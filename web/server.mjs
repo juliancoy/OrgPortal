@@ -28,6 +28,13 @@ function escapeJsonForHtml(data) {
   return JSON.stringify(data).replaceAll('</script', '<\\/script')
 }
 
+function toIsoDate(value) {
+  if (!value) return null
+  const dt = new Date(value)
+  if (Number.isNaN(dt.getTime())) return null
+  return dt.toISOString()
+}
+
 function contentTypeFor(filePath) {
   const ext = path.extname(filePath).toLowerCase()
   switch (ext) {
@@ -150,6 +157,12 @@ async function buildEventsListSeo(base) {
     jsonLd: [
       {
         '@context': 'https://schema.org',
+        '@type': 'WebPage',
+        name: 'Upcoming Events',
+        url: `${base}/events`,
+      },
+      {
+        '@context': 'https://schema.org',
         '@type': 'ItemList',
         name: 'Upcoming Events',
         itemListElement: events.slice(0, 50).map((event, idx) => ({
@@ -177,6 +190,47 @@ async function buildEventSeo(base, slug) {
       imageUrl: event.image_url || undefined,
       type: 'article',
       jsonLd: [
+        {
+          '@context': 'https://schema.org',
+          '@type': 'WebPage',
+          name: event.title,
+          url: canonicalUrl,
+          breadcrumb: {
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              {
+                '@type': 'ListItem',
+                position: 1,
+                name: 'Events',
+                item: `${base}/events`,
+              },
+              {
+                '@type': 'ListItem',
+                position: 2,
+                name: event.title,
+                item: canonicalUrl,
+              },
+            ],
+          },
+        },
+        {
+          '@context': 'https://schema.org',
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            {
+              '@type': 'ListItem',
+              position: 1,
+              name: 'Events',
+              item: `${base}/events`,
+            },
+            {
+              '@type': 'ListItem',
+              position: 2,
+              name: event.title,
+              item: canonicalUrl,
+            },
+          ],
+        },
         {
           '@context': 'https://schema.org',
           '@type': 'Event',
@@ -289,15 +343,20 @@ createServer(async (req, res) => {
       } catch {
         events = []
       }
-      const urls = [
-        `${base}/`,
-        `${base}/events`,
+      const entries = [
+        { loc: `${base}/` },
+        { loc: `${base}/events` },
         ...events
           .filter((event) => event && event.slug)
-          .map((event) => `${base}/events/${encodeURIComponent(event.slug)}`),
+          .map((event) => ({
+            loc: `${base}/events/${encodeURIComponent(event.slug)}`,
+            lastmod: toIsoDate(event.updated_at || event.starts_at || event.created_at),
+          })),
       ]
-      const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
-        .map((u) => `  <url><loc>${escapeHtml(u)}</loc></url>`)
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries
+        .map((entry) =>
+          `  <url><loc>${escapeHtml(entry.loc)}</loc>${entry.lastmod ? `<lastmod>${escapeHtml(entry.lastmod)}</lastmod>` : ''}</url>`,
+        )
         .join('\n')}\n</urlset>\n`
       res.writeHead(200, { 'content-type': 'application/xml; charset=utf-8' })
       res.end(xml)
