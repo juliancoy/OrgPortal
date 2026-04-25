@@ -105,6 +105,7 @@ function buildSeoHead(input) {
   const tags = []
   tags.push(`<title>${escapeHtml(input.title)}</title>`)
   tags.push(`<meta name="description" content="${escapeHtml(input.description)}">`)
+  if (input.robots) tags.push(`<meta name="robots" content="${escapeHtml(input.robots)}">`)
   tags.push(`<link rel="canonical" href="${escapeHtml(input.canonicalUrl)}">`)
   tags.push(`<meta property="og:type" content="${escapeHtml(input.type || 'website')}">`)
   tags.push(`<meta property="og:title" content="${escapeHtml(input.title)}">`)
@@ -170,6 +171,46 @@ async function buildEventsListSeo(base) {
           position: idx + 1,
           url: `${base}/events/${encodeURIComponent(event.slug)}`,
           name: event.title,
+        })),
+      },
+    ],
+  }
+}
+
+async function buildOrgsListSeo(base) {
+  let orgs = []
+  try {
+    const data = await fetchJsonWithCache(
+      `${EVENTS_API_BASE}/api/network/orgs/public?sort=popular&limit=120`,
+      'orgs-list',
+    )
+    if (Array.isArray(data)) {
+      orgs = data.filter((org) => Number(org?.upcoming_events_count || 0) > 0)
+    }
+  } catch {
+    // degrade gracefully to generic SEO if backend unavailable
+  }
+  return {
+    title: 'Organizations • Org Portal',
+    description: 'Browse registered organizations in the network, ranked by popularity.',
+    canonicalUrl: `${base}/orgs`,
+    type: 'website',
+    jsonLd: [
+      {
+        '@context': 'https://schema.org',
+        '@type': 'WebPage',
+        name: 'Organizations',
+        url: `${base}/orgs`,
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'ItemList',
+        name: 'Organizations',
+        itemListElement: orgs.slice(0, 100).map((org, idx) => ({
+          '@type': 'ListItem',
+          position: idx + 1,
+          url: `${base}/orgs/${encodeURIComponent(org.slug)}`,
+          name: org.name,
         })),
       },
     ],
@@ -331,6 +372,49 @@ async function buildOrgSeo(base, slug) {
   }
 }
 
+async function buildUserSeo(base, slug) {
+  const canonicalUrl = `${base}/users/${encodeURIComponent(slug)}`
+  try {
+    const profile = await fetchJsonWithCache(
+      `${EVENTS_API_BASE}/api/network/users/public/${encodeURIComponent(slug)}`,
+      `user:${slug}`,
+    )
+    const description = summary(profile.headline || profile.bio, 'Public individual profile on Org Portal.')
+    return {
+      statusCode: 200,
+      seo: {
+        title: `${profile.user_name} • Org Portal`,
+        description,
+        canonicalUrl,
+        imageUrl: profile.photo_url || undefined,
+        type: 'website',
+        robots: 'noindex, nofollow, noarchive, nosnippet, noimageindex',
+        jsonLd: [
+          {
+            '@context': 'https://schema.org',
+            '@type': 'ProfilePage',
+            name: profile.user_name,
+            url: canonicalUrl,
+            description,
+          },
+        ],
+      },
+    }
+  } catch {
+    return {
+      statusCode: 404,
+      seo: {
+        title: 'Profile Not Found • Org Portal',
+        description: 'The requested public individual profile could not be found.',
+        canonicalUrl,
+        type: 'website',
+        robots: 'noindex, nofollow, noarchive, nosnippet, noimageindex',
+        jsonLd: [],
+      },
+    }
+  }
+}
+
 async function serveStatic(req, res, pathname) {
   const rawPath = pathname === '/' ? '/index.html' : pathname
   const decoded = decodeURIComponent(rawPath)
@@ -360,6 +444,14 @@ async function serveSpa(req, res, pathname) {
     return
   }
 
+  if (pathname === '/orgs') {
+    const seo = await buildOrgsListSeo(base)
+    const html = applySeo(template, seo)
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
+    res.end(html)
+    return
+  }
+
   const eventMatch = pathname.match(/^\/events\/([^/]+)$/)
   if (eventMatch) {
     const slug = decodeURIComponent(eventMatch[1])
@@ -373,11 +465,30 @@ async function serveSpa(req, res, pathname) {
   const orgMatch = pathname.match(/^\/orgs\/([^/]+)$/)
   if (orgMatch) {
     const slug = decodeURIComponent(orgMatch[1])
-    const { statusCode, seo } = await buildOrgSeo(base, slug)
-    const html = applySeo(template, seo)
-    res.writeHead(statusCode, { 'content-type': 'text/html; charset=utf-8' })
-    res.end(html)
-    return
+    const reservedOrgPaths = new Set(['register', 'login', 'initiatives', 'profile', 'account', 'events'])
+    if (!reservedOrgPaths.has(slug)) {
+      const { statusCode, seo } = await buildOrgSeo(base, slug)
+      const html = applySeo(template, seo)
+      res.writeHead(statusCode, { 'content-type': 'text/html; charset=utf-8' })
+      res.end(html)
+      return
+    }
+  }
+
+  const userMatch = pathname.match(/^\/(?:users|contact)\/([^/]+)$/)
+  if (userMatch) {
+    const slug = decodeURIComponent(userMatch[1])
+    const reservedUserPaths = new Set(['register', 'login', 'dashboard', 'profile', 'account'])
+    if (!reservedUserPaths.has(slug)) {
+      const { statusCode, seo } = await buildUserSeo(base, slug)
+      const html = applySeo(template, seo)
+      res.writeHead(statusCode, {
+        'content-type': 'text/html; charset=utf-8',
+        'x-robots-tag': 'noindex, nofollow, noarchive, nosnippet, noimageindex',
+      })
+      res.end(html)
+      return
+    }
   }
 
   res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
@@ -398,13 +509,16 @@ createServer(async (req, res) => {
     if (pathname === '/robots.txt') {
       const base = getCanonicalBase(req)
       res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8' })
-      res.end(`User-agent: *\nAllow: /\nSitemap: ${base}/sitemap.xml\n`)
+      res.end(
+        `User-agent: *\nAllow: /\nDisallow: /users/\nDisallow: /contact/\nSitemap: ${base}/sitemap.xml\n`,
+      )
       return
     }
 
     if (pathname === '/sitemap.xml') {
       const base = getCanonicalBase(req)
       let events = []
+      let orgs = []
       try {
         const data = await fetchJsonWithCache(
           `${EVENTS_API_BASE}/api/network/events/public?upcoming_only=true&limit=500`,
@@ -414,14 +528,30 @@ createServer(async (req, res) => {
       } catch {
         events = []
       }
+      try {
+        const data = await fetchJsonWithCache(
+          `${EVENTS_API_BASE}/api/network/orgs/public?sort=popular&limit=500`,
+          'orgs-sitemap',
+        )
+        if (Array.isArray(data)) orgs = data
+      } catch {
+        orgs = []
+      }
       const entries = [
         { loc: `${base}/` },
         { loc: `${base}/events` },
+        { loc: `${base}/orgs` },
         ...events
           .filter((event) => event && event.slug)
           .map((event) => ({
             loc: `${base}/events/${encodeURIComponent(event.slug)}`,
             lastmod: toIsoDate(event.updated_at || event.starts_at || event.created_at),
+          })),
+        ...orgs
+          .filter((org) => org && org.slug)
+          .map((org) => ({
+            loc: `${base}/orgs/${encodeURIComponent(org.slug)}`,
+            lastmod: toIsoDate(org.updated_at || org.created_at),
           })),
       ]
       const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries

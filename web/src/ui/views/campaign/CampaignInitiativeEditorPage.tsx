@@ -16,7 +16,7 @@ export function CampaignInitiativeEditorPage() {
   const [status, setStatus] = useState<string | null>(null)
 
   useEffect(() => {
-    document.title = id ? 'ballot-sign • Edit initiative' : 'ballot-sign • Create/manage initiative'
+    document.title = id ? 'Org Portal • Edit initiative' : 'Org Portal • Create/manage initiative'
     if (!id) return
     fetch(`/api/ballot/initiatives/${id}`)
       .then((resp) => (resp.ok ? resp.json() : null))
@@ -121,7 +121,7 @@ export function CampaignInitiativeEditorPage() {
                 setStatus('Initiative saved.')
                 const initiativeId = saved?.id || id
                 if (initiativeId) {
-                  navigate(`/campaign/initiatives/${initiativeId}/ballot`)
+                  navigate(`/orgs/initiatives/${initiativeId}/ballot`)
                 }
               } catch (err) {
                 setStatus(err instanceof Error ? err.message : 'Save failed.')
@@ -131,11 +131,11 @@ export function CampaignInitiativeEditorPage() {
             {id ? 'Update initiative' : 'Save initiative'}
           </button>
           {id ? (
-            <button type="button" onClick={() => navigate(`/campaign/initiatives/${id}/ballot`)}>
+            <button type="button" onClick={() => navigate(`/orgs/initiatives/${id}/ballot`)}>
               Back
             </button>
           ) : (
-            <button type="button" onClick={() => navigate('/campaign/initiatives')}>
+            <button type="button" onClick={() => navigate('/orgs/initiatives')}>
               Back
             </button>
           )}
@@ -159,7 +159,7 @@ export function CampaignInitiativeEditorPage() {
                     throw new Error(text || `Delete failed (${resp.status})`)
                   }
                   alert('Initiative deleted.')
-                  navigate('/campaign/initiatives')
+                  navigate('/orgs/initiatives')
                 } catch (err) {
                   setStatus(err instanceof Error ? err.message : 'Delete failed.')
                 }

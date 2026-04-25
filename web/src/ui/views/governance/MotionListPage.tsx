@@ -40,6 +40,13 @@ function getGuestId(): string {
   return id
 }
 
+function motionProposerLabel(motion: Motion) {
+  if (motion.proposerType === 'org') {
+    return `Organization ${motion.proposerName}`
+  }
+  return motion.proposerName
+}
+
 export function MotionListPage() {
   const { motionRepository, engagementRepository } = useServices()
   const { user } = useAuth()
@@ -53,7 +60,7 @@ export function MotionListPage() {
   const [voteCounts, setVoteCounts] = useState<Record<string, VoteCounts>>({})
 
   useEffect(() => {
-    document.title = 'ballot-sign • Governance'
+    document.title = 'Org Portal • Governance'
   }, [])
 
   useEffect(() => {
@@ -206,7 +213,7 @@ export function MotionListPage() {
                       <span className="motion-list-card-title">{motion.title}</span>
                     </div>
                     <div className="motion-list-meta">
-                      Proposed by {motion.proposerName} on {motion.createdAtISO.slice(0, 10)}
+                      Proposed by {motionProposerLabel(motion)} on {motion.createdAtISO.slice(0, 10)}
                     </div>
                     <p className="motion-list-body">{motion.body.length > 120 ? `${motion.body.slice(0, 120)}...` : motion.body}</p>
                   </div>

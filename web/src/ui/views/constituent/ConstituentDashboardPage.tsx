@@ -4,14 +4,14 @@ import { useServices } from '../../../app/AppProviders'
 import { listInitiatives } from '../../../application/usecases/listInitiatives'
 import type { Initiative } from '../../../domain/initiative/Initiative'
 
-export function ConstituentDashboardPage() {
+export function UserDashboardPage() {
   const { initiativeRepository } = useServices()
   const [q, setQ] = useState('')
   const [items, setItems] = useState<Initiative[]>([])
   const [hasNotifications] = useState(true)
 
   useEffect(() => {
-    document.title = 'ballot-sign • Constituent dashboard'
+    document.title = 'Org Portal • User dashboard'
   }, [])
 
   useEffect(() => {
@@ -25,7 +25,7 @@ export function ConstituentDashboardPage() {
     <div style={{ display: 'grid', gap: '1rem' }}>
       <section className="panel">
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
-          <h1 style={{ margin: 0 }}>Constituent dashboard</h1>
+          <h1 style={{ margin: 0 }}>User dashboard</h1>
           <span className="muted">Notifications: {hasNotifications ? '●' : '○'}</span>
         </div>
         <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginTop: '0.75rem' }}>

@@ -12,23 +12,23 @@ export function CampaignRegisterPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
-    document.title = 'ballot-sign • Campaign manager registration'
+    document.title = 'Org Portal • Org registration'
   }, [])
 
   useEffect(() => {
     if (!isLoading && isSubmitting) {
       setIsSubmitting(false)
-      navigate('/campaign/initiatives')
+      navigate('/orgs/initiatives')
     }
   }, [isLoading, isSubmitting, navigate])
 
   return (
     <section className="panel">
-      <h1 style={{ marginTop: 0 }}>Register (campaign manager)</h1>
+      <h1 style={{ marginTop: 0 }}>Register (org)</h1>
       <div style={{ display: 'grid', gap: '0.6rem' }}>
         <div>
           <label className="muted" htmlFor="org">
-            Organization / campaign name
+            Organization name
           </label>
           <input id="org" value={orgName} onChange={(e) => setOrgName(e.target.value)} style={{ width: '100%' }} />
         </div>
@@ -128,7 +128,7 @@ export function CampaignRegisterPage() {
           {isSubmitting || isLoading ? 'Creating account...' : 'Register'}
         </button>
         <p className="muted" style={{ marginBottom: 0 }}>
-          Already have an account? <Link to="/campaign/login">Login</Link>
+          Already have an account? <Link to="/orgs/login">Login</Link>
         </p>
       </div>
     </section>

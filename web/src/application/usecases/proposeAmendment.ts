@@ -6,8 +6,12 @@ export type ProposeAmendmentRequest = {
   title: string
   body: string
   proposedBodyDiff: string
+  proposerType?: 'user' | 'org'
   proposerId: string
   proposerName: string
+  proposerUserName?: string
+  proposerOrgId?: string
+  proposerOrgName?: string
   quorumRequired: number
 }
 
@@ -16,6 +20,7 @@ export function validateProposeAmendment(req: ProposeAmendmentRequest): string[]
   if (!req.title?.trim()) errors.push('Title is required')
   if (!req.body?.trim()) errors.push('Body is required')
   if (!req.proposedBodyDiff?.trim()) errors.push('Proposed body diff is required')
+  if (req.proposerType === 'org' && !req.proposerOrgId?.trim()) errors.push('Organization selection is required')
   if (req.quorumRequired < 1) errors.push('Quorum must be at least 1')
   return errors
 }
@@ -36,8 +41,12 @@ export async function proposeAmendment(repo: MotionRepository, req: ProposeAmend
     title: req.title,
     body: req.body,
     proposedBodyDiff: req.proposedBodyDiff,
+    proposerType: req.proposerType || 'user',
     proposerId: req.proposerId,
     proposerName: req.proposerName,
+    proposerUserName: req.proposerUserName,
+    proposerOrgId: req.proposerOrgId,
+    proposerOrgName: req.proposerOrgName,
     quorumRequired: req.quorumRequired,
   })
   return { ok: true as const, motion }

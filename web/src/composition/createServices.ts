@@ -10,6 +10,8 @@ import { MockMotionRepository } from '../infrastructure/mocks/MockMotionReposito
 import { MockVoteRepository } from '../infrastructure/mocks/MockVoteRepository'
 import { MockEngagementRepository } from '../infrastructure/mocks/MockEngagementRepository'
 import { APIEngagementRepository } from '../infrastructure/api/APIEngagementRepository'
+import { APIMotionRepository } from '../infrastructure/api/APIMotionRepository'
+import { APIVoteRepository } from '../infrastructure/api/APIVoteRepository'
 
 /**
  * Application services container
@@ -49,7 +51,7 @@ function getConfig(): ServicesConfig {
   
   return {
     dataSource,
-    apiBaseUrl: env?.VITE_API_BASE_URL || '/api/governance',
+    apiBaseUrl: env?.VITE_API_BASE_URL || '/api/org/api/governance',
   }
 }
 
@@ -71,13 +73,23 @@ function createSignatureRepository(_config: ServicesConfig): SignatureRepository
   return new MockSignatureRepository()
 }
 
-function createMotionRepository(_config: ServicesConfig): MotionRepository {
-  // Currently only mock implementation available
+function createMotionRepository(config: ServicesConfig): MotionRepository {
+  if (config.dataSource === 'api') {
+    if (!config.apiBaseUrl) {
+      throw new Error('API base URL is required when using api data source')
+    }
+    return new APIMotionRepository(config.apiBaseUrl)
+  }
   return new MockMotionRepository()
 }
 
-function createVoteRepository(_config: ServicesConfig): VoteRepository {
-  // Currently only mock implementation available
+function createVoteRepository(config: ServicesConfig): VoteRepository {
+  if (config.dataSource === 'api') {
+    if (!config.apiBaseUrl) {
+      throw new Error('API base URL is required when using api data source')
+    }
+    return new APIVoteRepository(config.apiBaseUrl)
+  }
   return new MockVoteRepository()
 }
 

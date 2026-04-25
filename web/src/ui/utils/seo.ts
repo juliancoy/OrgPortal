@@ -34,11 +34,15 @@ export function setSeoMeta(input: {
   canonicalUrl: string
   imageUrl?: string | null
   type?: 'website' | 'article'
+  robots?: string
 }) {
   const type = input.type ?? 'website'
   document.title = input.title
   setCanonicalUrl(input.canonicalUrl)
   upsertMetaByName('description', input.description)
+  if (input.robots) {
+    upsertMetaByName('robots', input.robots)
+  }
   upsertMetaByProperty('og:title', input.title)
   upsertMetaByProperty('og:description', input.description)
   upsertMetaByProperty('og:url', input.canonicalUrl)
@@ -63,4 +67,3 @@ export function upsertJsonLd(id: string, data: unknown) {
   }
   script.textContent = JSON.stringify(data)
 }
-

@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../../app/AppProviders'
+import { pidpUrl } from '../../../config/pidp'
 
-export function ConstituentAccountPage() {
+const USER_PROFILE_STORAGE_KEY = 'user.profile'
+const LEGACY_USER_PROFILE_STORAGE_KEY = 'constituent.profile'
+
+export function UserAccountPage() {
   const { user, token } = useAuth()
-  const [email, setEmail] = useState('demo.constituent@example.com')
+  const [email, setEmail] = useState('demo.user@example.com')
   const [addressLine1, setAddressLine1] = useState('123 Example St NW')
   const [addressLine2, setAddressLine2] = useState('')
   const [city, setCity] = useState('Washington')
@@ -13,7 +17,7 @@ export function ConstituentAccountPage() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
 
   useEffect(() => {
-    document.title = 'ballot-sign • Constituent account'
+    document.title = 'Org Portal • User account'
   }, [])
 
   useEffect(() => {
@@ -21,7 +25,7 @@ export function ConstituentAccountPage() {
       setAvatarUrl(user.avatarUrl)
       return
     }
-    const raw = localStorage.getItem('constituent.profile')
+    const raw = localStorage.getItem(USER_PROFILE_STORAGE_KEY) || localStorage.getItem(LEGACY_USER_PROFILE_STORAGE_KEY)
     if (!raw) return
     try {
       const saved = JSON.parse(raw) as { avatarUrl?: string }
@@ -34,7 +38,7 @@ export function ConstituentAccountPage() {
   useEffect(() => {
     if (!token || avatarUrl) return
     let cancelled = false
-    fetch('/pidp/auth/me', {
+    fetch(pidpUrl('/auth/me'), {
       credentials: 'include',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -58,7 +62,7 @@ export function ConstituentAccountPage() {
 
   return (
     <section className="panel">
-      <h1 style={{ marginTop: 0 }}>Account (constituent)</h1>
+      <h1 style={{ marginTop: 0 }}>Account (user)</h1>
       <p className="muted" style={{ marginTop: 0 }}>
         Demo-only editable form.
       </p>

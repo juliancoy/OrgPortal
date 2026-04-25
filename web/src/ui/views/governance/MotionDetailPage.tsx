@@ -81,6 +81,13 @@ const destructiveBtn: React.CSSProperties = {
   transition: 'background 0.15s',
 }
 
+function motionProposerLabel(motion: Motion) {
+  if (motion.proposerType === 'org') {
+    return `Organization ${motion.proposerName}`
+  }
+  return motion.proposerName
+}
+
 export function MotionDetailPage() {
   const { id } = useParams()
   const { motionRepository, voteRepository, engagementRepository } = useServices()
@@ -118,7 +125,7 @@ export function MotionDetailPage() {
       }
       
       setLoading(false)
-      if (m) document.title = `ballot-sign \u2022 ${m.title}`
+      if (m) document.title = `Org Portal \u2022 ${m.title}`
     })
   }, [motionRepository, engagementRepository, id, user])
 
@@ -407,8 +414,13 @@ export function MotionDetailPage() {
         <h2 style={sectionTitle}>Details</h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 14, color: 'var(--text-secondary)' }}>
           <span>
-            Proposed by <strong style={{ color: 'var(--text-primary)' }}>{motion.proposerName}</strong> on {motion.createdAtISO.slice(0, 10)}
+            Proposed by <strong style={{ color: 'var(--text-primary)' }}>{motionProposerLabel(motion)}</strong> on {motion.createdAtISO.slice(0, 10)}
           </span>
+          {motion.proposerType === 'org' && motion.proposerUserName ? (
+            <span>
+              Submitted by <strong style={{ color: 'var(--text-primary)' }}>{motion.proposerUserName}</strong>
+            </span>
+          ) : null}
           {motion.seconderName ? (
             <span>
               Seconded by <strong style={{ color: 'var(--text-primary)' }}>{motion.seconderName}</strong>
@@ -570,7 +582,6 @@ export function MotionDetailPage() {
                   proposerName: a.proposerName,
                   status: a.status,
                 }))}
-                showUnchanged={false}
               />
             </div>
           )}

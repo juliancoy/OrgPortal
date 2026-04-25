@@ -1,5 +1,6 @@
 export type MotionStatus = 'proposed' | 'seconded' | 'discussion' | 'voting' | 'passed' | 'failed' | 'tabled' | 'withdrawn'
 export type MotionType = 'main' | 'amendment'
+export type MotionProposerType = 'user' | 'org'
 export type VoteChoice = 'yea' | 'nay' | 'abstain'
 
 export type Motion = {
@@ -10,8 +11,12 @@ export type Motion = {
   body: string                   // motion text (markdown)
   proposedBodyDiff?: string      // for amendments: the proposed replacement text
   status: MotionStatus
+  proposerType?: MotionProposerType
   proposerId: string
   proposerName: string
+  proposerUserName?: string
+  proposerOrgId?: string
+  proposerOrgName?: string
   seconderId?: string
   seconderName?: string
   createdAtISO: string

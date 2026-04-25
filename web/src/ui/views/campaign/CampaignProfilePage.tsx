@@ -15,6 +15,7 @@ type Org = {
   slug: string
   description?: string | null
   source_url?: string | null
+  source_urls?: string[]
   image_url?: string | null
   tags?: string[]
   seeded_from_events: boolean
@@ -43,15 +44,18 @@ export function CampaignProfilePage() {
   const [memberEmail, setMemberEmail] = useState('')
   const [memberName, setMemberName] = useState('')
   const [memberRole, setMemberRole] = useState<'member' | 'admin'>('member')
+  const [mergeSourceByTarget, setMergeSourceByTarget] = useState<Record<string, string>>({})
+  const [orgNameById, setOrgNameById] = useState<Record<string, string>>({})
 
   const [newOrgName, setNewOrgName] = useState('')
   const [newOrgUrl, setNewOrgUrl] = useState('')
   const [newOrgImage, setNewOrgImage] = useState('')
   const [newOrgTags, setNewOrgTags] = useState('')
   const [newOrgDescription, setNewOrgDescription] = useState('')
+  const [claimOnCreate, setClaimOnCreate] = useState(true)
 
   useEffect(() => {
-    document.title = 'ballot-sign • Organization network'
+    document.title = 'Org Portal • Organization network'
   }, [])
 
   async function loadOrgs() {
@@ -69,7 +73,13 @@ export function CampaignProfilePage() {
         throw new Error(text || `Failed to load organizations (${resp.status})`)
       }
       const data = await resp.json()
-      setOrgs(Array.isArray(data) ? data : [])
+      const rows = Array.isArray(data) ? data : []
+      setOrgs(rows)
+      setOrgNameById(
+        Object.fromEntries(
+          rows.map((org) => [org.id, org.name]),
+        ) as Record<string, string>,
+      )
     } catch (err) {
       setStatus(err instanceof Error ? err.message : 'Failed to load organizations')
     } finally {
@@ -112,7 +122,7 @@ export function CampaignProfilePage() {
         const text = await resp.text().catch(() => '')
         throw new Error(text || `Claim failed (${resp.status})`)
       }
-      setStatus('Organization claimed.')
+      setStatus('Organization claimed. You are now an organization admin.')
       await loadOrgs()
     } catch (err) {
       setStatus(err instanceof Error ? err.message : 'Claim failed')
@@ -138,6 +148,7 @@ export function CampaignProfilePage() {
           source_url: newOrgUrl.trim() || null,
           image_url: newOrgImage.trim() || null,
           description: newOrgDescription.trim() || null,
+          claim_on_create: claimOnCreate,
           tags: newOrgTags
             .split(',')
             .map((item) => item.trim())
@@ -153,10 +164,105 @@ export function CampaignProfilePage() {
       setNewOrgImage('')
       setNewOrgDescription('')
       setNewOrgTags('')
+      setClaimOnCreate(true)
       setStatus('Organization created.')
       await loadOrgs()
     } catch (err) {
       setStatus(err instanceof Error ? err.message : 'Create failed')
+    }
+  }
+
+  async function unclaimOrg(orgId: string) {
+    if (!token) return
+    setStatus(null)
+    try {
+      const resp = await fetch(orgUrl(`/api/network/orgs/${orgId}/unclaim`), {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!resp.ok) {
+        const text = await resp.text().catch(() => '')
+        throw new Error(text || `Unclaim failed (${resp.status})`)
+      }
+      setStatus('Organization unclaimed.')
+      await loadOrgs()
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : 'Unclaim failed')
+    }
+  }
+
+  async function mergeOrg(targetOrgId: string) {
+    if (!token) return
+    const sourceOrgId = mergeSourceByTarget[targetOrgId]
+    if (!sourceOrgId) {
+      setStatus('Choose a source organization to merge.')
+      return
+    }
+    if (sourceOrgId === targetOrgId) {
+      setStatus('Source and target organizations must be different.')
+      return
+    }
+    setStatus(null)
+    try {
+      const resp = await fetch(orgUrl(`/api/network/orgs/${targetOrgId}/merge`), {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ source_organization_id: sourceOrgId }),
+      })
+      if (!resp.ok) {
+        const text = await resp.text().catch(() => '')
+        throw new Error(text || `Merge failed (${resp.status})`)
+      }
+      setStatus('Organizations merged successfully.')
+      setMergeSourceByTarget((prev) => {
+        const next = { ...prev }
+        delete next[targetOrgId]
+        return next
+      })
+      if (selectedOrgId === sourceOrgId) {
+        setSelectedOrgId('')
+        setMembers([])
+      }
+      await loadOrgs()
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : 'Merge failed')
+    }
+  }
+
+  async function renameOrg(orgId: string) {
+    if (!token) return
+    const nextName = (orgNameById[orgId] || '').trim()
+    if (!nextName) {
+      setStatus('Organization name is required.')
+      return
+    }
+    setStatus(null)
+    try {
+      const resp = await fetch(orgUrl(`/api/network/orgs/${orgId}`), {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: nextName }),
+      })
+      if (!resp.ok) {
+        let detail = ''
+        try {
+          const payload = (await resp.json()) as { detail?: string }
+          detail = String(payload?.detail || '').trim()
+        } catch {
+          detail = (await resp.text().catch(() => '')).trim()
+        }
+        throw new Error(detail || `Rename failed (${resp.status})`)
+      }
+      setStatus('Organization updated.')
+      await loadOrgs()
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : 'Rename failed')
     }
   }
 
@@ -221,12 +327,13 @@ export function CampaignProfilePage() {
     <section className="panel" style={{ display: 'grid', gap: '1rem' }}>
       <h1 style={{ marginTop: 0 }}>Organization Network</h1>
       <p className="muted" style={{ marginTop: 0 }}>
-        Create or claim organizations seeded from `baltimore/event_sources.py`, then manage members/admins.
+        Create or claim organizations seeded from `baltimore/event_sources.py`, then manage members/admins and merge duplicates.
       </p>
 
       <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
         <Link to="/contact-settings">Manage My Contact Page</Link>
-        <Link to="/campaign/initiatives">My Initiatives</Link>
+        <Link to="/orgs/initiatives">My Initiatives</Link>
+        <Link to="/orgs/events">Events</Link>
       </div>
 
       <div className="portal-card" style={{ display: 'grid', gap: '0.6rem' }}>
@@ -251,6 +358,10 @@ export function CampaignProfilePage() {
         <input value={newOrgImage} onChange={(e) => setNewOrgImage(e.target.value)} placeholder="Image URL (optional)" />
         <input value={newOrgTags} onChange={(e) => setNewOrgTags(e.target.value)} placeholder="Tags, comma separated" />
         <textarea value={newOrgDescription} onChange={(e) => setNewOrgDescription(e.target.value)} rows={3} placeholder="Description" />
+        <label style={{ display: 'inline-flex', gap: '0.5rem', alignItems: 'center' }}>
+          <input type="checkbox" checked={claimOnCreate} onChange={(e) => setClaimOnCreate(e.target.checked)} />
+          Claim ownership on create
+        </label>
         <div>
           <button type="button" onClick={createOrg} disabled={!token}>Create</button>
         </div>
@@ -261,6 +372,10 @@ export function CampaignProfilePage() {
       <div style={{ display: 'grid', gap: '0.6rem' }}>
         {orgs.map((org) => {
           const canManage = org.my_role === 'admin'
+          const sourceOptions = orgs.filter((candidate) => candidate.id !== org.id)
+          const sourceUrls = Array.isArray(org.source_urls) && org.source_urls.length > 0
+            ? org.source_urls
+            : (org.source_url ? [org.source_url] : [])
           return (
             <article key={org.id} className="portal-card" style={{ display: 'grid', gap: '0.4rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.8rem', alignItems: 'start' }}>
@@ -268,18 +383,72 @@ export function CampaignProfilePage() {
                   <strong>{org.name}</strong> <span className="muted">(@{org.slug})</span>
                   {org.description ? <div className="muted">{org.description}</div> : null}
                   <div className="muted" style={{ fontSize: '0.8rem' }}>
-                    {org.source_url ? org.source_url : 'User-created'} • Members: {org.membership_count} • {org.seeded_from_events ? 'Seeded' : 'Custom'}
+                    {sourceUrls.length > 0 ? sourceUrls[0] : 'User-created'} • Members: {org.membership_count} • {org.seeded_from_events ? 'Seeded' : 'Custom'}
                   </div>
+                  {sourceUrls.length > 1 ? (
+                    <div className="muted" style={{ fontSize: '0.8rem' }}>
+                      Sources: {sourceUrls.join(' • ')}
+                    </div>
+                  ) : null}
                 </div>
                 <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                   {!org.claimed_by_user_id ? (
                     <button type="button" onClick={() => claimOrg(org.id)} disabled={!token}>Claim</button>
+                  ) : null}
+                  {org.claimed_by_user_id && canManage ? (
+                    <button type="button" onClick={() => unclaimOrg(org.id)} disabled={!token}>Unclaim</button>
                   ) : null}
                   {canManage ? (
                     <button type="button" onClick={() => loadMembers(org.id)}>Manage Members</button>
                   ) : null}
                 </div>
               </div>
+              {canManage ? (
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <input
+                    value={orgNameById[org.id] ?? org.name}
+                    onChange={(e) =>
+                      setOrgNameById((prev) => ({
+                        ...prev,
+                        [org.id]: e.target.value,
+                      }))
+                    }
+                    placeholder="Organization name"
+                    style={{ minWidth: 220 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => renameOrg(org.id)}
+                    disabled={!token}
+                  >
+                    Save Name
+                  </button>
+                  <select
+                    value={mergeSourceByTarget[org.id] ?? ''}
+                    onChange={(e) =>
+                      setMergeSourceByTarget((prev) => ({
+                        ...prev,
+                        [org.id]: e.target.value,
+                      }))
+                    }
+                    style={{ minWidth: 220 }}
+                  >
+                    <option value="">Select source org to merge into {org.name}</option>
+                    {sourceOptions.map((candidate) => (
+                      <option key={candidate.id} value={candidate.id}>
+                        {candidate.name} (@{candidate.slug})
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => mergeOrg(org.id)}
+                    disabled={!token || !mergeSourceByTarget[org.id]}
+                  >
+                    Merge Into This Org
+                  </button>
+                </div>
+              ) : null}
             </article>
           )
         })}

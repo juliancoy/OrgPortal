@@ -2,15 +2,15 @@ import { useEffect, useState } from 'react'
 
 export function CampaignAccountPage() {
   const [email, setEmail] = useState('saferstreets@example.com')
-  const [contactName, setContactName] = useState('Campaign Admin')
+  const [contactName, setContactName] = useState('Org Admin')
 
   useEffect(() => {
-    document.title = 'ballot-sign • Campaign account'
+    document.title = 'Org Portal • Org account'
   }, [])
 
   return (
     <section className="panel">
-      <h1 style={{ marginTop: 0 }}>Account (campaign manager)</h1>
+      <h1 style={{ marginTop: 0 }}>Account (org)</h1>
       <p className="muted" style={{ marginTop: 0 }}>
         Static demo form.
       </p>

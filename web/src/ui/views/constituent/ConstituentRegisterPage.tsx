@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
 
-export function ConstituentRegisterPage() {
+export function UserRegisterPage() {
   const navigate = useNavigate()
   const { registerWithPassword, isLoading } = useAuth()
   const [email, setEmail] = useState('')
@@ -16,7 +16,7 @@ export function ConstituentRegisterPage() {
   )
 
   useEffect(() => {
-    document.title = 'ballot-sign • Constituent registration'
+    document.title = 'Org Portal • User registration'
   }, [])
 
   useEffect(() => {
@@ -28,7 +28,7 @@ export function ConstituentRegisterPage() {
 
   return (
     <section className="panel">
-      <h1 style={{ marginTop: 0 }}>Register (constituent)</h1>
+      <h1 style={{ marginTop: 0 }}>Register (user)</h1>
       <div style={{ display: 'grid', gap: '0.6rem' }}>
         <div>
           <label className="muted" htmlFor="email">
@@ -93,7 +93,7 @@ export function ConstituentRegisterPage() {
                   <>
                     An account with this email already exists. Please log in instead.
                     <div style={{ marginTop: '0.75rem' }}>
-                      <Link to="/constituent/login">Go to login</Link>
+                      <Link to="/users/login">Go to login</Link>
                     </div>
                   </>
                 ) : (
@@ -141,7 +141,7 @@ export function ConstituentRegisterPage() {
           {isSubmitting || isLoading ? 'Creating account...' : 'Register'}
         </button>
         <p className="muted" style={{ marginBottom: 0 }}>
-          Already have an account? <Link to="/constituent/login">Login</Link>
+          Already have an account? <Link to="/users/login">Login</Link>
         </p>
       </div>
     </section>

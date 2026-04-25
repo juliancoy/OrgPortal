@@ -1,5 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
+import { pidpUrl } from '../../../config/pidp'
+
+const ORG_API_BASE = '/api/org'
+const USER_PROFILE_STORAGE_KEY = 'user.profile'
+const LEGACY_USER_PROFILE_STORAGE_KEY = 'constituent.profile'
+
+function orgUrl(path: string) {
+  if (!path.startsWith('/')) return `${ORG_API_BASE}/${path}`
+  return `${ORG_API_BASE}${path}`
+}
 
 type ProfileDraft = {
   fullName: string
@@ -16,12 +27,22 @@ type ProfileDraft = {
   organizations: string
 }
 
-export function ConstituentProfilePage() {
+type UserOrganization = {
+  id: string
+  name: string
+  slug: string
+  my_role?: 'member' | 'admin' | string | null
+  claimed_by_user_id?: string | null
+  is_contested?: boolean
+  pending_claim_requests_count?: number
+}
+
+export function UserProfilePage() {
   const { user, setUser, token, logout } = useAuth()
   const [fullName, setFullName] = useState('')
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
-  const [displayName, setDisplayName] = useState(user?.displayName ?? 'Demo Constituent')
+  const [displayName, setDisplayName] = useState(user?.displayName ?? 'Demo User')
   const [bio, setBio] = useState('Interested in local policy and civic engagement.')
   const [avatarUrl, setAvatarUrl] = useState('')
   const [addressLine1, setAddressLine1] = useState('')
@@ -33,6 +54,8 @@ export function ConstituentProfilePage() {
   const [isRunningForOffice, setIsRunningForOffice] = useState(false)
   const [officeTitle, setOfficeTitle] = useState('')
   const [campaignStatement, setCampaignStatement] = useState('')
+  const [userOrganizations, setUserOrganizations] = useState<UserOrganization[]>([])
+  const [userOrganizationsStatus, setUserOrganizationsStatus] = useState<string | null>(null)
   const [status, setStatus] = useState<string | null>(null)
   const [editorOpen, setEditorOpen] = useState(false)
   const [editorSource, setEditorSource] = useState<string | null>(null)
@@ -47,7 +70,7 @@ export function ConstituentProfilePage() {
   const editorObjectUrl = useRef<string | null>(null)
 
   useEffect(() => {
-    document.title = 'ballot-sign • Constituent profile'
+    document.title = 'Org Portal • User profile'
   }, [])
 
   useEffect(() => {
@@ -55,7 +78,7 @@ export function ConstituentProfilePage() {
 
     async function hydrateFromPidp() {
       try {
-        const resp = await fetch('/pidp/auth/me', {
+        const resp = await fetch(pidpUrl('/auth/me'), {
           credentials: 'include',
           headers: {
             Authorization: `Bearer ${token}`,
@@ -97,7 +120,7 @@ export function ConstituentProfilePage() {
       }
     }
 
-    const raw = localStorage.getItem('constituent.profile')
+    const raw = localStorage.getItem(USER_PROFILE_STORAGE_KEY) || localStorage.getItem(LEGACY_USER_PROFILE_STORAGE_KEY)
     if (!raw) return () => {
       cancelled = true
     }
@@ -118,6 +141,75 @@ export function ConstituentProfilePage() {
     } catch {
       // Ignore malformed local data.
     }
+
+    return () => {
+      cancelled = true
+    }
+  }, [token])
+
+  useEffect(() => {
+    let cancelled = false
+    if (!token) {
+      setUserOrganizations([])
+      setUserOrganizationsStatus('Sign in to load your organizations.')
+      return () => {
+        cancelled = true
+      }
+    }
+
+    setUserOrganizationsStatus('Loading your organizations…')
+    fetch(orgUrl('/api/network/orgs?mine=true&limit=300'), {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then(async (resp) => {
+        if (!resp.ok) {
+          const text = await resp.text().catch(() => '')
+          throw new Error(text || `Failed to load organizations (${resp.status})`)
+        }
+        return resp.json() as Promise<UserOrganization[]>
+      })
+      .then((rows) => {
+        if (cancelled) return
+        const list = (Array.isArray(rows) ? rows : []) as UserOrganization[]
+        return Promise.all(
+          list.map(async (org) => {
+            try {
+              const resp = await fetch(orgUrl(`/api/network/orgs/public/${encodeURIComponent(org.slug)}`))
+              if (!resp.ok) return org
+              const publicOrg = (await resp.json()) as {
+                is_contested?: boolean
+                pending_claim_requests_count?: number
+              }
+              return {
+                ...org,
+                is_contested: Boolean(publicOrg.is_contested),
+                pending_claim_requests_count: Number(publicOrg.pending_claim_requests_count || 0),
+              }
+            } catch {
+              return org
+            }
+          }),
+        )
+      })
+      .then((rows) => {
+        if (cancelled) return
+        const list = Array.isArray(rows) ? rows : []
+        list.sort((a, b) => {
+          const aAdmin = a.my_role === 'admin' ? 1 : 0
+          const bAdmin = b.my_role === 'admin' ? 1 : 0
+          if (aAdmin !== bAdmin) return bAdmin - aAdmin
+          return (a.name || '').localeCompare(b.name || '')
+        })
+        setUserOrganizations(list)
+        setUserOrganizationsStatus('')
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setUserOrganizations([])
+        setUserOrganizationsStatus(err instanceof Error ? err.message : 'Failed to load your organizations')
+      })
 
     return () => {
       cancelled = true
@@ -172,7 +264,7 @@ export function ConstituentProfilePage() {
 
   return (
     <section className="panel">
-      <h1 style={{ marginTop: 0 }}>Public profile (constituent)</h1>
+      <h1 style={{ marginTop: 0 }}>Public profile (user)</h1>
       <div style={{ display: 'grid', gap: '0.6rem' }}>
         <div style={{ display: 'grid', gap: '0.6rem', gridTemplateColumns: '1fr 1fr' }}>
           <div>
@@ -325,6 +417,38 @@ export function ConstituentProfilePage() {
           </label>
           <input id="orgs" value={organizations} onChange={(e) => setOrganizations(e.target.value)} style={{ width: '100%' }} />
         </div>
+        <div className="portal-card" style={{ display: 'grid', gap: '0.5rem' }}>
+          <h2 style={{ margin: 0, fontSize: '1rem' }}>Your Organizations</h2>
+          {userOrganizationsStatus ? (
+            <p className="muted" style={{ margin: 0 }}>
+              {userOrganizationsStatus}
+            </p>
+          ) : null}
+          {!userOrganizationsStatus && userOrganizations.length === 0 ? (
+            <p className="muted" style={{ margin: 0 }}>
+              You are not a member/admin of any organizations yet.
+            </p>
+          ) : null}
+          {userOrganizations.length > 0 ? (
+            <ul style={{ margin: 0, paddingLeft: '1.1rem', display: 'grid', gap: '0.35rem' }}>
+              {userOrganizations.map((org) => (
+                <li key={org.id}>
+                  <Link to={`/orgs/${encodeURIComponent(org.slug)}`}>{org.name}</Link>{' '}
+                  <span className="muted">
+                    (
+                    {org.claimed_by_user_id && user?.id && org.claimed_by_user_id === user.id
+                      ? 'owner'
+                      : org.my_role || 'member'}
+                    )
+                  </span>
+                  {org.is_contested ? (
+                    <span className="muted"> • contested ({org.pending_claim_requests_count || 0})</span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
         <div style={{ borderTop: '1px solid rgba(12, 30, 60, 0.12)', paddingTop: '1rem', marginTop: '0.5rem' }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
             <input
@@ -393,7 +517,7 @@ export function ConstituentProfilePage() {
               .filter(Boolean)
 
             if (token) {
-              fetch('/pidp/auth/me', {
+              fetch(pidpUrl('/auth/me'), {
                 method: 'PUT',
                 credentials: 'include',
                 headers: {
@@ -445,7 +569,7 @@ export function ConstituentProfilePage() {
               return
             }
 
-            localStorage.setItem('constituent.profile', JSON.stringify(payload))
+            localStorage.setItem(USER_PROFILE_STORAGE_KEY, JSON.stringify(payload))
             setStatus('Profile saved.')
             if (user) {
               setUser({
@@ -582,7 +706,7 @@ export function ConstituentProfilePage() {
                         }
                         try {
                           if (token) {
-                            const resp = await fetch('/pidp/auth/avatar/upload-url', {
+                            const resp = await fetch(pidpUrl('/auth/avatar/upload-url'), {
                               method: 'POST',
                               credentials: 'include',
                             })

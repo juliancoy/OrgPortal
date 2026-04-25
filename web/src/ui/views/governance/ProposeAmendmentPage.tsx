@@ -1,4 +1,5 @@
-import { FormEvent, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
+import type { FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useServices, useAuth } from '../../../app/AppProviders'
 import { getMotionById } from '../../../application/usecases/getMotionById'
@@ -6,6 +7,19 @@ import { proposeAmendment } from '../../../application/usecases/proposeAmendment
 import type { Motion } from '../../../domain/motion/Motion'
 import { AmendmentDiff } from '../../components/governance/AmendmentDiff'
 import { GovernanceNav, GovernanceBreadcrumb } from '../../components/governance/GovernanceNav'
+
+const ORG_API_BASE = '/api/org'
+
+function orgUrl(path: string) {
+  if (!path.startsWith('/')) return `${ORG_API_BASE}/${path}`
+  return `${ORG_API_BASE}${path}`
+}
+
+type MyOrganization = {
+  id: string
+  name: string
+  my_role?: string | null
+}
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -24,18 +38,21 @@ const inputStyle: React.CSSProperties = {
 export function ProposeAmendmentPage() {
   const { id } = useParams()
   const { motionRepository } = useServices()
-  const { user } = useAuth()
+  const { user, token } = useAuth()
   const navigate = useNavigate()
 
   const [parentMotion, setParentMotion] = useState<Motion | null>(null)
   const [loading, setLoading] = useState(true)
   const [title, setTitle] = useState('')
   const [proposedText, setProposedText] = useState('')
+  const [proposerType, setProposerType] = useState<'user' | 'org'>('user')
+  const [myAdminOrgs, setMyAdminOrgs] = useState<MyOrganization[]>([])
+  const [selectedOrgId, setSelectedOrgId] = useState('')
   const [errors, setErrors] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    document.title = 'ballot-sign \u2022 Propose Amendment'
+    document.title = 'Org Portal \u2022 Propose Amendment'
   }, [])
 
   useEffect(() => {
@@ -47,10 +64,49 @@ export function ProposeAmendmentPage() {
     })
   }, [motionRepository, id])
 
+  useEffect(() => {
+    if (!token) {
+      setMyAdminOrgs([])
+      return
+    }
+    let cancelled = false
+    fetch(orgUrl('/api/network/orgs?mine=true&limit=200'), {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(async (resp) => {
+        if (!resp.ok) return []
+        return (await resp.json()) as MyOrganization[]
+      })
+      .then((rows) => {
+        if (cancelled) return
+        const admins = (Array.isArray(rows) ? rows : []).filter((org) => org.my_role === 'admin')
+        setMyAdminOrgs(admins)
+        if (admins.length > 0 && !selectedOrgId) {
+          setSelectedOrgId(admins[0].id)
+        }
+      })
+      .catch(() => {
+        if (cancelled) return
+        setMyAdminOrgs([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [token])
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!user || !id || !parentMotion) {
       setErrors(['Unable to submit. Please ensure you are logged in.'])
+      return
+    }
+    if (proposerType === 'org' && myAdminOrgs.length === 0) {
+      setErrors(['You must be an admin of at least one organization to raise an organization amendment.'])
+      return
+    }
+    const selectedOrg = proposerType === 'org' ? myAdminOrgs.find((org) => org.id === selectedOrgId) : null
+    if (proposerType === 'org' && !selectedOrg) {
+      setErrors(['Select an organization to raise this amendment.'])
       return
     }
     setErrors([])
@@ -60,8 +116,12 @@ export function ProposeAmendmentPage() {
       title,
       body: proposedText,
       proposedBodyDiff: proposedText,
+      proposerType,
       proposerId: user.id,
-      proposerName: user.displayName,
+      proposerName: proposerType === 'org' ? (selectedOrg?.name || user.displayName) : user.displayName,
+      proposerUserName: proposerType === 'org' ? user.displayName : undefined,
+      proposerOrgId: proposerType === 'org' ? selectedOrg?.id : undefined,
+      proposerOrgName: proposerType === 'org' ? selectedOrg?.name : undefined,
       quorumRequired: parentMotion.quorumRequired,
     })
     setSubmitting(false)
@@ -148,6 +208,63 @@ export function ProposeAmendmentPage() {
 
         <form onSubmit={handleSubmit}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div>
+              <label
+                htmlFor="amend-proposer-type"
+                style={{
+                  display: 'block',
+                  marginBottom: 6,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: 'var(--text-secondary)',
+                }}
+              >
+                Raise As
+              </label>
+              <select
+                id="amend-proposer-type"
+                value={proposerType}
+                onChange={(e) => setProposerType(e.target.value as 'user' | 'org')}
+                style={{ ...inputStyle, maxWidth: 320 }}
+              >
+                <option value="user">User ({user?.displayName || 'signed in user'})</option>
+                <option value="org" disabled={myAdminOrgs.length === 0}>
+                  Organization {myAdminOrgs.length === 0 ? '(no admin orgs available)' : ''}
+                </option>
+              </select>
+              {proposerType === 'org' ? (
+                <div style={{ marginTop: 10 }}>
+                  <label
+                    htmlFor="amend-proposer-org"
+                    style={{
+                      display: 'block',
+                      marginBottom: 6,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: 'var(--text-secondary)',
+                    }}
+                  >
+                    Organization
+                  </label>
+                  <select
+                    id="amend-proposer-org"
+                    value={selectedOrgId}
+                    onChange={(e) => setSelectedOrgId(e.target.value)}
+                    style={{ ...inputStyle, maxWidth: 420 }}
+                  >
+                    {myAdminOrgs.map((org) => (
+                      <option key={org.id} value={org.id}>
+                        {org.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="muted" style={{ marginTop: 8, marginBottom: 0, fontSize: 12 }}>
+                    This amendment will be displayed as raised by the selected organization.
+                  </p>
+                </div>
+              ) : null}
+            </div>
+
             <div>
               <label
                 htmlFor="amend-title"

@@ -14,7 +14,7 @@ export function TargetPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    document.title = 'ballot-sign • Target'
+    document.title = 'Org Portal • Target'
   }, [])
 
   useEffect(() => {
@@ -55,7 +55,7 @@ export function TargetPage() {
         <ul style={{ paddingLeft: '1.2rem' }}>
           {filtered.map((initiative) => (
             <li key={initiative.id} style={{ marginBottom: '0.75rem' }}>
-              <Link to={`/campaign/initiatives/${initiative.id}/ballot`}>{initiative.title}</Link>
+              <Link to={`/orgs/initiatives/${initiative.id}/ballot`}>{initiative.title}</Link>
               {initiative.description ? <div className="muted">{initiative.description}</div> : null}
             </li>
           ))}

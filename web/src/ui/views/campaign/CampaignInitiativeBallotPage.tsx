@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
 import { useLegislativeBody } from '../../legislativeBodies'
+import { pidpUrl } from '../../../config/pidp'
 
 type Initiative = {
   id: string
@@ -73,7 +74,7 @@ export function CampaignInitiativeBallotPage() {
 
   useEffect(() => {
     if (!id) return
-    document.title = 'ballot-sign • Initiative ballot'
+    document.title = 'Org Portal • Initiative ballot'
     fetch(`/api/ballot/initiatives/${id}`)
       .then(async (resp) => {
         if (!resp.ok) {
@@ -127,7 +128,7 @@ export function CampaignInitiativeBallotPage() {
     if (!initiative) return
     const ids = [initiative.created_by, ...(initiative.collaborators || [])].filter(Boolean) as string[]
     if (!ids.length) return
-    fetch(`/pidp/auth/public/users?ids=${encodeURIComponent(ids.join(','))}`)
+    fetch(pidpUrl(`/auth/public/users?ids=${encodeURIComponent(ids.join(','))}`))
       .then((resp) => (resp.ok ? resp.json() : []))
       .then((data) => setAuthors(Array.isArray(data) ? data : []))
       .catch(() => {})
@@ -226,7 +227,7 @@ export function CampaignInitiativeBallotPage() {
                 return (
                   <Link
                     key={author.id}
-                    to={`/campaign-managers/${author.id}`}
+                    to={`/orgs/${author.id}`}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none' }}
                   >
                     {author.avatar_url ? (
@@ -286,7 +287,7 @@ export function CampaignInitiativeBallotPage() {
             ) : null}
             {canEdit ? (
               <Link
-                to={`/campaign/initiatives/${initiative.id}/edit`}
+                to={`/orgs/initiatives/${initiative.id}/edit`}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',

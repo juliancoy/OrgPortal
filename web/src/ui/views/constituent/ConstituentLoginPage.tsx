@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
+import { pidpAppLoginUrl } from '../../../config/pidp'
 
-export function ConstituentLoginPage() {
+export function UserLoginPage() {
   const navigate = useNavigate()
   const { loginWithPassword, isLoading } = useAuth()
   const [email, setEmail] = useState('')
@@ -12,7 +13,7 @@ export function ConstituentLoginPage() {
   const nextUrl = window.location.href
 
   useEffect(() => {
-    document.title = 'ballot-sign • Constituent login'
+    document.title = 'Org Portal • User login'
   }, [])
 
   useEffect(() => {
@@ -35,7 +36,7 @@ export function ConstituentLoginPage() {
 
   return (
     <section className="panel">
-      <h1 style={{ marginTop: 0 }}>Login (constituent)</h1>
+      <h1 style={{ marginTop: 0 }}>Login (user)</h1>
       <div
         style={{ display: 'grid', gap: '0.6rem' }}
         onKeyDown={(event) => {
@@ -52,7 +53,7 @@ export function ConstituentLoginPage() {
             Sign in with your Code Collective identity
           </p>
           <a
-            href={`/pidp/login?next=${encodeURIComponent(nextUrl)}`}
+            href={pidpAppLoginUrl(nextUrl)}
             style={{
               display: 'inline-flex',
               justifyContent: 'center',
@@ -62,7 +63,6 @@ export function ConstituentLoginPage() {
               borderRadius: 8,
               padding: '0.6rem 1rem',
               textDecoration: 'none',
-              color: 'inherit',
               backgroundColor: 'var(--primary)',
               color: '#fff',
             }}
@@ -98,7 +98,7 @@ export function ConstituentLoginPage() {
           {isSubmitting || isLoading ? 'Signing in...' : 'Login'}
         </button>
         <p className="muted" style={{ marginBottom: 0 }}>
-          New here? <Link to="/constituent/register">Register</Link>
+          New here? <Link to="/users/register">Register</Link>
         </p>
       </div>
     </section>

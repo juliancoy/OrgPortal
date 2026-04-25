@@ -15,7 +15,7 @@ export function CampaignEditableInitiativesPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    document.title = 'ballot-sign • Editable initiatives'
+    document.title = 'Org Portal • Editable initiatives'
   }, [])
 
   useEffect(() => {
@@ -58,8 +58,8 @@ export function CampaignEditableInitiativesPage() {
               {initiative.location ? <div className="muted">Target: {initiative.location}</div> : null}
               {initiative.description ? <div className="muted">{initiative.description}</div> : null}
               <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginTop: '0.35rem' }}>
-                <Link to={`/campaign/initiatives/${initiative.id}/edit`}>Edit</Link>
-                <Link to={`/campaign/initiatives/${initiative.id}/ballot`}>View</Link>
+                <Link to={`/orgs/initiatives/${initiative.id}/edit`}>Edit</Link>
+                <Link to={`/orgs/initiatives/${initiative.id}/ballot`}>View</Link>
               </div>
             </li>
           ))}

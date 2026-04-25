@@ -88,20 +88,44 @@ export function PublicEventsPage() {
       {status ? <p className="muted">{status}</p> : null}
       <div style={{ display: 'grid', gap: '0.9rem' }}>
         {events.map((event) => (
-          <article key={event.id} className="portal-card" style={{ display: 'grid', gap: '0.5rem' }}>
-            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>
-              <Link to={`/events/${event.slug}`} style={{ textDecoration: 'none' }}>
-                {event.title}
-              </Link>
-            </h2>
-            <p className="muted" style={{ margin: 0 }}>
-              {formatDate(event.starts_at)}{event.location ? ` • ${event.location}` : ''}
-            </p>
-            {event.description ? <p style={{ margin: 0 }}>{event.description}</p> : null}
+          <article
+            key={event.id}
+            className="portal-card"
+            style={{
+              display: 'flex',
+              gap: '0.85rem',
+              alignItems: 'flex-start',
+              flexWrap: 'wrap',
+            }}
+          >
+            {event.image_url ? (
+              <img
+                src={event.image_url}
+                alt={event.title}
+                style={{
+                  width: 140,
+                  height: 92,
+                  objectFit: 'cover',
+                  borderRadius: 10,
+                  border: '1px solid var(--border)',
+                  flex: '0 0 auto',
+                }}
+              />
+            ) : null}
+            <div style={{ display: 'grid', gap: '0.45rem', minWidth: 220, flex: '1 1 360px' }}>
+              <h2 style={{ margin: 0, fontSize: '1.1rem' }}>
+                <Link to={`/events/${event.slug}`} style={{ textDecoration: 'none' }}>
+                  {event.title}
+                </Link>
+              </h2>
+              <p className="muted" style={{ margin: 0 }}>
+                {formatDate(event.starts_at)}{event.location ? ` • ${event.location}` : ''}
+              </p>
+              {event.description ? <p style={{ margin: 0 }}>{event.description}</p> : null}
+            </div>
           </article>
         ))}
       </div>
     </section>
   )
 }
-

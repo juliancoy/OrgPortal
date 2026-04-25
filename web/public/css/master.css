@@ -178,10 +178,8 @@
     flex-direction: row;
     align-items: center;
     justify-content: center;
-    overflow-x: hidden;
-    /* Prevent horizontal overflow */
-    overflow-y: hidden;
-    /* Prevent vertical overflow */
+    overflow-x: auto;
+    overflow-y: visible;
 }
 
 #main img {
@@ -700,10 +698,8 @@ button:focus {
   /* Reduced padding for the horizontal layout */
   height: auto;
   /* Occupy full viewport height */
-  overflow: hidden;
-  /* Prevent any overflow that might cause scroll */
-  overflow-y: hidden;
-  /* Prevent vertical scrolling */
+  overflow: visible;
+  overflow-y: visible;
   overflow-x: auto;
   /* Allow horizontal expansion */
   flex-direction: row;
@@ -803,10 +799,8 @@ button:focus {
 }
 
 #body.horizontal {
-    height: 100vh;
-    /* Ensure it takes the full viewport height */
-    min-height: 0px;
-    /* Ensure it takes the full viewport height */
+    height: auto;
+    min-height: 100vh;
 
 }
 
@@ -815,7 +809,8 @@ button:focus {
 #html {
     padding: 0;
     margin: 0;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
     min-height: 100vh;
     /*background-color: #002a61;*/
 }/* header */

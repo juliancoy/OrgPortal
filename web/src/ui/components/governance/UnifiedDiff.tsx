@@ -21,34 +21,6 @@ interface Change {
 }
 
 /**
- * Find what text was added at the end of a line (simple suffix matching)
- */
-function findAddedSuffix(original: string, modified: string): string {
-  if (!original) return modified
-  if (!modified) return ''
-  
-  // If modified starts with original, the difference is the suffix
-  if (modified.startsWith(original)) {
-    return modified.slice(original.length)
-  }
-  
-  // Otherwise do word-level comparison
-  const origWords = original.split(' ')
-  const modWords = modified.split(' ')
-  
-  // Find common prefix words
-  let commonIdx = 0
-  while (commonIdx < origWords.length && 
-         commonIdx < modWords.length && 
-         origWords[commonIdx] === modWords[commonIdx]) {
-    commonIdx++
-  }
-  
-  // Return the differing part
-  return modWords.slice(commonIdx).join(' ')
-}
-
-/**
  * Find what text was added (for new lines or inline additions)
  */
 function findAdditions(original: string, modified: string): string {

@@ -16,7 +16,7 @@ export function AuthCallbackPage() {
       navigate('/', { replace: true })
       return
     }
-    navigate('/constituent/login', { replace: true })
+    navigate('/users/login', { replace: true })
   }, [completeOAuthLogin, location.hash, location.search, navigate])
 
   return null

@@ -12,6 +12,7 @@ container_app_dir = "/app"
 DEFAULT_PROD_IMAGE = "ghcr.io/juliancoy/orgportal:latest"
 DEFAULT_PROD_LOCAL_IMAGE = "orgportal-prod:local"
 DEFAULT_DEV_IMAGE = "node:24-alpine"
+DEFAULT_DATA_SOURCE = "api"
 
 
 def _env_truthy(name: str, default: bool = False) -> bool:
@@ -61,14 +62,19 @@ def _resolve_prod_image() -> str:
     return (os.getenv("ORGPORTAL_PROD_IMAGE") or "").strip() or DEFAULT_PROD_IMAGE
 
 
-def _default_pidp_base(portal_host: str | None) -> str:
+def _default_pidp_base(portal_host: str | None, dev: bool = False) -> str:
     if portal_host and "." in portal_host:
         domain = portal_host.split(".", 1)[1]
-        return f"https://dev.pidp.{domain}"
-    return "https://dev.pidp.arkavo.org"
+        if dev:
+            return f"https://dev.pidp.{domain}"
+        return f"https://pidp.{domain}"
+    if dev:
+        return "https://dev.pidp.arkavo.org"
+    return "https://pidp.arkavo.org"
 
 
-def _build_local_prod_image(local_tag: str, pidp_base_url: str) -> None:
+def _build_local_prod_image(local_tag: str, pidp_base_url: str, pidp_app_slug: str) -> None:
+    data_source = (os.getenv("ORGPORTAL_DATA_SOURCE") or DEFAULT_DATA_SOURCE).strip() or DEFAULT_DATA_SOURCE
     subprocess.check_call(
         [
             "docker",
@@ -78,7 +84,9 @@ def _build_local_prod_image(local_tag: str, pidp_base_url: str) -> None:
             "--build-arg",
             f"VITE_PIDP_BASE_URL={pidp_base_url}",
             "--build-arg",
-            "VITE_DATA_SOURCE=mock",
+            f"VITE_PIDP_APP_SLUG={pidp_app_slug}",
+            "--build-arg",
+            f"VITE_DATA_SOURCE={data_source}",
             "--build-arg",
             "VITE_PUBLIC_BASE=/",
             "-t",
@@ -88,7 +96,7 @@ def _build_local_prod_image(local_tag: str, pidp_base_url: str) -> None:
     )
 
 
-def _ensure_prod_image_available(requested_image: str, pidp_base_url: str) -> tuple[str, str]:
+def _ensure_prod_image_available(requested_image: str, pidp_base_url: str, pidp_app_slug: str) -> tuple[str, str]:
     skip_pull = _env_truthy("ORGPORTAL_SKIP_PROD_PULL", default=False)
     fallback_build = _env_truthy("ORGPORTAL_ALLOW_LOCAL_PROD_BUILD", default=True)
 
@@ -110,7 +118,7 @@ def _ensure_prod_image_available(requested_image: str, pidp_base_url: str) -> tu
             "Portal prod image unavailable via registry/local cache; "
             f"building local fallback image as {local_tag}"
         )
-        _build_local_prod_image(local_tag, pidp_base_url)
+        _build_local_prod_image(local_tag, pidp_base_url, pidp_app_slug)
         return local_tag, "local-build-fallback"
 
     raise RuntimeError(
@@ -127,11 +135,26 @@ def run(prefix: str, network_name: str) -> None:
     dev_base = os.getenv("ORGPORTAL_DEV_PUBLIC_BASE_URL") or _derive_dev_base(prod_base)
     prod_host = _host_from_base(prod_base)
     dev_host = _host_from_base(dev_base) or prod_host
-    pidp_base_url = (os.getenv("ORGPORTAL_PIDP_BASE_URL") or _default_pidp_base(prod_host)).rstrip("/")
+    prod_pidp_base_url = (
+        os.getenv("ORGPORTAL_PROD_PIDP_BASE_URL")
+        or os.getenv("ORGPORTAL_PIDP_BASE_URL")
+        or _default_pidp_base(prod_host, dev=False)
+    ).rstrip("/")
+    dev_pidp_base_url = (
+        os.getenv("ORGPORTAL_DEV_PIDP_BASE_URL")
+        or _default_pidp_base(dev_host or prod_host, dev=True)
+    ).rstrip("/")
+    prod_pidp_app_slug = (
+        os.getenv("ORGPORTAL_PROD_PIDP_APP_SLUG")
+        or os.getenv("ORGPORTAL_PIDP_APP_SLUG")
+        or "code-collective"
+    ).strip()
+    dev_pidp_app_slug = (os.getenv("ORGPORTAL_DEV_PIDP_APP_SLUG") or prod_pidp_app_slug).strip()
 
     prod_name = prefix + "portal"
     dev_name = prefix + "portal-dev"
     prod_image = _resolve_prod_image()
+    data_source = (os.getenv("ORGPORTAL_DATA_SOURCE") or DEFAULT_DATA_SOURCE).strip() or DEFAULT_DATA_SOURCE
 
     prod = {
         "image": prod_image,
@@ -165,8 +188,9 @@ def run(prefix: str, network_name: str) -> None:
             "NODE_ENV": "development",
             "CHOKIDAR_USEPOLLING": "1",
             "CHOKIDAR_INTERVAL": "200",
-            "VITE_PIDP_BASE_URL": pidp_base_url,
-            "VITE_DATA_SOURCE": "mock",
+            "VITE_PIDP_BASE_URL": dev_pidp_base_url,
+            "VITE_PIDP_APP_SLUG": dev_pidp_app_slug,
+            "VITE_DATA_SOURCE": data_source,
             "VITE_PUBLIC_BASE": "/",
             "VITE_HMR_HOST": dev_host or "",
             "VITE_ALLOWED_HOSTS": ",".join([h for h in [dev_host, prod_host, "localhost"] if h]),
@@ -186,11 +210,18 @@ def run(prefix: str, network_name: str) -> None:
         except Exception:
             pass
 
-    resolved_prod_image, image_source = _ensure_prod_image_available(prod_image, pidp_base_url)
+    resolved_prod_image, image_source = _ensure_prod_image_available(
+        prod_image,
+        prod_pidp_base_url,
+        prod_pidp_app_slug,
+    )
     print(f"Using portal prod image: {resolved_prod_image} ({image_source})")
     print(f"Portal prod base: {_normalize_public_base(prod_base) or 'unchanged'}")
     print(f"Portal dev base: {_normalize_public_base(dev_base) or 'unchanged'}")
-    print(f"Portal PIdP base: {pidp_base_url}")
+    print(f"Portal prod PIdP base: {prod_pidp_base_url}")
+    print(f"Portal dev PIdP base: {dev_pidp_base_url}")
+    print(f"Portal prod PIdP app slug: {prod_pidp_app_slug}")
+    print(f"Portal dev PIdP app slug: {dev_pidp_app_slug}")
     prod["image"] = resolved_prod_image
     prod["environment"]["BACKEND_IMAGE_RUNNING"] = resolved_prod_image
 

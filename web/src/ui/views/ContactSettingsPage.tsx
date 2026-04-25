@@ -38,7 +38,7 @@ export function ContactSettingsPage() {
   const [linksText, setLinksText] = useState('')
 
   useEffect(() => {
-    document.title = 'ballot-sign • Contact page settings'
+    document.title = 'Org Portal • Public profile settings'
   }, [])
 
   useEffect(() => {
@@ -69,6 +69,19 @@ export function ContactSettingsPage() {
       return null
     }
   }, [page?.public_url])
+
+  function downloadQrSvg() {
+    if (!qrSvg || !page?.slug) return
+    const blob = new Blob([qrSvg], { type: 'image/svg+xml;charset=utf-8' })
+    const href = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = href
+    anchor.download = `${page.slug}-profile-qr.svg`
+    document.body.appendChild(anchor)
+    anchor.click()
+    document.body.removeChild(anchor)
+    URL.revokeObjectURL(href)
+  }
 
   function setField<K extends keyof ContactPage>(field: K, value: ContactPage[K]) {
     setPage((prev) => (prev ? { ...prev, [field]: value } : prev))
@@ -122,7 +135,7 @@ export function ContactSettingsPage() {
   if (!token) {
     return (
       <section className="panel">
-        <h1 style={{ marginTop: 0 }}>Contact Page Settings</h1>
+        <h1 style={{ marginTop: 0 }}>Public Profile Settings</h1>
         <p className="muted">Sign in required.</p>
       </section>
     )
@@ -131,7 +144,7 @@ export function ContactSettingsPage() {
   if (!page) {
     return (
       <section className="panel">
-        <h1 style={{ marginTop: 0 }}>Contact Page Settings</h1>
+        <h1 style={{ marginTop: 0 }}>Public Profile Settings</h1>
         <p className="muted">Loading…</p>
         {status ? <p className="muted">{status}</p> : null}
       </section>
@@ -140,13 +153,13 @@ export function ContactSettingsPage() {
 
   return (
     <section className="panel" style={{ display: 'grid', gap: '0.75rem' }}>
-      <h1 style={{ marginTop: 0 }}>Contact Page Settings</h1>
-      <p className="muted" style={{ marginTop: 0 }}>
-        Default is off. Enable to publish a public contact page similar to personnel cards.
-      </p>
+        <h1 style={{ marginTop: 0 }}>Public Profile Settings</h1>
+        <p className="muted" style={{ marginTop: 0 }}>
+        Default is off. Enable to publish an opt-in public individual profile page with a shareable QR code.
+        </p>
 
       <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-        <Link to="/campaign/profile">Org Network</Link>
+        <Link to="/orgs/profile">Org Network</Link>
         {page.public_url ? (
           <a href={page.public_url} target="_blank" rel="noreferrer">
             Open Public Page
@@ -161,7 +174,7 @@ export function ContactSettingsPage() {
           onChange={(e) => setField('enabled', e.target.checked)}
           style={{ width: 'auto' }}
         />
-        Enable public contact page
+        Enable public profile
       </label>
 
       <input value={page.slug} onChange={(e) => setField('slug', e.target.value)} placeholder="Public slug" />
@@ -180,7 +193,7 @@ export function ContactSettingsPage() {
       />
 
       <div>
-        <button type="button" onClick={save}>Save Contact Page</button>
+        <button type="button" onClick={save}>Save Public Profile</button>
       </div>
 
       {status ? <p className="muted">{status}</p> : null}
@@ -195,6 +208,14 @@ export function ContactSettingsPage() {
               dangerouslySetInnerHTML={{ __html: qrSvg }}
             />
           ) : null}
+          {qrSvg ? (
+            <button type="button" onClick={downloadQrSvg}>
+              Download QR (SVG)
+            </button>
+          ) : null}
+          <p className="muted" style={{ margin: 0 }}>
+            Public individual profile pages are published with no-index metadata.
+          </p>
         </div>
       ) : null}
     </section>

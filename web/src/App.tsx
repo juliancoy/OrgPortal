@@ -30,6 +30,13 @@ function timeAgo(isoDate: string): string {
   return new Date(isoDate).toLocaleDateString()
 }
 
+function motionProposerLabel(motion: { proposerType?: string; proposerName: string }) {
+  if (motion.proposerType === 'org') {
+    return `Org: ${motion.proposerName}`
+  }
+  return motion.proposerName
+}
+
 export default function App() {
   const { user } = useAuth()
   const { motionRepository, engagementRepository } = useServices()
@@ -161,7 +168,7 @@ export default function App() {
                             {motion.commentCount}
                           </span>
                         )}
-                        <span>{motion.proposerName}</span>
+                        <span>{motionProposerLabel(motion)}</span>
                         <span>&middot;</span>
                         <span>{timeAgo(motion.createdAtISO)}</span>
                       </div>

@@ -5,13 +5,18 @@ import type { Motion, VoteDirection, Comment } from '../../domain/motion/Motion'
  * API Error Classes for proper error handling
  */
 export class APIError extends Error {
+  public readonly statusCode: number
+  public readonly responseBody?: string
+
   constructor(
     message: string,
-    public readonly statusCode: number,
-    public readonly responseBody?: string
+    statusCode: number,
+    responseBody?: string
   ) {
     super(message)
     this.name = 'APIError'
+    this.statusCode = statusCode
+    this.responseBody = responseBody
   }
 }
 
@@ -32,7 +37,7 @@ export class NotFoundError extends APIError {
 /**
  * API Configuration
  */
-const API_BASE = '/api/governance'
+const API_BASE = '/api/org/api/governance'
 const REQUEST_TIMEOUT_MS = 30000
 
 /**

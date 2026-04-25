@@ -400,17 +400,39 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
             justifyContent: 'center',
           }}>
             <div style={{
-              background: 'white',
+              background: 'var(--surface-solid)',
               padding: 20,
               borderRadius: 8,
               maxWidth: 400,
-              color: 'black',
+              color: 'var(--text-primary)',
             }}>
               <h3>Migrate Guest Data</h3>
               <p>You have data from guest mode. Would you like to migrate it to your account?</p>
               <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-                <button onClick={() => setShowMigration(false)} style={{ padding: '8px 16px' }}>No</button>
-                <button onClick={migrateGuestData} style={{ padding: '8px 16px', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: 4 }}>Yes</button>
+                <button
+                  onClick={() => setShowMigration(false)}
+                  style={{
+                    padding: '8px 16px',
+                    border: '1px solid var(--border-subtle)',
+                    background: 'var(--surface-soft)',
+                    color: 'var(--text-primary)',
+                    borderRadius: 4,
+                  }}
+                >
+                  No
+                </button>
+                <button
+                  onClick={migrateGuestData}
+                  style={{
+                    padding: '8px 16px',
+                    background: 'var(--primary)',
+                    color: 'var(--btn-primary-text)',
+                    border: 'none',
+                    borderRadius: 4,
+                  }}
+                >
+                  Yes
+                </button>
               </div>
             </div>
           </div>

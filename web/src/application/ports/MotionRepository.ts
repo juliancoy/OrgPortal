@@ -1,4 +1,4 @@
-import type { Motion, MotionStatus, MotionType } from '../../domain/motion/Motion'
+import type { Motion, MotionProposerType, MotionStatus, MotionType } from '../../domain/motion/Motion'
 
 export type MotionListQuery = {
   search?: string
@@ -13,8 +13,12 @@ export type CreateMotionInput = {
   title: string
   body: string
   proposedBodyDiff?: string
+  proposerType?: MotionProposerType
   proposerId: string
   proposerName: string
+  proposerUserName?: string
+  proposerOrgId?: string
+  proposerOrgName?: string
   quorumRequired: number
 }
 

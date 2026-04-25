@@ -8,11 +8,13 @@ export type CampaignManagerProfile = {
   bio?: string
 }
 
-export type ConstituentProfile = {
+export type UserProfile = {
   displayName: string
   handle: UserHandle
   bio?: string
 }
+
+export type ConstituentProfile = UserProfile
 
 export type CandidacyInfo = {
   isRunning: boolean

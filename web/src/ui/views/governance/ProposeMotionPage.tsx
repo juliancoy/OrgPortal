@@ -1,8 +1,22 @@
-import { FormEvent, useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import type { FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useServices, useAuth } from '../../../app/AppProviders'
 import { proposeMotion } from '../../../application/usecases/proposeMotion'
 import { GovernanceNav, GovernanceBreadcrumb } from '../../components/governance/GovernanceNav'
+
+const ORG_API_BASE = '/api/org'
+
+function orgUrl(path: string) {
+  if (!path.startsWith('/')) return `${ORG_API_BASE}/${path}`
+  return `${ORG_API_BASE}${path}`
+}
+
+type MyOrganization = {
+  id: string
+  name: string
+  my_role?: string | null
+}
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -20,18 +34,51 @@ const inputStyle: React.CSSProperties = {
 
 export function ProposeMotionPage() {
   const { motionRepository } = useServices()
-  const { user } = useAuth()
+  const { user, token } = useAuth()
   const navigate = useNavigate()
 
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [quorumRequired, setQuorumRequired] = useState(5)
+  const [proposerType, setProposerType] = useState<'user' | 'org'>('user')
+  const [myAdminOrgs, setMyAdminOrgs] = useState<MyOrganization[]>([])
+  const [selectedOrgId, setSelectedOrgId] = useState('')
   const [errors, setErrors] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    document.title = 'ballot-sign \u2022 Propose Motion'
+    document.title = 'Org Portal \u2022 Propose Motion'
   }, [])
+
+  useEffect(() => {
+    if (!token) {
+      setMyAdminOrgs([])
+      return
+    }
+    let cancelled = false
+    fetch(orgUrl('/api/network/orgs?mine=true&limit=200'), {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(async (resp) => {
+        if (!resp.ok) return []
+        return (await resp.json()) as MyOrganization[]
+      })
+      .then((rows) => {
+        if (cancelled) return
+        const admins = (Array.isArray(rows) ? rows : []).filter((org) => org.my_role === 'admin')
+        setMyAdminOrgs(admins)
+        if (admins.length > 0 && !selectedOrgId) {
+          setSelectedOrgId(admins[0].id)
+        }
+      })
+      .catch(() => {
+        if (cancelled) return
+        setMyAdminOrgs([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [token])
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -39,13 +86,26 @@ export function ProposeMotionPage() {
       setErrors(['You must be logged in to propose a motion.'])
       return
     }
+    if (proposerType === 'org' && myAdminOrgs.length === 0) {
+      setErrors(['You must be an admin of at least one organization to raise an organization motion.'])
+      return
+    }
+    const selectedOrg = proposerType === 'org' ? myAdminOrgs.find((org) => org.id === selectedOrgId) : null
+    if (proposerType === 'org' && !selectedOrg) {
+      setErrors(['Select an organization to raise this motion.'])
+      return
+    }
     setErrors([])
     setSubmitting(true)
     const res = await proposeMotion(motionRepository, {
       title,
       body,
+      proposerType,
       proposerId: user.id,
-      proposerName: user.displayName,
+      proposerName: proposerType === 'org' ? (selectedOrg?.name || user.displayName) : user.displayName,
+      proposerUserName: proposerType === 'org' ? user.displayName : undefined,
+      proposerOrgId: proposerType === 'org' ? selectedOrg?.id : undefined,
+      proposerOrgName: proposerType === 'org' ? selectedOrg?.name : undefined,
       quorumRequired,
     })
     setSubmitting(false)
@@ -94,6 +154,63 @@ export function ProposeMotionPage() {
 
         <form onSubmit={handleSubmit}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div>
+              <label
+                htmlFor="motion-proposer-type"
+                style={{
+                  display: 'block',
+                  marginBottom: 6,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: 'var(--text-secondary)',
+                }}
+              >
+                Raise As
+              </label>
+              <select
+                id="motion-proposer-type"
+                value={proposerType}
+                onChange={(e) => setProposerType(e.target.value as 'user' | 'org')}
+                style={{ ...inputStyle, maxWidth: 320 }}
+              >
+                <option value="user">User ({user?.displayName || 'signed in user'})</option>
+                <option value="org" disabled={myAdminOrgs.length === 0}>
+                  Organization {myAdminOrgs.length === 0 ? '(no admin orgs available)' : ''}
+                </option>
+              </select>
+              {proposerType === 'org' ? (
+                <div style={{ marginTop: 10 }}>
+                  <label
+                    htmlFor="motion-proposer-org"
+                    style={{
+                      display: 'block',
+                      marginBottom: 6,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: 'var(--text-secondary)',
+                    }}
+                  >
+                    Organization
+                  </label>
+                  <select
+                    id="motion-proposer-org"
+                    value={selectedOrgId}
+                    onChange={(e) => setSelectedOrgId(e.target.value)}
+                    style={{ ...inputStyle, maxWidth: 420 }}
+                  >
+                    {myAdminOrgs.map((org) => (
+                      <option key={org.id} value={org.id}>
+                        {org.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="muted" style={{ marginTop: 8, marginBottom: 0, fontSize: 12 }}>
+                    This motion will be displayed as raised by the selected organization.
+                  </p>
+                </div>
+              ) : null}
+            </div>
+
             <div>
               <label
                 htmlFor="motion-title"

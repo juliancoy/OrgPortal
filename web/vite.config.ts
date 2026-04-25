@@ -2,31 +2,39 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
-export default defineConfig(({ command }) => ({
+const envAllowedHosts = (process.env.VITE_ALLOWED_HOSTS || '')
+  .split(',')
+  .map((host) => host.trim())
+  .filter(Boolean)
+
+const allowedHosts = Array.from(
+  new Set([
+    'localhost',
+    'portal.arkavo.org',
+    'dev.portal.arkavo.org',
+    ...envAllowedHosts,
+  ]),
+)
+
+const hmrHost = process.env.VITE_HMR_HOST || 'dev.portal.arkavo.org'
+
+export default defineConfig(() => ({
   plugins: [react()],
-  base: command === 'serve' ? '/dev/' : (process.env.VITE_PUBLIC_BASE || '/'),
+  base: process.env.VITE_PUBLIC_BASE || '/',
   optimizeDeps: {
     exclude: ['pg']
   },
   server: {
-    allowedHosts: ['ballot-vm.local', 'ballot.arkavo.org', 'portal.arkavo.org', 'localhost'],
+    allowedHosts,
     host: true,
     hmr: {
-      // Use the actual host from the browser, not localhost
-      host: 'portal.arkavo.org',
+      host: hmrHost,
       protocol: 'wss',
       clientPort: 443,
     },
     proxy: {
-      '/pidp': {
-        target: 'http://localhost:8000',
-        changeOrigin: true,
-        rewrite: (path: string) => path.replace(/^\/pidp/, ''),
-      },
-      '/api/governance': {
-        target: 'http://localhost:8002',
-        changeOrigin: true,
-      },
+      '/pidp': { target: 'http://localhost:8000', changeOrigin: true },
+      '/api/governance': { target: 'http://localhost:8002', changeOrigin: true },
     },
   },
 }))

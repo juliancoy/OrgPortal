@@ -5,10 +5,10 @@ import { EconomicOpsPage } from '../views/EconomicOpsPage'
 import { AuthCallbackPage } from '../views/AuthCallbackPage'
 import { InitiativeDetailPage } from '../views/InitiativeDetailPage'
 import { InitiativeSignPage } from '../views/InitiativeSignPage'
-import { ConstituentAccountPage } from '../views/constituent/ConstituentAccountPage'
-import { ConstituentProfilePage } from '../views/constituent/ConstituentProfilePage'
-import { ConstituentLoginPage } from '../views/constituent/ConstituentLoginPage'
-import { ConstituentRegisterPage } from '../views/constituent/ConstituentRegisterPage'
+import { UserAccountPage } from '../views/constituent/ConstituentAccountPage'
+import { UserProfilePage } from '../views/constituent/ConstituentProfilePage'
+import { UserLoginPage } from '../views/constituent/ConstituentLoginPage'
+import { UserRegisterPage } from '../views/constituent/ConstituentRegisterPage'
 import { CampaignLoginPage } from '../views/campaign/CampaignLoginPage'
 import { CampaignRegisterPage } from '../views/campaign/CampaignRegisterPage'
 import { CampaignInitiativesPage } from '../views/campaign/CampaignInitiativesPage'
@@ -21,6 +21,8 @@ import { PublicCampaignManagerPage } from '../views/public/PublicCampaignManager
 import { PublicContactPage } from '../views/public/PublicContactPage'
 import { PublicEventsPage } from '../views/public/PublicEventsPage'
 import { PublicEventPage } from '../views/public/PublicEventPage'
+import { PublicOrganizationsPage } from '../views/public/PublicOrganizationsPage'
+import { GlobalSearchPage } from '../views/public/GlobalSearchPage'
 import { MotionListPage } from '../views/governance/MotionListPage'
 import { MotionDetailPage } from '../views/governance/MotionDetailPage'
 import { ProposeMotionPage } from '../views/governance/ProposeMotionPage'
@@ -63,11 +65,11 @@ export function createAppRouter() {
           { path: '/about', element: <AboutPage /> },
 
           // Canonical user routes
-          { path: '/users/register', element: <ConstituentRegisterPage /> },
-          { path: '/users/login', element: <ConstituentLoginPage /> },
+          { path: '/users/register', element: <UserRegisterPage /> },
+          { path: '/users/login', element: <UserLoginPage /> },
           { path: '/users/dashboard', element: <DashboardPage /> },
-          { path: '/users/profile', element: <ConstituentProfilePage /> },
-          { path: '/users/account', element: <ConstituentAccountPage /> },
+          { path: '/users/profile', element: <UserProfilePage /> },
+          { path: '/users/account', element: <UserAccountPage /> },
 
           // Canonical org routes
           { path: '/orgs/register', element: <CampaignRegisterPage /> },
@@ -102,9 +104,12 @@ export function createAppRouter() {
           { path: '/campaign-managers/:handle', element: <PublicCampaignManagerPage /> },
           { path: '/events', element: <PublicEventsPage /> },
           { path: '/events/:slug', element: <PublicEventPage /> },
+          { path: '/orgs', element: <PublicOrganizationsPage /> },
+          { path: '/search', element: <GlobalSearchPage /> },
 
           // Public profile
           { path: '/orgs/:handle', element: <PublicCampaignManagerPage /> },
+          { path: '/users/:slug', element: <PublicContactPage /> },
           { path: '/contact/:slug', element: <PublicContactPage /> },
           { path: '/contact-settings', element: <ContactSettingsPage /> },
 

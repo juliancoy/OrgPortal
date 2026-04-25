@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
+import { pidpAppLoginUrl } from '../../../config/pidp'
 
 export function CampaignLoginPage() {
   const navigate = useNavigate()
@@ -12,23 +13,23 @@ export function CampaignLoginPage() {
   const nextUrl = window.location.href
 
   useEffect(() => {
-    document.title = 'ballot-sign • Campaign manager login'
+    document.title = 'Org Portal • Org login'
   }, [])
 
   useEffect(() => {
     if (!isLoading && isSubmitting) {
       setIsSubmitting(false)
-      navigate('/campaign/initiatives')
+      navigate('/orgs/initiatives')
     }
   }, [isLoading, isSubmitting, navigate])
 
   return (
     <section className="panel">
-      <h1 style={{ marginTop: 0 }}>Login (campaign manager)</h1>
+      <h1 style={{ marginTop: 0 }}>Login (org)</h1>
       <div style={{ display: 'grid', gap: '0.6rem' }}>
         <div style={{ display: 'grid', gap: '0.5rem' }}>
           <a
-            href={`/pidp/auth/google/login?next=${encodeURIComponent(nextUrl)}`}
+            href={pidpAppLoginUrl(nextUrl)}
             style={{
               display: 'inline-flex',
               justifyContent: 'center',
@@ -41,23 +42,7 @@ export function CampaignLoginPage() {
               color: 'inherit',
             }}
           >
-            Continue with Google
-          </a>
-          <a
-            href={`/pidp/auth/github/login?next=${encodeURIComponent(nextUrl)}`}
-            style={{
-              display: 'inline-flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              gap: '0.5rem',
-              border: '1px solid var(--border-input)',
-              borderRadius: 8,
-              padding: '0.6rem 1rem',
-              textDecoration: 'none',
-              color: 'inherit',
-            }}
-          >
-            Continue with GitHub
+            Continue to Identity Provider
           </a>
         </div>
         <div className="muted" style={{ textAlign: 'center' }}>
@@ -97,7 +82,7 @@ export function CampaignLoginPage() {
           {isSubmitting || isLoading ? 'Signing in...' : 'Login'}
         </button>
         <p className="muted" style={{ marginBottom: 0 }}>
-          New campaign? <Link to="/campaign/register">Register</Link>
+          New organization? <Link to="/orgs/register">Register</Link>
         </p>
       </div>
     </section>

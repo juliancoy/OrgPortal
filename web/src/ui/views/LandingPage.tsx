@@ -12,7 +12,7 @@ export function LandingPage() {
   const [q, setQ] = useState('')
 
   useEffect(() => {
-    document.title = 'ballot-sign • Discover and sign initiatives'
+    document.title = 'Org Portal • Discover and sign initiatives'
   }, [])
 
   useEffect(() => {
@@ -88,7 +88,7 @@ export function LandingPage() {
             />
           </div>
           <Link
-            to="/constituent/register"
+            to="/users/register"
             className="panel"
             style={{
               padding: '0.75rem 1.25rem',
@@ -103,7 +103,7 @@ export function LandingPage() {
             Create Account
           </Link>
           <Link
-            to="/constituent/login"
+            to="/users/login"
             className="panel"
             style={{
               padding: '0.75rem 1.25rem',

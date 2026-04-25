@@ -1,3 +1,5 @@
+import { pidpUrl } from '../../config/pidp'
+
 export function Footer() {
   return (
     <footer className="portal-footer">
@@ -8,13 +10,13 @@ export function Footer() {
         </div>
         <div className="portal-footer-links">
           <a href="/governance">Governance</a>
-          <a href="/constituent/dashboard">Initiatives</a>
+          <a href="/users/dashboard">Initiatives</a>
           <a href="/ecops">Finance</a>
           <a href="/send">Send</a>
           <a href="/receive">Receive</a>
           <a href="/create">Create</a>
           <a href="/about">About</a>
-          <a href="/pidp">Identity</a>
+          <a href={pidpUrl('/')}>Identity</a>
         </div>
         <span>© 2026 Code Collective</span>
       </div>

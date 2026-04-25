@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 
 export function CampaignInitiativesPage() {
   useEffect(() => {
-    document.title = 'ballot-sign • Campaign initiatives'
+    document.title = 'Org Portal • Org initiatives'
   }, [])
 
   return (
@@ -28,9 +28,10 @@ export function CampaignInitiativesPage() {
       </div>
       <p className="muted">Create and manage initiatives. In the demo, this is navigable but not yet backed by persistence.</p>
       <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-        <Link to="/campaign/initiatives/new">Create new initiative</Link>
-        <Link to="/campaign/profile">Public profile</Link>
-        <Link to="/campaign/account">Account</Link>
+        <Link to="/orgs/initiatives/new">Create new initiative</Link>
+        <Link to="/orgs/profile">Public profile</Link>
+        <Link to="/orgs/events">Events</Link>
+        <Link to="/orgs/account">Account</Link>
       </div>
       <hr style={{ borderColor: 'var(--border)', margin: '1rem 0' }} />
       <ul>

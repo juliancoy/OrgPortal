@@ -31,7 +31,7 @@ export function InitiativeDetailPage() {
     if (!slug) return
     getInitiativeBySlug(initiativeRepository, slug).then((x) => {
       setInitiative(x)
-      document.title = x ? `ballot-sign • ${x.title}` : 'ballot-sign • Initiative'
+      document.title = x ? `Org Portal • ${x.title}` : 'Org Portal • Initiative'
     })
   }, [initiativeRepository, slug])
 
@@ -171,10 +171,10 @@ export function InitiativeDetailPage() {
       </section>
 
       <section className="panel">
-        <h2 style={{ marginTop: 0 }}>Campaign manager</h2>
+        <h2 style={{ marginTop: 0 }}>Organization</h2>
         <p>
           Managed by{' '}
-          <Link to={`/campaign-managers/${initiative.campaignManager.handle}`}>{initiative.campaignManager.displayName}</Link>
+          <Link to={`/orgs/${initiative.campaignManager.handle}`}>{initiative.campaignManager.displayName}</Link>
         </p>
       </section>
     </div>

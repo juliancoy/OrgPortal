@@ -23,7 +23,7 @@ export function InitiativeSignPage() {
     if (!slug) return
     getInitiativeBySlug(initiativeRepository, slug).then((x) => {
       setInitiative(x)
-      document.title = x ? `ballot-sign • Sign • ${x.title}` : 'ballot-sign • Sign'
+      document.title = x ? `Org Portal • Sign • ${x.title}` : 'Org Portal • Sign'
     })
   }, [initiativeRepository, slug])
 
@@ -43,7 +43,7 @@ export function InitiativeSignPage() {
         <p className="muted">Confirmation ID: {completeId}</p>
         <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
           <Link to={`/initiatives/${initiative.slug}`}>Back to details</Link>
-          <Link to="/constituent/dashboard">Go to dashboard</Link>
+          <Link to="/users/dashboard">Go to dashboard</Link>
         </div>
       </section>
     )

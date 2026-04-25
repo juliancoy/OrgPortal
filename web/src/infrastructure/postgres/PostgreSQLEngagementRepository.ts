@@ -181,7 +181,7 @@ export class PostgreSQLEngagementRepository implements EngagementRepository {
       )
     } catch (error) {
       // Ignore duplicate view tracking errors
-      if (!error.message.includes('duplicate key')) {
+      if (!(error instanceof Error) || !error.message.includes('duplicate key')) {
         throw error
       }
     }
