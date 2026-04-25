@@ -1,362 +1,210 @@
 import os
+import subprocess
+import sys
 from pathlib import Path
-here = Path(os.path.abspath(os.path.dirname(__file__)))
-nginx_dir = here / "nginx"
-webapp_dir = here / "web"
-static_dir = here / "static"
-NETWORK_NAME = "PORTAL"
+
 import docker_utils
-from nginx.run import run as nginx_run
-from pidp.run import run as pidp_run
-from ubi.run import run as ubi_run
-import importlib.util
-from web.run import run as web_run
 
-# Load governance backend dynamically (hyphen in dir name)
-def run_governance_backend(network_name: str, prefix: str) -> None:
-    governance_run_path = here / "governance-backend" / "run.py"
-    spec = importlib.util.spec_from_file_location("governance_backend_run", governance_run_path)
-    if spec and spec.loader:
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        return module.run(network_name, prefix)
-    raise ImportError("Failed to load governance-backend/run.py")
+current_dir = Path(os.path.abspath(os.path.dirname(__file__)))
+web_dir = current_dir / "web"
+container_app_dir = "/app"
 
-docker_utils.initializeFiles()
-import editme 
+DEFAULT_PROD_IMAGE = "ghcr.io/juliancoy/orgportal:latest"
+DEFAULT_PROD_LOCAL_IMAGE = "orgportal-prod:local"
+DEFAULT_DEV_IMAGE = "node:24-alpine"
 
-prefix = editme.prefix
 
-def _env_flag(name: str, default: bool = False) -> bool:
-    value = os.getenv(name)
-    if value is None:
+def _env_truthy(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
         return default
-    return value.strip().lower() in {"1", "true", "yes", "y", "on"}
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
-def ensure_nginx_certs() -> None:
-    certs_dir = here / "certs"
-    html_dir = certs_dir / "html"
-    html_dir.mkdir(parents=True, exist_ok=True)
-
-    nginx_certs_dir = certs_dir / "nginx"
-    fullchain = nginx_certs_dir / "fullchain.pem"
-    privkey = nginx_certs_dir / "privkey.pem"
-
-    if fullchain.exists() and privkey.exists():
-        print("NGINX certs already exist; skipping generation.")
-        return
-
-    nginx_certs_dir.mkdir(parents=True, exist_ok=True)
-    print("Generating self-signed NGINX certs (no Keycloak dependency)...")
-    docker_utils.generateDevKeys(str(nginx_certs_dir))
+def _docker_image_exists(image_ref: str) -> bool:
+    proc = subprocess.run(
+        ["docker", "image", "inspect", image_ref],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    return proc.returncode == 0
 
 
-ensure_nginx_certs()
+def _normalize_public_base(url: str | None) -> str | None:
+    value = (url or "").strip()
+    if not value:
+        return None
+    if not value.startswith(("http://", "https://")):
+        value = "https://" + value
+    if not value.endswith("/"):
+        value += "/"
+    return value
 
-def ensure_pidp_image() -> None:
-    images = docker_utils.DOCKER_CLIENT.images.list(name="pidp")
-    for image in images:
-        if "pidp" in image.tags:
-            return
-    print("Building pidp image from PIdP/Dockerfile...")
-    docker_utils.DOCKER_CLIENT.images.build(
-        path=str(here / "pidp"),
-        tag="pidp",
+
+def _derive_dev_base(prod_base: str | None) -> str | None:
+    normalized = _normalize_public_base(prod_base)
+    if not normalized:
+        return None
+    if "://portal." in normalized:
+        return normalized.replace("://portal.", "://dev.portal.", 1)
+    return normalized
+
+
+def _host_from_base(url: str | None) -> str | None:
+    normalized = _normalize_public_base(url)
+    if not normalized:
+        return None
+    return normalized.split("://", 1)[1].strip("/") or None
+
+
+def _resolve_prod_image() -> str:
+    return (os.getenv("ORGPORTAL_PROD_IMAGE") or "").strip() or DEFAULT_PROD_IMAGE
+
+
+def _default_pidp_base(portal_host: str | None) -> str:
+    if portal_host and "." in portal_host:
+        domain = portal_host.split(".", 1)[1]
+        return f"https://dev.pidp.{domain}"
+    return "https://dev.pidp.arkavo.org"
+
+
+def _build_local_prod_image(local_tag: str, pidp_base_url: str) -> None:
+    subprocess.check_call(
+        [
+            "docker",
+            "build",
+            "-f",
+            str(web_dir / "Dockerfile"),
+            "--build-arg",
+            f"VITE_PIDP_BASE_URL={pidp_base_url}",
+            "--build-arg",
+            "VITE_DATA_SOURCE=mock",
+            "--build-arg",
+            "VITE_PUBLIC_BASE=/",
+            "-t",
+            local_tag,
+            str(web_dir),
+        ]
     )
 
-ensure_pidp_image()
-def run_org_backend():
-    backend_run_path = here / "org-backend" / "run.py"
-    spec = importlib.util.spec_from_file_location("ballot_backend_run", backend_run_path)
-    if spec and spec.loader:
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        return module.run
-    raise ImportError("Failed to load ballot-backend/run.py")
+
+def _ensure_prod_image_available(requested_image: str, pidp_base_url: str) -> tuple[str, str]:
+    skip_pull = _env_truthy("ORGPORTAL_SKIP_PROD_PULL", default=False)
+    fallback_build = _env_truthy("ORGPORTAL_ALLOW_LOCAL_PROD_BUILD", default=True)
+
+    if not skip_pull:
+        pull_proc = subprocess.run(["docker", "pull", requested_image])
+        if pull_proc.returncode == 0:
+            return requested_image, "pulled"
+        print(f"Warning: failed to pull portal prod image {requested_image}")
+    else:
+        print("Skipping portal prod image pull because ORGPORTAL_SKIP_PROD_PULL is enabled")
+
+    if _docker_image_exists(requested_image):
+        print(f"Using cached local portal prod image: {requested_image}")
+        return requested_image, "local-cache"
+
+    if fallback_build:
+        local_tag = os.getenv("ORGPORTAL_PROD_LOCAL_IMAGE", DEFAULT_PROD_LOCAL_IMAGE)
+        print(
+            "Portal prod image unavailable via registry/local cache; "
+            f"building local fallback image as {local_tag}"
+        )
+        _build_local_prod_image(local_tag, pidp_base_url)
+        return local_tag, "local-build-fallback"
+
+    raise RuntimeError(
+        "Unable to start portal prod container: registry pull failed and no local image exists. "
+        "Set ORGPORTAL_PROD_IMAGE to an accessible image, run `docker login ghcr.io`, "
+        "or enable ORGPORTAL_ALLOW_LOCAL_PROD_BUILD=true."
+    )
 
 
-docker_utils.ensure_network(NETWORK_NAME)
-pidp_run(prefix, NETWORK_NAME)
-#wait for PIdP to initialize
+def run(prefix: str, network_name: str) -> None:
+    docker_utils.ensure_network(network_name)
 
-# ----------------------------
-# Governance DB (PostgreSQL for motions/voting/engagement)
-# ----------------------------
-GOVERNANCE_DB = dict(
-    image="postgres:15-alpine",
-    detach=True,
-    name=prefix + "governance-db",
-    network=NETWORK_NAME,
-    restart_policy={"Name": "always"},
-    environment={
-        "POSTGRES_USER": editme.GOVERNANCE_DB_USER,
-        "POSTGRES_PASSWORD": editme.GOVERNANCE_DB_PASSWORD,
-        "POSTGRES_DB": editme.GOVERNANCE_DB_NAME,
-    },
-    volumes={
-        prefix + "GOVERNANCE_DATA": {
-            "bind": "/var/lib/postgresql/data",
-            "mode": "rw",
-        }
-    },
-    healthcheck={
-        "test": ["CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"],
-        "interval": 5000000000,  # 5s
-        "timeout": 5000000000,   # 5s
-        "retries": 10,
-    },
-)
-docker_utils.run_container(GOVERNANCE_DB)
+    prod_base = os.getenv("ORGPORTAL_PROD_PUBLIC_BASE_URL")
+    dev_base = os.getenv("ORGPORTAL_DEV_PUBLIC_BASE_URL") or _derive_dev_base(prod_base)
+    prod_host = _host_from_base(prod_base)
+    dev_host = _host_from_base(dev_base) or prod_host
+    pidp_base_url = (os.getenv("ORGPORTAL_PIDP_BASE_URL") or _default_pidp_base(prod_host)).rstrip("/")
 
-# Wait for governance DB to be ready
-docker_utils.wait_for_db(
-    NETWORK_NAME,
-    f"postgresql://{editme.GOVERNANCE_DB_USER}:{editme.GOVERNANCE_DB_PASSWORD}@{prefix}governance-db:5432/{editme.GOVERNANCE_DB_NAME}",
-    db_user=editme.GOVERNANCE_DB_USER,
-)
+    prod_name = prefix + "portal"
+    dev_name = prefix + "portal-dev"
+    prod_image = _resolve_prod_image()
 
-# ----------------------------
-# Redis (cache/ratelimit/queue)
-# ----------------------------
-REDIS = dict(
-    image="redis:7-alpine",
-    detach=True,
-    name=prefix + "redis",
-    network=NETWORK_NAME,
-    restart_policy={"Name": "always"},
-    # Optional: expose to host for local dev tooling
-    # ports={"6379/tcp": 6379},
-    command=[
-        "redis-server",
-        "--appendonly", "yes",
-        "--save", "60", "1",
-        "--loglevel", "warning",
-        # If you want auth, set editme.REDIS_PASSWORD and uncomment:
-        # "--requirepass", editme.REDIS_PASSWORD,
-    ],
-    volumes={
-        prefix + "REDIS_DATA": {
-            "bind": "/data",
-            "mode": "rw",
-        }
-    },
-    healthcheck={
-        "test": ["CMD-SHELL", "redis-cli ping | grep -q PONG"],
-        "interval": 5000000000,  # 5s
-        "timeout": 5000000000,   # 5s
-        "retries": 10,
-    },
-)
-docker_utils.run_container(REDIS)
+    prod = {
+        "image": prod_image,
+        "name": prod_name,
+        "network": network_name,
+        "restart_policy": {"Name": "always"},
+        "detach": True,
+        "environment": {
+            "BACKEND_IMAGE_RUNNING": prod_image,
+            "PORTAL_PUBLIC_HOST": prod_host or "",
+            "PORT": "8080",
+            "ORGPORTAL_ORG_API_BASE": os.getenv("ORGPORTAL_ORG_API_BASE", f"http://{prefix}org:8001"),
+        },
+    }
 
-# ----------------------------
-# Object Storage (MinIO, S3-compatible)
-# ----------------------------
-MINIO = dict(
-    image="minio/minio:latest",
-    detach=True,
-    name=prefix + "minio",
-    network=NETWORK_NAME,
-    restart_policy={"Name": "always"},
-    ports={
-        "9000/tcp": 9000,  # S3 API
-        "9001/tcp": 9001,  # Console UI
-    },
-    environment={
-        # Put these in editme.py
-        "MINIO_ROOT_USER": editme.MINIO_ROOT_USER,
-        "MINIO_ROOT_PASSWORD": editme.MINIO_ROOT_PASSWORD,
-        # Optional but helpful when going through nginx / external URL:
-        # "MINIO_SERVER_URL": editme.MINIO_SERVER_URL,  # e.g. https://s3.example.com
-        # "MINIO_BROWSER_REDIRECT_URL": editme.MINIO_BROWSER_REDIRECT_URL,  # e.g. https://s3-console.example.com
-    },
-    command=[
-        "server",
-        "/data",
-        "--address", ":9000",
-        "--console-address", ":9001",
-    ],
-    volumes={
-        "MINIO_DATA": {
-            "bind": "/data",
-            "mode": "rw",
-        }
-    },
-    healthcheck={
-        "test": ["CMD-SHELL", "curl -fsS http://127.0.0.1:9000/minio/health/ready >/dev/null"],
-        "interval": 5000000000,  # 5s
-        "timeout": 5000000000,   # 5s
-        "retries": 10,
-    },
-)
-docker_utils.run_container(MINIO)
-
-# ----------------------------
-# CockroachDB (distributed SQL)
-# ----------------------------
-COCKROACH_HOST = f"{prefix}cockroach"
-COCKROACH = dict(
-    image="cockroachdb/cockroach",
-    detach=True,
-    name=COCKROACH_HOST,
-    network=NETWORK_NAME,
-    restart_policy={"Name": "always"},
-    # Optional: expose to host for local dev tooling
-    ports={
-        "26257/tcp": editme.COCKROACH_SQL_PORT,  # SQL
-        "8080/tcp": editme.COCKROACH_HTTP_PORT,    # Admin UI
-    },
-    command=[
-        "start",
-        *(
-            ["--insecure"]
-            if editme.COCKROACH_INSECURE
-            else []
-        ),
-        f"--listen-addr=0.0.0.0:{editme.COCKROACH_SQL_PORT}",
-        f"--http-addr=0.0.0.0:{editme.COCKROACH_HTTP_PORT}",
-        f"--advertise-addr={COCKROACH_HOST}:{editme.COCKROACH_SQL_PORT}",
-        f"--join={COCKROACH_HOST}:{editme.COCKROACH_SQL_PORT}",
-    ],
-    volumes={
-        prefix + "COCKROACH_DATA": {
-            "bind": "/cockroach/cockroach-data",
-            "mode": "rw",
-        }
-    },
-    healthcheck={
-        "test": [
-            "CMD-SHELL",
-            "cockroach sql --insecure --host=127.0.0.1:26257 -e 'select 1' >/dev/null",
+    dev = {
+        "image": os.getenv("ORGPORTAL_DEV_IMAGE", DEFAULT_DEV_IMAGE),
+        "name": dev_name,
+        "network": network_name,
+        "restart_policy": {"Name": "always"},
+        "detach": True,
+        "working_dir": container_app_dir,
+        "volumes": {
+            str(web_dir): {"bind": container_app_dir, "mode": "rw"},
+            prefix + "ORGPORTAL_DEV_NODE_MODULES": {
+                "bind": "/app/node_modules",
+                "mode": "rw",
+            },
+        },
+        "environment": {
+            "NODE_ENV": "development",
+            "CHOKIDAR_USEPOLLING": "1",
+            "CHOKIDAR_INTERVAL": "200",
+            "VITE_PIDP_BASE_URL": pidp_base_url,
+            "VITE_DATA_SOURCE": "mock",
+            "VITE_PUBLIC_BASE": "/",
+            "VITE_HMR_HOST": dev_host or "",
+            "VITE_ALLOWED_HOSTS": ",".join([h for h in [dev_host, prod_host, "localhost"] if h]),
+        },
+        "command": [
+            "sh",
+            "-c",
+            "npm install && npm run dev -- --host 0.0.0.0 --port 5173",
         ],
-        "interval": 5000000000,  # 5s
-        "timeout": 5000000000,   # 5s
-        "retries": 10,
-    },
-)
-docker_utils.run_container(COCKROACH)
-docker_utils.init_cockroach(
-    container_name=COCKROACH_HOST,
-    sql_port=editme.COCKROACH_SQL_PORT,
-    insecure=editme.COCKROACH_INSECURE,
-)
+    }
 
-# Handy internal endpoints (for your backend config)
-REDIS_URL = f"redis://{prefix}redis:6379/0"
-MINIO_S3_ENDPOINT = f"http://{prefix}minio:9000"
-MINIO_CONSOLE = f"http://{prefix}minio:9001"
-COCKROACH_SQL_URL = (
-    f"postgresql://{editme.COCKROACH_USER}@{COCKROACH_HOST}:"
-    f"{editme.COCKROACH_SQL_PORT}/{editme.COCKROACH_DB}"
-    f"?sslmode={'disable' if editme.COCKROACH_INSECURE else 'require'}"
-)
-COCKROACH_HTTP = f"http://{COCKROACH_HOST}:{editme.COCKROACH_HTTP_PORT}"
+    for name in (prod_name, dev_name):
+        try:
+            container = docker_utils.DOCKER_CLIENT.containers.get(name)
+            container.stop()
+            container.remove(force=True)
+        except Exception:
+            pass
+
+    resolved_prod_image, image_source = _ensure_prod_image_available(prod_image, pidp_base_url)
+    print(f"Using portal prod image: {resolved_prod_image} ({image_source})")
+    print(f"Portal prod base: {_normalize_public_base(prod_base) or 'unchanged'}")
+    print(f"Portal dev base: {_normalize_public_base(dev_base) or 'unchanged'}")
+    print(f"Portal PIdP base: {pidp_base_url}")
+    prod["image"] = resolved_prod_image
+    prod["environment"]["BACKEND_IMAGE_RUNNING"] = resolved_prod_image
+
+    docker_utils.run_container(prod)
+    docker_utils.run_container(dev)
+    docker_utils.wait_for_port(prod_name, 8080, network_name, retries=60, delay=2)
+    docker_utils.wait_for_port(dev_name, 5173, network_name, retries=60, delay=2)
 
 
-# 1) Postgres datastore for SpiceDB
-SPICEDB_DB = dict(
-    image="postgres:15-alpine",
-    detach=True,
-    name=prefix + "spicedb-postgres",
-    network=NETWORK_NAME,
-    restart_policy={"Name": "always"},
-    user="postgres",
-    environment={
-        "POSTGRES_PASSWORD": editme.SPICEDB_POSTGRES_PASSWORD,
-        "POSTGRES_USER": editme.SPICEDB_POSTGRES_USER,
-        "POSTGRES_DB": editme.SPICEDB_POSTGRES_DB,
-    },
-    volumes={
-        prefix + "SPICEDB_POSTGRES": {
-            "bind": "/var/lib/postgresql/data",
-            "mode": "rw",
-        }
-    },
-    healthcheck={
-        "test": ["CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"],
-        "interval": 5000000000,  # 5s
-        "timeout": 5000000000,   # 5s
-        "retries": 10,
-    },
-)
-docker_utils.run_container(SPICEDB_DB)
-
-# Common DSN used by migrate + spicedb
-dsn = (
-    f"postgres://{editme.SPICEDB_POSTGRES_USER}:"
-    f"{editme.SPICEDB_POSTGRES_PASSWORD}"
-    f"@{prefix}spicedb-postgres:5432/"
-    f"{editme.SPICEDB_POSTGRES_DB}?sslmode=disable"
-)
-
-# Wait for the DB to accept connections before running migrations.
-docker_utils.wait_for_db(
-    NETWORK_NAME,
-    dsn,
-    db_user=editme.SPICEDB_POSTGRES_USER,
-)
-
-# 2) Run migrations (one-shot container)
-# NOTE: you may want docker_utils.run_container to support `remove=True` or similar.
-SPICEDB_MIGRATE = dict(
-    image="authzed/spicedb:latest",
-    detach=False,  # usually you want to wait for this to finish
-    name=prefix + "spicedb-migrate",
-    network=NETWORK_NAME,
-    restart_policy={"Name": "no"},
-    command=[
-        "migrate",
-        "head",
-        "--datastore-engine=postgres",
-        f"--datastore-conn-uri={dsn}",
-    ],
-)
-if _env_flag("RUN_SPICEDB_MIGRATE", default=True):
-    docker_utils.run_container(SPICEDB_MIGRATE)
-
-# 3) SpiceDB API service
-SPICEDB = dict(
-    image="authzed/spicedb:latest",
-    detach=True,
-    name=prefix + "spicedb",
-    network=NETWORK_NAME,
-    restart_policy={"Name": "always"},
-    ports={
-        "50051/tcp": 50051,  # gRPC API
-        #"8443/tcp": 8443,    # HTTP gateway (if enabled; harmless to expose)
-    },
-    command=[
-        "serve",
-        "--grpc-preshared-key",
-        editme.SPICEDB_PRESHARED_KEY,
-
-        "--datastore-engine=postgres",
-        f"--datastore-conn-uri={dsn}",
-
-        # Nice defaults for dev; adjust as you like:
-        "--log-level=info",
-        "--http-enabled=true",
-        "--http-addr=0.0.0.0:8443",
-        "--grpc-addr=0.0.0.0:50051",
-    ],
-    healthcheck={
-        # Keeps it lightweight: confirm the process is up
-        # (If you prefer, swap this for a real gRPC health probe.)
-        "test": ["CMD-SHELL", "ps aux | grep -q '[s]picedb serve'"],
-        "interval": 5000000000,
-        "timeout": 5000000000,
-        "retries": 10,
-    },
-)
-docker_utils.run_container(SPICEDB)
-
-ballot_backend_run = run_org_backend()
-ballot_backend_run(NETWORK_NAME, prefix)
-
-# Governance Backend (motions, voting, engagement)
-run_governance_backend(NETWORK_NAME, prefix)
-
-ubi_run(NETWORK_NAME, prefix)
-web_run(NETWORK_NAME, prefix)
-nginx_run(NETWORK_NAME, prefix)
+if __name__ == "__main__":
+    if len(sys.argv) >= 3:
+        prefix = sys.argv[1]
+        network_name = sys.argv[2]
+    else:
+        prefix = ""
+        network_name = "arkavo"
+    run(prefix, network_name)
