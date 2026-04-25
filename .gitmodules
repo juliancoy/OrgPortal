@@ -1,0 +1,9 @@
+[submodule "PIdP"]
+	path = PIdP
+	url = https://github.com/juliancoy/PIdP.git
+[submodule "pidp"]
+	path = pidp
+	url = https://github.com/juliancoy/pidp.git
+[submodule "org-backend"]
+	path = org-backend
+	url = https://github.com/juliancoy/org-backend.git
