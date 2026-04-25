@@ -270,6 +270,67 @@ async function buildEventSeo(base, slug) {
   }
 }
 
+async function buildOrgSeo(base, slug) {
+  const canonicalUrl = `${base}/orgs/${encodeURIComponent(slug)}`
+  try {
+    const org = await fetchJsonWithCache(
+      `${EVENTS_API_BASE}/api/network/orgs/public/${encodeURIComponent(slug)}`,
+      `org:${slug}`,
+    )
+    const description = summary(org.description, 'Public profile for organization in the Org network.')
+    return {
+      statusCode: 200,
+      seo: {
+        title: `${org.name} • Org Portal`,
+        description,
+        canonicalUrl,
+        imageUrl: org.image_url || undefined,
+        type: 'website',
+        jsonLd: [
+          {
+            '@context': 'https://schema.org',
+            '@type': 'Organization',
+            name: org.name,
+            description,
+            url: canonicalUrl,
+            logo: org.image_url || undefined,
+            sameAs: org.source_url ? [org.source_url] : undefined,
+          },
+          {
+            '@context': 'https://schema.org',
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              {
+                '@type': 'ListItem',
+                position: 1,
+                name: 'Organizations',
+                item: `${base}/orgs`,
+              },
+              {
+                '@type': 'ListItem',
+                position: 2,
+                name: org.name,
+                item: canonicalUrl,
+              },
+            ],
+          },
+        ],
+      },
+    }
+  } catch {
+    return {
+      statusCode: 404,
+      seo: {
+        title: 'Organization Not Found • Org Portal',
+        description: 'The requested organization could not be found.',
+        canonicalUrl,
+        type: 'website',
+        jsonLd: [],
+      },
+    }
+  }
+}
+
 async function serveStatic(req, res, pathname) {
   const rawPath = pathname === '/' ? '/index.html' : pathname
   const decoded = decodeURIComponent(rawPath)
@@ -303,6 +364,16 @@ async function serveSpa(req, res, pathname) {
   if (eventMatch) {
     const slug = decodeURIComponent(eventMatch[1])
     const { statusCode, seo } = await buildEventSeo(base, slug)
+    const html = applySeo(template, seo)
+    res.writeHead(statusCode, { 'content-type': 'text/html; charset=utf-8' })
+    res.end(html)
+    return
+  }
+
+  const orgMatch = pathname.match(/^\/orgs\/([^/]+)$/)
+  if (orgMatch) {
+    const slug = decodeURIComponent(orgMatch[1])
+    const { statusCode, seo } = await buildOrgSeo(base, slug)
     const html = applySeo(template, seo)
     res.writeHead(statusCode, { 'content-type': 'text/html; charset=utf-8' })
     res.end(html)
