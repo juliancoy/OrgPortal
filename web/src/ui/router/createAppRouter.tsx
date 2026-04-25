@@ -16,8 +16,11 @@ import { CampaignInitiativeEditorPage } from '../views/campaign/CampaignInitiati
 import { CampaignInitiativeBallotPage } from '../views/campaign/CampaignInitiativeBallotPage'
 import { CampaignProfilePage } from '../views/campaign/CampaignProfilePage'
 import { CampaignAccountPage } from '../views/campaign/CampaignAccountPage'
+import { CampaignEventsPage } from '../views/campaign/CampaignEventsPage'
 import { PublicCampaignManagerPage } from '../views/public/PublicCampaignManagerPage'
 import { PublicContactPage } from '../views/public/PublicContactPage'
+import { PublicEventsPage } from '../views/public/PublicEventsPage'
+import { PublicEventPage } from '../views/public/PublicEventPage'
 import { MotionListPage } from '../views/governance/MotionListPage'
 import { MotionDetailPage } from '../views/governance/MotionDetailPage'
 import { ProposeMotionPage } from '../views/governance/ProposeMotionPage'
@@ -59,28 +62,49 @@ export function createAppRouter() {
 
           { path: '/about', element: <AboutPage /> },
 
-          // Constituent
-          { path: '/constituent/register', element: <ConstituentRegisterPage /> },
-          { path: '/constituent/login', element: <ConstituentLoginPage /> },
-          { path: '/constituent/dashboard', element: <DashboardPage /> },
-          { path: '/constituent/profile', element: <ConstituentProfilePage /> },
-          { path: '/constituent/account', element: <ConstituentAccountPage /> },
+          // Canonical user routes
+          { path: '/users/register', element: <ConstituentRegisterPage /> },
+          { path: '/users/login', element: <ConstituentLoginPage /> },
+          { path: '/users/dashboard', element: <DashboardPage /> },
+          { path: '/users/profile', element: <ConstituentProfilePage /> },
+          { path: '/users/account', element: <ConstituentAccountPage /> },
 
-          // Campaign manager (demo pages: static but navigable)
-          { path: '/campaign/register', element: <CampaignRegisterPage /> },
-          { path: '/campaign/login', element: <CampaignLoginPage /> },
-          { path: '/campaign/initiatives', element: <CampaignInitiativesPage /> },
-          { path: '/campaign/initiatives/editable', element: <CampaignEditableInitiativesPage /> },
-          { path: '/campaign/initiatives/new', element: <CampaignInitiativeEditorPage /> },
-          { path: '/campaign/initiatives/:id/edit', element: <CampaignInitiativeEditorPage /> },
-          { path: '/campaign/initiatives/:id/ballot', element: <CampaignInitiativeBallotPage /> },
-          { path: '/campaign/profile', element: <CampaignProfilePage /> },
-          { path: '/campaign/account', element: <CampaignAccountPage /> },
+          // Canonical org routes
+          { path: '/orgs/register', element: <CampaignRegisterPage /> },
+          { path: '/orgs/login', element: <CampaignLoginPage /> },
+          { path: '/orgs/initiatives', element: <CampaignInitiativesPage /> },
+          { path: '/orgs/initiatives/editable', element: <CampaignEditableInitiativesPage /> },
+          { path: '/orgs/initiatives/new', element: <CampaignInitiativeEditorPage /> },
+          { path: '/orgs/initiatives/:id/edit', element: <CampaignInitiativeEditorPage /> },
+          { path: '/orgs/initiatives/:id/ballot', element: <CampaignInitiativeBallotPage /> },
+          { path: '/orgs/profile', element: <CampaignProfilePage /> },
+          { path: '/orgs/account', element: <CampaignAccountPage /> },
+          { path: '/orgs/events', element: <CampaignEventsPage /> },
           { path: '/admin', element: <AdminPage /> },
           { path: '/targets/:target', element: <TargetPage /> },
 
-          // Public profile
+          // Legacy route compatibility
+          { path: '/constituent/register', element: <Navigate to="/users/register" replace /> },
+          { path: '/constituent/login', element: <Navigate to="/users/login" replace /> },
+          { path: '/constituent/dashboard', element: <Navigate to="/users/dashboard" replace /> },
+          { path: '/constituent/profile', element: <Navigate to="/users/profile" replace /> },
+          { path: '/constituent/account', element: <Navigate to="/users/account" replace /> },
+          { path: '/campaign/register', element: <Navigate to="/orgs/register" replace /> },
+          { path: '/campaign/login', element: <Navigate to="/orgs/login" replace /> },
+          { path: '/campaign/initiatives', element: <Navigate to="/orgs/initiatives" replace /> },
+          { path: '/campaign/initiatives/editable', element: <Navigate to="/orgs/initiatives/editable" replace /> },
+          { path: '/campaign/initiatives/new', element: <Navigate to="/orgs/initiatives/new" replace /> },
+          { path: '/campaign/initiatives/:id/edit', element: <CampaignInitiativeEditorPage /> },
+          { path: '/campaign/initiatives/:id/ballot', element: <CampaignInitiativeBallotPage /> },
+          { path: '/campaign/profile', element: <Navigate to="/orgs/profile" replace /> },
+          { path: '/campaign/account', element: <Navigate to="/orgs/account" replace /> },
+          { path: '/campaign/events', element: <Navigate to="/orgs/events" replace /> },
           { path: '/campaign-managers/:handle', element: <PublicCampaignManagerPage /> },
+          { path: '/events', element: <PublicEventsPage /> },
+          { path: '/events/:slug', element: <PublicEventPage /> },
+
+          // Public profile
+          { path: '/orgs/:handle', element: <PublicCampaignManagerPage /> },
           { path: '/contact/:slug', element: <PublicContactPage /> },
           { path: '/contact-settings', element: <ContactSettingsPage /> },
 

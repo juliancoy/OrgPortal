@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../../app/AppProviders'
+import { pidpUrl } from '../../config/pidp'
 
 interface NavLinkProps {
   to: string
@@ -29,7 +30,8 @@ export function Header() {
   const { role, user, logout, token } = useAuth()
   const location = useLocation()
   const displayName = user?.displayName || user?.email || 'Signed in'
-  const accountSettingsPath = role === 'campaign_manager' ? '/campaign/account' : '/constituent/account'
+  const accountSettingsPath = role === 'campaign_manager' ? '/orgs/account' : '/users/account'
+  const roleLabel = role === 'campaign_manager' ? 'Org' : role === 'constituent' ? 'User' : 'Guest'
   const nextUrl = window.location.href
   const [menuOpen, setMenuOpen] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
@@ -67,7 +69,10 @@ export function Header() {
 
   const isCivicActive =
     location.pathname === '/' ||
+    location.pathname.startsWith('/events') ||
     location.pathname.startsWith('/governance') ||
+    location.pathname.startsWith('/users') ||
+    location.pathname.startsWith('/orgs') ||
     location.pathname.startsWith('/constituent') ||
     location.pathname.startsWith('/campaign') ||
     location.pathname.startsWith('/about') ||
@@ -96,6 +101,13 @@ export function Header() {
               <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
             </svg>
             Civic
+          </NavLink>
+
+          <NavLink to="/events" isActive={location.pathname.startsWith('/events')}>
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M6 2a1 1 0 000 2h8a1 1 0 100-2H6zM4 5a2 2 0 00-2 2v7a4 4 0 004 4h8a4 4 0 004-4V7a2 2 0 00-2-2H4zm2 4a1 1 0 011-1h2a1 1 0 110 2H7a1 1 0 01-1-1zm5 0a1 1 0 011-1h2a1 1 0 110 2h-2a1 1 0 01-1-1z" />
+            </svg>
+            Events
           </NavLink>
 
           <NavLink to="/ecops" isActive={isFinanceActive}>
@@ -139,7 +151,7 @@ export function Header() {
                 <div className="portal-user-menu">
                   <div className="portal-user-menu-meta">
                     <strong>{displayName}</strong>
-                    <span>{role.replace('_', ' ')}</span>
+                    <span>{roleLabel}</span>
                   </div>
 
                   <Link to={accountSettingsPath} onClick={() => setMenuOpen(false)} className="portal-user-menu-item">
@@ -147,7 +159,7 @@ export function Header() {
                   </Link>
 
                   <Link
-                    to={role === 'campaign_manager' ? '/campaign/profile' : '/constituent/profile'}
+                    to={role === 'campaign_manager' ? '/orgs/profile' : '/users/profile'}
                     onClick={() => setMenuOpen(false)}
                     className="portal-user-menu-item"
                   >
@@ -158,7 +170,7 @@ export function Header() {
                     Contact Page
                   </Link>
 
-                  <a href="/pidp/" onClick={() => setMenuOpen(false)} className="portal-user-menu-item">
+                  <a href={pidpUrl('/')} onClick={() => setMenuOpen(false)} className="portal-user-menu-item">
                     Identity (PIdP)
                   </a>
 
@@ -176,10 +188,10 @@ export function Header() {
             </div>
           ) : (
             <>
-              <a className="portal-button" href={`/pidp/login?next=${encodeURIComponent(nextUrl)}`}>
+              <a className="portal-button" href={pidpUrl(`/login?next=${encodeURIComponent(nextUrl)}`)}>
                 Log In
               </a>
-              <Link to="/constituent/register" className="btn-secondary">
+              <Link to="/users/register" className="btn-secondary">
                 Register
               </Link>
             </>
