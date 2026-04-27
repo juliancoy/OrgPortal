@@ -334,8 +334,6 @@ export function Header() {
     location.pathname.startsWith('/users/dashboard') ||
     location.pathname.startsWith('/users/profile') ||
     location.pathname.startsWith('/users/account') ||
-    location.pathname.startsWith('/constituent') ||
-    location.pathname.startsWith('/campaign') ||
     location.pathname.startsWith('/about') ||
     location.pathname.startsWith('/orgs/register') ||
     location.pathname.startsWith('/orgs/login') ||

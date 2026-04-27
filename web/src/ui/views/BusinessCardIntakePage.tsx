@@ -5,6 +5,7 @@ import { pidpAppLoginUrl } from '../../config/pidp'
 
 type SubmissionResult = {
   id?: string
+  submitted_by_name?: string | null
   extracted_name?: string | null
   extracted_email?: string | null
   extracted_company?: string | null
@@ -83,12 +84,11 @@ export function BusinessCardIntakePage() {
   const [imageLoading, setImageLoading] = useState<Record<string, boolean>>({})
   const [imageErrors, setImageErrors] = useState<Record<string, string>>({})
   const [rerunBusy, setRerunBusy] = useState<Record<string, boolean>>({})
-  const [hoverPreviewUrl, setHoverPreviewUrl] = useState<string | null>(null)
+  const [modalPreviewUrl, setModalPreviewUrl] = useState<string | null>(null)
   const imageUrlsRef = useRef<Record<string, string>>({})
   const cameraInputRef = useRef<HTMLInputElement | null>(null)
   const galleryInputRef = useRef<HTMLInputElement | null>(null)
   const selectedPreviewRef = useRef<string | null>(null)
-  const hoverPreviewHideTimerRef = useRef<number | null>(null)
   const [selectedPreviewUrl, setSelectedPreviewUrl] = useState<string | null>(null)
 
   useEffect(() => {
@@ -101,29 +101,21 @@ export function BusinessCardIntakePage() {
       if (selectedPreviewRef.current) {
         URL.revokeObjectURL(selectedPreviewRef.current)
       }
-      if (hoverPreviewHideTimerRef.current !== null) {
-        window.clearTimeout(hoverPreviewHideTimerRef.current)
-      }
     }
   }, [])
 
-  function openHoverPreview(url: string) {
-    if (hoverPreviewHideTimerRef.current !== null) {
-      window.clearTimeout(hoverPreviewHideTimerRef.current)
-      hoverPreviewHideTimerRef.current = null
+  useEffect(() => {
+    if (!modalPreviewUrl) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setModalPreviewUrl(null)
+      }
     }
-    setHoverPreviewUrl(url)
-  }
-
-  function closeHoverPreviewSoon() {
-    if (hoverPreviewHideTimerRef.current !== null) {
-      window.clearTimeout(hoverPreviewHideTimerRef.current)
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
     }
-    hoverPreviewHideTimerRef.current = window.setTimeout(() => {
-      setHoverPreviewUrl(null)
-      hoverPreviewHideTimerRef.current = null
-    }, 120)
-  }
+  }, [modalPreviewUrl])
 
   function resetFileInputs() {
     if (cameraInputRef.current) cameraInputRef.current.value = ''
@@ -287,7 +279,7 @@ export function BusinessCardIntakePage() {
     async function loadHistory() {
       try {
         setIsLoadingHistory(true)
-        const response = await fetch('/api/org/api/network/scans?limit=100', {
+        const response = await fetch('/api/org/api/network/scans?scope=public&limit=100', {
           headers: { Authorization: `Bearer ${token}` },
         })
         if (!response.ok) {
@@ -605,6 +597,11 @@ export function BusinessCardIntakePage() {
                   <span className="muted" style={{ fontSize: '0.85rem' }}>
                     {scan.created_at ? new Date(scan.created_at).toLocaleString() : 'Unknown time'}
                   </span>
+                  {scan.submitted_by_name ? (
+                    <span className="muted" style={{ fontSize: '0.85rem' }}>
+                      Submitted by: {scan.submitted_by_name}
+                    </span>
+                  ) : null}
                   <span style={{ fontSize: '0.9rem' }}>{formatScanResult(scan)}</span>
                   <span className="muted" style={{ fontSize: '0.85rem' }}>
                     Type: {scan.scan_kind || 'n/a'} | Requested: {scan.scan_kind_requested || 'auto'}
@@ -645,15 +642,24 @@ export function BusinessCardIntakePage() {
                         </span>
                       ) : null}
                       {scanImageUrl ? (
-                        <img
-                          src={scanImageUrl}
-                          alt="Original submitted scan"
-                          style={{ width: '100%', maxHeight: '180px', objectFit: 'cover', borderRadius: 8 }}
-                          onMouseEnter={() => openHoverPreview(scanImageUrl)}
-                          onMouseLeave={closeHoverPreviewSoon}
-                          onFocus={() => openHoverPreview(scanImageUrl)}
-                          onBlur={closeHoverPreviewSoon}
-                        />
+                        <button
+                          type="button"
+                          onClick={() => setModalPreviewUrl(scanImageUrl)}
+                          style={{
+                            border: 'none',
+                            background: 'transparent',
+                            padding: 0,
+                            textAlign: 'left',
+                            cursor: 'zoom-in',
+                          }}
+                        >
+                          <img
+                            src={scanImageUrl}
+                            alt="Original submitted scan"
+                            style={{ width: '100%', maxHeight: '180px', objectFit: 'cover', borderRadius: 8 }}
+                          />
+                          <span className="muted" style={{ fontSize: '0.8rem' }}>Click to expand</span>
+                        </button>
                       ) : null}
                     </div>
                   ) : null}
@@ -663,7 +669,7 @@ export function BusinessCardIntakePage() {
           </div>
         </aside>
       </div>
-      {hoverPreviewUrl ? (
+      {modalPreviewUrl ? (
         <div
           style={{
             position: 'fixed',
@@ -675,27 +681,49 @@ export function BusinessCardIntakePage() {
             justifyContent: 'center',
             padding: '1.25rem',
           }}
-          onMouseEnter={() => openHoverPreview(hoverPreviewUrl)}
-          onMouseLeave={closeHoverPreviewSoon}
-          onClick={() => setHoverPreviewUrl(null)}
+          onClick={() => setModalPreviewUrl(null)}
           role="presentation"
         >
-          <img
-            src={hoverPreviewUrl}
-            alt="Large scan preview"
-            style={{
-              maxWidth: 'min(1100px, 96vw)',
-              maxHeight: '92vh',
-              width: 'auto',
-              height: 'auto',
-              objectFit: 'contain',
-              borderRadius: 12,
-              boxShadow: '0 22px 80px rgba(0, 0, 0, 0.55)',
-              border: '1px solid rgba(111, 188, 255, 0.35)',
-              background: '#001f49',
-            }}
-            onClick={(event) => event.stopPropagation()}
-          />
+          <div onClick={(event) => event.stopPropagation()} style={{ position: 'relative' }}>
+            <button
+              type="button"
+              onClick={() => setModalPreviewUrl(null)}
+              aria-label="Close full screen scan preview"
+              style={{
+                position: 'absolute',
+                top: '-0.75rem',
+                right: '-0.75rem',
+                width: '2.5rem',
+                height: '2.5rem',
+                borderRadius: '999px',
+                border: '1px solid rgba(255, 255, 255, 0.75)',
+                background: 'rgba(0, 0, 0, 0.8)',
+                color: '#fff',
+                fontSize: '1.2rem',
+                cursor: 'pointer',
+              }}
+            >
+              ×
+            </button>
+            <img
+              src={modalPreviewUrl}
+              alt="Large scan preview"
+              style={{
+                maxWidth: 'min(1100px, 96vw)',
+                maxHeight: '92vh',
+                width: 'auto',
+                height: 'auto',
+                objectFit: 'contain',
+                borderRadius: 12,
+                boxShadow: '0 22px 80px rgba(0, 0, 0, 0.55)',
+                border: '1px solid rgba(111, 188, 255, 0.35)',
+                background: '#001f49',
+              }}
+            />
+            <div className="muted" style={{ marginTop: '0.5rem', textAlign: 'center', color: '#d9e8ff' }}>
+              Press Esc or click × to close
+            </div>
+          </div>
         </div>
       ) : null}
     </section>

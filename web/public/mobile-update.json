@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "publishedAt": "2026-04-27T00:00:00Z",
+  "android": {
+    "versionName": "0.0.0",
+    "buildNumber": 1,
+    "apkUrl": "https://static.arkavo.org/app-release.apk",
+    "notes": "Initial update channel scaffold.",
+    "minSupportedBuildNumber": 1
+  },
+  "web": {
+    "versionName": "0.0.0",
+    "buildNumber": 1,
+    "notes": "Initial update channel scaffold."
+  }
+}
+

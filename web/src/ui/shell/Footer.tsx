@@ -1,6 +1,16 @@
 import { pidpUrl } from '../../config/pidp'
 
+function androidApkUrl() {
+  if (typeof window === 'undefined') return 'https://static.arkavo.org/app-release.apk'
+  const host = window.location.hostname.toLowerCase()
+  const match = host.match(/^(?:dev\.)?portal\.(.+)$/)
+  if (match?.[1]) return `https://static.${match[1]}/app-release.apk`
+  if (host === 'localhost' || host === '127.0.0.1') return '/app-release.apk'
+  return 'https://static.arkavo.org/app-release.apk'
+}
+
 export function Footer() {
+  const apkUrl = androidApkUrl()
   return (
     <footer className="portal-footer">
       <div className="portal-footer-inner">
@@ -17,6 +27,7 @@ export function Footer() {
           <a href="/create">Create</a>
           <a href="/about">About</a>
           <a href={pidpUrl('/')}>Identity</a>
+          <a href={apkUrl} target="_blank" rel="noreferrer">Android APK</a>
         </div>
         <span>© 2026 Code Collective</span>
       </div>

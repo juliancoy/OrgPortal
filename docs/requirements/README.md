@@ -2,6 +2,8 @@
 
 This directory contains **living requirements** for each page in the ballot-sign application.
 
+Note: some files retain legacy names (`campaign`, `constituent`). Current product terminology and routes use `org` and `user`; keep legacy names only for historical continuity until those files are renamed.
+
 Rules:
 
 - One markdown file per page.

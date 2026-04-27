@@ -1,5 +1,30 @@
 # React + TypeScript + Vite
 
+## App Update Channel (Web + Android)
+
+OrgPortal checks for update metadata from `mobile-update.json` and prompts users when a newer build exists.
+
+- Web: compares current build constant (`__APP_BUILD_NUMBER__`) to `web.buildNumber`, then offers reload.
+- Native Android (Capacitor): compares `App.getInfo().build` to `android.buildNumber`, then opens `android.apkUrl`.
+- Optional updates can be dismissed per target/build in local storage; mandatory updates (below `minSupportedBuildNumber`) cannot.
+
+Manifest locations used by deployment:
+
+- `OrgPortal/web/public/mobile-update.json` (web host copy)
+- `static/mobile-update.json` (static host copy for native)
+
+Release flow:
+
+1. Build and publish APK to static host (default URL is `https://static.arkavo.org/app-release.apk`).
+2. Update `android.versionName`, `android.buildNumber`, and `android.minSupportedBuildNumber` as needed.
+3. Update `web.versionName` and `web.buildNumber` for web deploys.
+4. Publish both manifest files with the release.
+
+Environment overrides:
+
+- `VITE_UPDATE_MANIFEST_URL`: explicit manifest URL.
+- `VITE_APP_BUILD_NUMBER`: compile-time web build number.
+
 ## Cloudflare Deploy
 
 This app can be deployed with Wrangler using:

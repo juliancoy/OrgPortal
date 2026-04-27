@@ -131,6 +131,45 @@ function lastActivityForRoom(room: Room): number | undefined {
 }
 
 type MatrixClientFactory = typeof createClient
+type MatrixRateLimitPayload = { errcode?: string; retry_after_ms?: number }
+
+const MATRIX_RATE_LIMIT_MAX_RETRIES = 2
+const MATRIX_RATE_LIMIT_WAIT_CAP_MS = 1_500
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    globalThis.setTimeout(resolve, ms)
+  })
+}
+
+function parseRateLimitPayload(err: unknown): MatrixRateLimitPayload {
+  const candidate = err as {
+    data?: MatrixRateLimitPayload
+    body?: MatrixRateLimitPayload
+    errcode?: string
+    retry_after_ms?: number
+  }
+  const data = (candidate?.data || candidate?.body || {}) as MatrixRateLimitPayload
+  return {
+    errcode: String(data.errcode || candidate?.errcode || ''),
+    retry_after_ms: Number(data.retry_after_ms || candidate?.retry_after_ms || 0),
+  }
+}
+
+function isMatrixRateLimitError(err: unknown): boolean {
+  const payload = parseRateLimitPayload(err)
+  if (payload.errcode === 'M_LIMIT_EXCEEDED') return true
+  const candidate = err as { httpStatus?: number; statusCode?: number; status?: number }
+  return candidate?.httpStatus === 429 || candidate?.statusCode === 429 || candidate?.status === 429
+}
+
+function matrixRateLimitErrorMessage(retryAfterMs?: number): string {
+  if (!retryAfterMs || retryAfterMs <= 0) {
+    return 'Matrix is temporarily rate-limiting chat requests. Please try again shortly.'
+  }
+  const waitSeconds = Math.max(1, Math.ceil(retryAfterMs / 1000))
+  return `Matrix is rate-limiting chat requests. Please retry in about ${waitSeconds}s.`
+}
 
 export class MatrixChatService implements ChatService {
   private client: MatrixClient | null = null
@@ -183,6 +222,23 @@ export class MatrixChatService implements ChatService {
     return this.client
   }
 
+  private async withRateLimitRetry<T>(operation: () => Promise<T>): Promise<T> {
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        return await operation()
+      } catch (err) {
+        if (!isMatrixRateLimitError(err)) throw err
+        const payload = parseRateLimitPayload(err)
+        const retryAfterMs = Number.isFinite(payload.retry_after_ms) ? Number(payload.retry_after_ms) : 0
+        if (attempt >= MATRIX_RATE_LIMIT_MAX_RETRIES) {
+          throw new Error(matrixRateLimitErrorMessage(retryAfterMs))
+        }
+        const waitMs = Math.max(250, Math.min(retryAfterMs || 500, MATRIX_RATE_LIMIT_WAIT_CAP_MS))
+        await sleep(waitMs)
+      }
+    }
+  }
+
   async verifySession(): Promise<void> {
     const client = this.getClient()
     await client.whoami()
@@ -222,7 +278,9 @@ export class MatrixChatService implements ChatService {
 
   async joinRoom(roomId: string): Promise<void> {
     const client = this.getClient()
-    await client.joinRoom(roomId)
+    await this.withRateLimitRetry(async () => {
+      await client.joinRoom(roomId)
+    })
   }
 
   listMessages(roomId: string): ChatMessage[] {
@@ -248,104 +306,118 @@ export class MatrixChatService implements ChatService {
 
   async sendTextMessage(roomId: string, body: string): Promise<void> {
     const client = this.getClient()
-    await client.sendTextMessage(roomId, body)
+    await this.withRateLimitRetry(async () => {
+      await client.sendTextMessage(roomId, body)
+    })
   }
 
   async sendReaction(roomId: string, eventId: string, key: string): Promise<void> {
     const client = this.getClient()
-    await client.sendEvent(roomId, EventType.Reaction, {
-      'm.relates_to': {
-        rel_type: RelationType.Annotation,
-        event_id: eventId,
-        key,
-      },
-    } as any)
+    await this.withRateLimitRetry(async () => {
+      await client.sendEvent(roomId, EventType.Reaction, {
+        'm.relates_to': {
+          rel_type: RelationType.Annotation,
+          event_id: eventId,
+          key,
+        },
+      } as any)
+    })
   }
 
   async sendMediaMessage(roomId: string, file: File): Promise<void> {
     const client = this.getClient()
-    const uploadResult = (await client.uploadContent(file, {
+    const uploadResult = (await this.withRateLimitRetry(async () => (await client.uploadContent(file, {
       type: file.type || 'application/octet-stream',
       name: file.name,
-    } as any)) as any
+    } as any)) as any)) as any
     const contentUri = typeof uploadResult === 'string' ? uploadResult : uploadResult?.content_uri
     if (!contentUri) {
       throw new Error('Matrix media upload failed')
     }
     const isImage = file.type.startsWith('image/')
-    await client.sendEvent(roomId, EventType.RoomMessage, {
-      msgtype: isImage ? MsgType.Image : MsgType.File,
-      body: file.name,
-      filename: file.name,
-      url: contentUri,
-      info: {
-        mimetype: file.type || 'application/octet-stream',
-        size: file.size,
-      },
-    } as any)
+    await this.withRateLimitRetry(async () => {
+      await client.sendEvent(roomId, EventType.RoomMessage, {
+        msgtype: isImage ? MsgType.Image : MsgType.File,
+        body: file.name,
+        filename: file.name,
+        url: contentUri,
+        info: {
+          mimetype: file.type || 'application/octet-stream',
+          size: file.size,
+        },
+      } as any)
+    })
   }
 
   async sendReplyMessage(roomId: string, eventId: string, body: string): Promise<void> {
     const client = this.getClient()
-    await client.sendEvent(
-      roomId,
-      EventType.RoomMessage,
-      {
-        msgtype: MsgType.Text,
-        body,
-        'm.relates_to': {
-          'm.in_reply_to': {
-            event_id: eventId,
+    await this.withRateLimitRetry(async () => {
+      await client.sendEvent(
+        roomId,
+        EventType.RoomMessage,
+        {
+          msgtype: MsgType.Text,
+          body,
+          'm.relates_to': {
+            'm.in_reply_to': {
+              event_id: eventId,
+            },
           },
-        },
-      } as any,
-    )
+        } as any,
+      )
+    })
   }
 
   async sendThreadReplyMessage(roomId: string, threadRootEventId: string, parentEventId: string, body: string): Promise<void> {
     const client = this.getClient()
-    await client.sendEvent(
-      roomId,
-      EventType.RoomMessage,
-      {
-        msgtype: MsgType.Text,
-        body,
-        'm.relates_to': {
-          rel_type: RelationType.Thread,
-          event_id: threadRootEventId,
-          is_falling_back: true,
-          'm.in_reply_to': {
-            event_id: parentEventId,
+    await this.withRateLimitRetry(async () => {
+      await client.sendEvent(
+        roomId,
+        EventType.RoomMessage,
+        {
+          msgtype: MsgType.Text,
+          body,
+          'm.relates_to': {
+            rel_type: RelationType.Thread,
+            event_id: threadRootEventId,
+            is_falling_back: true,
+            'm.in_reply_to': {
+              event_id: parentEventId,
+            },
           },
-        },
-      } as any,
-    )
+        } as any,
+      )
+    })
   }
 
   async editMessage(roomId: string, eventId: string, body: string): Promise<void> {
     const client = this.getClient()
     const trimmed = body.trim()
     if (!trimmed) return
-    await client.sendEvent(
-      roomId,
-      EventType.RoomMessage,
-      {
-        msgtype: MsgType.Text,
-        body: `* ${trimmed}`,
-        'm.new_content': {
+    await this.withRateLimitRetry(async () => {
+      await client.sendEvent(
+        roomId,
+        EventType.RoomMessage,
+        {
           msgtype: MsgType.Text,
-          body: trimmed,
-        },
-        'm.relates_to': {
-          rel_type: RelationType.Replace,
-          event_id: eventId,
-        },
-      } as any,
-    )
+          body: `* ${trimmed}`,
+          'm.new_content': {
+            msgtype: MsgType.Text,
+            body: trimmed,
+          },
+          'm.relates_to': {
+            rel_type: RelationType.Replace,
+            event_id: eventId,
+          },
+        } as any,
+      )
+    })
   }
 
   async deleteMessage(roomId: string, eventId: string): Promise<void> {
     const client = this.getClient()
-    await (client as any).redactEvent(roomId, eventId, undefined, { reason: 'Deleted by sender' })
+    await this.withRateLimitRetry(async () => {
+      await (client as any).redactEvent(roomId, eventId, undefined, { reason: 'Deleted by sender' })
+    })
   }
 }

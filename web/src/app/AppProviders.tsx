@@ -9,6 +9,12 @@ import { refreshRuntimeTokenFromSession } from '../infrastructure/auth/sessionTo
 import { PIDP_BASE_URL, pidpUrl } from '../config/pidp'
 import { isNativeCapacitorRuntime } from '../infrastructure/platform/runtimePlatform'
 import { initChatNotifications, setChatNotificationOpenHandler } from '../infrastructure/platform/chatNotifications'
+import { AppUpdatePrompt } from '../ui/components/system/AppUpdatePrompt'
+import {
+  checkForAvailableUpdate,
+  performUpdateAction,
+  type AvailableUpdate,
+} from '../infrastructure/platform/updateManifest'
 
 type PidpUser = {
   id: string
@@ -50,6 +56,7 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 const NATIVE_TOKEN_STORAGE_KEY = 'pidp.native.token'
+const UPDATE_DISMISS_STORAGE_KEY = 'orgportal.update.dismissed'
 
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext)
@@ -99,6 +106,8 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [showMigration, setShowMigration] = useState(false)
   const [pendingMigration, setPendingMigration] = useState<{guestId: string, userId: string, displayName: string} | null>(null)
+  const [availableUpdate, setAvailableUpdate] = useState<AvailableUpdate | null>(null)
+  const [updateActionBusy, setUpdateActionBusy] = useState(false)
 
   const normalizedPidpBase = PIDP_BASE_URL
 
@@ -109,6 +118,62 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
     })
     initChatNotifications().catch(() => {})
   }, [isNativeRuntime])
+
+  const isDismissedUpdate = useCallback((update: AvailableUpdate): boolean => {
+    if (update.mandatory) return false
+    const raw = localStorage.getItem(UPDATE_DISMISS_STORAGE_KEY)
+    if (!raw) return false
+    try {
+      const parsed = JSON.parse(raw) as { target?: string; buildNumber?: number }
+      return parsed.target === update.target && parsed.buildNumber === update.latestBuildNumber
+    } catch {
+      return false
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    let intervalId: ReturnType<typeof setInterval> | null = null
+    let appStateListener: { remove: () => Promise<void> } | null = null
+
+    const runUpdateCheck = async () => {
+      const { available } = await checkForAvailableUpdate()
+      if (cancelled) return
+      if (!available) {
+        setAvailableUpdate(null)
+        return
+      }
+      if (isDismissedUpdate(available)) return
+      setAvailableUpdate(available)
+    }
+
+    void runUpdateCheck()
+    intervalId = setInterval(() => {
+      void runUpdateCheck()
+    }, 5 * 60 * 1000)
+
+    if (isNativeRuntime) {
+      ;(async () => {
+        try {
+          const { App } = await import('@capacitor/app')
+          appStateListener = await App.addListener('appStateChange', (state) => {
+            if (!state.isActive) return
+            void runUpdateCheck()
+          })
+        } catch {
+          // Ignore: plugin unavailable in browser runtime.
+        }
+      })()
+    }
+
+    return () => {
+      cancelled = true
+      if (intervalId) clearInterval(intervalId)
+      if (appStateListener) {
+        void appStateListener.remove()
+      }
+    }
+  }, [isDismissedUpdate, isNativeRuntime])
 
   const normalizeAvatarUrl = useCallback(
     (rawUrl?: string | null): string | null => {
@@ -482,6 +547,28 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
     }
   }, [isNativeRuntime, setAuthToken])
 
+  const dismissAvailableUpdate = useCallback(() => {
+    if (!availableUpdate || availableUpdate.mandatory) return
+    localStorage.setItem(
+      UPDATE_DISMISS_STORAGE_KEY,
+      JSON.stringify({ target: availableUpdate.target, buildNumber: availableUpdate.latestBuildNumber }),
+    )
+    setAvailableUpdate(null)
+  }, [availableUpdate])
+
+  const applyAvailableUpdate = useCallback(async () => {
+    if (!availableUpdate) return
+    setUpdateActionBusy(true)
+    try {
+      await performUpdateAction(availableUpdate)
+      if (!availableUpdate.mandatory && availableUpdate.target === 'native') {
+        dismissAvailableUpdate()
+      }
+    } finally {
+      setUpdateActionBusy(false)
+    }
+  }, [availableUpdate, dismissAvailableUpdate])
+
   const authValue = useMemo<AuthContextValue>(
     () => ({
       role,
@@ -589,6 +676,16 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
             </div>
           </div>
         )}
+        {availableUpdate ? (
+          <AppUpdatePrompt
+            update={availableUpdate}
+            checking={updateActionBusy}
+            onUpdate={() => {
+              void applyAvailableUpdate()
+            }}
+            onDismiss={dismissAvailableUpdate}
+          />
+        ) : null}
       </AuthContext.Provider>
     </ServicesContext.Provider>
   )

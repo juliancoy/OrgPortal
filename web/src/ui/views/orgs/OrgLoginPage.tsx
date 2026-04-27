@@ -11,6 +11,8 @@ export function OrgLoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const nextUrl = window.location.href
+  const socialLoginUrl = (provider: 'google' | 'github') =>
+    `/api/org/auth/social/${provider}/login?next=${encodeURIComponent(nextUrl)}`
 
   useEffect(() => {
     document.title = 'Org Portal • Org login'
@@ -28,6 +30,38 @@ export function OrgLoginPage() {
       <h1 style={{ marginTop: 0 }}>Login (org)</h1>
       <div style={{ display: 'grid', gap: '0.6rem' }}>
         <div style={{ display: 'grid', gap: '0.5rem' }}>
+          <a
+            href={socialLoginUrl('google')}
+            style={{
+              display: 'inline-flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: '0.5rem',
+              border: '1px solid var(--border-input)',
+              borderRadius: 8,
+              padding: '0.6rem 1rem',
+              textDecoration: 'none',
+              color: 'inherit',
+            }}
+          >
+            Continue with Google
+          </a>
+          <a
+            href={socialLoginUrl('github')}
+            style={{
+              display: 'inline-flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: '0.5rem',
+              border: '1px solid var(--border-input)',
+              borderRadius: 8,
+              padding: '0.6rem 1rem',
+              textDecoration: 'none',
+              color: 'inherit',
+            }}
+          >
+            Continue with GitHub
+          </a>
           <a
             href={pidpAppLoginUrl(nextUrl)}
             style={{

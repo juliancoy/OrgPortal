@@ -8,6 +8,9 @@ class FakeMatrixClient {
   private rooms: any[] = []
   private roomMessages = new Map<string, any[]>()
   public redactions: Array<{ roomId: string; eventId: string }> = []
+  public joinRateLimitRemaining = 0
+  public sendRateLimitRemaining = 0
+  public sendRetryAfterMs = 1
 
   constructor() {
     this.rooms = [
@@ -67,6 +70,13 @@ class FakeMatrixClient {
   }
 
   joinRoom(roomId: string) {
+    if (this.joinRateLimitRemaining > 0) {
+      this.joinRateLimitRemaining -= 1
+      return Promise.reject({
+        data: { errcode: 'M_LIMIT_EXCEEDED', retry_after_ms: 1 },
+        httpStatus: 429,
+      })
+    }
     if (!this.rooms.some((room) => room.roomId === roomId)) {
       this.rooms.push({
         roomId,
@@ -86,6 +96,13 @@ class FakeMatrixClient {
   }
 
   sendTextMessage(roomId: string, body: string) {
+    if (this.sendRateLimitRemaining > 0) {
+      this.sendRateLimitRemaining -= 1
+      return Promise.reject({
+        data: { errcode: 'M_LIMIT_EXCEEDED', retry_after_ms: this.sendRetryAfterMs },
+        httpStatus: 429,
+      })
+    }
     const events = this.roomMessages.get(roomId) ?? []
     events.push({
       getType: () => EventType.RoomMessage,
@@ -173,6 +190,34 @@ describe('MatrixChatService', () => {
     expect(after.some((message) => message.messageType === 'image')).toBe(true)
     expect(fakeClient.redactions.some((item) => item.roomId === '!joined:matrix.local' && item.eventId === 'evt_2')).toBe(true)
 
+    service.stop()
+  })
+
+  it('retries rate-limited join and send operations', async () => {
+    const fakeClient = new FakeMatrixClient()
+    fakeClient.joinRateLimitRemaining = 1
+    fakeClient.sendRateLimitRemaining = 1
+    const service = new MatrixChatService(() => fakeClient as unknown as MatrixClient)
+
+    await service.start({ accessToken: 'token', userId: '@tester:matrix.local' })
+    await service.joinRoom('!public:matrix.local')
+    await service.sendTextMessage('!joined:matrix.local', 'retry ok')
+
+    const messages = service.listMessages('!joined:matrix.local')
+    expect(messages.some((message) => message.body === 'retry ok')).toBe(true)
+    service.stop()
+  })
+
+  it('returns a friendly message after repeated matrix rate limits', async () => {
+    const fakeClient = new FakeMatrixClient()
+    fakeClient.sendRateLimitRemaining = 10
+    fakeClient.sendRetryAfterMs = 73_209
+    const service = new MatrixChatService(() => fakeClient as unknown as MatrixClient)
+
+    await service.start({ accessToken: 'token', userId: '@tester:matrix.local' })
+    await expect(service.sendTextMessage('!joined:matrix.local', 'will fail')).rejects.toThrow(
+      'Matrix is rate-limiting chat requests. Please retry in about 74s.',
+    )
     service.stop()
   })
 })

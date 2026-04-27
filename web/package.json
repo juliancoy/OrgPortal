@@ -18,7 +18,12 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:matrix:live": "node scripts/matrix-live-smoke.mjs"
+    "test:matrix:live": "node scripts/matrix-live-smoke.mjs",
+    "bot:provision": "node scripts/provision-portal-bot.mjs",
+    "bot:list": "node scripts/bot-admin.mjs list",
+    "bot:admin": "node scripts/bot-admin.mjs",
+    "bot:issue-token": "node scripts/bot-admin.mjs issue-token",
+    "test:ux:selenium": "python scripts/selenium-ux-smoke.py"
   },
   "dependencies": {
     "@capacitor/android": "^6.1.2",

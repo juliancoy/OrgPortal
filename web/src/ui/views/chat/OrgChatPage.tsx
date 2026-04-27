@@ -6,6 +6,7 @@ import { useAuth, useServices } from '../../../app/AppProviders'
 import { bootstrapMatrixSessionFromOrg } from '../../../chat/bootstrapSession'
 import { beginMatrixSsoLogin, bootstrapMatrixSessionFromUrl, clearMatrixSession } from '../../../chat/matrixSession'
 import { refreshRuntimeTokenFromSession } from '../../../infrastructure/auth/sessionToken'
+import { toUserFacingErrorMessage } from '../../../infrastructure/http/userFacingError'
 import {
   buildChatNotificationPayload,
   initChatNotifications,
@@ -42,6 +43,7 @@ type OrgEligibleChatRoom = {
   organization_name: string
   organization_slug: string
   relationship_status: 'attendee' | 'member' | 'admin'
+  organization_member_count?: number
   room_id: string
   room_alias?: string | null
   room_name?: string | null
@@ -173,7 +175,7 @@ export function OrgChatPage() {
             session = await bootstrapMatrixSessionFromOrg(token)
           } catch (err) {
             if (!cancelled) {
-              setError(err instanceof Error ? err.message : 'Automatic chat sign-in failed')
+              setError(toUserFacingErrorMessage(err, 'Automatic chat sign-in failed'))
             }
           }
         }
@@ -189,7 +191,7 @@ export function OrgChatPage() {
       } catch (err) {
         clearMatrixSession()
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Failed to initialize Matrix chat')
+          setError(toUserFacingErrorMessage(err, 'Failed to initialize Matrix chat'))
           setBootstrapped(true)
         }
       } finally {
@@ -239,7 +241,11 @@ export function OrgChatPage() {
               if (eligibilityResp.ok) {
                 const payload = (await eligibilityResp.json()) as OrgEligibleChatRoom[]
                 if (Array.isArray(payload)) {
-                  eligibleRooms = payload
+                  eligibleRooms = payload.sort((a, b) => {
+                    const memberDiff = (b.organization_member_count || 0) - (a.organization_member_count || 0)
+                    if (memberDiff !== 0) return memberDiff
+                    return (a.organization_name || '').localeCompare(b.organization_name || '')
+                  })
                 }
               }
             }
@@ -284,10 +290,7 @@ export function OrgChatPage() {
               const preferredRooms = preferredIds
                 .map((roomId) => discoveredById.get(roomId))
                 .filter((room): room is ChatRoomSummary => Boolean(room))
-              const otherRooms = Array.from(discoveredById.values())
-                .filter((room) => !refreshedJoinedIds.has(room.id) && !preferredIds.includes(room.id))
-                .sort((a, b) => a.name.localeCompare(b.name))
-              setPublicRooms([...preferredRooms, ...otherRooms])
+              setPublicRooms(preferredRooms)
               if (!selectedRoomId && refreshedJoined.length > 0) {
                 navigate(`/chat/${encodeURIComponent(refreshedJoined[0].id)}`, { replace: true })
               }
@@ -316,15 +319,12 @@ export function OrgChatPage() {
         const preferredRooms = preferredIds
           .map((roomId) => discoveredById.get(roomId))
           .filter((room): room is ChatRoomSummary => Boolean(room))
-        const otherRooms = Array.from(discoveredById.values())
-          .filter((room) => !joinedIds.has(room.id) && !preferredIds.includes(room.id))
-          .sort((a, b) => a.name.localeCompare(b.name))
-        setPublicRooms([...preferredRooms, ...otherRooms])
+        setPublicRooms(preferredRooms)
         if (!selectedRoomId && joined.length > 0) {
           navigate(`/chat/${encodeURIComponent(joined[0].id)}`, { replace: true })
         }
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load rooms')
+        if (!cancelled) setError(toUserFacingErrorMessage(err, 'Failed to load rooms'))
       }
     }
 
@@ -426,7 +426,7 @@ export function OrgChatPage() {
       await chatService.joinRoom(nextRoomId)
       navigate(`/chat/${encodeURIComponent(nextRoomId)}`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to join room')
+      setError(toUserFacingErrorMessage(err, 'Failed to join room'))
     }
   }
 
@@ -455,7 +455,7 @@ export function OrgChatPage() {
       setThreadRootMessageId(null)
       setMessages(chatService.listMessages(selectedRoomId))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send message')
+      setError(toUserFacingErrorMessage(err, 'Failed to send message'))
     }
   }
 
@@ -467,7 +467,7 @@ export function OrgChatPage() {
       setMessages(chatService.listMessages(selectedRoomId))
       setOpenMenuMessageId(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send reaction')
+      setError(toUserFacingErrorMessage(err, 'Failed to send reaction'))
     }
   }
 
@@ -503,7 +503,7 @@ export function OrgChatPage() {
       setEditDraft('')
       setMessages(chatService.listMessages(selectedRoomId))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to edit message')
+      setError(toUserFacingErrorMessage(err, 'Failed to edit message'))
     }
   }
 
@@ -515,7 +515,7 @@ export function OrgChatPage() {
       setOpenMenuMessageId(null)
       setMessages(chatService.listMessages(selectedRoomId))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete message')
+      setError(toUserFacingErrorMessage(err, 'Failed to delete message'))
     }
   }
 
@@ -527,7 +527,7 @@ export function OrgChatPage() {
       await chatService.sendMediaMessage(selectedRoomId, file)
       setMessages(chatService.listMessages(selectedRoomId))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send media')
+      setError(toUserFacingErrorMessage(err, 'Failed to send media'))
     } finally {
       setIsUploadingMedia(false)
       if (mediaInputRef.current) {

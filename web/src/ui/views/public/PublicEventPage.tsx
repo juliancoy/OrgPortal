@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
 import { useAuth } from '../../../app/AppProviders'
 import { pidpAppLoginUrl } from '../../../config/pidp'
 import { recordAttendanceWithRetry } from './attendanceApi'
+import { toUserFacingErrorMessage } from '../../../infrastructure/http/userFacingError'
 
 const ORG_API_BASE = '/api/org'
 
@@ -22,6 +23,22 @@ type PublicEvent = {
   location?: string | null
   source_url?: string | null
   image_url?: string | null
+}
+
+type PublicEventChatMessage = {
+  event_id: string
+  sender?: string | null
+  body: string
+  sent_at?: string | null
+}
+
+type PublicEventChat = {
+  event_slug: string
+  room_exists: boolean
+  room_id?: string | null
+  room_alias?: string | null
+  room_name?: string | null
+  messages: PublicEventChatMessage[]
 }
 
 function toLocalDateTime(value?: string | null) {
@@ -49,6 +66,9 @@ export function PublicEventPage() {
   const [attending, setAttending] = useState(false)
   const [attendancePending, setAttendancePending] = useState(false)
   const [attendanceStatus, setAttendanceStatus] = useState('')
+  const [eventChat, setEventChat] = useState<PublicEventChat | null>(null)
+  const [chatLoading, setChatLoading] = useState(false)
+  const [chatStatus, setChatStatus] = useState('')
 
   useEffect(() => {
     if (!slug) return
@@ -77,8 +97,39 @@ export function PublicEventPage() {
       })
       .catch((err) => {
         setEvent(null)
-        setStatus(err instanceof Error ? err.message : 'Event unavailable')
+        setStatus(toUserFacingErrorMessage(err, 'Event unavailable'))
       })
+  }, [slug])
+
+  useEffect(() => {
+    if (!slug) return
+    let cancelled = false
+    setChatLoading(true)
+    setChatStatus('')
+    fetch(orgUrl(`/api/network/events/public/${encodeURIComponent(slug)}/chat`))
+      .then(async (resp) => {
+        if (!resp.ok) {
+          const text = await resp.text().catch(() => '')
+          throw new Error(text || `Event chat unavailable (${resp.status})`)
+        }
+        return (await resp.json()) as PublicEventChat
+      })
+      .then((payload) => {
+        if (cancelled) return
+        setEventChat(payload)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setEventChat(null)
+        setChatStatus(toUserFacingErrorMessage(err, 'Event chat unavailable'))
+      })
+      .finally(() => {
+        if (cancelled) return
+        setChatLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [slug])
 
   useEffect(() => {
@@ -183,6 +234,56 @@ export function PublicEventPage() {
           </a>
         </p>
       ) : null}
+      <section className="portal-card" style={{ display: 'grid', gap: '0.55rem' }}>
+        <h2 style={{ margin: 0, fontSize: '1rem' }}>Event Chat</h2>
+        {chatLoading ? (
+          <p className="muted" style={{ margin: 0 }}>Loading event chat…</p>
+        ) : null}
+        {chatStatus ? (
+          <p className="muted" style={{ margin: 0 }}>{chatStatus}</p>
+        ) : null}
+        {eventChat?.room_exists && eventChat.room_id ? (
+          <>
+            <p className="muted" style={{ margin: 0 }}>
+              {eventChat.room_name || 'Event Chat'}
+              {eventChat.room_alias ? ` • ${eventChat.room_alias}` : ''}
+            </p>
+            {token ? (
+              <Link
+                className="btn-primary"
+                to={`/chat/${encodeURIComponent(eventChat.room_id)}`}
+                style={{ textDecoration: 'none', width: 'fit-content' }}
+              >
+                Open Event Chat
+              </Link>
+            ) : (
+              <a
+                className="btn-primary"
+                href={pidpAppLoginUrl(`/chat/${encodeURIComponent(eventChat.room_id)}`)}
+                style={{ textDecoration: 'none', width: 'fit-content' }}
+              >
+                Login to Join Event Chat
+              </a>
+            )}
+            {eventChat.messages?.length ? (
+              <div style={{ display: 'grid', gap: '0.4rem' }}>
+                {eventChat.messages.slice(-10).map((message) => (
+                  <article key={message.event_id} style={{ borderLeft: '2px solid var(--border)', paddingLeft: '0.55rem' }}>
+                    <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{message.body}</p>
+                    <p className="muted" style={{ margin: 0 }}>
+                      {message.sender || 'Unknown'} • {toLocalDateTime(message.sent_at)}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="muted" style={{ margin: 0 }}>No chat messages yet.</p>
+            )}
+          </>
+        ) : !chatLoading && !chatStatus ? (
+          <p className="muted" style={{ margin: 0 }}>Event chat room not available yet.</p>
+        ) : null}
+      </section>
     </article>
   )
 }

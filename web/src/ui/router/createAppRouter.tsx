@@ -8,18 +8,18 @@ import { EconomicOpsPage } from '../views/EconomicOpsPage'
 import { AuthCallbackPage } from '../views/AuthCallbackPage'
 import { InitiativeDetailPage } from '../views/InitiativeDetailPage'
 import { InitiativeSignPage } from '../views/InitiativeSignPage'
-import { UserAccountPage } from '../views/constituent/ConstituentAccountPage'
-import { UserProfilePage } from '../views/constituent/ConstituentProfilePage'
-import { UserLoginPage } from '../views/constituent/ConstituentLoginPage'
-import { UserRegisterPage } from '../views/constituent/ConstituentRegisterPage'
-import { OrgLoginPage } from '../views/campaign/OrgLoginPage'
-import { OrgRegisterPage } from '../views/campaign/OrgRegisterPage'
-import { OrgInitiativesPage } from '../views/campaign/OrgInitiativesPage'
-import { OrgInitiativeEditorPage } from '../views/campaign/OrgInitiativeEditorPage'
-import { OrgInitiativeBallotPage } from '../views/campaign/OrgInitiativeBallotPage'
-import { OrgProfilePage } from '../views/campaign/OrgProfilePage'
-import { OrgAccountPage } from '../views/campaign/OrgAccountPage'
-import { OrgEventsPage } from '../views/campaign/OrgEventsPage'
+import { UserAccountPage } from '../views/users/UserAccountPage'
+import { UserProfilePage } from '../views/users/UserProfilePage'
+import { UserLoginPage } from '../views/users/UserLoginPage'
+import { UserRegisterPage } from '../views/users/UserRegisterPage'
+import { OrgLoginPage } from '../views/orgs/OrgLoginPage'
+import { OrgRegisterPage } from '../views/orgs/OrgRegisterPage'
+import { OrgInitiativesPage } from '../views/orgs/OrgInitiativesPage'
+import { OrgInitiativeEditorPage } from '../views/orgs/OrgInitiativeEditorPage'
+import { OrgInitiativeBallotPage } from '../views/orgs/OrgInitiativeBallotPage'
+import { OrgProfilePage } from '../views/orgs/OrgProfilePage'
+import { OrgAccountPage } from '../views/orgs/OrgAccountPage'
+import { OrgEventsPage } from '../views/orgs/OrgEventsPage'
 import { PublicAdminPage } from '../views/public/PublicAdminPage'
 import { PublicContactPage } from '../views/public/PublicContactPage'
 import { PublicEventsPage } from '../views/public/PublicEventsPage'
@@ -35,7 +35,7 @@ import { AboutPage } from '../views/AboutPage'
 import { DashboardPage } from '../dashboard/DashboardPage'
 import { AdminPage } from '../views/AdminPage'
 import { TargetPage } from '../views/TargetPage'
-import { OrgEditableInitiativesPage } from '../views/campaign/OrgEditableInitiativesPage'
+import { OrgEditableInitiativesPage } from '../views/orgs/OrgEditableInitiativesPage'
 import { ContactSettingsPage } from '../views/ContactSettingsPage'
 import { SendPage } from '../views/SendPage'
 import { ReceivePage } from '../views/ReceivePage'
@@ -184,23 +184,6 @@ export function createAppRouter() {
           },
           { path: '/targets/:target', element: <TargetPage /> },
 
-          // Legacy route compatibility
-          { path: '/constituent/register', element: <Navigate to="/users/register" replace /> },
-          { path: '/constituent/login', element: <Navigate to="/users/login" replace /> },
-          { path: '/constituent/dashboard', element: <Navigate to="/users/dashboard" replace /> },
-          { path: '/constituent/profile', element: <Navigate to="/users/profile" replace /> },
-          { path: '/constituent/account', element: <Navigate to="/users/account" replace /> },
-          { path: '/campaign/register', element: <Navigate to="/orgs/register" replace /> },
-          { path: '/campaign/login', element: <Navigate to="/orgs/login" replace /> },
-          { path: '/campaign/initiatives', element: <Navigate to="/orgs/initiatives" replace /> },
-          { path: '/campaign/initiatives/editable', element: <Navigate to="/orgs/initiatives/editable" replace /> },
-          { path: '/campaign/initiatives/new', element: <Navigate to="/orgs/initiatives/new" replace /> },
-          { path: '/campaign/initiatives/:id/edit', element: <OrgInitiativeEditorPage /> },
-          { path: '/campaign/initiatives/:id/ballot', element: <OrgInitiativeBallotPage /> },
-          { path: '/campaign/profile', element: <Navigate to="/orgs/profile" replace /> },
-          { path: '/campaign/account', element: <Navigate to="/orgs/account" replace /> },
-          { path: '/campaign/events', element: <Navigate to="/orgs/events" replace /> },
-          { path: '/campaign-managers/:handle', element: <PublicAdminPage /> },
           { path: '/events', element: <PublicEventsPage /> },
           { path: '/events/:slug', element: <PublicEventPage /> },
           { path: '/orgs', element: <PublicOrganizationsPage /> },
