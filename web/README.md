@@ -17,6 +17,79 @@ For the full end-to-end setup with hosted PIdP (`https://pidp.arkavo.org`), see:
 
 - `../docs/deployment/CLOUDFLARE_PIDP_DEPLOYMENT.md`
 
+## Matrix Chat Configuration
+
+OrgPortal chat now uses Matrix as the backend (`/chat` and `/chat/:roomId` routes).
+
+Configure the Matrix homeserver URL:
+
+```bash
+VITE_MATRIX_BASE_URL=https://matrix.arkavo.org
+```
+
+Fallback behavior:
+- If `VITE_MATRIX_BASE_URL` is unset, the app falls back to `VITE_SYNAPSE_BASE_URL`.
+- If both are unset, it defaults to `https://matrix.arkavo.org`.
+
+Optional local chat backend override:
+
+```bash
+VITE_CHAT_BACKEND=mock
+```
+
+Supported values:
+- `matrix` (default)
+- `mock`
+
+### Seamless Matrix Session Bootstrap via Org Backend
+
+OrgPortal chat will attempt automatic Matrix session bootstrap first by calling:
+
+- `POST /api/org/api/network/chat/bootstrap`
+
+This requires the org backend to be configured with:
+
+- `ORG_MATRIX_HOMESERVER_URL`
+- `ORG_MATRIX_SERVER_NAME`
+- `ORG_MATRIX_ADMIN_TOKEN`
+- `ORG_MATRIX_PASSWORD_SECRET`
+
+If unavailable, the UI falls back to manual Matrix SSO connect flow.
+
+## Testing
+
+Run unit and adapter integration tests:
+
+```bash
+npm test
+```
+
+Watch mode:
+
+```bash
+npm run test:watch
+```
+
+Live Matrix smoke test against a running homeserver:
+
+```bash
+MATRIX_BASE_URL=http://synapse:8008 \
+MATRIX_SMOKE_USER=orgportal_smoke \
+MATRIX_SMOKE_PASSWORD=orgportal_smoke_pw \
+npm run test:matrix:live
+```
+
+If running from a Docker Node container, join the `arkavo` network:
+
+```bash
+docker run --rm --network arkavo \
+  -e MATRIX_BASE_URL=http://synapse:8008 \
+  -e MATRIX_SMOKE_USER=orgportal_smoke \
+  -e MATRIX_SMOKE_PASSWORD=orgportal_smoke_pw \
+  -v "$PWD:/workspace" -w /workspace node:20-bookworm \
+  bash -lc 'npm install && npm run test:matrix:live'
+```
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

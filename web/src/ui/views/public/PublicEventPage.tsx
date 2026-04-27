@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
+import { useAuth } from '../../../app/AppProviders'
+import { pidpAppLoginUrl } from '../../../config/pidp'
+import { recordAttendanceWithRetry } from './attendanceApi'
 
 const ORG_API_BASE = '/api/org'
 
@@ -39,9 +42,13 @@ function summary(text?: string | null) {
 }
 
 export function PublicEventPage() {
+  const { token } = useAuth()
   const { slug } = useParams()
   const [event, setEvent] = useState<PublicEvent | null>(null)
   const [status, setStatus] = useState<string>('Loading event…')
+  const [attending, setAttending] = useState(false)
+  const [attendancePending, setAttendancePending] = useState(false)
+  const [attendanceStatus, setAttendanceStatus] = useState('')
 
   useEffect(() => {
     if (!slug) return
@@ -116,6 +123,24 @@ export function PublicEventPage() {
     upsertJsonLd('event-detail', eventJsonLd)
   }, [eventJsonLd])
 
+  async function markAttending() {
+    if (!event) return
+    setAttendancePending(true)
+    setAttendanceStatus('')
+    try {
+      const result = await recordAttendanceWithRetry(event.id, token)
+      if (!result.ok) {
+        throw new Error(result.message)
+      }
+      setAttending(true)
+      setAttendanceStatus(result.message)
+    } catch (err) {
+      setAttendanceStatus(err instanceof Error ? err.message : 'Unable to record attendance.')
+    } finally {
+      setAttendancePending(false)
+    }
+  }
+
   if (!event) {
     return (
       <section className="panel">
@@ -141,6 +166,16 @@ export function PublicEventPage() {
         />
       ) : null}
       {event.description ? <p style={{ margin: 0 }}>{event.description}</p> : null}
+      <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        {token ? (
+          <button type="button" onClick={markAttending} disabled={attendancePending || attending}>
+            {attendancePending ? 'Saving...' : attending ? 'Attending' : "I'm attending"}
+          </button>
+        ) : (
+          <a href={pidpAppLoginUrl(`/events/${encodeURIComponent(event.slug)}`)}>Login to indicate attendance</a>
+        )}
+        {attendanceStatus ? <span className="muted">{attendanceStatus}</span> : null}
+      </div>
       {event.source_url ? (
         <p style={{ margin: 0 }}>
           <a href={event.source_url} target="_blank" rel="noreferrer">
@@ -151,4 +186,3 @@ export function PublicEventPage() {
     </article>
   )
 }
-

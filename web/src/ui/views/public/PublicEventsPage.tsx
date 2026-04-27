@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
+import { useAuth } from '../../../app/AppProviders'
+import { pidpAppLoginUrl } from '../../../config/pidp'
+import { recordAttendanceWithRetry } from './attendanceApi'
 
 const ORG_API_BASE = '/api/org'
 
@@ -32,8 +35,12 @@ function currentUrl() {
 }
 
 export function PublicEventsPage() {
+  const { token } = useAuth()
   const [events, setEvents] = useState<PublicEvent[]>([])
   const [status, setStatus] = useState<string>('Loading upcoming events…')
+  const [attendingById, setAttendingById] = useState<Record<string, boolean>>({})
+  const [attendanceStatusById, setAttendanceStatusById] = useState<Record<string, string>>({})
+  const [attendingPendingById, setAttendingPendingById] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     setSeoMeta({
@@ -82,6 +89,26 @@ export function PublicEventsPage() {
     upsertJsonLd('events-list', itemListJsonLd)
   }, [itemListJsonLd])
 
+  async function markAttending(eventId: string) {
+    setAttendingPendingById((prev) => ({ ...prev, [eventId]: true }))
+    setAttendanceStatusById((prev) => ({ ...prev, [eventId]: '' }))
+    try {
+      const result = await recordAttendanceWithRetry(eventId, token)
+      if (!result.ok) {
+        throw new Error(result.message)
+      }
+      setAttendingById((prev) => ({ ...prev, [eventId]: true }))
+      setAttendanceStatusById((prev) => ({ ...prev, [eventId]: result.message }))
+    } catch (err) {
+      setAttendanceStatusById((prev) => ({
+        ...prev,
+        [eventId]: err instanceof Error ? err.message : 'Unable to record attendance.',
+      }))
+    } finally {
+      setAttendingPendingById((prev) => ({ ...prev, [eventId]: false }))
+    }
+  }
+
   return (
     <section className="panel" style={{ display: 'grid', gap: '1rem' }}>
       <h1 style={{ marginTop: 0 }}>Upcoming Events</h1>
@@ -122,6 +149,26 @@ export function PublicEventsPage() {
                 {formatDate(event.starts_at)}{event.location ? ` • ${event.location}` : ''}
               </p>
               {event.description ? <p style={{ margin: 0 }}>{event.description}</p> : null}
+              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                {token ? (
+                  <button
+                    type="button"
+                    onClick={() => markAttending(event.id)}
+                    disabled={Boolean(attendingPendingById[event.id]) || Boolean(attendingById[event.id])}
+                  >
+                    {attendingPendingById[event.id]
+                      ? 'Saving...'
+                      : attendingById[event.id]
+                        ? 'Attending'
+                        : "I'm attending"}
+                  </button>
+                ) : (
+                  <a href={pidpAppLoginUrl('/events')}>Login to indicate attendance</a>
+                )}
+                {attendanceStatusById[event.id] ? (
+                  <span className="muted">{attendanceStatusById[event.id]}</span>
+                ) : null}
+              </div>
             </div>
           </article>
         ))}

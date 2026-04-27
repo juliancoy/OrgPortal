@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth, useServices } from './app/AppProviders'
 import { Header } from './ui/shell/Header'
 import { Footer } from './ui/shell/Footer'
+import { pidpAppLoginUrl } from './config/pidp'
 import { listMotions } from './application/usecases/listMotions'
 import { MotionStatusBadge } from './ui/components/governance/MotionStatusBadge'
 import type { VoteDirection } from './domain/motion/Motion'
@@ -38,9 +39,11 @@ function motionProposerLabel(motion: { proposerType?: string; proposerName: stri
 }
 
 export default function App() {
-  const { user } = useAuth()
+  const { user, role } = useAuth()
   const { motionRepository, engagementRepository } = useServices()
   const navigate = useNavigate()
+  const nextUrl = window.location.href
+  const isGuest = role === 'guest'
   const effectiveUserId = user?.id ?? getGuestId()
 
   const [ranked, setRanked] = useState<RankedMotion[]>([])
@@ -48,7 +51,18 @@ export default function App() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    document.title = 'Code Collective'
+    document.title = isGuest ? 'Org Portal' : 'Code Collective'
+  }, [isGuest])
+
+  useEffect(() => {
+    if (isGuest) {
+      setLoading(false)
+      setRanked([])
+      setUserVotes({})
+      return
+    }
+
+    setLoading(true)
     listMotions(motionRepository).then(async (motions) => {
       const rankedMotions = await engagementRepository.rankMotions(motions, effectiveUserId)
       setRanked(rankedMotions)
@@ -63,7 +77,7 @@ export default function App() {
       for (const [id, dir] of pairs) map[id] = dir
       setUserVotes(map)
     })
-  }, [motionRepository, engagementRepository, effectiveUserId])
+  }, [isGuest, motionRepository, engagementRepository, effectiveUserId])
 
   async function handleVote(motionId: string, direction: 'up' | 'down', e: React.MouseEvent) {
     e.stopPropagation()
@@ -85,6 +99,57 @@ export default function App() {
       }),
     )
     setUserVotes((prev) => ({ ...prev, [motionId]: result.userVote }))
+  }
+
+  if (isGuest) {
+    return (
+      <main
+        style={{
+          minHeight: '100vh',
+          display: 'grid',
+          placeItems: 'center',
+          padding: '2rem 1rem',
+          background: 'var(--body-bg)',
+        }}
+      >
+        <section
+          className="panel"
+          style={{
+            width: '100%',
+            maxWidth: 880,
+            padding: '2.5rem',
+            borderRadius: 20,
+            boxShadow: 'var(--shadow-lg)',
+            display: 'grid',
+            gap: '1.25rem',
+          }}
+        >
+          <img
+            src="/images/namebanner.png"
+            alt="Code Collective"
+            style={{ width: 'min(100%, 420px)', height: 'auto' }}
+          />
+          <p className="muted" style={{ margin: 0, maxWidth: 680, fontSize: '1.05rem', lineHeight: 1.6 }}>
+            Coding a New Economy
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+            <a
+              href={pidpAppLoginUrl(nextUrl)}
+              className="btn-primary"
+              style={{
+                padding: '1.1rem 2.2rem',
+                fontSize: '1.2rem',
+                fontWeight: 700,
+                letterSpacing: '0.01em',
+                boxShadow: '0 0 0 4px rgba(122, 188, 255, 0.35), 0 14px 28px rgba(11, 30, 61, 0.4)',
+              }}
+            >
+              Login
+            </a>
+          </div>
+        </section>
+      </main>
+    )
   }
 
   return (

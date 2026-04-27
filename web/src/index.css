@@ -84,7 +84,7 @@
   --surface-input: #ffffff;
   --surface-muted: #f1f8ff;
 
-  --header-bg: linear-gradient(180deg, rgba(244, 251, 255, 0.97) 0%, rgba(217, 239, 255, 0.95) 100%);
+  --header-bg: linear-gradient(180deg, rgba(0, 42, 97, 0.12) 0%, rgba(217, 239, 255, 0.95) 100%);
   --hero-bg: linear-gradient(145deg, #d9eeff 0%, #a9d8ff 100%);
   --footer-bg: linear-gradient(180deg, rgba(208, 232, 255, 0.92) 0%, rgba(161, 211, 252, 0.92) 100%);
   --body-bg:
@@ -97,7 +97,7 @@
       transparent 8px,
       transparent 20px
     ),
-    linear-gradient(165deg, #eff8ff 0%, #cde8ff 50%, #d9eeff 100%);
+    linear-gradient(165deg, #e6f2ff 0%, #c5def7 50%, #b9d4f5 100%);
   --selection-bg: #002a61;
   --selection-text: #ffffff;
   --focus-ring: 0 0 0 3px rgba(0, 42, 97, 0.16);
@@ -108,11 +108,11 @@
 
   --primary: #7fb8ff;
   --primary-2: #98c6ff;
-  --primary-bg: #102845;
+  --primary-bg: #0e2f5f;
   --primary-hover: #a3ceff;
-  --surface: #13253b;
-  --panel: #12273f;
-  --panel-2: #193654;
+  --surface: #001f49;
+  --panel: #002a61;
+  --panel-2: #013a82;
   --border: #5c97de;
   --border-subtle: rgba(157, 197, 242, 0.38);
   --border-hover: rgba(180, 216, 255, 0.62);
@@ -160,27 +160,27 @@
   --color-sage: #9dbce1;
   --icon-stroke: #b6d8ff;
 
-  --surface-solid: #183250;
-  --surface-soft: rgba(20, 45, 74, 0.75);
-  --surface-softer: rgba(20, 45, 74, 0.82);
-  --surface-strong: #1d3b5f;
+  --surface-solid: #0f3568;
+  --surface-soft: rgba(0, 42, 97, 0.72);
+  --surface-softer: rgba(0, 42, 97, 0.82);
+  --surface-strong: #164277;
   --surface-input: #11263f;
   --surface-muted: #16314f;
 
-  --header-bg: linear-gradient(180deg, rgba(12, 25, 42, 0.96) 0%, rgba(16, 34, 58, 0.94) 100%);
-  --hero-bg: linear-gradient(145deg, #183a60 0%, #102945 100%);
-  --footer-bg: linear-gradient(180deg, rgba(12, 26, 43, 0.94) 0%, rgba(17, 37, 62, 0.94) 100%);
+  --header-bg: linear-gradient(180deg, rgba(0, 42, 97, 0.96) 0%, rgba(1, 36, 83, 0.94) 100%);
+  --hero-bg: linear-gradient(145deg, #013a82 0%, #002a61 100%);
+  --footer-bg: linear-gradient(180deg, rgba(0, 42, 97, 0.94) 0%, rgba(1, 36, 83, 0.94) 100%);
   --body-bg:
-    radial-gradient(1100px 680px at 10% -10%, rgba(120, 178, 255, 0.16), transparent 62%),
-    radial-gradient(1000px 760px at 105% 10%, rgba(57, 114, 185, 0.2), transparent 64%),
+    radial-gradient(1100px 680px at 10% -10%, rgba(0, 42, 97, 0.55), transparent 62%),
+    radial-gradient(1000px 760px at 105% 10%, rgba(1, 58, 130, 0.35), transparent 64%),
     repeating-linear-gradient(
       -45deg,
-      rgba(138, 184, 255, 0.04) 0,
-      rgba(138, 184, 255, 0.04) 8px,
+      rgba(138, 184, 255, 0.03) 0,
+      rgba(138, 184, 255, 0.03) 8px,
       transparent 8px,
       transparent 20px
     ),
-    linear-gradient(165deg, #091324 0%, #10203a 52%, #132744 100%);
+    linear-gradient(165deg, #001736 0%, #00244f 52%, #002a61 100%);
   --selection-bg: #7fb8ff;
   --selection-text: #071224;
   --focus-ring: 0 0 0 3px rgba(127, 184, 255, 0.28);
@@ -192,11 +192,11 @@
 
     --primary: #7fb8ff;
     --primary-2: #98c6ff;
-    --primary-bg: #102845;
+    --primary-bg: #0e2f5f;
     --primary-hover: #a3ceff;
-    --surface: #13253b;
-    --panel: #12273f;
-    --panel-2: #193654;
+    --surface: #001f49;
+    --panel: #002a61;
+    --panel-2: #013a82;
     --border: #5c97de;
     --border-subtle: rgba(157, 197, 242, 0.38);
     --border-hover: rgba(180, 216, 255, 0.62);
@@ -244,27 +244,27 @@
     --color-sage: #9dbce1;
     --icon-stroke: #b6d8ff;
 
-    --surface-solid: #183250;
-    --surface-soft: rgba(20, 45, 74, 0.75);
-    --surface-softer: rgba(20, 45, 74, 0.82);
-    --surface-strong: #1d3b5f;
+    --surface-solid: #0f3568;
+    --surface-soft: rgba(0, 42, 97, 0.72);
+    --surface-softer: rgba(0, 42, 97, 0.82);
+    --surface-strong: #164277;
     --surface-input: #11263f;
     --surface-muted: #16314f;
 
-    --header-bg: linear-gradient(180deg, rgba(12, 25, 42, 0.96) 0%, rgba(16, 34, 58, 0.94) 100%);
-    --hero-bg: linear-gradient(145deg, #183a60 0%, #102945 100%);
-    --footer-bg: linear-gradient(180deg, rgba(12, 26, 43, 0.94) 0%, rgba(17, 37, 62, 0.94) 100%);
+    --header-bg: linear-gradient(180deg, rgba(0, 42, 97, 0.96) 0%, rgba(1, 36, 83, 0.94) 100%);
+    --hero-bg: linear-gradient(145deg, #013a82 0%, #002a61 100%);
+    --footer-bg: linear-gradient(180deg, rgba(0, 42, 97, 0.94) 0%, rgba(1, 36, 83, 0.94) 100%);
     --body-bg:
-      radial-gradient(1100px 680px at 10% -10%, rgba(120, 178, 255, 0.16), transparent 62%),
-      radial-gradient(1000px 760px at 105% 10%, rgba(57, 114, 185, 0.2), transparent 64%),
+      radial-gradient(1100px 680px at 10% -10%, rgba(0, 42, 97, 0.55), transparent 62%),
+      radial-gradient(1000px 760px at 105% 10%, rgba(1, 58, 130, 0.35), transparent 64%),
       repeating-linear-gradient(
         -45deg,
-        rgba(138, 184, 255, 0.04) 0,
-        rgba(138, 184, 255, 0.04) 8px,
+        rgba(138, 184, 255, 0.03) 0,
+        rgba(138, 184, 255, 0.03) 8px,
         transparent 8px,
         transparent 20px
       ),
-      linear-gradient(165deg, #091324 0%, #10203a 52%, #132744 100%);
+      linear-gradient(165deg, #001736 0%, #00244f 52%, #002a61 100%);
     --selection-bg: #7fb8ff;
     --selection-text: #071224;
     --focus-ring: 0 0 0 3px rgba(127, 184, 255, 0.28);
@@ -401,6 +401,13 @@ textarea {
   gap: 20px;
   align-items: center;
   padding: 13px 0;
+}
+
+.portal-nav-bar {
+  width: min(1220px, 100% - 34px);
+  margin: 0 auto;
+  border-top: 1px solid var(--border-subtle);
+  padding: 8px 0 10px;
 }
 
 .portal-brand {
@@ -818,6 +825,42 @@ textarea {
   background: var(--surface-strong);
 }
 
+.portal-user-trigger.is-standard-user {
+  background: #002a61;
+  border-color: #2a6fc4;
+  color: #dcedff;
+}
+
+.portal-user-trigger.is-standard-user:hover {
+  background: #0a3878;
+}
+
+.portal-user-trigger.is-sysadmin {
+  background:
+    repeating-linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.16) 0px,
+      rgba(255, 255, 255, 0.16) 3px,
+      rgba(255, 255, 255, 0.05) 3px,
+      rgba(255, 255, 255, 0.05) 8px
+    ),
+    linear-gradient(140deg, #7a5a17 0%, #cda94b 45%, #6b4d12 100%);
+  border-color: #f0d27e;
+  color: #fff8e7;
+}
+
+.portal-user-trigger.is-sysadmin:hover {
+  background:
+    repeating-linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.18) 0px,
+      rgba(255, 255, 255, 0.18) 3px,
+      rgba(255, 255, 255, 0.06) 3px,
+      rgba(255, 255, 255, 0.06) 8px
+    ),
+    linear-gradient(140deg, #85621d 0%, #d9b65a 45%, #745314 100%);
+}
+
 .portal-avatar {
   width: 28px;
   height: 28px;
@@ -845,6 +888,11 @@ textarea {
   color: var(--text-primary);
   font-size: 0.76rem;
   font-weight: 700;
+}
+
+.portal-user-trigger.is-standard-user .portal-user-trigger-label,
+.portal-user-trigger.is-sysadmin .portal-user-trigger-label {
+  color: inherit;
 }
 
 .portal-user-menu {
@@ -911,6 +959,20 @@ textarea {
   border-top: 1px solid var(--border-subtle);
   margin-top: 2px;
   padding-top: 10px;
+}
+
+.sysadmin-layout {
+  grid-template-columns: 220px minmax(0, 1fr);
+}
+
+@media (max-width: 980px) {
+  .sysadmin-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sysadmin-sidebar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .portal-hero {
@@ -1372,6 +1434,10 @@ textarea:focus {
     justify-content: flex-start;
   }
 
+  .portal-nav-bar {
+    padding-top: 6px;
+  }
+
   .motion-feed,
   .motion-list-wrap {
     width: min(100%, 100% - 20px);
@@ -1413,5 +1479,657 @@ textarea:focus {
   .motion-list-card {
     padding: 14px;
     gap: 10px;
+  }
+}
+
+.portal-chat-shell {
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  gap: 18px;
+  min-height: 76vh;
+  position: relative;
+}
+
+.portal-chat-sidebar {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, rgba(0, 42, 97, 0.18), rgba(0, 42, 97, 0.08));
+  padding: 14px;
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  gap: 10px;
+  min-height: 0;
+}
+
+.portal-chat-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.portal-chat-sidebar-header h2 {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.portal-chat-home-link {
+  font-size: 0.85rem;
+  color: var(--primary);
+}
+
+.portal-chat-search-label {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.portal-chat-search-input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-input);
+  color: var(--text-primary);
+  font: inherit;
+  padding: 8px 10px;
+  height: 40px;
+}
+
+.portal-chat-room-groups {
+  display: grid;
+  gap: 14px;
+  overflow: hidden auto;
+  align-content: start;
+  min-height: 0;
+}
+
+.portal-chat-group-title {
+  margin: 0 0 6px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.portal-chat-room-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.portal-chat-room-btn {
+  width: 100%;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--surface-softer);
+  color: var(--text-primary);
+  display: grid;
+  text-align: left;
+  gap: 2px;
+  padding: 10px;
+  cursor: pointer;
+}
+
+.portal-chat-room-btn.active {
+  border-color: var(--primary);
+  background: linear-gradient(180deg, rgba(0, 42, 97, 0.2), rgba(0, 42, 97, 0.1));
+}
+
+.portal-chat-room-btn.discover {
+  border-style: dashed;
+}
+
+.portal-chat-room-btn small {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.portal-chat-unread {
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: #002a61;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.portal-chat-main {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: linear-gradient(160deg, rgba(0, 42, 97, 0.12), rgba(0, 42, 97, 0.04));
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 76vh;
+  min-width: 0;
+}
+
+.portal-chat-main.drag-over {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(122, 188, 255, 0.35) inset;
+}
+
+.portal-chat-room-header {
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 14px 16px;
+  background: rgba(0, 42, 97, 0.24);
+}
+
+.portal-chat-room-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.portal-chat-room-header h1 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.portal-chat-room-header p {
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.portal-chat-info-btn {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(0, 42, 97, 0.22);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+.portal-chat-timeline {
+  overflow: auto;
+  padding: 16px 18px;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.portal-chat-message {
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-softer);
+  border-radius: 12px;
+  padding: 10px 12px;
+  max-width: min(78%, 720px);
+  position: relative;
+}
+
+.portal-chat-message.mine {
+  margin-left: auto;
+  border-color: var(--primary);
+  background: linear-gradient(180deg, rgba(0, 42, 97, 0.22), rgba(0, 42, 97, 0.1));
+}
+
+.portal-chat-message-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.portal-chat-message-meta span {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.portal-chat-message p {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.portal-chat-media-image {
+  display: block;
+  max-width: min(100%, 440px);
+  max-height: 320px;
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+  margin-bottom: 8px;
+}
+
+.portal-chat-media-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--primary-soft);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  margin-bottom: 8px;
+}
+
+.portal-chat-message-actions {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.portal-chat-reaction-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.portal-chat-card-menu {
+  position: relative;
+}
+
+.portal-chat-menu-trigger {
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  width: 28px;
+  height: 24px;
+  line-height: 1;
+  background: rgba(0, 42, 97, 0.14);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 4;
+}
+
+.portal-chat-reaction-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.portal-chat-action-menu {
+  position: absolute;
+  top: 24px;
+  right: 0;
+  z-index: 5;
+  min-width: 190px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(0, 42, 97, 0.28), rgba(0, 42, 97, 0.16));
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.25);
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.portal-chat-action-menu-label {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  padding: 0 4px;
+}
+
+.portal-chat-action-item {
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: rgba(0, 42, 97, 0.12);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.84rem;
+  text-align: left;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.portal-chat-action-item.danger {
+  color: #ffb2b2;
+  border-color: rgba(255, 114, 114, 0.35);
+}
+
+.portal-chat-reply-context {
+  border-left: 2px solid var(--primary-soft);
+  padding-left: 8px;
+  margin-bottom: 6px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.portal-chat-thread-context {
+  border-left: 2px solid rgba(122, 188, 255, 0.45);
+  padding-left: 8px;
+  margin-bottom: 6px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.portal-chat-edit-box {
+  display: grid;
+  gap: 8px;
+}
+
+.portal-chat-edit-box textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-input);
+  color: var(--text-primary);
+  padding: 8px;
+  font: inherit;
+  resize: vertical;
+  min-height: 64px;
+}
+
+.portal-chat-edit-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.portal-chat-edited-mark {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.portal-chat-link-preview {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: rgba(0, 42, 97, 0.12);
+  margin-top: 8px;
+  padding: 8px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.portal-chat-link-preview img {
+  width: 92px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+}
+
+.portal-chat-link-preview-body {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.portal-chat-link-preview-body strong {
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.portal-chat-link-preview-body p {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.portal-chat-link-preview-body small {
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.portal-chat-reaction-btn {
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  padding: 2px 8px;
+  background: rgba(0, 42, 97, 0.16);
+  color: var(--text-primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.portal-chat-reaction-chip {
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  padding: 2px 8px;
+  background: rgba(122, 188, 255, 0.12);
+  color: var(--text-primary);
+  font-size: 0.84rem;
+}
+
+.portal-chat-composer {
+  border-top: 1px solid var(--border-subtle);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  padding: 12px;
+  align-items: end;
+  background: rgba(0, 42, 97, 0.1);
+}
+
+.portal-chat-reply-banner {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: rgba(0, 42, 97, 0.14);
+  padding: 6px 10px;
+  font-size: 0.84rem;
+  color: var(--text-secondary);
+}
+
+.portal-chat-reply-banner button {
+  margin-left: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+
+.portal-chat-composer-actions {
+  display: flex;
+  align-items: center;
+}
+
+.portal-chat-media-input {
+  display: none;
+}
+
+.portal-chat-attach-btn {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(0, 42, 97, 0.2);
+  color: var(--text-primary);
+  font: inherit;
+  height: 44px;
+  padding: 0 12px;
+  cursor: pointer;
+}
+
+.portal-chat-composer textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 64px;
+  max-height: 190px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-input);
+  color: var(--text-primary);
+  padding: 10px;
+  font: inherit;
+}
+
+.portal-chat-composer .btn-primary {
+  min-width: 96px;
+  height: 44px;
+}
+
+.portal-chat-empty {
+  padding: 24px;
+  display: grid;
+  gap: 8px;
+  align-content: center;
+  justify-items: start;
+}
+
+.portal-chat-empty h1 {
+  margin: 0;
+}
+
+.portal-chat-empty p {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.portal-chat-connect-btn {
+  margin-top: 10px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  box-shadow: 0 0 0 4px rgba(122, 188, 255, 0.35), 0 10px 24px rgba(0, 42, 97, 0.38);
+}
+
+.portal-chat-status,
+.portal-chat-muted,
+.portal-chat-error {
+  color: var(--text-secondary);
+}
+
+.portal-chat-error {
+  color: var(--text-danger);
+  margin: 0;
+}
+
+.scan-intake-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.portal-org-page {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem;
+}
+
+.portal-org-hero {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.8rem;
+  border-radius: 16px;
+  border: 1px solid var(--border-subtle);
+  background:
+    radial-gradient(120% 100% at 100% 0%, rgba(127, 184, 255, 0.22), transparent 65%),
+    linear-gradient(160deg, rgba(0, 42, 97, 0.28), rgba(0, 42, 97, 0.16));
+}
+
+.portal-org-hero-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.portal-org-image-hint {
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.portal-org-image-button {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  cursor: default;
+  text-align: left;
+  width: fit-content;
+}
+
+.portal-org-image-button.editable {
+  cursor: pointer;
+}
+
+.portal-org-image-button.editable .portal-org-hero-image {
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+.portal-org-image-button.editable:hover .portal-org-hero-image {
+  transform: translateY(-1px);
+  border-color: var(--border-hover);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+}
+
+.portal-org-image-button.editable:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: 14px;
+}
+
+.portal-org-hero-image {
+  width: 100%;
+  max-width: 560px;
+  border-radius: 14px;
+  border: 2px solid var(--border);
+  overflow: hidden;
+}
+
+.portal-org-meta {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.portal-org-admin-card {
+  scroll-margin-top: 90px;
+}
+
+@media (max-width: 980px) {
+  .scan-intake-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .portal-chat-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .portal-chat-sidebar {
+    max-height: 44vh;
+  }
+
+  .portal-chat-main {
+    min-height: 62vh;
+  }
+
+  .portal-chat-message {
+    max-width: 92%;
+  }
+
+  .portal-chat-composer {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .portal-chat-link-preview {
+    grid-template-columns: 1fr;
+  }
+
+  .portal-chat-link-preview img {
+    width: 100%;
+    height: auto;
+    max-height: 190px;
   }
 }

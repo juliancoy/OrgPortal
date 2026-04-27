@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" role="img" aria-labelledby="title desc">
+  <title id="title">Organization placeholder</title>
+  <desc id="desc">Fallback image used when an organization has no image</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#002a61" />
+      <stop offset="100%" stop-color="#0a4c9e" />
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="320" height="200" fill="url(#bg)" />
+  <circle cx="64" cy="64" r="30" fill="#7abcff" fill-opacity="0.18" />
+  <circle cx="280" cy="40" r="18" fill="#7abcff" fill-opacity="0.15" />
+  <rect x="38" y="120" width="244" height="10" rx="5" fill="#7abcff" fill-opacity="0.45" />
+  <rect x="38" y="140" width="170" height="10" rx="5" fill="#7abcff" fill-opacity="0.28" />
+  <g transform="translate(160,88)">
+    <circle cx="0" cy="-20" r="20" fill="#cfe4ff" fill-opacity="0.9" />
+    <path d="M-34,24c0-18.8 15.2-34 34-34s34,15.2 34,34v2h-68z" fill="#cfe4ff" fill-opacity="0.86" />
+  </g>
+</svg>

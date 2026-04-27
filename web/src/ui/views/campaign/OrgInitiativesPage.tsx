@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 
-export function CampaignInitiativesPage() {
+export function OrgInitiativesPage() {
   useEffect(() => {
     document.title = 'Org Portal • Org initiatives'
   }, [])

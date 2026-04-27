@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
 import { pidpUrl } from '../../../config/pidp'
+import { resolveSignedS3UploadUrl } from '../../../infrastructure/auth/avatarUpload'
 
 const ORG_API_BASE = '/api/org'
 const USER_PROFILE_STORAGE_KEY = 'user.profile'
@@ -10,6 +11,37 @@ const LEGACY_USER_PROFILE_STORAGE_KEY = 'constituent.profile'
 function orgUrl(path: string) {
   if (!path.startsWith('/')) return `${ORG_API_BASE}/${path}`
   return `${ORG_API_BASE}${path}`
+}
+
+const MASLOW_NEEDS = [
+  { key: 'physiological', label: 'Physiological' },
+  { key: 'safety', label: 'Safety' },
+  { key: 'love_belonging', label: 'Love & Belonging' },
+  { key: 'esteem', label: 'Esteem' },
+  { key: 'self_actualization', label: 'Self-Actualization' },
+] as const
+
+type MaslowNeedKey = (typeof MASLOW_NEEDS)[number]['key']
+type MaslowRatings = Record<MaslowNeedKey, number>
+
+const DEFAULT_MASLOW_RATINGS: MaslowRatings = {
+  physiological: 3,
+  safety: 3,
+  love_belonging: 3,
+  esteem: 3,
+  self_actualization: 3,
+}
+
+function normalizeMaslowRatings(value: unknown): MaslowRatings {
+  const source = (value && typeof value === 'object' ? value : {}) as Record<string, unknown>
+  const normalized: MaslowRatings = { ...DEFAULT_MASLOW_RATINGS }
+  for (const need of MASLOW_NEEDS) {
+    const raw = Number(source[need.key])
+    if (Number.isFinite(raw)) {
+      normalized[need.key] = Math.max(1, Math.min(5, Math.round(raw)))
+    }
+  }
+  return normalized
 }
 
 type ProfileDraft = {
@@ -25,6 +57,8 @@ type ProfileDraft = {
   state: string
   zip: string
   organizations: string
+  maslowNow: MaslowRatings
+  maslowFuture: MaslowRatings
 }
 
 type UserOrganization = {
@@ -54,6 +88,8 @@ export function UserProfilePage() {
   const [isRunningForOffice, setIsRunningForOffice] = useState(false)
   const [officeTitle, setOfficeTitle] = useState('')
   const [campaignStatement, setCampaignStatement] = useState('')
+  const [maslowNow, setMaslowNow] = useState<MaslowRatings>(DEFAULT_MASLOW_RATINGS)
+  const [maslowFuture, setMaslowFuture] = useState<MaslowRatings>(DEFAULT_MASLOW_RATINGS)
   const [userOrganizations, setUserOrganizations] = useState<UserOrganization[]>([])
   const [userOrganizationsStatus, setUserOrganizationsStatus] = useState<string | null>(null)
   const [status, setStatus] = useState<string | null>(null)
@@ -108,6 +144,8 @@ export function UserProfilePage() {
         if (data.identity_data?.is_running_for_office) setIsRunningForOffice(true)
         if (data.identity_data?.office_title) setOfficeTitle(data.identity_data.office_title)
         if (data.identity_data?.campaign_statement) setCampaignStatement(data.identity_data.campaign_statement)
+        if (data.identity_data?.maslow_now) setMaslowNow(normalizeMaslowRatings(data.identity_data.maslow_now))
+        if (data.identity_data?.maslow_future) setMaslowFuture(normalizeMaslowRatings(data.identity_data.maslow_future))
       } catch {
         // ignore
       }
@@ -138,6 +176,8 @@ export function UserProfilePage() {
       if (saved.state) setState(saved.state)
       if (saved.zip) setZip(saved.zip)
       if (saved.organizations) setOrganizations(saved.organizations)
+      if (saved.maslowNow) setMaslowNow(normalizeMaslowRatings(saved.maslowNow))
+      if (saved.maslowFuture) setMaslowFuture(normalizeMaslowRatings(saved.maslowFuture))
     } catch {
       // Ignore malformed local data.
     }
@@ -218,7 +258,7 @@ export function UserProfilePage() {
 
   useEffect(() => {
     if (status) setStatus(null)
-  }, [fullName, firstName, lastName, displayName, bio, avatarUrl, addressLine1, addressLine2, city, state, zip, organizations, isRunningForOffice, officeTitle, campaignStatement])
+  }, [fullName, firstName, lastName, displayName, bio, avatarUrl, addressLine1, addressLine2, city, state, zip, organizations, isRunningForOffice, officeTitle, campaignStatement, maslowNow, maslowFuture])
 
   useEffect(() => {
     if (!editorSource) {
@@ -265,6 +305,12 @@ export function UserProfilePage() {
   return (
     <section className="panel">
       <h1 style={{ marginTop: 0 }}>Public profile (user)</h1>
+      {user?.id ? (
+        <div className="portal-card" style={{ padding: '0.65rem', marginBottom: '0.75rem', display: 'grid', gap: '0.25rem' }}>
+          <div className="muted" style={{ margin: 0 }}>User UUID</div>
+          <code style={{ wordBreak: 'break-all' }}>{user.id}</code>
+        </div>
+      ) : null}
       <div style={{ display: 'grid', gap: '0.6rem' }}>
         <div style={{ display: 'grid', gap: '0.6rem', gridTemplateColumns: '1fr 1fr' }}>
           <div>
@@ -417,6 +463,58 @@ export function UserProfilePage() {
           </label>
           <input id="orgs" value={organizations} onChange={(e) => setOrganizations(e.target.value)} style={{ width: '100%' }} />
         </div>
+        <div className="portal-card" style={{ display: 'grid', gap: '0.75rem' }}>
+          <h2 style={{ margin: 0, fontSize: '1rem' }}>Maslow Satisfaction</h2>
+          <p className="muted" style={{ margin: 0 }}>
+            Rate each need from 1 (low) to 5 (high) for now and for your future outlook.
+          </p>
+          <div style={{ display: 'grid', gap: '0.9rem', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
+            <div style={{ display: 'grid', gap: '0.5rem' }}>
+              <h3 style={{ margin: 0, fontSize: '0.95rem' }}>Now</h3>
+              {MASLOW_NEEDS.map((need) => (
+                <label key={`maslow-now-${need.key}`} style={{ display: 'grid', gap: '0.25rem' }}>
+                  <span className="muted" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>{need.label}</span>
+                    <strong>{maslowNow[need.key]}</strong>
+                  </span>
+                  <input
+                    type="range"
+                    min={1}
+                    max={5}
+                    step={1}
+                    value={maslowNow[need.key]}
+                    onChange={(event) => {
+                      const next = Number(event.target.value)
+                      setMaslowNow((current) => ({ ...current, [need.key]: next }))
+                    }}
+                  />
+                </label>
+              ))}
+            </div>
+            <div style={{ display: 'grid', gap: '0.5rem' }}>
+              <h3 style={{ margin: 0, fontSize: '0.95rem' }}>Future</h3>
+              {MASLOW_NEEDS.map((need) => (
+                <label key={`maslow-future-${need.key}`} style={{ display: 'grid', gap: '0.25rem' }}>
+                  <span className="muted" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>{need.label}</span>
+                    <strong>{maslowFuture[need.key]}</strong>
+                  </span>
+                  <input
+                    type="range"
+                    min={1}
+                    max={5}
+                    step={1}
+                    value={maslowFuture[need.key]}
+                    onChange={(event) => {
+                      const next = Number(event.target.value)
+                      setMaslowFuture((current) => ({ ...current, [need.key]: next }))
+                    }}
+                  />
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
         <div className="portal-card" style={{ display: 'grid', gap: '0.5rem' }}>
           <h2 style={{ margin: 0, fontSize: '1rem' }}>Your Organizations</h2>
           {userOrganizationsStatus ? (
@@ -510,6 +608,8 @@ export function UserProfilePage() {
               state,
               zip,
               organizations,
+              maslowNow,
+              maslowFuture,
             }
             const organizationsList = payload.organizations
               .split(',')
@@ -537,6 +637,8 @@ export function UserProfilePage() {
                   state: payload.state,
                   zip: payload.zip,
                   organizations: organizationsList,
+                  maslow_now: maslowNow,
+                  maslow_future: maslowFuture,
                   is_running_for_office: isRunningForOffice,
                   office_title: isRunningForOffice ? officeTitle : null,
                   campaign_statement: isRunningForOffice ? campaignStatement : null,
@@ -719,7 +821,7 @@ export function UserProfilePage() {
                               throw new Error(text || `Upload setup failed (${resp.status})`)
                             }
                             const data = await resp.json()
-                            const uploadResp = await fetch(data.upload_url, {
+                            const uploadResp = await fetch(resolveSignedS3UploadUrl(data.upload_url), {
                               method: 'PUT',
                               headers: { 'Content-Type': 'image/png' },
                               body: blob,

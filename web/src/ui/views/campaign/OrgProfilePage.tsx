@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
+import { OrgImage } from '../../components/media/OrgImage'
 
 const ORG_API_BASE = '/api/org'
 
@@ -32,7 +33,7 @@ type OrgMember = {
   created_at: string
 }
 
-export function CampaignProfilePage() {
+export function OrgProfilePage() {
   const { token } = useAuth()
   const [orgs, setOrgs] = useState<Org[]>([])
   const [q, setQ] = useState('')
@@ -46,6 +47,7 @@ export function CampaignProfilePage() {
   const [memberRole, setMemberRole] = useState<'member' | 'admin'>('member')
   const [mergeSourceByTarget, setMergeSourceByTarget] = useState<Record<string, string>>({})
   const [orgNameById, setOrgNameById] = useState<Record<string, string>>({})
+  const [orgImageById, setOrgImageById] = useState<Record<string, string>>({})
 
   const [newOrgName, setNewOrgName] = useState('')
   const [newOrgUrl, setNewOrgUrl] = useState('')
@@ -78,6 +80,11 @@ export function CampaignProfilePage() {
       setOrgNameById(
         Object.fromEntries(
           rows.map((org) => [org.id, org.name]),
+        ) as Record<string, string>,
+      )
+      setOrgImageById(
+        Object.fromEntries(
+          rows.map((org) => [org.id, org.image_url || '']),
         ) as Record<string, string>,
       )
     } catch (err) {
@@ -266,6 +273,36 @@ export function CampaignProfilePage() {
     }
   }
 
+  async function saveOrgImage(orgId: string) {
+    if (!token) return
+    const nextImage = (orgImageById[orgId] || '').trim() || null
+    setStatus(null)
+    try {
+      const resp = await fetch(orgUrl(`/api/network/orgs/${orgId}`), {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ image_url: nextImage }),
+      })
+      if (!resp.ok) {
+        let detail = ''
+        try {
+          const payload = (await resp.json()) as { detail?: string }
+          detail = String(payload?.detail || '').trim()
+        } catch {
+          detail = (await resp.text().catch(() => '')).trim()
+        }
+        throw new Error(detail || `Image update failed (${resp.status})`)
+      }
+      setStatus('Organization image updated.')
+      await loadOrgs()
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : 'Image update failed')
+    }
+  }
+
   async function loadMembers(orgId: string) {
     if (!token) return
     setSelectedOrgId(orgId)
@@ -379,17 +416,30 @@ export function CampaignProfilePage() {
           return (
             <article key={org.id} className="portal-card" style={{ display: 'grid', gap: '0.4rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.8rem', alignItems: 'start' }}>
-                <div>
-                  <strong>{org.name}</strong> <span className="muted">(@{org.slug})</span>
-                  {org.description ? <div className="muted">{org.description}</div> : null}
-                  <div className="muted" style={{ fontSize: '0.8rem' }}>
-                    {sourceUrls.length > 0 ? sourceUrls[0] : 'User-created'} • Members: {org.membership_count} • {org.seeded_from_events ? 'Seeded' : 'Custom'}
-                  </div>
-                  {sourceUrls.length > 1 ? (
+                <div style={{ display: 'grid', gap: '0.5rem' }}>
+                  <OrgImage
+                    src={org.image_url}
+                    alt={org.name}
+                    style={{
+                      width: 96,
+                      height: 96,
+                      borderRadius: 12,
+                      border: '1px solid var(--border)',
+                      objectFit: 'cover',
+                    }}
+                  />
+                  <div>
+                    <strong>{org.name}</strong> <span className="muted">(@{org.slug})</span>
+                    {org.description ? <div className="muted">{org.description}</div> : null}
                     <div className="muted" style={{ fontSize: '0.8rem' }}>
-                      Sources: {sourceUrls.join(' • ')}
+                      {sourceUrls.length > 0 ? sourceUrls[0] : 'User-created'} • Members: {org.membership_count} • {org.seeded_from_events ? 'Seeded' : 'Custom'}
                     </div>
-                  ) : null}
+                    {sourceUrls.length > 1 ? (
+                      <div className="muted" style={{ fontSize: '0.8rem' }}>
+                        Sources: {sourceUrls.join(' • ')}
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
                 <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                   {!org.claimed_by_user_id ? (
@@ -422,6 +472,20 @@ export function CampaignProfilePage() {
                     disabled={!token}
                   >
                     Save Name
+                  </button>
+                  <input
+                    value={orgImageById[org.id] ?? org.image_url ?? ''}
+                    onChange={(e) =>
+                      setOrgImageById((prev) => ({
+                        ...prev,
+                        [org.id]: e.target.value,
+                      }))
+                    }
+                    placeholder="Image URL"
+                    style={{ minWidth: 220 }}
+                  />
+                  <button type="button" onClick={() => saveOrgImage(org.id)} disabled={!token}>
+                    Save Image
                   </button>
                   <select
                     value={mergeSourceByTarget[org.id] ?? ''}

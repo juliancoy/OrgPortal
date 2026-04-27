@@ -4,6 +4,7 @@ import { useAuth } from '../../app/AppProviders'
 import { createQrSvg } from '../utils/qr'
 
 const ORG_API_BASE = '/api/org'
+const THEME_STORAGE_KEY = 'orgportal.theme'
 
 function orgUrl(path: string) {
   if (!path.startsWith('/')) return `${ORG_API_BASE}/${path}`
@@ -26,7 +27,11 @@ type ContactPage = {
   email_public?: string | null
   phone_public?: string | null
   linkedin_url?: string | null
+  github_url?: string | null
+  x_url?: string | null
   website_url?: string | null
+  source_profile_url?: string | null
+  source_profile_imported_at?: string | null
   links?: ContactLink[]
   public_url?: string | null
 }
@@ -36,6 +41,12 @@ export function ContactSettingsPage() {
   const [page, setPage] = useState<ContactPage | null>(null)
   const [status, setStatus] = useState<string | null>(null)
   const [linksText, setLinksText] = useState('')
+  const [themeMode, setThemeMode] = useState<'dark' | 'light'>(() => {
+    const raw = localStorage.getItem(THEME_STORAGE_KEY)
+    return raw === 'light' ? 'light' : 'dark'
+  })
+  const [themeStatus, setThemeStatus] = useState<string | null>(null)
+  const [importUrl, setImportUrl] = useState('https://codecollective.us/personnel/juliancoy.html')
 
   useEffect(() => {
     document.title = 'Org Portal • Public profile settings'
@@ -57,6 +68,9 @@ export function ContactSettingsPage() {
       .then((data) => {
         setPage(data)
         setLinksText((data.links || []).map((item) => `${item.label}|${item.url}`).join('\n'))
+        if (data.source_profile_url) {
+          setImportUrl(data.source_profile_url)
+        }
       })
       .catch((err) => setStatus(err instanceof Error ? err.message : 'Failed to load contact page'))
   }, [token])
@@ -85,6 +99,13 @@ export function ContactSettingsPage() {
 
   function setField<K extends keyof ContactPage>(field: K, value: ContactPage[K]) {
     setPage((prev) => (prev ? { ...prev, [field]: value } : prev))
+  }
+
+  function saveTheme(nextMode: 'dark' | 'light') {
+    setThemeMode(nextMode)
+    localStorage.setItem(THEME_STORAGE_KEY, nextMode)
+    document.documentElement.setAttribute('data-theme', nextMode)
+    setThemeStatus(`Theme set to ${nextMode}.`)
   }
 
   async function save() {
@@ -116,6 +137,8 @@ export function ContactSettingsPage() {
           email_public: page.email_public || null,
           phone_public: page.phone_public || null,
           linkedin_url: page.linkedin_url || null,
+          github_url: page.github_url || null,
+          x_url: page.x_url || null,
           website_url: page.website_url || null,
           links: parsedLinks,
         }),
@@ -129,6 +152,47 @@ export function ContactSettingsPage() {
       setStatus('Contact page saved.')
     } catch (err) {
       setStatus(err instanceof Error ? err.message : 'Save failed')
+    }
+  }
+
+  async function importFromUrl() {
+    if (!token || !page) return
+    setStatus(null)
+    try {
+      const cleaned = importUrl.trim()
+      if (!cleaned) {
+        throw new Error('Provide a source URL first.')
+      }
+      const resp = await fetch(orgUrl('/api/network/contact/me/import'), {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          source_url: cleaned,
+          overwrite: true,
+        }),
+      })
+      if (!resp.ok) {
+        const text = await resp.text().catch(() => '')
+        throw new Error(text || `Import failed (${resp.status})`)
+      }
+      const data = (await resp.json()) as {
+        contact: ContactPage
+        imported_fields: string[]
+        source_url: string
+      }
+      setPage(data.contact)
+      setImportUrl(data.source_url)
+      setLinksText((data.contact.links || []).map((item) => `${item.label}|${item.url}`).join('\n'))
+      if (data.imported_fields.length > 0) {
+        setStatus(`Imported: ${data.imported_fields.join(', ')}`)
+      } else {
+        setStatus('Imported with no changes.')
+      }
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : 'Import failed')
     }
   }
 
@@ -167,6 +231,28 @@ export function ContactSettingsPage() {
         ) : null}
       </div>
 
+      <div className="portal-card" style={{ padding: '0.65rem', display: 'grid', gap: '0.25rem' }}>
+        <div className="muted" style={{ margin: 0 }}>User UUID</div>
+        <code style={{ wordBreak: 'break-all' }}>{page.user_id}</code>
+      </div>
+
+      <section className="portal-card" style={{ display: 'grid', gap: '0.5rem' }}>
+        <h2 style={{ margin: 0, fontSize: '1rem' }}>Appearance</h2>
+        <p className="muted" style={{ margin: 0 }}>Light mode can only be enabled here.</p>
+        <label className="muted" style={{ display: 'grid', gap: '0.3rem' }}>
+          Theme
+          <select
+            value={themeMode}
+            onChange={(e) => saveTheme(e.target.value as 'dark' | 'light')}
+            style={{ maxWidth: 220 }}
+          >
+            <option value="dark">Dark (default)</option>
+            <option value="light">Light</option>
+          </select>
+        </label>
+        {themeStatus ? <p className="muted" style={{ margin: 0 }}>{themeStatus}</p> : null}
+      </section>
+
       <label className="muted" style={{ display: 'inline-flex', gap: '0.5rem', alignItems: 'center' }}>
         <input
           type="checkbox"
@@ -184,6 +270,8 @@ export function ContactSettingsPage() {
       <input value={page.email_public || ''} onChange={(e) => setField('email_public', e.target.value)} placeholder="Public email" />
       <input value={page.phone_public || ''} onChange={(e) => setField('phone_public', e.target.value)} placeholder="Public phone" />
       <input value={page.linkedin_url || ''} onChange={(e) => setField('linkedin_url', e.target.value)} placeholder="LinkedIn URL" />
+      <input value={page.github_url || ''} onChange={(e) => setField('github_url', e.target.value)} placeholder="GitHub URL" />
+      <input value={page.x_url || ''} onChange={(e) => setField('x_url', e.target.value)} placeholder="X / Twitter URL" />
       <input value={page.website_url || ''} onChange={(e) => setField('website_url', e.target.value)} placeholder="Website URL" />
       <textarea
         value={linksText}
@@ -195,6 +283,24 @@ export function ContactSettingsPage() {
       <div>
         <button type="button" onClick={save}>Save Public Profile</button>
       </div>
+
+      <section className="portal-card" style={{ display: 'grid', gap: '0.5rem' }}>
+        <h2 style={{ margin: 0, fontSize: '1rem' }}>Import From Existing Profile URL</h2>
+        <p className="muted" style={{ margin: 0 }}>
+          Uses your current login token to fetch a public page and auto-fill profile fields.
+        </p>
+        <input
+          value={importUrl}
+          onChange={(e) => setImportUrl(e.target.value)}
+          placeholder="https://example.com/profile"
+        />
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <button type="button" onClick={importFromUrl}>Import From URL</button>
+          {page.source_profile_url ? (
+            <a href={page.source_profile_url} target="_blank" rel="noreferrer">Last Imported Source</a>
+          ) : null}
+        </div>
+      </section>
 
       {status ? <p className="muted">{status}</p> : null}
 

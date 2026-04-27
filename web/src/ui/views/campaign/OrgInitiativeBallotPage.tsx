@@ -50,7 +50,7 @@ type UserProfile = {
   avatar_url?: string
 }
 
-export function CampaignInitiativeBallotPage() {
+export function OrgInitiativeBallotPage() {
   const { id } = useParams()
   const { token, user } = useAuth()
   const { body: legislativeBody } = useLegislativeBody()

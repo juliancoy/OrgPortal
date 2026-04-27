@@ -4,6 +4,11 @@ import type { AppServices } from '../composition/createServices'
 import type { UserRole } from '../domain/user/User'
 import type { SessionUser } from '../ui/auth/SessionUser'
 import { readVotes, writeVotes, readComments, writeComments, readProfiles, writeProfiles } from '../infrastructure/utils/localStorage'
+import { setRuntimeAccessToken } from '../infrastructure/auth/runtimeAuth'
+import { refreshRuntimeTokenFromSession } from '../infrastructure/auth/sessionToken'
+import { PIDP_BASE_URL, pidpUrl } from '../config/pidp'
+import { isNativeCapacitorRuntime } from '../infrastructure/platform/runtimePlatform'
+import { initChatNotifications, setChatNotificationOpenHandler } from '../infrastructure/platform/chatNotifications'
 
 type PidpUser = {
   id: string
@@ -44,6 +49,7 @@ type AuthContextValue = {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
+const NATIVE_TOKEN_STORAGE_KEY = 'pidp.native.token'
 
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext)
@@ -68,10 +74,25 @@ function readInitialUser(): SessionUser | null {
 }
 
 function readInitialToken(): string | null {
-  return sessionStorage.getItem('pidp.token')
+  return null
+}
+
+function decodeJwtExpiry(token: string | null): number | null {
+  if (!token) return null
+  try {
+    const [, payload] = token.split('.')
+    if (!payload) return null
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')
+    const parsed = JSON.parse(atob(padded)) as { exp?: number }
+    return typeof parsed.exp === 'number' ? parsed.exp : null
+  } catch {
+    return null
+  }
 }
 
 export function AppProviders(props: { services: AppServices; children: ReactNode }) {
+  const isNativeRuntime = isNativeCapacitorRuntime()
   const [role, setRoleState] = useState<UserRole | 'guest'>(() => readInitialRole())
   const [user, setUserState] = useState<SessionUser | null>(() => readInitialUser())
   const [token, setToken] = useState<string | null>(() => readInitialToken())
@@ -79,8 +100,15 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
   const [showMigration, setShowMigration] = useState(false)
   const [pendingMigration, setPendingMigration] = useState<{guestId: string, userId: string, displayName: string} | null>(null)
 
-  const pidpBaseUrl = (import.meta.env.VITE_PIDP_BASE_URL as string | undefined) ?? '/pidp'
-  const normalizedPidpBase = pidpBaseUrl.replace(/\/$/, '')
+  const normalizedPidpBase = PIDP_BASE_URL
+
+  useEffect(() => {
+    if (!isNativeRuntime) return
+    setChatNotificationOpenHandler((roomId) => {
+      window.location.assign(`/chat/${encodeURIComponent(roomId)}`)
+    })
+    initChatNotifications().catch(() => {})
+  }, [isNativeRuntime])
 
   const normalizeAvatarUrl = useCallback(
     (rawUrl?: string | null): string | null => {
@@ -150,44 +178,53 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
 
   const setAuthToken = useCallback((nextToken: string | null) => {
     setToken(nextToken)
-    if (nextToken) {
-      sessionStorage.setItem('pidp.token', nextToken)
-    } else {
-      sessionStorage.removeItem('pidp.token')
+    setRuntimeAccessToken(nextToken)
+    if (isNativeRuntime) {
+      if (nextToken) {
+        localStorage.setItem(NATIVE_TOKEN_STORAGE_KEY, nextToken)
+      } else {
+        localStorage.removeItem(NATIVE_TOKEN_STORAGE_KEY)
+      }
     }
-  }, [])
+  }, [isNativeRuntime])
 
-  // Login with password - sets HTTP-only cookie via PIdP
+  // Login with password.
   const loginWithPassword = useCallback(
     async (email: string, password: string) => {
       const body = new URLSearchParams()
       body.set('username', email)
       body.set('password', password)
-      const resp = await fetch(`${normalizedPidpBase}/auth/token`, {
+      const endpoint = isNativeRuntime ? '/auth/token' : '/auth/session/login'
+      const resp = await fetch(pidpUrl(endpoint), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
-        credentials: 'include', // Important: include cookies
+        credentials: isNativeRuntime ? 'omit' : 'include',
         body,
       })
       if (!resp.ok) {
         throw new Error(await formatApiError(resp, 'Login failed.'))
       }
-      const data = (await resp.json().catch(() => null)) as { access_token?: string } | null
-      const accessToken = data?.access_token
-      if (accessToken) {
-        setAuthToken(accessToken)
+      if (isNativeRuntime) {
+        const tokenPayload = (await resp.json().catch(() => null)) as { access_token?: string } | null
+        const nextToken = tokenPayload?.access_token?.trim() || null
+        if (!nextToken) {
+          throw new Error('Login response did not include an access token.')
+        }
+        setAuthToken(nextToken)
+      } else {
+        // Cookie is now set; hydrate the runtime token + user profile.
+        setAuthToken(null)
       }
-      // Token and/or cookie is now set; hydrate user profile.
       setIsLoading(true)
     },
-    [normalizedPidpBase, formatApiError, setAuthToken],
+    [formatApiError, isNativeRuntime, setAuthToken],
   )
 
   const registerWithPassword = useCallback(
     async (email: string, password: string, fullName?: string) => {
-      const resp = await fetch(`${normalizedPidpBase}/auth/register`, {
+      const resp = await fetch(pidpUrl('/auth/register'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -210,7 +247,7 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
       }
       await loginWithPassword(email, password)
     },
-    [normalizedPidpBase, loginWithPassword, formatApiError],
+    [loginWithPassword, formatApiError],
   )
 
   // Check for OAuth token in URL hash (for OAuth flows that return token)
@@ -219,11 +256,24 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
     const params = new URLSearchParams(hash || window.location.search)
     const accessToken = params.get('token')
     if (!accessToken) return
+
+    if (!isNativeRuntime) {
+      fetch(pidpUrl('/auth/session/exchange'), {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }).catch(() => {
+        // Best-effort cookie exchange; in-memory token still supports the active session.
+      })
+    }
+
     // OAuth login successful, clear hash and hydrate session
     setAuthToken(accessToken)
     window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`)
     setIsLoading(true)
-  }, [setAuthToken])
+  }, [isNativeRuntime, setAuthToken])
 
   // Main session hydration effect - uses HTTP-only cookie only
   useEffect(() => {
@@ -235,22 +285,30 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
       try {
         let activeToken = token
         if (!activeToken) {
-          const sessionTokenResp = await fetch(`${normalizedPidpBase}/auth/session-token`, {
-            credentials: 'include',
-            signal: controller.signal,
-          })
-          if (sessionTokenResp.ok) {
-            const sessionTokenData = (await sessionTokenResp.json()) as { access_token?: string }
-            activeToken = sessionTokenData.access_token ?? null
+          if (isNativeRuntime) {
+            const persistedToken = localStorage.getItem(NATIVE_TOKEN_STORAGE_KEY)
+            activeToken = persistedToken?.trim() || null
             if (activeToken) {
               setAuthToken(activeToken)
+            }
+          } else {
+            const sessionTokenResp = await fetch(pidpUrl('/auth/session-token'), {
+              credentials: 'include',
+              signal: controller.signal,
+            })
+            if (sessionTokenResp.ok) {
+              const sessionTokenData = (await sessionTokenResp.json()) as { access_token?: string }
+              activeToken = sessionTokenData.access_token ?? null
+              if (activeToken) {
+                setAuthToken(activeToken)
+              }
             }
           }
         }
         if (!activeToken) throw new Error('Not authenticated')
 
-        const resp = await fetch(`${normalizedPidpBase}/auth/me`, {
-          credentials: 'include',
+        const resp = await fetch(pidpUrl('/auth/me'), {
+          credentials: isNativeRuntime ? 'omit' : 'include',
           headers: {
             Authorization: `Bearer ${activeToken}`,
           },
@@ -332,7 +390,97 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
       cancelled = true
       controller.abort()
     }
-  }, [normalizedPidpBase, normalizeAvatarUrl, isLoading, token, setAuthToken])
+  }, [isNativeRuntime, normalizeAvatarUrl, isLoading, token, setAuthToken])
+
+  useEffect(() => {
+    if (!user) return
+    if (isNativeRuntime) return
+    let cancelled = false
+    let expiryTimer: ReturnType<typeof setTimeout> | null = null
+    let healthInterval: ReturnType<typeof setInterval> | null = null
+
+    const runRefresh = async () => {
+      const refreshed = await refreshRuntimeTokenFromSession()
+      if (cancelled || !refreshed) return
+      setAuthToken(refreshed)
+    }
+
+    const scheduleExpiryRefresh = (activeToken: string | null) => {
+      if (expiryTimer) {
+        clearTimeout(expiryTimer)
+        expiryTimer = null
+      }
+      const exp = decodeJwtExpiry(activeToken)
+      if (!exp) return
+      const refreshAtMs = exp * 1000 - (2 * 60 * 1000)
+      const delayMs = Math.max(refreshAtMs - Date.now(), 15_000)
+      expiryTimer = setTimeout(() => {
+        void runRefresh()
+      }, delayMs)
+    }
+
+    scheduleExpiryRefresh(token)
+    healthInterval = setInterval(() => {
+      const exp = decodeJwtExpiry(token)
+      if (!exp) {
+        void runRefresh()
+        return
+      }
+      const msRemaining = exp * 1000 - Date.now()
+      if (msRemaining <= 3 * 60 * 1000) {
+        void runRefresh()
+      }
+    }, 60_000)
+
+    return () => {
+      cancelled = true
+      if (expiryTimer) clearTimeout(expiryTimer)
+      if (healthInterval) clearInterval(healthInterval)
+    }
+  }, [isNativeRuntime, token, user, setAuthToken])
+
+  useEffect(() => {
+    if (!isNativeRuntime) return
+    let removed = false
+    let listenerHandle: { remove: () => Promise<void> } | null = null
+
+    const consumeDeepLink = (rawUrl: string | null | undefined) => {
+      const nextUrl = (rawUrl || '').trim()
+      if (!nextUrl) return
+      try {
+        const parsed = new URL(nextUrl)
+        const hash = parsed.hash.startsWith('#') ? parsed.hash.slice(1) : parsed.hash
+        const params = new URLSearchParams(hash)
+        const linkedToken = params.get('token')
+        if (!linkedToken) return
+        setAuthToken(linkedToken)
+        setIsLoading(true)
+      } catch {
+        // Ignore malformed callback URLs from platform integrations.
+      }
+    }
+
+    ;(async () => {
+      try {
+        const { App } = await import('@capacitor/app')
+        const launch = await App.getLaunchUrl()
+        consumeDeepLink(launch?.url)
+        listenerHandle = await App.addListener('appUrlOpen', (event) => {
+          consumeDeepLink(event.url)
+        })
+      } catch {
+        // Running in browser or missing Capacitor plugin.
+      }
+    })()
+
+    return () => {
+      if (removed) return
+      removed = true
+      if (listenerHandle) {
+        void listenerHandle.remove()
+      }
+    }
+  }, [isNativeRuntime, setAuthToken])
 
   const authValue = useMemo<AuthContextValue>(
     () => ({
@@ -366,10 +514,14 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
         setAuthToken(null)
         setUserState(null)
         localStorage.removeItem('pidp.user')
-        // Call PIdP logout to clear session cookie.
-        fetch(`${normalizedPidpBase}/session/logout`, {
+        if (isNativeRuntime) {
+          window.location.reload()
+          return
+        }
+        // Browser flow: clear session cookie server-side.
+        fetch(pidpUrl('/auth/session/logout'), {
           method: 'POST',
-          credentials: 'include' 
+          credentials: 'include',
         }).then(() => {
           window.location.reload()
         }).catch(() => {
@@ -377,7 +529,7 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
         })
       },
     }),
-    [role, user, token, isLoading, loginWithPassword, registerWithPassword, normalizedPidpBase, setAuthToken],
+    [role, user, token, isLoading, isNativeRuntime, loginWithPassword, registerWithPassword, setAuthToken],
   )
 
   return (

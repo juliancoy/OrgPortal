@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
 import { pidpAppLoginUrl } from '../../../config/pidp'
 
-export function CampaignLoginPage() {
+export function OrgLoginPage() {
   const navigate = useNavigate()
   const { loginWithPassword, isLoading } = useAuth()
   const [email, setEmail] = useState('')

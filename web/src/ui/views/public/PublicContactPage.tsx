@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
+import { useAuth } from '../../../app/AppProviders'
+import { pidpAppLoginUrl } from '../../../config/pidp'
 import { createQrSvg } from '../../utils/qr'
 import { setSeoMeta } from '../../utils/seo'
 
@@ -25,6 +27,8 @@ type ContactPage = {
   email_public?: string | null
   phone_public?: string | null
   linkedin_url?: string | null
+  github_url?: string | null
+  x_url?: string | null
   website_url?: string | null
   links?: ContactLink[]
   public_url?: string | null
@@ -41,6 +45,7 @@ type PublicEvent = {
 }
 
 export function PublicContactPage() {
+  const { token } = useAuth()
   const { slug } = useParams()
   const [page, setPage] = useState<ContactPage | null>(null)
   const [events, setEvents] = useState<PublicEvent[]>([])
@@ -130,6 +135,15 @@ export function PublicContactPage() {
         </div>
         <h1 style={{ marginTop: 0, marginBottom: 0 }}>{page.user_name}</h1>
         {page.headline ? <p style={{ marginTop: 0 }}><strong>{page.headline}</strong></p> : null}
+        {token ? (
+          <Link className="btn-primary" to={`/chat?start=dm&user=${encodeURIComponent(page.slug)}`} style={{ textDecoration: 'none', width: 'fit-content' }}>
+            Message
+          </Link>
+        ) : (
+          <a className="btn-primary" href={pidpAppLoginUrl(`/chat?start=dm&user=${encodeURIComponent(page.slug)}`)} style={{ textDecoration: 'none', width: 'fit-content' }}>
+            Message
+          </a>
+        )}
       </div>
 
       <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'minmax(0, 2fr) minmax(240px, 1fr)' }}>
@@ -177,6 +191,16 @@ export function PublicContactPage() {
         {page.linkedin_url ? (
           <a className="portal-card" href={page.linkedin_url} target="_blank" rel="noreferrer" style={{ padding: '0.7rem', textDecoration: 'none' }}>
             LinkedIn
+          </a>
+        ) : null}
+        {page.github_url ? (
+          <a className="portal-card" href={page.github_url} target="_blank" rel="noreferrer" style={{ padding: '0.7rem', textDecoration: 'none' }}>
+            GitHub
+          </a>
+        ) : null}
+        {page.x_url ? (
+          <a className="portal-card" href={page.x_url} target="_blank" rel="noreferrer" style={{ padding: '0.7rem', textDecoration: 'none' }}>
+            X
           </a>
         ) : null}
         {page.website_url ? (

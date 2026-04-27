@@ -9,7 +9,7 @@ type Initiative = {
   location?: string
 }
 
-export function CampaignEditableInitiativesPage() {
+export function OrgEditableInitiativesPage() {
   const { token } = useAuth()
   const [initiatives, setInitiatives] = useState<Initiative[]>([])
   const [error, setError] = useState<string | null>(null)

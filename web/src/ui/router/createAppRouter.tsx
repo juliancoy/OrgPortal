@@ -1,6 +1,9 @@
+import { useEffect, useState } from 'react'
+import type { ReactElement } from 'react'
 import { Navigate, createBrowserRouter } from 'react-router-dom'
 import { AppLayout } from '../shell/AppLayout'
 import App from '../../App'
+import { useAuth } from '../../app/AppProviders'
 import { EconomicOpsPage } from '../views/EconomicOpsPage'
 import { AuthCallbackPage } from '../views/AuthCallbackPage'
 import { InitiativeDetailPage } from '../views/InitiativeDetailPage'
@@ -9,15 +12,15 @@ import { UserAccountPage } from '../views/constituent/ConstituentAccountPage'
 import { UserProfilePage } from '../views/constituent/ConstituentProfilePage'
 import { UserLoginPage } from '../views/constituent/ConstituentLoginPage'
 import { UserRegisterPage } from '../views/constituent/ConstituentRegisterPage'
-import { CampaignLoginPage } from '../views/campaign/CampaignLoginPage'
-import { CampaignRegisterPage } from '../views/campaign/CampaignRegisterPage'
-import { CampaignInitiativesPage } from '../views/campaign/CampaignInitiativesPage'
-import { CampaignInitiativeEditorPage } from '../views/campaign/CampaignInitiativeEditorPage'
-import { CampaignInitiativeBallotPage } from '../views/campaign/CampaignInitiativeBallotPage'
-import { CampaignProfilePage } from '../views/campaign/CampaignProfilePage'
-import { CampaignAccountPage } from '../views/campaign/CampaignAccountPage'
-import { CampaignEventsPage } from '../views/campaign/CampaignEventsPage'
-import { PublicCampaignManagerPage } from '../views/public/PublicCampaignManagerPage'
+import { OrgLoginPage } from '../views/campaign/OrgLoginPage'
+import { OrgRegisterPage } from '../views/campaign/OrgRegisterPage'
+import { OrgInitiativesPage } from '../views/campaign/OrgInitiativesPage'
+import { OrgInitiativeEditorPage } from '../views/campaign/OrgInitiativeEditorPage'
+import { OrgInitiativeBallotPage } from '../views/campaign/OrgInitiativeBallotPage'
+import { OrgProfilePage } from '../views/campaign/OrgProfilePage'
+import { OrgAccountPage } from '../views/campaign/OrgAccountPage'
+import { OrgEventsPage } from '../views/campaign/OrgEventsPage'
+import { PublicAdminPage } from '../views/public/PublicAdminPage'
 import { PublicContactPage } from '../views/public/PublicContactPage'
 import { PublicEventsPage } from '../views/public/PublicEventsPage'
 import { PublicEventPage } from '../views/public/PublicEventPage'
@@ -32,13 +35,74 @@ import { AboutPage } from '../views/AboutPage'
 import { DashboardPage } from '../dashboard/DashboardPage'
 import { AdminPage } from '../views/AdminPage'
 import { TargetPage } from '../views/TargetPage'
-import { CampaignEditableInitiativesPage } from '../views/campaign/CampaignEditableInitiativesPage'
+import { OrgEditableInitiativesPage } from '../views/campaign/OrgEditableInitiativesPage'
 import { ContactSettingsPage } from '../views/ContactSettingsPage'
 import { SendPage } from '../views/SendPage'
 import { ReceivePage } from '../views/ReceivePage'
 import { CreatePage } from '../views/CreatePage'
 import { CreateForProfitPage } from '../views/CreateForProfitPage'
 import { CreateNonProfitPage } from '../views/CreateNonProfitPage'
+import { OrgChatPage } from '../views/chat/OrgChatPage'
+import { DevToolsPage } from '../views/DevToolsPage'
+import { BusinessCardIntakePage } from '../views/BusinessCardIntakePage'
+import { PeoplePage } from '../views/PeoplePage'
+import { refreshRuntimeTokenFromSession } from '../../infrastructure/auth/sessionToken'
+
+function AuthenticatedRoute(props: { children: ReactElement }) {
+  const { role, isLoading } = useAuth()
+  if (isLoading) return null
+  if (role === 'guest') return <Navigate to="/" replace />
+  return props.children
+}
+
+function HomeRoute() {
+  const { role, isLoading } = useAuth()
+  if (isLoading) return null
+  if (role === 'guest') return <App />
+  return <Navigate to="/chat" replace />
+}
+
+function AdminRoute(props: { children: ReactElement }) {
+  const { role, token } = useAuth()
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    if (role === 'guest' || !token) {
+      setIsAdmin(false)
+      return
+    }
+    let cancelled = false
+    const checkAdmin = async () => {
+      let response = await fetch('/api/org/admin/me', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (response.status === 401) {
+        const refreshed = await refreshRuntimeTokenFromSession()
+        if (refreshed) {
+          response = await fetch('/api/org/admin/me', {
+            headers: { Authorization: `Bearer ${refreshed}` },
+          })
+        }
+      }
+      return response.ok ? response.json() : { is_sysadmin: false }
+    }
+
+    checkAdmin()
+      .then((data) => {
+        if (!cancelled) setIsAdmin(Boolean(data.is_sysadmin))
+      })
+      .catch(() => {
+        if (!cancelled) setIsAdmin(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [role, token])
+
+  if (isAdmin === null) return null
+  if (!isAdmin) return <Navigate to="/" replace />
+  return props.children
+}
 
 export function createAppRouter() {
   const baseUrl = import.meta.env.BASE_URL ?? '/'
@@ -46,7 +110,7 @@ export function createAppRouter() {
 
   return createBrowserRouter(
     [
-      { path: '/', element: <App /> },
+      { path: '/', element: <HomeRoute /> },
       { path: '/ecops', element: <EconomicOpsPage /> },
       { path: '/send', element: <SendPage /> },
       { path: '/receive', element: <ReceivePage /> },
@@ -72,17 +136,52 @@ export function createAppRouter() {
           { path: '/users/account', element: <UserAccountPage /> },
 
           // Canonical org routes
-          { path: '/orgs/register', element: <CampaignRegisterPage /> },
-          { path: '/orgs/login', element: <CampaignLoginPage /> },
-          { path: '/orgs/initiatives', element: <CampaignInitiativesPage /> },
-          { path: '/orgs/initiatives/editable', element: <CampaignEditableInitiativesPage /> },
-          { path: '/orgs/initiatives/new', element: <CampaignInitiativeEditorPage /> },
-          { path: '/orgs/initiatives/:id/edit', element: <CampaignInitiativeEditorPage /> },
-          { path: '/orgs/initiatives/:id/ballot', element: <CampaignInitiativeBallotPage /> },
-          { path: '/orgs/profile', element: <CampaignProfilePage /> },
-          { path: '/orgs/account', element: <CampaignAccountPage /> },
-          { path: '/orgs/events', element: <CampaignEventsPage /> },
-          { path: '/admin', element: <AdminPage /> },
+          { path: '/orgs/register', element: <OrgRegisterPage /> },
+          { path: '/orgs/login', element: <OrgLoginPage /> },
+          { path: '/orgs/initiatives', element: <OrgInitiativesPage /> },
+          { path: '/orgs/initiatives/editable', element: <OrgEditableInitiativesPage /> },
+          { path: '/orgs/initiatives/new', element: <OrgInitiativeEditorPage /> },
+          { path: '/orgs/initiatives/:id/edit', element: <OrgInitiativeEditorPage /> },
+          { path: '/orgs/initiatives/:id/ballot', element: <OrgInitiativeBallotPage /> },
+          { path: '/orgs/profile', element: <OrgProfilePage /> },
+          { path: '/orgs/account', element: <OrgAccountPage /> },
+          { path: '/orgs/events', element: <OrgEventsPage /> },
+          {
+            path: '/chat',
+            element: (
+              <AuthenticatedRoute>
+                <OrgChatPage />
+              </AuthenticatedRoute>
+            ),
+          },
+          {
+            path: '/chat/:roomId',
+            element: (
+              <AuthenticatedRoute>
+                <OrgChatPage />
+              </AuthenticatedRoute>
+            ),
+          },
+          {
+            path: '/dev-tools',
+            element: (
+              <AuthenticatedRoute>
+                <DevToolsPage />
+              </AuthenticatedRoute>
+            ),
+          },
+          {
+            path: '/tools/business-cards',
+            element: <BusinessCardIntakePage />,
+          },
+          {
+            path: '/admin',
+            element: (
+              <AdminRoute>
+                <AdminPage />
+              </AdminRoute>
+            ),
+          },
           { path: '/targets/:target', element: <TargetPage /> },
 
           // Legacy route compatibility
@@ -96,19 +195,20 @@ export function createAppRouter() {
           { path: '/campaign/initiatives', element: <Navigate to="/orgs/initiatives" replace /> },
           { path: '/campaign/initiatives/editable', element: <Navigate to="/orgs/initiatives/editable" replace /> },
           { path: '/campaign/initiatives/new', element: <Navigate to="/orgs/initiatives/new" replace /> },
-          { path: '/campaign/initiatives/:id/edit', element: <CampaignInitiativeEditorPage /> },
-          { path: '/campaign/initiatives/:id/ballot', element: <CampaignInitiativeBallotPage /> },
+          { path: '/campaign/initiatives/:id/edit', element: <OrgInitiativeEditorPage /> },
+          { path: '/campaign/initiatives/:id/ballot', element: <OrgInitiativeBallotPage /> },
           { path: '/campaign/profile', element: <Navigate to="/orgs/profile" replace /> },
           { path: '/campaign/account', element: <Navigate to="/orgs/account" replace /> },
           { path: '/campaign/events', element: <Navigate to="/orgs/events" replace /> },
-          { path: '/campaign-managers/:handle', element: <PublicCampaignManagerPage /> },
+          { path: '/campaign-managers/:handle', element: <PublicAdminPage /> },
           { path: '/events', element: <PublicEventsPage /> },
           { path: '/events/:slug', element: <PublicEventPage /> },
           { path: '/orgs', element: <PublicOrganizationsPage /> },
+          { path: '/people', element: <PeoplePage /> },
           { path: '/search', element: <GlobalSearchPage /> },
 
           // Public profile
-          { path: '/orgs/:handle', element: <PublicCampaignManagerPage /> },
+          { path: '/orgs/:handle', element: <PublicAdminPage /> },
           { path: '/users/:slug', element: <PublicContactPage /> },
           { path: '/contact/:slug', element: <PublicContactPage /> },
           { path: '/contact-settings', element: <ContactSettingsPage /> },

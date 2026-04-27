@@ -1,5 +1,6 @@
 import type { EngagementRepository, CreateCommentInput, UserProfile, RankedMotion, VoteCounts } from '../../application/ports/EngagementRepository'
 import type { Motion, VoteDirection, Comment } from '../../domain/motion/Motion'
+import { getRuntimeAccessToken } from '../auth/runtimeAuth'
 
 /**
  * API Error Classes for proper error handling
@@ -55,10 +56,10 @@ const logger = {
 }
 
 /**
- * Get authentication headers from session storage
+ * Get authentication headers from in-memory runtime auth
  */
 function getAuthHeaders(): HeadersInit {
-  const token = sessionStorage.getItem('pidp.token')
+  const token = getRuntimeAccessToken()
   if (!token) {
     throw new AuthenticationError()
   }

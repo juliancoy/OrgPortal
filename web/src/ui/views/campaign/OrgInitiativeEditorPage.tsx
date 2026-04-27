@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
 import { useLegislativeBody } from '../../legislativeBodies'
 
-export function CampaignInitiativeEditorPage() {
+export function OrgInitiativeEditorPage() {
   const navigate = useNavigate()
   const { id } = useParams()
   const { token } = useAuth()

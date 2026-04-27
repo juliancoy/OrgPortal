@@ -2,8 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
 import { useAuth } from '../../../app/AppProviders'
+import { pidpAppLoginUrl, pidpUrl } from '../../../config/pidp'
+import { OrgImage } from '../../components/media/OrgImage'
+import { ImageEditorModal } from '../../components/media/ImageEditorModal'
+import { resolveSignedS3UploadUrl } from '../../../infrastructure/auth/avatarUpload'
 
 const ORG_API_BASE = '/api/org'
+const ORG_PLACEHOLDER_SRC = '/images/org-placeholder.svg'
 
 function orgUrl(path: string) {
   if (!path.startsWith('/')) return `${ORG_API_BASE}/${path}`
@@ -65,7 +70,7 @@ function formatDate(value?: string | null) {
   return dt.toLocaleString()
 }
 
-export function PublicCampaignManagerPage() {
+export function PublicAdminPage() {
   const navigate = useNavigate()
   const { token } = useAuth()
   const { handle } = useParams()
@@ -83,8 +88,12 @@ export function PublicCampaignManagerPage() {
   const [mergeStatus, setMergeStatus] = useState<string | null>(null)
   const [merging, setMerging] = useState(false)
   const [orgNameDraft, setOrgNameDraft] = useState('')
+  const [orgImageDraft, setOrgImageDraft] = useState('')
   const [savingOrgName, setSavingOrgName] = useState(false)
+  const [savingOrgImage, setSavingOrgImage] = useState(false)
   const [adminView, setAdminView] = useState(true)
+  const [showImageEditor, setShowImageEditor] = useState(false)
+  const [editorSource, setEditorSource] = useState<string | null>(null)
   const hasExistingAdmins = admins.some((admin) => admin.role === 'admin' || admin.role === 'owner')
   const canManageCurrentOrg = myAdminOrgs.some((item) => item.id === org?.id)
   const claimActionLabel = hasExistingAdmins ? 'Request Ownership Review' : 'Claim This Organization'
@@ -134,6 +143,7 @@ export function PublicCampaignManagerPage() {
         ])
         setOrg(orgData)
         setOrgNameDraft(orgData.name || '')
+        setOrgImageDraft(orgData.image_url || '')
         setEvents(Array.isArray(eventData) ? eventData : [])
         setAdmins(Array.isArray(adminData) ? adminData : [])
         setStatus('')
@@ -382,6 +392,82 @@ export function PublicCampaignManagerPage() {
     }
   }
 
+  async function saveOrganizationImage(nextImageOverride?: string | null) {
+    if (!org || !token) {
+      setMergeStatus('Sign in to update this organization.')
+      return
+    }
+    const candidate = typeof nextImageOverride === 'string' ? nextImageOverride : orgImageDraft
+    setSavingOrgImage(true)
+    setMergeStatus(null)
+    try {
+      const resp = await fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}`), {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ image_url: candidate.trim() || null }),
+      })
+      if (!resp.ok) {
+        let detail = ''
+        try {
+          const payload = (await resp.json()) as { detail?: string }
+          detail = String(payload?.detail || '').trim()
+        } catch {
+          detail = (await resp.text().catch(() => '')).trim()
+        }
+        throw new Error(detail || `Update failed (${resp.status})`)
+      }
+      const updated = (await resp.json()) as { image_url?: string | null }
+      const updatedImage = updated?.image_url?.trim() || ''
+      setOrg((prev) => (prev ? { ...prev, image_url: updatedImage || null } : prev))
+      setOrgImageDraft(updatedImage)
+      setMergeStatus('Organization image updated.')
+    } catch (err) {
+      setMergeStatus(err instanceof Error ? err.message : 'Update failed')
+    } finally {
+      setSavingOrgImage(false)
+    }
+  }
+
+  async function handleSaveCroppedOrgImage(base64Image: string) {
+    if (!org || !token) return
+    setSavingOrgImage(true)
+    setMergeStatus(null)
+    try {
+      const uploadInit = await fetch(pidpUrl('/auth/avatar/upload-url'), {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      if (!uploadInit.ok) {
+        const text = await uploadInit.text().catch(() => '')
+        throw new Error(text || `Upload setup failed (${uploadInit.status})`)
+      }
+      const uploadData = (await uploadInit.json()) as { upload_url: string; public_url: string }
+      const dataUrl = `data:image/png;base64,${base64Image}`
+      const blob = await fetch(dataUrl).then((r) => r.blob())
+      const uploadResp = await fetch(resolveSignedS3UploadUrl(uploadData.upload_url), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'image/png' },
+        body: blob,
+      })
+      if (!uploadResp.ok) {
+        throw new Error(`Image upload failed (${uploadResp.status})`)
+      }
+      await saveOrganizationImage(uploadData.public_url)
+      setShowImageEditor(false)
+      setEditorSource(null)
+    } catch (err) {
+      setMergeStatus(err instanceof Error ? err.message : 'Image upload failed')
+    } finally {
+      setSavingOrgImage(false)
+    }
+  }
+
   if (!org) {
     return (
       <section className="panel">
@@ -393,26 +479,58 @@ export function PublicCampaignManagerPage() {
   }
 
   const mergeCandidates = myAdminOrgs.filter((item) => item.id !== org.id)
+  const canEditOrgImage = canManageCurrentOrg && adminView
+  const heroImageSource = org.image_url?.trim() || ORG_PLACEHOLDER_SRC
+
+  function openImageEditor() {
+    if (!canEditOrgImage) return
+    setEditorSource(heroImageSource)
+    setShowImageEditor(true)
+  }
 
   return (
-    <section className="panel" style={{ display: 'grid', gap: '0.85rem' }}>
-      <h1 style={{ marginTop: 0 }}>{org.name}</h1>
+    <section className="panel portal-org-page">
+      <div className="portal-org-hero">
+        <div className="portal-org-hero-header">
+          <h1 style={{ marginTop: 0, marginBottom: 0 }}>{org.name}</h1>
+          {canEditOrgImage ? (
+            <span className="portal-org-image-hint">Click image to change</span>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          className={`portal-org-image-button${canEditOrgImage ? ' editable' : ''}`}
+          onClick={openImageEditor}
+          disabled={!canEditOrgImage}
+          aria-label={canEditOrgImage ? 'Change organization image' : 'Organization image'}
+        >
+          <OrgImage
+            src={org.image_url}
+            alt={org.name}
+            className="portal-org-hero-image"
+          />
+        </button>
+      </div>
       {mergedFrom ? (
         <p className="muted" role="status" style={{ margin: 0 }}>
           Redirected from merged organization <code>{mergedFrom}</code>.
         </p>
       ) : null}
-      {org.image_url ? (
-        <img
-          src={org.image_url}
-          alt={org.name}
-          style={{ width: '100%', maxWidth: 520, borderRadius: 12, border: '1px solid var(--border)' }}
-        />
-      ) : null}
-      {org.description ? <p style={{ margin: 0 }}>{org.description}</p> : null}
-      <p className="muted" style={{ margin: 0 }}>
-        Handle: <code>{org.slug}</code> • Upcoming hosted events: {org.upcoming_events_count}
-      </p>
+      <div className="portal-org-meta">
+        {org.description ? <p style={{ margin: 0 }}>{org.description}</p> : null}
+        <p className="muted" style={{ margin: 0 }}>
+          Handle: <code>{org.slug}</code> • Upcoming hosted events: {org.upcoming_events_count}
+        </p>
+      </div>
+      {token ? (
+        <Link className="btn-primary" to={`/chat?start=group&org=${encodeURIComponent(org.slug)}`} style={{ textDecoration: 'none', width: 'fit-content' }}>
+          Message Group
+        </Link>
+      ) : (
+        <a className="btn-primary" href={pidpAppLoginUrl(`/chat?start=group&org=${encodeURIComponent(org.slug)}`)} style={{ textDecoration: 'none', width: 'fit-content' }}>
+          Message Group
+        </a>
+      )}
       {org.is_contested ? (
         <p className="muted" style={{ margin: 0 }}>
           Ownership status: Contested ({org.pending_claim_requests_count} pending request{org.pending_claim_requests_count === 1 ? '' : 's'}).
@@ -493,7 +611,7 @@ export function PublicCampaignManagerPage() {
       ) : null}
 
       {canManageCurrentOrg ? (
-        <div className="portal-card" style={{ display: 'grid', gap: '0.7rem' }}>
+        <div className="portal-card portal-org-admin-card" style={{ display: 'grid', gap: '0.7rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
             <h2 style={{ margin: 0, fontSize: '1rem' }}>Admin Controls</h2>
             <button type="button" onClick={() => setAdminView((prev) => !prev)}>
@@ -524,6 +642,21 @@ export function PublicCampaignManagerPage() {
                   />
                   <button type="button" onClick={saveOrganizationName} disabled={savingOrgName || !orgNameDraft.trim()}>
                     {savingOrgName ? 'Saving…' : 'Save Name'}
+                  </button>
+                </div>
+                <label htmlFor="org-image-url" className="muted">
+                  Organization image URL
+                </label>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <input
+                    id="org-image-url"
+                    value={orgImageDraft}
+                    onChange={(e) => setOrgImageDraft(e.target.value)}
+                    placeholder="https://example.com/org-image.png"
+                    style={{ minWidth: 240, flex: '1 1 260px' }}
+                  />
+                  <button type="button" onClick={() => void saveOrganizationImage()} disabled={savingOrgImage}>
+                    {savingOrgImage ? 'Saving…' : 'Save Image'}
                   </button>
                 </div>
                 <label htmlFor="merge-source-org" className="muted">
@@ -588,6 +721,17 @@ export function PublicCampaignManagerPage() {
           </div>
         )}
       </div>
+      {showImageEditor && editorSource ? (
+        <ImageEditorModal
+          image={editorSource}
+          onClose={() => {
+            if (savingOrgImage) return
+            setShowImageEditor(false)
+            setEditorSource(null)
+          }}
+          onSave={handleSaveCroppedOrgImage}
+        />
+      ) : null}
     </section>
   )
 }

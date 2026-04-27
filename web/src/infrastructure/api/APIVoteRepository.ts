@@ -1,10 +1,11 @@
 import type { VoteRepository } from '../../application/ports/VoteRepository'
 import type { Vote, VoteChoice, VoteResult } from '../../domain/motion/Motion'
+import { getRuntimeAccessToken } from '../auth/runtimeAuth'
 
 const API_BASE = '/api/org/api/governance'
 
 function getAuthHeaders(): HeadersInit {
-  const token = sessionStorage.getItem('pidp.token')
+  const token = getRuntimeAccessToken()
   if (!token) throw new Error('Authentication required')
   return {
     Authorization: `Bearer ${token}`,

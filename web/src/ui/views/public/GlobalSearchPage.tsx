@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { setSeoMeta } from '../../utils/seo'
+import { useAuth } from '../../../app/AppProviders'
+import { pidpAppLoginUrl } from '../../../config/pidp'
+import { OrgImage } from '../../components/media/OrgImage'
 
 const ORG_API_BASE = '/api/org'
 const MIN_QUERY_LEN = 2
@@ -55,6 +58,7 @@ function formatEventDate(value?: string | null): string {
 }
 
 export function GlobalSearchPage() {
+  const { token } = useAuth()
   const [searchParams] = useSearchParams()
   const q = (searchParams.get('q') || '').trim()
   const requestedScope = (searchParams.get('scope') || 'all').trim().toLowerCase()
@@ -166,20 +170,37 @@ export function GlobalSearchPage() {
             {orgs.length === 0 ? <p className="muted">No matching organizations.</p> : null}
             <div className="search-page-list">
               {orgs.map((org) => (
-                <Link key={org.id} to={`/orgs/${encodeURIComponent(org.slug)}`} className="search-page-item">
-                  {org.image_url ? (
-                    <img
-                      src={org.image_url}
-                      alt={org.name}
-                      style={{ width: '100%', maxHeight: 150, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }}
-                    />
-                  ) : null}
-                  <strong>{org.name}</strong>
+                <article key={org.id} className="search-page-item">
+                  <OrgImage
+                    src={org.image_url}
+                    alt={org.name}
+                    style={{ width: '100%', maxHeight: 150, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }}
+                  />
+                  <Link to={`/orgs/${encodeURIComponent(org.slug)}`} style={{ textDecoration: 'none', fontWeight: 700 }}>
+                    {org.name}
+                  </Link>
                   <span className="muted">
                     {org.membership_count ?? 0} members • {org.upcoming_events_count ?? 0} upcoming events
                   </span>
                   {org.description ? <span>{org.description}</span> : null}
-                </Link>
+                  {token ? (
+                    <Link
+                      to={`/chat?start=group&org=${encodeURIComponent(org.slug)}`}
+                      className="btn-primary"
+                      style={{ textDecoration: 'none', width: 'fit-content', marginTop: 4 }}
+                    >
+                      Message Group
+                    </Link>
+                  ) : (
+                    <a
+                      href={pidpAppLoginUrl(`/chat?start=group&org=${encodeURIComponent(org.slug)}`)}
+                      className="btn-primary"
+                      style={{ textDecoration: 'none', width: 'fit-content', marginTop: 4 }}
+                    >
+                      Message Group
+                    </a>
+                  )}
+                </article>
               ))}
             </div>
             </section>
@@ -217,7 +238,7 @@ export function GlobalSearchPage() {
             {users.length === 0 ? <p className="muted">No matching people.</p> : null}
             <div className="search-page-list">
               {users.map((person) => (
-                <Link key={person.user_id} to={`/users/${encodeURIComponent(person.slug)}`} className="search-page-item">
+                <article key={person.user_id} className="search-page-item">
                   {person.photo_url ? (
                     <img
                       src={person.photo_url}
@@ -225,12 +246,31 @@ export function GlobalSearchPage() {
                       style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: '50%', border: '1px solid var(--border)' }}
                     />
                   ) : null}
-                  <strong>{person.user_name}</strong>
+                  <Link to={`/users/${encodeURIComponent(person.slug)}`} style={{ textDecoration: 'none', fontWeight: 700 }}>
+                    {person.user_name}
+                  </Link>
                   <span className="muted">
                     {person.headline || `${person.upcoming_events_count ?? 0} upcoming hosted events`}
                   </span>
                   {person.bio ? <span>{person.bio}</span> : null}
-                </Link>
+                  {token ? (
+                    <Link
+                      to={`/chat?start=dm&user=${encodeURIComponent(person.slug)}`}
+                      className="btn-primary"
+                      style={{ textDecoration: 'none', width: 'fit-content', marginTop: 4 }}
+                    >
+                      Message
+                    </Link>
+                  ) : (
+                    <a
+                      href={pidpAppLoginUrl(`/chat?start=dm&user=${encodeURIComponent(person.slug)}`)}
+                      className="btn-primary"
+                      style={{ textDecoration: 'none', width: 'fit-content', marginTop: 4 }}
+                    >
+                      Message
+                    </a>
+                  )}
+                </article>
               ))}
             </div>
             </section>

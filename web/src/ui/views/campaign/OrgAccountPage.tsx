@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-export function CampaignAccountPage() {
+export function OrgAccountPage() {
   const [email, setEmail] = useState('saferstreets@example.com')
   const [contactName, setContactName] = useState('Org Admin')
 

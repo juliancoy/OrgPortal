@@ -46,7 +46,7 @@ function toIsoDateTime(value: string): string | null {
   return dt.toISOString()
 }
 
-export function CampaignEventsPage() {
+export function OrgEventsPage() {
   const { token } = useAuth()
   const [events, setEvents] = useState<NetworkEvent[]>([])
   const [orgs, setOrgs] = useState<Org[]>([])

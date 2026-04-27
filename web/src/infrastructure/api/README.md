@@ -85,4 +85,4 @@ try {
 - ✅ Input sanitization (URL encoding)
 - ✅ Structured logging (dev only)
 - ✅ Type-safe API responses
-- ✅ Automatic auth token injection from sessionStorage
+- ✅ Automatic auth token injection from runtime auth state
