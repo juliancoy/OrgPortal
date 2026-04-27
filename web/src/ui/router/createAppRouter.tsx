@@ -32,6 +32,7 @@ import { ProposeMotionPage } from '../views/governance/ProposeMotionPage'
 import { ProposeAmendmentPage } from '../views/governance/ProposeAmendmentPage'
 import { NotFoundPage } from '../views/NotFoundPage'
 import { AboutPage } from '../views/AboutPage'
+import { AndroidInstallPage } from '../views/AndroidInstallPage'
 import { DashboardPage } from '../dashboard/DashboardPage'
 import { AdminPage } from '../views/AdminPage'
 import { TargetPage } from '../views/TargetPage'
@@ -127,6 +128,7 @@ export function createAppRouter() {
           { path: '/initiatives/:slug/sign', element: <InitiativeSignPage /> },
 
           { path: '/about', element: <AboutPage /> },
+          { path: '/android/install', element: <AndroidInstallPage /> },
 
           // Canonical user routes
           { path: '/users/register', element: <UserRegisterPage /> },

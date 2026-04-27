@@ -15,7 +15,7 @@ Manifest locations used by deployment:
 
 Release flow:
 
-1. Build and publish APK to static host (default URL is `https://static.arkavo.org/app-release.apk`).
+1. Build and publish APK to static host (default URL is `https://static.arkavo.org/orgportal-android-release.apk`).
 2. Update `android.versionName`, `android.buildNumber`, and `android.minSupportedBuildNumber` as needed.
 3. Update `web.versionName` and `web.buildNumber` for web deploys.
 4. Publish both manifest files with the release.

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../../app/AppProviders'
 import { pidpAppLoginUrl, pidpUrl } from '../../config/pidp'
 import { refreshRuntimeTokenFromSession } from '../../infrastructure/auth/sessionToken'
+import { isAndroidDevice } from '../../infrastructure/platform/androidApp'
 import { OrgImage } from '../components/media/OrgImage'
 
 const ORG_API_BASE = '/api/org'
@@ -109,6 +110,7 @@ export function Header() {
   const accountSettingsPath = role === 'campaign_manager' ? '/orgs/account' : '/users/account'
   const roleLabel = role === 'campaign_manager' ? 'Org' : role === 'constituent' ? 'User' : 'Guest'
   const nextUrl = window.location.href
+  const showAndroidDownload = isAndroidDevice()
 
   const [menuOpen, setMenuOpen] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
@@ -773,6 +775,15 @@ export function Header() {
             </svg>
             Scan
           </NavLink>
+
+          {showAndroidDownload ? (
+            <NavLink to="/android/install" isActive={location.pathname.startsWith('/android/install')}>
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path d="M7.25 2.5a.75.75 0 011.03.25l.97 1.68A7.6 7.6 0 0110 4.4c.58 0 1.14.06 1.68.18l.97-1.68a.75.75 0 111.3.75l-.88 1.52A6.3 6.3 0 0116.1 9H3.9a6.3 6.3 0 013.03-3.83L6.05 3.65a.75.75 0 01.25-1.03zM7.5 7a.9.9 0 100-1.8.9.9 0 000 1.8zm5 0a.9.9 0 100-1.8.9.9 0 000 1.8zM3.5 10h1.4v4.7a1.4 1.4 0 102.8 0V10h4.6v4.7a1.4 1.4 0 102.8 0V10h1.4a.6.6 0 00.6-.6v-.2a.6.6 0 00-.6-.6H3.5a.6.6 0 00-.6.6v.2a.6.6 0 00.6.6z" />
+              </svg>
+              Android App
+            </NavLink>
+          ) : null}
 
           {isAdmin && (
             <NavLink to="/admin" isActive={location.pathname === '/admin'}>

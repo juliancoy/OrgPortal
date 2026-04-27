@@ -80,7 +80,7 @@ describe('updateManifest', () => {
           android: {
             versionName: '1.2.0',
             buildNumber: 12,
-            apkUrl: 'https://static.arkavo.org/app-release.apk',
+            apkUrl: 'https://static.arkavo.org/orgportal-android-release.apk',
             notes: 'Native release',
             minSupportedBuildNumber: 11,
           },
@@ -91,7 +91,7 @@ describe('updateManifest', () => {
     const result = await checkForAvailableUpdate()
     expect(result.available?.target).toBe('native')
     expect(result.available?.mandatory).toBe(true)
-    expect(result.available?.actionUrl).toBe('https://static.arkavo.org/app-release.apk')
+    expect(result.available?.actionUrl).toBe('https://static.arkavo.org/orgportal-android-release.apk')
   })
 
   it('performs web update action via reload', async () => {
@@ -122,12 +122,11 @@ describe('updateManifest', () => {
       notes: '',
       mandatory: false,
       actionLabel: 'Download update',
-      actionUrl: 'https://static.arkavo.org/app-release.apk',
+      actionUrl: 'https://static.arkavo.org/orgportal-android-release.apk',
     }
 
     await performUpdateAction(update)
     expect(open).toHaveBeenCalledTimes(1)
-    expect(assign).toHaveBeenCalledWith('https://static.arkavo.org/app-release.apk')
+    expect(assign).toHaveBeenCalledWith('https://static.arkavo.org/orgportal-android-release.apk')
   })
 })
-
