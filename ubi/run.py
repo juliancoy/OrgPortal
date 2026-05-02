@@ -68,13 +68,19 @@ def ensure_cockroach_certs(cert_dir: Path) -> None:
 
 def run_cockroach_secure(network_name: str, prefix: str, cert_dir: Path) -> None:
     name = prefix + "cockroach"
+    recreate = os.getenv("COCKROACH_RECREATE", "0").strip().lower() in {"1", "true", "yes", "on"}
     try:
         existing = docker_utils.DOCKER_CLIENT.containers.get(name)
+        if not recreate:
+            if existing.status != "running":
+                existing.start()
+            return
         existing.stop()
         existing.remove(force=True)
     except Exception:
         pass
 
+    data_volume = os.getenv("COCKROACH_DATA_VOLUME", prefix + "COCKROACH_DATA")
     config = dict(
         image=COCKROACH_IMAGE,
         name=name,
@@ -91,29 +97,31 @@ def run_cockroach_secure(network_name: str, prefix: str, cert_dir: Path) -> None
             "--http-addr=0.0.0.0:8080",
         ],
         ports={"26257/tcp": 26257, "8080/tcp": 8081},
-        volumes={str(cert_dir): {"bind": "/cockroach/certs", "mode": "ro"}},
+        volumes={
+            str(cert_dir): {"bind": "/cockroach/certs", "mode": "ro"},
+            data_volume: {"bind": "/cockroach/cockroach-data", "mode": "rw"},
+        },
     )
     docker_utils.run_container(config)
 
 
 def bootstrap_ubi_schema(cockroach_name: str) -> None:
+    db_name = os.getenv("UBI_COCKROACH_DB", os.getenv("ORG_COCKROACH_DB", "org"))
     sql = (
-        "CREATE DATABASE IF NOT EXISTS defaultdb; "
-        "USE defaultdb; "
-        "CREATE TABLE IF NOT EXISTS public.accounts ("
-        "id UUID PRIMARY KEY DEFAULT gen_random_uuid(), "
-        "entity_type STRING NOT NULL DEFAULT 'individual', "
-        "balance DECIMAL(20,6) NOT NULL DEFAULT 0, "
-        "dena_balance DECIMAL(20,6) NOT NULL DEFAULT 0, "
-        "updated_at TIMESTAMPTZ NOT NULL DEFAULT now()); "
-        "CREATE TABLE IF NOT EXISTS public.transactions ("
-        "id UUID PRIMARY KEY, "
-        "to_account_id UUID, "
-        "amount DECIMAL(20,6) NOT NULL, "
-        "currency STRING NOT NULL DEFAULT 'DEM', "
-        "transaction_type STRING NOT NULL, "
-        "description STRING, "
-        "timestamp TIMESTAMPTZ NOT NULL DEFAULT now());"
+        f"CREATE DATABASE IF NOT EXISTS {db_name}; "
+        f"USE {db_name}; "
+        "CREATE TABLE IF NOT EXISTS public.ubi_runtime_settings ("
+        "id INT PRIMARY KEY CHECK (id = 1), "
+        "interval_seconds INT NOT NULL, "
+        "dena_annual DECIMAL(20, 6) NOT NULL, "
+        "dena_precision INT NOT NULL, "
+        "entity_types TEXT NOT NULL, "
+        "updated_at TIMESTAMPTZ NOT NULL DEFAULT now(), "
+        "updated_by TEXT); "
+        "INSERT INTO public.ubi_runtime_settings "
+        "(id, interval_seconds, dena_annual, dena_precision, entity_types, updated_by) "
+        "VALUES (1, 60, 1.000000, 6, 'individual', 'ubi-service-bootstrap') "
+        "ON CONFLICT (id) DO NOTHING;"
     )
     cmd = [
         "docker",
@@ -160,7 +168,7 @@ def _common_env(prefix: str, interval_seconds: str, secure_mode: bool) -> dict[s
         db_host = os.getenv("UBI_DB_HOST", f"{prefix}cockroach")
         db_url = (
             f"postgresql://{editme.COCKROACH_USER}@{db_host}:"
-            f"{editme.COCKROACH_SQL_PORT}/{editme.COCKROACH_DB}"
+            f"{editme.COCKROACH_SQL_PORT}/{os.getenv('UBI_COCKROACH_DB', os.getenv('ORG_COCKROACH_DB', 'org'))}"
             f"?sslmode={'disable' if editme.COCKROACH_INSECURE else 'require'}"
         )
     return {
