@@ -48,6 +48,11 @@ const DEPARTMENTS: Department[] = [
     domain: 'Infrastructure',
     mandate: 'Plans energy resilience, utility access, generation, distribution, and public-interest infrastructure.',
   },
+  {
+    name: 'Department of Industry',
+    domain: 'Production',
+    mandate: 'Coordinates industrial capacity, productive infrastructure, supply chains, and public-interest enterprise development.',
+  },
 ]
 
 export function DepartmentsPage() {
