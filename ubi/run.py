@@ -140,8 +140,9 @@ def bootstrap_ubi_schema(cockroach_name: str) -> None:
 
 def _secure_db_url(prefix: str) -> str:
     db_host = f"{prefix}cockroach"
+    db_name = os.getenv("UBI_COCKROACH_DB", os.getenv("ORG_COCKROACH_DB", "org"))
     return (
-        f"postgresql://root@{db_host}:26257/defaultdb"
+        f"postgresql://root@{db_host}:26257/{db_name}"
         "?sslmode=verify-full"
         "&sslrootcert=/cockroach-certs/ca.crt"
         "&sslcert=/cockroach-certs/client.root.crt"
@@ -186,6 +187,7 @@ def run(network_name: str = "arkavo", prefix: str = "") -> None:
     dev_port = int(os.getenv("UBI_DEV_PORT", "8011"))
     prod_name = prefix + "ubi"
     dev_name = prefix + "ubi-dev"
+    start_dev = os.getenv("UBI_START_DEV", "0").strip().lower() in {"1", "true", "yes", "on"}
 
     for name in (prod_name, dev_name):
         try:
@@ -208,22 +210,22 @@ def run(network_name: str = "arkavo", prefix: str = "") -> None:
         },
         environment=_common_env(prefix, os.getenv("UBI_INTERVAL_SECONDS", "60"), secure_mode),
     )
-    ubi_dev = dict(
-        image="ubi",
-        name=dev_name,
-        detach=True,
-        network=network_name,
-        restart_policy={"Name": "always"},
-        ports={"8000/tcp": dev_port},
-        volumes={
-            str(here): {"bind": "/app", "mode": "rw"},
-            str(cockroach_cert_dir): {"bind": "/cockroach-certs", "mode": "ro"},
-        },
-        environment=_common_env(prefix, os.getenv("UBI_DEV_INTERVAL_SECONDS", "15"), secure_mode),
-    )
-
     docker_utils.run_container(ubi_prod)
-    docker_utils.run_container(ubi_dev)
+    if start_dev:
+        ubi_dev = dict(
+            image="ubi",
+            name=dev_name,
+            detach=True,
+            network=network_name,
+            restart_policy={"Name": "always"},
+            ports={"8000/tcp": dev_port},
+            volumes={
+                str(here): {"bind": "/app", "mode": "rw"},
+                str(cockroach_cert_dir): {"bind": "/cockroach-certs", "mode": "ro"},
+            },
+            environment=_common_env(prefix, os.getenv("UBI_DEV_INTERVAL_SECONDS", "15"), secure_mode),
+        )
+        docker_utils.run_container(ubi_dev)
 
 
 if __name__ == "__main__":
