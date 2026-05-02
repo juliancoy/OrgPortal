@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
-import { pidpUrl } from '../../config/pidp'
+import { pidpOwnerLoginUrl, pidpUrl } from '../../config/pidp'
 import { refreshRuntimeTokenFromSession } from '../../infrastructure/auth/sessionToken'
 
 type ApiTokenScope = 'service' | 'org_portal' | 'org_mcp' | 'org_admin'
@@ -33,8 +33,14 @@ type PidpConfiguration = {
 
 type TokenInfo = {
   token_kind?: 'pat' | 'jwt'
+  actor_type?: 'owner' | 'website_user'
   scope?: string
   scope_grants?: string[]
+  owner?: {
+    id?: string
+    email?: string
+    is_sysadmin?: boolean
+  }
 }
 
 type AccessSnapshot = {
@@ -67,6 +73,7 @@ function scopeGrantsForToken(token: ApiTokenPublic): string[] {
 }
 
 export function DevToolsPage() {
+  const OWNER_REAUTH_GUARD_KEY = 'devtools.owner_reauth_attempted'
   const { token } = useAuth()
   const [tokens, setTokens] = useState<ApiTokenPublic[]>([])
   const [tokenInfo, setTokenInfo] = useState<TokenInfo | null>(null)
@@ -74,9 +81,11 @@ export function DevToolsPage() {
   const [pidpConfig, setPidpConfig] = useState<PidpConfiguration | null>(null)
   const [loading, setLoading] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
+  const [patAccessNotice, setPatAccessNotice] = useState<string | null>(null)
+  const [patAccessCode, setPatAccessCode] = useState<number | null>(null)
 
   const [createName, setCreateName] = useState('')
-  const [createScope, setCreateScope] = useState<ApiTokenScope>('org_portal')
+  const [createScope, setCreateScope] = useState<ApiTokenScope>('org_admin')
   const [createBusy, setCreateBusy] = useState(false)
 
   const [renameBusyId, setRenameBusyId] = useState<string | null>(null)
@@ -84,12 +93,19 @@ export function DevToolsPage() {
   const [deleteBusyId, setDeleteBusyId] = useState<string | null>(null)
   const [renameDrafts, setRenameDrafts] = useState<Record<string, string>>({})
   const [issuedSecret, setIssuedSecret] = useState<ApiTokenIssued | null>(null)
+  const hasLoadedOnceRef = useRef(false)
+  const lastTokenRef = useRef<string | null>(null)
 
   const origin = window.location.origin
   const orgApiBase = `${origin}/api/org`
   const mcpEndpoint = `${origin}/api/org/mcp`
 
-  const scopeOptions: ApiTokenScope[] = ['service', 'org_portal', 'org_mcp', 'org_admin']
+  const scopeOptions: Array<{ value: ApiTokenScope; label: string }> = [
+    { value: 'org_admin', label: 'org_admin (Full access)' },
+    { value: 'org_portal', label: 'org_portal' },
+    { value: 'org_mcp', label: 'org_mcp' },
+    { value: 'service', label: 'service' },
+  ]
 
   useEffect(() => {
     document.title = 'Org Portal • Dev Tools'
@@ -97,7 +113,40 @@ export function DevToolsPage() {
 
   const canCreate = useMemo(() => createName.trim().length > 0 && !createBusy, [createBusy, createName])
 
-  async function authFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  async function authFetch(
+    url: string,
+    init: RequestInit = {},
+    options: { preferSession?: boolean; disableBearerFallback?: boolean; requireBearer?: boolean } = {},
+  ): Promise<Response> {
+    const requestWithHeaders = (headers: Headers) => fetch(url, { ...init, headers, credentials: 'include' })
+    const isPidpRequest = url.startsWith(pidpUrl('/'))
+    if (options.requireBearer) {
+      // PIdP admin endpoints must prefer the current PIdP session actor, not any stale app runtime token.
+      let authToken = isPidpRequest ? await refreshRuntimeTokenFromSession() : null
+      if (!authToken) authToken = token || null
+      if (!authToken) return new Response('Authentication required', { status: 401 })
+
+      const headers = new Headers(init.headers || {})
+      headers.set('Authorization', `Bearer ${authToken}`)
+      let resp = await requestWithHeaders(headers)
+      if (resp.status === 401 || resp.status === 403) {
+        const refreshed = await refreshRuntimeTokenFromSession()
+        if (!refreshed || refreshed === authToken) return resp
+        const retryHeaders = new Headers(init.headers || {})
+        retryHeaders.set('Authorization', `Bearer ${refreshed}`)
+        resp = await requestWithHeaders(retryHeaders)
+      }
+      return resp
+    }
+
+    if (options.preferSession) {
+      const sessionHeaders = new Headers(init.headers || {})
+      const sessionResp = await requestWithHeaders(sessionHeaders)
+      if (sessionResp.status !== 401 || options.disableBearerFallback) {
+        return sessionResp
+      }
+    }
+
     let authToken = token || null
     if (!authToken) {
       authToken = await refreshRuntimeTokenFromSession()
@@ -107,7 +156,7 @@ export function DevToolsPage() {
     const requestWithToken = (value: string) => {
       const headers = new Headers(init.headers || {})
       headers.set('Authorization', `Bearer ${value}`)
-      return fetch(url, { ...init, headers, credentials: 'include' })
+      return requestWithHeaders(headers)
     }
 
     let resp = await requestWithToken(authToken)
@@ -123,28 +172,14 @@ export function DevToolsPage() {
   async function loadPanel() {
     setLoading(true)
     setStatus(null)
+    setPatAccessNotice(null)
+    setPatAccessCode(null)
     try {
-      const [tokenResp, configResp, tokenInfoResp, authzResp] = await Promise.all([
-        authFetch(pidpUrl('/auth/tokens')),
+      const [configResp, tokenInfoResp, authzResp] = await Promise.all([
         fetch(pidpUrl('/configuration'), { credentials: 'include' }),
         authFetch(pidpUrl('/service/token-info')),
         authFetch('/api/org/api/authz/me'),
       ])
-
-      if (!tokenResp.ok) {
-        const text = await tokenResp.text().catch(() => '')
-        throw new Error(text || `Failed to load API tokens (${tokenResp.status})`)
-      }
-
-      const tokenRows = (await tokenResp.json()) as ApiTokenPublic[]
-      setTokens(Array.isArray(tokenRows) ? tokenRows : [])
-      setRenameDrafts((prev) => {
-        const next: Record<string, string> = {}
-        for (const item of tokenRows || []) {
-          next[item.id] = prev[item.id] ?? item.name
-        }
-        return next
-      })
 
       if (configResp.ok) {
         const config = (await configResp.json()) as PidpConfiguration
@@ -153,12 +188,8 @@ export function DevToolsPage() {
         setPidpConfig(null)
       }
 
-      if (tokenInfoResp.ok) {
-        const info = (await tokenInfoResp.json()) as TokenInfo
-        setTokenInfo(info)
-      } else {
-        setTokenInfo(null)
-      }
+      const info = tokenInfoResp.ok ? ((await tokenInfoResp.json()) as TokenInfo) : null
+      setTokenInfo(info)
 
       if (authzResp.ok) {
         const snapshot = (await authzResp.json()) as AccessSnapshot
@@ -166,6 +197,63 @@ export function DevToolsPage() {
       } else {
         setAccessSnapshot(null)
       }
+
+      const ownerId = info?.owner?.id || null
+      const ownerEmail = info?.owner?.email || 'unknown'
+      const actorType = info?.actor_type || 'owner'
+      const supportsTokenAdmin = info?.token_kind === 'jwt' || info?.token_kind === 'pat'
+      if (!ownerId || !supportsTokenAdmin) {
+        setPatAccessCode(401)
+        setPatAccessNotice('PIdP bearer session is not active. Re-authenticate to manage PATs.')
+        setTokens([])
+        setRenameDrafts({})
+        return
+      }
+
+      const tokenResp = await authFetch(pidpUrl('/auth/tokens'), {}, { requireBearer: true })
+      if (!tokenResp.ok) {
+        if (tokenResp.status === 401) {
+          setPatAccessCode(401)
+          setPatAccessNotice(`Current identity: ${ownerEmail} (${ownerId}). Re-authenticate with PIdP and retry.`)
+          setTokens([])
+          setRenameDrafts({})
+          return
+        }
+        if (tokenResp.status === 403) {
+          const actorHint =
+            actorType === 'website_user'
+              ? 'Current session actor is `website_user`; PAT endpoints require an owner session.'
+              : 'Current session actor is owner, but backend denied access.'
+          if (actorType === 'website_user') {
+            const alreadyAttempted = sessionStorage.getItem(OWNER_REAUTH_GUARD_KEY) === '1'
+            if (!alreadyAttempted) {
+              sessionStorage.setItem(OWNER_REAUTH_GUARD_KEY, '1')
+              window.location.assign(pidpOwnerLoginUrl(window.location.href))
+              return
+            }
+          }
+          setPatAccessCode(403)
+          setPatAccessNotice(
+            `Current identity: ${ownerEmail} (${ownerId}). ${actorHint}`,
+          )
+          setTokens([])
+          setRenameDrafts({})
+          return
+        }
+        const text = await tokenResp.text().catch(() => '')
+        throw new Error(text || `Failed to load API tokens (${tokenResp.status})`)
+      }
+
+      const tokenRows = (await tokenResp.json()) as ApiTokenPublic[]
+      sessionStorage.removeItem(OWNER_REAUTH_GUARD_KEY)
+      setTokens(Array.isArray(tokenRows) ? tokenRows : [])
+      setRenameDrafts((prev) => {
+        const next: Record<string, string> = {}
+        for (const item of tokenRows || []) {
+          next[item.id] = prev[item.id] ?? item.name
+        }
+        return next
+      })
     } catch (err) {
       setStatus(err instanceof Error ? err.message : 'Failed to load developer tools panel.')
     } finally {
@@ -174,6 +262,9 @@ export function DevToolsPage() {
   }
 
   useEffect(() => {
+    if (hasLoadedOnceRef.current && lastTokenRef.current === token) return
+    hasLoadedOnceRef.current = true
+    lastTokenRef.current = token || null
     loadPanel().catch(() => {})
   }, [token])
 
@@ -184,11 +275,15 @@ export function DevToolsPage() {
     setCreateBusy(true)
     setStatus(null)
     try {
-      const resp = await authFetch(pidpUrl('/auth/tokens'), {
+      const resp = await authFetch(
+        pidpUrl('/auth/tokens'),
+        {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, scope: createScope }),
-      })
+        },
+        { requireBearer: true },
+      )
       if (!resp.ok) {
         const text = await resp.text().catch(() => '')
         throw new Error(text || `Failed to create token (${resp.status})`)
@@ -214,11 +309,15 @@ export function DevToolsPage() {
     setRenameBusyId(tokenId)
     setStatus(null)
     try {
-      const resp = await authFetch(pidpUrl(`/auth/tokens/${encodeURIComponent(tokenId)}`), {
+      const resp = await authFetch(
+        pidpUrl(`/auth/tokens/${encodeURIComponent(tokenId)}`),
+        {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: nextName }),
-      })
+        },
+        { requireBearer: true },
+      )
       if (!resp.ok) {
         const text = await resp.text().catch(() => '')
         throw new Error(text || `Failed to rename token (${resp.status})`)
@@ -236,9 +335,13 @@ export function DevToolsPage() {
     setRecycleBusyId(tokenId)
     setStatus(null)
     try {
-      const resp = await authFetch(pidpUrl(`/auth/tokens/${encodeURIComponent(tokenId)}/cycle`), {
+      const resp = await authFetch(
+        pidpUrl(`/auth/tokens/${encodeURIComponent(tokenId)}/cycle`),
+        {
         method: 'POST',
-      })
+        },
+        { requireBearer: true },
+      )
       if (!resp.ok) {
         const text = await resp.text().catch(() => '')
         throw new Error(text || `Failed to cycle token (${resp.status})`)
@@ -259,9 +362,13 @@ export function DevToolsPage() {
     setDeleteBusyId(tokenId)
     setStatus(null)
     try {
-      const resp = await authFetch(pidpUrl(`/auth/tokens/${encodeURIComponent(tokenId)}`), {
+      const resp = await authFetch(
+        pidpUrl(`/auth/tokens/${encodeURIComponent(tokenId)}`),
+        {
         method: 'DELETE',
-      })
+        },
+        { requireBearer: true },
+      )
       if (!resp.ok) {
         const text = await resp.text().catch(() => '')
         throw new Error(text || `Failed to delete token (${resp.status})`)
@@ -306,6 +413,22 @@ export function DevToolsPage() {
             {status}
           </div>
         ) : null}
+        {patAccessNotice ? (
+          <div className="portal-card devtools-status" role="alert">
+            <strong>PAT access unavailable.</strong>
+            <div style={{ marginTop: 6 }}>{patAccessNotice}</div>
+            <div className="muted" style={{ marginTop: 6 }}>
+              PAT endpoints are owner-account only (`users` table). Website-user sessions (`website_users`) cannot manage PATs.
+            </div>
+            {patAccessCode === 401 ? (
+              <div className="devtools-action-row" style={{ marginTop: 10 }}>
+                <a className="btn-primary" href={pidpOwnerLoginUrl(window.location.href)}>
+                  Re-authenticate
+                </a>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         {issuedSecret ? (
           <div className="portal-card devtools-issued-secret">
@@ -333,6 +456,9 @@ export function DevToolsPage() {
           <h2 style={{ margin: 0 }}>PAT Inventory</h2>
           <span className="portal-pill">{tokens.length} total</span>
         </div>
+        <p className="muted" style={{ marginTop: '0.35rem' }}>
+          Auth mode: <code>Session cookie (PIdP)</code>. PAT management endpoints do not use implicit bearer fallback.
+        </p>
 
         <form className="portal-form devtools-create-form" onSubmit={handleCreateToken}>
           <label>
@@ -348,8 +474,8 @@ export function DevToolsPage() {
             Scope
             <select value={createScope} onChange={(event) => setCreateScope(event.target.value as ApiTokenScope)}>
               {scopeOptions.map((scope) => (
-                <option key={scope} value={scope}>
-                  {scope}
+                <option key={scope.value} value={scope.value}>
+                  {scope.label}
                 </option>
               ))}
             </select>
@@ -457,6 +583,10 @@ export function DevToolsPage() {
           <h2 style={{ marginTop: 0 }}>Runtime Auth</h2>
           <p className="muted">Current credential context resolved by PIdP token introspection.</p>
           <div className="devtools-kv-list">
+            <div>
+              <strong>Active identity</strong>
+              <code>{tokenInfo?.owner?.email || 'Unknown'} ({tokenInfo?.owner?.id || 'unknown-id'})</code>
+            </div>
             <div>
               <strong>Token kind</strong>
               <code>{tokenInfo?.token_kind || 'Unknown'}</code>

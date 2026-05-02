@@ -60,8 +60,14 @@ function formatTimestamp(ts: number): string {
 
 function messageAuthorLabel(message: ChatMessage, myUserId: string | null): string {
   if (myUserId && message.sender === myUserId) return 'You'
+  if (message.senderDisplayName?.trim()) return message.senderDisplayName.trim()
   const parts = message.sender.split(':')[0].split('@')
   return parts[1] || message.sender
+}
+
+function authorInitial(message: ChatMessage, myUserId: string | null): string {
+  const label = messageAuthorLabel(message, myUserId).trim()
+  return (label[0] || '?').toUpperCase()
 }
 
 function extractUrlsFromText(value: string): string[] {
@@ -78,6 +84,11 @@ function extractUrlsFromText(value: string): string[] {
     if (urls.length >= 5) break
   }
   return urls
+}
+
+function roomInitial(name: string): string {
+  const label = name.trim()
+  return (label[0] || '#').toUpperCase()
 }
 
 export function OrgChatPage() {
@@ -671,8 +682,12 @@ export function OrgChatPage() {
                     className={`portal-chat-room-btn ${room.id === selectedRoomId ? 'active' : ''}`}
                     onClick={() => navigate(`/chat/${encodeURIComponent(room.id)}`)}
                   >
-                    <span>{room.name}</span>
-                    <small>{room.id}</small>
+                    <span className="portal-chat-room-label">
+                      <span className="portal-avatar portal-chat-room-avatar">
+                        {room.avatarUrl ? <img src={room.avatarUrl} alt={room.name} /> : roomInitial(room.name)}
+                      </span>
+                      <span>{room.name}</span>
+                    </span>
                     {room.unreadCount > 0 ? <span className="portal-chat-unread">{room.unreadCount}</span> : null}
                   </button>
                 </li>
@@ -687,7 +702,12 @@ export function OrgChatPage() {
               {filteredPublicRooms.slice(0, 25).map((room) => (
                 <li key={room.id}>
                   <button type="button" className="portal-chat-room-btn discover" onClick={() => handleJoinRoom(room.id)}>
-                    <span>{room.name}</span>
+                    <span className="portal-chat-room-label">
+                      <span className="portal-avatar portal-chat-room-avatar">
+                        {room.avatarUrl ? <img src={room.avatarUrl} alt={room.name} /> : roomInitial(room.name)}
+                      </span>
+                      <span>{room.name}</span>
+                    </span>
                     <small>Join room</small>
                   </button>
                 </li>
@@ -799,7 +819,16 @@ export function OrgChatPage() {
                       ) : null}
                     </div>
                     <div className="portal-chat-message-meta">
-                      <strong>{messageAuthorLabel(message, myUserId)}</strong>
+                      <div className="portal-chat-message-author">
+                        <span className="portal-avatar portal-chat-message-avatar">
+                          {message.senderAvatarUrl ? (
+                            <img src={message.senderAvatarUrl} alt={messageAuthorLabel(message, myUserId)} />
+                          ) : (
+                            authorInitial(message, myUserId)
+                          )}
+                        </span>
+                        <strong>{messageAuthorLabel(message, myUserId)}</strong>
+                      </div>
                       <span>{formatTimestamp(message.ts)}</span>
                     </div>
                     {threadRoot ? (

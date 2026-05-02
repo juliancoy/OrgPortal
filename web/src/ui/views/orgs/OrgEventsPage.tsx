@@ -285,7 +285,7 @@ export function OrgEventsPage() {
         <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" />
         <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} placeholder="Description" />
         <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Location (optional)" />
-        <div style={{ display: 'grid', gap: '0.5rem', gridTemplateColumns: '1fr 1fr' }}>
+        <div style={{ display: 'grid', gap: '0.5rem', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
           <label style={{ display: 'grid', gap: '0.3rem' }}>
             <span className="muted">Starts at</span>
             <input type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
@@ -337,8 +337,8 @@ export function OrgEventsPage() {
               <div>
                 <strong>{event.title}</strong> <span className="muted">(@{event.slug})</span>
               </div>
-              {event.description ? <div className="muted">{event.description}</div> : null}
-              <div className="muted" style={{ fontSize: '0.85rem' }}>
+              {event.description ? <div className="muted" style={{ overflowWrap: 'anywhere' }}>{event.description}</div> : null}
+              <div className="muted" style={{ fontSize: '0.85rem', overflowWrap: 'anywhere' }}>
                 Host: {event.host_type}
                 {event.host_type === 'org' && event.host_org_name ? ` (${event.host_org_name})` : ''}
                 {' • '}Claimed: {event.claimed_by_user_id ? 'yes' : 'no'}

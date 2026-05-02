@@ -186,8 +186,9 @@ def run(prefix: str, network_name: str) -> None:
         },
         "environment": {
             "NODE_ENV": "development",
-            "CHOKIDAR_USEPOLLING": "1",
-            "CHOKIDAR_INTERVAL": "200",
+            "CHOKIDAR_USEPOLLING": os.getenv("ORGPORTAL_DEV_CHOKIDAR_USEPOLLING", "1"),
+            "CHOKIDAR_INTERVAL": os.getenv("ORGPORTAL_DEV_CHOKIDAR_INTERVAL", "200"),
+            "WATCHPACK_POLLING": os.getenv("ORGPORTAL_DEV_WATCHPACK_POLLING", "true"),
             "VITE_PIDP_BASE_URL": dev_pidp_base_url,
             "VITE_PIDP_APP_SLUG": dev_pidp_app_slug,
             "VITE_DATA_SOURCE": data_source,
@@ -198,7 +199,10 @@ def run(prefix: str, network_name: str) -> None:
         "command": [
             "sh",
             "-c",
-            "npm install && npm run dev -- --host 0.0.0.0 --port 5173",
+            (
+                "npm ci && "
+                "npm run dev -- --host 0.0.0.0 --port 5173 --strictPort"
+            ),
         ],
     }
 

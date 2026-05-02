@@ -100,17 +100,23 @@ function toFiniteNumber(value: unknown, fallback = 0): number {
 }
 
 function resampleHistory(points: MoneySupplyPoint[], targetSamples: number): MoneySupplyPoint[] {
-  if (points.length <= 2 || points.length >= targetSamples) return points
+  if (points.length <= 2 || points.length <= targetSamples) return points
   const lastIndex = points.length - 1
   const samples: MoneySupplyPoint[] = []
   for (let i = 0; i < targetSamples; i += 1) {
     const t = (i / (targetSamples - 1)) * lastIndex
     const left = Math.floor(t)
+    const right = Math.min(lastIndex, Math.ceil(t))
     const leftPoint = points[left]
+    const rightPoint = points[right]
+    const weight = t - left
+    const interpolatedSupply =
+      toFiniteNumber(leftPoint.total_supply) * (1 - weight) + toFiniteNumber(rightPoint.total_supply) * weight
+    const timestamp = rightPoint?.timestamp || leftPoint.timestamp
 
     samples.push({
-      timestamp: leftPoint.timestamp,
-      total_supply: toFiniteNumber(leftPoint.total_supply),
+      timestamp,
+      total_supply: interpolatedSupply,
     })
   }
   return samples
@@ -315,10 +321,12 @@ export function EconomicOpsPage() {
   }, [history, timeframeMs])
 
   const chartModel = useMemo(() => {
-    const normalizedHistory = visibleHistory.map((point) => ({
-      timestamp: point.timestamp,
-      total_supply: toFiniteNumber(point.total_supply),
-    }))
+    const normalizedHistory = visibleHistory
+      .map((point) => ({
+        timestamp: point.timestamp,
+        total_supply: toFiniteNumber(point.total_supply),
+      }))
+      .filter((point) => Number.isFinite(new Date(point.timestamp).getTime()))
     const sampledHistory = resampleHistory(normalizedHistory, CHART_TARGET_SAMPLES)
     const plotWidth = CHART_WIDTH - CHART_MARGIN_LEFT - CHART_MARGIN_RIGHT
     const plotHeight = CHART_HEIGHT - CHART_MARGIN_TOP - CHART_MARGIN_BOTTOM
@@ -529,7 +537,7 @@ export function EconomicOpsPage() {
         <div className="portal-container">
           <section className="portal-hero">
             <div>
-              <span className="portal-pill">Economic Operations</span>
+              <span className="portal-pill">Finance</span>
               <h1>Dena circulation + account directory</h1>
               <p className="portal-muted">
                 Global supply trend over time and a searchable user ledger sorted by Dena balance.

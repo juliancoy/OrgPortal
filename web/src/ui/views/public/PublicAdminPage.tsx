@@ -104,9 +104,15 @@ function formatDate(value?: string | null) {
 
 function messageAuthorLabel(message: ChatMessage, myUserId: string | null): string {
   if (myUserId && message.sender === myUserId) return 'You'
+  if (message.senderDisplayName?.trim()) return message.senderDisplayName.trim()
   const sender = String(message.sender || 'unknown')
   const parts = sender.split(':')[0].split('@')
   return parts[1] || sender
+}
+
+function messageAuthorInitial(message: ChatMessage, myUserId: string | null): string {
+  const label = messageAuthorLabel(message, myUserId).trim()
+  return (label[0] || '?').toUpperCase()
 }
 
 export function PublicAdminPage() {
@@ -966,7 +972,7 @@ export function PublicAdminPage() {
                         value={orgNameDraft}
                         onChange={(e) => setOrgNameDraft(e.target.value)}
                         placeholder="Organization name"
-                        style={{ minWidth: 240, flex: '1 1 260px' }}
+                        style={{ minWidth: 0, maxWidth: '100%', flex: '1 1 240px' }}
                       />
                       <button type="button" onClick={saveOrganizationName} disabled={savingOrgName || !orgNameDraft.trim()}>
                         {savingOrgName ? 'Saving…' : 'Save Name'}
@@ -981,7 +987,7 @@ export function PublicAdminPage() {
                         value={orgImageDraft}
                         onChange={(e) => setOrgImageDraft(e.target.value)}
                         placeholder="https://example.com/org-image.png"
-                        style={{ minWidth: 240, flex: '1 1 260px' }}
+                        style={{ minWidth: 0, maxWidth: '100%', flex: '1 1 240px' }}
                       />
                       <button type="button" onClick={() => void saveOrganizationImage()} disabled={savingOrgImage}>
                         {savingOrgImage ? 'Saving…' : 'Save Image'}
@@ -1109,10 +1115,19 @@ export function PublicAdminPage() {
                             style={{ borderLeft: '2px solid var(--border)', paddingLeft: '0.55rem', display: 'grid', gap: '0.35rem' }}
                           >
                             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.4rem', alignItems: 'center' }}>
-                              <p className="muted" style={{ margin: 0 }}>
-                                {messageAuthorLabel(message, myUserId)} • {new Date(message.ts).toLocaleString()}
-                                {message.edited ? ' • edited' : ''}
-                              </p>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', minWidth: 0 }}>
+                                <span className="portal-avatar" style={{ width: 22, height: 22, fontSize: '0.62rem', flex: '0 0 auto' }}>
+                                  {message.senderAvatarUrl ? (
+                                    <img src={message.senderAvatarUrl} alt={messageAuthorLabel(message, myUserId)} />
+                                  ) : (
+                                    messageAuthorInitial(message, myUserId)
+                                  )}
+                                </span>
+                                <p className="muted" style={{ margin: 0 }}>
+                                  {messageAuthorLabel(message, myUserId)} • {new Date(message.ts).toLocaleString()}
+                                  {message.edited ? ' • edited' : ''}
+                                </p>
+                              </div>
                               {isMine && generalSessionReady ? (
                                 <div style={{ position: 'relative' }}>
                                   <button

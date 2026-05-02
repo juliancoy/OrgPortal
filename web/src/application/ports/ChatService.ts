@@ -9,6 +9,7 @@ export type ChatSession = {
 export type ChatRoomSummary = {
   id: string
   name: string
+  avatarUrl?: string
   unreadCount: number
   lastActivityTs?: number
 }
@@ -16,6 +17,8 @@ export type ChatRoomSummary = {
 export type ChatMessage = {
   id: string
   sender: string
+  senderDisplayName?: string
+  senderAvatarUrl?: string
   body: string
   ts: number
   edited?: boolean

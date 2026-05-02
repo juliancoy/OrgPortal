@@ -415,8 +415,8 @@ export function OrgProfilePage() {
             : (org.source_url ? [org.source_url] : [])
           return (
             <article key={org.id} className="portal-card" style={{ display: 'grid', gap: '0.4rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.8rem', alignItems: 'start' }}>
-                <div style={{ display: 'grid', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.8rem', alignItems: 'start', flexWrap: 'wrap' }}>
+                <div style={{ display: 'grid', gap: '0.5rem', minWidth: 0, flex: '1 1 260px' }}>
                   <OrgImage
                     src={org.image_url}
                     alt={org.name}
@@ -430,12 +430,12 @@ export function OrgProfilePage() {
                   />
                   <div>
                     <strong>{org.name}</strong> <span className="muted">(@{org.slug})</span>
-                    {org.description ? <div className="muted">{org.description}</div> : null}
-                    <div className="muted" style={{ fontSize: '0.8rem' }}>
+                    {org.description ? <div className="muted" style={{ overflowWrap: 'anywhere' }}>{org.description}</div> : null}
+                    <div className="muted" style={{ fontSize: '0.8rem', overflowWrap: 'anywhere' }}>
                       {sourceUrls.length > 0 ? sourceUrls[0] : 'User-created'} • Members: {org.membership_count} • {org.seeded_from_events ? 'Seeded' : 'Custom'}
                     </div>
                     {sourceUrls.length > 1 ? (
-                      <div className="muted" style={{ fontSize: '0.8rem' }}>
+                      <div className="muted" style={{ fontSize: '0.8rem', overflowWrap: 'anywhere' }}>
                         Sources: {sourceUrls.join(' • ')}
                       </div>
                     ) : null}
@@ -464,7 +464,7 @@ export function OrgProfilePage() {
                       }))
                     }
                     placeholder="Organization name"
-                    style={{ minWidth: 220 }}
+                    style={{ minWidth: 0, flex: '1 1 220px', maxWidth: '100%' }}
                   />
                   <button
                     type="button"
@@ -482,7 +482,7 @@ export function OrgProfilePage() {
                       }))
                     }
                     placeholder="Image URL"
-                    style={{ minWidth: 220 }}
+                    style={{ minWidth: 0, flex: '1 1 220px', maxWidth: '100%' }}
                   />
                   <button type="button" onClick={() => saveOrgImage(org.id)} disabled={!token}>
                     Save Image
@@ -495,7 +495,7 @@ export function OrgProfilePage() {
                         [org.id]: e.target.value,
                       }))
                     }
-                    style={{ minWidth: 220 }}
+                    style={{ minWidth: 0, flex: '1 1 220px', maxWidth: '100%' }}
                   >
                     <option value="">Select source org to merge into {org.name}</option>
                     {sourceOptions.map((candidate) => (

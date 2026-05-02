@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useServices, useAuth } from '../../../app/AppProviders'
+import { useAuth } from '../../../app/AppProviders'
 import { proposeMotion } from '../../../application/usecases/proposeMotion'
 import { GovernanceNav, GovernanceBreadcrumb } from '../../components/governance/GovernanceNav'
+import { useGovernanceParadigm, useGovernanceRepositories } from './paradigm'
 
 const ORG_API_BASE = '/api/org'
 
@@ -33,7 +34,8 @@ const inputStyle: React.CSSProperties = {
 }
 
 export function ProposeMotionPage() {
-  const { motionRepository } = useServices()
+  const { motionRepository } = useGovernanceRepositories()
+  const { basePath, isRoberts } = useGovernanceParadigm()
   const { user, token } = useAuth()
   const navigate = useNavigate()
 
@@ -47,8 +49,8 @@ export function ProposeMotionPage() {
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    document.title = 'Org Portal \u2022 Propose Motion'
-  }, [])
+    document.title = isRoberts ? "Org Portal \u2022 Propose Motion \u2022 Robert's Rules" : 'Org Portal \u2022 Propose Motion'
+  }, [isRoberts])
 
   useEffect(() => {
     if (!token) {
@@ -110,7 +112,7 @@ export function ProposeMotionPage() {
     })
     setSubmitting(false)
     if (res.ok) {
-      navigate(`/governance/${res.motion.id}`)
+      navigate(`${basePath}/${res.motion.id}`)
     } else {
       setErrors(res.errors)
     }
@@ -120,7 +122,7 @@ export function ProposeMotionPage() {
     <div>
       <GovernanceNav />
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px 20px 40px' }}>
-        <GovernanceBreadcrumb items={[{ label: 'Motions', to: '/governance' }, { label: 'Propose Motion' }]} />
+        <GovernanceBreadcrumb items={[{ label: 'Motions', to: basePath }, { label: 'Propose Motion' }]} />
 
       <div style={{
         background: 'var(--panel)',

@@ -48,6 +48,7 @@ import { DevToolsPage } from '../views/DevToolsPage'
 import { BusinessCardIntakePage } from '../views/BusinessCardIntakePage'
 import { PeoplePage } from '../views/PeoplePage'
 import { refreshRuntimeTokenFromSession } from '../../infrastructure/auth/sessionToken'
+import { UbiSettingsPage } from '../views/UbiSettingsPage'
 
 function AuthenticatedRoute(props: { children: ReactElement }) {
   const { role, isLoading } = useAuth()
@@ -112,7 +113,8 @@ export function createAppRouter() {
   return createBrowserRouter(
     [
       { path: '/', element: <HomeRoute /> },
-      { path: '/ecops', element: <EconomicOpsPage /> },
+      { path: '/finance', element: <EconomicOpsPage /> },
+      { path: '/ecops', element: <Navigate to="/finance" replace /> },
       { path: '/send', element: <SendPage /> },
       { path: '/receive', element: <ReceivePage /> },
       { path: '/create', element: <CreatePage /> },
@@ -184,6 +186,14 @@ export function createAppRouter() {
               </AdminRoute>
             ),
           },
+          {
+            path: '/admin/ubi-settings',
+            element: (
+              <AdminRoute>
+                <UbiSettingsPage />
+              </AdminRoute>
+            ),
+          },
           { path: '/targets/:target', element: <TargetPage /> },
 
           { path: '/events', element: <PublicEventsPage /> },
@@ -199,6 +209,10 @@ export function createAppRouter() {
           { path: '/contact-settings', element: <ContactSettingsPage /> },
 
           // Governance
+          { path: '/governance/roberts', element: <MotionListPage /> },
+          { path: '/governance/roberts/propose', element: <ProposeMotionPage /> },
+          { path: '/governance/roberts/:id', element: <MotionDetailPage /> },
+          { path: '/governance/roberts/:id/amend', element: <ProposeAmendmentPage /> },
           { path: '/governance', element: <MotionListPage /> },
           { path: '/governance/propose', element: <ProposeMotionPage /> },
           { path: '/governance/:id', element: <MotionDetailPage /> },

@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { useServices, useAuth } from '../../../app/AppProviders'
+import { useAuth } from '../../../app/AppProviders'
 import { getMotionById } from '../../../application/usecases/getMotionById'
 import { proposeAmendment } from '../../../application/usecases/proposeAmendment'
 import type { Motion } from '../../../domain/motion/Motion'
 import { AmendmentDiff } from '../../components/governance/AmendmentDiff'
 import { GovernanceNav, GovernanceBreadcrumb } from '../../components/governance/GovernanceNav'
+import { useGovernanceParadigm, useGovernanceRepositories } from './paradigm'
 
 const ORG_API_BASE = '/api/org'
 
@@ -37,7 +38,8 @@ const inputStyle: React.CSSProperties = {
 
 export function ProposeAmendmentPage() {
   const { id } = useParams()
-  const { motionRepository } = useServices()
+  const { motionRepository } = useGovernanceRepositories()
+  const { basePath, isRoberts } = useGovernanceParadigm()
   const { user, token } = useAuth()
   const navigate = useNavigate()
 
@@ -52,8 +54,8 @@ export function ProposeAmendmentPage() {
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    document.title = 'Org Portal \u2022 Propose Amendment'
-  }, [])
+    document.title = isRoberts ? "Org Portal \u2022 Propose Amendment \u2022 Robert's Rules" : 'Org Portal \u2022 Propose Amendment'
+  }, [isRoberts])
 
   useEffect(() => {
     if (!id) return
@@ -126,7 +128,7 @@ export function ProposeAmendmentPage() {
     })
     setSubmitting(false)
     if (res.ok) {
-      navigate(`/governance/${res.motion.id}`)
+      navigate(`${basePath}/${res.motion.id}`)
     } else {
       setErrors(res.errors)
     }
@@ -151,7 +153,33 @@ export function ProposeAmendmentPage() {
         }}>
           <h1 style={{ marginTop: 0, color: 'var(--text-primary)' }}>Motion not found</h1>
           <p style={{ color: 'var(--text-muted)' }}>Cannot propose an amendment for a nonexistent motion.</p>
-          <Link to="/governance" style={{ color: 'var(--accent-blue)', fontWeight: 600 }}>Back to Governance</Link>
+          <Link to={basePath} style={{ color: 'var(--accent-blue)', fontWeight: 600 }}>Back to Governance</Link>
+        </div>
+      </div>
+    )
+  }
+
+  if (isRoberts) {
+    return (
+      <div>
+        <GovernanceNav />
+        <div style={{ maxWidth: 720, margin: '0 auto', padding: '40px 20px' }}>
+          <div
+            style={{
+              background: 'var(--panel)',
+              borderRadius: 'var(--radius-lg)',
+              boxShadow: 'var(--shadow-card)',
+              padding: 32,
+            }}
+          >
+            <h1 style={{ marginTop: 0, color: 'var(--text-primary)' }}>Amendments are not enabled in this paradigm</h1>
+            <p style={{ color: 'var(--text-muted)' }}>
+              The current Robert&apos;s Rules backend does not expose amendment creation endpoints yet.
+            </p>
+            <Link to={`${basePath}/${id}`} style={{ color: 'var(--accent-blue)', fontWeight: 600 }}>
+              Back to Motion
+            </Link>
+          </div>
         </div>
       </div>
     )
@@ -163,8 +191,8 @@ export function ProposeAmendmentPage() {
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px 20px 40px' }}>
         <GovernanceBreadcrumb 
           items={[
-            { label: 'Motions', to: '/governance' },
-            { label: parentMotion?.title || 'Motion', to: `/governance/${id}` },
+            { label: 'Motions', to: basePath },
+            { label: parentMotion?.title || 'Motion', to: `${basePath}/${id}` },
             { label: 'Propose Amendment' },
           ]} 
         />

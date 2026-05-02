@@ -32,29 +32,60 @@ type SubmissionResult = {
   created_at?: string | null
 }
 
+type ScanTarget = {
+  type?: string | null
+  id?: string | null
+  slug?: string | null
+  name?: string | null
+  url?: string | null
+  summary?: string | null
+}
+
+function scanTargets(scan: SubmissionResult): ScanTarget[] {
+  if (Array.isArray(scan.created_targets) && scan.created_targets.length > 0) {
+    return scan.created_targets
+  }
+  if (scan.created_target_type) {
+    const fallbackUrl =
+      scan.created_target_type === 'organization' && scan.created_target_slug
+        ? `/orgs/${encodeURIComponent(scan.created_target_slug)}`
+        : scan.created_target_type === 'event' && scan.created_target_slug
+          ? `/events/${encodeURIComponent(scan.created_target_slug)}`
+          : null
+    return [
+      {
+        type: scan.created_target_type,
+        id: scan.created_target_id || null,
+        slug: scan.created_target_slug || null,
+        name: scan.created_target_name || null,
+        url: fallbackUrl,
+      },
+    ]
+  }
+  return []
+}
+
+function groupTargetsByCategory(scan: SubmissionResult): Record<string, ScanTarget[]> {
+  const grouped: Record<string, ScanTarget[]> = {}
+  for (const target of scanTargets(scan)) {
+    const category = (target.type || 'resource').toLowerCase()
+    if (!grouped[category]) grouped[category] = []
+    grouped[category].push(target)
+  }
+  return grouped
+}
+
 function formatScanResult(scan: SubmissionResult): string {
-  const targets = Array.isArray(scan.created_targets) && scan.created_targets.length > 0
-    ? scan.created_targets
-    : scan.created_target_type
-      ? [
-          {
-            type: scan.created_target_type,
-            id: scan.created_target_id || null,
-            slug: scan.created_target_slug || null,
-            name: scan.created_target_name || null,
-          },
-        ]
-      : []
+  const grouped = groupTargetsByCategory(scan)
+  const categories = Object.keys(grouped)
   if (scan.clarification_required) {
     return 'Clarification required before record creation'
   }
-  if (targets.length > 0) {
-    const labeled = targets.map((target) => {
-      const typeLabel = target.type || 'resource'
-      const nameLabel = target.name || target.slug || target.id || 'created'
-      return `${typeLabel}: ${nameLabel}`
-    })
-    return `Created ${labeled.join(' · ')}`
+  if (categories.length > 0) {
+    const summary = categories
+      .map((category) => `${category} (${grouped[category].length})`)
+      .join(', ')
+    return `Added by category: ${summary}`
   }
   if (scan.created_target_type) {
     return `Created ${scan.created_target_type}`
@@ -69,16 +100,18 @@ function formatScanResult(scan: SubmissionResult): string {
 }
 
 export function BusinessCardIntakePage() {
-  const { token } = useAuth()
+  const { token, user } = useAuth()
   const nextUrl = window.location.href
   const [file, setFile] = useState<File | null>(null)
   const [scanKind, setScanKind] = useState<'auto' | 'person' | 'organization' | 'event'>('auto')
   const [notes, setNotes] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false)
+  const [isLoadingMyHistory, setIsLoadingMyHistory] = useState(false)
+  const [isLoadingGlobalHistory, setIsLoadingGlobalHistory] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<SubmissionResult | null>(null)
-  const [history, setHistory] = useState<SubmissionResult[]>([])
+  const [myHistory, setMyHistory] = useState<SubmissionResult[]>([])
+  const [globalHistory, setGlobalHistory] = useState<SubmissionResult[]>([])
   const [filterMode, setFilterMode] = useState<'all' | 'clarification'>('all')
   const [imageUrls, setImageUrls] = useState<Record<string, string>>({})
   const [imageLoading, setImageLoading] = useState<Record<string, boolean>>({})
@@ -211,7 +244,7 @@ export function BusinessCardIntakePage() {
       }
       const payload = (await rerunResponse.json()) as SubmissionResult
       setResult(payload)
-      setHistory((prev) => [payload, ...prev])
+      setMyHistory((prev) => [payload, ...prev])
       if (payload.id) {
         void loadScanImage(payload.id)
       }
@@ -222,64 +255,42 @@ export function BusinessCardIntakePage() {
     }
   }
 
-  const filteredHistory = history.filter((scan) => {
+  const filteredMyHistory = myHistory.filter((scan) => {
     if (filterMode === 'clarification') return Boolean(scan.clarification_required)
     return true
   })
-
-  function scanTargets(scan: SubmissionResult) {
-    if (Array.isArray(scan.created_targets) && scan.created_targets.length > 0) {
-      return scan.created_targets
-    }
-    if (scan.created_target_type) {
-      const fallbackUrl =
-        scan.created_target_type === 'organization' && scan.created_target_slug
-          ? `/orgs/${encodeURIComponent(scan.created_target_slug)}`
-          : scan.created_target_type === 'event' && scan.created_target_slug
-            ? `/events/${encodeURIComponent(scan.created_target_slug)}`
-            : null
-      return [
-        {
-          type: scan.created_target_type,
-          id: scan.created_target_id || null,
-          slug: scan.created_target_slug || null,
-          name: scan.created_target_name || null,
-          url: fallbackUrl,
-        },
-      ]
-    }
-    return []
-  }
-
-  function primaryTargetUrl(scan: SubmissionResult): string | null {
-    const targets = scanTargets(scan)
-    const firstWithUrl = targets.find((target) => Boolean(target.url))
-    return firstWithUrl?.url ?? null
-  }
+  const filteredGlobalHistory = globalHistory.filter((scan) => {
+    if (filterMode === 'clarification') return Boolean(scan.clarification_required)
+    return true
+  })
 
   useEffect(() => {
     if (!token) return
     const ids: string[] = []
     if (result?.id) ids.push(result.id)
-    for (const scan of filteredHistory.slice(0, 24)) {
+    for (const scan of filteredMyHistory.slice(0, 24)) {
+      if (scan.id) ids.push(scan.id)
+    }
+    for (const scan of filteredGlobalHistory.slice(0, 24)) {
       if (scan.id) ids.push(scan.id)
     }
     for (const submissionId of ids) {
       if (imageUrls[submissionId] || imageLoading[submissionId]) continue
       void loadScanImage(submissionId)
     }
-  }, [token, result, filteredHistory, imageUrls, imageLoading])
+  }, [token, result, filteredMyHistory, filteredGlobalHistory, imageUrls, imageLoading])
 
   useEffect(() => {
     if (!token) {
-      setHistory([])
+      setMyHistory([])
+      setGlobalHistory([])
       return
     }
     let cancelled = false
-    async function loadHistory() {
+    async function loadMyHistory() {
       try {
-        setIsLoadingHistory(true)
-        const response = await fetch('/api/org/api/network/scans?scope=public&limit=100', {
+        setIsLoadingMyHistory(true)
+        const response = await fetch('/api/org/api/network/scans?scope=mine&limit=100', {
           headers: { Authorization: `Bearer ${token}` },
         })
         if (!response.ok) {
@@ -287,19 +298,43 @@ export function BusinessCardIntakePage() {
         }
         const payload = (await response.json()) as SubmissionResult[]
         if (!cancelled) {
-          setHistory(Array.isArray(payload) ? payload : [])
+          setMyHistory(Array.isArray(payload) ? payload : [])
         }
       } catch {
         if (!cancelled) {
-          setHistory([])
+          setMyHistory([])
         }
       } finally {
         if (!cancelled) {
-          setIsLoadingHistory(false)
+          setIsLoadingMyHistory(false)
         }
       }
     }
-    loadHistory().catch(() => {})
+    async function loadGlobalHistory() {
+      try {
+        setIsLoadingGlobalHistory(true)
+        const response = await fetch('/api/org/api/network/scans?scope=public&limit=100', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!response.ok) {
+          throw new Error(`Unable to load global scans (${response.status})`)
+        }
+        const payload = (await response.json()) as SubmissionResult[]
+        if (!cancelled) {
+          setGlobalHistory(Array.isArray(payload) ? payload : [])
+        }
+      } catch {
+        if (!cancelled) {
+          setGlobalHistory([])
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingGlobalHistory(false)
+        }
+      }
+    }
+    loadMyHistory().catch(() => {})
+    loadGlobalHistory().catch(() => {})
     return () => {
       cancelled = true
     }
@@ -336,7 +371,7 @@ export function BusinessCardIntakePage() {
       }
       const payload = (await response.json()) as SubmissionResult
       setResult(payload)
-      setHistory((prev) => [payload, ...prev])
+      setMyHistory((prev) => [payload, ...prev])
       setFile(null)
       if (selectedPreviewRef.current) {
         URL.revokeObjectURL(selectedPreviewRef.current)
@@ -471,21 +506,21 @@ export function BusinessCardIntakePage() {
               </ul>
               {scanTargets(result).length > 0 ? (
                 <div style={{ display: 'grid', gap: '0.3rem', marginBottom: '0.5rem' }}>
-                  <strong>Created elements ({scanTargets(result).length})</strong>
-                  {scanTargets(result).map((target, index) => (
-                    <div key={`${target.type || 'resource'}-${target.id || target.slug || index}`} style={{ fontSize: '0.9rem' }}>
-                      <span style={{ textTransform: 'capitalize' }}>{target.type || 'resource'}</span>
+                  <strong>Created Elements By Category</strong>
+                  {Object.entries(groupTargetsByCategory(result)).map(([category, targets]) => (
+                    <div key={`latest-${category}`} style={{ fontSize: '0.9rem' }}>
+                      <span style={{ textTransform: 'capitalize', fontWeight: 700 }}>{category}</span>
                       {': '}
-                      {target.url ? (
-                        <a href={target.url}>{target.name || target.slug || target.id || target.url}</a>
-                      ) : (
-                        <span>{target.name || target.slug || target.id || 'created'}</span>
-                      )}
-                      {target.summary ? (
-                        <div className="muted" style={{ fontSize: '0.82rem' }}>
-                          {target.summary}
-                        </div>
-                      ) : null}
+                      {targets.map((target, index) => (
+                        <span key={`${category}-${target.id || target.slug || index}`}>
+                          {index > 0 ? ', ' : ''}
+                          {target.url ? (
+                            <a href={target.url}>{target.name || target.slug || target.id || target.url}</a>
+                          ) : (
+                            <span>{target.name || target.slug || target.id || 'created'}</span>
+                          )}
+                        </span>
+                      ))}
                     </div>
                   ))}
                 </div>
@@ -510,9 +545,9 @@ export function BusinessCardIntakePage() {
         </div>
 
         <aside>
-          <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Completed Scans</h2>
+          <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Scan History</h2>
           <p className="muted" style={{ marginTop: 0 }}>
-            Recent scans and their outcomes.
+            Separate tables for your scans and the global feed{user?.displayName ? ` (${user.displayName})` : ''}.
           </p>
           <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.65rem', flexWrap: 'wrap' }}>
             <button
@@ -530,143 +565,128 @@ export function BusinessCardIntakePage() {
               Needs Clarification
             </button>
           </div>
-          {isLoadingHistory ? <p className="muted">Loading scans...</p> : null}
-          {!isLoadingHistory && filteredHistory.length === 0 ? <p className="muted">No scans in this filter.</p> : null}
-          <div style={{ display: 'grid', gap: '0.65rem', maxHeight: '70vh', overflowY: 'auto', paddingRight: '0.2rem' }}>
-            {filteredHistory.map((scan) => {
-              const cardTargetUrl = primaryTargetUrl(scan)
-              const targets = scanTargets(scan)
-              const scanImageUrl = scan.id ? imageUrls[scan.id] : null
-              return (
-              <article
-                key={scan.id || `${scan.created_at || ''}-${scan.extracted_email || ''}`}
-                className="panel"
-                style={{ margin: 0, cursor: cardTargetUrl ? 'pointer' : 'default' }}
-                role={cardTargetUrl ? 'link' : undefined}
-                tabIndex={cardTargetUrl ? 0 : undefined}
-                onClick={
-                  cardTargetUrl
-                    ? (event) => {
-                        const targetElement = event.target as HTMLElement | null
-                        if (targetElement?.closest('a')) return
-                        window.location.assign(cardTargetUrl)
-                      }
-                    : undefined
-                }
-                onKeyDown={
-                  cardTargetUrl
-                    ? (event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault()
-                          window.location.assign(cardTargetUrl)
-                        }
-                      }
-                    : undefined
-                }
-              >
-                <div style={{ display: 'grid', gap: '0.3rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-                    <strong>{scan.extracted_name || scan.created_target_name || scan.extracted_company || 'Scan'}</strong>
-                    {scan.id ? (
-                      <button
-                        type="button"
-                        title="Run this scan again"
-                        aria-label="Run this scan again"
-                        onClick={(event) => {
-                          event.preventDefault()
-                          event.stopPropagation()
-                          void rerunScan(scan)
-                        }}
-                        disabled={Boolean(rerunBusy[scan.id])}
-                        style={{
-                          minWidth: '2rem',
-                          minHeight: '2rem',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          borderRadius: '999px',
-                          fontSize: '1rem',
-                          lineHeight: 1,
-                          padding: 0,
-                        }}
-                      >
-                        {rerunBusy[scan.id] ? '…' : '↻'}
-                      </button>
-                    ) : null}
-                  </div>
-                  <span className="muted" style={{ fontSize: '0.85rem' }}>
-                    {scan.created_at ? new Date(scan.created_at).toLocaleString() : 'Unknown time'}
-                  </span>
-                  {scan.submitted_by_name ? (
-                    <span className="muted" style={{ fontSize: '0.85rem' }}>
-                      Submitted by: {scan.submitted_by_name}
-                    </span>
-                  ) : null}
-                  <span style={{ fontSize: '0.9rem' }}>{formatScanResult(scan)}</span>
-                  <span className="muted" style={{ fontSize: '0.85rem' }}>
-                    Type: {scan.scan_kind || 'n/a'} | Requested: {scan.scan_kind_requested || 'auto'}
-                  </span>
-                  {targets.length > 0 ? (
-                    <div style={{ display: 'grid', gap: '0.2rem', fontSize: '0.85rem' }}>
-                      <strong>Created elements ({targets.length})</strong>
-                      {targets.map((target, index) => (
-                        <span key={`${scan.id || 'scan'}-${target.type || 'resource'}-${target.id || target.slug || index}`}>
-                          <span style={{ textTransform: 'capitalize' }}>{target.type || 'resource'}</span>
-                          {': '}
-                          {target.url ? (
-                            <a href={target.url}>{target.name || target.slug || target.id || target.url}</a>
-                          ) : (
-                            <span>{target.name || target.slug || target.id || 'created'}</span>
-                          )}
-                          {target.summary ? (
-                            <span className="muted" style={{ display: 'block', marginTop: '0.15rem' }}>
-                              {target.summary}
-                            </span>
+          <h3 style={{ margin: '0.2rem 0 0.4rem' }}>My Scans</h3>
+          {isLoadingMyHistory ? <p className="muted">Loading your scans...</p> : null}
+          {!isLoadingMyHistory && filteredMyHistory.length === 0 ? <p className="muted">No scans in this filter.</p> : null}
+          <div style={{ overflowX: 'auto', marginBottom: '1rem' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: 'left', borderBottom: '1px solid var(--border)', padding: '0.4rem' }}>Image</th>
+                  <th style={{ textAlign: 'left', borderBottom: '1px solid var(--border)', padding: '0.4rem' }}>Details</th>
+                  <th style={{ textAlign: 'left', borderBottom: '1px solid var(--border)', padding: '0.4rem' }}>Added By Category</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredMyHistory.map((scan) => {
+                  const groupedTargets = groupTargetsByCategory(scan)
+                  const categories = Object.keys(groupedTargets)
+                  const scanImageUrl = scan.id ? imageUrls[scan.id] : null
+                  return (
+                    <tr key={`mine-${scan.id || `${scan.created_at || ''}-${scan.extracted_email || ''}`}`}>
+                      <td style={{ padding: '0.45rem', verticalAlign: 'top', width: 120 }}>
+                        {scan.id && imageLoading[scan.id] ? <span className="muted">Loading…</span> : null}
+                        {scan.id && imageErrors[scan.id] ? <span className="portal-chat-error">{imageErrors[scan.id]}</span> : null}
+                        {scanImageUrl ? (
+                          <button
+                            type="button"
+                            onClick={() => setModalPreviewUrl(scanImageUrl)}
+                            style={{ border: 'none', background: 'transparent', padding: 0, cursor: 'zoom-in' }}
+                          >
+                            <img src={scanImageUrl} alt="Original submitted scan" style={{ width: 110, height: 78, objectFit: 'cover', borderRadius: 8 }} />
+                          </button>
+                        ) : null}
+                      </td>
+                      <td style={{ padding: '0.45rem', verticalAlign: 'top' }}>
+                        <div style={{ display: 'grid', gap: '0.2rem' }}>
+                          <strong>{scan.extracted_name || scan.created_target_name || scan.extracted_company || 'Scan'}</strong>
+                          <span className="muted">{scan.created_at ? new Date(scan.created_at).toLocaleString() : 'Unknown time'}</span>
+                          <span>{formatScanResult(scan)}</span>
+                          <span className="muted">Type: {scan.scan_kind || 'n/a'} | Requested: {scan.scan_kind_requested || 'auto'}</span>
+                          {scan.id ? (
+                            <button type="button" onClick={() => void rerunScan(scan)} disabled={Boolean(rerunBusy[scan.id])} style={{ width: 'fit-content' }}>
+                              {rerunBusy[scan.id] ? 'Rerunning…' : 'Rerun'}
+                            </button>
                           ) : null}
-                        </span>
-                      ))}
-                    </div>
-                  ) : null}
-                  {scan.extracted_email ? <span className="muted" style={{ fontSize: '0.85rem' }}>Email: {scan.extracted_email}</span> : null}
-                  {scan.notification_error ? (
-                    <span className="portal-chat-error" style={{ margin: 0, fontSize: '0.85rem' }}>
-                      Notification: {scan.notification_error}
-                    </span>
-                  ) : null}
-                  {scan.id ? (
-                    <div style={{ display: 'grid', gap: '0.35rem' }}>
-                      {imageLoading[scan.id] ? <span className="muted">Loading image…</span> : null}
-                      {imageErrors[scan.id] ? (
-                        <span className="portal-chat-error" style={{ margin: 0, fontSize: '0.85rem' }}>
-                          {imageErrors[scan.id]}
-                        </span>
-                      ) : null}
-                      {scanImageUrl ? (
-                        <button
-                          type="button"
-                          onClick={() => setModalPreviewUrl(scanImageUrl)}
-                          style={{
-                            border: 'none',
-                            background: 'transparent',
-                            padding: 0,
-                            textAlign: 'left',
-                            cursor: 'zoom-in',
-                          }}
-                        >
-                          <img
-                            src={scanImageUrl}
-                            alt="Original submitted scan"
-                            style={{ width: '100%', maxHeight: '180px', objectFit: 'cover', borderRadius: 8 }}
-                          />
-                          <span className="muted" style={{ fontSize: '0.8rem' }}>Click to expand</span>
-                        </button>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </div>
-              </article>
-            )})}
+                        </div>
+                      </td>
+                      <td style={{ padding: '0.45rem', verticalAlign: 'top' }}>
+                        {categories.length === 0 ? (
+                          <span className="muted">No created elements</span>
+                        ) : (
+                          <div style={{ display: 'grid', gap: '0.25rem' }}>
+                            {categories.map((category) => (
+                              <div key={`mine-${scan.id || scan.created_at}-${category}`}>
+                                <strong style={{ textTransform: 'capitalize' }}>{category}</strong>
+                                {': '}
+                                {groupedTargets[category].map((target, index) => (
+                                  <span key={`${category}-${target.id || target.slug || index}`}>
+                                    {index > 0 ? ', ' : ''}
+                                    {target.url ? <a href={target.url}>{target.name || target.slug || target.id || target.url}</a> : (target.name || target.slug || target.id || 'created')}
+                                  </span>
+                                ))}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
+
+          <h3 style={{ margin: '0.2rem 0 0.4rem' }}>Global Scans</h3>
+          {isLoadingGlobalHistory ? <p className="muted">Loading global scans...</p> : null}
+          {!isLoadingGlobalHistory && filteredGlobalHistory.length === 0 ? <p className="muted">No global scans in this filter.</p> : null}
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: 'left', borderBottom: '1px solid var(--border)', padding: '0.4rem' }}>Submitted By</th>
+                  <th style={{ textAlign: 'left', borderBottom: '1px solid var(--border)', padding: '0.4rem' }}>When</th>
+                  <th style={{ textAlign: 'left', borderBottom: '1px solid var(--border)', padding: '0.4rem' }}>Summary</th>
+                  <th style={{ textAlign: 'left', borderBottom: '1px solid var(--border)', padding: '0.4rem' }}>Added By Category</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredGlobalHistory.map((scan) => {
+                  const groupedTargets = groupTargetsByCategory(scan)
+                  const categories = Object.keys(groupedTargets)
+                  return (
+                    <tr key={`global-${scan.id || `${scan.created_at || ''}-${scan.extracted_email || ''}`}`}>
+                      <td style={{ padding: '0.45rem', verticalAlign: 'top' }}>{scan.submitted_by_name || 'Unknown'}</td>
+                      <td style={{ padding: '0.45rem', verticalAlign: 'top' }}>{scan.created_at ? new Date(scan.created_at).toLocaleString() : 'Unknown time'}</td>
+                      <td style={{ padding: '0.45rem', verticalAlign: 'top' }}>{formatScanResult(scan)}</td>
+                      <td style={{ padding: '0.45rem', verticalAlign: 'top' }}>
+                        {categories.length === 0 ? (
+                          <span className="muted">No created elements</span>
+                        ) : (
+                          <div style={{ display: 'grid', gap: '0.25rem' }}>
+                            {categories.map((category) => (
+                              <div key={`global-${scan.id || scan.created_at}-${category}`}>
+                                <strong style={{ textTransform: 'capitalize' }}>{category}</strong>
+                                {': '}
+                                {groupedTargets[category].map((target, index) => (
+                                  <span key={`${category}-${target.id || target.slug || index}`}>
+                                    {index > 0 ? ', ' : ''}
+                                    {target.name || target.slug || target.id || 'created'}
+                                  </span>
+                                ))}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+
+
         </aside>
       </div>
       {modalPreviewUrl ? (

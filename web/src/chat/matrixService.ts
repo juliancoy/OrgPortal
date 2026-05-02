@@ -16,6 +16,7 @@ type ReplacementPayload = {
 
 function mapMessage(
   event: MatrixEvent,
+  room: Room,
   reactions: ReactionAggregate,
   replacement: ReplacementPayload | null,
 ): ChatMessage | null {
@@ -41,14 +42,21 @@ function mapMessage(
   const body = replacement?.body || content.body
   const msgtype = content.msgtype || MsgType.Text
   if (msgtype !== MsgType.Text && msgtype !== MsgType.Image && msgtype !== MsgType.File) return null
-  let mediaUrl: string | undefined
-  if (content.url && content.url.startsWith('mxc://')) {
-    const mxcPath = content.url.replace('mxc://', '')
-    mediaUrl = `${MATRIX_BASE_URL}/_matrix/media/v3/download/${mxcPath}`
-  }
+  const mediaUrl = resolveMatrixMediaUrl(content.url)
+  const sender = event.getSender() ?? 'unknown'
+  const senderMember = room.getMember(sender)
+  const senderProfile = (event as unknown as { getSenderProfile?: () => { displayname?: string; avatar_url?: string } | null })
+    .getSenderProfile?.()
+  const senderDisplayName =
+    senderMember?.name || senderProfile?.displayname || sender.split(':')[0].replace(/^@/, '') || sender
+  const senderAvatarUrl = resolveMatrixMediaUrl(
+    senderMember?.events?.member?.getContent?.()?.avatar_url || senderProfile?.avatar_url || null,
+  )
   return {
     id: event.getId() ?? `${event.getSender()}-${event.getTs()}`,
-    sender: event.getSender() ?? 'unknown',
+    sender,
+    senderDisplayName,
+    senderAvatarUrl,
     body,
     ts: replacement?.ts ?? event.getTs() ?? Date.now(),
     edited: Boolean(replacement),
@@ -60,6 +68,16 @@ function mapMessage(
     mediaFileName: content.filename,
     reactions: Object.entries(reactions).map(([key, count]) => ({ key, count })),
   }
+}
+
+function resolveMatrixMediaUrl(url?: string | null): string | undefined {
+  if (!url) return undefined
+  if (url.startsWith('mxc://')) {
+    const mxcPath = url.replace('mxc://', '')
+    return `${MATRIX_BASE_URL}/_matrix/media/v3/download/${mxcPath}`
+  }
+  if (url.startsWith('http://') || url.startsWith('https://')) return url
+  return undefined
 }
 
 function mapReactions(events: MatrixEvent[]): Map<string, ReactionAggregate> {
@@ -252,6 +270,7 @@ export class MatrixChatService implements ChatService {
       .map((room) => ({
         id: room.roomId,
         name: roomLabel(room),
+        avatarUrl: resolveMatrixMediaUrl(room.getAvatarUrl(client.getHomeserverUrl(), 96, 96, 'crop') || undefined),
         unreadCount: unreadCountForRoom(room),
         lastActivityTs: lastActivityForRoom(room),
       }))
@@ -271,6 +290,7 @@ export class MatrixChatService implements ChatService {
       .map((room) => ({
         id: room.room_id,
         name: room.name || room.canonical_alias || room.room_id,
+        avatarUrl: resolveMatrixMediaUrl(room.avatar_url || undefined),
         unreadCount: 0,
       }))
       .sort((a, b) => a.name.localeCompare(b.name))
@@ -296,6 +316,7 @@ export class MatrixChatService implements ChatService {
       .map((event) =>
         mapMessage(
           event,
+          room,
           reactions.get(event.getId() ?? '') ?? {},
           replacements.get(event.getId() ?? '') ?? null,
         ),

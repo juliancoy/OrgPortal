@@ -62,5 +62,18 @@ export function pidpAppLoginUrl(next: string): string {
   if (PIDP_APP_SLUG) {
     params.set('app', PIDP_APP_SLUG)
   }
+  params.set('auto', '1')
+  return pidpUrl(`/app/login?${params.toString()}`)
+}
+
+export function pidpOwnerLoginUrl(next: string): string {
+  const params = new URLSearchParams()
+  if (isNativeCapacitorRuntime()) {
+    params.set('next', getNativeAuthCallbackUrl())
+  } else {
+    params.set('next', next)
+  }
+  params.set('owner', '1')
+  // Intentionally no `app` parameter: this route should mint owner-context sessions.
   return pidpUrl(`/app/login?${params.toString()}`)
 }

@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useServices, useAuth } from '../../../app/AppProviders'
+import { useAuth } from '../../../app/AppProviders'
 import { listMotions } from '../../../application/usecases/listMotions'
 import type { Motion, MotionStatus, VoteDirection } from '../../../domain/motion/Motion'
 import type { VoteCounts } from '../../../application/ports/EngagementRepository'
 import type { MotionListQuery } from '../../../application/ports/MotionRepository'
 import { MotionStatusBadge } from '../../components/governance/MotionStatusBadge'
 import { GovernanceNav, GovernanceBreadcrumb } from '../../components/governance/GovernanceNav'
+import { useGovernanceParadigm, useGovernanceRepositories } from './paradigm'
 
 const STATUS_FILTERS: (MotionStatus | null)[] = [
   null,
@@ -48,7 +49,8 @@ function motionProposerLabel(motion: Motion) {
 }
 
 export function MotionListPage() {
-  const { motionRepository, engagementRepository } = useServices()
+  const { motionRepository, engagementRepository } = useGovernanceRepositories()
+  const { basePath, isRoberts } = useGovernanceParadigm()
   const { user } = useAuth()
   const navigate = useNavigate()
   const effectiveUserId = user?.id ?? getGuestId()
@@ -60,8 +62,8 @@ export function MotionListPage() {
   const [voteCounts, setVoteCounts] = useState<Record<string, VoteCounts>>({})
 
   useEffect(() => {
-    document.title = 'Org Portal • Governance'
-  }, [])
+    document.title = isRoberts ? "Org Portal • Governance • Robert's Rules" : 'Org Portal • Governance'
+  }, [isRoberts])
 
   useEffect(() => {
     const query: MotionListQuery = {}
@@ -167,11 +169,11 @@ export function MotionListPage() {
               return (
                 <article
                   key={motion.id}
-                  onClick={() => navigate(`/governance/${motion.id}`)}
+                  onClick={() => navigate(`${basePath}/${motion.id}`)}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') navigate(`/governance/${motion.id}`)
+                    if (e.key === 'Enter' || e.key === ' ') navigate(`${basePath}/${motion.id}`)
                   }}
                   className="motion-list-card"
                 >

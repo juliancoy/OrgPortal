@@ -208,7 +208,7 @@ export function PublicEventPage() {
         {toLocalDateTime(event.starts_at)}
         {event.ends_at ? ` → ${toLocalDateTime(event.ends_at)}` : ''}
       </p>
-      {event.location ? <p style={{ margin: 0 }}><strong>Location:</strong> {event.location}</p> : null}
+      {event.location ? <p style={{ margin: 0, overflowWrap: 'anywhere' }}><strong>Location:</strong> {event.location}</p> : null}
       {event.image_url ? (
         <img
           src={event.image_url}
@@ -216,7 +216,7 @@ export function PublicEventPage() {
           style={{ width: '100%', maxWidth: 720, borderRadius: 12, border: '1px solid var(--border)' }}
         />
       ) : null}
-      {event.description ? <p style={{ margin: 0 }}>{event.description}</p> : null}
+      {event.description ? <p style={{ margin: 0, overflowWrap: 'anywhere' }}>{event.description}</p> : null}
       <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
         {token ? (
           <button type="button" onClick={markAttending} disabled={attendancePending || attending}>
@@ -228,7 +228,7 @@ export function PublicEventPage() {
         {attendanceStatus ? <span className="muted">{attendanceStatus}</span> : null}
       </div>
       {event.source_url ? (
-        <p style={{ margin: 0 }}>
+        <p style={{ margin: 0, overflowWrap: 'anywhere' }}>
           <a href={event.source_url} target="_blank" rel="noreferrer">
             Source / RSVP
           </a>

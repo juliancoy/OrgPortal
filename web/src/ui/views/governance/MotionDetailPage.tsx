@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { useServices, useAuth } from '../../../app/AppProviders'
+import { useAuth } from '../../../app/AppProviders'
 import { getMotionById } from '../../../application/usecases/getMotionById'
 import { secondMotion } from '../../../application/usecases/secondMotion'
 import { castVote } from '../../../application/usecases/castVote'
@@ -14,6 +14,7 @@ import { VotingPanel } from '../../components/governance/VotingPanel'
 import { DiffView, InlineDiff } from '../../components/governance/DiffView'
 import { UnifiedDiff } from '../../components/governance/UnifiedDiff'
 import { GovernanceNav, GovernanceBreadcrumb } from '../../components/governance/GovernanceNav'
+import { useGovernanceParadigm, useGovernanceRepositories } from './paradigm'
 
 function getGuestId(): string {
   const key = 'governance.guestId'
@@ -90,7 +91,8 @@ function motionProposerLabel(motion: Motion) {
 
 export function MotionDetailPage() {
   const { id } = useParams()
-  const { motionRepository, voteRepository, engagementRepository } = useServices()
+  const { motionRepository, voteRepository, engagementRepository } = useGovernanceRepositories()
+  const { basePath, isRoberts } = useGovernanceParadigm()
   const { user } = useAuth()
   const effectiveUserId = user?.id ?? getGuestId()
   const effectiveUserName = user?.displayName ?? 'Guest'
@@ -105,6 +107,11 @@ export function MotionDetailPage() {
   const [upCount, setUpCount] = useState(0)
   const [downCount, setDownCount] = useState(0)
   const [showUnifiedDiff, setShowUnifiedDiff] = useState(false)
+
+  useEffect(() => {
+    if (!id) return
+    document.title = isRoberts ? "Org Portal • Motion • Robert's Rules" : 'Org Portal • Motion'
+  }, [id, isRoberts])
 
   useEffect(() => {
     if (!id) return
@@ -236,7 +243,7 @@ export function MotionDetailPage() {
         <div style={sectionStyle}>
           <h1 style={{ ...sectionTitle, fontSize: 22 }}>Motion not found</h1>
           <p style={{ color: 'var(--text-muted)', margin: '0 0 16px' }}>Check the URL or return to governance.</p>
-          <Link to="/governance" style={{ color: 'var(--accent-blue)', fontWeight: 600 }}>Back to Governance</Link>
+          <Link to={basePath} style={{ color: 'var(--accent-blue)', fontWeight: 600 }}>Back to Governance</Link>
         </div>
       </div>
     )
@@ -256,7 +263,7 @@ export function MotionDetailPage() {
         {/* Breadcrumb */}
         <GovernanceBreadcrumb 
           items={[
-            { label: motion?.type === 'amendment' ? 'Amendments' : 'Motions', to: '/governance' },
+            { label: motion?.type === 'amendment' ? 'Amendments' : 'Motions', to: basePath },
             { label: motion?.title || 'Motion' },
           ]} 
         />
@@ -378,7 +385,7 @@ export function MotionDetailPage() {
             }}>
               Amendment to{' '}
               <Link 
-                to={`/governance/${parentMotion.id}`}
+                to={`${basePath}/${parentMotion.id}`}
                 style={{ color: 'var(--primary)', textDecoration: 'none' }}
               >
                 {parentMotion.title}
@@ -460,7 +467,7 @@ export function MotionDetailPage() {
               </button>
             )}
 
-            {motion.status === 'proposed' && motion.proposerId === user.id && (
+            {!isRoberts && motion.status === 'proposed' && motion.proposerId === user.id && (
               <button type="button" onClick={handleWithdraw} style={destructiveBtn}>
                 Withdraw
               </button>
@@ -468,29 +475,33 @@ export function MotionDetailPage() {
 
             {motion.status === 'discussion' && (
               <>
-                <button type="button" onClick={handleOpenVoting} style={primaryBtn}>
-                  Open Voting
-                </button>
-                <button
-                  type="button"
-                  onClick={handleTable}
-                  style={{
-                    background: 'var(--surface)',
-                    color: 'var(--text-secondary)',
-                    border: '1px solid var(--border)',
-                    borderRadius: 999,
-                    padding: '10px 22px',
-                    cursor: 'pointer',
-                    fontWeight: 700,
-                    fontSize: 14,
-                    transition: 'background 0.15s',
-                  }}
-                >
-                  Table
-                </button>
-                <Link to={`/governance/${motion.id}/amend`} style={outlinedBtn}>
-                  Propose Amendment
-                </Link>
+                {!isRoberts && (
+                  <>
+                    <button type="button" onClick={handleOpenVoting} style={primaryBtn}>
+                      Open Voting
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleTable}
+                      style={{
+                        background: 'var(--surface)',
+                        color: 'var(--text-secondary)',
+                        border: '1px solid var(--border)',
+                        borderRadius: 999,
+                        padding: '10px 22px',
+                        cursor: 'pointer',
+                        fontWeight: 700,
+                        fontSize: 14,
+                        transition: 'background 0.15s',
+                      }}
+                    >
+                      Table
+                    </button>
+                    <Link to={`${basePath}/${motion.id}/amend`} style={outlinedBtn}>
+                      Propose Amendment
+                    </Link>
+                  </>
+                )}
               </>
             )}
           </div>
@@ -656,7 +667,7 @@ export function MotionDetailPage() {
                   backgroundColor: 'var(--panel)',
                 }}>
                   <Link
-                    to={`/governance/${a.id}`}
+                    to={`${basePath}/${a.id}`}
                     style={{
                       color: 'var(--primary)',
                       textDecoration: 'none',

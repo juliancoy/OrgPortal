@@ -21,6 +21,11 @@ async function parseResponse<T>(resp: Response): Promise<T> {
   return (await resp.json()) as T
 }
 
+async function parseResponseOrNull<T>(resp: Response): Promise<T | null> {
+  if (!resp.ok) return null
+  return (await resp.json()) as T
+}
+
 type VoteResultApiResponse = {
   yea: number
   nay: number
@@ -38,13 +43,19 @@ export class APIVoteRepository implements VoteRepository {
   }
 
   async castVote(motionId: string, voterId: string, voterName: string, choice: VoteChoice): Promise<Vote> {
-    await parseResponse(
-      await fetch(`${this.baseUrl}/motions/${encodeURIComponent(motionId)}/votes`, {
+    let response = await fetch(`${this.baseUrl}/motions/${encodeURIComponent(motionId)}/votes`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ choice }),
+    })
+    if (response.status === 404 || response.status === 405) {
+      response = await fetch(`${this.baseUrl}/motions/${encodeURIComponent(motionId)}/vote`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({ choice }),
-      }),
-    )
+      })
+    }
+    await parseResponse(response)
     return {
       id: `vote_${Math.random().toString(16).slice(2)}`,
       motionId,
@@ -56,9 +67,25 @@ export class APIVoteRepository implements VoteRepository {
   }
 
   async getResults(motionId: string): Promise<VoteResult> {
-    const row = await parseResponse<VoteResultApiResponse>(
-      await fetch(`${this.baseUrl}/motions/${encodeURIComponent(motionId)}/results`),
-    )
+    let response = await fetch(`${this.baseUrl}/motions/${encodeURIComponent(motionId)}/results`)
+    if (response.status === 404 || response.status === 405) {
+      response = await fetch(`${this.baseUrl}/motions/${encodeURIComponent(motionId)}`)
+      const motion = await parseResponseOrNull<{ result?: { yea?: number; nay?: number; abstain?: number; total_votes?: number } }>(response)
+      const fallback = motion?.result || {}
+      const yea = Number(fallback.yea || 0)
+      const nay = Number(fallback.nay || 0)
+      const abstain = Number(fallback.abstain || 0)
+      const totalVotes = Number(fallback.total_votes || yea + nay + abstain)
+      return {
+        yea,
+        nay,
+        abstain,
+        totalEligible: totalVotes,
+        quorumMet: totalVotes > 0,
+        passed: yea > nay,
+      }
+    }
+    const row = await parseResponse<VoteResultApiResponse>(response)
     return {
       yea: Number(row.yea || 0),
       nay: Number(row.nay || 0),

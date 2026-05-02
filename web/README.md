@@ -95,6 +95,24 @@ Watch mode:
 npm run test:watch
 ```
 
+Run responsive browser E2E checks (desktop + mobile emulation):
+
+```bash
+npm run test:e2e
+```
+
+Run the E2E suite in Docker (recommended for consistent CI/local runs):
+
+```bash
+npm run test:e2e:docker
+```
+
+This uses `docker/playwright/Dockerfile` and `docker/playwright/docker-compose.yml`.
+Generated artifacts:
+
+- `playwright-report/`
+- `test-results/`
+
 Live Matrix smoke test against a running homeserver:
 
 ```bash

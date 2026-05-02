@@ -43,3 +43,16 @@ get-docker*
 webapp*
 web/package-lock.json
 web/.tmp/
+certs/cockroach/ca.crt
+
+# Certificates / private keys
+*.crt
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Generated test/build artifacts
+web/playwright-report/
+web/test-results/
+web/public/*.apk

@@ -11,7 +11,7 @@ export function Footer() {
         <div className="portal-footer-links">
           <a href="/governance">Governance</a>
           <a href="/users/dashboard">Initiatives</a>
-          <a href="/ecops">Finance</a>
+          <a href="/finance">Finance</a>
           <a href="/send">Send</a>
           <a href="/receive">Receive</a>
           <a href="/create">Create</a>

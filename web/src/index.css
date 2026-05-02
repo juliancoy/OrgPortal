@@ -1447,6 +1447,26 @@ textarea:focus {
 }
 
 @media (max-width: 680px) {
+  .portal-grid,
+  .dashboard-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .panel,
+  .portal-card,
+  .portal-org-main-column,
+  .portal-org-chat-column {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .panel *,
+  .portal-card * {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
   .portal-main {
     padding-top: 24px;
   }
@@ -1459,6 +1479,13 @@ textarea:focus {
     width: 100%;
     justify-content: flex-start;
     flex-wrap: wrap;
+  }
+
+  .portal-user-menu {
+    left: 0;
+    right: auto;
+    min-width: min(240px, calc(100vw - 24px));
+    max-width: calc(100vw - 24px);
   }
 
   .portal-search-results {
@@ -1569,6 +1596,20 @@ textarea:focus {
   cursor: pointer;
 }
 
+.portal-chat-room-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.portal-chat-room-avatar {
+  width: 22px;
+  height: 22px;
+  font-size: 0.62rem;
+  flex: 0 0 auto;
+}
+
 .portal-chat-room-btn.active {
   border-color: var(--primary);
   background: linear-gradient(180deg, rgba(0, 42, 97, 0.2), rgba(0, 42, 97, 0.1));
@@ -1677,8 +1718,29 @@ textarea:focus {
 .portal-chat-message-meta {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 10px;
   margin-bottom: 6px;
+}
+
+.portal-chat-message-author {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.portal-chat-message-author strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.portal-chat-message-avatar {
+  width: 22px;
+  height: 22px;
+  font-size: 0.62rem;
+  flex: 0 0 auto;
 }
 
 .portal-chat-message-meta span {
@@ -2016,6 +2078,19 @@ textarea:focus {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
   gap: 1rem;
+}
+
+.scan-gallery-grid {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  max-height: 70vh;
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+
+.scan-gallery-card {
+  align-self: start;
 }
 
 .portal-org-page {

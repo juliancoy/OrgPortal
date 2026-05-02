@@ -37,6 +37,8 @@ function NavItem({ to, children, end = false }: NavItemProps) {
 
 export function GovernanceNav() {
   const location = useLocation()
+  const isRoberts = location.pathname === '/governance/roberts' || location.pathname.startsWith('/governance/roberts/')
+  const basePath = isRoberts ? '/governance/roberts' : '/governance'
   
   // Only show on governance pages
   if (!location.pathname.startsWith('/governance')) {
@@ -59,35 +61,33 @@ export function GovernanceNav() {
         overflowX: 'auto',
         scrollbarWidth: 'none',
       }}>
-        <NavItem to="/governance" end>
+        <NavItem to={basePath} end>
           <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
             <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
           </svg>
           Motions
         </NavItem>
         
-        <NavItem to="/governance/propose">
+        <NavItem to={`${basePath}/propose`}>
           <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
           </svg>
           Propose Motion
         </NavItem>
         
-        <div style={{ 
+        <div style={{
           width: 1, 
           height: 24, 
           backgroundColor: 'var(--border-subtle)', 
           margin: '0 8px' 
         }} />
-        
-        <span style={{ 
-          fontSize: 12, 
-          color: 'var(--text-muted)', 
-          fontWeight: 500,
-          whiteSpace: 'nowrap',
-        }}>
-          Robert's Rules of Order
-        </span>
+
+        <NavItem to="/governance" end>
+          Org Governance
+        </NavItem>
+        <NavItem to="/governance/roberts" end>
+          Robert's Rules
+        </NavItem>
       </div>
     </nav>
   )
@@ -101,6 +101,9 @@ interface BreadcrumbProps {
 }
 
 export function GovernanceBreadcrumb({ items }: BreadcrumbProps) {
+  const location = useLocation()
+  const isRoberts = location.pathname === '/governance/roberts' || location.pathname.startsWith('/governance/roberts/')
+  const basePath = isRoberts ? '/governance/roberts' : '/governance'
   return (
     <nav aria-label="Breadcrumb" style={{ marginBottom: 16 }}>
       <ol style={{
@@ -114,7 +117,7 @@ export function GovernanceBreadcrumb({ items }: BreadcrumbProps) {
       }}>
         <li>
           <Link 
-            to="/governance"
+            to={basePath}
             style={{
               color: 'var(--text-muted)',
               textDecoration: 'none',
@@ -129,7 +132,7 @@ export function GovernanceBreadcrumb({ items }: BreadcrumbProps) {
             <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
               <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
             </svg>
-            Governance
+            {isRoberts ? "Robert's Rules" : 'Governance'}
           </Link>
         </li>
         

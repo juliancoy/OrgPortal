@@ -130,7 +130,7 @@ export function PublicOrganizationsPage() {
                 flex: '0 0 auto',
               }}
             />
-            <div style={{ display: 'grid', gap: '0.45rem', minWidth: 220, flex: '1 1 360px' }}>
+            <div style={{ display: 'grid', gap: '0.45rem', minWidth: 0, maxWidth: '100%', flex: '1 1 240px' }}>
               <h2 style={{ margin: 0, fontSize: '1.1rem' }}>
                 <Link to={`/orgs/${org.slug}`} style={{ textDecoration: 'none' }}>
                   {org.name}
@@ -140,7 +140,7 @@ export function PublicOrganizationsPage() {
                 Members: {org.membership_count} • Upcoming events: {org.upcoming_events_count}
                 {org.is_contested ? ` • Contested ownership (${org.pending_claim_requests_count})` : ''}
               </p>
-              {org.description ? <p style={{ margin: 0 }}>{org.description}</p> : null}
+              {org.description ? <p style={{ margin: 0, overflowWrap: 'anywhere' }}>{org.description}</p> : null}
               {(() => {
                 const links = Array.from(
                   new Set(

@@ -139,7 +139,7 @@ export function PublicEventsPage() {
                 }}
               />
             ) : null}
-            <div style={{ display: 'grid', gap: '0.45rem', minWidth: 220, flex: '1 1 360px' }}>
+            <div style={{ display: 'grid', gap: '0.45rem', minWidth: 0, maxWidth: '100%', flex: '1 1 240px' }}>
               <h2 style={{ margin: 0, fontSize: '1.1rem' }}>
                 <Link to={`/events/${event.slug}`} style={{ textDecoration: 'none' }}>
                   {event.title}
@@ -148,7 +148,7 @@ export function PublicEventsPage() {
               <p className="muted" style={{ margin: 0 }}>
                 {formatDate(event.starts_at)}{event.location ? ` • ${event.location}` : ''}
               </p>
-              {event.description ? <p style={{ margin: 0 }}>{event.description}</p> : null}
+              {event.description ? <p style={{ margin: 0, overflowWrap: 'anywhere' }}>{event.description}</p> : null}
               <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 {token ? (
                   <button
