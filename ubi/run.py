@@ -174,6 +174,9 @@ def _common_env(prefix: str, interval_seconds: str, secure_mode: bool) -> dict[s
     return {
         "COCKROACH_ASYNC_URL": db_url,
         "UBI_INTERVAL_SECONDS": interval_seconds,
+        "WAGES_INTERVAL_SECONDS": os.getenv("WAGES_INTERVAL_SECONDS", "60"),
+        "WAGES_MAX_PAYMENTS_PER_TICK": os.getenv("WAGES_MAX_PAYMENTS_PER_TICK", "500"),
+        "WAGES_API_KEY": os.getenv("WAGES_API_KEY", ""),
         "DENA_ANNUAL": os.getenv("DENA_ANNUAL", "1"),
         "DENA_PRECISION": os.getenv("DENA_PRECISION", "6"),
         "UBI_ENTITY_TYPES": os.getenv("UBI_ENTITY_TYPES", "individual"),
@@ -193,11 +196,14 @@ def run(network_name: str = "arkavo", prefix: str = "") -> None:
     ensure_ubi_image()
     prod_port = int(os.getenv("UBI_PROD_PORT", "8010"))
     dev_port = int(os.getenv("UBI_DEV_PORT", "8011"))
+    wages_port = int(os.getenv("WAGES_PORT", "8012"))
     prod_name = prefix + "ubi"
     dev_name = prefix + "ubi-dev"
+    wages_name = prefix + "wages"
     start_dev = os.getenv("UBI_START_DEV", "0").strip().lower() in {"1", "true", "yes", "on"}
+    start_wages = os.getenv("WAGES_START", "1").strip().lower() in {"1", "true", "yes", "on"}
 
-    for name in (prod_name, dev_name):
+    for name in (prod_name, dev_name, wages_name):
         try:
             container = docker_utils.DOCKER_CLIENT.containers.get(name)
             container.stop()
@@ -219,6 +225,22 @@ def run(network_name: str = "arkavo", prefix: str = "") -> None:
         environment=_common_env(prefix, os.getenv("UBI_INTERVAL_SECONDS", "60"), secure_mode),
     )
     docker_utils.run_container(ubi_prod)
+    if start_wages:
+        wages = dict(
+            image="ubi",
+            name=wages_name,
+            detach=True,
+            network=network_name,
+            restart_policy={"Name": "always"},
+            command=["uvicorn", "wages:app", "--host", "0.0.0.0", "--port", "8000"],
+            ports={"8000/tcp": wages_port},
+            volumes={
+                str(here): {"bind": "/app", "mode": "rw"},
+                str(cockroach_cert_dir): {"bind": "/cockroach-certs", "mode": "ro"},
+            },
+            environment=_common_env(prefix, os.getenv("UBI_INTERVAL_SECONDS", "60"), secure_mode),
+        )
+        docker_utils.run_container(wages)
     if start_dev:
         ubi_dev = dict(
             image="ubi",
