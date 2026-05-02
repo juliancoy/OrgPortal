@@ -9,7 +9,7 @@ type Department = {
 
 const DEPARTMENTS: Department[] = [
   {
-    name: 'Peacekeeping Force',
+    name: 'Peace',
     domain: 'Security',
     mandate: 'Maintains defensive readiness and civil peacekeeping capacity under democratic fiscal direction.',
   },
@@ -39,7 +39,7 @@ const DEPARTMENTS: Department[] = [
     mandate: 'Coordinates shelter policy, housing supply, tenant stability, and homelessness prevention.',
   },
   {
-    name: 'Dept of Housing',
+    name: 'Housing',
     domain: 'Shelter',
     mandate: 'Operates as the explicit department account target for housing budgets, wage schedules, and housing programs.',
   },
@@ -49,7 +49,7 @@ const DEPARTMENTS: Department[] = [
     mandate: 'Plans energy resilience, utility access, generation, distribution, and public-interest infrastructure.',
   },
   {
-    name: 'Department of Industry',
+    name: 'Industry',
     domain: 'Production',
     mandate: 'Coordinates industrial capacity, productive infrastructure, supply chains, and public-interest enterprise development.',
   },
