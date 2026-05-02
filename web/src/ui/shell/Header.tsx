@@ -369,6 +369,7 @@ export function Header() {
     location.pathname.startsWith('/send') ||
     location.pathname.startsWith('/receive') ||
     location.pathname.startsWith('/create')
+  const isDepartmentsActive = location.pathname.startsWith('/departments')
   const isChatActive = location.pathname.startsWith('/chat')
   const isScanActive = location.pathname.startsWith('/tools/business-cards')
 
@@ -761,6 +762,13 @@ export function Header() {
               />
             </svg>
             Finance
+          </NavLink>
+
+          <NavLink to="/departments" isActive={isDepartmentsActive}>
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path d="M4 3a2 2 0 00-2 2v12h16V5a2 2 0 00-2-2H4zm1 3h2v2H5V6zm4 0h2v2H9V6zm4 0h2v2h-2V6zM5 10h2v2H5v-2zm4 0h2v2H9v-2zm4 0h2v2h-2v-2zM8 14h4v3H8v-3z" />
+            </svg>
+            Departments
           </NavLink>
 
           {role !== 'guest' && (

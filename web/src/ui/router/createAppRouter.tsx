@@ -5,6 +5,7 @@ import { AppLayout } from '../shell/AppLayout'
 import App from '../../App'
 import { useAuth } from '../../app/AppProviders'
 import { EconomicOpsPage } from '../views/EconomicOpsPage'
+import { DepartmentsPage } from '../views/DepartmentsPage'
 import { AuthCallbackPage } from '../views/AuthCallbackPage'
 import { InitiativeDetailPage } from '../views/InitiativeDetailPage'
 import { InitiativeSignPage } from '../views/InitiativeSignPage'
@@ -114,6 +115,7 @@ export function createAppRouter() {
     [
       { path: '/', element: <HomeRoute /> },
       { path: '/finance', element: <EconomicOpsPage /> },
+      { path: '/departments', element: <DepartmentsPage /> },
       { path: '/ecops', element: <Navigate to="/finance" replace /> },
       { path: '/send', element: <SendPage /> },
       { path: '/receive', element: <ReceivePage /> },
