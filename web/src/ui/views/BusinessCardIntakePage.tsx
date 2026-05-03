@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { FormEvent, RefObject } from 'react'
+import type { ChangeEvent, FormEvent, RefObject } from 'react'
 import { useAuth } from '../../app/AppProviders'
 import { pidpAppLoginUrl } from '../../config/pidp'
 
@@ -122,7 +122,9 @@ export function BusinessCardIntakePage() {
   const cameraInputRef = useRef<HTMLInputElement | null>(null)
   const galleryInputRef = useRef<HTMLInputElement | null>(null)
   const selectedPreviewRef = useRef<string | null>(null)
+  const selectedFileRef = useRef<File | null>(null)
   const [selectedPreviewUrl, setSelectedPreviewUrl] = useState<string | null>(null)
+  const [submissionNotice, setSubmissionNotice] = useState<string | null>(null)
 
   useEffect(() => {
     imageUrlsRef.current = imageUrls
@@ -156,8 +158,12 @@ export function BusinessCardIntakePage() {
   }
 
   function applySelectedFile(nextFile: File | null) {
+    selectedFileRef.current = nextFile
     setFile(nextFile)
     setError(null)
+    if (nextFile) {
+      setSubmissionNotice(null)
+    }
     if (selectedPreviewRef.current) {
       URL.revokeObjectURL(selectedPreviewRef.current)
       selectedPreviewRef.current = null
@@ -169,6 +175,17 @@ export function BusinessCardIntakePage() {
     const previewUrl = URL.createObjectURL(nextFile)
     selectedPreviewRef.current = previewUrl
     setSelectedPreviewUrl(previewUrl)
+  }
+
+  function handleFileInputChange(event: ChangeEvent<HTMLInputElement>) {
+    const nextFile = event.target.files?.[0]
+    if (!nextFile) return
+    applySelectedFile(nextFile)
+  }
+
+  function clearSelectedFile() {
+    applySelectedFile(null)
+    resetFileInputs()
   }
 
   function openPicker(ref: RefObject<HTMLInputElement | null>) {
@@ -344,17 +361,19 @@ export function BusinessCardIntakePage() {
     event.preventDefault()
     setError(null)
     setResult(null)
+    setSubmissionNotice(null)
     if (!token) {
       setError('You must be logged in.')
       return
     }
-    if (!file) {
+    const uploadFile = selectedFileRef.current ?? file
+    if (!uploadFile) {
       setError('Please choose an image file.')
       return
     }
 
     const formData = new FormData()
-    formData.append('image', file)
+    formData.append('image', uploadFile)
     formData.append('scan_kind', scanKind)
     if (notes.trim()) formData.append('notes', notes.trim())
 
@@ -372,12 +391,8 @@ export function BusinessCardIntakePage() {
       const payload = (await response.json()) as SubmissionResult
       setResult(payload)
       setMyHistory((prev) => [payload, ...prev])
-      setFile(null)
-      if (selectedPreviewRef.current) {
-        URL.revokeObjectURL(selectedPreviewRef.current)
-        selectedPreviewRef.current = null
-      }
-      setSelectedPreviewUrl(null)
+      const submittedLabel = uploadFile.name || 'selected image'
+      setSubmissionNotice(`Submitted ${submittedLabel}.`)
       resetFileInputs()
       setNotes('')
     } catch (err) {
@@ -427,21 +442,26 @@ export function BusinessCardIntakePage() {
                   accept="image/*"
                   capture="environment"
                   style={{ display: 'none' }}
-                  onChange={(event) => applySelectedFile(event.target.files?.[0] ?? null)}
+                  onChange={handleFileInputChange}
                 />
                 <input
                   ref={galleryInputRef}
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
                   style={{ display: 'none' }}
-                  onChange={(event) => applySelectedFile(event.target.files?.[0] ?? null)}
+                  onChange={handleFileInputChange}
                 />
                 <div className="muted" style={{ marginTop: '0.35rem' }}>
                   {file ? `Selected: ${file.name}` : 'No image selected.'}
                 </div>
                 {selectedPreviewUrl ? (
                   <div style={{ marginTop: '0.6rem', display: 'grid', gap: '0.35rem' }}>
-                    <span className="muted">Image to be processed:</span>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span className="muted">Image to be processed:</span>
+                      <button type="button" onClick={clearSelectedFile} disabled={isSubmitting}>
+                        Remove
+                      </button>
+                    </div>
                     <img
                       src={selectedPreviewUrl}
                       alt="Selected scan preview"
@@ -478,6 +498,20 @@ export function BusinessCardIntakePage() {
           </form>
 
           {error ? <p className="portal-chat-error">{error}</p> : null}
+          {submissionNotice ? (
+            <p
+              role="status"
+              style={{
+                margin: '0.75rem 0 0',
+                padding: '0.65rem 0.75rem',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 8,
+              }}
+            >
+              {submissionNotice}
+              {result?.id ? ` Scan ID: ${result.id}.` : ''}
+            </p>
+          ) : null}
 
           {result ? (
             <div style={{ marginTop: '1rem' }}>
