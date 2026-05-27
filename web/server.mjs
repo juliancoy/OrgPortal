@@ -35,6 +35,21 @@ function toIsoDate(value) {
   return dt.toISOString()
 }
 
+function getEventOrganizerName(event) {
+  const candidate = event?.organization_name || event?.host_org_name
+  if (typeof candidate === 'string' && candidate.trim()) return candidate.trim()
+  return 'Code Collective'
+}
+
+function getEventOfferValidFrom(event) {
+  const start = event?.starts_at ? new Date(event.starts_at) : null
+  const now = new Date()
+  if (start && !Number.isNaN(start.getTime())) {
+    return (start.getTime() < now.getTime() ? start : now).toISOString()
+  }
+  return now.toISOString()
+}
+
 function contentTypeFor(filePath) {
   const ext = path.extname(filePath).toLowerCase()
   switch (ext) {
@@ -224,6 +239,10 @@ async function buildEventSeo(base, slug) {
       `${EVENTS_API_BASE}/api/network/events/public/${encodeURIComponent(slug)}`,
       `event:${slug}`,
     )
+    const organizerName = getEventOrganizerName(event)
+    const offerUrl = (typeof event.source_url === 'string' && event.source_url.trim())
+      ? event.source_url.trim()
+      : canonicalUrl
     const seo = {
       title: `${event.title} • Org Portal`,
       description: summary(event.description),
@@ -291,7 +310,19 @@ async function buildEventSeo(base, slug) {
             : undefined,
           organizer: {
             '@type': 'Organization',
-            name: 'Org Portal',
+            name: organizerName,
+          },
+          performer: {
+            '@type': 'Organization',
+            name: organizerName,
+          },
+          offers: {
+            '@type': 'Offer',
+            url: offerUrl,
+            price: '0',
+            priceCurrency: 'USD',
+            availability: 'https://schema.org/InStock',
+            validFrom: getEventOfferValidFrom(event),
           },
         },
       ],

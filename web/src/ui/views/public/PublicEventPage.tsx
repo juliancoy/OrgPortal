@@ -23,6 +23,8 @@ type PublicEvent = {
   location?: string | null
   source_url?: string | null
   image_url?: string | null
+  organization_name?: string | null
+  host_org_name?: string | null
 }
 
 type PublicEventChatMessage = {
@@ -56,6 +58,20 @@ function summary(text?: string | null) {
   const cleaned = (text || '').replace(/\s+/g, ' ').trim()
   if (!cleaned) return 'Event details and schedule on Org Portal.'
   return cleaned.length > 280 ? `${cleaned.slice(0, 277)}...` : cleaned
+}
+
+function getEventOrganizerName(event: PublicEvent) {
+  const candidate = event.organization_name || event.host_org_name
+  return candidate?.trim() || 'Code Collective'
+}
+
+function getEventOfferValidFrom(event: PublicEvent) {
+  const start = event.starts_at ? new Date(event.starts_at) : null
+  if (start && !Number.isNaN(start.getTime())) {
+    const now = new Date()
+    return (start.getTime() < now.getTime() ? start : now).toISOString()
+  }
+  return new Date().toISOString()
 }
 
 export function PublicEventPage() {
@@ -145,6 +161,8 @@ export function PublicEventPage() {
 
   const eventJsonLd = useMemo(() => {
     if (!event) return null
+    const organizerName = getEventOrganizerName(event)
+    const sourceUrl = event.source_url?.trim() || eventUrl(event.slug)
     return {
       '@context': 'https://schema.org',
       '@type': 'Event',
@@ -164,7 +182,19 @@ export function PublicEventPage() {
         : undefined,
       organizer: {
         '@type': 'Organization',
-        name: 'Org Portal',
+        name: organizerName,
+      },
+      performer: {
+        '@type': 'Organization',
+        name: organizerName,
+      },
+      offers: {
+        '@type': 'Offer',
+        url: sourceUrl,
+        price: '0',
+        priceCurrency: 'USD',
+        availability: 'https://schema.org/InStock',
+        validFrom: getEventOfferValidFrom(event),
       },
     }
   }, [event])
