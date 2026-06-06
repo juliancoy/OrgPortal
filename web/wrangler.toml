@@ -9,6 +9,6 @@ binding = "ASSETS"
 [vars]
 # Set these per environment as needed. Examples:
 # GOVERNANCE_API_ORIGIN = "https://governance-api.example.com"
-# PIDP_API_ORIGIN = "https://pidp.arkavo.org"
+# PIDP_API_ORIGIN = "https://id.codecollective.us"
 GOVERNANCE_API_ORIGIN = ""
-PIDP_API_ORIGIN = "https://pidp.arkavo.org"
+PIDP_API_ORIGIN = "https://id.codecollective.us"
