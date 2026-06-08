@@ -1,5 +1,7 @@
 import { getNativeAuthCallbackUrl, isNativeCapacitorRuntime } from '../infrastructure/platform/runtimePlatform'
 
+export const DEFAULT_POST_LOGIN_PATH = '/chat'
+
 function detectLane(hostname: string): 'dev' | 'prod' {
   return hostname.startsWith('dev.') ? 'dev' : 'prod'
 }
@@ -52,12 +54,46 @@ export function pidpUrl(path: string): string {
   return `${PIDP_BASE_URL}${normalizedPath}`
 }
 
+function normalizePostLoginPath(next: string): string {
+  const fallback = DEFAULT_POST_LOGIN_PATH
+  const raw = String(next || '').trim()
+  if (!raw) return fallback
+
+  try {
+    const origin = typeof window === 'undefined' ? 'https://codecollective.us' : window.location.origin
+    const parsed = new URL(raw, origin)
+    if (parsed.origin !== origin) return fallback
+    const path = `${parsed.pathname}${parsed.search}` || fallback
+    if (
+      path === '/' ||
+      path.startsWith('/auth/callback') ||
+      path.startsWith('/users/login') ||
+      path.startsWith('/users/register') ||
+      path.endsWith('/standalone.html') ||
+      path === '/standalone.html'
+    ) {
+      return fallback
+    }
+    return path
+  } catch {
+    return raw.startsWith('/') ? raw : fallback
+  }
+}
+
+export function portalAuthCallbackUrl(next: string): string {
+  const target = normalizePostLoginPath(next)
+  const origin = typeof window === 'undefined' ? 'https://codecollective.us' : window.location.origin
+  const callback = new URL('/auth/callback', origin)
+  callback.searchParams.set('next', target)
+  return callback.toString()
+}
+
 export function pidpAppLoginUrl(next: string): string {
   const params = new URLSearchParams()
   if (isNativeCapacitorRuntime()) {
     params.set('next', getNativeAuthCallbackUrl())
   } else {
-    params.set('next', next)
+    params.set('next', portalAuthCallbackUrl(next))
   }
   if (PIDP_APP_SLUG) {
     params.set('app', PIDP_APP_SLUG)
@@ -71,7 +107,7 @@ export function pidpOwnerLoginUrl(next: string): string {
   if (isNativeCapacitorRuntime()) {
     params.set('next', getNativeAuthCallbackUrl())
   } else {
-    params.set('next', next)
+    params.set('next', portalAuthCallbackUrl(next))
   }
   params.set('owner', '1')
   // Intentionally no `app` parameter: this route should mint owner-context sessions.

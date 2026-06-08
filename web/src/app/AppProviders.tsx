@@ -6,7 +6,7 @@ import type { SessionUser } from '../ui/auth/SessionUser'
 import { readVotes, writeVotes, readComments, writeComments, readProfiles, writeProfiles } from '../infrastructure/utils/localStorage'
 import { setRuntimeAccessToken } from '../infrastructure/auth/runtimeAuth'
 import { refreshRuntimeTokenFromSession } from '../infrastructure/auth/sessionToken'
-import { PIDP_BASE_URL, pidpUrl } from '../config/pidp'
+import { DEFAULT_POST_LOGIN_PATH, PIDP_BASE_URL, pidpUrl } from '../config/pidp'
 import { isNativeCapacitorRuntime } from '../infrastructure/platform/runtimePlatform'
 import { initChatNotifications, setChatNotificationOpenHandler } from '../infrastructure/platform/chatNotifications'
 import { AppUpdatePrompt } from '../ui/components/system/AppUpdatePrompt'
@@ -110,6 +110,10 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
   const [updateActionBusy, setUpdateActionBusy] = useState(false)
 
   const normalizedPidpBase = PIDP_BASE_URL
+  const postLoginHref = useMemo(() => {
+    const base = (import.meta.env.BASE_URL || '/').replace(/\/?$/, '/')
+    return `${base}${DEFAULT_POST_LOGIN_PATH.replace(/^\/+/, '')}`
+  }, [])
 
   useEffect(() => {
     if (!isNativeRuntime) return
@@ -520,6 +524,7 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
         if (!linkedToken) return
         setAuthToken(linkedToken)
         setIsLoading(true)
+        window.location.assign(postLoginHref)
       } catch {
         // Ignore malformed callback URLs from platform integrations.
       }
@@ -545,7 +550,7 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
         void listenerHandle.remove()
       }
     }
-  }, [isNativeRuntime, setAuthToken])
+  }, [isNativeRuntime, postLoginHref, setAuthToken])
 
   const dismissAvailableUpdate = useCallback(() => {
     if (!availableUpdate || availableUpdate.mandatory) return
