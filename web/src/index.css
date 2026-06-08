@@ -305,7 +305,7 @@ body.chat-realtime-disconnected::before {
   inset: 0;
   z-index: 2147483647;
   pointer-events: none;
-  border: 2px solid var(--accent-red);
+  border: 2px solid #8fd3ff;
 }
 
 #root {
@@ -1338,6 +1338,30 @@ textarea {
   width: min(100%, 520px);
   display: grid;
   gap: 0.6rem;
+}
+
+.public-id-attribution {
+  width: min(100%, 520px);
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 10px 12px 18px;
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-align: center;
+  text-decoration: none;
+}
+
+.public-id-attribution:hover {
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.public-id-attribution img {
+  display: block;
+  width: min(100%, 280px);
+  height: auto;
 }
 
 @media (max-width: 560px) {

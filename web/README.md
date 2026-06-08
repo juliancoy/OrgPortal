@@ -20,6 +20,32 @@ Release flow:
 3. Update `web.versionName` and `web.buildNumber` for web deploys.
 4. Publish both manifest files with the release.
 
+Android CI/CD is handled by the root `.github/workflows/android.yml` workflow:
+
+- Pull requests and pushes that touch `portal/web/**` build a debug APK.
+- Manual workflow dispatch can build signed release APK/AAB artifacts.
+- Manual workflow dispatch can also deploy the self-hosted APK and update manifest through the Cloudflare site deploy.
+
+The native Capacitor `android/` project is generated/synced on demand by:
+
+```bash
+npm run android:prepare
+```
+
+`android:prepare` also applies `public/mobile-update.json` to the generated Gradle project so
+`android.buildNumber` becomes the Android `versionCode` and `android.versionName` becomes the Android
+`versionName`.
+
+Required GitHub secrets for signed release builds:
+
+- `ANDROID_KEYSTORE_BASE64`: base64-encoded Android signing keystore.
+- `ANDROID_KEYSTORE_PASSWORD`: keystore password.
+- `ANDROID_KEY_ALIAS`: signing key alias.
+- `ANDROID_KEY_PASSWORD`: signing key password.
+
+Release CI pins Java 21. Local Android Gradle builds should also use a supported JDK such as Java 21; Java 25
+currently fails this generated Android Gradle toolchain with `Unsupported class file major version 69`.
+
 Environment overrides:
 
 - `VITE_UPDATE_MANIFEST_URL`: explicit manifest URL.
