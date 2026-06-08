@@ -232,10 +232,6 @@ export function ContactSettingsPage() {
 
   return (
     <section className="panel" style={{ display: 'grid', gap: '0.75rem' }}>
-        <h1 style={{ marginTop: 0 }}>Public Profile Settings</h1>
-        <p className="muted" style={{ marginTop: 0 }}>
-        Default is off. Enable to publish an opt-in public individual profile page with a shareable QR code.
-        </p>
 
       <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
         <Link to="/orgs/profile">Org Network</Link>
