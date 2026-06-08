@@ -42,7 +42,11 @@ class FakeD1 {
 
   first<T>(sql: string, params: unknown[]): T | null {
     if (sql.includes("FROM user_contact_pages WHERE slug = ?")) {
-      return (this.contacts.find((row) => row.slug === params[0] && row.enabled === 1) as T) || null;
+      return (
+        this.contacts.find(
+          (row) => row.slug === params[0] && (row.enabled === 1 || (params[1] && row.user_id === params[1])),
+        ) as T
+      ) || null;
     }
     if (sql.includes("FROM chat_conversation_members") && sql.includes("state = 'active'")) {
       return (
@@ -290,6 +294,38 @@ test("dm route resolves a contact slug and reuses the same conversation", async 
   );
   assert.equal(second.status, 200);
   assert.equal(db.conversations.length, 1);
+});
+
+test("dm route allows starting a direct message with yourself", async () => {
+  const db = new FakeD1();
+  db.contacts.push({
+    user_id: "user-a",
+    user_name: "Alice Example",
+    slug: "alice-example",
+    enabled: 0,
+  });
+
+  const first = await app.request(
+    "https://chat.example.test/api/network/chat/dm",
+    authedInit({ target_user_slug: "alice-example" }),
+    env(db),
+  );
+  assert.equal(first.status, 201);
+  const firstBody = (await first.json()) as { conversation: { id: string; members: Array<{ user_id: string; role: string }> } };
+  assert.equal(firstBody.conversation.members.length, 1);
+  assert.equal(firstBody.conversation.members[0].user_id, "user-a");
+  assert.equal(firstBody.conversation.members[0].role, "owner");
+  assert.equal(db.conversations.length, 1);
+  assert.equal(db.conversations[0].dm_key, "user-a:user-a");
+
+  const second = await app.request(
+    "https://chat.example.test/api/network/chat/dm",
+    authedInit({ target_user_slug: "alice-example" }),
+    env(db),
+  );
+  assert.equal(second.status, 200);
+  assert.equal(db.conversations.length, 1);
+  assert.equal(db.members.length, 1);
 });
 
 test("messages require membership and persist for listed conversations", async () => {
