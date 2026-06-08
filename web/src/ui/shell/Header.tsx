@@ -122,6 +122,7 @@ export function Header() {
   const androidApkUrl = resolveAndroidApkUrl()
 
   const [menuOpen, setMenuOpen] = useState(false)
+  const [navOpen, setNavOpen] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
@@ -168,6 +169,7 @@ export function Header() {
 
   useEffect(() => {
     setMenuOpen(false)
+    setNavOpen(false)
     setSearchOpen(false)
     setActiveResultIndex(-1)
   }, [location.pathname])
@@ -862,8 +864,32 @@ export function Header() {
           )}
         </div>
       </div>
-      <div className="portal-nav-bar">
-        <div className="portal-nav">
+      <div className={`portal-nav-bar ${navOpen ? 'open' : ''}`}>
+        <button
+          type="button"
+          className="portal-nav-toggle"
+          aria-controls="portal-primary-nav"
+          aria-expanded={navOpen}
+          onClick={() => setNavOpen((prev) => !prev)}
+        >
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            {navOpen ? (
+              <path
+                fillRule="evenodd"
+                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                clipRule="evenodd"
+              />
+            ) : (
+              <path
+                fillRule="evenodd"
+                d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm1 4a1 1 0 100 2h12a1 1 0 100-2H4z"
+                clipRule="evenodd"
+              />
+            )}
+          </svg>
+          <span>Navigation</span>
+        </button>
+        <div id="portal-primary-nav" className="portal-nav">
           <NavLink to="/" isActive={isCivicActive}>
             <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
               <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
