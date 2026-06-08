@@ -36,6 +36,10 @@ function publicProfileUrl(slug?: string | null) {
   return cleanSlug ? `${base}/users/${encodeURIComponent(cleanSlug)}` : null
 }
 
+function displayUrl(value: string): string {
+  return value.replace(/^mailto:/i, '').replace(/^tel:/i, '').replace(/^https?:\/\//i, '').replace(/\/$/, '')
+}
+
 function safeLinkUrl(value?: string | null): string | null {
   const text = String(value || '').trim()
   if (!text) return null
@@ -213,15 +217,19 @@ export function PublicContactPage() {
   return (
     <section className="public-id-page">
       <article className="public-id-card" aria-label={`${page.user_name} public ID`}>
-        {page.photo_url ? (
-          <img className="public-id-avatar" src={page.photo_url} alt={page.user_name} />
-        ) : (
-          <div className="public-id-avatar public-id-avatar-fallback" aria-hidden="true">
-            {page.user_name.slice(0, 1).toUpperCase()}
-          </div>
-        )}
-        <h1 className="public-id-name">{page.user_name}</h1>
-        {page.headline ? <p className="public-id-headline">{page.headline}</p> : null}
+        <div className="public-id-identity">
+          {page.photo_url ? (
+            <img className="public-id-avatar" src={page.photo_url} alt={page.user_name} />
+          ) : (
+            <div className="public-id-avatar public-id-avatar-fallback" aria-hidden="true">
+              {page.user_name.slice(0, 1).toUpperCase()}
+            </div>
+          )}
+          <div className="public-id-kicker">Public ID</div>
+          <h1 className="public-id-name">{page.user_name}</h1>
+          {page.headline ? <p className="public-id-headline">{page.headline}</p> : null}
+          {page.bio ? <p className="public-id-bio">{page.bio}</p> : null}
+        </div>
         <button type="button" className="public-id-download-card" onClick={downloadVCard}>
           <span className="public-id-download-icon" aria-hidden="true">
             <svg width="22" height="22" viewBox="0 0 20 20" fill="currentColor">
@@ -233,7 +241,6 @@ export function PublicContactPage() {
             <small>Save this profile as a vCard</small>
           </span>
         </button>
-        {page.bio ? <p className="public-id-bio">{page.bio}</p> : null}
 
         <div className="public-id-actions">
           {token ? (
@@ -282,7 +289,7 @@ export function PublicContactPage() {
                   <a className="public-id-link-name" href={link.url} target={link.url.startsWith('http') ? '_blank' : undefined} rel={link.url.startsWith('http') ? 'noreferrer' : undefined}>
                     {link.label}
                   </a>
-                  <div className="public-id-link-url">{link.display}</div>
+                  <div className="public-id-link-url" title={link.display}>{displayUrl(link.display)}</div>
                   <button
                     type="button"
                     className="public-id-copy-btn"
@@ -307,7 +314,7 @@ export function PublicContactPage() {
           {shareUrl ? (
             <div className="public-id-share-row">
               <a className="public-id-public-url" href={shareUrl}>Public page</a>
-              <div className="public-id-link-url">{shareUrl}</div>
+              <div className="public-id-link-url" title={shareUrl}>{displayUrl(shareUrl)}</div>
               <button
                 type="button"
                 className="public-id-copy-btn"

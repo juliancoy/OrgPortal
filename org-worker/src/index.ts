@@ -12,6 +12,7 @@ type PidpUser = {
   full_name?: string | null;
   avatar_url?: string | null;
   identity_data?: Record<string, unknown> | null;
+  is_admin?: boolean;
   is_sysadmin?: boolean;
 };
 
@@ -36,6 +37,35 @@ type ContactRow = {
   source_profile_imported_at: string | null;
   created_at: string;
   updated_at: string;
+};
+
+type ConnectionStatus = "none" | "pending_sent" | "pending_received" | "connected" | "declined";
+
+type ConnectionRow = {
+  id: string;
+  pair_key: string;
+  requester_user_id: string;
+  requester_user_name: string | null;
+  recipient_user_id: string;
+  recipient_user_name: string | null;
+  status: "pending" | "accepted" | "declined" | "canceled";
+  requested_at: string;
+  responded_at: string | null;
+  updated_at: string;
+};
+
+type NotificationRow = {
+  id: string;
+  user_id: string;
+  type: string;
+  actor_user_id: string | null;
+  actor_user_name: string | null;
+  entity_id: string | null;
+  title: string;
+  body: string | null;
+  status: "unread" | "read";
+  created_at: string;
+  read_at: string | null;
 };
 
 type OrganizationRow = {
@@ -123,6 +153,7 @@ type LedgerAccountRow = {
   email: string;
   entity_type: string;
   balance: number;
+  dena_balance?: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -149,6 +180,20 @@ type UbiSettingsRow = {
   updated_by: string | null;
 };
 
+const DEFAULT_UBI_CADENCE_SECONDS = 14 * 24 * 60 * 60;
+
+type UbiTickSummary = {
+  run_key: string;
+  status: "skipped" | "completed";
+  started_at: string;
+  completed_at: string;
+  elapsed_seconds: number;
+  eligible_accounts: number;
+  payout_count: number;
+  accrued_amount: number;
+  paid_amount: number;
+};
+
 type CalendarIngestPayload = {
   organizations?: Record<string, unknown>[];
   events?: Record<string, unknown>[];
@@ -168,6 +213,8 @@ type ContactPayload = Partial<{
   website_url: string | null;
   links: ContactLink[];
 }>;
+
+const DEFAULT_ADMIN_EMAIL = "julian@codecollective.us";
 
 export const app = new Hono<{ Bindings: Env; Variables: { user: PidpUser } }>();
 
@@ -192,6 +239,10 @@ function fail(status: number, detail: string): never {
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+function isoFromMillis(value: number) {
+  return new Date(value).toISOString();
 }
 
 function parseList(value: string | undefined): string[] {
@@ -231,6 +282,27 @@ function parseJsonArray(value: string | null | undefined): string[] {
   }
 }
 
+function adminUser(user: PidpUser, env: Env) {
+  const adminEmails = parseList(env.ADMIN_EMAILS);
+  const adminIds = parseList(env.ADMIN_USER_IDS);
+  const identity = user.identity_data || {};
+  const roles = Array.isArray(identity.roles)
+    ? identity.roles.map((item) => String(item || "").trim().toLowerCase()).filter(Boolean)
+    : [];
+  return (
+    Boolean(user.is_sysadmin) ||
+    Boolean(user.is_admin) ||
+    identity.is_sysadmin === true ||
+    identity.is_admin === true ||
+    roles.includes("sysadmin") ||
+    roles.includes("admin") ||
+    roles.includes("cis_admin") ||
+    roles.includes("cis-admin") ||
+    adminIds.includes(user.id.toLowerCase()) ||
+    (user.email ? adminEmails.includes(user.email.toLowerCase()) : false)
+  );
+}
+
 function slugify(value: string) {
   const slug = value
     .toLowerCase()
@@ -240,6 +312,103 @@ function slugify(value: string) {
     .replace(/^-+|-+$/g, "")
     .slice(0, 80);
   return slug || "contact";
+}
+
+function connectionPairKey(a: string, b: string) {
+  return [a, b].sort().join(":");
+}
+
+function mapConnection(row: ConnectionRow, currentUserId: string) {
+  const otherUserId = row.requester_user_id === currentUserId ? row.recipient_user_id : row.requester_user_id;
+  const otherUserName = row.requester_user_id === currentUserId ? row.recipient_user_name : row.requester_user_name;
+  const direction =
+    row.status === "pending"
+      ? row.requester_user_id === currentUserId
+        ? "outgoing"
+        : "incoming"
+      : null;
+  return {
+    id: row.id,
+    status: row.status,
+    direction,
+    other_user_id: otherUserId,
+    other_user_name: otherUserName || "User",
+    requested_at: row.requested_at,
+    responded_at: row.responded_at,
+    updated_at: row.updated_at,
+  };
+}
+
+function mapNotification(row: NotificationRow) {
+  return {
+    id: row.id,
+    type: row.type,
+    actor_user_id: row.actor_user_id,
+    actor_user_name: row.actor_user_name,
+    entity_id: row.entity_id,
+    title: row.title,
+    body: row.body,
+    status: row.status,
+    created_at: row.created_at,
+    read_at: row.read_at,
+  };
+}
+
+async function contactByUserId(db: D1Database, userId: string) {
+  return db.prepare("SELECT * FROM user_contact_pages WHERE user_id = ?").bind(userId).first<ContactRow>();
+}
+
+async function connectionStatusMap(db: D1Database, currentUserId: string, targetUserIds: string[]) {
+  const uniqueTargets = [...new Set(targetUserIds.filter((id) => id && id !== currentUserId))];
+  if (!uniqueTargets.length) return new Map<string, ConnectionStatus>();
+  const placeholders = uniqueTargets.map(() => "?").join(", ");
+  const rows = await db.prepare(
+    `SELECT * FROM user_connections
+     WHERE (requester_user_id = ? AND recipient_user_id IN (${placeholders}))
+        OR (recipient_user_id = ? AND requester_user_id IN (${placeholders}))`,
+  )
+    .bind(currentUserId, ...uniqueTargets, currentUserId, ...uniqueTargets)
+    .all<ConnectionRow>();
+  const statuses = new Map<string, ConnectionStatus>();
+  for (const row of rows.results || []) {
+    const other = row.requester_user_id === currentUserId ? row.recipient_user_id : row.requester_user_id;
+    if (row.status === "accepted") statuses.set(other, "connected");
+    else if (row.status === "pending") statuses.set(other, row.requester_user_id === currentUserId ? "pending_sent" : "pending_received");
+    else if (row.status === "declined") statuses.set(other, "declined");
+  }
+  return statuses;
+}
+
+async function ensureDefaultAdminConnection(db: D1Database, contact: ContactRow) {
+  const admin = await db.prepare("SELECT * FROM user_contact_pages WHERE lower(user_email) = ?")
+    .bind(DEFAULT_ADMIN_EMAIL)
+    .first<ContactRow>();
+  if (!admin || admin.user_id === contact.user_id) return;
+
+  const pairKey = connectionPairKey(admin.user_id, contact.user_id);
+  const existing = await db.prepare("SELECT id FROM user_connections WHERE pair_key = ?")
+    .bind(pairKey)
+    .first<{ id: string }>();
+  if (existing) return;
+
+  const now = nowIso();
+  await db.prepare(
+    `INSERT INTO user_connections
+     (id, pair_key, requester_user_id, requester_user_name, recipient_user_id, recipient_user_name, status, requested_at, responded_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, 'accepted', ?, ?, ?)`,
+  )
+    .bind(
+      `conn-admin-${crypto.randomUUID()}`,
+      pairKey,
+      admin.user_id,
+      admin.user_name || "Julian Coy II",
+      contact.user_id,
+      contact.user_name || "User",
+      now,
+      now,
+      now,
+    )
+    .run();
 }
 
 function publicPortalBase(env: Env, request: Request) {
@@ -359,8 +528,11 @@ async function contactForUser(env: Env, request: Request, user: PidpUser): Promi
       await env.DB.prepare("UPDATE user_contact_pages SET photo_url = ?, updated_at = ? WHERE user_id = ?")
         .bind(profileImage, updatedAt, user.id)
         .run();
-      return { ...existing, photo_url: profileImage, updated_at: updatedAt };
+      const updated = { ...existing, photo_url: profileImage, updated_at: updatedAt };
+      await ensureDefaultAdminConnection(env.DB, updated);
+      return updated;
     }
+    await ensureDefaultAdminConnection(env.DB, existing);
     return existing;
   }
 
@@ -374,7 +546,9 @@ async function contactForUser(env: Env, request: Request, user: PidpUser): Promi
   )
     .bind(id, user.id, user.email || null, userName(user), slug, profileImage, created, created)
     .run();
-  return (await env.DB.prepare("SELECT * FROM user_contact_pages WHERE id = ?").bind(id).first<ContactRow>())!;
+  const createdRow = (await env.DB.prepare("SELECT * FROM user_contact_pages WHERE id = ?").bind(id).first<ContactRow>())!;
+  await ensureDefaultAdminConnection(env.DB, createdRow);
+  return createdRow;
 }
 
 function cleanOptionalString(value: unknown, maxLength = 5000): string | null {
@@ -744,13 +918,14 @@ function mapLedgerAccount(row: LedgerAccountRow) {
     email: row.email,
     entity_type: row.entity_type,
     balance: Number(row.balance || 0),
+    dena_balance: Number(row.dena_balance || 0),
     created_at: row.created_at,
   };
 }
 
 function mapUbiSettings(row: UbiSettingsRow) {
   return {
-    interval_seconds: Number(row.interval_seconds || 60),
+    interval_seconds: Number(row.interval_seconds || DEFAULT_UBI_CADENCE_SECONDS),
     dena_annual: Number(row.dena_annual || 1),
     dena_precision: Number(row.dena_precision || 6),
     entity_types: parseJsonArray(row.entity_types),
@@ -762,7 +937,169 @@ function mapUbiSettings(row: UbiSettingsRow) {
 async function getUbiSettings(db: D1Database) {
   const row = await db.prepare("SELECT interval_seconds, dena_annual, dena_precision, entity_types, updated_at, updated_by FROM ubi_runtime_settings WHERE id = 1").first<UbiSettingsRow>();
   if (row) return mapUbiSettings(row);
-  return { interval_seconds: 60, dena_annual: 1, dena_precision: 6, entity_types: ["individual"], updated_at: nowIso(), updated_by: null };
+  return { interval_seconds: DEFAULT_UBI_CADENCE_SECONDS, dena_annual: 1, dena_precision: 6, entity_types: ["individual"], updated_at: nowIso(), updated_by: null };
+}
+
+function normalizedEntityTypes(settings: Awaited<ReturnType<typeof getUbiSettings>>) {
+  const entityTypes = settings.entity_types.map((value) => String(value || "").trim().toLowerCase()).filter(Boolean);
+  return entityTypes.length ? entityTypes : ["individual"];
+}
+
+function roundToPrecision(value: number, precision: number) {
+  const clampedPrecision = Math.max(0, Math.min(Math.trunc(precision || 0), 12));
+  const factor = 10 ** clampedPrecision;
+  return Math.round(value * factor) / factor;
+}
+
+function denaForElapsed(annual: number, precision: number, elapsedSeconds: number) {
+  if (!Number.isFinite(annual) || annual <= 0 || !Number.isFinite(elapsedSeconds) || elapsedSeconds <= 0) return 0;
+  const secondsPerYear = 365 * 24 * 60 * 60;
+  return roundToPrecision((annual * elapsedSeconds) / secondsPerYear, precision);
+}
+
+function cadenceSeconds(settings: Awaited<ReturnType<typeof getUbiSettings>>) {
+  const seconds = Math.trunc(Number(settings.interval_seconds || DEFAULT_UBI_CADENCE_SECONDS));
+  return Math.max(1, Math.min(seconds, 365 * 24 * 60 * 60));
+}
+
+function nextPaymentDate(scheduledTime: number, settings: Awaited<ReturnType<typeof getUbiSettings>>) {
+  return isoFromMillis(scheduledTime + cadenceSeconds(settings) * 1000).slice(0, 10);
+}
+
+function wholeCents(value: number) {
+  if (!Number.isFinite(value) || value < 0.01) return 0;
+  return Math.floor((value + Number.EPSILON) * 100) / 100;
+}
+
+async function ensureUbiTickState(db: D1Database, now: string) {
+  await db.prepare("INSERT OR IGNORE INTO ubi_tick_state (id, last_tick_at, updated_at) VALUES ('singleton', ?, ?)")
+    .bind(now, now)
+    .run();
+}
+
+async function markUbiRunStarted(db: D1Database, runKey: string, startedAt: string) {
+  const result = await db.prepare("INSERT OR IGNORE INTO ubi_tick_runs (run_key, started_at, status) VALUES (?, ?, 'running')")
+    .bind(runKey, startedAt)
+    .run();
+  return Number(result.meta?.changes || 0) > 0;
+}
+
+export async function runUbiTick(db: D1Database, scheduledTime = Date.now()): Promise<UbiTickSummary> {
+  const startedAt = isoFromMillis(scheduledTime);
+  const runKey = startedAt.slice(0, 16);
+  await ensureUbiTickState(db, startedAt);
+  const claimed = await markUbiRunStarted(db, runKey, startedAt);
+  if (!claimed) {
+    return {
+      run_key: runKey,
+      status: "skipped",
+      started_at: startedAt,
+      completed_at: nowIso(),
+      elapsed_seconds: 0,
+      eligible_accounts: 0,
+      payout_count: 0,
+      accrued_amount: 0,
+      paid_amount: 0,
+    };
+  }
+
+  try {
+    const state = await db.prepare("SELECT last_tick_at FROM ubi_tick_state WHERE id = 'singleton'").first<{ last_tick_at: string | null }>();
+    const lastTickMillis = state?.last_tick_at ? Date.parse(state.last_tick_at) : Number.NaN;
+    const elapsedSeconds = Number.isFinite(lastTickMillis)
+      ? Math.max(0, Math.floor((scheduledTime - lastTickMillis) / 1000))
+      : 0;
+    const settings = await getUbiSettings(db);
+    const accruedAmount = denaForElapsed(Number(settings.dena_annual || 0), Number(settings.dena_precision || 6), elapsedSeconds);
+    const entityTypes = normalizedEntityTypes(settings);
+    let eligibleAccounts = 0;
+    let payoutCount = 0;
+    let paidAmount = 0;
+
+    const placeholders = entityTypes.map(() => "?").join(", ");
+    const today = startedAt.slice(0, 10);
+    if (accruedAmount > 0) {
+      const eligible = await db.prepare(`SELECT id, dena_balance FROM ledger_accounts WHERE lower(entity_type) IN (${placeholders})`)
+        .bind(...entityTypes)
+        .all<Pick<LedgerAccountRow, "id" | "dena_balance">>();
+      const eligibleRows = eligible.results || [];
+      eligibleAccounts = eligibleRows.length;
+
+      await db.prepare(`UPDATE ledger_accounts SET dena_balance = COALESCE(dena_balance, 0) + ?, updated_at = ? WHERE lower(entity_type) IN (${placeholders})`)
+        .bind(accruedAmount, startedAt, ...entityTypes)
+        .run();
+    }
+    const payoutRows = await db.prepare(
+      `SELECT a.id, a.dena_balance
+       FROM ledger_accounts a
+       LEFT JOIN ubi_eligibility u ON u.account_id = a.id
+       WHERE lower(a.entity_type) IN (${placeholders})
+         AND COALESCE(a.dena_balance, 0) >= 0.01
+         AND COALESCE(u.is_eligible, 1) = 1
+         AND (u.next_payment_date IS NULL OR u.next_payment_date <= ?)`,
+    )
+      .bind(...entityTypes, today)
+      .all<Pick<LedgerAccountRow, "id" | "dena_balance">>();
+    const statements: D1PreparedStatement[] = [];
+    const followingPaymentDate = nextPaymentDate(scheduledTime, settings);
+    for (const account of payoutRows.results || []) {
+      const payout = wholeCents(Number(account.dena_balance || 0));
+      if (payout <= 0) continue;
+      payoutCount += 1;
+      paidAmount += payout;
+      statements.push(
+        db.prepare("UPDATE ledger_accounts SET balance = balance + ?, dena_balance = COALESCE(dena_balance, 0) - ?, updated_at = ? WHERE id = ?")
+          .bind(payout, payout, startedAt, account.id),
+      );
+      statements.push(
+        db.prepare(
+          "INSERT INTO ledger_transactions (id, from_account_id, to_account_id, amount, currency, transaction_type, description, timestamp) VALUES (?, NULL, ?, ?, 'DEM', 'UBI_PAYMENT', ?, ?)",
+        )
+          .bind(`txn-ubi-${crypto.randomUUID()}`, account.id, payout, "Automatic UBI payout from Cloudflare scheduled Worker", startedAt),
+      );
+      statements.push(
+        db.prepare(
+          `INSERT INTO ubi_eligibility (account_id, is_eligible, next_payment_date, last_payment_amount, total_payments_received)
+           VALUES (?, 1, ?, ?, ?)
+           ON CONFLICT(account_id) DO UPDATE SET
+            next_payment_date = excluded.next_payment_date,
+            last_payment_amount = excluded.last_payment_amount,
+            total_payments_received = ubi_eligibility.total_payments_received + excluded.last_payment_amount`,
+        )
+          .bind(account.id, followingPaymentDate, payout, payout),
+      );
+    }
+    if (statements.length) await db.batch(statements);
+
+    const completedAt = nowIso();
+    await db.prepare("UPDATE ubi_tick_state SET last_tick_at = ?, updated_at = ? WHERE id = 'singleton'")
+      .bind(startedAt, completedAt)
+      .run();
+    await db.prepare(
+      `UPDATE ubi_tick_runs
+       SET completed_at = ?, status = 'completed', eligible_accounts = ?, payout_count = ?, accrued_amount = ?, paid_amount = ?
+       WHERE run_key = ?`,
+    )
+      .bind(completedAt, eligibleAccounts, payoutCount, accruedAmount, paidAmount, runKey)
+      .run();
+
+    return {
+      run_key: runKey,
+      status: "completed",
+      started_at: startedAt,
+      completed_at: completedAt,
+      elapsed_seconds: elapsedSeconds,
+      eligible_accounts: eligibleAccounts,
+      payout_count: payoutCount,
+      accrued_amount: accruedAmount,
+      paid_amount: Math.round(paidAmount * 100) / 100,
+    };
+  } catch (err) {
+    await db.prepare("UPDATE ubi_tick_runs SET completed_at = ?, status = 'failed', error = ? WHERE run_key = ?")
+      .bind(nowIso(), err instanceof Error ? err.message.slice(0, 1000) : "Unknown UBI tick failure", runKey)
+      .run();
+    throw err;
+  }
 }
 
 async function accountForUser(db: D1Database, user: PidpUser) {
@@ -822,9 +1159,7 @@ app.get("/health", (c) => c.json({ ok: true, service: "org-worker" }));
 
 app.get("/admin/me", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
-  const adminEmails = parseList(c.env.ADMIN_EMAILS);
-  const adminIds = parseList(c.env.ADMIN_USER_IDS);
-  const isAdmin = Boolean(user.is_sysadmin) || adminIds.includes(user.id.toLowerCase()) || (user.email ? adminEmails.includes(user.email.toLowerCase()) : false);
+  const isAdmin = adminUser(user, c.env);
   return c.json({ is_admin: isAdmin, is_sysadmin: isAdmin });
 });
 
@@ -856,6 +1191,151 @@ app.post("/api/network/contact/me/import", async (c) => {
   const updated = await c.env.DB.prepare("SELECT * FROM user_contact_pages WHERE user_id = ?").bind(row.user_id).first<ContactRow>();
   return c.json({ contact: mapContact(c.env, c.req.raw, updated!), imported_fields: ["source_profile_url"], source_url: sourceUrl });
 });
+
+app.get("/api/network/notifications/summary", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const unread = await c.env.DB.prepare("SELECT count(*) AS n FROM user_notifications WHERE user_id = ? AND status = 'unread'")
+    .bind(user.id)
+    .first<{ n: number }>();
+  const pendingConnections = await c.env.DB.prepare("SELECT count(*) AS n FROM user_connections WHERE recipient_user_id = ? AND status = 'pending'")
+    .bind(user.id)
+    .first<{ n: number }>();
+  return c.json({
+    unread_count: Number(unread?.n || 0),
+    pending_connections_count: Number(pendingConnections?.n || 0),
+  });
+});
+
+app.get("/api/network/notifications", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "20", 10) || 20, 100));
+  const rows = await c.env.DB.prepare(
+    `SELECT * FROM user_notifications
+     WHERE user_id = ?
+     ORDER BY created_at DESC
+     LIMIT ?`,
+  )
+    .bind(user.id, limit)
+    .all<NotificationRow>();
+  return c.json((rows.results || []).map(mapNotification));
+});
+
+app.post("/api/network/notifications/read", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const readAt = nowIso();
+  await c.env.DB.prepare("UPDATE user_notifications SET status = 'read', read_at = ? WHERE user_id = ? AND status = 'unread'")
+    .bind(readAt, user.id)
+    .run();
+  return c.json({ ok: true, read_at: readAt });
+});
+
+app.get("/api/network/connections/requests", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const rows = await c.env.DB.prepare(
+    `SELECT * FROM user_connections
+     WHERE recipient_user_id = ? AND status = 'pending'
+     ORDER BY requested_at DESC
+     LIMIT 100`,
+  )
+    .bind(user.id)
+    .all<ConnectionRow>();
+  return c.json((rows.results || []).map((row) => mapConnection(row, user.id)));
+});
+
+app.post("/api/network/connections/request", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const payload = (await c.req.json().catch(() => ({}))) as { target_user_id?: string };
+  const targetUserId = String(payload.target_user_id || "").trim();
+  if (!targetUserId) fail(400, "target_user_id is required");
+  if (targetUserId === user.id) fail(400, "Cannot connect to yourself");
+  const target = await contactByUserId(c.env.DB, targetUserId);
+  if (!target) fail(404, "Person not found");
+
+  const pairKey = connectionPairKey(user.id, targetUserId);
+  const now = nowIso();
+  const existing = await c.env.DB.prepare("SELECT * FROM user_connections WHERE pair_key = ?")
+    .bind(pairKey)
+    .first<ConnectionRow>();
+  if (existing?.status === "accepted" || existing?.status === "pending") {
+    return c.json(mapConnection(existing, user.id));
+  }
+
+  const id = existing?.id || `conn-${crypto.randomUUID()}`;
+  if (existing) {
+    await c.env.DB.prepare(
+      `UPDATE user_connections
+       SET requester_user_id = ?, requester_user_name = ?, recipient_user_id = ?, recipient_user_name = ?,
+           status = 'pending', requested_at = ?, responded_at = NULL, updated_at = ?
+       WHERE id = ?`,
+    )
+      .bind(user.id, userName(user), targetUserId, target.user_name || "User", now, now, id)
+      .run();
+  } else {
+    await c.env.DB.prepare(
+      `INSERT INTO user_connections
+       (id, pair_key, requester_user_id, requester_user_name, recipient_user_id, recipient_user_name, status, requested_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)`,
+    )
+      .bind(id, pairKey, user.id, userName(user), targetUserId, target.user_name || "User", now, now)
+      .run();
+  }
+
+  await c.env.DB.prepare(
+    `INSERT INTO user_notifications
+     (id, user_id, type, actor_user_id, actor_user_name, entity_id, title, body, status, created_at)
+     VALUES (?, ?, 'connection_request', ?, ?, ?, ?, ?, 'unread', ?)`,
+  )
+    .bind(
+      `note-${crypto.randomUUID()}`,
+      targetUserId,
+      user.id,
+      userName(user),
+      id,
+      "New connection request",
+      `${userName(user)} wants to connect with you.`,
+      now,
+    )
+    .run();
+
+  const row = await c.env.DB.prepare("SELECT * FROM user_connections WHERE id = ?").bind(id).first<ConnectionRow>();
+  return c.json(mapConnection(row!, user.id), 201);
+});
+
+async function respondToConnection(env: Env, request: Request, connectionId: string, status: "accepted" | "declined") {
+  const user = await currentUser(env, request);
+  const row = await env.DB.prepare("SELECT * FROM user_connections WHERE id = ?").bind(connectionId).first<ConnectionRow>();
+  if (!row || row.recipient_user_id !== user.id || row.status !== "pending") fail(404, "Connection request not found");
+  const now = nowIso();
+  await env.DB.prepare("UPDATE user_connections SET status = ?, responded_at = ?, updated_at = ? WHERE id = ?")
+    .bind(status, now, now, connectionId)
+    .run();
+  await env.DB.prepare("UPDATE user_notifications SET status = 'read', read_at = ? WHERE user_id = ? AND entity_id = ? AND type = 'connection_request'")
+    .bind(now, user.id, connectionId)
+    .run();
+  if (status === "accepted") {
+    await env.DB.prepare(
+      `INSERT INTO user_notifications
+       (id, user_id, type, actor_user_id, actor_user_name, entity_id, title, body, status, created_at)
+       VALUES (?, ?, 'connection_accepted', ?, ?, ?, ?, ?, 'unread', ?)`,
+    )
+      .bind(
+        `note-${crypto.randomUUID()}`,
+        row.requester_user_id,
+        user.id,
+        userName(user),
+        connectionId,
+        "Connection accepted",
+        `${userName(user)} accepted your connection request.`,
+        now,
+      )
+      .run();
+  }
+  const updated = await env.DB.prepare("SELECT * FROM user_connections WHERE id = ?").bind(connectionId).first<ConnectionRow>();
+  return mapConnection(updated!, user.id);
+}
+
+app.post("/api/network/connections/:id/accept", async (c) => c.json(await respondToConnection(c.env, c.req.raw, c.req.param("id"), "accepted")));
+app.post("/api/network/connections/:id/decline", async (c) => c.json(await respondToConnection(c.env, c.req.raw, c.req.param("id"), "declined")));
 
 async function publicContact(env: Env, request: Request, slug: string) {
   const requestedSlug = String(slug || "").trim();
@@ -899,6 +1379,7 @@ async function publicUsers(env: Env, request: Request, query = "", limit = 40) {
 }
 
 async function networkUsers(env: Env, request: Request, query = "", limit = 500) {
+  const user = await currentUser(env, request);
   const safeLimit = Math.max(1, Math.min(limit, 1000));
   const q = query.trim().toLowerCase();
   const rows = q
@@ -917,7 +1398,9 @@ async function networkUsers(env: Env, request: Request, query = "", limit = 500)
       )
         .bind(safeLimit)
         .all<ContactRow>();
-  return (rows.results || []).map((row) => ({
+  const contactRows = rows.results || [];
+  const statuses = await connectionStatusMap(env.DB, user.id, contactRows.map((row) => row.user_id));
+  return contactRows.map((row) => ({
     user_id: row.user_id,
     user_name: row.user_name || "User",
     email: row.user_email || "",
@@ -926,6 +1409,7 @@ async function networkUsers(env: Env, request: Request, query = "", limit = 500)
     contact_enabled: Boolean(row.enabled),
     headline: row.headline,
     photo_url: row.photo_url,
+    connection_status: row.user_id === user.id ? "self" : statuses.get(row.user_id) || "none",
   }));
 }
 
@@ -1291,12 +1775,8 @@ app.get("/api/accounts", async (c) => {
 
 app.get("/api/admin/accounts", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
-  const adminEmails = parseList(c.env.ADMIN_EMAILS);
-  const adminIds = parseList(c.env.ADMIN_USER_IDS);
-  const isAdmin = Boolean(user.is_sysadmin) || adminIds.includes(user.id.toLowerCase()) || (user.email ? adminEmails.includes(user.email.toLowerCase()) : false);
-  if (!isAdmin) return c.json([]);
-  const rows = await c.env.DB.prepare("SELECT * FROM ledger_accounts WHERE lower(email) IN (SELECT lower(value) FROM json_each(?)) ORDER BY balance DESC, lower(name) ASC")
-    .bind(JSON.stringify(adminEmails))
+  if (!adminUser(user, c.env)) return c.json([]);
+  const rows = await c.env.DB.prepare("SELECT * FROM ledger_accounts ORDER BY balance DESC, lower(name) ASC")
     .all<LedgerAccountRow>();
   return c.json((rows.results || []).map(mapLedgerAccount));
 });
@@ -1434,10 +1914,7 @@ app.get("/api/ubi/settings", async (c) => {
 
 app.patch("/api/ubi/settings", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
-  const adminEmails = parseList(c.env.ADMIN_EMAILS);
-  const adminIds = parseList(c.env.ADMIN_USER_IDS);
-  const isAdmin = Boolean(user.is_sysadmin) || adminIds.includes(user.id.toLowerCase()) || (user.email ? adminEmails.includes(user.email.toLowerCase()) : false);
-  if (!isAdmin) fail(403, "Admin access required");
+  if (!adminUser(user, c.env)) fail(403, "Admin access required");
   const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
   const current = await getUbiSettings(c.env.DB);
   const intervalSeconds = Math.max(1, Math.min(Number(payload.interval_seconds ?? current.interval_seconds) || current.interval_seconds, 60 * 60 * 24 * 365));
@@ -1462,6 +1939,23 @@ app.patch("/api/ubi/settings", async (c) => {
     .bind(intervalSeconds, denaAnnual, denaPrecision, JSON.stringify(entityTypes), timestamp, user.email || user.id)
     .run();
   return c.json(await getUbiSettings(c.env.DB));
+});
+
+app.post("/api/ubi/tick", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  if (!adminUser(user, c.env)) fail(403, "Admin access required");
+  const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  const scheduledTime = payload.scheduled_time ? Date.parse(String(payload.scheduled_time)) : Date.now();
+  if (!Number.isFinite(scheduledTime)) fail(400, "scheduled_time must be an ISO timestamp");
+  return c.json(await runUbiTick(c.env.DB, scheduledTime));
+});
+
+app.get("/api/ubi/tick-status", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  if (!adminUser(user, c.env)) fail(403, "Admin access required");
+  const state = await c.env.DB.prepare("SELECT * FROM ubi_tick_state WHERE id = 'singleton'").first<Record<string, unknown>>();
+  const runs = await c.env.DB.prepare("SELECT * FROM ubi_tick_runs ORDER BY started_at DESC LIMIT 10").all<Record<string, unknown>>();
+  return c.json({ state, recent_runs: runs.results || [] });
 });
 
 app.get("/api/ubi/eligibility", async (c) => {
@@ -1673,7 +2167,7 @@ app.post("/api/governance/motions/:motionId/table", async (c) => {
 app.post("/api/governance/motions/:motionId/withdraw", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   const motion = await requireGovernanceMotion(c.env.DB, c.req.param("motionId"));
-  if (motion.proposer_id !== user.id && !user.is_sysadmin) fail(403, "Only the proposer can withdraw this motion");
+  if (motion.proposer_id !== user.id && !adminUser(user, c.env)) fail(403, "Only the proposer can withdraw this motion");
   if (["passed", "failed"].includes(motion.status)) fail(400, "Motion is already resolved");
   const updated = await updateGovernanceStatus(c.env.DB, motion.id, "withdrawn");
   return c.json(await mapGovernanceMotion(c.env.DB, updated));
@@ -1823,4 +2317,9 @@ app.post("/api/network/chat/bootstrap", async (c) => {
 
 app.all("*", (c) => c.json({ detail: "Endpoint is not implemented in the Cloudflare org worker" }, 501));
 
-export default app;
+export default {
+  fetch: app.fetch,
+  async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext) {
+    ctx.waitUntil(runUbiTick(env.DB, controller.scheduledTime));
+  },
+};

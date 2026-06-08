@@ -20,6 +20,7 @@ type NetworkUser = {
   contact_enabled: boolean
   headline?: string | null
   photo_url?: string | null
+  connection_status?: 'self' | 'none' | 'pending_sent' | 'pending_received' | 'connected' | 'declined'
 }
 
 export function PeoplePage() {
@@ -27,6 +28,7 @@ export function PeoplePage() {
   const [query, setQuery] = useState('')
   const [users, setUsers] = useState<NetworkUser[]>([])
   const [status, setStatus] = useState('Loading people…')
+  const [actionStatus, setActionStatus] = useState('')
 
   useEffect(() => {
     setSeoMeta({
@@ -77,6 +79,31 @@ export function PeoplePage() {
 
   const totalLabel = useMemo(() => `${users.length.toLocaleString()} people`, [users.length])
 
+  async function requestConnection(person: NetworkUser) {
+    if (!token) return
+    setActionStatus('')
+    try {
+      const response = await fetch(orgUrl('/api/network/connections/request'), {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ target_user_id: person.user_id }),
+      })
+      if (!response.ok) {
+        const text = await response.text().catch(() => '')
+        throw new Error(text || `Connection request failed (${response.status})`)
+      }
+      setUsers((prev) =>
+        prev.map((item) => item.user_id === person.user_id ? { ...item, connection_status: 'pending_sent' } : item),
+      )
+      setActionStatus(`Connection request sent to ${person.user_name}.`)
+    } catch (error) {
+      setActionStatus(error instanceof Error ? error.message : 'Connection request failed')
+    }
+  }
+
   return (
     <section className="panel" style={{ display: 'grid', gap: '1rem' }}>
       <h1 style={{ marginTop: 0 }}>People</h1>
@@ -96,6 +123,7 @@ export function PeoplePage() {
       </label>
 
       {!status && users.length === 0 ? <p className="muted">No people found.</p> : null}
+      {actionStatus ? <p className="muted" style={{ margin: 0 }}>{actionStatus}</p> : null}
 
       <div style={{ display: 'grid', gap: '0.9rem' }}>
         {users.map((person) => {
@@ -180,6 +208,17 @@ export function PeoplePage() {
                   )
                 ) : (
                   <span className="muted">No public chat link yet</span>
+                )}
+                {person.connection_status === 'self' ? null : person.connection_status === 'connected' ? (
+                  <span className="muted">Connected</span>
+                ) : person.connection_status === 'pending_sent' ? (
+                  <span className="muted">Connection pending</span>
+                ) : person.connection_status === 'pending_received' ? (
+                  <span className="muted">They requested to connect. Use notifications to respond.</span>
+                ) : (
+                  <button type="button" onClick={() => requestConnection(person)} style={{ width: 'fit-content' }}>
+                    Connect
+                  </button>
                 )}
               </div>
             </article>

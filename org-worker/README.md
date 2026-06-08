@@ -7,6 +7,7 @@ Cloudflare-native replacement boundary for the org API surface currently used by
 - Cloudflare Workers
 - TypeScript and Hono
 - D1 for org/contact/governance/ledger/UBI data
+- Cloudflare Scheduled Workers for UBI accrual and payout execution
 - PIdP token validation through `PIDP_BASE_URL/auth/me`
 - Calendar ingestion protected by the `ORG_INGEST_TOKEN` Worker secret
 
@@ -37,6 +38,8 @@ Cloudflare-native replacement boundary for the org API surface currently used by
 - `GET /api/system/metrics`
 - `GET/PATCH /api/ubi/settings`
 - `GET /api/ubi/eligibility`
+- Scheduled UBI tick: accrues DENA into `ledger_accounts.dena_balance`, pays whole cents into `balance` on the configured two-week cadence, and records `UBI_PAYMENT` ledger transactions.
+- `POST /api/ubi/tick` and `GET /api/ubi/tick-status` for admin-only smoke tests and operations checks.
 - `POST /api/network/ingest/calendar` for the existing calendar-generated org/event payload.
 - `POST /api/network/chat/bootstrap` returns a clear unavailable response unless Matrix bootstrap is added.
 - Unsupported routes return a clear `501` response from this Worker. The Worker no longer falls back to the legacy Arkavo org backend.
@@ -59,6 +62,36 @@ npm run deploy
 ```
 
 Set the root site Worker `ORG_API_ORIGIN` to the deployed Worker URL or custom domain.
+
+The Worker config includes a once-per-minute cron trigger:
+
+```json
+"triggers": {
+  "crons": ["* * * * *"]
+}
+```
+
+The cron trigger is only the executor wake-up. UBI administration cadence is controlled by `ubi_runtime_settings.interval_seconds`; production is set to `1209600` seconds, or 2 weeks.
+
+After deploying migrations and the Worker, verify UBI runtime state:
+
+```sh
+npx wrangler d1 execute org --remote --command "SELECT * FROM ubi_tick_state;"
+curl -i -H "Authorization: Bearer <admin-pidp-token>" https://org-codecollective.jcloiacon.workers.dev/api/ubi/tick-status
+```
+
+For a controlled smoke test, trigger one idempotent run with an explicit timestamp:
+
+```sh
+curl -i \
+  -X POST \
+  -H "Authorization: Bearer <admin-pidp-token>" \
+  -H "Content-Type: application/json" \
+  --data '{"scheduled_time":"2026-06-08T00:00:00.000Z"}' \
+  https://org-codecollective.jcloiacon.workers.dev/api/ubi/tick
+```
+
+Then confirm `ledger_transactions` includes `UBI_PAYMENT` rows when accrued balances reach whole cents.
 
 Set the ingest token as a Worker secret. Do not store it in `wrangler.jsonc` or pass it as a plain deploy variable.
 

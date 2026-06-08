@@ -80,6 +80,13 @@ type SearchCacheEntry = {
   users: SearchUser[]
 }
 
+type ConnectionRequest = {
+  id: string
+  other_user_id: string
+  other_user_name: string
+  requested_at: string
+}
+
 function highlightMatch(text: string, query: string): React.ReactNode {
   const normalizedQuery = query.trim().toLowerCase()
   if (!normalizedQuery) return text
@@ -124,8 +131,13 @@ export function Header() {
   const [searchOrgs, setSearchOrgs] = useState<SearchOrganization[]>([])
   const [searchEvents, setSearchEvents] = useState<SearchEvent[]>([])
   const [searchUsers, setSearchUsers] = useState<SearchUser[]>([])
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [unreadNotifications, setUnreadNotifications] = useState(0)
+  const [connectionRequests, setConnectionRequests] = useState<ConnectionRequest[]>([])
+  const [notificationsStatus, setNotificationsStatus] = useState('')
 
   const menuRef = useRef<HTMLDivElement | null>(null)
+  const notificationsRef = useRef<HTMLDivElement | null>(null)
   const searchRef = useRef<HTMLDivElement | null>(null)
   const searchInputRef = useRef<HTMLInputElement | null>(null)
   const searchCacheRef = useRef<Map<string, SearchCacheEntry>>(new Map())
@@ -190,6 +202,81 @@ export function Header() {
     }
     return () => document.removeEventListener('mousedown', handleClick)
   }, [menuOpen])
+
+  useEffect(() => {
+    function handleClick(event: MouseEvent) {
+      if (!notificationsRef.current) return
+      if (!notificationsRef.current.contains(event.target as Node)) {
+        setNotificationsOpen(false)
+      }
+    }
+    if (notificationsOpen) {
+      document.addEventListener('mousedown', handleClick)
+    }
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [notificationsOpen])
+
+  async function refreshNotifications(signal?: AbortSignal) {
+    if (!token || role === 'guest') {
+      setUnreadNotifications(0)
+      setConnectionRequests([])
+      return
+    }
+    try {
+      const [summaryResp, requestsResp] = await Promise.all([
+        fetch(orgUrl('/api/network/notifications/summary'), {
+          headers: { Authorization: `Bearer ${token}` },
+          signal,
+        }),
+        fetch(orgUrl('/api/network/connections/requests'), {
+          headers: { Authorization: `Bearer ${token}` },
+          signal,
+        }),
+      ])
+      if (!summaryResp.ok || !requestsResp.ok) throw new Error('Notifications unavailable')
+      const summary = (await summaryResp.json()) as { unread_count?: number; pending_connections_count?: number }
+      const requests = (await requestsResp.json()) as ConnectionRequest[]
+      setUnreadNotifications(Number(summary.unread_count || summary.pending_connections_count || 0))
+      setConnectionRequests(Array.isArray(requests) ? requests : [])
+      setNotificationsStatus('')
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return
+      setNotificationsStatus('Notifications unavailable')
+    }
+  }
+
+  useEffect(() => {
+    if (!token || role === 'guest') {
+      setUnreadNotifications(0)
+      setConnectionRequests([])
+      return
+    }
+    const controller = new AbortController()
+    refreshNotifications(controller.signal)
+    const interval = window.setInterval(() => refreshNotifications(), 30000)
+    const handleFocus = () => refreshNotifications()
+    window.addEventListener('focus', handleFocus)
+    return () => {
+      controller.abort()
+      window.clearInterval(interval)
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [role, token])
+
+  async function respondToConnectionRequest(id: string, action: 'accept' | 'decline') {
+    if (!token) return
+    setNotificationsStatus('')
+    try {
+      const response = await fetch(orgUrl(`/api/network/connections/${encodeURIComponent(id)}/${action}`), {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!response.ok) throw new Error(`Failed to ${action} request`)
+      await refreshNotifications()
+    } catch (error) {
+      setNotificationsStatus(error instanceof Error ? error.message : 'Request failed')
+    }
+  }
 
   useEffect(() => {
     function handleClick(event: MouseEvent) {
@@ -639,33 +726,83 @@ export function Header() {
 
         <div className="portal-auth">
           {role !== 'guest' ? (
-            <div className="portal-user" ref={menuRef}>
-              <button
-                type="button"
-                className={`portal-user-trigger ${isAdmin ? 'is-sysadmin' : 'is-standard-user'}`}
-                onClick={() => setMenuOpen((prev) => !prev)}
-              >
-                <span className="portal-avatar">
-                  {user?.avatarUrl ? (
-                    <img src={user.avatarUrl} alt={displayName} />
-                  ) : (
-                    displayName.slice(0, 1).toUpperCase()
-                  )}
-                </span>
-                <span className="portal-user-trigger-label">{displayName.split(' ')[0]}</span>
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 12 12"
-                  fill="currentColor"
-                  style={{ transform: menuOpen ? 'rotate(180deg)' : 'none' }}
+            <>
+              <div className="portal-notifications" ref={notificationsRef}>
+                <button
+                  type="button"
+                  className="portal-notification-trigger"
+                  aria-label={`Notifications${unreadNotifications ? `, ${unreadNotifications} unread` : ''}`}
+                  aria-expanded={notificationsOpen}
+                  onClick={() => setNotificationsOpen((prev) => !prev)}
                 >
-                  <path d="M6 8L1 3h10z" />
-                </svg>
-              </button>
+                  <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path d="M10 2a5 5 0 00-5 5v2.6c0 .8-.24 1.58-.68 2.24L3.3 13.38A1 1 0 004.13 15h11.74a1 1 0 00.83-1.56l-1.02-1.54A4 4 0 0115 9.6V7a5 5 0 00-5-5zm0 16a2.5 2.5 0 002.45-2h-4.9A2.5 2.5 0 0010 18z" />
+                  </svg>
+                  {unreadNotifications > 0 ? (
+                    <span className="portal-notification-badge">{Math.min(unreadNotifications, 99)}</span>
+                  ) : null}
+                </button>
 
-              {menuOpen && (
-                <div className="portal-user-menu">
+                {notificationsOpen ? (
+                  <div className="portal-notification-menu">
+                    <div className="portal-notification-menu-header">
+                      <strong>Notifications</strong>
+                      <button type="button" onClick={() => refreshNotifications()}>Refresh</button>
+                    </div>
+                    {connectionRequests.length > 0 ? (
+                      <div className="portal-notification-list">
+                        {connectionRequests.map((request) => (
+                          <article key={request.id} className="portal-notification-item">
+                            <div>
+                              <strong>{request.other_user_name}</strong>
+                              <p className="muted">Wants to connect with you.</p>
+                            </div>
+                            <div className="portal-notification-actions">
+                              <button type="button" onClick={() => respondToConnectionRequest(request.id, 'accept')}>
+                                Accept
+                              </button>
+                              <button type="button" onClick={() => respondToConnectionRequest(request.id, 'decline')}>
+                                Decline
+                              </button>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="muted portal-notification-empty">No pending connection requests.</p>
+                    )}
+                    {notificationsStatus ? <p className="muted portal-notification-empty">{notificationsStatus}</p> : null}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="portal-user" ref={menuRef}>
+                <button
+                  type="button"
+                  className={`portal-user-trigger ${isAdmin ? 'is-sysadmin' : 'is-standard-user'}`}
+                  onClick={() => setMenuOpen((prev) => !prev)}
+                >
+                  <span className="portal-avatar">
+                    {user?.avatarUrl ? (
+                      <img src={user.avatarUrl} alt={displayName} />
+                    ) : (
+                      displayName.slice(0, 1).toUpperCase()
+                    )}
+                  </span>
+                  <span className="portal-user-trigger-label">{displayName.split(' ')[0]}</span>
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 12 12"
+                    fill="currentColor"
+                    style={{ transform: menuOpen ? 'rotate(180deg)' : 'none' }}
+                  >
+                    <path d="M6 8L1 3h10z" />
+                  </svg>
+                </button>
+
+                {menuOpen && (
+                  <div className="portal-user-menu">
                   <div className="portal-user-menu-meta">
                     <strong>{displayName}</strong>
                     <span>{roleLabel}</span>
@@ -709,9 +846,10 @@ export function Header() {
                   <button type="button" onClick={logout} className="portal-user-menu-item logout">
                     Sign out
                   </button>
-                </div>
-              )}
-            </div>
+                  </div>
+                )}
+              </div>
+            </>
           ) : (
             <>
               <a className="portal-button" href={pidpAppLoginUrl(nextUrl)}>

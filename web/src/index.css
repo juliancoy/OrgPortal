@@ -724,7 +724,104 @@ textarea {
 .portal-auth {
   display: inline-flex;
   align-items: center;
+  justify-self: end;
   gap: 10px;
+}
+
+.portal-notifications {
+  position: relative;
+}
+
+.portal-auth .portal-notification-trigger {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  place-items: center;
+  padding: 0;
+  border-radius: var(--radius-full);
+  line-height: 1;
+}
+
+.portal-notification-trigger svg {
+  display: block;
+  flex: 0 0 auto;
+  pointer-events: none;
+}
+
+.portal-notification-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0 5px;
+  border: 2px solid var(--panel);
+  border-radius: 999px;
+  background: #dc2626;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.portal-notification-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 1200;
+  width: min(92vw, 360px);
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: var(--shadow-card);
+}
+
+.portal-notification-menu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.portal-notification-menu-header button,
+.portal-notification-actions button {
+  padding: 7px 10px;
+  font-size: 0.75rem;
+}
+
+.portal-notification-list {
+  display: grid;
+  gap: 8px;
+}
+
+.portal-notification-item {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--border), transparent 40%);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface-solid), var(--panel) 20%);
+}
+
+.portal-notification-item p,
+.portal-notification-empty {
+  margin: 0;
+}
+
+.portal-notification-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .portal-theme-control {
@@ -1089,15 +1186,25 @@ textarea {
 }
 
 .public-id-card {
-  width: min(100%, 520px);
+  width: min(100%, 560px);
   display: grid;
-  justify-items: center;
   gap: 14px;
-  padding: clamp(22px, 5vw, 36px);
+  padding: 18px;
+  box-sizing: border-box;
   border: 2px solid var(--border);
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   background: var(--panel);
   box-shadow: var(--shadow-card);
+}
+
+.public-id-card * {
+  box-sizing: border-box;
+}
+
+.public-id-identity {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
   text-align: center;
 }
 
@@ -1110,30 +1217,29 @@ textarea {
 }
 
 .public-id-avatar {
-  width: clamp(112px, 34vw, 168px);
-  height: clamp(112px, 34vw, 168px);
+  width: 92px;
+  height: 92px;
   border: 2px solid var(--border);
   border-radius: 50%;
   background: var(--surface-solid);
-  box-shadow: 0 2px 0 rgba(0, 42, 97, 0.32);
   object-fit: cover;
 }
 
 .public-id-avatar-fallback {
   display: grid;
   place-items: center;
-  color: var(--primary);
-  font-family: Mattone, NectoMono, monospace;
-  font-size: clamp(2.7rem, 16vw, 5rem);
+  color: #fff;
+  background: var(--primary);
+  font-size: 1.8rem;
+  font-weight: 800;
 }
 
 .public-id-name {
   max-width: 100%;
   margin: 0;
   color: var(--text-primary);
-  font-family: Mattone, NectoMono, monospace;
-  font-size: clamp(1.7rem, 8vw, 3rem);
-  line-height: 1.08;
+  font-size: clamp(1.8rem, 7vw, 2.6rem);
+  line-height: 1.02;
   overflow-wrap: anywhere;
 }
 
@@ -1150,7 +1256,7 @@ textarea {
 
 .public-id-bio {
   color: var(--text-secondary);
-  line-height: 1.45;
+  line-height: 1.4;
 }
 
 .public-id-download-card {
@@ -1231,25 +1337,23 @@ textarea {
 .public-id-link-list {
   width: 100%;
   display: grid;
-  gap: 10px;
+  gap: 8px;
   margin-top: 4px;
 }
 
 .public-id-link-row {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 42px;
-  grid-template-areas:
-    "name copy"
-    "url copy";
+  grid-template-columns: minmax(88px, 0.42fr) minmax(0, 1fr) 42px;
+  grid-template-areas: "name url copy";
   align-items: center;
-  gap: 3px 10px;
+  gap: 10px;
   width: 100%;
   min-width: 0;
-  padding: 12px;
-  border: 1px solid color-mix(in srgb, var(--border), transparent 35%);
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--border), transparent 28%);
   border-radius: 8px;
-  background: color-mix(in srgb, var(--surface-solid), var(--panel) 20%);
+  background: color-mix(in srgb, var(--panel), var(--bg) 10%);
   text-align: left;
 }
 
@@ -1257,10 +1361,13 @@ textarea {
   grid-area: name;
   min-width: 0;
   color: var(--text-primary);
+  font-size: 0.86rem;
   font-weight: 900;
   text-decoration-thickness: 2px;
   text-underline-offset: 3px;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .public-id-link-url {
@@ -1268,8 +1375,9 @@ textarea {
   min-width: 0;
   color: var(--text-secondary);
   font-size: 0.82rem;
-  line-height: 1.3;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .public-id-copy-btn {
@@ -1298,27 +1406,28 @@ textarea {
   width: 100%;
   display: grid;
   justify-items: center;
-  gap: 10px;
+  gap: 12px;
   margin-top: 4px;
-  padding-top: 16px;
-  border-top: 1px solid color-mix(in srgb, var(--border), transparent 45%);
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--border), transparent 28%);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel), var(--bg) 10%);
+  text-align: center;
 }
 
 .public-id-share-row {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 42px;
-  grid-template-areas:
-    "name copy"
-    "url copy";
+  grid-template-columns: minmax(88px, 0.42fr) minmax(0, 1fr) 42px;
+  grid-template-areas: "name url copy";
   align-items: center;
-  gap: 3px 10px;
+  gap: 10px;
   width: 100%;
   min-width: 0;
-  padding: 12px;
-  border: 1px solid color-mix(in srgb, var(--border), transparent 35%);
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--border), transparent 28%);
   border-radius: 8px;
-  background: color-mix(in srgb, var(--surface-solid), var(--panel) 20%);
+  background: color-mix(in srgb, var(--panel), var(--bg) 10%);
   text-align: left;
 }
 
@@ -1326,8 +1435,11 @@ textarea {
   grid-area: name;
   min-width: 0;
   color: var(--text-secondary);
+  font-size: 0.86rem;
   font-weight: 900;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .public-id-qr {
@@ -1380,10 +1492,16 @@ textarea {
 
 @media (max-width: 560px) {
   .public-id-card {
-    border-radius: 0;
-    border-left: 0;
-    border-right: 0;
-    box-shadow: none;
+    width: min(100%, calc(100vw - 20px));
+  }
+
+  .public-id-link-row,
+  .public-id-share-row {
+    grid-template-columns: minmax(0, 1fr) 42px;
+    grid-template-areas:
+      "name copy"
+      "url copy";
+    gap: 3px 10px;
   }
 }
 
@@ -1920,13 +2038,23 @@ textarea:focus {
 
 @media (max-width: 980px) {
   .portal-header-inner {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) auto;
     justify-items: start;
     gap: 10px;
   }
 
+  .portal-brand {
+    grid-column: 1;
+  }
+
   .portal-middle {
+    grid-column: 1 / -1;
     width: 100%;
+  }
+
+  .portal-auth {
+    grid-column: 2;
+    justify-self: end;
   }
 
   .portal-search-input {
@@ -1954,6 +2082,16 @@ textarea:focus {
 }
 
 @media (max-width: 680px) {
+  .portal-notification-menu {
+    position: fixed;
+    top: calc(env(safe-area-inset-top, 0px) + 64px);
+    left: 10px;
+    right: 10px;
+    width: auto;
+    max-height: calc(100vh - 84px);
+    overflow-y: auto;
+  }
+
   .portal-grid,
   .dashboard-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -2039,9 +2177,10 @@ textarea:focus {
   }
 
   .portal-auth {
-    width: 100%;
-    justify-content: flex-start;
-    flex-wrap: wrap;
+    width: auto;
+    justify-self: end;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
   }
 
   .portal-user-menu {

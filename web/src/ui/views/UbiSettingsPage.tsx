@@ -50,7 +50,7 @@ function formatDateTime(value?: string | null) {
 }
 
 function buildForm(data: UbiRuntimeSettings): UbiSettingsFormState {
-  const intervalSeconds = Number(data.interval_seconds ?? 60)
+  const intervalSeconds = Number(data.interval_seconds ?? 14 * 24 * 60 * 60)
   if (intervalSeconds % INTERVAL_UNIT_FACTORS.weeks === 0) {
     return {
       interval_value: String(intervalSeconds / INTERVAL_UNIT_FACTORS.weeks),
@@ -95,8 +95,8 @@ export function UbiSettingsPage() {
   const [settings, setSettings] = useState<UbiRuntimeSettings | null>(null)
   const [intervalError, setIntervalError] = useState<string | null>(null)
   const [form, setForm] = useState<UbiSettingsFormState>({
-    interval_value: '60',
-    interval_unit: 'seconds',
+    interval_value: '2',
+    interval_unit: 'weeks',
     dena_annual: '1',
     dena_precision: '6',
     entity_types: 'individual',
