@@ -207,7 +207,8 @@ export function IdPage() {
 
         <div className="id-actions">
           <Link to="/contact-settings">Edit ID</Link>
-          {qrPayload ? <a href={qrPayload}>Open Public Page</a> : null}
+          {page.enabled && qrPayload ? <a href={qrPayload}>Open Public Page</a> : null}
+          {!page.enabled ? <Link to="/contact-settings">Enable Public Page</Link> : null}
         </div>
       </article>
     </section>

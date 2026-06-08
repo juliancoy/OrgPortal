@@ -239,7 +239,7 @@ export function ContactSettingsPage() {
 
       <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
         <Link to="/orgs/profile">Org Network</Link>
-        {publicUrl ? (
+        {page.enabled && publicUrl ? (
           <a href={publicUrl} target="_blank" rel="noreferrer">
             Open Public Page
           </a>
@@ -333,7 +333,11 @@ export function ContactSettingsPage() {
       {publicUrl ? (
         <div className="portal-card" style={{ display: 'grid', gap: '0.5rem', justifyItems: 'start' }}>
           <div className="muted">Public URL</div>
-          <a href={publicUrl} target="_blank" rel="noreferrer">{publicUrl}</a>
+          {page.enabled ? (
+            <a href={publicUrl} target="_blank" rel="noreferrer">{publicUrl}</a>
+          ) : (
+            <span className="muted">{publicUrl} (not published yet)</span>
+          )}
           {qrSvg ? (
             <div
               aria-label="QR code for contact page"
