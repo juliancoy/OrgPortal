@@ -472,20 +472,24 @@ export function UserProfilePage() {
   }
 
   return (
-    <section className="panel profile-page">
-      <div className="profile-page-header">
-        <h1 style={{ margin: 0 }}>Profile</h1>
+    <section className="id-page profile-page">
+      <article className="id-card profile-editor-card" aria-label="Edit Code Collective ID">
         {publicPageUrl ? (
-          <div className="profile-top-actions">
-            <a className="contact-public-page-bubble" href={publicPageUrl} target="_blank" rel="noreferrer">
+          <div className="id-public-page-action profile-top-actions">
+            <a className="contact-public-page-bubble id-open-public-page" href={publicPageUrl} target="_blank" rel="noreferrer">
               Open Public Page
             </a>
           </div>
         ) : null}
-      </div>
 
-      <section className="profile-settings-section">
-        <div className="profile-detail-header">
+        <div className="id-identity profile-editor-identity">
+          {profileImageEditor}
+          <h1 className="id-name">{fullName.trim() || user?.displayName || 'Profile'}</h1>
+          <p className="id-headline">Edit your public ID</p>
+        </div>
+
+      <section className="id-qr-card profile-settings-section">
+        <div className="profile-detail-header profile-editor-section-header">
           <h2 style={{ margin: 0 }}>Name</h2>
           <button type="button" className="profile-save-button" onClick={saveProfile}>
             Save profile
@@ -504,12 +508,17 @@ export function UserProfilePage() {
             style={{ width: '100%' }}
           />
         </div>
-        <div>
-          <label className="muted" htmlFor="bio">
-            Bio
-          </label>
-          <textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} rows={4} style={{ width: '100%' }} />
-        </div>
+        {status ? (
+          <p className="muted" role="status" style={{ margin: 0 }}>
+            {status}
+          </p>
+        ) : null}
+      </div>
+      </section>
+
+      <ContactSettingsPage embedded hideQr hideProfileImage />
+
+      <section className="id-qr-card profile-settings-section profile-bottom-details">
         <div style={{ borderTop: '1px solid rgba(12, 30, 60, 0.12)', paddingTop: '1rem', marginTop: '0.5rem' }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
             <input
@@ -641,23 +650,16 @@ export function UserProfilePage() {
             </div>
           </div>
         </details>
-        {status ? (
-          <p className="muted" role="status" style={{ margin: 0 }}>
-            {status}
-          </p>
-        ) : null}
-      </div>
       </section>
 
-      <ContactSettingsPage embedded hideQr profileImageEditor={profileImageEditor} />
-
-      <section className="portal-card profile-settings-section profile-account-reference">
+      <section className="id-qr-card profile-settings-section profile-account-reference">
         <h2 style={{ margin: 0 }}>Account Reference</h2>
         <div>
           <div className="muted" style={{ margin: 0 }}>User UUID</div>
           <code style={{ wordBreak: 'break-all' }}>{user?.id || 'Unavailable'}</code>
         </div>
       </section>
+      </article>
 
       {editorOpen ? (
         <div

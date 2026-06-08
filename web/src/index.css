@@ -1587,8 +1587,49 @@ textarea {
 }
 
 .profile-page {
-  display: grid;
-  gap: 1.15rem;
+  padding: 0;
+}
+
+.profile-editor-card {
+  width: min(100%, 640px);
+}
+
+.profile-editor-card > .profile-settings-section,
+.profile-editor-card > .profile-bottom-details,
+.profile-editor-card > .profile-account-reference {
+  width: 100%;
+  justify-items: stretch;
+  text-align: left;
+}
+
+.profile-editor-card > .profile-settings-section h2,
+.profile-editor-card > .profile-bottom-details h2,
+.profile-editor-card > .profile-account-reference h2 {
+  font-size: 1rem;
+}
+
+.profile-editor-identity {
+  padding-bottom: 2px;
+}
+
+.profile-editor-identity .profile-public-photo-card {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.profile-editor-identity .profile-public-photo-button {
+  width: 92px;
+  height: 92px;
+  border-color: var(--border);
+  box-shadow: none;
+}
+
+.profile-editor-identity .profile-public-photo-label,
+.profile-editor-identity .profile-public-photo-card .muted,
+.profile-editor-identity .profile-public-photo-card > button:not(.profile-public-photo-button) {
+  display: none;
 }
 
 .profile-page-header,
@@ -1646,6 +1687,20 @@ textarea {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--surface);
+}
+
+.profile-page > .profile-public-photo-card {
+  order: 0;
+}
+
+.profile-bottom-details {
+  gap: 0.9rem;
+  justify-items: stretch;
+}
+
+.profile-bottom-field {
+  display: grid;
+  gap: 0.35rem;
 }
 
 .profile-public-photo-button {

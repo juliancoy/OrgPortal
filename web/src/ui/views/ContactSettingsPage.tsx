@@ -39,6 +39,7 @@ type ContactPage = {
 type ContactSettingsPageProps = {
   embedded?: boolean
   hideQr?: boolean
+  hideProfileImage?: boolean
   profileImageEditor?: ReactNode
 }
 
@@ -81,7 +82,7 @@ function contactVisibilityFromPage(page: ContactPage): PublicVisibility {
   }
 }
 
-export function ContactSettingsPage({ embedded = false, hideQr = false, profileImageEditor }: ContactSettingsPageProps = {}) {
+export function ContactSettingsPage({ embedded = false, hideQr = false, hideProfileImage = false, profileImageEditor }: ContactSettingsPageProps = {}) {
   const { token } = useAuth()
   const [page, setPage] = useState<ContactPage | null>(null)
   const [status, setStatus] = useState<string | null>(null)
@@ -329,7 +330,6 @@ export function ContactSettingsPage({ embedded = false, hideQr = false, profileI
         </button>
       </section>
 
-      <input value={page.slug} onChange={(e) => setField('slug', e.target.value)} placeholder="Public slug" />
       <div className={publicFieldClass('headline', page.headline)}>
         <input value={page.headline || ''} onChange={(e) => setField('headline', e.target.value)} placeholder="Headline" />
         {visibilityButton('headline')}
@@ -338,7 +338,7 @@ export function ContactSettingsPage({ embedded = false, hideQr = false, profileI
         <textarea value={page.bio || ''} onChange={(e) => setField('bio', e.target.value)} rows={4} placeholder="Bio" />
         {visibilityButton('bio')}
       </div>
-      {profileImageEditor ?? (
+      {!hideProfileImage && (profileImageEditor ?? (
         <div className="portal-card" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <span className="portal-avatar" style={{ width: 56, height: 56 }}>
             {page.photo_url ? <img src={page.photo_url} alt={page.user_name} /> : page.user_name.slice(0, 1).toUpperCase()}
@@ -349,7 +349,7 @@ export function ContactSettingsPage({ embedded = false, hideQr = false, profileI
             <Link to="/profile">Edit profile image</Link>
           </div>
         </div>
-      )}
+      ))}
       <div className={publicFieldClass('email_public', page.email_public)}>
         <input value={page.email_public || ''} onChange={(e) => setField('email_public', e.target.value)} placeholder="Public email" />
         {visibilityButton('email_public')}
@@ -388,7 +388,7 @@ export function ContactSettingsPage({ embedded = false, hideQr = false, profileI
         <button type="button" onClick={save}>Save Public Profile</button>
       </div>
 
-      <section className="portal-card" style={{ display: 'grid', gap: '0.5rem' }}>
+      {!embedded ? <section className="portal-card" style={{ display: 'grid', gap: '0.5rem' }}>
         <h2 style={{ margin: 0, fontSize: '1rem' }}>Import From Existing Profile URL</h2>
         <p className="muted" style={{ margin: 0 }}>
           Uses your current login token to fetch a public page and auto-fill profile fields.
@@ -404,7 +404,7 @@ export function ContactSettingsPage({ embedded = false, hideQr = false, profileI
             <a href={page.source_profile_url} target="_blank" rel="noreferrer">Last Imported Source</a>
           ) : null}
         </div>
-      </section>
+      </section> : null}
 
       {status ? <p className="muted">{status}</p> : null}
 
@@ -432,6 +432,11 @@ export function ContactSettingsPage({ embedded = false, hideQr = false, profileI
           </p>
         </div>
       ) : null}
+
+      <label className="profile-bottom-field">
+        <span className="muted">Public slug</span>
+        <input value={page.slug} onChange={(e) => setField('slug', e.target.value)} placeholder="Public slug" />
+      </label>
     </section>
   )
 }
