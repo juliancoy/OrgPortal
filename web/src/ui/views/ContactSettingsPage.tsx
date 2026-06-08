@@ -297,22 +297,7 @@ export function ContactSettingsPage({ embedded = false, hideQr = false, hideProf
 
   return (
     <section className={embedded ? 'profile-settings-section' : 'panel'} style={{ display: 'grid', gap: '0.75rem' }}>
-      {embedded ? (
-        <div>
-          <h2 style={{ margin: 0 }}>Public Profile</h2>
-          <p className="muted" style={{ margin: '0.25rem 0 0' }}>
-            Manage the contact details shown on your public page.
-          </p>
-        </div>
-      ) : null}
 
-      {!embedded ? <div className="contact-settings-actions">
-        {page.enabled && publicUrl ? (
-          <a className="contact-public-page-bubble" href={publicUrl} target="_blank" rel="noreferrer">
-            Open Public Page
-          </a>
-        ) : null}
-      </div> : null}
 
       <section className="portal-card contact-public-profile-card">
         <div>
@@ -328,7 +313,17 @@ export function ContactSettingsPage({ embedded = false, hideQr = false, hideProf
         >
           {page.enabled ? 'Disable' : 'Enable'}
         </button>
+
+        {!embedded ? <div className="contact-settings-actions">
+          {page.enabled && publicUrl ? (
+            <a className="contact-public-page-bubble" href={publicUrl} target="_blank" rel="noreferrer">
+              Open
+            </a>
+          ) : null}
+        </div> : null}
+
       </section>
+
 
       <div className={publicFieldClass('headline', page.headline)}>
         <input value={page.headline || ''} onChange={(e) => setField('headline', e.target.value)} placeholder="Headline" />
