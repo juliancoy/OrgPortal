@@ -88,21 +88,47 @@ def login_via_ui(driver: webdriver.Remote, base_url: str, email: str, password: 
     driver.find_element(By.XPATH, "//button[normalize-space()='Login']").click()
 
     def _authenticated(_: webdriver.Remote) -> bool:
-        user_json = driver.execute_script("return window.localStorage.getItem('pidp.user')")
-        if user_json:
-            return True
-        return "/users/login" not in driver.current_url
+        if "/users/login" in driver.current_url:
+            return False
+        return bool(driver.execute_async_script(
+            """
+            const done = arguments[0];
+            fetch('/pidp/auth/session-token', { credentials: 'include' })
+              .then((resp) => done(resp.ok))
+              .catch(() => done(false));
+            """
+        ))
 
     WebDriverWait(driver, 30).until(_authenticated)
 
 
 def bootstrap_token_session(driver: webdriver.Remote, base_url: str, access_token: str) -> bool:
-    boot_url = f"{base_url.rstrip('/')}/#token={urllib.parse.quote(access_token)}"
-    print(f"[auth] bootstrapping token session via {boot_url}")
-    driver.get(boot_url)
+    print("[auth] bootstrapping token session via cookie exchange")
+    driver.get(base_url.rstrip("/") + "/")
     try:
+        ok = driver.execute_async_script(
+            """
+            const [token, done] = arguments;
+            fetch('/pidp/auth/session/exchange', {
+              method: 'POST',
+              credentials: 'include',
+              headers: { Authorization: `Bearer ${token}` },
+            }).then((resp) => done(resp.ok)).catch(() => done(false));
+            """,
+            access_token,
+        )
+        if not ok:
+            return False
+        driver.refresh()
         WebDriverWait(driver, 30).until(
-            lambda _: driver.execute_script("return window.localStorage.getItem('pidp.user')") is not None
+            lambda _: driver.execute_async_script(
+                """
+                const done = arguments[0];
+                fetch('/pidp/auth/session-token', { credentials: 'include' })
+                  .then((resp) => done(resp.ok))
+                  .catch(() => done(false));
+                """
+            )
         )
         return True
     except Exception:
