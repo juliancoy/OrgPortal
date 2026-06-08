@@ -133,7 +133,6 @@ export function ContactSettingsPage() {
           slug: page.slug,
           headline: page.headline || null,
           bio: page.bio || null,
-          photo_url: page.photo_url || null,
           email_public: page.email_public || null,
           phone_public: page.phone_public || null,
           linkedin_url: page.linkedin_url || null,
@@ -266,7 +265,18 @@ export function ContactSettingsPage() {
       <input value={page.slug} onChange={(e) => setField('slug', e.target.value)} placeholder="Public slug" />
       <input value={page.headline || ''} onChange={(e) => setField('headline', e.target.value)} placeholder="Headline" />
       <textarea value={page.bio || ''} onChange={(e) => setField('bio', e.target.value)} rows={4} placeholder="Bio" />
-      <input value={page.photo_url || ''} onChange={(e) => setField('photo_url', e.target.value)} placeholder="Photo URL" />
+      <div className="portal-card" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <span className="portal-avatar" style={{ width: 56, height: 56 }}>
+          {page.photo_url ? <img src={page.photo_url} alt={page.user_name} /> : page.user_name.slice(0, 1).toUpperCase()}
+        </span>
+        <div>
+          <div style={{ fontWeight: 700 }}>Profile image</div>
+          <p className="muted" style={{ margin: 0 }}>
+            Managed from your user profile.
+          </p>
+          <Link to="/users/profile">Edit profile image</Link>
+        </div>
+      </div>
       <input value={page.email_public || ''} onChange={(e) => setField('email_public', e.target.value)} placeholder="Public email" />
       <input value={page.phone_public || ''} onChange={(e) => setField('phone_public', e.target.value)} placeholder="Public phone" />
       <input value={page.linkedin_url || ''} onChange={(e) => setField('linkedin_url', e.target.value)} placeholder="LinkedIn URL" />

@@ -6,8 +6,9 @@ This setup migrates `codecollective.us` from S3 static hosting to Cloudflare Wor
 
 - Legacy site static assets from repository root
 - Portal SPA at `/p/` (from `portal/web/dist`)
-- API proxy at `/api/governance/*` -> `GOVERNANCE_API_ORIGIN`
-- PIdP proxy at `/pidp/*` -> `https://pidp.arkavo.org/*` (prefix stripped)
+- API proxy at `/api/governance/*` -> `GOVERNANCE_API_ORIGIN` (currently the Cloudflare org Worker)
+- API proxy at `/api/org/*` -> `ORG_API_ORIGIN` (currently the Cloudflare org Worker, prefix stripped)
+- PIdP proxy at `/pidp/*` -> `https://id.codecollective.us/*` or the configured PIdP Worker origin
 
 ## 1) Build deployable site bundle
 
@@ -32,7 +33,10 @@ npx wrangler deploy
 Optional override:
 
 ```bash
-npx wrangler deploy --var GOVERNANCE_API_ORIGIN:https://portal.arkavo.org --var PIDP_API_ORIGIN:https://pidp.arkavo.org
+npx wrangler deploy \
+  --var GOVERNANCE_API_ORIGIN:https://org-codecollective.jcloiacon.workers.dev \
+  --var ORG_API_ORIGIN:https://org-codecollective.jcloiacon.workers.dev \
+  --var PIDP_API_ORIGIN:https://id.codecollective.us
 ```
 
 ## 3) Validate before DNS cutover

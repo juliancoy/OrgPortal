@@ -39,12 +39,12 @@ describe('updateManifest', () => {
   })
 
   it('resolves static manifest URL from portal host', () => {
-    setWindow('dev.portal.arkavo.org')
-    expect(resolveUpdateManifestUrl()).toBe('https://static.arkavo.org/mobile-update.json')
+    setWindow('codecollective.us')
+    expect(resolveUpdateManifestUrl()).toBe('https://codecollective.us/p/mobile-update.json')
   })
 
   it('detects available web update when manifest build is newer', async () => {
-    setWindow('dev.portal.arkavo.org')
+    setWindow('codecollective.us')
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => ({
@@ -68,7 +68,7 @@ describe('updateManifest', () => {
   })
 
   it('detects available native update using fallback runtime build info', async () => {
-    setWindow('dev.portal.arkavo.org')
+    setWindow('codecollective.us')
     runtimePlatform.isNativeCapacitorRuntime.mockReturnValue(true)
     vi.stubGlobal(
       'fetch',
@@ -80,7 +80,7 @@ describe('updateManifest', () => {
           android: {
             versionName: '1.2.0',
             buildNumber: 12,
-            apkUrl: 'https://static.arkavo.org/orgportal-android-release.apk',
+            apkUrl: 'https://codecollective.us/p/orgportal-android-release.apk',
             notes: 'Native release',
             minSupportedBuildNumber: 11,
           },
@@ -91,11 +91,11 @@ describe('updateManifest', () => {
     const result = await checkForAvailableUpdate()
     expect(result.available?.target).toBe('native')
     expect(result.available?.mandatory).toBe(true)
-    expect(result.available?.actionUrl).toBe('https://static.arkavo.org/orgportal-android-release.apk')
+    expect(result.available?.actionUrl).toBe('https://codecollective.us/p/orgportal-android-release.apk')
   })
 
   it('performs web update action via reload', async () => {
-    const { reload } = setWindow('dev.portal.arkavo.org')
+    const { reload } = setWindow('codecollective.us')
     const update: AvailableUpdate = {
       target: 'web',
       current: { target: 'web', versionName: '1.0.0', buildNumber: 10 },
@@ -112,7 +112,7 @@ describe('updateManifest', () => {
   })
 
   it('performs native update action with open fallback to assign', async () => {
-    const { open, assign } = setWindow('dev.portal.arkavo.org')
+    const { open, assign } = setWindow('codecollective.us')
     open.mockReturnValueOnce(null)
     const update: AvailableUpdate = {
       target: 'native',
@@ -122,11 +122,11 @@ describe('updateManifest', () => {
       notes: '',
       mandatory: false,
       actionLabel: 'Download update',
-      actionUrl: 'https://static.arkavo.org/orgportal-android-release.apk',
+      actionUrl: 'https://codecollective.us/p/orgportal-android-release.apk',
     }
 
     await performUpdateAction(update)
     expect(open).toHaveBeenCalledTimes(1)
-    expect(assign).toHaveBeenCalledWith('https://static.arkavo.org/orgportal-android-release.apk')
+    expect(assign).toHaveBeenCalledWith('https://codecollective.us/p/orgportal-android-release.apk')
   })
 })

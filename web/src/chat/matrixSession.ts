@@ -8,7 +8,7 @@ const MATRIX_SESSION_STORAGE_KEY = 'orgportal.matrix.session'
 
 function normalizeMatrixBaseUrl(rawValue: string | undefined): string {
   const raw = (rawValue ?? '').trim()
-  if (!raw) return 'https://matrix.arkavo.org'
+  if (!raw) return 'https://matrix.org'
   if (raw.startsWith('http://') || raw.startsWith('https://')) return raw.replace(/\/$/, '')
   return `https://${raw.replace(/\/$/, '')}`
 }

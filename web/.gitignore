@@ -10,6 +10,7 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+.vite-playwright-cache
 .tmp
 .tmp/
 scripts/__pycache__/
@@ -30,3 +31,5 @@ keystore.properties
 *.njsproj
 *.sln
 *.sw?
+
+.vite-docker*

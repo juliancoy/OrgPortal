@@ -44,7 +44,8 @@ function mapMessage(
   if (msgtype !== MsgType.Text && msgtype !== MsgType.Image && msgtype !== MsgType.File) return null
   const mediaUrl = resolveMatrixMediaUrl(content.url)
   const sender = event.getSender() ?? 'unknown'
-  const senderMember = room.getMember(sender)
+  const senderMember = (room as Room & { getMember?: (userId: string) => { name?: string; events?: { member?: { getContent?: () => { avatar_url?: string } } } } | null })
+    .getMember?.(sender)
   const senderProfile = (event as unknown as { getSenderProfile?: () => { displayname?: string; avatar_url?: string } | null })
     .getSenderProfile?.()
   const senderDisplayName =
@@ -264,13 +265,14 @@ export class MatrixChatService implements ChatService {
 
   listJoinedRooms(): ChatRoomSummary[] {
     const client = this.getClient()
+    const homeserverUrl = (client as MatrixClient & { getHomeserverUrl?: () => string }).getHomeserverUrl?.() || MATRIX_BASE_URL
     return client
       .getRooms()
       .filter((room) => room.getMyMembership() === 'join')
       .map((room) => ({
         id: room.roomId,
         name: roomLabel(room),
-        avatarUrl: resolveMatrixMediaUrl(room.getAvatarUrl(client.getHomeserverUrl(), 96, 96, 'crop') || undefined),
+        avatarUrl: resolveMatrixMediaUrl(room.getAvatarUrl?.(homeserverUrl, 96, 96, 'crop') || undefined),
         unreadCount: unreadCountForRoom(room),
         lastActivityTs: lastActivityForRoom(room),
       }))

@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
-const baseUrl = (process.env.MATRIX_BASE_URL || 'http://synapse:8008').replace(/\/$/, '')
+const baseUrl = (process.env.MATRIX_BASE_URL || 'https://matrix.org').replace(/\/$/, '')
 const username = process.env.MATRIX_SMOKE_USER || 'orgportal_smoke'
 const password = process.env.MATRIX_SMOKE_PASSWORD || 'orgportal_smoke_pw'
-const userIdHint = process.env.MATRIX_SMOKE_USER_ID || `@${username}:matrix.arkavo.org`
+const userIdHint = process.env.MATRIX_SMOKE_USER_ID || `@${username}:matrix.org`
 const timeoutMs = Number(process.env.MATRIX_SMOKE_TIMEOUT_MS || '15000')
 
 function withTimeout(signal, ms) {

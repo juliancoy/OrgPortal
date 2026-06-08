@@ -15,7 +15,7 @@ Manifest locations used by deployment:
 
 Release flow:
 
-1. Build and publish APK to static host (default URL is `https://static.arkavo.org/orgportal-android-release.apk`).
+1. Build and publish APK to the Code Collective portal static host (default URL is `https://codecollective.us/p/orgportal-android-release.apk`).
 2. Update `android.versionName`, `android.buildNumber`, and `android.minSupportedBuildNumber` as needed.
 3. Update `web.versionName` and `web.buildNumber` for web deploys.
 4. Publish both manifest files with the release.
@@ -38,7 +38,7 @@ npm run deploy:cf
 - `/api/governance/*` -> `GOVERNANCE_API_ORIGIN`
 - `/pidp/*` -> `PIDP_API_ORIGIN`
 
-For the full end-to-end setup with hosted PIdP (`https://pidp.arkavo.org`), see:
+For the full end-to-end setup with hosted PIdP (`https://id.codecollective.us`), see:
 
 - `../docs/deployment/CLOUDFLARE_PIDP_DEPLOYMENT.md`
 
@@ -49,12 +49,20 @@ OrgPortal chat now uses Matrix as the backend (`/chat` and `/chat/:roomId` route
 Configure the Matrix homeserver URL:
 
 ```bash
-VITE_MATRIX_BASE_URL=https://matrix.arkavo.org
+VITE_MATRIX_BASE_URL=https://matrix.org
 ```
 
 Fallback behavior:
 - If `VITE_MATRIX_BASE_URL` is unset, the app falls back to `VITE_SYNAPSE_BASE_URL`.
-- If both are unset, it defaults to `https://matrix.arkavo.org`.
+- If both are unset, it defaults to `https://matrix.org`.
+
+`matrix.org` is the temporary public homeserver for early chat testing. Keep the app migration-ready by using
+`VITE_MATRIX_BASE_URL` for environment-specific homeserver selection. When Code Collective has its own homeserver,
+set:
+
+```bash
+VITE_MATRIX_BASE_URL=https://matrix.codecollective.us
+```
 
 Optional local chat backend override:
 
@@ -116,21 +124,16 @@ Generated artifacts:
 Live Matrix smoke test against a running homeserver:
 
 ```bash
-MATRIX_BASE_URL=http://synapse:8008 \
 MATRIX_SMOKE_USER=orgportal_smoke \
 MATRIX_SMOKE_PASSWORD=orgportal_smoke_pw \
 npm run test:matrix:live
 ```
 
-If running from a Docker Node container, join the `arkavo` network:
+The smoke script defaults to `https://matrix.org`. Override `MATRIX_BASE_URL` for a local or future
+Code Collective homeserver:
 
 ```bash
-docker run --rm --network arkavo \
-  -e MATRIX_BASE_URL=http://synapse:8008 \
-  -e MATRIX_SMOKE_USER=orgportal_smoke \
-  -e MATRIX_SMOKE_PASSWORD=orgportal_smoke_pw \
-  -v "$PWD:/workspace" -w /workspace node:20-bookworm \
-  bash -lc 'npm install && npm run test:matrix:live'
+MATRIX_BASE_URL=https://matrix.codecollective.us npm run test:matrix:live
 ```
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.

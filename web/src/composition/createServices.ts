@@ -61,7 +61,7 @@ function getConfig(): ServicesConfig {
 
   let apiBaseUrl = env?.VITE_API_BASE_URL || '/api/org/api/governance'
   if (isNativeCapacitorRuntime() && typeof apiBaseUrl === 'string' && apiBaseUrl.startsWith('/')) {
-    const nativePortalBase = (env?.VITE_NATIVE_PORTAL_BASE_URL as string | undefined)?.trim() || 'https://dev.portal.arkavo.org'
+    const nativePortalBase = (env?.VITE_NATIVE_PORTAL_BASE_URL as string | undefined)?.trim() || 'https://codecollective.us/p'
     apiBaseUrl = `${nativePortalBase.replace(/\/$/, '')}${apiBaseUrl}`
   }
 
