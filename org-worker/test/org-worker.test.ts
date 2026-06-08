@@ -200,6 +200,67 @@ test("protected contact route requires a bearer token", async () => {
   assert.deepEqual(await res.json(), { detail: "Authentication required" });
 });
 
+test("public contact routes return sanitized canonical user URLs for exact slugs", async () => {
+  const db = new FakeD1();
+  db.contacts.push({
+    id: "contact-1",
+    user_id: "user-1",
+    user_email: "julian@example.test",
+    user_name: "Julian Coy",
+    slug: "julian-coy",
+    enabled: 1,
+    headline: "Organizer",
+    bio: null,
+    photo_url: null,
+    email_public: "julian@example.test",
+    phone_public: null,
+    linkedin_url: "https://www.linkedin.com/in/julian-coy-a2906415/",
+    github_url: "https://github.com/juliancoy",
+    x_url: null,
+    website_url: "https://juliancoy.us/",
+    links: JSON.stringify([{ label: "Site", url: "https://juliancoy.us/" }]),
+    source_profile_url: null,
+    source_profile_imported_at: null,
+    created_at: "2026-06-07T00:00:00Z",
+    updated_at: "2026-06-07T00:00:00Z",
+  });
+
+  const res = await app.request("https://org.example.test/api/network/users/public/julian-coy", {}, env(db));
+  assert.equal(res.status, 200);
+  const contact = (await res.json()) as { slug: string; public_url: string };
+  assert.equal(contact.slug, "julian-coy");
+  assert.equal(contact.public_url, "https://codecollective.test/p/users/julian-coy");
+});
+
+test("public contact route does not numerically fallback from missing slugs", async () => {
+  const db = new FakeD1();
+  db.contacts.push({
+    id: "contact-1",
+    user_id: "user-1",
+    user_email: "julian@example.test",
+    user_name: "Julian Coy",
+    slug: "julian-coy",
+    enabled: 1,
+    headline: "Organizer",
+    bio: null,
+    photo_url: null,
+    email_public: "julian@example.test",
+    phone_public: null,
+    linkedin_url: null,
+    github_url: null,
+    x_url: null,
+    website_url: null,
+    links: "[]",
+    source_profile_url: null,
+    source_profile_imported_at: null,
+    created_at: "2026-06-07T00:00:00Z",
+    updated_at: "2026-06-07T00:00:00Z",
+  });
+
+  const res = await app.request("https://org.example.test/api/network/users/public/julian-coy-2", {}, env(db));
+  assert.equal(res.status, 404);
+});
+
 test("public org and event routes return D1 rows", async () => {
   const db = new FakeD1();
   db.organizations.push({

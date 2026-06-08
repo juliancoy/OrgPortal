@@ -249,7 +249,7 @@ function publicPortalBase(env: Env, request: Request) {
 }
 
 function publicUrl(env: Env, request: Request, slug: string) {
-  return `${publicPortalBase(env, request)}/contact/${encodeURIComponent(slug)}`;
+  return `${publicPortalBase(env, request)}/users/${encodeURIComponent(slug)}`;
 }
 
 function orgPublicUrl(env: Env, request: Request, slug: string) {
@@ -385,10 +385,17 @@ function cleanOptionalString(value: unknown, maxLength = 5000): string | null {
 }
 
 function cleanUrl(value: unknown): string | null {
-  const text = cleanOptionalString(value, 1000);
+  const text = cleanOptionalString(value, 1000)?.replace(/[\u0000-\u001f\u007f\s]+/g, " ").trim();
   if (!text) return null;
-  if (/^(https?:|mailto:|tel:)/i.test(text)) return text;
-  return `https://${text.replace(/^\/+/, "")}`;
+  const candidate = /^(https?:|mailto:|tel:)/i.test(text) ? text : `https://${text.replace(/^\/+/, "")}`;
+  try {
+    const parsed = new URL(candidate);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") return parsed.toString();
+    if (parsed.protocol === "mailto:" || parsed.protocol === "tel:") return parsed.toString();
+  } catch {
+    return null;
+  }
+  return null;
 }
 
 function cleanPublicAssetUrl(value: unknown): string | null {
@@ -851,8 +858,9 @@ app.post("/api/network/contact/me/import", async (c) => {
 });
 
 async function publicContact(env: Env, request: Request, slug: string) {
+  const requestedSlug = slugify(slug);
   const row = await env.DB.prepare("SELECT * FROM user_contact_pages WHERE slug = ? AND enabled = 1")
-    .bind(slugify(slug))
+    .bind(requestedSlug)
     .first<ContactRow>();
   if (!row) fail(404, "Contact page not found");
   return mapContact(env, request, row);
