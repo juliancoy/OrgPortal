@@ -210,7 +210,7 @@ async function conversation(db: D1Database, conversationId: string) {
   return row;
 }
 
-async function resolveTargetUser(env: Env, payload: Record<string, unknown>) {
+async function resolveTargetUser(env: Env, payload: Record<string, unknown>, currentUserId: string) {
   const directUserId = cleanString(payload.target_user_id, 200);
   if (directUserId) {
     return {
@@ -225,9 +225,9 @@ async function resolveTargetUser(env: Env, payload: Record<string, unknown>) {
   if (!env.CONTACTS_DB) fail(503, "Contact directory binding is not configured");
 
   const row = await env.CONTACTS_DB.prepare(
-    "SELECT user_id, user_name, slug, enabled FROM user_contact_pages WHERE slug = ? AND enabled = 1",
+    "SELECT user_id, user_name, slug, enabled FROM user_contact_pages WHERE slug = ? AND (enabled = 1 OR user_id = ?)",
   )
-    .bind(slug)
+    .bind(slug, currentUserId)
     .first<ContactUserRow>();
   if (!row) fail(404, "Target user not found");
   return row;
@@ -389,8 +389,7 @@ app.get("/api/network/chat/conversations", async (c) => {
 app.post("/api/network/chat/dm", async (c) => {
   const user = c.get("user");
   const payload = await readJsonObject(c.req.raw);
-  const target = await resolveTargetUser(c.env, payload);
-  if (target.user_id === user.id) fail(400, "Cannot start a direct message with yourself");
+  const target = await resolveTargetUser(c.env, payload, user.id);
 
   const key = dmKey(user.id, target.user_id);
   const existing = await c.env.DB.prepare("SELECT * FROM chat_conversations WHERE kind = 'dm' AND dm_key = ?")
