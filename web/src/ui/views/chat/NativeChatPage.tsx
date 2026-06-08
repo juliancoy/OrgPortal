@@ -24,6 +24,8 @@ function conversationLabel(conversation: NativeChatConversation, myUserId?: stri
   if (conversation.title?.trim()) return conversation.title.trim()
   const other = (conversation.members || []).find((member) => member.user_id !== myUserId)
   if (other?.user_name?.trim()) return other.user_name.trim()
+  const me = (conversation.members || []).find((member) => member.user_id === myUserId)
+  if (me?.user_name?.trim()) return `${me.user_name.trim()} (you)`
   if (conversation.kind === 'dm') return 'Direct message'
   return conversation.id
 }
