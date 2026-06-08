@@ -1214,6 +1214,38 @@ textarea {
   flex-wrap: wrap;
 }
 
+.public-id-owner-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.public-id-visibility {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.public-id-visibility-on {
+  border-color: color-mix(in srgb, var(--accent-green), var(--border) 35%);
+  background: var(--accent-green-bg);
+  color: var(--accent-green);
+}
+
+.public-id-owner-note {
+  max-width: 36ch;
+  margin: -4px 0 0;
+  font-size: 0.82rem;
+}
+
 .public-id-link-list {
   width: 100%;
   display: grid;

@@ -858,11 +858,20 @@ app.post("/api/network/contact/me/import", async (c) => {
 });
 
 async function publicContact(env: Env, request: Request, slug: string) {
-  const requestedSlug = slugify(slug);
-  const row = await env.DB.prepare("SELECT * FROM user_contact_pages WHERE slug = ? AND enabled = 1")
+  const requestedSlug = String(slug || "").trim();
+  if (!requestedSlug) fail(404, "Public profile not found");
+  const row = await env.DB.prepare("SELECT * FROM user_contact_pages WHERE slug = ?")
     .bind(requestedSlug)
     .first<ContactRow>();
   if (!row) fail(404, "Public profile not found");
+  if (!row.enabled) {
+    try {
+      const user = await currentUser(env, request);
+      if (user.id !== row.user_id) fail(404, "Public profile not found");
+    } catch {
+      fail(404, "Public profile not found");
+    }
+  }
   return mapContact(env, request, row);
 }
 
