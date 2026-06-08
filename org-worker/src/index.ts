@@ -314,6 +314,101 @@ function slugify(value: string) {
   return slug || "contact";
 }
 
+function normalizeSearchText(value: unknown) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function searchTokens(value: unknown) {
+  const normalized = normalizeSearchText(value);
+  return normalized ? normalized.split(" ") : [];
+}
+
+function fuzzyDistanceLimit(token: string) {
+  if (token.length <= 2) return 0;
+  if (token.length <= 4) return 1;
+  return 2;
+}
+
+function boundedLevenshtein(a: string, b: string, maxDistance: number) {
+  if (Math.abs(a.length - b.length) > maxDistance) return maxDistance + 1;
+  if (a === b) return 0;
+  let previous = Array.from({ length: b.length + 1 }, (_, index) => index);
+  for (let i = 1; i <= a.length; i += 1) {
+    const current = [i];
+    let rowMin = current[0];
+    for (let j = 1; j <= b.length; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      const value = Math.min(
+        current[j - 1] + 1,
+        previous[j] + 1,
+        previous[j - 1] + cost,
+      );
+      current[j] = value;
+      rowMin = Math.min(rowMin, value);
+    }
+    if (rowMin > maxDistance) return maxDistance + 1;
+    previous = current;
+  }
+  return previous[b.length];
+}
+
+function scoreSearchToken(queryToken: string, fieldToken: string) {
+  if (!queryToken || !fieldToken) return 0;
+  if (fieldToken === queryToken) return 70;
+  if (fieldToken.startsWith(queryToken)) return 58;
+  if (fieldToken.includes(queryToken)) return 45;
+  const maxDistance = fuzzyDistanceLimit(queryToken);
+  if (!maxDistance) return 0;
+  const distance = boundedLevenshtein(queryToken, fieldToken, maxDistance);
+  if (distance <= maxDistance) return 35 - distance * 8 + Math.min(queryToken.length, 8);
+  return 0;
+}
+
+function scoreSearchCandidate(query: string, fields: Array<unknown>) {
+  const normalizedQuery = normalizeSearchText(query);
+  const queryTokens = searchTokens(normalizedQuery);
+  if (!normalizedQuery || !queryTokens.length) return 0;
+
+  const normalizedFields = fields.map(normalizeSearchText).filter(Boolean);
+  const fieldTokens = normalizedFields.flatMap((field) => field.split(" "));
+  let score = 0;
+
+  for (const field of normalizedFields) {
+    if (field === normalizedQuery) score = Math.max(score, 140);
+    else if (field.startsWith(normalizedQuery)) score = Math.max(score, 115);
+    else if (field.includes(normalizedQuery)) score = Math.max(score, 95);
+  }
+
+  for (const token of queryTokens) {
+    const best = fieldTokens.reduce((bestScore, fieldToken) => Math.max(bestScore, scoreSearchToken(token, fieldToken)), 0);
+    if (!best) return 0;
+    score += best;
+  }
+
+  return score;
+}
+
+function rankSearchResults<T>(rows: T[], query: string, fieldsForRow: (row: T) => Array<unknown>, limit: number) {
+  const q = query.trim();
+  if (!q) return rows.slice(0, limit);
+  return rows
+    .map((row, index) => ({ row, index, score: scoreSearchCandidate(q, fieldsForRow(row)) }))
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .slice(0, limit)
+    .map((item) => item.row);
+}
+
+function searchCandidateLimit(limit: number) {
+  return Math.min(Math.max(limit * 8, 200), 1000);
+}
+
 function connectionPairKey(a: string, b: string) {
   return [a, b].sort().join(":");
 }
@@ -1357,48 +1452,33 @@ async function publicContact(env: Env, request: Request, slug: string) {
 
 async function publicUsers(env: Env, request: Request, query = "", limit = 40) {
   const safeLimit = Math.max(1, Math.min(limit, 500));
-  const q = query.trim().toLowerCase();
-  const rows = q
-    ? await env.DB.prepare(
-        `SELECT * FROM user_contact_pages
-         WHERE enabled = 1 AND (lower(user_name) LIKE ? OR lower(headline) LIKE ? OR lower(slug) LIKE ?)
-         ORDER BY updated_at DESC
-         LIMIT ?`,
-      )
-        .bind(`%${q}%`, `%${q}%`, `%${q}%`, safeLimit)
-        .all<ContactRow>()
-    : await env.DB.prepare(
-        `SELECT * FROM user_contact_pages
-         WHERE enabled = 1
-         ORDER BY updated_at DESC
-         LIMIT ?`,
-      )
-        .bind(safeLimit)
-        .all<ContactRow>();
-  return (rows.results || []).map((row) => mapContact(env, request, row));
+  const q = query.trim();
+  const candidateLimit = q ? searchCandidateLimit(safeLimit) : safeLimit;
+  const rows = await env.DB.prepare(
+    `SELECT * FROM user_contact_pages
+     WHERE enabled = 1
+     ORDER BY updated_at DESC
+     LIMIT ?`,
+  )
+    .bind(candidateLimit)
+    .all<ContactRow>();
+  const rankedRows = rankSearchResults(rows.results || [], q, (row) => [row.user_name, row.headline, row.slug], safeLimit);
+  return rankedRows.map((row) => mapContact(env, request, row));
 }
 
 async function networkUsers(env: Env, request: Request, query = "", limit = 500) {
   const user = await currentUser(env, request);
   const safeLimit = Math.max(1, Math.min(limit, 1000));
-  const q = query.trim().toLowerCase();
-  const rows = q
-    ? await env.DB.prepare(
-        `SELECT * FROM user_contact_pages
-         WHERE lower(user_name) LIKE ? OR lower(user_email) LIKE ? OR lower(slug) LIKE ?
-         ORDER BY updated_at DESC
-         LIMIT ?`,
-      )
-        .bind(`%${q}%`, `%${q}%`, `%${q}%`, safeLimit)
-        .all<ContactRow>()
-    : await env.DB.prepare(
-        `SELECT * FROM user_contact_pages
-         ORDER BY updated_at DESC
-         LIMIT ?`,
-      )
-        .bind(safeLimit)
-        .all<ContactRow>();
-  const contactRows = rows.results || [];
+  const q = query.trim();
+  const candidateLimit = q ? searchCandidateLimit(safeLimit) : safeLimit;
+  const rows = await env.DB.prepare(
+    `SELECT * FROM user_contact_pages
+     ORDER BY updated_at DESC
+     LIMIT ?`,
+  )
+    .bind(candidateLimit)
+    .all<ContactRow>();
+  const contactRows = rankSearchResults(rows.results || [], q, (row) => [row.user_name, row.user_email, row.headline, row.slug], safeLimit);
   const statuses = await connectionStatusMap(env.DB, user.id, contactRows.map((row) => row.user_id));
   return contactRows.map((row) => ({
     user_id: row.user_id,
@@ -1443,29 +1523,20 @@ app.post("/api/network/ingest/calendar", async (c) => {
 });
 
 app.get("/api/network/orgs/public", async (c) => {
-  const q = (c.req.query("q") || "").trim().toLowerCase();
+  const q = (c.req.query("q") || "").trim();
   const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "300", 10) || 300, 500));
-  const rows = q
-    ? await c.env.DB.prepare(
-        `SELECT o.*,
-          (SELECT count(*) FROM events e WHERE e.host_org_id = o.id AND (e.starts_at IS NULL OR e.starts_at >= datetime('now'))) AS upcoming_events_count
-         FROM organizations o
-         WHERE lower(o.name) LIKE ? OR lower(o.description) LIKE ? OR lower(o.slug) LIKE ?
-         ORDER BY upcoming_events_count DESC, lower(o.name) ASC
-         LIMIT ?`,
-      )
-        .bind(`%${q}%`, `%${q}%`, `%${q}%`, limit)
-        .all<OrganizationRow & { upcoming_events_count: number }>()
-    : await c.env.DB.prepare(
-        `SELECT o.*,
-          (SELECT count(*) FROM events e WHERE e.host_org_id = o.id AND (e.starts_at IS NULL OR e.starts_at >= datetime('now'))) AS upcoming_events_count
-         FROM organizations o
-         ORDER BY upcoming_events_count DESC, lower(o.name) ASC
-         LIMIT ?`,
-      )
-        .bind(limit)
-        .all<OrganizationRow & { upcoming_events_count: number }>();
-  return c.json((rows.results || []).map((row) => mapOrganization(row, Number(row.upcoming_events_count || 0))));
+  const candidateLimit = q ? searchCandidateLimit(limit) : limit;
+  const rows = await c.env.DB.prepare(
+    `SELECT o.*,
+      (SELECT count(*) FROM events e WHERE e.host_org_id = o.id AND (e.starts_at IS NULL OR e.starts_at >= datetime('now'))) AS upcoming_events_count
+     FROM organizations o
+     ORDER BY upcoming_events_count DESC, lower(o.name) ASC
+     LIMIT ?`,
+  )
+    .bind(candidateLimit)
+    .all<OrganizationRow & { upcoming_events_count: number }>();
+  const rankedRows = rankSearchResults(rows.results || [], q, (row) => [row.name, row.description, row.slug, row.tags, row.city], limit);
+  return c.json(rankedRows.map((row) => mapOrganization(row, Number(row.upcoming_events_count || 0))));
 });
 
 app.get("/api/network/orgs/public/:slug", async (c) => {
@@ -1502,19 +1573,16 @@ app.get("/api/network/orgs/public/:slug/admins", (c) => c.json([]));
 app.get("/api/network/orgs/public/:slug/chat-feed", (c) => c.json({ organization_slug: c.req.param("slug"), rooms: [] }));
 
 app.get("/api/network/events/public", async (c) => {
-  const q = (c.req.query("q") || "").trim().toLowerCase();
+  const q = (c.req.query("q") || "").trim();
   const upcomingOnly = (c.req.query("upcoming_only") || "true").toLowerCase() !== "false";
   const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "120", 10) || 120, 500));
   const filters: string[] = [];
   const binds: unknown[] = [];
-  if (q) {
-    filters.push("(lower(e.title) LIKE ? OR lower(e.description) LIKE ? OR lower(e.location) LIKE ? OR lower(o.name) LIKE ?)");
-    binds.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`);
-  }
   if (upcomingOnly) {
     filters.push("(e.starts_at IS NULL OR e.starts_at >= datetime('now'))");
   }
   const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
+  const candidateLimit = q ? searchCandidateLimit(limit) : limit;
   const rows = await c.env.DB.prepare(
     `SELECT e.*, o.name AS organization_name
      FROM events e
@@ -1523,9 +1591,15 @@ app.get("/api/network/events/public", async (c) => {
      ORDER BY COALESCE(e.starts_at, e.created_at) ASC
      LIMIT ?`,
   )
-    .bind(...binds, limit)
+    .bind(...binds, candidateLimit)
     .all<EventRow>();
-  return c.json((rows.results || []).map((row) => mapEvent(c.env, c.req.raw, row)));
+  const rankedRows = rankSearchResults(
+    rows.results || [],
+    q,
+    (row) => [row.title, row.description, row.location, row.organization_name, row.host_org_name, row.slug, row.tags, row.city],
+    limit,
+  );
+  return c.json(rankedRows.map((row) => mapEvent(c.env, c.req.raw, row)));
 });
 
 app.get("/api/network/events/public/:slug", async (c) => {
@@ -1555,20 +1629,15 @@ app.get("/api/network/events/public/:slug/chat", (c) =>
 app.get("/api/network/orgs", async (c) => {
   await currentUser(c.env, c.req.raw);
   const mine = (c.req.query("mine") || "").toLowerCase() === "true";
-  const q = (c.req.query("q") || "").trim().toLowerCase();
+  const q = (c.req.query("q") || "").trim();
   const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "300", 10) || 300, 500));
   if (mine) return c.json([]);
-  const filters: string[] = [];
-  const binds: unknown[] = [];
-  if (q) {
-    filters.push("(lower(name) LIKE ? OR lower(description) LIKE ? OR lower(slug) LIKE ?)");
-    binds.push(`%${q}%`, `%${q}%`, `%${q}%`);
-  }
-  const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
-  const rows = await c.env.DB.prepare(`SELECT * FROM organizations ${where} ORDER BY lower(name) ASC LIMIT ?`)
-    .bind(...binds, limit)
+  const candidateLimit = q ? searchCandidateLimit(limit) : limit;
+  const rows = await c.env.DB.prepare(`SELECT * FROM organizations ORDER BY lower(name) ASC LIMIT ?`)
+    .bind(candidateLimit)
     .all<OrganizationRow>();
-  return c.json((rows.results || []).map((row) => mapOrganization(row)));
+  const rankedRows = rankSearchResults(rows.results || [], q, (row) => [row.name, row.description, row.slug, row.tags, row.city], limit);
+  return c.json(rankedRows.map((row) => mapOrganization(row)));
 });
 
 app.post("/api/network/orgs", async (c) => {
