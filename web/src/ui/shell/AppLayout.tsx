@@ -5,7 +5,10 @@ import { Footer } from './Footer'
 
 export function AppLayout() {
   const location = useLocation()
-  const hideHeader = /^\/(?:users|contact)\/[^/]+\/?$/.test(location.pathname)
+  const canonicalUserRoutes = new Set(['/users/register', '/users/login', '/users/dashboard', '/users/profile', '/users/account'])
+  const hideHeader =
+    /^\/contact\/[^/]+\/?$/.test(location.pathname) ||
+    (/^\/users\/[^/]+\/?$/.test(location.pathname) && !canonicalUserRoutes.has(location.pathname.replace(/\/$/, '')))
 
   return (
     <div className="portal-shell">

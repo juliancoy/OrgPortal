@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
+import { DEFAULT_POST_LOGIN_PATH } from '../../../config/pidp'
 
 export function UserRegisterPage() {
   const navigate = useNavigate()
@@ -22,7 +23,7 @@ export function UserRegisterPage() {
   useEffect(() => {
     if (!isLoading && isSubmitting) {
       setIsSubmitting(false)
-      navigate('/')
+      navigate(DEFAULT_POST_LOGIN_PATH)
     }
   }, [isLoading, isSubmitting, navigate])
 
