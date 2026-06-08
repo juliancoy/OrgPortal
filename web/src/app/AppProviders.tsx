@@ -7,6 +7,7 @@ import { readVotes, writeVotes, readComments, writeComments, readProfiles, write
 import { setRuntimeAccessToken } from '../infrastructure/auth/runtimeAuth'
 import { refreshRuntimeTokenFromSession } from '../infrastructure/auth/sessionToken'
 import { DEFAULT_POST_LOGIN_PATH, PIDP_BASE_URL, pidpUrl } from '../config/pidp'
+import { portalPath } from '../config/portalBase'
 import { isNativeCapacitorRuntime } from '../infrastructure/platform/runtimePlatform'
 import { initChatNotifications, setChatNotificationOpenHandler } from '../infrastructure/platform/chatNotifications'
 import { AppUpdatePrompt } from '../ui/components/system/AppUpdatePrompt'
@@ -94,14 +95,13 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
 
   const normalizedPidpBase = PIDP_BASE_URL
   const postLoginHref = useMemo(() => {
-    const base = (import.meta.env.BASE_URL || '/').replace(/\/?$/, '/')
-    return `${base}${DEFAULT_POST_LOGIN_PATH.replace(/^\/+/, '')}`
+    return portalPath(DEFAULT_POST_LOGIN_PATH)
   }, [])
 
   useEffect(() => {
     if (!isNativeRuntime) return
     setChatNotificationOpenHandler((roomId) => {
-      window.location.assign(`/chat/${encodeURIComponent(roomId)}`)
+      window.location.assign(portalPath(`/chat/${encodeURIComponent(roomId)}`))
     })
     initChatNotifications().catch(() => {})
   }, [isNativeRuntime])

@@ -94,6 +94,33 @@ async function mockCommon(page: Page) {
     ])
   })
 
+  await page.route('**/api/org/api/network/orgs/public?**', async (route) => {
+    await fulfillJson(route, [
+      {
+        id: 'org-2',
+        name: 'Neighborhood Assembly',
+        slug: 'neighborhood-assembly',
+        description: 'A larger public organization.',
+        image_url: null,
+        membership_count: 200,
+        upcoming_events_count: 3,
+        pending_claim_requests_count: 0,
+        is_contested: false,
+      },
+      {
+        id: 'org-1',
+        name: 'Code Collective',
+        slug: 'code-collective',
+        description: 'The organization this user belongs to.',
+        image_url: null,
+        membership_count: 1,
+        upcoming_events_count: 0,
+        pending_claim_requests_count: 0,
+        is_contested: false,
+      },
+    ])
+  })
+
   await page.route('**/api/org/api/network/orgs/public/**', async (route) => {
     await fulfillJson(route, { is_contested: false, pending_claim_requests_count: 0 })
   })
@@ -287,6 +314,18 @@ test.describe('Code Collective UI and UX system coverage', () => {
     await expect(page.getByRole('link', { name: 'Continue with Google' })).not.toHaveAttribute('href', /\/api\/org\/auth\/social/)
   })
 
+  test('organizations page prioritizes and filters the signed-in user organizations', async ({ page }) => {
+    await page.goto('/orgs')
+
+    await expect(page.locator('article').first().getByRole('heading', { name: 'Code Collective' })).toBeVisible()
+    await expect(page.locator('article').first()).toContainText('Your organization')
+
+    await page.getByRole('button', { name: 'Your organizations' }).click()
+    await expect(page.locator('article')).toHaveCount(1)
+    await expect(page.getByRole('heading', { name: 'Code Collective' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Neighborhood Assembly' })).toHaveCount(0)
+  })
+
   test('legacy constituent dashboard OAuth returns land on the user dashboard', async ({ page }) => {
     await page.goto('/constituent/dashboard#token=header.payload.signature&token_type=bearer')
 
@@ -301,7 +340,7 @@ test.describe('Code Collective UI and UX system coverage', () => {
     await expect(page.locator('.portal-header')).toHaveCount(0)
     await expect(page.getByRole('heading', { name: 'Mobile Tester' })).toBeVisible()
     await expect(page.getByRole('link', { name: /message mobile tester/i })).toHaveAttribute('href', /\/chat\?start=dm&user=mobile-tester/)
-    await expect(page.getByRole('link', { name: 'Edit Profile' })).toHaveAttribute('href', '/contact-settings')
+    await expect(page.getByRole('link', { name: 'Edit Profile' })).toHaveAttribute('href', '/profile')
     const contactDownload = page.getByRole('button', { name: /download contact/i })
     await expect(contactDownload).toBeVisible()
     const downloadPromise = page.waitForEvent('download')
@@ -338,7 +377,7 @@ test.describe('Code Collective UI and UX system coverage', () => {
     const download = await downloadPromise
     expect(download.suggestedFilename()).toBe('mobile-tester.vcf')
 
-    await expect(page.getByRole('link', { name: 'Edit ID' })).toHaveAttribute('href', '/contact-settings')
+    await expect(page.getByRole('link', { name: 'Edit ID' })).toHaveAttribute('href', '/profile')
     await expectNoHorizontalOverflow(page)
   })
 
@@ -364,9 +403,26 @@ test.describe('Code Collective UI and UX system coverage', () => {
     })
 
     await page.goto('/users/profile')
+    await expect(page.getByText('Manage your account details, profile information, and public contact page.')).toHaveCount(0)
+    await expect(page.locator('.profile-top-actions').getByRole('link', { name: 'Open Public Page' })).toHaveAttribute(
+      'href',
+      /\/users\/mobile-tester$/,
+    )
+    await expect(page.getByLabel('QR code for public profile')).toHaveCount(0)
+    await expect(page.getByText('Profile image')).toHaveCount(0)
+    const publicProfileBox = await page.getByRole('heading', { name: 'Public Profile' }).first().boundingBox()
+    const accountBox = await page.getByRole('heading', { name: 'Account' }).boundingBox()
+    expect(publicProfileBox?.y ?? Number.POSITIVE_INFINITY).toBeLessThan(accountBox?.y ?? 0)
+    const saveBox = await page.getByRole('button', { name: 'Save profile' }).boundingBox()
+    const firstNameBox = await page.getByLabel('First name').boundingBox()
+    expect(saveBox?.height).toBeGreaterThanOrEqual(44)
+    expect(saveBox?.y ?? Number.POSITIVE_INFINITY).toBeLessThan(firstNameBox?.y ?? 0)
+    await expect(page.locator('details').filter({ hasText: /^Address/ })).not.toHaveAttribute('open', '')
     await expect(page.getByAltText('Profile preview')).toHaveAttribute('src', authUser.avatar_url)
     await expect(page.getByLabel(/profile image url/i)).toHaveCount(0)
     await expect(page.getByLabel(/profile photo url/i)).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Edit photo' })).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: 'Your Organizations' })).toHaveCount(0)
 
     await page.getByLabel('Display name').fill('Updated Tester')
     await page.getByRole('button', { name: 'Save profile' }).click()
@@ -375,6 +431,84 @@ test.describe('Code Collective UI and UX system coverage', () => {
     expect(savedProfile?.display_name).toBe('Updated Tester')
     expect(savedProfile?.avatar_url).toBe(authUser.avatar_url)
     expect(savedContact?.photo_url).toBe(authUser.avatar_url)
+  })
+
+  test('profile picture upload stores the signed upload result in profile and public contact records', async ({ page }) => {
+    const uploadedAvatarUrl = 'https://assets.test/uploaded-profile.png'
+    let savedProfile: Record<string, unknown> | null = null
+    let savedContact: Record<string, unknown> | null = null
+    let uploadSetupRequested = false
+    let uploadRequest: { method: string; pathname: string; authorization: string | null; contentType: string | null; bodySize: number } | null = null
+
+    await page.route('**/auth/me', async (route) => {
+      if (route.request().method() === 'PUT') {
+        savedProfile = JSON.parse(route.request().postData() || '{}')
+        await fulfillJson(route, {
+          ...authUser,
+          full_name: savedProfile.full_name,
+          avatar_url: savedProfile.avatar_url,
+          identity_data: savedProfile,
+        })
+        return
+      }
+      await fulfillJson(route, authUser)
+    })
+    await page.route('**/api/org/api/network/contact/me', async (route) => {
+      if (route.request().method() === 'PUT') {
+        savedContact = JSON.parse(route.request().postData() || '{}')
+        await fulfillJson(route, { ...contactPage, ...savedContact })
+        return
+      }
+      await fulfillJson(route, contactPage)
+    })
+    await page.route('**/auth/avatar/upload-url', async (route) => {
+      uploadSetupRequested = true
+      expect(route.request().headers().authorization).toBe('Bearer header.payload.signature')
+      await fulfillJson(route, {
+        upload_url: '/auth/avatar/upload/avatars/test-user-1/profile.png',
+        public_url: uploadedAvatarUrl,
+      })
+    })
+    await page.route('**/pidp/auth/avatar/upload/**', async (route) => {
+      const request = route.request()
+      const url = new URL(request.url())
+      uploadRequest = {
+        method: request.method(),
+        pathname: url.pathname,
+        authorization: request.headers().authorization ?? null,
+        contentType: request.headers()['content-type'] ?? null,
+        bodySize: request.postDataBuffer()?.length ?? 0,
+      }
+      await route.fulfill({ status: 200, body: '' })
+    })
+
+    await page.goto('/users/profile')
+    await page.getByLabel('Profile photo').setInputFiles({
+      name: 'profile.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFklEQVR42mP8z8AARLJgwiC6AwwAIfACAf2y5nQAAAAASUVORK5CYII=',
+        'base64',
+      ),
+    })
+    await expect(page.getByRole('heading', { name: 'Edit profile photo' })).toBeVisible()
+
+    await page.getByRole('button', { name: 'Apply photo' }).click()
+    await expect(page.getByRole('heading', { name: 'Edit profile photo' })).toHaveCount(0)
+    await expect(page.getByRole('status')).toContainText('Photo saved.')
+    await expect(page.getByAltText('Profile preview')).toHaveAttribute('src', uploadedAvatarUrl)
+
+    expect(uploadSetupRequested).toBe(true)
+    expect(uploadRequest).toEqual({
+      method: 'PUT',
+      pathname: '/pidp/auth/avatar/upload/avatars/test-user-1/profile.png',
+      authorization: 'Bearer header.payload.signature',
+      contentType: 'image/png',
+      bodySize: expect.any(Number),
+    })
+    expect(uploadRequest?.bodySize).toBeGreaterThan(0)
+    expect(savedProfile?.avatar_url).toBe(uploadedAvatarUrl)
+    expect(savedContact?.photo_url).toBe(uploadedAvatarUrl)
   })
 
   test('native chat opens a direct message, sends optimistically, and confirms the canonical server message', async ({ page }) => {

@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
+import { publicProfileUrl } from '../../config/portalBase'
 import { createQrSvg } from '../utils/qr'
 
 const ORG_API_BASE = '/api/org'
@@ -9,21 +10,6 @@ const THEME_STORAGE_KEY = 'orgportal.theme'
 function orgUrl(path: string) {
   if (!path.startsWith('/')) return `${ORG_API_BASE}/${path}`
   return `${ORG_API_BASE}${path}`
-}
-
-function portalBaseUrl(): string {
-  if (typeof window === 'undefined') return ''
-  const publicBase = (import.meta.env.VITE_PUBLIC_BASE as string | undefined)?.trim() || '/p/'
-  const normalizedBase = publicBase.startsWith('http')
-    ? publicBase
-    : `${window.location.origin}${publicBase.startsWith('/') ? publicBase : `/${publicBase}`}`
-  return normalizedBase.replace(/\/+$/, '')
-}
-
-function publicProfileUrl(slug?: string | null): string | null {
-  const cleanSlug = String(slug || '').trim()
-  const base = portalBaseUrl()
-  return cleanSlug && base ? `${base}/users/${encodeURIComponent(cleanSlug)}` : null
 }
 
 type ContactLink = {
@@ -53,6 +39,8 @@ type ContactPage = {
 
 type ContactSettingsPageProps = {
   embedded?: boolean
+  hideQr?: boolean
+  profileImageEditor?: ReactNode
 }
 
 type PublicVisibilityKey =
@@ -94,7 +82,7 @@ function contactVisibilityFromPage(page: ContactPage): PublicVisibility {
   }
 }
 
-export function ContactSettingsPage({ embedded = false }: ContactSettingsPageProps = {}) {
+export function ContactSettingsPage({ embedded = false, hideQr = false, profileImageEditor }: ContactSettingsPageProps = {}) {
   const { token } = useAuth()
   const [page, setPage] = useState<ContactPage | null>(null)
   const [status, setStatus] = useState<string | null>(null)
@@ -330,13 +318,13 @@ export function ContactSettingsPage({ embedded = false }: ContactSettingsPagePro
         </div>
       ) : null}
 
-      <div className="contact-settings-actions">
+      {!embedded ? <div className="contact-settings-actions">
         {page.enabled && publicUrl ? (
           <a className="contact-public-page-bubble" href={publicUrl} target="_blank" rel="noreferrer">
             Open Public Page
           </a>
         ) : null}
-      </div>
+      </div> : null}
 
       <div className="portal-card" style={{ padding: '0.65rem', display: 'grid', gap: '0.25rem' }}>
         <div className="muted" style={{ margin: 0 }}>User UUID</div>
@@ -385,18 +373,18 @@ export function ContactSettingsPage({ embedded = false }: ContactSettingsPagePro
         <textarea value={page.bio || ''} onChange={(e) => setField('bio', e.target.value)} rows={4} placeholder="Bio" />
         {visibilityButton('bio')}
       </div>
-      <div className="portal-card" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-        <span className="portal-avatar" style={{ width: 56, height: 56 }}>
-          {page.photo_url ? <img src={page.photo_url} alt={page.user_name} /> : page.user_name.slice(0, 1).toUpperCase()}
-        </span>
-        <div>
-          <div style={{ fontWeight: 700 }}>Profile image</div>
-          <p className="muted" style={{ margin: 0 }}>
-            {embedded ? 'Managed from the profile photo field above.' : 'Managed from your user profile.'}
-          </p>
-          {embedded ? null : <Link to="/profile">Edit profile image</Link>}
+      {profileImageEditor ?? (
+        <div className="portal-card" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <span className="portal-avatar" style={{ width: 56, height: 56 }}>
+            {page.photo_url ? <img src={page.photo_url} alt={page.user_name} /> : page.user_name.slice(0, 1).toUpperCase()}
+          </span>
+          <div>
+            <div style={{ fontWeight: 700 }}>Profile image</div>
+            <p className="muted" style={{ margin: 0 }}>Managed from your user profile.</p>
+            <Link to="/profile">Edit profile image</Link>
+          </div>
         </div>
-      </div>
+      )}
       <div className={publicFieldClass('email_public', page.email_public)}>
         <input value={page.email_public || ''} onChange={(e) => setField('email_public', e.target.value)} placeholder="Public email" />
         {visibilityButton('email_public')}
@@ -463,13 +451,13 @@ export function ContactSettingsPage({ embedded = false }: ContactSettingsPagePro
           ) : (
             <span className="muted">{publicUrl} (not published yet)</span>
           )}
-          {qrSvg ? (
+          {!hideQr && qrSvg ? (
             <div
               aria-label="QR code for public profile"
               dangerouslySetInnerHTML={{ __html: qrSvg }}
             />
           ) : null}
-          {qrSvg ? (
+          {!hideQr && qrSvg ? (
             <button type="button" onClick={downloadQrSvg}>
               Download QR (SVG)
             </button>

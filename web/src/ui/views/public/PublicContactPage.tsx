@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
 import { pidpAppLoginUrl } from '../../../config/pidp'
+import { publicProfileUrl } from '../../../config/portalBase'
 import { createQrSvg } from '../../utils/qr'
 import { setSeoMeta } from '../../utils/seo'
 import { createVCard, vCardFileName } from '../../utils/vcard'
@@ -24,16 +25,6 @@ async function responseError(resp: Response, fallback: string) {
     // Plain text response.
   }
   return text
-}
-
-function publicProfileUrl(slug?: string | null) {
-  const cleanSlug = String(slug || '').trim()
-  const publicBase = (import.meta.env.VITE_PUBLIC_BASE as string | undefined)?.trim() || '/p/'
-  const normalizedBase = publicBase.startsWith('http')
-    ? publicBase
-    : `${window.location.origin}${publicBase.startsWith('/') ? publicBase : `/${publicBase}`}`
-  const base = normalizedBase.replace(/\/+$/, '')
-  return cleanSlug ? `${base}/users/${encodeURIComponent(cleanSlug)}` : null
 }
 
 function displayUrl(value: string): string {

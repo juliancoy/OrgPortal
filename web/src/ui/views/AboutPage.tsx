@@ -1,5 +1,6 @@
+import { portalPath } from '../../config/portalBase'
+
 export function AboutPage() {
-  const baseUrl = import.meta.env.BASE_URL ?? '/'
   return (
     <section className="panel">
       <h1 className="serif" style={{ marginTop: 0 }}>
@@ -27,7 +28,7 @@ export function AboutPage() {
           }}
         >
           <img
-            src={`${baseUrl}julian.jpeg`}
+            src={portalPath('/julian.jpeg')}
             alt="Julian"
             style={{
               width: '120px',
@@ -52,7 +53,7 @@ export function AboutPage() {
           }}
         >
           <img
-            src={`${baseUrl}dario.jpeg`}
+            src={portalPath('/dario.jpeg')}
             alt="Dario"
             style={{
               width: '120px',

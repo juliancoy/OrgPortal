@@ -1,4 +1,5 @@
 import { getNativeAuthCallbackUrl, isNativeCapacitorRuntime } from '../infrastructure/platform/runtimePlatform'
+import { portalUrl, toInternalPortalPath } from './portalBase'
 
 export const DEFAULT_POST_LOGIN_PATH = '/chat'
 
@@ -48,42 +49,30 @@ export const PIDP_BASE_URL = normalizePidpBase(
   (import.meta.env.VITE_PIDP_BASE_URL as string | undefined) ?? '/pidp',
 )
 export const PIDP_APP_SLUG = ((import.meta.env.VITE_PIDP_APP_SLUG as string | undefined) ?? 'code-collective').trim()
-
 export function pidpUrl(path: string): string {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
   return `${PIDP_BASE_URL}${normalizedPath}`
 }
 
-function normalizePostLoginPath(next: string): string {
+export function normalizePostLoginPath(next: string): string {
   const fallback = DEFAULT_POST_LOGIN_PATH
-  const raw = String(next || '').trim()
-  if (!raw) return fallback
-
-  try {
-    const origin = typeof window === 'undefined' ? 'https://codecollective.us' : window.location.origin
-    const parsed = new URL(raw, origin)
-    if (parsed.origin !== origin) return fallback
-    const path = `${parsed.pathname}${parsed.search}` || fallback
-    if (
-      path === '/' ||
-      path.startsWith('/auth/callback') ||
-      path.startsWith('/users/login') ||
-      path.startsWith('/users/register') ||
-      path.endsWith('/standalone.html') ||
-      path === '/standalone.html'
-    ) {
-      return fallback
-    }
-    return path
-  } catch {
-    return raw.startsWith('/') ? raw : fallback
+  const path = toInternalPortalPath(next, fallback)
+  if (
+    path === '/' ||
+    path.startsWith('/auth/callback') ||
+    path.startsWith('/users/login') ||
+    path.startsWith('/users/register') ||
+    path.endsWith('/standalone.html') ||
+    path === '/standalone.html'
+  ) {
+    return fallback
   }
+  return path
 }
 
 export function portalAuthCallbackUrl(next: string): string {
   const target = normalizePostLoginPath(next)
-  const origin = typeof window === 'undefined' ? 'https://codecollective.us' : window.location.origin
-  const callback = new URL('/auth/callback', origin)
+  const callback = new URL(portalUrl('/auth/callback'))
   callback.searchParams.set('next', target)
   return callback.toString()
 }

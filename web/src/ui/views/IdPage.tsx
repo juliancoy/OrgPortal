@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
+import { publicProfileUrl } from '../../config/portalBase'
 import { createQrSvg } from '../utils/qr'
 import { createVCard, vCardFileName } from '../utils/vcard'
 
@@ -36,22 +37,6 @@ type ContactPage = {
 
 function displayUrl(value: string): string {
   return value.replace(/^mailto:/i, '').replace(/^tel:/i, '').replace(/^https?:\/\//i, '').replace(/\/$/, '')
-}
-
-function portalBaseUrl(): string {
-  if (typeof window === 'undefined') return ''
-  const publicBase = (import.meta.env.VITE_PUBLIC_BASE as string | undefined)?.trim() || '/p/'
-  const normalizedBase = publicBase.startsWith('http')
-    ? publicBase
-    : `${window.location.origin}${publicBase.startsWith('/') ? publicBase : `/${publicBase}`}`
-  return normalizedBase.replace(/\/+$/, '')
-}
-
-function publicProfileUrl(slug?: string | null, fallback?: string | null): string | null {
-  const cleanSlug = String(slug || '').trim()
-  const base = portalBaseUrl()
-  if (cleanSlug && base) return `${base}/users/${encodeURIComponent(cleanSlug)}`
-  return fallback?.trim() || null
 }
 
 function linkRows(page: ContactPage): ContactLink[] {
