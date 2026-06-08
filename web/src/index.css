@@ -1770,6 +1770,24 @@ textarea {
   overscroll-behavior: contain;
 }
 
+.economic-current-balance {
+  display: inline-grid;
+  gap: 4px;
+  margin-top: 14px;
+  padding: 14px 18px;
+  border: 2px solid var(--primary);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.economic-current-balance-value {
+  color: var(--primary);
+  font-size: clamp(2rem, 6vw, 3.5rem);
+  font-weight: 900;
+  line-height: 1;
+}
+
 .portal-chart-overlay {
   touch-action: none;
 }

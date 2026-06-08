@@ -158,7 +158,7 @@ async function orgFetch<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export function EconomicOpsPage() {
-  const { token } = useAuth()
+  const { token, user } = useAuth()
   const [history, setHistory] = useState<MoneySupplyPoint[]>([])
   const [currency, setCurrency] = useState<string>('DEM')
   const [currentSupply, setCurrentSupply] = useState<number | null>(null)
@@ -472,6 +472,14 @@ export function EconomicOpsPage() {
     () => filteredAccounts.filter((account) => !adminIdSet.has(account.id)),
     [filteredAccounts, adminIdSet],
   )
+  const currentAccount = useMemo(() => {
+    if (!user) return null
+    const userEmail = user.email?.trim().toLowerCase()
+    return accounts.find((account) => {
+      if (account.id === user.id) return true
+      return Boolean(userEmail && account.email.trim().toLowerCase() === userEmail)
+    }) ?? null
+  }, [accounts, user])
 
   async function refreshUbiSettings() {
     if (!token) return
@@ -585,6 +593,13 @@ export function EconomicOpsPage() {
                   </svg>
                   Receive Dena
                 </a>
+              </div>
+              <div className="economic-current-balance">
+                <div className="portal-muted">Your current balance</div>
+                <div className="economic-current-balance-value">
+                  {currentAccount ? formatCurrency(currentAccount.balance, currency) : '—'}
+                </div>
+                {currentAccount?.email ? <div className="portal-muted">{currentAccount.email}</div> : null}
               </div>
             </div>
             <div className="portal-card portal-chart-card">
