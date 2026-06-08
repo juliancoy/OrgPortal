@@ -287,6 +287,14 @@ test.describe('Code Collective UI and UX system coverage', () => {
     await expect(page.getByRole('link', { name: 'Continue with Google' })).not.toHaveAttribute('href', /\/api\/org\/auth\/social/)
   })
 
+  test('legacy constituent dashboard OAuth returns land on the user dashboard', async ({ page }) => {
+    await page.goto('/constituent/dashboard#token=header.payload.signature&token_type=bearer')
+
+    await expect(page).toHaveURL(/\/users\/dashboard$/)
+    await expect(page.getByRole('heading', { name: /your voice/i })).toBeVisible()
+    await expect(page.getByText(/page not found/i)).toHaveCount(0)
+  })
+
   test('public ID page hides the app header, exposes inbox and owner edit actions, and remains responsive', async ({ page }) => {
     await page.goto('/users/mobile-tester')
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { ReactElement } from 'react'
-import { Navigate, createBrowserRouter } from 'react-router-dom'
+import { Navigate, createBrowserRouter, useLocation, useNavigate } from 'react-router-dom'
 import { AppLayout } from '../shell/AppLayout'
 import App from '../../App'
 import { useAuth } from '../../app/AppProviders'
@@ -65,6 +65,22 @@ function HomeRoute() {
   if (isLoading) return null
   if (role === 'guest') return <App />
   return <Navigate to="/chat" replace />
+}
+
+function LegacyUserRoute(props: { to: string }) {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const { completeOAuthLogin } = useAuth()
+
+  useEffect(() => {
+    const hash = location.hash.startsWith('#') ? location.hash.slice(1) : location.hash
+    const params = new URLSearchParams(hash || location.search)
+    const token = params.get('token')
+    if (token) completeOAuthLogin(token)
+    navigate(props.to, { replace: true })
+  }, [completeOAuthLogin, location.hash, location.search, navigate, props.to])
+
+  return null
 }
 
 function ChatRoute() {
@@ -148,6 +164,12 @@ export function createAppRouter() {
           { path: '/users/dashboard', element: <DashboardPage /> },
           { path: '/users/profile', element: <UserProfilePage /> },
           { path: '/users/account', element: <UserAccountPage /> },
+          { path: '/constituent', element: <LegacyUserRoute to="/users/dashboard" /> },
+          { path: '/constituent/dashboard', element: <LegacyUserRoute to="/users/dashboard" /> },
+          { path: '/constituent/profile', element: <LegacyUserRoute to="/users/profile" /> },
+          { path: '/constituent/account', element: <LegacyUserRoute to="/users/account" /> },
+          { path: '/constituent/login', element: <LegacyUserRoute to="/users/login" /> },
+          { path: '/constituent/register', element: <LegacyUserRoute to="/users/register" /> },
           {
             path: '/id',
             element: (
