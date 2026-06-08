@@ -759,6 +759,10 @@ export function Header() {
                     Profile
                   </Link>
 
+                  <Link to="/settings" onClick={() => setMenuOpen(false)} className="portal-user-menu-item">
+                    Settings
+                  </Link>
+
                   <Link to="/dev-tools" onClick={() => setMenuOpen(false)} className="portal-user-menu-item">
                     Dev Tools
                   </Link>

@@ -411,12 +411,15 @@ test.describe('Code Collective UI and UX system coverage', () => {
     await expect(page.getByLabel('QR code for public profile')).toHaveCount(0)
     await expect(page.getByText('Profile image')).toHaveCount(0)
     const publicProfileBox = await page.getByRole('heading', { name: 'Public Profile' }).first().boundingBox()
-    const accountBox = await page.getByRole('heading', { name: 'Account' }).boundingBox()
-    expect(publicProfileBox?.y ?? Number.POSITIVE_INFINITY).toBeLessThan(accountBox?.y ?? 0)
+    const profileDetailsBox = await page.getByRole('heading', { name: 'Profile Details' }).boundingBox()
+    expect(publicProfileBox?.y ?? Number.POSITIVE_INFINITY).toBeLessThan(profileDetailsBox?.y ?? 0)
     const saveBox = await page.getByRole('button', { name: 'Save profile' }).boundingBox()
     const firstNameBox = await page.getByLabel('First name').boundingBox()
     expect(saveBox?.height).toBeGreaterThanOrEqual(44)
     expect(saveBox?.y ?? Number.POSITIVE_INFINITY).toBeLessThan(firstNameBox?.y ?? 0)
+    await expect(page.getByRole('heading', { name: 'System Appearance' })).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: 'Account' })).toHaveCount(0)
+    await expect(page.getByText('User UUID')).toHaveCount(0)
     await expect(page.locator('details').filter({ hasText: /^Address/ })).not.toHaveAttribute('open', '')
     await expect(page.getByAltText('Profile preview')).toHaveAttribute('src', authUser.avatar_url)
     await expect(page.getByLabel(/profile image url/i)).toHaveCount(0)
@@ -431,6 +434,27 @@ test.describe('Code Collective UI and UX system coverage', () => {
     expect(savedProfile?.display_name).toBe('Updated Tester')
     expect(savedProfile?.avatar_url).toBe(authUser.avatar_url)
     expect(savedContact?.photo_url).toBe(authUser.avatar_url)
+  })
+
+  test('avatar menu opens settings and system theme persists outside the profile editor', async ({ page }) => {
+    await page.goto('/')
+
+    await page.getByLabel('Open user menu').click()
+    await page.getByRole('link', { name: 'Settings' }).click()
+
+    await expect(page).toHaveURL(/\/settings$/)
+    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'System Appearance' })).toBeVisible()
+    await expect(page.getByText('User UUID')).toBeVisible()
+
+    await page.getByLabel('Theme').selectOption('light')
+    await expect(page.getByRole('status')).toContainText('Theme set to light.')
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+    expect(await page.evaluate(() => localStorage.getItem('orgportal.theme'))).toBe('light')
+
+    await page.goto('/users/profile')
+    await expect(page.getByRole('heading', { name: 'System Appearance' })).toHaveCount(0)
+    await expect(page.getByText('User UUID')).toHaveCount(0)
   })
 
   test('profile picture upload stores the signed upload result in profile and public contact records', async ({ page }) => {
@@ -545,7 +569,7 @@ test.describe('Code Collective UI and UX system coverage', () => {
 
   test('core routes avoid horizontal overflow and keep interactive controls accessible', async ({ page }) => {
     await mockNativeChat(page)
-    for (const route of ['/id', '/users/mobile-tester', '/users/profile', '/chat/dm-1']) {
+    for (const route of ['/id', '/users/mobile-tester', '/users/profile', '/settings', '/chat/dm-1']) {
       await page.goto(route)
       await page.waitForLoadState('networkidle')
       await expectNoHorizontalOverflow(page)

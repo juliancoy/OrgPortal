@@ -500,22 +500,6 @@ export function UserProfilePage() {
 
       <ContactSettingsPage embedded hideQr profileImageEditor={profileImageEditor} />
 
-      <section className="portal-card profile-settings-section">
-        <h2 style={{ margin: 0 }}>Account</h2>
-        <div className="profile-account-grid">
-          <div>
-            <div className="muted" style={{ margin: 0 }}>Email</div>
-            <div style={{ fontWeight: 700, wordBreak: 'break-word' }}>{user?.email || 'Signed in'}</div>
-          </div>
-          {user?.id ? (
-            <div>
-              <div className="muted" style={{ margin: 0 }}>User UUID</div>
-              <code style={{ wordBreak: 'break-all' }}>{user.id}</code>
-            </div>
-          ) : null}
-        </div>
-      </section>
-
       <section className="profile-settings-section">
         <div className="profile-detail-header">
           <h2 style={{ margin: 0 }}>Profile Details</h2>

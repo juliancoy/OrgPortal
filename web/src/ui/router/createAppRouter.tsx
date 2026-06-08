@@ -10,6 +10,7 @@ import { AuthCallbackPage } from '../views/AuthCallbackPage'
 import { InitiativeDetailPage } from '../views/InitiativeDetailPage'
 import { InitiativeSignPage } from '../views/InitiativeSignPage'
 import { UserProfilePage } from '../views/users/UserProfilePage'
+import { UserSettingsPage } from '../views/users/UserSettingsPage'
 import { UserLoginPage } from '../views/users/UserLoginPage'
 import { UserRegisterPage } from '../views/users/UserRegisterPage'
 import { OrgLoginPage } from '../views/orgs/OrgLoginPage'
@@ -160,6 +161,14 @@ export function createAppRouter() {
           { path: '/users/login', element: <UserLoginPage /> },
           { path: '/users/dashboard', element: <DashboardPage /> },
           { path: '/profile', element: <UserProfilePage /> },
+          {
+            path: '/settings',
+            element: (
+              <AuthenticatedRoute>
+                <UserSettingsPage />
+              </AuthenticatedRoute>
+            ),
+          },
           { path: '/users/profile', element: <LegacyUserRoute to="/profile" /> },
           { path: '/users/account', element: <LegacyUserRoute to="/profile" /> },
           { path: '/constituent', element: <LegacyUserRoute to="/users/dashboard" /> },
