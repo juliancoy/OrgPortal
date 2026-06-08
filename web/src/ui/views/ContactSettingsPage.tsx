@@ -51,11 +51,55 @@ type ContactPage = {
   public_url?: string | null
 }
 
-export function ContactSettingsPage() {
+type ContactSettingsPageProps = {
+  embedded?: boolean
+}
+
+type PublicVisibilityKey =
+  | 'headline'
+  | 'bio'
+  | 'email_public'
+  | 'phone_public'
+  | 'linkedin_url'
+  | 'github_url'
+  | 'x_url'
+  | 'website_url'
+  | 'links'
+
+type PublicVisibility = Record<PublicVisibilityKey, boolean>
+
+const DEFAULT_PUBLIC_VISIBILITY: PublicVisibility = {
+  headline: false,
+  bio: false,
+  email_public: false,
+  phone_public: false,
+  linkedin_url: false,
+  github_url: false,
+  x_url: false,
+  website_url: false,
+  links: false,
+}
+
+function contactVisibilityFromPage(page: ContactPage): PublicVisibility {
+  return {
+    headline: Boolean(page.headline?.trim()),
+    bio: Boolean(page.bio?.trim()),
+    email_public: Boolean(page.email_public?.trim()),
+    phone_public: Boolean(page.phone_public?.trim()),
+    linkedin_url: Boolean(page.linkedin_url?.trim()),
+    github_url: Boolean(page.github_url?.trim()),
+    x_url: Boolean(page.x_url?.trim()),
+    website_url: Boolean(page.website_url?.trim()),
+    links: Boolean(page.links?.length),
+  }
+}
+
+export function ContactSettingsPage({ embedded = false }: ContactSettingsPageProps = {}) {
   const { token } = useAuth()
   const [page, setPage] = useState<ContactPage | null>(null)
   const [status, setStatus] = useState<string | null>(null)
   const [linksText, setLinksText] = useState('')
+  const [publicVisibility, setPublicVisibility] = useState<PublicVisibility>(DEFAULT_PUBLIC_VISIBILITY)
   const [themeMode, setThemeMode] = useState<'dark' | 'light'>(() => {
     const raw = localStorage.getItem(THEME_STORAGE_KEY)
     return raw === 'light' ? 'light' : 'dark'
@@ -83,6 +127,7 @@ export function ContactSettingsPage() {
       .then((data) => {
         setPage(data)
         setLinksText((data.links || []).map((item) => `${item.label}|${item.url}`).join('\n'))
+        setPublicVisibility(contactVisibilityFromPage(data))
         if (data.source_profile_url) {
           setImportUrl(data.source_profile_url)
         }
@@ -117,6 +162,47 @@ export function ContactSettingsPage() {
     setPage((prev) => (prev ? { ...prev, [field]: value } : prev))
   }
 
+  function setVisibility(field: PublicVisibilityKey, visible: boolean) {
+    setPublicVisibility((prev) => ({ ...prev, [field]: visible }))
+  }
+
+  function publicFieldClass(field: PublicVisibilityKey, value?: string | null) {
+    const willShow = publicVisibility[field] && Boolean(String(value || '').trim())
+    return `contact-public-field ${willShow ? 'is-public' : 'is-private'}`
+  }
+
+  function publicLinksFieldClass() {
+    const willShow = publicVisibility.links && Boolean(linksText.trim())
+    return `contact-public-field ${willShow ? 'is-public' : 'is-private'}`
+  }
+
+  function visibilityButton(field: PublicVisibilityKey) {
+    const visible = publicVisibility[field]
+    return (
+      <button
+        type="button"
+        className={`contact-public-visibility-button ${visible ? 'is-public' : 'is-private'}`}
+        onClick={() => setVisibility(field, !visible)}
+        aria-label={visible ? 'Hide from public profile' : 'Show on public profile'}
+        title={visible ? 'Hide from public profile' : 'Show on public profile'}
+      >
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          {visible ? (
+            <>
+              <path d="M2.5 10s2.7-5 7.5-5 7.5 5 7.5 5-2.7 5-7.5 5-7.5-5-7.5-5Z" stroke="currentColor" strokeWidth="1.7" />
+              <circle cx="10" cy="10" r="2.2" stroke="currentColor" strokeWidth="1.7" />
+            </>
+          ) : (
+            <>
+              <path d="M3 3l14 14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              <path d="M2.5 10s2.7-5 7.5-5c1.2 0 2.3.3 3.2.8M16 8.2c1 .9 1.5 1.8 1.5 1.8s-2.7 5-7.5 5c-1.1 0-2.1-.3-3-.7" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+            </>
+          )}
+        </svg>
+      </button>
+    )
+  }
+
   function saveTheme(nextMode: 'dark' | 'light') {
     setThemeMode(nextMode)
     localStorage.setItem(THEME_STORAGE_KEY, nextMode)
@@ -147,15 +233,15 @@ export function ContactSettingsPage() {
         body: JSON.stringify({
           enabled: page.enabled,
           slug: page.slug,
-          headline: page.headline || null,
-          bio: page.bio || null,
-          email_public: page.email_public || null,
-          phone_public: page.phone_public || null,
-          linkedin_url: page.linkedin_url || null,
-          github_url: page.github_url || null,
-          x_url: page.x_url || null,
-          website_url: page.website_url || null,
-          links: parsedLinks,
+          headline: publicVisibility.headline ? page.headline || null : null,
+          bio: publicVisibility.bio ? page.bio || null : null,
+          email_public: publicVisibility.email_public ? page.email_public || null : null,
+          phone_public: publicVisibility.phone_public ? page.phone_public || null : null,
+          linkedin_url: publicVisibility.linkedin_url ? page.linkedin_url || null : null,
+          github_url: publicVisibility.github_url ? page.github_url || null : null,
+          x_url: publicVisibility.x_url ? page.x_url || null : null,
+          website_url: publicVisibility.website_url ? page.website_url || null : null,
+          links: publicVisibility.links ? parsedLinks : [],
         }),
       })
       if (!resp.ok) {
@@ -164,6 +250,8 @@ export function ContactSettingsPage() {
       }
       const data = (await resp.json()) as ContactPage
       setPage(data)
+      setLinksText((data.links || []).map((item) => `${item.label}|${item.url}`).join('\n'))
+      setPublicVisibility(contactVisibilityFromPage(data))
       setStatus('Public profile saved.')
     } catch (err) {
       setStatus(err instanceof Error ? err.message : 'Save failed')
@@ -201,6 +289,7 @@ export function ContactSettingsPage() {
       setPage(data.contact)
       setImportUrl(data.source_url)
       setLinksText((data.contact.links || []).map((item) => `${item.label}|${item.url}`).join('\n'))
+      setPublicVisibility(contactVisibilityFromPage(data.contact))
       if (data.imported_fields.length > 0) {
         setStatus(`Imported: ${data.imported_fields.join(', ')}`)
       } else {
@@ -213,8 +302,8 @@ export function ContactSettingsPage() {
 
   if (!token) {
     return (
-      <section className="panel">
-        <h1 style={{ marginTop: 0 }}>Public Profile Settings</h1>
+      <section className={embedded ? 'profile-settings-section' : 'panel'}>
+        {embedded ? <h2 style={{ marginTop: 0 }}>Public Profile</h2> : <h1 style={{ marginTop: 0 }}>Public Profile Settings</h1>}
         <p className="muted">Sign in required.</p>
       </section>
     )
@@ -222,8 +311,8 @@ export function ContactSettingsPage() {
 
   if (!page) {
     return (
-      <section className="panel">
-        <h1 style={{ marginTop: 0 }}>Public Profile Settings</h1>
+      <section className={embedded ? 'profile-settings-section' : 'panel'}>
+        {embedded ? <h2 style={{ marginTop: 0 }}>Public Profile</h2> : <h1 style={{ marginTop: 0 }}>Public Profile Settings</h1>}
         <p className="muted">Loading…</p>
         {status ? <p className="muted">{status}</p> : null}
       </section>
@@ -231,7 +320,15 @@ export function ContactSettingsPage() {
   }
 
   return (
-    <section className="panel" style={{ display: 'grid', gap: '0.75rem' }}>
+    <section className={embedded ? 'profile-settings-section' : 'panel'} style={{ display: 'grid', gap: '0.75rem' }}>
+      {embedded ? (
+        <div>
+          <h2 style={{ margin: 0 }}>Public Profile</h2>
+          <p className="muted" style={{ margin: '0.25rem 0 0' }}>
+            Manage the contact details shown on your public page.
+          </p>
+        </div>
+      ) : null}
 
       <div className="contact-settings-actions">
         {page.enabled && publicUrl ? (
@@ -280,8 +377,14 @@ export function ContactSettingsPage() {
       </section>
 
       <input value={page.slug} onChange={(e) => setField('slug', e.target.value)} placeholder="Public slug" />
-      <input value={page.headline || ''} onChange={(e) => setField('headline', e.target.value)} placeholder="Headline" />
-      <textarea value={page.bio || ''} onChange={(e) => setField('bio', e.target.value)} rows={4} placeholder="Bio" />
+      <div className={publicFieldClass('headline', page.headline)}>
+        <input value={page.headline || ''} onChange={(e) => setField('headline', e.target.value)} placeholder="Headline" />
+        {visibilityButton('headline')}
+      </div>
+      <div className={publicFieldClass('bio', page.bio)}>
+        <textarea value={page.bio || ''} onChange={(e) => setField('bio', e.target.value)} rows={4} placeholder="Bio" />
+        {visibilityButton('bio')}
+      </div>
       <div className="portal-card" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
         <span className="portal-avatar" style={{ width: 56, height: 56 }}>
           {page.photo_url ? <img src={page.photo_url} alt={page.user_name} /> : page.user_name.slice(0, 1).toUpperCase()}
@@ -289,23 +392,44 @@ export function ContactSettingsPage() {
         <div>
           <div style={{ fontWeight: 700 }}>Profile image</div>
           <p className="muted" style={{ margin: 0 }}>
-            Managed from your user profile.
+            {embedded ? 'Managed from the profile photo field above.' : 'Managed from your user profile.'}
           </p>
-          <Link to="/users/profile">Edit profile image</Link>
+          {embedded ? null : <Link to="/profile">Edit profile image</Link>}
         </div>
       </div>
-      <input value={page.email_public || ''} onChange={(e) => setField('email_public', e.target.value)} placeholder="Public email" />
-      <input value={page.phone_public || ''} onChange={(e) => setField('phone_public', e.target.value)} placeholder="Public phone" />
-      <input value={page.linkedin_url || ''} onChange={(e) => setField('linkedin_url', e.target.value)} placeholder="LinkedIn URL" />
-      <input value={page.github_url || ''} onChange={(e) => setField('github_url', e.target.value)} placeholder="GitHub URL" />
-      <input value={page.x_url || ''} onChange={(e) => setField('x_url', e.target.value)} placeholder="X / Twitter URL" />
-      <input value={page.website_url || ''} onChange={(e) => setField('website_url', e.target.value)} placeholder="Website URL" />
-      <textarea
-        value={linksText}
-        onChange={(e) => setLinksText(e.target.value)}
-        rows={5}
-        placeholder={'Extra links, one per line: Label|https://example.com'}
-      />
+      <div className={publicFieldClass('email_public', page.email_public)}>
+        <input value={page.email_public || ''} onChange={(e) => setField('email_public', e.target.value)} placeholder="Public email" />
+        {visibilityButton('email_public')}
+      </div>
+      <div className={publicFieldClass('phone_public', page.phone_public)}>
+        <input value={page.phone_public || ''} onChange={(e) => setField('phone_public', e.target.value)} placeholder="Public phone" />
+        {visibilityButton('phone_public')}
+      </div>
+      <div className={publicFieldClass('linkedin_url', page.linkedin_url)}>
+        <input value={page.linkedin_url || ''} onChange={(e) => setField('linkedin_url', e.target.value)} placeholder="LinkedIn URL" />
+        {visibilityButton('linkedin_url')}
+      </div>
+      <div className={publicFieldClass('github_url', page.github_url)}>
+        <input value={page.github_url || ''} onChange={(e) => setField('github_url', e.target.value)} placeholder="GitHub URL" />
+        {visibilityButton('github_url')}
+      </div>
+      <div className={publicFieldClass('x_url', page.x_url)}>
+        <input value={page.x_url || ''} onChange={(e) => setField('x_url', e.target.value)} placeholder="X / Twitter URL" />
+        {visibilityButton('x_url')}
+      </div>
+      <div className={publicFieldClass('website_url', page.website_url)}>
+        <input value={page.website_url || ''} onChange={(e) => setField('website_url', e.target.value)} placeholder="Website URL" />
+        {visibilityButton('website_url')}
+      </div>
+      <div className={publicLinksFieldClass()}>
+        <textarea
+          value={linksText}
+          onChange={(e) => setLinksText(e.target.value)}
+          rows={5}
+          placeholder={'Extra links, one per line: Label|https://example.com'}
+        />
+        {visibilityButton('links')}
+      </div>
 
       <div>
         <button type="button" onClick={save}>Save Public Profile</button>

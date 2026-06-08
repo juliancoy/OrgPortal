@@ -131,7 +131,7 @@ export function PeoplePage() {
           const profilePath = person.contact_slug && (person.contact_enabled || isSelf)
             ? `/users/${encodeURIComponent(person.contact_slug)}`
             : isSelf
-              ? '/users/profile'
+              ? '/profile'
               : null
 
           return (

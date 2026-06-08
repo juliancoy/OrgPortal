@@ -367,7 +367,7 @@ export function OrgProfilePage() {
       </p>
 
       <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-        <Link to="/contact-settings">Manage My Contact Page</Link>
+        <Link to="/profile">Manage My Contact Page</Link>
         <Link to="/orgs/initiatives">My Initiatives</Link>
         <Link to="/orgs/events">Events</Link>
       </div>

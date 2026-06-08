@@ -5,7 +5,7 @@ import { Footer } from './Footer'
 
 export function AppLayout() {
   const location = useLocation()
-  const canonicalUserRoutes = new Set(['/users/register', '/users/login', '/users/dashboard', '/users/profile', '/users/account'])
+  const canonicalUserRoutes = new Set(['/profile', '/users/register', '/users/login', '/users/dashboard', '/users/profile', '/users/account'])
   const hideHeader =
     /^\/contact\/[^/]+\/?$/.test(location.pathname) ||
     (/^\/users\/[^/]+\/?$/.test(location.pathname) && !canonicalUserRoutes.has(location.pathname.replace(/\/$/, '')))

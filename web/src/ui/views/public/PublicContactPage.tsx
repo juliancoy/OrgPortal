@@ -269,7 +269,7 @@ export function PublicContactPage() {
           )}
           {isOwner ? (
             <div className="public-id-owner-controls" aria-label="Profile owner controls">
-              <Link to="/contact-settings">Edit Profile</Link>
+              <Link to="/profile">Edit Profile</Link>
             </div>
           ) : null}
         </div>

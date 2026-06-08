@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
 import { pidpUrl } from '../../../config/pidp'
 import { resolveSignedS3UploadUrl } from '../../../infrastructure/auth/avatarUpload'
+import { ContactSettingsPage } from '../ContactSettingsPage'
 
 const ORG_API_BASE = '/api/org'
 const USER_PROFILE_STORAGE_KEY = 'user.profile'
@@ -303,14 +304,32 @@ export function UserProfilePage() {
   }, [])
 
   return (
-    <section className="panel">
-      <h1 style={{ marginTop: 0 }}>Public profile (user)</h1>
-      {user?.id ? (
-        <div className="portal-card" style={{ padding: '0.65rem', marginBottom: '0.75rem', display: 'grid', gap: '0.25rem' }}>
-          <div className="muted" style={{ margin: 0 }}>User UUID</div>
-          <code style={{ wordBreak: 'break-all' }}>{user.id}</code>
+    <section className="panel profile-page">
+      <div>
+        <h1 style={{ margin: 0 }}>Profile</h1>
+        <p className="muted" style={{ margin: '0.25rem 0 0' }}>
+          Manage your account details, profile information, and public contact page.
+        </p>
+      </div>
+
+      <section className="portal-card profile-settings-section">
+        <h2 style={{ margin: 0 }}>Account</h2>
+        <div className="profile-account-grid">
+          <div>
+            <div className="muted" style={{ margin: 0 }}>Email</div>
+            <div style={{ fontWeight: 700, wordBreak: 'break-word' }}>{user?.email || 'Signed in'}</div>
+          </div>
+          {user?.id ? (
+            <div>
+              <div className="muted" style={{ margin: 0 }}>User UUID</div>
+              <code style={{ wordBreak: 'break-all' }}>{user.id}</code>
+            </div>
+          ) : null}
         </div>
-      ) : null}
+      </section>
+
+      <section className="profile-settings-section">
+        <h2 style={{ margin: 0 }}>Profile Details</h2>
       <div style={{ display: 'grid', gap: '0.6rem' }}>
         <div style={{ display: 'grid', gap: '0.6rem', gridTemplateColumns: '1fr 1fr' }}>
           <div>
@@ -699,6 +718,10 @@ export function UserProfilePage() {
           Save profile
         </button>
       </div>
+      </section>
+
+      <ContactSettingsPage embedded />
+
       {editorOpen ? (
         <div
           role="dialog"

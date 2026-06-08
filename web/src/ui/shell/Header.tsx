@@ -115,7 +115,6 @@ export function Header() {
   const location = useLocation()
   const navigate = useNavigate()
   const displayName = user?.displayName || user?.email || 'Signed in'
-  const accountSettingsPath = role === 'campaign_manager' ? '/orgs/account' : '/users/account'
   const roleLabel = role === 'campaign_manager' ? 'Org' : role === 'constituent' ? 'User' : 'Guest'
   const nextUrl = window.location.href
   const showAndroidDownload = isAndroidDevice()
@@ -425,6 +424,7 @@ export function Header() {
     location.pathname.startsWith('/users/register') ||
     location.pathname.startsWith('/users/login') ||
     location.pathname.startsWith('/users/dashboard') ||
+    location.pathname.startsWith('/profile') ||
     location.pathname.startsWith('/users/profile') ||
     location.pathname.startsWith('/users/account') ||
     location.pathname.startsWith('/about') ||
@@ -442,6 +442,7 @@ export function Header() {
       !location.pathname.startsWith('/users/register') &&
       !location.pathname.startsWith('/users/login') &&
       !location.pathname.startsWith('/users/dashboard') &&
+      !location.pathname.startsWith('/profile') &&
       !location.pathname.startsWith('/users/profile') &&
       !location.pathname.startsWith('/users/account')) ||
     location.pathname.startsWith('/contact/')
@@ -474,7 +475,6 @@ export function Header() {
           <img src={`${PORTAL_ASSET_BASE}codecollective_logo.png`} alt="Code Collective" />
           <div>
             <div className="portal-brand-title">Code Collective</div>
-            <div className="portal-brand-sub">Civic Governance Portal</div>
           </div>
         </a>
 
@@ -734,6 +734,7 @@ export function Header() {
                   type="button"
                   className={`portal-user-trigger ${isAdmin ? 'is-sysadmin' : 'is-standard-user'}`}
                   onClick={() => setMenuOpen((prev) => !prev)}
+                  aria-label="Open user menu"
                 >
                   <span className="portal-avatar">
                     {user?.avatarUrl ? (
@@ -742,39 +743,20 @@ export function Header() {
                       displayName.slice(0, 1).toUpperCase()
                     )}
                   </span>
-                  <span className="portal-user-trigger-label">{displayName.split(' ')[0]}</span>
-                  <svg
-                    width="12"
-                    height="12"
-                    viewBox="0 0 12 12"
-                    fill="currentColor"
-                    style={{ transform: menuOpen ? 'rotate(180deg)' : 'none' }}
-                  >
-                    <path d="M6 8L1 3h10z" />
-                  </svg>
                 </button>
 
                 {menuOpen && (
                   <div className="portal-user-menu">
                   <div className="portal-user-menu-meta">
-                    <strong>{displayName}</strong>
                     <span>{roleLabel}</span>
                   </div>
 
-                  <Link to={accountSettingsPath} onClick={() => setMenuOpen(false)} className="portal-user-menu-item">
-                    Account Settings
-                  </Link>
-
                   <Link
-                    to={role === 'campaign_manager' ? '/orgs/profile' : '/users/profile'}
+                    to={role === 'campaign_manager' ? '/orgs/profile' : '/profile'}
                     onClick={() => setMenuOpen(false)}
                     className="portal-user-menu-item"
                   >
                     Profile
-                  </Link>
-
-                  <Link to="/contact-settings" onClick={() => setMenuOpen(false)} className="portal-user-menu-item">
-                    Contact Page
                   </Link>
 
                   <Link to="/dev-tools" onClick={() => setMenuOpen(false)} className="portal-user-menu-item">

@@ -545,11 +545,6 @@ export function EconomicOpsPage() {
         <div className="portal-container">
           <section className="portal-hero">
             <div>
-              <span className="portal-pill">Finance</span>
-              <h1>Dena circulation + account directory</h1>
-              <p className="portal-muted">
-                Global supply trend over time and a searchable user ledger sorted by Dena balance.
-              </p>
               {error && <p className="portal-muted">{error}</p>}
               <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
                 <a

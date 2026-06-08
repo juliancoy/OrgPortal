@@ -148,6 +148,14 @@ export function IdPage() {
   return (
     <section className="id-page">
       <article className="id-card" aria-label="Code Collective ID">
+        {page.enabled && qrPayload ? (
+          <div className="id-public-page-action">
+            <a className="contact-public-page-bubble id-open-public-page" href={qrPayload}>
+              Open Public Page
+            </a>
+          </div>
+        ) : null}
+
         <div className="id-identity">
           {page.photo_url ? (
             <img
@@ -160,7 +168,6 @@ export function IdPage() {
               {page.user_name.slice(0, 1).toUpperCase()}
             </span>
           )}
-          <div className="id-kicker">ID</div>
           <h1 className="id-name">{page.user_name}</h1>
           {page.headline ? <p className="id-headline">{page.headline}</p> : null}
           {page.bio ? <p className="id-bio">{page.bio}</p> : null}
@@ -206,9 +213,8 @@ export function IdPage() {
         </div>
 
         <div className="id-actions">
-          <Link to="/contact-settings">Edit ID</Link>
-          {page.enabled && qrPayload ? <a href={qrPayload}>Open Public Page</a> : null}
-          {!page.enabled ? <Link to="/contact-settings">Enable Public Page</Link> : null}
+          <Link to="/profile">Edit ID</Link>
+          {!page.enabled ? <Link to="/profile">Enable Public Page</Link> : null}
         </div>
       </article>
     </section>

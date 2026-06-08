@@ -1197,6 +1197,17 @@ textarea {
   font-size: 0.9rem;
 }
 
+.id-public-page-action {
+  display: flex;
+  justify-content: center;
+}
+
+.id-open-public-page {
+  min-height: 48px;
+  padding: 0 24px;
+  font-size: 0.95rem;
+}
+
 .public-profile-inbox-btn {
   min-height: 46px;
   display: inline-flex;
@@ -1575,6 +1586,67 @@ textarea {
   transform: translateY(-1px);
 }
 
+.profile-page {
+  display: grid;
+  gap: 1rem;
+}
+
+.profile-settings-section {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.profile-account-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+
+.contact-public-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  gap: 8px;
+  align-items: stretch;
+  padding: 6px;
+  border: 2px solid;
+  border-radius: var(--radius-md);
+}
+
+.contact-public-field.is-public {
+  border-color: #1268d8;
+}
+
+.contact-public-field.is-private {
+  border-color: #d73535;
+}
+
+.contact-public-field input,
+.contact-public-field textarea {
+  min-width: 0;
+  width: 100%;
+  border-color: transparent;
+}
+
+.contact-public-visibility-button {
+  display: inline-grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+}
+
+.contact-public-visibility-button.is-public {
+  border-color: #1268d8;
+  color: #1268d8;
+}
+
+.contact-public-visibility-button.is-private {
+  border-color: #d73535;
+  color: #d73535;
+}
+
 .contact-public-profile-toggle {
   min-width: 112px;
   border-radius: var(--radius-full);
@@ -1611,21 +1683,6 @@ textarea {
     align-items: flex-start;
     flex-direction: column;
   }
-}
-
-.portal-user-trigger-label {
-  max-width: 110px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--text-primary);
-  font-size: 0.76rem;
-  font-weight: 700;
-}
-
-.portal-user-trigger.is-standard-user .portal-user-trigger-label,
-.portal-user-trigger.is-sysadmin .portal-user-trigger-label {
-  color: inherit;
 }
 
 .portal-user-menu {
