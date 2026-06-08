@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { ReactElement } from 'react'
-import { Navigate, createBrowserRouter, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Navigate, createBrowserRouter, useNavigate, useParams } from 'react-router-dom'
 import { AppLayout } from '../shell/AppLayout'
 import App from '../../App'
 import { useAuth } from '../../app/AppProviders'
@@ -68,17 +68,11 @@ function HomeRoute() {
 }
 
 function LegacyUserRoute(props: { to: string }) {
-  const location = useLocation()
   const navigate = useNavigate()
-  const { completeOAuthLogin } = useAuth()
 
   useEffect(() => {
-    const hash = location.hash.startsWith('#') ? location.hash.slice(1) : location.hash
-    const params = new URLSearchParams(hash || location.search)
-    const token = params.get('token')
-    if (token) completeOAuthLogin(token)
     navigate(props.to, { replace: true })
-  }, [completeOAuthLogin, location.hash, location.search, navigate, props.to])
+  }, [navigate, props.to])
 
   return null
 }

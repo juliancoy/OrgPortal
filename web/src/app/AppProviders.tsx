@@ -46,11 +46,10 @@ type AuthContextValue = {
   user: SessionUser | null
   token: string | null
   isLoading: boolean
-  setRole: (role: UserRole | 'guest') => void
   setUser: (user: SessionUser | null) => void
   loginWithPassword: (email: string, password: string) => Promise<void>
   registerWithPassword: (email: string, password: string, fullName?: string) => Promise<void>
-  completeOAuthLogin: (token: string) => void
+  refreshSession: () => void
   logout: () => void
 }
 
@@ -62,22 +61,6 @@ export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext)
   if (!ctx) throw new Error('useAuth must be used within AppProviders')
   return ctx
-}
-
-function readInitialRole(): UserRole | 'guest' {
-  const value = localStorage.getItem('demo.role')
-  if (value === 'campaign_manager' || value === 'constituent' || value === 'guest') return value
-  return 'guest'
-}
-
-function readInitialUser(): SessionUser | null {
-  const raw = localStorage.getItem('pidp.user')
-  if (!raw) return null
-  try {
-    return JSON.parse(raw) as SessionUser
-  } catch {
-    return null
-  }
 }
 
 function readInitialToken(): string | null {
@@ -100,8 +83,8 @@ function decodeJwtExpiry(token: string | null): number | null {
 
 export function AppProviders(props: { services: AppServices; children: ReactNode }) {
   const isNativeRuntime = isNativeCapacitorRuntime()
-  const [role, setRoleState] = useState<UserRole | 'guest'>(() => readInitialRole())
-  const [user, setUserState] = useState<SessionUser | null>(() => readInitialUser())
+  const [role, setRoleState] = useState<UserRole | 'guest'>('guest')
+  const [user, setUserState] = useState<SessionUser | null>(null)
   const [token, setToken] = useState<string | null>(() => readInitialToken())
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [showMigration, setShowMigration] = useState(false)
@@ -339,31 +322,6 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
     [loginWithPassword, formatApiError],
   )
 
-  // Check for OAuth token in URL hash (for OAuth flows that return token)
-  useEffect(() => {
-    const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : window.location.hash
-    const params = new URLSearchParams(hash || window.location.search)
-    const accessToken = params.get('token')
-    if (!accessToken) return
-
-    if (!isNativeRuntime) {
-      fetch(pidpUrl('/auth/session/exchange'), {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      }).catch(() => {
-        // Best-effort cookie exchange; in-memory token still supports the active session.
-      })
-    }
-
-    // OAuth login successful, clear hash and hydrate session
-    setAuthToken(accessToken)
-    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`)
-    setIsLoading(true)
-  }, [isNativeRuntime, setAuthToken])
-
   // Main session hydration effect - uses HTTP-only cookie only
   useEffect(() => {
     if (!isLoading) return
@@ -416,7 +374,6 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
         if (cancelled) return
         
         setRoleState('constituent')
-        localStorage.setItem('demo.role', 'constituent')
         setUserState({
           id: data.id,
           role: 'constituent',
@@ -428,21 +385,6 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
           lastName,
           avatarUrl,
         })
-        // Store user info (not token) in localStorage for UI state
-        localStorage.setItem(
-          'pidp.user',
-          JSON.stringify({
-            id: data.id,
-            role: 'constituent',
-            displayName,
-            handle,
-            email: data.email,
-            fullName: data.full_name,
-            firstName,
-            lastName,
-            avatarUrl,
-          }),
-        )
         
         // Check for guest data migration
         const guestId = localStorage.getItem('governance.guestId')
@@ -463,10 +405,8 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
       } catch {
         if (!cancelled) {
           setRoleState('guest')
-          localStorage.setItem('demo.role', 'guest')
           setAuthToken(null)
           setUserState(null)
-          localStorage.removeItem('pidp.user')
         }
       } finally {
         if (!cancelled) setIsLoading(false)
@@ -600,32 +540,18 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
       user,
       token,
       isLoading,
-      setRole: (r) => {
-        setRoleState(r)
-        localStorage.setItem('demo.role', r)
-        if (r === 'guest') {
-          setAuthToken(null)
-          setUserState(null)
-          localStorage.removeItem('pidp.user')
-        }
-      },
       setUser: (u) => {
         setUserState(u)
-        if (!u) localStorage.removeItem('pidp.user')
-        else localStorage.setItem('pidp.user', JSON.stringify(u))
       },
       loginWithPassword,
       registerWithPassword,
-      completeOAuthLogin: (nextToken: string) => {
-        setAuthToken(nextToken)
+      refreshSession: () => {
         setIsLoading(true)
       },
       logout: () => {
         setRoleState('guest')
-        localStorage.setItem('demo.role', 'guest')
         setAuthToken(null)
         setUserState(null)
-        localStorage.removeItem('pidp.user')
         if (isNativeRuntime) {
           window.location.reload()
           return
@@ -647,9 +573,7 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
   return (
     <ServicesContext.Provider value={servicesValue}>
       <AuthContext.Provider value={authValue}>
-        <div style={{ border: role === 'guest' ? '2px solid red' : 'none', minHeight: '100vh' }}>
-          {props.children}
-        </div>
+        {props.children}
         {showMigration && (
           <div style={{
             position: 'fixed',

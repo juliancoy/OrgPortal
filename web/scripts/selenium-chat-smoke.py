@@ -145,8 +145,16 @@ def login_via_ui(
     driver.find_element(By.XPATH, "//button[normalize-space()='Login']").click()
 
     def authenticated(_: webdriver.Remote) -> bool:
-        user_json = driver.execute_script("return window.localStorage.getItem('pidp.user')")
-        return bool(user_json) and "/users/login" not in driver.current_url
+        if "/users/login" in driver.current_url:
+            return False
+        return bool(driver.execute_async_script(
+            """
+            const done = arguments[0];
+            fetch('/pidp/auth/session-token', { credentials: 'include' })
+              .then((resp) => done(resp.ok))
+              .catch(() => done(false));
+            """
+        ))
 
     try:
         WebDriverWait(driver, 40).until(authenticated)
@@ -167,7 +175,7 @@ def login_via_ui(
               const body = new URLSearchParams();
               body.set('username', email);
               body.set('password', password);
-              request = fetch('/pidp/auth/token', {
+              request = fetch('/pidp/auth/session/login', {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -195,11 +203,8 @@ def login_via_ui(
             print(f"[ui] token fallback failed status={token.get('status') if isinstance(token, dict) else 'unknown'}")
             print(f"[ui] login failed body={body[:1000]}")
             raise
-        if smoke_secret:
-            print(f"[ui] smoke-token fallback session-status={token.get('sessionStatus')}")
-            driver.get(portal_url(base_url, "/"))
-        else:
-            driver.get(portal_url(base_url, f"/auth/callback#token={urllib.parse.quote(str(token['token']))}"))
+        print(f"[ui] token fallback session-status={token.get('sessionStatus')}")
+        driver.get(portal_url(base_url, "/"))
         try:
             WebDriverWait(driver, 40).until(authenticated)
         except Exception:
