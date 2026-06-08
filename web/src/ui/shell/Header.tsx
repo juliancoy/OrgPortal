@@ -727,55 +727,6 @@ export function Header() {
         <div className="portal-auth">
           {role !== 'guest' ? (
             <>
-              <div className="portal-notifications" ref={notificationsRef}>
-                <button
-                  type="button"
-                  className="portal-notification-trigger"
-                  aria-label={`Notifications${unreadNotifications ? `, ${unreadNotifications} unread` : ''}`}
-                  aria-expanded={notificationsOpen}
-                  onClick={() => setNotificationsOpen((prev) => !prev)}
-                >
-                  <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path d="M10 2a5 5 0 00-5 5v2.6c0 .8-.24 1.58-.68 2.24L3.3 13.38A1 1 0 004.13 15h11.74a1 1 0 00.83-1.56l-1.02-1.54A4 4 0 0115 9.6V7a5 5 0 00-5-5zm0 16a2.5 2.5 0 002.45-2h-4.9A2.5 2.5 0 0010 18z" />
-                  </svg>
-                  {unreadNotifications > 0 ? (
-                    <span className="portal-notification-badge">{Math.min(unreadNotifications, 99)}</span>
-                  ) : null}
-                </button>
-
-                {notificationsOpen ? (
-                  <div className="portal-notification-menu">
-                    <div className="portal-notification-menu-header">
-                      <strong>Notifications</strong>
-                      <button type="button" onClick={() => refreshNotifications()}>Refresh</button>
-                    </div>
-                    {connectionRequests.length > 0 ? (
-                      <div className="portal-notification-list">
-                        {connectionRequests.map((request) => (
-                          <article key={request.id} className="portal-notification-item">
-                            <div>
-                              <strong>{request.other_user_name}</strong>
-                              <p className="muted">Wants to connect with you.</p>
-                            </div>
-                            <div className="portal-notification-actions">
-                              <button type="button" onClick={() => respondToConnectionRequest(request.id, 'accept')}>
-                                Accept
-                              </button>
-                              <button type="button" onClick={() => respondToConnectionRequest(request.id, 'decline')}>
-                                Decline
-                              </button>
-                            </div>
-                          </article>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="muted portal-notification-empty">No pending connection requests.</p>
-                    )}
-                    {notificationsStatus ? <p className="muted portal-notification-empty">{notificationsStatus}</p> : null}
-                  </div>
-                ) : null}
-              </div>
-
               <div className="portal-user" ref={menuRef}>
                 <button
                   type="button"
@@ -848,6 +799,55 @@ export function Header() {
                   </button>
                   </div>
                 )}
+              </div>
+
+              <div className="portal-notifications" ref={notificationsRef}>
+                <button
+                  type="button"
+                  className="portal-notification-trigger"
+                  aria-label={`Notifications${unreadNotifications ? `, ${unreadNotifications} unread` : ''}`}
+                  aria-expanded={notificationsOpen}
+                  onClick={() => setNotificationsOpen((prev) => !prev)}
+                >
+                  <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path d="M10 2a5 5 0 00-5 5v2.6c0 .8-.24 1.58-.68 2.24L3.3 13.38A1 1 0 004.13 15h11.74a1 1 0 00.83-1.56l-1.02-1.54A4 4 0 0115 9.6V7a5 5 0 00-5-5zm0 16a2.5 2.5 0 002.45-2h-4.9A2.5 2.5 0 0010 18z" />
+                  </svg>
+                  {unreadNotifications > 0 ? (
+                    <span className="portal-notification-badge">{Math.min(unreadNotifications, 99)}</span>
+                  ) : null}
+                </button>
+
+                {notificationsOpen ? (
+                  <div className="portal-notification-menu">
+                    <div className="portal-notification-menu-header">
+                      <strong>Notifications</strong>
+                      <button type="button" onClick={() => refreshNotifications()}>Refresh</button>
+                    </div>
+                    {connectionRequests.length > 0 ? (
+                      <div className="portal-notification-list">
+                        {connectionRequests.map((request) => (
+                          <article key={request.id} className="portal-notification-item">
+                            <div>
+                              <strong>{request.other_user_name}</strong>
+                              <p className="muted">Wants to connect with you.</p>
+                            </div>
+                            <div className="portal-notification-actions">
+                              <button type="button" onClick={() => respondToConnectionRequest(request.id, 'accept')}>
+                                Accept
+                              </button>
+                              <button type="button" onClick={() => respondToConnectionRequest(request.id, 'decline')}>
+                                Decline
+                              </button>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="muted portal-notification-empty">No pending connection requests.</p>
+                    )}
+                    {notificationsStatus ? <p className="muted portal-notification-empty">{notificationsStatus}</p> : null}
+                  </div>
+                ) : null}
               </div>
             </>
           ) : (

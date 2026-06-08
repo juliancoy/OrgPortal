@@ -730,6 +730,9 @@ textarea {
 
 .portal-notifications {
   position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .portal-auth .portal-notification-trigger {
@@ -738,18 +741,25 @@ textarea {
   height: 38px;
   min-width: 38px;
   min-height: 38px;
+  max-width: 38px;
+  max-height: 38px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  place-items: center;
   padding: 0;
   border-radius: var(--radius-full);
   line-height: 1;
+  text-align: center;
+  box-sizing: border-box;
+  flex: 0 0 38px;
 }
 
 .portal-notification-trigger svg {
   display: block;
   flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin: 0;
   pointer-events: none;
 }
 
@@ -895,6 +905,10 @@ textarea {
   text-decoration: none;
   background: var(--primary-hover);
   transform: translateY(-1px);
+}
+
+.portal-auth .portal-notification-trigger:hover {
+  transform: none;
 }
 
 .btn-secondary,
@@ -2045,16 +2059,20 @@ textarea:focus {
 
   .portal-brand {
     grid-column: 1;
+    grid-row: 1;
   }
 
   .portal-middle {
     grid-column: 1 / -1;
+    grid-row: 2;
     width: 100%;
   }
 
   .portal-auth {
     grid-column: 2;
+    grid-row: 1;
     justify-self: end;
+    align-self: center;
   }
 
   .portal-search-input {

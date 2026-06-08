@@ -148,6 +148,12 @@ class FakeD1 {
           organization_name: this.organizations.find((org) => org.id === event.host_org_id)?.name || null,
         })) as T[];
     }
+    if (sql.includes("FROM user_contact_pages")) {
+      const enabledOnly = sql.includes("WHERE enabled = 1");
+      return [...this.contacts]
+        .filter((row) => !enabledOnly || Number(row.enabled) === 1)
+        .sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at))) as T[];
+    }
     if (sql.includes("FROM governance_motions m")) {
       return this.motions.map((motion) => ({
         ...motion,
@@ -618,6 +624,112 @@ test("public org and event routes return D1 rows", async () => {
   const event = (await eventDetail.json()) as { title: string; organization_name: string };
   assert.equal(event.title, "Open Meeting");
   assert.equal(event.organization_name, "Code Collective");
+});
+
+test("public network search tolerates slight misspellings", async () => {
+  const db = new FakeD1();
+  db.organizations.push(
+    {
+      id: "org-1",
+      name: "Code Collective",
+      slug: "code-collective",
+      description: "Civic tech",
+      source_url: "https://codecollective.test",
+      image_url: null,
+      tags: JSON.stringify(["Civic"]),
+      city: "baltimore",
+      created_at: "2026-06-07T00:00:00Z",
+      updated_at: "2026-06-07T00:00:00Z",
+    },
+    {
+      id: "org-2",
+      name: "Garden Club",
+      slug: "garden-club",
+      description: "Plant swaps",
+      source_url: "https://garden.test",
+      image_url: null,
+      tags: JSON.stringify(["Garden"]),
+      city: "baltimore",
+      created_at: "2026-06-07T00:00:00Z",
+      updated_at: "2026-06-07T00:00:00Z",
+    },
+  );
+  db.events.push({
+    id: "event-1",
+    ingest_key: "event-key",
+    title: "Open Meeting",
+    slug: "open-meeting",
+    description: "Public meeting",
+    starts_at: "2026-06-08T12:00:00Z",
+    ends_at: null,
+    location: "Baltimore",
+    source_url: "https://codecollective.test/events/open-meeting",
+    image_url: null,
+    host_org_id: "org-1",
+    host_org_name: "Code Collective",
+    host_org_source_url: "https://codecollective.test",
+    tags: JSON.stringify(["Civic"]),
+    city: "baltimore",
+    created_at: "2026-06-07T00:00:00Z",
+    updated_at: "2026-06-07T00:00:00Z",
+  });
+  db.contacts.push({
+    id: "contact-1",
+    user_id: "user-1",
+    user_email: "julian@example.test",
+    user_name: "Julian Coy",
+    slug: "julian-coy",
+    enabled: 1,
+    headline: "Organizer",
+    bio: null,
+    photo_url: null,
+    email_public: "julian@example.test",
+    phone_public: null,
+    linkedin_url: null,
+    github_url: null,
+    x_url: null,
+    website_url: null,
+    links: "[]",
+    source_profile_url: null,
+    source_profile_imported_at: null,
+    created_at: "2026-06-07T00:00:00Z",
+    updated_at: "2026-06-07T00:00:00Z",
+  });
+
+  const orgSearch = await app.request("https://org.example.test/api/network/orgs/public?q=cod%20colectiv", {}, env(db));
+  assert.equal(orgSearch.status, 200);
+  const orgs = (await orgSearch.json()) as Array<{ slug: string }>;
+  assert.deepEqual(orgs.map((org) => org.slug), ["code-collective"]);
+
+  const eventSearch = await app.request("https://org.example.test/api/network/events/public?q=opn%20meetng", {}, env(db));
+  assert.equal(eventSearch.status, 200);
+  const events = (await eventSearch.json()) as Array<{ slug: string }>;
+  assert.deepEqual(events.map((event) => event.slug), ["open-meeting"]);
+
+  const userSearch = await app.request("https://org.example.test/api/network/users/public?q=julain", {}, env(db));
+  assert.equal(userSearch.status, 200);
+  const users = (await userSearch.json()) as Array<{ slug: string }>;
+  assert.deepEqual(users.map((user) => user.slug), ["julian-coy"]);
+});
+
+test("public network search does not broaden unrelated short queries", async () => {
+  const db = new FakeD1();
+  db.organizations.push({
+    id: "org-1",
+    name: "Code Collective",
+    slug: "code-collective",
+    description: "Civic tech",
+    source_url: "https://codecollective.test",
+    image_url: null,
+    tags: JSON.stringify(["Civic"]),
+    city: "baltimore",
+    created_at: "2026-06-07T00:00:00Z",
+    updated_at: "2026-06-07T00:00:00Z",
+  });
+
+  const orgSearch = await app.request("https://org.example.test/api/network/orgs/public?q=zz", {}, env(db));
+  assert.equal(orgSearch.status, 200);
+  assert.deepEqual(await orgSearch.json(), []);
 });
 
 test("calendar ingest requires the configured token", async () => {
