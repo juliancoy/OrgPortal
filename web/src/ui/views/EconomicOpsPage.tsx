@@ -173,7 +173,7 @@ export function EconomicOpsPage() {
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [ubiSettings, setUbiSettings] = useState<UbiRuntimeSettings | null>(null)
   const [ubiSettingsForm, setUbiSettingsForm] = useState({
-    interval_seconds: '60',
+    interval_seconds: '1209600',
     dena_annual: '1',
     dena_precision: '6',
     entity_types: 'individual',

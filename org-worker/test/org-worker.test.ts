@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { app } from "../src/index";
+import { app, runUbiTick } from "../src/index";
 
 type Row = Record<string, unknown>;
 
@@ -35,9 +35,30 @@ class FakeD1 {
   motions: Row[] = [];
   governanceVotes: Row[] = [];
   engagementVotes: Row[] = [];
+  ledgerAccounts: Row[] = [];
+  ledgerTransactions: Row[] = [];
+  ubiEligibility: Row[] = [];
+  ubiSettings: Row = {
+    interval_seconds: 14 * 24 * 60 * 60,
+    dena_annual: 5256,
+    dena_precision: 6,
+    entity_types: JSON.stringify(["individual"]),
+    updated_at: "2026-06-07T00:00:00.000Z",
+    updated_by: "test",
+  };
+  tickState: Row | null = null;
+  tickRuns: Row[] = [];
 
   prepare(sql: string) {
     return new FakeStmt(this, sql);
+  }
+
+  async batch(statements: FakeStmt[]) {
+    const results = [];
+    for (const statement of statements) {
+      results.push(await statement.run());
+    }
+    return results;
   }
 
   first<T>(sql: string, params: unknown[]): T | null {
@@ -91,6 +112,15 @@ class FakeD1 {
     if (sql.includes("SELECT * FROM user_contact_pages WHERE slug = ?")) {
       return (this.contacts.find((row) => row.slug === params[0]) as T) || null;
     }
+    if (sql.includes("FROM ubi_runtime_settings WHERE id = 1")) {
+      return this.ubiSettings as T;
+    }
+    if (sql.includes("SELECT last_tick_at FROM ubi_tick_state")) {
+      return (this.tickState as T) || null;
+    }
+    if (sql.includes("SELECT * FROM ubi_tick_state")) {
+      return (this.tickState as T) || null;
+    }
     return null;
   }
 
@@ -128,6 +158,26 @@ class FakeD1 {
     }
     if (sql.includes("FROM governance_votes WHERE motion_id = ?")) {
       return this.governanceVotes.filter((row) => row.motion_id === params[0]) as T[];
+    }
+    if (sql.includes("FROM ledger_accounts") && sql.includes("dena_balance")) {
+      const entityTypes = params.map((value) => String(value).toLowerCase());
+      const requiresPayout = sql.includes("COALESCE(dena_balance, 0) >= 0.01") || sql.includes("COALESCE(a.dena_balance, 0) >= 0.01");
+      const dueDate = sql.includes("u.next_payment_date") ? String(params[params.length - 1]) : null;
+      return this.ledgerAccounts
+        .filter((row) => entityTypes.includes(String(row.entity_type).toLowerCase()))
+        .filter((row) => !requiresPayout || Number(row.dena_balance || 0) >= 0.01)
+        .filter((row) => {
+          if (!dueDate) return true;
+          const eligibility = this.ubiEligibility.find((item) => item.account_id === row.id);
+          if (eligibility && Number(eligibility.is_eligible) !== 1) return false;
+          return !eligibility?.next_payment_date || String(eligibility.next_payment_date) <= dueDate;
+        }) as T[];
+    }
+    if (sql.includes("SELECT * FROM ubi_tick_runs")) {
+      return [...this.tickRuns].sort((a, b) => String(b.started_at).localeCompare(String(a.started_at))).slice(0, 10) as T[];
+    }
+    if (sql.includes("SELECT * FROM ledger_accounts")) {
+      return [...this.ledgerAccounts].sort((a, b) => Number(b.balance || 0) - Number(a.balance || 0)) as T[];
     }
     return [];
   }
@@ -175,7 +225,108 @@ class FakeD1 {
       if (existingIndex >= 0) this.events[existingIndex] = { ...this.events[existingIndex], ...row };
       else this.events.push(row);
     }
-    return { success: true };
+    if (sql.includes("INSERT OR IGNORE INTO ubi_tick_state")) {
+      if (!this.tickState) {
+        this.tickState = { id: "singleton", last_tick_at: params[0], updated_at: params[1] };
+        return { success: true, meta: { changes: 1 } };
+      }
+      return { success: true, meta: { changes: 0 } };
+    }
+    if (sql.includes("INSERT OR IGNORE INTO ubi_tick_runs")) {
+      if (this.tickRuns.some((row) => row.run_key === params[0])) return { success: true, meta: { changes: 0 } };
+      this.tickRuns.push({
+        run_key: params[0],
+        started_at: params[1],
+        completed_at: null,
+        status: "running",
+        eligible_accounts: 0,
+        payout_count: 0,
+        accrued_amount: 0,
+        paid_amount: 0,
+        error: null,
+      });
+      return { success: true, meta: { changes: 1 } };
+    }
+    if (sql.includes("UPDATE ledger_accounts SET dena_balance = COALESCE(dena_balance, 0) + ?")) {
+      const [amount, updatedAt, ...entityTypes] = params;
+      for (const row of this.ledgerAccounts) {
+        if (entityTypes.map((value) => String(value).toLowerCase()).includes(String(row.entity_type).toLowerCase())) {
+          row.dena_balance = Number(row.dena_balance || 0) + Number(amount);
+          row.updated_at = updatedAt;
+        }
+      }
+    }
+    if (sql.includes("UPDATE ledger_accounts SET balance = balance + ?")) {
+      const [payout, denaDebit, updatedAt, accountId] = params;
+      const row = this.ledgerAccounts.find((item) => item.id === accountId);
+      if (row) {
+        row.balance = Number(row.balance || 0) + Number(payout);
+        row.dena_balance = Number(row.dena_balance || 0) - Number(denaDebit);
+        row.updated_at = updatedAt;
+      }
+    }
+    if (sql.includes("INSERT INTO ledger_transactions")) {
+      this.ledgerTransactions.push({
+        id: params[0],
+        from_account_id: null,
+        to_account_id: params[1],
+        amount: params[2],
+        currency: "DEM",
+        transaction_type: "UBI_PAYMENT",
+        description: params[3],
+        timestamp: params[4],
+      });
+    }
+    if (sql.includes("INSERT INTO ubi_eligibility")) {
+      const [accountId, nextPaymentDate, lastPaymentAmount, totalPayment] = params;
+      const existing = this.ubiEligibility.find((row) => row.account_id === accountId);
+      if (existing) {
+        existing.next_payment_date = nextPaymentDate;
+        existing.last_payment_amount = lastPaymentAmount;
+        existing.total_payments_received = Number(existing.total_payments_received || 0) + Number(lastPaymentAmount);
+      } else {
+        this.ubiEligibility.push({
+          account_id: accountId,
+          is_eligible: 1,
+          next_payment_date: nextPaymentDate,
+          last_payment_amount: lastPaymentAmount,
+          total_payments_received: totalPayment,
+        });
+      }
+    }
+    if (sql.includes("UPDATE ubi_tick_state SET last_tick_at = ?")) {
+      this.tickState = { id: "singleton", last_tick_at: params[0], updated_at: params[1] };
+    }
+    if (sql.includes("UPDATE ubi_tick_runs") && sql.includes("status = 'completed'")) {
+      const row = this.tickRuns.find((item) => item.run_key === params[5]);
+      if (row) {
+        row.completed_at = params[0];
+        row.status = "completed";
+        row.eligible_accounts = params[1];
+        row.payout_count = params[2];
+        row.accrued_amount = params[3];
+        row.paid_amount = params[4];
+      }
+    }
+    if (sql.includes("UPDATE ubi_tick_runs SET completed_at = ?, status = 'failed'")) {
+      const row = this.tickRuns.find((item) => item.run_key === params[2]);
+      if (row) {
+        row.completed_at = params[0];
+        row.status = "failed";
+        row.error = params[1];
+      }
+    }
+    if (sql.includes("INSERT INTO ubi_runtime_settings")) {
+      this.ubiSettings = {
+        interval_seconds: params[0],
+        dena_annual: params[1],
+        dena_precision: params[2],
+        entity_types: params[3],
+        updated_at: params[4],
+        updated_by: params[5],
+      };
+    }
+    return { success: true, meta: { changes: 1 } };
   }
 }
 
@@ -188,6 +339,20 @@ function env(db = new FakeD1()): Env {
   };
 }
 
+async function withPidpUser<T>(user: Row, callback: () => Promise<T>) {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify(user), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  try {
+    return await callback();
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
 test("health route identifies the org worker", async () => {
   const res = await app.request("https://org.example.test/health", {}, env());
   assert.equal(res.status, 200);
@@ -198,6 +363,75 @@ test("protected contact route requires a bearer token", async () => {
   const res = await app.request("https://org.example.test/api/network/contact/me", {}, env());
   assert.equal(res.status, 401);
   assert.deepEqual(await res.json(), { detail: "Authentication required" });
+});
+
+test("PIdP sysadmins have Dena UBI admin access", async () => {
+  const db = new FakeD1();
+  db.tickState = { id: "singleton", last_tick_at: "2026-06-07T00:00:00.000Z", updated_at: "2026-06-07T00:00:00.000Z" };
+  db.ledgerAccounts.push({
+    id: "acct-admin-visible",
+    user_id: "user-1",
+    name: "Visible Account",
+    email: "visible@example.test",
+    entity_type: "individual",
+    balance: 42,
+    dena_balance: 0,
+    created_at: "2026-06-07T00:00:00.000Z",
+    updated_at: "2026-06-07T00:00:00.000Z",
+  });
+
+  await withPidpUser({ id: "admin-1", email: "admin@example.test", full_name: "Admin", is_sysadmin: true }, async () => {
+    const adminMe = await app.request("https://org.example.test/admin/me", { headers: { authorization: "Bearer admin-token" } }, env(db));
+    assert.equal(adminMe.status, 200);
+    assert.deepEqual(await adminMe.json(), { is_admin: true, is_sysadmin: true });
+
+    const settings = await app.request(
+      "https://org.example.test/api/ubi/settings",
+      {
+        method: "PATCH",
+        headers: { authorization: "Bearer admin-token", "content-type": "application/json" },
+        body: JSON.stringify({ interval_seconds: 1209600, dena_annual: 2, dena_precision: 6, entity_types: ["individual"] }),
+      },
+      env(db),
+    );
+    assert.equal(settings.status, 200);
+    const updated = (await settings.json()) as { dena_annual: number; interval_seconds: number };
+    assert.equal(updated.interval_seconds, 1209600);
+    assert.equal(updated.dena_annual, 2);
+
+    const tickStatus = await app.request("https://org.example.test/api/ubi/tick-status", { headers: { authorization: "Bearer admin-token" } }, env(db));
+    assert.equal(tickStatus.status, 200);
+
+    const accounts = await app.request("https://org.example.test/api/admin/accounts", { headers: { authorization: "Bearer admin-token" } }, env(db));
+    assert.equal(accounts.status, 200);
+    const rows = (await accounts.json()) as Array<{ id: string; balance: number }>;
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].id, "acct-admin-visible");
+  });
+});
+
+test("PIdP CIS admin roles are accepted for UBI admin access", async () => {
+  await withPidpUser({ id: "cis-1", email: "cis@example.test", identity_data: { roles: ["cis_admin"] } }, async () => {
+    const res = await app.request("https://org.example.test/admin/me", { headers: { authorization: "Bearer cis-token" } }, env());
+    assert.equal(res.status, 200);
+    assert.deepEqual(await res.json(), { is_admin: true, is_sysadmin: true });
+  });
+});
+
+test("non-admin PIdP users cannot mutate UBI settings", async () => {
+  await withPidpUser({ id: "user-1", email: "user@example.test", is_sysadmin: false }, async () => {
+    const res = await app.request(
+      "https://org.example.test/api/ubi/settings",
+      {
+        method: "PATCH",
+        headers: { authorization: "Bearer user-token", "content-type": "application/json" },
+        body: JSON.stringify({ dena_annual: 3 }),
+      },
+      env(),
+    );
+    assert.equal(res.status, 403);
+    assert.deepEqual(await res.json(), { detail: "Admin access required" });
+  });
 });
 
 test("public contact routes return sanitized canonical user URLs for exact slugs", async () => {
@@ -492,4 +726,78 @@ test("governance routes return D1 motions and engagement counts", async () => {
   const counts = await app.request("https://org.example.test/api/governance/motions/mot-test/vote-counts", {}, env(db));
   assert.equal(counts.status, 200);
   assert.deepEqual(await counts.json(), { up: 2, down: 1, score: 1 });
+});
+
+test("UBI tick accrues dena and pays whole cents only when cadence is due", async () => {
+  const db = new FakeD1();
+  db.tickState = { id: "singleton", last_tick_at: "2026-06-07T00:00:00.000Z", updated_at: "2026-06-07T00:00:00.000Z" };
+  db.ubiSettings.interval_seconds = 14 * 24 * 60 * 60;
+  db.ledgerAccounts.push(
+    {
+      id: "acct-1",
+      user_id: "user-1",
+      name: "Eligible User",
+      email: "eligible@example.test",
+      entity_type: "individual",
+      balance: 10,
+      dena_balance: 0.009,
+      created_at: "2026-06-07T00:00:00.000Z",
+      updated_at: "2026-06-07T00:00:00.000Z",
+    },
+    {
+      id: "acct-2",
+      user_id: "user-2",
+      name: "Org",
+      email: "org@example.test",
+      entity_type: "nonprofit",
+      balance: 20,
+      dena_balance: 0,
+      created_at: "2026-06-07T00:00:00.000Z",
+      updated_at: "2026-06-07T00:00:00.000Z",
+    },
+  );
+  db.ubiEligibility.push({ account_id: "acct-1", is_eligible: 1, next_payment_date: "2026-06-07", last_payment_amount: 0, total_payments_received: 0 });
+
+  const summary = await runUbiTick(db as unknown as D1Database, Date.parse("2026-06-07T00:01:00.000Z"));
+
+  assert.equal(summary.status, "completed");
+  assert.equal(summary.eligible_accounts, 1);
+  assert.equal(summary.payout_count, 1);
+  assert.equal(summary.paid_amount, 0.01);
+  assert.equal(db.ledgerAccounts[0].balance, 10.01);
+  assert.equal(Math.round(Number(db.ledgerAccounts[0].dena_balance) * 1000000) / 1000000, 0.009);
+  assert.equal(db.ledgerAccounts[1].balance, 20);
+  assert.equal(db.ledgerTransactions.length, 1);
+  assert.equal(db.ledgerTransactions[0].transaction_type, "UBI_PAYMENT");
+  assert.equal(db.ubiEligibility[0].next_payment_date, "2026-06-21");
+
+  const duplicate = await runUbiTick(db as unknown as D1Database, Date.parse("2026-06-07T00:01:00.000Z"));
+  assert.equal(duplicate.status, "skipped");
+  assert.equal(db.ledgerTransactions.length, 1);
+});
+
+test("UBI tick accrues but does not pay before the two-week cadence is due", async () => {
+  const db = new FakeD1();
+  db.tickState = { id: "singleton", last_tick_at: "2026-06-07T00:00:00.000Z", updated_at: "2026-06-07T00:00:00.000Z" };
+  db.ledgerAccounts.push({
+    id: "acct-1",
+    user_id: "user-1",
+    name: "Eligible User",
+    email: "eligible@example.test",
+    entity_type: "individual",
+    balance: 10,
+    dena_balance: 1,
+    created_at: "2026-06-07T00:00:00.000Z",
+    updated_at: "2026-06-07T00:00:00.000Z",
+  });
+  db.ubiEligibility.push({ account_id: "acct-1", is_eligible: 1, next_payment_date: "2026-06-21", last_payment_amount: 0, total_payments_received: 0 });
+
+  const summary = await runUbiTick(db as unknown as D1Database, Date.parse("2026-06-07T00:01:00.000Z"));
+
+  assert.equal(summary.status, "completed");
+  assert.equal(summary.eligible_accounts, 1);
+  assert.equal(summary.payout_count, 0);
+  assert.equal(db.ledgerAccounts[0].balance, 10);
+  assert.equal(db.ledgerTransactions.length, 0);
+  assert.ok(Number(db.ledgerAccounts[0].dena_balance) > 1);
 });

@@ -9,6 +9,7 @@ This setup migrates `codecollective.us` from S3 static hosting to Cloudflare Wor
 - API proxy at `/api/governance/*` -> `GOVERNANCE_API_ORIGIN` (currently the Cloudflare org Worker)
 - API proxy at `/api/org/*` -> `ORG_API_ORIGIN` (currently the Cloudflare org Worker, prefix stripped)
 - PIdP proxy at `/pidp/*` -> `https://id.codecollective.us/*` or the configured PIdP Worker origin
+- UBI scheduled accrual and payout execution in the Cloudflare org Worker, backed by D1 ledger tables and `UBI_PAYMENT` transaction records.
 
 ## 1) Build deployable site bundle
 
@@ -47,6 +48,7 @@ Use the Worker URL from deploy output and test:
 - `/p/` (portal)
 - `/p/governance`
 - `/api/governance/motions`
+- `/api/org/api/ubi/tick-status` with an admin token
 - `/pidp/auth/me` (should return 401 without login, which is expected)
 
 ## 4) Route53 cutover
