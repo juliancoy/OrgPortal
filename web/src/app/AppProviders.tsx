@@ -123,6 +123,26 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
     initChatNotifications().catch(() => {})
   }, [isNativeRuntime])
 
+  useEffect(() => {
+    const rehydrateVisibleSession = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+      setIsLoading(true)
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') rehydrateVisibleSession()
+    }
+
+    window.addEventListener('pageshow', rehydrateVisibleSession)
+    window.addEventListener('focus', rehydrateVisibleSession)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      window.removeEventListener('pageshow', rehydrateVisibleSession)
+      window.removeEventListener('focus', rehydrateVisibleSession)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [])
+
   const isDismissedUpdate = useCallback((update: AvailableUpdate): boolean => {
     if (update.mandatory) return false
     const raw = localStorage.getItem(UPDATE_DISMISS_STORAGE_KEY)
