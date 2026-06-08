@@ -1842,6 +1842,65 @@ textarea {
   padding-top: 10px;
 }
 
+.user-settings-page {
+  display: grid;
+  gap: 18px;
+}
+
+.user-settings-section {
+  display: grid;
+  gap: 14px;
+  max-width: 760px;
+}
+
+.user-settings-section h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.user-settings-control {
+  display: grid;
+  gap: 6px;
+  max-width: 260px;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.user-settings-control select {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  background: var(--surface-solid);
+  color: var(--text-primary);
+  font: inherit;
+}
+
+.user-settings-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.user-settings-list div {
+  display: grid;
+  gap: 3px;
+}
+
+.user-settings-list dt {
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.user-settings-list dd {
+  margin: 0;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
 .sysadmin-layout {
   grid-template-columns: 220px minmax(0, 1fr);
 }

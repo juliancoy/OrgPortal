@@ -5,7 +5,6 @@ import { publicProfileUrl } from '../../config/portalBase'
 import { createQrSvg } from '../utils/qr'
 
 const ORG_API_BASE = '/api/org'
-const THEME_STORAGE_KEY = 'orgportal.theme'
 
 function orgUrl(path: string) {
   if (!path.startsWith('/')) return `${ORG_API_BASE}/${path}`
@@ -88,11 +87,6 @@ export function ContactSettingsPage({ embedded = false, hideQr = false, profileI
   const [status, setStatus] = useState<string | null>(null)
   const [linksText, setLinksText] = useState('')
   const [publicVisibility, setPublicVisibility] = useState<PublicVisibility>(DEFAULT_PUBLIC_VISIBILITY)
-  const [themeMode, setThemeMode] = useState<'dark' | 'light'>(() => {
-    const raw = localStorage.getItem(THEME_STORAGE_KEY)
-    return raw === 'light' ? 'light' : 'dark'
-  })
-  const [themeStatus, setThemeStatus] = useState<string | null>(null)
   const [importUrl, setImportUrl] = useState('https://codecollective.us/personnel/juliancoy.html')
 
   useEffect(() => {
@@ -189,13 +183,6 @@ export function ContactSettingsPage({ embedded = false, hideQr = false, profileI
         </svg>
       </button>
     )
-  }
-
-  function saveTheme(nextMode: 'dark' | 'light') {
-    setThemeMode(nextMode)
-    localStorage.setItem(THEME_STORAGE_KEY, nextMode)
-    document.documentElement.setAttribute('data-theme', nextMode)
-    setThemeStatus(`Theme set to ${nextMode}.`)
   }
 
   async function save() {
@@ -325,28 +312,6 @@ export function ContactSettingsPage({ embedded = false, hideQr = false, profileI
           </a>
         ) : null}
       </div> : null}
-
-      <div className="portal-card" style={{ padding: '0.65rem', display: 'grid', gap: '0.25rem' }}>
-        <div className="muted" style={{ margin: 0 }}>User UUID</div>
-        <code style={{ wordBreak: 'break-all' }}>{page.user_id}</code>
-      </div>
-
-      <section className="portal-card" style={{ display: 'grid', gap: '0.5rem' }}>
-        <h2 style={{ margin: 0, fontSize: '1rem' }}>Appearance</h2>
-        <p className="muted" style={{ margin: 0 }}>Light mode can only be enabled here.</p>
-        <label className="muted" style={{ display: 'grid', gap: '0.3rem' }}>
-          Theme
-          <select
-            value={themeMode}
-            onChange={(e) => saveTheme(e.target.value as 'dark' | 'light')}
-            style={{ maxWidth: 220 }}
-          >
-            <option value="dark">Dark (default)</option>
-            <option value="light">Light</option>
-          </select>
-        </label>
-        {themeStatus ? <p className="muted" style={{ margin: 0 }}>{themeStatus}</p> : null}
-      </section>
 
       <section className="portal-card contact-public-profile-card">
         <div>
