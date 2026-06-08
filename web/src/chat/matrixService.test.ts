@@ -2,11 +2,25 @@ import { ClientEvent, EventType, MsgType, type MatrixClient } from 'matrix-js-sd
 import { MatrixChatService } from './matrixService'
 
 type SyncListener = (state: string) => void
+type FakeMatrixEvent = {
+  getType: () => string
+  getContent: () => Record<string, unknown>
+  getId: () => string
+  getSender: () => string
+  getTs: () => number
+}
+type FakeMatrixRoom = {
+  roomId: string
+  name: string
+  getMyMembership: () => string
+  getUnreadNotificationCount: () => number
+  getLiveTimeline: () => { getEvents: () => FakeMatrixEvent[] }
+}
 
 class FakeMatrixClient {
   private syncListeners = new Set<SyncListener>()
-  private rooms: any[] = []
-  private roomMessages = new Map<string, any[]>()
+  private rooms: FakeMatrixRoom[] = []
+  private roomMessages = new Map<string, FakeMatrixEvent[]>()
   public redactions: Array<{ roomId: string; eventId: string }> = []
   public joinRateLimitRemaining = 0
   public sendRateLimitRemaining = 0
@@ -115,7 +129,7 @@ class FakeMatrixClient {
     return Promise.resolve({})
   }
 
-  sendEvent(roomId: string, eventType: string, content: Record<string, any>) {
+  sendEvent(roomId: string, eventType: string, content: Record<string, unknown>) {
     const events = this.roomMessages.get(roomId) ?? []
     events.push({
       getType: () => eventType,
