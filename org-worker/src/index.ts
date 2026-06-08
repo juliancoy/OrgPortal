@@ -862,7 +862,7 @@ async function publicContact(env: Env, request: Request, slug: string) {
   const row = await env.DB.prepare("SELECT * FROM user_contact_pages WHERE slug = ? AND enabled = 1")
     .bind(requestedSlug)
     .first<ContactRow>();
-  if (!row) fail(404, "Contact page not found");
+  if (!row) fail(404, "Public profile not found");
   return mapContact(env, request, row);
 }
 
