@@ -1547,6 +1547,34 @@ textarea {
   padding: 0.85rem;
 }
 
+.contact-settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.contact-public-page-bubble {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 18px;
+  border: 1px solid rgba(47, 132, 255, 0.48);
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, #0b6fe8 0%, #12b8a6 100%);
+  color: #ffffff;
+  font-weight: 900;
+  text-decoration: none;
+  box-shadow: 0 14px 28px rgba(11, 111, 232, 0.22);
+}
+
+.contact-public-page-bubble:hover {
+  color: #ffffff;
+  text-decoration: none;
+  transform: translateY(-1px);
+}
+
 .contact-public-profile-toggle {
   min-width: 112px;
   border-radius: var(--radius-full);
