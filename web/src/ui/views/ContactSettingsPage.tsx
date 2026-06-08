@@ -76,7 +76,7 @@ export function ContactSettingsPage() {
       .then(async (resp) => {
         if (!resp.ok) {
           const text = await resp.text().catch(() => '')
-          throw new Error(text || `Failed to load contact page (${resp.status})`)
+          throw new Error(text || `Failed to load public profile (${resp.status})`)
         }
         return resp.json() as Promise<ContactPage>
       })
@@ -87,7 +87,7 @@ export function ContactSettingsPage() {
           setImportUrl(data.source_profile_url)
         }
       })
-      .catch((err) => setStatus(err instanceof Error ? err.message : 'Failed to load contact page'))
+      .catch((err) => setStatus(err instanceof Error ? err.message : 'Failed to load public profile'))
   }, [token])
 
   const publicUrl = useMemo(() => publicProfileUrl(page?.slug), [page?.slug])
@@ -164,7 +164,7 @@ export function ContactSettingsPage() {
       }
       const data = (await resp.json()) as ContactPage
       setPage(data)
-      setStatus('Contact page saved.')
+      setStatus('Public profile saved.')
     } catch (err) {
       setStatus(err instanceof Error ? err.message : 'Save failed')
     }
@@ -340,7 +340,7 @@ export function ContactSettingsPage() {
           )}
           {qrSvg ? (
             <div
-              aria-label="QR code for contact page"
+              aria-label="QR code for public profile"
               dangerouslySetInnerHTML={{ __html: qrSvg }}
             />
           ) : null}

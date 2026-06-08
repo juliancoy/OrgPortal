@@ -124,7 +124,7 @@ export function PublicContactPage() {
       .catch((err) => {
         setPage(null)
         setEvents([])
-        setStatus(err instanceof Error ? err.message : 'Contact page unavailable')
+        setStatus(err instanceof Error ? err.message : 'Public profile unavailable')
         setSeoMeta({
           title: 'Profile Unavailable • Org Portal',
           description: 'The requested public profile could not be found.',
