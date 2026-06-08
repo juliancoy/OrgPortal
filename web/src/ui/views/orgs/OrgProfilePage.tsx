@@ -96,7 +96,6 @@ export function OrgProfilePage() {
 
   useEffect(() => {
     loadOrgs()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token])
 
   async function claimOrg(orgId: string) {

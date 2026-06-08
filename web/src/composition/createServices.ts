@@ -45,7 +45,13 @@ export type ServicesConfig = {
  * Get configuration from environment variables
  */
 function getConfig(): ServicesConfig {
-  const env = (import.meta as any).env
+  const env = import.meta.env as {
+    VITE_DATA_SOURCE?: string
+    VITE_CHAT_BACKEND?: string
+    VITE_API_BASE_URL?: string
+    VITE_NATIVE_PORTAL_BASE_URL?: string
+    PROD?: boolean
+  }
   const dataSourceEnv = env?.VITE_DATA_SOURCE as string | undefined
   const dataSource =
     dataSourceEnv === 'api'

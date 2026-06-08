@@ -78,6 +78,11 @@ type PublicOrgChatFeed = {
   rooms: PublicOrgChatRoomFeed[]
 }
 
+type MatrixEventedClient = {
+  on: (event: string, listener: (...args: unknown[]) => void) => void
+  off: (event: string, listener: (...args: unknown[]) => void) => void
+}
+
 type MyOrganization = {
   id: string
   name: string
@@ -403,12 +408,14 @@ export function PublicAdminPage() {
         const onSync = () => {
           refreshMessages()
         }
-        ;(client as any).on(RoomEvent.Timeline, onTimeline)
-        ;(client as any).on(ClientEvent.Sync, onSync)
+        const eventedClient = client as unknown as MatrixEventedClient
+        const timelineListener = onTimeline as (...args: unknown[]) => void
+        eventedClient.on(RoomEvent.Timeline, timelineListener)
+        eventedClient.on(ClientEvent.Sync, onSync)
 
         return () => {
-          ;(client as any).off(RoomEvent.Timeline, onTimeline)
-          ;(client as any).off(ClientEvent.Sync, onSync)
+          eventedClient.off(RoomEvent.Timeline, timelineListener)
+          eventedClient.off(ClientEvent.Sync, onSync)
         }
       } catch (err) {
         if (cancelled) return

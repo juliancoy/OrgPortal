@@ -151,6 +151,14 @@ function lastActivityForRoom(room: Room): number | undefined {
 
 type MatrixClientFactory = typeof createClient
 type MatrixRateLimitPayload = { errcode?: string; retry_after_ms?: number }
+type MatrixEventContent = Record<string, unknown>
+type MatrixMediaUploadResult = string | { content_uri?: string }
+type MatrixEventSender = MatrixClient & {
+  sendEvent: (roomId: string, eventType: string, content: MatrixEventContent) => Promise<unknown>
+}
+type MatrixRedactionClient = MatrixClient & {
+  redactEvent: (roomId: string, eventId: string, txnId?: string, content?: { reason?: string }) => Promise<unknown>
+}
 
 const MATRIX_RATE_LIMIT_MAX_RETRIES = 2
 const MATRIX_RATE_LIMIT_WAIT_CAP_MS = 1_500
@@ -337,29 +345,34 @@ export class MatrixChatService implements ChatService {
   async sendReaction(roomId: string, eventId: string, key: string): Promise<void> {
     const client = this.getClient()
     await this.withRateLimitRetry(async () => {
-      await client.sendEvent(roomId, EventType.Reaction, {
+      const sender = client as unknown as MatrixEventSender
+      const content: MatrixEventContent = {
         'm.relates_to': {
           rel_type: RelationType.Annotation,
           event_id: eventId,
           key,
         },
-      } as any)
+      }
+      await sender.sendEvent(roomId, EventType.Reaction, content)
     })
   }
 
   async sendMediaMessage(roomId: string, file: File): Promise<void> {
     const client = this.getClient()
-    const uploadResult = (await this.withRateLimitRetry(async () => (await client.uploadContent(file, {
-      type: file.type || 'application/octet-stream',
-      name: file.name,
-    } as any)) as any)) as any
+    const uploadResult = await this.withRateLimitRetry(async () => (
+      await client.uploadContent(file, {
+        type: file.type || 'application/octet-stream',
+        name: file.name,
+      })
+    ) as MatrixMediaUploadResult)
     const contentUri = typeof uploadResult === 'string' ? uploadResult : uploadResult?.content_uri
     if (!contentUri) {
       throw new Error('Matrix media upload failed')
     }
     const isImage = file.type.startsWith('image/')
     await this.withRateLimitRetry(async () => {
-      await client.sendEvent(roomId, EventType.RoomMessage, {
+      const sender = client as unknown as MatrixEventSender
+      const content: MatrixEventContent = {
         msgtype: isImage ? MsgType.Image : MsgType.File,
         body: file.name,
         filename: file.name,
@@ -368,25 +381,28 @@ export class MatrixChatService implements ChatService {
           mimetype: file.type || 'application/octet-stream',
           size: file.size,
         },
-      } as any)
+      }
+      await sender.sendEvent(roomId, EventType.RoomMessage, content)
     })
   }
 
   async sendReplyMessage(roomId: string, eventId: string, body: string): Promise<void> {
     const client = this.getClient()
     await this.withRateLimitRetry(async () => {
-      await client.sendEvent(
+      const sender = client as unknown as MatrixEventSender
+      const content: MatrixEventContent = {
+        msgtype: MsgType.Text,
+        body,
+        'm.relates_to': {
+          'm.in_reply_to': {
+            event_id: eventId,
+          },
+        },
+      }
+      await sender.sendEvent(
         roomId,
         EventType.RoomMessage,
-        {
-          msgtype: MsgType.Text,
-          body,
-          'm.relates_to': {
-            'm.in_reply_to': {
-              event_id: eventId,
-            },
-          },
-        } as any,
+        content,
       )
     })
   }
@@ -394,21 +410,23 @@ export class MatrixChatService implements ChatService {
   async sendThreadReplyMessage(roomId: string, threadRootEventId: string, parentEventId: string, body: string): Promise<void> {
     const client = this.getClient()
     await this.withRateLimitRetry(async () => {
-      await client.sendEvent(
+      const sender = client as unknown as MatrixEventSender
+      const content: MatrixEventContent = {
+        msgtype: MsgType.Text,
+        body,
+        'm.relates_to': {
+          rel_type: RelationType.Thread,
+          event_id: threadRootEventId,
+          is_falling_back: true,
+          'm.in_reply_to': {
+            event_id: parentEventId,
+          },
+        },
+      }
+      await sender.sendEvent(
         roomId,
         EventType.RoomMessage,
-        {
-          msgtype: MsgType.Text,
-          body,
-          'm.relates_to': {
-            rel_type: RelationType.Thread,
-            event_id: threadRootEventId,
-            is_falling_back: true,
-            'm.in_reply_to': {
-              event_id: parentEventId,
-            },
-          },
-        } as any,
+        content,
       )
     })
   }
@@ -418,21 +436,23 @@ export class MatrixChatService implements ChatService {
     const trimmed = body.trim()
     if (!trimmed) return
     await this.withRateLimitRetry(async () => {
-      await client.sendEvent(
+      const sender = client as unknown as MatrixEventSender
+      const content: MatrixEventContent = {
+        msgtype: MsgType.Text,
+        body: `* ${trimmed}`,
+        'm.new_content': {
+          msgtype: MsgType.Text,
+          body: trimmed,
+        },
+        'm.relates_to': {
+          rel_type: RelationType.Replace,
+          event_id: eventId,
+        },
+      }
+      await sender.sendEvent(
         roomId,
         EventType.RoomMessage,
-        {
-          msgtype: MsgType.Text,
-          body: `* ${trimmed}`,
-          'm.new_content': {
-            msgtype: MsgType.Text,
-            body: trimmed,
-          },
-          'm.relates_to': {
-            rel_type: RelationType.Replace,
-            event_id: eventId,
-          },
-        } as any,
+        content,
       )
     })
   }
@@ -440,7 +460,7 @@ export class MatrixChatService implements ChatService {
   async deleteMessage(roomId: string, eventId: string): Promise<void> {
     const client = this.getClient()
     await this.withRateLimitRetry(async () => {
-      await (client as any).redactEvent(roomId, eventId, undefined, { reason: 'Deleted by sender' })
+      await (client as MatrixRedactionClient).redactEvent(roomId, eventId, undefined, { reason: 'Deleted by sender' })
     })
   }
 }
