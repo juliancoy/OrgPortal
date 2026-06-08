@@ -88,8 +88,8 @@ class FakeD1 {
           .reduce((score, row) => score + (row.direction === "up" ? 1 : row.direction === "down" ? -1 : 0), 0),
       } as T;
     }
-    if (sql.includes("FROM user_contact_pages WHERE slug = ? AND enabled = 1")) {
-      return (this.contacts.find((row) => row.slug === params[0] && row.enabled === 1) as T) || null;
+    if (sql.includes("SELECT * FROM user_contact_pages WHERE slug = ?")) {
+      return (this.contacts.find((row) => row.slug === params[0]) as T) || null;
     }
     return null;
   }
@@ -259,6 +259,84 @@ test("public contact route does not numerically fallback from missing slugs", as
 
   const res = await app.request("https://org.example.test/api/network/users/public/julian-coy-2", {}, env(db));
   assert.equal(res.status, 404);
+});
+
+test("public contact route requires exact slug matches", async () => {
+  const db = new FakeD1();
+  db.contacts.push({
+    id: "contact-1",
+    user_id: "user-1",
+    user_email: "julian@example.test",
+    user_name: "Julian Coy",
+    slug: "julian-coy-2",
+    enabled: 1,
+    headline: "Organizer",
+    bio: null,
+    photo_url: null,
+    email_public: "julian@example.test",
+    phone_public: null,
+    linkedin_url: null,
+    github_url: null,
+    x_url: null,
+    website_url: null,
+    links: "[]",
+    source_profile_url: null,
+    source_profile_imported_at: null,
+    created_at: "2026-06-07T00:00:00Z",
+    updated_at: "2026-06-07T00:00:00Z",
+  });
+
+  const res = await app.request("https://org.example.test/api/network/users/public/Julian-Coy-2", {}, env(db));
+  assert.equal(res.status, 404);
+});
+
+test("disabled public contact route is visible only to the exact owner", async () => {
+  const db = new FakeD1();
+  db.contacts.push({
+    id: "contact-1",
+    user_id: "user-1",
+    user_email: "julian@example.test",
+    user_name: "Julian Coy",
+    slug: "julian-coy-2",
+    enabled: 0,
+    headline: "Organizer",
+    bio: null,
+    photo_url: null,
+    email_public: "julian@example.test",
+    phone_public: null,
+    linkedin_url: null,
+    github_url: null,
+    x_url: null,
+    website_url: null,
+    links: "[]",
+    source_profile_url: null,
+    source_profile_imported_at: null,
+    created_at: "2026-06-07T00:00:00Z",
+    updated_at: "2026-06-07T00:00:00Z",
+  });
+
+  const unauthenticated = await app.request("https://org.example.test/api/network/users/public/julian-coy-2", {}, env(db));
+  assert.equal(unauthenticated.status, 404);
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ id: "user-1", email: "julian@example.test", name: "Julian Coy" }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  try {
+    const owner = await app.request(
+      "https://org.example.test/api/network/users/public/julian-coy-2",
+      { headers: { authorization: "Bearer owner-token" } },
+      env(db),
+    );
+    assert.equal(owner.status, 200);
+    const contact = (await owner.json()) as { slug: string; enabled: boolean };
+    assert.equal(contact.slug, "julian-coy-2");
+    assert.equal(contact.enabled, false);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("public org and event routes return D1 rows", async () => {

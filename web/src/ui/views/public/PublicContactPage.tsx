@@ -60,6 +60,7 @@ type ContactPage = {
   user_id: string
   user_name: string
   slug: string
+  enabled: boolean
   headline?: string | null
   bio?: string | null
   photo_url?: string | null
@@ -89,12 +90,15 @@ export function PublicContactPage() {
   const [page, setPage] = useState<ContactPage | null>(null)
   const [events, setEvents] = useState<PublicEvent[]>([])
   const [status, setStatus] = useState<string>('Loading…')
+  const [visibilityStatus, setVisibilityStatus] = useState<string | null>(null)
+  const [visibilitySaving, setVisibilitySaving] = useState(false)
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
 
   useEffect(() => {
     if (!slug) return
+    const headers = token ? { Authorization: `Bearer ${token}` } : undefined
     Promise.all([
-      fetch(orgUrl(`/api/network/users/public/${encodeURIComponent(slug)}`)).then(async (resp) => {
+      fetch(orgUrl(`/api/network/users/public/${encodeURIComponent(slug)}`), { headers }).then(async (resp) => {
         if (!resp.ok) {
           throw new Error(await responseError(resp, `Profile not found (${resp.status})`))
         }
@@ -133,7 +137,7 @@ export function PublicContactPage() {
           robots: 'noindex, nofollow, noarchive, nosnippet, noimageindex',
         })
       })
-  }, [slug])
+  }, [slug, token])
 
   const qrSvg = useMemo(() => {
     const shareUrl = publicProfileUrl(page?.slug)
@@ -199,6 +203,32 @@ export function PublicContactPage() {
       })
   }
 
+  async function setPublicProfileEnabled(nextEnabled: boolean) {
+    if (!token || !page || !isOwner) return
+    setVisibilitySaving(true)
+    setVisibilityStatus(null)
+    try {
+      const resp = await fetch(orgUrl('/api/network/contact/me'), {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ enabled: nextEnabled }),
+      })
+      if (!resp.ok) {
+        throw new Error(await responseError(resp, `Failed to update public profile (${resp.status})`))
+      }
+      const updated = (await resp.json()) as ContactPage
+      setPage(updated)
+      setVisibilityStatus(nextEnabled ? 'Public profile enabled.' : 'Public profile disabled.')
+    } catch (err) {
+      setVisibilityStatus(err instanceof Error ? err.message : 'Failed to update public profile.')
+    } finally {
+      setVisibilitySaving(false)
+    }
+  }
+
   if (!page) {
     return (
       <section className="panel">
@@ -259,8 +289,26 @@ export function PublicContactPage() {
               <span>Message</span>
             </a>
           )}
-          {isOwner ? <Link to="/contact-settings">Edit Profile</Link> : null}
+          {isOwner ? (
+            <div className="public-id-owner-controls" aria-label="Profile owner controls">
+              <Link to="/contact-settings">Edit Profile</Link>
+              <button
+                type="button"
+                onClick={() => setPublicProfileEnabled(!page.enabled)}
+                disabled={visibilitySaving}
+              >
+                {visibilitySaving ? 'Saving…' : page.enabled ? 'Disable Public Profile' : 'Enable Public Profile'}
+              </button>
+              <span className={page.enabled ? 'public-id-visibility public-id-visibility-on' : 'public-id-visibility'}>
+                {page.enabled ? 'Public' : 'Private'}
+              </span>
+            </div>
+          ) : null}
         </div>
+        {isOwner && !page.enabled ? (
+          <p className="muted public-id-owner-note">Only you can see this profile while it is disabled.</p>
+        ) : null}
+        {isOwner && visibilityStatus ? <p className="muted public-id-owner-note">{visibilityStatus}</p> : null}
 
         {contactLinks.length > 0 ? (
           <div className="public-id-link-list" aria-label="Contact links">
