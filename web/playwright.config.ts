@@ -27,7 +27,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `npm run dev -- --host ${HOST} --port ${PORT}`,
+    command: `VITE_CACHE_DIR=.vite-playwright-cache npm run dev -- --host ${HOST} --port ${PORT}`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

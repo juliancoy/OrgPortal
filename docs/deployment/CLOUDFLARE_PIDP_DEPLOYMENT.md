@@ -1,10 +1,12 @@
 # Cloudflare + PIdP Deployment
 
-This deploy path uses:
+This document is legacy/reference. The current Code Collective deployment uses the Hono PIdP Worker at `https://id.codecollective.us` and the org/governance API Worker at `https://org-codecollective.jcloiacon.workers.dev`.
+
+This older deploy path used:
 
 - `portal/web` on **Cloudflare Workers** via `wrangler deploy`
 - `portal/governance-backend` on your backend host with Postgres
-- hosted PIdP at **https://pidp.arkavo.org**
+- hosted PIdP at **https://id.codecollective.us**
 
 ## 1) Configure governance backend
 
@@ -13,7 +15,7 @@ Set backend runtime environment:
 ```bash
 export DATABASE_URL='postgresql://<db-user>:<db-password>@<db-host>:5432/<db-name>'
 export REDIS_URL='redis://localhost:6379/0'
-export PIDP_BASE_URL='https://pidp.arkavo.org'
+export PIDP_BASE_URL='https://id.codecollective.us'
 ```
 
 Then run backend:
@@ -43,13 +45,13 @@ Deploy, setting proxy origins for API routes:
 
 ```bash
 npx wrangler deploy \
-  --var GOVERNANCE_API_ORIGIN:https://<your-governance-backend-domain>
+  --var GOVERNANCE_API_ORIGIN:https://org-codecollective.jcloiacon.workers.dev
 ```
 
 Notes:
 
 - `/api/governance/*` is proxied to `GOVERNANCE_API_ORIGIN`
-- `/pidp/*` is proxied to `https://pidp.arkavo.org` by default (or `PIDP_API_ORIGIN` if overridden)
+- `/pidp/*` is proxied to `https://id.codecollective.us` by default (or `PIDP_API_ORIGIN` if overridden)
 - All other routes serve the SPA from `dist/` with `index.html` fallback
 
 ## 3) Frontend runtime mode

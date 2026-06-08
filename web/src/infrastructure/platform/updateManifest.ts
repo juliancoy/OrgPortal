@@ -42,7 +42,7 @@ type UpdateCheckResult = {
 }
 
 const DEFAULT_STATIC_MANIFEST_PATH = '/mobile-update.json'
-const DEFAULT_NATIVE_PORTAL_BASE = 'https://dev.portal.arkavo.org'
+const DEFAULT_NATIVE_PORTAL_BASE = 'https://codecollective.us/p'
 
 function getCompileTimeVersionName(): string {
   const runtimeValue = (globalThis as { __APP_VERSION__?: unknown }).__APP_VERSION__
@@ -106,7 +106,7 @@ export function resolveUpdateManifestUrl(): string {
   }
 
   const nativePortalBase = env?.VITE_NATIVE_PORTAL_BASE_URL?.trim() || DEFAULT_NATIVE_PORTAL_BASE
-  return manifestUrlFromPortalBase(nativePortalBase) ?? 'https://static.arkavo.org/mobile-update.json'
+  return manifestUrlFromPortalBase(nativePortalBase) ?? 'https://codecollective.us/p/mobile-update.json'
 }
 
 function parseManifest(raw: unknown): UpdateManifest | null {

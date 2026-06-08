@@ -1,0 +1,41 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "chat-codecollective",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-06-07",
+  "workers_dev": true,
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "PIDP_BASE_URL": "https://id.codecollective.us",
+    "PUBLIC_PORTAL_BASE_URL": "https://codecollective.us/p",
+    "CHAT_ALLOWED_ORIGINS": "https://codecollective.us,http://127.0.0.1:8080,http://localhost:8080"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "chat",
+      "database_id": "2f115bab-2f42-4a58-8732-01cd47a43090"
+    },
+    {
+      "binding": "CONTACTS_DB",
+      "database_name": "org",
+      "database_id": "a71a2306-3d82-44cb-a50c-d7fdffaacdc7"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "CHAT_ROOMS",
+        "class_name": "ConversationDurableObject"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["ConversationDurableObject"]
+    }
+  ]
+}

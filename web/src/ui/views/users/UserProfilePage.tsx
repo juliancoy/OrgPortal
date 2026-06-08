@@ -345,7 +345,7 @@ export function UserProfilePage() {
           <input id="dn" value={displayName} onChange={(e) => setDisplayName(e.target.value)} style={{ width: '100%' }} />
         </div>
         <div>
-          <label className="muted">Profile photo</label>
+          <label className="muted" htmlFor="profile-photo-upload">Profile photo</label>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <div
               style={{
@@ -369,6 +369,7 @@ export function UserProfilePage() {
             </div>
             <div style={{ display: 'grid', gap: '0.4rem' }}>
               <input
+                id="profile-photo-upload"
                 type="file"
                 accept="image/*"
                 onChange={(event) => {
@@ -651,7 +652,17 @@ export function UserProfilePage() {
                   }
                   return resp.json()
                 })
-                .then((data) => {
+                .then(async (data) => {
+                  await fetch(orgUrl('/api/network/contact/me'), {
+                    method: 'PUT',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                      photo_url: payload.avatarUrl || null,
+                    }),
+                  }).catch(() => null)
                   setStatus('Profile saved.')
                   if (user) {
                     const newDisplay = payload.displayName || user.displayName
@@ -661,7 +672,7 @@ export function UserProfilePage() {
                       fullName: data.full_name ?? user.fullName,
                       firstName: payload.firstName,
                       lastName: payload.lastName,
-                      avatarUrl: payload.avatarUrl || user.avatarUrl,
+                      avatarUrl: payload.avatarUrl,
                     })
                   }
                 })
@@ -811,6 +822,9 @@ export function UserProfilePage() {
                             const resp = await fetch(pidpUrl('/auth/avatar/upload-url'), {
                               method: 'POST',
                               credentials: 'include',
+                              headers: {
+                                Authorization: `Bearer ${token}`,
+                              },
                             })
                             if (!resp.ok) {
                               if (resp.status === 401) {
@@ -823,7 +837,10 @@ export function UserProfilePage() {
                             const data = await resp.json()
                             const uploadResp = await fetch(resolveSignedS3UploadUrl(data.upload_url), {
                               method: 'PUT',
-                              headers: { 'Content-Type': 'image/png' },
+                              headers: {
+                                'Content-Type': 'image/png',
+                                Authorization: `Bearer ${token}`,
+                              },
                               body: blob,
                             })
                             if (!uploadResp.ok) {

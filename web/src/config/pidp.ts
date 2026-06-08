@@ -25,7 +25,7 @@ function normalizePidpBase(rawBase: string): string {
   } catch {
     if (isNativeCapacitorRuntime() && trimmed.startsWith('/')) {
       const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env
-      const nativeBase = env?.VITE_NATIVE_PIDP_BASE_URL?.trim() || 'https://dev.pidp.arkavo.org'
+      const nativeBase = env?.VITE_NATIVE_PIDP_BASE_URL?.trim() || 'https://id.codecollective.us'
       return `${nativeBase.replace(/\/$/, '')}${trimmed}`
     }
     return trimmed.replace(/\/$/, '') || fallback

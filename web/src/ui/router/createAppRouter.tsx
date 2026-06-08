@@ -39,12 +39,14 @@ import { AdminPage } from '../views/AdminPage'
 import { TargetPage } from '../views/TargetPage'
 import { OrgEditableInitiativesPage } from '../views/orgs/OrgEditableInitiativesPage'
 import { ContactSettingsPage } from '../views/ContactSettingsPage'
+import { IdPage } from '../views/IdPage'
 import { SendPage } from '../views/SendPage'
 import { ReceivePage } from '../views/ReceivePage'
 import { CreatePage } from '../views/CreatePage'
 import { CreateForProfitPage } from '../views/CreateForProfitPage'
 import { CreateNonProfitPage } from '../views/CreateNonProfitPage'
 import { OrgChatPage } from '../views/chat/OrgChatPage'
+import { NativeChatPage } from '../views/chat/NativeChatPage'
 import { DevToolsPage } from '../views/DevToolsPage'
 import { BusinessCardIntakePage } from '../views/BusinessCardIntakePage'
 import { PeoplePage } from '../views/PeoplePage'
@@ -63,6 +65,12 @@ function HomeRoute() {
   if (isLoading) return null
   if (role === 'guest') return <App />
   return <Navigate to="/chat" replace />
+}
+
+function ChatRoute() {
+  const backend = ((import.meta.env.VITE_CHAT_BACKEND as string | undefined) || 'cloudflare').toLowerCase()
+  if (backend === 'matrix') return <OrgChatPage />
+  return <NativeChatPage />
 }
 
 function AdminRoute(props: { children: ReactElement }) {
@@ -140,6 +148,14 @@ export function createAppRouter() {
           { path: '/users/dashboard', element: <DashboardPage /> },
           { path: '/users/profile', element: <UserProfilePage /> },
           { path: '/users/account', element: <UserAccountPage /> },
+          {
+            path: '/id',
+            element: (
+              <AuthenticatedRoute>
+                <IdPage />
+              </AuthenticatedRoute>
+            ),
+          },
 
           // Canonical org routes
           { path: '/orgs/register', element: <OrgRegisterPage /> },
@@ -156,7 +172,7 @@ export function createAppRouter() {
             path: '/chat',
             element: (
               <AuthenticatedRoute>
-                <OrgChatPage />
+                <ChatRoute />
               </AuthenticatedRoute>
             ),
           },
@@ -164,7 +180,7 @@ export function createAppRouter() {
             path: '/chat/:roomId',
             element: (
               <AuthenticatedRoute>
-                <OrgChatPage />
+                <ChatRoute />
               </AuthenticatedRoute>
             ),
           },

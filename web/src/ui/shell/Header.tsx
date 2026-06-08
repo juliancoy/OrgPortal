@@ -9,6 +9,7 @@ import { OrgImage } from '../components/media/OrgImage'
 const ORG_API_BASE = '/api/org'
 const SEARCH_MIN_LEN = 2
 const SEARCH_CACHE_MAX = 20
+const PORTAL_ASSET_BASE = (import.meta.env.BASE_URL || '/').replace(/\/?$/, '/')
 
 function orgUrl(path: string) {
   if (!path.startsWith('/')) return `${ORG_API_BASE}/${path}`
@@ -370,6 +371,7 @@ export function Header() {
     location.pathname.startsWith('/receive') ||
     location.pathname.startsWith('/create')
   const isDepartmentsActive = location.pathname.startsWith('/departments')
+  const isIdActive = location.pathname === '/id' || location.pathname.startsWith('/contact-settings')
   const isChatActive = location.pathname.startsWith('/chat')
   const isScanActive = location.pathname.startsWith('/tools/business-cards')
 
@@ -379,13 +381,13 @@ export function Header() {
   return (
     <header className="portal-header">
       <div className="portal-header-inner">
-        <Link to="/" className="portal-brand">
-          <img src="/laurel_wreath_logo.png" alt="Code Collective" />
+        <a href="/" className="portal-brand">
+          <img src={`${PORTAL_ASSET_BASE}codecollective_logo.png`} alt="Code Collective" />
           <div>
             <div className="portal-brand-title">Code Collective</div>
             <div className="portal-brand-sub">Civic Governance Portal</div>
           </div>
-        </Link>
+        </a>
 
         <div className="portal-middle">
           <div className="portal-search" ref={searchRef}>
@@ -751,6 +753,15 @@ export function Header() {
             </svg>
             People
           </NavLink>
+
+          {role !== 'guest' && (
+            <NavLink to="/id" isActive={isIdActive}>
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm2 4.5a2.5 2.5 0 115 0 2.5 2.5 0 01-5 0zM4.75 14a4.25 4.25 0 018.5 0 .75.75 0 01-.75.75h-7a.75.75 0 01-.75-.75zM14 6.5a.75.75 0 01.75-.75h1a.75.75 0 010 1.5h-1A.75.75 0 0114 6.5zm0 3a.75.75 0 01.75-.75h1a.75.75 0 010 1.5h-1A.75.75 0 0114 9.5z" />
+              </svg>
+              ID
+            </NavLink>
+          )}
 
           <NavLink to="/finance" isActive={isFinanceActive}>
             <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">

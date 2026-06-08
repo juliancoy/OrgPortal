@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "org-codecollective",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-06-07",
+  "workers_dev": true,
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "PIDP_BASE_URL": "https://id.codecollective.us",
+    "PUBLIC_PORTAL_BASE_URL": "https://codecollective.us/p",
+    "ADMIN_EMAILS": "",
+    "ADMIN_USER_IDS": ""
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "org",
+      "database_id": "a71a2306-3d82-44cb-a50c-d7fdffaacdc7"
+    }
+  ]
+}

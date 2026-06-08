@@ -4,6 +4,7 @@ import { useAuth } from '../../../app/AppProviders'
 import { pidpAppLoginUrl } from '../../../config/pidp'
 import { createQrSvg } from '../../utils/qr'
 import { setSeoMeta } from '../../utils/seo'
+import { createVCard, vCardFileName } from '../../utils/vcard'
 
 const ORG_API_BASE = '/api/org'
 
@@ -45,11 +46,12 @@ type PublicEvent = {
 }
 
 export function PublicContactPage() {
-  const { token } = useAuth()
+  const { token, user } = useAuth()
   const { slug } = useParams()
   const [page, setPage] = useState<ContactPage | null>(null)
   const [events, setEvents] = useState<PublicEvent[]>([])
   const [status, setStatus] = useState<string>('Loading…')
+  const [copiedKey, setCopiedKey] = useState<string | null>(null)
 
   useEffect(() => {
     if (!slug) return
@@ -118,6 +120,46 @@ export function PublicContactPage() {
     URL.revokeObjectURL(href)
   }
 
+  function downloadVCard() {
+    if (!page) return
+    const publicUrl = page.public_url || `${window.location.origin}/users/${encodeURIComponent(page.slug)}`
+    const vCard = createVCard(page, publicUrl)
+    const blob = new Blob([vCard], { type: 'text/vcard;charset=utf-8' })
+    const href = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = href
+    anchor.download = vCardFileName(page.user_name || page.slug)
+    document.body.appendChild(anchor)
+    anchor.click()
+    document.body.removeChild(anchor)
+    URL.revokeObjectURL(href)
+  }
+
+  const isOwner = Boolean(token && user?.id && page?.user_id === user.id)
+  const contactLinks = page
+    ? [
+        page.email_public ? { label: 'Email', url: `mailto:${page.email_public}`, display: page.email_public } : null,
+        page.phone_public ? { label: 'Phone', url: `tel:${page.phone_public}`, display: page.phone_public } : null,
+        page.website_url ? { label: 'Website', url: page.website_url, display: page.website_url } : null,
+        page.linkedin_url ? { label: 'LinkedIn', url: page.linkedin_url, display: page.linkedin_url } : null,
+        page.github_url ? { label: 'GitHub', url: page.github_url, display: page.github_url } : null,
+        page.x_url ? { label: 'X', url: page.x_url, display: page.x_url } : null,
+        ...(page.links || []).map((link) => ({ label: link.label, url: link.url, display: link.url })),
+      ].filter((link): link is { label: string; url: string; display: string } => Boolean(link))
+    : []
+
+  function copyLink(key: string, value: string) {
+    navigator.clipboard
+      ?.writeText(value)
+      .then(() => {
+        setCopiedKey(key)
+        window.setTimeout(() => setCopiedKey((current) => (current === key ? null : current)), 1600)
+      })
+      .catch(() => {
+        setCopiedKey(null)
+      })
+  }
+
   if (!page) {
     return (
       <section className="panel">
@@ -128,102 +170,123 @@ export function PublicContactPage() {
   }
 
   return (
-    <section className="panel" style={{ display: 'grid', gap: '1rem' }}>
-      <div style={{ display: 'grid', gap: '0.5rem' }}>
-        <div className="muted" style={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.8rem' }}>
-          Public Individual Profile
-        </div>
-        <h1 style={{ marginTop: 0, marginBottom: 0 }}>{page.user_name}</h1>
-        {page.headline ? <p style={{ marginTop: 0 }}><strong>{page.headline}</strong></p> : null}
-        {token ? (
-          <Link className="btn-primary" to={`/chat?start=dm&user=${encodeURIComponent(page.slug)}`} style={{ textDecoration: 'none', width: 'fit-content' }}>
-            Message
-          </Link>
+    <section className="public-id-page">
+      <article className="public-id-card" aria-label={`${page.user_name} public ID`}>
+        {page.photo_url ? (
+          <img className="public-id-avatar" src={page.photo_url} alt={page.user_name} />
         ) : (
-          <a className="btn-primary" href={pidpAppLoginUrl(`/chat?start=dm&user=${encodeURIComponent(page.slug)}`)} style={{ textDecoration: 'none', width: 'fit-content' }}>
-            Message
-          </a>
+          <div className="public-id-avatar public-id-avatar-fallback" aria-hidden="true">
+            {page.user_name.slice(0, 1).toUpperCase()}
+          </div>
         )}
-      </div>
+        <h1 className="public-id-name">{page.user_name}</h1>
+        {page.headline ? <p className="public-id-headline">{page.headline}</p> : null}
+        <button type="button" className="public-id-download-card" onClick={downloadVCard}>
+          <span className="public-id-download-icon" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M4.5 2A2.5 2.5 0 0 0 2 4.5v11A2.5 2.5 0 0 0 4.5 18h11a2.5 2.5 0 0 0 2.5-2.5v-11A2.5 2.5 0 0 0 15.5 2h-11Zm0 1.5h11A1.5 1.5 0 0 1 17 5v10a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 3 15V5a1.5 1.5 0 0 1 1.5-1.5ZM10 5a.75.75 0 0 1 .75.75v4.2l1.23-1.23a.75.75 0 1 1 1.06 1.06l-2.5 2.5a.75.75 0 0 1-1.08 0l-2.5-2.5a.75.75 0 1 1 1.06-1.06l1.23 1.23V5.75A.75.75 0 0 1 10 5Zm-3 9.25a.75.75 0 0 1 .75-.75h4.5a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1-.75-.75Z" />
+            </svg>
+          </span>
+          <span>
+            <strong>Download Contact</strong>
+            <small>Save this profile as a vCard</small>
+          </span>
+        </button>
+        {page.bio ? <p className="public-id-bio">{page.bio}</p> : null}
 
-      <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'minmax(0, 2fr) minmax(240px, 1fr)' }}>
-        <div style={{ display: 'grid', gap: '0.8rem' }}>
-          {page.photo_url ? (
-            <img
-              src={page.photo_url}
-              alt={page.user_name}
-              style={{ width: '100%', maxWidth: 420, borderRadius: 12, border: '2px solid var(--border)' }}
-            />
-          ) : null}
-          {page.bio ? <p>{page.bio}</p> : null}
+        <div className="public-id-actions">
+          {token ? (
+            <Link
+              className="btn-primary public-profile-inbox-btn"
+              to={`/chat?start=dm&user=${encodeURIComponent(page.slug)}`}
+              aria-label={`Message ${page.user_name}`}
+              title={`Message ${page.user_name}`}
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path d="M3 4.5A2.5 2.5 0 0 1 5.5 2h9A2.5 2.5 0 0 1 17 4.5v11A2.5 2.5 0 0 1 14.5 18h-9A2.5 2.5 0 0 1 3 15.5v-11Zm2.5-1A1.5 1.5 0 0 0 4 5v7h3.2a1 1 0 0 1 .82.43L9.1 14h1.8l1.08-1.57a1 1 0 0 1 .82-.43H16V5a1.5 1.5 0 0 0-1.5-1.5h-9ZM4 13v2.5A1.5 1.5 0 0 0 5.5 17h9a1.5 1.5 0 0 0 1.5-1.5V13h-2.67l-1.08 1.57a1 1 0 0 1-.82.43H8.57a1 1 0 0 1-.82-.43L6.67 13H4Z" />
+              </svg>
+              <span>Message</span>
+            </Link>
+          ) : (
+            <a
+              className="btn-primary public-profile-inbox-btn"
+              href={pidpAppLoginUrl(`/chat?start=dm&user=${encodeURIComponent(page.slug)}`)}
+              aria-label={`Sign in to message ${page.user_name}`}
+              title={`Message ${page.user_name}`}
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path d="M3 4.5A2.5 2.5 0 0 1 5.5 2h9A2.5 2.5 0 0 1 17 4.5v11A2.5 2.5 0 0 1 14.5 18h-9A2.5 2.5 0 0 1 3 15.5v-11Zm2.5-1A1.5 1.5 0 0 0 4 5v7h3.2a1 1 0 0 1 .82.43L9.1 14h1.8l1.08-1.57a1 1 0 0 1 .82-.43H16V5a1.5 1.5 0 0 0-1.5-1.5h-9ZM4 13v2.5A1.5 1.5 0 0 0 5.5 17h9a1.5 1.5 0 0 0 1.5-1.5V13h-2.67l-1.08 1.57a1 1 0 0 1-.82.43H8.57a1 1 0 0 1-.82-.43L6.67 13H4Z" />
+              </svg>
+              <span>Message</span>
+            </a>
+          )}
+          {isOwner ? <Link to="/contact-settings">Edit Profile</Link> : null}
         </div>
-        <aside className="portal-card" style={{ padding: '0.9rem', display: 'grid', gap: '0.6rem', alignContent: 'start' }}>
+
+        {contactLinks.length > 0 ? (
+          <div className="public-id-link-list" aria-label="Contact links">
+            {contactLinks.map((link) => {
+              const key = `${link.label}-${link.url}`
+              return (
+                <div className="public-id-link-row" key={key}>
+                  <a className="public-id-link-name" href={link.url} target={link.url.startsWith('http') ? '_blank' : undefined} rel={link.url.startsWith('http') ? 'noreferrer' : undefined}>
+                    {link.label}
+                  </a>
+                  <div className="public-id-link-url">{link.display}</div>
+                  <button
+                    type="button"
+                    className="public-id-copy-btn"
+                    onClick={() => copyLink(key, link.url)}
+                    aria-label={`Copy ${link.label} link`}
+                    title={`Copy ${link.label} link`}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <path d="M6 2.5A2.5 2.5 0 0 1 8.5 0h6A2.5 2.5 0 0 1 17 2.5v8A2.5 2.5 0 0 1 14.5 13h-6A2.5 2.5 0 0 1 6 10.5v-8Zm2.5-1A1.5 1.5 0 0 0 7 3v7a1.5 1.5 0 0 0 1.5 1.5h6A1.5 1.5 0 0 0 16 10V3a1.5 1.5 0 0 0-1.5-1.5h-6ZM3 6a1 1 0 0 1 1 1v8.5A1.5 1.5 0 0 0 5.5 17H12a1 1 0 1 1 0 2H5.5A3.5 3.5 0 0 1 2 15.5V7a1 1 0 0 1 1-1Z" />
+                    </svg>
+                    <span className="sr-only">{copiedKey === key ? 'Copied' : 'Copy'}</span>
+                  </button>
+                  {copiedKey === key ? <span className="public-id-copied">Copied</span> : null}
+                </div>
+              )
+            })}
+          </div>
+        ) : null}
+
+        <aside className="public-id-share">
           <div className="muted">Share Profile</div>
-          {page.public_url ? <a href={page.public_url}>{page.public_url}</a> : null}
-          {qrSvg ? (
-            <div
-              aria-label="QR code for public profile"
-              dangerouslySetInnerHTML={{ __html: qrSvg }}
-            />
+          {page.public_url ? (
+            <div className="public-id-share-row">
+              <a className="public-id-public-url" href={page.public_url}>Public page</a>
+              <div className="public-id-link-url">{page.public_url}</div>
+              <button
+                type="button"
+                className="public-id-copy-btn"
+                onClick={() => copyLink('public-url', page.public_url || '')}
+                aria-label="Copy public profile link"
+                title="Copy public profile link"
+              >
+                <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path d="M6 2.5A2.5 2.5 0 0 1 8.5 0h6A2.5 2.5 0 0 1 17 2.5v8A2.5 2.5 0 0 1 14.5 13h-6A2.5 2.5 0 0 1 6 10.5v-8Zm2.5-1A1.5 1.5 0 0 0 7 3v7a1.5 1.5 0 0 0 1.5 1.5h6A1.5 1.5 0 0 0 16 10V3a1.5 1.5 0 0 0-1.5-1.5h-6ZM3 6a1 1 0 0 1 1 1v8.5A1.5 1.5 0 0 0 5.5 17H12a1 1 0 1 1 0 2H5.5A3.5 3.5 0 0 1 2 15.5V7a1 1 0 0 1 1-1Z" />
+                </svg>
+                <span className="sr-only">{copiedKey === 'public-url' ? 'Copied' : 'Copy'}</span>
+              </button>
+              {copiedKey === 'public-url' ? <span className="public-id-copied">Copied</span> : null}
+            </div>
           ) : null}
+          {qrSvg ? <div aria-label="QR code for public profile" className="public-id-qr" dangerouslySetInnerHTML={{ __html: qrSvg }} /> : null}
           {qrSvg ? (
             <button type="button" onClick={downloadQrSvg}>
               Download QR (SVG)
             </button>
           ) : null}
-          <p className="muted" style={{ margin: 0 }}>
+          <p className="muted">
             Search engines are instructed not to index this page.
           </p>
         </aside>
-      </div>
-
-      <div className="contact-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.6rem' }}>
-        {page.email_public ? (
-          <a className="portal-card" href={`mailto:${page.email_public}`} style={{ padding: '0.7rem', textDecoration: 'none' }}>
-            Email
-          </a>
-        ) : null}
-        {page.phone_public ? (
-          <a className="portal-card" href={`tel:${page.phone_public}`} style={{ padding: '0.7rem', textDecoration: 'none' }}>
-            Phone
-          </a>
-        ) : null}
-        {page.linkedin_url ? (
-          <a className="portal-card" href={page.linkedin_url} target="_blank" rel="noreferrer" style={{ padding: '0.7rem', textDecoration: 'none' }}>
-            LinkedIn
-          </a>
-        ) : null}
-        {page.github_url ? (
-          <a className="portal-card" href={page.github_url} target="_blank" rel="noreferrer" style={{ padding: '0.7rem', textDecoration: 'none' }}>
-            GitHub
-          </a>
-        ) : null}
-        {page.x_url ? (
-          <a className="portal-card" href={page.x_url} target="_blank" rel="noreferrer" style={{ padding: '0.7rem', textDecoration: 'none' }}>
-            X
-          </a>
-        ) : null}
-        {page.website_url ? (
-          <a className="portal-card" href={page.website_url} target="_blank" rel="noreferrer" style={{ padding: '0.7rem', textDecoration: 'none' }}>
-            Website
-          </a>
-        ) : null}
-        {(page.links || []).map((link) => (
-          <a
-            key={`${link.label}-${link.url}`}
-            className="portal-card"
-            href={link.url}
-            target="_blank"
-            rel="noreferrer"
-            style={{ padding: '0.7rem', textDecoration: 'none' }}
-          >
-            {link.label}
-          </a>
-        ))}
-      </div>
+      </article>
 
       {events.length > 0 ? (
-        <section style={{ display: 'grid', gap: '0.6rem' }}>
+        <section className="public-id-events">
           <h2 style={{ margin: 0 }}>Upcoming Events</h2>
           <div style={{ display: 'grid', gap: '0.5rem' }}>
             {events.map((event) => (

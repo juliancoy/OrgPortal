@@ -72,7 +72,7 @@ export function UserAccountPage() {
         </span>
         <div>
           <div style={{ fontWeight: 700 }}>{displayName}</div>
-          <div className="muted">Profile image from identity provider</div>
+          <div className="muted">Profile image</div>
         </div>
       </div>
       <div style={{ display: 'grid', gap: '0.6rem' }}>

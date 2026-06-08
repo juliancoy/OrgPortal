@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
-import { pidpAppLoginUrl } from '../../../config/pidp'
+import { PIDP_APP_SLUG, pidpAppLoginUrl, pidpUrl } from '../../../config/pidp'
 
 export function OrgLoginPage() {
   const navigate = useNavigate()
@@ -11,8 +11,11 @@ export function OrgLoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const nextUrl = window.location.href
-  const socialLoginUrl = (provider: 'google' | 'github') =>
-    `/api/org/auth/social/${provider}/login?next=${encodeURIComponent(nextUrl)}`
+  const socialLoginUrl = (provider: 'google' | 'github') => {
+    const params = new URLSearchParams({ next: nextUrl })
+    if (PIDP_APP_SLUG) params.set('app', PIDP_APP_SLUG)
+    return pidpUrl(`/auth/${provider}/login?${params.toString()}`)
+  }
 
   useEffect(() => {
     document.title = 'Org Portal • Org login'
