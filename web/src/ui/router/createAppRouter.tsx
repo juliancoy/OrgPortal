@@ -9,7 +9,6 @@ import { DepartmentsPage } from '../views/DepartmentsPage'
 import { AuthCallbackPage } from '../views/AuthCallbackPage'
 import { InitiativeDetailPage } from '../views/InitiativeDetailPage'
 import { InitiativeSignPage } from '../views/InitiativeSignPage'
-import { UserAccountPage } from '../views/users/UserAccountPage'
 import { UserProfilePage } from '../views/users/UserProfilePage'
 import { UserLoginPage } from '../views/users/UserLoginPage'
 import { UserRegisterPage } from '../views/users/UserRegisterPage'
@@ -38,7 +37,6 @@ import { DashboardPage } from '../dashboard/DashboardPage'
 import { AdminPage } from '../views/AdminPage'
 import { TargetPage } from '../views/TargetPage'
 import { OrgEditableInitiativesPage } from '../views/orgs/OrgEditableInitiativesPage'
-import { ContactSettingsPage } from '../views/ContactSettingsPage'
 import { IdPage } from '../views/IdPage'
 import { SendPage } from '../views/SendPage'
 import { ReceivePage } from '../views/ReceivePage'
@@ -161,12 +159,13 @@ export function createAppRouter() {
           { path: '/users/register', element: <UserRegisterPage /> },
           { path: '/users/login', element: <UserLoginPage /> },
           { path: '/users/dashboard', element: <DashboardPage /> },
-          { path: '/users/profile', element: <UserProfilePage /> },
-          { path: '/users/account', element: <UserAccountPage /> },
+          { path: '/profile', element: <UserProfilePage /> },
+          { path: '/users/profile', element: <LegacyUserRoute to="/profile" /> },
+          { path: '/users/account', element: <LegacyUserRoute to="/profile" /> },
           { path: '/constituent', element: <LegacyUserRoute to="/users/dashboard" /> },
           { path: '/constituent/dashboard', element: <LegacyUserRoute to="/users/dashboard" /> },
-          { path: '/constituent/profile', element: <LegacyUserRoute to="/users/profile" /> },
-          { path: '/constituent/account', element: <LegacyUserRoute to="/users/account" /> },
+          { path: '/constituent/profile', element: <LegacyUserRoute to="/profile" /> },
+          { path: '/constituent/account', element: <LegacyUserRoute to="/profile" /> },
           { path: '/constituent/login', element: <LegacyUserRoute to="/users/login" /> },
           { path: '/constituent/register', element: <LegacyUserRoute to="/users/register" /> },
           {
@@ -245,7 +244,7 @@ export function createAppRouter() {
           { path: '/orgs/:handle', element: <PublicAdminPage /> },
           { path: '/users/:slug', element: <PublicContactPage /> },
           { path: '/contact/:slug', element: <LegacyPublicContactRoute /> },
-          { path: '/contact-settings', element: <ContactSettingsPage /> },
+          { path: '/contact-settings', element: <LegacyUserRoute to="/profile" /> },
 
           // Governance
           { path: '/governance/roberts', element: <MotionListPage /> },
