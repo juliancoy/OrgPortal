@@ -57,17 +57,20 @@ type ProfileDraft = {
   city: string
   state: string
   zip: string
-  organizations: string
   maslowNow: MaslowRatings
   maslowFuture: MaslowRatings
+}
+
+function splitFullName(value: string) {
+  const parts = value.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return { firstName: '', lastName: '' }
+  if (parts.length === 1) return { firstName: parts[0], lastName: '' }
+  return { firstName: parts[0], lastName: parts.slice(1).join(' ') }
 }
 
 export function UserProfilePage() {
   const { user, setUser, token, logout } = useAuth()
   const [fullName, setFullName] = useState('')
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
-  const [displayName, setDisplayName] = useState(user?.displayName ?? 'Demo User')
   const [bio, setBio] = useState('Interested in local policy and civic engagement.')
   const [avatarUrl, setAvatarUrl] = useState('')
   const [addressLine1, setAddressLine1] = useState('')
@@ -75,7 +78,6 @@ export function UserProfilePage() {
   const [city, setCity] = useState('')
   const [state, setState] = useState('')
   const [zip, setZip] = useState('')
-  const [organizations, setOrganizations] = useState('')
   const [isRunningForOffice, setIsRunningForOffice] = useState(false)
   const [officeTitle, setOfficeTitle] = useState('')
   const [campaignStatement, setCampaignStatement] = useState('')
@@ -116,22 +118,17 @@ export function UserProfilePage() {
         if (cancelled) return
 
         if (data.full_name) setFullName(data.full_name)
-        if (data.identity_data?.display_name) setDisplayName(data.identity_data.display_name)
+        else if (data.identity_data?.display_name) setFullName(data.identity_data.display_name)
+        else if (data.identity_data?.first_name || data.identity_data?.last_name) {
+          setFullName(`${data.identity_data?.first_name || ''} ${data.identity_data?.last_name || ''}`.trim())
+        }
         if (data.identity_data?.bio) setBio(data.identity_data.bio)
         if (data.identity_data?.avatar_url) setAvatarUrl(data.identity_data.avatar_url)
-        if (data.identity_data?.first_name) setFirstName(data.identity_data.first_name)
-        if (data.identity_data?.last_name) setLastName(data.identity_data.last_name)
         if (data.identity_data?.address_line1) setAddressLine1(data.identity_data.address_line1)
         if (data.identity_data?.address_line2) setAddressLine2(data.identity_data.address_line2)
         if (data.identity_data?.city) setCity(data.identity_data.city)
         if (data.identity_data?.state) setState(data.identity_data.state)
         if (data.identity_data?.zip) setZip(data.identity_data.zip)
-        if (data.identity_data?.organizations) {
-          const orgs = Array.isArray(data.identity_data.organizations)
-            ? data.identity_data.organizations.join(', ')
-            : data.identity_data.organizations
-          setOrganizations(orgs)
-        }
         if (data.identity_data?.is_running_for_office) setIsRunningForOffice(true)
         if (data.identity_data?.office_title) setOfficeTitle(data.identity_data.office_title)
         if (data.identity_data?.campaign_statement) setCampaignStatement(data.identity_data.campaign_statement)
@@ -156,9 +153,8 @@ export function UserProfilePage() {
     try {
       const saved = JSON.parse(raw) as Partial<ProfileDraft>
       if (saved.fullName) setFullName(saved.fullName)
-      if (saved.firstName) setFirstName(saved.firstName)
-      if (saved.lastName) setLastName(saved.lastName)
-      if (saved.displayName) setDisplayName(saved.displayName)
+      else if (saved.displayName) setFullName(saved.displayName)
+      else if (saved.firstName || saved.lastName) setFullName(`${saved.firstName || ''} ${saved.lastName || ''}`.trim())
       if (saved.bio) setBio(saved.bio)
       if (saved.avatarUrl) setAvatarUrl(saved.avatarUrl)
       if (saved.addressLine1) setAddressLine1(saved.addressLine1)
@@ -166,7 +162,6 @@ export function UserProfilePage() {
       if (saved.city) setCity(saved.city)
       if (saved.state) setState(saved.state)
       if (saved.zip) setZip(saved.zip)
-      if (saved.organizations) setOrganizations(saved.organizations)
       if (saved.maslowNow) setMaslowNow(normalizeMaslowRatings(saved.maslowNow))
       if (saved.maslowFuture) setMaslowFuture(normalizeMaslowRatings(saved.maslowFuture))
     } catch {
@@ -212,7 +207,7 @@ export function UserProfilePage() {
 
   useEffect(() => {
     if (status) setStatus(null)
-  }, [fullName, firstName, lastName, displayName, bio, addressLine1, addressLine2, city, state, zip, organizations, isRunningForOffice, officeTitle, campaignStatement, maslowNow, maslowFuture])
+  }, [fullName, bio, addressLine1, addressLine2, city, state, zip, isRunningForOffice, officeTitle, campaignStatement, maslowNow, maslowFuture])
 
   useEffect(() => {
     if (!editorSource) {
@@ -257,12 +252,13 @@ export function UserProfilePage() {
   }, [])
 
   function saveProfile() {
-    const combinedName = `${firstName.trim()} ${lastName.trim()}`.trim()
+    const nameParts = splitFullName(fullName)
+    const normalizedFullName = fullName.trim()
     const payload: ProfileDraft = {
-      fullName: (fullName.trim() || combinedName).trim(),
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      displayName: displayName.trim() || 'Anonymous',
+      fullName: normalizedFullName,
+      firstName: nameParts.firstName,
+      lastName: nameParts.lastName,
+      displayName: normalizedFullName || 'Anonymous',
       bio,
       avatarUrl,
       addressLine1,
@@ -270,14 +266,9 @@ export function UserProfilePage() {
       city,
       state,
       zip,
-      organizations,
       maslowNow,
       maslowFuture,
     }
-    const organizationsList = payload.organizations
-      .split(',')
-      .map((org) => org.trim())
-      .filter(Boolean)
 
     if (token) {
       fetch(pidpUrl('/auth/me'), {
@@ -299,7 +290,6 @@ export function UserProfilePage() {
           city: payload.city,
           state: payload.state,
           zip: payload.zip,
-          organizations: organizationsList,
           maslow_now: maslowNow,
           maslow_future: maslowFuture,
           is_running_for_office: isRunningForOffice,
@@ -416,9 +406,9 @@ export function UserProfilePage() {
       return
     }
 
-    const combinedName = `${firstName.trim()} ${lastName.trim()}`.trim()
-    const currentFullName = (fullName.trim() || combinedName).trim()
-    const currentDisplayName = displayName.trim() || 'Anonymous'
+    const currentFullName = fullName.trim()
+    const currentDisplayName = currentFullName || 'Anonymous'
+    const nameParts = splitFullName(currentFullName)
 
     const resp = await fetch(pidpUrl('/auth/me'), {
       method: 'PUT',
@@ -432,17 +422,13 @@ export function UserProfilePage() {
         display_name: currentDisplayName,
         bio,
         avatar_url: nextAvatarUrl || null,
-        first_name: firstName.trim() || null,
-        last_name: lastName.trim() || null,
+        first_name: nameParts.firstName || null,
+        last_name: nameParts.lastName || null,
         address_line1: addressLine1,
         address_line2: addressLine2,
         city,
         state,
         zip,
-        organizations: organizations
-          .split(',')
-          .map((org) => org.trim())
-          .filter(Boolean),
         maslow_now: maslowNow,
         maslow_future: maslowFuture,
         is_running_for_office: isRunningForOffice,
@@ -478,8 +464,8 @@ export function UserProfilePage() {
         ...user,
         displayName: currentDisplayName,
         fullName: data.full_name ?? user.fullName,
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
+        firstName: nameParts.firstName,
+        lastName: nameParts.lastName,
         avatarUrl: nextAvatarUrl,
       })
     }
@@ -498,59 +484,31 @@ export function UserProfilePage() {
         ) : null}
       </div>
 
-      <ContactSettingsPage embedded hideQr profileImageEditor={profileImageEditor} />
-
       <section className="profile-settings-section">
         <div className="profile-detail-header">
-          <h2 style={{ margin: 0 }}>Profile Details</h2>
+          <h2 style={{ margin: 0 }}>Name</h2>
           <button type="button" className="profile-save-button" onClick={saveProfile}>
             Save profile
           </button>
         </div>
       <div className="profile-form-grid">
-        <div style={{ display: 'grid', gap: '0.6rem', gridTemplateColumns: '1fr 1fr' }}>
-          <div>
-            <label className="muted" htmlFor="first-name">
-              First name
-            </label>
-            <input id="first-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} style={{ width: '100%' }} />
-          </div>
-          <div>
-            <label className="muted" htmlFor="last-name">
-              Last name
-            </label>
-            <input id="last-name" value={lastName} onChange={(e) => setLastName(e.target.value)} style={{ width: '100%' }} />
-          </div>
-        </div>
         <div>
           <label className="muted" htmlFor="full-name">
-            Full name (public record)
+            Full name
           </label>
           <input
             id="full-name"
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-            placeholder="Auto-filled from first + last name"
+            placeholder="Your full name"
             style={{ width: '100%' }}
           />
-        </div>
-        <div>
-          <label className="muted" htmlFor="dn">
-            Display name
-          </label>
-          <input id="dn" value={displayName} onChange={(e) => setDisplayName(e.target.value)} style={{ width: '100%' }} />
         </div>
         <div>
           <label className="muted" htmlFor="bio">
             Bio
           </label>
           <textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} rows={4} style={{ width: '100%' }} />
-        </div>
-        <div>
-          <label className="muted" htmlFor="orgs">
-            Organizations (comma-separated)
-          </label>
-          <input id="orgs" value={organizations} onChange={(e) => setOrganizations(e.target.value)} style={{ width: '100%' }} />
         </div>
         <div style={{ borderTop: '1px solid rgba(12, 30, 60, 0.12)', paddingTop: '1rem', marginTop: '0.5rem' }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
@@ -689,6 +647,16 @@ export function UserProfilePage() {
           </p>
         ) : null}
       </div>
+      </section>
+
+      <ContactSettingsPage embedded hideQr profileImageEditor={profileImageEditor} />
+
+      <section className="portal-card profile-settings-section profile-account-reference">
+        <h2 style={{ margin: 0 }}>Account Reference</h2>
+        <div>
+          <div className="muted" style={{ margin: 0 }}>User UUID</div>
+          <code style={{ wordBreak: 'break-all' }}>{user?.id || 'Unavailable'}</code>
+        </div>
       </section>
 
       {editorOpen ? (

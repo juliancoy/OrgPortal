@@ -4,7 +4,7 @@ import { useAuth } from '../../../app/AppProviders'
 import { applyThemeMode, readThemeMode, type ThemeMode } from '../../../config/theme'
 
 export function UserSettingsPage() {
-  const { role, user } = useAuth()
+  const { role } = useAuth()
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => readThemeMode())
   const [status, setStatus] = useState<string | null>(null)
 
@@ -58,27 +58,6 @@ export function UserSettingsPage() {
           </select>
         </label>
         {status ? <p role="status" className="portal-muted">{status}</p> : null}
-      </section>
-
-      <section className="portal-card user-settings-section">
-        <div>
-          <h2>Identity</h2>
-          <p className="portal-muted">Reference details for your signed-in account.</p>
-        </div>
-        <dl className="user-settings-list">
-          <div>
-            <dt>Name</dt>
-            <dd>{user?.displayName || 'Unknown user'}</dd>
-          </div>
-          <div>
-            <dt>Email</dt>
-            <dd>{user?.email || 'Unavailable'}</dd>
-          </div>
-          <div>
-            <dt>User UUID</dt>
-            <dd><code>{user?.id || 'Unavailable'}</code></dd>
-          </div>
-        </dl>
       </section>
     </main>
   )
