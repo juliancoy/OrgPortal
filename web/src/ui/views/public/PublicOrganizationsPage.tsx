@@ -27,6 +27,14 @@ type PublicOrganizationListItem = {
   is_contested: boolean
 }
 
+type UserOrganizationListItem = {
+  id: string
+  name: string
+  slug: string
+  my_role?: 'member' | 'admin' | string | null
+  claimed_by_user_id?: string | null
+}
+
 function currentUrl() {
   return `${window.location.origin}/orgs`
 }
@@ -34,6 +42,8 @@ function currentUrl() {
 export function PublicOrganizationsPage() {
   const { token } = useAuth()
   const [orgs, setOrgs] = useState<PublicOrganizationListItem[]>([])
+  const [myOrgSlugs, setMyOrgSlugs] = useState<Set<string>>(new Set())
+  const [showMineOnly, setShowMineOnly] = useState(false)
   const [status, setStatus] = useState<string>('Loading organizations…')
 
   useEffect(() => {
@@ -44,6 +54,61 @@ export function PublicOrganizationsPage() {
       type: 'website',
     })
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    if (!token) {
+      setMyOrgSlugs(new Set())
+      setShowMineOnly(false)
+      return () => {
+        cancelled = true
+      }
+    }
+
+    fetch(orgUrl('/api/network/orgs?mine=true&limit=300'), {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then(async (resp) => {
+        if (!resp.ok) return []
+        return resp.json() as Promise<UserOrganizationListItem[]>
+      })
+      .then((rows) => {
+        if (cancelled) return
+        const slugs = new Set(
+          (Array.isArray(rows) ? rows : [])
+            .map((org) => String(org.slug || '').trim())
+            .filter(Boolean),
+        )
+        setMyOrgSlugs(slugs)
+      })
+      .catch(() => {
+        if (!cancelled) setMyOrgSlugs(new Set())
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [token])
+
+  const sortedOrgs = useMemo(() => {
+    return [...orgs].sort((a, b) => {
+      const aMine = myOrgSlugs.has(a.slug) ? 1 : 0
+      const bMine = myOrgSlugs.has(b.slug) ? 1 : 0
+      if (aMine !== bMine) return bMine - aMine
+      const memberDelta = (b.membership_count || 0) - (a.membership_count || 0)
+      if (memberDelta !== 0) return memberDelta
+      const eventDelta = (b.upcoming_events_count || 0) - (a.upcoming_events_count || 0)
+      if (eventDelta !== 0) return eventDelta
+      return a.name.localeCompare(b.name)
+    })
+  }, [myOrgSlugs, orgs])
+
+  const visibleOrgs = useMemo(() => {
+    if (!showMineOnly) return sortedOrgs
+    return sortedOrgs.filter((org) => myOrgSlugs.has(org.slug))
+  }, [myOrgSlugs, showMineOnly, sortedOrgs])
 
   useEffect(() => {
     fetch(orgUrl('/api/network/orgs/public?sort=popular&limit=300'))
@@ -77,14 +142,14 @@ export function PublicOrganizationsPage() {
       '@context': 'https://schema.org',
       '@type': 'ItemList',
       name: 'Organizations',
-      itemListElement: orgs.slice(0, 100).map((org, index) => ({
+      itemListElement: sortedOrgs.slice(0, 100).map((org, index) => ({
         '@type': 'ListItem',
         position: index + 1,
         url: `${window.location.origin}/orgs/${encodeURIComponent(org.slug)}`,
         name: org.name,
       })),
     }),
-    [orgs],
+    [sortedOrgs],
   )
 
   useEffect(() => {
@@ -97,8 +162,30 @@ export function PublicOrganizationsPage() {
       <p className="muted" style={{ marginTop: 0 }}>
         Browse registered organizations and their claimed links.
       </p>
+      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          className={!showMineOnly ? 'btn-primary' : undefined}
+          onClick={() => setShowMineOnly(false)}
+        >
+          All organizations
+        </button>
+        <button
+          type="button"
+          className={showMineOnly ? 'btn-primary' : undefined}
+          onClick={() => setShowMineOnly(true)}
+          disabled={!token}
+        >
+          Your organizations
+        </button>
+        {!token ? (
+          <a href={pidpAppLoginUrl('/orgs')} style={{ alignSelf: 'center' }}>
+            Sign in to filter yours
+          </a>
+        ) : null}
+      </div>
       {status ? <p className="muted">{status}</p> : null}
-      {!status && orgs.length === 0 ? (
+      {!status && visibleOrgs.length === 0 ? (
         <p className="muted">No organizations were found.</p>
       ) : null}
       <div
@@ -107,7 +194,7 @@ export function PublicOrganizationsPage() {
           gap: '0.9rem',
         }}
       >
-        {orgs.map((org) => (
+        {visibleOrgs.map((org) => (
           <article
             key={org.id}
             className="portal-card"
@@ -139,6 +226,7 @@ export function PublicOrganizationsPage() {
               <p className="muted" style={{ margin: 0 }}>
                 Members: {org.membership_count} • Upcoming events: {org.upcoming_events_count}
                 {org.is_contested ? ` • Contested ownership (${org.pending_claim_requests_count})` : ''}
+                {myOrgSlugs.has(org.slug) ? ' • Your organization' : ''}
               </p>
               {org.description ? <p style={{ margin: 0, overflowWrap: 'anywhere' }}>{org.description}</p> : null}
               {(() => {

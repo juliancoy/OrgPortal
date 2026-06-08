@@ -50,6 +50,7 @@ import { BusinessCardIntakePage } from '../views/BusinessCardIntakePage'
 import { PeoplePage } from '../views/PeoplePage'
 import { refreshRuntimeTokenFromSession } from '../../infrastructure/auth/sessionToken'
 import { UbiSettingsPage } from '../views/UbiSettingsPage'
+import { portalBasePath } from '../../config/portalBase'
 
 function AuthenticatedRoute(props: { children: ReactElement }) {
   const { role, isLoading } = useAuth()
@@ -129,8 +130,7 @@ function AdminRoute(props: { children: ReactElement }) {
 }
 
 export function createAppRouter() {
-  const baseUrl = import.meta.env.BASE_URL ?? '/'
-  const basename = baseUrl === '/' ? '/' : baseUrl.replace(/\/$/, '')
+  const basename = portalBasePath() || '/'
 
   return createBrowserRouter(
     [

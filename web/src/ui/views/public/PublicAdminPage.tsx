@@ -5,7 +5,7 @@ import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
 import type { ChatMessage } from '../../../application/ports/ChatService'
 import { useAuth, useServices } from '../../../app/AppProviders'
 import { bootstrapMatrixSessionFromOrg } from '../../../chat/bootstrapSession'
-import { pidpAppLoginUrl, pidpUrl } from '../../../config/pidp'
+import { PIDP_BASE_URL, pidpAppLoginUrl, pidpUrl } from '../../../config/pidp'
 import { OrgImage } from '../../components/media/OrgImage'
 import { ImageEditorModal } from '../../components/media/ImageEditorModal'
 import { resolveSignedS3UploadUrl } from '../../../infrastructure/auth/avatarUpload'
@@ -703,9 +703,12 @@ export function PublicAdminPage() {
       const uploadData = (await uploadInit.json()) as { upload_url: string; public_url: string }
       const dataUrl = `data:image/png;base64,${base64Image}`
       const blob = await fetch(dataUrl).then((r) => r.blob())
-      const uploadResp = await fetch(resolveSignedS3UploadUrl(uploadData.upload_url), {
+      const uploadResp = await fetch(resolveSignedS3UploadUrl(uploadData.upload_url, PIDP_BASE_URL), {
         method: 'PUT',
-        headers: { 'Content-Type': 'image/png' },
+        headers: {
+          'Content-Type': 'image/png',
+          Authorization: `Bearer ${token}`,
+        },
         body: blob,
       })
       if (!uploadResp.ok) {

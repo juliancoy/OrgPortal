@@ -3,6 +3,7 @@ import { useAuth } from '../../app/AppProviders'
 import { Header } from '../shell/Header'
 import { Footer } from '../shell/Footer'
 import { createQrSvg } from '../utils/qr'
+import { portalUrl } from '../../config/portalBase'
 
 const ORG_API_BASE = '/api/org'
 
@@ -70,14 +71,11 @@ export function ReceivePage() {
 
   const paymentRequestUrl = useMemo(() => {
     if (!me) return ''
-    const base = import.meta.env.BASE_URL ?? '/'
-    const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base
-    const sendPath = `${normalizedBase}/send`
     const params = new URLSearchParams({
       t: me.id,
       a: requestAmount || '0',
     })
-    return `${window.location.origin}${sendPath}?${params.toString()}`
+    return `${portalUrl('/send')}?${params.toString()}`
   }, [me, requestAmount])
 
   const qrSvg = useMemo(() => {
