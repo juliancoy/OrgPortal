@@ -420,6 +420,7 @@ textarea {
 }
 
 .portal-nav-toggle {
+  appearance: none;
   display: none;
   align-items: center;
   justify-content: center;
@@ -427,8 +428,25 @@ textarea {
   width: 100%;
   min-height: 40px;
   padding: 8px 12px;
+  border: 2px solid var(--primary);
   border-radius: 8px;
+  background: var(--primary);
+  color: #fff;
   font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.portal-nav-toggle:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+
+.portal-nav-toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .portal-nav-toggle svg {
@@ -1521,6 +1539,32 @@ textarea {
   height: auto;
 }
 
+.contact-public-profile-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0.85rem;
+}
+
+.contact-public-profile-toggle {
+  min-width: 112px;
+  border-radius: var(--radius-full);
+  font-weight: 900;
+}
+
+.contact-public-profile-toggle.is-enable {
+  border-color: var(--accent-green);
+  background: var(--accent-green-bg);
+  color: var(--accent-green);
+}
+
+.contact-public-profile-toggle.is-disable {
+  border-color: var(--accent-red);
+  background: var(--accent-red-bg);
+  color: var(--accent-red);
+}
+
 @media (max-width: 560px) {
   .public-id-card {
     width: min(100%, calc(100vw - 20px));
@@ -1533,6 +1577,11 @@ textarea {
       "name copy"
       "url copy";
     gap: 3px 10px;
+  }
+
+  .contact-public-profile-card {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 
