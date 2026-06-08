@@ -7,6 +7,7 @@ import { setSeoMeta } from '../../utils/seo'
 import { createVCard, vCardFileName } from '../../utils/vcard'
 
 const ORG_API_BASE = '/api/org'
+const PORTAL_ASSET_BASE = (import.meta.env.BASE_URL || '/').replace(/\/?$/, '/')
 
 function orgUrl(path: string) {
   if (!path.startsWith('/')) return `${ORG_API_BASE}/${path}`
@@ -346,6 +347,11 @@ export function PublicContactPage() {
           </div>
         </section>
       ) : null}
+
+      <a className="public-id-attribution" href="/" aria-label="Brought to you by Code Collective">
+        <span>Brought to you by</span>
+        <img src={`${PORTAL_ASSET_BASE}images/namebanner.png`} alt="Code Collective" />
+      </a>
     </section>
   )
 }
