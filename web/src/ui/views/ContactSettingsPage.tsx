@@ -264,15 +264,21 @@ export function ContactSettingsPage() {
         {themeStatus ? <p className="muted" style={{ margin: 0 }}>{themeStatus}</p> : null}
       </section>
 
-      <label className="muted" style={{ display: 'inline-flex', gap: '0.5rem', alignItems: 'center' }}>
-        <input
-          type="checkbox"
-          checked={page.enabled}
-          onChange={(e) => setField('enabled', e.target.checked)}
-          style={{ width: 'auto' }}
-        />
-        Enable public profile
-      </label>
+      <section className="portal-card contact-public-profile-card">
+        <div>
+          <h2 style={{ margin: 0, fontSize: '1rem' }}>Public Profile</h2>
+          <p className="muted" style={{ margin: '0.25rem 0 0' }}>
+            {page.enabled ? 'Your public profile is enabled.' : 'Your public profile is disabled.'}
+          </p>
+        </div>
+        <button
+          type="button"
+          className={`contact-public-profile-toggle ${page.enabled ? 'is-disable' : 'is-enable'}`}
+          onClick={() => setField('enabled', !page.enabled)}
+        >
+          {page.enabled ? 'Disable' : 'Enable'}
+        </button>
+      </section>
 
       <input value={page.slug} onChange={(e) => setField('slug', e.target.value)} placeholder="Public slug" />
       <input value={page.headline || ''} onChange={(e) => setField('headline', e.target.value)} placeholder="Headline" />
