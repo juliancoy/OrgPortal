@@ -225,7 +225,6 @@ export function PublicContactPage() {
               {page.user_name.slice(0, 1).toUpperCase()}
             </div>
           )}
-          <div className="public-id-kicker">Public ID</div>
           <h1 className="public-id-name">{page.user_name}</h1>
           {page.headline ? <p className="public-id-headline">{page.headline}</p> : null}
           {page.bio ? <p className="public-id-bio">{page.bio}</p> : null}
