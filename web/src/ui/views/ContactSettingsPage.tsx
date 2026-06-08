@@ -233,10 +233,9 @@ export function ContactSettingsPage() {
   return (
     <section className="panel" style={{ display: 'grid', gap: '0.75rem' }}>
 
-      <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-        <Link to="/orgs/profile">Org Network</Link>
+      <div className="contact-settings-actions">
         {page.enabled && publicUrl ? (
-          <a href={publicUrl} target="_blank" rel="noreferrer">
+          <a className="contact-public-page-bubble" href={publicUrl} target="_blank" rel="noreferrer">
             Open Public Page
           </a>
         ) : null}
