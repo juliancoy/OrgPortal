@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { ReactElement } from 'react'
-import { Navigate, createBrowserRouter, useLocation, useNavigate } from 'react-router-dom'
+import { Navigate, createBrowserRouter, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { AppLayout } from '../shell/AppLayout'
 import App from '../../App'
 import { useAuth } from '../../app/AppProviders'
@@ -81,6 +81,11 @@ function LegacyUserRoute(props: { to: string }) {
   }, [completeOAuthLogin, location.hash, location.search, navigate, props.to])
 
   return null
+}
+
+function LegacyPublicContactRoute() {
+  const { slug } = useParams()
+  return <Navigate to={`/users/${encodeURIComponent(String(slug || ''))}`} replace />
 }
 
 function ChatRoute() {
@@ -245,7 +250,7 @@ export function createAppRouter() {
           // Public profile
           { path: '/orgs/:handle', element: <PublicAdminPage /> },
           { path: '/users/:slug', element: <PublicContactPage /> },
-          { path: '/contact/:slug', element: <PublicContactPage /> },
+          { path: '/contact/:slug', element: <LegacyPublicContactRoute /> },
           { path: '/contact-settings', element: <ContactSettingsPage /> },
 
           // Governance

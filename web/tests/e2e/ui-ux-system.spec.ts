@@ -312,6 +312,14 @@ test.describe('Code Collective UI and UX system coverage', () => {
     await expectNoHorizontalOverflow(page)
   })
 
+  test('legacy contact public URLs redirect to the canonical users URL', async ({ page }) => {
+    await page.goto('/contact/mobile-tester')
+
+    await expect(page).toHaveURL(/\/users\/mobile-tester$/)
+    await expect(page.getByRole('heading', { name: 'Mobile Tester' })).toBeVisible()
+    await expect(page.getByText(/\/contact\/mobile-tester/)).toHaveCount(0)
+  })
+
   test('private ID page renders link-tree contact data, a real QR SVG, a vCard download, and edit link', async ({ page }) => {
     await page.goto('/id')
 

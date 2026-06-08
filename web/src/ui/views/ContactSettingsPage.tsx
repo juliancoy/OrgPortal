@@ -11,6 +11,21 @@ function orgUrl(path: string) {
   return `${ORG_API_BASE}${path}`
 }
 
+function portalBaseUrl(): string {
+  if (typeof window === 'undefined') return ''
+  const publicBase = (import.meta.env.VITE_PUBLIC_BASE as string | undefined)?.trim() || '/p/'
+  const normalizedBase = publicBase.startsWith('http')
+    ? publicBase
+    : `${window.location.origin}${publicBase.startsWith('/') ? publicBase : `/${publicBase}`}`
+  return normalizedBase.replace(/\/+$/, '')
+}
+
+function publicProfileUrl(slug?: string | null): string | null {
+  const cleanSlug = String(slug || '').trim()
+  const base = portalBaseUrl()
+  return cleanSlug && base ? `${base}/users/${encodeURIComponent(cleanSlug)}` : null
+}
+
 type ContactLink = {
   label: string
   url: string
@@ -75,14 +90,15 @@ export function ContactSettingsPage() {
       .catch((err) => setStatus(err instanceof Error ? err.message : 'Failed to load contact page'))
   }, [token])
 
+  const publicUrl = useMemo(() => publicProfileUrl(page?.slug), [page?.slug])
   const qrSvg = useMemo(() => {
-    if (!page?.public_url) return null
+    if (!publicUrl) return null
     try {
-      return createQrSvg(page.public_url, 6, 3)
+      return createQrSvg(publicUrl, 6, 3)
     } catch {
       return null
     }
-  }, [page?.public_url])
+  }, [publicUrl])
 
   function downloadQrSvg() {
     if (!qrSvg || !page?.slug) return
@@ -223,8 +239,8 @@ export function ContactSettingsPage() {
 
       <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
         <Link to="/orgs/profile">Org Network</Link>
-        {page.public_url ? (
-          <a href={page.public_url} target="_blank" rel="noreferrer">
+        {publicUrl ? (
+          <a href={publicUrl} target="_blank" rel="noreferrer">
             Open Public Page
           </a>
         ) : null}
@@ -314,10 +330,10 @@ export function ContactSettingsPage() {
 
       {status ? <p className="muted">{status}</p> : null}
 
-      {page.public_url ? (
+      {publicUrl ? (
         <div className="portal-card" style={{ display: 'grid', gap: '0.5rem', justifyItems: 'start' }}>
           <div className="muted">Public URL</div>
-          <a href={page.public_url} target="_blank" rel="noreferrer">{page.public_url}</a>
+          <a href={publicUrl} target="_blank" rel="noreferrer">{publicUrl}</a>
           {qrSvg ? (
             <div
               aria-label="QR code for contact page"

@@ -13,6 +13,43 @@ function orgUrl(path: string) {
   return `${ORG_API_BASE}${path}`
 }
 
+async function responseError(resp: Response, fallback: string) {
+  const text = await resp.text().catch(() => '')
+  if (!text) return fallback
+  try {
+    const parsed = JSON.parse(text) as { detail?: unknown }
+    if (typeof parsed.detail === 'string' && parsed.detail.trim()) return parsed.detail.trim()
+  } catch {
+    // Plain text response.
+  }
+  return text
+}
+
+function publicProfileUrl(slug?: string | null) {
+  const cleanSlug = String(slug || '').trim()
+  const publicBase = (import.meta.env.VITE_PUBLIC_BASE as string | undefined)?.trim() || '/p/'
+  const normalizedBase = publicBase.startsWith('http')
+    ? publicBase
+    : `${window.location.origin}${publicBase.startsWith('/') ? publicBase : `/${publicBase}`}`
+  const base = normalizedBase.replace(/\/+$/, '')
+  return cleanSlug ? `${base}/users/${encodeURIComponent(cleanSlug)}` : null
+}
+
+function safeLinkUrl(value?: string | null): string | null {
+  const text = String(value || '').trim()
+  if (!text) return null
+  try {
+    const candidate = /^(https?:|mailto:|tel:)/i.test(text) ? text : `https://${text.replace(/^\/+/, '')}`
+    const parsed = new URL(candidate)
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:' || parsed.protocol === 'mailto:' || parsed.protocol === 'tel:') {
+      return parsed.toString()
+    }
+  } catch {
+    return null
+  }
+  return null
+}
+
 type ContactLink = {
   label: string
   url: string
@@ -58,8 +95,7 @@ export function PublicContactPage() {
     Promise.all([
       fetch(orgUrl(`/api/network/users/public/${encodeURIComponent(slug)}`)).then(async (resp) => {
         if (!resp.ok) {
-          const text = await resp.text().catch(() => '')
-          throw new Error(text || `Profile not found (${resp.status})`)
+          throw new Error(await responseError(resp, `Profile not found (${resp.status})`))
         }
         return resp.json() as Promise<ContactPage>
       }),
@@ -71,7 +107,7 @@ export function PublicContactPage() {
         setPage(data)
         setEvents(eventRows)
         setStatus('')
-        const canonicalUrl = `${window.location.origin}/users/${encodeURIComponent(data.slug)}`
+        const canonicalUrl = publicProfileUrl(data.slug) || window.location.href
         setSeoMeta({
           title: `${data.user_name} • Org Portal`,
           description:
@@ -99,13 +135,14 @@ export function PublicContactPage() {
   }, [slug])
 
   const qrSvg = useMemo(() => {
-    if (!page?.public_url) return null
+    const shareUrl = publicProfileUrl(page?.slug)
+    if (!shareUrl) return null
     try {
-      return createQrSvg(page.public_url, 7, 3)
+      return createQrSvg(shareUrl, 7, 3)
     } catch {
       return null
     }
-  }, [page?.public_url])
+  }, [page?.slug])
 
   function downloadQrSvg() {
     if (!qrSvg || !page?.slug) return
@@ -122,7 +159,7 @@ export function PublicContactPage() {
 
   function downloadVCard() {
     if (!page) return
-    const publicUrl = page.public_url || `${window.location.origin}/users/${encodeURIComponent(page.slug)}`
+    const publicUrl = publicProfileUrl(page.slug) || window.location.href
     const vCard = createVCard(page, publicUrl)
     const blob = new Blob([vCard], { type: 'text/vcard;charset=utf-8' })
     const href = URL.createObjectURL(blob)
@@ -140,13 +177,14 @@ export function PublicContactPage() {
     ? [
         page.email_public ? { label: 'Email', url: `mailto:${page.email_public}`, display: page.email_public } : null,
         page.phone_public ? { label: 'Phone', url: `tel:${page.phone_public}`, display: page.phone_public } : null,
-        page.website_url ? { label: 'Website', url: page.website_url, display: page.website_url } : null,
-        page.linkedin_url ? { label: 'LinkedIn', url: page.linkedin_url, display: page.linkedin_url } : null,
-        page.github_url ? { label: 'GitHub', url: page.github_url, display: page.github_url } : null,
-        page.x_url ? { label: 'X', url: page.x_url, display: page.x_url } : null,
-        ...(page.links || []).map((link) => ({ label: link.label, url: link.url, display: link.url })),
-      ].filter((link): link is { label: string; url: string; display: string } => Boolean(link))
+        page.website_url ? { label: 'Website', url: safeLinkUrl(page.website_url), display: page.website_url } : null,
+        page.linkedin_url ? { label: 'LinkedIn', url: safeLinkUrl(page.linkedin_url), display: page.linkedin_url } : null,
+        page.github_url ? { label: 'GitHub', url: safeLinkUrl(page.github_url), display: page.github_url } : null,
+        page.x_url ? { label: 'X', url: safeLinkUrl(page.x_url), display: page.x_url } : null,
+        ...(page.links || []).map((link) => ({ label: link.label, url: safeLinkUrl(link.url), display: link.url })),
+      ].filter((link): link is { label: string; url: string; display: string } => Boolean(link?.url))
     : []
+  const shareUrl = publicProfileUrl(page?.slug)
 
   function copyLink(key: string, value: string) {
     navigator.clipboard
@@ -254,14 +292,14 @@ export function PublicContactPage() {
 
         <aside className="public-id-share">
           <div className="muted">Share Profile</div>
-          {page.public_url ? (
+          {shareUrl ? (
             <div className="public-id-share-row">
-              <a className="public-id-public-url" href={page.public_url}>Public page</a>
-              <div className="public-id-link-url">{page.public_url}</div>
+              <a className="public-id-public-url" href={shareUrl}>Public page</a>
+              <div className="public-id-link-url">{shareUrl}</div>
               <button
                 type="button"
                 className="public-id-copy-btn"
-                onClick={() => copyLink('public-url', page.public_url || '')}
+                onClick={() => copyLink('public-url', shareUrl)}
                 aria-label="Copy public profile link"
                 title="Copy public profile link"
               >
