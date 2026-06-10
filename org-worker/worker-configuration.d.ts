@@ -1,7 +1,11 @@
 interface Env {
   DB: D1Database;
+  SCAN_IMAGES?: R2Bucket;
   PIDP_BASE_URL?: string;
   PUBLIC_PORTAL_BASE_URL?: string;
+  ORG_BUSINESS_CARD_OCR_PROVIDER?: string;
+  ORG_BUSINESS_CARD_OCR_MODEL?: string;
+  ORG_OPENAI_API_KEY?: string;
   ORG_INGEST_TOKEN?: string;
   ADMIN_EMAILS?: string;
   ADMIN_USER_IDS?: string;

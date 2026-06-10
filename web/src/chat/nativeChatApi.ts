@@ -8,6 +8,7 @@ export type NativeChatConversation = {
   members?: Array<{
     user_id: string
     user_name?: string | null
+    avatar_url?: string | null
     role?: string
     state?: string
   }>

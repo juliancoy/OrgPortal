@@ -16,6 +16,11 @@ type ContactUserRow = {
   enabled: number;
 };
 
+type ContactPhotoRow = {
+  user_id: string;
+  photo_url: string | null;
+};
+
 type ConversationRow = {
   id: string;
   kind: string;
@@ -40,6 +45,7 @@ type MemberRow = {
   conversation_id: string;
   user_id: string;
   user_name: string | null;
+  avatar_url?: string | null;
   role: string;
   state: string;
   joined_at: string;
@@ -233,7 +239,19 @@ async function resolveTargetUser(env: Env, payload: Record<string, unknown>, cur
   return row;
 }
 
-function mapConversation(row: ConversationRow, members: MemberRow[] = []) {
+function mapMember(member: MemberRow, avatarUrls = new Map<string, string | null>()) {
+  return {
+    user_id: member.user_id,
+    user_name: member.user_name,
+    avatar_url: member.avatar_url || avatarUrls.get(member.user_id) || null,
+    role: member.role,
+    state: member.state,
+    joined_at: member.joined_at,
+    last_read_at: member.last_read_at,
+  };
+}
+
+function mapConversation(row: ConversationRow, members: MemberRow[] = [], avatarUrls = new Map<string, string | null>()) {
   return {
     id: row.id,
     kind: row.kind,
@@ -244,7 +262,7 @@ function mapConversation(row: ConversationRow, members: MemberRow[] = []) {
     created_at: row.created_at,
     updated_at: row.updated_at,
     last_message_at: row.last_message_at,
-  last_message: row.last_message_body
+    last_message: row.last_message_body
       ? {
           body: row.last_message_body,
           sender_user_id: row.last_message_sender_user_id,
@@ -253,14 +271,7 @@ function mapConversation(row: ConversationRow, members: MemberRow[] = []) {
         }
       : null,
     unread_count: row.unread_count || 0,
-    members: members.map((member) => ({
-      user_id: member.user_id,
-      user_name: member.user_name,
-      role: member.role,
-      state: member.state,
-      joined_at: member.joined_at,
-      last_read_at: member.last_read_at,
-    })),
+    members: members.map((member) => mapMember(member, avatarUrls)),
   };
 }
 
@@ -316,6 +327,37 @@ async function membersForConversation(db: D1Database, conversationId: string) {
     .bind(conversationId)
     .all<MemberRow>();
   return rows.results || [];
+}
+
+async function membersForConversations(db: D1Database, conversationIds: string[]) {
+  if (conversationIds.length === 0) return new Map<string, MemberRow[]>();
+  const placeholders = conversationIds.map(() => "?").join(", ");
+  const rows = await db
+    .prepare(`SELECT * FROM chat_conversation_members WHERE conversation_id IN (${placeholders}) ORDER BY joined_at ASC`)
+    .bind(...conversationIds)
+    .all<MemberRow>();
+  const grouped = new Map<string, MemberRow[]>();
+  for (const member of rows.results || []) {
+    const list = grouped.get(member.conversation_id) || [];
+    list.push(member);
+    grouped.set(member.conversation_id, list);
+  }
+  return grouped;
+}
+
+async function avatarUrlsForUsers(env: Env, userIds: string[]) {
+  if (!env.CONTACTS_DB || userIds.length === 0) return new Map<string, string | null>();
+  const uniqueIds = Array.from(new Set(userIds.filter(Boolean)));
+  if (uniqueIds.length === 0) return new Map<string, string | null>();
+  const placeholders = uniqueIds.map(() => "?").join(", ");
+  const rows = await env.CONTACTS_DB.prepare(
+    `SELECT user_id, photo_url FROM user_contact_pages WHERE user_id IN (${placeholders})`,
+  )
+    .bind(...uniqueIds)
+    .all<ContactPhotoRow>();
+  const avatars = new Map<string, string | null>();
+  for (const row of rows.results || []) avatars.set(row.user_id, row.photo_url || null);
+  return avatars;
 }
 
 async function broadcast(env: Env, conversationId: string, event: unknown) {
@@ -383,7 +425,20 @@ app.get("/api/network/chat/conversations", async (c) => {
     .bind(user.id, user.id)
     .all<ConversationRow>();
 
-  return c.json({ conversations: (rows.results || []).map((row) => mapConversation(row)) });
+  const conversations = rows.results || [];
+  const membersByConversation = await membersForConversations(
+    c.env.DB,
+    conversations.map((conversation) => conversation.id),
+  );
+  const allMembers = Array.from(membersByConversation.values()).flat();
+  const avatarUrls = await avatarUrlsForUsers(
+    c.env,
+    allMembers.map((member) => member.user_id),
+  );
+
+  return c.json({
+    conversations: conversations.map((row) => mapConversation(row, membersByConversation.get(row.id) || [], avatarUrls)),
+  });
 });
 
 app.post("/api/network/chat/dm", async (c) => {
@@ -432,7 +487,12 @@ app.post("/api/network/chat/dm", async (c) => {
   const row = await c.env.DB.prepare("SELECT * FROM chat_conversations WHERE id = ?")
     .bind(conversationId)
     .first<ConversationRow>();
-  return c.json({ conversation: mapConversation(row!, await membersForConversation(c.env.DB, conversationId)) }, existing ? 200 : 201);
+  const members = await membersForConversation(c.env.DB, conversationId);
+  const avatarUrls = await avatarUrlsForUsers(
+    c.env,
+    members.map((member) => member.user_id),
+  );
+  return c.json({ conversation: mapConversation(row!, members, avatarUrls) }, existing ? 200 : 201);
 });
 
 app.get("/api/network/chat/conversations/:conversationId", async (c) => {
@@ -440,7 +500,12 @@ app.get("/api/network/chat/conversations/:conversationId", async (c) => {
   const conversationId = c.req.param("conversationId");
   await requireMember(c.env.DB, conversationId, user.id);
   const row = await conversation(c.env.DB, conversationId);
-  return c.json({ conversation: mapConversation(row, await membersForConversation(c.env.DB, conversationId)) });
+  const members = await membersForConversation(c.env.DB, conversationId);
+  const avatarUrls = await avatarUrlsForUsers(
+    c.env,
+    members.map((member) => member.user_id),
+  );
+  return c.json({ conversation: mapConversation(row, members, avatarUrls) });
 });
 
 app.get("/api/network/chat/conversations/:conversationId/messages", async (c) => {
@@ -501,19 +566,20 @@ app.get("/api/network/chat/conversations/:conversationId/sync", async (c) => {
       .bind(conversationId)
       .all<MemberRow>(),
   ]);
+  const members = memberRows.results || [];
+  const avatarUrls = await avatarUrlsForUsers(
+    c.env,
+    members.map((member) => member.user_id),
+  );
 
   return c.json({
     conversation_id: conversationId,
     latest_sequence: await latestSequence(c.env.DB, conversationId),
     messages: (messageRows.results || []).map(mapMessage),
     receipts: receiptRows.results || [],
-    members: (memberRows.results || []).map((member) => ({
-      user_id: member.user_id,
-      user_name: member.user_name,
-      role: member.role,
-      state: member.state,
+    members: members.map((member) => ({
+      ...mapMember(member, avatarUrls),
       last_read_message_id: member.last_read_message_id,
-      last_read_at: member.last_read_at,
     })),
   });
 });

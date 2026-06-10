@@ -10,6 +10,7 @@ type MessageState = NativeChatMessage & {
 }
 
 type RealtimeState = 'idle' | 'connecting' | 'connected' | 'reconnecting'
+type ConversationMember = NonNullable<NativeChatConversation['members']>[number]
 
 function timestamp(value: string): string {
   return new Date(value).toLocaleString(undefined, {
@@ -20,19 +21,51 @@ function timestamp(value: string): string {
   })
 }
 
+function conversationParticipant(conversation: NativeChatConversation, myUserId?: string | null): ConversationMember | null {
+  return (
+    (conversation.members || []).find((member) => member.user_id !== myUserId) ||
+    (conversation.members || []).find((member) => member.user_id === myUserId) ||
+    null
+  )
+}
+
 function conversationLabel(conversation: NativeChatConversation, myUserId?: string | null): string {
+  if (conversation.kind !== 'dm' && conversation.title?.trim()) return conversation.title.trim()
+  const participant = conversationParticipant(conversation, myUserId)
+  if (participant?.user_name?.trim()) {
+    const label = participant.user_name.trim()
+    return participant.user_id === myUserId ? `${label} (you)` : label
+  }
+  if (conversation.kind === 'dm') return 'Conversation'
   if (conversation.title?.trim()) return conversation.title.trim()
-  const other = (conversation.members || []).find((member) => member.user_id !== myUserId)
-  if (other?.user_name?.trim()) return other.user_name.trim()
-  const me = (conversation.members || []).find((member) => member.user_id === myUserId)
-  if (me?.user_name?.trim()) return `${me.user_name.trim()} (you)`
-  if (conversation.kind === 'dm') return 'Direct message'
   return conversation.id
 }
 
 function messageAuthor(message: NativeChatMessage, myUserId?: string | null): string {
   if (myUserId && message.sender_user_id === myUserId) return 'You'
   return message.sender_name?.trim() || message.sender_user_id
+}
+
+function avatarInitial(label: string): string {
+  return label.trim().slice(0, 1).toUpperCase() || '?'
+}
+
+function conversationAvatarUrl(conversation: NativeChatConversation, myUserId?: string | null): string {
+  return conversationParticipant(conversation, myUserId)?.avatar_url?.trim() || ''
+}
+
+function conversationRecency(conversation: NativeChatConversation): number {
+  const value = conversation.last_message_at || conversation.last_message?.created_at || conversation.updated_at
+  const parsed = new Date(value || 0).getTime()
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function sortConversationsByRecency(rows: NativeChatConversation[]): NativeChatConversation[] {
+  return [...rows].sort((a, b) => conversationRecency(b) - conversationRecency(a))
+}
+
+function renderAvatar(label: string, imageUrl?: string | null) {
+  return imageUrl ? <img src={imageUrl} alt={label} /> : avatarInitial(label)
 }
 
 function uuid() {
@@ -50,10 +83,11 @@ export function NativeChatPage() {
   const [draft, setDraft] = useState('')
   const [status, setStatus] = useState('Loading chat...')
   const [error, setError] = useState<string | null>(null)
-  const [latestSequence, setLatestSequence] = useState(0)
   const latestSequenceRef = useRef(0)
   const [realtimeState, setRealtimeState] = useState<RealtimeState>('idle')
   const [isSending, setIsSending] = useState(false)
+  const [sidebarExpanded, setSidebarExpanded] = useState(false)
+  const timelineRef = useRef<HTMLDivElement | null>(null)
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
 
   const api = useMemo(
@@ -68,6 +102,10 @@ export function NativeChatPage() {
     () => conversations.find((conversation) => conversation.id === roomId) || null,
     [conversations, roomId],
   )
+  const currentUserAvatarUrl = useMemo(() => {
+    if (!user?.id) return ''
+    return selectedConversation?.members?.find((member) => member.user_id === user.id)?.avatar_url?.trim() || ''
+  }, [selectedConversation, user])
 
   const mergeMessages = useCallback((incoming: NativeChatMessage[]) => {
     setMessages((current) => {
@@ -88,8 +126,9 @@ export function NativeChatPage() {
 
   const refreshConversations = useCallback(async () => {
     const rows = await api.listConversations()
-    setConversations(rows)
-    return rows
+    const sorted = sortConversationsByRecency(rows)
+    setConversations(sorted)
+    return sorted
   }, [api])
 
   const syncConversation = useCallback(
@@ -103,7 +142,6 @@ export function NativeChatPage() {
       }
       const nextSequence = payload.latest_sequence || afterSequence
       latestSequenceRef.current = nextSequence
-      setLatestSequence(nextSequence)
       return payload
     },
     [api, mergeMessages, refreshConversations],
@@ -122,7 +160,7 @@ export function NativeChatPage() {
           if (!cancelled) {
             setConversations((current) => {
               const next = current.filter((item) => item.id !== conversation.id)
-              return [conversation, ...next]
+              return sortConversationsByRecency([conversation, ...next])
             })
             navigate(`/chat/${encodeURIComponent(conversation.id)}`, { replace: true })
           }
@@ -147,7 +185,7 @@ export function NativeChatPage() {
   useEffect(() => {
     if (!roomId) {
       setMessages([])
-      setLatestSequence(0)
+      latestSequenceRef.current = 0
       setRealtimeState('idle')
       return
     }
@@ -160,8 +198,15 @@ export function NativeChatPage() {
         const payload = await api.listMessages(activeRoomId)
         if (cancelled) return
         latestSequenceRef.current = payload.latest_sequence || 0
-        setLatestSequence(payload.latest_sequence || 0)
-        setMessages(payload.messages.map((message) => ({ ...message, delivery_state: 'confirmed' })))
+        setMessages(
+          payload.messages
+            .map((message) => ({ ...message, delivery_state: 'confirmed' }) satisfies MessageState)
+            .sort(
+              (a, b) =>
+                Number(a.sequence || Number.MAX_SAFE_INTEGER) - Number(b.sequence || Number.MAX_SAFE_INTEGER) ||
+                new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+            ),
+        )
         const last = payload.messages.at(-1)
         if (last?.id) api.markRead(activeRoomId, last.id).catch(() => {})
       } catch (err) {
@@ -212,7 +257,6 @@ export function NativeChatPage() {
           mergeMessages([event.message])
           const nextSequence = Math.max(latestSequenceRef.current, Number(event.sequence || event.message.sequence || 0))
           latestSequenceRef.current = nextSequence
-          setLatestSequence(nextSequence)
           api.markRead(activeRoomId, event.message.id).catch(() => {})
           refreshConversations().catch(() => {})
           return
@@ -286,13 +330,11 @@ export function NativeChatPage() {
           if (payload.messages.length > 0) {
             mergeMessages(payload.messages)
             latestSequenceRef.current = payload.latest_sequence || latestSequenceRef.current
-            setLatestSequence(payload.latest_sequence || latestSequenceRef.current)
             const last = payload.messages.at(-1)
             if (last?.id) api.markRead(activeRoomId, last.id).catch(() => {})
             refreshConversations().catch(() => {})
           } else {
             latestSequenceRef.current = payload.latest_sequence || latestSequenceRef.current
-            setLatestSequence(payload.latest_sequence || latestSequenceRef.current)
           }
         }
       } catch {
@@ -319,7 +361,10 @@ export function NativeChatPage() {
   }, [api, mergeMessages, refreshConversations, roomId])
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const timeline = timelineRef.current
+    if (!timeline) return
+    timeline.scrollTo({ top: timeline.scrollHeight, left: 0, behavior: 'auto' })
+    window.scrollTo({ top: window.scrollY, left: 0, behavior: 'auto' })
   }, [messages])
 
   async function sendMessage() {
@@ -345,7 +390,6 @@ export function NativeChatPage() {
       mergeMessages([confirmed])
       const nextSequence = Math.max(latestSequenceRef.current, Number(confirmed.sequence || 0))
       latestSequenceRef.current = nextSequence
-      setLatestSequence(nextSequence)
       refreshConversations().catch(() => {})
     } catch (err) {
       setMessages((current) =>
@@ -360,30 +404,44 @@ export function NativeChatPage() {
   }
 
   return (
-    <section className="portal-chat-shell native-chat-shell">
-      <aside className="portal-chat-sidebar">
+    <section className={`portal-chat-shell native-chat-shell ${sidebarExpanded ? 'sidebar-expanded' : ''}`}>
+      <aside className="portal-chat-sidebar native-chat-sidebar">
         <div className="portal-chat-sidebar-header">
           <h2>Conversations</h2>
+          <button
+            type="button"
+            className="native-chat-sidebar-toggle"
+            aria-label={sidebarExpanded ? 'Collapse conversations' : 'Expand conversations'}
+            aria-expanded={sidebarExpanded}
+            onClick={() => setSidebarExpanded((expanded) => !expanded)}
+          >
+            {sidebarExpanded ? '<' : '>'}
+          </button>
           <Link to="/chat" className="portal-chat-home-link">Reset</Link>
         </div>
         <ul className="portal-chat-room-list">
-          {conversations.map((conversation) => (
-            <li key={conversation.id}>
-              <button
-                type="button"
-                className={`portal-chat-room-btn ${conversation.id === roomId ? 'active' : ''}`}
-                onClick={() => navigate(`/chat/${encodeURIComponent(conversation.id)}`)}
-              >
-                <span className="portal-chat-room-label">
-                  <span className="portal-avatar portal-chat-room-avatar">
-                    {conversationLabel(conversation, user?.id).slice(0, 1).toUpperCase()}
+          {conversations.map((conversation) => {
+            const label = conversationLabel(conversation, user?.id)
+            const avatarUrl = conversationAvatarUrl(conversation, user?.id)
+            return (
+              <li key={conversation.id}>
+                <button
+                  type="button"
+                  className={`portal-chat-room-btn ${conversation.id === roomId ? 'active' : ''}`}
+                  title={label}
+                  onClick={() => navigate(`/chat/${encodeURIComponent(conversation.id)}`)}
+                >
+                  <span className="portal-chat-room-label">
+                    <span className="portal-avatar portal-chat-room-avatar">
+                      {renderAvatar(label, avatarUrl)}
+                    </span>
+                    <span className="native-chat-room-name">{label}</span>
                   </span>
-                  <span>{conversationLabel(conversation, user?.id)}</span>
-                </span>
-                {conversation.unread_count ? <span className="portal-chat-unread">{conversation.unread_count}</span> : null}
-              </button>
-            </li>
-          ))}
+                  {conversation.unread_count ? <span className="portal-chat-unread">{conversation.unread_count}</span> : null}
+                </button>
+              </li>
+            )
+          })}
           {conversations.length === 0 ? <li className="portal-chat-muted">No conversations yet.</li> : null}
         </ul>
       </aside>
@@ -393,30 +451,48 @@ export function NativeChatPage() {
           <>
             <header className="portal-chat-room-header">
               <div className="portal-chat-room-header-row">
-                <h1>{selectedConversation ? conversationLabel(selectedConversation, user?.id) : 'Conversation'}</h1>
-                <span className="native-chat-sync-label">Sequence {latestSequence}</span>
+                <div className="native-chat-room-title">
+                  {selectedConversation ? (
+                    <span className="portal-avatar portal-chat-room-avatar">
+                      {renderAvatar(
+                        conversationLabel(selectedConversation, user?.id),
+                        conversationAvatarUrl(selectedConversation, user?.id),
+                      )}
+                    </span>
+                  ) : null}
+                  <h1>{selectedConversation ? conversationLabel(selectedConversation, user?.id) : 'Conversation'}</h1>
+                </div>
               </div>
               {status ? <p>{status}</p> : null}
               {error ? <p className="portal-chat-error">{error}</p> : null}
             </header>
 
-            <div className="portal-chat-timeline">
-              {messages.map((message) => {
+            <div className="portal-chat-timeline" ref={timelineRef}>
+              {messages.map((message, index) => {
                 const mine = message.sender_user_id === user?.id || message.sender_user_id === 'me'
+                const previous = messages[index - 1]
+                const groupedWithPrevious =
+                  Boolean(previous) &&
+                  previous.sender_user_id === message.sender_user_id &&
+                  Math.abs(new Date(message.created_at).getTime() - new Date(previous.created_at).getTime()) < 5 * 60 * 1000
+                const authorLabel = messageAuthor(message, user?.id)
+                const avatarUrl = mine ? currentUserAvatarUrl : undefined
                 return (
-                  <article key={message.client_message_id || message.id} className={`portal-chat-message ${mine ? 'mine' : ''}`}>
-                    <div className="portal-chat-message-meta">
+                  <article
+                    key={message.client_message_id || message.id}
+                    className={`portal-chat-message ${mine ? 'mine' : ''} ${groupedWithPrevious ? 'grouped' : ''}`}
+                  >
+                    <div className="portal-chat-message-meta" aria-hidden={groupedWithPrevious}>
                       <div className="portal-chat-message-author">
                         <span className="portal-avatar portal-chat-message-avatar">
-                          {messageAuthor(message, user?.id).slice(0, 1).toUpperCase()}
+                          {renderAvatar(authorLabel, avatarUrl)}
                         </span>
-                        <strong>{messageAuthor(message, user?.id)}</strong>
+                        <strong>{authorLabel}</strong>
                       </div>
                       <span>{timestamp(message.created_at)}</span>
                     </div>
                     <p>{message.body}</p>
                     <div className="native-chat-message-footer">
-                      {message.sequence ? <span>#{message.sequence}</span> : null}
                       {message.delivery_state === 'pending' ? <span>Sending...</span> : null}
                       {message.delivery_state === 'failed' ? <span className="portal-chat-error">Failed. Retry by sending again.</span> : null}
                     </div>

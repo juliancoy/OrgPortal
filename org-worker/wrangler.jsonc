@@ -24,5 +24,11 @@
       "database_name": "org",
       "database_id": "a71a2306-3d82-44cb-a50c-d7fdffaacdc7"
     }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "SCAN_IMAGES",
+      "bucket_name": "org-scan-images"
+    }
   ]
 }
