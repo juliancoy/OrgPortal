@@ -48,6 +48,22 @@ class FakeD1 {
   };
   tickState: Row | null = null;
   tickRuns: Row[] = [];
+  businessCardSettings: Row = {
+    enabled: 1,
+    per_user_limit_per_hour: 60,
+    per_ip_limit_per_hour: 120,
+    global_limit_per_hour: 1000,
+    duplicate_hash_limit: 8,
+    duplicate_hash_window_seconds: 86400,
+    max_bytes: 6291456,
+    allowed_content_types: JSON.stringify(["image/jpeg", "image/png", "image/webp"]),
+    auto_clarification_enabled: 1,
+    auto_min_confidence: 0.75,
+    auto_min_margin: 0.2,
+    updated_at: "2026-06-07T00:00:00.000Z",
+    updated_by: "test",
+  };
+  scans: Row[] = [];
 
   prepare(sql: string) {
     return new FakeStmt(this, sql);
@@ -114,6 +130,24 @@ class FakeD1 {
     }
     if (sql.includes("FROM ubi_runtime_settings WHERE id = 1")) {
       return this.ubiSettings as T;
+    }
+    if (sql.includes("FROM business_card_settings WHERE id = 1")) {
+      return this.businessCardSettings as T;
+    }
+    if (sql.includes("count(*) AS n FROM business_card_scans")) {
+      if (sql.includes("submitted_by_user_id = ?")) {
+        return { n: this.scans.filter((row) => row.submitted_by_user_id === params[0]).length } as T;
+      }
+      if (sql.includes("submitted_ip = ?")) {
+        return { n: this.scans.filter((row) => row.submitted_ip === params[0]).length } as T;
+      }
+      if (sql.includes("image_hash = ?")) {
+        return { n: this.scans.filter((row) => row.image_hash === params[0]).length } as T;
+      }
+      return { n: this.scans.length } as T;
+    }
+    if (sql.includes("FROM business_card_scans WHERE id = ?")) {
+      return (this.scans.find((row) => row.id === params[0]) as T) || null;
     }
     if (sql.includes("SELECT last_tick_at FROM ubi_tick_state")) {
       return (this.tickState as T) || null;
@@ -184,6 +218,12 @@ class FakeD1 {
     }
     if (sql.includes("SELECT * FROM ledger_accounts")) {
       return [...this.ledgerAccounts].sort((a, b) => Number(b.balance || 0) - Number(a.balance || 0)) as T[];
+    }
+    if (sql.includes("FROM business_card_scans")) {
+      if (sql.includes("WHERE submitted_by_user_id = ?")) {
+        return this.scans.filter((row) => row.submitted_by_user_id === params[0]).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))) as T[];
+      }
+      return [...this.scans].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))) as T[];
     }
     return [];
   }
@@ -331,6 +371,56 @@ class FakeD1 {
         updated_at: params[4],
         updated_by: params[5],
       };
+    }
+    if (sql.includes("INSERT INTO business_card_settings")) {
+      this.businessCardSettings = {
+        enabled: params[0],
+        per_user_limit_per_hour: params[1],
+        per_ip_limit_per_hour: params[2],
+        global_limit_per_hour: params[3],
+        duplicate_hash_limit: params[4],
+        duplicate_hash_window_seconds: params[5],
+        max_bytes: params[6],
+        allowed_content_types: params[7],
+        auto_clarification_enabled: params[8],
+        auto_min_confidence: params[9],
+        auto_min_margin: params[10],
+        updated_at: params[11],
+        updated_by: params[12],
+      };
+    }
+    if (sql.includes("INSERT INTO business_card_scans")) {
+      this.scans.push({
+        id: params[0],
+        submitted_by_user_id: params[1],
+        submitted_by_email: params[2],
+        submitted_by_name: params[3],
+        submitted_ip: params[4],
+        scan_kind_requested: params[5],
+        scan_kind: params[6],
+        notes: params[7],
+        original_filename: params[8],
+        content_type: params[9],
+        image_size: params[10],
+        image_hash: params[11],
+        image_key: params[12],
+        extracted_name: params[13],
+        extracted_email: params[14],
+        extracted_phone: params[15],
+        extracted_company: params[16],
+        extracted_title: params[17],
+        extracted_url: params[18],
+        created_target_type: params[19],
+        created_target_id: params[20],
+        created_target_slug: params[21],
+        created_target_name: params[22],
+        created_targets: params[23],
+        clarification_required: params[24],
+        clarification_message: params[25],
+        confidence: params[26],
+        pidp_user_created: 0,
+        created_at: params[27],
+      });
     }
     return { success: true, meta: { changes: 1 } };
   }
@@ -795,6 +885,70 @@ test("calendar ingest upserts orgs and events", async () => {
   assert.equal(db.organizations[0].image_url, "https://codecollective.us/event_images/backwater.webp");
   assert.equal(db.events[0].host_org_id, db.organizations[0].id);
   assert.equal(db.events[0].image_url, "https://codecollective.us/event_images/session.webp");
+});
+
+test("business card scan submission stores history and creates organization targets", async () => {
+  const db = new FakeD1();
+  await withPidpUser({ id: "user-scan", email: "scanner@example.test", full_name: "Scanner" }, async () => {
+    const form = new FormData();
+    form.append("scan_kind", "organization");
+    form.append("notes", "Organization: Baltimore Robotics Club\nWebsite: baltimorerobotics.example\nEmail: hello@baltimorerobotics.example");
+    form.append("image", new File([new Uint8Array([1, 2, 3, 4])], "card.png", { type: "image/png" }));
+
+    const res = await app.request(
+      "https://org.example.test/api/network/scans",
+      {
+        method: "POST",
+        headers: { authorization: "Bearer scan-token" },
+        body: form,
+      },
+      env(db),
+    );
+
+    assert.equal(res.status, 201);
+    const payload = (await res.json()) as {
+      id: string;
+      created_target_type: string;
+      created_targets: Array<{ type: string; slug: string; name: string }>;
+      clarification_required: boolean;
+    };
+    assert.equal(payload.created_target_type, "organization");
+    assert.equal(payload.created_targets[0].type, "organization");
+    assert.equal(payload.created_targets[0].slug, "baltimore-robotics-club");
+    assert.equal(payload.clarification_required, false);
+    assert.equal(db.scans.length, 1);
+    assert.equal(db.organizations.length, 1);
+
+    const history = await app.request(
+      "https://org.example.test/api/network/scans?scope=mine",
+      { headers: { authorization: "Bearer scan-token" } },
+      env(db),
+    );
+    assert.equal(history.status, 200);
+    const rows = (await history.json()) as Array<{ id: string; created_target_slug: string }>;
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].created_target_slug, "baltimore-robotics-club");
+  });
+});
+
+test("business card settings can be read and updated by admins", async () => {
+  const db = new FakeD1();
+  await withPidpUser({ id: "admin-scan", email: "admin@example.test", is_sysadmin: true }, async () => {
+    const update = await app.request(
+      "https://org.example.test/api/admin/business-card/settings",
+      {
+        method: "PATCH",
+        headers: { authorization: "Bearer admin-token", "content-type": "application/json" },
+        body: JSON.stringify({ max_bytes: 2048, allowed_content_types: ["image/png"], per_user_limit_per_hour: 3 }),
+      },
+      env(db),
+    );
+    assert.equal(update.status, 200);
+    const settings = (await update.json()) as { max_bytes: number; allowed_content_types: string[]; per_user_limit_per_hour: number };
+    assert.equal(settings.max_bytes, 2048);
+    assert.deepEqual(settings.allowed_content_types, ["image/png"]);
+    assert.equal(settings.per_user_limit_per_hour, 3);
+  });
 });
 
 test("governance routes return D1 motions and engagement counts", async () => {

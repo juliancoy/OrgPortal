@@ -81,6 +81,10 @@ class FakeD1 {
   }
 
   all<T>(sql: string, params: unknown[]): T[] {
+    if (sql.includes("FROM user_contact_pages WHERE user_id IN")) {
+      const ids = new Set(params);
+      return this.contacts.filter((row) => ids.has(row.user_id)) as T[];
+    }
     if (sql.includes("FROM chat_conversation_members m")) {
       const userId = params[1];
       return this.members
@@ -103,6 +107,10 @@ class FakeD1 {
     }
     if (sql.includes("FROM chat_conversation_members WHERE conversation_id = ?")) {
       return this.members.filter((row) => row.conversation_id === params[0]) as T[];
+    }
+    if (sql.includes("FROM chat_conversation_members WHERE conversation_id IN")) {
+      const ids = new Set(params);
+      return this.members.filter((row) => ids.has(row.conversation_id)) as T[];
     }
     if (sql.includes("FROM chat_messages")) {
       const conversationId = params[0];

@@ -9,6 +9,19 @@ SELENIUM_PORT="${SELENIUM_PORT:-4444}"
 SELENIUM_URL="${SELENIUM_URL:-http://127.0.0.1:${SELENIUM_PORT}/wd/hub}"
 STARTED_CONTAINER=0
 
+print_selenium_docker_start_command() {
+  cat <<EOF
+[selenium-chat] docker start command:
+docker run -d \\
+  --name "$SELENIUM_CONTAINER_NAME" \\
+  --shm-size=2g \\
+  -e SE_NODE_MAX_SESSIONS=2 \\
+  -e SE_NODE_OVERRIDE_MAX_SESSIONS=true \\
+  -p "${SELENIUM_PORT}:4444" \\
+  "$SELENIUM_IMAGE"
+EOF
+}
+
 wait_for_selenium() {
   local status_url="http://127.0.0.1:${SELENIUM_PORT}/status"
   for _ in $(seq 1 60); do
@@ -56,6 +69,7 @@ sock.close()
 PY
 then
   echo "[selenium-chat] starting ${SELENIUM_IMAGE}"
+  print_selenium_docker_start_command
   docker rm -f "$SELENIUM_CONTAINER_NAME" >/dev/null 2>&1 || true
   docker run -d \
     --name "$SELENIUM_CONTAINER_NAME" \

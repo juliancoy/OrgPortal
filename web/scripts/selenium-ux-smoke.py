@@ -135,6 +135,53 @@ def bootstrap_token_session(driver: webdriver.Remote, base_url: str, access_toke
         return False
 
 
+def assert_mobile_user_menu_within_viewport(driver: webdriver.Remote, base_url: str, screenshot_dir: pathlib.Path) -> tuple[bool, str]:
+    driver.set_window_size(390, 844)
+    driver.get(base_url.rstrip("/") + "/chat")
+    WebDriverWait(driver, 30).until(lambda d: d.find_element(By.CSS_SELECTOR, ".portal-user-trigger"))
+    trigger = driver.find_element(By.CSS_SELECTOR, ".portal-user-trigger")
+    trigger.click()
+    menu = WebDriverWait(driver, 10).until(lambda d: d.find_element(By.CSS_SELECTOR, ".portal-user-menu"))
+    metrics = driver.execute_script(
+        """
+        const box = arguments[0].getBoundingClientRect();
+        return {
+          innerWidth: window.innerWidth,
+          innerHeight: window.innerHeight,
+          scrollWidth: document.documentElement.scrollWidth,
+          left: box.left,
+          right: box.right,
+          top: box.top,
+          bottom: box.bottom,
+          width: box.width,
+          height: box.height
+        };
+        """,
+        menu,
+    )
+    shot_path = screenshot_dir / "mobile-user-menu.png"
+    driver.save_screenshot(str(shot_path))
+    print(f"[check] mobile user menu metrics={metrics} screenshot={shot_path}")
+    left = float(metrics.get("left") or 0)
+    right = float(metrics.get("right") or 0)
+    top = float(metrics.get("top") or 0)
+    bottom = float(metrics.get("bottom") or 0)
+    width = float(metrics.get("width") or 0)
+    inner_width = float(metrics.get("innerWidth") or 0)
+    inner_height = float(metrics.get("innerHeight") or 0)
+    scroll_width = float(metrics.get("scrollWidth") or 0)
+    ok = (
+        left >= 0
+        and right <= inner_width + 1
+        and top >= 0
+        and bottom <= inner_height + 1
+        and width <= inner_width
+        and scroll_width <= inner_width + 2
+    )
+    detail = f"left={left:.1f} right={right:.1f} width={width:.1f} viewport={inner_width:.1f}x{inner_height:.1f}"
+    return ok, detail
+
+
 def run_smoke(args: argparse.Namespace) -> int:
     screenshot_dir = pathlib.Path(args.screenshot_dir).resolve()
     screenshot_dir.mkdir(parents=True, exist_ok=True)
@@ -169,6 +216,10 @@ def run_smoke(args: argparse.Namespace) -> int:
             print(f"[auth] token bootstrap failed; falling back to UI login for {args.bot_email}")
             login_via_ui(driver, args.base_url, args.bot_email, args.bot_password)
         time.sleep(1.0)
+
+        ok, detail = assert_mobile_user_menu_within_viewport(driver, args.base_url, screenshot_dir)
+        print(f"[check] mobile user menu within viewport detail='{detail}' ok={ok}")
+        checks.append(("mobile-user-menu", detail, ok))
 
         routes: list[tuple[str, list[str]]] = [
             ("/chat", ["Org Chat", "Connect Chat"]),

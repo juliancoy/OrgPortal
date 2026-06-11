@@ -100,7 +100,7 @@ function formatScanResult(scan: SubmissionResult): string {
 }
 
 export function BusinessCardIntakePage() {
-  const { token, user } = useAuth()
+  const { token } = useAuth()
   const nextUrl = window.location.href
   const [file, setFile] = useState<File | null>(null)
   const [scanKind, setScanKind] = useState<'auto' | 'person' | 'organization' | 'event'>('auto')
@@ -121,6 +121,7 @@ export function BusinessCardIntakePage() {
   const imageUrlsRef = useRef<Record<string, string>>({})
   const cameraInputRef = useRef<HTMLInputElement | null>(null)
   const galleryInputRef = useRef<HTMLInputElement | null>(null)
+  const cameraAttemptedRef = useRef(false)
   const selectedPreviewRef = useRef<string | null>(null)
   const selectedFileRef = useRef<File | null>(null)
   const [selectedPreviewUrl, setSelectedPreviewUrl] = useState<string | null>(null)
@@ -181,11 +182,7 @@ export function BusinessCardIntakePage() {
     const nextFile = event.target.files?.[0]
     if (!nextFile) return
     applySelectedFile(nextFile)
-  }
-
-  function clearSelectedFile() {
-    applySelectedFile(null)
-    resetFileInputs()
+    void submitScan(nextFile)
   }
 
   function openPicker(ref: RefObject<HTMLInputElement | null>) {
@@ -357,18 +354,12 @@ export function BusinessCardIntakePage() {
     }
   }, [token])
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+  async function submitScan(uploadFile: File) {
     setError(null)
     setResult(null)
     setSubmissionNotice(null)
     if (!token) {
       setError('You must be logged in.')
-      return
-    }
-    const uploadFile = selectedFileRef.current ?? file
-    if (!uploadFile) {
-      setError('Please choose an image file.')
       return
     }
 
@@ -395,6 +386,7 @@ export function BusinessCardIntakePage() {
       setSubmissionNotice(`Submitted ${submittedLabel}.`)
       resetFileInputs()
       setNotes('')
+      applySelectedFile(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Submission failed')
     } finally {
@@ -402,10 +394,52 @@ export function BusinessCardIntakePage() {
     }
   }
 
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const uploadFile = selectedFileRef.current ?? file
+    if (!uploadFile) {
+      setError('Please choose an image file.')
+      return
+    }
+    await submitScan(uploadFile)
+  }
+
+  useEffect(() => {
+    if (!token || cameraAttemptedRef.current) return
+    cameraAttemptedRef.current = true
+    const timer = window.setTimeout(() => {
+      cameraInputRef.current?.click()
+    }, 250)
+    return () => window.clearTimeout(timer)
+  }, [token])
+
   return (
-    <section className="panel">
-      <h1 style={{ marginTop: 0 }}>Scan Intake</h1>
-      <p className="muted">Upload an image of a person card, event flyer, or organization sheet to create records.</p>
+    <section className="panel scan-page">
+      <div className="scan-capture-bar">
+        <div>
+          <h1>Scan</h1>
+          <p className="muted">Camera opens automatically. Capture a card, flyer, or organization sheet.</p>
+        </div>
+        {token ? (
+          <div className="scan-capture-actions">
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => openPicker(cameraInputRef)}
+              disabled={isSubmitting}
+            >
+              Open Camera
+            </button>
+            <button
+              type="button"
+              onClick={() => openPicker(galleryInputRef)}
+              disabled={isSubmitting}
+            >
+              Gallery
+            </button>
+          </div>
+        ) : null}
+      </div>
       {!token ? (
         <p className="muted" style={{ marginTop: 0 }}>
           Sign in to submit cards.{' '}
@@ -415,129 +449,80 @@ export function BusinessCardIntakePage() {
         </p>
       ) : null}
 
-      <div className="scan-intake-layout">
-        <div>
-          <form onSubmit={handleSubmit}>
-            <div style={{ display: 'grid', gap: '0.75rem' }}>
-              <label>
-                Scan image
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.35rem' }}>
-                  <button
-                    type="button"
-                    className="btn-primary"
-                    onClick={() => openPicker(cameraInputRef)}
-                  >
-                    Take Photo
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => openPicker(galleryInputRef)}
-                  >
-                    Choose from Gallery
-                  </button>
-                </div>
-                <input
-                  ref={cameraInputRef}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  style={{ display: 'none' }}
-                  onChange={handleFileInputChange}
-                />
-                <input
-                  ref={galleryInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  style={{ display: 'none' }}
-                  onChange={handleFileInputChange}
-                />
-                <div className="muted" style={{ marginTop: '0.35rem' }}>
-                  {file ? `Selected: ${file.name}` : 'No image selected.'}
-                </div>
-                {selectedPreviewUrl ? (
-                  <div style={{ marginTop: '0.6rem', display: 'grid', gap: '0.35rem' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span className="muted">Image to be processed:</span>
-                      <button type="button" onClick={clearSelectedFile} disabled={isSubmitting}>
-                        Remove
-                      </button>
-                    </div>
-                    <img
-                      src={selectedPreviewUrl}
-                      alt="Selected scan preview"
-                      style={{ width: '100%', maxHeight: '260px', objectFit: 'contain', borderRadius: 8 }}
-                    />
-                  </div>
-                ) : null}
-              </label>
+      <form onSubmit={handleSubmit} className="scan-hidden-form" aria-hidden={!file}>
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          style={{ display: 'none' }}
+          onChange={handleFileInputChange}
+        />
+        <input
+          ref={galleryInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          style={{ display: 'none' }}
+          onChange={handleFileInputChange}
+        />
+        <select value={scanKind} onChange={(event) => setScanKind(event.target.value as 'auto' | 'person' | 'organization' | 'event')}>
+          <option value="auto">Auto-detect</option>
+          <option value="person">Person</option>
+          <option value="organization">Organization</option>
+          <option value="event">Event</option>
+        </select>
+        <textarea
+          value={notes}
+          onChange={(event) => setNotes(event.target.value)}
+          rows={2}
+          placeholder="Optional context"
+        />
+        <button type="submit" className="btn-primary" disabled={isSubmitting || !file}>
+          {isSubmitting ? 'Processing...' : 'Process selected image'}
+        </button>
+      </form>
 
-              <label>
-                Scan type
-                <select value={scanKind} onChange={(event) => setScanKind(event.target.value as 'auto' | 'person' | 'organization' | 'event')}>
-                  <option value="auto">Auto-detect</option>
-                  <option value="person">Person</option>
-                  <option value="organization">Organization</option>
-                  <option value="event">Event</option>
-                </select>
-              </label>
+      {error ? <p className="portal-chat-error">{error}</p> : null}
 
-              <label>
-                Notes (optional)
-                <textarea
-                  value={notes}
-                  onChange={(event) => setNotes(event.target.value)}
-                  rows={4}
-                  placeholder="Context for this contact"
-                />
-              </label>
-
-              <button type="submit" className="btn-primary" disabled={isSubmitting}>
-                {isSubmitting ? 'Submitting...' : 'Submit Scan'}
-              </button>
-            </div>
-          </form>
-
-          {error ? <p className="portal-chat-error">{error}</p> : null}
-          {submissionNotice ? (
-            <p
-              role="status"
-              style={{
-                margin: '0.75rem 0 0',
-                padding: '0.65rem 0.75rem',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 8,
-              }}
-            >
-              {submissionNotice}
-              {result?.id ? ` Scan ID: ${result.id}.` : ''}
-            </p>
-          ) : null}
-
-          {result ? (
-            <div style={{ marginTop: '1rem' }}>
-              <h2 style={{ marginBottom: '0.5rem' }}>Latest Result</h2>
+      <section className="scan-result-panel" aria-live="polite">
+        {isSubmitting ? (
+          <div className="scan-result-empty">
+            <h2>Processing scan...</h2>
+            <p className="muted">Results will appear here as soon as the image is processed.</p>
+            {selectedPreviewUrl ? (
+              <img
+                src={selectedPreviewUrl}
+                alt="Selected scan preview"
+                className="scan-result-image"
+              />
+            ) : null}
+          </div>
+        ) : result ? (
+          <div>
+              <h2>Result</h2>
               {result.clarification_required ? (
                 <p className="portal-chat-error" style={{ marginTop: 0 }}>
                   {result.clarification_message || 'We could not confidently classify this scan. Please retry and choose the type explicitly.'}
                 </p>
               ) : null}
-              <ul style={{ paddingLeft: '1.2rem' }}>
-                <li>Name: {result.extracted_name || 'n/a'}</li>
-                <li>Email: {result.extracted_email || 'n/a'}</li>
-                <li>Company: {result.extracted_company || 'n/a'}</li>
-                <li>Requested type: {result.scan_kind_requested || 'auto'}</li>
-                <li>Detected type: {result.scan_kind || 'n/a'}</li>
-                <li>Status: {result.processing_status || 'processed'}</li>
+              <dl className="scan-result-list">
+                <div><dt>Name</dt><dd>{result.extracted_name || 'n/a'}</dd></div>
+                <div><dt>Email</dt><dd>{result.extracted_email || 'n/a'}</dd></div>
+                <div><dt>Company</dt><dd>{result.extracted_company || 'n/a'}</dd></div>
+                <div><dt>Detected type</dt><dd>{result.scan_kind || 'n/a'}</dd></div>
+                <div><dt>Status</dt><dd>{result.processing_status || 'processed'}</dd></div>
                 {result.created_target_type ? (
-                  <li>
-                    Created: {result.created_target_type} {result.created_target_name ? `(${result.created_target_name})` : ''}
+                  <div>
+                    <dt>Created</dt>
+                    <dd>{result.created_target_type} {result.created_target_name ? `(${result.created_target_name})` : ''}
                     {result.created_target_slug ? ` slug=${result.created_target_slug}` : ''}
-                  </li>
+                    </dd>
+                  </div>
                 ) : null}
-                <li>PIdP user created: {result.pidp_user_created ? 'yes' : 'no'}</li>
-                <li>Email notification sent: {result.notification_email_sent ? 'yes' : 'pending/failed'}</li>
-                {result.notification_error ? <li>Notification error: {result.notification_error}</li> : null}
-              </ul>
+                <div><dt>PIdP user created</dt><dd>{result.pidp_user_created ? 'yes' : 'no'}</dd></div>
+                <div><dt>Email notification</dt><dd>{result.notification_email_sent ? 'sent' : 'pending/failed'}</dd></div>
+                {result.notification_error ? <div><dt>Notification error</dt><dd>{result.notification_error}</dd></div> : null}
+              </dl>
               {scanTargets(result).length > 0 ? (
                 <div style={{ display: 'grid', gap: '0.3rem', marginBottom: '0.5rem' }}>
                   <strong>Created Elements By Category</strong>
@@ -574,15 +559,18 @@ export function BusinessCardIntakePage() {
                   ) : null}
                 </div>
               ) : null}
-            </div>
-          ) : null}
-        </div>
+              {submissionNotice ? <p className="muted">{submissionNotice}{result?.id ? ` Scan ID: ${result.id}.` : ''}</p> : null}
+          </div>
+        ) : (
+          <div className="scan-result-empty">
+            <h2>Ready to scan</h2>
+            <p className="muted">Use the camera prompt or the Open Camera button. The processed result will replace this panel.</p>
+          </div>
+        )}
+      </section>
 
-        <aside>
-          <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Scan History</h2>
-          <p className="muted" style={{ marginTop: 0 }}>
-            Separate tables for your scans and the global feed{user?.displayName ? ` (${user.displayName})` : ''}.
-          </p>
+      <section className="scan-history-section">
+          <h2>Past Scans</h2>
           <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.65rem', flexWrap: 'wrap' }}>
             <button
               type="button"
@@ -721,8 +709,7 @@ export function BusinessCardIntakePage() {
           </div>
 
 
-        </aside>
-      </div>
+      </section>
       {modalPreviewUrl ? (
         <div
           style={{

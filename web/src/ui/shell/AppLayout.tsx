@@ -9,12 +9,13 @@ export function AppLayout() {
   const hideHeader =
     /^\/contact\/[^/]+\/?$/.test(location.pathname) ||
     (/^\/users\/[^/]+\/?$/.test(location.pathname) && !canonicalUserRoutes.has(location.pathname.replace(/\/$/, '')))
+  const isChatRoute = location.pathname.startsWith('/chat')
 
   return (
     <div className="portal-shell">
       {hideHeader ? null : <Header />}
       <main className="portal-main">
-        <div className="portal-container">
+        <div className={`portal-container ${isChatRoute ? 'portal-chat-container' : ''}`}>
           <Outlet />
         </div>
       </main>

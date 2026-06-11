@@ -41,6 +41,7 @@ Cloudflare-native replacement boundary for the org API surface currently used by
 - Scheduled UBI tick: accrues DENA into `ledger_accounts.dena_balance`, pays whole cents into `balance` on the configured two-week cadence, and records `UBI_PAYMENT` ledger transactions.
 - `POST /api/ubi/tick` and `GET /api/ubi/tick-status` for admin-only smoke tests and operations checks.
 - `POST /api/network/ingest/calendar` for the existing calendar-generated org/event payload.
+- `GET/POST /api/network/scans`, `GET /api/network/scans/:scanId/image`, and `GET/PATCH /api/admin/business-card/settings` for Cloudflare-native business card scan intake, OpenAI OCR extraction, history, image storage, and abuse limits.
 - `POST /api/network/chat/bootstrap` returns a clear unavailable response unless Matrix bootstrap is added.
 - Unsupported routes return a clear `501` response from this Worker. The Worker no longer falls back to the legacy Arkavo org backend.
 

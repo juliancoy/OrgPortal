@@ -11,6 +11,22 @@ export function resolveAndroidApkUrl() {
   return `https://codecollective.us/p/${DEFAULT_APK_NAME}`
 }
 
+export async function isAndroidApkUrlReachable(apkUrl: string, signal?: AbortSignal): Promise<boolean> {
+  const normalized = apkUrl.trim()
+  if (!normalized) return false
+
+  try {
+    const response = await fetch(normalized, {
+      method: 'HEAD',
+      cache: 'no-store',
+      signal,
+    })
+    return response.ok
+  } catch {
+    return false
+  }
+}
+
 export function isAndroidDevice() {
   if (typeof navigator === 'undefined') return false
 

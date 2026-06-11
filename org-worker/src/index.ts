@@ -102,6 +102,54 @@ type EventRow = {
   organization_name?: string | null;
 };
 
+type BusinessCardSettingsRow = {
+  enabled: number;
+  per_user_limit_per_hour: number;
+  per_ip_limit_per_hour: number;
+  global_limit_per_hour: number;
+  duplicate_hash_limit: number;
+  duplicate_hash_window_seconds: number;
+  max_bytes: number;
+  allowed_content_types: string;
+  auto_clarification_enabled: number;
+  auto_min_confidence: number;
+  auto_min_margin: number;
+  updated_at: string;
+  updated_by: string | null;
+};
+
+type BusinessCardScanRow = {
+  id: string;
+  submitted_by_user_id: string;
+  submitted_by_email: string | null;
+  submitted_by_name: string | null;
+  submitted_ip: string | null;
+  scan_kind_requested: string;
+  scan_kind: string;
+  notes: string | null;
+  original_filename: string | null;
+  content_type: string | null;
+  image_size: number;
+  image_hash: string;
+  image_key: string | null;
+  extracted_name: string | null;
+  extracted_email: string | null;
+  extracted_phone: string | null;
+  extracted_company: string | null;
+  extracted_title: string | null;
+  extracted_url: string | null;
+  created_target_type: string | null;
+  created_target_id: string | null;
+  created_target_slug: string | null;
+  created_target_name: string | null;
+  created_targets: string;
+  clarification_required: number;
+  clarification_message: string | null;
+  confidence: number;
+  pidp_user_created: number;
+  created_at: string;
+};
+
 type GovernanceMotionRow = {
   id: string;
   type: string;
@@ -754,6 +802,299 @@ function mapEvent(env: Env, request: Request, row: EventRow) {
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
+}
+
+const DEFAULT_BUSINESS_CARD_SETTINGS = {
+  enabled: true,
+  per_user_limit_per_hour: 60,
+  per_ip_limit_per_hour: 120,
+  global_limit_per_hour: 1000,
+  duplicate_hash_limit: 8,
+  duplicate_hash_window_seconds: 86400,
+  max_bytes: 6 * 1024 * 1024,
+  allowed_content_types: ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"],
+  auto_clarification_enabled: true,
+  auto_min_confidence: 0.75,
+  auto_min_margin: 0.2,
+};
+
+function parseJsonStringArray(value: string | null | undefined, fallback: string[] = []) {
+  if (!value) return fallback;
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? parsed.map((item) => String(item || "").trim()).filter(Boolean) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function mapBusinessCardSettings(row: BusinessCardSettingsRow | null) {
+  return {
+    ...DEFAULT_BUSINESS_CARD_SETTINGS,
+    enabled: row ? Boolean(row.enabled) : DEFAULT_BUSINESS_CARD_SETTINGS.enabled,
+    per_user_limit_per_hour: Number(row?.per_user_limit_per_hour || DEFAULT_BUSINESS_CARD_SETTINGS.per_user_limit_per_hour),
+    per_ip_limit_per_hour: Number(row?.per_ip_limit_per_hour || DEFAULT_BUSINESS_CARD_SETTINGS.per_ip_limit_per_hour),
+    global_limit_per_hour: Number(row?.global_limit_per_hour || DEFAULT_BUSINESS_CARD_SETTINGS.global_limit_per_hour),
+    duplicate_hash_limit: Number(row?.duplicate_hash_limit || DEFAULT_BUSINESS_CARD_SETTINGS.duplicate_hash_limit),
+    duplicate_hash_window_seconds: Number(row?.duplicate_hash_window_seconds || DEFAULT_BUSINESS_CARD_SETTINGS.duplicate_hash_window_seconds),
+    max_bytes: Number(row?.max_bytes || DEFAULT_BUSINESS_CARD_SETTINGS.max_bytes),
+    allowed_content_types: parseJsonStringArray(row?.allowed_content_types, DEFAULT_BUSINESS_CARD_SETTINGS.allowed_content_types),
+    auto_clarification_enabled: row ? Boolean(row.auto_clarification_enabled) : DEFAULT_BUSINESS_CARD_SETTINGS.auto_clarification_enabled,
+    auto_min_confidence: Number(row?.auto_min_confidence ?? DEFAULT_BUSINESS_CARD_SETTINGS.auto_min_confidence),
+    auto_min_margin: Number(row?.auto_min_margin ?? DEFAULT_BUSINESS_CARD_SETTINGS.auto_min_margin),
+    updated_at: row?.updated_at || nowIso(),
+    updated_by: row?.updated_by || null,
+  };
+}
+
+async function businessCardSettings(db: D1Database) {
+  const row = await db.prepare("SELECT * FROM business_card_settings WHERE id = 1").first<BusinessCardSettingsRow>();
+  return mapBusinessCardSettings(row);
+}
+
+function mapBusinessCardScan(row: BusinessCardScanRow) {
+  const createdTargets = (() => {
+    try {
+      const parsed = JSON.parse(row.created_targets || "[]") as unknown;
+      return Array.isArray(parsed) ? parsed.filter((item) => item && typeof item === "object") : [];
+    } catch {
+      return [];
+    }
+  })();
+  return {
+    id: row.id,
+    submitted_by_user_id: row.submitted_by_user_id,
+    submitted_by_email: row.submitted_by_email,
+    submitted_by_name: row.submitted_by_name,
+    scan_kind_requested: row.scan_kind_requested,
+    scan_kind: row.scan_kind,
+    notes: row.notes,
+    original_filename: row.original_filename,
+    content_type: row.content_type,
+    image_size: Number(row.image_size || 0),
+    extracted_name: row.extracted_name,
+    extracted_email: row.extracted_email,
+    extracted_phone: row.extracted_phone,
+    extracted_company: row.extracted_company,
+    extracted_title: row.extracted_title,
+    extracted_url: row.extracted_url,
+    created_target_type: row.created_target_type,
+    created_target_id: row.created_target_id,
+    created_target_slug: row.created_target_slug,
+    created_target_name: row.created_target_name,
+    created_targets: createdTargets,
+    clarification_required: Boolean(row.clarification_required),
+    clarification_message: row.clarification_message,
+    confidence: Number(row.confidence || 0),
+    pidp_user_created: Boolean(row.pidp_user_created),
+    created_at: row.created_at,
+  };
+}
+
+function labeledValue(text: string, labels: string[]) {
+  const alternates = labels.map((label) => label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+  const match = new RegExp(`(?:^|\\n)\\s*(?:${alternates})\\s*[:\\-]\\s*([^\\n]+)`, "i").exec(text);
+  return match?.[1]?.trim() || null;
+}
+
+function firstUsefulLine(text: string) {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find((line) => line.length > 2 && !/@/.test(line) && !/^https?:\/\//i.test(line)) || null;
+}
+
+function inferScanKind(requested: string, text: string) {
+  if (["person", "organization", "event"].includes(requested)) return requested;
+  if (/\b(event|meetup|meeting|conference|workshop|starts?|date|time|venue|location)\s*[:\-]/i.test(text)) return "event";
+  if (/\b(company|organization|org|nonprofit|business)\s*[:\-]/i.test(text)) return "organization";
+  return "person";
+}
+
+function extractScanFields(requestedKind: string, notes: string, filename: string) {
+  const text = `${notes}\n${filename}`.trim();
+  const email = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i.exec(text)?.[0] || null;
+  const url = /(https?:\/\/[^\s,;]+|(?:www\.)[^\s,;]+|[a-z0-9-]+\.[a-z]{2,}(?:\/[^\s,;]*)?)/i.exec(text)?.[0] || null;
+  const phone = /(?:\+?1[\s.-]?)?(?:\(?\d{3}\)?[\s.-]?)\d{3}[\s.-]?\d{4}\b/.exec(text)?.[0] || null;
+  const scanKind = inferScanKind(requestedKind, text);
+  const extractedName = labeledValue(text, ["name", "person", "contact"]) || (scanKind === "person" ? firstUsefulLine(notes) : null);
+  const extractedCompany = labeledValue(text, ["company", "organization", "org", "business", "nonprofit"]) || (scanKind === "organization" ? firstUsefulLine(notes) : null);
+  const extractedTitle = labeledValue(text, ["event", "title", "role", "job title"]) || (scanKind === "event" ? firstUsefulLine(notes) : null);
+  const location = labeledValue(text, ["location", "venue", "address"]);
+  const startsAt = labeledValue(text, ["starts_at", "start", "date", "time"]);
+  const description = labeledValue(text, ["description", "desc", "notes"]) || notes || null;
+  const confidence = Math.min(
+    0.95,
+    0.25 +
+      (email ? 0.2 : 0) +
+      (url ? 0.15 : 0) +
+      (phone ? 0.1 : 0) +
+      (extractedName || extractedCompany || extractedTitle ? 0.25 : 0) +
+      (notes ? 0.1 : 0),
+  );
+  return {
+    scanKind,
+    extractedName,
+    extractedCompany,
+    extractedTitle,
+    email,
+    phone,
+    url: url ? cleanUrl(url) : null,
+    location,
+    startsAt,
+    description,
+    confidence,
+  };
+}
+
+async function hexSha256(bytes: ArrayBuffer) {
+  const hash = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(hash)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function arrayBufferToBase64(bytes: ArrayBuffer) {
+  const view = new Uint8Array(bytes);
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let offset = 0; offset < view.length; offset += chunkSize) {
+    binary += String.fromCharCode(...view.slice(offset, offset + chunkSize));
+  }
+  return btoa(binary);
+}
+
+function coerceOcrString(value: unknown, maxLength = 2000) {
+  const text = String(value || "").trim();
+  return text ? text.slice(0, maxLength) : null;
+}
+
+function normalizeOcrKind(value: unknown, fallback: string) {
+  const kind = String(value || "").trim().toLowerCase();
+  return ["person", "organization", "event"].includes(kind) ? kind : fallback;
+}
+
+function extractResponseText(payload: unknown) {
+  const record = payload as Record<string, unknown>;
+  if (typeof record.output_text === "string") return record.output_text;
+  const output = Array.isArray(record.output) ? record.output : [];
+  const parts: string[] = [];
+  for (const item of output) {
+    const content = Array.isArray((item as Record<string, unknown>)?.content) ? (item as Record<string, unknown>).content as unknown[] : [];
+    for (const part of content) {
+      const p = part as Record<string, unknown>;
+      if (typeof p.text === "string") parts.push(p.text);
+      else if (typeof p.output_text === "string") parts.push(p.output_text);
+    }
+  }
+  return parts.join("\n").trim();
+}
+
+function parseOcrJson(text: string) {
+  const cleaned = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
+  try {
+    return JSON.parse(cleaned) as Record<string, unknown>;
+  } catch {
+    const match = /\{[\s\S]*\}/.exec(cleaned);
+    if (!match) return null;
+    try {
+      return JSON.parse(match[0]) as Record<string, unknown>;
+    } catch {
+      return null;
+    }
+  }
+}
+
+async function extractScanFieldsWithOcr(env: Env, requestedKind: string, notes: string, filename: string, contentType: string, imageBytes: ArrayBuffer) {
+  const provider = String(env.ORG_BUSINESS_CARD_OCR_PROVIDER || "").trim().toLowerCase();
+  const apiKey = String(env.ORG_OPENAI_API_KEY || "").trim();
+  if (provider !== "openai" || !apiKey) {
+    return { ...extractScanFields(requestedKind, notes, filename), ocrUsed: false, ocrError: null as string | null };
+  }
+
+  const fallback = extractScanFields(requestedKind, notes, filename);
+  const model = String(env.ORG_BUSINESS_CARD_OCR_MODEL || "gpt-5.5-mini").trim();
+  const prompt = [
+    "Extract structured data from this business card, flyer, event listing, or organization scan.",
+    "Return only JSON with keys: scan_kind, name, email, phone, company, title, website, location, starts_at, description, confidence.",
+    "scan_kind must be one of person, organization, event.",
+    "Use null for missing fields. confidence must be 0 to 1.",
+    `Requested kind: ${requestedKind}. Filename: ${filename || "unknown"}.`,
+    notes ? `Submitter notes:\n${notes}` : "No submitter notes.",
+  ].join("\n");
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${apiKey}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        input: [
+          {
+            role: "user",
+            content: [
+              { type: "input_text", text: prompt },
+              { type: "input_image", image_url: `data:${contentType};base64,${arrayBufferToBase64(imageBytes)}` },
+            ],
+          },
+        ],
+        max_output_tokens: 800,
+      }),
+    });
+    if (!response.ok) {
+      return { ...fallback, ocrUsed: true, ocrError: `OpenAI OCR failed (${response.status})` };
+    }
+    const payload = await response.json();
+    const parsed = parseOcrJson(extractResponseText(payload));
+    if (!parsed) {
+      return { ...fallback, ocrUsed: true, ocrError: "OpenAI OCR returned unparseable JSON" };
+    }
+    const scanKind = normalizeOcrKind(parsed.scan_kind, fallback.scanKind);
+    const confidence = Math.max(0, Math.min(1, Number(parsed.confidence ?? fallback.confidence) || fallback.confidence));
+    return {
+      scanKind,
+      extractedName: coerceOcrString(parsed.name, 255) || fallback.extractedName,
+      extractedCompany: coerceOcrString(parsed.company, 255) || fallback.extractedCompany,
+      extractedTitle: coerceOcrString(parsed.title, 500) || fallback.extractedTitle,
+      email: coerceOcrString(parsed.email, 320) || fallback.email,
+      phone: coerceOcrString(parsed.phone, 80) || fallback.phone,
+      url: cleanUrl(parsed.website) || fallback.url,
+      location: coerceOcrString(parsed.location, 1000) || fallback.location,
+      startsAt: coerceOcrString(parsed.starts_at, 120) || fallback.startsAt,
+      description: coerceOcrString(parsed.description, 5000) || fallback.description,
+      confidence,
+      ocrUsed: true,
+      ocrError: null as string | null,
+    };
+  } catch (error) {
+    return { ...fallback, ocrUsed: true, ocrError: error instanceof Error ? error.message : "OpenAI OCR failed" };
+  }
+}
+
+function clientIp(request: Request) {
+  return request.headers.get("cf-connecting-ip") || request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+}
+
+async function countRecentScans(db: D1Database, where: string, binds: unknown[]) {
+  const row = await db.prepare(`SELECT count(*) AS n FROM business_card_scans WHERE ${where}`).bind(...binds).first<{ n: number }>();
+  return Number(row?.n || 0);
+}
+
+function scanTarget(type: string, id: string | null, slug: string | null, name: string | null) {
+  return {
+    type,
+    id,
+    slug,
+    name,
+    url: type === "organization" && slug ? `/orgs/${encodeURIComponent(slug)}` : type === "event" && slug ? `/events/${encodeURIComponent(slug)}` : null,
+  };
+}
+
+function normalizeScanDate(value: string | null) {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
 }
 
 function stringField(record: Record<string, unknown>, key: string, maxLength = 2000): string | null {
@@ -1740,6 +2081,72 @@ app.get("/api/network/audit-events", async (c) => {
   return c.json([]);
 });
 
+app.get("/api/admin/business-card/settings", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  if (!adminUser(user, c.env)) fail(403, "Admin access required");
+  return c.json(await businessCardSettings(c.env.DB));
+});
+
+app.patch("/api/admin/business-card/settings", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  if (!adminUser(user, c.env)) fail(403, "Admin access required");
+  const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  const current = await businessCardSettings(c.env.DB);
+  const allowedContentTypes = Array.isArray(payload.allowed_content_types)
+    ? payload.allowed_content_types.map((item) => String(item || "").trim()).filter(Boolean)
+    : current.allowed_content_types;
+  if (!allowedContentTypes.length) fail(400, "At least one allowed content type is required");
+  const numberValue = (key: string, fallback: number, min: number, max = Number.MAX_SAFE_INTEGER) => {
+    const value = payload[key] === undefined ? fallback : Number(payload[key]);
+    if (!Number.isFinite(value) || value < min || value > max) fail(400, `Invalid value for ${key}`);
+    return Math.trunc(value);
+  };
+  const decimalValue = (key: string, fallback: number) => {
+    const value = payload[key] === undefined ? fallback : Number(payload[key]);
+    if (!Number.isFinite(value) || value < 0 || value > 1) fail(400, `Invalid value for ${key}`);
+    return value;
+  };
+  const updatedAt = nowIso();
+  await c.env.DB.prepare(
+    `INSERT INTO business_card_settings
+      (id, enabled, per_user_limit_per_hour, per_ip_limit_per_hour, global_limit_per_hour,
+       duplicate_hash_limit, duplicate_hash_window_seconds, max_bytes, allowed_content_types,
+       auto_clarification_enabled, auto_min_confidence, auto_min_margin, updated_at, updated_by)
+     VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       enabled = excluded.enabled,
+       per_user_limit_per_hour = excluded.per_user_limit_per_hour,
+       per_ip_limit_per_hour = excluded.per_ip_limit_per_hour,
+       global_limit_per_hour = excluded.global_limit_per_hour,
+       duplicate_hash_limit = excluded.duplicate_hash_limit,
+       duplicate_hash_window_seconds = excluded.duplicate_hash_window_seconds,
+       max_bytes = excluded.max_bytes,
+       allowed_content_types = excluded.allowed_content_types,
+       auto_clarification_enabled = excluded.auto_clarification_enabled,
+       auto_min_confidence = excluded.auto_min_confidence,
+       auto_min_margin = excluded.auto_min_margin,
+       updated_at = excluded.updated_at,
+       updated_by = excluded.updated_by`,
+  )
+    .bind(
+      payload.enabled === undefined ? (current.enabled ? 1 : 0) : payload.enabled ? 1 : 0,
+      numberValue("per_user_limit_per_hour", current.per_user_limit_per_hour, 1),
+      numberValue("per_ip_limit_per_hour", current.per_ip_limit_per_hour, 1),
+      numberValue("global_limit_per_hour", current.global_limit_per_hour, 1),
+      numberValue("duplicate_hash_limit", current.duplicate_hash_limit, 1),
+      numberValue("duplicate_hash_window_seconds", current.duplicate_hash_window_seconds, 60),
+      numberValue("max_bytes", current.max_bytes, 1024),
+      JSON.stringify(allowedContentTypes),
+      payload.auto_clarification_enabled === undefined ? (current.auto_clarification_enabled ? 1 : 0) : payload.auto_clarification_enabled ? 1 : 0,
+      decimalValue("auto_min_confidence", current.auto_min_confidence),
+      decimalValue("auto_min_margin", current.auto_min_margin),
+      updatedAt,
+      user.email || user.id,
+    )
+    .run();
+  return c.json(await businessCardSettings(c.env.DB));
+});
+
 app.get("/api/network/events", async (c) => {
   await currentUser(c.env, c.req.raw);
   const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "300", 10) || 300, 500));
@@ -1783,16 +2190,168 @@ app.post("/api/network/events/:eventId/unclaim", async (c) => {
 app.get("/api/network/events/:eventId/attendance", async (c) => c.json({ event_id: c.req.param("eventId"), attendees: [], count: 0 }));
 
 app.get("/api/network/scans", async (c) => {
-  await currentUser(c.env, c.req.raw);
-  return c.json([]);
+  const user = await currentUser(c.env, c.req.raw);
+  const scope = (c.req.query("scope") || "mine").toLowerCase();
+  const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "100", 10) || 100, 500));
+  const isPublic = scope === "public";
+  const rows = isPublic
+    ? await c.env.DB.prepare("SELECT * FROM business_card_scans ORDER BY created_at DESC LIMIT ?").bind(limit).all<BusinessCardScanRow>()
+    : await c.env.DB.prepare("SELECT * FROM business_card_scans WHERE submitted_by_user_id = ? ORDER BY created_at DESC LIMIT ?")
+        .bind(user.id, limit)
+        .all<BusinessCardScanRow>();
+  return c.json((rows.results || []).map(mapBusinessCardScan));
 });
 app.post("/api/network/scans", async (c) => {
-  await currentUser(c.env, c.req.raw);
-  return c.json({ detail: "Business card scanning is not implemented in the Cloudflare org worker yet" }, 501);
+  const user = await currentUser(c.env, c.req.raw);
+  const settings = await businessCardSettings(c.env.DB);
+  if (!settings.enabled) fail(503, "Business card scanning is disabled");
+
+  const formData = await c.req.raw.formData().catch(() => null);
+  if (!formData) fail(400, "multipart form data is required");
+  const image = formData.get("image");
+  if (!(image instanceof File)) fail(400, "image is required");
+  const notes = String(formData.get("notes") || "").trim().slice(0, 10000);
+  const requestedKind = String(formData.get("scan_kind") || "auto").trim().toLowerCase();
+  const scanKindRequested = ["auto", "person", "organization", "event"].includes(requestedKind) ? requestedKind : "auto";
+  const contentType = image.type || "application/octet-stream";
+  if (!settings.allowed_content_types.includes(contentType)) fail(415, `Unsupported image type: ${contentType}`);
+  if (image.size > settings.max_bytes) fail(413, `Image exceeds ${settings.max_bytes} byte limit`);
+
+  const ip = clientIp(c.req.raw);
+  const hourAgo = isoFromMillis(Date.now() - 60 * 60 * 1000);
+  const userCount = await countRecentScans(c.env.DB, "submitted_by_user_id = ? AND created_at >= ?", [user.id, hourAgo]);
+  if (userCount >= settings.per_user_limit_per_hour) fail(429, "Per-user scan limit reached");
+  const ipCount = await countRecentScans(c.env.DB, "submitted_ip = ? AND created_at >= ?", [ip, hourAgo]);
+  if (ipCount >= settings.per_ip_limit_per_hour) fail(429, "Per-IP scan limit reached");
+  const globalCount = await countRecentScans(c.env.DB, "created_at >= ?", [hourAgo]);
+  if (globalCount >= settings.global_limit_per_hour) fail(429, "Global scan limit reached");
+
+  const imageBytes = await image.arrayBuffer();
+  const imageHash = await hexSha256(imageBytes);
+  const duplicateWindow = isoFromMillis(Date.now() - settings.duplicate_hash_window_seconds * 1000);
+  const duplicateCount = await countRecentScans(c.env.DB, "image_hash = ? AND created_at >= ?", [imageHash, duplicateWindow]);
+  if (duplicateCount >= settings.duplicate_hash_limit) fail(429, "Duplicate scan limit reached");
+
+  const scanId = crypto.randomUUID();
+  const createdAt = nowIso();
+  const extension = (image.name.split(".").pop() || "bin").replace(/[^a-z0-9]/gi, "").toLowerCase() || "bin";
+  const imageKey = c.env.SCAN_IMAGES ? `business-card-scans/${scanId}.${extension}` : null;
+  if (imageKey && c.env.SCAN_IMAGES) {
+    await c.env.SCAN_IMAGES.put(imageKey, imageBytes, {
+      httpMetadata: {
+        contentType,
+      },
+      customMetadata: {
+        submitted_by_user_id: user.id,
+        image_hash: imageHash,
+      },
+    });
+  }
+
+  const extracted = await extractScanFieldsWithOcr(c.env, scanKindRequested, notes, image.name || "", contentType, imageBytes);
+  const createdTargets: ReturnType<typeof scanTarget>[] = [];
+  let createdTargetType: string | null = null;
+  let createdTargetId: string | null = null;
+  let createdTargetSlug: string | null = null;
+  let createdTargetName: string | null = null;
+
+  if (extracted.scanKind === "organization" && extracted.extractedCompany) {
+    const org = await upsertOrganization(c.env.DB, {
+      name: extracted.extractedCompany,
+      description: extracted.description,
+      source_url: extracted.url,
+      tags: ["Scanned"],
+    });
+    if (org) {
+      createdTargets.push(scanTarget("organization", org.id, org.slug, org.name));
+      createdTargetType = "organization";
+      createdTargetId = org.id;
+      createdTargetSlug = org.slug;
+      createdTargetName = org.name;
+    }
+  } else if (extracted.scanKind === "event" && extracted.extractedTitle) {
+    const event = await upsertEvent(c.env.DB, {
+      ingest_key: `scan:${scanId}`,
+      title: extracted.extractedTitle,
+      description: extracted.description,
+      starts_at: normalizeScanDate(extracted.startsAt),
+      location: extracted.location,
+      source_url: extracted.url,
+      tags: ["Scanned"],
+    });
+    if (event) {
+      createdTargets.push(scanTarget("event", event.id, event.slug, event.title));
+      createdTargetType = "event";
+      createdTargetId = event.id;
+      createdTargetSlug = event.slug;
+      createdTargetName = event.title;
+    }
+  }
+
+  const lowConfidence = Number(extracted.confidence || 0) < Number(settings.auto_min_confidence || 0);
+  const clarificationRequired = settings.auto_clarification_enabled && (createdTargets.length === 0 || lowConfidence || Boolean(extracted.ocrError));
+  const clarificationMessage = clarificationRequired
+    ? extracted.ocrError
+      ? `Scan was saved, but OCR could not complete: ${extracted.ocrError}. Add notes like Name, Company, Event, Email, Website, Date, or Location, then rerun.`
+      : "Scan was saved, but extraction needs review. Add notes like Name, Company, Event, Email, Website, Date, or Location, then rerun."
+    : null;
+
+  await c.env.DB.prepare(
+    `INSERT INTO business_card_scans
+      (id, submitted_by_user_id, submitted_by_email, submitted_by_name, submitted_ip,
+       scan_kind_requested, scan_kind, notes, original_filename, content_type, image_size, image_hash, image_key,
+       extracted_name, extracted_email, extracted_phone, extracted_company, extracted_title, extracted_url,
+       created_target_type, created_target_id, created_target_slug, created_target_name, created_targets,
+       clarification_required, clarification_message, confidence, pidp_user_created, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)`,
+  )
+    .bind(
+      scanId,
+      user.id,
+      user.email || null,
+      userName(user),
+      ip,
+      scanKindRequested,
+      extracted.scanKind,
+      notes || null,
+      image.name || null,
+      contentType,
+      image.size,
+      imageHash,
+      imageKey,
+      extracted.extractedName,
+      extracted.email,
+      extracted.phone,
+      extracted.extractedCompany,
+      extracted.extractedTitle,
+      extracted.url,
+      createdTargetType,
+      createdTargetId,
+      createdTargetSlug,
+      createdTargetName,
+      JSON.stringify(createdTargets),
+      clarificationRequired ? 1 : 0,
+      clarificationMessage,
+      extracted.confidence,
+      createdAt,
+    )
+    .run();
+
+  const row = await c.env.DB.prepare("SELECT * FROM business_card_scans WHERE id = ?").bind(scanId).first<BusinessCardScanRow>();
+  return c.json(mapBusinessCardScan(row!), 201);
 });
 app.get("/api/network/scans/:scanId/image", async (c) => {
-  await currentUser(c.env, c.req.raw);
-  return c.json({ detail: "Scan image storage is not implemented in the Cloudflare org worker yet" }, 501);
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await c.env.DB.prepare("SELECT * FROM business_card_scans WHERE id = ?").bind(c.req.param("scanId")).first<BusinessCardScanRow>();
+  if (!row) fail(404, "Scan not found");
+  if (row.submitted_by_user_id !== user.id && !adminUser(user, c.env)) fail(403, "Access denied");
+  if (!row.image_key || !c.env.SCAN_IMAGES) fail(404, "Scan image is not available");
+  const object = await c.env.SCAN_IMAGES.get(row.image_key);
+  if (!object) fail(404, "Scan image is not available");
+  const headers = new Headers();
+  object.writeHttpMetadata(headers);
+  headers.set("cache-control", "private, max-age=300");
+  return new Response(object.body, { status: 200, headers });
 });
 
 app.get("/api/network/chat/rooms", async (c) => {
