@@ -30,6 +30,20 @@ function timestamp(value: string): string {
   })
 }
 
+function fullTimestamp(value?: string | null): string {
+  if (!value) return 'None'
+  return new Date(value).toLocaleString(undefined, {
+    weekday: 'short',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    timeZoneName: 'short',
+  })
+}
+
 function conversationParticipant(conversation: NativeChatConversation, myUserId?: string | null): ConversationMember | null {
   return (
     (conversation.members || []).find((member) => member.user_id !== myUserId) ||
@@ -571,10 +585,14 @@ export function NativeChatPage() {
                 const authorLabel = messageAuthor(message, user?.id)
                 const senderMember = conversationMemberByUserId(selectedConversation, message.sender_user_id)
                 const avatarUrl = mine ? currentUserAvatarUrl : senderMember?.avatar_url?.trim() || ''
+                const editHistoryLabel = message.edited_at
+                  ? `Edited ${fullTimestamp(message.edited_at)}. Earlier revisions are not available from the chat API.`
+                  : 'No edits recorded.'
                 return (
                   <article
                     key={message.client_message_id || message.id}
                     className={`portal-chat-message ${mine ? 'mine' : ''} ${groupedWithPrevious ? 'grouped' : ''}`}
+                    tabIndex={0}
                   >
                     {!mine ? (
                       <span className="portal-avatar portal-chat-message-side-avatar">
@@ -591,6 +609,40 @@ export function NativeChatPage() {
                       <span>{timestamp(message.created_at)}</span>
                     </div>
                     <p>{message.body}</p>
+                    <dl className="portal-chat-message-inspector" aria-label="Message information">
+                      <div>
+                        <dt>Person</dt>
+                        <dd>{authorLabel}</dd>
+                      </div>
+                      <div>
+                        <dt>User ID</dt>
+                        <dd>{message.sender_user_id}</dd>
+                      </div>
+                      <div>
+                        <dt>Time</dt>
+                        <dd>{fullTimestamp(message.created_at)}</dd>
+                      </div>
+                      <div>
+                        <dt>Edit history</dt>
+                        <dd>{editHistoryLabel}</dd>
+                      </div>
+                      <div>
+                        <dt>Message ID</dt>
+                        <dd>{message.id}</dd>
+                      </div>
+                      <div>
+                        <dt>Sequence</dt>
+                        <dd>{message.sequence ?? 'Pending'}</dd>
+                      </div>
+                      <div>
+                        <dt>Type</dt>
+                        <dd>{message.message_type || 'text'}</dd>
+                      </div>
+                      <div>
+                        <dt>Delivery</dt>
+                        <dd>{message.delivery_state || 'confirmed'}</dd>
+                      </div>
+                    </dl>
                     <div className="native-chat-message-footer">
                       {message.delivery_state === 'pending' ? <span>Sending...</span> : null}
                       {message.delivery_state === 'failed' ? <span className="portal-chat-error">Failed. Retry by sending again.</span> : null}
