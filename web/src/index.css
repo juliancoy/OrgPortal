@@ -3034,7 +3034,12 @@ textarea:focus {
   min-width: 0;
   position: relative;
   justify-self: start;
-  overflow: hidden;
+  overflow: visible;
+}
+
+.portal-chat-message:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .portal-chat-message.mine {
@@ -3109,6 +3114,53 @@ textarea:focus {
   overflow-wrap: anywhere;
   word-break: normal;
   max-width: 100%;
+}
+
+.portal-chat-message-inspector {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 8px);
+  z-index: 20;
+  width: min(360px, calc(100vw - 32px));
+  display: none;
+  gap: 6px;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-solid);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-lg);
+  font-size: 0.76rem;
+}
+
+.portal-chat-message.mine .portal-chat-message-inspector {
+  right: 0;
+  left: auto;
+}
+
+.portal-chat-message:hover .portal-chat-message-inspector,
+.portal-chat-message:focus-within .portal-chat-message-inspector,
+.portal-chat-message:focus .portal-chat-message-inspector {
+  display: grid;
+}
+
+.portal-chat-message-inspector div {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 8px;
+  min-width: 0;
+}
+
+.portal-chat-message-inspector dt {
+  color: var(--text-muted);
+  font-weight: 800;
+}
+
+.portal-chat-message-inspector dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .native-chat-message-footer:empty {
