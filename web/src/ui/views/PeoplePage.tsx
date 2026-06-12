@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
-import { pidpAppLoginUrl } from '../../config/pidp'
 import { setSeoMeta } from '../utils/seo'
 
 const ORG_API_BASE = '/api/org'
@@ -14,7 +13,6 @@ function orgUrl(path: string) {
 type NetworkUser = {
   user_id: string
   user_name: string
-  email: string
   created_at: string
   contact_slug?: string | null
   contact_enabled: boolean
@@ -117,8 +115,8 @@ export function PeoplePage() {
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search by name or email"
-          aria-label="Search people by name or email"
+          placeholder="Search by name"
+          aria-label="Search people by name"
         />
       </label>
 
@@ -183,31 +181,20 @@ export function PeoplePage() {
                     person.user_name
                   )}
                 </h2>
-                <p className="muted" style={{ margin: 0 }}>{person.email}</p>
                 {person.headline ? <p style={{ margin: 0 }}>{person.headline}</p> : null}
                 <p className="muted" style={{ margin: 0 }}>
                   Joined {new Date(person.created_at).toLocaleDateString()}
                 </p>
-                {person.contact_slug ? (
-                  token ? (
-                    <Link
-                      to={`/chat?start=dm&user=${encodeURIComponent(person.contact_slug)}`}
-                      className="btn-primary"
-                      style={{ textDecoration: 'none', width: 'fit-content' }}
-                    >
-                      Message
-                    </Link>
-                  ) : (
-                    <a
-                      href={pidpAppLoginUrl(`/chat?start=dm&user=${encodeURIComponent(person.contact_slug)}`)}
-                      className="btn-primary"
-                      style={{ textDecoration: 'none', width: 'fit-content' }}
-                    >
-                      Message
-                    </a>
-                  )
+                {profilePath ? (
+                  <Link
+                    to={profilePath}
+                    className="btn-primary"
+                    style={{ textDecoration: 'none', width: 'fit-content' }}
+                  >
+                    View public info
+                  </Link>
                 ) : (
-                  <span className="muted">No public chat link yet</span>
+                  <span className="muted">No public profile yet</span>
                 )}
                 {person.connection_status === 'self' ? null : person.connection_status === 'connected' ? (
                   <span className="muted">Connected</span>
