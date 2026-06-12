@@ -2739,7 +2739,7 @@ textarea:focus {
 }
 
 .native-chat-sidebar {
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
   padding: 8px;
   overflow: hidden;
 }
@@ -2778,6 +2778,8 @@ textarea:focus {
   font: inherit;
   font-weight: 700;
   cursor: pointer;
+  position: relative;
+  z-index: 2;
 }
 
 .portal-chat-home-link {
@@ -2888,6 +2890,41 @@ textarea:focus {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.native-chat-sociable {
+  display: grid;
+  gap: 6px;
+  min-height: 0;
+  overflow: hidden;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 9px;
+}
+
+.native-chat-sociable h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.native-chat-people-list {
+  max-height: min(34vh, 320px);
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.native-chat-shell:not(.sidebar-expanded) .native-chat-sociable {
+  display: none;
+}
+
+.native-chat-person-btn {
+  border-style: dashed;
+}
+
+.native-chat-person-copy {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
 }
 
 .portal-chat-unread {
@@ -3051,6 +3088,14 @@ textarea:focus {
   height: 22px;
   font-size: 0.62rem;
   flex: 0 0 auto;
+}
+
+.portal-chat-message-side-avatar {
+  float: left;
+  width: 28px;
+  height: 28px;
+  margin: 1px 8px 4px 0;
+  font-size: 0.7rem;
 }
 
 .portal-chat-message-meta span {
@@ -3662,8 +3707,8 @@ textarea:focus {
     justify-content: center;
   }
 
-  .native-chat-sidebar .portal-chat-sidebar-header h2,
-  .native-chat-sidebar .portal-chat-home-link {
+  .native-chat-shell:not(.sidebar-expanded) .native-chat-sidebar .portal-chat-sidebar-header h2,
+  .native-chat-shell:not(.sidebar-expanded) .native-chat-sidebar .portal-chat-home-link {
     display: none;
   }
 
