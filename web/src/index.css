@@ -3383,10 +3383,10 @@ textarea:focus {
 .portal-chat-composer {
   border-top: 1px solid var(--border-subtle);
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
   padding: 12px;
-  align-items: end;
+  align-items: stretch;
   background: rgba(0, 42, 97, 0.1);
 }
 
@@ -3448,7 +3448,8 @@ textarea:focus {
 }
 
 .portal-chat-composer .btn-primary {
-  min-width: 96px;
+  width: 100%;
+  min-width: 0;
   height: 44px;
 }
 
