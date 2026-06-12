@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
+import { NativeChatApi } from '../../../chat/nativeChatApi'
 import { pidpAppLoginUrl } from '../../../config/pidp'
 import { publicProfileUrl } from '../../../config/portalBase'
+import { refreshRuntimeTokenFromSession } from '../../../infrastructure/auth/sessionToken'
+import { toUserFacingErrorMessage } from '../../../infrastructure/http/userFacingError'
 import { createQrSvg } from '../../utils/qr'
 import { setSeoMeta } from '../../utils/seo'
 import { createVCard, vCardFileName } from '../../utils/vcard'
@@ -46,6 +49,11 @@ function safeLinkUrl(value?: string | null): string | null {
   return null
 }
 
+function uuid() {
+  if ('crypto' in window && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID()
+  return `client-${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
 type ContactLink = {
   label: string
   url: string
@@ -82,10 +90,22 @@ type PublicEvent = {
 export function PublicContactPage() {
   const { token, user } = useAuth()
   const { slug } = useParams()
+  const navigate = useNavigate()
   const [page, setPage] = useState<ContactPage | null>(null)
   const [events, setEvents] = useState<PublicEvent[]>([])
   const [status, setStatus] = useState<string>('Loading…')
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
+  const [messageDraft, setMessageDraft] = useState('')
+  const [messageStatus, setMessageStatus] = useState('')
+  const [isSendingMessage, setIsSendingMessage] = useState(false)
+
+  const chatApi = useMemo(
+    () =>
+      new NativeChatApi(async () => {
+        return token || (await refreshRuntimeTokenFromSession())
+      }),
+    [token],
+  )
 
   useEffect(() => {
     if (!slug) return
@@ -194,6 +214,27 @@ export function PublicContactPage() {
       .catch(() => {
         setCopiedKey(null)
       })
+  }
+
+  async function sendMessage() {
+    if (!page || !token || isOwner) return
+    const body = messageDraft.trim()
+    if (!body) {
+      setMessageStatus('Write a message first.')
+      return
+    }
+    setIsSendingMessage(true)
+    setMessageStatus('')
+    try {
+      const conversation = await chatApi.startDm(page.slug)
+      await chatApi.sendMessage(conversation.id, uuid(), body)
+      setMessageDraft('')
+      navigate(`/chat/${encodeURIComponent(conversation.id)}`)
+    } catch (err) {
+      setMessageStatus(toUserFacingErrorMessage(err, 'Failed to send message'))
+    } finally {
+      setIsSendingMessage(false)
+    }
   }
 
   if (!page) {
@@ -352,6 +393,43 @@ export function PublicContactPage() {
                 </div>
               </a>
             ))}
+          </div>
+        </section>
+      ) : null}
+
+      {!isOwner ? (
+        <section className="public-id-message-box" aria-label={`Message ${page.user_name}`}>
+          <div>
+            <h2>Message {page.user_name}</h2>
+            <p className="muted">Send a private message through Org Portal.</p>
+          </div>
+          <textarea
+            value={messageDraft}
+            onChange={(event) => setMessageDraft(event.target.value)}
+            placeholder={`Write a message to ${page.user_name}`}
+            rows={3}
+            disabled={!token || isSendingMessage}
+            aria-label={`Message ${page.user_name}`}
+          />
+          <div className="public-id-message-actions">
+            {token ? (
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => sendMessage().catch(() => {})}
+                disabled={isSendingMessage}
+              >
+                {isSendingMessage ? 'Sending...' : 'Send message'}
+              </button>
+            ) : (
+              <a
+                className="btn-primary"
+                href={pidpAppLoginUrl(`/chat?start=dm&user=${encodeURIComponent(page.slug)}`)}
+              >
+                Sign in to message
+              </a>
+            )}
+            {messageStatus ? <p className="muted">{messageStatus}</p> : null}
           </div>
         </section>
       ) : null}

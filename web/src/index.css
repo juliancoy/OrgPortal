@@ -1530,6 +1530,44 @@ textarea {
   gap: 0.6rem;
 }
 
+.public-id-message-box {
+  width: min(100%, 520px);
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: var(--shadow-card);
+}
+
+.public-id-message-box h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.public-id-message-box p {
+  margin: 2px 0 0;
+}
+
+.public-id-message-box textarea {
+  width: 100%;
+  min-height: 86px;
+  resize: vertical;
+}
+
+.public-id-message-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.public-id-message-actions p {
+  margin: 0;
+}
+
 .public-id-attribution {
   width: min(100%, 520px);
   display: grid;
