@@ -12,6 +12,15 @@ type MessageState = NativeChatMessage & {
 type RealtimeState = 'idle' | 'connecting' | 'connected' | 'reconnecting'
 type ConversationMember = NonNullable<NativeChatConversation['members']>[number]
 
+type NetworkUser = {
+  user_id: string
+  user_name: string
+  contact_slug?: string | null
+  contact_enabled?: boolean
+  headline?: string | null
+  photo_url?: string | null
+}
+
 function timestamp(value: string): string {
   return new Date(value).toLocaleString(undefined, {
     month: 'short',
@@ -54,6 +63,14 @@ function conversationAvatarUrl(conversation: NativeChatConversation, myUserId?: 
   return conversationParticipant(conversation, myUserId)?.avatar_url?.trim() || ''
 }
 
+function conversationMemberByUserId(
+  conversation: NativeChatConversation | null,
+  userId?: string | null,
+): ConversationMember | null {
+  if (!conversation || !userId) return null
+  return (conversation.members || []).find((member) => member.user_id === userId) || null
+}
+
 function conversationRecency(conversation: NativeChatConversation): number {
   const value = conversation.last_message_at || conversation.last_message?.created_at || conversation.updated_at
   const parsed = new Date(value || 0).getTime()
@@ -79,6 +96,7 @@ export function NativeChatPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [conversations, setConversations] = useState<NativeChatConversation[]>([])
+  const [people, setPeople] = useState<NetworkUser[]>([])
   const [messages, setMessages] = useState<MessageState[]>([])
   const [draft, setDraft] = useState('')
   const [status, setStatus] = useState('Loading chat...')
@@ -106,6 +124,13 @@ export function NativeChatPage() {
     if (!user?.id) return ''
     return selectedConversation?.members?.find((member) => member.user_id === user.id)?.avatar_url?.trim() || ''
   }, [selectedConversation, user])
+  const sociablePeople = useMemo(
+    () =>
+      people
+        .filter((person) => person.user_id !== user?.id && person.contact_slug && person.contact_enabled !== false)
+        .sort((a, b) => a.user_name.localeCompare(b.user_name)),
+    [people, user],
+  )
 
   const mergeMessages = useCallback((incoming: NativeChatMessage[]) => {
     setMessages((current) => {
@@ -181,6 +206,30 @@ export function NativeChatPage() {
       cancelled = true
     }
   }, [api, navigate, refreshConversations, roomId, searchParams])
+
+  useEffect(() => {
+    if (!token) {
+      setPeople([])
+      return
+    }
+    let cancelled = false
+    fetch('/api/org/api/network/users?limit=1000&sort=recent', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(await response.text().catch(() => 'Failed to load people'))
+        return response.json() as Promise<NetworkUser[]>
+      })
+      .then((rows) => {
+        if (!cancelled) setPeople(Array.isArray(rows) ? rows : [])
+      })
+      .catch(() => {
+        if (!cancelled) setPeople([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [token])
 
   useEffect(() => {
     if (!roomId) {
@@ -403,6 +452,24 @@ export function NativeChatPage() {
     }
   }
 
+  async function startConversationWith(person: NetworkUser) {
+    if (!person.contact_slug) return
+    try {
+      setError(null)
+      setStatus(`Opening chat with ${person.user_name}...`)
+      const conversation = await api.startDm(person.contact_slug)
+      setConversations((current) => {
+        const next = current.filter((item) => item.id !== conversation.id)
+        return sortConversationsByRecency([conversation, ...next])
+      })
+      navigate(`/chat/${encodeURIComponent(conversation.id)}`)
+    } catch (err) {
+      setError(toUserFacingErrorMessage(err, `Failed to open chat with ${person.user_name}`))
+    } finally {
+      setStatus('')
+    }
+  }
+
   return (
     <section className={`portal-chat-shell native-chat-shell ${sidebarExpanded ? 'sidebar-expanded' : ''}`}>
       <aside className="portal-chat-sidebar native-chat-sidebar">
@@ -444,6 +511,32 @@ export function NativeChatPage() {
           })}
           {conversations.length === 0 ? <li className="portal-chat-muted">No conversations yet.</li> : null}
         </ul>
+        <section className="native-chat-sociable" aria-label="Be Sociable">
+          <h3>Be Sociable!</h3>
+          <ul className="portal-chat-room-list native-chat-people-list">
+            {sociablePeople.map((person) => (
+              <li key={person.user_id}>
+                <button
+                  type="button"
+                  className="portal-chat-room-btn native-chat-person-btn"
+                  title={person.user_name}
+                  onClick={() => startConversationWith(person).catch(() => {})}
+                >
+                  <span className="portal-chat-room-label">
+                    <span className="portal-avatar portal-chat-room-avatar">
+                      {renderAvatar(person.user_name, person.photo_url)}
+                    </span>
+                    <span className="native-chat-person-copy">
+                      <span className="native-chat-room-name">{person.user_name}</span>
+                      {person.headline ? <small>{person.headline}</small> : null}
+                    </span>
+                  </span>
+                </button>
+              </li>
+            ))}
+            {sociablePeople.length === 0 ? <li className="portal-chat-muted">No people available.</li> : null}
+          </ul>
+        </section>
       </aside>
 
       <div className="portal-chat-main">
@@ -476,12 +569,18 @@ export function NativeChatPage() {
                   previous.sender_user_id === message.sender_user_id &&
                   Math.abs(new Date(message.created_at).getTime() - new Date(previous.created_at).getTime()) < 5 * 60 * 1000
                 const authorLabel = messageAuthor(message, user?.id)
-                const avatarUrl = mine ? currentUserAvatarUrl : undefined
+                const senderMember = conversationMemberByUserId(selectedConversation, message.sender_user_id)
+                const avatarUrl = mine ? currentUserAvatarUrl : senderMember?.avatar_url?.trim() || ''
                 return (
                   <article
                     key={message.client_message_id || message.id}
                     className={`portal-chat-message ${mine ? 'mine' : ''} ${groupedWithPrevious ? 'grouped' : ''}`}
                   >
+                    {!mine ? (
+                      <span className="portal-avatar portal-chat-message-side-avatar">
+                        {renderAvatar(authorLabel, avatarUrl)}
+                      </span>
+                    ) : null}
                     <div className="portal-chat-message-meta" aria-hidden={groupedWithPrevious}>
                       <div className="portal-chat-message-author">
                         <span className="portal-avatar portal-chat-message-avatar">
