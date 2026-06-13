@@ -51,6 +51,7 @@ export function UserSettingsPage() {
           <span>Theme</span>
           <select
             value={themeMode}
+            aria-label="Select color theme"
             onChange={(event) => saveTheme(event.target.value as ThemeMode)}
           >
             <option value="dark">Dark</option>

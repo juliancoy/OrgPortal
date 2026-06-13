@@ -33,7 +33,10 @@ export function OrgLoginPage() {
       <h1 style={{ marginTop: 0 }}>Login (org)</h1>
       <div style={{ display: 'grid', gap: '0.6rem' }}>
         <div style={{ display: 'grid', gap: '0.5rem' }}>
-          <div className="portal-guest-login-actions" aria-label="Social sign in options">
+          <p className="muted" style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
+            Sign in or register your organization
+          </p>
+          <div className="portal-guest-login-actions" aria-label="Sign in or register options">
             <a
               href={socialLoginUrl('google')}
               className="portal-social-login-button"
@@ -48,6 +51,26 @@ export function OrgLoginPage() {
             >
               <img src="/images/github-mark.svg" alt="" className="portal-social-login-logo" />
             </a>
+            <Link
+              to="/orgs/register"
+              className="portal-social-login-button"
+              aria-label="Register new organization"
+              style={{
+                display: 'inline-flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                gap: '0.5rem',
+                border: '1px solid var(--border-input)',
+                borderRadius: 8,
+                padding: '0.6rem 1rem',
+                textDecoration: 'none',
+                color: 'inherit',
+                fontSize: '0.9rem',
+                fontWeight: 600,
+              }}
+            >
+              Register
+            </Link>
           </div>
           <a
             href={pidpAppLoginUrl(nextUrl)}
@@ -73,22 +96,43 @@ export function OrgLoginPage() {
           <label className="muted" htmlFor="email">
             Email
           </label>
-          <input id="email" value={email} onChange={(e) => setEmail(e.target.value)} style={{ width: '100%' }} />
+          <input
+            id="email"
+            type="email"
+            autoComplete="email"
+            required
+            aria-required="true"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            style={{ width: '100%' }}
+            aria-describedby={error ? 'org-login-error' : undefined}
+          />
         </div>
         <div>
           <label className="muted" htmlFor="pw">
             Password
           </label>
-          <input id="pw" type="password" value={password} onChange={(e) => setPassword(e.target.value)} style={{ width: '100%' }} />
+          <input
+            id="pw"
+            type="password"
+            autoComplete="current-password"
+            required
+            aria-required="true"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            style={{ width: '100%' }}
+            aria-describedby={error ? 'org-login-error' : undefined}
+          />
         </div>
         {error ? (
-          <p className="muted" role="alert" style={{ color: 'var(--text-danger)', marginBottom: 0 }}>
+          <p id="org-login-error" className="muted" role="alert" aria-live="polite" style={{ color: 'var(--text-danger)', marginBottom: 0 }}>
             {error}
           </p>
         ) : null}
         <button
           type="button"
           disabled={isSubmitting || isLoading}
+          aria-busy={isSubmitting || isLoading}
           onClick={async () => {
             setError(null)
             setIsSubmitting(true)

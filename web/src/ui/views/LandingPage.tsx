@@ -26,6 +26,7 @@ export function LandingPage() {
       {/* Toggle button to switch to standalone HTML version */}
       <a
         href="/standalone.html"
+        aria-label="Switch to standalone HTML version of the portal"
         style={{
           position: 'fixed',
           bottom: '2rem',
