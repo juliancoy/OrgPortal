@@ -33,7 +33,7 @@ function NavLink({ to, children, end = false, isActive: forceActive }: NavLinkPr
         : location.pathname.startsWith(to)
 
   return (
-    <Link to={to} className={`portal-nav-link ${isActive ? 'active' : ''}`}>
+    <Link to={to} className={`portal-nav-link ${isActive ? 'active' : ''}`} aria-current={isActive ? 'page' : undefined}>
       {children}
     </Link>
   )
@@ -498,6 +498,7 @@ export function Header() {
                 aria-haspopup="listbox"
                 aria-expanded={searchOpen && searchQuery.trim().length >= SEARCH_MIN_LEN}
                 aria-controls="portal-search-listbox"
+                aria-owns="portal-search-listbox"
               >
                 <input
                   ref={searchInputRef}
@@ -545,7 +546,11 @@ export function Header() {
                   aria-label="Search organizations, events, and people"
                   aria-autocomplete="list"
                   aria-activedescendant={activeDescendant}
+                  aria-describedby="portal-search-help"
                 />
+                <span id="portal-search-help" className="sr-only">
+                  Type at least two characters. Use up and down arrow keys to review results, Enter to open the selected result, or Escape to close results.
+                </span>
                 {searchQuery ? (
                   <button
                     type="button"
@@ -565,16 +570,22 @@ export function Header() {
             </form>
 
             {searchOpen && searchQuery.trim().length >= SEARCH_MIN_LEN ? (
-              <div id="portal-search-listbox" className="portal-search-results" role="listbox" aria-label="Search results">
-                {searchLoading ? <div className="portal-search-status">Searching...</div> : null}
-                {!searchLoading && searchError ? <div className="portal-search-status">{searchError}</div> : null}
+              <div
+                id="portal-search-listbox"
+                className="portal-search-results"
+                role="listbox"
+                aria-label="Search results"
+                aria-busy={searchLoading}
+              >
+                {searchLoading ? <div className="portal-search-status" role="status">Searching...</div> : null}
+                {!searchLoading && searchError ? <div className="portal-search-status" role="status">{searchError}</div> : null}
                 {!searchLoading && !searchError && !hasSearchResults ? (
-                  <div className="portal-search-status">No results found</div>
+                  <div className="portal-search-status" role="status">No results found</div>
                 ) : null}
 
                 {!searchLoading && !searchError && searchOrgs.length > 0 ? (
-                  <section className="portal-search-group">
-                    <div className="portal-search-group-title">Orgs</div>
+                  <div className="portal-search-group" role="group" aria-label="Organizations">
+                    <div className="portal-search-group-title" aria-hidden="true">Orgs</div>
                     {searchOrgs.map((org) => {
                       const to = `/orgs/${encodeURIComponent(org.slug)}`
                       const resultIndex = results.findIndex((item) => item.id === `org-${org.id}`)
@@ -603,12 +614,12 @@ export function Header() {
                         </Link>
                       )
                     })}
-                  </section>
+                  </div>
                 ) : null}
 
                 {!searchLoading && !searchError && searchEvents.length > 0 ? (
-                  <section className="portal-search-group">
-                    <div className="portal-search-group-title">Events</div>
+                  <div className="portal-search-group" role="group" aria-label="Events">
+                    <div className="portal-search-group-title" aria-hidden="true">Events</div>
                     {searchEvents.map((eventItem) => {
                       const to = `/events/${encodeURIComponent(eventItem.slug)}`
                       const resultIndex = results.findIndex((item) => item.id === `event-${eventItem.id}`)
@@ -644,12 +655,12 @@ export function Header() {
                         </Link>
                       )
                     })}
-                  </section>
+                  </div>
                 ) : null}
 
                 {!searchLoading && !searchError && searchUsers.length > 0 ? (
-                  <section className="portal-search-group">
-                    <div className="portal-search-group-title">People</div>
+                  <div className="portal-search-group" role="group" aria-label="People">
+                    <div className="portal-search-group-title" aria-hidden="true">People</div>
                     {searchUsers.map((person) => {
                       const to = `/users/${encodeURIComponent(person.slug)}`
                       const resultIndex = results.findIndex((item) => item.id === `person-${person.user_id}`)
@@ -684,7 +695,7 @@ export function Header() {
                         </Link>
                       )
                     })}
-                  </section>
+                  </div>
                 ) : null}
 
                 {!searchLoading && !searchError ? (
@@ -734,6 +745,9 @@ export function Header() {
                   className={`portal-user-trigger ${isAdmin ? 'is-sysadmin' : 'is-standard-user'}`}
                   onClick={() => setMenuOpen((prev) => !prev)}
                   aria-label="Open user menu"
+                  aria-controls="portal-user-menu"
+                  aria-expanded={menuOpen}
+                  aria-haspopup="menu"
                 >
                   <span className="portal-avatar">
                     {user?.avatarUrl ? (
@@ -745,7 +759,7 @@ export function Header() {
                 </button>
 
                 {menuOpen && (
-                  <div className="portal-user-menu">
+                  <div id="portal-user-menu" className="portal-user-menu" role="menu" aria-label="User menu">
                   <div className="portal-user-menu-meta">
                     <span>{roleLabel}</span>
                   </div>
@@ -754,34 +768,35 @@ export function Header() {
                     to={role === 'campaign_manager' ? '/orgs/profile' : '/profile'}
                     onClick={() => setMenuOpen(false)}
                     className="portal-user-menu-item"
+                    role="menuitem"
                   >
                     Profile
                   </Link>
 
-                  <Link to="/settings" onClick={() => setMenuOpen(false)} className="portal-user-menu-item">
+                  <Link to="/settings" onClick={() => setMenuOpen(false)} className="portal-user-menu-item" role="menuitem">
                     Settings
                   </Link>
 
-                  <Link to="/dev-tools" onClick={() => setMenuOpen(false)} className="portal-user-menu-item">
+                  <Link to="/dev-tools" onClick={() => setMenuOpen(false)} className="portal-user-menu-item" role="menuitem">
                     Dev Tools
                   </Link>
 
-                  <a href={pidpUrl('/')} onClick={() => setMenuOpen(false)} className="portal-user-menu-item">
+                  <a href={pidpUrl('/')} onClick={() => setMenuOpen(false)} className="portal-user-menu-item" role="menuitem">
                     Identity (PIdP)
                   </a>
 
                   {isAdmin && (
-                    <Link to="/admin" onClick={() => setMenuOpen(false)} className="portal-user-menu-item admin">
+                    <Link to="/admin" onClick={() => setMenuOpen(false)} className="portal-user-menu-item admin" role="menuitem">
                       SysAdmin
                     </Link>
                   )}
                   {isAdmin && (
-                    <Link to="/admin/ubi-settings" onClick={() => setMenuOpen(false)} className="portal-user-menu-item admin">
+                    <Link to="/admin/ubi-settings" onClick={() => setMenuOpen(false)} className="portal-user-menu-item admin" role="menuitem">
                       UBI Settings
                     </Link>
                   )}
 
-                  <button type="button" onClick={logout} className="portal-user-menu-item logout">
+                  <button type="button" onClick={logout} className="portal-user-menu-item logout" role="menuitem">
                     Sign out
                   </button>
                   </div>
@@ -794,6 +809,8 @@ export function Header() {
                   className="portal-notification-trigger"
                   aria-label={`Notifications${unreadNotifications ? `, ${unreadNotifications} unread` : ''}`}
                   aria-expanded={notificationsOpen}
+                  aria-controls="portal-notification-menu"
+                  aria-haspopup="dialog"
                   onClick={() => setNotificationsOpen((prev) => !prev)}
                 >
                   <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -805,7 +822,7 @@ export function Header() {
                 </button>
 
                 {notificationsOpen ? (
-                  <div className="portal-notification-menu">
+                  <div id="portal-notification-menu" className="portal-notification-menu" role="dialog" aria-label="Notifications">
                     <div className="portal-notification-menu-header">
                       <strong>Notifications</strong>
                       <button type="button" onClick={() => refreshNotifications()}>Refresh</button>
@@ -832,7 +849,7 @@ export function Header() {
                     ) : (
                       <p className="muted portal-notification-empty">No pending connection requests.</p>
                     )}
-                    {notificationsStatus ? <p className="muted portal-notification-empty">{notificationsStatus}</p> : null}
+                    {notificationsStatus ? <p className="muted portal-notification-empty" role="status">{notificationsStatus}</p> : null}
                   </div>
                 ) : null}
               </div>
@@ -876,28 +893,28 @@ export function Header() {
         </button>
         <div id="portal-primary-nav" className="portal-nav">
           <NavLink to="/" isActive={isCivicActive}>
-            <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
               <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
             </svg>
             Civic
           </NavLink>
 
           <NavLink to="/events" isActive={location.pathname.startsWith('/events')}>
-            <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
               <path d="M6 2a1 1 0 000 2h8a1 1 0 100-2H6zM4 5a2 2 0 00-2 2v7a4 4 0 004 4h8a4 4 0 004-4V7a2 2 0 00-2-2H4zm2 4a1 1 0 011-1h2a1 1 0 110 2H7a1 1 0 01-1-1zm5 0a1 1 0 011-1h2a1 1 0 110 2h-2a1 1 0 01-1-1z" />
             </svg>
             Events
           </NavLink>
 
           <NavLink to="/orgs" isActive={isOrgDirectoryActive}>
-            <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
               <path d="M10 2a4 4 0 100 8 4 4 0 000-8zM3 16a5 5 0 0110 0v1H3v-1zM14.5 8.5a3 3 0 100-6 3 3 0 000 6zM14 11a4 4 0 014 4v2h-3v-1a6.98 6.98 0 00-1-3.61V11z" />
             </svg>
             Orgs
           </NavLink>
 
           <NavLink to="/people" isActive={isPeopleActive}>
-            <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
               <path d="M10 3a3.5 3.5 0 110 7 3.5 3.5 0 010-7zM4 15a4 4 0 018 0v1H4v-1zm11-5a2.5 2.5 0 100-5 2.5 2.5 0 000 5zm-.5 2.2A3.8 3.8 0 0118 16v0h-3.3c.02-.2.03-.4.03-.6 0-1.15-.4-2.2-1.08-3.02.29-.08.58-.14.88-.18z" />
             </svg>
             People
@@ -913,7 +930,7 @@ export function Header() {
           )}
 
           <NavLink to="/finance" isActive={isFinanceActive}>
-            <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
               <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" />
               <path
                 fillRule="evenodd"
@@ -933,7 +950,7 @@ export function Header() {
 
           {role !== 'guest' && (
             <NavLink to="/chat" isActive={isChatActive}>
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                 <path
                   fillRule="evenodd"
                   d="M18 10c0 3.866-3.582 7-8 7a8.84 8.84 0 01-3.462-.69L2 17l1.06-3.18A6.646 6.646 0 012 10c0-3.866 3.582-7 8-7s8 3.134 8 7zm-8-3a1 1 0 100 2h.01a1 1 0 100-2H10zm-3 2a1 1 0 110-2h.01a1 1 0 110 2H7zm6-1a1 1 0 100 2h.01a1 1 0 100-2H13z"
@@ -962,7 +979,7 @@ export function Header() {
 
           {isAdmin && (
             <NavLink to="/admin" isActive={location.pathname === '/admin'}>
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                 <path
                   fillRule="evenodd"
                   d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"

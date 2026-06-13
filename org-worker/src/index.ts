@@ -81,6 +81,11 @@ type OrganizationRow = {
   updated_at: string;
 };
 
+type OrganizationSentimentCounts = {
+  favor_count?: number | null;
+  disfavor_count?: number | null;
+};
+
 type EventRow = {
   id: string;
   ingest_key: string;
@@ -666,6 +671,7 @@ async function contactForUser(env: Env, request: Request, user: PidpUser): Promi
     .first<ContactRow>();
   const profileImage = userProfileImage(user);
   if (existing) {
+    await accountForUser(env.DB, user);
     if (profileImage && !existing.photo_url) {
       const updatedAt = nowIso();
       await env.DB.prepare("UPDATE user_contact_pages SET photo_url = ?, updated_at = ? WHERE user_id = ?")
@@ -690,6 +696,7 @@ async function contactForUser(env: Env, request: Request, user: PidpUser): Promi
     .bind(id, user.id, user.email || null, userName(user), slug, profileImage, created, created)
     .run();
   const createdRow = (await env.DB.prepare("SELECT * FROM user_contact_pages WHERE id = ?").bind(id).first<ContactRow>())!;
+  await accountForUser(env.DB, user);
   await ensureDefaultAdminConnection(env.DB, createdRow);
   return createdRow;
 }
@@ -761,7 +768,9 @@ async function applyContactPayload(env: Env, row: ContactRow, user: PidpUser, pa
     .run();
 }
 
-function mapOrganization(row: OrganizationRow, upcomingEventsCount = 0) {
+function mapOrganization(row: OrganizationRow & OrganizationSentimentCounts, upcomingEventsCount = 0) {
+  const favorCount = Number(row.favor_count || 0);
+  const disfavorCount = Number(row.disfavor_count || 0);
   return {
     id: row.id,
     name: row.name,
@@ -776,6 +785,9 @@ function mapOrganization(row: OrganizationRow, upcomingEventsCount = 0) {
     created_by_user_id: null,
     membership_count: 0,
     upcoming_events_count: upcomingEventsCount,
+    favor_count: favorCount,
+    disfavor_count: disfavorCount,
+    sentiment_score: favorCount - disfavorCount,
     pending_claim_requests_count: 0,
     is_contested: false,
     created_at: row.created_at,
@@ -1123,6 +1135,28 @@ async function organizationByNaturalKey(db: D1Database, name: string, city: stri
     .first<OrganizationRow>();
 }
 
+async function organizationByIdOrSlug(db: D1Database, organizationId: string) {
+  return db.prepare("SELECT * FROM organizations WHERE id = ? OR slug = ?")
+    .bind(organizationId, slugify(organizationId))
+    .first<OrganizationRow>();
+}
+
+async function organizationSentimentCounts(db: D1Database, organizationId: string) {
+  const row = await db.prepare(
+    `SELECT
+      COALESCE(SUM(CASE WHEN sentiment = 'favor' THEN 1 ELSE 0 END), 0) AS favor_count,
+      COALESCE(SUM(CASE WHEN sentiment = 'disfavor' THEN 1 ELSE 0 END), 0) AS disfavor_count
+     FROM organization_sentiments
+     WHERE organization_id = ?`,
+  )
+    .bind(organizationId)
+    .first<Required<OrganizationSentimentCounts>>();
+  return {
+    favor_count: Number(row?.favor_count || 0),
+    disfavor_count: Number(row?.disfavor_count || 0),
+  };
+}
+
 async function upsertOrganization(db: D1Database, raw: Record<string, unknown>) {
   const sourceUrl = cleanUrl(raw.source_url);
   const name = stringField(raw, "name", 255) || "Organization";
@@ -1420,6 +1454,39 @@ async function markUbiRunStarted(db: D1Database, runKey: string, startedAt: stri
   return Number(result.meta?.changes || 0) > 0;
 }
 
+async function ensurePeopleUbiEnrollment(db: D1Database, timestamp: string) {
+  await db.prepare(
+    `INSERT OR IGNORE INTO ledger_accounts (id, user_id, name, email, entity_type, balance, created_at, updated_at)
+     SELECT
+      'acct-user-' || user_id,
+      user_id,
+      COALESCE(NULLIF(user_name, ''), 'User'),
+      COALESCE(NULLIF(lower(user_email), ''), user_id || '@local.codecollective'),
+      'individual',
+      0,
+      COALESCE(created_at, ?),
+      ?
+     FROM user_contact_pages
+     WHERE user_id IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1
+        FROM ledger_accounts a
+        WHERE lower(a.email) = COALESCE(NULLIF(lower(user_contact_pages.user_email), ''), user_contact_pages.user_id || '@local.codecollective')
+      )`,
+  )
+    .bind(timestamp, timestamp)
+    .run();
+
+  await db.prepare(
+    `INSERT OR IGNORE INTO ubi_eligibility (account_id, is_eligible, next_payment_date, last_payment_amount, total_payments_received)
+     SELECT id, 1, ?, 0, 0
+     FROM ledger_accounts
+     WHERE lower(entity_type) = 'individual'`,
+  )
+    .bind(timestamp.slice(0, 10))
+    .run();
+}
+
 export async function runUbiTick(db: D1Database, scheduledTime = Date.now()): Promise<UbiTickSummary> {
   const startedAt = isoFromMillis(scheduledTime);
   const runKey = startedAt.slice(0, 16);
@@ -1448,6 +1515,7 @@ export async function runUbiTick(db: D1Database, scheduledTime = Date.now()): Pr
     const settings = await getUbiSettings(db);
     const accruedAmount = denaForElapsed(Number(settings.dena_annual || 0), Number(settings.dena_precision || 6), elapsedSeconds);
     const entityTypes = normalizedEntityTypes(settings);
+    if (entityTypes.includes("individual")) await ensurePeopleUbiEnrollment(db, startedAt);
     let eligibleAccounts = 0;
     let payoutCount = 0;
     let paidAmount = 0;
@@ -1540,8 +1608,17 @@ export async function runUbiTick(db: D1Database, scheduledTime = Date.now()): Pr
 
 async function accountForUser(db: D1Database, user: PidpUser) {
   const email = (user.email || "").trim().toLowerCase();
-  let row = email ? await db.prepare("SELECT * FROM ledger_accounts WHERE lower(email) = ?").bind(email).first<LedgerAccountRow>() : null;
-  if (row) return row;
+  let row = email
+    ? await db.prepare("SELECT * FROM ledger_accounts WHERE lower(email) = ?").bind(email).first<LedgerAccountRow>()
+    : await db.prepare("SELECT * FROM ledger_accounts WHERE user_id = ?").bind(user.id).first<LedgerAccountRow>();
+  if (row) {
+    if (String(row.entity_type || "").toLowerCase() === "individual") {
+      await db.prepare("INSERT OR IGNORE INTO ubi_eligibility (account_id, is_eligible, next_payment_date) VALUES (?, 1, ?)")
+        .bind(row.id, new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10))
+        .run();
+    }
+    return row;
+  }
   const id = `acct-${crypto.randomUUID()}`;
   const timestamp = nowIso();
   await db.prepare(
@@ -1869,13 +1946,15 @@ app.get("/api/network/orgs/public", async (c) => {
   const candidateLimit = q ? searchCandidateLimit(limit) : limit;
   const rows = await c.env.DB.prepare(
     `SELECT o.*,
-      (SELECT count(*) FROM events e WHERE e.host_org_id = o.id AND (e.starts_at IS NULL OR e.starts_at >= datetime('now'))) AS upcoming_events_count
+      (SELECT count(*) FROM events e WHERE e.host_org_id = o.id AND (e.starts_at IS NULL OR e.starts_at >= datetime('now'))) AS upcoming_events_count,
+      (SELECT count(*) FROM organization_sentiments s WHERE s.organization_id = o.id AND s.sentiment = 'favor') AS favor_count,
+      (SELECT count(*) FROM organization_sentiments s WHERE s.organization_id = o.id AND s.sentiment = 'disfavor') AS disfavor_count
      FROM organizations o
-     ORDER BY upcoming_events_count DESC, lower(o.name) ASC
+     ORDER BY (favor_count - disfavor_count) DESC, upcoming_events_count DESC, lower(o.name) ASC
      LIMIT ?`,
   )
     .bind(candidateLimit)
-    .all<OrganizationRow & { upcoming_events_count: number }>();
+    .all<OrganizationRow & { upcoming_events_count: number } & OrganizationSentimentCounts>();
   const rankedRows = rankSearchResults(rows.results || [], q, (row) => [row.name, row.description, row.slug, row.tags, row.city], limit);
   return c.json(rankedRows.map((row) => mapOrganization(row, Number(row.upcoming_events_count || 0))));
 });
@@ -1888,7 +1967,8 @@ app.get("/api/network/orgs/public/:slug", async (c) => {
   const count = await c.env.DB.prepare("SELECT count(*) AS n FROM events WHERE host_org_id = ? AND (starts_at IS NULL OR starts_at >= datetime('now'))")
     .bind(row.id)
     .first<{ n: number }>();
-  return c.json({ ...mapOrganization(row, Number(count?.n || 0)), public_url: orgPublicUrl(c.env, c.req.raw, row.slug) });
+  const sentimentCounts = await organizationSentimentCounts(c.env.DB, row.id);
+  return c.json({ ...mapOrganization({ ...row, ...sentimentCounts }, Number(count?.n || 0)), public_url: orgPublicUrl(c.env, c.req.raw, row.slug) });
 });
 
 app.get("/api/network/orgs/public/:slug/events", async (c) => {
@@ -1978,7 +2058,11 @@ app.get("/api/network/orgs", async (c) => {
     .bind(candidateLimit)
     .all<OrganizationRow>();
   const rankedRows = rankSearchResults(rows.results || [], q, (row) => [row.name, row.description, row.slug, row.tags, row.city], limit);
-  return c.json(rankedRows.map((row) => mapOrganization(row)));
+  const mapped = [];
+  for (const row of rankedRows) {
+    mapped.push(mapOrganization({ ...row, ...(await organizationSentimentCounts(c.env.DB, row.id)) }));
+  }
+  return c.json(mapped);
 });
 
 app.post("/api/network/orgs", async (c) => {
@@ -1997,11 +2081,71 @@ app.post("/api/network/orgs", async (c) => {
 
 app.get("/api/network/orgs/:organizationId", async (c) => {
   await currentUser(c.env, c.req.raw);
-  const row = await c.env.DB.prepare("SELECT * FROM organizations WHERE id = ? OR slug = ?")
-    .bind(c.req.param("organizationId"), slugify(c.req.param("organizationId")))
-    .first<OrganizationRow>();
+  const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
   if (!row) fail(404, "Organization not found");
-  return c.json(mapOrganization(row));
+  return c.json(mapOrganization({ ...row, ...(await organizationSentimentCounts(c.env.DB, row.id)) }));
+});
+
+app.get("/api/network/orgs/:organizationId/sentiment", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
+  if (!row) fail(404, "Organization not found");
+  const mine = await c.env.DB.prepare("SELECT sentiment FROM organization_sentiments WHERE organization_id = ? AND user_id = ?")
+    .bind(row.id, user.id)
+    .first<{ sentiment: "favor" | "disfavor" }>();
+  const counts = await organizationSentimentCounts(c.env.DB, row.id);
+  return c.json({
+    organization_id: row.id,
+    sentiment: mine?.sentiment || null,
+    favor_count: counts.favor_count,
+    disfavor_count: counts.disfavor_count,
+    sentiment_score: counts.favor_count - counts.disfavor_count,
+  });
+});
+
+app.put("/api/network/orgs/:organizationId/sentiment", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
+  if (!row) fail(404, "Organization not found");
+  const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  const sentiment = String(payload.sentiment || "").trim().toLowerCase();
+  if (sentiment !== "favor" && sentiment !== "disfavor") fail(400, "sentiment must be favor or disfavor");
+  const timestamp = nowIso();
+  await c.env.DB.prepare(
+    `INSERT INTO organization_sentiments (organization_id, user_id, user_name, sentiment, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?)
+     ON CONFLICT(organization_id, user_id) DO UPDATE SET
+      user_name = excluded.user_name,
+      sentiment = excluded.sentiment,
+      updated_at = excluded.updated_at`,
+  )
+    .bind(row.id, user.id, userName(user), sentiment, timestamp, timestamp)
+    .run();
+  const counts = await organizationSentimentCounts(c.env.DB, row.id);
+  return c.json({
+    organization_id: row.id,
+    sentiment,
+    favor_count: counts.favor_count,
+    disfavor_count: counts.disfavor_count,
+    sentiment_score: counts.favor_count - counts.disfavor_count,
+  });
+});
+
+app.delete("/api/network/orgs/:organizationId/sentiment", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
+  if (!row) fail(404, "Organization not found");
+  await c.env.DB.prepare("DELETE FROM organization_sentiments WHERE organization_id = ? AND user_id = ?")
+    .bind(row.id, user.id)
+    .run();
+  const counts = await organizationSentimentCounts(c.env.DB, row.id);
+  return c.json({
+    organization_id: row.id,
+    sentiment: null,
+    favor_count: counts.favor_count,
+    disfavor_count: counts.disfavor_count,
+    sentiment_score: counts.favor_count - counts.disfavor_count,
+  });
 });
 
 app.patch("/api/network/orgs/:organizationId", async (c) => {

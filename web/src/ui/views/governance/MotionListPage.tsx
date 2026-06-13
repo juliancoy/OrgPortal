@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
 import { listMotions } from '../../../application/usecases/listMotions'
 import type { Motion, MotionStatus, VoteDirection } from '../../../domain/motion/Motion'
@@ -52,7 +52,6 @@ export function MotionListPage() {
   const { motionRepository, engagementRepository } = useGovernanceRepositories()
   const { basePath, isRoberts } = useGovernanceParadigm()
   const { user } = useAuth()
-  const navigate = useNavigate()
   const effectiveUserId = user?.id ?? getGuestId()
   const [motions, setMotions] = useState<Motion[]>([])
   const [search, setSearch] = useState('')
@@ -118,21 +117,24 @@ export function MotionListPage() {
 
         <div className="motion-list-toolbar">
           <input
+            id="motion-list-search"
             type="text"
             placeholder="Search motions..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="motion-list-search"
+            aria-label="Search motions"
           />
 
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <span className="motion-list-sort-label">Sort</span>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }} role="group" aria-label="Sort motions">
+            <span className="motion-list-sort-label" aria-hidden="true">Sort</span>
             {(['score', 'newest'] as const).map((mode) => (
               <button
                 key={mode}
                 type="button"
                 onClick={() => setSortMode(mode)}
                 className={`motion-list-sort ${sortMode === mode ? 'active' : ''}`}
+                aria-pressed={sortMode === mode}
               >
                 {mode.charAt(0).toUpperCase() + mode.slice(1)}
               </button>
@@ -140,7 +142,7 @@ export function MotionListPage() {
           </div>
         </div>
 
-        <div className="motion-list-filters">
+        <div className="motion-list-filters" role="group" aria-label="Filter motions by status">
           {STATUS_FILTERS.map((s) => {
             const label = s ? STATUS_LABELS[s] : STATUS_LABELS.all
             const active = statusFilter === s
@@ -150,6 +152,7 @@ export function MotionListPage() {
                 type="button"
                 onClick={() => setStatusFilter(s)}
                 className={`motion-list-filter ${active ? 'active' : ''}`}
+                aria-pressed={active}
               >
                 {label}
               </button>
@@ -169,41 +172,37 @@ export function MotionListPage() {
               return (
                 <article
                   key={motion.id}
-                  onClick={() => navigate(`${basePath}/${motion.id}`)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') navigate(`${basePath}/${motion.id}`)
-                  }}
                   className="motion-list-card"
                 >
                   <div className="motion-list-vote">
                     <button
                       type="button"
                       onClick={(e) => handleVote(motion.id, 'up', e)}
-                      aria-label="Upvote"
+                      aria-label={`Upvote ${motion.title}. ${vc.up} upvotes`}
+                      aria-pressed={uv === 'up'}
                       className={`motion-vote-btn ${uv === 'up' ? 'active-up' : ''}`}
                     >
-                      <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                      <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                         <path d="M10 3l7 7h-4v7H7v-7H3l7-7z" />
                       </svg>
                     </button>
 
-                    <span className="motion-list-vote-count" style={{ color: voteColor }}>
+                    <span className="motion-list-vote-count" style={{ color: voteColor }} aria-label={`Score ${motion.score}`}>
                       {motion.score}
                     </span>
 
-                    <span className="motion-list-vote-breakdown">
+                    <span className="motion-list-vote-breakdown" aria-label={`${vc.up} upvotes and ${vc.down} downvotes`}>
                       {vc.up}↑ {vc.down}↓
                     </span>
 
                     <button
                       type="button"
                       onClick={(e) => handleVote(motion.id, 'down', e)}
-                      aria-label="Downvote"
+                      aria-label={`Downvote ${motion.title}. ${vc.down} downvotes`}
+                      aria-pressed={uv === 'down'}
                       className={`motion-vote-btn ${uv === 'down' ? 'active-down' : ''}`}
                     >
-                      <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                      <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                         <path d="M10 17l-7-7h4V3h6v7h4l-7 7z" />
                       </svg>
                     </button>
@@ -212,7 +211,9 @@ export function MotionListPage() {
                   <div className="motion-list-content">
                     <div className="motion-list-content-top">
                       <MotionStatusBadge status={motion.status} />
-                      <span className="motion-list-card-title">{motion.title}</span>
+                      <Link to={`${basePath}/${motion.id}`} className="motion-list-card-title">
+                        {motion.title}
+                      </Link>
                     </div>
                     <div className="motion-list-meta">
                       Proposed by {motionProposerLabel(motion)} on {motion.createdAtISO.slice(0, 10)}

@@ -38,6 +38,7 @@ class FakeD1 {
   ledgerAccounts: Row[] = [];
   ledgerTransactions: Row[] = [];
   ubiEligibility: Row[] = [];
+  organizationSentiments: Row[] = [];
   ubiSettings: Row = {
     interval_seconds: 14 * 24 * 60 * 60,
     dena_annual: 5256,
@@ -90,7 +91,7 @@ class FakeD1 {
       ) || null;
     }
     if (sql.includes("FROM organizations WHERE id = ?")) {
-      return (this.organizations.find((row) => row.id === params[0]) as T) || null;
+      return (this.organizations.find((row) => row.id === params[0] || row.slug === params[1]) as T) || null;
     }
     if (sql.includes("FROM organizations WHERE slug = ?")) {
       return (this.organizations.find((row) => row.slug === params[0]) as T) || null;
@@ -130,6 +131,23 @@ class FakeD1 {
     }
     if (sql.includes("FROM ubi_runtime_settings WHERE id = 1")) {
       return this.ubiSettings as T;
+    }
+    if (sql.includes("FROM organization_sentiments") && sql.includes("favor_count")) {
+      const organizationId = params[0];
+      const rows = this.organizationSentiments.filter((row) => row.organization_id === organizationId);
+      return {
+        favor_count: rows.filter((row) => row.sentiment === "favor").length,
+        disfavor_count: rows.filter((row) => row.sentiment === "disfavor").length,
+      } as T;
+    }
+    if (sql.includes("SELECT sentiment FROM organization_sentiments")) {
+      return (this.organizationSentiments.find((row) => row.organization_id === params[0] && row.user_id === params[1]) as T) || null;
+    }
+    if (sql.includes("SELECT * FROM ledger_accounts WHERE lower(email) = ?")) {
+      return (this.ledgerAccounts.find((row) => String(row.email).toLowerCase() === params[0]) as T) || null;
+    }
+    if (sql.includes("SELECT * FROM ledger_accounts WHERE user_id = ?")) {
+      return (this.ledgerAccounts.find((row) => row.user_id === params[0]) as T) || null;
     }
     if (sql.includes("FROM business_card_settings WHERE id = 1")) {
       return this.businessCardSettings as T;
@@ -323,6 +341,37 @@ class FakeD1 {
         timestamp: params[4],
       });
     }
+    if (sql.includes("INSERT OR IGNORE INTO ledger_accounts") || sql.includes("INSERT INTO ledger_accounts")) {
+      if (sql.includes("SELECT")) {
+        for (const contact of this.contacts) {
+          const email = String(contact.user_email || `${contact.user_id}@local.codecollective`).toLowerCase();
+          if (this.ledgerAccounts.some((row) => String(row.email).toLowerCase() === email)) continue;
+          this.ledgerAccounts.push({
+            id: `acct-user-${contact.user_id}`,
+            user_id: contact.user_id,
+            name: contact.user_name || "User",
+            email,
+            entity_type: "individual",
+            balance: 0,
+            dena_balance: 0,
+            created_at: contact.created_at || params[0],
+            updated_at: params[1] || params[0],
+          });
+        }
+      } else if (!this.ledgerAccounts.some((row) => row.id === params[0] || String(row.email).toLowerCase() === String(params[3]).toLowerCase())) {
+        this.ledgerAccounts.push({
+          id: params[0],
+          user_id: params[1],
+          name: params[2],
+          email: params[3],
+          entity_type: "individual",
+          balance: 0,
+          dena_balance: 0,
+          created_at: params[4],
+          updated_at: params[5],
+        });
+      }
+    }
     if (sql.includes("INSERT INTO ubi_eligibility")) {
       const [accountId, nextPaymentDate, lastPaymentAmount, totalPayment] = params;
       const existing = this.ubiEligibility.find((row) => row.account_id === accountId);
@@ -337,6 +386,19 @@ class FakeD1 {
           next_payment_date: nextPaymentDate,
           last_payment_amount: lastPaymentAmount,
           total_payments_received: totalPayment,
+        });
+      }
+    }
+    if (sql.includes("INSERT OR IGNORE INTO ubi_eligibility") && sql.includes("SELECT id")) {
+      for (const account of this.ledgerAccounts) {
+        if (String(account.entity_type).toLowerCase() !== "individual" || !account.user_id) continue;
+        if (this.ubiEligibility.some((row) => row.account_id === account.id)) continue;
+        this.ubiEligibility.push({
+          account_id: account.id,
+          is_eligible: 1,
+          next_payment_date: params[0],
+          last_payment_amount: 0,
+          total_payments_received: 0,
         });
       }
     }
@@ -421,6 +483,26 @@ class FakeD1 {
         pidp_user_created: 0,
         created_at: params[27],
       });
+    }
+    if (sql.includes("INSERT INTO organization_sentiments")) {
+      const existing = this.organizationSentiments.find((row) => row.organization_id === params[0] && row.user_id === params[1]);
+      if (existing) {
+        existing.user_name = params[2];
+        existing.sentiment = params[3];
+        existing.updated_at = params[5];
+      } else {
+        this.organizationSentiments.push({
+          organization_id: params[0],
+          user_id: params[1],
+          user_name: params[2],
+          sentiment: params[3],
+          created_at: params[4],
+          updated_at: params[5],
+        });
+      }
+    }
+    if (sql.includes("DELETE FROM organization_sentiments")) {
+      this.organizationSentiments = this.organizationSentiments.filter((row) => !(row.organization_id === params[0] && row.user_id === params[1]));
     }
     return { success: true, meta: { changes: 1 } };
   }
@@ -1066,4 +1148,95 @@ test("UBI tick accrues but does not pay before the two-week cadence is due", asy
   assert.equal(db.ledgerAccounts[0].balance, 10);
   assert.equal(db.ledgerTransactions.length, 0);
   assert.ok(Number(db.ledgerAccounts[0].dena_balance) > 1);
+});
+
+test("UBI tick enrolls known people before accrual", async () => {
+  const db = new FakeD1();
+  db.tickState = { id: "singleton", last_tick_at: "2026-06-07T00:00:00.000Z", updated_at: "2026-06-07T00:00:00.000Z" };
+  db.contacts.push({
+    id: "contact-1",
+    user_id: "user-known",
+    user_email: "known@example.test",
+    user_name: "Known Person",
+    slug: "known-person",
+    enabled: 1,
+    created_at: "2026-06-07T00:00:00.000Z",
+    updated_at: "2026-06-07T00:00:00.000Z",
+  });
+
+  const summary = await runUbiTick(db as unknown as D1Database, Date.parse("2026-06-07T00:01:00.000Z"));
+
+  assert.equal(summary.eligible_accounts, 1);
+  assert.equal(db.ledgerAccounts.length, 1);
+  assert.equal(db.ledgerAccounts[0].entity_type, "individual");
+  assert.equal(db.ubiEligibility.length, 1);
+  assert.equal(db.ubiEligibility[0].account_id, db.ledgerAccounts[0].id);
+});
+
+test("users can favor, change, and clear organization sentiment", async () => {
+  const db = new FakeD1();
+  db.organizations.push({
+    id: "org-1",
+    name: "Test Org",
+    slug: "test-org",
+    description: null,
+    source_url: null,
+    image_url: null,
+    tags: "[]",
+    city: null,
+    created_at: "2026-06-07T00:00:00.000Z",
+    updated_at: "2026-06-07T00:00:00.000Z",
+  });
+
+  await withPidpUser({ id: "user-1", email: "user@example.test", full_name: "Test User" }, async () => {
+    const favor = await app.request(
+      "https://org.example.test/api/network/orgs/org-1/sentiment",
+      {
+        method: "PUT",
+        headers: { authorization: "Bearer user-token", "content-type": "application/json" },
+        body: JSON.stringify({ sentiment: "favor" }),
+      },
+      env(db),
+    );
+    assert.equal(favor.status, 200);
+    assert.deepEqual(await favor.json(), {
+      organization_id: "org-1",
+      sentiment: "favor",
+      favor_count: 1,
+      disfavor_count: 0,
+      sentiment_score: 1,
+    });
+
+    const disfavor = await app.request(
+      "https://org.example.test/api/network/orgs/test-org/sentiment",
+      {
+        method: "PUT",
+        headers: { authorization: "Bearer user-token", "content-type": "application/json" },
+        body: JSON.stringify({ sentiment: "disfavor" }),
+      },
+      env(db),
+    );
+    assert.equal(disfavor.status, 200);
+    assert.deepEqual(await disfavor.json(), {
+      organization_id: "org-1",
+      sentiment: "disfavor",
+      favor_count: 0,
+      disfavor_count: 1,
+      sentiment_score: -1,
+    });
+
+    const cleared = await app.request(
+      "https://org.example.test/api/network/orgs/org-1/sentiment",
+      { method: "DELETE", headers: { authorization: "Bearer user-token" } },
+      env(db),
+    );
+    assert.equal(cleared.status, 200);
+    assert.deepEqual(await cleared.json(), {
+      organization_id: "org-1",
+      sentiment: null,
+      favor_count: 0,
+      disfavor_count: 0,
+      sentiment_score: 0,
+    });
+  });
 });

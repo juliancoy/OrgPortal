@@ -167,6 +167,7 @@ export function ContactSettingsPage({ embedded = false, hideQr = false, hideProf
         className={`contact-public-visibility-button ${visible ? 'is-public' : 'is-private'}`}
         onClick={() => setVisibility(field, !visible)}
         aria-label={visible ? 'Hide from public profile' : 'Show on public profile'}
+        aria-pressed={visible}
         title={visible ? 'Hide from public profile' : 'Show on public profile'}
       >
         <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
@@ -326,11 +327,13 @@ export function ContactSettingsPage({ embedded = false, hideQr = false, hideProf
 
 
       <div className={publicFieldClass('headline', page.headline)}>
-        <input value={page.headline || ''} onChange={(e) => setField('headline', e.target.value)} placeholder="Headline" />
+        <label className="sr-only" htmlFor="contact-headline">Headline</label>
+        <input id="contact-headline" value={page.headline || ''} onChange={(e) => setField('headline', e.target.value)} placeholder="Headline" />
         {visibilityButton('headline')}
       </div>
       <div className={publicFieldClass('bio', page.bio)}>
-        <textarea value={page.bio || ''} onChange={(e) => setField('bio', e.target.value)} rows={4} placeholder="Bio" />
+        <label className="sr-only" htmlFor="contact-bio">Bio</label>
+        <textarea id="contact-bio" value={page.bio || ''} onChange={(e) => setField('bio', e.target.value)} rows={4} placeholder="Bio" />
         {visibilityButton('bio')}
       </div>
       {!hideProfileImage && (profileImageEditor ?? (
@@ -346,31 +349,39 @@ export function ContactSettingsPage({ embedded = false, hideQr = false, hideProf
         </div>
       ))}
       <div className={publicFieldClass('email_public', page.email_public)}>
-        <input value={page.email_public || ''} onChange={(e) => setField('email_public', e.target.value)} placeholder="Public email" />
+        <label className="sr-only" htmlFor="contact-public-email">Public email</label>
+        <input id="contact-public-email" value={page.email_public || ''} onChange={(e) => setField('email_public', e.target.value)} placeholder="Public email" />
         {visibilityButton('email_public')}
       </div>
       <div className={publicFieldClass('phone_public', page.phone_public)}>
-        <input value={page.phone_public || ''} onChange={(e) => setField('phone_public', e.target.value)} placeholder="Public phone" />
+        <label className="sr-only" htmlFor="contact-public-phone">Public phone</label>
+        <input id="contact-public-phone" value={page.phone_public || ''} onChange={(e) => setField('phone_public', e.target.value)} placeholder="Public phone" />
         {visibilityButton('phone_public')}
       </div>
       <div className={publicFieldClass('linkedin_url', page.linkedin_url)}>
-        <input value={page.linkedin_url || ''} onChange={(e) => setField('linkedin_url', e.target.value)} placeholder="LinkedIn URL" />
+        <label className="sr-only" htmlFor="contact-linkedin-url">LinkedIn URL</label>
+        <input id="contact-linkedin-url" value={page.linkedin_url || ''} onChange={(e) => setField('linkedin_url', e.target.value)} placeholder="LinkedIn URL" />
         {visibilityButton('linkedin_url')}
       </div>
       <div className={publicFieldClass('github_url', page.github_url)}>
-        <input value={page.github_url || ''} onChange={(e) => setField('github_url', e.target.value)} placeholder="GitHub URL" />
+        <label className="sr-only" htmlFor="contact-github-url">GitHub URL</label>
+        <input id="contact-github-url" value={page.github_url || ''} onChange={(e) => setField('github_url', e.target.value)} placeholder="GitHub URL" />
         {visibilityButton('github_url')}
       </div>
       <div className={publicFieldClass('x_url', page.x_url)}>
-        <input value={page.x_url || ''} onChange={(e) => setField('x_url', e.target.value)} placeholder="X / Twitter URL" />
+        <label className="sr-only" htmlFor="contact-x-url">X / Twitter URL</label>
+        <input id="contact-x-url" value={page.x_url || ''} onChange={(e) => setField('x_url', e.target.value)} placeholder="X / Twitter URL" />
         {visibilityButton('x_url')}
       </div>
       <div className={publicFieldClass('website_url', page.website_url)}>
-        <input value={page.website_url || ''} onChange={(e) => setField('website_url', e.target.value)} placeholder="Website URL" />
+        <label className="sr-only" htmlFor="contact-website-url">Website URL</label>
+        <input id="contact-website-url" value={page.website_url || ''} onChange={(e) => setField('website_url', e.target.value)} placeholder="Website URL" />
         {visibilityButton('website_url')}
       </div>
       <div className={publicLinksFieldClass()}>
+        <label className="sr-only" htmlFor="contact-extra-links">Extra links</label>
         <textarea
+          id="contact-extra-links"
           value={linksText}
           onChange={(e) => setLinksText(e.target.value)}
           rows={5}
@@ -389,9 +400,11 @@ export function ContactSettingsPage({ embedded = false, hideQr = false, hideProf
           Uses your current login token to fetch a public page and auto-fill profile fields.
         </p>
         <input
+          id="contact-import-url"
           value={importUrl}
           onChange={(e) => setImportUrl(e.target.value)}
           placeholder="https://example.com/profile"
+          aria-label="Profile URL to import"
         />
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <button type="button" onClick={importFromUrl}>Import From URL</button>

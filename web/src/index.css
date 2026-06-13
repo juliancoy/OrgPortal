@@ -100,7 +100,7 @@
     linear-gradient(165deg, #e6f2ff 0%, #c5def7 50%, #b9d4f5 100%);
   --selection-bg: #002a61;
   --selection-text: #ffffff;
-  --focus-ring: 0 0 0 3px rgba(0, 42, 97, 0.16);
+  --focus-ring: 0 0 0 3px rgba(255, 255, 255, 0.95), 0 0 0 6px rgba(0, 42, 97, 0.86);
 }
 
 :root[data-theme='dark'] {
@@ -183,7 +183,7 @@
     linear-gradient(165deg, #001736 0%, #00244f 52%, #002a61 100%);
   --selection-bg: #7fb8ff;
   --selection-text: #071224;
-  --focus-ring: 0 0 0 3px rgba(127, 184, 255, 0.28);
+  --focus-ring: 0 0 0 3px rgba(7, 18, 36, 0.95), 0 0 0 6px rgba(127, 184, 255, 0.92);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -267,7 +267,7 @@
       linear-gradient(165deg, #001736 0%, #00244f 52%, #002a61 100%);
     --selection-bg: #7fb8ff;
     --selection-text: #071224;
-    --focus-ring: 0 0 0 3px rgba(127, 184, 255, 0.28);
+    --focus-ring: 0 0 0 3px rgba(7, 18, 36, 0.95), 0 0 0 6px rgba(127, 184, 255, 0.92);
   }
 }
 
@@ -321,6 +321,39 @@ a:hover {
   text-decoration: underline;
 }
 
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role='button']:focus-visible,
+[tabindex]:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  scroll-margin: 96px;
+}
+
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled,
+[aria-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.68;
+}
+
+[aria-pressed='true'] {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
 ::selection {
   background: var(--selection-bg);
   color: var(--selection-text);
@@ -367,14 +400,173 @@ textarea {
   width: 1px;
 }
 
+.skip-link {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 1000;
+  transform: translateY(-140%);
+  border: 3px solid var(--selection-text);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 1rem;
+  color: var(--selection-text);
+  background: var(--selection-bg);
+  box-shadow: var(--shadow-lg);
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
+
 .portal-shell {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
 }
 
+.portal-guest-main {
+  width: 100%;
+}
+
+.portal-guest-panel {
+  width: min(960px, 100%);
+  padding: clamp(1.25rem, 4vw, 2.5rem);
+  box-shadow: var(--shadow-lg);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(290px, 390px);
+  gap: clamp(1.5rem, 4vw, 2.5rem);
+  align-items: center;
+}
+
+.portal-guest-brand {
+  display: grid;
+  gap: 1.25rem;
+  justify-items: start;
+  text-align: left;
+}
+
+.portal-guest-brand img {
+  width: min(100%, 430px);
+  height: auto;
+}
+
+.portal-guest-brand h1 {
+  margin: 0 0 0.55rem;
+  font-size: clamp(1.6rem, 5vw, 3rem);
+  line-height: 1.08;
+}
+
+.portal-guest-brand p {
+  margin: 0;
+  max-width: 46rem;
+  font-size: 1.02rem;
+  line-height: 1.55;
+}
+
+.portal-guest-login {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-softer);
+}
+
+.portal-guest-login-actions,
+.portal-guest-password-form {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.portal-guest-login-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.portal-social-login-button,
+.portal-identity-provider-link {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 2px solid var(--border-input);
+  border-radius: var(--radius-md);
+  padding: 0.72rem 1rem;
+  color: var(--text-primary);
+  background: var(--surface-input);
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.portal-social-login-button {
+  min-height: 56px;
+  padding: 0;
+  background: #fff;
+}
+
+.portal-social-login-logo {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  display: block;
+}
+
+.portal-social-login-button:hover,
+.portal-identity-provider-link:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.portal-login-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.portal-login-divider::before,
+.portal-login-divider::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: var(--border-subtle);
+}
+
+.portal-guest-password-form label {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.portal-guest-submit {
+  min-height: 44px;
+  justify-content: center;
+}
+
+.portal-guest-submit:disabled {
+  cursor: wait;
+  opacity: 0.72;
+  transform: none;
+}
+
+.portal-login-error {
+  margin: 0;
+  color: var(--text-danger);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
 .portal-main {
   padding: 38px 0 88px;
+}
+
+.portal-main:focus {
+  outline: none;
 }
 
 .portal-container {
@@ -747,6 +939,7 @@ textarea {
   color: var(--primary);
   border-color: var(--primary);
   background: var(--primary-bg);
+  box-shadow: inset 0 0 0 2px var(--surface-strong);
 }
 
 .portal-nav-link.active::after {
@@ -2028,6 +2221,183 @@ textarea {
   padding: 30px;
 }
 
+.finance-page {
+  display: grid;
+  gap: 26px;
+  min-width: 0;
+}
+
+.finance-page > * {
+  min-width: 0;
+}
+
+.finance-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+  gap: clamp(1rem, 3vw, 1.6rem);
+  align-items: stretch;
+}
+
+.finance-wallet-card,
+.finance-network-card {
+  border: 2px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-softer);
+  box-shadow: var(--shadow-card);
+}
+
+.finance-wallet-card {
+  display: grid;
+  gap: 1rem;
+  padding: clamp(1rem, 3vw, 1.4rem);
+}
+
+.finance-network-card {
+  display: grid;
+  align-content: center;
+  gap: 0.7rem;
+  padding: clamp(1rem, 3vw, 1.35rem);
+}
+
+.finance-network-card strong {
+  color: var(--text-primary);
+  font-size: clamp(1.55rem, 4vw, 2.45rem);
+  line-height: 1;
+}
+
+.finance-network-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.finance-network-meta span {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  padding: 0.35rem 0.6rem;
+  color: var(--text-secondary);
+  background: var(--surface-soft);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.finance-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+}
+
+.finance-action {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: var(--radius-full);
+  padding: 0.72rem 1.25rem;
+  text-decoration: none;
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.finance-action:hover {
+  text-decoration: none;
+  transform: translateY(-1px);
+}
+
+.finance-action.primary {
+  border: 2px solid var(--primary);
+  color: var(--btn-primary-text);
+  background: var(--btn-primary-bg);
+}
+
+.finance-action.secondary {
+  border: 2px solid var(--border-input);
+  color: var(--text-primary);
+  background: var(--surface-input);
+}
+
+.finance-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+}
+
+.finance-filter-row input {
+  min-width: min(280px, 100%);
+}
+
+.finance-filter-row select {
+  width: auto;
+  min-width: 190px;
+}
+
+.finance-subheading {
+  margin: 1.2rem 0 0.65rem;
+  font-size: 1rem;
+}
+
+.finance-table-card {
+  overflow-x: auto;
+  max-width: 100%;
+  min-width: 0;
+  padding: 0.35rem 0.5rem;
+  background: var(--surface-softer);
+}
+
+.finance-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.finance-table.transactions {
+  min-width: 860px;
+}
+
+.finance-table.balances {
+  min-width: 680px;
+}
+
+.finance-table th,
+.finance-table td {
+  padding: 0.72rem 0.55rem;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.finance-table th {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.finance-table tbody tr {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.finance-table tbody tr:hover {
+  background: var(--surface-soft);
+}
+
+.finance-table .name {
+  color: var(--text-primary);
+  font-weight: 900;
+}
+
+.finance-table .number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.finance-table .nowrap {
+  white-space: nowrap;
+}
+
+.finance-table .capitalize {
+  text-transform: capitalize;
+}
+
 .portal-grid,
 .dashboard-grid {
   display: grid;
@@ -2037,6 +2407,7 @@ textarea {
 
 .portal-section {
   margin-top: 26px;
+  min-width: 0;
 }
 
 .portal-section-header {
@@ -2082,15 +2453,104 @@ textarea {
   overscroll-behavior: contain;
 }
 
-.economic-current-balance {
+.economic-chart-panel {
+  padding: clamp(1rem, 2.5vw, 1.45rem);
+  background: var(--surface-strong);
+}
+
+.economic-chart-summary {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 0.65rem;
+}
+
+.economic-chart-value {
+  margin-top: 0.25rem;
+  color: var(--text-primary);
+  font-size: clamp(1.7rem, 4vw, 2.65rem);
+  font-weight: 900;
+  line-height: 1;
+}
+
+.economic-chart-change {
   display: inline-grid;
+  gap: 0.2rem;
+  justify-items: end;
+  min-width: max-content;
+  border-radius: var(--radius-md);
+  padding: 0.52rem 0.7rem;
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.economic-chart-change.positive {
+  color: var(--accent-green);
+  background: var(--accent-green-bg);
+}
+
+.economic-chart-change.negative {
+  color: var(--accent-red);
+  background: var(--accent-red-bg);
+}
+
+.economic-line-chart {
+  display: block;
+  overflow: visible;
+  cursor: crosshair;
+}
+
+.economic-chart-grid-line {
+  stroke: var(--border-subtle);
+  stroke-width: 1;
+  stroke-dasharray: 2 8;
+}
+
+.economic-chart-line {
+  stroke: var(--primary);
+  filter: drop-shadow(0 5px 8px rgba(0, 42, 97, 0.18));
+}
+
+.economic-chart-date-label {
+  fill: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.economic-chart-hover-line {
+  stroke: var(--primary);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 5;
+  opacity: 0.58;
+}
+
+.economic-chart-hover-dot {
+  fill: var(--surface-strong);
+  stroke: var(--primary);
+  stroke-width: 3;
+}
+
+.economic-chart-tooltip-bg {
+  fill: var(--text-primary);
+  fill-opacity: 0.95;
+}
+
+.economic-chart-tooltip-date {
+  fill: var(--surface);
+  font-size: 11px;
+}
+
+.economic-chart-tooltip-value {
+  fill: #fff;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.economic-current-balance {
+  display: grid;
   gap: 4px;
-  margin-top: 14px;
-  padding: 14px 18px;
-  border: 2px solid var(--primary);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  box-shadow: var(--shadow-card);
 }
 
 .economic-current-balance-value {
@@ -2212,6 +2672,16 @@ textarea:focus {
   line-height: 1.34;
 }
 
+.motion-feed-title a {
+  color: inherit;
+  text-decoration-thickness: 0.12em;
+  text-underline-offset: 0.18em;
+}
+
+.motion-feed-title a:hover {
+  color: var(--primary);
+}
+
 .motion-feed-body {
   margin: 0 0 12px;
   color: var(--text-primary);
@@ -2255,11 +2725,13 @@ textarea:focus {
 .motion-vote-btn.active-up {
   color: var(--vote-up);
   background: var(--vote-up-bg);
+  box-shadow: inset 0 0 0 2px currentColor;
 }
 
 .motion-vote-btn.active-down {
   color: var(--vote-down);
   background: var(--vote-down-bg);
+  box-shadow: inset 0 0 0 2px currentColor;
 }
 
 .motion-vote-score {
@@ -2422,6 +2894,12 @@ textarea:focus {
   font-size: 0.98rem;
   font-weight: 800;
   color: var(--primary);
+  text-decoration-thickness: 0.12em;
+  text-underline-offset: 0.18em;
+}
+
+.motion-list-card-title:hover {
+  color: var(--primary-hover);
 }
 
 .motion-list-meta {
@@ -2475,6 +2953,19 @@ textarea:focus {
 }
 
 @media (max-width: 980px) {
+  .portal-guest-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .portal-guest-brand {
+    justify-items: center;
+    text-align: center;
+  }
+
+  .finance-hero {
+    grid-template-columns: 1fr;
+  }
+
   .portal-header-inner {
     grid-template-columns: minmax(0, 1fr) auto;
     justify-items: start;
@@ -2550,6 +3041,30 @@ textarea:focus {
 }
 
 @media (max-width: 680px) {
+  .portal-guest-login {
+    padding: 0.85rem;
+  }
+
+  .economic-chart-summary {
+    display: grid;
+    justify-content: stretch;
+  }
+
+  .economic-chart-change {
+    justify-items: start;
+    width: fit-content;
+  }
+
+  .finance-action-row,
+  .finance-filter-row {
+    display: grid;
+  }
+
+  .finance-action,
+  .finance-filter-row select {
+    width: 100%;
+  }
+
   .portal-notification-menu {
     position: fixed;
     top: calc(env(safe-area-inset-top, 0px) + 64px);
@@ -2704,6 +3219,87 @@ textarea:focus {
   .motion-list-card {
     padding: 14px;
     gap: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .portal-button:hover,
+  .btn-primary:hover,
+  .btn-secondary:hover,
+  .motion-list-sort:hover,
+  .motion-list-filter:hover,
+  .finance-action:hover,
+  .public-profile-inbox-btn:hover {
+    transform: none;
+  }
+}
+
+@media (forced-colors: active) {
+  :root {
+    --body-bg: Canvas;
+    --header-bg: Canvas;
+    --footer-bg: Canvas;
+    --hero-bg: Canvas;
+    --panel: Canvas;
+    --panel-2: Canvas;
+    --surface: Canvas;
+    --surface-solid: Canvas;
+    --surface-soft: Canvas;
+    --surface-softer: Canvas;
+    --surface-strong: Canvas;
+    --surface-input: Field;
+    --surface-muted: Canvas;
+    --text-primary: CanvasText;
+    --text-secondary: CanvasText;
+    --text-muted: GrayText;
+    --primary: LinkText;
+    --primary-hover: LinkText;
+    --primary-bg: Canvas;
+    --border: CanvasText;
+    --border-input: CanvasText;
+    --border-subtle: GrayText;
+    --btn-primary-bg: ButtonFace;
+    --btn-primary-text: ButtonText;
+    --focus-ring: 0 0 0 3px Highlight;
+  }
+
+  a,
+  button,
+  input,
+  select,
+  textarea,
+  .panel,
+  .portal-card,
+  .motion-card,
+  .motion-list-card,
+  .motion-feed-card {
+    forced-color-adjust: auto;
+  }
+
+  .btn-primary,
+  .portal-button,
+  .motion-list-sort.active,
+  .motion-list-filter.active,
+  [aria-pressed='true'] {
+    border: 2px solid Highlight;
+    color: ButtonText;
+    background: ButtonFace;
+  }
+
+  .portal-nav-link.active,
+  .motion-vote-btn.active-up,
+  .motion-vote-btn.active-down {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
   }
 }
 

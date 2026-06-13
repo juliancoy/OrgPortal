@@ -287,7 +287,8 @@ export function MotionDetailPage() {
             <button
               type="button"
               onClick={handleUpvote}
-              aria-label="Upvote"
+              aria-label={`Upvote ${motion.title}. ${upCount} upvotes`}
+              aria-pressed={userVote === 'up'}
               style={{
                 background: userVote === 'up' ? 'var(--vote-up-bg)' : 'transparent',
                 border: 'none',
@@ -306,7 +307,7 @@ export function MotionDetailPage() {
               onMouseEnter={(e) => { if (userVote !== 'up') e.currentTarget.style.background = 'var(--vote-neutral-hover)' }}
               onMouseLeave={(e) => { if (userVote !== 'up') e.currentTarget.style.background = 'transparent' }}
             >
-              <svg width="24" height="24" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3l7 7h-4v7H7v-7H3l7-7z"/></svg>
+              <svg width="24" height="24" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10 3l7 7h-4v7H7v-7H3l7-7z"/></svg>
             </button>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '4px 0' }}>
               <span style={{
@@ -317,14 +318,15 @@ export function MotionDetailPage() {
               }}>
                 {motion.score}
               </span>
-              <span style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 3, whiteSpace: 'nowrap' }}>
+              <span style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 3, whiteSpace: 'nowrap' }} aria-label={`${upCount} upvotes and ${downCount} downvotes`}>
                 {upCount}&#8593; {downCount}&#8595;
               </span>
             </div>
             <button
               type="button"
               onClick={handleDownvote}
-              aria-label="Downvote"
+              aria-label={`Downvote ${motion.title}. ${downCount} downvotes`}
+              aria-pressed={userVote === 'down'}
               style={{
                 background: userVote === 'down' ? 'var(--vote-down-bg)' : 'transparent',
                 border: 'none',
@@ -343,7 +345,7 @@ export function MotionDetailPage() {
               onMouseEnter={(e) => { if (userVote !== 'down') e.currentTarget.style.background = 'var(--vote-neutral-hover)' }}
               onMouseLeave={(e) => { if (userVote !== 'down') e.currentTarget.style.background = 'transparent' }}
             >
-              <svg width="24" height="24" viewBox="0 0 20 20" fill="currentColor"><path d="M10 17l-7-7h4V3h6v7h4l-7 7z"/></svg>
+              <svg width="24" height="24" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10 17l-7-7h4V3h6v7h4l-7 7z"/></svg>
             </button>
           </div>
 
