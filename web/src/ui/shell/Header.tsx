@@ -859,7 +859,15 @@ export function Header() {
               <a className="portal-button" href={pidpAppLoginUrl(nextUrl)}>
                 Log In
               </a>
-              <Link to="/users/register" className="btn-secondary">
+              <Link
+                to="/users/register"
+                className="btn-secondary"
+                style={{
+                  background: 'var(--primary)',
+                  color: '#fff',
+                  border: '2px solid var(--primary)',
+                }}
+              >
                 Register
               </Link>
             </>

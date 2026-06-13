@@ -163,13 +163,33 @@ export default function App() {
               void handlePasswordLogin()
             }}
           >
-            <div className="portal-guest-login-actions" aria-label="Social sign in options">
+            <div className="portal-guest-login-actions" aria-label="Sign in or register options">
               <a href={socialLoginUrl('google')} className="portal-social-login-button" aria-label="Continue with Google">
                 <img src="/images/google-g-logo.svg" alt="" className="portal-social-login-logo" />
               </a>
               <a href={socialLoginUrl('github')} className="portal-social-login-button" aria-label="Continue with GitHub">
                 <img src="/images/github-mark.svg" alt="" className="portal-social-login-logo" />
               </a>
+              <Link
+                to="/users/register"
+                className="portal-social-login-button"
+                aria-label="Register new account"
+                style={{
+                  display: 'inline-flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  border: '1px solid var(--border-input)',
+                  borderRadius: 8,
+                  padding: '0.6rem 1rem',
+                  textDecoration: 'none',
+                  color: 'inherit',
+                  fontSize: '0.9rem',
+                  fontWeight: 600,
+                }}
+              >
+                Register
+              </Link>
             </div>
 
             <div className="portal-login-divider">
@@ -183,8 +203,10 @@ export default function App() {
                 type="email"
                 autoComplete="email"
                 required
+                aria-required="true"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                aria-describedby={loginError ? 'portal-guest-login-error' : undefined}
               />
 
               <label htmlFor="portal-guest-password">Password</label>
@@ -193,12 +215,14 @@ export default function App() {
                 type="password"
                 autoComplete="current-password"
                 required
+                aria-required="true"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                aria-describedby={loginError ? 'portal-guest-login-error' : undefined}
               />
 
               {loginError ? (
-                <p className="portal-login-error" role="alert">
+                <p id="portal-guest-login-error" className="portal-login-error" role="alert" aria-live="polite">
                   {loginError}
                 </p>
               ) : null}
@@ -207,6 +231,7 @@ export default function App() {
                 type="button"
                 className="btn-primary portal-guest-submit"
                 disabled={isSubmittingLogin || sessionLoading}
+                aria-busy={isSubmittingLogin || sessionLoading}
                 onClick={handlePasswordLogin}
               >
                 {isSubmittingLogin || sessionLoading ? 'Signing in...' : 'Login'}

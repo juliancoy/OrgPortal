@@ -35,18 +35,40 @@ export function UserRegisterPage() {
           <label className="muted" htmlFor="email">
             Email
           </label>
-          <input id="email" value={email} onChange={(e) => setEmail(e.target.value)} style={{ width: '100%' }} />
+          <input
+            id="email"
+            type="email"
+            autoComplete="email"
+            required
+            aria-required="true"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            style={{ width: '100%' }}
+          />
         </div>
         <div>
           <label className="muted" htmlFor="pw">
             Password
           </label>
-          <input id="pw" type="password" value={password} onChange={(e) => setPassword(e.target.value)} style={{ width: '100%' }} />
+          <input
+            id="pw"
+            type="password"
+            autoComplete="new-password"
+            required
+            aria-required="true"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            style={{ width: '100%' }}
+            minLength={8}
+            aria-describedby="pw-hint"
+          />
+          <span id="pw-hint" className="sr-only">Password must be at least 8 characters</span>
         </div>
         {error ? (
           <div
-            role="dialog"
+            role="alertdialog"
             aria-modal="true"
+            aria-label={accountExists ? 'Account already exists' : 'Registration failed'}
             style={{
               position: 'fixed',
               inset: 0,
@@ -71,7 +93,7 @@ export function UserRegisterPage() {
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
-                <strong style={{ fontSize: '1.1rem' }}>
+                <strong id="register-error-title" style={{ fontSize: '1.1rem' }}>
                   {accountExists ? 'Account already exists' : 'Registration failed'}
                 </strong>
                 <button
@@ -128,6 +150,7 @@ export function UserRegisterPage() {
         <button
           type="button"
           disabled={isSubmitting || isLoading}
+          aria-busy={isSubmitting || isLoading}
           onClick={async () => {
             setError(null)
             setIsSubmitting(true)

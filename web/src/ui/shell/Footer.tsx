@@ -1,6 +1,6 @@
 export function Footer() {
   return (
-    <footer className="portal-footer">
+    <footer className="portal-footer" role="contentinfo">
       <div className="portal-footer-inner">
         <div>
           <div className="portal-brand-title">Code Collective</div>

@@ -30,24 +30,54 @@ export function OrgRegisterPage() {
           <label className="muted" htmlFor="org">
             Organization name
           </label>
-          <input id="org" value={orgName} onChange={(e) => setOrgName(e.target.value)} style={{ width: '100%' }} />
+          <input
+            id="org"
+            value={orgName}
+            onChange={(e) => setOrgName(e.target.value)}
+            style={{ width: '100%' }}
+            autoComplete="organization"
+            required
+            aria-required="true"
+          />
         </div>
         <div>
           <label className="muted" htmlFor="email">
             Email
           </label>
-          <input id="email" value={email} onChange={(e) => setEmail(e.target.value)} style={{ width: '100%' }} />
+          <input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            style={{ width: '100%' }}
+            autoComplete="email"
+            required
+            aria-required="true"
+          />
         </div>
         <div>
           <label className="muted" htmlFor="pw">
             Password
           </label>
-          <input id="pw" type="password" value={password} onChange={(e) => setPassword(e.target.value)} style={{ width: '100%' }} />
+          <input
+            id="pw"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            style={{ width: '100%' }}
+            autoComplete="new-password"
+            required
+            aria-required="true"
+            minLength={8}
+            aria-describedby="pw-hint"
+          />
+          <span id="pw-hint" className="sr-only">Password must be at least 8 characters</span>
         </div>
         {error ? (
           <div
-            role="dialog"
+            role="alertdialog"
             aria-modal="true"
+            aria-label="Registration failed"
             style={{
               position: 'fixed',
               inset: 0,
@@ -72,7 +102,7 @@ export function OrgRegisterPage() {
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
-                <strong style={{ fontSize: '1.1rem' }}>Registration failed</strong>
+                <strong id="org-register-error-title" style={{ fontSize: '1.1rem' }}>Registration failed</strong>
                 <button
                   type="button"
                   onClick={() => setError(null)}
@@ -114,6 +144,7 @@ export function OrgRegisterPage() {
         <button
           type="button"
           disabled={isSubmitting || isLoading}
+          aria-busy={isSubmitting || isLoading}
           onClick={async () => {
             setError(null)
             setIsSubmitting(true)
