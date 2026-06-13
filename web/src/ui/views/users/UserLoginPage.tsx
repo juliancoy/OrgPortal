@@ -57,38 +57,22 @@ export function UserLoginPage() {
           <p className="muted" style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
             Sign in with your Code Collective identity
           </p>
-          <a
-            href={socialLoginUrl('google')}
-            style={{
-              display: 'inline-flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              gap: '0.5rem',
-              border: '1px solid var(--border-input)',
-              borderRadius: 8,
-              padding: '0.6rem 1rem',
-              textDecoration: 'none',
-              color: 'inherit',
-            }}
-          >
-            Continue with Google
-          </a>
-          <a
-            href={socialLoginUrl('github')}
-            style={{
-              display: 'inline-flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              gap: '0.5rem',
-              border: '1px solid var(--border-input)',
-              borderRadius: 8,
-              padding: '0.6rem 1rem',
-              textDecoration: 'none',
-              color: 'inherit',
-            }}
-          >
-            Continue with GitHub
-          </a>
+          <div className="portal-guest-login-actions" aria-label="Social sign in options">
+            <a
+              href={socialLoginUrl('google')}
+              className="portal-social-login-button"
+              aria-label="Continue with Google"
+            >
+              <img src="/images/google-g-logo.svg" alt="" className="portal-social-login-logo" />
+            </a>
+            <a
+              href={socialLoginUrl('github')}
+              className="portal-social-login-button"
+              aria-label="Continue with GitHub"
+            >
+              <img src="/images/github-mark.svg" alt="" className="portal-social-login-logo" />
+            </a>
+          </div>
           <a
             href={pidpAppLoginUrl(nextUrl)}
             style={{

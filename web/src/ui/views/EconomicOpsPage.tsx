@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent, type PointerEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent, type MouseEvent } from 'react'
 import { useAuth } from '../../app/AppProviders'
 import { Header } from '../shell/Header'
 import { Footer } from '../shell/Footer'
@@ -60,8 +60,6 @@ type UbiEligibility = {
 const HOUR_MS = 60 * 60 * 1000
 const DAY_MS = 24 * HOUR_MS
 const YEAR_MS = 365 * DAY_MS
-const MIN_TIMEFRAME_MS = HOUR_MS
-const MAX_TIMEFRAME_MS = 5 * YEAR_MS
 const DEFAULT_TIMEFRAME_MS = 30 * DAY_MS
 
 const TIMEFRAME_PRESETS: Array<{ label: string; durationMs: number }> = [
@@ -83,11 +81,11 @@ const tooltipDateFormat = new Intl.DateTimeFormat('en-US', {
   minute: '2-digit',
 })
 const CHART_WIDTH = 760
-const CHART_HEIGHT = 320
-const CHART_MARGIN_TOP = 20
+const CHART_HEIGHT = 300
+const CHART_MARGIN_TOP = 32
 const CHART_MARGIN_RIGHT = 24
-const CHART_MARGIN_BOTTOM = 52
-const CHART_MARGIN_LEFT = 88
+const CHART_MARGIN_BOTTOM = 34
+const CHART_MARGIN_LEFT = 24
 const CHART_TARGET_SAMPLES = 1400
 
 function clamp(value: number, min: number, max: number) {
@@ -182,7 +180,6 @@ export function EconomicOpsPage() {
   const [ubiEligibility, setUbiEligibility] = useState<UbiEligibility | null>(null)
   const [ubiEligibilityStatus, setUbiEligibilityStatus] = useState<string>('')
   const [hoveredPointIndex, setHoveredPointIndex] = useState<number | null>(null)
-  const dragZoomStateRef = useRef<{ active: boolean; lastY: number }>({ active: false, lastY: 0 })
 
   useEffect(() => {
     if (!token) {
@@ -336,8 +333,11 @@ export function EconomicOpsPage() {
         path: '',
         yTicks: [] as Array<{ y: number; value: number }>,
         xTicks: [] as Array<{ x: number; label: string }>,
+        areaPath: '',
         minVal: null as number | null,
         maxVal: null as number | null,
+        firstVal: null as number | null,
+        lastVal: null as number | null,
         plotWidth,
         plotHeight,
       }
@@ -361,20 +361,25 @@ export function EconomicOpsPage() {
         path: '',
         yTicks: [] as Array<{ y: number; value: number }>,
         xTicks: [] as Array<{ x: number; label: string }>,
+        areaPath: '',
         minVal: null as number | null,
         maxVal: null as number | null,
+        firstVal: null as number | null,
+        lastVal: null as number | null,
         plotWidth,
         plotHeight,
       }
     }
-    const yTicks = Array.from({ length: 5 }, (_, index) => {
-      const ratio = index / 4
+    const baseY = CHART_MARGIN_TOP + plotHeight
+    const areaPath = `${path} L${points[points.length - 1].x},${baseY} L${points[0].x},${baseY} Z`
+    const yTicks = Array.from({ length: 3 }, (_, index) => {
+      const ratio = index / 2
       return {
         y: CHART_MARGIN_TOP + ratio * plotHeight,
         value: maxVal - ratio * range,
       }
     })
-    const xTickCount = Math.min(6, Math.max(3, Math.floor(plotWidth / 120)))
+    const xTickCount = Math.min(4, Math.max(2, Math.floor(plotWidth / 180)))
     const xTicks = Array.from({ length: xTickCount }, (_, index) => {
       const ratio = xTickCount === 1 ? 0 : index / (xTickCount - 1)
       const pointIndex = Math.round(ratio * (points.length - 1))
@@ -385,17 +390,27 @@ export function EconomicOpsPage() {
       }
     })
 
-    return { points, path, yTicks, xTicks, minVal, maxVal, plotWidth, plotHeight }
+    return {
+      points,
+      path,
+      areaPath,
+      yTicks,
+      xTicks,
+      minVal,
+      maxVal,
+      firstVal: points[0]?.total_supply ?? null,
+      lastVal: points[points.length - 1]?.total_supply ?? null,
+      plotWidth,
+      plotHeight,
+    }
   }, [visibleHistory])
 
-  const visibleMin = useMemo(() => chartModel.minVal, [chartModel.minVal])
-  const visibleMax = useMemo(() => chartModel.maxVal, [chartModel.maxVal])
-
-  const applyChartZoom = (deltaY: number) => {
-    const zoomScale = Math.exp(deltaY * 0.0015)
-    setTimeframeMs((prev) => clamp(prev * zoomScale, MIN_TIMEFRAME_MS, MAX_TIMEFRAME_MS))
-    setActivePresetLabel('')
-  }
+  const chartDelta = useMemo(() => {
+    if (chartModel.firstVal === null || chartModel.lastVal === null) return null
+    const absolute = chartModel.lastVal - chartModel.firstVal
+    const percent = chartModel.firstVal === 0 ? null : (absolute / Math.abs(chartModel.firstVal)) * 100
+    return { absolute, percent }
+  }, [chartModel.firstVal, chartModel.lastVal])
 
   const hoveredPoint = useMemo(() => {
     if (hoveredPointIndex === null) return null
@@ -413,31 +428,6 @@ export function EconomicOpsPage() {
 
   const onChartMouseLeave = () => {
     setHoveredPointIndex(null)
-  }
-
-  const onChartPointerDown = (event: PointerEvent<SVGRectElement>) => {
-    event.preventDefault()
-    event.currentTarget.setPointerCapture(event.pointerId)
-    dragZoomStateRef.current = { active: true, lastY: event.clientY }
-  }
-
-  const onChartPointerMove = (event: PointerEvent<SVGRectElement>) => {
-    if (!dragZoomStateRef.current.active) return
-    event.preventDefault()
-    const deltaY = event.clientY - dragZoomStateRef.current.lastY
-    if (Math.abs(deltaY) >= 1) {
-      applyChartZoom(deltaY * 4)
-      dragZoomStateRef.current.lastY = event.clientY
-    }
-  }
-
-  const stopChartPointerDrag = (event: PointerEvent<SVGRectElement>) => {
-    if (!dragZoomStateRef.current.active) return
-    event.preventDefault()
-    dragZoomStateRef.current.active = false
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId)
-    }
   }
 
   const filteredAccounts = useMemo(() => {
@@ -542,53 +532,10 @@ export function EconomicOpsPage() {
     <div className="portal-shell">
       <Header />
       <main className="portal-main">
-        <div className="portal-container">
-          <section className="portal-hero">
-            <div>
+        <div className="portal-container finance-page">
+          <section className="portal-hero finance-hero">
+            <div className="finance-wallet-card">
               {error && <p className="portal-muted">{error}</p>}
-              <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
-                <a
-                  href="/send"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    padding: '10px 20px',
-                    borderRadius: 999,
-                    backgroundColor: 'var(--primary)',
-                    color: '#fff',
-                    textDecoration: 'none',
-                    fontWeight: 600,
-                    fontSize: 14,
-                  }}
-                >
-                  <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M2 10a8 8 0 1116 0 8 8 0 01-16 0zm8-4a1 1 0 00-1 1v3H6a1 1 0 100 2h3v3a1 1 0 102 0v-3h3a1 1 0 100-2h-3V7a1 1 0 00-1-1z" />
-                  </svg>
-                  Send Dena
-                </a>
-                <a
-                  href="/receive"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    padding: '10px 20px',
-                    borderRadius: 999,
-                    border: '1px solid var(--border)',
-                    backgroundColor: 'transparent',
-                    color: 'var(--text-primary)',
-                    textDecoration: 'none',
-                    fontWeight: 600,
-                    fontSize: 14,
-                  }}
-                >
-                  <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
-                  </svg>
-                  Receive Dena
-                </a>
-              </div>
               <div className="economic-current-balance">
                 <div className="portal-muted">Your current balance</div>
                 <div className="economic-current-balance-value">
@@ -596,18 +543,35 @@ export function EconomicOpsPage() {
                 </div>
                 {currentAccount?.email ? <div className="portal-muted">{currentAccount.email}</div> : null}
               </div>
+
+              <div className="finance-action-row">
+                <a href="/send" className="finance-action primary">
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path d="M2 10a8 8 0 1116 0 8 8 0 01-16 0zm8-4a1 1 0 00-1 1v3H6a1 1 0 100 2h3v3a1 1 0 102 0v-3h3a1 1 0 100-2h-3V7a1 1 0 00-1-1z" />
+                  </svg>
+                  Send
+                </a>
+                <a href="/receive" className="finance-action secondary">
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
+                  </svg>
+                  Receive
+                </a>
+              </div>
             </div>
-            <div className="portal-card portal-chart-card">
-              <div className="portal-muted">Current Dena in circulation</div>
-              <div style={{ fontSize: '2rem', fontWeight: 700 }}>{formatCurrency(currentSupply, currency)}</div>
-              <div className="portal-muted">Accounts indexed: {formatNumber(accounts.length)}</div>
-              <div className="portal-muted">Admins indexed: {formatNumber(adminAccounts.length)}</div>
+            <div className="finance-network-card">
+              <div className="portal-muted">Network circulation</div>
+              <strong>{formatCurrency(currentSupply, currency)}</strong>
+              <div className="finance-network-meta">
+                <span>{formatNumber(accounts.length)} accounts</span>
+                <span>{formatNumber(adminAccounts.length)} admins</span>
+              </div>
             </div>
           </section>
 
           <section className="portal-section" id="circulation">
             <div className="portal-section-header">
-              <h2>Dena in circulation over time</h2>
+              <h2>Circulation trend</h2>
               <div className="portal-timeframe-controls">
                 {TIMEFRAME_PRESETS.map((preset) => (
                   <button
@@ -624,27 +588,41 @@ export function EconomicOpsPage() {
                 ))}
               </div>
             </div>
-            <div className="portal-card">
+            <div className="portal-card economic-chart-panel">
               {visibleHistory.length < 2 ? (
                 <p className="portal-muted">{isLoading ? 'Loading circulation history...' : 'No circulation history available yet.'}</p>
               ) : (
                 <>
+                  <div className="economic-chart-summary">
+                    <div>
+                      <div className="portal-muted">Dena in circulation</div>
+                      <div className="economic-chart-value">{formatCurrency(chartModel.lastVal, currency)}</div>
+                    </div>
+                    {chartDelta ? (
+                      <div className={`economic-chart-change ${chartDelta.absolute >= 0 ? 'positive' : 'negative'}`}>
+                        <span>{chartDelta.absolute >= 0 ? '+' : ''}{formatCurrency(chartDelta.absolute, currency)}</span>
+                        {chartDelta.percent !== null ? (
+                          <span>{chartDelta.percent >= 0 ? '+' : ''}{chartDelta.percent.toFixed(1)}%</span>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+
                   <svg
                     viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
                     width="100%"
-                    height="320"
+                    height="300"
                     role="img"
                     aria-label="Dena circulation history chart"
                     onMouseLeave={onChartMouseLeave}
-                    style={{ cursor: 'crosshair' }}
+                    className="economic-line-chart"
                   >
-                    <rect
-                      x={CHART_MARGIN_LEFT}
-                      y={CHART_MARGIN_TOP}
-                      width={chartModel.plotWidth}
-                      height={chartModel.plotHeight}
-                      fill="#f8fbff"
-                    />
+                    <defs>
+                      <linearGradient id="economic-chart-area" x1="0" x2="0" y1="0" y2="1">
+                        <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.24" />
+                        <stop offset="100%" stopColor="var(--primary)" stopOpacity="0.02" />
+                      </linearGradient>
+                    </defs>
 
                     {chartModel.yTicks.map((tick) => (
                       <g key={`y-${tick.y}`}>
@@ -653,60 +631,34 @@ export function EconomicOpsPage() {
                           y1={tick.y}
                           x2={CHART_WIDTH - CHART_MARGIN_RIGHT}
                           y2={tick.y}
-                          stroke="rgba(11, 26, 51, 0.12)"
-                          strokeDasharray="3 4"
+                          className="economic-chart-grid-line"
                         />
-                        <text
-                          x={CHART_MARGIN_LEFT - 10}
-                          y={tick.y + 4}
-                          textAnchor="end"
-                          fontSize="12"
-                          fill="rgba(11, 26, 51, 0.72)"
-                        >
-                          {formatNumber(tick.value)}
-                        </text>
                       </g>
                     ))}
 
+                    <path d={chartModel.areaPath} fill="url(#economic-chart-area)" />
+                    <path
+                      d={chartModel.path}
+                      fill="none"
+                      className="economic-chart-line"
+                      strokeWidth="3.5"
+                      strokeLinejoin="round"
+                      strokeLinecap="round"
+                    />
+
                     {chartModel.xTicks.map((tick) => (
                       <g key={`x-${tick.x}`}>
-                        <line
-                          x1={tick.x}
-                          y1={CHART_MARGIN_TOP}
-                          x2={tick.x}
-                          y2={CHART_HEIGHT - CHART_MARGIN_BOTTOM}
-                          stroke="rgba(11, 26, 51, 0.08)"
-                        />
                         <text
                           x={tick.x}
-                          y={CHART_HEIGHT - CHART_MARGIN_BOTTOM + 18}
+                          y={CHART_HEIGHT - 10}
                           textAnchor="middle"
-                          fontSize="11"
-                          fill="rgba(11, 26, 51, 0.72)"
+                          className="economic-chart-date-label"
                         >
                           {tick.label}
                         </text>
                       </g>
                     ))}
 
-                    <line
-                      x1={CHART_MARGIN_LEFT}
-                      y1={CHART_MARGIN_TOP}
-                      x2={CHART_MARGIN_LEFT}
-                      y2={CHART_HEIGHT - CHART_MARGIN_BOTTOM}
-                      stroke="rgba(11, 26, 51, 0.4)"
-                    />
-                    <line
-                      x1={CHART_MARGIN_LEFT}
-                      y1={CHART_HEIGHT - CHART_MARGIN_BOTTOM}
-                      x2={CHART_WIDTH - CHART_MARGIN_RIGHT}
-                      y2={CHART_HEIGHT - CHART_MARGIN_BOTTOM}
-                      stroke="rgba(11, 26, 51, 0.4)"
-                    />
-
-                    <path d={chartModel.path} fill="none" stroke="#0b1a33" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-
-                    {/* Transparent overlay for hover + drag-to-zoom interactions. */}
                     <rect
                       x={CHART_MARGIN_LEFT}
                       y={CHART_MARGIN_TOP}
@@ -715,10 +667,6 @@ export function EconomicOpsPage() {
                       className="portal-chart-overlay"
                       fill="transparent"
                       onMouseMove={onChartMouseMove}
-                      onPointerDown={onChartPointerDown}
-                      onPointerMove={onChartPointerMove}
-                      onPointerUp={stopChartPointerDrag}
-                      onPointerCancel={stopChartPointerDrag}
                     />
 
                     {hoveredPoint && (
@@ -728,78 +676,26 @@ export function EconomicOpsPage() {
                           y1={CHART_MARGIN_TOP}
                           x2={hoveredPoint.x}
                           y2={CHART_HEIGHT - CHART_MARGIN_BOTTOM}
-                          stroke="#16305e"
-                          strokeWidth="1.5"
-                          strokeDasharray="4 4"
+                          className="economic-chart-hover-line"
                         />
-                        <circle cx={hoveredPoint.x} cy={hoveredPoint.y} r="4.5" fill="#16305e" />
+                        <circle cx={hoveredPoint.x} cy={hoveredPoint.y} r="5" className="economic-chart-hover-dot" />
                         <g
                           transform={`translate(${Math.min(
                             CHART_WIDTH - CHART_MARGIN_RIGHT - 190,
                             hoveredPoint.x + 10,
                           )}, ${Math.max(CHART_MARGIN_TOP + 8, hoveredPoint.y - 54)})`}
                         >
-                          <rect width="182" height="46" rx="10" fill="#0b1a33" fillOpacity="0.95" />
-                          <text x="10" y="18" fontSize="11" fill="#dbe7ff">
+                          <rect width="182" height="46" rx="10" className="economic-chart-tooltip-bg" />
+                          <text x="10" y="18" className="economic-chart-tooltip-date">
                             {tooltipDateFormat.format(new Date(hoveredPoint.timestamp))}
                           </text>
-                          <text x="10" y="34" fontSize="13" fill="#ffffff" fontWeight="700">
+                          <text x="10" y="34" className="economic-chart-tooltip-value">
                             {formatCurrency(hoveredPoint.total_supply, currency)}
                           </text>
                         </g>
                       </>
                     )}
-
-                    {/* Zoom hint rendered when no point is hovered */}
-                    {!hoveredPoint && (
-                      <text
-                        x={CHART_MARGIN_LEFT + chartModel.plotWidth - 8}
-                        y={CHART_MARGIN_TOP + 16}
-                        textAnchor="end"
-                        fontSize="11"
-                        fill="rgba(11, 26, 51, 0.35)"
-                        style={{ pointerEvents: 'none', userSelect: 'none' }}
-                      >
-                        Scroll to zoom · drag to zoom
-                      </text>
-                    )}
-
-                    <text
-                      x={CHART_MARGIN_LEFT + chartModel.plotWidth / 2}
-                      y={CHART_HEIGHT - 8}
-                      textAnchor="middle"
-                      fontSize="12"
-                      fill="rgba(11, 26, 51, 0.75)"
-                    >
-                      Time
-                    </text>
-                    <text
-                      x="18"
-                      y={CHART_MARGIN_TOP + chartModel.plotHeight / 2}
-                      transform={`rotate(-90 18 ${CHART_MARGIN_TOP + chartModel.plotHeight / 2})`}
-                      textAnchor="middle"
-                      fontSize="12"
-                      fill="rgba(11, 26, 51, 0.75)"
-                    >
-                      Total Dena ({currency})
-                    </text>
                   </svg>
-                  <div className="portal-grid">
-                    <div className="portal-card">
-                      <div className="portal-muted">Visible min</div>
-                      <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{formatCurrency(visibleMin, currency)}</div>
-                    </div>
-                    <div className="portal-card">
-                      <div className="portal-muted">Visible max</div>
-                      <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{formatCurrency(visibleMax, currency)}</div>
-                    </div>
-                    <div className="portal-card">
-                      <div className="portal-muted">Latest point</div>
-                      <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>
-                        {formatCurrency(visibleHistory[visibleHistory.length - 1]?.total_supply, currency)}
-                      </div>
-                    </div>
-                  </div>
                 </>
               )}
             </div>
@@ -886,37 +782,37 @@ export function EconomicOpsPage() {
             <div className="portal-section-header">
               <h2>Last 10 transactions</h2>
             </div>
-            <div className="portal-card" style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 860 }}>
+            <div className="portal-card finance-table-card">
+              <table className="finance-table transactions">
                 <thead>
                   <tr>
-                    <th style={{ textAlign: 'left', padding: '8px 6px' }}>Time</th>
-                    <th style={{ textAlign: 'left', padding: '8px 6px' }}>Type</th>
-                    <th style={{ textAlign: 'left', padding: '8px 6px' }}>From</th>
-                    <th style={{ textAlign: 'left', padding: '8px 6px' }}>To</th>
-                    <th style={{ textAlign: 'right', padding: '8px 6px' }}>Amount</th>
-                    <th style={{ textAlign: 'left', padding: '8px 6px' }}>Description</th>
+                    <th>Time</th>
+                    <th>Type</th>
+                    <th>From</th>
+                    <th>To</th>
+                    <th className="number">Amount</th>
+                    <th>Description</th>
                   </tr>
                 </thead>
                 <tbody>
                   {recentTransactions.map((txn) => (
-                    <tr key={txn.id} style={{ borderTop: '1px solid rgba(12, 30, 60, 0.12)' }}>
-                      <td style={{ padding: '8px 6px', whiteSpace: 'nowrap' }}>
+                    <tr key={txn.id}>
+                      <td className="nowrap">
                         {new Date(txn.timestamp).toLocaleString()}
                       </td>
-                      <td style={{ padding: '8px 6px', textTransform: 'capitalize' }}>
+                      <td className="capitalize">
                         {String(txn.transaction_type || '').toLowerCase().replaceAll('_', ' ')}
                       </td>
-                      <td style={{ padding: '8px 6px' }}>
+                      <td>
                         {txn.from_account_name || (txn.from_account_id ? `${txn.from_account_id.slice(0, 8)}...` : 'System')}
                       </td>
-                      <td style={{ padding: '8px 6px' }}>
+                      <td>
                         {txn.to_account_name || (txn.to_account_id ? `${txn.to_account_id.slice(0, 8)}...` : 'System')}
                       </td>
-                      <td style={{ padding: '8px 6px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                      <td className="number nowrap">
                         {formatCurrency(txn.amount, txn.currency || currency)}
                       </td>
-                      <td style={{ padding: '8px 6px' }}>{txn.description || '—'}</td>
+                      <td>{txn.description || '—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -927,44 +823,42 @@ export function EconomicOpsPage() {
 
           <section className="portal-section" id="accounts">
             <div className="portal-section-header">
-              <h2>Users</h2>
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <h2>Community balances</h2>
+              <div className="finance-filter-row">
                 <input
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
                   placeholder="Search by name or email"
-                  style={{ padding: '8px 10px', borderRadius: 10, border: '1px solid rgba(12, 30, 60, 0.25)', minWidth: 260 }}
                 />
                 <select
                   value={sortDirection}
                   onChange={(event) => setSortDirection(event.target.value === 'asc' ? 'asc' : 'desc')}
-                  style={{ padding: '8px 10px', borderRadius: 10, border: '1px solid rgba(12, 30, 60, 0.25)' }}
                 >
                   <option value="desc">Most Dena first</option>
                   <option value="asc">Least Dena first</option>
                 </select>
               </div>
             </div>
-            <h3 style={{ marginBottom: 10 }}>Admins</h3>
-            <div className="portal-card" style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 680 }}>
+            <h3 className="finance-subheading">Admins</h3>
+            <div className="portal-card finance-table-card">
+              <table className="finance-table balances">
                 <thead>
                   <tr>
-                    <th style={{ textAlign: 'left', padding: '8px 6px' }}>#</th>
-                    <th style={{ textAlign: 'left', padding: '8px 6px' }}>Name</th>
-                    <th style={{ textAlign: 'left', padding: '8px 6px' }}>Email</th>
-                    <th style={{ textAlign: 'left', padding: '8px 6px' }}>Type</th>
-                    <th style={{ textAlign: 'right', padding: '8px 6px' }}>Dena</th>
+                    <th>#</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Type</th>
+                    <th className="number">Dena</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredAdminAccounts.map((account, index) => (
-                    <tr key={account.id} style={{ borderTop: '1px solid rgba(12, 30, 60, 0.12)' }}>
-                      <td style={{ padding: '8px 6px' }}>{index + 1}</td>
-                      <td style={{ padding: '8px 6px', fontWeight: 700 }}>{account.name}</td>
-                      <td style={{ padding: '8px 6px' }}>{account.email}</td>
-                      <td style={{ padding: '8px 6px', textTransform: 'capitalize' }}>{account.entity_type}</td>
-                      <td style={{ padding: '8px 6px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                    <tr key={account.id}>
+                      <td>{index + 1}</td>
+                      <td className="name">{account.name}</td>
+                      <td>{account.email}</td>
+                      <td className="capitalize">{account.entity_type}</td>
+                      <td className="number">
                         {formatCurrency(account.balance, currency)}
                       </td>
                     </tr>
@@ -974,26 +868,26 @@ export function EconomicOpsPage() {
               {!isLoading && filteredAdminAccounts.length === 0 && <p className="portal-muted">No admins matched your search.</p>}
             </div>
 
-            <h3 style={{ margin: '18px 0 10px' }}>Non-admin users</h3>
-            <div className="portal-card" style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 680 }}>
+            <h3 className="finance-subheading">Members</h3>
+            <div className="portal-card finance-table-card">
+              <table className="finance-table balances">
                 <thead>
                   <tr>
-                    <th style={{ textAlign: 'left', padding: '8px 6px' }}>#</th>
-                    <th style={{ textAlign: 'left', padding: '8px 6px' }}>Name</th>
-                    <th style={{ textAlign: 'left', padding: '8px 6px' }}>Email</th>
-                    <th style={{ textAlign: 'left', padding: '8px 6px' }}>Type</th>
-                    <th style={{ textAlign: 'right', padding: '8px 6px' }}>Dena</th>
+                    <th>#</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Type</th>
+                    <th className="number">Dena</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredNonAdminAccounts.map((account, index) => (
-                    <tr key={account.id} style={{ borderTop: '1px solid rgba(12, 30, 60, 0.12)' }}>
-                      <td style={{ padding: '8px 6px' }}>{index + 1}</td>
-                      <td style={{ padding: '8px 6px', fontWeight: 700 }}>{account.name}</td>
-                      <td style={{ padding: '8px 6px' }}>{account.email}</td>
-                      <td style={{ padding: '8px 6px', textTransform: 'capitalize' }}>{account.entity_type}</td>
-                      <td style={{ padding: '8px 6px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                    <tr key={account.id}>
+                      <td>{index + 1}</td>
+                      <td className="name">{account.name}</td>
+                      <td>{account.email}</td>
+                      <td className="capitalize">{account.entity_type}</td>
+                      <td className="number">
                         {formatCurrency(account.balance, currency)}
                       </td>
                     </tr>

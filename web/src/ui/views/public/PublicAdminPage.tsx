@@ -35,9 +35,20 @@ type PublicOrganization = {
   image_url?: string | null
   tags?: string[]
   upcoming_events_count: number
+  favor_count?: number
+  disfavor_count?: number
+  sentiment_score?: number
   pending_claim_requests_count: number
   is_contested: boolean
   redirected_from_slug?: string | null
+}
+
+type OrganizationSentiment = {
+  organization_id: string
+  sentiment: 'favor' | 'disfavor' | null
+  favor_count: number
+  disfavor_count: number
+  sentiment_score: number
 }
 
 type PublicEvent = {
@@ -135,6 +146,8 @@ export function PublicAdminPage() {
   const [chatFeedLoading, setChatFeedLoading] = useState(false)
   const [status, setStatus] = useState<string>('Loading organization…')
   const [claimStatus, setClaimStatus] = useState<string | null>(null)
+  const [orgSentiment, setOrgSentiment] = useState<'favor' | 'disfavor' | null>(null)
+  const [orgSentimentStatus, setOrgSentimentStatus] = useState<string | null>(null)
   const [claimRequestMessage, setClaimRequestMessage] = useState('')
   const [claiming, setClaiming] = useState(false)
   const [myAdminOrgs, setMyAdminOrgs] = useState<MyOrganization[]>([])
@@ -276,6 +289,41 @@ export function PublicAdminPage() {
       cancelled = true
     }
   }, [org?.slug])
+
+  useEffect(() => {
+    if (!org?.id || !token) {
+      setOrgSentiment(null)
+      return
+    }
+    let cancelled = false
+    fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/sentiment`), {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(async (resp) => {
+        if (!resp.ok) return null
+        return (await resp.json()) as OrganizationSentiment
+      })
+      .then((payload) => {
+        if (cancelled || !payload) return
+        setOrgSentiment(payload.sentiment)
+        setOrg((prev) =>
+          prev
+            ? {
+                ...prev,
+                favor_count: payload.favor_count,
+                disfavor_count: payload.disfavor_count,
+                sentiment_score: payload.sentiment_score,
+              }
+            : prev,
+        )
+      })
+      .catch(() => {
+        if (!cancelled) setOrgSentiment(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [org?.id, token])
 
   const mergedFrom = (searchParams.get('merged_from') || '').trim()
 
@@ -556,6 +604,44 @@ export function PublicAdminPage() {
       setClaimStatus(toUserFacingErrorMessage(err, 'Claim failed'))
     } finally {
       setClaiming(false)
+    }
+  }
+
+  async function setOrganizationSentiment(sentiment: 'favor' | 'disfavor') {
+    if (!org) return
+    if (!token) {
+      window.location.assign(pidpAppLoginUrl(`/orgs/${encodeURIComponent(org.slug)}`))
+      return
+    }
+    setOrgSentimentStatus(null)
+    try {
+      const method = orgSentiment === sentiment ? 'DELETE' : 'PUT'
+      const resp = await fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/sentiment`), {
+        method,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          ...(method === 'PUT' ? { 'Content-Type': 'application/json' } : {}),
+        },
+        body: method === 'PUT' ? JSON.stringify({ sentiment }) : undefined,
+      })
+      if (!resp.ok) {
+        const text = await resp.text().catch(() => '')
+        throw new Error(text || `Preference update failed (${resp.status})`)
+      }
+      const payload = (await resp.json()) as OrganizationSentiment
+      setOrgSentiment(payload.sentiment)
+      setOrg((prev) =>
+        prev
+          ? {
+              ...prev,
+              favor_count: payload.favor_count,
+              disfavor_count: payload.disfavor_count,
+              sentiment_score: payload.sentiment_score,
+            }
+          : prev,
+      )
+    } catch (err) {
+      setOrgSentimentStatus(toUserFacingErrorMessage(err, 'Could not update organization preference'))
     }
   }
 
@@ -861,7 +947,36 @@ export function PublicAdminPage() {
             <p className="muted" style={{ margin: 0 }}>
               Handle: <code>{org.slug}</code> • Upcoming hosted events: {org.upcoming_events_count}
             </p>
+            <p className="muted" style={{ margin: 0 }}>
+              Favor: {org.favor_count || 0} • Disfavor: {org.disfavor_count || 0}
+            </p>
           </div>
+          <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }} role="group" aria-label={`Preference for ${org.name}`}>
+            <button
+              type="button"
+              className={orgSentiment === 'favor' ? 'btn-primary' : undefined}
+              onClick={() => void setOrganizationSentiment('favor')}
+              aria-pressed={orgSentiment === 'favor'}
+              aria-label={`Favor ${org.name}. ${org.favor_count || 0} favor votes`}
+            >
+              Favor
+            </button>
+            <button
+              type="button"
+              className={orgSentiment === 'disfavor' ? 'btn-primary' : undefined}
+              onClick={() => void setOrganizationSentiment('disfavor')}
+              aria-pressed={orgSentiment === 'disfavor'}
+              aria-label={`Disfavor ${org.name}. ${org.disfavor_count || 0} disfavor votes`}
+            >
+              Disfavor
+            </button>
+            {!token ? <span className="muted">Sign in to register your preference.</span> : null}
+          </div>
+          {orgSentimentStatus ? (
+            <p className="muted" role="status" style={{ margin: 0 }}>
+              {orgSentimentStatus}
+            </p>
+          ) : null}
           {token ? (
             <Link className="btn-primary" to={`/chat?start=group&org=${encodeURIComponent(org.slug)}`} style={{ textDecoration: 'none', width: 'fit-content' }}>
               Message Group
