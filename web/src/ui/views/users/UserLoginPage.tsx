@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
 import { DEFAULT_POST_LOGIN_PATH, PIDP_APP_SLUG, pidpAppLoginUrl, pidpUrl, portalAuthCallbackUrl } from '../../../config/pidp'
@@ -28,7 +28,9 @@ export function UserLoginPage() {
     }
   }, [isLoading, isSubmitting, navigate])
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (event?: FormEvent<HTMLFormElement>) => {
+    event?.preventDefault()
+    if (isSubmitting) return
     setError(null)
     setIsSubmitting(true)
     try {
@@ -40,24 +42,16 @@ export function UserLoginPage() {
   }
 
   return (
-    <section className="panel">
-      <h1 style={{ marginTop: 0 }}>Login (user)</h1>
-      <div
-        style={{ display: 'grid', gap: '0.6rem' }}
-        onKeyDown={(event) => {
-          if (event.key !== 'Enter') return
-          if (isSubmitting || isLoading) return
-          const target = event.target as HTMLElement | null
-          if (target && (target.tagName === 'TEXTAREA' || target.isContentEditable)) return
-          event.preventDefault()
-          handleSubmit()
-        }}
-      >
-        <div style={{ display: 'grid', gap: '0.5rem' }}>
-          <p className="muted" style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
-            Sign in or register with your Code Collective identity
-          </p>
-          <div className="portal-guest-login-actions" aria-label="Sign in or register options">
+    <section className="portal-auth-page" aria-labelledby="user-login-title">
+      <div className="panel portal-auth-card">
+        <div className="portal-auth-card-header">
+          <p className="portal-auth-eyebrow">Code Collective identity</p>
+          <h1 id="user-login-title">Log In</h1>
+          <p className="muted">Sign in with your existing account or create one before continuing.</p>
+        </div>
+
+        <div className="portal-auth-provider-stack">
+          <div className="portal-guest-login-actions portal-auth-provider-actions" aria-label="Sign in or register options">
             <a
               href={socialLoginUrl('google')}
               className="portal-social-login-button"
@@ -74,92 +68,60 @@ export function UserLoginPage() {
             </a>
             <Link
               to="/users/register"
-              className="portal-social-login-button"
+              className="portal-social-login-button portal-auth-register-shortcut"
               aria-label="Register new account"
-              style={{
-                display: 'inline-flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                gap: '0.5rem',
-                border: '1px solid var(--border-input)',
-                borderRadius: 8,
-                padding: '0.6rem 1rem',
-                textDecoration: 'none',
-                color: 'inherit',
-                fontSize: '0.9rem',
-                fontWeight: 600,
-              }}
             >
               Register
             </Link>
           </div>
           <a
             href={pidpAppLoginUrl(nextUrl)}
-            style={{
-              display: 'inline-flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              gap: '0.5rem',
-              border: '1px solid var(--border-input)',
-              borderRadius: 8,
-              padding: '0.6rem 1rem',
-              textDecoration: 'none',
-              backgroundColor: 'var(--primary)',
-              color: '#fff',
-            }}
+            className="portal-button portal-auth-idp-link"
           >
             Continue to Identity Provider
           </a>
         </div>
-        <div className="muted" style={{ textAlign: 'center' }}>
-          or
-        </div>
-        <div>
-          <label className="muted" htmlFor="email">
-            Email
+
+        <div className="portal-auth-divider"><span>or use email</span></div>
+
+        <form className="portal-auth-form" onSubmit={handleSubmit}>
+          <label>
+            <span>Email</span>
+            <input
+              id="email"
+              type="email"
+              autoComplete="email"
+              required
+              aria-required="true"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              aria-describedby={error ? 'user-login-error' : undefined}
+            />
           </label>
-          <input
-            id="email"
-            type="email"
-            autoComplete="email"
-            required
-            aria-required="true"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            style={{ width: '100%' }}
-            aria-describedby={error ? 'user-login-error' : undefined}
-          />
-        </div>
-        <div>
-          <label className="muted" htmlFor="pw">
-            Password
+          <label>
+            <span>Password</span>
+            <input
+              id="pw"
+              type="password"
+              autoComplete="current-password"
+              required
+              aria-required="true"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              aria-describedby={error ? 'user-login-error' : undefined}
+            />
           </label>
-          <input
-            id="pw"
-            type="password"
-            autoComplete="current-password"
-            required
-            aria-required="true"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={{ width: '100%' }}
-            aria-describedby={error ? 'user-login-error' : undefined}
-          />
-        </div>
-        {error ? (
-          <p id="user-login-error" className="muted" role="alert" aria-live="polite" style={{ color: 'var(--text-danger)', marginBottom: 0 }}>
-            {error}
-          </p>
-        ) : null}
-        <button
-          type="button"
-          disabled={isSubmitting || isLoading}
-          aria-busy={isSubmitting || isLoading}
-          onClick={handleSubmit}
-        >
-          {isSubmitting || isLoading ? 'Signing in...' : 'Login'}
-        </button>
-        <p className="muted" style={{ marginBottom: 0 }}>
+          {error ? (
+            <p id="user-login-error" className="portal-auth-error" role="alert" aria-live="polite">
+              {error}
+            </p>
+          ) : null}
+          <button type="submit" className="btn-primary portal-auth-submit" disabled={isSubmitting} aria-busy={isSubmitting}>
+            {isSubmitting ? 'Signing in...' : 'Log In'}
+          </button>
+        </form>
+
+        <p className="portal-auth-secondary">
           New here? <Link to="/users/register">Register</Link>
         </p>
       </div>

@@ -15,7 +15,8 @@ export function UserSettingsPage() {
   function saveTheme(nextMode: ThemeMode) {
     setThemeMode(nextMode)
     applyThemeMode(nextMode)
-    setStatus(`Theme set to ${nextMode}.`)
+    const label = nextMode === 'system' ? 'system default' : nextMode
+    setStatus(`Theme set to ${label}.`)
   }
 
   if (role === 'guest') {
@@ -54,6 +55,7 @@ export function UserSettingsPage() {
             aria-label="Select color theme"
             onChange={(event) => saveTheme(event.target.value as ThemeMode)}
           >
+            <option value="system">System default</option>
             <option value="dark">Dark</option>
             <option value="light">Light</option>
           </select>

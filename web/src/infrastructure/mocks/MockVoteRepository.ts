@@ -1,5 +1,6 @@
 import type { VoteRepository } from '../../application/ports/VoteRepository'
 import type { Motion, Vote, VoteChoice, VoteResult } from '../../domain/motion/Motion'
+import { canVote } from '../../domain/motion/motionStateMachine'
 
 const STORAGE_KEY = 'demo.motions'
 
@@ -33,6 +34,7 @@ export class MockVoteRepository implements VoteRepository {
     const idx = all.findIndex((m) => m.id === motionId)
     if (idx === -1) throw new Error(`Motion not found: ${motionId}`)
     const motion = all[idx]
+    if (!canVote(motion, voterId)) throw new Error('Cannot vote on this motion')
 
     const vote: Vote = {
       id: `vote_${Math.random().toString(16).slice(2)}`,

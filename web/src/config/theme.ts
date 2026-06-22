@@ -1,9 +1,10 @@
-export type ThemeMode = 'dark' | 'light'
+export type ThemeMode = 'system' | 'dark' | 'light'
 
 export const THEME_STORAGE_KEY = 'orgportal.theme'
 
 export function normalizeThemeMode(value: string | null | undefined): ThemeMode {
-  return value === 'light' ? 'light' : 'dark'
+  if (value === 'dark' || value === 'light') return value
+  return 'system'
 }
 
 export function readThemeMode(storage: Pick<Storage, 'getItem'> = localStorage): ThemeMode {
@@ -13,6 +14,10 @@ export function readThemeMode(storage: Pick<Storage, 'getItem'> = localStorage):
 export function applyThemeMode(mode: ThemeMode, storage: Pick<Storage, 'setItem'> = localStorage) {
   storage.setItem(THEME_STORAGE_KEY, mode)
   if (typeof document !== 'undefined') {
-    document.documentElement.setAttribute('data-theme', mode)
+    if (mode === 'system') {
+      document.documentElement.removeAttribute('data-theme')
+    } else {
+      document.documentElement.setAttribute('data-theme', mode)
+    }
   }
 }

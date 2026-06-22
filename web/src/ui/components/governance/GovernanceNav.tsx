@@ -57,9 +57,8 @@ export function GovernanceNav() {
         padding: '0 20px',
         display: 'flex',
         alignItems: 'center',
+        flexWrap: 'wrap',
         gap: 8,
-        overflowX: 'auto',
-        scrollbarWidth: 'none',
       }}>
         <NavItem to={basePath} end>
           <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">

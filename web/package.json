@@ -28,6 +28,7 @@
     "test:matrix:live": "node scripts/matrix-live-smoke.mjs",
     "test:chat:selenium": "python scripts/selenium-chat-smoke.py",
     "test:chat:selenium:docker": "scripts/run-selenium-chat-smoke.sh",
+    "test:local:selenium:docker": "scripts/run-selenium-local-smoke.sh",
     "bot:provision": "node scripts/provision-portal-bot.mjs",
     "bot:list": "node scripts/bot-admin.mjs list",
     "bot:admin": "node scripts/bot-admin.mjs",

@@ -2,14 +2,15 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useAuth } from '../../app/AppProviders'
 import { Header } from '../shell/Header'
 import { Footer } from '../shell/Footer'
+import {
+  parsePaymentRequestSearch,
+  recipientOptions as buildRecipientOptions,
+  type FinanceAccountSummary,
+} from './financeUtils'
 
 const ORG_API_BASE = '/api/org'
 
-type AccountSummary = {
-  id: string
-  name: string
-  email: string
-}
+type AccountSummary = FinanceAccountSummary
 
 type MeAccount = {
   id: string
@@ -44,15 +45,11 @@ export function SendPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const to = params.get('to') ?? params.get('t')
-    const requestedAmount = params.get('amount') ?? params.get('a')
-    const memo = params.get('memo') ?? params.get('m')
-    const fromName = params.get('from') ?? params.get('f')
-    if (to) setToAccountId(to)
-    if (requestedAmount) setAmount(requestedAmount)
-    if (memo) setDescription(memo)
-    if (fromName) setRequestSource(fromName)
+    const request = parsePaymentRequestSearch(window.location.search)
+    if (request.toAccountId) setToAccountId(request.toAccountId)
+    if (request.amount) setAmount(request.amount)
+    if (request.memo) setDescription(request.memo)
+    if (request.requestSource) setRequestSource(request.requestSource)
   }, [])
 
   useEffect(() => {
@@ -72,8 +69,7 @@ export function SendPage() {
   }, [token])
 
   const recipientOptions = useMemo(() => {
-    if (!me) return accounts
-    return accounts.filter((account) => account.id !== me.id)
+    return buildRecipientOptions(accounts, me)
   }, [accounts, me])
 
   async function onSubmit(event: FormEvent) {

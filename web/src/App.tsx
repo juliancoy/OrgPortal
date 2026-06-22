@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth, useServices } from './app/AppProviders'
 import { Header } from './ui/shell/Header'
 import { Footer } from './ui/shell/Footer'
+import { ExternalBrowserPrompt } from './ui/components/ExternalBrowserPrompt'
 import { DEFAULT_POST_LOGIN_PATH, PIDP_APP_SLUG, pidpAppLoginUrl, pidpUrl, portalAuthCallbackUrl } from './config/pidp'
 import { listMotions } from './application/usecases/listMotions'
 import { MotionStatusBadge } from './ui/components/governance/MotionStatusBadge'
@@ -139,6 +140,7 @@ export default function App() {
           className="panel portal-guest-panel"
           aria-labelledby="portal-guest-title"
         >
+          <ExternalBrowserPrompt />
           <div className="portal-guest-brand">
             <img
               src="/images/namebanner.png"
@@ -244,6 +246,9 @@ export default function App() {
             >
               Open full identity provider
             </a>
+            <p className="muted" style={{ margin: 0, textAlign: 'center' }}>
+              Need an account? <Link to="/users/register">Register</Link>
+            </p>
           </div>
         </section>
       </main>
