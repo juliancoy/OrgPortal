@@ -89,6 +89,7 @@ export function ContactSettingsPage({ embedded = false, hideQr = false, hideProf
   const [linksText, setLinksText] = useState('')
   const [publicVisibility, setPublicVisibility] = useState<PublicVisibility>(DEFAULT_PUBLIC_VISIBILITY)
   const [importUrl, setImportUrl] = useState('https://codecollective.us/personnel/juliancoy.html')
+  const [isTogglingEnabled, setIsTogglingEnabled] = useState(false)
 
   useEffect(() => {
     document.title = 'Org Portal • Public profile settings'
@@ -185,6 +186,36 @@ export function ContactSettingsPage({ embedded = false, hideQr = false, hideProf
         </svg>
       </button>
     )
+  }
+
+  async function togglePublicProfile() {
+    if (!token || !page || isTogglingEnabled) return
+    const enabled = !page.enabled
+    setStatus(null)
+    setPage((prev) => (prev ? { ...prev, enabled } : prev))
+    setIsTogglingEnabled(true)
+    try {
+      const resp = await fetch(orgUrl('/api/network/contact/me'), {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ enabled }),
+      })
+      if (!resp.ok) {
+        const text = await resp.text().catch(() => '')
+        throw new Error(text || `Save failed (${resp.status})`)
+      }
+      const data = (await resp.json()) as ContactPage
+      setPage(data)
+      setStatus(data.enabled ? 'Public profile enabled.' : 'Public profile disabled.')
+    } catch (err) {
+      setPage((prev) => (prev ? { ...prev, enabled: !enabled } : prev))
+      setStatus(err instanceof Error ? err.message : 'Save failed')
+    } finally {
+      setIsTogglingEnabled(false)
+    }
   }
 
   async function save() {
@@ -310,9 +341,10 @@ export function ContactSettingsPage({ embedded = false, hideQr = false, hideProf
         <button
           type="button"
           className={`contact-public-profile-toggle ${page.enabled ? 'is-disable' : 'is-enable'}`}
-          onClick={() => setField('enabled', !page.enabled)}
+          onClick={togglePublicProfile}
+          disabled={isTogglingEnabled}
         >
-          {page.enabled ? 'Disable' : 'Enable'}
+          {isTogglingEnabled ? 'Saving...' : page.enabled ? 'Disable' : 'Enable'}
         </button>
 
         {!embedded ? <div className="contact-settings-actions">
