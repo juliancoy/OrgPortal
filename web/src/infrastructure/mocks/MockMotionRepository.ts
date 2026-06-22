@@ -1,5 +1,6 @@
 import type { MotionRepository, MotionListQuery, CreateMotionInput } from '../../application/ports/MotionRepository'
 import type { Motion, VoteResult } from '../../domain/motion/Motion'
+import { canOpenVoting, canSecond, canTable, canWithdraw } from '../../domain/motion/motionStateMachine'
 
 const STORAGE_KEY = 'demo.motions'
 
@@ -172,7 +173,7 @@ export class MockMotionRepository implements MotionRepository {
     const idx = all.findIndex((m) => m.id === motionId)
     if (idx === -1) throw new Error(`Motion not found: ${motionId}`)
     const motion = all[idx]
-    if (motion.status !== 'proposed') throw new Error(`Motion must be in 'proposed' status to second`)
+    if (!canSecond(motion, userId)) throw new Error('Cannot second this motion')
     motion.seconderId = userId
     motion.seconderName = userName
     motion.status = 'discussion'
@@ -186,6 +187,8 @@ export class MockMotionRepository implements MotionRepository {
     const idx = all.findIndex((m) => m.id === motionId)
     if (idx === -1) throw new Error(`Motion not found: ${motionId}`)
     const motion = all[idx]
+    const amendments = all.filter((m) => m.parentMotionId === motionId)
+    if (!canOpenVoting(motion, amendments)) throw new Error('Cannot open voting for this motion')
     motion.status = 'voting'
     motion.votingDeadlineISO = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
     motion.updatedAtISO = new Date().toISOString()
@@ -198,6 +201,7 @@ export class MockMotionRepository implements MotionRepository {
     const idx = all.findIndex((m) => m.id === motionId)
     if (idx === -1) throw new Error(`Motion not found: ${motionId}`)
     const motion = all[idx]
+    if (!canTable(motion)) throw new Error('Cannot table this motion')
     motion.status = 'tabled'
     motion.updatedAtISO = new Date().toISOString()
     writeAll(all)
@@ -209,7 +213,7 @@ export class MockMotionRepository implements MotionRepository {
     const idx = all.findIndex((m) => m.id === motionId)
     if (idx === -1) throw new Error(`Motion not found: ${motionId}`)
     const motion = all[idx]
-    if (motion.proposerId !== userId) throw new Error('Only the proposer may withdraw a motion')
+    if (!canWithdraw(motion, userId)) throw new Error('Cannot withdraw this motion')
     motion.status = 'withdrawn'
     motion.updatedAtISO = new Date().toISOString()
     writeAll(all)
@@ -221,6 +225,7 @@ export class MockMotionRepository implements MotionRepository {
     const idx = all.findIndex((m) => m.id === motionId)
     if (idx === -1) throw new Error(`Motion not found: ${motionId}`)
     const motion = all[idx]
+    if (motion.status !== 'voting') throw new Error('Motion must be in voting status to resolve')
     const result = computeResult(motion)
     motion.result = result
     motion.status = result.passed ? 'passed' : 'failed'

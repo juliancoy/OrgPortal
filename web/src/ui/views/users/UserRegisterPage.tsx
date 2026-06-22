@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
 import { DEFAULT_POST_LOGIN_PATH } from '../../../config/pidp'
@@ -27,14 +27,31 @@ export function UserRegisterPage() {
     }
   }, [isLoading, isSubmitting, navigate])
 
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (isSubmitting) return
+    setError(null)
+    setIsSubmitting(true)
+    try {
+      await registerWithPassword(email, password)
+    } catch (err) {
+      setIsSubmitting(false)
+      setError(err instanceof Error ? err.message : 'Registration failed')
+    }
+  }
+
   return (
-    <section className="panel">
-      <h1 style={{ marginTop: 0 }}>Register (user)</h1>
-      <div style={{ display: 'grid', gap: '0.6rem' }}>
-        <div>
-          <label className="muted" htmlFor="email">
-            Email
-          </label>
+    <section className="portal-auth-page" aria-labelledby="user-register-title">
+      <div className="panel portal-auth-card portal-auth-card-compact">
+        <div className="portal-auth-card-header">
+          <p className="portal-auth-eyebrow">New account</p>
+          <h1 id="user-register-title">Register</h1>
+          <p className="muted">Create a user account for the Code Collective portal.</p>
+        </div>
+
+        <form className="portal-auth-form" onSubmit={handleSubmit}>
+          <label>
+            <span>Email</span>
           <input
             id="email"
             type="email"
@@ -43,13 +60,10 @@ export function UserRegisterPage() {
             aria-required="true"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            style={{ width: '100%' }}
           />
-        </div>
-        <div>
-          <label className="muted" htmlFor="pw">
-            Password
           </label>
+          <label>
+            <span>Password</span>
           <input
             id="pw"
             type="password"
@@ -58,12 +72,11 @@ export function UserRegisterPage() {
             aria-required="true"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            style={{ width: '100%' }}
             minLength={8}
             aria-describedby="pw-hint"
           />
           <span id="pw-hint" className="sr-only">Password must be at least 8 characters</span>
-        </div>
+          </label>
         {error ? (
           <div
             role="alertdialog"
@@ -148,23 +161,16 @@ export function UserRegisterPage() {
           </div>
         ) : null}
         <button
-          type="button"
-          disabled={isSubmitting || isLoading}
-          aria-busy={isSubmitting || isLoading}
-          onClick={async () => {
-            setError(null)
-            setIsSubmitting(true)
-            try {
-              await registerWithPassword(email, password)
-            } catch (err) {
-              setIsSubmitting(false)
-              setError(err instanceof Error ? err.message : 'Registration failed')
-            }
-          }}
+          type="submit"
+          className="btn-primary portal-auth-submit"
+          disabled={isSubmitting}
+          aria-busy={isSubmitting}
         >
-          {isSubmitting || isLoading ? 'Creating account...' : 'Register'}
+          {isSubmitting ? 'Creating account...' : 'Register'}
         </button>
-        <p className="muted" style={{ marginBottom: 0 }}>
+        </form>
+
+        <p className="portal-auth-secondary">
           Already have an account? <Link to="/users/login">Login</Link>
         </p>
       </div>

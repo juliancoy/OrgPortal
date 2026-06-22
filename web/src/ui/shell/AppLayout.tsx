@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { Outlet } from 'react-router-dom'
 import { Header } from './Header'
 import { Footer } from './Footer'
+import { ExternalBrowserPrompt } from '../components/ExternalBrowserPrompt'
 
 export function AppLayout() {
   const location = useLocation()
@@ -25,6 +26,7 @@ export function AppLayout() {
       {hideHeader ? null : <Header />}
       <main id="main-content" className="portal-main" ref={mainRef} tabIndex={-1}>
         <div className={`portal-container ${isChatRoute ? 'portal-chat-container' : ''}`}>
+          <ExternalBrowserPrompt />
           <Outlet />
         </div>
       </main>

@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../../app/AppProviders'
-import { pidpAppLoginUrl, pidpUrl } from '../../config/pidp'
+import { pidpUrl } from '../../config/pidp'
 import { refreshRuntimeTokenFromSession } from '../../infrastructure/auth/sessionToken'
 import { isAndroidDevice } from '../../infrastructure/platform/androidApp'
 import { OrgImage } from '../components/media/OrgImage'
@@ -116,7 +116,6 @@ export function Header() {
   const navigate = useNavigate()
   const displayName = user?.displayName || user?.email || 'Signed in'
   const roleLabel = role === 'campaign_manager' ? 'Org' : role === 'constituent' ? 'User' : 'Guest'
-  const nextUrl = window.location.href
   const showAndroidDownload = isAndroidDevice()
 
   const [menuOpen, setMenuOpen] = useState(false)
@@ -856,9 +855,9 @@ export function Header() {
             </>
           ) : (
             <>
-              <a className="portal-button" href={pidpAppLoginUrl(nextUrl)}>
+              <Link className="portal-button" to="/users/login">
                 Log In
-              </a>
+              </Link>
               <Link
                 to="/users/register"
                 className="btn-secondary"

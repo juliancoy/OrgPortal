@@ -3,7 +3,11 @@ import { useAuth } from '../../app/AppProviders'
 import { Header } from '../shell/Header'
 import { Footer } from '../shell/Footer'
 import { createQrSvg } from '../utils/qr'
-import { portalUrl } from '../../config/portalBase'
+import {
+  buildPaymentRequestUrl,
+  incomingTransactions,
+  type FinanceTransaction,
+} from './financeUtils'
 
 const ORG_API_BASE = '/api/org'
 
@@ -14,15 +18,7 @@ type MeAccount = {
   balance: number
 }
 
-type Transaction = {
-  id: string
-  from_account_id?: string | null
-  to_account_id?: string | null
-  amount: number
-  transaction_type: string
-  description: string
-  timestamp: string
-}
+type Transaction = FinanceTransaction
 
 function orgUrl(path: string) {
   if (!path.startsWith('/')) return `${ORG_API_BASE}/${path}`
@@ -66,16 +62,12 @@ export function ReceivePage() {
 
   const incoming = useMemo(() => {
     if (!me) return []
-    return transactions.filter((tx) => tx.to_account_id === me.id).slice(0, 10)
+    return incomingTransactions(transactions, me.id)
   }, [transactions, me])
 
   const paymentRequestUrl = useMemo(() => {
     if (!me) return ''
-    const params = new URLSearchParams({
-      t: me.id,
-      a: requestAmount || '0',
-    })
-    return `${portalUrl('/send')}?${params.toString()}`
+    return buildPaymentRequestUrl(me.id, requestAmount)
   }, [me, requestAmount])
 
   const qrSvg = useMemo(() => {

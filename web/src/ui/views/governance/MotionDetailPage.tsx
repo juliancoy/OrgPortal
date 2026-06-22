@@ -15,6 +15,7 @@ import { DiffView, InlineDiff } from '../../components/governance/DiffView'
 import { UnifiedDiff } from '../../components/governance/UnifiedDiff'
 import { GovernanceNav, GovernanceBreadcrumb } from '../../components/governance/GovernanceNav'
 import { useGovernanceParadigm, useGovernanceRepositories } from './paradigm'
+import { canOpenVoting } from '../../../domain/motion/motionStateMachine'
 
 function getGuestId(): string {
   const key = 'governance.guestId'
@@ -188,6 +189,10 @@ export function MotionDetailPage() {
   async function handleOpenVoting() {
     if (!id) return
     setActionError(null)
+    if (!motion || !canOpenVoting(motion, amendments)) {
+      setActionError('Cannot open voting for this motion')
+      return
+    }
     try {
       const updated = await motionRepository.openVoting(id)
       setMotion(updated)
