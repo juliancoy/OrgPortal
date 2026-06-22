@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
 import { publicProfileUrl } from '../../config/portalBase'
@@ -55,6 +55,21 @@ type PublicVisibilityKey =
   | 'links'
 
 type PublicVisibility = Record<PublicVisibilityKey, boolean>
+type SaveState = 'saved' | 'pending' | 'saving' | 'error'
+
+type ContactSavePayload = {
+  enabled: boolean
+  slug: string
+  headline: string | null
+  bio: string | null
+  email_public: string | null
+  phone_public: string | null
+  linkedin_url: string | null
+  github_url: string | null
+  x_url: string | null
+  website_url: string | null
+  links: ContactLink[]
+}
 
 const DEFAULT_PUBLIC_VISIBILITY: PublicVisibility = {
   headline: false,
@@ -82,6 +97,43 @@ function contactVisibilityFromPage(page: ContactPage): PublicVisibility {
   }
 }
 
+function contactLinksToText(links?: ContactLink[]) {
+  return (links || []).map((item) => `${item.label}|${item.url}`).join('\n')
+}
+
+function parseLinksText(text: string): ContactLink[] {
+  return text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [label, url] = line.split('|').map((item) => item.trim())
+      return { label, url }
+    })
+    .filter((item) => item.label && item.url)
+}
+
+function savePayload(page: ContactPage, publicVisibility: PublicVisibility, linksText: string): ContactSavePayload {
+  const parsedLinks = parseLinksText(linksText)
+  return {
+    enabled: page.enabled,
+    slug: page.slug,
+    headline: publicVisibility.headline ? page.headline || null : null,
+    bio: publicVisibility.bio ? page.bio || null : null,
+    email_public: publicVisibility.email_public ? page.email_public || null : null,
+    phone_public: publicVisibility.phone_public ? page.phone_public || null : null,
+    linkedin_url: publicVisibility.linkedin_url ? page.linkedin_url || null : null,
+    github_url: publicVisibility.github_url ? page.github_url || null : null,
+    x_url: publicVisibility.x_url ? page.x_url || null : null,
+    website_url: publicVisibility.website_url ? page.website_url || null : null,
+    links: publicVisibility.links ? parsedLinks : [],
+  }
+}
+
+function payloadKey(payload: ContactSavePayload) {
+  return JSON.stringify(payload)
+}
+
 export function ContactSettingsPage({ embedded = false, hideQr = false, hideProfileImage = false, profileImageEditor }: ContactSettingsPageProps = {}) {
   const { token } = useAuth()
   const [page, setPage] = useState<ContactPage | null>(null)
@@ -89,7 +141,10 @@ export function ContactSettingsPage({ embedded = false, hideQr = false, hideProf
   const [linksText, setLinksText] = useState('')
   const [publicVisibility, setPublicVisibility] = useState<PublicVisibility>(DEFAULT_PUBLIC_VISIBILITY)
   const [importUrl, setImportUrl] = useState('https://codecollective.us/personnel/juliancoy.html')
-  const [isTogglingEnabled, setIsTogglingEnabled] = useState(false)
+  const [savedPayloadKey, setSavedPayloadKey] = useState<string | null>(null)
+  const [saveState, setSaveState] = useState<SaveState>('saved')
+  const autosaveTimer = useRef<number | null>(null)
+  const saveSequence = useRef(0)
 
   useEffect(() => {
     document.title = 'Org Portal • Public profile settings'
@@ -109,9 +164,13 @@ export function ContactSettingsPage({ embedded = false, hideQr = false, hideProf
         return resp.json() as Promise<ContactPage>
       })
       .then((data) => {
+        const visibility = contactVisibilityFromPage(data)
+        const nextLinksText = contactLinksToText(data.links)
         setPage(data)
-        setLinksText((data.links || []).map((item) => `${item.label}|${item.url}`).join('\n'))
-        setPublicVisibility(contactVisibilityFromPage(data))
+        setLinksText(nextLinksText)
+        setPublicVisibility(visibility)
+        setSavedPayloadKey(payloadKey(savePayload(data, visibility, nextLinksText)))
+        setSaveState('saved')
         if (data.source_profile_url) {
           setImportUrl(data.source_profile_url)
         }
@@ -146,18 +205,108 @@ export function ContactSettingsPage({ embedded = false, hideQr = false, hideProf
     setPage((prev) => (prev ? { ...prev, [field]: value } : prev))
   }
 
+  function setPublicField(field: PublicVisibilityKey, value: string) {
+    setPage((prev) => (prev ? { ...prev, [field]: value } : prev))
+    if (value.trim()) {
+      setPublicVisibility((prev) => ({ ...prev, [field]: true }))
+    }
+  }
+
+  function setPublicLinks(value: string) {
+    setLinksText(value)
+    if (value.trim()) {
+      setPublicVisibility((prev) => ({ ...prev, links: true }))
+    }
+  }
+
   function setVisibility(field: PublicVisibilityKey, visible: boolean) {
     setPublicVisibility((prev) => ({ ...prev, [field]: visible }))
   }
 
+  const currentPayload = useMemo(
+    () => (page ? savePayload(page, publicVisibility, linksText) : null),
+    [linksText, page, publicVisibility],
+  )
+
+  const currentPayloadKey = useMemo(() => (currentPayload ? payloadKey(currentPayload) : null), [currentPayload])
+
+  useEffect(() => {
+    if (!token || !page || !currentPayload || !currentPayloadKey || savedPayloadKey === null) return
+    if (currentPayloadKey === savedPayloadKey) {
+      setSaveState('saved')
+      return
+    }
+
+    setSaveState('pending')
+    if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current)
+    const sequence = saveSequence.current + 1
+    saveSequence.current = sequence
+    autosaveTimer.current = window.setTimeout(async () => {
+      setSaveState('saving')
+      try {
+        const resp = await fetch(orgUrl('/api/network/contact/me'), {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(currentPayload),
+        })
+        if (!resp.ok) {
+          const text = await resp.text().catch(() => '')
+          throw new Error(text || `Save failed (${resp.status})`)
+        }
+        const data = (await resp.json()) as ContactPage
+        if (saveSequence.current !== sequence) return
+        const visibility = contactVisibilityFromPage(data)
+        const nextLinksText = contactLinksToText(data.links)
+        const nextPayloadKey = payloadKey(savePayload(data, visibility, nextLinksText))
+        setPage(data)
+        setPublicVisibility(visibility)
+        setLinksText(nextLinksText)
+        setSavedPayloadKey(nextPayloadKey)
+        setSaveState('saved')
+        setStatus('Public profile updated.')
+      } catch (err) {
+        if (saveSequence.current !== sequence) return
+        setSaveState('error')
+        setStatus(err instanceof Error ? err.message : 'Save failed')
+      }
+    }, 800)
+
+    return () => {
+      if (autosaveTimer.current) {
+        window.clearTimeout(autosaveTimer.current)
+        autosaveTimer.current = null
+      }
+    }
+  }, [currentPayload, currentPayloadKey, page, savedPayloadKey, token])
+
   function publicFieldClass(field: PublicVisibilityKey, value?: string | null) {
     const willShow = publicVisibility[field] && Boolean(String(value || '').trim())
-    return `contact-public-field ${willShow ? 'is-public' : 'is-private'}`
+    return `contact-public-field ${willShow ? 'is-public' : 'is-private'} ${fieldStateClass(field)}`
   }
 
   function publicLinksFieldClass() {
     const willShow = publicVisibility.links && Boolean(linksText.trim())
-    return `contact-public-field ${willShow ? 'is-public' : 'is-private'}`
+    return `contact-public-field ${willShow ? 'is-public' : 'is-private'} ${fieldStateClass('links')}`
+  }
+
+  function fieldStateClass(field: PublicVisibilityKey | 'slug' | 'enabled') {
+    if (!page || !currentPayload || !savedPayloadKey || saveState === 'error') return 'save-error'
+    const saved = currentPayloadKey === savedPayloadKey
+    const savedPayload = JSON.parse(savedPayloadKey) as ContactSavePayload
+    if (field === 'links') {
+      return saved || JSON.stringify(currentPayload.links) === JSON.stringify(savedPayload.links) ? 'save-saved' : 'save-pending'
+    }
+    return saved || currentPayload[field] === savedPayload[field] ? 'save-saved' : 'save-pending'
+  }
+
+  function saveLabel() {
+    if (saveState === 'pending') return 'Unsaved changes'
+    if (saveState === 'saving') return 'Saving...'
+    if (saveState === 'error') return 'Save failed'
+    return 'Saved'
   }
 
   function visibilityButton(field: PublicVisibilityKey) {
@@ -186,84 +335,6 @@ export function ContactSettingsPage({ embedded = false, hideQr = false, hideProf
         </svg>
       </button>
     )
-  }
-
-  async function togglePublicProfile() {
-    if (!token || !page || isTogglingEnabled) return
-    const enabled = !page.enabled
-    setStatus(null)
-    setPage((prev) => (prev ? { ...prev, enabled } : prev))
-    setIsTogglingEnabled(true)
-    try {
-      const resp = await fetch(orgUrl('/api/network/contact/me'), {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ enabled }),
-      })
-      if (!resp.ok) {
-        const text = await resp.text().catch(() => '')
-        throw new Error(text || `Save failed (${resp.status})`)
-      }
-      const data = (await resp.json()) as ContactPage
-      setPage(data)
-      setStatus(data.enabled ? 'Public profile enabled.' : 'Public profile disabled.')
-    } catch (err) {
-      setPage((prev) => (prev ? { ...prev, enabled: !enabled } : prev))
-      setStatus(err instanceof Error ? err.message : 'Save failed')
-    } finally {
-      setIsTogglingEnabled(false)
-    }
-  }
-
-  async function save() {
-    if (!token || !page) return
-    setStatus(null)
-    try {
-      const parsedLinks = linksText
-        .split('\n')
-        .map((line) => line.trim())
-        .filter(Boolean)
-        .map((line) => {
-          const [label, url] = line.split('|').map((item) => item.trim())
-          return { label, url }
-        })
-        .filter((item) => item.label && item.url)
-
-      const resp = await fetch(orgUrl('/api/network/contact/me'), {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          enabled: page.enabled,
-          slug: page.slug,
-          headline: publicVisibility.headline ? page.headline || null : null,
-          bio: publicVisibility.bio ? page.bio || null : null,
-          email_public: publicVisibility.email_public ? page.email_public || null : null,
-          phone_public: publicVisibility.phone_public ? page.phone_public || null : null,
-          linkedin_url: publicVisibility.linkedin_url ? page.linkedin_url || null : null,
-          github_url: publicVisibility.github_url ? page.github_url || null : null,
-          x_url: publicVisibility.x_url ? page.x_url || null : null,
-          website_url: publicVisibility.website_url ? page.website_url || null : null,
-          links: publicVisibility.links ? parsedLinks : [],
-        }),
-      })
-      if (!resp.ok) {
-        const text = await resp.text().catch(() => '')
-        throw new Error(text || `Save failed (${resp.status})`)
-      }
-      const data = (await resp.json()) as ContactPage
-      setPage(data)
-      setLinksText((data.links || []).map((item) => `${item.label}|${item.url}`).join('\n'))
-      setPublicVisibility(contactVisibilityFromPage(data))
-      setStatus('Public profile saved.')
-    } catch (err) {
-      setStatus(err instanceof Error ? err.message : 'Save failed')
-    }
   }
 
   async function importFromUrl() {
@@ -296,8 +367,12 @@ export function ContactSettingsPage({ embedded = false, hideQr = false, hideProf
       }
       setPage(data.contact)
       setImportUrl(data.source_url)
-      setLinksText((data.contact.links || []).map((item) => `${item.label}|${item.url}`).join('\n'))
-      setPublicVisibility(contactVisibilityFromPage(data.contact))
+      const nextLinksText = contactLinksToText(data.contact.links)
+      const visibility = contactVisibilityFromPage(data.contact)
+      setLinksText(nextLinksText)
+      setPublicVisibility(visibility)
+      setSavedPayloadKey(payloadKey(savePayload(data.contact, visibility, nextLinksText)))
+      setSaveState('saved')
       if (data.imported_fields.length > 0) {
         setStatus(`Imported: ${data.imported_fields.join(', ')}`)
       } else {
@@ -337,14 +412,16 @@ export function ContactSettingsPage({ embedded = false, hideQr = false, hideProf
           <p className="muted" style={{ margin: '0.25rem 0 0' }}>
             {page.enabled ? 'Your public profile is enabled.' : 'Your public profile is disabled.'}
           </p>
+          <p className={`contact-autosave-status ${saveState}`} role="status">
+            {saveLabel()}
+          </p>
         </div>
         <button
           type="button"
-          className={`contact-public-profile-toggle ${page.enabled ? 'is-disable' : 'is-enable'}`}
-          onClick={togglePublicProfile}
-          disabled={isTogglingEnabled}
+          className={`contact-public-profile-toggle ${page.enabled ? 'is-disable' : 'is-enable'} ${fieldStateClass('enabled')}`}
+          onClick={() => setField('enabled', !page.enabled)}
         >
-          {isTogglingEnabled ? 'Saving...' : page.enabled ? 'Disable' : 'Enable'}
+          {page.enabled ? 'Disable' : 'Enable'}
         </button>
 
         {!embedded ? <div className="contact-settings-actions">
@@ -360,12 +437,12 @@ export function ContactSettingsPage({ embedded = false, hideQr = false, hideProf
 
       <div className={publicFieldClass('headline', page.headline)}>
         <label className="sr-only" htmlFor="contact-headline">Headline</label>
-        <input id="contact-headline" value={page.headline || ''} onChange={(e) => setField('headline', e.target.value)} placeholder="Headline" />
+        <input id="contact-headline" value={page.headline || ''} onChange={(e) => setPublicField('headline', e.target.value)} placeholder="Headline" />
         {visibilityButton('headline')}
       </div>
       <div className={publicFieldClass('bio', page.bio)}>
         <label className="sr-only" htmlFor="contact-bio">Bio</label>
-        <textarea id="contact-bio" value={page.bio || ''} onChange={(e) => setField('bio', e.target.value)} rows={4} placeholder="Bio" />
+        <textarea id="contact-bio" value={page.bio || ''} onChange={(e) => setPublicField('bio', e.target.value)} rows={4} placeholder="Bio" />
         {visibilityButton('bio')}
       </div>
       {!hideProfileImage && (profileImageEditor ?? (
@@ -382,32 +459,32 @@ export function ContactSettingsPage({ embedded = false, hideQr = false, hideProf
       ))}
       <div className={publicFieldClass('email_public', page.email_public)}>
         <label className="sr-only" htmlFor="contact-public-email">Public email</label>
-        <input id="contact-public-email" value={page.email_public || ''} onChange={(e) => setField('email_public', e.target.value)} placeholder="Public email" />
+        <input id="contact-public-email" value={page.email_public || ''} onChange={(e) => setPublicField('email_public', e.target.value)} placeholder="Public email" />
         {visibilityButton('email_public')}
       </div>
       <div className={publicFieldClass('phone_public', page.phone_public)}>
         <label className="sr-only" htmlFor="contact-public-phone">Public phone</label>
-        <input id="contact-public-phone" value={page.phone_public || ''} onChange={(e) => setField('phone_public', e.target.value)} placeholder="Public phone" />
+        <input id="contact-public-phone" value={page.phone_public || ''} onChange={(e) => setPublicField('phone_public', e.target.value)} placeholder="Public phone" />
         {visibilityButton('phone_public')}
       </div>
       <div className={publicFieldClass('linkedin_url', page.linkedin_url)}>
         <label className="sr-only" htmlFor="contact-linkedin-url">LinkedIn URL</label>
-        <input id="contact-linkedin-url" value={page.linkedin_url || ''} onChange={(e) => setField('linkedin_url', e.target.value)} placeholder="LinkedIn URL" />
+        <input id="contact-linkedin-url" value={page.linkedin_url || ''} onChange={(e) => setPublicField('linkedin_url', e.target.value)} placeholder="LinkedIn URL" />
         {visibilityButton('linkedin_url')}
       </div>
       <div className={publicFieldClass('github_url', page.github_url)}>
         <label className="sr-only" htmlFor="contact-github-url">GitHub URL</label>
-        <input id="contact-github-url" value={page.github_url || ''} onChange={(e) => setField('github_url', e.target.value)} placeholder="GitHub URL" />
+        <input id="contact-github-url" value={page.github_url || ''} onChange={(e) => setPublicField('github_url', e.target.value)} placeholder="GitHub URL" />
         {visibilityButton('github_url')}
       </div>
       <div className={publicFieldClass('x_url', page.x_url)}>
         <label className="sr-only" htmlFor="contact-x-url">X / Twitter URL</label>
-        <input id="contact-x-url" value={page.x_url || ''} onChange={(e) => setField('x_url', e.target.value)} placeholder="X / Twitter URL" />
+        <input id="contact-x-url" value={page.x_url || ''} onChange={(e) => setPublicField('x_url', e.target.value)} placeholder="X / Twitter URL" />
         {visibilityButton('x_url')}
       </div>
       <div className={publicFieldClass('website_url', page.website_url)}>
         <label className="sr-only" htmlFor="contact-website-url">Website URL</label>
-        <input id="contact-website-url" value={page.website_url || ''} onChange={(e) => setField('website_url', e.target.value)} placeholder="Website URL" />
+        <input id="contact-website-url" value={page.website_url || ''} onChange={(e) => setPublicField('website_url', e.target.value)} placeholder="Website URL" />
         {visibilityButton('website_url')}
       </div>
       <div className={publicLinksFieldClass()}>
@@ -415,15 +492,11 @@ export function ContactSettingsPage({ embedded = false, hideQr = false, hideProf
         <textarea
           id="contact-extra-links"
           value={linksText}
-          onChange={(e) => setLinksText(e.target.value)}
+          onChange={(e) => setPublicLinks(e.target.value)}
           rows={5}
           placeholder={'Extra links, one per line: Label|https://example.com'}
         />
         {visibilityButton('links')}
-      </div>
-
-      <div>
-        <button type="button" onClick={save}>Save Public Profile</button>
       </div>
 
       {!embedded ? <section className="portal-card" style={{ display: 'grid', gap: '0.5rem' }}>
@@ -473,7 +546,7 @@ export function ContactSettingsPage({ embedded = false, hideQr = false, hideProf
         </div>
       ) : null}
 
-      <label className="profile-bottom-field">
+      <label className={`profile-bottom-field contact-save-outline ${fieldStateClass('slug')}`}>
         <span className="muted">Public slug</span>
         <input value={page.slug} onChange={(e) => setField('slug', e.target.value)} placeholder="Public slug" />
       </label>
