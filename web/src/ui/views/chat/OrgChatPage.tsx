@@ -7,12 +7,8 @@ import { bootstrapMatrixSessionFromOrg } from '../../../chat/bootstrapSession'
 import { beginMatrixSsoLogin, bootstrapMatrixSessionFromUrl, clearMatrixSession } from '../../../chat/matrixSession'
 import { refreshRuntimeTokenFromSession } from '../../../infrastructure/auth/sessionToken'
 import { toUserFacingErrorMessage } from '../../../infrastructure/http/userFacingError'
-import {
-  buildChatNotificationPayload,
-  initChatNotifications,
-  notifyChatMessage,
-} from '../../../infrastructure/platform/chatNotifications'
-import { isNativeCapacitorRuntime } from '../../../infrastructure/platform/runtimePlatform'
+import { registerMatrixWebPusher } from '../../../infrastructure/platform/webPush'
+import { MatrixVideoCall } from '../../components/chat/MatrixVideoCall'
 
 const ORG_API_BASE = '/api/org'
 const QUICK_REACTIONS = ['👍', '❤️', '🔥', '🎉']
@@ -100,6 +96,7 @@ export function OrgChatPage() {
   const [isConnecting, setIsConnecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [myUserId, setMyUserId] = useState<string | null>(null)
+  const [matrixClient, setMatrixClient] = useState<MatrixClient | null>(null)
   const [rooms, setRooms] = useState<ChatRoomSummary[]>([])
   const [publicRooms, setPublicRooms] = useState<ChatRoomSummary[]>([])
   const [roomQuery, setRoomQuery] = useState('')
@@ -119,7 +116,6 @@ export function OrgChatPage() {
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
   const mediaInputRef = useRef<HTMLInputElement | null>(null)
   const autoJoinAttemptedRef = useRef<Set<string>>(new Set())
-  const isNativeRuntime = isNativeCapacitorRuntime()
 
   const selectedRoomId = roomId || null
   const selectedRoom = useMemo(
@@ -196,8 +192,10 @@ export function OrgChatPage() {
         }
         const client = await chatService.start(session)
         await chatService.verifySession()
+        await registerMatrixWebPusher(client).catch(() => {})
         if (cancelled) return
         setMyUserId(client.getUserId())
+        setMatrixClient(client)
         setBootstrapped(true)
       } catch (err) {
         clearMatrixSession()
@@ -214,6 +212,7 @@ export function OrgChatPage() {
 
     return () => {
       cancelled = true
+      setMatrixClient(null)
       chatService.stop()
     }
   }, [token])
@@ -397,39 +396,6 @@ export function OrgChatPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
-
-  useEffect(() => {
-    if (!isNativeRuntime || !bootstrapped) return
-    initChatNotifications().catch(() => {})
-  }, [isNativeRuntime, bootstrapped])
-
-  useEffect(() => {
-    if (!isNativeRuntime || !bootstrapped) return
-    let client: MatrixClient
-    try {
-      client = chatService.getClient()
-    } catch {
-      return
-    }
-    const onTimeline = (event: MatrixEvent, room: { roomId: string; name?: string } | undefined, toStartOfTimeline?: boolean) => {
-      if (toStartOfTimeline) return
-      if (event.getType() !== EventType.RoomMessage) return
-      if (!room?.roomId) return
-      if (room.roomId === selectedRoomId && document.visibilityState === 'visible') return
-      const payload = buildChatNotificationPayload({
-        event,
-        roomId: room.roomId,
-        roomName: room.name || room.roomId,
-        myUserId,
-      })
-      if (!payload) return
-      notifyChatMessage(payload).catch(() => {})
-    }
-    client.on(RoomEvent.Timeline, onTimeline)
-    return () => {
-      client.off(RoomEvent.Timeline, onTimeline)
-    }
-  }, [isNativeRuntime, bootstrapped, chatService, selectedRoomId, myUserId])
 
   async function handleJoinRoom(nextRoomId: string) {
     try {
@@ -741,13 +707,18 @@ export function OrgChatPage() {
             <header className="portal-chat-room-header">
               <div className="portal-chat-room-header-row">
                 <h1>{selectedRoom.name}</h1>
-                <button
-                  type="button"
-                  className="portal-chat-info-btn"
-                  onClick={() => setShowRoomInfo((current) => !current)}
-                >
-                  {showRoomInfo ? 'Hide Info' : 'Info'}
-                </button>
+                <div className="portal-chat-room-actions">
+                  {matrixClient ? (
+                    <MatrixVideoCall client={matrixClient} roomId={selectedRoom.id} roomName={selectedRoom.name} />
+                  ) : null}
+                  <button
+                    type="button"
+                    className="portal-chat-info-btn"
+                    onClick={() => setShowRoomInfo((current) => !current)}
+                  >
+                    {showRoomInfo ? 'Hide Info' : 'Info'}
+                  </button>
+                </div>
               </div>
               {showRoomInfo ? <p>{selectedRoom.id}</p> : null}
             </header>

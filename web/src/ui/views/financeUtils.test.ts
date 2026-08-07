@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildPaymentRequestUrl,
+  formatDena,
   incomingTransactions,
   parsePaymentRequestSearch,
   recipientOptions,
@@ -8,6 +9,12 @@ import {
 } from './financeUtils'
 
 describe('financeUtils', () => {
+  it('formats Dena using the ledger currency code and precision', () => {
+    expect(formatDena(90_163.456)).toBe('90,163.46 DEM')
+    expect(formatDena(12)).toBe('12 DEM')
+    expect(formatDena(null)).toBe('—')
+  })
+
   it('parses full and compact payment request query parameters', () => {
     expect(parsePaymentRequestSearch('?to=acct_1&amount=12.50&memo=Invoice&from=Julian')).toEqual({
       toAccountId: 'acct_1',

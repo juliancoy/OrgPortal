@@ -3,39 +3,13 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
 import { OrgImage } from '../components/media/OrgImage'
 import { setSeoMeta } from '../utils/seo'
+import { loadPeopleDirectory, type NetworkUser, type PublicOrganization } from './peopleDirectory'
 
 const ORG_API_BASE = '/api/org'
 
 function orgUrl(path: string) {
   if (!path.startsWith('/')) return `${ORG_API_BASE}/${path}`
   return `${ORG_API_BASE}${path}`
-}
-
-type NetworkUser = {
-  user_id: string
-  user_name: string
-  created_at?: string | null
-  updated_at?: string | null
-  slug?: string | null
-  enabled?: boolean
-  contact_slug?: string | null
-  contact_enabled?: boolean
-  headline?: string | null
-  photo_url?: string | null
-  connection_status?: 'self' | 'none' | 'pending_sent' | 'pending_received' | 'connected' | 'declined'
-}
-
-type PublicOrganization = {
-  id: string
-  name: string
-  slug: string
-  description?: string | null
-  image_url?: string | null
-  tags?: string[]
-  membership_count?: number
-  upcoming_events_count?: number
-  favor_count?: number
-  disfavor_count?: number
 }
 
 export function PeoplePage() {
@@ -60,45 +34,11 @@ export function PeoplePage() {
     const timer = window.setTimeout(async () => {
       try {
         setStatus('Loading directory...')
-        const params = new URLSearchParams({
-          limit: '500',
-          sort: 'recent',
-        })
-        if (query.trim()) params.set('q', query.trim())
-        const orgParams = new URLSearchParams(params)
-        orgParams.set('sort', 'popular')
-
-        const userPath = token ? '/api/network/users' : '/api/network/users/public'
-        const userOptions: RequestInit = token
-          ? {
-              headers: { Authorization: `Bearer ${token}` },
-              signal: controller.signal,
-            }
-          : { signal: controller.signal }
-
-        const [userResponse, organizationResponse] = await Promise.all([
-          fetch(orgUrl(`${userPath}?${params.toString()}`), userOptions),
-          fetch(orgUrl(`/api/network/orgs/public?${orgParams.toString()}`), {
-            signal: controller.signal,
-          }),
-        ])
-
-        if (!userResponse.ok) {
-          const text = await userResponse.text().catch(() => '')
-          throw new Error(text || `Failed to load people (${userResponse.status})`)
-        }
-        if (!organizationResponse.ok) {
-          const text = await organizationResponse.text().catch(() => '')
-          throw new Error(text || `Failed to load organizations (${organizationResponse.status})`)
-        }
-
-        const [userRows, organizationRows] = await Promise.all([
-          userResponse.json() as Promise<NetworkUser[]>,
-          organizationResponse.json() as Promise<PublicOrganization[]>,
-        ])
-        setUsers(Array.isArray(userRows) ? userRows : [])
-        setOrganizations(Array.isArray(organizationRows) ? organizationRows : [])
-        setStatus('')
+        const result = await loadPeopleDirectory({ token, query, signal: controller.signal })
+        if (controller.signal.aborted) return
+        setUsers(result.users)
+        setOrganizations(result.organizations)
+        setStatus(result.status)
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') return
         setUsers([])
@@ -257,6 +197,15 @@ export function PeoplePage() {
                     ) : (
                       <span className="muted">No public profile yet</span>
                     )}
+                    {!isSelf && token ? (
+                      <Link
+                        to={`/chat?start=dm&userId=${encodeURIComponent(person.user_id)}&name=${encodeURIComponent(person.user_name)}`}
+                        className="btn-primary"
+                        style={{ textDecoration: 'none', width: 'fit-content' }}
+                      >
+                        Message {person.user_name}
+                      </Link>
+                    ) : null}
                     {!token ? (
                       <span className="muted">Sign in to connect</span>
                     ) : person.connection_status === 'self' ? null : person.connection_status === 'connected' ? (

@@ -1,5 +1,20 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { consumePushBatch, endpointHash, enqueueUserPush, matrixJobs, normalizeSubscription } from "./push";
+import {
+  LifeInsuranceError,
+  insuranceDashboard,
+  reportMemberDeath,
+  saveInsuranceEnrollment,
+} from "./lifeInsurance";
+import {
+  HealthInsuranceError,
+  cancelHealthInsuranceAppointment,
+  healthInsuranceDashboard,
+  scheduleHealthInsuranceAppointment,
+  saveHealthInsuranceEnrollment,
+  submitHealthInsuranceClaim,
+} from "./healthInsurance";
 
 type ContactLink = {
   label: string;
@@ -1650,6 +1665,8 @@ function mapRecentTransaction(row: LedgerTransactionRow) {
 
 app.onError((err) => {
   if (err instanceof HTTPException) return err.getResponse();
+  if (err instanceof LifeInsuranceError) return json({ detail: err.message }, err.status);
+  if (err instanceof HealthInsuranceError) return json({ detail: err.message }, err.status);
   console.error("org-worker error", err);
   return json({ detail: "Internal server error" }, 500);
 });
@@ -1742,6 +1759,73 @@ app.post("/api/network/notifications/read", async (c) => {
   return c.json({ ok: true, read_at: readAt });
 });
 
+app.get("/api/network/push/status", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const rows = await c.env.DB.prepare(
+    "SELECT id FROM push_subscriptions WHERE user_id = ? AND enabled = 1 ORDER BY updated_at DESC",
+  ).bind(user.id).all<{ id: string }>();
+  return c.json({
+    supported: true,
+    configured: Boolean(c.env.PUSH_QUEUE && c.env.VAPID_PUBLIC_KEY && c.env.VAPID_PRIVATE_KEY && c.env.VAPID_SUBJECT),
+    public_key: c.env.VAPID_PUBLIC_KEY || null,
+    subscription_ids: (rows.results || []).map((row) => row.id),
+  });
+});
+
+app.post("/api/network/push/subscriptions", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  if (!c.env.VAPID_PUBLIC_KEY) fail(503, "Web Push is not configured");
+  let subscription;
+  try {
+    subscription = normalizeSubscription(await c.req.json());
+  } catch (error) {
+    fail(400, error instanceof Error ? error.message : "Invalid Web Push subscription");
+  }
+  const hash = await endpointHash(subscription!.endpoint);
+  const now = nowIso();
+  const existing = await c.env.DB.prepare(
+    "SELECT id FROM push_subscriptions WHERE user_id = ? AND endpoint_hash = ?",
+  ).bind(user.id, hash).first<{ id: string }>();
+  const id = existing?.id || `subscription-${crypto.randomUUID()}`;
+  await c.env.DB.prepare(
+    `INSERT INTO push_subscriptions
+     (id, user_id, endpoint, endpoint_hash, p256dh, auth, enabled, created_at, updated_at, last_seen_at)
+     VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
+     ON CONFLICT(user_id, endpoint_hash) DO UPDATE SET
+       endpoint = excluded.endpoint, p256dh = excluded.p256dh, auth = excluded.auth,
+       enabled = 1, updated_at = excluded.updated_at, last_seen_at = excluded.last_seen_at`,
+  ).bind(id, user.id, subscription!.endpoint, hash, subscription!.p256dh, subscription!.auth, now, now, now).run();
+  const publicOrigin = new URL(c.env.PUBLIC_PORTAL_BASE_URL || c.req.url).origin;
+  return c.json({
+    id,
+    gateway_url: `${publicOrigin}/api/org/api/network/push/matrix/_matrix/push/v1/notify`,
+  }, 201);
+});
+
+app.delete("/api/network/push/subscriptions/:id", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  await c.env.DB.prepare(
+    "UPDATE push_subscriptions SET enabled = 0, updated_at = ? WHERE id = ? AND user_id = ?",
+  ).bind(nowIso(), c.req.param("id"), user.id).run();
+  return c.json({ ok: true });
+});
+
+app.post("/api/network/push/matrix/_matrix/push/v1/notify", async (c) => {
+  const payload = (await c.req.json().catch(() => ({}))) as { notification?: Parameters<typeof matrixJobs>[0] };
+  const { jobs, rejected } = matrixJobs(payload.notification || {});
+  for (const job of jobs) {
+    const row = await c.env.DB.prepare(
+      "SELECT id FROM push_subscriptions WHERE id = ? AND enabled = 1",
+    ).bind(job.subscriptionId || "").first<{ id: string }>();
+    if (!row) {
+      if (job.subscriptionId) rejected.push(job.subscriptionId);
+      continue;
+    }
+    await enqueueUserPush(c.env, job);
+  }
+  return c.json({ rejected: [...new Set(rejected)] });
+});
+
 app.get("/api/network/connections/requests", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   const rows = await c.env.DB.prepare(
@@ -1793,13 +1877,14 @@ app.post("/api/network/connections/request", async (c) => {
       .run();
   }
 
+  const notificationId = `note-${crypto.randomUUID()}`;
   await c.env.DB.prepare(
     `INSERT INTO user_notifications
      (id, user_id, type, actor_user_id, actor_user_name, entity_id, title, body, status, created_at)
      VALUES (?, ?, 'connection_request', ?, ?, ?, ?, ?, 'unread', ?)`,
   )
     .bind(
-      `note-${crypto.randomUUID()}`,
+      notificationId,
       targetUserId,
       user.id,
       userName(user),
@@ -1809,6 +1894,13 @@ app.post("/api/network/connections/request", async (c) => {
       now,
     )
     .run();
+  await enqueueUserPush(c.env, {
+    eventId: `notification:${notificationId}`,
+    userId: targetUserId,
+    title: "New connection request",
+    body: `${userName(user)} wants to connect with you.`,
+    deepLink: "/people",
+  });
 
   const row = await c.env.DB.prepare("SELECT * FROM user_connections WHERE id = ?").bind(id).first<ConnectionRow>();
   return c.json(mapConnection(row!, user.id), 201);
@@ -1826,13 +1918,14 @@ async function respondToConnection(env: Env, request: Request, connectionId: str
     .bind(now, user.id, connectionId)
     .run();
   if (status === "accepted") {
+    const notificationId = `note-${crypto.randomUUID()}`;
     await env.DB.prepare(
       `INSERT INTO user_notifications
        (id, user_id, type, actor_user_id, actor_user_name, entity_id, title, body, status, created_at)
        VALUES (?, ?, 'connection_accepted', ?, ?, ?, ?, ?, 'unread', ?)`,
     )
       .bind(
-        `note-${crypto.randomUUID()}`,
+        notificationId,
         row.requester_user_id,
         user.id,
         userName(user),
@@ -1842,6 +1935,13 @@ async function respondToConnection(env: Env, request: Request, connectionId: str
         now,
       )
       .run();
+    await enqueueUserPush(env, {
+      eventId: `notification:${notificationId}`,
+      userId: row.requester_user_id,
+      title: "Connection accepted",
+      body: `${userName(user)} accepted your connection request.`,
+      deepLink: "/people",
+    });
   }
   const updated = await env.DB.prepare("SELECT * FROM user_connections WHERE id = ?").bind(connectionId).first<ConnectionRow>();
   return mapConnection(updated!, user.id);
@@ -2519,6 +2619,55 @@ app.get("/api/network/users", async (c) => {
   return c.json(await networkUsers(c.env, c.req.raw, q, Number.isFinite(limit) ? limit : 500));
 });
 
+app.get("/api/life-insurance", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  await accountForUser(c.env.DB, user);
+  return c.json(await insuranceDashboard(c.env.DB, user.id));
+});
+
+app.put("/api/life-insurance/enrollment", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  await accountForUser(c.env.DB, user);
+  const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  return c.json(await saveInsuranceEnrollment(c.env.DB, user.id, payload));
+});
+
+app.post("/api/life-insurance/death-reports", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  await accountForUser(c.env.DB, user);
+  const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  const claim = await reportMemberDeath(c.env.DB, user.id, userName(user), payload);
+  return c.json(claim, 201);
+});
+
+app.get("/api/health-insurance", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  return c.json(await healthInsuranceDashboard(c.env.DB, user.id));
+});
+
+app.put("/api/health-insurance/enrollment", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  return c.json(await saveHealthInsuranceEnrollment(c.env.DB, user.id, payload));
+});
+
+app.post("/api/health-insurance/claims", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  return c.json(await submitHealthInsuranceClaim(c.env.DB, user.id, payload), 201);
+});
+
+app.post("/api/health-insurance/appointments", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  return c.json(await scheduleHealthInsuranceAppointment(c.env.DB, user.id, payload), 201);
+});
+
+app.post("/api/health-insurance/appointments/:appointmentId/cancel", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  return c.json(await cancelHealthInsuranceAppointment(c.env.DB, user.id, c.req.param("appointmentId")));
+});
+
 app.get("/api/accounts", async (c) => {
   await currentUser(c.env, c.req.raw);
   const q = (c.req.query("q") || "").trim().toLowerCase();
@@ -3093,5 +3242,8 @@ export default {
   fetch: app.fetch,
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext) {
     ctx.waitUntil(runUbiTick(env.DB, controller.scheduledTime));
+  },
+  async queue(batch: MessageBatch<import("./push").PushDeliveryJob>, env: Env) {
+    await consumePushBatch(batch, env);
   },
 };

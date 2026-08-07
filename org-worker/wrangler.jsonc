@@ -3,6 +3,7 @@
   "name": "org-codecollective",
   "main": "src/index.ts",
   "compatibility_date": "2026-06-07",
+  "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
   "observability": {
     "enabled": true
@@ -25,6 +26,23 @@
       "database_id": "a71a2306-3d82-44cb-a50c-d7fdffaacdc7"
     }
   ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "PUSH_QUEUE",
+        "queue": "org-web-push"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "org-web-push",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 3,
+        "dead_letter_queue": "org-web-push-dead-letter"
+      }
+    ]
+  },
   "r2_buckets": [
     {
       "binding": "SCAN_IMAGES",

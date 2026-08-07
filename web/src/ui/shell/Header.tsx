@@ -459,6 +459,8 @@ export function Header() {
     location.pathname.startsWith('/receive') ||
     location.pathname.startsWith('/create')
   const isDepartmentsActive = location.pathname.startsWith('/departments')
+  const isLifeInsuranceActive = location.pathname.startsWith('/life-insurance')
+  const isHealthInsuranceActive = location.pathname.startsWith('/health-insurance')
   const isIdActive = location.pathname === '/id' || location.pathname.startsWith('/contact-settings')
   const isChatActive = location.pathname.startsWith('/chat')
   const isScanActive = location.pathname.startsWith('/tools/business-cards')
@@ -946,6 +948,20 @@ export function Header() {
               />
             </svg>
             Finance
+          </NavLink>
+
+          <NavLink to="/life-insurance" isActive={isLifeInsuranceActive}>
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path d="M10 2.25l6.5 2.6v4.4c0 4.2-2.72 7.42-6.5 8.5-3.78-1.08-6.5-4.3-6.5-8.5v-4.4L10 2.25zm0 3.1a.85.85 0 00-.85.85v2.05H7.1a.85.85 0 000 1.7h2.05V12a.85.85 0 001.7 0V9.95h2.05a.85.85 0 000-1.7h-2.05V6.2a.85.85 0 00-.85-.85z" />
+            </svg>
+            Life benefit
+          </NavLink>
+
+          <NavLink to="/health-insurance" isActive={isHealthInsuranceActive}>
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path d="M10 1.8c3 2.1 5.7 2.4 7 2.5v5.1c0 4.1-2.6 7.1-7 8.8-4.4-1.7-7-4.7-7-8.8V4.3c1.3-.1 4-.4 7-2.5zm-.9 4v2.7H6.4v1.8h2.7V13h1.8v-2.7h2.7V8.5h-2.7V5.8H9.1z" />
+            </svg>
+            Health benefit
           </NavLink>
 
           <NavLink to="/departments" isActive={isDepartmentsActive}>

@@ -5,6 +5,283 @@
   font-style: normal;
 }
 
+.health-insurance-page {
+  display: grid;
+  gap: 22px;
+  width: min(1180px, calc(100% - 32px));
+  margin: 28px auto 64px;
+}
+
+.health-insurance-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(260px, .7fr);
+  gap: 28px;
+  align-items: center;
+  background: linear-gradient(135deg, #eefaf6, #edf4ff);
+}
+
+.health-insurance-hero h1,
+.health-insurance-card h2,
+.health-insurance-history h2,
+.health-insurance-reference h2 {
+  margin: 4px 0 8px;
+}
+
+.health-insurance-eyebrow {
+  color: #18745b;
+  font-size: .76rem;
+  font-weight: 800;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.health-insurance-boundary {
+  display: grid;
+  gap: 7px;
+  padding: 18px;
+  color: #173b31;
+  background: rgba(255, 255, 255, .8);
+  border: 1px solid rgba(24, 116, 91, .22);
+  border-radius: 14px;
+}
+
+.health-insurance-boundary span,
+.health-insurance-card > p,
+.health-insurance-reference p,
+.health-insurance-history > p {
+  color: var(--text-muted);
+}
+
+.health-insurance-grid {
+  display: grid;
+  grid-template-columns: minmax(270px, .72fr) minmax(0, 1.48fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.health-insurance-card {
+  display: grid;
+  gap: 15px;
+}
+
+.health-insurance-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.health-insurance-check {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 10px;
+  align-items: flex-start;
+  font-weight: 500 !important;
+}
+
+.health-insurance-check input {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+}
+
+.health-insurance-lines {
+  display: grid;
+  gap: 12px;
+}
+
+.health-insurance-line-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.health-insurance-line-heading h3 {
+  margin: 0;
+}
+
+.health-insurance-line {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr 1fr .55fr .8fr auto;
+  gap: 10px;
+  align-items: end;
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.health-insurance-line legend {
+  padding: 0 6px;
+  font-weight: 750;
+}
+
+.health-insurance-alert {
+  padding: 13px 16px;
+  border-radius: 10px;
+  font-weight: 650;
+}
+
+.health-insurance-alert.error {
+  color: #8a2424;
+  background: #fff0f0;
+  border: 1px solid #efb5b5;
+}
+
+.health-insurance-alert.success {
+  color: #145c49;
+  background: #ecfaf5;
+  border: 1px solid #a9dbc9;
+}
+
+.health-insurance-history,
+.health-insurance-reference,
+.health-insurance-calendar {
+  display: grid;
+  gap: 14px;
+}
+
+.health-insurance-calendar {
+  grid-template-columns: minmax(0, 1.1fr) minmax(260px, .7fr);
+  align-items: start;
+}
+
+.health-insurance-calendar-copy h2 {
+  margin: 4px 0 8px;
+}
+
+.health-insurance-calendar-copy > p,
+.health-insurance-services span,
+.health-insurance-services small,
+.health-insurance-appointments span,
+.health-insurance-appointments > p {
+  color: var(--text-muted);
+}
+
+.health-insurance-services {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.health-insurance-services article {
+  display: grid;
+  gap: 5px;
+  padding: 13px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.health-insurance-scheduler {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  background: #f4f8ff;
+  border-radius: 12px;
+}
+
+.health-insurance-appointments {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 8px;
+}
+
+.health-insurance-appointments h3 {
+  margin: 6px 0;
+}
+
+.health-insurance-appointments article {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+
+.health-insurance-appointments article > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.health-insurance-claim-list {
+  display: grid;
+  gap: 9px;
+}
+
+.health-insurance-claim-list article {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 13px 0;
+  border-top: 1px solid var(--border);
+}
+
+.health-insurance-claim-list article > div {
+  display: grid;
+  gap: 4px;
+}
+
+.health-insurance-claim-list article > div:last-child {
+  justify-items: end;
+  text-align: right;
+}
+
+.health-insurance-claim-list span {
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.health-insurance-reference > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+}
+
+@media (max-width: 980px) {
+  .health-insurance-grid,
+  .health-insurance-hero,
+  .health-insurance-calendar {
+    grid-template-columns: 1fr;
+  }
+
+  .health-insurance-line {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .health-insurance-page {
+    width: min(100% - 20px, 1180px);
+    margin-top: 14px;
+  }
+
+  .health-insurance-fields,
+  .health-insurance-line,
+  .health-insurance-services {
+    grid-template-columns: 1fr;
+  }
+
+  .health-insurance-claim-list article {
+    display: grid;
+  }
+
+  .health-insurance-claim-list article > div:last-child {
+    justify-items: start;
+    text-align: left;
+  }
+
+  .health-insurance-appointments article,
+  .health-insurance-appointments article > div {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
 @font-face {
   font-family: Mattone;
   src: url('/fonts/CLT-Mattone/web/Mattone-Black.woff2') format('woff2');
@@ -160,17 +437,7 @@
   --header-bg: linear-gradient(180deg, rgba(0, 42, 97, 0.96) 0%, rgba(1, 36, 83, 0.94) 100%);
   --hero-bg: linear-gradient(145deg, #013a82 0%, #002a61 100%);
   --footer-bg: linear-gradient(180deg, rgba(0, 42, 97, 0.94) 0%, rgba(1, 36, 83, 0.94) 100%);
-  --body-bg:
-    radial-gradient(1100px 680px at 10% -10%, rgba(0, 42, 97, 0.55), transparent 62%),
-    radial-gradient(1000px 760px at 105% 10%, rgba(1, 58, 130, 0.35), transparent 64%),
-    repeating-linear-gradient(
-      -45deg,
-      rgba(138, 184, 255, 0.03) 0,
-      rgba(138, 184, 255, 0.03) 8px,
-      transparent 8px,
-      transparent 20px
-    ),
-    linear-gradient(165deg, #001736 0%, #00244f 52%, #002a61 100%);
+  --body-bg: #081b31;
   --selection-bg: #7fb8ff;
   --selection-text: #071224;
   --focus-ring: 0 0 0 3px rgba(7, 18, 36, 0.95), 0 0 0 6px rgba(127, 184, 255, 0.92);
@@ -244,17 +511,7 @@
     --header-bg: linear-gradient(180deg, rgba(0, 42, 97, 0.96) 0%, rgba(1, 36, 83, 0.94) 100%);
     --hero-bg: linear-gradient(145deg, #013a82 0%, #002a61 100%);
     --footer-bg: linear-gradient(180deg, rgba(0, 42, 97, 0.94) 0%, rgba(1, 36, 83, 0.94) 100%);
-    --body-bg:
-      radial-gradient(1100px 680px at 10% -10%, rgba(0, 42, 97, 0.55), transparent 62%),
-      radial-gradient(1000px 760px at 105% 10%, rgba(1, 58, 130, 0.35), transparent 64%),
-      repeating-linear-gradient(
-        -45deg,
-        rgba(138, 184, 255, 0.03) 0,
-        rgba(138, 184, 255, 0.03) 8px,
-        transparent 8px,
-        transparent 20px
-      ),
-      linear-gradient(165deg, #001736 0%, #00244f 52%, #002a61 100%);
+    --body-bg: #081b31;
     --selection-bg: #7fb8ff;
     --selection-text: #071224;
     --focus-ring: 0 0 0 3px rgba(7, 18, 36, 0.95), 0 0 0 6px rgba(127, 184, 255, 0.92);
@@ -1974,13 +2231,13 @@ h6 {
   justify-content: center;
   min-height: 42px;
   padding: 0 18px;
-  border: 1px solid rgba(47, 132, 255, 0.48);
-  border-radius: var(--radius-full);
-  background: linear-gradient(135deg, #0b6fe8 0%, #12b8a6 100%);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-md);
+  background: var(--btn-primary-bg);
   color: #ffffff;
   font-weight: 900;
   text-decoration: none;
-  box-shadow: 0 14px 28px rgba(11, 111, 232, 0.22);
+  box-shadow: 0 8px 18px rgba(0, 26, 61, 0.18);
 }
 
 .contact-public-page-bubble:hover {
@@ -1994,7 +2251,14 @@ h6 {
 }
 
 .profile-editor-card {
-  width: min(100%, 640px);
+  width: min(100%, 820px);
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  border-width: 1px;
+  border-color: var(--border-subtle);
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(0, 16, 40, 0.22);
 }
 
 .profile-editor-card > .profile-settings-section,
@@ -2003,19 +2267,36 @@ h6 {
   width: 100%;
   justify-items: stretch;
   text-align: left;
+  padding: 24px 28px;
+  border: 0;
+  border-bottom: 1px solid var(--border-subtle);
+  border-radius: 0;
+  background: var(--surface-solid);
+  box-shadow: none;
 }
 
 .profile-editor-card > .profile-settings-section h2,
 .profile-editor-card > .profile-bottom-details h2,
 .profile-editor-card > .profile-account-reference h2 {
-  font-size: 1rem;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
 }
 
 .profile-editor-identity {
-  padding-bottom: 2px;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "photo name"
+    "photo headline";
+  justify-items: start;
+  column-gap: 20px;
+  row-gap: 4px;
+  padding: 10px 28px 28px;
+  border-bottom: 1px solid var(--border-subtle);
+  text-align: left;
 }
 
 .profile-editor-identity .profile-public-photo-card {
+  grid-area: photo;
   padding: 0;
   border: 0;
   background: transparent;
@@ -2023,10 +2304,25 @@ h6 {
 }
 
 .profile-editor-identity .profile-public-photo-button {
-  width: 92px;
-  height: 92px;
+  width: 104px;
+  height: 104px;
   border-color: var(--border);
-  box-shadow: none;
+  box-shadow: 0 8px 24px rgba(0, 16, 40, 0.16);
+}
+
+.profile-editor-identity .id-name {
+  grid-area: name;
+  align-self: end;
+  font-size: clamp(1.8rem, 5vw, 2.35rem);
+  line-height: 1.1;
+  text-align: left;
+}
+
+.profile-editor-identity .id-headline {
+  grid-area: headline;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  font-weight: 500;
 }
 
 .profile-editor-identity .profile-public-photo-label,
@@ -2046,14 +2342,15 @@ h6 {
 
 .profile-top-actions {
   display: flex;
-  justify-content: flex-start;
+  justify-content: flex-end;
   gap: 0.6rem;
+  padding: 22px 28px 0;
   flex-wrap: wrap;
 }
 
 .profile-settings-section {
   display: grid;
-  gap: 0.9rem;
+  gap: 1rem;
 }
 
 .profile-form-grid {
@@ -2062,15 +2359,15 @@ h6 {
 }
 
 .profile-save-button {
-  min-height: 48px;
-  min-width: 148px;
-  padding: 0 22px;
-  border: 1px solid rgba(0, 42, 97, 0.2);
+  min-height: 44px;
+  min-width: 132px;
+  padding: 0 18px;
+  border: 1px solid var(--btn-primary-bg);
   border-radius: var(--radius-md);
   background: var(--btn-primary-bg);
   color: var(--btn-primary-text);
   font-weight: 900;
-  box-shadow: 0 12px 26px rgba(0, 42, 97, 0.2);
+  box-shadow: 0 6px 16px rgba(0, 26, 61, 0.16);
 }
 
 .profile-save-button:hover {
@@ -2097,7 +2394,7 @@ h6 {
 }
 
 .profile-bottom-details {
-  gap: 0.9rem;
+  gap: 1rem;
   justify-items: stretch;
 }
 
@@ -2154,25 +2451,26 @@ h6 {
 .contact-public-field {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 44px;
-  gap: 8px;
+  gap: 6px 10px;
   align-items: stretch;
-  padding: 6px;
-  border: 2px solid;
+  padding: 12px;
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
+  background: var(--surface-soft);
 }
 
 .contact-public-field.is-public {
-  border-color: var(--accent-green);
+  border-color: var(--border);
 }
 
 .contact-public-field.is-private {
-  border-color: var(--accent-green);
+  border-color: var(--border-subtle);
 }
 
 .contact-public-field.save-saved,
 .contact-save-outline.save-saved,
 .contact-public-profile-toggle.save-saved {
-  border-color: var(--accent-green);
+  border-color: var(--border-subtle);
 }
 
 .contact-public-field.save-pending,
@@ -2193,7 +2491,16 @@ h6 {
 .contact-public-field textarea {
   min-width: 0;
   width: 100%;
-  border-color: transparent;
+  border-color: var(--border-input);
+  background: var(--surface-input);
+}
+
+.contact-field-label {
+  grid-column: 1 / -1;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
 }
 
 .contact-public-visibility-button {
@@ -2203,17 +2510,18 @@ h6 {
   min-height: 44px;
   padding: 0;
   border-radius: var(--radius-md);
-  background: transparent;
+  border-color: var(--border);
+  background: var(--surface-solid);
 }
 
 .contact-public-visibility-button.is-public {
-  border-color: #1268d8;
-  color: #1268d8;
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 .contact-public-visibility-button.is-private {
-  border-color: #d73535;
-  color: #d73535;
+  border-color: var(--border);
+  color: var(--text-muted);
 }
 
 .contact-autosave-status {
@@ -2242,17 +2550,17 @@ h6 {
 }
 
 .contact-public-profile-toggle {
-  min-width: 148px;
+  min-width: 112px;
   min-height: 48px;
-  padding: 0 22px;
-  border-radius: var(--radius-full);
+  padding: 0 18px;
+  border-radius: var(--radius-md);
   font-weight: 900;
   font-size: 0.9rem;
-  box-shadow: 0 10px 24px rgba(12, 30, 60, 0.12);
+  box-shadow: none;
 }
 
 .profile-account-reference {
-  margin-top: 0.25rem;
+  margin-top: 0;
 }
 
 .contact-public-profile-toggle.is-enable {
@@ -2284,6 +2592,35 @@ h6 {
 
   .public-id-card {
     width: min(100%, calc(100vw - 20px));
+  }
+
+  .profile-editor-card {
+    border-radius: 10px;
+  }
+
+  .profile-editor-card > .profile-settings-section,
+  .profile-editor-card > .profile-bottom-details,
+  .profile-editor-card > .profile-account-reference {
+    padding: 20px 16px;
+  }
+
+  .profile-top-actions {
+    padding: 16px 16px 0;
+  }
+
+  .profile-editor-identity {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "photo"
+      "name"
+      "headline";
+    justify-items: center;
+    padding: 10px 16px 22px;
+    text-align: center;
+  }
+
+  .profile-editor-identity .id-name {
+    text-align: center;
   }
 
   .public-id-link-row,
@@ -2399,6 +2736,28 @@ h6 {
   background: var(--surface-solid);
   color: var(--text-primary);
   font: inherit;
+}
+
+.user-settings-notification-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.user-settings-notification-row strong {
+  color: var(--text-primary);
+}
+
+.user-settings-notification-row p {
+  margin: 4px 0 0;
+}
+
+@media (max-width: 620px) {
+  .user-settings-notification-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
 }
 
 .user-settings-list {
@@ -2847,6 +3206,324 @@ textarea:focus {
 .secondary {
   color: var(--primary);
   background: var(--surface-softer);
+}
+
+.life-insurance-page {
+  display: grid;
+  gap: 24px;
+}
+
+.life-insurance-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(230px, 0.38fr);
+  gap: 24px;
+  align-items: center;
+}
+
+.life-insurance-hero h1 {
+  margin: 10px 0 8px;
+  font-size: clamp(2rem, 5vw, 3.7rem);
+  line-height: 0.98;
+  letter-spacing: -0.04em;
+}
+
+.life-insurance-hero p {
+  max-width: 680px;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.life-insurance-privacy-card {
+  display: grid;
+  gap: 6px;
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-strong);
+}
+
+.life-insurance-privacy-card strong,
+.life-insurance-privacy-card small {
+  color: var(--text-secondary);
+}
+
+.life-insurance-privacy-card span {
+  color: var(--primary);
+  font-size: clamp(2.2rem, 7vw, 4.4rem);
+  font-weight: 900;
+  line-height: 1;
+}
+
+.life-insurance-workspace,
+.life-insurance-method-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.life-insurance-form,
+.life-insurance-result,
+.life-insurance-method-grid .portal-card {
+  padding: clamp(20px, 4vw, 30px);
+}
+
+.life-insurance-form {
+  gap: 18px;
+}
+
+.life-insurance-form h2,
+.life-insurance-result h2,
+.life-insurance-pyramid h2,
+.life-insurance-method-grid h2 {
+  margin: 7px 0;
+  font-size: clamp(1.2rem, 3vw, 1.65rem);
+}
+
+.life-insurance-step {
+  color: var(--primary);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.life-insurance-input-note,
+.life-insurance-result > p,
+.life-insurance-source,
+.life-insurance-method-grid p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.life-insurance-field-grid,
+.life-insurance-report-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.life-insurance-report-form > .life-insurance-checkbox,
+.life-insurance-report-form > button,
+.life-insurance-report-form > p,
+.life-insurance-report-form > .life-insurance-claim-progress {
+  grid-column: 1 / -1;
+}
+
+.life-insurance-checkbox {
+  display: flex !important;
+  grid-template-columns: none !important;
+  flex-direction: row;
+  gap: 10px !important;
+  align-items: flex-start;
+  padding: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+  color: var(--text-primary) !important;
+  line-height: 1.45;
+}
+
+.life-insurance-checkbox input {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin: 1px 0 0;
+  accent-color: var(--primary);
+}
+
+.life-insurance-form-status {
+  margin: 0;
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.life-insurance-designation,
+.life-insurance-claim-progress {
+  display: grid;
+  gap: 5px;
+  padding: 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+}
+
+.life-insurance-designation strong,
+.life-insurance-claim-progress strong {
+  color: var(--text-primary);
+}
+
+.life-insurance-death-report {
+  padding: clamp(20px, 4vw, 30px);
+  border-left: 5px solid var(--accent-amber);
+}
+
+.life-insurance-own-claim {
+  padding: 14px 16px;
+  border: 2px solid var(--accent-red);
+  border-radius: var(--radius-md);
+  background: var(--accent-red-bg);
+  color: var(--text-primary);
+  font-weight: 800;
+}
+
+.life-insurance-result {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  border-color: var(--primary);
+  background: var(--surface-strong);
+}
+
+.life-insurance-amount {
+  color: var(--primary);
+  font-size: clamp(2.6rem, 7vw, 5.2rem);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.05em;
+  font-variant-numeric: tabular-nums;
+}
+
+.life-insurance-result-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.life-insurance-result-grid div {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+}
+
+.life-insurance-result-grid span {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  line-height: 1.25;
+}
+
+.life-insurance-result-grid strong {
+  color: var(--text-primary);
+  font-size: 1.15rem;
+}
+
+.life-insurance-error {
+  color: var(--text-danger) !important;
+  font-weight: 700;
+}
+
+.life-insurance-pyramid {
+  padding: clamp(20px, 4vw, 30px);
+}
+
+.life-insurance-section-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.life-insurance-section-heading > span {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.life-insurance-bars {
+  display: grid;
+  gap: 4px;
+  max-width: 820px;
+  margin: 0 auto 18px;
+}
+
+.life-insurance-bar-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 46px;
+  gap: 10px;
+  align-items: center;
+  min-height: 18px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+}
+
+.life-insurance-bar-row > strong {
+  color: var(--text-secondary);
+  text-align: right;
+  font-weight: 700;
+}
+
+.life-insurance-bar-track {
+  display: flex;
+  justify-content: center;
+  height: 10px;
+}
+
+.life-insurance-bar-track > span {
+  display: block;
+  min-width: 2px;
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--border);
+}
+
+.life-insurance-bar-row.current {
+  color: var(--primary);
+  font-weight: 900;
+}
+
+.life-insurance-bar-row.current > strong {
+  color: var(--primary);
+}
+
+.life-insurance-bar-row.current .life-insurance-bar-track > span {
+  height: 14px;
+  margin-top: -2px;
+  background: var(--primary);
+}
+
+.life-insurance-source a {
+  font-weight: 800;
+}
+
+.life-insurance-method-grid code {
+  color: var(--text-primary);
+  font-weight: 800;
+}
+
+.life-insurance-caution {
+  border-left: 5px solid var(--accent-amber);
+}
+
+@media (max-width: 760px) {
+  .life-insurance-hero,
+  .life-insurance-workspace,
+  .life-insurance-method-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .life-insurance-result-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .life-insurance-field-grid,
+  .life-insurance-report-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .life-insurance-section-heading {
+    align-items: start;
+    flex-direction: column;
+  }
 }
 
 .motion-feed {
@@ -3550,21 +4227,24 @@ textarea:focus {
 }
 
 .native-chat-shell {
-  grid-template-columns: 54px minmax(0, 1fr);
+  grid-template-columns: 64px minmax(0, 1fr);
   transition: grid-template-columns 160ms ease;
   min-width: 0;
   max-width: 100%;
-  gap: 12px;
+  gap: 16px;
 }
 
 .native-chat-shell.sidebar-expanded {
-  grid-template-columns: minmax(196px, 252px) minmax(0, 1fr);
+  grid-template-columns: minmax(230px, 270px) minmax(0, 1fr);
 }
 
 .native-chat-sidebar {
   grid-template-rows: auto minmax(0, 1fr) auto;
-  padding: 8px;
+  padding: 12px;
   overflow: hidden;
+  background: color-mix(in srgb, var(--surface-solid) 94%, var(--primary-bg));
+  color: var(--text-primary);
+  box-shadow: 0 18px 44px rgba(0, 16, 40, 0.18);
 }
 
 .portal-chat-sidebar-header {
@@ -3599,7 +4279,9 @@ textarea:focus {
   background: rgba(0, 42, 97, 0.18);
   color: var(--text-primary);
   font: inherit;
+  font-size: 1.35rem;
   font-weight: 700;
+  line-height: 1;
   cursor: pointer;
   position: relative;
   z-index: 2;
@@ -3698,6 +4380,23 @@ textarea:focus {
   white-space: nowrap;
 }
 
+.native-chat-room-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.native-chat-room-preview {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 0.73rem;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .portal-chat-room-btn.active {
   border-color: var(--primary);
   background: linear-gradient(180deg, rgba(0, 42, 97, 0.2), rgba(0, 42, 97, 0.1));
@@ -3785,6 +4484,17 @@ textarea:focus {
   min-width: 0;
 }
 
+.native-chat-shell .portal-chat-main {
+  container-name: native-chat-main;
+  container-type: inline-size;
+  min-height: clamp(560px, calc(100dvh - 260px), 780px);
+  max-height: calc(100dvh - 220px);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--surface-solid) 92%, var(--primary-bg));
+  color: var(--text-primary);
+  box-shadow: 0 18px 44px rgba(0, 16, 40, 0.2);
+}
+
 .portal-chat-main.drag-over {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(122, 188, 255, 0.35) inset;
@@ -3796,11 +4506,253 @@ textarea:focus {
   background: rgba(0, 42, 97, 0.24);
 }
 
+.native-chat-shell .portal-chat-room-header {
+  padding: 16px 20px;
+  background: color-mix(in srgb, var(--surface-solid) 84%, var(--primary-bg));
+}
+
+.native-chat-room-status {
+  min-height: 1.1em;
+}
+
 .portal-chat-room-header-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+.portal-chat-room-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.portal-chat-video-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-solid);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.portal-chat-video-btn:hover:not(:disabled),
+.portal-chat-video-btn.active {
+  border-color: var(--accent-blue);
+  background: color-mix(in srgb, var(--accent-blue) 12%, var(--surface-solid));
+  color: var(--accent-blue);
+}
+
+.portal-chat-video-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.portal-chat-video-btn svg {
+  width: 17px;
+  height: 17px;
+  fill: currentColor;
+}
+
+.matrix-video-overlay {
+  position: fixed;
+  inset: 24px;
+  z-index: 1200;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, white 14%, transparent);
+  border-radius: 22px;
+  background: #08111f;
+  color: #f7f9fc;
+  box-shadow: 0 28px 90px rgb(0 0 0 / 48%);
+}
+
+.matrix-video-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 22px;
+  border-bottom: 1px solid rgb(255 255 255 / 10%);
+  background: rgb(8 17 31 / 94%);
+}
+
+.matrix-video-header p {
+  margin: 0 0 3px;
+  color: #8aa2c2;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.matrix-video-header h2 {
+  margin: 0;
+  color: #fff;
+  font-size: 1rem;
+}
+
+.matrix-video-minimize,
+.matrix-video-controls button {
+  min-height: 40px;
+  padding: 9px 15px;
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-radius: 999px;
+  background: #17243a;
+  color: #f7f9fc;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.matrix-video-minimize:hover,
+.matrix-video-controls button:hover:not(:disabled) {
+  background: #22334f;
+}
+
+.matrix-video-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 10px;
+  min-height: 0;
+  padding: 10px;
+}
+
+.matrix-video-grid.participants-1 {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.matrix-video-tile {
+  position: relative;
+  min-height: 220px;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 15px;
+  background: #101d31;
+}
+
+.matrix-video-tile video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.matrix-video-tile.camera-off video {
+  opacity: 0;
+}
+
+.matrix-video-avatar {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  display: grid;
+  width: 84px;
+  height: 84px;
+  place-items: center;
+  transform: translate(-50%, -50%);
+  border: 2px solid rgb(255 255 255 / 25%);
+  border-radius: 50%;
+  background: linear-gradient(135deg, #245da4, #4e73c5);
+  color: white;
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+.matrix-video-tile-label {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  left: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 9px;
+  background: rgb(4 10 19 / 72%);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 750;
+  backdrop-filter: blur(8px);
+}
+
+.matrix-video-empty {
+  display: grid;
+  min-height: 260px;
+  place-items: center;
+  border: 1px dashed rgb(255 255 255 / 16%);
+  border-radius: 15px;
+  color: #9fb0c8;
+  font-weight: 700;
+}
+
+.matrix-video-error {
+  margin: 0;
+  padding: 10px 22px;
+  background: rgb(190 45 66 / 20%);
+  color: #ffb6c1;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.matrix-video-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 16px 20px 20px;
+  border-top: 1px solid rgb(255 255 255 / 10%);
+  background: rgb(8 17 31 / 96%);
+}
+
+.matrix-video-controls button.primary,
+.matrix-video-controls button.active {
+  border-color: #4f8fdb;
+  background: #2865ad;
+}
+
+.matrix-video-controls button.off {
+  background: #5b3340;
+}
+
+.matrix-video-controls button.danger {
+  border-color: #9a3e4d;
+  background: #b83d52;
+}
+
+.matrix-video-controls button.danger.secondary {
+  background: transparent;
+  color: #ff9cab;
+}
+
+@media (max-width: 720px) {
+  .portal-chat-video-btn span {
+    display: none;
+  }
+
+  .matrix-video-overlay {
+    inset: 0;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .matrix-video-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .matrix-video-tile {
+    min-height: 180px;
+  }
 }
 
 .native-chat-room-title {
@@ -3847,7 +4799,15 @@ textarea:focus {
   align-content: start;
 }
 
+.native-chat-shell .portal-chat-timeline {
+  gap: 10px;
+  padding: 22px clamp(16px, 3vw, 34px);
+  background: color-mix(in srgb, var(--surface-soft) 88%, transparent);
+  scrollbar-gutter: stable;
+}
+
 .portal-chat-message {
+  box-sizing: border-box;
   border: 1px solid var(--border-subtle);
   background: var(--surface-softer);
   border-radius: 12px;
@@ -3858,6 +4818,21 @@ textarea:focus {
   position: relative;
   justify-self: start;
   overflow: visible;
+}
+
+.native-chat-shell .portal-chat-message {
+  max-width: min(68%, 640px);
+  padding: 9px 13px 10px;
+  border-color: var(--border);
+  background: var(--surface-solid);
+  color: var(--text-primary);
+  box-shadow: 0 7px 20px rgba(0, 16, 40, 0.14);
+  line-height: 1.45;
+}
+
+.native-chat-shell .portal-chat-message.mine {
+  border-color: var(--primary);
+  background: var(--primary-bg);
 }
 
 .portal-chat-message:focus-visible {
@@ -3892,6 +4867,10 @@ textarea:focus {
   gap: 10px;
   margin-bottom: 6px;
   min-width: 0;
+}
+
+.native-chat-shell .portal-chat-message.mine .portal-chat-message-meta {
+  justify-content: flex-end;
 }
 
 .portal-chat-message-author {
@@ -4207,10 +5186,22 @@ textarea:focus {
   border-top: 1px solid var(--border-subtle);
   display: grid;
   grid-template-columns: minmax(0, 1fr);
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   gap: 10px;
   padding: 12px;
   align-items: stretch;
   background: rgba(0, 42, 97, 0.1);
+}
+
+.native-chat-shell .portal-chat-composer {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 14px 18px;
+  align-items: end;
+  background: color-mix(in srgb, var(--surface-solid) 84%, var(--primary-bg));
 }
 
 .portal-chat-reply-banner {
@@ -4258,7 +5249,10 @@ textarea:focus {
 }
 
 .portal-chat-composer textarea {
+  box-sizing: border-box;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   resize: vertical;
   min-height: 64px;
   max-height: 190px;
@@ -4270,11 +5264,53 @@ textarea:focus {
   font: inherit;
 }
 
+.native-chat-shell .portal-chat-composer textarea {
+  width: auto;
+  min-height: 48px;
+  max-height: 144px;
+  resize: none;
+  padding: 12px 14px;
+}
+
 .portal-chat-composer .btn-primary {
   width: 100%;
   min-width: 0;
   height: 44px;
 }
+
+.native-chat-shell .portal-chat-composer .btn-primary {
+  width: auto;
+  min-width: 88px;
+  height: 48px;
+  padding-inline: 18px;
+}
+
+@container native-chat-main (max-width: 520px) {
+  .native-chat-shell .portal-chat-room-header,
+  .native-chat-shell .portal-chat-timeline,
+  .native-chat-shell .portal-chat-composer {
+    box-sizing: border-box;
+    width: 100cqi;
+    min-width: 0;
+    max-width: 100cqi;
+  }
+
+  .native-chat-shell .portal-chat-composer {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 10px 12px;
+  }
+
+  .native-chat-shell .portal-chat-message,
+  .native-chat-shell .portal-chat-message.mine {
+    max-width: 100%;
+  }
+
+  .native-chat-shell .portal-chat-composer .btn-primary {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
 
 .portal-chat-empty {
   padding: 24px;
@@ -4562,13 +5598,13 @@ textarea:focus {
   .native-chat-shell {
     width: 100%;
     max-width: 100%;
-    grid-template-columns: 48px minmax(0, calc(100% - 56px));
+    grid-template-columns: 52px minmax(0, 1fr);
     gap: 8px;
     overflow: hidden;
   }
 
   .native-chat-shell.sidebar-expanded {
-    grid-template-columns: minmax(132px, 36vw) minmax(0, calc(64vw - 16px));
+    grid-template-columns: minmax(210px, 32vw) minmax(0, 1fr);
   }
 
   .portal-chat-sidebar {
@@ -4593,6 +5629,10 @@ textarea:focus {
     width: 100%;
     max-width: 100%;
     overflow: hidden;
+  }
+
+  .native-chat-shell .portal-chat-main {
+    max-height: none;
   }
 
   .portal-chat-room-header,
@@ -4620,7 +5660,7 @@ textarea:focus {
 
   .native-chat-shell.sidebar-expanded .portal-chat-message,
   .native-chat-shell.sidebar-expanded .portal-chat-message.mine {
-    max-width: min(100%, calc(64vw - 36px));
+    max-width: min(76%, 560px);
   }
 
   .portal-chat-message-meta {
@@ -4646,9 +5686,19 @@ textarea:focus {
     align-items: stretch;
   }
 
+  .native-chat-shell .portal-chat-composer {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+  }
+
   .portal-chat-composer .btn-primary {
     width: 100%;
     min-width: 0;
+  }
+
+  .native-chat-shell .portal-chat-composer .btn-primary {
+    width: auto;
+    min-width: 84px;
   }
 
   .portal-chat-link-preview {
@@ -4894,8 +5944,23 @@ textarea:focus {
   .portal-chat-message.mine,
   .native-chat-shell.sidebar-expanded .portal-chat-message,
   .native-chat-shell.sidebar-expanded .portal-chat-message.mine {
+    margin-left: 0;
+    max-width: 84%;
+  }
+
+  .native-chat-shell .portal-chat-message {
     justify-self: start;
-    margin-left: 40px;
-    max-width: min(100%, calc(100vw - 94px));
+  }
+
+  .native-chat-shell .portal-chat-message.mine {
+    justify-self: end;
+  }
+
+  .native-chat-shell .portal-chat-timeline {
+    padding: 14px 12px;
+  }
+
+  .native-chat-shell .portal-chat-composer {
+    padding: 10px 12px;
   }
 }

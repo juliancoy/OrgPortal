@@ -1,0 +1,18 @@
+{
+  "name": "Code Collective Portal",
+  "short_name": "Code Collective",
+  "description": "Connect, collaborate, and organize with Code Collective.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f7fb",
+  "theme_color": "#12325b",
+  "icons": [
+    {
+      "src": "codecollective_logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

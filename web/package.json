@@ -39,7 +39,6 @@
     "@capacitor/android": "^8.3.1",
     "@capacitor/app": "^8.1.0",
     "@capacitor/core": "^8.3.1",
-    "@capacitor/local-notifications": "^8.0.2",
     "matrix-js-sdk": "^41.4.0",
     "pg": "^8.11.3",
     "qrcode": "^1.5.4",

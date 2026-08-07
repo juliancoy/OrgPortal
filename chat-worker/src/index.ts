@@ -219,11 +219,14 @@ async function conversation(db: D1Database, conversationId: string) {
 async function resolveTargetUser(env: Env, payload: Record<string, unknown>, currentUserId: string) {
   const directUserId = cleanString(payload.target_user_id, 200);
   if (directUserId) {
-    return {
-      user_id: directUserId,
-      user_name: cleanNullableString(payload.target_user_name, 200),
-      slug: cleanSlug(payload.target_user_slug) || null,
-    };
+    if (!env.CONTACTS_DB) fail(503, "Contact directory binding is not configured");
+    const row = await env.CONTACTS_DB.prepare(
+      "SELECT user_id, user_name, slug, enabled FROM user_contact_pages WHERE user_id = ?",
+    )
+      .bind(directUserId)
+      .first<ContactUserRow>();
+    if (!row) fail(404, "Target user not found");
+    return row;
   }
 
   const slug = cleanSlug(payload.target_user_slug);
@@ -691,12 +694,53 @@ app.get("/api/network/chat/conversations/:conversationId/socket", async (c) => {
   return room.fetch(url, c.req.raw);
 });
 
+app.get("/api/network/chat/ice-servers", async (c) => {
+  const user = c.get("user");
+  const fallback = [{ urls: ["stun:stun.cloudflare.com:3478"] }];
+  if (!c.env.CHAT_TURN_KEY_ID || !c.env.CHAT_TURN_KEY_API_TOKEN) {
+    return c.json({ ice_servers: fallback, relay_configured: false });
+  }
+  const response = await fetch(
+    `https://rtc.live.cloudflare.com/v1/turn/keys/${encodeURIComponent(c.env.CHAT_TURN_KEY_ID)}/credentials/generate-ice-servers`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${c.env.CHAT_TURN_KEY_API_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ ttl: 14400, customIdentifier: user.id }),
+    },
+  );
+  if (!response.ok) return c.json({ ice_servers: fallback, relay_configured: false });
+  const payload = await response.json() as { iceServers?: unknown };
+  return c.json({ ice_servers: Array.isArray(payload.iceServers) ? payload.iceServers : fallback, relay_configured: true });
+});
+
 type ConnectedSocket = {
   userId: string;
   userName: string;
   conversationId: string;
   connectedAt: string;
 };
+
+export function normalizeCallSignal(parsed: Record<string, unknown>, connected: ConnectedSocket) {
+  const signal = cleanString(parsed.signal, 20);
+  const callId = cleanString(parsed.call_id, 120);
+  const targetUserId = cleanString(parsed.target_user_id, 200);
+  if (!["invite", "offer", "answer", "ice", "hangup"].includes(signal) || !callId || !targetUserId) return null;
+  return {
+    type: "call.signal",
+    conversation_id: connected.conversationId,
+    call_id: callId,
+    signal,
+    from_user_id: connected.userId,
+    from_user_name: connected.userName,
+    target_user_id: targetUserId,
+    description: parsed.description && typeof parsed.description === "object" ? parsed.description : undefined,
+    candidate: parsed.candidate && typeof parsed.candidate === "object" ? parsed.candidate : undefined,
+    at: nowIso(),
+  };
+}
 
 export class ConversationDurableObject {
   constructor(private readonly state: DurableObjectState, private readonly env: Env) {
@@ -761,6 +805,16 @@ export class ConversationDurableObject {
           active: Boolean(parsed.active),
           at: nowIso(),
         });
+        return;
+      }
+      if (parsed.type === "call.signal") {
+        const event = normalizeCallSignal(parsed, connected);
+        if (!event) {
+          ws.send(JSON.stringify({ type: "error", detail: "Invalid call signal" }));
+          return;
+        }
+        this.broadcast(event);
+        return;
       }
     } catch {
       ws.send(JSON.stringify({ type: "error", detail: "Invalid WebSocket message" }));
