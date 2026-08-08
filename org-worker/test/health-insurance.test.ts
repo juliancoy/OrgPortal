@@ -5,10 +5,13 @@ import test from "node:test";
 import {
   HEALTH_INSURANCE_CODE_REFERENCE_VERSION,
   HealthInsuranceError,
-  healthInsuranceDashboard,
   cancelHealthInsuranceAppointment,
+  healthInsuranceDiagnosisBoard,
+  healthInsuranceDashboard,
+  requestHealthInsuranceAnalysis,
   saveHealthInsuranceEnrollment,
   scheduleHealthInsuranceAppointment,
+  submitHealthInsuranceDiagnosis,
   submitHealthInsuranceClaim,
   validNpi,
   validateHealthInsuranceClaim,
@@ -30,6 +33,27 @@ class SqliteD1 {
   constructor() {
     this.database.exec("PRAGMA foreign_keys = ON");
     this.database.exec(readFileSync(new URL("../migrations/0012_health_insurance.sql", import.meta.url), "utf8"));
+    this.database.exec(readFileSync(new URL("../migrations/0013_health_profile.sql", import.meta.url), "utf8"));
+    this.database.exec(readFileSync(new URL("../migrations/0014_health_diagnosis_support.sql", import.meta.url), "utf8"));
+    this.database.exec(`
+      CREATE TABLE IF NOT EXISTS ledger_accounts (
+        id TEXT PRIMARY KEY,
+        user_id TEXT,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL,
+        entity_type TEXT NOT NULL DEFAULT 'individual',
+        balance REAL NOT NULL DEFAULT 0,
+        dena_balance REAL NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    `);
+    this.database.exec(`
+      INSERT INTO ledger_accounts (id, user_id, name, email, entity_type, balance, dena_balance, created_at, updated_at) VALUES
+      ('acct-1', 'member-1', 'Member One', 'member-1@example.test', 'individual', 0, 0, '2026-08-07T00:00:00.000Z', '2026-08-07T00:00:00.000Z'),
+      ('acct-2', 'member-2', 'Member Two', 'member-2@example.test', 'individual', 0, 0, '2026-08-07T00:00:00.000Z', '2026-08-07T00:00:00.000Z'),
+      ('acct-3', 'member-without-enrollment', 'Member Without Enrollment', 'member-without-enrollment@example.test', 'individual', 0, 0, '2026-08-07T00:00:00.000Z', '2026-08-07T00:00:00.000Z');
+    `);
   }
   prepare(sql: string) { return new SqliteD1Statement(this.database.prepare(sql)); }
   async batch(statements: SqliteD1Statement[]) {
@@ -49,11 +73,12 @@ class SqliteD1 {
 function asD1(database: SqliteD1) { return database as unknown as D1Database; }
 
 const enrollment = {
-  state_code: "MD",
   program: "standard",
   coverage_effective_date: "2026-01-01",
+  suspected_diagnosis_codes: ["E11.9", "I10"],
+  issue_summary: "Recurring dizziness, elevated blood sugar, and headaches after exertion.",
   attested: true,
-};
+} as const;
 
 const claim = {
   service_id: "primary-care",
@@ -61,14 +86,16 @@ const claim = {
   provider_npi: "1234567893",
   place_of_service: "11",
   diagnosis_codes: ["E11.9"],
+  suspected_diagnosis_codes: ["E11.9", "I10"],
+  issue_summary: "Recurring dizziness, elevated blood sugar, and headaches after exertion.",
   lines: [
     { code_system: "HCPCS_LEVEL_II", code: "A4253", modifiers: ["NU"], units: 2, billed_amount_usd: 18.125 },
     { code_system: "CPT", code: "99213", modifiers: [], units: 1, billed_amount_usd: 95 },
   ],
   attested: true,
-};
+} as const;
 
-test("NPI and health-insurance code-family validation rejects malformed intake", () => {
+test("NPI and code validation rejects malformed intake and unknown suspected diagnoses", () => {
   assert.equal(validNpi("1234567893"), true);
   assert.equal(validNpi("1234567890"), false);
   assert.throws(
@@ -79,29 +106,76 @@ test("NPI and health-insurance code-family validation rejects malformed intake",
     () => validateHealthInsuranceClaim({ ...claim, lines: [{ ...claim.lines[0], code: "A12" }] }, enrollment, "2026-08-07"),
     (error: unknown) => error instanceof HealthInsuranceError && error.message.includes("HCPCS_LEVEL_II format"),
   );
+  assert.throws(
+    () => validateHealthInsuranceClaim({ ...claim, suspected_diagnosis_codes: ["A00.0"] }, enrollment, "2026-08-07"),
+    (error: unknown) => error instanceof HealthInsuranceError && error.message.includes("diagnosis catalog"),
+  );
 });
 
-test("an enrolled member can submit an immutable code snapshot for an available service", async () => {
+test("member profile, claims, analyses, and full history are returned together", async () => {
   const sqlite = new SqliteD1();
   const db = asD1(sqlite);
   await saveHealthInsuranceEnrollment(db, "member-1", enrollment, "2026-08-07T12:00:00.000Z");
+  const collaborative = await submitHealthInsuranceDiagnosis(db, "member-1", "Member One", { code: "E11.9", note: "Patient self-submitted this diagnosis." }, "2026-08-07T12:30:00.000Z");
+  await submitHealthInsuranceDiagnosis(db, "member-2", "Member Two", { patient_user_id: "member-1", code: "E11.9" }, "2026-08-07T12:45:00.000Z");
   const saved = await submitHealthInsuranceClaim(db, "member-1", claim, "2026-08-07T13:00:00.000Z");
+  const analysis = await requestHealthInsuranceAnalysis(db, "member-1", { analysis_kind: "record-summary" }, "2026-08-07T14:00:00.000Z");
+  const board = await healthInsuranceDiagnosisBoard(db, "member-2", "member-1");
 
+  assert.equal(collaborative?.self_reported, true);
+  assert.equal(collaborative?.supporter_count, 1);
   assert.equal(saved?.status, "received");
   assert.equal(saved?.coverage_determination, "available");
   assert.equal(saved?.total_billed_usd, 113.13);
   assert.equal(saved?.code_reference_version, HEALTH_INSURANCE_CODE_REFERENCE_VERSION);
   assert.deepEqual(saved?.diagnosis_codes, ["E11.9"]);
-  assert.equal(saved?.lines.length, 2);
-  assert.deepEqual(saved?.lines[0].modifiers, ["NU"]);
+  assert.deepEqual(saved?.suspected_diagnosis_codes, ["E11.9", "I10"]);
+  assert.equal(saved?.issue_summary, enrollment.issue_summary);
+  assert.equal(saved?.line_details[0].label, "Blood glucose test or reagent strips");
+  assert.equal(analysis.status, "ready");
+  assert.equal(board.patient.name.length > 0, true);
+  assert.equal(board.diagnoses[0].viewer_supports, true);
 
   const dashboard = await healthInsuranceDashboard(db, "member-1");
-  assert.equal(dashboard.enrollment?.state_code, "MD");
+  assert.equal(dashboard.enrollment?.state_code, undefined);
+  assert.equal(dashboard.enrollment?.program, "standard");
+  assert.deepEqual(dashboard.enrollment?.suspected_diagnosis_codes, ["E11.9", "I10"]);
+  assert.equal(dashboard.enrollment?.issue_summary, enrollment.issue_summary);
   assert.equal(dashboard.claims.length, 1);
-  assert.equal(dashboard.service_access, "Coverage follows published service availability for every authenticated member.");
+  assert.equal(dashboard.collaborative_diagnoses.length, 1);
+  assert.equal(dashboard.collaborative_diagnoses[0].supporter_count, 2);
+  assert.deepEqual(dashboard.collaborative_diagnoses[0].supporters.map((supporter) => supporter.supporter_name), ["Member One", "Member Two"]);
+  assert.equal(dashboard.profile_updates.length, 1);
+  assert.equal(dashboard.analyses.length, 1);
+  assert.equal(dashboard.history.length, 4);
+  assert.equal(dashboard.code_catalog.diagnoses.length > 5, true);
+  assert.equal(dashboard.code_catalog.claim_codes.length > 5, true);
+  assert.equal(dashboard.service_access, "Every member can use published services directly through this record.");
 });
 
-test("claim intake requires active enrollment and covered service dates", async () => {
+test("members can contribute diagnoses without later supporters overwriting the original note", async () => {
+  const sqlite = new SqliteD1();
+  const db = asD1(sqlite);
+  const contributed = await submitHealthInsuranceDiagnosis(
+    db,
+    "member-2",
+    "Member Two",
+    { patient_user_id: "member-1", code: "I10", note: "Community-submitted context." },
+    "2026-08-07T12:00:00.000Z",
+  );
+  assert.equal(contributed?.note, "Community-submitted context.");
+  const supported = await submitHealthInsuranceDiagnosis(
+    db,
+    "member-without-enrollment",
+    "Member Three",
+    { patient_user_id: "member-1", code: "I10", note: "Replacement note." },
+    "2026-08-07T12:05:00.000Z",
+  );
+  assert.equal(supported?.note, "Community-submitted context.");
+  assert.equal(supported?.supporter_count, 2);
+});
+
+test("claim intake requires an active health profile and valid covered dates", async () => {
   const sqlite = new SqliteD1();
   const db = asD1(sqlite);
   await assert.rejects(
@@ -115,7 +189,7 @@ test("claim intake requires active enrollment and covered service dates", async 
   );
 });
 
-test("published calendar services are available to every member and appointments can be cancelled", async () => {
+test("published calendar services remain available to every member and appointments can be cancelled", async () => {
   const sqlite = new SqliteD1();
   const db = asD1(sqlite);
   const appointment = await scheduleHealthInsuranceAppointment(db, "member-without-enrollment", {
@@ -130,6 +204,7 @@ test("published calendar services are available to every member and appointments
   assert.equal(dashboard.services.length, 3);
   assert.equal(dashboard.services.every((service) => service.available_to_all), true);
   assert.equal(dashboard.appointments.length, 1);
+  assert.equal(dashboard.history.length, 1);
 
   await cancelHealthInsuranceAppointment(db, "member-without-enrollment", String(appointment?.id), "2026-08-07T12:05:00.000Z");
   const saved = sqlite.database.prepare("SELECT status FROM health_insurance_appointments WHERE id = ?").get(appointment?.id) as { status: string };

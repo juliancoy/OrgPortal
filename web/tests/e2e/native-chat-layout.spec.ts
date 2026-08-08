@@ -105,6 +105,13 @@ test.beforeEach(async ({ page }) => {
   )
   await page.route('https://chat-codecollective.jcloiacon.workers.dev/**', async (route) => {
     const url = new URL(route.request().url())
+    if (url.pathname.endsWith('/api/network/chat/presence')) {
+      const body = route.request().method() === 'POST'
+        ? { online: true }
+        : { presence: [{ user_id: 'other-user', online: true }] }
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) })
+      return
+    }
     if (url.pathname.endsWith('/api/network/chat/conversations')) {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ conversations: [conversation] }) })
       return
@@ -138,6 +145,8 @@ test('native chat has a readable desktop conversation layout', async ({ page }, 
   expect(textarea?.width || 0).toBeGreaterThan(send?.width || 0)
   expect(outgoing?.x || 0).toBeGreaterThan(incoming?.x || 0)
   await expect(page.locator('.portal-chat-message').first().locator('.portal-chat-message-avatar')).toHaveCount(1)
+  await expect(page.getByTitle('Julian Coy is online').first()).toBeVisible()
+  await expect(page.getByText('Online', { exact: true })).toBeVisible()
 })
 
 test('native direct messages expose the video call workspace', async ({ page }) => {

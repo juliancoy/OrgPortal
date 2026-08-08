@@ -70,6 +70,55 @@
   gap: 12px;
 }
 
+.health-insurance-selector,
+.health-insurance-analysis-list,
+.health-insurance-analysis-actions {
+  display: grid;
+  gap: 12px;
+}
+
+.health-insurance-chip-list,
+.health-insurance-search-results {
+  display: grid;
+  gap: 8px;
+}
+
+.health-insurance-search-results-inline {
+  grid-column: 1 / -1;
+}
+
+.health-insurance-chip {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  color: inherit;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  text-align: left;
+}
+
+.health-insurance-chip span,
+.health-insurance-search-result span,
+.health-insurance-search-result small,
+.health-insurance-analysis-list span {
+  color: var(--text-muted);
+}
+
+.health-insurance-search-result {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  padding: 10px 12px;
+  color: inherit;
+  background: #f4f8ff;
+  border: 1px solid rgba(20, 75, 143, 0.18);
+  border-radius: 10px;
+  text-align: left;
+}
+
 .health-insurance-check {
   display: flex !important;
   flex-direction: row !important;
@@ -193,6 +242,17 @@
   margin: 6px 0;
 }
 
+.health-insurance-analysis-actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.health-insurance-analysis-list article {
+  display: grid;
+  gap: 8px;
+  padding: 13px 0;
+  border-top: 1px solid var(--border);
+}
+
 .health-insurance-appointments article {
   display: flex;
   justify-content: space-between;
@@ -251,6 +311,10 @@
 
   .health-insurance-line {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .health-insurance-analysis-actions {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -3336,6 +3400,105 @@ textarea:focus {
   accent-color: var(--primary);
 }
 
+.life-insurance-member-picker {
+  display: grid;
+  gap: 8px;
+}
+
+.life-insurance-member-picker > label {
+  font-weight: 700;
+}
+
+.life-insurance-selected-member {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 12px;
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.life-insurance-selected-member > span:nth-child(2) {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  margin-right: auto;
+}
+
+.life-insurance-selected-member small {
+  color: var(--text-muted);
+}
+
+.life-insurance-member-avatar {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  overflow: hidden;
+  color: #fff;
+  background: var(--primary);
+  border-radius: 50%;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.life-insurance-member-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.life-insurance-member-search {
+  position: relative;
+}
+
+.life-insurance-member-search > input {
+  width: 100%;
+}
+
+.life-insurance-member-results {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 5px);
+  right: 0;
+  left: 0;
+  display: grid;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 6px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 14px 34px rgba(23, 32, 51, 0.16);
+}
+
+.life-insurance-member-results button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px;
+  color: var(--text-primary);
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+}
+
+.life-insurance-member-results button:hover,
+.life-insurance-member-results button:focus-visible,
+.life-insurance-member-results button[aria-selected='true'] {
+  background: var(--primary-bg);
+}
+
+.life-insurance-member-empty {
+  padding: 12px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
 .life-insurance-form-status {
   margin: 0;
   color: var(--text-primary);
@@ -4371,6 +4534,41 @@ textarea:focus {
   height: 24px;
   font-size: 0.66rem;
   flex: 0 0 auto;
+}
+
+.native-chat-avatar-presence {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.native-chat-presence-dot {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--surface-solid);
+  border-radius: 50%;
+  background: #16a34a;
+  box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.28);
+}
+
+.native-chat-presence-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #15803d;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.native-chat-presence-label::before {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #16a34a;
+  content: '';
 }
 
 .native-chat-room-name {

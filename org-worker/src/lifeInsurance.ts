@@ -36,6 +36,7 @@ type MemberAccountRow = {
   user_id: string;
   account_id: string;
   name: string;
+  photo_url: string | null;
 };
 
 type EnrollmentRow = {
@@ -213,6 +214,8 @@ export async function insuranceDashboard(db: D1Database, userId: string) {
     claimForDeceased(db, userId),
     db.prepare(
       `SELECT a.user_id, a.id AS account_id, a.name,
+        (SELECT p.photo_url FROM user_contact_pages p
+         WHERE p.user_id = a.user_id ORDER BY p.updated_at DESC LIMIT 1) AS photo_url,
         CASE WHEN e.user_id IS NULL THEN 0 ELSE 1 END AS enrolled
        FROM ledger_accounts a
        LEFT JOIN life_insurance_enrollments e ON e.user_id = a.user_id AND e.status = 'active'
@@ -223,6 +226,7 @@ export async function insuranceDashboard(db: D1Database, userId: string) {
 
   const members = memberRows.results || [];
   const memberName = (targetId: string | null | undefined) => members.find((member) => member.user_id === targetId)?.name || null;
+  const memberPhoto = (targetId: string | null | undefined) => members.find((member) => member.user_id === targetId)?.photo_url || null;
   return {
     currency: LIFE_INSURANCE_CURRENCY,
     standard_benefit_dena: Number(programSettings.standard_benefit_dena),
@@ -231,7 +235,9 @@ export async function insuranceDashboard(db: D1Database, userId: string) {
       ...enrollment,
       confirmed_age: Number(enrollment.confirmed_age),
       next_of_kin_name: memberName(enrollment.next_of_kin_user_id),
+      next_of_kin_photo_url: memberPhoto(enrollment.next_of_kin_user_id),
       beneficiary_name: memberName(enrollment.beneficiary_user_id),
+      beneficiary_photo_url: memberPhoto(enrollment.beneficiary_user_id),
     } : null,
     claim: claim ? { ...claim, payout_amount: Number(claim.payout_amount), report_count: Number(claim.report_count || 0) } : null,
     members: members.map((member) => ({ ...member, enrolled: Boolean(member.enrolled) })),

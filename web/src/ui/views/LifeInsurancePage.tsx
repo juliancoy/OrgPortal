@@ -11,6 +11,7 @@ import { refreshRuntimeTokenFromSession } from '../../infrastructure/auth/sessio
 import { formatDena } from './financeUtils'
 
 const ORG_API_BASE = '/api/org'
+const LIFE_INSURANCE_DRAFT_PREFIX = 'life-insurance.form-draft.v1'
 const AGE_BANDS = globalPopulationAgeBands()
 const LARGEST_AGE_BAND = Math.max(...AGE_BANDS.map((band) => band.populationPercent))
 
@@ -18,6 +19,7 @@ type InsuranceMember = {
   user_id: string
   account_id: string
   name: string
+  photo_url: string | null
   enrolled: boolean
 }
 
@@ -27,9 +29,11 @@ type InsuranceEnrollment = {
   confirmed_age: number
   next_of_kin_user_id: string
   next_of_kin_name: string | null
+  next_of_kin_photo_url: string | null
   next_of_kin_relationship: string
   beneficiary_user_id: string | null
   beneficiary_name: string | null
+  beneficiary_photo_url: string | null
   beneficiary_relationship: string | null
   status: string
 }
@@ -89,6 +93,31 @@ const emptyReport: DeathReportForm = {
   attested: false,
 }
 
+type LifeInsuranceDraft = {
+  enrollment: EnrollmentForm
+  death_report: DeathReportForm
+}
+
+function draftKey(userId: string) {
+  return `${LIFE_INSURANCE_DRAFT_PREFIX}:${userId}`
+}
+
+function readDraft(userId: string): LifeInsuranceDraft | null {
+  if (!userId) return null
+  try {
+    const parsed = JSON.parse(sessionStorage.getItem(draftKey(userId)) || 'null') as Partial<LifeInsuranceDraft> | null
+    if (!parsed?.enrollment || !parsed.death_report) return null
+    return { enrollment: { ...emptyEnrollment, ...parsed.enrollment }, death_report: { ...emptyReport, ...parsed.death_report } }
+  } catch {
+    return null
+  }
+}
+
+function writeDraft(userId: string, draft: LifeInsuranceDraft) {
+  if (!userId) return
+  sessionStorage.setItem(draftKey(userId), JSON.stringify(draft))
+}
+
 function orgUrl(path: string) {
   return `${ORG_API_BASE}${path}`
 }
@@ -97,8 +126,83 @@ function statusLabel(status: string) {
   return status.replaceAll('_', ' ')
 }
 
+function memberInitials(name: string) {
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || '?'
+}
+
+function MemberPicker(props: {
+  id: string
+  label: string
+  value: string
+  members: InsuranceMember[]
+  required?: boolean
+  emptyLabel: string
+  onChange: (userId: string) => void
+}) {
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
+  const selected = props.members.find((member) => member.user_id === props.value) || null
+  const normalizedQuery = query.trim().toLowerCase()
+  const results = props.members
+    .filter((member) => !normalizedQuery || member.name.toLowerCase().includes(normalizedQuery))
+    .slice(0, 20)
+
+  return (
+    <div className="life-insurance-member-picker">
+      <label htmlFor={`${props.id}-search`}>{props.label}{props.required ? ' (required)' : ''}</label>
+      {selected ? (
+        <div className="life-insurance-selected-member" data-testid={`${props.id}-selected`}>
+          <span className="life-insurance-member-avatar">
+            {selected.photo_url ? <img src={selected.photo_url} alt="" /> : memberInitials(selected.name)}
+          </span>
+          <span><strong>{selected.name}</strong><small>Selected member</small></span>
+          <button type="button" className="portal-button-secondary" onClick={() => { props.onChange(''); setQuery(''); setOpen(true) }}>
+            {props.required ? 'Change' : 'Clear'}
+          </button>
+        </div>
+      ) : null}
+      <div className="life-insurance-member-search">
+        <input
+          id={`${props.id}-search`}
+          type="search"
+          role="combobox"
+          aria-controls={`${props.id}-results`}
+          aria-expanded={open}
+          autoComplete="off"
+          placeholder="Search members by name"
+          required={Boolean(props.required && !selected)}
+          value={query}
+          onFocus={() => setOpen(true)}
+          onChange={(event) => { setQuery(event.target.value); setOpen(true) }}
+        />
+        {open ? (
+          <div id={`${props.id}-results`} className="life-insurance-member-results" role="listbox">
+            {!props.required ? <button type="button" role="option" aria-selected={!props.value} onClick={() => { props.onChange(''); setQuery(''); setOpen(false) }}>{props.emptyLabel}</button> : null}
+            {results.map((member) => (
+              <button
+                type="button"
+                role="option"
+                aria-selected={member.user_id === props.value}
+                key={member.user_id}
+                onClick={() => { props.onChange(member.user_id); setQuery(''); setOpen(false) }}
+              >
+                <span className="life-insurance-member-avatar">
+                  {member.photo_url ? <img src={member.photo_url} alt="" /> : memberInitials(member.name)}
+                </span>
+                <span>{member.name}</span>
+              </button>
+            ))}
+            {!results.length ? <span className="life-insurance-member-empty">No members found</span> : null}
+          </div>
+        ) : null}
+      </div>
+      <input type="hidden" name={props.id} value={props.value} />
+    </div>
+  )
+}
+
 export function LifeInsurancePage() {
-  const { token } = useAuth()
+  const { token, user } = useAuth()
   const [dashboard, setDashboard] = useState<InsuranceDashboard | null>(null)
   const [enrollment, setEnrollment] = useState<EnrollmentForm>(emptyEnrollment)
   const [deathReport, setDeathReport] = useState<DeathReportForm>(emptyReport)
@@ -129,9 +233,11 @@ export function LifeInsurancePage() {
     return body.detail || fallback
   }
 
-  function applyDashboard(data: InsuranceDashboard) {
+  function applyDashboard(data: InsuranceDashboard, enrollmentDraft?: EnrollmentForm) {
     setDashboard(data)
-    if (data.enrollment) {
+    if (enrollmentDraft) {
+      setEnrollment(enrollmentDraft)
+    } else if (data.enrollment) {
       setEnrollment({
         birth_date: data.enrollment.birth_date,
         age: String(data.enrollment.confirmed_age),
@@ -144,12 +250,25 @@ export function LifeInsurancePage() {
     }
   }
 
+  function updateEnrollment(next: EnrollmentForm) {
+    setEnrollment(next)
+    if (user?.id) writeDraft(user.id, { enrollment: next, death_report: deathReport })
+  }
+
+  function updateDeathReport(next: DeathReportForm) {
+    setDeathReport(next)
+    if (user?.id) writeDraft(user.id, { enrollment, death_report: next })
+  }
+
   async function loadDashboard() {
     setLoading(true)
     try {
       const response = await authenticatedFetch('/api/life-insurance')
       if (!response.ok) throw new Error(await responseDetail(response, 'Unable to load the life-benefit program.'))
-      applyDashboard((await response.json()) as InsuranceDashboard)
+      const data = (await response.json()) as InsuranceDashboard
+      const draft = readDraft(user?.id || '')
+      applyDashboard(data, draft?.enrollment)
+      if (draft?.death_report) setDeathReport(draft.death_report)
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Unable to load the life-benefit program.')
     } finally {
@@ -159,7 +278,7 @@ export function LifeInsurancePage() {
 
   useEffect(() => {
     if (token) loadDashboard()
-  }, [token])
+  }, [token, user?.id])
 
   async function saveEnrollment(event: FormEvent) {
     event.preventDefault()
@@ -177,7 +296,18 @@ export function LifeInsurancePage() {
         }),
       })
       if (!response.ok) throw new Error(await responseDetail(response, 'Unable to save enrollment.'))
-      applyDashboard((await response.json()) as InsuranceDashboard)
+      const data = (await response.json()) as InsuranceDashboard
+      applyDashboard(data)
+      const savedEnrollment = data.enrollment ? {
+        birth_date: data.enrollment.birth_date,
+        age: String(data.enrollment.confirmed_age),
+        next_of_kin_user_id: data.enrollment.next_of_kin_user_id,
+        next_of_kin_relationship: data.enrollment.next_of_kin_relationship,
+        beneficiary_user_id: data.enrollment.beneficiary_user_id || '',
+        beneficiary_relationship: data.enrollment.beneficiary_relationship || '',
+        accepted_terms: false,
+      } : emptyEnrollment
+      if (user?.id) writeDraft(user.id, { enrollment: savedEnrollment, death_report: deathReport })
       setStatus('Enrollment saved. Your beneficiary selection is now active.')
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Unable to save enrollment.')
@@ -200,7 +330,7 @@ export function LifeInsurancePage() {
       if (!response.ok) throw new Error(await responseDetail(response, 'Unable to submit the death report.'))
       const claim = (await response.json()) as InsuranceClaim
       setReportResult(claim)
-      setDeathReport(emptyReport)
+      updateDeathReport(emptyReport)
       setReportStatus(
         claim.status === 'paid'
           ? `Threshold reached. ${formatDena(claim.payout_amount)} was paid to ${claim.recipient_name}.`
@@ -265,7 +395,7 @@ export function LifeInsurancePage() {
                 type="date"
                 required
                 value={enrollment.birth_date}
-                onChange={(event) => setEnrollment({ ...enrollment, birth_date: event.target.value })}
+                onChange={(event) => updateEnrollment({ ...enrollment, birth_date: event.target.value })}
               />
             </label>
             <label htmlFor="insurance-age">
@@ -279,23 +409,20 @@ export function LifeInsurancePage() {
                 step="1"
                 required
                 value={enrollment.age}
-                onChange={(event) => setEnrollment({ ...enrollment, age: event.target.value })}
+                onChange={(event) => updateEnrollment({ ...enrollment, age: event.target.value })}
               />
             </label>
           </div>
 
-          <label htmlFor="insurance-next-of-kin">
-            Next of kin (required)
-            <select
-              id="insurance-next-of-kin"
-              required
-              value={enrollment.next_of_kin_user_id}
-              onChange={(event) => setEnrollment({ ...enrollment, next_of_kin_user_id: event.target.value })}
-            >
-              <option value="">Select a member</option>
-              {dashboard?.members.map((member) => <option key={member.user_id} value={member.user_id}>{member.name}</option>)}
-            </select>
-          </label>
+          <MemberPicker
+            id="insurance-next-of-kin"
+            label="Next of kin"
+            required
+            value={enrollment.next_of_kin_user_id}
+            members={dashboard?.members || []}
+            emptyLabel="Select a member"
+            onChange={(userId) => updateEnrollment({ ...enrollment, next_of_kin_user_id: userId })}
+          />
           <label htmlFor="insurance-next-of-kin-relationship">
             Relationship to next of kin (required)
             <input
@@ -304,25 +431,22 @@ export function LifeInsurancePage() {
               maxLength={80}
               placeholder="For example: spouse, sibling, parent"
               value={enrollment.next_of_kin_relationship}
-              onChange={(event) => setEnrollment({ ...enrollment, next_of_kin_relationship: event.target.value })}
+              onChange={(event) => updateEnrollment({ ...enrollment, next_of_kin_relationship: event.target.value })}
             />
           </label>
 
-          <label htmlFor="insurance-beneficiary">
-            Named beneficiary (optional)
-            <select
-              id="insurance-beneficiary"
-              value={enrollment.beneficiary_user_id}
-              onChange={(event) => setEnrollment({
-                ...enrollment,
-                beneficiary_user_id: event.target.value,
-                beneficiary_relationship: event.target.value ? enrollment.beneficiary_relationship : '',
-              })}
-            >
-              <option value="">Use next of kin</option>
-              {dashboard?.members.map((member) => <option key={member.user_id} value={member.user_id}>{member.name}</option>)}
-            </select>
-          </label>
+          <MemberPicker
+            id="insurance-beneficiary"
+            label="Named beneficiary (optional)"
+            value={enrollment.beneficiary_user_id}
+            members={dashboard?.members || []}
+            emptyLabel="Use next of kin"
+            onChange={(userId) => updateEnrollment({
+              ...enrollment,
+              beneficiary_user_id: userId,
+              beneficiary_relationship: userId ? enrollment.beneficiary_relationship : '',
+            })}
+          />
           {enrollment.beneficiary_user_id ? (
             <label htmlFor="insurance-beneficiary-relationship">
               Relationship to beneficiary (required)
@@ -332,7 +456,7 @@ export function LifeInsurancePage() {
                 maxLength={80}
                 placeholder="For example: partner, child, friend"
                 value={enrollment.beneficiary_relationship}
-                onChange={(event) => setEnrollment({ ...enrollment, beneficiary_relationship: event.target.value })}
+                onChange={(event) => updateEnrollment({ ...enrollment, beneficiary_relationship: event.target.value })}
               />
             </label>
           ) : null}
@@ -343,7 +467,7 @@ export function LifeInsurancePage() {
               type="checkbox"
               required
               checked={enrollment.accepted_terms}
-              onChange={(event) => setEnrollment({ ...enrollment, accepted_terms: event.target.checked })}
+              onChange={(event) => updateEnrollment({ ...enrollment, accepted_terms: event.target.checked })}
             />
             <span>I attest that my birthday, age, and beneficiary information are accurate.</span>
           </label>
@@ -389,7 +513,7 @@ export function LifeInsurancePage() {
               id="deceased-member"
               required
               value={deathReport.deceased_user_id}
-              onChange={(event) => setDeathReport({ ...deathReport, deceased_user_id: event.target.value })}
+              onChange={(event) => updateDeathReport({ ...deathReport, deceased_user_id: event.target.value })}
             >
               <option value="">Select a member</option>
               {enrolledMembers.map((member) => <option key={member.user_id} value={member.user_id}>{member.name}</option>)}
@@ -402,7 +526,7 @@ export function LifeInsurancePage() {
               type="date"
               required
               value={deathReport.date_of_death}
-              onChange={(event) => setDeathReport({ ...deathReport, date_of_death: event.target.value })}
+              onChange={(event) => updateDeathReport({ ...deathReport, date_of_death: event.target.value })}
             />
           </label>
           <label htmlFor="relationship-to-deceased">
@@ -413,7 +537,7 @@ export function LifeInsurancePage() {
               maxLength={80}
               placeholder="For example: friend, family, colleague"
               value={deathReport.relationship_to_deceased}
-              onChange={(event) => setDeathReport({ ...deathReport, relationship_to_deceased: event.target.value })}
+              onChange={(event) => updateDeathReport({ ...deathReport, relationship_to_deceased: event.target.value })}
             />
           </label>
           <label className="life-insurance-checkbox" htmlFor="death-report-attestation">
@@ -422,7 +546,7 @@ export function LifeInsurancePage() {
               type="checkbox"
               required
               checked={deathReport.attested}
-              onChange={(event) => setDeathReport({ ...deathReport, attested: event.target.checked })}
+              onChange={(event) => updateDeathReport({ ...deathReport, attested: event.target.checked })}
             />
             <span>I attest that this report is truthful and understand a third unique report can release funds.</span>
           </label>

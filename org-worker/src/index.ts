@@ -10,11 +10,28 @@ import {
 import {
   HealthInsuranceError,
   cancelHealthInsuranceAppointment,
+  healthInsuranceDiagnosisBoard,
   healthInsuranceDashboard,
+  requestHealthInsuranceAnalysis,
   scheduleHealthInsuranceAppointment,
   saveHealthInsuranceEnrollment,
+  submitHealthInsuranceDiagnosis,
   submitHealthInsuranceClaim,
 } from "./healthInsurance";
+import {
+  OrganizationIamError,
+  authorizeOrganization,
+  claimOrganization,
+  createOwnershipChallenge,
+  listAuditEvents,
+  listOrganizationMembers,
+  listOwnershipChallenges,
+  resolveOwnershipChallenge,
+  saveOrganizationMember,
+  supportOwnershipChallenge,
+  withdrawOwnershipChallenge,
+  type OrganizationActor,
+} from "./organizationIam";
 
 type ContactLink = {
   label: string;
@@ -94,6 +111,11 @@ type OrganizationRow = {
   city: string | null;
   created_at: string;
   updated_at: string;
+  claimed_by_user_id?: string | null;
+  ownership_id?: string | null;
+  membership_count?: number | null;
+  pending_challenges_count?: number | null;
+  my_role?: string | null;
 };
 
 type OrganizationSentimentCounts = {
@@ -371,6 +393,13 @@ function adminUser(user: PidpUser, env: Env) {
   );
 }
 
+function operatorUser(user: PidpUser, env: Env) {
+  const roles = Array.isArray(user.identity_data?.roles)
+    ? user.identity_data.roles.map((item) => String(item || "").trim().toLowerCase())
+    : [];
+  return adminUser(user, env) || roles.includes("operator");
+}
+
 function slugify(value: string) {
   const slug = value
     .toLowerCase()
@@ -596,6 +625,15 @@ function userName(user: PidpUser) {
   return String(user.full_name || user.identity_data?.display_name || user.email || "User");
 }
 
+function organizationActor(user: PidpUser, env: Env): OrganizationActor {
+  return {
+    id: user.id,
+    name: userName(user),
+    email: user.email || null,
+    isOperator: operatorUser(user, env),
+  };
+}
+
 function userProfileImage(user: PidpUser): string | null {
   return cleanUrl(user.identity_data?.avatar_url || user.avatar_url || null);
 }
@@ -796,15 +834,18 @@ function mapOrganization(row: OrganizationRow & OrganizationSentimentCounts, upc
     image_url: row.image_url,
     tags: parseJsonArray(row.tags),
     seeded_from_events: true,
-    claimed_by_user_id: null,
+    claimed_by_user_id: row.claimed_by_user_id || null,
+    ownership_id: row.ownership_id || null,
+    ownership_status: row.claimed_by_user_id ? (Number(row.pending_challenges_count || 0) > 0 ? "disputed" : "claimed") : "unclaimed",
     created_by_user_id: null,
-    membership_count: 0,
+    membership_count: Number(row.membership_count || 0),
+    my_role: row.my_role || null,
     upcoming_events_count: upcomingEventsCount,
     favor_count: favorCount,
     disfavor_count: disfavorCount,
     sentiment_score: favorCount - disfavorCount,
-    pending_claim_requests_count: 0,
-    is_contested: false,
+    pending_challenges_count: Number(row.pending_challenges_count || 0),
+    is_disputed: Number(row.pending_challenges_count || 0) > 0,
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -1399,6 +1440,7 @@ async function updateGovernanceStatus(db: D1Database, motionId: string, status: 
 function mapLedgerAccount(row: LedgerAccountRow) {
   return {
     id: row.id,
+    user_id: row.user_id,
     name: row.name,
     email: row.email,
     entity_type: row.entity_type,
@@ -1667,6 +1709,7 @@ app.onError((err) => {
   if (err instanceof HTTPException) return err.getResponse();
   if (err instanceof LifeInsuranceError) return json({ detail: err.message }, err.status);
   if (err instanceof HealthInsuranceError) return json({ detail: err.message }, err.status);
+  if (err instanceof OrganizationIamError) return json({ detail: err.message }, err.status);
   console.error("org-worker error", err);
   return json({ detail: "Internal server error" }, 500);
 });
@@ -2048,7 +2091,11 @@ app.get("/api/network/orgs/public", async (c) => {
     `SELECT o.*,
       (SELECT count(*) FROM events e WHERE e.host_org_id = o.id AND (e.starts_at IS NULL OR e.starts_at >= datetime('now'))) AS upcoming_events_count,
       (SELECT count(*) FROM organization_sentiments s WHERE s.organization_id = o.id AND s.sentiment = 'favor') AS favor_count,
-      (SELECT count(*) FROM organization_sentiments s WHERE s.organization_id = o.id AND s.sentiment = 'disfavor') AS disfavor_count
+      (SELECT count(*) FROM organization_sentiments s WHERE s.organization_id = o.id AND s.sentiment = 'disfavor') AS disfavor_count,
+      (SELECT own.owner_user_id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS claimed_by_user_id,
+      (SELECT own.id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS ownership_id,
+      (SELECT count(*) FROM organization_memberships m WHERE m.organization_id = o.id AND m.status = 'active') AS membership_count,
+      (SELECT count(*) FROM organization_ownership_challenges ch WHERE ch.organization_id = o.id AND ch.status = 'open') AS pending_challenges_count
      FROM organizations o
      ORDER BY (favor_count - disfavor_count) DESC, upcoming_events_count DESC, lower(o.name) ASC
      LIMIT ?`,
@@ -2060,7 +2107,14 @@ app.get("/api/network/orgs/public", async (c) => {
 });
 
 app.get("/api/network/orgs/public/:slug", async (c) => {
-  const row = await c.env.DB.prepare("SELECT * FROM organizations WHERE slug = ?")
+  const row = await c.env.DB.prepare(
+    `SELECT o.*,
+      (SELECT own.owner_user_id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS claimed_by_user_id,
+      (SELECT own.id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS ownership_id,
+      (SELECT count(*) FROM organization_memberships m WHERE m.organization_id = o.id AND m.status = 'active') AS membership_count,
+      (SELECT count(*) FROM organization_ownership_challenges ch WHERE ch.organization_id = o.id AND ch.status = 'open') AS pending_challenges_count
+     FROM organizations o WHERE o.slug = ?`,
+  )
     .bind(slugify(c.req.param("slug")))
     .first<OrganizationRow>();
   if (!row) fail(404, "Organization not found");
@@ -2090,7 +2144,17 @@ app.get("/api/network/orgs/public/:slug/events", async (c) => {
   return c.json((rows.results || []).map((row) => mapEvent(c.env, c.req.raw, row)));
 });
 
-app.get("/api/network/orgs/public/:slug/admins", (c) => c.json([]));
+app.get("/api/network/orgs/public/:slug/admins", async (c) => {
+  const organization = await organizationByIdOrSlug(c.env.DB, c.req.param("slug"));
+  if (!organization) fail(404, "Organization not found");
+  const rows = await c.env.DB.prepare(
+    `SELECT user_id, user_name, role
+     FROM organization_memberships
+     WHERE organization_id = ? AND status = 'active' AND role IN ('owner', 'administrator')
+     ORDER BY CASE role WHEN 'owner' THEN 0 ELSE 1 END, lower(COALESCE(user_name, user_id))`,
+  ).bind(organization.id).all<Record<string, unknown>>();
+  return c.json(rows.results || []);
+});
 app.get("/api/network/orgs/public/:slug/chat-feed", (c) => c.json({ organization_slug: c.req.param("slug"), rooms: [] }));
 
 app.get("/api/network/events/public", async (c) => {
@@ -2148,14 +2212,25 @@ app.get("/api/network/events/public/:slug/chat", (c) =>
 );
 
 app.get("/api/network/orgs", async (c) => {
-  await currentUser(c.env, c.req.raw);
+  const user = await currentUser(c.env, c.req.raw);
   const mine = (c.req.query("mine") || "").toLowerCase() === "true";
   const q = (c.req.query("q") || "").trim();
   const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "300", 10) || 300, 500));
-  if (mine) return c.json([]);
   const candidateLimit = q ? searchCandidateLimit(limit) : limit;
-  const rows = await c.env.DB.prepare(`SELECT * FROM organizations ORDER BY lower(name) ASC LIMIT ?`)
-    .bind(candidateLimit)
+  const rows = await c.env.DB.prepare(
+    `SELECT o.*,
+      (SELECT own.owner_user_id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS claimed_by_user_id,
+      (SELECT own.id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS ownership_id,
+      (SELECT count(*) FROM organization_memberships mc WHERE mc.organization_id = o.id AND mc.status = 'active') AS membership_count,
+      (SELECT count(*) FROM organization_ownership_challenges ch WHERE ch.organization_id = o.id AND ch.status = 'open') AS pending_challenges_count,
+      (SELECT m.role FROM organization_memberships m WHERE m.organization_id = o.id AND m.user_id = ? AND m.status = 'active') AS my_role
+     FROM organizations o
+     WHERE (? = 0 OR EXISTS (
+       SELECT 1 FROM organization_memberships mine WHERE mine.organization_id = o.id AND mine.user_id = ? AND mine.status = 'active'
+     ))
+     ORDER BY lower(o.name) ASC LIMIT ?`,
+  )
+    .bind(user.id, mine ? 1 : 0, user.id, candidateLimit)
     .all<OrganizationRow>();
   const rankedRows = rankSearchResults(rows.results || [], q, (row) => [row.name, row.description, row.slug, row.tags, row.city], limit);
   const mapped = [];
@@ -2166,7 +2241,7 @@ app.get("/api/network/orgs", async (c) => {
 });
 
 app.post("/api/network/orgs", async (c) => {
-  await currentUser(c.env, c.req.raw);
+  const user = await currentUser(c.env, c.req.raw);
   const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
   const row = await upsertOrganization(c.env.DB, {
     name: stringField(payload, "name", 255) || "Organization",
@@ -2176,12 +2251,31 @@ app.post("/api/network/orgs", async (c) => {
     tags: Array.isArray(payload.tags) ? payload.tags : [],
     city: stringField(payload, "city", 80),
   });
-  return c.json(mapOrganization(row!), 201);
+  await claimOrganization(c.env.DB, row!.id, organizationActor(user, c.env), nowIso());
+  const created = await c.env.DB.prepare(
+    `SELECT o.*,
+      (SELECT own.owner_user_id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS claimed_by_user_id,
+      (SELECT own.id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS ownership_id,
+      (SELECT count(*) FROM organization_memberships m WHERE m.organization_id = o.id AND m.status = 'active') AS membership_count,
+      (SELECT count(*) FROM organization_ownership_challenges ch WHERE ch.organization_id = o.id AND ch.status = 'open') AS pending_challenges_count,
+      (SELECT m.role FROM organization_memberships m WHERE m.organization_id = o.id AND m.user_id = ? AND m.status = 'active') AS my_role
+     FROM organizations o WHERE o.id = ?`,
+  ).bind(user.id, row!.id).first<OrganizationRow>();
+  return c.json(mapOrganization(created!), 201);
 });
 
 app.get("/api/network/orgs/:organizationId", async (c) => {
-  await currentUser(c.env, c.req.raw);
-  const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
+  const user = await currentUser(c.env, c.req.raw);
+  const requested = c.req.param("organizationId");
+  const row = await c.env.DB.prepare(
+    `SELECT o.*,
+      (SELECT own.owner_user_id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS claimed_by_user_id,
+      (SELECT own.id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS ownership_id,
+      (SELECT count(*) FROM organization_memberships m WHERE m.organization_id = o.id AND m.status = 'active') AS membership_count,
+      (SELECT count(*) FROM organization_ownership_challenges ch WHERE ch.organization_id = o.id AND ch.status = 'open') AS pending_challenges_count,
+      (SELECT m.role FROM organization_memberships m WHERE m.organization_id = o.id AND m.user_id = ? AND m.status = 'active') AS my_role
+     FROM organizations o WHERE o.id = ? OR o.slug = ?`,
+  ).bind(user.id, requested, slugify(requested)).first<OrganizationRow>();
   if (!row) fail(404, "Organization not found");
   return c.json(mapOrganization({ ...row, ...(await organizationSentimentCounts(c.env.DB, row.id)) }));
 });
@@ -2249,11 +2343,11 @@ app.delete("/api/network/orgs/:organizationId/sentiment", async (c) => {
 });
 
 app.patch("/api/network/orgs/:organizationId", async (c) => {
-  await currentUser(c.env, c.req.raw);
-  const existing = await c.env.DB.prepare("SELECT * FROM organizations WHERE id = ?")
-    .bind(c.req.param("organizationId"))
-    .first<OrganizationRow>();
+  const user = await currentUser(c.env, c.req.raw);
+  const existing = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
   if (!existing) fail(404, "Organization not found");
+  const actor = organizationActor(user, c.env);
+  const role = await authorizeOrganization(c.env.DB, actor, "manage", existing.id);
   const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
   const updatedAt = nowIso();
   await c.env.DB.prepare(
@@ -2276,53 +2370,85 @@ app.patch("/api/network/orgs/:organizationId", async (c) => {
       existing.id,
     )
     .run();
-  const row = await c.env.DB.prepare("SELECT * FROM organizations WHERE id = ?").bind(existing.id).first<OrganizationRow>();
+  const row = await c.env.DB.prepare(
+    `SELECT o.*,
+      (SELECT own.owner_user_id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS claimed_by_user_id,
+      (SELECT own.id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS ownership_id,
+      (SELECT count(*) FROM organization_memberships m WHERE m.organization_id = o.id AND m.status = 'active') AS membership_count,
+      (SELECT count(*) FROM organization_ownership_challenges ch WHERE ch.organization_id = o.id AND ch.status = 'open') AS pending_challenges_count,
+      ? AS my_role
+     FROM organizations o WHERE o.id = ?`,
+  ).bind(role, existing.id).first<OrganizationRow>();
   return c.json(mapOrganization(row!));
 });
 
 app.post("/api/network/orgs/:organizationId/claim", async (c) => {
-  await currentUser(c.env, c.req.raw);
-  const row = await c.env.DB.prepare("SELECT * FROM organizations WHERE id = ?").bind(c.req.param("organizationId")).first<OrganizationRow>();
-  if (!row) fail(404, "Organization not found");
-  return c.json(mapOrganization(row));
-});
-app.post("/api/network/orgs/:organizationId/unclaim", async (c) => {
-  await currentUser(c.env, c.req.raw);
-  const row = await c.env.DB.prepare("SELECT * FROM organizations WHERE id = ?").bind(c.req.param("organizationId")).first<OrganizationRow>();
-  if (!row) fail(404, "Organization not found");
-  return c.json(mapOrganization(row));
+  const user = await currentUser(c.env, c.req.raw);
+  const requested = c.req.param("organizationId");
+  const organization = await organizationByIdOrSlug(c.env.DB, requested);
+  if (!organization) fail(404, "Organization not found");
+  await claimOrganization(c.env.DB, organization.id, organizationActor(user, c.env), nowIso());
+  const row = await c.env.DB.prepare(
+    `SELECT o.*,
+      (SELECT own.owner_user_id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS claimed_by_user_id,
+      (SELECT own.id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS ownership_id,
+      (SELECT count(*) FROM organization_memberships m WHERE m.organization_id = o.id AND m.status = 'active') AS membership_count,
+      (SELECT count(*) FROM organization_ownership_challenges ch WHERE ch.organization_id = o.id AND ch.status = 'open') AS pending_challenges_count,
+      'owner' AS my_role
+     FROM organizations o WHERE o.id = ?`,
+  ).bind(organization.id).first<OrganizationRow>();
+  return c.json(mapOrganization(row!));
 });
 app.get("/api/network/orgs/:organizationId/members", async (c) => {
-  await currentUser(c.env, c.req.raw);
-  return c.json([]);
+  const user = await currentUser(c.env, c.req.raw);
+  return c.json(await listOrganizationMembers(c.env.DB, c.req.param("organizationId"), organizationActor(user, c.env)));
 });
 app.post("/api/network/orgs/:organizationId/members", async (c) => {
-  await currentUser(c.env, c.req.raw);
-  return c.json({ detail: "Organization memberships are not implemented in the Cloudflare org worker yet" }, 501);
+  const user = await currentUser(c.env, c.req.raw);
+  const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  return c.json(await saveOrganizationMember(c.env.DB, c.req.param("organizationId"), organizationActor(user, c.env), payload, nowIso()));
 });
-app.get("/api/network/orgs/:organizationId/claim-requests", async (c) => {
-  await currentUser(c.env, c.req.raw);
-  return c.json([]);
+app.get("/api/network/orgs/:organizationId/ownership-challenges", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  return c.json(await listOwnershipChallenges(c.env.DB, organizationActor(user, c.env), {
+    organizationId: c.req.param("organizationId"),
+    status: c.req.query("status"),
+  }));
 });
-app.post("/api/network/orgs/:organizationId/claim-requests", async (c) => {
-  await currentUser(c.env, c.req.raw);
-  return c.json({ detail: "Organization claim requests are not implemented in the Cloudflare org worker yet" }, 501);
+app.post("/api/network/orgs/:organizationId/ownership-challenges", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  return c.json(await createOwnershipChallenge(c.env.DB, c.req.param("organizationId"), organizationActor(user, c.env), payload, nowIso()), 201);
 });
-app.post("/api/network/claim-requests/:claimRequestId/approve", async (c) => {
-  await currentUser(c.env, c.req.raw);
-  return c.json({ detail: "Organization claim requests are not implemented in the Cloudflare org worker yet" }, 501);
+app.post("/api/network/ownership-challenges/:challengeId/support", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  return c.json(await supportOwnershipChallenge(c.env.DB, c.req.param("challengeId"), organizationActor(user, c.env), payload.position, nowIso()));
 });
-app.post("/api/network/claim-requests/:claimRequestId/reject", async (c) => {
-  await currentUser(c.env, c.req.raw);
-  return c.json({ detail: "Organization claim requests are not implemented in the Cloudflare org worker yet" }, 501);
+app.post("/api/network/ownership-challenges/:challengeId/withdraw", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  return c.json(await withdrawOwnershipChallenge(c.env.DB, c.req.param("challengeId"), organizationActor(user, c.env), nowIso()));
 });
-app.get("/api/network/claim-requests", async (c) => {
-  await currentUser(c.env, c.req.raw);
-  return c.json([]);
+app.post("/api/network/ownership-challenges/:challengeId/accept", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  return c.json(await resolveOwnershipChallenge(c.env.DB, c.req.param("challengeId"), organizationActor(user, c.env), "challenger", nowIso(), true));
+});
+app.post("/api/network/ownership-challenges/:challengeId/resolve", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  return c.json(await resolveOwnershipChallenge(c.env.DB, c.req.param("challengeId"), organizationActor(user, c.env), payload.decision, nowIso()));
+});
+app.get("/api/network/ownership-challenges", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  return c.json(await listOwnershipChallenges(c.env.DB, organizationActor(user, c.env), {
+    status: c.req.query("status"),
+    operatorQueue: true,
+  }));
 });
 app.get("/api/network/audit-events", async (c) => {
-  await currentUser(c.env, c.req.raw);
-  return c.json([]);
+  const user = await currentUser(c.env, c.req.raw);
+  const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "100", 10) || 100, 500));
+  return c.json(await listAuditEvents(c.env.DB, organizationActor(user, c.env), limit));
 });
 
 app.get("/api/admin/business-card/settings", async (c) => {
@@ -2666,6 +2792,24 @@ app.post("/api/health-insurance/appointments", async (c) => {
 app.post("/api/health-insurance/appointments/:appointmentId/cancel", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   return c.json(await cancelHealthInsuranceAppointment(c.env.DB, user.id, c.req.param("appointmentId")));
+});
+
+app.post("/api/health-insurance/analysis", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  return c.json(await requestHealthInsuranceAnalysis(c.env.DB, user.id, payload), 201);
+});
+
+app.post("/api/health-insurance/diagnoses", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  return c.json(await submitHealthInsuranceDiagnosis(c.env.DB, user.id, userName(user), payload), 201);
+});
+
+app.get("/api/health-insurance/diagnoses", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const patientUserId = String(c.req.query("patient_user_id") || user.id).trim();
+  return c.json(await healthInsuranceDiagnosisBoard(c.env.DB, user.id, patientUserId));
 });
 
 app.get("/api/accounts", async (c) => {
