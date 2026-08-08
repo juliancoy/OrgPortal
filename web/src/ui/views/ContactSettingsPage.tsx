@@ -436,12 +436,12 @@ export function ContactSettingsPage({ embedded = false, hideQr = false, hideProf
 
 
       <div className={publicFieldClass('headline', page.headline)}>
-        <label className="sr-only" htmlFor="contact-headline">Headline</label>
+        <label className="contact-field-label" htmlFor="contact-headline">Professional headline</label>
         <input id="contact-headline" value={page.headline || ''} onChange={(e) => setPublicField('headline', e.target.value)} placeholder="Headline" />
         {visibilityButton('headline')}
       </div>
       <div className={publicFieldClass('bio', page.bio)}>
-        <label className="sr-only" htmlFor="contact-bio">Bio</label>
+        <label className="contact-field-label" htmlFor="contact-bio">Bio</label>
         <textarea id="contact-bio" value={page.bio || ''} onChange={(e) => setPublicField('bio', e.target.value)} rows={4} placeholder="Bio" />
         {visibilityButton('bio')}
       </div>
@@ -458,37 +458,37 @@ export function ContactSettingsPage({ embedded = false, hideQr = false, hideProf
         </div>
       ))}
       <div className={publicFieldClass('email_public', page.email_public)}>
-        <label className="sr-only" htmlFor="contact-public-email">Public email</label>
+        <label className="contact-field-label" htmlFor="contact-public-email">Public email</label>
         <input id="contact-public-email" value={page.email_public || ''} onChange={(e) => setPublicField('email_public', e.target.value)} placeholder="Public email" />
         {visibilityButton('email_public')}
       </div>
       <div className={publicFieldClass('phone_public', page.phone_public)}>
-        <label className="sr-only" htmlFor="contact-public-phone">Public phone</label>
+        <label className="contact-field-label" htmlFor="contact-public-phone">Public phone</label>
         <input id="contact-public-phone" value={page.phone_public || ''} onChange={(e) => setPublicField('phone_public', e.target.value)} placeholder="Public phone" />
         {visibilityButton('phone_public')}
       </div>
       <div className={publicFieldClass('linkedin_url', page.linkedin_url)}>
-        <label className="sr-only" htmlFor="contact-linkedin-url">LinkedIn URL</label>
+        <label className="contact-field-label" htmlFor="contact-linkedin-url">LinkedIn</label>
         <input id="contact-linkedin-url" value={page.linkedin_url || ''} onChange={(e) => setPublicField('linkedin_url', e.target.value)} placeholder="LinkedIn URL" />
         {visibilityButton('linkedin_url')}
       </div>
       <div className={publicFieldClass('github_url', page.github_url)}>
-        <label className="sr-only" htmlFor="contact-github-url">GitHub URL</label>
+        <label className="contact-field-label" htmlFor="contact-github-url">GitHub</label>
         <input id="contact-github-url" value={page.github_url || ''} onChange={(e) => setPublicField('github_url', e.target.value)} placeholder="GitHub URL" />
         {visibilityButton('github_url')}
       </div>
       <div className={publicFieldClass('x_url', page.x_url)}>
-        <label className="sr-only" htmlFor="contact-x-url">X / Twitter URL</label>
+        <label className="contact-field-label" htmlFor="contact-x-url">X / Twitter</label>
         <input id="contact-x-url" value={page.x_url || ''} onChange={(e) => setPublicField('x_url', e.target.value)} placeholder="X / Twitter URL" />
         {visibilityButton('x_url')}
       </div>
       <div className={publicFieldClass('website_url', page.website_url)}>
-        <label className="sr-only" htmlFor="contact-website-url">Website URL</label>
+        <label className="contact-field-label" htmlFor="contact-website-url">Website</label>
         <input id="contact-website-url" value={page.website_url || ''} onChange={(e) => setPublicField('website_url', e.target.value)} placeholder="Website URL" />
         {visibilityButton('website_url')}
       </div>
       <div className={publicLinksFieldClass()}>
-        <label className="sr-only" htmlFor="contact-extra-links">Extra links</label>
+        <label className="contact-field-label" htmlFor="contact-extra-links">Additional links</label>
         <textarea
           id="contact-extra-links"
           value={linksText}

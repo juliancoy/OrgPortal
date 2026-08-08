@@ -51,6 +51,8 @@ import { BusinessCardIntakePage } from '../views/BusinessCardIntakePage'
 import { PeoplePage } from '../views/PeoplePage'
 import { refreshRuntimeTokenFromSession } from '../../infrastructure/auth/sessionToken'
 import { UbiSettingsPage } from '../views/UbiSettingsPage'
+import { LifeInsurancePage } from '../views/LifeInsurancePage'
+import { HealthInsurancePage } from '../views/HealthInsurancePage'
 import { portalBasePath } from '../../config/portalBase'
 
 function AuthenticatedRoute(props: { children: ReactElement }) {
@@ -247,6 +249,22 @@ export function createAppRouter() {
           { path: '/events/:slug', element: <PublicEventPage /> },
           { path: '/orgs', element: <PublicOrganizationsPage /> },
           { path: '/people', element: <PeoplePage /> },
+          {
+            path: '/life-insurance',
+            element: (
+              <AuthenticatedRoute>
+                <LifeInsurancePage />
+              </AuthenticatedRoute>
+            ),
+          },
+          {
+            path: '/health-insurance',
+            element: (
+              <AuthenticatedRoute>
+                <HealthInsurancePage />
+              </AuthenticatedRoute>
+            ),
+          },
           { path: '/search', element: <GlobalSearchPage /> },
 
           // Public profile

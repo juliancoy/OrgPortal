@@ -1,6 +1,7 @@
 interface Env {
   DB: D1Database;
   SCAN_IMAGES?: R2Bucket;
+  PUSH_QUEUE?: Queue<import("./src/push").PushDeliveryJob>;
   PIDP_BASE_URL?: string;
   PUBLIC_PORTAL_BASE_URL?: string;
   ORG_BUSINESS_CARD_OCR_PROVIDER?: string;
@@ -13,4 +14,7 @@ interface Env {
   ORG_MATRIX_SERVER_NAME?: string;
   ORG_MATRIX_ADMIN_TOKEN?: string;
   ORG_MATRIX_PASSWORD_SECRET?: string;
+  VAPID_SUBJECT?: string;
+  VAPID_PUBLIC_KEY?: string;
+  VAPID_PRIVATE_KEY?: string;
 }

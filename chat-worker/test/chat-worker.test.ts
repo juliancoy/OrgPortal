@@ -1,6 +1,32 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { app } from "../src/index";
+import { app, normalizeCallSignal } from "../src/index";
+
+test("video call signaling uses authenticated socket identity and conversation", () => {
+  const signal = normalizeCallSignal({
+    signal: "offer",
+    call_id: "call-123",
+    target_user_id: "user-b",
+    from_user_id: "spoofed-user",
+    conversation_id: "spoofed-room",
+    description: { type: "offer", sdp: "v=0" },
+  }, {
+    userId: "user-a",
+    userName: "Alex",
+    conversationId: "conversation-1",
+    connectedAt: new Date().toISOString(),
+  });
+  assert.equal(signal?.from_user_id, "user-a");
+  assert.equal(signal?.conversation_id, "conversation-1");
+  assert.equal(signal?.target_user_id, "user-b");
+  assert.deepEqual(signal?.description, { type: "offer", sdp: "v=0" });
+  assert.equal(normalizeCallSignal({ signal: "unknown", call_id: "x", target_user_id: "user-b" }, {
+    userId: "user-a",
+    userName: "Alex",
+    conversationId: "conversation-1",
+    connectedAt: new Date().toISOString(),
+  }), null);
+});
 
 type Row = Record<string, unknown>;
 
@@ -41,6 +67,9 @@ class FakeD1 {
   }
 
   first<T>(sql: string, params: unknown[]): T | null {
+    if (sql.includes("FROM user_contact_pages WHERE user_id = ?")) {
+      return (this.contacts.find((row) => row.user_id === params[0]) as T) || null;
+    }
     if (sql.includes("FROM user_contact_pages WHERE slug = ?")) {
       return (
         this.contacts.find(
@@ -276,6 +305,19 @@ test("protected chat routes require a bearer token", async () => {
   assert.deepEqual(await res.json(), { detail: "Authentication required" });
 });
 
+test("video calls receive a free STUN configuration when TURN is not configured", async () => {
+  const res = await app.request(
+    "https://chat.example.test/api/network/chat/ice-servers",
+    authedInit(),
+    env(),
+  );
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), {
+    ice_servers: [{ urls: ["stun:stun.cloudflare.com:3478"] }],
+    relay_configured: false,
+  });
+});
+
 test("dm route resolves a contact slug and reuses the same conversation", async () => {
   const db = new FakeD1();
   db.contacts.push({
@@ -302,6 +344,43 @@ test("dm route resolves a contact slug and reuses the same conversation", async 
   );
   assert.equal(second.status, 200);
   assert.equal(db.conversations.length, 1);
+});
+
+test("dm route starts a conversation by user ID even when the public profile is disabled", async () => {
+  const db = new FakeD1();
+  db.contacts.push({
+    user_id: "user-b",
+    user_name: "Private Bob",
+    slug: "private-bob",
+    enabled: 0,
+  });
+
+  const response = await app.request(
+    "https://chat.example.test/api/network/chat/dm",
+    authedInit({ target_user_id: "user-b", target_user_name: "Spoofed name" }),
+    env(db),
+  );
+
+  assert.equal(response.status, 201);
+  const body = (await response.json()) as { conversation: { members: Array<{ user_id: string; user_name: string }> } };
+  assert.deepEqual(
+    body.conversation.members.map((member) => ({ user_id: member.user_id, user_name: member.user_name })),
+    [
+      { user_id: "user-a", user_name: "Alice Example" },
+      { user_id: "user-b", user_name: "Private Bob" },
+    ],
+  );
+});
+
+test("dm route rejects an unknown direct user ID", async () => {
+  const response = await app.request(
+    "https://chat.example.test/api/network/chat/dm",
+    authedInit({ target_user_id: "missing-user" }),
+    env(new FakeD1()),
+  );
+
+  assert.equal(response.status, 404);
+  assert.deepEqual(await response.json(), { detail: "Target user not found" });
 });
 
 test("dm route allows starting a direct message with yourself", async () => {

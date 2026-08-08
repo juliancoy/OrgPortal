@@ -1,5 +1,17 @@
 import { portalUrl } from '../../config/portalBase'
 
+export const DENA_CURRENCY_CODE = 'DEM'
+
+const denaNumberFormat = new Intl.NumberFormat('en-US', {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+})
+
+export function formatDena(value?: number | null): string {
+  if (value === null || value === undefined) return '—'
+  return `${denaNumberFormat.format(value)} ${DENA_CURRENCY_CODE}`
+}
+
 export type FinanceAccountSummary = {
   id: string
   name: string

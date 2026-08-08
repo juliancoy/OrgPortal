@@ -226,7 +226,11 @@ export function PublicContactPage() {
     setIsSendingMessage(true)
     setMessageStatus('')
     try {
-      const conversation = await chatApi.startDm(page.slug)
+      const conversation = await chatApi.startDm({
+        userId: page.user_id,
+        userName: page.user_name,
+        slug: page.slug,
+      })
       await chatApi.sendMessage(conversation.id, uuid(), body)
       setMessageDraft('')
       navigate(`/chat/${encodeURIComponent(conversation.id)}`)

@@ -43,12 +43,29 @@ export type NativeChatSync = {
   members?: NativeChatConversation['members']
 }
 
+export type NativeChatDmTarget = {
+  userId?: string
+  userName?: string | null
+  slug?: string
+}
+
 export type NativeChatSocketEvent =
   | { type: 'connected'; at?: string }
   | { type: 'pong'; at?: string }
   | { type: 'typing'; conversation_id?: string; user_id?: string; user_name?: string; active?: boolean; at?: string }
   | { type: 'conversation.read'; conversation_id?: string; user_id?: string; message_id?: string; read_at?: string }
   | { type: 'message.created'; conversation_id: string; sequence?: number; message?: NativeChatMessage }
+  | {
+      type: 'call.signal'
+      conversation_id: string
+      call_id: string
+      signal: 'invite' | 'offer' | 'answer' | 'ice' | 'hangup'
+      from_user_id: string
+      from_user_name?: string
+      target_user_id?: string
+      description?: RTCSessionDescriptionInit
+      candidate?: RTCIceCandidateInit
+    }
   | { type: 'error'; detail?: string }
 
 function normalizeBaseUrl(rawValue: string | undefined): string {
@@ -115,10 +132,14 @@ export class NativeChatApi {
     return payload.conversations || []
   }
 
-  async startDm(targetUserSlug: string): Promise<NativeChatConversation> {
+  async startDm(target: NativeChatDmTarget): Promise<NativeChatConversation> {
     const payload = await this.request<{ conversation: NativeChatConversation }>('/api/network/chat/dm', {
       method: 'POST',
-      body: JSON.stringify({ target_user_slug: targetUserSlug }),
+      body: JSON.stringify({
+        target_user_id: target.userId,
+        target_user_name: target.userName,
+        target_user_slug: target.slug,
+      }),
     })
     return payload.conversation
   }
@@ -165,5 +186,10 @@ export class NativeChatApi {
     if (!token) throw new Error('Chat requires a signed-in session')
     const url = `${websocketBaseUrl(this.baseUrl)}/api/network/chat/conversations/${encodeURIComponent(conversationId)}/socket`
     return new WebSocket(url, [`pidp.${base64Url(token)}`])
+  }
+
+  async getIceServers(): Promise<RTCIceServer[]> {
+    const payload = await this.request<{ ice_servers?: RTCIceServer[] }>('/api/network/chat/ice-servers')
+    return payload.ice_servers?.length ? payload.ice_servers : [{ urls: ['stun:stun.cloudflare.com:3478'] }]
   }
 }

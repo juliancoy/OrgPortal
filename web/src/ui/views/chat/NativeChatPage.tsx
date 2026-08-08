@@ -4,6 +4,7 @@ import { useAuth } from '../../../app/AppProviders'
 import { NativeChatApi, type NativeChatConversation, type NativeChatMessage, type NativeChatSocketEvent } from '../../../chat/nativeChatApi'
 import { refreshRuntimeTokenFromSession } from '../../../infrastructure/auth/sessionToken'
 import { toUserFacingErrorMessage } from '../../../infrastructure/http/userFacingError'
+import { NativeVideoCall } from '../../components/chat/NativeVideoCall'
 
 type MessageState = NativeChatMessage & {
   delivery_state?: 'pending' | 'confirmed' | 'failed'
@@ -117,8 +118,9 @@ export function NativeChatPage() {
   const [error, setError] = useState<string | null>(null)
   const latestSequenceRef = useRef(0)
   const [realtimeState, setRealtimeState] = useState<RealtimeState>('idle')
+  const [realtimeSocket, setRealtimeSocket] = useState<WebSocket | null>(null)
   const [isSending, setIsSending] = useState(false)
-  const [sidebarExpanded, setSidebarExpanded] = useState(false)
+  const [sidebarExpanded, setSidebarExpanded] = useState(() => window.matchMedia('(min-width: 681px)').matches)
   const timelineRef = useRef<HTMLDivElement | null>(null)
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
 
@@ -194,8 +196,14 @@ export function NativeChatPage() {
         setError(null)
         const start = searchParams.get('start')
         const targetUser = searchParams.get('user')
-        if (start === 'dm' && targetUser) {
-          const conversation = await api.startDm(targetUser)
+        const targetUserId = searchParams.get('userId')
+        const targetUserName = searchParams.get('name')
+        if (start === 'dm' && (targetUserId || targetUser)) {
+          const conversation = await api.startDm({
+            userId: targetUserId || undefined,
+            userName: targetUserName,
+            slug: targetUser || undefined,
+          })
           if (!cancelled) {
             setConversations((current) => {
               const next = current.filter((item) => item.id !== conversation.id)
@@ -338,6 +346,7 @@ export function NativeChatPage() {
       socket.addEventListener('open', () => {
         reconnectAttempt = 0
         setRealtimeState('connected')
+        setRealtimeSocket(socket)
       })
       socket.addEventListener('message', (event) => {
         if (typeof event.data !== 'string') return
@@ -349,6 +358,7 @@ export function NativeChatPage() {
         }
       })
       socket.addEventListener('close', () => {
+        setRealtimeSocket(null)
         socket = null
         setRealtimeState('reconnecting')
         syncConversation(activeRoomId).catch(() => {})
@@ -374,6 +384,7 @@ export function NativeChatPage() {
         socket.close()
       }
       setRealtimeState('idle')
+      setRealtimeSocket(null)
     }
   }, [api, mergeMessages, refreshConversations, roomId, syncConversation])
 
@@ -467,11 +478,14 @@ export function NativeChatPage() {
   }
 
   async function startConversationWith(person: NetworkUser) {
-    if (!person.contact_slug) return
     try {
       setError(null)
       setStatus(`Opening chat with ${person.user_name}...`)
-      const conversation = await api.startDm(person.contact_slug)
+      const conversation = await api.startDm({
+        userId: person.user_id,
+        userName: person.user_name,
+        slug: person.contact_slug || undefined,
+      })
       setConversations((current) => {
         const next = current.filter((item) => item.id !== conversation.id)
         return sortConversationsByRecency([conversation, ...next])
@@ -496,7 +510,7 @@ export function NativeChatPage() {
             aria-expanded={sidebarExpanded}
             onClick={() => setSidebarExpanded((expanded) => !expanded)}
           >
-            {sidebarExpanded ? '<' : '>'}
+            <span aria-hidden="true">{sidebarExpanded ? '‹' : '›'}</span>
           </button>
           <Link to="/chat" className="portal-chat-home-link">Reset</Link>
         </div>
@@ -516,7 +530,12 @@ export function NativeChatPage() {
                     <span className="portal-avatar portal-chat-room-avatar">
                       {renderAvatar(label, avatarUrl)}
                     </span>
-                    <span className="native-chat-room-name">{label}</span>
+                    <span className="native-chat-room-copy">
+                      <span className="native-chat-room-name">{label}</span>
+                      {conversation.last_message?.body ? (
+                        <small className="native-chat-room-preview">{conversation.last_message.body}</small>
+                      ) : null}
+                    </span>
                   </span>
                   {conversation.unread_count ? <span className="portal-chat-unread">{conversation.unread_count}</span> : null}
                 </button>
@@ -569,8 +588,21 @@ export function NativeChatPage() {
                   ) : null}
                   <h1>{selectedConversation ? conversationLabel(selectedConversation, user?.id) : 'Conversation'}</h1>
                 </div>
+                {selectedConversation?.kind === 'dm' && user?.id && conversationParticipant(selectedConversation, user.id)?.user_id !== user.id ? (
+                  <NativeVideoCall
+                    socket={realtimeSocket}
+                    conversationId={selectedConversation.id}
+                    conversationName={conversationLabel(selectedConversation, user.id)}
+                    currentUserId={user.id}
+                    otherUserId={conversationParticipant(selectedConversation, user.id)?.user_id || ''}
+                    otherUserName={conversationParticipant(selectedConversation, user.id)?.user_name || 'Participant'}
+                    loadIceServers={() => api.getIceServers()}
+                  />
+                ) : null}
               </div>
-              {status ? <p>{status}</p> : null}
+              <p className="native-chat-room-status">
+                {status || (realtimeState === 'connected' ? 'Connected' : realtimeState === 'reconnecting' ? 'Reconnecting…' : 'Direct message')}
+              </p>
               {error ? <p className="portal-chat-error">{error}</p> : null}
             </header>
 
@@ -594,18 +626,15 @@ export function NativeChatPage() {
                     className={`portal-chat-message ${mine ? 'mine' : ''} ${groupedWithPrevious ? 'grouped' : ''}`}
                     tabIndex={0}
                   >
-                    {!mine ? (
-                      <span className="portal-avatar portal-chat-message-side-avatar">
-                        {renderAvatar(authorLabel, avatarUrl)}
-                      </span>
-                    ) : null}
                     <div className="portal-chat-message-meta" aria-hidden={groupedWithPrevious}>
-                      <div className="portal-chat-message-author">
-                        <span className="portal-avatar portal-chat-message-avatar">
-                          {renderAvatar(authorLabel, avatarUrl)}
-                        </span>
-                        <strong>{authorLabel}</strong>
-                      </div>
+                      {!mine ? (
+                        <div className="portal-chat-message-author">
+                          <span className="portal-avatar portal-chat-message-avatar">
+                            {renderAvatar(authorLabel, avatarUrl)}
+                          </span>
+                          <strong>{authorLabel}</strong>
+                        </div>
+                      ) : null}
                       <span>{timestamp(message.created_at)}</span>
                     </div>
                     <p>{message.body}</p>
@@ -658,7 +687,7 @@ export function NativeChatPage() {
               <textarea
                 value={draft}
                 rows={2}
-                placeholder="Write a message"
+                placeholder={`Message ${selectedConversation ? conversationLabel(selectedConversation, user?.id) : ''}`.trim()}
                 onChange={(event) => setDraft(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' && !event.shiftKey) {

@@ -9,7 +9,6 @@ import { refreshRuntimeTokenFromSession } from '../infrastructure/auth/sessionTo
 import { DEFAULT_POST_LOGIN_PATH, PIDP_BASE_URL, pidpUrl } from '../config/pidp'
 import { portalPath } from '../config/portalBase'
 import { isNativeCapacitorRuntime } from '../infrastructure/platform/runtimePlatform'
-import { initChatNotifications, setChatNotificationOpenHandler } from '../infrastructure/platform/chatNotifications'
 import { AppUpdatePrompt } from '../ui/components/system/AppUpdatePrompt'
 import {
   checkForAvailableUpdate,
@@ -97,14 +96,6 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
   const postLoginHref = useMemo(() => {
     return portalPath(DEFAULT_POST_LOGIN_PATH)
   }, [])
-
-  useEffect(() => {
-    if (!isNativeRuntime) return
-    setChatNotificationOpenHandler((roomId) => {
-      window.location.assign(portalPath(`/chat/${encodeURIComponent(roomId)}`))
-    })
-    initChatNotifications().catch(() => {})
-  }, [isNativeRuntime])
 
   useEffect(() => {
     const rehydrateVisibleSession = () => {

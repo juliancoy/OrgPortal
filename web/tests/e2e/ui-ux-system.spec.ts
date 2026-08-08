@@ -150,7 +150,14 @@ async function mockCommon(page: Page) {
   })
 }
 
-async function mockNativeChat(page: Page, options: { failSend?: boolean; unauthorized?: boolean } = {}) {
+async function mockNativeChat(
+  page: Page,
+  options: {
+    failSend?: boolean
+    unauthorized?: boolean
+    onStartDm?: (payload: Record<string, unknown>) => void
+  } = {},
+) {
   const conversation = {
     id: 'dm-1',
     kind: 'dm',
@@ -192,6 +199,7 @@ async function mockNativeChat(page: Page, options: { failSend?: boolean; unautho
     }
 
     if (url.pathname.endsWith('/api/network/chat/dm') && request.method() === 'POST') {
+      options.onStartDm?.(JSON.parse(request.postData() || '{}') as Record<string, unknown>)
       await fulfillJson(route, { conversation })
       return
     }
@@ -326,6 +334,40 @@ test.describe('Code Collective UI and UX system coverage', () => {
     await expect(page.getByRole('heading', { name: 'Neighborhood Assembly' })).toHaveCount(0)
   })
 
+  test('users directory searches and starts a DM with a user who has no public profile', async ({ page }) => {
+    let dmPayload: Record<string, unknown> | null = null
+    await page.route('**/api/org/api/network/users?**', async (route) => {
+      await fulfillJson(route, [
+        {
+          user_id: authUser.id,
+          user_name: authUser.full_name,
+          contact_slug: 'mobile-tester',
+          contact_enabled: true,
+          connection_status: 'self',
+        },
+        {
+          user_id: 'test-user-2',
+          user_name: 'Jordan Contact',
+          contact_slug: 'jordan-contact',
+          contact_enabled: false,
+          connection_status: 'none',
+        },
+      ])
+    })
+    await mockNativeChat(page, { onStartDm: (payload) => { dmPayload = payload } })
+
+    await page.goto('/people')
+    await page.getByLabel('Search people and organizations by name').fill('Jordan')
+    await page.getByRole('link', { name: 'Message Jordan Contact' }).click()
+
+    await expect(page).toHaveURL(/\/chat\/dm-1$/)
+    await expect(page.getByRole('heading', { name: 'Jordan Contact' })).toBeVisible()
+    expect(dmPayload).toMatchObject({
+      target_user_id: 'test-user-2',
+      target_user_name: 'Jordan Contact',
+    })
+  })
+
   test('legacy constituent dashboard OAuth returns land on the user dashboard', async ({ page }) => {
     await page.goto('/constituent/dashboard#token=header.payload.signature&token_type=bearer')
 
@@ -338,7 +380,7 @@ test.describe('Code Collective UI and UX system coverage', () => {
     await page.goto('/users/mobile-tester')
 
     await expect(page.locator('.portal-header')).toHaveCount(0)
-    await expect(page.getByRole('heading', { name: 'Mobile Tester' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Mobile Tester', exact: true })).toBeVisible()
     await expect(page.getByRole('link', { name: /message mobile tester/i })).toHaveAttribute('href', /\/chat\?start=dm&user=mobile-tester/)
     await expect(page.getByRole('link', { name: 'Edit Profile' })).toHaveAttribute('href', '/profile')
     const contactDownload = page.getByRole('button', { name: /download contact/i })
@@ -355,7 +397,7 @@ test.describe('Code Collective UI and UX system coverage', () => {
     await page.goto('/contact/mobile-tester')
 
     await expect(page).toHaveURL(/\/users\/mobile-tester$/)
-    await expect(page.getByRole('heading', { name: 'Mobile Tester' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Mobile Tester', exact: true })).toBeVisible()
     await expect(page.getByText(/\/contact\/mobile-tester/)).toHaveCount(0)
   })
 
@@ -403,6 +445,17 @@ test.describe('Code Collective UI and UX system coverage', () => {
     })
 
     await page.goto('/users/profile')
+    const darkPageBackground = await page.evaluate(() => {
+      const root = document.documentElement
+      const previousTheme = root.dataset.theme
+      root.dataset.theme = 'dark'
+      const styles = getComputedStyle(document.body)
+      const result = { image: styles.backgroundImage, color: styles.backgroundColor }
+      if (previousTheme) root.dataset.theme = previousTheme
+      else delete root.dataset.theme
+      return result
+    })
+    expect(darkPageBackground).toEqual({ image: 'none', color: 'rgb(8, 27, 49)' })
     await expect(page.getByText('Manage your account details, profile information, and public contact page.')).toHaveCount(0)
     await expect(page.locator('.profile-top-actions').getByRole('link', { name: 'Open Public Page' })).toHaveAttribute(
       'href',
@@ -425,6 +478,9 @@ test.describe('Code Collective UI and UX system coverage', () => {
     expect(publicToggleBox?.height).toBeGreaterThanOrEqual(48)
     await expect(page.getByRole('heading', { name: 'System Appearance' })).toHaveCount(0)
     await expect(page.getByRole('heading', { name: 'Account', exact: true })).toHaveCount(0)
+    await expect(page.getByLabel('Professional headline')).toBeVisible()
+    await expect(page.getByLabel('Public email')).toBeVisible()
+    await expect(page.getByLabel('LinkedIn')).toBeVisible()
     const uuidBox = await page.getByText('User UUID').boundingBox()
     expect(uuidBox?.y ?? 0).toBeGreaterThan(publicProfileBox?.y ?? Number.POSITIVE_INFINITY)
     const slugBox = await page.getByLabel('Public slug').boundingBox()
@@ -450,7 +506,7 @@ test.describe('Code Collective UI and UX system coverage', () => {
 
     await page.getByLabel('Full name').fill('Updated Tester')
     await page.getByRole('button', { name: 'Save profile' }).click()
-    await expect(page.getByRole('status')).toContainText('Profile saved.')
+    await expect(page.getByText('Profile saved.', { exact: true })).toBeVisible()
 
     expect(savedProfile?.full_name).toBe('Updated Tester')
     expect(savedProfile?.display_name).toBe('Updated Tester')
@@ -465,7 +521,7 @@ test.describe('Code Collective UI and UX system coverage', () => {
     await page.goto('/')
 
     await page.getByLabel('Open user menu').click()
-    await page.getByRole('link', { name: 'Settings' }).click()
+    await page.getByRole('menuitem', { name: 'Settings' }).click()
 
     await expect(page).toHaveURL(/\/settings$/)
     await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
@@ -544,7 +600,7 @@ test.describe('Code Collective UI and UX system coverage', () => {
 
     await page.getByRole('button', { name: 'Apply photo' }).click()
     await expect(page.getByRole('heading', { name: 'Edit profile photo' })).toHaveCount(0)
-    await expect(page.getByRole('status')).toContainText('Photo saved.')
+    await expect(page.getByRole('status').filter({ hasText: 'Photo saved.' })).toBeVisible()
     await expect(page.getByAltText('Profile preview')).toHaveAttribute('src', uploadedAvatarUrl)
 
     expect(uploadSetupRequested).toBe(true)
@@ -568,11 +624,13 @@ test.describe('Code Collective UI and UX system coverage', () => {
     await expect(page.getByRole('heading', { name: 'Jordan Contact' })).toBeVisible()
     await expect(page.getByText('Existing hello from Jordan')).toBeVisible()
 
-    await page.getByPlaceholder('Write a message').fill('Hello from Playwright')
+    await page.getByRole('textbox', { name: 'Message Jordan Contact' }).fill('Hello from Playwright')
     await page.getByRole('button', { name: 'Send' }).click()
-    await expect(page.getByText('Hello from Playwright')).toBeVisible()
-    await expect(page.getByText('#2')).toBeVisible()
+    const sentMessage = page.locator('.portal-chat-message').filter({ hasText: 'Hello from Playwright' })
+    await expect(sentMessage).toBeVisible()
     await expect(page.getByText('Sending...')).toHaveCount(0)
+    await sentMessage.focus()
+    await expect(sentMessage.getByText('2', { exact: true })).toBeVisible()
   })
 
   test('native chat shows unauthorized and failed-send error states', async ({ page }) => {
@@ -585,7 +643,7 @@ test.describe('Code Collective UI and UX system coverage', () => {
     await page.goto('/chat/dm-1')
     await expect(page.getByText('Existing hello from Jordan')).toBeVisible()
 
-    await page.getByPlaceholder('Write a message').fill('This send should fail')
+    await page.getByRole('textbox', { name: 'Message Jordan Contact' }).fill('This send should fail')
     await page.getByRole('button', { name: 'Send' }).click()
     await expect(page.getByText('This send should fail')).toBeVisible()
     await expect(page.getByText('Message service unavailable')).toBeVisible()
