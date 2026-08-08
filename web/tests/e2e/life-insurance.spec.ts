@@ -8,8 +8,8 @@ const authUser = {
 }
 
 const members = [
-  { user_id: 'member-kin', account_id: 'acct-kin', name: 'Jordan Kin', enrolled: true },
-  { user_id: 'member-beneficiary', account_id: 'acct-beneficiary', name: 'Riley Beneficiary', enrolled: true },
+  { user_id: 'member-kin', account_id: 'acct-kin', name: 'Jordan Kin', photo_url: 'https://images.example.test/jordan.jpg', enrolled: true },
+  { user_id: 'member-beneficiary', account_id: 'acct-beneficiary', name: 'Riley Beneficiary', photo_url: 'https://images.example.test/riley.jpg', enrolled: true },
 ]
 
 const dashboard = {
@@ -91,15 +91,30 @@ test('member enrolls and a third death attestation displays the Dena payout', as
 
   await page.locator('#insurance-birthday').fill('1990-04-15')
   await page.locator('#insurance-age').fill('36')
-  await page.locator('#insurance-next-of-kin').selectOption('member-kin')
+  await page.getByRole('combobox', { name: 'Next of kin (required)' }).fill('Jordan')
+  await page.locator('#insurance-next-of-kin-results').getByRole('option', { name: 'Jordan Kin' }).click()
   await page.locator('#insurance-next-of-kin-relationship').fill('Sibling')
-  await page.locator('#insurance-beneficiary').selectOption('member-beneficiary')
+  await page.getByRole('combobox', { name: 'Named beneficiary (optional)' }).fill('Riley')
+  await page.locator('#insurance-beneficiary-results').getByRole('option', { name: 'Riley Beneficiary' }).click()
   await page.locator('#insurance-beneficiary-relationship').fill('Partner')
   await page.locator('#insurance-enrollment-attestation').check()
+
+  await page.goto('/about')
+  await page.goto('/life-insurance')
+  await expect(page.locator('#insurance-birthday')).toHaveValue('1990-04-15')
+  await expect(page.locator('#insurance-age')).toHaveValue('36')
+  await expect(page.locator('#insurance-next-of-kin-relationship')).toHaveValue('Sibling')
+  await expect(page.locator('#insurance-beneficiary-relationship')).toHaveValue('Partner')
+  await expect(page.locator('#insurance-enrollment-attestation')).toBeChecked()
+  await expect(page.getByTestId('insurance-next-of-kin-selected')).toContainText('Jordan Kin')
+  await expect(page.getByTestId('insurance-beneficiary-selected')).toContainText('Riley Beneficiary')
+
   await page.getByRole('button', { name: 'Save enrollment' }).click()
 
   await expect(page.getByText('Enrollment saved. Your beneficiary selection is now active.')).toBeVisible()
   await expect(page.getByText('Beneficiary: Riley Beneficiary')).toBeVisible()
+  await expect(page.getByTestId('insurance-next-of-kin-selected').locator('img')).toHaveAttribute('src', 'https://images.example.test/jordan.jpg')
+  await expect(page.getByTestId('insurance-beneficiary-selected').locator('img')).toHaveAttribute('src', 'https://images.example.test/riley.jpg')
 
   await page.locator('#deceased-member').selectOption('member-kin')
   await page.locator('#date-of-death').fill('2026-08-06')

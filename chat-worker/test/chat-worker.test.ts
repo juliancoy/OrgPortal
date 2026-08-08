@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { app, normalizeCallSignal } from "../src/index";
+import { app, isPresenceOnline, normalizeCallSignal } from "../src/index";
 
 test("video call signaling uses authenticated socket identity and conversation", () => {
   const signal = normalizeCallSignal({
@@ -60,6 +60,7 @@ class FakeD1 {
   messages: Row[] = [];
   contacts: Row[] = [];
   receipts: Row[] = [];
+  presence: Row[] = [];
   sequences = new Map<string, number>();
 
   prepare(sql: string) {
@@ -110,6 +111,10 @@ class FakeD1 {
   }
 
   all<T>(sql: string, params: unknown[]): T[] {
+    if (sql.includes("FROM chat_presence WHERE user_id IN")) {
+      const ids = new Set(params);
+      return this.presence.filter((row) => ids.has(row.user_id)) as T[];
+    }
     if (sql.includes("FROM user_contact_pages WHERE user_id IN")) {
       const ids = new Set(params);
       return this.contacts.filter((row) => ids.has(row.user_id)) as T[];
@@ -159,6 +164,11 @@ class FakeD1 {
   }
 
   async run(sql: string, params: unknown[]) {
+    if (sql.includes("INSERT INTO chat_presence")) {
+      const existing = this.presence.find((row) => row.user_id === params[0]);
+      if (existing) existing.last_seen_at = params[1];
+      else this.presence.push({ user_id: params[0], last_seen_at: params[1] });
+    }
     if (sql.includes("INSERT INTO chat_conversations")) {
       this.conversations.push({
         id: params[0],
@@ -303,6 +313,31 @@ test("protected chat routes require a bearer token", async () => {
   const res = await app.request("https://chat.example.test/api/network/chat/conversations", {}, env());
   assert.equal(res.status, 401);
   assert.deepEqual(await res.json(), { detail: "Authentication required" });
+});
+
+test("presence heartbeat reports recently active chat users as online", async () => {
+  const db = new FakeD1();
+  const heartbeat = await app.request(
+    "https://chat.example.test/api/network/chat/presence",
+    authedInit({}),
+    env(db),
+  );
+  assert.equal(heartbeat.status, 200);
+  assert.deepEqual(await heartbeat.json(), { online: true });
+
+  const response = await app.request(
+    "https://chat.example.test/api/network/chat/presence?user_ids=user-a,user-b",
+    authedInit(),
+    env(db),
+  );
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    presence: [
+      { user_id: "user-a", online: true },
+      { user_id: "user-b", online: false },
+    ],
+  });
+  assert.equal(isPresenceOnline(new Date(Date.now() - 76_000).toISOString()), false);
 });
 
 test("video calls receive a free STUN configuration when TURN is not configured", async () => {

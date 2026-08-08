@@ -1,24 +1,51 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useDeferredValue, useEffect, useState, type FormEvent } from 'react'
 import { useAuth } from '../../app/AppProviders'
 import { refreshRuntimeTokenFromSession } from '../../infrastructure/auth/sessionToken'
 
 const ORG_API_BASE = '/api/org'
-const STATES = [
-  ['AL', 'Alabama'], ['AK', 'Alaska'], ['AZ', 'Arizona'], ['AR', 'Arkansas'], ['CA', 'California'], ['CO', 'Colorado'],
-  ['CT', 'Connecticut'], ['DE', 'Delaware'], ['DC', 'District of Columbia'], ['FL', 'Florida'], ['GA', 'Georgia'], ['HI', 'Hawaii'],
-  ['ID', 'Idaho'], ['IL', 'Illinois'], ['IN', 'Indiana'], ['IA', 'Iowa'], ['KS', 'Kansas'], ['KY', 'Kentucky'], ['LA', 'Louisiana'],
-  ['ME', 'Maine'], ['MD', 'Maryland'], ['MA', 'Massachusetts'], ['MI', 'Michigan'], ['MN', 'Minnesota'], ['MS', 'Mississippi'],
-  ['MO', 'Missouri'], ['MT', 'Montana'], ['NE', 'Nebraska'], ['NV', 'Nevada'], ['NH', 'New Hampshire'], ['NJ', 'New Jersey'],
-  ['NM', 'New Mexico'], ['NY', 'New York'], ['NC', 'North Carolina'], ['ND', 'North Dakota'], ['OH', 'Ohio'], ['OK', 'Oklahoma'],
-  ['OR', 'Oregon'], ['PA', 'Pennsylvania'], ['RI', 'Rhode Island'], ['SC', 'South Carolina'], ['SD', 'South Dakota'],
-  ['TN', 'Tennessee'], ['TX', 'Texas'], ['UT', 'Utah'], ['VT', 'Vermont'], ['VA', 'Virginia'], ['WA', 'Washington'],
-  ['WV', 'West Virginia'], ['WI', 'Wisconsin'], ['WY', 'Wyoming'], ['AS', 'American Samoa'], ['GU', 'Guam'],
-  ['MP', 'Northern Mariana Islands'], ['PR', 'Puerto Rico'], ['VI', 'U.S. Virgin Islands'],
-] as const
 
 type CodeSystem = 'HCPCS_LEVEL_II' | 'CPT' | 'ICD10_PCS' | 'NDC'
-type ClaimLineForm = { code_system: CodeSystem; code: string; modifiers: string; units: string; billed_amount_usd: string }
-type Enrollment = { state_code: string; program: 'standard' | 'pediatric'; coverage_effective_date: string; status: string }
+type ClaimLineForm = {
+  code_system: CodeSystem
+  code: string
+  modifiers: string
+  units: string
+  billed_amount_usd: string
+  search: string
+}
+type DiagnosisEntry = { code: string; label: string; description: string; keywords: string[] }
+type CollaborativeDiagnosis = {
+  id: string
+  patient_user_id: string
+  code: string
+  label: string
+  description: string
+  note: string
+  submitted_by_user_id: string
+  submitted_by_name: string
+  self_reported: boolean
+  supporter_count: number
+  supporters: Array<{ supporter_user_id: string; supporter_name: string; created_at: string }>
+  viewer_supports: boolean
+  created_at: string
+  updated_at: string
+}
+type MemberAccount = { id: string; user_id: string | null; name: string; email: string }
+type DiagnosisBoard = {
+  patient: { user_id: string; name: string; is_self: boolean }
+  diagnoses: CollaborativeDiagnosis[]
+  diagnosis_reference_version: string
+  code_catalog: { diagnoses: DiagnosisEntry[] }
+}
+type ClaimCodeEntry = { code_system: CodeSystem; code: string; label: string; description: string; keywords: string[] }
+type Enrollment = {
+  program: 'standard' | 'pediatric'
+  coverage_effective_date: string
+  status: string
+  issue_summary: string
+  suspected_diagnosis_codes: string[]
+  suspected_diagnosis_details: DiagnosisEntry[]
+}
 type Claim = {
   id: string
   service_date: string
@@ -27,6 +54,11 @@ type Claim = {
   coverage_determination: string
   total_billed_usd: number
   diagnosis_codes: string[]
+  diagnosis_details: DiagnosisEntry[]
+  suspected_diagnosis_codes: string[]
+  suspected_diagnosis_details: DiagnosisEntry[]
+  issue_summary: string
+  line_details: Array<{ code_system: CodeSystem; code: string; label: string; description: string }>
   lines: Array<{ line_number: number; code_system: CodeSystem; code: string }>
 }
 type HealthService = {
@@ -46,34 +78,169 @@ type Appointment = {
   ends_at: string
   status: string
 }
+type AnalysisRun = {
+  id: string
+  analysis_kind: 'record-summary' | 'triage' | 'service-match'
+  status: string
+  requested_at: string
+  summary: { headline: string; findings: string[]; next_steps: string[] }
+}
+type HistoryEvent = {
+  id: string
+  event_type: 'profile_update' | 'claim' | 'appointment' | 'analysis' | 'diagnosis'
+  occurred_at: string
+  title: string
+  summary: string
+  metadata: Record<string, unknown>
+}
 type Dashboard = {
   enrollment: Enrollment | null
   claims: Claim[]
   services: HealthService[]
   appointments: Appointment[]
+  analyses: AnalysisRun[]
+  collaborative_diagnoses: CollaborativeDiagnosis[]
+  history: HistoryEvent[]
   code_reference_version: string
+  diagnosis_reference_version: string
   service_access: string
+  code_catalog: { diagnoses: DiagnosisEntry[]; claim_codes: ClaimCodeEntry[] }
 }
 
 const emptyLine = (): ClaimLineForm => ({
-  code_system: 'HCPCS_LEVEL_II', code: '', modifiers: '', units: '1', billed_amount_usd: '',
+  code_system: 'HCPCS_LEVEL_II', code: '', modifiers: '', units: '1', billed_amount_usd: '', search: '',
 })
 
 function label(value: string) {
   return value.replaceAll('_', ' ').replace(/\b\w/g, (character) => character.toUpperCase())
 }
 
+function fuzzyScore(query: string, candidate: string) {
+  const normalizedQuery = query.trim().toLowerCase()
+  const normalizedCandidate = candidate.toLowerCase()
+  if (!normalizedQuery) return 0
+  if (normalizedCandidate === normalizedQuery) return 500
+  if (normalizedCandidate.startsWith(normalizedQuery)) return 250
+  if (normalizedCandidate.includes(normalizedQuery)) return 100
+  let score = 0
+  let index = 0
+  for (const character of normalizedQuery) {
+    index = normalizedCandidate.indexOf(character, index)
+    if (index === -1) return -1
+    score += 5
+    index += 1
+  }
+  return score
+}
+
+function searchDiagnoses(entries: DiagnosisEntry[], query: string, selectedCodes: string[]) {
+  const selected = new Set(selectedCodes)
+  const normalizedQuery = query.trim()
+  return entries
+    .filter((entry) => !selected.has(entry.code))
+    .map((entry) => ({
+      entry,
+      score: Math.max(
+        fuzzyScore(normalizedQuery, entry.code),
+        fuzzyScore(normalizedQuery, entry.label),
+        ...entry.keywords.map((keyword) => fuzzyScore(normalizedQuery, keyword)),
+      ),
+    }))
+    .filter((result) => !normalizedQuery || result.score >= 0)
+    .sort((left, right) => right.score - left.score || left.entry.code.localeCompare(right.entry.code))
+    .slice(0, 8)
+    .map((result) => result.entry)
+}
+
+function searchClaimCodes(entries: ClaimCodeEntry[], query: string, codeSystem: CodeSystem) {
+  const normalizedQuery = query.trim()
+  return entries
+    .filter((entry) => entry.code_system === codeSystem)
+    .map((entry) => ({
+      entry,
+      score: Math.max(
+        fuzzyScore(normalizedQuery, entry.code),
+        fuzzyScore(normalizedQuery, entry.label),
+        ...entry.keywords.map((keyword) => fuzzyScore(normalizedQuery, keyword)),
+      ),
+    }))
+    .filter((result) => !normalizedQuery || result.score >= 0)
+    .sort((left, right) => right.score - left.score || left.entry.code.localeCompare(right.entry.code))
+    .slice(0, 8)
+    .map((result) => result.entry)
+}
+
+function DiagnosisSelector({
+  title,
+  query,
+  setQuery,
+  selectedCodes,
+  setSelectedCodes,
+  entries,
+}: {
+  title: string
+  query: string
+  setQuery: (value: string) => void
+  selectedCodes: string[]
+  setSelectedCodes: (codes: string[]) => void
+  entries: DiagnosisEntry[]
+}) {
+  const deferredQuery = useDeferredValue(query)
+  const matches = searchDiagnoses(entries, deferredQuery, selectedCodes)
+  const byCode = new Map(entries.map((entry) => [entry.code, entry]))
+  return (
+    <div className="health-insurance-selector">
+      <label>{title}
+        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by diagnosis name or code" />
+      </label>
+      <div className="health-insurance-chip-list">
+        {selectedCodes.length ? selectedCodes.map((code) => {
+          const entry = byCode.get(code)
+          return (
+            <button key={code} type="button" className="health-insurance-chip" onClick={() => setSelectedCodes(selectedCodes.filter((item) => item !== code))}>
+              <strong>{code}</strong>
+              <span>{entry?.label || code}</span>
+            </button>
+          )
+        }) : <p>No diagnoses selected.</p>}
+      </div>
+      <div className="health-insurance-search-results">
+        {matches.map((entry) => (
+          <button key={entry.code} type="button" className="health-insurance-search-result" onClick={() => {
+            setSelectedCodes([...selectedCodes, entry.code])
+            setQuery('')
+          }}>
+            <strong>{entry.code}</strong>
+            <span>{entry.label}</span>
+            <small>{entry.description}</small>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function HealthInsurancePage() {
-  const { token } = useAuth()
+  const { token, user } = useAuth()
   const [dashboard, setDashboard] = useState<Dashboard | null>(null)
-  const [stateCode, setStateCode] = useState('MD')
+  const [diagnosisBoard, setDiagnosisBoard] = useState<DiagnosisBoard | null>(null)
+  const [members, setMembers] = useState<MemberAccount[]>([])
+  const [patientQuery, setPatientQuery] = useState('')
+  const [selectedPatientUserId, setSelectedPatientUserId] = useState('')
   const [program, setProgram] = useState<'standard' | 'pediatric'>('standard')
   const [effectiveDate, setEffectiveDate] = useState('')
+  const [issueSummary, setIssueSummary] = useState('')
+  const [suspectedDiagnoses, setSuspectedDiagnoses] = useState<string[]>([])
+  const [suspectedQuery, setSuspectedQuery] = useState('')
   const [enrollmentAttested, setEnrollmentAttested] = useState(false)
   const [serviceDate, setServiceDate] = useState('')
   const [providerNpi, setProviderNpi] = useState('')
   const [placeOfService, setPlaceOfService] = useState('')
-  const [diagnoses, setDiagnoses] = useState('')
+  const [confirmedDiagnoses, setConfirmedDiagnoses] = useState<string[]>([])
+  const [confirmedQuery, setConfirmedQuery] = useState('')
+  const [claimIssueSummary, setClaimIssueSummary] = useState('')
+  const [claimSuspectedDiagnoses, setClaimSuspectedDiagnoses] = useState<string[]>([])
+  const [claimSuspectedQuery, setClaimSuspectedQuery] = useState('')
   const [lines, setLines] = useState<ClaimLineForm[]>([emptyLine()])
   const [claimAttested, setClaimAttested] = useState(false)
   const [claimService, setClaimService] = useState('')
@@ -81,6 +248,9 @@ export function HealthInsurancePage() {
   const [appointmentDate, setAppointmentDate] = useState('')
   const [appointmentTime, setAppointmentTime] = useState('13:00')
   const [appointmentAttested, setAppointmentAttested] = useState(false)
+  const [diagnosisSubmitQuery, setDiagnosisSubmitQuery] = useState('')
+  const [diagnosisSubmitCodes, setDiagnosisSubmitCodes] = useState<string[]>([])
+  const [diagnosisSubmitNote, setDiagnosisSubmitNote] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -109,37 +279,73 @@ export function HealthInsurancePage() {
 
   async function loadDashboard() {
     const response = await authenticatedFetch('/api/health-insurance')
-    if (!response.ok) throw new Error(await responseDetail(response, 'Unable to load health-benefit intake.'))
+    if (!response.ok) throw new Error(await responseDetail(response, 'Unable to load health-benefit record.'))
     const data = (await response.json()) as Dashboard
     setDashboard(data)
     if (!appointmentService && data.services[0]) setAppointmentService(data.services[0].id)
     if (!claimService && data.services[0]) setClaimService(data.services[0].id)
     if (data.enrollment) {
-      setStateCode(data.enrollment.state_code)
       setProgram(data.enrollment.program)
       setEffectiveDate(data.enrollment.coverage_effective_date)
+      setIssueSummary(data.enrollment.issue_summary || '')
+      setSuspectedDiagnoses(data.enrollment.suspected_diagnosis_codes || [])
+      if (!claimIssueSummary) setClaimIssueSummary(data.enrollment.issue_summary || '')
+      if (!claimSuspectedDiagnoses.length) setClaimSuspectedDiagnoses(data.enrollment.suspected_diagnosis_codes || [])
     }
+  }
+
+  async function loadMembers(query = '') {
+    const response = await authenticatedFetch(`/api/accounts?sort=name_asc&limit=20&q=${encodeURIComponent(query)}`)
+    if (!response.ok) throw new Error(await responseDetail(response, 'Unable to load members.'))
+    const data = (await response.json()) as MemberAccount[]
+    setMembers(data.filter((member) => member.user_id))
+  }
+
+  async function loadDiagnosisBoard(patientUserId: string) {
+    const response = await authenticatedFetch(`/api/health-insurance/diagnoses?patient_user_id=${encodeURIComponent(patientUserId)}`)
+    if (!response.ok) throw new Error(await responseDetail(response, 'Unable to load diagnosis board.'))
+    setDiagnosisBoard((await response.json()) as DiagnosisBoard)
   }
 
   useEffect(() => {
     loadDashboard().catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'Unable to load.')).finally(() => setLoading(false))
-    // The token identifies this member; form state is intentionally local.
   }, [token])
+
+  useEffect(() => {
+    const ownUserId = user?.id || ''
+    if (ownUserId && !selectedPatientUserId) setSelectedPatientUserId(ownUserId)
+  }, [user, selectedPatientUserId])
+
+  useEffect(() => {
+    loadMembers(patientQuery).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'Unable to load members.'))
+  }, [patientQuery])
+
+  useEffect(() => {
+    if (!selectedPatientUserId) return
+    loadDiagnosisBoard(selectedPatientUserId).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'Unable to load diagnosis board.'))
+  }, [selectedPatientUserId, token])
 
   async function saveEnrollment(event: FormEvent) {
     event.preventDefault()
     setSaving(true); setError(''); setMessage('')
     try {
       const response = await authenticatedFetch('/api/health-insurance/enrollment', {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ state_code: stateCode, program, coverage_effective_date: effectiveDate, attested: enrollmentAttested }),
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          program,
+          coverage_effective_date: effectiveDate,
+          suspected_diagnosis_codes: suspectedDiagnoses,
+          issue_summary: issueSummary,
+          attested: enrollmentAttested,
+        }),
       })
-      if (!response.ok) throw new Error(await responseDetail(response, 'Unable to save enrollment.'))
+      if (!response.ok) throw new Error(await responseDetail(response, 'Unable to save health profile.'))
       setEnrollmentAttested(false)
       await loadDashboard()
-      setMessage('Coverage details saved.')
+      setMessage('Health profile saved.')
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Unable to save enrollment.')
+      setError(reason instanceof Error ? reason.message : 'Unable to save health profile.')
     } finally { setSaving(false) }
   }
 
@@ -152,15 +358,19 @@ export function HealthInsurancePage() {
     setSubmitting(true); setError(''); setMessage('')
     try {
       const response = await authenticatedFetch('/api/health-insurance/claims', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           service_id: claimService,
           service_date: serviceDate,
           provider_npi: providerNpi,
           place_of_service: placeOfService,
-          diagnosis_codes: diagnoses.split(',').map((code) => code.trim()).filter(Boolean),
+          diagnosis_codes: confirmedDiagnoses,
+          suspected_diagnosis_codes: claimSuspectedDiagnoses,
+          issue_summary: claimIssueSummary,
           lines: lines.map((line) => ({
-            ...line,
+            code_system: line.code_system,
+            code: line.code,
             modifiers: line.modifiers.split(',').map((modifier) => modifier.trim()).filter(Boolean),
             units: Number(line.units),
             billed_amount_usd: Number(line.billed_amount_usd),
@@ -169,7 +379,13 @@ export function HealthInsurancePage() {
         }),
       })
       if (!response.ok) throw new Error(await responseDetail(response, 'Unable to submit claim intake.'))
-      setServiceDate(''); setProviderNpi(''); setPlaceOfService(''); setDiagnoses(''); setLines([emptyLine()]); setClaimAttested(false)
+      setServiceDate('')
+      setProviderNpi('')
+      setPlaceOfService('')
+      setConfirmedDiagnoses([])
+      setConfirmedQuery('')
+      setLines([emptyLine()])
+      setClaimAttested(false)
       await loadDashboard()
       setMessage('Claim codes recorded.')
     } catch (reason) {
@@ -182,11 +398,13 @@ export function HealthInsurancePage() {
     setSubmitting(true); setError(''); setMessage('')
     try {
       const response = await authenticatedFetch('/api/health-insurance/appointments', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ service_id: appointmentService, starts_at: `${appointmentDate}T${appointmentTime}:00.000Z`, attested: appointmentAttested }),
       })
       if (!response.ok) throw new Error(await responseDetail(response, 'Unable to request appointment.'))
-      setAppointmentDate(''); setAppointmentAttested(false)
+      setAppointmentDate('')
+      setAppointmentAttested(false)
       await loadDashboard()
       setMessage('Appointment requested. It remains pending until the service confirms it.')
     } catch (reason) {
@@ -202,6 +420,59 @@ export function HealthInsurancePage() {
     setMessage('Appointment cancelled.')
   }
 
+  async function runAnalysis(analysis_kind: AnalysisRun['analysis_kind']) {
+    setSubmitting(true); setError(''); setMessage('')
+    try {
+      const response = await authenticatedFetch('/api/health-insurance/analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ analysis_kind }),
+      })
+      if (!response.ok) throw new Error(await responseDetail(response, 'Unable to prepare analysis.'))
+      await loadDashboard()
+      setMessage(`${label(analysis_kind)} analysis prepared.`)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to prepare analysis.')
+    } finally { setSubmitting(false) }
+  }
+
+  async function submitCollaborativeDiagnosis(event: FormEvent) {
+    event.preventDefault()
+    if (!diagnosisSubmitCodes[0]) return
+    setSubmitting(true); setError(''); setMessage('')
+    try {
+      const response = await authenticatedFetch('/api/health-insurance/diagnoses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ patient_user_id: selectedPatientUserId, code: diagnosisSubmitCodes[0], note: diagnosisSubmitNote }),
+      })
+      if (!response.ok) throw new Error(await responseDetail(response, 'Unable to submit diagnosis.'))
+      setDiagnosisSubmitCodes([])
+      setDiagnosisSubmitQuery('')
+      setDiagnosisSubmitNote('')
+      await loadDiagnosisBoard(selectedPatientUserId)
+      setMessage('Diagnosis submitted and your support recorded.')
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to submit diagnosis.')
+    } finally { setSubmitting(false) }
+  }
+
+  async function supportDiagnosis(code: string) {
+    setSubmitting(true); setError(''); setMessage('')
+    try {
+      const response = await authenticatedFetch('/api/health-insurance/diagnoses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ patient_user_id: selectedPatientUserId, code }),
+      })
+      if (!response.ok) throw new Error(await responseDetail(response, 'Unable to support diagnosis.'))
+      await loadDiagnosisBoard(selectedPatientUserId)
+      setMessage('Diagnosis support recorded.')
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to support diagnosis.')
+    } finally { setSubmitting(false) }
+  }
+
   if (loading) return <main className="health-insurance-page"><p>Loading health-benefit intake…</p></main>
 
   return (
@@ -209,8 +480,8 @@ export function HealthInsurancePage() {
       <section className="portal-hero health-insurance-hero">
         <div>
           <span className="health-insurance-eyebrow">Independent health subsystem</span>
-          <h1>Health insurance code intake</h1>
-          <p>Record coverage details, submit standardized claim codes, and schedule available services.</p>
+          <h1>Health record and code intake</h1>
+          <p>Maintain a member health profile, search standardized codes by name, schedule services, and review the complete record history.</p>
         </div>
       </section>
 
@@ -220,32 +491,39 @@ export function HealthInsurancePage() {
       <section className="health-insurance-grid">
         <form className="portal-card portal-form health-insurance-card" onSubmit={saveEnrollment}>
           <span className="health-insurance-eyebrow">Step 1</span>
-          <h2>Coverage record</h2>
-          <p>Choose the coverage program and effective date.</p>
-          <label>State or territory
-            <select value={stateCode} onChange={(event) => setStateCode(event.target.value)} required>
-              {STATES.map(([code, name]) => <option value={code} key={code}>{name}</option>)}
-            </select>
-          </label>
+          <h2>Health profile</h2>
+          <p>Record the member’s current program, suspected diagnoses, and self-described issues.</p>
           <label>Program
             <select value={program} onChange={(event) => setProgram(event.target.value as 'standard' | 'pediatric')} required>
-              <option value="standard">Standard</option><option value="pediatric">Pediatric</option>
+              <option value="standard">Standard</option>
+              <option value="pediatric">Pediatric</option>
             </select>
           </label>
           <label>Coverage effective date
             <input type="date" value={effectiveDate} onChange={(event) => setEffectiveDate(event.target.value)} required />
           </label>
+          <DiagnosisSelector
+            title="Suspected diagnoses"
+            query={suspectedQuery}
+            setQuery={setSuspectedQuery}
+            selectedCodes={suspectedDiagnoses}
+            setSelectedCodes={setSuspectedDiagnoses}
+            entries={dashboard?.code_catalog.diagnoses || []}
+          />
+          <label>Describe your medical issues
+            <textarea value={issueSummary} onChange={(event) => setIssueSummary(event.target.value)} rows={6} placeholder="Describe symptoms, chronic issues, recent changes, or anything else relevant." />
+          </label>
           <label className="health-insurance-check">
             <input type="checkbox" checked={enrollmentAttested} onChange={(event) => setEnrollmentAttested(event.target.checked)} required />
-            <span>I attest that this member-provided coverage information is accurate.</span>
+            <span>I attest that this health profile reflects the member record I want on file.</span>
           </label>
-          <button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save coverage record'}</button>
+          <button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save health profile'}</button>
         </form>
 
         <form className="portal-card portal-form health-insurance-card health-insurance-claim" onSubmit={submitClaim}>
           <span className="health-insurance-eyebrow">Step 2</span>
           <h2>Claim-code intake</h2>
-          <p>Enter codes exactly as supplied by the provider. Do not include clinical notes.</p>
+          <p>Search standardized codes by name, record confirmed diagnoses, and snapshot the current member issue description.</p>
           <div className="health-insurance-fields">
             <label>Available service<select value={claimService} onChange={(event) => setClaimService(event.target.value)} required>
               {dashboard?.services.map((service) => <option value={service.id} key={service.id}>{service.name}</option>)}
@@ -253,30 +531,64 @@ export function HealthInsurancePage() {
             <label>Service date<input type="date" value={serviceDate} onChange={(event) => setServiceDate(event.target.value)} required /></label>
             <label>Provider NPI<input inputMode="numeric" maxLength={10} value={providerNpi} onChange={(event) => setProviderNpi(event.target.value)} placeholder="10 digits" required /></label>
             <label>Place of service<input inputMode="numeric" maxLength={2} value={placeOfService} onChange={(event) => setPlaceOfService(event.target.value)} placeholder="11" required /></label>
-            <label>ICD-10-CM diagnoses<input value={diagnoses} onChange={(event) => setDiagnoses(event.target.value)} placeholder="E11.9, I10" required /></label>
           </div>
+          <DiagnosisSelector
+            title="Confirmed diagnoses"
+            query={confirmedQuery}
+            setQuery={setConfirmedQuery}
+            selectedCodes={confirmedDiagnoses}
+            setSelectedCodes={setConfirmedDiagnoses}
+            entries={dashboard?.code_catalog.diagnoses || []}
+          />
+          <DiagnosisSelector
+            title="Patient suspected diagnoses"
+            query={claimSuspectedQuery}
+            setQuery={setClaimSuspectedQuery}
+            selectedCodes={claimSuspectedDiagnoses}
+            setSelectedCodes={setClaimSuspectedDiagnoses}
+            entries={dashboard?.code_catalog.diagnoses || []}
+          />
+          <label>Describe your medical issues
+            <textarea value={claimIssueSummary} onChange={(event) => setClaimIssueSummary(event.target.value)} rows={5} placeholder="Describe what the member is experiencing right now." />
+          </label>
           <div className="health-insurance-lines">
             <div className="health-insurance-line-heading"><h3>Claim lines</h3><button type="button" className="portal-button-secondary" onClick={() => setLines((current) => [...current, emptyLine()])}>Add line</button></div>
-            {lines.map((line, index) => (
-              <fieldset className="health-insurance-line" key={index}>
-                <legend>Line {index + 1}</legend>
-                <label>Code system<select value={line.code_system} onChange={(event) => updateLine(index, { code_system: event.target.value as CodeSystem })}>
-                  <option value="HCPCS_LEVEL_II">HCPCS Level II</option><option value="CPT">CPT</option><option value="ICD10_PCS">ICD-10-PCS</option><option value="NDC">NDC</option>
-                </select></label>
-                <label>Code<input value={line.code} onChange={(event) => updateLine(index, { code: event.target.value })} required /></label>
-                <label>Modifiers<input value={line.modifiers} onChange={(event) => updateLine(index, { modifiers: event.target.value })} placeholder="NU, RR" /></label>
-                <label>Units<input type="number" min="1" max="999" value={line.units} onChange={(event) => updateLine(index, { units: event.target.value })} required /></label>
-                <label>Billed USD<input type="number" min="0" max="1000000" step="0.01" value={line.billed_amount_usd} onChange={(event) => updateLine(index, { billed_amount_usd: event.target.value })} required /></label>
-                {lines.length > 1 ? <button type="button" className="portal-button-secondary" onClick={() => setLines((current) => current.filter((_, lineIndex) => lineIndex !== index))}>Remove</button> : null}
-              </fieldset>
-            ))}
+            {lines.map((line, index) => {
+              const matches = searchClaimCodes(dashboard?.code_catalog.claim_codes || [], line.search, line.code_system)
+              return (
+                <fieldset className="health-insurance-line" key={index}>
+                  <legend>Line {index + 1}</legend>
+                  <label>Code system<select value={line.code_system} onChange={(event) => updateLine(index, { code_system: event.target.value as CodeSystem, search: '', code: '' })}>
+                    <option value="HCPCS_LEVEL_II">HCPCS Level II</option>
+                    <option value="CPT">CPT</option>
+                    <option value="ICD10_PCS">ICD-10-PCS</option>
+                    <option value="NDC">NDC</option>
+                  </select></label>
+                  <label>Search code by name<input value={line.search} onChange={(event) => updateLine(index, { search: event.target.value })} placeholder="Office visit, insulin, x-ray" /></label>
+                  <label>Code<input value={line.code} onChange={(event) => updateLine(index, { code: event.target.value })} required /></label>
+                  <label>Modifiers<input value={line.modifiers} onChange={(event) => updateLine(index, { modifiers: event.target.value })} placeholder="NU, RR" /></label>
+                  <label>Units<input type="number" min="1" max="999" value={line.units} onChange={(event) => updateLine(index, { units: event.target.value })} required /></label>
+                  <label>Billed USD<input type="number" min="0" max="1000000" step="0.01" value={line.billed_amount_usd} onChange={(event) => updateLine(index, { billed_amount_usd: event.target.value })} required /></label>
+                  {lines.length > 1 ? <button type="button" className="portal-button-secondary" onClick={() => setLines((current) => current.filter((_, lineIndex) => lineIndex !== index))}>Remove</button> : null}
+                  <div className="health-insurance-search-results health-insurance-search-results-inline">
+                    {matches.map((entry) => (
+                      <button key={`${entry.code_system}:${entry.code}`} type="button" className="health-insurance-search-result" onClick={() => updateLine(index, { code: entry.code, search: `${entry.code} ${entry.label}` })}>
+                        <strong>{entry.code}</strong>
+                        <span>{entry.label}</span>
+                        <small>{entry.description}</small>
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+              )
+            })}
           </div>
           <label className="health-insurance-check">
             <input type="checkbox" checked={claimAttested} onChange={(event) => setClaimAttested(event.target.checked)} required />
-            <span>I attest that these codes match the provider document.</span>
+            <span>I attest that these codes and issue details match the member record I am submitting.</span>
           </label>
-          <button type="submit" disabled={!dashboard?.enrollment || !claimService || submitting}>{submitting ? 'Submitting…' : 'Submit claim codes'}</button>
-          {!dashboard?.enrollment ? <small>Save a coverage record before submitting a claim.</small> : null}
+          <button type="submit" disabled={!dashboard?.enrollment || !claimService || !confirmedDiagnoses.length || submitting}>{submitting ? 'Submitting…' : 'Submit claim codes'}</button>
+          {!dashboard?.enrollment ? <small>Save a health profile before submitting claim codes.</small> : null}
         </form>
       </section>
 
@@ -316,19 +628,99 @@ export function HealthInsurancePage() {
       </section>
 
       <section className="portal-card health-insurance-history">
-        <div><span className="health-insurance-eyebrow">Member record</span><h2>Recent submissions</h2></div>
-        {dashboard?.claims.length ? (
+        <div><span className="health-insurance-eyebrow">Collaborative diagnoses</span><h2>Diagnosis approvals</h2></div>
+        <div className="health-insurance-selector">
+          <label>Select patient
+            <input value={patientQuery} onChange={(event) => setPatientQuery(event.target.value)} placeholder="Search member by name" />
+          </label>
+          <div className="health-insurance-search-results">
+            {members.map((member) => (
+              <button
+                key={member.id}
+                type="button"
+                className="health-insurance-search-result"
+                onClick={() => { if (member.user_id) setSelectedPatientUserId(member.user_id); setPatientQuery('') }}
+              >
+                <strong>{member.name}</strong>
+                <span>{member.user_id === selectedPatientUserId ? 'Selected patient' : member.email}</span>
+              </button>
+            ))}
+          </div>
+          {diagnosisBoard?.patient ? <p>Reviewing diagnosis approvals for <strong>{diagnosisBoard.patient.name}</strong>{diagnosisBoard.patient.is_self ? ' (you)' : ''}.</p> : null}
+        </div>
+        <form className="portal-form health-insurance-scheduler" onSubmit={submitCollaborativeDiagnosis}>
+          <DiagnosisSelector
+            title={diagnosisBoard?.patient.is_self ? 'Place a diagnosis on your collaborative board' : 'Contribute a diagnosis for this patient'}
+            query={diagnosisSubmitQuery}
+            setQuery={setDiagnosisSubmitQuery}
+            selectedCodes={diagnosisSubmitCodes}
+            setSelectedCodes={setDiagnosisSubmitCodes}
+            entries={diagnosisBoard?.code_catalog.diagnoses || dashboard?.code_catalog.diagnoses || []}
+          />
+          <label>Contribution note
+            <textarea value={diagnosisSubmitNote} onChange={(event) => setDiagnosisSubmitNote(event.target.value)} rows={4} placeholder="Optional context for this diagnosis contribution." />
+          </label>
+          <button type="submit" disabled={!diagnosisSubmitCodes.length || submitting}>Contribute diagnosis</button>
+        </form>
+        <div className="health-insurance-analysis-list">
+          {diagnosisBoard?.diagnoses.length ? diagnosisBoard.diagnoses.map((diagnosis) => (
+            <article key={diagnosis.id}>
+              <div>
+                <strong>{diagnosis.code} {diagnosis.label}</strong>
+                <span>{diagnosis.self_reported ? `Self-submitted by ${diagnosis.submitted_by_name}` : `Submitted by ${diagnosis.submitted_by_name}`}</span>
+                {diagnosis.note ? <span>{diagnosis.note}</span> : null}
+              </div>
+              <div className="health-insurance-diagnosis-supporters">
+                <strong>{diagnosis.supporter_count} approval{diagnosis.supporter_count === 1 ? '' : 's'}</strong>
+                <span>{diagnosis.supporters.map((supporter) => supporter.supporter_name).join(', ')}</span>
+                {!diagnosis.viewer_supports ? <button type="button" className="portal-button-secondary" onClick={() => supportDiagnosis(diagnosis.code)}>Approve diagnosis</button> : <span>You support this diagnosis.</span>}
+              </div>
+            </article>
+          )) : <p>No collaborative diagnoses have been submitted yet.</p>}
+        </div>
+      </section>
+
+      <section className="portal-card health-insurance-history">
+        <div><span className="health-insurance-eyebrow">AI analysis stubs</span><h2>Record analysis</h2></div>
+        <div className="health-insurance-analysis-actions">
+          <button type="button" onClick={() => runAnalysis('record-summary')} disabled={submitting}>Prepare record summary</button>
+          <button type="button" className="portal-button-secondary" onClick={() => runAnalysis('triage')} disabled={submitting}>Prepare triage</button>
+          <button type="button" className="portal-button-secondary" onClick={() => runAnalysis('service-match')} disabled={submitting}>Prepare service match</button>
+        </div>
+        <div className="health-insurance-analysis-list">
+          {dashboard?.analyses.length ? dashboard.analyses.map((analysis) => (
+            <article key={analysis.id}>
+              <div>
+                <strong>{analysis.summary.headline}</strong>
+                <span>{label(analysis.analysis_kind)} · {new Date(analysis.requested_at).toLocaleString()}</span>
+              </div>
+              <div>
+                <span>{analysis.summary.findings.join(' • ')}</span>
+              </div>
+            </article>
+          )) : <p>No analysis stubs have been prepared yet.</p>}
+        </div>
+      </section>
+
+      <section className="portal-card health-insurance-history">
+        <div><span className="health-insurance-eyebrow">Member record</span><h2>Entire history</h2></div>
+        {dashboard?.history.length ? (
           <div className="health-insurance-claim-list">
-            {dashboard.claims.map((claimItem) => (
-              <article key={claimItem.id}>
-                <div><strong>{claimItem.service_date}</strong><span>{claimItem.lines.map((line) => line.code).join(', ')}</span></div>
-                <div><span>{label(claimItem.status)}</span><strong>{label(claimItem.coverage_determination)}</strong></div>
+            {dashboard.history.map((event) => (
+              <article key={event.id}>
+                <div>
+                  <strong>{event.title}</strong>
+                  <span>{new Date(event.occurred_at).toLocaleString()}</span>
+                  {event.summary ? <span>{event.summary}</span> : null}
+                </div>
+                <div>
+                  <strong>{label(event.event_type)}</strong>
+                </div>
               </article>
             ))}
           </div>
-        ) : <p>No claim codes have been submitted.</p>}
+        ) : <p>No history has been recorded yet.</p>}
       </section>
-
     </main>
   )
 }

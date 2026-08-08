@@ -62,6 +62,12 @@ class SqliteD1 {
         description TEXT NOT NULL,
         timestamp TEXT NOT NULL
       );
+      CREATE TABLE user_contact_pages (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        photo_url TEXT,
+        updated_at TEXT NOT NULL
+      );
     `);
     this.seedAccount("acct-civic-fund", null, "Civic Fund", 50_000, "nonprofit");
     this.seedAccount("acct-deceased", "member-deceased", "Deceased Member", 10);
@@ -70,6 +76,8 @@ class SqliteD1 {
     this.seedAccount("acct-reporter-1", "reporter-1", "Reporter One", 5);
     this.seedAccount("acct-reporter-2", "reporter-2", "Reporter Two", 5);
     this.seedAccount("acct-reporter-3", "reporter-3", "Reporter Three", 5);
+    this.database.prepare("INSERT INTO user_contact_pages (id, user_id, photo_url, updated_at) VALUES (?, ?, ?, ?)")
+      .run("profile-kin", "member-kin", "https://images.example.test/kin.jpg", "2026-08-07T00:00:00.000Z");
     this.database.exec(readFileSync(new URL("../migrations/0011_life_insurance.sql", import.meta.url), "utf8"));
   }
 
@@ -123,7 +131,9 @@ test("birthday is authoritative and required age must match it", () => {
 test("three unique member attestations pay the frozen Dena benefit to the named beneficiary once", async () => {
   const sqlite = new SqliteD1();
   const db = asD1(sqlite);
-  await saveInsuranceEnrollment(db, "member-deceased", enrollment, "2026-08-07T12:00:00.000Z");
+  const dashboard = await saveInsuranceEnrollment(db, "member-deceased", enrollment, "2026-08-07T12:00:00.000Z");
+  assert.equal(dashboard.enrollment?.next_of_kin_photo_url, "https://images.example.test/kin.jpg");
+  assert.equal(dashboard.members.find((member) => member.user_id === "member-kin")?.photo_url, "https://images.example.test/kin.jpg");
   const report = {
     deceased_user_id: "member-deceased",
     date_of_death: "2026-08-06",

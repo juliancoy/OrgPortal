@@ -76,7 +76,7 @@ export function OrgEventsPage() {
     document.title = 'Org Portal • Org events'
   }, [])
 
-  const adminOrgs = useMemo(() => orgs.filter((org) => org.my_role === 'admin'), [orgs])
+  const adminOrgs = useMemo(() => orgs.filter((org) => org.my_role === 'owner' || org.my_role === 'administrator'), [orgs])
 
   const loadOrgs = useCallback(async () => {
     if (!token) return

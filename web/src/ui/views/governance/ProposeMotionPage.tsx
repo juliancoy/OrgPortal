@@ -67,7 +67,7 @@ export function ProposeMotionPage() {
       })
       .then((rows) => {
         if (cancelled) return
-        const admins = (Array.isArray(rows) ? rows : []).filter((org) => org.my_role === 'admin')
+        const admins = (Array.isArray(rows) ? rows : []).filter((org) => org.my_role === 'owner' || org.my_role === 'administrator')
         setMyAdminOrgs(admins)
         if (admins.length > 0 && !selectedOrgId) {
           setSelectedOrgId(admins[0].id)

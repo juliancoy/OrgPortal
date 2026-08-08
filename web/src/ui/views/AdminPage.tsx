@@ -7,19 +7,20 @@ const ORG_API_BASE = '/api/org'
 
 type AdminTabKey = 'abuse' | 'stats' | 'users' | 'ops'
 
-type ClaimRequestQueueItem = {
+type OwnershipChallengeQueueItem = {
   id: string
   organization_id: string
   organization_name: string
   organization_slug: string
-  organization_claimed_by_user_id?: string | null
-  requested_by_user_id: string
-  requested_by_email?: string | null
-  requested_by_name?: string | null
-  message?: string | null
-  status: 'pending' | 'approved' | 'rejected' | string
-  reviewed_by_user_id?: string | null
-  reviewed_at?: string | null
+  owner_user_id?: string | null
+  challenger_user_id: string
+  challenger_email?: string | null
+  challenger_name?: string | null
+  explanation: string
+  status: 'open' | 'withdrawn' | 'resolved' | string
+  resolution?: 'incumbent' | 'challenger' | null
+  resolved_by_user_id?: string | null
+  resolved_at?: string | null
   created_at: string
 }
 
@@ -68,9 +69,9 @@ type NetworkAuditEvent = {
   id: string
   actor_user_id?: string | null
   actor_email?: string | null
-  event_type: string
-  target_type: string
-  target_id: string
+  action: string
+  resource_type: string
+  resource_id: string
   metadata: Record<string, unknown>
   created_at: string
 }
@@ -128,7 +129,7 @@ export function AdminPage() {
   const [status, setStatus] = useState<string | null>(null)
   const [isRunning, setIsRunning] = useState(false)
 
-  const [claimRequests, setClaimRequests] = useState<ClaimRequestQueueItem[]>([])
+  const [claimRequests, setClaimRequests] = useState<OwnershipChallengeQueueItem[]>([])
   const [claimQueueStatus, setClaimQueueStatus] = useState<string | null>(null)
   const [claimQueueLoading, setClaimQueueLoading] = useState(false)
   const [claimActionRunningId, setClaimActionRunningId] = useState<string | null>(null)
@@ -191,12 +192,12 @@ export function AdminPage() {
     setClaimQueueLoading(true)
     setClaimQueueStatus(null)
     try {
-      const resp = await fetchWithTokenRefresh('/api/network/claim-requests?status=pending&limit=500')
+      const resp = await fetchWithTokenRefresh('/api/network/ownership-challenges?status=open&limit=500')
       if (!resp.ok) {
         const text = await resp.text().catch(() => '')
         throw new Error(text || `Failed to load contested ownerships (${resp.status})`)
       }
-      const rows = (await resp.json()) as ClaimRequestQueueItem[]
+      const rows = (await resp.json()) as OwnershipChallengeQueueItem[]
       setClaimRequests(Array.isArray(rows) ? rows : [])
     } catch (err) {
       setClaimRequests([])
@@ -374,25 +375,27 @@ export function AdminPage() {
     }
   }
 
-  async function reviewClaimRequest(claimRequestId: string, action: 'approve' | 'reject') {
+  async function reviewClaimRequest(challengeId: string, decision: 'incumbent' | 'challenger') {
     if (!token) {
       setClaimQueueStatus('Login required.')
       return
     }
-    setClaimActionRunningId(claimRequestId)
+    setClaimActionRunningId(challengeId)
     setClaimQueueStatus(null)
     try {
-      const resp = await fetchWithTokenRefresh(`/api/network/claim-requests/${encodeURIComponent(claimRequestId)}/${action}`, {
+      const resp = await fetchWithTokenRefresh(`/api/network/ownership-challenges/${encodeURIComponent(challengeId)}/resolve`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decision }),
       })
       if (!resp.ok) {
         const text = await resp.text().catch(() => '')
-        throw new Error(text || `${action} failed (${resp.status})`)
+        throw new Error(text || `Resolution failed (${resp.status})`)
       }
-      setClaimQueueStatus(action === 'approve' ? 'Ownership contest approved.' : 'Ownership contest rejected.')
+      setClaimQueueStatus(decision === 'challenger' ? 'Ownership transferred to the challenger.' : 'Current ownership retained.')
       await loadClaimQueue()
     } catch (err) {
-      setClaimQueueStatus(err instanceof Error ? err.message : `${action} failed.`)
+      setClaimQueueStatus(err instanceof Error ? err.message : 'Resolution failed.')
     } finally {
       setClaimActionRunningId(null)
     }
@@ -432,7 +435,7 @@ export function AdminPage() {
     if (!stats) return []
     const counts = new Map<string, number>()
     for (const row of stats.auditEvents) {
-      counts.set(row.event_type, (counts.get(row.event_type) || 0) + 1)
+      counts.set(row.action, (counts.get(row.action) || 0) + 1)
     }
     return Array.from(counts.entries())
       .sort((a, b) => b[1] - a[1])
@@ -793,26 +796,26 @@ export function AdminPage() {
                           <span className="pill">{item.status}</span>
                         </div>
                         <p className="muted" style={{ margin: 0 }}>
-                          Requested by: {item.requested_by_name || item.requested_by_email || item.requested_by_user_id}
+                          Challenger: {item.challenger_name || item.challenger_email || item.challenger_user_id}
                         </p>
                         <p className="muted" style={{ margin: 0 }}>
-                          Current owner: {item.organization_claimed_by_user_id || 'none'} • Requested at: {formatDateTime(item.created_at)}
+                          Current owner: {item.owner_user_id || 'none'} • Challenged at: {formatDateTime(item.created_at)}
                         </p>
-                        {item.message ? <p style={{ margin: 0 }}>{item.message}</p> : null}
+                        <p style={{ margin: 0 }}>{item.explanation}</p>
                         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                           <button
                             type="button"
-                            onClick={() => void reviewClaimRequest(item.id, 'approve')}
+                            onClick={() => void reviewClaimRequest(item.id, 'challenger')}
                             disabled={claimActionRunningId === item.id}
                           >
-                            {claimActionRunningId === item.id ? 'Working…' : 'Approve'}
+                            {claimActionRunningId === item.id ? 'Working…' : 'Transfer ownership'}
                           </button>
                           <button
                             type="button"
-                            onClick={() => void reviewClaimRequest(item.id, 'reject')}
+                            onClick={() => void reviewClaimRequest(item.id, 'incumbent')}
                             disabled={claimActionRunningId === item.id}
                           >
-                            {claimActionRunningId === item.id ? 'Working…' : 'Reject'}
+                            {claimActionRunningId === item.id ? 'Working…' : 'Keep current owner'}
                           </button>
                         </div>
                       </article>

@@ -49,6 +49,11 @@ export type NativeChatDmTarget = {
   slug?: string
 }
 
+export type NativeChatPresence = {
+  user_id: string
+  online: boolean
+}
+
 export type NativeChatSocketEvent =
   | { type: 'connected'; at?: string }
   | { type: 'pong'; at?: string }
@@ -179,6 +184,20 @@ export class NativeChatApi {
       method: 'POST',
       body: JSON.stringify({ message_id: messageId }),
     })
+  }
+
+  async heartbeatPresence(): Promise<void> {
+    await this.request('/api/network/chat/presence', { method: 'POST' })
+  }
+
+  async getPresence(userIds: string[]): Promise<NativeChatPresence[]> {
+    const uniqueIds = Array.from(new Set(userIds.filter(Boolean)))
+    const chunks: string[][] = []
+    for (let index = 0; index < uniqueIds.length; index += 100) chunks.push(uniqueIds.slice(index, index + 100))
+    const payloads = await Promise.all(chunks.map((chunk) => this.request<{ presence: NativeChatPresence[] }>(
+      `/api/network/chat/presence?user_ids=${encodeURIComponent(chunk.join(','))}`,
+    )))
+    return payloads.flatMap((payload) => payload.presence || [])
   }
 
   async openConversationSocket(conversationId: string): Promise<WebSocket> {

@@ -72,6 +72,11 @@ type MessageRow = {
   moderation_state: string;
 };
 
+type PresenceRow = {
+  user_id: string;
+  last_seen_at: string;
+};
+
 type AppVariables = {
   user: PidpUser;
 };
@@ -80,6 +85,14 @@ export const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+const PRESENCE_ONLINE_WINDOW_MS = 75_000;
+
+export function isPresenceOnline(lastSeenAt: string | null | undefined, now = Date.now()) {
+  if (!lastSeenAt) return false;
+  const lastSeen = new Date(lastSeenAt).getTime();
+  return Number.isFinite(lastSeen) && lastSeen >= now - PRESENCE_ONLINE_WINDOW_MS;
 }
 
 function json(payload: unknown, status = 200, origin = "*") {
@@ -441,6 +454,39 @@ app.get("/api/network/chat/conversations", async (c) => {
 
   return c.json({
     conversations: conversations.map((row) => mapConversation(row, membersByConversation.get(row.id) || [], avatarUrls)),
+  });
+});
+
+app.post("/api/network/chat/presence", async (c) => {
+  const user = c.get("user");
+  const lastSeenAt = nowIso();
+  await c.env.DB.prepare(
+    `INSERT INTO chat_presence (user_id, last_seen_at) VALUES (?, ?)
+     ON CONFLICT(user_id) DO UPDATE SET last_seen_at = excluded.last_seen_at`,
+  ).bind(user.id, lastSeenAt).run();
+  return c.json({ online: true });
+});
+
+app.get("/api/network/chat/presence", async (c) => {
+  const requestedUserIds = Array.from(new Set(
+    (c.req.query("user_ids") || "")
+      .split(",")
+      .map((value) => cleanString(value, 200))
+      .filter(Boolean),
+  )).slice(0, 100);
+  if (requestedUserIds.length === 0) return c.json({ presence: [] });
+
+  const placeholders = requestedUserIds.map(() => "?").join(", ");
+  const rows = await c.env.DB.prepare(
+    `SELECT user_id, last_seen_at FROM chat_presence WHERE user_id IN (${placeholders})`,
+  ).bind(...requestedUserIds).all<PresenceRow>();
+  const lastSeenByUser = new Map((rows.results || []).map((row) => [row.user_id, row.last_seen_at]));
+  const now = Date.now();
+  return c.json({
+    presence: requestedUserIds.map((userId) => ({
+      user_id: userId,
+      online: isPresenceOnline(lastSeenByUser.get(userId), now),
+    })),
   });
 });
 

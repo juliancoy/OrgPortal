@@ -38,8 +38,9 @@ type PublicOrganization = {
   favor_count?: number
   disfavor_count?: number
   sentiment_score?: number
-  pending_claim_requests_count: number
-  is_contested: boolean
+  claimed_by_user_id?: string | null
+  pending_challenges_count: number
+  is_disputed: boolean
   redirected_from_slug?: string | null
 }
 
@@ -64,7 +65,6 @@ type PublicEvent = {
 type PublicOrgAdmin = {
   user_id: string
   user_name?: string | null
-  user_email?: string | null
   role: string
 }
 
@@ -174,9 +174,9 @@ export function PublicAdminPage() {
   const [editingGeneralMessageId, setEditingGeneralMessageId] = useState<string | null>(null)
   const [generalEditDraft, setGeneralEditDraft] = useState('')
   const [generalActionPending, setGeneralActionPending] = useState(false)
-  const hasExistingAdmins = admins.some((admin) => admin.role === 'admin' || admin.role === 'owner')
+  const hasExistingAdmins = admins.some((admin) => admin.role === 'administrator' || admin.role === 'owner')
   const canManageCurrentOrg = myAdminOrgs.some((item) => item.id === org?.id)
-  const claimActionLabel = hasExistingAdmins ? 'Request Ownership Review' : 'Claim This Organization'
+  const claimActionLabel = hasExistingAdmins ? 'Challenge Ownership' : 'Claim This Organization'
   const generalRoom = useMemo(
     () => (publicChatFeed?.rooms || []).find((room) => room.key === 'public_chat' || room.key === 'general') || null,
     [publicChatFeed],
@@ -358,7 +358,7 @@ export function PublicAdminPage() {
         return (await resp.json()) as MyOrganization[]
       })
       .then((rows) => {
-        const admins = (Array.isArray(rows) ? rows : []).filter((row) => row.my_role === 'admin')
+        const admins = (Array.isArray(rows) ? rows : []).filter((row) => row.my_role === 'owner' || row.my_role === 'administrator')
         setMyAdminOrgs(admins)
         setMyAdminOrgsStatus('')
       })
@@ -556,40 +556,43 @@ export function PublicAdminPage() {
     setClaimStatus(null)
     try {
       if (hasExistingAdmins) {
-        const requestResp = await fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/claim-requests`), {
+        const explanation = claimRequestMessage.trim()
+        if (!explanation) {
+          setClaimStatus('Explain why ownership should change.')
+          return
+        }
+        const requestResp = await fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/ownership-challenges`), {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            message: claimRequestMessage.trim() || 'Requesting ownership transfer for this organization.',
+            explanation,
           }),
         })
         if (requestResp.ok) {
-          setClaimStatus('Ownership review request submitted to admins.')
+          setClaimStatus('Ownership challenge filed. The organization is now marked disputed.')
+          const freshOrgResp = await fetch(orgUrl(`/api/network/orgs/public/${encodeURIComponent(handle)}`))
+          if (freshOrgResp.ok) setOrg((await freshOrgResp.json()) as PublicOrganization)
           return
         }
         const requestText = await requestResp.text().catch(() => '')
-        const normalizedRequestText = requestText.toLowerCase()
-        // If data is temporarily inconsistent (admins listed but org unclaimed), retry direct claim.
-        if (requestResp.status !== 400 || !normalizedRequestText.includes('unclaimed')) {
-          throw new Error(requestText || `Ownership review request failed (${requestResp.status})`)
-        }
+        throw new Error(requestText || `Ownership challenge failed (${requestResp.status})`)
       }
-      const resp = await fetch(orgUrl(`/api/network/orgs/public/${encodeURIComponent(handle)}/claim`), {
+      const resp = await fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/claim`), {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       })
       if (resp.status === 409) {
-        setClaimStatus('This organization is already claimed by another admin. Use Admin to request an ownership review.')
+        setClaimStatus('This organization was just claimed. Refresh to file an ownership challenge.')
         return
       }
       if (!resp.ok) {
         const text = await resp.text().catch(() => '')
         throw new Error(text || `Claim failed (${resp.status})`)
       }
-      setClaimStatus('Organization claimed. You are now an admin.')
+      setClaimStatus('Organization claimed. You are now its owner.')
       const [freshOrgResp, freshAdminsResp] = await Promise.all([
         fetch(orgUrl(`/api/network/orgs/public/${encodeURIComponent(handle)}`)),
         fetch(orgUrl(`/api/network/orgs/public/${encodeURIComponent(handle)}/admins`)),
@@ -986,9 +989,9 @@ export function PublicAdminPage() {
               Message Group
             </a>
           )}
-          {org.is_contested ? (
+          {org.is_disputed ? (
             <p className="muted" style={{ margin: 0 }}>
-              Ownership status: Contested ({org.pending_claim_requests_count} pending request{org.pending_claim_requests_count === 1 ? '' : 's'}).
+              Ownership status: Disputed ({org.pending_challenges_count} open challenge{org.pending_challenges_count === 1 ? '' : 's'}).
             </p>
           ) : null}
           {org.tags && org.tags.length ? (
@@ -1021,7 +1024,7 @@ export function PublicAdminPage() {
               <ul style={{ margin: 0, paddingLeft: '1.1rem' }}>
                 {admins.map((admin) => (
                   <li key={`${admin.user_id}-${admin.role}`}>
-                    <strong>{admin.user_name || admin.user_email || admin.user_id}</strong>{' '}
+                    <strong>{admin.user_name || admin.user_id}</strong>{' '}
                     <span className="muted">({admin.role})</span>
                   </li>
                 ))}
@@ -1049,7 +1052,7 @@ export function PublicAdminPage() {
           {hasExistingAdmins && !canManageCurrentOrg ? (
             <div style={{ display: 'grid', gap: '0.45rem', maxWidth: 680 }}>
               <label htmlFor="claim-request-message" className="muted">
-                Ownership review message
+                Ownership challenge
               </label>
               <textarea
                 id="claim-request-message"

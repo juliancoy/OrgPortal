@@ -21,6 +21,8 @@ type Org = {
   tags?: string[]
   seeded_from_events: boolean
   claimed_by_user_id?: string | null
+  ownership_status?: 'unclaimed' | 'claimed' | 'disputed'
+  pending_challenges_count?: number
   membership_count: number
   my_role?: string | null
 }
@@ -29,7 +31,7 @@ type OrgMember = {
   user_id: string
   user_email?: string | null
   user_name?: string | null
-  role: 'member' | 'admin'
+  role: 'member' | 'administrator' | 'owner'
   created_at: string
 }
 
@@ -44,7 +46,8 @@ export function OrgProfilePage() {
   const [memberUserId, setMemberUserId] = useState('')
   const [memberEmail, setMemberEmail] = useState('')
   const [memberName, setMemberName] = useState('')
-  const [memberRole, setMemberRole] = useState<'member' | 'admin'>('member')
+  const [memberRole, setMemberRole] = useState<'member' | 'administrator'>('member')
+  const [challengeExplanationByOrg, setChallengeExplanationByOrg] = useState<Record<string, string>>({})
   const [mergeSourceByTarget, setMergeSourceByTarget] = useState<Record<string, string>>({})
   const [orgNameById, setOrgNameById] = useState<Record<string, string>>({})
   const [orgImageById, setOrgImageById] = useState<Record<string, string>>({})
@@ -54,7 +57,6 @@ export function OrgProfilePage() {
   const [newOrgImage, setNewOrgImage] = useState('')
   const [newOrgTags, setNewOrgTags] = useState('')
   const [newOrgDescription, setNewOrgDescription] = useState('')
-  const [claimOnCreate, setClaimOnCreate] = useState(true)
 
   useEffect(() => {
     document.title = 'Org Portal • Organization network'
@@ -63,7 +65,6 @@ export function OrgProfilePage() {
   async function loadOrgs() {
     if (!token) return
     setLoading(true)
-    setStatus(null)
     try {
       const params = new URLSearchParams({ limit: '300' })
       if (q.trim()) params.set('q', q.trim())
@@ -106,32 +107,40 @@ export function OrgProfilePage() {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       })
-      if (resp.status === 409) {
-        const requestResp = await fetch(orgUrl(`/api/network/orgs/${orgId}/claim-requests`), {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            message: 'Requesting ownership transfer for this organization.',
-          }),
-        })
-        if (!requestResp.ok) {
-          const text = await requestResp.text().catch(() => '')
-          throw new Error(text || `Claim request failed (${requestResp.status})`)
-        }
-        setStatus('Organization is already claimed. Claim request submitted to admins.')
-        return
-      }
       if (!resp.ok) {
         const text = await resp.text().catch(() => '')
         throw new Error(text || `Claim failed (${resp.status})`)
       }
-      setStatus('Organization claimed. You are now an organization admin.')
+      setStatus('Organization claimed. You are now its owner.')
       await loadOrgs()
     } catch (err) {
       setStatus(err instanceof Error ? err.message : 'Claim failed')
+    }
+  }
+
+  async function challengeOrg(orgId: string) {
+    if (!token) return
+    const explanation = (challengeExplanationByOrg[orgId] || '').trim()
+    if (!explanation) {
+      setStatus('Explain why you are challenging this ownership.')
+      return
+    }
+    setStatus(null)
+    try {
+      const resp = await fetch(orgUrl(`/api/network/orgs/${orgId}/ownership-challenges`), {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ explanation }),
+      })
+      if (!resp.ok) {
+        const text = await resp.text().catch(() => '')
+        throw new Error(text || `Challenge failed (${resp.status})`)
+      }
+      setChallengeExplanationByOrg((current) => ({ ...current, [orgId]: '' }))
+      setStatus('Ownership challenge filed. The organization is now marked disputed.')
+      await loadOrgs()
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : 'Challenge failed')
     }
   }
 
@@ -154,7 +163,6 @@ export function OrgProfilePage() {
           source_url: newOrgUrl.trim() || null,
           image_url: newOrgImage.trim() || null,
           description: newOrgDescription.trim() || null,
-          claim_on_create: claimOnCreate,
           tags: newOrgTags
             .split(',')
             .map((item) => item.trim())
@@ -170,30 +178,10 @@ export function OrgProfilePage() {
       setNewOrgImage('')
       setNewOrgDescription('')
       setNewOrgTags('')
-      setClaimOnCreate(true)
-      setStatus('Organization created.')
+      setStatus('Organization created. You are now its owner.')
       await loadOrgs()
     } catch (err) {
       setStatus(err instanceof Error ? err.message : 'Create failed')
-    }
-  }
-
-  async function unclaimOrg(orgId: string) {
-    if (!token) return
-    setStatus(null)
-    try {
-      const resp = await fetch(orgUrl(`/api/network/orgs/${orgId}/unclaim`), {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (!resp.ok) {
-        const text = await resp.text().catch(() => '')
-        throw new Error(text || `Unclaim failed (${resp.status})`)
-      }
-      setStatus('Organization unclaimed.')
-      await loadOrgs()
-    } catch (err) {
-      setStatus(err instanceof Error ? err.message : 'Unclaim failed')
     }
   }
 
@@ -363,7 +351,7 @@ export function OrgProfilePage() {
     <section className="panel" style={{ display: 'grid', gap: '1rem' }}>
       <h1 style={{ marginTop: 0 }}>Organization Network</h1>
       <p className="muted" style={{ marginTop: 0 }}>
-        Create or claim organizations seeded from `baltimore/event_sources.py`, then manage members/admins and merge duplicates.
+        Create organizations or immediately claim an unclaimed listing. Existing ownership remains authoritative until challenged.
       </p>
 
       <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
@@ -394,10 +382,6 @@ export function OrgProfilePage() {
         <input value={newOrgImage} onChange={(e) => setNewOrgImage(e.target.value)} placeholder="Image URL (optional)" />
         <input value={newOrgTags} onChange={(e) => setNewOrgTags(e.target.value)} placeholder="Tags, comma separated" />
         <textarea value={newOrgDescription} onChange={(e) => setNewOrgDescription(e.target.value)} rows={3} placeholder="Description" />
-        <label style={{ display: 'inline-flex', gap: '0.5rem', alignItems: 'center' }}>
-          <input type="checkbox" checked={claimOnCreate} onChange={(e) => setClaimOnCreate(e.target.checked)} />
-          Claim ownership on create
-        </label>
         <div>
           <button type="button" onClick={createOrg} disabled={!token}>Create</button>
         </div>
@@ -407,7 +391,7 @@ export function OrgProfilePage() {
 
       <div style={{ display: 'grid', gap: '0.6rem' }}>
         {orgs.map((org) => {
-          const canManage = org.my_role === 'admin'
+          const canManage = org.my_role === 'owner' || org.my_role === 'administrator'
           const sourceOptions = orgs.filter((candidate) => candidate.id !== org.id)
           const sourceUrls = Array.isArray(org.source_urls) && org.source_urls.length > 0
             ? org.source_urls
@@ -433,6 +417,10 @@ export function OrgProfilePage() {
                     <div className="muted" style={{ fontSize: '0.8rem', overflowWrap: 'anywhere' }}>
                       {sourceUrls.length > 0 ? sourceUrls[0] : 'User-created'} • Members: {org.membership_count} • {org.seeded_from_events ? 'Seeded' : 'Custom'}
                     </div>
+                    <div className="muted" style={{ fontSize: '0.8rem' }}>
+                      Ownership: {org.ownership_status || (org.claimed_by_user_id ? 'claimed' : 'unclaimed')}
+                      {org.pending_challenges_count ? ` • ${org.pending_challenges_count} open challenge${org.pending_challenges_count === 1 ? '' : 's'}` : ''}
+                    </div>
                     {sourceUrls.length > 1 ? (
                       <div className="muted" style={{ fontSize: '0.8rem', overflowWrap: 'anywhere' }}>
                         Sources: {sourceUrls.join(' • ')}
@@ -444,14 +432,22 @@ export function OrgProfilePage() {
                   {!org.claimed_by_user_id ? (
                     <button type="button" onClick={() => claimOrg(org.id)} disabled={!token}>Claim</button>
                   ) : null}
-                  {org.claimed_by_user_id && canManage ? (
-                    <button type="button" onClick={() => unclaimOrg(org.id)} disabled={!token}>Unclaim</button>
-                  ) : null}
                   {canManage ? (
                     <button type="button" onClick={() => loadMembers(org.id)}>Manage Members</button>
                   ) : null}
                 </div>
               </div>
+              {org.claimed_by_user_id && !canManage ? (
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <input
+                    value={challengeExplanationByOrg[org.id] || ''}
+                    onChange={(e) => setChallengeExplanationByOrg((current) => ({ ...current, [org.id]: e.target.value }))}
+                    placeholder="Why should ownership change?"
+                    style={{ flex: '1 1 260px' }}
+                  />
+                  <button type="button" onClick={() => challengeOrg(org.id)} disabled={!token}>Challenge ownership</button>
+                </div>
+              ) : null}
               {canManage ? (
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                   <input
@@ -524,9 +520,9 @@ export function OrgProfilePage() {
             <input value={memberUserId} onChange={(e) => setMemberUserId(e.target.value)} placeholder="User ID (required)" />
             <input value={memberName} onChange={(e) => setMemberName(e.target.value)} placeholder="Name (optional)" />
             <input value={memberEmail} onChange={(e) => setMemberEmail(e.target.value)} placeholder="Email (optional)" />
-            <select value={memberRole} onChange={(e) => setMemberRole(e.target.value as 'member' | 'admin')}>
+            <select value={memberRole} onChange={(e) => setMemberRole(e.target.value as 'member' | 'administrator')}>
               <option value="member">member</option>
-              <option value="admin">admin</option>
+              <option value="administrator">administrator</option>
             </select>
             <div>
               <button type="button" onClick={upsertMember}>Save Member</button>

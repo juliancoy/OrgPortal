@@ -26,8 +26,8 @@ type PublicOrganizationListItem = {
   favor_count?: number
   disfavor_count?: number
   sentiment_score?: number
-  pending_claim_requests_count: number
-  is_contested: boolean
+  pending_challenges_count: number
+  is_disputed: boolean
 }
 
 type OrganizationSentiment = {
@@ -42,7 +42,7 @@ type UserOrganizationListItem = {
   id: string
   name: string
   slug: string
-  my_role?: 'member' | 'admin' | string | null
+  my_role?: 'member' | 'administrator' | 'owner' | string | null
   claimed_by_user_id?: string | null
 }
 
@@ -282,7 +282,7 @@ export function PublicOrganizationsPage() {
               <p className="muted" style={{ margin: 0 }}>
                 Members: {org.membership_count} • Upcoming events: {org.upcoming_events_count}
                 {` • Favor ${org.favor_count || 0} / Disfavor ${org.disfavor_count || 0}`}
-                {org.is_contested ? ` • Contested ownership (${org.pending_claim_requests_count})` : ''}
+                {org.is_disputed ? ` • Disputed ownership (${org.pending_challenges_count})` : ''}
                 {myOrgSlugs.has(org.slug) ? ' • Your organization' : ''}
               </p>
               {org.description ? <p style={{ margin: 0, overflowWrap: 'anywhere' }}>{org.description}</p> : null}

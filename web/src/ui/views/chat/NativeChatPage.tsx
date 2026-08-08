@@ -100,6 +100,21 @@ function renderAvatar(label: string, imageUrl?: string | null) {
   return imageUrl ? <img src={imageUrl} alt={label} /> : avatarInitial(label)
 }
 
+function renderPresenceAvatar(label: string, imageUrl: string | null | undefined, online: boolean) {
+  return (
+    <span className="native-chat-avatar-presence">
+      <span className="portal-avatar portal-chat-room-avatar">
+        {renderAvatar(label, imageUrl)}
+      </span>
+      {online ? (
+        <span className="native-chat-presence-dot" title={`${label} is online`}>
+          <span className="sr-only">{label} is online</span>
+        </span>
+      ) : null}
+    </span>
+  )
+}
+
 function uuid() {
   if ('crypto' in window && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID()
   return `client-${Date.now()}-${Math.random().toString(16).slice(2)}`
@@ -119,6 +134,7 @@ export function NativeChatPage() {
   const latestSequenceRef = useRef(0)
   const [realtimeState, setRealtimeState] = useState<RealtimeState>('idle')
   const [realtimeSocket, setRealtimeSocket] = useState<WebSocket | null>(null)
+  const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(() => new Set())
   const [isSending, setIsSending] = useState(false)
   const [sidebarExpanded, setSidebarExpanded] = useState(() => window.matchMedia('(min-width: 681px)').matches)
   const timelineRef = useRef<HTMLDivElement | null>(null)
@@ -147,6 +163,10 @@ export function NativeChatPage() {
         .sort((a, b) => a.user_name.localeCompare(b.user_name)),
     [people, user],
   )
+  const presenceUserIds = useMemo(() => Array.from(new Set([
+    ...conversations.flatMap((conversation) => (conversation.members || []).map((member) => member.user_id)),
+    ...sociablePeople.map((person) => person.user_id),
+  ].filter((userId) => userId && userId !== user?.id))), [conversations, sociablePeople, user])
 
   const mergeMessages = useCallback((incoming: NativeChatMessage[]) => {
     setMessages((current) => {
@@ -252,6 +272,41 @@ export function NativeChatPage() {
       cancelled = true
     }
   }, [token])
+
+  useEffect(() => {
+    if (!token) {
+      setOnlineUserIds(new Set())
+      return
+    }
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | null = null
+
+    async function refreshPresence() {
+      if (document.visibilityState !== 'visible') return
+      await api.heartbeatPresence()
+      const presence = await api.getPresence(presenceUserIds)
+      if (!cancelled) setOnlineUserIds(new Set(presence.filter((item) => item.online).map((item) => item.user_id)))
+    }
+
+    function scheduleRefresh() {
+      if (timer) clearTimeout(timer)
+      refreshPresence().catch(() => {})
+      timer = setTimeout(scheduleRefresh, 30_000)
+    }
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') scheduleRefresh()
+    }
+    scheduleRefresh()
+    document.addEventListener('visibilitychange', onVisibility)
+    window.addEventListener('online', onVisibility)
+    return () => {
+      cancelled = true
+      if (timer) clearTimeout(timer)
+      document.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('online', onVisibility)
+    }
+  }, [api, presenceUserIds, token])
 
   useEffect(() => {
     if (!roomId) {
@@ -518,6 +573,10 @@ export function NativeChatPage() {
           {conversations.map((conversation) => {
             const label = conversationLabel(conversation, user?.id)
             const avatarUrl = conversationAvatarUrl(conversation, user?.id)
+            const participant = conversationParticipant(conversation, user?.id)
+            const participantOnline = conversation.kind === 'dm' && Boolean(
+              participant?.user_id && participant.user_id !== user?.id && onlineUserIds.has(participant.user_id),
+            )
             return (
               <li key={conversation.id}>
                 <button
@@ -527,9 +586,7 @@ export function NativeChatPage() {
                   onClick={() => navigate(`/chat/${encodeURIComponent(conversation.id)}`)}
                 >
                   <span className="portal-chat-room-label">
-                    <span className="portal-avatar portal-chat-room-avatar">
-                      {renderAvatar(label, avatarUrl)}
-                    </span>
+                    {renderPresenceAvatar(label, avatarUrl, participantOnline)}
                     <span className="native-chat-room-copy">
                       <span className="native-chat-room-name">{label}</span>
                       {conversation.last_message?.body ? (
@@ -556,9 +613,7 @@ export function NativeChatPage() {
                   onClick={() => startConversationWith(person).catch(() => {})}
                 >
                   <span className="portal-chat-room-label">
-                    <span className="portal-avatar portal-chat-room-avatar">
-                      {renderAvatar(person.user_name, person.photo_url)}
-                    </span>
+                    {renderPresenceAvatar(person.user_name, person.photo_url, onlineUserIds.has(person.user_id))}
                     <span className="native-chat-person-copy">
                       <span className="native-chat-room-name">{person.user_name}</span>
                       {person.headline ? <small>{person.headline}</small> : null}
@@ -579,14 +634,20 @@ export function NativeChatPage() {
               <div className="portal-chat-room-header-row">
                 <div className="native-chat-room-title">
                   {selectedConversation ? (
-                    <span className="portal-avatar portal-chat-room-avatar">
-                      {renderAvatar(
+                    renderPresenceAvatar(
                         conversationLabel(selectedConversation, user?.id),
                         conversationAvatarUrl(selectedConversation, user?.id),
-                      )}
-                    </span>
+                        Boolean(
+                          conversationParticipant(selectedConversation, user?.id)?.user_id &&
+                          conversationParticipant(selectedConversation, user?.id)?.user_id !== user?.id &&
+                          onlineUserIds.has(conversationParticipant(selectedConversation, user?.id)?.user_id || ''),
+                        ),
+                      )
                   ) : null}
                   <h1>{selectedConversation ? conversationLabel(selectedConversation, user?.id) : 'Conversation'}</h1>
+                  {selectedConversation?.kind === 'dm' && onlineUserIds.has(
+                    conversationParticipant(selectedConversation, user?.id)?.user_id || '',
+                  ) ? <span className="native-chat-presence-label">Online</span> : null}
                 </div>
                 {selectedConversation?.kind === 'dm' && user?.id && conversationParticipant(selectedConversation, user.id)?.user_id !== user.id ? (
                   <NativeVideoCall
