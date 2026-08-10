@@ -53,6 +53,7 @@ import { refreshRuntimeTokenFromSession } from '../../infrastructure/auth/sessio
 import { UbiSettingsPage } from '../views/UbiSettingsPage'
 import { LifeInsurancePage } from '../views/LifeInsurancePage'
 import { HealthInsurancePage } from '../views/HealthInsurancePage'
+import { PropertyCasualtyInsurancePage } from '../views/PropertyCasualtyInsurancePage'
 import { portalBasePath } from '../../config/portalBase'
 
 function AuthenticatedRoute(props: { children: ReactElement }) {
@@ -262,6 +263,14 @@ export function createAppRouter() {
             element: (
               <AuthenticatedRoute>
                 <HealthInsurancePage />
+              </AuthenticatedRoute>
+            ),
+          },
+          {
+            path: '/property-casualty-insurance',
+            element: (
+              <AuthenticatedRoute>
+                <PropertyCasualtyInsurancePage />
               </AuthenticatedRoute>
             ),
           },
