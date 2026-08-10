@@ -8,6 +8,7 @@ import {
   cancelHealthInsuranceAppointment,
   healthInsuranceDiagnosisBoard,
   healthInsuranceDashboard,
+  healthInsuranceProviderDashboard,
   publishHealthInsuranceService,
   requestHealthInsuranceAnalysis,
   saveHealthInsuranceEnrollment,
@@ -290,4 +291,55 @@ test("individual recurring services can be published and booked in 30-minute wee
     ),
     (error: unknown) => error instanceof HealthInsuranceError && error.message.includes("published appointment slot"),
   );
+});
+
+test("provider dashboard lists hosted calendars and booked appointments", async () => {
+  const sqlite = new SqliteD1();
+  const db = asD1(sqlite);
+  const published = await publishHealthInsuranceService(
+    db,
+    validateHealthInsuranceServicePublish(
+      {
+        name: "Provider consults",
+        description: "Hosted by Member One.",
+        timezone: "UTC",
+        slot_minutes: 30,
+        capacity_per_slot: 1,
+        weekdays: [1, 2, 3, 4, 5],
+        starts_at: "14:00",
+        ends_at: "18:00",
+        google_calendar_sync: true,
+        google_block_busy: false,
+      },
+      {
+        host_type: "individual",
+        host_user_id: "member-1",
+        host_user_name: "Member One",
+        host_org_id: null,
+        host_org_name: null,
+      },
+    ),
+    "2026-08-11T12:00:00.000Z",
+  );
+
+  await scheduleHealthInsuranceAppointment(
+    db,
+    "member-2",
+    {
+      service_id: published?.id,
+      starts_at: "2026-08-12T14:00:00.000Z",
+      attested: true,
+    },
+    "2026-08-11T12:00:00.000Z",
+  );
+
+  const provider = await healthInsuranceProviderDashboard(db, "member-1");
+  assert.equal(provider.services.length, 1);
+  assert.equal(provider.services[0]?.id, published?.id);
+  assert.equal(provider.services[0]?.google_calendar_sync, true);
+  assert.equal(provider.appointments.length, 1);
+  assert.equal(provider.appointments[0]?.service_id, published?.id);
+  assert.equal(provider.appointments[0]?.attendee_user_id, "member-2");
+  assert.equal(provider.appointments[0]?.attendee_name, "Member Two");
+  assert.equal(provider.appointments[0]?.attendee_email, "member-2@example.test");
 });
