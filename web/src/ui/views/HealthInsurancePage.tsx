@@ -107,6 +107,32 @@ type Dashboard = {
   code_catalog: { diagnoses: DiagnosisEntry[]; claim_codes: ClaimCodeEntry[] }
 }
 
+function normalizeDashboard(data: Dashboard): Dashboard {
+  return {
+    ...data,
+    claims: Array.isArray(data.claims) ? data.claims : [],
+    services: Array.isArray(data.services) ? data.services : [],
+    appointments: Array.isArray(data.appointments) ? data.appointments : [],
+    analyses: Array.isArray(data.analyses) ? data.analyses : [],
+    collaborative_diagnoses: Array.isArray(data.collaborative_diagnoses) ? data.collaborative_diagnoses : [],
+    history: Array.isArray(data.history) ? data.history : [],
+    code_catalog: {
+      diagnoses: Array.isArray(data.code_catalog?.diagnoses) ? data.code_catalog.diagnoses : [],
+      claim_codes: Array.isArray(data.code_catalog?.claim_codes) ? data.code_catalog.claim_codes : [],
+    },
+  }
+}
+
+function normalizeDiagnosisBoard(data: DiagnosisBoard): DiagnosisBoard {
+  return {
+    ...data,
+    diagnoses: Array.isArray(data.diagnoses) ? data.diagnoses : [],
+    code_catalog: {
+      diagnoses: Array.isArray(data.code_catalog?.diagnoses) ? data.code_catalog.diagnoses : [],
+    },
+  }
+}
+
 const emptyLine = (): ClaimLineForm => ({
   code_system: 'HCPCS_LEVEL_II', code: '', modifiers: '', units: '1', billed_amount_usd: '', search: '',
 })
@@ -280,7 +306,7 @@ export function HealthInsurancePage() {
   async function loadDashboard() {
     const response = await authenticatedFetch('/api/health-insurance')
     if (!response.ok) throw new Error(await responseDetail(response, 'Unable to load health-benefit record.'))
-    const data = (await response.json()) as Dashboard
+    const data = normalizeDashboard((await response.json()) as Dashboard)
     setDashboard(data)
     if (!appointmentService && data.services[0]) setAppointmentService(data.services[0].id)
     if (!claimService && data.services[0]) setClaimService(data.services[0].id)
@@ -304,7 +330,7 @@ export function HealthInsurancePage() {
   async function loadDiagnosisBoard(patientUserId: string) {
     const response = await authenticatedFetch(`/api/health-insurance/diagnoses?patient_user_id=${encodeURIComponent(patientUserId)}`)
     if (!response.ok) throw new Error(await responseDetail(response, 'Unable to load diagnosis board.'))
-    setDiagnosisBoard((await response.json()) as DiagnosisBoard)
+    setDiagnosisBoard(normalizeDiagnosisBoard((await response.json()) as DiagnosisBoard))
   }
 
   useEffect(() => {
@@ -475,6 +501,10 @@ export function HealthInsurancePage() {
 
   if (loading) return <main className="health-insurance-page"><p>Loading health-benefit intake…</p></main>
 
+  const dashboardDiagnoses = dashboard?.code_catalog?.diagnoses ?? []
+  const claimCodes = dashboard?.code_catalog?.claim_codes ?? []
+  const diagnosisBoardDiagnoses = diagnosisBoard?.code_catalog?.diagnoses ?? dashboardDiagnoses
+
   return (
     <main className="health-insurance-page">
       <section className="portal-hero health-insurance-hero">
@@ -508,7 +538,7 @@ export function HealthInsurancePage() {
             setQuery={setSuspectedQuery}
             selectedCodes={suspectedDiagnoses}
             setSelectedCodes={setSuspectedDiagnoses}
-            entries={dashboard?.code_catalog.diagnoses || []}
+            entries={dashboardDiagnoses}
           />
           <label>Describe your medical issues
             <textarea value={issueSummary} onChange={(event) => setIssueSummary(event.target.value)} rows={6} placeholder="Describe symptoms, chronic issues, recent changes, or anything else relevant." />
@@ -538,7 +568,7 @@ export function HealthInsurancePage() {
             setQuery={setConfirmedQuery}
             selectedCodes={confirmedDiagnoses}
             setSelectedCodes={setConfirmedDiagnoses}
-            entries={dashboard?.code_catalog.diagnoses || []}
+            entries={dashboardDiagnoses}
           />
           <DiagnosisSelector
             title="Patient suspected diagnoses"
@@ -546,7 +576,7 @@ export function HealthInsurancePage() {
             setQuery={setClaimSuspectedQuery}
             selectedCodes={claimSuspectedDiagnoses}
             setSelectedCodes={setClaimSuspectedDiagnoses}
-            entries={dashboard?.code_catalog.diagnoses || []}
+            entries={dashboardDiagnoses}
           />
           <label>Describe your medical issues
             <textarea value={claimIssueSummary} onChange={(event) => setClaimIssueSummary(event.target.value)} rows={5} placeholder="Describe what the member is experiencing right now." />
@@ -554,7 +584,7 @@ export function HealthInsurancePage() {
           <div className="health-insurance-lines">
             <div className="health-insurance-line-heading"><h3>Claim lines</h3><button type="button" className="portal-button-secondary" onClick={() => setLines((current) => [...current, emptyLine()])}>Add line</button></div>
             {lines.map((line, index) => {
-              const matches = searchClaimCodes(dashboard?.code_catalog.claim_codes || [], line.search, line.code_system)
+              const matches = searchClaimCodes(claimCodes, line.search, line.code_system)
               return (
                 <fieldset className="health-insurance-line" key={index}>
                   <legend>Line {index + 1}</legend>
@@ -655,7 +685,7 @@ export function HealthInsurancePage() {
             setQuery={setDiagnosisSubmitQuery}
             selectedCodes={diagnosisSubmitCodes}
             setSelectedCodes={setDiagnosisSubmitCodes}
-            entries={diagnosisBoard?.code_catalog.diagnoses || dashboard?.code_catalog.diagnoses || []}
+            entries={diagnosisBoardDiagnoses}
           />
           <label>Contribution note
             <textarea value={diagnosisSubmitNote} onChange={(event) => setDiagnosisSubmitNote(event.target.value)} rows={4} placeholder="Optional context for this diagnosis contribution." />
