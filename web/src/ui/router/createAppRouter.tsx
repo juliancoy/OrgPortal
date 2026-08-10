@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { ReactElement } from 'react'
-import { Navigate, createBrowserRouter, useNavigate, useParams } from 'react-router-dom'
+import { Navigate, createBrowserRouter, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { AppLayout } from '../shell/AppLayout'
 import App from '../../App'
 import { useAuth } from '../../app/AppProviders'
@@ -59,8 +59,12 @@ import { portalBasePath } from '../../config/portalBase'
 
 function AuthenticatedRoute(props: { children: ReactElement }) {
   const { role, isLoading } = useAuth()
+  const location = useLocation()
   if (isLoading) return null
-  if (role === 'guest') return <Navigate to="/" replace />
+  if (role === 'guest') {
+    const next = `${location.pathname}${location.search}${location.hash}` || '/'
+    return <Navigate to={`/users/login?next=${encodeURIComponent(next)}`} replace />
+  }
   return props.children
 }
 
