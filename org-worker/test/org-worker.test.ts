@@ -193,8 +193,10 @@ class FakeD1 {
     }
     if (sql.includes("FROM events e")) {
       const hostOrgId = sql.includes("WHERE e.host_org_id = ?") ? params[0] : null;
+      const hostUserId = sql.includes("WHERE e.host_user_id = ?") ? params[0] : null;
       return this.events
         .filter((event) => !hostOrgId || event.host_org_id === hostOrgId)
+        .filter((event) => !hostUserId || event.host_user_id === hostUserId)
         .map((event) => ({
           ...event,
           organization_name: this.organizations.find((org) => org.id === event.host_org_id)?.name || null,
@@ -277,13 +279,15 @@ class FakeD1 {
         location: params[7],
         source_url: params[8],
         image_url: params[9],
-        host_org_id: params[10],
-        host_org_name: params[11],
-        host_org_source_url: params[12],
-        tags: params[13],
-        city: params[14],
-        created_at: params[15] || now,
-        updated_at: params[16] || now,
+        host_user_id: params[10],
+        host_user_name: params[11],
+        host_org_id: params[12],
+        host_org_name: params[13],
+        host_org_source_url: params[14],
+        tags: params[15],
+        city: params[16],
+        created_at: params[17] || now,
+        updated_at: params[18] || now,
       };
       const existingIndex = this.events.findIndex((item) => item.ingest_key === row.ingest_key);
       if (existingIndex >= 0) this.events[existingIndex] = { ...this.events[existingIndex], ...row };
@@ -796,6 +800,83 @@ test("public org and event routes return D1 rows", async () => {
   const event = (await eventDetail.json()) as { title: string; organization_name: string };
   assert.equal(event.title, "Open Meeting");
   assert.equal(event.organization_name, "Code Collective");
+});
+
+test("public user event route returns individual-hosted calendar entries", async () => {
+  const db = new FakeD1();
+  db.contacts.push({
+    id: "contact-1",
+    user_id: "user-1",
+    user_email: "julian@example.test",
+    user_name: "Julian Coy",
+    slug: "julian-coy",
+    enabled: 1,
+    headline: "Organizer",
+    bio: null,
+    photo_url: null,
+    email_public: "julian@example.test",
+    phone_public: null,
+    linkedin_url: null,
+    github_url: null,
+    x_url: null,
+    website_url: null,
+    links: "[]",
+    source_profile_url: null,
+    source_profile_imported_at: null,
+    created_at: "2026-06-07T00:00:00Z",
+    updated_at: "2026-06-07T00:00:00Z",
+  });
+  db.events.push(
+    {
+      id: "event-1",
+      ingest_key: "user-event-key",
+      title: "Half-hour consults",
+      slug: "half-hour-consults",
+      description: "Book a half-hour session.",
+      starts_at: "2026-08-12T14:00:00Z",
+      ends_at: "2026-08-12T14:30:00Z",
+      location: "Remote",
+      source_url: null,
+      image_url: null,
+      host_user_id: "user-1",
+      host_user_name: "Julian Coy",
+      host_org_id: null,
+      host_org_name: null,
+      host_org_source_url: null,
+      tags: JSON.stringify(["Health"]),
+      city: "baltimore",
+      created_at: "2026-08-11T00:00:00Z",
+      updated_at: "2026-08-11T00:00:00Z",
+    },
+    {
+      id: "event-2",
+      ingest_key: "other-event-key",
+      title: "Someone Else",
+      slug: "someone-else",
+      description: "Different host",
+      starts_at: "2026-08-12T16:00:00Z",
+      ends_at: "2026-08-12T16:30:00Z",
+      location: "Remote",
+      source_url: null,
+      image_url: null,
+      host_user_id: "user-2",
+      host_user_name: "Other Person",
+      host_org_id: null,
+      host_org_name: null,
+      host_org_source_url: null,
+      tags: JSON.stringify(["Health"]),
+      city: "baltimore",
+      created_at: "2026-08-11T00:00:00Z",
+      updated_at: "2026-08-11T00:00:00Z",
+    },
+  );
+
+  const res = await app.request("https://org.example.test/api/network/users/public/julian-coy/events?upcoming_only=true&limit=8", {}, env(db));
+  assert.equal(res.status, 200);
+  const events = (await res.json()) as Array<{ slug: string; host_type: string; host_user_id: string }>;
+  assert.deepEqual(events.map((event) => event.slug), ["half-hour-consults"]);
+  assert.equal(events[0].host_type, "individual");
+  assert.equal(events[0].host_user_id, "user-1");
 });
 
 test("public network search tolerates slight misspellings", async () => {
