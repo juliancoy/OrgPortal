@@ -111,7 +111,6 @@ function asD1(database: SqliteD1) {
 
 const enrollment = {
   birth_date: "1990-04-15",
-  age: 36,
   next_of_kin_user_id: "member-kin",
   next_of_kin_relationship: "Sibling",
   beneficiary_user_id: "member-beneficiary",
@@ -119,19 +118,27 @@ const enrollment = {
   accepted_terms: true,
 };
 
-test("birthday is authoritative and required age must match it", () => {
+test("profile birthday is authoritative for enrollment", () => {
   assert.equal(calculateAgeOnDate("1990-08-08", "2026-08-07"), 35);
   assert.equal(calculateAgeOnDate("1990-08-07", "2026-08-07"), 36);
+  assert.deepEqual(
+    validateEnrollmentInput(enrollment, "2026-08-07", "1990-04-15"),
+    enrollment,
+  );
   assert.throws(
-    () => validateEnrollmentInput({ ...enrollment, age: 35 }, "2026-08-07"),
-    (error: unknown) => error instanceof LifeInsuranceError && error.message === "Age must match the birthday (36).",
+    () => validateEnrollmentInput(enrollment, "2026-08-07", ""),
+    (error: unknown) => error instanceof LifeInsuranceError && error.message === "Add your birthday to your profile before enrolling in the life benefit.",
+  );
+  assert.throws(
+    () => validateEnrollmentInput({ ...enrollment, birth_date: "1991-04-15" }, "2026-08-07", "1990-04-15"),
+    (error: unknown) => error instanceof LifeInsuranceError && error.message === "Insurance enrollment uses the birthday saved on your profile.",
   );
 });
 
 test("three unique member attestations pay the frozen Dena benefit to the named beneficiary once", async () => {
   const sqlite = new SqliteD1();
   const db = asD1(sqlite);
-  const dashboard = await saveInsuranceEnrollment(db, "member-deceased", enrollment, "2026-08-07T12:00:00.000Z");
+  const dashboard = await saveInsuranceEnrollment(db, "member-deceased", enrollment, "1990-04-15", "2026-08-07T12:00:00.000Z");
   assert.equal(dashboard.enrollment?.next_of_kin_photo_url, "https://images.example.test/kin.jpg");
   assert.equal(dashboard.members.find((member) => member.user_id === "member-kin")?.photo_url, "https://images.example.test/kin.jpg");
   const report = {
@@ -177,6 +184,7 @@ test("next of kin is frozen as recipient when no beneficiary is listed", async (
     db,
     "member-deceased",
     { ...enrollment, beneficiary_user_id: null, beneficiary_relationship: null },
+    "1990-04-15",
     "2026-08-07T12:00:00.000Z",
   );
   const claim = await reportMemberDeath(db, "reporter-1", "Reporter One", {
@@ -194,7 +202,7 @@ test("the threshold cannot credit a recipient when the Civic Fund lacks Dena", a
   const sqlite = new SqliteD1();
   const db = asD1(sqlite);
   sqlite.database.prepare("UPDATE ledger_accounts SET balance = 0 WHERE id = 'acct-civic-fund'").run();
-  await saveInsuranceEnrollment(db, "member-deceased", enrollment, "2026-08-07T12:00:00.000Z");
+  await saveInsuranceEnrollment(db, "member-deceased", enrollment, "1990-04-15", "2026-08-07T12:00:00.000Z");
   const report = {
     deceased_user_id: "member-deceased",
     date_of_death: "2026-08-06",

@@ -120,6 +120,22 @@ export function UserSettingsPage() {
 
       <section className="portal-card user-settings-section">
         <div>
+          <h2>Calendar Integrations</h2>
+          <p className="portal-muted">Manage Google Calendar and other calendar export options from one place.</p>
+        </div>
+        <div className="user-settings-notification-row">
+          <div>
+            <strong>Calendar integrations</strong>
+            <p className="portal-muted">Open your calendar integrations page to connect Google Calendar or review upcoming events.</p>
+          </div>
+          <Link className="portal-button primary" to="/calendar">
+            Open Calendar
+          </Link>
+        </div>
+      </section>
+
+      <section className="portal-card user-settings-section">
+        <div>
           <h2>Push Notifications</h2>
           <p className="portal-muted">Receive connection and chat alerts even when the portal is not open.</p>
         </div>

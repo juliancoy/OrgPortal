@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
+import { downloadIcsEvent, outlookCalendarUrl } from '../../utils/calendar'
 import { useAuth } from '../../../app/AppProviders'
 import { pidpAppLoginUrl } from '../../../config/pidp'
 import { recordAttendanceWithRetry } from './attendanceApi'
+import { loadGoogleCalendarConnection, savePortalEventToGoogleCalendar } from '../googleCalendarApi'
+import { loadMicrosoftCalendarConnection, savePortalEventToMicrosoftCalendar } from '../microsoftCalendarApi'
 
 const ORG_API_BASE = '/api/org'
 
@@ -34,10 +37,16 @@ function currentUrl() {
   return `${window.location.origin}/events`
 }
 
+function eventPublicUrl(event: PublicEvent) {
+  return `${window.location.origin}/events/${encodeURIComponent(event.slug)}`
+}
+
 export function PublicEventsPage() {
   const { token } = useAuth()
   const [events, setEvents] = useState<PublicEvent[]>([])
   const [status, setStatus] = useState<string>('Loading upcoming events…')
+  const [googleCalendarConnected, setGoogleCalendarConnected] = useState(false)
+  const [microsoftCalendarConnected, setMicrosoftCalendarConnected] = useState(false)
   const [attendingById, setAttendingById] = useState<Record<string, boolean>>({})
   const [attendanceStatusById, setAttendanceStatusById] = useState<Record<string, string>>({})
   const [attendingPendingById, setAttendingPendingById] = useState<Record<string, boolean>>({})
@@ -50,6 +59,23 @@ export function PublicEventsPage() {
       type: 'website',
     })
   }, [])
+
+  useEffect(() => {
+    if (!token) {
+      setGoogleCalendarConnected(false)
+      setMicrosoftCalendarConnected(false)
+      return
+    }
+    Promise.allSettled([loadGoogleCalendarConnection(token), loadMicrosoftCalendarConnection(token)])
+      .then(([googleResult, microsoftResult]) => {
+        setGoogleCalendarConnected(googleResult.status === 'fulfilled' ? Boolean(googleResult.value.connected) : false)
+        setMicrosoftCalendarConnected(microsoftResult.status === 'fulfilled' ? Boolean(microsoftResult.value.connected) : false)
+      })
+      .catch(() => {
+        setGoogleCalendarConnected(false)
+        setMicrosoftCalendarConnected(false)
+      })
+  }, [token])
 
   useEffect(() => {
     fetch(orgUrl('/api/network/events/public?upcoming_only=true&limit=120'))
@@ -90,6 +116,8 @@ export function PublicEventsPage() {
   }, [itemListJsonLd])
 
   async function markAttending(eventId: string) {
+    const event = events.find((item) => item.id === eventId)
+    if (!event) return
     setAttendingPendingById((prev) => ({ ...prev, [eventId]: true }))
     setAttendanceStatusById((prev) => ({ ...prev, [eventId]: '' }))
     try {
@@ -97,8 +125,36 @@ export function PublicEventsPage() {
       if (!result.ok) {
         throw new Error(result.message)
       }
+      let message = result.message
+      if (googleCalendarConnected && event.starts_at) {
+        const calendarResult = await savePortalEventToGoogleCalendar(token, {
+          external_event_id: `portal-event:${event.id}`,
+          summary: event.title,
+          description: event.description || 'Event saved from Org Portal.',
+          starts_at: event.starts_at,
+          ends_at: event.ends_at || event.starts_at,
+          location: event.location || null,
+          source_url: `${window.location.origin}/events/${encodeURIComponent(event.slug)}`,
+        })
+        if (calendarResult.connected) {
+          message = 'Attendance saved and added to Google Calendar.'
+        }
+      } else if (microsoftCalendarConnected && event.starts_at) {
+        const calendarResult = await savePortalEventToMicrosoftCalendar(token, {
+          external_event_id: `portal-event:${event.id}`,
+          summary: event.title,
+          description: event.description || 'Event saved from Org Portal.',
+          starts_at: event.starts_at,
+          ends_at: event.ends_at || event.starts_at,
+          location: event.location || null,
+          source_url: `${window.location.origin}/events/${encodeURIComponent(event.slug)}`,
+        })
+        if (calendarResult.connected) {
+          message = 'Attendance saved and added to Microsoft Calendar.'
+        }
+      }
       setAttendingById((prev) => ({ ...prev, [eventId]: true }))
-      setAttendanceStatusById((prev) => ({ ...prev, [eventId]: result.message }))
+      setAttendanceStatusById((prev) => ({ ...prev, [eventId]: message }))
     } catch (err) {
       setAttendanceStatusById((prev) => ({
         ...prev,
@@ -115,62 +171,105 @@ export function PublicEventsPage() {
       {status ? <p className="muted">{status}</p> : null}
       <div style={{ display: 'grid', gap: '0.9rem' }}>
         {events.map((event) => (
-          <article
-            key={event.id}
-            className="portal-card"
-            style={{
-              display: 'flex',
-              gap: '0.85rem',
-              alignItems: 'flex-start',
-              flexWrap: 'wrap',
-            }}
-          >
-            {event.image_url ? (
-              <img
-                src={event.image_url}
-                alt={event.title}
+          (() => {
+            const eventStart = event.starts_at
+            const eventEnd = event.ends_at || eventStart || null
+            return (
+              <article
+                key={event.id}
+                className="portal-card"
                 style={{
-                  width: 140,
-                  height: 92,
-                  objectFit: 'cover',
-                  borderRadius: 10,
-                  border: '1px solid var(--border)',
-                  flex: '0 0 auto',
+                  display: 'flex',
+                  gap: '0.85rem',
+                  alignItems: 'flex-start',
+                  flexWrap: 'wrap',
                 }}
-              />
-            ) : null}
-            <div style={{ display: 'grid', gap: '0.45rem', minWidth: 0, maxWidth: '100%', flex: '1 1 240px' }}>
-              <h2 style={{ margin: 0, fontSize: '1.1rem' }}>
-                <Link to={`/events/${event.slug}`} style={{ textDecoration: 'none' }}>
-                  {event.title}
-                </Link>
-              </h2>
-              <p className="muted" style={{ margin: 0 }}>
-                {formatDate(event.starts_at)}{event.location ? ` • ${event.location}` : ''}
-              </p>
-              {event.description ? <p style={{ margin: 0, overflowWrap: 'anywhere' }}>{event.description}</p> : null}
-              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                {token ? (
-                  <button
-                    type="button"
-                    onClick={() => markAttending(event.id)}
-                    disabled={Boolean(attendingPendingById[event.id]) || Boolean(attendingById[event.id])}
-                  >
-                    {attendingPendingById[event.id]
-                      ? 'Saving...'
-                      : attendingById[event.id]
-                        ? 'Attending'
-                        : "I'm attending"}
-                  </button>
-                ) : (
-                  <a href={pidpAppLoginUrl('/events')}>Login to indicate attendance</a>
-                )}
-                {attendanceStatusById[event.id] ? (
-                  <span className="muted">{attendanceStatusById[event.id]}</span>
+              >
+                {event.image_url ? (
+                  <img
+                    src={event.image_url}
+                    alt={event.title}
+                    style={{
+                      width: 140,
+                      height: 92,
+                      objectFit: 'cover',
+                      borderRadius: 10,
+                      border: '1px solid var(--border)',
+                      flex: '0 0 auto',
+                    }}
+                  />
                 ) : null}
-              </div>
-            </div>
-          </article>
+                <div style={{ display: 'grid', gap: '0.45rem', minWidth: 0, maxWidth: '100%', flex: '1 1 240px' }}>
+                  <h2 style={{ margin: 0, fontSize: '1.1rem' }}>
+                    <Link to={`/events/${event.slug}`} style={{ textDecoration: 'none' }}>
+                      {event.title}
+                    </Link>
+                  </h2>
+                  <p className="muted" style={{ margin: 0 }}>
+                    {formatDate(event.starts_at)}{event.location ? ` • ${event.location}` : ''}
+                  </p>
+                  {event.description ? <p style={{ margin: 0, overflowWrap: 'anywhere' }}>{event.description}</p> : null}
+                  <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    {token ? (
+                      <button
+                        type="button"
+                        onClick={() => markAttending(event.id)}
+                        disabled={Boolean(attendingPendingById[event.id]) || Boolean(attendingById[event.id])}
+                      >
+                        {attendingPendingById[event.id]
+                          ? 'Saving...'
+                            : attendingById[event.id]
+                              ? 'Attending'
+                              : googleCalendarConnected
+                                ? 'Attend: add to Google Calendar'
+                                : microsoftCalendarConnected
+                                  ? 'Attend: add to Microsoft Calendar'
+                                  : 'Attend'}
+                      </button>
+                    ) : (
+                      <a href={pidpAppLoginUrl('/events')}>Login to indicate attendance</a>
+                    )}
+                    {eventStart && eventEnd ? (
+                      <>
+                        <span className="muted">Calendar Integrations:</span>
+                        <button
+                          type="button"
+                          className="portal-button-secondary"
+                          onClick={() => downloadIcsEvent({
+                            title: event.title,
+                            description: event.description || 'Event from Org Portal.',
+                            location: event.location || null,
+                            startsAt: eventStart,
+                            endsAt: eventEnd,
+                            url: eventPublicUrl(event),
+                          })}
+                        >
+                          Download .ics
+                        </button>
+                        <a
+                          href={outlookCalendarUrl({
+                            title: event.title,
+                            description: event.description || 'Event from Org Portal.',
+                            location: event.location || null,
+                            startsAt: eventStart,
+                            endsAt: eventEnd,
+                            url: eventPublicUrl(event),
+                          })}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Outlook
+                        </a>
+                      </>
+                    ) : null}
+                    {attendanceStatusById[event.id] ? (
+                      <span className="muted">{attendanceStatusById[event.id]}</span>
+                    ) : null}
+                  </div>
+                </div>
+              </article>
+            )
+          })()
         ))}
       </div>
     </section>
