@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { ReactElement } from 'react'
-import { Navigate, createBrowserRouter, useNavigate, useParams } from 'react-router-dom'
+import { Navigate, createBrowserRouter, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { AppLayout } from '../shell/AppLayout'
 import App from '../../App'
 import { useAuth } from '../../app/AppProviders'
@@ -10,6 +10,7 @@ import { AuthCallbackPage } from '../views/AuthCallbackPage'
 import { InitiativeDetailPage } from '../views/InitiativeDetailPage'
 import { InitiativeSignPage } from '../views/InitiativeSignPage'
 import { UserProfilePage } from '../views/users/UserProfilePage'
+import { UserCalendarPage } from '../views/users/UserCalendarPage'
 import { UserSettingsPage } from '../views/users/UserSettingsPage'
 import { UserLoginPage } from '../views/users/UserLoginPage'
 import { UserRegisterPage } from '../views/users/UserRegisterPage'
@@ -59,8 +60,12 @@ import { portalBasePath } from '../../config/portalBase'
 
 function AuthenticatedRoute(props: { children: ReactElement }) {
   const { role, isLoading } = useAuth()
+  const location = useLocation()
   if (isLoading) return null
-  if (role === 'guest') return <Navigate to="/" replace />
+  if (role === 'guest') {
+    const next = `${location.pathname}${location.search}${location.hash}` || '/'
+    return <Navigate to={`/users/login?next=${encodeURIComponent(next)}`} replace />
+  }
   return props.children
 }
 
@@ -165,6 +170,14 @@ export function createAppRouter() {
           { path: '/users/login', element: <UserLoginPage /> },
           { path: '/users/dashboard', element: <DashboardPage /> },
           { path: '/profile', element: <UserProfilePage /> },
+          {
+            path: '/calendar',
+            element: (
+              <AuthenticatedRoute>
+                <UserCalendarPage />
+              </AuthenticatedRoute>
+            ),
+          },
           {
             path: '/settings',
             element: (
