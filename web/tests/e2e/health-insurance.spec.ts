@@ -12,7 +12,13 @@ async function mockHealthProgram(page: Page) {
     claims: [] as Array<Record<string, unknown>>,
     services: [{
       id: 'primary-care', name: 'Primary care appointment', description: 'Request a general health appointment.',
-      timezone: 'UTC', slot_minutes: 30, available_to_all: true, hours: [],
+      timezone: 'UTC', slot_minutes: 30, available_to_all: true, host_type: 'shared', hours: [
+        { weekday: 1, starts_at: '13:00', ends_at: '21:00' },
+        { weekday: 2, starts_at: '13:00', ends_at: '21:00' },
+        { weekday: 3, starts_at: '13:00', ends_at: '21:00' },
+        { weekday: 4, starts_at: '13:00', ends_at: '21:00' },
+        { weekday: 5, starts_at: '13:00', ends_at: '21:00' },
+      ],
     }],
     appointments: [] as Array<Record<string, unknown>>,
     analyses: [] as Array<Record<string, unknown>>,
@@ -34,6 +40,10 @@ async function mockHealthProgram(page: Page) {
   await page.route('**/api/org/**', (route) => json(route, {}))
   await page.route('**/auth/session-token', (route) => json(route, { access_token: 'header.payload.signature' }))
   await page.route('**/auth/me', (route) => json(route, authUser))
+  await page.route('**/auth/google-calendar', async (route) => {
+    if (route.request().method() === 'GET') return json(route, { connected: false, google_email: null, calendar_id: null, sync_busy: false, updated_at: null })
+    return route.fallback()
+  })
   await page.route('**/api/org/admin/me', (route) => json(route, { is_sysadmin: false }))
   await page.route('**/api/org/api/accounts?**', async (route) => {
     await json(route, [
@@ -166,6 +176,22 @@ async function mockHealthProgram(page: Page) {
       ],
     }
     await json(route, appointment, 201)
+  })
+  await page.route('**/api/org/api/health-insurance/services', async (route) => {
+    const payload = JSON.parse(route.request().postData() || '{}')
+    expect(payload).toMatchObject({
+      host_type: 'individual',
+      name: 'Half-hour session',
+      timezone: 'UTC',
+      slot_minutes: 30,
+      capacity_per_slot: 1,
+      weekdays: [1, 2, 3, 4, 5],
+      starts_at: '14:00',
+      ends_at: '17:00',
+      google_calendar_sync: false,
+      google_block_busy: false,
+    })
+    await json(route, { id: 'service-published', ...payload }, 201)
   })
   await page.route('**/api/org/api/health-insurance/analysis', async (route) => {
     const payload = JSON.parse(route.request().postData() || '{}')
