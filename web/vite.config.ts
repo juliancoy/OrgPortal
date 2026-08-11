@@ -10,13 +10,19 @@ const envAllowedHosts = (process.env.VITE_ALLOWED_HOSTS || '')
 const allowedHosts = Array.from(
   new Set([
     'localhost',
-    'portal.arkavo.org',
-    'dev.portal.arkavo.org',
+    '127.0.0.1',
+    'codecollective.us',
+    'www.codecollective.us',
     ...envAllowedHosts,
   ]),
 )
 
-const hmrHost = process.env.VITE_HMR_HOST || 'dev.portal.arkavo.org'
+const hmrHost = process.env.VITE_HMR_HOST || 'localhost'
+const hmrProtocol = process.env.VITE_HMR_PROTOCOL || (hmrHost === 'localhost' || hmrHost === '127.0.0.1' ? 'ws' : 'wss')
+const hmrClientPort = Number.parseInt(
+  process.env.VITE_HMR_CLIENT_PORT || (hmrProtocol === 'wss' ? '443' : '5173'),
+  10,
+)
 const parsedBuildNumber = Number.parseInt(process.env.VITE_APP_BUILD_NUMBER || `${Math.floor(Date.now() / 1000)}`, 10)
 const appBuildNumber = Number.isFinite(parsedBuildNumber) ? parsedBuildNumber : Math.floor(Date.now() / 1000)
 const appVersion = process.env.npm_package_version || '0.0.0'
@@ -40,8 +46,8 @@ export default defineConfig(() => ({
     host: true,
     hmr: {
       host: hmrHost,
-      protocol: 'wss',
-      clientPort: 443,
+      protocol: hmrProtocol,
+      clientPort: Number.isFinite(hmrClientPort) ? hmrClientPort : 5173,
     },
     proxy: {
       '/pidp': {
