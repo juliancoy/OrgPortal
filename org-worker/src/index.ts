@@ -12,6 +12,7 @@ import {
   cancelHealthInsuranceAppointment,
   healthInsuranceDiagnosisBoard,
   healthInsuranceDashboard,
+  healthInsuranceProviderDashboard,
   publishHealthInsuranceService,
   requestHealthInsuranceAnalysis,
   scheduleHealthInsuranceAppointment,
@@ -2827,6 +2828,11 @@ app.post("/api/life-insurance/death-reports", async (c) => {
 app.get("/api/health-insurance", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   return c.json(await healthInsuranceDashboard(c.env.DB, user.id));
+});
+
+app.get("/api/health-insurance/provider", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  return c.json(await healthInsuranceProviderDashboard(c.env.DB, user.id));
 });
 
 app.put("/api/health-insurance/enrollment", async (c) => {

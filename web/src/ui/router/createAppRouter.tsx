@@ -53,6 +53,7 @@ import { refreshRuntimeTokenFromSession } from '../../infrastructure/auth/sessio
 import { UbiSettingsPage } from '../views/UbiSettingsPage'
 import { LifeInsurancePage } from '../views/LifeInsurancePage'
 import { HealthInsurancePage } from '../views/HealthInsurancePage'
+import { ProviderSchedulingPage } from '../views/ProviderSchedulingPage'
 import { PropertyCasualtyInsurancePage } from '../views/PropertyCasualtyInsurancePage'
 import { portalBasePath } from '../../config/portalBase'
 
@@ -263,6 +264,14 @@ export function createAppRouter() {
             element: (
               <AuthenticatedRoute>
                 <HealthInsurancePage />
+              </AuthenticatedRoute>
+            ),
+          },
+          {
+            path: '/provider-scheduling',
+            element: (
+              <AuthenticatedRoute>
+                <ProviderSchedulingPage />
               </AuthenticatedRoute>
             ),
           },

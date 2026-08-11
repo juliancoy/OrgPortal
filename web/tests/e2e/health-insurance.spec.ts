@@ -276,5 +276,7 @@ test('member maintains the profile, searches codes by name, and sees the full re
   await expect(page.getByText('Health profile updated')).toBeVisible()
   await expect(page.getByText('Claim codes recorded')).toBeVisible()
   await expect(page.getByText('Triage analysis')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Go to provider portal' })).toHaveAttribute('href', '/provider-scheduling')
+  await expect(page.getByRole('button', { name: 'Publish recurring session calendar' })).toHaveCount(0)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
 })

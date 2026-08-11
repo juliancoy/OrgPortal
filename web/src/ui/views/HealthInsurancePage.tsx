@@ -1,6 +1,6 @@
 import { useDeferredValue, useEffect, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
-import { pidpUrl } from '../../config/pidp'
 import { refreshRuntimeTokenFromSession } from '../../infrastructure/auth/sessionToken'
 
 const ORG_API_BASE = '/api/org'
@@ -32,7 +32,6 @@ type CollaborativeDiagnosis = {
   updated_at: string
 }
 type MemberAccount = { id: string; user_id: string | null; name: string; email: string }
-type HostOrganization = { id: string; name: string; slug: string; my_role?: 'owner' | 'administrator' | 'member' | null }
 type DiagnosisBoard = {
   patient: { user_id: string; name: string; is_self: boolean }
   diagnoses: CollaborativeDiagnosis[]
@@ -78,13 +77,6 @@ type HealthService = {
   google_calendar_sync?: boolean
   google_block_busy?: boolean
   hours: Array<{ weekday: number; starts_at: string; ends_at: string }>
-}
-type GoogleCalendarConnection = {
-  connected: boolean
-  google_email: string | null
-  calendar_id: string | null
-  sync_busy: boolean
-  updated_at: string | null
 }
 type Appointment = {
   id: string
@@ -289,7 +281,6 @@ export function HealthInsurancePage() {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null)
   const [diagnosisBoard, setDiagnosisBoard] = useState<DiagnosisBoard | null>(null)
   const [members, setMembers] = useState<MemberAccount[]>([])
-  const [hostOrganizations, setHostOrganizations] = useState<HostOrganization[]>([])
   const [patientQuery, setPatientQuery] = useState('')
   const [selectedPatientUserId, setSelectedPatientUserId] = useState('')
   const [program, setProgram] = useState<'standard' | 'pediatric'>('standard')
@@ -313,17 +304,6 @@ export function HealthInsurancePage() {
   const [appointmentDate, setAppointmentDate] = useState('')
   const [appointmentTime, setAppointmentTime] = useState('14:00')
   const [appointmentAttested, setAppointmentAttested] = useState(false)
-  const [publishHostType, setPublishHostType] = useState<'individual' | 'org'>('individual')
-  const [publishHostOrgId, setPublishHostOrgId] = useState('')
-  const [publishName, setPublishName] = useState('Half-hour session')
-  const [publishDescription, setPublishDescription] = useState('Book a 30-minute session through the health portal.')
-  const [publishStartsAt, setPublishStartsAt] = useState('14:00')
-  const [publishEndsAt, setPublishEndsAt] = useState('17:00')
-  const [publishCapacity, setPublishCapacity] = useState('1')
-  const [publishWeekdays, setPublishWeekdays] = useState<number[]>([1, 2, 3, 4, 5])
-  const [publishGoogleCalendarSync, setPublishGoogleCalendarSync] = useState(false)
-  const [publishGoogleBlockBusy, setPublishGoogleBlockBusy] = useState(false)
-  const [googleCalendar, setGoogleCalendar] = useState<GoogleCalendarConnection | null>(null)
   const [diagnosisSubmitQuery, setDiagnosisSubmitQuery] = useState('')
   const [diagnosisSubmitCodes, setDiagnosisSubmitCodes] = useState<string[]>([])
   const [diagnosisSubmitNote, setDiagnosisSubmitNote] = useState('')
@@ -341,20 +321,6 @@ export function HealthInsurancePage() {
       return fetch(`${ORG_API_BASE}${path}`, { ...init, headers })
     }
     let response = await send(token)
-    if (response.status === 401) {
-      const refreshed = await refreshRuntimeTokenFromSession()
-      if (refreshed) response = await send(refreshed)
-    }
-    return response
-  }
-
-  async function authenticatedPidpFetch(path: string, init: RequestInit = {}) {
-    const send = async (authToken?: string) => {
-      const headers = new Headers(init.headers)
-      if (authToken) headers.set('Authorization', `Bearer ${authToken}`)
-      return fetch(pidpUrl(path), { ...init, headers, credentials: 'include' })
-    }
-    let response = await send(token || undefined)
     if (response.status === 401) {
       const refreshed = await refreshRuntimeTokenFromSession()
       if (refreshed) response = await send(refreshed)
@@ -391,23 +357,10 @@ export function HealthInsurancePage() {
     setMembers(data.filter((member) => member.user_id))
   }
 
-  async function loadHostOrganizations() {
-    const response = await authenticatedFetch('/api/network/orgs?mine=true&limit=300')
-    if (!response.ok) throw new Error(await responseDetail(response, 'Unable to load organizations.'))
-    const data = (await response.json()) as HostOrganization[] | Record<string, unknown>
-    setHostOrganizations((Array.isArray(data) ? data : []).filter((org) => org.my_role === 'owner' || org.my_role === 'administrator'))
-  }
-
   async function loadDiagnosisBoard(patientUserId: string) {
     const response = await authenticatedFetch(`/api/health-insurance/diagnoses?patient_user_id=${encodeURIComponent(patientUserId)}`)
     if (!response.ok) throw new Error(await responseDetail(response, 'Unable to load diagnosis board.'))
     setDiagnosisBoard(normalizeDiagnosisBoard((await response.json()) as DiagnosisBoard))
-  }
-
-  async function loadGoogleCalendar() {
-    const response = await authenticatedPidpFetch('/auth/google-calendar')
-    if (!response.ok) throw new Error(await responseDetail(response, 'Unable to load Google Calendar connection.'))
-    setGoogleCalendar((await response.json()) as GoogleCalendarConnection)
   }
 
   useEffect(() => {
@@ -422,14 +375,6 @@ export function HealthInsurancePage() {
   useEffect(() => {
     loadMembers(patientQuery).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'Unable to load members.'))
   }, [patientQuery])
-
-  useEffect(() => {
-    loadHostOrganizations().catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'Unable to load organizations.'))
-  }, [token])
-
-  useEffect(() => {
-    loadGoogleCalendar().catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'Unable to load Google Calendar connection.'))
-  }, [token])
 
   useEffect(() => {
     if (!selectedPatientUserId) return
@@ -587,51 +532,6 @@ export function HealthInsurancePage() {
       setMessage('Diagnosis support recorded.')
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Unable to support diagnosis.')
-    } finally { setSubmitting(false) }
-  }
-
-  async function publishService(event: FormEvent) {
-    event.preventDefault()
-    setSubmitting(true); setError(''); setMessage('')
-    try {
-      const response = await authenticatedFetch('/api/health-insurance/services', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          host_type: publishHostType,
-          host_org_id: publishHostType === 'org' ? publishHostOrgId : null,
-          name: publishName,
-          description: publishDescription,
-          timezone: 'UTC',
-          slot_minutes: 30,
-          capacity_per_slot: Number(publishCapacity),
-          weekdays: publishWeekdays,
-          starts_at: publishStartsAt,
-          ends_at: publishEndsAt,
-          google_calendar_sync: publishGoogleCalendarSync,
-          google_block_busy: publishGoogleBlockBusy,
-        }),
-      })
-      if (!response.ok) throw new Error(await responseDetail(response, 'Unable to publish appointment calendar.'))
-      await loadDashboard()
-      await loadGoogleCalendar()
-      setMessage('Recurring appointment calendar published.')
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Unable to publish appointment calendar.')
-    } finally { setSubmitting(false) }
-  }
-
-  async function disconnectGoogleCalendar() {
-    setSubmitting(true); setError(''); setMessage('')
-    try {
-      const response = await authenticatedPidpFetch('/auth/google-calendar', { method: 'DELETE' })
-      if (!response.ok) throw new Error(await responseDetail(response, 'Unable to disconnect Google Calendar.'))
-      await loadGoogleCalendar()
-      setPublishGoogleCalendarSync(false)
-      setPublishGoogleBlockBusy(false)
-      setMessage('Google Calendar disconnected.')
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Unable to disconnect Google Calendar.')
     } finally { setSubmitting(false) }
   }
 
@@ -793,95 +693,22 @@ export function HealthInsurancePage() {
 
       <section className="portal-card health-insurance-calendar">
         <div className="health-insurance-calendar-copy">
-          <span className="health-insurance-eyebrow">Publish availability</span>
-          <h2>Recurring half-hour sessions</h2>
-          <p>Publish a personal or organization calendar so members can book 30-minute sessions on weekdays after 14:00 UTC.</p>
-          <p>
-            Google Calendar:
-            {' '}
-            {googleCalendar?.connected ? `Connected as ${googleCalendar.google_email || 'Google account'}` : 'Not connected'}
-          </p>
-          {googleCalendar?.connected ? (
-            <button type="button" className="portal-button-secondary" onClick={() => void disconnectGoogleCalendar()} disabled={submitting}>
-              Disconnect Google Calendar
-            </button>
-          ) : (
-            <a
-              className="portal-button-secondary"
-              href={pidpUrl(`/auth/google-calendar/connect?next=${encodeURIComponent(window.location.href)}`)}
-            >
-              Connect Google Calendar
-            </a>
-          )}
+          <span className="health-insurance-eyebrow">Provider scheduling</span>
+          <h2>Separate provider portal</h2>
+          <p>Provider availability publishing, Google Calendar connection, and booking intake now live in their own portal instead of the member record workflow.</p>
+          <p>Use it to publish recurring weekday slots after 14:00 UTC and manage bookings created from this health-benefit page.</p>
         </div>
-        <form className="portal-form health-insurance-scheduler" onSubmit={publishService}>
-          <label>Host calendar<select value={publishHostType} onChange={(event) => setPublishHostType(event.target.value as 'individual' | 'org')}>
-            <option value="individual">My calendar</option>
-            <option value="org">Organization calendar</option>
-          </select></label>
-          {publishHostType === 'org' ? (
-            <label>Organization<select value={publishHostOrgId} onChange={(event) => setPublishHostOrgId(event.target.value)} required>
-              <option value="">Select an organization</option>
-              {hostOrganizations.map((org) => <option key={org.id} value={org.id}>{org.name}</option>)}
-            </select></label>
-          ) : null}
-          <label>Session title<input value={publishName} onChange={(event) => setPublishName(event.target.value)} required /></label>
-          <label>Description<textarea value={publishDescription} onChange={(event) => setPublishDescription(event.target.value)} rows={4} required /></label>
-          <div className="health-insurance-fields">
-            <label>Starts at (UTC)<input type="time" value={publishStartsAt} onChange={(event) => setPublishStartsAt(event.target.value)} required /></label>
-            <label>Ends at (UTC)<input type="time" value={publishEndsAt} onChange={(event) => setPublishEndsAt(event.target.value)} required /></label>
-            <label>Capacity per slot<input type="number" min="1" max="100" value={publishCapacity} onChange={(event) => setPublishCapacity(event.target.value)} required /></label>
-          </div>
-          <div className="health-insurance-selector">
-            <strong>Weekdays</strong>
-            <div className="health-insurance-chip-list">
-              {[1, 2, 3, 4, 5].map((weekday) => {
-                const selected = publishWeekdays.includes(weekday)
-                return (
-                  <button
-                    key={weekday}
-                    type="button"
-                    className="health-insurance-chip"
-                    aria-pressed={selected}
-                    onClick={() => setPublishWeekdays((current) => selected ? current.filter((value) => value !== weekday) : [...current, weekday].sort((left, right) => left - right))}
-                  >
-                    <strong>{weekdayLabel(weekday)}</strong>
-                    <span>{selected ? 'Included' : 'Excluded'}</span>
-                  </button>
-                )
-              })}
+        <div className="health-insurance-appointments">
+          <article>
+            <div>
+              <strong>Open provider scheduling</strong>
+              <span>Connect Google Calendar, publish recurring availability, and review booked sessions.</span>
             </div>
-          </div>
-          {publishHostType === 'individual' ? (
-            <>
-              <label className="health-insurance-check">
-                <input
-                  type="checkbox"
-                  checked={publishGoogleCalendarSync}
-                  onChange={(event) => {
-                    setPublishGoogleCalendarSync(event.target.checked)
-                    if (!event.target.checked) setPublishGoogleBlockBusy(false)
-                  }}
-                  disabled={!googleCalendar?.connected}
-                />
-                <span>Publish this recurring availability to my Google Calendar.</span>
-              </label>
-              <label className="health-insurance-check">
-                <input
-                  type="checkbox"
-                  checked={publishGoogleBlockBusy}
-                  onChange={(event) => setPublishGoogleBlockBusy(event.target.checked)}
-                  disabled={!publishGoogleCalendarSync}
-                />
-                <span>Block portal slots that conflict with my Google busy times.</span>
-              </label>
-              {!googleCalendar?.connected ? <small>Connect Google Calendar first to enable sync for individual-hosted services.</small> : null}
-            </>
-          ) : <small>Google Calendar sync is currently available only for individual-hosted services.</small>}
-          <button type="submit" disabled={submitting || (publishHostType === 'org' && !publishHostOrgId) || !publishWeekdays.length}>
-            {submitting ? 'Publishing…' : 'Publish recurring session calendar'}
-          </button>
-        </form>
+            <div>
+              <Link className="portal-button-secondary" to="/provider-scheduling">Go to provider portal</Link>
+            </div>
+          </article>
+        </div>
       </section>
 
       <section className="portal-card health-insurance-history">

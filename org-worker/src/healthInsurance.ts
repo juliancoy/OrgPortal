@@ -84,6 +84,12 @@ type AppointmentRow = {
   requested_at: string;
 };
 
+type ProviderAppointmentRow = AppointmentRow & {
+  attendee_user_id: string;
+  attendee_name: string | null;
+  attendee_email: string | null;
+};
+
 type ProfileUpdateRow = {
   id: string;
   program: "standard" | "pediatric";
@@ -1006,6 +1012,45 @@ export async function healthInsuranceDashboard(db: D1Database, userId: string) {
       diagnoses: DIAGNOSIS_CATALOG,
       claim_codes: CLAIM_CODE_CATALOG,
     },
+  };
+}
+
+export async function healthInsuranceProviderDashboard(db: D1Database, userId: string) {
+  const [services, hours, appointments] = await Promise.all([
+    db.prepare(
+      `SELECT id, name, description, timezone, slot_minutes, capacity_per_slot, available_to_all,
+              COALESCE(host_type, 'shared') AS host_type, host_user_id, host_user_name, host_org_id, host_org_name,
+              COALESCE(google_calendar_sync, 0) AS google_calendar_sync,
+              COALESCE(google_block_busy, 0) AS google_block_busy
+       FROM health_insurance_services
+       WHERE active = 1 AND host_user_id = ?
+       ORDER BY name`,
+    ).bind(userId).all<ServiceRow>(),
+    db.prepare("SELECT service_id, weekday, starts_at, ends_at FROM health_insurance_service_hours ORDER BY service_id, weekday").all<ServiceHoursRow>(),
+    db.prepare(
+      `SELECT a.id, a.user_id AS attendee_user_id, a.service_id, s.name AS service_name,
+              a.starts_at, a.ends_at, a.status, a.requested_at, la.name AS attendee_name, la.email AS attendee_email
+       FROM health_insurance_appointments a
+       JOIN health_insurance_services s ON s.id = a.service_id
+       LEFT JOIN ledger_accounts la ON la.user_id = a.user_id
+       WHERE s.host_user_id = ?
+       ORDER BY a.starts_at DESC`,
+    ).bind(userId).all<ProviderAppointmentRow>(),
+  ]);
+
+  return {
+    services: services.results.map((service) => ({
+      ...service,
+      available_to_all: Boolean(service.available_to_all),
+      google_calendar_sync: Boolean(service.google_calendar_sync),
+      google_block_busy: Boolean(service.google_block_busy),
+      hours: hours.results.filter((item) => item.service_id === service.id),
+    })),
+    appointments: appointments.results.map((appointment) => ({
+      ...appointment,
+      attendee_name: appointment.attendee_name || null,
+      attendee_email: appointment.attendee_email || null,
+    })),
   };
 }
 
