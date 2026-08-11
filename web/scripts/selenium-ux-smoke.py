@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Live UX smoke checks for dev.portal.arkavo.org via remote Selenium."""
+"""Live UX smoke checks for the Cloudflare-backed Code Collective portal via remote Selenium."""
 
 from __future__ import annotations
 
@@ -12,11 +12,18 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from urllib.parse import urlparse
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
+
+
+BLOCKED_HOSTS = {
+    "dev.portal.arkavo.org",
+    "dev.pidp.arkavo.org",
+}
 
 
 def _http_json(method: str, url: str, body: bytes | None = None, headers: dict[str, str] | None = None) -> dict:
@@ -253,12 +260,21 @@ def run_smoke(args: argparse.Namespace) -> int:
     return 0
 
 
+def reject_blocked_hosts(base_url: str, pidp_base_url: str) -> None:
+    for raw_url in (base_url, pidp_base_url):
+        host = (urlparse(raw_url).hostname or "").lower()
+        if host in BLOCKED_HOSTS:
+            raise SystemExit(
+                f"Blocked host '{host}'. Use the Cloudflare-backed portal and PIdP origins instead."
+            )
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run OrgPortal live UX smoke checks in remote Selenium.")
     parser.add_argument("--selenium-url", default=os.environ.get("SELENIUM_URL", "http://127.0.0.1:4444/wd/hub"))
-    parser.add_argument("--base-url", default=os.environ.get("PORTAL_BASE_URL", "https://dev.portal.arkavo.org"))
-    parser.add_argument("--pidp-base-url", default=os.environ.get("PIDP_BASE_URL", "https://dev.pidp.arkavo.org"))
-    parser.add_argument("--bot-email", default=os.environ.get("PORTAL_BOT_EMAIL", "portal-bot@arkavo.org"))
+    parser.add_argument("--base-url", default=os.environ.get("PORTAL_BASE_URL", "https://codecollective.us/p"))
+    parser.add_argument("--pidp-base-url", default=os.environ.get("PIDP_BASE_URL", "https://id.codecollective.us"))
+    parser.add_argument("--bot-email", default=os.environ.get("PORTAL_BOT_EMAIL", "portal-bot@example.com"))
     parser.add_argument("--bot-password", default=os.environ.get("PORTAL_BOT_PASSWORD", ""))
     parser.add_argument("--bot-name", default=os.environ.get("PORTAL_BOT_NAME", "Portal Bot"))
     parser.add_argument("--api-key", default=os.environ.get("ORG_SYSADMIN_API_KEY", ""))
@@ -269,6 +285,7 @@ def parse_args() -> argparse.Namespace:
     args = parser.parse_args()
     if not args.api_key and not args.bot_password:
         parser.error("bot password required unless --api-key/ORG_SYSADMIN_API_KEY is provided")
+    reject_blocked_hosts(args.base_url, args.pidp_base_url)
     return args
 
 

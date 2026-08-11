@@ -4,7 +4,7 @@ const authUser = {
   id: 'member-current',
   email: 'member@example.test',
   full_name: 'Current Member',
-  identity_data: { display_name: 'Current Member' },
+  identity_data: { display_name: 'Current Member', birth_date: '1990-04-15' },
 }
 
 const members = [
@@ -16,6 +16,7 @@ const dashboard = {
   currency: 'DEM',
   standard_benefit_dena: 1000,
   attestation_threshold: 3,
+  profile_birth_date: '1990-04-15',
   enrollment: null,
   claim: null,
   members,
@@ -41,7 +42,6 @@ async function mockAuthenticatedProgram(page: Page) {
     const payload = JSON.parse(route.request().postData() || '{}')
     expect(payload).toMatchObject({
       birth_date: '1990-04-15',
-      age: 36,
       next_of_kin_user_id: 'member-kin',
       beneficiary_user_id: 'member-beneficiary',
       accepted_terms: true,
@@ -51,7 +51,7 @@ async function mockAuthenticatedProgram(page: Page) {
       enrollment: {
         user_id: authUser.id,
         birth_date: payload.birth_date,
-        confirmed_age: payload.age,
+        confirmed_age: 36,
         next_of_kin_user_id: payload.next_of_kin_user_id,
         next_of_kin_name: 'Jordan Kin',
         next_of_kin_relationship: payload.next_of_kin_relationship,
@@ -88,9 +88,9 @@ test('member enrolls and a third death attestation displays the Dena payout', as
   await mockAuthenticatedProgram(page)
   await page.goto('/life-insurance')
   await expect(page.getByRole('heading', { name: 'Protect the people you name' })).toBeVisible()
+  await expect(page.getByTestId('insurance-profile-birthday')).toContainText('1990-04-15')
+  await expect(page.getByTestId('insurance-derived-age')).toContainText('36')
 
-  await page.locator('#insurance-birthday').fill('1990-04-15')
-  await page.locator('#insurance-age').fill('36')
   await page.getByRole('combobox', { name: 'Next of kin (required)' }).fill('Jordan')
   await page.locator('#insurance-next-of-kin-results').getByRole('option', { name: 'Jordan Kin' }).click()
   await page.locator('#insurance-next-of-kin-relationship').fill('Sibling')
@@ -101,8 +101,8 @@ test('member enrolls and a third death attestation displays the Dena payout', as
 
   await page.goto('/about')
   await page.goto('/life-insurance')
-  await expect(page.locator('#insurance-birthday')).toHaveValue('1990-04-15')
-  await expect(page.locator('#insurance-age')).toHaveValue('36')
+  await expect(page.getByTestId('insurance-profile-birthday')).toContainText('1990-04-15')
+  await expect(page.getByTestId('insurance-derived-age')).toContainText('36')
   await expect(page.locator('#insurance-next-of-kin-relationship')).toHaveValue('Sibling')
   await expect(page.locator('#insurance-beneficiary-relationship')).toHaveValue('Partner')
   await expect(page.locator('#insurance-enrollment-attestation')).toBeChecked()
