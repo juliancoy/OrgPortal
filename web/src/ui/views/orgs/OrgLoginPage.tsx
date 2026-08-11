@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
+import { portalPath } from '../../../config/portalBase'
 import { PIDP_APP_SLUG, pidpAppLoginUrl, pidpUrl, portalAuthCallbackUrl } from '../../../config/pidp'
 
 export function OrgLoginPage() {
@@ -42,14 +43,14 @@ export function OrgLoginPage() {
               className="portal-social-login-button"
               aria-label="Continue with Google"
             >
-              <img src="/images/google-g-logo.svg" alt="" className="portal-social-login-logo" />
+              <img src={portalPath('/images/google-g-logo.svg')} alt="" className="portal-social-login-logo" />
             </a>
             <a
               href={socialLoginUrl('github')}
               className="portal-social-login-button"
               aria-label="Continue with GitHub"
             >
-              <img src="/images/github-mark.svg" alt="" className="portal-social-login-logo" />
+              <img src={portalPath('/images/github-mark.svg')} alt="" className="portal-social-login-logo" />
             </a>
             <Link
               to="/orgs/register"

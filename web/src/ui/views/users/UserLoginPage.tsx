@@ -1,18 +1,21 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
-import { DEFAULT_POST_LOGIN_PATH, PIDP_APP_SLUG, pidpAppLoginUrl, pidpUrl, portalAuthCallbackUrl } from '../../../config/pidp'
+import { portalPath } from '../../../config/portalBase'
+import { DEFAULT_POST_LOGIN_PATH, PIDP_APP_SLUG, normalizePostLoginPath, pidpAppLoginUrl, pidpUrl, portalAuthCallbackUrl } from '../../../config/pidp'
 
 export function UserLoginPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { loginWithPassword, isLoading } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const nextUrl = window.location.href
+  const requestedNext = normalizePostLoginPath(searchParams.get('next') || DEFAULT_POST_LOGIN_PATH)
+  const registerPath = `/users/register?next=${encodeURIComponent(requestedNext)}`
   const socialLoginUrl = (provider: 'google' | 'github') => {
-    const params = new URLSearchParams({ next: portalAuthCallbackUrl(DEFAULT_POST_LOGIN_PATH) })
+    const params = new URLSearchParams({ next: portalAuthCallbackUrl(requestedNext) })
     if (PIDP_APP_SLUG) params.set('app', PIDP_APP_SLUG)
     return pidpUrl(`/auth/${provider}/login?${params.toString()}`)
   }
@@ -24,9 +27,9 @@ export function UserLoginPage() {
   useEffect(() => {
     if (!isLoading && isSubmitting) {
       setIsSubmitting(false)
-      navigate(DEFAULT_POST_LOGIN_PATH)
+      navigate(requestedNext)
     }
-  }, [isLoading, isSubmitting, navigate])
+  }, [isLoading, isSubmitting, navigate, requestedNext])
 
   const handleSubmit = async (event?: FormEvent<HTMLFormElement>) => {
     event?.preventDefault()
@@ -57,17 +60,17 @@ export function UserLoginPage() {
               className="portal-social-login-button"
               aria-label="Continue with Google"
             >
-              <img src="/images/google-g-logo.svg" alt="" className="portal-social-login-logo" />
+              <img src={portalPath('/images/google-g-logo.svg')} alt="" className="portal-social-login-logo" />
             </a>
             <a
               href={socialLoginUrl('github')}
               className="portal-social-login-button"
               aria-label="Continue with GitHub"
             >
-              <img src="/images/github-mark.svg" alt="" className="portal-social-login-logo" />
+              <img src={portalPath('/images/github-mark.svg')} alt="" className="portal-social-login-logo" />
             </a>
             <Link
-              to="/users/register"
+              to={registerPath}
               className="portal-social-login-button portal-auth-register-shortcut"
               aria-label="Register new account"
             >
@@ -75,7 +78,7 @@ export function UserLoginPage() {
             </Link>
           </div>
           <a
-            href={pidpAppLoginUrl(nextUrl)}
+            href={pidpAppLoginUrl(requestedNext)}
             className="portal-button portal-auth-idp-link"
           >
             Continue to Identity Provider
@@ -122,7 +125,7 @@ export function UserLoginPage() {
         </form>
 
         <p className="portal-auth-secondary">
-          New here? <Link to="/users/register">Register</Link>
+          New here? <Link to={registerPath}>Register</Link>
         </p>
       </div>
     </section>
