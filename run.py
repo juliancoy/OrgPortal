@@ -63,14 +63,14 @@ def _resolve_prod_image() -> str:
 
 
 def _default_pidp_base(portal_host: str | None, dev: bool = False) -> str:
+    if portal_host in {"codecollective.us", "www.codecollective.us"}:
+        return "https://id.codecollective.us"
     if portal_host and "." in portal_host:
         domain = portal_host.split(".", 1)[1]
         if dev:
             return f"https://dev.pidp.{domain}"
         return f"https://pidp.{domain}"
-    if dev:
-        return "https://dev.pidp.arkavo.org"
-    return "https://pidp.arkavo.org"
+    return "https://id.codecollective.us"
 
 
 def _build_local_prod_image(local_tag: str, pidp_base_url: str, pidp_app_slug: str) -> None:

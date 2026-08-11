@@ -461,6 +461,7 @@ export function Header() {
   const isDepartmentsActive = location.pathname.startsWith('/departments')
   const isLifeInsuranceActive = location.pathname.startsWith('/life-insurance')
   const isHealthInsuranceActive = location.pathname.startsWith('/health-insurance')
+  const isCalendarActive = location.pathname.startsWith('/calendar')
   const isProviderSchedulingActive = location.pathname.startsWith('/provider-scheduling')
   const isPropertyCasualtyInsuranceActive = location.pathname.startsWith('/property-casualty-insurance')
   const isIdActive = location.pathname === '/id' || location.pathname.startsWith('/contact-settings')
@@ -780,6 +781,10 @@ export function Header() {
                     Settings
                   </Link>
 
+                  <Link to="/calendar" onClick={() => setMenuOpen(false)} className="portal-user-menu-item" role="menuitem">
+                    Calendar
+                  </Link>
+
                   <Link to="/dev-tools" onClick={() => setMenuOpen(false)} className="portal-user-menu-item" role="menuitem">
                     Dev Tools
                   </Link>
@@ -930,6 +935,15 @@ export function Header() {
             </svg>
             People
           </NavLink>
+
+          {role !== 'guest' && (
+            <NavLink to="/calendar" isActive={isCalendarActive}>
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path d="M6 2.5A1.5 1.5 0 017.5 4v.75h5V4a1.5 1.5 0 013 0v.75H16A2 2 0 0118 6.75v8.75A2.5 2.5 0 0115.5 18h-11A2.5 2.5 0 012 15.5V6.75a2 2 0 012-2h.5V4a1.5 1.5 0 011.5-1.5zm0 3.75H4v9.25c0 .28.22.5.5.5h11a.5.5 0 00.5-.5V6.25h-2.5V7a1 1 0 11-2 0v-.75h-5V7a1 1 0 11-2 0v-.75zm2.5 4a1 1 0 100 2h3a1 1 0 100-2h-3z" />
+              </svg>
+              Calendar
+            </NavLink>
+          )}
 
           {role !== 'guest' && (
             <NavLink to="/id" isActive={isIdActive}>
