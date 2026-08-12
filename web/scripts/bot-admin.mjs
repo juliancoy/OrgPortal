@@ -42,7 +42,7 @@ async function requestJson(url, init = {}) {
 async function main() {
   const args = parseArgs(process.argv.slice(2))
   const command = String(args._[0] || 'list').trim().toLowerCase()
-  const baseUrl = (String(args.base || process.env.ORGPORTAL_BASE_URL || 'https://dev.portal.arkavo.org')).replace(/\/+$/, '')
+  const baseUrl = (String(args.base || process.env.ORGPORTAL_BASE_URL || 'https://codecollective.us')).replace(/\/+$/, '')
   const apiKey = String(args.key || process.env.ORG_SYSADMIN_API_KEY || process.env.ORG_PAT || process.env.PIDP_PAT || '').trim()
   if (!apiKey) {
     throw new Error('Missing SysAdmin API key. Set ORG_SYSADMIN_API_KEY (or pass --key).')

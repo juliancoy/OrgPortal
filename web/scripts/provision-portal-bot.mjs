@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-const pidpBase = (process.env.PIDP_BASE_URL || 'https://dev.pidp.arkavo.org').replace(/\/+$/, '')
-const email = (process.env.PORTAL_BOT_EMAIL || 'portal-bot@arkavo.org').trim().toLowerCase()
+const pidpBase = (process.env.PIDP_BASE_URL || 'https://id.codecollective.us').replace(/\/+$/, '')
+const email = (process.env.PORTAL_BOT_EMAIL || 'portal-bot@example.com').trim().toLowerCase()
 const password = (process.env.PORTAL_BOT_PASSWORD || '').trim()
 const fullName = (process.env.PORTAL_BOT_NAME || 'Portal Bot').trim()
 
@@ -92,4 +92,3 @@ main().catch((err) => {
   console.error(err instanceof Error ? err.message : String(err))
   process.exit(1)
 })
-

@@ -50,6 +50,7 @@ type ProfileDraft = {
   firstName: string
   lastName: string
   displayName: string
+  birthDate: string
   bio: string
   avatarUrl: string
   addressLine1: string
@@ -71,6 +72,7 @@ function splitFullName(value: string) {
 export function UserProfilePage() {
   const { user, setUser, token, logout } = useAuth()
   const [fullName, setFullName] = useState('')
+  const [birthDate, setBirthDate] = useState('')
   const [bio, setBio] = useState('Interested in local policy and civic engagement.')
   const [avatarUrl, setAvatarUrl] = useState('')
   const [addressLine1, setAddressLine1] = useState('')
@@ -124,6 +126,7 @@ export function UserProfilePage() {
         }
         if (data.identity_data?.bio) setBio(data.identity_data.bio)
         if (data.identity_data?.avatar_url) setAvatarUrl(data.identity_data.avatar_url)
+        if (data.identity_data?.birth_date) setBirthDate(data.identity_data.birth_date)
         if (data.identity_data?.address_line1) setAddressLine1(data.identity_data.address_line1)
         if (data.identity_data?.address_line2) setAddressLine2(data.identity_data.address_line2)
         if (data.identity_data?.city) setCity(data.identity_data.city)
@@ -157,6 +160,7 @@ export function UserProfilePage() {
       else if (saved.firstName || saved.lastName) setFullName(`${saved.firstName || ''} ${saved.lastName || ''}`.trim())
       if (saved.bio) setBio(saved.bio)
       if (saved.avatarUrl) setAvatarUrl(saved.avatarUrl)
+      if (saved.birthDate) setBirthDate(saved.birthDate)
       if (saved.addressLine1) setAddressLine1(saved.addressLine1)
       if (saved.addressLine2) setAddressLine2(saved.addressLine2)
       if (saved.city) setCity(saved.city)
@@ -207,7 +211,7 @@ export function UserProfilePage() {
 
   useEffect(() => {
     if (status) setStatus(null)
-  }, [fullName, bio, addressLine1, addressLine2, city, state, zip, isRunningForOffice, officeTitle, campaignStatement, maslowNow, maslowFuture])
+  }, [fullName, birthDate, bio, addressLine1, addressLine2, city, state, zip, isRunningForOffice, officeTitle, campaignStatement, maslowNow, maslowFuture])
 
   useEffect(() => {
     if (!editorSource) {
@@ -259,6 +263,7 @@ export function UserProfilePage() {
       firstName: nameParts.firstName,
       lastName: nameParts.lastName,
       displayName: normalizedFullName || 'Anonymous',
+      birthDate,
       bio,
       avatarUrl,
       addressLine1,
@@ -285,6 +290,7 @@ export function UserProfilePage() {
           avatar_url: payload.avatarUrl || null,
           first_name: payload.firstName || null,
           last_name: payload.lastName || null,
+          birth_date: payload.birthDate || null,
           address_line1: payload.addressLine1,
           address_line2: payload.addressLine2,
           city: payload.city,
@@ -424,6 +430,7 @@ export function UserProfilePage() {
         avatar_url: nextAvatarUrl || null,
         first_name: nameParts.firstName || null,
         last_name: nameParts.lastName || null,
+        birth_date: birthDate || null,
         address_line1: addressLine1,
         address_line2: addressLine2,
         city,
@@ -616,6 +623,15 @@ export function UserProfilePage() {
             Address is required for petition signatures to be recognized by your state.
           </p>
           <div style={{ display: 'grid', gap: '0.6rem', marginTop: '0.6rem' }}>
+            <div>
+              <label className="muted" htmlFor="birth-date">
+                Birthday
+              </label>
+              <input id="birth-date" type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} style={{ width: '100%' }} />
+              <p className="muted" style={{ margin: '0.35rem 0 0' }}>
+                Insurance uses this birthday as the canonical value everywhere in the portal.
+              </p>
+            </div>
             <div>
               <label className="muted" htmlFor="address-line-1">
                 Address line 1
