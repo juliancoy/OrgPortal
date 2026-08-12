@@ -2,8 +2,6 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useAuth } from '../../app/AppProviders'
 import {
   LIFE_INSURANCE_SOURCE,
-  MAX_MEMBER_AGE,
-  MIN_MEMBER_AGE,
   estimateLifeInsuranceDisbursement,
   globalPopulationAgeBands,
 } from '../../domain/insurance/lifeInsuranceModel'
@@ -54,6 +52,7 @@ type InsuranceDashboard = {
   currency: string
   standard_benefit_dena: number
   attestation_threshold: number
+  profile_birth_date?: string | null
   enrollment: InsuranceEnrollment | null
   claim: InsuranceClaim | null
   members: InsuranceMember[]
@@ -61,7 +60,6 @@ type InsuranceDashboard = {
 
 type EnrollmentForm = {
   birth_date: string
-  age: string
   next_of_kin_user_id: string
   next_of_kin_relationship: string
   beneficiary_user_id: string
@@ -78,7 +76,6 @@ type DeathReportForm = {
 
 const emptyEnrollment: EnrollmentForm = {
   birth_date: '',
-  age: '',
   next_of_kin_user_id: '',
   next_of_kin_relationship: '',
   beneficiary_user_id: '',
@@ -128,6 +125,18 @@ function statusLabel(status: string) {
 
 function memberInitials(name: string) {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || '?'
+}
+
+function calculateAgeFromBirthDate(birthDate: string, today = new Date()): number | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) return null
+  const birth = new Date(`${birthDate}T00:00:00.000Z`)
+  if (Number.isNaN(birth.getTime())) return null
+  let age = today.getUTCFullYear() - birth.getUTCFullYear()
+  const birthdayNotReached =
+    today.getUTCMonth() < birth.getUTCMonth() ||
+    (today.getUTCMonth() === birth.getUTCMonth() && today.getUTCDate() < birth.getUTCDate())
+  if (birthdayNotReached) age -= 1
+  return age
 }
 
 function MemberPicker(props: {
@@ -235,18 +244,20 @@ export function LifeInsurancePage() {
 
   function applyDashboard(data: InsuranceDashboard, enrollmentDraft?: EnrollmentForm) {
     setDashboard(data)
+    const canonicalBirthDate = data.profile_birth_date || data.enrollment?.birth_date || ''
     if (enrollmentDraft) {
-      setEnrollment(enrollmentDraft)
+      setEnrollment({ ...enrollmentDraft, birth_date: canonicalBirthDate })
     } else if (data.enrollment) {
       setEnrollment({
-        birth_date: data.enrollment.birth_date,
-        age: String(data.enrollment.confirmed_age),
+        birth_date: canonicalBirthDate,
         next_of_kin_user_id: data.enrollment.next_of_kin_user_id,
         next_of_kin_relationship: data.enrollment.next_of_kin_relationship,
         beneficiary_user_id: data.enrollment.beneficiary_user_id || '',
         beneficiary_relationship: data.enrollment.beneficiary_relationship || '',
         accepted_terms: false,
       })
+    } else {
+      setEnrollment((current) => ({ ...current, birth_date: canonicalBirthDate }))
     }
   }
 
@@ -290,7 +301,6 @@ export function LifeInsurancePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...enrollment,
-          age: Number(enrollment.age),
           beneficiary_user_id: enrollment.beneficiary_user_id || null,
           beneficiary_relationship: enrollment.beneficiary_user_id ? enrollment.beneficiary_relationship : null,
         }),
@@ -299,8 +309,7 @@ export function LifeInsurancePage() {
       const data = (await response.json()) as InsuranceDashboard
       applyDashboard(data)
       const savedEnrollment = data.enrollment ? {
-        birth_date: data.enrollment.birth_date,
-        age: String(data.enrollment.confirmed_age),
+        birth_date: data.profile_birth_date || data.enrollment.birth_date,
         next_of_kin_user_id: data.enrollment.next_of_kin_user_id,
         next_of_kin_relationship: data.enrollment.next_of_kin_relationship,
         beneficiary_user_id: data.enrollment.beneficiary_user_id || '',
@@ -343,10 +352,10 @@ export function LifeInsurancePage() {
     }
   }
 
-  const parsedAge = Number(enrollment.age)
+  const parsedAge = calculateAgeFromBirthDate(enrollment.birth_date)
   let estimate = null
   try {
-    estimate = dashboard
+    estimate = dashboard && parsedAge !== null
       ? estimateLifeInsuranceDisbursement(parsedAge, dashboard.standard_benefit_dena)
       : null
   } catch {
@@ -388,30 +397,19 @@ export function LifeInsurancePage() {
           </div>
 
           <div className="life-insurance-field-grid">
-            <label htmlFor="insurance-birthday">
-              Birthday (required)
-              <input
-                id="insurance-birthday"
-                type="date"
-                required
-                value={enrollment.birth_date}
-                onChange={(event) => updateEnrollment({ ...enrollment, birth_date: event.target.value })}
-              />
-            </label>
-            <label htmlFor="insurance-age">
-              Current age (required)
-              <input
-                id="insurance-age"
-                type="number"
-                inputMode="numeric"
-                min={MIN_MEMBER_AGE}
-                max={MAX_MEMBER_AGE}
-                step="1"
-                required
-                value={enrollment.age}
-                onChange={(event) => updateEnrollment({ ...enrollment, age: event.target.value })}
-              />
-            </label>
+            <div className="life-insurance-profile-birthday" data-testid="insurance-profile-birthday">
+              <strong>Birthday on profile</strong>
+              <span>{enrollment.birth_date || 'Add your birthday on your profile before enrolling.'}</span>
+              <small>
+                This value comes from your profile and is used everywhere in the insurance flow.
+                {enrollment.birth_date ? ' Update it on your profile if it is wrong.' : ' Open your profile to add it.'}
+              </small>
+            </div>
+            <div className="life-insurance-profile-birthday" data-testid="insurance-derived-age">
+              <strong>Current age from profile birthday</strong>
+              <span>{parsedAge === null ? 'Unavailable' : `${parsedAge}`}</span>
+              <small>Age is derived automatically from your profile birthday. There is no separate age entry.</small>
+            </div>
           </div>
 
           <MemberPicker
@@ -469,7 +467,7 @@ export function LifeInsurancePage() {
               checked={enrollment.accepted_terms}
               onChange={(event) => updateEnrollment({ ...enrollment, accepted_terms: event.target.checked })}
             />
-            <span>I attest that my birthday, age, and beneficiary information are accurate.</span>
+            <span>I attest that my profile birthday and beneficiary information are accurate.</span>
           </label>
           <button type="submit" disabled={saving || loading}>{saving ? 'Saving…' : 'Save enrollment'}</button>
           {status ? <p className="life-insurance-form-status" role="status">{status}</p> : null}
@@ -483,11 +481,12 @@ export function LifeInsurancePage() {
               <strong className="life-insurance-amount">{formatDena(estimate.disbursement)}</strong>
               <div className="life-insurance-result-grid">
                 <div><span>Age-equity factor</span><strong>{(estimate.benefitFactor * 100).toFixed(1)}%</strong></div>
+                <div><span>Derived age</span><strong>{parsedAge}</strong></div>
                 <div><span>Program standard benefit</span><strong>{formatDena(estimate.standardBenefit)}</strong></div>
               </div>
               <p>The amount is frozen when the first consistent death report opens a claim.</p>
             </>
-          ) : <p>Enter a valid birthday and matching age to preview coverage.</p>}
+          ) : <p>Add a valid birthday on your profile to preview coverage.</p>}
           {dashboard?.enrollment ? (
             <div className="life-insurance-designation">
               <strong>Current recipient order</strong>
@@ -571,7 +570,7 @@ export function LifeInsurancePage() {
         </div>
         <div className="life-insurance-bars" role="img" aria-label="Global population percentage by five-year age group">
           {[...AGE_BANDS].reverse().map((band) => {
-            const current = Number.isInteger(parsedAge) && parsedAge >= band.startAge && parsedAge <= band.endAge
+            const current = parsedAge !== null && parsedAge >= band.startAge && parsedAge <= band.endAge
             return (
               <div className={`life-insurance-bar-row ${current ? 'current' : ''}`} key={band.label}>
                 <span>{band.label}</span>
@@ -583,7 +582,7 @@ export function LifeInsurancePage() {
         </div>
         <p className="life-insurance-source">
           Source: <a href={LIFE_INSURANCE_SOURCE.url} target="_blank" rel="noreferrer">{LIFE_INSURANCE_SOURCE.name}</a>.
-          Birthday determines age; the separately required age field must match it.
+          Birthday determines age, and the insurance interface uses the birthday saved on your profile.
         </p>
       </section>
     </div>

@@ -73,7 +73,6 @@ type ClaimRow = {
 
 export type EnrollmentInput = {
   birth_date: string;
-  age: number;
   next_of_kin_user_id: string;
   next_of_kin_relationship: string;
   beneficiary_user_id: string | null;
@@ -136,14 +135,37 @@ export function payoutForAge(age: number, standardBenefit: number): number {
   return Math.round(standardBenefit * benefitFactorForAge(age) * 100) / 100;
 }
 
-export function validateEnrollmentInput(payload: Record<string, unknown>, today: string): EnrollmentInput {
-  const birthDate = dateOnly(payload.birth_date, "Birthday");
+function normalizedProfileBirthDate(value: unknown, fieldName = "Profile birthday"): string | null {
+  const text = String(value || "").trim();
+  if (!text) return null;
+  return dateOnly(text, fieldName);
+}
+
+function safeProfileBirthDate(value: unknown): string | null {
+  try {
+    return normalizedProfileBirthDate(value);
+  } catch {
+    return null;
+  }
+}
+
+export function validateEnrollmentInput(
+  payload: Record<string, unknown>,
+  today: string,
+  profileBirthDateValue: unknown,
+): EnrollmentInput {
+  const profileBirthDate = normalizedProfileBirthDate(profileBirthDateValue);
+  if (!profileBirthDate) {
+    throw new LifeInsuranceError(400, "Add your birthday to your profile before enrolling in the life benefit.");
+  }
+  const requestedBirthDate = payload.birth_date == null ? profileBirthDate : dateOnly(payload.birth_date, "Birthday");
+  if (requestedBirthDate !== profileBirthDate) {
+    throw new LifeInsuranceError(400, "Insurance enrollment uses the birthday saved on your profile.");
+  }
+  const birthDate = profileBirthDate;
   if (birthDate > today) throw new LifeInsuranceError(400, "Birthday cannot be in the future.");
   const calculatedAge = calculateAgeOnDate(birthDate, today);
-  const confirmedAge = Number(payload.age);
-  if (!Number.isInteger(confirmedAge)) throw new LifeInsuranceError(400, "Age is required as a whole number.");
-  if (confirmedAge !== calculatedAge) throw new LifeInsuranceError(400, `Age must match the birthday (${calculatedAge}).`);
-  benefitFactorForAge(confirmedAge);
+  benefitFactorForAge(calculatedAge);
   const nextOfKinUserId = requiredText(payload.next_of_kin_user_id, "Next of kin", 120);
   const beneficiaryUserId = optionalText(payload.beneficiary_user_id, 120);
   const nextOfKinRelationship = requiredText(payload.next_of_kin_relationship, "Next-of-kin relationship", 80);
@@ -153,7 +175,6 @@ export function validateEnrollmentInput(payload: Record<string, unknown>, today:
   if (payload.accepted_terms !== true) throw new LifeInsuranceError(400, "You must attest that the enrollment information is accurate.");
   return {
     birth_date: birthDate,
-    age: confirmedAge,
     next_of_kin_user_id: nextOfKinUserId,
     next_of_kin_relationship: nextOfKinRelationship,
     beneficiary_user_id: beneficiaryUserId,
@@ -207,7 +228,7 @@ async function claimForDeceased(db: D1Database, userId: string): Promise<ClaimRo
   ).bind(userId).first<ClaimRow>();
 }
 
-export async function insuranceDashboard(db: D1Database, userId: string) {
+export async function insuranceDashboard(db: D1Database, userId: string, profileBirthDateValue?: unknown) {
   const [programSettings, enrollment, claim, memberRows] = await Promise.all([
     settings(db),
     db.prepare("SELECT * FROM life_insurance_enrollments WHERE user_id = ?").bind(userId).first<EnrollmentRow>(),
@@ -227,13 +248,16 @@ export async function insuranceDashboard(db: D1Database, userId: string) {
   const members = memberRows.results || [];
   const memberName = (targetId: string | null | undefined) => members.find((member) => member.user_id === targetId)?.name || null;
   const memberPhoto = (targetId: string | null | undefined) => members.find((member) => member.user_id === targetId)?.photo_url || null;
+  const profileBirthDate = safeProfileBirthDate(profileBirthDateValue);
   return {
     currency: LIFE_INSURANCE_CURRENCY,
     standard_benefit_dena: Number(programSettings.standard_benefit_dena),
     attestation_threshold: Number(programSettings.attestation_threshold),
+    profile_birth_date: profileBirthDate,
     enrollment: enrollment ? {
       ...enrollment,
-      confirmed_age: Number(enrollment.confirmed_age),
+      birth_date: profileBirthDate || enrollment.birth_date,
+      confirmed_age: calculateAgeOnDate(profileBirthDate || enrollment.birth_date, new Date().toISOString().slice(0, 10)),
       next_of_kin_name: memberName(enrollment.next_of_kin_user_id),
       next_of_kin_photo_url: memberPhoto(enrollment.next_of_kin_user_id),
       beneficiary_name: memberName(enrollment.beneficiary_user_id),
@@ -248,10 +272,11 @@ export async function saveInsuranceEnrollment(
   db: D1Database,
   userId: string,
   payload: Record<string, unknown>,
+  profileBirthDateValue: unknown,
   timestamp = new Date().toISOString(),
 ) {
   const today = timestamp.slice(0, 10);
-  const input = validateEnrollmentInput(payload, today);
+  const input = validateEnrollmentInput(payload, today, profileBirthDateValue);
   const existingClaim = await claimForDeceased(db, userId);
   if (existingClaim) throw new LifeInsuranceError(409, "Enrollment cannot change after a death claim has been opened.");
   if (input.next_of_kin_user_id === userId || input.beneficiary_user_id === userId) {
@@ -279,7 +304,7 @@ export async function saveInsuranceEnrollment(
   ).bind(
     userId,
     input.birth_date,
-    input.age,
+    calculateAgeOnDate(input.birth_date, today),
     input.next_of_kin_user_id,
     input.next_of_kin_relationship,
     input.beneficiary_user_id,
@@ -289,7 +314,7 @@ export async function saveInsuranceEnrollment(
     timestamp,
   ).run();
 
-  return insuranceDashboard(db, userId);
+  return insuranceDashboard(db, userId, input.birth_date);
 }
 
 async function attemptClaimPayout(db: D1Database, claim: ClaimRow, threshold: number, timestamp: string) {
