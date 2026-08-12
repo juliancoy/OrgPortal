@@ -1,4 +1,5 @@
 import { useDeferredValue, useEffect, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
 import { refreshRuntimeTokenFromSession } from '../../infrastructure/auth/sessionToken'
 
@@ -68,6 +69,13 @@ type HealthService = {
   timezone: string
   slot_minutes: number
   available_to_all: boolean
+  host_type: 'shared' | 'individual' | 'org'
+  host_user_id?: string | null
+  host_user_name?: string | null
+  host_org_id?: string | null
+  host_org_name?: string | null
+  google_calendar_sync?: boolean
+  google_block_busy?: boolean
   hours: Array<{ weekday: number; starts_at: string; ends_at: string }>
 }
 type Appointment = {
@@ -107,12 +115,60 @@ type Dashboard = {
   code_catalog: { diagnoses: DiagnosisEntry[]; claim_codes: ClaimCodeEntry[] }
 }
 
+function normalizeDashboard(data: Dashboard): Dashboard {
+  return {
+    ...data,
+    claims: Array.isArray(data.claims) ? data.claims : [],
+    services: Array.isArray(data.services) ? data.services : [],
+    appointments: Array.isArray(data.appointments) ? data.appointments : [],
+    analyses: Array.isArray(data.analyses) ? data.analyses : [],
+    collaborative_diagnoses: Array.isArray(data.collaborative_diagnoses) ? data.collaborative_diagnoses : [],
+    history: Array.isArray(data.history) ? data.history : [],
+    code_catalog: {
+      diagnoses: Array.isArray(data.code_catalog?.diagnoses) ? data.code_catalog.diagnoses : [],
+      claim_codes: Array.isArray(data.code_catalog?.claim_codes) ? data.code_catalog.claim_codes : [],
+    },
+  }
+}
+
+function normalizeDiagnosisBoard(data: DiagnosisBoard): DiagnosisBoard {
+  return {
+    ...data,
+    diagnoses: Array.isArray(data.diagnoses) ? data.diagnoses : [],
+    code_catalog: {
+      diagnoses: Array.isArray(data.code_catalog?.diagnoses) ? data.code_catalog.diagnoses : [],
+    },
+  }
+}
+
 const emptyLine = (): ClaimLineForm => ({
   code_system: 'HCPCS_LEVEL_II', code: '', modifiers: '', units: '1', billed_amount_usd: '', search: '',
 })
 
 function label(value: string) {
   return value.replaceAll('_', ' ').replace(/\b\w/g, (character) => character.toUpperCase())
+}
+
+function weekdayLabel(value: number) {
+  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][value] || String(value)
+}
+
+function serviceHostLabel(service: HealthService) {
+  if (service.host_type === 'individual' && service.host_user_name) return service.host_user_name
+  if (service.host_type === 'org' && service.host_org_name) return service.host_org_name
+  return 'Shared service'
+}
+
+function slotOptionsForService(service: HealthService | null) {
+  const firstWindow = service?.hours[0]
+  if (!firstWindow) return []
+  const startMinutes = Number(firstWindow.starts_at.slice(0, 2)) * 60 + Number(firstWindow.starts_at.slice(3, 5))
+  const endMinutes = Number(firstWindow.ends_at.slice(0, 2)) * 60 + Number(firstWindow.ends_at.slice(3, 5))
+  const count = Math.max(1, Math.floor((endMinutes - startMinutes) / service.slot_minutes))
+  return Array.from({ length: count }, (_, index) => {
+    const minutes = startMinutes + index * service.slot_minutes
+    return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
+  })
 }
 
 function fuzzyScore(query: string, candidate: string) {
@@ -246,7 +302,7 @@ export function HealthInsurancePage() {
   const [claimService, setClaimService] = useState('')
   const [appointmentService, setAppointmentService] = useState('')
   const [appointmentDate, setAppointmentDate] = useState('')
-  const [appointmentTime, setAppointmentTime] = useState('13:00')
+  const [appointmentTime, setAppointmentTime] = useState('14:00')
   const [appointmentAttested, setAppointmentAttested] = useState(false)
   const [diagnosisSubmitQuery, setDiagnosisSubmitQuery] = useState('')
   const [diagnosisSubmitCodes, setDiagnosisSubmitCodes] = useState<string[]>([])
@@ -280,7 +336,7 @@ export function HealthInsurancePage() {
   async function loadDashboard() {
     const response = await authenticatedFetch('/api/health-insurance')
     if (!response.ok) throw new Error(await responseDetail(response, 'Unable to load health-benefit record.'))
-    const data = (await response.json()) as Dashboard
+    const data = normalizeDashboard((await response.json()) as Dashboard)
     setDashboard(data)
     if (!appointmentService && data.services[0]) setAppointmentService(data.services[0].id)
     if (!claimService && data.services[0]) setClaimService(data.services[0].id)
@@ -304,7 +360,7 @@ export function HealthInsurancePage() {
   async function loadDiagnosisBoard(patientUserId: string) {
     const response = await authenticatedFetch(`/api/health-insurance/diagnoses?patient_user_id=${encodeURIComponent(patientUserId)}`)
     if (!response.ok) throw new Error(await responseDetail(response, 'Unable to load diagnosis board.'))
-    setDiagnosisBoard((await response.json()) as DiagnosisBoard)
+    setDiagnosisBoard(normalizeDiagnosisBoard((await response.json()) as DiagnosisBoard))
   }
 
   useEffect(() => {
@@ -324,6 +380,12 @@ export function HealthInsurancePage() {
     if (!selectedPatientUserId) return
     loadDiagnosisBoard(selectedPatientUserId).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'Unable to load diagnosis board.'))
   }, [selectedPatientUserId, token])
+
+  useEffect(() => {
+    const selected = dashboard?.services.find((service) => service.id === appointmentService) || dashboard?.services[0] || null
+    const firstSlot = slotOptionsForService(selected)[0]
+    if (firstSlot) setAppointmentTime(firstSlot)
+  }, [appointmentService, dashboard])
 
   async function saveEnrollment(event: FormEvent) {
     event.preventDefault()
@@ -475,6 +537,12 @@ export function HealthInsurancePage() {
 
   if (loading) return <main className="health-insurance-page"><p>Loading health-benefit intake…</p></main>
 
+  const dashboardDiagnoses = dashboard?.code_catalog?.diagnoses ?? []
+  const claimCodes = dashboard?.code_catalog?.claim_codes ?? []
+  const diagnosisBoardDiagnoses = diagnosisBoard?.code_catalog?.diagnoses ?? dashboardDiagnoses
+  const appointmentServiceEntry = dashboard?.services.find((service) => service.id === appointmentService) || dashboard?.services[0] || null
+  const appointmentSlotOptions = slotOptionsForService(appointmentServiceEntry)
+
   return (
     <main className="health-insurance-page">
       <section className="portal-hero health-insurance-hero">
@@ -508,7 +576,7 @@ export function HealthInsurancePage() {
             setQuery={setSuspectedQuery}
             selectedCodes={suspectedDiagnoses}
             setSelectedCodes={setSuspectedDiagnoses}
-            entries={dashboard?.code_catalog.diagnoses || []}
+            entries={dashboardDiagnoses}
           />
           <label>Describe your medical issues
             <textarea value={issueSummary} onChange={(event) => setIssueSummary(event.target.value)} rows={6} placeholder="Describe symptoms, chronic issues, recent changes, or anything else relevant." />
@@ -538,7 +606,7 @@ export function HealthInsurancePage() {
             setQuery={setConfirmedQuery}
             selectedCodes={confirmedDiagnoses}
             setSelectedCodes={setConfirmedDiagnoses}
-            entries={dashboard?.code_catalog.diagnoses || []}
+            entries={dashboardDiagnoses}
           />
           <DiagnosisSelector
             title="Patient suspected diagnoses"
@@ -546,7 +614,7 @@ export function HealthInsurancePage() {
             setQuery={setClaimSuspectedQuery}
             selectedCodes={claimSuspectedDiagnoses}
             setSelectedCodes={setClaimSuspectedDiagnoses}
-            entries={dashboard?.code_catalog.diagnoses || []}
+            entries={dashboardDiagnoses}
           />
           <label>Describe your medical issues
             <textarea value={claimIssueSummary} onChange={(event) => setClaimIssueSummary(event.target.value)} rows={5} placeholder="Describe what the member is experiencing right now." />
@@ -554,7 +622,7 @@ export function HealthInsurancePage() {
           <div className="health-insurance-lines">
             <div className="health-insurance-line-heading"><h3>Claim lines</h3><button type="button" className="portal-button-secondary" onClick={() => setLines((current) => [...current, emptyLine()])}>Add line</button></div>
             {lines.map((line, index) => {
-              const matches = searchClaimCodes(dashboard?.code_catalog.claim_codes || [], line.search, line.code_system)
+              const matches = searchClaimCodes(claimCodes, line.search, line.code_system)
               return (
                 <fieldset className="health-insurance-line" key={index}>
                   <legend>Line {index + 1}</legend>
@@ -598,7 +666,7 @@ export function HealthInsurancePage() {
           <h2>Appointment calendar</h2>
           <p>{dashboard?.service_access}</p>
           <div className="health-insurance-services">
-            {dashboard?.services.map((service) => <article key={service.id}><strong>{service.name}</strong><span>{service.description}</span><small>Weekdays, 13:00–21:00 UTC</small></article>)}
+            {dashboard?.services.map((service) => <article key={service.id}><strong>{service.name}</strong><span>{service.description}</span><small>{serviceHostLabel(service)} · {service.hours.map((hour) => `${weekdayLabel(hour.weekday)} ${hour.starts_at}-${hour.ends_at}`).join(', ')} {service.timezone}</small></article>)}
           </div>
         </div>
         <form className="portal-form health-insurance-scheduler" onSubmit={scheduleAppointment}>
@@ -607,11 +675,7 @@ export function HealthInsurancePage() {
           </select></label>
           <label>Date<input type="date" value={appointmentDate} onChange={(event) => setAppointmentDate(event.target.value)} required /></label>
           <label>Time (UTC)<select value={appointmentTime} onChange={(event) => setAppointmentTime(event.target.value)}>
-            {Array.from({ length: 16 }, (_, index) => {
-              const minutes = 13 * 60 + index * 30
-              const value = `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
-              return <option value={value} key={value}>{value}</option>
-            })}
+            {appointmentSlotOptions.map((value) => <option value={value} key={value}>{value}</option>)}
           </select></label>
           <label className="health-insurance-check"><input type="checkbox" checked={appointmentAttested} onChange={(event) => setAppointmentAttested(event.target.checked)} required /><span>Request this published slot.</span></label>
           <button type="submit" disabled={!dashboard?.services.length || submitting}>Request appointment</button>
@@ -624,6 +688,26 @@ export function HealthInsurancePage() {
               <div><span>{label(appointment.status)}</span>{['requested', 'confirmed'].includes(appointment.status) ? <button type="button" className="portal-button-secondary" onClick={() => cancelAppointment(appointment.id)}>Cancel</button> : null}</div>
             </article>
           )) : <p>No appointments requested.</p>}
+        </div>
+      </section>
+
+      <section className="portal-card health-insurance-calendar">
+        <div className="health-insurance-calendar-copy">
+          <span className="health-insurance-eyebrow">Provider scheduling</span>
+          <h2>Separate provider portal</h2>
+          <p>Provider availability publishing, Google Calendar connection, and booking intake now live in their own portal instead of the member record workflow.</p>
+          <p>Use it to publish recurring weekday slots after 14:00 UTC and manage bookings created from this health-benefit page.</p>
+        </div>
+        <div className="health-insurance-appointments">
+          <article>
+            <div>
+              <strong>Open provider scheduling</strong>
+              <span>Connect Google Calendar, publish recurring availability, and review booked sessions.</span>
+            </div>
+            <div>
+              <Link className="portal-button-secondary" to="/provider-scheduling">Go to provider portal</Link>
+            </div>
+          </article>
         </div>
       </section>
 
@@ -655,7 +739,7 @@ export function HealthInsurancePage() {
             setQuery={setDiagnosisSubmitQuery}
             selectedCodes={diagnosisSubmitCodes}
             setSelectedCodes={setDiagnosisSubmitCodes}
-            entries={diagnosisBoard?.code_catalog.diagnoses || dashboard?.code_catalog.diagnoses || []}
+            entries={diagnosisBoardDiagnoses}
           />
           <label>Contribution note
             <textarea value={diagnosisSubmitNote} onChange={(event) => setDiagnosisSubmitNote(event.target.value)} rows={4} placeholder="Optional context for this diagnosis contribution." />

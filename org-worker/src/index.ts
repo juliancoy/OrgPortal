@@ -12,11 +12,14 @@ import {
   cancelHealthInsuranceAppointment,
   healthInsuranceDiagnosisBoard,
   healthInsuranceDashboard,
+  healthInsuranceProviderDashboard,
+  publishHealthInsuranceService,
   requestHealthInsuranceAnalysis,
   scheduleHealthInsuranceAppointment,
   saveHealthInsuranceEnrollment,
   submitHealthInsuranceDiagnosis,
   submitHealthInsuranceClaim,
+  validateHealthInsuranceServicePublish,
 } from "./healthInsurance";
 import {
   OrganizationIamError,
@@ -134,6 +137,8 @@ type EventRow = {
   location: string | null;
   source_url: string | null;
   image_url: string | null;
+  host_user_id: string | null;
+  host_user_name: string | null;
   host_org_id: string | null;
   host_org_name: string | null;
   host_org_source_url: string | null;
@@ -686,6 +691,25 @@ async function currentUser(env: Env, request: Request): Promise<PidpUser> {
   return user;
 }
 
+async function pidpServiceJson<T>(env: Env, path: string, payload: Record<string, unknown>): Promise<T> {
+  const base = (env.PIDP_BASE_URL || "https://id.codecollective.us").replace(/\/+$/g, "");
+  const token = String(env.PIDP_SERVICE_TOKEN || "").trim();
+  if (!token) fail(500, "PIDP service token is not configured");
+  const response = await fetch(`${base}${path}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    fail(response.status === 404 || response.status === 409 ? 409 : 502, detail || "PIDP service request failed");
+  }
+  return response.json() as Promise<T>;
+}
+
 async function uniqueSlug(db: D1Database, desired: string, excludingUserId?: string) {
   const base = slugify(desired);
   for (let i = 0; i < 100; i += 1) {
@@ -862,6 +886,9 @@ function mapEvent(env: Env, request: Request, row: EventRow) {
     location: row.location,
     source_url: row.source_url,
     image_url: row.image_url,
+    host_type: row.host_org_id ? "org" : row.host_user_id ? "individual" : "unclaimed",
+    host_user_id: row.host_user_id,
+    host_user_name: row.host_user_name,
     host_org_id: row.host_org_id,
     host_org_name: row.organization_name || row.host_org_name,
     organization_name: row.organization_name || row.host_org_name,
@@ -1263,8 +1290,8 @@ async function upsertEvent(db: D1Database, raw: Record<string, unknown>) {
   await db.prepare(
     `INSERT INTO events
       (id, ingest_key, title, slug, description, starts_at, ends_at, location, source_url, image_url,
-       host_org_id, host_org_name, host_org_source_url, tags, city, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       host_user_id, host_user_name, host_org_id, host_org_name, host_org_source_url, tags, city, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(ingest_key) DO UPDATE SET
       title = excluded.title,
       description = excluded.description,
@@ -1273,6 +1300,8 @@ async function upsertEvent(db: D1Database, raw: Record<string, unknown>) {
       location = excluded.location,
       source_url = excluded.source_url,
       image_url = excluded.image_url,
+      host_user_id = excluded.host_user_id,
+      host_user_name = excluded.host_user_name,
       host_org_id = excluded.host_org_id,
       host_org_name = excluded.host_org_name,
       host_org_source_url = excluded.host_org_source_url,
@@ -1291,6 +1320,8 @@ async function upsertEvent(db: D1Database, raw: Record<string, unknown>) {
       stringField(raw, "location", 1000),
       cleanUrl(raw.source_url),
       cleanPublicAssetUrl(raw.image_url),
+      stringField(raw, "host_user_id", 255),
+      stringField(raw, "host_user_name", 255),
       hostOrg?.id || null,
       stringField(raw, "host_org_name", 255),
       hostOrgSourceUrl,
@@ -2533,14 +2564,42 @@ app.get("/api/network/events", async (c) => {
 });
 
 app.post("/api/network/events", async (c) => {
-  await currentUser(c.env, c.req.raw);
+  const user = await currentUser(c.env, c.req.raw);
   const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
   const title = stringField(payload, "title", 500) || stringField(payload, "name", 500);
   if (!title) fail(400, "title is required");
-  const row = await upsertEvent(c.env.DB, {
+  const hostType = String(payload.host_type || "unclaimed").trim().toLowerCase();
+  const eventPayload: Record<string, unknown> = {
     ...payload,
     title,
     ingest_key: stringField(payload, "ingest_key", 255) || crypto.randomUUID(),
+  };
+  if (hostType === "individual") {
+    eventPayload.host_user_id = user.id;
+    eventPayload.host_user_name = userName(user);
+    eventPayload.host_org_id = null;
+    eventPayload.host_org_name = null;
+    eventPayload.host_org_source_url = null;
+  } else if (hostType === "org") {
+    const requestedOrgId = String(payload.host_org_id || "").trim();
+    if (!requestedOrgId) fail(400, "host_org_id is required for org-hosted events");
+    const organization = await organizationByIdOrSlug(c.env.DB, requestedOrgId);
+    if (!organization) fail(404, "Organization not found");
+    await authorizeOrganization(c.env.DB, organizationActor(user, c.env), "manage", organization.id);
+    eventPayload.host_user_id = null;
+    eventPayload.host_user_name = null;
+    eventPayload.host_org_id = organization.id;
+    eventPayload.host_org_source_url = organization.source_url || null;
+    eventPayload.host_org_name = organization.name;
+  } else {
+    eventPayload.host_user_id = null;
+    eventPayload.host_user_name = null;
+    eventPayload.host_org_id = null;
+    eventPayload.host_org_name = null;
+    eventPayload.host_org_source_url = null;
+  }
+  const row = await upsertEvent(c.env.DB, {
+    ...eventPayload,
   });
   return c.json(mapEvent(c.env, c.req.raw, row!), 201);
 });
@@ -2748,14 +2807,14 @@ app.get("/api/network/users", async (c) => {
 app.get("/api/life-insurance", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   await accountForUser(c.env.DB, user);
-  return c.json(await insuranceDashboard(c.env.DB, user.id));
+  return c.json(await insuranceDashboard(c.env.DB, user.id, user.identity_data?.birth_date));
 });
 
 app.put("/api/life-insurance/enrollment", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   await accountForUser(c.env.DB, user);
   const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
-  return c.json(await saveInsuranceEnrollment(c.env.DB, user.id, payload));
+  return c.json(await saveInsuranceEnrollment(c.env.DB, user.id, payload, user.identity_data?.birth_date));
 });
 
 app.post("/api/life-insurance/death-reports", async (c) => {
@@ -2769,6 +2828,11 @@ app.post("/api/life-insurance/death-reports", async (c) => {
 app.get("/api/health-insurance", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   return c.json(await healthInsuranceDashboard(c.env.DB, user.id));
+});
+
+app.get("/api/health-insurance/provider", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  return c.json(await healthInsuranceProviderDashboard(c.env.DB, user.id));
 });
 
 app.put("/api/health-insurance/enrollment", async (c) => {
@@ -2786,7 +2850,50 @@ app.post("/api/health-insurance/claims", async (c) => {
 app.post("/api/health-insurance/appointments", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
-  return c.json(await scheduleHealthInsuranceAppointment(c.env.DB, user.id, payload), 201);
+  const serviceId = String(payload.service_id || "").trim();
+  const service = await c.env.DB.prepare(
+    `SELECT id, name, description, host_user_id,
+            slot_minutes,
+            COALESCE(google_calendar_sync, 0) AS google_calendar_sync,
+            COALESCE(google_block_busy, 0) AS google_block_busy
+       FROM health_insurance_services
+      WHERE id = ? AND active = 1 AND available_to_all = 1`,
+  ).bind(serviceId).first<{
+    id: string;
+    name: string;
+    description: string;
+    host_user_id: string | null;
+    slot_minutes: number;
+    google_calendar_sync: number;
+    google_block_busy: number;
+  }>();
+  const appointment = await scheduleHealthInsuranceAppointment(c.env.DB, user.id, payload);
+  if (service?.host_user_id && service.google_calendar_sync) {
+    try {
+      if (service.google_block_busy) {
+        const busy = await pidpServiceJson<{ busy: boolean }>(c.env, "/service/google-calendar/busy-check", {
+          owner_user_id: service.host_user_id,
+          starts_at: appointment?.starts_at,
+          ends_at: appointment?.ends_at,
+        });
+        if (busy.busy) fail(409, "That appointment conflicts with the host's Google Calendar.");
+      }
+      await pidpServiceJson(c.env, "/service/google-calendar/bookings", {
+        owner_user_id: service.host_user_id,
+        external_service_id: service.id,
+        service_name: service.name,
+        service_description: service.description,
+        starts_at: appointment?.starts_at,
+        ends_at: appointment?.ends_at,
+        attendee_name: userName(user),
+        attendee_email: user.email || null,
+      });
+    } catch (error) {
+      await c.env.DB.prepare("DELETE FROM health_insurance_appointments WHERE id = ? AND user_id = ?").bind(String(appointment?.id || ""), user.id).run();
+      throw error;
+    }
+  }
+  return c.json(appointment, 201);
 });
 
 app.post("/api/health-insurance/appointments/:appointmentId/cancel", async (c) => {
@@ -3370,7 +3477,72 @@ app.post("/api/governance/motions/:motionId/comments", async (c) => {
 
 app.get("/api/network/contact/:slug", async (c) => c.json(await publicContact(c.env, c.req.raw, c.req.param("slug"))));
 app.get("/api/network/users/public/:slug", async (c) => c.json(await publicContact(c.env, c.req.raw, c.req.param("slug"))));
-app.get("/api/network/users/public/:slug/events", (c) => c.json([]));
+app.get("/api/network/users/public/:slug/events", async (c) => {
+  const contact = await publicContact(c.env, c.req.raw, c.req.param("slug"));
+  const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "60", 10) || 60, 200));
+  const upcomingOnly = (c.req.query("upcoming_only") || "true").toLowerCase() !== "false";
+  const rows = await c.env.DB.prepare(
+    `SELECT e.*, o.name AS organization_name
+     FROM events e
+     LEFT JOIN organizations o ON o.id = e.host_org_id
+     WHERE e.host_user_id = ?
+       AND (? = 0 OR e.starts_at IS NULL OR e.starts_at >= datetime('now'))
+     ORDER BY COALESCE(e.starts_at, e.created_at) ASC
+     LIMIT ?`,
+  ).bind(contact.user_id, upcomingOnly ? 1 : 0, limit).all<EventRow>();
+  return c.json((rows.results || []).map((row) => mapEvent(c.env, c.req.raw, row)));
+});
+
+app.post("/api/health-insurance/services", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  const requestedHostType = String(payload.host_type || "individual").trim().toLowerCase();
+  let host;
+  if (requestedHostType === "org") {
+    const requestedOrgId = String(payload.host_org_id || "").trim();
+    if (!requestedOrgId) fail(400, "host_org_id is required");
+    const organization = await organizationByIdOrSlug(c.env.DB, requestedOrgId);
+    if (!organization) fail(404, "Organization not found");
+    await authorizeOrganization(c.env.DB, organizationActor(user, c.env), "manage", organization.id);
+    host = {
+      host_type: "org" as const,
+      host_user_id: null,
+      host_user_name: null,
+      host_org_id: organization.id,
+      host_org_name: organization.name,
+    };
+  } else {
+    host = {
+      host_type: "individual" as const,
+      host_user_id: user.id,
+      host_user_name: userName(user),
+      host_org_id: null,
+      host_org_name: null,
+    };
+  }
+  const service = await publishHealthInsuranceService(c.env.DB, validateHealthInsuranceServicePublish(payload, host));
+  if (service?.host_user_id && Number((service as { google_calendar_sync?: number | boolean }).google_calendar_sync || 0)) {
+    try {
+      await pidpServiceJson(c.env, "/service/google-calendar/availability", {
+        owner_user_id: service.host_user_id,
+        external_service_id: service.id,
+        summary: service.name,
+        description: service.description,
+        timezone: service.timezone,
+        weekdays: Array.isArray(payload.weekdays) ? payload.weekdays : [],
+        starts_at: payload.starts_at,
+        ends_at: payload.ends_at,
+      });
+    } catch (error) {
+      await c.env.DB.batch([
+        c.env.DB.prepare("DELETE FROM health_insurance_service_hours WHERE service_id = ?").bind(service.id),
+        c.env.DB.prepare("DELETE FROM health_insurance_services WHERE id = ?").bind(service.id),
+      ]);
+      throw error;
+    }
+  }
+  return c.json(service, 201);
+});
 
 app.post("/api/network/chat/bootstrap", async (c) => {
   await currentUser(c.env, c.req.raw);

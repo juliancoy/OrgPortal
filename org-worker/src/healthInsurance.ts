@@ -63,6 +63,13 @@ type ServiceRow = {
   slot_minutes: number;
   capacity_per_slot: number;
   available_to_all: number;
+  host_type: "shared" | "individual" | "org";
+  host_user_id: string | null;
+  host_user_name: string | null;
+  host_org_id: string | null;
+  host_org_name: string | null;
+  google_calendar_sync: number;
+  google_block_busy: number;
 };
 
 type ServiceHoursRow = { service_id: string; weekday: number; starts_at: string; ends_at: string };
@@ -75,6 +82,12 @@ type AppointmentRow = {
   ends_at: string;
   status: string;
   requested_at: string;
+};
+
+type ProviderAppointmentRow = AppointmentRow & {
+  attendee_user_id: string;
+  attendee_name: string | null;
+  attendee_email: string | null;
 };
 
 type ProfileUpdateRow = {
@@ -166,6 +179,28 @@ export type HealthInsuranceDiagnosisSubmissionInput = {
   note: string;
 };
 
+export type HealthInsuranceServiceHost = {
+  host_type: "shared" | "individual" | "org";
+  host_user_id: string | null;
+  host_user_name: string | null;
+  host_org_id: string | null;
+  host_org_name: string | null;
+};
+
+export type HealthInsuranceServicePublishInput = HealthInsuranceServiceHost & {
+  name: string;
+  description: string;
+  timezone: string;
+  slot_minutes: number;
+  capacity_per_slot: number;
+  available_to_all: true;
+  weekdays: number[];
+  starts_at: string;
+  ends_at: string;
+  google_calendar_sync: boolean;
+  google_block_busy: boolean;
+};
+
 function jsonArray(value: unknown): string[] {
   if (Array.isArray(value)) return value.map((item) => String(item || "").trim()).filter(Boolean);
   return [];
@@ -198,6 +233,66 @@ function normalizeIssueSummary(value: unknown): string {
   const summary = String(value || "").trim();
   if (summary.length > 4_000) throw new HealthInsuranceError(400, "Issue description must be 4,000 characters or fewer.");
   return summary;
+}
+
+function timeOfDay(value: unknown, fieldLabel: string): string {
+  const text = String(value || "").trim();
+  if (!/^\d{2}:\d{2}$/.test(text)) throw new HealthInsuranceError(400, `${fieldLabel} must use HH:MM.`);
+  const [hours, minutes] = text.split(":").map((part) => Number(part));
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+    throw new HealthInsuranceError(400, `${fieldLabel} must be a valid time.`);
+  }
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function serviceWeekdays(value: unknown): number[] {
+  if (!Array.isArray(value)) throw new HealthInsuranceError(400, "Choose at least one weekday.");
+  const weekdays = value
+    .map((item) => Number(item))
+    .filter((item) => Number.isInteger(item) && item >= 1 && item <= 5);
+  if (!weekdays.length) throw new HealthInsuranceError(400, "Choose at least one weekday.");
+  if (new Set(weekdays).size !== weekdays.length) throw new HealthInsuranceError(400, "Weekdays cannot contain duplicates.");
+  return weekdays.sort((left, right) => left - right);
+}
+
+function serviceTimezone(value: unknown): string {
+  const timezone = String(value || "").trim() || "UTC";
+  try {
+    Intl.DateTimeFormat("en-US", { timeZone: timezone }).format(new Date("2026-08-11T00:00:00.000Z"));
+  } catch {
+    throw new HealthInsuranceError(400, "Choose a valid IANA timezone.");
+  }
+  return timezone;
+}
+
+function cleanServiceHost(value: HealthInsuranceServiceHost): HealthInsuranceServiceHost {
+  if (value.host_type === "individual") {
+    if (!value.host_user_id) throw new HealthInsuranceError(400, "Individual-hosted services require a host user.");
+    return {
+      host_type: "individual",
+      host_user_id: value.host_user_id,
+      host_user_name: String(value.host_user_name || "").trim() || null,
+      host_org_id: null,
+      host_org_name: null,
+    };
+  }
+  if (value.host_type === "org") {
+    if (!value.host_org_id) throw new HealthInsuranceError(400, "Organization-hosted services require a host organization.");
+    return {
+      host_type: "org",
+      host_user_id: null,
+      host_user_name: null,
+      host_org_id: value.host_org_id,
+      host_org_name: String(value.host_org_name || "").trim() || null,
+    };
+  }
+  return {
+    host_type: "shared",
+    host_user_id: null,
+    host_user_name: null,
+    host_org_id: null,
+    host_org_name: null,
+  };
 }
 
 function normalizeDiagnosisCodes(value: unknown, { requireKnownCodes, fieldLabel }: { requireKnownCodes: boolean; fieldLabel: string }) {
@@ -321,6 +416,48 @@ export function validateHealthInsuranceClaim(
     issue_summary: issueSummary,
     lines,
     attested: true,
+  };
+}
+
+export function validateHealthInsuranceServicePublish(payload: Record<string, unknown>, host: HealthInsuranceServiceHost): HealthInsuranceServicePublishInput {
+  const name = String(payload.name || "").trim();
+  if (!name || name.length > 255) throw new HealthInsuranceError(400, "Service name is required.");
+  const description = String(payload.description || "").trim();
+  if (!description || description.length > 2_000) throw new HealthInsuranceError(400, "Service description is required.");
+  const timezone = serviceTimezone(payload.timezone);
+  const slotMinutes = Number(payload.slot_minutes ?? 30);
+  if (!Number.isInteger(slotMinutes) || slotMinutes < 15 || slotMinutes > 240 || slotMinutes % 5 !== 0) {
+    throw new HealthInsuranceError(400, "Slot length must be between 15 and 240 minutes.");
+  }
+  const capacityPerSlot = Number(payload.capacity_per_slot ?? 1);
+  if (!Number.isInteger(capacityPerSlot) || capacityPerSlot < 1 || capacityPerSlot > 100) {
+    throw new HealthInsuranceError(400, "Capacity per slot must be between 1 and 100.");
+  }
+  const weekdays = serviceWeekdays(payload.weekdays);
+  const startsAt = timeOfDay(payload.starts_at, "Start time");
+  const endsAt = timeOfDay(payload.ends_at, "End time");
+  if (startsAt >= endsAt) throw new HealthInsuranceError(400, "End time must be after start time.");
+  const googleCalendarSync = payload.google_calendar_sync === true;
+  const googleBlockBusy = payload.google_block_busy === true;
+  if (googleBlockBusy && !googleCalendarSync) {
+    throw new HealthInsuranceError(400, "Busy-time blocking requires Google Calendar sync.");
+  }
+  if (googleCalendarSync && host.host_type !== "individual") {
+    throw new HealthInsuranceError(400, "Google Calendar sync is currently available only for individual-hosted services.");
+  }
+  return {
+    ...cleanServiceHost(host),
+    name,
+    description,
+    timezone,
+    slot_minutes: slotMinutes,
+    capacity_per_slot: capacityPerSlot,
+    available_to_all: true,
+    weekdays,
+    starts_at: startsAt,
+    ends_at: endsAt,
+    google_calendar_sync: googleCalendarSync,
+    google_block_busy: googleBlockBusy,
   };
 }
 
@@ -807,7 +944,13 @@ export async function healthInsuranceDashboard(db: D1Database, userId: string) {
        FROM health_insurance_enrollments WHERE user_id = ?`,
     ).bind(userId).first<Record<string, unknown>>(),
     db.prepare("SELECT id FROM health_insurance_claims WHERE user_id = ? ORDER BY submitted_at DESC").bind(userId).all<{ id: string }>(),
-    db.prepare("SELECT id, name, description, timezone, slot_minutes, capacity_per_slot, available_to_all FROM health_insurance_services WHERE active = 1 ORDER BY name").all<ServiceRow>(),
+    db.prepare(
+      `SELECT id, name, description, timezone, slot_minutes, capacity_per_slot, available_to_all,
+              COALESCE(host_type, 'shared') AS host_type, host_user_id, host_user_name, host_org_id, host_org_name,
+              COALESCE(google_calendar_sync, 0) AS google_calendar_sync,
+              COALESCE(google_block_busy, 0) AS google_block_busy
+       FROM health_insurance_services WHERE active = 1 ORDER BY name`,
+    ).all<ServiceRow>(),
     db.prepare("SELECT service_id, weekday, starts_at, ends_at FROM health_insurance_service_hours ORDER BY service_id, weekday").all<ServiceHoursRow>(),
     db.prepare(
       `SELECT a.id, a.service_id, s.name AS service_name, a.starts_at, a.ends_at, a.status, a.requested_at
@@ -849,6 +992,8 @@ export async function healthInsuranceDashboard(db: D1Database, userId: string) {
     services: services.results.map((service) => ({
       ...service,
       available_to_all: Boolean(service.available_to_all),
+      google_calendar_sync: Boolean(service.google_calendar_sync),
+      google_block_busy: Boolean(service.google_block_busy),
       hours: hours.results.filter((item) => item.service_id === service.id),
     })),
     appointments: appointments.results,
@@ -870,6 +1015,45 @@ export async function healthInsuranceDashboard(db: D1Database, userId: string) {
   };
 }
 
+export async function healthInsuranceProviderDashboard(db: D1Database, userId: string) {
+  const [services, hours, appointments] = await Promise.all([
+    db.prepare(
+      `SELECT id, name, description, timezone, slot_minutes, capacity_per_slot, available_to_all,
+              COALESCE(host_type, 'shared') AS host_type, host_user_id, host_user_name, host_org_id, host_org_name,
+              COALESCE(google_calendar_sync, 0) AS google_calendar_sync,
+              COALESCE(google_block_busy, 0) AS google_block_busy
+       FROM health_insurance_services
+       WHERE active = 1 AND host_user_id = ?
+       ORDER BY name`,
+    ).bind(userId).all<ServiceRow>(),
+    db.prepare("SELECT service_id, weekday, starts_at, ends_at FROM health_insurance_service_hours ORDER BY service_id, weekday").all<ServiceHoursRow>(),
+    db.prepare(
+      `SELECT a.id, a.user_id AS attendee_user_id, a.service_id, s.name AS service_name,
+              a.starts_at, a.ends_at, a.status, a.requested_at, la.name AS attendee_name, la.email AS attendee_email
+       FROM health_insurance_appointments a
+       JOIN health_insurance_services s ON s.id = a.service_id
+       LEFT JOIN ledger_accounts la ON la.user_id = a.user_id
+       WHERE s.host_user_id = ?
+       ORDER BY a.starts_at DESC`,
+    ).bind(userId).all<ProviderAppointmentRow>(),
+  ]);
+
+  return {
+    services: services.results.map((service) => ({
+      ...service,
+      available_to_all: Boolean(service.available_to_all),
+      google_calendar_sync: Boolean(service.google_calendar_sync),
+      google_block_busy: Boolean(service.google_block_busy),
+      hours: hours.results.filter((item) => item.service_id === service.id),
+    })),
+    appointments: appointments.results.map((appointment) => ({
+      ...appointment,
+      attendee_name: appointment.attendee_name || null,
+      attendee_email: appointment.attendee_email || null,
+    })),
+  };
+}
+
 function isoTimestamp(value: unknown): string {
   const text = String(value || "").trim();
   const parsed = new Date(text);
@@ -885,7 +1069,11 @@ export async function scheduleHealthInsuranceAppointment(
 ) {
   const serviceId = String(payload.service_id || "").trim();
   const service = await db.prepare(
-    "SELECT id, name, description, timezone, slot_minutes, capacity_per_slot, available_to_all FROM health_insurance_services WHERE id = ? AND active = 1 AND available_to_all = 1",
+    `SELECT id, name, description, timezone, slot_minutes, capacity_per_slot, available_to_all,
+            COALESCE(host_type, 'shared') AS host_type, host_user_id, host_user_name, host_org_id, host_org_name,
+            COALESCE(google_calendar_sync, 0) AS google_calendar_sync,
+            COALESCE(google_block_busy, 0) AS google_block_busy
+     FROM health_insurance_services WHERE id = ? AND active = 1 AND available_to_all = 1`,
   ).bind(serviceId).first<ServiceRow>();
   if (!service) throw new HealthInsuranceError(404, "That service is not currently available.");
   const startsAt = isoTimestamp(payload.starts_at);
@@ -921,6 +1109,50 @@ export async function scheduleHealthInsuranceAppointment(
      FROM health_insurance_appointments a JOIN health_insurance_services s ON s.id = a.service_id
      WHERE a.id = ? AND a.user_id = ?`,
   ).bind(id, userId).first();
+}
+
+export async function publishHealthInsuranceService(
+  db: D1Database,
+  payload: HealthInsuranceServicePublishInput,
+  now = new Date().toISOString(),
+) {
+  const serviceId = crypto.randomUUID();
+  await db.batch([
+    db.prepare(
+      `INSERT INTO health_insurance_services
+        (id, name, description, timezone, slot_minutes, capacity_per_slot, available_to_all, active,
+         host_type, host_user_id, host_user_name, host_org_id, host_org_name, google_calendar_sync, google_block_busy)
+       VALUES (?, ?, ?, ?, ?, ?, 1, 1, ?, ?, ?, ?, ?, ?, ?)`,
+    ).bind(
+      serviceId,
+      payload.name,
+      payload.description,
+      payload.timezone,
+      payload.slot_minutes,
+      payload.capacity_per_slot,
+      payload.host_type,
+      payload.host_user_id,
+      payload.host_user_name,
+      payload.host_org_id,
+      payload.host_org_name,
+      payload.google_calendar_sync ? 1 : 0,
+      payload.google_block_busy ? 1 : 0,
+    ),
+    ...payload.weekdays.map((weekday) =>
+      db.prepare(
+        `INSERT INTO health_insurance_service_hours
+          (service_id, weekday, starts_at, ends_at)
+         VALUES (?, ?, ?, ?)`,
+      ).bind(serviceId, weekday, payload.starts_at, payload.ends_at),
+    ),
+  ]);
+  return db.prepare(
+    `SELECT id, name, description, timezone, slot_minutes, capacity_per_slot, available_to_all,
+            COALESCE(host_type, 'shared') AS host_type, host_user_id, host_user_name, host_org_id, host_org_name,
+            COALESCE(google_calendar_sync, 0) AS google_calendar_sync,
+            COALESCE(google_block_busy, 0) AS google_block_busy
+     FROM health_insurance_services WHERE id = ?`,
+  ).bind(serviceId).first<ServiceRow>();
 }
 
 export async function cancelHealthInsuranceAppointment(db: D1Database, userId: string, appointmentId: string, now = new Date().toISOString()) {

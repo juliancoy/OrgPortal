@@ -8,12 +8,15 @@ import {
   cancelHealthInsuranceAppointment,
   healthInsuranceDiagnosisBoard,
   healthInsuranceDashboard,
+  healthInsuranceProviderDashboard,
+  publishHealthInsuranceService,
   requestHealthInsuranceAnalysis,
   saveHealthInsuranceEnrollment,
   scheduleHealthInsuranceAppointment,
   submitHealthInsuranceDiagnosis,
   submitHealthInsuranceClaim,
   validNpi,
+  validateHealthInsuranceServicePublish,
   validateHealthInsuranceClaim,
 } from "../src/healthInsurance";
 
@@ -32,9 +35,11 @@ class SqliteD1 {
   readonly database = new DatabaseSync(":memory:");
   constructor() {
     this.database.exec("PRAGMA foreign_keys = ON");
+    this.database.exec(readFileSync(new URL("../migrations/0002_org_event_directories.sql", import.meta.url), "utf8"));
     this.database.exec(readFileSync(new URL("../migrations/0012_health_insurance.sql", import.meta.url), "utf8"));
     this.database.exec(readFileSync(new URL("../migrations/0013_health_profile.sql", import.meta.url), "utf8"));
     this.database.exec(readFileSync(new URL("../migrations/0014_health_diagnosis_support.sql", import.meta.url), "utf8"));
+    this.database.exec(readFileSync(new URL("../migrations/0016_health_service_hosts_and_user_event_calendars.sql", import.meta.url), "utf8"));
     this.database.exec(`
       CREATE TABLE IF NOT EXISTS ledger_accounts (
         id TEXT PRIMARY KEY,
@@ -219,4 +224,122 @@ test("calendar rejects unpublished times", async () => {
     }, "2026-08-07T12:00:00.000Z"),
     (error: unknown) => error instanceof HealthInsuranceError && error.message.includes("published appointment slot"),
   );
+});
+
+test("individual recurring services can be published and booked in 30-minute weekday slots after 14:00 UTC", async () => {
+  const sqlite = new SqliteD1();
+  const db = asD1(sqlite);
+  const published = await publishHealthInsuranceService(
+    db,
+    validateHealthInsuranceServicePublish(
+      {
+        name: "Half-hour consults",
+        description: "Book a half-hour health consultation.",
+        timezone: "UTC",
+        slot_minutes: 30,
+        capacity_per_slot: 1,
+        weekdays: [1, 2, 3, 4, 5],
+        starts_at: "14:00",
+        ends_at: "18:00",
+        google_calendar_sync: true,
+        google_block_busy: true,
+      },
+      {
+        host_type: "individual",
+        host_user_id: "member-1",
+        host_user_name: "Member One",
+        host_org_id: null,
+        host_org_name: null,
+      },
+    ),
+    "2026-08-11T12:00:00.000Z",
+  );
+
+  assert.equal(published?.host_type, "individual");
+  assert.equal(published?.host_user_id, "member-1");
+
+  const dashboard = await healthInsuranceDashboard(db, "member-without-enrollment");
+  const service = dashboard.services.find((entry) => entry.id === published?.id);
+  assert.equal(service?.host_type, "individual");
+  assert.equal(service?.host_user_name, "Member One");
+  assert.equal(service?.google_calendar_sync, true);
+  assert.equal(service?.google_block_busy, true);
+  assert.deepEqual(service?.hours.map((entry) => entry.weekday), [1, 2, 3, 4, 5]);
+
+  const appointment = await scheduleHealthInsuranceAppointment(
+    db,
+    "member-without-enrollment",
+    {
+      service_id: published?.id,
+      starts_at: "2026-08-12T14:00:00.000Z",
+      attested: true,
+    },
+    "2026-08-11T12:00:00.000Z",
+  );
+  assert.equal(appointment?.status, "requested");
+
+  await assert.rejects(
+    scheduleHealthInsuranceAppointment(
+      db,
+      "member-without-enrollment",
+      {
+        service_id: published?.id,
+        starts_at: "2026-08-12T13:30:00.000Z",
+        attested: true,
+      },
+      "2026-08-11T12:00:00.000Z",
+    ),
+    (error: unknown) => error instanceof HealthInsuranceError && error.message.includes("published appointment slot"),
+  );
+});
+
+test("provider dashboard lists hosted calendars and booked appointments", async () => {
+  const sqlite = new SqliteD1();
+  const db = asD1(sqlite);
+  const published = await publishHealthInsuranceService(
+    db,
+    validateHealthInsuranceServicePublish(
+      {
+        name: "Provider consults",
+        description: "Hosted by Member One.",
+        timezone: "UTC",
+        slot_minutes: 30,
+        capacity_per_slot: 1,
+        weekdays: [1, 2, 3, 4, 5],
+        starts_at: "14:00",
+        ends_at: "18:00",
+        google_calendar_sync: true,
+        google_block_busy: false,
+      },
+      {
+        host_type: "individual",
+        host_user_id: "member-1",
+        host_user_name: "Member One",
+        host_org_id: null,
+        host_org_name: null,
+      },
+    ),
+    "2026-08-11T12:00:00.000Z",
+  );
+
+  await scheduleHealthInsuranceAppointment(
+    db,
+    "member-2",
+    {
+      service_id: published?.id,
+      starts_at: "2026-08-12T14:00:00.000Z",
+      attested: true,
+    },
+    "2026-08-11T12:00:00.000Z",
+  );
+
+  const provider = await healthInsuranceProviderDashboard(db, "member-1");
+  assert.equal(provider.services.length, 1);
+  assert.equal(provider.services[0]?.id, published?.id);
+  assert.equal(provider.services[0]?.google_calendar_sync, true);
+  assert.equal(provider.appointments.length, 1);
+  assert.equal(provider.appointments[0]?.service_id, published?.id);
+  assert.equal(provider.appointments[0]?.attendee_user_id, "member-2");
+  assert.equal(provider.appointments[0]?.attendee_name, "Member Two");
+  assert.equal(provider.appointments[0]?.attendee_email, "member-2@example.test");
 });
