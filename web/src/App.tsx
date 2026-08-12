@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth, useServices } from './app/AppProviders'
+import { portalPath } from './config/portalBase'
 import { Header } from './ui/shell/Header'
 import { Footer } from './ui/shell/Footer'
 import { ExternalBrowserPrompt } from './ui/components/ExternalBrowserPrompt'
@@ -143,7 +144,7 @@ export default function App() {
           <ExternalBrowserPrompt />
           <div className="portal-guest-brand">
             <img
-              src="/images/namebanner.png"
+              src={portalPath('/images/namebanner.png')}
               alt="Code Collective"
             />
             <div>
@@ -167,10 +168,10 @@ export default function App() {
           >
             <div className="portal-guest-login-actions" aria-label="Sign in or register options">
               <a href={socialLoginUrl('google')} className="portal-social-login-button" aria-label="Continue with Google">
-                <img src="/images/google-g-logo.svg" alt="" className="portal-social-login-logo" />
+                <img src={portalPath('/images/google-g-logo.svg')} alt="" className="portal-social-login-logo" />
               </a>
               <a href={socialLoginUrl('github')} className="portal-social-login-button" aria-label="Continue with GitHub">
-                <img src="/images/github-mark.svg" alt="" className="portal-social-login-logo" />
+                <img src={portalPath('/images/github-mark.svg')} alt="" className="portal-social-login-logo" />
               </a>
               <Link
                 to="/users/register"

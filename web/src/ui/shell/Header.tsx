@@ -461,6 +461,8 @@ export function Header() {
   const isDepartmentsActive = location.pathname.startsWith('/departments')
   const isLifeInsuranceActive = location.pathname.startsWith('/life-insurance')
   const isHealthInsuranceActive = location.pathname.startsWith('/health-insurance')
+  const isProviderSchedulingActive = location.pathname.startsWith('/provider-scheduling')
+  const isPropertyCasualtyInsuranceActive = location.pathname.startsWith('/property-casualty-insurance')
   const isIdActive = location.pathname === '/id' || location.pathname.startsWith('/contact-settings')
   const isChatActive = location.pathname.startsWith('/chat')
   const isScanActive = location.pathname.startsWith('/tools/business-cards')
@@ -962,6 +964,22 @@ export function Header() {
               <path d="M10 1.8c3 2.1 5.7 2.4 7 2.5v5.1c0 4.1-2.6 7.1-7 8.8-4.4-1.7-7-4.7-7-8.8V4.3c1.3-.1 4-.4 7-2.5zm-.9 4v2.7H6.4v1.8h2.7V13h1.8v-2.7h2.7V8.5h-2.7V5.8H9.1z" />
             </svg>
             Health benefit
+          </NavLink>
+
+          {role !== 'guest' && (
+            <NavLink to="/provider-scheduling" isActive={isProviderSchedulingActive}>
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path d="M6 2.5A1.5 1.5 0 017.5 4v.75h5V4a1.5 1.5 0 013 0v.75H16A2 2 0 0118 6.75v8.75A2.5 2.5 0 0115.5 18h-11A2.5 2.5 0 012 15.5V6.75a2 2 0 012-2h.5V4a1.5 1.5 0 011.5-1.5zm0 3.75H4v9.25c0 .28.22.5.5.5h11a.5.5 0 00.5-.5V6.25h-2.5V7a1 1 0 11-2 0v-.75h-5V7a1 1 0 11-2 0v-.75zm2.5 4a1 1 0 100 2h3a1 1 0 100-2h-3z" />
+              </svg>
+              Provider portal
+            </NavLink>
+          )}
+
+          <NavLink to="/property-casualty-insurance" isActive={isPropertyCasualtyInsuranceActive}>
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path d="M10 2.2l6.8 2.7v4.6c0 4.5-2.9 7.9-6.8 9-3.9-1.1-6.8-4.5-6.8-9V4.9L10 2.2zm0 3.2a2.7 2.7 0 00-2.7 2.7c0 2.2 2.7 4.8 2.7 4.8s2.7-2.6 2.7-4.8A2.7 2.7 0 0010 5.4zm0 1.5a1.2 1.2 0 110 2.4 1.2 1.2 0 010-2.4z" />
+            </svg>
+            Property and casualty
           </NavLink>
 
           <NavLink to="/departments" isActive={isDepartmentsActive}>

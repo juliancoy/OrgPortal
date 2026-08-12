@@ -3,6 +3,7 @@ interface Env {
   SCAN_IMAGES?: R2Bucket;
   PUSH_QUEUE?: Queue<import("./src/push").PushDeliveryJob>;
   PIDP_BASE_URL?: string;
+  PIDP_SERVICE_TOKEN?: string;
   PUBLIC_PORTAL_BASE_URL?: string;
   ORG_BUSINESS_CARD_OCR_PROVIDER?: string;
   ORG_BUSINESS_CARD_OCR_MODEL?: string;
