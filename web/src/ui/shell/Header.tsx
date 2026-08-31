@@ -5,6 +5,7 @@ import { pidpUrl } from '../../config/pidp'
 import { refreshRuntimeTokenFromSession } from '../../infrastructure/auth/sessionToken'
 import { isAndroidDevice } from '../../infrastructure/platform/androidApp'
 import { OrgImage } from '../components/media/OrgImage'
+import { getActivePortalProfileConfig, isPortalFeatureEnabled } from '../../config/portalFeatures'
 
 const ORG_API_BASE = '/api/org'
 const SEARCH_MIN_LEN = 2
@@ -117,6 +118,8 @@ export function Header() {
   const displayName = user?.displayName || user?.email || 'Signed in'
   const roleLabel = role === 'campaign_manager' ? 'Org' : role === 'constituent' ? 'User' : 'Guest'
   const showAndroidDownload = isAndroidDevice()
+  const portalProfile = getActivePortalProfileConfig()
+  const ubiEnabled = isPortalFeatureEnabled('ubi', portalProfile)
 
   const [menuOpen, setMenuOpen] = useState(false)
   const [navOpen, setNavOpen] = useState(false)
@@ -475,9 +478,29 @@ export function Header() {
     <header className="portal-header">
       <div className="portal-header-inner">
         <a href="/" className="portal-brand">
-          <img src={`${PORTAL_ASSET_BASE}codecollective_logo.png`} alt="Code Collective" />
+          {portalProfile.brandImagePath ? (
+            <img src={`${PORTAL_ASSET_BASE}${portalProfile.brandImagePath.replace(/^\//, '')}`} alt={portalProfile.brandName} />
+          ) : (
+            <span
+              aria-hidden="true"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 38,
+                height: 38,
+                borderRadius: 8,
+                background: 'var(--primary)',
+                color: '#fff',
+                fontWeight: 800,
+                fontSize: '0.82rem',
+              }}
+            >
+              BM
+            </span>
+          )}
           <div>
-            <div className="portal-brand-title">Code Collective</div>
+            <div className="portal-brand-title">{portalProfile.brandName}</div>
           </div>
         </a>
 
@@ -798,7 +821,7 @@ export function Header() {
                       SysAdmin
                     </Link>
                   )}
-                  {isAdmin && (
+                  {isAdmin && ubiEnabled && (
                     <Link to="/admin/ubi-settings" onClick={() => setMenuOpen(false)} className="portal-user-menu-item admin" role="menuitem">
                       UBI Settings
                     </Link>

@@ -3,6 +3,7 @@ import { useAuth } from '../../app/AppProviders'
 import { Header } from '../shell/Header'
 import { Footer } from '../shell/Footer'
 import { clamp, resampleHistory, toFiniteNumber, type MoneySupplyPoint } from './economicOpsUtils'
+import { isPortalFeatureEnabled } from '../../config/portalFeatures'
 
 const ORG_API_BASE = '/api/org'
 
@@ -121,6 +122,7 @@ async function orgFetch<T>(path: string, options?: RequestInit): Promise<T> {
 
 export function EconomicOpsPage() {
   const { token, user } = useAuth()
+  const ubiEnabled = isPortalFeatureEnabled('ubi')
   const [history, setHistory] = useState<MoneySupplyPoint[]>([])
   const [currency, setCurrency] = useState<string>('DEM')
   const [currentSupply, setCurrentSupply] = useState<number | null>(null)
@@ -170,7 +172,7 @@ export function EconomicOpsPage() {
         orgFetch<AccountSummary[]>('/api/accounts?limit=2000&sort=balance_desc', { headers }),
         orgFetch<AccountSummary[]>('/api/admin/accounts', { headers }),
         orgFetch<RecentTransaction[]>('/api/transactions/recent?limit=10', { headers }),
-        orgFetch<UbiRuntimeSettings>('/api/ubi/settings', { headers }),
+        ubiEnabled ? orgFetch<UbiRuntimeSettings>('/api/ubi/settings', { headers }) : Promise.resolve(null),
       ])
         .then(([historyResult, accountsResult, adminsResult, recentTxResult, ubiSettingsResult]) => {
           if (cancelled) return
@@ -206,7 +208,12 @@ export function EconomicOpsPage() {
             setRecentTransactions([])
           }
 
-          if (ubiSettingsResult.status === 'fulfilled') {
+          if (!ubiEnabled) {
+            setUbiSettings(null)
+            setUbiEligibility(null)
+            setUbiSettingsStatus('')
+            setUbiEligibilityStatus('')
+          } else if (ubiSettingsResult.status === 'fulfilled' && ubiSettingsResult.value) {
             const data = ubiSettingsResult.value
             setUbiSettings(data)
             setUbiSettingsForm({
@@ -270,7 +277,7 @@ export function EconomicOpsPage() {
       cancelled = true
       window.clearInterval(refreshId)
     }
-  }, [token])
+  }, [token, ubiEnabled])
 
   const visibleHistory = useMemo(() => {
     if (!history.length) return []
@@ -436,7 +443,7 @@ export function EconomicOpsPage() {
   }, [accounts, user])
 
   async function refreshUbiSettings() {
-    if (!token) return
+    if (!token || !ubiEnabled) return
     try {
       const data = await orgFetch<UbiRuntimeSettings>('/api/ubi/settings', {
         headers: { Authorization: `Bearer ${token}` },
@@ -456,7 +463,7 @@ export function EconomicOpsPage() {
 
   async function submitUbiSettings(event: FormEvent) {
     event.preventDefault()
-    if (!token) return
+    if (!token || !ubiEnabled) return
     try {
       const payload = {
         interval_seconds: Number(ubiSettingsForm.interval_seconds),
@@ -480,7 +487,7 @@ export function EconomicOpsPage() {
   }
 
   async function checkUbiEligibility() {
-    if (!token) return
+    if (!token || !ubiEnabled) return
     try {
       const data = await orgFetch<UbiEligibility>('/api/ubi/eligibility', {
         headers: { Authorization: `Bearer ${token}` },
@@ -665,7 +672,8 @@ export function EconomicOpsPage() {
             </div>
           </section>
 
-          <section className="portal-section" id="accounts">
+          {ubiEnabled ? (
+          <section className="portal-section" id="ubi">
             <div className="portal-section-header">
               <h2>UBI options</h2>
               <button type="button" className="portal-timeframe-button" onClick={checkUbiEligibility}>
@@ -741,6 +749,7 @@ export function EconomicOpsPage() {
               </form>
             </div>
           </section>
+          ) : null}
 
           <section className="portal-section" id="transactions">
             <div className="portal-section-header">

@@ -3,11 +3,13 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
 import { portalPath } from '../../../config/portalBase'
 import { DEFAULT_POST_LOGIN_PATH, PIDP_APP_SLUG, normalizePostLoginPath, pidpAppLoginUrl, pidpUrl, portalAuthCallbackUrl } from '../../../config/pidp'
+import { getActivePortalProfileConfig } from '../../../config/portalFeatures'
 
 export function UserLoginPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { loginWithPassword, isLoading } = useAuth()
+  const portalProfile = getActivePortalProfileConfig()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -21,8 +23,8 @@ export function UserLoginPage() {
   }
 
   useEffect(() => {
-    document.title = 'Org Portal • User login'
-  }, [])
+    document.title = `${portalProfile.portalTitle} • User login`
+  }, [portalProfile.portalTitle])
 
   useEffect(() => {
     if (!isLoading && isSubmitting) {
@@ -48,7 +50,7 @@ export function UserLoginPage() {
     <section className="portal-auth-page" aria-labelledby="user-login-title">
       <div className="panel portal-auth-card">
         <div className="portal-auth-card-header">
-          <p className="portal-auth-eyebrow">Code Collective identity</p>
+          <p className="portal-auth-eyebrow">{portalProfile.brandName} identity</p>
           <h1 id="user-login-title">Log In</h1>
           <p className="muted">Sign in with your existing account or create one before continuing.</p>
         </div>
