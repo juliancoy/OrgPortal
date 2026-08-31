@@ -57,6 +57,7 @@ import { HealthInsurancePage } from '../views/HealthInsurancePage'
 import { ProviderSchedulingPage } from '../views/ProviderSchedulingPage'
 import { PropertyCasualtyInsurancePage } from '../views/PropertyCasualtyInsurancePage'
 import { portalBasePath } from '../../config/portalBase'
+import { isPortalFeatureEnabled, type PortalFeature } from '../../config/portalFeatures'
 
 function AuthenticatedRoute(props: { children: ReactElement }) {
   const { role, isLoading } = useAuth()
@@ -136,6 +137,11 @@ function AdminRoute(props: { children: ReactElement }) {
 
   if (isAdmin === null) return null
   if (!isAdmin) return <Navigate to="/" replace />
+  return props.children
+}
+
+function FeatureRoute(props: { feature: PortalFeature; children: ReactElement }) {
+  if (!isPortalFeatureEnabled(props.feature)) return <NotFoundPage />
   return props.children
 }
 
@@ -253,9 +259,11 @@ export function createAppRouter() {
           {
             path: '/admin/ubi-settings',
             element: (
-              <AdminRoute>
-                <UbiSettingsPage />
-              </AdminRoute>
+              <FeatureRoute feature="ubi">
+                <AdminRoute>
+                  <UbiSettingsPage />
+                </AdminRoute>
+              </FeatureRoute>
             ),
           },
           { path: '/targets/:target', element: <TargetPage /> },
