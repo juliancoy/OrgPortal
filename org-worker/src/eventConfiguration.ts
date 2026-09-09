@@ -7,6 +7,8 @@ export function checkEventConfiguration(env: Env, authorizationMetadata?: unknow
   const issues: string[] = [];
   const requiredSettings = ["MCP_PUBLIC_URL", "MCP_OAUTH_ISSUER", "MCP_OAUTH_JWKS_URL", "MCP_SUBJECT_MAP_JSON", "EVENT_INTEGRATIONS_JSON"] as const;
   const missingSettings = requiredSettings.filter(name => !env[name]?.trim());
+  const missingIntrospectionSettings = env.MCP_OAUTH_INTROSPECTION_URL && !env.MCP_OAUTH_INTROSPECTION_SECRET
+    ? ["MCP_OAUTH_INTROSPECTION_SECRET"] : env.MCP_OAUTH_INTROSPECTION_SECRET && !env.MCP_OAUTH_INTROSPECTION_URL ? ["MCP_OAUTH_INTROSPECTION_URL"] : [];
   let organizations = 0;
   let subjects = 0;
   try { mcpConfiguration(env); } catch { issues.push("oauth_configuration_invalid_or_missing"); }
@@ -50,5 +52,6 @@ export function checkEventConfiguration(env: Env, authorizationMetadata?: unknow
     }
   }
   return { ok: issues.length === 0, organizations, subjects, authorizationMetadataChecked: authorizationMetadata !== undefined,
-    missingSettings, issues: [...new Set(issues)], liveConnectivityChecked: false, deploymentPerformed: false };
+    missingSettings: [...missingSettings, ...missingIntrospectionSettings], introspectionEnabled: Boolean(env.MCP_OAUTH_INTROSPECTION_URL),
+    issues: [...new Set(issues)], liveConnectivityChecked: false, deploymentPerformed: false };
 }

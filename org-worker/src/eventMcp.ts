@@ -15,6 +15,7 @@ export function mcpConfiguration(env: Env) {
   const resource = env.MCP_PUBLIC_URL;
   const issuer = env.MCP_OAUTH_ISSUER;
   const jwks = env.MCP_OAUTH_JWKS_URL;
+  const introspection = env.MCP_OAUTH_INTROSPECTION_URL;
   if (!resource || !issuer || !jwks || !env.MCP_SUBJECT_MAP_JSON) throw new EventIntegrationError(503, "MCP OAuth is not configured");
   for (const value of [resource, issuer, jwks]) {
     let url: URL;
@@ -26,8 +27,13 @@ export function mcpConfiguration(env: Env) {
   try {
     z.record(z.string().min(1), z.string().trim().min(1)).parse(JSON.parse(env.MCP_SUBJECT_MAP_JSON));
   } catch { throw new EventIntegrationError(503, "Invalid MCP subject mapping"); }
+  if (introspection || env.MCP_OAUTH_INTROSPECTION_SECRET) {
+    if (introspection !== `${issuer.replace(/\/$/, "")}/oauth/mcp/introspect` || !env.MCP_OAUTH_INTROSPECTION_SECRET) {
+      throw new EventIntegrationError(503, "Invalid PIdP introspection configuration");
+    }
+  }
   const url = new URL(resource);
-  return { resource, issuer, jwks, metadataUrl: `${url.origin}/.well-known/oauth-protected-resource${url.pathname}` };
+  return { resource, issuer, jwks, introspection, metadataUrl: `${url.origin}/.well-known/oauth-protected-resource${url.pathname}` };
 }
 export async function authenticateMcp(request: Request, env: Env, getKey?: JWTVerifyGetKey) {
   const config = mcpConfiguration(env);
@@ -44,9 +50,26 @@ export async function authenticateMcp(request: Request, env: Env, getKey?: JWTVe
     const subjectMap = JSON.parse(env.MCP_SUBJECT_MAP_JSON!);
     const userId = payload.sub && Object.hasOwn(subjectMap, payload.sub) ? subjectMap[payload.sub] : undefined;
     if (typeof userId !== "string" || !userId) throw new Error();
+    if (config.introspection) {
+      let response: Response;
+      try {
+        response = await fetch(config.introspection, { method: "POST", redirect: "error", signal: AbortSignal.timeout(10000),
+          headers: { authorization: `Bearer ${env.MCP_OAUTH_INTROSPECTION_SECRET}`, "content-type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({ token, resource: config.resource }) });
+      } catch { throw new EventIntegrationError(503, "PIdP token status is unavailable"); }
+      if (!response.ok) throw new EventIntegrationError(503, "PIdP token status is unavailable");
+      let status;
+      try { status = await response.json() as Record<string, unknown>; }
+      catch { throw new EventIntegrationError(503, "PIdP token status is unavailable"); }
+      if (!status || status.active !== true || status.sub !== payload.sub || status.iss !== config.issuer
+        || status.aud !== config.resource || status.scope !== payload.scope || status.exp !== payload.exp) throw new Error();
+    }
     const scopes = typeof payload.scope === "string" ? payload.scope.split(" ") : [];
     return { userId, scopes };
-  } catch { throw new EventIntegrationError(401, "Invalid or unauthorized access token"); }
+  } catch (error) {
+    if (error instanceof EventIntegrationError) throw error;
+    throw new EventIntegrationError(401, "Invalid or unauthorized access token");
+  }
 }
 export function protectedResourceMetadata(env: Env) {
   const config = mcpConfiguration(env);
