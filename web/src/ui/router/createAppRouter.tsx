@@ -26,6 +26,8 @@ import { PublicAdminPage } from '../views/public/PublicAdminPage'
 import { PublicContactPage } from '../views/public/PublicContactPage'
 import { PublicEventsPage } from '../views/public/PublicEventsPage'
 import { PublicEventPage } from '../views/public/PublicEventPage'
+import { EmailCampaignsPage } from '../views/email/EmailCampaignsPage'
+import { EmailPreferencesPage } from '../views/email/EmailPreferencesPage'
 import { PublicOrganizationsPage } from '../views/public/PublicOrganizationsPage'
 import { GlobalSearchPage } from '../views/public/GlobalSearchPage'
 import { MotionListPage } from '../views/governance/MotionListPage'
@@ -163,6 +165,8 @@ export function createAppRouter() {
           { path: '/initiatives/:slug/sign', element: <InitiativeSignPage /> },
 
           { path: '/about', element: <AboutPage /> },
+          { path: '/email', element: <AdminRoute><EmailCampaignsPage /></AdminRoute> },
+          { path: '/email/preferences', element: <AuthenticatedRoute><EmailPreferencesPage /></AuthenticatedRoute> },
           { path: '/android/install', element: <AndroidInstallPage /> },
 
           // Canonical user routes

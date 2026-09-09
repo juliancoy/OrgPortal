@@ -45,7 +45,7 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    if (request.method === "OPTIONS" && (url.pathname.startsWith("/api/governance") || url.pathname.startsWith("/pidp"))) {
+    if (request.method === "OPTIONS" && (url.pathname.startsWith("/api/governance") || url.pathname.startsWith("/api/org/") || url.pathname.startsWith("/pidp"))) {
       return new Response(null, {
         status: 204,
         headers: {
@@ -58,6 +58,10 @@ export default {
 
     if (url.pathname.startsWith("/api/governance")) {
       return proxyRequest(request, env.GOVERNANCE_API_ORIGIN, env);
+    }
+
+    if (url.pathname === "/api/org" || url.pathname.startsWith("/api/org/")) {
+      return proxyRequest(request, env.ORG_API_ORIGIN, env, { stripPrefix: "/api/org" });
     }
 
     if (url.pathname.startsWith("/pidp")) {
