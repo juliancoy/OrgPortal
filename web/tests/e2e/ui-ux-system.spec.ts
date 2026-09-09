@@ -518,7 +518,31 @@ test.describe('Code Collective UI and UX system coverage', () => {
   })
 
   test('avatar menu opens settings and system theme persists outside the profile editor', async ({ page }) => {
+    let savedThemePayload: Record<string, unknown> | null = null
+    await page.route('**/auth/me', async (route) => {
+      if (route.request().method() === 'PUT') {
+        savedThemePayload = JSON.parse(route.request().postData() || '{}')
+        await fulfillJson(route, {
+          ...authUser,
+          identity_data: {
+            ...authUser.identity_data,
+            ...savedThemePayload,
+          },
+        })
+        return
+      }
+      await fulfillJson(route, {
+        ...authUser,
+        identity_data: {
+          ...authUser.identity_data,
+          theme_mode: 'dark',
+        },
+      })
+    })
+
     await page.goto('/')
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+    expect(await page.evaluate(() => localStorage.getItem('orgportal.theme'))).toBe('dark')
 
     await page.getByLabel('Open user menu').click()
     await page.getByRole('menuitem', { name: 'Settings' }).click()
@@ -529,9 +553,10 @@ test.describe('Code Collective UI and UX system coverage', () => {
     await expect(page.getByText('User UUID')).toHaveCount(0)
 
     await page.getByLabel('Theme').selectOption('light')
-    await expect(page.getByRole('status')).toContainText('Theme set to light.')
+    await expect(page.getByRole('status')).toContainText('saved to your account')
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
     expect(await page.evaluate(() => localStorage.getItem('orgportal.theme'))).toBe('light')
+    expect(savedThemePayload?.theme_mode).toBe('light')
 
     await page.goto('/users/profile')
     await expect(page.getByRole('heading', { name: 'System Appearance' })).toHaveCount(0)

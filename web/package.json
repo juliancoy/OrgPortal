@@ -37,7 +37,9 @@
     "test:timebank:selenium": "python3 scripts/selenium-timebank.py",
     "test:timebank:public:selenium": "python3 scripts/selenium-timebank-public.py",
     "test:timebank:account:selenium": "python3 scripts/selenium-timebank-account.py",
-    "test:timebank:messaging:selenium": "python3 scripts/selenium-timebank-messaging.py"
+    "test:timebank:messaging:selenium": "python3 scripts/selenium-timebank-messaging.py",
+    "test:a11y": "node scripts/accessibility/audit.mjs",
+    "test:a11y:orca": "bash scripts/accessibility/run-orca.sh"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.1",
@@ -52,6 +54,7 @@
     "react-router-dom": "^7.11.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
     "@capacitor/cli": "^8.3.1",
     "@eslint/js": "^9.39.1",
     "@playwright/test": "^1.56.1",

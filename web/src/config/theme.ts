@@ -1,10 +1,15 @@
 export type ThemeMode = 'system' | 'dark' | 'light'
 
 export const THEME_STORAGE_KEY = 'orgportal.theme'
+export const ACCOUNT_THEME_FIELD = 'theme_mode'
 
 export function normalizeThemeMode(value: string | null | undefined): ThemeMode {
   if (value === 'dark' || value === 'light') return value
   return 'system'
+}
+
+export function accountThemeMode(value: unknown): ThemeMode | null {
+  return value === 'dark' || value === 'light' || value === 'system' ? value : null
 }
 
 export function readThemeMode(storage: Pick<Storage, 'getItem'> = localStorage): ThemeMode {
