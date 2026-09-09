@@ -105,7 +105,9 @@ export function TimebankPage() {
   const api = useTimebankApi()
 
   const refresh = useCallback(async (signal?: AbortSignal) => {
-    const dashboard = await api<Dashboard>(`?request_sort=${requestSort}`, { signal })
+    const query = new URLSearchParams({ request_sort: requestSort })
+    if (mine) query.set('mine', 'true')
+    const dashboard = await api<Dashboard>(`?${query}`, { signal })
     if (signal?.aborted) return dashboard
     setData(dashboard)
     setSelected((current) => current ? dashboard.listings.find((item) => item.id === current.id) || current : null)
@@ -113,7 +115,7 @@ export function TimebankPage() {
     setDomainCommunity(dashboard.community)
     document.title = `${dashboard.community.name} · Timebanking`
     return dashboard
-  }, [api, requestSort])
+  }, [api, requestSort, mine])
 
   useEffect(() => {
     const controller = new AbortController()
