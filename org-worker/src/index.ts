@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { handleEventMcp, protectedResourceMetadata, eventErrorResponse } from "./eventMcp";
 import { consumePushBatch, endpointHash, enqueueUserPush, matrixJobs, normalizeSubscription } from "./push";
 import {
   LifeInsuranceError,
@@ -1743,6 +1744,15 @@ app.onError((err) => {
   if (err instanceof OrganizationIamError) return json({ detail: err.message }, err.status);
   console.error("org-worker error", err);
   return json({ detail: "Internal server error" }, 500);
+});
+
+// Register MCP before generic CORS; do not grant arbitrary origins event access.
+app.all("/mcp", (c) => handleEventMcp(c.req.raw, c.env));
+app.get("/.well-known/oauth-protected-resource", (c) => {
+  try { return c.json(protectedResourceMetadata(c.env)); } catch (error) { return eventErrorResponse(error, c.env); }
+});
+app.get("/.well-known/oauth-protected-resource/*", (c) => {
+  try { return c.json(protectedResourceMetadata(c.env)); } catch (error) { return eventErrorResponse(error, c.env); }
 });
 
 app.use("*", async (c, next) => {

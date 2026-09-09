@@ -1,4 +1,10 @@
 interface Env {
+  EVENT_INTEGRATIONS_JSON?: string;
+  MCP_PUBLIC_URL?: string;
+  MCP_OAUTH_ISSUER?: string;
+  MCP_OAUTH_JWKS_URL?: string;
+  MCP_SUBJECT_MAP_JSON?: string;
+  MCP_ALLOWED_ORIGINS?: string;
   DB: D1Database;
   SCAN_IMAGES?: R2Bucket;
   PUSH_QUEUE?: Queue<import("./src/push").PushDeliveryJob>;
