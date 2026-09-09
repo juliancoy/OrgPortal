@@ -7,7 +7,9 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test test/*.test.ts",
+    "test": "node --import tsx --test test/*.test.ts",
+    "events:check-config": "node --import tsx scripts/check-event-config.mjs",
+    "check:bundle": "esbuild src/index.ts --bundle --platform=node --conditions=workerd,worker,browser --format=esm --external:cloudflare:* --outfile=dist/worker-check.mjs",
     "db:migrate:local": "wrangler d1 migrations apply org --local",
     "db:migrate:remote": "wrangler d1 migrations apply org --remote"
   },
