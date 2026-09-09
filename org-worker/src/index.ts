@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 39046)
-Total output lines: 3673
-
 import { timebankNotifications, markTimebankNotificationsRead, dispatchTimebankPush } from './timebankNotifications';
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
@@ -1660,7 +1657,782 @@ export async function runUbiTick(db: D1Database, scheduledTime = Date.now()): Pr
       );
       statements.push(
         db.prepare(
-          `INSERT INTO ubi_el…9046 tokens truncated…      'owner' AS my_role
+          `INSERT INTO ubi_eligibility (account_id, is_eligible, next_payment_date, last_payment_amount, total_payments_received)
+           VALUES (?, 1, ?, ?, ?)
+           ON CONFLICT(account_id) DO UPDATE SET
+            next_payment_date = excluded.next_payment_date,
+            last_payment_amount = excluded.last_payment_amount,
+            total_payments_received = ubi_eligibility.total_payments_received + excluded.last_payment_amount`,
+        )
+          .bind(account.id, followingPaymentDate, payout, payout),
+      );
+    }
+    if (statements.length) await db.batch(statements);
+
+    const completedAt = nowIso();
+    await db.prepare("UPDATE ubi_tick_state SET last_tick_at = ?, updated_at = ? WHERE id = 'singleton'")
+      .bind(startedAt, completedAt)
+      .run();
+    await db.prepare(
+      `UPDATE ubi_tick_runs
+       SET completed_at = ?, status = 'completed', eligible_accounts = ?, payout_count = ?, accrued_amount = ?, paid_amount = ?
+       WHERE run_key = ?`,
+    )
+      .bind(completedAt, eligibleAccounts, payoutCount, accruedAmount, paidAmount, runKey)
+      .run();
+
+    return {
+      run_key: runKey,
+      status: "completed",
+      started_at: startedAt,
+      completed_at: completedAt,
+      elapsed_seconds: elapsedSeconds,
+      eligible_accounts: eligibleAccounts,
+      payout_count: payoutCount,
+      accrued_amount: accruedAmount,
+      paid_amount: Math.round(paidAmount * 100) / 100,
+    };
+  } catch (err) {
+    await db.prepare("UPDATE ubi_tick_runs SET completed_at = ?, status = 'failed', error = ? WHERE run_key = ?")
+      .bind(nowIso(), err instanceof Error ? err.message.slice(0, 1000) : "Unknown UBI tick failure", runKey)
+      .run();
+    throw err;
+  }
+}
+
+async function accountForUser(db: D1Database, user: PidpUser) {
+  const email = (user.email || "").trim().toLowerCase();
+  let row = email
+    ? await db.prepare("SELECT * FROM ledger_accounts WHERE lower(email) = ?").bind(email).first<LedgerAccountRow>()
+    : await db.prepare("SELECT * FROM ledger_accounts WHERE user_id = ?").bind(user.id).first<LedgerAccountRow>();
+  if (row) {
+    if (String(row.entity_type || "").toLowerCase() === "individual") {
+      await db.prepare("INSERT OR IGNORE INTO ubi_eligibility (account_id, is_eligible, next_payment_date) VALUES (?, 1, ?)")
+        .bind(row.id, new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10))
+        .run();
+    }
+    return row;
+  }
+  const id = `acct-${crypto.randomUUID()}`;
+  const timestamp = nowIso();
+  await db.prepare(
+    "INSERT INTO ledger_accounts (id, user_id, name, email, entity_type, balance, created_at, updated_at) VALUES (?, ?, ?, ?, 'individual', 0, ?, ?)",
+  )
+    .bind(id, user.id, userName(user), email || `${user.id}@local.codecollective`, timestamp, timestamp)
+    .run();
+  await db.prepare("INSERT OR IGNORE INTO ubi_eligibility (account_id, is_eligible, next_payment_date) VALUES (?, 1, ?)")
+    .bind(id, new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10))
+    .run();
+  row = await db.prepare("SELECT * FROM ledger_accounts WHERE id = ?").bind(id).first<LedgerAccountRow>();
+  return row!;
+}
+
+function mapRecentTransaction(row: LedgerTransactionRow) {
+  return {
+    id: row.id,
+    timestamp: row.timestamp,
+    transaction_type: row.transaction_type,
+    amount: Number(row.amount || 0),
+    currency: row.currency || "DEM",
+    description: row.description || "",
+    from_account_id: row.from_account_id,
+    to_account_id: row.to_account_id,
+    from_account_name: row.from_account_name || null,
+    to_account_name: row.to_account_name || null,
+  };
+}
+
+app.onError((err) => {
+  if (err instanceof HTTPException) return err.getResponse();
+  if (err instanceof LifeInsuranceError) return json({ detail: err.message }, err.status);
+  if (err instanceof HealthInsuranceError) return json({ detail: err.message }, err.status);
+  if (err instanceof OrganizationIamError) return json({ detail: err.message }, err.status);
+  if (err instanceof TimebankError) return json({ detail: err.message }, err.status);
+  console.error("org-worker error", err);
+  return json({ detail: "Internal server error" }, 500);
+});
+
+app.use("*", async (c, next) => {
+  if (c.req.method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS",
+        "access-control-allow-headers": "authorization,content-type,x-requested-with",
+      },
+    });
+  }
+  await next();
+});
+
+app.get("/health", (c) => c.json({ ok: true, service: "org-worker" }));
+
+app.get("/admin/me", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const isAdmin = adminUser(user, c.env);
+  return c.json({ is_admin: isAdmin, is_sysadmin: isAdmin });
+});
+
+app.get("/api/network/contact/me", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await contactForUser(c.env, c.req.raw, user);
+  return c.json(mapContact(c.env, c.req.raw, row));
+});
+
+app.put("/api/network/contact/me", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await contactForUser(c.env, c.req.raw, user);
+  const payload = (await c.req.json().catch(() => ({}))) as ContactPayload;
+  await applyContactPayload(c.env, row, user, payload);
+  const updated = await c.env.DB.prepare("SELECT * FROM user_contact_pages WHERE user_id = ?").bind(user.id).first<ContactRow>();
+  return c.json(mapContact(c.env, c.req.raw, updated!));
+});
+
+app.post("/api/network/contact/me/import", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await contactForUser(c.env, c.req.raw, user);
+  const payload = (await c.req.json().catch(() => ({}))) as { source_url?: string };
+  const sourceUrl = cleanUrl(payload.source_url);
+  if (!sourceUrl) fail(400, "source_url is required");
+  const importedAt = nowIso();
+  await c.env.DB.prepare("UPDATE user_contact_pages SET source_profile_url = ?, source_profile_imported_at = ?, updated_at = ? WHERE user_id = ?")
+    .bind(sourceUrl, importedAt, importedAt, user.id)
+    .run();
+  const updated = await c.env.DB.prepare("SELECT * FROM user_contact_pages WHERE user_id = ?").bind(row.user_id).first<ContactRow>();
+  return c.json({ contact: mapContact(c.env, c.req.raw, updated!), imported_fields: ["source_profile_url"], source_url: sourceUrl });
+});
+
+app.get("/api/network/notifications/summary", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const unread = await c.env.DB.prepare("SELECT count(*) AS n FROM user_notifications WHERE user_id = ? AND status = 'unread'")
+    .bind(user.id)
+    .first<{ n: number }>();
+  const pendingConnections = await c.env.DB.prepare("SELECT count(*) AS n FROM user_connections WHERE recipient_user_id = ? AND status = 'pending'")
+    .bind(user.id)
+    .first<{ n: number }>();
+  return c.json({
+    unread_count: Number(unread?.n || 0),
+    pending_connections_count: Number(pendingConnections?.n || 0),
+  });
+});
+
+app.get("/api/network/notifications", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "20", 10) || 20, 100));
+  const rows = await c.env.DB.prepare(
+    `SELECT * FROM user_notifications
+     WHERE user_id = ?
+     ORDER BY created_at DESC
+     LIMIT ?`,
+  )
+    .bind(user.id, limit)
+    .all<NotificationRow>();
+  return c.json((rows.results || []).map(mapNotification));
+});
+
+app.post("/api/network/notifications/read", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const readAt = nowIso();
+  await c.env.DB.prepare("UPDATE user_notifications SET status = 'read', read_at = ? WHERE user_id = ? AND status = 'unread'")
+    .bind(readAt, user.id)
+    .run();
+  return c.json({ ok: true, read_at: readAt });
+});
+
+app.get("/api/network/push/status", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const rows = await c.env.DB.prepare(
+    "SELECT id FROM push_subscriptions WHERE user_id = ? AND enabled = 1 ORDER BY updated_at DESC",
+  ).bind(user.id).all<{ id: string }>();
+  return c.json({
+    supported: true,
+    configured: Boolean(c.env.PUSH_QUEUE && c.env.VAPID_PUBLIC_KEY && c.env.VAPID_PRIVATE_KEY && c.env.VAPID_SUBJECT),
+    public_key: c.env.VAPID_PUBLIC_KEY || null,
+    subscription_ids: (rows.results || []).map((row) => row.id),
+  });
+});
+
+app.post("/api/network/push/subscriptions", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  if (!c.env.VAPID_PUBLIC_KEY) fail(503, "Web Push is not configured");
+  let subscription;
+  try {
+    subscription = normalizeSubscription(await c.req.json());
+  } catch (error) {
+    fail(400, error instanceof Error ? error.message : "Invalid Web Push subscription");
+  }
+  const hash = await endpointHash(subscription!.endpoint);
+  const now = nowIso();
+  const existing = await c.env.DB.prepare(
+    "SELECT id FROM push_subscriptions WHERE user_id = ? AND endpoint_hash = ?",
+  ).bind(user.id, hash).first<{ id: string }>();
+  const id = existing?.id || `subscription-${crypto.randomUUID()}`;
+  await c.env.DB.prepare(
+    `INSERT INTO push_subscriptions
+     (id, user_id, endpoint, endpoint_hash, p256dh, auth, enabled, created_at, updated_at, last_seen_at)
+     VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
+     ON CONFLICT(user_id, endpoint_hash) DO UPDATE SET
+       endpoint = excluded.endpoint, p256dh = excluded.p256dh, auth = excluded.auth,
+       enabled = 1, updated_at = excluded.updated_at, last_seen_at = excluded.last_seen_at`,
+  ).bind(id, user.id, subscription!.endpoint, hash, subscription!.p256dh, subscription!.auth, now, now, now).run();
+  const publicOrigin = new URL(c.env.PUBLIC_PORTAL_BASE_URL || c.req.url).origin;
+  return c.json({
+    id,
+    gateway_url: `${publicOrigin}/api/org/api/network/push/matrix/_matrix/push/v1/notify`,
+  }, 201);
+});
+
+app.delete("/api/network/push/subscriptions/:id", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  await c.env.DB.prepare(
+    "UPDATE push_subscriptions SET enabled = 0, updated_at = ? WHERE id = ? AND user_id = ?",
+  ).bind(nowIso(), c.req.param("id"), user.id).run();
+  return c.json({ ok: true });
+});
+
+app.post("/api/network/push/matrix/_matrix/push/v1/notify", async (c) => {
+  const payload = (await c.req.json().catch(() => ({}))) as { notification?: Parameters<typeof matrixJobs>[0] };
+  const { jobs, rejected } = matrixJobs(payload.notification || {});
+  for (const job of jobs) {
+    const row = await c.env.DB.prepare(
+      "SELECT id FROM push_subscriptions WHERE id = ? AND enabled = 1",
+    ).bind(job.subscriptionId || "").first<{ id: string }>();
+    if (!row) {
+      if (job.subscriptionId) rejected.push(job.subscriptionId);
+      continue;
+    }
+    await enqueueUserPush(c.env, job);
+  }
+  return c.json({ rejected: [...new Set(rejected)] });
+});
+
+app.get("/api/network/connections/requests", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const rows = await c.env.DB.prepare(
+    `SELECT * FROM user_connections
+     WHERE recipient_user_id = ? AND status = 'pending'
+     ORDER BY requested_at DESC
+     LIMIT 100`,
+  )
+    .bind(user.id)
+    .all<ConnectionRow>();
+  return c.json((rows.results || []).map((row) => mapConnection(row, user.id)));
+});
+
+app.post("/api/network/connections/request", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const payload = (await c.req.json().catch(() => ({}))) as { target_user_id?: string };
+  const targetUserId = String(payload.target_user_id || "").trim();
+  if (!targetUserId) fail(400, "target_user_id is required");
+  if (targetUserId === user.id) fail(400, "Cannot connect to yourself");
+  const target = await contactByUserId(c.env.DB, targetUserId);
+  if (!target) fail(404, "Person not found");
+
+  const pairKey = connectionPairKey(user.id, targetUserId);
+  const now = nowIso();
+  const existing = await c.env.DB.prepare("SELECT * FROM user_connections WHERE pair_key = ?")
+    .bind(pairKey)
+    .first<ConnectionRow>();
+  if (existing?.status === "accepted" || existing?.status === "pending") {
+    return c.json(mapConnection(existing, user.id));
+  }
+
+  const id = existing?.id || `conn-${crypto.randomUUID()}`;
+  if (existing) {
+    await c.env.DB.prepare(
+      `UPDATE user_connections
+       SET requester_user_id = ?, requester_user_name = ?, recipient_user_id = ?, recipient_user_name = ?,
+           status = 'pending', requested_at = ?, responded_at = NULL, updated_at = ?
+       WHERE id = ?`,
+    )
+      .bind(user.id, userName(user), targetUserId, target.user_name || "User", now, now, id)
+      .run();
+  } else {
+    await c.env.DB.prepare(
+      `INSERT INTO user_connections
+       (id, pair_key, requester_user_id, requester_user_name, recipient_user_id, recipient_user_name, status, requested_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)`,
+    )
+      .bind(id, pairKey, user.id, userName(user), targetUserId, target.user_name || "User", now, now)
+      .run();
+  }
+
+  const notificationId = `note-${crypto.randomUUID()}`;
+  await c.env.DB.prepare(
+    `INSERT INTO user_notifications
+     (id, user_id, type, actor_user_id, actor_user_name, entity_id, title, body, status, created_at)
+     VALUES (?, ?, 'connection_request', ?, ?, ?, ?, ?, 'unread', ?)`,
+  )
+    .bind(
+      notificationId,
+      targetUserId,
+      user.id,
+      userName(user),
+      id,
+      "New connection request",
+      `${userName(user)} wants to connect with you.`,
+      now,
+    )
+    .run();
+  await enqueueUserPush(c.env, {
+    eventId: `notification:${notificationId}`,
+    userId: targetUserId,
+    title: "New connection request",
+    body: `${userName(user)} wants to connect with you.`,
+    deepLink: "/people",
+  });
+
+  const row = await c.env.DB.prepare("SELECT * FROM user_connections WHERE id = ?").bind(id).first<ConnectionRow>();
+  return c.json(mapConnection(row!, user.id), 201);
+});
+
+async function respondToConnection(env: Env, request: Request, connectionId: string, status: "accepted" | "declined") {
+  const user = await currentUser(env, request);
+  const row = await env.DB.prepare("SELECT * FROM user_connections WHERE id = ?").bind(connectionId).first<ConnectionRow>();
+  if (!row || row.recipient_user_id !== user.id || row.status !== "pending") fail(404, "Connection request not found");
+  const now = nowIso();
+  await env.DB.prepare("UPDATE user_connections SET status = ?, responded_at = ?, updated_at = ? WHERE id = ?")
+    .bind(status, now, now, connectionId)
+    .run();
+  await env.DB.prepare("UPDATE user_notifications SET status = 'read', read_at = ? WHERE user_id = ? AND entity_id = ? AND type = 'connection_request'")
+    .bind(now, user.id, connectionId)
+    .run();
+  if (status === "accepted") {
+    const notificationId = `note-${crypto.randomUUID()}`;
+    await env.DB.prepare(
+      `INSERT INTO user_notifications
+       (id, user_id, type, actor_user_id, actor_user_name, entity_id, title, body, status, created_at)
+       VALUES (?, ?, 'connection_accepted', ?, ?, ?, ?, ?, 'unread', ?)`,
+    )
+      .bind(
+        notificationId,
+        row.requester_user_id,
+        user.id,
+        userName(user),
+        connectionId,
+        "Connection accepted",
+        `${userName(user)} accepted your connection request.`,
+        now,
+      )
+      .run();
+    await enqueueUserPush(env, {
+      eventId: `notification:${notificationId}`,
+      userId: row.requester_user_id,
+      title: "Connection accepted",
+      body: `${userName(user)} accepted your connection request.`,
+      deepLink: "/people",
+    });
+  }
+  const updated = await env.DB.prepare("SELECT * FROM user_connections WHERE id = ?").bind(connectionId).first<ConnectionRow>();
+  return mapConnection(updated!, user.id);
+}
+
+app.post("/api/network/connections/:id/accept", async (c) => c.json(await respondToConnection(c.env, c.req.raw, c.req.param("id"), "accepted")));
+app.post("/api/network/connections/:id/decline", async (c) => c.json(await respondToConnection(c.env, c.req.raw, c.req.param("id"), "declined")));
+
+async function publicContact(env: Env, request: Request, slug: string) {
+  const requestedSlug = String(slug || "").trim();
+  if (!requestedSlug) fail(404, "Public profile not found");
+  const row = await env.DB.prepare("SELECT * FROM user_contact_pages WHERE slug = ?")
+    .bind(requestedSlug)
+    .first<ContactRow>();
+  if (!row) fail(404, "Public profile not found");
+  if (!row.enabled) {
+    try {
+      const user = await currentUser(env, request);
+      if (user.id !== row.user_id) fail(404, "Public profile not found");
+    } catch {
+      fail(404, "Public profile not found");
+    }
+  }
+  return mapContact(env, request, row);
+}
+
+async function publicUsers(env: Env, request: Request, query = "", limit = 40) {
+  const safeLimit = Math.max(1, Math.min(limit, 500));
+  const q = query.trim();
+  const candidateLimit = q ? searchCandidateLimit(safeLimit) : safeLimit;
+  const rows = await env.DB.prepare(
+    `SELECT * FROM user_contact_pages
+     WHERE enabled = 1
+     ORDER BY updated_at DESC
+     LIMIT ?`,
+  )
+    .bind(candidateLimit)
+    .all<ContactRow>();
+  const rankedRows = rankSearchResults(rows.results || [], q, (row) => [row.user_name, row.headline, row.slug], safeLimit);
+  return rankedRows.map((row) => mapContact(env, request, row));
+}
+
+async function networkUsers(env: Env, request: Request, query = "", limit = 500) {
+  const user = await currentUser(env, request);
+  const safeLimit = Math.max(1, Math.min(limit, 1000));
+  const q = query.trim();
+  const candidateLimit = q ? searchCandidateLimit(safeLimit) : safeLimit;
+  const rows = await env.DB.prepare(
+    `SELECT * FROM user_contact_pages
+     ORDER BY updated_at DESC
+     LIMIT ?`,
+  )
+    .bind(candidateLimit)
+    .all<ContactRow>();
+  const contactRows = rankSearchResults(rows.results || [], q, (row) => [row.user_name, row.user_email, row.headline, row.slug], safeLimit);
+  const statuses = await connectionStatusMap(env.DB, user.id, contactRows.map((row) => row.user_id));
+  return contactRows.map((row) => ({
+    user_id: row.user_id,
+    user_name: row.user_name || "User",
+    email: row.user_email || "",
+    created_at: row.created_at,
+    contact_slug: row.slug,
+    contact_enabled: Boolean(row.enabled),
+    headline: row.headline,
+    photo_url: row.photo_url,
+    connection_status: row.user_id === user.id ? "self" : statuses.get(row.user_id) || "none",
+  }));
+}
+
+app.post("/api/network/ingest/calendar", async (c) => {
+  const configuredToken = c.env.ORG_INGEST_TOKEN || "";
+  if (!configuredToken) fail(503, "Calendar ingest is not configured");
+  const provided = bearerToken(c.req.raw);
+  if (provided !== configuredToken) fail(401, "Invalid ingest token");
+  const payload = (await c.req.json().catch(() => ({}))) as CalendarIngestPayload;
+  const orgs = Array.isArray(payload.organizations) ? payload.organizations : [];
+  const events = Array.isArray(payload.events) ? payload.events : [];
+
+  let insertedOrUpdatedOrgs = 0;
+  let insertedOrUpdatedEvents = 0;
+  for (const raw of orgs) {
+    if (!raw || typeof raw !== "object") continue;
+    const row = await upsertOrganization(c.env.DB, raw);
+    if (row) insertedOrUpdatedOrgs += 1;
+  }
+  for (const raw of events) {
+    if (!raw || typeof raw !== "object") continue;
+    const row = await upsertEvent(c.env.DB, raw);
+    if (row) insertedOrUpdatedEvents += 1;
+  }
+
+  return c.json({
+    ok: true,
+    organizations: insertedOrUpdatedOrgs,
+    events: insertedOrUpdatedEvents,
+  });
+});
+
+app.get("/api/network/orgs/public", async (c) => {
+  const q = (c.req.query("q") || "").trim();
+  const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "300", 10) || 300, 500));
+  const candidateLimit = q ? searchCandidateLimit(limit) : limit;
+  const rows = await c.env.DB.prepare(
+    `SELECT o.*,
+      (SELECT count(*) FROM events e WHERE e.host_org_id = o.id AND (e.starts_at IS NULL OR e.starts_at >= datetime('now'))) AS upcoming_events_count,
+      (SELECT count(*) FROM organization_sentiments s WHERE s.organization_id = o.id AND s.sentiment = 'favor') AS favor_count,
+      (SELECT count(*) FROM organization_sentiments s WHERE s.organization_id = o.id AND s.sentiment = 'disfavor') AS disfavor_count,
+      (SELECT own.owner_user_id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS claimed_by_user_id,
+      (SELECT own.id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS ownership_id,
+      (SELECT count(*) FROM organization_memberships m WHERE m.organization_id = o.id AND m.status = 'active') AS membership_count,
+      (SELECT count(*) FROM organization_ownership_challenges ch WHERE ch.organization_id = o.id AND ch.status = 'open') AS pending_challenges_count
+     FROM organizations o
+     ORDER BY (favor_count - disfavor_count) DESC, upcoming_events_count DESC, lower(o.name) ASC
+     LIMIT ?`,
+  )
+    .bind(candidateLimit)
+    .all<OrganizationRow & { upcoming_events_count: number } & OrganizationSentimentCounts>();
+  const rankedRows = rankSearchResults(rows.results || [], q, (row) => [row.name, row.description, row.slug, row.tags, row.city], limit);
+  return c.json(rankedRows.map((row) => mapOrganization(row, Number(row.upcoming_events_count || 0))));
+});
+
+app.get("/api/network/orgs/public/:slug", async (c) => {
+  const row = await c.env.DB.prepare(
+    `SELECT o.*,
+      (SELECT own.owner_user_id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS claimed_by_user_id,
+      (SELECT own.id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS ownership_id,
+      (SELECT count(*) FROM organization_memberships m WHERE m.organization_id = o.id AND m.status = 'active') AS membership_count,
+      (SELECT count(*) FROM organization_ownership_challenges ch WHERE ch.organization_id = o.id AND ch.status = 'open') AS pending_challenges_count
+     FROM organizations o WHERE o.slug = ?`,
+  )
+    .bind(slugify(c.req.param("slug")))
+    .first<OrganizationRow>();
+  if (!row) fail(404, "Organization not found");
+  const count = await c.env.DB.prepare("SELECT count(*) AS n FROM events WHERE host_org_id = ? AND (starts_at IS NULL OR starts_at >= datetime('now'))")
+    .bind(row.id)
+    .first<{ n: number }>();
+  const sentimentCounts = await organizationSentimentCounts(c.env.DB, row.id);
+  return c.json({ ...mapOrganization({ ...row, ...sentimentCounts }, Number(count?.n || 0)), public_url: orgPublicUrl(c.env, c.req.raw, row.slug) });
+});
+
+app.get("/api/network/orgs/public/:slug/events", async (c) => {
+  const org = await c.env.DB.prepare("SELECT * FROM organizations WHERE slug = ?")
+    .bind(slugify(c.req.param("slug")))
+    .first<OrganizationRow>();
+  if (!org) return c.json([]);
+  const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "60", 10) || 60, 200));
+  const rows = await c.env.DB.prepare(
+    `SELECT e.*, o.name AS organization_name
+     FROM events e
+     LEFT JOIN organizations o ON o.id = e.host_org_id
+     WHERE e.host_org_id = ?
+     ORDER BY COALESCE(e.starts_at, e.created_at) ASC
+     LIMIT ?`,
+  )
+    .bind(org.id, limit)
+    .all<EventRow>();
+  return c.json((rows.results || []).map((row) => mapEvent(c.env, c.req.raw, row)));
+});
+
+app.get("/api/network/orgs/public/:slug/admins", async (c) => {
+  const organization = await organizationByIdOrSlug(c.env.DB, c.req.param("slug"));
+  if (!organization) fail(404, "Organization not found");
+  const rows = await c.env.DB.prepare(
+    `SELECT user_id, user_name, role
+     FROM organization_memberships
+     WHERE organization_id = ? AND status = 'active' AND role IN ('owner', 'administrator')
+     ORDER BY CASE role WHEN 'owner' THEN 0 ELSE 1 END, lower(COALESCE(user_name, user_id))`,
+  ).bind(organization.id).all<Record<string, unknown>>();
+  return c.json(rows.results || []);
+});
+app.get("/api/network/orgs/public/:slug/chat-feed", (c) => c.json({ organization_slug: c.req.param("slug"), rooms: [] }));
+
+app.get("/api/network/events/public", async (c) => {
+  const q = (c.req.query("q") || "").trim();
+  const upcomingOnly = (c.req.query("upcoming_only") || "true").toLowerCase() !== "false";
+  const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "120", 10) || 120, 500));
+  const filters: string[] = [];
+  const binds: unknown[] = [];
+  if (upcomingOnly) {
+    filters.push("(e.starts_at IS NULL OR e.starts_at >= datetime('now'))");
+  }
+  const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
+  const candidateLimit = q ? searchCandidateLimit(limit) : limit;
+  const rows = await c.env.DB.prepare(
+    `SELECT e.*, o.name AS organization_name
+     FROM events e
+     LEFT JOIN organizations o ON o.id = e.host_org_id
+     ${where}
+     ORDER BY COALESCE(e.starts_at, e.created_at) ASC
+     LIMIT ?`,
+  )
+    .bind(...binds, candidateLimit)
+    .all<EventRow>();
+  const rankedRows = rankSearchResults(
+    rows.results || [],
+    q,
+    (row) => [row.title, row.description, row.location, row.organization_name, row.host_org_name, row.slug, row.tags, row.city],
+    limit,
+  );
+  return c.json(rankedRows.map((row) => mapEvent(c.env, c.req.raw, row)));
+});
+
+app.get("/api/network/events/public/:slug", async (c) => {
+  const row = await c.env.DB.prepare(
+    `SELECT e.*, o.name AS organization_name
+     FROM events e
+     LEFT JOIN organizations o ON o.id = e.host_org_id
+     WHERE e.slug = ?`,
+  )
+    .bind(slugify(c.req.param("slug")))
+    .first<EventRow>();
+  if (!row) fail(404, "Event not found");
+  return c.json(mapEvent(c.env, c.req.raw, row));
+});
+
+app.get("/api/network/events/public/:slug/chat", (c) =>
+  c.json({
+    event_slug: c.req.param("slug"),
+    room_exists: false,
+    room_id: null,
+    room_alias: null,
+    room_name: null,
+    messages: [],
+  }),
+);
+
+app.get("/api/network/orgs", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const mine = (c.req.query("mine") || "").toLowerCase() === "true";
+  const q = (c.req.query("q") || "").trim();
+  const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "300", 10) || 300, 500));
+  const candidateLimit = q ? searchCandidateLimit(limit) : limit;
+  const rows = await c.env.DB.prepare(
+    `SELECT o.*,
+      (SELECT own.owner_user_id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS claimed_by_user_id,
+      (SELECT own.id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS ownership_id,
+      (SELECT count(*) FROM organization_memberships mc WHERE mc.organization_id = o.id AND mc.status = 'active') AS membership_count,
+      (SELECT count(*) FROM organization_ownership_challenges ch WHERE ch.organization_id = o.id AND ch.status = 'open') AS pending_challenges_count,
+      (SELECT m.role FROM organization_memberships m WHERE m.organization_id = o.id AND m.user_id = ? AND m.status = 'active') AS my_role
+     FROM organizations o
+     WHERE (? = 0 OR EXISTS (
+       SELECT 1 FROM organization_memberships mine WHERE mine.organization_id = o.id AND mine.user_id = ? AND mine.status = 'active'
+     ))
+     ORDER BY lower(o.name) ASC LIMIT ?`,
+  )
+    .bind(user.id, mine ? 1 : 0, user.id, candidateLimit)
+    .all<OrganizationRow>();
+  const rankedRows = rankSearchResults(rows.results || [], q, (row) => [row.name, row.description, row.slug, row.tags, row.city], limit);
+  const mapped = [];
+  for (const row of rankedRows) {
+    mapped.push(mapOrganization({ ...row, ...(await organizationSentimentCounts(c.env.DB, row.id)) }));
+  }
+  return c.json(mapped);
+});
+
+app.post("/api/network/orgs", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  const row = await upsertOrganization(c.env.DB, {
+    name: stringField(payload, "name", 255) || "Organization",
+    description: stringField(payload, "description", 5000),
+    source_url: cleanUrl(payload.source_url),
+    image_url: cleanPublicAssetUrl(payload.image_url),
+    tags: Array.isArray(payload.tags) ? payload.tags : [],
+    city: stringField(payload, "city", 80),
+  });
+  await claimOrganization(c.env.DB, row!.id, organizationActor(user, c.env), nowIso());
+  const created = await c.env.DB.prepare(
+    `SELECT o.*,
+      (SELECT own.owner_user_id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS claimed_by_user_id,
+      (SELECT own.id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS ownership_id,
+      (SELECT count(*) FROM organization_memberships m WHERE m.organization_id = o.id AND m.status = 'active') AS membership_count,
+      (SELECT count(*) FROM organization_ownership_challenges ch WHERE ch.organization_id = o.id AND ch.status = 'open') AS pending_challenges_count,
+      (SELECT m.role FROM organization_memberships m WHERE m.organization_id = o.id AND m.user_id = ? AND m.status = 'active') AS my_role
+     FROM organizations o WHERE o.id = ?`,
+  ).bind(user.id, row!.id).first<OrganizationRow>();
+  return c.json(mapOrganization(created!), 201);
+});
+
+app.get("/api/network/orgs/:organizationId", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const requested = c.req.param("organizationId");
+  const row = await c.env.DB.prepare(
+    `SELECT o.*,
+      (SELECT own.owner_user_id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS claimed_by_user_id,
+      (SELECT own.id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS ownership_id,
+      (SELECT count(*) FROM organization_memberships m WHERE m.organization_id = o.id AND m.status = 'active') AS membership_count,
+      (SELECT count(*) FROM organization_ownership_challenges ch WHERE ch.organization_id = o.id AND ch.status = 'open') AS pending_challenges_count,
+      (SELECT m.role FROM organization_memberships m WHERE m.organization_id = o.id AND m.user_id = ? AND m.status = 'active') AS my_role
+     FROM organizations o WHERE o.id = ? OR o.slug = ?`,
+  ).bind(user.id, requested, slugify(requested)).first<OrganizationRow>();
+  if (!row) fail(404, "Organization not found");
+  return c.json(mapOrganization({ ...row, ...(await organizationSentimentCounts(c.env.DB, row.id)) }));
+});
+
+app.get("/api/network/orgs/:organizationId/sentiment", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
+  if (!row) fail(404, "Organization not found");
+  const mine = await c.env.DB.prepare("SELECT sentiment FROM organization_sentiments WHERE organization_id = ? AND user_id = ?")
+    .bind(row.id, user.id)
+    .first<{ sentiment: "favor" | "disfavor" }>();
+  const counts = await organizationSentimentCounts(c.env.DB, row.id);
+  return c.json({
+    organization_id: row.id,
+    sentiment: mine?.sentiment || null,
+    favor_count: counts.favor_count,
+    disfavor_count: counts.disfavor_count,
+    sentiment_score: counts.favor_count - counts.disfavor_count,
+  });
+});
+
+app.put("/api/network/orgs/:organizationId/sentiment", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
+  if (!row) fail(404, "Organization not found");
+  const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  const sentiment = String(payload.sentiment || "").trim().toLowerCase();
+  if (sentiment !== "favor" && sentiment !== "disfavor") fail(400, "sentiment must be favor or disfavor");
+  const timestamp = nowIso();
+  await c.env.DB.prepare(
+    `INSERT INTO organization_sentiments (organization_id, user_id, user_name, sentiment, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?)
+     ON CONFLICT(organization_id, user_id) DO UPDATE SET
+      user_name = excluded.user_name,
+      sentiment = excluded.sentiment,
+      updated_at = excluded.updated_at`,
+  )
+    .bind(row.id, user.id, userName(user), sentiment, timestamp, timestamp)
+    .run();
+  const counts = await organizationSentimentCounts(c.env.DB, row.id);
+  return c.json({
+    organization_id: row.id,
+    sentiment,
+    favor_count: counts.favor_count,
+    disfavor_count: counts.disfavor_count,
+    sentiment_score: counts.favor_count - counts.disfavor_count,
+  });
+});
+
+app.delete("/api/network/orgs/:organizationId/sentiment", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
+  if (!row) fail(404, "Organization not found");
+  await c.env.DB.prepare("DELETE FROM organization_sentiments WHERE organization_id = ? AND user_id = ?")
+    .bind(row.id, user.id)
+    .run();
+  const counts = await organizationSentimentCounts(c.env.DB, row.id);
+  return c.json({
+    organization_id: row.id,
+    sentiment: null,
+    favor_count: counts.favor_count,
+    disfavor_count: counts.disfavor_count,
+    sentiment_score: counts.favor_count - counts.disfavor_count,
+  });
+});
+
+app.patch("/api/network/orgs/:organizationId", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const existing = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
+  if (!existing) fail(404, "Organization not found");
+  const actor = organizationActor(user, c.env);
+  const role = await authorizeOrganization(c.env.DB, actor, "manage", existing.id);
+  const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  const updatedAt = nowIso();
+  await c.env.DB.prepare(
+    `UPDATE organizations SET
+      name = COALESCE(?, name),
+      description = COALESCE(?, description),
+      image_url = COALESCE(?, image_url),
+      tags = COALESCE(?, tags),
+      city = COALESCE(?, city),
+      updated_at = ?
+     WHERE id = ?`,
+  )
+    .bind(
+      stringField(payload, "name", 255),
+      stringField(payload, "description", 5000),
+      cleanPublicAssetUrl(payload.image_url),
+      Array.isArray(payload.tags) ? JSON.stringify(payload.tags.map((item) => String(item || "").trim()).filter(Boolean)) : null,
+      stringField(payload, "city", 80),
+      updatedAt,
+      existing.id,
+    )
+    .run();
+  const row = await c.env.DB.prepare(
+    `SELECT o.*,
+      (SELECT own.owner_user_id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS claimed_by_user_id,
+      (SELECT own.id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS ownership_id,
+      (SELECT count(*) FROM organization_memberships m WHERE m.organization_id = o.id AND m.status = 'active') AS membership_count,
+      (SELECT count(*) FROM organization_ownership_challenges ch WHERE ch.organization_id = o.id AND ch.status = 'open') AS pending_challenges_count,
+      ? AS my_role
+     FROM organizations o WHERE o.id = ?`,
+  ).bind(role, existing.id).first<OrganizationRow>();
+  return c.json(mapOrganization(row!));
+});
+
+app.post("/api/network/orgs/:organizationId/claim", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const requested = c.req.param("organizationId");
+  const organization = await organizationByIdOrSlug(c.env.DB, requested);
+  if (!organization) fail(404, "Organization not found");
+  await claimOrganization(c.env.DB, organization.id, organizationActor(user, c.env), nowIso());
+  const row = await c.env.DB.prepare(
+    `SELECT o.*,
+      (SELECT own.owner_user_id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS claimed_by_user_id,
+      (SELECT own.id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS ownership_id,
+      (SELECT count(*) FROM organization_memberships m WHERE m.organization_id = o.id AND m.status = 'active') AS membership_count,
+      (SELECT count(*) FROM organization_ownership_challenges ch WHERE ch.organization_id = o.id AND ch.status = 'open') AS pending_challenges_count,
+      'owner' AS my_role
      FROM organizations o WHERE o.id = ?`,
   ).bind(organization.id).first<OrganizationRow>();
   return c.json(mapOrganization(row!));
