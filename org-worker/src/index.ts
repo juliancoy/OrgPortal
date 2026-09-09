@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { buildMetadata } from "./generated/buildMetadata";
 import { HTTPException } from "hono/http-exception";
 import { handleEventMcp, protectedResourceMetadata, eventErrorResponse } from "./eventMcp";
+import { checkEventConfiguration } from "./eventConfiguration";
 import {
   getTimebankListing, setTimebankUptake, timebankAnalytics, resolveTimebankCommunity, saveTimebankCommunity, setTimebankPhoto, getTimebankPhoto,
   TimebankError, timebankDashboard, publicTimebankOffers, createTimebankListing, updateTimebankListing,
@@ -1797,6 +1798,15 @@ app.get("/admin/me", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   const isAdmin = adminUser(user, c.env);
   return c.json({ is_admin: isAdmin, is_sysadmin: isAdmin });
+});
+
+// Use the existing portal identity so operators can diagnose MCP before its
+// separate OAuth resource configuration is ready. Never return secret values.
+app.get("/admin/mcp/status", async (c) => {
+  c.header("Cache-Control", "no-store");
+  const user = await currentUser(c.env, c.req.raw);
+  if (!adminUser(user, c.env)) fail(403, "Administrator access is required");
+  return c.json(checkEventConfiguration(c.env));
 });
 
 app.get("/api/network/contact/me", async (c) => {
