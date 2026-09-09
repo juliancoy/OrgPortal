@@ -100,7 +100,7 @@ export function getActivePortalProfileConfig(
 ): PortalProfileConfig {
   if (hostname === MEDTECH_PORTAL_HOST) return PORTAL_PROFILES['baltimore-medtech']
   const community = getDomainCommunity()
-  if (community) return { id: 'code-collective', brandName: community.name, portalTitle: community.name, tagline: community.tagline, homeUrl: '/', memberHomePath: '/timebanking', disabledFeatures: [] }
+  if (community) return { id: 'code-collective', brandName: community.name, portalTitle: community.name, tagline: community.tagline, homeUrl: '/', memberHomePath: '/', disabledFeatures: [] }
   const urlProfileId = readPortalProfileIdFromSearch(search)
   const profileId = urlProfileId || (typeof window !== 'undefined' ? browserProfileId : null) || storageGet(storage) || 'code-collective'
   if (urlProfileId) storageSet(urlProfileId, storage)

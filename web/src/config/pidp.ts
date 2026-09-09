@@ -64,7 +64,7 @@ export function normalizePostLoginPath(next: string): string {
   const path = toInternalPortalPath(next, fallback)
   const pathname = new URL(path, 'https://portal.invalid').pathname
   if (
-    pathname === '/' ||
+    (pathname === '/' && !getDomainCommunity()) ||
     pathname.startsWith('/auth/callback') ||
     pathname.startsWith('/users/login') ||
     pathname.startsWith('/users/register') ||
