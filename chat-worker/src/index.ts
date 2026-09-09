@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { buildMetadata } from "./generated/buildMetadata.ts";
 
 type PidpUser = {
   id: string;
@@ -399,7 +400,21 @@ app.use("*", async (c, next) => {
 
 app.options("*", (c) => json({ ok: true }, 200, corsOrigin(c.env, c.req.raw)));
 
-app.get("/health", (c) => c.json({ ok: true, service: "chat-worker" }));
+function healthPayload(c: { env: Env; req: { url: string } }) {
+  const url = new URL(c.req.url);
+  return {
+    ok: true,
+    service: "chat-worker",
+    time: new Date().toISOString(),
+    ...buildMetadata,
+    workerVersionId: c.env.CF_VERSION_METADATA?.id ?? null,
+    hostname: url.hostname,
+    environment: "production",
+  };
+}
+
+app.get("/health", (c) => json(healthPayload(c)));
+app.get("/version", (c) => json(healthPayload(c)));
 
 app.use("/api/network/chat/*", async (c, next) => {
   const user = await currentUser(c.env, c.req.raw);

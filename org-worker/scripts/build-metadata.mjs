@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 // This also works when OrgPortal is checked out as a pinned submodule.
 const root = fileURLToPath(new URL('../../', import.meta.url));
 function git(...args) {
-  return execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+  return execFileSync('git', ['-c', `safe.directory=${root}`, '-C', root, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 }
 let commit = null;
 let dirty = null;

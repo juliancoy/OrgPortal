@@ -59,3 +59,5 @@ web/playwright-report/
 web/test-results/
 web/public/*.apk
 org-worker/src/generated/
+pidp/serverless/src/generated/
+chat-worker/src/generated/

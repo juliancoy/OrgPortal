@@ -304,9 +304,21 @@ test.after(() => {
 });
 
 test("health route identifies the chat worker", async () => {
-  const res = await app.request("https://chat.example.test/health", {}, env());
+  const healthEnv = env();
+  healthEnv.CF_VERSION_METADATA = { id: "chat-version-fixture" };
+  const res = await app.request("https://chat.example.test/health", {}, healthEnv);
   assert.equal(res.status, 200);
-  assert.deepEqual(await res.json(), { ok: true, service: "chat-worker" });
+  assert.equal(res.headers.get("cache-control"), "no-store");
+  const payload = await res.json() as Record<string, unknown>;
+  assert.equal(payload.ok, true);
+  assert.equal(payload.service, "chat-worker");
+  assert.equal(payload.workerVersionId, "chat-version-fixture");
+  assert.equal(payload.hostname, "chat.example.test");
+  assert.equal(payload.environment, "production");
+  assert.ok("commit" in payload);
+  assert.ok("dirty" in payload);
+  assert.match(String(payload.builtAt), /^\d{4}-\d{2}-\d{2}T/);
+  assert.match(String(payload.time), /^\d{4}-\d{2}-\d{2}T/);
 });
 
 test("protected chat routes require a bearer token", async () => {
