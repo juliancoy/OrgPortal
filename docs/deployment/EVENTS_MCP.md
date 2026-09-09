@@ -47,6 +47,25 @@ URLs, credentials, and account mappings cannot be supplied by a tool caller.
 
 ## Configure the shared worker
 
+### Diagnose a deployed 503
+
+`503 {"error":"MCP OAuth is not configured"}` means the MCP route is deployed
+but required OAuth settings are absent. Rebuilding the same source does not supply
+an issuer, signing keys, user mappings, or provider credentials.
+
+An existing portal administrator can call `GET /api/org/admin/mcp/status` with
+their normal portal bearer token, independently of MCP OAuth. This uncached,
+read-only endpoint returns missing setting names, validation issue codes and
+mapping counts, never secrets or configuration values. Non-administrators receive
+403 and unauthenticated callers receive 401. The same report is available offline
+through `npm run events:check-config`.
+
+The report validates configuration only: `ok: true` does not prove issuer
+reachability, database migrations, membership, valid Luma credentials, or a
+successful ChatGPT connection. Follow the acceptance tests below after setup.
+Keep OAuth enabled; do not replace it with anonymous access or accept a provider
+API key as a user identity to work around the 503.
+
 No secrets, account grants, or live event changes are included in this commit.
 Migration `0017_event_mcp_operations.sql` must be applied when deployment is
 eventually authorized. It has only been tested against an in-memory database.
