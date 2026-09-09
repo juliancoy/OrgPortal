@@ -7,6 +7,12 @@ const attendance = { event_id: 'one', count: 1, registered: true, attendees: [] 
 afterEach(() => { vi.unstubAllGlobals(); vi.resetAllMocks() })
 
 describe('event registration API', () => {
+  it('submits the event and organization email choices separately', async () => {
+    const fetch = vi.fn().mockResolvedValue(Response.json(attendance))
+    vi.stubGlobal('fetch', fetch)
+    await recordAttendanceWithRetry('one', 'token', 'POST', { email_updates: true, organization_announcements: false })
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({ email_updates: true, organization_announcements: false })
+  })
   it('loads the saved registration state without caching', async () => {
     const fetch = vi.fn().mockResolvedValue(Response.json(attendance))
     vi.stubGlobal('fetch', fetch)
