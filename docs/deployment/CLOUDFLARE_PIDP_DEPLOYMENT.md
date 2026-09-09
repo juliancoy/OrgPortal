@@ -31,28 +31,24 @@ Verify:
 curl -i http://127.0.0.1:8002/health
 ```
 
-## 2) Build and deploy portal web with Wrangler
+## 2) Build and deploy the integrated portal frontend
 
-Install deps and build:
+The standalone portal deployment described by older versions of this document
+has been retired. The parent CodeCollective site builds `portal/web` with a
+`/p/` base and serves it at `https://codecollective.us/p/`.
 
-```bash
-cd portal/web
-npm install
-npm run build:cf
-```
-
-Deploy, setting proxy origins for API routes:
+From the parent CodeCollective repository:
 
 ```bash
-npx wrangler deploy \
-  --var GOVERNANCE_API_ORIGIN:https://org-codecollective.jcloiacon.workers.dev
+./cloudflare/scripts/build_cloudflare_site.sh
+npx wrangler deploy
 ```
 
 Notes:
 
 - `/api/governance/*` is proxied to `GOVERNANCE_API_ORIGIN`
 - `/pidp/*` is proxied to `https://id.codecollective.us` by default (or `PIDP_API_ORIGIN` if overridden)
-- All other routes serve the SPA from `dist/` with `index.html` fallback
+- All other `/p/` routes serve the SPA with `index.html` fallback
 
 ## 3) Frontend runtime mode
 
