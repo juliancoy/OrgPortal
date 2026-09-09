@@ -1,3 +1,4 @@
+import { useDomainCommunity } from '../../config/timebankCommunity'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../../app/AppProviders'
@@ -5,6 +6,7 @@ import { pidpUrl } from '../../config/pidp'
 import { refreshRuntimeTokenFromSession } from '../../infrastructure/auth/sessionToken'
 import { isAndroidDevice } from '../../infrastructure/platform/androidApp'
 import { OrgImage } from '../components/media/OrgImage'
+import { getActivePortalProfileConfig, portalProfilePath, isPortalFeatureEnabled } from '../../config/portalFeatures'
 
 const ORG_API_BASE = '/api/org'
 const SEARCH_MIN_LEN = 2
@@ -33,7 +35,7 @@ function NavLink({ to, children, end = false, isActive: forceActive }: NavLinkPr
         : location.pathname.startsWith(to)
 
   return (
-    <Link to={to} className={`portal-nav-link ${isActive ? 'active' : ''}`} aria-current={isActive ? 'page' : undefined}>
+    <Link to={portalProfilePath(to)} className={`portal-nav-link ${isActive ? 'active' : ''}`} aria-current={isActive ? 'page' : undefined}>
       {children}
     </Link>
   )
@@ -117,6 +119,9 @@ export function Header() {
   const displayName = user?.displayName || user?.email || 'Signed in'
   const roleLabel = role === 'campaign_manager' ? 'Org' : role === 'constituent' ? 'User' : 'Guest'
   const showAndroidDownload = isAndroidDevice()
+  const domainCommunity = useDomainCommunity()
+  const portalProfile = getActivePortalProfileConfig()
+  const ubiEnabled = isPortalFeatureEnabled('ubi', portalProfile)
 
   const [menuOpen, setMenuOpen] = useState(false)
   const [navOpen, setNavOpen] = useState(false)
@@ -474,10 +479,31 @@ export function Header() {
   return (
     <header className="portal-header">
       <div className="portal-header-inner">
-        <a href="/" className="portal-brand">
-          <img src={`${PORTAL_ASSET_BASE}codecollective_logo.png`} alt="Code Collective" />
+        <a href={portalProfile.homeUrl} className="portal-brand">
+          {portalProfile.brandImagePath ? (
+            <img src={`${PORTAL_ASSET_BASE}${portalProfile.brandImagePath.replace(/^\//, '')}`} alt={portalProfile.brandName} />
+          ) : (
+            <span
+              aria-hidden="true"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 38,
+                height: 38,
+                borderRadius: 8,
+                background: 'var(--primary)',
+                color: '#fff',
+                fontWeight: 800,
+                fontSize: '0.82rem',
+              }}
+            >
+              {portalProfile.brandName.split(' ').slice(0, 2).map((word) => word[0]).join('')}
+            </span>
+          )}
           <div>
-            <div className="portal-brand-title">Code Collective</div>
+            <div className="portal-brand-title">{portalProfile.brandName}</div>
+            {portalProfile.id === 'baltimore-medtech' && <div className="portal-brand-sub">{portalProfile.tagline}</div>}
           </div>
         </a>
 
@@ -798,7 +824,7 @@ export function Header() {
                       SysAdmin
                     </Link>
                   )}
-                  {isAdmin && (
+                  {isAdmin && ubiEnabled && (
                     <Link to="/admin/ubi-settings" onClick={() => setMenuOpen(false)} className="portal-user-menu-item admin" role="menuitem">
                       UBI Settings
                     </Link>
@@ -867,11 +893,11 @@ export function Header() {
             </>
           ) : (
             <>
-              <Link className="portal-button" to="/users/login">
+              <Link className="portal-button" to={portalProfilePath("/users/login")}>
                 Log In
               </Link>
               <Link
-                to="/users/register"
+                to={portalProfilePath("/users/register")}
                 className="btn-secondary"
                 style={{
                   background: 'var(--primary)',
@@ -911,6 +937,19 @@ export function Header() {
           <span>Navigation</span>
         </button>
         <div id="portal-primary-nav" className="portal-nav">
+          {portalProfile.id === 'baltimore-medtech' ? <>
+            <NavLink to="/community">Community</NavLink>
+            <NavLink to="/chat">Messages</NavLink>
+            <NavLink to="/people">People</NavLink>
+            <a className="portal-nav-link" href="https://medtech.social/calendar.html">Events</a>
+            <a className="portal-nav-link" href="https://medtech.social/map.html">Medical map</a>
+          </> : domainCommunity ? <>
+            <NavLink to="/timebanking">Timebank</NavLink>
+            <NavLink to="/people">People</NavLink>
+            <NavLink to="/chat">Chat</NavLink>
+            <NavLink to="/calendar">Calendar</NavLink>
+            <a className="portal-nav-link" href="https://codecollective.us/p/">Code Collective portal ↗</a>
+          </> : <>
           <NavLink to="/" isActive={isCivicActive}>
             <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
               <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
@@ -957,6 +996,12 @@ export function Header() {
             </NavLink>
           )}
 
+          <NavLink to="/timebanking">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" />
+            </svg>
+            Timebanking
+          </NavLink>
           <NavLink to="/finance" isActive={isFinanceActive}>
             <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
               <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" />
@@ -1047,6 +1092,7 @@ export function Header() {
               SysAdmin
             </NavLink>
           )}
+          </>}
         </div>
       </div>
     </header>

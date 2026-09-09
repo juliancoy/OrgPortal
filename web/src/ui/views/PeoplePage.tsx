@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
 import { OrgImage } from '../components/media/OrgImage'
 import { setSeoMeta } from '../utils/seo'
+import { getActivePortalProfileConfig } from '../../config/portalFeatures'
 import { loadPeopleDirectory, type NetworkUser, type PublicOrganization } from './peopleDirectory'
 
 const ORG_API_BASE = '/api/org'
@@ -13,6 +14,7 @@ function orgUrl(path: string) {
 }
 
 export function PeoplePage() {
+  const portalProfile = getActivePortalProfileConfig()
   const { token, user } = useAuth()
   const [query, setQuery] = useState('')
   const [users, setUsers] = useState<NetworkUser[]>([])
@@ -22,12 +24,12 @@ export function PeoplePage() {
 
   useEffect(() => {
     setSeoMeta({
-      title: 'People & Organizations • Org Portal',
+      title: `People & Organizations • ${portalProfile.portalTitle}`,
       description: 'Browse public people and organization profiles across Org Portal.',
       canonicalUrl: `${window.location.origin}/people`,
       type: 'website',
     })
-  }, [])
+  }, [portalProfile.portalTitle])
 
   useEffect(() => {
     const controller = new AbortController()

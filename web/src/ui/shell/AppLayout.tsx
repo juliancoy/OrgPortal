@@ -1,3 +1,7 @@
+import { TimebankInboxProvider } from '../timebank/TimebankInbox'
+import { TimebankHeader } from './TimebankHeader'
+import { useDomainCommunity } from '../../config/timebankCommunity'
+import { getActivePortalProfileConfig } from '../../config/portalFeatures'
 import { useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Outlet } from 'react-router-dom'
@@ -7,6 +11,9 @@ import { ExternalBrowserPrompt } from '../components/ExternalBrowserPrompt'
 
 export function AppLayout() {
   const location = useLocation()
+  const community = useDomainCommunity()
+  const timebankShell = Boolean(community) || location.pathname.startsWith('/timebanking')
+  const brandedAuth = getActivePortalProfileConfig().id === 'baltimore-medtech' && ['/users/login', '/users/register'].includes(location.pathname)
   const mainRef = useRef<HTMLElement | null>(null)
   const canonicalUserRoutes = new Set(['/profile', '/users/register', '/users/login', '/users/dashboard', '/users/profile', '/users/account'])
   const hideHeader =
@@ -19,18 +26,18 @@ export function AppLayout() {
   }, [location.pathname])
 
   return (
-    <div className="portal-shell">
+    <TimebankInboxProvider enabled={timebankShell}><div className={`portal-shell ${timebankShell ? 'timebank-shell' : ''} ${brandedAuth ? 'portal-medtech-auth-shell' : ''}`}>
       <a className="skip-link" href="#main-content">
         Skip to main content
       </a>
-      {hideHeader ? null : <Header />}
+      {timebankShell ? <TimebankHeader /> : hideHeader ? null : <Header />}
       <main id="main-content" className="portal-main" ref={mainRef} tabIndex={-1}>
         <div className={`portal-container ${isChatRoute ? 'portal-chat-container' : ''}`}>
-          <ExternalBrowserPrompt />
+          {!timebankShell && <ExternalBrowserPrompt />}
           <Outlet />
         </div>
       </main>
-      <Footer />
-    </div>
+      {timebankShell ? <footer className="tb-shell-footer">Timebank hours are separate from Dena.</footer> : <Footer />}
+    </div></TimebankInboxProvider>
   )
 }

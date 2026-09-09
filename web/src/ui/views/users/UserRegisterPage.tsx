@@ -1,13 +1,16 @@
+import { getActivePortalProfileConfig, portalProfilePath } from '../../../config/portalFeatures'
+import { portalPath } from '../../../config/portalBase'
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
-import { DEFAULT_POST_LOGIN_PATH, normalizePostLoginPath } from '../../../config/pidp'
+import { defaultPostLoginPath, normalizePostLoginPath } from '../../../config/pidp'
 
 export function UserRegisterPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const requestedNext = normalizePostLoginPath(searchParams.get('next') || DEFAULT_POST_LOGIN_PATH)
-  const loginPath = `/users/login?next=${encodeURIComponent(requestedNext)}`
+  const portalProfile = getActivePortalProfileConfig()
+  const requestedNext = normalizePostLoginPath(searchParams.get('next') || defaultPostLoginPath())
+  const loginPath = portalProfilePath(`/users/login?next=${encodeURIComponent(requestedNext)}`)
   const { registerWithPassword, isLoading, token } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -21,8 +24,8 @@ export function UserRegisterPage() {
   )
 
   useEffect(() => {
-    document.title = 'Org Portal • User registration'
-  }, [])
+    document.title = `${portalProfile.portalTitle} • Registration`
+  }, [portalProfile.portalTitle])
 
   useEffect(() => {
     if (!isLoading && registrationComplete && token) {
@@ -49,9 +52,10 @@ export function UserRegisterPage() {
     <section className="portal-auth-page" aria-labelledby="user-register-title">
       <div className="panel portal-auth-card portal-auth-card-compact">
         <div className="portal-auth-card-header">
-          <p className="portal-auth-eyebrow">New account</p>
-          <h1 id="user-register-title">Register</h1>
-          <p className="muted">Create a user account for the Code Collective portal.</p>
+          {portalProfile.id === 'baltimore-medtech' && <img className="medtech-auth-logo" src={portalPath(portalProfile.brandImagePath!)} alt="" />}
+          <p className="portal-auth-eyebrow">{portalProfile.id === 'baltimore-medtech' ? portalProfile.tagline : 'New account'}</p>
+          <h1 id="user-register-title">{portalProfile.id === 'baltimore-medtech' ? 'Join Baltimore MedTech' : 'Register'}</h1>
+          <p className="muted">{portalProfile.id === 'baltimore-medtech' ? 'One account connects you to Baltimore MedTech and the wider Code Collective community.' : 'Create a user account for the Code Collective portal.'}</p>
         </div>
 
         <form className="portal-auth-form" onSubmit={handleSubmit}>
@@ -143,7 +147,7 @@ export function UserRegisterPage() {
               </div>
               {!accountExists ? (
                 <div style={{ marginTop: '0.75rem', fontSize: '0.9rem' }}>
-                  Check that the PIdP service is reachable at <code>/pidp</code>.
+                  Please try again in a moment.
                 </div>
               ) : null}
               <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
@@ -171,12 +175,12 @@ export function UserRegisterPage() {
           disabled={isSubmitting}
           aria-busy={isSubmitting}
         >
-          {isSubmitting ? 'Creating account...' : 'Register'}
+          {isSubmitting ? 'Creating account...' : portalProfile.id === 'baltimore-medtech' ? 'Join Baltimore MedTech' : 'Register'}
         </button>
         </form>
 
         <p className="portal-auth-secondary">
-          Already have an account? <Link to={loginPath}>Login</Link>
+          Already have a Code Collective account? <Link to={loginPath}>Login</Link>
         </p>
       </div>
     </section>

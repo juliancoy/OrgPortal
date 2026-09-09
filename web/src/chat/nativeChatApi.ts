@@ -176,6 +176,7 @@ export class NativeChatApi {
         body: JSON.stringify({ client_message_id: clientMessageId, body }),
       },
     )
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('portal:inbox-changed'))
     return payload.message
   }
 
@@ -184,6 +185,7 @@ export class NativeChatApi {
       method: 'POST',
       body: JSON.stringify({ message_id: messageId }),
     })
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('portal:inbox-changed'))
   }
 
   async heartbeatPresence(): Promise<void> {

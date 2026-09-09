@@ -99,7 +99,9 @@ export async function enableWebPush(token: string): Promise<void> {
 export async function disableWebPush(token: string): Promise<void> {
   if (!supportsWebPush()) return
   const status = await fetchStatus(token)
-  await Promise.all(status.subscription_ids.map(async (id) => {
+  const saved = loadRegistration()
+  const ids = saved && status.subscription_ids.includes(saved.id) ? [saved.id] : []
+  await Promise.all(ids.map(async (id) => {
     await readJson(await fetch(orgUrl(`/api/network/push/subscriptions/${encodeURIComponent(id)}`), {
       method: 'DELETE',
       headers: authHeaders(token),

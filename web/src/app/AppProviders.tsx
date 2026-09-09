@@ -6,7 +6,7 @@ import type { SessionUser } from '../ui/auth/SessionUser'
 import { readVotes, writeVotes, readComments, writeComments, readProfiles, writeProfiles } from '../infrastructure/utils/localStorage'
 import { setRuntimeAccessToken } from '../infrastructure/auth/runtimeAuth'
 import { refreshRuntimeTokenFromSession } from '../infrastructure/auth/sessionToken'
-import { DEFAULT_POST_LOGIN_PATH, PIDP_BASE_URL, pidpUrl } from '../config/pidp'
+import { defaultPostLoginPath, PIDP_BASE_URL, pidpUrl } from '../config/pidp'
 import { portalPath } from '../config/portalBase'
 import { isNativeCapacitorRuntime } from '../infrastructure/platform/runtimePlatform'
 import { AppUpdatePrompt } from '../ui/components/system/AppUpdatePrompt'
@@ -94,7 +94,7 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
 
   const normalizedPidpBase = PIDP_BASE_URL
   const postLoginHref = useMemo(() => {
-    return portalPath(DEFAULT_POST_LOGIN_PATH)
+    return portalPath(defaultPostLoginPath())
   }, [])
 
   useEffect(() => {
