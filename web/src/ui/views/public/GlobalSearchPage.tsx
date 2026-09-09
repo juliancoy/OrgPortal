@@ -4,6 +4,7 @@ import { setSeoMeta } from '../../utils/seo'
 import { useAuth } from '../../../app/AppProviders'
 import { pidpAppLoginUrl } from '../../../config/pidp'
 import { OrgImage } from '../../components/media/OrgImage'
+import { getActivePortalProfileConfig } from '../../../config/portalFeatures'
 
 const ORG_API_BASE = '/api/org'
 const MIN_QUERY_LEN = 2
@@ -58,6 +59,7 @@ function formatEventDate(value?: string | null): string {
 }
 
 export function GlobalSearchPage() {
+  const portalProfile = getActivePortalProfileConfig()
   const { token } = useAuth()
   const [searchParams] = useSearchParams()
   const q = (searchParams.get('q') || '').trim()
@@ -72,7 +74,7 @@ export function GlobalSearchPage() {
 
   useEffect(() => {
     setSeoMeta({
-      title: q ? `Search: ${q} • Org Portal` : 'Search • Org Portal',
+      title: `${q ? `Search: ${q}` : 'Search'} • ${portalProfile.portalTitle}`,
       description: q
         ? `Search organizations, events, and people for "${q}".`
         : 'Search organizations, events, and people in Org Portal.',
@@ -81,7 +83,7 @@ export function GlobalSearchPage() {
       }`,
       type: 'website',
     })
-  }, [q, scope])
+  }, [q, scope, portalProfile.portalTitle])
 
   useEffect(() => {
     if (q.length < MIN_QUERY_LEN) {

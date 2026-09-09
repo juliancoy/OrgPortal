@@ -5,7 +5,7 @@ import { pidpUrl } from '../../config/pidp'
 import { refreshRuntimeTokenFromSession } from '../../infrastructure/auth/sessionToken'
 import { isAndroidDevice } from '../../infrastructure/platform/androidApp'
 import { OrgImage } from '../components/media/OrgImage'
-import { getActivePortalProfileConfig, isPortalFeatureEnabled } from '../../config/portalFeatures'
+import { getActivePortalProfileConfig, portalProfilePath, isPortalFeatureEnabled } from '../../config/portalFeatures'
 
 const ORG_API_BASE = '/api/org'
 const SEARCH_MIN_LEN = 2
@@ -34,7 +34,7 @@ function NavLink({ to, children, end = false, isActive: forceActive }: NavLinkPr
         : location.pathname.startsWith(to)
 
   return (
-    <Link to={to} className={`portal-nav-link ${isActive ? 'active' : ''}`} aria-current={isActive ? 'page' : undefined}>
+    <Link to={portalProfilePath(to)} className={`portal-nav-link ${isActive ? 'active' : ''}`} aria-current={isActive ? 'page' : undefined}>
       {children}
     </Link>
   )
@@ -477,7 +477,7 @@ export function Header() {
   return (
     <header className="portal-header">
       <div className="portal-header-inner">
-        <a href="/" className="portal-brand">
+        <a href={portalProfile.homeUrl} className="portal-brand">
           {portalProfile.brandImagePath ? (
             <img src={`${PORTAL_ASSET_BASE}${portalProfile.brandImagePath.replace(/^\//, '')}`} alt={portalProfile.brandName} />
           ) : (
@@ -501,6 +501,7 @@ export function Header() {
           )}
           <div>
             <div className="portal-brand-title">{portalProfile.brandName}</div>
+            {portalProfile.id === 'baltimore-medtech' && <div className="portal-brand-sub">{portalProfile.tagline}</div>}
           </div>
         </a>
 
@@ -887,11 +888,11 @@ export function Header() {
             </>
           ) : (
             <>
-              <Link className="portal-button" to="/users/login">
+              <Link className="portal-button" to={portalProfilePath("/users/login")}>
                 Log In
               </Link>
               <Link
-                to="/users/register"
+                to={portalProfilePath("/users/register")}
                 className="btn-secondary"
                 style={{
                   background: 'var(--primary)',
@@ -931,6 +932,13 @@ export function Header() {
           <span>Navigation</span>
         </button>
         <div id="portal-primary-nav" className="portal-nav">
+          {portalProfile.id === 'baltimore-medtech' ? <>
+            <NavLink to="/community">Community</NavLink>
+            <NavLink to="/chat">Messages</NavLink>
+            <NavLink to="/people">People</NavLink>
+            <a className="portal-nav-link" href="https://medtech.social/calendar.html">Events</a>
+            <a className="portal-nav-link" href="https://medtech.social/map.html">Medical map</a>
+          </> : <>
           <NavLink to="/" isActive={isCivicActive}>
             <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
               <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
@@ -1067,6 +1075,7 @@ export function Header() {
               SysAdmin
             </NavLink>
           )}
+          </>}
         </div>
       </div>
     </header>

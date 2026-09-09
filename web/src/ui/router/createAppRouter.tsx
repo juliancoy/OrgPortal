@@ -1,3 +1,5 @@
+import { PortalProfileBoundary } from '../shell/PortalProfileBoundary'
+import { MedTechCommunityPage } from '../views/MedTechCommunityPage'
 import { useEffect, useState } from 'react'
 import type { ReactElement } from 'react'
 import { Navigate, createBrowserRouter, useLocation, useNavigate, useParams } from 'react-router-dom'
@@ -57,7 +59,7 @@ import { HealthInsurancePage } from '../views/HealthInsurancePage'
 import { ProviderSchedulingPage } from '../views/ProviderSchedulingPage'
 import { PropertyCasualtyInsurancePage } from '../views/PropertyCasualtyInsurancePage'
 import { portalBasePath } from '../../config/portalBase'
-import { isPortalFeatureEnabled, type PortalFeature } from '../../config/portalFeatures'
+import { getActivePortalProfileConfig, portalProfilePath, isPortalFeatureEnabled, type PortalFeature } from '../../config/portalFeatures'
 
 function AuthenticatedRoute(props: { children: ReactElement }) {
   const { role, isLoading } = useAuth()
@@ -65,7 +67,7 @@ function AuthenticatedRoute(props: { children: ReactElement }) {
   if (isLoading) return null
   if (role === 'guest') {
     const next = `${location.pathname}${location.search}${location.hash}` || '/'
-    return <Navigate to={`/users/login?next=${encodeURIComponent(next)}`} replace />
+    return <Navigate to={portalProfilePath(`/users/login?next=${encodeURIComponent(next)}`)} replace />
   }
   return props.children
 }
@@ -73,6 +75,10 @@ function AuthenticatedRoute(props: { children: ReactElement }) {
 function HomeRoute() {
   const { role, isLoading } = useAuth()
   if (isLoading) return null
+  const profile = getActivePortalProfileConfig()
+  if (profile.id === 'baltimore-medtech') {
+    return <Navigate to={portalProfilePath(role === 'guest' ? '/users/login' : profile.memberHomePath)} replace />
+  }
   if (role === 'guest') return <App />
   return <Navigate to="/chat" replace />
 }
@@ -149,7 +155,7 @@ export function createAppRouter() {
   const basename = portalBasePath() || '/'
 
   return createBrowserRouter(
-    [
+    [{ element: <PortalProfileBoundary />, children: [
       { path: '/', element: <HomeRoute /> },
       { path: '/finance', element: <EconomicOpsPage /> },
       { path: '/departments', element: <DepartmentsPage /> },
@@ -168,6 +174,7 @@ export function createAppRouter() {
           { path: '/initiatives/:slug', element: <InitiativeDetailPage /> },
           { path: '/initiatives/:slug/sign', element: <InitiativeSignPage /> },
 
+          { path: '/community', element: <AuthenticatedRoute><MedTechCommunityPage /></AuthenticatedRoute> },
           { path: '/about', element: <AboutPage /> },
           { path: '/android/install', element: <AndroidInstallPage /> },
 
@@ -325,7 +332,7 @@ export function createAppRouter() {
           { path: '*', element: <NotFoundPage /> },
         ],
       },
-    ],
+    ] }],
     { basename },
   )
 }

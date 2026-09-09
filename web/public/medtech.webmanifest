@@ -1,0 +1,14 @@
+{
+  "name": "Baltimore MedTech",
+  "short_name": "MedTech",
+  "description": "Health × Medicine × Biotech",
+  "id": "./?portalProfile=baltimore-medtech",
+  "start_url": "./?portalProfile=baltimore-medtech",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#061a26",
+  "theme_color": "#061a26",
+  "icons": [
+    { "src": "images/baltimore-medtech-logo-square.jpg", "sizes": "64x64", "type": "image/jpeg", "purpose": "any" }
+  ]
+}

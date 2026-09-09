@@ -1,3 +1,4 @@
+import { getActivePortalProfileConfig } from '../../config/portalFeatures'
 import { useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Outlet } from 'react-router-dom'
@@ -7,6 +8,7 @@ import { ExternalBrowserPrompt } from '../components/ExternalBrowserPrompt'
 
 export function AppLayout() {
   const location = useLocation()
+  const brandedAuth = getActivePortalProfileConfig().id === 'baltimore-medtech' && ['/users/login', '/users/register'].includes(location.pathname)
   const mainRef = useRef<HTMLElement | null>(null)
   const canonicalUserRoutes = new Set(['/profile', '/users/register', '/users/login', '/users/dashboard', '/users/profile', '/users/account'])
   const hideHeader =
@@ -19,7 +21,7 @@ export function AppLayout() {
   }, [location.pathname])
 
   return (
-    <div className="portal-shell">
+    <div className={`portal-shell ${brandedAuth ? 'portal-medtech-auth-shell' : ''}`}>
       <a className="skip-link" href="#main-content">
         Skip to main content
       </a>
