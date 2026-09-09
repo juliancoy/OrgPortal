@@ -8,6 +8,7 @@ import { setRuntimeAccessToken } from '../infrastructure/auth/runtimeAuth'
 import { refreshRuntimeTokenFromSession } from '../infrastructure/auth/sessionToken'
 import { defaultPostLoginPath, PIDP_BASE_URL, pidpUrl } from '../config/pidp'
 import { portalPath } from '../config/portalBase'
+import { accountThemeMode, applyThemeMode, readThemeMode } from '../config/theme'
 import { isNativeCapacitorRuntime } from '../infrastructure/platform/runtimePlatform'
 import { AppUpdatePrompt } from '../ui/components/system/AppUpdatePrompt'
 import {
@@ -26,6 +27,7 @@ type PidpUser = {
     avatar_url?: string | null
     first_name?: string | null
     last_name?: string | null
+    theme_mode?: string | null
   } | null
 }
 
@@ -361,8 +363,11 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
         const avatarUrl = normalizeAvatarUrl(data.identity_data?.avatar_url ?? data.avatar_url)
         const firstName = data.identity_data?.first_name ?? null
         const lastName = data.identity_data?.last_name ?? null
+        const savedThemeMode = accountThemeMode(data.identity_data?.theme_mode)
         
         if (cancelled) return
+
+        if (savedThemeMode) applyThemeMode(savedThemeMode)
         
         setRoleState('constituent')
         setUserState({
@@ -375,6 +380,7 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
           firstName,
           lastName,
           avatarUrl,
+          themeMode: savedThemeMode ?? readThemeMode(),
         })
         
         // Check for guest data migration

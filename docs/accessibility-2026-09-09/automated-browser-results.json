@@ -1,0 +1,1591 @@
+{
+  "startedAt": "2026-09-09T05:54:09.066Z",
+  "screenReader": null,
+  "mode": "Local synthetic fixtures; all APIs intercepted",
+  "scans": [
+    {
+      "name": "login-light",
+      "url": "http://127.0.0.1:5174/users/login",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "overflow": 0,
+      "axeVersion": "4.13.0",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "nodes": [
+            {
+              "target": [
+                ".muted"
+              ],
+              "html": "<p class=\"muted\">Sign in with your existing account or create one before continuing.</p>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".portal-auth-divider > span"
+              ],
+              "html": "<span>or use email</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 8.6pt (11.52px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".portal-auth-secondary"
+              ],
+              "html": "<p class=\"portal-auth-secondary\">New here? <a href=\"/users/register?next=%2Fchat\" data-discover=\"true\">Register</a></p>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 10.3pt (13.76px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".portal-auth-secondary > a[href=\"/users/register?next=%2Fchat\"][data-discover=\"true\"]"
+              ],
+              "html": "<a href=\"/users/register?next=%2Fchat\" data-discover=\"true\">Register</a>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 10.3pt (13.76px), font weight: normal). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        }
+      ],
+      "incomplete": [
+        {
+          "id": "aria-prohibited-attr",
+          "count": 1
+        },
+        {
+          "id": "aria-valid-attr-value",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "finance-light",
+      "url": "http://127.0.0.1:5174/finance",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "overflow": 0,
+      "axeVersion": "4.13.0",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "nodes": [
+            {
+              "target": [
+                ".transactions > thead > tr > th:nth-child(1)"
+              ],
+              "html": "<th>Time</th>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 8.6pt (11.52px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".transactions > thead > tr > th:nth-child(2)"
+              ],
+              "html": "<th>Type</th>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 8.6pt (11.52px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".transactions > thead > tr > th:nth-child(3)"
+              ],
+              "html": "<th>From</th>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 8.6pt (11.52px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".transactions > thead > tr > th:nth-child(4)"
+              ],
+              "html": "<th>To</th>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 8.6pt (11.52px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".transactions > thead > tr > .number"
+              ],
+              "html": "<th class=\"number\">Amount</th>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 8.6pt (11.52px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "th:nth-child(6)"
+              ],
+              "html": "<th>Description</th>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 8.6pt (11.52px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".finance-table-card.portal-card:nth-child(3) > .balances > thead > tr > th:nth-child(2)"
+              ],
+              "html": "<th>Name</th>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 8.6pt (11.52px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".finance-table-card.portal-card:nth-child(3) > .balances > thead > tr > th:nth-child(3)"
+              ],
+              "html": "<th>Email</th>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 8.6pt (11.52px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".finance-table-card.portal-card:nth-child(3) > .balances > thead > tr > th:nth-child(4)"
+              ],
+              "html": "<th>Type</th>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 8.6pt (11.52px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".finance-table-card.portal-card:nth-child(3) > .balances > thead > tr > .number"
+              ],
+              "html": "<th class=\"number\">Dena</th>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 8.6pt (11.52px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".finance-table-card.portal-card:nth-child(5) > .balances > thead > tr > th:nth-child(2)"
+              ],
+              "html": "<th>Name</th>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 8.6pt (11.52px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".finance-table-card.portal-card:nth-child(5) > .balances > thead > tr > th:nth-child(3)"
+              ],
+              "html": "<th>Email</th>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 8.6pt (11.52px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".finance-table-card.portal-card:nth-child(5) > .balances > thead > tr > th:nth-child(4)"
+              ],
+              "html": "<th>Type</th>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 8.6pt (11.52px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".finance-table-card.portal-card:nth-child(5) > .balances > thead > tr > .number"
+              ],
+              "html": "<th class=\"number\">Dena</th>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 8.6pt (11.52px), font weight: bold). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        },
+        {
+          "id": "select-name",
+          "impact": "critical",
+          "tags": [
+            "cat.forms",
+            "wcag2a",
+            "wcag412",
+            "section508",
+            "section508.22.n",
+            "TTv5",
+            "TT5.c",
+            "EN-301-549",
+            "EN-9.4.1.2",
+            "ACT",
+            "RGAAv4",
+            "RGAA-11.1.1"
+          ],
+          "help": "Select element must have an accessible name",
+          "nodes": [
+            {
+              "target": [
+                "select"
+              ],
+              "html": "<select><option value=\"desc\">Most Dena first</option><option value=\"asc\">Least Dena first</option></select>",
+              "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+            }
+          ]
+        }
+      ],
+      "incomplete": [
+        {
+          "id": "aria-valid-attr-value",
+          "count": 1
+        },
+        {
+          "id": "th-has-data-cells",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "name": "registration-error",
+      "url": "http://127.0.0.1:5174/users/register",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "overflow": 0,
+      "axeVersion": "4.13.0",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "nodes": [
+            {
+              "target": [
+                ".muted"
+              ],
+              "html": "<p class=\"muted\">Create a user account for the Code Collective portal.</p>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "#register-error-title"
+              ],
+              "html": "<strong id=\"register-error-title\" style=\"font-size: 1.1rem;\">Account already exists</strong>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 1.07 (foreground color: #ffffdb, background color: #fff1f1, font size: 13.2pt (17.6px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".portal-auth-secondary"
+              ],
+              "html": "<p class=\"portal-auth-secondary\">Already have a Code Collective account? <a href=\"/users/login?next=%2Fchat\" data-discover=\"true\">Login</a></p>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 10.3pt (13.76px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".portal-auth-secondary > a[href=\"/users/login?next=%2Fchat\"][data-discover=\"true\"]"
+              ],
+              "html": "<a href=\"/users/login?next=%2Fchat\" data-discover=\"true\">Login</a>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 10.3pt (13.76px), font weight: normal). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        }
+      ],
+      "incomplete": [
+        {
+          "id": "aria-valid-attr-value",
+          "count": 1
+        },
+        {
+          "id": "color-contrast",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "photo-dialog-dark",
+      "url": "http://127.0.0.1:5174/profile",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "overflow": 0,
+      "axeVersion": "4.13.0",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "nodes": [
+            {
+              "target": [
+                ".contact-public-page-bubble"
+              ],
+              "html": "<a class=\"contact-public-page-bubble id-open-public-page\" href=\"http://127.0.0.1:5174/users/accessibility-tester\" target=\"_blank\" rel=\"noreferrer\">Open Public Page</a>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.31 (foreground color: #ffffff, background color: #6eaef7, font size: 11.4pt (15.2px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "div > div:nth-child(1) > h2"
+              ],
+              "html": "<h2 style=\"margin: 0px;\">Edit profile photo</h2>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 1.16 (foreground color: #e3efff, background color: #ffffff, font size: 18.0pt (24px), font weight: bold). Expected contrast ratio of 3:1"
+            },
+            {
+              "target": [
+                "label:nth-child(1) > .muted"
+              ],
+              "html": "<span class=\"muted\">Zoom</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 1.98 (foreground color: #93bbef, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "div:nth-child(2) > div:nth-child(2) > label:nth-child(2) > .muted"
+              ],
+              "html": "<span class=\"muted\">Horizontal position</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 1.98 (foreground color: #93bbef, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "div:nth-child(2) > div:nth-child(2) > label:nth-child(3) > .muted"
+              ],
+              "html": "<span class=\"muted\">Vertical position</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 1.98 (foreground color: #93bbef, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "tags": [
+            "cat.forms",
+            "wcag2a",
+            "wcag412",
+            "section508",
+            "section508.22.n",
+            "TTv5",
+            "TT5.c",
+            "EN-301-549",
+            "EN-9.4.1.2",
+            "ACT",
+            "RGAAv4",
+            "RGAA-11.1.1"
+          ],
+          "help": "Form elements must have labels",
+          "nodes": [
+            {
+              "target": [
+                "#profile-photo-upload"
+              ],
+              "html": "<input id=\"profile-photo-upload\" accept=\"image/*\" class=\"profile-photo-input\" type=\"file\">",
+              "failureSummary": "Fix all of the following:\n  Form element has explicit <label> that is hidden"
+            }
+          ]
+        }
+      ],
+      "incomplete": [
+        {
+          "id": "aria-valid-attr-value",
+          "count": 3
+        },
+        {
+          "id": "color-contrast",
+          "count": 19
+        }
+      ]
+    },
+    {
+      "name": "chat-error-light",
+      "url": "http://127.0.0.1:5174/chat/a11y-dm",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "overflow": 0,
+      "axeVersion": "4.13.0",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "nodes": [
+            {
+              "target": [
+                ".native-chat-room-status"
+              ],
+              "html": "<p class=\"native-chat-room-status\">Reconnecting…</p>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.3 (foreground color: #697a90, background color: #fbfdff, font size: 9.8pt (13.12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".portal-chat-room-header > .portal-chat-error"
+              ],
+              "html": "<p class=\"portal-chat-error\">Message service unavailable</p>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.3 (foreground color: #697a90, background color: #fbfdff, font size: 9.8pt (13.12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "strong"
+              ],
+              "html": "<strong>Test Neighbor</strong>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 1.02 (foreground color: #ffffdb, background color: #ffffff, font size: 12.0pt (16px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "article:nth-child(1) > .portal-chat-message-meta[aria-hidden=\"false\"] > span"
+              ],
+              "html": "<span>Sep 9, 08:00 AM</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 9.4pt (12.48px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".mine > .portal-chat-message-meta[aria-hidden=\"false\"] > span"
+              ],
+              "html": "<span>Sep 9, 01:54 AM</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.85 (foreground color: #697a90, background color: #e8f1ff, font size: 9.4pt (12.48px), font weight: normal). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        }
+      ],
+      "incomplete": [
+        {
+          "id": "aria-valid-attr-value",
+          "count": 3
+        },
+        {
+          "id": "color-contrast",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "name": "timebank-dialog",
+      "url": "http://127.0.0.1:5174/timebanking",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "overflow": 0,
+      "axeVersion": "4.13.0",
+      "violations": [],
+      "incomplete": []
+    },
+    {
+      "name": "_users_login-light-320",
+      "url": "http://127.0.0.1:5174/users/login",
+      "viewport": {
+        "width": 320,
+        "height": 900
+      },
+      "overflow": 0,
+      "axeVersion": "4.13.0",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "nodes": [
+            {
+              "target": [
+                ".muted"
+              ],
+              "html": "<p class=\"muted\">Sign in with your existing account or create one before continuing.</p>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".portal-auth-divider > span"
+              ],
+              "html": "<span>or use email</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 8.6pt (11.52px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".portal-auth-secondary"
+              ],
+              "html": "<p class=\"portal-auth-secondary\">New here? <a href=\"/users/register?next=%2Fchat\" data-discover=\"true\">Register</a></p>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 10.3pt (13.76px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".portal-auth-secondary > a[href=\"/users/register?next=%2Fchat\"][data-discover=\"true\"]"
+              ],
+              "html": "<a href=\"/users/register?next=%2Fchat\" data-discover=\"true\">Register</a>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 10.3pt (13.76px), font weight: normal). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        }
+      ],
+      "incomplete": [
+        {
+          "id": "aria-prohibited-attr",
+          "count": 1
+        },
+        {
+          "id": "aria-valid-attr-value",
+          "count": 1
+        },
+        {
+          "id": "color-contrast",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "_users_register-light-320",
+      "url": "http://127.0.0.1:5174/users/register",
+      "viewport": {
+        "width": 320,
+        "height": 900
+      },
+      "overflow": 0,
+      "axeVersion": "4.13.0",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "nodes": [
+            {
+              "target": [
+                ".muted"
+              ],
+              "html": "<p class=\"muted\">Create a user account for the Code Collective portal.</p>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".portal-auth-secondary"
+              ],
+              "html": "<p class=\"portal-auth-secondary\">Already have a Code Collective account? <a href=\"/users/login?next=%2Fchat\" data-discover=\"true\">Login</a></p>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 10.3pt (13.76px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "a[href=\"/users/login?next=%2Fchat\"]"
+              ],
+              "html": "<a href=\"/users/login?next=%2Fchat\" data-discover=\"true\">Login</a>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 10.3pt (13.76px), font weight: normal). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        }
+      ],
+      "incomplete": [
+        {
+          "id": "aria-valid-attr-value",
+          "count": 1
+        },
+        {
+          "id": "color-contrast",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "_about-light-320",
+      "url": "http://127.0.0.1:5174/about",
+      "viewport": {
+        "width": 320,
+        "height": 900
+      },
+      "overflow": 0,
+      "axeVersion": "4.13.0",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "nodes": [
+            {
+              "target": [
+                ".sans"
+              ],
+              "html": "<p class=\"sans\" style=\"color: var(--text-muted);\">Meet the team behind Ballot.</p>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "article:nth-child(1) > p"
+              ],
+              "html": "<p style=\"margin: 0.35rem 0px 0px; color: var(--text-muted); font-size: 0.95rem;\">Programmer</p>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 11.4pt (15.2px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "article:nth-child(2) > p"
+              ],
+              "html": "<p style=\"margin: 0.35rem 0px 0px; color: var(--text-muted); font-size: 0.95rem;\">Founder</p>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 11.4pt (15.2px), font weight: normal). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        }
+      ],
+      "incomplete": [
+        {
+          "id": "aria-valid-attr-value",
+          "count": 1
+        },
+        {
+          "id": "color-contrast",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "_profile-light-320",
+      "url": "http://127.0.0.1:5174/profile",
+      "viewport": {
+        "width": 320,
+        "height": 900
+      },
+      "overflow": 0,
+      "axeVersion": "4.13.0",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "nodes": [
+            {
+              "target": [
+                "label[for=\"full-name\"]"
+              ],
+              "html": "<label class=\"muted\" for=\"full-name\">Full name</label>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "div > p:nth-child(2)"
+              ],
+              "html": "<p class=\"muted\" style=\"margin: 0.25rem 0px 0px;\">Your public profile is enabled.</p>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".contact-autosave-status"
+              ],
+              "html": "<p class=\"contact-autosave-status saved\" role=\"status\">Saved</p>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.15 (foreground color: #178f45, background color: #ffffff, font size: 10.6pt (14.08px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".portal-card:nth-child(11) > .muted:nth-child(1)"
+              ],
+              "html": "<div class=\"muted\">Public URL</div>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".portal-card:nth-child(11) > p"
+              ],
+              "html": "<p class=\"muted\" style=\"margin: 0px;\">Public individual profile pages are published with no-index metadata.</p>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".profile-bottom-field > .muted"
+              ],
+              "html": "<span class=\"muted\">Public slug</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".profile-account-reference > div > .muted"
+              ],
+              "html": "<div class=\"muted\" style=\"margin: 0px;\">User UUID</div>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #697a90, background color: #ffffff, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "tags": [
+            "cat.forms",
+            "wcag2a",
+            "wcag412",
+            "section508",
+            "section508.22.n",
+            "TTv5",
+            "TT5.c",
+            "EN-301-549",
+            "EN-9.4.1.2",
+            "ACT",
+            "RGAAv4",
+            "RGAA-11.1.1"
+          ],
+          "help": "Form elements must have labels",
+          "nodes": [
+            {
+              "target": [
+                "#profile-photo-upload"
+              ],
+              "html": "<input id=\"profile-photo-upload\" accept=\"image/*\" class=\"profile-photo-input\" type=\"file\">",
+              "failureSummary": "Fix all of the following:\n  Form element has explicit <label> that is hidden"
+            }
+          ]
+        }
+      ],
+      "incomplete": [
+        {
+          "id": "aria-valid-attr-value",
+          "count": 3
+        },
+        {
+          "id": "color-contrast",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "_settings-light-320",
+      "url": "http://127.0.0.1:5174/settings",
+      "viewport": {
+        "width": 320,
+        "height": 900
+      },
+      "overflow": 0,
+      "axeVersion": "4.13.0",
+      "violations": [],
+      "incomplete": [
+        {
+          "id": "aria-valid-attr-value",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "name": "_id-light-320",
+      "url": "http://127.0.0.1:5174/id",
+      "viewport": {
+        "width": 320,
+        "height": 900
+      },
+      "overflow": 0,
+      "axeVersion": "4.13.0",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "nodes": [
+            {
+              "target": [
+                ".id-link-row > strong"
+              ],
+              "html": "<strong>Email</strong>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 1.02 (foreground color: #ffffdb, background color: #ffffff, font size: 9.6pt (12.8px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "div:nth-child(1) > strong"
+              ],
+              "html": "<strong>QR</strong>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 1.02 (foreground color: #ffffdb, background color: #ffffff, font size: 12.0pt (16px), font weight: bold). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        }
+      ],
+      "incomplete": [
+        {
+          "id": "aria-prohibited-attr",
+          "count": 2
+        },
+        {
+          "id": "aria-valid-attr-value",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "name": "_calendar-light-320",
+      "url": "http://127.0.0.1:5174/calendar",
+      "viewport": {
+        "width": 320,
+        "height": 900
+      },
+      "overflow": 0,
+      "axeVersion": "4.13.0",
+      "violations": [],
+      "incomplete": [
+        {
+          "id": "aria-valid-attr-value",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "name": "_timebanking-light-320",
+      "url": "http://127.0.0.1:5174/timebanking",
+      "viewport": {
+        "width": 320,
+        "height": 900
+      },
+      "overflow": 0,
+      "axeVersion": "4.13.0",
+      "violations": [],
+      "incomplete": []
+    },
+    {
+      "name": "_users_login-dark-320",
+      "url": "http://127.0.0.1:5174/users/login",
+      "viewport": {
+        "width": 320,
+        "height": 900
+      },
+      "overflow": 0,
+      "axeVersion": "4.13.0",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "nodes": [
+            {
+              "target": [
+                "a[href$=\"login\"]"
+              ],
+              "html": "<a class=\"portal-button\" href=\"/users/login\" data-discover=\"true\">Log In</a>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.05 (foreground color: #ffffff, background color: #7fb8ff, font size: 9.6pt (12.8px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".btn-secondary"
+              ],
+              "html": "<a class=\"btn-secondary\" href=\"/users/register\" data-discover=\"true\" style=\"background: var(--primary); color: rgb(255, 255, 255); border: 2px solid var(--primary);\">Register</a>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.05 (foreground color: #ffffff, background color: #7fb8ff, font size: 9.6pt (12.8px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".portal-nav-toggle > span"
+              ],
+              "html": "<span>Navigation</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.05 (foreground color: #ffffff, background color: #7fb8ff, font size: 9.8pt (13.12px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".portal-auth-idp-link"
+              ],
+              "html": "<a href=\"/pidp/app/login?next=http%3A%2F%2F127.0.0.1%3A5174%2Fauth%2Fcallback%3Fnext%3D%252Fchat&amp;app=code-collective&amp;auto=1\" class=\"portal-button portal-auth-idp-link\">Continue to Identity Provider</a>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.05 (foreground color: #ffffff, background color: #7fb8ff, font size: 9.6pt (12.8px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".btn-primary"
+              ],
+              "html": "<button type=\"submit\" class=\"btn-primary portal-auth-submit\" aria-busy=\"false\">Log In</button>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.05 (foreground color: #ffffff, background color: #7fb8ff, font size: 9.6pt (12.8px), font weight: bold). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        }
+      ],
+      "incomplete": [
+        {
+          "id": "aria-prohibited-attr",
+          "count": 1
+        },
+        {
+          "id": "aria-valid-attr-value",
+          "count": 1
+        },
+        {
+          "id": "color-contrast",
+          "count": 4
+        }
+      ]
+    },
+    {
+      "name": "_users_register-dark-320",
+      "url": "http://127.0.0.1:5174/users/register",
+      "viewport": {
+        "width": 320,
+        "height": 900
+      },
+      "overflow": 0,
+      "axeVersion": "4.13.0",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "nodes": [
+            {
+              "target": [
+                ".portal-button"
+              ],
+              "html": "<a class=\"portal-button\" href=\"/users/login\" data-discover=\"true\">Log In</a>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.05 (foreground color: #ffffff, background color: #7fb8ff, font size: 9.6pt (12.8px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".btn-secondary"
+              ],
+              "html": "<a class=\"btn-secondary\" href=\"/users/register\" data-discover=\"true\" style=\"background: var(--primary); color: rgb(255, 255, 255); border: 2px solid var(--primary);\">Register</a>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.05 (foreground color: #ffffff, background color: #7fb8ff, font size: 9.6pt (12.8px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".portal-nav-toggle > span"
+              ],
+              "html": "<span>Navigation</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.05 (foreground color: #ffffff, background color: #7fb8ff, font size: 9.8pt (13.12px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".btn-primary"
+              ],
+              "html": "<button type=\"submit\" class=\"btn-primary portal-auth-submit\" aria-busy=\"false\">Register</button>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.05 (foreground color: #ffffff, background color: #7fb8ff, font size: 9.6pt (12.8px), font weight: bold). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        }
+      ],
+      "incomplete": [
+        {
+          "id": "aria-valid-attr-value",
+          "count": 1
+        },
+        {
+          "id": "color-contrast",
+          "count": 4
+        }
+      ]
+    },
+    {
+      "name": "_about-dark-320",
+      "url": "http://127.0.0.1:5174/about",
+      "viewport": {
+        "width": 320,
+        "height": 900
+      },
+      "overflow": 0,
+      "axeVersion": "4.13.0",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "nodes": [
+            {
+              "target": [
+                ".portal-button"
+              ],
+              "html": "<a class=\"portal-button\" href=\"/users/login\" data-discover=\"true\">Log In</a>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.05 (foreground color: #ffffff, background color: #7fb8ff, font size: 9.6pt (12.8px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".btn-secondary"
+              ],
+              "html": "<a class=\"btn-secondary\" href=\"/users/register\" data-discover=\"true\" style=\"background: var(--primary); color: rgb(255, 255, 255); border: 2px solid var(--primary);\">Register</a>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.05 (foreground color: #ffffff, background color: #7fb8ff, font size: 9.6pt (12.8px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "button > span"
+              ],
+              "html": "<span>Navigation</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.05 (foreground color: #ffffff, background color: #7fb8ff, font size: 9.8pt (13.12px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "article:nth-child(1) > h3"
+              ],
+              "html": "<h3 style=\"margin: 0px; font-size: 1.2rem;\">Julian</h3>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 1.16 (foreground color: #e3efff, background color: #ffffff, font size: 14.4pt (19.2px), font weight: bold). Expected contrast ratio of 3:1"
+            },
+            {
+              "target": [
+                "article:nth-child(1) > p"
+              ],
+              "html": "<p style=\"margin: 0.35rem 0px 0px; color: var(--text-muted); font-size: 0.95rem;\">Programmer</p>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 1.98 (foreground color: #93bbef, background color: #ffffff, font size: 11.4pt (15.2px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "article:nth-child(2) > h3"
+              ],
+              "html": "<h3 style=\"margin: 0px; font-size: 1.2rem;\">Dario</h3>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 1.16 (foreground color: #e3efff, background color: #ffffff, font size: 14.4pt (19.2px), font weight: bold). Expected contrast ratio of 3:1"
+            },
+            {
+              "target": [
+                "article:nth-child(2) > p"
+              ],
+              "html": "<p style=\"margin: 0.35rem 0px 0px; color: var(--text-muted); font-size: 0.95rem;\">Founder</p>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 1.98 (foreground color: #93bbef, background color: #ffffff, font size: 11.4pt (15.2px), font weight: normal). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        }
+      ],
+      "incomplete": [
+        {
+          "id": "aria-valid-attr-value",
+          "count": 1
+        },
+        {
+          "id": "color-contrast",
+          "count": 4
+        }
+      ]
+    },
+    {
+      "name": "_profile-dark-320",
+      "url": "http://127.0.0.1:5174/profile",
+      "viewport": {
+        "width": 320,
+        "height": 900
+      },
+      "overflow": 0,
+      "axeVersion": "4.13.0",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "nodes": [
+            {
+              "target": [
+                ".portal-nav-toggle > span"
+              ],
+              "html": "<span>Navigation</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.05 (foreground color: #ffffff, background color: #7fb8ff, font size: 9.8pt (13.12px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".contact-public-page-bubble"
+              ],
+              "html": "<a class=\"contact-public-page-bubble id-open-public-page\" href=\"http://127.0.0.1:5174/users/accessibility-tester\" target=\"_blank\" rel=\"noreferrer\">Open Public Page</a>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.31 (foreground color: #ffffff, background color: #6eaef7, font size: 11.4pt (15.2px), font weight: bold). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "tags": [
+            "cat.forms",
+            "wcag2a",
+            "wcag412",
+            "section508",
+            "section508.22.n",
+            "TTv5",
+            "TT5.c",
+            "EN-301-549",
+            "EN-9.4.1.2",
+            "ACT",
+            "RGAAv4",
+            "RGAA-11.1.1"
+          ],
+          "help": "Form elements must have labels",
+          "nodes": [
+            {
+              "target": [
+                "#profile-photo-upload"
+              ],
+              "html": "<input id=\"profile-photo-upload\" accept=\"image/*\" class=\"profile-photo-input\" type=\"file\">",
+              "failureSummary": "Fix all of the following:\n  Form element has explicit <label> that is hidden"
+            }
+          ]
+        }
+      ],
+      "incomplete": [
+        {
+          "id": "aria-valid-attr-value",
+          "count": 3
+        },
+        {
+          "id": "color-contrast",
+          "count": 6
+        }
+      ]
+    },
+    {
+      "name": "_settings-dark-320",
+      "url": "http://127.0.0.1:5174/settings",
+      "viewport": {
+        "width": 320,
+        "height": 900
+      },
+      "overflow": 0,
+      "axeVersion": "4.13.0",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "nodes": [
+            {
+              "target": [
+                ".portal-nav-toggle > span"
+              ],
+              "html": "<span>Navigation</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.05 (foreground color: #ffffff, background color: #7fb8ff, font size: 9.8pt (13.12px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".primary.portal-button[href$=\"calendar\"]"
+              ],
+              "html": "<a class=\"portal-button primary\" href=\"/calendar\" data-discover=\"true\">Open Calendar</a>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.05 (foreground color: #ffffff, background color: #7fb8ff, font size: 9.6pt (12.8px), font weight: bold). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        }
+      ],
+      "incomplete": [
+        {
+          "id": "aria-valid-attr-value",
+          "count": 3
+        },
+        {
+          "id": "color-contrast",
+          "count": 5
+        }
+      ]
+    },
+    {
+      "name": "_id-dark-320",
+      "url": "http://127.0.0.1:5174/id",
+      "viewport": {
+        "width": 320,
+        "height": 900
+      },
+      "overflow": 0,
+      "axeVersion": "4.13.0",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "nodes": [
+            {
+              "target": [
+                ".portal-nav-toggle > span"
+              ],
+              "html": "<span>Navigation</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.05 (foreground color: #ffffff, background color: #7fb8ff, font size: 9.8pt (13.12px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".contact-public-page-bubble"
+              ],
+              "html": "<a class=\"contact-public-page-bubble id-open-public-page\" href=\"http://127.0.0.1:5174/users/accessibility-tester\">Open Public Page</a>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.31 (foreground color: #ffffff, background color: #6eaef7, font size: 11.4pt (15.2px), font weight: bold). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        }
+      ],
+      "incomplete": [
+        {
+          "id": "aria-prohibited-attr",
+          "count": 2
+        },
+        {
+          "id": "aria-valid-attr-value",
+          "count": 3
+        },
+        {
+          "id": "color-contrast",
+          "count": 6
+        }
+      ]
+    },
+    {
+      "name": "_calendar-dark-320",
+      "url": "http://127.0.0.1:5174/calendar",
+      "viewport": {
+        "width": 320,
+        "height": 900
+      },
+      "overflow": 0,
+      "axeVersion": "4.13.0",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "nodes": [
+            {
+              "target": [
+                ".portal-nav-toggle > span"
+              ],
+              "html": "<span>Navigation</span>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.05 (foreground color: #ffffff, background color: #7fb8ff, font size: 9.8pt (13.12px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".portal-card:nth-child(2) > div > div > .portal-button"
+              ],
+              "html": "<a class=\"portal-button\" href=\"/pidp/auth/google-calendar/connect?next=http%3A%2F%2F127.0.0.1%3A5174%2Fcalendar\">Connect Google Calendar</a>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.05 (foreground color: #ffffff, background color: #7fb8ff, font size: 9.6pt (12.8px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".portal-card:nth-child(4) > div > div > .portal-button"
+              ],
+              "html": "<a class=\"portal-button\" href=\"/pidp/auth/microsoft-calendar/connect?next=http%3A%2F%2F127.0.0.1%3A5174%2Fcalendar\">Connect Microsoft Calendar</a>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.05 (foreground color: #ffffff, background color: #7fb8ff, font size: 9.6pt (12.8px), font weight: bold). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        }
+      ],
+      "incomplete": [
+        {
+          "id": "aria-valid-attr-value",
+          "count": 3
+        },
+        {
+          "id": "color-contrast",
+          "count": 5
+        }
+      ]
+    },
+    {
+      "name": "_timebanking-dark-320",
+      "url": "http://127.0.0.1:5174/timebanking",
+      "viewport": {
+        "width": 320,
+        "height": 900
+      },
+      "overflow": 0,
+      "axeVersion": "4.13.0",
+      "violations": [],
+      "incomplete": []
+    }
+  ],
+  "checks": [
+    {
+      "name": "Departments has its own page title",
+      "passed": false,
+      "detail": "Org Portal • User login"
+    },
+    {
+      "name": "registration-error: initial focus inside",
+      "passed": false,
+      "detail": {
+        "announcement": []
+      }
+    },
+    {
+      "name": "registration-error: Tab stays inside",
+      "passed": false,
+      "detail": [
+        {
+          "inside": false,
+          "tag": "A",
+          "name": "Login"
+        },
+        {
+          "inside": false,
+          "tag": "BODY",
+          "name": "\n    Skip to main contentCode CollectiveType at least two characters. Use up and"
+        },
+        {
+          "inside": false,
+          "tag": "A",
+          "name": "Skip to main content"
+        },
+        {
+          "inside": false,
+          "tag": "A",
+          "name": "Code Collective"
+        },
+        {
+          "inside": false,
+          "tag": "INPUT",
+          "name": "Search organizations, events, and people"
+        },
+        {
+          "inside": false,
+          "tag": "A",
+          "name": "Log In"
+        },
+        {
+          "inside": false,
+          "tag": "A",
+          "name": "Register"
+        },
+        {
+          "inside": false,
+          "tag": "A",
+          "name": "Civic"
+        }
+      ]
+    },
+    {
+      "name": "registration-error: Escape closes",
+      "passed": false,
+      "detail": null
+    },
+    {
+      "name": "photo-dialog-dark: initial focus inside",
+      "passed": false,
+      "detail": {
+        "announcement": []
+      }
+    },
+    {
+      "name": "photo-dialog-dark: Tab stays inside",
+      "passed": false,
+      "detail": [
+        {
+          "inside": false,
+          "tag": "INPUT",
+          "name": ""
+        },
+        {
+          "inside": false,
+          "tag": "BUTTON",
+          "name": "Save profile"
+        },
+        {
+          "inside": false,
+          "tag": "INPUT",
+          "name": ""
+        },
+        {
+          "inside": false,
+          "tag": "BUTTON",
+          "name": "Disable"
+        },
+        {
+          "inside": false,
+          "tag": "INPUT",
+          "name": ""
+        },
+        {
+          "inside": false,
+          "tag": "BUTTON",
+          "name": "Hide from public profile"
+        },
+        {
+          "inside": false,
+          "tag": "TEXTAREA",
+          "name": "Synthetic profile"
+        },
+        {
+          "inside": false,
+          "tag": "BUTTON",
+          "name": "Hide from public profile"
+        }
+      ]
+    },
+    {
+      "name": "photo-dialog-dark: Escape closes",
+      "passed": false,
+      "detail": null
+    },
+    {
+      "name": "Chat error is in an alert/live region",
+      "passed": false,
+      "detail": null
+    },
+    {
+      "name": "timebank-dialog: initial focus inside",
+      "passed": true,
+      "detail": {
+        "announcement": []
+      }
+    },
+    {
+      "name": "timebank-dialog: Tab stays inside",
+      "passed": true,
+      "detail": []
+    },
+    {
+      "name": "timebank-dialog: Escape closes",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "Timebank restores focus to Add offer",
+      "passed": true,
+      "detail": null
+    }
+  ],
+  "errors": [],
+  "baseURL": "http://127.0.0.1:5174",
+  "browserVersion": "147.0.7727.15",
+  "finishedAt": "2026-09-09T05:54:51.163Z",
+  "summary": {
+    "assertionsPassed": 4,
+    "assertionsFailed": 8,
+    "scans": 22,
+    "scansWithViolations": 17,
+    "harnessErrors": 0
+  }
+}
