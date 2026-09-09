@@ -1,5 +1,6 @@
 interface Env {
   DB: D1Database;
+  CF_VERSION_METADATA?: { id: string };
   CONTACTS_DB?: D1Database;
   CHAT_ROOMS?: DurableObjectNamespace;
   PIDP_BASE_URL: string;
