@@ -1,7 +1,11 @@
+import { getActivePortalProfileConfig, portalProfilePath } from './portalFeatures'
 import { getNativeAuthCallbackUrl, isNativeCapacitorRuntime } from '../infrastructure/platform/runtimePlatform'
 import { portalUrl, toInternalPortalPath } from './portalBase'
 
-export const DEFAULT_POST_LOGIN_PATH = '/chat'
+export function defaultPostLoginPath(): string {
+  const profile = getActivePortalProfileConfig()
+  return portalProfilePath(profile.memberHomePath, profile)
+}
 
 function detectLane(hostname: string): 'dev' | 'prod' {
   return hostname.startsWith('dev.') ? 'dev' : 'prod'
@@ -55,24 +59,27 @@ export function pidpUrl(path: string): string {
 }
 
 export function normalizePostLoginPath(next: string): string {
-  const fallback = DEFAULT_POST_LOGIN_PATH
+  const fallback = defaultPostLoginPath()
   const path = toInternalPortalPath(next, fallback)
+  const pathname = new URL(path, 'https://portal.invalid').pathname
   if (
-    path === '/' ||
-    path.startsWith('/auth/callback') ||
-    path.startsWith('/users/login') ||
-    path.startsWith('/users/register') ||
-    path.endsWith('/standalone.html') ||
-    path === '/standalone.html'
+    pathname === '/' ||
+    pathname.startsWith('/auth/callback') ||
+    pathname.startsWith('/users/login') ||
+    pathname.startsWith('/users/register') ||
+    pathname.endsWith('/standalone.html') ||
+    pathname === '/standalone.html'
   ) {
     return fallback
   }
-  return path
+  return portalProfilePath(path, getActivePortalProfileConfig())
 }
 
 export function portalAuthCallbackUrl(next: string): string {
   const target = normalizePostLoginPath(next)
   const callback = new URL(portalUrl('/auth/callback'))
+  const profile = getActivePortalProfileConfig()
+  if (profile.id === 'baltimore-medtech') callback.searchParams.set('portalProfile', profile.id)
   callback.searchParams.set('next', target)
   return callback.toString()
 }

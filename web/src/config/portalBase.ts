@@ -40,7 +40,7 @@ export function toInternalPortalPath(rawPath: string, fallback = '/'): string {
     const parsed = new URL(raw, origin)
     if (parsed.origin !== origin) return fallback
     const basePath = portalBasePath()
-    let path = `${parsed.pathname}${parsed.search}` || fallback
+    let path = `${parsed.pathname}${parsed.search}${parsed.hash}` || fallback
     if (basePath && (path === basePath || path.startsWith(`${basePath}/`) || path.startsWith(`${basePath}?`))) {
       path = path.slice(basePath.length) || '/'
       if (!path.startsWith('/')) path = `/${path}`

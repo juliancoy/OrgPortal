@@ -5,7 +5,7 @@ import { portalPath } from './config/portalBase'
 import { Header } from './ui/shell/Header'
 import { Footer } from './ui/shell/Footer'
 import { ExternalBrowserPrompt } from './ui/components/ExternalBrowserPrompt'
-import { DEFAULT_POST_LOGIN_PATH, PIDP_APP_SLUG, pidpAppLoginUrl, pidpUrl, portalAuthCallbackUrl } from './config/pidp'
+import { defaultPostLoginPath, PIDP_APP_SLUG, pidpAppLoginUrl, pidpUrl, portalAuthCallbackUrl } from './config/pidp'
 import { getActivePortalProfileConfig } from './config/portalFeatures'
 import { listMotions } from './application/usecases/listMotions'
 import { MotionStatusBadge } from './ui/components/governance/MotionStatusBadge'
@@ -58,7 +58,7 @@ export default function App() {
   const [isSubmittingLogin, setIsSubmittingLogin] = useState(false)
 
   const socialLoginUrl = (provider: 'google' | 'github') => {
-    const params = new URLSearchParams({ next: portalAuthCallbackUrl(DEFAULT_POST_LOGIN_PATH) })
+    const params = new URLSearchParams({ next: portalAuthCallbackUrl(defaultPostLoginPath()) })
     if (PIDP_APP_SLUG) params.set('app', PIDP_APP_SLUG)
     return pidpUrl(`/auth/${provider}/login?${params.toString()}`)
   }

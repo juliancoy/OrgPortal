@@ -18,6 +18,11 @@ function memoryStorage(initialValue?: string) {
 }
 
 describe('portal feature profiles', () => {
+  it('selects MedTech by its custom domain even with a conflicting saved profile', () => {
+    const profile = getActivePortalProfileConfig('?portalProfile=code-collective', memoryStorage('code-collective'), 'community.medtech.social')
+    expect(profile.id).toBe('baltimore-medtech')
+    expect(profile.memberHomePath).toBe('/community')
+  })
   it('keeps UBI enabled for the default Code Collective profile', () => {
     const profile = getActivePortalProfileConfig('', memoryStorage())
 
@@ -38,4 +43,5 @@ describe('portal feature profiles', () => {
     expect(readPortalProfileIdFromSearch('site=medtech')).toBe('baltimore-medtech')
     expect(portalProfileLoginSearch('baltimore-medtech')).toBe('portalProfile=baltimore-medtech')
   })
+
 })

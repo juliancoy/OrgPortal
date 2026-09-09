@@ -8,10 +8,13 @@ export type PortalProfileConfig = {
   portalTitle: string
   tagline: string
   brandImagePath?: string
+  homeUrl: string
+  memberHomePath: string
   disabledFeatures: PortalFeature[]
 }
 
 const PROFILE_STORAGE_KEY = 'portal.profile'
+export const MEDTECH_PORTAL_HOST = 'community.medtech.social'
 const PROFILE_QUERY_PARAMS = ['portalProfile', 'profile', 'site']
 
 const PORTAL_PROFILES: Record<PortalProfileId, PortalProfileConfig> = {
@@ -21,13 +24,18 @@ const PORTAL_PROFILES: Record<PortalProfileId, PortalProfileConfig> = {
     portalTitle: 'Org Portal',
     tagline: 'Coding a New Economy',
     brandImagePath: '/images/namebanner.png',
+    homeUrl: '/',
+    memberHomePath: '/chat',
     disabledFeatures: [],
   },
   'baltimore-medtech': {
     id: 'baltimore-medtech',
     brandName: 'Baltimore MedTech',
     portalTitle: 'Baltimore MedTech Portal',
-    tagline: 'Medicine, technology, research, and entrepreneurship in Baltimore.',
+    tagline: 'Health × Medicine × Biotech',
+    brandImagePath: '/images/baltimore-medtech-logo-square.jpg',
+    homeUrl: 'https://medtech.social/',
+    memberHomePath: '/community',
     disabledFeatures: ['ubi'],
   },
 }
@@ -65,11 +73,15 @@ function storageSet(profileId: PortalProfileId, storage?: Pick<Storage, 'setItem
 function browserStorage(): Storage | null {
   if (typeof window === 'undefined') return null
   try {
-    return window.localStorage
+    return window.sessionStorage
   } catch {
     return null
   }
 }
+
+// Keep navigation branded when browser storage is unavailable, without sharing
+// another tab's selected community.
+let browserProfileId: PortalProfileId | null = null
 
 export function readPortalProfileIdFromSearch(search = ''): PortalProfileId | null {
   const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search)
@@ -83,10 +95,13 @@ export function readPortalProfileIdFromSearch(search = ''): PortalProfileId | nu
 export function getActivePortalProfileConfig(
   search = typeof window === 'undefined' ? '' : window.location.search,
   storage: Pick<Storage, 'getItem' | 'setItem'> | null = browserStorage(),
+  hostname = typeof window === 'undefined' ? '' : window.location.hostname,
 ): PortalProfileConfig {
+  if (hostname === MEDTECH_PORTAL_HOST) return PORTAL_PROFILES['baltimore-medtech']
   const urlProfileId = readPortalProfileIdFromSearch(search)
-  const profileId = urlProfileId || storageGet(storage) || 'code-collective'
+  const profileId = urlProfileId || (typeof window !== 'undefined' ? browserProfileId : null) || storageGet(storage) || 'code-collective'
   if (urlProfileId) storageSet(urlProfileId, storage)
+  if (typeof window !== 'undefined') browserProfileId = profileId
   return PORTAL_PROFILES[profileId]
 }
 
@@ -96,4 +111,12 @@ export function isPortalFeatureEnabled(feature: PortalFeature, profile = getActi
 
 export function portalProfileLoginSearch(profileId: PortalProfileId): string {
   return `portalProfile=${encodeURIComponent(profileId)}`
+}
+
+export function portalProfilePath(path: string, profile = getActivePortalProfileConfig()): string {
+  if (profile.id !== 'baltimore-medtech') return path
+  const url = new URL(path, 'https://portal.invalid')
+  if (url.origin !== 'https://portal.invalid') throw new Error('Expected an internal portal path')
+  url.searchParams.set('portalProfile', profile.id)
+  return `${url.pathname}${url.search}${url.hash}`
 }

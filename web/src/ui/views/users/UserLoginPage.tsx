@@ -2,20 +2,20 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
 import { portalPath } from '../../../config/portalBase'
-import { DEFAULT_POST_LOGIN_PATH, PIDP_APP_SLUG, normalizePostLoginPath, pidpAppLoginUrl, pidpUrl, portalAuthCallbackUrl } from '../../../config/pidp'
-import { getActivePortalProfileConfig } from '../../../config/portalFeatures'
+import { defaultPostLoginPath, PIDP_APP_SLUG, normalizePostLoginPath, pidpAppLoginUrl, pidpUrl, portalAuthCallbackUrl } from '../../../config/pidp'
+import { getActivePortalProfileConfig, portalProfilePath } from '../../../config/portalFeatures'
 
 export function UserLoginPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { loginWithPassword, isLoading } = useAuth()
+  const { loginWithPassword, isLoading, role } = useAuth()
   const portalProfile = getActivePortalProfileConfig()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const requestedNext = normalizePostLoginPath(searchParams.get('next') || DEFAULT_POST_LOGIN_PATH)
-  const registerPath = `/users/register?next=${encodeURIComponent(requestedNext)}`
+  const requestedNext = normalizePostLoginPath(searchParams.get('next') || defaultPostLoginPath())
+  const registerPath = portalProfilePath(`/users/register?next=${encodeURIComponent(requestedNext)}`)
   const socialLoginUrl = (provider: 'google' | 'github') => {
     const params = new URLSearchParams({ next: portalAuthCallbackUrl(requestedNext) })
     if (PIDP_APP_SLUG) params.set('app', PIDP_APP_SLUG)
@@ -27,11 +27,11 @@ export function UserLoginPage() {
   }, [portalProfile.portalTitle])
 
   useEffect(() => {
-    if (!isLoading && isSubmitting) {
+    if (!isLoading && role !== 'guest') {
       setIsSubmitting(false)
       navigate(requestedNext)
     }
-  }, [isLoading, isSubmitting, navigate, requestedNext])
+  }, [isLoading, isSubmitting, role, navigate, requestedNext])
 
   const handleSubmit = async (event?: FormEvent<HTMLFormElement>) => {
     event?.preventDefault()
@@ -50,9 +50,10 @@ export function UserLoginPage() {
     <section className="portal-auth-page" aria-labelledby="user-login-title">
       <div className="panel portal-auth-card">
         <div className="portal-auth-card-header">
-          <p className="portal-auth-eyebrow">{portalProfile.brandName} identity</p>
-          <h1 id="user-login-title">Log In</h1>
-          <p className="muted">Sign in with your existing account or create one before continuing.</p>
+          {portalProfile.id === 'baltimore-medtech' && <img className="medtech-auth-logo" src={portalPath(portalProfile.brandImagePath!)} alt="" />}
+          <p className="portal-auth-eyebrow">{portalProfile.id === 'baltimore-medtech' ? portalProfile.tagline : `${portalProfile.brandName} identity`}</p>
+          <h1 id="user-login-title">{portalProfile.id === 'baltimore-medtech' ? 'Welcome to Baltimore MedTech' : 'Log In'}</h1>
+          <p className="muted">{portalProfile.id === 'baltimore-medtech' ? 'Connect with the people moving health, medicine, and biotech forward in Baltimore.' : 'Sign in with your existing account or create one before continuing.'}</p>
         </div>
 
         <div className="portal-auth-provider-stack">
@@ -83,7 +84,7 @@ export function UserLoginPage() {
             href={pidpAppLoginUrl(requestedNext)}
             className="portal-button portal-auth-idp-link"
           >
-            Continue to Identity Provider
+            {portalProfile.id === 'baltimore-medtech' ? 'Continue with Code Collective' : 'Continue to Identity Provider'}
           </a>
         </div>
 
@@ -122,13 +123,19 @@ export function UserLoginPage() {
             </p>
           ) : null}
           <button type="submit" className="btn-primary portal-auth-submit" disabled={isSubmitting} aria-busy={isSubmitting}>
-            {isSubmitting ? 'Signing in...' : 'Log In'}
+            {isSubmitting ? 'Signing in...' : portalProfile.id === 'baltimore-medtech' ? 'Member login' : 'Log In'}
           </button>
         </form>
 
         <p className="portal-auth-secondary">
-          New here? <Link to={registerPath}>Register</Link>
+          New here? <Link to={registerPath}>{portalProfile.id === 'baltimore-medtech' ? 'Join Baltimore MedTech' : 'Register'}</Link>
         </p>
+        {portalProfile.id === 'baltimore-medtech' && <p className="medtech-shared-account">Your existing Code Collective account works here.</p>}
+        {portalProfile.id === 'baltimore-medtech' && (
+          <p className="medtech-cache-reset">
+            <a href={`${portalPath('/clear-cache')}?${searchParams.toString()}`}>Clear local cache</a>
+          </p>
+        )}
       </div>
     </section>
   )
