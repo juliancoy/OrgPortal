@@ -4,7 +4,7 @@ import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
 import { downloadIcsEvent, outlookCalendarUrl } from '../../utils/calendar'
 import { useAuth } from '../../../app/AppProviders'
 import { pidpAppLoginUrl } from '../../../config/pidp'
-import { recordAttendanceWithRetry } from './attendanceApi'
+import { EventRegistration } from './EventRegistration'
 import { toUserFacingErrorMessage } from '../../../infrastructure/http/userFacingError'
 import { loadGoogleCalendarConnection, savePortalEventToGoogleCalendar } from '../googleCalendarApi'
 import { loadMicrosoftCalendarConnection, savePortalEventToMicrosoftCalendar } from '../microsoftCalendarApi'
@@ -28,6 +28,7 @@ type PublicEvent = {
   image_url?: string | null
   organization_name?: string | null
   host_org_name?: string | null
+  host_org_id?: string | null
 }
 
 type PublicEventChatMessage = {
@@ -78,15 +79,12 @@ function getEventOfferValidFrom(event: PublicEvent) {
 }
 
 export function PublicEventPage() {
-  const { token } = useAuth()
+  const { token, user } = useAuth()
   const { slug } = useParams()
   const [event, setEvent] = useState<PublicEvent | null>(null)
   const [status, setStatus] = useState<string>('Loading event…')
   const [googleCalendarConnected, setGoogleCalendarConnected] = useState(false)
   const [microsoftCalendarConnected, setMicrosoftCalendarConnected] = useState(false)
-  const [attending, setAttending] = useState(false)
-  const [attendancePending, setAttendancePending] = useState(false)
-  const [attendanceStatus, setAttendanceStatus] = useState('')
   const [eventChat, setEventChat] = useState<PublicEventChat | null>(null)
   const [chatLoading, setChatLoading] = useState(false)
   const [chatStatus, setChatStatus] = useState('')
@@ -121,6 +119,9 @@ export function PublicEventPage() {
 
   useEffect(() => {
     if (!slug) return
+    let cancelled = false
+    setEvent(null)
+    setStatus('Loading event…')
     fetch(orgUrl(`/api/network/events/public/${encodeURIComponent(slug)}`))
       .then(async (resp) => {
         if (!resp.ok) {
@@ -130,13 +131,16 @@ export function PublicEventPage() {
         return resp.json() as Promise<PublicEvent>
       })
       .then((data) => {
+        if (cancelled) return
         setEvent(data)
         setStatus('')
       })
       .catch((err) => {
+        if (cancelled) return
         setEvent(null)
         setStatus(toUserFacingErrorMessage(err, 'Event unavailable'))
       })
+    return () => { cancelled = true }
   }, [slug])
 
   useEffect(() => {
@@ -226,49 +230,23 @@ export function PublicEventPage() {
     upsertJsonLd('event-detail', eventJsonLd)
   }, [eventJsonLd])
 
-  async function markAttending() {
-    if (!event) return
-    setAttendancePending(true)
-    setAttendanceStatus('')
-    try {
-      const result = await recordAttendanceWithRetry(event.id, token)
-      if (!result.ok) {
-        throw new Error(result.message)
-      }
-      let message = result.message
-      if (googleCalendarConnected && event.starts_at) {
-        const calendarResult = await savePortalEventToGoogleCalendar(token, {
-          external_event_id: `portal-event:${event.id}`,
-          summary: event.title,
-          description: event.description || 'Event saved from Org Portal.',
-          starts_at: event.starts_at,
-          ends_at: event.ends_at || event.starts_at,
-          location: event.location || null,
-          source_url: event.source_url || eventUrl(event.slug),
-        })
-        if (calendarResult.connected) {
-          message = 'Attendance saved and added to Google Calendar.'
-        }
-      } else if (microsoftCalendarConnected && event.starts_at) {
-        const calendarResult = await savePortalEventToMicrosoftCalendar(token, {
-          external_event_id: `portal-event:${event.id}`,
-          summary: event.title,
-          description: event.description || 'Event saved from Org Portal.',
-          starts_at: event.starts_at,
-          ends_at: event.ends_at || event.starts_at,
-          location: event.location || null,
-          source_url: event.source_url || eventUrl(event.slug),
-        })
-        if (calendarResult.connected) {
-          message = 'Attendance saved and added to Microsoft Calendar.'
-        }
-      }
-      setAttending(true)
-      setAttendanceStatus(message)
-    } catch (err) {
-      setAttendanceStatus(err instanceof Error ? err.message : 'Unable to record attendance.')
-    } finally {
-      setAttendancePending(false)
+  async function saveToCalendar() {
+    if (!event?.starts_at) return
+    const calendarEvent = {
+      external_event_id: `portal-event:${event.id}`,
+      summary: event.title,
+      description: event.description || 'Event saved from Org Portal.',
+      starts_at: event.starts_at,
+      ends_at: event.ends_at || event.starts_at,
+      location: event.location || null,
+      source_url: event.source_url || eventUrl(event.slug),
+    }
+    if (googleCalendarConnected) {
+      const result = await savePortalEventToGoogleCalendar(token, calendarEvent)
+      if (result.connected) return 'You’re registered and the event was added to Google Calendar.'
+    } else if (microsoftCalendarConnected) {
+      const result = await savePortalEventToMicrosoftCalendar(token, calendarEvent)
+      if (result.connected) return 'You’re registered and the event was added to Microsoft Calendar.'
     }
   }
 
@@ -292,6 +270,9 @@ export function PublicEventPage() {
         {event.ends_at ? ` → ${toLocalDateTime(event.ends_at)}` : ''}
       </p>
       {event.location ? <p style={{ margin: 0, overflowWrap: 'anywhere' }}><strong>Location:</strong> {event.location}</p> : null}
+      <EventRegistration key={`${event.id}:${user?.id || 'guest'}:${Boolean(token)}`}
+        eventId={event.id} slug={event.slug} token={token} saveToCalendar={saveToCalendar}
+        organizationName={event.host_org_id ? event.organization_name || event.host_org_name : null} />
       {event.image_url ? (
         <img
           src={event.image_url}
@@ -301,13 +282,6 @@ export function PublicEventPage() {
       ) : null}
       {event.description ? <p style={{ margin: 0, overflowWrap: 'anywhere' }}>{event.description}</p> : null}
       <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
-        {token ? (
-          <button type="button" onClick={markAttending} disabled={attendancePending || attending}>
-            {attendancePending ? 'Saving...' : attending ? 'Attending' : googleCalendarConnected ? 'Attend: add to Google Calendar' : microsoftCalendarConnected ? 'Attend: add to Microsoft Calendar' : 'Attend'}
-          </button>
-        ) : (
-          <a href={pidpAppLoginUrl(`/events/${encodeURIComponent(event.slug)}`)}>Login to indicate attendance</a>
-        )}
         {eventStart && eventEnd ? (
           <>
             <span className="muted">Calendar Integrations:</span>
@@ -341,7 +315,6 @@ export function PublicEventPage() {
             </a>
           </>
         ) : null}
-        {attendanceStatus ? <span className="muted">{attendanceStatus}</span> : null}
       </div>
       {event.source_url ? (
         <p style={{ margin: 0, overflowWrap: 'anywhere' }}>

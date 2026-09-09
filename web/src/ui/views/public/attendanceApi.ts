@@ -10,40 +10,61 @@ function orgUrl(path: string) {
 type AttendanceResult = {
   ok: boolean
   message: string
+  attendance?: EventAttendance
 }
 
-async function postAttendance(eventId: string, token: string): Promise<Response> {
-  return fetch(orgUrl(`/api/network/events/${eventId}/attendance`), {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
+export type EventAttendance = {
+  event_id: string
+  count: number
+  registered: boolean
+  attendees: { slug: string; name: string; photo_url: string | null }[]
+}
+
+type EmailChoices = { email_updates: boolean; organization_announcements: boolean }
+async function attendanceRequest(eventId: string, token: string | null, method: string, emailChoices?: EmailChoices): Promise<Response> {
+  return fetch(orgUrl(`/api/network/events/${encodeURIComponent(eventId)}/attendance`), {
+    method,
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(emailChoices ? { 'Content-Type': 'application/json' } : {}) },
+    body: method === 'POST' && emailChoices ? JSON.stringify(emailChoices) : undefined,
     credentials: 'include',
+    cache: 'no-store',
   })
 }
 
-export async function recordAttendanceWithRetry(eventId: string, token: string | null): Promise<AttendanceResult> {
+export async function loadAttendance(eventId: string, token: string | null): Promise<EventAttendance> {
+  let response = await attendanceRequest(eventId, token, 'GET')
+  if (response.status === 401 && token) {
+    const refreshed = await refreshRuntimeTokenFromSession()
+    if (refreshed) response = await attendanceRequest(eventId, refreshed, 'GET')
+  }
+  if (!response.ok) throw new Error(response.status === 401
+    ? 'Session expired. Please log in again.' : 'Unable to load registrations. Please try again.')
+  return response.json() as Promise<EventAttendance>
+}
+
+export async function recordAttendanceWithRetry(eventId: string, token: string | null, method: 'POST' | 'DELETE' = 'POST', emailChoices?: EmailChoices): Promise<AttendanceResult> {
   if (!token) {
     const refreshed = await refreshRuntimeTokenFromSession()
     if (!refreshed) {
-      return { ok: false, message: 'Please log in to indicate attendance.' }
+      return { ok: false, message: 'Please log in or sign up to register.' }
     }
     token = refreshed
   }
 
-  let resp = await postAttendance(eventId, token)
+  let resp = await attendanceRequest(eventId, token, method, emailChoices)
   if (resp.status === 401) {
     const refreshed = await refreshRuntimeTokenFromSession()
     if (refreshed) {
-      resp = await postAttendance(eventId, refreshed)
+      resp = await attendanceRequest(eventId, refreshed, method, emailChoices)
     }
   }
 
   if (resp.ok) {
-    return { ok: true, message: 'Attendance recorded.' }
+    return { ok: true, message: method === 'DELETE' ? 'Registration cancelled.' : 'You’re registered!', attendance: await resp.json() as EventAttendance }
   }
 
-  const text = await resp.text().catch(() => '')
   if (resp.status === 401) {
     return { ok: false, message: 'Session expired. Please log in again.' }
   }
-  return { ok: false, message: text || `Unable to record attendance (${resp.status})` }
+  return { ok: false, message: 'Unable to save your registration. Please try again.' }
 }
