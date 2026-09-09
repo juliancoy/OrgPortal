@@ -167,7 +167,10 @@ the listing saved and offers a retry; the owner can also add its photo later.
 
 Run the Selenium acceptance suite with a fresh local fixture (restart between
 runs). It drives actual form fields, file upload, filters, dialogs, confirmations
-and community settings, with the production Worker routes and SQLite ledger:
+and community settings, with the production Worker routes and SQLite ledger.
+Use Node 24+ and install dependencies in `org-worker`, `chat-worker`, and `web`.
+The Chrome container needs at least three concurrent sessions for the public
+visibility suite (`SE_NODE_MAX_SESSIONS=5` and `SE_NODE_OVERRIDE_MAX_SESSIONS=true`):
 
 ```sh
 # In org-worker:

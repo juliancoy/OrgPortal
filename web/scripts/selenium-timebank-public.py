@@ -24,6 +24,13 @@ def close(driver):
     WebDriverWait(driver, 5).until(lambda d: not d.find_elements(By.CSS_SELECTOR, 'dialog[open]'))
 
 
+def community_board(driver):
+    WebDriverWait(driver, 10).until(lambda d:
+        'mine=true' not in d.current_url
+        and d.find_elements(By.CSS_SELECTOR, '.tb-mine input')
+        and not d.find_element(By.CSS_SELECTOR, '.tb-mine input').is_selected())
+
+
 def main():
     alice, bob, guest = flow.browser(), flow.browser(390, 844), flow.browser()
     suffix = str(int(time.time()))
@@ -46,7 +53,7 @@ def main():
         bob.find_element(By.CSS_SELECTOR, '.tb-mine input').click()
         absent(bob, public[0])
         flow.post(bob, 'offer', public[2], photo=False)
-        assert not bob.find_element(By.CSS_SELECTOR, '.tb-mine input').is_selected()
+        community_board(bob)
         flow.find(bob, f'article[aria-label="{public[0]}"]')
         flow.post(bob, 'request', public[3], photo=False)
         flow.button(alice, 'Refresh')
@@ -57,13 +64,13 @@ def main():
             flow.find(driver, '#timebank-search').send_keys('no matching listing')
             flow.button(driver, 'My hours')
             flow.button(driver, 'Home')
-            assert not driver.find_element(By.CSS_SELECTOR, '.tb-mine input').is_selected()
+            community_board(driver)
             assert flow.find(driver, '#timebank-search').get_attribute('value') == ''
             for title in public:
                 flow.find(driver, f'article[aria-label="{title}"]')
             driver.find_element(By.CSS_SELECTOR, '.tb-mine input').click()
             flow.find(driver, '.tb-shell-brand').click()
-            assert not driver.find_element(By.CSS_SELECTOR, '.tb-mine input').is_selected()
+            community_board(driver)
             flow.check_layout(driver)
         alice.save_screenshot(str(flow.OUT / 'member-community-home.png'))
         bob.save_screenshot(str(flow.OUT / 'member-community-home-mobile.png'))
