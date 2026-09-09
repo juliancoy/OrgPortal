@@ -51,18 +51,23 @@ Environment overrides:
 - `VITE_UPDATE_MANIFEST_URL`: explicit manifest URL.
 - `VITE_APP_BUILD_NUMBER`: compile-time web build number.
 
-## Cloudflare Deploy
+## Cloudflare deployment
 
-This app can be deployed with Wrangler using:
+This app is built and embedded at `/p/` by the parent CodeCollective repository.
+From the parent repository root, use:
 
 ```bash
-npm run deploy:cf
+./cloudflare/scripts/build_cloudflare_site.sh
+npx wrangler deploy
 ```
 
-`wrangler.toml` serves static assets from `dist/` and uses a Worker to proxy:
+The parent site Worker serves the static assets and proxies:
 
 - `/api/governance/*` -> `GOVERNANCE_API_ORIGIN`
 - `/pidp/*` -> `PIDP_API_ORIGIN`
+
+Do not deploy `portal/web` as a standalone Worker. The former standalone URL is
+maintained by a redirect Worker in the parent repository.
 
 For the full end-to-end setup with hosted PIdP (`https://id.codecollective.us`), see:
 

@@ -15,8 +15,6 @@
     "android:aab:release": "npm run android:prepare && cd android && ./gradlew --no-daemon bundleRelease",
     "android:ci:release": "npm run android:prepare && cd android && ./gradlew --no-daemon assembleRelease bundleRelease",
     "android:publish:static": "node scripts/publish-android-static.mjs",
-    "build:cf": "npm run build",
-    "deploy:cf": "npm run build:cf && npx wrangler deploy",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
