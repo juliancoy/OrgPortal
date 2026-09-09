@@ -43,7 +43,7 @@ Store secrets with `wrangler secret put NAME` from `org-worker`. Do not paste re
 
 Generate the encryption and unsubscribe secrets independently. Preserve the encryption key to keep existing connections usable, and preserve the unsubscribe secret so old unsubscribe links remain valid. Rotating either requires a planned migration, not simply replacing its value.
 
-The frontend's `ORG_API_ORIGIN` must point at the deployed org worker. The standalone frontend now forwards `/api/org/*`, including Authorization, Cookie, Set-Cookie, request bodies, and redirects. The root Code Collective proxy may already provide that route; preserve its existing routing if deploying behind it. Both the callback and the public unsubscribe endpoint must reach the org worker without a portal login redirect. Use a Workers/D1 plan that supports the application's existing workload and the outbox's bounded queries.
+The root Code Collective Worker forwards `/api/org/*` to the deployed org Worker, including Authorization, Cookie, Set-Cookie, request bodies, and redirects. Both the callback and the public unsubscribe endpoint must reach the org Worker without a portal login redirect. Use a Workers/D1 plan that supports the application's existing workload and the outbox's bounded queries.
 
 ## Rollout
 

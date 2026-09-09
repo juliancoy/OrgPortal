@@ -66,8 +66,8 @@ The parent site Worker serves the static assets and proxies:
 - `/api/governance/*` -> `GOVERNANCE_API_ORIGIN`
 - `/pidp/*` -> `PIDP_API_ORIGIN`
 
-Do not deploy `portal/web` as a standalone Worker. The former standalone URL is
-maintained by a redirect Worker in the parent repository.
+Do not deploy `portal/web` as a standalone Worker. The former standalone Worker
+has been deleted; `https://codecollective.us/p/` is the only supported URL.
 
 For the full end-to-end setup with hosted PIdP (`https://id.codecollective.us`), see:
 
