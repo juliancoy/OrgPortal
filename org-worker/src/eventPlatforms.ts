@@ -31,6 +31,7 @@ export const eventPlanSchema = eventTargetSchema.extend({
   applyBranding: z.boolean().default(false),
   collaborator: collaboratorSchema.optional(),
   confirm: z.boolean().default(false),
+  previewId: z.string().uuid().optional(),
 }).strict().refine((plan) => plan.applyBranding || plan.collaborator || Object.keys(plan.update || {}).length,
   "At least one change is required");
 export type EventUpdate = z.infer<typeof eventUpdateSchema>;
@@ -39,6 +40,7 @@ export type EventPlan = z.infer<typeof eventPlanSchema>;
 export type ManagedEvent = {
   id: string; name: string; startAt: string; endAt: string; timezone: string;
   coverUrl?: string; descriptionMarkdown?: string; url?: string;
+  visibility?: string; registrationOpen?: boolean;
 };
 export interface EventProvider {
   list(cursor?: string): Promise<{ events: ManagedEvent[]; nextCursor?: string }>;
@@ -79,7 +81,7 @@ export function configuredProvider(env: Env, organizationId: string) {
   }
   return { config, provider: factory(config, apiKey) };
 }
-export async function executeEventPlan(provider: EventProvider, config: EventIntegration, input: unknown) {
+export async function executeEventPlan(provider: EventProvider, config: EventIntegration, input: unknown, beforeWrite?: (preview: unknown) => Promise<void>) {
   const plan = eventPlanSchema.parse(input);
   const update = { ...plan.update };
   if (plan.applyBranding) {
@@ -99,6 +101,7 @@ export async function executeEventPlan(provider: EventProvider, config: EventInt
   const preview = { before, update, collaborator: plan.collaborator,
     branding: plan.applyBranding ? config.branding : undefined };
   if (!plan.confirm) return { dryRun: true, ...preview };
+  if (beforeWrite) await beforeWrite({ dryRun: true, ...preview });
   const completed: string[] = [];
   try {
     if (Object.keys(update).length) { await provider.update(plan.eventId, update); completed.push("update"); }
@@ -127,7 +130,8 @@ export class LumaEventProvider implements EventProvider {
   }
   private normalize(event: any): ManagedEvent {
     return { id: event.id, name: event.name, startAt: event.start_at, endAt: event.end_at,
-      timezone: event.timezone, coverUrl: event.cover_url, descriptionMarkdown: event.description_md, url: event.url };
+      timezone: event.timezone, coverUrl: event.cover_url, descriptionMarkdown: event.description_md, url: event.url,
+      visibility: event.visibility, registrationOpen: event.registration_open };
   }
   async list(cursor?: string) {
     const query = new URLSearchParams({ access: "manage", pagination_limit: "50" });

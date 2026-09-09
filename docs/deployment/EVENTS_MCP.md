@@ -19,14 +19,22 @@ do not synchronize a duplicate D1 record.
 | --- | --- |
 | `list_events` | List an organization's managed external events, with cursor pagination |
 | `get_event` | Read one event from that organization's calendar |
+| `get_event_operation` | Inspect the requesting user's prior operation status |
 | `preview_event_changes` | Always preview, even if `confirm: true` is supplied |
-| `apply_event_changes` | Preview by default; write only with `confirm: true` and write scope |
+| `apply_event_changes` | Preview by default; write only with `confirm: true`, a matching `previewId`, and write scope |
 
 Changes support name, start/end timestamps, timezone, description, uploaded cover,
 tint, visibility, registration status, notification suppression, and a collaborator
 with an exact email, access level, and public visibility. The client should show
 the preview and obtain user approval before applying. The `confirm` argument is
 an explicit execution switch, **not cryptographic proof of human approval**.
+Previews now return a ten-minute, one-use `previewId`. The server binds that ID to
+the user, organization, event, proposed changes, approved branding and normalized
+event snapshot. Applying a changed/expired/used preview fails with no write.
+An atomic database claim prevents concurrent reuse across Worker instances.
+The client still must obtain human approval; possession of a preview is not consent.
+This detects changes to the returned event snapshot, not every hidden provider
+field, and is not a transactional lock against concurrent edits in Luma itself.
 Write tools have destructive/non-idempotent annotations because they can notify
 guests and grant event-management access. Updates and collaborator invitations are
 not atomic; a timeout can have an unknown outcome. Inspect the provider before retrying.
@@ -40,6 +48,17 @@ URLs, credentials, and account mappings cannot be supplied by a tool caller.
 ## Configure the shared worker
 
 No secrets, account grants, or live event changes are included in this commit.
+Migration `0017_event_mcp_operations.sql` must be applied when deployment is
+eventually authorized. It has only been tested against an in-memory database.
+It adds operation audit records and a rate-limit counter (60 authorized tool
+calls per mapped user per minute). Audit records omit email addresses, event
+content, credentials and tokens. They retain the actor, target, fingerprint,
+timestamps, execution state and completed-step names. No automatic retention
+deletion is enabled; choose a retention period operationally. Rate-limit storage
+uses one row per mapped user, rather than growing a row every minute.
+Storage failures fail closed before provider writes. Failure after a claim stays
+`executing` or `uncertain` and cannot be replayed; inspect `get_event_operation`
+and the live event before creating a new preview.
 MCP returns 503 until configured. Use your secret manager or interactive
 `wrangler secret put NAME` from `org-worker`; never commit API keys or paste them
 into ChatGPT messages.
@@ -144,11 +163,31 @@ From `org-worker`:
 ```sh
 npm ci --ignore-scripts
 npm run typecheck
-node --import tsx --test test/*.test.ts
-npx wrangler deploy --dry-run
+npm test
+npm run check:bundle
+npm run events:check-config
 ```
+
+The configuration checker reads the process environment and performs **no network
+requests or writes**. It reports only issue codes and counts, not configuration
+values. Optionally supply a previously downloaded issuer discovery document:
+
+```sh
+npm run events:check-config -- authorization-metadata.json
+```
+
+It checks configured identities, providers, key presence, branding constraints,
+HTTPS origins and (when supplied) issuer/JWKS agreement, authorization-code flow,
+PKCE S256, and event scopes. It does not verify credential validity, organization
+membership, issuer reachability, client registration, or successful OAuth linking.
+Missing settings are an expected failing result until operators configure them.
+
+`check:bundle` is an offline import/bundle check with Node compatibility (already
+enabled in Wrangler), not a replacement for a future Wrangler/runtime test.
+CI runs typecheck, all tests and that bundle check. It has no deployment steps,
+credentials, remote migration commands, or publication permissions.
 
 Tests mock the provider and signing keys; no tests mutate live events. Production
 readiness still requires an end-to-end OAuth linking test and a real test-calendar
-write. Add operational rate limits and audit retention appropriate to your host
-before making the connection broadly available.
+write. Configure edge-level unauthenticated request limits and audit retention
+appropriate to your host before making the connection broadly available.

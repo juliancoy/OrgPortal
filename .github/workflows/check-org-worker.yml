@@ -1,0 +1,26 @@
+name: Check shared org worker
+on:
+  push:
+    paths: ['org-worker/**', '.github/workflows/check-org-worker.yml']
+  pull_request:
+    paths: ['org-worker/**', '.github/workflows/check-org-worker.yml']
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: org-worker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: org-worker/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run check:bundle
+      # Intentionally no credentials, migrations against D1, publish, or deploy steps.

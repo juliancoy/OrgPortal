@@ -4,6 +4,7 @@ import { generateKeyPair, SignJWT, createLocalJWKSet, exportJWK } from "jose";
 import { eventPlanSchema, executeEventPlan, LumaEventProvider, configuredProvider, type EventProvider } from "../src/eventPlatforms";
 import { authenticateMcp, handleEventMcp, protectedResourceMetadata, runEventOperation } from "../src/eventMcp";
 import { app } from "../src/index";
+import { EventTestDb } from "./event-test-db";
 
 const config = { provider: "luma", calendarId: "cal-one", apiKeyBinding: "EVENT_KEY_ONE",
   branding: { tintColor: "#0f6f8f", sourceUrl: "https://medtech.social", revision: "reviewed-commit" } };
@@ -114,14 +115,14 @@ test("organization management is required even with write scope", async () => {
   await assert.rejects(runEventOperation(env, { userId: "pidp-user", scopes: ["org:events.read", "org:events.write"] }, "plan", { ...plan, confirm: true }), /management access required/);
 });
 test("authenticated MCP initializes, lists tools and previews through the shared provider", async () => {
+  const db = new EventTestDb();
   const { privateKey, publicKey } = await generateKeyPair("RS256");
   const jwk = await exportJWK(publicKey);
   const token = await new SignJWT({ scope: "org:events.read" }).setProtectedHeader({ alg: "RS256" })
     .setSubject("subject").setIssuer(authEnv.MCP_OAUTH_ISSUER!).setAudience(authEnv.MCP_PUBLIC_URL!)
     .setIssuedAt().setExpirationTime("5m").sign(privateKey);
   const env = { ...authEnv, EVENT_INTEGRATIONS_JSON: JSON.stringify({ "org-one": config }), EVENT_KEY_ONE: "server-key",
-    DB: { prepare: (sql: string) => ({ bind: () => ({ first: async () =>
-      sql.includes("FROM organizations") ? { id: "org-one", name: "One" } : { role: "owner" } }) }) } } as unknown as Env;
+    DB: db } as unknown as Env;
   const originalFetch = globalThis.fetch;
   const writes: unknown[] = [];
   globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
@@ -141,12 +142,15 @@ test("authenticated MCP initializes, lists tools and previews through the shared
   try {
     assert.equal((await rpc("initialize", { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "test", version: "1" } })).result.serverInfo.name, "orgportal-events");
     const listed = await rpc("tools/list", {});
-    assert.equal(listed.result.tools.length, 4);
+    assert.equal(listed.result.tools.length, 5);
+    assert.ok(listed.result.tools.every((tool: any) => tool.securitySchemes[0].type === "oauth2"));
     assert.equal(listed.result.tools.find((t: any) => t.name === "apply_event_changes").annotations.destructiveHint, true);
     const preview = await rpc("tools/call", { name: "preview_event_changes", arguments: { ...plan, confirm: true } });
     assert.equal(preview.result.structuredContent.dryRun, true);
+    assert.match(preview.result.structuredContent.previewId, /^[0-9a-f-]{36}$/);
     const denied = await rpc("tools/call", { name: "apply_event_changes", arguments: { ...plan, confirm: true } });
     assert.equal(denied.result.isError, true);
+    assert.ok(denied.result._meta["mcp/www_authenticate"][0].includes("insufficient_scope"));
     assert.deepEqual(writes, []);
-  } finally { globalThis.fetch = originalFetch; }
+  } finally { globalThis.fetch = originalFetch; db.close(); }
 });
