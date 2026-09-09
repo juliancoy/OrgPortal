@@ -1,3 +1,7 @@
+import { MessageBody } from './MessageBody'
+import { useTimebankApi } from '../../timebank/useTimebankApi'
+import { timebankListingPath } from '../../timebank/links'
+import { portalUrl } from '../../../config/portalBase'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
@@ -128,7 +132,14 @@ export function NativeChatPage() {
   const [conversations, setConversations] = useState<NativeChatConversation[]>([])
   const [people, setPeople] = useState<NetworkUser[]>([])
   const [messages, setMessages] = useState<MessageState[]>([])
-  const [draft, setDraft] = useState('')
+  const [drafts, setDrafts] = useState<Record<string, string>>({})
+  const draft = drafts[roomId || ''] || ''
+  const setDraft = useCallback((value: string | ((current: string) => string)) => setDrafts((current) => ({ ...current, [roomId || '']: typeof value === 'function' ? value(current[roomId || ''] || '') : value })), [roomId])
+  const listingId = searchParams.get('timebankListing')
+  const timebankApi = useTimebankApi()
+  const [listingContext, setListingContext] = useState<{ title: string; id: string; member_name: string } | null>(null)
+  const [listingError, setListingError] = useState('')
+  const initializedDrafts = useRef(new Set<string>())
   const [status, setStatus] = useState('Loading chat...')
   const [error, setError] = useState<string | null>(null)
   const latestSequenceRef = useRef(0)
@@ -167,6 +178,22 @@ export function NativeChatPage() {
     ...conversations.flatMap((conversation) => (conversation.members || []).map((member) => member.user_id)),
     ...sociablePeople.map((person) => person.user_id),
   ].filter((userId) => userId && userId !== user?.id))), [conversations, sociablePeople, user])
+
+  useEffect(() => {
+    setListingContext(null); setListingError('')
+    if (!listingId || !roomId) return
+    const controller = new AbortController()
+    void timebankApi<{ id: string; title: string; member_name: string }>(`/listings/${encodeURIComponent(listingId)}`, { signal: controller.signal }).then((listing) => {
+      if (controller.signal.aborted) return
+      setListingContext(listing)
+      const key = `${roomId}:${listingId}`
+      if (!initializedDrafts.current.has(key)) {
+        initializedDrafts.current.add(key)
+        setDraft((current) => current || `Hi ${listing.member_name}, I'd like to discuss "${listing.title}".\n${portalUrl(timebankListingPath(listing.id))}`)
+      }
+    }).catch(() => { if (!controller.signal.aborted) setListingError('This listing could not be loaded. You can still message this member.') })
+    return () => controller.abort()
+  }, [listingId, roomId, setDraft, timebankApi])
 
   const mergeMessages = useCallback((incoming: NativeChatMessage[]) => {
     setMessages((current) => {
@@ -229,7 +256,7 @@ export function NativeChatPage() {
               const next = current.filter((item) => item.id !== conversation.id)
               return sortConversationsByRecency([conversation, ...next])
             })
-            navigate(`/chat/${encodeURIComponent(conversation.id)}`, { replace: true })
+            navigate(`/chat/${encodeURIComponent(conversation.id)}${listingId ? `?timebankListing=${encodeURIComponent(listingId)}` : ''}`, { replace: true })
           }
           return
         }
@@ -247,7 +274,7 @@ export function NativeChatPage() {
     return () => {
       cancelled = true
     }
-  }, [api, navigate, refreshConversations, roomId, searchParams])
+  }, [api, navigate, refreshConversations, roomId, searchParams, listingId])
 
   useEffect(() => {
     if (!token) {
@@ -698,7 +725,7 @@ export function NativeChatPage() {
                       ) : null}
                       <span>{timestamp(message.created_at)}</span>
                     </div>
-                    <p>{message.body}</p>
+                    <MessageBody body={message.body} />
                     <dl className="portal-chat-message-inspector" aria-label="Message information">
                       <div>
                         <dt>Person</dt>
@@ -744,9 +771,12 @@ export function NativeChatPage() {
               <div ref={messagesEndRef} />
             </div>
 
+            {listingContext && <aside className="tb-chat-context"><a href={portalUrl(timebankListingPath(listingContext.id))}>Regarding: {listingContext.title}</a><span>Your draft is editable. It sends only when you press Send.</span></aside>}
+            {listingError && <p role="status" className="portal-chat-muted">{listingError}</p>}
             <footer className="portal-chat-composer">
               <textarea
                 value={draft}
+                aria-label="Message"
                 rows={2}
                 placeholder={`Message ${selectedConversation ? conversationLabel(selectedConversation, user?.id) : ''}`.trim()}
                 onChange={(event) => setDraft(event.target.value)}

@@ -1,6 +1,12 @@
+import { timebankNotifications, markTimebankNotificationsRead, dispatchTimebankPush } from './timebankNotifications';
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { handleEventMcp, protectedResourceMetadata, eventErrorResponse } from "./eventMcp";
+import {
+  getTimebankListing, setTimebankUptake, timebankAnalytics, resolveTimebankCommunity, saveTimebankCommunity, setTimebankPhoto, getTimebankPhoto,
+  TimebankError, timebankDashboard, publicTimebankOffers, createTimebankListing, updateTimebankListing,
+  proposeTimebankExchange, resolveTimebankExchange,
+} from "./timebank";
 import { consumePushBatch, endpointHash, enqueueUserPush, matrixJobs, normalizeSubscription } from "./push";
 import {
   LifeInsuranceError,
@@ -1747,6 +1753,7 @@ app.onError((err) => {
   if (err instanceof LifeInsuranceError) return json({ detail: err.message }, err.status);
   if (err instanceof HealthInsuranceError) return json({ detail: err.message }, err.status);
   if (err instanceof OrganizationIamError) return json({ detail: err.message }, err.status);
+  if (err instanceof TimebankError) return json({ detail: err.message }, err.status);
   console.error("org-worker error", err);
   return json({ detail: "Internal server error" }, 500);
 });
@@ -2973,6 +2980,107 @@ app.get("/api/health-insurance/diagnoses", async (c) => {
   return c.json(await healthInsuranceDiagnosisBoard(c.env.DB, user.id, patientUserId));
 });
 
+app.get("/api/timebank/community", async (c) => {
+  c.header("Cache-Control", "no-store");
+  return c.json(await resolveTimebankCommunity(c.env.DB, c.req.raw));
+});
+
+app.get("/api/timebank/public-offers", async (c) => {
+  c.header("Cache-Control", "no-store");
+  return c.json(await publicTimebankOffers(c.env.DB, c.req.query("before")));
+});
+
+app.get("/api/timebank/communities/:id", async (c) => {
+  c.header("Cache-Control", "no-store");
+  const community = await c.env.DB.prepare("SELECT * FROM timebank_communities WHERE id = ?").bind(c.req.param("id")).first();
+  if (!community) fail(404, "Community not found");
+  return c.json(community);
+});
+
+app.put("/api/timebank/communities/:id", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  if (!adminUser(user, c.env)) fail(403, "Admin access required");
+  return c.json(await saveTimebankCommunity(c.env.DB, c.req.param("id"), await c.req.json().catch(() => null)));
+});
+
+app.get("/api/timebank", async (c) => {
+  const user = c.req.header("Authorization") ? await currentUser(c.env, c.req.raw) : null;
+  const community = await resolveTimebankCommunity(c.env.DB, c.req.raw);
+  const mineOnly = (c.req.query("mine") || "").toLowerCase() === "true";
+  c.header("Cache-Control", "no-store");
+  return c.json({ ...await timebankDashboard(c.env.DB, user ? { id: user.id, name: userName(user) } : null, community.id, c.req.query("request_sort") || "most", mineOnly), community, can_manage_community: user ? adminUser(user, c.env) : false });
+});
+
+app.get("/api/timebank/notifications", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const community = await resolveTimebankCommunity(c.env.DB, c.req.raw);
+  c.header("Cache-Control", "no-store");
+  return c.json(await timebankNotifications(c.env.DB, user.id, community.id, c.req.query("before")));
+});
+
+app.post("/api/timebank/notifications/read", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const community = await resolveTimebankCommunity(c.env.DB, c.req.raw);
+  return c.json(await markTimebankNotificationsRead(c.env.DB, user.id, community.id, await c.req.json().catch(() => null)));
+});
+
+app.get("/api/timebank/analytics", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  if (!adminUser(user, c.env)) fail(403, "Admin access required");
+  const community = await resolveTimebankCommunity(c.env.DB, c.req.raw);
+  c.header("Cache-Control", "no-store");
+  return c.json(await timebankAnalytics(c.env.DB, community.id));
+});
+
+app.on(["PUT", "DELETE"], "/api/timebank/listings/:id/uptake", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const community = await resolveTimebankCommunity(c.env.DB, c.req.raw);
+  return c.json(await setTimebankUptake(c.env.DB, { id: user.id, name: userName(user) }, c.req.param("id"), c.req.method === "PUT", community.id));
+});
+
+app.get("/api/timebank/listings/:id", async (c) => {
+  const user = c.req.header("Authorization") ? await currentUser(c.env, c.req.raw) : null;
+  const community = await resolveTimebankCommunity(c.env.DB, c.req.raw);
+  c.header("Cache-Control", "no-store");
+  return c.json(await getTimebankListing(c.env.DB, user?.id ?? null, community.id, c.req.param("id")));
+});
+
+app.post("/api/timebank/listings", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const community = await resolveTimebankCommunity(c.env.DB, c.req.raw);
+  return c.json(await createTimebankListing(c.env.DB, { id: user.id, name: userName(user) }, await c.req.json().catch(() => null), community.id), 201);
+});
+
+app.patch("/api/timebank/listings/:id", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const community = await resolveTimebankCommunity(c.env.DB, c.req.raw);
+  return c.json(await updateTimebankListing(c.env.DB, user.id, c.req.param("id"), await c.req.json().catch(() => null), community.id));
+});
+
+app.get("/api/timebank/listings/:id/image", async (c) => {
+  const user = c.req.header("Authorization") ? await currentUser(c.env, c.req.raw) : null;
+  const community = await resolveTimebankCommunity(c.env.DB, c.req.raw);
+  return getTimebankPhoto(c.env.DB, c.env.SCAN_IMAGES, community.id, c.req.param("id"), user?.id ?? null);
+});
+
+app.on(["PUT", "DELETE"], "/api/timebank/listings/:id/image", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const community = await resolveTimebankCommunity(c.env.DB, c.req.raw);
+  return c.json(await setTimebankPhoto(c.env.DB, c.env.SCAN_IMAGES, community.id, user.id, c.req.param("id"), c.req.raw));
+});
+
+app.post("/api/timebank/exchanges", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const community = await resolveTimebankCommunity(c.env.DB, c.req.raw);
+  return c.json(await proposeTimebankExchange(c.env.DB, { id: user.id, name: userName(user) }, await c.req.json().catch(() => null), community.id), 201);
+});
+
+app.patch("/api/timebank/exchanges/:id", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const community = await resolveTimebankCommunity(c.env.DB, c.req.raw);
+  return c.json(await resolveTimebankExchange(c.env.DB, user.id, c.req.param("id"), await c.req.json().catch(() => null), community.id));
+});
+
 app.get("/api/accounts", async (c) => {
   await currentUser(c.env, c.req.raw);
   const q = (c.req.query("q") || "").trim().toLowerCase();
@@ -3617,7 +3725,7 @@ app.all("*", (c) => c.json({ detail: "Endpoint is not implemented in the Cloudfl
 export default {
   fetch: app.fetch,
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext) {
-    ctx.waitUntil(runUbiTick(env.DB, controller.scheduledTime));
+    ctx.waitUntil(Promise.all([runUbiTick(env.DB, controller.scheduledTime), dispatchTimebankPush(env)]));
     ctx.waitUntil(runEmailDelivery(env));
   },
   async queue(batch: MessageBatch<import("./push").PushDeliveryJob>, env: Env) {

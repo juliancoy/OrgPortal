@@ -1,0 +1,35 @@
+.timebank-shell .portal-main { padding-top:0 }
+.timebank-shell .portal-container { box-sizing:border-box; width:min(1200px,100%); padding:0 24px }
+.tb-shell-header { box-sizing:border-box; width:min(1200px,100%); padding:1rem 24px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:1rem; border-bottom:1px solid var(--border-subtle); color:var(--text-primary) }
+.tb-shell-header * { box-sizing:border-box }
+.tb-shell-header :focus-visible { outline:3px solid var(--text-primary); outline-offset:3px }
+.tb-shell-brand { display:flex; align-items:center; gap:.7rem; min-height:44px; font-weight:700; color:var(--text-primary); text-decoration:none; font-size:1.05rem; min-width:0; border-radius:6px }
+.tb-shell-brand span { overflow-wrap:anywhere }
+.tb-shell-mark { display:grid; place-items:center; width:38px; height:38px; flex-shrink:0; border:1px solid var(--border-subtle); border-radius:12px; background:var(--panel) }
+.tb-account-menu { position:relative; flex-shrink:0; max-width:40% }
+.tb-account-trigger { display:flex; align-items:center; gap:.65rem; min-height:48px; max-width:100%; padding:4px 9px 4px 4px; border:1px solid transparent; border-radius:30px; background:transparent; color:var(--text-primary); cursor:pointer; font:inherit }
+.tb-account-trigger:hover,.tb-account-trigger[aria-expanded=true] { background:var(--panel); border-color:var(--border-subtle) }
+.tb-account-trigger-name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:.82rem; font-weight:600; max-width:180px }
+.tb-account-avatar { width:40px; height:40px; flex-shrink:0; display:grid; place-items:center; overflow:hidden; border-radius:50%; background:var(--text-primary); color:var(--panel); font-size:.8rem; font-weight:700; outline:1px solid var(--border-subtle); outline-offset:2px }
+.tb-account-avatar img { display:block; width:100%; height:100%; object-fit:cover }
+.tb-account-chevron { flex-shrink:0 }.tb-account-trigger[aria-expanded=true] .tb-account-chevron { transform:rotate(180deg) }
+.tb-account-panel { position:absolute; top:calc(100% + 10px); right:0; z-index:20; width:300px; max-width:calc(100vw - 32px); max-height:calc(100dvh - 100px); overflow-y:auto; padding:.5rem; border:1px solid var(--border-subtle); border-radius:14px; background:var(--panel); color:var(--text-primary); box-shadow:0 12px 36px #0003 }
+.tb-account-identity { display:flex; align-items:center; gap:.8rem; padding:.9rem .7rem 1.1rem; border-bottom:1px solid var(--border-subtle); margin-bottom:.4rem }
+.tb-account-identity > div { min-width:0; display:grid; gap:.25rem }.tb-account-identity strong { font-size:.9rem; color:inherit; overflow-wrap:anywhere; line-height:1.4 }.tb-account-identity > div > span { color:var(--text-secondary); font-size:.75rem; overflow-wrap:anywhere; line-height:1.4 }
+.tb-account-panel a,.tb-account-panel button { display:flex; align-items:center; gap:.8rem; width:100%; min-height:48px; padding:.75rem; font:inherit; font-size:.85rem; background:transparent; border:0; border-radius:8px; color:inherit; text-align:left; text-decoration:none; cursor:pointer }
+.tb-account-panel a:hover,.tb-account-panel button:hover { background:color-mix(in srgb,var(--text-primary) 7%,var(--panel)) }.tb-account-panel svg { flex-shrink:0 }
+.tb-account-panel :focus-visible { outline-offset:-3px }
+.tb-account-signout { border-top:1px solid var(--border-subtle); margin-top:.4rem; padding-top:.4rem }
+.tb-signin { color:inherit; min-height:44px; display:flex; align-items:center; padding:.5rem 1rem; border:1px solid var(--border-subtle); border-radius:8px; white-space:nowrap; font-size:.85rem; text-decoration:none }
+.tb-shell-footer { margin:2rem auto 0; padding:1rem 24px; max-width:1200px; width:100%; color:var(--text-secondary); font-size:.75rem; border-top:1px solid var(--border-subtle) }
+@media(max-width:640px) {
+  .tb-shell-header { padding:.7rem 16px; gap:.7rem }.tb-shell-brand { font-size:.9rem; gap:.6rem }.tb-shell-mark { width:32px; height:32px; border-radius:10px }
+  .tb-account-menu { max-width:none }.tb-account-trigger { gap:.4rem; padding-right:4px }.tb-account-trigger-name { display:none }.tb-account-avatar { width:36px; height:36px }
+  .tb-account-panel .tb-account-avatar { width:40px; height:40px }.tb-shell-footer { padding:1rem 16px }.timebank-shell .portal-container { padding:0 16px }
+}
+.tb-shell-actions { display:flex; align-items:center; justify-content:flex-end; gap:.75rem; flex-shrink:0; max-width:55% }
+.tb-shell-actions .tb-account-menu { max-width:none; min-width:0; flex-shrink:1 }
+.tb-messages-link { display:flex; align-items:center; justify-content:center; position:relative; gap:.4rem; min-height:44px; min-width:44px; padding:.5rem .65rem; border:1px solid var(--border-subtle); border-radius:10px; color:inherit; text-decoration:none; font-size:.8rem }
+.tb-messages-link:hover,.tb-messages-link[aria-current] { background:var(--panel) }
+.tb-inbox-badge { display:inline-flex; align-items:center; justify-content:center; min-width:19px; height:19px; border-radius:12px; padding:0 4px; background:var(--text-primary); color:var(--panel); font-size:.65rem; font-weight:700 }
+@media(max-width:640px) { .tb-messages-label { display:none }.tb-messages-link { padding:.4rem }.tb-shell-actions { gap:.4rem; max-width:45% }.tb-messages-link .tb-inbox-badge { position:absolute; top:-4px; right:-5px } }

@@ -7,6 +7,7 @@ export type PushDeliveryJob = {
   title: string;
   body: string;
   deepLink: string;
+  data?: { notificationId: string; communityId: string; type: string; path: string };
 };
 
 export type PushSubscriptionInput = {
@@ -103,7 +104,7 @@ async function deliverToSubscription(env: Env, job: PushDeliveryJob, subscriptio
   try {
     await webpush.sendNotification(
       { endpoint: subscription.endpoint, keys: { p256dh: subscription.p256dh, auth: subscription.auth } },
-      JSON.stringify({ title: job.title, body: job.body, url: job.deepLink, eventId: job.eventId }),
+      JSON.stringify({ title: job.title, body: job.body, url: job.deepLink, eventId: job.eventId, data: job.data }),
       { TTL: 60 * 60, urgency: "normal" },
     );
     await env.DB.prepare(
@@ -128,6 +129,11 @@ export async function consumePushBatch(batch: MessageBatch<PushDeliveryJob>, env
   for (const message of batch.messages) {
     try {
       const job = message.body;
+      if (job.data) {
+        const unread = await env.DB.prepare("SELECT id FROM user_notifications WHERE id = ? AND user_id = ? AND community_id = ? AND status = 'unread'")
+          .bind(job.data.notificationId, job.userId || '', job.data.communityId).first();
+        if (!unread) { message.ack(); continue; }
+      }
       const query = job.subscriptionId
         ? env.DB.prepare("SELECT * FROM push_subscriptions WHERE id = ? AND enabled = 1").bind(job.subscriptionId)
         : env.DB.prepare("SELECT * FROM push_subscriptions WHERE user_id = ? AND enabled = 1").bind(job.userId || "");

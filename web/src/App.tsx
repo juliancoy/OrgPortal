@@ -5,7 +5,8 @@ import { portalPath } from './config/portalBase'
 import { Header } from './ui/shell/Header'
 import { Footer } from './ui/shell/Footer'
 import { ExternalBrowserPrompt } from './ui/components/ExternalBrowserPrompt'
-import { DEFAULT_POST_LOGIN_PATH, PIDP_APP_SLUG, pidpAppLoginUrl, pidpUrl, portalAuthCallbackUrl } from './config/pidp'
+import { defaultPostLoginPath, PIDP_APP_SLUG, pidpAppLoginUrl, pidpUrl, portalAuthCallbackUrl } from './config/pidp'
+import { getActivePortalProfileConfig } from './config/portalFeatures'
 import { listMotions } from './application/usecases/listMotions'
 import { MotionStatusBadge } from './ui/components/governance/MotionStatusBadge'
 import type { VoteDirection } from './domain/motion/Motion'
@@ -43,6 +44,7 @@ function motionProposerLabel(motion: { proposerType?: string; proposerName: stri
 export default function App() {
   const { user, role, loginWithPassword, isLoading: sessionLoading } = useAuth()
   const { motionRepository, engagementRepository } = useServices()
+  const portalProfile = getActivePortalProfileConfig()
   const nextUrl = window.location.href
   const isGuest = role === 'guest'
   const effectiveUserId = user?.id ?? getGuestId()
@@ -56,14 +58,14 @@ export default function App() {
   const [isSubmittingLogin, setIsSubmittingLogin] = useState(false)
 
   const socialLoginUrl = (provider: 'google' | 'github') => {
-    const params = new URLSearchParams({ next: portalAuthCallbackUrl(DEFAULT_POST_LOGIN_PATH) })
+    const params = new URLSearchParams({ next: portalAuthCallbackUrl(defaultPostLoginPath()) })
     if (PIDP_APP_SLUG) params.set('app', PIDP_APP_SLUG)
     return pidpUrl(`/auth/${provider}/login?${params.toString()}`)
   }
 
   useEffect(() => {
-    document.title = isGuest ? 'Org Portal' : 'Code Collective'
-  }, [isGuest])
+    document.title = isGuest ? portalProfile.portalTitle : portalProfile.brandName
+  }, [isGuest, portalProfile.brandName, portalProfile.portalTitle])
 
   useEffect(() => {
     if (isGuest) {
@@ -143,14 +145,33 @@ export default function App() {
         >
           <ExternalBrowserPrompt />
           <div className="portal-guest-brand">
-            <img
-              src={portalPath('/images/namebanner.png')}
-              alt="Code Collective"
-            />
+            {portalProfile.brandImagePath ? (
+              <img
+                src={portalPath(portalProfile.brandImagePath)}
+                alt={portalProfile.brandName}
+              />
+            ) : (
+              <span
+                aria-hidden="true"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 54,
+                  height: 54,
+                  borderRadius: 12,
+                  background: 'var(--primary)',
+                  color: '#fff',
+                  fontWeight: 800,
+                }}
+              >
+                BM
+              </span>
+            )}
             <div>
-              <h1 id="portal-guest-title">Org Portal</h1>
+              <h1 id="portal-guest-title">{portalProfile.portalTitle}</h1>
               <p className="muted">
-                Coding a New Economy
+                {portalProfile.tagline}
               </p>
             </div>
           </div>
