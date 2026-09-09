@@ -941,7 +941,8 @@ export function Header() {
             <NavLink to="/community">Community</NavLink>
             <NavLink to="/chat">Messages</NavLink>
             <NavLink to="/people">People</NavLink>
-            <a className="portal-nav-link" href="https://medtech.social/calendar.html">Events</a>
+            <NavLink to="/medtech-events">MedTech Events</NavLink>
+            <a className="portal-nav-link" href="https://medtech.social/calendar.html">General Calendar</a>
             <a className="portal-nav-link" href="https://medtech.social/map.html">Medical map</a>
           </> : domainCommunity ? <>
             <NavLink to="/timebanking">Timebank</NavLink>

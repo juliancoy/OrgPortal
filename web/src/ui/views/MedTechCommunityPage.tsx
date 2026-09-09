@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
 import { portalPath } from '../../config/portalBase'
 import { portalProfilePath } from '../../config/portalFeatures'
-import { MEDTECH_CHAT_URL, MEDTECH_EVENTS_URL, medTechEventImageUrl, selectMedTechEvents, type MedTechEvent } from '../../config/medtechCommunity'
+import { MEDTECH_CHAT_URL, MEDTECH_OWNED_EVENTS_PATH, MEDTECH_LUMA_URL, medTechEventImageUrl, selectOwnedMedTechEvents, type MedTechEvent } from '../../config/medtechCommunity'
 
 export function MedTechCommunityPage() {
   const { user } = useAuth()
@@ -13,15 +13,15 @@ export function MedTechCommunityPage() {
   useEffect(() => {
     document.title = 'Community • Baltimore MedTech'
     const controller = new AbortController()
-    fetch(MEDTECH_EVENTS_URL, { signal: controller.signal })
+    fetch(`/api/org${MEDTECH_OWNED_EVENTS_PATH}`, { signal: controller.signal })
       .then(async response => {
         if (!response.ok) throw new Error('Unable to load events.')
-        const upcoming = selectMedTechEvents(await response.json())
+        const upcoming = selectOwnedMedTechEvents(await response.json())
         setEvents(upcoming)
-        setStatus(upcoming.length ? '' : 'No upcoming medical events are listed right now. Check the calendar for updates.')
+        setStatus(upcoming.length ? '' : 'No upcoming MedTech-hosted events have been published in the portal yet.')
       })
       .catch(() => {
-        if (!controller.signal.aborted) setStatus('Events could not be loaded. You can still browse the medical calendar.')
+        if (!controller.signal.aborted) setStatus('MedTech events could not be loaded. Please try again later, or check the group’s Luma page.')
       })
     return () => controller.abort()
   }, [])
@@ -57,8 +57,8 @@ export function MedTechCommunityPage() {
 
       <section className="medtech-community-events" aria-labelledby="medtech-events-title">
         <div className="medtech-section-heading">
-          <div><p className="medtech-eyebrow">Around the region</p><h2 id="medtech-events-title">Upcoming medical events</h2></div>
-          <a href="https://medtech.social/calendar.html">Full medical calendar <span aria-hidden="true">↗</span></a>
+          <div><p className="medtech-eyebrow">Hosted by our group</p><h2 id="medtech-events-title">MedTech Events</h2></div>
+          <Link to={portalProfilePath('/medtech-events')}>All MedTech events <span aria-hidden="true">→</span></Link>
         </div>
         {status && <p role="status">{status}</p>}
         <ul className="medtech-event-list">
@@ -67,12 +67,19 @@ export function MedTechCommunityPage() {
             return <li key={`${event.url}-${event.startDate}`}>
             <div className="medtech-event-details">
             <time dateTime={event.startDate}>{new Date(event.startDate).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}</time>
-            <a href={event.url}>{event.name} <span aria-hidden="true">↗</span></a>
+            <Link to={portalProfilePath(event.url)}>{event.name} <span aria-hidden="true">→</span></Link>
             {event.location?.name && <span>{event.location.name}</span>}
             </div>
             {imageUrl && <img className="medtech-event-image" src={imageUrl} alt="" loading="lazy" decoding="async" onError={event => { event.currentTarget.hidden = true }} />}
           </li>})}
         </ul>
+        <p><a href={MEDTECH_LUMA_URL}>Baltimore MedTech on Luma ↗</a></p>
+      </section>
+      <section className="medtech-community-card" aria-labelledby="regional-calendar-title">
+        <p className="medtech-eyebrow">Around the region</p>
+        <h2 id="regional-calendar-title">General Calendar</h2>
+        <p>Discover medical, health and technology events from organizations across Baltimore.</p>
+        <a href="https://medtech.social/calendar.html">Browse the General Calendar ↗</a>
       </section>
     </div>
   )
