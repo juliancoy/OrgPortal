@@ -37,6 +37,8 @@ import {
   type OrganizationActor,
 } from "./organizationIam";
 
+import { eventAttendance } from "./eventRegistrations";
+
 type ContactLink = {
   label: string;
   url: string;
@@ -2626,7 +2628,36 @@ app.post("/api/network/events/:eventId/unclaim", async (c) => {
   if (!row) fail(404, "Event not found");
   return c.json(mapEvent(c.env, c.req.raw, row));
 });
-app.get("/api/network/events/:eventId/attendance", async (c) => c.json({ event_id: c.req.param("eventId"), attendees: [], count: 0 }));
+app.get("/api/network/events/:eventId/attendance", async (c) => {
+  c.header("Cache-Control", "no-store");
+  const eventId = c.req.param("eventId");
+  const event = await c.env.DB.prepare("SELECT id FROM events WHERE id = ?").bind(eventId).first();
+  if (!event) fail(404, "Event not found");
+  const user = c.req.header("Authorization") ? await currentUser(c.env, c.req.raw) : null;
+  return c.json(await eventAttendance(c.env.DB, eventId, user?.id));
+});
+
+app.post("/api/network/events/:eventId/attendance", async (c) => {
+  c.header("Cache-Control", "no-store");
+  const user = await currentUser(c.env, c.req.raw);
+  const eventId = c.req.param("eventId");
+  const event = await c.env.DB.prepare("SELECT id FROM events WHERE id = ?").bind(eventId).first();
+  if (!event) fail(404, "Event not found");
+  await c.env.DB.prepare(`INSERT INTO event_registrations (event_id, user_id)
+    VALUES (?, ?) ON CONFLICT(event_id, user_id) DO NOTHING`).bind(eventId, user.id).run();
+  return c.json(await eventAttendance(c.env.DB, eventId, user.id));
+});
+
+app.delete("/api/network/events/:eventId/attendance", async (c) => {
+  c.header("Cache-Control", "no-store");
+  const user = await currentUser(c.env, c.req.raw);
+  const eventId = c.req.param("eventId");
+  const event = await c.env.DB.prepare("SELECT id FROM events WHERE id = ?").bind(eventId).first();
+  if (!event) fail(404, "Event not found");
+  await c.env.DB.prepare("DELETE FROM event_registrations WHERE event_id = ? AND user_id = ?")
+    .bind(eventId, user.id).run();
+  return c.json(await eventAttendance(c.env.DB, eventId, user.id));
+});
 
 app.get("/api/network/scans", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
