@@ -58,3 +58,4 @@ certs/cockroach/ca.crt
 web/playwright-report/
 web/test-results/
 web/public/*.apk
+org-worker/src/generated/
