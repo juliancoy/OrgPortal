@@ -34,7 +34,7 @@ curl -i http://127.0.0.1:8002/health
 ## 2) Build and deploy the integrated portal frontend
 
 The standalone portal deployment described by older versions of this document
-has been retired. The parent CodeCollective site builds `portal/web` with a
+has been deleted. The parent CodeCollective site builds `portal/web` with a
 `/p/` base and serves it at `https://codecollective.us/p/`.
 
 From the parent CodeCollective repository:
