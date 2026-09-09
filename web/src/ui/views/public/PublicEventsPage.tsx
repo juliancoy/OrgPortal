@@ -34,14 +34,19 @@ function formatDate(value?: string | null) {
 }
 
 function currentUrl() {
-  return `${window.location.origin}/events`
+  return `${window.location.origin}${window.location.pathname}`
 }
 
 function eventPublicUrl(event: PublicEvent) {
   return `${window.location.origin}/events/${encodeURIComponent(event.slug)}`
 }
 
-export function PublicEventsPage() {
+export function PublicEventsPage({
+  sourcePath = '/api/network/events/public?upcoming_only=true&limit=120',
+  heading = 'Upcoming Events',
+  description = 'Browse upcoming events from users and organizations in the Org network.',
+  emptyMessage = 'No upcoming events are listed right now.',
+}: { sourcePath?: string; heading?: string; description?: string; emptyMessage?: string } = {}) {
   const { token } = useAuth()
   const [events, setEvents] = useState<PublicEvent[]>([])
   const [status, setStatus] = useState<string>('Loading upcoming events…')
@@ -53,12 +58,12 @@ export function PublicEventsPage() {
 
   useEffect(() => {
     setSeoMeta({
-      title: 'Upcoming Events • Org Portal',
-      description: 'Browse upcoming events from users and organizations in the Org network.',
+      title: `${heading} • Org Portal`,
+      description,
       canonicalUrl: currentUrl(),
       type: 'website',
     })
-  }, [])
+  }, [heading, description])
 
   useEffect(() => {
     if (!token) {
@@ -78,29 +83,36 @@ export function PublicEventsPage() {
   }, [token])
 
   useEffect(() => {
-    fetch(orgUrl('/api/network/events/public?upcoming_only=true&limit=120'))
+    const controller = new AbortController()
+    setEvents([])
+    setStatus('Loading upcoming events…')
+    fetch(orgUrl(sourcePath), { signal: controller.signal })
       .then(async (resp) => {
         if (!resp.ok) {
           const text = await resp.text().catch(() => '')
           throw new Error(text || `Failed to load events (${resp.status})`)
         }
-        return resp.json() as Promise<PublicEvent[]>
+        const data = await resp.json()
+        if (!Array.isArray(data)) throw new Error('The event listing is unavailable.')
+        return data as PublicEvent[]
       })
       .then((data) => {
         setEvents(Array.isArray(data) ? data : [])
         setStatus('')
       })
       .catch((err) => {
+        if (controller.signal.aborted) return
         setEvents([])
         setStatus(err instanceof Error ? err.message : 'Unable to load events')
       })
-  }, [])
+    return () => controller.abort()
+  }, [sourcePath])
 
   const itemListJsonLd = useMemo(
     () => ({
       '@context': 'https://schema.org',
       '@type': 'ItemList',
-      name: 'Upcoming Events',
+      name: heading,
       itemListElement: events.slice(0, 50).map((event, index) => ({
         '@type': 'ListItem',
         position: index + 1,
@@ -108,7 +120,7 @@ export function PublicEventsPage() {
         name: event.title,
       })),
     }),
-    [events],
+    [events, heading],
   )
 
   useEffect(() => {
@@ -167,8 +179,10 @@ export function PublicEventsPage() {
 
   return (
     <section className="panel" style={{ display: 'grid', gap: '1rem' }}>
-      <h1 style={{ marginTop: 0 }}>Upcoming Events</h1>
+      <h1 style={{ marginTop: 0 }}>{heading}</h1>
+      <p className="muted">{description}</p>
       {status ? <p className="muted">{status}</p> : null}
+      {!status && events.length === 0 && <p role="status">{emptyMessage}</p>}
       <div style={{ display: 'grid', gap: '0.9rem' }}>
         {events.map((event) => (
           (() => {

@@ -1,5 +1,9 @@
 export const MEDTECH_EVENTS_URL = 'https://codecollective.us/baltimore/upcoming_events.json'
 export const MEDTECH_CHAT_URL = 'https://chat.whatsapp.com/Fpsd3Ko6l7q0Fy8DEYxw8V'
+export const MEDTECH_LUMA_URL = 'https://luma.com/baltimoremedtech'
+// Public organization slug, not a search term or a client-side ownership grant.
+export const MEDTECH_ORGANIZATION_SLUG = String(import.meta.env.VITE_MEDTECH_ORGANIZATION_SLUG || 'baltimore-medtech').trim()
+export const MEDTECH_OWNED_EVENTS_PATH = `/api/network/orgs/public/${encodeURIComponent(MEDTECH_ORGANIZATION_SLUG)}/events?upcoming_only=true&limit=120`
 
 export type MedTechEvent = {
   name: string
@@ -8,6 +12,19 @@ export type MedTechEvent = {
   location?: { name?: string }
   imageUrl?: string
   orgImageUrl?: string
+}
+
+// Only call this with the organization-scoped API response. Never substitute the
+// general calendar feed when the organization is missing or its request fails.
+export function selectOwnedMedTechEvents(feed: unknown, now = Date.now()): MedTechEvent[] {
+  if (!Array.isArray(feed)) throw new Error('MedTech events are unavailable.')
+  return feed.filter(event => event && typeof event.title === 'string' && typeof event.slug === 'string'
+    && typeof event.starts_at === 'string' && Date.parse(event.starts_at) >= now)
+    .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at))
+    .slice(0, 3)
+    .map(event => ({ name: event.title, startDate: event.starts_at,
+      url: `/events/${encodeURIComponent(event.slug)}`, location: { name: event.location || '' },
+      imageUrl: event.image_url || undefined }))
 }
 
 export function medTechEventImageUrl(event: MedTechEvent): string | null {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { medTechEventImageUrl, selectMedTechEvents } from './medtechCommunity'
+import { medTechEventImageUrl, selectMedTechEvents, selectOwnedMedTechEvents, MEDTECH_OWNED_EVENTS_PATH } from './medtechCommunity'
 
 describe('MedTech published calendar', () => {
   const now = Date.parse('2026-09-08T12:00:00Z')
@@ -26,5 +26,16 @@ describe('MedTech published calendar', () => {
   it('provides an empty state and rejects malformed feeds', () => {
     expect(selectMedTechEvents([], now)).toEqual([])
     expect(() => selectMedTechEvents({}, now)).toThrow('unavailable')
+  })
+
+  it('uses the organization-scoped API for owned events, never a keyword search', () => {
+    expect(MEDTECH_OWNED_EVENTS_PATH).toContain('/orgs/public/baltimore-medtech/events?')
+    expect(MEDTECH_OWNED_EVENTS_PATH).toContain('upcoming_only=true')
+    expect(selectOwnedMedTechEvents([event], now)).toEqual([])
+    const hosted = { title: 'Community gathering', slug: 'gathering', starts_at: '2026-09-29T22:00:00Z' }
+    expect(selectOwnedMedTechEvents([hosted, { ...hosted, starts_at: '2026-09-01T22:00:00Z' }], now)).toEqual([
+      { name: 'Community gathering', startDate: hosted.starts_at, url: '/events/gathering', location: { name: '' }, imageUrl: undefined },
+    ])
+    expect(() => selectOwnedMedTechEvents({ error: 'unavailable' }, now)).toThrow('unavailable')
   })
 })

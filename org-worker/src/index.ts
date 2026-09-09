@@ -2184,11 +2184,13 @@ app.get("/api/network/orgs/public/:slug/events", async (c) => {
     .first<OrganizationRow>();
   if (!org) return c.json([]);
   const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "60", 10) || 60, 200));
+  const upcomingOnly = c.req.query("upcoming_only") === "true";
   const rows = await c.env.DB.prepare(
     `SELECT e.*, o.name AS organization_name
      FROM events e
      LEFT JOIN organizations o ON o.id = e.host_org_id
      WHERE e.host_org_id = ?
+     ${upcomingOnly ? "AND e.starts_at IS NOT NULL AND julianday(e.starts_at) >= julianday('now')" : ""}
      ORDER BY COALESCE(e.starts_at, e.created_at) ASC
      LIMIT ?`,
   )

@@ -104,6 +104,8 @@
 .medtech-event-image { width: 100%; aspect-ratio: 16 / 10; object-fit: contain; border-radius: 8px; background: #fff; }
 .medtech-event-list a { font-size: 1.1rem; font-weight: 650; }
 .medtech-event-list time, .medtech-event-details > span { font-size: .85rem; color: var(--text-secondary); }
+.medtech-event-collections { display: flex; flex-wrap: wrap; gap: 1rem; margin-block: 1rem; font-size: 1rem; }
+.medtech-event-collections [aria-current="page"] { font-weight: 700; }
 @media (max-width: 640px) {
   .medtech-event-list li:has(.medtech-event-image:not([hidden])) { grid-template-columns: 1fr; }
   .medtech-community-grid { grid-template-columns: 1fr; }

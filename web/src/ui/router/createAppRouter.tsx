@@ -1,5 +1,6 @@
 import { PortalProfileBoundary } from '../shell/PortalProfileBoundary'
 import { MedTechCommunityPage } from '../views/MedTechCommunityPage'
+import { MedTechEventsPage } from '../views/MedTechEventsPage'
 import { getDomainCommunity } from '../../config/timebankCommunity'
 import { useEffect, useState } from 'react'
 import type { ReactElement } from 'react'
@@ -189,6 +190,7 @@ export function createAppRouter() {
           { path: '/initiatives/:slug/sign', element: <InitiativeSignPage /> },
 
           { path: '/community', element: <AuthenticatedRoute><MedTechCommunityPage /></AuthenticatedRoute> },
+          { path: '/medtech-events', element: <MedTechEventsPage /> },
           { path: '/about', element: <AboutPage /> },
           { path: '/email', element: <AdminRoute><EmailCampaignsPage /></AdminRoute> },
           { path: '/email/preferences', element: <AuthenticatedRoute><EmailPreferencesPage /></AuthenticatedRoute> },
