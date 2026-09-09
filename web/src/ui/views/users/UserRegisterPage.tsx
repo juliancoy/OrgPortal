@@ -1,15 +1,19 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
-import { DEFAULT_POST_LOGIN_PATH } from '../../../config/pidp'
+import { DEFAULT_POST_LOGIN_PATH, normalizePostLoginPath } from '../../../config/pidp'
 
 export function UserRegisterPage() {
   const navigate = useNavigate()
-  const { registerWithPassword, isLoading } = useAuth()
+  const [searchParams] = useSearchParams()
+  const requestedNext = normalizePostLoginPath(searchParams.get('next') || DEFAULT_POST_LOGIN_PATH)
+  const loginPath = `/users/login?next=${encodeURIComponent(requestedNext)}`
+  const { registerWithPassword, isLoading, token } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [registrationComplete, setRegistrationComplete] = useState(false)
   const accountExists = Boolean(
     error &&
       (error.toLowerCase().includes('account already exists') ||
@@ -21,11 +25,11 @@ export function UserRegisterPage() {
   }, [])
 
   useEffect(() => {
-    if (!isLoading && isSubmitting) {
+    if (!isLoading && registrationComplete && token) {
       setIsSubmitting(false)
-      navigate(DEFAULT_POST_LOGIN_PATH)
+      navigate(requestedNext)
     }
-  }, [isLoading, isSubmitting, navigate])
+  }, [isLoading, registrationComplete, token, navigate, requestedNext])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -34,6 +38,7 @@ export function UserRegisterPage() {
     setIsSubmitting(true)
     try {
       await registerWithPassword(email, password)
+      setRegistrationComplete(true)
     } catch (err) {
       setIsSubmitting(false)
       setError(err instanceof Error ? err.message : 'Registration failed')
@@ -129,7 +134,7 @@ export function UserRegisterPage() {
                   <>
                     An account with this email already exists. Please log in instead.
                     <div style={{ marginTop: '0.75rem' }}>
-                      <Link to="/users/login">Go to login</Link>
+                      <Link to={loginPath}>Go to login</Link>
                     </div>
                   </>
                 ) : (
@@ -171,7 +176,7 @@ export function UserRegisterPage() {
         </form>
 
         <p className="portal-auth-secondary">
-          Already have an account? <Link to="/users/login">Login</Link>
+          Already have an account? <Link to={loginPath}>Login</Link>
         </p>
       </div>
     </section>

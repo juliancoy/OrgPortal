@@ -465,6 +465,7 @@ export function AdminPage() {
       <div>
         <h1 style={{ marginTop: 0, marginBottom: '0.25rem' }}>SysAdmin</h1>
         <p className="muted" style={{ margin: 0 }}>Platform administration and moderation controls.</p>
+        <p><Link to="/email">Email campaigns</Link></p>
       </div>
 
       <div className="sysadmin-layout" style={{ display: 'grid', gap: '1rem' }}>

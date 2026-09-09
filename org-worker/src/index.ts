@@ -37,6 +37,11 @@ import {
   type OrganizationActor,
 } from "./organizationIam";
 
+import { eventAttendance } from "./eventRegistrations";
+import { emailRoutes } from "./emailRoutes";
+import { runEmailDelivery } from "./emailDelivery";
+import { subscriptionStatement } from "./emailShared";
+
 type ContactLink = {
   label: string;
   url: string;
@@ -2626,7 +2631,46 @@ app.post("/api/network/events/:eventId/unclaim", async (c) => {
   if (!row) fail(404, "Event not found");
   return c.json(mapEvent(c.env, c.req.raw, row));
 });
-app.get("/api/network/events/:eventId/attendance", async (c) => c.json({ event_id: c.req.param("eventId"), attendees: [], count: 0 }));
+app.get("/api/network/events/:eventId/attendance", async (c) => {
+  c.header("Cache-Control", "no-store");
+  const eventId = c.req.param("eventId");
+  const event = await c.env.DB.prepare("SELECT id FROM events WHERE id = ?").bind(eventId).first();
+  if (!event) fail(404, "Event not found");
+  const user = c.req.header("Authorization") ? await currentUser(c.env, c.req.raw) : null;
+  return c.json(await eventAttendance(c.env.DB, eventId, user?.id));
+});
+
+app.post("/api/network/events/:eventId/attendance", async (c) => {
+  c.header("Cache-Control", "no-store");
+  const user = await currentUser(c.env, c.req.raw);
+  const eventId = c.req.param("eventId");
+  const event = await c.env.DB.prepare("SELECT id, host_org_id FROM events WHERE id = ?").bind(eventId).first<{ id: string; host_org_id: string | null }>();
+  if (!event) fail(404, "Event not found");
+  const payload = await c.req.json().catch(() => ({})) as Record<string, unknown>;
+  for (const field of ["email_updates", "organization_announcements"]) {
+    if (payload[field] !== undefined && typeof payload[field] !== "boolean") fail(400, "Invalid email preference");
+  }
+  const statements = [c.env.DB.prepare(`INSERT INTO event_registrations (event_id, user_id)
+    VALUES (?, ?) ON CONFLICT(event_id, user_id) DO NOTHING`).bind(eventId, user.id)];
+  if (payload.email_updates !== undefined) statements.push(subscriptionStatement(c.env.DB, user, 'event', eventId, payload.email_updates === true));
+  if (payload.organization_announcements === true && event.host_org_id) statements.push(subscriptionStatement(c.env.DB, user, 'organization', event.host_org_id, true));
+  await c.env.DB.batch(statements);
+  return c.json(await eventAttendance(c.env.DB, eventId, user.id));
+});
+
+app.delete("/api/network/events/:eventId/attendance", async (c) => {
+  c.header("Cache-Control", "no-store");
+  const user = await currentUser(c.env, c.req.raw);
+  const eventId = c.req.param("eventId");
+  const event = await c.env.DB.prepare("SELECT id FROM events WHERE id = ?").bind(eventId).first();
+  if (!event) fail(404, "Event not found");
+  await c.env.DB.batch([
+    c.env.DB.prepare("DELETE FROM event_registrations WHERE event_id = ? AND user_id = ?").bind(eventId, user.id),
+    c.env.DB.prepare("UPDATE email_subscriptions SET status = 'unsubscribed', updated_at = ? WHERE user_id = ? AND topic_type = 'event' AND topic_id = ?")
+      .bind(Date.now(), user.id, eventId),
+  ]);
+  return c.json(await eventAttendance(c.env.DB, eventId, user.id));
+});
 
 app.get("/api/network/scans", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
@@ -3562,12 +3606,19 @@ app.post("/api/network/chat/bootstrap", async (c) => {
   return c.json({ detail: "Matrix bootstrap is not implemented in the Cloudflare org worker yet" }, 501);
 });
 
+app.route('/api/email', emailRoutes(currentUser, async (env, request) => {
+  const user = await currentUser(env, request);
+  if (!adminUser(user, env)) fail(403, 'Administrator access is required for email campaigns.');
+  return user;
+}));
+
 app.all("*", (c) => c.json({ detail: "Endpoint is not implemented in the Cloudflare org worker" }, 501));
 
 export default {
   fetch: app.fetch,
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext) {
     ctx.waitUntil(runUbiTick(env.DB, controller.scheduledTime));
+    ctx.waitUntil(runEmailDelivery(env));
   },
   async queue(batch: MessageBatch<import("./push").PushDeliveryJob>, env: Env) {
     await consumePushBatch(batch, env);
