@@ -1,0 +1,299 @@
+01:54:09.587218 - SPEECH OUTPUT: 'Screen reader on.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:10.336793 - SPEECH OUTPUT: 'Google Chrome for Testing frame.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:10.390076 - SPEECH OUTPUT: 'Address and search bar autocomplete data:text/html,<html lang="en"><title>Speech calibration</title><main><h1>Speech calibration</h1><label>Calibration field<input id="calibration"></label><button>Calibration button</button><p role="status" id="status"></p></main></html>' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:10.651686 - SPEECH OUTPUT: 'Finished loading Speech calibration.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:10.655453 - SPEECH OUTPUT: 'Page has 1 landmark, 1 heading.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:11.290580 - SPEECH OUTPUT: 'left control' {'established': False}
+01:54:11.815968 - SPEECH OUTPUT: 'Calibration field entry.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:11.822044 - SPEECH OUTPUT: 'Focus mode' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:13.141558 - SPEECH OUTPUT: 'Accessibility calibration ready' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:14.624119 - SPEECH OUTPUT: 'Browse mode' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:14.744018 - SPEECH OUTPUT: 'main content.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:15.397291 - SPEECH OUTPUT: 'left control' {'established': False}
+01:54:15.946686 - SPEECH OUTPUT: 'main content' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:15.948606 - SPEECH OUTPUT: 'region Log In' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:15.950500 - SPEECH OUTPUT: 'Email entry required.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:15.956923 - SPEECH OUTPUT: 'Focus mode' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:17.147817 - SPEECH OUTPUT: 'tab' {'established': False}
+01:54:17.223679 - SPEECH OUTPUT: 'Password password text.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:18.465045 - SPEECH OUTPUT: 'about:blank page tab.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:18.522473 - SPEECH OUTPUT: 'Address and search bar autocomplete about:blank.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:18.723439 - SPEECH OUTPUT: 'main content' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:18.725458 - SPEECH OUTPUT: 'region Log In' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:18.727308 - SPEECH OUTPUT: 'Password password text.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:18.734900 - SPEECH OUTPUT: 'Focus mode' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:19.414371 - SPEECH OUTPUT: 'Finished loading Code Collective Portal.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:19.422509 - SPEECH OUTPUT: 'Page has 3 landmarks, 8 headings, 3 tables, 16 unvisited links.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:20.034749 - SPEECH OUTPUT: 'left control' {'established': False}
+01:54:20.129457 - SPEECH OUTPUT: 'Code Collective CODE COLLECTIVE link.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:20.417042 - SPEECH OUTPUT: 'about:blank page tab.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:20.482717 - SPEECH OUTPUT: 'Address and search bar autocomplete about:blank.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:20.692921 - SPEECH OUTPUT: 'banner' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:20.694877 - SPEECH OUTPUT: 'Code Collective CODE COLLECTIVE link.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:21.124819 - SPEECH OUTPUT: 'leaving banner.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:21.126657 - SPEECH OUTPUT: 'main content' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:21.128426 - SPEECH OUTPUT: 'combo box.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:21.130693 - SPEECH OUTPUT: 'Most Dena first.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:21.133332 - SPEECH OUTPUT: 'opens menu' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:21.138757 - SPEECH OUTPUT: 'Focus mode' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:22.328562 - SPEECH OUTPUT: 'Google Chrome for Testing frame.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:22.408332 - SPEECH OUTPUT: 'Address and search bar autocomplete 127.0.0.1:5175/users/register.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:22.447756 - SPEECH OUTPUT: '127.0.0.1:5175/users/register' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:22.537560 - SPEECH OUTPUT: 'Finished loading Org Portal • Registration.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:22.544671 - SPEECH OUTPUT: 'Page has 4 landmarks, 1 heading, 16 unvisited links.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:22.699631 - SPEECH OUTPUT: 'main content.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:23.226820 - SPEECH OUTPUT: 'left control' {'established': False}
+01:54:23.382716 - SPEECH OUTPUT: 'audit@example.test' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:23.487347 - SPEECH OUTPUT: 'Register push button.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:23.714253 - SPEECH OUTPUT: 'return' {'established': False}
+01:54:23.979121 - SPEECH OUTPUT: 'Account already exists.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:23.981138 - SPEECH OUTPUT: 'Close error dialog push button.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:23.982973 - SPEECH OUTPUT: 'Account already exists.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:23.984571 - SPEECH OUTPUT: 'An account with this email already exists. Please log in instead.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:23.986449 - SPEECH OUTPUT: 'Go to login link.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:23.988179 - SPEECH OUTPUT: 'OK push button.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:24.742952 - SPEECH OUTPUT: 'tab' {'established': False}
+01:54:24.826584 - SPEECH OUTPUT: 'Login link.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:24.863449 - SPEECH OUTPUT: 'tab' {'established': False}
+01:54:24.937105 - SPEECH OUTPUT: 'View site information push button.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:24.983236 - SPEECH OUTPUT: 'tab' {'established': False}
+01:54:25.041431 - SPEECH OUTPUT: 'Address and search bar autocomplete 127.0.0.1:5175/users/register selected.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:25.103590 - SPEECH OUTPUT: 'tab' {'established': False}
+01:54:25.162766 - SPEECH OUTPUT: 'Bookmark this tab push button.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:25.223965 - SPEECH OUTPUT: 'tab' {'established': False}
+01:54:25.317570 - SPEECH OUTPUT: 'Skip to main content link.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:25.344106 - SPEECH OUTPUT: 'tab' {'established': False}
+01:54:25.431384 - SPEECH OUTPUT: 'banner' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:25.434086 - SPEECH OUTPUT: 'Code Collective CODE COLLECTIVE link.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:25.464454 - SPEECH OUTPUT: 'tab' {'established': False}
+01:54:25.541712 - SPEECH OUTPUT: 'Search organizations, events, and people editable combo box Search orgs, events, people.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:25.544353 - SPEECH OUTPUT: 'Type at least two characters. Use up and down arrow keys to review results, Enter to open the selected result, or Escape to close results.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:25.553875 - SPEECH OUTPUT: 'Focus mode' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:25.589249 - SPEECH OUTPUT: 'tab' {'established': False}
+01:54:25.670570 - SPEECH OUTPUT: 'Log In link.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:25.677604 - SPEECH OUTPUT: 'Browse mode' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:25.996630 - SPEECH OUTPUT: 'about:blank page tab.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:26.082013 - SPEECH OUTPUT: 'Address and search bar autocomplete about:blank.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:26.254462 - SPEECH OUTPUT: 'banner' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:26.256365 - SPEECH OUTPUT: 'Log In link.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:26.275661 - SPEECH OUTPUT: 'escape' {'established': False}
+01:54:26.769378 - SPEECH OUTPUT: 'Google Chrome for Testing frame.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:26.845629 - SPEECH OUTPUT: 'Address and search bar autocomplete 127.0.0.1:5175/profile.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:26.939916 - SPEECH OUTPUT: 'Finished loading Code Collective Portal.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:26.947414 - SPEECH OUTPUT: 'Page has 3 landmarks, 4 headings, 15 unvisited links.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:27.171384 - SPEECH OUTPUT: 'main content.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:27.358567 - SPEECH OUTPUT: 'Saved' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:27.609955 - SPEECH OUTPUT: 'left control' {'established': False}
+01:54:27.803469 - SPEECH OUTPUT: 'main content' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:27.805836 - SPEECH OUTPUT: 'article' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:27.808039 - SPEECH OUTPUT: 'Add photo push button.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:29.032457 - SPEECH OUTPUT: 'tab' {'established': False}
+01:54:29.100889 - SPEECH OUTPUT: 'push button.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:29.153228 - SPEECH OUTPUT: 'tab' {'established': False}
+01:54:29.230895 - SPEECH OUTPUT: 'Save profile push button.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:29.272012 - SPEECH OUTPUT: 'tab' {'established': False}
+01:54:29.361140 - SPEECH OUTPUT: 'Full name entry Accessibility Tester selected.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:29.369550 - SPEECH OUTPUT: 'Focus mode' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:29.398398 - SPEECH OUTPUT: 'tab' {'established': False}
+01:54:29.482121 - SPEECH OUTPUT: 'Disable push button.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:29.490540 - SPEECH OUTPUT: 'Browse mode' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:29.511845 - SPEECH OUTPUT: 'tab' {'established': False}
+01:54:29.590503 - SPEECH OUTPUT: 'Professional headline entry Accessibility testing selected.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:29.598402 - SPEECH OUTPUT: 'Focus mode' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:29.631600 - SPEECH OUTPUT: 'tab' {'established': False}
+01:54:29.706312 - SPEECH OUTPUT: 'Hide from public profile toggle button pressed.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:29.713951 - SPEECH OUTPUT: 'Browse mode' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:29.751581 - SPEECH OUTPUT: 'tab' {'established': False}
+01:54:29.826323 - SPEECH OUTPUT: 'Bio entry Synthetic profile.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:29.837053 - SPEECH OUTPUT: 'Focus mode' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:29.872231 - SPEECH OUTPUT: 'tab' {'established': False}
+01:54:29.945416 - SPEECH OUTPUT: 'Hide from public profile toggle button pressed.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:29.953119 - SPEECH OUTPUT: 'Browse mode' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:30.436902 - SPEECH OUTPUT: 'about:blank page tab.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:30.785348 - SPEECH OUTPUT: 'Hide from public profile toggle button pressed.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:30.793848 - SPEECH OUTPUT: 'escape' {'established': False}
+01:54:31.273325 - SPEECH OUTPUT: 'Google Chrome for Testing frame.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:31.351362 - SPEECH OUTPUT: 'Address and search bar autocomplete 127.0.0.1:5175/chat/a11y-dm.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:31.450238 - SPEECH OUTPUT: 'Finished loading Code Collective Portal.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:31.458085 - SPEECH OUTPUT: 'Page has 3 landmarks, 15 unvisited links.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:31.643691 - SPEECH OUTPUT: 'main content.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:32.090486 - SPEECH OUTPUT: 'left control' {'established': False}
+01:54:32.682905 - SPEECH OUTPUT: 'Chat calibration ready' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:33.630555 - SPEECH OUTPUT: 'Send push button.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:33.895825 - SPEECH OUTPUT: 'return' {'established': False}
+01:54:35.269245 - SPEECH OUTPUT: 'about:blank page tab.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:35.374578 - SPEECH OUTPUT: 'Address and search bar autocomplete about:blank.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:35.674726 - SPEECH OUTPUT: 'Google Chrome for Testing frame.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:35.761877 - SPEECH OUTPUT: 'Address and search bar autocomplete 127.0.0.1:5175/timebanking.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:35.971441 - SPEECH OUTPUT: 'Finished loading Code Collective Portal.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:35.977324 - SPEECH OUTPUT: 'Page has 3 landmarks, 3 unvisited links.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:36.149445 - SPEECH OUTPUT: 'main content.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:36.304788 - SPEECH OUTPUT: '0 offers and 0 requests shown.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:36.664762 - SPEECH OUTPUT: 'left control' {'established': False}
+01:54:36.870481 - SPEECH OUTPUT: 'main content' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:36.872468 - SPEECH OUTPUT: 'region Offers and requests' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:36.874492 - SPEECH OUTPUT: 'region Offers' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:36.876318 - SPEECH OUTPUT: 'Add offer push button.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:37.155556 - SPEECH OUTPUT: 'return' {'established': False}
+01:54:37.318793 - SPEECH OUTPUT: 'dialog' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:37.321101 - SPEECH OUTPUT: 'Close dialog push button.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:38.195320 - SPEECH OUTPUT: 'tab' {'established': False}
+01:54:38.261658 - SPEECH OUTPUT: 'Listing photo: No file chosen push button.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:38.314732 - SPEECH OUTPUT: 'tab' {'established': False}
+01:54:38.375102 - SPEECH OUTPUT: 'Title entry e.g. Bicycle tune-ups and small repairs required.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:38.383047 - SPEECH OUTPUT: 'Focus mode' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:38.435331 - SPEECH OUTPUT: 'tab' {'established': False}
+01:54:38.495108 - SPEECH OUTPUT: 'Category combo box.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:38.497163 - SPEECH OUTPUT: 'Other.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:38.498805 - SPEECH OUTPUT: 'opens menu' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:38.554057 - SPEECH OUTPUT: 'tab' {'established': False}
+01:54:38.616025 - SPEECH OUTPUT: 'Estimated hours 1 spin button required.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:38.674428 - SPEECH OUTPUT: 'tab' {'established': False}
+01:54:38.749790 - SPEECH OUTPUT: 'Description entry What’s included? Anything your neighbor should know? required.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:38.794285 - SPEECH OUTPUT: 'tab' {'established': False}
+01:54:38.857755 - SPEECH OUTPUT: 'Location or remote entry e.g. Charles Village, Baltimore · or Remote.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:38.913775 - SPEECH OUTPUT: 'tab' {'established': False}
+01:54:38.982612 - SPEECH OUTPUT: 'How to arrange it Optional availability or meeting details. Members can contact you through Messages. entry e.g. Available Saturday mornings.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:39.033353 - SPEECH OUTPUT: 'tab' {'established': False}
+01:54:39.094503 - SPEECH OUTPUT: 'Publish listing push button.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:39.103265 - SPEECH OUTPUT: 'Browse mode' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:39.411453 - SPEECH OUTPUT: 'about:blank page tab.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:39.682318 - SPEECH OUTPUT: 'Add offer dialog' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:39.684363 - SPEECH OUTPUT: 'Publish listing push button.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:39.693641 - SPEECH OUTPUT: 'escape' {'established': False}
+01:54:39.897921 - SPEECH OUTPUT: '0 offers and 0 requests shown.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:39.985248 - SPEECH OUTPUT: 'Google Chrome for Testing frame.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:40.071724 - SPEECH OUTPUT: 'Address and search bar autocomplete 127.0.0.1:5175/users/login.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:40.297268 - SPEECH OUTPUT: 'Finished loading Org Portal • User login.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:40.303772 - SPEECH OUTPUT: 'Page has 4 landmarks, 1 heading, 20 unvisited links.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:40.467473 - SPEECH OUTPUT: 'main content.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:40.993195 - SPEECH OUTPUT: 'left control' {'established': False}
+01:54:41.474039 - SPEECH OUTPUT: 'about:blank page tab.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:41.831581 - SPEECH OUTPUT: 'Google Chrome for Testing frame.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:41.924739 - SPEECH OUTPUT: 'Address and search bar autocomplete 127.0.0.1:5175/users/register.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:42.148991 - SPEECH OUTPUT: 'Finished loading Code Collective Portal.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:42.155510 - SPEECH OUTPUT: 'Page has 4 landmarks, 1 heading, 16 unvisited links.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:42.319140 - SPEECH OUTPUT: 'main content.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:42.852234 - SPEECH OUTPUT: 'left control' {'established': False}
+01:54:43.256816 - SPEECH OUTPUT: 'about:blank page tab.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:43.347591 - SPEECH OUTPUT: 'Address and search bar autocomplete about:blank.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:43.619216 - SPEECH OUTPUT: 'Google Chrome for Testing frame.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:43.706323 - SPEECH OUTPUT: 'Address and search bar autocomplete 127.0.0.1:5175/about.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:43.953049 - SPEECH OUTPUT: 'Finished loading Code Collective Portal.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:43.960730 - SPEECH OUTPUT: 'Page has 3 landmarks, 3 headings, 15 unvisited links.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:44.120336 - SPEECH OUTPUT: 'main content.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:44.661832 - SPEECH OUTPUT: 'left control' {'established': False}
+01:54:45.045215 - SPEECH OUTPUT: 'about:blank page tab.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:45.131492 - SPEECH OUTPUT: 'Address and search bar autocomplete about:blank.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:45.411021 - SPEECH OUTPUT: 'Google Chrome for Testing frame.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:45.498406 - SPEECH OUTPUT: 'Address and search bar autocomplete 127.0.0.1:5175/profile.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:45.777193 - SPEECH OUTPUT: 'Finished loading Org Portal • User profile.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:45.784464 - SPEECH OUTPUT: 'Page has 3 landmarks, 4 headings, 15 unvisited links.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:46.005258 - SPEECH OUTPUT: 'main content.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:46.223892 - SPEECH OUTPUT: 'Saved' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:46.452162 - SPEECH OUTPUT: 'left control' {'established': False}
+01:54:46.929187 - SPEECH OUTPUT: 'about:blank page tab.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:47.350516 - SPEECH OUTPUT: 'Google Chrome for Testing frame.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:47.442082 - SPEECH OUTPUT: 'Address and search bar autocomplete 127.0.0.1:5175/settings.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:47.684945 - SPEECH OUTPUT: 'Finished loading Code Collective Portal.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:47.695434 - SPEECH OUTPUT: 'Page has 3 landmarks, 15 unvisited links.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:47.900899 - SPEECH OUTPUT: 'main content.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:48.050987 - SPEECH OUTPUT: 'Request failed (404)' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:48.384471 - SPEECH OUTPUT: 'left control' {'established': False}
+01:54:48.756997 - SPEECH OUTPUT: 'about:blank page tab.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:48.843812 - SPEECH OUTPUT: 'Address and search bar autocomplete about:blank.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:49.071391 - SPEECH OUTPUT: 'Skip to main content.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:49.193702 - SPEECH OUTPUT: 'Google Chrome for Testing frame.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:49.287659 - SPEECH OUTPUT: 'Address and search bar autocomplete 127.0.0.1:5175/id.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:49.480549 - SPEECH OUTPUT: 'Finished loading Code Collective Portal.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:49.487632 - SPEECH OUTPUT: 'Page has 3 landmarks, 15 unvisited links.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:49.704258 - SPEECH OUTPUT: 'main content.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:50.171734 - SPEECH OUTPUT: 'left control' {'established': False}
+01:54:50.598995 - SPEECH OUTPUT: 'about:blank page tab.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:50.694703 - SPEECH OUTPUT: 'Address and search bar autocomplete about:blank.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:50.986714 - SPEECH OUTPUT: 'Google Chrome for Testing frame.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:51.081723 - SPEECH OUTPUT: 'Address and search bar autocomplete 127.0.0.1:5175/calendar.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:51.307408 - SPEECH OUTPUT: 'Finished loading Code Collective Portal.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:51.312438 - SPEECH OUTPUT: 'Page has 3 landmarks, 15 unvisited links.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:51.472952 - SPEECH OUTPUT: 'main content.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:52.000994 - SPEECH OUTPUT: 'left control' {'established': False}
+01:54:52.384707 - SPEECH OUTPUT: 'about:blank page tab.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:52.729642 - SPEECH OUTPUT: 'Google Chrome for Testing frame.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:52.816859 - SPEECH OUTPUT: 'Address and search bar autocomplete 127.0.0.1:5175/timebanking.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:53.016068 - SPEECH OUTPUT: 'Finished loading Code Collective Portal.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:53.019718 - SPEECH OUTPUT: 'Page has 3 landmarks, 3 unvisited links.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:53.156850 - SPEECH OUTPUT: 'main content.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:53.294600 - SPEECH OUTPUT: '0 offers and 0 requests shown.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:53.700864 - SPEECH OUTPUT: 'left control' {'established': False}
+01:54:54.079492 - SPEECH OUTPUT: 'about:blank page tab.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:54.164839 - SPEECH OUTPUT: 'Address and search bar autocomplete about:blank.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:54.358792 - SPEECH OUTPUT: 'Skip to main content.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:54.461156 - SPEECH OUTPUT: 'Google Chrome for Testing frame.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:54.540039 - SPEECH OUTPUT: 'Address and search bar autocomplete 127.0.0.1:5175/users/login.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:54.777506 - SPEECH OUTPUT: 'Finished loading Org Portal • User login.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:54.782994 - SPEECH OUTPUT: 'Page has 4 landmarks, 1 heading, 20 unvisited links.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:54.927564 - SPEECH OUTPUT: 'main content.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:55.472313 - SPEECH OUTPUT: 'left control' {'established': False}
+01:54:55.893503 - SPEECH OUTPUT: 'about:blank page tab.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:55.979603 - SPEECH OUTPUT: 'Address and search bar autocomplete about:blank.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:56.241566 - SPEECH OUTPUT: 'Google Chrome for Testing frame.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:56.323123 - SPEECH OUTPUT: 'Address and search bar autocomplete 127.0.0.1:5175/users/register.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:56.550570 - SPEECH OUTPUT: 'Finished loading Code Collective Portal.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:56.555805 - SPEECH OUTPUT: 'Page has 4 landmarks, 1 heading, 16 unvisited links.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:56.701835 - SPEECH OUTPUT: 'main content.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:57.249969 - SPEECH OUTPUT: 'left control' {'established': False}
+01:54:57.640728 - SPEECH OUTPUT: 'about:blank page tab.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:57.723778 - SPEECH OUTPUT: 'Address and search bar autocomplete about:blank.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:58.005159 - SPEECH OUTPUT: 'Google Chrome for Testing frame.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:58.085270 - SPEECH OUTPUT: 'Address and search bar autocomplete 127.0.0.1:5175/about.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:58.314072 - SPEECH OUTPUT: 'Finished loading Code Collective Portal.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:58.318998 - SPEECH OUTPUT: 'Page has 3 landmarks, 3 headings, 15 unvisited links.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:58.451479 - SPEECH OUTPUT: 'main content.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:59.018722 - SPEECH OUTPUT: 'left control' {'established': False}
+01:54:59.393135 - SPEECH OUTPUT: 'about:blank page tab.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:59.477634 - SPEECH OUTPUT: 'Address and search bar autocomplete about:blank.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:59.680842 - SPEECH OUTPUT: 'Skip to main content.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:59.780664 - SPEECH OUTPUT: 'Google Chrome for Testing frame.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:54:59.864337 - SPEECH OUTPUT: 'Address and search bar autocomplete 127.0.0.1:5175/profile.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:00.074968 - SPEECH OUTPUT: 'Finished loading Org Portal • User profile.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:00.081374 - SPEECH OUTPUT: 'Page has 3 landmarks, 4 headings, 15 unvisited links.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:00.256307 - SPEECH OUTPUT: 'main content.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:00.464409 - SPEECH OUTPUT: 'Saved' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:00.770947 - SPEECH OUTPUT: 'left control' {'established': False}
+01:55:01.257456 - SPEECH OUTPUT: 'about:blank page tab.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:01.336096 - SPEECH OUTPUT: 'Address and search bar autocomplete about:blank.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:01.573400 - SPEECH OUTPUT: 'Skip to main content link.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:01.675014 - SPEECH OUTPUT: 'Google Chrome for Testing frame.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:01.752964 - SPEECH OUTPUT: 'Address and search bar autocomplete 127.0.0.1:5175/settings.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:01.967543 - SPEECH OUTPUT: 'Finished loading Code Collective Portal.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:01.972910 - SPEECH OUTPUT: 'Page has 3 landmarks, 15 unvisited links.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:02.154182 - SPEECH OUTPUT: 'main content.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:02.301506 - SPEECH OUTPUT: 'Request failed (404)' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:02.656778 - SPEECH OUTPUT: 'left control' {'established': False}
+01:55:03.035167 - SPEECH OUTPUT: 'about:blank page tab.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:03.116270 - SPEECH OUTPUT: 'Address and search bar autocomplete about:blank.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:03.394265 - SPEECH OUTPUT: 'Google Chrome for Testing frame.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:03.476925 - SPEECH OUTPUT: 'Address and search bar autocomplete 127.0.0.1:5175/id.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:03.700600 - SPEECH OUTPUT: 'Finished loading Code Collective Portal.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:03.706782 - SPEECH OUTPUT: 'Page has 3 landmarks, 15 unvisited links.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:03.867592 - SPEECH OUTPUT: 'main content.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:04.385539 - SPEECH OUTPUT: 'left control' {'established': False}
+01:55:04.818532 - SPEECH OUTPUT: 'about:blank page tab.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:04.897618 - SPEECH OUTPUT: 'Address and search bar autocomplete about:blank.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:05.175511 - SPEECH OUTPUT: 'Google Chrome for Testing frame.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:05.259100 - SPEECH OUTPUT: 'Address and search bar autocomplete 127.0.0.1:5175/calendar.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:05.488604 - SPEECH OUTPUT: 'Finished loading Code Collective Portal.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:05.495481 - SPEECH OUTPUT: 'Page has 3 landmarks, 15 unvisited links.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:05.650486 - SPEECH OUTPUT: 'main content.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:06.171277 - SPEECH OUTPUT: 'left control' {'established': False}
+01:55:06.555261 - SPEECH OUTPUT: 'about:blank page tab.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:06.908678 - SPEECH OUTPUT: 'Google Chrome for Testing frame.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:06.986829 - SPEECH OUTPUT: 'Address and search bar autocomplete 127.0.0.1:5175/timebanking.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:07.214932 - SPEECH OUTPUT: 'Finished loading Code Collective Portal.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:07.220096 - SPEECH OUTPUT: 'Page has 3 landmarks, 3 unvisited links.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:07.360772 - SPEECH OUTPUT: 'main content.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:07.499164 - SPEECH OUTPUT: '0 offers and 0 requests shown.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:07.890058 - SPEECH OUTPUT: 'left control' {'established': False}
+01:55:08.272578 - SPEECH OUTPUT: 'about:blank page tab.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:08.361930 - SPEECH OUTPUT: 'Address and search bar autocomplete about:blank.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
+01:55:08.532493 - SPEECH OUTPUT: 'Screen reader off.' {'established': False, 'family': {'name': None, 'gender': None, 'lang': None, 'dialect': None, 'variant': None}}
