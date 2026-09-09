@@ -300,6 +300,8 @@ test.describe('Code Collective UI and UX system coverage', () => {
     await expect(header).toBeVisible()
     await expect(header.getByAltText('Code Collective')).toBeVisible()
     await expect(page.locator('.portal-user-trigger img')).toHaveAttribute('src', authUser.avatar_url)
+    const navigationToggle = page.getByRole('button', { name: 'Navigation', exact: true })
+    if (await navigationToggle.isVisible()) await navigationToggle.click()
     await expect(page.getByRole('link', { name: /^ID$/ })).toBeVisible()
     await expect(page.getByRole('link', { name: /^Chat$/ })).toBeVisible()
     await expect(page.getByRole('link', { name: /log in/i })).toHaveCount(0)
@@ -407,7 +409,7 @@ test.describe('Code Collective UI and UX system coverage', () => {
     await expect(page.getByRole('heading', { name: 'Mobile Tester' })).toBeVisible()
     await expect(page.getByRole('link', { name: /Email/ })).toHaveAttribute('href', 'mailto:mobile@test.org')
     await expect(page.getByRole('link', { name: /Phone/ })).toHaveAttribute('href', 'tel:+15551234567')
-    await expect(page.getByRole('link', { name: /Calendar/ })).toHaveAttribute('href', 'https://calendar.test/mobile')
+    await expect(page.getByRole('link', { name: 'Calendar calendar.test/mobile', exact: true })).toHaveAttribute('href', 'https://calendar.test/mobile')
 
     const qrSvg = page.getByLabel('QR code for this ID').locator('svg')
     await expect(qrSvg).toBeVisible()
@@ -519,9 +521,12 @@ test.describe('Code Collective UI and UX system coverage', () => {
 
   test('avatar menu opens settings and system theme persists outside the profile editor', async ({ page }) => {
     let savedThemePayload: Record<string, unknown> | null = null
+    let finishSave!: () => void
+    const saveReady = new Promise<void>((resolve) => { finishSave = resolve })
     await page.route('**/auth/me', async (route) => {
       if (route.request().method() === 'PUT') {
         savedThemePayload = JSON.parse(route.request().postData() || '{}')
+        await saveReady
         await fulfillJson(route, {
           ...authUser,
           identity_data: {
@@ -553,7 +558,11 @@ test.describe('Code Collective UI and UX system coverage', () => {
     await expect(page.getByText('User UUID')).toHaveCount(0)
 
     await page.getByLabel('Theme').selectOption('light')
+    await expect(page.getByLabel('Theme')).toBeDisabled()
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+    finishSave()
     await expect(page.getByRole('status')).toContainText('saved to your account')
+    await expect(page.getByLabel('Theme')).toBeEnabled()
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
     expect(await page.evaluate(() => localStorage.getItem('orgportal.theme'))).toBe('light')
     expect(savedThemePayload?.theme_mode).toBe('light')
@@ -649,7 +658,7 @@ test.describe('Code Collective UI and UX system coverage', () => {
     await expect(page.getByRole('heading', { name: 'Jordan Contact' })).toBeVisible()
     await expect(page.getByText('Existing hello from Jordan')).toBeVisible()
 
-    await page.getByRole('textbox', { name: 'Message Jordan Contact' }).fill('Hello from Playwright')
+    await page.getByRole('textbox', { name: 'Message', exact: true }).fill('Hello from Playwright')
     await page.getByRole('button', { name: 'Send' }).click()
     const sentMessage = page.locator('.portal-chat-message').filter({ hasText: 'Hello from Playwright' })
     await expect(sentMessage).toBeVisible()
@@ -668,7 +677,7 @@ test.describe('Code Collective UI and UX system coverage', () => {
     await page.goto('/chat/dm-1')
     await expect(page.getByText('Existing hello from Jordan')).toBeVisible()
 
-    await page.getByRole('textbox', { name: 'Message Jordan Contact' }).fill('This send should fail')
+    await page.getByRole('textbox', { name: 'Message', exact: true }).fill('This send should fail')
     await page.getByRole('button', { name: 'Send' }).click()
     await expect(page.getByText('This send should fail')).toBeVisible()
     await expect(page.getByText('Message service unavailable')).toBeVisible()
