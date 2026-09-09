@@ -13,6 +13,7 @@ import {
 export function UserSettingsPage() {
   const { role, token, user, setUser } = useAuth()
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => readThemeMode())
+  const [themeSaving, setThemeSaving] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
   const [pushState, setPushState] = useState<WebPushState>('disabled')
   const [pushBusy, setPushBusy] = useState(true)
@@ -59,6 +60,7 @@ export function UserSettingsPage() {
       return
     }
     setStatus(`Theme set to ${label}. Saving to your account...`)
+    setThemeSaving(true)
     try {
       const resp = await fetch(pidpUrl('/auth/me'), {
         method: 'PUT',
@@ -76,6 +78,8 @@ export function UserSettingsPage() {
       setStatus(`Theme set to ${label} and saved to your account.`)
     } catch (error) {
       setStatus(error instanceof Error ? `${error.message} Theme still applies on this device.` : 'Theme saved on this device only.')
+    } finally {
+      setThemeSaving(false)
     }
   }
 
@@ -135,6 +139,7 @@ export function UserSettingsPage() {
           <span>Theme</span>
           <select
             value={themeMode}
+            disabled={themeSaving}
             aria-label="Select color theme"
             onChange={(event) => void saveTheme(event.target.value as ThemeMode)}
           >
