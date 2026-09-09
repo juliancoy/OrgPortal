@@ -14,6 +14,7 @@ Cloudflare-native replacement boundary for the org API surface currently used by
 ## Implemented
 
 - `GET /health`
+- `GET /version`
 - `GET /admin/me`
 - `GET /api/network/contact/me`
 - `PUT /api/network/contact/me`
@@ -59,6 +60,28 @@ Creation requests include a client-generated UUID `id` for safe retries. Listing
 `npm test` covers the real migration, accounting, permissions, retries, and HTTP authentication. From `../web`, `npm run test:timebank:selenium` exercises desktop and mobile browsers against the production Worker routes with a local SQLite adapter and test identity provider (setup below). These browser tests use Node 24 and require the org-worker dependencies installed.
 
 ## Deploy
+
+### Identify the running source
+
+`/health` retains `ok` and `service`, and adds `commit` (full OrgPortal Git SHA),
+`dirty` (whether the build checkout had local changes), `builtAt` (UTC build time),
+and `workerVersionId` (Cloudflare's version ID, distinct from a Git SHA).
+`/version` returns the same metadata without `ok`. Both send `Cache-Control: no-store`.
+Through the existing edge proxy, use `/api/org/health` or `/api/org/version`.
+
+Wrangler's custom build automatically runs `npm run build:metadata`, including
+when invoked directly with `npx wrangler deploy` or `wrangler versions upload`.
+The generated module is bundled into the Worker; no database or Git lookup happens
+on requests. It reads OrgPortal's own checkout, including when used as a submodule,
+so a parent site's GitHub SHA cannot be mistaken for the OrgPortal revision.
+Source archives can supply `ORGPORTAL_BUILD_COMMIT` as an explicit full SHA.
+Without Git history or that setting, `commit` and `dirty` are `null`; the endpoint
+never invents a revision. An archive's `dirty` value remains unknown (`null`).
+
+`npm run typecheck`, `npm test`, and `npm run check:bundle` generate the module
+automatically. For custom build/test commands, run `npm run build:metadata` first.
+Do not use Wrangler's `--no-bundle`/`--no-build` shortcuts to bypass this build step.
+The source change must be deployed before live health responses include these fields.
 
 Create D1:
 

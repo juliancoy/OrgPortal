@@ -1,5 +1,6 @@
 import { timebankNotifications, markTimebankNotificationsRead, dispatchTimebankPush } from './timebankNotifications';
 import { Hono } from "hono";
+import { buildMetadata } from "./generated/buildMetadata";
 import { HTTPException } from "hono/http-exception";
 import { handleEventMcp, protectedResourceMetadata, eventErrorResponse } from "./eventMcp";
 import {
@@ -1781,7 +1782,16 @@ app.use("*", async (c, next) => {
   await next();
 });
 
-app.get("/health", (c) => c.json({ ok: true, service: "org-worker" }));
+app.get("/health", (c) => {
+  c.header("Cache-Control", "no-store");
+  return c.json({ ok: true, service: "org-worker", ...buildMetadata,
+    workerVersionId: c.env.CF_VERSION_METADATA?.id ?? null });
+});
+app.get("/version", (c) => {
+  c.header("Cache-Control", "no-store");
+  return c.json({ service: "org-worker", ...buildMetadata,
+    workerVersionId: c.env.CF_VERSION_METADATA?.id ?? null });
+});
 
 app.get("/admin/me", async (c) => {
   const user = await currentUser(c.env, c.req.raw);

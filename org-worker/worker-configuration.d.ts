@@ -1,4 +1,5 @@
 interface Env {
+  CF_VERSION_METADATA?: { id: string; tag: string; timestamp: string };
   EMAIL_GOOGLE_CLIENT_ID?: string;
   EMAIL_GOOGLE_CLIENT_SECRET?: string;
   EMAIL_GOOGLE_REDIRECT_URI?: string;
