@@ -1,9 +1,11 @@
+import { loadDomainCommunity } from './config/timebankCommunity'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router-dom'
 import './index.css'
 import './medtech.css'
 import { applyPortalBranding } from './config/portalBranding'
+import { MEDTECH_PORTAL_HOST } from './config/portalFeatures'
 import { AppProviders } from './app/AppProviders'
 import { createServices } from './composition/createServices'
 import { applyThemeMode, readThemeMode } from './config/theme'
@@ -14,12 +16,16 @@ applyThemeMode(readThemeMode())
 const services = createServices()
 const router = createAppRouter()
 
-applyPortalBranding()
-
-createRoot(document.getElementById('root')!).render(
+async function start() {
+  if (window.location.hostname !== MEDTECH_PORTAL_HOST) await loadDomainCommunity().catch(() => undefined)
+  applyPortalBranding()
+  createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AppProviders services={services}>
       <RouterProvider router={router} />
     </AppProviders>
   </StrictMode>,
 )
+
+}
+void start()

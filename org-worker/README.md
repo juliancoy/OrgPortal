@@ -34,6 +34,7 @@ Cloudflare-native replacement boundary for the org API surface currently used by
 - `GET /api/network/events/public/:slug`
 - `GET /api/governance/motions` and motion detail/action/vote/comment routes
 - `GET /api/accounts`, `GET /api/accounts/me`, account automation, transaction history, recent transactions, and transfer creation
+- `GET /api/timebank`, `POST /api/timebank/listings`, `PATCH /api/timebank/listings/:id`, `POST /api/timebank/exchanges`, and `PATCH /api/timebank/exchanges/:id`
 - `GET /api/system/money-supply/history`
 - `GET /api/system/metrics`
 - `GET/PATCH /api/ubi/settings`
@@ -44,6 +45,18 @@ Cloudflare-native replacement boundary for the org API surface currently used by
 - `GET/POST /api/network/scans`, `GET /api/network/scans/:scanId/image`, and `GET/PATCH /api/admin/business-card/settings` for Cloudflare-native business card scan intake, OpenAI OCR extraction, history, image storage, and abuse limits.
 - `POST /api/network/chat/bootstrap` returns a clear unavailable response unless Matrix bootstrap is added.
 - Unsupported routes return a clear `501` response from this Worker. The Worker no longer falls back to the legacy Arkavo org backend.
+
+## Timebanking
+
+The portal's `/timebanking` tab uses separate `timebank_members`, `timebank_listings`, and `timebank_exchanges` tables. Apply the timebank migrations through `0021_timebank_listing_visibility.sql` before releasing the Worker and portal changes. Public listings can be browsed without signing in; member data and mutations require a PIdP bearer token. The portal reaches these routes through `/api/org/api/timebank`.
+
+Members post an `offer` or `request` with a title, description, optional location, and estimated minutes. The owner can close or reopen a listing. Another member records completed work using the listing ID, actual minutes, and a note. The listing determines who provided and received the help. The listing owner confirms or declines; the submitter can cancel pending hours. Closing a listing prevents new exchanges while allowing existing exchanges to settle.
+
+Confirmed exchanges form the hours ledger. Each credits the provider and debits the recipient equally. Balances start at zero, allow negatives, and are calculated from all confirmed exchanges. No Dena accounts, transfers, UBI accrual, or currency conversions participate. Durations are stored as integer minutes in 15-minute increments, from 15 minutes to 24 hours per listing or exchange.
+
+Creation requests include a client-generated UUID `id` for safe retries. Listing status accepts `open` or `closed`; exchange status accepts `confirmed`, `declined`, or `canceled`. Resolved exchanges cannot be changed. The dashboard returns the latest 200 visible listings and 100 personal exchanges (pending first), plus lifetime earned, spent, and balance totals in minutes.
+
+`npm test` covers the real migration, accounting, permissions, retries, and HTTP authentication. From `../web`, `npm run test:timebank:selenium` exercises desktop and mobile browsers against the production Worker routes with a local SQLite adapter and test identity provider (setup below). These browser tests use Node 24 and require the org-worker dependencies installed.
 
 ## Deploy
 
@@ -124,3 +137,168 @@ The endpoint is idempotent by organization source URL and event ingest key, so r
 npm run typecheck
 npm test
 ```
+
+### Timebank communities and photos
+
+`0018_timebank_communities_images.sql` creates the central timebank and
+`bmoretimebank.codecollective.us`. The site Worker forwards the incoming hostname;
+all listing, exchange, balance and photo operations resolve that hostname to a
+community. Unknown hosts return 404. Communities are open to the shared portal's
+signed-in members. Identity, People, Chat, Calendar and Dena remain shared portal
+services; this is isolation of timebank data, not a separate identity system.
+
+Sysadmins can change the community name, welcome message and accent from
+**Timebank → Community settings**, or create another community there. Connect
+its generated `<slug>.codecollective.us` hostname to the existing
+`codecollective-site` Worker in Cloudflare (a proxied DNS record plus an exact
+Worker route, or a Worker Custom Domain). The subdomain root opens `/p/timebanking`.
+OAuth uses the already trusted central callback, resolves the destination from
+community records, and returns using the existing shared-domain session cookie.
+No separate frontend build or identity-provider callback registration is needed.
+
+Listing images use the existing `SCAN_IMAGES` R2 binding in the `timebank/`
+namespace. Owners can add, replace or remove JPEG/PNG/WebP photos up to 5 MB.
+The browser re-encodes photos at at most 1600 px to remove embedded metadata.
+Public, open listing images are readable by URL within their community. Other
+listing images require a bearer token and are loaded as blobs by the portal.
+Photo responses use `private, no-store` so visibility is rechecked on each read.
+A failed photo upload leaves
+the listing saved and offers a retry; the owner can also add its photo later.
+
+Run the Selenium acceptance suite with a fresh local fixture (restart between
+runs). It drives actual form fields, file upload, filters, dialogs, confirmations
+and community settings, with the production Worker routes and SQLite ledger:
+
+```sh
+# In org-worker:
+TIMEBANK_TEST_PORT=8794 node --import tsx test/helpers/timebankServer.ts
+# In web, a second terminal:
+VITE_CACHE_DIR=/tmp/timebank-vite VITE_ALLOWED_HOSTS=codecollective.us,bmoretimebank.codecollective.us VITE_PUBLIC_BASE=/p/ VITE_HMR_HOST=bmoretimebank.codecollective.us VITE_HMR_PROTOCOL=ws VITE_HMR_CLIENT_PORT=5179 PIDP_PROXY_ORIGIN=http://127.0.0.1:8794 ORG_API_ORIGIN=http://127.0.0.1:8794 npm run dev -- --host 0.0.0.0 --port 5179 --strictPort
+# Chrome in Docker on port 4446; browser maps the two test hosts to 172.17.0.1.
+npm run test:timebank:selenium
+```
+
+Screenshots default to `/tmp/timebank-selenium-after`. Only external identity and
+R2 storage are fixture adapters; the timebank HTTP routes and SQL are real.
+
+### Request uptake and administrator analytics
+
+Apply `0019_timebank_uptake.sql`. Members can take up another member's open
+request (`PUT /api/timebank/listings/:id/uptake`) or withdraw their commitment
+(`DELETE` on the same route). This never transfers hours. Uptake counts distinct
+current volunteers plus providers of confirmed help; multiple exchanges by the
+same person count once, and completed help remains counted after withdrawal.
+
+`GET /api/timebank?request_sort=most|least|newest` sorts requests before limiting
+the board to 200 listings per column. Offers stay newest first.
+
+`GET /api/timebank/analytics` requires a system administrator and reports only
+the hostname's community, over the complete confirmed ledger:
+
+- Circulation: sum of positive net member balances (outstanding credits).
+- Rewarded hours: sum of confirmed exchange durations, each counted once.
+- Category pie: rewarded hours grouped by the listing category.
+- Beneficiaries: top ten recipients by confirmed hours received.
+- Providers: top ten members by confirmed hours provided.
+
+Pending, declined and canceled exchanges never contribute to these metrics.
+The timebank home is a dedicated Offers/Requests board; My hours and Admin are
+separate views. General portal navigation and promotional panels are omitted.
+
+### Public homepage and listing visibility
+
+`0021_timebank_listing_visibility.sql` adds `visibility: public | members`, with
+`public` as the default for existing and new offers and requests. Owners choose
+**Public** or **Members only** in the composer and can change it in listing details
+using `PATCH /api/timebank/listings/:id` with `{ "visibility": "members" }`.
+Visibility covers the listing text, details and photos.
+
+The community homepage opens without a login wall and shows public, open listings
+from all authors. Signed-in members see all open listings in their community.
+**My listings** is an explicit filter; publishing or returning Home restores the
+community view. Guests must sign in to post, message, take up requests or exchange
+hours. Public dashboard responses include no account or exchange history.
+Closed listings are available to signed-in members through their detail links.
+
+The Code Collective website's **Community offers** section uses
+`GET /api/timebank/public-offers` through the existing `/api/org` proxy. This public
+feed reads open, public offers from every timebank community and includes the
+original community's listing and photo URLs. It never includes member-only
+listings or account data, even for signed-in visitors. Pages contain 12 offers,
+newest first; use `before=<next_cursor>` to load more. The website's **Show more
+offers** button follows that cursor. Closing an offer or making it members-only
+removes it from subsequent public reads.
+
+Run `npm run test:timebank:public:selenium` from `web` with the same fresh fixture
+and Vite setup above and a Selenium container configured for three sessions.
+It checks multiple authors, public defaults, restricted photos, visibility changes,
+desktop/mobile browsing, Home filters, sign-in destinations and sign-out.
+
+The account menu uses the signed-in profile photo, with initials when the image
+is missing or fails. Profile & photo opens `/profile`; account settings opens
+`/settings`. The disclosure supports Tab, Enter, Escape, outside-click dismissal,
+and focus restoration. Mobile controls have at least 44px tap targets.
+
+To verify the account menu, start the fixture server with
+`TIMEBANK_TEST_AVATAR_PATH=/absolute/path/to/profile.jpeg`, then run
+`npm run test:timebank:account:selenium` from `web`. This covers loaded and broken
+avatars, account navigation, sign-out, keyboard interaction, search clearing,
+and 390px/320px layouts. Screenshots are in the `account` subdirectory of
+`TIMEBANK_SHOTS`. The fixture never uploads the supplied JPEG to production.
+
+
+### Timebank messages and notifications
+
+Apply `0020_timebank_notifications.sql` before deploying this UI. **Message member**
+opens the existing native portal DM and adds an editable draft with a link to the
+listing. Opening a conversation does not send a message. New timebank members
+receive a private contact record so the messenger can resolve them; existing
+contact settings are preserved. Listing arrangement notes are optional.
+
+The header shows unread messages. **Notifications** lists unread conversations
+and the current community's activity: request uptake, pending hours, and confirmed,
+declined or canceled exchanges. Opening a conversation uses the messenger's
+existing read receipts. Activity has persistent per-user read state and cursor
+pagination. Failures retain visible activity and show a retry control.
+
+- `GET /api/timebank/notifications` returns 50 items, `unread_count`, and
+  `next_cursor`; pass that cursor as `before` to load older activity.
+- `POST /api/timebank/notifications/read` accepts `{ "ids": [...] }` (up to 100).
+  IDs are constrained to the authenticated user and resolved community. Explicit
+  IDs prevent newly arriving notifications being marked read unseen.
+- `GET /api/timebank/listings/:id` resolves shared links, including closed listings,
+  with the same authentication and community checks as the board.
+
+SQL triggers commit each activity notification atomically with its action. Stable
+IDs prevent retry duplicates. Withdrawing and taking up the same request again
+does not send another uptake notification. Resolving hours retires its pending
+notification. Hours still move only after confirmation.
+
+The existing minute cron dispatches at most 100 unread, unqueued activity events
+from the last 24 hours to `PUSH_QUEUE` when VAPID credentials are configured.
+Queue submission failures leave the outbox record retryable; existing per-device
+push delivery IDs deduplicate retries. Read or resolved alerts are suppressed at
+consumption. The in-app inbox remains available without push credentials.
+
+Device alerts reuse Web Push and ask permission only after an explicit click.
+Turning them off removes only this browser's subscription. Native Capacitor
+builds currently display **Device alerts are not connected in this mobile build**.
+The platform adapter is `web/src/infrastructure/platform/notificationDelivery.ts`;
+it deliberately does not attempt Web Push inside a native webview.
+
+For the future Android/iPhone integration, connect that adapter to Capacitor push
+registration, store authenticated per-installation APNs/FCM tokens, handle token
+rotation and logout/revocation, and add native delivery alongside Web Push.
+The queue payload already carries a stable notification ID, community ID, event
+type, relative path, and absolute community URL. Handle notification taps by
+restoring the community and session before opening the path, then refresh this
+same inbox. Signed builds, APNs entitlements/credentials and Firebase configuration
+remain required; native delivery is not enabled by this change. See the
+[Capacitor push API](https://capacitorjs.com/docs/apis/push-notifications) and
+[Apple registration documentation](https://developer.apple.com/documentation/usernotifications/registering-your-app-with-apns).
+
+Run `npm run test:timebank:messaging:selenium` from `web` against a fresh fixture.
+It uses the production chat routes and SQLite migrations, with HTTP polling in
+place of Durable Object sockets, to test two-member messaging, listing links,
+unread states, uptake and exchange notifications, refresh failures and narrow
+mobile layouts. Production acceptance separately checks the deployed services.

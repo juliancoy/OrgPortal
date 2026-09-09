@@ -1,4 +1,5 @@
 import { getActivePortalProfileConfig, portalProfilePath } from './portalFeatures'
+import { getDomainCommunity } from './timebankCommunity'
 import { getNativeAuthCallbackUrl, isNativeCapacitorRuntime } from '../infrastructure/platform/runtimePlatform'
 import { portalUrl, toInternalPortalPath } from './portalBase'
 
@@ -77,7 +78,10 @@ export function normalizePostLoginPath(next: string): string {
 
 export function portalAuthCallbackUrl(next: string): string {
   const target = normalizePostLoginPath(next)
-  const callback = new URL(portalUrl('/auth/callback'))
+  const community = getDomainCommunity()
+  // PIdP already trusts the shared callback and sets a codecollective.us session cookie.
+  const callback = new URL(community ? 'https://codecollective.us/p/auth/callback' : portalUrl('/auth/callback'))
+  if (community) callback.searchParams.set('community', community.id)
   const profile = getActivePortalProfileConfig()
   if (profile.id === 'baltimore-medtech') callback.searchParams.set('portalProfile', profile.id)
   callback.searchParams.set('next', target)

@@ -1,3 +1,4 @@
+import { useDomainCommunity } from '../../config/timebankCommunity'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../../app/AppProviders'
@@ -118,6 +119,7 @@ export function Header() {
   const displayName = user?.displayName || user?.email || 'Signed in'
   const roleLabel = role === 'campaign_manager' ? 'Org' : role === 'constituent' ? 'User' : 'Guest'
   const showAndroidDownload = isAndroidDevice()
+  const domainCommunity = useDomainCommunity()
   const portalProfile = getActivePortalProfileConfig()
   const ubiEnabled = isPortalFeatureEnabled('ubi', portalProfile)
 
@@ -496,7 +498,7 @@ export function Header() {
                 fontSize: '0.82rem',
               }}
             >
-              BM
+              {portalProfile.brandName.split(' ').slice(0, 2).map((word) => word[0]).join('')}
             </span>
           )}
           <div>
@@ -938,6 +940,12 @@ export function Header() {
             <NavLink to="/people">People</NavLink>
             <a className="portal-nav-link" href="https://medtech.social/calendar.html">Events</a>
             <a className="portal-nav-link" href="https://medtech.social/map.html">Medical map</a>
+          </> : domainCommunity ? <>
+            <NavLink to="/timebanking">Timebank</NavLink>
+            <NavLink to="/people">People</NavLink>
+            <NavLink to="/chat">Chat</NavLink>
+            <NavLink to="/calendar">Calendar</NavLink>
+            <a className="portal-nav-link" href="https://codecollective.us/p/">Code Collective portal ↗</a>
           </> : <>
           <NavLink to="/" isActive={isCivicActive}>
             <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -985,6 +993,12 @@ export function Header() {
             </NavLink>
           )}
 
+          <NavLink to="/timebanking">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" />
+            </svg>
+            Timebanking
+          </NavLink>
           <NavLink to="/finance" isActive={isFinanceActive}>
             <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
               <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" />

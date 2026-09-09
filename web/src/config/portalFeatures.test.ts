@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import * as communities from './timebankCommunity'
 import {
   getActivePortalProfileConfig,
   isPortalFeatureEnabled,
@@ -44,4 +45,16 @@ describe('portal feature profiles', () => {
     expect(portalProfileLoginSearch('baltimore-medtech')).toBe('portalProfile=baltimore-medtech')
   })
 
+  it('lets a hostname community keep its identity and landing page', () => {
+    const domain = vi.spyOn(communities, 'getDomainCommunity').mockReturnValue({
+      id: 'bmoretimebank', hostname: 'bmoretimebank.codecollective.us',
+      name: 'Bmore Timebank', tagline: 'Neighbors helping neighbors', accent_color: '#18745b',
+    })
+    try {
+      const profile = getActivePortalProfileConfig('?portalProfile=baltimore-medtech', memoryStorage())
+      expect(profile.brandName).toBe('Bmore Timebank')
+      expect(profile.memberHomePath).toBe('/timebanking')
+      expect(isPortalFeatureEnabled('ubi', profile)).toBe(true)
+    } finally { domain.mockRestore() }
+  })
 })
