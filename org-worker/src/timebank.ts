@@ -84,8 +84,9 @@ async function ensureMember(db: D1Database, member: Member) {
   ]);
 }
 
-export async function timebankDashboard(db: D1Database, member: Member | null, communityId = DEFAULT_COMMUNITY, requestSort = 'most') {
+export async function timebankDashboard(db: D1Database, member: Member | null, communityId = DEFAULT_COMMUNITY, requestSort = 'most', mineOnly = false) {
   if (!['most', 'least', 'newest'].includes(requestSort)) throw new TimebankError('Choose most taken up, least taken up, or newest.');
+  if (mineOnly && !member) throw new TimebankError('Sign in to view your listings.', 403);
   if (member) await ensureMember(db, member);
   const userId = member?.id ?? null;
   const [totals, listings, exchanges] = await db.batch<Record<string, unknown>>([
@@ -113,13 +114,15 @@ export async function timebankDashboard(db: D1Database, member: Member | null, c
         LEFT JOIN uptake u ON u.listing_id = l.id
         WHERE l.community_id = ? AND (l.status = 'open' OR l.user_id = ?)
           AND (? IS NOT NULL OR l.visibility = 'public')
+          AND (? = 0 OR l.user_id = ?)
       ), ranked AS (
         SELECT *, ROW_NUMBER() OVER (PARTITION BY kind ORDER BY
           CASE WHEN kind = 'request' AND ? = 'most' THEN uptake_count END DESC,
           CASE WHEN kind = 'request' AND ? = 'least' THEN uptake_count END ASC,
           created_at DESC, id DESC) AS board_rank FROM board
-      ) SELECT * FROM ranked WHERE board_rank <= 200 ORDER BY kind, board_rank`)
-      .bind(communityId, communityId, userId, userId, communityId, userId, userId, requestSort, requestSort),
+      ) SELECT * FROM ranked WHERE ? = 1 OR board_rank <= 200 ORDER BY kind, board_rank`)
+      .bind(communityId, communityId, userId, userId, communityId, userId, userId,
+        mineOnly ? 1 : 0, userId, requestSort, requestSort, mineOnly ? 1 : 0),
     db.prepare(`SELECT e.*, l.title AS listing_title, p.name AS provider_name, r.name AS recipient_name
       FROM timebank_exchanges e JOIN timebank_listings l ON l.id = e.listing_id
       JOIN timebank_members p ON p.user_id = e.provider_user_id
