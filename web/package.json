@@ -33,7 +33,11 @@
     "bot:list": "node scripts/bot-admin.mjs list",
     "bot:admin": "node scripts/bot-admin.mjs",
     "bot:issue-token": "node scripts/bot-admin.mjs issue-token",
-    "test:ux:selenium": "python scripts/selenium-ux-smoke.py"
+    "test:ux:selenium": "python scripts/selenium-ux-smoke.py",
+    "test:timebank:selenium": "python3 scripts/selenium-timebank.py",
+    "test:timebank:public:selenium": "python3 scripts/selenium-timebank-public.py",
+    "test:timebank:account:selenium": "python3 scripts/selenium-timebank-account.py",
+    "test:timebank:messaging:selenium": "python3 scripts/selenium-timebank-messaging.py"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.1",

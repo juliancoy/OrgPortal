@@ -1,5 +1,6 @@
 import { PortalProfileBoundary } from '../shell/PortalProfileBoundary'
 import { MedTechCommunityPage } from '../views/MedTechCommunityPage'
+import { getDomainCommunity } from '../../config/timebankCommunity'
 import { useEffect, useState } from 'react'
 import type { ReactElement } from 'react'
 import { Navigate, createBrowserRouter, useLocation, useNavigate, useParams } from 'react-router-dom'
@@ -44,6 +45,7 @@ import { OrgEditableInitiativesPage } from '../views/orgs/OrgEditableInitiatives
 import { IdPage } from '../views/IdPage'
 import { SendPage } from '../views/SendPage'
 import { ReceivePage } from '../views/ReceivePage'
+import { TimebankPage } from '../views/TimebankPage'
 import { CreatePage } from '../views/CreatePage'
 import { CreateForProfitPage } from '../views/CreateForProfitPage'
 import { CreateNonProfitPage } from '../views/CreateNonProfitPage'
@@ -64,7 +66,9 @@ import { getActivePortalProfileConfig, portalProfilePath, isPortalFeatureEnabled
 function AuthenticatedRoute(props: { children: ReactElement }) {
   const { role, isLoading } = useAuth()
   const location = useLocation()
-  if (isLoading) return null
+  // Keep an authenticated page mounted during background session refreshes,
+  // including the focus event when a member returns from a file picker.
+  if (isLoading && role === 'guest') return null
   if (role === 'guest') {
     const next = `${location.pathname}${location.search}${location.hash}` || '/'
     return <Navigate to={portalProfilePath(`/users/login?next=${encodeURIComponent(next)}`)} replace />
@@ -75,12 +79,20 @@ function AuthenticatedRoute(props: { children: ReactElement }) {
 function HomeRoute() {
   const { role, isLoading } = useAuth()
   if (isLoading) return null
+  if (getDomainCommunity()) return <Navigate to="/timebanking" replace />
   const profile = getActivePortalProfileConfig()
   if (profile.id === 'baltimore-medtech') {
     return <Navigate to={portalProfilePath(role === 'guest' ? '/users/login' : profile.memberHomePath)} replace />
   }
   if (role === 'guest') return <App />
   return <Navigate to="/chat" replace />
+}
+
+function TimebankRoute() {
+  const { user } = useAuth()
+  // Reset member data when identity changes, while keeping guest dialogs open
+  // during background session checks.
+  return <TimebankPage key={user?.id || 'guest'} />
 }
 
 function LegacyUserRoute(props: { to: string }) {
@@ -279,6 +291,7 @@ export function createAppRouter() {
           { path: '/events/:slug', element: <PublicEventPage /> },
           { path: '/orgs', element: <PublicOrganizationsPage /> },
           { path: '/people', element: <PeoplePage /> },
+          { path: '/timebanking', element: <TimebankRoute /> },
           {
             path: '/life-insurance',
             element: (

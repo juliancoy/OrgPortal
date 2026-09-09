@@ -50,6 +50,7 @@ export default defineConfig(() => ({
       clientPort: Number.isFinite(hmrClientPort) ? hmrClientPort : 5173,
     },
     proxy: {
+      ...(orgApiOrigin ? { '/api/chat': { target: orgApiOrigin, changeOrigin: true, xfwd: true, ws: true, rewrite: (path: string) => path.replace(/^\/api\/chat/, '') } } : {}),
       '/pidp': {
         target: pidpProxyOrigin,
         changeOrigin: true,
@@ -60,6 +61,7 @@ export default defineConfig(() => ({
             '/api/org': {
               target: orgApiOrigin,
               changeOrigin: true,
+              xfwd: true,
               rewrite: (path: string) => path.replace(/^\/api\/org/, ''),
             },
           }
