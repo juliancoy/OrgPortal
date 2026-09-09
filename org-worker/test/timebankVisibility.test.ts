@@ -54,6 +54,19 @@ test('visibility is checked before the per-column limit and only the owner can c
   assert.deepEqual((await timebankDashboard(db, null, community)).listings.map(row => row.id), [listing!.id]);
 });
 
+test('My listings is owner-scoped before the community limit and includes closed listings', async (t) => {
+  const database = new TimebankDatabase(), db = database.asD1();
+  t.after(() => database.sqlite.close());
+  const owned = await createTimebankListing(db, alice, input(), community);
+  database.sqlite.prepare('UPDATE timebank_listings SET created_at = ? WHERE id = ?').run('2020-01-01', owned!.id);
+  await updateTimebankListing(db, alice.id, owned!.id, { status: 'closed' }, community);
+  for (let i = 0; i < 201; i++) await createTimebankListing(db, bob, input(), community);
+
+  assert.equal((await timebankDashboard(db, alice, community)).listings.some((row) => row.id === owned!.id), false);
+  assert.deepEqual((await timebankDashboard(db, alice, community, 'most', true)).listings.map((row) => row.id), [owned!.id]);
+  await assert.rejects(timebankDashboard(db, null, community, 'most', true), { status: 403 });
+});
+
 test('HTTP visibility protects details and photos, rejects invalid credentials, and keeps actions authenticated', async (t) => {
   const database = new TimebankDatabase(), bucket = new TimebankBucket();
   t.after(() => database.sqlite.close());
