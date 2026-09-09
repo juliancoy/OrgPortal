@@ -10,4 +10,5 @@ export type SessionUser = {
   firstName?: string | null
   lastName?: string | null
   avatarUrl?: string | null
+  themeMode?: 'system' | 'dark' | 'light'
 }

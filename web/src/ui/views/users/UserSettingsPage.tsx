@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
+import { pidpUrl } from '../../../config/pidp'
 import { applyThemeMode, readThemeMode, type ThemeMode } from '../../../config/theme'
 import {
   disableWebPush,
@@ -10,7 +11,7 @@ import {
 } from '../../../infrastructure/platform/webPush'
 
 export function UserSettingsPage() {
-  const { role, token } = useAuth()
+  const { role, token, user, setUser } = useAuth()
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => readThemeMode())
   const [status, setStatus] = useState<string | null>(null)
   const [pushState, setPushState] = useState<WebPushState>('disabled')
@@ -20,6 +21,11 @@ export function UserSettingsPage() {
   useEffect(() => {
     document.title = 'Org Portal • Settings'
   }, [])
+
+  useEffect(() => {
+    if (!user?.themeMode) return
+    setThemeMode(user.themeMode)
+  }, [user?.themeMode])
 
   useEffect(() => {
     if (!token) {
@@ -44,11 +50,33 @@ export function UserSettingsPage() {
     return () => { cancelled = true }
   }, [token])
 
-  function saveTheme(nextMode: ThemeMode) {
+  async function saveTheme(nextMode: ThemeMode) {
     setThemeMode(nextMode)
     applyThemeMode(nextMode)
     const label = nextMode === 'system' ? 'system default' : nextMode
-    setStatus(`Theme set to ${label}.`)
+    if (!token) {
+      setStatus(`Theme set to ${label} on this device.`)
+      return
+    }
+    setStatus(`Theme set to ${label}. Saving to your account...`)
+    try {
+      const resp = await fetch(pidpUrl('/auth/me'), {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ theme_mode: nextMode }),
+      })
+      if (!resp.ok) {
+        throw new Error(`Account save failed (${resp.status}).`)
+      }
+      setUser(user ? { ...user, themeMode: nextMode } : user)
+      setStatus(`Theme set to ${label} and saved to your account.`)
+    } catch (error) {
+      setStatus(error instanceof Error ? `${error.message} Theme still applies on this device.` : 'Theme saved on this device only.')
+    }
   }
 
   async function togglePushNotifications() {
@@ -108,7 +136,7 @@ export function UserSettingsPage() {
           <select
             value={themeMode}
             aria-label="Select color theme"
-            onChange={(event) => saveTheme(event.target.value as ThemeMode)}
+            onChange={(event) => void saveTheme(event.target.value as ThemeMode)}
           >
             <option value="system">System default</option>
             <option value="dark">Dark</option>
