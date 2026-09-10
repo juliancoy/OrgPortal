@@ -98,15 +98,17 @@ export function EventRegistration({ eventId, slug, token, saveToCalendar, organi
           {attendance?.registered && <strong className="public-event-registered-state">You’re registered</strong>}
           <button type="button" className={attendance?.registered ? 'portal-button-secondary' : undefined}
             onClick={updateRegistration} disabled={pending || !attendance}>
-            {pending ? 'Saving…' : attendance?.registered ? 'Cancel registration' : 'Register for event'}
+            {pending ? 'Saving…' : attendance?.registered ? 'Cancel Registration' : 'Register'}
           </button>
         </> : <>
-          <a className="btn-primary" href={pidpAppLoginUrl(next)}>Log in to register</a>
-          <Link to={`/users/register?next=${encodeURIComponent(next)}`}>Sign up</Link>
+          <a className="btn-primary" href={pidpAppLoginUrl(next)}>Register</a>
         </>}
       </div>
       <p className="muted public-event-registration-note">Public profiles appear below; private profiles remain hidden.</p>
-      {token && <Link to="/email/preferences" className="public-event-preferences-link">Manage email preferences</Link>}
+      {token && <div className="public-event-registration-links">
+        <Link to="/email/preferences" className="public-event-preferences-link">Manage email preferences</Link>
+        {attendance?.registered ? <Link to="/calendar" className="public-event-preferences-link">Subscribe to registered events</Link> : null}
+      </div>}
       {message && <p role="status" className="public-event-status-message">{message}</p>}
       {error && <div role="alert" className="public-event-registration-error">
         <p style={{ margin: '0 0 0.5rem' }}>{error}</p>

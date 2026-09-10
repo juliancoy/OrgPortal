@@ -218,6 +218,14 @@ type EventRow = {
   organization_name?: string | null;
 };
 
+type RegisteredEventCalendarFeedRow = {
+  user_id: string;
+  token: string;
+  created_at: string;
+  updated_at: string;
+  revoked_at: string | null;
+};
+
 type BusinessCardSettingsRow = {
   enabled: number;
   per_user_limit_per_hour: number;
@@ -715,6 +723,144 @@ async function orgPublicUrl(env: Env, request: Request, slug: string) {
 
 async function eventPublicUrl(env: Env, request: Request, slug: string) {
   return `${(await publicPortalBase(env, request)).replace(/\/+$/g, "")}/events/${encodeURIComponent(slug)}`;
+}
+
+function calendarFeedPublicUrl(request: Request, token: string) {
+  const origin = new URL(request.url).origin.replace(/\/+$/g, "");
+  return `${origin}/api/org/api/network/calendar/feed/${encodeURIComponent(token)}.ics`;
+}
+
+function webcalUrl(url: string) {
+  return url.replace(/^https:/i, "webcal:");
+}
+
+function base64Url(bytes: Uint8Array) {
+  let raw = "";
+  for (const byte of bytes) raw += String.fromCharCode(byte);
+  return btoa(raw).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function generateCalendarFeedToken() {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return base64Url(bytes);
+}
+
+function calendarFeedLinks(request: Request, token: string, count: number, createdAt: string) {
+  const feedUrl = calendarFeedPublicUrl(request, token);
+  const name = "OrgPortal registered events";
+  return {
+    feed_url: feedUrl,
+    download_url: feedUrl,
+    webcal_url: webcalUrl(feedUrl),
+    google_url: `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(feedUrl)}`,
+    outlook_url: `https://outlook.live.com/calendar/0/addfromweb?url=${encodeURIComponent(feedUrl)}&name=${encodeURIComponent(name)}`,
+    event_count: count,
+    token_created_at: createdAt,
+  };
+}
+
+async function registeredEventCount(db: D1Database, userId: string) {
+  const row = await db.prepare("SELECT count(*) AS count FROM event_registrations WHERE user_id = ?").bind(userId).first<{ count: number }>();
+  return Number(row?.count || 0);
+}
+
+async function registeredEventCalendarFeed(env: Env, request: Request, userId: string, regenerate = false) {
+  const now = new Date().toISOString();
+  let feed = await env.DB.prepare(
+    "SELECT * FROM event_calendar_feeds WHERE user_id = ? AND revoked_at IS NULL",
+  )
+    .bind(userId)
+    .first<RegisteredEventCalendarFeedRow>();
+  if (!feed || regenerate) {
+    const token = generateCalendarFeedToken();
+    if (feed) {
+      await env.DB.prepare("UPDATE event_calendar_feeds SET token = ?, updated_at = ?, revoked_at = NULL WHERE user_id = ?")
+        .bind(token, now, userId)
+        .run();
+    } else {
+      await env.DB.prepare("INSERT INTO event_calendar_feeds (user_id, token, created_at, updated_at) VALUES (?, ?, ?, ?)")
+        .bind(userId, token, now, now)
+        .run();
+    }
+    feed = await env.DB.prepare("SELECT * FROM event_calendar_feeds WHERE user_id = ?")
+      .bind(userId)
+      .first<RegisteredEventCalendarFeedRow>();
+  }
+  if (!feed) fail(500, "Calendar feed could not be created");
+  return calendarFeedLinks(request, feed.token, await registeredEventCount(env.DB, userId), feed.created_at);
+}
+
+function icsTimestamp(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+}
+
+function icsEscape(value: string) {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/\r?\n/g, "\\n")
+    .replace(/,/g, "\\,")
+    .replace(/;/g, "\\;");
+}
+
+function icsFold(line: string) {
+  const chunks: string[] = [];
+  let rest = line;
+  while (rest.length > 74) {
+    chunks.push(rest.slice(0, 74));
+    rest = ` ${rest.slice(74)}`;
+  }
+  chunks.push(rest);
+  return chunks.join("\r\n");
+}
+
+async function registeredEventsIcs(env: Env, request: Request, feed: RegisteredEventCalendarFeedRow) {
+  const rows = await env.DB.prepare(
+    `SELECT e.*, o.name AS organization_name
+     FROM event_registrations r
+     JOIN events e ON e.id = r.event_id
+     LEFT JOIN organizations o ON o.id = e.host_org_id
+     WHERE r.user_id = ?
+     ORDER BY COALESCE(e.starts_at, e.created_at) ASC
+     LIMIT 500`,
+  )
+    .bind(feed.user_id)
+    .all<EventRow>();
+  const nowStamp = icsTimestamp(new Date().toISOString()) || "";
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Code Collective//OrgPortal Registered Events//EN",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    "X-WR-CALNAME:OrgPortal Registered Events",
+  ];
+  for (const event of rows.results || []) {
+    const startsAt = event.starts_at;
+    if (!startsAt) continue;
+    const start = icsTimestamp(startsAt);
+    if (!start) continue;
+    const end = event.ends_at ? icsTimestamp(event.ends_at) : null;
+    const fallbackEnd = icsTimestamp(new Date(new Date(startsAt).getTime() + 60 * 60 * 1000).toISOString()) || start;
+    const url = await eventPublicUrl(env, request, event.slug);
+    const details = [event.description?.trim() || "", url].filter(Boolean).join("\n\n");
+    lines.push(
+      "BEGIN:VEVENT",
+      `UID:${icsEscape(`${event.id}@orgportal.codecollective.us`)}`,
+      `DTSTAMP:${nowStamp}`,
+      `DTSTART:${start}`,
+      `DTEND:${end || fallbackEnd}`,
+      `SUMMARY:${icsEscape(event.title.trim() || "Event")}`,
+    );
+    if (details) lines.push(`DESCRIPTION:${icsEscape(details)}`);
+    if (event.location?.trim()) lines.push(`LOCATION:${icsEscape(event.location.trim())}`);
+    if (url) lines.push(`URL:${icsEscape(url)}`);
+    lines.push("END:VEVENT");
+  }
+  lines.push("END:VCALENDAR");
+  return `${lines.map(icsFold).join("\r\n")}\r\n`;
 }
 
 function userName(user: PidpUser) {
@@ -3098,6 +3244,33 @@ app.post("/api/network/events/:eventId/unclaim", async (c) => {
   if (!row) fail(404, "Event not found");
   return c.json(await mapEvent(c.env, c.req.raw, row));
 });
+
+app.get("/api/network/calendar/feed", async (c) => {
+  c.header("Cache-Control", "no-store");
+  const user = await currentUser(c.env, c.req.raw);
+  return c.json(await registeredEventCalendarFeed(c.env, c.req.raw, user.id));
+});
+
+app.post("/api/network/calendar/feed/regenerate", async (c) => {
+  c.header("Cache-Control", "no-store");
+  const user = await currentUser(c.env, c.req.raw);
+  return c.json(await registeredEventCalendarFeed(c.env, c.req.raw, user.id, true));
+});
+
+app.get("/api/network/calendar/feed/:token", async (c) => {
+  const token = c.req.param("token").replace(/\.ics$/i, "");
+  if (!/^[A-Za-z0-9_-]{32,128}$/.test(token)) fail(404, "Calendar feed not found");
+  const feed = await c.env.DB.prepare("SELECT * FROM event_calendar_feeds WHERE token = ? AND revoked_at IS NULL")
+    .bind(token)
+    .first<RegisteredEventCalendarFeedRow>();
+  if (!feed) fail(404, "Calendar feed not found");
+  const ics = await registeredEventsIcs(c.env, c.req.raw, feed);
+  c.header("Content-Type", "text/calendar;charset=utf-8");
+  c.header("Cache-Control", "private, max-age=300");
+  c.header("Content-Disposition", 'inline; filename="orgportal-registered-events.ics"');
+  return c.body(ics);
+});
+
 app.get("/api/network/events/:eventId/attendance", async (c) => {
   c.header("Cache-Control", "no-store");
   const eventId = c.req.param("eventId");
