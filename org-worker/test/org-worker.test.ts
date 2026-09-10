@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { app, runUbiTick } from "../src/index";
+import worker, { app, runUbiTick } from "../src/index";
 
 type Row = Record<string, unknown>;
 
@@ -547,6 +547,20 @@ test("path-qualified MCP protected resource metadata is public", async () => {
   const body = await response.json() as Record<string, unknown>;
   assert.equal(body.resource, "https://community.medtech.social/api/org/mcp");
   assert.deepEqual(body.authorization_servers, ["https://id.codecollective.us"]);
+});
+
+
+test("worker fetch serves path-qualified MCP protected resource metadata before fallback", async () => {
+  const response = await worker.fetch(new Request("https://org.example.test/.well-known/oauth-protected-resource/api/org/mcp"), {
+    ...env(),
+    MCP_PUBLIC_URL: "https://community.medtech.social/api/org/mcp",
+    MCP_OAUTH_ISSUER: "https://id.codecollective.us",
+    MCP_OAUTH_JWKS_URL: "https://id.codecollective.us/.well-known/jwks.json",
+    MCP_SUBJECT_MAP_JSON: "{}",
+  }, { waitUntil() {}, passThroughOnException() {} } as unknown as ExecutionContext);
+  assert.equal(response.status, 200);
+  const body = await response.json() as Record<string, unknown>;
+  assert.equal(body.resource, "https://community.medtech.social/api/org/mcp");
 });
 
 test("health route identifies the org worker", async () => {
