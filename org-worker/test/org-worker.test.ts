@@ -535,6 +535,20 @@ async function withPidpUser<T>(user: Row, callback: () => Promise<T>) {
   }
 }
 
+test("path-qualified MCP protected resource metadata is public", async () => {
+  const response = await app.request("https://org.example.test/.well-known/oauth-protected-resource/api/org/mcp", {}, {
+    ...env(),
+    MCP_PUBLIC_URL: "https://community.medtech.social/api/org/mcp",
+    MCP_OAUTH_ISSUER: "https://id.codecollective.us",
+    MCP_OAUTH_JWKS_URL: "https://id.codecollective.us/.well-known/jwks.json",
+    MCP_SUBJECT_MAP_JSON: "{}",
+  });
+  assert.equal(response.status, 200);
+  const body = await response.json() as Record<string, unknown>;
+  assert.equal(body.resource, "https://community.medtech.social/api/org/mcp");
+  assert.deepEqual(body.authorization_servers, ["https://id.codecollective.us"]);
+});
+
 test("health route identifies the org worker", async () => {
   const res = await app.request("https://org.example.test/health", {}, env());
   assert.equal(res.status, 200);

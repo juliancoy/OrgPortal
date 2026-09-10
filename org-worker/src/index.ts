@@ -1762,12 +1762,12 @@ app.onError((err) => {
 
 // Register MCP before generic CORS; do not grant arbitrary origins event access.
 app.all("/mcp", (c) => handleEventMcp(c.req.raw, c.env));
-app.get("/.well-known/oauth-protected-resource", (c) => {
-  try { return c.json(protectedResourceMetadata(c.env)); } catch (error) { return eventErrorResponse(error, c.env); }
-});
-app.get("/.well-known/oauth-protected-resource/*", (c) => {
-  try { return c.json(protectedResourceMetadata(c.env)); } catch (error) { return eventErrorResponse(error, c.env); }
-});
+const oauthProtectedResourceMetadata = (c: { env: Env }) => {
+  try { return json(protectedResourceMetadata(c.env)); } catch (error) { return eventErrorResponse(error, c.env); }
+};
+app.get("/.well-known/oauth-protected-resource", oauthProtectedResourceMetadata);
+app.get("/.well-known/oauth-protected-resource/api/org/mcp", oauthProtectedResourceMetadata);
+app.get("/.well-known/oauth-protected-resource/*", oauthProtectedResourceMetadata);
 
 app.use("*", async (c, next) => {
   if (c.req.method === "OPTIONS") {
