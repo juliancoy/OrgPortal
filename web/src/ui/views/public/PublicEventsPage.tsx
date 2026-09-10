@@ -30,7 +30,13 @@ function formatDate(value?: string | null) {
   if (!value) return 'TBD'
   const dt = new Date(value)
   if (Number.isNaN(dt.getTime())) return 'TBD'
-  return dt.toLocaleString()
+  return dt.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+}
+
+function shortDescription(value?: string | null) {
+  const text = (value || '').replace(/\s+/g, ' ').trim()
+  if (!text) return ''
+  return text.length > 190 ? `${text.slice(0, 187)}...` : text
 }
 
 function currentUrl() {
@@ -178,12 +184,15 @@ export function PublicEventsPage({
   }
 
   return (
-    <section className="panel" style={{ display: 'grid', gap: '1rem' }}>
-      <h1 style={{ marginTop: 0 }}>{heading}</h1>
-      <p className="muted">{description}</p>
+    <section className="public-events-page">
+      <div className="public-events-heading">
+        <p className="public-event-eyebrow">Events</p>
+        <h1>{heading}</h1>
+        <p className="muted">{description}</p>
+      </div>
       {status ? <p className="muted">{status}</p> : null}
       {!status && events.length === 0 && <p role="status">{emptyMessage}</p>}
-      <div style={{ display: 'grid', gap: '0.9rem' }}>
+      <div className="public-events-list">
         {events.map((event) => (
           (() => {
             const eventStart = event.starts_at
@@ -191,39 +200,30 @@ export function PublicEventsPage({
             return (
               <article
                 key={event.id}
-                className="portal-card"
-                style={{
-                  display: 'flex',
-                  gap: '0.85rem',
-                  alignItems: 'flex-start',
-                  flexWrap: 'wrap',
-                }}
+                className="portal-card public-event-list-card"
               >
                 {event.image_url ? (
                   <img
                     src={event.image_url}
                     alt={event.title}
-                    style={{
-                      width: 140,
-                      height: 92,
-                      objectFit: 'cover',
-                      borderRadius: 10,
-                      border: '1px solid var(--border)',
-                      flex: '0 0 auto',
-                    }}
+                    className="public-event-list-image"
                   />
                 ) : null}
-                <div style={{ display: 'grid', gap: '0.45rem', minWidth: 0, maxWidth: '100%', flex: '1 1 240px' }}>
-                  <h2 style={{ margin: 0, fontSize: '1.1rem' }}>
-                    <Link to={`/events/${event.slug}`} style={{ textDecoration: 'none' }}>
+                <div className="public-event-list-body">
+                  <div className="public-event-list-title-row">
+                    <h2>
+                      <Link to={`/events/${event.slug}`}>
                       {event.title}
-                    </Link>
-                  </h2>
-                  <p className="muted" style={{ margin: 0 }}>
-                    {formatDate(event.starts_at)}{event.location ? ` • ${event.location}` : ''}
-                  </p>
-                  {event.description ? <p style={{ margin: 0, overflowWrap: 'anywhere' }}>{event.description}</p> : null}
-                  <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      </Link>
+                    </h2>
+                    <Link className="public-event-open-link" to={`/events/${event.slug}`}>View details</Link>
+                  </div>
+                  <div className="public-event-list-meta">
+                    <span>{formatDate(event.starts_at)}</span>
+                    {event.location ? <span>{event.location}</span> : null}
+                  </div>
+                  {event.description ? <p className="public-event-list-description">{shortDescription(event.description)}</p> : null}
+                  <div className="public-event-list-actions">
                     {token ? (
                       <button
                         type="button"
@@ -241,11 +241,10 @@ export function PublicEventsPage({
                                   : 'Attend'}
                       </button>
                     ) : (
-                      <a href={pidpAppLoginUrl('/events')}>Login to indicate attendance</a>
+                      <a className="btn-primary" href={pidpAppLoginUrl('/events')}>Log in to attend</a>
                     )}
                     {eventStart && eventEnd ? (
                       <>
-                        <span className="muted">Calendar Integrations:</span>
                         <button
                           type="button"
                           className="portal-button-secondary"

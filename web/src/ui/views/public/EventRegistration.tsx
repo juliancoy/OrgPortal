@@ -7,11 +7,10 @@ function RegistrantAvatar({ name, photoUrl }: { name: string; photoUrl: string |
   const [failed, setFailed] = useState(false)
   const initials = name.split(/\s+/).slice(0, 2).map((word) => word[0]).join('').toUpperCase()
   return photoUrl && !failed ? (
-    <img src={photoUrl} alt={name} width={40} height={40} loading="lazy" referrerPolicy="no-referrer"
-      onError={() => setFailed(true)} style={{ display: 'block', borderRadius: '50%', objectFit: 'cover' }} />
+    <img src={photoUrl} alt={name} width={44} height={44} loading="lazy" referrerPolicy="no-referrer"
+      onError={() => setFailed(true)} className="public-event-registrant-avatar" />
   ) : (
-    <span aria-label={name} role="img" style={{ display: 'grid', placeItems: 'center', width: 40, height: 40,
-      borderRadius: '50%', background: 'var(--border)', color: 'var(--text)', fontWeight: 600 }}>{initials || '?'}</span>
+    <span aria-label={name} role="img" className="public-event-registrant-avatar public-event-registrant-initials">{initials || '?'}</span>
   )
 }
 
@@ -67,30 +66,36 @@ export function EventRegistration({ eventId, slug, token, saveToCalendar, organi
   }
 
   return (
-    <section className="portal-card" aria-labelledby="event-registration-title" style={{ display: 'grid', gap: '0.75rem' }}>
-      <h2 id="event-registration-title" style={{ margin: 0, fontSize: '1.1rem' }}>Registration</h2>
+    <section className="portal-card public-event-registration" aria-labelledby="event-registration-title">
+      <div className="public-event-card-heading">
+        <p className="public-event-eyebrow">Registration</p>
+        <h2 id="event-registration-title">Reserve Your Spot</h2>
+      </div>
       {attendance ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+        <div className="public-event-attendance-summary">
           {attendance.attendees.length > 0 && (
-            <div aria-label="Public registrants" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
+            <div aria-label="Public registrants" className="public-event-registrants">
               {attendance.attendees.map((person) => (
-                <Link key={person.slug} to={`/users/${encodeURIComponent(person.slug)}`} title={person.name}>
+                <Link key={person.slug} to={`/users/${encodeURIComponent(person.slug)}`} title={person.name} className="public-event-registrant-link">
                   <RegistrantAvatar name={person.name} photoUrl={person.photo_url} />
                 </Link>
               ))}
             </div>
           )}
-          <strong aria-live="polite">{attendance.count} {attendance.count === 1 ? 'person registered' : 'people registered'}</strong>
-          {attendance.count === 0 && <span className="muted">Be the first to register.</span>}
+          <div className="public-event-attendance-count">
+            <strong aria-live="polite">{attendance.count}</strong>
+            <span>{attendance.count === 1 ? 'person registered' : 'people registered'}</span>
+            {attendance.count === 0 && <small>Be the first to register.</small>}
+          </div>
         </div>
-      ) : !error ? <p className="muted" style={{ margin: 0 }}>Loading registrations…</p> : null}
-      {token && attendance && !attendance.registered && <div style={{ display: 'grid', gap: '.5rem' }}>
-        <label style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}><input type="checkbox" disabled={pending} checked={emailUpdates} onChange={(event) => setEmailUpdates(event.target.checked)} /> Email me updates about this event</label>
-        {organizationName && <label style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}><input type="checkbox" disabled={pending} checked={organizationAnnouncements} onChange={(event) => setOrganizationAnnouncements(event.target.checked)} /> Also send me announcements from {organizationName}</label>}
+      ) : !error ? <p className="muted">Loading registrations…</p> : null}
+      {token && attendance && !attendance.registered && <div className="public-event-registration-options">
+        <label><input type="checkbox" disabled={pending} checked={emailUpdates} onChange={(event) => setEmailUpdates(event.target.checked)} /> <span>Email me updates about this event</span></label>
+        {organizationName && <label><input type="checkbox" disabled={pending} checked={organizationAnnouncements} onChange={(event) => setOrganizationAnnouncements(event.target.checked)} /> <span>Also send me announcements from {organizationName}</span></label>}
       </div>}
-      <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+      <div className="public-event-registration-actions">
         {token ? <>
-          {attendance?.registered && <strong>You’re registered!</strong>}
+          {attendance?.registered && <strong className="public-event-registered-state">You’re registered</strong>}
           <button type="button" className={attendance?.registered ? 'portal-button-secondary' : undefined}
             onClick={updateRegistration} disabled={pending || !attendance}>
             {pending ? 'Saving…' : attendance?.registered ? 'Cancel registration' : 'Register for event'}
@@ -100,10 +105,10 @@ export function EventRegistration({ eventId, slug, token, saveToCalendar, organi
           <Link to={`/users/register?next=${encodeURIComponent(next)}`}>Sign up</Link>
         </>}
       </div>
-      <p className="muted" style={{ margin: 0 }}>Registrants with public profiles appear here; private profiles remain hidden.</p>
-      {token && <Link to="/email/preferences">Manage email preferences</Link>}
-      {message && <p role="status" style={{ margin: 0 }}>{message}</p>}
-      {error && <div role="alert">
+      <p className="muted public-event-registration-note">Public profiles appear below; private profiles remain hidden.</p>
+      {token && <Link to="/email/preferences" className="public-event-preferences-link">Manage email preferences</Link>}
+      {message && <p role="status" className="public-event-status-message">{message}</p>}
+      {error && <div role="alert" className="public-event-registration-error">
         <p style={{ margin: '0 0 0.5rem' }}>{error}</p>
         <button type="button" className="portal-button-secondary" disabled={pending} onClick={() => setReload((value) => value + 1)}>Retry</button>
         {' '}<a href={pidpAppLoginUrl(next)}>Log in again</a>
