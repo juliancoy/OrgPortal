@@ -30,6 +30,15 @@ const portalDomainSchema = z.object({
   hostname: z.string().min(4).max(253),
   notes: z.string().max(1000).optional().nullable(),
 }).strict();
+const eventCommentsSchema = z.object({
+  organizationId: z.string().min(1).max(200),
+  eventSlug: z.string().min(1).max(255).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+  previewId: z.string().uuid().optional(),
+  confirm: z.boolean().optional(),
+  roomId: z.string().regex(/^![^\s:]{1,200}:[A-Za-z0-9.-]+$/).optional().nullable(),
+  roomAlias: z.string().regex(/^#[^\s:]{1,200}:[A-Za-z0-9.-]+$/).optional().nullable(),
+  roomName: z.string().min(1).max(255).optional().nullable(),
+}).strict();
 const nativeEventSchema = z.object({
   organizationId: z.string().min(1).max(200),
   previewId: z.string().uuid().optional(),
@@ -118,6 +127,7 @@ export function protectedResourceMetadata(env: Env) {
 }
 
 type NativeEventInput = z.infer<typeof nativeEventSchema>;
+type EventCommentsInput = z.infer<typeof eventCommentsSchema>;
 
 function nullable(value: string | null | undefined) {
   const trimmed = typeof value === "string" ? value.trim() : "";
@@ -287,6 +297,65 @@ async function nativeExistingEvent(db: D1Database, event: { ingest_key: string; 
     .all<Record<string, unknown>>();
 }
 
+async function eventForComments(db: D1Database, organizationId: string, eventSlug: string) {
+  const row = await db.prepare(
+    `SELECT id, slug, title, host_org_id, event_chat_room_id, event_chat_room_alias, event_chat_room_name
+     FROM events WHERE slug = ?`,
+  )
+    .bind(eventSlug)
+    .first<{ id: string; slug: string; title: string; host_org_id: string | null;
+      event_chat_room_id?: string | null; event_chat_room_alias?: string | null; event_chat_room_name?: string | null }>();
+  if (!row) throw new EventIntegrationError(404, "Event not found");
+  if (row.host_org_id !== organizationId) throw new EventIntegrationError(403, "Event is not hosted by this organization");
+  return row;
+}
+
+function normalizeEventComments(input: EventCommentsInput) {
+  const roomId = nullable(input.roomId);
+  const roomAlias = nullable(input.roomAlias);
+  if (!roomId && !roomAlias) throw new EventIntegrationError(400, "Provide a Matrix room id or alias for event comments");
+  return {
+    roomId,
+    roomAlias,
+    roomName: nullable(input.roomName) || "Event comments",
+  };
+}
+
+async function previewEventComments(env: Env, input: EventCommentsInput) {
+  const organization = await nativeOrganization(env.DB, input.organizationId);
+  const event = await eventForComments(env.DB, organization.id, input.eventSlug);
+  const comments = normalizeEventComments(input);
+  return {
+    operation: "configure_event_comments",
+    organization,
+    event: {
+      id: event.id,
+      slug: event.slug,
+      title: event.title,
+      current: {
+        roomId: event.event_chat_room_id || null,
+        roomAlias: event.event_chat_room_alias || null,
+        roomName: event.event_chat_room_name || null,
+      },
+      next: comments,
+    },
+    publicUrl: `/events/${encodeURIComponent(event.slug)}`,
+  };
+}
+
+async function applyEventComments(env: Env, input: EventCommentsInput) {
+  const preview = await previewEventComments(env, input);
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    `UPDATE events
+     SET event_chat_room_id = ?, event_chat_room_alias = ?, event_chat_room_name = ?, updated_at = ?
+     WHERE id = ?`,
+  )
+    .bind(preview.event.next.roomId, preview.event.next.roomAlias, preview.event.next.roomName, now, preview.event.id)
+    .run();
+  return { success: true, completed: ["configure_event_comments"], event: preview.event, publicUrl: preview.publicUrl };
+}
+
 async function previewNativeEvent(env: Env, input: NativeEventInput) {
   const organization = await nativeOrganization(env.DB, input.organizationId);
   const event = normalizeNativeEvent(input, organization);
@@ -359,6 +428,38 @@ export async function runNativeEventOperation(env: Env, identity: { userId: stri
     try { await finishEventOperation(env.DB, args.previewId!, false, []); } catch { /* executing remains inspectable */ }
     return { success: false, outcomeUncertain: true, previewId: args.previewId,
       message: "Native event write or audit finalization failed. Inspect operation status and the live event before retrying." };
+  }
+}
+
+export async function runEventCommentsOperation(env: Env, identity: { userId: string; scopes: string[] }, input: unknown) {
+  const args = eventCommentsSchema.parse(input);
+  if (!identity.scopes.includes(readScope) || (args.confirm && !identity.scopes.includes(writeScope))) {
+    throw new EventIntegrationError(403, "Missing event scope");
+  }
+  const organization = await nativeOrganization(env.DB, args.organizationId);
+  await authorizeOrganization(env.DB, { id: identity.userId, name: identity.userId, email: null, isOperator: false }, "manage", organization.id);
+  await enforceEventRateLimit(env.DB, identity.userId);
+  const owner = { userId: identity.userId, organizationId: organization.id, eventId: `comments:${args.eventSlug}` };
+  if (args.confirm && !args.previewId) throw new EventIntegrationError(409, "Request a preview first and supply its previewId");
+  if (!args.confirm) {
+    const preview = await previewEventComments(env, { ...args, organizationId: organization.id, confirm: false });
+    const fingerprint = await previewFingerprint({ eventComments: true, preview });
+    return { ...preview, ...await prepareEventOperation(env.DB, owner, fingerprint) };
+  }
+  let claimed = false;
+  try {
+    const latestPreview = await previewEventComments(env, { ...args, organizationId: organization.id });
+    const latestFingerprint = await previewFingerprint({ eventComments: true, preview: latestPreview });
+    await claimEventOperation(env.DB, owner, args.previewId!, latestFingerprint);
+    claimed = true;
+    const result = await applyEventComments(env, { ...args, organizationId: organization.id });
+    await finishEventOperation(env.DB, args.previewId!, true, result.completed);
+    return { ...result, previewId: args.previewId };
+  } catch (error) {
+    if (!claimed) throw error;
+    try { await finishEventOperation(env.DB, args.previewId!, false, []); } catch { /* executing remains inspectable */ }
+    return { success: false, outcomeUncertain: true, previewId: args.previewId,
+      message: "Event comment configuration or audit finalization failed. Inspect operation status and the live event before retrying." };
   }
 }
 
@@ -448,9 +549,11 @@ export async function handleEventMcp(request: Request, env: Env) {
     try { parsedBody = JSON.parse(new TextDecoder().decode(bytes)); }
     catch { return new Response("Invalid JSON", { status: 400 }); }
     const server = new McpServer({ name: "orgportal-events", version: "1.0.0" });
-    const result = async (operation: "list" | "get" | "plan" | "status" | "native", args: unknown) => {
+    const result = async (operation: "list" | "get" | "plan" | "status" | "native" | "comments", args: unknown) => {
       try {
-        const data = operation === "native" ? await runNativeEventOperation(env, identity, args) : await runEventOperation(env, identity, operation, args);
+        const data = operation === "native" ? await runNativeEventOperation(env, identity, args)
+          : operation === "comments" ? await runEventCommentsOperation(env, identity, args)
+          : await runEventOperation(env, identity, operation, args);
         return { ...("success" in data && data.success === false ? { isError: true } : {}),
           content: [{ type: "text" as const, text: JSON.stringify(data) }], structuredContent: data };
       } catch (error) {
@@ -490,6 +593,12 @@ export async function handleEventMcp(request: Request, env: Env) {
     server.registerTool("apply_org_event_changes", { description: "Create or update a native OrgPortal event after showing a preview and obtaining user approval. Requires confirm=true and the matching one-use previewId.",
       inputSchema: nativeEventSchema, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       _meta: metadata([readScope, writeScope]) }, args => result("native", args));
+    server.registerTool("preview_event_comments", { description: "Preview enabling the public event comment section by attaching an existing Matrix room id or alias to an OrgPortal event.",
+      inputSchema: eventCommentsSchema, annotations: { readOnlyHint: true, openWorldHint: false }, _meta: metadata([readScope]) },
+      args => result("comments", { ...args, confirm: false }));
+    server.registerTool("apply_event_comments", { description: "Enable the public event comment section after showing a preview and obtaining user approval. Requires confirm=true and the matching one-use previewId.",
+      inputSchema: eventCommentsSchema, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      _meta: metadata([readScope, writeScope]) }, args => result("comments", args));
     server.registerTool("get_portal_setup", { description: "Read the tenant portal setup for an organization, including shared slug URL and custom-domain status.",
       inputSchema: z.object({ organizationId: z.string().min(1).max(200) }).strict(),
       annotations: { readOnlyHint: true, openWorldHint: false }, _meta: metadata([portalReadScope]) }, args => portalResult("get", args));
