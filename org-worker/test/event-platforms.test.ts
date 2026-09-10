@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { generateKeyPair, SignJWT, createLocalJWKSet, exportJWK } from "jose";
 import { eventPlanSchema, executeEventPlan, LumaEventProvider, configuredProvider, type EventProvider } from "../src/eventPlatforms";
-import { authenticateMcp, handleEventMcp, protectedResourceMetadata, runEventOperation, runNativeEventOperation } from "../src/eventMcp";
+import { authenticateMcp, handleEventMcp, protectedResourceMetadata, runEventCommentsOperation, runEventOperation, runNativeEventOperation } from "../src/eventMcp";
 import { app } from "../src/index";
 import { EventTestDb } from "./event-test-db";
 
@@ -142,6 +142,37 @@ test("native event changes preview, apply once, and write OrgPortal events", asy
     db.close();
   }
 });
+test("event comments can be enabled through previewed MCP operations", async () => {
+  const db = new EventTestDb();
+  const env = { ...authEnv, DB: db } as unknown as Env;
+  const identity = { userId: "pidp-user", scopes: ["org:events.read", "org:events.write"] };
+  await db.prepare(
+    `INSERT INTO events
+      (id, ingest_key, title, slug, host_org_id, host_org_name, tags, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  )
+    .bind("event-one", "manual:event-one", "Native formation", "native-formation", "org-one", "One", "[]", "2026-09-01T00:00:00Z", "2026-09-01T00:00:00Z")
+    .run();
+  try {
+    const input = {
+      organizationId: "one",
+      eventSlug: "native-formation",
+      roomAlias: "#native-formation:chat.codecollective.us",
+      roomName: "Native formation comments",
+    };
+    const preview = await runEventCommentsOperation(env, identity, input) as { previewId: string; event: { next: { roomAlias: string; roomName: string } } };
+    assert.equal(preview.event.next.roomAlias, "#native-formation:chat.codecollective.us");
+    assert.equal(preview.event.next.roomName, "Native formation comments");
+    const applied = await runEventCommentsOperation(env, identity, { ...input, confirm: true, previewId: preview.previewId }) as { success: boolean };
+    assert.equal(applied.success, true);
+    const row = await db.prepare("SELECT event_chat_room_alias, event_chat_room_name FROM events WHERE slug = ?").bind("native-formation").first() as any;
+    assert.equal(row.event_chat_room_alias, "#native-formation:chat.codecollective.us");
+    assert.equal(row.event_chat_room_name, "Native formation comments");
+    await assert.rejects(runEventCommentsOperation(env, identity, { ...input, confirm: true, previewId: preview.previewId }), /Preview is expired/);
+  } finally {
+    db.close();
+  }
+});
 test("organization management is required even with write scope", async () => {
   const env = { ...authEnv, DB: { prepare: (sql: string) => ({ bind: () => ({ first: async () =>
     sql.includes("FROM organizations") ? { id: "org-one", name: "One" } : { role: "member" } }) }) } } as unknown as Env;
@@ -175,10 +206,11 @@ test("authenticated MCP initializes, lists tools and previews through the shared
   try {
     assert.equal((await rpc("initialize", { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "test", version: "1" } })).result.serverInfo.name, "orgportal-events");
     const listed = await rpc("tools/list", {});
-    assert.equal(listed.result.tools.length, 11);
+    assert.equal(listed.result.tools.length, 13);
     assert.ok(listed.result.tools.every((tool: any) => tool.securitySchemes[0].type === "oauth2"));
     assert.equal(listed.result.tools.find((t: any) => t.name === "apply_event_changes").annotations.destructiveHint, true);
     assert.equal(listed.result.tools.find((t: any) => t.name === "apply_org_event_changes").annotations.idempotentHint, true);
+    assert.equal(listed.result.tools.find((t: any) => t.name === "apply_event_comments").annotations.idempotentHint, true);
     assert.ok(listed.result.tools.find((t: any) => t.name === "save_portal_setup"));
     assert.ok(listed.result.tools.find((t: any) => t.name === "request_portal_custom_domain"));
     assert.ok(listed.result.tools.find((t: any) => t.name === "attach_portal_custom_domain"));
