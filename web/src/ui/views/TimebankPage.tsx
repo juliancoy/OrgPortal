@@ -1,13 +1,13 @@
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { fetchTimebank, useTimebankApi } from '../timebank/useTimebankApi'
 import { useTimebankInbox, signalInboxChange } from '../timebank/TimebankInbox'
-import { timebankMessagePath } from '../timebank/links'
+import { timebankListingPath, timebankMessagePath } from '../timebank/links'
 import { TimebankNotifications } from './timebank/TimebankNotifications'
 import { TimebankAnalytics } from './timebank/TimebankAnalytics'
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react'
 import { useAuth } from '../../app/AppProviders'
 import { toUserFacingErrorMessage } from '../../infrastructure/http/userFacingError'
-import { setDomainCommunity, type TimebankCommunity } from '../../config/timebankCommunity'
+import { setDomainCommunity, timebankHomePath, type TimebankCommunity } from '../../config/timebankCommunity'
 import { TimebankDialog } from './timebank/TimebankDialog'
 import { prepareTimebankPhoto } from './timebank/photo'
 import './timebank.css'
@@ -65,7 +65,7 @@ function ListingPhoto({ item, large = false }: { item: Listing; large?: boolean 
 export function TimebankPage() {
   const { token } = useAuth()
   const navigate = useNavigate()
-  const signInPath = (listingId?: string) => `/users/login?next=${encodeURIComponent(`/timebanking${listingId ? `?listing=${listingId}` : ''}`)}`
+  const signInPath = (listingId?: string) => `/users/login?next=${encodeURIComponent(listingId ? timebankListingPath(listingId) : timebankHomePath())}`
   const [data, setData] = useState<Dashboard | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')

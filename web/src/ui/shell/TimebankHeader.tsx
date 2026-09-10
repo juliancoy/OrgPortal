@@ -2,7 +2,7 @@ import { useTimebankInbox } from '../timebank/TimebankInbox'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
-import { useDomainCommunity } from '../../config/timebankCommunity'
+import { useDomainCommunity, timebankHomePath } from '../../config/timebankCommunity'
 import './timebank-shell.css'
 
 function AccountIcon({ children }: { children: ReactNode }) {
@@ -51,7 +51,7 @@ export function TimebankHeader() {
   }, [open])
 
   return <header className="tb-shell-header">
-    <Link to="/timebanking" className="tb-shell-brand" aria-label={`${community?.name || 'Code Collective Timebank'} home`}>
+    <Link to={timebankHomePath()} className="tb-shell-brand" aria-label={`${community?.name || 'Code Collective Timebank'} home`}>
       <span className="tb-shell-mark"><AccountIcon><circle cx="12" cy="12" r="9" /><path d="M12 6v6l4 2" /></AccountIcon></span>
       <span>{community?.name || 'Code Collective Timebank'}</span>
     </Link>
@@ -71,6 +71,6 @@ export function TimebankHeader() {
         </nav>
         <div className="tb-account-signout"><button type="button" onClick={() => { close(); logout() }}><AccountIcon><path d="M9 4H4v16h5M9 12h12m-5-5 5 5-5 5" /></AccountIcon><span>Sign out</span></button></div>
       </div>}
-    </div></div> : <Link className="tb-signin" to="/users/login?next=%2Ftimebanking">Sign in</Link>}
+    </div></div> : <Link className="tb-signin" to={`/users/login?next=${encodeURIComponent(timebankHomePath())}`}>Sign in</Link>}
   </header>
 }

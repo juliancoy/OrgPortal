@@ -14,10 +14,10 @@ import { createAppRouter } from './ui/router/createAppRouter'
 applyThemeMode(readThemeMode())
 
 const services = createServices()
-const router = createAppRouter()
 
 async function start() {
   if (window.location.hostname !== MEDTECH_PORTAL_HOST) await loadDomainCommunity().catch(() => undefined)
+  const router = createAppRouter()
   applyPortalBranding()
   createRoot(document.getElementById('root')!).render(
   <StrictMode>

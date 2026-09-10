@@ -1,3 +1,5 @@
+import { getDomainCommunity } from './timebankCommunity'
+
 const DEFAULT_ORIGIN = 'https://codecollective.us'
 
 function runtimeOrigin(): string {
@@ -16,6 +18,7 @@ export function normalizePortalBasePath(rawBase: string, origin = runtimeOrigin(
 }
 
 export function portalBasePath(): string {
+  if (getDomainCommunity()) return ''
   return normalizePortalBasePath((import.meta.env.BASE_URL as string | undefined) || '/')
 }
 

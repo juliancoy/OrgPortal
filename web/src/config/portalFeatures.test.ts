@@ -53,7 +53,7 @@ describe('portal feature profiles', () => {
     try {
       const profile = getActivePortalProfileConfig('?portalProfile=baltimore-medtech', memoryStorage())
       expect(profile.brandName).toBe('Bmore Timebank')
-      expect(profile.memberHomePath).toBe('/timebanking')
+      expect(profile.memberHomePath).toBe('/')
       expect(isPortalFeatureEnabled('ubi', profile)).toBe(true)
     } finally { domain.mockRestore() }
   })
