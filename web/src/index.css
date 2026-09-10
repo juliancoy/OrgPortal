@@ -1156,6 +1156,46 @@ h6 {
   gap: 10px;
 }
 
+.public-event-comment-auth-loading {
+  width: min(100%, 240px);
+  height: 38px;
+  display: flex;
+  align-items: center;
+}
+
+.public-event-comment-auth-loading span,
+.public-event-registration-auth-loading span,
+.portal-auth-loading-line,
+.tenant-home-action-placeholder {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--border-subtle), transparent 28%),
+    color-mix(in srgb, var(--surface-soft), transparent 10%),
+    color-mix(in srgb, var(--border-subtle), transparent 28%)
+  );
+  background-size: 200% 100%;
+  animation: portal-loading-sheen 1.2s ease-in-out infinite;
+}
+
+.public-event-comment-auth-loading span {
+  width: 170px;
+  height: 36px;
+  border-radius: var(--radius-full);
+}
+
+.public-event-registration-auth-loading {
+  width: min(100%, 180px);
+  height: 38px;
+  display: flex;
+  align-items: center;
+}
+
+.public-event-registration-auth-loading span {
+  width: 128px;
+  height: 36px;
+  border-radius: var(--radius-full);
+}
+
 .public-event-comment-composer textarea {
   width: 100%;
   min-height: 92px;
@@ -1533,6 +1573,25 @@ h6 {
   flex-wrap: wrap;
   gap: .65rem;
   margin-top: .25rem;
+}
+
+.tenant-home-actions-loading {
+  min-height: 40px;
+  align-items: center;
+}
+
+.tenant-home-action-placeholder {
+  display: inline-block;
+  height: 38px;
+  border-radius: var(--radius-full);
+}
+
+.tenant-home-action-placeholder.primary {
+  width: 176px;
+}
+
+.tenant-home-action-placeholder.secondary {
+  width: 152px;
 }
 
 .tenant-home-media {
@@ -2005,6 +2064,50 @@ h6 {
   align-items: center;
   justify-self: end;
   gap: 10px;
+}
+
+.portal-auth-loading {
+  width: 86px;
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.portal-auth-loading-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-full);
+  background:
+    radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--border-subtle), transparent 8%) 0 42%, transparent 43%),
+    color-mix(in srgb, var(--surface-soft), transparent 6%);
+  border: 1px solid var(--border-subtle);
+}
+
+.portal-auth-loading-line {
+  width: 40px;
+  height: 12px;
+  border-radius: var(--radius-full);
+}
+
+@keyframes portal-loading-sheen {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-event-comment-auth-loading span,
+  .public-event-registration-auth-loading span,
+  .portal-auth-loading-line,
+  .tenant-home-action-placeholder {
+    animation: none;
+  }
 }
 
 .portal-notifications {

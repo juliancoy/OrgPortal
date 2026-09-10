@@ -60,13 +60,20 @@ function featureLabel(feature: string) {
 }
 
 function TenantHomeActions({ tenant }: { tenant: PortalTenant }) {
-  const { role } = useAuth()
+  const { role, isLoading } = useAuth()
   const primaryHref = actionHref(tenant.home_primary_href) || portalProfilePath(role === 'guest' ? '/users/register' : '/chat')
   const secondaryHref = actionHref(tenant.home_secondary_href) || (tenant.home_org_slug ? portalProfilePath(`/orgs/${encodeURIComponent(tenant.home_org_slug)}`) : portalProfilePath('/events'))
   const primaryLabel = tenant.home_primary_label || (role === 'guest' ? 'Join the Community' : 'Open Messages')
   const secondaryLabel = tenant.home_secondary_label || (tenant.home_org_slug ? 'View Organization' : 'Browse Events')
   const primaryTarget = actionLinkTarget(primaryHref)
   const secondaryTarget = actionLinkTarget(secondaryHref)
+
+  if (isLoading && role === 'guest') {
+    return <div className="tenant-home-actions tenant-home-actions-loading" role="status" aria-label="Checking sign-in status">
+      <span className="tenant-home-action-placeholder primary" aria-hidden="true" />
+      <span className="tenant-home-action-placeholder secondary" aria-hidden="true" />
+    </div>
+  }
 
   return <div className="tenant-home-actions">
     {primaryTarget ? <Link className="btn-primary" to={primaryTarget}>{primaryLabel}</Link> : <a className="btn-primary" href={primaryHref}>{primaryLabel}</a>}

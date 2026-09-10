@@ -113,7 +113,7 @@ function formatEventDate(value?: string | null): string {
 }
 
 export function Header() {
-  const { role, user, logout, token } = useAuth()
+  const { role, user, logout, token, isLoading } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   const displayName = user?.displayName || user?.email || 'Signed in'
@@ -768,7 +768,12 @@ export function Header() {
         </div>
 
         <div className="portal-auth">
-          {role !== 'guest' ? (
+          {isLoading && role === 'guest' ? (
+            <div className="portal-auth-loading" role="status" aria-label="Checking sign-in status">
+              <span className="portal-auth-loading-avatar" aria-hidden="true" />
+              <span className="portal-auth-loading-line" aria-hidden="true" />
+            </div>
+          ) : role !== 'guest' ? (
             <>
               <div className="portal-user" ref={menuRef}>
                 <button

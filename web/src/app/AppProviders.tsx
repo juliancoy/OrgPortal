@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { AppServices } from '../composition/createServices'
 import type { UserRole } from '../domain/user/User'
@@ -88,7 +88,10 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
   const [role, setRoleState] = useState<UserRole | 'guest'>('guest')
   const [user, setUserState] = useState<SessionUser | null>(null)
   const [token, setToken] = useState<string | null>(() => readInitialToken())
+  const tokenRef = useRef<string | null>(token)
   const [isLoading, setIsLoading] = useState<boolean>(true)
+  const isLoadingRef = useRef<boolean>(isLoading)
+  const lastSessionHydratedAtRef = useRef(0)
   const [showMigration, setShowMigration] = useState(false)
   const [pendingMigration, setPendingMigration] = useState<{guestId: string, userId: string, displayName: string} | null>(null)
   const [availableUpdate, setAvailableUpdate] = useState<AvailableUpdate | null>(null)
@@ -102,6 +105,8 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
   useEffect(() => {
     const rehydrateVisibleSession = () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+      if (isLoadingRef.current) return
+      if (Date.now() - lastSessionHydratedAtRef.current < 5_000) return
       setIsLoading(true)
     }
 
@@ -188,6 +193,10 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
 
   const servicesValue = useMemo<ServicesContextValue>(() => ({ services: props.services }), [props.services])
 
+  useEffect(() => {
+    isLoadingRef.current = isLoading
+  }, [isLoading])
+
   const migrateGuestData = useCallback(() => {
     if (!pendingMigration) return
     const { guestId, userId, displayName } = pendingMigration
@@ -242,6 +251,7 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
   }, [])
 
   const setAuthToken = useCallback((nextToken: string | null) => {
+    tokenRef.current = nextToken
     setToken(nextToken)
     setRuntimeAccessToken(nextToken)
     if (isNativeRuntime) {
@@ -323,7 +333,7 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
 
     async function hydrateSession() {
       try {
-        let activeToken = token
+        let activeToken = tokenRef.current
         if (!activeToken) {
           if (isNativeRuntime) {
             const persistedToken = localStorage.getItem(NATIVE_TOKEN_STORAGE_KEY)
@@ -406,7 +416,10 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
           setUserState(null)
         }
       } finally {
-        if (!cancelled) setIsLoading(false)
+        if (!cancelled) {
+          lastSessionHydratedAtRef.current = Date.now()
+          setIsLoading(false)
+        }
       }
     }
 
@@ -416,7 +429,7 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
       cancelled = true
       controller.abort()
     }
-  }, [isNativeRuntime, normalizeAvatarUrl, isLoading, token, setAuthToken])
+  }, [isNativeRuntime, normalizeAvatarUrl, isLoading, setAuthToken])
 
   useEffect(() => {
     if (!user) return
