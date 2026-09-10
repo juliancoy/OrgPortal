@@ -1,15 +1,23 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { ClientEvent, EventType, RoomEvent } from 'matrix-js-sdk'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
 import { downloadIcsEvent, outlookCalendarUrl } from '../../utils/calendar'
-import { useAuth } from '../../../app/AppProviders'
+import type { ChatMessage } from '../../../application/ports/ChatService'
+import { useAuth, useServices } from '../../../app/AppProviders'
+import { bootstrapMatrixSessionFromOrg } from '../../../chat/bootstrapSession'
 import { pidpAppLoginUrl } from '../../../config/pidp'
 import { EventRegistration } from './EventRegistration'
 import { toUserFacingErrorMessage } from '../../../infrastructure/http/userFacingError'
 import { loadGoogleCalendarConnection, savePortalEventToGoogleCalendar } from '../googleCalendarApi'
 import { loadMicrosoftCalendarConnection, savePortalEventToMicrosoftCalendar } from '../microsoftCalendarApi'
+import {
+  readCachedRoomMessages,
+  writeCachedRoomMessages,
+} from '../../../infrastructure/utils/chatWindowCache'
 
 const ORG_API_BASE = '/api/org'
+const QUICK_REACTIONS = ['👍', '❤️', '🔥', '🎉']
 
 function orgUrl(path: string) {
   if (!path.startsWith('/')) return `${ORG_API_BASE}/${path}`
@@ -45,6 +53,12 @@ type PublicEventChat = {
   room_alias?: string | null
   room_name?: string | null
   messages: PublicEventChatMessage[]
+}
+
+type MatrixEventedClient = {
+  on: (event: string, listener: (...args: unknown[]) => void) => void
+  off: (event: string, listener: (...args: unknown[]) => void) => void
+  getUserId: () => string | null
 }
 
 function toLocalDateTime(value?: string | null) {
@@ -96,16 +110,46 @@ function getEventOfferValidFrom(event: PublicEvent) {
   return new Date().toISOString()
 }
 
+function messageAuthorLabel(message: ChatMessage, myUserId: string | null): string {
+  if (myUserId && message.sender === myUserId) return 'You'
+  if (message.senderDisplayName?.trim()) return message.senderDisplayName.trim()
+  const sender = String(message.sender || 'unknown')
+  const parts = sender.split(':')[0].split('@')
+  return parts[1] || sender
+}
+
+function messageAuthorInitial(message: ChatMessage, myUserId: string | null): string {
+  const label = messageAuthorLabel(message, myUserId).trim()
+  return (label[0] || '?').toUpperCase()
+}
+
+function publicChatMessageToChatMessage(message: PublicEventChatMessage): ChatMessage {
+  return {
+    id: message.event_id,
+    sender: message.sender || 'unknown',
+    body: message.body,
+    ts: message.sent_at ? new Date(message.sent_at).getTime() : Date.now(),
+  }
+}
+
 export function PublicEventPage() {
   const { token, user } = useAuth()
+  const { chatService } = useServices()
   const { slug } = useParams()
   const [event, setEvent] = useState<PublicEvent | null>(null)
   const [status, setStatus] = useState<string>('Loading event…')
   const [googleCalendarConnected, setGoogleCalendarConnected] = useState(false)
   const [microsoftCalendarConnected, setMicrosoftCalendarConnected] = useState(false)
   const [eventChat, setEventChat] = useState<PublicEventChat | null>(null)
+  const [eventChatMessages, setEventChatMessages] = useState<ChatMessage[]>([])
+  const [eventChatReady, setEventChatReady] = useState(false)
   const [chatLoading, setChatLoading] = useState(false)
   const [chatStatus, setChatStatus] = useState('')
+  const [commentDraft, setCommentDraft] = useState('')
+  const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({})
+  const [replyingToId, setReplyingToId] = useState<string | null>(null)
+  const [chatActionPending, setChatActionPending] = useState(false)
+  const [myUserId, setMyUserId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!slug) return
@@ -177,6 +221,7 @@ export function PublicEventPage() {
       .then((payload) => {
         if (cancelled) return
         setEventChat(payload)
+        setEventChatMessages((payload.messages || []).map(publicChatMessageToChatMessage))
       })
       .catch((err) => {
         if (cancelled) return
@@ -191,6 +236,83 @@ export function PublicEventPage() {
       cancelled = true
     }
   }, [slug])
+
+  const activeEventRoomId = eventChat?.room_id || eventChat?.room_alias || ''
+
+  useEffect(() => {
+    const activeToken = (token || '').trim()
+    const roomId = activeEventRoomId.trim()
+    let cancelled = false
+    setEventChatReady(false)
+    setMyUserId(null)
+    setReplyingToId(null)
+    setReplyDrafts({})
+    if (roomId) {
+      const cachedMessages = readCachedRoomMessages(roomId)
+      if (cachedMessages.length) setEventChatMessages(cachedMessages)
+    }
+    if (!activeToken || !roomId) return
+
+    async function initEventComments() {
+      try {
+        setChatStatus('Connecting to event comments...')
+        const session = await bootstrapMatrixSessionFromOrg(activeToken)
+        const client = await chatService.start(session)
+        await chatService.verifySession()
+        await chatService.joinRoom(roomId)
+        if (cancelled) return
+        setMyUserId(client.getUserId())
+        setEventChatReady(true)
+        setChatStatus('')
+        const initialMessages = chatService.listMessages(roomId)
+        setEventChatMessages(initialMessages)
+        writeCachedRoomMessages(roomId, initialMessages)
+
+        const refreshMessages = () => {
+          if (cancelled) return
+          const nextMessages = chatService.listMessages(roomId)
+          setEventChatMessages(nextMessages)
+          writeCachedRoomMessages(roomId, nextMessages)
+        }
+        const onTimeline = (event: unknown, room: { roomId: string } | undefined, toStartOfTimeline?: boolean) => {
+          if (toStartOfTimeline) return
+          const matrixEvent = event as { getType?: () => string }
+          if (matrixEvent.getType?.() !== EventType.RoomMessage) return
+          if (!room || room.roomId !== roomId) return
+          refreshMessages()
+        }
+        const onSync = () => {
+          refreshMessages()
+        }
+        const eventedClient = client as unknown as MatrixEventedClient
+        const timelineListener = onTimeline as (...args: unknown[]) => void
+        eventedClient.on(RoomEvent.Timeline, timelineListener)
+        eventedClient.on(ClientEvent.Sync, onSync)
+        return () => {
+          eventedClient.off(RoomEvent.Timeline, timelineListener)
+          eventedClient.off(ClientEvent.Sync, onSync)
+        }
+      } catch (err) {
+        if (cancelled) return undefined
+        setEventChatReady(false)
+        setChatStatus(toUserFacingErrorMessage(err, 'Event comments unavailable'))
+      }
+      return undefined
+    }
+
+    let cleanupListeners: (() => void) | undefined
+    initEventComments()
+      .then((cleanup) => {
+        cleanupListeners = cleanup
+      })
+      .catch(() => {})
+
+    return () => {
+      cancelled = true
+      if (cleanupListeners) cleanupListeners()
+      chatService.stop()
+    }
+  }, [activeEventRoomId, chatService, token])
 
   useEffect(() => {
     if (!event) return
@@ -247,6 +369,77 @@ export function PublicEventPage() {
     if (!eventJsonLd) return
     upsertJsonLd('event-detail', eventJsonLd)
   }, [eventJsonLd])
+
+  const eventComments = useMemo(() => {
+    const byRoot = new Map<string, ChatMessage[]>()
+    const roots: ChatMessage[] = []
+    for (const message of eventChatMessages) {
+      if (message.threadRootEventId) {
+        const replies = byRoot.get(message.threadRootEventId) || []
+        replies.push(message)
+        byRoot.set(message.threadRootEventId, replies)
+      } else {
+        roots.push(message)
+      }
+    }
+    roots.sort((a, b) => a.ts - b.ts)
+    for (const replies of byRoot.values()) replies.sort((a, b) => a.ts - b.ts)
+    return roots.map((message) => ({ message, replies: byRoot.get(message.id) || [] }))
+  }, [eventChatMessages])
+
+  function refreshEventComments() {
+    if (!activeEventRoomId) return
+    const nextMessages = chatService.listMessages(activeEventRoomId)
+    setEventChatMessages(nextMessages)
+    writeCachedRoomMessages(activeEventRoomId, nextMessages)
+  }
+
+  async function postEventComment() {
+    const body = commentDraft.trim()
+    if (!activeEventRoomId || !body || !eventChatReady) return
+    try {
+      setChatActionPending(true)
+      setChatStatus('')
+      await chatService.sendTextMessage(activeEventRoomId, body)
+      setCommentDraft('')
+      refreshEventComments()
+    } catch (err) {
+      setChatStatus(toUserFacingErrorMessage(err, 'Could not post comment'))
+    } finally {
+      setChatActionPending(false)
+    }
+  }
+
+  async function postEventReply(rootMessageId: string) {
+    const body = (replyDrafts[rootMessageId] || '').trim()
+    if (!activeEventRoomId || !body || !eventChatReady) return
+    try {
+      setChatActionPending(true)
+      setChatStatus('')
+      await chatService.sendThreadReplyMessage(activeEventRoomId, rootMessageId, rootMessageId, body)
+      setReplyDrafts((prev) => ({ ...prev, [rootMessageId]: '' }))
+      setReplyingToId(null)
+      refreshEventComments()
+    } catch (err) {
+      setChatStatus(toUserFacingErrorMessage(err, 'Could not post reply'))
+    } finally {
+      setChatActionPending(false)
+    }
+  }
+
+  async function reactToEventComment(messageId: string, emoji: string) {
+    if (!activeEventRoomId || !eventChatReady) return
+    try {
+      setChatActionPending(true)
+      setChatStatus('')
+      await chatService.sendReaction(activeEventRoomId, messageId, emoji)
+      refreshEventComments()
+    } catch (err) {
+      setChatStatus(toUserFacingErrorMessage(err, 'Could not add reaction'))
+    } finally {
+      setChatActionPending(false)
+    }
+  }
 
   async function saveToCalendar() {
     if (!event?.starts_at) return
@@ -369,7 +562,7 @@ export function PublicEventPage() {
       <section className="portal-card public-event-chat">
         <div className="public-event-card-heading">
           <p className="public-event-eyebrow">Conversation</p>
-          <h2>Event Chat</h2>
+          <h2>Comments</h2>
         </div>
         {chatLoading ? (
           <p className="muted" style={{ margin: 0 }}>Loading event chat…</p>
@@ -377,46 +570,152 @@ export function PublicEventPage() {
         {chatStatus ? (
           <p className="muted" style={{ margin: 0 }}>{chatStatus}</p>
         ) : null}
-        {eventChat?.room_exists && eventChat.room_id ? (
+        {eventChat?.room_exists && activeEventRoomId ? (
           <>
             <p className="muted" style={{ margin: 0 }}>
-              {eventChat.room_name || 'Event Chat'}
+              {eventChat.room_name || 'Event comments'}
               {eventChat.room_alias ? ` • ${eventChat.room_alias}` : ''}
             </p>
             {token ? (
-              <Link
-                className="btn-primary"
-                to={`/chat/${encodeURIComponent(eventChat.room_id)}`}
-                style={{ textDecoration: 'none', width: 'fit-content' }}
-              >
-                Open Event Chat
-              </Link>
+              <div className="public-event-comment-composer">
+                <textarea
+                  value={commentDraft}
+                  onChange={(event) => setCommentDraft(event.target.value)}
+                  placeholder={eventChatReady ? 'Add a comment...' : 'Connecting before comments can be posted...'}
+                  rows={3}
+                  disabled={!eventChatReady || chatActionPending}
+                />
+                <div className="public-event-comment-actions">
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    disabled={!eventChatReady || chatActionPending || !commentDraft.trim()}
+                    onClick={() => postEventComment().catch(() => {})}
+                  >
+                    Post Comment
+                  </button>
+                  {eventChat.room_id ? (
+                    <Link to={`/chat/${encodeURIComponent(eventChat.room_id)}`}>
+                      Open full chat
+                    </Link>
+                  ) : null}
+                </div>
+              </div>
             ) : (
               <a
                 className="btn-primary"
-                href={pidpAppLoginUrl(`/chat/${encodeURIComponent(eventChat.room_id)}`)}
+                href={pidpAppLoginUrl(`/events/${encodeURIComponent(event.slug)}`)}
                 style={{ textDecoration: 'none', width: 'fit-content' }}
               >
-                Login to Join Event Chat
+                Login to Comment
               </a>
             )}
-            {eventChat.messages?.length ? (
-              <div style={{ display: 'grid', gap: '0.4rem' }}>
-                {eventChat.messages.slice(-10).map((message) => (
-                  <article key={message.event_id} style={{ borderLeft: '2px solid var(--border)', paddingLeft: '0.55rem' }}>
-                    <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{message.body}</p>
-                    <p className="muted" style={{ margin: 0 }}>
-                      {message.sender || 'Unknown'} • {toLocalDateTime(message.sent_at)}
-                    </p>
+            {eventComments.length ? (
+              <div className="public-event-comment-list">
+                {eventComments.map(({ message, replies }) => (
+                  <article key={message.id} className="public-event-comment">
+                    <div className="public-event-comment-avatar" aria-hidden="true">
+                      {message.senderAvatarUrl ? (
+                        <img src={message.senderAvatarUrl} alt="" />
+                      ) : (
+                        messageAuthorInitial(message, myUserId)
+                      )}
+                    </div>
+                    <div className="public-event-comment-body">
+                      <div className="public-event-comment-meta">
+                        <strong>{messageAuthorLabel(message, myUserId)}</strong>
+                        <span>{toLocalDateTime(new Date(message.ts).toISOString())}</span>
+                      </div>
+                      <p>{message.body}</p>
+                      <div className="public-event-comment-tools">
+                        {QUICK_REACTIONS.map((emoji) => {
+                          const count = message.reactions?.find((reaction) => reaction.key === emoji)?.count || 0
+                          return (
+                            <button
+                              key={`${message.id}-${emoji}`}
+                              type="button"
+                              onClick={() => reactToEventComment(message.id, emoji).catch(() => {})}
+                              disabled={!eventChatReady || chatActionPending}
+                              aria-label={`React with ${emoji}`}
+                            >
+                              {emoji}{count ? ` ${count}` : ''}
+                            </button>
+                          )
+                        })}
+                        {token ? (
+                          <button type="button" onClick={() => setReplyingToId((current) => (current === message.id ? null : message.id))}>
+                            Reply
+                          </button>
+                        ) : null}
+                      </div>
+                      {replies.length ? (
+                        <div className="public-event-comment-replies">
+                          {replies.map((reply) => (
+                            <article key={reply.id} className="public-event-comment public-event-comment-reply">
+                              <div className="public-event-comment-avatar" aria-hidden="true">
+                                {reply.senderAvatarUrl ? <img src={reply.senderAvatarUrl} alt="" /> : messageAuthorInitial(reply, myUserId)}
+                              </div>
+                              <div className="public-event-comment-body">
+                                <div className="public-event-comment-meta">
+                                  <strong>{messageAuthorLabel(reply, myUserId)}</strong>
+                                  <span>{toLocalDateTime(new Date(reply.ts).toISOString())}</span>
+                                </div>
+                                <p>{reply.body}</p>
+                                <div className="public-event-comment-tools">
+                                  {QUICK_REACTIONS.map((emoji) => {
+                                    const count = reply.reactions?.find((reaction) => reaction.key === emoji)?.count || 0
+                                    return (
+                                      <button
+                                        key={`${reply.id}-${emoji}`}
+                                        type="button"
+                                        onClick={() => reactToEventComment(reply.id, emoji).catch(() => {})}
+                                        disabled={!eventChatReady || chatActionPending}
+                                        aria-label={`React with ${emoji}`}
+                                      >
+                                        {emoji}{count ? ` ${count}` : ''}
+                                      </button>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            </article>
+                          ))}
+                        </div>
+                      ) : null}
+                      {replyingToId === message.id ? (
+                        <div className="public-event-comment-composer public-event-reply-composer">
+                          <textarea
+                            value={replyDrafts[message.id] || ''}
+                            onChange={(event) => setReplyDrafts((prev) => ({ ...prev, [message.id]: event.target.value }))}
+                            placeholder="Write a reply..."
+                            rows={2}
+                            disabled={!eventChatReady || chatActionPending}
+                          />
+                          <div className="public-event-comment-actions">
+                            <button
+                              type="button"
+                              className="btn-primary"
+                              disabled={!eventChatReady || chatActionPending || !(replyDrafts[message.id] || '').trim()}
+                              onClick={() => postEventReply(message.id).catch(() => {})}
+                            >
+                              Post Reply
+                            </button>
+                            <button type="button" onClick={() => setReplyingToId(null)}>
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
                   </article>
                 ))}
               </div>
             ) : (
-              <p className="muted" style={{ margin: 0 }}>No chat messages yet.</p>
+              <p className="muted" style={{ margin: 0 }}>No comments yet.</p>
             )}
           </>
         ) : !chatLoading && !chatStatus ? (
-          <p className="muted" style={{ margin: 0 }}>Event chat room not available yet.</p>
+          <p className="muted" style={{ margin: 0 }}>Comments are not available for this event yet.</p>
         ) : null}
       </section>
         </main>
