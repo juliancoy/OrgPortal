@@ -36,6 +36,35 @@ function eventSlugFromPath(pathname) {
   }
 }
 
+function configuredAllowedOrigins(env) {
+  return String(env.PORTAL_ALLOWED_ORIGINS || env.WEB_ALLOWED_ORIGINS || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function corsOrigin(request, env) {
+  const origin = request.headers.get("origin");
+  if (!origin) return null;
+  let parsedOrigin;
+  try {
+    parsedOrigin = new URL(origin);
+  } catch {
+    return null;
+  }
+  const requestOrigin = new URL(request.url).origin;
+  if (parsedOrigin.origin === requestOrigin) return parsedOrigin.origin;
+  return configuredAllowedOrigins(env).includes(parsedOrigin.origin) ? parsedOrigin.origin : null;
+}
+
+function applyCors(headers, origin) {
+  if (!origin) return;
+  headers.set("access-control-allow-origin", origin);
+  headers.set("access-control-allow-methods", "GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS");
+  headers.set("access-control-allow-headers", "authorization,content-type,x-requested-with");
+  headers.set("vary", "Origin");
+}
+
 async function fetchPublicEvent(request, env, slug) {
   const origin = trimTrailingSlash(env.ORG_API_ORIGIN);
   if (!origin) return null;
@@ -101,9 +130,7 @@ async function proxyRequest(request, targetOrigin, env, options = {}) {
   });
 
   const responseHeaders = new Headers(proxied.headers);
-  responseHeaders.set("access-control-allow-origin", "*");
-  responseHeaders.set("access-control-allow-methods", "GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS");
-  responseHeaders.set("access-control-allow-headers", "authorization,content-type,x-requested-with");
+  applyCors(responseHeaders, corsOrigin(request, env));
 
   return new Response(proxied.body, {
     status: proxied.status,
@@ -117,13 +144,13 @@ export default {
     const url = new URL(request.url);
 
     if (request.method === "OPTIONS" && (url.pathname.startsWith("/api/governance") || url.pathname.startsWith("/api/org/") || url.pathname.startsWith("/pidp"))) {
+      const origin = corsOrigin(request, env);
+      if (request.headers.get("origin") && !origin) return new Response("Origin denied", { status: 403 });
+      const headers = new Headers();
+      applyCors(headers, origin);
       return new Response(null, {
         status: 204,
-        headers: {
-          "access-control-allow-origin": "*",
-          "access-control-allow-methods": "GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS",
-          "access-control-allow-headers": "authorization,content-type,x-requested-with",
-        },
+        headers,
       });
     }
 
