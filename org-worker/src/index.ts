@@ -3750,8 +3750,18 @@ app.route('/api/email', emailRoutes(currentUser, async (env, request) => {
 
 app.all("*", (c) => c.json({ detail: "Endpoint is not implemented in the Cloudflare org worker" }, 501));
 
+function orgWorkerFetch(request: Request, env: Env, ctx: ExecutionContext) {
+  const url = new URL(request.url);
+  if (request.method === "GET" && (url.pathname === "/.well-known/oauth-protected-resource"
+    || url.pathname === "/.well-known/oauth-protected-resource/api/org/mcp"
+    || url.pathname.startsWith("/.well-known/oauth-protected-resource/"))) {
+    try { return json(protectedResourceMetadata(env)); } catch (error) { return eventErrorResponse(error, env); }
+  }
+  return app.fetch(request, env, ctx);
+}
+
 export default {
-  fetch: app.fetch,
+  fetch: orgWorkerFetch,
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext) {
     ctx.waitUntil(Promise.all([runUbiTick(env.DB, controller.scheduledTime), dispatchTimebankPush(env)]));
     ctx.waitUntil(runEmailDelivery(env));
