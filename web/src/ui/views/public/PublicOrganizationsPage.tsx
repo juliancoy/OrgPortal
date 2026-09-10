@@ -46,7 +46,7 @@ function currentUrl() {
 export function PublicOrganizationsPage() {
   const { token } = useAuth()
   const [orgs, setOrgs] = useState<PublicOrganizationListItem[]>([])
-  const [myOrgSlugs, setMyOrgSlugs] = useState<Set<string>>(new Set())
+  const [myOrgRoles, setMyOrgRoles] = useState<Map<string, string>>(new Map())
   const [showMineOnly, setShowMineOnly] = useState(false)
   const [status, setStatus] = useState<string>('Loading organizations…')
   const [membershipStatus, setMembershipStatus] = useState<string>('')
@@ -63,7 +63,7 @@ export function PublicOrganizationsPage() {
   useEffect(() => {
     let cancelled = false
     if (!token) {
-      setMyOrgSlugs(new Set())
+      setMyOrgRoles(new Map())
       setShowMineOnly(false)
       return () => {
         cancelled = true
@@ -81,15 +81,15 @@ export function PublicOrganizationsPage() {
       })
       .then((rows) => {
         if (cancelled) return
-        const slugs = new Set(
-          (Array.isArray(rows) ? rows : [])
-            .map((org) => String(org.slug || '').trim())
-            .filter(Boolean),
-        )
-        setMyOrgSlugs(slugs)
+        const roles = new Map<string, string>()
+        for (const org of Array.isArray(rows) ? rows : []) {
+          const slug = String(org.slug || '').trim()
+          if (slug) roles.set(slug, String(org.my_role || 'member'))
+        }
+        setMyOrgRoles(roles)
       })
       .catch(() => {
-        if (!cancelled) setMyOrgSlugs(new Set())
+        if (!cancelled) setMyOrgRoles(new Map())
       })
 
     return () => {
@@ -99,8 +99,8 @@ export function PublicOrganizationsPage() {
 
   const sortedOrgs = useMemo(() => {
     return [...orgs].sort((a, b) => {
-      const aMine = myOrgSlugs.has(a.slug) ? 1 : 0
-      const bMine = myOrgSlugs.has(b.slug) ? 1 : 0
+      const aMine = myOrgRoles.has(a.slug) ? 1 : 0
+      const bMine = myOrgRoles.has(b.slug) ? 1 : 0
       if (aMine !== bMine) return bMine - aMine
       const memberDelta = (b.membership_count || 0) - (a.membership_count || 0)
       if (memberDelta !== 0) return memberDelta
@@ -108,12 +108,12 @@ export function PublicOrganizationsPage() {
       if (eventDelta !== 0) return eventDelta
       return a.name.localeCompare(b.name)
     })
-  }, [myOrgSlugs, orgs])
+  }, [myOrgRoles, orgs])
 
   const visibleOrgs = useMemo(() => {
     if (!showMineOnly) return sortedOrgs
-    return sortedOrgs.filter((org) => myOrgSlugs.has(org.slug))
-  }, [myOrgSlugs, showMineOnly, sortedOrgs])
+    return sortedOrgs.filter((org) => myOrgRoles.has(org.slug))
+  }, [myOrgRoles, showMineOnly, sortedOrgs])
 
   useEffect(() => {
     fetch(orgUrl('/api/network/orgs/public?sort=popular&limit=300'))
@@ -158,9 +158,9 @@ export function PublicOrganizationsPage() {
         throw new Error(text || `Membership update failed (${resp.status})`)
       }
       const payload = (await resp.json()) as { status: 'active' | 'none'; membership_count: number }
-      setMyOrgSlugs((prev) => {
-        const next = new Set(prev)
-        if (payload.status === 'active') next.add(org.slug)
+      setMyOrgRoles((prev) => {
+        const next = new Map(prev)
+        if (payload.status === 'active') next.set(org.slug, 'member')
         else next.delete(org.slug)
         return next
       })
@@ -273,7 +273,7 @@ export function PublicOrganizationsPage() {
                 Members: {org.membership_count} • Upcoming events: {org.upcoming_events_count}
                 {` • Feedback ${org.feedback_count || 0}`}
                 {org.is_disputed ? ` • Disputed ownership (${org.pending_challenges_count})` : ''}
-                {myOrgSlugs.has(org.slug) ? ' • Your organization' : ''}
+                {myOrgRoles.has(org.slug) ? ' • Your organization' : ''}
               </p>
               {org.description ? <p style={{ margin: 0, overflowWrap: 'anywhere' }}>{org.description}</p> : null}
               {(() => {
@@ -307,14 +307,19 @@ export function PublicOrganizationsPage() {
               <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }} role="group" aria-label={`Actions for ${org.name}`}>
                 <button
                   type="button"
-                  className={myOrgSlugs.has(org.slug) ? undefined : 'btn-primary'}
-                  onClick={() => void updateOrganizationMembership(org, !myOrgSlugs.has(org.slug))}
-                  aria-pressed={myOrgSlugs.has(org.slug)}
+                  className={myOrgRoles.has(org.slug) ? undefined : 'btn-primary'}
+                  onClick={() => void updateOrganizationMembership(org, !myOrgRoles.has(org.slug))}
+                  disabled={Boolean(myOrgRoles.get(org.slug) && myOrgRoles.get(org.slug) !== 'member')}
+                  aria-pressed={myOrgRoles.has(org.slug)}
                 >
-                  {myOrgSlugs.has(org.slug) ? 'Leave Group' : 'Join Group'}
+                  {myOrgRoles.get(org.slug) === 'owner' || myOrgRoles.get(org.slug) === 'administrator'
+                    ? 'Managing'
+                    : myOrgRoles.has(org.slug)
+                      ? 'Leave Group'
+                      : 'Join Group'}
                 </button>
                 <Link to={`/orgs/${org.slug}`} style={{ textDecoration: 'none' }}>
-                  Leave Feedback
+                  Give Feedback
                 </Link>
                 {token ? (
                   <Link

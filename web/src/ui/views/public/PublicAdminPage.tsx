@@ -61,6 +61,16 @@ type OrganizationFeedback = {
   feedback_score: number
 }
 
+type OrganizationFeedbackReview = {
+  organization_id: string
+  user_id: string
+  user_name?: string | null
+  rating: FeedbackRating
+  comment: string
+  created_at: string
+  updated_at: string
+}
+
 type OrganizationMembership = {
   organization_id: string
   role: string | null
@@ -165,6 +175,8 @@ export function PublicAdminPage() {
   const [feedbackRating, setFeedbackRating] = useState<FeedbackRating>('neutral')
   const [feedbackComment, setFeedbackComment] = useState('')
   const [feedbackStatus, setFeedbackStatus] = useState<string | null>(null)
+  const [feedbackReviews, setFeedbackReviews] = useState<OrganizationFeedbackReview[]>([])
+  const [feedbackReviewStatus, setFeedbackReviewStatus] = useState<string | null>(null)
   const [membership, setMembership] = useState<OrganizationMembership | null>(null)
   const [membershipStatus, setMembershipStatus] = useState<string | null>(null)
   const [claimRequestMessage, setClaimRequestMessage] = useState('')
@@ -401,6 +413,39 @@ export function PublicAdminPage() {
         setMyAdminOrgsStatus(toUserFacingErrorMessage(err, 'Failed to load admin organizations'))
       })
   }, [token])
+
+  useEffect(() => {
+    if (!org?.id || !token || !canManageCurrentOrg) {
+      setFeedbackReviews([])
+      setFeedbackReviewStatus(null)
+      return
+    }
+    let cancelled = false
+    setFeedbackReviewStatus('Loading feedback...')
+    fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/feedback/review?limit=100`), {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(async (resp) => {
+        if (!resp.ok) {
+          const text = await resp.text().catch(() => '')
+          throw new Error(text || `Failed to load feedback (${resp.status})`)
+        }
+        return (await resp.json()) as OrganizationFeedbackReview[]
+      })
+      .then((rows) => {
+        if (cancelled) return
+        setFeedbackReviews(Array.isArray(rows) ? rows : [])
+        setFeedbackReviewStatus('')
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setFeedbackReviews([])
+        setFeedbackReviewStatus(toUserFacingErrorMessage(err, 'Failed to load feedback'))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [canManageCurrentOrg, org?.id, token])
 
   useEffect(() => {
     if (!org?.slug) return
@@ -1224,6 +1269,43 @@ export function PublicAdminPage() {
                       {myAdminOrgsStatus}
                     </p>
                   ) : null}
+                  <div className="portal-card" style={{ display: 'grid', gap: '0.55rem', boxShadow: 'none' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '0.98rem' }}>Feedback Inbox</h3>
+                      <p className="muted" style={{ margin: '0.2rem 0 0' }}>
+                        {feedbackReviews.length} response{feedbackReviews.length === 1 ? '' : 's'} visible to organization admins.
+                      </p>
+                    </div>
+                    {feedbackReviewStatus ? (
+                      <p className="muted" style={{ margin: 0 }}>{feedbackReviewStatus}</p>
+                    ) : feedbackReviews.length ? (
+                      <div style={{ display: 'grid', gap: '0.55rem' }}>
+                        {feedbackReviews.map((item) => (
+                          <article
+                            key={`${item.user_id}-${item.updated_at}`}
+                            style={{
+                              display: 'grid',
+                              gap: '0.35rem',
+                              padding: '0.65rem',
+                              border: '1px solid var(--border)',
+                              borderRadius: 8,
+                            }}
+                          >
+                            <p style={{ margin: 0 }}>
+                              <strong>{item.user_name || item.user_id}</strong>{' '}
+                              <span className="pill">{item.rating === 'positive' ? 'Positive' : item.rating === 'concern' ? 'Concern' : 'Neutral'}</span>
+                            </p>
+                            {item.comment ? <p style={{ margin: 0, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{item.comment}</p> : (
+                              <p className="muted" style={{ margin: 0 }}>No written note.</p>
+                            )}
+                            <p className="muted" style={{ margin: 0 }}>{formatDate(item.updated_at)}</p>
+                          </article>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="muted" style={{ margin: 0 }}>No feedback yet.</p>
+                    )}
+                  </div>
                   <div style={{ display: 'grid', gap: '0.5rem' }}>
                     <label htmlFor="org-name" className="muted">
                       Organization name
