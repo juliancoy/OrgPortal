@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { defaultPostLoginPath, normalizePostLoginPath, portalAuthCallbackUrl } from './pidp'
+import { defaultPostLoginPath, normalizePidpBase, normalizePostLoginPath, portalAuthCallbackUrl } from './pidp'
 import * as profiles from './portalFeatures'
 import { setDomainTenant } from './timebankCommunity'
 
 afterEach(() => {
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
   setDomainTenant(null)
 })
 
@@ -61,5 +62,20 @@ describe('profile-aware authentication destinations', () => {
     })
     const callback = new URL(portalAuthCallbackUrl('/portals/test-org'))
     expect(callback.toString()).toBe('https://codecollective.us/p/auth/callback?next=%2Fportals%2Ftest-org')
+  })
+
+  it('uses the same-origin PIdP proxy for browser sessions on tenant domains', () => {
+    vi.stubGlobal('window', {
+      location: { origin: 'https://medtech.social', hostname: 'medtech.social' },
+    })
+    expect(normalizePidpBase('https://id.codecollective.us')).toBe('/pidp')
+    expect(normalizePidpBase('https://dev.id.codecollective.us/')).toBe('/pidp')
+  })
+
+  it('preserves non-first-party absolute PIdP bases for operators without the proxy', () => {
+    vi.stubGlobal('window', {
+      location: { origin: 'https://tenant.example', hostname: 'tenant.example' },
+    })
+    expect(normalizePidpBase('https://identity.example/root/')).toBe('https://identity.example/root')
   })
 })

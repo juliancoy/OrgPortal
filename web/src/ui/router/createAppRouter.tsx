@@ -15,7 +15,6 @@ import { UserProfilePage } from '../views/users/UserProfilePage'
 import { UserCalendarPage } from '../views/users/UserCalendarPage'
 import { UserSettingsPage } from '../views/users/UserSettingsPage'
 import { UserLoginPage } from '../views/users/UserLoginPage'
-import { UserRegisterPage } from '../views/users/UserRegisterPage'
 import { OrgLoginPage } from '../views/orgs/OrgLoginPage'
 import { OrgRegisterPage } from '../views/orgs/OrgRegisterPage'
 import { OrgInitiativesPage } from '../views/orgs/OrgInitiativesPage'
@@ -125,6 +124,11 @@ function LegacyPublicContactRoute() {
   return <Navigate to={`/users/${encodeURIComponent(String(slug || ''))}`} replace />
 }
 
+function LoginRedirectRoute() {
+  const location = useLocation()
+  return <Navigate to={`/users/login${location.search}${location.hash}`} replace />
+}
+
 function ChatRoute() {
   const backend = ((import.meta.env.VITE_CHAT_BACKEND as string | undefined) || 'cloudflare').toLowerCase()
   if (backend === 'matrix') return <OrgChatPage />
@@ -209,7 +213,7 @@ export function createAppRouter() {
           { path: '/android/install', element: <AndroidInstallPage /> },
 
           // Canonical user routes
-          { path: '/users/register', element: <UserRegisterPage /> },
+          { path: '/users/register', element: <LoginRedirectRoute /> },
           { path: '/users/login', element: <UserLoginPage /> },
           { path: '/users/dashboard', element: <DashboardPage /> },
           { path: '/profile', element: <UserProfilePage /> },
@@ -236,7 +240,7 @@ export function createAppRouter() {
           { path: '/constituent/profile', element: <LegacyUserRoute to="/profile" /> },
           { path: '/constituent/account', element: <LegacyUserRoute to="/profile" /> },
           { path: '/constituent/login', element: <LegacyUserRoute to="/users/login" /> },
-          { path: '/constituent/register', element: <LegacyUserRoute to="/users/register" /> },
+          { path: '/constituent/register', element: <LegacyUserRoute to="/users/login" /> },
           {
             path: '/id',
             element: (

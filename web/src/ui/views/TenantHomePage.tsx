@@ -61,9 +61,9 @@ function featureLabel(feature: string) {
 
 function TenantHomeActions({ tenant }: { tenant: PortalTenant }) {
   const { role, isLoading } = useAuth()
-  const primaryHref = actionHref(tenant.home_primary_href) || portalProfilePath(role === 'guest' ? '/users/register' : '/chat')
+  const primaryHref = actionHref(tenant.home_primary_href) || portalProfilePath(role === 'guest' ? '/users/login' : '/chat')
   const secondaryHref = actionHref(tenant.home_secondary_href) || (tenant.home_org_slug ? portalProfilePath(`/orgs/${encodeURIComponent(tenant.home_org_slug)}`) : portalProfilePath('/events'))
-  const primaryLabel = tenant.home_primary_label || (role === 'guest' ? 'Join the Community' : 'Open Messages')
+  const primaryLabel = tenant.home_primary_label || (role === 'guest' ? 'Login' : 'Open Messages')
   const secondaryLabel = tenant.home_secondary_label || (tenant.home_org_slug ? 'View Organization' : 'Browse Events')
   const primaryTarget = actionLinkTarget(primaryHref)
   const secondaryTarget = actionLinkTarget(secondaryHref)

@@ -43,7 +43,7 @@ async function mockTenant(page: Page, options: MockTenantOptions = {}) {
         home_kind: 'auth',
         home_org_slug: 'baltimore-medtech',
         home_primary_label: 'Join Baltimore MedTech',
-        home_primary_href: '/users/register',
+        home_primary_href: '/users/login',
         home_secondary_label: 'Browse MedTech Events',
         home_secondary_href: '/org-events',
         public_base_url: 'https://medtech.social',
@@ -125,7 +125,7 @@ test('tenant header login preserves the current event route', async ({ page }) =
   await mockTenant(page, { completeAppLogin: true })
   await page.goto(portal('/events/medtech-in-the-hut'))
 
-  await page.getByRole('link', { name: 'Log In' }).click()
+  await page.getByRole('link', { name: 'Login', exact: true }).click()
   await expect(page).toHaveURL(/\/users\/login\?next=%2Fevents%2Fmedtech-in-the-hut$/)
   await page.getByRole('link', { name: 'Continue with Code Collective' }).click()
 

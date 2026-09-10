@@ -444,7 +444,7 @@ export function BusinessCardIntakePage() {
         <p className="muted" style={{ marginTop: 0 }}>
           Sign in to submit cards.{' '}
           <a className="portal-button" href={pidpAppLoginUrl(nextUrl)}>
-            Log In
+            Login
           </a>
         </p>
       ) : null}
