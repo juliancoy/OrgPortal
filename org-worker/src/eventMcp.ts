@@ -258,7 +258,7 @@ async function runPortalOperation(env: Env, identity: { userId: string; scopes: 
       JSON.stringify(setup.features || ["directory", "events", "chat"]), setup.homeImageUrl || null, `${portalBase(env)}/portals/${encodeURIComponent(slug)}`,
       setup.accentColor || "#155e59", homeKind, homeKind === "route" ? setup.homePath || null : null, organization.slug,
       setup.homeHeading || setup.name || organization.name, setup.homeDescription || setup.tagline || `Portal for ${organization.name}`,
-      "Join Group", "/users/register", "View Events", "/org-events", setup.homeImageUrl || null,
+      "Join Group", "/users/login", "View Events", "/org-events", setup.homeImageUrl || null,
       `${portalBase(env)}/portals/${encodeURIComponent(slug)}`, JSON.stringify({ slugPortal: { enabled: true, path: `/portals/${slug}` } }), now, now).run();
     return { portal: await portalResponse(env, await portalTenantByOrg(env.DB, organization)) };
   }

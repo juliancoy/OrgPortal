@@ -16,7 +16,7 @@ SET
   home_heading = 'Baltimore MedTech',
   home_description = 'Find your next conversation, connection, or local event across health, medicine, and biotech.',
   home_primary_label = 'Join Baltimore MedTech',
-  home_primary_href = '/users/register',
+  home_primary_href = '/users/login',
   home_secondary_label = 'Browse MedTech Events',
   home_secondary_href = '/org-events',
   home_image_url = '/images/baltimore-medtech-hero.webp'

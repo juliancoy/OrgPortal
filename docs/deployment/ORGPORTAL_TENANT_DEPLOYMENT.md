@@ -10,7 +10,7 @@ Coding agents setting up an organization tenant should also follow `docs/deploym
 - Tenant domains, for example `medtech.social`, serve OrgPortal at `/`.
 - Organization admins can publish a shared slug portal at `/portals/:slug` before a custom domain is attached.
 - Tenant routes are canonical at the tenant root: `/users/login`, `/events/:slug`, `/orgs/:slug`, `/people`, `/chat`, `/org-events`, and `/timebanking`.
-- Tenant event homes use `/org-events`; tenant-specific legacy aliases are not part of the routing model.
+- Tenant event homes use `/org-events`; compatibility aliases such as `/community` and `/medtech-events` may redirect to canonical tenant routes, but they are not the primary routing model.
 
 The web build emits relative static asset URLs so the same artifact can load from `/p/` or `/`. Runtime routing is selected from tenant metadata returned by `/api/org/api/portal/tenant`; tenant hosts use a root router basename, while the shared CodeCollective host uses `/p`.
 
