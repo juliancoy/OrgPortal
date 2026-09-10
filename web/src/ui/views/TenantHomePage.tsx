@@ -37,6 +37,12 @@ function actionHref(value?: string | null) {
   return safeExternalHref(raw)
 }
 
+function actionLinkTarget(href: string) {
+  const url = new URL(href, window.location.origin)
+  if (url.origin !== window.location.origin && !href.startsWith('/')) return null
+  return `${url.pathname}${url.search}${url.hash}`
+}
+
 function formatEventDate(value?: string | null) {
   if (!value) return 'Date to be announced'
   const date = new Date(value)
@@ -59,10 +65,12 @@ function TenantHomeActions({ tenant }: { tenant: PortalTenant }) {
   const secondaryHref = actionHref(tenant.home_secondary_href) || (tenant.home_org_slug ? portalProfilePath(`/orgs/${encodeURIComponent(tenant.home_org_slug)}`) : portalProfilePath('/events'))
   const primaryLabel = tenant.home_primary_label || (role === 'guest' ? 'Join the Community' : 'Open Messages')
   const secondaryLabel = tenant.home_secondary_label || (tenant.home_org_slug ? 'View Organization' : 'Browse Events')
+  const primaryTarget = actionLinkTarget(primaryHref)
+  const secondaryTarget = actionLinkTarget(secondaryHref)
 
   return <div className="tenant-home-actions">
-    {primaryHref.startsWith(window.location.origin) || primaryHref.startsWith('/') ? <Link className="btn-primary" to={new URL(primaryHref, window.location.origin).pathname + new URL(primaryHref, window.location.origin).search}>{primaryLabel}</Link> : <a className="btn-primary" href={primaryHref}>{primaryLabel}</a>}
-    {secondaryHref.startsWith(window.location.origin) || secondaryHref.startsWith('/') ? <Link className="portal-button-secondary" to={new URL(secondaryHref, window.location.origin).pathname + new URL(secondaryHref, window.location.origin).search}>{secondaryLabel}</Link> : <a className="portal-button-secondary" href={secondaryHref}>{secondaryLabel}</a>}
+    {primaryTarget ? <Link className="btn-primary" to={primaryTarget}>{primaryLabel}</Link> : <a className="btn-primary" href={primaryHref}>{primaryLabel}</a>}
+    {secondaryTarget ? <Link className="portal-button-secondary" to={secondaryTarget}>{secondaryLabel}</Link> : <a className="portal-button-secondary" href={secondaryHref}>{secondaryLabel}</a>}
   </div>
 }
 
@@ -115,13 +123,13 @@ export function TenantHomePage() {
           </div>}
         </section>
 
-        <section className="tenant-home-grid" aria-label={`${profile.brandName} portal sections`}>
+        {features.length > 0 && <section className="tenant-home-grid" aria-label={`${profile.brandName} portal sections`}>
           {features.slice(0, 4).map((feature) => <article className="tenant-home-card" key={feature}>
             <span>{featureLabel(feature)}</span>
             <h2>{feature === 'events' ? 'Events and registration' : feature === 'chat' ? 'Community messages' : featureLabel(feature)}</h2>
             <p>{feature === 'events' ? 'Publish events, collect registrations, and keep attendance visible.' : feature === 'chat' ? 'Keep member conversations close to the organization.' : `Use the ${featureLabel(feature).toLowerCase()} tools configured for this tenant.`}</p>
           </article>)}
-        </section>
+        </section>}
 
         {tenant.home_org_slug && <section className="tenant-home-events" aria-labelledby="tenant-home-events-title">
           <div className="tenant-home-section-heading">
