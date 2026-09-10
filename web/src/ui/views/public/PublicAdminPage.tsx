@@ -35,21 +35,37 @@ type PublicOrganization = {
   image_url?: string | null
   tags?: string[]
   upcoming_events_count: number
-  favor_count?: number
-  disfavor_count?: number
-  sentiment_score?: number
+  membership_count?: number
+  feedback_count?: number
+  feedback_positive_count?: number
+  feedback_concern_count?: number
+  feedback_score?: number
   claimed_by_user_id?: string | null
   pending_challenges_count: number
   is_disputed: boolean
   redirected_from_slug?: string | null
 }
 
-type OrganizationSentiment = {
+type FeedbackRating = 'positive' | 'neutral' | 'concern'
+
+type OrganizationFeedback = {
   organization_id: string
-  sentiment: 'favor' | 'disfavor' | null
-  favor_count: number
-  disfavor_count: number
-  sentiment_score: number
+  my_feedback: {
+    rating: FeedbackRating
+    comment: string
+    updated_at: string
+  } | null
+  feedback_count: number
+  feedback_positive_count: number
+  feedback_concern_count: number
+  feedback_score: number
+}
+
+type OrganizationMembership = {
+  organization_id: string
+  role: string | null
+  status: 'active' | 'none'
+  membership_count: number
 }
 
 type PublicEvent = {
@@ -146,8 +162,11 @@ export function PublicAdminPage() {
   const [chatFeedLoading, setChatFeedLoading] = useState(false)
   const [status, setStatus] = useState<string>('Loading organization…')
   const [claimStatus, setClaimStatus] = useState<string | null>(null)
-  const [orgSentiment, setOrgSentiment] = useState<'favor' | 'disfavor' | null>(null)
-  const [orgSentimentStatus, setOrgSentimentStatus] = useState<string | null>(null)
+  const [feedbackRating, setFeedbackRating] = useState<FeedbackRating>('neutral')
+  const [feedbackComment, setFeedbackComment] = useState('')
+  const [feedbackStatus, setFeedbackStatus] = useState<string | null>(null)
+  const [membership, setMembership] = useState<OrganizationMembership | null>(null)
+  const [membershipStatus, setMembershipStatus] = useState<string | null>(null)
   const [claimRequestMessage, setClaimRequestMessage] = useState('')
   const [claiming, setClaiming] = useState(false)
   const [myAdminOrgs, setMyAdminOrgs] = useState<MyOrganization[]>([])
@@ -292,33 +311,48 @@ export function PublicAdminPage() {
 
   useEffect(() => {
     if (!org?.id || !token) {
-      setOrgSentiment(null)
+      setFeedbackRating('neutral')
+      setFeedbackComment('')
+      setMembership(null)
       return
     }
     let cancelled = false
-    fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/sentiment`), {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(async (resp) => {
-        if (!resp.ok) return null
-        return (await resp.json()) as OrganizationSentiment
-      })
-      .then((payload) => {
-        if (cancelled || !payload) return
-        setOrgSentiment(payload.sentiment)
-        setOrg((prev) =>
-          prev
-            ? {
-                ...prev,
-                favor_count: payload.favor_count,
-                disfavor_count: payload.disfavor_count,
-                sentiment_score: payload.sentiment_score,
-              }
-            : prev,
-        )
+    Promise.all([
+      fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/feedback`), {
+        headers: { Authorization: `Bearer ${token}` },
+      }).then(async (resp) => (resp.ok ? ((await resp.json()) as OrganizationFeedback) : null)),
+      fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/membership`), {
+        headers: { Authorization: `Bearer ${token}` },
+      }).then(async (resp) => (resp.ok ? ((await resp.json()) as OrganizationMembership) : null)),
+    ])
+      .then(([feedback, membershipData]) => {
+        if (cancelled) return
+        if (feedback) {
+          setFeedbackRating(feedback.my_feedback?.rating || 'neutral')
+          setFeedbackComment(feedback.my_feedback?.comment || '')
+          setOrg((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  feedback_count: feedback.feedback_count,
+                  feedback_positive_count: feedback.feedback_positive_count,
+                  feedback_concern_count: feedback.feedback_concern_count,
+                  feedback_score: feedback.feedback_score,
+                }
+              : prev,
+          )
+        }
+        if (membershipData) {
+          setMembership(membershipData)
+          setOrg((prev) => (prev ? { ...prev, membership_count: membershipData.membership_count } : prev))
+        }
       })
       .catch(() => {
-        if (!cancelled) setOrgSentiment(null)
+        if (!cancelled) {
+          setFeedbackRating('neutral')
+          setFeedbackComment('')
+          setMembership(null)
+        }
       })
     return () => {
       cancelled = true
@@ -610,41 +644,90 @@ export function PublicAdminPage() {
     }
   }
 
-  async function setOrganizationSentiment(sentiment: 'favor' | 'disfavor') {
+  function applyFeedbackPayload(payload: OrganizationFeedback) {
+    setFeedbackRating(payload.my_feedback?.rating || 'neutral')
+    setFeedbackComment(payload.my_feedback?.comment || '')
+    setOrg((prev) =>
+      prev
+        ? {
+            ...prev,
+            feedback_count: payload.feedback_count,
+            feedback_positive_count: payload.feedback_positive_count,
+            feedback_concern_count: payload.feedback_concern_count,
+            feedback_score: payload.feedback_score,
+          }
+        : prev,
+    )
+  }
+
+  async function saveOrganizationFeedback() {
     if (!org) return
     if (!token) {
       window.location.assign(pidpAppLoginUrl(`/orgs/${encodeURIComponent(org.slug)}`))
       return
     }
-    setOrgSentimentStatus(null)
+    setFeedbackStatus(null)
     try {
-      const method = orgSentiment === sentiment ? 'DELETE' : 'PUT'
-      const resp = await fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/sentiment`), {
-        method,
+      const resp = await fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/feedback`), {
+        method: 'PUT',
         headers: {
           Authorization: `Bearer ${token}`,
-          ...(method === 'PUT' ? { 'Content-Type': 'application/json' } : {}),
+          'Content-Type': 'application/json',
         },
-        body: method === 'PUT' ? JSON.stringify({ sentiment }) : undefined,
+        body: JSON.stringify({ rating: feedbackRating, comment: feedbackComment }),
       })
       if (!resp.ok) {
         const text = await resp.text().catch(() => '')
-        throw new Error(text || `Preference update failed (${resp.status})`)
+        throw new Error(text || `Feedback update failed (${resp.status})`)
       }
-      const payload = (await resp.json()) as OrganizationSentiment
-      setOrgSentiment(payload.sentiment)
-      setOrg((prev) =>
-        prev
-          ? {
-              ...prev,
-              favor_count: payload.favor_count,
-              disfavor_count: payload.disfavor_count,
-              sentiment_score: payload.sentiment_score,
-            }
-          : prev,
-      )
+      applyFeedbackPayload((await resp.json()) as OrganizationFeedback)
+      setFeedbackStatus('Feedback saved.')
     } catch (err) {
-      setOrgSentimentStatus(toUserFacingErrorMessage(err, 'Could not update organization preference'))
+      setFeedbackStatus(toUserFacingErrorMessage(err, 'Could not update organization feedback'))
+    }
+  }
+
+  async function clearOrganizationFeedback() {
+    if (!org || !token) return
+    setFeedbackStatus(null)
+    try {
+      const resp = await fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/feedback`), {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!resp.ok) {
+        const text = await resp.text().catch(() => '')
+        throw new Error(text || `Feedback update failed (${resp.status})`)
+      }
+      applyFeedbackPayload((await resp.json()) as OrganizationFeedback)
+      setFeedbackStatus('Feedback cleared.')
+    } catch (err) {
+      setFeedbackStatus(toUserFacingErrorMessage(err, 'Could not clear organization feedback'))
+    }
+  }
+
+  async function updateOrganizationMembership(join: boolean) {
+    if (!org) return
+    if (!token) {
+      window.location.assign(pidpAppLoginUrl(`/orgs/${encodeURIComponent(org.slug)}`))
+      return
+    }
+    setMembershipStatus(null)
+    try {
+      const resp = await fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/membership`), {
+        method: join ? 'POST' : 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!resp.ok) {
+        const text = await resp.text().catch(() => '')
+        throw new Error(text || `Membership update failed (${resp.status})`)
+      }
+      const payload = (await resp.json()) as OrganizationMembership
+      setMembership(payload)
+      setOrg((prev) => (prev ? { ...prev, membership_count: payload.membership_count } : prev))
+      setMembershipStatus(join ? 'You joined this group.' : 'You left this group.')
+    } catch (err) {
+      setMembershipStatus(toUserFacingErrorMessage(err, 'Could not update group membership'))
     }
   }
 
@@ -948,47 +1031,98 @@ export function PublicAdminPage() {
           <div className="portal-org-meta">
             {org.description ? <p style={{ margin: 0 }}>{org.description}</p> : null}
             <p className="muted" style={{ margin: 0 }}>
-              Handle: <code>{org.slug}</code> • Upcoming hosted events: {org.upcoming_events_count}
-            </p>
-            <p className="muted" style={{ margin: 0 }}>
-              Favor: {org.favor_count || 0} • Disfavor: {org.disfavor_count || 0}
+              Handle: <code>{org.slug}</code>
             </p>
           </div>
-          <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }} role="group" aria-label={`Preference for ${org.name}`}>
-            <button
-              type="button"
-              className={orgSentiment === 'favor' ? 'btn-primary' : undefined}
-              onClick={() => void setOrganizationSentiment('favor')}
-              aria-pressed={orgSentiment === 'favor'}
-              aria-label={`Favor ${org.name}. ${org.favor_count || 0} favor votes`}
-            >
-              Favor
-            </button>
-            <button
-              type="button"
-              className={orgSentiment === 'disfavor' ? 'btn-primary' : undefined}
-              onClick={() => void setOrganizationSentiment('disfavor')}
-              aria-pressed={orgSentiment === 'disfavor'}
-              aria-label={`Disfavor ${org.name}. ${org.disfavor_count || 0} disfavor votes`}
-            >
-              Disfavor
-            </button>
-            {!token ? <span className="muted">Sign in to register your preference.</span> : null}
+          <div className="portal-card" style={{ display: 'grid', gap: '0.8rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.6rem' }}>
+              <div>
+                <strong>{org.membership_count || 0}</strong>
+                <p className="muted" style={{ margin: 0 }}>Members</p>
+              </div>
+              <div>
+                <strong>{org.upcoming_events_count}</strong>
+                <p className="muted" style={{ margin: 0 }}>Upcoming events</p>
+              </div>
+              <div>
+                <strong>{org.feedback_count || 0}</strong>
+                <p className="muted" style={{ margin: 0 }}>Feedback notes</p>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              {membership?.status === 'active' ? (
+                membership.role === 'member' ? (
+                  <button type="button" onClick={() => void updateOrganizationMembership(false)}>
+                    Leave Group
+                  </button>
+                ) : (
+                  <span className="pill">You manage this group</span>
+                )
+              ) : (
+                <button type="button" className="btn-primary" onClick={() => void updateOrganizationMembership(true)}>
+                  Join Group
+                </button>
+              )}
+              {token ? (
+                <Link className="btn-primary" to={`/chat?start=group&org=${encodeURIComponent(org.slug)}`} style={{ textDecoration: 'none', width: 'fit-content' }}>
+                  Message Group
+                </Link>
+              ) : (
+                <a className="btn-primary" href={pidpAppLoginUrl(`/chat?start=group&org=${encodeURIComponent(org.slug)}`)} style={{ textDecoration: 'none', width: 'fit-content' }}>
+                  Message Group
+                </a>
+              )}
+              {!token ? <span className="muted">Sign in to join and leave feedback.</span> : null}
+            </div>
+            {membershipStatus ? <p className="muted" role="status" style={{ margin: 0 }}>{membershipStatus}</p> : null}
           </div>
-          {orgSentimentStatus ? (
-            <p className="muted" role="status" style={{ margin: 0 }}>
-              {orgSentimentStatus}
-            </p>
-          ) : null}
-          {token ? (
-            <Link className="btn-primary" to={`/chat?start=group&org=${encodeURIComponent(org.slug)}`} style={{ textDecoration: 'none', width: 'fit-content' }}>
-              Message Group
-            </Link>
-          ) : (
-            <a className="btn-primary" href={pidpAppLoginUrl(`/chat?start=group&org=${encodeURIComponent(org.slug)}`)} style={{ textDecoration: 'none', width: 'fit-content' }}>
-              Message Group
-            </a>
-          )}
+          <div className="portal-card" style={{ display: 'grid', gap: '0.65rem' }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: '1rem' }}>Group Feedback</h2>
+              <p className="muted" style={{ margin: '0.25rem 0 0' }}>
+                {org.feedback_positive_count || 0} positive • {org.feedback_concern_count || 0} concerns
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }} role="group" aria-label={`Feedback rating for ${org.name}`}>
+              {(['positive', 'neutral', 'concern'] as FeedbackRating[]).map((rating) => (
+                <button
+                  key={rating}
+                  type="button"
+                  className={feedbackRating === rating ? 'btn-primary' : undefined}
+                  onClick={() => setFeedbackRating(rating)}
+                  disabled={!token}
+                  aria-pressed={feedbackRating === rating}
+                >
+                  {rating === 'positive' ? 'Positive' : rating === 'concern' ? 'Concern' : 'Neutral'}
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={feedbackComment}
+              onChange={(e) => setFeedbackComment(e.target.value)}
+              placeholder="Share context, praise, concerns, or what would help you participate."
+              rows={3}
+              disabled={!token}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                borderRadius: 8,
+                border: '1px solid var(--border)',
+                background: 'var(--panel)',
+                color: 'var(--text-primary)',
+              }}
+            />
+            <div style={{ display: 'flex', gap: '0.55rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <button type="button" className="btn-primary" onClick={() => void saveOrganizationFeedback()} disabled={!token}>
+                Save Feedback
+              </button>
+              <button type="button" onClick={() => void clearOrganizationFeedback()} disabled={!token || (!feedbackComment && feedbackRating === 'neutral')}>
+                Clear
+              </button>
+              {!token ? <a href={pidpAppLoginUrl(`/orgs/${encodeURIComponent(org.slug)}`)}>Sign in to respond</a> : null}
+            </div>
+            {feedbackStatus ? <p className="muted" role="status" style={{ margin: 0 }}>{feedbackStatus}</p> : null}
+          </div>
           {org.is_disputed ? (
             <p className="muted" style={{ margin: 0 }}>
               Ownership status: Disputed ({org.pending_challenges_count} open challenge{org.pending_challenges_count === 1 ? '' : 's'}).

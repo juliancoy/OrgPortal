@@ -38,7 +38,8 @@ class FakeD1 {
   ledgerAccounts: Row[] = [];
   ledgerTransactions: Row[] = [];
   ubiEligibility: Row[] = [];
-  organizationSentiments: Row[] = [];
+  organizationFeedback: Row[] = [];
+  organizationMemberships: Row[] = [];
   portalTenants: Row[] = [];
   ubiSettings: Row = {
     interval_seconds: 14 * 24 * 60 * 60,
@@ -136,16 +137,29 @@ class FakeD1 {
     if (sql.includes("FROM ubi_runtime_settings WHERE id = 1")) {
       return this.ubiSettings as T;
     }
-    if (sql.includes("FROM organization_sentiments") && sql.includes("favor_count")) {
+    if (sql.includes("FROM organization_feedback") && sql.includes("feedback_count")) {
       const organizationId = params[0];
-      const rows = this.organizationSentiments.filter((row) => row.organization_id === organizationId);
+      const rows = this.organizationFeedback.filter((row) => row.organization_id === organizationId);
       return {
-        favor_count: rows.filter((row) => row.sentiment === "favor").length,
-        disfavor_count: rows.filter((row) => row.sentiment === "disfavor").length,
+        feedback_count: rows.length,
+        feedback_positive_count: rows.filter((row) => row.rating === "positive").length,
+        feedback_concern_count: rows.filter((row) => row.rating === "concern").length,
       } as T;
     }
-    if (sql.includes("SELECT sentiment FROM organization_sentiments")) {
-      return (this.organizationSentiments.find((row) => row.organization_id === params[0] && row.user_id === params[1]) as T) || null;
+    if (sql.includes("FROM organization_feedback") && sql.includes("user_id = ?")) {
+      return (this.organizationFeedback.find((row) => row.organization_id === params[0] && row.user_id === params[1]) as T) || null;
+    }
+    if (sql.includes("SELECT role FROM organization_memberships")) {
+      return (
+        this.organizationMemberships.find(
+          (row) => row.organization_id === params[0] && row.user_id === params[1] && row.status === "active",
+        ) as T
+      ) || null;
+    }
+    if (sql.includes("count(*) AS n FROM organization_memberships")) {
+      return {
+        n: this.organizationMemberships.filter((row) => row.organization_id === params[0] && row.status === "active").length,
+      } as T;
     }
     if (sql.includes("SELECT * FROM ledger_accounts WHERE lower(email) = ?")) {
       return (this.ledgerAccounts.find((row) => String(row.email).toLowerCase() === params[0]) as T) || null;
@@ -193,6 +207,10 @@ class FakeD1 {
       return this.organizations.map((row) => ({
         ...row,
         upcoming_events_count: this.events.filter((event) => event.host_org_id === row.id).length,
+        membership_count: this.organizationMemberships.filter((membership) => membership.organization_id === row.id && membership.status === "active").length,
+        feedback_count: this.organizationFeedback.filter((feedback) => feedback.organization_id === row.id).length,
+        feedback_positive_count: this.organizationFeedback.filter((feedback) => feedback.organization_id === row.id && feedback.rating === "positive").length,
+        feedback_concern_count: this.organizationFeedback.filter((feedback) => feedback.organization_id === row.id && feedback.rating === "concern").length,
       })) as T[];
     }
     if (sql.includes("FROM events e")) {
@@ -492,25 +510,56 @@ class FakeD1 {
         created_at: params[27],
       });
     }
-    if (sql.includes("INSERT INTO organization_sentiments")) {
-      const existing = this.organizationSentiments.find((row) => row.organization_id === params[0] && row.user_id === params[1]);
+    if (sql.includes("INSERT INTO organization_feedback")) {
+      const existing = this.organizationFeedback.find((row) => row.organization_id === params[0] && row.user_id === params[1]);
       if (existing) {
         existing.user_name = params[2];
-        existing.sentiment = params[3];
-        existing.updated_at = params[5];
+        existing.rating = params[3];
+        existing.comment = params[4];
+        existing.updated_at = params[6];
       } else {
-        this.organizationSentiments.push({
+        this.organizationFeedback.push({
           organization_id: params[0],
           user_id: params[1],
           user_name: params[2],
-          sentiment: params[3],
+          rating: params[3],
+          comment: params[4],
+          created_at: params[5],
+          updated_at: params[6],
+        });
+      }
+    }
+    if (sql.includes("DELETE FROM organization_feedback")) {
+      this.organizationFeedback = this.organizationFeedback.filter((row) => !(row.organization_id === params[0] && row.user_id === params[1]));
+    }
+    if (sql.includes("INSERT INTO organization_memberships")) {
+      const existing = this.organizationMemberships.find((row) => row.organization_id === params[0] && row.user_id === params[1]);
+      if (existing) {
+        existing.user_name = params[2];
+        existing.user_email = params[3];
+        existing.status = "active";
+        existing.updated_at = params[5];
+      } else {
+        this.organizationMemberships.push({
+          organization_id: params[0],
+          user_id: params[1],
+          user_name: params[2],
+          user_email: params[3],
+          role: "member",
+          status: "active",
           created_at: params[4],
           updated_at: params[5],
         });
       }
     }
-    if (sql.includes("DELETE FROM organization_sentiments")) {
-      this.organizationSentiments = this.organizationSentiments.filter((row) => !(row.organization_id === params[0] && row.user_id === params[1]));
+    if (sql.includes("UPDATE organization_memberships SET status = 'inactive'")) {
+      const row = this.organizationMemberships.find(
+        (membership) => membership.organization_id === params[1] && membership.user_id === params[2] && membership.role === "member",
+      );
+      if (row) {
+        row.status = "inactive";
+        row.updated_at = params[0];
+      }
     }
     return { success: true, meta: { changes: 1 } };
   }
@@ -1387,7 +1436,7 @@ test("UBI tick enrolls known people before accrual", async () => {
   assert.equal(db.ubiEligibility[0].account_id, db.ledgerAccounts[0].id);
 });
 
-test("users can favor, change, and clear organization sentiment", async () => {
+test("users can save, change, and clear organization feedback", async () => {
   const db = new FakeD1();
   db.organizations.push({
     id: "org-1",
@@ -1403,54 +1452,117 @@ test("users can favor, change, and clear organization sentiment", async () => {
   });
 
   await withPidpUser({ id: "user-1", email: "user@example.test", full_name: "Test User" }, async () => {
-    const favor = await app.request(
-      "https://org.example.test/api/network/orgs/org-1/sentiment",
+    const positive = await app.request(
+      "https://org.example.test/api/network/orgs/org-1/feedback",
       {
         method: "PUT",
         headers: { authorization: "Bearer user-token", "content-type": "application/json" },
-        body: JSON.stringify({ sentiment: "favor" }),
+        body: JSON.stringify({ rating: "positive", comment: "Useful events and helpful organizers." }),
       },
       env(db),
     );
-    assert.equal(favor.status, 200);
-    assert.deepEqual(await favor.json(), {
+    assert.equal(positive.status, 200);
+    const positiveBody = await positive.json() as Record<string, unknown>;
+    assert.deepEqual({
+      ...positiveBody,
+      my_feedback: { ...(positiveBody.my_feedback as Record<string, unknown>), updated_at: "present" },
+    }, {
       organization_id: "org-1",
-      sentiment: "favor",
-      favor_count: 1,
-      disfavor_count: 0,
-      sentiment_score: 1,
+      my_feedback: {
+        rating: "positive",
+        comment: "Useful events and helpful organizers.",
+        updated_at: "present",
+      },
+      feedback_count: 1,
+      feedback_positive_count: 1,
+      feedback_concern_count: 0,
+      feedback_score: 1,
     });
 
-    const disfavor = await app.request(
-      "https://org.example.test/api/network/orgs/test-org/sentiment",
+    const concern = await app.request(
+      "https://org.example.test/api/network/orgs/test-org/feedback",
       {
         method: "PUT",
         headers: { authorization: "Bearer user-token", "content-type": "application/json" },
-        body: JSON.stringify({ sentiment: "disfavor" }),
+        body: JSON.stringify({ rating: "concern", comment: "Needs clearer meeting details." }),
       },
       env(db),
     );
-    assert.equal(disfavor.status, 200);
-    assert.deepEqual(await disfavor.json(), {
+    assert.equal(concern.status, 200);
+    const concernBody = await concern.json() as Record<string, unknown>;
+    assert.deepEqual({
+      ...concernBody,
+      my_feedback: { ...(concernBody.my_feedback as Record<string, unknown>), updated_at: "present" },
+    }, {
       organization_id: "org-1",
-      sentiment: "disfavor",
-      favor_count: 0,
-      disfavor_count: 1,
-      sentiment_score: -1,
+      my_feedback: {
+        rating: "concern",
+        comment: "Needs clearer meeting details.",
+        updated_at: "present",
+      },
+      feedback_count: 1,
+      feedback_positive_count: 0,
+      feedback_concern_count: 1,
+      feedback_score: -1,
     });
 
     const cleared = await app.request(
-      "https://org.example.test/api/network/orgs/org-1/sentiment",
+      "https://org.example.test/api/network/orgs/org-1/feedback",
       { method: "DELETE", headers: { authorization: "Bearer user-token" } },
       env(db),
     );
     assert.equal(cleared.status, 200);
     assert.deepEqual(await cleared.json(), {
       organization_id: "org-1",
-      sentiment: null,
-      favor_count: 0,
-      disfavor_count: 0,
-      sentiment_score: 0,
+      my_feedback: null,
+      feedback_count: 0,
+      feedback_positive_count: 0,
+      feedback_concern_count: 0,
+      feedback_score: 0,
+    });
+  });
+});
+
+test("users can join and leave organization groups", async () => {
+  const db = new FakeD1();
+  db.organizations.push({
+    id: "org-1",
+    name: "Test Org",
+    slug: "test-org",
+    description: null,
+    source_url: null,
+    image_url: null,
+    tags: "[]",
+    city: null,
+    created_at: "2026-06-07T00:00:00.000Z",
+    updated_at: "2026-06-07T00:00:00.000Z",
+  });
+
+  await withPidpUser({ id: "user-1", email: "user@example.test", full_name: "Test User" }, async () => {
+    const joined = await app.request(
+      "https://org.example.test/api/network/orgs/test-org/membership",
+      { method: "POST", headers: { authorization: "Bearer user-token" } },
+      env(db),
+    );
+    assert.equal(joined.status, 200);
+    assert.deepEqual(await joined.json(), {
+      organization_id: "org-1",
+      role: "member",
+      status: "active",
+      membership_count: 1,
+    });
+
+    const left = await app.request(
+      "https://org.example.test/api/network/orgs/org-1/membership",
+      { method: "DELETE", headers: { authorization: "Bearer user-token" } },
+      env(db),
+    );
+    assert.equal(left.status, 200);
+    assert.deepEqual(await left.json(), {
+      organization_id: "org-1",
+      role: null,
+      status: "none",
+      membership_count: 0,
     });
   });
 });

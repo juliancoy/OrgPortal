@@ -133,11 +133,24 @@ type OrganizationRow = {
   membership_count?: number | null;
   pending_challenges_count?: number | null;
   my_role?: string | null;
+  feedback_count?: number | null;
+  feedback_positive_count?: number | null;
+  feedback_concern_count?: number | null;
 };
 
-type OrganizationSentimentCounts = {
-  favor_count?: number | null;
-  disfavor_count?: number | null;
+type OrganizationFeedbackRating = "positive" | "neutral" | "concern";
+
+type OrganizationFeedbackRow = {
+  rating: OrganizationFeedbackRating;
+  comment: string | null;
+  updated_at: string;
+};
+
+type OrganizationMembershipState = {
+  organization_id: string;
+  role: string | null;
+  status: "active" | "none";
+  membership_count: number;
 };
 
 type EventRow = {
@@ -881,9 +894,9 @@ async function applyContactPayload(env: Env, row: ContactRow, user: PidpUser, pa
     .run();
 }
 
-function mapOrganization(row: OrganizationRow & OrganizationSentimentCounts, upcomingEventsCount = 0) {
-  const favorCount = Number(row.favor_count || 0);
-  const disfavorCount = Number(row.disfavor_count || 0);
+function mapOrganization(row: OrganizationRow, upcomingEventsCount = 0) {
+  const positiveCount = Number(row.feedback_positive_count || 0);
+  const concernCount = Number(row.feedback_concern_count || 0);
   return {
     id: row.id,
     name: row.name,
@@ -901,9 +914,10 @@ function mapOrganization(row: OrganizationRow & OrganizationSentimentCounts, upc
     membership_count: Number(row.membership_count || 0),
     my_role: row.my_role || null,
     upcoming_events_count: upcomingEventsCount,
-    favor_count: favorCount,
-    disfavor_count: disfavorCount,
-    sentiment_score: favorCount - disfavorCount,
+    feedback_count: Number(row.feedback_count || 0),
+    feedback_positive_count: positiveCount,
+    feedback_concern_count: concernCount,
+    feedback_score: positiveCount - concernCount,
     pending_challenges_count: Number(row.pending_challenges_count || 0),
     is_disputed: Number(row.pending_challenges_count || 0) > 0,
     created_at: row.created_at,
@@ -1260,19 +1274,40 @@ async function organizationByIdOrSlug(db: D1Database, organizationId: string) {
     .first<OrganizationRow>();
 }
 
-async function organizationSentimentCounts(db: D1Database, organizationId: string) {
+async function organizationFeedbackSummary(db: D1Database, organizationId: string) {
   const row = await db.prepare(
     `SELECT
-      COALESCE(SUM(CASE WHEN sentiment = 'favor' THEN 1 ELSE 0 END), 0) AS favor_count,
-      COALESCE(SUM(CASE WHEN sentiment = 'disfavor' THEN 1 ELSE 0 END), 0) AS disfavor_count
-     FROM organization_sentiments
+      count(*) AS feedback_count,
+      COALESCE(SUM(CASE WHEN rating = 'positive' THEN 1 ELSE 0 END), 0) AS feedback_positive_count,
+      COALESCE(SUM(CASE WHEN rating = 'concern' THEN 1 ELSE 0 END), 0) AS feedback_concern_count
+     FROM organization_feedback
      WHERE organization_id = ?`,
   )
     .bind(organizationId)
-    .first<Required<OrganizationSentimentCounts>>();
+    .first<Pick<Required<OrganizationRow>, "feedback_count" | "feedback_positive_count" | "feedback_concern_count">>();
   return {
-    favor_count: Number(row?.favor_count || 0),
-    disfavor_count: Number(row?.disfavor_count || 0),
+    feedback_count: Number(row?.feedback_count || 0),
+    feedback_positive_count: Number(row?.feedback_positive_count || 0),
+    feedback_concern_count: Number(row?.feedback_concern_count || 0),
+  };
+}
+
+async function organizationMembershipState(db: D1Database, organizationId: string, userId: string): Promise<OrganizationMembershipState> {
+  const membership = await db.prepare(
+    "SELECT role FROM organization_memberships WHERE organization_id = ? AND user_id = ? AND status = 'active'",
+  )
+    .bind(organizationId, userId)
+    .first<{ role: string }>();
+  const count = await db.prepare(
+    "SELECT count(*) AS n FROM organization_memberships WHERE organization_id = ? AND status = 'active'",
+  )
+    .bind(organizationId)
+    .first<{ n: number }>();
+  return {
+    organization_id: organizationId,
+    role: membership?.role || null,
+    status: membership?.role ? "active" : "none",
+    membership_count: Number(count?.n || 0),
   };
 }
 
@@ -2192,18 +2227,19 @@ app.get("/api/network/orgs/public", async (c) => {
   const rows = await c.env.DB.prepare(
     `SELECT o.*,
       (SELECT count(*) FROM events e WHERE e.host_org_id = o.id AND (e.starts_at IS NULL OR e.starts_at >= datetime('now'))) AS upcoming_events_count,
-      (SELECT count(*) FROM organization_sentiments s WHERE s.organization_id = o.id AND s.sentiment = 'favor') AS favor_count,
-      (SELECT count(*) FROM organization_sentiments s WHERE s.organization_id = o.id AND s.sentiment = 'disfavor') AS disfavor_count,
+      (SELECT count(*) FROM organization_feedback f WHERE f.organization_id = o.id) AS feedback_count,
+      (SELECT count(*) FROM organization_feedback f WHERE f.organization_id = o.id AND f.rating = 'positive') AS feedback_positive_count,
+      (SELECT count(*) FROM organization_feedback f WHERE f.organization_id = o.id AND f.rating = 'concern') AS feedback_concern_count,
       (SELECT own.owner_user_id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS claimed_by_user_id,
       (SELECT own.id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS ownership_id,
       (SELECT count(*) FROM organization_memberships m WHERE m.organization_id = o.id AND m.status = 'active') AS membership_count,
       (SELECT count(*) FROM organization_ownership_challenges ch WHERE ch.organization_id = o.id AND ch.status = 'open') AS pending_challenges_count
      FROM organizations o
-     ORDER BY (favor_count - disfavor_count) DESC, upcoming_events_count DESC, lower(o.name) ASC
+     ORDER BY membership_count DESC, (feedback_positive_count - feedback_concern_count) DESC, upcoming_events_count DESC, lower(o.name) ASC
      LIMIT ?`,
   )
     .bind(candidateLimit)
-    .all<OrganizationRow & { upcoming_events_count: number } & OrganizationSentimentCounts>();
+    .all<OrganizationRow & { upcoming_events_count: number }>();
   const rankedRows = rankSearchResults(rows.results || [], q, (row) => [row.name, row.description, row.slug, row.tags, row.city], limit);
   return c.json(rankedRows.map((row) => mapOrganization(row, Number(row.upcoming_events_count || 0))));
 });
@@ -2214,6 +2250,9 @@ app.get("/api/network/orgs/public/:slug", async (c) => {
       (SELECT own.owner_user_id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS claimed_by_user_id,
       (SELECT own.id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS ownership_id,
       (SELECT count(*) FROM organization_memberships m WHERE m.organization_id = o.id AND m.status = 'active') AS membership_count,
+      (SELECT count(*) FROM organization_feedback f WHERE f.organization_id = o.id) AS feedback_count,
+      (SELECT count(*) FROM organization_feedback f WHERE f.organization_id = o.id AND f.rating = 'positive') AS feedback_positive_count,
+      (SELECT count(*) FROM organization_feedback f WHERE f.organization_id = o.id AND f.rating = 'concern') AS feedback_concern_count,
       (SELECT count(*) FROM organization_ownership_challenges ch WHERE ch.organization_id = o.id AND ch.status = 'open') AS pending_challenges_count
      FROM organizations o WHERE o.slug = ?`,
   )
@@ -2223,8 +2262,7 @@ app.get("/api/network/orgs/public/:slug", async (c) => {
   const count = await c.env.DB.prepare("SELECT count(*) AS n FROM events WHERE host_org_id = ? AND (starts_at IS NULL OR starts_at >= datetime('now'))")
     .bind(row.id)
     .first<{ n: number }>();
-  const sentimentCounts = await organizationSentimentCounts(c.env.DB, row.id);
-  return c.json({ ...mapOrganization({ ...row, ...sentimentCounts }, Number(count?.n || 0)), public_url: await orgPublicUrl(c.env, c.req.raw, row.slug) });
+  return c.json({ ...mapOrganization(row, Number(count?.n || 0)), public_url: await orgPublicUrl(c.env, c.req.raw, row.slug) });
 });
 
 app.get("/api/network/orgs/public/:slug/events", async (c) => {
@@ -2326,6 +2364,9 @@ app.get("/api/network/orgs", async (c) => {
       (SELECT own.owner_user_id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS claimed_by_user_id,
       (SELECT own.id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS ownership_id,
       (SELECT count(*) FROM organization_memberships mc WHERE mc.organization_id = o.id AND mc.status = 'active') AS membership_count,
+      (SELECT count(*) FROM organization_feedback f WHERE f.organization_id = o.id) AS feedback_count,
+      (SELECT count(*) FROM organization_feedback f WHERE f.organization_id = o.id AND f.rating = 'positive') AS feedback_positive_count,
+      (SELECT count(*) FROM organization_feedback f WHERE f.organization_id = o.id AND f.rating = 'concern') AS feedback_concern_count,
       (SELECT count(*) FROM organization_ownership_challenges ch WHERE ch.organization_id = o.id AND ch.status = 'open') AS pending_challenges_count,
       (SELECT m.role FROM organization_memberships m WHERE m.organization_id = o.id AND m.user_id = ? AND m.status = 'active') AS my_role
      FROM organizations o
@@ -2337,11 +2378,7 @@ app.get("/api/network/orgs", async (c) => {
     .bind(user.id, mine ? 1 : 0, user.id, candidateLimit)
     .all<OrganizationRow>();
   const rankedRows = rankSearchResults(rows.results || [], q, (row) => [row.name, row.description, row.slug, row.tags, row.city], limit);
-  const mapped = [];
-  for (const row of rankedRows) {
-    mapped.push(mapOrganization({ ...row, ...(await organizationSentimentCounts(c.env.DB, row.id)) }));
-  }
-  return c.json(mapped);
+  return c.json(rankedRows.map((row) => mapOrganization(row)));
 });
 
 app.post("/api/network/orgs", async (c) => {
@@ -2361,6 +2398,9 @@ app.post("/api/network/orgs", async (c) => {
       (SELECT own.owner_user_id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS claimed_by_user_id,
       (SELECT own.id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS ownership_id,
       (SELECT count(*) FROM organization_memberships m WHERE m.organization_id = o.id AND m.status = 'active') AS membership_count,
+      (SELECT count(*) FROM organization_feedback f WHERE f.organization_id = o.id) AS feedback_count,
+      (SELECT count(*) FROM organization_feedback f WHERE f.organization_id = o.id AND f.rating = 'positive') AS feedback_positive_count,
+      (SELECT count(*) FROM organization_feedback f WHERE f.organization_id = o.id AND f.rating = 'concern') AS feedback_concern_count,
       (SELECT count(*) FROM organization_ownership_challenges ch WHERE ch.organization_id = o.id AND ch.status = 'open') AS pending_challenges_count,
       (SELECT m.role FROM organization_memberships m WHERE m.organization_id = o.id AND m.user_id = ? AND m.status = 'active') AS my_role
      FROM organizations o WHERE o.id = ?`,
@@ -2376,74 +2416,122 @@ app.get("/api/network/orgs/:organizationId", async (c) => {
       (SELECT own.owner_user_id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS claimed_by_user_id,
       (SELECT own.id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS ownership_id,
       (SELECT count(*) FROM organization_memberships m WHERE m.organization_id = o.id AND m.status = 'active') AS membership_count,
+      (SELECT count(*) FROM organization_feedback f WHERE f.organization_id = o.id) AS feedback_count,
+      (SELECT count(*) FROM organization_feedback f WHERE f.organization_id = o.id AND f.rating = 'positive') AS feedback_positive_count,
+      (SELECT count(*) FROM organization_feedback f WHERE f.organization_id = o.id AND f.rating = 'concern') AS feedback_concern_count,
       (SELECT count(*) FROM organization_ownership_challenges ch WHERE ch.organization_id = o.id AND ch.status = 'open') AS pending_challenges_count,
       (SELECT m.role FROM organization_memberships m WHERE m.organization_id = o.id AND m.user_id = ? AND m.status = 'active') AS my_role
      FROM organizations o WHERE o.id = ? OR o.slug = ?`,
   ).bind(user.id, requested, slugify(requested)).first<OrganizationRow>();
   if (!row) fail(404, "Organization not found");
-  return c.json(mapOrganization({ ...row, ...(await organizationSentimentCounts(c.env.DB, row.id)) }));
+  return c.json(mapOrganization(row));
 });
 
-app.get("/api/network/orgs/:organizationId/sentiment", async (c) => {
+app.get("/api/network/orgs/:organizationId/feedback", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
   if (!row) fail(404, "Organization not found");
-  const mine = await c.env.DB.prepare("SELECT sentiment FROM organization_sentiments WHERE organization_id = ? AND user_id = ?")
+  const mine = await c.env.DB.prepare(
+    "SELECT rating, comment, updated_at FROM organization_feedback WHERE organization_id = ? AND user_id = ?",
+  )
     .bind(row.id, user.id)
-    .first<{ sentiment: "favor" | "disfavor" }>();
-  const counts = await organizationSentimentCounts(c.env.DB, row.id);
+    .first<OrganizationFeedbackRow>();
+  const counts = await organizationFeedbackSummary(c.env.DB, row.id);
   return c.json({
     organization_id: row.id,
-    sentiment: mine?.sentiment || null,
-    favor_count: counts.favor_count,
-    disfavor_count: counts.disfavor_count,
-    sentiment_score: counts.favor_count - counts.disfavor_count,
+    my_feedback: mine || null,
+    ...counts,
+    feedback_score: counts.feedback_positive_count - counts.feedback_concern_count,
   });
 });
 
-app.put("/api/network/orgs/:organizationId/sentiment", async (c) => {
+app.put("/api/network/orgs/:organizationId/feedback", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
   if (!row) fail(404, "Organization not found");
   const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
-  const sentiment = String(payload.sentiment || "").trim().toLowerCase();
-  if (sentiment !== "favor" && sentiment !== "disfavor") fail(400, "sentiment must be favor or disfavor");
+  const rating = String(payload.rating || "").trim().toLowerCase();
+  if (rating !== "positive" && rating !== "neutral" && rating !== "concern") {
+    fail(400, "rating must be positive, neutral, or concern");
+  }
+  const comment = stringField(payload, "comment", 1200) || "";
   const timestamp = nowIso();
   await c.env.DB.prepare(
-    `INSERT INTO organization_sentiments (organization_id, user_id, user_name, sentiment, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?)
+    `INSERT INTO organization_feedback (organization_id, user_id, user_name, rating, comment, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(organization_id, user_id) DO UPDATE SET
       user_name = excluded.user_name,
-      sentiment = excluded.sentiment,
+      rating = excluded.rating,
+      comment = excluded.comment,
       updated_at = excluded.updated_at`,
   )
-    .bind(row.id, user.id, userName(user), sentiment, timestamp, timestamp)
+    .bind(row.id, user.id, userName(user), rating, comment, timestamp, timestamp)
     .run();
-  const counts = await organizationSentimentCounts(c.env.DB, row.id);
+  const counts = await organizationFeedbackSummary(c.env.DB, row.id);
   return c.json({
     organization_id: row.id,
-    sentiment,
-    favor_count: counts.favor_count,
-    disfavor_count: counts.disfavor_count,
-    sentiment_score: counts.favor_count - counts.disfavor_count,
+    my_feedback: { rating, comment, updated_at: timestamp },
+    ...counts,
+    feedback_score: counts.feedback_positive_count - counts.feedback_concern_count,
   });
 });
 
-app.delete("/api/network/orgs/:organizationId/sentiment", async (c) => {
+app.delete("/api/network/orgs/:organizationId/feedback", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
   if (!row) fail(404, "Organization not found");
-  await c.env.DB.prepare("DELETE FROM organization_sentiments WHERE organization_id = ? AND user_id = ?")
+  await c.env.DB.prepare("DELETE FROM organization_feedback WHERE organization_id = ? AND user_id = ?")
     .bind(row.id, user.id)
     .run();
-  const counts = await organizationSentimentCounts(c.env.DB, row.id);
+  const counts = await organizationFeedbackSummary(c.env.DB, row.id);
   return c.json({
     organization_id: row.id,
-    sentiment: null,
-    favor_count: counts.favor_count,
-    disfavor_count: counts.disfavor_count,
-    sentiment_score: counts.favor_count - counts.disfavor_count,
+    my_feedback: null,
+    ...counts,
+    feedback_score: counts.feedback_positive_count - counts.feedback_concern_count,
   });
+});
+
+app.get("/api/network/orgs/:organizationId/membership", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
+  if (!row) fail(404, "Organization not found");
+  return c.json(await organizationMembershipState(c.env.DB, row.id, user.id));
+});
+
+app.post("/api/network/orgs/:organizationId/membership", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
+  if (!row) fail(404, "Organization not found");
+  const timestamp = nowIso();
+  await c.env.DB.prepare(
+    `INSERT INTO organization_memberships (organization_id, user_id, user_name, user_email, role, status, created_at, updated_at)
+     VALUES (?, ?, ?, ?, 'member', 'active', ?, ?)
+     ON CONFLICT(organization_id, user_id) DO UPDATE SET
+      user_name = excluded.user_name,
+      user_email = excluded.user_email,
+      status = 'active',
+      updated_at = excluded.updated_at`,
+  )
+    .bind(row.id, user.id, userName(user), user.email || null, timestamp, timestamp)
+    .run();
+  return c.json(await organizationMembershipState(c.env.DB, row.id, user.id));
+});
+
+app.delete("/api/network/orgs/:organizationId/membership", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
+  if (!row) fail(404, "Organization not found");
+  const membership = await organizationMembershipState(c.env.DB, row.id, user.id);
+  if (membership.role === "owner" || membership.role === "administrator") {
+    fail(409, "Organization admins must transfer or remove admin access before leaving");
+  }
+  await c.env.DB.prepare(
+    "UPDATE organization_memberships SET status = 'inactive', updated_at = ? WHERE organization_id = ? AND user_id = ? AND role = 'member'",
+  )
+    .bind(nowIso(), row.id, user.id)
+    .run();
+  return c.json(await organizationMembershipState(c.env.DB, row.id, user.id));
 });
 
 app.patch("/api/network/orgs/:organizationId", async (c) => {
