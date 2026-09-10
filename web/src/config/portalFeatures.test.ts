@@ -20,7 +20,7 @@ function memoryStorage(initialValue?: string) {
 
 describe('portal feature profiles', () => {
   it('selects MedTech by its custom domain even with a conflicting saved profile', () => {
-    const profile = getActivePortalProfileConfig('?portalProfile=code-collective', memoryStorage('code-collective'), 'community.medtech.social')
+    const profile = getActivePortalProfileConfig('?portalProfile=code-collective', memoryStorage('code-collective'), 'medtech.social')
     expect(profile.id).toBe('baltimore-medtech')
     expect(profile.memberHomePath).toBe('/community')
   })
