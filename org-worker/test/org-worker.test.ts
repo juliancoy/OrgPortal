@@ -135,7 +135,8 @@ class FakeD1 {
       return (this.contacts.find((row) => row.slug === params[0]) as T) || null;
     }
     if (sql.includes("FROM portal_tenants WHERE hostname = ?")) {
-      return (this.portalTenants.find((row) => row.hostname === params[0]) as T) || null;
+      const row = this.portalTenants.find((row) => row.hostname === params[0] && (!sql.includes("id <> ?") || row.id !== params[1]));
+      return (row as T) || null;
     }
     if (sql.includes("FROM portal_tenants WHERE slug = ?")) {
       return (this.portalTenants.find((row) => row.slug === params[0]) as T) || null;
@@ -613,11 +614,40 @@ class FakeD1 {
         public_base_url: params[21],
         canonical_path_prefix: "/p",
         feature_config: params[22],
+        custom_domain_hostname: null,
+        custom_domain_status: "none",
+        custom_domain_requested_at: null,
+        custom_domain_attached_at: null,
+        custom_domain_notes: null,
         created_at: params[23],
         updated_at: params[24],
       };
       if (existing) Object.assign(existing, row);
       else this.portalTenants.push(row);
+    }
+    if (sql.includes("custom_domain_status = 'requested'")) {
+      const row = this.portalTenants.find((tenant) => tenant.id === params[4]);
+      if (row) {
+        row.custom_domain_hostname = params[0];
+        row.custom_domain_status = "requested";
+        row.custom_domain_requested_at = params[1];
+        row.custom_domain_attached_at = null;
+        row.custom_domain_notes = params[2];
+        row.updated_at = params[3];
+      }
+    }
+    if (sql.includes("custom_domain_status = 'attached'")) {
+      const row = this.portalTenants.find((tenant) => tenant.id === params[6]);
+      if (row) {
+        row.hostname = params[0];
+        row.public_base_url = params[1];
+        row.canonical_path_prefix = "";
+        row.custom_domain_hostname = params[2];
+        row.custom_domain_status = "attached";
+        row.custom_domain_attached_at = params[3];
+        row.custom_domain_notes = params[4];
+        row.updated_at = params[5];
+      }
     }
     return { success: true, meta: { changes: 1 } };
   }
@@ -1817,5 +1847,71 @@ test("non-admins cannot publish organization slug portals", async () => {
     );
     assert.equal(response.status, 403);
     assert.equal(db.portalTenants.length, 0);
+  });
+});
+
+test("organization admins can request and attach a custom portal domain", async () => {
+  const db = new FakeD1();
+  db.organizations.push({
+    id: "org-1",
+    name: "Test Org",
+    slug: "test-org",
+    description: null,
+    source_url: null,
+    image_url: null,
+    tags: "[]",
+    city: null,
+    created_at: "2026-06-07T00:00:00.000Z",
+    updated_at: "2026-06-07T00:00:00.000Z",
+  });
+  db.organizationMemberships.push({
+    organization_id: "org-1",
+    user_id: "admin-1",
+    role: "owner",
+    status: "active",
+  });
+
+  await withPidpUser({ id: "admin-1", email: "admin@example.test", full_name: "Admin User" }, async () => {
+    await app.request(
+      "https://org.example.test/api/network/orgs/test-org/portal",
+      {
+        method: "PUT",
+        headers: { authorization: "Bearer admin-token", "content-type": "application/json" },
+        body: JSON.stringify({ slug: "test-org" }),
+      },
+      env(db),
+    );
+
+    const requested = await app.request(
+      "https://org.example.test/api/network/orgs/test-org/portal/custom-domain/request",
+      {
+        method: "POST",
+        headers: { authorization: "Bearer admin-token", "content-type": "application/json" },
+        body: JSON.stringify({ hostname: "portal.test-org.example", notes: "DNS owner confirmed" }),
+      },
+      env(db),
+    );
+    assert.equal(requested.status, 200);
+    const requestedPayload = await requested.json() as { portal: Row; checklist: string[] };
+    assert.equal(requestedPayload.portal.custom_domain_hostname, "portal.test-org.example");
+    assert.equal(requestedPayload.portal.custom_domain_status, "requested");
+    assert.equal(requestedPayload.portal.hostname, "test-org.slug.portal.local");
+    assert.ok(requestedPayload.checklist.some((item) => item.includes("Cloudflare custom domain")));
+
+    const attached = await app.request(
+      "https://org.example.test/api/network/orgs/test-org/portal/custom-domain/attach",
+      {
+        method: "POST",
+        headers: { authorization: "Bearer admin-token", "content-type": "application/json" },
+        body: JSON.stringify({ hostname: "portal.test-org.example" }),
+      },
+      env(db),
+    );
+    assert.equal(attached.status, 200);
+    const attachedPayload = await attached.json() as { portal: Row };
+    assert.equal(attachedPayload.portal.custom_domain_status, "attached");
+    assert.equal(attachedPayload.portal.hostname, "portal.test-org.example");
+    assert.equal(attachedPayload.portal.public_base_url, "https://portal.test-org.example");
+    assert.equal(attachedPayload.portal.canonical_path_prefix, "");
   });
 });

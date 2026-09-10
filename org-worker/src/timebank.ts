@@ -28,6 +28,11 @@ export type PortalTenant = Community & {
   public_base_url?: string | null;
   canonical_path_prefix?: string | null;
   feature_config?: string | null;
+  custom_domain_hostname?: string | null;
+  custom_domain_status?: string | null;
+  custom_domain_requested_at?: string | null;
+  custom_domain_attached_at?: string | null;
+  custom_domain_notes?: string | null;
 };
 const DEFAULT_COMMUNITY = 'code-collective';
 export const TIMEBANK_CATEGORIES = ['Home & garden', 'Learning', 'Tech help', 'Care & company', 'Transport', 'Creative', 'Other'] as const;

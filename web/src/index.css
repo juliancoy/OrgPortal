@@ -6707,6 +6707,21 @@ textarea:focus {
   gap: 0.65rem;
 }
 
+.portal-org-domain-flow {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel), var(--primary) 4%);
+}
+
+.portal-org-domain-checklist {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--text-muted);
+}
+
 @media (max-width: 980px) {
   .scan-intake-layout {
     grid-template-columns: 1fr;
