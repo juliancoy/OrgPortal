@@ -51,7 +51,25 @@ function toLocalDateTime(value?: string | null) {
   if (!value) return 'TBD'
   const dt = new Date(value)
   if (Number.isNaN(dt.getTime())) return 'TBD'
-  return dt.toLocaleString()
+  return dt.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+}
+
+function toEventDate(value?: string | null) {
+  if (!value) return 'Date TBD'
+  const dt = new Date(value)
+  if (Number.isNaN(dt.getTime())) return 'Date TBD'
+  return dt.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+}
+
+function toEventTimeRange(start?: string | null, end?: string | null) {
+  if (!start) return 'Time TBD'
+  const startDate = new Date(start)
+  if (Number.isNaN(startDate.getTime())) return 'Time TBD'
+  const startText = startDate.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+  if (!end) return startText
+  const endDate = new Date(end)
+  if (Number.isNaN(endDate.getTime())) return startText
+  return `${startText} to ${endDate.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`
 }
 
 function eventUrl(slug: string) {
@@ -263,28 +281,52 @@ export function PublicEventPage() {
   const eventEnd = event.ends_at || eventStart || null
 
   return (
-    <article className="panel" style={{ display: 'grid', gap: '0.9rem' }}>
-      <h1 style={{ marginTop: 0 }}>{event.title}</h1>
-      <p className="muted" style={{ margin: 0 }}>
-        {toLocalDateTime(event.starts_at)}
-        {event.ends_at ? ` → ${toLocalDateTime(event.ends_at)}` : ''}
-      </p>
-      {event.location ? <p style={{ margin: 0, overflowWrap: 'anywhere' }}><strong>Location:</strong> {event.location}</p> : null}
-      <EventRegistration key={`${event.id}:${user?.id || 'guest'}:${Boolean(token)}`}
-        eventId={event.id} slug={event.slug} token={token} saveToCalendar={saveToCalendar}
-        organizationName={event.host_org_id ? event.organization_name || event.host_org_name : null} />
-      {event.image_url ? (
-        <img
-          src={event.image_url}
-          alt={event.title}
-          style={{ width: '100%', maxWidth: 720, borderRadius: 12, border: '1px solid var(--border)' }}
-        />
-      ) : null}
-      {event.description ? <p style={{ margin: 0, overflowWrap: 'anywhere' }}>{event.description}</p> : null}
-      <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+    <article className="public-event-page">
+      <section className="public-event-hero">
+        {event.image_url ? (
+          <img className="public-event-hero-image" src={event.image_url} alt="" />
+        ) : <div className="public-event-hero-image public-event-hero-placeholder" aria-hidden="true" />}
+        <div className="public-event-hero-content">
+          <p className="public-event-eyebrow">{getEventOrganizerName(event)}</p>
+          <h1>{event.title}</h1>
+          <div className="public-event-facts" aria-label="Event details">
+            <div>
+              <span>Date</span>
+              <strong>{toEventDate(event.starts_at)}</strong>
+            </div>
+            <div>
+              <span>Time</span>
+              <strong>{toEventTimeRange(event.starts_at, event.ends_at)}</strong>
+            </div>
+            {event.location ? (
+              <div>
+                <span>Location</span>
+                <strong>{event.location}</strong>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </section>
+
+      <div className="public-event-layout">
+        <main className="public-event-main">
+          {event.description ? (
+            <section className="portal-card public-event-description">
+              <div className="public-event-card-heading">
+                <p className="public-event-eyebrow">About The Event</p>
+                <h2>What To Expect</h2>
+              </div>
+              <p>{event.description}</p>
+            </section>
+          ) : null}
+          <section className="portal-card public-event-calendar-card">
+            <div className="public-event-card-heading">
+              <p className="public-event-eyebrow">Calendar</p>
+              <h2>Add It To Your Schedule</h2>
+            </div>
+            <div className="public-event-actions">
         {eventStart && eventEnd ? (
           <>
-            <span className="muted">Calendar Integrations:</span>
             <button
               type="button"
               className="portal-button-secondary"
@@ -315,7 +357,8 @@ export function PublicEventPage() {
             </a>
           </>
         ) : null}
-      </div>
+            </div>
+          </section>
       {event.source_url ? (
         <p style={{ margin: 0, overflowWrap: 'anywhere' }}>
           <a href={event.source_url} target="_blank" rel="noreferrer">
@@ -323,8 +366,11 @@ export function PublicEventPage() {
           </a>
         </p>
       ) : null}
-      <section className="portal-card" style={{ display: 'grid', gap: '0.55rem' }}>
-        <h2 style={{ margin: 0, fontSize: '1rem' }}>Event Chat</h2>
+      <section className="portal-card public-event-chat">
+        <div className="public-event-card-heading">
+          <p className="public-event-eyebrow">Conversation</p>
+          <h2>Event Chat</h2>
+        </div>
         {chatLoading ? (
           <p className="muted" style={{ margin: 0 }}>Loading event chat…</p>
         ) : null}
@@ -373,6 +419,13 @@ export function PublicEventPage() {
           <p className="muted" style={{ margin: 0 }}>Event chat room not available yet.</p>
         ) : null}
       </section>
+        </main>
+        <aside className="public-event-side">
+          <EventRegistration key={`${event.id}:${user?.id || 'guest'}:${Boolean(token)}`}
+            eventId={event.id} slug={event.slug} token={token} saveToCalendar={saveToCalendar}
+            organizationName={event.host_org_id ? event.organization_name || event.host_org_name : null} />
+        </aside>
+      </div>
     </article>
   )
 }
