@@ -158,6 +158,7 @@ test('domain selection rejects unknown communities; only admins can customize or
   assert.equal(medtech.id, 'baltimore-medtech');
   assert.equal(medtech.profile, 'baltimore-medtech');
   assert.deepEqual(medtech.features, ['directory', 'events', 'chat']);
+  assert.equal((await app.request('https://community.medtech.social/api/portal/tenant', {}, env)).status, 404);
   assert.equal((await app.request('https://unknown.codecollective.us/api/timebank/community', {}, env)).status, 404);
   const body = JSON.stringify({ name: 'Neighbor Time', tagline: 'Share your time.', accent_color: '#453876' });
   assert.equal((await request('/communities/neighbortime', { method: 'PUT', body, headers: { Authorization: 'Bearer alice' } })).status, 403);
