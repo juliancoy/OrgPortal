@@ -5,6 +5,7 @@ export class TimebankError extends Error {
 }
 
 export type Community = { id: string; hostname: string; name: string; tagline: string; accent_color: string };
+export type PortalTenant = Community & { profile: 'community'; features: string[] };
 const DEFAULT_COMMUNITY = 'code-collective';
 export const TIMEBANK_CATEGORIES = ['Home & garden', 'Learning', 'Tech help', 'Care & company', 'Transport', 'Creative', 'Other'] as const;
 
@@ -262,6 +263,11 @@ export async function resolveTimebankCommunity(db: D1Database, request: Request)
   const row = await db.prepare('SELECT * FROM timebank_communities WHERE hostname = ?').bind(hostname).first<Community>();
   if (!row) throw new TimebankError('This timebank community has not been configured.', 404);
   return row;
+}
+
+export async function resolvePortalTenant(db: D1Database, request: Request): Promise<PortalTenant> {
+  const community = await resolveTimebankCommunity(db, request);
+  return { ...community, profile: 'community', features: ['timebank'] };
 }
 
 export async function saveTimebankCommunity(db: D1Database, id: string, body: unknown) {

@@ -10,7 +10,13 @@ class SqliteStatement {
     const result = this.statement.run(...this.parameters);
     return { success: true, results: [], meta: { changes: Number(result.changes) } };
   }
-  async execute() { return this.statement.columns().length ? this.all() : this.run(); }
+  private returnsRows() {
+    const columns = 'columns' in this.statement && typeof this.statement.columns === 'function'
+      ? this.statement.columns()
+      : this.statement.sourceSQL?.trim().match(/^(?:WITH|SELECT|PRAGMA)\b/i) ? [true] : [];
+    return columns.length > 0;
+  }
+  async execute() { return this.returnsRows() ? this.all() : this.run(); }
 }
 
 export class TimebankDatabase {

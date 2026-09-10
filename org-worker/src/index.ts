@@ -5,7 +5,7 @@ import { HTTPException } from "hono/http-exception";
 import { handleEventMcp, protectedResourceMetadata, eventErrorResponse } from "./eventMcp";
 import { checkEventConfiguration } from "./eventConfiguration";
 import {
-  getTimebankListing, setTimebankUptake, timebankAnalytics, resolveTimebankCommunity, saveTimebankCommunity, setTimebankPhoto, getTimebankPhoto,
+  getTimebankListing, setTimebankUptake, timebankAnalytics, resolvePortalTenant, resolveTimebankCommunity, saveTimebankCommunity, setTimebankPhoto, getTimebankPhoto,
   TimebankError, timebankDashboard, publicTimebankOffers, createTimebankListing, updateTimebankListing,
   proposeTimebankExchange, resolveTimebankExchange,
 } from "./timebank";
@@ -3012,6 +3012,11 @@ app.get("/api/health-insurance/diagnoses", async (c) => {
 app.get("/api/timebank/community", async (c) => {
   c.header("Cache-Control", "no-store");
   return c.json(await resolveTimebankCommunity(c.env.DB, c.req.raw));
+});
+
+app.get("/api/portal/tenant", async (c) => {
+  c.header("Cache-Control", "no-store");
+  return c.json(await resolvePortalTenant(c.env.DB, c.req.raw));
 });
 
 app.get("/api/timebank/public-offers", async (c) => {
