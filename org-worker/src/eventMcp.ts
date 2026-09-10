@@ -35,8 +35,7 @@ const eventCommentsSchema = z.object({
   eventSlug: z.string().min(1).max(255).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
   previewId: z.string().uuid().optional(),
   confirm: z.boolean().optional(),
-  roomId: z.string().regex(/^![^\s:]{1,200}:[A-Za-z0-9.-]+$/).optional().nullable(),
-  roomAlias: z.string().regex(/^#[^\s:]{1,200}:[A-Za-z0-9.-]+$/).optional().nullable(),
+  conversationId: z.string().min(1).max(255).optional().nullable(),
   roomName: z.string().min(1).max(255).optional().nullable(),
 }).strict();
 const nativeEventSchema = z.object({
@@ -311,12 +310,10 @@ async function eventForComments(db: D1Database, organizationId: string, eventSlu
 }
 
 function normalizeEventComments(input: EventCommentsInput) {
-  const roomId = nullable(input.roomId);
-  const roomAlias = nullable(input.roomAlias);
-  if (!roomId && !roomAlias) throw new EventIntegrationError(400, "Provide a Matrix room id or alias for event comments");
+  const conversationId = nullable(input.conversationId);
+  if (!conversationId) throw new EventIntegrationError(400, "Provide a native chat conversation id for event comments");
   return {
-    roomId,
-    roomAlias,
+    conversationId,
     roomName: nullable(input.roomName) || "Event comments",
   };
 }
@@ -333,8 +330,7 @@ async function previewEventComments(env: Env, input: EventCommentsInput) {
       slug: event.slug,
       title: event.title,
       current: {
-        roomId: event.event_chat_room_id || null,
-        roomAlias: event.event_chat_room_alias || null,
+        conversationId: event.event_chat_room_id || null,
         roomName: event.event_chat_room_name || null,
       },
       next: comments,
@@ -351,7 +347,7 @@ async function applyEventComments(env: Env, input: EventCommentsInput) {
      SET event_chat_room_id = ?, event_chat_room_alias = ?, event_chat_room_name = ?, updated_at = ?
      WHERE id = ?`,
   )
-    .bind(preview.event.next.roomId, preview.event.next.roomAlias, preview.event.next.roomName, now, preview.event.id)
+    .bind(preview.event.next.conversationId, null, preview.event.next.roomName, now, preview.event.id)
     .run();
   return { success: true, completed: ["configure_event_comments"], event: preview.event, publicUrl: preview.publicUrl };
 }
@@ -593,7 +589,7 @@ export async function handleEventMcp(request: Request, env: Env) {
     server.registerTool("apply_org_event_changes", { description: "Create or update a native OrgPortal event after showing a preview and obtaining user approval. Requires confirm=true and the matching one-use previewId.",
       inputSchema: nativeEventSchema, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       _meta: metadata([readScope, writeScope]) }, args => result("native", args));
-    server.registerTool("preview_event_comments", { description: "Preview enabling the public event comment section by attaching an existing Matrix room id or alias to an OrgPortal event.",
+    server.registerTool("preview_event_comments", { description: "Preview enabling the public event comment section by attaching an existing native OrgPortal chat conversation to an event.",
       inputSchema: eventCommentsSchema, annotations: { readOnlyHint: true, openWorldHint: false }, _meta: metadata([readScope]) },
       args => result("comments", { ...args, confirm: false }));
     server.registerTool("apply_event_comments", { description: "Enable the public event comment section after showing a preview and obtaining user approval. Requires confirm=true and the matching one-use previewId.",
