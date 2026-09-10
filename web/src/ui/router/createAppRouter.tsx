@@ -1,7 +1,7 @@
 import { PortalProfileBoundary } from '../shell/PortalProfileBoundary'
 import { MedTechCommunityPage } from '../views/MedTechCommunityPage'
 import { MedTechEventsPage } from '../views/MedTechEventsPage'
-import { getDomainCommunity } from '../../config/timebankCommunity'
+import { getDomainCommunity, getDomainTenant, type PortalTenant } from '../../config/timebankCommunity'
 import { useEffect, useState } from 'react'
 import type { ReactElement } from 'react'
 import { Navigate, createBrowserRouter, useLocation, useNavigate, useParams } from 'react-router-dom'
@@ -49,6 +49,7 @@ import { IdPage } from '../views/IdPage'
 import { SendPage } from '../views/SendPage'
 import { ReceivePage } from '../views/ReceivePage'
 import { TimebankPage } from '../views/TimebankPage'
+import { TenantEventsHomePage, TenantHomePage } from '../views/TenantHomePage'
 import { CreatePage } from '../views/CreatePage'
 import { CreateForProfitPage } from '../views/CreateForProfitPage'
 import { CreateNonProfitPage } from '../views/CreateNonProfitPage'
@@ -79,11 +80,40 @@ function AuthenticatedRoute(props: { children: ReactElement }) {
   return props.children
 }
 
+function internalHomePath(path?: string | null) {
+  const raw = String(path || '').trim()
+  if (!raw.startsWith('/')) return null
+  try {
+    const url = new URL(raw, 'https://portal.invalid')
+    if (url.origin !== 'https://portal.invalid') return null
+    if (url.pathname === '/' || url.pathname.startsWith('/auth/callback') || url.pathname.startsWith('/users/login')) return null
+    return `${url.pathname}${url.search}${url.hash}`
+  } catch {
+    return null
+  }
+}
+
+function tenantHomeElement(tenant: PortalTenant, role: string, profile: ReturnType<typeof getActivePortalProfileConfig>) {
+  const kind = tenant.home_kind || (tenant.features?.includes('timebank') ? 'timebank' : 'default')
+  if (kind === 'landing') return <TenantHomePage />
+  if (kind === 'timebank') return <Navigate to="/timebanking" replace />
+  if (kind === 'auth') return <Navigate to={portalProfilePath(role === 'guest' ? '/users/login' : profile.memberHomePath, profile)} replace />
+  if (kind === 'org' && tenant.home_org_slug) return <Navigate to={portalProfilePath(`/orgs/${encodeURIComponent(tenant.home_org_slug)}`, profile)} replace />
+  if (kind === 'org-events' && tenant.home_org_slug) return <TenantEventsHomePage />
+  if (kind === 'route') {
+    const path = internalHomePath(tenant.home_path || tenant.member_home_path)
+    return path ? <Navigate to={portalProfilePath(path, profile)} replace /> : <TenantHomePage />
+  }
+  return role === 'guest' ? <TenantHomePage /> : <Navigate to={portalProfilePath(profile.memberHomePath, profile)} replace />
+}
+
 function HomeRoute() {
   const { role, isLoading } = useAuth()
   if (isLoading) return null
-  if (getDomainCommunity()) return <Navigate to="/timebanking" replace />
   const profile = getActivePortalProfileConfig()
+  const tenant = getDomainTenant()
+  if (tenant) return tenantHomeElement(tenant, role, profile)
+  if (getDomainCommunity()) return <Navigate to="/timebanking" replace />
   if (profile.id === 'baltimore-medtech') {
     return <Navigate to={portalProfilePath(role === 'guest' ? '/users/login' : profile.memberHomePath)} replace />
   }

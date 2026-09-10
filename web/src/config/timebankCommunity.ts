@@ -13,6 +13,16 @@ export type PortalTenant = {
   member_home_path?: string | null
   manifest_path?: string | null
   theme_color?: string | null
+  home_kind?: 'default' | 'landing' | 'route' | 'org' | 'org-events' | 'timebank' | 'auth' | null
+  home_path?: string | null
+  home_org_slug?: string | null
+  home_heading?: string | null
+  home_description?: string | null
+  home_primary_label?: string | null
+  home_primary_href?: string | null
+  home_secondary_label?: string | null
+  home_secondary_href?: string | null
+  home_image_url?: string | null
 }
 export type TimebankCommunity = PortalTenant
 let tenant: PortalTenant | null = null
