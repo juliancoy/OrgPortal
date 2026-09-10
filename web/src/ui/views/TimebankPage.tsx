@@ -4,6 +4,7 @@ import { useTimebankInbox, signalInboxChange } from '../timebank/TimebankInbox'
 import { timebankListingPath, timebankMessagePath } from '../timebank/links'
 import { TimebankNotifications } from './timebank/TimebankNotifications'
 import { TimebankAnalytics } from './timebank/TimebankAnalytics'
+import { TimebankClaims, TimebankClaimReview } from './timebank/TimebankClaims'
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react'
 import { useAuth } from '../../app/AppProviders'
 import { toUserFacingErrorMessage } from '../../infrastructure/http/userFacingError'
@@ -26,7 +27,8 @@ type Exchange = {
   created_at: string; resolved_at: string | null
 }
 type Dashboard = {
-  account: { user_id: string; balance_minutes: number; earned_minutes: number; spent_minutes: number } | null
+  account: { user_id: string; balance_minutes: number; earned_minutes: number; spent_minutes: number; imported_balance_minutes: number | null; has_imported_account: boolean } | null
+  imports_available: boolean
   listings: Listing[]; exchanges: Exchange[]; community: TimebankCommunity; can_manage_community: boolean
 }
 const categories = ['Home & garden', 'Learning', 'Tech help', 'Care & company', 'Transport', 'Creative', 'Other']
@@ -76,8 +78,8 @@ export function TimebankPage() {
   const inbox = useTimebankInbox()
   const tabsRef = useRef<HTMLElement>(null)
   const requestedTab = params.get('tab')
-  const tab = token && (requestedTab === 'activity' || requestedTab === 'admin' || requestedTab === 'notifications') ? requestedTab : 'home'
-  const setTab = (next: 'home' | 'activity' | 'admin' | 'notifications') => {
+  const tab = token && (requestedTab === 'activity' || requestedTab === 'admin' || requestedTab === 'notifications' || requestedTab === 'imports') ? requestedTab : 'home'
+  const setTab = (next: 'home' | 'activity' | 'admin' | 'notifications' | 'imports') => {
     if (next === 'home') setSearch('')
     setParams(next === 'home' ? {} : { tab: next })
   }
@@ -241,6 +243,7 @@ export function TimebankPage() {
       <nav ref={tabsRef} className="tb-tabs" aria-label="Timebank sections">
         <button aria-current={tab === 'home' ? 'page' : undefined} onClick={() => setTab('home')}>Home</button>
         {token && <button aria-current={tab === 'activity' ? 'page' : undefined} onClick={() => setTab('activity')}>My hours {pending.length > 0 && <span className="tb-count">{pending.length}</span>}</button>}
+        {token && data?.imports_available && <button aria-current={tab === 'imports' ? 'page' : undefined} onClick={() => setTab('imports')}>Claim LetsBMore account</button>}
         {token && <button aria-current={tab === 'notifications' ? 'page' : undefined} onClick={() => setTab('notifications')}>Notifications{inbox.unreadActivity + inbox.conversations.filter((item) => (item.unread_count || 0) > 0).length > 0 && <span className="tb-count">{inbox.unreadActivity + inbox.conversations.filter((item) => (item.unread_count || 0) > 0).length}</span>}</button>}
         {data?.can_manage_community && <button aria-current={tab === 'admin' ? 'page' : undefined} onClick={() => setTab('admin')}>Admin</button>}
       </nav>
@@ -273,13 +276,16 @@ export function TimebankPage() {
         })}
       </div>
     </section>}
+    {data?.imports_available && tab === 'home' && <div className="tb-quiet tb-import-banner"><strong>Previously a LetsBMore member?</strong> <button className="tb-text-button" onClick={() => token ? setTab('imports') : navigate(`/users/login?next=${encodeURIComponent(`${timebankHomePath()}?tab=imports`)}`)}>Sign in and claim your existing hours</button></div>}
+    {tab === 'imports' && <TimebankClaims onChanged={refresh} />}
     {tab === 'notifications' && <TimebankNotifications />}
     {data?.can_manage_community && tab === 'admin' && <>
       <div className="tb-admin-tools"><button className="tb-text-button" onClick={() => { setNewCommunity(false); setSettings(data.community); setSavedDomain(''); setError('') }}>Community settings</button></div>
       <TimebankAnalytics api={api} revision={revision} />
+      <TimebankClaimReview />
     </>}
     {data?.account && tab === 'activity' && <section className="tb-activity" aria-label="Hours activity">
-      <h2>My hours</h2><div className="tb-personal-totals" aria-label="Your hours"><span>Balance <strong data-testid="hours-balance">{formatHours(data.account.balance_minutes)}</strong></span><span>Provided <strong>{formatHours(data.account.earned_minutes)}</strong></span><span>Received <strong>{formatHours(data.account.spent_minutes)}</strong></span></div><p className="tb-muted">Balances start at zero and can go negative when you receive help. Both members agree before hours move.</p>
+      <h2>My hours</h2><div className="tb-personal-totals" aria-label="Your hours"><span>Balance <strong data-testid="hours-balance">{formatHours(data.account.balance_minutes)}</strong></span><span>Provided <strong>{formatHours(data.account.earned_minutes)}</strong></span><span>Received <strong>{formatHours(data.account.spent_minutes)}</strong></span></div><p className="tb-muted">Both members agree before new exchange hours move. Balances can go negative when you receive help.{data.account.has_imported_account ? data.account.imported_balance_minutes === null ? ' Your LetsBMore balance was not recorded; this total includes only new exchanges.' : ` Includes ${formatHours(data.account.imported_balance_minutes)} carried over from LetsBMore.` : ''}</p>
       <h3>Pending confirmation <span className="tb-count">{pending.length}</span></h3>
       {pending.length === 0 && <div className="tb-quiet">You’re all caught up. No hours awaiting confirmation.</div>}
       {pending.map((item) => <article className="tb-exchange" key={item.id} id={`exchange-${item.id}`} tabIndex={-1} aria-label={`Pending: ${item.listing_title}`}>
