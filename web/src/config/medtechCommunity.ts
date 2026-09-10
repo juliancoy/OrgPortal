@@ -5,7 +5,7 @@ export const MEDTECH_FORMATIONAL_EVENT = {
   plannedStart: '2026-09-29T22:00:00.000Z',
   plannedEnd: '2026-09-30T00:30:00.000Z',
   timezone: 'America/New_York',
-  eventPath: '/events/medtech-formational-event',
+  eventPath: '/medtech-events',
 } as const
 // Public organization slug, not a search term or a client-side ownership grant.
 export const MEDTECH_ORGANIZATION_SLUG = String(import.meta.env.VITE_MEDTECH_ORGANIZATION_SLUG || 'baltimore-medtech').trim()

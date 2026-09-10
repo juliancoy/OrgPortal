@@ -17,7 +17,7 @@ export function MedTechFormationalEventCard() {
       <p className="medtech-formational-event-note">Registration will be handled here in the Org Portal.</p>
     </div>
     <div className="medtech-formational-event-actions">
-      <Link className="medtech-primary-link" to={portalProfilePath(MEDTECH_FORMATIONAL_EVENT.eventPath)}>Open event page <span aria-hidden="true">→</span></Link>
+      <Link className="medtech-primary-link" to={portalProfilePath(MEDTECH_FORMATIONAL_EVENT.eventPath)}>Open MedTech events <span aria-hidden="true">→</span></Link>
       <Link to={portalProfilePath('/medtech-events')}>Browse MedTech events <span aria-hidden="true">→</span></Link>
     </div>
   </article>
