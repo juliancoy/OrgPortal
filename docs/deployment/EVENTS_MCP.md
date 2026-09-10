@@ -9,9 +9,9 @@ read-only; its social-login OAuth clients are not an MCP authorization server.
 
 This implementation adds `/mcp` to **org-worker**, the shared Cloudflare backend.
 It does not change the legacy Python backend or the PIdP submodule. The existing
-`/api/org/*` edge proxy can expose it at `/api/org/mcp`. Native D1 event APIs are
-unchanged; these tools manage the external provider's authoritative events and
-do not synchronize a duplicate D1 record.
+`/api/org/*` edge proxy can expose it at `/api/org/mcp`. Provider tools manage
+external authoritative events. Native tools write OrgPortal's D1 event directory
+directly for portal-owned events and are the preferred path when retiring Luma.
 
 ## Tools and provider contract
 
@@ -22,6 +22,15 @@ do not synchronize a duplicate D1 record.
 | `get_event_operation` | Inspect the requesting user's prior operation status |
 | `preview_event_changes` | Always preview, even if `confirm: true` is supplied |
 | `apply_event_changes` | Preview by default; write only with `confirm: true`, a matching `previewId`, and write scope |
+| `preview_org_event_changes` | Preview creating or updating an OrgPortal-native event; no write |
+| `apply_org_event_changes` | Create or update an OrgPortal-native event with `confirm: true`, a matching `previewId`, and write scope |
+
+The provider tools currently target managed Luma calendar events. The native
+tools target the `events` table and support portal-owned title, slug, description,
+timestamps, location, source URL, image URL, tags and city. Passing `sourceUrl:
+null` keeps the portal event as the source of truth with no outbound provider
+link. Native writes are idempotent for the same `ingestKey`, but each apply still
+requires a fresh preview receipt and organization management access.
 
 Changes support name, start/end timestamps, timezone, description, uploaded cover,
 tint, visibility, registration status, notification suppression, and a collaborator
@@ -38,6 +47,9 @@ field, and is not a transactional lock against concurrent edits in Luma itself.
 Write tools have destructive/non-idempotent annotations because they can notify
 guests and grant event-management access. Updates and collaborator invitations are
 not atomic; a timeout can have an unknown outcome. Inspect the provider before retrying.
+The native apply tool is annotated idempotent because it upserts by `ingestKey`
+inside OrgPortal; clients should still inspect the returned event before retrying
+after an unknown transport failure.
 
 `src/eventPlatforms.ts` defines `EventProvider`, the generic schemas and registry.
 Luma is the first adapter, not a claim that other vendors already work. Register

@@ -10,6 +10,24 @@ const readScope = "org:events.read";
 const writeScope = "org:events.write";
 const listSchema = z.object({ organizationId: z.string().min(1).max(200), cursor: z.string().max(1000).optional() }).strict();
 const statusSchema = z.object({ organizationId: z.string().min(1).max(200), previewId: z.string().uuid() }).strict();
+const nativeEventSchema = z.object({
+  organizationId: z.string().min(1).max(200),
+  previewId: z.string().uuid().optional(),
+  confirm: z.boolean().optional(),
+  event: z.object({
+    ingestKey: z.string().min(1).max(255),
+    title: z.string().min(1).max(500),
+    slug: z.string().min(1).max(255).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+    description: z.string().max(10000).nullable().optional(),
+    startsAt: z.string().max(80).nullable().optional(),
+    endsAt: z.string().max(80).nullable().optional(),
+    location: z.string().max(1000).nullable().optional(),
+    sourceUrl: z.string().url().nullable().optional(),
+    imageUrl: z.string().url().nullable().optional(),
+    tags: z.array(z.string().min(1).max(80)).max(40).optional(),
+    city: z.string().max(80).nullable().optional(),
+  }).strict(),
+}).strict();
 const keySets = new Map<string, JWTVerifyGetKey>();
 export function mcpConfiguration(env: Env) {
   const resource = env.MCP_PUBLIC_URL;
@@ -34,7 +52,7 @@ export function mcpConfiguration(env: Env) {
   }
   const url = new URL(resource);
   const metadataUrl = new URL(`/.well-known/oauth-protected-resource${url.pathname}`, url.origin);
-  metadataUrl.searchParams.set("v", "20260910");
+  metadataUrl.searchParams.set("v", "20260910-2");
   return { resource, issuer, jwks, introspection, metadataUrl: metadataUrl.toString() };
 }
 export async function authenticateMcp(request: Request, env: Env, getKey?: JWTVerifyGetKey) {
@@ -78,6 +96,125 @@ export function protectedResourceMetadata(env: Env) {
   return { resource: config.resource, authorization_servers: [config.issuer],
     scopes_supported: [readScope, writeScope], bearer_methods_supported: ["header"] };
 }
+
+type NativeEventInput = z.infer<typeof nativeEventSchema>;
+
+function nullable(value: string | null | undefined) {
+  const trimmed = typeof value === "string" ? value.trim() : "";
+  return trimmed || null;
+}
+
+function normalizeNativeEvent(input: NativeEventInput, organization: { id: string; name: string; source_url: string | null }) {
+  return {
+    id: `event:${input.event.ingestKey}`.slice(0, 120),
+    ingest_key: input.event.ingestKey,
+    title: input.event.title.trim(),
+    slug: input.event.slug.trim(),
+    description: nullable(input.event.description),
+    starts_at: nullable(input.event.startsAt),
+    ends_at: nullable(input.event.endsAt),
+    location: nullable(input.event.location),
+    source_url: nullable(input.event.sourceUrl),
+    image_url: nullable(input.event.imageUrl),
+    host_user_id: null,
+    host_user_name: null,
+    host_org_id: organization.id,
+    host_org_name: organization.name,
+    host_org_source_url: organization.source_url,
+    tags: input.event.tags || [],
+    city: nullable(input.event.city),
+  };
+}
+
+async function nativeOrganization(db: D1Database, organizationId: string) {
+  const row = await db.prepare("SELECT id, name, source_url FROM organizations WHERE id = ? OR slug = ?")
+    .bind(organizationId, organizationId)
+    .first<{ id: string; name: string; source_url: string | null }>();
+  if (!row) throw new EventIntegrationError(404, "Organization not found");
+  return row;
+}
+
+async function nativeExistingEvent(db: D1Database, event: { ingest_key: string; slug: string }) {
+  return db.prepare("SELECT * FROM events WHERE ingest_key = ? OR slug = ?")
+    .bind(event.ingest_key, event.slug)
+    .all<Record<string, unknown>>();
+}
+
+async function previewNativeEvent(env: Env, input: NativeEventInput) {
+  const organization = await nativeOrganization(env.DB, input.organizationId);
+  const event = normalizeNativeEvent(input, organization);
+  const existing = (await nativeExistingEvent(env.DB, event)).results || [];
+  const conflicting = existing.find((row) => row.ingest_key !== event.ingest_key);
+  if (conflicting) throw new EventIntegrationError(409, "Event slug is already used by another event");
+  return { operation: "upsert_native_event", organization, event, existing: existing[0] || null,
+    publicUrl: `/events/${encodeURIComponent(event.slug)}` };
+}
+
+async function applyNativeEvent(env: Env, input: NativeEventInput) {
+  const preview = await previewNativeEvent(env, input);
+  const event = preview.event;
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    `INSERT INTO events
+      (id, ingest_key, title, slug, description, starts_at, ends_at, location, source_url, image_url,
+       host_user_id, host_user_name, host_org_id, host_org_name, host_org_source_url, tags, city, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(ingest_key) DO UPDATE SET
+      title = excluded.title,
+      slug = excluded.slug,
+      description = excluded.description,
+      starts_at = excluded.starts_at,
+      ends_at = excluded.ends_at,
+      location = excluded.location,
+      source_url = excluded.source_url,
+      image_url = excluded.image_url,
+      host_user_id = excluded.host_user_id,
+      host_user_name = excluded.host_user_name,
+      host_org_id = excluded.host_org_id,
+      host_org_name = excluded.host_org_name,
+      host_org_source_url = excluded.host_org_source_url,
+      tags = excluded.tags,
+      city = excluded.city,
+      updated_at = excluded.updated_at`,
+  ).bind(event.id, event.ingest_key, event.title, event.slug, event.description, event.starts_at, event.ends_at, event.location,
+    event.source_url, event.image_url, event.host_user_id, event.host_user_name, event.host_org_id, event.host_org_name,
+    event.host_org_source_url, JSON.stringify(event.tags), event.city, now, now).run();
+  return { success: true, completed: ["upsert_native_event"], event: (await previewNativeEvent(env, input)).event,
+    publicUrl: preview.publicUrl };
+}
+
+export async function runNativeEventOperation(env: Env, identity: { userId: string; scopes: string[] }, input: unknown) {
+  const args = nativeEventSchema.parse(input);
+  if (!identity.scopes.includes(readScope) || (args.confirm && !identity.scopes.includes(writeScope))) {
+    throw new EventIntegrationError(403, "Missing event scope");
+  }
+  const organization = await nativeOrganization(env.DB, args.organizationId);
+  await authorizeOrganization(env.DB, { id: identity.userId, name: identity.userId, email: null, isOperator: false }, "manage", organization.id);
+  await enforceEventRateLimit(env.DB, identity.userId);
+  const owner = { userId: identity.userId, organizationId: organization.id, eventId: `native:${args.event.ingestKey}` };
+  if (args.confirm && !args.previewId) throw new EventIntegrationError(409, "Request a preview first and supply its previewId");
+  if (!args.confirm) {
+    const preview = await previewNativeEvent(env, { ...args, organizationId: organization.id, confirm: false });
+    const fingerprint = await previewFingerprint({ native: true, preview });
+    return { ...preview, ...await prepareEventOperation(env.DB, owner, fingerprint) };
+  }
+  let claimed = false;
+  try {
+    const latestPreview = await previewNativeEvent(env, { ...args, organizationId: organization.id });
+    const latestFingerprint = await previewFingerprint({ native: true, preview: latestPreview });
+    await claimEventOperation(env.DB, owner, args.previewId!, latestFingerprint);
+    claimed = true;
+    const result = await applyNativeEvent(env, { ...args, organizationId: organization.id });
+    await finishEventOperation(env.DB, args.previewId!, true, result.completed);
+    return { ...result, previewId: args.previewId };
+  } catch (error) {
+    if (!claimed) throw error;
+    try { await finishEventOperation(env.DB, args.previewId!, false, []); } catch { /* executing remains inspectable */ }
+    return { success: false, outcomeUncertain: true, previewId: args.previewId,
+      message: "Native event write or audit finalization failed. Inspect operation status and the live event before retrying." };
+  }
+}
+
 export async function runEventOperation(env: Env, identity: { userId: string; scopes: string[] },
   operation: "list" | "get" | "plan" | "status", input: unknown) {
   const args = operation === "status" ? statusSchema.parse(input) : operation === "list" ? listSchema.parse(input)
@@ -164,9 +301,9 @@ export async function handleEventMcp(request: Request, env: Env) {
     try { parsedBody = JSON.parse(new TextDecoder().decode(bytes)); }
     catch { return new Response("Invalid JSON", { status: 400 }); }
     const server = new McpServer({ name: "orgportal-events", version: "1.0.0" });
-    const result = async (operation: "list" | "get" | "plan" | "status", args: unknown) => {
+    const result = async (operation: "list" | "get" | "plan" | "status" | "native", args: unknown) => {
       try {
-        const data = await runEventOperation(env, identity, operation, args);
+        const data = operation === "native" ? await runNativeEventOperation(env, identity, args) : await runEventOperation(env, identity, operation, args);
         return { ...("success" in data && data.success === false ? { isError: true } : {}),
           content: [{ type: "text" as const, text: JSON.stringify(data) }], structuredContent: data };
       } catch (error) {
@@ -189,6 +326,12 @@ export async function handleEventMcp(request: Request, env: Env) {
     server.registerTool("apply_event_changes", { description: "Update an event or grant collaborator access after showing a preview and obtaining user approval. Requires confirm=true and the matching one-use previewId (expires after ten minutes). Changes may notify guests and are not atomic; inspect failures before retrying.",
       inputSchema: eventPlanSchema, annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
       _meta: metadata([readScope, writeScope]) }, args => result("plan", args));
+    server.registerTool("preview_org_event_changes", { description: "Preview creating or updating a native OrgPortal event without writing. Use this when the portal, not an external provider, is the event system of record.",
+      inputSchema: nativeEventSchema, annotations: { readOnlyHint: true, openWorldHint: false }, _meta: metadata([readScope]) },
+      args => result("native", { ...args, confirm: false }));
+    server.registerTool("apply_org_event_changes", { description: "Create or update a native OrgPortal event after showing a preview and obtaining user approval. Requires confirm=true and the matching one-use previewId.",
+      inputSchema: nativeEventSchema, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      _meta: metadata([readScope, writeScope]) }, args => result("native", args));
     const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
     await server.connect(transport);
     try {

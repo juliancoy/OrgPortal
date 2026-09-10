@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { generateKeyPair, SignJWT, createLocalJWKSet, exportJWK } from "jose";
 import { eventPlanSchema, executeEventPlan, LumaEventProvider, configuredProvider, type EventProvider } from "../src/eventPlatforms";
-import { authenticateMcp, handleEventMcp, protectedResourceMetadata, runEventOperation } from "../src/eventMcp";
+import { authenticateMcp, handleEventMcp, protectedResourceMetadata, runEventOperation, runNativeEventOperation } from "../src/eventMcp";
 import { app } from "../src/index";
 import { EventTestDb } from "./event-test-db";
 
@@ -103,12 +103,44 @@ test("MCP routes fail closed, advertise resource metadata, reject origins and re
   const response = await app.request(request, undefined, authEnv);
   assert.equal(response.status, 401);
   const challenge = response.headers.get("www-authenticate") || "";
-  assert.ok(challenge.includes("/.well-known/oauth-protected-resource/api/org/mcp?v=20260910"));
+  assert.ok(challenge.includes("/.well-known/oauth-protected-resource/api/org/mcp?v=20260910-2"));
   assert.equal(protectedResourceMetadata(authEnv).resource, authEnv.MCP_PUBLIC_URL);
   assert.equal((await handleEventMcp(new Request(request, { headers: { origin: "https://evil.example" } }), authEnv)).status, 403);
 });
 test("writes require write scope before consulting database or provider", async () => {
   await assert.rejects(runEventOperation(authEnv, { userId: "pidp-user", scopes: ["org:events.read"] }, "plan", { ...plan, confirm: true }), /Missing event scope/);
+});
+test("native event changes preview, apply once, and write OrgPortal events", async () => {
+  const db = new EventTestDb();
+  const env = { ...authEnv, DB: db } as unknown as Env;
+  const input = { organizationId: "org-one", event: {
+    ingestKey: "manual:event-one",
+    title: "Native formation",
+    slug: "native-formation",
+    description: "Portal-owned event",
+    startsAt: "2026-09-17T22:00:00Z",
+    endsAt: "2026-09-18T00:30:00Z",
+    location: "To Be Announced",
+    sourceUrl: null,
+    imageUrl: "https://images.example/event.png",
+    tags: ["medtech"],
+    city: "Baltimore",
+  } };
+  try {
+    const identity = { userId: "pidp-user", scopes: ["org:events.read", "org:events.write"] };
+    const preview = await runNativeEventOperation(env, identity, input) as { previewId: string; event: { slug: string } };
+    assert.equal(preview.event.slug, "native-formation");
+    const applied = await runNativeEventOperation(env, identity, { ...input, confirm: true, previewId: preview.previewId }) as { success: boolean };
+    assert.equal(applied.success, true);
+    const rows = await db.prepare("SELECT title, slug, host_org_id, source_url, tags FROM events WHERE ingest_key = ?")
+      .bind("manual:event-one").all();
+    assert.deepEqual(rows.results.map(row => ({ ...row })), [
+      { title: "Native formation", slug: "native-formation", host_org_id: "org-one", source_url: null, tags: '["medtech"]' },
+    ]);
+    await assert.rejects(runNativeEventOperation(env, identity, { ...input, confirm: true, previewId: preview.previewId }), /Preview is expired/);
+  } finally {
+    db.close();
+  }
 });
 test("organization management is required even with write scope", async () => {
   const env = { ...authEnv, DB: { prepare: (sql: string) => ({ bind: () => ({ first: async () =>
@@ -143,9 +175,10 @@ test("authenticated MCP initializes, lists tools and previews through the shared
   try {
     assert.equal((await rpc("initialize", { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "test", version: "1" } })).result.serverInfo.name, "orgportal-events");
     const listed = await rpc("tools/list", {});
-    assert.equal(listed.result.tools.length, 5);
+    assert.equal(listed.result.tools.length, 7);
     assert.ok(listed.result.tools.every((tool: any) => tool.securitySchemes[0].type === "oauth2"));
     assert.equal(listed.result.tools.find((t: any) => t.name === "apply_event_changes").annotations.destructiveHint, true);
+    assert.equal(listed.result.tools.find((t: any) => t.name === "apply_org_event_changes").annotations.idempotentHint, true);
     const preview = await rpc("tools/call", { name: "preview_event_changes", arguments: { ...plan, confirm: true } });
     assert.equal(preview.result.structuredContent.dryRun, true);
     assert.match(preview.result.structuredContent.previewId, /^[0-9a-f-]{36}$/);

@@ -72,7 +72,7 @@ export function EventRegistration({ eventId, slug, token, saveToCalendar, organi
       {attendance ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
           {attendance.attendees.length > 0 && (
-            <div aria-label="Some of the registrants" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
+            <div aria-label="Public registrants" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
               {attendance.attendees.map((person) => (
                 <Link key={person.slug} to={`/users/${encodeURIComponent(person.slug)}`} title={person.name}>
                   <RegistrantAvatar name={person.name} photoUrl={person.photo_url} />
@@ -100,7 +100,7 @@ export function EventRegistration({ eventId, slug, token, saveToCalendar, organi
           <Link to={`/users/register?next=${encodeURIComponent(next)}`}>Sign up</Link>
         </>}
       </div>
-      <p className="muted" style={{ margin: 0 }}>Your public profile may appear with other registrants.</p>
+      <p className="muted" style={{ margin: 0 }}>Registrants with public profiles appear here; private profiles remain hidden.</p>
       {token && <Link to="/email/preferences">Manage email preferences</Link>}
       {message && <p role="status" style={{ margin: 0 }}>{message}</p>}
       {error && <div role="alert">
