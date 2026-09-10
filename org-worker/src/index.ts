@@ -1783,16 +1783,22 @@ app.use("*", async (c, next) => {
   await next();
 });
 
-app.get("/health", (c) => {
+function deploymentHealth(c: { env: Env; req: { url: string }; header: (name: string, value: string) => void }, ok: boolean) {
   c.header("Cache-Control", "no-store");
-  return c.json({ ok: true, service: "org-worker", ...buildMetadata,
-    workerVersionId: c.env.CF_VERSION_METADATA?.id ?? null });
-});
-app.get("/version", (c) => {
-  c.header("Cache-Control", "no-store");
-  return c.json({ service: "org-worker", ...buildMetadata,
-    workerVersionId: c.env.CF_VERSION_METADATA?.id ?? null });
-});
+  const url = new URL(c.req.url);
+  return {
+    ...(ok ? { ok: true } : {}),
+    service: "org-worker",
+    time: new Date().toISOString(),
+    ...buildMetadata,
+    workerVersionId: c.env.CF_VERSION_METADATA?.id ?? null,
+    hostname: url.hostname,
+    environment: c.env.ENV ?? "production",
+  };
+}
+
+app.get("/health", (c) => c.json(deploymentHealth(c, true)));
+app.get("/version", (c) => c.json(deploymentHealth(c, false)));
 
 app.get("/admin/me", async (c) => {
   const user = await currentUser(c.env, c.req.raw);

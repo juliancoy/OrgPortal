@@ -1,4 +1,5 @@
 interface Env {
+  ENV?: string;
   MCP_OAUTH_INTROSPECTION_URL?: string;
   MCP_OAUTH_INTROSPECTION_SECRET?: string;
   CF_VERSION_METADATA?: { id: string; tag: string; timestamp: string };

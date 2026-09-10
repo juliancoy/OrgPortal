@@ -543,13 +543,21 @@ test("health route identifies the org worker", async () => {
   assert.equal(body.service, "org-worker");
   assert.ok(body.commit === null || /^[a-f0-9]{40,64}$/.test(String(body.commit)));
   assert.ok(Number.isFinite(Date.parse(String(body.builtAt))));
+  assert.ok(Number.isFinite(Date.parse(String(body.time))));
   assert.equal(body.workerVersionId, null);
+  assert.equal(body.hostname, "org.example.test");
+  assert.equal(body.environment, "production");
   assert.equal(res.headers.get("cache-control"), "no-store");
-  const versionEnv = { ...env(), CF_VERSION_METADATA: { id: "worker-version", tag: "release", timestamp: "2026-09-09T00:00:00Z" } };
+  const versionEnv = { ...env(), ENV: "test", CF_VERSION_METADATA: { id: "worker-version", tag: "release", timestamp: "2026-09-09T00:00:00Z" } };
   const version = await app.request("https://org.example.test/version", {}, versionEnv);
   assert.equal(version.status, 200);
   assert.equal(version.headers.get("cache-control"), "no-store");
-  assert.deepEqual(await version.json(), { ...Object.fromEntries(Object.entries(body).filter(([key]) => key !== "ok")), workerVersionId: "worker-version" });
+  const versionBody = await version.json() as Record<string, unknown>;
+  assert.equal(versionBody.ok, undefined);
+  assert.equal(versionBody.workerVersionId, "worker-version");
+  assert.equal(versionBody.hostname, "org.example.test");
+  assert.equal(versionBody.environment, "test");
+  assert.ok(Number.isFinite(Date.parse(String(versionBody.time))));
 });
 
 test("protected contact route requires a bearer token", async () => {
