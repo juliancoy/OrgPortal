@@ -18,7 +18,8 @@ export function normalizePortalBasePath(rawBase: string, origin = runtimeOrigin(
 }
 
 export function portalBasePath(): string {
-  if (getDomainTenant()) return ''
+  const tenant = getDomainTenant()
+  if (tenant && (tenant.canonical_path_prefix || '') === '') return ''
   return normalizePortalBasePath(
     (import.meta.env.VITE_PORTAL_MOUNT_PATH as string | undefined) ||
       (import.meta.env.BASE_URL as string | undefined) ||
