@@ -111,7 +111,7 @@ function uuid() {
 }
 
 export function PublicEventPage() {
-  const { token, user } = useAuth()
+  const { token, user, isLoading: authLoading } = useAuth()
   const { slug } = useParams()
   const [event, setEvent] = useState<PublicEvent | null>(null)
   const [status, setStatus] = useState<string>('Loading event…')
@@ -147,6 +147,7 @@ export function PublicEventPage() {
   }, [slug])
 
   useEffect(() => {
+    if (authLoading) return
     if (!token) {
       setGoogleCalendarConnected(false)
       setMicrosoftCalendarConnected(false)
@@ -161,7 +162,7 @@ export function PublicEventPage() {
         setGoogleCalendarConnected(false)
         setMicrosoftCalendarConnected(false)
       })
-  }, [token])
+  }, [authLoading, token])
 
   useEffect(() => {
     if (!slug) return
@@ -227,6 +228,7 @@ export function PublicEventPage() {
     setMyUserId(null)
     setReplyingToId(null)
     setReplyDrafts({})
+    if (authLoading) return
     if (!activeToken || !event || !eventChat?.room_exists) return
 
     const currentEvent = event
@@ -258,7 +260,7 @@ export function PublicEventPage() {
     return () => {
       cancelled = true
     }
-  }, [chatApi, event, eventChat?.room_exists, token, user?.id])
+  }, [authLoading, chatApi, event, eventChat?.room_exists, token, user?.id])
 
   useEffect(() => {
     if (!event) return
@@ -517,7 +519,11 @@ export function PublicEventPage() {
             <p className="muted" style={{ margin: 0 }}>
               {eventChat.room_name || 'Event comments'}
             </p>
-            {token ? (
+            {authLoading ? (
+              <div className="public-event-comment-auth-loading" role="status" aria-label="Checking sign-in status">
+                <span aria-hidden="true" />
+              </div>
+            ) : token ? (
               <div className="public-event-comment-composer">
                 <textarea
                   value={commentDraft}
@@ -658,7 +664,7 @@ export function PublicEventPage() {
         </main>
         <aside className="public-event-side">
           <EventRegistration key={`${event.id}:${user?.id || 'guest'}:${Boolean(token)}`}
-            eventId={event.id} slug={event.slug} token={token} saveToCalendar={saveToCalendar}
+            eventId={event.id} slug={event.slug} token={token} authLoading={authLoading} saveToCalendar={saveToCalendar}
             organizationName={event.host_org_id ? event.organization_name || event.host_org_name : null} />
         </aside>
       </div>

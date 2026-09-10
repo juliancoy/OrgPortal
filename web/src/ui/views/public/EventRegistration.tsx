@@ -15,8 +15,13 @@ function RegistrantAvatar({ name, photoUrl }: { name: string; photoUrl: string |
 }
 
 // The parent keys this component by event and account to reset state on navigation/sign-in.
-export function EventRegistration({ eventId, slug, token, saveToCalendar, organizationName }: {
-  eventId: string; slug: string; token: string | null; saveToCalendar: () => Promise<string | undefined>; organizationName?: string | null
+export function EventRegistration({ eventId, slug, token, authLoading = false, saveToCalendar, organizationName }: {
+  eventId: string
+  slug: string
+  token: string | null
+  authLoading?: boolean
+  saveToCalendar: () => Promise<string | undefined>
+  organizationName?: string | null
 }) {
   const [attendance, setAttendance] = useState<EventAttendance | null>(null)
   const [pending, setPending] = useState(false)
@@ -28,12 +33,13 @@ export function EventRegistration({ eventId, slug, token, saveToCalendar, organi
   const next = `/events/${encodeURIComponent(slug)}`
 
   useEffect(() => {
+    if (authLoading) return
     let cancelled = false
     loadAttendance(eventId, token).then((result) => {
       if (!cancelled) { setAttendance(result); setError('') }
     }).catch((err: Error) => { if (!cancelled) setError(err.message) })
     return () => { cancelled = true }
-  }, [eventId, token, reload])
+  }, [authLoading, eventId, token, reload])
 
   async function updateRegistration() {
     if (pending || !token || !attendance) return
@@ -94,7 +100,11 @@ export function EventRegistration({ eventId, slug, token, saveToCalendar, organi
         {organizationName && <label><input type="checkbox" disabled={pending} checked={organizationAnnouncements} onChange={(event) => setOrganizationAnnouncements(event.target.checked)} /> <span>Also send me announcements from {organizationName}</span></label>}
       </div>}
       <div className="public-event-registration-actions">
-        {token ? <>
+        {authLoading ? (
+          <div className="public-event-registration-auth-loading" role="status" aria-label="Checking sign-in status">
+            <span aria-hidden="true" />
+          </div>
+        ) : token ? <>
           {attendance?.registered && <strong className="public-event-registered-state">You’re registered</strong>}
           <button type="button" className={attendance?.registered ? 'portal-button-secondary' : undefined}
             onClick={updateRegistration} disabled={pending || !attendance}>

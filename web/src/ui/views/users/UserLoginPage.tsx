@@ -124,7 +124,7 @@ export function UserLoginPage() {
             </p>
           ) : null}
           <button type="submit" className="btn-primary portal-auth-submit" disabled={isSubmitting} aria-busy={isSubmitting}>
-            {isSubmitting ? 'Signing in...' : tenantAuth ? 'Member login' : 'Log In'}
+            {isSubmitting ? 'Signing in...' : 'Login'}
           </button>
         </form>
 
