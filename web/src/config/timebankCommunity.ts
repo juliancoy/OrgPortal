@@ -13,6 +13,6 @@ export function useDomainCommunity() {
   return useSyncExternalStore((listener) => { listeners.add(listener); return () => { listeners.delete(listener) } }, getDomainCommunity, () => null)
 }
 export async function loadDomainCommunity() {
-  const response = await fetch('/api/org/api/timebank/community', { signal: AbortSignal.timeout(5000) })
+  const response = await fetch('/api/org/api/portal/tenant', { signal: AbortSignal.timeout(5000) })
   if (response.ok) setDomainCommunity(await response.json() as TimebankCommunity)
 }
