@@ -25,3 +25,4 @@ SELECT
   created_at,
   updated_at
 FROM organization_sentiments
+;
