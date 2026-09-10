@@ -66,6 +66,7 @@ import { ProviderSchedulingPage } from '../views/ProviderSchedulingPage'
 import { PropertyCasualtyInsurancePage } from '../views/PropertyCasualtyInsurancePage'
 import { portalBasePath } from '../../config/portalBase'
 import { getActivePortalProfileConfig, portalProfilePath, isPortalFeatureEnabled, type PortalFeature } from '../../config/portalFeatures'
+import { tenantHomeAction } from '../../config/tenantHome'
 
 function AuthenticatedRoute(props: { children: ReactElement }) {
   const { role, isLoading } = useAuth()
@@ -80,31 +81,11 @@ function AuthenticatedRoute(props: { children: ReactElement }) {
   return props.children
 }
 
-function internalHomePath(path?: string | null) {
-  const raw = String(path || '').trim()
-  if (!raw.startsWith('/')) return null
-  try {
-    const url = new URL(raw, 'https://portal.invalid')
-    if (url.origin !== 'https://portal.invalid') return null
-    if (url.pathname === '/' || url.pathname.startsWith('/auth/callback') || url.pathname.startsWith('/users/login')) return null
-    return `${url.pathname}${url.search}${url.hash}`
-  } catch {
-    return null
-  }
-}
-
 function tenantHomeElement(tenant: PortalTenant, role: string, profile: ReturnType<typeof getActivePortalProfileConfig>) {
-  const kind = tenant.home_kind || (tenant.features?.includes('timebank') ? 'timebank' : 'default')
-  if (kind === 'landing') return <TenantHomePage />
-  if (kind === 'timebank') return <Navigate to="/timebanking" replace />
-  if (kind === 'auth') return <Navigate to={portalProfilePath(role === 'guest' ? '/users/login' : profile.memberHomePath, profile)} replace />
-  if (kind === 'org' && tenant.home_org_slug) return <Navigate to={portalProfilePath(`/orgs/${encodeURIComponent(tenant.home_org_slug)}`, profile)} replace />
-  if (kind === 'org-events' && tenant.home_org_slug) return <TenantEventsHomePage />
-  if (kind === 'route') {
-    const path = internalHomePath(tenant.home_path || tenant.member_home_path)
-    return path ? <Navigate to={portalProfilePath(path, profile)} replace /> : <TenantHomePage />
-  }
-  return role === 'guest' ? <TenantHomePage /> : <Navigate to={portalProfilePath(profile.memberHomePath, profile)} replace />
+  const action = tenantHomeAction(tenant, role, profile.memberHomePath)
+  if (action.kind === 'landing') return <TenantHomePage />
+  if (action.kind === 'events') return <TenantEventsHomePage />
+  return <Navigate to={portalProfilePath(action.to, profile)} replace />
 }
 
 function HomeRoute() {
@@ -119,6 +100,19 @@ function HomeRoute() {
   }
   if (role === 'guest') return <App />
   return <Navigate to="/chat" replace />
+}
+
+function TenantCommunityRoute() {
+  const tenant = getDomainTenant()
+  const profile = getActivePortalProfileConfig()
+  if (tenant && profile.id !== 'baltimore-medtech') return <TenantHomePage />
+  return <MedTechCommunityPage />
+}
+
+function TenantOrgEventsRoute() {
+  const tenant = getDomainTenant()
+  if (tenant?.home_org_slug) return <TenantEventsHomePage />
+  return <PublicEventsPage />
 }
 
 function TimebankRoute() {
@@ -219,7 +213,8 @@ export function createAppRouter() {
           { path: '/initiatives/:slug', element: <InitiativeDetailPage /> },
           { path: '/initiatives/:slug/sign', element: <InitiativeSignPage /> },
 
-          { path: '/community', element: <MedTechCommunityPage /> },
+          { path: '/community', element: <TenantCommunityRoute /> },
+          { path: '/org-events', element: <TenantOrgEventsRoute /> },
           { path: '/medtech-events', element: <MedTechEventsPage /> },
           { path: '/about', element: <AboutPage /> },
           { path: '/email', element: <AdminRoute><EmailCampaignsPage /></AdminRoute> },

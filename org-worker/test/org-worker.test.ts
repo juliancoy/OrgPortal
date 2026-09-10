@@ -39,6 +39,7 @@ class FakeD1 {
   ledgerTransactions: Row[] = [];
   ubiEligibility: Row[] = [];
   organizationSentiments: Row[] = [];
+  portalTenants: Row[] = [];
   ubiSettings: Row = {
     interval_seconds: 14 * 24 * 60 * 60,
     dena_annual: 5256,
@@ -93,7 +94,7 @@ class FakeD1 {
     if (sql.includes("FROM organizations WHERE id = ?")) {
       return (this.organizations.find((row) => row.id === params[0] || row.slug === params[1]) as T) || null;
     }
-    if (sql.includes("FROM organizations WHERE slug = ?")) {
+    if (sql.includes("FROM organizations WHERE slug = ?") || sql.includes("FROM organizations o WHERE o.slug = ?")) {
       return (this.organizations.find((row) => row.slug === params[0]) as T) || null;
     }
     if (sql.includes("FROM events WHERE ingest_key = ?")) {
@@ -128,6 +129,9 @@ class FakeD1 {
     }
     if (sql.includes("SELECT * FROM user_contact_pages WHERE slug = ?")) {
       return (this.contacts.find((row) => row.slug === params[0]) as T) || null;
+    }
+    if (sql.includes("FROM portal_tenants WHERE hostname = ?")) {
+      return (this.portalTenants.find((row) => row.hostname === params[0]) as T) || null;
     }
     if (sql.includes("FROM ubi_runtime_settings WHERE id = 1")) {
       return this.ubiSettings as T;
@@ -695,6 +699,86 @@ test("public contact routes return sanitized canonical user URLs for exact slugs
   const contact = (await res.json()) as { slug: string; public_url: string };
   assert.equal(contact.slug, "julian-coy");
   assert.equal(contact.public_url, "https://codecollective.test/p/users/julian-coy");
+});
+
+test("tenant host public URLs are root-mounted even when shared portal base is configured", async () => {
+  const db = new FakeD1();
+  db.portalTenants.push({
+    id: "baltimore-medtech",
+    hostname: "medtech.social",
+    name: "Baltimore MedTech",
+    tagline: "Health x Medicine x Biotech",
+    accent_color: "#0f6f8f",
+    profile: "baltimore-medtech",
+    features: JSON.stringify(["directory", "events", "chat"]),
+    public_base_url: "https://medtech.social",
+    canonical_path_prefix: "",
+  });
+  db.contacts.push({
+    id: "contact-1",
+    user_id: "user-1",
+    user_email: "member@example.test",
+    user_name: "Jordan",
+    slug: "jordan",
+    enabled: 1,
+    headline: "Founder",
+    bio: null,
+    photo_url: null,
+    email_public: null,
+    phone_public: null,
+    linkedin_url: null,
+    github_url: null,
+    x_url: null,
+    website_url: null,
+    links: "[]",
+    source_profile_url: null,
+    source_profile_imported_at: null,
+    created_at: "2026-06-07T00:00:00Z",
+    updated_at: "2026-06-07T00:00:00Z",
+  });
+  db.organizations.push({
+    id: "org-1",
+    name: "Baltimore MedTech",
+    slug: "baltimore-medtech",
+    description: "Health community",
+    source_url: null,
+    image_url: null,
+    tags: "[]",
+    city: "baltimore",
+    created_at: "2026-06-07T00:00:00Z",
+    updated_at: "2026-06-07T00:00:00Z",
+  });
+  db.events.push({
+    id: "event-1",
+    ingest_key: "event-key",
+    title: "Founder Night",
+    slug: "founder-night",
+    description: "Meet founders",
+    starts_at: "2026-06-08T12:00:00Z",
+    ends_at: null,
+    location: "Baltimore",
+    source_url: null,
+    image_url: null,
+    host_org_id: "org-1",
+    host_org_name: "Baltimore MedTech",
+    host_org_source_url: null,
+    tags: "[]",
+    city: "baltimore",
+    created_at: "2026-06-07T00:00:00Z",
+    updated_at: "2026-06-07T00:00:00Z",
+  });
+
+  const contactRes = await app.request("https://medtech.social/api/network/users/public/jordan", {}, env(db));
+  assert.equal(contactRes.status, 200);
+  assert.equal(((await contactRes.json()) as { public_url: string }).public_url, "https://medtech.social/users/jordan");
+
+  const orgRes = await app.request("https://medtech.social/api/network/orgs/public/baltimore-medtech", {}, env(db));
+  assert.equal(orgRes.status, 200);
+  assert.equal(((await orgRes.json()) as { public_url: string }).public_url, "https://medtech.social/orgs/baltimore-medtech");
+
+  const eventRes = await app.request("https://medtech.social/api/network/events/public/founder-night", {}, env(db));
+  assert.equal(eventRes.status, 200);
+  assert.equal(((await eventRes.json()) as { public_url: string }).public_url, "https://medtech.social/events/founder-night");
 });
 
 test("public contact route does not numerically fallback from missing slugs", async () => {

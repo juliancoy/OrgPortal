@@ -20,7 +20,6 @@ export type PortalProfileConfig = {
 }
 
 const PROFILE_STORAGE_KEY = 'portal.profile'
-export const MEDTECH_PORTAL_HOST = 'medtech.social'
 const PROFILE_QUERY_PARAMS = ['portalProfile', 'profile', 'site']
 
 const PORTAL_PROFILES: Record<PortalProfileId, PortalProfileConfig> = {
@@ -135,11 +134,10 @@ function tenantProfileConfig(tenant: PortalTenant): PortalProfileConfig {
 export function getActivePortalProfileConfig(
   search = typeof window === 'undefined' ? '' : window.location.search,
   storage: Pick<Storage, 'getItem' | 'setItem'> | null = browserStorage(),
-  hostname = typeof window === 'undefined' ? '' : window.location.hostname,
+  _hostname = typeof window === 'undefined' ? '' : window.location.hostname,
 ): PortalProfileConfig {
   const tenant = getDomainTenant()
   if (tenant) return tenantProfileConfig(tenant)
-  if (hostname === MEDTECH_PORTAL_HOST) return PORTAL_PROFILES['baltimore-medtech']
   const urlProfileId = readPortalProfileIdFromSearch(search)
   const profileId = urlProfileId || (typeof window !== 'undefined' ? browserProfileId : null) || storageGet(storage) || 'code-collective'
   if (urlProfileId) storageSet(urlProfileId, storage)

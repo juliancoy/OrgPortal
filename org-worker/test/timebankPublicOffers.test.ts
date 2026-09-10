@@ -31,7 +31,7 @@ test('website feed shares public offers from all communities with original porta
   assert.deepEqual(page.items.map(item => item.member_name).sort(), ['Alice', 'Bob']);
   for (const item of page.items) {
     const hostname = item.member_name === 'Alice' ? 'codecollective.us' : 'bmoretimebank.codecollective.us';
-    assert.equal(item.url, `https://${hostname}/p/timebanking?listing=${item.id}`);
+    assert.equal(item.url, `https://${hostname}${hostname === 'codecollective.us' ? '/p' : ''}/timebanking?listing=${item.id}`);
     assert.equal(item.image_url, `https://${hostname}/api/org/api/timebank/listings/${item.id}/image?v=photo%2Fkey`);
     assert.equal('contact' in item, false);
   }

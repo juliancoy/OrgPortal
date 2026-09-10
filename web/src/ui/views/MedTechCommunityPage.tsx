@@ -61,7 +61,7 @@ export function MedTechCommunityPage() {
       <section className="medtech-community-events" aria-labelledby="medtech-events-title">
         <div className="medtech-section-heading">
           <div><p className="medtech-eyebrow">Hosted by our group</p><h2 id="medtech-events-title">MedTech Events</h2></div>
-          <Link to={portalProfilePath('/medtech-events')}>All MedTech events <span aria-hidden="true">→</span></Link>
+          <Link to={portalProfilePath('/org-events')}>All MedTech events <span aria-hidden="true">→</span></Link>
         </div>
         {status && <p role="status">{status}</p>}
         <ul className="medtech-event-list">
@@ -76,7 +76,7 @@ export function MedTechCommunityPage() {
             {imageUrl && <img className="medtech-event-image" src={imageUrl} alt="" loading="lazy" decoding="async" onError={event => { event.currentTarget.hidden = true }} />}
           </li>})}
         </ul>
-        <p><Link to={portalProfilePath('/medtech-events')}>Browse all MedTech events →</Link></p>
+        <p><Link to={portalProfilePath('/org-events')}>Browse all MedTech events →</Link></p>
       </section>
       <section className="medtech-community-card" aria-labelledby="regional-calendar-title">
         <p className="medtech-eyebrow">Around the region</p>

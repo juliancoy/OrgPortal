@@ -6,6 +6,7 @@ import {
   portalProfileLoginSearch,
   readPortalProfileIdFromSearch,
 } from './portalFeatures'
+import { parsePortalTenant } from './timebankCommunity'
 
 function memoryStorage(initialValue?: string) {
   let value = initialValue
@@ -19,10 +20,10 @@ function memoryStorage(initialValue?: string) {
 }
 
 describe('portal feature profiles', () => {
-  it('selects MedTech by its custom domain even with a conflicting saved profile', () => {
+  it('does not infer MedTech from hostname without tenant metadata', () => {
     const profile = getActivePortalProfileConfig('?portalProfile=code-collective', memoryStorage('code-collective'), 'medtech.social')
-    expect(profile.id).toBe('baltimore-medtech')
-    expect(profile.memberHomePath).toBe('/community')
+    expect(profile.id).toBe('code-collective')
+    expect(profile.memberHomePath).toBe('/chat')
   })
   it('keeps UBI enabled for the default Code Collective profile', () => {
     const profile = getActivePortalProfileConfig('', memoryStorage())
@@ -83,5 +84,28 @@ describe('portal feature profiles', () => {
       expect(profile.manifestPath).toBe('/medtech.webmanifest')
       expect(isPortalFeatureEnabled('ubi', profile)).toBe(false)
     } finally { domain.mockRestore() }
+  })
+
+  it('validates tenant config from the backend before applying routing and branding', () => {
+    const tenant = parsePortalTenant({
+      id: 'medtech',
+      hostname: 'medtech.social',
+      name: 'Baltimore MedTech',
+      tagline: 'Health x Medicine x Biotech',
+      accent_color: '#0f6f8f',
+      profile: 'baltimore-medtech',
+      features: ['directory', 'events', 'chat', 42],
+      home_kind: 'org-events',
+      home_org_slug: 'baltimore-medtech',
+      public_base_url: 'https://medtech.social',
+      canonical_path_prefix: '',
+      feature_config: '{"orgEvents":{"enabled":true}}',
+    })
+
+    expect(tenant?.features).toEqual(['directory', 'events', 'chat'])
+    expect(tenant?.home_kind).toBe('org-events')
+    expect(tenant?.public_base_url).toBe('https://medtech.social')
+    expect(tenant?.feature_config?.orgEvents).toEqual({ enabled: true })
+    expect(parsePortalTenant({ hostname: 'missing-id' })).toBeNull()
   })
 })

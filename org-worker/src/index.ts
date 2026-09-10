@@ -622,22 +622,44 @@ async function ensureDefaultAdminConnection(db: D1Database, contact: ContactRow)
     .run();
 }
 
-function publicPortalBase(env: Env, request: Request) {
+function requestPublicHostname(request: Request) {
+  return (request.headers.get("x-forwarded-host") || new URL(request.url).host).toLowerCase().split(":")[0];
+}
+
+async function tenantPublicPortalBase(env: Env, request: Request): Promise<string | null> {
+  const hostname = requestPublicHostname(request);
+  try {
+    const tenant = await env.DB.prepare("SELECT public_base_url, canonical_path_prefix FROM portal_tenants WHERE hostname = ?")
+      .bind(hostname)
+      .first<{ public_base_url?: string | null; canonical_path_prefix?: string | null }>();
+    if (!tenant) return null;
+    const configured = String(tenant.public_base_url || "").replace(/\/+$/g, "");
+    if (configured) return configured;
+    const prefix = String(tenant.canonical_path_prefix || "").trim().replace(/\/+$/g, "");
+    return `${new URL(request.url).origin}${prefix === "/" ? "" : prefix}`;
+  } catch {
+    return null;
+  }
+}
+
+async function publicPortalBase(env: Env, request: Request) {
+  const tenantBase = await tenantPublicPortalBase(env, request);
+  if (tenantBase) return tenantBase;
   const configured = (env.PUBLIC_PORTAL_BASE_URL || "").replace(/\/+$/g, "");
   if (configured) return configured;
   return `${new URL(request.url).origin}/p`;
 }
 
-function publicUrl(env: Env, request: Request, slug: string) {
-  return `${publicPortalBase(env, request)}/users/${encodeURIComponent(slug)}`;
+async function publicUrl(env: Env, request: Request, slug: string) {
+  return `${await publicPortalBase(env, request)}/users/${encodeURIComponent(slug)}`;
 }
 
-function orgPublicUrl(env: Env, request: Request, slug: string) {
-  return `${publicPortalBase(env, request).replace(/\/+$/g, "")}/orgs/${encodeURIComponent(slug)}`;
+async function orgPublicUrl(env: Env, request: Request, slug: string) {
+  return `${(await publicPortalBase(env, request)).replace(/\/+$/g, "")}/orgs/${encodeURIComponent(slug)}`;
 }
 
-function eventPublicUrl(env: Env, request: Request, slug: string) {
-  return `${publicPortalBase(env, request).replace(/\/+$/g, "")}/events/${encodeURIComponent(slug)}`;
+async function eventPublicUrl(env: Env, request: Request, slug: string) {
+  return `${(await publicPortalBase(env, request)).replace(/\/+$/g, "")}/events/${encodeURIComponent(slug)}`;
 }
 
 function userName(user: PidpUser) {
@@ -664,7 +686,7 @@ function defaultSlug(user: PidpUser) {
   return slugify(user.id || "contact");
 }
 
-function mapContact(env: Env, request: Request, row: ContactRow) {
+async function mapContact(env: Env, request: Request, row: ContactRow) {
   return {
     user_id: row.user_id,
     user_name: row.user_name || "User",
@@ -682,7 +704,7 @@ function mapContact(env: Env, request: Request, row: ContactRow) {
     links: parseLinks(row.links),
     source_profile_url: row.source_profile_url,
     source_profile_imported_at: row.source_profile_imported_at,
-    public_url: publicUrl(env, request, row.slug),
+    public_url: await publicUrl(env, request, row.slug),
     updated_at: row.updated_at,
   };
 }
@@ -889,7 +911,7 @@ function mapOrganization(row: OrganizationRow & OrganizationSentimentCounts, upc
   };
 }
 
-function mapEvent(env: Env, request: Request, row: EventRow) {
+async function mapEvent(env: Env, request: Request, row: EventRow) {
   return {
     id: row.id,
     title: row.title,
@@ -907,7 +929,7 @@ function mapEvent(env: Env, request: Request, row: EventRow) {
     host_org_name: row.organization_name || row.host_org_name,
     organization_name: row.organization_name || row.host_org_name,
     tags: parseJsonArray(row.tags),
-    public_url: eventPublicUrl(env, request, row.slug),
+    public_url: await eventPublicUrl(env, request, row.slug),
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -1819,7 +1841,7 @@ app.get("/admin/mcp/status", async (c) => {
 app.get("/api/network/contact/me", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   const row = await contactForUser(c.env, c.req.raw, user);
-  return c.json(mapContact(c.env, c.req.raw, row));
+  return c.json(await mapContact(c.env, c.req.raw, row));
 });
 
 app.put("/api/network/contact/me", async (c) => {
@@ -1828,7 +1850,7 @@ app.put("/api/network/contact/me", async (c) => {
   const payload = (await c.req.json().catch(() => ({}))) as ContactPayload;
   await applyContactPayload(c.env, row, user, payload);
   const updated = await c.env.DB.prepare("SELECT * FROM user_contact_pages WHERE user_id = ?").bind(user.id).first<ContactRow>();
-  return c.json(mapContact(c.env, c.req.raw, updated!));
+  return c.json(await mapContact(c.env, c.req.raw, updated!));
 });
 
 app.post("/api/network/contact/me/import", async (c) => {
@@ -1842,7 +1864,7 @@ app.post("/api/network/contact/me/import", async (c) => {
     .bind(sourceUrl, importedAt, importedAt, user.id)
     .run();
   const updated = await c.env.DB.prepare("SELECT * FROM user_contact_pages WHERE user_id = ?").bind(row.user_id).first<ContactRow>();
-  return c.json({ contact: mapContact(c.env, c.req.raw, updated!), imported_fields: ["source_profile_url"], source_url: sourceUrl });
+  return c.json({ contact: await mapContact(c.env, c.req.raw, updated!), imported_fields: ["source_profile_url"], source_url: sourceUrl });
 });
 
 app.get("/api/network/notifications/summary", async (c) => {
@@ -2104,7 +2126,7 @@ async function publicUsers(env: Env, request: Request, query = "", limit = 40) {
     .bind(candidateLimit)
     .all<ContactRow>();
   const rankedRows = rankSearchResults(rows.results || [], q, (row) => [row.user_name, row.headline, row.slug], safeLimit);
-  return rankedRows.map((row) => mapContact(env, request, row));
+  return Promise.all(rankedRows.map((row) => mapContact(env, request, row)));
 }
 
 async function networkUsers(env: Env, request: Request, query = "", limit = 500) {
@@ -2202,7 +2224,7 @@ app.get("/api/network/orgs/public/:slug", async (c) => {
     .bind(row.id)
     .first<{ n: number }>();
   const sentimentCounts = await organizationSentimentCounts(c.env.DB, row.id);
-  return c.json({ ...mapOrganization({ ...row, ...sentimentCounts }, Number(count?.n || 0)), public_url: orgPublicUrl(c.env, c.req.raw, row.slug) });
+  return c.json({ ...mapOrganization({ ...row, ...sentimentCounts }, Number(count?.n || 0)), public_url: await orgPublicUrl(c.env, c.req.raw, row.slug) });
 });
 
 app.get("/api/network/orgs/public/:slug/events", async (c) => {
@@ -2223,7 +2245,7 @@ app.get("/api/network/orgs/public/:slug/events", async (c) => {
   )
     .bind(org.id, limit)
     .all<EventRow>();
-  return c.json((rows.results || []).map((row) => mapEvent(c.env, c.req.raw, row)));
+  return c.json(await Promise.all((rows.results || []).map((row) => mapEvent(c.env, c.req.raw, row))));
 });
 
 app.get("/api/network/orgs/public/:slug/admins", async (c) => {
@@ -2266,7 +2288,7 @@ app.get("/api/network/events/public", async (c) => {
     (row) => [row.title, row.description, row.location, row.organization_name, row.host_org_name, row.slug, row.tags, row.city],
     limit,
   );
-  return c.json(rankedRows.map((row) => mapEvent(c.env, c.req.raw, row)));
+  return c.json(await Promise.all(rankedRows.map((row) => mapEvent(c.env, c.req.raw, row))));
 });
 
 app.get("/api/network/events/public/:slug", async (c) => {
@@ -2279,7 +2301,7 @@ app.get("/api/network/events/public/:slug", async (c) => {
     .bind(slugify(c.req.param("slug")))
     .first<EventRow>();
   if (!row) fail(404, "Event not found");
-  return c.json(mapEvent(c.env, c.req.raw, row));
+  return c.json(await mapEvent(c.env, c.req.raw, row));
 });
 
 app.get("/api/network/events/public/:slug/chat", (c) =>
@@ -2611,7 +2633,7 @@ app.get("/api/network/events", async (c) => {
   )
     .bind(limit)
     .all<EventRow>();
-  return c.json((rows.results || []).map((row) => mapEvent(c.env, c.req.raw, row)));
+  return c.json(await Promise.all((rows.results || []).map((row) => mapEvent(c.env, c.req.raw, row))));
 });
 
 app.post("/api/network/events", async (c) => {
@@ -2652,20 +2674,20 @@ app.post("/api/network/events", async (c) => {
   const row = await upsertEvent(c.env.DB, {
     ...eventPayload,
   });
-  return c.json(mapEvent(c.env, c.req.raw, row!), 201);
+  return c.json(await mapEvent(c.env, c.req.raw, row!), 201);
 });
 
 app.post("/api/network/events/:eventId/claim", async (c) => {
   await currentUser(c.env, c.req.raw);
   const row = await c.env.DB.prepare("SELECT * FROM events WHERE id = ?").bind(c.req.param("eventId")).first<EventRow>();
   if (!row) fail(404, "Event not found");
-  return c.json(mapEvent(c.env, c.req.raw, row));
+  return c.json(await mapEvent(c.env, c.req.raw, row));
 });
 app.post("/api/network/events/:eventId/unclaim", async (c) => {
   await currentUser(c.env, c.req.raw);
   const row = await c.env.DB.prepare("SELECT * FROM events WHERE id = ?").bind(c.req.param("eventId")).first<EventRow>();
   if (!row) fail(404, "Event not found");
-  return c.json(mapEvent(c.env, c.req.raw, row));
+  return c.json(await mapEvent(c.env, c.req.raw, row));
 });
 app.get("/api/network/events/:eventId/attendance", async (c) => {
   c.header("Cache-Control", "no-store");
@@ -3686,7 +3708,7 @@ app.get("/api/network/users/public/:slug/events", async (c) => {
      ORDER BY COALESCE(e.starts_at, e.created_at) ASC
      LIMIT ?`,
   ).bind(contact.user_id, upcomingOnly ? 1 : 0, limit).all<EventRow>();
-  return c.json((rows.results || []).map((row) => mapEvent(c.env, c.req.raw, row)));
+  return c.json(await Promise.all((rows.results || []).map((row) => mapEvent(c.env, c.req.raw, row))));
 });
 
 app.post("/api/health-insurance/services", async (c) => {

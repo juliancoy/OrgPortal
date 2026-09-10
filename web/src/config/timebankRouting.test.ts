@@ -38,6 +38,8 @@ test('non-timebank tenant domains also use root portal routes', () => {
   })
   expect(portalBasePath()).toBe('')
   expect(portalPath('/community')).toBe('/community')
+  expect(normalizePostLoginPath('/p/users/login?next=/community')).toBe('/community?portalProfile=baltimore-medtech')
+  expect(portalAuthCallbackUrl('/org-events')).toContain('next=%2Forg-events')
 })
 
 test('shared sign-in callback keeps root listing destinations and rejects external returns', () => {
