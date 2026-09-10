@@ -63,7 +63,6 @@
 [data-portal-profile='baltimore-medtech'] .skip-link { opacity: 0; pointer-events: none; }
 [data-portal-profile='baltimore-medtech'] .skip-link:focus { opacity: 1; pointer-events: auto; }
 .portal-tenant-auth-shell p { text-indent: 0; }
-[data-portal-profile='baltimore-medtech'] .portal-auth-register-shortcut { color: #061a26; }
 [data-portal-profile='baltimore-medtech'] .portal-auth-idp-link { background: var(--btn-primary-bg); color: var(--btn-primary-text); }
 [data-portal-profile='baltimore-medtech'] .btn-primary { background: var(--btn-primary-bg); color: var(--btn-primary-text); }
 [data-portal-profile='baltimore-medtech'] .portal-nav-toggle,

@@ -914,23 +914,11 @@ export function Header() {
           ) : (
             <>
               <Link className="portal-button" to={portalProfilePath(`/users/login${authNextQuery}`)}>
-                Log In
-              </Link>
-              <Link
-                to={portalProfilePath(`/users/register${authNextQuery}`)}
-                className="btn-secondary"
-                style={{
-                  background: 'var(--primary)',
-                  color: '#fff',
-                  border: '2px solid var(--primary)',
-                }}
-              >
-                Register
+                Login
               </Link>
             </>
           )}
         </div>
-      </div>
       <div className={`portal-nav-bar ${navOpen ? 'open' : ''}`}>
         <button
           type="button"
@@ -1114,6 +1102,7 @@ export function Header() {
           )}
           </>}
         </div>
+      </div>
       </div>
     </header>
   )

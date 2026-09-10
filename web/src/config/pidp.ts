@@ -22,7 +22,7 @@ function laneCorrectHost(hostname: string, lane: 'dev' | 'prod'): string {
   return hostname
 }
 
-function normalizePidpBase(rawBase: string): string {
+export function normalizePidpBase(rawBase: string): string {
   const fallback = '/pidp'
   const trimmed = rawBase.trim()
   if (!trimmed) return fallback
@@ -42,6 +42,12 @@ function normalizePidpBase(rawBase: string): string {
   if (typeof window === 'undefined') {
     return parsed.toString().replace(/\/$/, '')
   }
+
+  if (!isNativeCapacitorRuntime() && parsed.origin !== window.location.origin) {
+    const firstPartyPidpHosts = new Set(['id.codecollective.us', 'dev.id.codecollective.us'])
+    if (firstPartyPidpHosts.has(parsed.hostname)) return fallback
+  }
+
   const lane = detectLane(window.location.hostname)
   const correctedHost = laneCorrectHost(parsed.hostname, lane)
   if (correctedHost !== parsed.hostname) {

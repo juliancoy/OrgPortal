@@ -1,9 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
 import { portalPath } from '../../../config/portalBase'
 import { defaultPostLoginPath, PIDP_APP_SLUG, normalizePostLoginPath, pidpAppLoginUrl, pidpUrl, portalAuthCallbackUrl } from '../../../config/pidp'
-import { getActivePortalProfileConfig, portalProfilePath } from '../../../config/portalFeatures'
+import { getActivePortalProfileConfig } from '../../../config/portalFeatures'
 
 export function UserLoginPage() {
   const navigate = useNavigate()
@@ -16,7 +16,6 @@ export function UserLoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const requestedNext = normalizePostLoginPath(searchParams.get('next') || defaultPostLoginPath())
-  const registerPath = portalProfilePath(`/users/register?next=${encodeURIComponent(requestedNext)}`)
   const socialLoginUrl = (provider: 'google' | 'github') => {
     const params = new URLSearchParams({ next: portalAuthCallbackUrl(requestedNext) })
     if (PIDP_APP_SLUG) params.set('app', PIDP_APP_SLUG)
@@ -53,12 +52,12 @@ export function UserLoginPage() {
         <div className="portal-auth-card-header">
           {tenantAuth && portalProfile.brandImagePath && <img className="tenant-auth-logo" src={portalPath(portalProfile.brandImagePath)} alt="" />}
           <p className="portal-auth-eyebrow">{tenantAuth ? portalProfile.tagline : `${portalProfile.brandName} identity`}</p>
-          <h1 id="user-login-title">{tenantAuth ? `Welcome to ${portalProfile.brandName}` : 'Log In'}</h1>
-          <p className="muted">{tenantAuth ? `Sign in to continue to ${portalProfile.brandName}.` : 'Sign in with your existing account or create one before continuing.'}</p>
+          <h1 id="user-login-title">{tenantAuth ? `Welcome to ${portalProfile.brandName}` : 'Login'}</h1>
+          <p className="muted">{tenantAuth ? `Sign in to continue to ${portalProfile.brandName}.` : 'Sign in to continue.'}</p>
         </div>
 
         <div className="portal-auth-provider-stack">
-          <div className="portal-guest-login-actions portal-auth-provider-actions" aria-label="Sign in or register options">
+          <div className="portal-guest-login-actions portal-auth-provider-actions" aria-label="Sign in options">
             <a
               href={socialLoginUrl('google')}
               className="portal-social-login-button"
@@ -73,13 +72,6 @@ export function UserLoginPage() {
             >
               <img src={portalPath('/images/github-mark.svg')} alt="" className="portal-social-login-logo" />
             </a>
-            <Link
-              to={registerPath}
-              className="portal-social-login-button portal-auth-register-shortcut"
-              aria-label="Register new account"
-            >
-              Register
-            </Link>
           </div>
           <a
             href={pidpAppLoginUrl(requestedNext)}
@@ -128,9 +120,6 @@ export function UserLoginPage() {
           </button>
         </form>
 
-        <p className="portal-auth-secondary">
-          New here? <Link to={registerPath}>{tenantAuth ? `Join ${portalProfile.brandName}` : 'Register'}</Link>
-        </p>
         {tenantAuth && <p className="tenant-shared-account">Your existing Code Collective account works here.</p>}
       </div>
     </section>
