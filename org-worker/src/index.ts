@@ -1762,8 +1762,9 @@ app.onError((err) => {
 
 // Register MCP before generic CORS; do not grant arbitrary origins event access.
 app.all("/mcp", (c) => handleEventMcp(c.req.raw, c.env));
+const oauthProtectedResourceMetadataResponse = (env: Env) => Response.json(protectedResourceMetadata(env), { headers: { "cache-control": "no-store" } });
 const oauthProtectedResourceMetadata = (c: { env: Env }) => {
-  try { return json(protectedResourceMetadata(c.env)); } catch (error) { return eventErrorResponse(error, c.env); }
+  try { return oauthProtectedResourceMetadataResponse(c.env); } catch (error) { return eventErrorResponse(error, c.env); }
 };
 app.get("/.well-known/oauth-protected-resource", oauthProtectedResourceMetadata);
 app.get("/.well-known/oauth-protected-resource/api/org/mcp", oauthProtectedResourceMetadata);
@@ -3755,7 +3756,7 @@ function orgWorkerFetch(request: Request, env: Env, ctx: ExecutionContext) {
   if (request.method === "GET" && (url.pathname === "/.well-known/oauth-protected-resource"
     || url.pathname === "/.well-known/oauth-protected-resource/api/org/mcp"
     || url.pathname.startsWith("/.well-known/oauth-protected-resource/"))) {
-    try { return json(protectedResourceMetadata(env)); } catch (error) { return eventErrorResponse(error, env); }
+    try { return oauthProtectedResourceMetadataResponse(env); } catch (error) { return eventErrorResponse(error, env); }
   }
   return app.fetch(request, env, ctx);
 }
