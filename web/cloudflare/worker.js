@@ -56,6 +56,14 @@ export default {
       });
     }
 
+    // The PIdP origin intentionally has no document at `/`. Give visitors who
+    // follow the public proxy root a useful entry point instead of a 404.
+    if (request.method === "GET" && (url.pathname === "/pidp" || url.pathname === "/pidp/")) {
+      url.pathname = "/pidp/app/login";
+      if (!url.searchParams.has("owner")) url.searchParams.set("owner", "1");
+      return Response.redirect(url.toString(), 302);
+    }
+
     if (url.pathname.startsWith("/api/governance")) {
       return proxyRequest(request, env.GOVERNANCE_API_ORIGIN, env);
     }
