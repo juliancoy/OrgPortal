@@ -25,6 +25,7 @@ export class TimebankDatabase {
     this.sqlite.exec(readFileSync(new URL('../../migrations/0022_timebank_uptake.sql', import.meta.url), 'utf8'));
     this.sqlite.exec(readFileSync(new URL('../../migrations/0023_timebank_notifications.sql', import.meta.url), 'utf8'));
     this.sqlite.exec(readFileSync(new URL('../../migrations/0024_timebank_listing_visibility.sql', import.meta.url), 'utf8'));
+    this.sqlite.exec(readFileSync(new URL('../../migrations/0025_timebank_import_claims.sql', import.meta.url), 'utf8'));
   }
   prepare(sql: string) { return new SqliteStatement(this.sqlite.prepare(sql)); }
   async batch(statements: SqliteStatement[]) {

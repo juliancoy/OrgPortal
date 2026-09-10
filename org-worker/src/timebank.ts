@@ -89,7 +89,7 @@ export async function timebankDashboard(db: D1Database, member: Member | null, c
   if (mineOnly && !member) throw new TimebankError('Sign in to view your listings.', 403);
   if (member) await ensureMember(db, member);
   const userId = member?.id ?? null;
-  const [totals, listings, exchanges] = await db.batch<Record<string, unknown>>([
+  const [totals, listings, exchanges, imported, availability] = await db.batch<Record<string, unknown>>([
     db.prepare(`SELECT
       COALESCE(SUM(CASE WHEN provider_user_id = ? THEN minutes ELSE 0 END), 0) AS earned_minutes,
       COALESCE(SUM(CASE WHEN recipient_user_id = ? THEN minutes ELSE 0 END), 0) AS spent_minutes
@@ -130,11 +130,20 @@ export async function timebankDashboard(db: D1Database, member: Member | null, c
       WHERE e.community_id = ? AND (e.provider_user_id = ? OR e.recipient_user_id = ?)
       ORDER BY (e.status = 'pending') DESC, COALESCE(e.resolved_at, e.created_at) DESC, e.id DESC LIMIT 100`)
       .bind(communityId, userId, userId),
+    db.prepare(`SELECT a.balance_minutes, a.earned_minutes, a.spent_minutes
+      FROM timebank_import_accounts a JOIN timebank_import_batches b ON b.id = a.batch_id
+      WHERE a.community_id = ? AND a.claimed_by_user_id = ? AND b.ready = 1`).bind(communityId, userId),
+    db.prepare('SELECT EXISTS(SELECT 1 FROM timebank_import_batches WHERE community_id = ? AND ready = 1) AS available').bind(communityId),
   ]);
   const earned = Number(totals.results[0]?.earned_minutes || 0);
   const spent = Number(totals.results[0]?.spent_minutes || 0);
+  const opening = imported.results[0];
   return {
-    account: member ? { user_id: member.id, name: member.name, balance_minutes: earned - spent, earned_minutes: earned, spent_minutes: spent } : null,
+    account: member ? { user_id: member.id, name: member.name,
+      balance_minutes: earned - spent + Number(opening?.balance_minutes || 0),
+      earned_minutes: earned + Number(opening?.earned_minutes || 0), spent_minutes: spent + Number(opening?.spent_minutes || 0),
+      imported_balance_minutes: opening?.balance_minutes ?? null, has_imported_account: Boolean(opening) } : null,
+    imports_available: Boolean(availability.results[0]?.available),
     listings: listings.results,
     exchanges: exchanges.results,
   };
@@ -367,8 +376,12 @@ export async function timebankAnalytics(db: D1Database, communityId: string) {
         SELECT provider_user_id AS user_id, minutes FROM timebank_exchanges WHERE community_id = ? AND status = 'confirmed'
         UNION ALL
         SELECT recipient_user_id AS user_id, -minutes FROM timebank_exchanges WHERE community_id = ? AND status = 'confirmed'
+        UNION ALL
+        SELECT a.claimed_by_user_id AS user_id, a.balance_minutes AS minutes
+          FROM timebank_import_accounts a JOIN timebank_import_batches b ON b.id = a.batch_id
+          WHERE a.community_id = ? AND b.ready = 1 AND a.claimed_by_user_id IS NOT NULL AND a.balance_minutes IS NOT NULL
       ), balances AS (SELECT user_id, SUM(minutes) AS minutes FROM entries GROUP BY user_id)
-      SELECT COALESCE(SUM(minutes), 0) AS circulation_minutes FROM balances WHERE minutes > 0`).bind(communityId, communityId),
+      SELECT COALESCE(SUM(minutes), 0) AS circulation_minutes FROM balances WHERE minutes > 0`).bind(communityId, communityId, communityId),
     db.prepare(`SELECT l.category, SUM(e.minutes) AS minutes FROM timebank_exchanges e
       JOIN timebank_listings l ON l.id = e.listing_id AND l.community_id = e.community_id
       WHERE e.community_id = ? AND e.status = 'confirmed' GROUP BY l.category ORDER BY minutes DESC, l.category`).bind(communityId),

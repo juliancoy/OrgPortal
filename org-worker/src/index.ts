@@ -1,4 +1,5 @@
 import { timebankNotifications, markTimebankNotificationsRead, dispatchTimebankPush } from './timebankNotifications';
+import { importClaimDirectory, requestImportClaim, withdrawImportClaim, reviewImportClaims, resolveImportClaim, claimedImportRecords } from './timebankImports';
 import { Hono } from "hono";
 import { buildMetadata } from "./generated/buildMetadata";
 import { HTTPException } from "hono/http-exception";
@@ -3045,6 +3046,43 @@ app.get("/api/timebank/notifications", async (c) => {
   const community = await resolveTimebankCommunity(c.env.DB, c.req.raw);
   c.header("Cache-Control", "no-store");
   return c.json(await timebankNotifications(c.env.DB, user.id, community.id, c.req.query("before")));
+});
+
+app.get('/api/timebank/imports/accounts', async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const community = await resolveTimebankCommunity(c.env.DB, c.req.raw);
+  c.header('Cache-Control', 'no-store');
+  return c.json(await importClaimDirectory(c.env.DB, user.id, community.id, c.req.query('q') || ''));
+});
+app.get('/api/timebank/imports/me', async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const community = await resolveTimebankCommunity(c.env.DB, c.req.raw);
+  c.header('Cache-Control', 'no-store');
+  return c.json(await claimedImportRecords(c.env.DB, user.id, community.id));
+});
+app.post('/api/timebank/imports/claims', async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const community = await resolveTimebankCommunity(c.env.DB, c.req.raw);
+  c.header('Cache-Control', 'no-store');
+  return c.json(await requestImportClaim(c.env.DB, { id: user.id, name: userName(user), email: user.email || '' }, community.id, await c.req.json().catch(() => null)), 201);
+});
+app.post('/api/timebank/imports/claims/:id/withdraw', async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const community = await resolveTimebankCommunity(c.env.DB, c.req.raw);
+  return c.json(await withdrawImportClaim(c.env.DB, user.id, community.id, c.req.param('id')));
+});
+app.get('/api/timebank/imports/review', async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  if (!adminUser(user, c.env)) fail(403, 'Admin access required');
+  const community = await resolveTimebankCommunity(c.env.DB, c.req.raw);
+  c.header('Cache-Control', 'no-store');
+  return c.json(await reviewImportClaims(c.env.DB, community.id));
+});
+app.patch('/api/timebank/imports/claims/:id', async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  if (!adminUser(user, c.env)) fail(403, 'Admin access required');
+  const community = await resolveTimebankCommunity(c.env.DB, c.req.raw);
+  return c.json(await resolveImportClaim(c.env.DB, user.id, community.id, c.req.param('id'), await c.req.json().catch(() => null)));
 });
 
 app.post("/api/timebank/notifications/read", async (c) => {
