@@ -15,7 +15,7 @@ export type PortalProfileConfig = {
 }
 
 const PROFILE_STORAGE_KEY = 'portal.profile'
-export const MEDTECH_PORTAL_HOST = 'community.medtech.social'
+export const MEDTECH_PORTAL_HOST = 'medtech.social'
 const PROFILE_QUERY_PARAMS = ['portalProfile', 'profile', 'site']
 
 const PORTAL_PROFILES: Record<PortalProfileId, PortalProfileConfig> = {
