@@ -1,7 +1,7 @@
 import { PortalProfileBoundary } from '../shell/PortalProfileBoundary'
 import { MedTechCommunityPage } from '../views/MedTechCommunityPage'
 import { MedTechEventsPage } from '../views/MedTechEventsPage'
-import { getDomainCommunity, timebankHomePath } from '../../config/timebankCommunity'
+import { getDomainCommunity } from '../../config/timebankCommunity'
 import { useEffect, useState } from 'react'
 import type { ReactElement } from 'react'
 import { Navigate, createBrowserRouter, useLocation, useNavigate, useParams } from 'react-router-dom'
@@ -82,6 +82,7 @@ function AuthenticatedRoute(props: { children: ReactElement }) {
 function HomeRoute() {
   const { role, isLoading } = useAuth()
   if (isLoading) return null
+  if (getDomainCommunity()) return <Navigate to="/timebanking" replace />
   const profile = getActivePortalProfileConfig()
   if (profile.id === 'baltimore-medtech') {
     return <Navigate to={portalProfilePath(role === 'guest' ? '/users/login' : profile.memberHomePath)} replace />
@@ -170,7 +171,7 @@ export function createAppRouter() {
 
   return createBrowserRouter(
     [{ element: <PortalProfileBoundary />, children: [
-      ...(getDomainCommunity() ? [] : [{ path: '/', element: <HomeRoute /> }]),
+      { path: '/', element: <HomeRoute /> },
       { path: '/finance', element: <EconomicOpsPage /> },
       { path: '/departments', element: <DepartmentsPage /> },
       { path: '/ecops', element: <Navigate to="/finance" replace /> },
@@ -188,7 +189,7 @@ export function createAppRouter() {
           { path: '/initiatives/:slug', element: <InitiativeDetailPage /> },
           { path: '/initiatives/:slug/sign', element: <InitiativeSignPage /> },
 
-          { path: '/community', element: <AuthenticatedRoute><MedTechCommunityPage /></AuthenticatedRoute> },
+          { path: '/community', element: <MedTechCommunityPage /> },
           { path: '/medtech-events', element: <MedTechEventsPage /> },
           { path: '/about', element: <AboutPage /> },
           { path: '/email', element: <AdminRoute><EmailCampaignsPage /></AdminRoute> },
@@ -296,7 +297,7 @@ export function createAppRouter() {
           { path: '/events/:slug', element: <PublicEventPage /> },
           { path: '/orgs', element: <PublicOrganizationsPage /> },
           { path: '/people', element: <PeoplePage /> },
-          { path: timebankHomePath(), element: <TimebankRoute /> },
+          { path: '/timebanking', element: <TimebankRoute /> },
           {
             path: '/life-insurance',
             element: (

@@ -1,5 +1,6 @@
 import { MEDTECH_LUMA_URL, MEDTECH_OWNED_EVENTS_PATH } from '../../config/medtechCommunity'
 import { PublicEventsPage } from './public/PublicEventsPage'
+import { MedTechFormationalEventCard } from './MedTechFormationalEventCard'
 
 export function MedTechEventsPage() {
   return <>
@@ -7,6 +8,7 @@ export function MedTechEventsPage() {
       <span aria-current="page">MedTech Events</span>
       <a href="https://medtech.social/calendar.html">General Calendar ↗</a>
     </nav>
+    <MedTechFormationalEventCard />
     <PublicEventsPage sourcePath={MEDTECH_OWNED_EVENTS_PATH} heading="MedTech Events"
       description="Events hosted by Baltimore MedTech. Browse the General Calendar for other medical and technology events around the region."
       emptyMessage="No upcoming MedTech-hosted events have been published in the portal yet." />

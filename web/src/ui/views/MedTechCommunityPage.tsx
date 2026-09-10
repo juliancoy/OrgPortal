@@ -4,6 +4,7 @@ import { useAuth } from '../../app/AppProviders'
 import { portalPath } from '../../config/portalBase'
 import { portalProfilePath } from '../../config/portalFeatures'
 import { MEDTECH_CHAT_URL, MEDTECH_OWNED_EVENTS_PATH, MEDTECH_LUMA_URL, medTechEventImageUrl, selectOwnedMedTechEvents, type MedTechEvent } from '../../config/medtechCommunity'
+import { MedTechFormationalEventCard } from './MedTechFormationalEventCard'
 
 export function MedTechCommunityPage() {
   const { user } = useAuth()
@@ -33,10 +34,12 @@ export function MedTechCommunityPage() {
         <div>
           <p className="medtech-eyebrow">Health × Medicine × Biotech</p>
           <h1 id="medtech-community-title">Your Baltimore<br />MedTech community.</h1>
-          <p>Welcome, {user?.firstName || user?.displayName || 'neighbor'}. Find your next conversation, connection, or local event.</p>
+          <p>Welcome{user ? `, ${user.firstName || user.displayName || 'neighbor'}` : ''}. Find your next conversation, connection, or local event.</p>
           <a className="medtech-primary-link" href={MEDTECH_CHAT_URL}>Join the community conversation <span aria-hidden="true">↗</span></a>
         </div>
       </section>
+
+      <MedTechFormationalEventCard />
 
       <section className="medtech-community-grid" aria-label="Connect with the community">
         <article className="medtech-community-card">

@@ -95,6 +95,15 @@
 .medtech-community-card p:not(.medtech-eyebrow) { margin: 0 0 6px; line-height: 1.6; color: var(--text-secondary); }
 .medtech-community-card a { font-weight: 650; }
 .medtech-community-events { padding: 28px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; }
+.medtech-formational-event { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 28px; align-items: center; padding: clamp(24px, 4vw, 40px); background: linear-gradient(120deg, #073d4a, #08697a 68%, #0a8192); color: #fff; border-radius: 14px; box-shadow: 0 12px 28px rgba(6,26,38,.16); }
+.medtech-formational-event .medtech-eyebrow { color: #a8f1f4; }
+.medtech-formational-event h2 { color: #fff; margin: 8px 0; font-size: clamp(1.6rem, 3vw, 2.35rem); line-height: 1.1; }
+.medtech-formational-event p { margin: 8px 0; color: #e1fbfc; line-height: 1.5; }
+.medtech-formational-event .medtech-formational-event-date { font-size: 1.1rem; font-weight: 700; color: #fff; }
+.medtech-formational-event .medtech-formational-event-note { font-size: .85rem; color: #bcecef; }
+.medtech-formational-event-actions { display: grid; justify-items: start; gap: 14px; }
+.medtech-formational-event-actions a:not(.medtech-primary-link) { color: #fff; font-weight: 700; }
+.medtech-formational-event .medtech-primary-link { margin-top: 0; white-space: nowrap; }
 .medtech-section-heading { display: flex; gap: 20px; justify-content: space-between; align-items: center; }
 .medtech-section-heading h2 { margin: 8px 0; font-size: 1.5rem; }
 .medtech-event-list { list-style: none; padding: 0; margin: 16px 0 0; }
@@ -109,6 +118,8 @@
 @media (max-width: 640px) {
   .medtech-event-list li:has(.medtech-event-image:not([hidden])) { grid-template-columns: 1fr; }
   .medtech-community-grid { grid-template-columns: 1fr; }
+  .medtech-formational-event { grid-template-columns: 1fr; gap: 18px; }
+  .medtech-formational-event .medtech-primary-link { white-space: normal; }
   .medtech-section-heading { align-items: start; flex-direction: column; }
   .medtech-community-card, .medtech-community-events { padding: 20px; }
   .portal-medtech-auth-shell .portal-main { padding-block: 20px; }
