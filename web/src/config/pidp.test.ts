@@ -43,4 +43,23 @@ describe('profile-aware authentication destinations', () => {
     expect(defaultPostLoginPath()).toBe('/chat')
     expect(new URL(portalAuthCallbackUrl('/people')).searchParams.has('portalProfile')).toBe(false)
   })
+
+  it('keeps shared slug portal login callbacks under the shared mount', () => {
+    vi.stubEnv('BASE_URL', '/p/')
+    setDomainTenant({
+      id: 'org-test-portal',
+      organization_id: 'org-test',
+      slug: 'test-org',
+      hostname: 'test-org.slug.portal.local',
+      name: 'Test Org',
+      tagline: 'Test org portal',
+      accent_color: '#155e59',
+      profile: 'community',
+      features: ['directory', 'events', 'chat'],
+      member_home_path: '/chat',
+      canonical_path_prefix: '/p',
+    })
+    const callback = new URL(portalAuthCallbackUrl('/portals/test-org'))
+    expect(callback.toString()).toBe('https://codecollective.us/p/auth/callback?next=%2Fportals%2Ftest-org')
+  })
 })
