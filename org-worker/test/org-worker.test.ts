@@ -538,7 +538,7 @@ async function withPidpUser<T>(user: Row, callback: () => Promise<T>) {
 test("path-qualified MCP protected resource metadata is public", async () => {
   const response = await app.request("https://org.example.test/.well-known/oauth-protected-resource/api/org/mcp", {}, {
     ...env(),
-    MCP_PUBLIC_URL: "https://community.medtech.social/api/org/mcp",
+    MCP_PUBLIC_URL: "https://medtech.social/api/org/mcp",
     MCP_OAUTH_ISSUER: "https://id.codecollective.us",
     MCP_OAUTH_JWKS_URL: "https://id.codecollective.us/.well-known/jwks.json",
     MCP_SUBJECT_MAP_JSON: "{}",
@@ -546,7 +546,7 @@ test("path-qualified MCP protected resource metadata is public", async () => {
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("cache-control"), "no-store");
   const body = await response.json() as Record<string, unknown>;
-  assert.equal(body.resource, "https://community.medtech.social/api/org/mcp");
+  assert.equal(body.resource, "https://medtech.social/api/org/mcp");
   assert.deepEqual(body.authorization_servers, ["https://id.codecollective.us"]);
 });
 
@@ -554,7 +554,7 @@ test("path-qualified MCP protected resource metadata is public", async () => {
 test("worker fetch serves path-qualified MCP protected resource metadata before fallback", async () => {
   const response = await worker.fetch(new Request("https://org.example.test/.well-known/oauth-protected-resource/api/org/mcp"), {
     ...env(),
-    MCP_PUBLIC_URL: "https://community.medtech.social/api/org/mcp",
+    MCP_PUBLIC_URL: "https://medtech.social/api/org/mcp",
     MCP_OAUTH_ISSUER: "https://id.codecollective.us",
     MCP_OAUTH_JWKS_URL: "https://id.codecollective.us/.well-known/jwks.json",
     MCP_SUBJECT_MAP_JSON: "{}",
@@ -562,7 +562,7 @@ test("worker fetch serves path-qualified MCP protected resource metadata before 
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("cache-control"), "no-store");
   const body = await response.json() as Record<string, unknown>;
-  assert.equal(body.resource, "https://community.medtech.social/api/org/mcp");
+  assert.equal(body.resource, "https://medtech.social/api/org/mcp");
 });
 
 test("health route identifies the org worker", async () => {
