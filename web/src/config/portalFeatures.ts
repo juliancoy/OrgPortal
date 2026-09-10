@@ -1,4 +1,4 @@
-import { getDomainCommunity } from './timebankCommunity'
+import { getDomainTenant, type PortalTenant } from './timebankCommunity'
 export type PortalFeature = 'ubi'
 
 export type PortalProfileId = 'code-collective' | 'baltimore-medtech'
@@ -12,6 +12,11 @@ export type PortalProfileConfig = {
   homeUrl: string
   memberHomePath: string
   disabledFeatures: PortalFeature[]
+  manifestPath: string
+  faviconPath: string
+  faviconType: string
+  themeColor: string
+  tenantId?: string
 }
 
 const PROFILE_STORAGE_KEY = 'portal.profile'
@@ -28,6 +33,10 @@ const PORTAL_PROFILES: Record<PortalProfileId, PortalProfileConfig> = {
     homeUrl: '/',
     memberHomePath: '/chat',
     disabledFeatures: [],
+    manifestPath: '/manifest.webmanifest',
+    faviconPath: '/codecollective_logo.png',
+    faviconType: 'image/png',
+    themeColor: '#12325b',
   },
   'baltimore-medtech': {
     id: 'baltimore-medtech',
@@ -38,6 +47,10 @@ const PORTAL_PROFILES: Record<PortalProfileId, PortalProfileConfig> = {
     homeUrl: 'https://medtech.social/',
     memberHomePath: '/community',
     disabledFeatures: ['ubi'],
+    manifestPath: '/medtech.webmanifest',
+    faviconPath: '/images/baltimore-medtech-logo-square.jpg',
+    faviconType: 'image/jpeg',
+    themeColor: '#061a26',
   },
 }
 
@@ -93,14 +106,40 @@ export function readPortalProfileIdFromSearch(search = ''): PortalProfileId | nu
   return null
 }
 
+function tenantProfileConfig(tenant: PortalTenant): PortalProfileConfig {
+  const profileId = normalizeProfileId(tenant.profile) || 'code-collective'
+  const base = PORTAL_PROFILES[profileId]
+  const features = new Set(tenant.features || [])
+  const disabledFeatures = features.size
+    ? (['ubi'] as PortalFeature[]).filter((feature) => !features.has(feature))
+    : base.disabledFeatures
+  const brandImagePath = tenant.brand_image_path || base.brandImagePath
+  return {
+    ...base,
+    id: profileId,
+    tenantId: tenant.id,
+    brandName: tenant.name || base.brandName,
+    portalTitle: tenant.name ? `${tenant.name} Portal` : base.portalTitle,
+    tagline: tenant.tagline || base.tagline,
+    brandImagePath,
+    homeUrl: tenant.home_url || base.homeUrl,
+    memberHomePath: tenant.member_home_path || (profileId === 'code-collective' && tenant.features?.includes('timebank') ? '/' : base.memberHomePath),
+    disabledFeatures,
+    manifestPath: tenant.manifest_path || base.manifestPath,
+    faviconPath: brandImagePath || base.faviconPath,
+    faviconType: brandImagePath?.endsWith('.png') ? 'image/png' : brandImagePath?.endsWith('.webp') ? 'image/webp' : base.faviconType,
+    themeColor: tenant.theme_color || tenant.accent_color || base.themeColor,
+  }
+}
+
 export function getActivePortalProfileConfig(
   search = typeof window === 'undefined' ? '' : window.location.search,
   storage: Pick<Storage, 'getItem' | 'setItem'> | null = browserStorage(),
   hostname = typeof window === 'undefined' ? '' : window.location.hostname,
 ): PortalProfileConfig {
+  const tenant = getDomainTenant()
+  if (tenant) return tenantProfileConfig(tenant)
   if (hostname === MEDTECH_PORTAL_HOST) return PORTAL_PROFILES['baltimore-medtech']
-  const community = getDomainCommunity()
-  if (community) return { id: 'code-collective', brandName: community.name, portalTitle: community.name, tagline: community.tagline, homeUrl: '/', memberHomePath: '/', disabledFeatures: [] }
   const urlProfileId = readPortalProfileIdFromSearch(search)
   const profileId = urlProfileId || (typeof window !== 'undefined' ? browserProfileId : null) || storageGet(storage) || 'code-collective'
   if (urlProfileId) storageSet(urlProfileId, storage)
@@ -117,9 +156,10 @@ export function portalProfileLoginSearch(profileId: PortalProfileId): string {
 }
 
 export function portalProfilePath(path: string, profile = getActivePortalProfileConfig()): string {
-  if (profile.id !== 'baltimore-medtech') return path
+  if (!profile.tenantId && profile.id !== 'baltimore-medtech') return path
   const url = new URL(path, 'https://portal.invalid')
   if (url.origin !== 'https://portal.invalid') throw new Error('Expected an internal portal path')
+  if (profile.tenantId && !['baltimore-medtech'].includes(profile.id)) return `${url.pathname}${url.search}${url.hash}`
   url.searchParams.set('portalProfile', profile.id)
   return `${url.pathname}${url.search}${url.hash}`
 }

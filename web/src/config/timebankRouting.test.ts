@@ -4,7 +4,7 @@ import { portalBasePath, portalPath } from './portalBase'
 import { defaultPostLoginPath, normalizePostLoginPath, portalAuthCallbackUrl } from './pidp'
 import { timebankListingPath, timebankNoticePath } from '../ui/timebank/links'
 
-const tenant = { id: 'timebank', hostname: 'timebank.codecollective.us', name: 'Timebank', tagline: 'Share time', accent_color: '#155e59' }
+const tenant = { id: 'timebank', hostname: 'timebank.codecollective.us', name: 'Timebank', tagline: 'Share time', accent_color: '#155e59', profile: 'community', features: ['timebank'] }
 afterEach(() => {
   setDomainCommunity({ ...tenant, id: 'code-collective', hostname: 'codecollective.us' })
   vi.unstubAllEnvs()
