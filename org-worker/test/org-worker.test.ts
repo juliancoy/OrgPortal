@@ -31,6 +31,7 @@ class FakeStmt {
 class FakeD1 {
   organizations: Row[] = [];
   events: Row[] = [];
+  eventSlugAliases: Row[] = [];
   contacts: Row[] = [];
   motions: Row[] = [];
   governanceVotes: Row[] = [];
@@ -106,6 +107,14 @@ class FakeD1 {
     }
     if (sql.includes("count(*) AS n FROM events WHERE host_org_id = ?")) {
       return { n: this.events.filter((row) => row.host_org_id === params[0]).length } as T;
+    }
+    if (sql.includes("event_slug_aliases")) {
+      const slug = params[0];
+      const alias = this.eventSlugAliases.find((row) => row.slug === slug);
+      const event = this.events.find((row) => row.slug === slug || row.id === alias?.event_id);
+      if (!event) return null;
+      const org = this.organizations.find((row) => row.id === event.host_org_id);
+      return { ...event, organization_name: org?.name || null } as T;
     }
     if (sql.includes("FROM events e") && sql.includes("WHERE e.slug = ?")) {
       const event = this.events.find((row) => row.slug === params[0]);
@@ -1090,8 +1099,8 @@ test("public event chat returns configured room metadata for comment views", asy
     host_org_id: null,
     host_org_name: null,
     host_org_source_url: null,
-    event_chat_room_id: "!event:matrix.local",
-    event_chat_room_alias: "#commentable-event:matrix.local",
+    event_chat_room_id: "event-room-commentable-event",
+    event_chat_room_alias: null,
     event_chat_room_name: "Commentable Event",
     tags: "[]",
     city: null,
@@ -1104,9 +1113,64 @@ test("public event chat returns configured room metadata for comment views", asy
   assert.deepEqual(await response.json(), {
     event_slug: "commentable-event",
     room_exists: true,
-    room_id: "!event:matrix.local",
-    room_alias: "#commentable-event:matrix.local",
+    conversation_id: "event-room-commentable-event",
     room_name: "Commentable Event",
+    messages: [],
+  });
+});
+
+test("public event detail resolves old slug aliases to canonical event urls", async () => {
+  const db = new FakeD1();
+  db.portalTenants.push({
+    id: "baltimore-medtech",
+    hostname: "medtech.social",
+    name: "Baltimore MedTech",
+    tagline: "Health x Medicine x Biotech",
+    accent_color: "#0f6f8f",
+    profile: "baltimore-medtech",
+    features: JSON.stringify(["directory", "events", "chat"]),
+    public_base_url: "https://medtech.social",
+    canonical_path_prefix: "",
+  });
+  db.events.push({
+    id: "event-1",
+    ingest_key: "event-1",
+    title: "MedTech in the Hut",
+    slug: "medtech-in-the-hut",
+    description: null,
+    starts_at: null,
+    ends_at: null,
+    location: null,
+    source_url: null,
+    image_url: null,
+    host_user_id: null,
+    host_user_name: null,
+    host_org_id: null,
+    host_org_name: null,
+    host_org_source_url: null,
+    event_chat_room_id: "event-room-medtech-in-the-hut",
+    event_chat_room_alias: null,
+    event_chat_room_name: "MedTech in the Hut Comments",
+    tags: "[]",
+    city: null,
+    created_at: "2026-06-07T00:00:00.000Z",
+    updated_at: "2026-06-07T00:00:00.000Z",
+  });
+  db.eventSlugAliases.push({ slug: "medtech-formational-event", event_id: "event-1" });
+
+  const response = await app.request("https://medtech.social/api/network/events/public/medtech-formational-event", {}, env(db));
+  assert.equal(response.status, 200);
+  const event = await response.json() as { slug: string; public_url: string };
+  assert.equal(event.slug, "medtech-in-the-hut");
+  assert.equal(event.public_url, "https://medtech.social/events/medtech-in-the-hut");
+
+  const chatResponse = await app.request("https://medtech.social/api/network/events/public/medtech-formational-event/chat", {}, env(db));
+  assert.equal(chatResponse.status, 200);
+  assert.deepEqual(await chatResponse.json(), {
+    event_slug: "medtech-in-the-hut",
+    room_exists: true,
+    conversation_id: "event-room-medtech-in-the-hut",
+    room_name: "MedTech in the Hut Comments",
     messages: [],
   });
 });

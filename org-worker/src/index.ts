@@ -1137,6 +1137,33 @@ async function mapEvent(env: Env, request: Request, row: EventRow) {
   };
 }
 
+async function publicEventBySlug(db: D1Database, rawSlug: string) {
+  const slug = slugify(rawSlug);
+  try {
+    return await db.prepare(
+      `SELECT e.*, o.name AS organization_name
+       FROM events e
+       LEFT JOIN organizations o ON o.id = e.host_org_id
+       LEFT JOIN event_slug_aliases esa ON esa.event_id = e.id AND esa.slug = ?
+       WHERE e.slug = ? OR esa.slug = ?
+       ORDER BY CASE WHEN e.slug = ? THEN 0 ELSE 1 END
+       LIMIT 1`,
+    )
+      .bind(slug, slug, slug, slug)
+      .first<EventRow>();
+  } catch (err) {
+    if (!String(err instanceof Error ? err.message : err).includes("event_slug_aliases")) throw err;
+    return await db.prepare(
+      `SELECT e.*, o.name AS organization_name
+       FROM events e
+       LEFT JOIN organizations o ON o.id = e.host_org_id
+       WHERE e.slug = ?`,
+    )
+      .bind(slug)
+      .first<EventRow>();
+  }
+}
+
 const DEFAULT_BUSINESS_CARD_SETTINGS = {
   enabled: true,
   per_user_limit_per_hour: 60,
@@ -2604,33 +2631,19 @@ app.get("/api/network/events/public", async (c) => {
 });
 
 app.get("/api/network/events/public/:slug", async (c) => {
-  const row = await c.env.DB.prepare(
-    `SELECT e.*, o.name AS organization_name
-     FROM events e
-     LEFT JOIN organizations o ON o.id = e.host_org_id
-     WHERE e.slug = ?`,
-  )
-    .bind(slugify(c.req.param("slug")))
-    .first<EventRow>();
+  const row = await publicEventBySlug(c.env.DB, c.req.param("slug"));
   if (!row) fail(404, "Event not found");
   return c.json(await mapEvent(c.env, c.req.raw, row));
 });
 
 app.get("/api/network/events/public/:slug/chat", async (c) => {
-  const slug = slugify(c.req.param("slug"));
-  const row = await c.env.DB.prepare(
-    "SELECT slug, title, event_chat_room_id, event_chat_room_alias, event_chat_room_name FROM events WHERE slug = ?",
-  )
-    .bind(slug)
-    .first<Pick<EventRow, "slug" | "title" | "event_chat_room_id" | "event_chat_room_alias" | "event_chat_room_name">>();
+  const row = await publicEventBySlug(c.env.DB, c.req.param("slug"));
   if (!row) fail(404, "Event not found");
   const roomId = String(row.event_chat_room_id || "").trim();
-  const roomAlias = String(row.event_chat_room_alias || "").trim();
   return c.json({
     event_slug: row.slug,
-    room_exists: Boolean(roomId || roomAlias),
-    room_id: roomId || null,
-    room_alias: roomAlias || null,
+    room_exists: Boolean(roomId),
+    conversation_id: roomId || null,
     room_name: String(row.event_chat_room_name || row.title || "Event Chat").trim(),
     messages: [],
   });

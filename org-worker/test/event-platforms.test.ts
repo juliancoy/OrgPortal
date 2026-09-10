@@ -157,16 +157,17 @@ test("event comments can be enabled through previewed MCP operations", async () 
     const input = {
       organizationId: "one",
       eventSlug: "native-formation",
-      roomAlias: "#native-formation:chat.codecollective.us",
+      conversationId: "event-room-native-formation",
       roomName: "Native formation comments",
     };
-    const preview = await runEventCommentsOperation(env, identity, input) as { previewId: string; event: { next: { roomAlias: string; roomName: string } } };
-    assert.equal(preview.event.next.roomAlias, "#native-formation:chat.codecollective.us");
+    const preview = await runEventCommentsOperation(env, identity, input) as { previewId: string; event: { next: { conversationId: string; roomName: string } } };
+    assert.equal(preview.event.next.conversationId, "event-room-native-formation");
     assert.equal(preview.event.next.roomName, "Native formation comments");
     const applied = await runEventCommentsOperation(env, identity, { ...input, confirm: true, previewId: preview.previewId }) as { success: boolean };
     assert.equal(applied.success, true);
-    const row = await db.prepare("SELECT event_chat_room_alias, event_chat_room_name FROM events WHERE slug = ?").bind("native-formation").first() as any;
-    assert.equal(row.event_chat_room_alias, "#native-formation:chat.codecollective.us");
+    const row = await db.prepare("SELECT event_chat_room_id, event_chat_room_alias, event_chat_room_name FROM events WHERE slug = ?").bind("native-formation").first() as any;
+    assert.equal(row.event_chat_room_id, "event-room-native-formation");
+    assert.equal(row.event_chat_room_alias, null);
     assert.equal(row.event_chat_room_name, "Native formation comments");
     await assert.rejects(runEventCommentsOperation(env, identity, { ...input, confirm: true, previewId: preview.previewId }), /Preview is expired/);
   } finally {

@@ -1,20 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ClientEvent, EventType, RoomEvent } from 'matrix-js-sdk'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
 import { downloadIcsEvent, outlookCalendarUrl } from '../../utils/calendar'
-import type { ChatMessage } from '../../../application/ports/ChatService'
-import { useAuth, useServices } from '../../../app/AppProviders'
-import { bootstrapMatrixSessionFromOrg } from '../../../chat/bootstrapSession'
+import { useAuth } from '../../../app/AppProviders'
+import { NativeChatApi, type NativeChatMessage } from '../../../chat/nativeChatApi'
+import { refreshRuntimeTokenFromSession } from '../../../infrastructure/auth/sessionToken'
 import { pidpAppLoginUrl } from '../../../config/pidp'
 import { EventRegistration } from './EventRegistration'
 import { toUserFacingErrorMessage } from '../../../infrastructure/http/userFacingError'
 import { loadGoogleCalendarConnection, savePortalEventToGoogleCalendar } from '../googleCalendarApi'
 import { loadMicrosoftCalendarConnection, savePortalEventToMicrosoftCalendar } from '../microsoftCalendarApi'
-import {
-  readCachedRoomMessages,
-  writeCachedRoomMessages,
-} from '../../../infrastructure/utils/chatWindowCache'
 
 const ORG_API_BASE = '/api/org'
 const QUICK_REACTIONS = ['👍', '❤️', '🔥', '🎉']
@@ -39,26 +34,12 @@ type PublicEvent = {
   host_org_id?: string | null
 }
 
-type PublicEventChatMessage = {
-  event_id: string
-  sender?: string | null
-  body: string
-  sent_at?: string | null
-}
-
 type PublicEventChat = {
   event_slug: string
   room_exists: boolean
-  room_id?: string | null
-  room_alias?: string | null
+  conversation_id?: string | null
   room_name?: string | null
-  messages: PublicEventChatMessage[]
-}
-
-type MatrixEventedClient = {
-  on: (event: string, listener: (...args: unknown[]) => void) => void
-  off: (event: string, listener: (...args: unknown[]) => void) => void
-  getUserId: () => string | null
+  messages?: unknown[]
 }
 
 function toLocalDateTime(value?: string | null) {
@@ -110,38 +91,34 @@ function getEventOfferValidFrom(event: PublicEvent) {
   return new Date().toISOString()
 }
 
-function messageAuthorLabel(message: ChatMessage, myUserId: string | null): string {
-  if (myUserId && message.sender === myUserId) return 'You'
-  if (message.senderDisplayName?.trim()) return message.senderDisplayName.trim()
-  const sender = String(message.sender || 'unknown')
-  const parts = sender.split(':')[0].split('@')
-  return parts[1] || sender
+function messageAuthorLabel(message: NativeChatMessage, myUserId: string | null): string {
+  if (myUserId && message.sender_user_id === myUserId) return 'You'
+  return message.sender_name?.trim() || message.sender_user_id || 'Member'
 }
 
-function messageAuthorInitial(message: ChatMessage, myUserId: string | null): string {
+function messageAuthorInitial(message: NativeChatMessage, myUserId: string | null): string {
   const label = messageAuthorLabel(message, myUserId).trim()
   return (label[0] || '?').toUpperCase()
 }
 
-function publicChatMessageToChatMessage(message: PublicEventChatMessage): ChatMessage {
-  return {
-    id: message.event_id,
-    sender: message.sender || 'unknown',
-    body: message.body,
-    ts: message.sent_at ? new Date(message.sent_at).getTime() : Date.now(),
-  }
+function messageTime(message: NativeChatMessage) {
+  return new Date(message.created_at).getTime()
+}
+
+function uuid() {
+  if ('crypto' in window && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID()
+  return `client-${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
 export function PublicEventPage() {
   const { token, user } = useAuth()
-  const { chatService } = useServices()
   const { slug } = useParams()
   const [event, setEvent] = useState<PublicEvent | null>(null)
   const [status, setStatus] = useState<string>('Loading event…')
   const [googleCalendarConnected, setGoogleCalendarConnected] = useState(false)
   const [microsoftCalendarConnected, setMicrosoftCalendarConnected] = useState(false)
   const [eventChat, setEventChat] = useState<PublicEventChat | null>(null)
-  const [eventChatMessages, setEventChatMessages] = useState<ChatMessage[]>([])
+  const [eventChatMessages, setEventChatMessages] = useState<NativeChatMessage[]>([])
   const [eventChatReady, setEventChatReady] = useState(false)
   const [chatLoading, setChatLoading] = useState(false)
   const [chatStatus, setChatStatus] = useState('')
@@ -150,6 +127,13 @@ export function PublicEventPage() {
   const [replyingToId, setReplyingToId] = useState<string | null>(null)
   const [chatActionPending, setChatActionPending] = useState(false)
   const [myUserId, setMyUserId] = useState<string | null>(null)
+  const chatApi = useMemo(
+    () =>
+      new NativeChatApi(async () => {
+        return token || (await refreshRuntimeTokenFromSession())
+      }),
+    [token],
+  )
 
   useEffect(() => {
     if (!slug) return
@@ -221,7 +205,6 @@ export function PublicEventPage() {
       .then((payload) => {
         if (cancelled) return
         setEventChat(payload)
-        setEventChatMessages((payload.messages || []).map(publicChatMessageToChatMessage))
       })
       .catch((err) => {
         if (cancelled) return
@@ -237,82 +220,45 @@ export function PublicEventPage() {
     }
   }, [slug])
 
-  const activeEventRoomId = eventChat?.room_id || eventChat?.room_alias || ''
-
   useEffect(() => {
     const activeToken = (token || '').trim()
-    const roomId = activeEventRoomId.trim()
     let cancelled = false
     setEventChatReady(false)
     setMyUserId(null)
     setReplyingToId(null)
     setReplyDrafts({})
-    if (roomId) {
-      const cachedMessages = readCachedRoomMessages(roomId)
-      if (cachedMessages.length) setEventChatMessages(cachedMessages)
-    }
-    if (!activeToken || !roomId) return
+    if (!activeToken || !event || !eventChat?.room_exists) return
 
+    const currentEvent = event
     async function initEventComments() {
       try {
         setChatStatus('Connecting to event comments...')
-        const session = await bootstrapMatrixSessionFromOrg(activeToken)
-        const client = await chatService.start(session)
-        await chatService.verifySession()
-        await chatService.joinRoom(roomId)
+        const conversation = await chatApi.startEventRoom({
+          eventId: currentEvent.id,
+          title: eventChat?.room_name || `${currentEvent.title} Comments`,
+          orgId: currentEvent.host_org_id || null,
+        })
         if (cancelled) return
-        setMyUserId(client.getUserId())
+        setEventChat((current) => current ? { ...current, conversation_id: conversation.id, room_name: conversation.title || current.room_name } : current)
+        setMyUserId(user?.id || null)
         setEventChatReady(true)
         setChatStatus('')
-        const initialMessages = chatService.listMessages(roomId)
-        setEventChatMessages(initialMessages)
-        writeCachedRoomMessages(roomId, initialMessages)
-
-        const refreshMessages = () => {
-          if (cancelled) return
-          const nextMessages = chatService.listMessages(roomId)
-          setEventChatMessages(nextMessages)
-          writeCachedRoomMessages(roomId, nextMessages)
-        }
-        const onTimeline = (event: unknown, room: { roomId: string } | undefined, toStartOfTimeline?: boolean) => {
-          if (toStartOfTimeline) return
-          const matrixEvent = event as { getType?: () => string }
-          if (matrixEvent.getType?.() !== EventType.RoomMessage) return
-          if (!room || room.roomId !== roomId) return
-          refreshMessages()
-        }
-        const onSync = () => {
-          refreshMessages()
-        }
-        const eventedClient = client as unknown as MatrixEventedClient
-        const timelineListener = onTimeline as (...args: unknown[]) => void
-        eventedClient.on(RoomEvent.Timeline, timelineListener)
-        eventedClient.on(ClientEvent.Sync, onSync)
-        return () => {
-          eventedClient.off(RoomEvent.Timeline, timelineListener)
-          eventedClient.off(ClientEvent.Sync, onSync)
-        }
+        const initialMessages = await chatApi.listMessages(conversation.id)
+        if (!cancelled) setEventChatMessages(initialMessages.messages || [])
       } catch (err) {
         if (cancelled) return undefined
         setEventChatReady(false)
         setChatStatus(toUserFacingErrorMessage(err, 'Event comments unavailable'))
       }
-      return undefined
     }
 
-    let cleanupListeners: (() => void) | undefined
     initEventComments()
-      .then((cleanup) => {
-        cleanupListeners = cleanup
-      })
       .catch(() => {})
 
     return () => {
       cancelled = true
-      if (cleanupListeners) cleanupListeners()
-      chatService.stop()
     }
-  }, [activeEventRoomId, chatService, token])
+  }, [chatApi, event, eventChat?.room_exists, token, user?.id])
 
   useEffect(() => {
     if (!event) return
@@ -371,38 +317,31 @@ export function PublicEventPage() {
   }, [eventJsonLd])
 
   const eventComments = useMemo(() => {
-    const byRoot = new Map<string, ChatMessage[]>()
-    const roots: ChatMessage[] = []
+    const byRoot = new Map<string, NativeChatMessage[]>()
+    const roots: NativeChatMessage[] = []
     for (const message of eventChatMessages) {
-      if (message.threadRootEventId) {
-        const replies = byRoot.get(message.threadRootEventId) || []
+      if (message.thread_root_message_id) {
+        const replies = byRoot.get(message.thread_root_message_id) || []
         replies.push(message)
-        byRoot.set(message.threadRootEventId, replies)
+        byRoot.set(message.thread_root_message_id, replies)
       } else {
         roots.push(message)
       }
     }
-    roots.sort((a, b) => a.ts - b.ts)
-    for (const replies of byRoot.values()) replies.sort((a, b) => a.ts - b.ts)
+    roots.sort((a, b) => messageTime(a) - messageTime(b))
+    for (const replies of byRoot.values()) replies.sort((a, b) => messageTime(a) - messageTime(b))
     return roots.map((message) => ({ message, replies: byRoot.get(message.id) || [] }))
   }, [eventChatMessages])
 
-  function refreshEventComments() {
-    if (!activeEventRoomId) return
-    const nextMessages = chatService.listMessages(activeEventRoomId)
-    setEventChatMessages(nextMessages)
-    writeCachedRoomMessages(activeEventRoomId, nextMessages)
-  }
-
   async function postEventComment() {
     const body = commentDraft.trim()
-    if (!activeEventRoomId || !body || !eventChatReady) return
+    if (!eventChat?.conversation_id || !body || !eventChatReady) return
     try {
       setChatActionPending(true)
       setChatStatus('')
-      await chatService.sendTextMessage(activeEventRoomId, body)
+      const message = await chatApi.sendMessage(eventChat.conversation_id, uuid(), body)
       setCommentDraft('')
-      refreshEventComments()
+      setEventChatMessages((current) => [...current, message])
     } catch (err) {
       setChatStatus(toUserFacingErrorMessage(err, 'Could not post comment'))
     } finally {
@@ -412,14 +351,17 @@ export function PublicEventPage() {
 
   async function postEventReply(rootMessageId: string) {
     const body = (replyDrafts[rootMessageId] || '').trim()
-    if (!activeEventRoomId || !body || !eventChatReady) return
+    if (!eventChat?.conversation_id || !body || !eventChatReady) return
     try {
       setChatActionPending(true)
       setChatStatus('')
-      await chatService.sendThreadReplyMessage(activeEventRoomId, rootMessageId, rootMessageId, body)
+      const message = await chatApi.sendMessage(eventChat.conversation_id, uuid(), body, {
+        replyToMessageId: rootMessageId,
+        threadRootMessageId: rootMessageId,
+      })
       setReplyDrafts((prev) => ({ ...prev, [rootMessageId]: '' }))
       setReplyingToId(null)
-      refreshEventComments()
+      setEventChatMessages((current) => [...current, message])
     } catch (err) {
       setChatStatus(toUserFacingErrorMessage(err, 'Could not post reply'))
     } finally {
@@ -428,12 +370,12 @@ export function PublicEventPage() {
   }
 
   async function reactToEventComment(messageId: string, emoji: string) {
-    if (!activeEventRoomId || !eventChatReady) return
+    if (!eventChat?.conversation_id || !eventChatReady) return
     try {
       setChatActionPending(true)
       setChatStatus('')
-      await chatService.sendReaction(activeEventRoomId, messageId, emoji)
-      refreshEventComments()
+      const reactions = await chatApi.sendReaction(eventChat.conversation_id, messageId, emoji)
+      setEventChatMessages((current) => current.map((message) => message.id === messageId ? { ...message, reactions } : message))
     } catch (err) {
       setChatStatus(toUserFacingErrorMessage(err, 'Could not add reaction'))
     } finally {
@@ -570,11 +512,10 @@ export function PublicEventPage() {
         {chatStatus ? (
           <p className="muted" style={{ margin: 0 }}>{chatStatus}</p>
         ) : null}
-        {eventChat?.room_exists && activeEventRoomId ? (
+        {eventChat?.room_exists ? (
           <>
             <p className="muted" style={{ margin: 0 }}>
               {eventChat.room_name || 'Event comments'}
-              {eventChat.room_alias ? ` • ${eventChat.room_alias}` : ''}
             </p>
             {token ? (
               <div className="public-event-comment-composer">
@@ -594,8 +535,8 @@ export function PublicEventPage() {
                   >
                     Post Comment
                   </button>
-                  {eventChat.room_id ? (
-                    <Link to={`/chat/${encodeURIComponent(eventChat.room_id)}`}>
+                  {eventChat.conversation_id ? (
+                    <Link to={`/chat/${encodeURIComponent(eventChat.conversation_id)}`}>
                       Open full chat
                     </Link>
                   ) : null}
@@ -615,16 +556,12 @@ export function PublicEventPage() {
                 {eventComments.map(({ message, replies }) => (
                   <article key={message.id} className="public-event-comment">
                     <div className="public-event-comment-avatar" aria-hidden="true">
-                      {message.senderAvatarUrl ? (
-                        <img src={message.senderAvatarUrl} alt="" />
-                      ) : (
-                        messageAuthorInitial(message, myUserId)
-                      )}
+                      {messageAuthorInitial(message, myUserId)}
                     </div>
                     <div className="public-event-comment-body">
                       <div className="public-event-comment-meta">
                         <strong>{messageAuthorLabel(message, myUserId)}</strong>
-                        <span>{toLocalDateTime(new Date(message.ts).toISOString())}</span>
+                        <span>{toLocalDateTime(message.created_at)}</span>
                       </div>
                       <p>{message.body}</p>
                       <div className="public-event-comment-tools">
@@ -653,12 +590,12 @@ export function PublicEventPage() {
                           {replies.map((reply) => (
                             <article key={reply.id} className="public-event-comment public-event-comment-reply">
                               <div className="public-event-comment-avatar" aria-hidden="true">
-                                {reply.senderAvatarUrl ? <img src={reply.senderAvatarUrl} alt="" /> : messageAuthorInitial(reply, myUserId)}
+                                {messageAuthorInitial(reply, myUserId)}
                               </div>
                               <div className="public-event-comment-body">
                                 <div className="public-event-comment-meta">
                                   <strong>{messageAuthorLabel(reply, myUserId)}</strong>
-                                  <span>{toLocalDateTime(new Date(reply.ts).toISOString())}</span>
+                                  <span>{toLocalDateTime(reply.created_at)}</span>
                                 </div>
                                 <p>{reply.body}</p>
                                 <div className="public-event-comment-tools">
