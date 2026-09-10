@@ -2,6 +2,8 @@
 
 OrgPortal uses one web application and one org worker for both the shared CodeCollective portal and organization-branded tenant domains.
 
+Coding agents setting up an organization tenant should also follow `docs/deployment/ORGPORTAL_AGENT_ONBOARDING.md` and validate against `LLMs.Tests.md`.
+
 ## Mounts
 
 - `codecollective.us` serves OrgPortal at `/p`.
