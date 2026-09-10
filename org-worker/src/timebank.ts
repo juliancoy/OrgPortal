@@ -5,7 +5,7 @@ export class TimebankError extends Error {
 }
 
 export type Community = { id: string; hostname: string; name: string; tagline: string; accent_color: string };
-export type PortalTenant = Community & { profile: 'community'; features: string[] };
+export type PortalTenant = Community & { profile: string; features: string[] };
 const DEFAULT_COMMUNITY = 'code-collective';
 export const TIMEBANK_CATEGORIES = ['Home & garden', 'Learning', 'Tech help', 'Care & company', 'Transport', 'Creative', 'Other'] as const;
 
@@ -265,7 +265,29 @@ export async function resolveTimebankCommunity(db: D1Database, request: Request)
   return row;
 }
 
+function requestHostname(request: Request) {
+  const host = (request.headers.get('x-forwarded-host') || new URL(request.url).host).toLowerCase().split(':')[0];
+  const defaults = ['localhost', '127.0.0.1', 'www.codecollective.us', 'org-codecollective.jcloiacon.workers.dev', 'codecollective-site.jcloiacon.workers.dev'];
+  return defaults.includes(host) ? 'codecollective.us' : host;
+}
+
+function tenantFeatures(value: string | null | undefined) {
+  try {
+    const parsed = JSON.parse(value || '[]');
+    return Array.isArray(parsed) ? parsed.filter(item => typeof item === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function resolvePortalTenant(db: D1Database, request: Request): Promise<PortalTenant> {
+  const hostname = requestHostname(request);
+  try {
+    const tenant = await db.prepare('SELECT * FROM portal_tenants WHERE hostname = ?').bind(hostname).first<Community & { profile: string; features: string }>();
+    if (tenant) return { ...tenant, features: tenantFeatures(tenant.features) };
+  } catch {
+    // Older local databases may not have the tenant table yet.
+  }
   const community = await resolveTimebankCommunity(db, request);
   return { ...community, profile: 'community', features: ['timebank'] };
 }
@@ -281,6 +303,10 @@ export async function saveTimebankCommunity(db: D1Database, id: string, body: un
   const hostname = id === DEFAULT_COMMUNITY ? 'codecollective.us' : `${id}.codecollective.us`;
   await db.prepare(`INSERT INTO timebank_communities (id, hostname, name, tagline, accent_color) VALUES (?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET name = excluded.name, tagline = excluded.tagline, accent_color = excluded.accent_color`)
+    .bind(id, hostname, name, tagline, accent).run();
+  await db.prepare(`INSERT INTO portal_tenants (id, hostname, name, tagline, accent_color, profile, features) VALUES (?, ?, ?, ?, ?, 'community', '["timebank"]')
+    ON CONFLICT(id) DO UPDATE SET hostname = excluded.hostname, name = excluded.name, tagline = excluded.tagline,
+      accent_color = excluded.accent_color, profile = excluded.profile, features = excluded.features, updated_at = CURRENT_TIMESTAMP`)
     .bind(id, hostname, name, tagline, accent).run();
   return db.prepare('SELECT * FROM timebank_communities WHERE id = ?').bind(id).first<Community>();
 }
