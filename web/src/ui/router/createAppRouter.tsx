@@ -47,7 +47,7 @@ import { IdPage } from '../views/IdPage'
 import { SendPage } from '../views/SendPage'
 import { ReceivePage } from '../views/ReceivePage'
 import { TimebankPage } from '../views/TimebankPage'
-import { TenantEventsHomePage, TenantHomePage } from '../views/TenantHomePage'
+import { TenantEventsHomePage, TenantHomePage, TenantSlugHomePage } from '../views/TenantHomePage'
 import { CreatePage } from '../views/CreatePage'
 import { CreateForProfitPage } from '../views/CreateForProfitPage'
 import { CreateNonProfitPage } from '../views/CreateNonProfitPage'
@@ -184,6 +184,7 @@ export function createAppRouter() {
   return createBrowserRouter(
     [{ element: <PortalProfileBoundary />, children: [
       { path: '/', element: <HomeRoute /> },
+      { path: '/portals/:tenantSlug', element: <TenantSlugHomePage /> },
       { path: '/finance', element: <EconomicOpsPage /> },
       { path: '/departments', element: <DepartmentsPage /> },
       { path: '/ecops', element: <Navigate to="/finance" replace /> },

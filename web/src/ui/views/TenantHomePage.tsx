@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
 import { portalPath } from '../../config/portalBase'
 import { getActivePortalProfileConfig, portalProfilePath } from '../../config/portalFeatures'
-import { getDomainTenant, type PortalTenant } from '../../config/timebankCommunity'
+import { getDomainTenant, parsePortalTenant, setDomainTenant, type PortalTenant } from '../../config/timebankCommunity'
 import { Header } from '../shell/Header'
 import { Footer } from '../shell/Footer'
 import { ExternalBrowserPrompt } from '../components/ExternalBrowserPrompt'
@@ -178,4 +178,51 @@ export function TenantEventsHomePage() {
     </main>
     <Footer />
   </div>
+}
+
+export function TenantSlugHomePage() {
+  const { tenantSlug } = useParams()
+  const [status, setStatus] = useState('Loading portal...')
+
+  useEffect(() => {
+    if (!tenantSlug) return
+    const previousTenant = getDomainTenant()
+    const controller = new AbortController()
+    setStatus('Loading portal...')
+    fetch(`/api/org/api/portal/tenants/${encodeURIComponent(tenantSlug)}`, { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error('Portal not found.')
+        const parsed = parsePortalTenant(await response.json())
+        if (!parsed) throw new Error('Portal not found.')
+        setDomainTenant(parsed)
+        setStatus('')
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setDomainTenant(null)
+          setStatus('Portal not found.')
+        }
+      })
+    return () => {
+      controller.abort()
+      setDomainTenant(previousTenant)
+    }
+  }, [tenantSlug])
+
+  if (status) {
+    return <div className="portal-shell tenant-home-shell">
+      <Header />
+      <main className="portal-main" tabIndex={-1}>
+        <div className="portal-container">
+          <section className="panel">
+            <h1 style={{ marginTop: 0 }}>Organization Portal</h1>
+            <p className="muted" role="status">{status}</p>
+          </section>
+        </div>
+      </main>
+      <Footer />
+    </div>
+  }
+
+  return <TenantHomePage />
 }

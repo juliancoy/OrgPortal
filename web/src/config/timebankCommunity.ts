@@ -2,6 +2,9 @@ import { useSyncExternalStore } from 'react'
 
 export type PortalTenant = {
   id: string
+  organization_id?: string | null
+  slug?: string | null
+  slug_url?: string | null
   hostname: string
   name: string
   tagline: string
@@ -77,6 +80,9 @@ export function parsePortalTenant(value: unknown): PortalTenant | null {
   const homeKind = optionalString(input.home_kind)
   return {
     id,
+    organization_id: optionalString(input.organization_id),
+    slug: optionalString(input.slug),
+    slug_url: optionalString(input.slug_url),
     hostname,
     name,
     tagline: optionalString(input.tagline) || '',

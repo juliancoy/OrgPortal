@@ -5,7 +5,7 @@ import { HTTPException } from "hono/http-exception";
 import { handleEventMcp, protectedResourceMetadata, eventErrorResponse } from "./eventMcp";
 import { checkEventConfiguration } from "./eventConfiguration";
 import {
-  getTimebankListing, setTimebankUptake, timebankAnalytics, resolvePortalTenant, resolveTimebankCommunity, saveTimebankCommunity, setTimebankPhoto, getTimebankPhoto,
+  getTimebankListing, setTimebankUptake, timebankAnalytics, resolvePortalTenant, resolvePortalTenantBySlug, resolveTimebankCommunity, saveTimebankCommunity, setTimebankPhoto, getTimebankPhoto,
   TimebankError, timebankDashboard, publicTimebankOffers, createTimebankListing, updateTimebankListing,
   proposeTimebankExchange, resolveTimebankExchange,
 } from "./timebank";
@@ -155,6 +155,36 @@ type OrganizationMembershipState = {
   role: string | null;
   status: "active" | "none";
   membership_count: number;
+};
+
+type OrganizationPortalRow = {
+  id: string;
+  organization_id?: string | null;
+  slug?: string | null;
+  hostname: string;
+  name: string;
+  tagline: string;
+  accent_color: string;
+  profile: string;
+  features: string | string[];
+  brand_image_path?: string | null;
+  home_url?: string | null;
+  member_home_path?: string | null;
+  manifest_path?: string | null;
+  theme_color?: string | null;
+  home_kind?: string | null;
+  home_path?: string | null;
+  home_org_slug?: string | null;
+  home_heading?: string | null;
+  home_description?: string | null;
+  home_primary_label?: string | null;
+  home_primary_href?: string | null;
+  home_secondary_label?: string | null;
+  home_secondary_href?: string | null;
+  home_image_url?: string | null;
+  public_base_url?: string | null;
+  canonical_path_prefix?: string | null;
+  feature_config?: string | null;
 };
 
 type EventRow = {
@@ -1315,6 +1345,63 @@ async function organizationMembershipState(db: D1Database, organizationId: strin
     role: membership?.role || null,
     status: membership?.role ? "active" : "none",
     membership_count: Number(count?.n || 0),
+  };
+}
+
+function tenantSlugField(payload: Record<string, unknown>, fallback: string) {
+  const slug = slugify(stringField(payload, "slug", 80) || fallback);
+  if (!/^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/.test(slug)) {
+    fail(400, "Use a 3-64 character slug with lowercase letters, numbers, and hyphens.");
+  }
+  return slug;
+}
+
+function tenantHomeKindField(payload: Record<string, unknown>) {
+  const kind = String(payload.home_kind || "landing").trim();
+  if (!["landing", "route", "org", "org-events", "timebank", "auth", "default"].includes(kind)) {
+    fail(400, "home_kind is not supported.");
+  }
+  return kind;
+}
+
+function portalTenantFeaturesField(payload: Record<string, unknown>) {
+  const raw = Array.isArray(payload.features) ? payload.features : ["directory", "events", "chat"];
+  return JSON.stringify(raw.map((feature) => String(feature || "").trim()).filter(Boolean).slice(0, 12));
+}
+
+function parsePortalTenantFeatures(value: string | string[]) {
+  if (Array.isArray(value)) return value.filter((feature): feature is string => typeof feature === "string" && Boolean(feature.trim()));
+  try {
+    const parsed = JSON.parse(String(value || "[]"));
+    return Array.isArray(parsed) ? parsed.filter((feature): feature is string => typeof feature === "string" && Boolean(feature.trim())) : [];
+  } catch {
+    return [];
+  }
+}
+
+async function organizationPortalSlugUrl(env: Env, request: Request, slug: string) {
+  const base = (await publicPortalBase(env, request)).replace(/\/+$/g, "");
+  return `${base}/portals/${encodeURIComponent(slug)}`;
+}
+
+async function organizationPortalByOrg(db: D1Database, organization: OrganizationRow) {
+  return db.prepare(
+    `SELECT * FROM portal_tenants
+     WHERE organization_id = ? OR home_org_slug = ?
+     ORDER BY CASE WHEN organization_id = ? THEN 0 ELSE 1 END
+     LIMIT 1`,
+  )
+    .bind(organization.id, organization.slug, organization.id)
+    .first<OrganizationPortalRow>();
+}
+
+async function organizationPortalResponse(env: Env, request: Request, tenant: OrganizationPortalRow | null) {
+  if (!tenant) return null;
+  const slug = String(tenant.slug || "").trim();
+  return {
+    ...tenant,
+    features: parsePortalTenantFeatures(tenant.features),
+    slug_url: slug ? await organizationPortalSlugUrl(env, request, slug) : null,
   };
 }
 
@@ -2576,6 +2663,106 @@ app.delete("/api/network/orgs/:organizationId/membership", async (c) => {
   return c.json(await organizationMembershipState(c.env.DB, row.id, user.id));
 });
 
+app.get("/api/network/orgs/:organizationId/portal", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
+  if (!row) fail(404, "Organization not found");
+  await authorizeOrganization(c.env.DB, organizationActor(user, c.env), "manage", row.id);
+  return c.json({ portal: await organizationPortalResponse(c.env, c.req.raw, await organizationPortalByOrg(c.env.DB, row)) });
+});
+
+app.put("/api/network/orgs/:organizationId/portal", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
+  if (!row) fail(404, "Organization not found");
+  await authorizeOrganization(c.env.DB, organizationActor(user, c.env), "manage", row.id);
+  const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  const slug = tenantSlugField(payload, row.slug);
+  const existing = await organizationPortalByOrg(c.env.DB, row);
+  const slugOwner = await c.env.DB.prepare("SELECT id, organization_id FROM portal_tenants WHERE slug = ?").bind(slug).first<{ id: string; organization_id?: string | null }>();
+  if (slugOwner && slugOwner.id !== existing?.id && slugOwner.organization_id !== row.id) {
+    fail(409, "That portal slug is already in use.");
+  }
+  const id = existing?.id || `org-${row.id}-portal`;
+  const name = stringField(payload, "name", 120) || row.name;
+  const tagline = stringField(payload, "tagline", 180) || row.description || `Portal for ${row.name}`;
+  const accent = stringField(payload, "accent_color", 7) || "#155e59";
+  if (!/^#[0-9a-f]{6}$/i.test(accent)) fail(400, "Choose a valid accent color.");
+  const homeKind = tenantHomeKindField(payload);
+  const features = portalTenantFeaturesField(payload);
+  const heading = stringField(payload, "home_heading", 120) || name;
+  const description = stringField(payload, "home_description", 500) || row.description || tagline;
+  const homeImageUrl = cleanUrl(payload.home_image_url) || row.image_url || null;
+  const slugUrl = await organizationPortalSlugUrl(c.env, c.req.raw, slug);
+  const timestamp = nowIso();
+  await c.env.DB.prepare(
+    `INSERT INTO portal_tenants (
+      id, organization_id, slug, hostname, name, tagline, accent_color, profile, features,
+      brand_image_path, home_url, member_home_path, manifest_path, theme_color,
+      home_kind, home_path, home_org_slug, home_heading, home_description,
+      home_primary_label, home_primary_href, home_secondary_label, home_secondary_href,
+      home_image_url, public_base_url, canonical_path_prefix, feature_config, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, 'community', ?, ?, ?, '/chat', '/manifest.webmanifest', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '/p', ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      organization_id = excluded.organization_id,
+      slug = excluded.slug,
+      hostname = excluded.hostname,
+      name = excluded.name,
+      tagline = excluded.tagline,
+      accent_color = excluded.accent_color,
+      profile = excluded.profile,
+      features = excluded.features,
+      brand_image_path = excluded.brand_image_path,
+      home_url = excluded.home_url,
+      member_home_path = excluded.member_home_path,
+      manifest_path = excluded.manifest_path,
+      theme_color = excluded.theme_color,
+      home_kind = excluded.home_kind,
+      home_path = excluded.home_path,
+      home_org_slug = excluded.home_org_slug,
+      home_heading = excluded.home_heading,
+      home_description = excluded.home_description,
+      home_primary_label = excluded.home_primary_label,
+      home_primary_href = excluded.home_primary_href,
+      home_secondary_label = excluded.home_secondary_label,
+      home_secondary_href = excluded.home_secondary_href,
+      home_image_url = excluded.home_image_url,
+      public_base_url = excluded.public_base_url,
+      canonical_path_prefix = excluded.canonical_path_prefix,
+      feature_config = excluded.feature_config,
+      updated_at = excluded.updated_at`,
+  )
+    .bind(
+      id,
+      row.id,
+      slug,
+      `${slug}.slug.portal.local`,
+      name,
+      tagline,
+      accent,
+      features,
+      homeImageUrl,
+      slugUrl,
+      accent,
+      homeKind,
+      homeKind === "route" ? stringField(payload, "home_path", 200) : null,
+      row.slug,
+      heading,
+      description,
+      stringField(payload, "home_primary_label", 80) || "Join Group",
+      stringField(payload, "home_primary_href", 200) || "/users/register",
+      stringField(payload, "home_secondary_label", 80) || "View Events",
+      stringField(payload, "home_secondary_href", 200) || "/org-events",
+      homeImageUrl,
+      slugUrl,
+      JSON.stringify({ slugPortal: { enabled: true, path: `/portals/${slug}` } }),
+      timestamp,
+      timestamp,
+    )
+    .run();
+  return c.json({ portal: await organizationPortalResponse(c.env, c.req.raw, await organizationPortalByOrg(c.env.DB, row)) });
+});
+
 app.patch("/api/network/orgs/:organizationId", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   const existing = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
@@ -3169,6 +3356,13 @@ app.get("/api/timebank/community", async (c) => {
 app.get("/api/portal/tenant", async (c) => {
   c.header("Cache-Control", "no-store");
   return c.json(await resolvePortalTenant(c.env.DB, c.req.raw));
+});
+
+app.get("/api/portal/tenants/:slug", async (c) => {
+  c.header("Cache-Control", "no-store");
+  const tenant = await resolvePortalTenantBySlug(c.env.DB, c.req.param("slug"));
+  if (!tenant) fail(404, "Tenant portal not found");
+  return c.json(tenant);
 });
 
 app.get("/api/timebank/public-offers", async (c) => {

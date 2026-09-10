@@ -78,6 +78,21 @@ type OrganizationMembership = {
   membership_count: number
 }
 
+type OrganizationPortal = {
+  id: string
+  organization_id?: string | null
+  slug?: string | null
+  slug_url?: string | null
+  name: string
+  tagline: string
+  accent_color: string
+  features?: string[]
+  home_kind?: 'default' | 'landing' | 'route' | 'org' | 'org-events' | 'timebank' | 'auth' | null
+  home_heading?: string | null
+  home_description?: string | null
+  home_image_url?: string | null
+}
+
 type PublicEvent = {
   id: string
   title: string
@@ -144,6 +159,15 @@ function formatDate(value?: string | null) {
   return dt.toLocaleString()
 }
 
+function normalizePortalSlug(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 64)
+}
+
 function messageAuthorLabel(message: ChatMessage, myUserId: string | null): string {
   if (myUserId && message.sender === myUserId) return 'You'
   if (message.senderDisplayName?.trim()) return message.senderDisplayName.trim()
@@ -179,6 +203,16 @@ export function PublicAdminPage() {
   const [feedbackReviewStatus, setFeedbackReviewStatus] = useState<string | null>(null)
   const [membership, setMembership] = useState<OrganizationMembership | null>(null)
   const [membershipStatus, setMembershipStatus] = useState<string | null>(null)
+  const [portalConfig, setPortalConfig] = useState<OrganizationPortal | null>(null)
+  const [portalSlugDraft, setPortalSlugDraft] = useState('')
+  const [portalNameDraft, setPortalNameDraft] = useState('')
+  const [portalTaglineDraft, setPortalTaglineDraft] = useState('')
+  const [portalHomeKindDraft, setPortalHomeKindDraft] = useState<OrganizationPortal['home_kind']>('landing')
+  const [portalHeadingDraft, setPortalHeadingDraft] = useState('')
+  const [portalDescriptionDraft, setPortalDescriptionDraft] = useState('')
+  const [portalImageDraft, setPortalImageDraft] = useState('')
+  const [portalStatus, setPortalStatus] = useState<string | null>(null)
+  const [savingPortal, setSavingPortal] = useState(false)
   const [claimRequestMessage, setClaimRequestMessage] = useState('')
   const [claiming, setClaiming] = useState(false)
   const [myAdminOrgs, setMyAdminOrgs] = useState<MyOrganization[]>([])
@@ -261,6 +295,13 @@ export function PublicAdminPage() {
         setOrg(orgData)
         setOrgNameDraft(orgData.name || '')
         setOrgImageDraft(orgData.image_url || '')
+        setPortalSlugDraft(normalizePortalSlug(orgData.slug || orgData.name || ''))
+        setPortalNameDraft(orgData.name || '')
+        setPortalTaglineDraft(orgData.description || '')
+        setPortalHomeKindDraft('landing')
+        setPortalHeadingDraft(orgData.name || '')
+        setPortalDescriptionDraft(orgData.description || '')
+        setPortalImageDraft(orgData.image_url || '')
         setEvents([])
         setAdmins([])
         setPublicChatFeed(null)
@@ -446,6 +487,47 @@ export function PublicAdminPage() {
       cancelled = true
     }
   }, [canManageCurrentOrg, org?.id, token])
+
+  useEffect(() => {
+    if (!org?.id || !token || !canManageCurrentOrg) {
+      setPortalConfig(null)
+      setPortalStatus(null)
+      return
+    }
+    let cancelled = false
+    setPortalStatus('Loading portal setup...')
+    fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/portal`), {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(async (resp) => {
+        if (!resp.ok) {
+          const text = await resp.text().catch(() => '')
+          throw new Error(text || `Failed to load portal (${resp.status})`)
+        }
+        return (await resp.json()) as { portal: OrganizationPortal | null }
+      })
+      .then(({ portal }) => {
+        if (cancelled) return
+        setPortalConfig(portal)
+        if (portal) {
+          setPortalSlugDraft(normalizePortalSlug(portal.slug || org.slug))
+          setPortalNameDraft(portal.name || org.name)
+          setPortalTaglineDraft(portal.tagline || org.description || '')
+          setPortalHomeKindDraft(portal.home_kind || 'landing')
+          setPortalHeadingDraft(portal.home_heading || portal.name || org.name)
+          setPortalDescriptionDraft(portal.home_description || portal.tagline || org.description || '')
+          setPortalImageDraft(portal.home_image_url || org.image_url || '')
+        }
+        setPortalStatus('')
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setPortalStatus(toUserFacingErrorMessage(err, 'Failed to load portal setup'))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [canManageCurrentOrg, org?.id, org?.image_url, org?.name, org?.slug, org?.description, token])
 
   useEffect(() => {
     if (!org?.slug) return
@@ -773,6 +855,48 @@ export function PublicAdminPage() {
       setMembershipStatus(join ? 'You joined this group.' : 'You left this group.')
     } catch (err) {
       setMembershipStatus(toUserFacingErrorMessage(err, 'Could not update group membership'))
+    }
+  }
+
+  async function saveOrganizationPortal() {
+    if (!org || !token) return
+    const slug = normalizePortalSlug(portalSlugDraft || org.slug)
+    if (!slug || slug.length < 3) {
+      setPortalStatus('Use a portal slug with at least 3 characters.')
+      return
+    }
+    setSavingPortal(true)
+    setPortalStatus(null)
+    try {
+      const resp = await fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/portal`), {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          slug,
+          name: portalNameDraft || org.name,
+          tagline: portalTaglineDraft || org.description || `Portal for ${org.name}`,
+          home_kind: portalHomeKindDraft || 'landing',
+          home_heading: portalHeadingDraft || portalNameDraft || org.name,
+          home_description: portalDescriptionDraft || portalTaglineDraft || org.description || '',
+          home_image_url: portalImageDraft || org.image_url || null,
+          features: ['directory', 'events', 'chat'],
+        }),
+      })
+      if (!resp.ok) {
+        const text = await resp.text().catch(() => '')
+        throw new Error(text || `Portal update failed (${resp.status})`)
+      }
+      const payload = (await resp.json()) as { portal: OrganizationPortal }
+      setPortalConfig(payload.portal)
+      setPortalSlugDraft(normalizePortalSlug(payload.portal.slug || slug))
+      setPortalStatus('Portal saved.')
+    } catch (err) {
+      setPortalStatus(toUserFacingErrorMessage(err, 'Could not save portal setup'))
+    } finally {
+      setSavingPortal(false)
     }
   }
 
@@ -1269,6 +1393,102 @@ export function PublicAdminPage() {
                       {myAdminOrgsStatus}
                     </p>
                   ) : null}
+                  <div className="portal-card portal-org-portal-setup" style={{ display: 'grid', gap: '0.65rem', boxShadow: 'none' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '0.98rem' }}>Portal</h3>
+                      <p className="muted" style={{ margin: '0.2rem 0 0' }}>
+                        Publish an organization portal at a shared slug URL. A custom domain can be attached to the same portal later.
+                      </p>
+                    </div>
+                    <div className="portal-org-portal-grid">
+                      <label>
+                        <span className="muted">Slug URL</span>
+                        <input
+                          value={portalSlugDraft}
+                          onChange={(e) => setPortalSlugDraft(normalizePortalSlug(e.target.value))}
+                          placeholder={org.slug}
+                        />
+                      </label>
+                      <label>
+                        <span className="muted">Home mode</span>
+                        <select
+                          value={portalHomeKindDraft || 'landing'}
+                          onChange={(e) => setPortalHomeKindDraft(e.target.value as OrganizationPortal['home_kind'])}
+                        >
+                          <option value="landing">Landing</option>
+                          <option value="org-events">Org events</option>
+                          <option value="org">Org profile</option>
+                          <option value="auth">Member flow</option>
+                        </select>
+                      </label>
+                    </div>
+                    {portalConfig?.slug_url ? (
+                      <p className="muted" style={{ margin: 0 }}>
+                        Portal URL: <a href={portalConfig.slug_url}>{portalConfig.slug_url}</a>
+                      </p>
+                    ) : (
+                      <p className="muted" style={{ margin: 0 }}>
+                        Portal URL will be available after saving.
+                      </p>
+                    )}
+                    <div className="portal-org-portal-grid">
+                      <label>
+                        <span className="muted">Portal name</span>
+                        <input
+                          value={portalNameDraft}
+                          onChange={(e) => setPortalNameDraft(e.target.value)}
+                          placeholder={org.name}
+                        />
+                      </label>
+                      <label>
+                        <span className="muted">Tagline</span>
+                        <input
+                          value={portalTaglineDraft}
+                          onChange={(e) => setPortalTaglineDraft(e.target.value)}
+                          placeholder="Short portal tagline"
+                        />
+                      </label>
+                    </div>
+                    <label>
+                      <span className="muted">Heading</span>
+                      <input
+                        value={portalHeadingDraft}
+                        onChange={(e) => setPortalHeadingDraft(e.target.value)}
+                        placeholder={org.name}
+                      />
+                    </label>
+                    <label>
+                      <span className="muted">Description</span>
+                      <textarea
+                        value={portalDescriptionDraft}
+                        onChange={(e) => setPortalDescriptionDraft(e.target.value)}
+                        rows={3}
+                        placeholder="Describe what members and visitors can do here."
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          borderRadius: 8,
+                          border: '1px solid var(--border)',
+                          background: 'var(--panel)',
+                          color: 'var(--text-primary)',
+                        }}
+                      />
+                    </label>
+                    <label>
+                      <span className="muted">Hero image URL</span>
+                      <input
+                        value={portalImageDraft}
+                        onChange={(e) => setPortalImageDraft(e.target.value)}
+                        placeholder="https://example.com/hero.jpg"
+                      />
+                    </label>
+                    <div style={{ display: 'flex', gap: '0.55rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <button type="button" className="btn-primary" onClick={() => void saveOrganizationPortal()} disabled={savingPortal}>
+                        {savingPortal ? 'Saving...' : 'Save Portal'}
+                      </button>
+                      {portalStatus ? <p className="muted" role="status" style={{ margin: 0 }}>{portalStatus}</p> : null}
+                    </div>
+                  </div>
                   <div className="portal-card" style={{ display: 'grid', gap: '0.55rem', boxShadow: 'none' }}>
                     <div>
                       <h3 style={{ margin: 0, fontSize: '0.98rem' }}>Feedback Inbox</h3>
