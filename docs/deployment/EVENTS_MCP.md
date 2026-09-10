@@ -47,6 +47,33 @@ URLs, credentials, and account mappings cannot be supplied by a tool caller.
 
 ## Configure the shared worker
 
+### Use the existing PIdP identity platform
+
+PIdP now has a dedicated event OAuth authorization-server implementation in
+`serverless/src/mcpAuthorization.ts`. Use its existing Google/GitHub/password
+login; no replacement identity provider is needed. Deployment, signing-key and
+client provisioning instructions are in
+[PIdP's MCP authorization handoff](https://github.com/juliancoy/PIdP/blob/main/serverless/MCP_AUTHORIZATION.md).
+
+Set the issuer to `https://id.codecollective.us` and JWKS to
+`https://id.codecollective.us/.well-known/jwks.json`. Set
+`MCP_OAUTH_INTROSPECTION_URL=https://id.codecollective.us/oauth/mcp/introspect`
+and `MCP_OAUTH_INTROSPECTION_SECRET` to the resource credential provisioned in PIdP.
+OrgPortal verifies JWT signature/issuer/audience/expiry first, then checks live
+grant/account status on every MCP request. Revoked grants return 401; issuer
+outages fail closed with 503. No tokens or introspection credentials are logged.
+Both introspection settings must be supplied together and the endpoint must be
+the configured issuer's `/oauth/mcp/introspect` path. Other issuers can retain
+JWT-only verification by omitting both settings; that mode has no live revocation check.
+
+PIdP's namespaced subjects require explicit mappings, for example
+`{"owner:ACTUAL_PIDP_USER_ID":"ACTUAL_PIDP_USER_ID"}`. Website-user subjects are
+`website:<website-id>:<user-id>`; map only the intended existing identity. Existing
+organization authorization and preview/confirmation controls remain mandatory.
+The configuration report includes `introspectionEnabled` to verify this setting.
+The PIdP implementation and configuration must be deployed before these URLs work;
+the pre-existing HS256 session tokens and PATs are still not MCP access tokens.
+
 ### Diagnose a deployed 503
 
 `503 {"error":"MCP OAuth is not configured"}` means the MCP route is deployed
