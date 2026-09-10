@@ -14,10 +14,10 @@ export function MedTechFormationalEventCard() {
       <h2 id="medtech-formational-event-title">{MEDTECH_FORMATIONAL_EVENT.name}</h2>
       <p className="medtech-formational-event-date"><time dateTime={MEDTECH_FORMATIONAL_EVENT.plannedStart}>{dateFormatter.format(start)}</time><span aria-hidden="true"> · </span><span>{timeFormatter.format(start)}–{timeFormatter.format(end)} Eastern</span></p>
       <p>A gathering to shape Baltimore’s medicine-and-technology community and its next season of work.</p>
-      <p className="medtech-formational-event-note">Planned date; registration details are on Luma.</p>
+      <p className="medtech-formational-event-note">Registration will be handled here in the Org Portal.</p>
     </div>
     <div className="medtech-formational-event-actions">
-      <a className="medtech-primary-link" href={MEDTECH_FORMATIONAL_EVENT.registrationUrl}>View registration details <span aria-hidden="true">↗</span></a>
+      <Link className="medtech-primary-link" to={portalProfilePath(MEDTECH_FORMATIONAL_EVENT.eventPath)}>Open event page <span aria-hidden="true">→</span></Link>
       <Link to={portalProfilePath('/medtech-events')}>Browse MedTech events <span aria-hidden="true">→</span></Link>
     </div>
   </article>

@@ -1,12 +1,11 @@
 export const MEDTECH_EVENTS_URL = 'https://codecollective.us/baltimore/upcoming_events.json'
 export const MEDTECH_CHAT_URL = 'https://chat.whatsapp.com/Fpsd3Ko6l7q0Fy8DEYxw8V'
-export const MEDTECH_LUMA_URL = 'https://luma.com/baltimoremedtech'
 export const MEDTECH_FORMATIONAL_EVENT = {
   name: 'MedTech Formational Event',
   plannedStart: '2026-09-29T22:00:00.000Z',
   plannedEnd: '2026-09-30T00:30:00.000Z',
   timezone: 'America/New_York',
-  registrationUrl: MEDTECH_LUMA_URL,
+  eventPath: '/events/medtech-formational-event',
 } as const
 // Public organization slug, not a search term or a client-side ownership grant.
 export const MEDTECH_ORGANIZATION_SLUG = String(import.meta.env.VITE_MEDTECH_ORGANIZATION_SLUG || 'baltimore-medtech').trim()
