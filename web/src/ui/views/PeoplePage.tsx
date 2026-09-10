@@ -264,8 +264,8 @@ export function PeoplePage() {
                     {typeof org.upcoming_events_count === 'number'
                       ? ` • Upcoming events: ${org.upcoming_events_count}`
                       : ''}
-                    {typeof org.favor_count === 'number' || typeof org.disfavor_count === 'number'
-                      ? ` • Favor ${org.favor_count || 0} / Disfavor ${org.disfavor_count || 0}`
+                    {typeof org.feedback_count === 'number'
+                      ? ` • Feedback: ${org.feedback_count}`
                       : ''}
                   </p>
                   {org.tags?.length ? (

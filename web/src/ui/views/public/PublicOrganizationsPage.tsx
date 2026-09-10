@@ -23,19 +23,12 @@ type PublicOrganizationListItem = {
   tags?: string[]
   membership_count: number
   upcoming_events_count: number
-  favor_count?: number
-  disfavor_count?: number
-  sentiment_score?: number
+  feedback_count?: number
+  feedback_positive_count?: number
+  feedback_concern_count?: number
+  feedback_score?: number
   pending_challenges_count: number
   is_disputed: boolean
-}
-
-type OrganizationSentiment = {
-  organization_id: string
-  sentiment: 'favor' | 'disfavor' | null
-  favor_count: number
-  disfavor_count: number
-  sentiment_score: number
 }
 
 type UserOrganizationListItem = {
@@ -54,10 +47,9 @@ export function PublicOrganizationsPage() {
   const { token } = useAuth()
   const [orgs, setOrgs] = useState<PublicOrganizationListItem[]>([])
   const [myOrgSlugs, setMyOrgSlugs] = useState<Set<string>>(new Set())
-  const [mySentiments, setMySentiments] = useState<Record<string, 'favor' | 'disfavor' | null>>({})
   const [showMineOnly, setShowMineOnly] = useState(false)
   const [status, setStatus] = useState<string>('Loading organizations…')
-  const [sentimentStatus, setSentimentStatus] = useState<string>('')
+  const [membershipStatus, setMembershipStatus] = useState<string>('')
 
   useEffect(() => {
     setSeoMeta({
@@ -150,43 +142,41 @@ export function PublicOrganizationsPage() {
       })
   }, [])
 
-  async function setOrganizationSentiment(org: PublicOrganizationListItem, sentiment: 'favor' | 'disfavor') {
+  async function updateOrganizationMembership(org: PublicOrganizationListItem, join: boolean) {
     if (!token) {
       window.location.assign(pidpAppLoginUrl(`/orgs/${encodeURIComponent(org.slug)}`))
       return
     }
-    setSentimentStatus('')
+    setMembershipStatus('')
     try {
-      const current = mySentiments[org.id]
-      const method = current === sentiment ? 'DELETE' : 'PUT'
-      const resp = await fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/sentiment`), {
-        method,
-        headers: {
-          Authorization: `Bearer ${token}`,
-          ...(method === 'PUT' ? { 'Content-Type': 'application/json' } : {}),
-        },
-        body: method === 'PUT' ? JSON.stringify({ sentiment }) : undefined,
+      const resp = await fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/membership`), {
+        method: join ? 'POST' : 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
       })
       if (!resp.ok) {
         const text = await resp.text().catch(() => '')
-        throw new Error(text || `Sentiment update failed (${resp.status})`)
+        throw new Error(text || `Membership update failed (${resp.status})`)
       }
-      const payload = (await resp.json()) as OrganizationSentiment
-      setMySentiments((prev) => ({ ...prev, [org.id]: payload.sentiment }))
+      const payload = (await resp.json()) as { status: 'active' | 'none'; membership_count: number }
+      setMyOrgSlugs((prev) => {
+        const next = new Set(prev)
+        if (payload.status === 'active') next.add(org.slug)
+        else next.delete(org.slug)
+        return next
+      })
       setOrgs((prev) =>
         prev.map((item) =>
           item.id === org.id
             ? {
                 ...item,
-                favor_count: payload.favor_count,
-                disfavor_count: payload.disfavor_count,
-                sentiment_score: payload.sentiment_score,
+                membership_count: payload.membership_count,
               }
             : item,
         ),
       )
+      setMembershipStatus(join ? `Joined ${org.name}.` : `Left ${org.name}.`)
     } catch (err) {
-      setSentimentStatus(err instanceof Error ? err.message : 'Could not update organization preference.')
+      setMembershipStatus(err instanceof Error ? err.message : 'Could not update group membership.')
     }
   }
 
@@ -240,7 +230,7 @@ export function PublicOrganizationsPage() {
         ) : null}
       </div>
       {status ? <p className="muted">{status}</p> : null}
-      {sentimentStatus ? <p className="muted" role="status">{sentimentStatus}</p> : null}
+      {membershipStatus ? <p className="muted" role="status">{membershipStatus}</p> : null}
       {!status && visibleOrgs.length === 0 ? (
         <p className="muted">No organizations were found.</p>
       ) : null}
@@ -281,7 +271,7 @@ export function PublicOrganizationsPage() {
               </h2>
               <p className="muted" style={{ margin: 0 }}>
                 Members: {org.membership_count} • Upcoming events: {org.upcoming_events_count}
-                {` • Favor ${org.favor_count || 0} / Disfavor ${org.disfavor_count || 0}`}
+                {` • Feedback ${org.feedback_count || 0}`}
                 {org.is_disputed ? ` • Disputed ownership (${org.pending_challenges_count})` : ''}
                 {myOrgSlugs.has(org.slug) ? ' • Your organization' : ''}
               </p>
@@ -314,25 +304,18 @@ export function PublicOrganizationsPage() {
                   </div>
                 )
               })()}
-              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }} role="group" aria-label={`Preference for ${org.name}`}>
+              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }} role="group" aria-label={`Actions for ${org.name}`}>
                 <button
                   type="button"
-                  className={mySentiments[org.id] === 'favor' ? 'btn-primary' : undefined}
-                  onClick={() => void setOrganizationSentiment(org, 'favor')}
-                  aria-pressed={mySentiments[org.id] === 'favor'}
-                  aria-label={`Favor ${org.name}. ${org.favor_count || 0} favor votes`}
+                  className={myOrgSlugs.has(org.slug) ? undefined : 'btn-primary'}
+                  onClick={() => void updateOrganizationMembership(org, !myOrgSlugs.has(org.slug))}
+                  aria-pressed={myOrgSlugs.has(org.slug)}
                 >
-                  Favor
+                  {myOrgSlugs.has(org.slug) ? 'Leave Group' : 'Join Group'}
                 </button>
-                <button
-                  type="button"
-                  className={mySentiments[org.id] === 'disfavor' ? 'btn-primary' : undefined}
-                  onClick={() => void setOrganizationSentiment(org, 'disfavor')}
-                  aria-pressed={mySentiments[org.id] === 'disfavor'}
-                  aria-label={`Disfavor ${org.name}. ${org.disfavor_count || 0} disfavor votes`}
-                >
-                  Disfavor
-                </button>
+                <Link to={`/orgs/${org.slug}`} style={{ textDecoration: 'none' }}>
+                  Leave Feedback
+                </Link>
                 {token ? (
                   <Link
                     to={`/chat?start=group&org=${encodeURIComponent(org.slug)}`}
