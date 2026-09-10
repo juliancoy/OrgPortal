@@ -7,11 +7,11 @@ import { refreshRuntimeTokenFromSession } from '../../infrastructure/auth/sessio
 import { isAndroidDevice } from '../../infrastructure/platform/androidApp'
 import { OrgImage } from '../components/media/OrgImage'
 import { getActivePortalProfileConfig, portalProfilePath, isPortalFeatureEnabled } from '../../config/portalFeatures'
+import { portalPath } from '../../config/portalBase'
 
 const ORG_API_BASE = '/api/org'
 const SEARCH_MIN_LEN = 2
 const SEARCH_CACHE_MAX = 20
-const PORTAL_ASSET_BASE = (import.meta.env.BASE_URL || '/').replace(/\/?$/, '/')
 
 function orgUrl(path: string) {
   if (!path.startsWith('/')) return `${ORG_API_BASE}/${path}`
@@ -481,7 +481,7 @@ export function Header() {
       <div className="portal-header-inner">
         <a href={portalProfile.homeUrl} className="portal-brand">
           {portalProfile.brandImagePath ? (
-            <img src={`${PORTAL_ASSET_BASE}${portalProfile.brandImagePath.replace(/^\//, '')}`} alt={portalProfile.brandName} />
+            <img src={portalPath(portalProfile.brandImagePath)} alt={portalProfile.brandName} />
           ) : (
             <span
               aria-hidden="true"
@@ -503,7 +503,7 @@ export function Header() {
           )}
           <div>
             <div className="portal-brand-title">{portalProfile.brandName}</div>
-            {portalProfile.id === 'baltimore-medtech' && <div className="portal-brand-sub">{portalProfile.tagline}</div>}
+            {portalProfile.tenantId && <div className="portal-brand-sub">{portalProfile.tagline}</div>}
           </div>
         </a>
 
@@ -941,7 +941,7 @@ export function Header() {
             <NavLink to="/community">Community</NavLink>
             <NavLink to="/chat">Messages</NavLink>
             <NavLink to="/people">People</NavLink>
-            <NavLink to="/medtech-events">MedTech Events</NavLink>
+            <NavLink to="/org-events">MedTech Events</NavLink>
             <a className="portal-nav-link" href="https://medtech.social/calendar.html">General Calendar</a>
             <a className="portal-nav-link" href="https://medtech.social/map.html">Medical map</a>
           </> : domainCommunity ? <>

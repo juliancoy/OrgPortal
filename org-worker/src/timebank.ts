@@ -5,7 +5,13 @@ export class TimebankError extends Error {
 }
 
 export type Community = { id: string; hostname: string; name: string; tagline: string; accent_color: string };
-export type PortalTenant = Community & { profile: string; features: string[] };
+export type PortalTenant = Community & {
+  profile: string;
+  features: string[];
+  public_base_url?: string | null;
+  canonical_path_prefix?: string | null;
+  feature_config?: string | null;
+};
 const DEFAULT_COMMUNITY = 'code-collective';
 export const TIMEBANK_CATEGORIES = ['Home & garden', 'Learning', 'Tech help', 'Care & company', 'Transport', 'Creative', 'Other'] as const;
 
@@ -164,7 +170,7 @@ export async function publicTimebankOffers(db: D1Database, before?: string) {
   return {
     items: rows.results.slice(0, pageSize).map(({ image_key, community_hostname, ...listing }) => ({
       ...listing,
-      url: `https://${community_hostname}/p/timebanking?listing=${encodeURIComponent(listing.id)}`,
+      url: `https://${community_hostname}${community_hostname === 'codecollective.us' ? '/p' : ''}/timebanking?listing=${encodeURIComponent(listing.id)}`,
       image_url: image_key ? `https://${community_hostname}/api/org/api/timebank/listings/${encodeURIComponent(listing.id)}/image?v=${encodeURIComponent(image_key)}` : null,
     })),
     next_cursor: rows.results.length > pageSize ? `${rows.results[pageSize - 1].created_at}|${rows.results[pageSize - 1].id}` : null,
@@ -283,7 +289,7 @@ function tenantFeatures(value: string | null | undefined) {
 export async function resolvePortalTenant(db: D1Database, request: Request): Promise<PortalTenant> {
   const hostname = requestHostname(request);
   try {
-    const tenant = await db.prepare('SELECT * FROM portal_tenants WHERE hostname = ?').bind(hostname).first<Community & { profile: string; features: string }>();
+    const tenant = await db.prepare('SELECT * FROM portal_tenants WHERE hostname = ?').bind(hostname).first<Community & { profile: string; features: string; public_base_url?: string | null; canonical_path_prefix?: string | null; feature_config?: string | null }>();
     if (tenant) return { ...tenant, features: tenantFeatures(tenant.features) };
   } catch {
     // Older local databases may not have the tenant table yet.

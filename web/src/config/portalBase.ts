@@ -19,7 +19,11 @@ export function normalizePortalBasePath(rawBase: string, origin = runtimeOrigin(
 
 export function portalBasePath(): string {
   if (getDomainTenant()) return ''
-  return normalizePortalBasePath((import.meta.env.BASE_URL as string | undefined) || '/')
+  return normalizePortalBasePath(
+    (import.meta.env.VITE_PORTAL_MOUNT_PATH as string | undefined) ||
+      (import.meta.env.BASE_URL as string | undefined) ||
+      '/',
+  )
 }
 
 export function portalUrl(path = '/'): string {
@@ -44,6 +48,10 @@ export function toInternalPortalPath(rawPath: string, fallback = '/'): string {
     if (parsed.origin !== origin) return fallback
     const basePath = portalBasePath()
     let path = `${parsed.pathname}${parsed.search}${parsed.hash}` || fallback
+    if (!basePath && getDomainTenant() && (path === '/p' || path.startsWith('/p/') || path.startsWith('/p?'))) {
+      path = path.slice(2) || '/'
+      if (!path.startsWith('/')) path = `/${path}`
+    }
     if (basePath && (path === basePath || path.startsWith(`${basePath}/`) || path.startsWith(`${basePath}?`))) {
       path = path.slice(basePath.length) || '/'
       if (!path.startsWith('/')) path = `/${path}`
