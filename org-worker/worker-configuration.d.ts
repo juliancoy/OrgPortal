@@ -1,4 +1,6 @@
 interface Env {
+  MCP_OAUTH_INTROSPECTION_URL?: string;
+  MCP_OAUTH_INTROSPECTION_SECRET?: string;
   CF_VERSION_METADATA?: { id: string; tag: string; timestamp: string };
   EMAIL_GOOGLE_CLIENT_ID?: string;
   EMAIL_GOOGLE_CLIENT_SECRET?: string;

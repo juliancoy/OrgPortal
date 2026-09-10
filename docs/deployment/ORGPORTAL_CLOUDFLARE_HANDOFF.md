@@ -1,5 +1,15 @@
 # Agent handoff: deploy OrgPortal event MCP integration
 
+Update: PIdP now includes the event OAuth authorization-server implementation.
+Use its existing login and follow
+[PIdP's MCP authorization setup](https://github.com/juliancoy/PIdP/blob/main/serverless/MCP_AUTHORIZATION.md)
+for migration 0006, separate ES256 keys, registered client credentials and resource
+introspection credentials. The older discussion below of extending PIdP refers to
+the implementation that has now been added; provisioning and deployment remain
+required. Configure OrgPortal's `MCP_OAUTH_INTROSPECTION_URL` and
+`MCP_OAUTH_INTROSPECTION_SECRET` as described in `EVENTS_MCP.md` for immediate
+revocation, and map PIdP's namespaced subjects to existing OrgPortal identities.
+
 ## Objective and authorization boundary
 
 Apply the already-implemented shared event integration to the correct Cloudflare
