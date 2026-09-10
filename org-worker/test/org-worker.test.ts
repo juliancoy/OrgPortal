@@ -544,6 +544,7 @@ test("path-qualified MCP protected resource metadata is public", async () => {
     MCP_SUBJECT_MAP_JSON: "{}",
   });
   assert.equal(response.status, 200);
+  assert.equal(response.headers.get("cache-control"), "no-store");
   const body = await response.json() as Record<string, unknown>;
   assert.equal(body.resource, "https://community.medtech.social/api/org/mcp");
   assert.deepEqual(body.authorization_servers, ["https://id.codecollective.us"]);
@@ -559,6 +560,7 @@ test("worker fetch serves path-qualified MCP protected resource metadata before 
     MCP_SUBJECT_MAP_JSON: "{}",
   }, { waitUntil() {}, passThroughOnException() {} } as unknown as ExecutionContext);
   assert.equal(response.status, 200);
+  assert.equal(response.headers.get("cache-control"), "no-store");
   const body = await response.json() as Record<string, unknown>;
   assert.equal(body.resource, "https://community.medtech.social/api/org/mcp");
 });
