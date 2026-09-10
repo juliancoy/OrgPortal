@@ -102,7 +102,8 @@ test("MCP routes fail closed, advertise resource metadata, reject origins and re
   assert.equal((await handleEventMcp(request, {} as Env)).status, 503);
   const response = await app.request(request, undefined, authEnv);
   assert.equal(response.status, 401);
-  assert.ok(response.headers.get("www-authenticate")?.includes("/.well-known/oauth-protected-resource/api/org/mcp"));
+  const challenge = response.headers.get("www-authenticate") || "";
+  assert.ok(challenge.includes("/.well-known/oauth-protected-resource/api/org/mcp?v=20260910"));
   assert.equal(protectedResourceMetadata(authEnv).resource, authEnv.MCP_PUBLIC_URL);
   assert.equal((await handleEventMcp(new Request(request, { headers: { origin: "https://evil.example" } }), authEnv)).status, 403);
 });

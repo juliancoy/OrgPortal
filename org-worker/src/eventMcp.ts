@@ -33,7 +33,9 @@ export function mcpConfiguration(env: Env) {
     }
   }
   const url = new URL(resource);
-  return { resource, issuer, jwks, introspection, metadataUrl: `${url.origin}/.well-known/oauth-protected-resource${url.pathname}` };
+  const metadataUrl = new URL(`/.well-known/oauth-protected-resource${url.pathname}`, url.origin);
+  metadataUrl.searchParams.set("v", "20260910");
+  return { resource, issuer, jwks, introspection, metadataUrl: metadataUrl.toString() };
 }
 export async function authenticateMcp(request: Request, env: Env, getKey?: JWTVerifyGetKey) {
   const config = mcpConfiguration(env);
