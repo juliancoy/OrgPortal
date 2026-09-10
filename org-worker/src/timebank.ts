@@ -6,8 +6,25 @@ export class TimebankError extends Error {
 
 export type Community = { id: string; hostname: string; name: string; tagline: string; accent_color: string };
 export type PortalTenant = Community & {
+  organization_id?: string | null;
+  slug?: string | null;
   profile: string;
   features: string[];
+  brand_image_path?: string | null;
+  home_url?: string | null;
+  member_home_path?: string | null;
+  manifest_path?: string | null;
+  theme_color?: string | null;
+  home_kind?: string | null;
+  home_path?: string | null;
+  home_org_slug?: string | null;
+  home_heading?: string | null;
+  home_description?: string | null;
+  home_primary_label?: string | null;
+  home_primary_href?: string | null;
+  home_secondary_label?: string | null;
+  home_secondary_href?: string | null;
+  home_image_url?: string | null;
   public_base_url?: string | null;
   canonical_path_prefix?: string | null;
   feature_config?: string | null;
@@ -296,6 +313,19 @@ export async function resolvePortalTenant(db: D1Database, request: Request): Pro
   }
   const community = await resolveTimebankCommunity(db, request);
   return { ...community, profile: 'community', features: ['timebank'] };
+}
+
+export async function resolvePortalTenantBySlug(db: D1Database, slug: string): Promise<PortalTenant | null> {
+  const normalized = slug.toLowerCase().trim();
+  if (!/^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/.test(normalized)) return null;
+  try {
+    const tenant = await db.prepare('SELECT * FROM portal_tenants WHERE slug = ?')
+      .bind(normalized)
+      .first<Community & { profile: string; features: string }>();
+    return tenant ? { ...tenant, features: tenantFeatures(tenant.features) } : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function saveTimebankCommunity(db: D1Database, id: string, body: unknown) {

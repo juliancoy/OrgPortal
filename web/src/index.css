@@ -6696,6 +6696,17 @@ textarea:focus {
   scroll-margin-top: 90px;
 }
 
+.portal-org-portal-setup label,
+.portal-org-portal-grid {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.portal-org-portal-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.65rem;
+}
+
 @media (max-width: 980px) {
   .scan-intake-layout {
     grid-template-columns: 1fr;

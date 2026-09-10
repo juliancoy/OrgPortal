@@ -137,6 +137,16 @@ class FakeD1 {
     if (sql.includes("FROM portal_tenants WHERE hostname = ?")) {
       return (this.portalTenants.find((row) => row.hostname === params[0]) as T) || null;
     }
+    if (sql.includes("FROM portal_tenants WHERE slug = ?")) {
+      return (this.portalTenants.find((row) => row.slug === params[0]) as T) || null;
+    }
+    if (sql.includes("FROM portal_tenants") && sql.includes("organization_id = ?")) {
+      const [organizationId, slug] = params;
+      const row =
+        this.portalTenants.find((row) => row.organization_id === organizationId) ||
+        this.portalTenants.find((row) => row.home_org_slug === slug);
+      return (row as T) || null;
+    }
     if (sql.includes("FROM ubi_runtime_settings WHERE id = 1")) {
       return this.ubiSettings as T;
     }
@@ -572,6 +582,42 @@ class FakeD1 {
         row.status = "inactive";
         row.updated_at = params[0];
       }
+    }
+    if (sql.includes("INSERT INTO portal_tenants")) {
+      const existing = this.portalTenants.find((row) => row.id === params[0]);
+      const row = {
+        id: params[0],
+        organization_id: params[1],
+        slug: params[2],
+        hostname: params[3],
+        name: params[4],
+        tagline: params[5],
+        accent_color: params[6],
+        profile: "community",
+        features: params[7],
+        brand_image_path: params[8],
+        home_url: params[9],
+        member_home_path: "/chat",
+        manifest_path: "/manifest.webmanifest",
+        theme_color: params[10],
+        home_kind: params[11],
+        home_path: params[12],
+        home_org_slug: params[13],
+        home_heading: params[14],
+        home_description: params[15],
+        home_primary_label: params[16],
+        home_primary_href: params[17],
+        home_secondary_label: params[18],
+        home_secondary_href: params[19],
+        home_image_url: params[20],
+        public_base_url: params[21],
+        canonical_path_prefix: "/p",
+        feature_config: params[22],
+        created_at: params[23],
+        updated_at: params[24],
+      };
+      if (existing) Object.assign(existing, row);
+      else this.portalTenants.push(row);
     }
     return { success: true, meta: { changes: 1 } };
   }
@@ -1679,5 +1725,97 @@ test("users can join and leave organization groups", async () => {
       status: "none",
       membership_count: 0,
     });
+  });
+});
+
+test("organization admins can publish a slug portal for their organization", async () => {
+  const db = new FakeD1();
+  db.organizations.push({
+    id: "org-1",
+    name: "Test Org",
+    slug: "test-org",
+    description: "A test organization.",
+    source_url: null,
+    image_url: "https://cdn.example.test/org.jpg",
+    tags: "[]",
+    city: null,
+    created_at: "2026-06-07T00:00:00.000Z",
+    updated_at: "2026-06-07T00:00:00.000Z",
+  });
+  db.organizationMemberships.push({
+    organization_id: "org-1",
+    user_id: "admin-1",
+    role: "administrator",
+    status: "active",
+  });
+
+  await withPidpUser({ id: "admin-1", email: "admin@example.test", full_name: "Admin User" }, async () => {
+    const saved = await app.request(
+      "https://org.example.test/api/network/orgs/test-org/portal",
+      {
+        method: "PUT",
+        headers: { authorization: "Bearer admin-token", "content-type": "application/json" },
+        body: JSON.stringify({
+          slug: "test-org",
+          name: "Test Org Portal",
+          tagline: "Everything for Test Org members.",
+          home_kind: "org-events",
+          home_heading: "Test Org",
+          home_description: "Join Test Org events and conversations.",
+        }),
+      },
+      env(db),
+    );
+    assert.equal(saved.status, 200);
+    const savedPayload = await saved.json() as { portal: Row };
+    assert.equal(savedPayload.portal.organization_id, "org-1");
+    assert.equal(savedPayload.portal.slug, "test-org");
+    assert.equal(savedPayload.portal.home_org_slug, "test-org");
+    assert.equal(savedPayload.portal.home_kind, "org-events");
+    assert.equal(savedPayload.portal.slug_url, "https://codecollective.test/p/portals/test-org");
+
+    const loaded = await app.request(
+      "https://org.example.test/api/network/orgs/org-1/portal",
+      { headers: { authorization: "Bearer admin-token" } },
+      env(db),
+    );
+    assert.equal(loaded.status, 200);
+    assert.equal(((await loaded.json()) as { portal: Row }).portal.slug, "test-org");
+
+    const publicTenant = await app.request("https://org.example.test/api/portal/tenants/test-org", {}, env(db));
+    assert.equal(publicTenant.status, 200);
+    const publicPayload = await publicTenant.json() as Row;
+    assert.equal(publicPayload.name, "Test Org Portal");
+    assert.deepEqual(publicPayload.features, ["directory", "events", "chat"]);
+  });
+});
+
+test("non-admins cannot publish organization slug portals", async () => {
+  const db = new FakeD1();
+  db.organizations.push({
+    id: "org-1",
+    name: "Test Org",
+    slug: "test-org",
+    description: null,
+    source_url: null,
+    image_url: null,
+    tags: "[]",
+    city: null,
+    created_at: "2026-06-07T00:00:00.000Z",
+    updated_at: "2026-06-07T00:00:00.000Z",
+  });
+
+  await withPidpUser({ id: "user-1", email: "user@example.test", full_name: "Regular User" }, async () => {
+    const response = await app.request(
+      "https://org.example.test/api/network/orgs/test-org/portal",
+      {
+        method: "PUT",
+        headers: { authorization: "Bearer user-token", "content-type": "application/json" },
+        body: JSON.stringify({ slug: "test-org" }),
+      },
+      env(db),
+    );
+    assert.equal(response.status, 403);
+    assert.equal(db.portalTenants.length, 0);
   });
 });
