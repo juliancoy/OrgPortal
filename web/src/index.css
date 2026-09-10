@@ -1106,6 +1106,139 @@ h6 {
   font-weight: 700;
 }
 
+.public-event-comment-composer {
+  display: grid;
+  gap: 10px;
+}
+
+.public-event-comment-composer textarea {
+  width: 100%;
+  min-height: 92px;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--panel-2), transparent 12%);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.public-event-comment-actions,
+.public-event-comment-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.public-event-comment-actions a {
+  font-weight: 700;
+}
+
+.public-event-comment-list {
+  display: grid;
+  gap: 16px;
+}
+
+.public-event-comment {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.public-event-comment-avatar {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  color: var(--panel);
+  background: var(--text-primary);
+  border-radius: 50%;
+  font-size: 0.82rem;
+  font-weight: 850;
+  overflow: hidden;
+}
+
+.public-event-comment-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.public-event-comment-body {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--panel-2), transparent 20%);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.public-event-comment-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+  color: var(--text-muted);
+  font-size: 0.84rem;
+}
+
+.public-event-comment-meta strong {
+  color: var(--text-primary);
+}
+
+.public-event-comment-body p {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.55;
+}
+
+.public-event-comment-tools button {
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  padding: 3px 9px;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--primary), transparent 88%);
+  font: inherit;
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+
+.public-event-comment-tools button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.public-event-comment-replies {
+  display: grid;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.public-event-comment-reply {
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.public-event-comment-reply .public-event-comment-avatar {
+  width: 34px;
+  height: 34px;
+  font-size: 0.72rem;
+}
+
+.public-event-reply-composer {
+  margin-top: 2px;
+}
+
+.public-event-reply-composer textarea {
+  min-height: 72px;
+}
+
 .public-event-registration {
   padding: 22px;
   border-color: color-mix(in srgb, var(--primary) 22%, var(--border));
@@ -4902,6 +5035,17 @@ textarea:focus {
     justify-content: center;
     width: 100%;
     text-align: center;
+  }
+
+  .public-event-comment,
+  .public-event-comment-reply {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .public-event-comment-avatar {
+    width: 34px;
+    height: 34px;
+    font-size: 0.72rem;
   }
 
   .public-event-list-card {

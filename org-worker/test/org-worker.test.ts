@@ -101,6 +101,9 @@ class FakeD1 {
     if (sql.includes("FROM events WHERE ingest_key = ?")) {
       return (this.events.find((row) => row.ingest_key === params[0]) as T) || null;
     }
+    if (sql.includes("FROM events WHERE slug = ?")) {
+      return (this.events.find((row) => row.slug === params[0]) as T) || null;
+    }
     if (sql.includes("count(*) AS n FROM events WHERE host_org_id = ?")) {
       return { n: this.events.filter((row) => row.host_org_id === params[0]).length } as T;
     }
@@ -306,10 +309,13 @@ class FakeD1 {
         host_org_id: params[12],
         host_org_name: params[13],
         host_org_source_url: params[14],
-        tags: params[15],
-        city: params[16],
-        created_at: params[17] || now,
-        updated_at: params[18] || now,
+        event_chat_room_id: params[15],
+        event_chat_room_alias: params[16],
+        event_chat_room_name: params[17],
+        tags: params[18],
+        city: params[19],
+        created_at: params[20] || now,
+        updated_at: params[21] || now,
       };
       const existingIndex = this.events.findIndex((item) => item.ingest_key === row.ingest_key);
       if (existingIndex >= 0) this.events[existingIndex] = { ...this.events[existingIndex], ...row };
@@ -982,6 +988,45 @@ test("public org and event routes return D1 rows", async () => {
   const event = (await eventDetail.json()) as { title: string; organization_name: string };
   assert.equal(event.title, "Open Meeting");
   assert.equal(event.organization_name, "Code Collective");
+});
+
+test("public event chat returns configured room metadata for comment views", async () => {
+  const db = new FakeD1();
+  db.events.push({
+    id: "event-1",
+    ingest_key: "event-1",
+    title: "Commentable Event",
+    slug: "commentable-event",
+    description: null,
+    starts_at: null,
+    ends_at: null,
+    location: null,
+    source_url: null,
+    image_url: null,
+    host_user_id: null,
+    host_user_name: null,
+    host_org_id: null,
+    host_org_name: null,
+    host_org_source_url: null,
+    event_chat_room_id: "!event:matrix.local",
+    event_chat_room_alias: "#commentable-event:matrix.local",
+    event_chat_room_name: "Commentable Event",
+    tags: "[]",
+    city: null,
+    created_at: "2026-06-07T00:00:00.000Z",
+    updated_at: "2026-06-07T00:00:00.000Z",
+  });
+
+  const response = await app.request("https://org.example.test/api/network/events/public/commentable-event/chat", {}, env(db));
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    event_slug: "commentable-event",
+    room_exists: true,
+    room_id: "!event:matrix.local",
+    room_alias: "#commentable-event:matrix.local",
+    room_name: "Commentable Event",
+    messages: [],
+  });
 });
 
 test("public user event route returns individual-hosted calendar entries", async () => {

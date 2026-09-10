@@ -169,6 +169,9 @@ type EventRow = {
   host_org_id: string | null;
   host_org_name: string | null;
   host_org_source_url: string | null;
+  event_chat_room_id?: string | null;
+  event_chat_room_alias?: string | null;
+  event_chat_room_name?: string | null;
   tags: string;
   city: string | null;
   created_at: string;
@@ -1361,8 +1364,10 @@ async function upsertEvent(db: D1Database, raw: Record<string, unknown>) {
   await db.prepare(
     `INSERT INTO events
       (id, ingest_key, title, slug, description, starts_at, ends_at, location, source_url, image_url,
-       host_user_id, host_user_name, host_org_id, host_org_name, host_org_source_url, tags, city, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       host_user_id, host_user_name, host_org_id, host_org_name, host_org_source_url,
+       event_chat_room_id, event_chat_room_alias, event_chat_room_name,
+       tags, city, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(ingest_key) DO UPDATE SET
       title = excluded.title,
       description = excluded.description,
@@ -1376,6 +1381,9 @@ async function upsertEvent(db: D1Database, raw: Record<string, unknown>) {
       host_org_id = excluded.host_org_id,
       host_org_name = excluded.host_org_name,
       host_org_source_url = excluded.host_org_source_url,
+      event_chat_room_id = excluded.event_chat_room_id,
+      event_chat_room_alias = excluded.event_chat_room_alias,
+      event_chat_room_name = excluded.event_chat_room_name,
       tags = excluded.tags,
       city = excluded.city,
       updated_at = excluded.updated_at`,
@@ -1396,6 +1404,9 @@ async function upsertEvent(db: D1Database, raw: Record<string, unknown>) {
       hostOrg?.id || null,
       stringField(raw, "host_org_name", 255),
       hostOrgSourceUrl,
+      stringField(raw, "event_chat_room_id", 255),
+      stringField(raw, "event_chat_room_alias", 255),
+      stringField(raw, "event_chat_room_name", 255),
       tagsField(raw),
       stringField(raw, "city", 80),
       existing?.created_at || updatedAt,
@@ -2342,16 +2353,25 @@ app.get("/api/network/events/public/:slug", async (c) => {
   return c.json(await mapEvent(c.env, c.req.raw, row));
 });
 
-app.get("/api/network/events/public/:slug/chat", (c) =>
-  c.json({
-    event_slug: c.req.param("slug"),
-    room_exists: false,
-    room_id: null,
-    room_alias: null,
-    room_name: null,
+app.get("/api/network/events/public/:slug/chat", async (c) => {
+  const slug = slugify(c.req.param("slug"));
+  const row = await c.env.DB.prepare(
+    "SELECT slug, title, event_chat_room_id, event_chat_room_alias, event_chat_room_name FROM events WHERE slug = ?",
+  )
+    .bind(slug)
+    .first<Pick<EventRow, "slug" | "title" | "event_chat_room_id" | "event_chat_room_alias" | "event_chat_room_name">>();
+  if (!row) fail(404, "Event not found");
+  const roomId = String(row.event_chat_room_id || "").trim();
+  const roomAlias = String(row.event_chat_room_alias || "").trim();
+  return c.json({
+    event_slug: row.slug,
+    room_exists: Boolean(roomId || roomAlias),
+    room_id: roomId || null,
+    room_alias: roomAlias || null,
+    room_name: String(row.event_chat_room_name || row.title || "Event Chat").trim(),
     messages: [],
-  }),
-);
+  });
+});
 
 app.get("/api/network/orgs", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
