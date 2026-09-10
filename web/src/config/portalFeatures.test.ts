@@ -45,16 +45,43 @@ describe('portal feature profiles', () => {
     expect(portalProfileLoginSearch('baltimore-medtech')).toBe('portalProfile=baltimore-medtech')
   })
 
-  it('lets a hostname community keep its identity and landing page', () => {
-    const domain = vi.spyOn(communities, 'getDomainCommunity').mockReturnValue({
+  it('lets a hostname timebank tenant keep its identity and landing page', () => {
+    const domain = vi.spyOn(communities, 'getDomainTenant').mockReturnValue({
       id: 'bmoretimebank', hostname: 'bmoretimebank.codecollective.us',
       name: 'Bmore Timebank', tagline: 'Neighbors helping neighbors', accent_color: '#18745b',
+      profile: 'community', features: ['timebank'],
     })
     try {
       const profile = getActivePortalProfileConfig('?portalProfile=baltimore-medtech', memoryStorage())
       expect(profile.brandName).toBe('Bmore Timebank')
       expect(profile.memberHomePath).toBe('/')
-      expect(isPortalFeatureEnabled('ubi', profile)).toBe(true)
+      expect(isPortalFeatureEnabled('ubi', profile)).toBe(false)
+    } finally { domain.mockRestore() }
+  })
+
+  it('lets a configured tenant provide MedTech-level branding without a hostname special case', () => {
+    const domain = vi.spyOn(communities, 'getDomainTenant').mockReturnValue({
+      id: 'baltimore-medtech',
+      hostname: 'medtech.social',
+      name: 'Baltimore MedTech',
+      tagline: 'Health x Medicine x Biotech',
+      accent_color: '#0f6f8f',
+      profile: 'baltimore-medtech',
+      features: ['directory', 'events', 'chat'],
+      brand_image_path: '/images/baltimore-medtech-logo-square.jpg',
+      home_url: 'https://medtech.social/',
+      member_home_path: '/community',
+      manifest_path: '/medtech.webmanifest',
+      theme_color: '#061a26',
+    })
+    try {
+      const profile = getActivePortalProfileConfig('?portalProfile=code-collective', memoryStorage('code-collective'), 'custom.example')
+      expect(profile.id).toBe('baltimore-medtech')
+      expect(profile.tenantId).toBe('baltimore-medtech')
+      expect(profile.brandImagePath).toBe('/images/baltimore-medtech-logo-square.jpg')
+      expect(profile.memberHomePath).toBe('/community')
+      expect(profile.manifestPath).toBe('/medtech.webmanifest')
+      expect(isPortalFeatureEnabled('ubi', profile)).toBe(false)
     } finally { domain.mockRestore() }
   })
 })
