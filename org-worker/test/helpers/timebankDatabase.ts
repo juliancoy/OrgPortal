@@ -33,6 +33,8 @@ export class TimebankDatabase {
     this.sqlite.exec(readFileSync(new URL('../../migrations/0024_timebank_listing_visibility.sql', import.meta.url), 'utf8'));
     this.sqlite.exec(readFileSync(new URL('../../migrations/0025_portal_tenants.sql', import.meta.url), 'utf8'));
     this.sqlite.exec(readFileSync(new URL('../../migrations/0026_retire_medtech_community_subdomain.sql', import.meta.url), 'utf8'));
+    this.sqlite.exec(readFileSync(new URL('../../migrations/0027_portal_tenant_branding.sql', import.meta.url), 'utf8'));
+    this.sqlite.exec(readFileSync(new URL('../../migrations/0028_portal_tenant_home_page.sql', import.meta.url), 'utf8'));
   }
   prepare(sql: string) { return new SqliteStatement(this.sqlite.prepare(sql)); }
   async batch(statements: SqliteStatement[]) {

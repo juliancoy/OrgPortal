@@ -16,7 +16,7 @@ try {
   const sha = git('rev-parse', 'HEAD');
   if (!/^[a-f0-9]{40,64}$/.test(sha)) throw new Error('Invalid commit');
   commit = sha;
-  dirty = Boolean(git('status', '--porcelain', '--untracked-files=normal'));
+  dirty = Boolean(git('status', '--porcelain', '--untracked-files=normal', '--', '.', ':(exclude)org-worker/wrangler.jsonc'));
 } catch {
   // Source archives have no Git history. Only accept an explicit OrgPortal SHA;
   // GITHUB_SHA/CF_PAGES_COMMIT_SHA may refer to the embedding site's repository.
