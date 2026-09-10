@@ -2935,7 +2935,7 @@ app.put("/api/network/orgs/:organizationId/portal", async (c) => {
       heading,
       description,
       stringField(payload, "home_primary_label", 80) || "Join Group",
-      stringField(payload, "home_primary_href", 200) || "/users/register",
+      stringField(payload, "home_primary_href", 200) || "/users/login",
       stringField(payload, "home_secondary_label", 80) || "View Events",
       stringField(payload, "home_secondary_href", 200) || "/org-events",
       homeImageUrl,

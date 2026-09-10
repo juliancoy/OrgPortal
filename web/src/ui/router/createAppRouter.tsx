@@ -102,6 +102,16 @@ function TenantOrgEventsRoute() {
   return <PublicEventsPage />
 }
 
+function TenantCommunityAliasRoute() {
+  const tenant = getDomainTenant()
+  if (tenant?.home_org_slug) return <Navigate to={`/orgs/${encodeURIComponent(tenant.home_org_slug)}`} replace />
+  return <Navigate to={tenant ? '/people' : '/orgs'} replace />
+}
+
+function TenantEventsAliasRoute() {
+  return <Navigate to={getDomainTenant() ? '/org-events' : '/events'} replace />
+}
+
 function TimebankRoute() {
   const { user } = useAuth()
   // Reset member data when identity changes, while keeping guest dialogs open
@@ -207,6 +217,8 @@ export function createAppRouter() {
           { path: '/initiatives/:slug/sign', element: <InitiativeSignPage /> },
 
           { path: '/org-events', element: <TenantOrgEventsRoute /> },
+          { path: '/community', element: <TenantCommunityAliasRoute /> },
+          { path: '/medtech-events', element: <TenantEventsAliasRoute /> },
           { path: '/about', element: <AboutPage /> },
           { path: '/email', element: <AdminRoute><EmailCampaignsPage /></AdminRoute> },
           { path: '/email/preferences', element: <AuthenticatedRoute><EmailPreferencesPage /></AuthenticatedRoute> },

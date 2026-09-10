@@ -108,6 +108,16 @@ test('tenant domains use root-mounted canonical routes and assets', async ({ pag
   expect(callback.searchParams.get('next')).toBe('/chat')
 })
 
+test('tenant legacy community aliases redirect to canonical tenant routes', async ({ page }) => {
+  await mockTenant(page)
+
+  await page.goto(portal('/community?portalProfile=baltimore-medtech'))
+  await expect(page).toHaveURL(/\/orgs\/baltimore-medtech$/)
+
+  await page.goto(portal('/medtech-events'))
+  await expect(page).toHaveURL(/\/org-events$/)
+})
+
 test('tenant event auth actions return to the same root-mounted event', async ({ page }) => {
   await mockTenant(page, { completeAppLogin: true })
   await page.goto(portal('/events/medtech-in-the-hut'))
