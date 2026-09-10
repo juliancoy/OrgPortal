@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
 import { portalPath } from '../../config/portalBase'
 import { portalProfilePath } from '../../config/portalFeatures'
-import { MEDTECH_CHAT_URL, MEDTECH_OWNED_EVENTS_PATH, MEDTECH_LUMA_URL, medTechEventImageUrl, selectOwnedMedTechEvents, type MedTechEvent } from '../../config/medtechCommunity'
+import { MEDTECH_CHAT_URL, MEDTECH_OWNED_EVENTS_PATH, medTechEventImageUrl, selectOwnedMedTechEvents, type MedTechEvent } from '../../config/medtechCommunity'
 import { MedTechFormationalEventCard } from './MedTechFormationalEventCard'
 
 export function MedTechCommunityPage() {
@@ -22,7 +22,7 @@ export function MedTechCommunityPage() {
         setStatus(upcoming.length ? '' : 'No upcoming MedTech-hosted events have been published in the portal yet.')
       })
       .catch(() => {
-        if (!controller.signal.aborted) setStatus('MedTech events could not be loaded. Please try again later, or check the group’s Luma page.')
+        if (!controller.signal.aborted) setStatus('MedTech events could not be loaded. Please try again later.')
       })
     return () => controller.abort()
   }, [])
@@ -76,7 +76,7 @@ export function MedTechCommunityPage() {
             {imageUrl && <img className="medtech-event-image" src={imageUrl} alt="" loading="lazy" decoding="async" onError={event => { event.currentTarget.hidden = true }} />}
           </li>})}
         </ul>
-        <p><a href={MEDTECH_LUMA_URL}>Baltimore MedTech on Luma ↗</a></p>
+        <p><Link to={portalProfilePath('/medtech-events')}>Browse all MedTech events →</Link></p>
       </section>
       <section className="medtech-community-card" aria-labelledby="regional-calendar-title">
         <p className="medtech-eyebrow">Around the region</p>
