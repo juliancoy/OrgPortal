@@ -1106,6 +1106,51 @@ h6 {
   font-weight: 700;
 }
 
+.public-event-registration-links,
+.registered-events-calendar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  align-items: center;
+}
+
+.registered-events-calendar-card {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.registered-events-calendar-card h2 {
+  margin: 0;
+}
+
+.registered-events-calendar-card p {
+  margin: 0.35rem 0 0;
+}
+
+.registered-events-calendar-stats {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  color: var(--text-primary);
+}
+
+.registered-events-calendar-stats strong {
+  font-size: 1.7rem;
+  line-height: 1;
+}
+
+.registered-events-calendar-url {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--surface-soft), transparent 10%);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font: 0.85rem/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
 .public-event-comment-composer {
   display: grid;
   gap: 10px;

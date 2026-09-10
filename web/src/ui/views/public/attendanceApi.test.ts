@@ -1,9 +1,23 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { loadAttendance, recordAttendanceWithRetry } from './attendanceApi'
+import {
+  loadAttendance,
+  loadRegisteredEventsCalendarFeed,
+  recordAttendanceWithRetry,
+  regenerateRegisteredEventsCalendarFeed,
+} from './attendanceApi'
 import { refreshRuntimeTokenFromSession } from '../../../infrastructure/auth/sessionToken'
 
 vi.mock('../../../infrastructure/auth/sessionToken', () => ({ refreshRuntimeTokenFromSession: vi.fn() }))
 const attendance = { event_id: 'one', count: 1, registered: true, attendees: [] }
+const feed = {
+  feed_url: 'https://medtech.social/api/org/api/network/calendar/feed/private.ics',
+  download_url: 'https://medtech.social/api/org/api/network/calendar/feed/private.ics',
+  webcal_url: 'webcal://medtech.social/api/org/api/network/calendar/feed/private.ics',
+  google_url: 'https://calendar.google.com/calendar/r?cid=feed',
+  outlook_url: 'https://outlook.live.com/calendar/0/addfromweb?url=feed',
+  event_count: 2,
+  token_created_at: '2026-09-09T21:00:00.000Z',
+}
 afterEach(() => { vi.unstubAllGlobals(); vi.resetAllMocks() })
 
 describe('event registration API', () => {
@@ -44,5 +58,22 @@ describe('event registration API', () => {
     const result = await recordAttendanceWithRetry('one', 'token')
     expect(result.ok).toBe(false)
     expect(result.message).not.toContain('internal details')
+  })
+  it('loads the registered events subscription feed metadata', async () => {
+    const fetch = vi.fn().mockResolvedValue(Response.json(feed))
+    vi.stubGlobal('fetch', fetch)
+    expect(await loadRegisteredEventsCalendarFeed('token')).toEqual(feed)
+    expect(fetch).toHaveBeenCalledWith('/api/org/api/network/calendar/feed', expect.objectContaining({
+      method: 'GET', cache: 'no-store', headers: { Authorization: 'Bearer token' },
+    }))
+  })
+  it('regenerates the registered events subscription feed with refreshed auth', async () => {
+    const fetch = vi.fn().mockResolvedValueOnce(new Response('', { status: 401 })).mockResolvedValueOnce(Response.json(feed))
+    vi.stubGlobal('fetch', fetch)
+    vi.mocked(refreshRuntimeTokenFromSession).mockResolvedValue('fresh')
+    expect(await regenerateRegisteredEventsCalendarFeed('expired')).toEqual(feed)
+    expect(fetch.mock.calls[0][0]).toBe('/api/org/api/network/calendar/feed/regenerate')
+    expect(fetch.mock.calls[0][1].method).toBe('POST')
+    expect(fetch.mock.calls[1][1].headers.Authorization).toBe('Bearer fresh')
   })
 })
