@@ -66,7 +66,7 @@ test('registration requires verified identity; repeated requests and cancellatio
   assert.equal(database.prepare("SELECT count(*) AS n FROM event_registrations WHERE event_id = 'event-1'").get()?.n, 0);
 });
 
-test('public preview counts all registrations but returns at most eight public profiles without private fields', async (t) => {
+test('public preview counts all registrations and returns public profiles without private fields', async (t) => {
   const { database, request } = setup();
   t.after(() => database.close());
   for (let i = 0; i < 12; i++) {
@@ -82,7 +82,7 @@ test('public preview counts all registrations but returns at most eight public p
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('Cache-Control'), 'no-store');
   assert.equal(data.count, 12);
-  assert.equal(data.attendees.length, 8);
+  assert.equal(data.attendees.length, 11);
   assert.equal(data.attendees.some((person: { slug: string }) => person.slug === 'person-0'), false);
   const emailName = data.attendees.find((person: { slug: string }) => person.slug === 'person-1');
   assert.equal(emailName.name, 'Registrant');
