@@ -35,10 +35,11 @@ test('non-timebank tenant domains also use root portal routes', () => {
     accent_color: '#0f6f8f',
     profile: 'baltimore-medtech',
     features: ['directory', 'events', 'chat'],
+    member_home_path: '/chat',
   })
   expect(portalBasePath()).toBe('')
-  expect(portalPath('/community')).toBe('/community')
-  expect(normalizePostLoginPath('/p/users/login?next=/community')).toBe('/community?portalProfile=baltimore-medtech')
+  expect(portalPath('/users/login')).toBe('/users/login')
+  expect(normalizePostLoginPath('/p/users/login?next=/org-events')).toBe('/chat')
   expect(portalAuthCallbackUrl('/org-events')).toContain('next=%2Forg-events')
 })
 

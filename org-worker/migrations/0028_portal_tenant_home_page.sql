@@ -18,7 +18,7 @@ SET
   home_primary_label = 'Join Baltimore MedTech',
   home_primary_href = '/users/register',
   home_secondary_label = 'Browse MedTech Events',
-  home_secondary_href = '/medtech-events',
+  home_secondary_href = '/org-events',
   home_image_url = '/images/baltimore-medtech-hero.webp'
 WHERE id = 'baltimore-medtech';
 

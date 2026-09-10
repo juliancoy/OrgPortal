@@ -19,9 +19,6 @@ export type PortalProfileConfig = {
   tenantId?: string
 }
 
-const PROFILE_STORAGE_KEY = 'portal.profile'
-const PROFILE_QUERY_PARAMS = ['portalProfile', 'profile', 'site']
-
 const PORTAL_PROFILES: Record<PortalProfileId, PortalProfileConfig> = {
   'code-collective': {
     id: 'code-collective',
@@ -44,7 +41,7 @@ const PORTAL_PROFILES: Record<PortalProfileId, PortalProfileConfig> = {
     tagline: 'Health × Medicine × Biotech',
     brandImagePath: '/images/baltimore-medtech-logo-square.jpg',
     homeUrl: 'https://medtech.social/',
-    memberHomePath: '/community',
+    memberHomePath: '/chat',
     disabledFeatures: ['ubi'],
     manifestPath: '/medtech.webmanifest',
     faviconPath: '/images/baltimore-medtech-logo-square.jpg',
@@ -61,46 +58,6 @@ function normalizeProfileId(value?: string | null): PortalProfileId | null {
   }
   if (['code-collective', 'codecollective', 'default', 'main'].includes(normalized)) {
     return 'code-collective'
-  }
-  return null
-}
-
-function storageGet(storage?: Pick<Storage, 'getItem'> | null): PortalProfileId | null {
-  if (!storage) return null
-  try {
-    return normalizeProfileId(storage.getItem(PROFILE_STORAGE_KEY))
-  } catch {
-    return null
-  }
-}
-
-function storageSet(profileId: PortalProfileId, storage?: Pick<Storage, 'setItem'> | null) {
-  if (!storage) return
-  try {
-    storage.setItem(PROFILE_STORAGE_KEY, profileId)
-  } catch {
-    // Storage can be unavailable in private or embedded contexts.
-  }
-}
-
-function browserStorage(): Storage | null {
-  if (typeof window === 'undefined') return null
-  try {
-    return window.sessionStorage
-  } catch {
-    return null
-  }
-}
-
-// Keep navigation branded when browser storage is unavailable, without sharing
-// another tab's selected community.
-let browserProfileId: PortalProfileId | null = null
-
-export function readPortalProfileIdFromSearch(search = ''): PortalProfileId | null {
-  const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search)
-  for (const key of PROFILE_QUERY_PARAMS) {
-    const profileId = normalizeProfileId(params.get(key))
-    if (profileId) return profileId
   }
   return null
 }
@@ -132,32 +89,22 @@ function tenantProfileConfig(tenant: PortalTenant): PortalProfileConfig {
 }
 
 export function getActivePortalProfileConfig(
-  search = typeof window === 'undefined' ? '' : window.location.search,
-  storage: Pick<Storage, 'getItem' | 'setItem'> | null = browserStorage(),
+  _search = typeof window === 'undefined' ? '' : window.location.search,
+  _storage: Pick<Storage, 'getItem' | 'setItem'> | null = null,
   _hostname = typeof window === 'undefined' ? '' : window.location.hostname,
 ): PortalProfileConfig {
   const tenant = getDomainTenant()
   if (tenant) return tenantProfileConfig(tenant)
-  const urlProfileId = readPortalProfileIdFromSearch(search)
-  const profileId = urlProfileId || (typeof window !== 'undefined' ? browserProfileId : null) || storageGet(storage) || 'code-collective'
-  if (urlProfileId) storageSet(urlProfileId, storage)
-  if (typeof window !== 'undefined') browserProfileId = profileId
-  return PORTAL_PROFILES[profileId]
+  return PORTAL_PROFILES['code-collective']
 }
 
 export function isPortalFeatureEnabled(feature: PortalFeature, profile = getActivePortalProfileConfig()): boolean {
   return !profile.disabledFeatures.includes(feature)
 }
 
-export function portalProfileLoginSearch(profileId: PortalProfileId): string {
-  return `portalProfile=${encodeURIComponent(profileId)}`
-}
-
 export function portalProfilePath(path: string, profile = getActivePortalProfileConfig()): string {
-  if (!profile.tenantId && profile.id !== 'baltimore-medtech') return path
+  if (!profile.tenantId) return path
   const url = new URL(path, 'https://portal.invalid')
   if (url.origin !== 'https://portal.invalid') throw new Error('Expected an internal portal path')
-  if (profile.tenantId && !['baltimore-medtech'].includes(profile.id)) return `${url.pathname}${url.search}${url.hash}`
-  url.searchParams.set('portalProfile', profile.id)
   return `${url.pathname}${url.search}${url.hash}`
 }

@@ -82,8 +82,6 @@ export function portalAuthCallbackUrl(next: string): string {
   // PIdP already trusts the shared callback and sets a codecollective.us session cookie.
   const callback = new URL(community ? 'https://codecollective.us/p/auth/callback' : portalUrl('/auth/callback'))
   if (community) callback.searchParams.set('community', community.id)
-  const profile = getActivePortalProfileConfig()
-  if (profile.id === 'baltimore-medtech') callback.searchParams.set('portalProfile', profile.id)
   callback.searchParams.set('next', target)
   return callback.toString()
 }

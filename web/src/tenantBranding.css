@@ -1,0 +1,83 @@
+:root[data-portal-profile='baltimore-medtech'] {
+  --primary: #08697a;
+  --primary-2: #087f91;
+  --primary-bg: #e0f6f8;
+  --primary-hover: #064c5b;
+  --btn-primary-bg: #08697a;
+  --btn-primary-text: #fff;
+  --body-bg: #f1f8f9;
+  --hero-bg: #e0f6f8;
+  --icon-tile-bg: #e0f6f8;
+  --selection-bg: #08697a;
+  --border-hover: #087f91;
+  --focus-ring: 0 0 0 3px var(--panel), 0 0 0 6px #087f91;
+}
+
+:root[data-portal-profile='baltimore-medtech'][data-theme='dark'] {
+  --primary: #67dce8;
+  --primary-2: #8ee5ef;
+  --primary-bg: #123b47;
+  --primary-hover: #9aeaf1;
+  --btn-primary-bg: #29bdd0;
+  --btn-primary-text: #061a26;
+  --body-bg: #061a26;
+  --panel: #0b2733;
+  --panel-2: #12323e;
+  --surface-softer: #0b2733;
+  --surface-input: #061a26;
+  --header-bg: #0b2733;
+  --footer-bg: #0b2733;
+  --border: #315563;
+  --border-input: #638a96;
+  --text-primary: #edfcff;
+  --text-secondary: #bddde5;
+  --text-muted: #a2c5cf;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-portal-profile='baltimore-medtech']:not([data-theme]) {
+    --primary: #67dce8;
+    --primary-2: #8ee5ef;
+    --primary-bg: #123b47;
+    --primary-hover: #9aeaf1;
+    --btn-primary-bg: #29bdd0;
+    --btn-primary-text: #061a26;
+    --body-bg: #061a26;
+    --panel: #0b2733;
+    --panel-2: #12323e;
+    --surface-softer: #0b2733;
+    --surface-input: #061a26;
+    --header-bg: #0b2733;
+    --footer-bg: #0b2733;
+    --border: #315563;
+    --border-input: #638a96;
+    --text-primary: #edfcff;
+    --text-secondary: #bddde5;
+    --text-muted: #a2c5cf;
+  }
+}
+
+[data-portal-profile='baltimore-medtech'] .portal-brand img { width: 46px; height: 46px; object-fit: contain; }
+[data-portal-profile='baltimore-medtech'] .portal-brand-title { font-family: inherit; text-transform: none; font-weight: 800; }
+[data-portal-profile='baltimore-medtech'] .portal-brand-sub { font-size: .68rem; letter-spacing: .03em; }
+[data-portal-profile='baltimore-medtech'] .skip-link { opacity: 0; pointer-events: none; }
+[data-portal-profile='baltimore-medtech'] .skip-link:focus { opacity: 1; pointer-events: auto; }
+.portal-tenant-auth-shell p { text-indent: 0; }
+[data-portal-profile='baltimore-medtech'] .portal-auth-register-shortcut { color: #061a26; }
+[data-portal-profile='baltimore-medtech'] .portal-auth-idp-link { background: var(--btn-primary-bg); color: var(--btn-primary-text); }
+[data-portal-profile='baltimore-medtech'] .btn-primary { background: var(--btn-primary-bg); color: var(--btn-primary-text); }
+[data-portal-profile='baltimore-medtech'] .portal-nav-toggle,
+[data-portal-profile='baltimore-medtech'] .portal-auth .portal-notification-trigger { background: var(--btn-primary-bg); color: var(--btn-primary-text); }
+.portal-tenant-auth-shell .portal-middle,
+.portal-tenant-auth-shell .portal-nav-bar,
+.portal-tenant-auth-shell .portal-auth { display: none; }
+.portal-tenant-auth-shell .portal-auth-card { border-top: 4px solid #29bdd0; padding: clamp(24px, 4vw, 40px); gap: 22px; }
+.portal-tenant-auth-shell .portal-main { display: grid; align-items: center; padding-block: 40px; }
+.portal-tenant-auth-shell .portal-container { width: 100%; }
+.portal-tenant-auth-shell .portal-auth-card-header { gap: 14px; }
+.portal-tenant-auth-shell .portal-auth-card-header h1 { font-size: clamp(1.8rem, 5vw, 2.4rem); line-height: 1.12; }
+.tenant-auth-logo { width: 64px; height: 64px; border-radius: 8px; }
+.tenant-shared-account { margin: 0; font-size: .85rem; color: var(--text-muted); text-align: center; }
+@media (max-width: 640px) {
+  .portal-tenant-auth-shell .portal-main { padding-block: 20px; }
+}

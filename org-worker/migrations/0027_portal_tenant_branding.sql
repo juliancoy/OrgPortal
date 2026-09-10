@@ -17,7 +17,7 @@ UPDATE portal_tenants
 SET
   brand_image_path = '/images/baltimore-medtech-logo-square.jpg',
   home_url = 'https://medtech.social/',
-  member_home_path = '/community',
+  member_home_path = '/chat',
   manifest_path = '/medtech.webmanifest',
   theme_color = '#061a26'
 WHERE id = 'baltimore-medtech';

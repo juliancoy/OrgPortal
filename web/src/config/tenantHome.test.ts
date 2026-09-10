@@ -19,8 +19,8 @@ describe('tenant home modes', () => {
     expect(tenantHomeAction({ ...baseTenant, home_kind: 'org', home_org_slug: 'baltimore-medtech' }, 'guest', '/chat')).toEqual({ kind: 'redirect', to: '/orgs/baltimore-medtech' })
     expect(tenantHomeAction({ ...baseTenant, home_kind: 'org-events', home_org_slug: 'baltimore-medtech' }, 'guest', '/chat')).toEqual({ kind: 'events' })
     expect(tenantHomeAction({ ...baseTenant, home_kind: 'timebank' }, 'guest', '/chat')).toEqual({ kind: 'redirect', to: '/timebanking' })
-    expect(tenantHomeAction({ ...baseTenant, home_kind: 'auth', member_home_path: '/community' }, 'guest', '/community')).toEqual({ kind: 'redirect', to: '/users/login' })
-    expect(tenantHomeAction({ ...baseTenant, home_kind: 'auth', member_home_path: '/community' }, 'member', '/community')).toEqual({ kind: 'redirect', to: '/community' })
+    expect(tenantHomeAction({ ...baseTenant, home_kind: 'auth', member_home_path: '/chat' }, 'guest', '/chat')).toEqual({ kind: 'redirect', to: '/users/login' })
+    expect(tenantHomeAction({ ...baseTenant, home_kind: 'auth', member_home_path: '/chat' }, 'member', '/chat')).toEqual({ kind: 'redirect', to: '/chat' })
   })
 
   it('rejects unsafe or circular configured home paths', () => {

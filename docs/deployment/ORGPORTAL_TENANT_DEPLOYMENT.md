@@ -7,7 +7,7 @@ OrgPortal uses one web application and one org worker for both the shared CodeCo
 - `codecollective.us` serves OrgPortal at `/p`.
 - Tenant domains, for example `medtech.social`, serve OrgPortal at `/`.
 - Tenant routes are canonical at the tenant root: `/users/login`, `/events/:slug`, `/orgs/:slug`, `/people`, `/chat`, `/org-events`, and `/timebanking`.
-- Legacy MedTech routes such as `/community` and `/medtech-events` remain aliases. New tenant event homes should use `/org-events`.
+- Tenant event homes use `/org-events`; tenant-specific legacy aliases are not part of the routing model.
 
 The web build emits relative static asset URLs so the same artifact can load from `/p/` or `/`. Runtime routing is selected from tenant metadata returned by `/api/org/api/portal/tenant`; tenant hosts use a root router basename, while the shared CodeCollective host uses `/p`.
 
