@@ -141,8 +141,12 @@ type OrganizationRow = {
 type OrganizationFeedbackRating = "positive" | "neutral" | "concern";
 
 type OrganizationFeedbackRow = {
+  organization_id?: string;
+  user_id?: string;
+  user_name?: string | null;
   rating: OrganizationFeedbackRating;
   comment: string | null;
+  created_at?: string;
   updated_at: string;
 };
 
@@ -2463,6 +2467,24 @@ app.get("/api/network/orgs/:organizationId/feedback", async (c) => {
     ...counts,
     feedback_score: counts.feedback_positive_count - counts.feedback_concern_count,
   });
+});
+
+app.get("/api/network/orgs/:organizationId/feedback/review", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
+  if (!row) fail(404, "Organization not found");
+  await authorizeOrganization(c.env.DB, organizationActor(user, c.env), "manage", row.id);
+  const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "100", 10) || 100, 300));
+  const rows = await c.env.DB.prepare(
+    `SELECT organization_id, user_id, user_name, rating, comment, created_at, updated_at
+     FROM organization_feedback
+     WHERE organization_id = ?
+     ORDER BY updated_at DESC
+     LIMIT ?`,
+  )
+    .bind(row.id, limit)
+    .all<OrganizationFeedbackRow>();
+  return c.json(rows.results || []);
 });
 
 app.put("/api/network/orgs/:organizationId/feedback", async (c) => {

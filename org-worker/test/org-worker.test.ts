@@ -216,6 +216,12 @@ class FakeD1 {
         feedback_concern_count: this.organizationFeedback.filter((feedback) => feedback.organization_id === row.id && feedback.rating === "concern").length,
       })) as T[];
     }
+    if (sql.includes("FROM organization_feedback")) {
+      return this.organizationFeedback
+        .filter((row) => row.organization_id === params[0])
+        .sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)))
+        .slice(0, Number(params[1] || 100)) as T[];
+    }
     if (sql.includes("FROM events e")) {
       const hostOrgId = sql.includes("WHERE e.host_org_id = ?") ? params[0] : null;
       const hostUserId = sql.includes("WHERE e.host_user_id = ?") ? params[0] : null;
@@ -1565,6 +1571,70 @@ test("users can save, change, and clear organization feedback", async () => {
       feedback_concern_count: 0,
       feedback_score: 0,
     });
+  });
+});
+
+test("organization admins can review feedback history", async () => {
+  const db = new FakeD1();
+  db.organizations.push({
+    id: "org-1",
+    name: "Test Org",
+    slug: "test-org",
+    description: null,
+    source_url: null,
+    image_url: null,
+    tags: "[]",
+    city: null,
+    created_at: "2026-06-07T00:00:00.000Z",
+    updated_at: "2026-06-07T00:00:00.000Z",
+  });
+  db.organizationMemberships.push({
+    organization_id: "org-1",
+    user_id: "admin-1",
+    user_name: "Admin User",
+    user_email: "admin@example.test",
+    role: "administrator",
+    status: "active",
+    created_at: "2026-06-07T00:00:00.000Z",
+    updated_at: "2026-06-07T00:00:00.000Z",
+  });
+  db.organizationFeedback.push({
+    organization_id: "org-1",
+    user_id: "user-1",
+    user_name: "Test User",
+    rating: "concern",
+    comment: "Needs clearer meeting details.",
+    created_at: "2026-06-07T00:00:00.000Z",
+    updated_at: "2026-06-08T00:00:00.000Z",
+  });
+
+  await withPidpUser({ id: "admin-1", email: "admin@example.test", full_name: "Admin User" }, async () => {
+    const response = await app.request(
+      "https://org.example.test/api/network/orgs/test-org/feedback/review",
+      { headers: { authorization: "Bearer admin-token" } },
+      env(db),
+    );
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), [
+      {
+        organization_id: "org-1",
+        user_id: "user-1",
+        user_name: "Test User",
+        rating: "concern",
+        comment: "Needs clearer meeting details.",
+        created_at: "2026-06-07T00:00:00.000Z",
+        updated_at: "2026-06-08T00:00:00.000Z",
+      },
+    ]);
+  });
+
+  await withPidpUser({ id: "user-2", email: "user2@example.test", full_name: "Regular User" }, async () => {
+    const response = await app.request(
+      "https://org.example.test/api/network/orgs/test-org/feedback/review",
+      { headers: { authorization: "Bearer user-token" } },
+      env(db),
+    );
+    assert.equal(response.status, 403);
   });
 });
 
