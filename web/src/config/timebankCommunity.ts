@@ -29,6 +29,11 @@ export type PortalTenant = {
   public_base_url?: string | null
   canonical_path_prefix?: string | null
   feature_config?: Record<string, unknown>
+  custom_domain_hostname?: string | null
+  custom_domain_status?: 'none' | 'requested' | 'attached' | 'blocked' | null
+  custom_domain_requested_at?: string | null
+  custom_domain_attached_at?: string | null
+  custom_domain_notes?: string | null
 }
 export type TimebankCommunity = PortalTenant
 let tenant: PortalTenant | null = null
@@ -107,6 +112,11 @@ export function parsePortalTenant(value: unknown): PortalTenant | null {
     public_base_url: optionalString(input.public_base_url),
     canonical_path_prefix: optionalString(input.canonical_path_prefix),
     feature_config: optionalObject(input.feature_config),
+    custom_domain_hostname: optionalString(input.custom_domain_hostname),
+    custom_domain_status: optionalString(input.custom_domain_status) as PortalTenant['custom_domain_status'],
+    custom_domain_requested_at: optionalString(input.custom_domain_requested_at),
+    custom_domain_attached_at: optionalString(input.custom_domain_attached_at),
+    custom_domain_notes: optionalString(input.custom_domain_notes),
   }
 }
 

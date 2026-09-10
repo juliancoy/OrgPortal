@@ -36,6 +36,23 @@ For each organization tenant, operators still provision:
 - Custom-domain fields on the D1 `portal_tenants` row and any organization seed rows referenced by `home_org_slug`.
 - Provider bindings/secrets for event sources, chat, email, storage, or other enabled tenant features.
 
+## Custom Domain Flow
+
+1. The organization admin saves the Portal panel, which creates the shared `/portals/:slug` tenant.
+2. The admin enters the desired custom domain and chooses `Request Domain`. OrgPortal stores `custom_domain_status = requested` and returns the operator checklist.
+3. The operator provisions Cloudflare custom domain/DNS, PIdP origins and callbacks, MCP resource metadata, and feature-provider bindings.
+4. After the domain serves the portal, the admin or operator chooses `Attach Provisioned Domain`. OrgPortal updates `hostname`, `public_base_url`, and `canonical_path_prefix = ''`, then marks `custom_domain_status = attached`.
+5. The custom domain becomes the canonical root-mounted tenant base for generated public URLs.
+
+The same lifecycle is available over MCP:
+
+- `get_portal_setup`
+- `save_portal_setup`
+- `request_portal_custom_domain`
+- `attach_portal_custom_domain`
+
+MCP clients need `org:portal.read` for reads and `org:portal.write` for saves, requests, and attaches.
+
 ## New Tenant Checklist
 
 1. Create or confirm the organization row and public slug.

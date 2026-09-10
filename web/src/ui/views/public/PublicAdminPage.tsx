@@ -91,6 +91,11 @@ type OrganizationPortal = {
   home_heading?: string | null
   home_description?: string | null
   home_image_url?: string | null
+  custom_domain_hostname?: string | null
+  custom_domain_status?: 'none' | 'requested' | 'attached' | 'blocked' | null
+  custom_domain_requested_at?: string | null
+  custom_domain_attached_at?: string | null
+  custom_domain_notes?: string | null
 }
 
 type PublicEvent = {
@@ -168,6 +173,10 @@ function normalizePortalSlug(value: string) {
     .slice(0, 64)
 }
 
+function normalizeDomain(value: string) {
+  return value.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '')
+}
+
 function messageAuthorLabel(message: ChatMessage, myUserId: string | null): string {
   if (myUserId && message.sender === myUserId) return 'You'
   if (message.senderDisplayName?.trim()) return message.senderDisplayName.trim()
@@ -211,8 +220,12 @@ export function PublicAdminPage() {
   const [portalHeadingDraft, setPortalHeadingDraft] = useState('')
   const [portalDescriptionDraft, setPortalDescriptionDraft] = useState('')
   const [portalImageDraft, setPortalImageDraft] = useState('')
+  const [portalDomainDraft, setPortalDomainDraft] = useState('')
+  const [portalDomainNotesDraft, setPortalDomainNotesDraft] = useState('')
+  const [portalDomainChecklist, setPortalDomainChecklist] = useState<string[]>([])
   const [portalStatus, setPortalStatus] = useState<string | null>(null)
   const [savingPortal, setSavingPortal] = useState(false)
+  const [savingPortalDomain, setSavingPortalDomain] = useState(false)
   const [claimRequestMessage, setClaimRequestMessage] = useState('')
   const [claiming, setClaiming] = useState(false)
   const [myAdminOrgs, setMyAdminOrgs] = useState<MyOrganization[]>([])
@@ -517,6 +530,8 @@ export function PublicAdminPage() {
           setPortalHeadingDraft(portal.home_heading || portal.name || org.name)
           setPortalDescriptionDraft(portal.home_description || portal.tagline || org.description || '')
           setPortalImageDraft(portal.home_image_url || org.image_url || '')
+          setPortalDomainDraft(portal.custom_domain_hostname || '')
+          setPortalDomainNotesDraft(portal.custom_domain_notes || '')
         }
         setPortalStatus('')
       })
@@ -897,6 +912,40 @@ export function PublicAdminPage() {
       setPortalStatus(toUserFacingErrorMessage(err, 'Could not save portal setup'))
     } finally {
       setSavingPortal(false)
+    }
+  }
+
+  async function updatePortalCustomDomain(action: 'request' | 'attach') {
+    if (!org || !token) return
+    const hostname = normalizeDomain(portalDomainDraft)
+    if (!hostname) {
+      setPortalStatus('Enter the custom domain first.')
+      return
+    }
+    setSavingPortalDomain(true)
+    setPortalStatus(null)
+    try {
+      const resp = await fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/portal/custom-domain/${action}`), {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ hostname, notes: portalDomainNotesDraft || null }),
+      })
+      if (!resp.ok) {
+        const text = await resp.text().catch(() => '')
+        throw new Error(text || `Custom domain update failed (${resp.status})`)
+      }
+      const payload = (await resp.json()) as { portal: OrganizationPortal; checklist?: string[] }
+      setPortalConfig(payload.portal)
+      setPortalDomainDraft(payload.portal.custom_domain_hostname || hostname)
+      setPortalDomainChecklist(Array.isArray(payload.checklist) ? payload.checklist : [])
+      setPortalStatus(action === 'request' ? 'Custom domain request saved.' : 'Custom domain attached.')
+    } catch (err) {
+      setPortalStatus(toUserFacingErrorMessage(err, 'Could not update custom domain'))
+    } finally {
+      setSavingPortalDomain(false)
     }
   }
 
@@ -1431,6 +1480,53 @@ export function PublicAdminPage() {
                         Portal URL will be available after saving.
                       </p>
                     )}
+                    <div className="portal-org-domain-flow">
+                      <div>
+                        <h4 style={{ margin: 0, fontSize: '0.92rem' }}>Custom domain</h4>
+                        <p className="muted" style={{ margin: '0.15rem 0 0' }}>
+                          Status: {portalConfig?.custom_domain_status || 'none'}
+                        </p>
+                      </div>
+                      <div className="portal-org-portal-grid">
+                        <label>
+                          <span className="muted">Domain</span>
+                          <input
+                            value={portalDomainDraft}
+                            onChange={(e) => setPortalDomainDraft(normalizeDomain(e.target.value))}
+                            placeholder="example.org"
+                          />
+                        </label>
+                        <label>
+                          <span className="muted">Operator notes</span>
+                          <input
+                            value={portalDomainNotesDraft}
+                            onChange={(e) => setPortalDomainNotesDraft(e.target.value)}
+                            placeholder="DNS owner, deadline, provider notes"
+                          />
+                        </label>
+                      </div>
+                      {portalDomainChecklist.length ? (
+                        <ol className="portal-org-domain-checklist">
+                          {portalDomainChecklist.map((item) => <li key={item}>{item}</li>)}
+                        </ol>
+                      ) : null}
+                      <div style={{ display: 'flex', gap: '0.55rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          onClick={() => void updatePortalCustomDomain('request')}
+                          disabled={savingPortalDomain || !portalConfig}
+                        >
+                          Request Domain
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void updatePortalCustomDomain('attach')}
+                          disabled={savingPortalDomain || !portalConfig}
+                        >
+                          Attach Provisioned Domain
+                        </button>
+                      </div>
+                    </div>
                     <div className="portal-org-portal-grid">
                       <label>
                         <span className="muted">Portal name</span>

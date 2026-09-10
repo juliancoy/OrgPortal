@@ -175,10 +175,13 @@ test("authenticated MCP initializes, lists tools and previews through the shared
   try {
     assert.equal((await rpc("initialize", { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "test", version: "1" } })).result.serverInfo.name, "orgportal-events");
     const listed = await rpc("tools/list", {});
-    assert.equal(listed.result.tools.length, 7);
+    assert.equal(listed.result.tools.length, 11);
     assert.ok(listed.result.tools.every((tool: any) => tool.securitySchemes[0].type === "oauth2"));
     assert.equal(listed.result.tools.find((t: any) => t.name === "apply_event_changes").annotations.destructiveHint, true);
     assert.equal(listed.result.tools.find((t: any) => t.name === "apply_org_event_changes").annotations.idempotentHint, true);
+    assert.ok(listed.result.tools.find((t: any) => t.name === "save_portal_setup"));
+    assert.ok(listed.result.tools.find((t: any) => t.name === "request_portal_custom_domain"));
+    assert.ok(listed.result.tools.find((t: any) => t.name === "attach_portal_custom_domain"));
     const preview = await rpc("tools/call", { name: "preview_event_changes", arguments: { ...plan, confirm: true } });
     assert.equal(preview.result.structuredContent.dryRun, true);
     assert.match(preview.result.structuredContent.previewId, /^[0-9a-f-]{36}$/);
@@ -186,5 +189,44 @@ test("authenticated MCP initializes, lists tools and previews through the shared
     assert.equal(denied.result.isError, true);
     assert.ok(denied.result._meta["mcp/www_authenticate"][0].includes("insufficient_scope"));
     assert.deepEqual(writes, []);
+  } finally { globalThis.fetch = originalFetch; db.close(); }
+});
+
+test("MCP exposes organization portal setup and custom-domain flow", async () => {
+  const db = new EventTestDb();
+  const portalAuthEnv = { ...authEnv, MCP_OAUTH_JWKS_URL: "https://auth.example/portal-jwks" };
+  const { privateKey, publicKey } = await generateKeyPair("RS256");
+  const jwk = await exportJWK(publicKey);
+  const token = await new SignJWT({ scope: "org:portal.read org:portal.write" }).setProtectedHeader({ alg: "RS256" })
+    .setSubject("subject").setIssuer(portalAuthEnv.MCP_OAUTH_ISSUER!).setAudience(portalAuthEnv.MCP_PUBLIC_URL!)
+    .setIssuedAt().setExpirationTime("5m").sign(privateKey);
+  const env = { ...portalAuthEnv, PUBLIC_PORTAL_BASE_URL: "https://codecollective.test/p", DB: db } as unknown as Env;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: string | URL | Request) => {
+    const url = String(input);
+    if (url === portalAuthEnv.MCP_OAUTH_JWKS_URL) return Response.json({ keys: [jwk] });
+    return new Response("unexpected fetch", { status: 500 });
+  }) as typeof fetch;
+  const rpc = async (name: string, args: unknown) => {
+    const response = await handleEventMcp(new Request(portalAuthEnv.MCP_PUBLIC_URL!, { method: "POST", headers: {
+      authorization: `Bearer ${token}`, "content-type": "application/json", accept: "application/json, text/event-stream",
+    }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name, arguments: args } }) }), env);
+    assert.equal(response.status, 200);
+    const payload = await response.json() as any;
+    assert.equal(payload.result.isError, undefined);
+    return payload.result.structuredContent;
+  };
+  try {
+    const saved = await rpc("save_portal_setup", { organizationId: "org-one", slug: "one", name: "One Portal", homeKind: "landing" });
+    assert.equal(saved.portal.slug, "one");
+    assert.equal(saved.portal.slug_url, "https://codecollective.test/p/portals/one");
+    const requested = await rpc("request_portal_custom_domain", { organizationId: "org-one", hostname: "one.example.org", notes: "ready for DNS" });
+    assert.equal(requested.portal.custom_domain_status, "requested");
+    assert.ok(requested.checklist.some((item: string) => item.includes("Cloudflare custom domain")));
+    const attached = await rpc("attach_portal_custom_domain", { organizationId: "org-one", hostname: "one.example.org" });
+    assert.equal(attached.portal.hostname, "one.example.org");
+    assert.equal(attached.portal.public_base_url, "https://one.example.org");
+    const loaded = await rpc("get_portal_setup", { organizationId: "org-one" });
+    assert.equal(loaded.portal.custom_domain_status, "attached");
   } finally { globalThis.fetch = originalFetch; db.close(); }
 });

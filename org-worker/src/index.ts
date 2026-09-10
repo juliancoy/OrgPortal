@@ -185,6 +185,11 @@ type OrganizationPortalRow = {
   public_base_url?: string | null;
   canonical_path_prefix?: string | null;
   feature_config?: string | null;
+  custom_domain_hostname?: string | null;
+  custom_domain_status?: string | null;
+  custom_domain_requested_at?: string | null;
+  custom_domain_attached_at?: string | null;
+  custom_domain_notes?: string | null;
 };
 
 type EventRow = {
@@ -1379,6 +1384,17 @@ function parsePortalTenantFeatures(value: string | string[]) {
   }
 }
 
+function customDomainField(payload: Record<string, unknown>) {
+  const hostname = String(payload.hostname || payload.custom_domain_hostname || "").trim().toLowerCase();
+  if (!/^(?!-)(?:[a-z0-9-]{1,63}\.)+[a-z]{2,63}$/.test(hostname) || hostname.includes("..")) {
+    fail(400, "Enter a valid custom domain.");
+  }
+  if (hostname === "codecollective.us" || hostname.endsWith(".codecollective.us") || hostname.endsWith(".slug.portal.local")) {
+    fail(400, "That domain is reserved.");
+  }
+  return hostname;
+}
+
 async function organizationPortalSlugUrl(env: Env, request: Request, slug: string) {
   const base = (await publicPortalBase(env, request)).replace(/\/+$/g, "");
   return `${base}/portals/${encodeURIComponent(slug)}`;
@@ -1403,6 +1419,16 @@ async function organizationPortalResponse(env: Env, request: Request, tenant: Or
     features: parsePortalTenantFeatures(tenant.features),
     slug_url: slug ? await organizationPortalSlugUrl(env, request, slug) : null,
   };
+}
+
+function customDomainChecklist(hostname: string) {
+  return [
+    `Add the Cloudflare custom domain for ${hostname} to the OrgPortal web deployment.`,
+    `Allow https://${hostname} in PIdP origins and redirect/callback settings.`,
+    `Confirm MCP protected resource metadata advertises the tenant worker URL.`,
+    "Configure any provider bindings required by this tenant's enabled features.",
+    `After the domain serves the portal, attach it to make https://${hostname} canonical.`,
+  ];
 }
 
 async function upsertOrganization(db: D1Database, raw: Record<string, unknown>) {
@@ -2759,6 +2785,72 @@ app.put("/api/network/orgs/:organizationId/portal", async (c) => {
       timestamp,
       timestamp,
     )
+    .run();
+  return c.json({ portal: await organizationPortalResponse(c.env, c.req.raw, await organizationPortalByOrg(c.env.DB, row)) });
+});
+
+app.post("/api/network/orgs/:organizationId/portal/custom-domain/request", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
+  if (!row) fail(404, "Organization not found");
+  await authorizeOrganization(c.env.DB, organizationActor(user, c.env), "manage", row.id);
+  const tenant = await organizationPortalByOrg(c.env.DB, row);
+  if (!tenant) fail(409, "Save the organization portal before requesting a custom domain.");
+  const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  const hostname = customDomainField(payload);
+  const owner = await c.env.DB.prepare("SELECT id FROM portal_tenants WHERE hostname = ? AND id <> ?")
+    .bind(hostname, tenant.id)
+    .first<{ id: string }>();
+  if (owner) fail(409, "That domain is already attached to another tenant.");
+  const timestamp = nowIso();
+  await c.env.DB.prepare(
+    `UPDATE portal_tenants
+     SET custom_domain_hostname = ?,
+      custom_domain_status = 'requested',
+      custom_domain_requested_at = ?,
+      custom_domain_attached_at = NULL,
+      custom_domain_notes = ?,
+      updated_at = ?
+     WHERE id = ?`,
+  )
+    .bind(hostname, timestamp, stringField(payload, "notes", 1000), timestamp, tenant.id)
+    .run();
+  return c.json({
+    portal: await organizationPortalResponse(c.env, c.req.raw, await organizationPortalByOrg(c.env.DB, row)),
+    checklist: customDomainChecklist(hostname),
+  });
+});
+
+app.post("/api/network/orgs/:organizationId/portal/custom-domain/attach", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
+  if (!row) fail(404, "Organization not found");
+  await authorizeOrganization(c.env.DB, organizationActor(user, c.env), "manage", row.id);
+  const tenant = await organizationPortalByOrg(c.env.DB, row);
+  if (!tenant) fail(409, "Save the organization portal before attaching a custom domain.");
+  const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  const hostname = customDomainField(payload);
+  if (tenant.custom_domain_hostname && tenant.custom_domain_hostname !== hostname) {
+    fail(409, "Request this domain before attaching it.");
+  }
+  const owner = await c.env.DB.prepare("SELECT id FROM portal_tenants WHERE hostname = ? AND id <> ?")
+    .bind(hostname, tenant.id)
+    .first<{ id: string }>();
+  if (owner) fail(409, "That domain is already attached to another tenant.");
+  const timestamp = nowIso();
+  await c.env.DB.prepare(
+    `UPDATE portal_tenants
+     SET hostname = ?,
+      public_base_url = ?,
+      canonical_path_prefix = '',
+      custom_domain_hostname = ?,
+      custom_domain_status = 'attached',
+      custom_domain_attached_at = ?,
+      custom_domain_notes = ?,
+      updated_at = ?
+     WHERE id = ?`,
+  )
+    .bind(hostname, `https://${hostname}`, hostname, timestamp, stringField(payload, "notes", 1000), timestamp, tenant.id)
     .run();
   return c.json({ portal: await organizationPortalResponse(c.env, c.req.raw, await organizationPortalByOrg(c.env.DB, row)) });
 });
