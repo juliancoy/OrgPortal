@@ -1,4 +1,4 @@
-import { useDomainCommunity } from '../../config/timebankCommunity'
+import { useDomainCommunity, useDomainTenant } from '../../config/timebankCommunity'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../../app/AppProviders'
@@ -120,6 +120,7 @@ export function Header() {
   const roleLabel = role === 'campaign_manager' ? 'Org' : role === 'constituent' ? 'User' : 'Guest'
   const showAndroidDownload = isAndroidDevice()
   const domainCommunity = useDomainCommunity()
+  const domainTenant = useDomainTenant()
   const portalProfile = getActivePortalProfileConfig()
   const ubiEnabled = isPortalFeatureEnabled('ubi', portalProfile)
 
@@ -937,13 +938,12 @@ export function Header() {
           <span>Navigation</span>
         </button>
         <div id="portal-primary-nav" className="portal-nav">
-          {portalProfile.id === 'baltimore-medtech' ? <>
-            <NavLink to="/community">Community</NavLink>
-            <NavLink to="/chat">Messages</NavLink>
-            <NavLink to="/people">People</NavLink>
-            <NavLink to="/org-events">MedTech Events</NavLink>
-            <a className="portal-nav-link" href="https://medtech.social/calendar.html">General Calendar</a>
-            <a className="portal-nav-link" href="https://medtech.social/map.html">Medical map</a>
+          {domainTenant && !domainCommunity ? <>
+            {domainTenant.features?.includes('events') && <NavLink to="/org-events">Events</NavLink>}
+            {domainTenant.features?.includes('directory') && <NavLink to="/people">People</NavLink>}
+            {domainTenant.features?.includes('chat') && <NavLink to="/chat">Messages</NavLink>}
+            {typeof domainTenant.feature_config?.externalCalendarUrl === 'string' && <a className="portal-nav-link" href={domainTenant.feature_config.externalCalendarUrl}>Calendar</a>}
+            {typeof domainTenant.feature_config?.externalMapUrl === 'string' && <a className="portal-nav-link" href={domainTenant.feature_config.externalMapUrl}>Map</a>}
           </> : domainCommunity ? <>
             <NavLink to="/timebanking">Timebank</NavLink>
             <NavLink to="/people">People</NavLink>

@@ -1,6 +1,4 @@
 import { PortalProfileBoundary } from '../shell/PortalProfileBoundary'
-import { MedTechCommunityPage } from '../views/MedTechCommunityPage'
-import { MedTechEventsPage } from '../views/MedTechEventsPage'
 import { getDomainCommunity, getDomainTenant, type PortalTenant } from '../../config/timebankCommunity'
 import { useEffect, useState } from 'react'
 import type { ReactElement } from 'react'
@@ -95,18 +93,8 @@ function HomeRoute() {
   const tenant = getDomainTenant()
   if (tenant) return tenantHomeElement(tenant, role, profile)
   if (getDomainCommunity()) return <Navigate to="/timebanking" replace />
-  if (profile.id === 'baltimore-medtech') {
-    return <Navigate to={portalProfilePath(role === 'guest' ? '/users/login' : profile.memberHomePath)} replace />
-  }
   if (role === 'guest') return <App />
   return <Navigate to="/chat" replace />
-}
-
-function TenantCommunityRoute() {
-  const tenant = getDomainTenant()
-  const profile = getActivePortalProfileConfig()
-  if (tenant && profile.id !== 'baltimore-medtech') return <TenantHomePage />
-  return <MedTechCommunityPage />
 }
 
 function TenantOrgEventsRoute() {
@@ -213,9 +201,7 @@ export function createAppRouter() {
           { path: '/initiatives/:slug', element: <InitiativeDetailPage /> },
           { path: '/initiatives/:slug/sign', element: <InitiativeSignPage /> },
 
-          { path: '/community', element: <TenantCommunityRoute /> },
           { path: '/org-events', element: <TenantOrgEventsRoute /> },
-          { path: '/medtech-events', element: <MedTechEventsPage /> },
           { path: '/about', element: <AboutPage /> },
           { path: '/email', element: <AdminRoute><EmailCampaignsPage /></AdminRoute> },
           { path: '/email/preferences', element: <AuthenticatedRoute><EmailPreferencesPage /></AuthenticatedRoute> },

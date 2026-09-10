@@ -9,6 +9,7 @@ export function UserRegisterPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const portalProfile = getActivePortalProfileConfig()
+  const tenantAuth = Boolean(portalProfile.tenantId)
   const requestedNext = normalizePostLoginPath(searchParams.get('next') || defaultPostLoginPath())
   const loginPath = portalProfilePath(`/users/login?next=${encodeURIComponent(requestedNext)}`)
   const { registerWithPassword, isLoading, token } = useAuth()
@@ -52,10 +53,10 @@ export function UserRegisterPage() {
     <section className="portal-auth-page" aria-labelledby="user-register-title">
       <div className="panel portal-auth-card portal-auth-card-compact">
         <div className="portal-auth-card-header">
-          {portalProfile.id === 'baltimore-medtech' && <img className="medtech-auth-logo" src={portalPath(portalProfile.brandImagePath!)} alt="" />}
-          <p className="portal-auth-eyebrow">{portalProfile.id === 'baltimore-medtech' ? portalProfile.tagline : 'New account'}</p>
-          <h1 id="user-register-title">{portalProfile.id === 'baltimore-medtech' ? 'Join Baltimore MedTech' : 'Register'}</h1>
-          <p className="muted">{portalProfile.id === 'baltimore-medtech' ? 'One account connects you to Baltimore MedTech and the wider Code Collective community.' : 'Create a user account for the Code Collective portal.'}</p>
+          {tenantAuth && portalProfile.brandImagePath && <img className="tenant-auth-logo" src={portalPath(portalProfile.brandImagePath)} alt="" />}
+          <p className="portal-auth-eyebrow">{tenantAuth ? portalProfile.tagline : 'New account'}</p>
+          <h1 id="user-register-title">{tenantAuth ? `Join ${portalProfile.brandName}` : 'Register'}</h1>
+          <p className="muted">{tenantAuth ? `One account connects you to ${portalProfile.brandName} and Code Collective.` : 'Create a user account for the Code Collective portal.'}</p>
         </div>
 
         <form className="portal-auth-form" onSubmit={handleSubmit}>
@@ -175,7 +176,7 @@ export function UserRegisterPage() {
           disabled={isSubmitting}
           aria-busy={isSubmitting}
         >
-          {isSubmitting ? 'Creating account...' : portalProfile.id === 'baltimore-medtech' ? 'Join Baltimore MedTech' : 'Register'}
+          {isSubmitting ? 'Creating account...' : tenantAuth ? `Join ${portalProfile.brandName}` : 'Register'}
         </button>
         </form>
 

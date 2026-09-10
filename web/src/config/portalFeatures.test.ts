@@ -3,47 +3,20 @@ import * as communities from './timebankCommunity'
 import {
   getActivePortalProfileConfig,
   isPortalFeatureEnabled,
-  portalProfileLoginSearch,
-  readPortalProfileIdFromSearch,
 } from './portalFeatures'
 import { parsePortalTenant } from './timebankCommunity'
 
-function memoryStorage(initialValue?: string) {
-  let value = initialValue
-  return {
-    getItem: () => value ?? null,
-    setItem: (_key: string, nextValue: string) => {
-      value = nextValue
-    },
-    value: () => value,
-  }
-}
-
 describe('portal feature profiles', () => {
   it('does not infer MedTech from hostname without tenant metadata', () => {
-    const profile = getActivePortalProfileConfig('?portalProfile=code-collective', memoryStorage('code-collective'), 'medtech.social')
+    const profile = getActivePortalProfileConfig('', null, 'medtech.social')
     expect(profile.id).toBe('code-collective')
     expect(profile.memberHomePath).toBe('/chat')
   })
   it('keeps UBI enabled for the default Code Collective profile', () => {
-    const profile = getActivePortalProfileConfig('', memoryStorage())
+    const profile = getActivePortalProfileConfig()
 
     expect(profile.id).toBe('code-collective')
     expect(isPortalFeatureEnabled('ubi', profile)).toBe(true)
-  })
-
-  it('disables UBI for the Baltimore MedTech profile', () => {
-    const storage = memoryStorage()
-    const profile = getActivePortalProfileConfig('?portalProfile=baltimore-medtech', storage)
-
-    expect(profile.id).toBe('baltimore-medtech')
-    expect(isPortalFeatureEnabled('ubi', profile)).toBe(false)
-    expect(storage.value()).toBe('baltimore-medtech')
-  })
-
-  it('accepts profile aliases from public-site login links', () => {
-    expect(readPortalProfileIdFromSearch('site=medtech')).toBe('baltimore-medtech')
-    expect(portalProfileLoginSearch('baltimore-medtech')).toBe('portalProfile=baltimore-medtech')
   })
 
   it('lets a hostname timebank tenant keep its identity and landing page', () => {
@@ -53,7 +26,7 @@ describe('portal feature profiles', () => {
       profile: 'community', features: ['timebank'],
     })
     try {
-      const profile = getActivePortalProfileConfig('?portalProfile=baltimore-medtech', memoryStorage())
+      const profile = getActivePortalProfileConfig()
       expect(profile.brandName).toBe('Bmore Timebank')
       expect(profile.memberHomePath).toBe('/')
       expect(isPortalFeatureEnabled('ubi', profile)).toBe(false)
@@ -71,16 +44,16 @@ describe('portal feature profiles', () => {
       features: ['directory', 'events', 'chat'],
       brand_image_path: '/images/baltimore-medtech-logo-square.jpg',
       home_url: 'https://medtech.social/',
-      member_home_path: '/community',
+      member_home_path: '/chat',
       manifest_path: '/medtech.webmanifest',
       theme_color: '#061a26',
     })
     try {
-      const profile = getActivePortalProfileConfig('?portalProfile=code-collective', memoryStorage('code-collective'), 'custom.example')
+      const profile = getActivePortalProfileConfig('', null, 'custom.example')
       expect(profile.id).toBe('baltimore-medtech')
       expect(profile.tenantId).toBe('baltimore-medtech')
       expect(profile.brandImagePath).toBe('/images/baltimore-medtech-logo-square.jpg')
-      expect(profile.memberHomePath).toBe('/community')
+      expect(profile.memberHomePath).toBe('/chat')
       expect(profile.manifestPath).toBe('/medtech.webmanifest')
       expect(isPortalFeatureEnabled('ubi', profile)).toBe(false)
     } finally { domain.mockRestore() }
