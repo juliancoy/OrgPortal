@@ -112,6 +112,19 @@ function formatEventDate(value?: string | null): string {
   return dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
+function authReturnQuery(location: ReturnType<typeof useLocation>): string {
+  const next = `${location.pathname}${location.search}${location.hash}` || '/'
+  const pathname = location.pathname
+  if (
+    pathname.startsWith('/auth/callback') ||
+    pathname.startsWith('/users/login') ||
+    pathname.startsWith('/users/register')
+  ) {
+    return ''
+  }
+  return `?next=${encodeURIComponent(next)}`
+}
+
 export function Header() {
   const { role, user, logout, token, isLoading } = useAuth()
   const location = useLocation()
@@ -123,6 +136,7 @@ export function Header() {
   const domainTenant = useDomainTenant()
   const portalProfile = getActivePortalProfileConfig()
   const ubiEnabled = isPortalFeatureEnabled('ubi', portalProfile)
+  const authNextQuery = authReturnQuery(location)
 
   const [menuOpen, setMenuOpen] = useState(false)
   const [navOpen, setNavOpen] = useState(false)
@@ -899,11 +913,11 @@ export function Header() {
             </>
           ) : (
             <>
-              <Link className="portal-button" to={portalProfilePath("/users/login")}>
+              <Link className="portal-button" to={portalProfilePath(`/users/login${authNextQuery}`)}>
                 Log In
               </Link>
               <Link
-                to={portalProfilePath("/users/register")}
+                to={portalProfilePath(`/users/register${authNextQuery}`)}
                 className="btn-secondary"
                 style={{
                   background: 'var(--primary)',
