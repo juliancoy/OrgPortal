@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import type { ReactElement } from 'react'
 import { Navigate, createBrowserRouter, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { AppLayout } from '../shell/AppLayout'
+import { TimebankHeader } from '../shell/TimebankHeader'
 import App from '../../App'
 import { useAuth } from '../../app/AppProviders'
 import { EconomicOpsPage } from '../views/EconomicOpsPage'
@@ -46,6 +47,7 @@ import { IdPage } from '../views/IdPage'
 import { SendPage } from '../views/SendPage'
 import { ReceivePage } from '../views/ReceivePage'
 import { TimebankPage } from '../views/TimebankPage'
+import { TimebankInboxProvider } from '../timebank/TimebankInbox'
 import { TenantEventsHomePage, TenantHomePage, TenantSlugHomePage } from '../views/TenantHomePage'
 import { CreatePage } from '../views/CreatePage'
 import { CreateForProfitPage } from '../views/CreateForProfitPage'
@@ -82,7 +84,7 @@ function tenantHomeElement(tenant: PortalTenant, role: string, profile: ReturnTy
   const action = tenantHomeAction(tenant, role, profile.memberHomePath)
   if (action.kind === 'landing') return <TenantHomePage />
   if (action.kind === 'events') return <TenantEventsHomePage />
-  if (action.kind === 'timebank') return <TimebankPage />
+  if (action.kind === 'timebank') return <TimebankTenantRoot />
   return <Navigate to={portalProfilePath(action.to, profile)} replace />
 }
 
@@ -95,6 +97,20 @@ function HomeRoute() {
   if (getDomainCommunity()) return <Navigate to="/timebanking" replace />
   if (role === 'guest') return <App />
   return <Navigate to="/chat" replace />
+}
+
+
+function TimebankTenantRoot() {
+  return <TimebankInboxProvider enabled><div className="portal-shell timebank-shell">
+    <a className="skip-link" href="#main-content">Skip to main content</a>
+    <TimebankHeader />
+    <main id="main-content" className="portal-main" tabIndex={-1}>
+      <div className="portal-container">
+        <TimebankPage />
+      </div>
+    </main>
+    <footer className="tb-shell-footer">Timebank hours are separate from Dena.</footer>
+  </div></TimebankInboxProvider>
 }
 
 function TenantOrgEventsRoute() {
