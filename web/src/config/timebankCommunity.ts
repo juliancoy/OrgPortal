@@ -48,7 +48,10 @@ export function setDomainTenant(value: PortalTenant | null) {
   tenant = value
   for (const listener of listeners) listener()
 }
-export function setDomainCommunity(value: TimebankCommunity) { setDomainTenant(value) }
+export function setDomainCommunity(value: TimebankCommunity) {
+  const features = new Set([...(value.features || []), 'timebank'])
+  setDomainTenant({ ...value, profile: value.profile || 'community', features: Array.from(features), home_kind: value.home_kind || 'timebank' })
+}
 export function useDomainCommunity() {
   return useSyncExternalStore((listener) => { listeners.add(listener); return () => { listeners.delete(listener) } }, getDomainCommunity, () => null)
 }
