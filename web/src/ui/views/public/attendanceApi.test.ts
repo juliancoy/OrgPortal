@@ -42,7 +42,7 @@ describe('event registration API', () => {
     expect((await recordAttendanceWithRetry('one', null)).ok).toBe(false)
     expect(fetch).not.toHaveBeenCalled()
   })
-  it('refreshes an expired token and returns the authoritative count', async () => {
+  it('refreshes an expired token and returns the privacy-safe public count', async () => {
     const fetch = vi.fn().mockResolvedValueOnce(new Response('', { status: 401 })).mockResolvedValueOnce(Response.json(attendance))
     vi.stubGlobal('fetch', fetch)
     vi.mocked(refreshRuntimeTokenFromSession).mockResolvedValue('fresh')

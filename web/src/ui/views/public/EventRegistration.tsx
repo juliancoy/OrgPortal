@@ -90,8 +90,8 @@ export function EventRegistration({ eventId, slug, token, authLoading = false, s
           )}
           <div className="public-event-attendance-count">
             <strong aria-live="polite">{attendance.count}</strong>
-            <span>{attendance.count === 1 ? 'person registered' : 'people registered'}</span>
-            {attendance.count === 0 && <small>Be the first to register.</small>}
+            <span>{attendance.count === 1 ? 'public attendee' : 'public attendees'}</span>
+            {attendance.count === 0 && <small>No public attendees yet.</small>}
           </div>
         </div>
       ) : !error ? <p className="muted">Loading registrations…</p> : null}
@@ -114,7 +114,7 @@ export function EventRegistration({ eventId, slug, token, authLoading = false, s
           <a className="btn-primary" href={pidpAppLoginUrl(next)}>Register</a>
         </>}
       </div>
-      <p className="muted public-event-registration-note">Public profiles appear below; private profiles remain hidden.</p>
+      <p className="muted public-event-registration-note">Only people with public profiles are counted and listed here. Private registrations remain hidden.</p>
       {token && <div className="public-event-registration-links">
         <Link to="/email/preferences" className="public-event-preferences-link">Manage email preferences</Link>
         {attendance?.registered ? <Link to="/calendar" className="public-event-preferences-link">Subscribe to registered events</Link> : null}
