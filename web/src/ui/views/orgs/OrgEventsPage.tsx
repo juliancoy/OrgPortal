@@ -1,142 +1,191 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { useAuth } from '../../../app/AppProviders'
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { useAuth } from "../../../app/AppProviders";
 
-const ORG_API_BASE = '/api/org'
+const ORG_API_BASE = "/api/org";
 
 function orgUrl(path: string) {
-  if (!path.startsWith('/')) return `${ORG_API_BASE}/${path}`
-  return `${ORG_API_BASE}${path}`
+  if (!path.startsWith("/")) return `${ORG_API_BASE}/${path}`;
+  return `${ORG_API_BASE}${path}`;
 }
 
-type HostType = 'unclaimed' | 'individual' | 'org'
+type HostType = "unclaimed" | "individual" | "org";
 
 type NetworkEvent = {
-  id: string
-  title: string
-  slug: string
-  description?: string | null
-  starts_at?: string | null
-  ends_at?: string | null
-  location?: string | null
-  source_url?: string | null
-  image_url?: string | null
-  tags?: string[]
-  host_type: HostType
-  host_user_id?: string | null
-  host_org_id?: string | null
-  host_org_name?: string | null
-  claimed_by_user_id?: string | null
-  is_unclaimed: boolean
-  my_host_role?: string | null
-}
+  id: string;
+  title: string;
+  slug: string;
+  description?: string | null;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  location?: string | null;
+  source_url?: string | null;
+  image_url?: string | null;
+  social_title?: string | null;
+  social_description?: string | null;
+  social_image_url?: string | null;
+  flyer_urls?: {
+    letter?: string;
+    postcard?: string;
+    social?: string;
+  };
+  public_url?: string | null;
+  tags?: string[];
+  host_type: HostType;
+  host_user_id?: string | null;
+  host_org_id?: string | null;
+  host_org_name?: string | null;
+  claimed_by_user_id?: string | null;
+  is_unclaimed: boolean;
+  my_host_role?: string | null;
+};
 
 type Org = {
-  id: string
-  name: string
-  slug: string
-  my_role?: string | null
-}
+  id: string;
+  name: string;
+  slug: string;
+  my_role?: string | null;
+};
 
 function toIsoDateTime(value: string): string | null {
-  const raw = value.trim()
-  if (!raw) return null
-  const dt = new Date(raw)
-  if (Number.isNaN(dt.getTime())) return null
-  return dt.toISOString()
+  const raw = value.trim();
+  if (!raw) return null;
+  const dt = new Date(raw);
+  if (Number.isNaN(dt.getTime())) return null;
+  return dt.toISOString();
 }
 
 export function OrgEventsPage() {
-  const { token } = useAuth()
-  const [events, setEvents] = useState<NetworkEvent[]>([])
-  const [orgs, setOrgs] = useState<Org[]>([])
-  const [status, setStatus] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
+  const { token } = useAuth();
+  const [events, setEvents] = useState<NetworkEvent[]>([]);
+  const [orgs, setOrgs] = useState<Org[]>([]);
+  const [status, setStatus] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const [search, setSearch] = useState('')
-  const [onlyMine, setOnlyMine] = useState(false)
-  const [onlyUnclaimed, setOnlyUnclaimed] = useState(false)
-  const [hostFilter, setHostFilter] = useState<'all' | HostType>('all')
+  const [search, setSearch] = useState("");
+  const [onlyMine, setOnlyMine] = useState(false);
+  const [onlyUnclaimed, setOnlyUnclaimed] = useState(false);
+  const [hostFilter, setHostFilter] = useState<"all" | HostType>("all");
 
-  const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
-  const [location, setLocation] = useState('')
-  const [startsAt, setStartsAt] = useState('')
-  const [endsAt, setEndsAt] = useState('')
-  const [sourceUrl, setSourceUrl] = useState('')
-  const [imageUrl, setImageUrl] = useState('')
-  const [tagsText, setTagsText] = useState('')
-  const [hostType, setHostType] = useState<HostType>('unclaimed')
-  const [hostOrgId, setHostOrgId] = useState('')
-  const [claimOnCreate, setClaimOnCreate] = useState(false)
-  const [claimHostTypeByEvent, setClaimHostTypeByEvent] = useState<Record<string, Exclude<HostType, 'unclaimed'>>>({})
-  const [claimHostOrgIdByEvent, setClaimHostOrgIdByEvent] = useState<Record<string, string>>({})
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [location, setLocation] = useState("");
+  const [startsAt, setStartsAt] = useState("");
+  const [endsAt, setEndsAt] = useState("");
+  const [sourceUrl, setSourceUrl] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [socialTitle, setSocialTitle] = useState("");
+  const [socialDescription, setSocialDescription] = useState("");
+  const [socialImageUrl, setSocialImageUrl] = useState("");
+  const [tagsText, setTagsText] = useState("");
+  const [hostType, setHostType] = useState<HostType>("unclaimed");
+  const [hostOrgId, setHostOrgId] = useState("");
+  const [claimOnCreate, setClaimOnCreate] = useState(false);
+  const [claimHostTypeByEvent, setClaimHostTypeByEvent] = useState<
+    Record<string, Exclude<HostType, "unclaimed">>
+  >({});
+  const [claimHostOrgIdByEvent, setClaimHostOrgIdByEvent] = useState<
+    Record<string, string>
+  >({});
+  const [socialDraftByEvent, setSocialDraftByEvent] = useState<
+    Record<string, { title: string; description: string; imageUrl: string }>
+  >({});
 
   useEffect(() => {
-    document.title = 'Org Portal • Org events'
-  }, [])
+    document.title = "Org Portal • Org events";
+  }, []);
 
-  const adminOrgs = useMemo(() => orgs.filter((org) => org.my_role === 'owner' || org.my_role === 'administrator'), [orgs])
+  const adminOrgs = useMemo(
+    () =>
+      orgs.filter(
+        (org) => org.my_role === "owner" || org.my_role === "administrator",
+      ),
+    [orgs],
+  );
 
   const loadOrgs = useCallback(async () => {
-    if (!token) return
+    if (!token) return;
     try {
-      const resp = await fetch(orgUrl('/api/network/orgs?mine=true&limit=300'), {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      const resp = await fetch(
+        orgUrl("/api/network/orgs?mine=true&limit=300"),
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
       if (!resp.ok) {
-        const text = await resp.text().catch(() => '')
-        throw new Error(text || `Failed to load organizations (${resp.status})`)
+        const text = await resp.text().catch(() => "");
+        throw new Error(
+          text || `Failed to load organizations (${resp.status})`,
+        );
       }
-      const data = await resp.json()
-      setOrgs(Array.isArray(data) ? (data as Org[]) : [])
+      const data = await resp.json();
+      setOrgs(Array.isArray(data) ? (data as Org[]) : []);
     } catch (err) {
-      setStatus(err instanceof Error ? err.message : 'Failed to load organizations')
+      setStatus(
+        err instanceof Error ? err.message : "Failed to load organizations",
+      );
     }
-  }, [token])
+  }, [token]);
 
   const loadEvents = useCallback(async () => {
-    if (!token) return
-    setLoading(true)
-    setStatus(null)
+    if (!token) return;
+    setLoading(true);
+    setStatus(null);
     try {
-      const params = new URLSearchParams({ limit: '300' })
-      if (search.trim()) params.set('q', search.trim())
-      if (onlyMine) params.set('mine', 'true')
-      if (onlyUnclaimed) params.set('only_unclaimed', 'true')
-      if (hostFilter !== 'all') params.set('host_type', hostFilter)
-      const resp = await fetch(orgUrl(`/api/network/events?${params.toString()}`), {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      const params = new URLSearchParams({ limit: "300" });
+      if (search.trim()) params.set("q", search.trim());
+      if (onlyMine) params.set("mine", "true");
+      if (onlyUnclaimed) params.set("only_unclaimed", "true");
+      if (hostFilter !== "all") params.set("host_type", hostFilter);
+      const resp = await fetch(
+        orgUrl(`/api/network/events?${params.toString()}`),
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
       if (!resp.ok) {
-        const text = await resp.text().catch(() => '')
-        throw new Error(text || `Failed to load events (${resp.status})`)
+        const text = await resp.text().catch(() => "");
+        throw new Error(text || `Failed to load events (${resp.status})`);
       }
-      const data = await resp.json()
-      setEvents(Array.isArray(data) ? (data as NetworkEvent[]) : [])
+      const data = await resp.json();
+      const nextEvents = Array.isArray(data) ? (data as NetworkEvent[]) : [];
+      setEvents(nextEvents);
+      setSocialDraftByEvent((prev) => {
+        const next = { ...prev };
+        for (const event of nextEvents) {
+          if (!next[event.id]) {
+            next[event.id] = {
+              title: event.social_title || "",
+              description: event.social_description || "",
+              imageUrl: event.social_image_url || "",
+            };
+          }
+        }
+        return next;
+      });
     } catch (err) {
-      setStatus(err instanceof Error ? err.message : 'Failed to load events')
+      setStatus(err instanceof Error ? err.message : "Failed to load events");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [hostFilter, onlyMine, onlyUnclaimed, search, token])
+  }, [hostFilter, onlyMine, onlyUnclaimed, search, token]);
 
   useEffect(() => {
-    loadOrgs()
-    loadEvents()
-  }, [loadOrgs, loadEvents])
+    loadOrgs();
+    loadEvents();
+  }, [loadOrgs, loadEvents]);
 
   async function createEvent() {
-    if (!token) return
+    if (!token) return;
     if (!title.trim()) {
-      setStatus('Event title is required.')
-      return
+      setStatus("Event title is required.");
+      return;
     }
-    if (hostType === 'org' && !hostOrgId) {
-      setStatus('Choose a host organization for org-hosted events.')
-      return
+    if (hostType === "org" && !hostOrgId) {
+      setStatus("Choose a host organization for org-hosted events.");
+      return;
     }
-    setStatus(null)
+    setStatus(null);
     try {
       const payload: Record<string, unknown> = {
         title: title.trim(),
@@ -146,168 +195,398 @@ export function OrgEventsPage() {
         ends_at: toIsoDateTime(endsAt),
         source_url: sourceUrl.trim() || null,
         image_url: imageUrl.trim() || null,
+        social_title: socialTitle.trim() || null,
+        social_description: socialDescription.trim() || null,
+        social_image_url: socialImageUrl.trim() || null,
         tags: tagsText
-          .split(',')
+          .split(",")
           .map((item) => item.trim())
           .filter(Boolean),
         host_type: hostType,
         claim_on_create: claimOnCreate,
+      };
+      if (hostType === "org") {
+        payload.host_org_id = hostOrgId;
       }
-      if (hostType === 'org') {
-        payload.host_org_id = hostOrgId
-      }
-      const resp = await fetch(orgUrl('/api/network/events'), {
-        method: 'POST',
+      const resp = await fetch(orgUrl("/api/network/events"), {
+        method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
-      })
+      });
       if (!resp.ok) {
-        const text = await resp.text().catch(() => '')
-        throw new Error(text || `Create failed (${resp.status})`)
+        const text = await resp.text().catch(() => "");
+        throw new Error(text || `Create failed (${resp.status})`);
       }
-      setTitle('')
-      setDescription('')
-      setLocation('')
-      setStartsAt('')
-      setEndsAt('')
-      setSourceUrl('')
-      setImageUrl('')
-      setTagsText('')
-      setHostType('unclaimed')
-      setHostOrgId('')
-      setClaimOnCreate(false)
-      setStatus('Event created.')
-      await loadEvents()
+      setTitle("");
+      setDescription("");
+      setLocation("");
+      setStartsAt("");
+      setEndsAt("");
+      setSourceUrl("");
+      setImageUrl("");
+      setSocialTitle("");
+      setSocialDescription("");
+      setSocialImageUrl("");
+      setTagsText("");
+      setHostType("unclaimed");
+      setHostOrgId("");
+      setClaimOnCreate(false);
+      setStatus("Event created.");
+      await loadEvents();
     } catch (err) {
-      setStatus(err instanceof Error ? err.message : 'Create failed')
+      setStatus(err instanceof Error ? err.message : "Create failed");
     }
   }
 
+  async function saveSocialPreview(
+    eventId: string,
+    override?: { title?: string; description?: string; imageUrl?: string },
+  ) {
+    if (!token) return;
+    const current = socialDraftByEvent[eventId] || {
+      title: "",
+      description: "",
+      imageUrl: "",
+    };
+    const draft = { ...current, ...override };
+    setStatus(null);
+    try {
+      const resp = await fetch(
+        orgUrl(`/api/network/events/${encodeURIComponent(eventId)}`),
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            social_title: draft.title.trim() || null,
+            social_description: draft.description.trim() || null,
+            social_image_url: draft.imageUrl.trim() || null,
+          }),
+        },
+      );
+      if (!resp.ok) {
+        const text = await resp.text().catch(() => "");
+        throw new Error(text || `Save failed (${resp.status})`);
+      }
+      const updated = (await resp.json()) as NetworkEvent;
+      setEvents((prev) =>
+        prev.map((event) => (event.id === updated.id ? updated : event)),
+      );
+      setSocialDraftByEvent((prev) => ({
+        ...prev,
+        [updated.id]: {
+          title: updated.social_title || "",
+          description: updated.social_description || "",
+          imageUrl: updated.social_image_url || "",
+        },
+      }));
+      setStatus("Social preview saved.");
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Save failed");
+    }
+  }
+
+  async function useGeneratedFlyerAsSocialPreview(event: NetworkEvent) {
+    const socialFlyerUrl = event.flyer_urls?.social;
+    if (!socialFlyerUrl) {
+      setStatus("Generated social flyer URL is not available for this event yet.");
+      return;
+    }
+    await saveSocialPreview(event.id, {
+      title: socialDraftByEvent[event.id]?.title || event.social_title || event.title,
+      description:
+        socialDraftByEvent[event.id]?.description ||
+        event.social_description ||
+        event.description ||
+        "",
+      imageUrl: socialFlyerUrl,
+    });
+  }
+
+  async function useEventImageAsSocialPreview(event: NetworkEvent) {
+    const imageUrl = event.image_url?.trim();
+    if (!imageUrl) {
+      setStatus("This event does not have an image URL to use as the social preview.");
+      return;
+    }
+    await saveSocialPreview(event.id, {
+      title: socialDraftByEvent[event.id]?.title || event.social_title || event.title,
+      description:
+        socialDraftByEvent[event.id]?.description ||
+        event.social_description ||
+        event.description ||
+        "",
+      imageUrl,
+    });
+  }
+
   async function claimEvent(eventId: string) {
-    if (!token) return
-    const claimHostType = claimHostTypeByEvent[eventId] ?? 'individual'
+    if (!token) return;
+    const claimHostType = claimHostTypeByEvent[eventId] ?? "individual";
     const claimPayload: Record<string, unknown> = {
       host_type: claimHostType,
-    }
-    if (claimHostType === 'org') {
-      const selectedOrgId = claimHostOrgIdByEvent[eventId]
+    };
+    if (claimHostType === "org") {
+      const selectedOrgId = claimHostOrgIdByEvent[eventId];
       if (!selectedOrgId) {
-        setStatus('Select an organization before claiming as org host.')
-        return
+        setStatus("Select an organization before claiming as org host.");
+        return;
       }
-      claimPayload.host_org_id = selectedOrgId
+      claimPayload.host_org_id = selectedOrgId;
     }
 
-    setStatus(null)
+    setStatus(null);
     try {
       const resp = await fetch(orgUrl(`/api/network/events/${eventId}/claim`), {
-        method: 'POST',
+        method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(claimPayload),
-      })
+      });
       if (!resp.ok) {
-        const text = await resp.text().catch(() => '')
-        throw new Error(text || `Claim failed (${resp.status})`)
+        const text = await resp.text().catch(() => "");
+        throw new Error(text || `Claim failed (${resp.status})`);
       }
-      setStatus('Event claimed.')
-      await loadEvents()
+      setStatus("Event claimed.");
+      await loadEvents();
     } catch (err) {
-      setStatus(err instanceof Error ? err.message : 'Claim failed')
+      setStatus(err instanceof Error ? err.message : "Claim failed");
     }
   }
 
   async function unclaimEvent(eventId: string) {
-    if (!token) return
-    setStatus(null)
+    if (!token) return;
+    setStatus(null);
     try {
-      const resp = await fetch(orgUrl(`/api/network/events/${eventId}/unclaim`), {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      const resp = await fetch(
+        orgUrl(`/api/network/events/${eventId}/unclaim`),
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
       if (!resp.ok) {
-        const text = await resp.text().catch(() => '')
-        throw new Error(text || `Unclaim failed (${resp.status})`)
+        const text = await resp.text().catch(() => "");
+        throw new Error(text || `Unclaim failed (${resp.status})`);
       }
-      setStatus('Event unclaimed.')
-      await loadEvents()
+      setStatus("Event unclaimed.");
+      await loadEvents();
     } catch (err) {
-      setStatus(err instanceof Error ? err.message : 'Unclaim failed')
+      setStatus(err instanceof Error ? err.message : "Unclaim failed");
     }
   }
 
   return (
-    <section className="panel" style={{ display: 'grid', gap: '1rem' }}>
+    <section className="panel" style={{ display: "grid", gap: "1rem" }}>
       <h1 style={{ marginTop: 0 }}>Organization Events</h1>
       <p className="muted" style={{ marginTop: 0 }}>
-        Events can be hosted by individuals, organizations, or remain unclaimed. Ownership claim and host binding are separate but compatible.
+        Events can be hosted by individuals, organizations, or remain unclaimed.
+        Ownership claim and host binding are separate but compatible.
       </p>
 
-      <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+      <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
         <Link to="/orgs/profile">Organization Network</Link>
         <Link to="/orgs/initiatives">My Initiatives</Link>
       </div>
 
-      <div className="portal-card" style={{ display: 'grid', gap: '0.6rem' }}>
-        <h2 style={{ margin: 0, fontSize: '1rem' }}>Find Events</h2>
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by title, slug, or location" />
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <label style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center' }}>
-            <input type="checkbox" checked={onlyMine} onChange={(e) => setOnlyMine(e.target.checked)} />
+      <div className="portal-card" style={{ display: "grid", gap: "0.6rem" }}>
+        <h2 style={{ margin: 0, fontSize: "1rem" }}>Find Events</h2>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by title, slug, or location"
+        />
+        <div
+          style={{
+            display: "flex",
+            gap: "0.75rem",
+            flexWrap: "wrap",
+            alignItems: "center",
+          }}
+        >
+          <label
+            style={{
+              display: "inline-flex",
+              gap: "0.4rem",
+              alignItems: "center",
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={onlyMine}
+              onChange={(e) => setOnlyMine(e.target.checked)}
+            />
             Mine
           </label>
-          <label style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center' }}>
-            <input type="checkbox" checked={onlyUnclaimed} onChange={(e) => setOnlyUnclaimed(e.target.checked)} />
+          <label
+            style={{
+              display: "inline-flex",
+              gap: "0.4rem",
+              alignItems: "center",
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={onlyUnclaimed}
+              onChange={(e) => setOnlyUnclaimed(e.target.checked)}
+            />
             Unclaimed only
           </label>
-          <label style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center' }}>
+          <label
+            style={{
+              display: "inline-flex",
+              gap: "0.4rem",
+              alignItems: "center",
+            }}
+          >
             Host type
-            <select value={hostFilter} onChange={(e) => setHostFilter(e.target.value as 'all' | HostType)}>
+            <select
+              value={hostFilter}
+              onChange={(e) =>
+                setHostFilter(e.target.value as "all" | HostType)
+              }
+            >
               <option value="all">all</option>
               <option value="unclaimed">unclaimed</option>
               <option value="individual">individual</option>
               <option value="org">org</option>
             </select>
           </label>
-          <button type="button" onClick={loadEvents} disabled={!token || loading}>
-            {loading ? 'Loading…' : 'Search'}
+          <button
+            type="button"
+            onClick={loadEvents}
+            disabled={!token || loading}
+          >
+            {loading ? "Loading…" : "Search"}
           </button>
         </div>
       </div>
 
-      <div className="portal-card" style={{ display: 'grid', gap: '0.6rem' }}>
-        <h2 style={{ margin: 0, fontSize: '1rem' }}>Create Event</h2>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" />
-        <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} placeholder="Description" />
-        <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Location (optional)" />
-        <div style={{ display: 'grid', gap: '0.5rem', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
-          <label style={{ display: 'grid', gap: '0.3rem' }}>
+      <div className="portal-card" style={{ display: "grid", gap: "0.6rem" }}>
+        <h2 style={{ margin: 0, fontSize: "1rem" }}>Create Event</h2>
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Title"
+        />
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={3}
+          placeholder="Description"
+        />
+        <input
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+          placeholder="Location (optional)"
+        />
+        <div
+          style={{
+            display: "grid",
+            gap: "0.5rem",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          }}
+        >
+          <label style={{ display: "grid", gap: "0.3rem" }}>
             <span className="muted">Starts at</span>
-            <input type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
+            <input
+              type="datetime-local"
+              value={startsAt}
+              onChange={(e) => setStartsAt(e.target.value)}
+            />
           </label>
-          <label style={{ display: 'grid', gap: '0.3rem' }}>
+          <label style={{ display: "grid", gap: "0.3rem" }}>
             <span className="muted">Ends at</span>
-            <input type="datetime-local" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
+            <input
+              type="datetime-local"
+              value={endsAt}
+              onChange={(e) => setEndsAt(e.target.value)}
+            />
           </label>
         </div>
-        <input value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} placeholder="Source URL (optional)" />
-        <input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="Image URL (optional)" />
-        <input value={tagsText} onChange={(e) => setTagsText(e.target.value)} placeholder="Tags, comma separated" />
-        <label style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center' }}>
+        <input
+          value={sourceUrl}
+          onChange={(e) => setSourceUrl(e.target.value)}
+          placeholder="Source URL (optional)"
+        />
+        <input
+          value={imageUrl}
+          onChange={(e) => setImageUrl(e.target.value)}
+          placeholder="Image URL (optional)"
+        />
+        <fieldset
+          className="portal-card"
+          style={{ display: "grid", gap: "0.5rem", padding: "0.75rem" }}
+        >
+          <legend>Social preview</legend>
+          <p className="muted" style={{ margin: 0 }}>
+            These fields control link previews on social networks and chat apps.
+            Leave blank to use the public event title, description, and image.
+          </p>
+          <input
+            value={socialTitle}
+            onChange={(e) => setSocialTitle(e.target.value)}
+            placeholder="Social title (optional)"
+            maxLength={140}
+          />
+          <textarea
+            value={socialDescription}
+            onChange={(e) => setSocialDescription(e.target.value)}
+            rows={2}
+            placeholder="Social description (optional)"
+            maxLength={300}
+          />
+          <input
+            value={socialImageUrl}
+            onChange={(e) => setSocialImageUrl(e.target.value)}
+            placeholder="Social image URL (optional, 1200×630 recommended)"
+          />
+          {socialImageUrl || imageUrl ? (
+            <img
+              src={socialImageUrl || imageUrl}
+              alt="Social preview"
+              style={{
+                width: "min(100%, 360px)",
+                borderRadius: "0.75rem",
+                border: "1px solid var(--border-subtle)",
+              }}
+            />
+          ) : null}
+        </fieldset>
+        <input
+          value={tagsText}
+          onChange={(e) => setTagsText(e.target.value)}
+          placeholder="Tags, comma separated"
+        />
+        <label
+          style={{
+            display: "inline-flex",
+            gap: "0.4rem",
+            alignItems: "center",
+          }}
+        >
           Host type
-          <select value={hostType} onChange={(e) => setHostType(e.target.value as HostType)}>
+          <select
+            value={hostType}
+            onChange={(e) => setHostType(e.target.value as HostType)}
+          >
             <option value="unclaimed">unclaimed</option>
             <option value="individual">individual</option>
             <option value="org">org</option>
           </select>
         </label>
-        {hostType === 'org' ? (
-          <select value={hostOrgId} onChange={(e) => setHostOrgId(e.target.value)}>
+        {hostType === "org" ? (
+          <select
+            value={hostOrgId}
+            onChange={(e) => setHostOrgId(e.target.value)}
+          >
             <option value="">Select org host</option>
             {adminOrgs.map((org) => (
               <option key={org.id} value={org.id}>
@@ -316,49 +595,231 @@ export function OrgEventsPage() {
             ))}
           </select>
         ) : null}
-        <label style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center' }}>
-          <input type="checkbox" checked={claimOnCreate} onChange={(e) => setClaimOnCreate(e.target.checked)} />
+        <label
+          style={{
+            display: "inline-flex",
+            gap: "0.4rem",
+            alignItems: "center",
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={claimOnCreate}
+            onChange={(e) => setClaimOnCreate(e.target.checked)}
+          />
           Claim ownership on create
         </label>
         <div>
-          <button type="button" onClick={createEvent} disabled={!token}>Create Event</button>
+          <button type="button" onClick={createEvent} disabled={!token}>
+            Create Event
+          </button>
         </div>
       </div>
 
       {status ? <p className="muted">{status}</p> : null}
 
-      <div style={{ display: 'grid', gap: '0.6rem' }}>
+      <div style={{ display: "grid", gap: "0.6rem" }}>
         {events.map((event) => {
-          const selectedClaimHostType = claimHostTypeByEvent[event.id] ?? 'individual'
-          const selectedClaimHostOrgId = claimHostOrgIdByEvent[event.id] ?? ''
-          const canUnclaim = event.my_host_role === 'owner'
+          const selectedClaimHostType =
+            claimHostTypeByEvent[event.id] ?? "individual";
+          const selectedClaimHostOrgId = claimHostOrgIdByEvent[event.id] ?? "";
+          const canUnclaim = event.my_host_role === "owner";
           return (
-            <article key={event.id} className="portal-card" style={{ display: 'grid', gap: '0.5rem' }}>
+            <article
+              key={event.id}
+              className="portal-card"
+              style={{ display: "grid", gap: "0.5rem" }}
+            >
               <div>
-                <strong>{event.title}</strong> <span className="muted">(@{event.slug})</span>
+                <strong>{event.title}</strong>{" "}
+                <span className="muted">(@{event.slug})</span>
               </div>
-              {event.description ? <div className="muted" style={{ overflowWrap: 'anywhere' }}>{event.description}</div> : null}
-              <div className="muted" style={{ fontSize: '0.85rem', overflowWrap: 'anywhere' }}>
+              {event.description ? (
+                <div className="muted" style={{ overflowWrap: "anywhere" }}>
+                  {event.description}
+                </div>
+              ) : null}
+              <details className="portal-card" style={{ padding: "0.75rem" }}>
+                <summary>Social preview</summary>
+                <div
+                  style={{
+                    display: "grid",
+                    gap: "0.5rem",
+                    marginTop: "0.75rem",
+                  }}
+                >
+                  <input
+                    value={socialDraftByEvent[event.id]?.title || ""}
+                    onChange={(e) =>
+                      setSocialDraftByEvent((prev) => ({
+                        ...prev,
+                        [event.id]: {
+                          title: e.target.value,
+                          description: prev[event.id]?.description || "",
+                          imageUrl: prev[event.id]?.imageUrl || "",
+                        },
+                      }))
+                    }
+                    placeholder={event.title}
+                    maxLength={140}
+                  />
+                  <textarea
+                    value={socialDraftByEvent[event.id]?.description || ""}
+                    onChange={(e) =>
+                      setSocialDraftByEvent((prev) => ({
+                        ...prev,
+                        [event.id]: {
+                          title: prev[event.id]?.title || "",
+                          description: e.target.value,
+                          imageUrl: prev[event.id]?.imageUrl || "",
+                        },
+                      }))
+                    }
+                    rows={2}
+                    placeholder={event.description || "Social description"}
+                    maxLength={300}
+                  />
+                  <input
+                    value={socialDraftByEvent[event.id]?.imageUrl || ""}
+                    onChange={(e) =>
+                      setSocialDraftByEvent((prev) => ({
+                        ...prev,
+                        [event.id]: {
+                          title: prev[event.id]?.title || "",
+                          description: prev[event.id]?.description || "",
+                          imageUrl: e.target.value,
+                        },
+                      }))
+                    }
+                    placeholder={event.image_url || "Social image URL"}
+                  />
+                  {socialDraftByEvent[event.id]?.imageUrl ||
+                  event.social_image_url ||
+                  event.flyer_urls?.social ||
+                  event.image_url ? (
+                    <img
+                      src={
+                        socialDraftByEvent[event.id]?.imageUrl ||
+                        event.social_image_url ||
+                        event.flyer_urls?.social ||
+                        event.image_url ||
+                        ""
+                      }
+                      alt="Social preview"
+                      style={{
+                        width: "min(100%, 360px)",
+                        borderRadius: "0.75rem",
+                        border: "1px solid var(--border-subtle)",
+                      }}
+                    />
+                  ) : null}
+                  <div
+                    className="portal-card"
+                    style={{ display: "grid", gap: "0.6rem", padding: "0.75rem" }}
+                  >
+                    <div>
+                      <strong>Flyer generator</strong>
+                      <p className="muted" style={{ margin: "0.25rem 0 0" }}>
+                        Generated from this event’s title, host, date, location,
+                        description, and QR code to the public event link.
+                      </p>
+                    </div>
+                    {event.flyer_urls?.social ? (
+                      <img
+                        src={event.flyer_urls.social}
+                        alt="Generated social flyer"
+                        style={{
+                          width: "min(100%, 420px)",
+                          borderRadius: "0.75rem",
+                          border: "1px solid var(--border-subtle)",
+                          background: "#07111f",
+                        }}
+                      />
+                    ) : null}
+                    <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                      {event.flyer_urls?.letter ? (
+                        <a href={event.flyer_urls.letter} target="_blank" rel="noreferrer">
+                          Open 8.5×11 flyer
+                        </a>
+                      ) : null}
+                      {event.flyer_urls?.postcard ? (
+                        <a href={event.flyer_urls.postcard} target="_blank" rel="noreferrer">
+                          Open 4×6 flyer
+                        </a>
+                      ) : null}
+                      {event.flyer_urls?.social ? (
+                        <a href={event.flyer_urls.social} target="_blank" rel="noreferrer">
+                          Open social flyer
+                        </a>
+                      ) : null}
+                      {event.public_url ? (
+                        <a href={event.public_url} target="_blank" rel="noreferrer">
+                          Public event page
+                        </a>
+                      ) : null}
+                    </div>
+                    <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                      <button
+                        type="button"
+                        onClick={() => useGeneratedFlyerAsSocialPreview(event)}
+                        disabled={!token || !event.flyer_urls?.social}
+                      >
+                        Use generated flyer as social preview
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => useEventImageAsSocialPreview(event)}
+                        disabled={!token || !event.image_url}
+                      >
+                        Use event image unedited
+                      </button>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => saveSocialPreview(event.id)}
+                    disabled={!token}
+                  >
+                    Save social preview
+                  </button>
+                </div>
+              </details>
+              <div
+                className="muted"
+                style={{ fontSize: "0.85rem", overflowWrap: "anywhere" }}
+              >
                 Host: {event.host_type}
-                {event.host_type === 'org' && event.host_org_name ? ` (${event.host_org_name})` : ''}
-                {' • '}Claimed: {event.claimed_by_user_id ? 'yes' : 'no'}
-                {event.location ? ` • ${event.location}` : ''}
+                {event.host_type === "org" && event.host_org_name
+                  ? ` (${event.host_org_name})`
+                  : ""}
+                {" • "}Claimed: {event.claimed_by_user_id ? "yes" : "no"}
+                {event.location ? ` • ${event.location}` : ""}
               </div>
 
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <div
+                style={{
+                  display: "flex",
+                  gap: "0.5rem",
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                }}
+              >
                 <select
                   value={selectedClaimHostType}
                   onChange={(e) =>
                     setClaimHostTypeByEvent((prev) => ({
                       ...prev,
-                      [event.id]: e.target.value as Exclude<HostType, 'unclaimed'>,
+                      [event.id]: e.target.value as Exclude<
+                        HostType,
+                        "unclaimed"
+                      >,
                     }))
                   }
                 >
                   <option value="individual">individual host</option>
                   <option value="org">org host</option>
                 </select>
-                {selectedClaimHostType === 'org' ? (
+                {selectedClaimHostType === "org" ? (
                   <select
                     value={selectedClaimHostOrgId}
                     onChange={(e) =>
@@ -376,19 +837,29 @@ export function OrgEventsPage() {
                     ))}
                   </select>
                 ) : null}
-                <button type="button" onClick={() => claimEvent(event.id)} disabled={!token}>
-                  {event.claimed_by_user_id ? 'Re-claim / update host' : 'Claim'}
+                <button
+                  type="button"
+                  onClick={() => claimEvent(event.id)}
+                  disabled={!token}
+                >
+                  {event.claimed_by_user_id
+                    ? "Re-claim / update host"
+                    : "Claim"}
                 </button>
                 {canUnclaim ? (
-                  <button type="button" onClick={() => unclaimEvent(event.id)} disabled={!token}>
+                  <button
+                    type="button"
+                    onClick={() => unclaimEvent(event.id)}
+                    disabled={!token}
+                  >
                     Unclaim
                   </button>
                 ) : null}
               </div>
             </article>
-          )
+          );
         })}
       </div>
     </section>
-  )
+  );
 }
