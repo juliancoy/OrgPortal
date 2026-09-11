@@ -50,7 +50,7 @@ import { SendPage } from '../views/SendPage'
 import { ReceivePage } from '../views/ReceivePage'
 import { TimebankPage } from '../views/TimebankPage'
 import { TimebankInboxProvider } from '../timebank/TimebankInbox'
-import { TenantEventsHomePage, TenantHomePage, TenantSlugHomePage } from '../views/TenantHomePage'
+import { TenantEventsContent, TenantEventsHomePage, TenantHomePage, TenantSlugHomePage } from '../views/TenantHomePage'
 import { TenantResourcesPage } from '../views/TenantResourcesPage'
 import { CreatePage } from '../views/CreatePage'
 import { CreateForProfitPage } from '../views/CreateForProfitPage'
@@ -118,7 +118,7 @@ function TimebankTenantRoot() {
 
 function TenantOrgEventsRoute() {
   const tenant = getDomainTenant()
-  if (tenant?.home_org_slug) return <TenantEventsHomePage />
+  if (tenant?.home_org_slug) return <TenantEventsContent />
   return <PublicEventsPage />
 }
 
