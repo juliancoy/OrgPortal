@@ -204,6 +204,9 @@ type EventRow = {
   location: string | null;
   source_url: string | null;
   image_url: string | null;
+  social_title?: string | null;
+  social_description?: string | null;
+  social_image_url?: string | null;
   host_user_id: string | null;
   host_user_name: string | null;
   host_org_id: string | null;
@@ -1125,6 +1128,9 @@ async function mapEvent(env: Env, request: Request, row: EventRow) {
     location: row.location,
     source_url: row.source_url,
     image_url: row.image_url,
+    social_title: row.social_title || null,
+    social_description: row.social_description || null,
+    social_image_url: row.social_image_url || null,
     host_type: row.host_org_id ? "org" : row.host_user_id ? "individual" : "unclaimed",
     host_user_id: row.host_user_id,
     host_user_name: row.host_user_name,
@@ -1655,10 +1661,11 @@ async function upsertEvent(db: D1Database, raw: Record<string, unknown>) {
   await db.prepare(
     `INSERT INTO events
       (id, ingest_key, title, slug, description, starts_at, ends_at, location, source_url, image_url,
+       social_title, social_description, social_image_url,
        host_user_id, host_user_name, host_org_id, host_org_name, host_org_source_url,
        event_chat_room_id, event_chat_room_alias, event_chat_room_name,
        tags, city, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(ingest_key) DO UPDATE SET
       title = excluded.title,
       description = excluded.description,
@@ -1667,6 +1674,9 @@ async function upsertEvent(db: D1Database, raw: Record<string, unknown>) {
       location = excluded.location,
       source_url = excluded.source_url,
       image_url = excluded.image_url,
+      social_title = excluded.social_title,
+      social_description = excluded.social_description,
+      social_image_url = excluded.social_image_url,
       host_user_id = excluded.host_user_id,
       host_user_name = excluded.host_user_name,
       host_org_id = excluded.host_org_id,
@@ -1690,6 +1700,9 @@ async function upsertEvent(db: D1Database, raw: Record<string, unknown>) {
       stringField(raw, "location", 1000),
       cleanUrl(raw.source_url),
       cleanPublicAssetUrl(raw.image_url),
+      stringField(raw, "social_title", 140),
+      stringField(raw, "social_description", 300),
+      cleanPublicAssetUrl(raw.social_image_url),
       stringField(raw, "host_user_id", 255),
       stringField(raw, "host_user_name", 255),
       hostOrg?.id || null,
@@ -3205,6 +3218,16 @@ app.get("/api/network/events", async (c) => {
   return c.json(await Promise.all((rows.results || []).map((row) => mapEvent(c.env, c.req.raw, row))));
 });
 
+
+async function authorizeEventManager(env: Env, user: PidpUser, row: EventRow) {
+  if (row.host_org_id) {
+    await authorizeOrganization(env.DB, organizationActor(user, env), "manage", row.host_org_id);
+    return;
+  }
+  if (row.host_user_id === user.id || adminUser(user, env)) return;
+  fail(403, "Event management access required");
+}
+
 app.post("/api/network/events", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
@@ -3244,6 +3267,27 @@ app.post("/api/network/events", async (c) => {
     ...eventPayload,
   });
   return c.json(await mapEvent(c.env, c.req.raw, row!), 201);
+});
+
+
+app.patch("/api/network/events/:eventId", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await c.env.DB.prepare("SELECT * FROM events WHERE id = ?").bind(c.req.param("eventId")).first<EventRow>();
+  if (!row) fail(404, "Event not found");
+  await authorizeEventManager(c.env, user, row);
+  const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  const updates: Record<string, unknown> = {};
+  if ("social_title" in payload) updates.social_title = stringField(payload, "social_title", 140);
+  if ("social_description" in payload) updates.social_description = stringField(payload, "social_description", 300);
+  if ("social_image_url" in payload) updates.social_image_url = cleanPublicAssetUrl(payload.social_image_url);
+  if (!Object.keys(updates).length) return c.json(await mapEvent(c.env, c.req.raw, row));
+  updates.updated_at = nowIso();
+  const assignments = Object.keys(updates).map((key) => `${key} = ?`).join(", ");
+  await c.env.DB.prepare(`UPDATE events SET ${assignments} WHERE id = ?`).bind(...Object.values(updates), row.id).run();
+  const updated = await c.env.DB.prepare("SELECT e.*, o.name AS organization_name FROM events e LEFT JOIN organizations o ON o.id = e.host_org_id WHERE e.id = ?")
+    .bind(row.id)
+    .first<EventRow>();
+  return c.json(await mapEvent(c.env, c.req.raw, updated!));
 });
 
 app.post("/api/network/events/:eventId/claim", async (c) => {
