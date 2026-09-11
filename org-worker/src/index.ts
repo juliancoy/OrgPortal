@@ -1,6 +1,7 @@
 import { timebankNotifications, markTimebankNotificationsRead, dispatchTimebankPush } from './timebankNotifications';
 import { importedListings, importedListingImage, importClaimDirectory, requestImportClaim, withdrawImportClaim, reviewImportClaims, resolveImportClaim, claimedImportRecords } from './timebankImports';
 import { Hono } from "hono";
+import QRCode from "qrcode";
 import { buildMetadata } from "./generated/buildMetadata";
 import { HTTPException } from "hono/http-exception";
 import { handleEventMcp, protectedResourceMetadata, eventErrorResponse } from "./eventMcp";
@@ -729,6 +730,21 @@ async function eventPublicUrl(env: Env, request: Request, slug: string) {
   return `${(await publicPortalBase(env, request)).replace(/\/+$/g, "")}/events/${encodeURIComponent(slug)}`;
 }
 
+function publicRequestOrigin(request: Request) {
+  const url = new URL(request.url);
+  const host = request.headers.get("x-forwarded-host") || url.host;
+  const proto = request.headers.get("x-forwarded-proto") || url.protocol.replace(":", "") || "https";
+  return `${proto}://${host}`.replace(/\/+$/g, "");
+}
+
+function publicOrgApiPrefix(request: Request) {
+  return request.headers.get("x-forwarded-host") ? "/api/org" : "";
+}
+
+function eventFlyerPublicUrl(request: Request, slug: string, format: FlyerFormat) {
+  return `${publicRequestOrigin(request)}${publicOrgApiPrefix(request)}/api/network/events/public/${encodeURIComponent(slug)}/flyer.svg?format=${format}`;
+}
+
 function calendarFeedPublicUrl(request: Request, token: string) {
   const origin = new URL(request.url).origin.replace(/\/+$/g, "");
   return `${origin}/api/org/api/network/calendar/feed/${encodeURIComponent(token)}.ics`;
@@ -1131,6 +1147,11 @@ async function mapEvent(env: Env, request: Request, row: EventRow) {
     social_title: row.social_title || null,
     social_description: row.social_description || null,
     social_image_url: row.social_image_url || null,
+    flyer_urls: {
+      letter: eventFlyerPublicUrl(request, row.slug, "letter"),
+      postcard: eventFlyerPublicUrl(request, row.slug, "postcard"),
+      social: eventFlyerPublicUrl(request, row.slug, "social"),
+    },
     host_type: row.host_org_id ? "org" : row.host_user_id ? "individual" : "unclaimed",
     host_user_id: row.host_user_id,
     host_user_name: row.host_user_name,
@@ -1142,6 +1163,153 @@ async function mapEvent(env: Env, request: Request, row: EventRow) {
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
+}
+
+
+function xmlEscape(value: unknown) {
+  return String(value ?? "").replace(/[&<>"']/g, (char) => {
+    if (char === "&") return "&amp;";
+    if (char === "<") return "&lt;";
+    if (char === ">") return "&gt;";
+    if (char === '"') return "&quot;";
+    return "&#39;";
+  });
+}
+
+type FlyerFormat = "letter" | "postcard" | "social";
+
+function flyerFormat(value: string | null): FlyerFormat {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized === "4x6" || normalized === "postcard") return "postcard";
+  if (normalized === "social" || normalized === "preview" || normalized === "og") return "social";
+  return "letter";
+}
+
+function flyerGeometry(format: FlyerFormat) {
+  if (format === "postcard") return { width: 400, height: 600, name: "postcard" };
+  if (format === "social") return { width: 1200, height: 630, name: "social" };
+  return { width: 850, height: 1100, name: "letter" };
+}
+
+function shortText(value: unknown, max: number) {
+  const text = String(value || "").replace(/\s+/g, " ").trim();
+  if (text.length <= max) return text;
+  return `${text.slice(0, Math.max(0, max - 1)).trim()}…`;
+}
+
+function wrapText(value: unknown, maxChars: number, maxLines: number) {
+  const words = String(value || "").replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
+  const lines: string[] = [];
+  let line = "";
+  for (const word of words) {
+    const next = line ? `${line} ${word}` : word;
+    if (next.length > maxChars && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = next;
+    }
+    if (lines.length === maxLines) break;
+  }
+  if (line && lines.length < maxLines) lines.push(line);
+  if (words.length && lines.length === maxLines) {
+    const used = lines.join(" ").length;
+    const original = words.join(" ");
+    if (used < original.length) lines[maxLines - 1] = shortText(lines[maxLines - 1], Math.max(1, maxChars));
+  }
+  return lines;
+}
+
+function eventDateLabel(event: EventRow) {
+  if (!event.starts_at) return "Date to be announced";
+  const start = new Date(event.starts_at);
+  if (Number.isNaN(start.getTime())) return event.starts_at;
+  const date = new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "America/New_York",
+  }).format(start);
+  const startTime = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "America/New_York",
+  }).format(start);
+  if (!event.ends_at) return `${date} · ${startTime}`;
+  const end = new Date(event.ends_at);
+  if (Number.isNaN(end.getTime())) return `${date} · ${startTime}`;
+  const endTime = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "America/New_York",
+  }).format(end);
+  return `${date} · ${startTime}–${endTime}`;
+}
+
+function nestedSvg(svg: string, x: number, y: number, size: number) {
+  return svg.replace(/<svg\s+/i, `<svg x="${x}" y="${y}" width="${size}" height="${size}" `);
+}
+
+async function eventFlyerSvg(env: Env, request: Request, event: EventRow, format: FlyerFormat) {
+  const { width, height, name } = flyerGeometry(format);
+  const publicUrl = await eventPublicUrl(env, request, event.slug);
+  const title = shortText(event.social_title || event.title || "Event", format === "social" ? 92 : 120);
+  const host = shortText(event.organization_name || event.host_org_name || event.host_user_name || "MedTech Social", 80);
+  const description = shortText(event.social_description || event.description || "Join us for this community event.", format === "social" ? 190 : 360);
+  const date = eventDateLabel(event);
+  const location = shortText(event.location || "Location to be announced", format === "social" ? 90 : 140);
+  const qrSize = format === "social" ? 150 : format === "postcard" ? 112 : 170;
+  const qr = nestedSvg(await QRCode.toString(publicUrl, {
+    type: "svg",
+    errorCorrectionLevel: "M",
+    margin: 2,
+    color: { dark: "#111827", light: "#ffffff" },
+  }), width - qrSize - (format === "social" ? 58 : 54), height - qrSize - (format === "social" ? 46 : 58), qrSize);
+  const margin = format === "social" ? 58 : format === "postcard" ? 34 : 64;
+  const badge = host.toUpperCase();
+  const titleSize = format === "social" ? 72 : format === "postcard" ? 37 : 58;
+  const titleChars = format === "social" ? 22 : format === "postcard" ? 14 : 18;
+  const titleLines = wrapText(title, titleChars, format === "social" ? 2 : 4);
+  const descLines = wrapText(description, format === "social" ? 58 : format === "postcard" ? 31 : 48, format === "social" ? 2 : format === "postcard" ? 5 : 6);
+  const detailY = margin + 92 + titleLines.length * (titleSize * 0.95);
+  const descY = detailY + (format === "postcard" ? 96 : 120);
+  const linkLabel = new URL(publicUrl).hostname.replace(/^www\./, "");
+  const image = event.image_url ? `<image href="${xmlEscape(event.image_url)}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice" opacity="0.2" />` : "";
+  const titleTspans = titleLines.map((line, index) => `<tspan x="${margin}" dy="${index === 0 ? 0 : titleSize * 0.95}">${xmlEscape(line)}</tspan>`).join("");
+  const descTspans = descLines.map((line, index) => `<tspan x="${margin}" dy="${index === 0 ? 0 : format === "postcard" ? 22 : 31}">${xmlEscape(line)}</tspan>`).join("");
+  const qrLabelY = height - (format === "social" ? 34 : 36);
+  const tagLine = format === "social" ? "Health · Medicine · Biotech" : "health, medicine, biotech";
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="title desc">
+  <title id="title">${xmlEscape(title)} flyer</title>
+  <desc id="desc">${xmlEscape(description)}</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#07111f"/>
+      <stop offset="0.52" stop-color="#123d4c"/>
+      <stop offset="1" stop-color="#39a08f"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.07"/>
+    </linearGradient>
+  </defs>
+  <rect width="${width}" height="${height}" fill="url(#bg)"/>
+  ${image}
+  <rect x="${margin / 2}" y="${margin / 2}" width="${width - margin}" height="${height - margin}" rx="${format === "social" ? 38 : 32}" fill="url(#panel)" stroke="#ffffff" stroke-opacity="0.22"/>
+  <text x="${margin}" y="${margin + 20}" fill="#c7fff4" font-family="Inter, Arial, sans-serif" font-size="${format === "postcard" ? 13 : 20}" font-weight="800" letter-spacing="${format === "postcard" ? 1.8 : 3}">${xmlEscape(badge)}</text>
+  <text x="${margin}" y="${margin + 52}" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-size="${titleSize}" font-weight="900" letter-spacing="-2">${titleTspans}</text>
+  <text x="${margin}" y="${detailY}" fill="#c7fff4" font-family="Inter, Arial, sans-serif" font-size="${format === "postcard" ? 17 : 27}" font-weight="800">${xmlEscape(date)}</text>
+  <text x="${margin}" y="${detailY + (format === "postcard" ? 29 : 42)}" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-size="${format === "postcard" ? 15 : 24}" font-weight="650">${xmlEscape(location)}</text>
+  <text x="${margin}" y="${descY}" fill="#f0fffb" font-family="Inter, Arial, sans-serif" font-size="${format === "postcard" ? 18 : 28}" font-weight="500">${descTspans}</text>
+  <text x="${margin}" y="${height - (format === "postcard" ? 80 : 96)}" fill="#c7fff4" font-family="Inter, Arial, sans-serif" font-size="${format === "postcard" ? 14 : 22}" font-weight="800">${xmlEscape(tagLine)}</text>
+  <text x="${margin}" y="${height - (format === "postcard" ? 50 : 58)}" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-size="${format === "postcard" ? 12 : 18}" font-weight="650">${xmlEscape(linkLabel)}</text>
+  <rect x="${width - qrSize - (format === "social" ? 64 : 60)}" y="${height - qrSize - (format === "social" ? 52 : 64)}" width="${qrSize + 12}" height="${qrSize + 12}" rx="18" fill="#ffffff" opacity="0.96"/>
+  ${qr}
+  <text x="${width - qrSize / 2 - (format === "social" ? 58 : 54)}" y="${qrLabelY}" text-anchor="middle" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-size="${format === "postcard" ? 11 : 16}" font-weight="800">Scan to RSVP</text>
+  <text x="${width - margin}" y="${margin + 20}" text-anchor="end" fill="#ffffff" opacity="0.62" font-family="Inter, Arial, sans-serif" font-size="${format === "postcard" ? 11 : 16}" font-weight="700">${xmlEscape(name === "letter" ? "8.5×11" : name === "postcard" ? "4×6" : "social preview")}</text>
+</svg>`;
 }
 
 async function publicEventBySlug(db: D1Database, rawSlug: string) {
@@ -2648,6 +2816,21 @@ app.get("/api/network/events/public/:slug", async (c) => {
   const row = await publicEventBySlug(c.env.DB, c.req.param("slug"));
   if (!row) fail(404, "Event not found");
   return c.json(await mapEvent(c.env, c.req.raw, row));
+});
+
+app.get("/api/network/events/public/:slug/flyer.svg", async (c) => {
+  const row = await publicEventBySlug(c.env.DB, c.req.param("slug"));
+  if (!row) fail(404, "Event not found");
+  const format = flyerFormat(c.req.query("format") || c.req.query("size") || null);
+  const svg = await eventFlyerSvg(c.env, c.req.raw, row, format);
+  const dispositionName = `${row.slug}-${format === "postcard" ? "4x6" : format === "social" ? "social" : "letter"}-flyer.svg`;
+  return new Response(svg, {
+    headers: {
+      "content-type": "image/svg+xml; charset=utf-8",
+      "cache-control": "public, max-age=300, s-maxage=900",
+      "content-disposition": `inline; filename="${dispositionName}"`,
+    },
+  });
 });
 
 app.get("/api/network/events/public/:slug/chat", async (c) => {
