@@ -82,6 +82,7 @@ function tenantHomeElement(tenant: PortalTenant, role: string, profile: ReturnTy
   const action = tenantHomeAction(tenant, role, profile.memberHomePath)
   if (action.kind === 'landing') return <TenantHomePage />
   if (action.kind === 'events') return <TenantEventsHomePage />
+  if (action.kind === 'timebank') return <TimebankPage />
   return <Navigate to={portalProfilePath(action.to, profile)} replace />
 }
 
