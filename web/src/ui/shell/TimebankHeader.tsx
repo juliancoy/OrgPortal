@@ -3,6 +3,8 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
 import { useDomainCommunity, timebankHomePath } from '../../config/timebankCommunity'
+import { getActivePortalProfileConfig } from '../../config/portalFeatures'
+import { portalPath } from '../../config/portalBase'
 import './timebank-shell.css'
 
 function AccountIcon({ children }: { children: ReactNode }) {
@@ -20,6 +22,7 @@ function ProfilePhoto({ src, name }: { src?: string | null; name: string }) {
 
 export function TimebankHeader() {
   const community = useDomainCommunity()
+  const profile = getActivePortalProfileConfig()
   const { user, role, logout } = useAuth()
   const location = useLocation()
   const inbox = useTimebankInbox()
@@ -52,7 +55,7 @@ export function TimebankHeader() {
 
   return <header className="tb-shell-header">
     <Link to={timebankHomePath()} className="tb-shell-brand" aria-label={`${community?.name || 'Code Collective Timebank'} home`}>
-      <span className="tb-shell-mark"><AccountIcon><circle cx="12" cy="12" r="9" /><path d="M12 6v6l4 2" /></AccountIcon></span>
+      <span className="tb-shell-mark">{profile.brandImagePath ? <img src={portalPath(profile.brandImagePath)} alt="" /> : <AccountIcon><circle cx="12" cy="12" r="9" /><path d="M12 6v6l4 2" /></AccountIcon>}</span>
       <span>{community?.name || 'Code Collective Timebank'}</span>
     </Link>
     {role !== 'guest' ? <div className="tb-shell-actions"><Link to="/chat" className="tb-messages-link" aria-label={`Messages${inbox.unreadMessages ? `, ${inbox.unreadMessages} unread` : ''}`} aria-current={location.pathname.startsWith('/chat') ? 'page' : undefined}><AccountIcon><path d="M21 11a9 9 0 0 1-9 9H4l-3 2V11a10 10 0 0 1 20 0Z" /><path d="M7 10h8M7 14h5" /></AccountIcon><span className="tb-messages-label">Messages</span>{inbox.unreadMessages > 0 && <span className="tb-inbox-badge" aria-hidden="true">{inbox.unreadMessages > 99 ? '99+' : inbox.unreadMessages}</span>}</Link><div className="tb-account-menu" ref={menuRef} onBlur={(event) => {

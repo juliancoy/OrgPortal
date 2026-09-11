@@ -1,0 +1,24 @@
+{
+  "name": "Bmore Timebank",
+  "short_name": "Timebank",
+  "description": "Offer help, request help, and exchange neighbor-to-neighbor timebank hours.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f7f2e8",
+  "theme_color": "#155e59",
+  "icons": [
+    {
+      "src": "images/timebank/timebank-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "images/timebank/timebank-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

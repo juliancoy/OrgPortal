@@ -29,6 +29,10 @@ describe('portal feature profiles', () => {
       const profile = getActivePortalProfileConfig()
       expect(profile.brandName).toBe('Bmore Timebank')
       expect(profile.memberHomePath).toBe('/')
+      expect(profile.brandImagePath).toBe('/images/timebank/timebank-mark.svg')
+      expect(profile.faviconPath).toBe('/images/timebank/favicon-64.png')
+      expect(profile.appleTouchIconPath).toBe('/images/timebank/apple-touch-icon.png')
+      expect(profile.manifestPath).toBe('/timebank.webmanifest')
       expect(isPortalFeatureEnabled('ubi', profile)).toBe(false)
     } finally { domain.mockRestore() }
   })
