@@ -25,6 +25,7 @@ export type NativeChatMessage = {
   conversation_id: string
   sender_user_id: string
   sender_name?: string | null
+  sender_avatar_url?: string | null
   client_message_id?: string | null
   body: string
   sequence?: number | null
@@ -35,7 +36,7 @@ export type NativeChatMessage = {
   edited_at?: string | null
   deleted_at?: string | null
   moderation_state?: string
-  reactions?: Array<{ key: string; count: number }>
+  reactions?: Array<{ key: string; count: number; reacted?: boolean }>
 }
 
 export type NativeChatSync = {
@@ -200,8 +201,8 @@ export class NativeChatApi {
     return payload.message
   }
 
-  async sendReaction(conversationId: string, messageId: string, emoji: string): Promise<Array<{ key: string; count: number }>> {
-    const payload = await this.request<{ reactions: Array<{ key: string; count: number }> }>(
+  async sendReaction(conversationId: string, messageId: string, emoji: string): Promise<Array<{ key: string; count: number; reacted?: boolean }>> {
+    const payload = await this.request<{ reactions: Array<{ key: string; count: number; reacted?: boolean }> }>(
       `/api/network/chat/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}/reactions`,
       {
         method: 'POST',

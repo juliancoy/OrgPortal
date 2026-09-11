@@ -57,6 +57,7 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 const NATIVE_TOKEN_STORAGE_KEY = 'pidp.native.token'
+const BROWSER_TOKEN_STORAGE_KEY = 'orgportal.auth.accessToken'
 const UPDATE_DISMISS_STORAGE_KEY = 'orgportal.update.dismissed'
 
 export function useAuth(): AuthContextValue {
@@ -65,8 +66,37 @@ export function useAuth(): AuthContextValue {
   return ctx
 }
 
-function readInitialToken(): string | null {
-  return null
+function readStoredToken(storageKey: string): string | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const token = localStorage.getItem(storageKey)?.trim() || null
+    if (!token) return null
+    const exp = decodeJwtExpiry(token)
+    if (exp && exp * 1000 <= Date.now() + 30_000) {
+      localStorage.removeItem(storageKey)
+      return null
+    }
+    return token
+  } catch {
+    return null
+  }
+}
+
+function writeStoredToken(storageKey: string, token: string | null): void {
+  if (typeof window === 'undefined') return
+  try {
+    if (token) {
+      localStorage.setItem(storageKey, token)
+    } else {
+      localStorage.removeItem(storageKey)
+    }
+  } catch {
+    // Storage may be unavailable in private or constrained browser contexts.
+  }
+}
+
+function readInitialToken(isNativeRuntime: boolean): string | null {
+  return readStoredToken(isNativeRuntime ? NATIVE_TOKEN_STORAGE_KEY : BROWSER_TOKEN_STORAGE_KEY)
 }
 
 function decodeJwtExpiry(token: string | null): number | null {
@@ -87,7 +117,7 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
   const isNativeRuntime = isNativeCapacitorRuntime()
   const [role, setRoleState] = useState<UserRole | 'guest'>('guest')
   const [user, setUserState] = useState<SessionUser | null>(null)
-  const [token, setToken] = useState<string | null>(() => readInitialToken())
+  const [token, setToken] = useState<string | null>(() => readInitialToken(isNativeRuntime))
   const tokenRef = useRef<string | null>(token)
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const isLoadingRef = useRef<boolean>(isLoading)
@@ -254,13 +284,7 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
     tokenRef.current = nextToken
     setToken(nextToken)
     setRuntimeAccessToken(nextToken)
-    if (isNativeRuntime) {
-      if (nextToken) {
-        localStorage.setItem(NATIVE_TOKEN_STORAGE_KEY, nextToken)
-      } else {
-        localStorage.removeItem(NATIVE_TOKEN_STORAGE_KEY)
-      }
-    }
+    writeStoredToken(isNativeRuntime ? NATIVE_TOKEN_STORAGE_KEY : BROWSER_TOKEN_STORAGE_KEY, nextToken)
   }, [isNativeRuntime])
 
   // Login with password.
@@ -336,8 +360,7 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
         let activeToken = tokenRef.current
         if (!activeToken) {
           if (isNativeRuntime) {
-            const persistedToken = localStorage.getItem(NATIVE_TOKEN_STORAGE_KEY)
-            activeToken = persistedToken?.trim() || null
+            activeToken = readStoredToken(NATIVE_TOKEN_STORAGE_KEY)
             if (activeToken) {
               setAuthToken(activeToken)
             }
@@ -349,6 +372,12 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
             if (sessionTokenResp.ok) {
               const sessionTokenData = (await sessionTokenResp.json()) as { access_token?: string }
               activeToken = sessionTokenData.access_token ?? null
+              if (activeToken) {
+                setAuthToken(activeToken)
+              }
+            }
+            if (!activeToken) {
+              activeToken = readStoredToken(BROWSER_TOKEN_STORAGE_KEY)
               if (activeToken) {
                 setAuthToken(activeToken)
               }
