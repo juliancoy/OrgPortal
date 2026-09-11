@@ -12,14 +12,18 @@ CREATE TABLE timebank_import_batches (
   expected_accounts INTEGER NOT NULL CHECK(expected_accounts > 0),
   expected_records INTEGER NOT NULL CHECK(expected_records >= 0),
   expected_links INTEGER NOT NULL CHECK(expected_links >= 0),
+  expected_assets INTEGER NOT NULL DEFAULT 0 CHECK(expected_assets >= 0),
   ready INTEGER NOT NULL DEFAULT 0 CHECK(ready IN (0, 1)),
   UNIQUE(community_id, source_key),
   UNIQUE(id, community_id)
 );
 CREATE TRIGGER timebank_import_snapshot_immutable BEFORE UPDATE ON timebank_import_batches
-WHEN OLD.source_sha256 <> NEW.source_sha256 OR OLD.community_id <> NEW.community_id
+WHEN OLD.id <> NEW.id OR OLD.source_key <> NEW.source_key OR OLD.source_name <> NEW.source_name
+  OR OLD.source_url <> NEW.source_url OR OLD.captured_at <> NEW.captured_at OR OLD.imported_at <> NEW.imported_at
+  OR OLD.source_sha256 <> NEW.source_sha256 OR OLD.community_id <> NEW.community_id
   OR OLD.expected_accounts <> NEW.expected_accounts OR OLD.expected_records <> NEW.expected_records
-  OR OLD.expected_links <> NEW.expected_links
+  OR OLD.expected_links <> NEW.expected_links OR OLD.expected_assets <> NEW.expected_assets
+  OR (OLD.ready = 1 AND NEW.ready <> 1)
 BEGIN SELECT RAISE(ABORT, 'Import snapshot differs from the existing batch'); END;
 
 CREATE TABLE timebank_import_accounts (
@@ -63,11 +67,22 @@ CREATE TABLE timebank_import_record_accounts (
   FOREIGN KEY(record_id, batch_id) REFERENCES timebank_import_records(id, batch_id),
   FOREIGN KEY(account_id, batch_id) REFERENCES timebank_import_accounts(id, batch_id)
 );
+CREATE TABLE timebank_import_assets (
+  id TEXT PRIMARY KEY,
+  batch_id TEXT NOT NULL REFERENCES timebank_import_batches(id),
+  source_url TEXT NOT NULL,
+  object_key TEXT NOT NULL,
+  content_type TEXT NOT NULL CHECK(content_type IN ('image/jpeg', 'image/png', 'image/webp')),
+  byte_size INTEGER NOT NULL CHECK(byte_size > 0),
+  sha256 TEXT NOT NULL,
+  UNIQUE(batch_id, source_url)
+);
 CREATE TRIGGER timebank_import_complete BEFORE UPDATE OF ready ON timebank_import_batches
 WHEN NEW.ready = 1 AND (
   NEW.expected_accounts <> (SELECT COUNT(*) FROM timebank_import_accounts WHERE batch_id = NEW.id)
   OR NEW.expected_records <> (SELECT COUNT(*) FROM timebank_import_records WHERE batch_id = NEW.id)
   OR NEW.expected_links <> (SELECT COUNT(*) FROM timebank_import_record_accounts WHERE batch_id = NEW.id)
+  OR NEW.expected_assets <> (SELECT COUNT(*) FROM timebank_import_assets WHERE batch_id = NEW.id)
 )
 BEGIN SELECT RAISE(ABORT, 'Import is incomplete'); END;
 
@@ -125,7 +140,7 @@ WHEN NEW.status = 'approved'
 BEGIN
   UPDATE timebank_import_accounts SET claimed_by_user_id = NEW.claimant_user_id, claimed_at = NEW.reviewed_at
     WHERE id = NEW.account_id AND claimed_by_user_id IS NULL;
-  SELECT CASE WHEN changes() <> 1 THEN RAISE(ABORT, 'Imported account already claimed') END;
+  SELECT RAISE(ABORT, 'Imported account already claimed') WHERE changes() <> 1;
   UPDATE timebank_import_claims SET status = 'rejected', reviewed_at = NEW.reviewed_at,
     reviewer_user_id = NEW.reviewer_user_id, review_note = 'Another claim for this account was approved.'
     WHERE account_id = NEW.account_id AND id <> NEW.id AND status = 'pending';
@@ -135,3 +150,44 @@ WHEN NEW.status <> 'pending'
 BEGIN
   INSERT INTO timebank_import_claim_audit VALUES (NEW.id || ':' || NEW.status, NEW.id, NEW.reviewer_user_id, NEW.status, COALESCE(NEW.review_note, ''), NEW.reviewed_at);
 END;
+
+-- Ready snapshots cannot be edited, extended or removed through later imports.
+CREATE TRIGGER timebank_import_account_source_immutable BEFORE UPDATE ON timebank_import_accounts
+WHEN OLD.id <> NEW.id OR OLD.batch_id <> NEW.batch_id OR OLD.community_id <> NEW.community_id
+ OR OLD.source_profile_url <> NEW.source_profile_url OR OLD.source_slug <> NEW.source_slug OR OLD.name <> NEW.name
+ OR OLD.balance_minutes IS NOT NEW.balance_minutes OR OLD.earned_minutes IS NOT NEW.earned_minutes
+ OR OLD.spent_minutes IS NOT NEW.spent_minutes OR OLD.received_minutes IS NOT NEW.received_minutes
+ OR OLD.donated_minutes IS NOT NEW.donated_minutes OR OLD.profile_json <> NEW.profile_json
+BEGIN SELECT RAISE(ABORT, 'Imported source account is immutable'); END;
+CREATE TRIGGER timebank_import_accounts_insert_guard BEFORE INSERT ON timebank_import_accounts
+WHEN (SELECT ready FROM timebank_import_batches WHERE id = NEW.batch_id) = 1
+BEGIN SELECT RAISE(ABORT, 'Ready import snapshot is immutable'); END;
+CREATE TRIGGER timebank_import_accounts_delete_guard BEFORE DELETE ON timebank_import_accounts
+WHEN (SELECT ready FROM timebank_import_batches WHERE id = OLD.batch_id) = 1
+BEGIN SELECT RAISE(ABORT, 'Ready import snapshot is immutable'); END;
+CREATE TRIGGER timebank_import_records_insert_guard BEFORE INSERT ON timebank_import_records
+WHEN (SELECT ready FROM timebank_import_batches WHERE id = NEW.batch_id) = 1
+BEGIN SELECT RAISE(ABORT, 'Ready import snapshot is immutable'); END;
+CREATE TRIGGER timebank_import_records_delete_guard BEFORE DELETE ON timebank_import_records
+WHEN (SELECT ready FROM timebank_import_batches WHERE id = OLD.batch_id) = 1
+BEGIN SELECT RAISE(ABORT, 'Ready import snapshot is immutable'); END;
+CREATE TRIGGER timebank_import_records_update_guard BEFORE UPDATE ON timebank_import_records
+BEGIN SELECT RAISE(ABORT, 'Imported source is immutable'); END;
+CREATE TRIGGER timebank_import_record_accounts_insert_guard BEFORE INSERT ON timebank_import_record_accounts
+WHEN (SELECT ready FROM timebank_import_batches WHERE id = NEW.batch_id) = 1
+BEGIN SELECT RAISE(ABORT, 'Ready import snapshot is immutable'); END;
+CREATE TRIGGER timebank_import_record_accounts_delete_guard BEFORE DELETE ON timebank_import_record_accounts
+WHEN (SELECT ready FROM timebank_import_batches WHERE id = OLD.batch_id) = 1
+BEGIN SELECT RAISE(ABORT, 'Ready import snapshot is immutable'); END;
+CREATE TRIGGER timebank_import_record_accounts_update_guard BEFORE UPDATE ON timebank_import_record_accounts
+BEGIN SELECT RAISE(ABORT, 'Imported source is immutable'); END;
+CREATE TRIGGER timebank_import_assets_insert_guard BEFORE INSERT ON timebank_import_assets
+WHEN (SELECT ready FROM timebank_import_batches WHERE id = NEW.batch_id) = 1
+BEGIN SELECT RAISE(ABORT, 'Ready import snapshot is immutable'); END;
+CREATE TRIGGER timebank_import_assets_delete_guard BEFORE DELETE ON timebank_import_assets
+WHEN (SELECT ready FROM timebank_import_batches WHERE id = OLD.batch_id) = 1
+BEGIN SELECT RAISE(ABORT, 'Ready import snapshot is immutable'); END;
+CREATE TRIGGER timebank_import_assets_update_guard BEFORE UPDATE ON timebank_import_assets
+BEGIN SELECT RAISE(ABORT, 'Imported source is immutable'); END;
+CREATE TRIGGER timebank_import_batch_delete_guard BEFORE DELETE ON timebank_import_batches
+WHEN OLD.ready = 1 BEGIN SELECT RAISE(ABORT, 'Ready import snapshot is immutable'); END;

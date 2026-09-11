@@ -1,12 +1,12 @@
 import { timebankNotifications, markTimebankNotificationsRead, dispatchTimebankPush } from './timebankNotifications';
-import { importClaimDirectory, requestImportClaim, withdrawImportClaim, reviewImportClaims, resolveImportClaim, claimedImportRecords } from './timebankImports';
+import { importedListings, importedListingImage, importClaimDirectory, requestImportClaim, withdrawImportClaim, reviewImportClaims, resolveImportClaim, claimedImportRecords } from './timebankImports';
 import { Hono } from "hono";
 import { buildMetadata } from "./generated/buildMetadata";
 import { HTTPException } from "hono/http-exception";
 import { handleEventMcp, protectedResourceMetadata, eventErrorResponse } from "./eventMcp";
 import { checkEventConfiguration } from "./eventConfiguration";
 import {
-  getTimebankListing, setTimebankUptake, timebankAnalytics, resolveTimebankCommunity, saveTimebankCommunity, setTimebankPhoto, getTimebankPhoto,
+  getTimebankListing, setTimebankUptake, setTimebankListingVote, timebankAnalytics, resolveTimebankCommunity, saveTimebankCommunity, setTimebankPhoto, getTimebankPhoto,
   TimebankError, timebankDashboard, publicTimebankOffers, createTimebankListing, updateTimebankListing,
   proposeTimebankExchange, resolveTimebankExchange,
 } from "./timebank";
@@ -3048,6 +3048,18 @@ app.get("/api/timebank/notifications", async (c) => {
   return c.json(await timebankNotifications(c.env.DB, user.id, community.id, c.req.query("before")));
 });
 
+app.get('/api/timebank/imports/listings', async (c) => {
+  const user = c.req.header('Authorization') ? await currentUser(c.env, c.req.raw) : null;
+  const community = await resolveTimebankCommunity(c.env.DB, c.req.raw);
+  c.header('Cache-Control', 'no-store');
+  return c.json(await importedListings(c.env.DB, user?.id ?? null, community.id));
+});
+app.get('/api/timebank/imports/listings/:id/image', async (c) => {
+  const user = c.req.header('Authorization') ? await currentUser(c.env, c.req.raw) : null;
+  const community = await resolveTimebankCommunity(c.env.DB, c.req.raw);
+  return importedListingImage(c.env, user?.id ?? null, community.id, c.req.param('id'));
+});
+
 app.get('/api/timebank/imports/accounts', async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   const community = await resolveTimebankCommunity(c.env.DB, c.req.raw);
@@ -3103,6 +3115,14 @@ app.on(["PUT", "DELETE"], "/api/timebank/listings/:id/uptake", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   const community = await resolveTimebankCommunity(c.env.DB, c.req.raw);
   return c.json(await setTimebankUptake(c.env.DB, { id: user.id, name: userName(user) }, c.req.param("id"), c.req.method === "PUT", community.id));
+});
+
+app.put("/api/timebank/listings/:id/vote", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const community = await resolveTimebankCommunity(c.env.DB, c.req.raw);
+  const body = await c.req.json().catch(() => null) as { direction?: unknown } | null;
+  const direction = body?.direction === null || body?.direction === undefined ? null : body.direction;
+  return c.json(await setTimebankListingVote(c.env.DB, { id: user.id, name: userName(user) }, c.req.param("id"), direction as "up" | "down" | null, community.id));
 });
 
 app.get("/api/timebank/listings/:id", async (c) => {

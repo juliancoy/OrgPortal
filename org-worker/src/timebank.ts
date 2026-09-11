@@ -25,6 +25,7 @@ type Listing = {
   contact: string;
   visibility: 'public' | 'members';
 };
+type VoteDirection = 'up' | 'down';
 type Exchange = {
   id: string;
   listing_id: string;
@@ -105,13 +106,24 @@ export async function timebankDashboard(db: D1Database, member: Member | null, c
       ), uptake AS (
         SELECT listing_id, COUNT(*) AS uptake_count, MAX(user_id = ?) AS user_has_taken_up
         FROM participants GROUP BY listing_id
+      ), votes AS (
+        SELECT listing_id,
+          SUM(direction = 'up') AS upvote_count,
+          SUM(direction = 'down') AS downvote_count,
+          MAX(CASE WHEN user_id = ? THEN direction END) AS user_vote
+        FROM timebank_listing_votes WHERE community_id = ? GROUP BY listing_id
       ), board AS (
         SELECT l.*, m.name AS member_name, COALESCE(u.uptake_count, 0) AS uptake_count,
           COALESCE(u.user_has_taken_up, 0) AS user_has_taken_up,
+          COALESCE(v.upvote_count, 0) AS upvote_count,
+          COALESCE(v.downvote_count, 0) AS downvote_count,
+          COALESCE(v.upvote_count, 0) - COALESCE(v.downvote_count, 0) AS vote_score,
+          v.user_vote,
           EXISTS(SELECT 1 FROM timebank_exchanges e WHERE e.listing_id = l.id
             AND e.community_id = l.community_id AND e.status = 'confirmed' AND e.provider_user_id = ?) AS user_has_helped
         FROM timebank_listings l JOIN timebank_members m ON m.user_id = l.user_id
         LEFT JOIN uptake u ON u.listing_id = l.id
+        LEFT JOIN votes v ON v.listing_id = l.id
         WHERE l.community_id = ? AND (l.status = 'open' OR l.user_id = ?)
           AND (? IS NOT NULL OR l.visibility = 'public')
           AND (? = 0 OR l.user_id = ?)
@@ -121,7 +133,7 @@ export async function timebankDashboard(db: D1Database, member: Member | null, c
           CASE WHEN kind = 'request' AND ? = 'least' THEN uptake_count END ASC,
           created_at DESC, id DESC) AS board_rank FROM board
       ) SELECT * FROM ranked WHERE ? = 1 OR board_rank <= 200 ORDER BY kind, board_rank`)
-      .bind(communityId, communityId, userId, userId, communityId, userId, userId,
+      .bind(communityId, communityId, userId, userId, communityId, userId, communityId, userId, userId,
         mineOnly ? 1 : 0, userId, requestSort, requestSort, mineOnly ? 1 : 0),
     db.prepare(`SELECT e.*, l.title AS listing_title, p.name AS provider_name, r.name AS recipient_name
       FROM timebank_exchanges e JOIN timebank_listings l ON l.id = e.listing_id
@@ -368,6 +380,32 @@ export async function setTimebankUptake(db: D1Database, member: Member, listingI
   return { active };
 }
 
+export async function setTimebankListingVote(db: D1Database, member: Member, listingId: string, direction: VoteDirection | null, communityId: string) {
+  if (direction !== null && direction !== 'up' && direction !== 'down') throw new TimebankError('Choose up, down, or no vote.');
+  const listing = await db.prepare('SELECT id, status FROM timebank_listings WHERE id = ? AND community_id = ?')
+    .bind(listingId, communityId).first<Listing>();
+  if (!listing) throw new TimebankError('Listing not found in this community.', 404);
+  if (listing.status !== 'open' && direction) throw new TimebankError('This listing is closed.', 409);
+  await ensureMember(db, member);
+  if (direction) {
+    await db.prepare(`INSERT INTO timebank_listing_votes (listing_id, user_id, community_id, direction, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT(listing_id, user_id) DO UPDATE SET direction = excluded.direction, updated_at = excluded.updated_at`)
+      .bind(listingId, member.id, communityId, direction, new Date().toISOString(), new Date().toISOString()).run();
+  } else {
+    await db.prepare('DELETE FROM timebank_listing_votes WHERE listing_id = ? AND user_id = ? AND community_id = ?')
+      .bind(listingId, member.id, communityId).run();
+  }
+  const row = await db.prepare(`SELECT
+      COALESCE(SUM(direction = 'up'), 0) AS upvote_count,
+      COALESCE(SUM(direction = 'down'), 0) AS downvote_count,
+      COALESCE(SUM(CASE direction WHEN 'up' THEN 1 WHEN 'down' THEN -1 ELSE 0 END), 0) AS vote_score,
+      MAX(CASE WHEN user_id = ? THEN direction END) AS user_vote
+    FROM timebank_listing_votes WHERE listing_id = ? AND community_id = ?`)
+    .bind(member.id, listingId, communityId).first();
+  return row || { upvote_count: 0, downvote_count: 0, vote_score: 0, user_vote: null };
+}
+
 export async function timebankAnalytics(db: D1Database, communityId: string) {
   const [totals, circulation, categories, beneficiaries, providers] = await db.batch<Record<string, unknown>>([
     db.prepare(`SELECT COALESCE(SUM(minutes), 0) AS rewarded_minutes, COUNT(*) AS confirmed_exchanges
@@ -407,10 +445,14 @@ export async function getTimebankListing(db: D1Database, userId: string | null, 
         AND e.community_id = l.community_id AND e.status = 'confirmed' AND l.kind = 'request'
     )) AS uptake_count,
     EXISTS(SELECT 1 FROM timebank_uptakes u WHERE u.listing_id = l.id AND u.user_id = ?) AS user_has_taken_up,
-    EXISTS(SELECT 1 FROM timebank_exchanges e WHERE e.listing_id = l.id AND e.provider_user_id = ? AND e.status = 'confirmed') AS user_has_helped
+    EXISTS(SELECT 1 FROM timebank_exchanges e WHERE e.listing_id = l.id AND e.provider_user_id = ? AND e.status = 'confirmed') AS user_has_helped,
+    COALESCE((SELECT SUM(direction = 'up') FROM timebank_listing_votes v WHERE v.listing_id = l.id AND v.community_id = l.community_id), 0) AS upvote_count,
+    COALESCE((SELECT SUM(direction = 'down') FROM timebank_listing_votes v WHERE v.listing_id = l.id AND v.community_id = l.community_id), 0) AS downvote_count,
+    COALESCE((SELECT SUM(CASE direction WHEN 'up' THEN 1 WHEN 'down' THEN -1 ELSE 0 END) FROM timebank_listing_votes v WHERE v.listing_id = l.id AND v.community_id = l.community_id), 0) AS vote_score,
+    (SELECT direction FROM timebank_listing_votes v WHERE v.listing_id = l.id AND v.community_id = l.community_id AND v.user_id = ?) AS user_vote
     FROM timebank_listings l JOIN timebank_members m ON m.user_id = l.user_id
     WHERE l.id = ? AND l.community_id = ?
-      AND (? IS NOT NULL OR (l.visibility = 'public' AND l.status = 'open'))`).bind(userId, userId, id, communityId, userId).first();
+      AND (? IS NOT NULL OR (l.visibility = 'public' AND l.status = 'open'))`).bind(userId, userId, userId, id, communityId, userId).first();
   if (!row) throw new TimebankError('Listing not found in this community.', 404);
   return row;
 }

@@ -91,3 +91,261 @@
 .tb-import-record summary { cursor:pointer; font-weight:600; min-height:44px; display:list-item }
 .tb-imports .tb-description { white-space:pre-wrap; overflow-wrap:anywhere }
 .tb-import-banner { margin:1rem 0 }
+
+
+.timebank-page {
+  --tb-board: color-mix(in srgb, var(--body-bg, #081b31) 82%, #ffffff 18%);
+  --tb-card: color-mix(in srgb, var(--tb-surface) 72%, var(--body-bg, #081b31) 28%);
+  --tb-card-hover: color-mix(in srgb, var(--tb-accent) 14%, var(--tb-card));
+  --tb-soft: color-mix(in srgb, var(--tb-accent) 12%, var(--tb-surface));
+  --tb-rule: color-mix(in srgb, var(--tb-line) 72%, #ffffff 28%);
+}
+.tb-home {
+  display:grid;
+  gap:1.1rem;
+  padding:1.15rem;
+  border:1px solid color-mix(in srgb, var(--tb-line) 70%, transparent);
+  border-radius:12px;
+  background:linear-gradient(180deg, color-mix(in srgb, var(--tb-board) 96%, #ffffff 4%), color-mix(in srgb, var(--tb-board) 88%, #000000 12%));
+}
+.tb-home-heading {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:1rem;
+}
+.tb-home-heading > span {
+  flex-shrink:0;
+  border:1px solid var(--tb-rule);
+  border-radius:999px;
+  padding:.35rem .65rem;
+  color:var(--text-secondary);
+  background:color-mix(in srgb, var(--tb-surface) 70%, transparent);
+  font-size:.74rem;
+  font-weight:700;
+}
+.tb-board-tools {
+  padding:.75rem;
+  border:1px solid color-mix(in srgb, var(--tb-line) 62%, transparent);
+  border-radius:10px;
+  background:color-mix(in srgb, var(--tb-surface) 48%, transparent);
+}
+.tb-search {
+  max-width:none;
+}
+.tb-search input,
+.tb-column-meta select {
+  border-color:color-mix(in srgb, var(--tb-line) 70%, #ffffff 30%);
+  background:color-mix(in srgb, var(--tb-surface) 84%, #ffffff 16%);
+  box-shadow:0 1px 0 color-mix(in srgb, #ffffff 10%, transparent) inset;
+}
+.tb-mine {
+  border:1px solid var(--tb-rule);
+  border-radius:999px;
+  padding:0 .7rem;
+  background:color-mix(in srgb, var(--tb-surface) 58%, transparent);
+}
+.tb-columns {
+  gap:1.5rem;
+}
+.tb-column {
+  display:grid;
+  gap:.85rem;
+  min-width:0;
+}
+.tb-column-heading {
+  min-height:56px;
+  padding:.25rem 0 .8rem;
+  border-bottom:1px solid var(--tb-rule);
+}
+.tb-column-heading > div {
+  display:grid;
+  gap:.2rem;
+}
+.tb-column-heading > div > span {
+  color:var(--text-secondary);
+  font-size:.74rem;
+  font-weight:750;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.tb-column-heading h2 {
+  font-size:1.65rem;
+  letter-spacing:0;
+}
+.tb-column-meta {
+  min-height:auto;
+  padding:0;
+}
+.tb-column-meta label {
+  display:grid;
+  align-items:center;
+  grid-template-columns:auto minmax(150px, max-content);
+  gap:.55rem;
+  width:max-content;
+  max-width:100%;
+  color:var(--text-secondary);
+  font-size:.74rem;
+  font-weight:750;
+  letter-spacing:.02em;
+}
+.tb-column-meta select {
+  width:auto;
+  min-width:156px;
+  padding:.55rem 2rem .55rem .75rem;
+  color:var(--tb-ink);
+}
+.timebank-page .tb-list {
+  gap:.85rem;
+}
+.tb-listing {
+  border-color:color-mix(in srgb, var(--tb-line) 76%, #ffffff 24%);
+  border-radius:10px;
+  background:var(--tb-card);
+  box-shadow:0 10px 28px color-mix(in srgb, #000000 16%, transparent);
+}
+.timebank-page .tb-row-open {
+  gap:1rem;
+  padding:1rem;
+}
+.tb-row-open:hover {
+  background:var(--tb-card-hover);
+}
+.tb-listing-photo,
+.tb-photo-placeholder {
+  width:104px;
+  height:104px;
+  border-radius:8px;
+  border:1px solid color-mix(in srgb, #ffffff 22%, transparent);
+  box-shadow:0 8px 18px color-mix(in srgb, #000000 18%, transparent);
+}
+.tb-photo-placeholder {
+  color:color-mix(in srgb, var(--tb-accent) 72%, var(--tb-ink));
+  background:linear-gradient(135deg, color-mix(in srgb, var(--tb-accent) 12%, #f5f9ef), #edf4e8);
+}
+.tb-card-kicker {
+  display:inline-flex;
+  align-items:center;
+  width:max-content;
+  max-width:100%;
+  border:1px solid color-mix(in srgb, var(--tb-accent) 28%, var(--tb-line));
+  border-radius:999px;
+  padding:.18rem .45rem;
+  color:color-mix(in srgb, var(--tb-accent) 72%, var(--tb-ink));
+  background:color-mix(in srgb, var(--tb-accent) 10%, var(--tb-surface));
+  font-size:.66rem;
+  font-weight:800;
+  line-height:1.2;
+  overflow-wrap:anywhere;
+}
+.tb-row-body {
+  display:grid;
+  gap:.32rem;
+}
+.tb-row-body h3 {
+  font-size:1.02rem;
+  letter-spacing:0;
+}
+.timebank-page .tb-card-description {
+  margin:.1rem 0;
+  color:color-mix(in srgb, var(--text-secondary) 88%, var(--tb-ink) 12%);
+}
+.timebank-page .tb-row-meta {
+  color:var(--tb-ink);
+  font-size:.73rem;
+}
+.timebank-page .tb-row-member {
+  font-size:.72rem;
+}
+.tb-listing-message {
+  padding:.1rem 1rem .45rem;
+}
+.tb-listing-message a,
+.tb-text-link {
+  color:color-mix(in srgb, var(--tb-accent) 70%, var(--tb-ink));
+  font-weight:700;
+}
+.tb-uptake {
+  margin:0 1rem;
+  padding:.15rem 0 .75rem;
+  border-color:var(--tb-rule);
+}
+.tb-votes {
+  display:flex;
+  align-items:center;
+  gap:.45rem;
+  margin:0 1rem .55rem;
+  color:var(--text-secondary);
+  font-variant-numeric:tabular-nums;
+}
+.tb-votes button {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:.25rem;
+  min-width:50px;
+  min-height:34px;
+  border:1px solid var(--tb-rule);
+  border-radius:999px;
+  color:var(--tb-ink);
+  background:color-mix(in srgb, var(--tb-surface) 74%, transparent);
+  font-size:.76rem;
+  font-weight:800;
+}
+.tb-votes button:hover {
+  background:color-mix(in srgb, var(--tb-accent) 10%, var(--tb-surface));
+}
+.tb-votes button.is-selected {
+  border-color:color-mix(in srgb, var(--tb-accent) 60%, var(--tb-line));
+  color:var(--tb-accent-ink);
+  background:var(--tb-accent);
+}
+.tb-votes strong {
+  min-width:2ch;
+  color:var(--tb-ink);
+  font-size:.8rem;
+  text-align:center;
+}
+.tb-detail > .tb-votes {
+  margin:.85rem 0 0;
+}
+.tb-imported-listing {
+  background:color-mix(in srgb, var(--tb-card) 88%, var(--tb-soft) 12%);
+}
+.tb-imported-listing .tb-card-kicker {
+  color:color-mix(in srgb, var(--tb-accent) 82%, var(--tb-ink));
+}
+.tb-marketplace-detail .tb-imported-photo-frame .tb-listing-photo,
+.tb-marketplace-detail .tb-imported-photo-frame .tb-photo-placeholder {
+  width:100%;
+}
+.tb-marketplace-contact {
+  display:grid;
+  gap:.55rem;
+}
+@media(max-width:900px) {
+  .tb-home { padding:.9rem }
+  .tb-columns { gap:1rem }
+  .tb-listing-photo,
+  .tb-photo-placeholder { width:82px; height:82px }
+}
+@media(max-width:640px) {
+  .tb-home { padding:.7rem; border-radius:10px }
+  .tb-home-heading { align-items:flex-start; flex-direction:column; gap:.35rem }
+  .tb-board-tools { padding:.55rem }
+  .tb-mine { min-height:40px }
+  .tb-column { gap:.65rem }
+  .tb-column-heading { min-height:50px }
+  .tb-column-heading h2 { font-size:1.22rem }
+  .tb-column-meta label { align-items:flex-start; grid-template-columns:1fr; gap:.35rem; width:100% }
+  .tb-column-meta select { width:100%; min-width:0; padding:.55rem .6rem }
+  .timebank-page .tb-row-open { gap:.65rem }
+  .tb-row-open .tb-listing-photo,
+  .tb-row-open .tb-photo-placeholder { width:100%; height:auto; aspect-ratio:4/3 }
+  .tb-card-kicker { font-size:.62rem }
+  .tb-row-body h3 { font-size:.9rem }
+  .tb-listing-message { padding:0 .65rem .25rem }
+  .tb-uptake { margin:0 .65rem; padding:.3rem 0 .55rem }
+  .tb-votes { margin:0 .65rem .5rem; gap:.35rem }
+  .tb-votes button { min-width:44px; min-height:34px }
+}

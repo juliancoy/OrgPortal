@@ -334,3 +334,63 @@ It uses the production chat routes and SQLite migrations, with HTTP polling in
 place of Durable Object sockets, to test two-member messaging, listing links,
 unread states, uptake and exchange notifications, refresh failures and narrow
 mobile layouts. Production acceptance separately checks the deployed services.
+
+
+### LetsBMore archive import
+
+`0025_timebank_import_claims.sql` stages an immutable source snapshot in the
+`bmoretimebank` community. The source files and generated plan contain private
+member information and must stay outside the repository and frontend assets.
+Run the loader with Node 24 or newer:
+
+```sh
+node scripts/letsbmore-import.mjs --archive /private/archive --plan /private/import-plan.json
+# Validate the migration and load against a local SQLite database first:
+node scripts/letsbmore-import.mjs --archive /private/archive --plan /private/import-plan.json --local-db /private/org.sqlite --apply
+# After backup, migration, and local acceptance, load the authorized production DB:
+LETSBMORE_D1_ID=<org-database-id> node scripts/letsbmore-import.mjs --archive /private/archive --plan /private/import-plan.json --remote --apply
+```
+
+Remote loading requires `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` with D1
+and R2 access. The loader verifies source counts, integer-minute conversion,
+activity IDs, the exporting member's ledger reconciliation, and every image
+checksum. Images are copied to `org-scan-images/timebank-imports/<batch-id>/`
+and read back to verify their hashes. A batch stays unavailable until every
+expected row is present and its content matches the plan. Rerunning the same
+snapshot resumes staging or verifies the completed batch; a changed snapshot
+is rejected. No existing timebank listing, exchange, or Dena account is rewritten.
+
+The initial snapshot contains 75 profiles, 74 known balances totaling 414 hours,
+108 activities, nine detailed historical exchanges, 100 account-to-record links,
+and 126 images. The repaired advertised-activity list contains 55 offers,
+41 requests, and one event. The two-column board shows the 96 offers/requests to
+signed-in members, labelled as archived with source dates and original links.
+Seventeen advertised records have no owner identified by the source; those are
+retained as unassigned records, without guessing an identity. Events and ended
+activities remain in the archive; owner-linked records appear after a claim.
+
+An authenticated member searches **Claim LetsBMore account**, submits evidence,
+and can withdraw a pending claim. A system administrator reviews it in
+**Admin → Account claims** and records a reason. Administrators cannot approve
+their own claims. Approval attaches the source balance once, rejects competing
+claims atomically, and creates append-only audit entries. Historical transactions
+are read-only evidence already included in the opening balance. New confirmed
+exchanges adjust that balance; only those new exchanges enter rewarded-hours
+and category/provider/beneficiary statistics. Unknown balances remain unknown.
+Source messages, notifications, credentials, and account settings stay in the
+private offline archive and are not injected into current conversations.
+
+Authenticated import endpoints under `/api/timebank/imports` are `accounts`,
+`me`, `listings`, `listings/:id/image`, `claims`, `claims/:id/withdraw`, `review`,
+and `claims/:id` (PATCH for admin review). Account discovery exposes names and
+former handles; balances/history require approved ownership or admin review.
+Catalog and photo endpoints enforce community scope and return no-store/private
+responses. Public offer feeds never include these imported records.
+
+For Selenium, run the synthetic fixture with `TIMEBANK_TEST_IMPORTS=1` and
+`TIMEBANK_TEST_PORT=8794`, then `node web/scripts/timebank-site-fixture.mjs` from
+`portal`, and `npm --prefix web run test:timebank:imports:selenium`. The fixture
+serves the actual site Worker and built `.cloudflare/site` assets so tenant root
+navigation is tested. Use Selenium Chrome on port 4446. Browser acceptance tests
+claim/withdraw/reclaim/review, private history, exact opening balances, logout,
+community isolation, and 320px/390px layouts. Test identities and data are synthetic.
