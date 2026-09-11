@@ -19,11 +19,11 @@ export function AboutPage() {
       >
         <article
           style={{
-            background: '#fff',
-            border: '1px solid #e3e0d7',
+            background: 'var(--panel)',
+            border: '1px solid var(--border)',
             borderRadius: '18px',
             padding: '1.25rem',
-            boxShadow: '0 12px 30px rgba(20, 16, 8, 0.08)',
+            boxShadow: 'var(--shadow-card)',
             textAlign: 'center',
           }}
         >
@@ -44,11 +44,11 @@ export function AboutPage() {
         </article>
         <article
           style={{
-            background: '#fff',
-            border: '1px solid #e3e0d7',
+            background: 'var(--panel)',
+            border: '1px solid var(--border)',
             borderRadius: '18px',
             padding: '1.25rem',
-            boxShadow: '0 12px 30px rgba(20, 16, 8, 0.08)',
+            boxShadow: 'var(--shadow-card)',
             textAlign: 'center',
           }}
         >

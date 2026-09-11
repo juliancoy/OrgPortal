@@ -371,10 +371,10 @@
 
   --text-primary: #172033;
   --text-secondary: #4b5f78;
-  --text-muted: #697a90;
+  --text-muted: #5b6b80;
   --text-danger: #b10030;
 
-  --accent-green: #178f45;
+  --accent-green: #0f6f36;
   --accent-green-bg: #d3f3dc;
   --accent-red: #c1121f;
   --accent-red-bg: #ffdce5;
@@ -993,7 +993,7 @@ h6 {
 
 .public-event-eyebrow {
   margin: 0;
-  color: color-mix(in srgb, var(--primary) 72%, #fff);
+  color: var(--primary);
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.12em;
@@ -1742,6 +1742,7 @@ h6 {
 }
 
 .tenant-home-event strong {
+  color: var(--text-primary);
   overflow-wrap: anywhere;
 }
 
@@ -1784,8 +1785,8 @@ h6 {
   padding: 8px 12px;
   border: 2px solid var(--primary);
   border-radius: 8px;
-  background: var(--primary);
-  color: #fff;
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
   font-size: 0.82rem;
   font-weight: 700;
   line-height: 1;
@@ -1794,6 +1795,7 @@ h6 {
 }
 
 .portal-nav-toggle:hover {
+  color: var(--btn-primary-text);
   background: var(--primary-hover);
   border-color: var(--primary-hover);
 }
@@ -2346,8 +2348,8 @@ h6 {
 .motion-feed-empty-link,
 .motion-list-sort.active,
 .motion-list-filter.active {
-  color: #fff;
-  background: var(--primary);
+  color: var(--btn-primary-text);
+  background: var(--btn-primary-bg);
 }
 
 .portal-button:hover,
@@ -2357,6 +2359,7 @@ h6 {
 .motion-list-sort.active:hover,
 .motion-list-filter.active:hover {
   text-decoration: none;
+  color: var(--btn-primary-text);
   background: var(--primary-hover);
   transform: translateY(-1px);
 }
@@ -2374,7 +2377,7 @@ h6 {
 }
 
 .portal-button-secondary:hover {
-  color: #fff;
+  color: var(--btn-primary-text);
   background: var(--primary-hover);
   text-decoration: none;
   transform: translateY(-1px);
@@ -2686,6 +2689,7 @@ h6 {
 }
 
 .id-link-row strong {
+  color: var(--text-primary);
   font-size: 0.86rem;
 }
 
@@ -2715,7 +2719,12 @@ h6 {
   gap: 12px;
   justify-items: center;
   padding: 14px;
+  color: var(--text-primary);
   text-align: center;
+}
+
+.id-qr-card strong {
+  color: var(--text-primary);
 }
 
 .id-qr-url {
@@ -3164,14 +3173,14 @@ h6 {
   border: 1px solid var(--primary);
   border-radius: var(--radius-md);
   background: var(--btn-primary-bg);
-  color: #ffffff;
+  color: var(--btn-primary-text);
   font-weight: 900;
   text-decoration: none;
   box-shadow: 0 8px 18px rgba(0, 26, 61, 0.18);
 }
 
 .contact-public-page-bubble:hover {
-  color: #ffffff;
+  color: var(--btn-primary-text);
   text-decoration: none;
   transform: translateY(-1px);
 }
@@ -3370,6 +3379,78 @@ h6 {
   height: 1px;
   opacity: 0;
   pointer-events: none;
+}
+
+
+.profile-photo-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  overflow-y: auto;
+  background: rgb(4 12 24 / 0.68);
+}
+
+.profile-photo-dialog {
+  display: grid;
+  gap: 1rem;
+  width: min(92vw, 720px);
+  padding: 1.5rem;
+  color: var(--text-primary);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg);
+}
+
+.profile-photo-dialog-heading {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.profile-photo-dialog-heading h2 {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.profile-photo-dialog-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.profile-photo-preview-panel {
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: var(--surface-soft);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+}
+
+.profile-photo-editor-controls {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.profile-photo-editor-controls .muted {
+  color: var(--text-secondary);
+}
+
+.profile-photo-editor-button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.profile-photo-editor-error {
+  margin: 0;
+  color: var(--text-danger);
+  font-weight: 700;
 }
 
 .profile-account-grid {
@@ -3957,8 +4038,8 @@ h6 {
 }
 
 .portal-timeframe-button.active {
-  background: var(--primary);
-  color: #fff;
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
 }
 
 .portal-muted {
@@ -6220,6 +6301,7 @@ textarea:focus {
 
 .portal-chat-message-author strong {
   min-width: 0;
+  color: var(--text-primary);
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -7929,6 +8011,7 @@ textarea:focus {
 }
 
 .tenant-home-resource strong {
+  color: var(--text-primary);
   font-size: 1.05rem;
 }
 
