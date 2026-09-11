@@ -32,6 +32,7 @@ type PublicEvent = {
   organization_name?: string | null
   host_org_name?: string | null
   host_org_id?: string | null
+  host_user_id?: string | null
 }
 
 type PublicEventChat = {
@@ -188,6 +189,7 @@ export function PublicEventPage() {
   const [replyingToId, setReplyingToId] = useState<string | null>(null)
   const [chatActionPending, setChatActionPending] = useState(false)
   const [myUserId, setMyUserId] = useState<string | null>(null)
+  const [canManageEvent, setCanManageEvent] = useState(false)
   const chatApi = useMemo(
     () =>
       new NativeChatApi(async () => {
@@ -333,6 +335,50 @@ export function PublicEventPage() {
       type: 'article',
     })
   }, [event])
+
+  useEffect(() => {
+    let cancelled = false
+    setCanManageEvent(false)
+    if (authLoading || !event || !token) return
+
+    async function checkEventManagerAccess() {
+      try {
+        const adminCheck = fetch(orgUrl('/admin/me'), {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+          .then((resp) => (resp.ok ? resp.json() : { is_sysadmin: false }))
+          .catch(() => ({ is_sysadmin: false }))
+
+        const orgCheck = event?.host_org_id
+          ? fetch(orgUrl('/api/network/orgs?mine=true&limit=300'), {
+              headers: { Authorization: `Bearer ${token}` },
+            })
+              .then(async (resp) => {
+                if (!resp.ok) return []
+                const data = await resp.json()
+                return Array.isArray(data) ? data : []
+              })
+              .catch(() => [])
+          : Promise.resolve([])
+
+        const [adminData, orgRows] = await Promise.all([adminCheck, orgCheck])
+        if (cancelled) return
+        const isSysadmin = Boolean((adminData as { is_sysadmin?: boolean }).is_sysadmin)
+        const managesHostOrg = (orgRows as Array<{ id?: string; my_role?: string | null }>).some((org) => (
+          org.id === event?.host_org_id && (org.my_role === 'owner' || org.my_role === 'administrator')
+        ))
+        const managesIndividualEvent = Boolean(event?.host_user_id && user?.id && event.host_user_id === user.id)
+        setCanManageEvent(isSysadmin || managesHostOrg || managesIndividualEvent)
+      } catch {
+        if (!cancelled) setCanManageEvent(false)
+      }
+    }
+
+    checkEventManagerAccess().catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [authLoading, event, token, user?.id])
 
   const eventJsonLd = useMemo(() => {
     if (!event) return null
@@ -503,6 +549,11 @@ export function PublicEventPage() {
               </div>
             ) : null}
           </div>
+          {canManageEvent ? (
+            <Link className="btn-primary public-event-manage-button" to={`/orgs/events#event-${encodeURIComponent(event.slug)}`}>
+              Manage Event
+            </Link>
+          ) : null}
         </div>
       </section>
 

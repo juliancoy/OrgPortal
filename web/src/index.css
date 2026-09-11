@@ -7550,3 +7550,17 @@ textarea:focus {
     position: static;
   }
 }
+
+.public-event-manage-button {
+  width: fit-content;
+  text-decoration: none;
+}
+
+.org-event-management-card {
+  scroll-margin-top: 96px;
+}
+
+.org-event-management-card:target {
+  border-color: color-mix(in srgb, var(--primary), var(--border) 35%);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary), transparent 78%);
+}
