@@ -352,7 +352,6 @@ async function reactionsForMessages(env: Env, messageIds: string[], currentUserI
   const rows = await env.DB.prepare(
     `SELECT r.message_id, r.emoji, r.user_id,
             COALESCE(m.user_name, r.user_id) AS user_name,
-            m.avatar_url AS avatar_url,
             r.created_at,
             CASE WHEN r.user_id = ? THEN 1 ELSE 0 END AS reacted
      FROM chat_message_reactions r
@@ -379,7 +378,7 @@ async function reactionsForMessages(env: Env, messageIds: string[], currentUserI
     aggregate.users!.push({
       user_id: row.user_id,
       user_name: row.user_name || row.user_id,
-      avatar_url: row.avatar_url || avatarUrls.get(row.user_id) || null,
+      avatar_url: avatarUrls.get(row.user_id) || null,
       created_at: row.created_at,
     });
     byMessageEmoji.set(key, aggregate);
