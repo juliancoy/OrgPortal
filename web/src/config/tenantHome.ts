@@ -25,7 +25,7 @@ export function tenantHomeAction(
   memberHomePath: string,
 ): TenantHomeAction {
   const kind = tenant.home_kind || (tenant.features?.includes('timebank') ? 'timebank' : 'default')
-  if (kind === 'landing') return { kind: 'landing' }
+  if (kind === 'landing' || kind === 'main') return { kind: 'landing' }
   if (kind === 'timebank') return { kind: 'timebank' }
   if (kind === 'auth') return { kind: 'redirect', to: role === 'guest' ? '/users/login' : memberHomePath }
   if (kind === 'org' && tenant.home_org_slug) return { kind: 'redirect', to: `/orgs/${encodeURIComponent(tenant.home_org_slug)}` }
