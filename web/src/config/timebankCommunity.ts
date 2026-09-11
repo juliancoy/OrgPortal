@@ -16,7 +16,7 @@ export type PortalTenant = {
   member_home_path?: string | null
   manifest_path?: string | null
   theme_color?: string | null
-  home_kind?: 'default' | 'landing' | 'route' | 'org' | 'org-events' | 'timebank' | 'auth' | null
+  home_kind?: 'default' | 'main' | 'landing' | 'route' | 'org' | 'org-events' | 'timebank' | 'auth' | null
   home_path?: string | null
   home_org_slug?: string | null
   home_heading?: string | null
@@ -58,7 +58,7 @@ export function useDomainCommunity() {
 export function useDomainTenant() {
   return useSyncExternalStore((listener) => { listeners.add(listener); return () => { listeners.delete(listener) } }, getDomainTenant, () => null)
 }
-const HOME_KINDS = new Set(['default', 'landing', 'route', 'org', 'org-events', 'timebank', 'auth'])
+const HOME_KINDS = new Set(['default', 'main', 'landing', 'route', 'org', 'org-events', 'timebank', 'auth'])
 
 function optionalString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null

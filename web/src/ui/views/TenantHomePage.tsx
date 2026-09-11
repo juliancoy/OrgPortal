@@ -62,9 +62,9 @@ function featureLabel(feature: string) {
 function TenantHomeActions({ tenant }: { tenant: PortalTenant }) {
   const { role, isLoading } = useAuth()
   const primaryHref = actionHref(tenant.home_primary_href) || portalProfilePath(role === 'guest' ? '/users/login' : '/chat')
-  const secondaryHref = actionHref(tenant.home_secondary_href) || (tenant.home_org_slug ? portalProfilePath(`/orgs/${encodeURIComponent(tenant.home_org_slug)}`) : portalProfilePath('/events'))
+  const secondaryHref = actionHref(tenant.home_secondary_href) || (tenant.home_org_slug ? portalProfilePath('/org-events') : portalProfilePath('/events'))
   const primaryLabel = tenant.home_primary_label || (role === 'guest' ? 'Login' : 'Open Messages')
-  const secondaryLabel = tenant.home_secondary_label || (tenant.home_org_slug ? 'View Organization' : 'Browse Events')
+  const secondaryLabel = tenant.home_secondary_label || 'Browse Events'
   const primaryTarget = actionLinkTarget(primaryHref)
   const secondaryTarget = actionLinkTarget(secondaryHref)
 
@@ -96,7 +96,7 @@ export function TenantHomePage() {
     if (!tenant?.home_org_slug) return
     const controller = new AbortController()
     setEventStatus('Loading upcoming events...')
-    fetch(`/api/org/api/network/orgs/public/${encodeURIComponent(tenant.home_org_slug)}/events?upcoming_only=true&limit=3`, { signal: controller.signal })
+    fetch(`/api/org/api/network/orgs/public/${encodeURIComponent(tenant.home_org_slug)}/events?upcoming_only=true&limit=6`, { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error('Unable to load events.')
         const data = await response.json()
@@ -130,31 +130,35 @@ export function TenantHomePage() {
           </div>}
         </section>
 
-        {features.length > 0 && <section className="tenant-home-grid" aria-label={`${profile.brandName} portal sections`}>
-          {features.slice(0, 4).map((feature) => <article className="tenant-home-card" key={feature}>
-            <span>{featureLabel(feature)}</span>
-            <h2>{feature === 'events' ? 'Events and registration' : feature === 'chat' ? 'Community messages' : featureLabel(feature)}</h2>
-            <p>{feature === 'events' ? 'Publish events, collect registrations, and keep attendance visible.' : feature === 'chat' ? 'Keep member conversations close to the organization.' : `Use the ${featureLabel(feature).toLowerCase()} tools configured for this tenant.`}</p>
-          </article>)}
-        </section>}
-
         {tenant.home_org_slug && <section className="tenant-home-events" aria-labelledby="tenant-home-events-title">
           <div className="tenant-home-section-heading">
             <div>
               <p className="tenant-home-eyebrow">Upcoming</p>
-              <h2 id="tenant-home-events-title">Hosted Events</h2>
+              <h2 id="tenant-home-events-title">Events at the center of the community</h2>
             </div>
-            <Link to={portalProfilePath(`/orgs/${encodeURIComponent(tenant.home_org_slug)}`)}>Organization Profile</Link>
+            <div className="tenant-home-section-links">
+              <Link to={portalProfilePath('/org-events')}>View all events</Link>
+              <Link to={portalProfilePath(`/orgs/${encodeURIComponent(tenant.home_org_slug)}`)}>Organization profile</Link>
+            </div>
           </div>
           {eventStatus && <p role="status" className="muted">{eventStatus}</p>}
+          {!eventStatus && events.length === 0 ? <p className="muted">New events will appear here as soon as they are published.</p> : null}
           <div className="tenant-home-event-list">
-            {events.map((event) => <Link className="tenant-home-event" to={portalProfilePath(`/events/${encodeURIComponent(event.slug)}`)} key={event.id}>
+            {events.map((event, index) => <Link className={`tenant-home-event${index === 0 ? ' tenant-home-event-featured' : ''}`} to={portalProfilePath(`/events/${encodeURIComponent(event.slug)}`)} key={event.id}>
               {event.image_url && <img src={event.image_url} alt="" loading="lazy" decoding="async" />}
               <span>{formatEventDate(event.starts_at)}</span>
               <strong>{event.title}</strong>
               {event.location && <small>{event.location}</small>}
             </Link>)}
           </div>
+        </section>}
+
+        {features.length > 0 && <section className="tenant-home-grid" aria-label={`${profile.brandName} portal sections`}>
+          {features.slice(0, 4).map((feature) => <article className="tenant-home-card" key={feature}>
+            <span>{featureLabel(feature)}</span>
+            <h2>{feature === 'events' ? 'Events and registration' : feature === 'chat' ? 'Community messages' : featureLabel(feature)}</h2>
+            <p>{feature === 'events' ? 'Publish events, collect registrations, and keep attendance visible.' : feature === 'chat' ? 'Keep member conversations close to the organization.' : `Use the ${featureLabel(feature).toLowerCase()} tools configured for this tenant.`}</p>
+          </article>)}
         </section>}
       </div>
     </main>
