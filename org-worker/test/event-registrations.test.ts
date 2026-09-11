@@ -15,7 +15,19 @@ class Statement {
 function setup() {
   const database = new DatabaseSync(':memory:');
   database.exec('PRAGMA foreign_keys = ON');
-  for (const name of ['0001_contact_pages', '0002_org_event_directories', '0018_event_registrations', '0019_email_campaigns']) {
+  for (const name of [
+    '0001_contact_pages',
+    '0002_org_event_directories',
+    '0018_event_registrations',
+    '0019_email_campaigns',
+    '0025_portal_tenants',
+    '0027_portal_tenant_branding',
+    '0028_portal_tenant_home_page',
+    '0029_portal_tenant_deployment_model',
+    '0032_portal_tenant_org_slug',
+    '0033_portal_tenant_custom_domains',
+    '0034_event_calendar_feeds',
+  ]) {
     database.exec(readFileSync(new URL(`../migrations/${name}.sql`, import.meta.url), 'utf8'));
   }
   database.exec("INSERT INTO events (id, ingest_key, title, slug) VALUES ('event-1', 'one', 'First event', 'first-event'), ('event-2', 'two', 'Second event', 'second-event')");
@@ -66,7 +78,52 @@ test('registration requires verified identity; repeated requests and cancellatio
   assert.equal(database.prepare("SELECT count(*) AS n FROM event_registrations WHERE event_id = 'event-1'").get()?.n, 0);
 });
 
-test('public preview counts all registrations but returns at most eight public profiles without private fields', async (t) => {
+test('registered events calendar feed is private, subscribable, and host-rooted', async (t) => {
+  t.mock.method(globalThis, 'fetch', async (_url: unknown, options: RequestInit) => {
+    const token = new Headers(options.headers).get('Authorization')?.replace('Bearer ', '');
+    return token ? Response.json({ id: token }) : new Response('', { status: 401 });
+  });
+  const { database } = setup();
+  t.after(() => database.close());
+  database.exec("UPDATE events SET starts_at = '2026-09-29T22:00:00.000Z', ends_at = '2026-09-30T00:00:00.000Z', location = 'Checkerspot Brewing' WHERE id = 'event-1'");
+  database.exec("UPDATE events SET starts_at = '2026-10-01T22:00:00.000Z', ends_at = '2026-10-02T00:00:00.000Z' WHERE id = 'event-2'");
+  database.exec("INSERT INTO event_registrations (event_id, user_id) VALUES ('event-1', 'alice'), ('event-2', 'bob')");
+
+  const metadataResponse = await app.request('https://medtech.social/api/network/calendar/feed', {
+    headers: { Authorization: 'Bearer alice' },
+  }, { DB: { prepare: (sql: string) => new Statement(database.prepare(sql)), batch: async (statements: Statement[]) => {
+    const results = [];
+    for (const statement of statements) results.push(await statement.run());
+    return results;
+  } }, PIDP_BASE_URL: 'https://identity.test' } as unknown as Env);
+  assert.equal(metadataResponse.status, 200);
+  assert.equal(metadataResponse.headers.get('Cache-Control'), 'no-store');
+  const metadata = await metadataResponse.json() as { feed_url: string; webcal_url: string; google_url: string; outlook_url: string; event_count: number };
+  assert.match(metadata.feed_url, /^https:\/\/medtech\.social\/api\/org\/api\/network\/calendar\/feed\/[A-Za-z0-9_-]+\.ics$/);
+  assert.equal(metadata.webcal_url.startsWith('webcal://medtech.social/'), true);
+  assert.equal(metadata.google_url.includes(encodeURIComponent(metadata.feed_url)), true);
+  assert.equal(metadata.outlook_url.includes(encodeURIComponent(metadata.feed_url)), true);
+  assert.equal(metadata.event_count, 1);
+
+  const icsResponse = await app.request(metadata.feed_url.replace('/api/org', ''), undefined, {
+    DB: { prepare: (sql: string) => new Statement(database.prepare(sql)), batch: async (statements: Statement[]) => {
+      const results = [];
+      for (const statement of statements) results.push(await statement.run());
+      return results;
+    } },
+    PIDP_BASE_URL: 'https://identity.test',
+  } as unknown as Env);
+  assert.equal(icsResponse.status, 200);
+  assert.equal(icsResponse.headers.get('Content-Type'), 'text/calendar;charset=utf-8');
+  const ics = await icsResponse.text();
+  assert.match(ics, /BEGIN:VCALENDAR/);
+  assert.match(ics, /SUMMARY:First event/);
+  assert.match(ics, /URL:https:\/\/medtech\.social\/events\/first-event/);
+  assert.doesNotMatch(ics, /Second event/);
+  assert.doesNotMatch(ics, /alice|bob/);
+});
+
+test('public preview counts all registrations and returns public profiles without private fields', async (t) => {
   const { database, request } = setup();
   t.after(() => database.close());
   for (let i = 0; i < 12; i++) {
@@ -82,7 +139,7 @@ test('public preview counts all registrations but returns at most eight public p
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('Cache-Control'), 'no-store');
   assert.equal(data.count, 12);
-  assert.equal(data.attendees.length, 8);
+  assert.equal(data.attendees.length, 11);
   assert.equal(data.attendees.some((person: { slug: string }) => person.slug === 'person-0'), false);
   const emailName = data.attendees.find((person: { slug: string }) => person.slug === 'person-1');
   assert.equal(emailName.name, 'Registrant');

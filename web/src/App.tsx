@@ -187,33 +187,13 @@ export default function App() {
               void handlePasswordLogin()
             }}
           >
-            <div className="portal-guest-login-actions" aria-label="Sign in or register options">
+            <div className="portal-guest-login-actions" aria-label="Sign in options">
               <a href={socialLoginUrl('google')} className="portal-social-login-button" aria-label="Continue with Google">
                 <img src={portalPath('/images/google-g-logo.svg')} alt="" className="portal-social-login-logo" />
               </a>
               <a href={socialLoginUrl('github')} className="portal-social-login-button" aria-label="Continue with GitHub">
                 <img src={portalPath('/images/github-mark.svg')} alt="" className="portal-social-login-logo" />
               </a>
-              <Link
-                to="/users/register"
-                className="portal-social-login-button"
-                aria-label="Register new account"
-                style={{
-                  display: 'inline-flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  border: '1px solid var(--border-input)',
-                  borderRadius: 8,
-                  padding: '0.6rem 1rem',
-                  textDecoration: 'none',
-                  color: 'inherit',
-                  fontSize: '0.9rem',
-                  fontWeight: 600,
-                }}
-              >
-                Register
-              </Link>
             </div>
 
             <div className="portal-login-divider">
@@ -268,9 +248,6 @@ export default function App() {
             >
               Open full identity provider
             </a>
-            <p className="muted" style={{ margin: 0, textAlign: 'center' }}>
-              Need an account? <Link to="/users/register">Register</Link>
-            </p>
           </div>
         </section>
       </main>

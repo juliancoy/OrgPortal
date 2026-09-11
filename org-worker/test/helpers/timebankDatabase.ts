@@ -10,7 +10,13 @@ class SqliteStatement {
     const result = this.statement.run(...this.parameters);
     return { success: true, results: [], meta: { changes: Number(result.changes) } };
   }
-  async execute() { return this.statement.columns().length ? this.all() : this.run(); }
+  private returnsRows() {
+    const columns = 'columns' in this.statement && typeof this.statement.columns === 'function'
+      ? this.statement.columns()
+      : this.statement.sourceSQL?.trim().match(/^(?:WITH|SELECT|PRAGMA)\b/i) ? [true] : [];
+    return columns.length > 0;
+  }
+  async execute() { return this.returnsRows() ? this.all() : this.run(); }
 }
 
 export class TimebankDatabase {
@@ -25,8 +31,12 @@ export class TimebankDatabase {
     this.sqlite.exec(readFileSync(new URL('../../migrations/0022_timebank_uptake.sql', import.meta.url), 'utf8'));
     this.sqlite.exec(readFileSync(new URL('../../migrations/0023_timebank_notifications.sql', import.meta.url), 'utf8'));
     this.sqlite.exec(readFileSync(new URL('../../migrations/0024_timebank_listing_visibility.sql', import.meta.url), 'utf8'));
+    this.sqlite.exec(readFileSync(new URL('../../migrations/0025_portal_tenants.sql', import.meta.url), 'utf8'));
     this.sqlite.exec(readFileSync(new URL('../../migrations/0025_timebank_import_claims.sql', import.meta.url), 'utf8'));
+    this.sqlite.exec(readFileSync(new URL('../../migrations/0026_retire_medtech_community_subdomain.sql', import.meta.url), 'utf8'));
     this.sqlite.exec(readFileSync(new URL('../../migrations/0026_timebank_listing_votes.sql', import.meta.url), 'utf8'));
+    this.sqlite.exec(readFileSync(new URL('../../migrations/0027_portal_tenant_branding.sql', import.meta.url), 'utf8'));
+    this.sqlite.exec(readFileSync(new URL('../../migrations/0028_portal_tenant_home_page.sql', import.meta.url), 'utf8'));
   }
   prepare(sql: string) { return new SqliteStatement(this.sqlite.prepare(sql)); }
   async batch(statements: SqliteStatement[]) {

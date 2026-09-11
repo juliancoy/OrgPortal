@@ -28,6 +28,8 @@ test('build metadata identifies its own checkout, marks edits, and never adopts 
     const sha = runGit(dir, 'rev-parse', 'HEAD');
     assert.equal(generate(dir).commit, sha);
     assert.equal(generate(dir).dirty, false);
+    writeFileSync(join(dir, 'org-worker/wrangler.jsonc'), '{"name":"generated-deploy-config"}\n');
+    assert.equal(generate(dir).dirty, false);
     writeFileSync(join(dir, 'local-edit.txt'), 'local edit');
     assert.equal(generate(dir).dirty, true);
     const archive = join(dir, 'embedded-archive');

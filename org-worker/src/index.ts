@@ -6,7 +6,7 @@ import { HTTPException } from "hono/http-exception";
 import { handleEventMcp, protectedResourceMetadata, eventErrorResponse } from "./eventMcp";
 import { checkEventConfiguration } from "./eventConfiguration";
 import {
-  getTimebankListing, setTimebankUptake, setTimebankListingVote, timebankAnalytics, resolveTimebankCommunity, saveTimebankCommunity, setTimebankPhoto, getTimebankPhoto,
+  getTimebankListing, setTimebankUptake, setTimebankListingVote, timebankAnalytics, resolvePortalTenant, resolvePortalTenantBySlug, resolveTimebankCommunity, saveTimebankCommunity, setTimebankPhoto, getTimebankPhoto,
   TimebankError, timebankDashboard, publicTimebankOffers, createTimebankListing, updateTimebankListing,
   proposeTimebankExchange, resolveTimebankExchange,
 } from "./timebank";
@@ -134,11 +134,63 @@ type OrganizationRow = {
   membership_count?: number | null;
   pending_challenges_count?: number | null;
   my_role?: string | null;
+  feedback_count?: number | null;
+  feedback_positive_count?: number | null;
+  feedback_concern_count?: number | null;
 };
 
-type OrganizationSentimentCounts = {
-  favor_count?: number | null;
-  disfavor_count?: number | null;
+type OrganizationFeedbackRating = "positive" | "neutral" | "concern";
+
+type OrganizationFeedbackRow = {
+  organization_id?: string;
+  user_id?: string;
+  user_name?: string | null;
+  rating: OrganizationFeedbackRating;
+  comment: string | null;
+  created_at?: string;
+  updated_at: string;
+};
+
+type OrganizationMembershipState = {
+  organization_id: string;
+  role: string | null;
+  status: "active" | "none";
+  membership_count: number;
+};
+
+type OrganizationPortalRow = {
+  id: string;
+  organization_id?: string | null;
+  slug?: string | null;
+  hostname: string;
+  name: string;
+  tagline: string;
+  accent_color: string;
+  profile: string;
+  features: string | string[];
+  brand_image_path?: string | null;
+  home_url?: string | null;
+  member_home_path?: string | null;
+  manifest_path?: string | null;
+  theme_color?: string | null;
+  home_kind?: string | null;
+  home_path?: string | null;
+  home_org_slug?: string | null;
+  home_heading?: string | null;
+  home_description?: string | null;
+  home_primary_label?: string | null;
+  home_primary_href?: string | null;
+  home_secondary_label?: string | null;
+  home_secondary_href?: string | null;
+  home_image_url?: string | null;
+  public_base_url?: string | null;
+  canonical_path_prefix?: string | null;
+  feature_config?: string | null;
+  custom_domain_hostname?: string | null;
+  custom_domain_status?: string | null;
+  custom_domain_requested_at?: string | null;
+  custom_domain_attached_at?: string | null;
+  custom_domain_notes?: string | null;
 };
 
 type EventRow = {
@@ -157,11 +209,22 @@ type EventRow = {
   host_org_id: string | null;
   host_org_name: string | null;
   host_org_source_url: string | null;
+  event_chat_room_id?: string | null;
+  event_chat_room_alias?: string | null;
+  event_chat_room_name?: string | null;
   tags: string;
   city: string | null;
   created_at: string;
   updated_at: string;
   organization_name?: string | null;
+};
+
+type RegisteredEventCalendarFeedRow = {
+  user_id: string;
+  token: string;
+  created_at: string;
+  updated_at: string;
+  revoked_at: string | null;
 };
 
 type BusinessCardSettingsRow = {
@@ -623,22 +686,182 @@ async function ensureDefaultAdminConnection(db: D1Database, contact: ContactRow)
     .run();
 }
 
-function publicPortalBase(env: Env, request: Request) {
+function requestPublicHostname(request: Request) {
+  return (request.headers.get("x-forwarded-host") || new URL(request.url).host).toLowerCase().split(":")[0];
+}
+
+async function tenantPublicPortalBase(env: Env, request: Request): Promise<string | null> {
+  const hostname = requestPublicHostname(request);
+  try {
+    const tenant = await env.DB.prepare("SELECT public_base_url, canonical_path_prefix FROM portal_tenants WHERE hostname = ?")
+      .bind(hostname)
+      .first<{ public_base_url?: string | null; canonical_path_prefix?: string | null }>();
+    if (!tenant) return null;
+    const configured = String(tenant.public_base_url || "").replace(/\/+$/g, "");
+    if (configured) return configured;
+    const prefix = String(tenant.canonical_path_prefix || "").trim().replace(/\/+$/g, "");
+    return `${new URL(request.url).origin}${prefix === "/" ? "" : prefix}`;
+  } catch {
+    return null;
+  }
+}
+
+async function publicPortalBase(env: Env, request: Request) {
+  const tenantBase = await tenantPublicPortalBase(env, request);
+  if (tenantBase) return tenantBase;
   const configured = (env.PUBLIC_PORTAL_BASE_URL || "").replace(/\/+$/g, "");
   if (configured) return configured;
   return `${new URL(request.url).origin}/p`;
 }
 
-function publicUrl(env: Env, request: Request, slug: string) {
-  return `${publicPortalBase(env, request)}/users/${encodeURIComponent(slug)}`;
+async function publicUrl(env: Env, request: Request, slug: string) {
+  return `${await publicPortalBase(env, request)}/users/${encodeURIComponent(slug)}`;
 }
 
-function orgPublicUrl(env: Env, request: Request, slug: string) {
-  return `${publicPortalBase(env, request).replace(/\/+$/g, "")}/orgs/${encodeURIComponent(slug)}`;
+async function orgPublicUrl(env: Env, request: Request, slug: string) {
+  return `${(await publicPortalBase(env, request)).replace(/\/+$/g, "")}/orgs/${encodeURIComponent(slug)}`;
 }
 
-function eventPublicUrl(env: Env, request: Request, slug: string) {
-  return `${publicPortalBase(env, request).replace(/\/+$/g, "")}/events/${encodeURIComponent(slug)}`;
+async function eventPublicUrl(env: Env, request: Request, slug: string) {
+  return `${(await publicPortalBase(env, request)).replace(/\/+$/g, "")}/events/${encodeURIComponent(slug)}`;
+}
+
+function calendarFeedPublicUrl(request: Request, token: string) {
+  const origin = new URL(request.url).origin.replace(/\/+$/g, "");
+  return `${origin}/api/org/api/network/calendar/feed/${encodeURIComponent(token)}.ics`;
+}
+
+function webcalUrl(url: string) {
+  return url.replace(/^https:/i, "webcal:");
+}
+
+function base64Url(bytes: Uint8Array) {
+  let raw = "";
+  for (const byte of bytes) raw += String.fromCharCode(byte);
+  return btoa(raw).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function generateCalendarFeedToken() {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return base64Url(bytes);
+}
+
+function calendarFeedLinks(request: Request, token: string, count: number, createdAt: string) {
+  const feedUrl = calendarFeedPublicUrl(request, token);
+  const name = "OrgPortal registered events";
+  return {
+    feed_url: feedUrl,
+    download_url: feedUrl,
+    webcal_url: webcalUrl(feedUrl),
+    google_url: `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(feedUrl)}`,
+    outlook_url: `https://outlook.live.com/calendar/0/addfromweb?url=${encodeURIComponent(feedUrl)}&name=${encodeURIComponent(name)}`,
+    event_count: count,
+    token_created_at: createdAt,
+  };
+}
+
+async function registeredEventCount(db: D1Database, userId: string) {
+  const row = await db.prepare("SELECT count(*) AS count FROM event_registrations WHERE user_id = ?").bind(userId).first<{ count: number }>();
+  return Number(row?.count || 0);
+}
+
+async function registeredEventCalendarFeed(env: Env, request: Request, userId: string, regenerate = false) {
+  const now = new Date().toISOString();
+  let feed = await env.DB.prepare(
+    "SELECT * FROM event_calendar_feeds WHERE user_id = ? AND revoked_at IS NULL",
+  )
+    .bind(userId)
+    .first<RegisteredEventCalendarFeedRow>();
+  if (!feed || regenerate) {
+    const token = generateCalendarFeedToken();
+    if (feed) {
+      await env.DB.prepare("UPDATE event_calendar_feeds SET token = ?, updated_at = ?, revoked_at = NULL WHERE user_id = ?")
+        .bind(token, now, userId)
+        .run();
+    } else {
+      await env.DB.prepare("INSERT INTO event_calendar_feeds (user_id, token, created_at, updated_at) VALUES (?, ?, ?, ?)")
+        .bind(userId, token, now, now)
+        .run();
+    }
+    feed = await env.DB.prepare("SELECT * FROM event_calendar_feeds WHERE user_id = ?")
+      .bind(userId)
+      .first<RegisteredEventCalendarFeedRow>();
+  }
+  if (!feed) fail(500, "Calendar feed could not be created");
+  return calendarFeedLinks(request, feed.token, await registeredEventCount(env.DB, userId), feed.created_at);
+}
+
+function icsTimestamp(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+}
+
+function icsEscape(value: string) {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/\r?\n/g, "\\n")
+    .replace(/,/g, "\\,")
+    .replace(/;/g, "\\;");
+}
+
+function icsFold(line: string) {
+  const chunks: string[] = [];
+  let rest = line;
+  while (rest.length > 74) {
+    chunks.push(rest.slice(0, 74));
+    rest = ` ${rest.slice(74)}`;
+  }
+  chunks.push(rest);
+  return chunks.join("\r\n");
+}
+
+async function registeredEventsIcs(env: Env, request: Request, feed: RegisteredEventCalendarFeedRow) {
+  const rows = await env.DB.prepare(
+    `SELECT e.*, o.name AS organization_name
+     FROM event_registrations r
+     JOIN events e ON e.id = r.event_id
+     LEFT JOIN organizations o ON o.id = e.host_org_id
+     WHERE r.user_id = ?
+     ORDER BY COALESCE(e.starts_at, e.created_at) ASC
+     LIMIT 500`,
+  )
+    .bind(feed.user_id)
+    .all<EventRow>();
+  const nowStamp = icsTimestamp(new Date().toISOString()) || "";
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Code Collective//OrgPortal Registered Events//EN",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    "X-WR-CALNAME:OrgPortal Registered Events",
+  ];
+  for (const event of rows.results || []) {
+    const startsAt = event.starts_at;
+    if (!startsAt) continue;
+    const start = icsTimestamp(startsAt);
+    if (!start) continue;
+    const end = event.ends_at ? icsTimestamp(event.ends_at) : null;
+    const fallbackEnd = icsTimestamp(new Date(new Date(startsAt).getTime() + 60 * 60 * 1000).toISOString()) || start;
+    const url = await eventPublicUrl(env, request, event.slug);
+    const details = [event.description?.trim() || "", url].filter(Boolean).join("\n\n");
+    lines.push(
+      "BEGIN:VEVENT",
+      `UID:${icsEscape(`${event.id}@orgportal.codecollective.us`)}`,
+      `DTSTAMP:${nowStamp}`,
+      `DTSTART:${start}`,
+      `DTEND:${end || fallbackEnd}`,
+      `SUMMARY:${icsEscape(event.title.trim() || "Event")}`,
+    );
+    if (details) lines.push(`DESCRIPTION:${icsEscape(details)}`);
+    if (event.location?.trim()) lines.push(`LOCATION:${icsEscape(event.location.trim())}`);
+    if (url) lines.push(`URL:${icsEscape(url)}`);
+    lines.push("END:VEVENT");
+  }
+  lines.push("END:VCALENDAR");
+  return `${lines.map(icsFold).join("\r\n")}\r\n`;
 }
 
 function userName(user: PidpUser) {
@@ -665,7 +888,7 @@ function defaultSlug(user: PidpUser) {
   return slugify(user.id || "contact");
 }
 
-function mapContact(env: Env, request: Request, row: ContactRow) {
+async function mapContact(env: Env, request: Request, row: ContactRow) {
   return {
     user_id: row.user_id,
     user_name: row.user_name || "User",
@@ -683,7 +906,7 @@ function mapContact(env: Env, request: Request, row: ContactRow) {
     links: parseLinks(row.links),
     source_profile_url: row.source_profile_url,
     source_profile_imported_at: row.source_profile_imported_at,
-    public_url: publicUrl(env, request, row.slug),
+    public_url: await publicUrl(env, request, row.slug),
     updated_at: row.updated_at,
   };
 }
@@ -860,9 +1083,9 @@ async function applyContactPayload(env: Env, row: ContactRow, user: PidpUser, pa
     .run();
 }
 
-function mapOrganization(row: OrganizationRow & OrganizationSentimentCounts, upcomingEventsCount = 0) {
-  const favorCount = Number(row.favor_count || 0);
-  const disfavorCount = Number(row.disfavor_count || 0);
+function mapOrganization(row: OrganizationRow, upcomingEventsCount = 0) {
+  const positiveCount = Number(row.feedback_positive_count || 0);
+  const concernCount = Number(row.feedback_concern_count || 0);
   return {
     id: row.id,
     name: row.name,
@@ -880,9 +1103,10 @@ function mapOrganization(row: OrganizationRow & OrganizationSentimentCounts, upc
     membership_count: Number(row.membership_count || 0),
     my_role: row.my_role || null,
     upcoming_events_count: upcomingEventsCount,
-    favor_count: favorCount,
-    disfavor_count: disfavorCount,
-    sentiment_score: favorCount - disfavorCount,
+    feedback_count: Number(row.feedback_count || 0),
+    feedback_positive_count: positiveCount,
+    feedback_concern_count: concernCount,
+    feedback_score: positiveCount - concernCount,
     pending_challenges_count: Number(row.pending_challenges_count || 0),
     is_disputed: Number(row.pending_challenges_count || 0) > 0,
     created_at: row.created_at,
@@ -890,7 +1114,7 @@ function mapOrganization(row: OrganizationRow & OrganizationSentimentCounts, upc
   };
 }
 
-function mapEvent(env: Env, request: Request, row: EventRow) {
+async function mapEvent(env: Env, request: Request, row: EventRow) {
   return {
     id: row.id,
     title: row.title,
@@ -908,10 +1132,37 @@ function mapEvent(env: Env, request: Request, row: EventRow) {
     host_org_name: row.organization_name || row.host_org_name,
     organization_name: row.organization_name || row.host_org_name,
     tags: parseJsonArray(row.tags),
-    public_url: eventPublicUrl(env, request, row.slug),
+    public_url: await eventPublicUrl(env, request, row.slug),
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
+}
+
+async function publicEventBySlug(db: D1Database, rawSlug: string) {
+  const slug = slugify(rawSlug);
+  try {
+    return await db.prepare(
+      `SELECT e.*, o.name AS organization_name
+       FROM events e
+       LEFT JOIN organizations o ON o.id = e.host_org_id
+       LEFT JOIN event_slug_aliases esa ON esa.event_id = e.id AND esa.slug = ?
+       WHERE e.slug = ? OR esa.slug = ?
+       ORDER BY CASE WHEN e.slug = ? THEN 0 ELSE 1 END
+       LIMIT 1`,
+    )
+      .bind(slug, slug, slug, slug)
+      .first<EventRow>();
+  } catch (err) {
+    if (!String(err instanceof Error ? err.message : err).includes("event_slug_aliases")) throw err;
+    return await db.prepare(
+      `SELECT e.*, o.name AS organization_name
+       FROM events e
+       LEFT JOIN organizations o ON o.id = e.host_org_id
+       WHERE e.slug = ?`,
+    )
+      .bind(slug)
+      .first<EventRow>();
+  }
 }
 
 const DEFAULT_BUSINESS_CARD_SETTINGS = {
@@ -1239,20 +1490,119 @@ async function organizationByIdOrSlug(db: D1Database, organizationId: string) {
     .first<OrganizationRow>();
 }
 
-async function organizationSentimentCounts(db: D1Database, organizationId: string) {
+async function organizationFeedbackSummary(db: D1Database, organizationId: string) {
   const row = await db.prepare(
     `SELECT
-      COALESCE(SUM(CASE WHEN sentiment = 'favor' THEN 1 ELSE 0 END), 0) AS favor_count,
-      COALESCE(SUM(CASE WHEN sentiment = 'disfavor' THEN 1 ELSE 0 END), 0) AS disfavor_count
-     FROM organization_sentiments
+      count(*) AS feedback_count,
+      COALESCE(SUM(CASE WHEN rating = 'positive' THEN 1 ELSE 0 END), 0) AS feedback_positive_count,
+      COALESCE(SUM(CASE WHEN rating = 'concern' THEN 1 ELSE 0 END), 0) AS feedback_concern_count
+     FROM organization_feedback
      WHERE organization_id = ?`,
   )
     .bind(organizationId)
-    .first<Required<OrganizationSentimentCounts>>();
+    .first<Pick<Required<OrganizationRow>, "feedback_count" | "feedback_positive_count" | "feedback_concern_count">>();
   return {
-    favor_count: Number(row?.favor_count || 0),
-    disfavor_count: Number(row?.disfavor_count || 0),
+    feedback_count: Number(row?.feedback_count || 0),
+    feedback_positive_count: Number(row?.feedback_positive_count || 0),
+    feedback_concern_count: Number(row?.feedback_concern_count || 0),
   };
+}
+
+async function organizationMembershipState(db: D1Database, organizationId: string, userId: string): Promise<OrganizationMembershipState> {
+  const membership = await db.prepare(
+    "SELECT role FROM organization_memberships WHERE organization_id = ? AND user_id = ? AND status = 'active'",
+  )
+    .bind(organizationId, userId)
+    .first<{ role: string }>();
+  const count = await db.prepare(
+    "SELECT count(*) AS n FROM organization_memberships WHERE organization_id = ? AND status = 'active'",
+  )
+    .bind(organizationId)
+    .first<{ n: number }>();
+  return {
+    organization_id: organizationId,
+    role: membership?.role || null,
+    status: membership?.role ? "active" : "none",
+    membership_count: Number(count?.n || 0),
+  };
+}
+
+function tenantSlugField(payload: Record<string, unknown>, fallback: string) {
+  const slug = slugify(stringField(payload, "slug", 80) || fallback);
+  if (!/^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/.test(slug)) {
+    fail(400, "Use a 3-64 character slug with lowercase letters, numbers, and hyphens.");
+  }
+  return slug;
+}
+
+function tenantHomeKindField(payload: Record<string, unknown>) {
+  const kind = String(payload.home_kind || "landing").trim();
+  if (!["landing", "route", "org", "org-events", "timebank", "auth", "default"].includes(kind)) {
+    fail(400, "home_kind is not supported.");
+  }
+  return kind;
+}
+
+function portalTenantFeaturesField(payload: Record<string, unknown>) {
+  const raw = Array.isArray(payload.features) ? payload.features : ["directory", "events", "chat"];
+  return JSON.stringify(raw.map((feature) => String(feature || "").trim()).filter(Boolean).slice(0, 12));
+}
+
+function parsePortalTenantFeatures(value: string | string[]) {
+  if (Array.isArray(value)) return value.filter((feature): feature is string => typeof feature === "string" && Boolean(feature.trim()));
+  try {
+    const parsed = JSON.parse(String(value || "[]"));
+    return Array.isArray(parsed) ? parsed.filter((feature): feature is string => typeof feature === "string" && Boolean(feature.trim())) : [];
+  } catch {
+    return [];
+  }
+}
+
+function customDomainField(payload: Record<string, unknown>) {
+  const hostname = String(payload.hostname || payload.custom_domain_hostname || "").trim().toLowerCase();
+  if (!/^(?!-)(?:[a-z0-9-]{1,63}\.)+[a-z]{2,63}$/.test(hostname) || hostname.includes("..")) {
+    fail(400, "Enter a valid custom domain.");
+  }
+  if (hostname === "codecollective.us" || hostname.endsWith(".codecollective.us") || hostname.endsWith(".slug.portal.local")) {
+    fail(400, "That domain is reserved.");
+  }
+  return hostname;
+}
+
+async function organizationPortalSlugUrl(env: Env, request: Request, slug: string) {
+  const base = (await publicPortalBase(env, request)).replace(/\/+$/g, "");
+  return `${base}/portals/${encodeURIComponent(slug)}`;
+}
+
+async function organizationPortalByOrg(db: D1Database, organization: OrganizationRow) {
+  return db.prepare(
+    `SELECT * FROM portal_tenants
+     WHERE organization_id = ? OR home_org_slug = ?
+     ORDER BY CASE WHEN organization_id = ? THEN 0 ELSE 1 END
+     LIMIT 1`,
+  )
+    .bind(organization.id, organization.slug, organization.id)
+    .first<OrganizationPortalRow>();
+}
+
+async function organizationPortalResponse(env: Env, request: Request, tenant: OrganizationPortalRow | null) {
+  if (!tenant) return null;
+  const slug = String(tenant.slug || "").trim();
+  return {
+    ...tenant,
+    features: parsePortalTenantFeatures(tenant.features),
+    slug_url: slug ? await organizationPortalSlugUrl(env, request, slug) : null,
+  };
+}
+
+function customDomainChecklist(hostname: string) {
+  return [
+    `Add the Cloudflare custom domain for ${hostname} to the OrgPortal web deployment.`,
+    `Allow https://${hostname} in PIdP origins and redirect/callback settings.`,
+    `Confirm MCP protected resource metadata advertises the tenant worker URL.`,
+    "Configure any provider bindings required by this tenant's enabled features.",
+    `After the domain serves the portal, attach it to make https://${hostname} canonical.`,
+  ];
 }
 
 async function upsertOrganization(db: D1Database, raw: Record<string, unknown>) {
@@ -1305,8 +1655,10 @@ async function upsertEvent(db: D1Database, raw: Record<string, unknown>) {
   await db.prepare(
     `INSERT INTO events
       (id, ingest_key, title, slug, description, starts_at, ends_at, location, source_url, image_url,
-       host_user_id, host_user_name, host_org_id, host_org_name, host_org_source_url, tags, city, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       host_user_id, host_user_name, host_org_id, host_org_name, host_org_source_url,
+       event_chat_room_id, event_chat_room_alias, event_chat_room_name,
+       tags, city, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(ingest_key) DO UPDATE SET
       title = excluded.title,
       description = excluded.description,
@@ -1320,6 +1672,9 @@ async function upsertEvent(db: D1Database, raw: Record<string, unknown>) {
       host_org_id = excluded.host_org_id,
       host_org_name = excluded.host_org_name,
       host_org_source_url = excluded.host_org_source_url,
+      event_chat_room_id = excluded.event_chat_room_id,
+      event_chat_room_alias = excluded.event_chat_room_alias,
+      event_chat_room_name = excluded.event_chat_room_name,
       tags = excluded.tags,
       city = excluded.city,
       updated_at = excluded.updated_at`,
@@ -1340,6 +1695,9 @@ async function upsertEvent(db: D1Database, raw: Record<string, unknown>) {
       hostOrg?.id || null,
       stringField(raw, "host_org_name", 255),
       hostOrgSourceUrl,
+      stringField(raw, "event_chat_room_id", 255),
+      stringField(raw, "event_chat_room_alias", 255),
+      stringField(raw, "event_chat_room_name", 255),
       tagsField(raw),
       stringField(raw, "city", 80),
       existing?.created_at || updatedAt,
@@ -1820,7 +2178,7 @@ app.get("/admin/mcp/status", async (c) => {
 app.get("/api/network/contact/me", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   const row = await contactForUser(c.env, c.req.raw, user);
-  return c.json(mapContact(c.env, c.req.raw, row));
+  return c.json(await mapContact(c.env, c.req.raw, row));
 });
 
 app.put("/api/network/contact/me", async (c) => {
@@ -1829,7 +2187,7 @@ app.put("/api/network/contact/me", async (c) => {
   const payload = (await c.req.json().catch(() => ({}))) as ContactPayload;
   await applyContactPayload(c.env, row, user, payload);
   const updated = await c.env.DB.prepare("SELECT * FROM user_contact_pages WHERE user_id = ?").bind(user.id).first<ContactRow>();
-  return c.json(mapContact(c.env, c.req.raw, updated!));
+  return c.json(await mapContact(c.env, c.req.raw, updated!));
 });
 
 app.post("/api/network/contact/me/import", async (c) => {
@@ -1843,7 +2201,7 @@ app.post("/api/network/contact/me/import", async (c) => {
     .bind(sourceUrl, importedAt, importedAt, user.id)
     .run();
   const updated = await c.env.DB.prepare("SELECT * FROM user_contact_pages WHERE user_id = ?").bind(row.user_id).first<ContactRow>();
-  return c.json({ contact: mapContact(c.env, c.req.raw, updated!), imported_fields: ["source_profile_url"], source_url: sourceUrl });
+  return c.json({ contact: await mapContact(c.env, c.req.raw, updated!), imported_fields: ["source_profile_url"], source_url: sourceUrl });
 });
 
 app.get("/api/network/notifications/summary", async (c) => {
@@ -2105,7 +2463,7 @@ async function publicUsers(env: Env, request: Request, query = "", limit = 40) {
     .bind(candidateLimit)
     .all<ContactRow>();
   const rankedRows = rankSearchResults(rows.results || [], q, (row) => [row.user_name, row.headline, row.slug], safeLimit);
-  return rankedRows.map((row) => mapContact(env, request, row));
+  return Promise.all(rankedRows.map((row) => mapContact(env, request, row)));
 }
 
 async function networkUsers(env: Env, request: Request, query = "", limit = 500) {
@@ -2171,18 +2529,19 @@ app.get("/api/network/orgs/public", async (c) => {
   const rows = await c.env.DB.prepare(
     `SELECT o.*,
       (SELECT count(*) FROM events e WHERE e.host_org_id = o.id AND (e.starts_at IS NULL OR e.starts_at >= datetime('now'))) AS upcoming_events_count,
-      (SELECT count(*) FROM organization_sentiments s WHERE s.organization_id = o.id AND s.sentiment = 'favor') AS favor_count,
-      (SELECT count(*) FROM organization_sentiments s WHERE s.organization_id = o.id AND s.sentiment = 'disfavor') AS disfavor_count,
+      (SELECT count(*) FROM organization_feedback f WHERE f.organization_id = o.id) AS feedback_count,
+      (SELECT count(*) FROM organization_feedback f WHERE f.organization_id = o.id AND f.rating = 'positive') AS feedback_positive_count,
+      (SELECT count(*) FROM organization_feedback f WHERE f.organization_id = o.id AND f.rating = 'concern') AS feedback_concern_count,
       (SELECT own.owner_user_id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS claimed_by_user_id,
       (SELECT own.id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS ownership_id,
       (SELECT count(*) FROM organization_memberships m WHERE m.organization_id = o.id AND m.status = 'active') AS membership_count,
       (SELECT count(*) FROM organization_ownership_challenges ch WHERE ch.organization_id = o.id AND ch.status = 'open') AS pending_challenges_count
      FROM organizations o
-     ORDER BY (favor_count - disfavor_count) DESC, upcoming_events_count DESC, lower(o.name) ASC
+     ORDER BY membership_count DESC, (feedback_positive_count - feedback_concern_count) DESC, upcoming_events_count DESC, lower(o.name) ASC
      LIMIT ?`,
   )
     .bind(candidateLimit)
-    .all<OrganizationRow & { upcoming_events_count: number } & OrganizationSentimentCounts>();
+    .all<OrganizationRow & { upcoming_events_count: number }>();
   const rankedRows = rankSearchResults(rows.results || [], q, (row) => [row.name, row.description, row.slug, row.tags, row.city], limit);
   return c.json(rankedRows.map((row) => mapOrganization(row, Number(row.upcoming_events_count || 0))));
 });
@@ -2193,6 +2552,9 @@ app.get("/api/network/orgs/public/:slug", async (c) => {
       (SELECT own.owner_user_id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS claimed_by_user_id,
       (SELECT own.id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS ownership_id,
       (SELECT count(*) FROM organization_memberships m WHERE m.organization_id = o.id AND m.status = 'active') AS membership_count,
+      (SELECT count(*) FROM organization_feedback f WHERE f.organization_id = o.id) AS feedback_count,
+      (SELECT count(*) FROM organization_feedback f WHERE f.organization_id = o.id AND f.rating = 'positive') AS feedback_positive_count,
+      (SELECT count(*) FROM organization_feedback f WHERE f.organization_id = o.id AND f.rating = 'concern') AS feedback_concern_count,
       (SELECT count(*) FROM organization_ownership_challenges ch WHERE ch.organization_id = o.id AND ch.status = 'open') AS pending_challenges_count
      FROM organizations o WHERE o.slug = ?`,
   )
@@ -2202,8 +2564,7 @@ app.get("/api/network/orgs/public/:slug", async (c) => {
   const count = await c.env.DB.prepare("SELECT count(*) AS n FROM events WHERE host_org_id = ? AND (starts_at IS NULL OR starts_at >= datetime('now'))")
     .bind(row.id)
     .first<{ n: number }>();
-  const sentimentCounts = await organizationSentimentCounts(c.env.DB, row.id);
-  return c.json({ ...mapOrganization({ ...row, ...sentimentCounts }, Number(count?.n || 0)), public_url: orgPublicUrl(c.env, c.req.raw, row.slug) });
+  return c.json({ ...mapOrganization(row, Number(count?.n || 0)), public_url: await orgPublicUrl(c.env, c.req.raw, row.slug) });
 });
 
 app.get("/api/network/orgs/public/:slug/events", async (c) => {
@@ -2224,7 +2585,7 @@ app.get("/api/network/orgs/public/:slug/events", async (c) => {
   )
     .bind(org.id, limit)
     .all<EventRow>();
-  return c.json((rows.results || []).map((row) => mapEvent(c.env, c.req.raw, row)));
+  return c.json(await Promise.all((rows.results || []).map((row) => mapEvent(c.env, c.req.raw, row))));
 });
 
 app.get("/api/network/orgs/public/:slug/admins", async (c) => {
@@ -2267,32 +2628,27 @@ app.get("/api/network/events/public", async (c) => {
     (row) => [row.title, row.description, row.location, row.organization_name, row.host_org_name, row.slug, row.tags, row.city],
     limit,
   );
-  return c.json(rankedRows.map((row) => mapEvent(c.env, c.req.raw, row)));
+  return c.json(await Promise.all(rankedRows.map((row) => mapEvent(c.env, c.req.raw, row))));
 });
 
 app.get("/api/network/events/public/:slug", async (c) => {
-  const row = await c.env.DB.prepare(
-    `SELECT e.*, o.name AS organization_name
-     FROM events e
-     LEFT JOIN organizations o ON o.id = e.host_org_id
-     WHERE e.slug = ?`,
-  )
-    .bind(slugify(c.req.param("slug")))
-    .first<EventRow>();
+  const row = await publicEventBySlug(c.env.DB, c.req.param("slug"));
   if (!row) fail(404, "Event not found");
-  return c.json(mapEvent(c.env, c.req.raw, row));
+  return c.json(await mapEvent(c.env, c.req.raw, row));
 });
 
-app.get("/api/network/events/public/:slug/chat", (c) =>
-  c.json({
-    event_slug: c.req.param("slug"),
-    room_exists: false,
-    room_id: null,
-    room_alias: null,
-    room_name: null,
+app.get("/api/network/events/public/:slug/chat", async (c) => {
+  const row = await publicEventBySlug(c.env.DB, c.req.param("slug"));
+  if (!row) fail(404, "Event not found");
+  const roomId = String(row.event_chat_room_id || "").trim();
+  return c.json({
+    event_slug: row.slug,
+    room_exists: Boolean(roomId),
+    conversation_id: roomId || null,
+    room_name: String(row.event_chat_room_name || row.title || "Event Chat").trim(),
     messages: [],
-  }),
-);
+  });
+});
 
 app.get("/api/network/orgs", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
@@ -2305,6 +2661,9 @@ app.get("/api/network/orgs", async (c) => {
       (SELECT own.owner_user_id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS claimed_by_user_id,
       (SELECT own.id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS ownership_id,
       (SELECT count(*) FROM organization_memberships mc WHERE mc.organization_id = o.id AND mc.status = 'active') AS membership_count,
+      (SELECT count(*) FROM organization_feedback f WHERE f.organization_id = o.id) AS feedback_count,
+      (SELECT count(*) FROM organization_feedback f WHERE f.organization_id = o.id AND f.rating = 'positive') AS feedback_positive_count,
+      (SELECT count(*) FROM organization_feedback f WHERE f.organization_id = o.id AND f.rating = 'concern') AS feedback_concern_count,
       (SELECT count(*) FROM organization_ownership_challenges ch WHERE ch.organization_id = o.id AND ch.status = 'open') AS pending_challenges_count,
       (SELECT m.role FROM organization_memberships m WHERE m.organization_id = o.id AND m.user_id = ? AND m.status = 'active') AS my_role
      FROM organizations o
@@ -2316,11 +2675,7 @@ app.get("/api/network/orgs", async (c) => {
     .bind(user.id, mine ? 1 : 0, user.id, candidateLimit)
     .all<OrganizationRow>();
   const rankedRows = rankSearchResults(rows.results || [], q, (row) => [row.name, row.description, row.slug, row.tags, row.city], limit);
-  const mapped = [];
-  for (const row of rankedRows) {
-    mapped.push(mapOrganization({ ...row, ...(await organizationSentimentCounts(c.env.DB, row.id)) }));
-  }
-  return c.json(mapped);
+  return c.json(rankedRows.map((row) => mapOrganization(row)));
 });
 
 app.post("/api/network/orgs", async (c) => {
@@ -2340,6 +2695,9 @@ app.post("/api/network/orgs", async (c) => {
       (SELECT own.owner_user_id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS claimed_by_user_id,
       (SELECT own.id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS ownership_id,
       (SELECT count(*) FROM organization_memberships m WHERE m.organization_id = o.id AND m.status = 'active') AS membership_count,
+      (SELECT count(*) FROM organization_feedback f WHERE f.organization_id = o.id) AS feedback_count,
+      (SELECT count(*) FROM organization_feedback f WHERE f.organization_id = o.id AND f.rating = 'positive') AS feedback_positive_count,
+      (SELECT count(*) FROM organization_feedback f WHERE f.organization_id = o.id AND f.rating = 'concern') AS feedback_concern_count,
       (SELECT count(*) FROM organization_ownership_challenges ch WHERE ch.organization_id = o.id AND ch.status = 'open') AS pending_challenges_count,
       (SELECT m.role FROM organization_memberships m WHERE m.organization_id = o.id AND m.user_id = ? AND m.status = 'active') AS my_role
      FROM organizations o WHERE o.id = ?`,
@@ -2355,74 +2713,306 @@ app.get("/api/network/orgs/:organizationId", async (c) => {
       (SELECT own.owner_user_id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS claimed_by_user_id,
       (SELECT own.id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS ownership_id,
       (SELECT count(*) FROM organization_memberships m WHERE m.organization_id = o.id AND m.status = 'active') AS membership_count,
+      (SELECT count(*) FROM organization_feedback f WHERE f.organization_id = o.id) AS feedback_count,
+      (SELECT count(*) FROM organization_feedback f WHERE f.organization_id = o.id AND f.rating = 'positive') AS feedback_positive_count,
+      (SELECT count(*) FROM organization_feedback f WHERE f.organization_id = o.id AND f.rating = 'concern') AS feedback_concern_count,
       (SELECT count(*) FROM organization_ownership_challenges ch WHERE ch.organization_id = o.id AND ch.status = 'open') AS pending_challenges_count,
       (SELECT m.role FROM organization_memberships m WHERE m.organization_id = o.id AND m.user_id = ? AND m.status = 'active') AS my_role
      FROM organizations o WHERE o.id = ? OR o.slug = ?`,
   ).bind(user.id, requested, slugify(requested)).first<OrganizationRow>();
   if (!row) fail(404, "Organization not found");
-  return c.json(mapOrganization({ ...row, ...(await organizationSentimentCounts(c.env.DB, row.id)) }));
+  return c.json(mapOrganization(row));
 });
 
-app.get("/api/network/orgs/:organizationId/sentiment", async (c) => {
+app.get("/api/network/orgs/:organizationId/feedback", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
   if (!row) fail(404, "Organization not found");
-  const mine = await c.env.DB.prepare("SELECT sentiment FROM organization_sentiments WHERE organization_id = ? AND user_id = ?")
+  const mine = await c.env.DB.prepare(
+    "SELECT rating, comment, updated_at FROM organization_feedback WHERE organization_id = ? AND user_id = ?",
+  )
     .bind(row.id, user.id)
-    .first<{ sentiment: "favor" | "disfavor" }>();
-  const counts = await organizationSentimentCounts(c.env.DB, row.id);
+    .first<OrganizationFeedbackRow>();
+  const counts = await organizationFeedbackSummary(c.env.DB, row.id);
   return c.json({
     organization_id: row.id,
-    sentiment: mine?.sentiment || null,
-    favor_count: counts.favor_count,
-    disfavor_count: counts.disfavor_count,
-    sentiment_score: counts.favor_count - counts.disfavor_count,
+    my_feedback: mine || null,
+    ...counts,
+    feedback_score: counts.feedback_positive_count - counts.feedback_concern_count,
   });
 });
 
-app.put("/api/network/orgs/:organizationId/sentiment", async (c) => {
+app.get("/api/network/orgs/:organizationId/feedback/review", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
+  if (!row) fail(404, "Organization not found");
+  await authorizeOrganization(c.env.DB, organizationActor(user, c.env), "manage", row.id);
+  const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "100", 10) || 100, 300));
+  const rows = await c.env.DB.prepare(
+    `SELECT organization_id, user_id, user_name, rating, comment, created_at, updated_at
+     FROM organization_feedback
+     WHERE organization_id = ?
+     ORDER BY updated_at DESC
+     LIMIT ?`,
+  )
+    .bind(row.id, limit)
+    .all<OrganizationFeedbackRow>();
+  return c.json(rows.results || []);
+});
+
+app.put("/api/network/orgs/:organizationId/feedback", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
   if (!row) fail(404, "Organization not found");
   const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
-  const sentiment = String(payload.sentiment || "").trim().toLowerCase();
-  if (sentiment !== "favor" && sentiment !== "disfavor") fail(400, "sentiment must be favor or disfavor");
+  const rating = String(payload.rating || "").trim().toLowerCase();
+  if (rating !== "positive" && rating !== "neutral" && rating !== "concern") {
+    fail(400, "rating must be positive, neutral, or concern");
+  }
+  const comment = stringField(payload, "comment", 1200) || "";
   const timestamp = nowIso();
   await c.env.DB.prepare(
-    `INSERT INTO organization_sentiments (organization_id, user_id, user_name, sentiment, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?)
+    `INSERT INTO organization_feedback (organization_id, user_id, user_name, rating, comment, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(organization_id, user_id) DO UPDATE SET
       user_name = excluded.user_name,
-      sentiment = excluded.sentiment,
+      rating = excluded.rating,
+      comment = excluded.comment,
       updated_at = excluded.updated_at`,
   )
-    .bind(row.id, user.id, userName(user), sentiment, timestamp, timestamp)
+    .bind(row.id, user.id, userName(user), rating, comment, timestamp, timestamp)
     .run();
-  const counts = await organizationSentimentCounts(c.env.DB, row.id);
+  const counts = await organizationFeedbackSummary(c.env.DB, row.id);
   return c.json({
     organization_id: row.id,
-    sentiment,
-    favor_count: counts.favor_count,
-    disfavor_count: counts.disfavor_count,
-    sentiment_score: counts.favor_count - counts.disfavor_count,
+    my_feedback: { rating, comment, updated_at: timestamp },
+    ...counts,
+    feedback_score: counts.feedback_positive_count - counts.feedback_concern_count,
   });
 });
 
-app.delete("/api/network/orgs/:organizationId/sentiment", async (c) => {
+app.delete("/api/network/orgs/:organizationId/feedback", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
   if (!row) fail(404, "Organization not found");
-  await c.env.DB.prepare("DELETE FROM organization_sentiments WHERE organization_id = ? AND user_id = ?")
+  await c.env.DB.prepare("DELETE FROM organization_feedback WHERE organization_id = ? AND user_id = ?")
     .bind(row.id, user.id)
     .run();
-  const counts = await organizationSentimentCounts(c.env.DB, row.id);
+  const counts = await organizationFeedbackSummary(c.env.DB, row.id);
   return c.json({
     organization_id: row.id,
-    sentiment: null,
-    favor_count: counts.favor_count,
-    disfavor_count: counts.disfavor_count,
-    sentiment_score: counts.favor_count - counts.disfavor_count,
+    my_feedback: null,
+    ...counts,
+    feedback_score: counts.feedback_positive_count - counts.feedback_concern_count,
   });
+});
+
+app.get("/api/network/orgs/:organizationId/membership", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
+  if (!row) fail(404, "Organization not found");
+  return c.json(await organizationMembershipState(c.env.DB, row.id, user.id));
+});
+
+app.post("/api/network/orgs/:organizationId/membership", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
+  if (!row) fail(404, "Organization not found");
+  const timestamp = nowIso();
+  await c.env.DB.prepare(
+    `INSERT INTO organization_memberships (organization_id, user_id, user_name, user_email, role, status, created_at, updated_at)
+     VALUES (?, ?, ?, ?, 'member', 'active', ?, ?)
+     ON CONFLICT(organization_id, user_id) DO UPDATE SET
+      user_name = excluded.user_name,
+      user_email = excluded.user_email,
+      status = 'active',
+      updated_at = excluded.updated_at`,
+  )
+    .bind(row.id, user.id, userName(user), user.email || null, timestamp, timestamp)
+    .run();
+  return c.json(await organizationMembershipState(c.env.DB, row.id, user.id));
+});
+
+app.delete("/api/network/orgs/:organizationId/membership", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
+  if (!row) fail(404, "Organization not found");
+  const membership = await organizationMembershipState(c.env.DB, row.id, user.id);
+  if (membership.role === "owner" || membership.role === "administrator") {
+    fail(409, "Organization admins must transfer or remove admin access before leaving");
+  }
+  await c.env.DB.prepare(
+    "UPDATE organization_memberships SET status = 'inactive', updated_at = ? WHERE organization_id = ? AND user_id = ? AND role = 'member'",
+  )
+    .bind(nowIso(), row.id, user.id)
+    .run();
+  return c.json(await organizationMembershipState(c.env.DB, row.id, user.id));
+});
+
+app.get("/api/network/orgs/:organizationId/portal", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
+  if (!row) fail(404, "Organization not found");
+  await authorizeOrganization(c.env.DB, organizationActor(user, c.env), "manage", row.id);
+  return c.json({ portal: await organizationPortalResponse(c.env, c.req.raw, await organizationPortalByOrg(c.env.DB, row)) });
+});
+
+app.put("/api/network/orgs/:organizationId/portal", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
+  if (!row) fail(404, "Organization not found");
+  await authorizeOrganization(c.env.DB, organizationActor(user, c.env), "manage", row.id);
+  const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  const slug = tenantSlugField(payload, row.slug);
+  const existing = await organizationPortalByOrg(c.env.DB, row);
+  const slugOwner = await c.env.DB.prepare("SELECT id, organization_id FROM portal_tenants WHERE slug = ?").bind(slug).first<{ id: string; organization_id?: string | null }>();
+  if (slugOwner && slugOwner.id !== existing?.id && slugOwner.organization_id !== row.id) {
+    fail(409, "That portal slug is already in use.");
+  }
+  const id = existing?.id || `org-${row.id}-portal`;
+  const name = stringField(payload, "name", 120) || row.name;
+  const tagline = stringField(payload, "tagline", 180) || row.description || `Portal for ${row.name}`;
+  const accent = stringField(payload, "accent_color", 7) || "#155e59";
+  if (!/^#[0-9a-f]{6}$/i.test(accent)) fail(400, "Choose a valid accent color.");
+  const homeKind = tenantHomeKindField(payload);
+  const features = portalTenantFeaturesField(payload);
+  const heading = stringField(payload, "home_heading", 120) || name;
+  const description = stringField(payload, "home_description", 500) || row.description || tagline;
+  const homeImageUrl = cleanUrl(payload.home_image_url) || row.image_url || null;
+  const slugUrl = await organizationPortalSlugUrl(c.env, c.req.raw, slug);
+  const timestamp = nowIso();
+  await c.env.DB.prepare(
+    `INSERT INTO portal_tenants (
+      id, organization_id, slug, hostname, name, tagline, accent_color, profile, features,
+      brand_image_path, home_url, member_home_path, manifest_path, theme_color,
+      home_kind, home_path, home_org_slug, home_heading, home_description,
+      home_primary_label, home_primary_href, home_secondary_label, home_secondary_href,
+      home_image_url, public_base_url, canonical_path_prefix, feature_config, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, 'community', ?, ?, ?, '/chat', '/manifest.webmanifest', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '/p', ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      organization_id = excluded.organization_id,
+      slug = excluded.slug,
+      hostname = excluded.hostname,
+      name = excluded.name,
+      tagline = excluded.tagline,
+      accent_color = excluded.accent_color,
+      profile = excluded.profile,
+      features = excluded.features,
+      brand_image_path = excluded.brand_image_path,
+      home_url = excluded.home_url,
+      member_home_path = excluded.member_home_path,
+      manifest_path = excluded.manifest_path,
+      theme_color = excluded.theme_color,
+      home_kind = excluded.home_kind,
+      home_path = excluded.home_path,
+      home_org_slug = excluded.home_org_slug,
+      home_heading = excluded.home_heading,
+      home_description = excluded.home_description,
+      home_primary_label = excluded.home_primary_label,
+      home_primary_href = excluded.home_primary_href,
+      home_secondary_label = excluded.home_secondary_label,
+      home_secondary_href = excluded.home_secondary_href,
+      home_image_url = excluded.home_image_url,
+      public_base_url = excluded.public_base_url,
+      canonical_path_prefix = excluded.canonical_path_prefix,
+      feature_config = excluded.feature_config,
+      updated_at = excluded.updated_at`,
+  )
+    .bind(
+      id,
+      row.id,
+      slug,
+      `${slug}.slug.portal.local`,
+      name,
+      tagline,
+      accent,
+      features,
+      homeImageUrl,
+      slugUrl,
+      accent,
+      homeKind,
+      homeKind === "route" ? stringField(payload, "home_path", 200) : null,
+      row.slug,
+      heading,
+      description,
+      stringField(payload, "home_primary_label", 80) || "Join Group",
+      stringField(payload, "home_primary_href", 200) || "/users/login",
+      stringField(payload, "home_secondary_label", 80) || "View Events",
+      stringField(payload, "home_secondary_href", 200) || "/org-events",
+      homeImageUrl,
+      slugUrl,
+      JSON.stringify({ slugPortal: { enabled: true, path: `/portals/${slug}` } }),
+      timestamp,
+      timestamp,
+    )
+    .run();
+  return c.json({ portal: await organizationPortalResponse(c.env, c.req.raw, await organizationPortalByOrg(c.env.DB, row)) });
+});
+
+app.post("/api/network/orgs/:organizationId/portal/custom-domain/request", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
+  if (!row) fail(404, "Organization not found");
+  await authorizeOrganization(c.env.DB, organizationActor(user, c.env), "manage", row.id);
+  const tenant = await organizationPortalByOrg(c.env.DB, row);
+  if (!tenant) fail(409, "Save the organization portal before requesting a custom domain.");
+  const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  const hostname = customDomainField(payload);
+  const owner = await c.env.DB.prepare("SELECT id FROM portal_tenants WHERE hostname = ? AND id <> ?")
+    .bind(hostname, tenant.id)
+    .first<{ id: string }>();
+  if (owner) fail(409, "That domain is already attached to another tenant.");
+  const timestamp = nowIso();
+  await c.env.DB.prepare(
+    `UPDATE portal_tenants
+     SET custom_domain_hostname = ?,
+      custom_domain_status = 'requested',
+      custom_domain_requested_at = ?,
+      custom_domain_attached_at = NULL,
+      custom_domain_notes = ?,
+      updated_at = ?
+     WHERE id = ?`,
+  )
+    .bind(hostname, timestamp, stringField(payload, "notes", 1000), timestamp, tenant.id)
+    .run();
+  return c.json({
+    portal: await organizationPortalResponse(c.env, c.req.raw, await organizationPortalByOrg(c.env.DB, row)),
+    checklist: customDomainChecklist(hostname),
+  });
+});
+
+app.post("/api/network/orgs/:organizationId/portal/custom-domain/attach", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
+  if (!row) fail(404, "Organization not found");
+  await authorizeOrganization(c.env.DB, organizationActor(user, c.env), "manage", row.id);
+  const tenant = await organizationPortalByOrg(c.env.DB, row);
+  if (!tenant) fail(409, "Save the organization portal before attaching a custom domain.");
+  const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  const hostname = customDomainField(payload);
+  if (tenant.custom_domain_hostname && tenant.custom_domain_hostname !== hostname) {
+    fail(409, "Request this domain before attaching it.");
+  }
+  const owner = await c.env.DB.prepare("SELECT id FROM portal_tenants WHERE hostname = ? AND id <> ?")
+    .bind(hostname, tenant.id)
+    .first<{ id: string }>();
+  if (owner) fail(409, "That domain is already attached to another tenant.");
+  const timestamp = nowIso();
+  await c.env.DB.prepare(
+    `UPDATE portal_tenants
+     SET hostname = ?,
+      public_base_url = ?,
+      canonical_path_prefix = '',
+      custom_domain_hostname = ?,
+      custom_domain_status = 'attached',
+      custom_domain_attached_at = ?,
+      custom_domain_notes = ?,
+      updated_at = ?
+     WHERE id = ?`,
+  )
+    .bind(hostname, `https://${hostname}`, hostname, timestamp, stringField(payload, "notes", 1000), timestamp, tenant.id)
+    .run();
+  return c.json({ portal: await organizationPortalResponse(c.env, c.req.raw, await organizationPortalByOrg(c.env.DB, row)) });
 });
 
 app.patch("/api/network/orgs/:organizationId", async (c) => {
@@ -2612,7 +3202,7 @@ app.get("/api/network/events", async (c) => {
   )
     .bind(limit)
     .all<EventRow>();
-  return c.json((rows.results || []).map((row) => mapEvent(c.env, c.req.raw, row)));
+  return c.json(await Promise.all((rows.results || []).map((row) => mapEvent(c.env, c.req.raw, row))));
 });
 
 app.post("/api/network/events", async (c) => {
@@ -2653,21 +3243,48 @@ app.post("/api/network/events", async (c) => {
   const row = await upsertEvent(c.env.DB, {
     ...eventPayload,
   });
-  return c.json(mapEvent(c.env, c.req.raw, row!), 201);
+  return c.json(await mapEvent(c.env, c.req.raw, row!), 201);
 });
 
 app.post("/api/network/events/:eventId/claim", async (c) => {
   await currentUser(c.env, c.req.raw);
   const row = await c.env.DB.prepare("SELECT * FROM events WHERE id = ?").bind(c.req.param("eventId")).first<EventRow>();
   if (!row) fail(404, "Event not found");
-  return c.json(mapEvent(c.env, c.req.raw, row));
+  return c.json(await mapEvent(c.env, c.req.raw, row));
 });
 app.post("/api/network/events/:eventId/unclaim", async (c) => {
   await currentUser(c.env, c.req.raw);
   const row = await c.env.DB.prepare("SELECT * FROM events WHERE id = ?").bind(c.req.param("eventId")).first<EventRow>();
   if (!row) fail(404, "Event not found");
-  return c.json(mapEvent(c.env, c.req.raw, row));
+  return c.json(await mapEvent(c.env, c.req.raw, row));
 });
+
+app.get("/api/network/calendar/feed", async (c) => {
+  c.header("Cache-Control", "no-store");
+  const user = await currentUser(c.env, c.req.raw);
+  return c.json(await registeredEventCalendarFeed(c.env, c.req.raw, user.id));
+});
+
+app.post("/api/network/calendar/feed/regenerate", async (c) => {
+  c.header("Cache-Control", "no-store");
+  const user = await currentUser(c.env, c.req.raw);
+  return c.json(await registeredEventCalendarFeed(c.env, c.req.raw, user.id, true));
+});
+
+app.get("/api/network/calendar/feed/:token", async (c) => {
+  const token = c.req.param("token").replace(/\.ics$/i, "");
+  if (!/^[A-Za-z0-9_-]{32,128}$/.test(token)) fail(404, "Calendar feed not found");
+  const feed = await c.env.DB.prepare("SELECT * FROM event_calendar_feeds WHERE token = ? AND revoked_at IS NULL")
+    .bind(token)
+    .first<RegisteredEventCalendarFeedRow>();
+  if (!feed) fail(404, "Calendar feed not found");
+  const ics = await registeredEventsIcs(c.env, c.req.raw, feed);
+  c.header("Content-Type", "text/calendar;charset=utf-8");
+  c.header("Cache-Control", "private, max-age=300");
+  c.header("Content-Disposition", 'inline; filename="orgportal-registered-events.ics"');
+  return c.body(ics);
+});
+
 app.get("/api/network/events/:eventId/attendance", async (c) => {
   c.header("Cache-Control", "no-store");
   const eventId = c.req.param("eventId");
@@ -3013,6 +3630,18 @@ app.get("/api/health-insurance/diagnoses", async (c) => {
 app.get("/api/timebank/community", async (c) => {
   c.header("Cache-Control", "no-store");
   return c.json(await resolveTimebankCommunity(c.env.DB, c.req.raw));
+});
+
+app.get("/api/portal/tenant", async (c) => {
+  c.header("Cache-Control", "no-store");
+  return c.json(await resolvePortalTenant(c.env.DB, c.req.raw));
+});
+
+app.get("/api/portal/tenants/:slug", async (c) => {
+  c.header("Cache-Control", "no-store");
+  const tenant = await resolvePortalTenantBySlug(c.env.DB, c.req.param("slug"));
+  if (!tenant) fail(404, "Tenant portal not found");
+  return c.json(tenant);
 });
 
 app.get("/api/timebank/public-offers", async (c) => {
@@ -3739,7 +4368,7 @@ app.get("/api/network/users/public/:slug/events", async (c) => {
      ORDER BY COALESCE(e.starts_at, e.created_at) ASC
      LIMIT ?`,
   ).bind(contact.user_id, upcomingOnly ? 1 : 0, limit).all<EventRow>();
-  return c.json((rows.results || []).map((row) => mapEvent(c.env, c.req.raw, row)));
+  return c.json(await Promise.all((rows.results || []).map((row) => mapEvent(c.env, c.req.raw, row))));
 });
 
 app.post("/api/health-insurance/services", async (c) => {

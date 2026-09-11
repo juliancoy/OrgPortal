@@ -16,6 +16,11 @@ import {
   type MicrosoftCalendarConnection,
   type MicrosoftCalendarListItem,
 } from '../microsoftCalendarApi'
+import {
+  loadRegisteredEventsCalendarFeed,
+  regenerateRegisteredEventsCalendarFeed,
+  type RegisteredEventsCalendarFeed,
+} from '../public/attendanceApi'
 
 function formatDateTime(value?: string | null) {
   if (!value) return 'TBD'
@@ -30,18 +35,22 @@ export function UserCalendarPage() {
   const [googleEvents, setGoogleEvents] = useState<GoogleCalendarListItem[]>([])
   const [microsoftConnection, setMicrosoftConnection] = useState<MicrosoftCalendarConnection | null>(null)
   const [microsoftEvents, setMicrosoftEvents] = useState<MicrosoftCalendarListItem[]>([])
+  const [registeredEventsFeed, setRegisteredEventsFeed] = useState<RegisteredEventsCalendarFeed | null>(null)
   const [loading, setLoading] = useState(true)
   const [disconnecting, setDisconnecting] = useState(false)
+  const [feedBusy, setFeedBusy] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
 
   async function refreshCalendarState() {
-    const [googleCalendar, microsoftCalendar] = await Promise.all([
+    const [googleCalendar, microsoftCalendar, feed] = await Promise.all([
       loadGoogleCalendarConnection(token),
       loadMicrosoftCalendarConnection(token),
+      loadRegisteredEventsCalendarFeed(token),
     ])
     setGoogleConnection(googleCalendar)
     setMicrosoftConnection(microsoftCalendar)
+    setRegisteredEventsFeed(feed)
     if (googleCalendar.connected) {
       const listing = await loadUpcomingGoogleCalendarEvents(token, 12)
       setGoogleEvents(Array.isArray(listing.events) ? listing.events : [])
@@ -101,6 +110,32 @@ export function UserCalendarPage() {
     }
   }
 
+  async function copyFeedUrl() {
+    if (!registeredEventsFeed) return
+    try {
+      await navigator.clipboard.writeText(registeredEventsFeed.feed_url)
+      setMessage('Registered events calendar link copied.')
+      setError('')
+    } catch {
+      setError('Unable to copy the calendar link. You can select and copy it below.')
+      setMessage('')
+    }
+  }
+
+  async function regenerateFeedUrl() {
+    setFeedBusy(true)
+    setError('')
+    setMessage('')
+    try {
+      setRegisteredEventsFeed(await regenerateRegisteredEventsCalendarFeed(token))
+      setMessage('Registered events calendar link regenerated.')
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to regenerate registered events calendar.')
+    } finally {
+      setFeedBusy(false)
+    }
+  }
+
   if (role === 'guest') {
     return (
       <main className="portal-page">
@@ -118,7 +153,7 @@ export function UserCalendarPage() {
         <div>
           <p className="portal-eyebrow">Account</p>
           <h1>Calendar Integrations</h1>
-          <p className="portal-muted">Connect Google Calendar and use calendar export options from one place.</p>
+          <p className="portal-muted">Connect calendar providers and subscribe to every event you register for.</p>
         </div>
         <Link className="portal-button secondary" to="/settings">
           Settings
@@ -127,6 +162,42 @@ export function UserCalendarPage() {
 
       {error ? <div className="health-insurance-alert error" role="alert">{error}</div> : null}
       {message ? <div className="health-insurance-alert success" role="status">{message}</div> : null}
+
+      <section className="portal-card registered-events-calendar-card">
+        <div>
+          <p className="portal-eyebrow">Registered Events</p>
+          <h2>Subscribe Once</h2>
+          <p className="portal-muted">
+            Your calendar app will stay synced with events you register for or cancel.
+          </p>
+        </div>
+        {loading ? (
+          <p className="portal-muted" style={{ margin: 0 }}>Loading subscription options…</p>
+        ) : registeredEventsFeed ? (
+          <>
+            <div className="registered-events-calendar-stats" aria-label="Registered event calendar summary">
+              <strong>{registeredEventsFeed.event_count}</strong>
+              <span>{registeredEventsFeed.event_count === 1 ? 'registered event' : 'registered events'}</span>
+            </div>
+            <div className="registered-events-calendar-actions">
+              <a className="portal-button" href={registeredEventsFeed.webcal_url}>Apple/iCal</a>
+              <a className="portal-button" href={registeredEventsFeed.google_url} target="_blank" rel="noreferrer">Google Calendar</a>
+              <a className="portal-button" href={registeredEventsFeed.outlook_url} target="_blank" rel="noreferrer">Outlook</a>
+              <a className="portal-button secondary" href={registeredEventsFeed.download_url}>Download .ics</a>
+              <button type="button" className="portal-button secondary" onClick={() => void copyFeedUrl()}>Copy Link</button>
+              <button type="button" className="portal-button-secondary" onClick={() => void regenerateFeedUrl()} disabled={feedBusy}>
+                {feedBusy ? 'Regenerating…' : 'Regenerate Link'}
+              </button>
+            </div>
+            <input className="registered-events-calendar-url" readOnly value={registeredEventsFeed.feed_url} onFocus={(event) => event.currentTarget.select()} />
+            <p className="portal-muted" style={{ margin: 0 }}>
+              Regenerate the link if it was shared by mistake. Calendar apps may take a little while to refresh subscriptions.
+            </p>
+          </>
+        ) : (
+          <p className="portal-muted" style={{ margin: 0 }}>Unable to load registered event subscription options.</p>
+        )}
+      </section>
 
       <section className="portal-card" style={{ display: 'grid', gap: '0.8rem' }}>
         <div style={{ display: 'grid', gap: '0.45rem' }}>

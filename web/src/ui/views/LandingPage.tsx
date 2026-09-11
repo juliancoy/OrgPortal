@@ -89,21 +89,6 @@ export function LandingPage() {
             />
           </div>
           <Link
-            to="/users/register"
-            className="panel"
-            style={{
-              padding: '0.75rem 1.25rem',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 500,
-              whiteSpace: 'nowrap',
-              textDecoration: 'none',
-            }}
-          >
-            Create Account
-          </Link>
-          <Link
             to="/users/login"
             className="panel"
             style={{

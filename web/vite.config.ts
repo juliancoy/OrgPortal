@@ -30,9 +30,9 @@ const pidpProxyOrigin = process.env.PIDP_PROXY_ORIGIN || process.env.PIDP_API_OR
 const orgApiOrigin = process.env.ORG_API_ORIGIN || ''
 const governanceApiOrigin = process.env.GOVERNANCE_API_ORIGIN || 'http://localhost:8002'
 
-export default defineConfig(() => ({
+export default defineConfig(({ command }) => ({
   plugins: [react()],
-  base: process.env.VITE_PUBLIC_BASE || '/',
+  base: process.env.VITE_PUBLIC_BASE || (command === 'build' ? './' : '/'),
   cacheDir: process.env.VITE_CACHE_DIR || 'node_modules/.vite',
   define: {
     __APP_VERSION__: JSON.stringify(appVersion),

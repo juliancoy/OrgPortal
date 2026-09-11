@@ -1,7 +1,5 @@
 import { PortalProfileBoundary } from '../shell/PortalProfileBoundary'
-import { MedTechCommunityPage } from '../views/MedTechCommunityPage'
-import { MedTechEventsPage } from '../views/MedTechEventsPage'
-import { getDomainCommunity, timebankHomePath } from '../../config/timebankCommunity'
+import { getDomainCommunity, getDomainTenant, type PortalTenant } from '../../config/timebankCommunity'
 import { useEffect, useState } from 'react'
 import type { ReactElement } from 'react'
 import { Navigate, createBrowserRouter, useLocation, useNavigate, useParams } from 'react-router-dom'
@@ -17,7 +15,6 @@ import { UserProfilePage } from '../views/users/UserProfilePage'
 import { UserCalendarPage } from '../views/users/UserCalendarPage'
 import { UserSettingsPage } from '../views/users/UserSettingsPage'
 import { UserLoginPage } from '../views/users/UserLoginPage'
-import { UserRegisterPage } from '../views/users/UserRegisterPage'
 import { OrgLoginPage } from '../views/orgs/OrgLoginPage'
 import { OrgRegisterPage } from '../views/orgs/OrgRegisterPage'
 import { OrgInitiativesPage } from '../views/orgs/OrgInitiativesPage'
@@ -49,6 +46,7 @@ import { IdPage } from '../views/IdPage'
 import { SendPage } from '../views/SendPage'
 import { ReceivePage } from '../views/ReceivePage'
 import { TimebankPage } from '../views/TimebankPage'
+import { TenantEventsHomePage, TenantHomePage, TenantSlugHomePage } from '../views/TenantHomePage'
 import { CreatePage } from '../views/CreatePage'
 import { CreateForProfitPage } from '../views/CreateForProfitPage'
 import { CreateNonProfitPage } from '../views/CreateNonProfitPage'
@@ -65,6 +63,7 @@ import { ProviderSchedulingPage } from '../views/ProviderSchedulingPage'
 import { PropertyCasualtyInsurancePage } from '../views/PropertyCasualtyInsurancePage'
 import { portalBasePath } from '../../config/portalBase'
 import { getActivePortalProfileConfig, portalProfilePath, isPortalFeatureEnabled, type PortalFeature } from '../../config/portalFeatures'
+import { tenantHomeAction } from '../../config/tenantHome'
 
 function AuthenticatedRoute(props: { children: ReactElement }) {
   const { role, isLoading } = useAuth()
@@ -79,15 +78,38 @@ function AuthenticatedRoute(props: { children: ReactElement }) {
   return props.children
 }
 
+function tenantHomeElement(tenant: PortalTenant, role: string, profile: ReturnType<typeof getActivePortalProfileConfig>) {
+  const action = tenantHomeAction(tenant, role, profile.memberHomePath)
+  if (action.kind === 'landing') return <TenantHomePage />
+  if (action.kind === 'events') return <TenantEventsHomePage />
+  return <Navigate to={portalProfilePath(action.to, profile)} replace />
+}
+
 function HomeRoute() {
   const { role, isLoading } = useAuth()
   if (isLoading) return null
   const profile = getActivePortalProfileConfig()
-  if (profile.id === 'baltimore-medtech') {
-    return <Navigate to={portalProfilePath(role === 'guest' ? '/users/login' : profile.memberHomePath)} replace />
-  }
+  const tenant = getDomainTenant()
+  if (tenant) return tenantHomeElement(tenant, role, profile)
+  if (getDomainCommunity()) return <Navigate to="/timebanking" replace />
   if (role === 'guest') return <App />
   return <Navigate to="/chat" replace />
+}
+
+function TenantOrgEventsRoute() {
+  const tenant = getDomainTenant()
+  if (tenant?.home_org_slug) return <TenantEventsHomePage />
+  return <PublicEventsPage />
+}
+
+function TenantCommunityAliasRoute() {
+  const tenant = getDomainTenant()
+  if (tenant?.home_org_slug) return <Navigate to={`/orgs/${encodeURIComponent(tenant.home_org_slug)}`} replace />
+  return <Navigate to={tenant ? '/people' : '/orgs'} replace />
+}
+
+function TenantEventsAliasRoute() {
+  return <Navigate to={getDomainTenant() ? '/org-events' : '/events'} replace />
 }
 
 function TimebankRoute() {
@@ -110,6 +132,11 @@ function LegacyUserRoute(props: { to: string }) {
 function LegacyPublicContactRoute() {
   const { slug } = useParams()
   return <Navigate to={`/users/${encodeURIComponent(String(slug || ''))}`} replace />
+}
+
+function LoginRedirectRoute() {
+  const location = useLocation()
+  return <Navigate to={`/users/login${location.search}${location.hash}`} replace />
 }
 
 function ChatRoute() {
@@ -170,7 +197,8 @@ export function createAppRouter() {
 
   return createBrowserRouter(
     [{ element: <PortalProfileBoundary />, children: [
-      ...(getDomainCommunity() ? [] : [{ path: '/', element: <HomeRoute /> }]),
+      { path: '/', element: <HomeRoute /> },
+      { path: '/portals/:tenantSlug', element: <TenantSlugHomePage /> },
       { path: '/finance', element: <EconomicOpsPage /> },
       { path: '/departments', element: <DepartmentsPage /> },
       { path: '/ecops', element: <Navigate to="/finance" replace /> },
@@ -188,15 +216,16 @@ export function createAppRouter() {
           { path: '/initiatives/:slug', element: <InitiativeDetailPage /> },
           { path: '/initiatives/:slug/sign', element: <InitiativeSignPage /> },
 
-          { path: '/community', element: <AuthenticatedRoute><MedTechCommunityPage /></AuthenticatedRoute> },
-          { path: '/medtech-events', element: <MedTechEventsPage /> },
+          { path: '/org-events', element: <TenantOrgEventsRoute /> },
+          { path: '/community', element: <TenantCommunityAliasRoute /> },
+          { path: '/medtech-events', element: <TenantEventsAliasRoute /> },
           { path: '/about', element: <AboutPage /> },
           { path: '/email', element: <AdminRoute><EmailCampaignsPage /></AdminRoute> },
           { path: '/email/preferences', element: <AuthenticatedRoute><EmailPreferencesPage /></AuthenticatedRoute> },
           { path: '/android/install', element: <AndroidInstallPage /> },
 
           // Canonical user routes
-          { path: '/users/register', element: <UserRegisterPage /> },
+          { path: '/users/register', element: <LoginRedirectRoute /> },
           { path: '/users/login', element: <UserLoginPage /> },
           { path: '/users/dashboard', element: <DashboardPage /> },
           { path: '/profile', element: <UserProfilePage /> },
@@ -223,7 +252,7 @@ export function createAppRouter() {
           { path: '/constituent/profile', element: <LegacyUserRoute to="/profile" /> },
           { path: '/constituent/account', element: <LegacyUserRoute to="/profile" /> },
           { path: '/constituent/login', element: <LegacyUserRoute to="/users/login" /> },
-          { path: '/constituent/register', element: <LegacyUserRoute to="/users/register" /> },
+          { path: '/constituent/register', element: <LegacyUserRoute to="/users/login" /> },
           {
             path: '/id',
             element: (
@@ -296,7 +325,7 @@ export function createAppRouter() {
           { path: '/events/:slug', element: <PublicEventPage /> },
           { path: '/orgs', element: <PublicOrganizationsPage /> },
           { path: '/people', element: <PeoplePage /> },
-          { path: timebankHomePath(), element: <TimebankRoute /> },
+          { path: '/timebanking', element: <TimebankRoute /> },
           {
             path: '/life-insurance',
             element: (

@@ -3,14 +3,15 @@ import { getActivePortalProfileConfig } from './portalFeatures'
 
 export function applyPortalBranding() {
   const profile = getActivePortalProfileConfig()
-  const medtech = profile.id === 'baltimore-medtech'
   document.documentElement.dataset.portalProfile = profile.id
+  if (profile.tenantId) document.documentElement.dataset.portalTenant = profile.tenantId
+  else delete document.documentElement.dataset.portalTenant
   const icon = document.querySelector<HTMLLinkElement>('link[rel="icon"]')
   if (icon) {
-    icon.href = portalPath(medtech ? '/images/baltimore-medtech-logo-square.jpg' : '/codecollective_logo.png')
-    icon.type = medtech ? 'image/jpeg' : 'image/png'
+    icon.href = portalPath(profile.faviconPath)
+    icon.type = profile.faviconType
   }
   const manifest = document.querySelector<HTMLLinkElement>('link[rel="manifest"]')
-  if (manifest) manifest.href = portalPath(medtech ? '/medtech.webmanifest' : '/manifest.webmanifest')
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', medtech ? '#061a26' : '#12325b')
+  if (manifest) manifest.href = portalPath(profile.manifestPath)
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', profile.themeColor)
 }

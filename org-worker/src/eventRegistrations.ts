@@ -8,7 +8,6 @@ export async function eventAttendance(db: D1Database, eventId: string, userId?: 
     JOIN user_contact_pages p ON p.user_id = r.user_id AND p.enabled = 1
     WHERE r.event_id = ?
     ORDER BY r.registered_at, r.user_id
-    LIMIT 8
   `).bind(eventId).all<{ slug: string; name: string | null; photo_url: string | null }>();
   const registration = userId
     ? await db.prepare('SELECT registered_at FROM event_registrations WHERE event_id = ? AND user_id = ?')

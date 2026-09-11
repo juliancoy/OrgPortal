@@ -58,6 +58,7 @@ class FakeD1 {
   conversations: Row[] = [];
   members: Row[] = [];
   messages: Row[] = [];
+  reactions: Row[] = [];
   contacts: Row[] = [];
   receipts: Row[] = [];
   presence: Row[] = [];
@@ -88,6 +89,16 @@ class FakeD1 {
     }
     if (sql.includes("FROM chat_conversations WHERE kind = 'dm' AND dm_key = ?")) {
       return (this.conversations.find((row) => row.kind === "dm" && row.dm_key === params[0]) as T) || null;
+    }
+    if (sql.includes("FROM chat_conversations WHERE kind = 'event_room' AND event_id = ?")) {
+      return (this.conversations.find((row) => row.kind === "event_room" && row.event_id === params[0]) as T) || null;
+    }
+    if (sql.includes("FROM chat_messages WHERE id = ? AND conversation_id = ?")) {
+      return (
+        this.messages.find(
+          (row) => row.id === params[0] && row.conversation_id === params[1] && !row.deleted_at && row.moderation_state === "visible",
+        ) as T
+      ) || null;
     }
     if (sql.includes("FROM chat_messages WHERE id = ?")) {
       return (this.messages.find((row) => row.id === params[0]) as T) || null;
@@ -146,6 +157,18 @@ class FakeD1 {
       const ids = new Set(params);
       return this.members.filter((row) => ids.has(row.conversation_id)) as T[];
     }
+    if (sql.includes("FROM chat_message_reactions")) {
+      const ids = new Set(params);
+      const grouped = new Map<string, Row>();
+      for (const reaction of this.reactions) {
+        if (!ids.has(reaction.message_id)) continue;
+        const key = `${reaction.message_id}:${reaction.emoji}`;
+        const row = grouped.get(key) || { message_id: reaction.message_id, emoji: reaction.emoji, count: 0 };
+        row.count = Number(row.count || 0) + 1;
+        grouped.set(key, row);
+      }
+      return [...grouped.values()] as T[];
+    }
     if (sql.includes("FROM chat_messages")) {
       const conversationId = params[0];
       const afterSequence = Number(params[1] || 0);
@@ -169,7 +192,23 @@ class FakeD1 {
       if (existing) existing.last_seen_at = params[1];
       else this.presence.push({ user_id: params[0], last_seen_at: params[1] });
     }
-    if (sql.includes("INSERT INTO chat_conversations")) {
+    if (sql.includes("VALUES (?, 'event_room'")) {
+      this.conversations.push({
+        id: params[0],
+        kind: "event_room",
+        title: params[1],
+        slug: params[2],
+        dm_key: null,
+        created_by_user_id: params[3],
+        org_id: params[4],
+        event_id: params[5],
+        created_at: params[6],
+        updated_at: params[7],
+        last_message_at: null,
+        archived_at: null,
+      });
+      this.sequences.set(String(params[0]), 1);
+    } else if (sql.includes("INSERT INTO chat_conversations")) {
       this.conversations.push({
         id: params[0],
         kind: "dm",
@@ -227,6 +266,12 @@ class FakeD1 {
         deleted_at: null,
         moderation_state: "visible",
       });
+    }
+
+    if (sql.includes("INSERT INTO chat_message_reactions")) {
+      const existing = this.reactions.find((row) => row.message_id === params[0] && row.user_id === params[1] && row.emoji === params[2]);
+      if (existing) existing.created_at = params[3];
+      else this.reactions.push({ message_id: params[0], user_id: params[1], emoji: params[2], created_at: params[3] });
     }
 
     if (sql.includes("INSERT INTO chat_conversation_sequences")) {
@@ -511,6 +556,77 @@ test("messages require membership and persist for listed conversations", async (
   assert.equal(listedBody.messages.length, 1);
   assert.equal(listedBody.messages[0].body, "Hello from Cloudflare chat");
   assert.equal(listedBody.messages[0].sequence, 1);
+});
+
+test("event room route supports comments, replies, and reactions", async () => {
+  const db = new FakeD1();
+  const room = await app.request(
+    "https://chat.example.test/api/network/chat/event-room",
+    authedInit({ event_id: "event-1", title: "MedTech in the Hut Comments", org_id: "org-baltimore-medtech" }),
+    env(db),
+  );
+  assert.equal(room.status, 201);
+  const roomBody = (await room.json()) as { conversation: { id: string; kind: string; event_id: string; members: Array<{ user_id: string; role: string }> } };
+  assert.equal(roomBody.conversation.kind, "event_room");
+  assert.equal(roomBody.conversation.event_id, "event-1");
+  assert.equal(roomBody.conversation.members[0].role, "owner");
+
+  const reused = await app.request(
+    "https://chat.example.test/api/network/chat/event-room",
+    authedInit({ event_id: "event-1", title: "Ignored" }),
+    env(db),
+  );
+  assert.equal(reused.status, 200);
+  assert.equal(db.conversations.length, 1);
+
+  const root = await app.request(
+    `https://chat.example.test/api/network/chat/conversations/${roomBody.conversation.id}/messages`,
+    authedInit({ client_message_id: "event-comment-1", body: "Looking forward to this." }),
+    env(db),
+  );
+  assert.equal(root.status, 201);
+  const rootBody = (await root.json()) as { message: { id: string; body: string; reactions: unknown[] } };
+  assert.equal(rootBody.message.body, "Looking forward to this.");
+  assert.deepEqual(rootBody.message.reactions, []);
+
+  const reply = await app.request(
+    `https://chat.example.test/api/network/chat/conversations/${roomBody.conversation.id}/messages`,
+    authedInit({
+      client_message_id: "event-reply-1",
+      body: "Same here.",
+      reply_to_message_id: rootBody.message.id,
+      thread_root_message_id: rootBody.message.id,
+    }),
+    env(db),
+  );
+  assert.equal(reply.status, 201);
+  const replyBody = (await reply.json()) as { message: { reply_to_message_id: string; thread_root_message_id: string } };
+  assert.equal(replyBody.message.reply_to_message_id, rootBody.message.id);
+  assert.equal(replyBody.message.thread_root_message_id, rootBody.message.id);
+
+  const reaction = await app.request(
+    `https://chat.example.test/api/network/chat/conversations/${roomBody.conversation.id}/messages/${rootBody.message.id}/reactions`,
+    authedInit({ emoji: "👍" }),
+    env(db),
+  );
+  assert.equal(reaction.status, 200);
+  assert.deepEqual(await reaction.json(), { reactions: [{ key: "👍", count: 1 }] });
+
+  const listed = await app.request(
+    `https://chat.example.test/api/network/chat/conversations/${roomBody.conversation.id}/messages?afterSequence=0`,
+    authedInit(),
+    env(db),
+  );
+  assert.equal(listed.status, 200);
+  const listedBody = (await listed.json()) as { messages: Array<{ body: string; reply_to_message_id: string | null; reactions: Array<{ key: string; count: number }> }> };
+  assert.deepEqual(
+    listedBody.messages.map((message) => ({ body: message.body, reply_to_message_id: message.reply_to_message_id })),
+    [
+      { body: "Looking forward to this.", reply_to_message_id: null },
+      { body: "Same here.", reply_to_message_id: rootBody.message.id },
+    ],
+  );
+  assert.deepEqual(listedBody.messages[0].reactions, [{ key: "👍", count: 1 }]);
 });
 
 test("sync returns only messages after the requested sequence", async () => {

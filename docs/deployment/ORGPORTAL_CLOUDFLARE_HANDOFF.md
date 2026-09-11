@@ -59,12 +59,15 @@ The shared Cloudflare worker exposes `/mcp` with these tools:
 | `get_event` | Read an event in its configured calendar |
 | `preview_event_changes` | Return proposed changes and a ten-minute preview ID; no external event write |
 | `apply_event_changes` | Require write scope, `confirm: true`, and the matching one-use preview ID |
+| `preview_org_event_changes` | Preview creating or updating a portal-native D1 event; no write |
+| `apply_org_event_changes` | Create or update a portal-native D1 event by `ingestKey` after preview confirmation |
 | `get_event_operation` | Inspect the caller's previous operation status |
 
 Luma is the implemented external provider; the interface can support additional
-adapters. These tools do not synchronize external events into the native D1
-event directory and do not implement attendee registration. Existing native
-event APIs, the legacy Python backend, and the PIdP submodule are unchanged.
+adapters. The `*_org_event_changes` tools are for portal-owned events when Luma is
+being retired; they write the native event directory directly and leave
+registrations to the existing OrgPortal APIs. Existing native event APIs, the
+legacy Python backend, and the PIdP submodule are unchanged.
 
 OAuth JWT verification checks signature, issuer, audience, expiry and explicit
 subject mapping. Mapped users must also be active organization owners or
