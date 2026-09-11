@@ -29,10 +29,13 @@ export type NativeChatMessage = {
   body: string
   sequence?: number | null
   message_type?: 'text' | 'image' | 'file' | 'system'
+  reply_to_message_id?: string | null
+  thread_root_message_id?: string | null
   created_at: string
   edited_at?: string | null
   deleted_at?: string | null
   moderation_state?: string
+  reactions?: Array<{ key: string; count: number }>
 }
 
 export type NativeChatSync = {
@@ -149,6 +152,18 @@ export class NativeChatApi {
     return payload.conversation
   }
 
+  async startEventRoom(event: { eventId: string; title: string; orgId?: string | null }): Promise<NativeChatConversation> {
+    const payload = await this.request<{ conversation: NativeChatConversation }>('/api/network/chat/event-room', {
+      method: 'POST',
+      body: JSON.stringify({
+        event_id: event.eventId,
+        title: event.title,
+        org_id: event.orgId || null,
+      }),
+    })
+    return payload.conversation
+  }
+
   async getConversation(conversationId: string): Promise<NativeChatConversation> {
     const payload = await this.request<{ conversation: NativeChatConversation }>(
       `/api/network/chat/conversations/${encodeURIComponent(conversationId)}`,
@@ -168,16 +183,32 @@ export class NativeChatApi {
     )
   }
 
-  async sendMessage(conversationId: string, clientMessageId: string, body: string): Promise<NativeChatMessage> {
+  async sendMessage(conversationId: string, clientMessageId: string, body: string, options: { replyToMessageId?: string; threadRootMessageId?: string } = {}): Promise<NativeChatMessage> {
     const payload = await this.request<{ message: NativeChatMessage }>(
       `/api/network/chat/conversations/${encodeURIComponent(conversationId)}/messages`,
       {
         method: 'POST',
-        body: JSON.stringify({ client_message_id: clientMessageId, body }),
+        body: JSON.stringify({
+          client_message_id: clientMessageId,
+          body,
+          reply_to_message_id: options.replyToMessageId,
+          thread_root_message_id: options.threadRootMessageId,
+        }),
       },
     )
     if (typeof window !== 'undefined') window.dispatchEvent(new Event('portal:inbox-changed'))
     return payload.message
+  }
+
+  async sendReaction(conversationId: string, messageId: string, emoji: string): Promise<Array<{ key: string; count: number }>> {
+    const payload = await this.request<{ reactions: Array<{ key: string; count: number }> }>(
+      `/api/network/chat/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}/reactions`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ emoji }),
+      },
+    )
+    return payload.reactions || []
   }
 
   async markRead(conversationId: string, messageId: string): Promise<void> {

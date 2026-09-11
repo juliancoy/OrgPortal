@@ -35,21 +35,67 @@ type PublicOrganization = {
   image_url?: string | null
   tags?: string[]
   upcoming_events_count: number
-  favor_count?: number
-  disfavor_count?: number
-  sentiment_score?: number
+  membership_count?: number
+  feedback_count?: number
+  feedback_positive_count?: number
+  feedback_concern_count?: number
+  feedback_score?: number
   claimed_by_user_id?: string | null
   pending_challenges_count: number
   is_disputed: boolean
   redirected_from_slug?: string | null
 }
 
-type OrganizationSentiment = {
+type FeedbackRating = 'positive' | 'neutral' | 'concern'
+
+type OrganizationFeedback = {
   organization_id: string
-  sentiment: 'favor' | 'disfavor' | null
-  favor_count: number
-  disfavor_count: number
-  sentiment_score: number
+  my_feedback: {
+    rating: FeedbackRating
+    comment: string
+    updated_at: string
+  } | null
+  feedback_count: number
+  feedback_positive_count: number
+  feedback_concern_count: number
+  feedback_score: number
+}
+
+type OrganizationFeedbackReview = {
+  organization_id: string
+  user_id: string
+  user_name?: string | null
+  rating: FeedbackRating
+  comment: string
+  created_at: string
+  updated_at: string
+}
+
+type OrganizationMembership = {
+  organization_id: string
+  role: string | null
+  status: 'active' | 'none'
+  membership_count: number
+}
+
+type OrganizationPortal = {
+  id: string
+  organization_id?: string | null
+  slug?: string | null
+  slug_url?: string | null
+  name: string
+  tagline: string
+  accent_color: string
+  features?: string[]
+  home_kind?: 'default' | 'landing' | 'route' | 'org' | 'org-events' | 'timebank' | 'auth' | null
+  home_heading?: string | null
+  home_description?: string | null
+  home_image_url?: string | null
+  custom_domain_hostname?: string | null
+  custom_domain_status?: 'none' | 'requested' | 'attached' | 'blocked' | null
+  custom_domain_requested_at?: string | null
+  custom_domain_attached_at?: string | null
+  custom_domain_notes?: string | null
 }
 
 type PublicEvent = {
@@ -118,6 +164,19 @@ function formatDate(value?: string | null) {
   return dt.toLocaleString()
 }
 
+function normalizePortalSlug(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 64)
+}
+
+function normalizeDomain(value: string) {
+  return value.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '')
+}
+
 function messageAuthorLabel(message: ChatMessage, myUserId: string | null): string {
   if (myUserId && message.sender === myUserId) return 'You'
   if (message.senderDisplayName?.trim()) return message.senderDisplayName.trim()
@@ -146,8 +205,27 @@ export function PublicAdminPage() {
   const [chatFeedLoading, setChatFeedLoading] = useState(false)
   const [status, setStatus] = useState<string>('Loading organization…')
   const [claimStatus, setClaimStatus] = useState<string | null>(null)
-  const [orgSentiment, setOrgSentiment] = useState<'favor' | 'disfavor' | null>(null)
-  const [orgSentimentStatus, setOrgSentimentStatus] = useState<string | null>(null)
+  const [feedbackRating, setFeedbackRating] = useState<FeedbackRating>('neutral')
+  const [feedbackComment, setFeedbackComment] = useState('')
+  const [feedbackStatus, setFeedbackStatus] = useState<string | null>(null)
+  const [feedbackReviews, setFeedbackReviews] = useState<OrganizationFeedbackReview[]>([])
+  const [feedbackReviewStatus, setFeedbackReviewStatus] = useState<string | null>(null)
+  const [membership, setMembership] = useState<OrganizationMembership | null>(null)
+  const [membershipStatus, setMembershipStatus] = useState<string | null>(null)
+  const [portalConfig, setPortalConfig] = useState<OrganizationPortal | null>(null)
+  const [portalSlugDraft, setPortalSlugDraft] = useState('')
+  const [portalNameDraft, setPortalNameDraft] = useState('')
+  const [portalTaglineDraft, setPortalTaglineDraft] = useState('')
+  const [portalHomeKindDraft, setPortalHomeKindDraft] = useState<OrganizationPortal['home_kind']>('landing')
+  const [portalHeadingDraft, setPortalHeadingDraft] = useState('')
+  const [portalDescriptionDraft, setPortalDescriptionDraft] = useState('')
+  const [portalImageDraft, setPortalImageDraft] = useState('')
+  const [portalDomainDraft, setPortalDomainDraft] = useState('')
+  const [portalDomainNotesDraft, setPortalDomainNotesDraft] = useState('')
+  const [portalDomainChecklist, setPortalDomainChecklist] = useState<string[]>([])
+  const [portalStatus, setPortalStatus] = useState<string | null>(null)
+  const [savingPortal, setSavingPortal] = useState(false)
+  const [savingPortalDomain, setSavingPortalDomain] = useState(false)
   const [claimRequestMessage, setClaimRequestMessage] = useState('')
   const [claiming, setClaiming] = useState(false)
   const [myAdminOrgs, setMyAdminOrgs] = useState<MyOrganization[]>([])
@@ -230,6 +308,13 @@ export function PublicAdminPage() {
         setOrg(orgData)
         setOrgNameDraft(orgData.name || '')
         setOrgImageDraft(orgData.image_url || '')
+        setPortalSlugDraft(normalizePortalSlug(orgData.slug || orgData.name || ''))
+        setPortalNameDraft(orgData.name || '')
+        setPortalTaglineDraft(orgData.description || '')
+        setPortalHomeKindDraft('landing')
+        setPortalHeadingDraft(orgData.name || '')
+        setPortalDescriptionDraft(orgData.description || '')
+        setPortalImageDraft(orgData.image_url || '')
         setEvents([])
         setAdmins([])
         setPublicChatFeed(null)
@@ -292,33 +377,48 @@ export function PublicAdminPage() {
 
   useEffect(() => {
     if (!org?.id || !token) {
-      setOrgSentiment(null)
+      setFeedbackRating('neutral')
+      setFeedbackComment('')
+      setMembership(null)
       return
     }
     let cancelled = false
-    fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/sentiment`), {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(async (resp) => {
-        if (!resp.ok) return null
-        return (await resp.json()) as OrganizationSentiment
-      })
-      .then((payload) => {
-        if (cancelled || !payload) return
-        setOrgSentiment(payload.sentiment)
-        setOrg((prev) =>
-          prev
-            ? {
-                ...prev,
-                favor_count: payload.favor_count,
-                disfavor_count: payload.disfavor_count,
-                sentiment_score: payload.sentiment_score,
-              }
-            : prev,
-        )
+    Promise.all([
+      fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/feedback`), {
+        headers: { Authorization: `Bearer ${token}` },
+      }).then(async (resp) => (resp.ok ? ((await resp.json()) as OrganizationFeedback) : null)),
+      fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/membership`), {
+        headers: { Authorization: `Bearer ${token}` },
+      }).then(async (resp) => (resp.ok ? ((await resp.json()) as OrganizationMembership) : null)),
+    ])
+      .then(([feedback, membershipData]) => {
+        if (cancelled) return
+        if (feedback) {
+          setFeedbackRating(feedback.my_feedback?.rating || 'neutral')
+          setFeedbackComment(feedback.my_feedback?.comment || '')
+          setOrg((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  feedback_count: feedback.feedback_count,
+                  feedback_positive_count: feedback.feedback_positive_count,
+                  feedback_concern_count: feedback.feedback_concern_count,
+                  feedback_score: feedback.feedback_score,
+                }
+              : prev,
+          )
+        }
+        if (membershipData) {
+          setMembership(membershipData)
+          setOrg((prev) => (prev ? { ...prev, membership_count: membershipData.membership_count } : prev))
+        }
       })
       .catch(() => {
-        if (!cancelled) setOrgSentiment(null)
+        if (!cancelled) {
+          setFeedbackRating('neutral')
+          setFeedbackComment('')
+          setMembership(null)
+        }
       })
     return () => {
       cancelled = true
@@ -367,6 +467,82 @@ export function PublicAdminPage() {
         setMyAdminOrgsStatus(toUserFacingErrorMessage(err, 'Failed to load admin organizations'))
       })
   }, [token])
+
+  useEffect(() => {
+    if (!org?.id || !token || !canManageCurrentOrg) {
+      setFeedbackReviews([])
+      setFeedbackReviewStatus(null)
+      return
+    }
+    let cancelled = false
+    setFeedbackReviewStatus('Loading feedback...')
+    fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/feedback/review?limit=100`), {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(async (resp) => {
+        if (!resp.ok) {
+          const text = await resp.text().catch(() => '')
+          throw new Error(text || `Failed to load feedback (${resp.status})`)
+        }
+        return (await resp.json()) as OrganizationFeedbackReview[]
+      })
+      .then((rows) => {
+        if (cancelled) return
+        setFeedbackReviews(Array.isArray(rows) ? rows : [])
+        setFeedbackReviewStatus('')
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setFeedbackReviews([])
+        setFeedbackReviewStatus(toUserFacingErrorMessage(err, 'Failed to load feedback'))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [canManageCurrentOrg, org?.id, token])
+
+  useEffect(() => {
+    if (!org?.id || !token || !canManageCurrentOrg) {
+      setPortalConfig(null)
+      setPortalStatus(null)
+      return
+    }
+    let cancelled = false
+    setPortalStatus('Loading portal setup...')
+    fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/portal`), {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(async (resp) => {
+        if (!resp.ok) {
+          const text = await resp.text().catch(() => '')
+          throw new Error(text || `Failed to load portal (${resp.status})`)
+        }
+        return (await resp.json()) as { portal: OrganizationPortal | null }
+      })
+      .then(({ portal }) => {
+        if (cancelled) return
+        setPortalConfig(portal)
+        if (portal) {
+          setPortalSlugDraft(normalizePortalSlug(portal.slug || org.slug))
+          setPortalNameDraft(portal.name || org.name)
+          setPortalTaglineDraft(portal.tagline || org.description || '')
+          setPortalHomeKindDraft(portal.home_kind || 'landing')
+          setPortalHeadingDraft(portal.home_heading || portal.name || org.name)
+          setPortalDescriptionDraft(portal.home_description || portal.tagline || org.description || '')
+          setPortalImageDraft(portal.home_image_url || org.image_url || '')
+          setPortalDomainDraft(portal.custom_domain_hostname || '')
+          setPortalDomainNotesDraft(portal.custom_domain_notes || '')
+        }
+        setPortalStatus('')
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setPortalStatus(toUserFacingErrorMessage(err, 'Failed to load portal setup'))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [canManageCurrentOrg, org?.id, org?.image_url, org?.name, org?.slug, org?.description, token])
 
   useEffect(() => {
     if (!org?.slug) return
@@ -610,41 +786,166 @@ export function PublicAdminPage() {
     }
   }
 
-  async function setOrganizationSentiment(sentiment: 'favor' | 'disfavor') {
+  function applyFeedbackPayload(payload: OrganizationFeedback) {
+    setFeedbackRating(payload.my_feedback?.rating || 'neutral')
+    setFeedbackComment(payload.my_feedback?.comment || '')
+    setOrg((prev) =>
+      prev
+        ? {
+            ...prev,
+            feedback_count: payload.feedback_count,
+            feedback_positive_count: payload.feedback_positive_count,
+            feedback_concern_count: payload.feedback_concern_count,
+            feedback_score: payload.feedback_score,
+          }
+        : prev,
+    )
+  }
+
+  async function saveOrganizationFeedback() {
     if (!org) return
     if (!token) {
       window.location.assign(pidpAppLoginUrl(`/orgs/${encodeURIComponent(org.slug)}`))
       return
     }
-    setOrgSentimentStatus(null)
+    setFeedbackStatus(null)
     try {
-      const method = orgSentiment === sentiment ? 'DELETE' : 'PUT'
-      const resp = await fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/sentiment`), {
-        method,
+      const resp = await fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/feedback`), {
+        method: 'PUT',
         headers: {
           Authorization: `Bearer ${token}`,
-          ...(method === 'PUT' ? { 'Content-Type': 'application/json' } : {}),
+          'Content-Type': 'application/json',
         },
-        body: method === 'PUT' ? JSON.stringify({ sentiment }) : undefined,
+        body: JSON.stringify({ rating: feedbackRating, comment: feedbackComment }),
       })
       if (!resp.ok) {
         const text = await resp.text().catch(() => '')
-        throw new Error(text || `Preference update failed (${resp.status})`)
+        throw new Error(text || `Feedback update failed (${resp.status})`)
       }
-      const payload = (await resp.json()) as OrganizationSentiment
-      setOrgSentiment(payload.sentiment)
-      setOrg((prev) =>
-        prev
-          ? {
-              ...prev,
-              favor_count: payload.favor_count,
-              disfavor_count: payload.disfavor_count,
-              sentiment_score: payload.sentiment_score,
-            }
-          : prev,
-      )
+      applyFeedbackPayload((await resp.json()) as OrganizationFeedback)
+      setFeedbackStatus('Feedback saved.')
     } catch (err) {
-      setOrgSentimentStatus(toUserFacingErrorMessage(err, 'Could not update organization preference'))
+      setFeedbackStatus(toUserFacingErrorMessage(err, 'Could not update organization feedback'))
+    }
+  }
+
+  async function clearOrganizationFeedback() {
+    if (!org || !token) return
+    setFeedbackStatus(null)
+    try {
+      const resp = await fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/feedback`), {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!resp.ok) {
+        const text = await resp.text().catch(() => '')
+        throw new Error(text || `Feedback update failed (${resp.status})`)
+      }
+      applyFeedbackPayload((await resp.json()) as OrganizationFeedback)
+      setFeedbackStatus('Feedback cleared.')
+    } catch (err) {
+      setFeedbackStatus(toUserFacingErrorMessage(err, 'Could not clear organization feedback'))
+    }
+  }
+
+  async function updateOrganizationMembership(join: boolean) {
+    if (!org) return
+    if (!token) {
+      window.location.assign(pidpAppLoginUrl(`/orgs/${encodeURIComponent(org.slug)}`))
+      return
+    }
+    setMembershipStatus(null)
+    try {
+      const resp = await fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/membership`), {
+        method: join ? 'POST' : 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!resp.ok) {
+        const text = await resp.text().catch(() => '')
+        throw new Error(text || `Membership update failed (${resp.status})`)
+      }
+      const payload = (await resp.json()) as OrganizationMembership
+      setMembership(payload)
+      setOrg((prev) => (prev ? { ...prev, membership_count: payload.membership_count } : prev))
+      setMembershipStatus(join ? 'You joined this group.' : 'You left this group.')
+    } catch (err) {
+      setMembershipStatus(toUserFacingErrorMessage(err, 'Could not update group membership'))
+    }
+  }
+
+  async function saveOrganizationPortal() {
+    if (!org || !token) return
+    const slug = normalizePortalSlug(portalSlugDraft || org.slug)
+    if (!slug || slug.length < 3) {
+      setPortalStatus('Use a portal slug with at least 3 characters.')
+      return
+    }
+    setSavingPortal(true)
+    setPortalStatus(null)
+    try {
+      const resp = await fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/portal`), {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          slug,
+          name: portalNameDraft || org.name,
+          tagline: portalTaglineDraft || org.description || `Portal for ${org.name}`,
+          home_kind: portalHomeKindDraft || 'landing',
+          home_heading: portalHeadingDraft || portalNameDraft || org.name,
+          home_description: portalDescriptionDraft || portalTaglineDraft || org.description || '',
+          home_image_url: portalImageDraft || org.image_url || null,
+          features: ['directory', 'events', 'chat'],
+        }),
+      })
+      if (!resp.ok) {
+        const text = await resp.text().catch(() => '')
+        throw new Error(text || `Portal update failed (${resp.status})`)
+      }
+      const payload = (await resp.json()) as { portal: OrganizationPortal }
+      setPortalConfig(payload.portal)
+      setPortalSlugDraft(normalizePortalSlug(payload.portal.slug || slug))
+      setPortalStatus('Portal saved.')
+    } catch (err) {
+      setPortalStatus(toUserFacingErrorMessage(err, 'Could not save portal setup'))
+    } finally {
+      setSavingPortal(false)
+    }
+  }
+
+  async function updatePortalCustomDomain(action: 'request' | 'attach') {
+    if (!org || !token) return
+    const hostname = normalizeDomain(portalDomainDraft)
+    if (!hostname) {
+      setPortalStatus('Enter the custom domain first.')
+      return
+    }
+    setSavingPortalDomain(true)
+    setPortalStatus(null)
+    try {
+      const resp = await fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/portal/custom-domain/${action}`), {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ hostname, notes: portalDomainNotesDraft || null }),
+      })
+      if (!resp.ok) {
+        const text = await resp.text().catch(() => '')
+        throw new Error(text || `Custom domain update failed (${resp.status})`)
+      }
+      const payload = (await resp.json()) as { portal: OrganizationPortal; checklist?: string[] }
+      setPortalConfig(payload.portal)
+      setPortalDomainDraft(payload.portal.custom_domain_hostname || hostname)
+      setPortalDomainChecklist(Array.isArray(payload.checklist) ? payload.checklist : [])
+      setPortalStatus(action === 'request' ? 'Custom domain request saved.' : 'Custom domain attached.')
+    } catch (err) {
+      setPortalStatus(toUserFacingErrorMessage(err, 'Could not update custom domain'))
+    } finally {
+      setSavingPortalDomain(false)
     }
   }
 
@@ -948,47 +1249,98 @@ export function PublicAdminPage() {
           <div className="portal-org-meta">
             {org.description ? <p style={{ margin: 0 }}>{org.description}</p> : null}
             <p className="muted" style={{ margin: 0 }}>
-              Handle: <code>{org.slug}</code> • Upcoming hosted events: {org.upcoming_events_count}
-            </p>
-            <p className="muted" style={{ margin: 0 }}>
-              Favor: {org.favor_count || 0} • Disfavor: {org.disfavor_count || 0}
+              Handle: <code>{org.slug}</code>
             </p>
           </div>
-          <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }} role="group" aria-label={`Preference for ${org.name}`}>
-            <button
-              type="button"
-              className={orgSentiment === 'favor' ? 'btn-primary' : undefined}
-              onClick={() => void setOrganizationSentiment('favor')}
-              aria-pressed={orgSentiment === 'favor'}
-              aria-label={`Favor ${org.name}. ${org.favor_count || 0} favor votes`}
-            >
-              Favor
-            </button>
-            <button
-              type="button"
-              className={orgSentiment === 'disfavor' ? 'btn-primary' : undefined}
-              onClick={() => void setOrganizationSentiment('disfavor')}
-              aria-pressed={orgSentiment === 'disfavor'}
-              aria-label={`Disfavor ${org.name}. ${org.disfavor_count || 0} disfavor votes`}
-            >
-              Disfavor
-            </button>
-            {!token ? <span className="muted">Sign in to register your preference.</span> : null}
+          <div className="portal-card" style={{ display: 'grid', gap: '0.8rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.6rem' }}>
+              <div>
+                <strong>{org.membership_count || 0}</strong>
+                <p className="muted" style={{ margin: 0 }}>Members</p>
+              </div>
+              <div>
+                <strong>{org.upcoming_events_count}</strong>
+                <p className="muted" style={{ margin: 0 }}>Upcoming events</p>
+              </div>
+              <div>
+                <strong>{org.feedback_count || 0}</strong>
+                <p className="muted" style={{ margin: 0 }}>Feedback notes</p>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              {membership?.status === 'active' ? (
+                membership.role === 'member' ? (
+                  <button type="button" onClick={() => void updateOrganizationMembership(false)}>
+                    Leave Group
+                  </button>
+                ) : (
+                  <span className="pill">You manage this group</span>
+                )
+              ) : (
+                <button type="button" className="btn-primary" onClick={() => void updateOrganizationMembership(true)}>
+                  Join Group
+                </button>
+              )}
+              {token ? (
+                <Link className="btn-primary" to={`/chat?start=group&org=${encodeURIComponent(org.slug)}`} style={{ textDecoration: 'none', width: 'fit-content' }}>
+                  Message Group
+                </Link>
+              ) : (
+                <a className="btn-primary" href={pidpAppLoginUrl(`/chat?start=group&org=${encodeURIComponent(org.slug)}`)} style={{ textDecoration: 'none', width: 'fit-content' }}>
+                  Message Group
+                </a>
+              )}
+              {!token ? <span className="muted">Sign in to join and leave feedback.</span> : null}
+            </div>
+            {membershipStatus ? <p className="muted" role="status" style={{ margin: 0 }}>{membershipStatus}</p> : null}
           </div>
-          {orgSentimentStatus ? (
-            <p className="muted" role="status" style={{ margin: 0 }}>
-              {orgSentimentStatus}
-            </p>
-          ) : null}
-          {token ? (
-            <Link className="btn-primary" to={`/chat?start=group&org=${encodeURIComponent(org.slug)}`} style={{ textDecoration: 'none', width: 'fit-content' }}>
-              Message Group
-            </Link>
-          ) : (
-            <a className="btn-primary" href={pidpAppLoginUrl(`/chat?start=group&org=${encodeURIComponent(org.slug)}`)} style={{ textDecoration: 'none', width: 'fit-content' }}>
-              Message Group
-            </a>
-          )}
+          <div className="portal-card" style={{ display: 'grid', gap: '0.65rem' }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: '1rem' }}>Group Feedback</h2>
+              <p className="muted" style={{ margin: '0.25rem 0 0' }}>
+                {org.feedback_positive_count || 0} positive • {org.feedback_concern_count || 0} concerns
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }} role="group" aria-label={`Feedback rating for ${org.name}`}>
+              {(['positive', 'neutral', 'concern'] as FeedbackRating[]).map((rating) => (
+                <button
+                  key={rating}
+                  type="button"
+                  className={feedbackRating === rating ? 'btn-primary' : undefined}
+                  onClick={() => setFeedbackRating(rating)}
+                  disabled={!token}
+                  aria-pressed={feedbackRating === rating}
+                >
+                  {rating === 'positive' ? 'Positive' : rating === 'concern' ? 'Concern' : 'Neutral'}
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={feedbackComment}
+              onChange={(e) => setFeedbackComment(e.target.value)}
+              placeholder="Share context, praise, concerns, or what would help you participate."
+              rows={3}
+              disabled={!token}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                borderRadius: 8,
+                border: '1px solid var(--border)',
+                background: 'var(--panel)',
+                color: 'var(--text-primary)',
+              }}
+            />
+            <div style={{ display: 'flex', gap: '0.55rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <button type="button" className="btn-primary" onClick={() => void saveOrganizationFeedback()} disabled={!token}>
+                Save Feedback
+              </button>
+              <button type="button" onClick={() => void clearOrganizationFeedback()} disabled={!token || (!feedbackComment && feedbackRating === 'neutral')}>
+                Clear
+              </button>
+              {!token ? <a href={pidpAppLoginUrl(`/orgs/${encodeURIComponent(org.slug)}`)}>Sign in to respond</a> : null}
+            </div>
+            {feedbackStatus ? <p className="muted" role="status" style={{ margin: 0 }}>{feedbackStatus}</p> : null}
+          </div>
           {org.is_disputed ? (
             <p className="muted" style={{ margin: 0 }}>
               Ownership status: Disputed ({org.pending_challenges_count} open challenge{org.pending_challenges_count === 1 ? '' : 's'}).
@@ -1090,6 +1442,186 @@ export function PublicAdminPage() {
                       {myAdminOrgsStatus}
                     </p>
                   ) : null}
+                  <div className="portal-card portal-org-portal-setup" style={{ display: 'grid', gap: '0.65rem', boxShadow: 'none' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '0.98rem' }}>Portal</h3>
+                      <p className="muted" style={{ margin: '0.2rem 0 0' }}>
+                        Publish an organization portal at a shared slug URL. A custom domain can be attached to the same portal later.
+                      </p>
+                    </div>
+                    <div className="portal-org-portal-grid">
+                      <label>
+                        <span className="muted">Slug URL</span>
+                        <input
+                          value={portalSlugDraft}
+                          onChange={(e) => setPortalSlugDraft(normalizePortalSlug(e.target.value))}
+                          placeholder={org.slug}
+                        />
+                      </label>
+                      <label>
+                        <span className="muted">Home mode</span>
+                        <select
+                          value={portalHomeKindDraft || 'landing'}
+                          onChange={(e) => setPortalHomeKindDraft(e.target.value as OrganizationPortal['home_kind'])}
+                        >
+                          <option value="landing">Landing</option>
+                          <option value="org-events">Org events</option>
+                          <option value="org">Org profile</option>
+                          <option value="auth">Member flow</option>
+                        </select>
+                      </label>
+                    </div>
+                    {portalConfig?.slug_url ? (
+                      <p className="muted" style={{ margin: 0 }}>
+                        Portal URL: <a href={portalConfig.slug_url}>{portalConfig.slug_url}</a>
+                      </p>
+                    ) : (
+                      <p className="muted" style={{ margin: 0 }}>
+                        Portal URL will be available after saving.
+                      </p>
+                    )}
+                    <div className="portal-org-domain-flow">
+                      <div>
+                        <h4 style={{ margin: 0, fontSize: '0.92rem' }}>Custom domain</h4>
+                        <p className="muted" style={{ margin: '0.15rem 0 0' }}>
+                          Status: {portalConfig?.custom_domain_status || 'none'}
+                        </p>
+                      </div>
+                      <div className="portal-org-portal-grid">
+                        <label>
+                          <span className="muted">Domain</span>
+                          <input
+                            value={portalDomainDraft}
+                            onChange={(e) => setPortalDomainDraft(normalizeDomain(e.target.value))}
+                            placeholder="example.org"
+                          />
+                        </label>
+                        <label>
+                          <span className="muted">Operator notes</span>
+                          <input
+                            value={portalDomainNotesDraft}
+                            onChange={(e) => setPortalDomainNotesDraft(e.target.value)}
+                            placeholder="DNS owner, deadline, provider notes"
+                          />
+                        </label>
+                      </div>
+                      {portalDomainChecklist.length ? (
+                        <ol className="portal-org-domain-checklist">
+                          {portalDomainChecklist.map((item) => <li key={item}>{item}</li>)}
+                        </ol>
+                      ) : null}
+                      <div style={{ display: 'flex', gap: '0.55rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          onClick={() => void updatePortalCustomDomain('request')}
+                          disabled={savingPortalDomain || !portalConfig}
+                        >
+                          Request Domain
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void updatePortalCustomDomain('attach')}
+                          disabled={savingPortalDomain || !portalConfig}
+                        >
+                          Attach Provisioned Domain
+                        </button>
+                      </div>
+                    </div>
+                    <div className="portal-org-portal-grid">
+                      <label>
+                        <span className="muted">Portal name</span>
+                        <input
+                          value={portalNameDraft}
+                          onChange={(e) => setPortalNameDraft(e.target.value)}
+                          placeholder={org.name}
+                        />
+                      </label>
+                      <label>
+                        <span className="muted">Tagline</span>
+                        <input
+                          value={portalTaglineDraft}
+                          onChange={(e) => setPortalTaglineDraft(e.target.value)}
+                          placeholder="Short portal tagline"
+                        />
+                      </label>
+                    </div>
+                    <label>
+                      <span className="muted">Heading</span>
+                      <input
+                        value={portalHeadingDraft}
+                        onChange={(e) => setPortalHeadingDraft(e.target.value)}
+                        placeholder={org.name}
+                      />
+                    </label>
+                    <label>
+                      <span className="muted">Description</span>
+                      <textarea
+                        value={portalDescriptionDraft}
+                        onChange={(e) => setPortalDescriptionDraft(e.target.value)}
+                        rows={3}
+                        placeholder="Describe what members and visitors can do here."
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          borderRadius: 8,
+                          border: '1px solid var(--border)',
+                          background: 'var(--panel)',
+                          color: 'var(--text-primary)',
+                        }}
+                      />
+                    </label>
+                    <label>
+                      <span className="muted">Hero image URL</span>
+                      <input
+                        value={portalImageDraft}
+                        onChange={(e) => setPortalImageDraft(e.target.value)}
+                        placeholder="https://example.com/hero.jpg"
+                      />
+                    </label>
+                    <div style={{ display: 'flex', gap: '0.55rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <button type="button" className="btn-primary" onClick={() => void saveOrganizationPortal()} disabled={savingPortal}>
+                        {savingPortal ? 'Saving...' : 'Save Portal'}
+                      </button>
+                      {portalStatus ? <p className="muted" role="status" style={{ margin: 0 }}>{portalStatus}</p> : null}
+                    </div>
+                  </div>
+                  <div className="portal-card" style={{ display: 'grid', gap: '0.55rem', boxShadow: 'none' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '0.98rem' }}>Feedback Inbox</h3>
+                      <p className="muted" style={{ margin: '0.2rem 0 0' }}>
+                        {feedbackReviews.length} response{feedbackReviews.length === 1 ? '' : 's'} visible to organization admins.
+                      </p>
+                    </div>
+                    {feedbackReviewStatus ? (
+                      <p className="muted" style={{ margin: 0 }}>{feedbackReviewStatus}</p>
+                    ) : feedbackReviews.length ? (
+                      <div style={{ display: 'grid', gap: '0.55rem' }}>
+                        {feedbackReviews.map((item) => (
+                          <article
+                            key={`${item.user_id}-${item.updated_at}`}
+                            style={{
+                              display: 'grid',
+                              gap: '0.35rem',
+                              padding: '0.65rem',
+                              border: '1px solid var(--border)',
+                              borderRadius: 8,
+                            }}
+                          >
+                            <p style={{ margin: 0 }}>
+                              <strong>{item.user_name || item.user_id}</strong>{' '}
+                              <span className="pill">{item.rating === 'positive' ? 'Positive' : item.rating === 'concern' ? 'Concern' : 'Neutral'}</span>
+                            </p>
+                            {item.comment ? <p style={{ margin: 0, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{item.comment}</p> : (
+                              <p className="muted" style={{ margin: 0 }}>No written note.</p>
+                            )}
+                            <p className="muted" style={{ margin: 0 }}>{formatDate(item.updated_at)}</p>
+                          </article>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="muted" style={{ margin: 0 }}>No feedback yet.</p>
+                    )}
+                  </div>
                   <div style={{ display: 'grid', gap: '0.5rem' }}>
                     <label htmlFor="org-name" className="muted">
                       Organization name

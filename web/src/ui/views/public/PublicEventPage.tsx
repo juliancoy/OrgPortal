@@ -3,6 +3,8 @@ import { Link, useParams } from 'react-router-dom'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
 import { downloadIcsEvent, outlookCalendarUrl } from '../../utils/calendar'
 import { useAuth } from '../../../app/AppProviders'
+import { NativeChatApi, type NativeChatMessage } from '../../../chat/nativeChatApi'
+import { refreshRuntimeTokenFromSession } from '../../../infrastructure/auth/sessionToken'
 import { pidpAppLoginUrl } from '../../../config/pidp'
 import { EventRegistration } from './EventRegistration'
 import { toUserFacingErrorMessage } from '../../../infrastructure/http/userFacingError'
@@ -10,6 +12,7 @@ import { loadGoogleCalendarConnection, savePortalEventToGoogleCalendar } from '.
 import { loadMicrosoftCalendarConnection, savePortalEventToMicrosoftCalendar } from '../microsoftCalendarApi'
 
 const ORG_API_BASE = '/api/org'
+const QUICK_REACTIONS = ['👍', '❤️', '🔥', '🎉']
 
 function orgUrl(path: string) {
   if (!path.startsWith('/')) return `${ORG_API_BASE}/${path}`
@@ -31,27 +34,37 @@ type PublicEvent = {
   host_org_id?: string | null
 }
 
-type PublicEventChatMessage = {
-  event_id: string
-  sender?: string | null
-  body: string
-  sent_at?: string | null
-}
-
 type PublicEventChat = {
   event_slug: string
   room_exists: boolean
-  room_id?: string | null
-  room_alias?: string | null
+  conversation_id?: string | null
   room_name?: string | null
-  messages: PublicEventChatMessage[]
+  messages?: unknown[]
 }
 
 function toLocalDateTime(value?: string | null) {
   if (!value) return 'TBD'
   const dt = new Date(value)
   if (Number.isNaN(dt.getTime())) return 'TBD'
-  return dt.toLocaleString()
+  return dt.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+}
+
+function toEventDate(value?: string | null) {
+  if (!value) return 'Date TBD'
+  const dt = new Date(value)
+  if (Number.isNaN(dt.getTime())) return 'Date TBD'
+  return dt.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+}
+
+function toEventTimeRange(start?: string | null, end?: string | null) {
+  if (!start) return 'Time TBD'
+  const startDate = new Date(start)
+  if (Number.isNaN(startDate.getTime())) return 'Time TBD'
+  const startText = startDate.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+  if (!end) return startText
+  const endDate = new Date(end)
+  if (Number.isNaN(endDate.getTime())) return startText
+  return `${startText} to ${endDate.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`
 }
 
 function eventUrl(slug: string) {
@@ -78,16 +91,49 @@ function getEventOfferValidFrom(event: PublicEvent) {
   return new Date().toISOString()
 }
 
+function messageAuthorLabel(message: NativeChatMessage, myUserId: string | null): string {
+  if (myUserId && message.sender_user_id === myUserId) return 'You'
+  return message.sender_name?.trim() || message.sender_user_id || 'Member'
+}
+
+function messageAuthorInitial(message: NativeChatMessage, myUserId: string | null): string {
+  const label = messageAuthorLabel(message, myUserId).trim()
+  return (label[0] || '?').toUpperCase()
+}
+
+function messageTime(message: NativeChatMessage) {
+  return new Date(message.created_at).getTime()
+}
+
+function uuid() {
+  if ('crypto' in window && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID()
+  return `client-${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
 export function PublicEventPage() {
-  const { token, user } = useAuth()
+  const { token, user, isLoading: authLoading } = useAuth()
   const { slug } = useParams()
   const [event, setEvent] = useState<PublicEvent | null>(null)
   const [status, setStatus] = useState<string>('Loading event…')
   const [googleCalendarConnected, setGoogleCalendarConnected] = useState(false)
   const [microsoftCalendarConnected, setMicrosoftCalendarConnected] = useState(false)
   const [eventChat, setEventChat] = useState<PublicEventChat | null>(null)
+  const [eventChatMessages, setEventChatMessages] = useState<NativeChatMessage[]>([])
+  const [eventChatReady, setEventChatReady] = useState(false)
   const [chatLoading, setChatLoading] = useState(false)
   const [chatStatus, setChatStatus] = useState('')
+  const [commentDraft, setCommentDraft] = useState('')
+  const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({})
+  const [replyingToId, setReplyingToId] = useState<string | null>(null)
+  const [chatActionPending, setChatActionPending] = useState(false)
+  const [myUserId, setMyUserId] = useState<string | null>(null)
+  const chatApi = useMemo(
+    () =>
+      new NativeChatApi(async () => {
+        return token || (await refreshRuntimeTokenFromSession())
+      }),
+    [token],
+  )
 
   useEffect(() => {
     if (!slug) return
@@ -101,6 +147,7 @@ export function PublicEventPage() {
   }, [slug])
 
   useEffect(() => {
+    if (authLoading) return
     if (!token) {
       setGoogleCalendarConnected(false)
       setMicrosoftCalendarConnected(false)
@@ -115,7 +162,7 @@ export function PublicEventPage() {
         setGoogleCalendarConnected(false)
         setMicrosoftCalendarConnected(false)
       })
-  }, [token])
+  }, [authLoading, token])
 
   useEffect(() => {
     if (!slug) return
@@ -175,6 +222,47 @@ export function PublicEventPage() {
   }, [slug])
 
   useEffect(() => {
+    const activeToken = (token || '').trim()
+    let cancelled = false
+    setEventChatReady(false)
+    setMyUserId(null)
+    setReplyingToId(null)
+    setReplyDrafts({})
+    if (authLoading) return
+    if (!activeToken || !event || !eventChat?.room_exists) return
+
+    const currentEvent = event
+    async function initEventComments() {
+      try {
+        setChatStatus('Connecting to event comments...')
+        const conversation = await chatApi.startEventRoom({
+          eventId: currentEvent.id,
+          title: eventChat?.room_name || `${currentEvent.title} Comments`,
+          orgId: currentEvent.host_org_id || null,
+        })
+        if (cancelled) return
+        setEventChat((current) => current ? { ...current, conversation_id: conversation.id, room_name: conversation.title || current.room_name } : current)
+        setMyUserId(user?.id || null)
+        setEventChatReady(true)
+        setChatStatus('')
+        const initialMessages = await chatApi.listMessages(conversation.id)
+        if (!cancelled) setEventChatMessages(initialMessages.messages || [])
+      } catch (err) {
+        if (cancelled) return undefined
+        setEventChatReady(false)
+        setChatStatus(toUserFacingErrorMessage(err, 'Event comments unavailable'))
+      }
+    }
+
+    initEventComments()
+      .catch(() => {})
+
+    return () => {
+      cancelled = true
+    }
+  }, [authLoading, chatApi, event, eventChat?.room_exists, token, user?.id])
+
+  useEffect(() => {
     if (!event) return
     setSeoMeta({
       title: `${event.title} • Org Portal`,
@@ -230,6 +318,73 @@ export function PublicEventPage() {
     upsertJsonLd('event-detail', eventJsonLd)
   }, [eventJsonLd])
 
+  const eventComments = useMemo(() => {
+    const byRoot = new Map<string, NativeChatMessage[]>()
+    const roots: NativeChatMessage[] = []
+    for (const message of eventChatMessages) {
+      if (message.thread_root_message_id) {
+        const replies = byRoot.get(message.thread_root_message_id) || []
+        replies.push(message)
+        byRoot.set(message.thread_root_message_id, replies)
+      } else {
+        roots.push(message)
+      }
+    }
+    roots.sort((a, b) => messageTime(a) - messageTime(b))
+    for (const replies of byRoot.values()) replies.sort((a, b) => messageTime(a) - messageTime(b))
+    return roots.map((message) => ({ message, replies: byRoot.get(message.id) || [] }))
+  }, [eventChatMessages])
+
+  async function postEventComment() {
+    const body = commentDraft.trim()
+    if (!eventChat?.conversation_id || !body || !eventChatReady) return
+    try {
+      setChatActionPending(true)
+      setChatStatus('')
+      const message = await chatApi.sendMessage(eventChat.conversation_id, uuid(), body)
+      setCommentDraft('')
+      setEventChatMessages((current) => [...current, message])
+    } catch (err) {
+      setChatStatus(toUserFacingErrorMessage(err, 'Could not post comment'))
+    } finally {
+      setChatActionPending(false)
+    }
+  }
+
+  async function postEventReply(rootMessageId: string) {
+    const body = (replyDrafts[rootMessageId] || '').trim()
+    if (!eventChat?.conversation_id || !body || !eventChatReady) return
+    try {
+      setChatActionPending(true)
+      setChatStatus('')
+      const message = await chatApi.sendMessage(eventChat.conversation_id, uuid(), body, {
+        replyToMessageId: rootMessageId,
+        threadRootMessageId: rootMessageId,
+      })
+      setReplyDrafts((prev) => ({ ...prev, [rootMessageId]: '' }))
+      setReplyingToId(null)
+      setEventChatMessages((current) => [...current, message])
+    } catch (err) {
+      setChatStatus(toUserFacingErrorMessage(err, 'Could not post reply'))
+    } finally {
+      setChatActionPending(false)
+    }
+  }
+
+  async function reactToEventComment(messageId: string, emoji: string) {
+    if (!eventChat?.conversation_id || !eventChatReady) return
+    try {
+      setChatActionPending(true)
+      setChatStatus('')
+      const reactions = await chatApi.sendReaction(eventChat.conversation_id, messageId, emoji)
+      setEventChatMessages((current) => current.map((message) => message.id === messageId ? { ...message, reactions } : message))
+    } catch (err) {
+      setChatStatus(toUserFacingErrorMessage(err, 'Could not add reaction'))
+    } finally {
+      setChatActionPending(false)
+    }
+  }
+
   async function saveToCalendar() {
     if (!event?.starts_at) return
     const calendarEvent = {
@@ -263,28 +418,52 @@ export function PublicEventPage() {
   const eventEnd = event.ends_at || eventStart || null
 
   return (
-    <article className="panel" style={{ display: 'grid', gap: '0.9rem' }}>
-      <h1 style={{ marginTop: 0 }}>{event.title}</h1>
-      <p className="muted" style={{ margin: 0 }}>
-        {toLocalDateTime(event.starts_at)}
-        {event.ends_at ? ` → ${toLocalDateTime(event.ends_at)}` : ''}
-      </p>
-      {event.location ? <p style={{ margin: 0, overflowWrap: 'anywhere' }}><strong>Location:</strong> {event.location}</p> : null}
-      <EventRegistration key={`${event.id}:${user?.id || 'guest'}:${Boolean(token)}`}
-        eventId={event.id} slug={event.slug} token={token} saveToCalendar={saveToCalendar}
-        organizationName={event.host_org_id ? event.organization_name || event.host_org_name : null} />
-      {event.image_url ? (
-        <img
-          src={event.image_url}
-          alt={event.title}
-          style={{ width: '100%', maxWidth: 720, borderRadius: 12, border: '1px solid var(--border)' }}
-        />
-      ) : null}
-      {event.description ? <p style={{ margin: 0, overflowWrap: 'anywhere' }}>{event.description}</p> : null}
-      <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+    <article className="public-event-page">
+      <section className="public-event-hero">
+        {event.image_url ? (
+          <img className="public-event-hero-image" src={event.image_url} alt="" />
+        ) : <div className="public-event-hero-image public-event-hero-placeholder" aria-hidden="true" />}
+        <div className="public-event-hero-content">
+          <p className="public-event-eyebrow">{getEventOrganizerName(event)}</p>
+          <h1>{event.title}</h1>
+          <div className="public-event-facts" aria-label="Event details">
+            <div>
+              <span>Date</span>
+              <strong>{toEventDate(event.starts_at)}</strong>
+            </div>
+            <div>
+              <span>Time</span>
+              <strong>{toEventTimeRange(event.starts_at, event.ends_at)}</strong>
+            </div>
+            {event.location ? (
+              <div>
+                <span>Location</span>
+                <strong>{event.location}</strong>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </section>
+
+      <div className="public-event-layout">
+        <main className="public-event-main">
+          {event.description ? (
+            <section className="portal-card public-event-description">
+              <div className="public-event-card-heading">
+                <p className="public-event-eyebrow">About The Event</p>
+                <h2>What To Expect</h2>
+              </div>
+              <p>{event.description}</p>
+            </section>
+          ) : null}
+          <section className="portal-card public-event-calendar-card">
+            <div className="public-event-card-heading">
+              <p className="public-event-eyebrow">Calendar</p>
+              <h2>Add It To Your Schedule</h2>
+            </div>
+            <div className="public-event-actions">
         {eventStart && eventEnd ? (
           <>
-            <span className="muted">Calendar Integrations:</span>
             <button
               type="button"
               className="portal-button-secondary"
@@ -315,7 +494,8 @@ export function PublicEventPage() {
             </a>
           </>
         ) : null}
-      </div>
+            </div>
+          </section>
       {event.source_url ? (
         <p style={{ margin: 0, overflowWrap: 'anywhere' }}>
           <a href={event.source_url} target="_blank" rel="noreferrer">
@@ -323,56 +503,171 @@ export function PublicEventPage() {
           </a>
         </p>
       ) : null}
-      <section className="portal-card" style={{ display: 'grid', gap: '0.55rem' }}>
-        <h2 style={{ margin: 0, fontSize: '1rem' }}>Event Chat</h2>
+      <section className="portal-card public-event-chat">
+        <div className="public-event-card-heading">
+          <p className="public-event-eyebrow">Conversation</p>
+          <h2>Comments</h2>
+        </div>
         {chatLoading ? (
           <p className="muted" style={{ margin: 0 }}>Loading event chat…</p>
         ) : null}
         {chatStatus ? (
           <p className="muted" style={{ margin: 0 }}>{chatStatus}</p>
         ) : null}
-        {eventChat?.room_exists && eventChat.room_id ? (
+        {eventChat?.room_exists ? (
           <>
             <p className="muted" style={{ margin: 0 }}>
-              {eventChat.room_name || 'Event Chat'}
-              {eventChat.room_alias ? ` • ${eventChat.room_alias}` : ''}
+              {eventChat.room_name || 'Event comments'}
             </p>
-            {token ? (
-              <Link
-                className="btn-primary"
-                to={`/chat/${encodeURIComponent(eventChat.room_id)}`}
-                style={{ textDecoration: 'none', width: 'fit-content' }}
-              >
-                Open Event Chat
-              </Link>
+            {authLoading ? (
+              <div className="public-event-comment-auth-loading" role="status" aria-label="Checking sign-in status">
+                <span aria-hidden="true" />
+              </div>
+            ) : token ? (
+              <div className="public-event-comment-composer">
+                <textarea
+                  value={commentDraft}
+                  onChange={(event) => setCommentDraft(event.target.value)}
+                  placeholder={eventChatReady ? 'Add a comment...' : 'Connecting before comments can be posted...'}
+                  rows={3}
+                  disabled={!eventChatReady || chatActionPending}
+                />
+                <div className="public-event-comment-actions">
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    disabled={!eventChatReady || chatActionPending || !commentDraft.trim()}
+                    onClick={() => postEventComment().catch(() => {})}
+                  >
+                    Post Comment
+                  </button>
+                  {eventChat.conversation_id ? (
+                    <Link to={`/chat/${encodeURIComponent(eventChat.conversation_id)}`}>
+                      Open full chat
+                    </Link>
+                  ) : null}
+                </div>
+              </div>
             ) : (
               <a
                 className="btn-primary"
-                href={pidpAppLoginUrl(`/chat/${encodeURIComponent(eventChat.room_id)}`)}
+                href={pidpAppLoginUrl(`/events/${encodeURIComponent(event.slug)}`)}
                 style={{ textDecoration: 'none', width: 'fit-content' }}
               >
-                Login to Join Event Chat
+                Login to Comment
               </a>
             )}
-            {eventChat.messages?.length ? (
-              <div style={{ display: 'grid', gap: '0.4rem' }}>
-                {eventChat.messages.slice(-10).map((message) => (
-                  <article key={message.event_id} style={{ borderLeft: '2px solid var(--border)', paddingLeft: '0.55rem' }}>
-                    <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{message.body}</p>
-                    <p className="muted" style={{ margin: 0 }}>
-                      {message.sender || 'Unknown'} • {toLocalDateTime(message.sent_at)}
-                    </p>
+            {eventComments.length ? (
+              <div className="public-event-comment-list">
+                {eventComments.map(({ message, replies }) => (
+                  <article key={message.id} className="public-event-comment">
+                    <div className="public-event-comment-avatar" aria-hidden="true">
+                      {messageAuthorInitial(message, myUserId)}
+                    </div>
+                    <div className="public-event-comment-body">
+                      <div className="public-event-comment-meta">
+                        <strong>{messageAuthorLabel(message, myUserId)}</strong>
+                        <span>{toLocalDateTime(message.created_at)}</span>
+                      </div>
+                      <p>{message.body}</p>
+                      <div className="public-event-comment-tools">
+                        {QUICK_REACTIONS.map((emoji) => {
+                          const count = message.reactions?.find((reaction) => reaction.key === emoji)?.count || 0
+                          return (
+                            <button
+                              key={`${message.id}-${emoji}`}
+                              type="button"
+                              onClick={() => reactToEventComment(message.id, emoji).catch(() => {})}
+                              disabled={!eventChatReady || chatActionPending}
+                              aria-label={`React with ${emoji}`}
+                            >
+                              {emoji}{count ? ` ${count}` : ''}
+                            </button>
+                          )
+                        })}
+                        {token ? (
+                          <button type="button" onClick={() => setReplyingToId((current) => (current === message.id ? null : message.id))}>
+                            Reply
+                          </button>
+                        ) : null}
+                      </div>
+                      {replies.length ? (
+                        <div className="public-event-comment-replies">
+                          {replies.map((reply) => (
+                            <article key={reply.id} className="public-event-comment public-event-comment-reply">
+                              <div className="public-event-comment-avatar" aria-hidden="true">
+                                {messageAuthorInitial(reply, myUserId)}
+                              </div>
+                              <div className="public-event-comment-body">
+                                <div className="public-event-comment-meta">
+                                  <strong>{messageAuthorLabel(reply, myUserId)}</strong>
+                                  <span>{toLocalDateTime(reply.created_at)}</span>
+                                </div>
+                                <p>{reply.body}</p>
+                                <div className="public-event-comment-tools">
+                                  {QUICK_REACTIONS.map((emoji) => {
+                                    const count = reply.reactions?.find((reaction) => reaction.key === emoji)?.count || 0
+                                    return (
+                                      <button
+                                        key={`${reply.id}-${emoji}`}
+                                        type="button"
+                                        onClick={() => reactToEventComment(reply.id, emoji).catch(() => {})}
+                                        disabled={!eventChatReady || chatActionPending}
+                                        aria-label={`React with ${emoji}`}
+                                      >
+                                        {emoji}{count ? ` ${count}` : ''}
+                                      </button>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            </article>
+                          ))}
+                        </div>
+                      ) : null}
+                      {replyingToId === message.id ? (
+                        <div className="public-event-comment-composer public-event-reply-composer">
+                          <textarea
+                            value={replyDrafts[message.id] || ''}
+                            onChange={(event) => setReplyDrafts((prev) => ({ ...prev, [message.id]: event.target.value }))}
+                            placeholder="Write a reply..."
+                            rows={2}
+                            disabled={!eventChatReady || chatActionPending}
+                          />
+                          <div className="public-event-comment-actions">
+                            <button
+                              type="button"
+                              className="btn-primary"
+                              disabled={!eventChatReady || chatActionPending || !(replyDrafts[message.id] || '').trim()}
+                              onClick={() => postEventReply(message.id).catch(() => {})}
+                            >
+                              Post Reply
+                            </button>
+                            <button type="button" onClick={() => setReplyingToId(null)}>
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
                   </article>
                 ))}
               </div>
             ) : (
-              <p className="muted" style={{ margin: 0 }}>No chat messages yet.</p>
+              <p className="muted" style={{ margin: 0 }}>No comments yet.</p>
             )}
           </>
         ) : !chatLoading && !chatStatus ? (
-          <p className="muted" style={{ margin: 0 }}>Event chat room not available yet.</p>
+          <p className="muted" style={{ margin: 0 }}>Comments are not available for this event yet.</p>
         ) : null}
       </section>
+        </main>
+        <aside className="public-event-side">
+          <EventRegistration key={`${event.id}:${user?.id || 'guest'}:${Boolean(token)}`}
+            eventId={event.id} slug={event.slug} token={token} authLoading={authLoading} saveToCalendar={saveToCalendar}
+            organizationName={event.host_org_id ? event.organization_name || event.host_org_name : null} />
+        </aside>
+      </div>
     </article>
   )
 }

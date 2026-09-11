@@ -23,8 +23,9 @@ export type PublicOrganization = {
   tags?: string[]
   membership_count?: number
   upcoming_events_count?: number
-  favor_count?: number
-  disfavor_count?: number
+  feedback_count?: number
+  feedback_positive_count?: number
+  feedback_concern_count?: number
 }
 
 type DirectoryRequest = {

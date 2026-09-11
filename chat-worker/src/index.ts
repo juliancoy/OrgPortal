@@ -73,6 +73,12 @@ type MessageRow = {
   moderation_state: string;
 };
 
+type ReactionRow = {
+  message_id: string;
+  emoji: string;
+  count: number;
+};
+
 type PresenceRow = {
   user_id: string;
   last_seen_at: string;
@@ -292,7 +298,7 @@ function mapConversation(row: ConversationRow, members: MemberRow[] = [], avatar
   };
 }
 
-function mapMessage(row: MessageRow) {
+function mapMessage(row: MessageRow, reactions: ReactionRow[] = []) {
   return {
     id: row.id,
     conversation_id: row.conversation_id,
@@ -309,7 +315,30 @@ function mapMessage(row: MessageRow) {
     edited_at: row.edited_at,
     deleted_at: row.deleted_at,
     moderation_state: row.moderation_state,
+    reactions: reactions.map((reaction) => ({ key: reaction.emoji, count: Number(reaction.count || 0) })),
   };
+}
+
+async function reactionsForMessages(db: D1Database, messageIds: string[]) {
+  const uniqueIds = Array.from(new Set(messageIds.filter(Boolean)));
+  if (uniqueIds.length === 0) return new Map<string, ReactionRow[]>();
+  const placeholders = uniqueIds.map(() => "?").join(", ");
+  const rows = await db.prepare(
+    `SELECT message_id, emoji, count(*) AS count
+     FROM chat_message_reactions
+     WHERE message_id IN (${placeholders})
+     GROUP BY message_id, emoji
+     ORDER BY min(created_at) ASC`,
+  )
+    .bind(...uniqueIds)
+    .all<ReactionRow>();
+  const grouped = new Map<string, ReactionRow[]>();
+  for (const row of rows.results || []) {
+    const list = grouped.get(row.message_id) || [];
+    list.push(row);
+    grouped.set(row.message_id, list);
+  }
+  return grouped;
 }
 
 async function nextMessageSequence(db: D1Database, conversationId: string) {
@@ -559,6 +588,51 @@ app.post("/api/network/chat/dm", async (c) => {
   return c.json({ conversation: mapConversation(row!, members, avatarUrls) }, existing ? 200 : 201);
 });
 
+app.post("/api/network/chat/event-room", async (c) => {
+  const user = c.get("user");
+  const payload = await readJsonObject(c.req.raw);
+  const eventId = cleanString(payload.event_id || payload.eventId, 200);
+  if (!eventId) fail(400, "event_id is required");
+  const title = cleanString(payload.title, 255) || "Event comments";
+  const orgId = cleanNullableString(payload.org_id || payload.orgId, 200);
+  const existing = await c.env.DB.prepare("SELECT * FROM chat_conversations WHERE kind = 'event_room' AND event_id = ?")
+    .bind(eventId)
+    .first<ConversationRow>();
+
+  const createdAt = nowIso();
+  const conversationId = existing?.id || crypto.randomUUID();
+  if (!existing) {
+    await c.env.DB.prepare(
+      `INSERT INTO chat_conversations
+       (id, kind, title, slug, dm_key, created_by_user_id, org_id, event_id, created_at, updated_at)
+       VALUES (?, 'event_room', ?, ?, NULL, ?, ?, ?, ?, ?)`,
+    )
+      .bind(conversationId, title, cleanSlug(title), user.id, orgId, eventId, createdAt, createdAt)
+      .run();
+  }
+
+  await c.env.DB.prepare(
+    `INSERT INTO chat_conversation_members
+     (conversation_id, user_id, user_name, role, state, joined_at)
+     VALUES (?, ?, ?, ?, 'active', ?)
+     ON CONFLICT(conversation_id, user_id) DO UPDATE SET
+       user_name = excluded.user_name,
+       state = 'active'`,
+  )
+    .bind(conversationId, user.id, userName(user), existing ? "member" : "owner", createdAt)
+    .run();
+
+  const row = await c.env.DB.prepare("SELECT * FROM chat_conversations WHERE id = ?")
+    .bind(conversationId)
+    .first<ConversationRow>();
+  const members = await membersForConversation(c.env.DB, conversationId);
+  const avatarUrls = await avatarUrlsForUsers(
+    c.env,
+    members.map((member) => member.user_id),
+  );
+  return c.json({ conversation: mapConversation(row!, members, avatarUrls) }, existing ? 200 : 201);
+});
+
 app.get("/api/network/chat/conversations/:conversationId", async (c) => {
   const user = c.get("user");
   const conversationId = c.req.param("conversationId");
@@ -595,7 +669,9 @@ app.get("/api/network/chat/conversations/:conversationId/messages", async (c) =>
     .bind(conversationId, afterSequence, after, after, limit)
     .all<MessageRow>();
 
-  return c.json({ messages: (rows.results || []).map(mapMessage), latest_sequence: await latestSequence(c.env.DB, conversationId) });
+  const messages = rows.results || [];
+  const reactions = await reactionsForMessages(c.env.DB, messages.map((message) => message.id));
+  return c.json({ messages: messages.map((message) => mapMessage(message, reactions.get(message.id) || [])), latest_sequence: await latestSequence(c.env.DB, conversationId) });
 });
 
 app.get("/api/network/chat/conversations/:conversationId/sync", async (c) => {
@@ -636,10 +712,12 @@ app.get("/api/network/chat/conversations/:conversationId/sync", async (c) => {
     members.map((member) => member.user_id),
   );
 
+  const messages = messageRows.results || [];
+  const reactions = await reactionsForMessages(c.env.DB, messages.map((message) => message.id));
   return c.json({
     conversation_id: conversationId,
     latest_sequence: await latestSequence(c.env.DB, conversationId),
-    messages: (messageRows.results || []).map(mapMessage),
+    messages: messages.map((message) => mapMessage(message, reactions.get(message.id) || [])),
     receipts: receiptRows.results || [],
     members: members.map((member) => ({
       ...mapMember(member, avatarUrls),
@@ -700,6 +778,39 @@ app.post("/api/network/chat/conversations/:conversationId/messages", async (c) =
   const message = mapMessage(row!);
   await broadcast(c.env, conversationId, { type: "message.created", conversation_id: conversationId, sequence, message });
   return c.json({ message }, 201);
+});
+
+app.post("/api/network/chat/conversations/:conversationId/messages/:messageId/reactions", async (c) => {
+  const user = c.get("user");
+  const conversationId = c.req.param("conversationId");
+  const messageId = c.req.param("messageId");
+  await requireMember(c.env.DB, conversationId, user.id);
+  await conversation(c.env.DB, conversationId);
+  const message = await c.env.DB.prepare(
+    "SELECT * FROM chat_messages WHERE id = ? AND conversation_id = ? AND deleted_at IS NULL AND moderation_state = 'visible'",
+  )
+    .bind(messageId, conversationId)
+    .first<MessageRow>();
+  if (!message) fail(404, "Message not found");
+  const payload = await readJsonObject(c.req.raw);
+  const emoji = cleanString(payload.emoji || payload.key, 20);
+  if (!emoji) fail(400, "emoji is required");
+  const createdAt = nowIso();
+  await c.env.DB.prepare(
+    `INSERT INTO chat_message_reactions (message_id, user_id, emoji, created_at)
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT(message_id, user_id, emoji) DO UPDATE SET created_at = excluded.created_at`,
+  )
+    .bind(messageId, user.id, emoji, createdAt)
+    .run();
+  const reactions = await reactionsForMessages(c.env.DB, [messageId]);
+  await broadcast(c.env, conversationId, {
+    type: "message.reacted",
+    conversation_id: conversationId,
+    message_id: messageId,
+    reactions: reactions.get(messageId) || [],
+  });
+  return c.json({ reactions: (reactions.get(messageId) || []).map((reaction) => ({ key: reaction.emoji, count: Number(reaction.count || 0) })) });
 });
 
 app.post("/api/network/chat/conversations/:conversationId/read", async (c) => {

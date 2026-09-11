@@ -5,6 +5,35 @@ export class TimebankError extends Error {
 }
 
 export type Community = { id: string; hostname: string; name: string; tagline: string; accent_color: string };
+export type PortalTenant = Community & {
+  organization_id?: string | null;
+  slug?: string | null;
+  profile: string;
+  features: string[];
+  brand_image_path?: string | null;
+  home_url?: string | null;
+  member_home_path?: string | null;
+  manifest_path?: string | null;
+  theme_color?: string | null;
+  home_kind?: string | null;
+  home_path?: string | null;
+  home_org_slug?: string | null;
+  home_heading?: string | null;
+  home_description?: string | null;
+  home_primary_label?: string | null;
+  home_primary_href?: string | null;
+  home_secondary_label?: string | null;
+  home_secondary_href?: string | null;
+  home_image_url?: string | null;
+  public_base_url?: string | null;
+  canonical_path_prefix?: string | null;
+  feature_config?: string | null;
+  custom_domain_hostname?: string | null;
+  custom_domain_status?: string | null;
+  custom_domain_requested_at?: string | null;
+  custom_domain_attached_at?: string | null;
+  custom_domain_notes?: string | null;
+};
 const DEFAULT_COMMUNITY = 'code-collective';
 export const TIMEBANK_CATEGORIES = ['Home & garden', 'Learning', 'Tech help', 'Care & company', 'Transport', 'Creative', 'Other'] as const;
 
@@ -184,7 +213,7 @@ export async function publicTimebankOffers(db: D1Database, before?: string) {
   return {
     items: rows.results.slice(0, pageSize).map(({ image_key, community_hostname, ...listing }) => ({
       ...listing,
-      url: `https://${community_hostname}/p/timebanking?listing=${encodeURIComponent(listing.id)}`,
+      url: `https://${community_hostname}${community_hostname === 'codecollective.us' ? '/p' : ''}/timebanking?listing=${encodeURIComponent(listing.id)}`,
       image_url: image_key ? `https://${community_hostname}/api/org/api/timebank/listings/${encodeURIComponent(listing.id)}/image?v=${encodeURIComponent(image_key)}` : null,
     })),
     next_cursor: rows.results.length > pageSize ? `${rows.results[pageSize - 1].created_at}|${rows.results[pageSize - 1].id}` : null,
@@ -285,6 +314,46 @@ export async function resolveTimebankCommunity(db: D1Database, request: Request)
   return row;
 }
 
+function requestHostname(request: Request) {
+  const host = (request.headers.get('x-forwarded-host') || new URL(request.url).host).toLowerCase().split(':')[0];
+  const defaults = ['localhost', '127.0.0.1', 'www.codecollective.us', 'org-codecollective.jcloiacon.workers.dev', 'codecollective-site.jcloiacon.workers.dev'];
+  return defaults.includes(host) ? 'codecollective.us' : host;
+}
+
+function tenantFeatures(value: string | null | undefined) {
+  try {
+    const parsed = JSON.parse(value || '[]');
+    return Array.isArray(parsed) ? parsed.filter(item => typeof item === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function resolvePortalTenant(db: D1Database, request: Request): Promise<PortalTenant> {
+  const hostname = requestHostname(request);
+  try {
+    const tenant = await db.prepare('SELECT * FROM portal_tenants WHERE hostname = ?').bind(hostname).first<Community & { profile: string; features: string; public_base_url?: string | null; canonical_path_prefix?: string | null; feature_config?: string | null }>();
+    if (tenant) return { ...tenant, features: tenantFeatures(tenant.features) };
+  } catch {
+    // Older local databases may not have the tenant table yet.
+  }
+  const community = await resolveTimebankCommunity(db, request);
+  return { ...community, profile: 'community', features: ['timebank'] };
+}
+
+export async function resolvePortalTenantBySlug(db: D1Database, slug: string): Promise<PortalTenant | null> {
+  const normalized = slug.toLowerCase().trim();
+  if (!/^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/.test(normalized)) return null;
+  try {
+    const tenant = await db.prepare('SELECT * FROM portal_tenants WHERE slug = ?')
+      .bind(normalized)
+      .first<Community & { profile: string; features: string }>();
+    return tenant ? { ...tenant, features: tenantFeatures(tenant.features) } : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function saveTimebankCommunity(db: D1Database, id: string, body: unknown) {
   const input = inputObject(body);
   if (!/^[a-z][a-z0-9-]{2,39}$/.test(id) || id.endsWith('-')) throw new TimebankError('Use 3–40 lowercase letters, numbers or hyphens for the subdomain.');
@@ -296,6 +365,10 @@ export async function saveTimebankCommunity(db: D1Database, id: string, body: un
   const hostname = id === DEFAULT_COMMUNITY ? 'codecollective.us' : `${id}.codecollective.us`;
   await db.prepare(`INSERT INTO timebank_communities (id, hostname, name, tagline, accent_color) VALUES (?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET name = excluded.name, tagline = excluded.tagline, accent_color = excluded.accent_color`)
+    .bind(id, hostname, name, tagline, accent).run();
+  await db.prepare(`INSERT INTO portal_tenants (id, hostname, name, tagline, accent_color, profile, features) VALUES (?, ?, ?, ?, ?, 'community', '["timebank"]')
+    ON CONFLICT(id) DO UPDATE SET hostname = excluded.hostname, name = excluded.name, tagline = excluded.tagline,
+      accent_color = excluded.accent_color, profile = excluded.profile, features = excluded.features, updated_at = CURRENT_TIMESTAMP`)
     .bind(id, hostname, name, tagline, accent).run();
   return db.prepare('SELECT * FROM timebank_communities WHERE id = ?').bind(id).first<Community>();
 }

@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
 import { NativeChatApi } from '../../../chat/nativeChatApi'
 import { pidpAppLoginUrl } from '../../../config/pidp'
-import { publicProfileUrl } from '../../../config/portalBase'
+import { portalPath, publicProfileUrl } from '../../../config/portalBase'
 import { refreshRuntimeTokenFromSession } from '../../../infrastructure/auth/sessionToken'
 import { toUserFacingErrorMessage } from '../../../infrastructure/http/userFacingError'
 import { createQrSvg } from '../../utils/qr'
@@ -11,7 +11,6 @@ import { setSeoMeta } from '../../utils/seo'
 import { createVCard, vCardFileName } from '../../utils/vcard'
 
 const ORG_API_BASE = '/api/org'
-const PORTAL_ASSET_BASE = (import.meta.env.BASE_URL || '/').replace(/\/?$/, '/')
 
 function orgUrl(path: string) {
   if (!path.startsWith('/')) return `${ORG_API_BASE}/${path}`
@@ -440,7 +439,7 @@ export function PublicContactPage() {
 
       <a className="public-id-attribution" href="/" aria-label="Brought to you by Code Collective">
         <span>Brought to you by</span>
-        <img src={`${PORTAL_ASSET_BASE}images/namebanner.png`} alt="Code Collective" />
+        <img src={portalPath('/images/namebanner.png')} alt="Code Collective" />
       </a>
     </section>
   )

@@ -8,8 +8,54 @@ import { enforceEventRateLimit, prepareEventOperation, claimEventOperation, fini
 
 const readScope = "org:events.read";
 const writeScope = "org:events.write";
+const portalReadScope = "org:portal.read";
+const portalWriteScope = "org:portal.write";
 const listSchema = z.object({ organizationId: z.string().min(1).max(200), cursor: z.string().max(1000).optional() }).strict();
 const statusSchema = z.object({ organizationId: z.string().min(1).max(200), previewId: z.string().uuid() }).strict();
+const portalSetupSchema = z.object({
+  organizationId: z.string().min(1).max(200),
+  slug: z.string().min(3).max(64).optional(),
+  name: z.string().min(1).max(120).optional(),
+  tagline: z.string().max(180).optional(),
+  accentColor: z.string().regex(/^#[0-9a-f]{6}$/i).optional(),
+  features: z.array(z.string().min(1).max(80)).max(12).optional(),
+  homeKind: z.enum(["default", "landing", "route", "org", "org-events", "timebank", "auth"]).optional(),
+  homePath: z.string().max(200).optional().nullable(),
+  homeHeading: z.string().max(120).optional(),
+  homeDescription: z.string().max(500).optional(),
+  homeImageUrl: z.string().url().optional().nullable(),
+}).strict();
+const portalDomainSchema = z.object({
+  organizationId: z.string().min(1).max(200),
+  hostname: z.string().min(4).max(253),
+  notes: z.string().max(1000).optional().nullable(),
+}).strict();
+const eventCommentsSchema = z.object({
+  organizationId: z.string().min(1).max(200),
+  eventSlug: z.string().min(1).max(255).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+  previewId: z.string().uuid().optional(),
+  confirm: z.boolean().optional(),
+  conversationId: z.string().min(1).max(255).optional().nullable(),
+  roomName: z.string().min(1).max(255).optional().nullable(),
+}).strict();
+const nativeEventSchema = z.object({
+  organizationId: z.string().min(1).max(200),
+  previewId: z.string().uuid().optional(),
+  confirm: z.boolean().optional(),
+  event: z.object({
+    ingestKey: z.string().min(1).max(255),
+    title: z.string().min(1).max(500),
+    slug: z.string().min(1).max(255).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+    description: z.string().max(10000).nullable().optional(),
+    startsAt: z.string().max(80).nullable().optional(),
+    endsAt: z.string().max(80).nullable().optional(),
+    location: z.string().max(1000).nullable().optional(),
+    sourceUrl: z.string().url().nullable().optional(),
+    imageUrl: z.string().url().nullable().optional(),
+    tags: z.array(z.string().min(1).max(80)).max(40).optional(),
+    city: z.string().max(80).nullable().optional(),
+  }).strict(),
+}).strict();
 const keySets = new Map<string, JWTVerifyGetKey>();
 export function mcpConfiguration(env: Env) {
   const resource = env.MCP_PUBLIC_URL;
@@ -34,7 +80,7 @@ export function mcpConfiguration(env: Env) {
   }
   const url = new URL(resource);
   const metadataUrl = new URL(`/.well-known/oauth-protected-resource${url.pathname}`, url.origin);
-  metadataUrl.searchParams.set("v", "20260910");
+  metadataUrl.searchParams.set("v", "20260910-2");
   return { resource, issuer, jwks, introspection, metadataUrl: metadataUrl.toString() };
 }
 export async function authenticateMcp(request: Request, env: Env, getKey?: JWTVerifyGetKey) {
@@ -76,8 +122,343 @@ export async function authenticateMcp(request: Request, env: Env, getKey?: JWTVe
 export function protectedResourceMetadata(env: Env) {
   const config = mcpConfiguration(env);
   return { resource: config.resource, authorization_servers: [config.issuer],
-    scopes_supported: [readScope, writeScope], bearer_methods_supported: ["header"] };
+    scopes_supported: [readScope, writeScope, portalReadScope, portalWriteScope], bearer_methods_supported: ["header"] };
 }
+
+type NativeEventInput = z.infer<typeof nativeEventSchema>;
+type EventCommentsInput = z.infer<typeof eventCommentsSchema>;
+
+function nullable(value: string | null | undefined) {
+  const trimmed = typeof value === "string" ? value.trim() : "";
+  return trimmed || null;
+}
+
+function normalizeNativeEvent(input: NativeEventInput, organization: { id: string; name: string; source_url: string | null }) {
+  return {
+    id: `event:${input.event.ingestKey}`.slice(0, 120),
+    ingest_key: input.event.ingestKey,
+    title: input.event.title.trim(),
+    slug: input.event.slug.trim(),
+    description: nullable(input.event.description),
+    starts_at: nullable(input.event.startsAt),
+    ends_at: nullable(input.event.endsAt),
+    location: nullable(input.event.location),
+    source_url: nullable(input.event.sourceUrl),
+    image_url: nullable(input.event.imageUrl),
+    host_user_id: null,
+    host_user_name: null,
+    host_org_id: organization.id,
+    host_org_name: organization.name,
+    host_org_source_url: organization.source_url,
+    tags: input.event.tags || [],
+    city: nullable(input.event.city),
+  };
+}
+
+async function nativeOrganization(db: D1Database, organizationId: string) {
+  const row = await db.prepare("SELECT id, name, slug, source_url FROM organizations WHERE id = ? OR slug = ?")
+    .bind(organizationId, organizationId)
+    .first<{ id: string; name: string; slug: string; source_url: string | null }>();
+  if (!row) throw new EventIntegrationError(404, "Organization not found");
+  return row;
+}
+
+function portalBase(env: Env) {
+  const configured = (env.PUBLIC_PORTAL_BASE_URL || "").replace(/\/+$/g, "");
+  if (configured) return configured;
+  const resource = env.MCP_PUBLIC_URL ? new URL(env.MCP_PUBLIC_URL) : null;
+  return resource ? `${resource.origin}/p` : "https://codecollective.us/p";
+}
+
+function slugify(value: string) {
+  return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 64);
+}
+
+function portalSlug(value: string) {
+  const slug = slugify(value);
+  if (!/^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/.test(slug)) throw new EventIntegrationError(400, "Use a 3-64 character slug with lowercase letters, numbers, and hyphens.");
+  return slug;
+}
+
+function customHostname(value: string) {
+  const hostname = value.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+  if (!/^(?!-)(?:[a-z0-9-]{1,63}\.)+[a-z]{2,63}$/.test(hostname) || hostname.includes("..")) throw new EventIntegrationError(400, "Enter a valid custom domain.");
+  if (hostname === "codecollective.us" || hostname.endsWith(".codecollective.us") || hostname.endsWith(".slug.portal.local")) throw new EventIntegrationError(400, "That domain is reserved.");
+  return hostname;
+}
+
+function parseFeatures(value: string | string[] | undefined) {
+  if (Array.isArray(value)) return value.filter((feature): feature is string => typeof feature === "string" && Boolean(feature.trim()));
+  try {
+    const parsed = JSON.parse(String(value || "[]"));
+    return Array.isArray(parsed) ? parsed.filter((feature): feature is string => typeof feature === "string" && Boolean(feature.trim())) : [];
+  } catch { return []; }
+}
+
+async function portalTenantByOrg(db: D1Database, organization: { id: string; slug: string }) {
+  return db.prepare(
+    `SELECT * FROM portal_tenants
+     WHERE organization_id = ? OR home_org_slug = ?
+     ORDER BY CASE WHEN organization_id = ? THEN 0 ELSE 1 END
+     LIMIT 1`,
+  ).bind(organization.id, organization.slug, organization.id).first<Record<string, unknown>>();
+}
+
+async function portalResponse(env: Env, tenant: Record<string, unknown> | null) {
+  if (!tenant) return null;
+  const slug = String(tenant.slug || "").trim();
+  return {
+    ...tenant,
+    features: parseFeatures(tenant.features as string | string[] | undefined),
+    slug_url: slug ? `${portalBase(env)}/portals/${encodeURIComponent(slug)}` : null,
+  };
+}
+
+async function runPortalOperation(env: Env, identity: { userId: string; scopes: string[] },
+  operation: "get" | "save" | "requestDomain" | "attachDomain", input: unknown) {
+  const args = operation === "get" ? z.object({ organizationId: z.string().min(1).max(200) }).strict().parse(input)
+    : operation === "save" ? portalSetupSchema.parse(input) : portalDomainSchema.parse(input);
+  const writes = operation !== "get";
+  if (!identity.scopes.includes(portalReadScope) || (writes && !identity.scopes.includes(portalWriteScope))) {
+    throw new EventIntegrationError(403, "Missing portal scope");
+  }
+  const organization = await nativeOrganization(env.DB, args.organizationId);
+  await authorizeOrganization(env.DB, { id: identity.userId, name: identity.userId, email: null, isOperator: false }, "manage", organization.id);
+  const existing = await portalTenantByOrg(env.DB, organization);
+  if (operation === "get") return { portal: await portalResponse(env, existing) };
+  if (operation === "save") {
+    const setup = args as z.infer<typeof portalSetupSchema>;
+    const slug = portalSlug(setup.slug || organization.slug || organization.name);
+    const slugOwner = await env.DB.prepare("SELECT id, organization_id FROM portal_tenants WHERE slug = ?").bind(slug).first<{ id: string; organization_id?: string | null }>();
+    if (slugOwner && slugOwner.id !== existing?.id && slugOwner.organization_id !== organization.id) throw new EventIntegrationError(409, "That portal slug is already in use.");
+    const now = new Date().toISOString();
+    const homeKind = setup.homeKind || "landing";
+    await env.DB.prepare(
+      `INSERT INTO portal_tenants (
+        id, organization_id, slug, hostname, name, tagline, accent_color, profile, features,
+        brand_image_path, home_url, member_home_path, manifest_path, theme_color,
+        home_kind, home_path, home_org_slug, home_heading, home_description,
+        home_primary_label, home_primary_href, home_secondary_label, home_secondary_href,
+        home_image_url, public_base_url, canonical_path_prefix, feature_config, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'community', ?, ?, ?, '/chat', '/manifest.webmanifest', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '/p', ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        organization_id = excluded.organization_id, slug = excluded.slug, hostname = excluded.hostname,
+        name = excluded.name, tagline = excluded.tagline, accent_color = excluded.accent_color,
+        features = excluded.features, brand_image_path = excluded.brand_image_path, home_url = excluded.home_url,
+        member_home_path = excluded.member_home_path, manifest_path = excluded.manifest_path,
+        theme_color = excluded.theme_color, home_kind = excluded.home_kind, home_path = excluded.home_path,
+        home_org_slug = excluded.home_org_slug, home_heading = excluded.home_heading,
+        home_description = excluded.home_description, home_primary_label = excluded.home_primary_label,
+        home_primary_href = excluded.home_primary_href, home_secondary_label = excluded.home_secondary_label,
+        home_secondary_href = excluded.home_secondary_href, home_image_url = excluded.home_image_url,
+        public_base_url = excluded.public_base_url, canonical_path_prefix = excluded.canonical_path_prefix,
+        feature_config = excluded.feature_config, updated_at = excluded.updated_at`,
+    ).bind(existing?.id || `org-${organization.id}-portal`, organization.id, slug, `${slug}.slug.portal.local`,
+      setup.name || organization.name, setup.tagline || `Portal for ${organization.name}`, setup.accentColor || "#155e59",
+      JSON.stringify(setup.features || ["directory", "events", "chat"]), setup.homeImageUrl || null, `${portalBase(env)}/portals/${encodeURIComponent(slug)}`,
+      setup.accentColor || "#155e59", homeKind, homeKind === "route" ? setup.homePath || null : null, organization.slug,
+      setup.homeHeading || setup.name || organization.name, setup.homeDescription || setup.tagline || `Portal for ${organization.name}`,
+      "Join Group", "/users/login", "View Events", "/org-events", setup.homeImageUrl || null,
+      `${portalBase(env)}/portals/${encodeURIComponent(slug)}`, JSON.stringify({ slugPortal: { enabled: true, path: `/portals/${slug}` } }), now, now).run();
+    return { portal: await portalResponse(env, await portalTenantByOrg(env.DB, organization)) };
+  }
+  if (!existing) throw new EventIntegrationError(409, "Save the organization portal before configuring a custom domain.");
+  const domain = args as z.infer<typeof portalDomainSchema>;
+  const hostname = customHostname(domain.hostname);
+  const owner = await env.DB.prepare("SELECT id FROM portal_tenants WHERE hostname = ? AND id <> ?").bind(hostname, existing.id).first<{ id: string }>();
+  if (owner) throw new EventIntegrationError(409, "That domain is already attached to another tenant.");
+  const now = new Date().toISOString();
+  if (operation === "requestDomain") {
+    await env.DB.prepare(
+      `UPDATE portal_tenants SET custom_domain_hostname = ?, custom_domain_status = 'requested',
+       custom_domain_requested_at = ?, custom_domain_attached_at = NULL, custom_domain_notes = ?, updated_at = ? WHERE id = ?`,
+    ).bind(hostname, now, domain.notes || null, now, existing.id).run();
+    return { portal: await portalResponse(env, await portalTenantByOrg(env.DB, organization)), checklist: [
+      `Add the Cloudflare custom domain for ${hostname} to the OrgPortal web deployment.`,
+      `Allow https://${hostname} in PIdP origins and redirect/callback settings.`,
+      "Confirm MCP protected resource metadata advertises the tenant worker URL.",
+      "Configure any provider bindings required by this tenant's enabled features.",
+      `After the domain serves the portal, attach it to make https://${hostname} canonical.`,
+    ] };
+  }
+  if (existing.custom_domain_hostname && existing.custom_domain_hostname !== hostname) throw new EventIntegrationError(409, "Request this domain before attaching it.");
+  await env.DB.prepare(
+    `UPDATE portal_tenants SET hostname = ?, public_base_url = ?, canonical_path_prefix = '',
+     custom_domain_hostname = ?, custom_domain_status = 'attached', custom_domain_attached_at = ?,
+     custom_domain_notes = ?, updated_at = ? WHERE id = ?`,
+  ).bind(hostname, `https://${hostname}`, hostname, now, domain.notes || null, now, existing.id).run();
+  return { portal: await portalResponse(env, await portalTenantByOrg(env.DB, organization)) };
+}
+
+async function nativeExistingEvent(db: D1Database, event: { ingest_key: string; slug: string }) {
+  return db.prepare("SELECT * FROM events WHERE ingest_key = ? OR slug = ?")
+    .bind(event.ingest_key, event.slug)
+    .all<Record<string, unknown>>();
+}
+
+async function eventForComments(db: D1Database, organizationId: string, eventSlug: string) {
+  const row = await db.prepare(
+    `SELECT id, slug, title, host_org_id, event_chat_room_id, event_chat_room_alias, event_chat_room_name
+     FROM events WHERE slug = ?`,
+  )
+    .bind(eventSlug)
+    .first<{ id: string; slug: string; title: string; host_org_id: string | null;
+      event_chat_room_id?: string | null; event_chat_room_alias?: string | null; event_chat_room_name?: string | null }>();
+  if (!row) throw new EventIntegrationError(404, "Event not found");
+  if (row.host_org_id !== organizationId) throw new EventIntegrationError(403, "Event is not hosted by this organization");
+  return row;
+}
+
+function normalizeEventComments(input: EventCommentsInput) {
+  const conversationId = nullable(input.conversationId);
+  if (!conversationId) throw new EventIntegrationError(400, "Provide a native chat conversation id for event comments");
+  return {
+    conversationId,
+    roomName: nullable(input.roomName) || "Event comments",
+  };
+}
+
+async function previewEventComments(env: Env, input: EventCommentsInput) {
+  const organization = await nativeOrganization(env.DB, input.organizationId);
+  const event = await eventForComments(env.DB, organization.id, input.eventSlug);
+  const comments = normalizeEventComments(input);
+  return {
+    operation: "configure_event_comments",
+    organization,
+    event: {
+      id: event.id,
+      slug: event.slug,
+      title: event.title,
+      current: {
+        conversationId: event.event_chat_room_id || null,
+        roomName: event.event_chat_room_name || null,
+      },
+      next: comments,
+    },
+    publicUrl: `/events/${encodeURIComponent(event.slug)}`,
+  };
+}
+
+async function applyEventComments(env: Env, input: EventCommentsInput) {
+  const preview = await previewEventComments(env, input);
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    `UPDATE events
+     SET event_chat_room_id = ?, event_chat_room_alias = ?, event_chat_room_name = ?, updated_at = ?
+     WHERE id = ?`,
+  )
+    .bind(preview.event.next.conversationId, null, preview.event.next.roomName, now, preview.event.id)
+    .run();
+  return { success: true, completed: ["configure_event_comments"], event: preview.event, publicUrl: preview.publicUrl };
+}
+
+async function previewNativeEvent(env: Env, input: NativeEventInput) {
+  const organization = await nativeOrganization(env.DB, input.organizationId);
+  const event = normalizeNativeEvent(input, organization);
+  const existing = (await nativeExistingEvent(env.DB, event)).results || [];
+  const conflicting = existing.find((row) => row.ingest_key !== event.ingest_key);
+  if (conflicting) throw new EventIntegrationError(409, "Event slug is already used by another event");
+  return { operation: "upsert_native_event", organization, event, existing: existing[0] || null,
+    publicUrl: `/events/${encodeURIComponent(event.slug)}` };
+}
+
+async function applyNativeEvent(env: Env, input: NativeEventInput) {
+  const preview = await previewNativeEvent(env, input);
+  const event = preview.event;
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    `INSERT INTO events
+      (id, ingest_key, title, slug, description, starts_at, ends_at, location, source_url, image_url,
+       host_user_id, host_user_name, host_org_id, host_org_name, host_org_source_url, tags, city, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(ingest_key) DO UPDATE SET
+      title = excluded.title,
+      slug = excluded.slug,
+      description = excluded.description,
+      starts_at = excluded.starts_at,
+      ends_at = excluded.ends_at,
+      location = excluded.location,
+      source_url = excluded.source_url,
+      image_url = excluded.image_url,
+      host_user_id = excluded.host_user_id,
+      host_user_name = excluded.host_user_name,
+      host_org_id = excluded.host_org_id,
+      host_org_name = excluded.host_org_name,
+      host_org_source_url = excluded.host_org_source_url,
+      tags = excluded.tags,
+      city = excluded.city,
+      updated_at = excluded.updated_at`,
+  ).bind(event.id, event.ingest_key, event.title, event.slug, event.description, event.starts_at, event.ends_at, event.location,
+    event.source_url, event.image_url, event.host_user_id, event.host_user_name, event.host_org_id, event.host_org_name,
+    event.host_org_source_url, JSON.stringify(event.tags), event.city, now, now).run();
+  return { success: true, completed: ["upsert_native_event"], event: (await previewNativeEvent(env, input)).event,
+    publicUrl: preview.publicUrl };
+}
+
+export async function runNativeEventOperation(env: Env, identity: { userId: string; scopes: string[] }, input: unknown) {
+  const args = nativeEventSchema.parse(input);
+  if (!identity.scopes.includes(readScope) || (args.confirm && !identity.scopes.includes(writeScope))) {
+    throw new EventIntegrationError(403, "Missing event scope");
+  }
+  const organization = await nativeOrganization(env.DB, args.organizationId);
+  await authorizeOrganization(env.DB, { id: identity.userId, name: identity.userId, email: null, isOperator: false }, "manage", organization.id);
+  await enforceEventRateLimit(env.DB, identity.userId);
+  const owner = { userId: identity.userId, organizationId: organization.id, eventId: `native:${args.event.ingestKey}` };
+  if (args.confirm && !args.previewId) throw new EventIntegrationError(409, "Request a preview first and supply its previewId");
+  if (!args.confirm) {
+    const preview = await previewNativeEvent(env, { ...args, organizationId: organization.id, confirm: false });
+    const fingerprint = await previewFingerprint({ native: true, preview });
+    return { ...preview, ...await prepareEventOperation(env.DB, owner, fingerprint) };
+  }
+  let claimed = false;
+  try {
+    const latestPreview = await previewNativeEvent(env, { ...args, organizationId: organization.id });
+    const latestFingerprint = await previewFingerprint({ native: true, preview: latestPreview });
+    await claimEventOperation(env.DB, owner, args.previewId!, latestFingerprint);
+    claimed = true;
+    const result = await applyNativeEvent(env, { ...args, organizationId: organization.id });
+    await finishEventOperation(env.DB, args.previewId!, true, result.completed);
+    return { ...result, previewId: args.previewId };
+  } catch (error) {
+    if (!claimed) throw error;
+    try { await finishEventOperation(env.DB, args.previewId!, false, []); } catch { /* executing remains inspectable */ }
+    return { success: false, outcomeUncertain: true, previewId: args.previewId,
+      message: "Native event write or audit finalization failed. Inspect operation status and the live event before retrying." };
+  }
+}
+
+export async function runEventCommentsOperation(env: Env, identity: { userId: string; scopes: string[] }, input: unknown) {
+  const args = eventCommentsSchema.parse(input);
+  if (!identity.scopes.includes(readScope) || (args.confirm && !identity.scopes.includes(writeScope))) {
+    throw new EventIntegrationError(403, "Missing event scope");
+  }
+  const organization = await nativeOrganization(env.DB, args.organizationId);
+  await authorizeOrganization(env.DB, { id: identity.userId, name: identity.userId, email: null, isOperator: false }, "manage", organization.id);
+  await enforceEventRateLimit(env.DB, identity.userId);
+  const owner = { userId: identity.userId, organizationId: organization.id, eventId: `comments:${args.eventSlug}` };
+  if (args.confirm && !args.previewId) throw new EventIntegrationError(409, "Request a preview first and supply its previewId");
+  if (!args.confirm) {
+    const preview = await previewEventComments(env, { ...args, organizationId: organization.id, confirm: false });
+    const fingerprint = await previewFingerprint({ eventComments: true, preview });
+    return { ...preview, ...await prepareEventOperation(env.DB, owner, fingerprint) };
+  }
+  let claimed = false;
+  try {
+    const latestPreview = await previewEventComments(env, { ...args, organizationId: organization.id });
+    const latestFingerprint = await previewFingerprint({ eventComments: true, preview: latestPreview });
+    await claimEventOperation(env.DB, owner, args.previewId!, latestFingerprint);
+    claimed = true;
+    const result = await applyEventComments(env, { ...args, organizationId: organization.id });
+    await finishEventOperation(env.DB, args.previewId!, true, result.completed);
+    return { ...result, previewId: args.previewId };
+  } catch (error) {
+    if (!claimed) throw error;
+    try { await finishEventOperation(env.DB, args.previewId!, false, []); } catch { /* executing remains inspectable */ }
+    return { success: false, outcomeUncertain: true, previewId: args.previewId,
+      message: "Event comment configuration or audit finalization failed. Inspect operation status and the live event before retrying." };
+  }
+}
+
 export async function runEventOperation(env: Env, identity: { userId: string; scopes: string[] },
   operation: "list" | "get" | "plan" | "status", input: unknown) {
   const args = operation === "status" ? statusSchema.parse(input) : operation === "list" ? listSchema.parse(input)
@@ -164,9 +545,11 @@ export async function handleEventMcp(request: Request, env: Env) {
     try { parsedBody = JSON.parse(new TextDecoder().decode(bytes)); }
     catch { return new Response("Invalid JSON", { status: 400 }); }
     const server = new McpServer({ name: "orgportal-events", version: "1.0.0" });
-    const result = async (operation: "list" | "get" | "plan" | "status", args: unknown) => {
+    const result = async (operation: "list" | "get" | "plan" | "status" | "native" | "comments", args: unknown) => {
       try {
-        const data = await runEventOperation(env, identity, operation, args);
+        const data = operation === "native" ? await runNativeEventOperation(env, identity, args)
+          : operation === "comments" ? await runEventCommentsOperation(env, identity, args)
+          : await runEventOperation(env, identity, operation, args);
         return { ...("success" in data && data.success === false ? { isError: true } : {}),
           content: [{ type: "text" as const, text: JSON.stringify(data) }], structuredContent: data };
       } catch (error) {
@@ -174,6 +557,17 @@ export async function handleEventMcp(request: Request, env: Env) {
         const reauthorize = error instanceof EventIntegrationError && error.status === 403 && error.message === "Missing event scope";
         return { isError: true, content: [{ type: "text" as const, text: await response.text() }],
           ...(reauthorize ? { _meta: { "mcp/www_authenticate": [`Bearer resource_metadata="${config.metadataUrl}", error="insufficient_scope", error_description="Authorize the required event scopes", scope="${readScope} ${writeScope}"`] } } : {}) };
+      }
+    };
+    const portalResult = async (operation: "get" | "save" | "requestDomain" | "attachDomain", args: unknown) => {
+      try {
+        const data = await runPortalOperation(env, identity, operation, args);
+        return { content: [{ type: "text" as const, text: JSON.stringify(data) }], structuredContent: data };
+      } catch (error) {
+        const response = eventErrorResponse(error, env);
+        const reauthorize = error instanceof EventIntegrationError && error.status === 403 && error.message === "Missing portal scope";
+        return { isError: true, content: [{ type: "text" as const, text: await response.text() }],
+          ...(reauthorize ? { _meta: { "mcp/www_authenticate": [`Bearer resource_metadata="${config.metadataUrl}", error="insufficient_scope", error_description="Authorize the required portal scopes", scope="${portalReadScope} ${portalWriteScope}"`] } } : {}) };
       }
     };
     const metadata = (scopes: string[]) => ({ securitySchemes: [{ type: "oauth2", scopes }] });
@@ -189,6 +583,30 @@ export async function handleEventMcp(request: Request, env: Env) {
     server.registerTool("apply_event_changes", { description: "Update an event or grant collaborator access after showing a preview and obtaining user approval. Requires confirm=true and the matching one-use previewId (expires after ten minutes). Changes may notify guests and are not atomic; inspect failures before retrying.",
       inputSchema: eventPlanSchema, annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
       _meta: metadata([readScope, writeScope]) }, args => result("plan", args));
+    server.registerTool("preview_org_event_changes", { description: "Preview creating or updating a native OrgPortal event without writing. Use this when the portal, not an external provider, is the event system of record.",
+      inputSchema: nativeEventSchema, annotations: { readOnlyHint: true, openWorldHint: false }, _meta: metadata([readScope]) },
+      args => result("native", { ...args, confirm: false }));
+    server.registerTool("apply_org_event_changes", { description: "Create or update a native OrgPortal event after showing a preview and obtaining user approval. Requires confirm=true and the matching one-use previewId.",
+      inputSchema: nativeEventSchema, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      _meta: metadata([readScope, writeScope]) }, args => result("native", args));
+    server.registerTool("preview_event_comments", { description: "Preview enabling the public event comment section by attaching an existing native OrgPortal chat conversation to an event.",
+      inputSchema: eventCommentsSchema, annotations: { readOnlyHint: true, openWorldHint: false }, _meta: metadata([readScope]) },
+      args => result("comments", { ...args, confirm: false }));
+    server.registerTool("apply_event_comments", { description: "Enable the public event comment section after showing a preview and obtaining user approval. Requires confirm=true and the matching one-use previewId.",
+      inputSchema: eventCommentsSchema, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      _meta: metadata([readScope, writeScope]) }, args => result("comments", args));
+    server.registerTool("get_portal_setup", { description: "Read the tenant portal setup for an organization, including shared slug URL and custom-domain status.",
+      inputSchema: z.object({ organizationId: z.string().min(1).max(200) }).strict(),
+      annotations: { readOnlyHint: true, openWorldHint: false }, _meta: metadata([portalReadScope]) }, args => portalResult("get", args));
+    server.registerTool("save_portal_setup", { description: "Create or update the organization tenant portal available at /portals/:slug using existing OrgPortal primitives.",
+      inputSchema: portalSetupSchema, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      _meta: metadata([portalReadScope, portalWriteScope]) }, args => portalResult("save", args));
+    server.registerTool("request_portal_custom_domain", { description: "Record an org admin's desired custom domain and return the operator provisioning checklist. This does not change canonical routing.",
+      inputSchema: portalDomainSchema, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+      _meta: metadata([portalReadScope, portalWriteScope]) }, args => portalResult("requestDomain", args));
+    server.registerTool("attach_portal_custom_domain", { description: "Mark an externally provisioned custom domain as attached and make that domain the tenant's canonical root-mounted base URL.",
+      inputSchema: portalDomainSchema, annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
+      _meta: metadata([portalReadScope, portalWriteScope]) }, args => portalResult("attachDomain", args));
     const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
     await server.connect(transport);
     try {

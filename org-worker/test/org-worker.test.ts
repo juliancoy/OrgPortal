@@ -31,6 +31,7 @@ class FakeStmt {
 class FakeD1 {
   organizations: Row[] = [];
   events: Row[] = [];
+  eventSlugAliases: Row[] = [];
   contacts: Row[] = [];
   motions: Row[] = [];
   governanceVotes: Row[] = [];
@@ -38,7 +39,9 @@ class FakeD1 {
   ledgerAccounts: Row[] = [];
   ledgerTransactions: Row[] = [];
   ubiEligibility: Row[] = [];
-  organizationSentiments: Row[] = [];
+  organizationFeedback: Row[] = [];
+  organizationMemberships: Row[] = [];
+  portalTenants: Row[] = [];
   ubiSettings: Row = {
     interval_seconds: 14 * 24 * 60 * 60,
     dena_annual: 5256,
@@ -93,14 +96,25 @@ class FakeD1 {
     if (sql.includes("FROM organizations WHERE id = ?")) {
       return (this.organizations.find((row) => row.id === params[0] || row.slug === params[1]) as T) || null;
     }
-    if (sql.includes("FROM organizations WHERE slug = ?")) {
+    if (sql.includes("FROM organizations WHERE slug = ?") || sql.includes("FROM organizations o WHERE o.slug = ?")) {
       return (this.organizations.find((row) => row.slug === params[0]) as T) || null;
     }
     if (sql.includes("FROM events WHERE ingest_key = ?")) {
       return (this.events.find((row) => row.ingest_key === params[0]) as T) || null;
     }
+    if (sql.includes("FROM events WHERE slug = ?")) {
+      return (this.events.find((row) => row.slug === params[0]) as T) || null;
+    }
     if (sql.includes("count(*) AS n FROM events WHERE host_org_id = ?")) {
       return { n: this.events.filter((row) => row.host_org_id === params[0]).length } as T;
+    }
+    if (sql.includes("event_slug_aliases")) {
+      const slug = params[0];
+      const alias = this.eventSlugAliases.find((row) => row.slug === slug);
+      const event = this.events.find((row) => row.slug === slug || row.id === alias?.event_id);
+      if (!event) return null;
+      const org = this.organizations.find((row) => row.id === event.host_org_id);
+      return { ...event, organization_name: org?.name || null } as T;
     }
     if (sql.includes("FROM events e") && sql.includes("WHERE e.slug = ?")) {
       const event = this.events.find((row) => row.slug === params[0]);
@@ -129,19 +143,46 @@ class FakeD1 {
     if (sql.includes("SELECT * FROM user_contact_pages WHERE slug = ?")) {
       return (this.contacts.find((row) => row.slug === params[0]) as T) || null;
     }
+    if (sql.includes("FROM portal_tenants WHERE hostname = ?")) {
+      const row = this.portalTenants.find((row) => row.hostname === params[0] && (!sql.includes("id <> ?") || row.id !== params[1]));
+      return (row as T) || null;
+    }
+    if (sql.includes("FROM portal_tenants WHERE slug = ?")) {
+      return (this.portalTenants.find((row) => row.slug === params[0]) as T) || null;
+    }
+    if (sql.includes("FROM portal_tenants") && sql.includes("organization_id = ?")) {
+      const [organizationId, slug] = params;
+      const row =
+        this.portalTenants.find((row) => row.organization_id === organizationId) ||
+        this.portalTenants.find((row) => row.home_org_slug === slug);
+      return (row as T) || null;
+    }
     if (sql.includes("FROM ubi_runtime_settings WHERE id = 1")) {
       return this.ubiSettings as T;
     }
-    if (sql.includes("FROM organization_sentiments") && sql.includes("favor_count")) {
+    if (sql.includes("FROM organization_feedback") && sql.includes("feedback_count")) {
       const organizationId = params[0];
-      const rows = this.organizationSentiments.filter((row) => row.organization_id === organizationId);
+      const rows = this.organizationFeedback.filter((row) => row.organization_id === organizationId);
       return {
-        favor_count: rows.filter((row) => row.sentiment === "favor").length,
-        disfavor_count: rows.filter((row) => row.sentiment === "disfavor").length,
+        feedback_count: rows.length,
+        feedback_positive_count: rows.filter((row) => row.rating === "positive").length,
+        feedback_concern_count: rows.filter((row) => row.rating === "concern").length,
       } as T;
     }
-    if (sql.includes("SELECT sentiment FROM organization_sentiments")) {
-      return (this.organizationSentiments.find((row) => row.organization_id === params[0] && row.user_id === params[1]) as T) || null;
+    if (sql.includes("FROM organization_feedback") && sql.includes("user_id = ?")) {
+      return (this.organizationFeedback.find((row) => row.organization_id === params[0] && row.user_id === params[1]) as T) || null;
+    }
+    if (sql.includes("SELECT role FROM organization_memberships")) {
+      return (
+        this.organizationMemberships.find(
+          (row) => row.organization_id === params[0] && row.user_id === params[1] && row.status === "active",
+        ) as T
+      ) || null;
+    }
+    if (sql.includes("count(*) AS n FROM organization_memberships")) {
+      return {
+        n: this.organizationMemberships.filter((row) => row.organization_id === params[0] && row.status === "active").length,
+      } as T;
     }
     if (sql.includes("SELECT * FROM ledger_accounts WHERE lower(email) = ?")) {
       return (this.ledgerAccounts.find((row) => String(row.email).toLowerCase() === params[0]) as T) || null;
@@ -189,7 +230,17 @@ class FakeD1 {
       return this.organizations.map((row) => ({
         ...row,
         upcoming_events_count: this.events.filter((event) => event.host_org_id === row.id).length,
+        membership_count: this.organizationMemberships.filter((membership) => membership.organization_id === row.id && membership.status === "active").length,
+        feedback_count: this.organizationFeedback.filter((feedback) => feedback.organization_id === row.id).length,
+        feedback_positive_count: this.organizationFeedback.filter((feedback) => feedback.organization_id === row.id && feedback.rating === "positive").length,
+        feedback_concern_count: this.organizationFeedback.filter((feedback) => feedback.organization_id === row.id && feedback.rating === "concern").length,
       })) as T[];
+    }
+    if (sql.includes("FROM organization_feedback")) {
+      return this.organizationFeedback
+        .filter((row) => row.organization_id === params[0])
+        .sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)))
+        .slice(0, Number(params[1] || 100)) as T[];
     }
     if (sql.includes("FROM events e")) {
       const hostOrgId = sql.includes("WHERE e.host_org_id = ?") ? params[0] : null;
@@ -284,10 +335,13 @@ class FakeD1 {
         host_org_id: params[12],
         host_org_name: params[13],
         host_org_source_url: params[14],
-        tags: params[15],
-        city: params[16],
-        created_at: params[17] || now,
-        updated_at: params[18] || now,
+        event_chat_room_id: params[15],
+        event_chat_room_alias: params[16],
+        event_chat_room_name: params[17],
+        tags: params[18],
+        city: params[19],
+        created_at: params[20] || now,
+        updated_at: params[21] || now,
       };
       const existingIndex = this.events.findIndex((item) => item.ingest_key === row.ingest_key);
       if (existingIndex >= 0) this.events[existingIndex] = { ...this.events[existingIndex], ...row };
@@ -488,25 +542,121 @@ class FakeD1 {
         created_at: params[27],
       });
     }
-    if (sql.includes("INSERT INTO organization_sentiments")) {
-      const existing = this.organizationSentiments.find((row) => row.organization_id === params[0] && row.user_id === params[1]);
+    if (sql.includes("INSERT INTO organization_feedback")) {
+      const existing = this.organizationFeedback.find((row) => row.organization_id === params[0] && row.user_id === params[1]);
       if (existing) {
         existing.user_name = params[2];
-        existing.sentiment = params[3];
-        existing.updated_at = params[5];
+        existing.rating = params[3];
+        existing.comment = params[4];
+        existing.updated_at = params[6];
       } else {
-        this.organizationSentiments.push({
+        this.organizationFeedback.push({
           organization_id: params[0],
           user_id: params[1],
           user_name: params[2],
-          sentiment: params[3],
+          rating: params[3],
+          comment: params[4],
+          created_at: params[5],
+          updated_at: params[6],
+        });
+      }
+    }
+    if (sql.includes("DELETE FROM organization_feedback")) {
+      this.organizationFeedback = this.organizationFeedback.filter((row) => !(row.organization_id === params[0] && row.user_id === params[1]));
+    }
+    if (sql.includes("INSERT INTO organization_memberships")) {
+      const existing = this.organizationMemberships.find((row) => row.organization_id === params[0] && row.user_id === params[1]);
+      if (existing) {
+        existing.user_name = params[2];
+        existing.user_email = params[3];
+        existing.status = "active";
+        existing.updated_at = params[5];
+      } else {
+        this.organizationMemberships.push({
+          organization_id: params[0],
+          user_id: params[1],
+          user_name: params[2],
+          user_email: params[3],
+          role: "member",
+          status: "active",
           created_at: params[4],
           updated_at: params[5],
         });
       }
     }
-    if (sql.includes("DELETE FROM organization_sentiments")) {
-      this.organizationSentiments = this.organizationSentiments.filter((row) => !(row.organization_id === params[0] && row.user_id === params[1]));
+    if (sql.includes("UPDATE organization_memberships SET status = 'inactive'")) {
+      const row = this.organizationMemberships.find(
+        (membership) => membership.organization_id === params[1] && membership.user_id === params[2] && membership.role === "member",
+      );
+      if (row) {
+        row.status = "inactive";
+        row.updated_at = params[0];
+      }
+    }
+    if (sql.includes("INSERT INTO portal_tenants")) {
+      const existing = this.portalTenants.find((row) => row.id === params[0]);
+      const row = {
+        id: params[0],
+        organization_id: params[1],
+        slug: params[2],
+        hostname: params[3],
+        name: params[4],
+        tagline: params[5],
+        accent_color: params[6],
+        profile: "community",
+        features: params[7],
+        brand_image_path: params[8],
+        home_url: params[9],
+        member_home_path: "/chat",
+        manifest_path: "/manifest.webmanifest",
+        theme_color: params[10],
+        home_kind: params[11],
+        home_path: params[12],
+        home_org_slug: params[13],
+        home_heading: params[14],
+        home_description: params[15],
+        home_primary_label: params[16],
+        home_primary_href: params[17],
+        home_secondary_label: params[18],
+        home_secondary_href: params[19],
+        home_image_url: params[20],
+        public_base_url: params[21],
+        canonical_path_prefix: "/p",
+        feature_config: params[22],
+        custom_domain_hostname: null,
+        custom_domain_status: "none",
+        custom_domain_requested_at: null,
+        custom_domain_attached_at: null,
+        custom_domain_notes: null,
+        created_at: params[23],
+        updated_at: params[24],
+      };
+      if (existing) Object.assign(existing, row);
+      else this.portalTenants.push(row);
+    }
+    if (sql.includes("custom_domain_status = 'requested'")) {
+      const row = this.portalTenants.find((tenant) => tenant.id === params[4]);
+      if (row) {
+        row.custom_domain_hostname = params[0];
+        row.custom_domain_status = "requested";
+        row.custom_domain_requested_at = params[1];
+        row.custom_domain_attached_at = null;
+        row.custom_domain_notes = params[2];
+        row.updated_at = params[3];
+      }
+    }
+    if (sql.includes("custom_domain_status = 'attached'")) {
+      const row = this.portalTenants.find((tenant) => tenant.id === params[6]);
+      if (row) {
+        row.hostname = params[0];
+        row.public_base_url = params[1];
+        row.canonical_path_prefix = "";
+        row.custom_domain_hostname = params[2];
+        row.custom_domain_status = "attached";
+        row.custom_domain_attached_at = params[3];
+        row.custom_domain_notes = params[4];
+        row.updated_at = params[5];
+      }
     }
     return { success: true, meta: { changes: 1 } };
   }
@@ -538,7 +688,7 @@ async function withPidpUser<T>(user: Row, callback: () => Promise<T>) {
 test("path-qualified MCP protected resource metadata is public", async () => {
   const response = await app.request("https://org.example.test/.well-known/oauth-protected-resource/api/org/mcp", {}, {
     ...env(),
-    MCP_PUBLIC_URL: "https://community.medtech.social/api/org/mcp",
+    MCP_PUBLIC_URL: "https://medtech.social/api/org/mcp",
     MCP_OAUTH_ISSUER: "https://id.codecollective.us",
     MCP_OAUTH_JWKS_URL: "https://id.codecollective.us/.well-known/jwks.json",
     MCP_SUBJECT_MAP_JSON: "{}",
@@ -546,7 +696,7 @@ test("path-qualified MCP protected resource metadata is public", async () => {
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("cache-control"), "no-store");
   const body = await response.json() as Record<string, unknown>;
-  assert.equal(body.resource, "https://community.medtech.social/api/org/mcp");
+  assert.equal(body.resource, "https://medtech.social/api/org/mcp");
   assert.deepEqual(body.authorization_servers, ["https://id.codecollective.us"]);
 });
 
@@ -554,7 +704,7 @@ test("path-qualified MCP protected resource metadata is public", async () => {
 test("worker fetch serves path-qualified MCP protected resource metadata before fallback", async () => {
   const response = await worker.fetch(new Request("https://org.example.test/.well-known/oauth-protected-resource/api/org/mcp"), {
     ...env(),
-    MCP_PUBLIC_URL: "https://community.medtech.social/api/org/mcp",
+    MCP_PUBLIC_URL: "https://medtech.social/api/org/mcp",
     MCP_OAUTH_ISSUER: "https://id.codecollective.us",
     MCP_OAUTH_JWKS_URL: "https://id.codecollective.us/.well-known/jwks.json",
     MCP_SUBJECT_MAP_JSON: "{}",
@@ -562,7 +712,7 @@ test("worker fetch serves path-qualified MCP protected resource metadata before 
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("cache-control"), "no-store");
   const body = await response.json() as Record<string, unknown>;
-  assert.equal(body.resource, "https://community.medtech.social/api/org/mcp");
+  assert.equal(body.resource, "https://medtech.social/api/org/mcp");
 });
 
 test("health route identifies the org worker", async () => {
@@ -695,6 +845,86 @@ test("public contact routes return sanitized canonical user URLs for exact slugs
   const contact = (await res.json()) as { slug: string; public_url: string };
   assert.equal(contact.slug, "julian-coy");
   assert.equal(contact.public_url, "https://codecollective.test/p/users/julian-coy");
+});
+
+test("tenant host public URLs are root-mounted even when shared portal base is configured", async () => {
+  const db = new FakeD1();
+  db.portalTenants.push({
+    id: "baltimore-medtech",
+    hostname: "medtech.social",
+    name: "Baltimore MedTech",
+    tagline: "Health x Medicine x Biotech",
+    accent_color: "#0f6f8f",
+    profile: "baltimore-medtech",
+    features: JSON.stringify(["directory", "events", "chat"]),
+    public_base_url: "https://medtech.social",
+    canonical_path_prefix: "",
+  });
+  db.contacts.push({
+    id: "contact-1",
+    user_id: "user-1",
+    user_email: "member@example.test",
+    user_name: "Jordan",
+    slug: "jordan",
+    enabled: 1,
+    headline: "Founder",
+    bio: null,
+    photo_url: null,
+    email_public: null,
+    phone_public: null,
+    linkedin_url: null,
+    github_url: null,
+    x_url: null,
+    website_url: null,
+    links: "[]",
+    source_profile_url: null,
+    source_profile_imported_at: null,
+    created_at: "2026-06-07T00:00:00Z",
+    updated_at: "2026-06-07T00:00:00Z",
+  });
+  db.organizations.push({
+    id: "org-1",
+    name: "Baltimore MedTech",
+    slug: "baltimore-medtech",
+    description: "Health community",
+    source_url: null,
+    image_url: null,
+    tags: "[]",
+    city: "baltimore",
+    created_at: "2026-06-07T00:00:00Z",
+    updated_at: "2026-06-07T00:00:00Z",
+  });
+  db.events.push({
+    id: "event-1",
+    ingest_key: "event-key",
+    title: "Founder Night",
+    slug: "founder-night",
+    description: "Meet founders",
+    starts_at: "2026-06-08T12:00:00Z",
+    ends_at: null,
+    location: "Baltimore",
+    source_url: null,
+    image_url: null,
+    host_org_id: "org-1",
+    host_org_name: "Baltimore MedTech",
+    host_org_source_url: null,
+    tags: "[]",
+    city: "baltimore",
+    created_at: "2026-06-07T00:00:00Z",
+    updated_at: "2026-06-07T00:00:00Z",
+  });
+
+  const contactRes = await app.request("https://medtech.social/api/network/users/public/jordan", {}, env(db));
+  assert.equal(contactRes.status, 200);
+  assert.equal(((await contactRes.json()) as { public_url: string }).public_url, "https://medtech.social/users/jordan");
+
+  const orgRes = await app.request("https://medtech.social/api/network/orgs/public/baltimore-medtech", {}, env(db));
+  assert.equal(orgRes.status, 200);
+  assert.equal(((await orgRes.json()) as { public_url: string }).public_url, "https://medtech.social/orgs/baltimore-medtech");
+
+  const eventRes = await app.request("https://medtech.social/api/network/events/public/founder-night", {}, env(db));
+  assert.equal(eventRes.status, 200);
+  assert.equal(((await eventRes.json()) as { public_url: string }).public_url, "https://medtech.social/events/founder-night");
 });
 
 test("public contact route does not numerically fallback from missing slugs", async () => {
@@ -849,6 +1079,100 @@ test("public org and event routes return D1 rows", async () => {
   const event = (await eventDetail.json()) as { title: string; organization_name: string };
   assert.equal(event.title, "Open Meeting");
   assert.equal(event.organization_name, "Code Collective");
+});
+
+test("public event chat returns configured room metadata for comment views", async () => {
+  const db = new FakeD1();
+  db.events.push({
+    id: "event-1",
+    ingest_key: "event-1",
+    title: "Commentable Event",
+    slug: "commentable-event",
+    description: null,
+    starts_at: null,
+    ends_at: null,
+    location: null,
+    source_url: null,
+    image_url: null,
+    host_user_id: null,
+    host_user_name: null,
+    host_org_id: null,
+    host_org_name: null,
+    host_org_source_url: null,
+    event_chat_room_id: "event-room-commentable-event",
+    event_chat_room_alias: null,
+    event_chat_room_name: "Commentable Event",
+    tags: "[]",
+    city: null,
+    created_at: "2026-06-07T00:00:00.000Z",
+    updated_at: "2026-06-07T00:00:00.000Z",
+  });
+
+  const response = await app.request("https://org.example.test/api/network/events/public/commentable-event/chat", {}, env(db));
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    event_slug: "commentable-event",
+    room_exists: true,
+    conversation_id: "event-room-commentable-event",
+    room_name: "Commentable Event",
+    messages: [],
+  });
+});
+
+test("public event detail resolves old slug aliases to canonical event urls", async () => {
+  const db = new FakeD1();
+  db.portalTenants.push({
+    id: "baltimore-medtech",
+    hostname: "medtech.social",
+    name: "Baltimore MedTech",
+    tagline: "Health x Medicine x Biotech",
+    accent_color: "#0f6f8f",
+    profile: "baltimore-medtech",
+    features: JSON.stringify(["directory", "events", "chat"]),
+    public_base_url: "https://medtech.social",
+    canonical_path_prefix: "",
+  });
+  db.events.push({
+    id: "event-1",
+    ingest_key: "event-1",
+    title: "MedTech in the Hut",
+    slug: "medtech-in-the-hut",
+    description: null,
+    starts_at: null,
+    ends_at: null,
+    location: null,
+    source_url: null,
+    image_url: null,
+    host_user_id: null,
+    host_user_name: null,
+    host_org_id: null,
+    host_org_name: null,
+    host_org_source_url: null,
+    event_chat_room_id: "event-room-medtech-in-the-hut",
+    event_chat_room_alias: null,
+    event_chat_room_name: "MedTech in the Hut Comments",
+    tags: "[]",
+    city: null,
+    created_at: "2026-06-07T00:00:00.000Z",
+    updated_at: "2026-06-07T00:00:00.000Z",
+  });
+  db.eventSlugAliases.push({ slug: "medtech-formational-event", event_id: "event-1" });
+
+  const response = await app.request("https://medtech.social/api/network/events/public/medtech-formational-event", {}, env(db));
+  assert.equal(response.status, 200);
+  const event = await response.json() as { slug: string; public_url: string };
+  assert.equal(event.slug, "medtech-in-the-hut");
+  assert.equal(event.public_url, "https://medtech.social/events/medtech-in-the-hut");
+
+  const chatResponse = await app.request("https://medtech.social/api/network/events/public/medtech-formational-event/chat", {}, env(db));
+  assert.equal(chatResponse.status, 200);
+  assert.deepEqual(await chatResponse.json(), {
+    event_slug: "medtech-in-the-hut",
+    room_exists: true,
+    conversation_id: "event-room-medtech-in-the-hut",
+    room_name: "MedTech in the Hut Comments",
+    messages: [],
+  });
 });
 
 test("public user event route returns individual-hosted calendar entries", async () => {
@@ -1303,7 +1627,7 @@ test("UBI tick enrolls known people before accrual", async () => {
   assert.equal(db.ubiEligibility[0].account_id, db.ledgerAccounts[0].id);
 });
 
-test("users can favor, change, and clear organization sentiment", async () => {
+test("users can save, change, and clear organization feedback", async () => {
   const db = new FakeD1();
   db.organizations.push({
     id: "org-1",
@@ -1319,54 +1643,339 @@ test("users can favor, change, and clear organization sentiment", async () => {
   });
 
   await withPidpUser({ id: "user-1", email: "user@example.test", full_name: "Test User" }, async () => {
-    const favor = await app.request(
-      "https://org.example.test/api/network/orgs/org-1/sentiment",
+    const positive = await app.request(
+      "https://org.example.test/api/network/orgs/org-1/feedback",
       {
         method: "PUT",
         headers: { authorization: "Bearer user-token", "content-type": "application/json" },
-        body: JSON.stringify({ sentiment: "favor" }),
+        body: JSON.stringify({ rating: "positive", comment: "Useful events and helpful organizers." }),
       },
       env(db),
     );
-    assert.equal(favor.status, 200);
-    assert.deepEqual(await favor.json(), {
+    assert.equal(positive.status, 200);
+    const positiveBody = await positive.json() as Record<string, unknown>;
+    assert.deepEqual({
+      ...positiveBody,
+      my_feedback: { ...(positiveBody.my_feedback as Record<string, unknown>), updated_at: "present" },
+    }, {
       organization_id: "org-1",
-      sentiment: "favor",
-      favor_count: 1,
-      disfavor_count: 0,
-      sentiment_score: 1,
+      my_feedback: {
+        rating: "positive",
+        comment: "Useful events and helpful organizers.",
+        updated_at: "present",
+      },
+      feedback_count: 1,
+      feedback_positive_count: 1,
+      feedback_concern_count: 0,
+      feedback_score: 1,
     });
 
-    const disfavor = await app.request(
-      "https://org.example.test/api/network/orgs/test-org/sentiment",
+    const concern = await app.request(
+      "https://org.example.test/api/network/orgs/test-org/feedback",
       {
         method: "PUT",
         headers: { authorization: "Bearer user-token", "content-type": "application/json" },
-        body: JSON.stringify({ sentiment: "disfavor" }),
+        body: JSON.stringify({ rating: "concern", comment: "Needs clearer meeting details." }),
       },
       env(db),
     );
-    assert.equal(disfavor.status, 200);
-    assert.deepEqual(await disfavor.json(), {
+    assert.equal(concern.status, 200);
+    const concernBody = await concern.json() as Record<string, unknown>;
+    assert.deepEqual({
+      ...concernBody,
+      my_feedback: { ...(concernBody.my_feedback as Record<string, unknown>), updated_at: "present" },
+    }, {
       organization_id: "org-1",
-      sentiment: "disfavor",
-      favor_count: 0,
-      disfavor_count: 1,
-      sentiment_score: -1,
+      my_feedback: {
+        rating: "concern",
+        comment: "Needs clearer meeting details.",
+        updated_at: "present",
+      },
+      feedback_count: 1,
+      feedback_positive_count: 0,
+      feedback_concern_count: 1,
+      feedback_score: -1,
     });
 
     const cleared = await app.request(
-      "https://org.example.test/api/network/orgs/org-1/sentiment",
+      "https://org.example.test/api/network/orgs/org-1/feedback",
       { method: "DELETE", headers: { authorization: "Bearer user-token" } },
       env(db),
     );
     assert.equal(cleared.status, 200);
     assert.deepEqual(await cleared.json(), {
       organization_id: "org-1",
-      sentiment: null,
-      favor_count: 0,
-      disfavor_count: 0,
-      sentiment_score: 0,
+      my_feedback: null,
+      feedback_count: 0,
+      feedback_positive_count: 0,
+      feedback_concern_count: 0,
+      feedback_score: 0,
     });
+  });
+});
+
+test("organization admins can review feedback history", async () => {
+  const db = new FakeD1();
+  db.organizations.push({
+    id: "org-1",
+    name: "Test Org",
+    slug: "test-org",
+    description: null,
+    source_url: null,
+    image_url: null,
+    tags: "[]",
+    city: null,
+    created_at: "2026-06-07T00:00:00.000Z",
+    updated_at: "2026-06-07T00:00:00.000Z",
+  });
+  db.organizationMemberships.push({
+    organization_id: "org-1",
+    user_id: "admin-1",
+    user_name: "Admin User",
+    user_email: "admin@example.test",
+    role: "administrator",
+    status: "active",
+    created_at: "2026-06-07T00:00:00.000Z",
+    updated_at: "2026-06-07T00:00:00.000Z",
+  });
+  db.organizationFeedback.push({
+    organization_id: "org-1",
+    user_id: "user-1",
+    user_name: "Test User",
+    rating: "concern",
+    comment: "Needs clearer meeting details.",
+    created_at: "2026-06-07T00:00:00.000Z",
+    updated_at: "2026-06-08T00:00:00.000Z",
+  });
+
+  await withPidpUser({ id: "admin-1", email: "admin@example.test", full_name: "Admin User" }, async () => {
+    const response = await app.request(
+      "https://org.example.test/api/network/orgs/test-org/feedback/review",
+      { headers: { authorization: "Bearer admin-token" } },
+      env(db),
+    );
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), [
+      {
+        organization_id: "org-1",
+        user_id: "user-1",
+        user_name: "Test User",
+        rating: "concern",
+        comment: "Needs clearer meeting details.",
+        created_at: "2026-06-07T00:00:00.000Z",
+        updated_at: "2026-06-08T00:00:00.000Z",
+      },
+    ]);
+  });
+
+  await withPidpUser({ id: "user-2", email: "user2@example.test", full_name: "Regular User" }, async () => {
+    const response = await app.request(
+      "https://org.example.test/api/network/orgs/test-org/feedback/review",
+      { headers: { authorization: "Bearer user-token" } },
+      env(db),
+    );
+    assert.equal(response.status, 403);
+  });
+});
+
+test("users can join and leave organization groups", async () => {
+  const db = new FakeD1();
+  db.organizations.push({
+    id: "org-1",
+    name: "Test Org",
+    slug: "test-org",
+    description: null,
+    source_url: null,
+    image_url: null,
+    tags: "[]",
+    city: null,
+    created_at: "2026-06-07T00:00:00.000Z",
+    updated_at: "2026-06-07T00:00:00.000Z",
+  });
+
+  await withPidpUser({ id: "user-1", email: "user@example.test", full_name: "Test User" }, async () => {
+    const joined = await app.request(
+      "https://org.example.test/api/network/orgs/test-org/membership",
+      { method: "POST", headers: { authorization: "Bearer user-token" } },
+      env(db),
+    );
+    assert.equal(joined.status, 200);
+    assert.deepEqual(await joined.json(), {
+      organization_id: "org-1",
+      role: "member",
+      status: "active",
+      membership_count: 1,
+    });
+
+    const left = await app.request(
+      "https://org.example.test/api/network/orgs/org-1/membership",
+      { method: "DELETE", headers: { authorization: "Bearer user-token" } },
+      env(db),
+    );
+    assert.equal(left.status, 200);
+    assert.deepEqual(await left.json(), {
+      organization_id: "org-1",
+      role: null,
+      status: "none",
+      membership_count: 0,
+    });
+  });
+});
+
+test("organization admins can publish a slug portal for their organization", async () => {
+  const db = new FakeD1();
+  db.organizations.push({
+    id: "org-1",
+    name: "Test Org",
+    slug: "test-org",
+    description: "A test organization.",
+    source_url: null,
+    image_url: "https://cdn.example.test/org.jpg",
+    tags: "[]",
+    city: null,
+    created_at: "2026-06-07T00:00:00.000Z",
+    updated_at: "2026-06-07T00:00:00.000Z",
+  });
+  db.organizationMemberships.push({
+    organization_id: "org-1",
+    user_id: "admin-1",
+    role: "administrator",
+    status: "active",
+  });
+
+  await withPidpUser({ id: "admin-1", email: "admin@example.test", full_name: "Admin User" }, async () => {
+    const saved = await app.request(
+      "https://org.example.test/api/network/orgs/test-org/portal",
+      {
+        method: "PUT",
+        headers: { authorization: "Bearer admin-token", "content-type": "application/json" },
+        body: JSON.stringify({
+          slug: "test-org",
+          name: "Test Org Portal",
+          tagline: "Everything for Test Org members.",
+          home_kind: "org-events",
+          home_heading: "Test Org",
+          home_description: "Join Test Org events and conversations.",
+        }),
+      },
+      env(db),
+    );
+    assert.equal(saved.status, 200);
+    const savedPayload = await saved.json() as { portal: Row };
+    assert.equal(savedPayload.portal.organization_id, "org-1");
+    assert.equal(savedPayload.portal.slug, "test-org");
+    assert.equal(savedPayload.portal.home_org_slug, "test-org");
+    assert.equal(savedPayload.portal.home_kind, "org-events");
+    assert.equal(savedPayload.portal.slug_url, "https://codecollective.test/p/portals/test-org");
+
+    const loaded = await app.request(
+      "https://org.example.test/api/network/orgs/org-1/portal",
+      { headers: { authorization: "Bearer admin-token" } },
+      env(db),
+    );
+    assert.equal(loaded.status, 200);
+    assert.equal(((await loaded.json()) as { portal: Row }).portal.slug, "test-org");
+
+    const publicTenant = await app.request("https://org.example.test/api/portal/tenants/test-org", {}, env(db));
+    assert.equal(publicTenant.status, 200);
+    const publicPayload = await publicTenant.json() as Row;
+    assert.equal(publicPayload.name, "Test Org Portal");
+    assert.deepEqual(publicPayload.features, ["directory", "events", "chat"]);
+  });
+});
+
+test("non-admins cannot publish organization slug portals", async () => {
+  const db = new FakeD1();
+  db.organizations.push({
+    id: "org-1",
+    name: "Test Org",
+    slug: "test-org",
+    description: null,
+    source_url: null,
+    image_url: null,
+    tags: "[]",
+    city: null,
+    created_at: "2026-06-07T00:00:00.000Z",
+    updated_at: "2026-06-07T00:00:00.000Z",
+  });
+
+  await withPidpUser({ id: "user-1", email: "user@example.test", full_name: "Regular User" }, async () => {
+    const response = await app.request(
+      "https://org.example.test/api/network/orgs/test-org/portal",
+      {
+        method: "PUT",
+        headers: { authorization: "Bearer user-token", "content-type": "application/json" },
+        body: JSON.stringify({ slug: "test-org" }),
+      },
+      env(db),
+    );
+    assert.equal(response.status, 403);
+    assert.equal(db.portalTenants.length, 0);
+  });
+});
+
+test("organization admins can request and attach a custom portal domain", async () => {
+  const db = new FakeD1();
+  db.organizations.push({
+    id: "org-1",
+    name: "Test Org",
+    slug: "test-org",
+    description: null,
+    source_url: null,
+    image_url: null,
+    tags: "[]",
+    city: null,
+    created_at: "2026-06-07T00:00:00.000Z",
+    updated_at: "2026-06-07T00:00:00.000Z",
+  });
+  db.organizationMemberships.push({
+    organization_id: "org-1",
+    user_id: "admin-1",
+    role: "owner",
+    status: "active",
+  });
+
+  await withPidpUser({ id: "admin-1", email: "admin@example.test", full_name: "Admin User" }, async () => {
+    await app.request(
+      "https://org.example.test/api/network/orgs/test-org/portal",
+      {
+        method: "PUT",
+        headers: { authorization: "Bearer admin-token", "content-type": "application/json" },
+        body: JSON.stringify({ slug: "test-org" }),
+      },
+      env(db),
+    );
+
+    const requested = await app.request(
+      "https://org.example.test/api/network/orgs/test-org/portal/custom-domain/request",
+      {
+        method: "POST",
+        headers: { authorization: "Bearer admin-token", "content-type": "application/json" },
+        body: JSON.stringify({ hostname: "portal.test-org.example", notes: "DNS owner confirmed" }),
+      },
+      env(db),
+    );
+    assert.equal(requested.status, 200);
+    const requestedPayload = await requested.json() as { portal: Row; checklist: string[] };
+    assert.equal(requestedPayload.portal.custom_domain_hostname, "portal.test-org.example");
+    assert.equal(requestedPayload.portal.custom_domain_status, "requested");
+    assert.equal(requestedPayload.portal.hostname, "test-org.slug.portal.local");
+    assert.ok(requestedPayload.checklist.some((item) => item.includes("Cloudflare custom domain")));
+
+    const attached = await app.request(
+      "https://org.example.test/api/network/orgs/test-org/portal/custom-domain/attach",
+      {
+        method: "POST",
+        headers: { authorization: "Bearer admin-token", "content-type": "application/json" },
+        body: JSON.stringify({ hostname: "portal.test-org.example" }),
+      },
+      env(db),
+    );
+    assert.equal(attached.status, 200);
+    const attachedPayload = await attached.json() as { portal: Row };
+    assert.equal(attachedPayload.portal.custom_domain_status, "attached");
+    assert.equal(attachedPayload.portal.hostname, "portal.test-org.example");
+    assert.equal(attachedPayload.portal.public_base_url, "https://portal.test-org.example");
+    assert.equal(attachedPayload.portal.canonical_path_prefix, "");
   });
 });
