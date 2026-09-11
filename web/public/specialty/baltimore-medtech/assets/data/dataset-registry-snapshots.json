@@ -1,0 +1,269 @@
+{
+  "datasets": [
+    {
+      "id": "medical-science-field-atlas",
+      "title": "Medical Science Field Atlas",
+      "short_title": "Field Atlas",
+      "publisher": "Baltimore MedTech",
+      "category": "Curated scientific field atlas",
+      "mode": "repository-snapshot",
+      "adapter": "local_medical_science_field_atlas",
+      "page": "/specialty/baltimore-medtech/datasets/medical-science-field-atlas.html",
+      "source_url": "/medical-science-field-atlas.json",
+      "coverage": "Current repository build",
+      "refresh": "On repository update",
+      "geography": "Conceptual / global",
+      "default_page_size": 100,
+      "max_page_size": 500,
+      "cache_seconds": 300,
+      "description": "Spreadsheet view of the 223-field polyhierarchical atlas of medical science, including scientific lineage, anatomy, methods, scale, population, translation, and subdisciplines.",
+      "filters": [
+        {
+          "name": "q",
+          "label": "Search fields",
+          "type": "text",
+          "placeholder": "Neurology"
+        }
+      ],
+      "preferred_columns": [
+        "id",
+        "name",
+        "scientific_lineage",
+        "body_parts",
+        "methods",
+        "scale",
+        "population",
+        "translation",
+        "subdisciplines",
+        "tags"
+      ],
+      "limitations": [
+        "This is a curated orientation atlas, not an official clinical terminology, certification list, or universal taxonomy."
+      ]
+    },
+    {
+      "id": "clinical-code-systems",
+      "title": "Clinical and Administrative Code Systems",
+      "short_title": "Code systems",
+      "publisher": "Baltimore MedTech from official stewards",
+      "category": "Existing curated dataset",
+      "mode": "repository-snapshot",
+      "adapter": "local_systems",
+      "asset": "/clinical-code-systems.json",
+      "page": "/specialty/baltimore-medtech/datasets/clinical-code-systems.html",
+      "source_url": "/clinical-code-systems.json",
+      "coverage": "Current repository build",
+      "refresh": "On repository update",
+      "geography": "U.S. and international standards",
+      "default_page_size": 100,
+      "max_page_size": 300,
+      "cache_seconds": 300,
+      "description": "Spreadsheet view of ICD, CPT, HCPCS, NDC, place-of-service, revenue, and Medicaid-related coding layers already used by the Medical Atlas.",
+      "filters": [
+        {
+          "name": "q",
+          "label": "Search systems",
+          "type": "text",
+          "placeholder": "ICD"
+        }
+      ],
+      "preferred_columns": [
+        "id",
+        "short_name",
+        "name",
+        "kind",
+        "layer",
+        "role",
+        "question",
+        "scope",
+        "steward",
+        "identifier_shape",
+        "source_urls",
+        "licensed",
+        "tags",
+        "note"
+      ],
+      "limitations": [
+        "Descriptions are educational orientation; implementation requires current code sets, licenses, manuals, and payer rules."
+      ]
+    },
+    {
+      "id": "clinical-semantic-systems",
+      "title": "Clinical Semantic and Interoperability Systems",
+      "short_title": "Semantic systems",
+      "publisher": "Baltimore MedTech from official stewards",
+      "category": "Existing curated dataset",
+      "mode": "repository-snapshot",
+      "adapter": "local_systems",
+      "asset": "/clinical-semantic-systems.json",
+      "page": "/specialty/baltimore-medtech/datasets/clinical-semantic-systems.html",
+      "source_url": "/clinical-semantic-systems.json",
+      "coverage": "Current repository build",
+      "refresh": "On repository update",
+      "geography": "International standards",
+      "default_page_size": 100,
+      "max_page_size": 300,
+      "cache_seconds": 300,
+      "description": "Spreadsheet view of SNOMED CT, LOINC, RxNorm, FHIR, UMLS, DICOM, GA4GH VRS, and OMOP CDM roles and official stewardship links.",
+      "filters": [
+        {
+          "name": "q",
+          "label": "Search systems",
+          "type": "text",
+          "placeholder": "FHIR"
+        }
+      ],
+      "preferred_columns": [
+        "id",
+        "short_name",
+        "name",
+        "kind",
+        "stage",
+        "layer",
+        "role",
+        "question",
+        "scope",
+        "steward",
+        "identifier_shape",
+        "source_urls",
+        "licensed",
+        "tags",
+        "note"
+      ],
+      "limitations": [
+        "Mappings are contextual and version-dependent; this index does not distribute licensed terminology content."
+      ]
+    },
+    {
+      "id": "strategy-field-metrics",
+      "title": "MedTech Strategy Field Metrics",
+      "short_title": "Field metrics",
+      "publisher": "Baltimore MedTech from cited public sources",
+      "category": "Existing analytical dataset",
+      "mode": "repository-snapshot",
+      "adapter": "local_strategy_fields",
+      "page": "/specialty/baltimore-medtech/datasets/strategy-field-metrics.html",
+      "source_url": "/taxonomy.html#strategy-dashboard",
+      "coverage": "Four example fields; source years vary",
+      "refresh": "On repository update",
+      "geography": "United States",
+      "default_page_size": 100,
+      "max_page_size": 100,
+      "cache_seconds": 300,
+      "description": "One row per example field combining existing workforce, entrant-pipeline, need, lead NIH institute funding, digital leverage, and strategy annotations.",
+      "filters": [
+        {
+          "name": "q",
+          "label": "Search fields",
+          "type": "text",
+          "placeholder": "Genomics"
+        }
+      ],
+      "preferred_columns": [
+        "id",
+        "field",
+        "workforce",
+        "workforce_year",
+        "workforce_definition",
+        "pipeline",
+        "pipeline_year",
+        "pipeline_definition",
+        "need",
+        "need_year",
+        "need_type",
+        "funding_proxy",
+        "funding_fy2024",
+        "digital_leverage",
+        "stance",
+        "labor_strategy",
+        "application_strategy"
+      ],
+      "limitations": [
+        "Field measures use different definitions and years and are not a universal ranking of medical importance."
+      ]
+    },
+    {
+      "id": "need-availability-distortions",
+      "title": "Need–Availability Distortion Metrics",
+      "short_title": "Need gaps",
+      "publisher": "Baltimore MedTech analytical model",
+      "category": "Existing analytical dataset",
+      "mode": "repository-snapshot",
+      "adapter": "local_distortions",
+      "page": "/specialty/baltimore-medtech/datasets/need-availability-distortions.html",
+      "source_url": "/specialty/baltimore-medtech/need-availability-distortions.html",
+      "coverage": "Four example fields; source years vary",
+      "refresh": "On repository update",
+      "geography": "United States",
+      "default_page_size": 100,
+      "max_page_size": 100,
+      "cache_seconds": 300,
+      "description": "Auditable row-level view of the current need-per-physician pressure, pipeline fragility, availability composite, signed gap, and distortion index.",
+      "filters": [
+        {
+          "name": "q",
+          "label": "Search fields",
+          "type": "text",
+          "placeholder": "Radiology"
+        }
+      ],
+      "preferred_columns": [
+        "rank",
+        "id",
+        "field",
+        "need_proxy",
+        "need_type",
+        "physician_workforce",
+        "physician_pipeline",
+        "need_per_physician",
+        "entrants_per_1000_physicians",
+        "need_score",
+        "availability_score",
+        "signed_gap",
+        "distortion_index"
+      ],
+      "limitations": [
+        "The index is relative within four unlike need proxies and is not an absolute shortage threshold or access rate."
+      ]
+    },
+    {
+      "id": "allied-care-teams",
+      "title": "Selected Allied Care-Team Employment and Openings",
+      "short_title": "Allied care teams",
+      "publisher": "Baltimore MedTech from BLS Occupational Outlook Handbook",
+      "category": "Existing curated dataset",
+      "mode": "repository-snapshot",
+      "adapter": "local_care_teams",
+      "page": "/specialty/baltimore-medtech/datasets/allied-care-teams.html",
+      "source_url": "/specialty/baltimore-medtech/need-availability-care-teams.json",
+      "coverage": "2025 jobs and projected 2025–2035 annual openings",
+      "refresh": "On repository update",
+      "geography": "United States",
+      "default_page_size": 100,
+      "max_page_size": 200,
+      "cache_seconds": 300,
+      "description": "One row per selected allied occupation, preserving its field mapping, SOC code, employment, annual openings, mapping strength, source, and scope warning.",
+      "filters": [
+        {
+          "name": "q",
+          "label": "Search occupations",
+          "type": "text",
+          "placeholder": "Therapist"
+        }
+      ],
+      "preferred_columns": [
+        "field",
+        "mapping_strength",
+        "occupation",
+        "soc",
+        "jobs_2025",
+        "annual_openings_2025_2035",
+        "source_url",
+        "field_scope_note"
+      ],
+      "limitations": [
+        "Mapped occupations are not dedicated specialty full-time equivalents and do not exhaust the full care team."
+      ]
+    }
+  ]
+}

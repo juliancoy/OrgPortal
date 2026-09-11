@@ -51,6 +51,7 @@ import { ReceivePage } from '../views/ReceivePage'
 import { TimebankPage } from '../views/TimebankPage'
 import { TimebankInboxProvider } from '../timebank/TimebankInbox'
 import { TenantEventsHomePage, TenantHomePage, TenantSlugHomePage } from '../views/TenantHomePage'
+import { TenantResourcesPage } from '../views/TenantResourcesPage'
 import { CreatePage } from '../views/CreatePage'
 import { CreateForProfitPage } from '../views/CreateForProfitPage'
 import { CreateNonProfitPage } from '../views/CreateNonProfitPage'
@@ -130,6 +131,7 @@ function TenantCommunityAliasRoute() {
 function TenantEventsAliasRoute() {
   return <Navigate to={getDomainTenant() ? '/org-events' : '/events'} replace />
 }
+
 
 function TimebankRoute() {
   const { user } = useAuth()
@@ -238,6 +240,7 @@ export function createAppRouter() {
           { path: '/org-events', element: <TenantOrgEventsRoute /> },
           { path: '/community', element: <TenantCommunityAliasRoute /> },
           { path: '/medtech-events', element: <TenantEventsAliasRoute /> },
+          { path: '/resources', element: <TenantResourcesPage /> },
           { path: '/about', element: <AboutPage /> },
           { path: '/terms', element: <TermsPage /> },
           { path: '/legal', element: <TermsPage /> },

@@ -1,0 +1,122 @@
+{
+  "meta": {
+    "title": "Baltimore MedTech Strategy Signals",
+    "as_of": "2026-09-03",
+    "geography": "United States unless an individual metric says otherwise",
+    "summary": "A decision dashboard for medical labor, application opportunities, research capital, and Baltimore ecosystem strategy.",
+    "comparability_note": "These four fields are different kinds of domains. Need measures are field-specific proxies, not one shared prevalence statistic. Workforce is a physician-specialist proxy and excludes nurses, technologists, genetic counselors, scientists, engineers, and other essential workers. Funding uses lead NIH institute appropriations, not total non-overlapping spending in each field.",
+    "radar_note": "Radar values are directional 0–100 signals. Need, workforce scarcity, funding, and pipeline are log-normalized across the four selected fields. Digital leverage is a documented project rubric based on structured-data availability, standards maturity, and feasibility of software-assisted workflows. The radar is not a clinical, investment, or workforce ranking.",
+    "review_cycle": "Review at least annually and whenever AAMC, HRSA, NIH, NCI, NINDS, NIBIB, NHGRI, or ABMGG publishes a material update."
+  },
+  "baltimore": {
+    "year": 2024,
+    "label": "Two largest Baltimore research anchors",
+    "total_funding": 1056504219,
+    "total_awards": 1932,
+    "scope_note": "A selected two-institution subtotal, not all Baltimore or Maryland NIH funding. NIH warns that organization totals should not be treated as institutional rankings.",
+    "anchors": [
+      {
+        "name": "Johns Hopkins University",
+        "short_name": "Johns Hopkins",
+        "funding": 857947550,
+        "awards": 1512,
+        "source_url": "https://report.nih.gov/award/index.cfm?fy=2024&orgid=4134401"
+      },
+      {
+        "name": "University of Maryland Baltimore",
+        "short_name": "UMB",
+        "funding": 198556669,
+        "awards": 420,
+        "source_url": "https://report.nih.gov/award/index.cfm?fy=2024&orgid=820104"
+      }
+    ]
+  },
+  "recommendations": [
+    {
+      "id": "labor",
+      "title": "Extend labor before trying to replace it",
+      "signal": "Genomics has the smallest physician proxy and weakest entry pipeline; neurology and oncology carry large longitudinal coordination loads.",
+      "action": "Organize projects around specialist time saved, referrals completed, follow-up closed, and patients moved safely through a pathway."
+    },
+    {
+      "id": "applications",
+      "title": "Choose data-rich bottlenecks",
+      "signal": "Radiology has the strongest immediate digital-deployment surface; genomics has the strongest interpretation and interoperability bottleneck.",
+      "action": "Require an operational owner, a measurable baseline, an integration path, and a post-deployment safety metric before adopting an application theme."
+    },
+    {
+      "id": "capital",
+      "title": "Do not confuse funding with open opportunity",
+      "signal": "Oncology has the largest lead-institute budget proxy, but that also signals a mature, competitive ecosystem.",
+      "action": "Enter well-funded fields through neglected operational or equity gaps; enter lower-funded fields through shared infrastructure and reusable platforms."
+    },
+    {
+      "id": "baltimore",
+      "title": "Use Baltimore as an implementation network",
+      "signal": "Johns Hopkins and UMB received about $1.057 billion across 1,932 NIH awards in FY2024.",
+      "action": "Build cross-institution working groups that connect academic expertise to community need, startups, state programs, payers, and deployable standards."
+    }
+  ],
+  "sources": [
+    {
+      "id": "aamc",
+      "label": "AAMC U.S. Physician Workforce Data Dashboard",
+      "url": "https://www.aamc.org/data-reports/report/us-physician-workforce-data-dashboard",
+      "note": "Current dashboard and workforce methods; exact displayed specialty counts use the 2021 report snapshot."
+    },
+    {
+      "id": "hrsa",
+      "label": "HRSA Physician Model Components",
+      "url": "https://bhw.hrsa.gov/data-research/projecting-health-workforce-supply-demand/technical-documentation/physician-model-components",
+      "note": "Modeled annual new entrants."
+    },
+    {
+      "id": "nih-budget",
+      "label": "NIH Historical Budget Information",
+      "url": "https://www.nih.gov/about-nih/nih-almanac/appropriations-section-1",
+      "note": "Institute appropriations in thousands of dollars."
+    },
+    {
+      "id": "ninds",
+      "label": "NINDS Interim Strategic Plan",
+      "url": "https://www.ninds.nih.gov/about-ninds/what-we-do/strategic-plans-evaluations/strategic-plans/ninds-interim-strategic-plan",
+      "note": "Neurological burden markers."
+    },
+    {
+      "id": "nci",
+      "label": "NCI Office of Cancer Survivorship Statistics",
+      "url": "https://cancercontrol.cancer.gov/ocs/statistics",
+      "note": "May 2025 U.S. cancer-survivor estimate."
+    },
+    {
+      "id": "ct",
+      "label": "2023 U.S. CT utilization study",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11997853/",
+      "note": "Estimated CT patients and examinations."
+    },
+    {
+      "id": "ncats",
+      "label": "NCATS Rare Diseases Are Not Rare",
+      "url": "https://ncats.nih.gov/news/releases/2019/rare-diseases-challenge",
+      "note": "Aggregate rare-disease population and genetic-origin estimate."
+    },
+    {
+      "id": "abmgg",
+      "label": "ABMGG 2025 New Diplomates",
+      "url": "https://www.abmgg.org/facet/abmgg-welcomes-new-diplomates-in-2025/",
+      "note": "Observed new diplomates, not the same model as HRSA entrants."
+    },
+    {
+      "id": "report-jhu",
+      "label": "NIH RePORT: Johns Hopkins FY2024",
+      "url": "https://report.nih.gov/award/index.cfm?fy=2024&orgid=4134401",
+      "note": "Frozen FY2024 organization total."
+    },
+    {
+      "id": "report-umb",
+      "label": "NIH RePORT: UMB FY2024",
+      "url": "https://report.nih.gov/award/index.cfm?fy=2024&orgid=820104",
+      "note": "Frozen FY2024 organization total."
+    }
+  ]
+}

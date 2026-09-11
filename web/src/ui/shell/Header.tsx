@@ -1,4 +1,5 @@
 import { useDomainCommunity, useDomainTenant } from '../../config/timebankCommunity'
+import { hasTenantCalendar, specialtyResourcesForTenant } from '../../config/specialtyResources'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../../app/AppProviders'
@@ -482,11 +483,13 @@ export function Header() {
   const isLifeInsuranceActive = location.pathname.startsWith('/life-insurance')
   const isHealthInsuranceActive = location.pathname.startsWith('/health-insurance')
   const isCalendarActive = location.pathname.startsWith('/calendar')
+  const isResourcesActive = location.pathname.startsWith('/resources') || location.pathname.startsWith('/specialty/')
   const isProviderSchedulingActive = location.pathname.startsWith('/provider-scheduling')
   const isPropertyCasualtyInsuranceActive = location.pathname.startsWith('/property-casualty-insurance')
   const isIdActive = location.pathname === '/id' || location.pathname.startsWith('/contact-settings')
   const isChatActive = location.pathname.startsWith('/chat')
   const isScanActive = location.pathname.startsWith('/tools/business-cards')
+  const tenantResources = specialtyResourcesForTenant(domainTenant)
 
   const activeDescendant =
     activeResultIndex >= 0 && activeResultIndex < results.length ? `portal-search-option-${activeResultIndex}` : undefined
@@ -947,11 +950,10 @@ export function Header() {
         <div id="portal-primary-nav" className="portal-nav">
           {domainTenant && !domainCommunity ? <>
             {domainTenant.features?.includes('events') && <NavLink to="/org-events">Events</NavLink>}
-            {domainTenant.profile === 'baltimore-medtech' && <NavLink to="/calendar" isActive={isCalendarActive}>Calendar</NavLink>}
+            {hasTenantCalendar(domainTenant) && <NavLink to="/calendar" isActive={isCalendarActive}>Calendar</NavLink>}
             {domainTenant.features?.includes('directory') && <NavLink to="/people">People</NavLink>}
             {domainTenant.features?.includes('chat') && <NavLink to="/chat">Messages</NavLink>}
-            {typeof domainTenant.feature_config?.externalCalendarUrl === 'string' && <a className="portal-nav-link" href={domainTenant.feature_config.externalCalendarUrl}>Calendar</a>}
-            {typeof domainTenant.feature_config?.externalMapUrl === 'string' && <a className="portal-nav-link" href={domainTenant.feature_config.externalMapUrl}>Map</a>}
+            {tenantResources.length > 0 && <NavLink to="/resources" isActive={isResourcesActive}>Resources</NavLink>}
           </> : domainCommunity ? <>
             <NavLink to="/timebanking">Timebank</NavLink>
             <NavLink to="/people">People</NavLink>

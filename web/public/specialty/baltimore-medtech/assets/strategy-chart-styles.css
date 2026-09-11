@@ -1,0 +1,313 @@
+.strategy-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: clamp(42px, 6vw, 72px);
+}
+
+.strategy-chart-card {
+  min-width: 0;
+  padding: 22px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: var(--surface-raised);
+  box-shadow: 0 15px 42px rgba(12, 49, 66, 0.07);
+}
+
+.strategy-chart-card-wide { grid-column: 1 / -1; }
+
+.strategy-chart-card > header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: start;
+}
+
+.strategy-chart-kicker {
+  margin: 0;
+  color: var(--teal);
+  font-size: 0.63rem;
+  font-weight: 950;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.strategy-chart-card h3 {
+  margin: 6px 0 0;
+  font-size: clamp(1.55rem, 3vw, 2.65rem);
+  line-height: 0.98;
+  letter-spacing: -0.048em;
+}
+
+.strategy-chart-unit {
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.strategy-chart-deck {
+  max-width: 850px;
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.52;
+}
+
+.strategy-chart {
+  width: 100%;
+  min-height: 260px;
+  margin-top: 14px;
+  overflow-x: auto;
+}
+
+.strategy-chart-line { min-height: 330px; }
+.strategy-chart-radar { min-height: 400px; }
+
+.strategy-chart-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-width: 540px;
+  overflow: visible;
+}
+
+.strategy-chart-gridline {
+  stroke: color-mix(in srgb, var(--muted) 22%, transparent);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.strategy-chart-gridline-vertical { opacity: 0.55; }
+
+.strategy-chart-tick {
+  fill: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.strategy-chart-label {
+  fill: var(--ink);
+  font-size: 14px;
+  font-weight: 850;
+}
+
+.strategy-chart-value {
+  fill: var(--ink);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.strategy-chart-series { --series-color: var(--strategy-cyan); }
+.strategy-chart-series[data-field="oncology"] { --series-color: var(--strategy-coral); }
+.strategy-chart-series[data-field="radiology"] { --series-color: var(--strategy-gold); }
+.strategy-chart-series[data-field="genomics"] { --series-color: var(--strategy-violet); }
+.strategy-chart-series[data-field^="local-"] { --series-color: var(--strategy-green); }
+
+.strategy-chart-bar {
+  fill: var(--series-color);
+  opacity: 0.86;
+}
+
+.strategy-chart-line-path {
+  fill: none;
+  stroke: var(--series-color);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.strategy-chart-point {
+  fill: var(--surface-raised);
+  stroke: var(--series-color);
+  stroke-width: 3;
+  vector-effect: non-scaling-stroke;
+}
+
+.strategy-chart-end-label {
+  fill: var(--series-color);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.strategy-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px 14px;
+  margin-top: 8px;
+}
+
+.strategy-chart-legend-item {
+  --series-color: var(--strategy-cyan);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 800;
+}
+
+.strategy-chart-legend-item[data-field="oncology"] { --series-color: var(--strategy-coral); }
+.strategy-chart-legend-item[data-field="radiology"] { --series-color: var(--strategy-gold); }
+.strategy-chart-legend-item[data-field="genomics"] { --series-color: var(--strategy-violet); }
+
+.strategy-chart-legend-item i {
+  width: 14px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--series-color);
+}
+
+.strategy-radar-ring,
+.strategy-radar-axis {
+  fill: none;
+  stroke: color-mix(in srgb, var(--muted) 24%, transparent);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.strategy-radar-ring { fill: color-mix(in srgb, var(--blue) 1.8%, transparent); }
+
+.strategy-radar-axis-label {
+  fill: var(--ink);
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.strategy-radar-tick {
+  fill: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.strategy-radar-shape {
+  fill: color-mix(in srgb, var(--series-color) 11%, transparent);
+  stroke: var(--series-color);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  transition: opacity 150ms ease, stroke-width 150ms ease;
+}
+
+.strategy-radar-point {
+  fill: var(--surface-raised);
+  stroke: var(--series-color);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+  transition: opacity 150ms ease;
+}
+
+.strategy-radar-series.is-muted .strategy-radar-shape,
+.strategy-radar-series.is-muted .strategy-radar-point { opacity: 0.12; }
+.strategy-radar-series.is-focused .strategy-radar-shape { stroke-width: 4; }
+
+.strategy-radar-legend {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.strategy-radar-key {
+  --series-color: var(--strategy-cyan);
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--series-color) 34%, var(--line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--series-color) 5%, var(--surface-subtle));
+  color: var(--series-color);
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.strategy-radar-key[data-field="oncology"] { --series-color: var(--strategy-coral); }
+.strategy-radar-key[data-field="radiology"] { --series-color: var(--strategy-gold); }
+.strategy-radar-key[data-field="genomics"] { --series-color: var(--strategy-violet); }
+
+.strategy-radar-key[aria-pressed="true"] {
+  background: var(--series-color);
+  color: #fff;
+}
+
+.strategy-method-note {
+  margin: 13px 0 0;
+  color: var(--muted);
+  font-size: 0.66rem;
+  line-height: 1.48;
+}
+
+.strategy-local-total {
+  display: grid;
+  margin-top: 18px;
+  padding: 17px 18px;
+  border: 1px solid color-mix(in srgb, var(--strategy-green) 30%, var(--line));
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--strategy-green) 7%, var(--surface-subtle));
+}
+
+.strategy-local-total strong {
+  color: var(--strategy-green);
+  font-size: clamp(2rem, 5vw, 3.8rem);
+  line-height: 0.95;
+  letter-spacing: -0.06em;
+}
+
+.strategy-local-total span {
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.strategy-table-wrap { margin-top: 9px; }
+
+.strategy-data-details {
+  padding-top: 9px;
+  border-top: 1px solid var(--line);
+}
+
+.strategy-data-details summary {
+  width: fit-content;
+  color: var(--blue);
+  font-size: 0.64rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.strategy-data-table {
+  width: 100%;
+  margin-top: 10px;
+  border-collapse: collapse;
+  font-size: 0.68rem;
+}
+
+.strategy-data-table caption {
+  padding-bottom: 7px;
+  color: var(--muted);
+  font-weight: 800;
+  text-align: left;
+}
+
+.strategy-data-table th,
+.strategy-data-table td {
+  padding: 7px 8px;
+  border: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.strategy-data-table th {
+  background: var(--surface-subtle);
+  color: var(--ink);
+}
+
+.strategy-data-table td { color: var(--muted); }

@@ -1,0 +1,339 @@
+{
+  "meta": {
+    "title": "Knowledge-to-care-to-payment flow",
+    "as_of": "2026-09-02",
+    "principle": "Clinical terminologies preserve meaning; classifications summarize it; billing codes report services; payer rules determine payment.",
+    "summary": "The semantic layer connects medical knowledge to the detailed clinical record before information is exchanged, classified for reporting, or adjudicated by a payer.",
+    "disclaimer": "Educational orientation only. These descriptions do not replace implementation guides, terminology licenses, coding rules, payer manuals, or clinical documentation requirements."
+  },
+  "flow_stages": [
+    {
+      "id": "science",
+      "step": "01",
+      "eyebrow": "Knowledge",
+      "title": "Medical science",
+      "question": "What domain is being studied?",
+      "description": "Disciplines and research domains organize expertise around systems, diseases, methods, populations, and biological scale.",
+      "systems": [
+        "Neurology",
+        "Oncology",
+        "Radiology",
+        "Genomics",
+        "MeSH"
+      ],
+      "tone": "science",
+      "target": "coordinate-map",
+      "featured": false
+    },
+    {
+      "id": "documentation",
+      "step": "02",
+      "eyebrow": "Encounter",
+      "title": "Clinical record",
+      "question": "What happened to this patient?",
+      "description": "Narrative, findings, diagnoses, orders, results, procedures, medications, images, and context form the source record.",
+      "systems": [
+        "History",
+        "Findings",
+        "Orders",
+        "Results"
+      ],
+      "tone": "record",
+      "target": "semantic-layer",
+      "featured": false
+    },
+    {
+      "id": "clinical-semantics",
+      "step": "03",
+      "eyebrow": "Meaning",
+      "title": "Clinical semantics",
+      "question": "What does each clinical statement mean?",
+      "description": "Reference terminologies and domain vocabularies preserve computable meaning before it is compressed into reporting or billing categories.",
+      "systems": [
+        "SNOMED CT",
+        "LOINC",
+        "RxNorm",
+        "GA4GH VRS"
+      ],
+      "tone": "semantic",
+      "target": "semantic-layer",
+      "featured": true
+    },
+    {
+      "id": "interoperability",
+      "step": "04",
+      "eyebrow": "Exchange",
+      "title": "Interoperability",
+      "question": "How does meaning move between systems?",
+      "description": "Information models and exchange standards package coded clinical content into interoperable records and imaging objects.",
+      "systems": [
+        "FHIR",
+        "DICOM",
+        "ValueSet",
+        "ConceptMap"
+      ],
+      "tone": "exchange",
+      "target": "semantic-layer",
+      "featured": false
+    },
+    {
+      "id": "administrative-coding",
+      "step": "05",
+      "eyebrow": "Reporting",
+      "title": "Administrative coding",
+      "question": "How is the encounter classified and billed?",
+      "description": "Diagnosis, procedure, service, product, and claim-context codes support reporting and reimbursement workflows.",
+      "systems": [
+        "ICD-10-CM",
+        "CPT / HCPCS",
+        "ICD-10-PCS",
+        "NDC"
+      ],
+      "tone": "coding",
+      "target": "coding-layer",
+      "featured": false
+    },
+    {
+      "id": "payer-policy",
+      "step": "06",
+      "eyebrow": "Coverage",
+      "title": "Maryland Medicaid",
+      "question": "Is the claim covered and payable?",
+      "description": "Program rules, provider manuals, authorization, managed-care contracts, fee schedules, and edits determine payment.",
+      "systems": [
+        "Coverage",
+        "Rates",
+        "NCCI",
+        "MCO rules"
+      ],
+      "tone": "payer",
+      "target": "coding-layer",
+      "featured": false
+    },
+    {
+      "id": "learning",
+      "step": "07",
+      "eyebrow": "Outcome",
+      "title": "Adjudication & learning",
+      "question": "What was paid, denied, measured, and learned?",
+      "description": "Claims, outcomes, and real-world evidence flow back into operations, population health, research, and policy.",
+      "systems": [
+        "ClaimResponse",
+        "EOB",
+        "OMOP",
+        "Evidence"
+      ],
+      "tone": "learning",
+      "target": "coding-layer",
+      "featured": false
+    }
+  ],
+  "systems": [
+    {
+      "id": "snomed-ct",
+      "short_name": "SNOMED CT",
+      "name": "Systematized Nomenclature of Medicine — Clinical Terms",
+      "role": "Clinical reference terminology",
+      "stage": "clinical-semantics",
+      "question": "What clinical concept is being asserted?",
+      "scope": "Detailed, logic-based representation of disorders, findings, procedures, body structures, organisms, substances, situations, and other clinical content.",
+      "steward": "SNOMED International",
+      "source_url": "https://www.snomed.org/what-is-snomed-ct",
+      "source_label": "Official SNOMED CT overview",
+      "tone": "semantic",
+      "licensed": true,
+      "match_terms": [
+        "clinical",
+        "medicine",
+        "disease",
+        "disorder",
+        "finding",
+        "anatomy",
+        "body",
+        "procedure",
+        "care",
+        "patient"
+      ],
+      "note": "The semantic center of the map: rich clinical meaning should not be reduced prematurely to a billing classification."
+    },
+    {
+      "id": "loinc",
+      "short_name": "LOINC",
+      "name": "Logical Observation Identifiers Names and Codes",
+      "role": "Observation and document identifiers",
+      "stage": "clinical-semantics",
+      "question": "What was measured, observed, or documented?",
+      "scope": "Identifiers for laboratory tests, clinical observations, measurements, panels, surveys, and documents.",
+      "steward": "Regenstrief Institute",
+      "source_url": "https://loinc.org/",
+      "source_label": "Official LOINC site",
+      "tone": "observation",
+      "licensed": false,
+      "match_terms": [
+        "laboratory",
+        "diagnostic",
+        "measurement",
+        "physiology",
+        "imaging",
+        "pathology",
+        "genomics",
+        "biomarker",
+        "monitoring",
+        "survey"
+      ],
+      "note": "LOINC generally identifies the observation; the result value and interpretation are carried separately."
+    },
+    {
+      "id": "rxnorm",
+      "short_name": "RxNorm",
+      "name": "RxNorm normalized drug terminology",
+      "role": "Medication semantics",
+      "stage": "clinical-semantics",
+      "question": "Which clinical drug, ingredient, strength, and dose form is meant?",
+      "scope": "Normalized names and identifiers for generic and branded clinical drugs, with links to other drug vocabularies.",
+      "steward": "U.S. National Library of Medicine",
+      "source_url": "https://www.nlm.nih.gov/research/umls/rxnorm/index.html",
+      "source_label": "Official RxNorm overview",
+      "tone": "medication",
+      "licensed": false,
+      "match_terms": [
+        "pharmacology",
+        "drug",
+        "medication",
+        "therapeutic",
+        "oncology",
+        "psychiatry",
+        "infectious",
+        "anesthesiology",
+        "immunotherapy"
+      ],
+      "note": "RxNorm represents the medication concept; NDC identifies a particular labeled product and package."
+    },
+    {
+      "id": "fhir",
+      "short_name": "FHIR",
+      "name": "Fast Healthcare Interoperability Resources",
+      "role": "Clinical information exchange model",
+      "stage": "interoperability",
+      "question": "How is coded clinical information packaged and exchanged?",
+      "scope": "Resources such as Condition, Observation, Procedure, MedicationRequest, DiagnosticReport, ImagingStudy, Claim, and ExplanationOfBenefit.",
+      "steward": "Health Level Seven International",
+      "source_url": "https://hl7.org/fhir/R5/",
+      "source_label": "FHIR R5 specification",
+      "tone": "exchange",
+      "licensed": false,
+      "match_terms": [
+        "clinical",
+        "informatics",
+        "digital health",
+        "interoperability",
+        "record",
+        "data",
+        "medicine",
+        "care"
+      ],
+      "note": "FHIR is an exchange and information model, not a replacement for SNOMED CT, LOINC, RxNorm, ICD, or other code systems."
+    },
+    {
+      "id": "umls",
+      "short_name": "UMLS",
+      "name": "Unified Medical Language System",
+      "role": "Vocabulary integration and crosswalk infrastructure",
+      "stage": "interoperability",
+      "question": "How can concepts from different vocabularies be related?",
+      "scope": "Files and software that bring together many biomedical vocabularies, names, identifiers, and relationships to support interoperability.",
+      "steward": "U.S. National Library of Medicine",
+      "source_url": "https://www.nlm.nih.gov/research/umls/index.html",
+      "source_label": "Official UMLS overview",
+      "tone": "mapping",
+      "licensed": true,
+      "match_terms": [
+        "terminology",
+        "ontology",
+        "classification",
+        "informatics",
+        "data",
+        "mapping",
+        "research",
+        "clinical"
+      ],
+      "note": "A crosswalk is not necessarily one-to-one; mappings can depend on context, purpose, release, and direction."
+    },
+    {
+      "id": "dicom",
+      "short_name": "DICOM",
+      "name": "Digital Imaging and Communications in Medicine",
+      "role": "Medical imaging information standard",
+      "stage": "interoperability",
+      "question": "How are medical images and related information represented and exchanged?",
+      "scope": "Transmission, storage, retrieval, processing, and display of medical imaging information and associated metadata.",
+      "steward": "DICOM Standards Committee / Medical Imaging & Technology Alliance",
+      "source_url": "https://www.dicomstandard.org/",
+      "source_label": "Official DICOM standard",
+      "tone": "imaging",
+      "licensed": false,
+      "match_terms": [
+        "radiology",
+        "imaging",
+        "radiation",
+        "nuclear medicine",
+        "ultrasound",
+        "mri",
+        "computed tomography",
+        "pathology imaging"
+      ],
+      "note": "DICOM carries imaging objects and metadata; clinical concepts around them may still use SNOMED CT, LOINC, and FHIR bindings."
+    },
+    {
+      "id": "ga4gh-vrs",
+      "short_name": "GA4GH VRS",
+      "name": "GA4GH Variation Representation Specification",
+      "role": "Computable genomic variation representation",
+      "stage": "clinical-semantics",
+      "question": "How is a genomic variation represented precisely across systems?",
+      "scope": "A community specification for precise, interoperable representation and exchange of genetic variation data.",
+      "steward": "Global Alliance for Genomics and Health",
+      "source_url": "https://www.ga4gh.org/product/variation-representation/",
+      "source_label": "Official GA4GH VRS overview",
+      "tone": "genomics",
+      "licensed": false,
+      "match_terms": [
+        "genomics",
+        "genetics",
+        "gene",
+        "variant",
+        "precision medicine",
+        "pharmacogenomics",
+        "cancer genomics",
+        "molecular"
+      ],
+      "note": "Genomic meaning also depends on reference sequences, gene nomenclature, evidence assertions, and clinical interpretation."
+    },
+    {
+      "id": "omop-cdm",
+      "short_name": "OMOP CDM",
+      "name": "Observational Medical Outcomes Partnership Common Data Model",
+      "role": "Research and real-world evidence model",
+      "stage": "learning",
+      "question": "How can observational health data be standardized for analysis?",
+      "scope": "A common structure and standardized vocabularies for observational data used in outcomes research and real-world evidence.",
+      "steward": "OHDSI community",
+      "source_url": "https://www.ohdsi.org/data-standardization/",
+      "source_label": "Official OMOP CDM overview",
+      "tone": "learning",
+      "licensed": false,
+      "match_terms": [
+        "epidemiology",
+        "outcomes",
+        "real-world",
+        "population",
+        "health services",
+        "research",
+        "biostatistics",
+        "artificial intelligence",
+        "informatics"
+      ],
+      "note": "OMOP supports secondary analysis; it does not replace the source clinical record or transaction standards."
+    }
+  ]
+}

@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="icon" type="image/jpeg" href="/specialty/baltimore-medtech/assets/images/baltimore-medtech-logo-square.jpg" />
+  <title>Need–Availability Distortions | Baltimore MedTech</title>
+  <meta name="description" content="Compare where patient need and service demand appear to outrun physician capacity, then inspect a separate allied-care-team workforce lens." />
+  <script>(()=>{const k='bmore-medtech.theme',s=(()=>{try{return localStorage.getItem(k)}catch{return null}})(),m=s==='light'||s==='dark'?s:'system',r=m==='system'&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':m==='dark'?'dark':'light';document.documentElement.dataset.themeMode=m;document.documentElement.dataset.theme=r})()</script>
+  <link rel="stylesheet" href="/specialty/baltimore-medtech/assets/styles.css" />
+  <link rel="stylesheet" href="/specialty/baltimore-medtech/assets/need-availability-page.css" />
+  <script type="module" src="/specialty/baltimore-medtech/assets/theme.js"></script>
+  <script type="module" src="/specialty/baltimore-medtech/assets/need-availability-distortion.js"></script>
+</head>
+<body class="taxonomy-body distortion-body">
+<a class="skip-link" href="#main-content">Skip to main content</a>
+<header class="site-header taxonomy-site-header">
+  <div class="site-header-inner">
+    <a class="brand" href="/" aria-label="Baltimore MedTech home">
+      <img src="/specialty/baltimore-medtech/assets/images/baltimore-medtech-logo-square.jpg" alt="" />
+      <span class="brand-copy"><strong>Baltimore MedTech</strong><small>Health × Medicine × Biotech</small></span>
+    </a>
+    <nav aria-label="Primary navigation">
+      <a href="/calendar">General Calendar</a>
+      <a href="https://medtech.social/medtech-events">MedTech Events</a>
+      <a href="/">Start Here</a>
+      <a href="/specialty/baltimore-medtech/map.html">Map</a>
+      <a href="/specialty/baltimore-medtech/taxonomy.html">Medical atlas</a>
+      <a aria-current="page" href="/specialty/baltimore-medtech/need-availability-distortions.html">Need gaps</a>
+      <a class="button nav-cta" href="https://medtech.social/users/login">Login</a>
+    </nav>
+  </div>
+</header>
+
+<main class="distortion-page" id="main-content">
+  <section class="distortion-hero" aria-labelledby="distortion-title">
+    <div class="distortion-hero-copy">
+      <p class="eyebrow">Patient need ↔ service availability</p>
+      <h1 id="distortion-title">Where need <em>outruns</em> capacity.</h1>
+      <p class="distortion-hero-lede">
+        The primary ranking compares field-specific patient-need or service-demand signals with physician-specialist
+        workforce and entry pipelines. A new allied-care-team layer separately exposes eight nonphysician occupations,
+        so physician headcount is no longer presented as the whole service system.
+      </p>
+      <nav class="distortion-hero-links" aria-label="Page sections">
+        <a href="#distortion-ranking">See ranking</a>
+        <a href="#distortion-charts">Compare gaps</a>
+        <a href="#distortion-care-team">Care-team lens</a>
+        <a href="#distortion-profiles">Read interpretations</a>
+        <a href="/specialty/baltimore-medtech/taxonomy.html#strategy-dashboard">Decision board</a>
+      </nav>
+      <span id="distortion-as-of" class="distortion-as-of"></span>
+    </div>
+    <aside class="distortion-hero-result">
+      <span>Largest current physician-capacity shortfall signal</span>
+      <h2 id="distortion-leader-name">Loading…</h2>
+      <div class="distortion-hero-score"><strong id="distortion-leader-index">—</strong><span>relative distortion index</span></div>
+      <p><strong id="distortion-leader-ratio">—</strong></p>
+      <p id="distortion-leader-gap">—</p>
+      <p id="distortion-leader-team">—</p>
+      <p id="distortion-conclusion"></p>
+    </aside>
+  </section>
+
+  <section class="distortion-section" id="distortion-ranking" aria-labelledby="distortion-ranking-title">
+    <header class="distortion-section-heading">
+      <p class="eyebrow">Relative physician-pressure ranking</p>
+      <h2 id="distortion-ranking-title">The largest distortions first.</h2>
+      <p>The index gives greatest weight to need-proxy people represented per physician-specialist proxy, then adds a smaller penalty where the physician entry pipeline is weak relative to the current workforce.</p>
+    </header>
+    <div id="distortion-ranking-cards" class="distortion-ranking-cards" aria-live="polite"></div>
+    <div class="distortion-guardrail" role="note">
+      <span>!</span>
+      <div><strong>This ranks physician-proxy pressure—not patients, specialties, or moral importance.</strong><p>Allied occupations are shown separately below because their scopes differ and many serve multiple specialties and settings.</p></div>
+    </div>
+  </section>
+
+  <section class="distortion-section" id="distortion-charts" aria-labelledby="distortion-charts-title">
+    <header class="distortion-section-heading">
+      <p class="eyebrow">Inspect the physician mismatch</p>
+      <h2 id="distortion-charts-title">One index, four underlying views.</h2>
+      <p>The charts separate relative pressure, raw need-to-physician ratios, physician-workforce replenishment, and normalized need versus physician availability. Open the exact table to inspect every input.</p>
+    </header>
+    <div class="distortion-chart-grid strategy-chart-grid">
+      <article class="strategy-chart-card strategy-chart-card-wide">
+        <header><div><p class="strategy-chart-kicker">Distortion ranking</p><h3>Need-to-physician-availability pressure index</h3></div><span class="strategy-chart-unit">20–100 relative signal</span></header>
+        <p class="strategy-chart-deck">80% need-per-physician pressure and 20% physician-pipeline fragility, log-normalized within four selected fields.</p>
+        <div id="distortion-index-chart" class="strategy-chart"></div>
+        <div id="distortion-data-table" class="strategy-table-wrap"></div>
+      </article>
+      <article class="strategy-chart-card">
+        <header><div><p class="strategy-chart-kicker">Raw pressure</p><h3>Need proxy per physician-specialist proxy</h3></div><span class="strategy-chart-unit">people / physician proxy</span></header>
+        <p class="strategy-chart-deck">A blunt ratio—not a caseload, access rate, or recommended staffing level.</p>
+        <div id="distortion-ratio-chart" class="strategy-chart"></div>
+      </article>
+      <article class="strategy-chart-card">
+        <header><div><p class="strategy-chart-kicker">Physician pipeline renewal</p><h3>New entrants per 1,000 specialists</h3></div><span class="strategy-chart-unit">annual proxy</span></header>
+        <p class="strategy-chart-deck">Higher values imply a stronger gross entry pipeline relative to the installed physician base; this is not net growth.</p>
+        <div id="distortion-pipeline-chart" class="strategy-chart"></div>
+      </article>
+      <article class="strategy-chart-card strategy-chart-card-wide">
+        <header><div><p class="strategy-chart-kicker">Quadrant view</p><h3>Need signal against physician availability</h3></div><span class="strategy-chart-unit">relative position</span></header>
+        <p class="strategy-chart-deck">Points above the diagonal have a positive normalized physician-capacity gap. The chart does not establish an absolute shortage threshold.</p>
+        <div id="distortion-quadrant-chart" class="strategy-chart strategy-chart-line"></div>
+      </article>
+    </div>
+  </section>
+
+  <section class="distortion-section distortion-care-team-section" id="distortion-care-team" aria-labelledby="distortion-care-team-title">
+    <header class="distortion-section-heading">
+      <p class="eyebrow">Most fixable limitation corrected</p>
+      <h2 id="distortion-care-team-title">Physicians are not the whole service system.</h2>
+      <p>Current BLS data now adds selected rehabilitation, imaging, radiation-treatment, and genetic-counseling occupations. They remain separate from the index because these groups are not equivalent dedicated field workforces.</p>
+    </header>
+    <div class="distortion-care-team-summary" role="note">
+      <span aria-hidden="true">8</span>
+      <div><strong>Eight nonphysician occupations added</strong><p id="distortion-care-team-fixed"></p><small id="distortion-care-team-policy"></small></div>
+    </div>
+    <div class="distortion-chart-grid strategy-chart-grid distortion-team-chart-grid">
+      <article class="strategy-chart-card strategy-chart-card-wide">
+        <header><div><p class="strategy-chart-kicker">Observable allied workforce</p><h3>Selected care-team jobs mapped to each field</h3></div><span class="strategy-chart-unit">BLS 2025 jobs</span></header>
+        <p class="strategy-chart-deck">These are mapped occupation totals—not dedicated field FTEs. Neurology’s rehabilitation group is especially broad; oncology’s radiation-therapy group is especially narrow.</p>
+        <div id="distortion-team-jobs-chart" class="strategy-chart"></div>
+        <div id="distortion-team-table" class="strategy-table-wrap"></div>
+      </article>
+      <article class="strategy-chart-card strategy-chart-card-wide">
+        <header><div><p class="strategy-chart-kicker">Allied workforce replenishment</p><h3>Projected annual openings in the mapped occupations</h3></div><span class="strategy-chart-unit">average 2025–2035</span></header>
+        <p class="strategy-chart-deck">Openings include growth and replacement needs. They are not graduates, filled jobs, net growth, or field-specific entrants.</p>
+        <div id="distortion-team-openings-chart" class="strategy-chart"></div>
+      </article>
+    </div>
+    <div id="distortion-care-team-groups" class="distortion-care-team-groups"></div>
+  </section>
+
+  <section class="distortion-section" id="distortion-profiles" aria-labelledby="distortion-profiles-title">
+    <header class="distortion-section-heading">
+      <p class="eyebrow">Strategic interpretation</p>
+      <h2 id="distortion-profiles-title">What each distortion actually means.</h2>
+      <p>A high score should trigger better local measurement and pathway design—not an automatic technology purchase. Each profile now includes its physician signal, allied-team context, action, and reason not to overread it.</p>
+    </header>
+    <div id="distortion-field-profiles" class="distortion-field-profiles"></div>
+  </section>
+
+  <details class="distortion-methodology">
+    <summary>Formula, care-team scope, remaining limitations, and sources</summary>
+    <div class="distortion-methodology-grid">
+      <div>
+        <h3>Calculation and scope</h3>
+        <p id="distortion-method-formula"></p>
+        <p id="distortion-method-availability"></p>
+        <p id="distortion-method-team"></p>
+        <p id="distortion-method-scaling"></p>
+        <p id="distortion-method-gap"></p>
+        <p id="distortion-method-guardrail"></p>
+      </div>
+      <div><h3>Source register</h3><div id="distortion-source-register" class="distortion-source-register"></div></div>
+    </div>
+  </details>
+  <div id="distortion-status" class="status distortion-status">Loading need–availability and care-team metrics…</div>
+</main>
+
+<footer class="site-footer taxonomy-footer">
+  <div class="site-footer-grid">
+    <div><a class="footer-brand" href="/">Baltimore MedTech</a><p>Connecting health, medicine, and biotech across Baltimore.</p></div>
+    <div class="footer-links"><a href="/specialty/baltimore-medtech/taxonomy.html#strategy-dashboard">Decision board</a><a href="/specialty/baltimore-medtech/taxonomy.html#field-index">Field atlas</a><a href="/specialty/baltimore-medtech/taxonomy.html#coding-layer">Coding and Medicaid</a></div>
+    <div class="footer-action"><span>Measure the full care pathway before selecting the intervention.</span><a href="https://medtech.social/users/register">Join Baltimore MedTech <span aria-hidden="true">↗</span></a></div>
+  </div>
+</footer>
+</body>
+</html>

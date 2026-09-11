@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="icon" type="image/jpeg" href="/specialty/baltimore-medtech/assets/images/baltimore-medtech-logo-square.jpg" />
+  <title>Dataset Sheet | Baltimore MedTech</title>
+  <meta name="description" content="Spreadsheet-style public medical labor and MedTech dataset explorer." />
+  <script>(()=>{const k='bmore-medtech.theme',s=(()=>{try{return localStorage.getItem(k)}catch{return null}})(),m=s==='light'||s==='dark'?s:'system',r=m==='system'&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':m==='dark'?'dark':'light';document.documentElement.dataset.themeMode=m;document.documentElement.dataset.theme=r})()</script>
+  <link rel="stylesheet" href="/specialty/baltimore-medtech/assets/styles.css" />
+  <link rel="stylesheet" href="/specialty/baltimore-medtech/assets/dataset-pages.css" />
+  <script type="module" src="/specialty/baltimore-medtech/assets/theme.js"></script>
+  <script type="module" src="/specialty/baltimore-medtech/assets/dataset-sheet.js"></script>
+</head>
+<body class="dataset-body dataset-sheet-body">
+<a class="skip-link" href="#main-content">Skip to main content</a>
+<header class="site-header"><div class="site-header-inner">
+  <a class="brand" href="/" aria-label="Baltimore MedTech home"><img src="/specialty/baltimore-medtech/assets/images/baltimore-medtech-logo-square.jpg" alt="" /><span class="brand-copy"><strong>Baltimore MedTech</strong><small>Health × Medicine × Biotech</small></span></a>
+  <nav aria-label="Primary navigation"><a href="/calendar">General Calendar</a><a href="/specialty/baltimore-medtech/map.html">Map</a><a href="/specialty/baltimore-medtech/taxonomy.html">Medical atlas</a><a aria-current="page" href="/specialty/baltimore-medtech/datasets.html">Data sheets</a><a class="button nav-cta" href="https://medtech.social/users/login">Login</a></nav>
+  <a href="https://medtech.social/medtech-events">MedTech Events</a>
+</div></header>
+
+<main class="dataset-sheet-page" id="main-content">
+  <section class="dataset-sheet-hero" aria-labelledby="dataset-title">
+    <div><p class="dataset-eyebrow">Dataset sheet</p><span id="dataset-short-title" class="dataset-short-title">Loading…</span><h1 id="dataset-title">Loading dataset…</h1><p id="dataset-description"></p><div class="dataset-hero-links"><a id="dataset-source-link" href="#" target="_blank" rel="noreferrer">Open source ↗</a><a id="dataset-api-link" href="#" target="_blank" rel="noreferrer" hidden>Open API ↗</a><a href="/specialty/baltimore-medtech/datasets.html">Workbook index</a></div></div>
+    <dl class="dataset-meta-grid"><div><dt>Mode</dt><dd><span id="dataset-mode" class="dataset-mode-badge"></span></dd></div><div><dt>Publisher</dt><dd id="dataset-publisher"></dd></div><div><dt>Coverage</dt><dd id="dataset-coverage"></dd></div><div><dt>Geography</dt><dd id="dataset-geography"></dd></div><div><dt>Refresh</dt><dd id="dataset-refresh-cadence"></dd></div><div><dt>Rows</dt><dd id="dataset-row-summary">—</dd></div><div><dt>Fetched</dt><dd id="dataset-fetched">—</dd></div><div><dt>Source updated</dt><dd id="dataset-updated">—</dd></div></dl>
+  </section>
+
+  <section class="dataset-sheet-workbook" aria-label="Dataset spreadsheet">
+    <form id="dataset-filter-form" class="dataset-toolbar">
+      <div id="dataset-filter-fields" class="dataset-filter-fields"></div>
+      <label class="dataset-filter-field dataset-page-size"><span>Rows</span><select id="dataset-page-size" name="page_size"><option>25</option><option>50</option><option selected>100</option><option>200</option><option>500</option></select></label>
+      <button class="dataset-toolbar-button is-primary" type="submit">Run query</button>
+      <button id="dataset-refresh-button" class="dataset-toolbar-button" type="button">Refresh live</button>
+      <a id="dataset-csv-link" class="dataset-toolbar-button" href="#">CSV</a>
+      <a id="dataset-json-link" class="dataset-toolbar-button" href="#" target="_blank" rel="noreferrer">JSON</a>
+    </form>
+    <div class="dataset-formula-bar"><span id="dataset-cell-name">A1</span><strong>fx</strong><p id="dataset-formula-value">Select a cell to inspect its full value.</p></div>
+    <div class="dataset-sheet-tablist" role="tablist" aria-label="Workbook sheets"><button type="button" role="tab" data-sheet-tab="data">Data</button><button type="button" role="tab" data-sheet-tab="columns">Columns</button><button type="button" role="tab" data-sheet-tab="source">Source &amp; limits</button></div>
+
+    <div data-sheet-panel="data">
+      <div id="dataset-status" class="status">Loading dataset…</div>
+      <div id="dataset-table-wrap" class="dataset-table-scroll"><table class="dataset-grid-table"><thead id="dataset-table-head"></thead><tbody id="dataset-table-body"></tbody></table></div>
+      <div class="dataset-pagination"><button id="dataset-previous" type="button">← Previous</button><strong id="dataset-page-label">Page 1</strong><button id="dataset-next" type="button">Next →</button></div>
+    </div>
+
+    <section data-sheet-panel="columns" hidden class="dataset-columns-sheet"><div><h2>Visible columns</h2><p>Uncheck a column to hide it from the Data sheet. The source response remains unchanged.</p><div id="dataset-columns-panel" class="dataset-column-options"></div></div><div><h2>Inferred dictionary</h2><div class="dataset-table-scroll"><table class="dataset-grid-table dataset-dictionary-table"><thead><tr><th>Column</th><th>Native key</th>Label</th><th>Observed type</th></tr></thead><tbody id="dataset-dictionary-body"></tbody></table></div></div></section>
+
+    <section id="dataset-source-panel" data-sheet-panel="source" hidden class="dataset-source-sheet"><article><h2>Dataset limitations</h2><ul id="dataset-limitations"></ul><h3>Request warnings</h3><ul id="dataset-warnings"></ul></article><article><h2>Provenance</h2><table class="dataset-source-table"><tbody id="dataset-upstream"></tbody></table></article></section>
+    <div class="dataset-sheet-tabs dataset-sheet-tabs-bottom"><a href="/specialty/baltimore-medtech/datasets.html">Workbook index</a><span class="is-selected">Current dataset</span><a href="/specialty/baltimore-medtech/need-availability-distortions.html">Need gaps</a></div>
+  </section>
+</main>
+<footer class="site-footer"><div class="site-footer-grid"><div><a class="footer-brand" href="/">Baltimore MedTech</a><p>Connecting health, medicine, and biotech across Baltimore.</p></div><div class="footer-links"><a href="/specialty/baltimore-medtech/datasets.html">Data workbook</a><a href="/specialty/baltimore-medtech/taxonomy.html">Medical atlas</a><a href="/specialty/baltimore-medtech/need-availability-distortions.html">Need gaps</a></div><div class="footer-action"><span>Trace every strategic claim back to a row and source.</span><a href="https://medtech.social/users/register">Join Baltimore MedTech <span aria-hidden="true">↗</span></a></div></div></footer>
+</body>
+</html>

@@ -15,7 +15,7 @@ VALUES
   ('code-collective', 'codecollective.us', 'Code Collective', 'Coding a New Economy', '#12325b', 'code-collective', '["timebank","directory","events","chat","ubi"]'),
   ('bmoretimebank', 'bmoretimebank.codecollective.us', 'Bmore Timebank', 'Baltimore neighbors helping Baltimore neighbors.', '#155e59', 'community', '["timebank"]'),
   ('timebank', 'timebank.codecollective.us', 'Code Collective Timebank', 'Good neighbors. Useful skills. Time well shared.', '#155e59', 'community', '["timebank"]'),
-  ('baltimore-medtech', 'medtech.social', 'Baltimore MedTech', 'Health × Medicine × Biotech', '#0f6f8f', 'baltimore-medtech', '["directory","events","chat"]')
+  ('baltimore-medtech', 'medtech.social', 'Baltimore MedTech', 'Health × Medicine × Biotech', '#0f6f8f', 'baltimore-medtech', '["directory","events","calendar","chat"]')
 ON CONFLICT(hostname) DO UPDATE SET
   name = excluded.name,
   tagline = excluded.tagline,

@@ -1,0 +1,60 @@
+{
+  "id": "radiology",
+  "index_field_id": "radiology-and-biomedical-imaging",
+  "name": "Radiology",
+  "accent": "gold",
+  "stance": "Exploit data volume while improving safety",
+  "workforce": {
+    "value": 27197,
+    "display": "27,197",
+    "year": 2021,
+    "label": "active physicians",
+    "definition": "AAMC Radiology and Diagnostic Radiology grouping",
+    "source_label": "AAMC 2022 Physician Specialty Data Report (2021 data)",
+    "source_url": "https://www.aamc.org/data-reports/report/us-physician-workforce-data-dashboard",
+    "exact_table_url": "https://www.beckersasc.com/asc-news/number-of-active-physicians-by-specialty/"
+  },
+  "pipeline": {
+    "value": 1303,
+    "display": "1,303",
+    "year": 2025,
+    "label": "modeled new entrants per year",
+    "definition": "HRSA Health Workforce Simulation Model",
+    "source_label": "HRSA physician model components",
+    "source_url": "https://bhw.hrsa.gov/data-research/projecting-health-workforce-supply-demand/technical-documentation/physician-model-components"
+  },
+  "need": {
+    "value": 61510000,
+    "display": "61.5M",
+    "year": 2023,
+    "label": "U.S. patients receiving CT",
+    "type": "annual service-demand proxy",
+    "secondary": [
+      "93M CT examinations in 2023",
+      "35% more CT examinations than in 2007"
+    ],
+    "scope_note": "This is CT utilization, not disease prevalence or all radiology utilization.",
+    "source_label": "Projected Lifetime Cancer Risks From Current CT Imaging",
+    "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11997853/"
+  },
+  "funding": {
+    "proxy_label": "NIBIB appropriation",
+    "scope_note": "Biomedical imaging and bioengineering proxy; radiology research is distributed across NCI, NHLBI, NINDS, industry, and other funders.",
+    "source_label": "NIH historical appropriations",
+    "source_url": "https://www.nih.gov/about-nih/nih-almanac/appropriations-section-1",
+    "values": [
+      {"year": 2022, "value": 424590000},
+      {"year": 2023, "value": 440627000},
+      {"year": 2024, "value": 440627000}
+    ]
+  },
+  "digital_leverage": {
+    "score": 100,
+    "basis": "High-volume digital images, mature DICOM infrastructure, established workflow systems, measurable turnaround and quality outcomes, and strong AI compatibility."
+  },
+  "strategy": {
+    "labor": "Treat AI as workflow augmentation: protocoling, worklist prioritization, quality assurance, comparison retrieval, follow-up tracking, and communication—not autonomous replacement.",
+    "applications": "Prioritize appropriateness, dose optimization, incidental-follow-up closure, multimodal decision support, and integration into PACS, RIS, and EHR workflows.",
+    "group": "Radiology offers fast technical demonstrations, but projects should begin with deployment ownership, validation data, liability boundaries, and measurable workflow outcomes."
+  }
+}

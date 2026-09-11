@@ -4,6 +4,8 @@ import { useAuth } from '../../app/AppProviders'
 import { portalPath } from '../../config/portalBase'
 import { getActivePortalProfileConfig, portalProfilePath } from '../../config/portalFeatures'
 import { getDomainTenant, parsePortalTenant, setDomainTenant, type PortalTenant } from '../../config/timebankCommunity'
+import { specialtyResourcesForTenant } from '../../config/specialtyResources'
+import { SpecialtyResourcesPanel } from '../components/SpecialtyResourcesPanel'
 import { Header } from '../shell/Header'
 import { Footer } from '../shell/Footer'
 import { ExternalBrowserPrompt } from '../components/ExternalBrowserPrompt'
@@ -87,7 +89,8 @@ export function TenantHomePage() {
   const tenant = getDomainTenant()
   const [events, setEvents] = useState<TenantEvent[]>([])
   const [eventStatus, setEventStatus] = useState('')
-  const features = useMemo(() => (tenant?.features || []).filter((feature) => feature !== 'ubi'), [tenant])
+  const features = useMemo(() => (tenant?.features || []).filter((feature) => !['ubi', 'calendar'].includes(feature)), [tenant])
+  const specialtyResources = useMemo(() => specialtyResourcesForTenant(tenant), [tenant])
 
   useEffect(() => {
     document.title = `${profile.brandName} Portal`
@@ -130,6 +133,8 @@ export function TenantHomePage() {
             <img src={imageUrl.startsWith('/') ? portalPath(imageUrl) : imageUrl} alt="" />
           </div>}
         </section>
+
+        <SpecialtyResourcesPanel resources={specialtyResources.slice(0, 4)} compact={specialtyResources.length > 4} />
 
         {tenant.home_org_slug && <section className="tenant-home-events" aria-labelledby="tenant-home-events-title">
           <div className="tenant-home-section-heading">

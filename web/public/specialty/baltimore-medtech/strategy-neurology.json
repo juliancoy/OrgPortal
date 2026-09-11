@@ -1,0 +1,60 @@
+{
+  "id": "neurology",
+  "index_field_id": "neurology",
+  "name": "Neurology",
+  "accent": "cyan",
+  "stance": "Expand access and continuity",
+  "workforce": {
+    "value": 13853,
+    "display": "13,853",
+    "year": 2021,
+    "label": "active physicians",
+    "definition": "AAMC Neurology specialty grouping",
+    "source_label": "AAMC 2022 Physician Specialty Data Report (2021 data)",
+    "source_url": "https://www.aamc.org/data-reports/report/us-physician-workforce-data-dashboard",
+    "exact_table_url": "https://www.beckersasc.com/asc-news/number-of-active-physicians-by-specialty/"
+  },
+  "pipeline": {
+    "value": 1047,
+    "display": "1,047",
+    "year": 2025,
+    "label": "modeled new entrants per year",
+    "definition": "HRSA Health Workforce Simulation Model",
+    "source_label": "HRSA physician model components",
+    "source_url": "https://bhw.hrsa.gov/data-research/projecting-health-workforce-supply-demand/technical-documentation/physician-model-components"
+  },
+  "need": {
+    "value": 25000000,
+    "display": "25M+",
+    "year": 2020,
+    "label": "Americans with chronic pain every day",
+    "type": "neurological-burden marker",
+    "secondary": [
+      "3.4M people have epilepsy",
+      "Nearly 800K strokes occur each year"
+    ],
+    "scope_note": "Chronic pain is cross-specialty and this is not a count of all people with neurological disorders.",
+    "source_label": "NINDS Interim Strategic Plan",
+    "source_url": "https://www.ninds.nih.gov/about-ninds/what-we-do/strategic-plans-evaluations/strategic-plans/ninds-interim-strategic-plan"
+  },
+  "funding": {
+    "proxy_label": "NINDS appropriation",
+    "scope_note": "Lead-institute proxy; neurological research is also funded through other NIH institutes and programs.",
+    "source_label": "NIH historical appropriations",
+    "source_url": "https://www.nih.gov/about-nih/nih-almanac/appropriations-section-1",
+    "values": [
+      {"year": 2022, "value": 2611370000},
+      {"year": 2023, "value": 2813925000},
+      {"year": 2024, "value": 2689925000}
+    ]
+  },
+  "digital_leverage": {
+    "score": 84,
+    "basis": "Strong imaging, electrophysiology, longitudinal monitoring, EHR, and remote-assessment opportunities; fragmented phenotypes and specialist access remain constraints."
+  },
+  "strategy": {
+    "labor": "Use tools and care models to extend scarce specialist time across triage, follow-up, rehabilitation, monitoring, and referral coordination.",
+    "applications": "Favor longitudinal symptom tracking, stroke and epilepsy pathways, neurodiagnostic workflow, rehabilitation support, and decision support tied to measurable outcomes.",
+    "group": "Convene neurologists with rehabilitation, imaging, digital-health, disability, caregiver, and community organizations rather than treating neurology as a single-department topic."
+  }
+}
