@@ -190,6 +190,11 @@ function messageAuthorInitial(message: ChatMessage, myUserId: string | null): st
   return (label[0] || '?').toUpperCase()
 }
 
+function reactionOwnerText(reaction: { key?: string; count?: number; users?: Array<{ user_name?: string | null; user_id: string }> }) {
+  const names = (reaction.users || []).map((owner) => owner.user_name?.trim() || owner.user_id).filter(Boolean)
+  return names.length ? names.join(', ') : 'No reactions yet'
+}
+
 export function PublicAdminPage() {
   const navigate = useNavigate()
   const { token } = useAuth()
@@ -1851,8 +1856,8 @@ export function PublicAdminPage() {
                             {generalSessionReady ? (
                               <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }}>
                                 {QUICK_REACTIONS.map((emoji) => {
-                                  const count =
-                                    message.reactions?.find((reaction) => reaction.key === emoji)?.count || 0
+                                  const reaction = message.reactions?.find((reaction) => reaction.key === emoji)
+                                  const count = reaction?.count || 0
                                   return (
                                     <button
                                       key={`${message.id}-${emoji}`}
@@ -1863,6 +1868,7 @@ export function PublicAdminPage() {
                                       }}
                                       disabled={generalActionPending}
                                       style={{ padding: '0.15rem 0.45rem', minWidth: 'auto' }}
+                                      title={reaction ? `Reacted by ${reactionOwnerText(reaction)}` : undefined}
                                     >
                                       {emoji} {count > 0 ? count : ''}
                                     </button>

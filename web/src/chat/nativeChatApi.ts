@@ -1,3 +1,17 @@
+export type NativeChatReactionOwner = {
+  user_id: string
+  user_name?: string | null
+  avatar_url?: string | null
+  created_at?: string | null
+}
+
+export type NativeChatReaction = {
+  key: string
+  count: number
+  reacted?: boolean
+  users?: NativeChatReactionOwner[]
+}
+
 export type NativeChatConversation = {
   id: string
   kind: string
@@ -36,7 +50,7 @@ export type NativeChatMessage = {
   edited_at?: string | null
   deleted_at?: string | null
   moderation_state?: string
-  reactions?: Array<{ key: string; count: number; reacted?: boolean }>
+  reactions?: NativeChatReaction[]
 }
 
 export type NativeChatSync = {
@@ -64,6 +78,7 @@ export type NativeChatSocketEvent =
   | { type: 'typing'; conversation_id?: string; user_id?: string; user_name?: string; active?: boolean; at?: string }
   | { type: 'conversation.read'; conversation_id?: string; user_id?: string; message_id?: string; read_at?: string }
   | { type: 'message.created'; conversation_id: string; sequence?: number; message?: NativeChatMessage }
+  | { type: 'message.reacted'; conversation_id: string; message_id: string; reactions: NativeChatReaction[] }
   | {
       type: 'call.signal'
       conversation_id: string
@@ -201,8 +216,8 @@ export class NativeChatApi {
     return payload.message
   }
 
-  async sendReaction(conversationId: string, messageId: string, emoji: string): Promise<Array<{ key: string; count: number; reacted?: boolean }>> {
-    const payload = await this.request<{ reactions: Array<{ key: string; count: number; reacted?: boolean }> }>(
+  async sendReaction(conversationId: string, messageId: string, emoji: string): Promise<NativeChatReaction[]> {
+    const payload = await this.request<{ reactions: NativeChatReaction[] }>(
       `/api/network/chat/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}/reactions`,
       {
         method: 'POST',

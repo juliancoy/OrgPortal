@@ -7564,3 +7564,15 @@ textarea:focus {
   border-color: color-mix(in srgb, var(--primary), var(--border) 35%);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary), transparent 78%);
 }
+
+.public-event-comment-tools button small {
+  display: block;
+  max-width: 12rem;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

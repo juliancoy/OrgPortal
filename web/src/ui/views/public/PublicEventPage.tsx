@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
 import { downloadIcsEvent, outlookCalendarUrl } from '../../utils/calendar'
 import { useAuth } from '../../../app/AppProviders'
-import { NativeChatApi, type NativeChatMessage } from '../../../chat/nativeChatApi'
+import { NativeChatApi, type NativeChatMessage, type NativeChatReaction } from '../../../chat/nativeChatApi'
 import { refreshRuntimeTokenFromSession } from '../../../infrastructure/auth/sessionToken'
 import { pidpAppLoginUrl } from '../../../config/pidp'
 import { EventRegistration } from './EventRegistration'
@@ -106,6 +106,23 @@ function usedReactions(message: NativeChatMessage) {
   return (message.reactions || []).filter((reaction) => reaction.count > 0)
 }
 
+function reactionOwnerLabel(reaction: NativeChatReaction) {
+  const names = (reaction.users || [])
+    .map((owner) => owner.user_name?.trim() || owner.user_id)
+    .filter(Boolean)
+  if (names.length === 0) return 'No reactions yet'
+  return names.join(', ')
+}
+
+function reactionOwnerSummary(reaction: NativeChatReaction) {
+  const names = (reaction.users || [])
+    .map((owner) => owner.user_name?.trim() || owner.user_id)
+    .filter(Boolean)
+  if (names.length === 0) return ''
+  if (names.length <= 2) return names.join(', ')
+  return `${names.slice(0, 2).join(', ')} and ${names.length - 2} more`
+}
+
 function CommentAvatar({ message, myUserId }: { message: NativeChatMessage; myUserId: string | null }) {
   return (
     <div className="public-event-comment-avatar" aria-hidden="true">
@@ -136,11 +153,13 @@ function ReactionControls({
           type="button"
           onClick={() => onReact(message.id, reaction.key)}
           disabled={disabled}
-          aria-label={`${reaction.reacted ? 'Remove' : 'React with'} ${reaction.key}`}
+          aria-label={`${reaction.reacted ? 'Remove' : 'React with'} ${reaction.key}. Reacted by ${reactionOwnerLabel(reaction)}`}
           aria-pressed={Boolean(reaction.reacted)}
           className={reaction.reacted ? 'public-event-comment-reaction-active' : undefined}
+          title={`Reacted by ${reactionOwnerLabel(reaction)}`}
         >
-          {reaction.key} {reaction.count}
+          <span>{reaction.key} {reaction.count}</span>
+          <small>{reactionOwnerSummary(reaction)}</small>
         </button>
       ))}
       <details className="public-event-comment-react-menu">
