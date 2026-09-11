@@ -28,6 +28,14 @@ test('tenant navigation uses its root while the main portal uses the build base'
   expect(timebankHomePath()).toBe('/timebanking')
 })
 
+test('dashboard communities keep tenant timebank routing metadata', () => {
+  vi.stubEnv('BASE_URL', '/p/')
+  setDomainCommunity({ id: 'bmoretimebank', hostname: 'bmoretimebank.codecollective.us', name: 'Bmore Timebank', tagline: 'Share time', accent_color: '#155e59' })
+  expect(timebankHomePath()).toBe('/')
+  expect(defaultPostLoginPath()).toBe('/')
+  expect(new URL(portalAuthCallbackUrl('/timebanking')).searchParams.get('next')).toBe('/')
+})
+
 test('non-timebank tenant domains also use root portal routes', () => {
   vi.stubEnv('BASE_URL', '/p/')
   setDomainTenant({
