@@ -5,7 +5,8 @@
 .tb-shell-header :focus-visible { outline:3px solid var(--text-primary); outline-offset:3px }
 .tb-shell-brand { display:flex; align-items:center; gap:.7rem; min-height:44px; font-weight:700; color:var(--text-primary); text-decoration:none; font-size:1.05rem; min-width:0; border-radius:6px }
 .tb-shell-brand span { overflow-wrap:anywhere }
-.tb-shell-mark { display:grid; place-items:center; width:38px; height:38px; flex-shrink:0; border:1px solid var(--border-subtle); border-radius:12px; background:var(--panel) }
+.tb-shell-mark { display:grid; place-items:center; width:40px; height:40px; flex-shrink:0; border:1px solid var(--border-subtle); border-radius:12px; background:#05283d; overflow:hidden }
+.tb-shell-mark img { display:block; width:100%; height:100%; object-fit:cover }
 .tb-account-menu { position:relative; flex-shrink:0; max-width:40% }
 .tb-account-trigger { display:flex; align-items:center; gap:.65rem; min-height:48px; max-width:100%; padding:4px 9px 4px 4px; border:1px solid transparent; border-radius:30px; background:transparent; color:var(--text-primary); cursor:pointer; font:inherit }
 .tb-account-trigger:hover,.tb-account-trigger[aria-expanded=true] { background:var(--panel); border-color:var(--border-subtle) }

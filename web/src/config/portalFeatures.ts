@@ -15,6 +15,7 @@ export type PortalProfileConfig = {
   manifestPath: string
   faviconPath: string
   faviconType: string
+  appleTouchIconPath: string
   themeColor: string
   tenantId?: string
 }
@@ -32,6 +33,7 @@ const PORTAL_PROFILES: Record<PortalProfileId, PortalProfileConfig> = {
     manifestPath: '/manifest.webmanifest',
     faviconPath: '/codecollective_logo.png',
     faviconType: 'image/png',
+    appleTouchIconPath: '/codecollective_logo.png',
     themeColor: '#12325b',
   },
   'baltimore-medtech': {
@@ -46,6 +48,7 @@ const PORTAL_PROFILES: Record<PortalProfileId, PortalProfileConfig> = {
     manifestPath: '/medtech.webmanifest',
     faviconPath: '/images/baltimore-medtech-logo-square.jpg',
     faviconType: 'image/jpeg',
+    appleTouchIconPath: '/images/baltimore-medtech-logo-square.jpg',
     themeColor: '#061a26',
   },
 }
@@ -66,10 +69,23 @@ function tenantProfileConfig(tenant: PortalTenant): PortalProfileConfig {
   const profileId = normalizeProfileId(tenant.profile) || 'code-collective'
   const base = PORTAL_PROFILES[profileId]
   const features = new Set(tenant.features || [])
+  const isTimebank = features.has('timebank')
   const disabledFeatures = features.size
     ? (['ubi'] as PortalFeature[]).filter((feature) => !features.has(feature))
     : base.disabledFeatures
-  const brandImagePath = tenant.brand_image_path || base.brandImagePath
+  const brandImagePath = tenant.brand_image_path || (isTimebank ? '/images/timebank/timebank-mark.svg' : base.brandImagePath)
+  const faviconPath = tenant.brand_image_path
+    ? brandImagePath || base.faviconPath
+    : isTimebank ? '/images/timebank/favicon-64.png' : brandImagePath || base.faviconPath
+  const faviconType = faviconPath.endsWith('.png')
+    ? 'image/png'
+    : faviconPath.endsWith('.webp')
+      ? 'image/webp'
+      : faviconPath.endsWith('.svg')
+        ? 'image/svg+xml'
+        : faviconPath.endsWith('.jpg') || faviconPath.endsWith('.jpeg')
+          ? 'image/jpeg'
+          : base.faviconType
   return {
     ...base,
     id: profileId,
@@ -81,9 +97,10 @@ function tenantProfileConfig(tenant: PortalTenant): PortalProfileConfig {
     homeUrl: tenant.home_url || base.homeUrl,
     memberHomePath: tenant.member_home_path || (profileId === 'code-collective' && tenant.features?.includes('timebank') ? '/' : base.memberHomePath),
     disabledFeatures,
-    manifestPath: tenant.manifest_path || base.manifestPath,
-    faviconPath: brandImagePath || base.faviconPath,
-    faviconType: brandImagePath?.endsWith('.png') ? 'image/png' : brandImagePath?.endsWith('.webp') ? 'image/webp' : base.faviconType,
+    manifestPath: tenant.manifest_path || (isTimebank ? '/timebank.webmanifest' : base.manifestPath),
+    faviconPath,
+    faviconType,
+    appleTouchIconPath: tenant.brand_image_path || (isTimebank ? '/images/timebank/apple-touch-icon.png' : base.appleTouchIconPath),
     themeColor: tenant.theme_color || tenant.accent_color || base.themeColor,
   }
 }

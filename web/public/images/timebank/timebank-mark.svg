@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Timebank exchange mark</title>
+  <desc id="desc">A clock held by two circular hands, symbolizing neighbors exchanging time.</desc>
+  <defs>
+    <linearGradient id="teal" x1="84" y1="420" x2="420" y2="92" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0b5960"/>
+      <stop offset="1" stop-color="#14a59a"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="96" y1="90" x2="430" y2="270" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffe19a"/>
+      <stop offset=".52" stop-color="#e0a72e"/>
+      <stop offset="1" stop-color="#a96d11"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="125%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#062332" flood-opacity=".25"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="#05283d"/>
+  <path d="M113 187c34-75 113-119 196-105 51 9 97 39 126 81" fill="none" stroke="url(#gold)" stroke-width="48" stroke-linecap="round"/>
+  <path d="M421 99l23 92-90-26z" fill="#d99a20"/>
+  <path d="M399 325c-34 75-113 119-196 105-51-9-97-39-126-81" fill="none" stroke="url(#teal)" stroke-width="48" stroke-linecap="round"/>
+  <path d="M91 413l-23-92 90 26z" fill="#11a098"/>
+  <g filter="url(#shadow)">
+    <circle cx="256" cy="256" r="128" fill="#fff7df"/>
+    <circle cx="256" cy="256" r="104" fill="none" stroke="#123a54" stroke-width="14" stroke-dasharray="1 40" stroke-linecap="round"/>
+    <path d="M256 155v101l69-42" fill="none" stroke="#082d49" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="256" cy="256" r="20" fill="#e9ae36"/>
+  </g>
+</svg>
