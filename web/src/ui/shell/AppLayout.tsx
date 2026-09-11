@@ -8,6 +8,7 @@ import { Outlet } from 'react-router-dom'
 import { Header } from './Header'
 import { Footer } from './Footer'
 import { ExternalBrowserPrompt } from '../components/ExternalBrowserPrompt'
+import { FloatingSocialDock } from '../components/FloatingSocialDock'
 
 export function AppLayout() {
   const location = useLocation()
@@ -38,6 +39,7 @@ export function AppLayout() {
         </div>
       </main>
       {timebankShell ? <footer className="tb-shell-footer">Timebank hours are separate from Dena.</footer> : <Footer />}
+      <FloatingSocialDock />
     </div></TimebankInboxProvider>
   )
 }

@@ -74,11 +74,29 @@ type MessageRow = {
   moderation_state: string;
 };
 
+type ReactionOwner = {
+  user_id: string;
+  user_name: string | null;
+  avatar_url?: string | null;
+  created_at?: string | null;
+};
+
 type ReactionRow = {
   message_id: string;
   emoji: string;
   count: number;
   reacted?: number | boolean | null;
+  users?: ReactionOwner[];
+};
+
+type ReactionQueryRow = {
+  message_id: string;
+  emoji: string;
+  user_id: string;
+  user_name: string | null;
+  avatar_url?: string | null;
+  created_at: string;
+  reacted: number;
 };
 
 type PresenceRow = {
@@ -322,31 +340,66 @@ function mapMessage(row: MessageRow, reactions: ReactionRow[] = [], avatarUrls =
       key: reaction.emoji,
       count: Number(reaction.count || 0),
       reacted: Boolean(reaction.reacted),
+      users: reaction.users || [],
     })),
   };
 }
 
-async function reactionsForMessages(db: D1Database, messageIds: string[], currentUserId = "") {
+async function reactionsForMessages(env: Env, messageIds: string[], currentUserId = "") {
   const uniqueIds = Array.from(new Set(messageIds.filter(Boolean)));
   if (uniqueIds.length === 0) return new Map<string, ReactionRow[]>();
   const placeholders = uniqueIds.map(() => "?").join(", ");
-  const rows = await db.prepare(
-    `SELECT message_id, emoji, count(*) AS count,
-            max(CASE WHEN user_id = ? THEN 1 ELSE 0 END) AS reacted
-     FROM chat_message_reactions
-     WHERE message_id IN (${placeholders})
-     GROUP BY message_id, emoji
-     ORDER BY min(created_at) ASC`,
+  const rows = await env.DB.prepare(
+    `SELECT r.message_id, r.emoji, r.user_id,
+            COALESCE(m.user_name, r.user_id) AS user_name,
+            m.avatar_url AS avatar_url,
+            r.created_at,
+            CASE WHEN r.user_id = ? THEN 1 ELSE 0 END AS reacted
+     FROM chat_message_reactions r
+     JOIN chat_messages msg ON msg.id = r.message_id
+     LEFT JOIN chat_conversation_members m ON m.conversation_id = msg.conversation_id AND m.user_id = r.user_id
+     WHERE r.message_id IN (${placeholders})
+     ORDER BY r.created_at ASC`,
   )
     .bind(currentUserId, ...uniqueIds)
-    .all<ReactionRow>();
-  const grouped = new Map<string, ReactionRow[]>();
+    .all<ReactionQueryRow>();
+  const avatarUrls = await avatarUrlsForUsers(env, (rows.results || []).map((row) => row.user_id));
+  const byMessageEmoji = new Map<string, ReactionRow>();
   for (const row of rows.results || []) {
+    const key = `${row.message_id}:${row.emoji}`;
+    const aggregate = byMessageEmoji.get(key) || {
+      message_id: row.message_id,
+      emoji: row.emoji,
+      count: 0,
+      reacted: false,
+      users: [],
+    };
+    aggregate.count += 1;
+    aggregate.reacted = Boolean(aggregate.reacted) || Boolean(row.reacted);
+    aggregate.users!.push({
+      user_id: row.user_id,
+      user_name: row.user_name || row.user_id,
+      avatar_url: row.avatar_url || avatarUrls.get(row.user_id) || null,
+      created_at: row.created_at,
+    });
+    byMessageEmoji.set(key, aggregate);
+  }
+  const grouped = new Map<string, ReactionRow[]>();
+  for (const row of byMessageEmoji.values()) {
     const list = grouped.get(row.message_id) || [];
     list.push(row);
     grouped.set(row.message_id, list);
   }
   return grouped;
+}
+
+function mapReaction(reaction: ReactionRow) {
+  return {
+    key: reaction.emoji,
+    count: Number(reaction.count || 0),
+    reacted: Boolean(reaction.reacted),
+    users: reaction.users || [],
+  };
 }
 
 async function nextMessageSequence(db: D1Database, conversationId: string) {
@@ -682,7 +735,7 @@ app.get("/api/network/chat/conversations/:conversationId/messages", async (c) =>
     c.env,
     messages.map((message) => message.sender_user_id),
   );
-  const reactions = await reactionsForMessages(c.env.DB, messages.map((message) => message.id), user.id);
+  const reactions = await reactionsForMessages(c.env, messages.map((message) => message.id), user.id);
   return c.json({ messages: messages.map((message) => mapMessage(message, reactions.get(message.id) || [], avatarUrls)), latest_sequence: await latestSequence(c.env.DB, conversationId) });
 });
 
@@ -729,7 +782,7 @@ app.get("/api/network/chat/conversations/:conversationId/sync", async (c) => {
   for (const [userId, avatarUrl] of await avatarUrlsForUsers(c.env, messages.map((message) => message.sender_user_id))) {
     if (!messageAvatarUrls.has(userId)) messageAvatarUrls.set(userId, avatarUrl);
   }
-  const reactions = await reactionsForMessages(c.env.DB, messages.map((message) => message.id), user.id);
+  const reactions = await reactionsForMessages(c.env, messages.map((message) => message.id), user.id);
   return c.json({
     conversation_id: conversationId,
     latest_sequence: await latestSequence(c.env.DB, conversationId),
@@ -832,14 +885,14 @@ app.post("/api/network/chat/conversations/:conversationId/messages/:messageId/re
       .bind(messageId, user.id, emoji, createdAt)
       .run();
   }
-  const reactions = await reactionsForMessages(c.env.DB, [messageId], user.id);
+  const reactions = await reactionsForMessages(c.env, [messageId], user.id);
   await broadcast(c.env, conversationId, {
     type: "message.reacted",
     conversation_id: conversationId,
     message_id: messageId,
-    reactions: (reactions.get(messageId) || []).map((reaction) => ({ key: reaction.emoji, count: Number(reaction.count || 0), reacted: Boolean(reaction.reacted) })),
+    reactions: (reactions.get(messageId) || []).map(mapReaction),
   });
-  return c.json({ reactions: (reactions.get(messageId) || []).map((reaction) => ({ key: reaction.emoji, count: Number(reaction.count || 0), reacted: Boolean(reaction.reacted) })) });
+  return c.json({ reactions: (reactions.get(messageId) || []).map(mapReaction) });
 });
 
 app.post("/api/network/chat/conversations/:conversationId/read", async (c) => {

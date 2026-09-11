@@ -87,6 +87,11 @@ function roomInitial(name: string): string {
   return (label[0] || '#').toUpperCase()
 }
 
+function reactionOwnerText(reaction: { key?: string; count?: number; users?: Array<{ user_name?: string | null; user_id: string }> }) {
+  const names = (reaction.users || []).map((owner) => owner.user_name?.trim() || owner.user_id).filter(Boolean)
+  return names.length ? names.join(', ') : 'No reactions yet'
+}
+
 export function OrgChatPage() {
   const { role, token } = useAuth()
   const { chatService } = useServices()
@@ -877,7 +882,11 @@ export function OrgChatPage() {
                       {(message.reactions ?? []).length > 0 ? (
                         <div className="portal-chat-reaction-summary">
                           {(message.reactions ?? []).map((reaction) => (
-                            <span key={`${message.id}-count-${reaction.key}`} className="portal-chat-reaction-chip">
+                            <span
+                              key={`${message.id}-count-${reaction.key}`}
+                              className="portal-chat-reaction-chip"
+                              title={`Reacted by ${reactionOwnerText(reaction)}`}
+                            >
                               {reaction.key} {reaction.count}
                             </span>
                           ))}

@@ -87,7 +87,7 @@ type OrganizationPortal = {
   tagline: string
   accent_color: string
   features?: string[]
-  home_kind?: 'default' | 'landing' | 'route' | 'org' | 'org-events' | 'timebank' | 'auth' | null
+  home_kind?: 'default' | 'main' | 'landing' | 'route' | 'org' | 'org-events' | 'timebank' | 'auth' | null
   home_heading?: string | null
   home_description?: string | null
   home_image_url?: string | null
@@ -188,6 +188,11 @@ function messageAuthorLabel(message: ChatMessage, myUserId: string | null): stri
 function messageAuthorInitial(message: ChatMessage, myUserId: string | null): string {
   const label = messageAuthorLabel(message, myUserId).trim()
   return (label[0] || '?').toUpperCase()
+}
+
+function reactionOwnerText(reaction: { key?: string; count?: number; users?: Array<{ user_name?: string | null; user_id: string }> }) {
+  const names = (reaction.users || []).map((owner) => owner.user_name?.trim() || owner.user_id).filter(Boolean)
+  return names.length ? names.join(', ') : 'No reactions yet'
 }
 
 export function PublicAdminPage() {
@@ -873,17 +878,54 @@ export function PublicAdminPage() {
     }
   }
 
-  async function saveOrganizationPortal() {
-    if (!org || !token) return
+  async function saveOrganizationSettings() {
+    if (!org || !token) {
+      setMergeStatus('Sign in to update this organization.')
+      return
+    }
+    const nextName = orgNameDraft.trim()
+    if (!nextName) {
+      setMergeStatus('Organization name is required.')
+      return
+    }
     const slug = normalizePortalSlug(portalSlugDraft || org.slug)
     if (!slug || slug.length < 3) {
       setPortalStatus('Use a portal slug with at least 3 characters.')
       return
     }
+    setSavingOrgName(true)
+    setSavingOrgImage(true)
     setSavingPortal(true)
+    setMergeStatus(null)
     setPortalStatus(null)
     try {
-      const resp = await fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/portal`), {
+      const orgResp = await fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}`), {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: nextName, image_url: orgImageDraft.trim() || null }),
+      })
+      if (!orgResp.ok) {
+        let detail = ''
+        try {
+          const payload = (await orgResp.json()) as { detail?: string }
+          detail = String(payload?.detail || '').trim()
+        } catch {
+          detail = (await orgResp.text().catch(() => '')).trim()
+        }
+        throw new Error(detail || `Organization update failed (${orgResp.status})`)
+      }
+      const updatedOrg = (await orgResp.json()) as { name?: string; image_url?: string | null }
+      const updatedName = String(updatedOrg?.name || nextName)
+      const updatedImage = updatedOrg?.image_url?.trim() || orgImageDraft.trim() || ''
+      setOrg((prev) => (prev ? { ...prev, name: updatedName, image_url: updatedImage || null } : prev))
+      setMyAdminOrgs((prev) => prev.map((row) => (row.id === org.id ? { ...row, name: updatedName, image_url: updatedImage || null } : row)))
+      setOrgNameDraft(updatedName)
+      setOrgImageDraft(updatedImage)
+
+      const portalResp = await fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/portal`), {
         method: 'PUT',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -891,26 +933,31 @@ export function PublicAdminPage() {
         },
         body: JSON.stringify({
           slug,
-          name: portalNameDraft || org.name,
-          tagline: portalTaglineDraft || org.description || `Portal for ${org.name}`,
-          home_kind: portalHomeKindDraft || 'landing',
-          home_heading: portalHeadingDraft || portalNameDraft || org.name,
+          name: portalNameDraft || updatedName,
+          tagline: portalTaglineDraft || org.description || `Portal for ${updatedName}`,
+          home_kind: portalHomeKindDraft || 'main',
+          home_heading: portalHeadingDraft || portalNameDraft || updatedName,
           home_description: portalDescriptionDraft || portalTaglineDraft || org.description || '',
-          home_image_url: portalImageDraft || org.image_url || null,
+          home_image_url: portalImageDraft || updatedImage || null,
           features: ['directory', 'events', 'chat'],
         }),
       })
-      if (!resp.ok) {
-        const text = await resp.text().catch(() => '')
-        throw new Error(text || `Portal update failed (${resp.status})`)
+      if (!portalResp.ok) {
+        const text = await portalResp.text().catch(() => '')
+        throw new Error(text || `Portal update failed (${portalResp.status})`)
       }
-      const payload = (await resp.json()) as { portal: OrganizationPortal }
+      const payload = (await portalResp.json()) as { portal: OrganizationPortal }
       setPortalConfig(payload.portal)
       setPortalSlugDraft(normalizePortalSlug(payload.portal.slug || slug))
-      setPortalStatus('Portal saved.')
+      setPortalStatus('Organization settings saved.')
+      setMergeStatus('Organization settings saved.')
     } catch (err) {
-      setPortalStatus(toUserFacingErrorMessage(err, 'Could not save portal setup'))
+      const message = toUserFacingErrorMessage(err, 'Could not save organization settings')
+      setPortalStatus(message)
+      setMergeStatus(message)
     } finally {
+      setSavingOrgName(false)
+      setSavingOrgImage(false)
       setSavingPortal(false)
     }
   }
@@ -989,91 +1036,6 @@ export function PublicAdminPage() {
     }
   }
 
-  async function saveOrganizationName() {
-    if (!org || !token) {
-      setMergeStatus('Sign in to update this organization.')
-      return
-    }
-    const nextName = orgNameDraft.trim()
-    if (!nextName) {
-      setMergeStatus('Organization name is required.')
-      return
-    }
-    setSavingOrgName(true)
-    setMergeStatus(null)
-    try {
-      const resp = await fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}`), {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ name: nextName }),
-      })
-      if (!resp.ok) {
-        let detail = ''
-        try {
-          const payload = (await resp.json()) as { detail?: string }
-          detail = String(payload?.detail || '').trim()
-        } catch {
-          detail = (await resp.text().catch(() => '')).trim()
-        }
-        throw new Error(detail || `Update failed (${resp.status})`)
-      }
-      const updated = (await resp.json()) as { name?: string }
-      const updatedName = String(updated?.name || nextName)
-      setOrg((prev) => (prev ? { ...prev, name: updatedName } : prev))
-      setMyAdminOrgs((prev) =>
-        prev.map((row) => (row.id === org.id ? { ...row, name: updatedName } : row)),
-      )
-      setOrgNameDraft(updatedName)
-      setMergeStatus('Organization name updated.')
-    } catch (err) {
-      setMergeStatus(toUserFacingErrorMessage(err, 'Update failed'))
-    } finally {
-      setSavingOrgName(false)
-    }
-  }
-
-  async function saveOrganizationImage(nextImageOverride?: string | null) {
-    if (!org || !token) {
-      setMergeStatus('Sign in to update this organization.')
-      return
-    }
-    const candidate = typeof nextImageOverride === 'string' ? nextImageOverride : orgImageDraft
-    setSavingOrgImage(true)
-    setMergeStatus(null)
-    try {
-      const resp = await fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}`), {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ image_url: candidate.trim() || null }),
-      })
-      if (!resp.ok) {
-        let detail = ''
-        try {
-          const payload = (await resp.json()) as { detail?: string }
-          detail = String(payload?.detail || '').trim()
-        } catch {
-          detail = (await resp.text().catch(() => '')).trim()
-        }
-        throw new Error(detail || `Update failed (${resp.status})`)
-      }
-      const updated = (await resp.json()) as { image_url?: string | null }
-      const updatedImage = updated?.image_url?.trim() || ''
-      setOrg((prev) => (prev ? { ...prev, image_url: updatedImage || null } : prev))
-      setOrgImageDraft(updatedImage)
-      setMergeStatus('Organization image updated.')
-    } catch (err) {
-      setMergeStatus(toUserFacingErrorMessage(err, 'Update failed'))
-    } finally {
-      setSavingOrgImage(false)
-    }
-  }
-
   async function handleSaveCroppedOrgImage(base64Image: string) {
     if (!org || !token) return
     setSavingOrgImage(true)
@@ -1104,7 +1066,8 @@ export function PublicAdminPage() {
       if (!uploadResp.ok) {
         throw new Error(`Image upload failed (${uploadResp.status})`)
       }
-      await saveOrganizationImage(uploadData.public_url)
+      setOrgImageDraft(uploadData.public_url)
+      setMergeStatus('Image uploaded. Save organization settings to publish it.')
       setShowImageEditor(false)
       setEditorSource(null)
     } catch (err) {
@@ -1424,6 +1387,44 @@ export function PublicAdminPage() {
             </div>
           ) : null}
 
+          <div className="portal-card portal-org-events-card">
+            <div className="portal-org-events-heading">
+              <div>
+                <p className="tenant-home-eyebrow">Upcoming</p>
+                <h2>Hosted Events</h2>
+              </div>
+              <Link to="/events">View all events</Link>
+            </div>
+            {eventsLoading ? (
+              <p className="muted" style={{ margin: 0 }}>
+                Loading events…
+              </p>
+            ) : events.length === 0 ? (
+              <p className="muted" style={{ margin: 0 }}>
+                No hosted events listed.
+              </p>
+            ) : (
+              <div className="portal-org-events-grid">
+                {events.map((event) => (
+                  <article key={event.id} className="portal-org-event-card">
+                    {event.image_url ? (
+                      <img
+                        src={event.image_url}
+                        alt={event.title}
+                        
+                      />
+                    ) : null}
+                    <Link to={`/events/${event.slug}`}>
+                      {event.title}
+                    </Link>
+                    <span className="muted">{formatDate(event.starts_at)}{event.location ? ` • ${event.location}` : ''}</span>
+                  </article>
+                ))}
+              </div>
+            )}
+          </div>
+
+
           {canManageCurrentOrg ? (
             <div className="portal-card portal-org-admin-card" style={{ display: 'grid', gap: '0.7rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -1464,6 +1465,7 @@ export function PublicAdminPage() {
                           value={portalHomeKindDraft || 'landing'}
                           onChange={(e) => setPortalHomeKindDraft(e.target.value as OrganizationPortal['home_kind'])}
                         >
+                          <option value="main">Main domain homepage</option>
                           <option value="landing">Landing</option>
                           <option value="org-events">Org events</option>
                           <option value="org">Org profile</option>
@@ -1578,12 +1580,7 @@ export function PublicAdminPage() {
                         placeholder="https://example.com/hero.jpg"
                       />
                     </label>
-                    <div style={{ display: 'flex', gap: '0.55rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                      <button type="button" className="btn-primary" onClick={() => void saveOrganizationPortal()} disabled={savingPortal}>
-                        {savingPortal ? 'Saving...' : 'Save Portal'}
-                      </button>
-                      {portalStatus ? <p className="muted" role="status" style={{ margin: 0 }}>{portalStatus}</p> : null}
-                    </div>
+                    {portalStatus ? <p className="muted" role="status" style={{ margin: 0 }}>{portalStatus}</p> : null}
                   </div>
                   <div className="portal-card" style={{ display: 'grid', gap: '0.55rem', boxShadow: 'none' }}>
                     <div>
@@ -1626,33 +1623,21 @@ export function PublicAdminPage() {
                     <label htmlFor="org-name" className="muted">
                       Organization name
                     </label>
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                      <input
-                        id="org-name"
-                        value={orgNameDraft}
-                        onChange={(e) => setOrgNameDraft(e.target.value)}
-                        placeholder="Organization name"
-                        style={{ minWidth: 0, maxWidth: '100%', flex: '1 1 240px' }}
-                      />
-                      <button type="button" onClick={saveOrganizationName} disabled={savingOrgName || !orgNameDraft.trim()}>
-                        {savingOrgName ? 'Saving…' : 'Save Name'}
-                      </button>
-                    </div>
+                    <input
+                      id="org-name"
+                      value={orgNameDraft}
+                      onChange={(e) => setOrgNameDraft(e.target.value)}
+                      placeholder="Organization name"
+                    />
                     <label htmlFor="org-image-url" className="muted">
                       Organization image URL
                     </label>
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                      <input
-                        id="org-image-url"
-                        value={orgImageDraft}
-                        onChange={(e) => setOrgImageDraft(e.target.value)}
-                        placeholder="https://example.com/org-image.png"
-                        style={{ minWidth: 0, maxWidth: '100%', flex: '1 1 240px' }}
-                      />
-                      <button type="button" onClick={() => void saveOrganizationImage()} disabled={savingOrgImage}>
-                        {savingOrgImage ? 'Saving…' : 'Save Image'}
-                      </button>
-                    </div>
+                    <input
+                      id="org-image-url"
+                      value={orgImageDraft}
+                      onChange={(e) => setOrgImageDraft(e.target.value)}
+                      placeholder="https://example.com/org-image.png"
+                    />
                     <label htmlFor="merge-source-org" className="muted">
                       Merge one of your organizations into this one
                     </label>
@@ -1674,6 +1659,16 @@ export function PublicAdminPage() {
                         {merging ? 'Merging…' : 'Merge Into This Org'}
                       </button>
                     </div>
+                    <div className="portal-org-save-bar">
+                      <button
+                        type="button"
+                        className="btn-primary"
+                        onClick={() => void saveOrganizationSettings()}
+                        disabled={savingPortal || savingOrgName || savingOrgImage || !orgNameDraft.trim()}
+                      >
+                        {(savingPortal || savingOrgName || savingOrgImage) ? 'Saving…' : 'Save organization settings'}
+                      </button>
+                    </div>
                     {mergeStatus ? (
                       <p className="muted" role="status" style={{ margin: 0 }}>
                         {mergeStatus}
@@ -1689,36 +1684,6 @@ export function PublicAdminPage() {
             </div>
           ) : null}
 
-          <div className="portal-card" style={{ display: 'grid', gap: '0.6rem' }}>
-            <h2 style={{ margin: 0, fontSize: '1rem' }}>Hosted Events</h2>
-            {eventsLoading ? (
-              <p className="muted" style={{ margin: 0 }}>
-                Loading events…
-              </p>
-            ) : events.length === 0 ? (
-              <p className="muted" style={{ margin: 0 }}>
-                No hosted events listed.
-              </p>
-            ) : (
-              <div style={{ display: 'grid', gap: '0.5rem' }}>
-                {events.map((event) => (
-                  <article key={event.id} style={{ display: 'grid', gap: '0.25rem' }}>
-                    {event.image_url ? (
-                      <img
-                        src={event.image_url}
-                        alt={event.title}
-                        style={{ width: '100%', maxHeight: 180, objectFit: 'cover', borderRadius: 10, border: '1px solid var(--border)' }}
-                      />
-                    ) : null}
-                    <Link to={`/events/${event.slug}`} style={{ fontWeight: 700, textDecoration: 'none' }}>
-                      {event.title}
-                    </Link>
-                    <span className="muted">{formatDate(event.starts_at)}{event.location ? ` • ${event.location}` : ''}</span>
-                  </article>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
         <aside className="portal-org-chat-column">
           <div className="portal-card" style={{ display: 'grid', gap: '0.55rem' }}>
@@ -1891,8 +1856,8 @@ export function PublicAdminPage() {
                             {generalSessionReady ? (
                               <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }}>
                                 {QUICK_REACTIONS.map((emoji) => {
-                                  const count =
-                                    message.reactions?.find((reaction) => reaction.key === emoji)?.count || 0
+                                  const reaction = message.reactions?.find((reaction) => reaction.key === emoji)
+                                  const count = reaction?.count || 0
                                   return (
                                     <button
                                       key={`${message.id}-${emoji}`}
@@ -1903,6 +1868,7 @@ export function PublicAdminPage() {
                                       }}
                                       disabled={generalActionPending}
                                       style={{ padding: '0.15rem 0.45rem', minWidth: 'auto' }}
+                                      title={reaction ? `Reacted by ${reactionOwnerText(reaction)}` : undefined}
                                     >
                                       {emoji} {count > 0 ? count : ''}
                                     </button>

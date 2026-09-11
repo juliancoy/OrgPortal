@@ -13,7 +13,8 @@ const baseTenant: PortalTenant = {
 }
 
 describe('tenant home modes', () => {
-  it('supports landing, route, org profile, org events, timebank and auth modes', () => {
+  it('supports main, landing, route, org profile, org events, timebank and auth modes', () => {
+    expect(tenantHomeAction({ ...baseTenant, home_kind: 'main' }, 'guest', '/chat')).toEqual({ kind: 'landing' })
     expect(tenantHomeAction({ ...baseTenant, home_kind: 'landing' }, 'guest', '/chat')).toEqual({ kind: 'landing' })
     expect(tenantHomeAction({ ...baseTenant, home_kind: 'route', home_path: '/people?q=medtech' }, 'guest', '/chat')).toEqual({ kind: 'redirect', to: '/people?q=medtech' })
     expect(tenantHomeAction({ ...baseTenant, home_kind: 'org', home_org_slug: 'baltimore-medtech' }, 'guest', '/chat')).toEqual({ kind: 'redirect', to: '/orgs/baltimore-medtech' })
