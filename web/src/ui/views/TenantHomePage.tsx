@@ -8,6 +8,7 @@ import { Header } from '../shell/Header'
 import { Footer } from '../shell/Footer'
 import { ExternalBrowserPrompt } from '../components/ExternalBrowserPrompt'
 import { PublicEventsPage } from './public/PublicEventsPage'
+import { FloatingSocialDock } from '../components/FloatingSocialDock'
 
 type TenantEvent = {
   id: string
@@ -163,6 +164,7 @@ export function TenantHomePage() {
       </div>
     </main>
     <Footer />
+    <FloatingSocialDock />
   </div>
 }
 
@@ -188,6 +190,7 @@ export function TenantEventsHomePage() {
       </div>
     </main>
     <Footer />
+    <FloatingSocialDock />
   </div>
 }
 

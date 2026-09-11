@@ -827,8 +827,8 @@ export function Header() {
                     Settings
                   </Link>
 
-                  <Link to="/calendar" onClick={() => setMenuOpen(false)} className="portal-user-menu-item" role="menuitem">
-                    Calendar
+                  <Link to="/calendar/integrations" onClick={() => setMenuOpen(false)} className="portal-user-menu-item" role="menuitem">
+                    Calendar integrations
                   </Link>
 
                   <Link to="/dev-tools" onClick={() => setMenuOpen(false)} className="portal-user-menu-item" role="menuitem">
@@ -947,6 +947,7 @@ export function Header() {
         <div id="portal-primary-nav" className="portal-nav">
           {domainTenant && !domainCommunity ? <>
             {domainTenant.features?.includes('events') && <NavLink to="/org-events">Events</NavLink>}
+            {domainTenant.profile === 'baltimore-medtech' && <NavLink to="/calendar" isActive={isCalendarActive}>Calendar</NavLink>}
             {domainTenant.features?.includes('directory') && <NavLink to="/people">People</NavLink>}
             {domainTenant.features?.includes('chat') && <NavLink to="/chat">Messages</NavLink>}
             {typeof domainTenant.feature_config?.externalCalendarUrl === 'string' && <a className="portal-nav-link" href={domainTenant.feature_config.externalCalendarUrl}>Calendar</a>}
@@ -955,7 +956,7 @@ export function Header() {
             <NavLink to="/timebanking">Timebank</NavLink>
             <NavLink to="/people">People</NavLink>
             <NavLink to="/chat">Chat</NavLink>
-            <NavLink to="/calendar">Calendar</NavLink>
+            <NavLink to="/calendar" isActive={isCalendarActive}>Calendar</NavLink>
             <a className="portal-nav-link" href="https://codecollective.us/p/">Code Collective portal ↗</a>
           </> : <>
           <NavLink to="/" isActive={isCivicActive}>
@@ -987,7 +988,7 @@ export function Header() {
           </NavLink>
 
           {role !== 'guest' && (
-            <NavLink to="/calendar" isActive={isCalendarActive}>
+            <NavLink to="/calendar/integrations" isActive={isCalendarActive}>
               <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                 <path d="M6 2.5A1.5 1.5 0 017.5 4v.75h5V4a1.5 1.5 0 013 0v.75H16A2 2 0 0118 6.75v8.75A2.5 2.5 0 0115.5 18h-11A2.5 2.5 0 012 15.5V6.75a2 2 0 012-2h.5V4a1.5 1.5 0 011.5-1.5zm0 3.75H4v9.25c0 .28.22.5.5.5h11a.5.5 0 00.5-.5V6.25h-2.5V7a1 1 0 11-2 0v-.75h-5V7a1 1 0 11-2 0v-.75zm2.5 4a1 1 0 100 2h3a1 1 0 100-2h-3z" />
               </svg>

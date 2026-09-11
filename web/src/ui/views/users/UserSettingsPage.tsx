@@ -161,7 +161,7 @@ export function UserSettingsPage() {
             <strong>Calendar integrations</strong>
             <p className="portal-muted">Open your calendar integrations page to connect Google Calendar or review upcoming events.</p>
           </div>
-          <Link className="portal-button primary" to="/calendar">
+          <Link className="portal-button primary" to="/calendar/integrations">
             Open Calendar
           </Link>
         </div>

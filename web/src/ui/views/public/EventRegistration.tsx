@@ -117,7 +117,7 @@ export function EventRegistration({ eventId, slug, token, authLoading = false, s
       <p className="muted public-event-registration-note">Public profiles appear below; private profiles remain hidden.</p>
       {token && <div className="public-event-registration-links">
         <Link to="/email/preferences" className="public-event-preferences-link">Manage email preferences</Link>
-        {attendance?.registered ? <Link to="/calendar" className="public-event-preferences-link">Subscribe to registered events</Link> : null}
+        {attendance?.registered ? <Link to="/calendar/integrations" className="public-event-preferences-link">Subscribe to registered events</Link> : null}
       </div>}
       {message && <p role="status" className="public-event-status-message">{message}</p>}
       {error && <div role="alert" className="public-event-registration-error">
