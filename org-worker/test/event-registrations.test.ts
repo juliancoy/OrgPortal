@@ -60,19 +60,19 @@ test('registration requires verified identity; repeated requests and cancellatio
   assert.equal(created.status, 200);
   assert.equal((await created.json()).registered, true);
   await Promise.all([request('POST', 'alice'), request('POST', 'alice')]);
-  assert.equal((await (await request('GET', 'alice')).json()).count, 0);
+  assert.equal((await (await request('GET', 'alice')).json()).count, 1);
   assert.equal((await (await request('GET', 'bob')).json()).registered, false);
   await request('POST', 'bob');
   await request('POST', 'alice', 'event-2');
-  assert.equal((await (await request()).json()).count, 0);
+  assert.equal((await (await request()).json()).count, 2);
   assert.equal((await (await request()).json()).registered, false);
   const cancelled = await request('DELETE', 'alice');
   assert.equal(cancelled.headers.get('Cache-Control'), 'no-store');
-  assert.deepEqual(await cancelled.json(), { event_id: 'event-1', count: 0, attendees: [], registered: false });
+  assert.deepEqual(await cancelled.json(), { event_id: 'event-1', count: 1, attendees: [], registered: false });
   await request('DELETE', 'alice');
   assert.equal((await (await request('GET', 'bob')).json()).registered, true);
   assert.equal((await (await request('GET', 'alice', 'event-2')).json()).registered, true);
-  assert.equal((await (await request('POST', 'alice')).json()).count, 0);
+  assert.equal((await (await request('POST', 'alice')).json()).count, 2);
   for (const method of ['GET', 'POST', 'DELETE']) assert.equal((await request(method, 'alice', 'missing')).status, 404);
   database.exec("DELETE FROM events WHERE id = 'event-1'");
   assert.equal(database.prepare("SELECT count(*) AS n FROM event_registrations WHERE event_id = 'event-1'").get()?.n, 0);
@@ -123,7 +123,7 @@ test('registered events calendar feed is private, subscribable, and host-rooted'
   assert.doesNotMatch(ics, /alice|bob/);
 });
 
-test('public preview counts only public profiles without private fields', async (t) => {
+test('public preview counts all registrations while exposing only public profiles', async (t) => {
   const { database, request } = setup();
   t.after(() => database.close());
   for (let i = 0; i < 12; i++) {
@@ -138,7 +138,7 @@ test('public preview counts only public profiles without private fields', async 
   const data = await response.json();
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('Cache-Control'), 'no-store');
-  assert.equal(data.count, 11);
+  assert.equal(data.count, 12);
   assert.equal(data.attendees.length, 11);
   assert.equal(data.attendees.some((person: { slug: string }) => person.slug === 'person-0'), false);
   const emailName = data.attendees.find((person: { slug: string }) => person.slug === 'person-1');
