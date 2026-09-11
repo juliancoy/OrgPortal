@@ -1,0 +1,129 @@
+{
+  "meta": {
+    "title": "Observable allied-care-team context",
+    "as_of": "2026-09-03",
+    "geography": "United States",
+    "employment_year": 2025,
+    "openings_window": "2025–2035",
+    "source": "U.S. Bureau of Labor Statistics Occupational Outlook Handbook",
+    "scope": "Selected nonphysician occupations with a defensible connection to the four example fields. Counts are national 2025 jobs rounded by BLS; annual openings are projected averages over 2025–2035.",
+    "counting_rule": "Each listed occupation is counted once within its mapped field group. Group totals are descriptive context, not dedicated field full-time equivalents.",
+    "index_policy": "These occupations are displayed separately and are not added to the physician-specialist distortion index because their scopes differ sharply and many serve multiple fields, conditions, and settings.",
+    "fixed_limitation": "Nonphysician labor is no longer omitted: the page now exposes eight allied occupations, their job bases, projected annual openings, and the limits of each field mapping.",
+    "remaining_gap": "Specialty nurses, advanced-practice clinicians, pharmacists, laboratory geneticists, molecular technologists, medical physicists, dosimetrists, navigators, social workers, administrative staff, equipment capacity, appointment supply, payer participation, and local geographic access remain unmeasured."
+  },
+  "groups": [
+    {
+      "id": "neurology",
+      "name": "Neurology",
+      "label": "Broad rehabilitation workforce",
+      "mapping_strength": "Broad cross-specialty mapping",
+      "jobs_total": 646700,
+      "annual_openings_total": 35900,
+      "strategic_read": "Rehabilitation and communication capacity is a major part of neurological access. MedTech projects should connect diagnosis to therapy, home programs, longitudinal measurement, and referral completion rather than treating neurologist headcount as the entire pathway.",
+      "scope_note": "Physical therapists, occupational therapists, and speech-language pathologists serve stroke, brain injury, pain, mobility, swallowing, communication, pediatric, geriatric, and many non-neurological conditions. Their national job totals are not dedicated neurology full-time equivalents.",
+      "roles": [
+        {
+          "title": "Physical therapists",
+          "soc": "29-1123",
+          "jobs": 283700,
+          "annual_openings": 13400,
+          "source_url": "https://www.bls.gov/ooh/healthcare/physical-therapists.htm",
+          "source_label": "BLS — Physical Therapists"
+        },
+        {
+          "title": "Occupational therapists",
+          "soc": "29-1122",
+          "jobs": 169600,
+          "annual_openings": 10000,
+          "source_url": "https://www.bls.gov/ooh/healthcare/occupational-therapists.htm",
+          "source_label": "BLS — Occupational Therapists"
+        },
+        {
+          "title": "Speech-language pathologists",
+          "soc": "29-1127",
+          "jobs": 193400,
+          "annual_openings": 12500,
+          "source_url": "https://www.bls.gov/ooh/healthcare/speech-language-pathologists.htm",
+          "source_label": "BLS — Speech-Language Pathologists"
+        }
+      ]
+    },
+    {
+      "id": "oncology",
+      "name": "Oncology",
+      "label": "Radiation-treatment workforce",
+      "mapping_strength": "Narrow treatment mapping",
+      "jobs_total": 17400,
+      "annual_openings_total": 700,
+      "strategic_read": "Radiation therapists provide a visible, treatment-specific capacity layer. Workflow tools can improve scheduling, handoffs, safety checks, patient preparation, and treatment continuity, but the wider oncology workforce must be measured separately.",
+      "scope_note": "Radiation therapists are strongly connected to oncology but represent only one treatment modality. The total excludes oncology nurses, pharmacists, dosimetrists, physicists, surgeons, pathologists, navigators, social workers, and infusion or operating capacity.",
+      "roles": [
+        {
+          "title": "Radiation therapists",
+          "soc": "29-1124",
+          "jobs": 17400,
+          "annual_openings": 700,
+          "source_url": "https://www.bls.gov/ooh/healthcare/radiation-therapists.htm",
+          "source_label": "BLS — Radiation Therapists"
+        }
+      ]
+    },
+    {
+      "id": "radiology",
+      "name": "Radiology",
+      "label": "Imaging technologist workforce",
+      "mapping_strength": "Strong operational mapping",
+      "jobs_total": 387700,
+      "annual_openings_total": 22100,
+      "strategic_read": "Imaging service capacity depends heavily on technologists as well as physicians. The large mapped workforce strengthens the case for applications aimed at acquisition quality, protocol execution, scheduling, equipment utilization, safety, and reliable handoffs.",
+      "scope_note": "Radiologic and MRI technologists, diagnostic medical sonographers, and nuclear medicine technologists span many modalities and settings. These totals do not measure scanner capacity, appointment slots, modality-specific staffing, downtime, geographic distribution, or work performed outside radiologist-led services.",
+      "roles": [
+        {
+          "title": "Radiologic and MRI technologists",
+          "soc": "29-2034 / 29-2035",
+          "jobs": 278100,
+          "annual_openings": 15300,
+          "source_url": "https://www.bls.gov/ooh/healthcare/radiologic-technologists.htm",
+          "source_label": "BLS — Radiologic and MRI Technologists"
+        },
+        {
+          "title": "Diagnostic medical sonographers",
+          "soc": "29-2032",
+          "jobs": 92200,
+          "annual_openings": 6000,
+          "source_url": "https://www.bls.gov/ooh/healthcare/diagnostic-medical-sonographers.htm",
+          "source_label": "BLS — Diagnostic Medical Sonographers"
+        },
+        {
+          "title": "Nuclear medicine technologists",
+          "soc": "29-2033",
+          "jobs": 17400,
+          "annual_openings": 800,
+          "source_url": "https://www.bls.gov/ooh/healthcare/nuclear-medicine-technologists.htm",
+          "source_label": "BLS — Nuclear Medicine Technologists"
+        }
+      ]
+    },
+    {
+      "id": "genomics",
+      "name": "Genomics",
+      "label": "Genetic counseling workforce",
+      "mapping_strength": "Direct but incomplete mapping",
+      "jobs_total": 4200,
+      "annual_openings_total": 300,
+      "strategic_read": "Genetic counselors are a directly relevant nonphysician capacity layer and remain a small national workforce. Tools that improve triage, family-history capture, consent, education, result communication, and follow-up can extend—but not replace—their work.",
+      "scope_note": "Genetic counselors are only one component of genomic medicine. The total excludes laboratory geneticists, molecular technologists, bioinformaticians, variant scientists, specialty nurses, testing capacity, and clinicians in other specialties who order and interpret genetic tests.",
+      "roles": [
+        {
+          "title": "Genetic counselors",
+          "soc": "29-9092",
+          "jobs": 4200,
+          "annual_openings": 300,
+          "source_url": "https://www.bls.gov/ooh/healthcare/genetic-counselors.htm",
+          "source_label": "BLS — Genetic Counselors"
+        }
+      ]
+    }
+  ]
+}

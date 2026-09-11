@@ -1,0 +1,195 @@
+.icd-atlas {
+  padding: clamp(100px, 12vw, 170px) clamp(8px, 3vw, 34px) 0;
+}
+
+.icd-atlas-heading {
+  padding-bottom: clamp(46px, 6vw, 78px);
+  border-bottom: 1px solid var(--line);
+}
+
+.icd-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.icd-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.icd-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--blue);
+}
+
+.icd-legend span:nth-child(2) i { background: var(--coral); }
+.icd-legend span:nth-child(3) i { background: var(--gold); }
+
+.icd-chapter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+  margin-top: 18px;
+}
+
+.icd-chapter {
+  --chapter-color: var(--blue);
+  position: relative;
+  min-width: 0;
+  min-height: 142px;
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  gap: 13px;
+  align-items: center;
+  padding: 15px 14px 15px 11px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-raised);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.icd-chapter::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--chapter-color);
+}
+
+.icd-chapter[data-tone="microbial"] { --chapter-color: #18a79d; }
+.icd-chapter[data-tone="disease"] { --chapter-color: #cf4f3f; }
+.icd-chapter[data-tone="blood"] { --chapter-color: #a94d67; }
+.icd-chapter[data-tone="metabolic"] { --chapter-color: #d99a2b; }
+.icd-chapter[data-tone="behavioral"] { --chapter-color: #786ccf; }
+.icd-chapter[data-tone="neural"] { --chapter-color: #0f6f8f; }
+.icd-chapter[data-tone="sensory"] { --chapter-color: #2a91a7; }
+.icd-chapter[data-tone="circulatory"] { --chapter-color: #be4f59; }
+.icd-chapter[data-tone="respiratory"] { --chapter-color: #4b8fbf; }
+.icd-chapter[data-tone="digestive"] { --chapter-color: #b28138; }
+.icd-chapter[data-tone="skin"] { --chapter-color: #c77a62; }
+.icd-chapter[data-tone="movement"] { --chapter-color: #557f63; }
+.icd-chapter[data-tone="renal"] { --chapter-color: #5071af; }
+.icd-chapter[data-tone="maternal"] { --chapter-color: #b15a8e; }
+.icd-chapter[data-tone="life-stage"] { --chapter-color: #a07b38; }
+.icd-chapter[data-tone="genetic"] { --chapter-color: #725ec3; }
+.icd-chapter[data-tone="finding"] { --chapter-color: #637989; }
+.icd-chapter[data-tone="injury"] { --chapter-color: #c45d44; }
+.icd-chapter[data-tone="external"] { --chapter-color: #70823c; }
+.icd-chapter[data-tone="encounter"] { --chapter-color: #378e83; }
+.icd-chapter[data-tone="special"] { --chapter-color: #7d61a7; }
+
+.icd-chapter-number {
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+  border-right: 1px solid var(--line);
+  color: var(--chapter-color);
+  font-size: 1.24rem;
+  font-weight: 950;
+  letter-spacing: -0.04em;
+}
+
+.icd-chapter-copy {
+  min-width: 0;
+}
+
+.icd-chapter-range {
+  display: block;
+  color: var(--chapter-color);
+  font-size: 0.67rem;
+  font-weight: 950;
+  letter-spacing: 0.07em;
+}
+
+.icd-chapter-title {
+  display: block;
+  margin-top: 7px;
+  font-size: 0.79rem;
+  font-weight: 800;
+  line-height: 1.32;
+}
+
+.icd-chapter-action {
+  width: 29px;
+  height: 29px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--chapter-color);
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.icd-chapter:hover,
+.icd-chapter:focus-visible {
+  z-index: 1;
+  transform: translateY(-2px);
+  border-color: var(--chapter-color);
+  box-shadow: 0 14px 34px color-mix(in srgb, var(--chapter-color) 13%, transparent);
+}
+
+.coding-notes {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: clamp(38px, 8vw, 122px);
+  align-items: start;
+  margin-top: clamp(100px, 13vw, 180px);
+  padding: clamp(40px, 6vw, 78px);
+  border-top: 6px solid var(--teal);
+  border-radius: 18px;
+  background: var(--paper);
+  box-shadow: 0 22px 65px rgba(13, 51, 69, 0.09);
+}
+
+.coding-notes h2 {
+  font-size: clamp(2.7rem, 5.5vw, 5.7rem);
+  line-height: 0.91;
+  letter-spacing: -0.058em;
+}
+
+.coding-notes-copy {
+  padding-top: 10px;
+}
+
+.coding-notes-copy p {
+  margin: 0;
+  color: var(--muted);
+  font-size: clamp(1rem, 1.45vw, 1.18rem);
+  line-height: 1.72;
+}
+
+.coding-notes-copy p + p {
+  margin-top: 26px;
+  padding-top: 26px;
+  border-top: 1px solid var(--line);
+  font-size: 0.82rem;
+  font-weight: 750;
+  line-height: 1.6;
+}
+
+.taxonomy-footer {
+  margin-top: 0;
+}
+
+.taxonomy-body button:focus-visible,
+.taxonomy-body a:focus-visible,
+.taxonomy-body input:focus-visible,
+.taxonomy-body select:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--blue) 42%, transparent);
+  outline-offset: 2px;
+}

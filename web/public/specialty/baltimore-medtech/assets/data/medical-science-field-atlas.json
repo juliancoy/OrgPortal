@@ -1,0 +1,7166 @@
+[
+  {
+    "id": "anatomy-and-morphology",
+    "name": "Anatomy and morphology",
+    "scientific_lineage": [
+      "Foundational biomedical sciences"
+    ],
+    "body_parts": [],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "research",
+      "mechanisms",
+      "basic science"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Phenomena and Processes"
+      ],
+      "oecd_ford": [
+        "Basic medicine"
+      ]
+    }
+  },
+  {
+    "id": "physiology",
+    "name": "Physiology",
+    "scientific_lineage": [
+      "Foundational biomedical sciences"
+    ],
+    "body_parts": [],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "research",
+      "mechanisms",
+      "basic science"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Phenomena and Processes"
+      ],
+      "oecd_ford": [
+        "Basic medicine"
+      ]
+    }
+  },
+  {
+    "id": "biochemistry-and-molecular-biology",
+    "name": "Biochemistry and molecular biology",
+    "scientific_lineage": [
+      "Foundational biomedical sciences"
+    ],
+    "body_parts": [],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "research",
+      "mechanisms",
+      "basic science"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Phenomena and Processes"
+      ],
+      "oecd_ford": [
+        "Basic medicine"
+      ]
+    }
+  },
+  {
+    "id": "cell-biology",
+    "name": "Cell biology",
+    "scientific_lineage": [
+      "Foundational biomedical sciences"
+    ],
+    "body_parts": [],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "research",
+      "mechanisms",
+      "basic science"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Phenomena and Processes"
+      ],
+      "oecd_ford": [
+        "Basic medicine"
+      ]
+    }
+  },
+  {
+    "id": "developmental-biology-and-embryology",
+    "name": "Developmental biology and embryology",
+    "scientific_lineage": [
+      "Foundational biomedical sciences"
+    ],
+    "body_parts": [],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "research",
+      "mechanisms",
+      "basic science"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Phenomena and Processes"
+      ],
+      "oecd_ford": [
+        "Basic medicine"
+      ]
+    }
+  },
+  {
+    "id": "genetics-and-genomics",
+    "name": "Genetics and genomics",
+    "scientific_lineage": [
+      "Foundational biomedical sciences"
+    ],
+    "body_parts": [],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "research",
+      "mechanisms",
+      "basic science"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Phenomena and Processes"
+      ],
+      "oecd_ford": [
+        "Basic medicine"
+      ]
+    }
+  },
+  {
+    "id": "epigenetics",
+    "name": "Epigenetics",
+    "scientific_lineage": [
+      "Foundational biomedical sciences"
+    ],
+    "body_parts": [],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "research",
+      "mechanisms",
+      "basic science"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Phenomena and Processes"
+      ],
+      "oecd_ford": [
+        "Basic medicine"
+      ]
+    }
+  },
+  {
+    "id": "microbiology",
+    "name": "Microbiology",
+    "scientific_lineage": [
+      "Foundational biomedical sciences"
+    ],
+    "body_parts": [],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "research",
+      "mechanisms",
+      "basic science"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Phenomena and Processes"
+      ],
+      "oecd_ford": [
+        "Basic medicine"
+      ]
+    }
+  },
+  {
+    "id": "virology",
+    "name": "Virology",
+    "scientific_lineage": [
+      "Foundational biomedical sciences"
+    ],
+    "body_parts": [],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "research",
+      "mechanisms",
+      "basic science"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Phenomena and Processes"
+      ],
+      "oecd_ford": [
+        "Basic medicine"
+      ]
+    }
+  },
+  {
+    "id": "mycology",
+    "name": "Mycology",
+    "scientific_lineage": [
+      "Foundational biomedical sciences"
+    ],
+    "body_parts": [],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "research",
+      "mechanisms",
+      "basic science"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Phenomena and Processes"
+      ],
+      "oecd_ford": [
+        "Basic medicine"
+      ]
+    }
+  },
+  {
+    "id": "parasitology",
+    "name": "Parasitology",
+    "scientific_lineage": [
+      "Foundational biomedical sciences"
+    ],
+    "body_parts": [],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "research",
+      "mechanisms",
+      "basic science"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Phenomena and Processes"
+      ],
+      "oecd_ford": [
+        "Basic medicine"
+      ]
+    }
+  },
+  {
+    "id": "immunology",
+    "name": "Immunology",
+    "scientific_lineage": [
+      "Foundational biomedical sciences"
+    ],
+    "body_parts": [],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "research",
+      "mechanisms",
+      "basic science"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Phenomena and Processes"
+      ],
+      "oecd_ford": [
+        "Basic medicine"
+      ]
+    }
+  },
+  {
+    "id": "pathology-and-pathophysiology",
+    "name": "Pathology and pathophysiology",
+    "scientific_lineage": [
+      "Foundational biomedical sciences"
+    ],
+    "body_parts": [],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "research",
+      "mechanisms",
+      "basic science"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Phenomena and Processes"
+      ],
+      "oecd_ford": [
+        "Basic medicine"
+      ]
+    }
+  },
+  {
+    "id": "pharmacology",
+    "name": "Pharmacology",
+    "scientific_lineage": [
+      "Foundational biomedical sciences"
+    ],
+    "body_parts": [],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "research",
+      "mechanisms",
+      "basic science"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Phenomena and Processes"
+      ],
+      "oecd_ford": [
+        "Basic medicine"
+      ]
+    }
+  },
+  {
+    "id": "toxicology",
+    "name": "Toxicology",
+    "scientific_lineage": [
+      "Foundational biomedical sciences"
+    ],
+    "body_parts": [],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "research",
+      "mechanisms",
+      "basic science"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Phenomena and Processes"
+      ],
+      "oecd_ford": [
+        "Basic medicine"
+      ]
+    }
+  },
+  {
+    "id": "neuroscience",
+    "name": "Neuroscience",
+    "scientific_lineage": [
+      "Foundational biomedical sciences"
+    ],
+    "body_parts": [],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "research",
+      "mechanisms",
+      "basic science"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Phenomena and Processes"
+      ],
+      "oecd_ford": [
+        "Basic medicine"
+      ]
+    }
+  },
+  {
+    "id": "biophysics-and-biomechanics",
+    "name": "Biophysics and biomechanics",
+    "scientific_lineage": [
+      "Foundational biomedical sciences"
+    ],
+    "body_parts": [],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "research",
+      "mechanisms",
+      "basic science"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Phenomena and Processes"
+      ],
+      "oecd_ford": [
+        "Basic medicine"
+      ]
+    }
+  },
+  {
+    "id": "systems-biology",
+    "name": "Systems biology",
+    "scientific_lineage": [
+      "Foundational biomedical sciences"
+    ],
+    "body_parts": [],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "research",
+      "mechanisms",
+      "basic science"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Phenomena and Processes"
+      ],
+      "oecd_ford": [
+        "Basic medicine"
+      ]
+    }
+  },
+  {
+    "id": "evolutionary-medicine",
+    "name": "Evolutionary medicine",
+    "scientific_lineage": [
+      "Foundational biomedical sciences"
+    ],
+    "body_parts": [],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "research",
+      "mechanisms",
+      "basic science"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Phenomena and Processes"
+      ],
+      "oecd_ford": [
+        "Basic medicine"
+      ]
+    }
+  },
+  {
+    "id": "neurology",
+    "name": "Neurology",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Nervous and behavioral"
+    ],
+    "body_parts": [
+      "brain",
+      "spinal cord",
+      "peripheral nervous system"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [
+      "Child neurology",
+      "Clinical neurophysiology",
+      "Epilepsy",
+      "Neurocritical care",
+      "Neurodevelopmental disabilities",
+      "Neuroendovascular intervention",
+      "Neuromuscular medicine",
+      "Vascular neurology",
+      "Brain-injury medicine",
+      "Sleep medicine"
+    ],
+    "child_disciplines": [
+      "child-neurology",
+      "clinical-neurophysiology",
+      "epilepsy",
+      "neurocritical-care",
+      "neurodevelopmental-disabilities",
+      "neuroendovascular-intervention",
+      "neuromuscular-medicine",
+      "vascular-neurology",
+      "brain-injury-medicine",
+      "sleep-medicine"
+    ],
+    "tags": [
+      "clinical",
+      "nervous system"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Psychiatry and Psychology"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "acgme": [
+        "Neurology"
+      ],
+      "nih_rcdc": [
+        "Neurosciences"
+      ]
+    }
+  },
+  {
+    "id": "neurological-surgery",
+    "name": "Neurological surgery",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Nervous and behavioral"
+    ],
+    "body_parts": [
+      "brain",
+      "spinal cord",
+      "peripheral nervous system"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "nervous system"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Psychiatry and Psychology"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "acgme": [
+        "Neurological Surgery"
+      ],
+      "nih_rcdc": [
+        "Neurosciences"
+      ]
+    }
+  },
+  {
+    "id": "psychiatry",
+    "name": "Psychiatry",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Nervous and behavioral"
+    ],
+    "body_parts": [
+      "brain",
+      "spinal cord",
+      "peripheral nervous system"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "nervous system"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Psychiatry and Psychology"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "acgme": [
+        "Psychiatry"
+      ],
+      "nih_rcdc": [
+        "Neurosciences"
+      ]
+    }
+  },
+  {
+    "id": "neuropsychology",
+    "name": "Neuropsychology",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Nervous and behavioral"
+    ],
+    "body_parts": [
+      "brain",
+      "spinal cord",
+      "peripheral nervous system"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "nervous system"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Psychiatry and Psychology"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "nih_rcdc": [
+        "Neurosciences"
+      ]
+    }
+  },
+  {
+    "id": "neurorehabilitation",
+    "name": "Neurorehabilitation",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Nervous and behavioral"
+    ],
+    "body_parts": [
+      "brain",
+      "spinal cord",
+      "peripheral nervous system"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "nervous system"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Psychiatry and Psychology"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "nih_rcdc": [
+        "Neurosciences"
+      ]
+    }
+  },
+  {
+    "id": "child-neurology",
+    "name": "Child neurology",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Nervous and behavioral"
+    ],
+    "body_parts": [
+      "brain",
+      "spinal cord",
+      "peripheral nervous system"
+    ],
+    "parent_disciplines": [
+      "neurology"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "subspecialty",
+      "nervous system"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Psychiatry and Psychology"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "acgme": [
+        "Neurology"
+      ],
+      "nih_rcdc": [
+        "Neurosciences"
+      ]
+    }
+  },
+  {
+    "id": "clinical-neurophysiology",
+    "name": "Clinical neurophysiology",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Nervous and behavioral"
+    ],
+    "body_parts": [
+      "brain",
+      "spinal cord",
+      "peripheral nervous system"
+    ],
+    "parent_disciplines": [
+      "neurology"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "subspecialty",
+      "nervous system"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Psychiatry and Psychology"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "acgme": [
+        "Neurology"
+      ],
+      "nih_rcdc": [
+        "Neurosciences"
+      ]
+    }
+  },
+  {
+    "id": "epilepsy",
+    "name": "Epilepsy",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Nervous and behavioral"
+    ],
+    "body_parts": [
+      "brain",
+      "spinal cord",
+      "peripheral nervous system"
+    ],
+    "parent_disciplines": [
+      "neurology"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "subspecialty",
+      "nervous system"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Psychiatry and Psychology"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "acgme": [
+        "Neurology"
+      ],
+      "nih_rcdc": [
+        "Neurosciences"
+      ]
+    }
+  },
+  {
+    "id": "neurocritical-care",
+    "name": "Neurocritical care",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Nervous and behavioral"
+    ],
+    "body_parts": [
+      "brain",
+      "spinal cord",
+      "peripheral nervous system"
+    ],
+    "parent_disciplines": [
+      "neurology"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "subspecialty",
+      "nervous system"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Psychiatry and Psychology"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "nih_rcdc": [
+        "Neurosciences"
+      ]
+    }
+  },
+  {
+    "id": "neurodevelopmental-disabilities",
+    "name": "Neurodevelopmental disabilities",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Nervous and behavioral"
+    ],
+    "body_parts": [
+      "brain",
+      "spinal cord",
+      "peripheral nervous system"
+    ],
+    "parent_disciplines": [
+      "neurology"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "subspecialty",
+      "nervous system"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Psychiatry and Psychology"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "nih_rcdc": [
+        "Neurosciences"
+      ]
+    }
+  },
+  {
+    "id": "neuroendovascular-intervention",
+    "name": "Neuroendovascular intervention",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Nervous and behavioral"
+    ],
+    "body_parts": [
+      "brain",
+      "spinal cord",
+      "peripheral nervous system"
+    ],
+    "parent_disciplines": [
+      "neurology"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "subspecialty",
+      "nervous system"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Psychiatry and Psychology"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "nih_rcdc": [
+        "Neurosciences"
+      ]
+    }
+  },
+  {
+    "id": "neuromuscular-medicine",
+    "name": "Neuromuscular medicine",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Nervous and behavioral"
+    ],
+    "body_parts": [
+      "brain",
+      "spinal cord",
+      "peripheral nervous system"
+    ],
+    "parent_disciplines": [
+      "neurology"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "subspecialty",
+      "nervous system"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Psychiatry and Psychology"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "nih_rcdc": [
+        "Neurosciences"
+      ]
+    }
+  },
+  {
+    "id": "vascular-neurology",
+    "name": "Vascular neurology",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Nervous and behavioral"
+    ],
+    "body_parts": [
+      "brain",
+      "spinal cord",
+      "peripheral nervous system"
+    ],
+    "parent_disciplines": [
+      "neurology"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "subspecialty",
+      "nervous system"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Psychiatry and Psychology"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "nih_rcdc": [
+        "Neurosciences"
+      ]
+    }
+  },
+  {
+    "id": "brain-injury-medicine",
+    "name": "Brain-injury medicine",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Nervous and behavioral"
+    ],
+    "body_parts": [
+      "brain",
+      "spinal cord",
+      "peripheral nervous system"
+    ],
+    "parent_disciplines": [
+      "neurology"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "subspecialty",
+      "nervous system"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Psychiatry and Psychology"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "nih_rcdc": [
+        "Neurosciences"
+      ]
+    }
+  },
+  {
+    "id": "sleep-medicine",
+    "name": "Sleep medicine",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Nervous and behavioral"
+    ],
+    "body_parts": [
+      "brain",
+      "respiratory system"
+    ],
+    "parent_disciplines": [
+      "neurology"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "subspecialty",
+      "nervous system",
+      "sleep"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Psychiatry and Psychology"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "nih_rcdc": [
+        "Neurosciences"
+      ]
+    }
+  },
+  {
+    "id": "cardiology",
+    "name": "Cardiology",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Cardiovascular"
+    ],
+    "body_parts": [
+      "heart",
+      "blood vessels"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [
+      "Cardiac surgery"
+    ],
+    "child_disciplines": [
+      "cardiac-surgery"
+    ],
+    "tags": [
+      "clinical",
+      "cardiovascular"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "acgme": [
+        "Internal Medicine"
+      ],
+      "nih_rcdc": [
+        "Cardiovascular research"
+      ]
+    }
+  },
+  {
+    "id": "vascular-medicine",
+    "name": "Vascular medicine",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Cardiovascular"
+    ],
+    "body_parts": [
+      "heart",
+      "blood vessels"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [
+      "Vascular surgery"
+    ],
+    "child_disciplines": [
+      "vascular-surgery"
+    ],
+    "tags": [
+      "clinical",
+      "cardiovascular"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "nih_rcdc": [
+        "Cardiovascular research"
+      ]
+    }
+  },
+  {
+    "id": "cardiac-surgery",
+    "name": "Cardiac surgery",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Cardiovascular"
+    ],
+    "body_parts": [
+      "heart"
+    ],
+    "parent_disciplines": [
+      "cardiology"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "surgical",
+      "cardiovascular"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "acgme": [
+        "Thoracic Surgery"
+      ],
+      "nih_rcdc": [
+        "Cardiovascular research"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "vascular-surgery",
+    "name": "Vascular surgery",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Cardiovascular"
+    ],
+    "body_parts": [
+      "blood vessels"
+    ],
+    "parent_disciplines": [
+      "vascular-medicine"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "surgical",
+      "cardiovascular"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "acgme": [
+        "Surgery"
+      ],
+      "nih_rcdc": [
+        "Cardiovascular research"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "pulmonology",
+    "name": "Pulmonology",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Respiratory"
+    ],
+    "body_parts": [
+      "lungs",
+      "airways",
+      "chest"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "respiratory"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "acgme": [
+        "Internal Medicine"
+      ],
+      "nih_rcdc": [
+        "Lung research"
+      ]
+    }
+  },
+  {
+    "id": "respiratory-physiology",
+    "name": "Respiratory physiology",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Respiratory"
+    ],
+    "body_parts": [
+      "lungs",
+      "airways",
+      "chest"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "respiratory"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "nih_rcdc": [
+        "Lung research"
+      ]
+    }
+  },
+  {
+    "id": "thoracic-surgery",
+    "name": "Thoracic surgery",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Respiratory"
+    ],
+    "body_parts": [
+      "lungs",
+      "airways",
+      "chest"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "respiratory"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "nih_rcdc": [
+        "Lung research"
+      ]
+    }
+  },
+  {
+    "id": "gastroenterology",
+    "name": "Gastroenterology",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Digestive and hepatobiliary"
+    ],
+    "body_parts": [
+      "gastrointestinal tract",
+      "liver",
+      "biliary system"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "digestive system"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "acgme": [
+        "Internal Medicine"
+      ]
+    }
+  },
+  {
+    "id": "hepatology",
+    "name": "Hepatology",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Digestive and hepatobiliary"
+    ],
+    "body_parts": [
+      "gastrointestinal tract",
+      "liver",
+      "biliary system"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "digestive system"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "acgme": [
+        "Internal Medicine"
+      ]
+    }
+  },
+  {
+    "id": "colorectal-surgery",
+    "name": "Colorectal surgery",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Digestive and hepatobiliary"
+    ],
+    "body_parts": [
+      "gastrointestinal tract",
+      "liver",
+      "biliary system"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "digestive system"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "acgme": [
+        "Colon and Rectal Surgery"
+      ]
+    }
+  },
+  {
+    "id": "nephrology",
+    "name": "Nephrology",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Renal and urinary"
+    ],
+    "body_parts": [
+      "kidneys",
+      "urinary tract"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "renal and urinary"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "acgme": [
+        "Internal Medicine"
+      ]
+    }
+  },
+  {
+    "id": "urology",
+    "name": "Urology",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Renal and urinary"
+    ],
+    "body_parts": [
+      "kidneys",
+      "urinary tract"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "renal and urinary"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "acgme": [
+        "Urology"
+      ]
+    }
+  },
+  {
+    "id": "endocrinology",
+    "name": "Endocrinology",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Endocrine and metabolic"
+    ],
+    "body_parts": [
+      "endocrine glands",
+      "pancreas",
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "endocrine",
+      "metabolism"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "acgme": [
+        "Internal Medicine"
+      ]
+    }
+  },
+  {
+    "id": "diabetology",
+    "name": "Diabetology",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Endocrine and metabolic"
+    ],
+    "body_parts": [
+      "endocrine glands",
+      "pancreas",
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "endocrine",
+      "metabolism"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ]
+    }
+  },
+  {
+    "id": "metabolic-medicine",
+    "name": "Metabolic medicine",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Endocrine and metabolic"
+    ],
+    "body_parts": [
+      "endocrine glands",
+      "pancreas",
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "endocrine",
+      "metabolism"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ]
+    }
+  },
+  {
+    "id": "obesity-medicine",
+    "name": "Obesity medicine",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Endocrine and metabolic"
+    ],
+    "body_parts": [
+      "endocrine glands",
+      "pancreas",
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "endocrine",
+      "metabolism"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ]
+    }
+  },
+  {
+    "id": "hematology",
+    "name": "Hematology",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Blood and lymphatic"
+    ],
+    "body_parts": [
+      "blood",
+      "bone marrow",
+      "lymphatic system"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "blood and lymphatic"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "acgme": [
+        "Internal Medicine"
+      ]
+    }
+  },
+  {
+    "id": "transfusion-medicine",
+    "name": "Transfusion medicine",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Blood and lymphatic"
+    ],
+    "body_parts": [
+      "blood",
+      "bone marrow",
+      "lymphatic system"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "blood and lymphatic"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ]
+    }
+  },
+  {
+    "id": "allergy-and-immunology",
+    "name": "Allergy and immunology",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Immune and connective tissue"
+    ],
+    "body_parts": [
+      "immune system",
+      "connective tissue",
+      "joints"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "immune system"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "acgme": [
+        "Allergy and Immunology"
+      ],
+      "nih_rcdc": [
+        "Autoimmune and inflammatory disease"
+      ]
+    }
+  },
+  {
+    "id": "rheumatology",
+    "name": "Rheumatology",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Immune and connective tissue"
+    ],
+    "body_parts": [
+      "immune system",
+      "connective tissue",
+      "joints"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "immune system"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "acgme": [
+        "Internal Medicine"
+      ],
+      "nih_rcdc": [
+        "Autoimmune and inflammatory disease"
+      ]
+    }
+  },
+  {
+    "id": "orthopedics",
+    "name": "Orthopedics",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Musculoskeletal"
+    ],
+    "body_parts": [
+      "bones",
+      "joints",
+      "muscles",
+      "connective tissue"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "musculoskeletal",
+      "functioning"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "acgme": [
+        "Orthopaedic Surgery"
+      ],
+      "who_fic": [
+        "ICF — functioning, disability and health"
+      ]
+    }
+  },
+  {
+    "id": "sports-medicine",
+    "name": "Sports medicine",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Musculoskeletal"
+    ],
+    "body_parts": [
+      "bones",
+      "joints",
+      "muscles",
+      "connective tissue"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "musculoskeletal",
+      "functioning"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "who_fic": [
+        "ICF — functioning, disability and health"
+      ]
+    }
+  },
+  {
+    "id": "physical-medicine-and-rehabilitation",
+    "name": "Physical medicine and rehabilitation",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Musculoskeletal"
+    ],
+    "body_parts": [
+      "bones",
+      "joints",
+      "muscles",
+      "connective tissue"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "musculoskeletal",
+      "functioning"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "acgme": [
+        "Physical Medicine and Rehabilitation"
+      ],
+      "who_fic": [
+        "ICF — functioning, disability and health"
+      ]
+    }
+  },
+  {
+    "id": "dermatology",
+    "name": "Dermatology",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Skin"
+    ],
+    "body_parts": [
+      "skin",
+      "hair",
+      "nails"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "integumentary system"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "acgme": [
+        "Dermatology"
+      ]
+    }
+  },
+  {
+    "id": "ophthalmology",
+    "name": "Ophthalmology",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Eye and visual system"
+    ],
+    "body_parts": [
+      "eyes",
+      "visual system"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "sensory system"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "acgme": [
+        "Ophthalmology"
+      ]
+    }
+  },
+  {
+    "id": "vision-science",
+    "name": "Vision science",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Eye and visual system"
+    ],
+    "body_parts": [
+      "eyes",
+      "visual system"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "sensory system"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ]
+    }
+  },
+  {
+    "id": "otolaryngology",
+    "name": "Otolaryngology",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Ear, nose, throat, and head and neck"
+    ],
+    "body_parts": [
+      "ear",
+      "nose",
+      "throat",
+      "head and neck"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "sensory system"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "acgme": [
+        "Otolaryngology – Head and Neck Surgery"
+      ]
+    }
+  },
+  {
+    "id": "audiology",
+    "name": "Audiology",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Ear, nose, throat, and head and neck"
+    ],
+    "body_parts": [
+      "ear",
+      "nose",
+      "throat",
+      "head and neck"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "sensory system"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ]
+    }
+  },
+  {
+    "id": "vestibular-medicine",
+    "name": "Vestibular medicine",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Ear, nose, throat, and head and neck"
+    ],
+    "body_parts": [
+      "ear",
+      "nose",
+      "throat",
+      "head and neck"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "sensory system"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ]
+    }
+  },
+  {
+    "id": "obstetrics-and-gynecology",
+    "name": "Obstetrics and gynecology",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Reproductive and maternal"
+    ],
+    "body_parts": [
+      "reproductive system",
+      "uterus",
+      "ovaries",
+      "placenta"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "reproduction",
+      "maternal health"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "acgme": [
+        "Obstetrics and Gynecology"
+      ]
+    }
+  },
+  {
+    "id": "reproductive-endocrinology",
+    "name": "Reproductive endocrinology",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Reproductive and maternal"
+    ],
+    "body_parts": [
+      "reproductive system",
+      "uterus",
+      "ovaries",
+      "placenta"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "reproduction",
+      "maternal health"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "acgme": [
+        "Obstetrics and Gynecology"
+      ]
+    }
+  },
+  {
+    "id": "maternal-fetal-medicine",
+    "name": "Maternal-fetal medicine",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Reproductive and maternal"
+    ],
+    "body_parts": [
+      "reproductive system",
+      "uterus",
+      "ovaries",
+      "placenta"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "reproduction",
+      "maternal health"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "acgme": [
+        "Obstetrics and Gynecology"
+      ]
+    }
+  },
+  {
+    "id": "dentistry",
+    "name": "Dentistry",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Oral and craniofacial"
+    ],
+    "body_parts": [
+      "mouth",
+      "teeth",
+      "jaw",
+      "face"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "oral health"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ]
+    }
+  },
+  {
+    "id": "oral-surgery",
+    "name": "Oral surgery",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Oral and craniofacial"
+    ],
+    "body_parts": [
+      "mouth",
+      "teeth",
+      "jaw",
+      "face"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "oral health"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ]
+    }
+  },
+  {
+    "id": "maxillofacial-medicine",
+    "name": "Maxillofacial medicine",
+    "scientific_lineage": [
+      "Organ- and system-based medical sciences",
+      "Oral and craniofacial"
+    ],
+    "body_parts": [
+      "mouth",
+      "teeth",
+      "jaw",
+      "face"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "oral health"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ]
+    }
+  },
+  {
+    "id": "oncology",
+    "name": "Oncology",
+    "scientific_lineage": [
+      "Cross-organ disease and mechanism domains",
+      "Cancer"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [
+      "Medical oncology",
+      "Surgical oncology",
+      "Radiation oncology",
+      "Neuro-oncology",
+      "Hematologic oncology",
+      "Thoracic oncology",
+      "Pediatric oncology",
+      "Molecular oncology",
+      "Cancer immunology",
+      "Cancer genomics",
+      "Cancer epidemiology"
+    ],
+    "child_disciplines": [
+      "medical-oncology",
+      "surgical-oncology",
+      "radiation-oncology",
+      "neuro-oncology",
+      "hematologic-oncology",
+      "thoracic-oncology",
+      "pediatric-oncology",
+      "molecular-oncology",
+      "cancer-immunology",
+      "cancer-genomics",
+      "cancer-epidemiology"
+    ],
+    "tags": [
+      "disease domain",
+      "research",
+      "cancer",
+      "neoplasia"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Diseases"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "nih_rcdc": [
+        "Cancer"
+      ],
+      "who_fic": [
+        "ICD — diseases and related health problems"
+      ]
+    }
+  },
+  {
+    "id": "cancer-biology",
+    "name": "Cancer biology",
+    "scientific_lineage": [
+      "Cross-organ disease and mechanism domains",
+      "Cancer"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "disease domain",
+      "research",
+      "cancer",
+      "neoplasia"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Diseases"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "nih_rcdc": [
+        "Cancer"
+      ],
+      "who_fic": [
+        "ICD — diseases and related health problems"
+      ]
+    }
+  },
+  {
+    "id": "medical-oncology",
+    "name": "Medical oncology",
+    "scientific_lineage": [
+      "Cross-organ disease and mechanism domains",
+      "Cancer"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [
+      "oncology"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "therapeutic",
+      "cancer",
+      "neoplasia"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "acgme": [
+        "Internal Medicine"
+      ],
+      "nih_rcdc": [
+        "Cancer"
+      ],
+      "who_fic": [
+        "ICD — diseases and related health problems",
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "surgical-oncology",
+    "name": "Surgical oncology",
+    "scientific_lineage": [
+      "Cross-organ disease and mechanism domains",
+      "Cancer"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [
+      "oncology"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "therapeutic",
+      "cancer",
+      "neoplasia"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "nih_rcdc": [
+        "Cancer"
+      ],
+      "who_fic": [
+        "ICD — diseases and related health problems",
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "radiation-oncology",
+    "name": "Radiation oncology",
+    "scientific_lineage": [
+      "Cross-organ disease and mechanism domains",
+      "Cancer"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [
+      "oncology"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "therapeutic",
+      "cancer",
+      "neoplasia"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "acgme": [
+        "Radiation Oncology"
+      ],
+      "nih_rcdc": [
+        "Cancer"
+      ],
+      "who_fic": [
+        "ICD — diseases and related health problems",
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "neuro-oncology",
+    "name": "Neuro-oncology",
+    "scientific_lineage": [
+      "Cross-organ disease and mechanism domains",
+      "Cancer"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [
+      "oncology"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "disease domain",
+      "subspecialty",
+      "cancer",
+      "neoplasia"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Diseases"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "nih_rcdc": [
+        "Cancer"
+      ],
+      "who_fic": [
+        "ICD — diseases and related health problems"
+      ]
+    }
+  },
+  {
+    "id": "hematologic-oncology",
+    "name": "Hematologic oncology",
+    "scientific_lineage": [
+      "Cross-organ disease and mechanism domains",
+      "Cancer"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [
+      "oncology"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "disease domain",
+      "subspecialty",
+      "cancer",
+      "neoplasia"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Diseases"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "nih_rcdc": [
+        "Cancer"
+      ],
+      "who_fic": [
+        "ICD — diseases and related health problems"
+      ]
+    }
+  },
+  {
+    "id": "thoracic-oncology",
+    "name": "Thoracic oncology",
+    "scientific_lineage": [
+      "Cross-organ disease and mechanism domains",
+      "Cancer"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [
+      "oncology"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "disease domain",
+      "subspecialty",
+      "cancer",
+      "neoplasia"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Diseases"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "nih_rcdc": [
+        "Cancer"
+      ],
+      "who_fic": [
+        "ICD — diseases and related health problems"
+      ]
+    }
+  },
+  {
+    "id": "pediatric-oncology",
+    "name": "Pediatric oncology",
+    "scientific_lineage": [
+      "Cross-organ disease and mechanism domains",
+      "Cancer"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [
+      "oncology"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "disease domain",
+      "subspecialty",
+      "cancer",
+      "neoplasia"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Diseases"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "nih_rcdc": [
+        "Cancer"
+      ],
+      "who_fic": [
+        "ICD — diseases and related health problems"
+      ]
+    }
+  },
+  {
+    "id": "molecular-oncology",
+    "name": "Molecular oncology",
+    "scientific_lineage": [
+      "Cross-organ disease and mechanism domains",
+      "Cancer"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [
+      "oncology"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "disease domain",
+      "subspecialty",
+      "cancer",
+      "neoplasia"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Diseases"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "nih_rcdc": [
+        "Cancer"
+      ],
+      "who_fic": [
+        "ICD — diseases and related health problems"
+      ]
+    }
+  },
+  {
+    "id": "cancer-immunology",
+    "name": "Cancer immunology",
+    "scientific_lineage": [
+      "Cross-organ disease and mechanism domains",
+      "Cancer"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [
+      "oncology"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "disease domain",
+      "subspecialty",
+      "cancer",
+      "neoplasia"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Diseases"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "nih_rcdc": [
+        "Cancer"
+      ],
+      "who_fic": [
+        "ICD — diseases and related health problems"
+      ]
+    }
+  },
+  {
+    "id": "cancer-genomics",
+    "name": "Cancer genomics",
+    "scientific_lineage": [
+      "Cross-organ disease and mechanism domains",
+      "Cancer"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [
+      "oncology"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "disease domain",
+      "subspecialty",
+      "cancer",
+      "neoplasia"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Diseases"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "nih_rcdc": [
+        "Cancer"
+      ],
+      "who_fic": [
+        "ICD — diseases and related health problems"
+      ]
+    }
+  },
+  {
+    "id": "cancer-epidemiology",
+    "name": "Cancer epidemiology",
+    "scientific_lineage": [
+      "Cross-organ disease and mechanism domains",
+      "Cancer"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [
+      "oncology"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "disease domain",
+      "subspecialty",
+      "cancer",
+      "neoplasia"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Diseases"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "nih_rcdc": [
+        "Cancer"
+      ],
+      "who_fic": [
+        "ICD — diseases and related health problems"
+      ]
+    }
+  },
+  {
+    "id": "infectious-diseases",
+    "name": "Infectious diseases",
+    "scientific_lineage": [
+      "Cross-organ disease and mechanism domains"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "disease domain",
+      "research",
+      "cross-organ"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Diseases"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "nih_rcdc": [
+        "Research, condition, and disease category"
+      ],
+      "who_fic": [
+        "ICD — diseases and related health problems"
+      ]
+    }
+  },
+  {
+    "id": "genetic-and-rare-diseases",
+    "name": "Genetic and rare diseases",
+    "scientific_lineage": [
+      "Cross-organ disease and mechanism domains"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "disease domain",
+      "research",
+      "cross-organ"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Diseases"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "nih_rcdc": [
+        "Research, condition, and disease category"
+      ],
+      "who_fic": [
+        "ICD — diseases and related health problems"
+      ]
+    }
+  },
+  {
+    "id": "autoimmune-and-inflammatory-diseases",
+    "name": "Autoimmune and inflammatory diseases",
+    "scientific_lineage": [
+      "Cross-organ disease and mechanism domains"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "disease domain",
+      "research",
+      "cross-organ"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Diseases"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "nih_rcdc": [
+        "Research, condition, and disease category"
+      ],
+      "who_fic": [
+        "ICD — diseases and related health problems"
+      ]
+    }
+  },
+  {
+    "id": "metabolic-diseases",
+    "name": "Metabolic diseases",
+    "scientific_lineage": [
+      "Cross-organ disease and mechanism domains"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "disease domain",
+      "research",
+      "cross-organ"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Diseases"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "nih_rcdc": [
+        "Research, condition, and disease category"
+      ],
+      "who_fic": [
+        "ICD — diseases and related health problems"
+      ]
+    }
+  },
+  {
+    "id": "vascular-and-thrombotic-diseases",
+    "name": "Vascular and thrombotic diseases",
+    "scientific_lineage": [
+      "Cross-organ disease and mechanism domains"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "disease domain",
+      "research",
+      "cross-organ"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Diseases"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "nih_rcdc": [
+        "Research, condition, and disease category"
+      ],
+      "who_fic": [
+        "ICD — diseases and related health problems"
+      ]
+    }
+  },
+  {
+    "id": "degenerative-diseases",
+    "name": "Degenerative diseases",
+    "scientific_lineage": [
+      "Cross-organ disease and mechanism domains"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "disease domain",
+      "research",
+      "cross-organ"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Diseases"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "nih_rcdc": [
+        "Research, condition, and disease category"
+      ],
+      "who_fic": [
+        "ICD — diseases and related health problems"
+      ]
+    }
+  },
+  {
+    "id": "congenital-and-developmental-disorders",
+    "name": "Congenital and developmental disorders",
+    "scientific_lineage": [
+      "Cross-organ disease and mechanism domains"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "disease domain",
+      "research",
+      "cross-organ"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Diseases"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "nih_rcdc": [
+        "Research, condition, and disease category"
+      ],
+      "who_fic": [
+        "ICD — diseases and related health problems"
+      ]
+    }
+  },
+  {
+    "id": "trauma-and-injury-science",
+    "name": "Trauma and injury science",
+    "scientific_lineage": [
+      "Cross-organ disease and mechanism domains"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "disease domain",
+      "research",
+      "cross-organ"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Diseases"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "nih_rcdc": [
+        "Research, condition, and disease category"
+      ],
+      "who_fic": [
+        "ICD — diseases and related health problems"
+      ]
+    }
+  },
+  {
+    "id": "environmental-and-occupational-disease",
+    "name": "Environmental and occupational disease",
+    "scientific_lineage": [
+      "Cross-organ disease and mechanism domains"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "disease domain",
+      "research",
+      "cross-organ"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Diseases"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "nih_rcdc": [
+        "Research, condition, and disease category"
+      ],
+      "who_fic": [
+        "ICD — diseases and related health problems"
+      ]
+    }
+  },
+  {
+    "id": "toxicological-disease",
+    "name": "Toxicological disease",
+    "scientific_lineage": [
+      "Cross-organ disease and mechanism domains"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "disease domain",
+      "research",
+      "cross-organ"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Diseases"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "nih_rcdc": [
+        "Research, condition, and disease category"
+      ],
+      "who_fic": [
+        "ICD — diseases and related health problems"
+      ]
+    }
+  },
+  {
+    "id": "pain-medicine",
+    "name": "Pain medicine",
+    "scientific_lineage": [
+      "Cross-organ disease and mechanism domains"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "disease domain",
+      "research",
+      "cross-organ"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Diseases"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "nih_rcdc": [
+        "Research, condition, and disease category"
+      ],
+      "who_fic": [
+        "ICD — diseases and related health problems"
+      ]
+    }
+  },
+  {
+    "id": "aging-frailty-and-geroscience",
+    "name": "Aging, frailty, and geroscience",
+    "scientific_lineage": [
+      "Cross-organ disease and mechanism domains"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "disease domain",
+      "research",
+      "cross-organ"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Diseases"
+      ],
+      "oecd_ford": [
+        "Clinical medicine"
+      ],
+      "nih_rcdc": [
+        "Research, condition, and disease category"
+      ],
+      "who_fic": [
+        "ICD — diseases and related health problems"
+      ]
+    }
+  },
+  {
+    "id": "radiology-and-biomedical-imaging",
+    "name": "Radiology and biomedical imaging",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Imaging"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [
+      "Diagnostic radiology",
+      "Neuroradiology",
+      "Abdominal radiology",
+      "Musculoskeletal radiology",
+      "Pediatric radiology",
+      "Nuclear radiology",
+      "Interventional radiology",
+      "Breast radiology",
+      "Thoracic radiology",
+      "Imaging informatics",
+      "Radiomics",
+      "Computational imaging",
+      "Radiogenomics",
+      "X-ray imaging",
+      "Computed tomography",
+      "Magnetic resonance imaging",
+      "Ultrasound imaging",
+      "Positron emission tomography",
+      "Single-photon emission computed tomography"
+    ],
+    "child_disciplines": [
+      "diagnostic-radiology",
+      "neuroradiology",
+      "abdominal-radiology",
+      "musculoskeletal-radiology",
+      "pediatric-radiology",
+      "nuclear-radiology",
+      "interventional-radiology",
+      "breast-radiology",
+      "thoracic-radiology",
+      "imaging-informatics",
+      "radiomics",
+      "computational-imaging",
+      "radiogenomics",
+      "x-ray-imaging",
+      "computed-tomography",
+      "magnetic-resonance-imaging",
+      "ultrasound-imaging",
+      "positron-emission-tomography",
+      "single-photon-emission-computed-tomography"
+    ],
+    "tags": [
+      "diagnostic",
+      "technology",
+      "imaging",
+      "measurement"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "nuclear-medicine",
+    "name": "Nuclear medicine",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Imaging"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "diagnostic",
+      "therapeutic",
+      "technology",
+      "imaging",
+      "measurement",
+      "radiopharmaceuticals"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "acgme": [
+        "Nuclear Medicine"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "diagnostic-radiology",
+    "name": "Diagnostic radiology",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Imaging"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [
+      "radiology-and-biomedical-imaging"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "diagnostic",
+      "technology",
+      "subspecialty",
+      "imaging",
+      "measurement"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "acgme": [
+        "Radiology"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "neuroradiology",
+    "name": "Neuroradiology",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Imaging"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [
+      "radiology-and-biomedical-imaging"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "diagnostic",
+      "technology",
+      "subspecialty",
+      "imaging",
+      "measurement"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "acgme": [
+        "Radiology"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "abdominal-radiology",
+    "name": "Abdominal radiology",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Imaging"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [
+      "radiology-and-biomedical-imaging"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "diagnostic",
+      "technology",
+      "subspecialty",
+      "imaging",
+      "measurement"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "musculoskeletal-radiology",
+    "name": "Musculoskeletal radiology",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Imaging"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [
+      "radiology-and-biomedical-imaging"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "diagnostic",
+      "technology",
+      "subspecialty",
+      "imaging",
+      "measurement"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "pediatric-radiology",
+    "name": "Pediatric radiology",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Imaging"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [
+      "radiology-and-biomedical-imaging"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "diagnostic",
+      "technology",
+      "subspecialty",
+      "imaging",
+      "measurement"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "acgme": [
+        "Radiology"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "nuclear-radiology",
+    "name": "Nuclear radiology",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Imaging"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [
+      "radiology-and-biomedical-imaging"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "diagnostic",
+      "technology",
+      "subspecialty",
+      "imaging",
+      "measurement"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "acgme": [
+        "Radiology"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "interventional-radiology",
+    "name": "Interventional radiology",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Imaging"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [
+      "radiology-and-biomedical-imaging"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "diagnostic",
+      "technology",
+      "subspecialty",
+      "imaging",
+      "measurement"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "acgme": [
+        "Radiology"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "breast-radiology",
+    "name": "Breast radiology",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Imaging"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [
+      "radiology-and-biomedical-imaging"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "diagnostic",
+      "technology",
+      "subspecialty",
+      "imaging",
+      "measurement"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "thoracic-radiology",
+    "name": "Thoracic radiology",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Imaging"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [
+      "radiology-and-biomedical-imaging"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "diagnostic",
+      "technology",
+      "subspecialty",
+      "imaging",
+      "measurement"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "imaging-informatics",
+    "name": "Imaging informatics",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Imaging"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [
+      "radiology-and-biomedical-imaging"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "diagnostic",
+      "technology",
+      "subspecialty",
+      "imaging",
+      "measurement"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "radiomics",
+    "name": "Radiomics",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Imaging"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [
+      "radiology-and-biomedical-imaging"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "diagnostic",
+      "technology",
+      "subspecialty",
+      "imaging",
+      "measurement"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "computational-imaging",
+    "name": "Computational imaging",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Imaging"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [
+      "radiology-and-biomedical-imaging"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "diagnostic",
+      "technology",
+      "subspecialty",
+      "imaging",
+      "measurement"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "radiogenomics",
+    "name": "Radiogenomics",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Imaging"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [
+      "radiology-and-biomedical-imaging"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "diagnostic",
+      "technology",
+      "subspecialty",
+      "imaging",
+      "measurement"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "x-ray-imaging",
+    "name": "X-ray imaging",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Imaging technologies"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [
+      "radiology-and-biomedical-imaging"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "diagnostic",
+      "technology",
+      "imaging modality",
+      "measurement"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "computed-tomography",
+    "name": "Computed tomography",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Imaging technologies"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [
+      "radiology-and-biomedical-imaging"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "diagnostic",
+      "technology",
+      "imaging modality",
+      "measurement"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "magnetic-resonance-imaging",
+    "name": "Magnetic resonance imaging",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Imaging technologies"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [
+      "radiology-and-biomedical-imaging"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "diagnostic",
+      "technology",
+      "imaging modality",
+      "measurement"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "ultrasound-imaging",
+    "name": "Ultrasound imaging",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Imaging technologies"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [
+      "radiology-and-biomedical-imaging"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "diagnostic",
+      "technology",
+      "imaging modality",
+      "measurement"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "positron-emission-tomography",
+    "name": "Positron emission tomography",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Imaging technologies"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [
+      "radiology-and-biomedical-imaging"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "diagnostic",
+      "technology",
+      "imaging modality",
+      "measurement"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "single-photon-emission-computed-tomography",
+    "name": "Single-photon emission computed tomography",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Imaging technologies"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [
+      "radiology-and-biomedical-imaging"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "diagnostic",
+      "technology",
+      "imaging modality",
+      "measurement"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "pathology",
+    "name": "Pathology",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Pathology"
+    ],
+    "body_parts": [
+      "whole body",
+      "tissue",
+      "cells"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [
+      "Anatomic pathology",
+      "Clinical pathology",
+      "Molecular pathology",
+      "Neuropathology",
+      "Hematopathology",
+      "Cytopathology",
+      "Forensic pathology"
+    ],
+    "child_disciplines": [
+      "anatomic-pathology",
+      "clinical-pathology",
+      "molecular-pathology",
+      "neuropathology",
+      "hematopathology",
+      "cytopathology",
+      "forensic-pathology"
+    ],
+    "tags": [
+      "diagnostic",
+      "laboratory",
+      "pathology",
+      "measurement"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "acgme": [
+        "Pathology"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "anatomic-pathology",
+    "name": "Anatomic pathology",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Pathology"
+    ],
+    "body_parts": [
+      "whole body",
+      "tissue",
+      "cells"
+    ],
+    "parent_disciplines": [
+      "pathology"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "diagnostic",
+      "laboratory",
+      "subspecialty",
+      "pathology",
+      "measurement"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "acgme": [
+        "Pathology"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "clinical-pathology",
+    "name": "Clinical pathology",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Pathology"
+    ],
+    "body_parts": [
+      "whole body",
+      "tissue",
+      "cells"
+    ],
+    "parent_disciplines": [
+      "pathology"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "diagnostic",
+      "laboratory",
+      "subspecialty",
+      "pathology",
+      "measurement"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "acgme": [
+        "Pathology"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "molecular-pathology",
+    "name": "Molecular pathology",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Pathology"
+    ],
+    "body_parts": [
+      "whole body",
+      "tissue",
+      "cells"
+    ],
+    "parent_disciplines": [
+      "pathology"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "diagnostic",
+      "laboratory",
+      "subspecialty",
+      "pathology",
+      "measurement"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "acgme": [
+        "Pathology"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "neuropathology",
+    "name": "Neuropathology",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Pathology"
+    ],
+    "body_parts": [
+      "whole body",
+      "tissue",
+      "cells"
+    ],
+    "parent_disciplines": [
+      "pathology"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "diagnostic",
+      "laboratory",
+      "subspecialty",
+      "pathology",
+      "measurement"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "acgme": [
+        "Pathology"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "hematopathology",
+    "name": "Hematopathology",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Pathology"
+    ],
+    "body_parts": [
+      "whole body",
+      "tissue",
+      "cells"
+    ],
+    "parent_disciplines": [
+      "pathology"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "diagnostic",
+      "laboratory",
+      "subspecialty",
+      "pathology",
+      "measurement"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "acgme": [
+        "Pathology"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "cytopathology",
+    "name": "Cytopathology",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Pathology"
+    ],
+    "body_parts": [
+      "whole body",
+      "tissue",
+      "cells"
+    ],
+    "parent_disciplines": [
+      "pathology"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "diagnostic",
+      "laboratory",
+      "subspecialty",
+      "pathology",
+      "measurement"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "acgme": [
+        "Pathology"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "forensic-pathology",
+    "name": "Forensic pathology",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Pathology"
+    ],
+    "body_parts": [
+      "whole body",
+      "tissue",
+      "cells"
+    ],
+    "parent_disciplines": [
+      "pathology"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "diagnostic",
+      "laboratory",
+      "subspecialty",
+      "pathology",
+      "measurement"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "laboratory-medicine",
+    "name": "Laboratory medicine",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Laboratory and physiological measurement"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "diagnostic",
+      "laboratory",
+      "measurement"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "molecular-diagnostics",
+    "name": "Molecular diagnostics",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Laboratory and physiological measurement"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "diagnostic",
+      "laboratory",
+      "measurement"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "clinical-chemistry",
+    "name": "Clinical chemistry",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Laboratory and physiological measurement"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "diagnostic",
+      "laboratory",
+      "measurement"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "microbiological-diagnostics",
+    "name": "Microbiological diagnostics",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Laboratory and physiological measurement"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "diagnostic",
+      "laboratory",
+      "measurement"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "electrodiagnostic-medicine",
+    "name": "Electrodiagnostic medicine",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Laboratory and physiological measurement"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "diagnostic",
+      "laboratory",
+      "measurement"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "biomarker-science",
+    "name": "Biomarker science",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Laboratory and physiological measurement"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "diagnostic",
+      "laboratory",
+      "measurement"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "physiological-monitoring",
+    "name": "Physiological monitoring",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Laboratory and physiological measurement"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "diagnostic",
+      "laboratory",
+      "measurement"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "medical-physics",
+    "name": "Medical physics",
+    "scientific_lineage": [
+      "Diagnostic and measurement sciences",
+      "Laboratory and physiological measurement"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "diagnostic",
+      "laboratory",
+      "measurement"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "surgery-and-surgical-sciences",
+    "name": "Surgery and surgical sciences",
+    "scientific_lineage": [
+      "Therapeutic and interventional sciences"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "therapeutic",
+      "intervention",
+      "treatment"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "anesthesiology",
+    "name": "Anesthesiology",
+    "scientific_lineage": [
+      "Therapeutic and interventional sciences"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "therapeutic",
+      "intervention",
+      "treatment"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "acgme": [
+        "Anesthesiology"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "critical-care-medicine",
+    "name": "Critical care medicine",
+    "scientific_lineage": [
+      "Therapeutic and interventional sciences"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "therapeutic",
+      "intervention",
+      "treatment"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "pharmacotherapy-and-clinical-pharmacology",
+    "name": "Pharmacotherapy and clinical pharmacology",
+    "scientific_lineage": [
+      "Therapeutic and interventional sciences"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "therapeutic",
+      "intervention",
+      "treatment"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "immunotherapy",
+    "name": "Immunotherapy",
+    "scientific_lineage": [
+      "Therapeutic and interventional sciences"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "therapeutic",
+      "intervention",
+      "treatment"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "transplantation-medicine",
+    "name": "Transplantation medicine",
+    "scientific_lineage": [
+      "Therapeutic and interventional sciences"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "therapeutic",
+      "intervention",
+      "treatment"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "regenerative-medicine",
+    "name": "Regenerative medicine",
+    "scientific_lineage": [
+      "Therapeutic and interventional sciences"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "therapeutic",
+      "intervention",
+      "treatment"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "cell-therapy",
+    "name": "Cell therapy",
+    "scientific_lineage": [
+      "Therapeutic and interventional sciences"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "therapeutic",
+      "intervention",
+      "treatment"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "gene-therapy-and-genome-editing",
+    "name": "Gene therapy and genome editing",
+    "scientific_lineage": [
+      "Therapeutic and interventional sciences"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "therapeutic",
+      "intervention",
+      "treatment"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "rehabilitation-science",
+    "name": "Rehabilitation science",
+    "scientific_lineage": [
+      "Therapeutic and interventional sciences"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "therapeutic",
+      "intervention",
+      "treatment"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions",
+        "ICF — functioning, disability and health"
+      ]
+    }
+  },
+  {
+    "id": "physical-therapy",
+    "name": "Physical therapy",
+    "scientific_lineage": [
+      "Therapeutic and interventional sciences"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "therapeutic",
+      "intervention",
+      "treatment"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions",
+        "ICF — functioning, disability and health"
+      ]
+    }
+  },
+  {
+    "id": "occupational-therapy",
+    "name": "Occupational therapy",
+    "scientific_lineage": [
+      "Therapeutic and interventional sciences"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "therapeutic",
+      "intervention",
+      "treatment"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions",
+        "ICF — functioning, disability and health"
+      ]
+    }
+  },
+  {
+    "id": "palliative-and-hospice-medicine",
+    "name": "Palliative and hospice medicine",
+    "scientific_lineage": [
+      "Therapeutic and interventional sciences"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "therapeutic",
+      "intervention",
+      "treatment"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "medical-device-therapeutics",
+    "name": "Medical-device therapeutics",
+    "scientific_lineage": [
+      "Therapeutic and interventional sciences"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "therapeutic",
+      "intervention",
+      "treatment"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "behavioral-and-psychotherapeutic-interventions",
+    "name": "Behavioral and psychotherapeutic interventions",
+    "scientific_lineage": [
+      "Therapeutic and interventional sciences"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "therapeutic",
+      "intervention",
+      "treatment"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Analytical, Diagnostic and Therapeutic Techniques, and Equipment"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "who_fic": [
+        "ICHI — health interventions"
+      ]
+    }
+  },
+  {
+    "id": "genomics",
+    "name": "Genomics",
+    "scientific_lineage": [
+      "Omics, computational, and engineering sciences",
+      "Omics"
+    ],
+    "body_parts": [
+      "whole body",
+      "cells",
+      "molecules"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "computational",
+      "laboratory",
+      "omics",
+      "precision medicine"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Information Science"
+      ],
+      "oecd_ford": [
+        "Health biotechnology"
+      ],
+      "nih_rcdc": [
+        "Genetics and genomics"
+      ]
+    }
+  },
+  {
+    "id": "epigenomics",
+    "name": "Epigenomics",
+    "scientific_lineage": [
+      "Omics, computational, and engineering sciences",
+      "Omics"
+    ],
+    "body_parts": [
+      "whole body",
+      "cells",
+      "molecules"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "computational",
+      "laboratory",
+      "omics",
+      "precision medicine"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Information Science"
+      ],
+      "oecd_ford": [
+        "Health biotechnology"
+      ],
+      "nih_rcdc": [
+        "Genetics and genomics"
+      ]
+    }
+  },
+  {
+    "id": "transcriptomics",
+    "name": "Transcriptomics",
+    "scientific_lineage": [
+      "Omics, computational, and engineering sciences",
+      "Omics"
+    ],
+    "body_parts": [
+      "whole body",
+      "cells",
+      "molecules"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "computational",
+      "laboratory",
+      "omics",
+      "precision medicine"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Information Science"
+      ],
+      "oecd_ford": [
+        "Health biotechnology"
+      ],
+      "nih_rcdc": [
+        "Genetics and genomics"
+      ]
+    }
+  },
+  {
+    "id": "proteomics",
+    "name": "Proteomics",
+    "scientific_lineage": [
+      "Omics, computational, and engineering sciences",
+      "Omics"
+    ],
+    "body_parts": [
+      "whole body",
+      "cells",
+      "molecules"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "computational",
+      "laboratory",
+      "omics",
+      "precision medicine"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Information Science"
+      ],
+      "oecd_ford": [
+        "Health biotechnology"
+      ],
+      "nih_rcdc": [
+        "Genetics and genomics"
+      ]
+    }
+  },
+  {
+    "id": "metabolomics",
+    "name": "Metabolomics",
+    "scientific_lineage": [
+      "Omics, computational, and engineering sciences",
+      "Omics"
+    ],
+    "body_parts": [
+      "whole body",
+      "cells",
+      "molecules"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "computational",
+      "laboratory",
+      "omics",
+      "precision medicine"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Information Science"
+      ],
+      "oecd_ford": [
+        "Health biotechnology"
+      ],
+      "nih_rcdc": [
+        "Genetics and genomics"
+      ]
+    }
+  },
+  {
+    "id": "lipidomics",
+    "name": "Lipidomics",
+    "scientific_lineage": [
+      "Omics, computational, and engineering sciences",
+      "Omics"
+    ],
+    "body_parts": [
+      "whole body",
+      "cells",
+      "molecules"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "computational",
+      "laboratory",
+      "omics",
+      "precision medicine"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Information Science"
+      ],
+      "oecd_ford": [
+        "Health biotechnology"
+      ],
+      "nih_rcdc": [
+        "Genetics and genomics"
+      ]
+    }
+  },
+  {
+    "id": "glycomics",
+    "name": "Glycomics",
+    "scientific_lineage": [
+      "Omics, computational, and engineering sciences",
+      "Omics"
+    ],
+    "body_parts": [
+      "whole body",
+      "cells",
+      "molecules"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "computational",
+      "laboratory",
+      "omics",
+      "precision medicine"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Information Science"
+      ],
+      "oecd_ford": [
+        "Health biotechnology"
+      ],
+      "nih_rcdc": [
+        "Genetics and genomics"
+      ]
+    }
+  },
+  {
+    "id": "microbiomics",
+    "name": "Microbiomics",
+    "scientific_lineage": [
+      "Omics, computational, and engineering sciences",
+      "Omics"
+    ],
+    "body_parts": [
+      "whole body",
+      "cells",
+      "molecules"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "computational",
+      "laboratory",
+      "omics",
+      "precision medicine"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Information Science"
+      ],
+      "oecd_ford": [
+        "Health biotechnology"
+      ],
+      "nih_rcdc": [
+        "Genetics and genomics"
+      ]
+    }
+  },
+  {
+    "id": "pharmacogenomics",
+    "name": "Pharmacogenomics",
+    "scientific_lineage": [
+      "Omics, computational, and engineering sciences",
+      "Omics"
+    ],
+    "body_parts": [
+      "whole body",
+      "cells",
+      "molecules"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "computational",
+      "laboratory",
+      "omics",
+      "precision medicine"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Information Science"
+      ],
+      "oecd_ford": [
+        "Health biotechnology"
+      ],
+      "nih_rcdc": [
+        "Genetics and genomics"
+      ]
+    }
+  },
+  {
+    "id": "functional-genomics",
+    "name": "Functional genomics",
+    "scientific_lineage": [
+      "Omics, computational, and engineering sciences",
+      "Omics"
+    ],
+    "body_parts": [
+      "whole body",
+      "cells",
+      "molecules"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "computational",
+      "laboratory",
+      "omics",
+      "precision medicine"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Information Science"
+      ],
+      "oecd_ford": [
+        "Health biotechnology"
+      ],
+      "nih_rcdc": [
+        "Genetics and genomics"
+      ]
+    }
+  },
+  {
+    "id": "population-genomics",
+    "name": "Population genomics",
+    "scientific_lineage": [
+      "Omics, computational, and engineering sciences",
+      "Omics"
+    ],
+    "body_parts": [
+      "whole body",
+      "cells",
+      "molecules"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "computational",
+      "laboratory",
+      "omics",
+      "precision medicine"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Information Science"
+      ],
+      "oecd_ford": [
+        "Health biotechnology"
+      ],
+      "nih_rcdc": [
+        "Genetics and genomics"
+      ]
+    }
+  },
+  {
+    "id": "human-genomics",
+    "name": "Human genomics",
+    "scientific_lineage": [
+      "Omics, computational, and engineering sciences",
+      "Omics"
+    ],
+    "body_parts": [
+      "whole body",
+      "cells",
+      "molecules"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "computational",
+      "laboratory",
+      "omics",
+      "precision medicine"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Information Science"
+      ],
+      "oecd_ford": [
+        "Health biotechnology"
+      ],
+      "nih_rcdc": [
+        "Genetics and genomics"
+      ]
+    }
+  },
+  {
+    "id": "medical-genetics-and-genomics",
+    "name": "Medical genetics and genomics",
+    "scientific_lineage": [
+      "Omics, computational, and engineering sciences",
+      "Omics"
+    ],
+    "body_parts": [
+      "whole body",
+      "cells",
+      "molecules"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [
+      "Clinical biochemical genetics",
+      "Laboratory genetics and genomics",
+      "Medical biochemical genetics",
+      "Molecular genetic pathology"
+    ],
+    "child_disciplines": [
+      "clinical-biochemical-genetics",
+      "laboratory-genetics-and-genomics",
+      "medical-biochemical-genetics",
+      "molecular-genetic-pathology"
+    ],
+    "tags": [
+      "foundational",
+      "computational",
+      "laboratory",
+      "omics",
+      "precision medicine"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Information Science"
+      ],
+      "oecd_ford": [
+        "Health biotechnology"
+      ],
+      "acgme": [
+        "Medical Genetics and Genomics"
+      ],
+      "nih_rcdc": [
+        "Genetics and genomics"
+      ]
+    }
+  },
+  {
+    "id": "clinical-genomics",
+    "name": "Clinical genomics",
+    "scientific_lineage": [
+      "Omics, computational, and engineering sciences",
+      "Omics"
+    ],
+    "body_parts": [
+      "whole body",
+      "cells",
+      "molecules"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "computational",
+      "laboratory",
+      "omics",
+      "precision medicine"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Information Science"
+      ],
+      "oecd_ford": [
+        "Health biotechnology"
+      ],
+      "nih_rcdc": [
+        "Genetics and genomics"
+      ]
+    }
+  },
+  {
+    "id": "comparative-genomics",
+    "name": "Comparative genomics",
+    "scientific_lineage": [
+      "Omics, computational, and engineering sciences",
+      "Omics"
+    ],
+    "body_parts": [
+      "whole body",
+      "cells",
+      "molecules"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "computational",
+      "laboratory",
+      "omics",
+      "precision medicine"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Information Science"
+      ],
+      "oecd_ford": [
+        "Health biotechnology"
+      ],
+      "nih_rcdc": [
+        "Genetics and genomics"
+      ]
+    }
+  },
+  {
+    "id": "pathogen-genomics",
+    "name": "Pathogen genomics",
+    "scientific_lineage": [
+      "Omics, computational, and engineering sciences",
+      "Omics"
+    ],
+    "body_parts": [
+      "whole body",
+      "cells",
+      "molecules"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "computational",
+      "laboratory",
+      "omics",
+      "precision medicine"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Information Science"
+      ],
+      "oecd_ford": [
+        "Health biotechnology"
+      ],
+      "nih_rcdc": [
+        "Genetics and genomics"
+      ]
+    }
+  },
+  {
+    "id": "rare-disease-genomics",
+    "name": "Rare-disease genomics",
+    "scientific_lineage": [
+      "Omics, computational, and engineering sciences",
+      "Omics"
+    ],
+    "body_parts": [
+      "whole body",
+      "cells",
+      "molecules"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "computational",
+      "laboratory",
+      "omics",
+      "precision medicine"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Information Science"
+      ],
+      "oecd_ford": [
+        "Health biotechnology"
+      ],
+      "nih_rcdc": [
+        "Genetics and genomics"
+      ]
+    }
+  },
+  {
+    "id": "genome-engineering",
+    "name": "Genome engineering",
+    "scientific_lineage": [
+      "Omics, computational, and engineering sciences",
+      "Omics"
+    ],
+    "body_parts": [
+      "whole body",
+      "cells",
+      "molecules"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "computational",
+      "laboratory",
+      "omics",
+      "precision medicine"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Information Science"
+      ],
+      "oecd_ford": [
+        "Health biotechnology"
+      ],
+      "nih_rcdc": [
+        "Genetics and genomics"
+      ]
+    }
+  },
+  {
+    "id": "computational-genomics",
+    "name": "Computational genomics",
+    "scientific_lineage": [
+      "Omics, computational, and engineering sciences",
+      "Omics"
+    ],
+    "body_parts": [
+      "whole body",
+      "cells",
+      "molecules"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "computational",
+      "laboratory",
+      "omics",
+      "precision medicine"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Information Science"
+      ],
+      "oecd_ford": [
+        "Health biotechnology"
+      ],
+      "nih_rcdc": [
+        "Genetics and genomics"
+      ]
+    }
+  },
+  {
+    "id": "single-cell-biology",
+    "name": "Single-cell biology",
+    "scientific_lineage": [
+      "Omics, computational, and engineering sciences",
+      "Omics"
+    ],
+    "body_parts": [
+      "whole body",
+      "cells",
+      "molecules"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "computational",
+      "laboratory",
+      "omics",
+      "precision medicine"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Information Science"
+      ],
+      "oecd_ford": [
+        "Health biotechnology"
+      ],
+      "nih_rcdc": [
+        "Genetics and genomics"
+      ]
+    }
+  },
+  {
+    "id": "spatial-biology",
+    "name": "Spatial biology",
+    "scientific_lineage": [
+      "Omics, computational, and engineering sciences",
+      "Omics"
+    ],
+    "body_parts": [
+      "whole body",
+      "cells",
+      "molecules"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "foundational",
+      "computational",
+      "laboratory",
+      "omics",
+      "precision medicine"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Information Science"
+      ],
+      "oecd_ford": [
+        "Health biotechnology"
+      ],
+      "nih_rcdc": [
+        "Genetics and genomics"
+      ]
+    }
+  },
+  {
+    "id": "clinical-biochemical-genetics",
+    "name": "Clinical biochemical genetics",
+    "scientific_lineage": [
+      "Omics, computational, and engineering sciences",
+      "Clinical genetics"
+    ],
+    "body_parts": [
+      "whole body",
+      "cells",
+      "molecules"
+    ],
+    "parent_disciplines": [
+      "medical-genetics-and-genomics"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "laboratory",
+      "subspecialty",
+      "omics",
+      "precision medicine"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Health biotechnology"
+      ],
+      "acgme": [
+        "Medical Genetics and Genomics"
+      ],
+      "nih_rcdc": [
+        "Genetics and genomics"
+      ]
+    }
+  },
+  {
+    "id": "laboratory-genetics-and-genomics",
+    "name": "Laboratory genetics and genomics",
+    "scientific_lineage": [
+      "Omics, computational, and engineering sciences",
+      "Clinical genetics"
+    ],
+    "body_parts": [
+      "whole body",
+      "cells",
+      "molecules"
+    ],
+    "parent_disciplines": [
+      "medical-genetics-and-genomics"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "laboratory",
+      "subspecialty",
+      "omics",
+      "precision medicine"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Health biotechnology"
+      ],
+      "acgme": [
+        "Medical Genetics and Genomics"
+      ],
+      "nih_rcdc": [
+        "Genetics and genomics"
+      ]
+    }
+  },
+  {
+    "id": "medical-biochemical-genetics",
+    "name": "Medical biochemical genetics",
+    "scientific_lineage": [
+      "Omics, computational, and engineering sciences",
+      "Clinical genetics"
+    ],
+    "body_parts": [
+      "whole body",
+      "cells",
+      "molecules"
+    ],
+    "parent_disciplines": [
+      "medical-genetics-and-genomics"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "laboratory",
+      "subspecialty",
+      "omics",
+      "precision medicine"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Health biotechnology"
+      ],
+      "acgme": [
+        "Medical Genetics and Genomics"
+      ],
+      "nih_rcdc": [
+        "Genetics and genomics"
+      ]
+    }
+  },
+  {
+    "id": "molecular-genetic-pathology",
+    "name": "Molecular genetic pathology",
+    "scientific_lineage": [
+      "Omics, computational, and engineering sciences",
+      "Clinical genetics"
+    ],
+    "body_parts": [
+      "whole body",
+      "cells",
+      "molecules"
+    ],
+    "parent_disciplines": [
+      "medical-genetics-and-genomics"
+    ],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "laboratory",
+      "subspecialty",
+      "omics",
+      "precision medicine"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Health biotechnology"
+      ],
+      "acgme": [
+        "Medical Genetics and Genomics"
+      ],
+      "nih_rcdc": [
+        "Genetics and genomics"
+      ]
+    }
+  },
+  {
+    "id": "bioinformatics",
+    "name": "Bioinformatics",
+    "scientific_lineage": [
+      "Omics, computational, and engineering sciences",
+      "Computation"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "computational",
+      "research",
+      "data science",
+      "precision medicine"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Information Science"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "nih_rcdc": [
+        "Genetics and genomics"
+      ]
+    }
+  },
+  {
+    "id": "computational-biology",
+    "name": "Computational biology",
+    "scientific_lineage": [
+      "Omics, computational, and engineering sciences",
+      "Computation"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "computational",
+      "research",
+      "data science",
+      "precision medicine"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Information Science"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "nih_rcdc": [
+        "Genetics and genomics"
+      ]
+    }
+  },
+  {
+    "id": "biostatistics",
+    "name": "Biostatistics",
+    "scientific_lineage": [
+      "Omics, computational, and engineering sciences",
+      "Computation"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "computational",
+      "research",
+      "data science",
+      "precision medicine"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Information Science"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "nih_rcdc": [
+        "Genetics and genomics"
+      ]
+    }
+  },
+  {
+    "id": "clinical-informatics",
+    "name": "Clinical informatics",
+    "scientific_lineage": [
+      "Omics, computational, and engineering sciences",
+      "Computation"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "computational",
+      "research",
+      "data science",
+      "precision medicine"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Information Science"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "nih_rcdc": [
+        "Genetics and genomics"
+      ]
+    }
+  },
+  {
+    "id": "artificial-intelligence-in-medicine",
+    "name": "Artificial intelligence in medicine",
+    "scientific_lineage": [
+      "Omics, computational, and engineering sciences",
+      "Computation"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "computational",
+      "research",
+      "data science",
+      "precision medicine"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Information Science"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "nih_rcdc": [
+        "Genetics and genomics"
+      ]
+    }
+  },
+  {
+    "id": "systems-medicine",
+    "name": "Systems medicine",
+    "scientific_lineage": [
+      "Omics, computational, and engineering sciences",
+      "Computation"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "computational",
+      "research",
+      "data science",
+      "precision medicine"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Information Science"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "nih_rcdc": [
+        "Genetics and genomics"
+      ]
+    }
+  },
+  {
+    "id": "precision-medicine",
+    "name": "Precision medicine",
+    "scientific_lineage": [
+      "Omics, computational, and engineering sciences",
+      "Computation"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "computational",
+      "research",
+      "data science",
+      "precision medicine"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Information Science"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "nih_rcdc": [
+        "Genetics and genomics"
+      ]
+    }
+  },
+  {
+    "id": "biomedical-engineering",
+    "name": "Biomedical engineering",
+    "scientific_lineage": [
+      "Omics, computational, and engineering sciences",
+      "Engineering"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "engineering",
+      "technology",
+      "medical technology",
+      "devices"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Technology, Industry, and Agriculture"
+      ],
+      "oecd_ford": [
+        "Health biotechnology"
+      ]
+    }
+  },
+  {
+    "id": "medical-robotics",
+    "name": "Medical robotics",
+    "scientific_lineage": [
+      "Omics, computational, and engineering sciences",
+      "Engineering"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "engineering",
+      "technology",
+      "medical technology",
+      "devices"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Technology, Industry, and Agriculture"
+      ],
+      "oecd_ford": [
+        "Health biotechnology"
+      ]
+    }
+  },
+  {
+    "id": "digital-health",
+    "name": "Digital health",
+    "scientific_lineage": [
+      "Omics, computational, and engineering sciences",
+      "Engineering"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "engineering",
+      "technology",
+      "medical technology",
+      "devices"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Technology, Industry, and Agriculture"
+      ],
+      "oecd_ford": [
+        "Health biotechnology"
+      ]
+    }
+  },
+  {
+    "id": "epidemiology",
+    "name": "Epidemiology",
+    "scientific_lineage": [
+      "Population, prevention, and health-system sciences"
+    ],
+    "body_parts": [
+      "population"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "population",
+      "research",
+      "health systems",
+      "prevention"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Health Care"
+      ],
+      "oecd_ford": [
+        "Health sciences"
+      ],
+      "nih_rcdc": [
+        "Population and prevention research"
+      ]
+    }
+  },
+  {
+    "id": "public-health",
+    "name": "Public health",
+    "scientific_lineage": [
+      "Population, prevention, and health-system sciences"
+    ],
+    "body_parts": [
+      "population"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "population",
+      "research",
+      "health systems",
+      "prevention"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Health Care"
+      ],
+      "oecd_ford": [
+        "Health sciences"
+      ],
+      "nih_rcdc": [
+        "Population and prevention research"
+      ]
+    }
+  },
+  {
+    "id": "preventive-medicine",
+    "name": "Preventive medicine",
+    "scientific_lineage": [
+      "Population, prevention, and health-system sciences"
+    ],
+    "body_parts": [
+      "population"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "population",
+      "research",
+      "health systems",
+      "prevention"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Health Care"
+      ],
+      "oecd_ford": [
+        "Health sciences"
+      ],
+      "nih_rcdc": [
+        "Population and prevention research"
+      ]
+    }
+  },
+  {
+    "id": "environmental-health",
+    "name": "Environmental health",
+    "scientific_lineage": [
+      "Population, prevention, and health-system sciences"
+    ],
+    "body_parts": [
+      "population"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "population",
+      "research",
+      "health systems",
+      "prevention"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Health Care"
+      ],
+      "oecd_ford": [
+        "Health sciences"
+      ],
+      "nih_rcdc": [
+        "Population and prevention research"
+      ]
+    }
+  },
+  {
+    "id": "occupational-health",
+    "name": "Occupational health",
+    "scientific_lineage": [
+      "Population, prevention, and health-system sciences"
+    ],
+    "body_parts": [
+      "population"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "population",
+      "research",
+      "health systems",
+      "prevention"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Health Care"
+      ],
+      "oecd_ford": [
+        "Health sciences"
+      ],
+      "nih_rcdc": [
+        "Population and prevention research"
+      ]
+    }
+  },
+  {
+    "id": "global-health",
+    "name": "Global health",
+    "scientific_lineage": [
+      "Population, prevention, and health-system sciences"
+    ],
+    "body_parts": [
+      "population"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "population",
+      "research",
+      "health systems",
+      "prevention"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Health Care"
+      ],
+      "oecd_ford": [
+        "Health sciences"
+      ],
+      "nih_rcdc": [
+        "Population and prevention research"
+      ]
+    }
+  },
+  {
+    "id": "social-and-behavioral-medicine",
+    "name": "Social and behavioral medicine",
+    "scientific_lineage": [
+      "Population, prevention, and health-system sciences"
+    ],
+    "body_parts": [
+      "population"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "population",
+      "research",
+      "health systems",
+      "prevention"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Health Care"
+      ],
+      "oecd_ford": [
+        "Health sciences"
+      ],
+      "nih_rcdc": [
+        "Population and prevention research"
+      ]
+    }
+  },
+  {
+    "id": "health-disparities-and-social-determinants",
+    "name": "Health disparities and social determinants",
+    "scientific_lineage": [
+      "Population, prevention, and health-system sciences"
+    ],
+    "body_parts": [
+      "population"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "population",
+      "research",
+      "health systems",
+      "prevention"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Health Care"
+      ],
+      "oecd_ford": [
+        "Health sciences"
+      ],
+      "nih_rcdc": [
+        "Population and prevention research"
+      ]
+    }
+  },
+  {
+    "id": "health-services-research",
+    "name": "Health-services research",
+    "scientific_lineage": [
+      "Population, prevention, and health-system sciences"
+    ],
+    "body_parts": [
+      "population"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "population",
+      "research",
+      "health systems",
+      "prevention"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Health Care"
+      ],
+      "oecd_ford": [
+        "Health sciences"
+      ],
+      "nih_rcdc": [
+        "Population and prevention research"
+      ]
+    }
+  },
+  {
+    "id": "implementation-science",
+    "name": "Implementation science",
+    "scientific_lineage": [
+      "Population, prevention, and health-system sciences"
+    ],
+    "body_parts": [
+      "population"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "population",
+      "research",
+      "health systems",
+      "prevention"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Health Care"
+      ],
+      "oecd_ford": [
+        "Health sciences"
+      ],
+      "nih_rcdc": [
+        "Population and prevention research"
+      ]
+    }
+  },
+  {
+    "id": "comparative-effectiveness-research",
+    "name": "Comparative-effectiveness research",
+    "scientific_lineage": [
+      "Population, prevention, and health-system sciences"
+    ],
+    "body_parts": [
+      "population"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "population",
+      "research",
+      "health systems",
+      "prevention"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Health Care"
+      ],
+      "oecd_ford": [
+        "Health sciences"
+      ],
+      "nih_rcdc": [
+        "Population and prevention research"
+      ]
+    }
+  },
+  {
+    "id": "outcomes-research",
+    "name": "Outcomes research",
+    "scientific_lineage": [
+      "Population, prevention, and health-system sciences"
+    ],
+    "body_parts": [
+      "population"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "population",
+      "research",
+      "health systems",
+      "prevention"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Health Care"
+      ],
+      "oecd_ford": [
+        "Health sciences"
+      ],
+      "nih_rcdc": [
+        "Population and prevention research"
+      ]
+    }
+  },
+  {
+    "id": "health-economics",
+    "name": "Health economics",
+    "scientific_lineage": [
+      "Population, prevention, and health-system sciences"
+    ],
+    "body_parts": [
+      "population"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "population",
+      "research",
+      "health systems",
+      "prevention"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Health Care"
+      ],
+      "oecd_ford": [
+        "Health sciences"
+      ],
+      "nih_rcdc": [
+        "Population and prevention research"
+      ]
+    }
+  },
+  {
+    "id": "health-policy",
+    "name": "Health policy",
+    "scientific_lineage": [
+      "Population, prevention, and health-system sciences"
+    ],
+    "body_parts": [
+      "population"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "population",
+      "research",
+      "health systems",
+      "prevention"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Health Care"
+      ],
+      "oecd_ford": [
+        "Health sciences"
+      ],
+      "nih_rcdc": [
+        "Population and prevention research"
+      ]
+    }
+  },
+  {
+    "id": "quality-improvement-and-patient-safety",
+    "name": "Quality improvement and patient safety",
+    "scientific_lineage": [
+      "Population, prevention, and health-system sciences"
+    ],
+    "body_parts": [
+      "population"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "population",
+      "research",
+      "health systems",
+      "prevention"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Health Care"
+      ],
+      "oecd_ford": [
+        "Health sciences"
+      ],
+      "nih_rcdc": [
+        "Population and prevention research"
+      ]
+    }
+  },
+  {
+    "id": "medical-ethics-and-bioethics",
+    "name": "Medical ethics and bioethics",
+    "scientific_lineage": [
+      "Population, prevention, and health-system sciences"
+    ],
+    "body_parts": [
+      "population"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "population",
+      "research",
+      "health systems",
+      "prevention"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Health Care"
+      ],
+      "oecd_ford": [
+        "Health sciences"
+      ],
+      "nih_rcdc": [
+        "Population and prevention research"
+      ]
+    }
+  },
+  {
+    "id": "regulatory-science",
+    "name": "Regulatory science",
+    "scientific_lineage": [
+      "Population, prevention, and health-system sciences"
+    ],
+    "body_parts": [
+      "population"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "population",
+      "research",
+      "health systems",
+      "prevention"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Health Care"
+      ],
+      "oecd_ford": [
+        "Health sciences"
+      ],
+      "nih_rcdc": [
+        "Population and prevention research"
+      ]
+    }
+  },
+  {
+    "id": "disaster-medicine",
+    "name": "Disaster medicine",
+    "scientific_lineage": [
+      "Population, prevention, and health-system sciences"
+    ],
+    "body_parts": [
+      "population"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "population",
+      "research",
+      "health systems",
+      "prevention"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Health Care"
+      ],
+      "oecd_ford": [
+        "Health sciences"
+      ],
+      "nih_rcdc": [
+        "Population and prevention research"
+      ]
+    }
+  },
+  {
+    "id": "neonatology",
+    "name": "Neonatology",
+    "scientific_lineage": [
+      "Life-stage and care-setting disciplines"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "care setting",
+      "life stage",
+      "care delivery"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Health Care"
+      ],
+      "oecd_ford": [
+        "Health sciences"
+      ],
+      "acgme": [
+        "Pediatrics"
+      ]
+    }
+  },
+  {
+    "id": "pediatrics",
+    "name": "Pediatrics",
+    "scientific_lineage": [
+      "Life-stage and care-setting disciplines"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "care setting",
+      "life stage",
+      "care delivery"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Health Care"
+      ],
+      "oecd_ford": [
+        "Health sciences"
+      ],
+      "acgme": [
+        "Pediatrics"
+      ]
+    }
+  },
+  {
+    "id": "adolescent-medicine",
+    "name": "Adolescent medicine",
+    "scientific_lineage": [
+      "Life-stage and care-setting disciplines"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "care setting",
+      "life stage",
+      "care delivery"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Health Care"
+      ],
+      "oecd_ford": [
+        "Health sciences"
+      ],
+      "acgme": [
+        "Pediatrics"
+      ]
+    }
+  },
+  {
+    "id": "reproductive-and-maternal-medicine",
+    "name": "Reproductive and maternal medicine",
+    "scientific_lineage": [
+      "Life-stage and care-setting disciplines"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "care setting",
+      "life stage",
+      "care delivery"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Health Care"
+      ],
+      "oecd_ford": [
+        "Health sciences"
+      ]
+    }
+  },
+  {
+    "id": "geriatrics",
+    "name": "Geriatrics",
+    "scientific_lineage": [
+      "Life-stage and care-setting disciplines"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "care setting",
+      "life stage",
+      "care delivery"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Health Care"
+      ],
+      "oecd_ford": [
+        "Health sciences"
+      ]
+    }
+  },
+  {
+    "id": "primary-care",
+    "name": "Primary care",
+    "scientific_lineage": [
+      "Life-stage and care-setting disciplines"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "care setting",
+      "life stage",
+      "care delivery"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Health Care"
+      ],
+      "oecd_ford": [
+        "Health sciences"
+      ]
+    }
+  },
+  {
+    "id": "family-medicine",
+    "name": "Family medicine",
+    "scientific_lineage": [
+      "Life-stage and care-setting disciplines"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "care setting",
+      "life stage",
+      "care delivery"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Health Care"
+      ],
+      "oecd_ford": [
+        "Health sciences"
+      ],
+      "acgme": [
+        "Family Medicine"
+      ]
+    }
+  },
+  {
+    "id": "emergency-medicine",
+    "name": "Emergency medicine",
+    "scientific_lineage": [
+      "Life-stage and care-setting disciplines"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "care setting",
+      "life stage",
+      "care delivery"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Health Care"
+      ],
+      "oecd_ford": [
+        "Health sciences"
+      ],
+      "acgme": [
+        "Emergency Medicine"
+      ]
+    }
+  },
+  {
+    "id": "hospital-medicine",
+    "name": "Hospital medicine",
+    "scientific_lineage": [
+      "Life-stage and care-setting disciplines"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "care setting",
+      "life stage",
+      "care delivery"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Health Care"
+      ],
+      "oecd_ford": [
+        "Health sciences"
+      ]
+    }
+  },
+  {
+    "id": "critical-care",
+    "name": "Critical care",
+    "scientific_lineage": [
+      "Life-stage and care-setting disciplines"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "care setting",
+      "life stage",
+      "care delivery"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Health Care"
+      ],
+      "oecd_ford": [
+        "Health sciences"
+      ]
+    }
+  },
+  {
+    "id": "ambulatory-medicine",
+    "name": "Ambulatory medicine",
+    "scientific_lineage": [
+      "Life-stage and care-setting disciplines"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "care setting",
+      "life stage",
+      "care delivery"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Health Care"
+      ],
+      "oecd_ford": [
+        "Health sciences"
+      ]
+    }
+  },
+  {
+    "id": "rural-medicine",
+    "name": "Rural medicine",
+    "scientific_lineage": [
+      "Life-stage and care-setting disciplines"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "care setting",
+      "life stage",
+      "care delivery"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Health Care"
+      ],
+      "oecd_ford": [
+        "Health sciences"
+      ]
+    }
+  },
+  {
+    "id": "military-and-aerospace-medicine",
+    "name": "Military and aerospace medicine",
+    "scientific_lineage": [
+      "Life-stage and care-setting disciplines"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "care setting",
+      "life stage",
+      "care delivery"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Health Care"
+      ],
+      "oecd_ford": [
+        "Health sciences"
+      ]
+    }
+  },
+  {
+    "id": "palliative-and-hospice-care",
+    "name": "Palliative and hospice care",
+    "scientific_lineage": [
+      "Life-stage and care-setting disciplines"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "clinical",
+      "care setting",
+      "life stage",
+      "care delivery"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Health Care"
+      ],
+      "oecd_ford": [
+        "Health sciences"
+      ]
+    }
+  },
+  {
+    "id": "fundamental-discovery",
+    "name": "Fundamental discovery",
+    "scientific_lineage": [
+      "Translational stage"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "translational stage",
+      "research pathway"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "nih_rcdc": [
+        "Research area"
+      ]
+    }
+  },
+  {
+    "id": "experimental-and-mechanistic-research",
+    "name": "Experimental and mechanistic research",
+    "scientific_lineage": [
+      "Translational stage"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "translational stage",
+      "research pathway"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "nih_rcdc": [
+        "Research area"
+      ]
+    }
+  },
+  {
+    "id": "preclinical-models",
+    "name": "Preclinical models",
+    "scientific_lineage": [
+      "Translational stage"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "translational stage",
+      "research pathway"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "nih_rcdc": [
+        "Research area"
+      ]
+    }
+  },
+  {
+    "id": "biomarker-and-diagnostic-development",
+    "name": "Biomarker and diagnostic development",
+    "scientific_lineage": [
+      "Translational stage"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "translational stage",
+      "research pathway"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "nih_rcdc": [
+        "Research area"
+      ]
+    }
+  },
+  {
+    "id": "therapeutic-development",
+    "name": "Therapeutic development",
+    "scientific_lineage": [
+      "Translational stage"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "translational stage",
+      "research pathway"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "nih_rcdc": [
+        "Research area"
+      ]
+    }
+  },
+  {
+    "id": "clinical-trials",
+    "name": "Clinical trials",
+    "scientific_lineage": [
+      "Translational stage"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "translational stage",
+      "research pathway"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "nih_rcdc": [
+        "Research area"
+      ]
+    }
+  },
+  {
+    "id": "clinical-epidemiology-and-comparative-effectiveness",
+    "name": "Clinical epidemiology and comparative effectiveness",
+    "scientific_lineage": [
+      "Translational stage"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "translational stage",
+      "research pathway"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "nih_rcdc": [
+        "Research area"
+      ]
+    }
+  },
+  {
+    "id": "implementation-in-health-systems",
+    "name": "Implementation in health systems",
+    "scientific_lineage": [
+      "Translational stage"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "translational stage",
+      "research pathway"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "nih_rcdc": [
+        "Research area"
+      ]
+    }
+  },
+  {
+    "id": "population-surveillance-and-policy",
+    "name": "Population surveillance and policy",
+    "scientific_lineage": [
+      "Translational stage"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "translational stage",
+      "research pathway"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "nih_rcdc": [
+        "Research area"
+      ]
+    }
+  },
+  {
+    "id": "post-market-and-real-world-evidence",
+    "name": "Post-market and real-world evidence",
+    "scientific_lineage": [
+      "Translational stage"
+    ],
+    "body_parts": [
+      "whole body"
+    ],
+    "parent_disciplines": [],
+    "subdisciplines": [],
+    "child_disciplines": [],
+    "tags": [
+      "translational stage",
+      "research pathway"
+    ],
+    "source_lenses": {
+      "mesh": [
+        "Disciplines and Occupations"
+      ],
+      "oecd_ford": [
+        "Other medical sciences"
+      ],
+      "nih_rcdc": [
+        "Research area"
+      ]
+    }
+  }
+]

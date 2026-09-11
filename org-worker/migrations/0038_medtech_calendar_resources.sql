@@ -1,25 +1,5 @@
-ALTER TABLE portal_tenants ADD COLUMN public_base_url TEXT;
-ALTER TABLE portal_tenants ADD COLUMN canonical_path_prefix TEXT NOT NULL DEFAULT '';
-ALTER TABLE portal_tenants ADD COLUMN feature_config TEXT NOT NULL DEFAULT '{}';
-
 UPDATE portal_tenants
 SET
-  public_base_url = 'https://codecollective.us/p',
-  canonical_path_prefix = '/p',
-  feature_config = '{}'
-WHERE id = 'code-collective';
-
-UPDATE portal_tenants
-SET
-  public_base_url = 'https://medtech.social',
-  canonical_path_prefix = '',
-  home_secondary_href = '/org-events',
+  features = '["directory","events","calendar","chat"]',
   feature_config = '{"community":{"enabled":true},"orgEvents":{"enabled":true},"specialtyResources":[{"id":"map","label":"MedTech Map","description":"Explore Baltimore health, medicine, biotech, and public-health infrastructure layers.","href":"/specialty/baltimore-medtech/map.html","category":"Map"},{"id":"datasets","label":"Data Workbook","description":"Browse the MedTech source-of-sources index, live public datasets, and versioned snapshots.","href":"/specialty/baltimore-medtech/datasets.html","category":"Data"},{"id":"taxonomy","label":"Medical Atlas","description":"Navigate the medical science field atlas, coding systems, and Medicaid reference layers.","href":"/specialty/baltimore-medtech/taxonomy.html","category":"Atlas"},{"id":"need-availability","label":"Need Gaps","description":"Compare directional medical need against workforce and allied-care availability signals.","href":"/specialty/baltimore-medtech/need-availability-distortions.html","category":"Analysis"}]}'
 WHERE id = 'baltimore-medtech';
-
-UPDATE portal_tenants
-SET
-  public_base_url = 'https://' || hostname,
-  canonical_path_prefix = '',
-  feature_config = '{}'
-WHERE id <> 'code-collective' AND public_base_url IS NULL;

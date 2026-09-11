@@ -1,0 +1,558 @@
+{
+  "meta": {
+    "title": "Clinical coding and Maryland Medicaid payment layer",
+    "jurisdiction": "United States / Maryland",
+    "as_of": "2026-09-02",
+    "release_note": "Use the code release and payer guidance effective for the date of service. FY 2026 ICD-10-CM remains effective through September 30, 2026; FY 2027 takes effect October 1, 2026.",
+    "summary": "Medical disciplines, diagnosis classifications, procedure codes, claim context, payer policy, and local hospital charges answer different questions. This map keeps those layers connected without treating them as interchangeable.",
+    "disclaimer": "Educational orientation only. It is not coding, billing, reimbursement, legal, or clinical advice. Verify every code, modifier, coverage rule, fee, and effective date in the authoritative code set and current Maryland Medicaid guidance."
+  },
+  "claim_flow": [
+    {
+      "id": "clinical-concept",
+      "step": "01",
+      "eyebrow": "Medical knowledge",
+      "title": "Clinical concept",
+      "question": "What is being studied or treated?",
+      "description": "A discipline, body system, disease mechanism, technology, population, or stage of care.",
+      "examples": [
+        "Neurology",
+        "Oncology",
+        "Radiology",
+        "Genomics"
+      ],
+      "tone": "science"
+    },
+    {
+      "id": "diagnosis",
+      "step": "02",
+      "eyebrow": "Diagnosis",
+      "title": "ICD-10-CM",
+      "question": "What condition, symptom, or reason for care is documented?",
+      "description": "The U.S. clinical modification of ICD classifies diagnoses across care settings.",
+      "examples": [
+        "Chapter",
+        "Category",
+        "Billable code"
+      ],
+      "tone": "diagnosis"
+    },
+    {
+      "id": "service",
+      "step": "03",
+      "eyebrow": "Service or procedure",
+      "title": "CPT / HCPCS / ICD-10-PCS",
+      "question": "What service, item, test, drug, or inpatient procedure was furnished?",
+      "description": "The applicable service vocabulary depends on the setting and the thing being reported.",
+      "examples": [
+        "Professional service",
+        "Supply or drug",
+        "Inpatient procedure"
+      ],
+      "tone": "service"
+    },
+    {
+      "id": "claim-context",
+      "step": "04",
+      "eyebrow": "Claim context",
+      "title": "Modifiers, POS & revenue",
+      "question": "Where and under what circumstances did the service occur?",
+      "description": "Context codes qualify a service line, site of care, facility department, or billing circumstance.",
+      "examples": [
+        "Modifier",
+        "Place of service",
+        "Revenue code"
+      ],
+      "tone": "context"
+    },
+    {
+      "id": "payer-policy",
+      "step": "05",
+      "eyebrow": "Payer logic",
+      "title": "Maryland Medicaid",
+      "question": "Is it covered, payable, and correctly submitted?",
+      "description": "Provider manuals, fee schedules, program rules, managed-care contracts, and dates of service determine payment.",
+      "examples": [
+        "Coverage",
+        "Rate",
+        "Edits"
+      ],
+      "tone": "payer"
+    },
+    {
+      "id": "adjudication",
+      "step": "06",
+      "eyebrow": "Financial result",
+      "title": "Adjudication",
+      "question": "What did the payer allow, deny, bundle, or adjust?",
+      "description": "The billed charge is an input—not a guarantee of the amount paid.",
+      "examples": [
+        "Allowed",
+        "Denied",
+        "Adjusted"
+      ],
+      "tone": "result"
+    }
+  ],
+  "systems": [
+    {
+      "id": "icd-10-cm",
+      "short_name": "ICD-10-CM",
+      "name": "International Classification of Diseases, Tenth Revision, Clinical Modification",
+      "kind": "diagnosis",
+      "layer": "Diagnosis classification",
+      "question": "Why was care provided?",
+      "scope": "Diagnoses, symptoms, findings, injuries, external causes, and factors influencing health status in U.S. health care.",
+      "steward": "CDC/National Center for Health Statistics, with CMS",
+      "identifier_shape": "Alphanumeric diagnosis codes organized into 22 chapters",
+      "tags": [
+        "diagnosis",
+        "disease",
+        "symptom",
+        "all settings"
+      ],
+      "note": "Use the release effective for the date of service; do not infer a patient diagnosis from a specialty alone.",
+      "source_links": [
+        {
+          "label": "Official ICD-10-CM files",
+          "url": "https://www.cdc.gov/nchs/icd/icd-10-cm/files.html"
+        },
+        {
+          "label": "CMS ICD-10 resources",
+          "url": "https://www.cms.gov/medicare/coding-billing/icd-10-codes"
+        }
+      ],
+      "licensed_descriptions": false
+    },
+    {
+      "id": "icd-10-pcs",
+      "short_name": "ICD-10-PCS",
+      "name": "International Classification of Diseases, Tenth Revision, Procedure Coding System",
+      "kind": "procedure",
+      "layer": "Inpatient procedure classification",
+      "question": "What procedure was performed during an inpatient hospital stay?",
+      "scope": "Procedures reported for U.S. hospital inpatient claims; it is not the general physician-office procedure vocabulary.",
+      "steward": "Centers for Medicare & Medicaid Services",
+      "identifier_shape": "Seven-character alphanumeric procedure codes",
+      "tags": [
+        "procedure",
+        "inpatient",
+        "hospital",
+        "facility"
+      ],
+      "note": "ICD-10-PCS and ICD-10-CM are related classifications but answer different claim questions.",
+      "source_links": [
+        {
+          "label": "Official ICD-10-PCS files",
+          "url": "https://www.cms.gov/medicare/coding-billing/icd-10-codes"
+        }
+      ],
+      "licensed_descriptions": false
+    },
+    {
+      "id": "cpt-hcpcs-level-i",
+      "short_name": "CPT / HCPCS I",
+      "name": "Current Procedural Terminology / HCPCS Level I",
+      "kind": "procedure",
+      "layer": "Professional services and procedures",
+      "question": "What physician or other professional service was performed?",
+      "scope": "Medical, surgical, diagnostic, and evaluation services commonly reported on professional claims.",
+      "steward": "American Medical Association; adopted as HCPCS Level I",
+      "identifier_shape": "Five-character CPT codes",
+      "tags": [
+        "procedure",
+        "professional",
+        "test",
+        "evaluation"
+      ],
+      "note": "CPT descriptors and related content are copyrighted and licensed by the AMA; this site does not redistribute the code set.",
+      "source_links": [
+        {
+          "label": "CMS code-set overview",
+          "url": "https://www.cms.gov/priorities/key-initiatives/burden-reduction/administrative-simplification/code-sets"
+        }
+      ],
+      "licensed_descriptions": true
+    },
+    {
+      "id": "hcpcs-level-ii",
+      "short_name": "HCPCS II",
+      "name": "Healthcare Common Procedure Coding System Level II",
+      "kind": "procedure",
+      "layer": "Products, supplies, drugs, and services",
+      "question": "What non-CPT service, supply, product, or drug was furnished?",
+      "scope": "Items and services such as ambulance, durable medical equipment, supplies, prosthetics, and many separately reported drugs.",
+      "steward": "Centers for Medicare & Medicaid Services",
+      "identifier_shape": "One letter followed by four digits",
+      "tags": [
+        "supply",
+        "drug",
+        "DME",
+        "ambulance",
+        "procedure"
+      ],
+      "note": "Coverage and payment still depend on the payer, setting, modifiers, units, and effective date.",
+      "source_links": [
+        {
+          "label": "Official HCPCS resources",
+          "url": "https://www.cms.gov/medicare/coding-billing/healthcare-common-procedure-system"
+        }
+      ],
+      "licensed_descriptions": false
+    },
+    {
+      "id": "claim-modifiers",
+      "short_name": "Modifiers",
+      "name": "CPT and HCPCS claim-line modifiers",
+      "kind": "claim-context",
+      "layer": "Service-line context",
+      "question": "What circumstance changes how the service line should be interpreted?",
+      "scope": "Qualifiers attached to CPT or HCPCS codes, including professional/technical components and other billing circumstances.",
+      "steward": "AMA and CMS, depending on the modifier",
+      "identifier_shape": "Two-character qualifiers appended to a service code",
+      "tags": [
+        "context",
+        "claim line",
+        "professional",
+        "technical"
+      ],
+      "note": "A modifier is not a diagnosis or a standalone medical service.",
+      "source_links": [
+        {
+          "label": "CMS HCPCS resources",
+          "url": "https://www.cms.gov/medicare/coding-billing/healthcare-common-procedure-system"
+        },
+        {
+          "label": "Maryland Medicaid provider guidance",
+          "url": "https://health.maryland.gov/mmcp/pages/provider-information.aspx"
+        }
+      ],
+      "licensed_descriptions": true
+    },
+    {
+      "id": "place-of-service",
+      "short_name": "POS",
+      "name": "Place of Service code set",
+      "kind": "claim-context",
+      "layer": "Site of care",
+      "question": "Where was the professional service furnished?",
+      "scope": "Two-digit codes used on professional claims to identify the setting, such as office, hospital, or telehealth locations.",
+      "steward": "Centers for Medicare & Medicaid Services",
+      "identifier_shape": "Two-digit numeric codes",
+      "tags": [
+        "setting",
+        "site of care",
+        "professional claim"
+      ],
+      "note": "The place of service can affect coverage, edits, and the applicable payment amount.",
+      "source_links": [
+        {
+          "label": "Official POS code set",
+          "url": "https://www.cms.gov/medicare/coding-billing/place-of-service-codes/code-sets"
+        }
+      ],
+      "licensed_descriptions": false
+    },
+    {
+      "id": "ub04-revenue-codes",
+      "short_name": "Revenue codes",
+      "name": "UB-04 revenue codes",
+      "kind": "claim-context",
+      "layer": "Institutional claim department or cost center",
+      "question": "Which facility department or type of institutional charge produced the line?",
+      "scope": "Institutional billing categories used with units, charges, and—when required—HCPCS or other service codes.",
+      "steward": "National Uniform Billing Committee / American Hospital Association",
+      "identifier_shape": "Four-digit revenue-center codes",
+      "tags": [
+        "facility",
+        "institutional claim",
+        "charge",
+        "department"
+      ],
+      "note": "UB-04 specifications and revenue-code content are licensed by the NUBC; this site provides orientation and links only.",
+      "source_links": [
+        {
+          "label": "CMS institutional-claim overview",
+          "url": "https://www.cms.gov/Outreach-and-Education/MLN/WBT/MLN7388180-MLN-WBT-1450/1450/lesson05/13/index.html"
+        },
+        {
+          "label": "Maryland Medicaid FFS claims",
+          "url": "https://health.maryland.gov/mmcp/provider/Pages/ffsclaims.aspx"
+        }
+      ],
+      "licensed_descriptions": true
+    },
+    {
+      "id": "ndc",
+      "short_name": "NDC",
+      "name": "National Drug Code",
+      "kind": "product",
+      "layer": "Drug product identification",
+      "question": "Which labeled drug product and package was dispensed or administered?",
+      "scope": "Identifiers for drugs listed for commercial distribution in the United States; claims may also require HCPCS and units.",
+      "steward": "U.S. Food and Drug Administration",
+      "identifier_shape": "Three-segment drug labeler, product, and package identifier",
+      "tags": [
+        "drug",
+        "pharmacy",
+        "package",
+        "product"
+      ],
+      "note": "An NDC identifies a product/package; it does not by itself establish coverage or payment.",
+      "source_links": [
+        {
+          "label": "FDA NDC Directory",
+          "url": "https://www.fda.gov/drugs/drug-approvals-and-databases/national-drug-code-directory"
+        }
+      ],
+      "licensed_descriptions": false
+    },
+    {
+      "id": "cdt",
+      "short_name": "CDT",
+      "name": "Code on Dental Procedures and Nomenclature",
+      "kind": "procedure",
+      "layer": "Dental procedures",
+      "question": "What dental service or procedure was performed?",
+      "scope": "Dental procedure reporting and claims.",
+      "steward": "American Dental Association",
+      "identifier_shape": "D followed by four digits",
+      "tags": [
+        "dental",
+        "oral health",
+        "procedure"
+      ],
+      "note": "CDT descriptors and related content are copyrighted and licensed by the ADA; this site does not redistribute the code set.",
+      "source_links": [
+        {
+          "label": "CMS code-set overview",
+          "url": "https://www.cms.gov/priorities/key-initiatives/burden-reduction/administrative-simplification/code-sets"
+        },
+        {
+          "label": "Maryland Medicaid provider guidance",
+          "url": "https://health.maryland.gov/mmcp/pages/provider-information.aspx"
+        }
+      ],
+      "licensed_descriptions": true
+    },
+    {
+      "id": "maryland-medicaid",
+      "short_name": "MD Medicaid",
+      "name": "Maryland Medicaid provider manuals, fee schedules, and billing guidance",
+      "kind": "payer-policy",
+      "layer": "Coverage and reimbursement",
+      "question": "Will Maryland Medicaid cover and pay this correctly coded claim?",
+      "scope": "Program-specific enrollment, coverage, authorization, billing, edits, and fee-for-service reimbursement guidance; managed-care rules and contracts may differ.",
+      "steward": "Maryland Department of Health",
+      "identifier_shape": "Uses national code sets plus Maryland program rules, rates, and forms",
+      "tags": [
+        "Medicaid",
+        "Maryland",
+        "coverage",
+        "fee schedule",
+        "billing"
+      ],
+      "note": "This is not one code set. Maryland Medicaid applies CMS-designated diagnosis and procedure code sets through program-specific policy and payment rules.",
+      "source_links": [
+        {
+          "label": "Provider information and fee schedules",
+          "url": "https://health.maryland.gov/mmcp/pages/provider-information.aspx"
+        },
+        {
+          "label": "Professional services guidance",
+          "url": "https://health.maryland.gov/mmcp/provider/Pages/professional-services.aspx"
+        },
+        {
+          "label": "Fee-for-service claims",
+          "url": "https://health.maryland.gov/mmcp/provider/Pages/ffsclaims.aspx"
+        }
+      ],
+      "licensed_descriptions": false
+    },
+    {
+      "id": "local-charge-codes",
+      "short_name": "Charge codes",
+      "name": "Hospital chargemaster and local accounting codes",
+      "kind": "facility-local",
+      "layer": "Provider-internal charge capture",
+      "question": "What internal facility item or service generated a gross charge?",
+      "scope": "Hospital-specific identifiers and descriptions used in charge capture and price-transparency files, often mapped to standard billing codes.",
+      "steward": "Individual hospital or health system",
+      "identifier_shape": "Facility-defined; no universal Medicaid charge-code format",
+      "tags": [
+        "chargemaster",
+        "gross charge",
+        "hospital",
+        "local code"
+      ],
+      "note": "A local gross charge is not the same as an allowed Medicaid amount. It must be interpreted alongside standard billing codes and payer policy.",
+      "source_links": [
+        {
+          "label": "CMS hospital price transparency",
+          "url": "https://www.cms.gov/priorities/key-initiatives/hospital-price-transparency"
+        },
+        {
+          "label": "Maryland Medicaid provider guidance",
+          "url": "https://health.maryland.gov/mmcp/pages/provider-information.aspx"
+        }
+      ],
+      "licensed_descriptions": false
+    }
+  ],
+  "icd10cm_chapters": [
+    {
+      "chapter": "01",
+      "range": "A00–B99",
+      "title": "Certain infectious and parasitic diseases",
+      "index_query": "infectious",
+      "tone": "microbial"
+    },
+    {
+      "chapter": "02",
+      "range": "C00–D49",
+      "title": "Neoplasms",
+      "index_query": "cancer",
+      "tone": "disease"
+    },
+    {
+      "chapter": "03",
+      "range": "D50–D89",
+      "title": "Diseases of the blood and blood-forming organs and certain disorders involving the immune mechanism",
+      "index_query": "blood",
+      "tone": "blood"
+    },
+    {
+      "chapter": "04",
+      "range": "E00–E89",
+      "title": "Endocrine, nutritional and metabolic diseases",
+      "index_query": "metabolism",
+      "tone": "metabolic"
+    },
+    {
+      "chapter": "05",
+      "range": "F01–F99",
+      "title": "Mental, behavioral and neurodevelopmental disorders",
+      "index_query": "psychiatry",
+      "tone": "behavioral"
+    },
+    {
+      "chapter": "06",
+      "range": "G00–G99",
+      "title": "Diseases of the nervous system",
+      "index_query": "nervous system",
+      "tone": "neural"
+    },
+    {
+      "chapter": "07",
+      "range": "H00–H59",
+      "title": "Diseases of the eye and adnexa",
+      "index_query": "eye",
+      "tone": "sensory"
+    },
+    {
+      "chapter": "08",
+      "range": "H60–H95",
+      "title": "Diseases of the ear and mastoid process",
+      "index_query": "ear",
+      "tone": "sensory"
+    },
+    {
+      "chapter": "09",
+      "range": "I00–I99",
+      "title": "Diseases of the circulatory system",
+      "index_query": "cardiovascular",
+      "tone": "circulatory"
+    },
+    {
+      "chapter": "10",
+      "range": "J00–J99",
+      "title": "Diseases of the respiratory system",
+      "index_query": "respiratory",
+      "tone": "respiratory"
+    },
+    {
+      "chapter": "11",
+      "range": "K00–K95",
+      "title": "Diseases of the digestive system",
+      "index_query": "digestive",
+      "tone": "digestive"
+    },
+    {
+      "chapter": "12",
+      "range": "L00–L99",
+      "title": "Diseases of the skin and subcutaneous tissue",
+      "index_query": "skin",
+      "tone": "skin"
+    },
+    {
+      "chapter": "13",
+      "range": "M00–M99",
+      "title": "Diseases of the musculoskeletal system and connective tissue",
+      "index_query": "musculoskeletal",
+      "tone": "movement"
+    },
+    {
+      "chapter": "14",
+      "range": "N00–N99",
+      "title": "Diseases of the genitourinary system",
+      "index_query": "renal",
+      "tone": "renal"
+    },
+    {
+      "chapter": "15",
+      "range": "O00–O9A",
+      "title": "Pregnancy, childbirth and the puerperium",
+      "index_query": "maternal",
+      "tone": "maternal"
+    },
+    {
+      "chapter": "16",
+      "range": "P00–P96",
+      "title": "Certain conditions originating in the perinatal period",
+      "index_query": "neonatology",
+      "tone": "life-stage"
+    },
+    {
+      "chapter": "17",
+      "range": "Q00–Q99",
+      "title": "Congenital malformations, deformations and chromosomal abnormalities",
+      "index_query": "genetic",
+      "tone": "genetic"
+    },
+    {
+      "chapter": "18",
+      "range": "R00–R99",
+      "title": "Symptoms, signs and abnormal clinical and laboratory findings, not elsewhere classified",
+      "index_query": "diagnostic",
+      "tone": "finding"
+    },
+    {
+      "chapter": "19",
+      "range": "S00–T88",
+      "title": "Injury, poisoning and certain other consequences of external causes",
+      "index_query": "trauma",
+      "tone": "injury"
+    },
+    {
+      "chapter": "20",
+      "range": "V00–Y99",
+      "title": "External causes of morbidity",
+      "index_query": "environmental",
+      "tone": "external"
+    },
+    {
+      "chapter": "21",
+      "range": "Z00–Z99",
+      "title": "Factors influencing health status and contact with health services",
+      "index_query": "primary care",
+      "tone": "encounter"
+    },
+    {
+      "chapter": "22",
+      "range": "U00–U85",
+      "title": "Codes for special purposes",
+      "index_query": "public health",
+      "tone": "special"
+    }
+  ]
+}

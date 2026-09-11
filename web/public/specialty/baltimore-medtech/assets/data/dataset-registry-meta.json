@@ -1,0 +1,94 @@
+{
+  "datasets": [
+    {
+      "id": "medtech-meta-index",
+      "title": "MedTech Meta Index",
+      "short_title": "Meta Index",
+      "publisher": "Baltimore MedTech",
+      "category": "Source-of-sources index",
+      "mode": "repository-snapshot",
+      "adapter": "local_meta_index",
+      "page": "/specialty/baltimore-medtech/datasets/medtech-meta-index.html",
+      "source_url": "/medtech-meta-index.json",
+      "api_url": "/specialty/baltimore-medtech/api/datasets/medtech-meta-index",
+      "coverage": "Thirteen component sources across provider identity, labor, service output, payer access, scientific fields, standards, and derived analysis",
+      "refresh": "On registry or source-assessment update",
+      "geography": "National, Maryland, Baltimore, and conceptual layers",
+      "default_page_size": 100,
+      "max_page_size": 200,
+      "cache_seconds": 300,
+      "description": "The governing source index for the MedTech workbook. It assembles every component source with authority tier, evidence type, unit of observation, decision role, join keys, provenance, and principal caveat.",
+      "filters": [
+        {
+          "name": "q",
+          "label": "Search the Meta Index",
+          "type": "text",
+          "placeholder": "Service output, Medicaid, workforce…"
+        },
+        {
+          "name": "source_tier",
+          "label": "Quality tier",
+          "type": "select",
+          "default": "",
+          "options": [
+            { "value": "", "label": "All tiers" },
+            { "value": "A1", "label": "A1 — operational / administrative" },
+            { "value": "A2", "label": "A2 — statistical / resource" },
+            { "value": "B1", "label": "B1 — curated steward index" },
+            { "value": "B2", "label": "B2 — curated official extract" },
+            { "value": "C1", "label": "C1 — derived analysis" }
+          ]
+        },
+        {
+          "name": "data_layer",
+          "label": "Data layer contains",
+          "type": "text",
+          "placeholder": "Labor"
+        },
+        {
+          "name": "mode",
+          "label": "Component mode",
+          "type": "select",
+          "default": "",
+          "options": [
+            { "value": "", "label": "All modes" },
+            { "value": "live-api", "label": "Live API" },
+            { "value": "live-release", "label": "Live release" },
+            { "value": "live-lookup", "label": "Live lookup" },
+            { "value": "repository-snapshot", "label": "Repository snapshot" }
+          ]
+        }
+      ],
+      "preferred_columns": [
+        "decision_rank",
+        "source_id",
+        "source_name",
+        "publisher",
+        "source_tier",
+        "source_tier_label",
+        "authority_class",
+        "evidence_type",
+        "unit_of_observation",
+        "data_layer",
+        "availability_layer",
+        "mode",
+        "geography",
+        "coverage",
+        "refresh",
+        "decision_role",
+        "quality_strength",
+        "principal_caveat",
+        "join_keys",
+        "dependencies",
+        "component_sheet",
+        "live_endpoint",
+        "source_url"
+      ],
+      "limitations": [
+        "The Meta Index is a source catalog and evidence map, not a merged patient-provider fact table.",
+        "Decision rank reflects proximity to measurable patient access and service delivery, not universal source quality or scientific importance.",
+        "Cross-source use still requires explicit denominator alignment, time and geography reconciliation, deduplication, and missing-data analysis."
+      ]
+    }
+  ]
+}

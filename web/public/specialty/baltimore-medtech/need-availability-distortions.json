@@ -1,0 +1,59 @@
+{
+  "meta": {
+    "title": "Need–availability distortions",
+    "as_of": "2026-09-03",
+    "geography": "United States unless an underlying field metric says otherwise",
+    "summary": "A directional comparison of patient-need or service-demand proxies against physician-specialist capacity and new-entry pipelines across neurology, oncology, radiology, and genomics, with a separate allied-care-team workforce lens.",
+    "conclusion": "Genomics remains the clearest physician-capacity shortfall signal in the current four-field dataset. The new care-team lens adds 4,200 genetic counselors and 300 projected annual openings, but also makes clear that laboratory, nursing, bioinformatics, testing, and cross-specialty capacity are still outside the index.",
+    "availability_definition": "The primary ranking approximates physician availability with current physician-specialist workforce and annual physician new-entrant counts. The page now separately displays selected nonphysician occupations, but it still does not measure appointment supply, wait time, geographic access, insurance participation, equipment capacity, clinical appropriateness, or actual services delivered.",
+    "fixed_limitation": "Nonphysician labor is no longer omitted from the page: eight allied occupations are displayed with 2025 employment, projected annual openings, mapping strength, and field-specific limitations.",
+    "formula": "Physician-capacity distortion index = 80% log-normalized need-per-physician pressure + 20% log-normalized physician-pipeline fragility (current physician workforce divided by annual physician entrants). Allied occupations are shown separately and are not folded into this index because the selected roles are not equivalent dedicated field workforces.",
+    "scaling": "Each physician-index component is scaled from 20 to 100 within only these four selected fields. The index is relative, not an absolute shortage threshold, and should not be compared with an external score.",
+    "signed_gap_note": "The separate need-versus-physician-availability gap compares log-normalized need with a physician-capacity composite weighted 80% to current workforce and 20% to the entry pipeline. Positive values indicate need outrunning the selected physician-capacity proxies; negative values indicate the reverse within this dataset.",
+    "comparability_guardrail": "Neurology uses chronic pain as a cross-specialty burden marker, oncology uses survivorship prevalence, radiology uses annual CT utilization, and genomics uses rare disease as an addressable-population proxy. These are not equivalent patient denominators."
+  },
+  "weights": {
+    "distortion": {
+      "need_per_specialist_pressure": 0.8,
+      "pipeline_fragility": 0.2
+    },
+    "availability": {
+      "current_workforce": 0.8,
+      "entry_pipeline": 0.2
+    }
+  },
+  "interpretations": [
+    {
+      "id": "genomics",
+      "headline": "Largest physician shortfall signal",
+      "summary": "The rare-disease population proxy is large, while the board-certified physician proxy and observed new-diplomate pipeline are the smallest of the four fields.",
+      "care_team_context": "BLS reports about 4,200 genetic counselor jobs in 2025 and about 300 projected openings per year. That is a directly relevant additional capacity layer, but it still excludes laboratory geneticists, molecular technologists, bioinformaticians, testing capacity, and clinicians in other specialties.",
+      "action": "Prioritize phenotype capture, evidence review, counseling support, referral completion, report comprehension, consent, and responsible reanalysis that extend scarce genetics teams.",
+      "caution": "Rare disease is broader than clinical genomics demand, and neither the physician nor genetic-counselor count represents the full genomic service system."
+    },
+    {
+      "id": "radiology",
+      "headline": "High-throughput physician pressure",
+      "summary": "Radiology has the largest physician workforce proxy, but CT touches tens of millions of patients and the physician entrant-to-workforce ratio is relatively weak.",
+      "care_team_context": "BLS reports about 387,700 jobs across radiologic and MRI technologists, diagnostic medical sonographers, and nuclear medicine technologists, with about 22,100 projected openings per year. This reveals a large operational workforce that the physician-only index previously hid.",
+      "action": "Focus on acquisition quality, protocoling, scheduling, equipment utilization, prioritization, follow-up closure, quality assurance, and dose or appropriateness improvement rather than autonomous replacement.",
+      "caution": "CT utilization is a service-volume proxy, and mapped technologist employment does not measure scanner supply, appointment capacity, modality mix, or dedicated radiology full-time equivalents."
+    },
+    {
+      "id": "oncology",
+      "headline": "Pipeline fragility exceeds the raw physician burden ratio",
+      "summary": "The survivorship proxy produces the lowest people-per-physician ratio in this four-field set, but the annual physician entrant pipeline is small relative to the existing workforce.",
+      "care_team_context": "The current allied layer adds about 17,400 radiation therapist jobs and 700 projected openings per year. It is intentionally narrow and does not yet measure oncology nurses, pharmacists, dosimetrists, physicists, navigators, social workers, infusion capacity, or surgical teams.",
+      "action": "Measure navigation, survivorship, toxicity management, radiation scheduling, prior authorization, trial matching, and multidisciplinary coordination burdens directly.",
+      "caution": "Cancer survivors have highly variable needs, hematology-oncology physicians are not the entire oncology workforce, and radiation therapists represent only one treatment modality."
+    },
+    {
+      "id": "neurology",
+      "headline": "Large burden with a blurred physician denominator",
+      "summary": "The chronic-pain marker is large, but pain care spans primary care, rehabilitation, anesthesiology, psychiatry, surgery, and other specialties, weakening a simple neurologist ratio.",
+      "care_team_context": "BLS reports about 646,700 jobs across physical therapy, occupational therapy, and speech-language pathology, with about 35,900 projected openings per year. These professions are crucial to many neurological pathways but also serve extensive non-neurological populations.",
+      "action": "Collect referral delay, appointment wait, rehabilitation access, therapy completion, diagnostic turnaround, and longitudinal follow-up data before treating the national proxy as a local shortage estimate.",
+      "caution": "Chronic pain is not a count of all neurological disease, is not served exclusively by neurologists, and the broad rehabilitation totals are not dedicated neurology full-time equivalents."
+    }
+  ]
+}

@@ -1,0 +1,227 @@
+/* Allied-care-team context for the need–availability distortion page */
+.distortion-care-team-section {
+  position: relative;
+  padding: clamp(36px, 5vw, 64px);
+  border: 1px solid var(--line);
+  border-top: 7px solid var(--teal);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 94% 7%, color-mix(in srgb, var(--teal) 12%, transparent), transparent 29%),
+    var(--paper);
+  box-shadow: 0 24px 68px rgba(13, 51, 67, 0.09);
+}
+
+.distortion-care-team-section .distortion-section-heading {
+  margin-bottom: 26px;
+}
+
+.distortion-care-team-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+  margin-bottom: 14px;
+  padding: 20px 22px;
+  border: 1px solid color-mix(in srgb, var(--teal) 35%, var(--line));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--teal) 7%, var(--surface-raised));
+}
+
+.distortion-care-team-summary > span {
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--teal);
+  color: #04242d;
+  font-size: 1.35rem;
+  font-weight: 950;
+}
+
+.distortion-care-team-summary strong {
+  display: block;
+  font-size: clamp(1.05rem, 1.7vw, 1.35rem);
+}
+
+.distortion-care-team-summary p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.79rem;
+  line-height: 1.52;
+}
+
+.distortion-care-team-summary small {
+  display: block;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.68rem;
+  line-height: 1.48;
+}
+
+.distortion-team-chart-grid {
+  margin-top: 0;
+}
+
+.distortion-care-team-groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 11px;
+  margin-top: 14px;
+}
+
+.distortion-team-card {
+  --field: var(--strategy-cyan);
+  position: relative;
+  min-width: 0;
+  padding: 23px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-left: 5px solid var(--field);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 100% 0, color-mix(in srgb, var(--field) 10%, transparent), transparent 38%),
+    var(--surface-raised);
+  box-shadow: 0 15px 40px rgba(13, 51, 67, 0.07);
+}
+
+.distortion-team-card[data-field="oncology"] { --field: var(--strategy-coral); }
+.distortion-team-card[data-field="radiology"] { --field: var(--strategy-gold); }
+.distortion-team-card[data-field="genomics"] { --field: var(--strategy-violet); }
+
+.distortion-team-card > header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: start;
+}
+
+.distortion-team-label {
+  color: var(--field);
+  font-size: 0.59rem;
+  font-weight: 950;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.distortion-team-card h3 {
+  margin: 7px 0 0;
+  font-size: clamp(1.55rem, 2.8vw, 2.6rem);
+  line-height: 0.98;
+  letter-spacing: -0.052em;
+}
+
+.distortion-team-total {
+  display: grid;
+  justify-items: end;
+  text-align: right;
+}
+
+.distortion-team-total strong {
+  color: var(--field);
+  font-size: clamp(1.7rem, 3.4vw, 3rem);
+  line-height: 0.9;
+  letter-spacing: -0.06em;
+}
+
+.distortion-team-total span,
+.distortion-team-renewal span {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.56rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.distortion-team-renewal {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin-top: 18px;
+  padding: 12px 13px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface-subtle);
+}
+
+.distortion-team-renewal strong {
+  color: var(--field);
+  font-size: 1.25rem;
+}
+
+.distortion-team-renewal span {
+  margin: 0;
+}
+
+.distortion-team-roles {
+  display: grid;
+  gap: 7px;
+  margin-top: 14px;
+}
+
+.distortion-team-role {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 11px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface-subtle);
+}
+
+.distortion-team-role strong,
+.distortion-team-role span {
+  display: block;
+}
+
+.distortion-team-role strong {
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+
+.distortion-team-role span {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.61rem;
+  line-height: 1.35;
+}
+
+.distortion-team-role b {
+  color: var(--field);
+  font-size: 0.9rem;
+}
+
+.distortion-team-card footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+@media (max-width: 900px) {
+  .distortion-care-team-groups {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .distortion-care-team-section {
+    padding: 30px 18px;
+    border-radius: 18px;
+  }
+
+  .distortion-care-team-summary,
+  .distortion-team-card > header {
+    grid-template-columns: 1fr;
+  }
+
+  .distortion-team-total {
+    justify-items: start;
+    text-align: left;
+  }
+}

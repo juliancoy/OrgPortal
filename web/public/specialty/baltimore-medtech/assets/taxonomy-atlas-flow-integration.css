@@ -1,0 +1,238 @@
+.taxonomy-object-model .taxonomy-object-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.taxonomy-object-model .taxonomy-object-card {
+  min-height: 270px;
+}
+
+.taxonomy-object-semantic { --object-color: var(--teal); }
+.taxonomy-object-exchange { --object-color: #766bc8; }
+.taxonomy-object-code { --object-color: var(--gold); }
+.taxonomy-object-payment { --object-color: var(--coral); }
+
+.semantic-inspector-section {
+  position: relative;
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--teal) 35%, var(--line));
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--teal) 7%, var(--surface-raised)), var(--surface-raised));
+}
+
+.semantic-inspector-section::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--teal);
+}
+
+.semantic-inspector-list {
+  display: grid;
+  gap: 7px;
+}
+
+.semantic-inspector-link {
+  --inspector-accent: var(--teal);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface-subtle);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.semantic-inspector-link[data-tone="observation"] { --inspector-accent: #247da0; }
+.semantic-inspector-link[data-tone="medication"] { --inspector-accent: #b45b6c; }
+.semantic-inspector-link[data-tone="exchange"] { --inspector-accent: #7569c5; }
+.semantic-inspector-link[data-tone="mapping"] { --inspector-accent: #8d6a30; }
+.semantic-inspector-link[data-tone="imaging"] { --inspector-accent: #2c7f95; }
+.semantic-inspector-link[data-tone="genomics"] { --inspector-accent: #7b5cb6; }
+.semantic-inspector-link[data-tone="learning"] { --inspector-accent: #4a8064; }
+
+.semantic-inspector-link > span {
+  min-width: 56px;
+  padding: 5px 7px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--inspector-accent) 10%, var(--surface-raised));
+  color: var(--inspector-accent);
+  font-size: 0.6rem;
+  font-weight: 950;
+  text-align: center;
+}
+
+.semantic-inspector-link strong {
+  display: block;
+  font-size: 0.76rem;
+  line-height: 1.3;
+}
+
+.semantic-inspector-link p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 0.67rem;
+  line-height: 1.4;
+}
+
+.semantic-inspector-link:hover,
+.semantic-inspector-link:focus-visible {
+  border-color: var(--inspector-accent);
+}
+
+.semantic-inspector-atlas-link {
+  display: inline-flex;
+  margin-top: 11px;
+  color: var(--teal);
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.semantic-inspector-atlas-link::after {
+  content: " ↑";
+  margin-left: 4px;
+}
+
+.semantic-inspector-atlas-link:hover,
+.semantic-inspector-atlas-link:focus-visible {
+  text-decoration: underline;
+}
+
+@media (max-width: 1220px) {
+  .semantic-system-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .taxonomy-object-model .taxonomy-object-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .taxonomy-object-model .taxonomy-object-card:nth-child(3)::after {
+    content: none;
+  }
+}
+
+@media (max-width: 960px) {
+  .global-flow-masthead,
+  .semantic-layer-heading,
+  .taxonomy-coordinate-stage {
+    grid-template-columns: 1fr;
+  }
+
+  .global-flow-aside {
+    max-width: 760px;
+  }
+
+  .taxonomy-coordinate-intro {
+    max-width: 660px;
+  }
+
+  .taxonomy-coordinate-stage .taxonomy-example-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .taxonomy-coordinate-stage .taxonomy-coordinate {
+    width: min(760px, 100%);
+    justify-self: center;
+  }
+}
+
+@media (max-width: 720px) {
+  .global-flow-hero {
+    min-height: 0;
+    padding: 32px 18px 38px;
+    border-radius: 18px;
+  }
+
+  .global-flow-copy h1 {
+    font-size: clamp(3.5rem, 16vw, 6rem);
+  }
+
+  .global-flow-shell {
+    padding: 11px;
+  }
+
+  .global-flow-shell-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .global-flow-viewport {
+    overflow: visible;
+  }
+
+  .global-flowchart {
+    grid-template-columns: 1fr;
+    min-width: 0;
+  }
+
+  .global-flow-stage {
+    min-height: 0;
+  }
+
+  .global-flow-stage::after,
+  .global-flow-stage:last-child::after {
+    content: "⌄";
+    top: auto;
+    right: 50%;
+    bottom: -13px;
+    transform: translateX(50%);
+  }
+
+  .global-flow-stage:last-child::after {
+    content: none;
+  }
+
+  .global-flow-stage.is-featured {
+    margin-block: 5px;
+  }
+
+  .global-flow-feedback {
+    min-height: 66px;
+    padding-inline: 16px;
+  }
+
+  .semantic-layer,
+  .taxonomy-coordinate-section {
+    padding-inline: 2px;
+  }
+
+  .semantic-system-grid,
+  .taxonomy-object-model .taxonomy-object-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .semantic-system-card {
+    min-height: 0;
+  }
+
+  .semantic-axiom {
+    grid-template-columns: 1fr;
+  }
+
+  .taxonomy-coordinate-stage {
+    padding: 24px 16px;
+    border-radius: 18px;
+  }
+
+  .taxonomy-coordinate-stage .taxonomy-example-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .taxonomy-object-model .taxonomy-object-card::after,
+  .taxonomy-object-model .taxonomy-object-card:nth-child(3)::after {
+    content: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .global-flow-stage,
+  .semantic-inspector-link {
+    transition: none;
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "meta": {
+    "title": "Baltimore MedTech live data workbook",
+    "as_of": "2026-09-03",
+    "default_geography": "Maryland and Baltimore where supported",
+    "description": "The MedTech Meta Index leads a workbook of live public medical-labor sources and explicit repository snapshots, with one spreadsheet-style page per component source.",
+    "live_definition": "Live means the page queries the publisher or its release metadata through the MedTech Worker when opened. Repository snapshots remain versioned inputs and are never labeled live.",
+    "privacy_note": "The workbook exposes public aggregate and provider-directory data only. It does not retrieve patient-level records or restricted claims files."
+  },
+  "parts": [
+    "/specialty/baltimore-medtech/dataset-registry-meta.json",
+    "/specialty/baltimore-medtech/dataset-registry-live.json",
+    "/specialty/baltimore-medtech/dataset-registry-snapshots.json"
+  ]
+}

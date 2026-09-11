@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="icon" type="image/jpeg" href="/specialty/baltimore-medtech/assets/images/baltimore-medtech-logo-square.jpg" />
+  <title>MedTech Meta Index &amp; Data Workbook | Baltimore MedTech</title>
+  <meta name="description" content="The MedTech Meta Index and spreadsheet-style pages for live public medical-labor sources and versioned Baltimore MedTech datasets." />
+  <script>(()=>{const k='bmore-medtech.theme',s=(()=>{try{return localStorage.getItem(k)}catch{return null}})(),m=s==='light'||s==='dark'?s:'system',r=m==='system'&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':m==='dark'?'dark':'light';document.documentElement.dataset.themeMode=m;document.documentElement.dataset.theme=r})()</script>
+  <link rel="stylesheet" href="/specialty/baltimore-medtech/assets/styles.css" />
+  <link rel="stylesheet" href="/specialty/baltimore-medtech/assets/dataset-pages.css" />
+  <script type="module" src="/specialty/baltimore-medtech/assets/theme.js"></script>
+  <script type="module" src="/specialty/baltimore-medtech/assets/dataset-catalog.js"></script>
+</head>
+<body class="dataset-body">
+<a class="skip-link" href="#main-content">Skip to main content</a>
+<header class="site-header"><div class="site-header-inner">
+  <a class="brand" href="/" aria-label="Baltimore MedTech home"><img src="/specialty/baltimore-medtech/assets/images/baltimore-medtech-logo-square.jpg" alt="" /><span class="brand-copy"><strong>Baltimore MedTech</strong><small>Health × Medicine × Biotech</small></span></a>
+  <nav aria-label="Primary navigation"><a href="/calendar">General Calendar</a><a href="https://medtech.social/medtech-events">MedTech Events</a><a href="/">Start Here</a><a href="/specialty/baltimore-medtech/map.html">Map</a><a href="/specialty/baltimore-medtech/taxonomy.html">Medical atlas</a><a aria-current="page" href="/specialty/baltimore-medtech/datasets.html">Data sheets</a><a class="button nav-cta" href="https://medtech.social/users/login">Login</a></nav>
+</div></header>
+
+<main class="dataset-catalog-page" id="main-content">
+  <section class="dataset-catalog-hero" aria-labelledby="dataset-catalog-title">
+    <div>
+      <p class="dataset-eyebrow">MedTech Meta Index</p>
+      <h1 id="dataset-catalog-title">The source behind<br />the <em>sources.</em></h1>
+      <p>Begin with the Meta Index to see authority, evidence type, unit of observation, access layer, join keys, and principal caveats across the full workbook. Then open each live or versioned component in its own spreadsheet-style sheet.</p>
+      <div class="dataset-hero-links"><a href="/specialty/baltimore-medtech/datasets/medtech-meta-index.html">Open the MedTech Meta Index →</a><a href="/specialty/baltimore-medtech/datasets/medical-science-field-atlas.html">Open the Medical Science Field Atlas</a></div>
+      <span id="dataset-catalog-reviewed" class="dataset-reviewed"></span>
+    </div>
+    <div class="dataset-catalog-stats" aria-label="Workbook summary"><article><strong id="dataset-live-count">—</strong><span>live source pages</span></article><article><strong id="dataset-snapshot-count">—</strong><span>versioned index and data sheets</span></article><article><strong id="dataset-publisher-count">—</strong><span>publishers / stewards</span></article></div>
+  </section>
+
+  <section class="dataset-workbook-index" aria-labelledby="dataset-index-title">
+    <header><div><p class="dataset-eyebrow">Workbook index</p><h2 id="dataset-index-title">Datasets</h2></div><div class="dataset-catalog-controls"><label><span>Find</span><input id="dataset-catalog-search" type="search" placeholder="Provider, workforce, ICD, genomics…" /></label><label><span>Mode</span><select id="dataset-catalog-mode"><option value="">All modes</option><option value="live-api">Live API</option><option value="live-release">Live release</option><option value="live-lookup">Live lookup</option><option value="repository-snapshot">Repository snapshot</option></select></label><strong id="dataset-catalog-count">Loading…</strong></div></header>
+    <div class="dataset-sheet-frame dataset-catalog-frame">
+      <div class="dataset-formula-bar" aria-hidden="true"><span>INDEX</span><strong>MedTech Meta Index first</strong><p>Source-of-sources · live public data · versioned scientific and analytical inputs</p></div>
+      <div class="dataset-table-scroll"><table class="dataset-grid-table dataset-catalog-table"><thead><tr><th class="dataset-sheet-corner"></th><th>Dataset</th><th>Mode</th><th>Publisher</th><th>Category</th><th>Coverage</th><th>Refresh</th><th>Geography</th><th>Page</th></tr></thead><tbody id="dataset-catalog-body"></tbody></table></div>
+      <div class="dataset-sheet-tabs"><a href="/specialty/baltimore-medtech/datasets/medtech-meta-index.html">MedTech Meta Index</a><span class="is-selected">Workbook index</span><a href="/specialty/baltimore-medtech/need-availability-distortions.html">Need gaps</a><a href="/specialty/baltimore-medtech/taxonomy.html">Medical Science Atlas</a></div>
+    </div>
+    <div id="dataset-catalog-status" class="status">Loading dataset registry…</div>
+  </section>
+
+  <section class="dataset-catalog-principles">
+    <article><span>META</span><h3>A governed source-of-sources</h3><p>The Meta Index distinguishes primary operational evidence, official statistics, curated standards and scientific indexes, and derived analyses. Decision proximity is separate from authority tier.</p></article>
+    <article><span>LIVE</span><h3>Publisher queried when opened</h3><p>CMS, NPPES, BLS, HRSA release metadata, and Maryland’s public verification portals are fetched through the Worker and cached for a source-appropriate interval.</p></article>
+    <article><span>SNAPSHOT</span><h3>Versioned analytical inputs</h3><p>The Medical Science Field Atlas, standards indexes, strategy metrics, need-gap model, and allied-care extract remain reproducible repository assets with their own sheets.</p></article>
+  </section>
+</main>
+<footer class="site-footer"><div class="site-footer-grid"><div><a class="footer-brand" href="/">Baltimore MedTech</a><p>Connecting health, medicine, and biotech across Baltimore.</p></div><div class="footer-links"><a href="/specialty/baltimore-medtech/datasets/medtech-meta-index.html">MedTech Meta Index</a><a href="/specialty/baltimore-medtech/datasets.html">Data workbook</a><a href="/specialty/baltimore-medtech/taxonomy.html">Medical Science Atlas</a><a href="/specialty/baltimore-medtech/need-availability-distortions.html">Need gaps</a></div><div class="footer-action"><span>Trace every strategic claim back to a row and source.</span><a href="https://medtech.social/users/register">Join Baltimore MedTech <span aria-hidden="true">↗</span></a></div></div></footer>
+</body>
+</html>

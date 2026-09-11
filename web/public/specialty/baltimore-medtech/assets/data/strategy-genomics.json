@@ -1,0 +1,60 @@
+{
+  "id": "genomics",
+  "index_field_id": "genomics",
+  "name": "Genomics",
+  "accent": "violet",
+  "stance": "Attack the interpretation bottleneck",
+  "workforce": {
+    "value": 2632,
+    "display": "2,632",
+    "year": 2022,
+    "label": "board-certified physicians",
+    "definition": "ABMS Medical Genetics and Genomics specialty proxy",
+    "source_label": "ABMS 2022 board-certification report summary",
+    "source_url": "https://www.abms.org/newsroom/new-report-indicates-record-number-of-us-physicians-and-medical-specialists-are-abms-member-board-certified/",
+    "exact_table_url": "https://www.beckershospitalreview.com/quality/hospital-physician-relationships/10-medical-specialties-with-the-most-fewest-board-certified-physicians/"
+  },
+  "pipeline": {
+    "value": 177,
+    "display": "177",
+    "year": 2025,
+    "label": "new diplomates",
+    "definition": "ABMGG certification examinations",
+    "source_label": "ABMGG 2025 new diplomates",
+    "source_url": "https://www.abmgg.org/facet/abmgg-welcomes-new-diplomates-in-2025/"
+  },
+  "need": {
+    "value": 30000000,
+    "display": "≈30M",
+    "year": 2019,
+    "label": "Americans with a rare disease",
+    "type": "addressable-population proxy",
+    "secondary": [
+      "About 80% of rare diseases are genetic",
+      "More than half affect children"
+    ],
+    "scope_note": "Rare disease is a strategic genomics proxy, not the full population using genetics, pharmacogenomics, cancer genomics, or reproductive testing.",
+    "source_label": "NIH/NCATS Rare Diseases Are Not Rare",
+    "source_url": "https://ncats.nih.gov/news/releases/2019/rare-diseases-challenge"
+  },
+  "funding": {
+    "proxy_label": "NHGRI appropriation",
+    "scope_note": "Lead-institute proxy; genomics is funded throughout NIH, other agencies, health systems, philanthropy, and industry.",
+    "source_label": "NIH historical appropriations",
+    "source_url": "https://www.nih.gov/about-nih/nih-almanac/appropriations-section-1",
+    "values": [
+      {"year": 2022, "value": 639062000},
+      {"year": 2023, "value": 663200000},
+      {"year": 2024, "value": 663200000}
+    ]
+  },
+  "digital_leverage": {
+    "score": 100,
+    "basis": "Inherently computational data, rapidly improving standards, reusable variant knowledge, and major opportunities in phenotype capture, interpretation, counseling, and longitudinal reanalysis."
+  },
+  "strategy": {
+    "labor": "Build around clinical geneticists, laboratory specialists, and genetic counselors by reducing phenotype capture, evidence review, interpretation, handoff, and reanalysis burden.",
+    "applications": "Focus on diagnostic-odyssey shortening, phenotype-to-variant workflows, report comprehension, VRS and FHIR interoperability, and responsible reanalysis rather than sequencing alone.",
+    "group": "Genomics is the clearest labor-scarcity and software-leverage signal. Convene clinicians, labs, counselors, rare-disease communities, informaticians, and payers around specific diagnostic pathways."
+  }
+}

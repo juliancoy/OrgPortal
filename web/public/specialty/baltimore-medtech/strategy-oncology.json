@@ -1,0 +1,60 @@
+{
+  "id": "oncology",
+  "index_field_id": "oncology",
+  "name": "Oncology",
+  "accent": "coral",
+  "stance": "Target navigation and operational friction",
+  "workforce": {
+    "value": 16673,
+    "display": "16,673",
+    "year": 2021,
+    "label": "active physicians",
+    "definition": "AAMC Hematology and Oncology specialty grouping",
+    "source_label": "AAMC 2022 Physician Specialty Data Report (2021 data)",
+    "source_url": "https://www.aamc.org/data-reports/report/us-physician-workforce-data-dashboard",
+    "exact_table_url": "https://www.beckersasc.com/asc-news/number-of-active-physicians-by-specialty/"
+  },
+  "pipeline": {
+    "value": 825,
+    "display": "825",
+    "year": 2025,
+    "label": "modeled new entrants per year",
+    "definition": "HRSA Health Workforce Simulation Model",
+    "source_label": "HRSA physician model components",
+    "source_url": "https://bhw.hrsa.gov/data-research/projecting-health-workforce-supply-demand/technical-documentation/physician-model-components"
+  },
+  "need": {
+    "value": 18600000,
+    "display": "18.6M",
+    "year": 2025,
+    "label": "U.S. cancer survivors",
+    "type": "prevalence / survivorship",
+    "secondary": [
+      "5.4% of the U.S. population",
+      "Projected to reach 22.4M by 2035"
+    ],
+    "scope_note": "Survivorship begins at diagnosis and includes people with widely different treatment and follow-up needs.",
+    "source_label": "NCI Office of Cancer Survivorship",
+    "source_url": "https://cancercontrol.cancer.gov/ocs/statistics"
+  },
+  "funding": {
+    "proxy_label": "NCI appropriation",
+    "scope_note": "Lead-institute proxy; cancer research is also funded outside NCI and outside NIH.",
+    "source_label": "NIH historical appropriations",
+    "source_url": "https://www.nih.gov/about-nih/nih-almanac/appropriations-section-1",
+    "values": [
+      {"year": 2022, "value": 6912522000},
+      {"year": 2023, "value": 7320159000},
+      {"year": 2024, "value": 7224159000}
+    ]
+  },
+  "digital_leverage": {
+    "score": 90,
+    "basis": "Rich longitudinal, imaging, pathology, genomic, pharmacy, trial, and claims data; workflow complexity and high regulatory burden create both opportunity and friction."
+  },
+  "strategy": {
+    "labor": "Extend oncology teams through navigation, symptom management, survivorship, prior-authorization support, trial matching, and multidisciplinary coordination.",
+    "applications": "Avoid generic cancer apps. Focus on care transitions, treatment toxicity, financial navigation, structured pathology and genomics, and operational gaps with an identifiable clinical owner.",
+    "group": "Use oncology as a partnership-rich domain, but enter through a narrow workflow where Baltimore institutions, patient groups, and implementers can validate impact."
+  }
+}

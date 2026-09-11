@@ -1,0 +1,68 @@
+[
+  {
+    "id": "medtech_index",
+    "name": "Medical Science Field Atlas",
+    "steward": "Baltimore MedTech",
+    "scope": "A modern polyhierarchy of medical science fields and subdisciplines",
+    "description": "The complete local field atlas. It treats anatomy, disease, method, biological scale, population, care setting, and translational stage as intersecting coordinates rather than forcing every field into one tree.",
+    "source_url": "/medical-science-field-atlas.json",
+    "source_label": "Download Field Atlas JSON",
+    "selection_mode": "all",
+    "group_mode": "lineage"
+  },
+  {
+    "id": "mesh",
+    "name": "Medical Subject Headings (MeSH)",
+    "steward": "U.S. National Library of Medicine",
+    "scope": "Biomedical indexing vocabulary",
+    "description": "A Medical Science Field Atlas crosswalk grouped by the most relevant high-level MeSH tree. MeSH is broader than fields and also organizes anatomy, diseases, processes, techniques, and health care.",
+    "source_url": "https://www.nlm.nih.gov/databases/download/mesh.html",
+    "source_label": "Official MeSH data",
+    "selection_mode": "source_lens",
+    "group_mode": "source_lens"
+  },
+  {
+    "id": "acgme",
+    "name": "ACGME Specialties",
+    "steward": "Accreditation Council for Graduate Medical Education",
+    "scope": "U.S. physician specialties and subspecialties",
+    "description": "Clinical fields in the Medical Science Field Atlas that map to an ACGME specialty umbrella. This lens describes accredited professional training, not the whole of medical research.",
+    "source_url": "https://www.acgme.org/specialties/",
+    "source_label": "Official specialties",
+    "selection_mode": "source_lens",
+    "group_mode": "source_lens"
+  },
+  {
+    "id": "oecd_ford",
+    "name": "OECD Fields of R&D (FORD)",
+    "steward": "Organisation for Economic Co-operation and Development",
+    "scope": "Research activity and statistical reporting",
+    "description": "The complete Medical Science Field Atlas grouped into FORD's five medical and health science divisions. This lens is useful for portfolios and reporting, but intentionally coarse.",
+    "source_url": "https://www.oecd.org/en/publications/frascati-manual-2015_9789264239012-en.html",
+    "source_label": "Frascati Manual",
+    "selection_mode": "source_lens",
+    "group_mode": "source_lens"
+  },
+  {
+    "id": "nih_rcdc",
+    "name": "NIH RCDC",
+    "steward": "U.S. National Institutes of Health",
+    "scope": "Funded research, condition, and disease categories",
+    "description": "Research areas and disease domains in the Medical Science Field Atlas that align with the overlapping topic model used for NIH categorical spending. It is a portfolio lens, not a field hierarchy.",
+    "source_url": "https://report.nih.gov/funding/categorical-spending/rcdc",
+    "source_label": "About RCDC",
+    "selection_mode": "source_lens",
+    "group_mode": "source_lens"
+  },
+  {
+    "id": "who_fic",
+    "name": "WHO-FIC: ICD, ICF & ICHI",
+    "steward": "World Health Organization",
+    "scope": "Diseases, functioning, disability, and health interventions",
+    "description": "Medical Science Field Atlas entries connected to ICD, ICF, or ICHI. These systems classify the objects and activities of medicine rather than scientific fields themselves.",
+    "source_url": "https://www.who.int/standards/classifications/",
+    "source_label": "WHO classifications",
+    "selection_mode": "source_lens",
+    "group_mode": "source_lens"
+  }
+]
