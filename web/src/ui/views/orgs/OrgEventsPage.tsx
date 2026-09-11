@@ -308,6 +308,23 @@ export function OrgEventsPage() {
     });
   }
 
+  async function useEventImageAsSocialPreview(event: NetworkEvent) {
+    const imageUrl = event.image_url?.trim();
+    if (!imageUrl) {
+      setStatus("This event does not have an image URL to use as the social preview.");
+      return;
+    }
+    await saveSocialPreview(event.id, {
+      title: socialDraftByEvent[event.id]?.title || event.social_title || event.title,
+      description:
+        socialDraftByEvent[event.id]?.description ||
+        event.social_description ||
+        event.description ||
+        "",
+      imageUrl,
+    });
+  }
+
   async function claimEvent(eventId: string) {
     if (!token) return;
     const claimHostType = claimHostTypeByEvent[eventId] ?? "individual";
@@ -741,13 +758,22 @@ export function OrgEventsPage() {
                         </a>
                       ) : null}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => useGeneratedFlyerAsSocialPreview(event)}
-                      disabled={!token || !event.flyer_urls?.social}
-                    >
-                      Use generated flyer as social preview
-                    </button>
+                    <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                      <button
+                        type="button"
+                        onClick={() => useGeneratedFlyerAsSocialPreview(event)}
+                        disabled={!token || !event.flyer_urls?.social}
+                      >
+                        Use generated flyer as social preview
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => useEventImageAsSocialPreview(event)}
+                        disabled={!token || !event.image_url}
+                      >
+                        Use event image unedited
+                      </button>
+                    </div>
                   </div>
                   <button
                     type="button"
