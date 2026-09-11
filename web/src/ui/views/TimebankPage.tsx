@@ -4,6 +4,7 @@ import { useTimebankInbox, signalInboxChange } from '../timebank/TimebankInbox'
 import { timebankListingPath, timebankMessagePath } from '../timebank/links'
 import { TimebankNotifications } from './timebank/TimebankNotifications'
 import { TimebankAnalytics } from './timebank/TimebankAnalytics'
+import { ImportedPhoto, type ImportedListing } from './timebank/ImportedListings'
 import { TimebankClaims, TimebankClaimReview } from './timebank/TimebankClaims'
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react'
 import { useAuth } from '../../app/AppProviders'
@@ -19,6 +20,7 @@ type Listing = {
   category: string; contact: string; image_key: string | null
   visibility: 'public' | 'members'
   uptake_count: number; user_has_taken_up: number; user_has_helped: number
+  upvote_count: number; downvote_count: number; vote_score: number; user_vote: 'up' | 'down' | null
 }
 type Exchange = {
   id: string; listing_title: string; provider_user_id: string; recipient_user_id: string
@@ -36,6 +38,13 @@ const categorySymbols: Record<string, string> = { 'Home & garden': '❀', Learni
 const emptyListing = (kind: 'offer' | 'request' = 'offer') => ({ id: crypto.randomUUID(), kind, title: '', description: '', location: '', hours: '1', category: 'Other', contact: '', visibility: 'public' as Listing['visibility'] })
 const hours = (minutes: number) => new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(minutes / 60)
 const formatHours = (minutes: number) => `${hours(minutes)} h`
+const sortListings = (items: Listing[], sort: string) => {
+  const ordered = [...items]
+  if (sort === 'hours-low') ordered.sort((a, b) => a.minutes - b.minutes || a.title.localeCompare(b.title))
+  if (sort === 'hours-high') ordered.sort((a, b) => b.minutes - a.minutes || a.title.localeCompare(b.title))
+  if (sort === 'category') ordered.sort((a, b) => a.category.localeCompare(b.category) || a.title.localeCompare(b.title))
+  return ordered
+}
 function accentForeground(color: string) {
   const channels = [1, 3, 5].map((offset) => parseInt(color.slice(offset, offset + 2), 16) / 255).map((value) => value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4)
   return .2126 * channels[0] + .7152 * channels[1] + .0722 * channels[2] > .179 ? '#10221b' : '#ffffff'
@@ -68,7 +77,15 @@ export function TimebankPage() {
   const { token } = useAuth()
   const navigate = useNavigate()
   const signInPath = (listingId?: string) => `/users/login?next=${encodeURIComponent(listingId ? timebankListingPath(listingId) : timebankHomePath())}`
+  const importedMessagePath = (item: ImportedListing) => `/chat?${new URLSearchParams({
+    start: 'dm',
+    userId: item.claimed_user_id || '',
+    name: item.claimed_user_name || item.owner_name,
+    draft: `Hi ${item.claimed_user_name || item.owner_name}, I'm interested in your archived ${item.kind} "${item.title}" from Bmore Timebank. Is this still available?`,
+  })}`
   const [data, setData] = useState<Dashboard | null>(null)
+  const [importedListings, setImportedListings] = useState<ImportedListing[]>([])
+  const [importError, setImportError] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
@@ -94,10 +111,12 @@ export function TimebankPage() {
   const mine = Boolean(token) && params.get('mine') === 'true'
   const setMine = (value: boolean) => setParams(value ? { mine: 'true' } : {})
   const [requestSort, setRequestSort] = useState('most')
+  const [offerSort, setOfferSort] = useState('newest')
   const [revision, setRevision] = useState(0)
   const [search, setSearch] = useState('')
   const searchRef = useRef<HTMLInputElement>(null)
   const [selected, setSelected] = useState<Listing | null>(null)
+  const [selectedImport, setSelectedImport] = useState<ImportedListing | null>(null)
   const [recording, setRecording] = useState(false)
   const [exchange, setExchange] = useState({ id: crypto.randomUUID(), hours: '1', note: '' })
   const [settings, setSettings] = useState<TimebankCommunity | null>(null)
@@ -105,6 +124,16 @@ export function TimebankPage() {
   const [savedDomain, setSavedDomain] = useState('')
 
   const api = useTimebankApi()
+  useEffect(() => {
+    setImportedListings([]); setImportError('')
+    if (!data?.imports_available) return
+    const controller = new AbortController()
+    void api<ImportedListing[]>('/imports/listings', { signal: controller.signal })
+      .then((items) => { if (!controller.signal.aborted) setImportedListings(items) })
+      .catch(() => { if (!controller.signal.aborted) setImportError('Imported listings could not be loaded. Refresh to try again.') })
+    return () => controller.abort()
+  }, [api, data?.imports_available, revision])
+
 
   const refresh = useCallback(async (signal?: AbortSignal) => {
     const query = new URLSearchParams({ request_sort: requestSort })
@@ -159,7 +188,7 @@ export function TimebankPage() {
     finally { busyRef.current = false; setBusy(false) }
   }
   const mutate = (path: string, body: unknown, success: string, onSaved?: () => void) => run(() => api(path, { method: 'PATCH', body: JSON.stringify(body) }), success, onSaved)
-  const closeDialog = () => { setShowForm(false); setSelected(null); setSettings(null); setError(''); setPhoto(null); if (linkedListing) setParams({}, { replace: true }) }
+  const closeDialog = () => { setShowForm(false); setSelected(null); setSelectedImport(null); setSettings(null); setError(''); setPhoto(null); if (linkedListing) setParams({}, { replace: true }) }
   const openComposer = (kind: 'offer' | 'request') => {
     if (!token) { navigate(signInPath()); return }
     setListing(emptyListing(kind)); setPhoto(null); setPostedId(null); setError(''); setShowForm(true)
@@ -198,11 +227,12 @@ export function TimebankPage() {
     return scope && `${item.title} ${item.description} ${item.location} ${item.member_name}`.toLowerCase().includes(search.trim().toLowerCase())
   })
   const pending = (data?.exchanges || []).filter((item) => item.status === 'pending')
+  const visibleImports = importedListings.filter((item) => (!mine || item.claimed_by_me) && `${item.title} ${item.description} ${item.owner_name}`.toLowerCase().includes(search.trim().toLowerCase()))
   const needsYou = pending.filter((item) => item.proposed_by_user_id !== userId).length
   const history = (data?.exchanges || []).filter((item) => item.status !== 'pending')
   const community = data?.community
   const modalError = error && <p className="tb-alert" role="alert">{error}</p>
-  const hasDialog = showForm || selected || settings
+  const hasDialog = showForm || selected || selectedImport || settings
 
   useEffect(() => {
     if (tab !== 'activity' || !token) return
@@ -232,6 +262,28 @@ export function TimebankPage() {
     if (!token) { navigate(signInPath(item.id)); return }
     return run(() => api(`/listings/${item.id}/uptake`, { method: item.user_has_taken_up ? 'DELETE' : 'PUT' }), item.user_has_taken_up ? 'You withdrew from this request. No hours moved.' : 'You have taken up this request. Arrange the help with its owner.')
   }
+  const voteOnListing = (item: Listing, direction: 'up' | 'down') => {
+    if (!token) { navigate(signInPath(item.id)); return }
+    const nextDirection = item.user_vote === direction ? null : direction
+    return run(async () => {
+      const result = await api<Pick<Listing, 'upvote_count' | 'downvote_count' | 'vote_score' | 'user_vote'>>(`/listings/${item.id}/vote`, { method: 'PUT', body: JSON.stringify({ direction: nextDirection }) })
+      setData((current) => current ? { ...current, listings: current.listings.map((row) => row.id === item.id ? { ...row, ...result } : row) } : current)
+      setSelected((current) => current?.id === item.id ? { ...current, ...result } : current)
+    }, nextDirection ? 'Vote saved.' : 'Vote removed.')
+  }
+  const listingVotes = (item: Listing) => {
+    const canVoteUp = item.status === 'open' || item.user_vote === 'up'
+    const canVoteDown = item.status === 'open' || item.user_vote === 'down'
+    return <div className="tb-votes" aria-label={`${item.vote_score || 0} vote score`}>
+      <button className={item.user_vote === 'up' ? 'is-selected' : ''} disabled={busy || !canVoteUp} aria-pressed={item.user_vote === 'up'} aria-label={`Upvote ${item.title}`} onClick={() => { void voteOnListing(item, 'up') }}>
+        <span aria-hidden="true">▲</span><span>{item.upvote_count || 0}</span>
+      </button>
+      <strong>{item.vote_score || 0}</strong>
+      <button className={item.user_vote === 'down' ? 'is-selected' : ''} disabled={busy || !canVoteDown} aria-pressed={item.user_vote === 'down'} aria-label={`Downvote ${item.title}`} onClick={() => { void voteOnListing(item, 'down') }}>
+        <span aria-hidden="true">▼</span><span>{item.downvote_count || 0}</span>
+      </button>
+    </div>
+  }
   const refreshButton = <button className="tb-text-button" disabled={busy || loading} onClick={() => {
     setLoading(true); setError('')
     void Promise.all([refresh(), inbox.refresh()]).catch((err) => setError(toUserFacingErrorMessage(err, 'Unable to refresh.'))).finally(() => setLoading(false))
@@ -254,23 +306,34 @@ export function TimebankPage() {
       <p role="status" aria-live="polite">{loading ? 'Loading your community…' : message}</p>
     </div>
     {data && tab === 'home' && <section className="tb-home" aria-label="Offers and requests">
-      <p className="tb-muted">{token ? 'Offers and requests from everyone in this community.' : <>Explore public offers and requests from the community. <Link to={signInPath()}>Sign in</Link> to share yours and arrange help.</>}</p>
+      <div className="tb-home-heading">
+        <p className="tb-muted">{token ? 'Offers and requests from everyone in this community.' : <>Explore public offers and requests from the community. <Link to={signInPath()}>Sign in</Link> to share yours and arrange help.</>}</p>
+        <span>{visible.length + visibleImports.length} listings</span>
+      </div>
       <div className="tb-board-tools"><div className="tb-search"><label className="tb-sr-only" htmlFor="timebank-search">Search offers and requests</label><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 5 5" /></svg><input id="timebank-search" ref={searchRef} type="search" placeholder="Search offers and requests" value={search} onChange={(event) => setSearch(event.target.value)} />{search && <button className="tb-search-clear" aria-label="Clear search" onClick={() => { setSearch(''); searchRef.current?.focus() }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6" /></svg></button>}</div>{token && <label className="tb-mine"><input type="checkbox" checked={mine} onChange={(event) => setMine(event.target.checked)} />My listings</label>}{needsYou > 0 && <button className="tb-text-button" onClick={() => setTab('activity')}>{needsYou} awaiting confirmation</button>}</div>
-      <p className="tb-sr-only" role="status" aria-live="polite">{visible.filter((item) => item.kind === 'offer').length} offers and {visible.filter((item) => item.kind === 'request').length} requests{search ? ' match your search' : ' shown'}.</p>
+      <p className="tb-sr-only" role="status" aria-live="polite">{visible.filter((item) => item.kind === 'offer').length + visibleImports.filter((item) => item.kind === 'offer').length} offers and {visible.filter((item) => item.kind === 'request').length + visibleImports.filter((item) => item.kind === 'request').length} requests{search ? ' match your search' : ' shown'}.</p>
+      {importError && <p role="alert" className="tb-alert">{importError}</p>}
       <div className="tb-columns">
         {(['offer', 'request'] as const).map((kind) => {
-          const items = visible.filter((item) => item.kind === kind)
+          const items = kind === 'offer' ? sortListings(visible.filter((item) => item.kind === kind), offerSort) : visible.filter((item) => item.kind === kind)
+          const imported = visibleImports.filter((item) => item.kind === kind)
           return <section className="tb-column" key={kind} aria-labelledby={`timebank-${kind}-title`}>
-            <div className="tb-column-heading"><h2 id={`timebank-${kind}-title`}>{kind === 'offer' ? 'Offers' : 'Requests'}</h2><button className="tb-button tb-add" aria-label={kind === 'offer' ? 'Add offer' : 'Add request'} disabled={busy} onClick={() => openComposer(kind)}>＋<span>Add</span></button></div>
-            <div className="tb-column-meta">{kind === 'request' ? <label><span className="tb-sr-only">Sort requests</span><select aria-label="Sort requests" value={requestSort} onChange={(event) => setRequestSort(event.target.value)}><option value="most">Most taken up</option><option value="least">Least taken up</option><option value="newest">Newest</option></select></label> : <span>Newest offers</span>}</div>
+            <div className="tb-column-heading"><div><span>{items.length + imported.length}</span><h2 id={`timebank-${kind}-title`}>{kind === 'offer' ? 'Offers' : 'Requests'}</h2></div><button className="tb-button tb-add" aria-label={kind === 'offer' ? 'Add offer' : 'Add request'} disabled={busy} onClick={() => openComposer(kind)}>＋<span>Add</span></button></div>
+            <div className="tb-column-meta"><label><span>{kind === 'offer' ? 'Sort offers' : 'Sort requests'}</span><select aria-label={kind === 'offer' ? 'Sort offers' : 'Sort requests'} value={kind === 'offer' ? offerSort : requestSort} onChange={(event) => kind === 'offer' ? setOfferSort(event.target.value) : setRequestSort(event.target.value)}>{kind === 'offer' ? <><option value="newest">Newest offers</option><option value="hours-low">Shortest first</option><option value="hours-high">Longest first</option><option value="category">By category</option></> : <><option value="most">Most taken up</option><option value="least">Least taken up</option><option value="newest">Newest requests</option></>}</select></label></div>
             <ul className="tb-list">{items.map((item) => <li key={item.id}><article className="tb-listing" aria-label={item.title}>
               <button className="tb-row-open" aria-label={`View ${item.title}`} onClick={() => { setSelected(item); setRecording(false); setError(''); setExchange({ id: crypto.randomUUID(), hours: String(item.minutes / 60), note: '' }) }}>
-                <ListingPhoto item={item} /><div className="tb-row-body"><h3>{item.title}</h3><p className="tb-card-description">{item.description}</p><p className="tb-row-meta">{formatHours(item.minutes)} · {item.category}</p><p className="tb-row-member">{item.member_name}{item.user_id === userId ? ' (you)' : ''}{item.location ? ` · ${item.location}` : ''}{item.visibility === 'members' ? ' · Members only' : ''}{item.status === 'closed' ? ' · Closed' : ''}</p></div>
+                <ListingPhoto item={item} /><div className="tb-row-body"><span className="tb-card-kicker">{item.category}</span><h3>{item.title}</h3><p className="tb-card-description">{item.description}</p><p className="tb-row-meta">{formatHours(item.minutes)} estimated</p><p className="tb-row-member">{item.member_name}{item.user_id === userId ? ' (you)' : ''}{item.location ? ` · ${item.location}` : ''}{item.visibility === 'members' ? ' · Members only' : ''}{item.status === 'closed' ? ' · Closed' : ''}</p></div>
               </button>
+              {listingVotes(item)}
               {item.user_id !== userId && <div className="tb-listing-message"><Link to={timebankMessagePath(item.user_id, item.member_name, item.id)} aria-label={`Message ${item.member_name} about ${item.title}`}>Message member</Link></div>}
               {kind === 'request' && <div className="tb-uptake"><span aria-label={`${item.uptake_count} people have taken up this request`}>{item.uptake_count} {item.uptake_count === 1 ? 'person' : 'people'} took this up</span>{item.user_id !== userId && (item.user_has_helped ? <span className="tb-muted">You helped</span> : <button className="tb-text-button" disabled={busy || (item.status !== 'open' && !item.user_has_taken_up)} onClick={() => { void takeUp(item) }}>{item.user_has_taken_up ? 'Withdraw' : 'Take up request'}</button>)}</div>}
+            </article></li>)}{imported.map((item) => <li key={`import-${item.id}`}><article className="tb-listing tb-imported-listing" aria-label={item.title} data-imported-id={item.id}>
+              <button className="tb-row-open" aria-label={`View ${item.title}`} onClick={() => { setSelectedImport(item); setSelected(null); setRecording(false); setError('') }}>
+                <ImportedPhoto item={item} /><div className="tb-row-body"><span className="tb-card-kicker">{item.kind === 'offer' ? 'Offer' : 'Request'}</span><h3>{item.title}</h3><p className="tb-card-description">{item.description || 'No description was available in the source archive.'}</p><p className="tb-row-meta">Archived listing</p><p className="tb-row-member">{item.claimed_user_name || item.owner_name}</p></div>
+              </button>
+              <div className="tb-listing-message">{item.claimed_user_id ? <Link to={importedMessagePath(item)} aria-label={`Message ${item.claimed_user_name || item.owner_name} about ${item.title}`}>Message member</Link> : <button className="tb-text-button" onClick={() => setSelectedImport(item)}>View details</button>}</div>
             </article></li>)}</ul>
-            {!items.length && <p className="tb-empty">{search ? `No ${kind}s match your search.` : mine ? `You have no ${kind}s here.` : `No ${kind}s yet.`}</p>}
+            {!items.length && !imported.length && <p className="tb-empty">{search ? `No ${kind}s match your search.` : mine ? `You have no ${kind}s here.` : `No ${kind}s yet.`}</p>}
             {data.listings.filter((item) => item.kind === kind).length === 200 && <p className="tb-muted">Showing up to 200 {kind}s in the selected order.</p>}
           </section>
         })}
@@ -319,11 +382,22 @@ export function TimebankPage() {
         event.preventDefault()
         void run(() => api('/exchanges', { method: 'POST', body: JSON.stringify({ id: exchange.id, listing_id: selected.id, minutes: Number(exchange.hours) * 60, note: exchange.note }) }), 'Hours sent to the other member for confirmation.', () => { closeDialog(); setTab('activity') })
       }}><h3>{selected.title}</h3><p>{selected.kind === 'offer' ? `You received help from ${selected.member_name}. These hours will be subtracted from your balance when they confirm.` : `You helped ${selected.member_name}. These hours will be added to your balance when they confirm.`}</p><label>Completed hours<input autoFocus required type="number" min="0.25" max="24" step="0.25" value={exchange.hours} onChange={(event) => setExchange({ ...exchange, hours: event.target.value })} /></label><label>Work completed<textarea required rows={3} maxLength={1000} value={exchange.note} onChange={(event) => setExchange({ ...exchange, note: event.target.value })} /></label><div className="tb-dialog-footer"><button type="button" className="tb-text-button" disabled={busy} onClick={() => setRecording(false)}>Back to listing</button><button className="tb-button" disabled={busy} type="submit">Send hours for confirmation</button></div></form> : <div className="tb-detail">
-        <ListingPhoto item={selected} large /><div className="tb-detail-meta"><span className={`tb-badge tb-${selected.kind}`}>{selected.kind === 'offer' ? 'Offering' : 'Looking for help'}</span><span className="tb-badge">{selected.visibility === 'members' ? 'Members only' : 'Public'}</span><span>{selected.category} · {formatHours(selected.minutes)} estimated</span></div><p className="tb-description">{selected.description}</p><p className="tb-muted">Shared by <b>{selected.member_name}</b> · {selected.location || 'Arrange with member'}</p>
+        <ListingPhoto item={selected} large /><div className="tb-detail-meta"><span className={`tb-badge tb-${selected.kind}`}>{selected.kind === 'offer' ? 'Offering' : 'Looking for help'}</span><span className="tb-badge">{selected.visibility === 'members' ? 'Members only' : 'Public'}</span><span>{selected.category} · {formatHours(selected.minutes)} estimated</span></div>{listingVotes(selected)}<p className="tb-description">{selected.description}</p><p className="tb-muted">Shared by <b>{selected.member_name}</b> · {selected.location || 'Arrange with member'}</p>
         <div className="tb-arrange"><h3>Arrange the help</h3><p className="tb-description">{selected.contact || 'Use Messages to agree on the details before exchanging hours.'}</p>{selected.user_id !== userId && <Link className="tb-button" to={timebankMessagePath(selected.user_id, selected.member_name, selected.id)}>Message {selected.member_name}</Link>}</div>
         {selected.kind === 'request' && <div className="tb-detail-uptake"><p>{selected.uptake_count} {selected.uptake_count === 1 ? 'person has' : 'people have'} taken up this request.</p>{selected.user_id !== userId && (selected.user_has_helped ? <p>You have already provided confirmed help for this request.</p> : <button className="tb-button" disabled={busy || (selected.status !== 'open' && !selected.user_has_taken_up)} onClick={() => { void takeUp(selected) }}>{selected.user_has_taken_up ? 'Withdraw' : 'Take up request'}</button>)}</div>}
         {selected.user_id === userId ? <><label className="tb-visibility-edit tb-form">Visibility<select aria-label="Listing visibility" value={selected.visibility} disabled={busy || photoBusy} onChange={(event) => { void mutate(`/listings/${selected.id}`, { visibility: event.target.value }, 'Listing visibility updated.') }}><option value="public">Public</option><option value="members">Members only</option></select></label><div className="tb-owner-tools"><label className="tb-photo-edit">{photoBusy ? 'Preparing photo…' : selected.image_key ? 'Replace photo' : 'Add a photo'}<input type="file" accept="image/jpeg,image/png,image/webp" aria-label="Replace listing photo" disabled={busy || photoBusy} onChange={(event) => { void choosePhoto(event.target.files?.[0], selected); event.target.value = '' }} /></label>{selected.image_key && <button className="tb-text-button" disabled={busy || photoBusy} onClick={() => { void run(async () => { await api(`/listings/${selected.id}/image`, { method: 'DELETE' }); setSelected({ ...selected, image_key: null }) }, 'Photo removed.') }}>Remove photo</button>}<button className="tb-button tb-secondary" disabled={busy || photoBusy} onClick={() => { void mutate(`/listings/${selected.id}`, { status: selected.status === 'open' ? 'closed' : 'open' }, selected.status === 'open' ? 'Listing closed.' : 'Listing reopened.', closeDialog) }}>{selected.status === 'open' ? 'Close listing' : 'Reopen listing'}</button></div></> : token ? <div className="tb-dialog-footer"><span>Already helped each other?</span><button className="tb-button" disabled={selected.status !== 'open'} onClick={() => setRecording(true)}>Record completed help</button></div> : <p className="tb-muted"><Link to={signInPath(selected.id)}>Sign in to arrange help and exchange hours.</Link></p>}
       </div>}
+    </TimebankDialog>}
+    {selectedImport && <TimebankDialog title={selectedImport.title} busy={busy} onClose={closeDialog}>
+      {modalError}
+      <div className="tb-detail tb-marketplace-detail">
+        <ImportedPhoto item={selectedImport} large />
+        <div className="tb-detail-meta"><span className={`tb-badge tb-${selectedImport.kind}`}>{selectedImport.kind === 'offer' ? 'Offering' : 'Looking for help'}</span><span>{new Date(selectedImport.captured_at).toLocaleDateString()} archive</span></div>
+        <p className="tb-description">{selectedImport.description || 'No description was available in the source archive.'}</p>
+        <p className="tb-muted">Shared by <b>{selectedImport.owner_name}</b> in the previous Bmore Timebank archive.</p>
+        <div className="tb-arrange tb-marketplace-contact"><h3>Message about this listing</h3><p className="tb-description">Ask whether this offer or request is still available before exchanging hours.</p>{selectedImport.claimed_user_id ? <Link className="tb-button" to={importedMessagePath(selectedImport)}>Message {selectedImport.claimed_user_name || selectedImport.owner_name}</Link> : token ? <button className="tb-button" onClick={() => setTab('imports')}>Claim your LetsBMore account</button> : <Link className="tb-button" to={`/users/login?next=${encodeURIComponent(`${timebankHomePath()}?tab=imports`)}`}>Sign in to claim or message</Link>}</div>
+        <div className="tb-dialog-footer"><a className="tb-text-link" href={selectedImport.source_url} target="_blank" rel="noreferrer">View original listing</a><button className="tb-button tb-secondary" onClick={() => openComposer(selectedImport.kind)}>Post a current {selectedImport.kind}</button></div>
+      </div>
     </TimebankDialog>}
     {settings && <TimebankDialog title={newCommunity ? 'Create a community' : 'Community settings'} busy={busy} onClose={closeDialog}><form className="tb-form" onSubmit={(event) => {
       event.preventDefault()

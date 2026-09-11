@@ -37,7 +37,8 @@
     "test:timebank:account:selenium": "python3 scripts/selenium-timebank-account.py",
     "test:timebank:messaging:selenium": "python3 scripts/selenium-timebank-messaging.py",
     "test:a11y": "node scripts/accessibility/audit.mjs",
-    "test:a11y:orca": "bash scripts/accessibility/run-orca.sh"
+    "test:a11y:orca": "bash scripts/accessibility/run-orca.sh",
+    "test:timebank:imports:selenium": "python3 scripts/selenium-timebank-imports.py"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.1",

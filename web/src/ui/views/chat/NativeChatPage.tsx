@@ -136,6 +136,7 @@ export function NativeChatPage() {
   const draft = drafts[roomId || ''] || ''
   const setDraft = useCallback((value: string | ((current: string) => string)) => setDrafts((current) => ({ ...current, [roomId || '']: typeof value === 'function' ? value(current[roomId || ''] || '') : value })), [roomId])
   const listingId = searchParams.get('timebankListing')
+  const initialDraft = searchParams.get('draft')
   const timebankApi = useTimebankApi()
   const [listingContext, setListingContext] = useState<{ title: string; id: string; member_name: string } | null>(null)
   const [listingError, setListingError] = useState('')
@@ -256,7 +257,10 @@ export function NativeChatPage() {
               const next = current.filter((item) => item.id !== conversation.id)
               return sortConversationsByRecency([conversation, ...next])
             })
-            navigate(`/chat/${encodeURIComponent(conversation.id)}${listingId ? `?timebankListing=${encodeURIComponent(listingId)}` : ''}`, { replace: true })
+            const nextParams = new URLSearchParams()
+            if (listingId) nextParams.set('timebankListing', listingId)
+            if (initialDraft) nextParams.set('draft', initialDraft)
+            navigate(`/chat/${encodeURIComponent(conversation.id)}${nextParams.size ? `?${nextParams.toString()}` : ''}`, { replace: true })
           }
           return
         }
@@ -274,7 +278,15 @@ export function NativeChatPage() {
     return () => {
       cancelled = true
     }
-  }, [api, navigate, refreshConversations, roomId, searchParams, listingId])
+  }, [api, navigate, refreshConversations, roomId, searchParams, listingId, initialDraft])
+
+  useEffect(() => {
+    if (!roomId || !initialDraft) return
+    const key = `${roomId}:draft:${initialDraft}`
+    if (initializedDrafts.current.has(key)) return
+    initializedDrafts.current.add(key)
+    setDraft((current) => current || initialDraft)
+  }, [initialDraft, roomId, setDraft])
 
   useEffect(() => {
     if (!token) {

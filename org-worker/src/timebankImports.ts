@@ -79,6 +79,7 @@ export async function resolveImportClaim(db: D1Database, reviewerId: string, com
   if (status !== 'approved' && status !== 'rejected') throw new TimebankError('Choose approve or reject.');
   const existing = await db.prepare('SELECT * FROM timebank_import_claims WHERE id = ? AND community_id = ?').bind(id, communityId).first<Claim>();
   if (!existing) throw new TimebankError('Claim not found.', 404);
+  if (status === 'approved' && existing.claimant_user_id === reviewerId) throw new TimebankError('Another administrator must review your own claim.', 403);
   if (existing.status === status) return { id, status };
   if (existing.status !== 'pending') throw new TimebankError('This claim has already been reviewed.', 409);
   try {
@@ -106,4 +107,39 @@ export async function claimedImportRecords(db: D1Database, userId: string, commu
     WHERE link.account_id = ? ORDER BY r.kind DESC, r.id`).bind(account.id).all<{ payload_json: string; [key: string]: unknown }>();
   const { profile_json, ...fields } = account;
   return { account: { ...fields, profile: JSON.parse(profile_json) as unknown }, records: records.results.map(({ payload_json, ...record }) => ({ ...record, detail: JSON.parse(payload_json) as unknown })) };
+}
+
+
+// The source catalog contains public-safe advertised offers and requests. Source
+// balances, evidence, and private ledgers stay on the authenticated claim routes.
+export async function importedListings(db: D1Database, userId: string | null, communityId: string) {
+  const rows = await db.prepare(`SELECT r.id, r.title, r.source_url, r.payload_json, b.source_name, b.captured_at,
+      a.claimed_by_user_id AS claimed_user_id, COALESCE(m.name, a.name) AS claimed_user_name,
+      (? IS NOT NULL AND a.claimed_by_user_id = ?) AS claimed_by_me
+    FROM timebank_import_records r JOIN timebank_import_batches b ON b.id = r.batch_id
+    LEFT JOIN timebank_import_record_accounts link ON link.record_id = r.id AND link.relationship = 'owner'
+    LEFT JOIN timebank_import_accounts a ON a.id = link.account_id
+    LEFT JOIN timebank_members m ON m.user_id = a.claimed_by_user_id
+    WHERE b.community_id = ? AND b.ready = 1 AND r.kind = 'activity'
+      AND json_extract(r.payload_json, '$.advertised') = 1
+      AND json_extract(r.payload_json, '$.activity_type') IN ('Offer', 'Request')
+    ORDER BY r.title, r.id LIMIT 200`).bind(userId, userId, communityId).all<{payload_json: string; [key: string]: unknown}>();
+  return rows.results.map(({payload_json, ...row}) => {
+    const detail = JSON.parse(payload_json);
+    return {...row, kind: detail.activity_type.toLowerCase(), description: detail.text,
+      owner_name: detail.owner_name, image_id: detail.image_id, date_display: detail.date_display};
+  });
+}
+export async function importedListingImage(env: Env, userId: string | null, communityId: string, recordId: string) {
+  const row = await env.DB.prepare(`SELECT asset.object_key, asset.content_type FROM timebank_import_records r
+    JOIN timebank_import_batches b ON b.id = r.batch_id
+    JOIN timebank_import_assets asset ON asset.id = json_extract(r.payload_json, '$.image_id') AND asset.batch_id = b.id
+    WHERE r.id = ? AND b.community_id = ? AND b.ready = 1 AND r.kind = 'activity'
+      AND (json_extract(r.payload_json, '$.advertised') = 1 OR EXISTS (
+        SELECT 1 FROM timebank_import_record_accounts link JOIN timebank_import_accounts a ON a.id = link.account_id
+        WHERE link.record_id = r.id AND ? IS NOT NULL AND a.claimed_by_user_id = ?))`).bind(recordId, communityId, userId, userId).first<{object_key: string; content_type: string}>();
+  if (!row) throw new TimebankError('Imported photo not found.', 404);
+  const photo = await env.SCAN_IMAGES?.get(row.object_key);
+  if (!photo) throw new TimebankError('Imported photo not found.', 404);
+  return new Response(photo.body, { headers: { 'Content-Type': row.content_type, 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' } });
 }

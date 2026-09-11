@@ -2,13 +2,17 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { app } from '../src/index';
 import { TimebankDatabase } from './helpers/timebankDatabase';
-import { createTimebankListing, proposeTimebankExchange, resolveTimebankExchange, updateTimebankListing, timebankDashboard } from '../src/timebank';
+import { createTimebankListing, proposeTimebankExchange, resolveTimebankExchange, updateTimebankListing, timebankDashboard, setTimebankListingVote } from '../src/timebank';
 
 const alice = { id: 'alice', name: 'Alice' };
 const bob = { id: 'bob', name: 'Bob' };
 const carol = { id: 'carol', name: 'Carol' };
 const listingInput = (kind = 'offer') => ({ id: crypto.randomUUID(), kind, title: 'Garden help', description: 'Help with planting. Arrange in the community chat.', location: 'Baltimore', minutes: 90 });
 const exchangeInput = (listingId: string) => ({ id: crypto.randomUUID(), listing_id: listingId, minutes: 75, note: 'Planted the raised beds.' });
+const voteSnapshot = (row: unknown) => {
+  const vote = row as Record<string, unknown>;
+  return { upvote_count: vote.upvote_count, downvote_count: vote.downvote_count, vote_score: vote.vote_score, user_vote: vote.user_vote };
+};
 
 for (const kind of ['offer', 'request']) {
   test(`${kind}: confirmation moves equal hours between members and leaves Dena untouched`, async () => {
@@ -226,6 +230,33 @@ test('request uptake counts distinct volunteers and confirmed providers without 
   database.sqlite.close();
 });
 
+test('listing votes toggle per member, stay scoped to community, and do not move hours', async () => {
+  const database = new TimebankDatabase();
+  const db = database.asD1();
+  const request = await createTimebankListing(db, alice, listingInput('request'), 'bmoretimebank');
+  const other = await createTimebankListing(db, alice, listingInput('request'), 'code-collective');
+  await assert.rejects(setTimebankListingVote(db, bob, request.id, 'up', 'code-collective'), { status: 404 });
+  assert.deepEqual(voteSnapshot(await setTimebankListingVote(db, bob, request.id, 'up', 'bmoretimebank')), { upvote_count: 1, downvote_count: 0, vote_score: 1, user_vote: 'up' });
+  assert.deepEqual(voteSnapshot(await setTimebankListingVote(db, carol, request.id, 'down', 'bmoretimebank')), { upvote_count: 1, downvote_count: 1, vote_score: 0, user_vote: 'down' });
+  assert.deepEqual(voteSnapshot(await setTimebankListingVote(db, bob, request.id, 'down', 'bmoretimebank')), { upvote_count: 0, downvote_count: 2, vote_score: -2, user_vote: 'down' });
+  assert.deepEqual(voteSnapshot(await setTimebankListingVote(db, bob, request.id, null, 'bmoretimebank')), { upvote_count: 0, downvote_count: 1, vote_score: -1, user_vote: null });
+  await assert.rejects(setTimebankListingVote(db, bob, request.id, 'sideways' as 'up', 'bmoretimebank'), { status: 400 });
+  await setTimebankListingVote(db, bob, other.id, 'up', 'code-collective');
+  const bmoreBoard = await timebankDashboard(db, bob, 'bmoretimebank');
+  const bmoreListing = bmoreBoard.listings.find((row) => row.id === request.id)! as Record<string, unknown>;
+  assert.equal(bmoreListing.upvote_count, 0);
+  assert.equal(bmoreListing.downvote_count, 1);
+  assert.equal(bmoreListing.vote_score, -1);
+  assert.equal(bmoreListing.user_vote, null);
+  assert.equal(bmoreBoard.account.balance_minutes, 0);
+  const detail = await import('../src/timebank').then(({ getTimebankListing }) => getTimebankListing(db, carol.id, 'bmoretimebank', request.id)) as Record<string, unknown>;
+  assert.equal(detail.user_vote, 'down');
+  await updateTimebankListing(db, alice.id, request.id, { status: 'closed' }, 'bmoretimebank');
+  await assert.rejects(setTimebankListingVote(db, bob, request.id, 'up', 'bmoretimebank'), { status: 409 });
+  assert.deepEqual(voteSnapshot(await setTimebankListingVote(db, carol, request.id, null, 'bmoretimebank')), { upvote_count: 0, downvote_count: 0, vote_score: 0, user_vote: null });
+  database.sqlite.close();
+});
+
 test('request sorting orders the entire board before limiting each column', async () => {
   const { setTimebankUptake } = await import('../src/timebank');
   const database = new TimebankDatabase();
@@ -295,7 +326,7 @@ test('analytics are admin-only and all new routes enforce authentication and hos
   const env = { DB: database.asD1(), PIDP_BASE_URL: 'https://identity.example.test' };
   const request = await createTimebankListing(database.asD1(), alice, listingInput('request'), 'bmoretimebank');
   const url = 'https://bmoretimebank.codecollective.us/api/timebank';
-  for (const [method, path] of [['GET', '/analytics'], ['PUT', `/listings/${request.id}/uptake`], ['DELETE', `/listings/${request.id}/uptake`]]) {
+  for (const [method, path] of [['GET', '/analytics'], ['PUT', `/listings/${request.id}/uptake`], ['DELETE', `/listings/${request.id}/uptake`], ['PUT', `/listings/${request.id}/vote`]]) {
     assert.equal((await app.request(url + path, { method }, env)).status, 401);
   }
   assert.equal((await app.request(url + '/analytics', { headers: { Authorization: 'Bearer bob' } }, env)).status, 403);
@@ -305,4 +336,7 @@ test('analytics are admin-only and all new routes enforce authentication and hos
   const uptake = `/listings/${request.id}/uptake`;
   assert.equal((await app.request(url + uptake, { method: 'PUT', headers: { Authorization: 'Bearer bob' } }, env)).status, 200);
   assert.equal((await app.request(url.replace('bmoretimebank.', '') + uptake, { method: 'DELETE', headers: { Authorization: 'Bearer bob' } }, env)).status, 404);
+  const vote = `/listings/${request.id}/vote`;
+  assert.equal((await app.request(url + vote, { method: 'PUT', headers: { Authorization: 'Bearer bob', 'Content-Type': 'application/json' }, body: JSON.stringify({ direction: 'up' }) }, env)).status, 200);
+  assert.equal((await app.request(url.replace('bmoretimebank.', '') + vote, { method: 'PUT', headers: { Authorization: 'Bearer bob', 'Content-Type': 'application/json' }, body: JSON.stringify({ direction: null }) }, env)).status, 404);
 });

@@ -6,9 +6,15 @@ import { app } from '../../src/index';
 import { app as chatApp } from '../../../chat-worker/src/index';
 import { TimebankDatabase } from './timebankDatabase';
 import { TimebankBucket } from './timebankBucket';
+import { importFixture } from './timebankImportFixture';
+import { loadSnapshot } from '../../scripts/letsbmore-import.mjs';
 
 const database = new TimebankDatabase();
 const bucket = new TimebankBucket();
+if (process.env.TIMEBANK_TEST_IMPORTS === '1') await loadSnapshot(importFixture(), async (sql: string, params: any[] = []) => {
+  const statement = database.sqlite.prepare(sql);
+  return statement.columns().length ? statement.all(...params) : (statement.run(...params), []);
+});
 for (const migration of ['0001_chat.sql', '0002_message_idempotency_sync.sql', '0003_presence.sql']) {
   database.sqlite.exec(readFileSync(new URL(`../../../chat-worker/migrations/${migration}`, import.meta.url), 'utf8'));
 }
