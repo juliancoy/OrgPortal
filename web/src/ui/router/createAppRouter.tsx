@@ -27,6 +27,7 @@ import { OrgEventsPage } from '../views/orgs/OrgEventsPage'
 import { PublicAdminPage } from '../views/public/PublicAdminPage'
 import { PublicContactPage } from '../views/public/PublicContactPage'
 import { PublicEventsPage } from '../views/public/PublicEventsPage'
+import { PublicCalendarPage } from '../views/public/PublicCalendarPage'
 import { PublicEventPage } from '../views/public/PublicEventPage'
 import { EmailCampaignsPage } from '../views/email/EmailCampaignsPage'
 import { EmailPreferencesPage } from '../views/email/EmailPreferencesPage'
@@ -249,8 +250,10 @@ export function createAppRouter() {
           { path: '/users/login', element: <UserLoginPage /> },
           { path: '/users/dashboard', element: <DashboardPage /> },
           { path: '/profile', element: <UserProfilePage /> },
+          { path: '/calendar', element: <PublicCalendarPage /> },
+          { path: '/calendar.html', element: <Navigate to="/calendar" replace /> },
           {
-            path: '/calendar',
+            path: '/calendar/integrations',
             element: (
               <AuthenticatedRoute>
                 <UserCalendarPage />
