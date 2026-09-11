@@ -627,7 +627,8 @@ export function OrgEventsPage() {
           return (
             <article
               key={event.id}
-              className="portal-card"
+              id={`event-${event.slug}`}
+              className="portal-card org-event-management-card"
               style={{ display: "grid", gap: "0.5rem" }}
             >
               <div>

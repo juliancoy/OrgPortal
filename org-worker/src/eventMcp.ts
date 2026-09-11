@@ -19,7 +19,7 @@ const portalSetupSchema = z.object({
   tagline: z.string().max(180).optional(),
   accentColor: z.string().regex(/^#[0-9a-f]{6}$/i).optional(),
   features: z.array(z.string().min(1).max(80)).max(12).optional(),
-  homeKind: z.enum(["default", "landing", "route", "org", "org-events", "timebank", "auth"]).optional(),
+  homeKind: z.enum(["default", "main", "landing", "route", "org", "org-events", "timebank", "auth"]).optional(),
   homePath: z.string().max(200).optional().nullable(),
   homeHeading: z.string().max(120).optional(),
   homeDescription: z.string().max(500).optional(),

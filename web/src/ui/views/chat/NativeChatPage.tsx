@@ -429,6 +429,12 @@ export function NativeChatPage() {
         await syncConversation(activeRoomId)
         return
       }
+      if (event.type === 'message.reacted' && event.conversation_id === activeRoomId) {
+        setMessages((current) => current.map((message) => (
+          message.id === event.message_id ? { ...message, reactions: event.reactions } : message
+        )))
+        return
+      }
       if (event.type === 'conversation.read' && event.conversation_id === activeRoomId) {
         refreshConversations().catch(() => {})
       }

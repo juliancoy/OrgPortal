@@ -1711,7 +1711,7 @@ function tenantSlugField(payload: Record<string, unknown>, fallback: string) {
 
 function tenantHomeKindField(payload: Record<string, unknown>) {
   const kind = String(payload.home_kind || "landing").trim();
-  if (!["landing", "route", "org", "org-events", "timebank", "auth", "default"].includes(kind)) {
+  if (!["landing", "main", "route", "org", "org-events", "timebank", "auth", "default"].includes(kind)) {
     fail(400, "home_kind is not supported.");
   }
   return kind;

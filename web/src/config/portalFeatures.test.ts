@@ -72,7 +72,7 @@ describe('portal feature profiles', () => {
       accent_color: '#0f6f8f',
       profile: 'baltimore-medtech',
       features: ['directory', 'events', 'chat', 42],
-      home_kind: 'org-events',
+      home_kind: 'main',
       home_org_slug: 'baltimore-medtech',
       public_base_url: 'https://medtech.social',
       canonical_path_prefix: '',
@@ -80,7 +80,7 @@ describe('portal feature profiles', () => {
     })
 
     expect(tenant?.features).toEqual(['directory', 'events', 'chat'])
-    expect(tenant?.home_kind).toBe('org-events')
+    expect(tenant?.home_kind).toBe('main')
     expect(tenant?.public_base_url).toBe('https://medtech.social')
     expect(tenant?.feature_config?.orgEvents).toEqual({ enabled: true })
     expect(parsePortalTenant({ hostname: 'missing-id' })).toBeNull()

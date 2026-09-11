@@ -163,16 +163,21 @@ class FakeD1 {
     if (sql.includes("FROM chat_message_reactions")) {
       const currentUserId = String(params[0] || "");
       const ids = new Set(params.slice(1));
-      const grouped = new Map<string, Row>();
-      for (const reaction of this.reactions) {
-        if (!ids.has(reaction.message_id)) continue;
-        const key = `${reaction.message_id}:${reaction.emoji}`;
-        const row = grouped.get(key) || { message_id: reaction.message_id, emoji: reaction.emoji, count: 0, reacted: 0 };
-        row.count = Number(row.count || 0) + 1;
-        if (reaction.user_id === currentUserId) row.reacted = 1;
-        grouped.set(key, row);
-      }
-      return [...grouped.values()] as T[];
+      return this.reactions
+        .filter((reaction) => ids.has(reaction.message_id))
+        .map((reaction) => {
+          const message = this.messages.find((row) => row.id === reaction.message_id);
+          const member = this.members.find((row) => row.conversation_id === message?.conversation_id && row.user_id === reaction.user_id);
+          return {
+            message_id: reaction.message_id,
+            emoji: reaction.emoji,
+            user_id: reaction.user_id,
+            user_name: member?.user_name || reaction.user_id,
+            avatar_url: member?.avatar_url || null,
+            created_at: reaction.created_at,
+            reacted: reaction.user_id === currentUserId ? 1 : 0,
+          };
+        }) as T[];
     }
     if (sql.includes("FROM chat_messages")) {
       const conversationId = params[0];
@@ -621,7 +626,14 @@ test("event room route supports comments, replies, and reactions", async () => {
     env(db),
   );
   assert.equal(reaction.status, 200);
-  assert.deepEqual(await reaction.json(), { reactions: [{ key: "👍", count: 1, reacted: true }] });
+  assert.deepEqual(await reaction.json(), {
+    reactions: [{
+      key: "👍",
+      count: 1,
+      reacted: true,
+      users: [{ user_id: "user-a", user_name: "Alice Example", avatar_url: "https://images.example/alice.jpg", created_at: db.reactions[0].created_at }],
+    }],
+  });
 
   const removedReaction = await app.request(
     `https://chat.example.test/api/network/chat/conversations/${roomBody.conversation.id}/messages/${rootBody.message.id}/reactions`,
@@ -643,7 +655,7 @@ test("event room route supports comments, replies, and reactions", async () => {
     env(db),
   );
   assert.equal(listed.status, 200);
-  const listedBody = (await listed.json()) as { messages: Array<{ body: string; reply_to_message_id: string | null; sender_avatar_url: string | null; reactions: Array<{ key: string; count: number; reacted: boolean }> }> };
+  const listedBody = (await listed.json()) as { messages: Array<{ body: string; reply_to_message_id: string | null; sender_avatar_url: string | null; reactions: Array<{ key: string; count: number; reacted: boolean; users: Array<{ user_id: string; user_name: string; avatar_url: string | null; created_at?: string | null }> }> }> };
   assert.deepEqual(
     listedBody.messages.map((message) => ({ body: message.body, reply_to_message_id: message.reply_to_message_id })),
     [
@@ -652,7 +664,12 @@ test("event room route supports comments, replies, and reactions", async () => {
     ],
   );
   assert.equal(listedBody.messages[0].sender_avatar_url, "https://images.example/alice.jpg");
-  assert.deepEqual(listedBody.messages[0].reactions, [{ key: "❤️", count: 1, reacted: true }]);
+  assert.deepEqual(listedBody.messages[0].reactions, [{
+    key: "❤️",
+    count: 1,
+    reacted: true,
+    users: [{ user_id: "user-a", user_name: "Alice Example", avatar_url: "https://images.example/alice.jpg", created_at: db.reactions[0].created_at }],
+  }]);
 });
 
 test("sync returns only messages after the requested sequence", async () => {

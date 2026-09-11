@@ -6,6 +6,21 @@ afterEach(() => {
 })
 
 describe('NativeChatApi', () => {
+  it('defaults to the same-origin chat proxy', async () => {
+    const fetcher = vi.fn(async () =>
+      new Response(JSON.stringify({ conversations: [] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetcher)
+    const api = new NativeChatApi(async () => 'test-token')
+
+    await api.listConversations()
+
+    expect(fetcher.mock.calls[0][0]).toBe('/api/chat/api/network/chat/conversations')
+  })
+
   it('starts a DM by stable user ID without requiring a public profile slug', async () => {
     const fetcher = vi.fn(async () =>
       new Response(
@@ -61,6 +76,14 @@ describe('NativeChatApi', () => {
     expect(fetcher.mock.calls[0][1]?.method).toBe('POST')
     expect(fetcher.mock.calls[1][0]).toBe('https://chat.example.test/api/network/chat/presence?user_ids=user-2%2Cuser-3')
     expect(new Headers(fetcher.mock.calls[1][1]?.headers).get('Authorization')).toBe('Bearer test-token')
+  })
+
+  it('surfaces plain text chat failures without a JSON parse error', async () => {
+    const fetcher = vi.fn(async () => new Response('Internal Server Error', { status: 500 }))
+    vi.stubGlobal('fetch', fetcher)
+    const api = new NativeChatApi(async () => 'test-token', 'https://chat.example.test')
+
+    await expect(api.startEventRoom({ eventId: 'event-1', title: 'MedTech in the Hut Comments' })).rejects.toThrow('Internal Server Error')
   })
 
   it('starts event rooms and sends threaded comments with reactions', async () => {

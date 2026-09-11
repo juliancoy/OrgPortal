@@ -27,6 +27,7 @@ import { OrgEventsPage } from '../views/orgs/OrgEventsPage'
 import { PublicAdminPage } from '../views/public/PublicAdminPage'
 import { PublicContactPage } from '../views/public/PublicContactPage'
 import { PublicEventsPage } from '../views/public/PublicEventsPage'
+import { PublicCalendarPage } from '../views/public/PublicCalendarPage'
 import { PublicEventPage } from '../views/public/PublicEventPage'
 import { EmailCampaignsPage } from '../views/email/EmailCampaignsPage'
 import { EmailPreferencesPage } from '../views/email/EmailPreferencesPage'
@@ -38,6 +39,7 @@ import { ProposeMotionPage } from '../views/governance/ProposeMotionPage'
 import { ProposeAmendmentPage } from '../views/governance/ProposeAmendmentPage'
 import { NotFoundPage } from '../views/NotFoundPage'
 import { AboutPage } from '../views/AboutPage'
+import { TermsPage } from '../views/TermsPage'
 import { AndroidInstallPage } from '../views/AndroidInstallPage'
 import { DashboardPage } from '../dashboard/DashboardPage'
 import { AdminPage } from '../views/AdminPage'
@@ -237,6 +239,8 @@ export function createAppRouter() {
           { path: '/community', element: <TenantCommunityAliasRoute /> },
           { path: '/medtech-events', element: <TenantEventsAliasRoute /> },
           { path: '/about', element: <AboutPage /> },
+          { path: '/terms', element: <TermsPage /> },
+          { path: '/legal', element: <TermsPage /> },
           { path: '/email', element: <AdminRoute><EmailCampaignsPage /></AdminRoute> },
           { path: '/email/preferences', element: <AuthenticatedRoute><EmailPreferencesPage /></AuthenticatedRoute> },
           { path: '/android/install', element: <AndroidInstallPage /> },
@@ -246,8 +250,10 @@ export function createAppRouter() {
           { path: '/users/login', element: <UserLoginPage /> },
           { path: '/users/dashboard', element: <DashboardPage /> },
           { path: '/profile', element: <UserProfilePage /> },
+          { path: '/calendar', element: <PublicCalendarPage /> },
+          { path: '/calendar.html', element: <Navigate to="/calendar" replace /> },
           {
-            path: '/calendar',
+            path: '/calendar/integrations',
             element: (
               <AuthenticatedRoute>
                 <UserCalendarPage />
