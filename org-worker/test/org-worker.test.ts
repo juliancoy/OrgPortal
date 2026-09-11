@@ -927,7 +927,28 @@ test("tenant host public URLs are root-mounted even when shared portal base is c
 
   const eventRes = await app.request("https://medtech.social/api/network/events/public/founder-night", {}, env(db));
   assert.equal(eventRes.status, 200);
-  assert.equal(((await eventRes.json()) as { public_url: string }).public_url, "https://medtech.social/events/founder-night");
+  const event = (await eventRes.json()) as { public_url: string; flyer_urls: { letter: string; postcard: string; social: string } };
+  assert.equal(event.public_url, "https://medtech.social/events/founder-night");
+  assert.equal(event.flyer_urls.letter, "https://medtech.social/api/network/events/public/founder-night/flyer.svg?format=letter");
+  assert.equal(event.flyer_urls.postcard, "https://medtech.social/api/network/events/public/founder-night/flyer.svg?format=postcard");
+
+  const proxiedEventRes = await app.request("https://org.example.test/api/network/events/public/founder-night", {
+    headers: { "x-forwarded-host": "medtech.social", "x-forwarded-proto": "https" },
+  }, env(db));
+  assert.equal(proxiedEventRes.status, 200);
+  const proxiedEvent = (await proxiedEventRes.json()) as { public_url: string; flyer_urls: { social: string } };
+  assert.equal(proxiedEvent.public_url, "https://medtech.social/events/founder-night");
+  assert.equal(proxiedEvent.flyer_urls.social, "https://medtech.social/api/org/api/network/events/public/founder-night/flyer.svg?format=social");
+
+  const flyerRes = await app.request("https://org.example.test/api/network/events/public/founder-night/flyer.svg?format=4x6", {
+    headers: { "x-forwarded-host": "medtech.social", "x-forwarded-proto": "https" },
+  }, env(db));
+  assert.equal(flyerRes.status, 200);
+  assert.equal(flyerRes.headers.get("content-type"), "image/svg+xml; charset=utf-8");
+  const flyer = await flyerRes.text();
+  assert.match(flyer, /Founder Night flyer/);
+  assert.match(flyer, /Scan to RSVP/);
+  assert.match(flyer, /4×6/);
 });
 
 test("public contact route does not numerically fallback from missing slugs", async () => {

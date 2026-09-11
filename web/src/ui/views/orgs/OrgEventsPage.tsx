@@ -24,6 +24,12 @@ type NetworkEvent = {
   social_title?: string | null;
   social_description?: string | null;
   social_image_url?: string | null;
+  flyer_urls?: {
+    letter?: string;
+    postcard?: string;
+    social?: string;
+  };
+  public_url?: string | null;
   tags?: string[];
   host_type: HostType;
   host_user_id?: string | null;
@@ -235,13 +241,17 @@ export function OrgEventsPage() {
     }
   }
 
-  async function saveSocialPreview(eventId: string) {
+  async function saveSocialPreview(
+    eventId: string,
+    override?: { title?: string; description?: string; imageUrl?: string },
+  ) {
     if (!token) return;
-    const draft = socialDraftByEvent[eventId] || {
+    const current = socialDraftByEvent[eventId] || {
       title: "",
       description: "",
       imageUrl: "",
     };
+    const draft = { ...current, ...override };
     setStatus(null);
     try {
       const resp = await fetch(
@@ -279,6 +289,23 @@ export function OrgEventsPage() {
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "Save failed");
     }
+  }
+
+  async function useGeneratedFlyerAsSocialPreview(event: NetworkEvent) {
+    const socialFlyerUrl = event.flyer_urls?.social;
+    if (!socialFlyerUrl) {
+      setStatus("Generated social flyer URL is not available for this event yet.");
+      return;
+    }
+    await saveSocialPreview(event.id, {
+      title: socialDraftByEvent[event.id]?.title || event.social_title || event.title,
+      description:
+        socialDraftByEvent[event.id]?.description ||
+        event.social_description ||
+        event.description ||
+        "",
+      imageUrl: socialFlyerUrl,
+    });
   }
 
   async function claimEvent(eventId: string) {
@@ -651,11 +678,13 @@ export function OrgEventsPage() {
                   />
                   {socialDraftByEvent[event.id]?.imageUrl ||
                   event.social_image_url ||
+                  event.flyer_urls?.social ||
                   event.image_url ? (
                     <img
                       src={
                         socialDraftByEvent[event.id]?.imageUrl ||
                         event.social_image_url ||
+                        event.flyer_urls?.social ||
                         event.image_url ||
                         ""
                       }
@@ -667,6 +696,59 @@ export function OrgEventsPage() {
                       }}
                     />
                   ) : null}
+                  <div
+                    className="portal-card"
+                    style={{ display: "grid", gap: "0.6rem", padding: "0.75rem" }}
+                  >
+                    <div>
+                      <strong>Flyer generator</strong>
+                      <p className="muted" style={{ margin: "0.25rem 0 0" }}>
+                        Generated from this event’s title, host, date, location,
+                        description, and QR code to the public event link.
+                      </p>
+                    </div>
+                    {event.flyer_urls?.social ? (
+                      <img
+                        src={event.flyer_urls.social}
+                        alt="Generated social flyer"
+                        style={{
+                          width: "min(100%, 420px)",
+                          borderRadius: "0.75rem",
+                          border: "1px solid var(--border-subtle)",
+                          background: "#07111f",
+                        }}
+                      />
+                    ) : null}
+                    <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                      {event.flyer_urls?.letter ? (
+                        <a href={event.flyer_urls.letter} target="_blank" rel="noreferrer">
+                          Open 8.5×11 flyer
+                        </a>
+                      ) : null}
+                      {event.flyer_urls?.postcard ? (
+                        <a href={event.flyer_urls.postcard} target="_blank" rel="noreferrer">
+                          Open 4×6 flyer
+                        </a>
+                      ) : null}
+                      {event.flyer_urls?.social ? (
+                        <a href={event.flyer_urls.social} target="_blank" rel="noreferrer">
+                          Open social flyer
+                        </a>
+                      ) : null}
+                      {event.public_url ? (
+                        <a href={event.public_url} target="_blank" rel="noreferrer">
+                          Public event page
+                        </a>
+                      ) : null}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => useGeneratedFlyerAsSocialPreview(event)}
+                      disabled={!token || !event.flyer_urls?.social}
+                    >
+                      Use generated flyer as social preview
+                    </button>
+                  </div>
                   <button
                     type="button"
                     onClick={() => saveSocialPreview(event.id)}
