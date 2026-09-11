@@ -68,7 +68,11 @@ export function pidpUrl(path: string): string {
 export function normalizePostLoginPath(next: string): string {
   const fallback = defaultPostLoginPath()
   const path = toInternalPortalPath(next, fallback)
-  const pathname = new URL(path, 'https://portal.invalid').pathname
+  const parsed = new URL(path, 'https://portal.invalid')
+  const pathname = parsed.pathname
+  if (getDomainCommunity() && pathname === '/timebanking') {
+    return `/${parsed.search}${parsed.hash}`
+  }
   if (
     (pathname === '/' && !getDomainCommunity()) ||
     pathname.startsWith('/auth/callback') ||

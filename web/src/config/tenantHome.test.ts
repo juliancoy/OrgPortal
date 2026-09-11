@@ -18,7 +18,7 @@ describe('tenant home modes', () => {
     expect(tenantHomeAction({ ...baseTenant, home_kind: 'route', home_path: '/people?q=medtech' }, 'guest', '/chat')).toEqual({ kind: 'redirect', to: '/people?q=medtech' })
     expect(tenantHomeAction({ ...baseTenant, home_kind: 'org', home_org_slug: 'baltimore-medtech' }, 'guest', '/chat')).toEqual({ kind: 'redirect', to: '/orgs/baltimore-medtech' })
     expect(tenantHomeAction({ ...baseTenant, home_kind: 'org-events', home_org_slug: 'baltimore-medtech' }, 'guest', '/chat')).toEqual({ kind: 'events' })
-    expect(tenantHomeAction({ ...baseTenant, home_kind: 'timebank' }, 'guest', '/chat')).toEqual({ kind: 'redirect', to: '/timebanking' })
+    expect(tenantHomeAction({ ...baseTenant, home_kind: 'timebank' }, 'guest', '/chat')).toEqual({ kind: 'timebank' })
     expect(tenantHomeAction({ ...baseTenant, home_kind: 'auth', member_home_path: '/chat' }, 'guest', '/chat')).toEqual({ kind: 'redirect', to: '/users/login' })
     expect(tenantHomeAction({ ...baseTenant, home_kind: 'auth', member_home_path: '/chat' }, 'member', '/chat')).toEqual({ kind: 'redirect', to: '/chat' })
   })
