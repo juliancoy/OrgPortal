@@ -94,7 +94,7 @@ export type NativeChatSocketEvent =
 
 function normalizeBaseUrl(rawValue: string | undefined): string {
   const raw = (rawValue || '').trim()
-  if (!raw) return 'https://chat-codecollective.jcloiacon.workers.dev'
+  if (!raw) return '/api/chat'
   return raw.replace(/\/+$/, '')
 }
 
@@ -120,13 +120,16 @@ function base64Url(value: string): string {
 async function readJson<T>(response: Response): Promise<T> {
   if (response.ok) return (await response.json()) as T
   const text = await response.text().catch(() => '')
-  try {
-    const parsed = JSON.parse(text) as { detail?: string }
-    throw new Error(parsed.detail || text || `Chat request failed (${response.status})`)
-  } catch (err) {
-    if (err instanceof Error && err.message !== text) throw err
-    throw new Error(text || `Chat request failed (${response.status})`)
+  let detail = ''
+  if (text) {
+    try {
+      const parsed = JSON.parse(text) as { detail?: string; error?: string; message?: string }
+      detail = parsed.detail || parsed.error || parsed.message || ''
+    } catch {
+      detail = text
+    }
   }
+  throw new Error(detail || `Chat request failed (${response.status})`)
 }
 
 export class NativeChatApi {
