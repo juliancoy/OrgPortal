@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { getActivePortalProfileConfig, portalProfilePath } from '../../config/portalFeatures'
 import { useDomainTenant } from '../../config/timebankCommunity'
@@ -7,6 +8,10 @@ export function TermsPage() {
   const tenant = useDomainTenant()
   const brandName = profile.brandName || 'OrgPortal'
   const tenantName = tenant?.name || brandName
+
+  useEffect(() => {
+    document.title = `Terms & privacy · ${brandName}`
+  }, [brandName])
 
   return (
     <section className="legal-page panel" aria-labelledby="legal-title">
