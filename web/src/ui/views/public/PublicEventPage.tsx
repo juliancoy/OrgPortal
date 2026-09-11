@@ -101,6 +101,67 @@ function messageAuthorInitial(message: NativeChatMessage, myUserId: string | nul
   return (label[0] || '?').toUpperCase()
 }
 
+function usedReactions(message: NativeChatMessage) {
+  return (message.reactions || []).filter((reaction) => reaction.count > 0)
+}
+
+function CommentAvatar({ message, myUserId }: { message: NativeChatMessage; myUserId: string | null }) {
+  return (
+    <div className="public-event-comment-avatar" aria-hidden="true">
+      {message.sender_avatar_url ? (
+        <img src={message.sender_avatar_url} alt="" loading="lazy" />
+      ) : (
+        messageAuthorInitial(message, myUserId)
+      )}
+    </div>
+  )
+}
+
+function ReactionControls({
+  message,
+  disabled,
+  onReact,
+}: {
+  message: NativeChatMessage
+  disabled: boolean
+  onReact: (messageId: string, emoji: string) => void
+}) {
+  const reactions = usedReactions(message)
+  return (
+    <div className="public-event-comment-tools">
+      {reactions.map((reaction) => (
+        <button
+          key={`${message.id}-${reaction.key}`}
+          type="button"
+          onClick={() => onReact(message.id, reaction.key)}
+          disabled={disabled}
+          aria-label={`${reaction.reacted ? 'Remove' : 'React with'} ${reaction.key}`}
+          aria-pressed={Boolean(reaction.reacted)}
+          className={reaction.reacted ? 'public-event-comment-reaction-active' : undefined}
+        >
+          {reaction.key} {reaction.count}
+        </button>
+      ))}
+      <details className="public-event-comment-react-menu">
+        <summary>React</summary>
+        <div>
+          {QUICK_REACTIONS.map((emoji) => (
+            <button
+              key={`${message.id}-add-${emoji}`}
+              type="button"
+              onClick={() => onReact(message.id, emoji)}
+              disabled={disabled}
+              aria-label={`React with ${emoji}`}
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
+      </details>
+    </div>
+  )
+}
+
 function messageTime(message: NativeChatMessage) {
   return new Date(message.created_at).getTime()
 }
@@ -561,30 +622,19 @@ export function PublicEventPage() {
               <div className="public-event-comment-list">
                 {eventComments.map(({ message, replies }) => (
                   <article key={message.id} className="public-event-comment">
-                    <div className="public-event-comment-avatar" aria-hidden="true">
-                      {messageAuthorInitial(message, myUserId)}
-                    </div>
+                    <CommentAvatar message={message} myUserId={myUserId} />
                     <div className="public-event-comment-body">
                       <div className="public-event-comment-meta">
                         <strong>{messageAuthorLabel(message, myUserId)}</strong>
                         <span>{toLocalDateTime(message.created_at)}</span>
                       </div>
                       <p>{message.body}</p>
-                      <div className="public-event-comment-tools">
-                        {QUICK_REACTIONS.map((emoji) => {
-                          const count = message.reactions?.find((reaction) => reaction.key === emoji)?.count || 0
-                          return (
-                            <button
-                              key={`${message.id}-${emoji}`}
-                              type="button"
-                              onClick={() => reactToEventComment(message.id, emoji).catch(() => {})}
-                              disabled={!eventChatReady || chatActionPending}
-                              aria-label={`React with ${emoji}`}
-                            >
-                              {emoji}{count ? ` ${count}` : ''}
-                            </button>
-                          )
-                        })}
+                      <div className="public-event-comment-tools public-event-comment-tool-row">
+                        <ReactionControls
+                          message={message}
+                          disabled={!eventChatReady || chatActionPending}
+                          onReact={(messageId, emoji) => reactToEventComment(messageId, emoji).catch(() => {})}
+                        />
                         {token ? (
                           <button type="button" onClick={() => setReplyingToId((current) => (current === message.id ? null : message.id))}>
                             Reply
@@ -595,31 +645,18 @@ export function PublicEventPage() {
                         <div className="public-event-comment-replies">
                           {replies.map((reply) => (
                             <article key={reply.id} className="public-event-comment public-event-comment-reply">
-                              <div className="public-event-comment-avatar" aria-hidden="true">
-                                {messageAuthorInitial(reply, myUserId)}
-                              </div>
+                              <CommentAvatar message={reply} myUserId={myUserId} />
                               <div className="public-event-comment-body">
                                 <div className="public-event-comment-meta">
                                   <strong>{messageAuthorLabel(reply, myUserId)}</strong>
                                   <span>{toLocalDateTime(reply.created_at)}</span>
                                 </div>
                                 <p>{reply.body}</p>
-                                <div className="public-event-comment-tools">
-                                  {QUICK_REACTIONS.map((emoji) => {
-                                    const count = reply.reactions?.find((reaction) => reaction.key === emoji)?.count || 0
-                                    return (
-                                      <button
-                                        key={`${reply.id}-${emoji}`}
-                                        type="button"
-                                        onClick={() => reactToEventComment(reply.id, emoji).catch(() => {})}
-                                        disabled={!eventChatReady || chatActionPending}
-                                        aria-label={`React with ${emoji}`}
-                                      >
-                                        {emoji}{count ? ` ${count}` : ''}
-                                      </button>
-                                    )
-                                  })}
-                                </div>
+                                <ReactionControls
+                                  message={reply}
+                                  disabled={!eventChatReady || chatActionPending}
+                                  onReact={(messageId, emoji) => reactToEventComment(messageId, emoji).catch(() => {})}
+                                />
                               </div>
                             </article>
                           ))}
