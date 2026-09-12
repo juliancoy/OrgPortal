@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useMemo, useState, type KeyboardEvent, type MouseEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
 import { downloadIcsEvent, outlookCalendarUrl } from '../../utils/calendar'
 import { useAuth } from '../../../app/AppProviders'
@@ -58,6 +58,7 @@ export function PublicEventsPage({
   emptyMessage = 'No upcoming events are listed right now.',
 }: { sourcePath?: string; heading?: string; description?: string; emptyMessage?: string } = {}) {
   const { token } = useAuth()
+  const navigate = useNavigate()
   const [events, setEvents] = useState<PublicEvent[]>([])
   const [status, setStatus] = useState<string>('Loading upcoming events…')
   const [googleCalendarConnected, setGoogleCalendarConnected] = useState(false)
@@ -160,6 +161,24 @@ export function PublicEventsPage({
     upsertJsonLd('events-list', itemListJsonLd)
   }, [itemListJsonLd])
 
+  function openEventCard(event: PublicEvent) {
+    navigate(`/events/${encodeURIComponent(event.slug)}`)
+  }
+
+  function handleCardClick(event: MouseEvent<HTMLElement>, item: PublicEvent) {
+    const target = event.target as HTMLElement | null
+    if (target?.closest('a, button, input, select, textarea, [role="button"]')) return
+    openEventCard(item)
+  }
+
+  function handleCardKeyDown(event: KeyboardEvent<HTMLElement>, item: PublicEvent) {
+    if (event.key !== 'Enter' && event.key !== ' ') return
+    const target = event.target as HTMLElement | null
+    if (target?.closest('a, button, input, select, textarea, [role="button"]')) return
+    event.preventDefault()
+    openEventCard(item)
+  }
+
   async function updateAttendance(eventId: string) {
     const event = events.find((item) => item.id === eventId)
     if (!event) return
@@ -247,7 +266,12 @@ export function PublicEventsPage({
             return (
               <article
                 key={event.id}
-                className="portal-card public-event-list-card"
+                className="portal-card public-event-list-card public-event-list-card-clickable"
+                role="link"
+                tabIndex={0}
+                aria-label={`Open event details for ${event.title}`}
+                onClick={(clickEvent) => handleCardClick(clickEvent, event)}
+                onKeyDown={(keyEvent) => handleCardKeyDown(keyEvent, event)}
               >
                 {event.image_url ? (
                   <img
@@ -258,12 +282,7 @@ export function PublicEventsPage({
                 ) : null}
                 <div className="public-event-list-body">
                   <div className="public-event-list-title-row">
-                    <h2>
-                      <Link to={`/events/${event.slug}`}>
-                      {event.title}
-                      </Link>
-                    </h2>
-                    <Link className="public-event-open-link" to={`/events/${event.slug}`}>View details</Link>
+                    <h2>{event.title}</h2>
                   </div>
                   <div className="public-event-list-meta">
                     <span>{formatDate(event.starts_at)}</span>
@@ -289,7 +308,6 @@ export function PublicEventsPage({
                       ) : (
                         <a className="public-event-rsvp-button" href={pidpAppLoginUrl(currentPath())}>Log in to register</a>
                       )}
-                      <Link className="portal-button-secondary" to={`/events/${event.slug}`}>Details</Link>
                       {eventStart && eventEnd ? (
                         <>
                           <button

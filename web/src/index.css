@@ -1521,6 +1521,15 @@ h6 {
   box-shadow: var(--shadow-card);
 }
 
+.public-event-list-card-clickable {
+  cursor: pointer;
+}
+
+.public-event-list-card-clickable:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--primary) 60%, transparent);
+  outline-offset: 3px;
+}
+
 .public-event-list-image {
   width: 100%;
   height: 100%;
