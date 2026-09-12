@@ -709,7 +709,7 @@ export function NativeChatPage() {
               <p className="native-chat-room-status">
                 {status || (realtimeState === 'connected' ? 'Connected' : realtimeState === 'reconnecting' ? 'Reconnecting…' : 'Direct message')}
               </p>
-              {error ? <p className="portal-chat-error">{error}</p> : null}
+              {error ? <p className="portal-chat-error" role="alert" aria-live="assertive">{error}</p> : null}
             </header>
 
             <div className="portal-chat-timeline" ref={timelineRef}>
@@ -780,7 +780,7 @@ export function NativeChatPage() {
                     </dl>
                     <div className="native-chat-message-footer">
                       {message.delivery_state === 'pending' ? <span>Sending...</span> : null}
-                      {message.delivery_state === 'failed' ? <span className="portal-chat-error">Failed. Retry by sending again.</span> : null}
+                      {message.delivery_state === 'failed' ? <span className="portal-chat-error" role="alert" aria-live="assertive">Failed. Retry by sending again.</span> : null}
                     </div>
                   </article>
                 )
@@ -814,7 +814,7 @@ export function NativeChatPage() {
           <div className="portal-chat-empty">
             <h1>Chat</h1>
             <p>{status || 'Select a conversation or open an inbox from a profile.'}</p>
-            {error ? <p className="portal-chat-error">{error}</p> : null}
+            {error ? <p className="portal-chat-error" role="alert" aria-live="assertive">{error}</p> : null}
           </div>
         )}
       </div>

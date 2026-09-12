@@ -97,8 +97,21 @@ export function UserProfilePage() {
   const [editorBusy, setEditorBusy] = useState(false)
   const [editorError, setEditorError] = useState<string | null>(null)
   const editorCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const editorDialogRef = useRef<HTMLDivElement | null>(null)
+  const editorCloseButtonRef = useRef<HTMLButtonElement | null>(null)
   const editorObjectUrl = useRef<string | null>(null)
   const profilePhotoInputRef = useRef<HTMLInputElement | null>(null)
+
+  function closePhotoEditor() {
+    setEditorOpen(false)
+    setEditorSource(null)
+    setEditorImage(null)
+    setEditorError(null)
+    if (editorObjectUrl.current) {
+      URL.revokeObjectURL(editorObjectUrl.current)
+      editorObjectUrl.current = null
+    }
+  }
 
   useEffect(() => {
     document.title = 'Org Portal • User profile'
@@ -255,6 +268,45 @@ export function UserProfilePage() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!editorOpen) return
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    window.setTimeout(() => editorCloseButtonRef.current?.focus(), 0)
+
+    function handleDialogKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        closePhotoEditor()
+        return
+      }
+      if (event.key !== 'Tab') return
+      const dialog = editorDialogRef.current
+      if (!dialog) return
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      )).filter((element) => element.offsetParent !== null || element === document.activeElement)
+      if (focusable.length === 0) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      } else if (!dialog.contains(document.activeElement)) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+
+    document.addEventListener('keydown', handleDialogKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleDialogKeyDown)
+      if (previousFocus && document.contains(previousFocus)) previousFocus.focus()
+    }
+  }, [editorOpen])
+
   function saveProfile() {
     const nameParts = splitFullName(fullName)
     const normalizedFullName = fullName.trim()
@@ -373,6 +425,7 @@ export function UserProfilePage() {
         id="profile-photo-upload"
         type="file"
         accept="image/*"
+        aria-label="Upload profile photo"
         className="profile-photo-input"
         onChange={(event) => {
           const file = event.currentTarget.files?.[0]
@@ -679,46 +732,25 @@ export function UserProfilePage() {
 
       {editorOpen ? (
         <div
+          ref={editorDialogRef}
           role="dialog"
           aria-modal="true"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(20, 16, 8, 0.55)',
-            display: 'grid',
-            placeItems: 'center',
-            zIndex: 50,
-            padding: '1rem',
-            overflowY: 'auto',
-          }}
+          aria-labelledby="profile-photo-editor-title"
+          className="profile-photo-dialog-backdrop"
         >
-          <div
-            style={{
-              background: '#fff',
-              padding: '1.5rem',
-              borderRadius: '16px',
-              width: 'min(92vw, 720px)',
-              boxShadow: '0 24px 60px rgba(18, 14, 6, 0.3)',
-              display: 'grid',
-              gap: '1rem',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
-              <h2 style={{ margin: 0 }}>Edit profile photo</h2>
+          <div className="profile-photo-dialog">
+            <div className="profile-photo-dialog-heading">
+              <h2 id="profile-photo-editor-title">Edit profile photo</h2>
               <button
                 type="button"
-                onClick={() => {
-                  setEditorOpen(false)
-                  setEditorSource(null)
-                  setEditorImage(null)
-                  setEditorError(null)
-                }}
+                ref={editorCloseButtonRef}
+                onClick={closePhotoEditor}
               >
                 Close
               </button>
             </div>
-            <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
-              <div style={{ display: 'grid', placeItems: 'center', background: '#f7f3e9', borderRadius: '16px', padding: '1rem' }}>
+            <div className="profile-photo-dialog-grid">
+              <div className="profile-photo-preview-panel">
                 <canvas
                   ref={editorCanvasRef}
                   style={{
@@ -728,7 +760,7 @@ export function UserProfilePage() {
                   }}
                 />
               </div>
-              <div style={{ display: 'grid', gap: '0.8rem' }}>
+              <div className="profile-photo-editor-controls">
                 <label style={{ display: 'grid', gap: '0.35rem' }}>
                   <span className="muted">Zoom</span>
                   <input
@@ -762,7 +794,7 @@ export function UserProfilePage() {
                     onChange={(e) => setEditorOffsetY(Number(e.target.value))}
                   />
                 </label>
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <div className="profile-photo-editor-button-row">
                   <button type="button" onClick={() => setEditorRotate((val) => val - 90)}>
                     Rotate left
                   </button>
@@ -781,7 +813,7 @@ export function UserProfilePage() {
                     Reset
                   </button>
                 </div>
-                <div style={{ display: 'flex', gap: '0.6rem' }}>
+                <div className="profile-photo-editor-button-row">
                   <button
                     type="button"
                     onClick={() => {
@@ -828,13 +860,7 @@ export function UserProfilePage() {
                           } else {
                             await persistProfilePhoto(canvas.toDataURL('image/png'))
                           }
-                          setEditorOpen(false)
-                          setEditorSource(null)
-                          setEditorImage(null)
-                          if (editorObjectUrl.current) {
-                            URL.revokeObjectURL(editorObjectUrl.current)
-                            editorObjectUrl.current = null
-                          }
+                          closePhotoEditor()
                         } catch (err) {
                           setEditorError(err instanceof Error ? err.message : 'Upload failed.')
                         } finally {
@@ -847,22 +873,13 @@ export function UserProfilePage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      setEditorOpen(false)
-                      setEditorSource(null)
-                      setEditorImage(null)
-                      setEditorError(null)
-                      if (editorObjectUrl.current) {
-                        URL.revokeObjectURL(editorObjectUrl.current)
-                        editorObjectUrl.current = null
-                      }
-                    }}
+                    onClick={closePhotoEditor}
                   >
                     Cancel
                   </button>
                 </div>
                 {editorError ? (
-                  <p className="muted" style={{ color: '#a61f1f', margin: 0 }}>
+                  <p className="profile-photo-editor-error" role="alert">
                     {editorError}
                   </p>
                 ) : null}
