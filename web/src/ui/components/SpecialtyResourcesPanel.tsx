@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom'
 import type { SpecialtyResource } from '../../config/specialtyResources'
 
-function isInternalHref(href: string) {
-  return href.startsWith('/') && !href.startsWith('//')
+function isRouterHref(href: string) {
+  return href.startsWith('/') && !href.startsWith('//') && !href.startsWith('/specialty/')
 }
 
 export function SpecialtyResourcesPanel({ resources, compact = false }: { resources: SpecialtyResource[]; compact?: boolean }) {
@@ -22,7 +22,7 @@ export function SpecialtyResourcesPanel({ resources, compact = false }: { resour
           <strong>{resource.label}</strong>
           {resource.description ? <small>{resource.description}</small> : null}
         </>
-        return isInternalHref(resource.href)
+        return isRouterHref(resource.href)
           ? <Link className="tenant-home-resource" to={resource.href} key={resource.id}>{content}</Link>
           : <a className="tenant-home-resource" href={resource.href} target={resource.external ? '_blank' : undefined} rel={resource.external ? 'noreferrer' : undefined} key={resource.id}>{content}</a>
       })}
