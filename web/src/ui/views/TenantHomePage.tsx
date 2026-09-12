@@ -173,12 +173,24 @@ export function TenantHomePage() {
   </div>
 }
 
-export function TenantEventsHomePage() {
+export function TenantEventsContent() {
   const profile = getActivePortalProfileConfig()
   const tenant = getDomainTenant()
   const orgSlug = tenant?.home_org_slug || ''
 
   if (!tenant || !orgSlug) return <TenantHomePage />
+
+  return <PublicEventsPage
+    sourcePath={`/api/network/orgs/public/${encodeURIComponent(orgSlug)}/events?upcoming_only=true&limit=120`}
+    heading={`${profile.brandName} Events`}
+    description={`Upcoming events hosted by ${profile.brandName}.`}
+    emptyMessage="No upcoming events have been published yet."
+  />
+}
+
+export function TenantEventsHomePage() {
+  const tenant = getDomainTenant()
+  if (!tenant?.home_org_slug) return <TenantHomePage />
 
   return <div className="portal-shell tenant-home-shell">
     <a className="skip-link" href="#main-content">Skip to main content</a>
@@ -186,12 +198,7 @@ export function TenantEventsHomePage() {
     <main id="main-content" className="portal-main" tabIndex={-1}>
       <div className="portal-container">
         <ExternalBrowserPrompt />
-        <PublicEventsPage
-          sourcePath={`/api/network/orgs/public/${encodeURIComponent(orgSlug)}/events?upcoming_only=true&limit=120`}
-          heading={`${profile.brandName} Events`}
-          description={`Upcoming events hosted by ${profile.brandName}.`}
-          emptyMessage="No upcoming events have been published yet."
-        />
+        <TenantEventsContent />
       </div>
     </main>
     <Footer />
