@@ -1403,6 +1403,24 @@ h6 {
   font-weight: 800;
 }
 
+
+.public-event-registrant-private {
+  background: color-mix(in srgb, var(--text-muted) 58%, var(--panel));
+  color: transparent;
+  border-color: var(--panel);
+  position: relative;
+}
+
+.public-event-registrant-private::before {
+  content: '';
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-muted) 48%, var(--panel));
+  box-shadow: 0 14px 0 5px color-mix(in srgb, var(--text-muted) 48%, var(--panel));
+  transform: translateY(-7px);
+}
+
 .public-event-attendance-count {
   display: grid;
   gap: 1px;

@@ -1,5 +1,10 @@
 /** Public previews only include profiles their owners have made public. */
 export async function eventAttendance(db: D1Database, eventId: string, userId?: string) {
+  const total = await db.prepare(`
+    SELECT COUNT(*) AS count
+    FROM event_registrations
+    WHERE event_id = ?
+  `).bind(eventId).first<{ count: number }>();
   const attendees = await db.prepare(`
     SELECT p.slug, p.user_name AS name, p.photo_url
     FROM event_registrations r
@@ -13,7 +18,7 @@ export async function eventAttendance(db: D1Database, eventId: string, userId?: 
     : null;
   return {
     event_id: eventId,
-    count: (attendees.results || []).length,
+    count: Number(total?.count || 0),
     attendees: (attendees.results || []).map((person) => ({
       slug: person.slug,
       // Older contact profiles may use an email address as their display name.
