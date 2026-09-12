@@ -1481,11 +1481,15 @@ h6 {
 }
 
 .public-events-heading {
+  position: relative;
   display: grid;
-  gap: 8px;
-  padding: 24px;
-  background: var(--panel);
-  border: 1px solid var(--border);
+  gap: 10px;
+  overflow: hidden;
+  padding: clamp(24px, 4vw, 42px);
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--primary) 16%, transparent), transparent 34%),
+    linear-gradient(135deg, color-mix(in srgb, var(--panel), var(--primary) 5%), var(--panel));
+  border: 1px solid color-mix(in srgb, var(--primary) 20%, var(--border));
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
 }
@@ -1495,18 +1499,32 @@ h6 {
   margin: 0;
 }
 
+.public-events-heading h1 {
+  max-width: 14ch;
+  font-size: clamp(2.2rem, 5vw, 4rem);
+  line-height: 0.98;
+}
+
 .public-event-list-card {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  gap: 18px;
+  grid-template-columns: minmax(190px, 260px) minmax(0, 1fr);
+  gap: 20px;
   align-items: stretch;
-  padding: 14px;
+  padding: 16px;
+  transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.public-event-list-card:hover,
+.public-event-list-card:focus-within {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--primary) 28%, var(--border));
+  box-shadow: var(--shadow-card);
 }
 
 .public-event-list-image {
   width: 100%;
   height: 100%;
-  min-height: 154px;
+  min-height: 178px;
   object-fit: cover;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
@@ -1514,7 +1532,7 @@ h6 {
 
 .public-event-list-body {
   display: grid;
-  gap: 10px;
+  gap: 12px;
   align-content: start;
   padding: 4px 2px;
 }
@@ -1527,8 +1545,8 @@ h6 {
 }
 
 .public-event-list-title-row h2 {
-  font-size: 1.25rem;
-  line-height: 1.2;
+  font-size: clamp(1.25rem, 2.1vw, 1.65rem);
+  line-height: 1.16;
 }
 
 .public-event-list-title-row h2 a {
@@ -1565,6 +1583,114 @@ h6 {
   color: var(--text-primary);
   line-height: 1.55;
   overflow-wrap: anywhere;
+}
+
+.public-event-rsvp-panel {
+  display: grid;
+  gap: 12px;
+  margin-top: 2px;
+  padding: 12px;
+  background: color-mix(in srgb, var(--panel-2), var(--panel) 35%);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.public-event-rsvp-state {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.public-event-rsvp-state span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 5px 10px;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--text-muted) 11%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--text-muted) 28%, var(--border));
+  border-radius: var(--radius-full);
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.public-event-rsvp-state.is-registered span {
+  color: var(--btn-primary-text);
+  background: color-mix(in srgb, var(--primary) 88%, #08331f);
+  border-color: color-mix(in srgb, var(--primary) 70%, var(--border));
+}
+
+.public-event-rsvp-state strong {
+  color: var(--text-primary);
+  font-size: 0.92rem;
+}
+
+.public-event-rsvp-button,
+.public-event-calendar-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0.55rem 0.9rem;
+  color: var(--btn-primary-text);
+  background: var(--btn-primary-bg);
+  border: 1px solid color-mix(in srgb, var(--btn-primary-bg) 82%, var(--border));
+  border-radius: var(--radius-full);
+  font: inherit;
+  font-weight: 800;
+  line-height: 1.1;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--btn-primary-bg) 20%, transparent);
+}
+
+.public-event-rsvp-button:hover,
+.public-event-rsvp-button:focus-visible,
+.public-event-calendar-link:hover,
+.public-event-calendar-link:focus-visible {
+  color: var(--btn-primary-text);
+  text-decoration: none;
+  filter: brightness(1.04);
+}
+
+.public-event-rsvp-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+  box-shadow: none;
+}
+
+.public-event-rsvp-button-cancel {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--panel), var(--primary) 7%);
+  border-color: color-mix(in srgb, var(--primary) 34%, var(--border));
+  box-shadow: none;
+}
+
+.public-event-rsvp-button-cancel:hover,
+.public-event-rsvp-button-cancel:focus-visible {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--panel-2), var(--primary) 10%);
+}
+
+.public-event-calendar-link {
+  color: var(--text-primary);
+  background: transparent;
+  border-color: var(--border-subtle);
+  box-shadow: none;
+}
+
+.public-event-calendar-link:hover,
+.public-event-calendar-link:focus-visible {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--panel-2), var(--primary) 6%);
+}
+
+.public-event-rsvp-message {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.35;
 }
 
 .tenant-home-shell {
@@ -8051,5 +8177,33 @@ textarea:focus {
 @media (max-width: 620px) {
   .tenant-home-resource-list {
     grid-template-columns: 1fr;
+  }
+}
+
+
+@media (max-width: 720px) {
+  .public-event-list-card {
+    grid-template-columns: 1fr;
+    padding: 12px;
+  }
+
+  .public-event-list-image {
+    min-height: 210px;
+    max-height: 280px;
+  }
+
+  .public-event-list-title-row {
+    display: grid;
+  }
+
+  .public-event-rsvp-state,
+  .public-event-list-actions {
+    align-items: stretch;
+  }
+
+  .public-event-rsvp-button,
+  .public-event-calendar-link,
+  .public-event-list-actions .portal-button-secondary {
+    width: 100%;
   }
 }
