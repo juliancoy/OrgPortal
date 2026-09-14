@@ -17,7 +17,7 @@ export type EventAttendance = {
   event_id: string
   count: number
   registered: boolean
-  attendees: { slug: string; name: string; photo_url: string | null }[]
+  attendees: { user_id: string; slug: string; name: string; photo_url: string | null; profile_public?: boolean }[]
 }
 
 export type RegisteredEventsCalendarFeed = {
