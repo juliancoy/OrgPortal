@@ -7,6 +7,7 @@ const portal = (path: string) => `${basePath}${path}`
 
 type MockTenantOptions = {
   completeAppLogin?: boolean
+  initiallyLoggedIn?: boolean
 }
 
 const medtechEvent = {
@@ -23,7 +24,7 @@ const medtechEvent = {
 }
 
 async function mockTenant(page: Page, options: MockTenantOptions = {}) {
-  let loggedIn = false
+  let loggedIn = Boolean(options.initiallyLoggedIn)
   await page.route('**/api/org/**', route => {
     const path = new URL(route.request().url()).pathname
     if (path.endsWith('/portal/tenant')) {
@@ -58,7 +59,15 @@ async function mockTenant(page: Page, options: MockTenantOptions = {}) {
     }
     if (path.endsWith('/network/events/public/medtech-in-the-hut')) return route.fulfill({ json: medtechEvent })
     if (path.endsWith('/network/events/evt-medtech-hut/attendance')) {
-      return route.fulfill({ json: { event_id: 'evt-medtech-hut', count: 2, registered: false, attendees: [] } })
+      return route.fulfill({ json: {
+        event_id: 'evt-medtech-hut',
+        count: 2,
+        registered: false,
+        attendees: [
+          { user_id: 'user-public', slug: 'public-registrant', name: 'Public Registrant', photo_url: 'https://images.test/public.png', profile_public: true },
+          { user_id: 'user-private', slug: 'private-registrant', name: 'Private Registrant', photo_url: 'https://images.test/private.png', profile_public: false },
+        ],
+      } })
     }
     return route.fulfill({ json: [] })
   })
@@ -129,6 +138,24 @@ test('tenant event auth actions return to the same root-mounted event', async ({
   await expect(page).toHaveURL(/\/events\/medtech-in-the-hut$/)
   await expect(page.getByRole('heading', { name: 'MedTech in the Hut' })).toBeVisible()
   await expect(page.locator('body')).not.toContainText(/404|not found/i)
+})
+
+test('tenant event registrants can be messaged even when profiles are private', async ({ page }) => {
+  await mockTenant(page, { initiallyLoggedIn: true })
+  await page.goto(portal('/events/medtech-in-the-hut'))
+
+  await expect(page.locator('.public-event-registrant').filter({ hasText: 'Private Registrant' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Public Registrant', exact: true })).toHaveAttribute('href', '/users/public-registrant')
+  await expect(page.getByRole('link', { name: 'Private Registrant', exact: true })).toHaveCount(0)
+
+  const privateMessage = page.getByRole('link', { name: 'Message Private Registrant' })
+  await expect(privateMessage).toBeVisible()
+  const messageUrl = new URL((await privateMessage.getAttribute('href'))!, 'https://medtech.social')
+  expect(messageUrl.pathname).toBe('/chat')
+  expect(messageUrl.searchParams.get('start')).toBe('dm')
+  expect(messageUrl.searchParams.get('userId')).toBe('user-private')
+  expect(messageUrl.searchParams.get('name')).toBe('Private Registrant')
+  expect(messageUrl.toString()).not.toContain('@')
 })
 
 test('tenant header login preserves the current event route', async ({ page }) => {

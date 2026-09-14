@@ -887,6 +887,11 @@ function userName(user: PidpUser) {
   return String(user.full_name || user.identity_data?.display_name || user.email || "User");
 }
 
+function registrantDisplayName(user: PidpUser) {
+  const name = String(user.full_name || user.identity_data?.display_name || "").trim();
+  return name && !name.includes("@") ? name : "User";
+}
+
 function organizationActor(user: PidpUser, env: Env): OrganizationActor {
   return {
     id: user.id,
@@ -1033,6 +1038,41 @@ async function contactForUser(env: Env, request: Request, user: PidpUser): Promi
   await accountForUser(env.DB, user);
   await ensureDefaultAdminConnection(env.DB, createdRow);
   return createdRow;
+}
+
+async function ensureContactDirectoryUser(db: D1Database, user: PidpUser) {
+  const existing = await db.prepare("SELECT id, user_name, photo_url FROM user_contact_pages WHERE user_id = ?")
+    .bind(user.id)
+    .first<{ id: string; user_name: string | null; photo_url: string | null }>();
+  const profileImage = userProfileImage(user);
+  const displayName = registrantDisplayName(user);
+  if (existing) {
+    const updates: string[] = [];
+    const values: unknown[] = [];
+    if (!existing.user_name?.trim() || existing.user_name.includes("@")) {
+      updates.push("user_name = ?");
+      values.push(displayName);
+    }
+    if (profileImage && !existing.photo_url) {
+      updates.push("photo_url = ?");
+      values.push(profileImage);
+    }
+    if (updates.length) {
+      await db.prepare(`UPDATE user_contact_pages SET ${updates.join(", ")}, updated_at = ? WHERE user_id = ?`)
+        .bind(...values, nowIso(), user.id)
+        .run();
+    }
+    return;
+  }
+
+  const created = nowIso();
+  await db.prepare(
+    `INSERT INTO user_contact_pages
+      (id, user_id, user_email, user_name, slug, enabled, photo_url, links, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, 0, ?, '[]', ?, ?)`,
+  )
+    .bind(crypto.randomUUID(), user.id, user.email || null, displayName, await uniqueSlug(db, defaultSlug(user)), profileImage, created, created)
+    .run();
 }
 
 function cleanOptionalString(value: unknown, maxLength = 5000): string | null {
@@ -3531,6 +3571,7 @@ app.post("/api/network/events/:eventId/attendance", async (c) => {
   for (const field of ["email_updates", "organization_announcements"]) {
     if (payload[field] !== undefined && typeof payload[field] !== "boolean") fail(400, "Invalid email preference");
   }
+  await ensureContactDirectoryUser(c.env.DB, user);
   const statements = [c.env.DB.prepare(`INSERT INTO event_registrations (event_id, user_id)
     VALUES (?, ?) ON CONFLICT(event_id, user_id) DO NOTHING`).bind(eventId, user.id)];
   if (payload.email_updates !== undefined) statements.push(subscriptionStatement(c.env.DB, user, 'event', eventId, payload.email_updates === true));
