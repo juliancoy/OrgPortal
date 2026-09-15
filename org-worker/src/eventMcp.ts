@@ -38,6 +38,20 @@ const eventCommentsSchema = z.object({
   conversationId: z.string().min(1).max(255).optional().nullable(),
   roomName: z.string().min(1).max(255).optional().nullable(),
 }).strict();
+const eventMediaItemSchema = z.object({
+  id: z.string().trim().min(1).max(120).optional(),
+  url: z.string().trim().min(1).max(2000).refine((value) => {
+    try {
+      const url = new URL(value);
+      return url.protocol === "https:" && !url.username && !url.password;
+    } catch { return false; }
+  }, "HTTPS URL required"),
+  label: z.string().trim().min(1).max(160),
+  alt: z.string().trim().min(1).max(500).optional(),
+}).strict();
+const eventMediaSchema = eventTargetSchema.extend({
+  media: z.array(eventMediaItemSchema).max(12),
+}).strict();
 const nativeEventSchema = z.object({
   organizationId: z.string().min(1).max(200),
   previewId: z.string().uuid().optional(),
@@ -427,6 +441,39 @@ export async function runNativeEventOperation(env: Env, identity: { userId: stri
   }
 }
 
+async function runEventMediaOperation(env: Env, identity: { userId: string; scopes: string[] }, input: unknown, write: boolean) {
+  const args = eventMediaSchema.parse(input);
+  if (!identity.scopes.includes(readScope) || (write && !identity.scopes.includes(writeScope))) {
+    throw new EventIntegrationError(403, "Missing event scope");
+  }
+  await enforceEventRateLimit(env.DB, identity.userId);
+  const row = await env.DB.prepare("SELECT id, slug, title, host_org_id, media_json FROM events WHERE id = ? OR slug = ?")
+    .bind(args.eventId, args.eventId)
+    .first<{ id: string; slug: string; title: string; host_org_id: string | null; media_json?: string | null }>();
+  if (!row) throw new EventIntegrationError(404, "Event not found");
+  if (row.host_org_id !== args.organizationId) throw new EventIntegrationError(404, "Event not found for organization");
+  await authorizeOrganization(env.DB, { id: identity.userId, name: identity.userId, email: null, isOperator: false }, "manage", args.organizationId);
+  const media = args.media.map((item) => ({
+    id: item.id || crypto.randomUUID(),
+    url: item.url,
+    label: item.label,
+    alt: item.alt || item.label,
+    kind: "image",
+    content_type: null,
+    image_key: null,
+  }));
+  let before: unknown[] = [];
+  try {
+    const parsed = row.media_json ? JSON.parse(row.media_json) : [];
+    before = Array.isArray(parsed) ? parsed : [];
+  } catch { before = []; }
+  if (!write) return { dryRun: true, eventId: row.id, eventSlug: row.slug, eventTitle: row.title, before, media };
+  await env.DB.prepare("UPDATE events SET media_json = ?, updated_at = ? WHERE id = ?")
+    .bind(JSON.stringify(media), new Date().toISOString(), row.id)
+    .run();
+  return { dryRun: false, success: true, eventId: row.id, eventSlug: row.slug, eventTitle: row.title, media };
+}
+
 export async function runEventCommentsOperation(env: Env, identity: { userId: string; scopes: string[] }, input: unknown) {
   const args = eventCommentsSchema.parse(input);
   if (!identity.scopes.includes(readScope) || (args.confirm && !identity.scopes.includes(writeScope))) {
@@ -545,10 +592,12 @@ export async function handleEventMcp(request: Request, env: Env) {
     try { parsedBody = JSON.parse(new TextDecoder().decode(bytes)); }
     catch { return new Response("Invalid JSON", { status: 400 }); }
     const server = new McpServer({ name: "orgportal-events", version: "1.0.0" });
-    const result = async (operation: "list" | "get" | "plan" | "status" | "native" | "comments", args: unknown) => {
+    const result = async (operation: "list" | "get" | "plan" | "status" | "native" | "comments" | "mediaPreview" | "mediaApply", args: unknown) => {
       try {
         const data = operation === "native" ? await runNativeEventOperation(env, identity, args)
           : operation === "comments" ? await runEventCommentsOperation(env, identity, args)
+          : operation === "mediaPreview" ? await runEventMediaOperation(env, identity, args, false)
+          : operation === "mediaApply" ? await runEventMediaOperation(env, identity, args, true)
           : await runEventOperation(env, identity, operation, args);
         return { ...("success" in data && data.success === false ? { isError: true } : {}),
           content: [{ type: "text" as const, text: JSON.stringify(data) }], structuredContent: data };
@@ -595,6 +644,12 @@ export async function handleEventMcp(request: Request, env: Env) {
     server.registerTool("apply_event_comments", { description: "Enable the public event comment section after showing a preview and obtaining user approval. Requires confirm=true and the matching one-use previewId.",
       inputSchema: eventCommentsSchema, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       _meta: metadata([readScope, writeScope]) }, args => result("comments", args));
+    server.registerTool("preview_event_media_changes", { description: "Preview the public image/media URLs attached to a native OrgPortal event. Use this for already-hosted images; direct binary upload is available through admin UI.",
+      inputSchema: eventMediaSchema, annotations: { readOnlyHint: true, openWorldHint: true }, _meta: metadata([readScope]) },
+      args => result("mediaPreview", args));
+    server.registerTool("apply_event_media_changes", { description: "Replace a native OrgPortal event's public image/media URL list after previewing it. Use admin UI for direct binary uploads.",
+      inputSchema: eventMediaSchema, annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
+      _meta: metadata([readScope, writeScope]) }, args => result("mediaApply", args));
     server.registerTool("get_portal_setup", { description: "Read the tenant portal setup for an organization, including shared slug URL and custom-domain status.",
       inputSchema: z.object({ organizationId: z.string().min(1).max(200) }).strict(),
       annotations: { readOnlyHint: true, openWorldHint: false }, _meta: metadata([portalReadScope]) }, args => portalResult("get", args));
