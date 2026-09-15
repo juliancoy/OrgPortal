@@ -57,6 +57,16 @@ type ContactLink = {
   url: string;
 };
 
+type EventMediaItem = {
+  id: string;
+  url: string;
+  label: string;
+  alt: string;
+  kind: "image";
+  content_type?: string | null;
+  image_key?: string | null;
+};
+
 type PidpUser = {
   id: string;
   email?: string | null;
@@ -205,6 +215,7 @@ type EventRow = {
   location: string | null;
   source_url: string | null;
   image_url: string | null;
+  media_json?: string | null;
   social_title?: string | null;
   social_description?: string | null;
   social_image_url?: string | null;
@@ -454,6 +465,17 @@ function parseJsonArray(value: string | null | undefined): string[] {
     const parsed = JSON.parse(value) as unknown;
     if (!Array.isArray(parsed)) return [];
     return parsed.map((item) => String(item || "").trim()).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+function parseEventMedia(value: string | null | undefined): EventMediaItem[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return sanitizeEventMedia(parsed);
   } catch {
     return [];
   }
@@ -1103,6 +1125,38 @@ function cleanPublicAssetUrl(value: unknown): string | null {
   return cleanUrl(text);
 }
 
+function cleanEventMediaUrl(value: unknown): string | null {
+  const text = cleanOptionalString(value, 1000);
+  if (!text) return null;
+  if (text.startsWith("/api/network/events/public/")) return text;
+  return cleanPublicAssetUrl(text);
+}
+
+function sanitizeEventMedia(value: unknown): EventMediaItem[] {
+  if (!Array.isArray(value)) return [];
+  const items: EventMediaItem[] = [];
+  for (const raw of value) {
+    if (!raw || typeof raw !== "object") continue;
+    const record = raw as Record<string, unknown>;
+    const url = cleanEventMediaUrl(record.url);
+    if (!url) continue;
+    const label = cleanOptionalString(record.label, 160) || "Event image";
+    const alt = cleanOptionalString(record.alt, 500) || label;
+    const id = cleanOptionalString(record.id, 120)?.replace(/[^a-zA-Z0-9._:-]/g, "-") || crypto.randomUUID();
+    items.push({
+      id,
+      url,
+      label,
+      alt,
+      kind: "image",
+      content_type: cleanOptionalString(record.content_type, 120),
+      image_key: cleanOptionalString(record.image_key, 500),
+    });
+    if (items.length >= 12) break;
+  }
+  return items;
+}
+
 function cleanLinks(value: unknown): ContactLink[] {
   if (!Array.isArray(value)) return [];
   return value
@@ -1184,6 +1238,7 @@ async function mapEvent(env: Env, request: Request, row: EventRow) {
     location: row.location,
     source_url: row.source_url,
     image_url: row.image_url,
+    media: parseEventMedia(row.media_json),
     social_title: row.social_title || null,
     social_description: row.social_description || null,
     social_image_url: row.social_image_url || null,
@@ -1866,14 +1921,16 @@ async function upsertEvent(db: D1Database, raw: Record<string, unknown>) {
   const id = existing?.id || crypto.randomUUID();
   const slug = existing?.slug || (await uniqueTableSlug(db, "events", `${title}-${ingestKey.slice(0, 8)}`));
   const updatedAt = nowIso();
+  const mediaJson = Array.isArray(raw.media) ? JSON.stringify(sanitizeEventMedia(raw.media)) : existing?.media_json || "[]";
   await db.prepare(
     `INSERT INTO events
       (id, ingest_key, title, slug, description, starts_at, ends_at, location, source_url, image_url,
+       media_json,
        social_title, social_description, social_image_url,
        host_user_id, host_user_name, host_org_id, host_org_name, host_org_source_url,
        event_chat_room_id, event_chat_room_alias, event_chat_room_name,
        tags, city, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(ingest_key) DO UPDATE SET
       title = excluded.title,
       description = excluded.description,
@@ -1882,6 +1939,7 @@ async function upsertEvent(db: D1Database, raw: Record<string, unknown>) {
       location = excluded.location,
       source_url = excluded.source_url,
       image_url = excluded.image_url,
+      media_json = excluded.media_json,
       social_title = excluded.social_title,
       social_description = excluded.social_description,
       social_image_url = excluded.social_image_url,
@@ -1908,6 +1966,7 @@ async function upsertEvent(db: D1Database, raw: Record<string, unknown>) {
       stringField(raw, "location", 1000),
       cleanUrl(raw.source_url),
       cleanPublicAssetUrl(raw.image_url),
+      mediaJson,
       stringField(raw, "social_title", 140),
       stringField(raw, "social_description", 300),
       cleanPublicAssetUrl(raw.social_image_url),
@@ -2858,6 +2917,19 @@ app.get("/api/network/events/public/:slug", async (c) => {
   return c.json(await mapEvent(c.env, c.req.raw, row));
 });
 
+app.get("/api/network/events/public/:slug/media/:mediaId", async (c) => {
+  const row = await publicEventBySlug(c.env.DB, c.req.param("slug"));
+  if (!row) fail(404, "Event not found");
+  const media = parseEventMedia(row.media_json).find((item) => item.id === c.req.param("mediaId"));
+  if (!media?.image_key || !c.env.SCAN_IMAGES) fail(404, "Event media is not available");
+  const object = await c.env.SCAN_IMAGES.get(media.image_key);
+  if (!object) fail(404, "Event media is not available");
+  const headers = new Headers();
+  object.writeHttpMetadata(headers);
+  headers.set("cache-control", "public, max-age=31536000, immutable");
+  return new Response(object.body, { status: 200, headers });
+});
+
 app.get("/api/network/events/public/:slug/flyer.svg", async (c) => {
   const row = await publicEventBySlug(c.env.DB, c.req.param("slug"));
   if (!row) fail(404, "Event not found");
@@ -3511,6 +3583,61 @@ app.patch("/api/network/events/:eventId", async (c) => {
     .bind(row.id)
     .first<EventRow>();
   return c.json(await mapEvent(c.env, c.req.raw, updated!));
+});
+
+app.patch("/api/network/events/:eventId/media", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await c.env.DB.prepare("SELECT * FROM events WHERE id = ? OR slug = ?")
+    .bind(c.req.param("eventId"), slugify(c.req.param("eventId")))
+    .first<EventRow>();
+  if (!row) fail(404, "Event not found");
+  await authorizeEventManager(c.env, user, row);
+  const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  const media = sanitizeEventMedia(payload.media);
+  await c.env.DB.prepare("UPDATE events SET media_json = ?, updated_at = ? WHERE id = ?")
+    .bind(JSON.stringify(media), nowIso(), row.id)
+    .run();
+  const updated = await c.env.DB.prepare("SELECT e.*, o.name AS organization_name FROM events e LEFT JOIN organizations o ON o.id = e.host_org_id WHERE e.id = ?")
+    .bind(row.id)
+    .first<EventRow>();
+  return c.json(await mapEvent(c.env, c.req.raw, updated!));
+});
+
+app.post("/api/network/events/:eventId/media", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await c.env.DB.prepare("SELECT * FROM events WHERE id = ? OR slug = ?")
+    .bind(c.req.param("eventId"), slugify(c.req.param("eventId")))
+    .first<EventRow>();
+  if (!row) fail(404, "Event not found");
+  await authorizeEventManager(c.env, user, row);
+  if (!c.env.SCAN_IMAGES) fail(503, "Event media upload storage is not configured");
+  const formData = await c.req.raw.formData().catch(() => null);
+  if (!formData) fail(400, "multipart form data is required");
+  const image = formData.get("image");
+  if (!(image instanceof File)) fail(400, "image is required");
+  const allowed = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+  const contentType = image.type || "application/octet-stream";
+  if (!allowed.has(contentType)) fail(415, `Unsupported image type: ${contentType}`);
+  if (image.size > 8 * 1024 * 1024) fail(413, "Image exceeds 8 MB");
+  const mediaId = crypto.randomUUID();
+  const extension = (image.name.split(".").pop() || contentType.split("/")[1] || "bin").replace(/[^a-z0-9]/gi, "").toLowerCase() || "bin";
+  const imageBytes = await image.arrayBuffer();
+  const imageKey = `event-media/${row.id}/${mediaId}.${extension}`;
+  await c.env.SCAN_IMAGES.put(imageKey, imageBytes, {
+    httpMetadata: { contentType },
+    customMetadata: { event_id: row.id, submitted_by_user_id: user.id },
+  });
+  const label = cleanOptionalString(formData.get("label"), 160) || image.name || "Event image";
+  const alt = cleanOptionalString(formData.get("alt"), 500) || label;
+  const url = `/api/network/events/public/${encodeURIComponent(row.slug)}/media/${encodeURIComponent(mediaId)}`;
+  const media = sanitizeEventMedia([...parseEventMedia(row.media_json), { id: mediaId, url, label, alt, kind: "image", content_type: contentType, image_key: imageKey }]);
+  await c.env.DB.prepare("UPDATE events SET media_json = ?, updated_at = ? WHERE id = ?")
+    .bind(JSON.stringify(media), nowIso(), row.id)
+    .run();
+  const updated = await c.env.DB.prepare("SELECT e.*, o.name AS organization_name FROM events e LEFT JOIN organizations o ON o.id = e.host_org_id WHERE e.id = ?")
+    .bind(row.id)
+    .first<EventRow>();
+  return c.json(await mapEvent(c.env, c.req.raw, updated!), 201);
 });
 
 app.post("/api/network/events/:eventId/claim", async (c) => {

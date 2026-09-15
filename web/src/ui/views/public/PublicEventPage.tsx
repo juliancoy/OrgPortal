@@ -29,10 +29,19 @@ type PublicEvent = {
   location?: string | null
   source_url?: string | null
   image_url?: string | null
+  media?: EventMediaItem[]
   organization_name?: string | null
   host_org_name?: string | null
   host_org_id?: string | null
   host_user_id?: string | null
+}
+
+type EventMediaItem = {
+  id: string
+  url: string
+  label: string
+  alt: string
+  kind: 'image'
 }
 
 type PublicEventChat = {
@@ -578,6 +587,26 @@ export function PublicEventPage() {
 
       <div className="public-event-layout public-event-layout-primary">
         <main className="public-event-main">
+          {(event.media || []).length ? (
+            <section className="portal-card" style={{ display: 'grid', gap: '0.75rem' }} aria-labelledby="event-media-title">
+              <div className="public-event-card-heading">
+                <p className="public-event-eyebrow">Event Media</p>
+                <h2 id="event-media-title">Files And Images</h2>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.75rem' }}>
+                {(event.media || []).map((item) => (
+                  <a key={item.id} href={item.url} target="_blank" rel="noopener noreferrer" style={{ display: 'grid', gap: '0.45rem', color: 'inherit', textDecoration: 'none' }}>
+                    <img
+                      src={item.url}
+                      alt={item.alt || item.label}
+                      style={{ width: '100%', aspectRatio: '3 / 4', objectFit: 'cover', borderRadius: 12, border: '1px solid var(--border)' }}
+                    />
+                    <strong>{item.label}</strong>
+                  </a>
+                ))}
+              </div>
+            </section>
+          ) : null}
           {event.description ? (
             <section className="portal-card public-event-description">
               <div className="public-event-card-heading">
