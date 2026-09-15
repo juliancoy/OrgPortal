@@ -1049,6 +1049,10 @@ h6 {
   align-items: start;
 }
 
+.public-event-layout-primary {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .public-event-main,
 .public-event-side,
 .public-events-list,
@@ -1357,7 +1361,7 @@ h6 {
 }
 
 .public-event-registration {
-  padding: 22px;
+  padding: clamp(22px, 3vw, 34px);
   border-color: color-mix(in srgb, var(--primary) 22%, var(--border));
 }
 
@@ -1368,32 +1372,41 @@ h6 {
 .public-event-attendance-summary {
   display: flex;
   flex-wrap: wrap;
-  gap: 14px;
+  gap: 18px;
   align-items: center;
-  padding: 14px;
+  padding: 16px;
   background: color-mix(in srgb, var(--panel-2), var(--panel) 28%);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
 }
 
 .public-event-registrants {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
-  gap: 8px;
-  flex: 1 1 320px;
-  min-width: min(100%, 260px);
+  display: flex;
+  flex: 1 1 180px;
+  flex-wrap: wrap;
+  align-items: center;
+  min-width: min(100%, 180px);
+  padding-left: 10px;
 }
 
 .public-event-registrant {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
+  display: inline-flex;
   align-items: center;
-  min-width: 0;
-  padding: 6px;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  background: var(--panel);
+  margin-left: -10px;
+  border-radius: 50%;
+  text-decoration: none;
+  transition: transform 0.16s ease, z-index 0.16s ease;
+}
+
+.public-event-registrant:hover,
+.public-event-registrant:focus-visible {
+  z-index: 2;
+  transform: translateY(-2px);
+}
+
+.public-event-registrant:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--primary), white 16%);
+  outline-offset: 3px;
 }
 
 .public-event-registrant-link {
@@ -1434,14 +1447,15 @@ h6 {
   display: grid;
   flex: 0 0 auto;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: 46px;
+  height: 46px;
   color: var(--panel);
   background: var(--text-primary);
-  border: 2px solid var(--panel);
+  border: 3px solid var(--panel);
   border-radius: 50%;
   object-fit: cover;
-  font-size: 0.7rem;
+  box-shadow: 0 8px 18px rgb(0 0 0 / 0.18);
+  font-size: 0.78rem;
   font-weight: 800;
 }
 
@@ -1506,6 +1520,23 @@ h6 {
 
 .public-event-registration-actions .btn-primary {
   text-decoration: none;
+}
+
+.public-event-registration-actions {
+  margin-top: 2px;
+}
+
+.public-event-registration-actions .btn-primary,
+.public-event-registration-actions button {
+  min-height: 54px;
+  padding: 0.9rem 1.35rem;
+  border-radius: var(--radius-sm);
+  font-size: 1.02rem;
+  font-weight: 850;
+}
+
+.public-event-registration-actions .btn-primary {
+  box-shadow: 0 14px 30px color-mix(in srgb, var(--primary) 28%, transparent);
 }
 
 .public-event-registered-state,
