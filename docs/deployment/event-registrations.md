@@ -2,7 +2,7 @@
 
 Event detail pages collect registrations using the existing PIdP accounts. Visitors can log in or create an account and return to the event. They explicitly register after authentication. Each account has at most one registration per event and can cancel it.
 
-The registration card displays the total count and up to eight public contact profiles, with profile photos or initials. Disabled/private profiles still count but are excluded from the preview. The public response omits account IDs, email addresses, and other contact fields. Calendar sync failure does not undo registration; cancellation does not delete external calendar copies.
+The registration card displays the total count and registrant names with profile photos or initials, regardless of whether each registrant has enabled their public profile page. Registrant avatars open in-portal direct messages; public-profile status only controls the separate public link-tree/profile page. The public response omits email addresses, phone numbers, and other contact fields. Calendar sync failure does not undo registration; cancellation does not delete external calendar copies.
 
 ## Deployment order
 
@@ -22,7 +22,7 @@ No new secrets or identity provider configuration are needed. This change does n
 - POST: authenticated, idempotent registration for the token's account.
 - DELETE: authenticated, idempotent cancellation for the token's account only.
 
-All responses disable caching. Successful responses contain `event_id`, `count`, `attendees` (`slug`, `name`, `photo_url`), and `registered`. Unknown events return 404. Missing or invalid credentials on writes return 401.
+All responses disable caching. Successful responses contain `event_id`, `count`, `attendees` (`user_id`, `slug`, `name`, `photo_url`, `profile_public`), and `registered`. Unknown events return 404. Missing or invalid credentials on writes return 401.
 
 ## Verification
 
@@ -37,6 +37,6 @@ npm test -- src/ui/views/public/attendanceApi.test.ts
 npm run build
 ```
 
-After deployment, open an event while signed out, confirm its count is visible, and follow Sign up or Log in. Verify the flow returns to the event, registration updates the count, a reload preserves the status, repeat registration does not inflate the count, and cancellation reduces it. A registered account with an enabled public profile should appear in the preview; a private profile should not.
+After deployment, open an event while signed out, confirm its count is visible, and follow Sign up or Log in. Verify the flow returns to the event, registration updates the count, a reload preserves the status, repeat registration does not inflate the count, and cancellation reduces it. Registered accounts should appear in the preview with avatars/initials whether or not their public profile page is enabled, and the avatar action should open a direct message after sign-in.
 
 Rollback application code if needed, keeping the additive table and its registrations intact.

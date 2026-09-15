@@ -14,6 +14,10 @@ function RegistrantAvatar({ name, photoUrl }: { name: string; photoUrl: string |
   )
 }
 
+function registrantMessagePath(person: EventAttendance['attendees'][number]) {
+  return `/chat?${new URLSearchParams({ start: 'dm', userId: person.user_id, name: person.name })}`
+}
+
 // The parent keys this component by event and account to reset state on navigation/sign-in.
 export function EventRegistration({ eventId, slug, token, authLoading = false, saveToCalendar, organizationName }: {
   eventId: string
@@ -83,24 +87,27 @@ export function EventRegistration({ eventId, slug, token, authLoading = false, s
             <div aria-label="Event registrants" className="public-event-registrants">
               {attendance.attendees.map((person, index) => {
                 const avatar = <RegistrantAvatar name={person.name} photoUrl={person.photo_url} />
-                return person.profile_public && person.slug ? (
+                const messagePath = registrantMessagePath(person)
+                return token ? (
                   <Link
                     key={person.user_id || person.slug}
-                    to={`/users/${encodeURIComponent(person.slug)}`}
+                    to={messagePath}
                     title={person.name}
-                    aria-label={`Open ${person.name}'s profile`}
-                    className="public-event-registrant public-event-registrant-profile"
+                    aria-label={`Message ${person.name}`}
+                    className="public-event-registrant public-event-registrant-message-link"
                   >
                     {avatar}
                   </Link>
                 ) : (
-                  <span
+                  <a
                     key={person.user_id || `${person.slug || 'registrant'}-${index}`}
+                    href={pidpAppLoginUrl(messagePath)}
                     title={person.name}
+                    aria-label={`Sign in to message ${person.name}`}
                     className="public-event-registrant"
                   >
                     {avatar}
-                  </span>
+                  </a>
                 )
               })}
             </div>
