@@ -57,14 +57,14 @@ This app is built and embedded at `/p/` by the parent CodeCollective repository.
 From the parent repository root, use:
 
 ```bash
-./cloudflare/scripts/build_cloudflare_site.sh
-npx wrangler deploy
+./deploy.sh --component site --target prod
 ```
 
 The parent site Worker serves the static assets and proxies:
 
 - `/api/governance/*` -> `GOVERNANCE_API_ORIGIN`
 - `/pidp/*` -> `PIDP_API_ORIGIN`
+- `/api/chat/*` -> `CHAT_API_ORIGIN`
 
 Do not deploy `portal/web` as a standalone Worker. The former standalone Worker
 has been deleted; `https://codecollective.us/p/` is the only supported URL.
