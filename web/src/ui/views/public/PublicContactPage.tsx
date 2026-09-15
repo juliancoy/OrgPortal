@@ -9,6 +9,7 @@ import { toUserFacingErrorMessage } from '../../../infrastructure/http/userFacin
 import { createQrSvg } from '../../utils/qr'
 import { setSeoMeta } from '../../utils/seo'
 import { createVCard, vCardFileName } from '../../utils/vcard'
+import { UserProfilePage } from '../users/UserProfilePage'
 
 const ORG_API_BASE = '/api/org'
 
@@ -86,7 +87,11 @@ type PublicEvent = {
   image_url?: string | null
 }
 
-export function PublicContactPage() {
+type PublicContactPageProps = {
+  self?: boolean
+}
+
+export function PublicContactPage({ self = false }: PublicContactPageProps = {}) {
   const { token, user } = useAuth()
   const { slug } = useParams()
   const navigate = useNavigate()
@@ -107,19 +112,36 @@ export function PublicContactPage() {
   )
 
   useEffect(() => {
-    if (!slug) return
+    if (!self && !slug) return
+    if (self && !token) {
+      setPage(null)
+      setEvents([])
+      setStatus('Sign in required.')
+      return
+    }
+
     const headers = token ? { Authorization: `Bearer ${token}` } : undefined
-    Promise.all([
-      fetch(orgUrl(`/api/network/users/public/${encodeURIComponent(slug)}`), { headers }).then(async (resp) => {
+    const loadPage = self
+      ? fetch(orgUrl('/api/network/contact/me'), { headers }).then(async (resp) => {
         if (!resp.ok) {
           throw new Error(await responseError(resp, `Profile not found (${resp.status})`))
         }
         return resp.json() as Promise<ContactPage>
-      }),
-      fetch(orgUrl(`/api/network/users/public/${encodeURIComponent(slug)}/events?upcoming_only=true&limit=8`))
-        .then(async (resp) => (resp.ok ? ((await resp.json()) as PublicEvent[]) : []))
-        .catch(() => []),
-    ])
+      })
+      : fetch(orgUrl(`/api/network/users/public/${encodeURIComponent(String(slug))}`), { headers }).then(async (resp) => {
+        if (!resp.ok) {
+          throw new Error(await responseError(resp, `Profile not found (${resp.status})`))
+        }
+        return resp.json() as Promise<ContactPage>
+      })
+
+    loadPage
+      .then(async (data) => {
+        const eventRows = await fetch(orgUrl(`/api/network/users/public/${encodeURIComponent(data.slug)}/events?upcoming_only=true&limit=8`))
+          .then(async (resp) => (resp.ok ? ((await resp.json()) as PublicEvent[]) : []))
+          .catch(() => [])
+        return [data, eventRows] as const
+      })
       .then(([data, eventRows]) => {
         setPage(data)
         setEvents(eventRows)
@@ -144,12 +166,12 @@ export function PublicContactPage() {
         setSeoMeta({
           title: 'Profile Unavailable • Org Portal',
           description: 'The requested public profile could not be found.',
-          canonicalUrl: `${window.location.origin}/users/${encodeURIComponent(slug)}`,
+          canonicalUrl: `${window.location.origin}/users/${encodeURIComponent(String(slug || ''))}`,
           type: 'website',
           robots: 'noindex, nofollow, noarchive, nosnippet, noimageindex',
         })
       })
-  }, [slug, token])
+  }, [self, slug, token])
 
   const qrSvg = useMemo(() => {
     const shareUrl = publicProfileUrl(page?.slug)
@@ -189,7 +211,7 @@ export function PublicContactPage() {
     URL.revokeObjectURL(href)
   }
 
-  const isOwner = Boolean(token && user?.id && page?.user_id === user.id)
+  const isOwner = Boolean(token && page && (self || (user?.id && page.user_id === user.id)))
   const contactLinks = page
     ? [
         page.email_public ? { label: 'Email', url: `mailto:${page.email_public}`, display: page.email_public } : null,
@@ -304,7 +326,8 @@ export function PublicContactPage() {
           )}
           {isOwner ? (
             <div className="public-id-owner-controls" aria-label="Profile owner controls">
-              <Link to="/profile">Edit Profile</Link>
+              <a href="#profile-editor">Edit Profile</a>
+              {shareUrl ? <Link to={`/users/${encodeURIComponent(page.slug)}`}>View Public Page</Link> : null}
             </div>
           ) : null}
         </div>
@@ -441,6 +464,8 @@ export function PublicContactPage() {
         <span>Brought to you by</span>
         <img src={portalPath('/images/namebanner.png')} alt="Code Collective" />
       </a>
+
+      {isOwner ? <UserProfilePage embedded publicPageUrl={shareUrl} /> : null}
     </section>
   )
 }

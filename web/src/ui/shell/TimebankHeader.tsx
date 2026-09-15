@@ -69,7 +69,7 @@ export function TimebankHeader() {
       {open && <div className="tb-account-panel" id={panelId}>
         <div className="tb-account-identity"><ProfilePhoto key={user?.avatarUrl || 'initials'} src={user?.avatarUrl} name={name} /><div><strong>{name}</strong>{user?.email && <span>{user.email}</span>}</div></div>
         <nav aria-label="Account">
-          <Link to="/profile" onClick={close}><AccountIcon><circle cx="12" cy="8" r="4" /><path d="M4 21v-2a8 8 0 0 1 16 0v2" /></AccountIcon><span>Profile &amp; photo</span></Link>
+          <Link to="/profile" onClick={close}><AccountIcon><circle cx="12" cy="8" r="4" /><path d="M4 21v-2a8 8 0 0 1 16 0v2" /></AccountIcon><span>My Profile</span></Link>
           <Link to="/settings" onClick={close}><AccountIcon><path d="M4 7h16M4 17h16" /><circle cx="9" cy="7" r="3" fill="var(--panel)" /><circle cx="15" cy="17" r="3" fill="var(--panel)" /></AccountIcon><span>Account settings</span></Link>
         </nav>
         <div className="tb-account-signout"><button type="button" onClick={() => { close(); logout() }}><AccountIcon><path d="M9 4H4v16h5M9 12h12m-5-5 5 5-5 5" /></AccountIcon><span>Sign out</span></button></div>

@@ -12,7 +12,6 @@ import { DepartmentsPage } from '../views/DepartmentsPage'
 import { AuthCallbackPage } from '../views/AuthCallbackPage'
 import { InitiativeDetailPage } from '../views/InitiativeDetailPage'
 import { InitiativeSignPage } from '../views/InitiativeSignPage'
-import { UserProfilePage } from '../views/users/UserProfilePage'
 import { UserCalendarPage } from '../views/users/UserCalendarPage'
 import { UserSettingsPage } from '../views/users/UserSettingsPage'
 import { UserLoginPage } from '../views/users/UserLoginPage'
@@ -252,7 +251,14 @@ export function createAppRouter() {
           { path: '/users/register', element: <LoginRedirectRoute /> },
           { path: '/users/login', element: <UserLoginPage /> },
           { path: '/users/dashboard', element: <DashboardPage /> },
-          { path: '/profile', element: <UserProfilePage /> },
+          {
+            path: '/profile',
+            element: (
+              <AuthenticatedRoute>
+                <PublicContactPage self />
+              </AuthenticatedRoute>
+            ),
+          },
           { path: '/calendar', element: <PublicCalendarPage /> },
           { path: '/calendar.html', element: <Navigate to="/calendar" replace /> },
           {

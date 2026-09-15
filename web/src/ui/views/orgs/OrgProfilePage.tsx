@@ -349,13 +349,13 @@ export function OrgProfilePage() {
 
   return (
     <section className="panel" style={{ display: 'grid', gap: '1rem' }}>
-      <h1 style={{ marginTop: 0 }}>Organization Network</h1>
+      <h1 style={{ marginTop: 0 }}>Organization Profile</h1>
       <p className="muted" style={{ marginTop: 0 }}>
         Create organizations or immediately claim an unclaimed listing. Existing ownership remains authoritative until challenged.
       </p>
 
       <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-        <Link to="/profile">Manage My Contact Page</Link>
+        <Link to="/profile">My Profile</Link>
         <Link to="/orgs/initiatives">My Initiatives</Link>
         <Link to="/orgs/events">Events</Link>
       </div>

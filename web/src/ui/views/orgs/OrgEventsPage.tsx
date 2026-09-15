@@ -392,7 +392,7 @@ export function OrgEventsPage() {
       </p>
 
       <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
-        <Link to="/orgs/profile">Organization Network</Link>
+        <Link to="/orgs/profile">Organization Profile</Link>
         <Link to="/orgs/initiatives">My Initiatives</Link>
       </div>
 

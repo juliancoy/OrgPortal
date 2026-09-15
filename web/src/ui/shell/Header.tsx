@@ -42,6 +42,28 @@ function NavLink({ to, children, end = false, isActive: forceActive }: NavLinkPr
   )
 }
 
+type NavGroupProps = {
+  label: string
+  active?: boolean
+  children: React.ReactNode
+}
+
+function NavGroup({ label, active = false, children }: NavGroupProps) {
+  return (
+    <details className={`portal-nav-group ${active ? 'active' : ''}`} open={active || undefined}>
+      <summary className="portal-nav-group-label">
+        <span>{label}</span>
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <path d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" />
+        </svg>
+      </summary>
+      <div className="portal-nav-group-items">
+        {children}
+      </div>
+    </details>
+  )
+}
+
 type SearchOrganization = {
   id: string
   name: string
@@ -824,7 +846,7 @@ export function Header() {
                     className="portal-user-menu-item"
                     role="menuitem"
                   >
-                    Profile
+                    {role === 'campaign_manager' ? 'Organization Profile' : 'My Profile'}
                   </Link>
 
                   <Link to="/settings" onClick={() => setMenuOpen(false)} className="portal-user-menu-item" role="menuitem">
@@ -990,12 +1012,12 @@ export function Header() {
             People
           </NavLink>
 
-            {!isGuest && (
+          {!isGuest && (
             <NavLink to="/calendar/integrations" isActive={isCalendarActive}>
               <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                 <path d="M6 2.5A1.5 1.5 0 017.5 4v.75h5V4a1.5 1.5 0 013 0v.75H16A2 2 0 0118 6.75v8.75A2.5 2.5 0 0115.5 18h-11A2.5 2.5 0 012 15.5V6.75a2 2 0 012-2h.5V4a1.5 1.5 0 011.5-1.5zm0 3.75H4v9.25c0 .28.22.5.5.5h11a.5.5 0 00.5-.5V6.25h-2.5V7a1 1 0 11-2 0v-.75h-5V7a1 1 0 11-2 0v-.75zm2.5 4a1 1 0 100 2h3a1 1 0 100-2h-3z" />
               </svg>
-              Calendar
+              Calendar feeds
             </NavLink>
           )}
 
@@ -1004,7 +1026,7 @@ export function Header() {
               <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                 <path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm2 4.5a2.5 2.5 0 115 0 2.5 2.5 0 01-5 0zM4.75 14a4.25 4.25 0 018.5 0 .75.75 0 01-.75.75h-7a.75.75 0 01-.75-.75zM14 6.5a.75.75 0 01.75-.75h1a.75.75 0 010 1.5h-1A.75.75 0 0114 6.5zm0 3a.75.75 0 01.75-.75h1a.75.75 0 010 1.5h-1A.75.75 0 0114 9.5z" />
               </svg>
-              ID
+              ID card
             </NavLink>
           )}
 
@@ -1015,54 +1037,17 @@ export function Header() {
             </svg>
             Timebanking
           </NavLink>
-          <NavLink to="/finance" isActive={isFinanceActive}>
-            <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" />
-              <path
-                fillRule="evenodd"
-                d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z"
-                clipRule="evenodd"
-              />
-            </svg>
-            Finance
-          </NavLink>
+          <NavGroup label="Benefits" active={isLifeInsuranceActive || isHealthInsuranceActive || isPropertyCasualtyInsuranceActive}>
+            <NavLink to="/life-insurance" isActive={isLifeInsuranceActive}>Life benefit</NavLink>
+            <NavLink to="/health-insurance" isActive={isHealthInsuranceActive}>Health benefit</NavLink>
+            <NavLink to="/property-casualty-insurance" isActive={isPropertyCasualtyInsuranceActive}>Property and casualty</NavLink>
+          </NavGroup>
 
-          <NavLink to="/life-insurance" isActive={isLifeInsuranceActive}>
-            <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path d="M10 2.25l6.5 2.6v4.4c0 4.2-2.72 7.42-6.5 8.5-3.78-1.08-6.5-4.3-6.5-8.5v-4.4L10 2.25zm0 3.1a.85.85 0 00-.85.85v2.05H7.1a.85.85 0 000 1.7h2.05V12a.85.85 0 001.7 0V9.95h2.05a.85.85 0 000-1.7h-2.05V6.2a.85.85 0 00-.85-.85z" />
-            </svg>
-            Life benefit
-          </NavLink>
-
-          <NavLink to="/health-insurance" isActive={isHealthInsuranceActive}>
-            <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path d="M10 1.8c3 2.1 5.7 2.4 7 2.5v5.1c0 4.1-2.6 7.1-7 8.8-4.4-1.7-7-4.7-7-8.8V4.3c1.3-.1 4-.4 7-2.5zm-.9 4v2.7H6.4v1.8h2.7V13h1.8v-2.7h2.7V8.5h-2.7V5.8H9.1z" />
-            </svg>
-            Health benefit
-          </NavLink>
-
-          {!isGuest && (
-            <NavLink to="/provider-scheduling" isActive={isProviderSchedulingActive}>
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path d="M6 2.5A1.5 1.5 0 017.5 4v.75h5V4a1.5 1.5 0 013 0v.75H16A2 2 0 0118 6.75v8.75A2.5 2.5 0 0115.5 18h-11A2.5 2.5 0 012 15.5V6.75a2 2 0 012-2h.5V4a1.5 1.5 0 011.5-1.5zm0 3.75H4v9.25c0 .28.22.5.5.5h11a.5.5 0 00.5-.5V6.25h-2.5V7a1 1 0 11-2 0v-.75h-5V7a1 1 0 11-2 0v-.75zm2.5 4a1 1 0 100 2h3a1 1 0 100-2h-3z" />
-              </svg>
-              Provider portal
-            </NavLink>
-          )}
-
-          <NavLink to="/property-casualty-insurance" isActive={isPropertyCasualtyInsuranceActive}>
-            <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path d="M10 2.2l6.8 2.7v4.6c0 4.5-2.9 7.9-6.8 9-3.9-1.1-6.8-4.5-6.8-9V4.9L10 2.2zm0 3.2a2.7 2.7 0 00-2.7 2.7c0 2.2 2.7 4.8 2.7 4.8s2.7-2.6 2.7-4.8A2.7 2.7 0 0010 5.4zm0 1.5a1.2 1.2 0 110 2.4 1.2 1.2 0 010-2.4z" />
-            </svg>
-            Property and casualty
-          </NavLink>
-
-          <NavLink to="/departments" isActive={isDepartmentsActive}>
-            <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path d="M4 3a2 2 0 00-2 2v12h16V5a2 2 0 00-2-2H4zm1 3h2v2H5V6zm4 0h2v2H9V6zm4 0h2v2h-2V6zM5 10h2v2H5v-2zm4 0h2v2H9v-2zm4 0h2v2h-2v-2zM8 14h4v3H8v-3z" />
-            </svg>
-            Departments
-          </NavLink>
+          <NavGroup label="Operations" active={isFinanceActive || isDepartmentsActive || isProviderSchedulingActive}>
+            <NavLink to="/finance" isActive={isFinanceActive}>Finance</NavLink>
+            <NavLink to="/departments" isActive={isDepartmentsActive}>Departments</NavLink>
+            <NavLink to="/provider-scheduling" isActive={isProviderSchedulingActive}>Provider portal</NavLink>
+          </NavGroup>
 
           {!isGuest && (
             <NavLink to="/chat" isActive={isChatActive}>
@@ -1077,22 +1062,13 @@ export function Header() {
             </NavLink>
           )}
 
-          <NavLink to="/tools/business-cards" isActive={isScanActive}>
-            <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path d="M3 3h4v2H5v2H3V3zm10 0h4v4h-2V5h-2V3zM3 13h2v2h2v2H3v-4zm12 0h2v4h-4v-2h2v-2zM6 8h8v4H6V8zm2 1v2h4V9H8z" />
-            </svg>
-            Scan
-          </NavLink>
+          <NavGroup label="Tools" active={isScanActive || location.pathname === '/android/install'}>
+            <NavLink to="/tools/business-cards" isActive={isScanActive}>Business card scanner</NavLink>
+            {showAndroidDownload ? (
+              <NavLink to="/android/install" isActive={location.pathname === '/android/install'}>Android app</NavLink>
+            ) : null}
+          </NavGroup>
           </>}
-
-          {!isGuest && showAndroidDownload ? (
-            <NavLink to="/android/install" isActive={location.pathname === '/android/install'}>
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path d="M7.25 2.5a.75.75 0 011.03.25l.97 1.68A7.6 7.6 0 0110 4.4c.58 0 1.14.06 1.68.18l.97-1.68a.75.75 0 111.3.75l-.88 1.52A6.3 6.3 0 0116.1 9H3.9a6.3 6.3 0 013.03-3.83L6.05 3.65a.75.75 0 01.25-1.03zM7.5 7a.9.9 0 100-1.8.9.9 0 000 1.8zm5 0a.9.9 0 100-1.8.9.9 0 000 1.8zM3.5 10h1.4v4.7a1.4 1.4 0 102.8 0V10h4.6v4.7a1.4 1.4 0 102.8 0V10h1.4a.6.6 0 00.6-.6v-.2a.6.6 0 00-.6-.6H3.5a.6.6 0 00-.6.6v.2a.6.6 0 00.6.6z" />
-              </svg>
-              Android App
-            </NavLink>
-          ) : null}
 
           {isAdmin && (
             <NavLink to="/admin" isActive={location.pathname === '/admin'}>

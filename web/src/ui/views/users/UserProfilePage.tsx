@@ -69,7 +69,12 @@ function splitFullName(value: string) {
   return { firstName: parts[0], lastName: parts.slice(1).join(' ') }
 }
 
-export function UserProfilePage() {
+type UserProfilePageProps = {
+  embedded?: boolean
+  publicPageUrl?: string | null
+}
+
+export function UserProfilePage({ embedded = false, publicPageUrl: publicPageUrlProp }: UserProfilePageProps = {}) {
   const { user, setUser, token, logout } = useAuth()
   const [fullName, setFullName] = useState('')
   const [birthDate, setBirthDate] = useState('')
@@ -85,7 +90,7 @@ export function UserProfilePage() {
   const [campaignStatement, setCampaignStatement] = useState('')
   const [maslowNow, setMaslowNow] = useState<MaslowRatings>(DEFAULT_MASLOW_RATINGS)
   const [maslowFuture, setMaslowFuture] = useState<MaslowRatings>(DEFAULT_MASLOW_RATINGS)
-  const [publicPageUrl, setPublicPageUrl] = useState<string | null>(null)
+  const [loadedPublicPageUrl, setLoadedPublicPageUrl] = useState<string | null>(null)
   const [status, setStatus] = useState<string | null>(null)
   const [editorOpen, setEditorOpen] = useState(false)
   const [editorSource, setEditorSource] = useState<string | null>(null)
@@ -193,7 +198,7 @@ export function UserProfilePage() {
   useEffect(() => {
     let cancelled = false
     if (!token) {
-      setPublicPageUrl(null)
+      setLoadedPublicPageUrl(null)
       return () => {
         cancelled = true
       }
@@ -211,10 +216,10 @@ export function UserProfilePage() {
         return publicProfileUrl(data.slug)
       })
       .then((url) => {
-        if (!cancelled) setPublicPageUrl(url)
+        if (!cancelled) setLoadedPublicPageUrl(url)
       })
       .catch(() => {
-        if (!cancelled) setPublicPageUrl(null)
+        if (!cancelled) setLoadedPublicPageUrl(null)
       })
 
     return () => {
@@ -531,13 +536,15 @@ export function UserProfilePage() {
     }
   }
 
+  const publicPageUrl = publicPageUrlProp ?? loadedPublicPageUrl
+
   return (
-    <section className="id-page profile-page">
+    <section id="profile-editor" className={`id-page profile-page${embedded ? ' profile-page-embedded' : ''}`}>
       <article className="id-card profile-editor-card" aria-label="Edit Code Collective ID">
         {publicPageUrl ? (
           <div className="id-public-page-action profile-top-actions">
-            <a className="contact-public-page-bubble id-open-public-page" href={publicPageUrl} target="_blank" rel="noreferrer">
-              Open Public Page
+            <a className="contact-public-page-bubble id-open-public-page" href={publicPageUrl}>
+              View Public Page
             </a>
           </div>
         ) : null}
