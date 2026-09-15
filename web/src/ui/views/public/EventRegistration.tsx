@@ -83,30 +83,23 @@ export function EventRegistration({ eventId, slug, token, authLoading = false, s
             <div aria-label="Event registrants" className="public-event-registrants">
               {attendance.attendees.map((person, index) => {
                 const avatar = <RegistrantAvatar name={person.name} photoUrl={person.photo_url} />
-                const messagePath = `/chat?start=dm&userId=${encodeURIComponent(person.user_id)}&name=${encodeURIComponent(person.name)}`
                 return person.profile_public && person.slug ? (
-                  <span key={person.user_id || person.slug} className="public-event-registrant">
-                    <Link to={`/users/${encodeURIComponent(person.slug)}`} title={person.name} className="public-event-registrant-link">
-                      {avatar}
-                      <span>{person.name}</span>
-                    </Link>
-                    {token ? (
-                      <Link to={messagePath} className="public-event-registrant-message" aria-label={`Message ${person.name}`}>Message</Link>
-                    ) : (
-                      <a href={pidpAppLoginUrl(messagePath)} className="public-event-registrant-message" aria-label={`Message ${person.name}`}>Message</a>
-                    )}
-                  </span>
+                  <Link
+                    key={person.user_id || person.slug}
+                    to={`/users/${encodeURIComponent(person.slug)}`}
+                    title={person.name}
+                    aria-label={`Open ${person.name}'s profile`}
+                    className="public-event-registrant public-event-registrant-profile"
+                  >
+                    {avatar}
+                  </Link>
                 ) : (
-                  <span key={person.user_id || `${person.slug || 'registrant'}-${index}`} className="public-event-registrant">
-                    <span title={person.name} className="public-event-registrant-link">
-                      {avatar}
-                      <span>{person.name}</span>
-                    </span>
-                    {token ? (
-                      <Link to={messagePath} className="public-event-registrant-message" aria-label={`Message ${person.name}`}>Message</Link>
-                    ) : (
-                      <a href={pidpAppLoginUrl(messagePath)} className="public-event-registrant-message" aria-label={`Message ${person.name}`}>Message</a>
-                    )}
+                  <span
+                    key={person.user_id || `${person.slug || 'registrant'}-${index}`}
+                    title={person.name}
+                    className="public-event-registrant"
+                  >
+                    {avatar}
                   </span>
                 )
               })}

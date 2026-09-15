@@ -130,6 +130,7 @@ export function Header() {
   const { role, user, logout, token, isLoading } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
+  const isGuest = role === 'guest'
   const displayName = user?.displayName || user?.email || 'Signed in'
   const roleLabel = role === 'campaign_manager' ? 'Org' : role === 'constituent' ? 'User' : 'Guest'
   const showAndroidDownload = isAndroidDevice()
@@ -162,7 +163,7 @@ export function Header() {
   const searchCacheRef = useRef<Map<string, SearchCacheEntry>>(new Map())
 
   useEffect(() => {
-    if (role === 'guest' || !token) {
+    if (isGuest || !token) {
       setIsAdmin(false)
       return
     }
@@ -183,7 +184,7 @@ export function Header() {
     checkAdmin()
       .then((data) => setIsAdmin(Boolean(data.is_sysadmin)))
       .catch(() => setIsAdmin(false))
-  }, [role, token])
+  }, [isGuest, token])
 
   useEffect(() => {
     setMenuOpen(false)
@@ -237,7 +238,7 @@ export function Header() {
   }, [notificationsOpen])
 
   async function refreshNotifications(signal?: AbortSignal) {
-    if (!token || role === 'guest') {
+    if (!token || isGuest) {
       setUnreadNotifications(0)
       setConnectionRequests([])
       return
@@ -281,7 +282,7 @@ export function Header() {
       window.clearInterval(interval)
       window.removeEventListener('focus', handleFocus)
     }
-  }, [role, token])
+  }, [isGuest, token])
 
   async function respondToConnectionRequest(id: string, action: 'accept' | 'decline') {
     if (!token) return
@@ -952,7 +953,7 @@ export function Header() {
             {domainTenant.features?.includes('events') && <NavLink to="/org-events">Events</NavLink>}
             {hasTenantCalendar(domainTenant) && <NavLink to="/calendar" isActive={isCalendarActive}>Calendar</NavLink>}
             {domainTenant.features?.includes('directory') && <NavLink to="/people">People</NavLink>}
-            {domainTenant.features?.includes('chat') && <NavLink to="/chat">Messages</NavLink>}
+            {!isGuest && domainTenant.features?.includes('chat') && <NavLink to="/chat">Messages</NavLink>}
             {tenantResources.length > 0 && <NavLink to="/resources" isActive={isResourcesActive}>Resources</NavLink>}
           </> : domainCommunity ? <>
             <NavLink to="/timebanking">Timebank</NavLink>
@@ -989,7 +990,7 @@ export function Header() {
             People
           </NavLink>
 
-          {role !== 'guest' && (
+            {!isGuest && (
             <NavLink to="/calendar/integrations" isActive={isCalendarActive}>
               <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                 <path d="M6 2.5A1.5 1.5 0 017.5 4v.75h5V4a1.5 1.5 0 013 0v.75H16A2 2 0 0118 6.75v8.75A2.5 2.5 0 0115.5 18h-11A2.5 2.5 0 012 15.5V6.75a2 2 0 012-2h.5V4a1.5 1.5 0 011.5-1.5zm0 3.75H4v9.25c0 .28.22.5.5.5h11a.5.5 0 00.5-.5V6.25h-2.5V7a1 1 0 11-2 0v-.75h-5V7a1 1 0 11-2 0v-.75zm2.5 4a1 1 0 100 2h3a1 1 0 100-2h-3z" />
@@ -998,7 +999,7 @@ export function Header() {
             </NavLink>
           )}
 
-          {role !== 'guest' && (
+          {!isGuest && (
             <NavLink to="/id" isActive={isIdActive}>
               <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                 <path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm2 4.5a2.5 2.5 0 115 0 2.5 2.5 0 01-5 0zM4.75 14a4.25 4.25 0 018.5 0 .75.75 0 01-.75.75h-7a.75.75 0 01-.75-.75zM14 6.5a.75.75 0 01.75-.75h1a.75.75 0 010 1.5h-1A.75.75 0 0114 6.5zm0 3a.75.75 0 01.75-.75h1a.75.75 0 010 1.5h-1A.75.75 0 0114 9.5z" />
@@ -1007,6 +1008,7 @@ export function Header() {
             </NavLink>
           )}
 
+          {!isGuest && <>
           <NavLink to="/timebanking">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" />
@@ -1039,7 +1041,7 @@ export function Header() {
             Health benefit
           </NavLink>
 
-          {role !== 'guest' && (
+          {!isGuest && (
             <NavLink to="/provider-scheduling" isActive={isProviderSchedulingActive}>
               <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                 <path d="M6 2.5A1.5 1.5 0 017.5 4v.75h5V4a1.5 1.5 0 013 0v.75H16A2 2 0 0118 6.75v8.75A2.5 2.5 0 0115.5 18h-11A2.5 2.5 0 012 15.5V6.75a2 2 0 012-2h.5V4a1.5 1.5 0 011.5-1.5zm0 3.75H4v9.25c0 .28.22.5.5.5h11a.5.5 0 00.5-.5V6.25h-2.5V7a1 1 0 11-2 0v-.75h-5V7a1 1 0 11-2 0v-.75zm2.5 4a1 1 0 100 2h3a1 1 0 100-2h-3z" />
@@ -1062,7 +1064,7 @@ export function Header() {
             Departments
           </NavLink>
 
-          {role !== 'guest' && (
+          {!isGuest && (
             <NavLink to="/chat" isActive={isChatActive}>
               <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                 <path
@@ -1081,8 +1083,9 @@ export function Header() {
             </svg>
             Scan
           </NavLink>
+          </>}
 
-          {showAndroidDownload ? (
+          {!isGuest && showAndroidDownload ? (
             <NavLink to="/android/install" isActive={location.pathname === '/android/install'}>
               <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                 <path d="M7.25 2.5a.75.75 0 011.03.25l.97 1.68A7.6 7.6 0 0110 4.4c.58 0 1.14.06 1.68.18l.97-1.68a.75.75 0 111.3.75l-.88 1.52A6.3 6.3 0 0116.1 9H3.9a6.3 6.3 0 013.03-3.83L6.05 3.65a.75.75 0 01.25-1.03zM7.5 7a.9.9 0 100-1.8.9.9 0 000 1.8zm5 0a.9.9 0 100-1.8.9.9 0 000 1.8zM3.5 10h1.4v4.7a1.4 1.4 0 102.8 0V10h4.6v4.7a1.4 1.4 0 102.8 0V10h1.4a.6.6 0 00.6-.6v-.2a.6.6 0 00-.6-.6H3.5a.6.6 0 00-.6.6v.2a.6.6 0 00.6.6z" />

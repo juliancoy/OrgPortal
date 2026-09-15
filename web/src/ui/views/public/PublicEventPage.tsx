@@ -576,7 +576,7 @@ export function PublicEventPage() {
         </div>
       </section>
 
-      <div className="public-event-layout">
+      <div className="public-event-layout public-event-layout-primary">
         <main className="public-event-main">
           {event.description ? (
             <section className="portal-card public-event-description">
@@ -587,6 +587,9 @@ export function PublicEventPage() {
               <p>{event.description}</p>
             </section>
           ) : null}
+          <EventRegistration key={`${event.id}:${user?.id || 'guest'}:${Boolean(token)}`}
+            eventId={event.id} slug={event.slug} token={token} authLoading={authLoading} saveToCalendar={saveToCalendar}
+            organizationName={event.host_org_id ? event.organization_name || event.host_org_name : null} />
           <section className="portal-card public-event-calendar-card">
             <div className="public-event-card-heading">
               <p className="public-event-eyebrow">Calendar</p>
@@ -769,11 +772,6 @@ export function PublicEventPage() {
         ) : null}
       </section>
         </main>
-        <aside className="public-event-side">
-          <EventRegistration key={`${event.id}:${user?.id || 'guest'}:${Boolean(token)}`}
-            eventId={event.id} slug={event.slug} token={token} authLoading={authLoading} saveToCalendar={saveToCalendar}
-            organizationName={event.host_org_id ? event.organization_name || event.host_org_name : null} />
-        </aside>
       </div>
     </article>
   )
