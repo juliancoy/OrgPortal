@@ -106,6 +106,15 @@ type PublicEvent = {
   starts_at?: string | null
   location?: string | null
   image_url?: string | null
+  media?: EventMediaItem[]
+}
+
+type EventMediaItem = {
+  id: string
+  url: string
+  label: string
+  alt: string
+  kind: 'image'
 }
 
 type PublicOrgAdmin = {
@@ -242,6 +251,10 @@ export function PublicAdminPage() {
   const [orgImageDraft, setOrgImageDraft] = useState('')
   const [savingOrgName, setSavingOrgName] = useState(false)
   const [savingOrgImage, setSavingOrgImage] = useState(false)
+  const [eventMediaStatus, setEventMediaStatus] = useState<Record<string, string>>({})
+  const [eventMediaUrlDrafts, setEventMediaUrlDrafts] = useState<Record<string, string>>({})
+  const [eventMediaLabelDrafts, setEventMediaLabelDrafts] = useState<Record<string, string>>({})
+  const [eventMediaPending, setEventMediaPending] = useState<Record<string, boolean>>({})
   const [adminView, setAdminView] = useState(true)
   const [showImageEditor, setShowImageEditor] = useState(false)
   const [editorSource, setEditorSource] = useState<string | null>(null)
@@ -1077,6 +1090,84 @@ export function PublicAdminPage() {
     }
   }
 
+  function updateEventInList(updated: PublicEvent) {
+    setEvents((prev) => prev.map((event) => (event.id === updated.id ? updated : event)))
+  }
+
+  async function saveEventMediaList(event: PublicEvent, media: EventMediaItem[]) {
+    if (!token) {
+      setEventMediaStatus((prev) => ({ ...prev, [event.id]: 'Sign in to manage event media.' }))
+      return
+    }
+    setEventMediaPending((prev) => ({ ...prev, [event.id]: true }))
+    setEventMediaStatus((prev) => ({ ...prev, [event.id]: '' }))
+    try {
+      const resp = await fetch(orgUrl(`/api/network/events/${encodeURIComponent(event.id)}/media`), {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ media }),
+      })
+      if (!resp.ok) {
+        const text = await resp.text().catch(() => '')
+        throw new Error(text || `Media update failed (${resp.status})`)
+      }
+      updateEventInList((await resp.json()) as PublicEvent)
+      setEventMediaStatus((prev) => ({ ...prev, [event.id]: 'Event media updated.' }))
+    } catch (err) {
+      setEventMediaStatus((prev) => ({ ...prev, [event.id]: toUserFacingErrorMessage(err, 'Event media update failed') }))
+    } finally {
+      setEventMediaPending((prev) => ({ ...prev, [event.id]: false }))
+    }
+  }
+
+  async function addEventMediaUrl(event: PublicEvent) {
+    const url = (eventMediaUrlDrafts[event.id] || '').trim()
+    if (!url) {
+      setEventMediaStatus((prev) => ({ ...prev, [event.id]: 'Enter an image URL first.' }))
+      return
+    }
+    const label = (eventMediaLabelDrafts[event.id] || '').trim() || 'Event image'
+    await saveEventMediaList(event, [
+      ...(event.media || []),
+      { id: crypto.randomUUID(), url, label, alt: label, kind: 'image' },
+    ])
+    setEventMediaUrlDrafts((prev) => ({ ...prev, [event.id]: '' }))
+    setEventMediaLabelDrafts((prev) => ({ ...prev, [event.id]: '' }))
+  }
+
+  async function uploadEventMediaFile(event: PublicEvent, file: File | null) {
+    if (!file) return
+    if (!token) {
+      setEventMediaStatus((prev) => ({ ...prev, [event.id]: 'Sign in to upload event media.' }))
+      return
+    }
+    setEventMediaPending((prev) => ({ ...prev, [event.id]: true }))
+    setEventMediaStatus((prev) => ({ ...prev, [event.id]: '' }))
+    try {
+      const formData = new FormData()
+      formData.append('image', file)
+      formData.append('label', file.name.replace(/\.[^.]+$/, '') || 'Event image')
+      const resp = await fetch(orgUrl(`/api/network/events/${encodeURIComponent(event.id)}/media`), {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      })
+      if (!resp.ok) {
+        const text = await resp.text().catch(() => '')
+        throw new Error(text || `Upload failed (${resp.status})`)
+      }
+      updateEventInList((await resp.json()) as PublicEvent)
+      setEventMediaStatus((prev) => ({ ...prev, [event.id]: 'Event media uploaded.' }))
+    } catch (err) {
+      setEventMediaStatus((prev) => ({ ...prev, [event.id]: toUserFacingErrorMessage(err, 'Event media upload failed') }))
+    } finally {
+      setEventMediaPending((prev) => ({ ...prev, [event.id]: false }))
+    }
+  }
+
   async function sendGeneralMessage() {
     const body = generalDraft.trim()
     if (!generalRoom?.room_id || !body || !canPostGeneral || !generalSessionReady) return
@@ -1418,6 +1509,62 @@ export function PublicAdminPage() {
                       {event.title}
                     </Link>
                     <span className="muted">{formatDate(event.starts_at)}{event.location ? ` • ${event.location}` : ''}</span>
+                    {(event.media || []).length ? (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(86px, 1fr))', gap: '0.45rem', marginTop: '0.35rem' }}>
+                        {(event.media || []).map((item) => (
+                          <figure key={item.id} style={{ margin: 0, display: 'grid', gap: '0.25rem' }}>
+                            <img
+                              src={item.url}
+                              alt={item.alt || item.label}
+                              style={{ width: '100%', aspectRatio: '3 / 4', objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }}
+                            />
+                            <figcaption className="muted" style={{ fontSize: '0.78rem' }}>{item.label}</figcaption>
+                            {adminView && canManageCurrentOrg ? (
+                              <button
+                                type="button"
+                                className="btn-secondary"
+                                disabled={eventMediaPending[event.id]}
+                                onClick={() => void saveEventMediaList(event, (event.media || []).filter((candidate) => candidate.id !== item.id))}
+                              >
+                                Remove
+                              </button>
+                            ) : null}
+                          </figure>
+                        ))}
+                      </div>
+                    ) : null}
+                    {adminView && canManageCurrentOrg ? (
+                      <div style={{ display: 'grid', gap: '0.45rem', marginTop: '0.45rem', paddingTop: '0.45rem', borderTop: '1px solid var(--border)' }}>
+                        <label className="muted" htmlFor={`event-media-upload-${event.id}`}>Upload event image</label>
+                        <input
+                          id={`event-media-upload-${event.id}`}
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/gif"
+                          disabled={eventMediaPending[event.id]}
+                          onChange={(e) => {
+                            const file = e.currentTarget.files?.[0] || null
+                            void uploadEventMediaFile(event, file)
+                            e.currentTarget.value = ''
+                          }}
+                        />
+                        <label className="muted" htmlFor={`event-media-url-${event.id}`}>Or attach hosted image URL</label>
+                        <input
+                          id={`event-media-url-${event.id}`}
+                          value={eventMediaUrlDrafts[event.id] || ''}
+                          onChange={(e) => setEventMediaUrlDrafts((prev) => ({ ...prev, [event.id]: e.target.value }))}
+                          placeholder="https://example.com/menu.jpg"
+                        />
+                        <input
+                          value={eventMediaLabelDrafts[event.id] || ''}
+                          onChange={(e) => setEventMediaLabelDrafts((prev) => ({ ...prev, [event.id]: e.target.value }))}
+                          placeholder="Menu label"
+                        />
+                        <button type="button" disabled={eventMediaPending[event.id]} onClick={() => void addEventMediaUrl(event)}>
+                          {eventMediaPending[event.id] ? 'Saving…' : 'Attach Image URL'}
+                        </button>
+                        {eventMediaStatus[event.id] ? <p className="muted" role="status" style={{ margin: 0 }}>{eventMediaStatus[event.id]}</p> : null}
+                      </div>
+                    ) : null}
                   </article>
                 ))}
               </div>
