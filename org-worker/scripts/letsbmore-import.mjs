@@ -9,6 +9,7 @@ import { DatabaseSync } from 'node:sqlite';
 const SOURCE = 'https://letsbmore.timebanks.org';
 const stamp = () => new Date().toISOString();
 const json = (value) => JSON.stringify(value);
+const returnsRows = (statement) => typeof statement.columns === 'function' ? statement.columns().length > 0 : /^(?:WITH|SELECT|PRAGMA)\b/i.test(statement.sourceSQL?.trim() || '');
 export const stableId = (value) => {
   const h = createHash('sha1').update(`codecollective:letsbmore:${value}`).digest('hex');
   return `${h.slice(0,8)}-${h.slice(8,12)}-5${h.slice(13,16)}-a${h.slice(17,20)}-${h.slice(20,32)}`;
@@ -148,7 +149,7 @@ async function main() {
   let execute,upload,db;
   if (value('--local-db') && !args.includes('--remote')) {
     db=new DatabaseSync(value('--local-db'));db.exec('PRAGMA foreign_keys=ON');
-    execute=async(sql,params=[])=>{const s=db.prepare(sql);return s.columns().length?s.all(...params):(s.run(...params),[]);};
+    execute=async(sql,params=[])=>{const s=db.prepare(sql);return returnsRows(s)?s.all(...params):(s.run(...params),[]);};
   } else if(args.includes('--remote') && !value('--local-db')) {
     const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
     const database=process.env.LETSBMORE_D1_ID;

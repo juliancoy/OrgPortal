@@ -8,9 +8,12 @@ import { loadSnapshot, statements, minutes } from '../scripts/letsbmore-import.m
 import { TimebankDatabase } from './helpers/timebankDatabase';
 import { importFixture } from './helpers/timebankImportFixture';
 const bob={id:'bob',name:'Bob',email:'bob@example.test'}, carol={id:'carol',name:'Carol',email:'carol@example.test'};
+const returnsRows=(statement:{columns?:()=>unknown[];sourceSQL?:string})=>typeof statement.columns==='function'
+ ? statement.columns().length>0
+ : /^(?:WITH|SELECT|PRAGMA)\b/i.test(statement.sourceSQL?.trim() || '');
 function fixture() {
  const db=new TimebankDatabase();const snapshot=importFixture();
- const execute=async(sql:string,params:unknown[]=[])=>{const s=db.sqlite.prepare(sql);return s.columns().length?s.all(...params as any[]):(s.run(...params as any[]),[]);};
+ const execute=async(sql:string,params:unknown[]=[])=>{const s=db.sqlite.prepare(sql);return returnsRows(s)?s.all(...params as any[]):(s.run(...params as any[]),[]);};
  return {db,d1:db.asD1(),snapshot,execute};
 }
 const claim=(account_id:string)=>({id:randomUUID(),account_id,evidence:'A coordinator can verify this profile.'});
