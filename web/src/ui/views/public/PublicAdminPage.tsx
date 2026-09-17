@@ -1263,6 +1263,19 @@ export function PublicAdminPage() {
   const mergeCandidates = myAdminOrgs.filter((item) => item.id !== org.id)
   const canEditOrgImage = canManageCurrentOrg && adminView
   const heroImageSource = org.image_url?.trim() || ORG_PLACEHOLDER_SRC
+  const upcomingEvents = events
+    .filter((event) => {
+      if (!event.starts_at) return true
+      const eventTime = new Date(event.starts_at).getTime()
+      return Number.isNaN(eventTime) || eventTime >= Date.now() - 1000 * 60 * 60 * 24
+    })
+    .slice(0, 3)
+  const featuredEvent = upcomingEvents[0]
+  const visibleEvents = upcomingEvents.length ? upcomingEvents : events.slice(0, 3)
+  const hasPublicChatContent = Boolean(
+    publicChatFeed?.rooms?.some((room) => room.room_id || room.messages.length > 0),
+  )
+  const showChatColumn = Boolean(token || hasPublicChatContent)
 
   function openImageEditor() {
     if (!canEditOrgImage) return
@@ -1272,14 +1285,43 @@ export function PublicAdminPage() {
 
   return (
     <section className="panel portal-org-page">
-      <div className="portal-org-layout">
+      <div className={`portal-org-layout${showChatColumn ? '' : ' portal-org-layout-single'}`}>
         <div className="portal-org-main-column">
           <div className="portal-org-hero">
-            <div className="portal-org-hero-header">
-              <h1 style={{ marginTop: 0, marginBottom: 0 }}>{org.name}</h1>
-              {canEditOrgImage ? (
-                <span className="portal-org-image-hint">Click image to change</span>
-              ) : null}
+            <div className="portal-org-hero-copy">
+              <p className="tenant-home-eyebrow">Organization Profile</p>
+              <div className="portal-org-hero-header">
+                <h1>{org.name}</h1>
+                {canEditOrgImage ? (
+                  <span className="portal-org-image-hint">Click image to change</span>
+                ) : null}
+              </div>
+              {org.description ? <p>{org.description}</p> : null}
+              <div className="portal-org-actions" aria-label={`${org.name} actions`}>
+                {featuredEvent ? (
+                  <Link className="btn-primary" to={`/events/${featuredEvent.slug}`}>
+                    View Next Event
+                  </Link>
+                ) : (
+                  <Link className="btn-primary" to="/events">
+                    Browse Events
+                  </Link>
+                )}
+                {token ? (
+                  <Link className="btn-secondary" to={`/chat?start=group&org=${encodeURIComponent(org.slug)}`}>
+                    Message Group
+                  </Link>
+                ) : (
+                  <a className="btn-secondary" href={pidpAppLoginUrl(`/orgs/${encodeURIComponent(org.slug)}`)}>
+                    Log in to join
+                  </a>
+                )}
+                {org.source_url ? (
+                  <a className="btn-secondary" href={org.source_url} target="_blank" rel="noreferrer">
+                    Website
+                  </a>
+                ) : null}
+              </div>
             </div>
             <button
               type="button"
@@ -1300,28 +1342,25 @@ export function PublicAdminPage() {
               Redirected from merged organization <code>{mergedFrom}</code>.
             </p>
           ) : null}
-          <div className="portal-org-meta">
-            {org.description ? <p style={{ margin: 0 }}>{org.description}</p> : null}
-            <p className="muted" style={{ margin: 0 }}>
-              Handle: <code>{org.slug}</code>
-            </p>
-          </div>
           <div className="portal-card" style={{ display: 'grid', gap: '0.8rem' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.6rem' }}>
               <div>
                 <strong>{org.membership_count || 0}</strong>
-                <p className="muted" style={{ margin: 0 }}>Members</p>
+                <p className="muted" style={{ margin: 0 }}>Community members</p>
               </div>
               <div>
                 <strong>{org.upcoming_events_count}</strong>
                 <p className="muted" style={{ margin: 0 }}>Upcoming events</p>
               </div>
-              <div>
-                <strong>{org.feedback_count || 0}</strong>
-                <p className="muted" style={{ margin: 0 }}>Feedback notes</p>
-              </div>
+              {token || canManageCurrentOrg ? (
+                <div>
+                  <strong>{org.feedback_count || 0}</strong>
+                  <p className="muted" style={{ margin: 0 }}>Feedback notes</p>
+                </div>
+              ) : null}
             </div>
-            <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            {token ? (
+              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
               {membership?.status === 'active' ? (
                 membership.role === 'member' ? (
                   <button type="button" onClick={() => void updateOrganizationMembership(false)}>
@@ -1335,20 +1374,15 @@ export function PublicAdminPage() {
                   Join Group
                 </button>
               )}
-              {token ? (
-                <Link className="btn-primary" to={`/chat?start=group&org=${encodeURIComponent(org.slug)}`} style={{ textDecoration: 'none', width: 'fit-content' }}>
+                <Link className="btn-secondary" to={`/chat?start=group&org=${encodeURIComponent(org.slug)}`} style={{ textDecoration: 'none', width: 'fit-content' }}>
                   Message Group
                 </Link>
-              ) : (
-                <a className="btn-primary" href={pidpAppLoginUrl(`/chat?start=group&org=${encodeURIComponent(org.slug)}`)} style={{ textDecoration: 'none', width: 'fit-content' }}>
-                  Message Group
-                </a>
-              )}
-              {!token ? <span className="muted">Sign in to join and leave feedback.</span> : null}
-            </div>
+              </div>
+            ) : null}
             {membershipStatus ? <p className="muted" role="status" style={{ margin: 0 }}>{membershipStatus}</p> : null}
           </div>
-          <div className="portal-card" style={{ display: 'grid', gap: '0.65rem' }}>
+          {token ? (
+            <div className="portal-card" style={{ display: 'grid', gap: '0.65rem' }}>
             <div>
               <h2 style={{ margin: 0, fontSize: '1rem' }}>Group Feedback</h2>
               <p className="muted" style={{ margin: '0.25rem 0 0' }}>
@@ -1394,7 +1428,8 @@ export function PublicAdminPage() {
               {!token ? <a href={pidpAppLoginUrl(`/orgs/${encodeURIComponent(org.slug)}`)}>Sign in to respond</a> : null}
             </div>
             {feedbackStatus ? <p className="muted" role="status" style={{ margin: 0 }}>{feedbackStatus}</p> : null}
-          </div>
+            </div>
+          ) : null}
           {org.is_disputed ? (
             <p className="muted" style={{ margin: 0 }}>
               Ownership status: Disputed ({org.pending_challenges_count} open challenge{org.pending_challenges_count === 1 ? '' : 's'}).
@@ -1409,14 +1444,8 @@ export function PublicAdminPage() {
               ))}
             </div>
           ) : null}
-          {org.source_url ? (
-            <p style={{ margin: 0 }}>
-              <a href={org.source_url} target="_blank" rel="noreferrer">
-                Source website
-              </a>
-            </p>
-          ) : null}
-          <div className="portal-card" style={{ display: 'grid', gap: '0.55rem' }}>
+          {token || canManageCurrentOrg ? (
+            <div className="portal-card" style={{ display: 'grid', gap: '0.55rem' }}>
             <h2 style={{ margin: 0, fontSize: '1rem' }}>Organization Admins</h2>
             {adminsLoading ? (
               <p className="muted" style={{ margin: 0 }}>
@@ -1436,26 +1465,26 @@ export function PublicAdminPage() {
                 ))}
               </ul>
             )}
-          </div>
+            </div>
+          ) : null}
 
-          {!canManageCurrentOrg ? (
+          {token && !canManageCurrentOrg ? (
             <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
               <button type="button" onClick={claimOrganizationBySlug} disabled={claiming || !token}>
                 {claiming ? 'Submitting…' : claimActionLabel}
               </button>
-              {!token ? <span className="muted">Sign in to continue.</span> : null}
             </div>
-          ) : (
+          ) : canManageCurrentOrg ? (
             <p className="muted" style={{ margin: 0 }}>
               You already administer this organization.
             </p>
-          )}
+          ) : null}
           {claimStatus ? (
             <p className="muted" role="status" style={{ margin: 0 }}>
               {claimStatus}
             </p>
           ) : null}
-          {hasExistingAdmins && !canManageCurrentOrg ? (
+          {token && hasExistingAdmins && !canManageCurrentOrg ? (
             <div style={{ display: 'grid', gap: '0.45rem', maxWidth: 680 }}>
               <label htmlFor="claim-request-message" className="muted">
                 Ownership challenge
@@ -1490,13 +1519,13 @@ export function PublicAdminPage() {
               <p className="muted" style={{ margin: 0 }}>
                 Loading events…
               </p>
-            ) : events.length === 0 ? (
+            ) : visibleEvents.length === 0 ? (
               <p className="muted" style={{ margin: 0 }}>
                 No hosted events listed.
               </p>
             ) : (
               <div className="portal-org-events-grid">
-                {events.map((event) => (
+                {visibleEvents.map((event) => (
                   <article key={event.id} className="portal-org-event-card">
                     {event.image_url ? (
                       <img
@@ -1832,6 +1861,7 @@ export function PublicAdminPage() {
           ) : null}
 
         </div>
+        {showChatColumn ? (
         <aside className="portal-org-chat-column">
           <div className="portal-card" style={{ display: 'grid', gap: '0.55rem' }}>
             <h2 style={{ margin: 0, fontSize: '1rem' }}>Public Chat</h2>
@@ -2126,6 +2156,7 @@ export function PublicAdminPage() {
             ) : null}
           </div>
         </aside>
+        ) : null}
       </div>
       {showImageEditor && editorSource ? (
         <ImageEditorModal

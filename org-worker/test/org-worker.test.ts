@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import worker, { app, runUbiTick } from "../src/index";
+import { TimebankBucket } from "./helpers/timebankBucket";
 
 type Row = Record<string, unknown>;
 
@@ -82,6 +83,9 @@ class FakeD1 {
   }
 
   first<T>(sql: string, params: unknown[]): T | null {
+    if (sql.includes("SELECT * FROM events WHERE id = ? OR slug = ?")) {
+      return (this.events.find((row) => row.id === params[0] || row.slug === params[1]) as T) || null;
+    }
     if (sql.includes("FROM organizations WHERE source_url = ?")) {
       return (this.organizations.find((row) => row.source_url === params[0]) as T) || null;
     }
@@ -118,6 +122,12 @@ class FakeD1 {
     }
     if (sql.includes("FROM events e") && sql.includes("WHERE e.slug = ?")) {
       const event = this.events.find((row) => row.slug === params[0]);
+      if (!event) return null;
+      const org = this.organizations.find((row) => row.id === event.host_org_id);
+      return { ...event, organization_name: org?.name || null } as T;
+    }
+    if (sql.includes("FROM events e") && sql.includes("WHERE e.id = ?")) {
+      const event = this.events.find((row) => row.id === params[0]);
       if (!event) return null;
       const org = this.organizations.find((row) => row.id === event.host_org_id);
       return { ...event, organization_name: org?.name || null } as T;
@@ -350,6 +360,13 @@ class FakeD1 {
       const existingIndex = this.events.findIndex((item) => item.ingest_key === row.ingest_key);
       if (existingIndex >= 0) this.events[existingIndex] = { ...this.events[existingIndex], ...row };
       else this.events.push(row);
+    }
+    if (sql.includes("UPDATE events SET media_json = ?")) {
+      const row = this.events.find((item) => item.id === params[2]);
+      if (row) {
+        row.media_json = params[0];
+        row.updated_at = params[1];
+      }
     }
     if (sql.includes("INSERT OR IGNORE INTO ubi_tick_state")) {
       if (!this.tickState) {
@@ -666,12 +683,13 @@ class FakeD1 {
   }
 }
 
-function env(db = new FakeD1()): Env {
+function env(db = new FakeD1(), overrides: Partial<Env> = {}): Env {
   return {
     DB: db as unknown as D1Database,
     PIDP_BASE_URL: "https://id.example.test",
     PUBLIC_PORTAL_BASE_URL: "https://codecollective.test/p",
     ORG_INGEST_TOKEN: "test-ingest-token",
+    ...overrides,
   };
 }
 
@@ -950,6 +968,103 @@ test("tenant host public URLs are root-mounted even when shared portal base is c
   assert.match(flyer, /Founder Night flyer/);
   assert.match(flyer, /Scan to RSVP/);
   assert.match(flyer, /4×6/);
+});
+
+test("removing uploaded event media deletes the backing R2 object", async () => {
+  const db = new FakeD1();
+  const bucket = new TimebankBucket();
+  const uploadedKey = "event-media/event-1/uploaded.jpg";
+  bucket.objects.set(uploadedKey, { bytes: new Uint8Array([1, 2, 3]), type: "image/jpeg" });
+  db.organizations.push({
+    id: "org-1",
+    name: "Test Org",
+    slug: "test-org",
+    description: null,
+    source_url: null,
+    image_url: null,
+    tags: "[]",
+    city: null,
+    created_at: "2026-06-07T00:00:00.000Z",
+    updated_at: "2026-06-07T00:00:00.000Z",
+  });
+  db.organizationMemberships.push({
+    organization_id: "org-1",
+    user_id: "admin-1",
+    role: "administrator",
+    status: "active",
+  });
+  db.events.push({
+    id: "event-1",
+    ingest_key: "manual:event-1",
+    title: "Gallery Event",
+    slug: "gallery-event",
+    description: null,
+    starts_at: "2026-09-29T22:00:00Z",
+    ends_at: null,
+    location: null,
+    source_url: null,
+    image_url: null,
+    media_json: JSON.stringify([
+      {
+        id: "uploaded",
+        url: "/api/network/events/public/gallery-event/media/uploaded",
+        label: "Uploaded",
+        alt: "Uploaded",
+        kind: "image",
+        content_type: "image/jpeg",
+        image_key: uploadedKey,
+      },
+      {
+        id: "hosted",
+        url: "https://cdn.example.test/menu.jpg",
+        label: "Hosted",
+        alt: "Hosted",
+        kind: "image",
+        content_type: null,
+        image_key: null,
+      },
+    ]),
+    social_title: null,
+    social_description: null,
+    social_image_url: null,
+    host_org_id: "org-1",
+    host_org_name: "Test Org",
+    host_org_source_url: null,
+    event_chat_room_id: null,
+    event_chat_room_alias: null,
+    event_chat_room_name: null,
+    tags: "[]",
+    city: null,
+    created_at: "2026-06-07T00:00:00.000Z",
+    updated_at: "2026-06-07T00:00:00.000Z",
+  });
+
+  await withPidpUser({ id: "admin-1", email: "admin@example.test", full_name: "Admin User" }, async () => {
+    const response = await app.request(
+      "https://org.example.test/api/network/events/event-1/media",
+      {
+        method: "PATCH",
+        headers: { authorization: "Bearer admin-token", "content-type": "application/json" },
+        body: JSON.stringify({
+          media: [
+            {
+              id: "hosted",
+              url: "https://cdn.example.test/menu.jpg",
+              label: "Hosted",
+              alt: "Hosted",
+              kind: "image",
+            },
+          ],
+        }),
+      },
+      env(db, { SCAN_IMAGES: bucket.asR2() }),
+    );
+    assert.equal(response.status, 200);
+  });
+
+  assert.equal(bucket.objects.has(uploadedKey), false);
+  const media = JSON.parse(String(db.events[0].media_json));
+  assert.deepEqual(media.map((item: Row) => item.id), ["hosted"]);
 });
 
 test("public contact route does not numerically fallback from missing slugs", async () => {

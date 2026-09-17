@@ -1523,20 +1523,24 @@ h6 {
 }
 
 .public-event-registration-actions {
-  margin-top: 2px;
+  align-items: stretch;
+  margin-top: 0;
 }
 
 .public-event-registration-actions .btn-primary,
 .public-event-registration-actions button {
-  min-height: 54px;
-  padding: 0.9rem 1.35rem;
+  justify-content: center;
+  width: 100%;
+  min-height: 62px;
+  padding: 1rem 1.45rem;
   border-radius: var(--radius-sm);
-  font-size: 1.02rem;
-  font-weight: 850;
+  font-size: 1.12rem;
+  font-weight: 900;
+  text-align: center;
 }
 
 .public-event-registration-actions .btn-primary {
-  box-shadow: 0 14px 30px color-mix(in srgb, var(--primary) 28%, transparent);
+  box-shadow: 0 16px 34px color-mix(in srgb, var(--primary) 34%, transparent);
 }
 
 .public-event-registered-state,
@@ -1987,10 +1991,9 @@ h6 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  width: auto;
+  width: 42px;
   min-height: 40px;
-  padding: 8px 12px;
+  padding: 8px;
   border: 2px solid var(--primary);
   border-radius: 8px;
   background: var(--btn-primary-bg);
@@ -2411,6 +2414,13 @@ h6 {
   align-items: center;
   justify-self: end;
   gap: 10px;
+}
+
+.portal-guest-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .portal-auth-loading {
@@ -7183,6 +7193,10 @@ textarea:focus {
   align-items: start;
 }
 
+.portal-org-layout-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .portal-org-main-column {
   display: grid;
   gap: 0.9rem;
@@ -7199,13 +7213,21 @@ textarea:focus {
 
 .portal-org-hero {
   display: grid;
-  gap: 0.75rem;
-  padding: 0.8rem;
-  border-radius: 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.42fr);
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem;
+  border-radius: 12px;
   border: 1px solid var(--border-subtle);
   background:
     radial-gradient(120% 100% at 100% 0%, rgba(127, 184, 255, 0.22), transparent 65%),
     linear-gradient(160deg, rgba(0, 42, 97, 0.28), rgba(0, 42, 97, 0.16));
+}
+
+.portal-org-hero-copy {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
 }
 
 .portal-org-hero-header {
@@ -7214,6 +7236,26 @@ textarea:focus {
   justify-content: space-between;
   gap: 0.75rem;
   flex-wrap: wrap;
+}
+
+.portal-org-hero-header h1 {
+  margin: 0;
+}
+
+.portal-org-hero-copy p {
+  margin: 0;
+}
+
+.portal-org-actions {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.portal-org-actions .btn-primary,
+.portal-org-actions .btn-secondary {
+  text-decoration: none;
 }
 
 .portal-org-image-hint {
@@ -7230,7 +7272,7 @@ textarea:focus {
   background: transparent;
   cursor: default;
   text-align: left;
-  width: fit-content;
+  width: 100%;
 }
 
 .portal-org-image-button.editable {
@@ -7255,8 +7297,8 @@ textarea:focus {
 
 .portal-org-hero-image {
   width: 100%;
-  max-width: 560px;
-  border-radius: 14px;
+  max-width: 420px;
+  border-radius: 10px;
   border: 2px solid var(--border);
   overflow: hidden;
 }
@@ -7302,6 +7344,10 @@ textarea:focus {
   }
 
   .portal-org-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .portal-org-hero {
     grid-template-columns: 1fr;
   }
 

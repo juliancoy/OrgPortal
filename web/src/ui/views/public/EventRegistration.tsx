@@ -14,10 +14,6 @@ function RegistrantAvatar({ name, photoUrl }: { name: string; photoUrl: string |
   )
 }
 
-function registrantMessagePath(person: EventAttendance['attendees'][number]) {
-  return `/chat?${new URLSearchParams({ start: 'dm', userId: person.user_id, name: person.name })}`
-}
-
 // The parent keys this component by event and account to reset state on navigation/sign-in.
 export function EventRegistration({ eventId, slug, token, authLoading = false, saveToCalendar, organizationName }: {
   eventId: string
@@ -75,39 +71,56 @@ export function EventRegistration({ eventId, slug, token, authLoading = false, s
     }
   }
 
+  const registrationActions = (
+    <div className="public-event-registration-actions">
+      {authLoading ? (
+        <div className="public-event-registration-auth-loading" role="status" aria-label="Checking sign-in status">
+          <span aria-hidden="true" />
+        </div>
+      ) : token ? <>
+        {attendance?.registered && <strong className="public-event-registered-state">You’re registered</strong>}
+        <button type="button" className={attendance?.registered ? 'portal-button-secondary' : undefined}
+          onClick={updateRegistration} disabled={pending || !attendance}>
+          {pending ? 'Saving…' : attendance?.registered ? 'Cancel Registration' : 'Register'}
+        </button>
+      </> : <>
+        <a className="btn-primary" href={pidpAppLoginUrl(next)}>Register</a>
+      </>}
+    </div>
+  )
+
   return (
     <section className="portal-card public-event-registration" aria-labelledby="event-registration-title">
       <div className="public-event-card-heading">
         <p className="public-event-eyebrow">Registration</p>
         <h2 id="event-registration-title">Reserve Your Spot</h2>
       </div>
+      {registrationActions}
       {attendance ? (
         <div className="public-event-attendance-summary">
           {attendance.attendees.length > 0 && (
             <div aria-label="Event registrants" className="public-event-registrants">
               {attendance.attendees.map((person, index) => {
                 const avatar = <RegistrantAvatar name={person.name} photoUrl={person.photo_url} />
-                const messagePath = registrantMessagePath(person)
-                return token ? (
+                return person.profile_public && person.slug ? (
                   <Link
                     key={person.user_id || person.slug}
-                    to={messagePath}
+                    to={`/users/${encodeURIComponent(person.slug)}`}
                     title={person.name}
-                    aria-label={`Message ${person.name}`}
-                    className="public-event-registrant public-event-registrant-message-link"
+                    aria-label={`View ${person.name}'s profile`}
+                    className="public-event-registrant"
                   >
                     {avatar}
                   </Link>
                 ) : (
-                  <a
+                  <span
                     key={person.user_id || `${person.slug || 'registrant'}-${index}`}
-                    href={pidpAppLoginUrl(messagePath)}
                     title={person.name}
-                    aria-label={`Sign in to message ${person.name}`}
+                    aria-label={person.name}
                     className="public-event-registrant"
                   >
                     {avatar}
-                  </a>
+                  </span>
                 )
               })}
             </div>
@@ -123,21 +136,6 @@ export function EventRegistration({ eventId, slug, token, authLoading = false, s
         <label><input type="checkbox" disabled={pending} checked={emailUpdates} onChange={(event) => setEmailUpdates(event.target.checked)} /> <span>Email me updates about this event</span></label>
         {organizationName && <label><input type="checkbox" disabled={pending} checked={organizationAnnouncements} onChange={(event) => setOrganizationAnnouncements(event.target.checked)} /> <span>Also send me announcements from {organizationName}</span></label>}
       </div>}
-      <div className="public-event-registration-actions">
-        {authLoading ? (
-          <div className="public-event-registration-auth-loading" role="status" aria-label="Checking sign-in status">
-            <span aria-hidden="true" />
-          </div>
-        ) : token ? <>
-          {attendance?.registered && <strong className="public-event-registered-state">You’re registered</strong>}
-          <button type="button" className={attendance?.registered ? 'portal-button-secondary' : undefined}
-            onClick={updateRegistration} disabled={pending || !attendance}>
-            {pending ? 'Saving…' : attendance?.registered ? 'Cancel Registration' : 'Register'}
-          </button>
-        </> : <>
-          <a className="btn-primary" href={pidpAppLoginUrl(next)}>Register</a>
-        </>}
-      </div>
       <p className="muted public-event-registration-note">Registrant names and avatars are visible; email addresses stay private.</p>
       {token && <div className="public-event-registration-links">
         <Link to="/email/preferences" className="public-event-preferences-link">Manage email preferences</Link>

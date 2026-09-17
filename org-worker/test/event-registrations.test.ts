@@ -89,6 +89,46 @@ test('registration requires verified identity; repeated requests and cancellatio
   assert.equal(database.prepare("SELECT count(*) AS n FROM event_registrations WHERE event_id = 'event-1'").get()?.n, 0);
 });
 
+test('registration refreshes placeholder contact rows with the real name and avatar', async (t) => {
+  t.mock.method(globalThis, 'fetch', async (_url: unknown, options: RequestInit) => {
+    const token = new Headers(options.headers).get('Authorization')?.replace('Bearer ', '');
+    return token === 'bob'
+      ? Response.json({
+        id: 'bob',
+        email: 'bob@example.test',
+        full_name: 'Bob Builder',
+        identity_data: { avatar_url: 'https://images.test/bob.png' },
+      })
+      : new Response('', { status: 401 });
+  });
+  const { database, request } = setup();
+  t.after(() => database.close());
+  database.exec("INSERT INTO event_registrations (event_id, user_id) VALUES ('event-1', 'bob')");
+  database.exec(`INSERT INTO user_contact_pages
+    (id, user_id, user_email, user_name, slug, enabled, photo_url, links)
+    VALUES ('event-registrant-bob', 'bob', NULL, 'User', 'event-registrant-bob-1', 0, NULL, '[]')`);
+
+  const refreshed = await request('POST', 'bob');
+  assert.equal(refreshed.status, 200);
+  assert.deepEqual(await refreshed.json(), {
+    event_id: 'event-1',
+    count: 1,
+    attendees: [{
+      user_id: 'bob',
+      slug: 'bob-builder',
+      name: 'Bob Builder',
+      photo_url: 'https://images.test/bob.png',
+      profile_public: false,
+    }],
+    registered: true,
+  });
+  const bobContact = database.prepare("SELECT user_name, slug, photo_url, enabled FROM user_contact_pages WHERE user_id = 'bob'").get();
+  assert.equal(bobContact?.user_name, 'Bob Builder');
+  assert.equal(bobContact?.slug, 'bob-builder');
+  assert.equal(bobContact?.photo_url, 'https://images.test/bob.png');
+  assert.equal(bobContact?.enabled, 0);
+});
+
 test('registered events calendar feed is private, subscribable, and host-rooted', async (t) => {
   t.mock.method(globalThis, 'fetch', async (_url: unknown, options: RequestInit) => {
     const token = new Headers(options.headers).get('Authorization')?.replace('Bearer ', '');

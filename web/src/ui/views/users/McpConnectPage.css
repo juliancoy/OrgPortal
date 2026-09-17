@@ -1,0 +1,30 @@
+.mcp-connect .portal-auth-card {
+  max-width: 480px;
+  border-radius: 8px;
+  text-align: left;
+}
+
+.mcp-connect h1 {
+  font-size: 24px;
+  line-height: 1.25;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+
+.mcp-connect p {
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+
+.mcp-connect .portal-button {
+  border-radius: 6px;
+  white-space: normal;
+  text-align: center;
+  letter-spacing: 0;
+}
+
+.mcp-connect .mcp-connect-secondary {
+  background: transparent;
+  color: inherit;
+  border: 1px solid currentColor;
+}

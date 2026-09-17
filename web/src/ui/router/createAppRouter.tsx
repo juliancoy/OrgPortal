@@ -15,6 +15,7 @@ import { InitiativeSignPage } from '../views/InitiativeSignPage'
 import { UserCalendarPage } from '../views/users/UserCalendarPage'
 import { UserSettingsPage } from '../views/users/UserSettingsPage'
 import { UserLoginPage } from '../views/users/UserLoginPage'
+import { McpConnectPage } from '../views/users/McpConnectPage'
 import { OrgLoginPage } from '../views/orgs/OrgLoginPage'
 import { OrgRegisterPage } from '../views/orgs/OrgRegisterPage'
 import { OrgInitiativesPage } from '../views/orgs/OrgInitiativesPage'
@@ -250,6 +251,7 @@ export function createAppRouter() {
           // Canonical user routes
           { path: '/users/register', element: <LoginRedirectRoute /> },
           { path: '/users/login', element: <UserLoginPage /> },
+          { path: '/users/mcp-connect', element: <AuthenticatedRoute><McpConnectPage /></AuthenticatedRoute> },
           { path: '/users/dashboard', element: <DashboardPage /> },
           {
             path: '/profile',

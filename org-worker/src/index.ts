@@ -5,6 +5,7 @@ import QRCode from "qrcode";
 import { buildMetadata } from "./generated/buildMetadata";
 import { HTTPException } from "hono/http-exception";
 import { handleEventMcp, protectedResourceMetadata, eventErrorResponse } from "./eventMcp";
+import { handleEventMediaUpload } from "./eventMediaUpload";
 import { checkEventConfiguration } from "./eventConfiguration";
 import {
   getTimebankListing, setTimebankUptake, setTimebankListingVote, timebankAnalytics, resolvePortalTenant, resolvePortalTenantBySlug, resolveTimebankCommunity, saveTimebankCommunity, setTimebankPhoto, getTimebankPhoto,
@@ -1063,17 +1064,22 @@ async function contactForUser(env: Env, request: Request, user: PidpUser): Promi
 }
 
 async function ensureContactDirectoryUser(db: D1Database, user: PidpUser) {
-  const existing = await db.prepare("SELECT id, user_name, photo_url FROM user_contact_pages WHERE user_id = ?")
+  const existing = await db.prepare("SELECT id, user_name, slug, photo_url FROM user_contact_pages WHERE user_id = ?")
     .bind(user.id)
-    .first<{ id: string; user_name: string | null; photo_url: string | null }>();
+    .first<{ id: string; user_name: string | null; slug: string | null; photo_url: string | null }>();
   const profileImage = userProfileImage(user);
   const displayName = registrantDisplayName(user);
   if (existing) {
     const updates: string[] = [];
     const values: unknown[] = [];
-    if (!existing.user_name?.trim() || existing.user_name.includes("@")) {
+    const currentName = existing.user_name?.trim() || "";
+    if (!currentName || currentName.includes("@") || (currentName === "User" && displayName !== "User")) {
       updates.push("user_name = ?");
       values.push(displayName);
+    }
+    if (existing.slug?.startsWith("event-registrant-") && displayName !== "User") {
+      updates.push("slug = ?");
+      values.push(await uniqueSlug(db, displayName, user.id));
     }
     if (profileImage && !existing.photo_url) {
       updates.push("photo_url = ?");
@@ -1155,6 +1161,16 @@ function sanitizeEventMedia(value: unknown): EventMediaItem[] {
     if (items.length >= 12) break;
   }
   return items;
+}
+
+function removedEventMediaImageKeys(eventId: string, before: EventMediaItem[], after: EventMediaItem[]) {
+  const retainedKeys = new Set(after.map((item) => item.image_key).filter(Boolean));
+  const retainedUrls = new Set(after.map((item) => item.url).filter(Boolean));
+  const eventMediaPrefix = `event-media/${eventId}/`;
+  return before
+    .filter((item) => item.image_key?.startsWith(eventMediaPrefix))
+    .filter((item) => !retainedKeys.has(item.image_key) && !retainedUrls.has(item.url))
+    .map((item) => item.image_key!);
 }
 
 function cleanLinks(value: unknown): ContactLink[] {
@@ -2401,6 +2417,7 @@ app.onError((err) => {
 
 // Register MCP before generic CORS; do not grant arbitrary origins event access.
 app.all("/mcp", (c) => handleEventMcp(c.req.raw, c.env));
+app.post("/mcp/uploads/event-media", (c) => handleEventMediaUpload(c.req.raw, c.env));
 const oauthProtectedResourceMetadataResponse = (env: Env) => Response.json(protectedResourceMetadata(env), { headers: { "cache-control": "no-store" } });
 const oauthProtectedResourceMetadata = (c: { env: Env }) => {
   try { return oauthProtectedResourceMetadataResponse(c.env); } catch (error) { return eventErrorResponse(error, c.env); }
@@ -3593,10 +3610,14 @@ app.patch("/api/network/events/:eventId/media", async (c) => {
   if (!row) fail(404, "Event not found");
   await authorizeEventManager(c.env, user, row);
   const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  const before = parseEventMedia(row.media_json);
   const media = sanitizeEventMedia(payload.media);
   await c.env.DB.prepare("UPDATE events SET media_json = ?, updated_at = ? WHERE id = ?")
     .bind(JSON.stringify(media), nowIso(), row.id)
     .run();
+  if (c.env.SCAN_IMAGES) {
+    await Promise.all(removedEventMediaImageKeys(row.id, before, media).map((key) => c.env.SCAN_IMAGES!.delete(key)));
+  }
   const updated = await c.env.DB.prepare("SELECT e.*, o.name AS organization_name FROM events e LEFT JOIN organizations o ON o.id = e.host_org_id WHERE e.id = ?")
     .bind(row.id)
     .first<EventRow>();
@@ -3615,6 +3636,8 @@ app.post("/api/network/events/:eventId/media", async (c) => {
   if (!formData) fail(400, "multipart form data is required");
   const image = formData.get("image");
   if (!(image instanceof File)) fail(400, "image is required");
+  const existingMedia = parseEventMedia(row.media_json);
+  if (existingMedia.length >= 12) fail(400, "Event media gallery already has 12 items");
   const allowed = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
   const contentType = image.type || "application/octet-stream";
   if (!allowed.has(contentType)) fail(415, `Unsupported image type: ${contentType}`);
@@ -3630,7 +3653,7 @@ app.post("/api/network/events/:eventId/media", async (c) => {
   const label = cleanOptionalString(formData.get("label"), 160) || image.name || "Event image";
   const alt = cleanOptionalString(formData.get("alt"), 500) || label;
   const url = `/api/network/events/public/${encodeURIComponent(row.slug)}/media/${encodeURIComponent(mediaId)}`;
-  const media = sanitizeEventMedia([...parseEventMedia(row.media_json), { id: mediaId, url, label, alt, kind: "image", content_type: contentType, image_key: imageKey }]);
+  const media = sanitizeEventMedia([...existingMedia, { id: mediaId, url, label, alt, kind: "image", content_type: contentType, image_key: imageKey }]);
   await c.env.DB.prepare("UPDATE events SET media_json = ?, updated_at = ? WHERE id = ?")
     .bind(JSON.stringify(media), nowIso(), row.id)
     .run();

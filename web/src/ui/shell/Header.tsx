@@ -153,6 +153,7 @@ export function Header() {
   const location = useLocation()
   const navigate = useNavigate()
   const isGuest = role === 'guest'
+  const isAuthenticated = role !== 'guest'
   const displayName = user?.displayName || user?.email || 'Signed in'
   const roleLabel = role === 'campaign_manager' ? 'Org' : role === 'constituent' ? 'User' : 'Guest'
   const showAndroidDownload = isAndroidDevice()
@@ -813,7 +814,7 @@ export function Header() {
               <span className="portal-auth-loading-avatar" aria-hidden="true" />
               <span className="portal-auth-loading-line" aria-hidden="true" />
             </div>
-          ) : role !== 'guest' ? (
+          ) : isAuthenticated ? (
             <>
               <div className="portal-user" ref={menuRef}>
                 <button
@@ -938,17 +939,21 @@ export function Header() {
               </div>
             </>
           ) : (
-            <>
-              <Link className="portal-button" to={portalProfilePath(`/users/login${authNextQuery}`)}>
-                Login
+            <div className="portal-guest-actions" aria-label="Account actions">
+              <Link className="portal-button-secondary" to={portalProfilePath(`/users/login${authNextQuery}`)}>
+                Log in
               </Link>
-            </>
+              <Link className="portal-button" to={portalProfilePath(`/users/register${authNextQuery}`)}>
+                Join
+              </Link>
+            </div>
           )}
         </div>
-      <div className={`portal-nav-bar ${navOpen ? 'open' : ''}`}>
+      {isAuthenticated ? <div className={`portal-nav-bar ${navOpen ? 'open' : ''}`}>
         <button
           type="button"
           className="portal-nav-toggle"
+          aria-label={navOpen ? 'Close navigation' : 'Open navigation'}
           aria-controls="portal-primary-nav"
           aria-expanded={navOpen}
           onClick={() => setNavOpen((prev) => !prev)}
@@ -968,7 +973,6 @@ export function Header() {
               />
             )}
           </svg>
-          <span>Navigation</span>
         </button>
         <div id="portal-primary-nav" className="portal-nav">
           {domainTenant && !domainCommunity ? <>
@@ -1084,7 +1088,7 @@ export function Header() {
           )}
           </>}
         </div>
-      </div>
+      </div> : null}
       </div>
     </header>
   )

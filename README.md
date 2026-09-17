@@ -1,5 +1,64 @@
-# ballot-sign
-A production-grade, open-source platform for discovering and signing ballot initiatives in Washington, DC
+# OrgPortal
+
+OrgPortal is the shared organization and community application used by
+CodeCollective and tenant sites such as MedTech. `web/` owns the portal UI;
+the organization, governance, and chat services own their domain workflows.
+PIdP is a separate identity provider maintained in the sibling `../pidp`
+checkout, not a vendored service in this repository.
+
+## Account and Service Boundaries
+
+These are ownership rules, not a claim that all migration work is complete.
+
+| Capability | Source of truth and implementation owner |
+| --- | --- |
+| Credentials, social sign-in, identity verification, recovery, authentication sessions, and account security | PIdP |
+| Stable identity subjects, core identity profile/avatar, and linked login providers | PIdP |
+| OAuth client registration, PKCE, connected-app consent, tokens, refresh, and grant revocation | PIdP |
+| Organizations, membership, invitations, roles, and domain authorization | OrgPortal |
+| Member directories, organization-specific profiles/preferences, governance, chat, and event administration | OrgPortal |
+| Personal calendar and event workflows, including event galleries | OrgPortal, using existing PIdP provider-credential/calendar interfaces where applicable |
+| Tenant branding, navigation, sign-in entry points, and post-login application routing | OrgPortal |
+| Medical datasets, taxonomy/strategy analysis, and public medical event presentation | MedTech |
+
+Reusable account and security screens belong in PIdP. Portal account pages may
+compose domain settings and link to PIdP-managed identity settings, but must not
+implement another credential store, provider callback, recovery flow, or token
+issuer. A branded portal sign-in entry point is appropriate; duplicating the
+authentication implementation is not. Identity-profile edits use PIdP interfaces;
+membership-profile edits stay in OrgPortal.
+
+For MCP, the intended flow is: client -> PIdP authorization -> existing account
+sign-in -> explicit PIdP consent -> client callback -> OrgPortal tools. Preserve
+the requesting portal and its account namespace through sign-in. Never silently
+substitute PIdP owner login for a portal website-user account. Portal sessions
+and issuer sessions are not automatically interchangeable across domains; any
+handoff must be validated and preserve OAuth state, exact redirects, and PKCE.
+
+PIdP authenticates an identity and limits delegated scopes. OrgPortal independently
+checks the mapped identity, current membership, domain permissions, and required
+preview/apply receipts on each operation. OAuth consent does not create membership
+or administrator access. Never infer privileged identity mappings from email.
+Event gallery objects and metadata remain OrgPortal-owned, not identity assets.
+
+The `/users/mcp-connect` route reuses the existing portal login and explicitly
+confirms the account. PIdP exchanges its one-use, browser-bound handoff for a
+resource-bound MCP browser session and then hosts consent. Configure the resource
+mapping in PIdP; do not accept a client-supplied issuer or portal destination.
+Move reusable account UI upstream incrementally while preserving existing
+subjects and sessions, with integration tests before switching routes.
+
+Shared portal releases go through the CodeCollective checkout. PIdP is released
+separately, with equivalent account/OAuth behavior in Python and serverless.
+MedTech deployment must not deploy either shared service.
+
+See [architecture](ARCHITECTURE.md), [account authorization](../pidp/docs/account-oauth.md),
+and [event uploads](docs/deployment/EVENT_UPLOADS.md).
+
+## Historical Project Context
+
+The ballot-sign material below records the original civic project context. Its
+placeholder status statements do not describe the current OrgPortal platform.
 
 
 ## Intent Statement
