@@ -20,10 +20,12 @@ export type EventAttendance = {
   attendees: { slug: string; name: string; photo_url: string | null }[]
 }
 
-async function attendanceRequest(eventId: string, token: string | null, method: string): Promise<Response> {
+type EmailChoices = { email_updates: boolean; organization_announcements: boolean }
+async function attendanceRequest(eventId: string, token: string | null, method: string, emailChoices?: EmailChoices): Promise<Response> {
   return fetch(orgUrl(`/api/network/events/${encodeURIComponent(eventId)}/attendance`), {
     method,
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(emailChoices ? { 'Content-Type': 'application/json' } : {}) },
+    body: method === 'POST' && emailChoices ? JSON.stringify(emailChoices) : undefined,
     credentials: 'include',
     cache: 'no-store',
   })
@@ -40,7 +42,7 @@ export async function loadAttendance(eventId: string, token: string | null): Pro
   return response.json() as Promise<EventAttendance>
 }
 
-export async function recordAttendanceWithRetry(eventId: string, token: string | null, method: 'POST' | 'DELETE' = 'POST'): Promise<AttendanceResult> {
+export async function recordAttendanceWithRetry(eventId: string, token: string | null, method: 'POST' | 'DELETE' = 'POST', emailChoices?: EmailChoices): Promise<AttendanceResult> {
   if (!token) {
     const refreshed = await refreshRuntimeTokenFromSession()
     if (!refreshed) {
@@ -49,11 +51,11 @@ export async function recordAttendanceWithRetry(eventId: string, token: string |
     token = refreshed
   }
 
-  let resp = await attendanceRequest(eventId, token, method)
+  let resp = await attendanceRequest(eventId, token, method, emailChoices)
   if (resp.status === 401) {
     const refreshed = await refreshRuntimeTokenFromSession()
     if (refreshed) {
-      resp = await attendanceRequest(eventId, refreshed, method)
+      resp = await attendanceRequest(eventId, refreshed, method, emailChoices)
     }
   }
 

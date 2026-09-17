@@ -16,14 +16,16 @@ function RegistrantAvatar({ name, photoUrl }: { name: string; photoUrl: string |
 }
 
 // The parent keys this component by event and account to reset state on navigation/sign-in.
-export function EventRegistration({ eventId, slug, token, saveToCalendar }: {
-  eventId: string; slug: string; token: string | null; saveToCalendar: () => Promise<string | undefined>
+export function EventRegistration({ eventId, slug, token, saveToCalendar, organizationName }: {
+  eventId: string; slug: string; token: string | null; saveToCalendar: () => Promise<string | undefined>; organizationName?: string | null
 }) {
   const [attendance, setAttendance] = useState<EventAttendance | null>(null)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [reload, setReload] = useState(0)
+  const [emailUpdates, setEmailUpdates] = useState(true)
+  const [organizationAnnouncements, setOrganizationAnnouncements] = useState(false)
   const next = `/events/${encodeURIComponent(slug)}`
 
   useEffect(() => {
@@ -41,7 +43,9 @@ export function EventRegistration({ eventId, slug, token, saveToCalendar }: {
     setError('')
     setMessage('')
     try {
-      const result = await recordAttendanceWithRetry(eventId, token, cancelling ? 'DELETE' : 'POST')
+      const result = await recordAttendanceWithRetry(eventId, token, cancelling ? 'DELETE' : 'POST', cancelling ? undefined : {
+        email_updates: emailUpdates, organization_announcements: organizationAnnouncements,
+      })
       if (!result.ok || !result.attendance) throw new Error(result.message)
       setAttendance(result.attendance)
       setMessage(result.message)
@@ -80,6 +84,10 @@ export function EventRegistration({ eventId, slug, token, saveToCalendar }: {
           {attendance.count === 0 && <span className="muted">Be the first to register.</span>}
         </div>
       ) : !error ? <p className="muted" style={{ margin: 0 }}>Loading registrations…</p> : null}
+      {token && attendance && !attendance.registered && <div style={{ display: 'grid', gap: '.5rem' }}>
+        <label style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}><input type="checkbox" disabled={pending} checked={emailUpdates} onChange={(event) => setEmailUpdates(event.target.checked)} /> Email me updates about this event</label>
+        {organizationName && <label style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}><input type="checkbox" disabled={pending} checked={organizationAnnouncements} onChange={(event) => setOrganizationAnnouncements(event.target.checked)} /> Also send me announcements from {organizationName}</label>}
+      </div>}
       <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
         {token ? <>
           {attendance?.registered && <strong>You’re registered!</strong>}
@@ -93,6 +101,7 @@ export function EventRegistration({ eventId, slug, token, saveToCalendar }: {
         </>}
       </div>
       <p className="muted" style={{ margin: 0 }}>Your public profile may appear with other registrants.</p>
+      {token && <Link to="/email/preferences">Manage email preferences</Link>}
       {message && <p role="status" style={{ margin: 0 }}>{message}</p>}
       {error && <div role="alert">
         <p style={{ margin: '0 0 0.5rem' }}>{error}</p>
