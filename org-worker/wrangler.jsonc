@@ -2,10 +2,13 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "org-codecollective",
   "main": "src/index.ts",
-  "build": { "command": "npm run build:metadata" },
-  "version_metadata": { "binding": "CF_VERSION_METADATA" },
+  "version_metadata": {
+    "binding": "CF_VERSION_METADATA"
+  },
   "compatibility_date": "2026-06-07",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
   "workers_dev": true,
   "observability": {
     "enabled": true
@@ -16,11 +19,9 @@
     ]
   },
   "vars": {
-    "EMAIL_ALLOWED_SENDERS": "julian@codecollective.us",
-    "EMAIL_DAILY_LIMIT": "250",
-    "EMAIL_SENDING_ENABLED": "false",
     "PIDP_BASE_URL": "https://id.codecollective.us",
     "PUBLIC_PORTAL_BASE_URL": "https://codecollective.us/p",
+    "CHAT_API_ORIGIN": "https://chat-codecollective.jcloiacon.workers.dev",
     "ADMIN_EMAILS": "",
     "ADMIN_USER_IDS": ""
   },
@@ -29,6 +30,12 @@
       "binding": "DB",
       "database_name": "org",
       "database_id": "a71a2306-3d82-44cb-a50c-d7fdffaacdc7"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "SCAN_IMAGES",
+      "bucket_name": "org-scan-images"
     }
   ],
   "queues": {
@@ -47,11 +54,5 @@
         "dead_letter_queue": "org-web-push-dead-letter"
       }
     ]
-  },
-  "r2_buckets": [
-    {
-      "binding": "SCAN_IMAGES",
-      "bucket_name": "org-scan-images"
-    }
-  ]
+  }
 }

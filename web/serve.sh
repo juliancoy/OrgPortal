@@ -28,6 +28,7 @@ Environment:
   NODE_IMAGE          Docker Node image (default: node:22-bookworm-slim)
   CONTAINER_NAME      Docker container name (default: codecollective-portal-vite)
   ORG_API_ORIGIN      Backend for /api/org, default live org worker
+  CHAT_API_ORIGIN     Backend for /api/chat, default live chat worker
   PIDP_PROXY_ORIGIN   Backend for /pidp, default live Code Collective PIdP worker
   PUBLIC_ID_PATH      Path to print for quick mobile preview
 
@@ -91,6 +92,7 @@ fi
 mkdir -p "$ROOT_DIR/.vite-docker-cache"
 
 ORG_API_ORIGIN="${ORG_API_ORIGIN:-https://org-codecollective.jcloiacon.workers.dev}"
+CHAT_API_ORIGIN="${CHAT_API_ORIGIN:-https://chat-codecollective.jcloiacon.workers.dev}"
 PIDP_PROXY_ORIGIN="${PIDP_PROXY_ORIGIN:-https://pidp-codecollective.jcloiacon.workers.dev}"
 VITE_PIDP_BASE_URL="${VITE_PIDP_BASE_URL:-/pidp}"
 VITE_PUBLIC_BASE="${VITE_PUBLIC_BASE:-/}"
@@ -112,6 +114,7 @@ docker_args=(
   -e VITE_PIDP_BASE_URL="$VITE_PIDP_BASE_URL"
   -e VITE_ALLOWED_HOSTS="$VITE_ALLOWED_HOSTS"
   -e ORG_API_ORIGIN="$ORG_API_ORIGIN"
+  -e CHAT_API_ORIGIN="$CHAT_API_ORIGIN"
   -e PIDP_PROXY_ORIGIN="$PIDP_PROXY_ORIGIN"
   -e VITE_HMR_HOST=127.0.0.1
   -p "${HOST}:${PORT}:${PORT}"
@@ -130,6 +133,7 @@ fi
 echo "[serve] portal: http://${HOST}:${PORT}/"
 echo "[serve] public ID preview: http://${HOST}:${PORT}${PUBLIC_ID_PATH}"
 echo "[serve] /api/org -> $ORG_API_ORIGIN"
+echo "[serve] /api/chat -> $CHAT_API_ORIGIN"
 echo "[serve] /pidp -> $PIDP_PROXY_ORIGIN"
 
 if [[ "$DETACH" -eq 0 ]]; then

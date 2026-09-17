@@ -29,6 +29,7 @@ export async function eventAttendance(db: D1Database, eventId: string, userId?: 
       name: person.name.trim(),
       photo_url: person.photo_url,
       profile_public: person.enabled === 1,
+      profile_url: `/users/${encodeURIComponent(person.slug)}`,
     })),
     registered: Boolean(registration),
   };

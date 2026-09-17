@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../../app/AppProviders";
+import { EventPosterTools } from '../../components/EventPosterTools';
 
 const ORG_API_BASE = "/api/org";
 
@@ -15,6 +16,7 @@ type NetworkEvent = {
   id: string;
   title: string;
   slug: string;
+  updated_at?: string | null;
   description?: string | null;
   starts_at?: string | null;
   ends_at?: string | null;
@@ -289,23 +291,6 @@ export function OrgEventsPage() {
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "Save failed");
     }
-  }
-
-  async function useGeneratedFlyerAsSocialPreview(event: NetworkEvent) {
-    const socialFlyerUrl = event.flyer_urls?.social;
-    if (!socialFlyerUrl) {
-      setStatus("Generated social flyer URL is not available for this event yet.");
-      return;
-    }
-    await saveSocialPreview(event.id, {
-      title: socialDraftByEvent[event.id]?.title || event.social_title || event.title,
-      description:
-        socialDraftByEvent[event.id]?.description ||
-        event.social_description ||
-        event.description ||
-        "",
-      imageUrl: socialFlyerUrl,
-    });
   }
 
   async function useEventImageAsSocialPreview(event: NetworkEvent) {
@@ -640,6 +625,7 @@ export function OrgEventsPage() {
                   {event.description}
                 </div>
               ) : null}
+              <EventPosterTools slug={event.slug} title={event.title} revision={event.updated_at || JSON.stringify([event.title, event.description, event.social_title, event.social_description, event.starts_at, event.ends_at, event.location])} />
               <details className="portal-card" style={{ padding: "0.75rem" }}>
                 <summary>Social preview</summary>
                 <div
@@ -714,68 +700,9 @@ export function OrgEventsPage() {
                       }}
                     />
                   ) : null}
-                  <div
-                    className="portal-card"
-                    style={{ display: "grid", gap: "0.6rem", padding: "0.75rem" }}
-                  >
-                    <div>
-                      <strong>Flyer generator</strong>
-                      <p className="muted" style={{ margin: "0.25rem 0 0" }}>
-                        Generated from this event’s title, host, date, location,
-                        description, and QR code to the public event link.
-                      </p>
-                    </div>
-                    {event.flyer_urls?.social ? (
-                      <img
-                        src={event.flyer_urls.social}
-                        alt="Generated social flyer"
-                        style={{
-                          width: "min(100%, 420px)",
-                          borderRadius: "0.75rem",
-                          border: "1px solid var(--border-subtle)",
-                          background: "#07111f",
-                        }}
-                      />
-                    ) : null}
-                    <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                      {event.flyer_urls?.letter ? (
-                        <a href={event.flyer_urls.letter} target="_blank" rel="noreferrer">
-                          Open 8.5×11 flyer
-                        </a>
-                      ) : null}
-                      {event.flyer_urls?.postcard ? (
-                        <a href={event.flyer_urls.postcard} target="_blank" rel="noreferrer">
-                          Open 4×6 flyer
-                        </a>
-                      ) : null}
-                      {event.flyer_urls?.social ? (
-                        <a href={event.flyer_urls.social} target="_blank" rel="noreferrer">
-                          Open social flyer
-                        </a>
-                      ) : null}
-                      {event.public_url ? (
-                        <a href={event.public_url} target="_blank" rel="noreferrer">
-                          Public event page
-                        </a>
-                      ) : null}
-                    </div>
-                    <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                      <button
-                        type="button"
-                        onClick={() => useGeneratedFlyerAsSocialPreview(event)}
-                        disabled={!token || !event.flyer_urls?.social}
-                      >
-                        Use generated flyer as social preview
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => useEventImageAsSocialPreview(event)}
-                        disabled={!token || !event.image_url}
-                      >
-                        Use event image unedited
-                      </button>
-                    </div>
-                  </div>
+                  <button type="button" onClick={() => useEventImageAsSocialPreview(event)} disabled={!token || !event.image_url}>
+                    Use event image unedited
+                  </button>
                   <button
                     type="button"
                     onClick={() => saveSocialPreview(event.id)}

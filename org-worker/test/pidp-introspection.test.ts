@@ -18,7 +18,7 @@ test('PIdP signed tokens require matching live status; revocation and outages fa
     let status: Record<string, unknown> = { active: true, ...payload };
     globalThis.fetch = async (url, options) => {
       assert.equal(url, env.MCP_OAUTH_INTROSPECTION_URL);
-      assert.equal(options?.redirect, 'error');
+      assert.equal(options?.redirect, 'manual');
       assert.equal(new Headers(options?.headers).get('authorization'), 'Bearer resource-secret');
       assert.equal(new URLSearchParams(String(options?.body)).get('resource'), resource);
       return Response.json(status);
@@ -30,6 +30,16 @@ test('PIdP signed tokens require matching live status; revocation and outages fa
     }
     globalThis.fetch = async () => { throw new Error('secret provider detail'); };
     await assert.rejects(authenticateMcp(request, env, async () => publicKey), (e: any) => e.status === 503 && !e.message.includes('secret'));
+    for (const httpStatus of [301, 302, 307, 308, 401, 500]) {
+      let calls = 0;
+      globalThis.fetch = async (_url, options) => {
+        calls++;
+        assert.equal(options?.redirect, 'manual');
+        return new Response(null, { status: httpStatus, headers: { location: 'https://untrusted.example/token' } });
+      };
+      await assert.rejects(authenticateMcp(request, env, async () => publicKey), (e: any) => e.status === 503);
+      assert.equal(calls, 1);
+    }
     assert.throws(() => mcpConfiguration({ ...env, MCP_OAUTH_INTROSPECTION_SECRET: undefined }), /introspection/);
     assert.throws(() => mcpConfiguration({ ...env, MCP_OAUTH_INTROSPECTION_URL: 'https://evil.example/collect' }), /introspection/);
   } finally { globalThis.fetch = original; }

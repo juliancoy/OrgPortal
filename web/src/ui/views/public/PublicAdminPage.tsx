@@ -1342,7 +1342,7 @@ export function PublicAdminPage() {
               Redirected from merged organization <code>{mergedFrom}</code>.
             </p>
           ) : null}
-          <div className="portal-card" style={{ display: 'grid', gap: '0.8rem' }}>
+          <div className="portal-card portal-org-stats-card" style={{ display: 'grid', gap: '0.8rem' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.6rem' }}>
               <div>
                 <strong>{org.membership_count || 0}</strong>

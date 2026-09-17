@@ -7,11 +7,13 @@ import docker_utils
 
 current_dir = Path(os.path.abspath(os.path.dirname(__file__)))
 web_dir = current_dir / "web"
+org_worker_dir = current_dir / "org-worker"
 container_app_dir = "/app"
 
 DEFAULT_PROD_IMAGE = "ghcr.io/juliancoy/orgportal:latest"
 DEFAULT_PROD_LOCAL_IMAGE = "orgportal-prod:local"
 DEFAULT_DEV_IMAGE = "node:24-alpine"
+DEFAULT_WORKER_IMAGE = "node:24-alpine"
 DEFAULT_DATA_SOURCE = "api"
 
 
@@ -153,8 +155,10 @@ def run(prefix: str, network_name: str) -> None:
 
     prod_name = prefix + "portal"
     dev_name = prefix + "portal-dev"
+    org_worker_name = prefix + "org"
     prod_image = _resolve_prod_image()
     data_source = (os.getenv("ORGPORTAL_DATA_SOURCE") or DEFAULT_DATA_SOURCE).strip() or DEFAULT_DATA_SOURCE
+    org_api_base = os.getenv("ORGPORTAL_ORG_API_BASE", f"http://{org_worker_name}:8001")
 
     prod = {
         "image": prod_image,
@@ -166,8 +170,47 @@ def run(prefix: str, network_name: str) -> None:
             "BACKEND_IMAGE_RUNNING": prod_image,
             "PORTAL_PUBLIC_HOST": prod_host or "",
             "PORT": "8080",
-            "ORGPORTAL_ORG_API_BASE": os.getenv("ORGPORTAL_ORG_API_BASE", f"http://{prefix}org:8001"),
+            "ORGPORTAL_ORG_API_BASE": org_api_base,
         },
+    }
+
+    org_worker = {
+        "image": os.getenv("ORGPORTAL_WORKER_IMAGE", DEFAULT_WORKER_IMAGE),
+        "name": org_worker_name,
+        "network": network_name,
+        "restart_policy": {"Name": "always"},
+        "detach": True,
+        "working_dir": container_app_dir,
+        "volumes": {
+            str(org_worker_dir): {"bind": container_app_dir, "mode": "rw"},
+            prefix + "ORGPORTAL_ORG_WORKER_NODE_MODULES": {
+                "bind": "/app/node_modules",
+                "mode": "rw",
+            },
+            prefix + "ORGPORTAL_ORG_WORKER_WRANGLER": {
+                "bind": "/app/.wrangler",
+                "mode": "rw",
+            },
+        },
+        "environment": {
+            "NODE_ENV": "development",
+            "PIDP_BASE_URL": os.getenv("ORGPORTAL_DEV_PIDP_BASE_URL") or dev_pidp_base_url,
+            "PUBLIC_PORTAL_BASE_URL": _normalize_public_base(dev_base) or "http://localhost:5173/",
+            "EMAIL_SENDING_ENABLED": os.getenv("ORGPORTAL_LOCAL_EMAIL_SENDING_ENABLED", "false"),
+            "EMAIL_ALLOWED_SENDERS": os.getenv("ORGPORTAL_LOCAL_EMAIL_ALLOWED_SENDERS", "dev@example.test"),
+            "EMAIL_DAILY_LIMIT": os.getenv("ORGPORTAL_LOCAL_EMAIL_DAILY_LIMIT", "25"),
+            "ADMIN_EMAILS": os.getenv("ORGPORTAL_LOCAL_ADMIN_EMAILS", ""),
+            "ADMIN_USER_IDS": os.getenv("ORGPORTAL_LOCAL_ADMIN_USER_IDS", ""),
+        },
+        "command": [
+            "sh",
+            "-c",
+            (
+                "npm ci && "
+                "npm run db:migrate:local && "
+                "npx wrangler dev --local --test-scheduled --ip 0.0.0.0 --port 8001"
+            ),
+        ],
     }
 
     dev = {
@@ -195,6 +238,8 @@ def run(prefix: str, network_name: str) -> None:
             "VITE_PUBLIC_BASE": "/",
             "VITE_HMR_HOST": dev_host or "",
             "VITE_ALLOWED_HOSTS": ",".join([h for h in [dev_host, prod_host, "localhost"] if h]),
+            "ORG_API_ORIGIN": org_api_base,
+            "CHAT_API_ORIGIN": os.getenv("CHAT_API_ORIGIN", "https://chat-codecollective.jcloiacon.workers.dev"),
         },
         "command": [
             "sh",
@@ -206,7 +251,7 @@ def run(prefix: str, network_name: str) -> None:
         ],
     }
 
-    for name in (prod_name, dev_name):
+    for name in (prod_name, dev_name, org_worker_name):
         try:
             container = docker_utils.DOCKER_CLIENT.containers.get(name)
             container.stop()
@@ -226,11 +271,14 @@ def run(prefix: str, network_name: str) -> None:
     print(f"Portal dev PIdP base: {dev_pidp_base_url}")
     print(f"Portal prod PIdP app slug: {prod_pidp_app_slug}")
     print(f"Portal dev PIdP app slug: {dev_pidp_app_slug}")
+    print(f"Portal org API base: {org_api_base}")
     prod["image"] = resolved_prod_image
     prod["environment"]["BACKEND_IMAGE_RUNNING"] = resolved_prod_image
 
+    docker_utils.run_container(org_worker)
     docker_utils.run_container(prod)
     docker_utils.run_container(dev)
+    docker_utils.wait_for_port(org_worker_name, 8001, network_name, retries=60, delay=2)
     docker_utils.wait_for_port(prod_name, 8080, network_name, retries=60, delay=2)
     docker_utils.wait_for_port(dev_name, 5173, network_name, retries=60, delay=2)
 

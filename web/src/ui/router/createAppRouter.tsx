@@ -124,12 +124,18 @@ function TenantOrgEventsRoute() {
 
 function TenantCommunityAliasRoute() {
   const tenant = getDomainTenant()
-  if (tenant?.home_org_slug) return <Navigate to={`/orgs/${encodeURIComponent(tenant.home_org_slug)}`} replace />
+  if (tenant?.home_org_slug) return <Navigate to="/" replace />
   return <Navigate to={tenant ? '/people' : '/orgs'} replace />
 }
 
 function TenantEventsAliasRoute() {
   return <Navigate to={getDomainTenant() ? '/org-events' : '/events'} replace />
+}
+
+function PublicEventsRoute() {
+  const tenant = getDomainTenant()
+  if (tenant?.home_org_slug) return <TenantEventsContent />
+  return <PublicEventsPage />
 }
 
 
@@ -355,7 +361,7 @@ export function createAppRouter() {
           },
           { path: '/targets/:target', element: <TargetPage /> },
 
-          { path: '/events', element: <PublicEventsPage /> },
+          { path: '/events', element: <PublicEventsRoute /> },
           { path: '/events/:slug', element: <PublicEventPage /> },
           { path: '/orgs', element: <PublicOrganizationsPage /> },
           { path: '/people', element: <PeoplePage /> },

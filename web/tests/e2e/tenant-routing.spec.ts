@@ -1,4 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
+import { readFile } from 'node:fs/promises'
+import { renderEventPoster } from '../../../org-worker/src/eventPoster'
 
 test.use({ video: 'off' })
 
@@ -8,6 +10,7 @@ const portal = (path: string) => `${basePath}${path}`
 type MockTenantOptions = {
   completeAppLogin?: boolean
   initiallyLoggedIn?: boolean
+  mockEventChatRoutes?: boolean
 }
 
 const medtechEvent = {
@@ -22,6 +25,90 @@ const medtechEvent = {
   host_org_name: 'Baltimore MedTech',
   host_org_id: 'org-medtech',
 }
+
+test('poster workflow previews formats, exports PNG and SVG, and opens print', async ({ page }, info) => {
+  test.setTimeout(90000)
+  await mockTenant(page)
+  await page.addInitScript(() => {
+    const open = window.open.bind(window)
+    window.open = (...args: Parameters<typeof window.open>) => {
+      const popup = open(...args)
+      if (popup) popup.print = () => { popup.document.body.dataset.printed = 'true' }
+      return popup
+    }
+  })
+  await page.route('**/flyer.svg?**', async route => {
+    const format = new URL(route.request().url()).searchParams.get('format') as 'letter' | 'letter-4up' | 'postcard' | 'social'
+    const svg = await renderEventPoster(medtechEvent, 'https://medtech.social/events/medtech-in-the-hut', format, { name: 'Baltimore MedTech' })
+    await route.fulfill({ contentType: 'image/svg+xml', body: svg })
+  })
+  await page.goto(portal('/events/medtech-in-the-hut'))
+  await page.getByRole('button', { name: 'Create poster', exact: true }).click()
+  const editor = page.getByRole('region', { name: 'Event poster', exact: true })
+  for (const [label, width, height] of [['8.5 x 11', 2550, 3300], ['Letter 2 × 2', 2550, 3300], ['4 x 6', 1200, 1800], ['Social', 1200, 630]] as const) {
+    await editor.getByRole('button', { name: label, exact: true }).click()
+    await expect(editor.getByRole('img')).toHaveAttribute('alt', `MedTech in the Hut, ${label} poster`)
+    const pending = page.waitForEvent('download')
+    await editor.getByRole('button', { name: 'PNG', exact: true }).click()
+    const download = await pending
+    const path = info.outputPath(download.suggestedFilename())
+    await download.saveAs(path)
+    const png = await readFile(path)
+    expect(png.subarray(1, 4).toString()).toBe('PNG')
+    expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([width, height])
+    const printing = page.waitForEvent('popup')
+    await editor.getByRole('button', { name: 'Print', exact: true }).click()
+    const popup = await printing
+    await expect(popup.locator('body')).toHaveAttribute('data-printed', 'true')
+    const pdf = await popup.pdf({ preferCSSPageSize: true, path: info.outputPath(`${download.suggestedFilename()}.pdf`) })
+    const mediaBox = pdf.toString('latin1').match(/\/MediaBox\s*\[0 0 ([\d.]+) ([\d.]+)\]/)
+    expect(mediaBox).not.toBeNull()
+    const expected = label === '8.5 x 11' || label === 'Letter 2 × 2' ? [612, 792] : label === '4 x 6' ? [288, 432] : [864, 453.6]
+    expect(Math.abs(Number(mediaBox![1]) - expected[0])).toBeLessThan(1)
+    expect(Math.abs(Number(mediaBox![2]) - expected[1])).toBeLessThan(1)
+    expect(pdf.toString('latin1').match(/\/Type \/Page\b/g)?.length).toBe(1)
+    await popup.close()
+  }
+  const vector = page.waitForEvent('download')
+  await editor.getByRole('button', { name: 'SVG', exact: true }).click()
+  expect((await vector).suggestedFilename()).toBe('medtech-in-the-hut-social.svg')
+})
+
+test('poster failures offer retry and do not leave export buttons active', async ({ page }) => {
+  await mockTenant(page)
+  let failing = true
+  await page.route('**/flyer.svg?**', async route => {
+    if (failing) return route.fulfill({ status: 503, body: 'Unavailable' })
+    return route.fulfill({ contentType: 'image/svg+xml', body: await renderEventPoster(medtechEvent, 'https://medtech.social/events/medtech-in-the-hut', 'letter', { name: 'Baltimore MedTech' }) })
+  })
+  await page.goto(portal('/events/medtech-in-the-hut'))
+  await page.getByRole('button', { name: 'Create poster', exact: true }).click()
+  const editor = page.getByRole('region', { name: 'Event poster', exact: true })
+  await expect(editor.getByRole('alert')).toContainText('Poster unavailable')
+  await expect(editor.getByRole('button', { name: 'PNG', exact: true })).toBeDisabled()
+  failing = false
+  await editor.getByRole('button', { name: 'Retry', exact: true }).click()
+  await expect(editor.getByRole('img')).toBeVisible()
+  await expect(editor.getByRole('button', { name: 'PNG', exact: true })).toBeEnabled()
+})
+
+test('event gallery resolves stored images through the org API without rewriting external images', async ({ page }) => {
+  await mockTenant(page);
+  await page.route('**/api/org/api/network/events/public/medtech-in-the-hut', route => route.fulfill({ json: {
+    ...medtechEvent,
+    media: [
+      { id: 'stored', url: '/api/network/events/public/medtech-in-the-hut/media/stored', label: '20260915_201444_extra_long_menu_photo_filename.jpg', alt: 'Menu photo', kind: 'image' },
+      { id: 'external', url: 'https://images.test/event.png', label: 'External photo', alt: 'External photo', kind: 'image' },
+    ],
+  } }));
+  await page.goto(portal('/events/medtech-in-the-hut'));
+  const image = page.getByRole('img', { name: 'Menu photo', exact: true });
+  await expect(image).toHaveAttribute('src', '/api/org/api/network/events/public/medtech-in-the-hut/media/stored');
+  await expect(image.locator('..')).toHaveAttribute('href', '/api/org/api/network/events/public/medtech-in-the-hut/media/stored');
+  const labelFits = await image.locator('..').locator('strong').evaluate(label => label.scrollWidth <= label.parentElement!.clientWidth);
+  expect(labelFits).toBe(true);
+  await expect(page.getByRole('img', { name: 'External photo', exact: true })).toHaveAttribute('src', 'https://images.test/event.png');
+});
 
 async function mockTenant(page: Page, options: MockTenantOptions = {}) {
   let loggedIn = Boolean(options.initiallyLoggedIn)
@@ -92,12 +179,14 @@ async function mockTenant(page: Page, options: MockTenantOptions = {}) {
     }
     await route.fulfill({ status: 401, json: {} })
   })
-  await page.route('**/api/network/chat/event-room', route => {
-    return route.fulfill({ json: { conversation: { id: 'conv-event', kind: 'event', title: 'Event comments', updated_at: '2026-09-10T12:00:00Z' } } })
-  })
-  await page.route('**/api/network/chat/conversations/conv-event/messages?afterSequence=0', route => {
-    return route.fulfill({ json: { latest_sequence: 0, messages: [] } })
-  })
+  if (options.mockEventChatRoutes !== false) {
+    await page.route('**/api/network/chat/event-room', route => {
+      return route.fulfill({ json: { conversation: { id: 'conv-event', kind: 'event', title: 'Event comments', updated_at: '2026-09-10T12:00:00Z' } } })
+    })
+    await page.route('**/api/network/chat/conversations/conv-event/messages?afterSequence=0', route => {
+      return route.fulfill({ json: { latest_sequence: 0, messages: [] } })
+    })
+  }
 }
 
 test('tenant domains use root-mounted canonical routes and assets', async ({ page }) => {
@@ -140,15 +229,117 @@ test('tenant event auth actions return to the same root-mounted event', async ({
   await expect(page.locator('body')).not.toContainText(/404|not found/i)
 })
 
-test('tenant event registrants can be messaged even when profiles are private', async ({ page }) => {
+test('tenant event comments use the chat API for room, comments, replies, and reactions', async ({ page }) => {
+  const rootText = 'Excited to meet other medtech builders.'
+  const replyText = 'Saving a seat near the front.'
+  const chatRequests: string[] = []
+
+  await mockTenant(page, { initiallyLoggedIn: true, mockEventChatRoutes: false })
+  await page.route('**/api/chat/api/network/chat/**', async route => {
+    const request = route.request()
+    const url = new URL(request.url())
+    chatRequests.push(`${request.method()} ${url.pathname}${url.search}`)
+
+    if (url.pathname.endsWith('/api/network/chat/event-room')) {
+      const payload = request.postDataJSON() as { event_id?: string; title?: string; org_id?: string | null }
+      expect(payload).toEqual({
+        event_id: 'evt-medtech-hut',
+        title: 'Event comments',
+        org_id: 'org-medtech',
+      })
+      return route.fulfill({ json: { conversation: { id: 'conv-event', kind: 'event_room', event_id: 'evt-medtech-hut', title: 'Event comments', updated_at: '2026-09-10T12:00:00Z' } } })
+    }
+
+    if (url.pathname.endsWith('/api/network/chat/conversations/conv-event/messages') && request.method() === 'GET') {
+      return route.fulfill({ json: { latest_sequence: 0, messages: [] } })
+    }
+
+    if (url.pathname.endsWith('/api/network/chat/conversations/conv-event/messages') && request.method() === 'POST') {
+      const payload = request.postDataJSON() as { body?: string; reply_to_message_id?: string; thread_root_message_id?: string }
+      const isReply = payload.thread_root_message_id === 'root-message'
+      return route.fulfill({
+        status: 201,
+        json: {
+          message: {
+            id: isReply ? 'reply-message' : 'root-message',
+            conversation_id: 'conv-event',
+            sender_user_id: 'user-a',
+            sender_name: 'Alice Example',
+            sender_avatar_url: null,
+            client_message_id: isReply ? 'client-reply' : 'client-root',
+            body: payload.body,
+            sequence: isReply ? 2 : 1,
+            message_type: 'text',
+            reply_to_message_id: payload.reply_to_message_id || null,
+            thread_root_message_id: payload.thread_root_message_id || null,
+            created_at: isReply ? '2026-09-10T12:02:00Z' : '2026-09-10T12:01:00Z',
+            edited_at: null,
+            deleted_at: null,
+            moderation_state: 'visible',
+            reactions: [],
+          },
+        },
+      })
+    }
+
+    if (url.pathname.endsWith('/api/network/chat/conversations/conv-event/messages/root-message/reactions')) {
+      return route.fulfill({
+        json: {
+          reactions: [{
+            key: '👍',
+            count: 1,
+            reacted: true,
+            users: [{ user_id: 'user-a', user_name: 'Alice Example', avatar_url: null, created_at: '2026-09-10T12:03:00Z' }],
+          }],
+        },
+      })
+    }
+
+    return route.fulfill({ status: 404, json: { detail: 'Unhandled event chat route' } })
+  })
+
+  await page.goto(portal('/events/medtech-in-the-hut'))
+
+  await expect(page.getByRole('heading', { name: 'MedTech in the Hut' })).toBeVisible()
+  await expect(page.locator('.public-event-attendance-count strong')).toHaveText('2 coming')
+  await expect(page.getByPlaceholder('Add a comment...')).toBeEnabled()
+
+  await page.getByPlaceholder('Add a comment...').fill(rootText)
+  await page.getByRole('button', { name: 'Post Comment' }).click()
+  const rootComment = page.locator('.public-event-comment').filter({ hasText: rootText }).first()
+  await expect(rootComment).toBeVisible()
+
+  await rootComment.getByRole('button', { name: 'Reply' }).click()
+  await page.getByPlaceholder('Write a reply...').fill(replyText)
+  await page.getByRole('button', { name: 'Post Reply' }).click()
+  await expect(rootComment.locator('.public-event-comment-reply').filter({ hasText: replyText })).toBeVisible()
+
+  await rootComment.locator('summary').filter({ hasText: 'React' }).first().click()
+  await rootComment.getByRole('button', { name: 'React with 👍' }).first().click()
+  await expect(rootComment.getByRole('button', { name: /Remove 👍/ })).toContainText('👍 1')
+  await expect(page.locator('body')).not.toContainText('Chat request failed (501)')
+
+  expect(chatRequests).toEqual(expect.arrayContaining([
+    'POST /api/chat/api/network/chat/event-room',
+    'GET /api/chat/api/network/chat/conversations/conv-event/messages?afterSequence=0',
+    'POST /api/chat/api/network/chat/conversations/conv-event/messages',
+    'POST /api/chat/api/network/chat/conversations/conv-event/messages/root-message/reactions',
+  ]))
+})
+
+test('tenant event guest list is compact publicly and explorable when logged in', async ({ page }) => {
   await mockTenant(page, { initiallyLoggedIn: true })
   await page.goto(portal('/events/medtech-in-the-hut'))
 
-  await expect(page.locator('.public-event-registrant').filter({ hasText: 'Private Registrant' })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Public Registrant', exact: true })).toHaveAttribute('href', '/users/public-registrant')
-  await expect(page.getByRole('link', { name: 'Private Registrant', exact: true })).toHaveCount(0)
+  await expect(page.locator('.public-event-registrant')).toHaveCount(2)
+  await expect(page.locator('.public-event-registration')).not.toContainText('Private Registrant')
+  await page.getByRole('button', { name: /2 coming/ }).click()
+  const dialog = page.getByRole('dialog', { name: /2 coming/ })
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByRole('link', { name: 'Public Registrant', exact: true })).toHaveAttribute('href', '/users/public-registrant')
+  await expect(dialog.getByRole('link', { name: 'Private Registrant', exact: true })).toHaveAttribute('href', '/users/private-registrant')
 
-  const privateMessage = page.getByRole('link', { name: 'Message Private Registrant' })
+  const privateMessage = dialog.locator('.public-event-guest-list-item').filter({ hasText: 'Private Registrant' }).getByRole('link', { name: 'Message' })
   await expect(privateMessage).toBeVisible()
   const messageUrl = new URL((await privateMessage.getAttribute('href'))!, 'https://medtech.social')
   expect(messageUrl.pathname).toBe('/chat')
@@ -156,6 +347,30 @@ test('tenant event registrants can be messaged even when profiles are private', 
   expect(messageUrl.searchParams.get('userId')).toBe('user-private')
   expect(messageUrl.searchParams.get('name')).toBe('Private Registrant')
   expect(messageUrl.toString()).not.toContain('@')
+})
+
+test('tenant event location opens Google Maps and copies the address', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: async (value: string) => {
+          ;(window as unknown as { __copiedAddress?: string }).__copiedAddress = value
+        },
+      },
+    })
+  })
+  await mockTenant(page, { initiallyLoggedIn: true })
+  await page.goto(portal('/events/medtech-in-the-hut'))
+
+  const mapsLink = page.getByRole('link', { name: /Open in Google Maps/i })
+  await expect(mapsLink).toBeVisible()
+  await expect(mapsLink).toHaveAttribute('href', /google\.com\/maps\/search/)
+  await expect(page.locator('.public-event-map-frame iframe')).toHaveAttribute('src', /google\.com\/maps/)
+
+  await page.getByRole('button', { name: 'Copy Address' }).click()
+  await expect(page.getByRole('button', { name: 'Copied' })).toBeVisible()
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __copiedAddress?: string }).__copiedAddress)).toBe('Checkerspot Brewing')
 })
 
 test('tenant header login preserves the current event route', async ({ page }) => {

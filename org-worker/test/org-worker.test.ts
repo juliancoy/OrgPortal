@@ -737,6 +737,34 @@ test("worker fetch serves path-qualified MCP protected resource metadata before 
   assert.equal(body.resource, "https://medtech.social/api/org/mcp");
 });
 
+test("org worker proxies stale site chat API paths to the chat worker", async () => {
+  const originalFetch = globalThis.fetch;
+  const seen: Record<string, unknown> = {};
+  globalThis.fetch = async (input, init) => {
+    const request = new Request(input, init);
+    seen.url = request.url;
+    seen.authorization = request.headers.get("authorization");
+    seen.forwardedHost = request.headers.get("x-forwarded-host");
+    seen.forwardedProto = request.headers.get("x-forwarded-proto");
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 202,
+      headers: { "content-type": "application/json" },
+    });
+  };
+  try {
+    const response = await app.request("https://medtech.social/api/chat/api/network/chat/conversations/room/messages?afterSequence=0", {
+      headers: { Authorization: "Bearer test-token" },
+    }, env(undefined, { CHAT_API_ORIGIN: "https://chat.example.test" }));
+    assert.equal(response.status, 202);
+    assert.equal(seen.url, "https://chat.example.test/api/network/chat/conversations/room/messages?afterSequence=0");
+    assert.equal(seen.authorization, "Bearer test-token");
+    assert.equal(seen.forwardedHost, "medtech.social");
+    assert.equal(seen.forwardedProto, "https");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("health route identifies the org worker", async () => {
   const res = await app.request("https://org.example.test/health", {}, env());
   assert.equal(res.status, 200);
@@ -1700,25 +1728,25 @@ test("UBI tick accrues dena and pays whole cents only when cadence is due", asyn
   );
   db.ubiEligibility.push({ account_id: "acct-1", is_eligible: 1, next_payment_date: "2026-06-07", last_payment_amount: 0, total_payments_received: 0 });
 
-  const summary = await runUbiTick(db as unknown as D1Database, Date.parse("2026-06-07T00:01:00.000Z"));
+  const summary = await runUbiTick(db as unknown as D1Database, Date.parse("2026-06-21T00:00:00.000Z"));
 
   assert.equal(summary.status, "completed");
   assert.equal(summary.eligible_accounts, 1);
   assert.equal(summary.payout_count, 1);
-  assert.equal(summary.paid_amount, 0.01);
-  assert.equal(db.ledgerAccounts[0].balance, 10.01);
+  assert.equal(summary.paid_amount, 201.6);
+  assert.equal(db.ledgerAccounts[0].balance, 211.6);
   assert.equal(Math.round(Number(db.ledgerAccounts[0].dena_balance) * 1000000) / 1000000, 0.009);
   assert.equal(db.ledgerAccounts[1].balance, 20);
   assert.equal(db.ledgerTransactions.length, 1);
   assert.equal(db.ledgerTransactions[0].transaction_type, "UBI_PAYMENT");
-  assert.equal(db.ubiEligibility[0].next_payment_date, "2026-06-21");
+  assert.equal(db.ubiEligibility[0].next_payment_date, "2026-07-05");
 
-  const duplicate = await runUbiTick(db as unknown as D1Database, Date.parse("2026-06-07T00:01:00.000Z"));
+  const duplicate = await runUbiTick(db as unknown as D1Database, Date.parse("2026-06-21T00:00:00.000Z"));
   assert.equal(duplicate.status, "skipped");
   assert.equal(db.ledgerTransactions.length, 1);
 });
 
-test("UBI tick accrues but does not pay before the two-week cadence is due", async () => {
+test("UBI tick skips ledger work before the two-week cadence is due", async () => {
   const db = new FakeD1();
   db.tickState = { id: "singleton", last_tick_at: "2026-06-07T00:00:00.000Z", updated_at: "2026-06-07T00:00:00.000Z" };
   db.ledgerAccounts.push({
@@ -1736,12 +1764,14 @@ test("UBI tick accrues but does not pay before the two-week cadence is due", asy
 
   const summary = await runUbiTick(db as unknown as D1Database, Date.parse("2026-06-07T00:01:00.000Z"));
 
-  assert.equal(summary.status, "completed");
-  assert.equal(summary.eligible_accounts, 1);
+  assert.equal(summary.status, "skipped");
+  assert.equal(summary.elapsed_seconds, 60);
+  assert.equal(summary.eligible_accounts, 0);
   assert.equal(summary.payout_count, 0);
   assert.equal(db.ledgerAccounts[0].balance, 10);
   assert.equal(db.ledgerTransactions.length, 0);
-  assert.ok(Number(db.ledgerAccounts[0].dena_balance) > 1);
+  assert.equal(db.ledgerAccounts[0].dena_balance, 1);
+  assert.equal(db.tickRuns.length, 0);
 });
 
 test("UBI tick enrolls known people before accrual", async () => {
@@ -1758,7 +1788,7 @@ test("UBI tick enrolls known people before accrual", async () => {
     updated_at: "2026-06-07T00:00:00.000Z",
   });
 
-  const summary = await runUbiTick(db as unknown as D1Database, Date.parse("2026-06-07T00:01:00.000Z"));
+  const summary = await runUbiTick(db as unknown as D1Database, Date.parse("2026-06-21T00:00:00.000Z"));
 
   assert.equal(summary.eligible_accounts, 1);
   assert.equal(db.ledgerAccounts.length, 1);

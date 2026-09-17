@@ -28,6 +28,7 @@ const appBuildNumber = Number.isFinite(parsedBuildNumber) ? parsedBuildNumber : 
 const appVersion = process.env.npm_package_version || '0.0.0'
 const pidpProxyOrigin = process.env.PIDP_PROXY_ORIGIN || process.env.PIDP_API_ORIGIN || 'http://localhost:8000'
 const orgApiOrigin = process.env.ORG_API_ORIGIN || ''
+const chatApiOrigin = process.env.CHAT_API_ORIGIN || ''
 const governanceApiOrigin = process.env.GOVERNANCE_API_ORIGIN || 'http://localhost:8002'
 
 export default defineConfig(({ command }) => ({
@@ -50,7 +51,7 @@ export default defineConfig(({ command }) => ({
       clientPort: Number.isFinite(hmrClientPort) ? hmrClientPort : 5173,
     },
     proxy: {
-      ...(orgApiOrigin ? { '/api/chat': { target: orgApiOrigin, changeOrigin: true, xfwd: true, ws: true, rewrite: (path: string) => path.replace(/^\/api\/chat/, '') } } : {}),
+      ...(chatApiOrigin ? { '/api/chat': { target: chatApiOrigin, changeOrigin: true, xfwd: true, ws: true, rewrite: (path: string) => path.replace(/^\/api\/chat/, '') } } : {}),
       '/pidp': {
         target: pidpProxyOrigin,
         changeOrigin: true,

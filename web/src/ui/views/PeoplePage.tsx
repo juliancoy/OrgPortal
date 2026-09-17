@@ -95,7 +95,7 @@ export function PeoplePage() {
     <section className="panel" style={{ display: 'grid', gap: '1rem' }}>
       <h1 style={{ marginTop: 0 }}>People</h1>
       <p className="muted" style={{ marginTop: 0 }}>
-        Public people and organization directory. {status ? status : totalLabel}
+        Search public people and organization profiles. {status ? status : `Showing ${totalLabel}.`}
       </p>
 
       <label style={{ display: 'grid', gap: '0.35rem', maxWidth: 420 }}>

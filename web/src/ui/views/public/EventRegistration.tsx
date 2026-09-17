@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { pidpAppLoginUrl } from '../../../config/pidp'
 import { loadAttendance, recordAttendanceWithRetry, type EventAttendance } from './attendanceApi'
@@ -30,7 +30,11 @@ export function EventRegistration({ eventId, slug, token, authLoading = false, s
   const [reload, setReload] = useState(0)
   const [emailUpdates, setEmailUpdates] = useState(true)
   const [organizationAnnouncements, setOrganizationAnnouncements] = useState(false)
+  const [guestListOpen, setGuestListOpen] = useState(false)
+  const guestListTitleId = useId()
   const next = `/events/${encodeURIComponent(slug)}`
+  const visibleAttendees = attendance?.attendees.slice(0, 5) || []
+  const hiddenAttendeeCount = attendance ? Math.max(0, attendance.count - visibleAttendees.length) : 0
 
   useEffect(() => {
     if (authLoading) return
@@ -40,6 +44,15 @@ export function EventRegistration({ eventId, slug, token, authLoading = false, s
     }).catch((err: Error) => { if (!cancelled) setError(err.message) })
     return () => { cancelled = true }
   }, [authLoading, eventId, token, reload])
+
+  useEffect(() => {
+    if (!guestListOpen) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setGuestListOpen(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [guestListOpen])
 
   async function updateRegistration() {
     if (pending || !token || !attendance) return
@@ -89,54 +102,52 @@ export function EventRegistration({ eventId, slug, token, authLoading = false, s
     </div>
   )
 
+  const attendeeSummaryText = attendance
+    ? attendance.count === 1 ? '1 coming' : `${attendance.count} coming`
+    : 'Loading guests'
+
   return (
     <section className="portal-card public-event-registration" aria-labelledby="event-registration-title">
-      <div className="public-event-card-heading">
-        <p className="public-event-eyebrow">Registration</p>
-        <h2 id="event-registration-title">Reserve Your Spot</h2>
+      <div className="public-event-registration-top">
+        <div className="public-event-card-heading">
+          <p className="public-event-eyebrow">Registration</p>
+          <h2 id="event-registration-title">Reserve Your Spot</h2>
+        </div>
+        {registrationActions}
       </div>
-      {registrationActions}
       {attendance ? (
         <div className="public-event-attendance-summary">
-          {attendance.attendees.length > 0 && (
-            <div aria-label="Event registrants" className="public-event-registrants">
-              {attendance.attendees.map((person, index) => {
-                const avatar = <RegistrantAvatar name={person.name} photoUrl={person.photo_url} />
-                return person.profile_public && person.slug ? (
-                  <Link
-                    key={person.user_id || person.slug}
-                    to={`/users/${encodeURIComponent(person.slug)}`}
-                    title={person.name}
-                    aria-label={`View ${person.name}'s profile`}
-                    className="public-event-registrant"
-                  >
-                    {avatar}
-                  </Link>
-                ) : (
-                  <span
-                    key={person.user_id || `${person.slug || 'registrant'}-${index}`}
-                    title={person.name}
-                    aria-label={person.name}
-                    className="public-event-registrant"
-                  >
-                    {avatar}
-                  </span>
-                )
-              })}
-            </div>
-          )}
-          <div className="public-event-attendance-count">
-            <strong aria-live="polite">{attendance.count}</strong>
-            <span>{attendance.count === 1 ? 'registrant' : 'registrants'}</span>
-            {attendance.count === 0 && <small>No registrants yet.</small>}
-          </div>
+          <button
+            type="button"
+            className="public-event-attendance-button"
+            onClick={() => token && attendance.count > 0 ? setGuestListOpen(true) : undefined}
+            disabled={!token || attendance.count === 0}
+            aria-haspopup={token && attendance.count > 0 ? 'dialog' : undefined}
+            aria-expanded={token && attendance.count > 0 ? guestListOpen : undefined}
+          >
+            <span aria-label="Event attendees" className="public-event-registrants">
+              {visibleAttendees.map((person, index) => (
+                <span
+                  key={person.user_id || `${person.slug || 'registrant'}-${index}`}
+                  className="public-event-registrant"
+                  aria-hidden="true"
+                >
+                  <RegistrantAvatar name={person.name} photoUrl={person.photo_url} />
+                </span>
+              ))}
+              {hiddenAttendeeCount > 0 ? <span className="public-event-registrant-more" aria-hidden="true">+{hiddenAttendeeCount}</span> : null}
+            </span>
+            <span className="public-event-attendance-count" aria-live="polite">
+              <strong>{attendeeSummaryText}</strong>
+              {token && attendance.count > 0 ? <small>View guests</small> : !token && attendance.count > 0 ? <small>Login to view guests</small> : <small>No guests yet</small>}
+            </span>
+          </button>
         </div>
       ) : !error ? <p className="muted">Loading registrations…</p> : null}
       {token && attendance && !attendance.registered && <div className="public-event-registration-options">
         <label><input type="checkbox" disabled={pending} checked={emailUpdates} onChange={(event) => setEmailUpdates(event.target.checked)} /> <span>Email me updates about this event</span></label>
         {organizationName && <label><input type="checkbox" disabled={pending} checked={organizationAnnouncements} onChange={(event) => setOrganizationAnnouncements(event.target.checked)} /> <span>Also send me announcements from {organizationName}</span></label>}
       </div>}
-      <p className="muted public-event-registration-note">Registrant names and avatars are visible; email addresses stay private.</p>
       {token && <div className="public-event-registration-links">
         <Link to="/email/preferences" className="public-event-preferences-link">Manage email preferences</Link>
         {attendance?.registered ? <Link to="/calendar/integrations" className="public-event-preferences-link">Subscribe to registered events</Link> : null}
@@ -147,6 +158,47 @@ export function EventRegistration({ eventId, slug, token, authLoading = false, s
         <button type="button" className="portal-button-secondary" disabled={pending} onClick={() => setReload((value) => value + 1)}>Retry</button>
         {' '}<a href={pidpAppLoginUrl(next)}>Log in again</a>
       </div>}
+      {token && attendance && guestListOpen ? (
+        <div className="public-event-guest-list-backdrop" role="presentation" onMouseDown={(event) => {
+          if (event.target === event.currentTarget) setGuestListOpen(false)
+        }}>
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={guestListTitleId}
+            className="portal-card public-event-guest-list-dialog"
+          >
+            <div className="public-event-guest-list-header">
+              <div>
+                <p className="public-event-eyebrow">Guests</p>
+                <h3 id={guestListTitleId}>{attendeeSummaryText}</h3>
+              </div>
+              <button type="button" className="portal-button-secondary" onClick={() => setGuestListOpen(false)}>Close</button>
+            </div>
+            <div className="public-event-guest-list" aria-label="Guest list">
+              {attendance.attendees.map((person, index) => {
+                const profileUrl = person.profile_url || (person.slug ? `/users/${encodeURIComponent(person.slug)}` : null)
+                return (
+                  <div className="public-event-guest-list-item" key={person.user_id || `${person.slug || 'registrant'}-${index}`}>
+                    <RegistrantAvatar name={person.name} photoUrl={person.photo_url} />
+                    <div>
+                      {profileUrl ? <Link to={profileUrl} onClick={() => setGuestListOpen(false)}>{person.name}</Link> : <strong>{person.name}</strong>}
+                      <small>Guest</small>
+                    </div>
+                    <Link
+                      to={`/chat?start=dm&userId=${encodeURIComponent(person.user_id)}&name=${encodeURIComponent(person.name)}`}
+                      className="public-event-registrant-message"
+                      onClick={() => setGuestListOpen(false)}
+                    >
+                      Message
+                    </Link>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        </div>
+      ) : null}
     </section>
   )
 }

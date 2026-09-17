@@ -1,7 +1,7 @@
 import { timebankNotifications, markTimebankNotificationsRead, dispatchTimebankPush } from './timebankNotifications';
 import { importedListings, importedListingImage, importClaimDirectory, requestImportClaim, withdrawImportClaim, reviewImportClaims, resolveImportClaim, claimedImportRecords } from './timebankImports';
 import { Hono } from "hono";
-import QRCode from "qrcode";
+import { renderEventPoster, posterLogo } from "./eventPoster";
 import { buildMetadata } from "./generated/buildMetadata";
 import { HTTPException } from "hono/http-exception";
 import { handleEventMcp, protectedResourceMetadata, eventErrorResponse } from "./eventMcp";
@@ -424,6 +424,44 @@ function fail(status: number, detail: string): never {
     headers: { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*" },
   });
   throw new HTTPException(status as 400, { message: detail, res });
+}
+
+function trimTrailingSlash(value: string | undefined) {
+  return String(value || "").replace(/\/+$/, "");
+}
+
+function chatProxyTarget(requestUrl: string, chatOrigin: string) {
+  const url = new URL(requestUrl);
+  const prefix = "/api/chat";
+  const path = url.pathname === prefix || url.pathname.startsWith(`${prefix}/`)
+    ? url.pathname.slice(prefix.length) || "/"
+    : url.pathname;
+  return `${trimTrailingSlash(chatOrigin)}${path}${url.search}`;
+}
+
+async function proxyChatRequest(request: Request, env: Env) {
+  const origin = trimTrailingSlash(env.CHAT_API_ORIGIN || "https://chat-codecollective.jcloiacon.workers.dev");
+  if (!origin) return json({ detail: "Chat API origin is not configured" }, 502);
+
+  const requestUrl = new URL(request.url);
+  const headers = new Headers(request.headers);
+  headers.delete("host");
+  headers.set("x-forwarded-host", requestUrl.host);
+  headers.set("x-forwarded-proto", requestUrl.protocol.replace(":", ""));
+
+  const upstream = await fetch(chatProxyTarget(request.url, origin), {
+    method: request.method,
+    headers,
+    body: request.body,
+    redirect: "manual",
+    cf: { cacheEverything: false },
+  });
+
+  return new Response(upstream.body, {
+    status: upstream.status,
+    statusText: upstream.statusText,
+    headers: upstream.headers,
+  });
 }
 
 function nowIso() {
@@ -1261,6 +1299,7 @@ async function mapEvent(env: Env, request: Request, row: EventRow) {
     flyer_urls: {
       letter: eventFlyerPublicUrl(request, row.slug, "letter"),
       postcard: eventFlyerPublicUrl(request, row.slug, "postcard"),
+      letter_4up: eventFlyerPublicUrl(request, row.slug, "letter-4up"),
       social: eventFlyerPublicUrl(request, row.slug, "social"),
     },
     host_type: row.host_org_id ? "org" : row.host_user_id ? "individual" : "unclaimed",
@@ -1287,166 +1326,58 @@ function xmlEscape(value: unknown) {
   });
 }
 
-type FlyerFormat = "letter" | "postcard" | "social";
+type FlyerFormat = "letter" | "letter-4up" | "postcard" | "social";
 
 function flyerFormat(value: string | null): FlyerFormat {
   const normalized = String(value || "").trim().toLowerCase();
+  if (normalized === "letter-4up" || normalized === "2x2") return "letter-4up";
   if (normalized === "4x6" || normalized === "postcard") return "postcard";
   if (normalized === "social" || normalized === "preview" || normalized === "og") return "social";
   return "letter";
 }
 
-function flyerGeometry(format: FlyerFormat) {
-  if (format === "postcard") return { width: 400, height: 600, name: "postcard" };
-  if (format === "social") return { width: 1200, height: 630, name: "social" };
-  return { width: 850, height: 1100, name: "letter" };
-}
-
-function shortText(value: unknown, max: number) {
-  const text = String(value || "").replace(/\s+/g, " ").trim();
-  if (text.length <= max) return text;
-  return `${text.slice(0, Math.max(0, max - 1)).trim()}…`;
-}
-
-function wrapText(value: unknown, maxChars: number, maxLines: number) {
-  const words = String(value || "").replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
-  const lines: string[] = [];
-  let line = "";
-  for (const word of words) {
-    const next = line ? `${line} ${word}` : word;
-    if (next.length > maxChars && line) {
-      lines.push(line);
-      line = word;
-    } else {
-      line = next;
-    }
-    if (lines.length === maxLines) break;
-  }
-  if (line && lines.length < maxLines) lines.push(line);
-  if (words.length && lines.length === maxLines) {
-    const used = lines.join(" ").length;
-    const original = words.join(" ");
-    if (used < original.length) lines[maxLines - 1] = shortText(lines[maxLines - 1], Math.max(1, maxChars));
-  }
-  return lines;
-}
-
-function eventDateLabel(event: EventRow) {
-  if (!event.starts_at) return "Date to be announced";
-  const start = new Date(event.starts_at);
-  if (Number.isNaN(start.getTime())) return event.starts_at;
-  const date = new Intl.DateTimeFormat("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "America/New_York",
-  }).format(start);
-  const startTime = new Intl.DateTimeFormat("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "America/New_York",
-  }).format(start);
-  if (!event.ends_at) return `${date} · ${startTime}`;
-  const end = new Date(event.ends_at);
-  if (Number.isNaN(end.getTime())) return `${date} · ${startTime}`;
-  const endTime = new Intl.DateTimeFormat("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "America/New_York",
-  }).format(end);
-  return `${date} · ${startTime}–${endTime}`;
-}
-
-function nestedSvg(svg: string, x: number, y: number, size: number) {
-  return svg.replace(/<svg\s+/i, `<svg x="${x}" y="${y}" width="${size}" height="${size}" `);
-}
-
 async function eventFlyerSvg(env: Env, request: Request, event: EventRow, format: FlyerFormat) {
-  const { width, height, name } = flyerGeometry(format);
   const publicUrl = await eventPublicUrl(env, request, event.slug);
-  const title = shortText(event.social_title || event.title || "Event", format === "social" ? 92 : 120);
-  const host = shortText(event.organization_name || event.host_org_name || event.host_user_name || "MedTech Social", 80);
-  const description = shortText(event.social_description || event.description || "Join us for this community event.", format === "social" ? 190 : 360);
-  const date = eventDateLabel(event);
-  const location = shortText(event.location || "Location to be announced", format === "social" ? 90 : 140);
-  const qrSize = format === "social" ? 150 : format === "postcard" ? 112 : 170;
-  const qr = nestedSvg(await QRCode.toString(publicUrl, {
-    type: "svg",
-    errorCorrectionLevel: "M",
-    margin: 2,
-    color: { dark: "#111827", light: "#ffffff" },
-  }), width - qrSize - (format === "social" ? 58 : 54), height - qrSize - (format === "social" ? 46 : 58), qrSize);
-  const margin = format === "social" ? 58 : format === "postcard" ? 34 : 64;
-  const badge = host.toUpperCase();
-  const titleSize = format === "social" ? 72 : format === "postcard" ? 37 : 58;
-  const titleChars = format === "social" ? 22 : format === "postcard" ? 14 : 18;
-  const titleLines = wrapText(title, titleChars, format === "social" ? 2 : 4);
-  const descLines = wrapText(description, format === "social" ? 58 : format === "postcard" ? 31 : 48, format === "social" ? 2 : format === "postcard" ? 5 : 6);
-  const detailY = margin + 92 + titleLines.length * (titleSize * 0.95);
-  const descY = detailY + (format === "postcard" ? 96 : 120);
-  const linkLabel = new URL(publicUrl).hostname.replace(/^www\./, "");
-  const image = event.image_url ? `<image href="${xmlEscape(event.image_url)}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice" opacity="0.2" />` : "";
-  const titleTspans = titleLines.map((line, index) => `<tspan x="${margin}" dy="${index === 0 ? 0 : titleSize * 0.95}">${xmlEscape(line)}</tspan>`).join("");
-  const descTspans = descLines.map((line, index) => `<tspan x="${margin}" dy="${index === 0 ? 0 : format === "postcard" ? 22 : 31}">${xmlEscape(line)}</tspan>`).join("");
-  const qrLabelY = height - (format === "social" ? 34 : 36);
-  const tagLine = format === "social" ? "Health · Medicine · Biotech" : "health, medicine, biotech";
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="title desc">
-  <title id="title">${xmlEscape(title)} flyer</title>
-  <desc id="desc">${xmlEscape(description)}</desc>
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#07111f"/>
-      <stop offset="0.52" stop-color="#123d4c"/>
-      <stop offset="1" stop-color="#39a08f"/>
-    </linearGradient>
-    <linearGradient id="panel" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.18"/>
-      <stop offset="1" stop-color="#ffffff" stop-opacity="0.07"/>
-    </linearGradient>
-  </defs>
-  <rect width="${width}" height="${height}" fill="url(#bg)"/>
-  ${image}
-  <rect x="${margin / 2}" y="${margin / 2}" width="${width - margin}" height="${height - margin}" rx="${format === "social" ? 38 : 32}" fill="url(#panel)" stroke="#ffffff" stroke-opacity="0.22"/>
-  <text x="${margin}" y="${margin + 20}" fill="#c7fff4" font-family="Inter, Arial, sans-serif" font-size="${format === "postcard" ? 13 : 20}" font-weight="800" letter-spacing="${format === "postcard" ? 1.8 : 3}">${xmlEscape(badge)}</text>
-  <text x="${margin}" y="${margin + 52}" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-size="${titleSize}" font-weight="900" letter-spacing="-2">${titleTspans}</text>
-  <text x="${margin}" y="${detailY}" fill="#c7fff4" font-family="Inter, Arial, sans-serif" font-size="${format === "postcard" ? 17 : 27}" font-weight="800">${xmlEscape(date)}</text>
-  <text x="${margin}" y="${detailY + (format === "postcard" ? 29 : 42)}" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-size="${format === "postcard" ? 15 : 24}" font-weight="650">${xmlEscape(location)}</text>
-  <text x="${margin}" y="${descY}" fill="#f0fffb" font-family="Inter, Arial, sans-serif" font-size="${format === "postcard" ? 18 : 28}" font-weight="500">${descTspans}</text>
-  <text x="${margin}" y="${height - (format === "postcard" ? 80 : 96)}" fill="#c7fff4" font-family="Inter, Arial, sans-serif" font-size="${format === "postcard" ? 14 : 22}" font-weight="800">${xmlEscape(tagLine)}</text>
-  <text x="${margin}" y="${height - (format === "postcard" ? 50 : 58)}" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-size="${format === "postcard" ? 12 : 18}" font-weight="650">${xmlEscape(linkLabel)}</text>
-  <rect x="${width - qrSize - (format === "social" ? 64 : 60)}" y="${height - qrSize - (format === "social" ? 52 : 64)}" width="${qrSize + 12}" height="${qrSize + 12}" rx="18" fill="#ffffff" opacity="0.96"/>
-  ${qr}
-  <text x="${width - qrSize / 2 - (format === "social" ? 58 : 54)}" y="${qrLabelY}" text-anchor="middle" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-size="${format === "postcard" ? 11 : 16}" font-weight="800">Scan to RSVP</text>
-  <text x="${width - margin}" y="${margin + 20}" text-anchor="end" fill="#ffffff" opacity="0.62" font-family="Inter, Arial, sans-serif" font-size="${format === "postcard" ? 11 : 16}" font-weight="700">${xmlEscape(name === "letter" ? "8.5×11" : name === "postcard" ? "4×6" : "social preview")}</text>
-</svg>`;
+  const tenant = await resolvePortalTenant(env.DB, request);
+  const name = event.organization_name || event.host_org_name || event.host_user_name || tenant.name || "Community event";
+  let logo: string | undefined;
+  if (tenant.public_base_url && tenant.brand_image_path) {
+    const base = new URL(tenant.public_base_url);
+    const asset = new URL(tenant.brand_image_path, base);
+    if (base.protocol === "https:" && asset.origin === base.origin && asset.pathname.startsWith("/images/")) {
+      logo = await posterLogo(asset);
+    }
+  }
+  return renderEventPoster(event, publicUrl, format, { name, tagline: tenant.tagline, logo });
 }
 
 async function publicEventBySlug(db: D1Database, rawSlug: string) {
   const slug = slugify(rawSlug);
+  const direct = await db.prepare(
+    `SELECT e.*, o.name AS organization_name
+     FROM events e
+     LEFT JOIN organizations o ON o.id = e.host_org_id
+     WHERE e.slug = ?
+     LIMIT 1`,
+  )
+    .bind(slug)
+    .first<EventRow>();
+  if (direct) return direct;
+
   try {
     return await db.prepare(
       `SELECT e.*, o.name AS organization_name
-       FROM events e
+       FROM event_slug_aliases esa
+       JOIN events e ON e.id = esa.event_id
        LEFT JOIN organizations o ON o.id = e.host_org_id
-       LEFT JOIN event_slug_aliases esa ON esa.event_id = e.id AND esa.slug = ?
-       WHERE e.slug = ? OR esa.slug = ?
-       ORDER BY CASE WHEN e.slug = ? THEN 0 ELSE 1 END
+       WHERE esa.slug = ?
        LIMIT 1`,
-    )
-      .bind(slug, slug, slug, slug)
-      .first<EventRow>();
-  } catch (err) {
-    if (!String(err instanceof Error ? err.message : err).includes("event_slug_aliases")) throw err;
-    return await db.prepare(
-      `SELECT e.*, o.name AS organization_name
-       FROM events e
-       LEFT JOIN organizations o ON o.id = e.host_org_id
-       WHERE e.slug = ?`,
     )
       .bind(slug)
       .first<EventRow>();
+  } catch (err) {
+    if (!String(err instanceof Error ? err.message : err).includes("event_slug_aliases")) throw err;
+    return null;
   }
 }
 
@@ -2247,7 +2178,42 @@ async function ensurePeopleUbiEnrollment(db: D1Database, timestamp: string) {
 export async function runUbiTick(db: D1Database, scheduledTime = Date.now()): Promise<UbiTickSummary> {
   const startedAt = isoFromMillis(scheduledTime);
   const runKey = startedAt.slice(0, 16);
-  await ensureUbiTickState(db, startedAt);
+  const state = await db.prepare("SELECT last_tick_at FROM ubi_tick_state WHERE id = 'singleton'").first<{ last_tick_at: string | null }>();
+  if (!state) {
+    await ensureUbiTickState(db, startedAt);
+    return {
+      run_key: runKey,
+      status: "skipped",
+      started_at: startedAt,
+      completed_at: nowIso(),
+      elapsed_seconds: 0,
+      eligible_accounts: 0,
+      payout_count: 0,
+      accrued_amount: 0,
+      paid_amount: 0,
+    };
+  }
+
+  const lastTickMillis = state.last_tick_at ? Date.parse(state.last_tick_at) : Number.NaN;
+  const elapsedSeconds = Number.isFinite(lastTickMillis)
+    ? Math.max(0, Math.floor((scheduledTime - lastTickMillis) / 1000))
+    : 0;
+  const settings = await getUbiSettings(db);
+  const intervalSeconds = cadenceSeconds(settings);
+  if (elapsedSeconds < intervalSeconds) {
+    return {
+      run_key: runKey,
+      status: "skipped",
+      started_at: startedAt,
+      completed_at: nowIso(),
+      elapsed_seconds: elapsedSeconds,
+      eligible_accounts: 0,
+      payout_count: 0,
+      accrued_amount: 0,
+      paid_amount: 0,
+    };
+  }
+
   const claimed = await markUbiRunStarted(db, runKey, startedAt);
   if (!claimed) {
     return {
@@ -2264,12 +2230,6 @@ export async function runUbiTick(db: D1Database, scheduledTime = Date.now()): Pr
   }
 
   try {
-    const state = await db.prepare("SELECT last_tick_at FROM ubi_tick_state WHERE id = 'singleton'").first<{ last_tick_at: string | null }>();
-    const lastTickMillis = state?.last_tick_at ? Date.parse(state.last_tick_at) : Number.NaN;
-    const elapsedSeconds = Number.isFinite(lastTickMillis)
-      ? Math.max(0, Math.floor((scheduledTime - lastTickMillis) / 1000))
-      : 0;
-    const settings = await getUbiSettings(db);
     const accruedAmount = denaForElapsed(Number(settings.dena_annual || 0), Number(settings.dena_precision || 6), elapsedSeconds);
     const entityTypes = normalizedEntityTypes(settings);
     if (entityTypes.includes("individual")) await ensurePeopleUbiEnrollment(db, startedAt);
@@ -2737,6 +2697,16 @@ async function publicContact(env: Env, request: Request, slug: string) {
     .first<ContactRow>();
   if (!row) fail(404, "Public profile not found");
   if (!row.enabled) {
+    const eventVisible = await env.DB.prepare(`
+      SELECT 1
+      FROM event_registrations r
+      JOIN events e ON e.id = r.event_id
+      WHERE r.user_id = ?
+      LIMIT 1
+    `)
+      .bind(row.user_id)
+      .first();
+    if (eventVisible) return mapContact(env, request, row);
     try {
       const user = await currentUser(env, request);
       if (user.id !== row.user_id) fail(404, "Public profile not found");
@@ -2952,7 +2922,7 @@ app.get("/api/network/events/public/:slug/flyer.svg", async (c) => {
   if (!row) fail(404, "Event not found");
   const format = flyerFormat(c.req.query("format") || c.req.query("size") || null);
   const svg = await eventFlyerSvg(c.env, c.req.raw, row, format);
-  const dispositionName = `${row.slug}-${format === "postcard" ? "4x6" : format === "social" ? "social" : "letter"}-flyer.svg`;
+  const dispositionName = `${row.slug}-${format === "postcard" ? "4x6" : format}-flyer.svg`;
   return new Response(svg, {
     headers: {
       "content-type": "image/svg+xml; charset=utf-8",
@@ -4847,6 +4817,9 @@ app.post("/api/network/chat/bootstrap", async (c) => {
   }
   return c.json({ detail: "Matrix bootstrap is not implemented in the Cloudflare org worker yet" }, 501);
 });
+
+app.all("/api/chat", (c) => proxyChatRequest(c.req.raw, c.env));
+app.all("/api/chat/*", (c) => proxyChatRequest(c.req.raw, c.env));
 
 app.route('/api/email', emailRoutes(currentUser, async (env, request) => {
   const user = await currentUser(env, request);

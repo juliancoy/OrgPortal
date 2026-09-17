@@ -72,7 +72,7 @@ test('registration requires verified identity; repeated requests and cancellatio
   assert.deepEqual(await cancelled.json(), {
     event_id: 'event-1',
     count: 1,
-    attendees: [{ user_id: 'bob', slug: 'bob', name: 'User', photo_url: null, profile_public: false }],
+    attendees: [{ user_id: 'bob', slug: 'bob', name: 'User', photo_url: null, profile_public: false, profile_url: '/users/bob' }],
     registered: false,
   });
   const bobContact = database.prepare("SELECT user_email, user_name, slug, enabled FROM user_contact_pages WHERE user_id = 'bob'").get();
@@ -119,6 +119,7 @@ test('registration refreshes placeholder contact rows with the real name and ava
       name: 'Bob Builder',
       photo_url: 'https://images.test/bob.png',
       profile_public: false,
+      profile_url: '/users/bob-builder',
     }],
     registered: true,
   });
@@ -195,12 +196,54 @@ test('public preview counts all registrations and returns registrant profiles wi
   assert.equal(privateProfile.name, 'Person 0');
   assert.equal(privateProfile.photo_url, 'https://images.test/avatar.png');
   assert.equal(privateProfile.profile_public, false);
+  assert.equal(privateProfile.profile_url, '/users/person-0');
   const publicProfile = data.attendees.find((person: { slug: string }) => person.slug === 'person-1');
   assert.equal(publicProfile.name, 'Person 1');
   assert.equal(publicProfile.photo_url, 'https://images.test/avatar.png');
   assert.equal(publicProfile.profile_public, true);
-  for (const person of data.attendees) assert.deepEqual(Object.keys(person).sort(), ['name', 'photo_url', 'profile_public', 'slug', 'user_id']);
+  assert.equal(publicProfile.profile_url, '/users/person-1');
+  for (const person of data.attendees) assert.deepEqual(Object.keys(person).sort(), ['name', 'photo_url', 'profile_public', 'profile_url', 'slug', 'user_id']);
   assert.doesNotMatch(JSON.stringify(data), /private@|email@|555-0100/);
+});
+
+test('event-visible registrant profiles can be opened without directory listing the person', async (t) => {
+  const { database, request } = setup();
+  t.after(() => database.close());
+  database.exec(`INSERT INTO user_contact_pages
+    (id, user_id, user_email, user_name, slug, enabled, photo_url, email_public, phone_public)
+    VALUES ('p-private', 'private-person', 'private@example.test', 'Private Person', 'private-person', 0, 'https://images.test/private.png', NULL, NULL)`);
+  database.exec("INSERT INTO event_registrations (event_id, user_id) VALUES ('event-1', 'private-person')");
+
+  const attendance = await (await request()).json();
+  assert.equal(attendance.attendees[0].profile_url, '/users/private-person');
+  assert.equal(attendance.attendees[0].profile_public, false);
+
+  const profileResponse = await app.request('https://org.test/api/network/users/public/private-person', undefined, {
+    DB: { prepare: (sql: string) => new Statement(database.prepare(sql)), batch: async (statements: Statement[]) => {
+      const results = [];
+      for (const statement of statements) results.push(await statement.run());
+      return results;
+    } },
+    PIDP_BASE_URL: 'https://identity.test',
+  } as unknown as Env);
+  assert.equal(profileResponse.status, 200);
+  const profile = await profileResponse.json();
+  assert.equal(profile.user_name, 'Private Person');
+  assert.equal(profile.slug, 'private-person');
+  assert.equal(profile.enabled, false);
+  assert.equal(profile.photo_url, 'https://images.test/private.png');
+  assert.equal(profile.email_public, null);
+  assert.equal(profile.phone_public, null);
+
+  database.exec("DELETE FROM event_registrations WHERE event_id = 'event-1' AND user_id = 'private-person'");
+  assert.equal((await app.request('https://org.test/api/network/users/public/private-person', undefined, {
+    DB: { prepare: (sql: string) => new Statement(database.prepare(sql)), batch: async (statements: Statement[]) => {
+      const results = [];
+      for (const statement of statements) results.push(await statement.run());
+      return results;
+    } },
+    PIDP_BASE_URL: 'https://identity.test',
+  } as unknown as Env)).status, 404);
 });
 
 test('event registrant data migration repairs contact rows used for messaging', async (t) => {

@@ -7,6 +7,7 @@ import { NativeChatApi, type NativeChatMessage, type NativeChatReaction } from '
 import { refreshRuntimeTokenFromSession } from '../../../infrastructure/auth/sessionToken'
 import { pidpAppLoginUrl } from '../../../config/pidp'
 import { EventRegistration } from './EventRegistration'
+import { EventPosterTools } from '../../components/EventPosterTools'
 import { toUserFacingErrorMessage } from '../../../infrastructure/http/userFacingError'
 import { loadGoogleCalendarConnection, savePortalEventToGoogleCalendar } from '../googleCalendarApi'
 import { loadMicrosoftCalendarConnection, savePortalEventToMicrosoftCalendar } from '../microsoftCalendarApi'
@@ -23,6 +24,7 @@ type PublicEvent = {
   id: string
   title: string
   slug: string
+  updated_at?: string | null
   description?: string | null
   starts_at?: string | null
   ends_at?: string | null
@@ -79,6 +81,14 @@ function toEventTimeRange(start?: string | null, end?: string | null) {
 
 function eventUrl(slug: string) {
   return `${window.location.origin}/events/${encodeURIComponent(slug)}`
+}
+
+function googleMapsUrl(location: string) {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`
+}
+
+function googleMapsEmbedUrl(location: string) {
+  return `https://www.google.com/maps?q=${encodeURIComponent(location)}&output=embed`
 }
 
 function summary(text?: string | null) {
@@ -218,6 +228,7 @@ export function PublicEventPage() {
   const [chatActionPending, setChatActionPending] = useState(false)
   const [myUserId, setMyUserId] = useState<string | null>(null)
   const [canManageEvent, setCanManageEvent] = useState(false)
+  const [addressCopied, setAddressCopied] = useState(false)
   const chatApi = useMemo(
     () =>
       new NativeChatApi(async () => {
@@ -270,7 +281,10 @@ export function PublicEventPage() {
       })
       .then((data) => {
         if (cancelled) return
-        setEvent(data)
+        setEvent({ ...data, media: data.media?.map((item) => ({
+          ...item,
+          url: item.url.startsWith('/api/network/') ? orgUrl(item.url) : item.url,
+        })) })
         setStatus('')
       })
       .catch((err) => {
@@ -540,6 +554,18 @@ export function PublicEventPage() {
     }
   }
 
+  async function copyEventAddress() {
+    const address = event?.location?.trim()
+    if (!address) return
+    try {
+      await navigator.clipboard.writeText(address)
+      setAddressCopied(true)
+      window.setTimeout(() => setAddressCopied(false), 1600)
+    } catch {
+      setAddressCopied(false)
+    }
+  }
+
   if (!event) {
     return (
       <section className="panel">
@@ -551,6 +577,8 @@ export function PublicEventPage() {
 
   const eventStart = event.starts_at
   const eventEnd = event.ends_at || eventStart || null
+  const mapsUrl = event.location ? googleMapsUrl(event.location) : null
+  const mapsEmbedUrl = event.location ? googleMapsEmbedUrl(event.location) : null
 
   return (
     <article className="public-event-page">
@@ -561,22 +589,6 @@ export function PublicEventPage() {
         <div className="public-event-hero-content">
           <p className="public-event-eyebrow">{getEventOrganizerName(event)}</p>
           <h1>{event.title}</h1>
-          <div className="public-event-facts" aria-label="Event details">
-            <div>
-              <span>Date</span>
-              <strong>{toEventDate(event.starts_at)}</strong>
-            </div>
-            <div>
-              <span>Time</span>
-              <strong>{toEventTimeRange(event.starts_at, event.ends_at)}</strong>
-            </div>
-            {event.location ? (
-              <div>
-                <span>Location</span>
-                <strong>{event.location}</strong>
-              </div>
-            ) : null}
-          </div>
           {canManageEvent ? (
             <Link className="btn-primary public-event-manage-button" to={`/orgs/events#event-${encodeURIComponent(event.slug)}`}>
               Manage Event
@@ -585,7 +597,7 @@ export function PublicEventPage() {
         </div>
       </section>
 
-      <div className="public-event-layout public-event-layout-primary">
+      <div className="public-event-layout public-event-luma-layout">
         <main className="public-event-main">
           {(event.media || []).length ? (
             <section className="portal-card" style={{ display: 'grid', gap: '0.75rem' }} aria-labelledby="event-media-title">
@@ -595,13 +607,13 @@ export function PublicEventPage() {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.75rem' }}>
                 {(event.media || []).map((item) => (
-                  <a key={item.id} href={item.url} target="_blank" rel="noopener noreferrer" style={{ display: 'grid', gap: '0.45rem', color: 'inherit', textDecoration: 'none' }}>
+                  <a key={item.id} href={item.url} target="_blank" rel="noopener noreferrer" style={{ display: 'grid', gap: '0.45rem', minWidth: 0, color: 'inherit', textDecoration: 'none' }}>
                     <img
                       src={item.url}
                       alt={item.alt || item.label}
                       style={{ width: '100%', aspectRatio: '3 / 4', objectFit: 'cover', borderRadius: 12, border: '1px solid var(--border)' }}
                     />
-                    <strong>{item.label}</strong>
+                    <strong style={{ overflowWrap: 'anywhere', color: 'var(--text-primary)' }}>{item.label}</strong>
                   </a>
                 ))}
               </div>
@@ -616,49 +628,6 @@ export function PublicEventPage() {
               <p>{event.description}</p>
             </section>
           ) : null}
-          <EventRegistration key={`${event.id}:${user?.id || 'guest'}:${Boolean(token)}`}
-            eventId={event.id} slug={event.slug} token={token} authLoading={authLoading} saveToCalendar={saveToCalendar}
-            organizationName={event.host_org_id ? event.organization_name || event.host_org_name : null} />
-          <section className="portal-card public-event-calendar-card">
-            <div className="public-event-card-heading">
-              <p className="public-event-eyebrow">Calendar</p>
-              <h2>Add It To Your Schedule</h2>
-            </div>
-            <div className="public-event-actions">
-        {eventStart && eventEnd ? (
-          <>
-            <button
-              type="button"
-              className="portal-button-secondary"
-              onClick={() => downloadIcsEvent({
-                title: event.title,
-                description: event.description || 'Event from Org Portal.',
-                location: event.location || null,
-                startsAt: eventStart,
-                endsAt: eventEnd,
-                url: event.source_url || eventUrl(event.slug),
-              })}
-            >
-              Download .ics
-            </button>
-            <a
-              href={outlookCalendarUrl({
-                title: event.title,
-                description: event.description || 'Event from Org Portal.',
-                location: event.location || null,
-                startsAt: eventStart,
-                endsAt: eventEnd,
-                url: event.source_url || eventUrl(event.slug),
-              })}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Outlook
-            </a>
-          </>
-        ) : null}
-            </div>
-          </section>
       {event.source_url ? (
         <p style={{ margin: 0, overflowWrap: 'anywhere' }}>
           <a href={event.source_url} target="_blank" rel="noreferrer">
@@ -801,6 +770,87 @@ export function PublicEventPage() {
         ) : null}
       </section>
         </main>
+        <aside className="public-event-side public-event-luma-side" aria-label="Event actions and location">
+          <EventRegistration key={`${event.id}:${user?.id || 'guest'}:${Boolean(token)}`}
+            eventId={event.id} slug={event.slug} token={token} authLoading={authLoading} saveToCalendar={saveToCalendar}
+            organizationName={event.host_org_id ? event.organization_name || event.host_org_name : null} />
+          <section className="portal-card public-event-logistics-card" aria-labelledby="event-logistics-title">
+            <div className="public-event-card-heading">
+              <p className="public-event-eyebrow">Details</p>
+              <h2 id="event-logistics-title">When And Where</h2>
+            </div>
+            <div className="public-event-logistics-list">
+              <div className="public-event-logistics-item">
+                <span>Date</span>
+                <strong>{toEventDate(event.starts_at)}</strong>
+              </div>
+              <div className="public-event-logistics-item">
+                <span>Time</span>
+                <strong>{toEventTimeRange(event.starts_at, event.ends_at)}</strong>
+              </div>
+              {event.location ? (
+                <div className="public-event-logistics-item">
+                  <span>Location</span>
+                  <strong>{event.location}</strong>
+                </div>
+              ) : null}
+            </div>
+            {event.location && mapsUrl && mapsEmbedUrl ? (
+              <div className="public-event-map-card">
+                <a className="public-event-map-frame" href={mapsUrl} target="_blank" rel="noreferrer" aria-label={`Open ${event.location} in Google Maps`}>
+                  <iframe title={`Map for ${event.location}`} src={mapsEmbedUrl} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+                </a>
+                <div className="public-event-map-actions">
+                  <a href={mapsUrl} target="_blank" rel="noreferrer">Open in Google Maps</a>
+                  <button type="button" className="portal-button-secondary" onClick={() => copyEventAddress().catch(() => {})}>
+                    {addressCopied ? 'Copied' : 'Copy Address'}
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </section>
+          <section className="portal-card public-event-calendar-card">
+            <div className="public-event-card-heading">
+              <p className="public-event-eyebrow">Calendar</p>
+              <h2>Add To Calendar</h2>
+            </div>
+            <div className="public-event-actions">
+              {eventStart && eventEnd ? (
+                <>
+                  <button
+                    type="button"
+                    className="portal-button-secondary"
+                    onClick={() => downloadIcsEvent({
+                      title: event.title,
+                      description: event.description || 'Event from Org Portal.',
+                      location: event.location || null,
+                      startsAt: eventStart,
+                      endsAt: eventEnd,
+                      url: event.source_url || eventUrl(event.slug),
+                    })}
+                  >
+                    Download .ics
+                  </button>
+                  <a
+                    href={outlookCalendarUrl({
+                      title: event.title,
+                      description: event.description || 'Event from Org Portal.',
+                      location: event.location || null,
+                      startsAt: eventStart,
+                      endsAt: eventEnd,
+                      url: event.source_url || eventUrl(event.slug),
+                    })}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Outlook
+                  </a>
+                </>
+              ) : null}
+            </div>
+          </section>
+          <EventPosterTools slug={event.slug} title={event.title} revision={event.updated_at || ''} />
+        </aside>
       </div>
     </article>
   )

@@ -6,6 +6,7 @@ import { basename, extname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 import { createInterface } from 'node:readline/promises';
+import { credentialStore, tokenConnection } from './upload-connection.mjs';
 
 function secureUrl(value) {
   const url = new URL(value);
@@ -13,9 +14,15 @@ function secureUrl(value) {
   return url;
 }
 
-async function json(url, options = {}) {
-  const response = await fetch(url, { ...options, redirect: 'error', signal: AbortSignal.timeout(30000) });
-  if (!response.ok) throw new Error(`Request failed (${response.status}); check service deployment and account permissions`);
+async function json(url, { timeoutMs = 30000, ...options } = {}) {
+  const response = await fetch(url, { ...options, redirect: 'error', signal: AbortSignal.timeout(timeoutMs) });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    // Only known service errors are safe to display; never echo arbitrary token responses.
+    const messages = new Set(['PIdP token status is unavailable', 'Uploads require account revocation checks',
+      'Invalid or unauthorized access token', 'Missing event scope', 'Event does not belong to this organization', 'invalid_grant']);
+    throw new Error(`Request failed (${response.status})${messages.has(data.error) ? `: ${data.error}` : '; check service deployment and account permissions'}`);
+  }
   return response.json();
 }
 
@@ -28,7 +35,7 @@ export function callbackResult(url, state, issuer) {
   return code;
 }
 
-export async function browserLogin(resource, issuer, clientId, openBrowser = true) {
+export async function browserLogin(resource, issuer, clientId, openBrowser = true, options = {}) {
   secureUrl(resource); secureUrl(issuer);
   const metadata = await json(`${issuer}/.well-known/oauth-authorization-server`);
   if (metadata.issuer !== issuer || !metadata.code_challenge_methods_supported?.includes('S256')
@@ -37,6 +44,21 @@ export async function browserLogin(resource, issuer, clientId, openBrowser = tru
   for (const key of ['authorization_endpoint', 'token_endpoint', 'revocation_endpoint']) {
     if (secureUrl(metadata[key]).origin !== new URL(issuer).origin) throw new Error('Unexpected authorization endpoint');
   }
+  const saved = options.store ? await options.store.load() : null;
+  if (saved && (!saved.clientId || (saved.refreshToken && clientId && saved.clientId !== clientId))) throw new Error('Saved client does not match; disconnect the saved connection first');
+  clientId = clientId || saved?.clientId;
+  if (options.disconnect && !saved?.refreshToken) return { close: async () => {}, disconnect: async () => {} };
+  if (!clientId) {
+    if (secureUrl(metadata.registration_endpoint).origin !== new URL(issuer).origin) throw new Error('Unexpected registration endpoint');
+    const registration = await json(metadata.registration_endpoint, { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ client_name: 'OrgPortal image upload', token_endpoint_auth_method: 'none',
+        redirect_uris: ['http://127.0.0.1/callback'], grant_types: ['authorization_code', 'refresh_token'],
+        response_types: ['code'], scope: 'org:events.read org:events.write' }) });
+    if (typeof registration.client_id !== 'string' || !registration.client_id || registration.client_secret) throw new Error('Invalid public client registration');
+    clientId = registration.client_id;
+  }
+  if (options.store && saved?.clientId !== clientId) await options.store.save({ clientId });
+  if (saved?.refreshToken) return tokenConnection({ resource, clientId, metadata, store: options.store, saved, requestJson: json });
   const verifier = randomBytes(32).toString('base64url');
   const state = randomBytes(32).toString('base64url');
   let complete, cancel;
@@ -77,53 +99,40 @@ export async function browserLogin(resource, issuer, clientId, openBrowser = tru
       if (command) { const child = spawn(command, [url.toString()], { stdio: 'ignore' }); child.on('error', () => {}); child.unref(); }
     }
     const code = await codePromise;
-    let token = await json(metadata.token_endpoint, { method: 'POST', body: new URLSearchParams({
+    const token = await json(metadata.token_endpoint, { method: 'POST', body: new URLSearchParams({
       grant_type: 'authorization_code', client_id: clientId, code, redirect_uri: redirect, resource, code_verifier: verifier }) });
-    if (!token.access_token || !token.refresh_token) throw new Error('Incomplete token response');
-    let expiresAt = Date.now() + token.expires_in * 1000;
-    return {
-      async accessToken() {
-        if (Date.now() > expiresAt - 30000) {
-          // Calls are sequential; never retry an ambiguous rotating-refresh exchange.
-          token = await json(metadata.token_endpoint, { method: 'POST', body: new URLSearchParams({
-            grant_type: 'refresh_token', client_id: clientId, refresh_token: token.refresh_token, resource }) });
-          if (!token.access_token || !token.refresh_token) throw new Error('Incomplete refresh response');
-          expiresAt = Date.now() + token.expires_in * 1000;
-        }
-        return token.access_token;
-      },
-      async close() {
-        const response = await fetch(metadata.revocation_endpoint, { method: 'POST', redirect: 'error', signal: AbortSignal.timeout(10000),
-          body: new URLSearchParams({ client_id: clientId, token: token.refresh_token }) });
-        if (!response.ok) throw new Error('Revoke the connection from your PIdP account');
-        token = null;
-      },
-    };
+    return tokenConnection({ resource, clientId, metadata, token, store: options.store, requestJson: json });
   } finally { clearTimeout(timer); server.closeAllConnections(); server.close(); }
 }
 
 async function main() {
   const { values } = parseArgs({ options: { resource: { type: 'string' }, issuer: { type: 'string', default: 'https://id.codecollective.us' },
-    'client-id': { type: 'string', default: 'orgportal-local-upload' }, organization: { type: 'string' }, event: { type: 'string' },
+    'client-id': { type: 'string' }, organization: { type: 'string' }, event: { type: 'string' },
+    connect: { type: 'boolean' }, disconnect: { type: 'boolean' }, ephemeral: { type: 'boolean' },
     directory: { type: 'string' }, yes: { type: 'boolean' }, 'no-browser': { type: 'boolean' }, help: { type: 'boolean' } } });
-  if (values.help) { console.log('event-upload.mjs --resource https://HOST/api/org/mcp --organization ORG_ID --event SLUG --directory PATH [--yes] [--no-browser]'); return; }
-  if (!values.resource || !values.organization || !values.event || !values.directory) throw new Error('Specify --resource, --organization, --event and --directory (see --help)');
+  if (values.help) { console.log('event-upload.mjs --resource https://HOST/api/org/mcp [--connect | --disconnect | --organization ORG_ID --event SLUG --directory PATH] [--yes] [--no-browser] [--ephemeral]'); return; }
+  if ((values.connect && values.disconnect) || (values.ephemeral && (values.connect || values.disconnect))) throw new Error('Choose one connection mode');
+  if (!values.resource || (!(values.connect || values.disconnect) && (!values.organization || !values.event || !values.directory))) throw new Error('Specify --resource and a connection command or upload arguments (see --help)');
   const resource = secureUrl(values.resource).toString();
   const extensions = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.gif': 'image/gif', '.webp': 'image/webp' };
-  const files = (await readdir(values.directory)).filter(name => extensions[extname(name).toLowerCase()]).sort();
-  if (!files.length || files.length > 12) throw new Error('Choose a directory with 1 to 12 supported images');
+  const files = values.connect || values.disconnect ? [] : (await readdir(values.directory)).filter(name => extensions[extname(name).toLowerCase()]).sort();
+  if (!(values.connect || values.disconnect) && (!files.length || files.length > 12)) throw new Error('Choose a directory with 1 to 12 supported images');
   for (const name of files) {
     const info = await stat(resolve(values.directory, name));
     if (!info.isFile() || !info.size || info.size > 8 * 1024 * 1024) throw new Error(`${name}: expected an image up to 8 MB`);
   }
-  const connection = await browserLogin(resource, values.issuer, values['client-id'], !values['no-browser']);
+  const store = values.ephemeral ? null : await credentialStore(resource, values.issuer);
+  let connection;
   try {
+    connection = await browserLogin(resource, values.issuer, values['client-id'], !values['no-browser'], { store, disconnect: values.disconnect });
+    if (values.disconnect) { await connection.disconnect(); console.log('Disconnected.'); return; }
+    if (values.connect) { await connection.accessToken(); console.log('Account connection saved in the OS keyring.'); return; }
     for (const name of files) {
       const data = await readFile(resolve(values.directory, name));
       const form = new FormData();
       form.set('organizationId', values.organization); form.set('eventId', values.event);
       form.set('label', basename(name)); form.set('image', new Blob([data], { type: extensions[extname(name).toLowerCase()] }), name);
-      const send = async () => json(`${resource}/uploads/event-media`, { method: 'POST', headers: { authorization: `Bearer ${await connection.accessToken()}` }, body: form });
+      const send = async () => json(`${resource}/uploads/event-media`, { method: 'POST', headers: { authorization: `Bearer ${await connection.accessToken()}` }, body: form, timeoutMs: 120000 });
       const preview = await send();
       if (!preview.dryRun || !preview.previewId) throw new Error('Upload preview unavailable');
       console.log(JSON.stringify({ event: preview.eventTitle, organization: preview.organizationId, image: preview.image, existingImages: preview.before.length }, null, 2));
@@ -134,11 +143,16 @@ async function main() {
         finally { prompt.close(); }
       }
       form.set('confirm', 'true'); form.set('previewId', preview.previewId);
-      const result = await send();
+      let result;
+      try { result = await send(); }
+      catch { throw new Error(`Upload outcome uncertain; inspect operation ${preview.previewId} and the gallery before retrying ${name}`); }
       if (!result.success) throw new Error(`Upload outcome uncertain; inspect operation ${preview.previewId} before retrying`);
       console.log(`Attached ${name} to ${preview.eventTitle}`);
     }
-  } finally { await connection.close().catch(() => console.error('Connection cleanup failed; revoke it at the PIdP connected-apps page.')); }
+  } finally {
+    await connection?.close().catch(() => console.error('Connection cleanup failed; revoke it at the PIdP connected-apps page.'));
+    await store?.release();
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

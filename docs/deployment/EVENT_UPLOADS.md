@@ -1,5 +1,27 @@
 # Browser-authorized local image uploads
 
+## Persistent connections: 2026-09-17
+
+The uploader now retains its own account grant in OS credential storage. Verified
+live sign-in followed by automatic token rotation in separate processes, MCP
+initialization, and all four NOLA_MENU uploads to MedTech in the Hut. Downloaded
+image SHA-256 hashes match the local originals. No API key was used.
+
+OrgPortal Worker `e947c107-f730-42f7-98a0-004fc90a2be6` fixes live introspection:
+Workerd rejects `redirect: "error"` before making the request. The check now uses
+`manual` and rejects all non-2xx responses, including redirects. Secrets and
+tokens are never logged. PIdP's existing five-minute access tokens and 30-day
+grants are unchanged, so no Python/serverless behavior divergence was introduced.
+
+Shared frontend Worker `bd626cc6-6c12-4be4-815e-ca0cb93d3fa7` resolves stored
+gallery image URLs through the existing `/api/org` proxy, preserving external
+image URLs, and wraps long filenames with readable caption colors. The desktop
+and mobile gallery routing and caption regression tests pass.
+
+Codex manages its own credentials separately. The locally installed Codex Snap
+does not expose a password-manager interface. Uploader persistence does not
+resolve that packaging restriction or grant access to Codex's keyring entries.
+
 ## Production release: 2026-09-17
 
 Released through CodeCollective's backend deployment path:
@@ -23,15 +45,25 @@ The Python PIdP implementation was not deployed; production here uses the Worker
 The shared uploader lives in OrgPortal, not in tenant repositories. It opens the
 system browser for PIdP account login and consent using a registered public OAuth
 client with PKCE S256, a random state and a loopback callback. It verifies the
-callback issuer and state. Tokens stay in process memory, refresh sequentially
-when needed, and the grant is revoked when the task finishes. Interrupting the
-process may leave a grant; revoke it through PIdP's `/oauth/mcp/connections` page.
-There is no API key or copied browser session token.
+callback issuer and state. By default, the client registration and rotating refresh
+token are saved in the OS keyring under `OrgPortal upload OAuth`, isolated by
+issuer and resource. Access tokens stay in memory. Connections survive normal
+completion, upload errors and restarts, within PIdP's existing 30-day grant limit.
+There is no API key or copied browser session token, and no plaintext fallback.
+On Linux, persistent Secret Service storage is required; kernel session keyrings
+are not used as a fallback. This is separate from Codex's own credential store.
+
+Concurrent uploader processes for the same connection are excluded using a
+private, non-secret lock under `~/.orgportal-connections`. Refresh intent is saved
+before sending a one-use token; an interrupted or ambiguous refresh requires
+disconnect/reconnect rather than replay. A failed disconnect retains credentials
+so revocation can be retried. Revocation is also available through PIdP's
+`/oauth/mcp/connections` page.
 
 ## Release prerequisites
 
-- Register `orgportal-local-upload` in PIdP as described in
-  `../pidp/docs/account-oauth.md` (relative to the OrgPortal checkout).
+- Enable PIdP dynamic public-client registration, or supply a pre-registered
+  `--client-id`. The uploader registers itself once and remembers the client ID.
 - Deploy PIdP public-client support using its release path.
 - Configure the canonical MCP resource, explicit account subject mappings and
   live introspection in OrgPortal. Existing organization membership still applies.
@@ -52,6 +84,20 @@ node scripts/event-upload.mjs \
   --event medtech-in-the-hut \
   --directory "$HOME/Downloads/NOLA_MENU"
 ```
+
+Install local tooling dependencies with `npm ci`. Connect without uploading, or
+explicitly revoke the saved connection:
+
+```sh
+node scripts/event-upload.mjs --resource https://medtech.social/api/org/mcp --connect
+node scripts/event-upload.mjs --resource https://medtech.social/api/org/mcp --disconnect
+```
+
+`--ephemeral` opts into the previous memory-only, revoke-on-exit behavior for an
+upload. It does not read or modify the persistent connection. Do not copy Codex
+credentials into this uploader; each client owns its own account grant. A locked
+or inaccessible keyring is an actionable error, not a reason to store tokens in
+the repository or weaken system sandbox restrictions.
 
 The browser must run on the same machine as the uploader's loopback listener.
 `--no-browser` prints the authorization URL without launching a browser.

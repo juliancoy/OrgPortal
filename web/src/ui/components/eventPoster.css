@@ -1,0 +1,16 @@
+.event-poster { min-width: 0; padding-block: 1.5rem; border-top: 1px solid var(--border); }
+.event-poster h2 { font-size: 1.25rem; margin: 0 0 1rem; letter-spacing: 0; }
+.event-poster-toolbar, .event-poster-actions, .event-poster-formats { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.event-poster-toolbar { justify-content: space-between; margin-bottom: 1rem; }
+.event-poster button { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; min-height: 40px; padding: .45rem .65rem; border: 1px solid var(--border); border-radius: 4px; background: var(--panel); color: var(--text-primary); font-size: .875rem; font-weight: 600; letter-spacing: 0; cursor: pointer; }
+.event-poster button[aria-pressed="true"] { background: #087482; border-color: #087482; color: #fff; }
+.event-poster button:focus-visible { outline: 3px solid #087482; outline-offset: 3px; }
+.event-poster button:disabled { opacity: .55; cursor: default; }
+.event-poster-preview { width: min(100%, 425px); aspect-ratio: 850 / 1100; background: #e7edf0; border: 1px solid var(--border); display: grid; place-items: center; overflow: hidden; }
+.event-poster-preview-postcard { width: min(100%, 360px); aspect-ratio: 2 / 3; }
+.event-poster-preview-social { width: min(100%, 720px); aspect-ratio: 1200 / 630; }
+.event-poster-preview img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.event-poster-preview span { font-size: .875rem; color: #435362; }
+.event-poster-error { display: flex; gap: .75rem; align-items: center; margin-bottom: 1rem; color: var(--text-danger); }
+@media (max-width: 480px) { .event-poster-toolbar { align-items: flex-start; flex-direction: column; } }
+.event-poster-entry > button { display: inline-flex; align-items: center; gap: .5rem; }

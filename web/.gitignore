@@ -12,6 +12,7 @@ dist
 dist-ssr
 .vite-playwright-cache
 .vite-local-cache
+.vite-local-check-cache
 .tmp
 .tmp/
 scripts/__pycache__/

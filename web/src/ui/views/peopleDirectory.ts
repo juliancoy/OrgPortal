@@ -61,7 +61,7 @@ export async function loadPeopleDirectory({
   fetcher = fetch,
 }: DirectoryRequest): Promise<DirectoryResult> {
   const params = new URLSearchParams({
-    limit: '500',
+    limit: '40',
     sort: 'recent',
   })
   if (query.trim()) params.set('q', query.trim())

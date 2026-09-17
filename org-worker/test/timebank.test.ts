@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { app } from '../src/index';
 import { TimebankDatabase } from './helpers/timebankDatabase';
-import { createTimebankListing, proposeTimebankExchange, resolveTimebankExchange, updateTimebankListing, timebankDashboard, setTimebankListingVote } from '../src/timebank';
+import { createTimebankListing, proposeTimebankExchange, resolveTimebankExchange, updateTimebankListing, timebankDashboard, setTimebankListingVote, getTimebankListing } from '../src/timebank';
 
 const alice = { id: 'alice', name: 'Alice' };
 const bob = { id: 'bob', name: 'Bob' };
@@ -283,6 +283,45 @@ test('request sorting orders the entire board before limiting each column', asyn
   assert.equal((await list('newest'))[0].id, newest.id);
   assert.equal((await timebankDashboard(db, bob)).listings.filter((row) => row.kind === 'offer').length, 1);
   await assert.rejects(timebankDashboard(db, bob, 'code-collective', 'invalid'), { status: 400 });
+  database.sqlite.close();
+});
+
+test('listings carry tags and matching pairs connect compatible offers and requests', async () => {
+  const database = new TimebankDatabase();
+  const db = database.asD1();
+  const offer = await createTimebankListing(db, alice, {
+    ...listingInput('offer'),
+    title: 'Remote website help',
+    description: 'I can help with app setup and small website fixes.',
+    category: 'Tech help',
+    tags: ['websites', 'apps'],
+  }, 'bmoretimebank');
+  const request = await createTimebankListing(db, bob, {
+    ...listingInput('request'),
+    title: 'Need website setup',
+    description: 'Looking for remote help with a small clinic site.',
+    category: 'Tech help',
+    tags: 'websites, clinic',
+  }, 'bmoretimebank');
+  const unrelated = await createTimebankListing(db, carol, {
+    ...listingInput('offer'),
+    title: 'Plant swap',
+    description: 'Garden starts and raised bed advice.',
+    category: 'Home & garden',
+  }, 'bmoretimebank');
+  const dashboard = await timebankDashboard(db, alice, 'bmoretimebank') as unknown as { listings: Array<Record<string, unknown>>, listing_matches: Array<Record<string, unknown>> };
+  const offerRow = dashboard.listings.find((row) => row.id === offer.id)!;
+  const requestRow = dashboard.listings.find((row) => row.id === request.id)!;
+  const unrelatedRow = dashboard.listings.find((row) => row.id === unrelated.id)!;
+  assert.deepEqual((offerRow.tags as string[]).includes('websites'), true);
+  assert.deepEqual((requestRow.tags as string[]).includes('clinic'), true);
+  assert.deepEqual((unrelatedRow.tags as string[]).includes('home & garden'), true);
+  assert.deepEqual(requestRow.match_ids, [offer.id]);
+  assert.equal((unrelatedRow.match_ids as string[]).length, 0);
+  assert.deepEqual(dashboard.listing_matches.map((row) => [row.listing_id, row.match_id]), [[request.id, offer.id]]);
+  assert.deepEqual(dashboard.listing_matches[0].shared_tags, ['websites', 'tech help', 'technology']);
+  const detail = await getTimebankListing(db, bob.id, 'bmoretimebank', offer.id) as Record<string, unknown>;
+  assert.equal((detail.tags as string[]).includes('apps'), true);
   database.sqlite.close();
 });
 

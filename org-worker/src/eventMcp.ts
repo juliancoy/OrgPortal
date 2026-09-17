@@ -115,11 +115,18 @@ export async function authenticateMcp(request: Request, env: Env, getKey?: JWTVe
     if (config.introspection) {
       let response: Response;
       try {
-        response = await fetch(config.introspection, { method: "POST", redirect: "error", signal: AbortSignal.timeout(10000),
+        // Workerd rejects redirect: "error". Manual mode keeps credentials at this endpoint.
+        response = await fetch(config.introspection, { method: "POST", redirect: "manual", signal: AbortSignal.timeout(10000),
           headers: { authorization: `Bearer ${env.MCP_OAUTH_INTROSPECTION_SECRET}`, "content-type": "application/x-www-form-urlencoded" },
           body: new URLSearchParams({ token, resource: config.resource }) });
-      } catch { throw new EventIntegrationError(503, "PIdP token status is unavailable"); }
-      if (!response.ok) throw new EventIntegrationError(503, "PIdP token status is unavailable");
+      } catch {
+        console.warn('MCP introspection unavailable', { reason: 'network' });
+        throw new EventIntegrationError(503, "PIdP token status is unavailable");
+      }
+      if (!response.ok) {
+        console.warn('MCP introspection unavailable', { reason: 'http', status: response.status });
+        throw new EventIntegrationError(503, "PIdP token status is unavailable");
+      }
       let status;
       try { status = await response.json() as Record<string, unknown>; }
       catch { throw new EventIntegrationError(503, "PIdP token status is unavailable"); }

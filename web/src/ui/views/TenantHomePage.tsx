@@ -140,11 +140,10 @@ export function TenantHomePage() {
           <div className="tenant-home-section-heading">
             <div>
               <p className="tenant-home-eyebrow">Upcoming</p>
-              <h2 id="tenant-home-events-title">Events at the center of the community</h2>
+              <h2 id="tenant-home-events-title">Hosted events</h2>
             </div>
             <div className="tenant-home-section-links">
               <Link to={portalProfilePath('/org-events')}>View all events</Link>
-              <Link to={portalProfilePath(`/orgs/${encodeURIComponent(tenant.home_org_slug)}`)}>Organization profile</Link>
             </div>
           </div>
           {eventStatus && <p role="status" className="muted">{eventStatus}</p>}
@@ -162,7 +161,7 @@ export function TenantHomePage() {
         {features.length > 0 && <section className="tenant-home-grid" aria-label={`${profile.brandName} portal sections`}>
           {features.slice(0, 4).map((feature) => <article className="tenant-home-card" key={feature}>
             <span>{featureLabel(feature)}</span>
-            <h2>{feature === 'events' ? 'Events and registration' : feature === 'chat' ? 'Community messages' : featureLabel(feature)}</h2>
+            <h2>{feature === 'events' ? 'Events and registration' : feature === 'chat' ? 'Messages' : featureLabel(feature)}</h2>
             <p>{feature === 'events' ? 'Publish events, collect registrations, and keep attendance visible.' : feature === 'chat' ? 'Keep member conversations close to the organization.' : `Use the ${featureLabel(feature).toLowerCase()} tools configured for this tenant.`}</p>
           </article>)}
         </section>}
