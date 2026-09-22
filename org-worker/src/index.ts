@@ -1,7 +1,7 @@
 import { timebankNotifications, markTimebankNotificationsRead, dispatchTimebankPush } from './timebankNotifications';
 import { importedListings, importedListingImage, importClaimDirectory, requestImportClaim, withdrawImportClaim, reviewImportClaims, resolveImportClaim, claimedImportRecords } from './timebankImports';
 import { Hono } from "hono";
-import { renderEventPoster, posterLogo } from "./eventPoster";
+import { renderEventPoster, posterLogo, type PosterTheme } from "./eventPoster";
 import { buildMetadata } from "./generated/buildMetadata";
 import { HTTPException } from "hono/http-exception";
 import { handleEventMcp, protectedResourceMetadata, eventErrorResponse } from "./eventMcp";
@@ -1336,7 +1336,11 @@ function flyerFormat(value: string | null): FlyerFormat {
   return "letter";
 }
 
-async function eventFlyerSvg(env: Env, request: Request, event: EventRow, format: FlyerFormat) {
+function flyerTheme(value: string | null): PosterTheme {
+  return String(value || "").trim().toLowerCase() === "dark" ? "dark" : "light";
+}
+
+async function eventFlyerSvg(env: Env, request: Request, event: EventRow, format: FlyerFormat, theme: PosterTheme) {
   const publicUrl = await eventPublicUrl(env, request, event.slug);
   const tenant = await resolvePortalTenant(env.DB, request);
   const name = event.organization_name || event.host_org_name || event.host_user_name || tenant.name || "Community event";
@@ -1348,7 +1352,7 @@ async function eventFlyerSvg(env: Env, request: Request, event: EventRow, format
       logo = await posterLogo(asset);
     }
   }
-  return renderEventPoster(event, publicUrl, format, { name, tagline: tenant.tagline, logo });
+  return renderEventPoster(event, publicUrl, format, { name, tagline: tenant.tagline, logo }, theme);
 }
 
 async function publicEventBySlug(db: D1Database, rawSlug: string) {
@@ -2921,8 +2925,9 @@ app.get("/api/network/events/public/:slug/flyer.svg", async (c) => {
   const row = await publicEventBySlug(c.env.DB, c.req.param("slug"));
   if (!row) fail(404, "Event not found");
   const format = flyerFormat(c.req.query("format") || c.req.query("size") || null);
-  const svg = await eventFlyerSvg(c.env, c.req.raw, row, format);
-  const dispositionName = `${row.slug}-${format === "postcard" ? "4x6" : format}-flyer.svg`;
+  const theme = flyerTheme(c.req.query("theme") || c.req.query("mode") || null);
+  const svg = await eventFlyerSvg(c.env, c.req.raw, row, format, theme);
+  const dispositionName = `${row.slug}-${format === "postcard" ? "4x6" : format}${theme === "dark" ? "-dark" : ""}-flyer.svg`;
   return new Response(svg, {
     headers: {
       "content-type": "image/svg+xml; charset=utf-8",

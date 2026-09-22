@@ -40,6 +40,14 @@ const DEFAULT_MEDTECH_RESOURCES: SpecialtyResource[] = [
   },
 ]
 
+const TENANT_BRAND_RESOURCE: SpecialtyResource = {
+  id: 'brand-guide',
+  label: 'Brand Guide',
+  description: 'View approved organization logos, colors, and portal identity details.',
+  href: '/branding',
+  category: 'Brand',
+}
+
 function cleanResource(value: unknown): SpecialtyResource | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null
   const input = value as Record<string, unknown>
@@ -62,9 +70,13 @@ export function specialtyResourcesForTenant(tenant?: PortalTenant | null): Speci
   const configured = Array.isArray(tenant.feature_config?.specialtyResources)
     ? tenant.feature_config.specialtyResources.map(cleanResource).filter((resource): resource is SpecialtyResource => Boolean(resource))
     : []
-  if (configured.length) return configured
-  if (tenant.profile === 'baltimore-medtech' || tenant.id === 'baltimore-medtech' || tenant.hostname === 'medtech.social') return DEFAULT_MEDTECH_RESOURCES
-  return []
+  const isMedTechTenant = tenant.profile === 'baltimore-medtech' || tenant.id === 'baltimore-medtech' || tenant.hostname === 'medtech.social'
+  const tenantResources = configured.filter((resource) => resource.id !== TENANT_BRAND_RESOURCE.id)
+  const configuredIds = new Set(tenantResources.map((resource) => resource.id))
+  const medTechDefaults = isMedTechTenant
+    ? DEFAULT_MEDTECH_RESOURCES.filter((resource) => !configuredIds.has(resource.id))
+    : []
+  return [...tenantResources, ...medTechDefaults, TENANT_BRAND_RESOURCE]
 }
 
 export function hasTenantCalendar(tenant?: PortalTenant | null) {

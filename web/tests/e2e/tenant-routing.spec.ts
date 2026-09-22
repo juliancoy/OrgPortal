@@ -38,16 +38,19 @@ test('poster workflow previews formats, exports PNG and SVG, and opens print', a
     }
   })
   await page.route('**/flyer.svg?**', async route => {
-    const format = new URL(route.request().url()).searchParams.get('format') as 'letter' | 'letter-4up' | 'postcard' | 'social'
-    const svg = await renderEventPoster(medtechEvent, 'https://medtech.social/events/medtech-in-the-hut', format, { name: 'Baltimore MedTech' })
+    const query = new URL(route.request().url()).searchParams
+    const format = query.get('format') as 'letter' | 'letter-4up' | 'postcard' | 'social'
+    const theme = query.get('theme') === 'dark' ? 'dark' : 'light'
+    const svg = await renderEventPoster(medtechEvent, 'https://medtech.social/events/medtech-in-the-hut', format, { name: 'Baltimore MedTech' }, theme)
     await route.fulfill({ contentType: 'image/svg+xml', body: svg })
   })
   await page.goto(portal('/events/medtech-in-the-hut'))
   await page.getByRole('button', { name: 'Create poster', exact: true }).click()
   const editor = page.getByRole('region', { name: 'Event poster', exact: true })
+  await editor.getByRole('button', { name: 'Dark', exact: true }).click()
   for (const [label, width, height] of [['8.5 x 11', 2550, 3300], ['Letter 2 × 2', 2550, 3300], ['4 x 6', 1200, 1800], ['Social', 1200, 630]] as const) {
     await editor.getByRole('button', { name: label, exact: true }).click()
-    await expect(editor.getByRole('img')).toHaveAttribute('alt', `MedTech in the Hut, ${label} poster`)
+    await expect(editor.getByRole('img')).toHaveAttribute('alt', `MedTech in the Hut, ${label}, dark poster`)
     const pending = page.waitForEvent('download')
     await editor.getByRole('button', { name: 'PNG', exact: true }).click()
     const download = await pending
@@ -71,7 +74,7 @@ test('poster workflow previews formats, exports PNG and SVG, and opens print', a
   }
   const vector = page.waitForEvent('download')
   await editor.getByRole('button', { name: 'SVG', exact: true }).click()
-  expect((await vector).suggestedFilename()).toBe('medtech-in-the-hut-social.svg')
+  expect((await vector).suggestedFilename()).toBe('medtech-in-the-hut-social-dark.svg')
 })
 
 test('poster failures offer retry and do not leave export buttons active', async ({ page }) => {
@@ -104,10 +107,19 @@ test('event gallery resolves stored images through the org API without rewriting
   await page.goto(portal('/events/medtech-in-the-hut'));
   const image = page.getByRole('img', { name: 'Menu photo', exact: true });
   await expect(image).toHaveAttribute('src', '/api/org/api/network/events/public/medtech-in-the-hut/media/stored');
-  await expect(image.locator('..')).toHaveAttribute('href', '/api/org/api/network/events/public/medtech-in-the-hut/media/stored');
   const labelFits = await image.locator('..').locator('strong').evaluate(label => label.scrollWidth <= label.parentElement!.clientWidth);
   expect(labelFits).toBe(true);
   await expect(page.getByRole('img', { name: 'External photo', exact: true })).toHaveAttribute('src', 'https://images.test/event.png');
+  await page.getByRole('button', { name: 'Open Menu photo in gallery', exact: true }).click();
+  const gallery = page.getByRole('dialog');
+  await expect(gallery).toBeVisible();
+  await expect(gallery.getByRole('heading', { name: '20260915_201444_extra_long_menu_photo_filename.jpg', exact: true })).toBeVisible();
+  await expect(gallery.getByRole('img', { name: 'Menu photo', exact: true })).toHaveAttribute('src', '/api/org/api/network/events/public/medtech-in-the-hut/media/stored');
+  await expect(gallery.getByRole('link', { name: 'Open', exact: true })).toHaveAttribute('href', '/api/org/api/network/events/public/medtech-in-the-hut/media/stored');
+  await gallery.getByRole('button', { name: 'Next image', exact: true }).click();
+  await expect(gallery.getByRole('heading', { name: 'External photo', exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(gallery).toBeHidden();
 });
 
 async function mockTenant(page: Page, options: MockTenantOptions = {}) {
@@ -123,7 +135,7 @@ async function mockTenant(page: Page, options: MockTenantOptions = {}) {
         accent_color: '#0f6f8f',
         profile: 'baltimore-medtech',
         features: ['directory', 'events', 'chat'],
-        brand_image_path: '/images/baltimore-medtech-logo-square.jpg',
+        brand_image_path: '/images/baltimore-medtech-logo-square-v2.jpg',
         home_url: 'https://medtech.social/',
         member_home_path: '/chat',
         manifest_path: '/medtech.webmanifest',
@@ -196,7 +208,7 @@ test('tenant domains use root-mounted canonical routes and assets', async ({ pag
   await expect(page.locator('html')).toHaveAttribute('data-portal-profile', 'baltimore-medtech')
   await expect(page.locator('html')).toHaveAttribute('data-portal-tenant', 'baltimore-medtech')
   await expect(page.getByRole('heading', { name: 'Welcome to Baltimore MedTech' })).toBeVisible()
-  await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', /\/images\/baltimore-medtech-logo-square\.jpg$/)
+  await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', /\/images\/baltimore-medtech-logo-square-v2\.jpg$/)
   await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', /\/medtech\.webmanifest$/)
 
   const providerUrl = new URL((await page.getByRole('link', { name: 'Continue with Google' }).getAttribute('href'))!, 'http://portal.test')
@@ -214,6 +226,35 @@ test('tenant legacy community aliases redirect to canonical tenant routes', asyn
 
   await page.goto(portal('/medtech-events'))
   await expect(page).toHaveURL(/\/org-events$/)
+})
+
+test('tenant brand guide uses the active organization identity', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: async (value: string) => {
+          ;(window as unknown as { __copiedBrandColor?: string }).__copiedBrandColor = value
+        },
+      },
+    })
+  })
+  await mockTenant(page)
+  await page.goto(portal('/branding'))
+
+  await expect(page.getByRole('heading', { name: 'Baltimore MedTech', exact: true })).toBeVisible()
+  await expect(page.getByText('Health x Medicine x Biotech', { exact: true }).first()).toBeVisible()
+  await expect(page.getByRole('img', { name: 'Baltimore MedTech primary logo' })).toHaveAttribute('src', /\/images\/baltimore-medtech-logo-square-v2\.jpg$/)
+  await expect(page.getByText('#0f6f8f', { exact: true })).toBeVisible()
+  await expect(page.getByText('#061a26', { exact: true })).toBeVisible()
+  await expect(page.getByText('#FFFFFF', { exact: true })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Copy Accent color #0f6f8f' }).click()
+  await expect(page.getByText('Copied', { exact: true })).toBeVisible()
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __copiedBrandColor?: string }).__copiedBrandColor)).toBe('#0f6f8f')
+
+  await page.goto(portal('/branding.html'))
+  await expect(page).toHaveURL(/\/branding$/)
 })
 
 test('tenant event auth actions return to the same root-mounted event', async ({ page }) => {

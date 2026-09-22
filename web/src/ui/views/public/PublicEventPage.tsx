@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { ChevronLeft, ChevronRight, ExternalLink, X } from 'lucide-react'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
 import { downloadIcsEvent, outlookCalendarUrl } from '../../utils/calendar'
 import { useAuth } from '../../../app/AppProviders'
@@ -229,6 +230,7 @@ export function PublicEventPage() {
   const [myUserId, setMyUserId] = useState<string | null>(null)
   const [canManageEvent, setCanManageEvent] = useState(false)
   const [addressCopied, setAddressCopied] = useState(false)
+  const [selectedMediaIndex, setSelectedMediaIndex] = useState(-1)
   const chatApi = useMemo(
     () =>
       new NativeChatApi(async () => {
@@ -484,6 +486,24 @@ export function PublicEventPage() {
     return roots.map((message) => ({ message, replies: byRoot.get(message.id) || [] }))
   }, [eventChatMessages])
 
+  const mediaItems = event?.media || []
+  const selectedMedia = selectedMediaIndex >= 0 ? mediaItems[selectedMediaIndex] : null
+
+  useEffect(() => {
+    if (selectedMediaIndex >= mediaItems.length) setSelectedMediaIndex(-1)
+  }, [mediaItems.length, selectedMediaIndex])
+
+  useEffect(() => {
+    if (!selectedMedia) return
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setSelectedMediaIndex(-1)
+      if (event.key === 'ArrowLeft') setSelectedMediaIndex((current) => (current <= 0 ? mediaItems.length - 1 : current - 1))
+      if (event.key === 'ArrowRight') setSelectedMediaIndex((current) => (current + 1) % mediaItems.length)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [mediaItems.length, selectedMedia])
+
   async function postEventComment() {
     const body = commentDraft.trim()
     if (!eventChat?.conversation_id || !body || !eventChatReady) return
@@ -599,22 +619,27 @@ export function PublicEventPage() {
 
       <div className="public-event-layout public-event-luma-layout">
         <main className="public-event-main">
-          {(event.media || []).length ? (
-            <section className="portal-card" style={{ display: 'grid', gap: '0.75rem' }} aria-labelledby="event-media-title">
+          {mediaItems.length ? (
+            <section className="portal-card public-event-media" aria-labelledby="event-media-title">
               <div className="public-event-card-heading">
                 <p className="public-event-eyebrow">Event Media</p>
                 <h2 id="event-media-title">Files And Images</h2>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.75rem' }}>
-                {(event.media || []).map((item) => (
-                  <a key={item.id} href={item.url} target="_blank" rel="noopener noreferrer" style={{ display: 'grid', gap: '0.45rem', minWidth: 0, color: 'inherit', textDecoration: 'none' }}>
+              <div className="public-event-media-grid">
+                {mediaItems.map((item, index) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="public-event-media-card"
+                    onClick={() => setSelectedMediaIndex(index)}
+                    aria-label={`Open ${item.alt || item.label} in gallery`}
+                  >
                     <img
                       src={item.url}
                       alt={item.alt || item.label}
-                      style={{ width: '100%', aspectRatio: '3 / 4', objectFit: 'cover', borderRadius: 12, border: '1px solid var(--border)' }}
                     />
-                    <strong style={{ overflowWrap: 'anywhere', color: 'var(--text-primary)' }}>{item.label}</strong>
-                  </a>
+                    <strong>{item.label}</strong>
+                  </button>
                 ))}
               </div>
             </section>
@@ -852,6 +877,60 @@ export function PublicEventPage() {
           <EventPosterTools slug={event.slug} title={event.title} revision={event.updated_at || ''} />
         </aside>
       </div>
+      {selectedMedia ? (
+        <div className="public-event-gallery-backdrop" role="presentation" onMouseDown={(event) => {
+          if (event.target === event.currentTarget) setSelectedMediaIndex(-1)
+        }}>
+          <section
+            className="public-event-gallery-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="event-gallery-title"
+          >
+            <div className="public-event-gallery-toolbar">
+              <div>
+                <p className="public-event-eyebrow">Event Gallery</p>
+                <h2 id="event-gallery-title">{selectedMedia.label}</h2>
+              </div>
+              <div className="public-event-gallery-actions">
+                <a href={selectedMedia.url} target="_blank" rel="noopener noreferrer" title="Open image file">
+                  <ExternalLink size={18} aria-hidden="true" />
+                  <span>Open</span>
+                </a>
+                <button type="button" onClick={() => setSelectedMediaIndex(-1)} aria-label="Close gallery" title="Close gallery">
+                  <X size={20} aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+            <div className="public-event-gallery-stage">
+              {mediaItems.length > 1 ? (
+                <button
+                  type="button"
+                  className="public-event-gallery-nav public-event-gallery-prev"
+                  onClick={() => setSelectedMediaIndex((current) => (current <= 0 ? mediaItems.length - 1 : current - 1))}
+                  aria-label="Previous image"
+                  title="Previous image"
+                >
+                  <ChevronLeft size={26} aria-hidden="true" />
+                </button>
+              ) : null}
+              <img src={selectedMedia.url} alt={selectedMedia.alt || selectedMedia.label} />
+              {mediaItems.length > 1 ? (
+                <button
+                  type="button"
+                  className="public-event-gallery-nav public-event-gallery-next"
+                  onClick={() => setSelectedMediaIndex((current) => (current + 1) % mediaItems.length)}
+                  aria-label="Next image"
+                  title="Next image"
+                >
+                  <ChevronRight size={26} aria-hidden="true" />
+                </button>
+              ) : null}
+            </div>
+            <p className="public-event-gallery-count">{selectedMediaIndex + 1} of {mediaItems.length}</p>
+          </section>
+        </div>
+      ) : null}
     </article>
   )
 }

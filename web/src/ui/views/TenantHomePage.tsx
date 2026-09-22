@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
 import { portalPath } from '../../config/portalBase'
@@ -122,16 +123,17 @@ export function TenantHomePage() {
     <main id="main-content" className="portal-main tenant-home-main" tabIndex={-1}>
       <div className="portal-container">
         <ExternalBrowserPrompt />
-        <section className="tenant-home-hero" aria-labelledby="tenant-home-title">
+        <section
+          className={`tenant-home-hero${imageUrl ? ' tenant-home-hero-has-image' : ''}`}
+          aria-labelledby="tenant-home-title"
+          style={imageUrl ? { '--tenant-home-image': `url("${imageUrl.startsWith('/') ? portalPath(imageUrl) : imageUrl}")` } as CSSProperties : undefined}
+        >
           <div className="tenant-home-copy">
             <p className="tenant-home-eyebrow">{profile.tagline}</p>
             <h1 id="tenant-home-title">{tenant.home_heading || profile.brandName}</h1>
             <p>{tenant.home_description || `Welcome to the ${profile.brandName} portal.`}</p>
             <TenantHomeActions tenant={tenant} />
           </div>
-          {imageUrl && <div className="tenant-home-media">
-            <img src={imageUrl.startsWith('/') ? portalPath(imageUrl) : imageUrl} alt="" />
-          </div>}
         </section>
 
         <SpecialtyResourcesPanel resources={specialtyResources.slice(0, 4)} compact={specialtyResources.length > 4} />

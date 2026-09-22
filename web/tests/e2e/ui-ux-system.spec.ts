@@ -384,7 +384,11 @@ test.describe('Code Collective UI and UX system coverage', () => {
     await expect(page.locator('.portal-header')).toHaveCount(0)
     await expect(page.getByRole('heading', { name: 'Mobile Tester', exact: true })).toBeVisible()
     await expect(page.getByRole('link', { name: /message mobile tester/i })).toHaveAttribute('href', /\/chat\?start=dm&user=mobile-tester/)
-    await expect(page.getByRole('link', { name: 'Edit Profile' })).toHaveAttribute('href', '/profile')
+    const editPage = page.getByRole('button', { name: 'Edit page' })
+    await expect(editPage).toBeVisible()
+    await editPage.click()
+    await expect(page.locator('[aria-label="Edit Code Collective ID"]')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Close editor' })).toBeVisible()
     const contactDownload = page.getByRole('button', { name: /download contact/i })
     await expect(contactDownload).toBeVisible()
     const downloadPromise = page.waitForEvent('download')
@@ -393,6 +397,41 @@ test.describe('Code Collective UI and UX system coverage', () => {
     expect(download.suggestedFilename()).toBe('mobile-tester.vcf')
     await expect(page.getByLabel('QR code for public profile').locator('svg')).toBeVisible()
     await expectNoHorizontalOverflow(page)
+  })
+
+  test('organization admins can open and close the editor from the public organization page', async ({ page }, testInfo) => {
+    testInfo.setTimeout(90_000)
+    await page.route('**/api/org/api/network/orgs?mine=true**', async (route) => {
+      await fulfillJson(route, [
+        { id: 'org-1', name: 'Code Collective', slug: 'code-collective', my_role: 'administrator' },
+      ])
+    })
+    await page.route('**/api/org/api/network/orgs/public/code-collective', async (route) => {
+      await fulfillJson(route, {
+        id: 'org-1',
+        name: 'Code Collective',
+        slug: 'code-collective',
+        description: 'The organization this user administers.',
+        image_url: null,
+        membership_count: 1,
+        upcoming_events_count: 0,
+        feedback_count: 0,
+        pending_challenges_count: 0,
+        is_disputed: false,
+      })
+    })
+
+    await page.goto('/orgs/code-collective')
+
+    const editPage = page.getByRole('button', { name: 'Edit page' })
+    await expect(editPage).toBeVisible()
+    await expect(page.locator('#organization-page-editor')).toHaveCount(0)
+    await editPage.click()
+    await expect(page.locator('#organization-page-editor')).toBeVisible()
+    await expect(page.getByLabel('Organization name')).toHaveValue('Code Collective')
+    await expect(page.getByLabel('Public description')).toHaveValue('The organization this user administers.')
+    await page.getByRole('button', { name: 'Close editor' }).click()
+    await expect(page.locator('#organization-page-editor')).toHaveCount(0)
   })
 
   test('legacy contact public URLs redirect to the canonical users URL', async ({ page }) => {

@@ -1,6 +1,6 @@
 .event-poster { min-width: 0; padding-block: 1.5rem; border-top: 1px solid var(--border); }
 .event-poster h2 { font-size: 1.25rem; margin: 0 0 1rem; letter-spacing: 0; }
-.event-poster-toolbar, .event-poster-actions, .event-poster-formats { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.event-poster-toolbar, .event-poster-actions, .event-poster-formats, .event-poster-themes { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
 .event-poster-toolbar { justify-content: space-between; margin-bottom: 1rem; }
 .event-poster button { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; min-height: 40px; padding: .45rem .65rem; border: 1px solid var(--border); border-radius: 4px; background: var(--panel); color: var(--text-primary); font-size: .875rem; font-weight: 600; letter-spacing: 0; cursor: pointer; }
 .event-poster button[aria-pressed="true"] { background: #087482; border-color: #087482; color: #fff; }

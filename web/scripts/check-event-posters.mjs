@@ -15,8 +15,8 @@ const brand = { name: 'Baltimore MedTech', tagline: 'Health x Medicine x Biotech
 const browser = await chromium.launch();
 try {
   const page = await browser.newPage();
-  for (const long of [false, true]) for (const format of ['letter', 'letter-4up', 'postcard', 'social']) {
-    const svg = await renderEventPoster(long ? { ...event, title: 'Building the future of community health: collaboration across medicine, biotechnology, research and civic life', location: event.location + ' - Community gathering space and accessible entrance on the east side' } : event, url, format, brand);
+  for (const theme of ['light', 'dark']) for (const long of [false, true]) for (const format of ['letter', 'letter-4up', 'postcard', 'social']) {
+    const svg = await renderEventPoster(long ? { ...event, title: 'Building the future of community health: collaboration across medicine, biotechnology, research and civic life', location: event.location + ' - Community gathering space and accessible entrance on the east side' } : event, url, format, brand, theme);
     const { width, height } = posterGeometry(format);
     await page.setViewportSize({ width, height });
     await page.setContent(`<style>body{margin:0}body>svg{display:block;width:100%;height:100%}</style>${svg.replace(/^<\?xml[^>]*>/, '')}`);
@@ -53,7 +53,7 @@ try {
     }, { svg, width, height });
     assert.equal(pixels.length, format === 'letter-4up' ? 4 : 1);
     for (const crop of pixels) assert.equal(jsQR(new Uint8ClampedArray(crop.data), crop.width, crop.height)?.data, url, `${format}: QR does not decode`);
-    await page.screenshot({ path: `${directory}/${format}${long ? '-long' : ''}.png` });
-    console.log(`${format}${long ? ' long text' : ''}: bounds, non-overlap and QR passed`);
+    await page.screenshot({ path: `${directory}/${format}-${theme}${long ? '-long' : ''}.png` });
+    console.log(`${format} ${theme}${long ? ' long text' : ''}: bounds, non-overlap and QR passed`);
   }
 } finally { await browser.close(); }

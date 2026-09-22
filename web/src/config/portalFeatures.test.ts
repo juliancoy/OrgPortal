@@ -46,7 +46,7 @@ describe('portal feature profiles', () => {
       accent_color: '#0f6f8f',
       profile: 'baltimore-medtech',
       features: ['directory', 'events', 'chat'],
-      brand_image_path: '/images/baltimore-medtech-logo-square.jpg',
+      brand_image_path: '/images/baltimore-medtech-logo-square-v2.jpg',
       home_url: 'https://medtech.social/',
       member_home_path: '/chat',
       manifest_path: '/medtech.webmanifest',
@@ -56,7 +56,7 @@ describe('portal feature profiles', () => {
       const profile = getActivePortalProfileConfig('', null, 'custom.example')
       expect(profile.id).toBe('baltimore-medtech')
       expect(profile.tenantId).toBe('baltimore-medtech')
-      expect(profile.brandImagePath).toBe('/images/baltimore-medtech-logo-square.jpg')
+      expect(profile.brandImagePath).toBe('/images/baltimore-medtech-logo-square-v2.jpg')
       expect(profile.memberHomePath).toBe('/chat')
       expect(profile.manifestPath).toBe('/medtech.webmanifest')
       expect(isPortalFeatureEnabled('ubi', profile)).toBe(false)

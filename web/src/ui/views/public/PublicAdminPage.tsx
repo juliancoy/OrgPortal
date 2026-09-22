@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ClientEvent, EventType, RoomEvent } from 'matrix-js-sdk'
+import { Pencil, X } from 'lucide-react'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
 import type { ChatMessage } from '../../../application/ports/ChatService'
 import { useAuth, useServices } from '../../../app/AppProviders'
@@ -248,6 +249,7 @@ export function PublicAdminPage() {
   const [mergeStatus, setMergeStatus] = useState<string | null>(null)
   const [merging, setMerging] = useState(false)
   const [orgNameDraft, setOrgNameDraft] = useState('')
+  const [orgDescriptionDraft, setOrgDescriptionDraft] = useState('')
   const [orgImageDraft, setOrgImageDraft] = useState('')
   const [savingOrgName, setSavingOrgName] = useState(false)
   const [savingOrgImage, setSavingOrgImage] = useState(false)
@@ -255,7 +257,8 @@ export function PublicAdminPage() {
   const [eventMediaUrlDrafts, setEventMediaUrlDrafts] = useState<Record<string, string>>({})
   const [eventMediaLabelDrafts, setEventMediaLabelDrafts] = useState<Record<string, string>>({})
   const [eventMediaPending, setEventMediaPending] = useState<Record<string, boolean>>({})
-  const [adminView, setAdminView] = useState(true)
+  const [adminView, setAdminView] = useState(false)
+  const organizationEditorRef = useRef<HTMLDivElement | null>(null)
   const [showImageEditor, setShowImageEditor] = useState(false)
   const [editorSource, setEditorSource] = useState<string | null>(null)
   const [generalLiveMessages, setGeneralLiveMessages] = useState<ChatMessage[]>([])
@@ -325,6 +328,7 @@ export function PublicAdminPage() {
         }
         setOrg(orgData)
         setOrgNameDraft(orgData.name || '')
+        setOrgDescriptionDraft(orgData.description || '')
         setOrgImageDraft(orgData.image_url || '')
         setPortalSlugDraft(normalizePortalSlug(orgData.slug || orgData.name || ''))
         setPortalNameDraft(orgData.name || '')
@@ -918,7 +922,11 @@ export function PublicAdminPage() {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name: nextName, image_url: orgImageDraft.trim() || null }),
+        body: JSON.stringify({
+          name: nextName,
+          description: orgDescriptionDraft.trim(),
+          image_url: orgImageDraft.trim() || null,
+        }),
       })
       if (!orgResp.ok) {
         let detail = ''
@@ -930,12 +938,14 @@ export function PublicAdminPage() {
         }
         throw new Error(detail || `Organization update failed (${orgResp.status})`)
       }
-      const updatedOrg = (await orgResp.json()) as { name?: string; image_url?: string | null }
+      const updatedOrg = (await orgResp.json()) as { name?: string; description?: string | null; image_url?: string | null }
       const updatedName = String(updatedOrg?.name || nextName)
+      const updatedDescription = updatedOrg?.description?.trim() || ''
       const updatedImage = updatedOrg?.image_url?.trim() || orgImageDraft.trim() || ''
-      setOrg((prev) => (prev ? { ...prev, name: updatedName, image_url: updatedImage || null } : prev))
+      setOrg((prev) => (prev ? { ...prev, name: updatedName, description: updatedDescription, image_url: updatedImage || null } : prev))
       setMyAdminOrgs((prev) => prev.map((row) => (row.id === org.id ? { ...row, name: updatedName, image_url: updatedImage || null } : row)))
       setOrgNameDraft(updatedName)
+      setOrgDescriptionDraft(updatedDescription)
       setOrgImageDraft(updatedImage)
 
       const portalResp = await fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/portal`), {
@@ -1283,6 +1293,14 @@ export function PublicAdminPage() {
     setShowImageEditor(true)
   }
 
+  function openOrganizationEditor() {
+    setAdminView(true)
+    window.requestAnimationFrame(() => {
+      organizationEditorRef.current?.scrollIntoView({ block: 'start' })
+      organizationEditorRef.current?.focus({ preventScroll: true })
+    })
+  }
+
   return (
     <section className="panel portal-org-page">
       <div className={`portal-org-layout${showChatColumn ? '' : ' portal-org-layout-single'}`}>
@@ -1320,6 +1338,12 @@ export function PublicAdminPage() {
                   <a className="btn-secondary" href={org.source_url} target="_blank" rel="noreferrer">
                     Website
                   </a>
+                ) : null}
+                {canManageCurrentOrg ? (
+                  <button type="button" className="btn-secondary" onClick={openOrganizationEditor} aria-expanded={adminView}>
+                    <Pencil size={17} aria-hidden="true" />
+                    Edit page
+                  </button>
                 ) : null}
               </div>
             </div>
@@ -1601,16 +1625,23 @@ export function PublicAdminPage() {
           </div>
 
 
-          {canManageCurrentOrg ? (
-            <div className="portal-card portal-org-admin-card" style={{ display: 'grid', gap: '0.7rem' }}>
+          {canManageCurrentOrg && adminView ? (
+            <div
+              ref={organizationEditorRef}
+              id="organization-page-editor"
+              className="portal-card portal-org-admin-card"
+              style={{ display: 'grid', gap: '0.7rem' }}
+              tabIndex={-1}
+              aria-label={`Edit ${org.name}`}
+            >
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                <h2 style={{ margin: 0, fontSize: '1rem' }}>Admin Controls</h2>
-                <button type="button" onClick={() => setAdminView((prev) => !prev)}>
-                  {adminView ? 'View as User' : 'View as Admin'}
+                <h2 style={{ margin: 0, fontSize: '1rem' }}>Edit organization page</h2>
+                <button type="button" className="btn-secondary" onClick={() => setAdminView(false)}>
+                  <X size={17} aria-hidden="true" />
+                  Close editor
                 </button>
               </div>
-              {adminView ? (
-                <>
+              <>
                   <p className="muted" style={{ margin: 0 }}>
                     You are an admin of this organization.
                   </p>
@@ -1805,6 +1836,16 @@ export function PublicAdminPage() {
                       onChange={(e) => setOrgNameDraft(e.target.value)}
                       placeholder="Organization name"
                     />
+                    <label htmlFor="org-description" className="muted">
+                      Public description
+                    </label>
+                    <textarea
+                      id="org-description"
+                      value={orgDescriptionDraft}
+                      onChange={(e) => setOrgDescriptionDraft(e.target.value)}
+                      placeholder="Describe this organization"
+                      rows={4}
+                    />
                     <label htmlFor="org-image-url" className="muted">
                       Organization image URL
                     </label>
@@ -1851,12 +1892,7 @@ export function PublicAdminPage() {
                       </p>
                     ) : null}
                   </div>
-                </>
-              ) : (
-                <p className="muted" style={{ margin: 0 }}>
-                  User preview mode is active. Admin controls are hidden.
-                </p>
-              )}
+              </>
             </div>
           ) : null}
 

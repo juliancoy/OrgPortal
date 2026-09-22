@@ -26,6 +26,15 @@ test('missing dates and malformed optional dates do not crash generation', async
   assert.match(svg, /Location to be announced/);
 });
 
+test('dark poster theme uses dark paper while retaining a white QR background', async () => {
+  const svg = await renderEventPoster({ title: 'Night builders', starts_at: '2026-09-29T22:00:00Z' }, 'https://example.org/event', 'letter', { name: 'Community' }, 'dark');
+  assert.match(svg, /fill="#101820"/);
+  assert.match(svg, /fill="#f7fbfc"/);
+  assert.match(svg, /fill="#33c6d4"/);
+  assert.match(svg, /fill="#ffffff"/);
+  assert.match(svg, /dark 8\.5×11 event poster/);
+});
+
 test('brand image loading rejects redirects, SVG and oversized images', async () => {
   const original = globalThis.fetch;
   try {

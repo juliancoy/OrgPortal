@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { X } from 'lucide-react'
 import { useAuth } from '../../../app/AppProviders'
 import { PIDP_BASE_URL, pidpUrl } from '../../../config/pidp'
 import { publicProfileUrl } from '../../../config/portalBase'
@@ -72,9 +73,10 @@ function splitFullName(value: string) {
 type UserProfilePageProps = {
   embedded?: boolean
   publicPageUrl?: string | null
+  onClose?: () => void
 }
 
-export function UserProfilePage({ embedded = false, publicPageUrl: publicPageUrlProp }: UserProfilePageProps = {}) {
+export function UserProfilePage({ embedded = false, publicPageUrl: publicPageUrlProp, onClose }: UserProfilePageProps = {}) {
   const { user, setUser, token, logout } = useAuth()
   const [fullName, setFullName] = useState('')
   const [birthDate, setBirthDate] = useState('')
@@ -539,13 +541,21 @@ export function UserProfilePage({ embedded = false, publicPageUrl: publicPageUrl
   const publicPageUrl = publicPageUrlProp ?? loadedPublicPageUrl
 
   return (
-    <section id="profile-editor" className={`id-page profile-page${embedded ? ' profile-page-embedded' : ''}`}>
+    <section id="profile-editor" className={`id-page profile-page${embedded ? ' profile-page-embedded' : ''}`} tabIndex={-1}>
       <article className="id-card profile-editor-card" aria-label="Edit Code Collective ID">
-        {publicPageUrl ? (
+        {publicPageUrl || onClose ? (
           <div className="id-public-page-action profile-top-actions">
-            <a className="contact-public-page-bubble id-open-public-page" href={publicPageUrl}>
-              View Public Page
-            </a>
+            {publicPageUrl ? (
+              <a className="contact-public-page-bubble id-open-public-page" href={publicPageUrl}>
+                View Public Page
+              </a>
+            ) : null}
+            {onClose ? (
+              <button type="button" className="btn-secondary" onClick={onClose}>
+                <X size={17} aria-hidden="true" />
+                Close editor
+              </button>
+            ) : null}
           </div>
         ) : null}
 

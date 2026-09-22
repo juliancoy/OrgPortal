@@ -52,6 +52,7 @@ import { TimebankPage } from '../views/TimebankPage'
 import { TimebankInboxProvider } from '../timebank/TimebankInbox'
 import { TenantEventsContent, TenantEventsHomePage, TenantHomePage, TenantSlugHomePage } from '../views/TenantHomePage'
 import { TenantResourcesPage } from '../views/TenantResourcesPage'
+import { TenantBrandingPage } from '../views/TenantBrandingPage'
 import { CreatePage } from '../views/CreatePage'
 import { CreateForProfitPage } from '../views/CreateForProfitPage'
 import { CreateNonProfitPage } from '../views/CreateNonProfitPage'
@@ -247,6 +248,8 @@ export function createAppRouter() {
           { path: '/community', element: <TenantCommunityAliasRoute /> },
           { path: '/medtech-events', element: <TenantEventsAliasRoute /> },
           { path: '/resources', element: <TenantResourcesPage /> },
+          { path: '/branding', element: <TenantBrandingPage /> },
+          { path: '/branding.html', element: <Navigate to="/branding" replace /> },
           { path: '/about', element: <AboutPage /> },
           { path: '/terms', element: <TermsPage /> },
           { path: '/legal', element: <TermsPage /> },

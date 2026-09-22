@@ -69,8 +69,18 @@ function ensureDatasetNavigation() {
   const nav = document.querySelector('.site-header nav')
   if (!nav || nav.querySelector('a[href="/specialty/baltimore-medtech/datasets.html"]')) return
   const link = document.createElement('a')
-  link.href = '/datasets.html'
+  link.href = '/specialty/baltimore-medtech/datasets.html'
   link.textContent = 'Data sheets'
+  const insertionPoint = nav.querySelector('.theme-control, .nav-cta')
+  nav.insertBefore(link, insertionPoint || null)
+}
+
+function ensureBrandGuideNavigation() {
+  const nav = document.querySelector('.site-header nav')
+  if (!nav || nav.querySelector('a[href="/branding"]')) return
+  const link = document.createElement('a')
+  link.href = '/branding'
+  link.textContent = 'Brand guide'
   const insertionPoint = nav.querySelector('.theme-control, .nav-cta')
   nav.insertBefore(link, insertionPoint || null)
 }
@@ -160,6 +170,7 @@ function setupPrimaryNavigation() {
 
 setupThemeControls();
 ensureDatasetNavigation();
+ensureBrandGuideNavigation();
 ensureMedTechEventsNavigation();
 ensureStartNavigation();
 setupPrimaryNavigation();

@@ -507,7 +507,7 @@ export function Header() {
   const isLifeInsuranceActive = location.pathname.startsWith('/life-insurance')
   const isHealthInsuranceActive = location.pathname.startsWith('/health-insurance')
   const isCalendarActive = location.pathname.startsWith('/calendar')
-  const isResourcesActive = location.pathname.startsWith('/resources') || location.pathname.startsWith('/specialty/')
+  const isResourcesActive = location.pathname.startsWith('/resources') || location.pathname.startsWith('/specialty/') || location.pathname.startsWith('/branding')
   const isProviderSchedulingActive = location.pathname.startsWith('/provider-scheduling')
   const isPropertyCasualtyInsuranceActive = location.pathname.startsWith('/property-casualty-insurance')
   const isIdActive = location.pathname === '/id' || location.pathname.startsWith('/contact-settings')
@@ -940,11 +940,8 @@ export function Header() {
             </>
           ) : (
             <div className="portal-guest-actions" aria-label="Account actions">
-              <Link className="portal-button-secondary" to={portalProfilePath(`/users/login${authNextQuery}`)}>
-                Log in
-              </Link>
-              <Link className="portal-button" to={portalProfilePath(`/users/register${authNextQuery}`)}>
-                Join
+              <Link className="portal-button" to={portalProfilePath(`/users/login${authNextQuery}`)}>
+                Login
               </Link>
             </div>
           )}

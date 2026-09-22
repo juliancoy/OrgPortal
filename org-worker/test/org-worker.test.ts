@@ -987,15 +987,17 @@ test("tenant host public URLs are root-mounted even when shared portal base is c
   assert.equal(proxiedEvent.public_url, "https://medtech.social/events/founder-night");
   assert.equal(proxiedEvent.flyer_urls.social, "https://medtech.social/api/org/api/network/events/public/founder-night/flyer.svg?format=social");
 
-  const flyerRes = await app.request("https://org.example.test/api/network/events/public/founder-night/flyer.svg?format=4x6", {
+  const flyerRes = await app.request("https://org.example.test/api/network/events/public/founder-night/flyer.svg?format=4x6&theme=dark", {
     headers: { "x-forwarded-host": "medtech.social", "x-forwarded-proto": "https" },
   }, env(db));
   assert.equal(flyerRes.status, 200);
   assert.equal(flyerRes.headers.get("content-type"), "image/svg+xml; charset=utf-8");
+  assert.equal(flyerRes.headers.get("content-disposition"), 'inline; filename="founder-night-4x6-dark-flyer.svg"');
   const flyer = await flyerRes.text();
   assert.match(flyer, /Founder Night flyer/);
   assert.match(flyer, /Scan to RSVP/);
-  assert.match(flyer, /4×6/);
+  assert.match(flyer, /dark 4×6/);
+  assert.match(flyer, /fill="#101820"/);
 });
 
 test("removing uploaded event media deletes the backing R2 object", async () => {

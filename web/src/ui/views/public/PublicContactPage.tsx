@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Pencil } from 'lucide-react'
 import { useAuth } from '../../../app/AppProviders'
 import { NativeChatApi } from '../../../chat/nativeChatApi'
 import { pidpAppLoginUrl } from '../../../config/pidp'
@@ -102,6 +103,7 @@ export function PublicContactPage({ self = false }: PublicContactPageProps = {})
   const [messageDraft, setMessageDraft] = useState('')
   const [messageStatus, setMessageStatus] = useState('')
   const [isSendingMessage, setIsSendingMessage] = useState(false)
+  const [editingPage, setEditingPage] = useState(false)
 
   const chatApi = useMemo(
     () =>
@@ -173,6 +175,10 @@ export function PublicContactPage({ self = false }: PublicContactPageProps = {})
       })
   }, [self, slug, token])
 
+  useEffect(() => {
+    setEditingPage(false)
+  }, [self, slug])
+
   const qrSvg = useMemo(() => {
     const shareUrl = publicProfileUrl(page?.slug)
     if (!shareUrl) return null
@@ -235,6 +241,15 @@ export function PublicContactPage({ self = false }: PublicContactPageProps = {})
       .catch(() => {
         setCopiedKey(null)
       })
+  }
+
+  function openPageEditor() {
+    setEditingPage(true)
+    window.requestAnimationFrame(() => {
+      const editor = document.getElementById('profile-editor')
+      editor?.scrollIntoView({ block: 'start' })
+      editor?.focus({ preventScroll: true })
+    })
   }
 
   async function sendMessage() {
@@ -326,8 +341,10 @@ export function PublicContactPage({ self = false }: PublicContactPageProps = {})
           )}
           {isOwner ? (
             <div className="public-id-owner-controls" aria-label="Profile owner controls">
-              <a href="#profile-editor">Edit Profile</a>
-              {shareUrl ? <Link to={`/users/${encodeURIComponent(page.slug)}`}>View Public Page</Link> : null}
+              <button type="button" className="btn-secondary" onClick={openPageEditor} aria-expanded={editingPage}>
+                <Pencil size={17} aria-hidden="true" />
+                Edit page
+              </button>
             </div>
           ) : null}
         </div>
@@ -399,6 +416,10 @@ export function PublicContactPage({ self = false }: PublicContactPageProps = {})
         </aside>
       </article>
 
+      {isOwner && editingPage ? (
+        <UserProfilePage embedded publicPageUrl={shareUrl} onClose={() => setEditingPage(false)} />
+      ) : null}
+
       {events.length > 0 ? (
         <section className="public-id-events">
           <h2 style={{ margin: 0 }}>Upcoming Events</h2>
@@ -465,7 +486,6 @@ export function PublicContactPage({ self = false }: PublicContactPageProps = {})
         <img src={portalPath('/images/namebanner.png')} alt="Code Collective" />
       </a>
 
-      {isOwner ? <UserProfilePage embedded publicPageUrl={shareUrl} /> : null}
     </section>
   )
 }
