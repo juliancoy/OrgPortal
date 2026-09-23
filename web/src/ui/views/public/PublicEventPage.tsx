@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { CalendarPlus, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, MapPinned, X } from 'lucide-react'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
@@ -519,6 +519,7 @@ export function PublicEventPage() {
   const mediaItems = event?.media || []
   const eventLinks = event?.links || []
   const selectedMedia = selectedMediaIndex >= 0 ? mediaItems[selectedMediaIndex] : null
+  const mediaRailRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (selectedMediaIndex >= mediaItems.length) setSelectedMediaIndex(-1)
@@ -549,6 +550,12 @@ export function PublicEventPage() {
     } finally {
       setChatActionPending(false)
     }
+  }
+
+  function scrollEventMedia(direction: -1 | 1) {
+    const rail = mediaRailRef.current
+    if (!rail) return
+    rail.scrollBy({ left: direction * Math.max(180, rail.clientWidth * 0.72), behavior: 'smooth' })
   }
 
   async function postEventReply(rootMessageId: string) {
@@ -676,11 +683,23 @@ export function PublicEventPage() {
         <main className="public-event-main">
           {mediaItems.length ? (
             <section className="portal-card public-event-media" aria-labelledby="event-media-title">
-              <div className="public-event-card-heading">
-                <p className="public-event-eyebrow">Event Media</p>
-                <h2 id="event-media-title">Files And Images</h2>
+              <div className="public-event-card-heading public-event-media-heading-row">
+                <div>
+                  <p className="public-event-eyebrow">Event Media</p>
+                  <h2 id="event-media-title">Files And Images</h2>
+                </div>
+                {mediaItems.length > 1 ? (
+                  <div className="public-event-media-controls" aria-label="Browse event media">
+                    <button type="button" onClick={() => scrollEventMedia(-1)} aria-label="Previous event media" title="Previous event media">
+                      <ChevronLeft size={18} aria-hidden="true" />
+                    </button>
+                    <button type="button" onClick={() => scrollEventMedia(1)} aria-label="Next event media" title="Next event media">
+                      <ChevronRight size={18} aria-hidden="true" />
+                    </button>
+                  </div>
+                ) : null}
               </div>
-              <div className="public-event-media-grid">
+              <div className="public-event-media-grid" ref={mediaRailRef}>
                 {mediaItems.map((item, index) => (
                   <button
                     key={item.id}

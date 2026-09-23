@@ -119,6 +119,9 @@ test('event gallery resolves stored images through the org API without rewriting
   const labelFits = await image.locator('..').locator('strong').evaluate(label => label.scrollWidth <= label.parentElement!.clientWidth);
   expect(labelFits).toBe(true);
   await expect(page.getByRole('img', { name: 'External photo', exact: true })).toHaveAttribute('src', 'https://images.test/event.png');
+  await expect(page.getByRole('button', { name: 'Next event media', exact: true })).toBeVisible();
+  const railHeight = await page.locator('.public-event-media-grid').evaluate((rail) => rail.getBoundingClientRect().height);
+  expect(railHeight).toBeLessThan(190);
   await page.getByRole('button', { name: 'Open Menu photo in gallery', exact: true }).click();
   const gallery = page.getByRole('dialog');
   await expect(gallery).toBeVisible();
