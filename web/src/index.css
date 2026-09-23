@@ -1511,16 +1511,22 @@ h6 {
 
 .public-event-comment-composer textarea {
   width: 100%;
-  min-height: 92px;
+  min-height: 84px;
   box-sizing: border-box;
-  padding: 12px 14px;
+  padding: 12px 13px;
   color: var(--text-primary);
-  background: color-mix(in srgb, var(--panel-2), transparent 12%);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--panel), var(--panel-2) 34%);
+  border: 1px solid color-mix(in srgb, var(--border), transparent 10%);
+  border-radius: 8px;
   font: inherit;
-  line-height: 1.5;
+  line-height: 1.45;
   resize: vertical;
+}
+
+.public-event-comment-composer textarea:focus {
+  border-color: color-mix(in srgb, var(--primary), white 18%);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary), transparent 82%);
+  outline: none;
 }
 
 .public-event-comment-actions,
@@ -1532,30 +1538,44 @@ h6 {
 }
 
 .public-event-comment-actions a {
+  color: var(--text-muted);
+  font-size: 0.92rem;
   font-weight: 700;
+  text-decoration: none;
+}
+
+.public-event-comment-actions a:hover,
+.public-event-comment-actions a:focus-visible {
+  color: var(--primary);
+  text-decoration: underline;
 }
 
 .public-event-comment-list {
   display: grid;
-  gap: 16px;
+  gap: 4px;
+  padding-top: 4px;
 }
 
 .public-event-comment {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 10px;
   align-items: start;
+  padding: 10px 2px;
+  border-top: 1px solid color-mix(in srgb, var(--border-subtle), transparent 28%);
 }
 
 .public-event-comment-avatar {
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
+  width: 36px;
+  height: 36px;
   color: var(--panel);
   background: var(--text-primary);
+  border: 1px solid color-mix(in srgb, var(--border), transparent 20%);
   border-radius: 50%;
-  font-size: 0.82rem;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.16);
+  font-size: 0.78rem;
   font-weight: 850;
   overflow: hidden;
 }
@@ -1569,50 +1589,72 @@ h6 {
 .public-event-comment-body {
   display: grid;
   min-width: 0;
-  gap: 8px;
-  padding: 12px 14px;
-  background: color-mix(in srgb, var(--panel-2), transparent 20%);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
+  gap: 6px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
 }
 
 .public-event-comment-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  justify-content: space-between;
+  justify-content: flex-start;
+  align-items: baseline;
   color: var(--text-muted);
-  font-size: 0.84rem;
+  font-size: 0.78rem;
+  line-height: 1.25;
 }
 
 .public-event-comment-meta strong {
   color: var(--text-primary);
+  font-size: 0.94rem;
+  font-weight: 800;
 }
 
 .public-event-comment-body p {
   margin: 0;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  line-height: 1.55;
+  color: var(--text-primary);
+  font-size: 0.98rem;
+  line-height: 1.48;
 }
 
 .public-event-comment-tools button,
 .public-event-comment-react-menu summary {
-  border: 1px solid var(--border-subtle);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  border: 1px solid color-mix(in srgb, var(--border-subtle), transparent 8%);
   border-radius: 999px;
-  padding: 3px 9px;
-  color: var(--text-primary);
-  background: color-mix(in srgb, var(--primary), transparent 88%);
+  padding: 2px 9px;
+  color: var(--text-muted);
+  background: transparent;
   font: inherit;
-  font-size: 0.86rem;
+  font-size: 0.8rem;
+  font-weight: 750;
+  line-height: 1;
   cursor: pointer;
+}
+
+.public-event-comment-tools button:hover,
+.public-event-comment-react-menu summary:hover,
+.public-event-comment-tools button:focus-visible,
+.public-event-comment-react-menu summary:focus-visible {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--panel-2), transparent 18%);
+  border-color: color-mix(in srgb, var(--primary), transparent 45%);
 }
 
 .public-event-comment-tools button[aria-pressed="true"],
 .public-event-comment-tools button.public-event-comment-reaction-active {
-  border-color: color-mix(in srgb, var(--primary), white 24%);
-  background: color-mix(in srgb, var(--primary), transparent 68%);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary), transparent 88%);
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--primary), white 18%);
+  background: color-mix(in srgb, var(--primary), transparent 72%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary), transparent 72%);
 }
 
 .public-event-comment-tools button:disabled {
@@ -1640,25 +1682,39 @@ h6 {
   margin-top: 6px;
   padding: 6px;
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--panel), transparent 2%);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 10px 26px rgb(0 0 0 / 0.18);
 }
 
 .public-event-comment-replies {
   display: grid;
-  gap: 10px;
-  padding-top: 4px;
+  gap: 2px;
+  margin-top: 4px;
+  padding: 2px 0 0 12px;
+  border-left: 2px solid color-mix(in srgb, var(--border-subtle), transparent 18%);
 }
 
 .public-event-comment-reply {
-  grid-template-columns: 34px minmax(0, 1fr);
-  gap: 10px;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 8px;
+  padding: 8px 0;
+  border-top: 0;
 }
 
 .public-event-comment-reply .public-event-comment-avatar {
-  width: 34px;
-  height: 34px;
-  font-size: 0.72rem;
+  width: 30px;
+  height: 30px;
+  font-size: 0.68rem;
+}
+
+.public-event-comment-tools button small {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 .public-event-reply-composer {
