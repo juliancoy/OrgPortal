@@ -118,19 +118,19 @@ class FakeD1 {
       const event = this.events.find((row) => row.slug === slug || row.id === alias?.event_id);
       if (!event) return null;
       const org = this.organizations.find((row) => row.id === event.host_org_id);
-      return { ...event, organization_name: org?.name || null } as T;
+      return { ...event, organization_name: org?.name || null, organization_slug: org?.slug || null, organization_image_url: org?.image_url || null } as T;
     }
     if (sql.includes("FROM events e") && sql.includes("WHERE e.slug = ?")) {
       const event = this.events.find((row) => row.slug === params[0]);
       if (!event) return null;
       const org = this.organizations.find((row) => row.id === event.host_org_id);
-      return { ...event, organization_name: org?.name || null } as T;
+      return { ...event, organization_name: org?.name || null, organization_slug: org?.slug || null, organization_image_url: org?.image_url || null } as T;
     }
     if (sql.includes("FROM events e") && sql.includes("WHERE e.id = ?")) {
       const event = this.events.find((row) => row.id === params[0]);
       if (!event) return null;
       const org = this.organizations.find((row) => row.id === event.host_org_id);
-      return { ...event, organization_name: org?.name || null } as T;
+      return { ...event, organization_name: org?.name || null, organization_slug: org?.slug || null, organization_image_url: org?.image_url || null } as T;
     }
     if (sql.includes("FROM governance_motions WHERE id = ?")) {
       return (this.motions.find((row) => row.id === params[0]) as T) || null;
@@ -261,6 +261,8 @@ class FakeD1 {
         .map((event) => ({
           ...event,
           organization_name: this.organizations.find((org) => org.id === event.host_org_id)?.name || null,
+          organization_slug: this.organizations.find((org) => org.id === event.host_org_id)?.slug || null,
+          organization_image_url: this.organizations.find((org) => org.id === event.host_org_id)?.image_url || null,
         })) as T[];
     }
     if (sql.includes("FROM user_contact_pages")) {
@@ -938,7 +940,7 @@ test("tenant host public URLs are root-mounted even when shared portal base is c
     slug: "baltimore-medtech",
     description: "Health community",
     source_url: null,
-    image_url: null,
+    image_url: "https://images.test/baltimore-medtech.png",
     tags: "[]",
     city: "baltimore",
     created_at: "2026-06-07T00:00:00Z",
@@ -974,8 +976,15 @@ test("tenant host public URLs are root-mounted even when shared portal base is c
 
   const eventRes = await app.request("https://medtech.social/api/network/events/public/founder-night", {}, env(db));
   assert.equal(eventRes.status, 200);
-  const event = (await eventRes.json()) as { public_url: string; flyer_urls: { letter: string; postcard: string; social: string } };
+  const event = (await eventRes.json()) as {
+    public_url: string;
+    flyer_urls: { letter: string; postcard: string; social: string };
+    organization_slug: string;
+    organization_image_url: string;
+  };
   assert.equal(event.public_url, "https://medtech.social/events/founder-night");
+  assert.equal(event.organization_slug, "baltimore-medtech");
+  assert.equal(event.organization_image_url, "https://images.test/baltimore-medtech.png");
   assert.equal(event.flyer_urls.letter, "https://medtech.social/api/network/events/public/founder-night/flyer.svg?format=letter");
   assert.equal(event.flyer_urls.postcard, "https://medtech.social/api/network/events/public/founder-night/flyer.svg?format=postcard");
 
@@ -1246,9 +1255,10 @@ test("public org and event routes return D1 rows", async () => {
 
   const eventDetail = await app.request("https://org.example.test/api/network/events/public/open-meeting", {}, env(db));
   assert.equal(eventDetail.status, 200);
-  const event = (await eventDetail.json()) as { title: string; organization_name: string };
+  const event = (await eventDetail.json()) as { title: string; organization_name: string; organization_slug: string };
   assert.equal(event.title, "Open Meeting");
   assert.equal(event.organization_name, "Code Collective");
+  assert.equal(event.organization_slug, "code-collective");
 });
 
 test("public event chat returns configured room metadata for comment views", async () => {

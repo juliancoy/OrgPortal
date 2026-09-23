@@ -34,6 +34,8 @@ type PublicEvent = {
   image_url?: string | null
   media?: EventMediaItem[]
   organization_name?: string | null
+  organization_slug?: string | null
+  organization_image_url?: string | null
   host_org_name?: string | null
   host_org_id?: string | null
   host_user_id?: string | null
@@ -101,6 +103,16 @@ function summary(text?: string | null) {
 function getEventOrganizerName(event: PublicEvent) {
   const candidate = event.organization_name || event.host_org_name
   return candidate?.trim() || 'Code Collective'
+}
+
+function organizationInitials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join('')
+    .toUpperCase() || '?'
 }
 
 function getEventOfferValidFrom(event: PublicEvent) {
@@ -599,6 +611,8 @@ export function PublicEventPage() {
   const eventEnd = event.ends_at || eventStart || null
   const mapsUrl = event.location ? googleMapsUrl(event.location) : null
   const mapsEmbedUrl = event.location ? googleMapsEmbedUrl(event.location) : null
+  const organizerName = getEventOrganizerName(event)
+  const organizerAvatar = event.organization_image_url?.trim() || ''
 
   return (
     <article className="public-event-page">
@@ -607,7 +621,20 @@ export function PublicEventPage() {
           <img className="public-event-hero-image" src={event.image_url} alt="" />
         ) : <div className="public-event-hero-image public-event-hero-placeholder" aria-hidden="true" />}
         <div className="public-event-hero-content">
-          <p className="public-event-eyebrow">{getEventOrganizerName(event)}</p>
+          {event.organization_slug ? (
+            <Link
+              className="public-event-organizer-link"
+              to={`/orgs/${encodeURIComponent(event.organization_slug)}`}
+              aria-label={`View ${organizerName} group page`}
+            >
+              <span className="public-event-organizer-avatar" aria-hidden="true">
+                {organizerAvatar ? <img src={organizerAvatar} alt="" /> : organizationInitials(organizerName)}
+              </span>
+              <span>{organizerName}</span>
+            </Link>
+          ) : (
+            <p className="public-event-eyebrow">{organizerName}</p>
+          )}
           <h1>{event.title}</h1>
           {canManageEvent ? (
             <Link className="btn-primary public-event-manage-button" to={`/orgs/events#event-${encodeURIComponent(event.slug)}`}>

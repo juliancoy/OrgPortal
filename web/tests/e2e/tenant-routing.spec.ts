@@ -22,6 +22,8 @@ const medtechEvent = {
   ends_at: '2026-09-29T20:00:00-04:00',
   location: 'Checkerspot Brewing',
   organization_name: 'Baltimore MedTech',
+  organization_slug: 'baltimore-medtech',
+  organization_image_url: 'https://images.test/baltimore-medtech.png',
   host_org_name: 'Baltimore MedTech',
   host_org_id: 'org-medtech',
 }
@@ -276,6 +278,9 @@ test('tenant event page keeps the hero compact and removes redundant labels', as
   await page.goto(portal('/events/medtech-in-the-hut'))
 
   await expect(page.getByRole('heading', { name: 'MedTech in the Hut' })).toBeVisible()
+  const organizerLink = page.getByRole('link', { name: 'View Baltimore MedTech group page' })
+  await expect(organizerLink).toHaveAttribute('href', '/orgs/baltimore-medtech')
+  await expect(organizerLink.locator('img')).toHaveAttribute('src', 'https://images.test/baltimore-medtech.png')
   const body = page.locator('body')
   await expect(body).not.toContainText('Registration')
   await expect(body).not.toContainText('Reserve Your Spot')

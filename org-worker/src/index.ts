@@ -233,6 +233,8 @@ type EventRow = {
   created_at: string;
   updated_at: string;
   organization_name?: string | null;
+  organization_slug?: string | null;
+  organization_image_url?: string | null;
 };
 
 type RegisteredEventCalendarFeedRow = {
@@ -899,7 +901,7 @@ function icsFold(line: string) {
 
 async function registeredEventsIcs(env: Env, request: Request, feed: RegisteredEventCalendarFeedRow) {
   const rows = await env.DB.prepare(
-    `SELECT e.*, o.name AS organization_name
+    `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url
      FROM event_registrations r
      JOIN events e ON e.id = r.event_id
      LEFT JOIN organizations o ON o.id = e.host_org_id
@@ -1308,6 +1310,8 @@ async function mapEvent(env: Env, request: Request, row: EventRow) {
     host_org_id: row.host_org_id,
     host_org_name: row.organization_name || row.host_org_name,
     organization_name: row.organization_name || row.host_org_name,
+    organization_slug: row.organization_slug || null,
+    organization_image_url: row.organization_image_url || null,
     tags: parseJsonArray(row.tags),
     public_url: await eventPublicUrl(env, request, row.slug),
     created_at: row.created_at,
@@ -1358,7 +1362,7 @@ async function eventFlyerSvg(env: Env, request: Request, event: EventRow, format
 async function publicEventBySlug(db: D1Database, rawSlug: string) {
   const slug = slugify(rawSlug);
   const direct = await db.prepare(
-    `SELECT e.*, o.name AS organization_name
+    `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url
      FROM events e
      LEFT JOIN organizations o ON o.id = e.host_org_id
      WHERE e.slug = ?
@@ -1370,7 +1374,7 @@ async function publicEventBySlug(db: D1Database, rawSlug: string) {
 
   try {
     return await db.prepare(
-      `SELECT e.*, o.name AS organization_name
+      `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url
        FROM event_slug_aliases esa
        JOIN events e ON e.id = esa.event_id
        LEFT JOIN organizations o ON o.id = e.host_org_id
@@ -2846,7 +2850,7 @@ app.get("/api/network/orgs/public/:slug/events", async (c) => {
   const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "60", 10) || 60, 200));
   const upcomingOnly = c.req.query("upcoming_only") === "true";
   const rows = await c.env.DB.prepare(
-    `SELECT e.*, o.name AS organization_name
+    `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url
      FROM events e
      LEFT JOIN organizations o ON o.id = e.host_org_id
      WHERE e.host_org_id = ?
@@ -2884,7 +2888,7 @@ app.get("/api/network/events/public", async (c) => {
   const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
   const candidateLimit = q ? searchCandidateLimit(limit) : limit;
   const rows = await c.env.DB.prepare(
-    `SELECT e.*, o.name AS organization_name
+    `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url
      FROM events e
      LEFT JOIN organizations o ON o.id = e.host_org_id
      ${where}
@@ -3494,7 +3498,7 @@ app.get("/api/network/events", async (c) => {
   await currentUser(c.env, c.req.raw);
   const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "300", 10) || 300, 500));
   const rows = await c.env.DB.prepare(
-    `SELECT e.*, o.name AS organization_name
+    `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url
      FROM events e
      LEFT JOIN organizations o ON o.id = e.host_org_id
      ORDER BY COALESCE(e.starts_at, e.created_at) ASC
@@ -3571,7 +3575,7 @@ app.patch("/api/network/events/:eventId", async (c) => {
   updates.updated_at = nowIso();
   const assignments = Object.keys(updates).map((key) => `${key} = ?`).join(", ");
   await c.env.DB.prepare(`UPDATE events SET ${assignments} WHERE id = ?`).bind(...Object.values(updates), row.id).run();
-  const updated = await c.env.DB.prepare("SELECT e.*, o.name AS organization_name FROM events e LEFT JOIN organizations o ON o.id = e.host_org_id WHERE e.id = ?")
+  const updated = await c.env.DB.prepare("SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url FROM events e LEFT JOIN organizations o ON o.id = e.host_org_id WHERE e.id = ?")
     .bind(row.id)
     .first<EventRow>();
   return c.json(await mapEvent(c.env, c.req.raw, updated!));
@@ -3593,7 +3597,7 @@ app.patch("/api/network/events/:eventId/media", async (c) => {
   if (c.env.SCAN_IMAGES) {
     await Promise.all(removedEventMediaImageKeys(row.id, before, media).map((key) => c.env.SCAN_IMAGES!.delete(key)));
   }
-  const updated = await c.env.DB.prepare("SELECT e.*, o.name AS organization_name FROM events e LEFT JOIN organizations o ON o.id = e.host_org_id WHERE e.id = ?")
+  const updated = await c.env.DB.prepare("SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url FROM events e LEFT JOIN organizations o ON o.id = e.host_org_id WHERE e.id = ?")
     .bind(row.id)
     .first<EventRow>();
   return c.json(await mapEvent(c.env, c.req.raw, updated!));
@@ -3632,7 +3636,7 @@ app.post("/api/network/events/:eventId/media", async (c) => {
   await c.env.DB.prepare("UPDATE events SET media_json = ?, updated_at = ? WHERE id = ?")
     .bind(JSON.stringify(media), nowIso(), row.id)
     .run();
-  const updated = await c.env.DB.prepare("SELECT e.*, o.name AS organization_name FROM events e LEFT JOIN organizations o ON o.id = e.host_org_id WHERE e.id = ?")
+  const updated = await c.env.DB.prepare("SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url FROM events e LEFT JOIN organizations o ON o.id = e.host_org_id WHERE e.id = ?")
     .bind(row.id)
     .first<EventRow>();
   return c.json(await mapEvent(c.env, c.req.raw, updated!), 201);
@@ -4753,7 +4757,7 @@ app.get("/api/network/users/public/:slug/events", async (c) => {
   const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "60", 10) || 60, 200));
   const upcomingOnly = (c.req.query("upcoming_only") || "true").toLowerCase() !== "false";
   const rows = await c.env.DB.prepare(
-    `SELECT e.*, o.name AS organization_name
+    `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url
      FROM events e
      LEFT JOIN organizations o ON o.id = e.host_org_id
      WHERE e.host_user_id = ?
