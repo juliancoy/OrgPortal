@@ -123,6 +123,14 @@ test("native event changes preview, apply once, and write OrgPortal events", asy
     location: "To Be Announced",
     sourceUrl: null,
     imageUrl: "https://images.example/event.png",
+    links: [{
+      id: "luma",
+      url: "https://luma.com/csd7fvgm?tk=iQTYPW",
+      label: "Luma",
+      title: "Palava Night #3: Medtech & Healthcare, What's New? · Luma",
+      description: "Welcome to Tech in the Hut, Baltimore's bi-weekly meetup for founders, builders and creators.",
+      imageUrl: "https://images.example/luma.png",
+    }],
     tags: ["medtech"],
     city: "Baltimore",
   } };
@@ -132,10 +140,15 @@ test("native event changes preview, apply once, and write OrgPortal events", asy
     assert.equal(preview.event.slug, "native-formation");
     const applied = await runNativeEventOperation(env, identity, { ...input, confirm: true, previewId: preview.previewId }) as { success: boolean };
     assert.equal(applied.success, true);
-    const rows = await db.prepare("SELECT title, slug, host_org_id, source_url, tags FROM events WHERE ingest_key = ?")
+    const rows = await db.prepare("SELECT title, slug, host_org_id, source_url, event_links_json, tags FROM events WHERE ingest_key = ?")
       .bind("manual:event-one").all();
     assert.deepEqual(rows.results.map(row => ({ ...row })), [
-      { title: "Native formation", slug: "native-formation", host_org_id: "org-one", source_url: null, tags: '["medtech"]' },
+      { title: "Native formation", slug: "native-formation", host_org_id: "org-one", source_url: null,
+        event_links_json: JSON.stringify([{ id: "luma", url: "https://luma.com/csd7fvgm?tk=iQTYPW", label: "Luma",
+          title: "Palava Night #3: Medtech & Healthcare, What's New? · Luma",
+          description: "Welcome to Tech in the Hut, Baltimore's bi-weekly meetup for founders, builders and creators.",
+          image_url: "https://images.example/luma.png" }]),
+        tags: '["medtech"]' },
     ]);
     await assert.rejects(runNativeEventOperation(env, identity, { ...input, confirm: true, previewId: preview.previewId }), /Preview is expired/);
   } finally {

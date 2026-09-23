@@ -33,6 +33,7 @@ type PublicEvent = {
   source_url?: string | null
   image_url?: string | null
   media?: EventMediaItem[]
+  links?: EventLinkItem[]
   organization_name?: string | null
   organization_slug?: string | null
   organization_image_url?: string | null
@@ -47,6 +48,15 @@ type EventMediaItem = {
   label: string
   alt: string
   kind: 'image'
+}
+
+type EventLinkItem = {
+  id: string
+  url: string
+  label: string
+  title: string
+  description?: string | null
+  image_url?: string | null
 }
 
 type PublicEventChat = {
@@ -92,6 +102,14 @@ function googleMapsUrl(location: string) {
 
 function googleMapsEmbedUrl(location: string) {
   return `https://www.google.com/maps?q=${encodeURIComponent(location)}&output=embed`
+}
+
+function linkHost(value: string) {
+  try {
+    return new URL(value).hostname.replace(/^www\./, '')
+  } catch {
+    return value
+  }
 }
 
 function summary(text?: string | null) {
@@ -499,6 +517,7 @@ export function PublicEventPage() {
   }, [eventChatMessages])
 
   const mediaItems = event?.media || []
+  const eventLinks = event?.links || []
   const selectedMedia = selectedMediaIndex >= 0 ? mediaItems[selectedMediaIndex] : null
 
   useEffect(() => {
@@ -689,13 +708,35 @@ export function PublicEventPage() {
               <p>{event.description}</p>
             </section>
           ) : null}
-      {event.source_url ? (
-        <p style={{ margin: 0, overflowWrap: 'anywhere' }}>
-          <a href={event.source_url} target="_blank" rel="noreferrer">
-            Source / RSVP
-          </a>
-        </p>
-      ) : null}
+          {eventLinks.length > 0 ? (
+            <section className="portal-card public-event-links" aria-labelledby="event-links-title">
+              <div className="public-event-card-heading">
+                <p className="public-event-eyebrow">Related Links</p>
+                <h2 id="event-links-title">Event Links</h2>
+              </div>
+              <div className="public-event-link-list">
+                {eventLinks.map((link) => (
+                  <a key={link.id || link.url} className={`public-event-link-card${link.image_url ? '' : ' public-event-link-card-text-only'}`} href={link.url} target="_blank" rel="noreferrer">
+                    {link.image_url ? (
+                      <img src={link.image_url} alt="" loading="lazy" decoding="async" />
+                    ) : null}
+                    <span className="public-event-link-copy">
+                      <span className="public-event-link-label">{link.label}</span>
+                      <strong>{link.title || linkHost(link.url)}</strong>
+                      {link.description ? <span>{link.description}</span> : null}
+                      <span className="public-event-link-url">{linkHost(link.url)} <ExternalLink size={15} aria-hidden="true" /></span>
+                    </span>
+                  </a>
+                ))}
+              </div>
+            </section>
+          ) : event.source_url ? (
+            <p style={{ margin: 0, overflowWrap: 'anywhere' }}>
+              <a href={event.source_url} target="_blank" rel="noreferrer">
+                Source / RSVP
+              </a>
+            </p>
+          ) : null}
       <section className="portal-card public-event-chat">
         <div className="public-event-card-heading">
           <p className="public-event-eyebrow">Conversation</p>

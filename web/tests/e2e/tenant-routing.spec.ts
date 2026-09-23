@@ -26,6 +26,14 @@ const medtechEvent = {
   organization_image_url: 'https://images.test/baltimore-medtech.png',
   host_org_name: 'Baltimore MedTech',
   host_org_id: 'org-medtech',
+  links: [{
+    id: 'luma-csd7fvgm',
+    url: 'https://luma.com/csd7fvgm?tk=iQTYPW',
+    label: 'Luma',
+    title: "Palava Night #3: Medtech & Healthcare, What's New? · Luma",
+    description: "Welcome to Tech in the Hut, Baltimore's bi-weekly meetup for founders, builders and creators.",
+    image_url: 'https://images.lumacdn.com/cdn-cgi/image/format=auto,fit=cover,dpr=1,anim=false,background=white,quality=75,width=800,height=420/event-social/kd/b505d847-aed8-4b06-a478-aa958e3e8b0d.png',
+  }],
 }
 
 test('poster workflow previews formats, exports PNG and SVG, and opens print', async ({ page }, info) => {
@@ -286,6 +294,10 @@ test('tenant event page keeps the hero compact and removes redundant labels', as
   await expect(body).not.toContainText('You’re registered')
   await expect(body).not.toContainText('Details')
   await expect(body).not.toContainText('When And Where')
+  await expect(page.getByRole('heading', { name: 'Event Links', exact: true })).toBeVisible()
+  const lumaLink = page.getByRole('link', { name: /Palava Night #3: Medtech & Healthcare/ })
+  await expect(lumaLink).toHaveAttribute('href', 'https://luma.com/csd7fvgm?tk=iQTYPW')
+  await expect(lumaLink.getByText('luma.com')).toBeVisible()
 
   const heroBox = await page.locator('.public-event-hero').boundingBox()
   const titleBox = await page.getByRole('heading', { name: 'MedTech in the Hut' }).boundingBox()

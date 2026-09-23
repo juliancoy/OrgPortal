@@ -52,6 +52,14 @@ const eventMediaItemSchema = z.object({
 const eventMediaSchema = eventTargetSchema.extend({
   media: z.array(eventMediaItemSchema).max(12),
 }).strict();
+const eventLinkSchema = z.object({
+  id: z.string().trim().min(1).max(120).optional(),
+  url: z.string().url().max(2000),
+  label: z.string().trim().min(1).max(80),
+  title: z.string().trim().min(1).max(180),
+  description: z.string().trim().max(500).nullable().optional(),
+  imageUrl: z.string().url().max(2000).nullable().optional(),
+}).strict();
 const nativeEventSchema = z.object({
   organizationId: z.string().min(1).max(200),
   previewId: z.string().uuid().optional(),
@@ -66,6 +74,7 @@ const nativeEventSchema = z.object({
     location: z.string().max(1000).nullable().optional(),
     sourceUrl: z.string().url().nullable().optional(),
     imageUrl: z.string().url().nullable().optional(),
+    links: z.array(eventLinkSchema).max(8).optional(),
     tags: z.array(z.string().min(1).max(80)).max(40).optional(),
     city: z.string().max(80).nullable().optional(),
   }).strict(),
@@ -154,6 +163,17 @@ function nullable(value: string | null | undefined) {
   return trimmed || null;
 }
 
+function normalizeEventLinks(value: NativeEventInput["event"]["links"] = []) {
+  return value.map((item) => ({
+    id: item.id || crypto.randomUUID(),
+    url: item.url,
+    label: item.label,
+    title: item.title,
+    description: nullable(item.description),
+    image_url: nullable(item.imageUrl),
+  }));
+}
+
 function normalizeNativeEvent(input: NativeEventInput, organization: { id: string; name: string; source_url: string | null }) {
   return {
     id: `event:${input.event.ingestKey}`.slice(0, 120),
@@ -166,6 +186,7 @@ function normalizeNativeEvent(input: NativeEventInput, organization: { id: strin
     location: nullable(input.event.location),
     source_url: nullable(input.event.sourceUrl),
     image_url: nullable(input.event.imageUrl),
+    links: normalizeEventLinks(input.event.links),
     host_user_id: null,
     host_user_name: null,
     host_org_id: organization.id,
@@ -390,8 +411,8 @@ async function applyNativeEvent(env: Env, input: NativeEventInput) {
   await env.DB.prepare(
     `INSERT INTO events
       (id, ingest_key, title, slug, description, starts_at, ends_at, location, source_url, image_url,
-       host_user_id, host_user_name, host_org_id, host_org_name, host_org_source_url, tags, city, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       event_links_json, host_user_id, host_user_name, host_org_id, host_org_name, host_org_source_url, tags, city, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(ingest_key) DO UPDATE SET
       title = excluded.title,
       slug = excluded.slug,
@@ -401,6 +422,7 @@ async function applyNativeEvent(env: Env, input: NativeEventInput) {
       location = excluded.location,
       source_url = excluded.source_url,
       image_url = excluded.image_url,
+      event_links_json = excluded.event_links_json,
       host_user_id = excluded.host_user_id,
       host_user_name = excluded.host_user_name,
       host_org_id = excluded.host_org_id,
@@ -410,7 +432,7 @@ async function applyNativeEvent(env: Env, input: NativeEventInput) {
       city = excluded.city,
       updated_at = excluded.updated_at`,
   ).bind(event.id, event.ingest_key, event.title, event.slug, event.description, event.starts_at, event.ends_at, event.location,
-    event.source_url, event.image_url, event.host_user_id, event.host_user_name, event.host_org_id, event.host_org_name,
+    event.source_url, event.image_url, JSON.stringify(event.links), event.host_user_id, event.host_user_name, event.host_org_id, event.host_org_name,
     event.host_org_source_url, JSON.stringify(event.tags), event.city, now, now).run();
   return { success: true, completed: ["upsert_native_event"], event: (await previewNativeEvent(env, input)).event,
     publicUrl: preview.publicUrl };

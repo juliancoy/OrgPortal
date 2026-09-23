@@ -1098,6 +1098,92 @@ h6 {
   outline-offset: 4px;
 }
 
+.public-event-links {
+  display: grid;
+  gap: 14px;
+}
+
+.public-event-link-list {
+  display: grid;
+  gap: 12px;
+}
+
+.public-event-link-card {
+  display: grid;
+  grid-template-columns: minmax(124px, 34%) minmax(0, 1fr);
+  gap: 14px;
+  align-items: stretch;
+  overflow: hidden;
+  color: var(--text-primary);
+  text-decoration: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.public-event-link-card:hover,
+.public-event-link-card:focus-visible {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+.public-event-link-card:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 3px;
+}
+
+.public-event-link-card img {
+  width: 100%;
+  height: 100%;
+  min-height: 134px;
+  object-fit: cover;
+  background: var(--panel-2);
+}
+
+.public-event-link-card-text-only {
+  grid-template-columns: 1fr;
+}
+
+.public-event-link-card-text-only .public-event-link-copy {
+  padding: 14px;
+}
+
+.public-event-link-copy {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 14px 14px 14px 0;
+  align-content: center;
+}
+
+.public-event-link-copy strong,
+.public-event-link-copy span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.public-event-link-copy strong {
+  font-size: 1.05rem;
+  line-height: 1.28;
+}
+
+.public-event-link-copy span:not(.public-event-link-label):not(.public-event-link-url) {
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.public-event-link-label,
+.public-event-link-url {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  color: var(--primary);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
 .public-event-gallery-backdrop {
   position: fixed;
   inset: 0;
@@ -9144,6 +9230,19 @@ textarea:focus {
 
 
 @media (max-width: 720px) {
+  .public-event-link-card {
+    grid-template-columns: 1fr;
+  }
+
+  .public-event-link-card img {
+    aspect-ratio: 1.91 / 1;
+    min-height: 0;
+  }
+
+  .public-event-link-copy {
+    padding: 0 12px 12px;
+  }
+
   .public-event-list-card {
     grid-template-columns: 1fr;
     padding: 12px;

@@ -217,6 +217,7 @@ type EventRow = {
   source_url: string | null;
   image_url: string | null;
   media_json?: string | null;
+  event_links_json?: string | null;
   social_title?: string | null;
   social_description?: string | null;
   social_image_url?: string | null;
@@ -1203,6 +1204,48 @@ function sanitizeEventMedia(value: unknown): EventMediaItem[] {
   return items;
 }
 
+type EventLinkItem = {
+  id: string;
+  url: string;
+  label: string;
+  title: string;
+  description: string | null;
+  image_url: string | null;
+};
+
+function sanitizeEventLinks(value: unknown): EventLinkItem[] {
+  if (!Array.isArray(value)) return [];
+  const items: EventLinkItem[] = [];
+  for (const raw of value) {
+    if (!raw || typeof raw !== "object") continue;
+    const record = raw as Record<string, unknown>;
+    const url = cleanUrl(record.url);
+    if (!url) continue;
+    const label = cleanOptionalString(record.label, 80) || "Event link";
+    const title = cleanOptionalString(record.title, 180) || label;
+    const id = cleanOptionalString(record.id, 120)?.replace(/[^a-zA-Z0-9._:-]/g, "-") || crypto.randomUUID();
+    items.push({
+      id,
+      url,
+      label,
+      title,
+      description: cleanOptionalString(record.description, 500),
+      image_url: cleanPublicAssetUrl(record.image_url),
+    });
+    if (items.length >= 8) break;
+  }
+  return items;
+}
+
+function parseEventLinks(value: string | null | undefined): EventLinkItem[] {
+  if (!value) return [];
+  try {
+    return sanitizeEventLinks(JSON.parse(value));
+  } catch {
+    return [];
+  }
+}
+
 function removedEventMediaImageKeys(eventId: string, before: EventMediaItem[], after: EventMediaItem[]) {
   const retainedKeys = new Set(after.map((item) => item.image_key).filter(Boolean));
   const retainedUrls = new Set(after.map((item) => item.url).filter(Boolean));
@@ -1295,6 +1338,7 @@ async function mapEvent(env: Env, request: Request, row: EventRow) {
     source_url: row.source_url,
     image_url: row.image_url,
     media: parseEventMedia(row.media_json),
+    links: parseEventLinks(row.event_links_json),
     social_title: row.social_title || null,
     social_description: row.social_description || null,
     social_image_url: row.social_image_url || null,
@@ -1877,15 +1921,16 @@ async function upsertEvent(db: D1Database, raw: Record<string, unknown>) {
   const slug = existing?.slug || (await uniqueTableSlug(db, "events", `${title}-${ingestKey.slice(0, 8)}`));
   const updatedAt = nowIso();
   const mediaJson = Array.isArray(raw.media) ? JSON.stringify(sanitizeEventMedia(raw.media)) : existing?.media_json || "[]";
+  const eventLinksJson = Array.isArray(raw.links) ? JSON.stringify(sanitizeEventLinks(raw.links)) : existing?.event_links_json || "[]";
   await db.prepare(
     `INSERT INTO events
       (id, ingest_key, title, slug, description, starts_at, ends_at, location, source_url, image_url,
-       media_json,
+       media_json, event_links_json,
        social_title, social_description, social_image_url,
        host_user_id, host_user_name, host_org_id, host_org_name, host_org_source_url,
        event_chat_room_id, event_chat_room_alias, event_chat_room_name,
        tags, city, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(ingest_key) DO UPDATE SET
       title = excluded.title,
       description = excluded.description,
@@ -1895,6 +1940,7 @@ async function upsertEvent(db: D1Database, raw: Record<string, unknown>) {
       source_url = excluded.source_url,
       image_url = excluded.image_url,
       media_json = excluded.media_json,
+      event_links_json = excluded.event_links_json,
       social_title = excluded.social_title,
       social_description = excluded.social_description,
       social_image_url = excluded.social_image_url,
@@ -1922,6 +1968,7 @@ async function upsertEvent(db: D1Database, raw: Record<string, unknown>) {
       cleanUrl(raw.source_url),
       cleanPublicAssetUrl(raw.image_url),
       mediaJson,
+      eventLinksJson,
       stringField(raw, "social_title", 140),
       stringField(raw, "social_description", 300),
       cleanPublicAssetUrl(raw.social_image_url),
@@ -3571,6 +3618,7 @@ app.patch("/api/network/events/:eventId", async (c) => {
   if ("social_title" in payload) updates.social_title = stringField(payload, "social_title", 140);
   if ("social_description" in payload) updates.social_description = stringField(payload, "social_description", 300);
   if ("social_image_url" in payload) updates.social_image_url = cleanPublicAssetUrl(payload.social_image_url);
+  if ("links" in payload) updates.event_links_json = JSON.stringify(sanitizeEventLinks(payload.links));
   if (!Object.keys(updates).length) return c.json(await mapEvent(c.env, c.req.raw, row));
   updates.updated_at = nowIso();
   const assignments = Object.keys(updates).map((key) => `${key} = ?`).join(", ");

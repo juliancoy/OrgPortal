@@ -55,6 +55,7 @@ export class EventTestDb {
         location TEXT,
         source_url TEXT,
         image_url TEXT,
+        event_links_json TEXT NOT NULL DEFAULT '[]',
         social_title TEXT,
         social_description TEXT,
         social_image_url TEXT,
