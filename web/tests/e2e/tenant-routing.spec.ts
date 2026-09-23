@@ -244,6 +244,7 @@ test('tenant brand guide uses the active organization identity', async ({ page }
 
   await expect(page.getByRole('heading', { name: 'Baltimore MedTech', exact: true })).toBeVisible()
   await expect(page.getByText('Health x Medicine x Biotech', { exact: true }).first()).toBeVisible()
+  await expect(page.locator('.tenant-brand-lockup strong')).toHaveCSS('color', 'rgb(23, 32, 51)')
   await expect(page.getByRole('img', { name: 'Baltimore MedTech primary logo' })).toHaveAttribute('src', /\/images\/baltimore-medtech-logo-square-v2\.jpg$/)
   await expect(page.getByText('#0f6f8f', { exact: true })).toBeVisible()
   await expect(page.getByText('#061a26', { exact: true })).toBeVisible()

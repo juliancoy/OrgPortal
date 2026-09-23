@@ -8834,6 +8834,7 @@ textarea:focus {
 }
 
 .tenant-brand-lockup strong {
+  color: var(--text-primary);
   font-size: 1.25rem;
 }
 
