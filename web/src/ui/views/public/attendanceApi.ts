@@ -106,7 +106,7 @@ export async function recordAttendanceWithRetry(eventId: string, token: string |
   }
 
   if (resp.ok) {
-    return { ok: true, message: method === 'DELETE' ? 'Registration cancelled.' : 'You’re registered!', attendance: await resp.json() as EventAttendance }
+    return { ok: true, message: method === 'DELETE' ? 'Registration cancelled.' : 'Registration saved.', attendance: await resp.json() as EventAttendance }
   }
 
   if (resp.status === 401) {

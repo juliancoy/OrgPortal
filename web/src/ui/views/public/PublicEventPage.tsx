@@ -567,10 +567,10 @@ export function PublicEventPage() {
     }
     if (googleCalendarConnected) {
       const result = await savePortalEventToGoogleCalendar(token, calendarEvent)
-      if (result.connected) return 'You’re registered and the event was added to Google Calendar.'
+      if (result.connected) return 'Saved to your registration and added to Google Calendar.'
     } else if (microsoftCalendarConnected) {
       const result = await savePortalEventToMicrosoftCalendar(token, calendarEvent)
-      if (result.connected) return 'You’re registered and the event was added to Microsoft Calendar.'
+      if (result.connected) return 'Saved to your registration and added to Microsoft Calendar.'
     }
   }
 
@@ -799,11 +799,7 @@ export function PublicEventPage() {
           <EventRegistration key={`${event.id}:${user?.id || 'guest'}:${Boolean(token)}`}
             eventId={event.id} slug={event.slug} token={token} authLoading={authLoading} saveToCalendar={saveToCalendar}
             organizationName={event.host_org_id ? event.organization_name || event.host_org_name : null} />
-          <section className="portal-card public-event-logistics-card" aria-labelledby="event-logistics-title">
-            <div className="public-event-card-heading">
-              <p className="public-event-eyebrow">Details</p>
-              <h2 id="event-logistics-title">When And Where</h2>
-            </div>
+          <section className="portal-card public-event-logistics-card" aria-label="Event details">
             <div className="public-event-logistics-list">
               <div className="public-event-logistics-item">
                 <span>Date</span>

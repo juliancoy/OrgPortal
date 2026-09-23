@@ -72,7 +72,7 @@ export function EventRegistration({ eventId, slug, token, authLoading = false, s
           const calendarMessage = await saveToCalendar()
           if (calendarMessage) setMessage(calendarMessage)
         } catch {
-          setMessage('You’re registered! Calendar sync failed; you can download the calendar event below.')
+          setMessage('Saved. Calendar sync failed; you can download the calendar event below.')
         }
       } else {
         setMessage('Registration cancelled. Remove any saved calendar copy separately.')
@@ -91,7 +91,6 @@ export function EventRegistration({ eventId, slug, token, authLoading = false, s
           <span aria-hidden="true" />
         </div>
       ) : token ? <>
-        {attendance?.registered && <strong className="public-event-registered-state">You’re registered</strong>}
         <button type="button" className={attendance?.registered ? 'portal-button-secondary' : undefined}
           onClick={updateRegistration} disabled={pending || !attendance}>
           {pending ? 'Saving…' : attendance?.registered ? 'Cancel Registration' : 'Register'}
@@ -107,12 +106,8 @@ export function EventRegistration({ eventId, slug, token, authLoading = false, s
     : 'Loading guests'
 
   return (
-    <section className="portal-card public-event-registration" aria-labelledby="event-registration-title">
+    <section className="portal-card public-event-registration" aria-label="Event registration">
       <div className="public-event-registration-top">
-        <div className="public-event-card-heading">
-          <p className="public-event-eyebrow">Registration</p>
-          <h2 id="event-registration-title">Reserve Your Spot</h2>
-        </div>
         {registrationActions}
       </div>
       {attendance ? (

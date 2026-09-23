@@ -271,6 +271,36 @@ test('tenant event auth actions return to the same root-mounted event', async ({
   await expect(page.locator('body')).not.toContainText(/404|not found/i)
 })
 
+test('tenant event page keeps the hero compact and removes redundant labels', async ({ page }) => {
+  await mockTenant(page)
+  await page.goto(portal('/events/medtech-in-the-hut'))
+
+  await expect(page.getByRole('heading', { name: 'MedTech in the Hut' })).toBeVisible()
+  const body = page.locator('body')
+  await expect(body).not.toContainText('Registration')
+  await expect(body).not.toContainText('Reserve Your Spot')
+  await expect(body).not.toContainText('You’re registered')
+  await expect(body).not.toContainText('Details')
+  await expect(body).not.toContainText('When And Where')
+
+  const heroBox = await page.locator('.public-event-hero').boundingBox()
+  const titleBox = await page.getByRole('heading', { name: 'MedTech in the Hut' }).boundingBox()
+  expect(heroBox).not.toBeNull()
+  expect(titleBox).not.toBeNull()
+  expect(titleBox!.x).toBeGreaterThanOrEqual(heroBox!.x)
+  expect(titleBox!.y).toBeGreaterThanOrEqual(heroBox!.y)
+  expect(titleBox!.x + titleBox!.width).toBeLessThanOrEqual(heroBox!.x + heroBox!.width + 1)
+  expect(titleBox!.y + titleBox!.height).toBeLessThanOrEqual(heroBox!.y + heroBox!.height + 1)
+
+  const viewport = page.viewportSize()
+  expect(viewport).not.toBeNull()
+  if (viewport!.width >= 980) {
+    expect(heroBox!.width).toBeLessThanOrEqual(viewport!.width * 0.55)
+  } else {
+    expect(heroBox!.width).toBeGreaterThan(viewport!.width * 0.85)
+  }
+})
+
 test('tenant event comments use the chat API for room, comments, replies, and reactions', async ({ page }) => {
   const rootText = 'Excited to meet other medtech builders.'
   const replyText = 'Saving a seat near the front.'

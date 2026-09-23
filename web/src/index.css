@@ -950,9 +950,9 @@ h6 {
 
 .public-event-hero {
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 0.98fr) minmax(420px, 1.02fr);
-  min-height: 340px;
+  display: block;
+  width: min(50%, 620px);
+  min-height: clamp(260px, 30vw, 420px);
   overflow: hidden;
   color: #fff;
   background: #061a26;
@@ -966,15 +966,14 @@ h6 {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background:
-    linear-gradient(90deg, rgb(6 26 38 / 0.1), rgb(6 26 38 / 0.84) 58%, rgb(6 26 38 / 0.96)),
-    linear-gradient(0deg, rgb(0 0 0 / 0.32), transparent 42%);
+  background: linear-gradient(0deg, rgb(6 26 38 / 0.92), rgb(6 26 38 / 0.4) 54%, rgb(6 26 38 / 0.08));
 }
 
 .public-event-hero-image {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
-  min-height: 340px;
   object-fit: cover;
 }
 
@@ -983,12 +982,13 @@ h6 {
 }
 
 .public-event-hero-content {
-  position: relative;
+  position: absolute;
+  inset: 0;
   z-index: 1;
   display: grid;
-  align-content: center;
+  align-content: end;
   gap: 18px;
-  padding: clamp(28px, 5vw, 56px);
+  padding: clamp(22px, 3vw, 38px);
 }
 
 .public-event-eyebrow {
@@ -1173,7 +1173,7 @@ h6 {
   max-width: 100%;
   margin: 0;
   color: #fff;
-  font-size: clamp(2.35rem, 4.9vw, 4.35rem);
+  font-size: clamp(2.1rem, 3.6vw, 3.65rem);
   line-height: 1.02;
   overflow-wrap: anywhere;
 }
@@ -5935,8 +5935,8 @@ textarea:focus {
   }
 
   .public-event-hero {
-    grid-template-columns: 1fr;
-    min-height: 0;
+    width: 100%;
+    min-height: 260px;
   }
 
   .public-event-hero::after {
@@ -5944,8 +5944,8 @@ textarea:focus {
   }
 
   .public-event-hero-image {
-    min-height: 170px;
-    max-height: 210px;
+    min-height: 0;
+    max-height: none;
   }
 
   .public-event-hero-content {
