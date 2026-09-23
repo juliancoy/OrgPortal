@@ -1,4 +1,5 @@
 .event-poster { min-width: 0; padding-block: 1.5rem; border-top: 1px solid var(--border); }
+.public-event-side > .event-poster { padding: clamp(16px, 2.4vw, 24px); background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); }
 .event-poster h2 { font-size: 1.25rem; margin: 0 0 1rem; letter-spacing: 0; }
 .event-poster-toolbar, .event-poster-actions, .event-poster-formats, .event-poster-themes { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
 .event-poster-toolbar { justify-content: space-between; margin-bottom: 1rem; }

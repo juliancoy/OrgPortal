@@ -47,7 +47,7 @@ test('poster workflow previews formats, exports PNG and SVG, and opens print', a
     await route.fulfill({ contentType: 'image/svg+xml', body: svg })
   })
   await page.goto(portal('/events/medtech-in-the-hut'))
-  await page.getByRole('button', { name: 'Create poster', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Create poster', exact: true })).toHaveCount(0)
   const editor = page.getByRole('region', { name: 'Event poster', exact: true })
   await editor.getByRole('button', { name: 'Dark', exact: true }).click()
   for (const [label, width, height] of [['8.5 x 11', 2550, 3300], ['Letter 2 × 2', 2550, 3300], ['4 x 6', 1200, 1800], ['Social', 1200, 630]] as const) {
@@ -87,7 +87,6 @@ test('poster failures offer retry and do not leave export buttons active', async
     return route.fulfill({ contentType: 'image/svg+xml', body: await renderEventPoster(medtechEvent, 'https://medtech.social/events/medtech-in-the-hut', 'letter', { name: 'Baltimore MedTech' }) })
   })
   await page.goto(portal('/events/medtech-in-the-hut'))
-  await page.getByRole('button', { name: 'Create poster', exact: true }).click()
   const editor = page.getByRole('region', { name: 'Event poster', exact: true })
   await expect(editor.getByRole('alert')).toContainText('Poster unavailable')
   await expect(editor.getByRole('button', { name: 'PNG', exact: true })).toBeDisabled()
@@ -440,13 +439,13 @@ test('tenant event location opens Google Maps and copies the address', async ({ 
   await mockTenant(page, { initiallyLoggedIn: true })
   await page.goto(portal('/events/medtech-in-the-hut'))
 
-  const mapsLink = page.getByRole('link', { name: /Open in Google Maps/i })
+  const mapsLink = page.getByRole('link', { name: 'Open location in Google Maps' })
   await expect(mapsLink).toBeVisible()
   await expect(mapsLink).toHaveAttribute('href', /google\.com\/maps\/search/)
   await expect(page.locator('.public-event-map-frame iframe')).toHaveAttribute('src', /google\.com\/maps/)
 
-  await page.getByRole('button', { name: 'Copy Address' }).click()
-  await expect(page.getByRole('button', { name: 'Copied' })).toBeVisible()
+  await page.getByRole('button', { name: 'Copy address' }).click()
+  await expect(page.getByRole('button', { name: 'Address copied' })).toBeVisible()
   await expect.poll(() => page.evaluate(() => (window as unknown as { __copiedAddress?: string }).__copiedAddress)).toBe('Checkerspot Brewing')
 })
 

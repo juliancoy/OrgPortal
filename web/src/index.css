@@ -1359,6 +1359,47 @@ h6 {
   overflow-wrap: anywhere;
 }
 
+.public-event-location-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+}
+
+.public-event-location-actions,
+.public-event-calendar-actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.public-event-calendar-actions {
+  margin-top: 4px;
+}
+
+.public-event-icon-action {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  padding: 0;
+  color: var(--primary);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.public-event-icon-action:hover,
+.public-event-icon-action:focus-visible {
+  color: var(--panel);
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
 .public-event-map-frame {
   position: relative;
   display: block;
@@ -1376,33 +1417,6 @@ h6 {
   width: 100%;
   height: 100%;
   border: 0;
-}
-
-.public-event-map-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.public-event-map-actions a,
-.public-event-map-actions button {
-  flex: 1 1 auto;
-  justify-content: center;
-  min-height: 38px;
-  text-align: center;
-}
-
-.public-event-map-actions a {
-  display: inline-flex;
-  align-items: center;
-  padding: 0 10px;
-  color: var(--primary);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  text-decoration: none;
-  font-weight: 850;
 }
 
 .public-event-registration-links,

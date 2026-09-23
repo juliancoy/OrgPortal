@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, ExternalLink, X } from 'lucide-react'
+import { CalendarPlus, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, MapPinned, X } from 'lucide-react'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
 import { downloadIcsEvent, outlookCalendarUrl } from '../../utils/calendar'
 import { useAuth } from '../../../app/AppProviders'
@@ -613,6 +613,15 @@ export function PublicEventPage() {
   const mapsEmbedUrl = event.location ? googleMapsEmbedUrl(event.location) : null
   const organizerName = getEventOrganizerName(event)
   const organizerAvatar = event.organization_image_url?.trim() || ''
+  const publicEventUrl = event.source_url || eventUrl(event.slug)
+  const calendarDownloadEvent = eventStart && eventEnd ? {
+    title: event.title,
+    description: event.description || 'Event from Org Portal.',
+    location: event.location || null,
+    startsAt: eventStart,
+    endsAt: eventEnd,
+    url: publicEventUrl,
+  } : null
 
   return (
     <article className="public-event-page">
@@ -835,11 +844,59 @@ export function PublicEventPage() {
               <div className="public-event-logistics-item">
                 <span>Time</span>
                 <strong>{toEventTimeRange(event.starts_at, event.ends_at)}</strong>
+                {calendarDownloadEvent ? (
+                  <div className="public-event-calendar-actions" aria-label="Add event to calendar">
+                    <button
+                      type="button"
+                      className="public-event-icon-action"
+                      onClick={() => downloadIcsEvent(calendarDownloadEvent)}
+                      title="Download calendar file"
+                      aria-label="Download calendar file"
+                    >
+                      <Download size={17} aria-hidden="true" />
+                    </button>
+                    <a
+                      className="public-event-icon-action"
+                      href={outlookCalendarUrl(calendarDownloadEvent)}
+                      target="_blank"
+                      rel="noreferrer"
+                      title="Add to Outlook calendar"
+                      aria-label="Add to Outlook calendar"
+                    >
+                      <CalendarPlus size={17} aria-hidden="true" />
+                    </a>
+                  </div>
+                ) : null}
               </div>
               {event.location ? (
                 <div className="public-event-logistics-item">
                   <span>Location</span>
-                  <strong>{event.location}</strong>
+                  <div className="public-event-location-row">
+                    <strong>{event.location}</strong>
+                    <div className="public-event-location-actions" aria-label="Location actions">
+                      <button
+                        type="button"
+                        className="public-event-icon-action"
+                        onClick={() => copyEventAddress().catch(() => {})}
+                        title={addressCopied ? 'Address copied' : 'Copy address'}
+                        aria-label={addressCopied ? 'Address copied' : 'Copy address'}
+                      >
+                        <Copy size={17} aria-hidden="true" />
+                      </button>
+                      {mapsUrl ? (
+                        <a
+                          className="public-event-icon-action"
+                          href={mapsUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          title="Open in Google Maps"
+                          aria-label="Open location in Google Maps"
+                        >
+                          <MapPinned size={17} aria-hidden="true" />
+                        </a>
+                      ) : null}
+                    </div>
+                  </div>
                 </div>
               ) : null}
             </div>
@@ -848,56 +905,10 @@ export function PublicEventPage() {
                 <a className="public-event-map-frame" href={mapsUrl} target="_blank" rel="noreferrer" aria-label={`Open ${event.location} in Google Maps`}>
                   <iframe title={`Map for ${event.location}`} src={mapsEmbedUrl} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
                 </a>
-                <div className="public-event-map-actions">
-                  <a href={mapsUrl} target="_blank" rel="noreferrer">Open in Google Maps</a>
-                  <button type="button" className="portal-button-secondary" onClick={() => copyEventAddress().catch(() => {})}>
-                    {addressCopied ? 'Copied' : 'Copy Address'}
-                  </button>
-                </div>
               </div>
             ) : null}
           </section>
-          <section className="portal-card public-event-calendar-card">
-            <div className="public-event-card-heading">
-              <p className="public-event-eyebrow">Calendar</p>
-              <h2>Add To Calendar</h2>
-            </div>
-            <div className="public-event-actions">
-              {eventStart && eventEnd ? (
-                <>
-                  <button
-                    type="button"
-                    className="portal-button-secondary"
-                    onClick={() => downloadIcsEvent({
-                      title: event.title,
-                      description: event.description || 'Event from Org Portal.',
-                      location: event.location || null,
-                      startsAt: eventStart,
-                      endsAt: eventEnd,
-                      url: event.source_url || eventUrl(event.slug),
-                    })}
-                  >
-                    Download .ics
-                  </button>
-                  <a
-                    href={outlookCalendarUrl({
-                      title: event.title,
-                      description: event.description || 'Event from Org Portal.',
-                      location: event.location || null,
-                      startsAt: eventStart,
-                      endsAt: eventEnd,
-                      url: event.source_url || eventUrl(event.slug),
-                    })}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Outlook
-                  </a>
-                </>
-              ) : null}
-            </div>
-          </section>
-          <EventPosterTools slug={event.slug} title={event.title} revision={event.updated_at || ''} />
+          <EventPosterTools slug={event.slug} title={event.title} revision={event.updated_at || ''} inline />
         </aside>
       </div>
       {selectedMedia ? (

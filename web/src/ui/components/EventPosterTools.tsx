@@ -11,9 +11,10 @@ const formats: Record<Format, { label: string; width: number; height: number; pr
   social: { label: 'Social', width: 1200, height: 630, print: '12in 6.3in' },
 }
 
-type Props = { slug: string; title: string; revision?: string }
-export function EventPosterTools(props: Props) {
+type Props = { slug: string; title: string; revision?: string; inline?: boolean }
+export function EventPosterTools({ inline = false, ...props }: Props) {
   const [open, setOpen] = useState(false)
+  if (inline) return <PosterEditor {...props} />
   return <div className="event-poster-entry">
     <button type="button" className="portal-button-secondary" aria-expanded={open} onClick={() => setOpen(value => !value)}>
       {open ? <X size={18} aria-hidden="true"/> : <FileImage size={18} aria-hidden="true"/>}{open ? 'Close poster' : 'Create poster'}
