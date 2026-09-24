@@ -2,9 +2,11 @@ import QRCode from 'qrcode';
 
 export type PosterFormat = 'letter' | 'letter-4up' | 'postcard' | 'social';
 export type PosterTheme = 'light' | 'dark';
+export type PosterBackground = 'solid' | 'city' | 'gradient';
 type PosterEvent = { title: string; social_title?: string | null; description?: string | null; social_description?: string | null;
   starts_at?: string | null; ends_at?: string | null; location?: string | null };
 export type PosterBrand = { name: string; tagline?: string | null; logo?: string };
+export type PosterOptions = { background?: PosterBackground; backgroundImage?: string };
 const escape = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]!));
 const clean = (value: unknown) => String(value || '').replace(/\s+/g, ' ').trim();
 
@@ -30,16 +32,48 @@ function wrap(value: string, width: number, size: number) {
   return lines;
 }
 
-function posterPalette(theme: PosterTheme) {
+function posterPalette(theme: PosterTheme, background: PosterBackground) {
+  if (background !== 'solid') {
+    return {
+      paper: '#07131c',
+      accent: '#33c6d4',
+      brand: '#a8f7ff',
+      text: '#ffffff',
+      muted: '#d7e3e6',
+      rule: '#77dbe5',
+      qrDark: '#101820',
+      qrLight: '#ffffff',
+    };
+  }
   return theme === 'dark'
     ? { paper: '#101820', accent: '#33c6d4', brand: '#7de0e8', text: '#f7fbfc', muted: '#c7d6dc', rule: '#33545d', qrDark: '#101820', qrLight: '#ffffff' }
     : { paper: '#ffffff', accent: '#087f8c', brand: '#075e68', text: '#172033', muted: '#435362', rule: '#c8d9dc', qrDark: '#101820', qrLight: '#ffffff' };
 }
 
-export async function renderEventPoster(event: PosterEvent, publicUrl: string, format: PosterFormat, brand: PosterBrand, theme: PosterTheme = 'light') {
+function posterBackgroundParts(width: number, height: number, palette: ReturnType<typeof posterPalette>, background: PosterBackground, backgroundImage?: string) {
+  if (background === 'gradient') {
+    return [
+      `<defs><linearGradient id="poster-bg-gradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#061a26"/><stop offset="56%" stop-color="#087482"/><stop offset="100%" stop-color="#101820"/></linearGradient></defs>`,
+      `<rect width="${width}" height="${height}" fill="url(#poster-bg-gradient)"/>`,
+      `<rect width="${width}" height="${height}" fill="#000000" opacity="0.2"/>`,
+    ];
+  }
+  if (background === 'city' && backgroundImage) {
+    return [
+      `<rect width="${width}" height="${height}" fill="${palette.paper}"/>`,
+      `<image href="${escape(backgroundImage)}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice"/>`,
+      `<rect width="${width}" height="${height}" fill="#000000" opacity="0.66"/>`,
+      `<rect width="${width}" height="${height}" fill="#061a26" opacity="0.26"/>`,
+    ];
+  }
+  return [`<rect width="${width}" height="${height}" fill="${palette.paper}"/>`];
+}
+
+export async function renderEventPoster(event: PosterEvent, publicUrl: string, format: PosterFormat, brand: PosterBrand, theme: PosterTheme = 'light', options: PosterOptions = {}) {
   const { width, height } = posterGeometry(format);
   const social = format === 'social', small = format === 'postcard';
-  const palette = posterPalette(theme);
+  const background = options.background || 'solid';
+  const palette = posterPalette(theme, background);
   const margin = small ? 28 : 56;
   const contentWidth = width - margin * 2;
   const textArea = social ? 830 : contentWidth;
@@ -56,7 +90,7 @@ export async function renderEventPoster(event: PosterEvent, publicUrl: string, f
     parts.push(`<text fill="${color}" font-size="${size}" font-weight="${weight}">${lines.map((line, i) => `<tspan x="${x}" y="${y + i * size * 1.25}">${escape(line)}</tspan>`).join('')}</text>`);
     return y + lines.length * size * 1.25;
   }
-  parts.push(`<rect width="${width}" height="${height}" fill="${palette.paper}"/><rect width="${width}" height="${small ? 8 : 12}" fill="${palette.accent}"/>`);
+  parts.push(...posterBackgroundParts(width, height, palette, background, options.backgroundImage), `<rect width="${width}" height="${small ? 8 : 12}" fill="${palette.accent}"/>`);
   const logoSize = small ? 42 : 68, brandY = small ? 27 : 40;
   if (brand.logo) parts.push(`<image href="${escape(brand.logo)}" x="${margin}" y="${brandY}" width="${logoSize}" height="${logoSize}" preserveAspectRatio="xMidYMid meet"/>`);
   const brandX = margin + (brand.logo ? logoSize + (small ? 12 : 20) : 0);
@@ -99,13 +133,13 @@ export async function renderEventPoster(event: PosterEvent, publicUrl: string, f
     const insetY = (515 - height * scale) / 2;
     const copies = [0, 1].flatMap(row => [0, 1].map(column =>
       `<use href="#poster-art" transform="translate(${25 + column * 410} ${25 + row * 535 + insetY}) scale(${scale})"/>`));
-    return `<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" width="8.5in" height="11in" viewBox="0 0 850 1100" role="img" aria-labelledby="title desc" font-family="Arial, Helvetica, sans-serif" letter-spacing="0"><title id="title">${escape(title)} - four posters</title><desc id="desc">Four identical ${theme} event posters in a 2 by 2 grid on US Letter paper.</desc><rect width="850" height="1100" fill="${palette.paper}"/><defs><g id="poster-art">${parts.join('')}</g></defs>${copies.join('')}</svg>`;
+    return `<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" width="8.5in" height="11in" viewBox="0 0 850 1100" role="img" aria-labelledby="title desc" font-family="Arial, Helvetica, sans-serif" letter-spacing="0"><title id="title">${escape(title)} - four posters</title><desc id="desc">Four identical ${theme} ${background} event posters in a 2 by 2 grid on US Letter paper. Text uses a high-contrast foreground over the selected background.</desc><rect width="850" height="1100" fill="${palette.paper}"/><defs><g id="poster-art">${parts.join('')}</g></defs>${copies.join('')}</svg>`;
   }
   const physical = format === 'letter' ? 'width="8.5in" height="11in"' : format === 'postcard' ? 'width="4in" height="6in"' : `width="${width}" height="${height}"`;
-  return `<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" ${physical} viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="title desc" font-family="Arial, Helvetica, sans-serif" letter-spacing="0"><title id="title">${escape(title)} flyer</title><desc id="desc">${escape(`${brand.name}. ${date}. ${time}. ${event.location || ''}. ${theme} ${format === 'postcard' ? '4×6' : format === 'letter' ? '8.5×11' : 'Social'} event poster.`)}</desc>${parts.join('')}</svg>`;
+  return `<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" ${physical} viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="title desc" font-family="Arial, Helvetica, sans-serif" letter-spacing="0"><title id="title">${escape(title)} flyer</title><desc id="desc">${escape(`${brand.name}. ${date}. ${time}. ${event.location || ''}. ${theme} ${background} ${format === 'postcard' ? '4×6' : format === 'letter' ? '8.5×11' : 'Social'} event poster. Text uses a high-contrast foreground over the selected background.`)}</desc>${parts.join('')}</svg>`;
 }
 
-export async function posterLogo(url: URL): Promise<string | undefined> {
+async function posterDataImage(url: URL, maxBytes: number): Promise<string | undefined> {
   try {
     const response = await fetch(url, { redirect: 'manual', signal: AbortSignal.timeout(5000) });
     const mime = response.headers.get('content-type')?.split(';')[0];
@@ -115,11 +149,19 @@ export async function posterLogo(url: URL): Promise<string | undefined> {
     while (true) {
       const chunk = await reader.read(); if (chunk.done) break;
       length += chunk.value.length;
-      if (length > 512000) { await reader.cancel(); return; }
+      if (length > maxBytes) { await reader.cancel(); return; }
       chunks.push(chunk.value);
     }
     let binary = '';
     for (const chunk of chunks) for (const byte of chunk) binary += String.fromCharCode(byte);
     return `data:${mime};base64,${btoa(binary)}`;
   } catch { return; }
+}
+
+export async function posterLogo(url: URL): Promise<string | undefined> {
+  return posterDataImage(url, 512000);
+}
+
+export async function posterBackgroundImage(url: URL): Promise<string | undefined> {
+  return posterDataImage(url, 1600000);
 }

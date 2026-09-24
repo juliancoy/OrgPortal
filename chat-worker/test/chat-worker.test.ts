@@ -670,6 +670,19 @@ test("event room route supports comments, replies, and reactions", async () => {
     reacted: true,
     users: [{ user_id: "user-a", user_name: "Alice Example", avatar_url: "https://images.example/alice.jpg", created_at: db.reactions[0].created_at }],
   }]);
+
+  const publicListed = await app.request(
+    `https://chat.example.test/api/network/public/event-chat/${roomBody.conversation.id}/messages?afterSequence=0`,
+    {},
+    env(db),
+  );
+  assert.equal(publicListed.status, 200);
+  const publicBody = (await publicListed.json()) as { messages: Array<{ body: string; reactions: Array<{ reacted: boolean }> }> };
+  assert.deepEqual(
+    publicBody.messages.map((message) => message.body),
+    ["Looking forward to this.", "Same here."],
+  );
+  assert.equal(publicBody.messages[0].reactions[0].reacted, false);
 });
 
 test("sync returns only messages after the requested sequence", async () => {

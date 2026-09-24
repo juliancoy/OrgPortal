@@ -7,6 +7,10 @@
 .event-poster button[aria-pressed="true"] { background: #087482; border-color: #087482; color: #fff; }
 .event-poster button:focus-visible { outline: 3px solid #087482; outline-offset: 3px; }
 .event-poster button:disabled { opacity: .55; cursor: default; }
+.event-poster-background { display: grid; gap: .25rem; min-width: min(100%, 220px); color: var(--text-primary); font-size: .78rem; font-weight: 700; }
+.event-poster-background span { color: var(--text-muted); text-transform: uppercase; letter-spacing: .08em; }
+.event-poster-background select { width: 100%; min-height: 40px; padding: .45rem 2rem .45rem .65rem; border: 1px solid var(--border); border-radius: 4px; background: var(--panel); color: var(--text-primary); font: inherit; font-size: .875rem; cursor: pointer; }
+.event-poster-background select:focus-visible { outline: 3px solid #087482; outline-offset: 3px; }
 .event-poster-preview { width: min(100%, 425px); aspect-ratio: 850 / 1100; background: #e7edf0; border: 1px solid var(--border); display: grid; place-items: center; overflow: hidden; }
 .event-poster-preview-postcard { width: min(100%, 360px); aspect-ratio: 2 / 3; }
 .event-poster-preview-social { width: min(100%, 720px); aspect-ratio: 1200 / 630; }

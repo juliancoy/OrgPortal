@@ -4,11 +4,17 @@ import './eventPoster.css'
 
 type Format = 'letter' | 'letter-4up' | 'postcard' | 'social'
 type Theme = 'light' | 'dark'
+type Background = 'solid' | 'city' | 'gradient'
 const formats: Record<Format, { label: string; width: number; height: number; print: string }> = {
   letter: { label: '8.5 x 11', width: 2550, height: 3300, print: '8.5in 11in' },
   'letter-4up': { label: 'Letter 2 × 2', width: 2550, height: 3300, print: '8.5in 11in' },
   postcard: { label: '4 x 6', width: 1200, height: 1800, print: '4in 6in' },
   social: { label: 'Social', width: 1200, height: 630, print: '12in 6.3in' },
+}
+const backgrounds: Record<Background, string> = {
+  solid: 'Solid color',
+  city: 'Baltimore city photo',
+  gradient: 'High-contrast gradient',
 }
 
 type Props = { slug: string; title: string; revision?: string; inline?: boolean }
@@ -27,18 +33,19 @@ function PosterEditor({ slug, title, revision = '' }: Props) {
   const id = useId()
   const [format, setFormat] = useState<Format>('letter')
   const [theme, setTheme] = useState<Theme>('light')
+  const [background, setBackground] = useState<Background>('solid')
   const [retry, setRetry] = useState(0)
   const [poster, setPoster] = useState<{ url: string; blob: Blob; key: string } | null>(null)
   const [error, setError] = useState('')
   const [exporting, setExporting] = useState(false)
-  const key = JSON.stringify([slug, format, theme, revision, retry])
+  const key = JSON.stringify([slug, format, theme, background, revision, retry])
   const ready = poster?.key === key ? poster : null
   useEffect(() => {
     const abort = new AbortController()
     let url: string | undefined
     const timeout = window.setTimeout(() => { setError('Poster request timed out. Try again.'); abort.abort() }, 30000)
     setPoster(null); setError('')
-    const query = new URLSearchParams({ format, theme, version: '2', revision })
+    const query = new URLSearchParams({ format, theme, background, version: '2', revision })
     fetch(`/api/org/api/network/events/public/${encodeURIComponent(slug)}/flyer.svg?${query}`, { signal: abort.signal, cache: 'no-cache' })
       .then(async response => {
         if (!response.ok || !response.headers.get('content-type')?.includes('image/svg+xml')) throw new Error('Poster unavailable. Try again.')
@@ -50,12 +57,12 @@ function PosterEditor({ slug, title, revision = '' }: Props) {
       .catch(() => { if (!abort.signal.aborted) setError('Poster unavailable. Try again.') })
       .finally(() => window.clearTimeout(timeout))
     return () => { window.clearTimeout(timeout); abort.abort(); if (url) URL.revokeObjectURL(url) }
-  }, [slug, format, theme, revision, retry, key])
+  }, [slug, format, theme, background, revision, retry, key])
 
   function download(blob: Blob, extension: string) {
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
-    link.href = url; link.download = `${slug}-${format}${theme === 'dark' ? '-dark' : ''}.${extension}`
+    link.href = url; link.download = `${slug}-${format}${theme === 'dark' ? '-dark' : ''}${background !== 'solid' ? `-${background}` : ''}.${extension}`
     document.body.append(link); link.click(); link.remove()
     window.setTimeout(() => URL.revokeObjectURL(url), 10000)
   }
@@ -101,6 +108,12 @@ function PosterEditor({ slug, title, revision = '' }: Props) {
         <button type="button" aria-pressed={theme === 'light'} onClick={() => setTheme('light')} disabled={exporting} title="Light poster"><Sun size={18} aria-hidden="true"/>Light</button>
         <button type="button" aria-pressed={theme === 'dark'} onClick={() => setTheme('dark')} disabled={exporting} title="Dark poster"><Moon size={18} aria-hidden="true"/>Dark</button>
       </div>
+      <label className="event-poster-background">
+        <span>Background</span>
+        <select value={background} onChange={event => setBackground(event.target.value as Background)} disabled={exporting}>
+          {(Object.keys(backgrounds) as Background[]).map(value => <option key={value} value={value}>{backgrounds[value]}</option>)}
+        </select>
+      </label>
       <div className="event-poster-actions">
         <button type="button" disabled={!ready || exporting} onClick={downloadPng} title="Download PNG"><Download size={18} aria-hidden="true"/>{exporting ? 'Exporting...' : 'PNG'}</button>
         <button type="button" disabled={!ready || exporting} onClick={() => ready && download(ready.blob, 'svg')} title="Download SVG"><FileImage size={18} aria-hidden="true"/>SVG</button>
@@ -109,7 +122,7 @@ function PosterEditor({ slug, title, revision = '' }: Props) {
     </div>
     {error && <div role="alert" className="event-poster-error">{error}<button type="button" title="Retry poster" onClick={() => setRetry(value => value + 1)}><RefreshCw size={18} aria-hidden="true"/>Retry</button></div>}
     <div className={`event-poster-preview event-poster-preview-${format}`} aria-busy={!ready && !error}>
-      {ready ? <img src={ready.url} alt={`${title}, ${formats[format].label}, ${theme} poster`} onError={() => { setPoster(null); setError('Poster preview failed. Try again.') }}/> : <span role="status">{error ? 'Preview unavailable' : 'Generating poster...'}</span>}
+      {ready ? <img src={ready.url} alt={`${title}, ${formats[format].label}, ${theme}, ${backgrounds[background]} poster`} onError={() => { setPoster(null); setError('Poster preview failed. Try again.') }}/> : <span role="status">{error ? 'Preview unavailable' : 'Generating poster...'}</span>}
     </div>
   </section>
 }

@@ -1006,7 +1006,7 @@ test("tenant host public URLs are root-mounted even when shared portal base is c
   const flyer = await flyerRes.text();
   assert.match(flyer, /Founder Night flyer/);
   assert.match(flyer, /Scan to RSVP/);
-  assert.match(flyer, /dark 4×6/);
+  assert.match(flyer, /dark solid 4×6/);
   assert.match(flyer, /fill="#101820"/);
 });
 
@@ -1264,6 +1264,32 @@ test("public org and event routes return D1 rows", async () => {
 
 test("public event chat returns configured room metadata for comment views", async () => {
   const db = new FakeD1();
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    const request = new Request(input);
+    assert.equal(request.url, "https://chat.example.test/api/network/public/event-chat/event-room-commentable-event/messages?limit=100");
+    return new Response(JSON.stringify({
+      messages: [{
+        id: "message-1",
+        conversation_id: "event-room-commentable-event",
+        sender_user_id: "user-a",
+        sender_name: "Alice Example",
+        sender_avatar_url: null,
+        client_message_id: null,
+        body: "Public event comment",
+        sequence: 1,
+        message_type: "text",
+        attachment_id: null,
+        reply_to_message_id: null,
+        thread_root_message_id: null,
+        created_at: "2026-06-07T01:00:00.000Z",
+        edited_at: null,
+        deleted_at: null,
+        moderation_state: "visible",
+        reactions: [],
+      }],
+    }), { headers: { "content-type": "application/json" } });
+  };
   db.events.push({
     id: "event-1",
     ingest_key: "event-1",
@@ -1289,15 +1315,41 @@ test("public event chat returns configured room metadata for comment views", asy
     updated_at: "2026-06-07T00:00:00.000Z",
   });
 
-  const response = await app.request("https://org.example.test/api/network/events/public/commentable-event/chat", {}, env(db));
-  assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), {
-    event_slug: "commentable-event",
-    room_exists: true,
-    conversation_id: "event-room-commentable-event",
-    room_name: "Commentable Event",
-    messages: [],
-  });
+  try {
+    const response = await app.request(
+      "https://org.example.test/api/network/events/public/commentable-event/chat",
+      {},
+      env(db, { CHAT_API_ORIGIN: "https://chat.example.test" }),
+    );
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      event_slug: "commentable-event",
+      room_exists: true,
+      conversation_id: "event-room-commentable-event",
+      room_name: "Commentable Event",
+      messages: [{
+        id: "message-1",
+        conversation_id: "event-room-commentable-event",
+        sender_user_id: "user-a",
+        sender_name: "Alice Example",
+        sender_avatar_url: null,
+        client_message_id: null,
+        body: "Public event comment",
+        sequence: 1,
+        message_type: "text",
+        attachment_id: null,
+        reply_to_message_id: null,
+        thread_root_message_id: null,
+        created_at: "2026-06-07T01:00:00.000Z",
+        edited_at: null,
+        deleted_at: null,
+        moderation_state: "visible",
+        reactions: [],
+      }],
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("public event detail resolves old slug aliases to canonical event urls", async () => {
@@ -1345,15 +1397,27 @@ test("public event detail resolves old slug aliases to canonical event urls", as
   assert.equal(event.slug, "medtech-in-the-hut");
   assert.equal(event.public_url, "https://medtech.social/events/medtech-in-the-hut");
 
-  const chatResponse = await app.request("https://medtech.social/api/network/events/public/medtech-formational-event/chat", {}, env(db));
-  assert.equal(chatResponse.status, 200);
-  assert.deepEqual(await chatResponse.json(), {
-    event_slug: "medtech-in-the-hut",
-    room_exists: true,
-    conversation_id: "event-room-medtech-in-the-hut",
-    room_name: "MedTech in the Hut Comments",
-    messages: [],
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({ messages: [] }), {
+    headers: { "content-type": "application/json" },
   });
+  try {
+    const chatResponse = await app.request(
+      "https://medtech.social/api/network/events/public/medtech-formational-event/chat",
+      {},
+      env(db, { CHAT_API_ORIGIN: "https://chat.example.test" }),
+    );
+    assert.equal(chatResponse.status, 200);
+    assert.deepEqual(await chatResponse.json(), {
+      event_slug: "medtech-in-the-hut",
+      room_exists: true,
+      conversation_id: "event-room-medtech-in-the-hut",
+      room_name: "MedTech in the Hut Comments",
+      messages: [],
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("public user event route returns individual-hosted calendar entries", async () => {

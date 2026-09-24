@@ -505,6 +505,45 @@ function healthPayload(c: { env: Env; req: { url: string } }) {
 app.get("/health", (c) => json(healthPayload(c)));
 app.get("/version", (c) => json(healthPayload(c)));
 
+app.get("/api/network/public/event-chat/:conversationId/messages", async (c) => {
+  const conversationId = c.req.param("conversationId");
+  const room = await c.env.DB.prepare(
+    "SELECT * FROM chat_conversations WHERE id = ? AND kind = 'event_room' AND archived_at IS NULL",
+  )
+    .bind(conversationId)
+    .first<ConversationRow>();
+  if (!room) fail(404, "Event chat not found");
+
+  const limit = Math.min(Math.max(Number(c.req.query("limit") || 50), 1), 100);
+  const afterSequence = Math.max(Number(c.req.query("afterSequence") || c.req.query("after_sequence") || 0), 0);
+  const after = cleanNullableString(c.req.query("after"), 80);
+  const rows = await c.env.DB.prepare(
+    `SELECT * FROM chat_messages
+     WHERE conversation_id = ?
+       AND deleted_at IS NULL
+       AND moderation_state = 'visible'
+       AND (
+         sequence > ?
+         OR (? IS NOT NULL AND sequence IS NULL AND created_at > ?)
+       )
+     ORDER BY COALESCE(sequence, 0) ASC, created_at ASC, id ASC
+     LIMIT ?`,
+  )
+    .bind(conversationId, afterSequence, after, after, limit)
+    .all<MessageRow>();
+
+  const messages = rows.results || [];
+  const avatarUrls = await avatarUrlsForUsers(
+    c.env,
+    messages.map((message) => message.sender_user_id),
+  );
+  const reactions = await reactionsForMessages(c.env, messages.map((message) => message.id));
+  return c.json({
+    messages: messages.map((message) => mapMessage(message, reactions.get(message.id) || [], avatarUrls)),
+    latest_sequence: await latestSequence(c.env.DB, conversationId),
+  });
+});
+
 app.use("/api/network/chat/*", async (c, next) => {
   const user = await currentUser(c.env, c.req.raw);
   c.set("user", user);

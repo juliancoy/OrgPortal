@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { CalendarPlus, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, MapPinned, X } from 'lucide-react'
+import { CalendarPlus, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, MapPinned, RotateCcw, X, ZoomIn, ZoomOut } from 'lucide-react'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
-import { downloadIcsEvent, outlookCalendarUrl } from '../../utils/calendar'
+import { downloadIcsEvent, googleCalendarUrl, outlookCalendarUrl } from '../../utils/calendar'
 import { useAuth } from '../../../app/AppProviders'
 import { NativeChatApi, type NativeChatMessage, type NativeChatReaction } from '../../../chat/nativeChatApi'
 import { refreshRuntimeTokenFromSession } from '../../../infrastructure/auth/sessionToken'
@@ -15,10 +15,17 @@ import { loadMicrosoftCalendarConnection, savePortalEventToMicrosoftCalendar } f
 
 const ORG_API_BASE = '/api/org'
 const QUICK_REACTIONS = ['👍', '❤️', '🔥', '🎉']
+const MEDIA_ZOOM_MIN = 1
+const MEDIA_ZOOM_MAX = 3
+const MEDIA_ZOOM_STEP = 0.5
 
 function orgUrl(path: string) {
   if (!path.startsWith('/')) return `${ORG_API_BASE}/${path}`
   return `${ORG_API_BASE}${path}`
+}
+
+function clampMediaZoom(value: number) {
+  return Math.min(MEDIA_ZOOM_MAX, Math.max(MEDIA_ZOOM_MIN, value))
 }
 
 type PublicEvent = {
@@ -64,7 +71,7 @@ type PublicEventChat = {
   room_exists: boolean
   conversation_id?: string | null
   room_name?: string | null
-  messages?: unknown[]
+  messages?: NativeChatMessage[]
 }
 
 function toLocalDateTime(value?: string | null) {
@@ -261,6 +268,7 @@ export function PublicEventPage() {
   const [canManageEvent, setCanManageEvent] = useState(false)
   const [addressCopied, setAddressCopied] = useState(false)
   const [selectedMediaIndex, setSelectedMediaIndex] = useState(-1)
+  const [mediaZoom, setMediaZoom] = useState(1)
   const chatApi = useMemo(
     () =>
       new NativeChatApi(async () => {
@@ -343,10 +351,12 @@ export function PublicEventPage() {
       .then((payload) => {
         if (cancelled) return
         setEventChat(payload)
+        setEventChatMessages(payload.messages || [])
       })
       .catch((err) => {
         if (cancelled) return
         setEventChat(null)
+        setEventChatMessages([])
         setChatStatus(toUserFacingErrorMessage(err, 'Event chat unavailable'))
       })
       .finally(() => {
@@ -520,10 +530,20 @@ export function PublicEventPage() {
   const eventLinks = event?.links || []
   const selectedMedia = selectedMediaIndex >= 0 ? mediaItems[selectedMediaIndex] : null
   const mediaRailRef = useRef<HTMLDivElement>(null)
+  const galleryStageRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (selectedMediaIndex >= mediaItems.length) setSelectedMediaIndex(-1)
   }, [mediaItems.length, selectedMediaIndex])
+
+  useEffect(() => {
+    setMediaZoom(1)
+    galleryStageRef.current?.scrollTo({ top: 0, left: 0 })
+  }, [selectedMedia?.id])
+
+  useEffect(() => {
+    if (mediaZoom === 1) galleryStageRef.current?.scrollTo({ top: 0, left: 0 })
+  }, [mediaZoom])
 
   useEffect(() => {
     if (!selectedMedia) return
@@ -531,6 +551,18 @@ export function PublicEventPage() {
       if (event.key === 'Escape') setSelectedMediaIndex(-1)
       if (event.key === 'ArrowLeft') setSelectedMediaIndex((current) => (current <= 0 ? mediaItems.length - 1 : current - 1))
       if (event.key === 'ArrowRight') setSelectedMediaIndex((current) => (current + 1) % mediaItems.length)
+      if (event.key === '+' || event.key === '=') {
+        event.preventDefault()
+        setMediaZoom((current) => clampMediaZoom(current + MEDIA_ZOOM_STEP))
+      }
+      if (event.key === '-' || event.key === '_') {
+        event.preventDefault()
+        setMediaZoom((current) => clampMediaZoom(current - MEDIA_ZOOM_STEP))
+      }
+      if (event.key === '0') {
+        event.preventDefault()
+        setMediaZoom(1)
+      }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
@@ -651,36 +683,35 @@ export function PublicEventPage() {
 
   return (
     <article className="public-event-page">
-      <section className="public-event-hero">
-        {event.image_url ? (
-          <img className="public-event-hero-image" src={event.image_url} alt="" />
-        ) : <div className="public-event-hero-image public-event-hero-placeholder" aria-hidden="true" />}
-        <div className="public-event-hero-content">
-          {event.organization_slug ? (
-            <Link
-              className="public-event-organizer-link"
-              to={`/orgs/${encodeURIComponent(event.organization_slug)}`}
-              aria-label={`View ${organizerName} group page`}
-            >
-              <span className="public-event-organizer-avatar" aria-hidden="true">
-                {organizerAvatar ? <img src={organizerAvatar} alt="" /> : organizationInitials(organizerName)}
-              </span>
-              <span>{organizerName}</span>
-            </Link>
-          ) : (
-            <p className="public-event-eyebrow">{organizerName}</p>
-          )}
-          <h1>{event.title}</h1>
-          {canManageEvent ? (
-            <Link className="btn-primary public-event-manage-button" to={`/orgs/events#event-${encodeURIComponent(event.slug)}`}>
-              Manage Event
-            </Link>
-          ) : null}
-        </div>
-      </section>
-
       <div className="public-event-layout public-event-luma-layout">
         <main className="public-event-main">
+          <section className="public-event-hero">
+            {event.image_url ? (
+              <img className="public-event-hero-image" src={event.image_url} alt="" />
+            ) : <div className="public-event-hero-image public-event-hero-placeholder" aria-hidden="true" />}
+            <div className="public-event-hero-content">
+              {event.organization_slug ? (
+                <Link
+                  className="public-event-organizer-link"
+                  to={`/orgs/${encodeURIComponent(event.organization_slug)}`}
+                  aria-label={`View ${organizerName} group page`}
+                >
+                  <span className="public-event-organizer-avatar" aria-hidden="true">
+                    {organizerAvatar ? <img src={organizerAvatar} alt="" /> : organizationInitials(organizerName)}
+                  </span>
+                  <span>{organizerName}</span>
+                </Link>
+              ) : (
+                <p className="public-event-eyebrow">{organizerName}</p>
+              )}
+              <h1>{event.title}</h1>
+              {canManageEvent ? (
+                <Link className="btn-primary public-event-manage-button" to={`/orgs/events#event-${encodeURIComponent(event.slug)}`}>
+                  Manage Event
+                </Link>
+              ) : null}
+            </div>
+          </section>
           {mediaItems.length ? (
             <section className="portal-card public-event-media" aria-labelledby="event-media-title">
               <div className="public-event-card-heading public-event-media-heading-row">
@@ -906,25 +937,23 @@ export function PublicEventPage() {
                 <strong>{toEventTimeRange(event.starts_at, event.ends_at)}</strong>
                 {calendarDownloadEvent ? (
                   <div className="public-event-calendar-actions" aria-label="Add event to calendar">
-                    <button
-                      type="button"
-                      className="public-event-icon-action"
-                      onClick={() => downloadIcsEvent(calendarDownloadEvent)}
-                      title="Download calendar file"
-                      aria-label="Download calendar file"
-                    >
-                      <Download size={17} aria-hidden="true" />
-                    </button>
-                    <a
-                      className="public-event-icon-action"
-                      href={outlookCalendarUrl(calendarDownloadEvent)}
-                      target="_blank"
-                      rel="noreferrer"
-                      title="Add to Outlook calendar"
-                      aria-label="Add to Outlook calendar"
-                    >
-                      <CalendarPlus size={17} aria-hidden="true" />
-                    </a>
+                    <details className="public-event-calendar-menu">
+                      <summary className="public-event-icon-action" title="Add to calendar" aria-label="Add to calendar">
+                        <CalendarPlus size={17} aria-hidden="true" />
+                      </summary>
+                      <div className="public-event-calendar-menu-list">
+                        <a href={googleCalendarUrl(calendarDownloadEvent)} target="_blank" rel="noreferrer">
+                          Google Calendar
+                        </a>
+                        <a href={outlookCalendarUrl(calendarDownloadEvent)} target="_blank" rel="noreferrer">
+                          Outlook Calendar
+                        </a>
+                        <button type="button" onClick={() => downloadIcsEvent(calendarDownloadEvent)}>
+                          <Download size={15} aria-hidden="true" />
+                          <span>Apple / iCal file</span>
+                        </button>
+                      </div>
+                    </details>
                   </div>
                 ) : null}
               </div>
@@ -987,6 +1016,46 @@ export function PublicEventPage() {
                 <h2 id="event-gallery-title">{selectedMedia.label}</h2>
               </div>
               <div className="public-event-gallery-actions">
+                <div className="public-event-gallery-zoom-controls" role="group" aria-label="Image zoom">
+                  <button
+                    type="button"
+                    onClick={() => setMediaZoom((current) => clampMediaZoom(current - MEDIA_ZOOM_STEP))}
+                    disabled={mediaZoom <= MEDIA_ZOOM_MIN}
+                    aria-label="Zoom out"
+                    title="Zoom out"
+                  >
+                    <ZoomOut size={18} aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    className="public-event-gallery-zoom-primary"
+                    onClick={() => setMediaZoom((current) => current > 1 ? 1 : 2)}
+                    aria-pressed={mediaZoom > 1}
+                    aria-label={mediaZoom > 1 ? 'Reset zoom' : 'Zoom in'}
+                    title={mediaZoom > 1 ? 'Reset zoom' : 'Zoom in'}
+                  >
+                    <ZoomIn size={18} aria-hidden="true" />
+                    <span>{Math.round(mediaZoom * 100)}%</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMediaZoom((current) => clampMediaZoom(current + MEDIA_ZOOM_STEP))}
+                    disabled={mediaZoom >= MEDIA_ZOOM_MAX}
+                    aria-label="Zoom in"
+                    title="Zoom in"
+                  >
+                    <ZoomIn size={18} aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMediaZoom(1)}
+                    disabled={mediaZoom === 1}
+                    aria-label="Reset zoom"
+                    title="Reset zoom"
+                  >
+                    <RotateCcw size={18} aria-hidden="true" />
+                  </button>
+                </div>
                 <a href={selectedMedia.url} target="_blank" rel="noopener noreferrer" title="Open image file">
                   <ExternalLink size={18} aria-hidden="true" />
                   <span>Open</span>
@@ -996,7 +1065,10 @@ export function PublicEventPage() {
                 </button>
               </div>
             </div>
-            <div className="public-event-gallery-stage">
+            <div
+              ref={galleryStageRef}
+              className={`public-event-gallery-stage${mediaZoom > 1 ? ' public-event-gallery-stage-zoomed' : ''}`}
+            >
               {mediaItems.length > 1 ? (
                 <button
                   type="button"
@@ -1008,7 +1080,13 @@ export function PublicEventPage() {
                   <ChevronLeft size={26} aria-hidden="true" />
                 </button>
               ) : null}
-              <img src={selectedMedia.url} alt={selectedMedia.alt || selectedMedia.label} />
+              <img
+                src={selectedMedia.url}
+                alt={selectedMedia.alt || selectedMedia.label}
+                style={mediaZoom > 1 ? { width: `${mediaZoom * 100}%` } : undefined}
+                onClick={() => setMediaZoom((current) => current > 1 ? 1 : 2)}
+                title={mediaZoom > 1 ? 'Reset zoom' : 'Zoom in'}
+              />
               {mediaItems.length > 1 ? (
                 <button
                   type="button"

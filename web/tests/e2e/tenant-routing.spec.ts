@@ -11,6 +11,7 @@ type MockTenantOptions = {
   completeAppLogin?: boolean
   initiallyLoggedIn?: boolean
   mockEventChatRoutes?: boolean
+  publicEventChatMessages?: unknown[]
 }
 
 const medtechEvent = {
@@ -51,16 +52,24 @@ test('poster workflow previews formats, exports PNG and SVG, and opens print', a
     const query = new URL(route.request().url()).searchParams
     const format = query.get('format') as 'letter' | 'letter-4up' | 'postcard' | 'social'
     const theme = query.get('theme') === 'dark' ? 'dark' : 'light'
-    const svg = await renderEventPoster(medtechEvent, 'https://medtech.social/events/medtech-in-the-hut', format, { name: 'Baltimore MedTech' }, theme)
+    const background = query.get('background') === 'city' ? 'city' : query.get('background') === 'gradient' ? 'gradient' : 'solid'
+    const svg = await renderEventPoster(medtechEvent, 'https://medtech.social/events/medtech-in-the-hut', format, { name: 'Baltimore MedTech' }, theme, {
+      background,
+      backgroundImage: background === 'city' ? 'data:image/jpeg;base64,AQID' : undefined,
+    })
     await route.fulfill({ contentType: 'image/svg+xml', body: svg })
   })
   await page.goto(portal('/events/medtech-in-the-hut'))
   await expect(page.getByRole('button', { name: 'Create poster', exact: true })).toHaveCount(0)
   const editor = page.getByRole('region', { name: 'Event poster', exact: true })
   await editor.getByRole('button', { name: 'Dark', exact: true }).click()
+  await editor.getByLabel('Background').selectOption('city')
+  await expect(editor.getByRole('img')).toHaveAttribute('alt', 'MedTech in the Hut, 8.5 x 11, dark, Baltimore city photo poster')
+  await editor.getByLabel('Background').selectOption('gradient')
+  await expect(editor.getByRole('img')).toHaveAttribute('alt', 'MedTech in the Hut, 8.5 x 11, dark, High-contrast gradient poster')
   for (const [label, width, height] of [['8.5 x 11', 2550, 3300], ['Letter 2 × 2', 2550, 3300], ['4 x 6', 1200, 1800], ['Social', 1200, 630]] as const) {
     await editor.getByRole('button', { name: label, exact: true }).click()
-    await expect(editor.getByRole('img')).toHaveAttribute('alt', `MedTech in the Hut, ${label}, dark poster`)
+    await expect(editor.getByRole('img')).toHaveAttribute('alt', `MedTech in the Hut, ${label}, dark, High-contrast gradient poster`)
     const pending = page.waitForEvent('download')
     await editor.getByRole('button', { name: 'PNG', exact: true }).click()
     const download = await pending
@@ -84,7 +93,7 @@ test('poster workflow previews formats, exports PNG and SVG, and opens print', a
   }
   const vector = page.waitForEvent('download')
   await editor.getByRole('button', { name: 'SVG', exact: true }).click()
-  expect((await vector).suggestedFilename()).toBe('medtech-in-the-hut-social-dark.svg')
+  expect((await vector).suggestedFilename()).toBe('medtech-in-the-hut-social-dark-gradient.svg')
 })
 
 test('poster failures offer retry and do not leave export buttons active', async ({ page }) => {
@@ -128,6 +137,11 @@ test('event gallery resolves stored images through the org API without rewriting
   await expect(gallery.getByRole('heading', { name: '20260915_201444_extra_long_menu_photo_filename.jpg', exact: true })).toBeVisible();
   await expect(gallery.getByRole('img', { name: 'Menu photo', exact: true })).toHaveAttribute('src', '/api/org/api/network/events/public/medtech-in-the-hut/media/stored');
   await expect(gallery.getByRole('link', { name: 'Open', exact: true })).toHaveAttribute('href', '/api/org/api/network/events/public/medtech-in-the-hut/media/stored');
+  await gallery.locator('.public-event-gallery-zoom-primary').click();
+  await expect(gallery.locator('.public-event-gallery-zoom-primary')).toContainText('200%');
+  await expect(gallery.locator('.public-event-gallery-stage')).toHaveClass(/public-event-gallery-stage-zoomed/);
+  await page.keyboard.press('0');
+  await expect(gallery.locator('.public-event-gallery-zoom-primary')).toContainText('100%');
   await gallery.getByRole('button', { name: 'Next image', exact: true }).click();
   await expect(gallery.getByRole('heading', { name: 'External photo', exact: true })).toBeVisible();
   await page.keyboard.press('Escape');
@@ -166,7 +180,13 @@ async function mockTenant(page: Page, options: MockTenantOptions = {}) {
     if (path.endsWith('/admin/me')) return route.fulfill({ json: { is_sysadmin: false } })
     if (path.includes('/network/orgs/public/baltimore-medtech/events')) return route.fulfill({ json: [] })
     if (path.endsWith('/network/events/public/medtech-in-the-hut/chat')) {
-      return route.fulfill({ json: { event_slug: 'medtech-in-the-hut', room_exists: true, room_name: 'Event comments' } })
+      return route.fulfill({ json: {
+        event_slug: 'medtech-in-the-hut',
+        room_exists: true,
+        conversation_id: 'conv-event',
+        room_name: 'Event comments',
+        messages: options.publicEventChatMessages || [],
+      } })
     }
     if (path.endsWith('/network/events/public/medtech-in-the-hut')) return route.fulfill({ json: medtechEvent })
     if (path.endsWith('/network/events/evt-medtech-hut/attendance')) {
@@ -301,10 +321,18 @@ test('tenant event page keeps the hero compact and removes redundant labels', as
   const lumaLink = page.getByRole('link', { name: /Palava Night #3: Medtech & Healthcare/ })
   await expect(lumaLink).toHaveAttribute('href', 'https://luma.com/csd7fvgm?tk=iQTYPW')
   await expect(lumaLink.getByText('luma.com')).toBeVisible()
+  await page.locator('.public-event-calendar-menu summary').click()
+  await expect(page.getByRole('link', { name: 'Google Calendar', exact: true })).toHaveAttribute('href', /calendar\.google\.com/)
+  await expect(page.getByRole('link', { name: 'Outlook Calendar', exact: true })).toHaveAttribute('href', /outlook\.live\.com/)
+  await expect(page.getByRole('button', { name: 'Apple / iCal file', exact: true })).toBeVisible()
 
   const heroBox = await page.locator('.public-event-hero').boundingBox()
+  const layoutBox = await page.locator('.public-event-layout').boundingBox()
+  const sideBox = await page.locator('.public-event-side').boundingBox()
   const titleBox = await page.getByRole('heading', { name: 'MedTech in the Hut' }).boundingBox()
   expect(heroBox).not.toBeNull()
+  expect(layoutBox).not.toBeNull()
+  expect(sideBox).not.toBeNull()
   expect(titleBox).not.toBeNull()
   expect(titleBox!.x).toBeGreaterThanOrEqual(heroBox!.x)
   expect(titleBox!.y).toBeGreaterThanOrEqual(heroBox!.y)
@@ -314,10 +342,44 @@ test('tenant event page keeps the hero compact and removes redundant labels', as
   const viewport = page.viewportSize()
   expect(viewport).not.toBeNull()
   if (viewport!.width >= 980) {
-    expect(heroBox!.width).toBeLessThanOrEqual(viewport!.width * 0.55)
+    expect(heroBox!.x).toBeGreaterThanOrEqual(layoutBox!.x)
+    expect(sideBox!.x).toBeGreaterThan(heroBox!.x + heroBox!.width)
+    expect(Math.abs(sideBox!.y - heroBox!.y)).toBeLessThanOrEqual(1)
   } else {
     expect(heroBox!.width).toBeGreaterThan(viewport!.width * 0.85)
+    expect(sideBox!.y).toBeGreaterThan(heroBox!.y + heroBox!.height)
   }
+})
+
+test('tenant event comments are publicly readable before login', async ({ page }) => {
+  await mockTenant(page, {
+    publicEventChatMessages: [{
+      id: 'public-root-message',
+      conversation_id: 'conv-event',
+      sender_user_id: 'user-a',
+      sender_name: 'Alice Example',
+      sender_avatar_url: null,
+      client_message_id: null,
+      body: 'This menu looks great for the meetup.',
+      sequence: 1,
+      message_type: 'text',
+      attachment_id: null,
+      reply_to_message_id: null,
+      thread_root_message_id: null,
+      created_at: '2026-09-10T12:01:00Z',
+      edited_at: null,
+      deleted_at: null,
+      moderation_state: 'visible',
+      reactions: [{ key: '👍', count: 2, reacted: false, users: [] }],
+    }],
+  })
+
+  await page.goto(portal('/events/medtech-in-the-hut'))
+
+  await expect(page.locator('.public-event-comment').filter({ hasText: 'This menu looks great for the meetup.' })).toBeVisible()
+  await expect(page.getByRole('button', { name: /React with 👍/ })).toBeDisabled()
+  await expect(page.getByRole('link', { name: 'Login to Comment', exact: true })).toBeVisible()
+  await expect(page.getByPlaceholder('Add a comment...')).toHaveCount(0)
 })
 
 test('tenant event comments use the chat API for room, comments, replies, and reactions', async ({ page }) => {

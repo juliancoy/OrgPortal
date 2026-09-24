@@ -95,3 +95,15 @@ export function outlookCalendarUrl(event: CalendarEvent): string {
   if (event.location?.trim()) params.set('location', event.location.trim())
   return `https://outlook.live.com/calendar/0/deeplink/compose?${params.toString()}`
 }
+
+export function googleCalendarUrl(event: CalendarEvent): string {
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: event.title.trim() || 'Event',
+    dates: `${toUtcTimestamp(event.startsAt)}/${toUtcTimestamp(eventEnd(event))}`,
+  })
+  const details = [event.description?.trim() || '', event.url?.trim() || ''].filter(Boolean).join('\n\n')
+  if (details) params.set('details', details)
+  if (event.location?.trim()) params.set('location', event.location.trim())
+  return `https://calendar.google.com/calendar/render?${params.toString()}`
+}

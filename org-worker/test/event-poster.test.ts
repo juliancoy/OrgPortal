@@ -2,6 +2,28 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { renderEventPoster, posterLogo, posterGeometry } from '../src/eventPoster';
 
+function luminance([r, g, b]: [number, number, number]) {
+  const linear = [r, g, b].map(value => {
+    const channel = value / 255;
+    return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+}
+
+function contrast(a: [number, number, number], b: [number, number, number]) {
+  const [lighter, darker] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+function hexRgb(value: string): [number, number, number] {
+  const hex = value.replace('#', '');
+  return [0, 2, 4].map(index => Number.parseInt(hex.slice(index, index + 2), 16)) as [number, number, number];
+}
+
+function blend(top: [number, number, number], bottom: [number, number, number], opacity: number): [number, number, number] {
+  return top.map((value, index) => Math.round(value * opacity + bottom[index] * (1 - opacity))) as [number, number, number];
+}
+
 test('posters escape text, carry the real host, use explicit print sizes and avoid remote image dependencies', async () => {
   for (const format of ['letter', 'letter-4up', 'postcard', 'social'] as const) {
     const svg = await renderEventPoster({ title: 'Builders <script>alert(1)</script>', starts_at: '2026-09-29T22:00:00Z', ends_at: '2026-09-30T00:30:00Z', location: 'Checkerspot & Palava Hut', description: 'A community event.' }, 'https://example.org/events/builders', format, { name: 'Builders Guild', tagline: 'Build together' });
@@ -32,7 +54,31 @@ test('dark poster theme uses dark paper while retaining a white QR background', 
   assert.match(svg, /fill="#f7fbfc"/);
   assert.match(svg, /fill="#33c6d4"/);
   assert.match(svg, /fill="#ffffff"/);
-  assert.match(svg, /dark 8\.5×11 event poster/);
+  assert.match(svg, /dark solid 8\.5×11 event poster/);
+});
+
+test('photo and gradient poster backgrounds retain accessible text contrast', async () => {
+  const event = { title: 'City builders', starts_at: '2026-09-29T22:00:00Z', location: 'Baltimore' };
+  const city = await renderEventPoster(event, 'https://example.org/event', 'letter', { name: 'Community' }, 'light', {
+    background: 'city',
+    backgroundImage: 'data:image/jpeg;base64,AQID',
+  });
+  assert.match(city, /href="data:image\/jpeg;base64,AQID"/);
+  assert.match(city, /opacity="0\.66"/);
+  assert.match(city, /fill="#ffffff"/);
+  assert.match(city, /high-contrast foreground/);
+
+  const gradient = await renderEventPoster(event, 'https://example.org/event', 'letter', { name: 'Community' }, 'light', { background: 'gradient' });
+  assert.match(gradient, /poster-bg-gradient/);
+  assert.match(gradient, /fill="#ffffff"/);
+  assert.match(gradient, /gradient 8\.5×11 event poster/);
+
+  const worstCityBackground = blend(hexRgb('#061a26'), blend([0, 0, 0], [255, 255, 255], 0.66), 0.26);
+  const brightestGradientBackground = blend([0, 0, 0], hexRgb('#087482'), 0.2);
+  for (const foreground of ['#ffffff', '#d7e3e6', '#a8f7ff'] as const) {
+    assert.ok(contrast(hexRgb(foreground), worstCityBackground) >= 4.5, `${foreground} must contrast with the city overlay`);
+    assert.ok(contrast(hexRgb(foreground), brightestGradientBackground) >= 4.5, `${foreground} must contrast with the gradient`);
+  }
 });
 
 test('brand image loading rejects redirects, SVG and oversized images', async () => {

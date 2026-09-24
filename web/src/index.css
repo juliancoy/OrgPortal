@@ -951,7 +951,7 @@ h6 {
 .public-event-hero {
   position: relative;
   display: block;
-  width: min(50%, 620px);
+  width: 100%;
   min-height: clamp(260px, 30vw, 420px);
   overflow: hidden;
   color: #fff;
@@ -1266,6 +1266,10 @@ h6 {
   gap: 16px;
 }
 
+.public-event-gallery-toolbar > div:first-child {
+  min-width: 0;
+}
+
 .public-event-gallery-toolbar h2 {
   margin: 0.15rem 0 0;
   color: #f7fbfc;
@@ -1277,8 +1281,21 @@ h6 {
 .public-event-gallery-actions {
   display: inline-flex;
   align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 0.5rem;
   flex-shrink: 0;
+  max-width: 100%;
+}
+
+.public-event-gallery-zoom-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 3px;
+  border: 1px solid rgb(255 255 255 / 0.14);
+  border-radius: 7px;
+  background: rgb(255 255 255 / 0.06);
 }
 
 .public-event-gallery-actions a,
@@ -1297,9 +1314,30 @@ h6 {
   cursor: pointer;
 }
 
+.public-event-gallery-actions button:disabled {
+  opacity: 0.42;
+  cursor: default;
+}
+
 .public-event-gallery-actions a {
   gap: 0.4rem;
   padding: 0 0.75rem;
+}
+
+.public-event-gallery-zoom-primary {
+  gap: 0.35rem;
+  padding-inline: 0.65rem;
+}
+
+.public-event-gallery-zoom-primary[aria-pressed="true"] {
+  border-color: #7de0e8;
+  background: rgb(125 224 232 / 0.2);
+}
+
+.public-event-gallery-zoom-primary span {
+  font-size: 0.82rem;
+  font-weight: 800;
+  min-width: 3ch;
 }
 
 .public-event-gallery-actions a:hover,
@@ -1323,11 +1361,25 @@ h6 {
   background: #03080d;
 }
 
+.public-event-gallery-stage-zoomed {
+  display: block;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
 .public-event-gallery-stage img {
   display: block;
   max-width: 100%;
   max-height: min(72vh, 720px);
   object-fit: contain;
+  cursor: zoom-in;
+}
+
+.public-event-gallery-stage-zoomed img {
+  max-width: none;
+  max-height: none;
+  margin: 0 auto;
+  cursor: zoom-out;
 }
 
 .public-event-gallery-nav {
@@ -1350,6 +1402,21 @@ h6 {
   color: #c7d6dc;
   text-align: center;
   font-size: 0.9rem;
+}
+
+@media (max-width: 620px) {
+  .public-event-gallery-toolbar {
+    flex-direction: column;
+  }
+
+  .public-event-gallery-actions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .public-event-gallery-zoom-controls {
+    flex-wrap: wrap;
+  }
 }
 
 .public-event-hero h1 {
@@ -1515,6 +1582,18 @@ h6 {
   margin-top: 4px;
 }
 
+.public-event-calendar-menu {
+  position: relative;
+}
+
+.public-event-calendar-menu summary {
+  list-style: none;
+}
+
+.public-event-calendar-menu summary::-webkit-details-marker {
+  display: none;
+}
+
 .public-event-icon-action {
   display: inline-grid;
   place-items: center;
@@ -1528,6 +1607,47 @@ h6 {
   border-radius: var(--radius-sm);
   text-decoration: none;
   cursor: pointer;
+}
+
+.public-event-calendar-menu-list {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 6px);
+  right: 0;
+  display: grid;
+  min-width: 210px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: var(--shadow-card);
+}
+
+.public-event-calendar-menu-list a,
+.public-event-calendar-menu-list button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px;
+  color: var(--text-primary);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  font: inherit;
+  font-weight: 750;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.public-event-calendar-menu-list a:hover,
+.public-event-calendar-menu-list button:hover,
+.public-event-calendar-menu-list a:focus-visible,
+.public-event-calendar-menu-list button:focus-visible {
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  outline: none;
 }
 
 .public-event-icon-action:hover,
@@ -6218,7 +6338,6 @@ textarea:focus {
 
   .public-event-side {
     position: static;
-    order: -1;
   }
 
   .public-event-registration,

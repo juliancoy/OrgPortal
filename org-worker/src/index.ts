@@ -1,7 +1,7 @@
 import { timebankNotifications, markTimebankNotificationsRead, dispatchTimebankPush } from './timebankNotifications';
 import { importedListings, importedListingImage, importClaimDirectory, requestImportClaim, withdrawImportClaim, reviewImportClaims, resolveImportClaim, claimedImportRecords } from './timebankImports';
 import { Hono } from "hono";
-import { renderEventPoster, posterLogo, type PosterTheme } from "./eventPoster";
+import { renderEventPoster, posterBackgroundImage, posterLogo, type PosterBackground, type PosterTheme } from "./eventPoster";
 import { buildMetadata } from "./generated/buildMetadata";
 import { HTTPException } from "hono/http-exception";
 import { handleEventMcp, protectedResourceMetadata, eventErrorResponse } from "./eventMcp";
@@ -465,6 +465,20 @@ async function proxyChatRequest(request: Request, env: Env) {
     statusText: upstream.statusText,
     headers: upstream.headers,
   });
+}
+
+async function publicEventChatMessages(env: Env, roomId: string) {
+  const origin = trimTrailingSlash(env.CHAT_API_ORIGIN || "https://chat-codecollective.jcloiacon.workers.dev");
+  if (!origin || !roomId) return [];
+  try {
+    const url = `${origin}/api/network/public/event-chat/${encodeURIComponent(roomId)}/messages?limit=100`;
+    const response = await fetch(url, { headers: { accept: "application/json" }, cf: { cacheEverything: false } });
+    if (!response.ok) return [];
+    const payload = await response.json().catch(() => null) as { messages?: unknown[] } | null;
+    return Array.isArray(payload?.messages) ? payload.messages : [];
+  } catch {
+    return [];
+  }
 }
 
 function nowIso() {
@@ -1388,11 +1402,19 @@ function flyerTheme(value: string | null): PosterTheme {
   return String(value || "").trim().toLowerCase() === "dark" ? "dark" : "light";
 }
 
-async function eventFlyerSvg(env: Env, request: Request, event: EventRow, format: FlyerFormat, theme: PosterTheme) {
+function flyerBackground(value: string | null): PosterBackground {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized === "city" || normalized === "photo" || normalized === "image") return "city";
+  if (normalized === "gradient") return "gradient";
+  return "solid";
+}
+
+async function eventFlyerSvg(env: Env, request: Request, event: EventRow, format: FlyerFormat, theme: PosterTheme, background: PosterBackground) {
   const publicUrl = await eventPublicUrl(env, request, event.slug);
   const tenant = await resolvePortalTenant(env.DB, request);
   const name = event.organization_name || event.host_org_name || event.host_user_name || tenant.name || "Community event";
   let logo: string | undefined;
+  let backgroundData: string | undefined;
   if (tenant.public_base_url && tenant.brand_image_path) {
     const base = new URL(tenant.public_base_url);
     const asset = new URL(tenant.brand_image_path, base);
@@ -1400,7 +1422,21 @@ async function eventFlyerSvg(env: Env, request: Request, event: EventRow, format
       logo = await posterLogo(asset);
     }
   }
-  return renderEventPoster(event, publicUrl, format, { name, tagline: tenant.tagline, logo }, theme);
+  if (background === "city" && tenant.public_base_url) {
+    const base = new URL(tenant.public_base_url);
+    const candidates = [
+      "/assets/images/baltimore-medtech-home-hero-canonical.jpg",
+      "/specialty/baltimore-medtech/assets/images/baltimore-medtech-home-hero-canonical.jpg",
+    ];
+    for (const path of candidates) {
+      const asset = new URL(path, base);
+      if (base.protocol === "https:" && asset.origin === base.origin) {
+        backgroundData = await posterBackgroundImage(asset);
+        if (backgroundData) break;
+      }
+    }
+  }
+  return renderEventPoster(event, publicUrl, format, { name, tagline: tenant.tagline, logo }, theme, { background, backgroundImage: backgroundData });
 }
 
 async function publicEventBySlug(db: D1Database, rawSlug: string) {
@@ -2977,8 +3013,9 @@ app.get("/api/network/events/public/:slug/flyer.svg", async (c) => {
   if (!row) fail(404, "Event not found");
   const format = flyerFormat(c.req.query("format") || c.req.query("size") || null);
   const theme = flyerTheme(c.req.query("theme") || c.req.query("mode") || null);
-  const svg = await eventFlyerSvg(c.env, c.req.raw, row, format, theme);
-  const dispositionName = `${row.slug}-${format === "postcard" ? "4x6" : format}${theme === "dark" ? "-dark" : ""}-flyer.svg`;
+  const background = flyerBackground(c.req.query("background") || c.req.query("bg") || null);
+  const svg = await eventFlyerSvg(c.env, c.req.raw, row, format, theme, background);
+  const dispositionName = `${row.slug}-${format === "postcard" ? "4x6" : format}${theme === "dark" ? "-dark" : ""}${background !== "solid" ? `-${background}` : ""}-flyer.svg`;
   return new Response(svg, {
     headers: {
       "content-type": "image/svg+xml; charset=utf-8",
@@ -2992,12 +3029,13 @@ app.get("/api/network/events/public/:slug/chat", async (c) => {
   const row = await publicEventBySlug(c.env.DB, c.req.param("slug"));
   if (!row) fail(404, "Event not found");
   const roomId = String(row.event_chat_room_id || "").trim();
+  const messages = roomId ? await publicEventChatMessages(c.env, roomId) : [];
   return c.json({
     event_slug: row.slug,
     room_exists: Boolean(roomId),
     conversation_id: roomId || null,
     room_name: String(row.event_chat_room_name || row.title || "Event Chat").trim(),
-    messages: [],
+    messages,
   });
 });
 
