@@ -1,3 +1,4 @@
+import { availabilityRoutes } from './availability';
 import { timebankNotifications, markTimebankNotificationsRead, dispatchTimebankPush } from './timebankNotifications';
 import { importedListings, importedListingImage, importClaimDirectory, requestImportClaim, withdrawImportClaim, reviewImportClaims, resolveImportClaim, claimedImportRecords } from './timebankImports';
 import { Hono } from "hono";
@@ -2504,6 +2505,8 @@ function deploymentHealth(c: { env: Env; req: { url: string }; header: (name: st
     environment: c.env.ENV ?? "production",
   };
 }
+
+app.route("/api/availability", availabilityRoutes(currentUser));
 
 app.get("/health", (c) => c.json(deploymentHealth(c, true)));
 app.get("/version", (c) => c.json(deploymentHealth(c, false)));

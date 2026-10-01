@@ -992,6 +992,7 @@ export function Header() {
             Civic
           </NavLink>
 
+          <NavLink to="/availability" isActive={location.pathname.startsWith('/availability')}>Find a meeting time</NavLink>
           <NavLink to="/events" isActive={location.pathname.startsWith('/events')}>
             <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
               <path d="M6 2a1 1 0 000 2h8a1 1 0 100-2H6zM4 5a2 2 0 00-2 2v7a4 4 0 004 4h8a4 4 0 004-4V7a2 2 0 00-2-2H4zm2 4a1 1 0 011-1h2a1 1 0 110 2H7a1 1 0 01-1-1zm5 0a1 1 0 011-1h2a1 1 0 110 2h-2a1 1 0 01-1-1z" />
