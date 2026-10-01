@@ -20,7 +20,8 @@ async function json(url, { timeoutMs = 30000, ...options } = {}) {
     const data = await response.json().catch(() => ({}));
     // Only known service errors are safe to display; never echo arbitrary token responses.
     const messages = new Set(['PIdP token status is unavailable', 'Uploads require account revocation checks',
-      'Invalid or unauthorized access token', 'Missing event scope', 'Event does not belong to this organization', 'invalid_grant']);
+      'Invalid or unauthorized access token', 'Missing event scope', 'Missing portal scope',
+      'Event does not belong to this organization', 'invalid_grant']);
     throw new Error(`Request failed (${response.status})${messages.has(data.error) ? `: ${data.error}` : '; check service deployment and account permissions'}`);
   }
   return response.json();
@@ -44,6 +45,7 @@ export async function browserLogin(resource, issuer, clientId, openBrowser = tru
   for (const key of ['authorization_endpoint', 'token_endpoint', 'revocation_endpoint']) {
     if (secureUrl(metadata[key]).origin !== new URL(issuer).origin) throw new Error('Unexpected authorization endpoint');
   }
+  const scope = options.scope || 'org:events.read org:events.write';
   const saved = options.store ? await options.store.load() : null;
   if (saved && (!saved.clientId || (saved.refreshToken && clientId && saved.clientId !== clientId))) throw new Error('Saved client does not match; disconnect the saved connection first');
   clientId = clientId || saved?.clientId;
@@ -53,7 +55,7 @@ export async function browserLogin(resource, issuer, clientId, openBrowser = tru
     const registration = await json(metadata.registration_endpoint, { method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ client_name: 'OrgPortal image upload', token_endpoint_auth_method: 'none',
         redirect_uris: ['http://127.0.0.1/callback'], grant_types: ['authorization_code', 'refresh_token'],
-        response_types: ['code'], scope: 'org:events.read org:events.write' }) });
+        response_types: ['code'], scope: 'org:events.read org:events.write org:portal.read org:portal.write' }) });
     if (typeof registration.client_id !== 'string' || !registration.client_id || registration.client_secret) throw new Error('Invalid public client registration');
     clientId = registration.client_id;
   }
@@ -91,7 +93,7 @@ export async function browserLogin(resource, issuer, clientId, openBrowser = tru
     redirect = `http://127.0.0.1:${server.address().port}/callback`;
     const url = new URL(metadata.authorization_endpoint);
     url.search = new URLSearchParams({ response_type: 'code', client_id: clientId, redirect_uri: redirect, resource,
-      scope: 'org:events.read org:events.write', state, code_challenge_method: 'S256',
+      scope, state, code_challenge_method: 'S256',
       code_challenge: createHash('sha256').update(verifier).digest('base64url') }).toString();
     console.log(`Sign in and approve access in your browser:\n${url}`);
     if (openBrowser) {
@@ -110,10 +112,13 @@ async function main() {
     'client-id': { type: 'string' }, organization: { type: 'string' }, event: { type: 'string' },
     connect: { type: 'boolean' }, disconnect: { type: 'boolean' }, ephemeral: { type: 'boolean' },
     directory: { type: 'string' }, yes: { type: 'boolean' }, 'no-browser': { type: 'boolean' }, help: { type: 'boolean' } } });
-  if (values.help) { console.log('event-upload.mjs --resource https://HOST/api/org/mcp [--connect | --disconnect | --organization ORG_ID --event SLUG --directory PATH] [--yes] [--no-browser] [--ephemeral]'); return; }
+  if (values.help) { console.log('event-upload.mjs --resource https://HOST/api/org/mcp [--connect | --disconnect | --organization ORG_ID [--event SLUG] --directory PATH] [--yes] [--no-browser] [--ephemeral]'); return; }
   if ((values.connect && values.disconnect) || (values.ephemeral && (values.connect || values.disconnect))) throw new Error('Choose one connection mode');
-  if (!values.resource || (!(values.connect || values.disconnect) && (!values.organization || !values.event || !values.directory))) throw new Error('Specify --resource and a connection command or upload arguments (see --help)');
+  if (!values.resource || (!(values.connect || values.disconnect) && (!values.organization || !values.directory))) throw new Error('Specify --resource and a connection command or upload arguments (see --help)');
   const resource = secureUrl(values.resource).toString();
+  const scope = values.event ? 'org:events.read org:events.write'
+    : values.connect || values.disconnect ? 'org:events.read org:events.write org:portal.read org:portal.write'
+    : 'org:portal.read org:portal.write';
   const extensions = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.gif': 'image/gif', '.webp': 'image/webp' };
   const files = values.connect || values.disconnect ? [] : (await readdir(values.directory)).filter(name => extensions[extname(name).toLowerCase()]).sort();
   if (!(values.connect || values.disconnect) && (!files.length || files.length > 12)) throw new Error('Choose a directory with 1 to 12 supported images');
@@ -124,18 +129,20 @@ async function main() {
   const store = values.ephemeral ? null : await credentialStore(resource, values.issuer);
   let connection;
   try {
-    connection = await browserLogin(resource, values.issuer, values['client-id'], !values['no-browser'], { store, disconnect: values.disconnect });
+    connection = await browserLogin(resource, values.issuer, values['client-id'], !values['no-browser'], { store, disconnect: values.disconnect, scope });
     if (values.disconnect) { await connection.disconnect(); console.log('Disconnected.'); return; }
     if (values.connect) { await connection.accessToken(); console.log('Account connection saved in the OS keyring.'); return; }
     for (const name of files) {
       const data = await readFile(resolve(values.directory, name));
       const form = new FormData();
-      form.set('organizationId', values.organization); form.set('eventId', values.event);
+      form.set('organizationId', values.organization);
+      if (values.event) form.set('eventId', values.event);
       form.set('label', basename(name)); form.set('image', new Blob([data], { type: extensions[extname(name).toLowerCase()] }), name);
-      const send = async () => json(`${resource}/uploads/event-media`, { method: 'POST', headers: { authorization: `Bearer ${await connection.accessToken()}` }, body: form, timeoutMs: 120000 });
+      const uploadPath = values.event ? 'event-media' : 'organization-media';
+      const send = async () => json(`${resource}/uploads/${uploadPath}`, { method: 'POST', headers: { authorization: `Bearer ${await connection.accessToken()}` }, body: form, timeoutMs: 120000 });
       const preview = await send();
       if (!preview.dryRun || !preview.previewId) throw new Error('Upload preview unavailable');
-      console.log(JSON.stringify({ event: preview.eventTitle, organization: preview.organizationId, image: preview.image, existingImages: preview.before.length }, null, 2));
+      console.log(JSON.stringify({ event: preview.eventTitle, organization: preview.organizationName || preview.organizationId, image: preview.image, existingImages: preview.before.length }, null, 2));
       if (!values.yes) {
         if (!process.stdin.isTTY) throw new Error('Review the preview and rerun with --yes only after user authorization');
         const prompt = createInterface({ input: process.stdin, output: process.stdout });
@@ -147,7 +154,7 @@ async function main() {
       try { result = await send(); }
       catch { throw new Error(`Upload outcome uncertain; inspect operation ${preview.previewId} and the gallery before retrying ${name}`); }
       if (!result.success) throw new Error(`Upload outcome uncertain; inspect operation ${preview.previewId} before retrying`);
-      console.log(`Attached ${name} to ${preview.eventTitle}`);
+      console.log(`Attached ${name} to ${preview.eventTitle || preview.organizationName}`);
     }
   } finally {
     await connection?.close().catch(() => console.error('Connection cleanup failed; revoke it at the PIdP connected-apps page.'));

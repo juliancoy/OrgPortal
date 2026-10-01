@@ -6540,11 +6540,35 @@ textarea:focus {
     font-size: 0.9rem;
   }
 
+  .portal-brand {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .portal-brand > div {
+    min-width: 0;
+  }
+
+  .portal-brand-title,
+  .portal-brand-sub {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .portal-auth {
     width: auto;
+    min-width: 0;
     justify-self: end;
     justify-content: flex-end;
     flex-wrap: nowrap;
+  }
+
+  .portal-user-trigger {
+    width: 40px;
+    min-height: 40px;
+    justify-content: center;
+    padding: 4px;
   }
 
   .portal-user-menu {

@@ -7,6 +7,7 @@ import { buildMetadata } from "./generated/buildMetadata";
 import { HTTPException } from "hono/http-exception";
 import { handleEventMcp, protectedResourceMetadata, eventErrorResponse } from "./eventMcp";
 import { handleEventMediaUpload } from "./eventMediaUpload";
+import { handleOrganizationMediaUpload } from "./organizationMediaUpload";
 import { checkEventConfiguration } from "./eventConfiguration";
 import {
   getTimebankListing, setTimebankUptake, setTimebankListingVote, timebankAnalytics, resolvePortalTenant, resolvePortalTenantBySlug, resolveTimebankCommunity, saveTimebankCommunity, setTimebankPhoto, getTimebankPhoto,
@@ -138,6 +139,7 @@ type OrganizationRow = {
   description: string | null;
   source_url: string | null;
   image_url: string | null;
+  media_json?: string | null;
   tags: string;
   city: string | null;
   created_at: string;
@@ -1187,22 +1189,16 @@ function cleanPublicAssetUrl(value: unknown): string | null {
   return cleanUrl(text);
 }
 
-function cleanEventMediaUrl(value: unknown): string | null {
-  const text = cleanOptionalString(value, 1000);
-  if (!text) return null;
-  if (text.startsWith("/api/network/events/public/")) return text;
-  return cleanPublicAssetUrl(text);
-}
-
-function sanitizeEventMedia(value: unknown): EventMediaItem[] {
+function sanitizeMedia(value: unknown, localPathPrefix: string, fallbackLabel: string): EventMediaItem[] {
   if (!Array.isArray(value)) return [];
   const items: EventMediaItem[] = [];
   for (const raw of value) {
     if (!raw || typeof raw !== "object") continue;
     const record = raw as Record<string, unknown>;
-    const url = cleanEventMediaUrl(record.url);
+    const rawUrl = cleanOptionalString(record.url, 1000);
+    const url = rawUrl?.startsWith(localPathPrefix) ? rawUrl : cleanPublicAssetUrl(rawUrl);
     if (!url) continue;
-    const label = cleanOptionalString(record.label, 160) || "Event image";
+    const label = cleanOptionalString(record.label, 160) || fallbackLabel;
     const alt = cleanOptionalString(record.alt, 500) || label;
     const id = cleanOptionalString(record.id, 120)?.replace(/[^a-zA-Z0-9._:-]/g, "-") || crypto.randomUUID();
     items.push({
@@ -1217,6 +1213,23 @@ function sanitizeEventMedia(value: unknown): EventMediaItem[] {
     if (items.length >= 12) break;
   }
   return items;
+}
+
+function sanitizeEventMedia(value: unknown): EventMediaItem[] {
+  return sanitizeMedia(value, "/api/network/events/public/", "Event image");
+}
+
+function sanitizeOrganizationMedia(value: unknown): EventMediaItem[] {
+  return sanitizeMedia(value, "/api/network/orgs/public/", "Organization image");
+}
+
+function parseOrganizationMedia(value: string | null | undefined): EventMediaItem[] {
+  if (!value) return [];
+  try {
+    return sanitizeOrganizationMedia(JSON.parse(value));
+  } catch {
+    return [];
+  }
 }
 
 type EventLinkItem = {
@@ -1271,6 +1284,16 @@ function removedEventMediaImageKeys(eventId: string, before: EventMediaItem[], a
     .map((item) => item.image_key!);
 }
 
+function removedOrganizationMediaImageKeys(organizationId: string, before: EventMediaItem[], after: EventMediaItem[]) {
+  const retainedKeys = new Set(after.map((item) => item.image_key).filter(Boolean));
+  const retainedUrls = new Set(after.map((item) => item.url).filter(Boolean));
+  const mediaPrefix = `organization-media/${organizationId}/`;
+  return before
+    .filter((item) => item.image_key?.startsWith(mediaPrefix))
+    .filter((item) => !retainedKeys.has(item.image_key) && !retainedUrls.has(item.url))
+    .map((item) => item.image_key!);
+}
+
 function cleanLinks(value: unknown): ContactLink[] {
   if (!Array.isArray(value)) return [];
   return value
@@ -1321,6 +1344,7 @@ function mapOrganization(row: OrganizationRow, upcomingEventsCount = 0) {
     source_url: row.source_url,
     source_urls: row.source_url ? [row.source_url] : [],
     image_url: row.image_url,
+    media: parseOrganizationMedia(row.media_json),
     tags: parseJsonArray(row.tags),
     seeded_from_events: true,
     claimed_by_user_id: row.claimed_by_user_id || null,
@@ -2470,6 +2494,7 @@ app.onError((err) => {
 // Register MCP before generic CORS; do not grant arbitrary origins event access.
 app.all("/mcp", (c) => handleEventMcp(c.req.raw, c.env));
 app.post("/mcp/uploads/event-media", (c) => handleEventMediaUpload(c.req.raw, c.env));
+app.post("/mcp/uploads/organization-media", (c) => handleOrganizationMediaUpload(c.req.raw, c.env));
 const oauthProtectedResourceMetadataResponse = (env: Env) => Response.json(protectedResourceMetadata(env), { headers: { "cache-control": "no-store" } });
 const oauthProtectedResourceMetadata = (c: { env: Env }) => {
   try { return oauthProtectedResourceMetadataResponse(c.env); } catch (error) { return eventErrorResponse(error, c.env); }
@@ -2962,6 +2987,21 @@ app.get("/api/network/orgs/public/:slug/admins", async (c) => {
 });
 app.get("/api/network/orgs/public/:slug/chat-feed", (c) => c.json({ organization_slug: c.req.param("slug"), rooms: [] }));
 
+app.get("/api/network/orgs/public/:slug/media/:mediaId", async (c) => {
+  const row = await c.env.DB.prepare("SELECT * FROM organizations WHERE slug = ?")
+    .bind(slugify(c.req.param("slug")))
+    .first<OrganizationRow>();
+  if (!row) fail(404, "Organization not found");
+  const media = parseOrganizationMedia(row.media_json).find((item) => item.id === c.req.param("mediaId"));
+  if (!media?.image_key || !c.env.SCAN_IMAGES) fail(404, "Organization media is not available");
+  const object = await c.env.SCAN_IMAGES.get(media.image_key);
+  if (!object) fail(404, "Organization media is not available");
+  const headers = new Headers();
+  object.writeHttpMetadata(headers);
+  headers.set("cache-control", "public, max-age=31536000, immutable");
+  return new Response(object.body, { status: 200, headers });
+});
+
 app.get("/api/network/events/public", async (c) => {
   const q = (c.req.query("q") || "").trim();
   const upcomingOnly = (c.req.query("upcoming_only") || "true").toLowerCase() !== "false";
@@ -3445,6 +3485,63 @@ app.patch("/api/network/orgs/:organizationId", async (c) => {
      FROM organizations o WHERE o.id = ?`,
   ).bind(role, existing.id).first<OrganizationRow>();
   return c.json(mapOrganization(row!));
+});
+
+app.patch("/api/network/orgs/:organizationId/media", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
+  if (!row) fail(404, "Organization not found");
+  await authorizeOrganization(c.env.DB, organizationActor(user, c.env), "manage", row.id);
+  const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  const before = parseOrganizationMedia(row.media_json);
+  const media = sanitizeOrganizationMedia(payload.media);
+  await c.env.DB.prepare("UPDATE organizations SET media_json = ?, updated_at = ? WHERE id = ?")
+    .bind(JSON.stringify(media), nowIso(), row.id)
+    .run();
+  if (c.env.SCAN_IMAGES) {
+    await Promise.all(removedOrganizationMediaImageKeys(row.id, before, media).map((key) => c.env.SCAN_IMAGES!.delete(key)));
+  }
+  const updated = await c.env.DB.prepare("SELECT * FROM organizations WHERE id = ?")
+    .bind(row.id)
+    .first<OrganizationRow>();
+  return c.json(mapOrganization(updated!));
+});
+
+app.post("/api/network/orgs/:organizationId/media", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
+  if (!row) fail(404, "Organization not found");
+  await authorizeOrganization(c.env.DB, organizationActor(user, c.env), "manage", row.id);
+  if (!c.env.SCAN_IMAGES) fail(503, "Organization media upload storage is not configured");
+  const formData = await c.req.raw.formData().catch(() => null);
+  if (!formData) fail(400, "multipart form data is required");
+  const image = formData.get("image");
+  if (!(image instanceof File)) fail(400, "image is required");
+  const existingMedia = parseOrganizationMedia(row.media_json);
+  if (existingMedia.length >= 12) fail(400, "Organization media gallery already has 12 items");
+  const allowed = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+  const contentType = image.type || "application/octet-stream";
+  if (!allowed.has(contentType)) fail(415, `Unsupported image type: ${contentType}`);
+  if (image.size > 8 * 1024 * 1024) fail(413, "Image exceeds 8 MB");
+  const mediaId = crypto.randomUUID();
+  const extension = (image.name.split(".").pop() || contentType.split("/")[1] || "bin").replace(/[^a-z0-9]/gi, "").toLowerCase() || "bin";
+  const imageBytes = await image.arrayBuffer();
+  const imageKey = `organization-media/${row.id}/${mediaId}.${extension}`;
+  await c.env.SCAN_IMAGES.put(imageKey, imageBytes, {
+    httpMetadata: { contentType },
+    customMetadata: { organization_id: row.id, submitted_by_user_id: user.id },
+  });
+  const label = cleanOptionalString(formData.get("label"), 160) || image.name || "Organization image";
+  const alt = cleanOptionalString(formData.get("alt"), 500) || label;
+  const url = `/api/network/orgs/public/${encodeURIComponent(row.slug)}/media/${encodeURIComponent(mediaId)}`;
+  const media = sanitizeOrganizationMedia([...existingMedia, { id: mediaId, url, label, alt, kind: "image", content_type: contentType, image_key: imageKey }]);
+  await c.env.DB.prepare("UPDATE organizations SET media_json = ?, updated_at = ? WHERE id = ?")
+    .bind(JSON.stringify(media), nowIso(), row.id)
+    .run();
+  const updated = await c.env.DB.prepare("SELECT * FROM organizations WHERE id = ?")
+    .bind(row.id)
+    .first<OrganizationRow>();
+  return c.json(mapOrganization(updated!), 201);
 });
 
 app.post("/api/network/orgs/:organizationId/claim", async (c) => {

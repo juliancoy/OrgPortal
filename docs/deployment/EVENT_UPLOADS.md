@@ -85,6 +85,16 @@ node scripts/event-upload.mjs \
   --directory "$HOME/Downloads/NOLA_MENU"
 ```
 
+Omit `--event` to upload the same directory to the organization's public media
+gallery instead of an event gallery:
+
+```sh
+node scripts/event-upload.mjs \
+  --resource https://medtech.social/api/org/mcp \
+  --organization org-baltimore-medtech \
+  --directory "$HOME/Downloads/ORG_PHOTOS"
+```
+
 Install local tooling dependencies with `npm ci`. Connect without uploading, or
 explicitly revoke the saved connection:
 
@@ -121,6 +131,10 @@ fields are `organizationId`, `eventId` (ID or slug), `image`, optional `label` a
 `alt`. JPEG, PNG, GIF and WebP are limited to 8 MB, with a maximum of 12 gallery
 items. The complete multipart body is bounded before parsing.
 
+`POST /mcp/uploads/organization-media` follows the same preview/apply contract for
+organization galleries. It requires `org:portal.read` and `org:portal.write`; the
+multipart fields are `organizationId`, `image`, optional `label` and `alt`.
+
 First send without `confirm` to obtain a preview and one-use `previewId`. Then
 send the identical image/metadata with `confirm=true` and that `previewId`.
 The receipt binds the user, organization, event, image hash, metadata and gallery
@@ -133,6 +147,9 @@ The image bytes use the existing R2 event-media prefix; gallery metadata uses
 Known unattached objects are deleted after conditional-write conflicts. An
 ambiguous storage/database failure leaves an inspectable operation and may need
 operator reconciliation; it is never reported as a confirmed success.
+
+Organization image bytes use the R2 `organization-media/` prefix and gallery
+metadata uses `organizations.media_json`.
 
 Tests: `node --import tsx --test test/event-media-upload.test.ts`, the existing
 event safety/introspection suites, and `npx tsc --noEmit`.
