@@ -1,30 +1,54 @@
-.mcp-connect .portal-auth-card {
-  max-width: 480px;
-  border-radius: 8px;
-  text-align: left;
+.mcp-connect { display: grid; place-items: start center; padding: clamp(24px, 6vw, 64px) 16px; }
+.mcp-connect .mcp-connect-card {
+  display: flex; flex-direction: column; gap: 24px;
+  width: min(100%, 480px); box-sizing: border-box; padding: clamp(24px, 5vw, 36px);
+  border: 1px solid var(--border, #d9e2eb); border-radius: 18px;
+  background: var(--panel, #fff); color: var(--text-primary, #172b3a);
+  box-shadow: 0 12px 36px rgb(15 40 60 / 8%); text-align: left;
 }
-
-.mcp-connect h1 {
-  font-size: 24px;
-  line-height: 1.25;
-  letter-spacing: 0;
-  overflow-wrap: anywhere;
+.mcp-connect .mcp-connect-heading { display: grid; gap: 10px; }
+.mcp-connect .mcp-connect-heading p { text-align: left; }
+.mcp-connect .mcp-connect-heading h1 {
+  margin: 0; font-size: clamp(24px, 5vw, 30px); font-weight: 700;
+  line-height: 1.2; letter-spacing: -.02em; overflow-wrap: anywhere;
 }
-
-.mcp-connect p {
-  font-size: 16px;
-  overflow-wrap: anywhere;
+.mcp-connect .mcp-connect-eyebrow {
+  margin: 0; color: var(--primary, #0f6f8f); font-size: 12px; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase;
 }
-
-.mcp-connect .portal-button {
-  border-radius: 6px;
-  white-space: normal;
-  text-align: center;
-  letter-spacing: 0;
+.mcp-connect .mcp-connect-description, .mcp-connect .mcp-connect-loading {
+  margin: 0; color: var(--text-muted, #526779); font-size: 15px; line-height: 1.6;
 }
-
-.mcp-connect .mcp-connect-secondary {
-  background: transparent;
-  color: inherit;
-  border: 1px solid currentColor;
+.mcp-connect-account {
+  display: flex; align-items: flex-start; gap: 14px; padding: 18px;
+  border: 1px solid var(--border, #d9e2eb); border-radius: 12px;
+}
+.mcp-connect-avatar {
+  display: grid; place-items: center; flex: 0 0 42px; height: 42px;
+  border-radius: 50%; background: var(--btn-primary-bg, #0f6f8f); color: var(--btn-primary-text, #fff); font-size: 18px; font-weight: 700;
+}
+.mcp-connect-account-details { display: grid; gap: 5px; min-width: 0; }
+.mcp-connect-label { color: var(--text-muted, #526779); font-size: 12px; }
+.mcp-connect-account-details strong { color: var(--text-primary, #172b3a); font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; }
+.mcp-connect .mcp-connect-switch {
+  justify-self: start; padding: 6px 0; border: 0; border-radius: 4px;
+  background: transparent; color: var(--primary, #0f6f8f); font: inherit; font-size: 13px; text-align: left; cursor: pointer;
+}
+.mcp-connect-provider { display: grid; gap: 5px; margin: 0; font-size: 13px; line-height: 1.5; }
+.mcp-connect-provider dt { color: var(--text-muted, #526779); }
+.mcp-connect-provider dd { margin: 0; overflow-wrap: anywhere; }
+.mcp-connect-actions { display: grid; gap: 14px; }
+.mcp-connect .mcp-connect-continue {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  width: 100%; min-height: 48px; padding: 12px 18px; border: 0; border-radius: 10px;
+  background: var(--btn-primary-bg, #0f6f8f); color: var(--btn-primary-text, #fff); font: inherit; font-size: 15px; font-weight: 600; text-align: left; cursor: pointer;
+}
+.mcp-connect .mcp-connect-continue:hover { filter: brightness(.94); }
+.mcp-connect .mcp-connect-cancel { justify-self: center; padding: 8px 16px; color: var(--text-muted, #526779); font-size: 14px; text-decoration: none; }
+.mcp-connect .mcp-connect-cancel:hover, .mcp-connect .mcp-connect-switch:hover { text-decoration: underline; }
+.mcp-connect button:disabled { opacity: .6; cursor: wait; }
+.mcp-connect :is(button, a):focus-visible { outline: 3px solid var(--primary, #0f6f8f); outline-offset: 4px; }
+.mcp-connect .mcp-connect-error {
+  margin: 0; padding: 14px; border: 1px solid #e7afaf; border-radius: 10px;
+  background: #fff2f2; color: #8d2525; font-size: 14px; line-height: 1.6;
 }

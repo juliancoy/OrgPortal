@@ -42,6 +42,8 @@ test('MCP continuation requires an explicit action and safely returns to the iss
   await page.goto(path)
   await expect(page.getByRole('heading', { name: 'Connect MedTech' })).toBeVisible()
   await expect(page.getByText('member@example.test', { exact: true })).toBeVisible()
+  await expect(page.getByText('Signed in as', { exact: true })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Cancel', exact: true })).toBeVisible()
   expect(posts).toBe(0)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   await page.screenshot({ path: testInfo.outputPath('mcp-connect.png'), fullPage: true })

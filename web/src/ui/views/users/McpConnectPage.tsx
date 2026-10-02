@@ -62,19 +62,35 @@ export function McpConnectPage() {
   }
 
   return <section className="portal-auth-page mcp-connect" aria-labelledby="mcp-connect-title">
-    <div className="portal-auth-card">
-      <h1 id="mcp-connect-title">Connect {connection?.portal || 'your account'}</h1>
-      {error && <p role="alert">{error}</p>}
-      {!connection && !error && <p role="status">Loading connection...</p>}
+    <div className="portal-auth-card mcp-connect-card">
+      <header className="mcp-connect-heading">
+        <p className="mcp-connect-eyebrow">Account connection</p>
+        <h1 id="mcp-connect-title">Connect {connection?.portal || 'your account'}</h1>
+        <p className="mcp-connect-description">Confirm your account. You’ll review permissions on the next screen.</p>
+      </header>
+      {error && <p className="mcp-connect-error" role="alert">{error}</p>}
+      {!connection && !error && <p className="mcp-connect-loading" role="status">Loading your account…</p>}
       {connection && <>
-        <p>{connection.account}</p>
-        <button className="portal-button mcp-connect-secondary" type="button" disabled={busy} onClick={logout}>Use a different account</button>
-        <p>Identity provider: {new URL(connection.issuer).host}</p>
-        <button className="portal-button" type="button" disabled={busy} onClick={() => void connect()}>
-          {busy ? 'Connecting...' : 'Continue to consent'}
-        </button>
+        <div className="mcp-connect-account">
+          <span className="mcp-connect-avatar" aria-hidden="true">{connection.account.slice(0, 1).toUpperCase()}</span>
+          <div className="mcp-connect-account-details">
+            <span className="mcp-connect-label">Signed in as</span>
+            <strong>{connection.account}</strong>
+            <button className="mcp-connect-switch" type="button" disabled={busy} onClick={logout}>Use a different account</button>
+          </div>
+        </div>
+        <dl className="mcp-connect-provider">
+          <dt>Sign-in provider</dt>
+          <dd>{new URL(connection.issuer).host}</dd>
+        </dl>
       </>}
-      <a href={portalPath('/')} className="portal-button mcp-connect-secondary">Cancel</a>
+      <div className="mcp-connect-actions">
+        {connection && <button className="mcp-connect-continue" type="button" disabled={busy} aria-busy={busy} onClick={() => void connect()}>
+          {busy ? 'Connecting…' : 'Continue to consent'}
+          <span aria-hidden="true">→</span>
+        </button>}
+        <a href={portalPath('/')} className="mcp-connect-cancel">Cancel</a>
+      </div>
     </div>
   </section>
 }
