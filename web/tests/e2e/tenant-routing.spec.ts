@@ -563,6 +563,13 @@ test('event lists separate past gatherings, show sourced attendance to guests, a
 
 test('LifeTech keeps its own logo and app icons across chat and event navigation', async ({ page }) => {
   await mockTenant(page)
+  // LifeTech's proxy removes the upstream manifest link before serving portal HTML.
+  await page.route('**/*', async route => {
+    if (route.request().resourceType() !== 'document') return route.fallback()
+    const response = await route.fetch()
+    const html = (await response.text()).replace(/<link[^>]+rel="manifest"[^>]*>/g, '')
+    return route.fulfill({ response, body: html })
+  })
   await page.route('**/api/org/api/portal/tenant', route => route.fulfill({ json: {
     id: 'lifetech', hostname: 'lifetech.fyi', name: 'LifeTech', tagline: 'Health × Medicine × Biotech',
     accent_color: '#061a26', profile: 'community', features: ['directory', 'events', 'chat'],

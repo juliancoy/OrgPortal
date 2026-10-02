@@ -13,7 +13,12 @@ export function applyPortalBranding() {
   }
   const appleIcon = document.querySelector<HTMLLinkElement>('link[rel="apple-touch-icon"]')
   if (appleIcon) appleIcon.href = portalPath(profile.appleTouchIconPath)
-  const manifest = document.querySelector<HTMLLinkElement>('link[rel="manifest"]')
-  if (manifest) manifest.href = portalPath(profile.manifestPath)
+  let manifest = document.querySelector<HTMLLinkElement>('link[rel="manifest"]')
+  if (!manifest) {
+    manifest = document.createElement('link')
+    manifest.rel = 'manifest'
+    document.head.appendChild(manifest)
+  }
+  manifest.href = portalPath(profile.manifestPath)
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', profile.themeColor)
 }
