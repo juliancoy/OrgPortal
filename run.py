@@ -2,6 +2,7 @@ import base64
 import importlib.util
 import os
 import secrets
+import shlex
 import subprocess
 import sys
 import textwrap
@@ -13,6 +14,8 @@ current_dir = Path(os.path.abspath(os.path.dirname(__file__)))
 web_dir = current_dir / "web"
 org_worker_dir = current_dir / "org-worker"
 pidp_dir = current_dir.parent / "pidp"
+if not pidp_dir.exists():
+    pidp_dir = current_dir.parent / "PIdP"
 local_dir = current_dir / ".local"
 local_certs_dir = local_dir / "certs"
 local_nginx_conf = local_dir / "nginx.conf"
@@ -129,6 +132,24 @@ def _apply_pidp_secret_defaults() -> Path:
     for key in PINNED_PIDP_ENV_KEYS:
         if file_values.get(key):
             os.environ[key] = file_values[key].strip()
+    if not os.getenv("PIDP_JWT_PRIVATE_KEY") and not os.getenv("PIDP_JWT_PUBLIC_KEY"):
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric import rsa
+
+        local_dir.mkdir(parents=True, exist_ok=True)
+        key_path = local_dir / "pidp-jwt-private.pem"
+        if not key_path.exists():
+            private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+            key_path.write_bytes(private_key.private_bytes(
+                serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
+                serialization.NoEncryption(),
+            ))
+        key_path.chmod(0o600)
+        private_key = serialization.load_pem_private_key(key_path.read_bytes(), password=None)
+        os.environ["PIDP_JWT_PRIVATE_KEY"] = key_path.read_text()
+        os.environ["PIDP_JWT_PUBLIC_KEY"] = private_key.public_key().public_bytes(
+            serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo,
+        ).decode()
     return selected_path
 
 
@@ -394,6 +415,7 @@ def _write_local_gateway_config(
                 }}
 
                 location / {{
+                  proxy_set_header Host $host;
                   proxy_set_header Upgrade $http_upgrade;
                   proxy_set_header Connection "upgrade";
                   proxy_pass http://{dev_name}:5173;
@@ -501,14 +523,14 @@ def _start_pidp_if_available(prefix: str, network_name: str, gateway_base: str) 
         "network": network_name,
         "restart_policy": {"Name": "always"},
         "detach": True,
-        "working_dir": container_app_dir,
+        "working_dir": "/tmp",
         "command": [
             "sh",
             "-c",
             (
                 "python -m venv /venv && "
                 "/venv/bin/pip install -r /app/requirements.txt && "
-                "exec /venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app"
+                "exec /venv/bin/uvicorn main:app --app-dir /app --host 0.0.0.0 --port 8000 --reload --reload-dir /app"
             ),
         ],
     }
@@ -635,7 +657,9 @@ def run(prefix: str, network_name: str) -> None:
             (
                 "npm ci && "
                 "npm run db:migrate:local && "
-                f"npx wrangler dev --local --test-scheduled --ip 0.0.0.0 --port {worker_port}"
+                f"npx wrangler dev --local --test-scheduled --ip 0.0.0.0 --port {worker_port} "
+                f"--var {shlex.quote('PIDP_BASE_URL:' + (os.getenv('ORGPORTAL_WORKER_PIDP_BASE_URL') or f'http://{pidp_dev_name}:8000'))} "
+                f"--var {shlex.quote('PUBLIC_PORTAL_BASE_URL:' + gateway_base)}"
             ),
         ],
     }

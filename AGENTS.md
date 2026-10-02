@@ -21,3 +21,12 @@
   OrgPortal permissions and required preview/apply receipts for API and MCP alike.
 - Shared portal releases use CodeCollective. PIdP releases are separate and must
   preserve Python/serverless parity. Do not deploy shared services from MedTech.
+
+## Browser tests
+
+- Run browser automation headlessly.
+- Use the local Docker deployment for tests that log in, retain sessions across
+  browser runs, or check login persistence across deployments. Keep their test
+  accounts, browser state, and application data local. Verify that both the
+  portal and authentication endpoints use the local deployment before running.
+- Production browser checks should be read-only and unauthenticated.

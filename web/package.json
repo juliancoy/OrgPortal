@@ -27,6 +27,7 @@
     "test:chat:selenium": "python scripts/selenium-chat-smoke.py",
     "test:chat:selenium:docker": "scripts/run-selenium-chat-smoke.sh",
     "test:local:selenium:docker": "scripts/run-selenium-local-smoke.sh",
+    "test:session:local": "python3 scripts/test-local-session-persistence.py",
     "bot:provision": "node scripts/provision-portal-bot.mjs",
     "bot:list": "node scripts/bot-admin.mjs list",
     "bot:admin": "node scripts/bot-admin.mjs",
