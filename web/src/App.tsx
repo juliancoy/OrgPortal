@@ -5,7 +5,7 @@ import { portalPath } from './config/portalBase'
 import { Header } from './ui/shell/Header'
 import { Footer } from './ui/shell/Footer'
 import { ExternalBrowserPrompt } from './ui/components/ExternalBrowserPrompt'
-import { defaultPostLoginPath, PIDP_APP_SLUG, pidpAppLoginUrl, pidpUrl, portalAuthCallbackUrl } from './config/pidp'
+import { defaultPostLoginPath, pidpAppLoginUrl, pidpSingleSignOnUrl } from './config/pidp'
 import { getActivePortalProfileConfig } from './config/portalFeatures'
 import { listMotions } from './application/usecases/listMotions'
 import { MotionStatusBadge } from './ui/components/governance/MotionStatusBadge'
@@ -42,7 +42,7 @@ function motionProposerLabel(motion: { proposerType?: string; proposerName: stri
 }
 
 export default function App() {
-  const { user, role, loginWithPassword, isLoading: sessionLoading } = useAuth()
+  const { user, role } = useAuth()
   const { motionRepository, engagementRepository } = useServices()
   const portalProfile = getActivePortalProfileConfig()
   const nextUrl = window.location.href
@@ -52,16 +52,7 @@ export default function App() {
   const [ranked, setRanked] = useState<RankedMotion[]>([])
   const [userVotes, setUserVotes] = useState<Record<string, VoteDirection | null>>({})
   const [loading, setLoading] = useState(true)
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [loginError, setLoginError] = useState<string | null>(null)
-  const [isSubmittingLogin, setIsSubmittingLogin] = useState(false)
-
-  const socialLoginUrl = (provider: 'google' | 'github') => {
-    const params = new URLSearchParams({ next: portalAuthCallbackUrl(defaultPostLoginPath()) })
-    if (PIDP_APP_SLUG) params.set('app', PIDP_APP_SLUG)
-    return pidpUrl(`/auth/${provider}/login?${params.toString()}`)
-  }
+  const socialLoginUrl = (provider: 'google' | 'github') => pidpSingleSignOnUrl(defaultPostLoginPath(), provider)
 
   useEffect(() => {
     document.title = isGuest ? portalProfile.portalTitle : portalProfile.brandName
@@ -114,18 +105,6 @@ export default function App() {
     setUserVotes((prev) => ({ ...prev, [motionId]: result.userVote }))
   }
 
-  async function handlePasswordLogin() {
-    if (isSubmittingLogin || sessionLoading) return
-    setLoginError(null)
-    setIsSubmittingLogin(true)
-    try {
-      await loginWithPassword(email, password)
-    } catch (err) {
-      setIsSubmittingLogin(false)
-      setLoginError(err instanceof Error ? err.message : 'Login failed')
-    }
-  }
-
   if (isGuest) {
     return (
       <main
@@ -176,17 +155,7 @@ export default function App() {
             </div>
           </div>
 
-          <div
-            className="portal-guest-login"
-            onKeyDown={(event) => {
-              if (event.key !== 'Enter') return
-              if (isSubmittingLogin || sessionLoading) return
-              const target = event.target as HTMLElement | null
-              if (target && (target.tagName === 'TEXTAREA' || target.isContentEditable)) return
-              event.preventDefault()
-              void handlePasswordLogin()
-            }}
-          >
+          <div className="portal-guest-login">
             <div className="portal-guest-login-actions" aria-label="Sign in options">
               <a href={socialLoginUrl('google')} className="portal-social-login-button" aria-label="Continue with Google">
                 <img src={portalPath('/images/google-g-logo.svg')} alt="" className="portal-social-login-logo" />
@@ -200,53 +169,12 @@ export default function App() {
               <span>or</span>
             </div>
 
-            <div className="portal-guest-password-form">
-              <label htmlFor="portal-guest-email">Email</label>
-              <input
-                id="portal-guest-email"
-                type="email"
-                autoComplete="email"
-                required
-                aria-required="true"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                aria-describedby={loginError ? 'portal-guest-login-error' : undefined}
-              />
-
-              <label htmlFor="portal-guest-password">Password</label>
-              <input
-                id="portal-guest-password"
-                type="password"
-                autoComplete="current-password"
-                required
-                aria-required="true"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                aria-describedby={loginError ? 'portal-guest-login-error' : undefined}
-              />
-
-              {loginError ? (
-                <p id="portal-guest-login-error" className="portal-login-error" role="alert" aria-live="polite">
-                  {loginError}
-                </p>
-              ) : null}
-
-              <button
-                type="button"
-                className="btn-primary portal-guest-submit"
-                disabled={isSubmittingLogin || sessionLoading}
-                aria-busy={isSubmittingLogin || sessionLoading}
-                onClick={handlePasswordLogin}
-              >
-                {isSubmittingLogin || sessionLoading ? 'Signing in...' : 'Login'}
-              </button>
-            </div>
 
             <a
               href={pidpAppLoginUrl(nextUrl)}
               className="portal-identity-provider-link"
             >
-              Open full identity provider
+              Continue with email
             </a>
           </div>
         </section>
