@@ -201,11 +201,11 @@ async function main() {
   const password = env("VERIFY_SMOKE_PASSWORD", `PortalSmoke!${timestamp}`);
   const primary = {
     email: `insurance-birthday-gate-a-${timestamp}@example.com`,
-    fullName: "Insurance Birthday Gate A",
+    fullName: `Insurance Birthday Gate A ${timestamp}`,
   };
   const secondary = {
     email: `insurance-birthday-gate-b-${timestamp}@example.com`,
-    fullName: "Insurance Birthday Gate B",
+    fullName: `Insurance Birthday Gate B ${timestamp}`,
   };
 
   await registerUser(pidpBaseUrl, primary.email, password, primary.fullName);
