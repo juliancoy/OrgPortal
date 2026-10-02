@@ -42,6 +42,7 @@ const messages = [
 ]
 
 test.beforeEach(async ({ page }) => {
+  await page.route('**/api/org/api/portal/tenant', route => route.fulfill({ json: null }))
   await page.addInitScript(() => {
     class MockWebSocket extends EventTarget {
       static OPEN = 1
@@ -103,7 +104,7 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/api/org/api/network/users?**', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }),
   )
-  await page.route('https://chat-codecollective.jcloiacon.workers.dev/**', async (route) => {
+  await page.route('**/api/chat/**', async (route) => {
     const url = new URL(route.request().url())
     if (url.pathname.endsWith('/api/network/chat/presence')) {
       const body = route.request().method() === 'POST'
@@ -140,6 +141,14 @@ test('native chat has a readable desktop conversation layout', async ({ page }, 
   const outgoing = await page.locator('.portal-chat-message.mine').boundingBox()
 
   expect(sidebar?.width || 0).toBeGreaterThanOrEqual(220)
+  const headerFits = await page.locator('.portal-chat-sidebar-header').evaluate((header) => {
+    const bounds = header.getBoundingClientRect()
+    return [...header.children].every((child) => {
+      const box = child.getBoundingClientRect()
+      return box.left >= bounds.left && box.right <= bounds.right + 1
+    })
+  })
+  expect(headerFits).toBe(true)
   expect(Math.abs((textarea?.y || 0) + (textarea?.height || 0) - ((send?.y || 0) + (send?.height || 0)))).toBeLessThanOrEqual(4)
   expect(send?.width || 999).toBeLessThanOrEqual(140)
   expect(textarea?.width || 0).toBeGreaterThan(send?.width || 0)

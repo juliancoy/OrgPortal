@@ -6753,6 +6753,12 @@ textarea:focus {
   color: var(--text-primary);
 }
 
+.native-chat-sidebar .portal-chat-sidebar-header h2 {
+  min-width: 0;
+  font-size: 1.05rem;
+  overflow-wrap: anywhere;
+}
+
 .native-chat-shell:not(.sidebar-expanded) .portal-chat-sidebar-header {
   justify-content: center;
 }
@@ -6764,6 +6770,7 @@ textarea:focus {
 }
 
 .native-chat-sidebar-toggle {
+  flex-shrink: 0;
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   width: 34px;
@@ -7832,7 +7839,7 @@ textarea:focus {
 
   .native-chat-shell .portal-chat-message,
   .native-chat-shell .portal-chat-message.mine {
-    max-width: 100%;
+    max-width: 84%;
   }
 
   .native-chat-shell .portal-chat-composer .btn-primary {
