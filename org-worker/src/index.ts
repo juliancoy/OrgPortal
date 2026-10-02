@@ -2492,7 +2492,11 @@ app.onError((err) => {
 });
 
 // Register MCP before generic CORS; do not grant arbitrary origins event access.
-app.all("/mcp", (c) => handleEventMcp(c.req.raw, c.env));
+app.all("/mcp", (c) => handleEventMcp(c.req.raw, c.env, async (actor, payload) => {
+  const row = await upsertOrganization(c.env.DB, payload);
+  await claimOrganization(c.env.DB, row!.id, actor, nowIso());
+  return row!;
+}));
 app.post("/mcp/uploads/event-media", (c) => handleEventMediaUpload(c.req.raw, c.env));
 app.post("/mcp/uploads/organization-media", (c) => handleOrganizationMediaUpload(c.req.raw, c.env));
 const oauthProtectedResourceMetadataResponse = (env: Env) => Response.json(protectedResourceMetadata(env), { headers: { "cache-control": "no-store" } });
