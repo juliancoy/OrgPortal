@@ -102,6 +102,12 @@ export function mcpConfiguration(env: Env) {
       throw new EventIntegrationError(503, "Invalid PIdP introspection configuration");
     }
   }
+  try {
+    const namespaces = z.array(z.string().regex(/^(owner|website:[^:]+)$/)).parse(JSON.parse(env.MCP_PIDP_ACCOUNT_NAMESPACES_JSON || '[]'));
+    if (namespaces.length && (!introspection || issuer !== env.PIDP_BASE_URL?.replace(/\/$/, ''))) {
+      throw new Error();
+    }
+  } catch { throw new EventIntegrationError(503, "Invalid PIdP account namespace configuration"); }
   const url = new URL(resource);
   const metadataUrl = new URL(`/.well-known/oauth-protected-resource${url.pathname}`, url.origin);
   metadataUrl.searchParams.set("v", "20260910-2");
@@ -120,7 +126,16 @@ export async function authenticateMcp(request: Request, env: Env, getKey?: JWTVe
       issuer: config.issuer, audience: config.resource, algorithms: ["RS256", "ES256"], requiredClaims: ["sub", "exp", "iat"],
     });
     const subjectMap = JSON.parse(env.MCP_SUBJECT_MAP_JSON!);
-    const userId = payload.sub && Object.hasOwn(subjectMap, payload.sub) ? subjectMap[payload.sub] : undefined;
+    let userId = payload.sub && Object.hasOwn(subjectMap, payload.sub) ? subjectMap[payload.sub] : undefined;
+    if (!userId && typeof payload.sub === 'string') {
+      const namespaces: string[] = JSON.parse(env.MCP_PIDP_ACCOUNT_NAMESPACES_JSON || '[]');
+      const separator = payload.sub.lastIndexOf(':');
+      const namespace = payload.sub.slice(0, separator);
+      const accountId = payload.sub.slice(separator + 1);
+      if (separator > 0 && namespaces.includes(namespace) && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(accountId)) {
+        userId = accountId;
+      }
+    }
     if (typeof userId !== "string" || !userId) throw new Error();
     if (config.introspection) {
       let response: Response;

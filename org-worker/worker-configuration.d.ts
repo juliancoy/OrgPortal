@@ -17,6 +17,7 @@ interface Env {
   MCP_OAUTH_ISSUER?: string;
   MCP_OAUTH_JWKS_URL?: string;
   MCP_SUBJECT_MAP_JSON?: string;
+  MCP_PIDP_ACCOUNT_NAMESPACES_JSON?: string;
   MCP_ALLOWED_ORIGINS?: string;
   DB: D1Database;
   SCAN_IMAGES?: R2Bucket;

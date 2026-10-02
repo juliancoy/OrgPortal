@@ -152,6 +152,7 @@ Required configuration:
 | `MCP_OAUTH_ISSUER` | Your OAuth authorization server's exact issuer |
 | `MCP_OAUTH_JWKS_URL` | Its trusted HTTPS signing-key endpoint |
 | `MCP_SUBJECT_MAP_JSON` | Explicit map of issuer subject IDs to existing PIdP user IDs |
+| `MCP_PIDP_ACCOUNT_NAMESPACES_JSON` | Optional approved PIdP namespaces, such as `["owner"]` or `["website:<website-id>"]`. Resolves UUID subjects to the same PIdP account ID as portal sessions. Requires live introspection and issuer matching `PIDP_BASE_URL`; explicit subject mappings take precedence. This grants no organization permissions. |
 | `EVENT_INTEGRATIONS_JSON` | Organization **database ID** to provider configuration |
 | `EVENT_KEY_<NAME>` | Server-only provider API key, one binding per calendar |
 | `MCP_ALLOWED_ORIGINS` | Optional comma-separated browser origins; omit for server-to-server clients |
