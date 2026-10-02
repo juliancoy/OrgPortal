@@ -136,7 +136,11 @@ async function verifyBrowserLifeAndProperty(portalBaseUrl, token, birthday, expe
 
     await page.goto(`${portalBaseUrl}/life-insurance`, { waitUntil: "domcontentloaded", timeout: 45_000 });
     await page.getByRole("heading", { name: "Protect the people you name" }).waitFor({ timeout: 30_000 });
-    await page.getByTestId("insurance-profile-birthday").waitFor({ timeout: 10_000 });
+    await page.waitForFunction(
+      (expectedBirthday) => document.querySelector('[data-testid="insurance-profile-birthday"]')?.textContent?.includes(expectedBirthday),
+      birthday,
+      { timeout: 30_000 },
+    );
     const birthdayCard = await page.getByTestId("insurance-profile-birthday").innerText();
     const ageCard = await page.getByTestId("insurance-derived-age").innerText();
     if (!birthdayCard.includes(birthday)) {
@@ -197,11 +201,11 @@ async function main() {
   const password = env("VERIFY_SMOKE_PASSWORD", `PortalSmoke!${timestamp}`);
   const primary = {
     email: `insurance-birthday-gate-a-${timestamp}@example.com`,
-    fullName: "Insurance Birthday Gate A",
+    fullName: `Insurance Birthday Gate A ${timestamp}`,
   };
   const secondary = {
     email: `insurance-birthday-gate-b-${timestamp}@example.com`,
-    fullName: "Insurance Birthday Gate B",
+    fullName: `Insurance Birthday Gate B ${timestamp}`,
   };
 
   await registerUser(pidpBaseUrl, primary.email, password, primary.fullName);

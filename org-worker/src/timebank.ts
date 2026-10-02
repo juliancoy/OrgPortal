@@ -36,6 +36,7 @@ export type PortalTenant = Community & {
 };
 const DEFAULT_COMMUNITY = 'code-collective';
 export const TIMEBANK_CATEGORIES = ['Home & garden', 'Learning', 'Tech help', 'Care & company', 'Transport', 'Creative', 'Other'] as const;
+const GENERIC_MATCH_TAGS = new Set(['local', 'remote', 'other']);
 
 type Member = { id: string; name: string };
 type Listing = {
@@ -52,7 +53,19 @@ type Listing = {
   image_key: string | null;
   category: string;
   contact: string;
+  tags?: string | string[];
   visibility: 'public' | 'members';
+};
+type ListingPayload = Omit<Listing, 'tags'> & {
+  member_name?: string;
+  tags: string[];
+  match_ids?: string[];
+};
+type ListingMatch = {
+  listing_id: string;
+  match_id: string;
+  score: number;
+  shared_tags: string[];
 };
 type VoteDirection = 'up' | 'down';
 type Exchange = {
@@ -98,6 +111,97 @@ function minutesField(input: Record<string, unknown>) {
     throw new TimebankError('Choose 0.25 to 24 hours in quarter-hour increments.');
   }
   return minutes;
+}
+
+function unique(values: string[]) {
+  return [...new Set(values)];
+}
+
+function slugWords(value: string) {
+  return value.toLowerCase().match(/[a-z0-9]+(?:[ -][a-z0-9]+)*/g) || [];
+}
+
+function automaticTags(input: { category?: string; title?: string; description?: string; location?: string }) {
+  const text = `${input.title || ''} ${input.description || ''} ${input.location || ''}`.toLowerCase();
+  const tags = [input.category || 'Other'];
+  const rules: [RegExp, string][] = [
+    [/garden|plant|yard|lawn|repair|clean|home|house|bike|bicycle|tool/, 'hands-on help'],
+    [/computer|phone|software|app|website|tech|device|wifi|internet/, 'technology'],
+    [/lesson|teach|learn|tutor|study|language|class|coach/, 'learning'],
+    [/ride|drive|transport|errand|delivery|pickup/, 'transport'],
+    [/care|companion|visit|meal|child|elder|pet|wellness/, 'care'],
+    [/art|design|write|music|photo|video|creative|craft/, 'creative'],
+    [/remote|online|virtual|zoom/, 'remote'],
+    [/baltimore|charles village|station north|remington|hamden|waverly/, 'local'],
+  ];
+  for (const [pattern, tag] of rules) if (pattern.test(text)) tags.push(tag);
+  return tags;
+}
+
+function normalizeTags(input: Record<string, unknown>, base: { category?: string; title?: string; description?: string; location?: string }) {
+  const raw = input.tags;
+  const explicit = Array.isArray(raw)
+    ? raw
+    : typeof raw === 'string'
+      ? raw.split(/[,\n]/)
+      : [];
+  const tags = explicit.map((tag) => String(tag).trim().toLowerCase().replace(/\s+/g, ' '))
+    .filter((tag) => tag.length > 0 && tag.length <= 32 && /^[a-z0-9][a-z0-9 &/+.-]*$/.test(tag));
+  if (explicit.length > 12 || tags.length !== explicit.filter((tag) => String(tag).trim()).length) {
+    throw new TimebankError('Tags must be short letters, numbers or simple punctuation.');
+  }
+  return unique([...tags, ...automaticTags(base).map((tag) => tag.toLowerCase())]).slice(0, 12);
+}
+
+function parseListingTags(item: Listing | Record<string, unknown>) {
+  const raw = (item as { tags?: unknown }).tags;
+  const parsed = Array.isArray(raw) ? raw : typeof raw === 'string' && raw.trim()
+    ? (() => { try { return JSON.parse(raw); } catch { return String(raw).split(','); } })()
+    : [];
+  const stored = Array.isArray(parsed) ? parsed.map((tag) => String(tag)) : [];
+  return unique([...stored, ...automaticTags({
+    category: String((item as Record<string, unknown>).category || 'Other'),
+    title: String((item as Record<string, unknown>).title || ''),
+    description: String((item as Record<string, unknown>).description || ''),
+    location: String((item as Record<string, unknown>).location || ''),
+  })].map((tag) => tag.trim().toLowerCase()).filter(Boolean)).slice(0, 12);
+}
+
+function listingKeywords(item: ListingPayload) {
+  return unique([...item.tags, ...slugWords(`${item.category} ${item.title} ${item.description}`)].filter((word) => word.length > 2));
+}
+
+function enrichListings(rows: Record<string, unknown>[]) {
+  return rows.map((row) => ({ ...row, tags: parseListingTags(row) })) as ListingPayload[];
+}
+
+function matchListings(listings: ListingPayload[], _userId: string | null) {
+  const open = listings.filter((item) => item.status === 'open');
+  const pairs: ListingMatch[] = [];
+  for (const request of open.filter((item) => item.kind === 'request')) {
+    const requestKeywords = listingKeywords(request);
+    for (const offer of open.filter((item) => item.kind === 'offer')) {
+      if (offer.user_id === request.user_id) continue;
+      const offerKeywords = listingKeywords(offer);
+      const sharedTags = request.tags.filter((tag) => offer.tags.includes(tag));
+      const specificSharedTags = sharedTags.filter((tag) => !GENERIC_MATCH_TAGS.has(tag));
+      const sharedWords = requestKeywords.filter((word) => offerKeywords.includes(word));
+      const sameCategory = request.category === offer.category;
+      const score = sharedTags.length * 3
+        + sharedWords.length
+        + (sameCategory ? 4 : 0)
+        + (request.location && offer.location && request.location.toLowerCase() === offer.location.toLowerCase() ? 1 : 0);
+      if (score >= 4 && (sameCategory || specificSharedTags.length > 0)) pairs.push({ listing_id: request.id, match_id: offer.id, score, shared_tags: unique(specificSharedTags).slice(0, 4) });
+    }
+  }
+  pairs.sort((a, b) => b.score - a.score || a.match_id.localeCompare(b.match_id));
+  const limited = pairs.reduce<ListingMatch[]>((acc, pair) => {
+    const fromCount = acc.filter((item) => item.listing_id === pair.listing_id || item.match_id === pair.listing_id).length;
+    const toCount = acc.filter((item) => item.listing_id === pair.match_id || item.match_id === pair.match_id).length;
+    if (fromCount < 3 && toCount < 3) acc.push(pair);
+    return acc;
+  }, []);
+  return limited;
 }
 
 async function ensureMember(db: D1Database, member: Member) {
@@ -179,13 +283,21 @@ export async function timebankDashboard(db: D1Database, member: Member | null, c
   const earned = Number(totals.results[0]?.earned_minutes || 0);
   const spent = Number(totals.results[0]?.spent_minutes || 0);
   const opening = imported.results[0];
+  const boardListings = enrichListings(listings.results);
+  const matches = matchListings(boardListings, userId);
   return {
     account: member ? { user_id: member.id, name: member.name,
       balance_minutes: earned - spent + Number(opening?.balance_minutes || 0),
       earned_minutes: earned + Number(opening?.earned_minutes || 0), spent_minutes: spent + Number(opening?.spent_minutes || 0),
       imported_balance_minutes: opening?.balance_minutes ?? null, has_imported_account: Boolean(opening) } : null,
     imports_available: Boolean(availability.results[0]?.available),
-    listings: listings.results,
+    listings: boardListings.map((listing) => ({
+      ...listing,
+      match_ids: matches
+        .filter((match) => match.listing_id === listing.id || match.match_id === listing.id)
+        .map((match) => match.listing_id === listing.id ? match.match_id : match.listing_id),
+    })),
+    listing_matches: matches,
     exchanges: exchanges.results,
   };
 }
@@ -230,31 +342,39 @@ export async function createTimebankListing(db: D1Database, member: Member, body
   const location = textField(input, 'location', 160, true);
   const contact = textField(input, 'contact', 300, true);
   const category = textField(input, 'category', 40, true) || 'Other';
+  const tags = normalizeTags(input, { category, title, description, location });
   const visibility = input.visibility === undefined ? 'public' : input.visibility;
   if (visibility !== 'public' && visibility !== 'members') throw new TimebankError('Choose public or members only.');
   if (!(TIMEBANK_CATEGORIES as readonly string[]).includes(category)) throw new TimebankError('Choose a category.');
   const minutes = minutesField(input);
   await ensureMember(db, member);
-  await db.prepare(`INSERT INTO timebank_listings (id, user_id, kind, title, description, location, minutes, created_at, community_id, category, contact, visibility)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING`)
-    .bind(id, member.id, kind, title, description, location, minutes, new Date().toISOString(), communityId, category, contact, visibility).run();
+  await db.prepare(`INSERT INTO timebank_listings (id, user_id, kind, title, description, location, minutes, created_at, community_id, category, contact, visibility, tags)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING`)
+    .bind(id, member.id, kind, title, description, location, minutes, new Date().toISOString(), communityId, category, contact, visibility, JSON.stringify(tags)).run();
   const row = await db.prepare('SELECT * FROM timebank_listings WHERE id = ? AND community_id = ?').bind(id, communityId).first<Listing>();
-  if (!row || row.user_id !== member.id || row.kind !== kind || row.title !== title || row.description !== description || row.location !== location || row.minutes !== minutes || row.category !== category || row.contact !== contact || row.visibility !== visibility) {
+  if (!row || row.user_id !== member.id || row.kind !== kind || row.title !== title || row.description !== description || row.location !== location || row.minutes !== minutes || row.category !== category || row.contact !== contact || row.visibility !== visibility || JSON.stringify(parseListingTags(row)) !== JSON.stringify(tags)) {
     throw new TimebankError('This request ID has already been used. Refresh and try again.', 409);
   }
-  return row;
+  return { ...row, tags };
 }
 
 export async function updateTimebankListing(db: D1Database, userId: string, id: string, body: unknown, communityId = DEFAULT_COMMUNITY) {
   const input = inputObject(body);
-  if (input.status === undefined && input.visibility === undefined) throw new TimebankError('Choose a status or visibility.');
+  if (input.status === undefined && input.visibility === undefined && input.tags === undefined) throw new TimebankError('Choose a status, visibility, or tags.');
   if (input.status !== undefined && input.status !== 'open' && input.status !== 'closed') throw new TimebankError('Choose open or closed.');
   if (input.visibility !== undefined && input.visibility !== 'public' && input.visibility !== 'members') throw new TimebankError('Choose public or members only.');
-  const result = await db.prepare(`UPDATE timebank_listings SET status = COALESCE(?, status), visibility = COALESCE(?, visibility)
+  let tags: string[] | null = null;
+  if (input.tags !== undefined) {
+    const current = await db.prepare('SELECT title, description, location, category FROM timebank_listings WHERE id = ? AND user_id = ? AND community_id = ?')
+      .bind(id, userId, communityId).first<Listing>();
+    if (!current) throw new TimebankError('Listing not found or not owned by you.', 404);
+    tags = normalizeTags(input, current);
+  }
+  const result = await db.prepare(`UPDATE timebank_listings SET status = COALESCE(?, status), visibility = COALESCE(?, visibility), tags = COALESCE(?, tags)
     WHERE id = ? AND user_id = ? AND community_id = ?`)
-    .bind(input.status ?? null, input.visibility ?? null, id, userId, communityId).run();
+    .bind(input.status ?? null, input.visibility ?? null, tags ? JSON.stringify(tags) : null, id, userId, communityId).run();
   if (!result.meta.changes) throw new TimebankError('Listing not found or not owned by you.', 404);
-  return { id, status: input.status, visibility: input.visibility };
+  return { id, status: input.status, visibility: input.visibility, tags };
 }
 
 export async function proposeTimebankExchange(db: D1Database, member: Member, body: unknown, communityId = DEFAULT_COMMUNITY) {
@@ -527,5 +647,5 @@ export async function getTimebankListing(db: D1Database, userId: string | null, 
     WHERE l.id = ? AND l.community_id = ?
       AND (? IS NOT NULL OR (l.visibility = 'public' AND l.status = 'open'))`).bind(userId, userId, userId, id, communityId, userId).first();
   if (!row) throw new TimebankError('Listing not found in this community.', 404);
-  return row;
+  return enrichListings([row as Record<string, unknown>])[0];
 }

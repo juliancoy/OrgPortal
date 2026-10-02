@@ -57,14 +57,14 @@ This app is built and embedded at `/p/` by the parent CodeCollective repository.
 From the parent repository root, use:
 
 ```bash
-./cloudflare/scripts/build_cloudflare_site.sh
-npx wrangler deploy
+./deploy.sh --component site --target prod
 ```
 
 The parent site Worker serves the static assets and proxies:
 
 - `/api/governance/*` -> `GOVERNANCE_API_ORIGIN`
 - `/pidp/*` -> `PIDP_API_ORIGIN`
+- `/api/chat/*` -> `CHAT_API_ORIGIN`
 
 Do not deploy `portal/web` as a standalone Worker. The former standalone Worker
 has been deleted; `https://codecollective.us/p/` is the only supported URL.
@@ -147,6 +147,25 @@ npm run test:e2e:docker
 ```
 
 This uses `docker/playwright/Dockerfile` and `docker/playwright/docker-compose.yml`.
+
+Run real login/session persistence checks against a dedicated local Docker stack:
+
+```bash
+cd ..
+ORGPORTAL_START_PROD=false PIDP_EMAIL_VERIFICATION_REQUIRED=false \
+  CHAT_API_ORIGIN=http://session-test-org:8001 \
+  python3 run.py session-test- orgportal-session-test
+cd web
+npm run test:session:local
+```
+
+This requires Python Playwright, the Python Docker SDK, and Google Chrome. The
+headless test retains its local Chrome profile and test account under
+`../.local/session-test/`, checks a fresh browser run, recreates only the test
+portal and identity containers with their volumes intact, and verifies logout
+in another browser run. It blocks browser requests to public hosts. Test
+containers and database volumes remain available for later runs.
+
 Generated artifacts:
 
 - `playwright-report/`

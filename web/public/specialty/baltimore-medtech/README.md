@@ -11,4 +11,4 @@ Public routes:
 
 OrgPortal links to these routes from tenant `feature_config.specialtyResources`. The Cloudflare Worker keeps legacy root paths such as `/map.html` and `/datasets.html` redirecting here on tenant domains.
 
-Keep MedTech-specific HTML, CSS, JavaScript, and JSON here. Keep reusable tenant UX in `portal/web/src`. If a specialty page needs an API, mount it under `/specialty/baltimore-medtech/api/...` from `cloudflare/medtech` so it does not pollute the generic OrgPortal API.
+Keep MedTech-specific HTML, CSS, JavaScript, and JSON here. Reusable tenant UX, including the tenant-aware `/branding` guide, belongs in `web/src`. If a specialty page needs an API, mount it under `/specialty/baltimore-medtech/api/...` from `cloudflare/medtech` so it does not pollute the generic OrgPortal API.

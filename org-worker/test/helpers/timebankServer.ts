@@ -11,9 +11,12 @@ import { loadSnapshot } from '../../scripts/letsbmore-import.mjs';
 
 const database = new TimebankDatabase();
 const bucket = new TimebankBucket();
+const returnsRows = (statement: { columns?: () => unknown[]; sourceSQL?: string }) => typeof statement.columns === 'function'
+  ? statement.columns().length > 0
+  : /^(?:WITH|SELECT|PRAGMA)\b/i.test(statement.sourceSQL?.trim() || '');
 if (process.env.TIMEBANK_TEST_IMPORTS === '1') await loadSnapshot(importFixture(), async (sql: string, params: any[] = []) => {
   const statement = database.sqlite.prepare(sql);
-  return statement.columns().length ? statement.all(...params) : (statement.run(...params), []);
+  return returnsRows(statement) ? statement.all(...params) : (statement.run(...params), []);
 });
 for (const migration of ['0001_chat.sql', '0002_message_idempotency_sync.sql', '0003_presence.sql']) {
   database.sqlite.exec(readFileSync(new URL(`../../../chat-worker/migrations/${migration}`, import.meta.url), 'utf8'));

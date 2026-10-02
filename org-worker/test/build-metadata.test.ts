@@ -24,7 +24,7 @@ test('build metadata identifies its own checkout, marks edits, and never adopts 
     setup(dir);
     runGit(dir, 'init');
     runGit(dir, 'add', '.');
-    runGit(dir, '-c', 'user.name=Test', '-c', 'user.email=test@example.test', 'commit', '-m', 'fixture');
+    runGit(dir, '-c', 'core.hooksPath=/dev/null', '-c', 'user.name=Test', '-c', 'user.email=test@example.test', 'commit', '-m', 'fixture');
     const sha = runGit(dir, 'rev-parse', 'HEAD');
     assert.equal(generate(dir).commit, sha);
     assert.equal(generate(dir).dirty, false);

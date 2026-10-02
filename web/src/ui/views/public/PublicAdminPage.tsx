@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ClientEvent, EventType, RoomEvent } from 'matrix-js-sdk'
+import { Pencil, X } from 'lucide-react'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
 import type { ChatMessage } from '../../../application/ports/ChatService'
 import { useAuth, useServices } from '../../../app/AppProviders'
@@ -106,6 +107,15 @@ type PublicEvent = {
   starts_at?: string | null
   location?: string | null
   image_url?: string | null
+  media?: EventMediaItem[]
+}
+
+type EventMediaItem = {
+  id: string
+  url: string
+  label: string
+  alt: string
+  kind: 'image'
 }
 
 type PublicOrgAdmin = {
@@ -239,10 +249,16 @@ export function PublicAdminPage() {
   const [mergeStatus, setMergeStatus] = useState<string | null>(null)
   const [merging, setMerging] = useState(false)
   const [orgNameDraft, setOrgNameDraft] = useState('')
+  const [orgDescriptionDraft, setOrgDescriptionDraft] = useState('')
   const [orgImageDraft, setOrgImageDraft] = useState('')
   const [savingOrgName, setSavingOrgName] = useState(false)
   const [savingOrgImage, setSavingOrgImage] = useState(false)
-  const [adminView, setAdminView] = useState(true)
+  const [eventMediaStatus, setEventMediaStatus] = useState<Record<string, string>>({})
+  const [eventMediaUrlDrafts, setEventMediaUrlDrafts] = useState<Record<string, string>>({})
+  const [eventMediaLabelDrafts, setEventMediaLabelDrafts] = useState<Record<string, string>>({})
+  const [eventMediaPending, setEventMediaPending] = useState<Record<string, boolean>>({})
+  const [adminView, setAdminView] = useState(false)
+  const organizationEditorRef = useRef<HTMLDivElement | null>(null)
   const [showImageEditor, setShowImageEditor] = useState(false)
   const [editorSource, setEditorSource] = useState<string | null>(null)
   const [generalLiveMessages, setGeneralLiveMessages] = useState<ChatMessage[]>([])
@@ -312,6 +328,7 @@ export function PublicAdminPage() {
         }
         setOrg(orgData)
         setOrgNameDraft(orgData.name || '')
+        setOrgDescriptionDraft(orgData.description || '')
         setOrgImageDraft(orgData.image_url || '')
         setPortalSlugDraft(normalizePortalSlug(orgData.slug || orgData.name || ''))
         setPortalNameDraft(orgData.name || '')
@@ -905,7 +922,11 @@ export function PublicAdminPage() {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name: nextName, image_url: orgImageDraft.trim() || null }),
+        body: JSON.stringify({
+          name: nextName,
+          description: orgDescriptionDraft.trim(),
+          image_url: orgImageDraft.trim() || null,
+        }),
       })
       if (!orgResp.ok) {
         let detail = ''
@@ -917,12 +938,14 @@ export function PublicAdminPage() {
         }
         throw new Error(detail || `Organization update failed (${orgResp.status})`)
       }
-      const updatedOrg = (await orgResp.json()) as { name?: string; image_url?: string | null }
+      const updatedOrg = (await orgResp.json()) as { name?: string; description?: string | null; image_url?: string | null }
       const updatedName = String(updatedOrg?.name || nextName)
+      const updatedDescription = updatedOrg?.description?.trim() || ''
       const updatedImage = updatedOrg?.image_url?.trim() || orgImageDraft.trim() || ''
-      setOrg((prev) => (prev ? { ...prev, name: updatedName, image_url: updatedImage || null } : prev))
+      setOrg((prev) => (prev ? { ...prev, name: updatedName, description: updatedDescription, image_url: updatedImage || null } : prev))
       setMyAdminOrgs((prev) => prev.map((row) => (row.id === org.id ? { ...row, name: updatedName, image_url: updatedImage || null } : row)))
       setOrgNameDraft(updatedName)
+      setOrgDescriptionDraft(updatedDescription)
       setOrgImageDraft(updatedImage)
 
       const portalResp = await fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/portal`), {
@@ -1077,6 +1100,84 @@ export function PublicAdminPage() {
     }
   }
 
+  function updateEventInList(updated: PublicEvent) {
+    setEvents((prev) => prev.map((event) => (event.id === updated.id ? updated : event)))
+  }
+
+  async function saveEventMediaList(event: PublicEvent, media: EventMediaItem[]) {
+    if (!token) {
+      setEventMediaStatus((prev) => ({ ...prev, [event.id]: 'Sign in to manage event media.' }))
+      return
+    }
+    setEventMediaPending((prev) => ({ ...prev, [event.id]: true }))
+    setEventMediaStatus((prev) => ({ ...prev, [event.id]: '' }))
+    try {
+      const resp = await fetch(orgUrl(`/api/network/events/${encodeURIComponent(event.id)}/media`), {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ media }),
+      })
+      if (!resp.ok) {
+        const text = await resp.text().catch(() => '')
+        throw new Error(text || `Media update failed (${resp.status})`)
+      }
+      updateEventInList((await resp.json()) as PublicEvent)
+      setEventMediaStatus((prev) => ({ ...prev, [event.id]: 'Event media updated.' }))
+    } catch (err) {
+      setEventMediaStatus((prev) => ({ ...prev, [event.id]: toUserFacingErrorMessage(err, 'Event media update failed') }))
+    } finally {
+      setEventMediaPending((prev) => ({ ...prev, [event.id]: false }))
+    }
+  }
+
+  async function addEventMediaUrl(event: PublicEvent) {
+    const url = (eventMediaUrlDrafts[event.id] || '').trim()
+    if (!url) {
+      setEventMediaStatus((prev) => ({ ...prev, [event.id]: 'Enter an image URL first.' }))
+      return
+    }
+    const label = (eventMediaLabelDrafts[event.id] || '').trim() || 'Event image'
+    await saveEventMediaList(event, [
+      ...(event.media || []),
+      { id: crypto.randomUUID(), url, label, alt: label, kind: 'image' },
+    ])
+    setEventMediaUrlDrafts((prev) => ({ ...prev, [event.id]: '' }))
+    setEventMediaLabelDrafts((prev) => ({ ...prev, [event.id]: '' }))
+  }
+
+  async function uploadEventMediaFile(event: PublicEvent, file: File | null) {
+    if (!file) return
+    if (!token) {
+      setEventMediaStatus((prev) => ({ ...prev, [event.id]: 'Sign in to upload event media.' }))
+      return
+    }
+    setEventMediaPending((prev) => ({ ...prev, [event.id]: true }))
+    setEventMediaStatus((prev) => ({ ...prev, [event.id]: '' }))
+    try {
+      const formData = new FormData()
+      formData.append('image', file)
+      formData.append('label', file.name.replace(/\.[^.]+$/, '') || 'Event image')
+      const resp = await fetch(orgUrl(`/api/network/events/${encodeURIComponent(event.id)}/media`), {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      })
+      if (!resp.ok) {
+        const text = await resp.text().catch(() => '')
+        throw new Error(text || `Upload failed (${resp.status})`)
+      }
+      updateEventInList((await resp.json()) as PublicEvent)
+      setEventMediaStatus((prev) => ({ ...prev, [event.id]: 'Event media uploaded.' }))
+    } catch (err) {
+      setEventMediaStatus((prev) => ({ ...prev, [event.id]: toUserFacingErrorMessage(err, 'Event media upload failed') }))
+    } finally {
+      setEventMediaPending((prev) => ({ ...prev, [event.id]: false }))
+    }
+  }
+
   async function sendGeneralMessage() {
     const body = generalDraft.trim()
     if (!generalRoom?.room_id || !body || !canPostGeneral || !generalSessionReady) return
@@ -1172,6 +1273,19 @@ export function PublicAdminPage() {
   const mergeCandidates = myAdminOrgs.filter((item) => item.id !== org.id)
   const canEditOrgImage = canManageCurrentOrg && adminView
   const heroImageSource = org.image_url?.trim() || ORG_PLACEHOLDER_SRC
+  const upcomingEvents = events
+    .filter((event) => {
+      if (!event.starts_at) return true
+      const eventTime = new Date(event.starts_at).getTime()
+      return Number.isNaN(eventTime) || eventTime >= Date.now() - 1000 * 60 * 60 * 24
+    })
+    .slice(0, 3)
+  const featuredEvent = upcomingEvents[0]
+  const visibleEvents = upcomingEvents.length ? upcomingEvents : events.slice(0, 3)
+  const hasPublicChatContent = Boolean(
+    publicChatFeed?.rooms?.some((room) => room.room_id || room.messages.length > 0),
+  )
+  const showChatColumn = Boolean(token || hasPublicChatContent)
 
   function openImageEditor() {
     if (!canEditOrgImage) return
@@ -1179,16 +1293,59 @@ export function PublicAdminPage() {
     setShowImageEditor(true)
   }
 
+  function openOrganizationEditor() {
+    setAdminView(true)
+    window.requestAnimationFrame(() => {
+      organizationEditorRef.current?.scrollIntoView({ block: 'start' })
+      organizationEditorRef.current?.focus({ preventScroll: true })
+    })
+  }
+
   return (
     <section className="panel portal-org-page">
-      <div className="portal-org-layout">
+      <div className={`portal-org-layout${showChatColumn ? '' : ' portal-org-layout-single'}`}>
         <div className="portal-org-main-column">
           <div className="portal-org-hero">
-            <div className="portal-org-hero-header">
-              <h1 style={{ marginTop: 0, marginBottom: 0 }}>{org.name}</h1>
-              {canEditOrgImage ? (
-                <span className="portal-org-image-hint">Click image to change</span>
-              ) : null}
+            <div className="portal-org-hero-copy">
+              <p className="tenant-home-eyebrow">Organization Profile</p>
+              <div className="portal-org-hero-header">
+                <h1>{org.name}</h1>
+                {canEditOrgImage ? (
+                  <span className="portal-org-image-hint">Click image to change</span>
+                ) : null}
+              </div>
+              {org.description ? <p>{org.description}</p> : null}
+              <div className="portal-org-actions" aria-label={`${org.name} actions`}>
+                {featuredEvent ? (
+                  <Link className="btn-primary" to={`/events/${featuredEvent.slug}`}>
+                    View Next Event
+                  </Link>
+                ) : (
+                  <Link className="btn-primary" to="/events">
+                    Browse Events
+                  </Link>
+                )}
+                {token ? (
+                  <Link className="btn-secondary" to={`/chat?start=group&org=${encodeURIComponent(org.slug)}`}>
+                    Message Group
+                  </Link>
+                ) : (
+                  <a className="btn-secondary" href={pidpAppLoginUrl(`/orgs/${encodeURIComponent(org.slug)}`)}>
+                    Log in to join
+                  </a>
+                )}
+                {org.source_url ? (
+                  <a className="btn-secondary" href={org.source_url} target="_blank" rel="noreferrer">
+                    Website
+                  </a>
+                ) : null}
+                {canManageCurrentOrg ? (
+                  <button type="button" className="btn-secondary" onClick={openOrganizationEditor} aria-expanded={adminView}>
+                    <Pencil size={17} aria-hidden="true" />
+                    Edit page
+                  </button>
+                ) : null}
+              </div>
             </div>
             <button
               type="button"
@@ -1209,28 +1366,25 @@ export function PublicAdminPage() {
               Redirected from merged organization <code>{mergedFrom}</code>.
             </p>
           ) : null}
-          <div className="portal-org-meta">
-            {org.description ? <p style={{ margin: 0 }}>{org.description}</p> : null}
-            <p className="muted" style={{ margin: 0 }}>
-              Handle: <code>{org.slug}</code>
-            </p>
-          </div>
-          <div className="portal-card" style={{ display: 'grid', gap: '0.8rem' }}>
+          <div className="portal-card portal-org-stats-card" style={{ display: 'grid', gap: '0.8rem' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.6rem' }}>
               <div>
                 <strong>{org.membership_count || 0}</strong>
-                <p className="muted" style={{ margin: 0 }}>Members</p>
+                <p className="muted" style={{ margin: 0 }}>Community members</p>
               </div>
               <div>
                 <strong>{org.upcoming_events_count}</strong>
                 <p className="muted" style={{ margin: 0 }}>Upcoming events</p>
               </div>
-              <div>
-                <strong>{org.feedback_count || 0}</strong>
-                <p className="muted" style={{ margin: 0 }}>Feedback notes</p>
-              </div>
+              {token || canManageCurrentOrg ? (
+                <div>
+                  <strong>{org.feedback_count || 0}</strong>
+                  <p className="muted" style={{ margin: 0 }}>Feedback notes</p>
+                </div>
+              ) : null}
             </div>
-            <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            {token ? (
+              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
               {membership?.status === 'active' ? (
                 membership.role === 'member' ? (
                   <button type="button" onClick={() => void updateOrganizationMembership(false)}>
@@ -1244,20 +1398,15 @@ export function PublicAdminPage() {
                   Join Group
                 </button>
               )}
-              {token ? (
-                <Link className="btn-primary" to={`/chat?start=group&org=${encodeURIComponent(org.slug)}`} style={{ textDecoration: 'none', width: 'fit-content' }}>
+                <Link className="btn-secondary" to={`/chat?start=group&org=${encodeURIComponent(org.slug)}`} style={{ textDecoration: 'none', width: 'fit-content' }}>
                   Message Group
                 </Link>
-              ) : (
-                <a className="btn-primary" href={pidpAppLoginUrl(`/chat?start=group&org=${encodeURIComponent(org.slug)}`)} style={{ textDecoration: 'none', width: 'fit-content' }}>
-                  Message Group
-                </a>
-              )}
-              {!token ? <span className="muted">Sign in to join and leave feedback.</span> : null}
-            </div>
+              </div>
+            ) : null}
             {membershipStatus ? <p className="muted" role="status" style={{ margin: 0 }}>{membershipStatus}</p> : null}
           </div>
-          <div className="portal-card" style={{ display: 'grid', gap: '0.65rem' }}>
+          {token ? (
+            <div className="portal-card" style={{ display: 'grid', gap: '0.65rem' }}>
             <div>
               <h2 style={{ margin: 0, fontSize: '1rem' }}>Group Feedback</h2>
               <p className="muted" style={{ margin: '0.25rem 0 0' }}>
@@ -1303,7 +1452,8 @@ export function PublicAdminPage() {
               {!token ? <a href={pidpAppLoginUrl(`/orgs/${encodeURIComponent(org.slug)}`)}>Sign in to respond</a> : null}
             </div>
             {feedbackStatus ? <p className="muted" role="status" style={{ margin: 0 }}>{feedbackStatus}</p> : null}
-          </div>
+            </div>
+          ) : null}
           {org.is_disputed ? (
             <p className="muted" style={{ margin: 0 }}>
               Ownership status: Disputed ({org.pending_challenges_count} open challenge{org.pending_challenges_count === 1 ? '' : 's'}).
@@ -1318,14 +1468,8 @@ export function PublicAdminPage() {
               ))}
             </div>
           ) : null}
-          {org.source_url ? (
-            <p style={{ margin: 0 }}>
-              <a href={org.source_url} target="_blank" rel="noreferrer">
-                Source website
-              </a>
-            </p>
-          ) : null}
-          <div className="portal-card" style={{ display: 'grid', gap: '0.55rem' }}>
+          {token || canManageCurrentOrg ? (
+            <div className="portal-card" style={{ display: 'grid', gap: '0.55rem' }}>
             <h2 style={{ margin: 0, fontSize: '1rem' }}>Organization Admins</h2>
             {adminsLoading ? (
               <p className="muted" style={{ margin: 0 }}>
@@ -1345,26 +1489,26 @@ export function PublicAdminPage() {
                 ))}
               </ul>
             )}
-          </div>
+            </div>
+          ) : null}
 
-          {!canManageCurrentOrg ? (
+          {token && !canManageCurrentOrg ? (
             <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
               <button type="button" onClick={claimOrganizationBySlug} disabled={claiming || !token}>
                 {claiming ? 'Submitting…' : claimActionLabel}
               </button>
-              {!token ? <span className="muted">Sign in to continue.</span> : null}
             </div>
-          ) : (
+          ) : canManageCurrentOrg ? (
             <p className="muted" style={{ margin: 0 }}>
               You already administer this organization.
             </p>
-          )}
+          ) : null}
           {claimStatus ? (
             <p className="muted" role="status" style={{ margin: 0 }}>
               {claimStatus}
             </p>
           ) : null}
-          {hasExistingAdmins && !canManageCurrentOrg ? (
+          {token && hasExistingAdmins && !canManageCurrentOrg ? (
             <div style={{ display: 'grid', gap: '0.45rem', maxWidth: 680 }}>
               <label htmlFor="claim-request-message" className="muted">
                 Ownership challenge
@@ -1399,13 +1543,13 @@ export function PublicAdminPage() {
               <p className="muted" style={{ margin: 0 }}>
                 Loading events…
               </p>
-            ) : events.length === 0 ? (
+            ) : visibleEvents.length === 0 ? (
               <p className="muted" style={{ margin: 0 }}>
                 No hosted events listed.
               </p>
             ) : (
               <div className="portal-org-events-grid">
-                {events.map((event) => (
+                {visibleEvents.map((event) => (
                   <article key={event.id} className="portal-org-event-card">
                     {event.image_url ? (
                       <img
@@ -1418,6 +1562,62 @@ export function PublicAdminPage() {
                       {event.title}
                     </Link>
                     <span className="muted">{formatDate(event.starts_at)}{event.location ? ` • ${event.location}` : ''}</span>
+                    {(event.media || []).length ? (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(86px, 1fr))', gap: '0.45rem', marginTop: '0.35rem' }}>
+                        {(event.media || []).map((item) => (
+                          <figure key={item.id} style={{ margin: 0, display: 'grid', gap: '0.25rem' }}>
+                            <img
+                              src={item.url}
+                              alt={item.alt || item.label}
+                              style={{ width: '100%', aspectRatio: '3 / 4', objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }}
+                            />
+                            <figcaption className="muted" style={{ fontSize: '0.78rem' }}>{item.label}</figcaption>
+                            {adminView && canManageCurrentOrg ? (
+                              <button
+                                type="button"
+                                className="btn-secondary"
+                                disabled={eventMediaPending[event.id]}
+                                onClick={() => void saveEventMediaList(event, (event.media || []).filter((candidate) => candidate.id !== item.id))}
+                              >
+                                Remove
+                              </button>
+                            ) : null}
+                          </figure>
+                        ))}
+                      </div>
+                    ) : null}
+                    {adminView && canManageCurrentOrg ? (
+                      <div style={{ display: 'grid', gap: '0.45rem', marginTop: '0.45rem', paddingTop: '0.45rem', borderTop: '1px solid var(--border)' }}>
+                        <label className="muted" htmlFor={`event-media-upload-${event.id}`}>Upload event image</label>
+                        <input
+                          id={`event-media-upload-${event.id}`}
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/gif"
+                          disabled={eventMediaPending[event.id]}
+                          onChange={(e) => {
+                            const file = e.currentTarget.files?.[0] || null
+                            void uploadEventMediaFile(event, file)
+                            e.currentTarget.value = ''
+                          }}
+                        />
+                        <label className="muted" htmlFor={`event-media-url-${event.id}`}>Or attach hosted image URL</label>
+                        <input
+                          id={`event-media-url-${event.id}`}
+                          value={eventMediaUrlDrafts[event.id] || ''}
+                          onChange={(e) => setEventMediaUrlDrafts((prev) => ({ ...prev, [event.id]: e.target.value }))}
+                          placeholder="https://example.com/menu.jpg"
+                        />
+                        <input
+                          value={eventMediaLabelDrafts[event.id] || ''}
+                          onChange={(e) => setEventMediaLabelDrafts((prev) => ({ ...prev, [event.id]: e.target.value }))}
+                          placeholder="Menu label"
+                        />
+                        <button type="button" disabled={eventMediaPending[event.id]} onClick={() => void addEventMediaUrl(event)}>
+                          {eventMediaPending[event.id] ? 'Saving…' : 'Attach Image URL'}
+                        </button>
+                        {eventMediaStatus[event.id] ? <p className="muted" role="status" style={{ margin: 0 }}>{eventMediaStatus[event.id]}</p> : null}
+                      </div>
+                    ) : null}
                   </article>
                 ))}
               </div>
@@ -1425,16 +1625,23 @@ export function PublicAdminPage() {
           </div>
 
 
-          {canManageCurrentOrg ? (
-            <div className="portal-card portal-org-admin-card" style={{ display: 'grid', gap: '0.7rem' }}>
+          {canManageCurrentOrg && adminView ? (
+            <div
+              ref={organizationEditorRef}
+              id="organization-page-editor"
+              className="portal-card portal-org-admin-card"
+              style={{ display: 'grid', gap: '0.7rem' }}
+              tabIndex={-1}
+              aria-label={`Edit ${org.name}`}
+            >
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                <h2 style={{ margin: 0, fontSize: '1rem' }}>Admin Controls</h2>
-                <button type="button" onClick={() => setAdminView((prev) => !prev)}>
-                  {adminView ? 'View as User' : 'View as Admin'}
+                <h2 style={{ margin: 0, fontSize: '1rem' }}>Edit organization page</h2>
+                <button type="button" className="btn-secondary" onClick={() => setAdminView(false)}>
+                  <X size={17} aria-hidden="true" />
+                  Close editor
                 </button>
               </div>
-              {adminView ? (
-                <>
+              <>
                   <p className="muted" style={{ margin: 0 }}>
                     You are an admin of this organization.
                   </p>
@@ -1629,6 +1836,16 @@ export function PublicAdminPage() {
                       onChange={(e) => setOrgNameDraft(e.target.value)}
                       placeholder="Organization name"
                     />
+                    <label htmlFor="org-description" className="muted">
+                      Public description
+                    </label>
+                    <textarea
+                      id="org-description"
+                      value={orgDescriptionDraft}
+                      onChange={(e) => setOrgDescriptionDraft(e.target.value)}
+                      placeholder="Describe this organization"
+                      rows={4}
+                    />
                     <label htmlFor="org-image-url" className="muted">
                       Organization image URL
                     </label>
@@ -1675,16 +1892,12 @@ export function PublicAdminPage() {
                       </p>
                     ) : null}
                   </div>
-                </>
-              ) : (
-                <p className="muted" style={{ margin: 0 }}>
-                  User preview mode is active. Admin controls are hidden.
-                </p>
-              )}
+              </>
             </div>
           ) : null}
 
         </div>
+        {showChatColumn ? (
         <aside className="portal-org-chat-column">
           <div className="portal-card" style={{ display: 'grid', gap: '0.55rem' }}>
             <h2 style={{ margin: 0, fontSize: '1rem' }}>Public Chat</h2>
@@ -1979,6 +2192,7 @@ export function PublicAdminPage() {
             ) : null}
           </div>
         </aside>
+        ) : null}
       </div>
       {showImageEditor && editorSource ? (
         <ImageEditorModal

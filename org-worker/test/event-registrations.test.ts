@@ -27,6 +27,7 @@ function setup() {
     '0032_portal_tenant_org_slug',
     '0033_portal_tenant_custom_domains',
     '0034_event_calendar_feeds',
+    '0037_event_registrant_contact_data',
   ]) {
     database.exec(readFileSync(new URL(`../migrations/${name}.sql`, import.meta.url), 'utf8'));
   }
@@ -68,7 +69,17 @@ test('registration requires verified identity; repeated requests and cancellatio
   assert.equal((await (await request()).json()).registered, false);
   const cancelled = await request('DELETE', 'alice');
   assert.equal(cancelled.headers.get('Cache-Control'), 'no-store');
-  assert.deepEqual(await cancelled.json(), { event_id: 'event-1', count: 1, attendees: [], registered: false });
+  assert.deepEqual(await cancelled.json(), {
+    event_id: 'event-1',
+    count: 1,
+    attendees: [{ user_id: 'bob', slug: 'bob', name: 'User', photo_url: null, profile_public: false, profile_url: '/users/bob' }],
+    registered: false,
+  });
+  const bobContact = database.prepare("SELECT user_email, user_name, slug, enabled FROM user_contact_pages WHERE user_id = 'bob'").get();
+  assert.equal(bobContact?.user_email, null);
+  assert.equal(bobContact?.user_name, 'User');
+  assert.equal(bobContact?.slug, 'bob');
+  assert.equal(bobContact?.enabled, 0);
   await request('DELETE', 'alice');
   assert.equal((await (await request('GET', 'bob')).json()).registered, true);
   assert.equal((await (await request('GET', 'alice', 'event-2')).json()).registered, true);
@@ -76,6 +87,47 @@ test('registration requires verified identity; repeated requests and cancellatio
   for (const method of ['GET', 'POST', 'DELETE']) assert.equal((await request(method, 'alice', 'missing')).status, 404);
   database.exec("DELETE FROM events WHERE id = 'event-1'");
   assert.equal(database.prepare("SELECT count(*) AS n FROM event_registrations WHERE event_id = 'event-1'").get()?.n, 0);
+});
+
+test('registration refreshes placeholder contact rows with the real name and avatar', async (t) => {
+  t.mock.method(globalThis, 'fetch', async (_url: unknown, options: RequestInit) => {
+    const token = new Headers(options.headers).get('Authorization')?.replace('Bearer ', '');
+    return token === 'bob'
+      ? Response.json({
+        id: 'bob',
+        email: 'bob@example.test',
+        full_name: 'Bob Builder',
+        identity_data: { avatar_url: 'https://images.test/bob.png' },
+      })
+      : new Response('', { status: 401 });
+  });
+  const { database, request } = setup();
+  t.after(() => database.close());
+  database.exec("INSERT INTO event_registrations (event_id, user_id) VALUES ('event-1', 'bob')");
+  database.exec(`INSERT INTO user_contact_pages
+    (id, user_id, user_email, user_name, slug, enabled, photo_url, links)
+    VALUES ('event-registrant-bob', 'bob', NULL, 'User', 'event-registrant-bob-1', 0, NULL, '[]')`);
+
+  const refreshed = await request('POST', 'bob');
+  assert.equal(refreshed.status, 200);
+  assert.deepEqual(await refreshed.json(), {
+    event_id: 'event-1',
+    count: 1,
+    attendees: [{
+      user_id: 'bob',
+      slug: 'bob-builder',
+      name: 'Bob Builder',
+      photo_url: 'https://images.test/bob.png',
+      profile_public: false,
+      profile_url: '/users/bob-builder',
+    }],
+    registered: true,
+  });
+  const bobContact = database.prepare("SELECT user_name, slug, photo_url, enabled FROM user_contact_pages WHERE user_id = 'bob'").get();
+  assert.equal(bobContact?.user_name, 'Bob Builder');
+  assert.equal(bobContact?.slug, 'bob-builder');
+  assert.equal(bobContact?.photo_url, 'https://images.test/bob.png');
+  assert.equal(bobContact?.enabled, 0);
 });
 
 test('registered events calendar feed is private, subscribable, and host-rooted', async (t) => {
@@ -123,15 +175,14 @@ test('registered events calendar feed is private, subscribable, and host-rooted'
   assert.doesNotMatch(ics, /alice|bob/);
 });
 
-test('public preview counts all registrations while exposing only public profiles', async (t) => {
+test('public preview counts all registrations and returns registrant profiles without private fields', async (t) => {
   const { database, request } = setup();
   t.after(() => database.close());
   for (let i = 0; i < 12; i++) {
     database.prepare(`INSERT INTO user_contact_pages
       (id, user_id, user_email, user_name, slug, enabled, photo_url, phone_public)
       VALUES (?, ?, 'private@example.test', ?, ?, ?, ?, '555-0100')`)
-      .run(`p-${i}`, `u-${i}`, i === 1 ? 'email@example.test' : `Person ${i}`, `person-${i}`, i === 0 ? 0 : 1,
-        i === 1 ? 'javascript:alert(1)' : 'https://images.test/avatar.png');
+      .run(`p-${i}`, `u-${i}`, `Person ${i}`, `person-${i}`, i === 0 ? 0 : 1, 'https://images.test/avatar.png');
     database.prepare('INSERT INTO event_registrations (event_id, user_id) VALUES (?, ?)').run('event-1', `u-${i}`);
   }
   const response = await request();
@@ -139,11 +190,87 @@ test('public preview counts all registrations while exposing only public profile
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('Cache-Control'), 'no-store');
   assert.equal(data.count, 12);
-  assert.equal(data.attendees.length, 11);
-  assert.equal(data.attendees.some((person: { slug: string }) => person.slug === 'person-0'), false);
-  const emailName = data.attendees.find((person: { slug: string }) => person.slug === 'person-1');
-  assert.equal(emailName.name, 'Registrant');
-  assert.equal(emailName.photo_url, null);
-  for (const person of data.attendees) assert.deepEqual(Object.keys(person).sort(), ['name', 'photo_url', 'slug']);
+  assert.equal(data.attendees.length, 12);
+  const privateProfile = data.attendees.find((person: { slug: string }) => person.slug === 'person-0');
+  assert.equal(privateProfile.user_id, 'u-0');
+  assert.equal(privateProfile.name, 'Person 0');
+  assert.equal(privateProfile.photo_url, 'https://images.test/avatar.png');
+  assert.equal(privateProfile.profile_public, false);
+  assert.equal(privateProfile.profile_url, '/users/person-0');
+  const publicProfile = data.attendees.find((person: { slug: string }) => person.slug === 'person-1');
+  assert.equal(publicProfile.name, 'Person 1');
+  assert.equal(publicProfile.photo_url, 'https://images.test/avatar.png');
+  assert.equal(publicProfile.profile_public, true);
+  assert.equal(publicProfile.profile_url, '/users/person-1');
+  for (const person of data.attendees) assert.deepEqual(Object.keys(person).sort(), ['name', 'photo_url', 'profile_public', 'profile_url', 'slug', 'user_id']);
   assert.doesNotMatch(JSON.stringify(data), /private@|email@|555-0100/);
+});
+
+test('event-visible registrant profiles can be opened without directory listing the person', async (t) => {
+  const { database, request } = setup();
+  t.after(() => database.close());
+  database.exec(`INSERT INTO user_contact_pages
+    (id, user_id, user_email, user_name, slug, enabled, photo_url, email_public, phone_public)
+    VALUES ('p-private', 'private-person', 'private@example.test', 'Private Person', 'private-person', 0, 'https://images.test/private.png', NULL, NULL)`);
+  database.exec("INSERT INTO event_registrations (event_id, user_id) VALUES ('event-1', 'private-person')");
+
+  const attendance = await (await request()).json();
+  assert.equal(attendance.attendees[0].profile_url, '/users/private-person');
+  assert.equal(attendance.attendees[0].profile_public, false);
+
+  const profileResponse = await app.request('https://org.test/api/network/users/public/private-person', undefined, {
+    DB: { prepare: (sql: string) => new Statement(database.prepare(sql)), batch: async (statements: Statement[]) => {
+      const results = [];
+      for (const statement of statements) results.push(await statement.run());
+      return results;
+    } },
+    PIDP_BASE_URL: 'https://identity.test',
+  } as unknown as Env);
+  assert.equal(profileResponse.status, 200);
+  const profile = await profileResponse.json();
+  assert.equal(profile.user_name, 'Private Person');
+  assert.equal(profile.slug, 'private-person');
+  assert.equal(profile.enabled, false);
+  assert.equal(profile.photo_url, 'https://images.test/private.png');
+  assert.equal(profile.email_public, null);
+  assert.equal(profile.phone_public, null);
+
+  database.exec("DELETE FROM event_registrations WHERE event_id = 'event-1' AND user_id = 'private-person'");
+  assert.equal((await app.request('https://org.test/api/network/users/public/private-person', undefined, {
+    DB: { prepare: (sql: string) => new Statement(database.prepare(sql)), batch: async (statements: Statement[]) => {
+      const results = [];
+      for (const statement of statements) results.push(await statement.run());
+      return results;
+    } },
+    PIDP_BASE_URL: 'https://identity.test',
+  } as unknown as Env)).status, 404);
+});
+
+test('event registrant data migration repairs contact rows used for messaging', async (t) => {
+  const database = new DatabaseSync(':memory:');
+  t.after(() => database.close());
+  database.exec('PRAGMA foreign_keys = ON');
+  for (const name of [
+    '0001_contact_pages',
+    '0002_org_event_directories',
+    '0018_event_registrations',
+  ]) {
+    database.exec(readFileSync(new URL(`../migrations/${name}.sql`, import.meta.url), 'utf8'));
+  }
+  database.exec("INSERT INTO events (id, ingest_key, title, slug) VALUES ('event-1', 'one', 'First event', 'first-event')");
+  database.exec("INSERT INTO event_registrations (event_id, user_id) VALUES ('event-1', 'missing-contact'), ('event-1', 'dirty-contact')");
+  database.exec(`INSERT INTO user_contact_pages
+    (id, user_id, user_email, user_name, slug, enabled, photo_url)
+    VALUES ('dirty-page', 'dirty-contact', 'dirty@example.test', 'dirty@example.test', '', 0, 'javascript:alert(1)')`);
+
+  database.exec(readFileSync(new URL('../migrations/0037_event_registrant_contact_data.sql', import.meta.url), 'utf8'));
+
+  const missingContact = database.prepare("SELECT user_name, slug, enabled FROM user_contact_pages WHERE user_id = 'missing-contact'").get();
+  assert.equal(missingContact?.user_name, 'User');
+  assert.match(String(missingContact?.slug), /^event-registrant-missing-contact-\d+$/);
+  assert.equal(missingContact?.enabled, 0);
+  const dirtyContact = database.prepare("SELECT user_name, slug, photo_url FROM user_contact_pages WHERE user_id = 'dirty-contact'").get();
+  assert.equal(dirtyContact?.user_name, 'User');
+  assert.match(String(dirtyContact?.slug), /^event-registrant-dirty-contact-\d+$/);
+  assert.equal(dirtyContact?.photo_url, null);
 });

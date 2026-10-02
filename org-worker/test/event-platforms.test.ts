@@ -123,6 +123,14 @@ test("native event changes preview, apply once, and write OrgPortal events", asy
     location: "To Be Announced",
     sourceUrl: null,
     imageUrl: "https://images.example/event.png",
+    links: [{
+      id: "luma",
+      url: "https://luma.com/csd7fvgm?tk=iQTYPW",
+      label: "Luma",
+      title: "Palava Night #3: Medtech & Healthcare, What's New? · Luma",
+      description: "Welcome to Tech in the Hut, Baltimore's bi-weekly meetup for founders, builders and creators.",
+      imageUrl: "https://images.example/luma.png",
+    }],
     tags: ["medtech"],
     city: "Baltimore",
   } };
@@ -132,10 +140,15 @@ test("native event changes preview, apply once, and write OrgPortal events", asy
     assert.equal(preview.event.slug, "native-formation");
     const applied = await runNativeEventOperation(env, identity, { ...input, confirm: true, previewId: preview.previewId }) as { success: boolean };
     assert.equal(applied.success, true);
-    const rows = await db.prepare("SELECT title, slug, host_org_id, source_url, tags FROM events WHERE ingest_key = ?")
+    const rows = await db.prepare("SELECT title, slug, host_org_id, source_url, event_links_json, tags FROM events WHERE ingest_key = ?")
       .bind("manual:event-one").all();
     assert.deepEqual(rows.results.map(row => ({ ...row })), [
-      { title: "Native formation", slug: "native-formation", host_org_id: "org-one", source_url: null, tags: '["medtech"]' },
+      { title: "Native formation", slug: "native-formation", host_org_id: "org-one", source_url: null,
+        event_links_json: JSON.stringify([{ id: "luma", url: "https://luma.com/csd7fvgm?tk=iQTYPW", label: "Luma",
+          title: "Palava Night #3: Medtech & Healthcare, What's New? · Luma",
+          description: "Welcome to Tech in the Hut, Baltimore's bi-weekly meetup for founders, builders and creators.",
+          image_url: "https://images.example/luma.png" }]),
+        tags: '["medtech"]' },
     ]);
     await assert.rejects(runNativeEventOperation(env, identity, { ...input, confirm: true, previewId: preview.previewId }), /Preview is expired/);
   } finally {
@@ -207,7 +220,9 @@ test("authenticated MCP initializes, lists tools and previews through the shared
   try {
     assert.equal((await rpc("initialize", { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "test", version: "1" } })).result.serverInfo.name, "orgportal-events");
     const listed = await rpc("tools/list", {});
-    assert.equal(listed.result.tools.length, 13);
+    assert.equal(listed.result.tools.length, 21);
+    assert.ok(listed.result.tools.some((tool: { name: string }) => tool.name === 'preview_organization_creation'));
+    assert.ok(listed.result.tools.some((tool: { name: string }) => tool.name === 'apply_organization_membership'));
     assert.ok(listed.result.tools.every((tool: any) => tool.securitySchemes[0].type === "oauth2"));
     assert.equal(listed.result.tools.find((t: any) => t.name === "apply_event_changes").annotations.destructiveHint, true);
     assert.equal(listed.result.tools.find((t: any) => t.name === "apply_org_event_changes").annotations.idempotentHint, true);
@@ -259,6 +274,7 @@ test("MCP exposes organization portal setup and custom-domain flow", async () =>
     const attached = await rpc("attach_portal_custom_domain", { organizationId: "org-one", hostname: "one.example.org" });
     assert.equal(attached.portal.hostname, "one.example.org");
     assert.equal(attached.portal.public_base_url, "https://one.example.org");
+    assert.equal(attached.portal.home_url, "https://one.example.org/");
     const loaded = await rpc("get_portal_setup", { organizationId: "org-one" });
     assert.equal(loaded.portal.custom_domain_status, "attached");
   } finally { globalThis.fetch = originalFetch; db.close(); }

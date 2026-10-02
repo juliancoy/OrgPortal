@@ -1,26 +1,18 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
 import { portalPath } from '../../../config/portalBase'
-import { defaultPostLoginPath, PIDP_APP_SLUG, normalizePostLoginPath, pidpAppLoginUrl, pidpUrl, portalAuthCallbackUrl } from '../../../config/pidp'
+import { defaultPostLoginPath, normalizePostLoginPath, pidpSingleSignOnUrl } from '../../../config/pidp'
 import { getActivePortalProfileConfig } from '../../../config/portalFeatures'
 
-export function UserLoginPage() {
+export function UserLoginPage({ defaultNext }: { defaultNext?: string } = {}) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { loginWithPassword, isLoading, role } = useAuth()
+  const { isLoading, role } = useAuth()
   const portalProfile = getActivePortalProfileConfig()
   const tenantAuth = Boolean(portalProfile.tenantId)
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const requestedNext = normalizePostLoginPath(searchParams.get('next') || defaultPostLoginPath())
-  const socialLoginUrl = (provider: 'google' | 'github') => {
-    const params = new URLSearchParams({ next: portalAuthCallbackUrl(requestedNext) })
-    if (PIDP_APP_SLUG) params.set('app', PIDP_APP_SLUG)
-    return pidpUrl(`/auth/${provider}/login?${params.toString()}`)
-  }
+  const requestedNext = normalizePostLoginPath(searchParams.get('next') || defaultNext || defaultPostLoginPath())
+  const socialLoginUrl = (provider: 'google' | 'github') => pidpSingleSignOnUrl(requestedNext, provider)
 
   useEffect(() => {
     document.title = `${portalProfile.portalTitle} • User login`
@@ -28,23 +20,9 @@ export function UserLoginPage() {
 
   useEffect(() => {
     if (!isLoading && role !== 'guest') {
-      setIsSubmitting(false)
       navigate(requestedNext)
     }
-  }, [isLoading, isSubmitting, role, navigate, requestedNext])
-
-  const handleSubmit = async (event?: FormEvent<HTMLFormElement>) => {
-    event?.preventDefault()
-    if (isSubmitting) return
-    setError(null)
-    setIsSubmitting(true)
-    try {
-      await loginWithPassword(email, password)
-    } catch (err) {
-      setIsSubmitting(false)
-      setError(err instanceof Error ? err.message : 'Login failed')
-    }
-  }
+  }, [isLoading, role, navigate, requestedNext])
 
   return (
     <section className="portal-auth-page" aria-labelledby="user-login-title">
@@ -74,51 +52,14 @@ export function UserLoginPage() {
             </a>
           </div>
           <a
-            href={pidpAppLoginUrl(requestedNext)}
+            href={pidpSingleSignOnUrl(requestedNext)}
             className="portal-button portal-auth-idp-link"
           >
-            {tenantAuth ? 'Continue with Code Collective' : 'Continue to Identity Provider'}
+            Continue with email
           </a>
         </div>
 
-        <div className="portal-auth-divider"><span>or use email</span></div>
-
-        <form className="portal-auth-form" onSubmit={handleSubmit}>
-          <label>
-            <span>Email</span>
-            <input
-              id="email"
-              type="email"
-              autoComplete="email"
-              required
-              aria-required="true"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              aria-describedby={error ? 'user-login-error' : undefined}
-            />
-          </label>
-          <label>
-            <span>Password</span>
-            <input
-              id="pw"
-              type="password"
-              autoComplete="current-password"
-              required
-              aria-required="true"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              aria-describedby={error ? 'user-login-error' : undefined}
-            />
-          </label>
-          {error ? (
-            <p id="user-login-error" className="portal-auth-error" role="alert" aria-live="polite">
-              {error}
-            </p>
-          ) : null}
-          <button type="submit" className="btn-primary portal-auth-submit" disabled={isSubmitting} aria-busy={isSubmitting}>
-            {isSubmitting ? 'Signing in...' : 'Login'}
-          </button>
-        </form>
+        <p className="muted">Sign in once to use your account across connected services.</p>
 
         {tenantAuth && <p className="tenant-shared-account">Your existing Code Collective account works here.</p>}
       </div>

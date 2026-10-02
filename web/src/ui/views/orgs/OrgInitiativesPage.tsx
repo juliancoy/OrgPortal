@@ -29,7 +29,7 @@ export function OrgInitiativesPage() {
       <p className="muted">Create and manage initiatives. In the demo, this is navigable but not yet backed by persistence.</p>
       <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
         <Link to="/orgs/initiatives/new">Create new initiative</Link>
-        <Link to="/orgs/profile">Public profile</Link>
+        <Link to="/orgs/profile">Organization Profile</Link>
         <Link to="/orgs/events">Events</Link>
         <Link to="/orgs/account">Account</Link>
       </div>

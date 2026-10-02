@@ -108,7 +108,7 @@ The Worker config includes a once-per-minute cron trigger:
 }
 ```
 
-The cron trigger is only the executor wake-up. UBI administration cadence is controlled by `ubi_runtime_settings.interval_seconds`; production is set to `1209600` seconds, or 2 weeks.
+The cron trigger is only the executor wake-up. UBI administration cadence is controlled by `ubi_runtime_settings.interval_seconds`; production is set to `1209600` seconds, or 2 weeks. Before that cadence is due, the UBI cron path only reads runtime state/settings and skips ledger enrollment, accrual, run-row insertion, and payout queries. This keeps the once-per-minute trigger from turning into continuous D1 ledger traffic.
 
 After deploying migrations and the Worker, verify UBI runtime state:
 
@@ -156,7 +156,7 @@ The endpoint is idempotent by organization source URL and event ingest key, so r
 
 ## Email campaigns
 
-The portal's `/email` page manages Google Workspace campaigns. Registrations support separate event-update and organization-announcement subscriptions. The existing minute cron drains a durable D1 email outbox alongside the independent UBI task.
+The portal's `/email` page manages Google Workspace campaigns. Registrations support separate event-update and organization-announcement subscriptions. The existing minute cron drains a durable D1 email outbox alongside the independent UBI task. Sending defaults to disabled; when `EMAIL_SENDING_ENABLED` is not `true`, the cron returns before touching D1 for email delivery.
 
 Follow [the Google Workspace setup and deployment guide](../docs/deployment/email-campaigns.md) before enabling sending. Sender OAuth secrets, migration `0019_email_campaigns.sql`, and the frontend org API proxy are required. Sending defaults to disabled.
 
@@ -307,7 +307,9 @@ does not send another uptake notification. Resolving hours retires its pending
 notification. Hours still move only after confirmation.
 
 The existing minute cron dispatches at most 100 unread, unqueued activity events
-from the last 24 hours to `PUSH_QUEUE` when VAPID credentials are configured.
+from the last 24 hours to `PUSH_QUEUE` when VAPID credentials are configured. If
+the queue or VAPID settings are missing, the dispatch path returns before any D1
+read.
 Queue submission failures leave the outbox record retryable; existing per-device
 push delivery IDs deduplicate retries. Read or resolved alerts are suppressed at
 consumption. The in-app inbox remains available without push credentials.

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
 import { portalPath } from '../../config/portalBase'
@@ -122,16 +123,17 @@ export function TenantHomePage() {
     <main id="main-content" className="portal-main tenant-home-main" tabIndex={-1}>
       <div className="portal-container">
         <ExternalBrowserPrompt />
-        <section className="tenant-home-hero" aria-labelledby="tenant-home-title">
+        <section
+          className={`tenant-home-hero${imageUrl ? ' tenant-home-hero-has-image' : ''}`}
+          aria-labelledby="tenant-home-title"
+          style={imageUrl ? { '--tenant-home-image': `url("${imageUrl.startsWith('/') ? portalPath(imageUrl) : imageUrl}")` } as CSSProperties : undefined}
+        >
           <div className="tenant-home-copy">
             <p className="tenant-home-eyebrow">{profile.tagline}</p>
             <h1 id="tenant-home-title">{tenant.home_heading || profile.brandName}</h1>
             <p>{tenant.home_description || `Welcome to the ${profile.brandName} portal.`}</p>
             <TenantHomeActions tenant={tenant} />
           </div>
-          {imageUrl && <div className="tenant-home-media">
-            <img src={imageUrl.startsWith('/') ? portalPath(imageUrl) : imageUrl} alt="" />
-          </div>}
         </section>
 
         <SpecialtyResourcesPanel resources={specialtyResources.slice(0, 4)} compact={specialtyResources.length > 4} />
@@ -140,11 +142,10 @@ export function TenantHomePage() {
           <div className="tenant-home-section-heading">
             <div>
               <p className="tenant-home-eyebrow">Upcoming</p>
-              <h2 id="tenant-home-events-title">Events at the center of the community</h2>
+              <h2 id="tenant-home-events-title">Hosted events</h2>
             </div>
             <div className="tenant-home-section-links">
               <Link to={portalProfilePath('/org-events')}>View all events</Link>
-              <Link to={portalProfilePath(`/orgs/${encodeURIComponent(tenant.home_org_slug)}`)}>Organization profile</Link>
             </div>
           </div>
           {eventStatus && <p role="status" className="muted">{eventStatus}</p>}
@@ -162,7 +163,7 @@ export function TenantHomePage() {
         {features.length > 0 && <section className="tenant-home-grid" aria-label={`${profile.brandName} portal sections`}>
           {features.slice(0, 4).map((feature) => <article className="tenant-home-card" key={feature}>
             <span>{featureLabel(feature)}</span>
-            <h2>{feature === 'events' ? 'Events and registration' : feature === 'chat' ? 'Community messages' : featureLabel(feature)}</h2>
+            <h2>{feature === 'events' ? 'Events and registration' : feature === 'chat' ? 'Messages' : featureLabel(feature)}</h2>
             <p>{feature === 'events' ? 'Publish events, collect registrations, and keep attendance visible.' : feature === 'chat' ? 'Keep member conversations close to the organization.' : `Use the ${featureLabel(feature).toLowerCase()} tools configured for this tenant.`}</p>
           </article>)}
         </section>}
@@ -181,10 +182,10 @@ export function TenantEventsContent() {
   if (!tenant || !orgSlug) return <TenantHomePage />
 
   return <PublicEventsPage
-    sourcePath={`/api/network/orgs/public/${encodeURIComponent(orgSlug)}/events?upcoming_only=true&limit=120`}
+    sourcePath={`/api/network/orgs/public/${encodeURIComponent(orgSlug)}/events?upcoming_only=false&limit=200`}
     heading={`${profile.brandName} Events`}
-    description={`Upcoming events hosted by ${profile.brandName}.`}
-    emptyMessage="No upcoming events have been published yet."
+    description={`Upcoming and past events from ${profile.brandName}.`}
+    emptyMessage="No events have been published yet."
   />
 }
 

@@ -1,0 +1,33 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { readFileSync } from 'node:fs';
+import { HTTPException } from 'hono/http-exception';
+import { availabilityRoutes, validatePoll, validateSelection } from '../src/availability';
+import { TimebankDatabase } from './helpers/timebankDatabase';
+const slots=['2026-10-10T13:00:00.000Z','2026-10-10T13:30:00.000Z'];
+test('poll validation preserves UTC instants, bounds grids and rejects invalid selections',()=>{
+ assert.deepEqual(validatePoll({title:' Meetup ',timezone:'America/New_York',slots:[...slots].reverse()}),{title:'Meetup',timezone:'America/New_York',slots});
+ for(const value of [null,{title:'x',timezone:'bad',slots},{title:'x',timezone:'UTC',slots:[slots[0],slots[0]]},{title:'x',timezone:'UTC',slots:['bad']},{title:'x',timezone:'UTC',slots:[slots[0],'2026-11-10T13:00:00.000Z']}])assert.throws(()=>validatePoll(value));
+ assert.deepEqual(validateSelection([],slots),[]);
+ assert.throws(()=>validateSelection([slots[0],slots[0]],slots));assert.throws(()=>validateSelection(['bad'],slots));
+});
+test('polls isolate tenants and identities, replace responses and refuse saves after closure',async()=>{
+ const db=new TimebankDatabase();db.sqlite.exec(readFileSync(new URL('../migrations/0042_availability_polls.sql',import.meta.url),'utf8'));
+ const app=availabilityRoutes(async(_env,req)=>{const id=req.headers.get('authorization');if(!id)throw new HTTPException(401);return {id}});
+ const env={DB:db.asD1()} as Env;
+ const request=(path:string,method='GET',body?:unknown,user?:string,host='medtech.social')=>app.fetch(new Request(`https://${host}${path}`,{method,headers:{...(user?{authorization:user}:{}),'content-type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)}),env);
+ assert.equal((await request('/','POST',{title:'Meetup',timezone:'UTC',slots})).status,401);
+ const created=await request('/','POST',{title:'Meetup',timezone:'UTC',slots},'alice');assert.equal(created.status,201);const {id}=await created.json() as {id:string};
+ assert.equal((await request(`/${id}`, 'GET',undefined,undefined,'codecollective.us')).status,404);
+ assert.equal((await request(`/${id}/me`)).status,401);
+ assert.equal((await request(`/${id}/me`,'PUT',{slots},'bob')).status,200);
+ assert.equal((await request(`/${id}/me`,'PUT',{slots:[slots[0]]},'bob')).status,200);
+ const publicResult=await (await request(`/${id}`)).json() as {participants:number;counts:Record<string,number>};assert.equal(publicResult.participants,1);assert.deepEqual(publicResult.counts,{[slots[0]]:1,[slots[1]]:0});assert.ok(!JSON.stringify(publicResult).includes('bob'));
+ assert.equal((await request(`/${id}/me`,'PUT',{slots:['unknown']},'bob')).status,400);
+ assert.equal((await request(`/${id}`,'PATCH',{closed:true},'bob')).status,403);
+ assert.equal((await request(`/${id}`,'PATCH',{closed:true},'alice')).status,200);
+ assert.equal((await request(`/${id}/me`,'PUT',{slots:[]},'bob')).status,409);
+ assert.equal((await request(`/${id}`,'PATCH',{closed:false},'alice')).status,200);
+ assert.equal((await request(`/${id}/me`,'PUT',{slots:[]},'bob')).status,200);
+ db.sqlite.close();
+});

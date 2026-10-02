@@ -15,6 +15,29 @@ directly for portal-owned events and are the preferred path when retiring Luma.
 
 ## Tools and provider contract
 
+Organization setup uses the same browser OAuth connection and existing PIdP
+identity. `list_organizations` returns active memberships;
+`list_organization_members` checks OrgPortal's member-read permission.
+`preview_organization_creation` / `apply_organization_creation` create a separate
+organization owned by the authenticated identity. Existing organizations are
+rejected rather than overwritten. `preview_organization_membership` /
+`apply_organization_membership` reuse existing PIdP user IDs and enforce live
+organization-management permissions. Both write pairs require portal read/write
+scopes and a matching ten-minute, one-use preview receipt. OAuth consent does
+not grant management permission or create additional identity accounts.
+
+Connect from Codex with a configured MCP resource URL:
+
+```sh
+codex mcp add orgportal --url "$ORGPORTAL_MCP_URL"
+codex mcp login orgportal --scopes org:events.read,org:events.write,org:portal.read,org:portal.write
+```
+
+PIdP's operator must enable `MCP_OAUTH_DYNAMIC_REGISTRATION=true` for automatic
+client registration. Login opens the portal's browser sign-in and PIdP consent
+flow, returning to the client's loopback callback. Credentials are managed by
+the OAuth client; no password or API token needs to be pasted into chat.
+
 | Tool | Effect |
 | --- | --- |
 | `list_events` | List an organization's managed external events, with cursor pagination |
@@ -129,6 +152,7 @@ Required configuration:
 | `MCP_OAUTH_ISSUER` | Your OAuth authorization server's exact issuer |
 | `MCP_OAUTH_JWKS_URL` | Its trusted HTTPS signing-key endpoint |
 | `MCP_SUBJECT_MAP_JSON` | Explicit map of issuer subject IDs to existing PIdP user IDs |
+| `MCP_PIDP_ACCOUNT_NAMESPACES_JSON` | Optional approved PIdP namespaces, such as `["owner"]` or `["website:<website-id>"]`. Resolves UUID subjects to the same PIdP account ID as portal sessions. Requires live introspection and issuer matching `PIDP_BASE_URL`; explicit subject mappings take precedence. This grants no organization permissions. |
 | `EVENT_INTEGRATIONS_JSON` | Organization **database ID** to provider configuration |
 | `EVENT_KEY_<NAME>` | Server-only provider API key, one binding per calendar |
 | `MCP_ALLOWED_ORIGINS` | Optional comma-separated browser origins; omit for server-to-server clients |

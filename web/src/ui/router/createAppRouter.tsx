@@ -1,3 +1,4 @@
+import { AvailabilityPage } from '../views/AvailabilityPage'
 import { PortalProfileBoundary } from '../shell/PortalProfileBoundary'
 import { getDomainCommunity, getDomainTenant, type PortalTenant } from '../../config/timebankCommunity'
 import { useEffect, useState } from 'react'
@@ -12,10 +13,10 @@ import { DepartmentsPage } from '../views/DepartmentsPage'
 import { AuthCallbackPage } from '../views/AuthCallbackPage'
 import { InitiativeDetailPage } from '../views/InitiativeDetailPage'
 import { InitiativeSignPage } from '../views/InitiativeSignPage'
-import { UserProfilePage } from '../views/users/UserProfilePage'
 import { UserCalendarPage } from '../views/users/UserCalendarPage'
 import { UserSettingsPage } from '../views/users/UserSettingsPage'
 import { UserLoginPage } from '../views/users/UserLoginPage'
+import { McpConnectPage } from '../views/users/McpConnectPage'
 import { OrgLoginPage } from '../views/orgs/OrgLoginPage'
 import { OrgRegisterPage } from '../views/orgs/OrgRegisterPage'
 import { OrgInitiativesPage } from '../views/orgs/OrgInitiativesPage'
@@ -52,6 +53,7 @@ import { TimebankPage } from '../views/TimebankPage'
 import { TimebankInboxProvider } from '../timebank/TimebankInbox'
 import { TenantEventsContent, TenantEventsHomePage, TenantHomePage, TenantSlugHomePage } from '../views/TenantHomePage'
 import { TenantResourcesPage } from '../views/TenantResourcesPage'
+import { TenantBrandingPage } from '../views/TenantBrandingPage'
 import { CreatePage } from '../views/CreatePage'
 import { CreateForProfitPage } from '../views/CreateForProfitPage'
 import { CreateNonProfitPage } from '../views/CreateNonProfitPage'
@@ -124,12 +126,18 @@ function TenantOrgEventsRoute() {
 
 function TenantCommunityAliasRoute() {
   const tenant = getDomainTenant()
-  if (tenant?.home_org_slug) return <Navigate to={`/orgs/${encodeURIComponent(tenant.home_org_slug)}`} replace />
+  if (tenant?.home_org_slug) return <Navigate to="/" replace />
   return <Navigate to={tenant ? '/people' : '/orgs'} replace />
 }
 
 function TenantEventsAliasRoute() {
   return <Navigate to={getDomainTenant() ? '/org-events' : '/events'} replace />
+}
+
+function PublicEventsRoute() {
+  const tenant = getDomainTenant()
+  if (tenant?.home_org_slug) return <TenantEventsContent />
+  return <PublicEventsPage />
 }
 
 
@@ -241,6 +249,8 @@ export function createAppRouter() {
           { path: '/community', element: <TenantCommunityAliasRoute /> },
           { path: '/medtech-events', element: <TenantEventsAliasRoute /> },
           { path: '/resources', element: <TenantResourcesPage /> },
+          { path: '/branding', element: <TenantBrandingPage /> },
+          { path: '/branding.html', element: <Navigate to="/branding" replace /> },
           { path: '/about', element: <AboutPage /> },
           { path: '/terms', element: <TermsPage /> },
           { path: '/legal', element: <TermsPage /> },
@@ -251,8 +261,16 @@ export function createAppRouter() {
           // Canonical user routes
           { path: '/users/register', element: <LoginRedirectRoute /> },
           { path: '/users/login', element: <UserLoginPage /> },
+          { path: '/users/mcp-connect', element: <AuthenticatedRoute><McpConnectPage /></AuthenticatedRoute> },
           { path: '/users/dashboard', element: <DashboardPage /> },
-          { path: '/profile', element: <UserProfilePage /> },
+          {
+            path: '/profile',
+            element: (
+              <AuthenticatedRoute>
+                <PublicContactPage self />
+              </AuthenticatedRoute>
+            ),
+          },
           { path: '/calendar', element: <PublicCalendarPage /> },
           { path: '/calendar.html', element: <Navigate to="/calendar" replace /> },
           {
@@ -347,7 +365,9 @@ export function createAppRouter() {
           },
           { path: '/targets/:target', element: <TargetPage /> },
 
-          { path: '/events', element: <PublicEventsPage /> },
+          { path: '/availability', element: <AvailabilityPage /> },
+          { path: '/availability/:id', element: <AvailabilityPage /> },
+          { path: '/events', element: <PublicEventsRoute /> },
           { path: '/events/:slug', element: <PublicEventPage /> },
           { path: '/orgs', element: <PublicOrganizationsPage /> },
           { path: '/people', element: <PeoplePage /> },

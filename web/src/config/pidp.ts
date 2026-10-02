@@ -88,15 +88,13 @@ export function normalizePostLoginPath(next: string): string {
 
 export function portalAuthCallbackUrl(next: string): string {
   const target = normalizePostLoginPath(next)
-  const community = getDomainCommunity()
-  // PIdP already trusts the shared callback and sets a codecollective.us session cookie.
-  const callback = new URL(community ? 'https://codecollective.us/p/auth/callback' : portalUrl('/auth/callback'))
-  if (community) callback.searchParams.set('community', community.id)
+  const callback = new URL(portalUrl('/auth/callback'))
   callback.searchParams.set('next', target)
   return callback.toString()
 }
 
 export function pidpAppLoginUrl(next: string): string {
+  if (!isNativeCapacitorRuntime()) return pidpSingleSignOnUrl(next)
   const params = new URLSearchParams()
   if (isNativeCapacitorRuntime()) {
     params.set('next', getNativeAuthCallbackUrl())
@@ -120,4 +118,15 @@ export function pidpOwnerLoginUrl(next: string): string {
   params.set('owner', '1')
   // Intentionally no `app` parameter: this route should mint owner-context sessions.
   return pidpUrl(`/app/login?${params.toString()}`)
+}
+
+export function pidpSingleSignOnUrl(next: string, provider?: 'google' | 'github'): string {
+  if (isNativeCapacitorRuntime()) {
+    if (!provider) return pidpAppLoginUrl(next)
+    const params = new URLSearchParams({ app: PIDP_APP_SLUG, next: getNativeAuthCallbackUrl() })
+    return pidpUrl(`/auth/${provider}/login?${params.toString()}`)
+  }
+  const params = new URLSearchParams({ app: PIDP_APP_SLUG, next: portalAuthCallbackUrl(next) })
+  if (provider) params.set('provider', provider)
+  return pidpUrl(`/auth/sso/start?${params.toString()}`)
 }

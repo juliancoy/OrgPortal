@@ -1,0 +1,14 @@
+{
+  "name": "LifeTech",
+  "short_name": "LifeTech",
+  "description": "Health × Medicine × Biotech",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#061a26",
+  "theme_color": "#061a26",
+  "icons": [
+    { "src": "/assets/images/lifetech-logo.png", "sizes": "1254x1254", "type": "image/png", "purpose": "any" }
+  ]
+}

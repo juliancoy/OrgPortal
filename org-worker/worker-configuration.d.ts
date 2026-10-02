@@ -17,6 +17,7 @@ interface Env {
   MCP_OAUTH_ISSUER?: string;
   MCP_OAUTH_JWKS_URL?: string;
   MCP_SUBJECT_MAP_JSON?: string;
+  MCP_PIDP_ACCOUNT_NAMESPACES_JSON?: string;
   MCP_ALLOWED_ORIGINS?: string;
   DB: D1Database;
   SCAN_IMAGES?: R2Bucket;
@@ -24,6 +25,7 @@ interface Env {
   PIDP_BASE_URL?: string;
   PIDP_SERVICE_TOKEN?: string;
   PUBLIC_PORTAL_BASE_URL?: string;
+  CHAT_API_ORIGIN?: string;
   ORG_BUSINESS_CARD_OCR_PROVIDER?: string;
   ORG_BUSINESS_CARD_OCR_MODEL?: string;
   ORG_OPENAI_API_KEY?: string;

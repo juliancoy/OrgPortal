@@ -612,7 +612,6 @@ export function NativeChatPage() {
           >
             <span aria-hidden="true">{sidebarExpanded ? '‹' : '›'}</span>
           </button>
-          <Link to="/chat" className="portal-chat-home-link">Reset</Link>
         </div>
         <ul className="portal-chat-room-list">
           {conversations.map((conversation) => {
@@ -646,8 +645,8 @@ export function NativeChatPage() {
           })}
           {conversations.length === 0 ? <li className="portal-chat-muted">No conversations yet.</li> : null}
         </ul>
-        <section className="native-chat-sociable" aria-label="Be Sociable">
-          <h3>Be Sociable!</h3>
+        <section className="native-chat-sociable" aria-label="People to message">
+          <h3>People to message</h3>
           <ul className="portal-chat-room-list native-chat-people-list">
             {sociablePeople.map((person) => (
               <li key={person.user_id}>
@@ -813,7 +812,8 @@ export function NativeChatPage() {
         ) : (
           <div className="portal-chat-empty">
             <h1>Chat</h1>
-            <p>{status || 'Select a conversation or open an inbox from a profile.'}</p>
+            <p>{status || 'Choose a conversation or find someone to message.'}</p>
+            {!status && <Link to="/people" className="btn-primary">Find people</Link>}
             {error ? <p className="portal-chat-error" role="alert" aria-live="assertive">{error}</p> : null}
           </div>
         )}

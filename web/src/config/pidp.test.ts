@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { defaultPostLoginPath, normalizePidpBase, normalizePostLoginPath, portalAuthCallbackUrl } from './pidp'
+import { defaultPostLoginPath, normalizePidpBase, normalizePostLoginPath, portalAuthCallbackUrl, pidpSingleSignOnUrl } from './pidp'
 import * as profiles from './portalFeatures'
 import { setDomainTenant } from './timebankCommunity'
 
@@ -78,4 +78,16 @@ describe('profile-aware authentication destinations', () => {
     })
     expect(normalizePidpBase('https://identity.example/root/')).toBe('https://identity.example/root')
   })
+})
+
+it('single sign-on keeps callback and navigation on the current tenant origin', () => {
+  vi.stubGlobal('window', { location: { origin: 'https://tenant.example', hostname: 'tenant.example' } })
+  setDomainTenant({ id: 'tenant', hostname: 'tenant.example', name: 'Tenant', tagline: '', accent_color: '#123456', canonical_path_prefix: '' })
+  const login = new URL(pidpSingleSignOnUrl('/people?q=medicine', 'google'), 'https://tenant.example')
+  expect(login.pathname).toBe('/pidp/auth/sso/start')
+  expect(login.searchParams.get('provider')).toBe('google')
+  const callback = new URL(login.searchParams.get('next')!)
+  expect(callback.origin).toBe('https://tenant.example')
+  expect(callback.pathname).toBe('/auth/callback')
+  expect(callback.searchParams.get('next')).toBe('/people?q=medicine')
 })

@@ -29,6 +29,7 @@ logs/
 **/.eslintcache
 **/.npm/
 **/.pnpm-store/
+.local/
 
 # OS / editor files
 .DS_Store

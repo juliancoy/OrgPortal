@@ -17,7 +17,7 @@ export type EventAttendance = {
   event_id: string
   count: number
   registered: boolean
-  attendees: { slug: string; name: string; photo_url: string | null }[]
+  attendees: { user_id: string; slug: string; name: string; photo_url: string | null; profile_public?: boolean; profile_url?: string | null }[]
 }
 
 export type RegisteredEventsCalendarFeed = {
@@ -106,7 +106,7 @@ export async function recordAttendanceWithRetry(eventId: string, token: string |
   }
 
   if (resp.ok) {
-    return { ok: true, message: method === 'DELETE' ? 'Registration cancelled.' : 'You’re registered!', attendance: await resp.json() as EventAttendance }
+    return { ok: true, message: method === 'DELETE' ? 'Registration cancelled.' : 'Registration saved.', attendance: await resp.json() as EventAttendance }
   }
 
   if (resp.status === 401) {

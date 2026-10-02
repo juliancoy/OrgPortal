@@ -1,10 +1,13 @@
+import { availabilityRoutes } from './availability';
 import { timebankNotifications, markTimebankNotificationsRead, dispatchTimebankPush } from './timebankNotifications';
 import { importedListings, importedListingImage, importClaimDirectory, requestImportClaim, withdrawImportClaim, reviewImportClaims, resolveImportClaim, claimedImportRecords } from './timebankImports';
 import { Hono } from "hono";
-import QRCode from "qrcode";
+import { renderEventPoster, posterBackgroundImage, posterLogo, type PosterBackground, type PosterTheme } from "./eventPoster";
 import { buildMetadata } from "./generated/buildMetadata";
 import { HTTPException } from "hono/http-exception";
 import { handleEventMcp, protectedResourceMetadata, eventErrorResponse } from "./eventMcp";
+import { handleEventMediaUpload } from "./eventMediaUpload";
+import { handleOrganizationMediaUpload } from "./organizationMediaUpload";
 import { checkEventConfiguration } from "./eventConfiguration";
 import {
   getTimebankListing, setTimebankUptake, setTimebankListingVote, timebankAnalytics, resolvePortalTenant, resolvePortalTenantBySlug, resolveTimebankCommunity, saveTimebankCommunity, setTimebankPhoto, getTimebankPhoto,
@@ -55,6 +58,16 @@ import { subscriptionStatement } from "./emailShared";
 type ContactLink = {
   label: string;
   url: string;
+};
+
+type EventMediaItem = {
+  id: string;
+  url: string;
+  label: string;
+  alt: string;
+  kind: "image";
+  content_type?: string | null;
+  image_key?: string | null;
 };
 
 type PidpUser = {
@@ -126,6 +139,7 @@ type OrganizationRow = {
   description: string | null;
   source_url: string | null;
   image_url: string | null;
+  media_json?: string | null;
   tags: string;
   city: string | null;
   created_at: string;
@@ -205,6 +219,8 @@ type EventRow = {
   location: string | null;
   source_url: string | null;
   image_url: string | null;
+  media_json?: string | null;
+  event_links_json?: string | null;
   social_title?: string | null;
   social_description?: string | null;
   social_image_url?: string | null;
@@ -221,6 +237,10 @@ type EventRow = {
   created_at: string;
   updated_at: string;
   organization_name?: string | null;
+  organization_slug?: string | null;
+  organization_image_url?: string | null;
+  attendance_count?: number | null;
+  attendance_source_url?: string | null;
 };
 
 type RegisteredEventCalendarFeedRow = {
@@ -414,6 +434,58 @@ function fail(status: number, detail: string): never {
   throw new HTTPException(status as 400, { message: detail, res });
 }
 
+function trimTrailingSlash(value: string | undefined) {
+  return String(value || "").replace(/\/+$/, "");
+}
+
+function chatProxyTarget(requestUrl: string, chatOrigin: string) {
+  const url = new URL(requestUrl);
+  const prefix = "/api/chat";
+  const path = url.pathname === prefix || url.pathname.startsWith(`${prefix}/`)
+    ? url.pathname.slice(prefix.length) || "/"
+    : url.pathname;
+  return `${trimTrailingSlash(chatOrigin)}${path}${url.search}`;
+}
+
+async function proxyChatRequest(request: Request, env: Env) {
+  const origin = trimTrailingSlash(env.CHAT_API_ORIGIN || "https://chat-codecollective.jcloiacon.workers.dev");
+  if (!origin) return json({ detail: "Chat API origin is not configured" }, 502);
+
+  const requestUrl = new URL(request.url);
+  const headers = new Headers(request.headers);
+  headers.delete("host");
+  headers.set("x-forwarded-host", requestUrl.host);
+  headers.set("x-forwarded-proto", requestUrl.protocol.replace(":", ""));
+
+  const upstream = await fetch(chatProxyTarget(request.url, origin), {
+    method: request.method,
+    headers,
+    body: request.body,
+    redirect: "manual",
+    cf: { cacheEverything: false },
+  });
+
+  return new Response(upstream.body, {
+    status: upstream.status,
+    statusText: upstream.statusText,
+    headers: upstream.headers,
+  });
+}
+
+async function publicEventChatMessages(env: Env, roomId: string) {
+  const origin = trimTrailingSlash(env.CHAT_API_ORIGIN || "https://chat-codecollective.jcloiacon.workers.dev");
+  if (!origin || !roomId) return [];
+  try {
+    const url = `${origin}/api/network/public/event-chat/${encodeURIComponent(roomId)}/messages?limit=100`;
+    const response = await fetch(url, { headers: { accept: "application/json" }, cf: { cacheEverything: false } });
+    if (!response.ok) return [];
+    const payload = await response.json().catch(() => null) as { messages?: unknown[] } | null;
+    return Array.isArray(payload?.messages) ? payload.messages : [];
+  } catch {
+    return [];
+  }
+}
+
 function nowIso() {
   return new Date().toISOString();
 }
@@ -454,6 +526,17 @@ function parseJsonArray(value: string | null | undefined): string[] {
     const parsed = JSON.parse(value) as unknown;
     if (!Array.isArray(parsed)) return [];
     return parsed.map((item) => String(item || "").trim()).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+function parseEventMedia(value: string | null | undefined): EventMediaItem[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return sanitizeEventMedia(parsed);
   } catch {
     return [];
   }
@@ -838,7 +921,7 @@ function icsFold(line: string) {
 
 async function registeredEventsIcs(env: Env, request: Request, feed: RegisteredEventCalendarFeedRow) {
   const rows = await env.DB.prepare(
-    `SELECT e.*, o.name AS organization_name
+    `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url
      FROM event_registrations r
      JOIN events e ON e.id = r.event_id
      LEFT JOIN organizations o ON o.id = e.host_org_id
@@ -885,6 +968,11 @@ async function registeredEventsIcs(env: Env, request: Request, feed: RegisteredE
 
 function userName(user: PidpUser) {
   return String(user.full_name || user.identity_data?.display_name || user.email || "User");
+}
+
+function registrantDisplayName(user: PidpUser) {
+  const name = String(user.full_name || user.identity_data?.display_name || "").trim();
+  return name && !name.includes("@") ? name : "User";
 }
 
 function organizationActor(user: PidpUser, env: Env): OrganizationActor {
@@ -1035,6 +1123,46 @@ async function contactForUser(env: Env, request: Request, user: PidpUser): Promi
   return createdRow;
 }
 
+async function ensureContactDirectoryUser(db: D1Database, user: PidpUser) {
+  const existing = await db.prepare("SELECT id, user_name, slug, photo_url FROM user_contact_pages WHERE user_id = ?")
+    .bind(user.id)
+    .first<{ id: string; user_name: string | null; slug: string | null; photo_url: string | null }>();
+  const profileImage = userProfileImage(user);
+  const displayName = registrantDisplayName(user);
+  if (existing) {
+    const updates: string[] = [];
+    const values: unknown[] = [];
+    const currentName = existing.user_name?.trim() || "";
+    if (!currentName || currentName.includes("@") || (currentName === "User" && displayName !== "User")) {
+      updates.push("user_name = ?");
+      values.push(displayName);
+    }
+    if (existing.slug?.startsWith("event-registrant-") && displayName !== "User") {
+      updates.push("slug = ?");
+      values.push(await uniqueSlug(db, displayName, user.id));
+    }
+    if (profileImage && !existing.photo_url) {
+      updates.push("photo_url = ?");
+      values.push(profileImage);
+    }
+    if (updates.length) {
+      await db.prepare(`UPDATE user_contact_pages SET ${updates.join(", ")}, updated_at = ? WHERE user_id = ?`)
+        .bind(...values, nowIso(), user.id)
+        .run();
+    }
+    return;
+  }
+
+  const created = nowIso();
+  await db.prepare(
+    `INSERT INTO user_contact_pages
+      (id, user_id, user_email, user_name, slug, enabled, photo_url, links, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, 0, ?, '[]', ?, ?)`,
+  )
+    .bind(crypto.randomUUID(), user.id, user.email || null, displayName, await uniqueSlug(db, defaultSlug(user)), profileImage, created, created)
+    .run();
+}
+
 function cleanOptionalString(value: unknown, maxLength = 5000): string | null {
   if (value === null) return null;
   if (value === undefined) return undefined as unknown as null;
@@ -1061,6 +1189,111 @@ function cleanPublicAssetUrl(value: unknown): string | null {
   if (!text) return null;
   if (text.startsWith("/")) return `https://codecollective.us${text}`;
   return cleanUrl(text);
+}
+
+function sanitizeMedia(value: unknown, localPathPrefix: string, fallbackLabel: string): EventMediaItem[] {
+  if (!Array.isArray(value)) return [];
+  const items: EventMediaItem[] = [];
+  for (const raw of value) {
+    if (!raw || typeof raw !== "object") continue;
+    const record = raw as Record<string, unknown>;
+    const rawUrl = cleanOptionalString(record.url, 1000);
+    const url = rawUrl?.startsWith(localPathPrefix) ? rawUrl : cleanPublicAssetUrl(rawUrl);
+    if (!url) continue;
+    const label = cleanOptionalString(record.label, 160) || fallbackLabel;
+    const alt = cleanOptionalString(record.alt, 500) || label;
+    const id = cleanOptionalString(record.id, 120)?.replace(/[^a-zA-Z0-9._:-]/g, "-") || crypto.randomUUID();
+    items.push({
+      id,
+      url,
+      label,
+      alt,
+      kind: "image",
+      content_type: cleanOptionalString(record.content_type, 120),
+      image_key: cleanOptionalString(record.image_key, 500),
+    });
+    if (items.length >= 12) break;
+  }
+  return items;
+}
+
+function sanitizeEventMedia(value: unknown): EventMediaItem[] {
+  return sanitizeMedia(value, "/api/network/events/public/", "Event image");
+}
+
+function sanitizeOrganizationMedia(value: unknown): EventMediaItem[] {
+  return sanitizeMedia(value, "/api/network/orgs/public/", "Organization image");
+}
+
+function parseOrganizationMedia(value: string | null | undefined): EventMediaItem[] {
+  if (!value) return [];
+  try {
+    return sanitizeOrganizationMedia(JSON.parse(value));
+  } catch {
+    return [];
+  }
+}
+
+type EventLinkItem = {
+  id: string;
+  url: string;
+  label: string;
+  title: string;
+  description: string | null;
+  image_url: string | null;
+};
+
+function sanitizeEventLinks(value: unknown): EventLinkItem[] {
+  if (!Array.isArray(value)) return [];
+  const items: EventLinkItem[] = [];
+  for (const raw of value) {
+    if (!raw || typeof raw !== "object") continue;
+    const record = raw as Record<string, unknown>;
+    const url = cleanUrl(record.url);
+    if (!url) continue;
+    const label = cleanOptionalString(record.label, 80) || "Event link";
+    const title = cleanOptionalString(record.title, 180) || label;
+    const id = cleanOptionalString(record.id, 120)?.replace(/[^a-zA-Z0-9._:-]/g, "-") || crypto.randomUUID();
+    items.push({
+      id,
+      url,
+      label,
+      title,
+      description: cleanOptionalString(record.description, 500),
+      image_url: cleanPublicAssetUrl(record.image_url),
+    });
+    if (items.length >= 8) break;
+  }
+  return items;
+}
+
+function parseEventLinks(value: string | null | undefined): EventLinkItem[] {
+  if (!value) return [];
+  try {
+    return sanitizeEventLinks(JSON.parse(value));
+  } catch {
+    return [];
+  }
+}
+
+function removedEventMediaImageKeys(eventId: string, before: EventMediaItem[], after: EventMediaItem[]) {
+  const retainedKeys = new Set(after.map((item) => item.image_key).filter(Boolean));
+  const retainedUrls = new Set(after.map((item) => item.url).filter(Boolean));
+  const eventMediaPrefix = `event-media/${eventId}/`;
+  return before
+    .filter((item) => item.image_key?.startsWith(eventMediaPrefix))
+    .filter((item) => !retainedKeys.has(item.image_key) && !retainedUrls.has(item.url))
+    .map((item) => item.image_key!);
+}
+
+function removedOrganizationMediaImageKeys(organizationId: string, before: EventMediaItem[], after: EventMediaItem[]) {
+  const retainedKeys = new Set(after.map((item) => item.image_key).filter(Boolean));
+  const retainedUrls = new Set(after.map((item) => item.url).filter(Boolean));
+  const mediaPrefix = `organization-media/${organizationId}/`;
+  return before
+    .filter((item) => item.image_key?.startsWith(mediaPrefix))
+    .filter((item) => !retainedKeys.has(item.image_key) && !retainedUrls.has(item.url))
+    .map((item) => item.image_key!);
 }
 
 function cleanLinks(value: unknown): ContactLink[] {
@@ -1113,6 +1346,7 @@ function mapOrganization(row: OrganizationRow, upcomingEventsCount = 0) {
     source_url: row.source_url,
     source_urls: row.source_url ? [row.source_url] : [],
     image_url: row.image_url,
+    media: parseOrganizationMedia(row.media_json),
     tags: parseJsonArray(row.tags),
     seeded_from_events: true,
     claimed_by_user_id: row.claimed_by_user_id || null,
@@ -1144,12 +1378,17 @@ async function mapEvent(env: Env, request: Request, row: EventRow) {
     location: row.location,
     source_url: row.source_url,
     image_url: row.image_url,
+    media: parseEventMedia(row.media_json),
+    links: parseEventLinks(row.event_links_json),
+    attendance_count: row.attendance_count ?? null,
+    attendance_source_url: row.attendance_source_url || null,
     social_title: row.social_title || null,
     social_description: row.social_description || null,
     social_image_url: row.social_image_url || null,
     flyer_urls: {
       letter: eventFlyerPublicUrl(request, row.slug, "letter"),
       postcard: eventFlyerPublicUrl(request, row.slug, "postcard"),
+      letter_4up: eventFlyerPublicUrl(request, row.slug, "letter-4up"),
       social: eventFlyerPublicUrl(request, row.slug, "social"),
     },
     host_type: row.host_org_id ? "org" : row.host_user_id ? "individual" : "unclaimed",
@@ -1158,6 +1397,8 @@ async function mapEvent(env: Env, request: Request, row: EventRow) {
     host_org_id: row.host_org_id,
     host_org_name: row.organization_name || row.host_org_name,
     organization_name: row.organization_name || row.host_org_name,
+    organization_slug: row.organization_slug || null,
+    organization_image_url: row.organization_image_url || null,
     tags: parseJsonArray(row.tags),
     public_url: await eventPublicUrl(env, request, row.slug),
     created_at: row.created_at,
@@ -1176,166 +1417,84 @@ function xmlEscape(value: unknown) {
   });
 }
 
-type FlyerFormat = "letter" | "postcard" | "social";
+type FlyerFormat = "letter" | "letter-4up" | "postcard" | "social";
 
 function flyerFormat(value: string | null): FlyerFormat {
   const normalized = String(value || "").trim().toLowerCase();
+  if (normalized === "letter-4up" || normalized === "2x2") return "letter-4up";
   if (normalized === "4x6" || normalized === "postcard") return "postcard";
   if (normalized === "social" || normalized === "preview" || normalized === "og") return "social";
   return "letter";
 }
 
-function flyerGeometry(format: FlyerFormat) {
-  if (format === "postcard") return { width: 400, height: 600, name: "postcard" };
-  if (format === "social") return { width: 1200, height: 630, name: "social" };
-  return { width: 850, height: 1100, name: "letter" };
+function flyerTheme(value: string | null): PosterTheme {
+  return String(value || "").trim().toLowerCase() === "dark" ? "dark" : "light";
 }
 
-function shortText(value: unknown, max: number) {
-  const text = String(value || "").replace(/\s+/g, " ").trim();
-  if (text.length <= max) return text;
-  return `${text.slice(0, Math.max(0, max - 1)).trim()}…`;
+function flyerBackground(value: string | null): PosterBackground {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized === "city" || normalized === "photo" || normalized === "image") return "city";
+  if (normalized === "gradient") return "gradient";
+  return "solid";
 }
 
-function wrapText(value: unknown, maxChars: number, maxLines: number) {
-  const words = String(value || "").replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
-  const lines: string[] = [];
-  let line = "";
-  for (const word of words) {
-    const next = line ? `${line} ${word}` : word;
-    if (next.length > maxChars && line) {
-      lines.push(line);
-      line = word;
-    } else {
-      line = next;
-    }
-    if (lines.length === maxLines) break;
-  }
-  if (line && lines.length < maxLines) lines.push(line);
-  if (words.length && lines.length === maxLines) {
-    const used = lines.join(" ").length;
-    const original = words.join(" ");
-    if (used < original.length) lines[maxLines - 1] = shortText(lines[maxLines - 1], Math.max(1, maxChars));
-  }
-  return lines;
-}
-
-function eventDateLabel(event: EventRow) {
-  if (!event.starts_at) return "Date to be announced";
-  const start = new Date(event.starts_at);
-  if (Number.isNaN(start.getTime())) return event.starts_at;
-  const date = new Intl.DateTimeFormat("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "America/New_York",
-  }).format(start);
-  const startTime = new Intl.DateTimeFormat("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "America/New_York",
-  }).format(start);
-  if (!event.ends_at) return `${date} · ${startTime}`;
-  const end = new Date(event.ends_at);
-  if (Number.isNaN(end.getTime())) return `${date} · ${startTime}`;
-  const endTime = new Intl.DateTimeFormat("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "America/New_York",
-  }).format(end);
-  return `${date} · ${startTime}–${endTime}`;
-}
-
-function nestedSvg(svg: string, x: number, y: number, size: number) {
-  return svg.replace(/<svg\s+/i, `<svg x="${x}" y="${y}" width="${size}" height="${size}" `);
-}
-
-async function eventFlyerSvg(env: Env, request: Request, event: EventRow, format: FlyerFormat) {
-  const { width, height, name } = flyerGeometry(format);
+async function eventFlyerSvg(env: Env, request: Request, event: EventRow, format: FlyerFormat, theme: PosterTheme, background: PosterBackground) {
   const publicUrl = await eventPublicUrl(env, request, event.slug);
-  const title = shortText(event.social_title || event.title || "Event", format === "social" ? 92 : 120);
-  const host = shortText(event.organization_name || event.host_org_name || event.host_user_name || "MedTech Social", 80);
-  const description = shortText(event.social_description || event.description || "Join us for this community event.", format === "social" ? 190 : 360);
-  const date = eventDateLabel(event);
-  const location = shortText(event.location || "Location to be announced", format === "social" ? 90 : 140);
-  const qrSize = format === "social" ? 150 : format === "postcard" ? 112 : 170;
-  const qr = nestedSvg(await QRCode.toString(publicUrl, {
-    type: "svg",
-    errorCorrectionLevel: "M",
-    margin: 2,
-    color: { dark: "#111827", light: "#ffffff" },
-  }), width - qrSize - (format === "social" ? 58 : 54), height - qrSize - (format === "social" ? 46 : 58), qrSize);
-  const margin = format === "social" ? 58 : format === "postcard" ? 34 : 64;
-  const badge = host.toUpperCase();
-  const titleSize = format === "social" ? 72 : format === "postcard" ? 37 : 58;
-  const titleChars = format === "social" ? 22 : format === "postcard" ? 14 : 18;
-  const titleLines = wrapText(title, titleChars, format === "social" ? 2 : 4);
-  const descLines = wrapText(description, format === "social" ? 58 : format === "postcard" ? 31 : 48, format === "social" ? 2 : format === "postcard" ? 5 : 6);
-  const detailY = margin + 92 + titleLines.length * (titleSize * 0.95);
-  const descY = detailY + (format === "postcard" ? 96 : 120);
-  const linkLabel = new URL(publicUrl).hostname.replace(/^www\./, "");
-  const image = event.image_url ? `<image href="${xmlEscape(event.image_url)}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice" opacity="0.2" />` : "";
-  const titleTspans = titleLines.map((line, index) => `<tspan x="${margin}" dy="${index === 0 ? 0 : titleSize * 0.95}">${xmlEscape(line)}</tspan>`).join("");
-  const descTspans = descLines.map((line, index) => `<tspan x="${margin}" dy="${index === 0 ? 0 : format === "postcard" ? 22 : 31}">${xmlEscape(line)}</tspan>`).join("");
-  const qrLabelY = height - (format === "social" ? 34 : 36);
-  const tagLine = format === "social" ? "Health · Medicine · Biotech" : "health, medicine, biotech";
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="title desc">
-  <title id="title">${xmlEscape(title)} flyer</title>
-  <desc id="desc">${xmlEscape(description)}</desc>
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#07111f"/>
-      <stop offset="0.52" stop-color="#123d4c"/>
-      <stop offset="1" stop-color="#39a08f"/>
-    </linearGradient>
-    <linearGradient id="panel" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.18"/>
-      <stop offset="1" stop-color="#ffffff" stop-opacity="0.07"/>
-    </linearGradient>
-  </defs>
-  <rect width="${width}" height="${height}" fill="url(#bg)"/>
-  ${image}
-  <rect x="${margin / 2}" y="${margin / 2}" width="${width - margin}" height="${height - margin}" rx="${format === "social" ? 38 : 32}" fill="url(#panel)" stroke="#ffffff" stroke-opacity="0.22"/>
-  <text x="${margin}" y="${margin + 20}" fill="#c7fff4" font-family="Inter, Arial, sans-serif" font-size="${format === "postcard" ? 13 : 20}" font-weight="800" letter-spacing="${format === "postcard" ? 1.8 : 3}">${xmlEscape(badge)}</text>
-  <text x="${margin}" y="${margin + 52}" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-size="${titleSize}" font-weight="900" letter-spacing="-2">${titleTspans}</text>
-  <text x="${margin}" y="${detailY}" fill="#c7fff4" font-family="Inter, Arial, sans-serif" font-size="${format === "postcard" ? 17 : 27}" font-weight="800">${xmlEscape(date)}</text>
-  <text x="${margin}" y="${detailY + (format === "postcard" ? 29 : 42)}" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-size="${format === "postcard" ? 15 : 24}" font-weight="650">${xmlEscape(location)}</text>
-  <text x="${margin}" y="${descY}" fill="#f0fffb" font-family="Inter, Arial, sans-serif" font-size="${format === "postcard" ? 18 : 28}" font-weight="500">${descTspans}</text>
-  <text x="${margin}" y="${height - (format === "postcard" ? 80 : 96)}" fill="#c7fff4" font-family="Inter, Arial, sans-serif" font-size="${format === "postcard" ? 14 : 22}" font-weight="800">${xmlEscape(tagLine)}</text>
-  <text x="${margin}" y="${height - (format === "postcard" ? 50 : 58)}" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-size="${format === "postcard" ? 12 : 18}" font-weight="650">${xmlEscape(linkLabel)}</text>
-  <rect x="${width - qrSize - (format === "social" ? 64 : 60)}" y="${height - qrSize - (format === "social" ? 52 : 64)}" width="${qrSize + 12}" height="${qrSize + 12}" rx="18" fill="#ffffff" opacity="0.96"/>
-  ${qr}
-  <text x="${width - qrSize / 2 - (format === "social" ? 58 : 54)}" y="${qrLabelY}" text-anchor="middle" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-size="${format === "postcard" ? 11 : 16}" font-weight="800">Scan to RSVP</text>
-  <text x="${width - margin}" y="${margin + 20}" text-anchor="end" fill="#ffffff" opacity="0.62" font-family="Inter, Arial, sans-serif" font-size="${format === "postcard" ? 11 : 16}" font-weight="700">${xmlEscape(name === "letter" ? "8.5×11" : name === "postcard" ? "4×6" : "social preview")}</text>
-</svg>`;
+  const tenant = await resolvePortalTenant(env.DB, request);
+  const name = event.organization_name || event.host_org_name || event.host_user_name || tenant.name || "Community event";
+  let logo: string | undefined;
+  let backgroundData: string | undefined;
+  if (tenant.public_base_url && tenant.brand_image_path) {
+    const base = new URL(tenant.public_base_url);
+    const asset = new URL(tenant.brand_image_path, base);
+    if (base.protocol === "https:" && asset.origin === base.origin && asset.pathname.startsWith("/images/")) {
+      logo = await posterLogo(asset);
+    }
+  }
+  if (background === "city" && tenant.public_base_url) {
+    const base = new URL(tenant.public_base_url);
+    const candidates = [
+      "/assets/images/baltimore-medtech-home-hero-canonical.jpg",
+      "/specialty/baltimore-medtech/assets/images/baltimore-medtech-home-hero-canonical.jpg",
+    ];
+    for (const path of candidates) {
+      const asset = new URL(path, base);
+      if (base.protocol === "https:" && asset.origin === base.origin) {
+        backgroundData = await posterBackgroundImage(asset);
+        if (backgroundData) break;
+      }
+    }
+  }
+  return renderEventPoster(event, publicUrl, format, { name, tagline: tenant.tagline, logo }, theme, { background, backgroundImage: backgroundData });
 }
 
 async function publicEventBySlug(db: D1Database, rawSlug: string) {
   const slug = slugify(rawSlug);
+  const direct = await db.prepare(
+    `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url
+     FROM events e
+     LEFT JOIN organizations o ON o.id = e.host_org_id
+     WHERE e.slug = ?
+     LIMIT 1`,
+  )
+    .bind(slug)
+    .first<EventRow>();
+  if (direct) return direct;
+
   try {
     return await db.prepare(
-      `SELECT e.*, o.name AS organization_name
-       FROM events e
+      `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url
+       FROM event_slug_aliases esa
+       JOIN events e ON e.id = esa.event_id
        LEFT JOIN organizations o ON o.id = e.host_org_id
-       LEFT JOIN event_slug_aliases esa ON esa.event_id = e.id AND esa.slug = ?
-       WHERE e.slug = ? OR esa.slug = ?
-       ORDER BY CASE WHEN e.slug = ? THEN 0 ELSE 1 END
+       WHERE esa.slug = ?
        LIMIT 1`,
-    )
-      .bind(slug, slug, slug, slug)
-      .first<EventRow>();
-  } catch (err) {
-    if (!String(err instanceof Error ? err.message : err).includes("event_slug_aliases")) throw err;
-    return await db.prepare(
-      `SELECT e.*, o.name AS organization_name
-       FROM events e
-       LEFT JOIN organizations o ON o.id = e.host_org_id
-       WHERE e.slug = ?`,
     )
       .bind(slug)
       .first<EventRow>();
+  } catch (err) {
+    if (!String(err instanceof Error ? err.message : err).includes("event_slug_aliases")) throw err;
+    return null;
   }
 }
 
@@ -1826,14 +1985,17 @@ async function upsertEvent(db: D1Database, raw: Record<string, unknown>) {
   const id = existing?.id || crypto.randomUUID();
   const slug = existing?.slug || (await uniqueTableSlug(db, "events", `${title}-${ingestKey.slice(0, 8)}`));
   const updatedAt = nowIso();
+  const mediaJson = Array.isArray(raw.media) ? JSON.stringify(sanitizeEventMedia(raw.media)) : existing?.media_json || "[]";
+  const eventLinksJson = Array.isArray(raw.links) ? JSON.stringify(sanitizeEventLinks(raw.links)) : existing?.event_links_json || "[]";
   await db.prepare(
     `INSERT INTO events
       (id, ingest_key, title, slug, description, starts_at, ends_at, location, source_url, image_url,
+       media_json, event_links_json,
        social_title, social_description, social_image_url,
        host_user_id, host_user_name, host_org_id, host_org_name, host_org_source_url,
        event_chat_room_id, event_chat_room_alias, event_chat_room_name,
        tags, city, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(ingest_key) DO UPDATE SET
       title = excluded.title,
       description = excluded.description,
@@ -1842,6 +2004,8 @@ async function upsertEvent(db: D1Database, raw: Record<string, unknown>) {
       location = excluded.location,
       source_url = excluded.source_url,
       image_url = excluded.image_url,
+      media_json = excluded.media_json,
+      event_links_json = excluded.event_links_json,
       social_title = excluded.social_title,
       social_description = excluded.social_description,
       social_image_url = excluded.social_image_url,
@@ -1868,6 +2032,8 @@ async function upsertEvent(db: D1Database, raw: Record<string, unknown>) {
       stringField(raw, "location", 1000),
       cleanUrl(raw.source_url),
       cleanPublicAssetUrl(raw.image_url),
+      mediaJson,
+      eventLinksJson,
       stringField(raw, "social_title", 140),
       stringField(raw, "social_description", 300),
       cleanPublicAssetUrl(raw.social_image_url),
@@ -2132,7 +2298,42 @@ async function ensurePeopleUbiEnrollment(db: D1Database, timestamp: string) {
 export async function runUbiTick(db: D1Database, scheduledTime = Date.now()): Promise<UbiTickSummary> {
   const startedAt = isoFromMillis(scheduledTime);
   const runKey = startedAt.slice(0, 16);
-  await ensureUbiTickState(db, startedAt);
+  const state = await db.prepare("SELECT last_tick_at FROM ubi_tick_state WHERE id = 'singleton'").first<{ last_tick_at: string | null }>();
+  if (!state) {
+    await ensureUbiTickState(db, startedAt);
+    return {
+      run_key: runKey,
+      status: "skipped",
+      started_at: startedAt,
+      completed_at: nowIso(),
+      elapsed_seconds: 0,
+      eligible_accounts: 0,
+      payout_count: 0,
+      accrued_amount: 0,
+      paid_amount: 0,
+    };
+  }
+
+  const lastTickMillis = state.last_tick_at ? Date.parse(state.last_tick_at) : Number.NaN;
+  const elapsedSeconds = Number.isFinite(lastTickMillis)
+    ? Math.max(0, Math.floor((scheduledTime - lastTickMillis) / 1000))
+    : 0;
+  const settings = await getUbiSettings(db);
+  const intervalSeconds = cadenceSeconds(settings);
+  if (elapsedSeconds < intervalSeconds) {
+    return {
+      run_key: runKey,
+      status: "skipped",
+      started_at: startedAt,
+      completed_at: nowIso(),
+      elapsed_seconds: elapsedSeconds,
+      eligible_accounts: 0,
+      payout_count: 0,
+      accrued_amount: 0,
+      paid_amount: 0,
+    };
+  }
+
   const claimed = await markUbiRunStarted(db, runKey, startedAt);
   if (!claimed) {
     return {
@@ -2149,12 +2350,6 @@ export async function runUbiTick(db: D1Database, scheduledTime = Date.now()): Pr
   }
 
   try {
-    const state = await db.prepare("SELECT last_tick_at FROM ubi_tick_state WHERE id = 'singleton'").first<{ last_tick_at: string | null }>();
-    const lastTickMillis = state?.last_tick_at ? Date.parse(state.last_tick_at) : Number.NaN;
-    const elapsedSeconds = Number.isFinite(lastTickMillis)
-      ? Math.max(0, Math.floor((scheduledTime - lastTickMillis) / 1000))
-      : 0;
-    const settings = await getUbiSettings(db);
     const accruedAmount = denaForElapsed(Number(settings.dena_annual || 0), Number(settings.dena_precision || 6), elapsedSeconds);
     const entityTypes = normalizedEntityTypes(settings);
     if (entityTypes.includes("individual")) await ensurePeopleUbiEnrollment(db, startedAt);
@@ -2301,7 +2496,13 @@ app.onError((err) => {
 });
 
 // Register MCP before generic CORS; do not grant arbitrary origins event access.
-app.all("/mcp", (c) => handleEventMcp(c.req.raw, c.env));
+app.all("/mcp", (c) => handleEventMcp(c.req.raw, c.env, async (actor, payload) => {
+  const row = await upsertOrganization(c.env.DB, payload);
+  await claimOrganization(c.env.DB, row!.id, actor, nowIso());
+  return row!;
+}));
+app.post("/mcp/uploads/event-media", (c) => handleEventMediaUpload(c.req.raw, c.env));
+app.post("/mcp/uploads/organization-media", (c) => handleOrganizationMediaUpload(c.req.raw, c.env));
 const oauthProtectedResourceMetadataResponse = (env: Env) => Response.json(protectedResourceMetadata(env), { headers: { "cache-control": "no-store" } });
 const oauthProtectedResourceMetadata = (c: { env: Env }) => {
   try { return oauthProtectedResourceMetadataResponse(c.env); } catch (error) { return eventErrorResponse(error, c.env); }
@@ -2337,6 +2538,8 @@ function deploymentHealth(c: { env: Env; req: { url: string }; header: (name: st
     environment: c.env.ENV ?? "production",
   };
 }
+
+app.route("/api/availability", availabilityRoutes(currentUser));
 
 app.get("/health", (c) => c.json(deploymentHealth(c, true)));
 app.get("/version", (c) => c.json(deploymentHealth(c, false)));
@@ -2621,6 +2824,16 @@ async function publicContact(env: Env, request: Request, slug: string) {
     .first<ContactRow>();
   if (!row) fail(404, "Public profile not found");
   if (!row.enabled) {
+    const eventVisible = await env.DB.prepare(`
+      SELECT 1
+      FROM event_registrations r
+      JOIN events e ON e.id = r.event_id
+      WHERE r.user_id = ?
+      LIMIT 1
+    `)
+      .bind(row.user_id)
+      .first();
+    if (eventVisible) return mapContact(env, request, row);
     try {
       const user = await currentUser(env, request);
       if (user.id !== row.user_id) fail(404, "Public profile not found");
@@ -2756,15 +2969,15 @@ app.get("/api/network/orgs/public/:slug/events", async (c) => {
   const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "60", 10) || 60, 200));
   const upcomingOnly = c.req.query("upcoming_only") === "true";
   const rows = await c.env.DB.prepare(
-    `SELECT e.*, o.name AS organization_name
+    `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url
      FROM events e
      LEFT JOIN organizations o ON o.id = e.host_org_id
-     WHERE e.host_org_id = ?
+     WHERE (e.host_org_id = ? OR EXISTS (SELECT 1 FROM event_organizations eo WHERE eo.event_id = e.id AND eo.organization_id = ?))
      ${upcomingOnly ? "AND e.starts_at IS NOT NULL AND julianday(e.starts_at) >= julianday('now')" : ""}
-     ORDER BY COALESCE(e.starts_at, e.created_at) ASC
+     ORDER BY COALESCE(e.starts_at, e.created_at) ${upcomingOnly ? "ASC" : "DESC"}
      LIMIT ?`,
   )
-    .bind(org.id, limit)
+    .bind(org.id, org.id, limit)
     .all<EventRow>();
   return c.json(await Promise.all((rows.results || []).map((row) => mapEvent(c.env, c.req.raw, row))));
 });
@@ -2782,6 +2995,21 @@ app.get("/api/network/orgs/public/:slug/admins", async (c) => {
 });
 app.get("/api/network/orgs/public/:slug/chat-feed", (c) => c.json({ organization_slug: c.req.param("slug"), rooms: [] }));
 
+app.get("/api/network/orgs/public/:slug/media/:mediaId", async (c) => {
+  const row = await c.env.DB.prepare("SELECT * FROM organizations WHERE slug = ?")
+    .bind(slugify(c.req.param("slug")))
+    .first<OrganizationRow>();
+  if (!row) fail(404, "Organization not found");
+  const media = parseOrganizationMedia(row.media_json).find((item) => item.id === c.req.param("mediaId"));
+  if (!media?.image_key || !c.env.SCAN_IMAGES) fail(404, "Organization media is not available");
+  const object = await c.env.SCAN_IMAGES.get(media.image_key);
+  if (!object) fail(404, "Organization media is not available");
+  const headers = new Headers();
+  object.writeHttpMetadata(headers);
+  headers.set("cache-control", "public, max-age=31536000, immutable");
+  return new Response(object.body, { status: 200, headers });
+});
+
 app.get("/api/network/events/public", async (c) => {
   const q = (c.req.query("q") || "").trim();
   const upcomingOnly = (c.req.query("upcoming_only") || "true").toLowerCase() !== "false";
@@ -2794,11 +3022,11 @@ app.get("/api/network/events/public", async (c) => {
   const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
   const candidateLimit = q ? searchCandidateLimit(limit) : limit;
   const rows = await c.env.DB.prepare(
-    `SELECT e.*, o.name AS organization_name
+    `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url
      FROM events e
      LEFT JOIN organizations o ON o.id = e.host_org_id
      ${where}
-     ORDER BY COALESCE(e.starts_at, e.created_at) ASC
+     ORDER BY COALESCE(e.starts_at, e.created_at) ${upcomingOnly ? "ASC" : "DESC"}
      LIMIT ?`,
   )
     .bind(...binds, candidateLimit)
@@ -2818,12 +3046,27 @@ app.get("/api/network/events/public/:slug", async (c) => {
   return c.json(await mapEvent(c.env, c.req.raw, row));
 });
 
+app.get("/api/network/events/public/:slug/media/:mediaId", async (c) => {
+  const row = await publicEventBySlug(c.env.DB, c.req.param("slug"));
+  if (!row) fail(404, "Event not found");
+  const media = parseEventMedia(row.media_json).find((item) => item.id === c.req.param("mediaId"));
+  if (!media?.image_key || !c.env.SCAN_IMAGES) fail(404, "Event media is not available");
+  const object = await c.env.SCAN_IMAGES.get(media.image_key);
+  if (!object) fail(404, "Event media is not available");
+  const headers = new Headers();
+  object.writeHttpMetadata(headers);
+  headers.set("cache-control", "public, max-age=31536000, immutable");
+  return new Response(object.body, { status: 200, headers });
+});
+
 app.get("/api/network/events/public/:slug/flyer.svg", async (c) => {
   const row = await publicEventBySlug(c.env.DB, c.req.param("slug"));
   if (!row) fail(404, "Event not found");
   const format = flyerFormat(c.req.query("format") || c.req.query("size") || null);
-  const svg = await eventFlyerSvg(c.env, c.req.raw, row, format);
-  const dispositionName = `${row.slug}-${format === "postcard" ? "4x6" : format === "social" ? "social" : "letter"}-flyer.svg`;
+  const theme = flyerTheme(c.req.query("theme") || c.req.query("mode") || null);
+  const background = flyerBackground(c.req.query("background") || c.req.query("bg") || null);
+  const svg = await eventFlyerSvg(c.env, c.req.raw, row, format, theme, background);
+  const dispositionName = `${row.slug}-${format === "postcard" ? "4x6" : format}${theme === "dark" ? "-dark" : ""}${background !== "solid" ? `-${background}` : ""}-flyer.svg`;
   return new Response(svg, {
     headers: {
       "content-type": "image/svg+xml; charset=utf-8",
@@ -2837,12 +3080,13 @@ app.get("/api/network/events/public/:slug/chat", async (c) => {
   const row = await publicEventBySlug(c.env.DB, c.req.param("slug"));
   if (!row) fail(404, "Event not found");
   const roomId = String(row.event_chat_room_id || "").trim();
+  const messages = roomId ? await publicEventChatMessages(c.env, roomId) : [];
   return c.json({
     event_slug: row.slug,
     room_exists: Boolean(roomId),
     conversation_id: roomId || null,
     room_name: String(row.event_chat_room_name || row.title || "Event Chat").trim(),
-    messages: [],
+    messages,
   });
 });
 
@@ -3251,6 +3495,63 @@ app.patch("/api/network/orgs/:organizationId", async (c) => {
   return c.json(mapOrganization(row!));
 });
 
+app.patch("/api/network/orgs/:organizationId/media", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
+  if (!row) fail(404, "Organization not found");
+  await authorizeOrganization(c.env.DB, organizationActor(user, c.env), "manage", row.id);
+  const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  const before = parseOrganizationMedia(row.media_json);
+  const media = sanitizeOrganizationMedia(payload.media);
+  await c.env.DB.prepare("UPDATE organizations SET media_json = ?, updated_at = ? WHERE id = ?")
+    .bind(JSON.stringify(media), nowIso(), row.id)
+    .run();
+  if (c.env.SCAN_IMAGES) {
+    await Promise.all(removedOrganizationMediaImageKeys(row.id, before, media).map((key) => c.env.SCAN_IMAGES!.delete(key)));
+  }
+  const updated = await c.env.DB.prepare("SELECT * FROM organizations WHERE id = ?")
+    .bind(row.id)
+    .first<OrganizationRow>();
+  return c.json(mapOrganization(updated!));
+});
+
+app.post("/api/network/orgs/:organizationId/media", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
+  if (!row) fail(404, "Organization not found");
+  await authorizeOrganization(c.env.DB, organizationActor(user, c.env), "manage", row.id);
+  if (!c.env.SCAN_IMAGES) fail(503, "Organization media upload storage is not configured");
+  const formData = await c.req.raw.formData().catch(() => null);
+  if (!formData) fail(400, "multipart form data is required");
+  const image = formData.get("image");
+  if (!(image instanceof File)) fail(400, "image is required");
+  const existingMedia = parseOrganizationMedia(row.media_json);
+  if (existingMedia.length >= 12) fail(400, "Organization media gallery already has 12 items");
+  const allowed = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+  const contentType = image.type || "application/octet-stream";
+  if (!allowed.has(contentType)) fail(415, `Unsupported image type: ${contentType}`);
+  if (image.size > 8 * 1024 * 1024) fail(413, "Image exceeds 8 MB");
+  const mediaId = crypto.randomUUID();
+  const extension = (image.name.split(".").pop() || contentType.split("/")[1] || "bin").replace(/[^a-z0-9]/gi, "").toLowerCase() || "bin";
+  const imageBytes = await image.arrayBuffer();
+  const imageKey = `organization-media/${row.id}/${mediaId}.${extension}`;
+  await c.env.SCAN_IMAGES.put(imageKey, imageBytes, {
+    httpMetadata: { contentType },
+    customMetadata: { organization_id: row.id, submitted_by_user_id: user.id },
+  });
+  const label = cleanOptionalString(formData.get("label"), 160) || image.name || "Organization image";
+  const alt = cleanOptionalString(formData.get("alt"), 500) || label;
+  const url = `/api/network/orgs/public/${encodeURIComponent(row.slug)}/media/${encodeURIComponent(mediaId)}`;
+  const media = sanitizeOrganizationMedia([...existingMedia, { id: mediaId, url, label, alt, kind: "image", content_type: contentType, image_key: imageKey }]);
+  await c.env.DB.prepare("UPDATE organizations SET media_json = ?, updated_at = ? WHERE id = ?")
+    .bind(JSON.stringify(media), nowIso(), row.id)
+    .run();
+  const updated = await c.env.DB.prepare("SELECT * FROM organizations WHERE id = ?")
+    .bind(row.id)
+    .first<OrganizationRow>();
+  return c.json(mapOrganization(updated!), 201);
+});
+
 app.post("/api/network/orgs/:organizationId/claim", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   const requested = c.req.param("organizationId");
@@ -3390,7 +3691,7 @@ app.get("/api/network/events", async (c) => {
   await currentUser(c.env, c.req.raw);
   const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "300", 10) || 300, 500));
   const rows = await c.env.DB.prepare(
-    `SELECT e.*, o.name AS organization_name
+    `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url
      FROM events e
      LEFT JOIN organizations o ON o.id = e.host_org_id
      ORDER BY COALESCE(e.starts_at, e.created_at) ASC
@@ -3463,14 +3764,76 @@ app.patch("/api/network/events/:eventId", async (c) => {
   if ("social_title" in payload) updates.social_title = stringField(payload, "social_title", 140);
   if ("social_description" in payload) updates.social_description = stringField(payload, "social_description", 300);
   if ("social_image_url" in payload) updates.social_image_url = cleanPublicAssetUrl(payload.social_image_url);
+  if ("links" in payload) updates.event_links_json = JSON.stringify(sanitizeEventLinks(payload.links));
   if (!Object.keys(updates).length) return c.json(await mapEvent(c.env, c.req.raw, row));
   updates.updated_at = nowIso();
   const assignments = Object.keys(updates).map((key) => `${key} = ?`).join(", ");
   await c.env.DB.prepare(`UPDATE events SET ${assignments} WHERE id = ?`).bind(...Object.values(updates), row.id).run();
-  const updated = await c.env.DB.prepare("SELECT e.*, o.name AS organization_name FROM events e LEFT JOIN organizations o ON o.id = e.host_org_id WHERE e.id = ?")
+  const updated = await c.env.DB.prepare("SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url FROM events e LEFT JOIN organizations o ON o.id = e.host_org_id WHERE e.id = ?")
     .bind(row.id)
     .first<EventRow>();
   return c.json(await mapEvent(c.env, c.req.raw, updated!));
+});
+
+app.patch("/api/network/events/:eventId/media", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await c.env.DB.prepare("SELECT * FROM events WHERE id = ? OR slug = ?")
+    .bind(c.req.param("eventId"), slugify(c.req.param("eventId")))
+    .first<EventRow>();
+  if (!row) fail(404, "Event not found");
+  await authorizeEventManager(c.env, user, row);
+  const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  const before = parseEventMedia(row.media_json);
+  const media = sanitizeEventMedia(payload.media);
+  await c.env.DB.prepare("UPDATE events SET media_json = ?, updated_at = ? WHERE id = ?")
+    .bind(JSON.stringify(media), nowIso(), row.id)
+    .run();
+  if (c.env.SCAN_IMAGES) {
+    await Promise.all(removedEventMediaImageKeys(row.id, before, media).map((key) => c.env.SCAN_IMAGES!.delete(key)));
+  }
+  const updated = await c.env.DB.prepare("SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url FROM events e LEFT JOIN organizations o ON o.id = e.host_org_id WHERE e.id = ?")
+    .bind(row.id)
+    .first<EventRow>();
+  return c.json(await mapEvent(c.env, c.req.raw, updated!));
+});
+
+app.post("/api/network/events/:eventId/media", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await c.env.DB.prepare("SELECT * FROM events WHERE id = ? OR slug = ?")
+    .bind(c.req.param("eventId"), slugify(c.req.param("eventId")))
+    .first<EventRow>();
+  if (!row) fail(404, "Event not found");
+  await authorizeEventManager(c.env, user, row);
+  if (!c.env.SCAN_IMAGES) fail(503, "Event media upload storage is not configured");
+  const formData = await c.req.raw.formData().catch(() => null);
+  if (!formData) fail(400, "multipart form data is required");
+  const image = formData.get("image");
+  if (!(image instanceof File)) fail(400, "image is required");
+  const existingMedia = parseEventMedia(row.media_json);
+  if (existingMedia.length >= 12) fail(400, "Event media gallery already has 12 items");
+  const allowed = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+  const contentType = image.type || "application/octet-stream";
+  if (!allowed.has(contentType)) fail(415, `Unsupported image type: ${contentType}`);
+  if (image.size > 8 * 1024 * 1024) fail(413, "Image exceeds 8 MB");
+  const mediaId = crypto.randomUUID();
+  const extension = (image.name.split(".").pop() || contentType.split("/")[1] || "bin").replace(/[^a-z0-9]/gi, "").toLowerCase() || "bin";
+  const imageBytes = await image.arrayBuffer();
+  const imageKey = `event-media/${row.id}/${mediaId}.${extension}`;
+  await c.env.SCAN_IMAGES.put(imageKey, imageBytes, {
+    httpMetadata: { contentType },
+    customMetadata: { event_id: row.id, submitted_by_user_id: user.id },
+  });
+  const label = cleanOptionalString(formData.get("label"), 160) || image.name || "Event image";
+  const alt = cleanOptionalString(formData.get("alt"), 500) || label;
+  const url = `/api/network/events/public/${encodeURIComponent(row.slug)}/media/${encodeURIComponent(mediaId)}`;
+  const media = sanitizeEventMedia([...existingMedia, { id: mediaId, url, label, alt, kind: "image", content_type: contentType, image_key: imageKey }]);
+  await c.env.DB.prepare("UPDATE events SET media_json = ?, updated_at = ? WHERE id = ?")
+    .bind(JSON.stringify(media), nowIso(), row.id)
+    .run();
+  const updated = await c.env.DB.prepare("SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url FROM events e LEFT JOIN organizations o ON o.id = e.host_org_id WHERE e.id = ?")
+    .bind(row.id)
+    .first<EventRow>();
+  return c.json(await mapEvent(c.env, c.req.raw, updated!), 201);
 });
 
 app.post("/api/network/events/:eventId/claim", async (c) => {
@@ -3531,6 +3894,7 @@ app.post("/api/network/events/:eventId/attendance", async (c) => {
   for (const field of ["email_updates", "organization_announcements"]) {
     if (payload[field] !== undefined && typeof payload[field] !== "boolean") fail(400, "Invalid email preference");
   }
+  await ensureContactDirectoryUser(c.env.DB, user);
   const statements = [c.env.DB.prepare(`INSERT INTO event_registrations (event_id, user_id)
     VALUES (?, ?) ON CONFLICT(event_id, user_id) DO NOTHING`).bind(eventId, user.id)];
   if (payload.email_updates !== undefined) statements.push(subscriptionStatement(c.env.DB, user, 'event', eventId, payload.email_updates === true));
@@ -4587,7 +4951,7 @@ app.get("/api/network/users/public/:slug/events", async (c) => {
   const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "60", 10) || 60, 200));
   const upcomingOnly = (c.req.query("upcoming_only") || "true").toLowerCase() !== "false";
   const rows = await c.env.DB.prepare(
-    `SELECT e.*, o.name AS organization_name
+    `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url
      FROM events e
      LEFT JOIN organizations o ON o.id = e.host_org_id
      WHERE e.host_user_id = ?
@@ -4656,6 +5020,9 @@ app.post("/api/network/chat/bootstrap", async (c) => {
   }
   return c.json({ detail: "Matrix bootstrap is not implemented in the Cloudflare org worker yet" }, 501);
 });
+
+app.all("/api/chat", (c) => proxyChatRequest(c.req.raw, c.env));
+app.all("/api/chat/*", (c) => proxyChatRequest(c.req.raw, c.env));
 
 app.route('/api/email', emailRoutes(currentUser, async (env, request) => {
   const user = await currentUser(env, request);

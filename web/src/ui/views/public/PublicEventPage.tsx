@@ -1,38 +1,69 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { CalendarPlus, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, MapPinned, RotateCcw, X, ZoomIn, ZoomOut } from 'lucide-react'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
-import { downloadIcsEvent, outlookCalendarUrl } from '../../utils/calendar'
+import { downloadIcsEvent, googleCalendarUrl, outlookCalendarUrl } from '../../utils/calendar'
 import { useAuth } from '../../../app/AppProviders'
 import { NativeChatApi, type NativeChatMessage, type NativeChatReaction } from '../../../chat/nativeChatApi'
 import { refreshRuntimeTokenFromSession } from '../../../infrastructure/auth/sessionToken'
 import { pidpAppLoginUrl } from '../../../config/pidp'
 import { EventRegistration } from './EventRegistration'
+import { EventPosterTools } from '../../components/EventPosterTools'
 import { toUserFacingErrorMessage } from '../../../infrastructure/http/userFacingError'
 import { loadGoogleCalendarConnection, savePortalEventToGoogleCalendar } from '../googleCalendarApi'
 import { loadMicrosoftCalendarConnection, savePortalEventToMicrosoftCalendar } from '../microsoftCalendarApi'
 
 const ORG_API_BASE = '/api/org'
 const QUICK_REACTIONS = ['👍', '❤️', '🔥', '🎉']
+const MEDIA_ZOOM_MIN = 1
+const MEDIA_ZOOM_MAX = 3
+const MEDIA_ZOOM_STEP = 0.5
 
 function orgUrl(path: string) {
   if (!path.startsWith('/')) return `${ORG_API_BASE}/${path}`
   return `${ORG_API_BASE}${path}`
 }
 
+function clampMediaZoom(value: number) {
+  return Math.min(MEDIA_ZOOM_MAX, Math.max(MEDIA_ZOOM_MIN, value))
+}
+
 type PublicEvent = {
   id: string
   title: string
   slug: string
+  updated_at?: string | null
   description?: string | null
   starts_at?: string | null
   ends_at?: string | null
   location?: string | null
   source_url?: string | null
   image_url?: string | null
+  media?: EventMediaItem[]
+  links?: EventLinkItem[]
   organization_name?: string | null
+  organization_slug?: string | null
+  organization_image_url?: string | null
   host_org_name?: string | null
   host_org_id?: string | null
   host_user_id?: string | null
+}
+
+type EventMediaItem = {
+  id: string
+  url: string
+  label: string
+  alt: string
+  kind: 'image'
+}
+
+type EventLinkItem = {
+  id: string
+  url: string
+  label: string
+  title: string
+  description?: string | null
+  image_url?: string | null
 }
 
 type PublicEventChat = {
@@ -40,7 +71,7 @@ type PublicEventChat = {
   room_exists: boolean
   conversation_id?: string | null
   room_name?: string | null
-  messages?: unknown[]
+  messages?: NativeChatMessage[]
 }
 
 function toLocalDateTime(value?: string | null) {
@@ -72,6 +103,22 @@ function eventUrl(slug: string) {
   return `${window.location.origin}/events/${encodeURIComponent(slug)}`
 }
 
+function googleMapsUrl(location: string) {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`
+}
+
+function googleMapsEmbedUrl(location: string) {
+  return `https://www.google.com/maps?q=${encodeURIComponent(location)}&output=embed`
+}
+
+function linkHost(value: string) {
+  try {
+    return new URL(value).hostname.replace(/^www\./, '')
+  } catch {
+    return value
+  }
+}
+
 function summary(text?: string | null) {
   const cleaned = (text || '').replace(/\s+/g, ' ').trim()
   if (!cleaned) return 'Event details and schedule on Org Portal.'
@@ -81,6 +128,16 @@ function summary(text?: string | null) {
 function getEventOrganizerName(event: PublicEvent) {
   const candidate = event.organization_name || event.host_org_name
   return candidate?.trim() || 'Code Collective'
+}
+
+function organizationInitials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join('')
+    .toUpperCase() || '?'
 }
 
 function getEventOfferValidFrom(event: PublicEvent) {
@@ -209,6 +266,9 @@ export function PublicEventPage() {
   const [chatActionPending, setChatActionPending] = useState(false)
   const [myUserId, setMyUserId] = useState<string | null>(null)
   const [canManageEvent, setCanManageEvent] = useState(false)
+  const [addressCopied, setAddressCopied] = useState(false)
+  const [selectedMediaIndex, setSelectedMediaIndex] = useState(-1)
+  const [mediaZoom, setMediaZoom] = useState(1)
   const chatApi = useMemo(
     () =>
       new NativeChatApi(async () => {
@@ -261,7 +321,10 @@ export function PublicEventPage() {
       })
       .then((data) => {
         if (cancelled) return
-        setEvent(data)
+        setEvent({ ...data, media: data.media?.map((item) => ({
+          ...item,
+          url: item.url.startsWith('/api/network/') ? orgUrl(item.url) : item.url,
+        })) })
         setStatus('')
       })
       .catch((err) => {
@@ -288,10 +351,12 @@ export function PublicEventPage() {
       .then((payload) => {
         if (cancelled) return
         setEventChat(payload)
+        setEventChatMessages(payload.messages || [])
       })
       .catch((err) => {
         if (cancelled) return
         setEventChat(null)
+        setEventChatMessages([])
         setChatStatus(toUserFacingErrorMessage(err, 'Event chat unavailable'))
       })
       .finally(() => {
@@ -461,6 +526,48 @@ export function PublicEventPage() {
     return roots.map((message) => ({ message, replies: byRoot.get(message.id) || [] }))
   }, [eventChatMessages])
 
+  const mediaItems = event?.media || []
+  const eventLinks = event?.links || []
+  const selectedMedia = selectedMediaIndex >= 0 ? mediaItems[selectedMediaIndex] : null
+  const mediaRailRef = useRef<HTMLDivElement>(null)
+  const galleryStageRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (selectedMediaIndex >= mediaItems.length) setSelectedMediaIndex(-1)
+  }, [mediaItems.length, selectedMediaIndex])
+
+  useEffect(() => {
+    setMediaZoom(1)
+    galleryStageRef.current?.scrollTo({ top: 0, left: 0 })
+  }, [selectedMedia?.id])
+
+  useEffect(() => {
+    if (mediaZoom === 1) galleryStageRef.current?.scrollTo({ top: 0, left: 0 })
+  }, [mediaZoom])
+
+  useEffect(() => {
+    if (!selectedMedia) return
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setSelectedMediaIndex(-1)
+      if (event.key === 'ArrowLeft') setSelectedMediaIndex((current) => (current <= 0 ? mediaItems.length - 1 : current - 1))
+      if (event.key === 'ArrowRight') setSelectedMediaIndex((current) => (current + 1) % mediaItems.length)
+      if (event.key === '+' || event.key === '=') {
+        event.preventDefault()
+        setMediaZoom((current) => clampMediaZoom(current + MEDIA_ZOOM_STEP))
+      }
+      if (event.key === '-' || event.key === '_') {
+        event.preventDefault()
+        setMediaZoom((current) => clampMediaZoom(current - MEDIA_ZOOM_STEP))
+      }
+      if (event.key === '0') {
+        event.preventDefault()
+        setMediaZoom(1)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [mediaItems.length, selectedMedia])
+
   async function postEventComment() {
     const body = commentDraft.trim()
     if (!eventChat?.conversation_id || !body || !eventChatReady) return
@@ -475,6 +582,12 @@ export function PublicEventPage() {
     } finally {
       setChatActionPending(false)
     }
+  }
+
+  function scrollEventMedia(direction: -1 | 1) {
+    const rail = mediaRailRef.current
+    if (!rail) return
+    rail.scrollBy({ left: direction * Math.max(180, rail.clientWidth * 0.72), behavior: 'smooth' })
   }
 
   async function postEventReply(rootMessageId: string) {
@@ -524,10 +637,22 @@ export function PublicEventPage() {
     }
     if (googleCalendarConnected) {
       const result = await savePortalEventToGoogleCalendar(token, calendarEvent)
-      if (result.connected) return 'You’re registered and the event was added to Google Calendar.'
+      if (result.connected) return 'Saved to your registration and added to Google Calendar.'
     } else if (microsoftCalendarConnected) {
       const result = await savePortalEventToMicrosoftCalendar(token, calendarEvent)
-      if (result.connected) return 'You’re registered and the event was added to Microsoft Calendar.'
+      if (result.connected) return 'Saved to your registration and added to Microsoft Calendar.'
+    }
+  }
+
+  async function copyEventAddress() {
+    const address = event?.location?.trim()
+    if (!address) return
+    try {
+      await navigator.clipboard.writeText(address)
+      setAddressCopied(true)
+      window.setTimeout(() => setAddressCopied(false), 1600)
+    } catch {
+      setAddressCopied(false)
     }
   }
 
@@ -542,42 +667,88 @@ export function PublicEventPage() {
 
   const eventStart = event.starts_at
   const eventEnd = event.ends_at || eventStart || null
+  const mapsUrl = event.location ? googleMapsUrl(event.location) : null
+  const mapsEmbedUrl = event.location ? googleMapsEmbedUrl(event.location) : null
+  const organizerName = getEventOrganizerName(event)
+  const organizerAvatar = event.organization_image_url?.trim() || ''
+  const publicEventUrl = event.source_url || eventUrl(event.slug)
+  const calendarDownloadEvent = eventStart && eventEnd ? {
+    title: event.title,
+    description: event.description || 'Event from Org Portal.',
+    location: event.location || null,
+    startsAt: eventStart,
+    endsAt: eventEnd,
+    url: publicEventUrl,
+  } : null
 
   return (
     <article className="public-event-page">
-      <section className="public-event-hero">
-        {event.image_url ? (
-          <img className="public-event-hero-image" src={event.image_url} alt="" />
-        ) : <div className="public-event-hero-image public-event-hero-placeholder" aria-hidden="true" />}
-        <div className="public-event-hero-content">
-          <p className="public-event-eyebrow">{getEventOrganizerName(event)}</p>
-          <h1>{event.title}</h1>
-          <div className="public-event-facts" aria-label="Event details">
-            <div>
-              <span>Date</span>
-              <strong>{toEventDate(event.starts_at)}</strong>
-            </div>
-            <div>
-              <span>Time</span>
-              <strong>{toEventTimeRange(event.starts_at, event.ends_at)}</strong>
-            </div>
-            {event.location ? (
-              <div>
-                <span>Location</span>
-                <strong>{event.location}</strong>
-              </div>
-            ) : null}
-          </div>
-          {canManageEvent ? (
-            <Link className="btn-primary public-event-manage-button" to={`/orgs/events#event-${encodeURIComponent(event.slug)}`}>
-              Manage Event
-            </Link>
-          ) : null}
-        </div>
-      </section>
-
-      <div className="public-event-layout">
+      <div className="public-event-layout public-event-luma-layout">
         <main className="public-event-main">
+          <section className="public-event-hero">
+            {event.image_url ? (
+              <img className="public-event-hero-image" src={event.image_url} alt="" />
+            ) : <div className="public-event-hero-image public-event-hero-placeholder" aria-hidden="true" />}
+            <div className="public-event-hero-content">
+              {event.organization_slug ? (
+                <Link
+                  className="public-event-organizer-link"
+                  to={`/orgs/${encodeURIComponent(event.organization_slug)}`}
+                  aria-label={`View ${organizerName} group page`}
+                >
+                  <span className="public-event-organizer-avatar" aria-hidden="true">
+                    {organizerAvatar ? <img src={organizerAvatar} alt="" /> : organizationInitials(organizerName)}
+                  </span>
+                  <span>{organizerName}</span>
+                </Link>
+              ) : (
+                <p className="public-event-eyebrow">{organizerName}</p>
+              )}
+              <h1>{event.title}</h1>
+              {canManageEvent ? (
+                <Link className="btn-primary public-event-manage-button" to={`/orgs/events#event-${encodeURIComponent(event.slug)}`}>
+                  Manage Event
+                </Link>
+              ) : null}
+            </div>
+          </section>
+          {mediaItems.length ? (
+            <section className="portal-card public-event-media" aria-labelledby="event-media-title">
+              <div className="public-event-card-heading public-event-media-heading-row">
+                <div>
+                  <p className="public-event-eyebrow">Event Media</p>
+                  <h2 id="event-media-title">Files And Images</h2>
+                </div>
+                {mediaItems.length > 1 ? (
+                  <div className="public-event-media-controls" aria-label="Browse event media">
+                    <button type="button" onClick={() => scrollEventMedia(-1)} aria-label="Previous event media" title="Previous event media">
+                      <ChevronLeft size={18} aria-hidden="true" />
+                    </button>
+                    <button type="button" onClick={() => scrollEventMedia(1)} aria-label="Next event media" title="Next event media">
+                      <ChevronRight size={18} aria-hidden="true" />
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+              <div className="public-event-media-grid" ref={mediaRailRef}>
+                {mediaItems.map((item, index) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="public-event-media-card"
+                    onClick={() => setSelectedMediaIndex(index)}
+                    aria-label={`Open ${item.alt || item.label} in gallery`}
+                  >
+                    <img
+                      src={item.url}
+                      alt={item.alt || item.label}
+                    />
+                    <strong>{item.label}</strong>
+                  </button>
+                ))}
+              </div>
+            </section>
+          ) : null}
           {event.description ? (
             <section className="portal-card public-event-description">
               <div className="public-event-card-heading">
@@ -587,53 +758,35 @@ export function PublicEventPage() {
               <p>{event.description}</p>
             </section>
           ) : null}
-          <section className="portal-card public-event-calendar-card">
-            <div className="public-event-card-heading">
-              <p className="public-event-eyebrow">Calendar</p>
-              <h2>Add It To Your Schedule</h2>
-            </div>
-            <div className="public-event-actions">
-        {eventStart && eventEnd ? (
-          <>
-            <button
-              type="button"
-              className="portal-button-secondary"
-              onClick={() => downloadIcsEvent({
-                title: event.title,
-                description: event.description || 'Event from Org Portal.',
-                location: event.location || null,
-                startsAt: eventStart,
-                endsAt: eventEnd,
-                url: event.source_url || eventUrl(event.slug),
-              })}
-            >
-              Download .ics
-            </button>
-            <a
-              href={outlookCalendarUrl({
-                title: event.title,
-                description: event.description || 'Event from Org Portal.',
-                location: event.location || null,
-                startsAt: eventStart,
-                endsAt: eventEnd,
-                url: event.source_url || eventUrl(event.slug),
-              })}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Outlook
-            </a>
-          </>
-        ) : null}
-            </div>
-          </section>
-      {event.source_url ? (
-        <p style={{ margin: 0, overflowWrap: 'anywhere' }}>
-          <a href={event.source_url} target="_blank" rel="noreferrer">
-            Source / RSVP
-          </a>
-        </p>
-      ) : null}
+          {eventLinks.length > 0 ? (
+            <section className="portal-card public-event-links" aria-labelledby="event-links-title">
+              <div className="public-event-card-heading">
+                <p className="public-event-eyebrow">Related Links</p>
+                <h2 id="event-links-title">Event Links</h2>
+              </div>
+              <div className="public-event-link-list">
+                {eventLinks.map((link) => (
+                  <a key={link.id || link.url} className={`public-event-link-card${link.image_url ? '' : ' public-event-link-card-text-only'}`} href={link.url} target="_blank" rel="noreferrer">
+                    {link.image_url ? (
+                      <img src={link.image_url} alt="" loading="lazy" decoding="async" />
+                    ) : null}
+                    <span className="public-event-link-copy">
+                      <span className="public-event-link-label">{link.label}</span>
+                      <strong>{link.title || linkHost(link.url)}</strong>
+                      {link.description ? <span>{link.description}</span> : null}
+                      <span className="public-event-link-url">{linkHost(link.url)} <ExternalLink size={15} aria-hidden="true" /></span>
+                    </span>
+                  </a>
+                ))}
+              </div>
+            </section>
+          ) : event.source_url ? (
+            <p style={{ margin: 0, overflowWrap: 'anywhere' }}>
+              <a href={event.source_url} target="_blank" rel="noreferrer">
+                Source / RSVP
+              </a>
+            </p>
+          ) : null}
       <section className="portal-card public-event-chat">
         <div className="public-event-card-heading">
           <p className="public-event-eyebrow">Conversation</p>
@@ -769,12 +922,187 @@ export function PublicEventPage() {
         ) : null}
       </section>
         </main>
-        <aside className="public-event-side">
+        <aside className="public-event-side public-event-luma-side" aria-label="Event actions and location">
           <EventRegistration key={`${event.id}:${user?.id || 'guest'}:${Boolean(token)}`}
             eventId={event.id} slug={event.slug} token={token} authLoading={authLoading} saveToCalendar={saveToCalendar}
             organizationName={event.host_org_id ? event.organization_name || event.host_org_name : null} />
+          <section className="portal-card public-event-logistics-card" aria-label="Event details">
+            <div className="public-event-logistics-list">
+              <div className="public-event-logistics-item">
+                <span>Date</span>
+                <strong>{toEventDate(event.starts_at)}</strong>
+              </div>
+              <div className="public-event-logistics-item">
+                <span>Time</span>
+                <strong>{toEventTimeRange(event.starts_at, event.ends_at)}</strong>
+                {calendarDownloadEvent ? (
+                  <div className="public-event-calendar-actions" aria-label="Add event to calendar">
+                    <details className="public-event-calendar-menu">
+                      <summary className="public-event-icon-action" title="Add to calendar" aria-label="Add to calendar">
+                        <CalendarPlus size={17} aria-hidden="true" />
+                      </summary>
+                      <div className="public-event-calendar-menu-list">
+                        <a href={googleCalendarUrl(calendarDownloadEvent)} target="_blank" rel="noreferrer">
+                          Google Calendar
+                        </a>
+                        <a href={outlookCalendarUrl(calendarDownloadEvent)} target="_blank" rel="noreferrer">
+                          Outlook Calendar
+                        </a>
+                        <button type="button" onClick={() => downloadIcsEvent(calendarDownloadEvent)}>
+                          <Download size={15} aria-hidden="true" />
+                          <span>Apple / iCal file</span>
+                        </button>
+                      </div>
+                    </details>
+                  </div>
+                ) : null}
+              </div>
+              {event.location ? (
+                <div className="public-event-logistics-item">
+                  <span>Location</span>
+                  <div className="public-event-location-row">
+                    <strong>{event.location}</strong>
+                    <div className="public-event-location-actions" aria-label="Location actions">
+                      <button
+                        type="button"
+                        className="public-event-icon-action"
+                        onClick={() => copyEventAddress().catch(() => {})}
+                        title={addressCopied ? 'Address copied' : 'Copy address'}
+                        aria-label={addressCopied ? 'Address copied' : 'Copy address'}
+                      >
+                        <Copy size={17} aria-hidden="true" />
+                      </button>
+                      {mapsUrl ? (
+                        <a
+                          className="public-event-icon-action"
+                          href={mapsUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          title="Open in Google Maps"
+                          aria-label="Open location in Google Maps"
+                        >
+                          <MapPinned size={17} aria-hidden="true" />
+                        </a>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+            {event.location && mapsUrl && mapsEmbedUrl ? (
+              <div className="public-event-map-card">
+                <a className="public-event-map-frame" href={mapsUrl} target="_blank" rel="noreferrer" aria-label={`Open ${event.location} in Google Maps`}>
+                  <iframe title={`Map for ${event.location}`} src={mapsEmbedUrl} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+                </a>
+              </div>
+            ) : null}
+          </section>
+          <EventPosterTools slug={event.slug} title={event.title} revision={event.updated_at || ''} inline />
         </aside>
       </div>
+      {selectedMedia ? (
+        <div className="public-event-gallery-backdrop" role="presentation" onMouseDown={(event) => {
+          if (event.target === event.currentTarget) setSelectedMediaIndex(-1)
+        }}>
+          <section
+            className="public-event-gallery-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="event-gallery-title"
+          >
+            <div className="public-event-gallery-toolbar">
+              <div>
+                <p className="public-event-eyebrow">Event Gallery</p>
+                <h2 id="event-gallery-title">{selectedMedia.label}</h2>
+              </div>
+              <div className="public-event-gallery-actions">
+                <div className="public-event-gallery-zoom-controls" role="group" aria-label="Image zoom">
+                  <button
+                    type="button"
+                    onClick={() => setMediaZoom((current) => clampMediaZoom(current - MEDIA_ZOOM_STEP))}
+                    disabled={mediaZoom <= MEDIA_ZOOM_MIN}
+                    aria-label="Zoom out"
+                    title="Zoom out"
+                  >
+                    <ZoomOut size={18} aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    className="public-event-gallery-zoom-primary"
+                    onClick={() => setMediaZoom((current) => current > 1 ? 1 : 2)}
+                    aria-pressed={mediaZoom > 1}
+                    aria-label={mediaZoom > 1 ? 'Reset zoom' : 'Zoom in'}
+                    title={mediaZoom > 1 ? 'Reset zoom' : 'Zoom in'}
+                  >
+                    <ZoomIn size={18} aria-hidden="true" />
+                    <span>{Math.round(mediaZoom * 100)}%</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMediaZoom((current) => clampMediaZoom(current + MEDIA_ZOOM_STEP))}
+                    disabled={mediaZoom >= MEDIA_ZOOM_MAX}
+                    aria-label="Zoom in"
+                    title="Zoom in"
+                  >
+                    <ZoomIn size={18} aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMediaZoom(1)}
+                    disabled={mediaZoom === 1}
+                    aria-label="Reset zoom"
+                    title="Reset zoom"
+                  >
+                    <RotateCcw size={18} aria-hidden="true" />
+                  </button>
+                </div>
+                <a href={selectedMedia.url} target="_blank" rel="noopener noreferrer" title="Open image file">
+                  <ExternalLink size={18} aria-hidden="true" />
+                  <span>Open</span>
+                </a>
+                <button type="button" onClick={() => setSelectedMediaIndex(-1)} aria-label="Close gallery" title="Close gallery">
+                  <X size={20} aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+            <div
+              ref={galleryStageRef}
+              className={`public-event-gallery-stage${mediaZoom > 1 ? ' public-event-gallery-stage-zoomed' : ''}`}
+            >
+              {mediaItems.length > 1 ? (
+                <button
+                  type="button"
+                  className="public-event-gallery-nav public-event-gallery-prev"
+                  onClick={() => setSelectedMediaIndex((current) => (current <= 0 ? mediaItems.length - 1 : current - 1))}
+                  aria-label="Previous image"
+                  title="Previous image"
+                >
+                  <ChevronLeft size={26} aria-hidden="true" />
+                </button>
+              ) : null}
+              <img
+                src={selectedMedia.url}
+                alt={selectedMedia.alt || selectedMedia.label}
+                style={mediaZoom > 1 ? { width: `${mediaZoom * 100}%` } : undefined}
+                onClick={() => setMediaZoom((current) => current > 1 ? 1 : 2)}
+                title={mediaZoom > 1 ? 'Reset zoom' : 'Zoom in'}
+              />
+              {mediaItems.length > 1 ? (
+                <button
+                  type="button"
+                  className="public-event-gallery-nav public-event-gallery-next"
+                  onClick={() => setSelectedMediaIndex((current) => (current + 1) % mediaItems.length)}
+                  aria-label="Next image"
+                  title="Next image"
+                >
+                  <ChevronRight size={26} aria-hidden="true" />
+                </button>
+              ) : null}
+            </div>
+            <p className="public-event-gallery-count">{selectedMediaIndex + 1} of {mediaItems.length}</p>
+          </section>
+        </div>
+      ) : null}
     </article>
   )
 }

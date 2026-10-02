@@ -1,0 +1,1 @@
+ALTER TABLE events ADD COLUMN media_json TEXT NOT NULL DEFAULT '[]';
