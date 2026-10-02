@@ -341,10 +341,10 @@ async function runPortalOperation(env: Env, identity: { userId: string; scopes: 
   }
   if (existing.custom_domain_hostname && existing.custom_domain_hostname !== hostname) throw new EventIntegrationError(409, "Request this domain before attaching it.");
   await env.DB.prepare(
-    `UPDATE portal_tenants SET hostname = ?, public_base_url = ?, canonical_path_prefix = '',
+    `UPDATE portal_tenants SET hostname = ?, public_base_url = ?, home_url = ?, canonical_path_prefix = '',
      custom_domain_hostname = ?, custom_domain_status = 'attached', custom_domain_attached_at = ?,
      custom_domain_notes = ?, updated_at = ? WHERE id = ?`,
-  ).bind(hostname, `https://${hostname}`, hostname, now, domain.notes || null, now, existing.id).run();
+  ).bind(hostname, `https://${hostname}`, `https://${hostname}/`, hostname, now, domain.notes || null, now, existing.id).run();
   return { portal: await portalResponse(env, await portalTenantByOrg(env.DB, organization)) };
 }
 

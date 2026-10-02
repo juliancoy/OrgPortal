@@ -274,6 +274,7 @@ test("MCP exposes organization portal setup and custom-domain flow", async () =>
     const attached = await rpc("attach_portal_custom_domain", { organizationId: "org-one", hostname: "one.example.org" });
     assert.equal(attached.portal.hostname, "one.example.org");
     assert.equal(attached.portal.public_base_url, "https://one.example.org");
+    assert.equal(attached.portal.home_url, "https://one.example.org/");
     const loaded = await rpc("get_portal_setup", { organizationId: "org-one" });
     assert.equal(loaded.portal.custom_domain_status, "attached");
   } finally { globalThis.fetch = originalFetch; db.close(); }
