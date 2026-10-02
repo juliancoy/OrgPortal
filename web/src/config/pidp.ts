@@ -88,10 +88,7 @@ export function normalizePostLoginPath(next: string): string {
 
 export function portalAuthCallbackUrl(next: string): string {
   const target = normalizePostLoginPath(next)
-  const community = getDomainCommunity()
-  // PIdP already trusts the shared callback and sets a codecollective.us session cookie.
-  const callback = new URL(community ? 'https://codecollective.us/p/auth/callback' : portalUrl('/auth/callback'))
-  if (community) callback.searchParams.set('community', community.id)
+  const callback = new URL(portalUrl('/auth/callback'))
   callback.searchParams.set('next', target)
   return callback.toString()
 }

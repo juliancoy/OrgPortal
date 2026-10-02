@@ -54,13 +54,15 @@ test('non-timebank tenant domains also use root portal routes', () => {
   expect(portalAuthCallbackUrl('/org-events')).toContain('next=%2Forg-events')
 })
 
-test('shared sign-in callback keeps root listing destinations and rejects external returns', () => {
+test('timebank sign-in returns to the same origin and retains root listing destinations', () => {
+  vi.stubGlobal('window', { location: { origin: 'https://timebank.codecollective.us', hostname: 'timebank.codecollective.us' } })
   vi.stubEnv('BASE_URL', '/p/')
   setDomainCommunity(tenant)
   expect(normalizePostLoginPath('/?listing=abc')).toBe('/?listing=abc')
   expect(normalizePostLoginPath('//evil.test')).toBe('/')
   const callback = new URL(portalAuthCallbackUrl('/?listing=abc'))
-  expect(callback.origin + callback.pathname).toBe('https://codecollective.us/p/auth/callback')
-  expect(callback.searchParams.get('community')).toBe('timebank')
+  expect(callback.origin + callback.pathname).toBe('https://timebank.codecollective.us/auth/callback')
+  expect(callback.searchParams.has('community')).toBe(false)
+  vi.unstubAllGlobals()
   expect(callback.searchParams.get('next')).toBe('/?listing=abc')
 })
