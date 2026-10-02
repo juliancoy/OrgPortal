@@ -124,6 +124,11 @@ export function pidpOwnerLoginUrl(next: string): string {
 }
 
 export function pidpSingleSignOnUrl(next: string, provider?: 'google' | 'github'): string {
+  if (isNativeCapacitorRuntime()) {
+    if (!provider) return pidpAppLoginUrl(next)
+    const params = new URLSearchParams({ app: PIDP_APP_SLUG, next: getNativeAuthCallbackUrl() })
+    return pidpUrl(`/auth/${provider}/login?${params.toString()}`)
+  }
   const params = new URLSearchParams({ app: PIDP_APP_SLUG, next: portalAuthCallbackUrl(next) })
   if (provider) params.set('provider', provider)
   return pidpUrl(`/auth/sso/start?${params.toString()}`)
