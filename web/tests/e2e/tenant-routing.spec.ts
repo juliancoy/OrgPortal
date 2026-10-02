@@ -560,3 +560,23 @@ test('event lists separate past gatherings, show sourced attendance to guests, a
   await expect(upcoming.getByRole('heading', { name: 'Next gathering' })).toBeVisible()
   await expect(upcoming.getByRole('link', { name: 'Log in to register' })).toBeVisible()
 })
+
+test('LifeTech keeps its own logo and app icons across chat and event navigation', async ({ page }) => {
+  await mockTenant(page)
+  await page.route('**/api/org/api/portal/tenant', route => route.fulfill({ json: {
+    id: 'lifetech', hostname: 'lifetech.fyi', name: 'LifeTech', tagline: 'Health × Medicine × Biotech',
+    accent_color: '#061a26', profile: 'community', features: ['directory', 'events', 'chat'],
+    home_kind: 'auth', home_org_slug: 'lifetech', canonical_path_prefix: '',
+    brand_image_path: '/assets/images/lifetech-logo.png', manifest_path: '/lifetech.webmanifest',
+    theme_color: '#061a26', home_url: 'https://lifetech.fyi/',
+  } }))
+  await page.route('**/api/org/api/network/orgs/public/lifetech/events?**', route => route.fulfill({ json: [] }))
+  for (const path of ['/org-events', '/chat', '/users/login']) {
+    await page.goto(portal(path))
+    await expect(page.locator('img[src="/assets/images/lifetech-logo.png"]').first()).toBeVisible()
+    await expect(page.locator('img[src*="codecollective_logo"], img[src*="namebanner"], img[alt="Code Collective"]')).toHaveCount(0)
+    await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', '/assets/images/lifetech-logo.png')
+    await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', '/assets/images/lifetech-logo.png')
+    await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/lifetech.webmanifest')
+  }
+})
