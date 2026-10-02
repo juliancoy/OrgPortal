@@ -6,7 +6,7 @@ export class EventTestDb {
   private sqlite = new DatabaseSync(":memory:");
   constructor() {
     this.sqlite.exec(readFileSync(new URL("../migrations/0017_event_mcp_operations.sql", import.meta.url), "utf8"));
-    this.sqlite.exec(`CREATE TABLE organizations (id TEXT, name TEXT, slug TEXT, source_url TEXT, image_url TEXT, media_json TEXT NOT NULL DEFAULT '[]', updated_at TEXT DEFAULT '');
+    this.sqlite.exec(`CREATE TABLE organizations (id TEXT PRIMARY KEY, name TEXT, slug TEXT, source_url TEXT, image_url TEXT, media_json TEXT NOT NULL DEFAULT '[]', updated_at TEXT DEFAULT '');
       CREATE TABLE organization_memberships (organization_id TEXT, user_id TEXT, role TEXT, status TEXT);
       CREATE TABLE portal_tenants (
         id TEXT PRIMARY KEY,
@@ -75,6 +75,7 @@ export class EventTestDb {
       INSERT INTO organizations (id, name, slug, source_url, image_url, media_json, updated_at)
         VALUES ('org-one', 'One', 'one', 'https://one.example', 'https://one.example/logo.png', '[]', '');
       INSERT INTO organization_memberships VALUES ('org-one', 'pidp-user', 'owner', 'active');`);
+    this.sqlite.exec(readFileSync(new URL("../migrations/0044_event_history.sql", import.meta.url), "utf8"));
   }
   prepare(sql: string) {
     const stmt = this.sqlite.prepare(sql);

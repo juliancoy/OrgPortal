@@ -239,6 +239,8 @@ type EventRow = {
   organization_name?: string | null;
   organization_slug?: string | null;
   organization_image_url?: string | null;
+  attendance_count?: number | null;
+  attendance_source_url?: string | null;
 };
 
 type RegisteredEventCalendarFeedRow = {
@@ -1378,6 +1380,8 @@ async function mapEvent(env: Env, request: Request, row: EventRow) {
     image_url: row.image_url,
     media: parseEventMedia(row.media_json),
     links: parseEventLinks(row.event_links_json),
+    attendance_count: row.attendance_count ?? null,
+    attendance_source_url: row.attendance_source_url || null,
     social_title: row.social_title || null,
     social_description: row.social_description || null,
     social_image_url: row.social_image_url || null,
@@ -2968,12 +2972,12 @@ app.get("/api/network/orgs/public/:slug/events", async (c) => {
     `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url
      FROM events e
      LEFT JOIN organizations o ON o.id = e.host_org_id
-     WHERE e.host_org_id = ?
+     WHERE (e.host_org_id = ? OR EXISTS (SELECT 1 FROM event_organizations eo WHERE eo.event_id = e.id AND eo.organization_id = ?))
      ${upcomingOnly ? "AND e.starts_at IS NOT NULL AND julianday(e.starts_at) >= julianday('now')" : ""}
-     ORDER BY COALESCE(e.starts_at, e.created_at) ASC
+     ORDER BY COALESCE(e.starts_at, e.created_at) ${upcomingOnly ? "ASC" : "DESC"}
      LIMIT ?`,
   )
-    .bind(org.id, limit)
+    .bind(org.id, org.id, limit)
     .all<EventRow>();
   return c.json(await Promise.all((rows.results || []).map((row) => mapEvent(c.env, c.req.raw, row))));
 });
@@ -3022,7 +3026,7 @@ app.get("/api/network/events/public", async (c) => {
      FROM events e
      LEFT JOIN organizations o ON o.id = e.host_org_id
      ${where}
-     ORDER BY COALESCE(e.starts_at, e.created_at) ASC
+     ORDER BY COALESCE(e.starts_at, e.created_at) ${upcomingOnly ? "ASC" : "DESC"}
      LIMIT ?`,
   )
     .bind(...binds, candidateLimit)

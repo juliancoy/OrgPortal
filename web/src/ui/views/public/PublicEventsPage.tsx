@@ -24,6 +24,8 @@ type PublicEvent = {
   ends_at?: string | null
   location?: string | null
   image_url?: string | null
+  attendance_count?: number | null
+  attendance_source_url?: string | null
 }
 
 function formatDate(value?: string | null) {
@@ -52,15 +54,15 @@ function currentPath() {
 }
 
 export function PublicEventsPage({
-  sourcePath = '/api/network/events/public?upcoming_only=true&limit=120',
-  heading = 'Upcoming Events',
-  description = 'Browse upcoming events from users and organizations in the Org network.',
-  emptyMessage = 'No upcoming events are listed right now.',
+  sourcePath = '/api/network/events/public?upcoming_only=false&limit=500',
+  heading = 'Events',
+  description = 'Browse upcoming and past events from users and organizations in the Org network.',
+  emptyMessage = 'No events are listed right now.',
 }: { sourcePath?: string; heading?: string; description?: string; emptyMessage?: string } = {}) {
   const { token } = useAuth()
   const navigate = useNavigate()
   const [events, setEvents] = useState<PublicEvent[]>([])
-  const [status, setStatus] = useState<string>('Loading upcoming events…')
+  const [status, setStatus] = useState<string>('Loading events…')
   const [googleCalendarConnected, setGoogleCalendarConnected] = useState(false)
   const [microsoftCalendarConnected, setMicrosoftCalendarConnected] = useState(false)
   const [attendanceById, setAttendanceById] = useState<Record<string, EventAttendance>>({})
@@ -96,7 +98,7 @@ export function PublicEventsPage({
   useEffect(() => {
     const controller = new AbortController()
     setEvents([])
-    setStatus('Loading upcoming events…')
+    setStatus('Loading events…')
     fetch(orgUrl(sourcePath), { signal: controller.signal })
       .then(async (resp) => {
         if (!resp.ok) {
@@ -230,6 +232,13 @@ export function PublicEventsPage({
     }
   }
 
+  const now = Date.now()
+  const isPast = (event: PublicEvent) => Boolean(event.ends_at || event.starts_at) && new Date(event.ends_at || event.starts_at!).getTime() < now
+  const groups = [
+    { heading: 'Upcoming events', events: events.filter((event) => !isPast(event)).sort((a, b) => Date.parse(a.starts_at || '') - Date.parse(b.starts_at || '')) },
+    { heading: 'Past events', events: events.filter(isPast).sort((a, b) => Date.parse(b.starts_at || '') - Date.parse(a.starts_at || '')) },
+  ]
+
   return (
     <section className="public-events-page">
       <div className="public-events-heading">
@@ -239,9 +248,14 @@ export function PublicEventsPage({
       </div>
       {status ? <p className="muted">{status}</p> : null}
       {!status && events.length === 0 && <p role="status">{emptyMessage}</p>}
-      <div className="public-events-list">
-        {events.map((event) => (
+      {!status && groups.map((group) => (
+        <section key={group.heading} aria-label={group.heading}>
+          <h2>{group.heading}</h2>
+          {!group.events.length && <p className="muted">No {group.heading.toLowerCase()} are listed.</p>}
+          <div className="public-events-list">
+        {group.events.map((event) => (
           (() => {
+            const past = isPast(event)
             const eventStart = event.starts_at
             const eventEnd = event.ends_at || eventStart || null
             const attendance = attendanceById[event.id]
@@ -291,11 +305,14 @@ export function PublicEventsPage({
                   {event.description ? <p className="public-event-list-description">{shortDescription(event.description)}</p> : null}
                   <div className="public-event-rsvp-panel" aria-label={`Registration status for ${event.title}`}>
                     <div className={`public-event-rsvp-state${registered ? ' is-registered' : ''}`}>
-                      <span>{registrationLabel}</span>
-                      {typeof attendance?.count === 'number' ? <strong>{attendance.count} {attendance.count === 1 ? 'registrant' : 'registrants'}</strong> : null}
+                      <span>{past ? 'Past event' : registrationLabel}</span>
+                      {past && typeof event.attendance_count === 'number' ? (
+                        <strong>{event.attendance_count} {event.attendance_count === 1 ? 'person went' : 'people went'}{event.attendance_source_url ? <> · <a href={event.attendance_source_url} target="_blank" rel="noreferrer">Source</a></> : null}</strong>
+                      ) : null}
+                      {(!past || event.attendance_count == null) && typeof attendance?.count === 'number' ? <strong>{attendance.count} {attendance.count === 1 ? 'registrant' : 'registrants'}</strong> : null}
                     </div>
                     <div className="public-event-list-actions">
-                      {token ? (
+                      {past ? null : token ? (
                         <button
                           type="button"
                           className={registered ? 'public-event-rsvp-button public-event-rsvp-button-cancel' : 'public-event-rsvp-button'}
@@ -308,7 +325,7 @@ export function PublicEventsPage({
                       ) : (
                         <a className="public-event-rsvp-button" href={pidpAppLoginUrl(currentPath())}>Log in to register</a>
                       )}
-                      {eventStart && eventEnd ? (
+                      {!past && eventStart && eventEnd ? (
                         <>
                           <button
                             type="button"
@@ -351,7 +368,9 @@ export function PublicEventsPage({
             )
           })()
         ))}
-      </div>
+          </div>
+        </section>
+      ))}
     </section>
   )
 }

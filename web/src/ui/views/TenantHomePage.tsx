@@ -182,10 +182,10 @@ export function TenantEventsContent() {
   if (!tenant || !orgSlug) return <TenantHomePage />
 
   return <PublicEventsPage
-    sourcePath={`/api/network/orgs/public/${encodeURIComponent(orgSlug)}/events?upcoming_only=true&limit=120`}
+    sourcePath={`/api/network/orgs/public/${encodeURIComponent(orgSlug)}/events?upcoming_only=false&limit=200`}
     heading={`${profile.brandName} Events`}
-    description={`Upcoming events hosted by ${profile.brandName}.`}
-    emptyMessage="No upcoming events have been published yet."
+    description={`Upcoming and past events from ${profile.brandName}.`}
+    emptyMessage="No events have been published yet."
   />
 }
 

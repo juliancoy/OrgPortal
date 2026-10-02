@@ -538,3 +538,25 @@ test('tenant header login preserves the current event route', async ({ page }) =
   await expect(page.getByRole('heading', { name: 'MedTech in the Hut' })).toBeVisible()
   await expect(page.locator('body')).not.toContainText(/404|not found/i)
 })
+
+test('event lists separate past gatherings, show sourced attendance to guests, and close past registration', async ({ page }) => {
+  await mockTenant(page)
+  await page.clock.install({ time: new Date('2026-10-02T16:00:00Z') })
+  await page.route('**/api/org/api/network/orgs/public/baltimore-medtech/events?**', route => {
+    expect(new URL(route.request().url()).searchParams.get('upcoming_only')).toBe('false')
+    return route.fulfill({ json: [
+      { ...medtechEvent, attendance_count: 76, attendance_source_url: 'https://luma.com/csd7fvgm' },
+      { ...medtechEvent, id: 'future', slug: 'future-gathering', title: 'Next gathering', starts_at: '2026-11-01T18:00:00Z', ends_at: '2026-11-01T20:00:00Z' },
+    ] })
+  })
+  await page.route('**/api/org/api/network/events/*/attendance', route => route.fulfill({ json: { count: 3, registered: false, attendees: [] } }))
+  await page.goto(portal('/org-events'))
+  const past = page.getByRole('region', { name: 'Past events', exact: true })
+  await expect(past.getByRole('heading', { name: 'MedTech in the Hut' })).toBeVisible()
+  await expect(past).toContainText('76 people went')
+  await expect(past.getByRole('link', { name: 'Source', exact: true })).toHaveAttribute('href', 'https://luma.com/csd7fvgm')
+  await expect(past.getByRole('link', { name: 'Log in to register' })).toHaveCount(0)
+  const upcoming = page.getByRole('region', { name: 'Upcoming events', exact: true })
+  await expect(upcoming.getByRole('heading', { name: 'Next gathering' })).toBeVisible()
+  await expect(upcoming.getByRole('link', { name: 'Log in to register' })).toBeVisible()
+})
