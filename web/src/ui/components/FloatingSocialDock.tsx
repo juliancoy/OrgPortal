@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { getActivePortalProfileConfig } from '../../config/portalFeatures'
 import { useDomainTenant } from '../../config/timebankCommunity'
 
-const MEDTECH_WHATSAPP_URL = 'https://chat.whatsapp.com/Fpsd3Ko6l7q0Fy8DEYxw8V'
+const MEDTECH_WHATSAPP_URL = 'https://chat.whatsapp.com/D52d1XHKZQCFZyFfFq0KIR'
 const MEDTECH_GITHUB_URL = 'https://github.com/juliancoy/BmoreMedTech'
 const MEDTECH_LUMA_URL = 'https://luma.com/'
 

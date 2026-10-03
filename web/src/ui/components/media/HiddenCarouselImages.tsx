@@ -18,7 +18,7 @@ export function HiddenCarouselImages() {
   useEffect(() => {
     let cancelled = false
     setImages([])
-    if (!token || tenantId !== 'baltimore-medtech') return
+    if (!token || !['baltimore-medtech', 'lifetech'].includes(tenantId)) return
     setStatus('Loading your hidden photos…')
     Promise.all([
       fetch(api, { cache: 'no-store' }).then(read),
@@ -30,7 +30,7 @@ export function HiddenCarouselImages() {
     }).catch(error => { if (!cancelled) setStatus(error.message) })
     return () => { cancelled = true }
   }, [token, tenantId, refresh])
-  if (!token || tenantId !== 'baltimore-medtech') return null
+  if (!token || !['baltimore-medtech', 'lifetech'].includes(tenantId)) return null
   return <section id="hidden-community-photos" className="panel" style={{ marginTop: 24 }}>
     <h2>Hidden community photos</h2>
     <p>Hidden from your carousel. Restore them whenever you like.</p>
