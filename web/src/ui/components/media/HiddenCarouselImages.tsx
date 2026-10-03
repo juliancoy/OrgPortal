@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../../app/AppProviders'
+import { getDomainTenant } from '../../../config/timebankCommunity'
 import { getActivePortalProfileConfig } from '../../../config/portalFeatures'
 
 type Image = { id: string; name: string; imageUrl: string; driveUrl: string }
@@ -11,6 +12,7 @@ async function read(response: Response) {
 export function HiddenCarouselImages() {
   const { token } = useAuth()
   const tenantId = getActivePortalProfileConfig().tenantId
+  const enabled = ['medtech.social', 'lifetech.fyi'].includes(getDomainTenant()?.hostname || '')
   const [images, setImages] = useState<Image[]>([])
   const [status, setStatus] = useState('Loading your hidden photos…')
   const [busy, setBusy] = useState<string | null>(null)
@@ -18,7 +20,7 @@ export function HiddenCarouselImages() {
   useEffect(() => {
     let cancelled = false
     setImages([])
-    if (!token || !['baltimore-medtech', 'lifetech'].includes(tenantId)) return
+    if (!token || !enabled) return
     setStatus('Loading your hidden photos…')
     Promise.all([
       fetch(api, { cache: 'no-store' }).then(read),
@@ -29,8 +31,8 @@ export function HiddenCarouselImages() {
       setStatus('')
     }).catch(error => { if (!cancelled) setStatus(error.message) })
     return () => { cancelled = true }
-  }, [token, tenantId, refresh])
-  if (!token || !['baltimore-medtech', 'lifetech'].includes(tenantId)) return null
+  }, [token, tenantId, enabled, refresh])
+  if (!token || !enabled) return null
   return <section id="hidden-community-photos" className="panel" style={{ marginTop: 24 }}>
     <h2>Hidden community photos</h2>
     <p>Hidden from your carousel. Restore them whenever you like.</p>

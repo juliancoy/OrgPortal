@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { resolvePortalTenant } from './timebank';
 
-export const MEDTECH_CAROUSEL = { id: 'medtech-photos', tenantIds: ['baltimore-medtech', 'lifetech'], folderId: '1PoJ9KQvInRhJeoY91ODJ-915_eGuPAmb', title: 'Community photos' };
+export const MEDTECH_CAROUSEL = { id: 'medtech-photos', tenantHostnames: ['medtech.social', 'lifetech.fyi'], folderId: '1PoJ9KQvInRhJeoY91ODJ-915_eGuPAmb', title: 'Community photos' };
 export type CarouselImage = { id: string; name: string; imageUrl: string; driveUrl: string };
 export type CarouselFolder = { title: string; folderUrl: string; images: CarouselImage[] };
 const decode = (value: string) => value.replace(/&(?:amp|quot|apos|lt|gt|#39|#(\d+)|#x([a-f0-9]+));/gi, (match, decimal, hex) => decimal || hex ? String.fromCodePoint(parseInt(decimal || hex, hex ? 16 : 10)) : ({'&amp;':'&','&quot;':'"','&apos;':"'",'&#39;':"'",'&lt;':'<','&gt;':'>'}[match.toLowerCase()] || match));
@@ -45,14 +45,14 @@ export function driveCarouselRoutes(getUser: (env: Env, request: Request) => Pro
   app.use('/:carousel/*', async (c, next) => {
     c.header('Cache-Control', 'private, no-store');
     const tenant = await resolvePortalTenant(c.env.DB, c.req.raw);
-    if (!MEDTECH_CAROUSEL.tenantIds.includes(tenant.id) || c.req.param('carousel') !== MEDTECH_CAROUSEL.id) throw new HTTPException(404, { message: 'Photo carousel not found.' });
+    if (!MEDTECH_CAROUSEL.tenantHostnames.includes(tenant.hostname) || c.req.param('carousel') !== MEDTECH_CAROUSEL.id) throw new HTTPException(404, { message: 'Photo carousel not found.' });
     c.set('carouselTenant', tenant.id);
     await next();
   });
   app.get('/:carousel', async c => {
     c.header('Cache-Control', 'private, no-store');
     const tenant = await resolvePortalTenant(c.env.DB, c.req.raw);
-    if (!MEDTECH_CAROUSEL.tenantIds.includes(tenant.id) || c.req.param('carousel') !== MEDTECH_CAROUSEL.id) throw new HTTPException(404, { message: 'Photo carousel not found.' });
+    if (!MEDTECH_CAROUSEL.tenantHostnames.includes(tenant.hostname) || c.req.param('carousel') !== MEDTECH_CAROUSEL.id) throw new HTTPException(404, { message: 'Photo carousel not found.' });
     return c.json(await loadFolder());
   });
   app.get('/:carousel/me', async c => {
