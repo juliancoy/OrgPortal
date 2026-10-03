@@ -3295,7 +3295,12 @@ h6 {
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--panel);
+  color: var(--text-primary);
   box-shadow: var(--shadow-card);
+}
+
+.portal-notification-menu-header strong {
+  color: var(--text-primary);
 }
 
 .portal-notification-menu-header {
