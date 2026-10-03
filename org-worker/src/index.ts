@@ -39,6 +39,7 @@ import {
 import {
   OrganizationIamError,
   authorizeOrganization,
+  organizationRole,
   claimOrganization,
   createOwnershipChallenge,
   listAuditEvents,
@@ -50,6 +51,8 @@ import {
   withdrawOwnershipChallenge,
   type OrganizationActor,
 } from "./organizationIam";
+
+import { type GovernanceAction, type GovernanceService } from "./governanceMcp";
 
 import { eventAttendance } from "./eventRegistrations";
 import { emailRoutes } from "./emailRoutes";
@@ -2501,7 +2504,35 @@ app.all("/mcp", (c) => handleEventMcp(c.req.raw, c.env, async (actor, payload) =
   const row = await upsertOrganization(c.env.DB, payload);
   await claimOrganization(c.env.DB, row!.id, actor, nowIso());
   return row!;
-}));
+}, governanceService(c.env.DB)));
+
+export function governanceService(db: D1Database): GovernanceService {
+  return {
+    async read(operation, organizationId, args) {
+      if (operation === 'list') {
+        const filters = ['proposer_org_id = ?'];
+        const binds: unknown[] = [organizationId];
+        if (args.search) { filters.push('(lower(title) LIKE ? OR lower(body) LIKE ?)'); binds.push(`%${String(args.search).toLowerCase()}%`, `%${String(args.search).toLowerCase()}%`); }
+        if (args.status) { filters.push('status = ?'); binds.push(args.status); }
+        const rows = await db.prepare(`SELECT * FROM governance_motions WHERE ${filters.join(' AND ')} ORDER BY created_at DESC LIMIT ?`)
+          .bind(...binds, args.limit || 100).all<GovernanceMotionRow>();
+        return { motions: await Promise.all((rows.results || []).map(row => mapGovernanceMotion(db, row))) };
+      }
+      const row = await db.prepare('SELECT * FROM governance_motions WHERE id = ? AND proposer_org_id = ?')
+        .bind(args.motionId, organizationId).first<GovernanceMotionRow>();
+      if (!row) fail(404, 'Motion not found in this organization');
+      const comments = await db.prepare('SELECT * FROM governance_comments WHERE motion_id = ? ORDER BY created_at ASC').bind(row.id).all();
+      const amendments = await db.prepare('SELECT id, status, updated_at FROM governance_motions WHERE parent_motion_id = ? AND proposer_org_id = ? ORDER BY created_at ASC')
+        .bind(row.id, organizationId).all();
+      return { motion: await mapGovernanceMotion(db, row), comments: comments.results || [], amendments: amendments.results || [],
+        results: await formalVoteCounts(db, row.id, row.quorum_required) };
+    },
+    async execute(userId, action, motionId, payload) {
+      const contact = await db.prepare('SELECT user_name FROM user_contact_pages WHERE user_id = ?').bind(userId).first<{ user_name: string }>();
+      return await executeGovernanceAction(db, { id: userId, full_name: contact?.user_name || userId }, action, motionId, payload);
+    },
+  };
+}
 app.post("/mcp/uploads/event-media", (c) => handleEventMediaUpload(c.req.raw, c.env));
 app.post("/mcp/uploads/organization-media", (c) => handleOrganizationMediaUpload(c.req.raw, c.env));
 const oauthProtectedResourceMetadataResponse = (env: Env) => Response.json(protectedResourceMetadata(env), { headers: { "cache-control": "no-store" } });
@@ -4693,6 +4724,140 @@ app.post("/api/tax/pay", async (c) => {
   return c.json({ detail: "Tax payments are not implemented in the Cloudflare org worker yet" }, 501);
 });
 
+export async function executeGovernanceAction(db: D1Database, user: PidpUser, action: GovernanceAction,
+  motionId: string | null, payload: Record<string, unknown>, isOperator = false) {
+  const organizationId = action === 'propose' ? stringField(payload, 'proposer_org_id', 120)
+    : (await requireGovernanceMotion(db, motionId!)).proposer_org_id;
+  if (organizationId) {
+    const role = await organizationRole(db, organizationId, user.id);
+    if (!role && !isOperator) fail(403, 'Active organization membership required');
+    if (['open-voting', 'table', 'resolve'].includes(action) || (action === 'propose' && payload.proposer_type === 'org')) {
+      await authorizeOrganization(db, { id: user.id, name: userName(user), email: user.email || null, isOperator }, 'manage', organizationId);
+    }
+    if (action === 'propose' && payload.parent_motion_id) {
+      const parent = await requireGovernanceMotion(db, String(payload.parent_motion_id));
+      if (parent.proposer_org_id !== organizationId) fail(404, 'Parent motion not found in this organization');
+    }
+  }
+  if (action === "propose") {
+    const title = stringField(payload, "title", 500);
+    const body = stringField(payload, "body", 50000);
+    if (!title || !body) fail(400, "title and body are required");
+    const type = stringField(payload, "type", 20) === "amendment" ? "amendment" : "main";
+    const parentMotionId = stringField(payload, "parent_motion_id", 120);
+    if (type === "amendment" && !parentMotionId) fail(400, "parent_motion_id is required for amendments");
+    if (parentMotionId) await requireGovernanceMotion(db, parentMotionId);
+    const proposerType = stringField(payload, "proposer_type", 20) === "org" ? "org" : "user";
+    const proposerOrgId = stringField(payload, "proposer_org_id", 120);
+    let proposerOrgName: string | null = null;
+    if (proposerType === "org" && proposerOrgId) {
+      const org = await db.prepare("SELECT name FROM organizations WHERE id = ?").bind(proposerOrgId).first<{ name: string }>();
+      proposerOrgName = org?.name || null;
+    }
+    const id = `mot-${crypto.randomUUID().slice(0, 12)}`;
+    const createdAt = nowIso();
+    await db.prepare(
+      `INSERT INTO governance_motions
+        (id, type, parent_motion_id, title, body, proposed_body_diff, status, proposer_type, proposer_id, proposer_name,
+         proposer_user_name, proposer_org_id, proposer_org_name, created_at, updated_at, quorum_required)
+       VALUES (?, ?, ?, ?, ?, ?, 'proposed', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+      .bind(
+        id,
+        type,
+        parentMotionId,
+        title,
+        body,
+        stringField(payload, "proposed_body_diff", 50000),
+        proposerType,
+        user.id,
+        proposerType === "org" ? proposerOrgName || "Organization" : userName(user),
+        userName(user),
+        proposerOrgId,
+        proposerOrgName,
+        createdAt,
+        createdAt,
+        Math.max(1, Math.min(Number(payload.quorum_required || 5) || 5, 1000000)),
+      )
+      .run();
+    return await mapGovernanceMotion(db, (await requireGovernanceMotion(db, id)));
+  }
+  if (action === "second") {
+    const motion = await requireGovernanceMotion(db, motionId!);
+    if (motion.status !== "proposed") fail(400, "Motion can only be seconded when in proposed status");
+    if (motion.proposer_id === user.id) fail(400, "Proposer cannot second their own motion");
+    const updated = await updateGovernanceStatus(db, motion.id, "discussion", {
+      seconder_id: user.id,
+      seconder_name: userName(user),
+      discussion_deadline: addDaysIso(7),
+    });
+    return await mapGovernanceMotion(db, updated);
+  }
+  if (action === "open-voting") {
+    if (organizationId) {
+      const pending = await db.prepare("SELECT id FROM governance_motions WHERE parent_motion_id = ? AND status NOT IN ('passed', 'failed', 'withdrawn') LIMIT 1").bind(motionId).first();
+      if (pending) fail(409, 'Resolve pending amendments before opening voting');
+    }
+    const motion = await requireGovernanceMotion(db, motionId!);
+    if (!["discussion", "seconded", "proposed"].includes(motion.status)) fail(400, "Motion cannot be opened for voting from its current status");
+    const updated = await updateGovernanceStatus(db, motion.id, "voting", { voting_deadline: addDaysIso(7) });
+    return await mapGovernanceMotion(db, updated);
+  }
+  if (action === "table") {
+    const motion = await requireGovernanceMotion(db, motionId!);
+    if (["passed", "failed", "withdrawn"].includes(motion.status)) fail(400, "Motion is already closed");
+    const updated = await updateGovernanceStatus(db, motion.id, "tabled");
+    return await mapGovernanceMotion(db, updated);
+  }
+  if (action === "withdraw") {
+    const motion = await requireGovernanceMotion(db, motionId!);
+    if (motion.proposer_id !== user.id && !isOperator) fail(403, "Only the proposer can withdraw this motion");
+    if (["passed", "failed"].includes(motion.status)) fail(400, "Motion is already resolved");
+    const updated = await updateGovernanceStatus(db, motion.id, "withdrawn");
+    return await mapGovernanceMotion(db, updated);
+  }
+  if (action === "vote") {
+    const motion = await requireGovernanceMotion(db, motionId!);
+    if (motion.status !== "voting") fail(400, "Voting is not open for this motion");
+    const choice = stringField(payload, "choice", 20);
+    if (!choice || !["yea", "nay", "abstain"].includes(choice)) fail(400, "choice must be yea, nay, or abstain");
+    await db.prepare(
+      `INSERT INTO governance_votes (id, motion_id, user_id, user_name, choice, cast_at)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT(motion_id, user_id) DO UPDATE SET choice = excluded.choice, user_name = excluded.user_name, cast_at = excluded.cast_at`,
+    )
+      .bind(`vote-${crypto.randomUUID()}`, motion.id, user.id, userName(user), choice, nowIso())
+      .run();
+    const updated = await requireGovernanceMotion(db, motion.id);
+    return await mapGovernanceMotion(db, updated);
+  }
+  if (action === "resolve") {
+    const motion = await requireGovernanceMotion(db, motionId!);
+    if (motion.status !== 'voting') fail(409, 'Voting must be open before resolving a motion');
+    const result = await formalVoteCounts(db, motion.id, Number(motion.quorum_required || 1));
+    const status = result.passed ? "passed" : "failed";
+    const updatedAt = nowIso();
+    await db.prepare("UPDATE governance_motions SET status = ?, result = ?, updated_at = ? WHERE id = ?")
+      .bind(status, JSON.stringify(result), updatedAt, motion.id)
+      .run();
+    return await mapGovernanceMotion(db, await requireGovernanceMotion(db, motion.id));
+  }
+  if (action === "comment") {
+    const motion = await requireGovernanceMotion(db, motionId!);
+    const body = stringField(payload, "body", 10000);
+    if (!body) fail(400, "body is required");
+    const id = `comment-${crypto.randomUUID()}`;
+    const timestamp = nowIso();
+    await db.prepare(
+      "INSERT INTO governance_comments (id, motion_id, user_id, user_name, body, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    )
+      .bind(id, motion.id, user.id, userName(user), body, timestamp, timestamp)
+      .run();
+    return { id, motion_id: motion.id, author_id: user.id, author_name: userName(user), body, created_at: timestamp };
+  }
+  fail(400, 'Unknown governance action');
+}
+
 app.get("/api/governance/motions", async (c) => {
   const url = new URL(c.req.url);
   const search = (url.searchParams.get("search") || "").trim().toLowerCase();
@@ -4734,48 +4899,7 @@ app.get("/api/governance/motions", async (c) => {
 
 app.post("/api/governance/motions", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
-  const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
-  const title = stringField(payload, "title", 500);
-  const body = stringField(payload, "body", 50000);
-  if (!title || !body) fail(400, "title and body are required");
-  const type = stringField(payload, "type", 20) === "amendment" ? "amendment" : "main";
-  const parentMotionId = stringField(payload, "parent_motion_id", 120);
-  if (type === "amendment" && !parentMotionId) fail(400, "parent_motion_id is required for amendments");
-  if (parentMotionId) await requireGovernanceMotion(c.env.DB, parentMotionId);
-  const proposerType = stringField(payload, "proposer_type", 20) === "org" ? "org" : "user";
-  const proposerOrgId = stringField(payload, "proposer_org_id", 120);
-  let proposerOrgName: string | null = null;
-  if (proposerType === "org" && proposerOrgId) {
-    const org = await c.env.DB.prepare("SELECT name FROM organizations WHERE id = ?").bind(proposerOrgId).first<{ name: string }>();
-    proposerOrgName = org?.name || null;
-  }
-  const id = `mot-${crypto.randomUUID().slice(0, 12)}`;
-  const createdAt = nowIso();
-  await c.env.DB.prepare(
-    `INSERT INTO governance_motions
-      (id, type, parent_motion_id, title, body, proposed_body_diff, status, proposer_type, proposer_id, proposer_name,
-       proposer_user_name, proposer_org_id, proposer_org_name, created_at, updated_at, quorum_required)
-     VALUES (?, ?, ?, ?, ?, ?, 'proposed', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  )
-    .bind(
-      id,
-      type,
-      parentMotionId,
-      title,
-      body,
-      stringField(payload, "proposed_body_diff", 50000),
-      proposerType,
-      user.id,
-      proposerType === "org" ? proposerOrgName || "Organization" : userName(user),
-      userName(user),
-      proposerOrgId,
-      proposerOrgName,
-      createdAt,
-      createdAt,
-      Math.max(1, Math.min(Number(payload.quorum_required || 5) || 5, 1000000)),
-    )
-    .run();
-  return c.json(await mapGovernanceMotion(c.env.DB, (await requireGovernanceMotion(c.env.DB, id))), 201);
+  return c.json(await executeGovernanceAction(c.env.DB, user, "propose", null, await c.req.json().catch(() => ({})), adminUser(user, c.env)), 201);
 });
 
 app.get("/api/governance/motions/:motionId", async (c) => {
@@ -4784,71 +4908,33 @@ app.get("/api/governance/motions/:motionId", async (c) => {
 
 app.post("/api/governance/motions/:motionId/second", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
-  const motion = await requireGovernanceMotion(c.env.DB, c.req.param("motionId"));
-  if (motion.status !== "proposed") fail(400, "Motion can only be seconded when in proposed status");
-  if (motion.proposer_id === user.id) fail(400, "Proposer cannot second their own motion");
-  const updated = await updateGovernanceStatus(c.env.DB, motion.id, "discussion", {
-    seconder_id: user.id,
-    seconder_name: userName(user),
-    discussion_deadline: addDaysIso(7),
-  });
-  return c.json(await mapGovernanceMotion(c.env.DB, updated));
+  return c.json(await executeGovernanceAction(c.env.DB, user, "second", c.req.param("motionId"), {}, adminUser(user, c.env)));
 });
 
 app.post("/api/governance/motions/:motionId/open-voting", async (c) => {
-  await currentUser(c.env, c.req.raw);
-  const motion = await requireGovernanceMotion(c.env.DB, c.req.param("motionId"));
-  if (!["discussion", "seconded", "proposed"].includes(motion.status)) fail(400, "Motion cannot be opened for voting from its current status");
-  const updated = await updateGovernanceStatus(c.env.DB, motion.id, "voting", { voting_deadline: addDaysIso(7) });
-  return c.json(await mapGovernanceMotion(c.env.DB, updated));
+  const user = await currentUser(c.env, c.req.raw);
+  return c.json(await executeGovernanceAction(c.env.DB, user, "open-voting", c.req.param("motionId"), {}, adminUser(user, c.env)));
 });
 
 app.post("/api/governance/motions/:motionId/table", async (c) => {
-  await currentUser(c.env, c.req.raw);
-  const motion = await requireGovernanceMotion(c.env.DB, c.req.param("motionId"));
-  if (["passed", "failed", "withdrawn"].includes(motion.status)) fail(400, "Motion is already closed");
-  const updated = await updateGovernanceStatus(c.env.DB, motion.id, "tabled");
-  return c.json(await mapGovernanceMotion(c.env.DB, updated));
+  const user = await currentUser(c.env, c.req.raw);
+  return c.json(await executeGovernanceAction(c.env.DB, user, "table", c.req.param("motionId"), {}, adminUser(user, c.env)));
 });
 
 app.post("/api/governance/motions/:motionId/withdraw", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
-  const motion = await requireGovernanceMotion(c.env.DB, c.req.param("motionId"));
-  if (motion.proposer_id !== user.id && !adminUser(user, c.env)) fail(403, "Only the proposer can withdraw this motion");
-  if (["passed", "failed"].includes(motion.status)) fail(400, "Motion is already resolved");
-  const updated = await updateGovernanceStatus(c.env.DB, motion.id, "withdrawn");
-  return c.json(await mapGovernanceMotion(c.env.DB, updated));
+  return c.json(await executeGovernanceAction(c.env.DB, user, "withdraw", c.req.param("motionId"), {}, adminUser(user, c.env)));
 });
 
 app.post("/api/governance/motions/:motionId/vote", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
-  const motion = await requireGovernanceMotion(c.env.DB, c.req.param("motionId"));
-  if (motion.status !== "voting") fail(400, "Voting is not open for this motion");
-  const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
-  const choice = stringField(payload, "choice", 20);
-  if (!choice || !["yea", "nay", "abstain"].includes(choice)) fail(400, "choice must be yea, nay, or abstain");
-  await c.env.DB.prepare(
-    `INSERT INTO governance_votes (id, motion_id, user_id, user_name, choice, cast_at)
-     VALUES (?, ?, ?, ?, ?, ?)
-     ON CONFLICT(motion_id, user_id) DO UPDATE SET choice = excluded.choice, user_name = excluded.user_name, cast_at = excluded.cast_at`,
-  )
-    .bind(`vote-${crypto.randomUUID()}`, motion.id, user.id, userName(user), choice, nowIso())
-    .run();
-  const updated = await requireGovernanceMotion(c.env.DB, motion.id);
-  return c.json(await mapGovernanceMotion(c.env.DB, updated));
+  return c.json(await executeGovernanceAction(c.env.DB, user, "vote", c.req.param("motionId"), await c.req.json().catch(() => ({})), adminUser(user, c.env)));
 });
 app.post("/api/governance/motions/:motionId/votes", (c) => app.fetch(new Request(new URL(`/api/governance/motions/${c.req.param("motionId")}/vote`, c.req.url), c.req.raw), c.env));
 
 app.post("/api/governance/motions/:motionId/resolve", async (c) => {
-  await currentUser(c.env, c.req.raw);
-  const motion = await requireGovernanceMotion(c.env.DB, c.req.param("motionId"));
-  const result = await formalVoteCounts(c.env.DB, motion.id, Number(motion.quorum_required || 1));
-  const status = result.passed ? "passed" : "failed";
-  const updatedAt = nowIso();
-  await c.env.DB.prepare("UPDATE governance_motions SET status = ?, result = ?, updated_at = ? WHERE id = ?")
-    .bind(status, JSON.stringify(result), updatedAt, motion.id)
-    .run();
-  return c.json(await mapGovernanceMotion(c.env.DB, await requireGovernanceMotion(c.env.DB, motion.id)));
+  const user = await currentUser(c.env, c.req.raw);
+  return c.json(await executeGovernanceAction(c.env.DB, user, "resolve", c.req.param("motionId"), {}, adminUser(user, c.env)));
 });
 
 app.get("/api/governance/motions/:motionId/results", async (c) => {
@@ -4933,21 +5019,7 @@ app.get("/api/governance/motions/:motionId/comments", async (c) => {
 
 app.post("/api/governance/motions/:motionId/comments", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
-  const motion = await requireGovernanceMotion(c.env.DB, c.req.param("motionId"));
-  const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
-  const body = stringField(payload, "body", 10000);
-  if (!body) fail(400, "body is required");
-  const id = `comment-${crypto.randomUUID()}`;
-  const timestamp = nowIso();
-  await c.env.DB.prepare(
-    "INSERT INTO governance_comments (id, motion_id, user_id, user_name, body, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-  )
-    .bind(id, motion.id, user.id, userName(user), body, timestamp, timestamp)
-    .run();
-  return c.json(
-    { id, motion_id: motion.id, author_id: user.id, author_name: userName(user), body, created_at: timestamp },
-    201,
-  );
+  return c.json(await executeGovernanceAction(c.env.DB, user, "comment", c.req.param("motionId"), await c.req.json().catch(() => ({})), adminUser(user, c.env)), 201);
 });
 
 app.get("/api/network/contact/:slug", async (c) => c.json(await publicContact(c.env, c.req.raw, c.req.param("slug"))));

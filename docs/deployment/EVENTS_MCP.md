@@ -273,3 +273,52 @@ Tests mock the provider and signing keys; no tests mutate live events. Productio
 readiness still requires an end-to-end OAuth linking test and a real test-calendar
 write. Configure edge-level unauthenticated request limits and audit retention
 appropriate to your host before making the connection broadly available.
+
+## Governance motions
+
+The same `/api/org/mcp` connection exposes Robert's Rules motion tools:
+
+| Tool | Purpose |
+| --- | --- |
+| `list_motions` | List organization motions, with optional search/status and limit |
+| `get_motion` | Read a motion, comments, amendments and quorum/vote results |
+| `get_motion_operation` | Inspect a preview/write receipt before retrying |
+| `preview_motion` / `apply_motion` | File a motion as the authenticated member |
+| `preview_motion_amendment` / `apply_motion_amendment` | File an amendment with `parentMotionId` |
+| `preview_motion_action` / `apply_motion_action` | Second, comment, vote, withdraw, open voting, table or resolve |
+
+Every request names `organizationId` and requires active membership plus
+`org:portal.read`. Writes also require `org:portal.write`. Opening voting,
+tabling and resolving require an organization owner or administrator. Only the
+proposer can withdraw, and a proposer cannot second their own motion. These
+checks run again at apply time. OAuth permission alone does not grant membership.
+
+Motion tools address motions associated with that organization through the
+existing `proposer_org_id` field. Historical unassociated/global motions remain
+in the website but are not selected by these MCP tools. Newly filed motions use
+the existing shared motion tables and REST workflow; this is not tenant-private
+storage, and the public website/API still exposes its existing shared feed.
+
+For example, call `preview_motion` with:
+
+```json
+{"organizationId":"baltimore-medtech","title":"Schedule the next meeting","body":"Hold our next meeting on Friday.","quorumRequired":5}
+```
+
+Show the returned preview to the user. After approval, send the same arguments
+to `apply_motion`, adding `"confirm":true` and the returned `"previewId"`.
+The preview tools never write motions even if `confirm:true` is supplied.
+Receipts expire after ten minutes, bind the actor/organization/arguments/current
+motion state, and can be used only once. If the motion, votes, discussion or
+amendments change, get a new preview. Inspect `get_motion_operation` and
+`get_motion` after any uncertain apply response rather than filing again.
+
+Actions use `motionId` and one of `second`, `comment`, `vote`, `withdraw`,
+`open-voting`, `table`, or `resolve`. A vote additionally requires `choice`
+(`yea`, `nay`, or `abstain`); a comment requires `body`. An amendment requires
+`parentMotionId`, `title`, and `body`, with optional `proposedBodyDiff`.
+
+This is an org Worker change only. Release it from CodeCollective with
+`./deploy.sh --component org --skip-org-migrations`; no schema, frontend, PIdP,
+or chat release is needed. Reconnect or refresh your MCP client's tool list if
+it caches tools.
