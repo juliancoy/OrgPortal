@@ -1,0 +1,49 @@
+{
+  "resource": "https://medtech.social/api/org/mcp",
+  "organizationId": "org-baltimore-medtech",
+  "researchedAt": "2026-10-03",
+  "venues": [
+    {
+      "venueId": "venue-33ee543e1273f7a09e77",
+      "name": "Checkerspot Brewing",
+      "imageUrl": "https://checkerspotbrewing.com/apple-touch-icon.png",
+      "imageSourceUrl": "https://checkerspotbrewing.com/",
+      "imageCredit": "Checkerspot Brewing — official logo"
+    },
+    {
+      "venueId": "venue-e90fa70417bece9489e3",
+      "name": "City Garage",
+      "imageUrl": "https://citygaragestc.com/wp-content/uploads/2021/11/cropped-fav-cg-2-192x192.png",
+      "imageSourceUrl": "https://citygaragestc.com/",
+      "imageCredit": "City Garage — official logo"
+    },
+    {
+      "venueId": "venue-b59c33787982caa8e179",
+      "name": "Digital Harbor Foundation",
+      "imageUrl": "https://digitalharbor.org/wp-content/uploads/2026/07/digital-harbor-logo-512x512-1-300x300.png",
+      "imageSourceUrl": "https://digitalharbor.org/",
+      "imageCredit": "Digital Harbor Foundation — official logo"
+    },
+    {
+      "venueId": "venue-31610282a412a4149fbf",
+      "name": "R House",
+      "imageUrl": "https://r.housebaltimore.com/wp-content/uploads/2017/03/r-house-corner-night-sized-1024x768.jpg",
+      "imageSourceUrl": "https://r.housebaltimore.com/",
+      "imageCredit": "R House — official website photo"
+    },
+    {
+      "venueId": "venue-b1e0f816097c062e3754",
+      "name": "Red Emma’s",
+      "imageUrl": "https://redemmas.org/icons/icon-256x256.png",
+      "imageSourceUrl": "https://redemmas.org/",
+      "imageCredit": "Red Emma’s — official logo"
+    },
+    {
+      "venueId": "venue-3b05a11cd1050b82f0b8",
+      "name": "Spark",
+      "imageUrl": "https://sparkcoworking.com/baltimore/wp-content/uploads/sites/6/2021/01/1.jpg",
+      "imageSourceUrl": "https://sparkcoworking.com/baltimore/",
+      "imageCredit": "Spark — official website photo"
+    }
+  ]
+}

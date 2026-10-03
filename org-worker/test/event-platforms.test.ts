@@ -220,7 +220,9 @@ test("authenticated MCP initializes, lists tools and previews through the shared
   try {
     assert.equal((await rpc("initialize", { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "test", version: "1" } })).result.serverInfo.name, "orgportal-events");
     const listed = await rpc("tools/list", {});
-    assert.equal(listed.result.tools.length, 32);
+    assert.equal(listed.result.tools.length, 34);
+    assert.ok(listed.result.tools.some((tool: { name: string }) => tool.name === 'preview_venue_image_changes'));
+    assert.ok(listed.result.tools.some((tool: { name: string }) => tool.name === 'apply_venue_image_changes'));
     assert.ok(listed.result.tools.some((tool: { name: string }) => tool.name === 'apply_organization_tasks'));
     assert.ok(listed.result.tools.some((tool: { name: string }) => tool.name === 'preview_organization_creation'));
     assert.ok(listed.result.tools.some((tool: { name: string }) => tool.name === 'apply_organization_membership'));

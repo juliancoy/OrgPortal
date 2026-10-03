@@ -1,3 +1,4 @@
+import { runVenueImageOperation, venueImageSchema } from './venueImagesMcp';
 import { runOrganizationTaskOperation, organizationTaskSchema } from './organizationTasksMcp';
 import { HTTPException } from "hono/http-exception";
 import { runGovernanceOperation, motionListSchema, motionTargetSchema, motionOperationSchema, proposeMotionSchema, amendMotionSchema, motionActionSchema, type GovernanceService } from "./governanceMcp";
@@ -669,10 +670,11 @@ export async function handleEventMcp(request: Request, env: Env, createOrganizat
         || args.organizationId !== config.organizationId)) throw new EventIntegrationError(403, 'This MCP connection is limited to its own organization');
       return args;
     };
-    const result = async (operation: "list" | "get" | "plan" | "status" | "native" | "comments" | "mediaPreview" | "mediaApply", args: unknown) => {
+    const result = async (operation: "list" | "get" | "plan" | "status" | "native" | "comments" | "mediaPreview" | "mediaApply" | "venueImage", args: unknown) => {
       try {
         args = scopedArgs(args);
-        const data = operation === "native" ? await runNativeEventOperation(env, identity, args)
+        const data = operation === "venueImage" ? await runVenueImageOperation(env, identity, args)
+          : operation === "native" ? await runNativeEventOperation(env, identity, args)
           : operation === "comments" ? await runEventCommentsOperation(env, identity, args)
           : operation === "mediaPreview" ? await runEventMediaOperation(env, identity, args, false)
           : operation === "mediaApply" ? await runEventMediaOperation(env, identity, args, true)
@@ -790,6 +792,12 @@ export async function handleEventMcp(request: Request, env: Env, createOrganizat
     server.registerTool("apply_org_event_changes", { description: "Create or update a native OrgPortal event after showing a preview and obtaining user approval. Requires confirm=true and the matching one-use previewId.",
       inputSchema: nativeEventSchema, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       _meta: metadata([readScope, writeScope]) }, args => result("native", args));
+    server.registerTool("preview_venue_image_changes", { description: "Preview an organization-owned venue avatar and its source/credit without writing. Requires live organization management permission.",
+      inputSchema: venueImageSchema, annotations: { readOnlyHint: true, openWorldHint: false }, _meta: metadata([readScope]) },
+      args => result("venueImage", { ...args, confirm: false }));
+    server.registerTool("apply_venue_image_changes", { description: "Save the reviewed venue avatar, source and credit. Requires confirm=true and the matching one-use previewId. Rechecks live organization permissions and rejects intervening image edits.",
+      inputSchema: venueImageSchema, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+      _meta: metadata([readScope, writeScope]) }, args => result("venueImage", args));
     server.registerTool("preview_event_comments", { description: "Preview enabling the public event comment section by attaching an existing native OrgPortal chat conversation to an event.",
       inputSchema: eventCommentsSchema, annotations: { readOnlyHint: true, openWorldHint: false }, _meta: metadata([readScope]) },
       args => result("comments", { ...args, confirm: false }));
