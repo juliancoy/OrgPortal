@@ -33,3 +33,5 @@
 .availability-grid .availability-weekend{background:color-mix(in srgb,var(--panel) 86%,#438be0)}
 .availability-grid .availability-weekend th,.availability-grid .availability-weekend button:not([aria-pressed=true]){border-color:color-mix(in srgb,var(--border-subtle) 50%,#438be0)}
 .availability-grid thead .availability-weekend button:not([aria-pressed=true]){background:color-mix(in srgb,var(--panel) 80%,#438be0)}
+
+.availability-grid button.availability-suggested{outline-style:dashed}

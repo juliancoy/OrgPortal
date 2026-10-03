@@ -9,7 +9,7 @@ import { TimebankDatabase } from './helpers/timebankDatabase';
 const slots=['2026-10-10T13:00:00.000Z','2026-10-10T13:30:00.000Z'];
 function fixture(){
  const db=new TimebankDatabase();
- for(const file of ['0042_availability_polls.sql','0046_user_tasks.sql'])db.sqlite.exec(readFileSync(new URL(`../migrations/${file}`,import.meta.url),'utf8'));
+ for(const file of ['0042_availability_polls.sql','0046_user_tasks.sql','0047_account_availability.sql'])db.sqlite.exec(readFileSync(new URL(`../migrations/${file}`,import.meta.url),'utf8'));
  for(const id of ['alice','bob','carol'])db.sqlite.prepare('INSERT INTO user_contact_pages (id,user_id,user_name,slug,enabled) VALUES (?,?,?,?,1)').run(id,id,id,id);
  const auth=async(_env:Env,req:Request)=>{const id=req.headers.get('authorization');if(!id)throw new HTTPException(401);return {id}};
  const app=new Hono<{Bindings:Env}>();app.route('/availability',availabilityRoutes(auth));app.route('/tasks',userTaskRoutes(auth));

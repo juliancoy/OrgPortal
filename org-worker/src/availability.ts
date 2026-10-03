@@ -1,3 +1,4 @@
+import { accountSelection, type AvailabilityObservation } from './accountAvailability';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { resolvePortalTenant } from './timebank';
@@ -53,7 +54,12 @@ export function availabilityRoutes(getUser: (env: Env, request: Request) => Prom
  app.get('/:id/me',async c=>{
   const user=await getUser(c.env,c.req.raw),p=await poll(c.env,c.req.raw,c.req.param('id'));
   const row=await c.env.DB.prepare('SELECT slots_json FROM availability_responses WHERE poll_id = ? AND user_id = ?').bind(p.id,user.id).first<{slots_json:string}>();
-  return c.json({slots:row?JSON.parse(row.slots_json):[],is_owner:p.owner_user_id===user.id});
+  const timezone=c.req.query('timezone') || p.timezone;
+  try { new Intl.DateTimeFormat('en',{timeZone:timezone}); } catch { reject('Invalid timezone.'); }
+  const pollSlots=JSON.parse(p.slots_json) as string[];
+  const history=await c.env.DB.prepare('SELECT slot,available FROM account_availability WHERE user_id = ? AND slot <= ? ORDER BY slot').bind(user.id,new Date(Date.parse(pollSlots.at(-1)!)+7*86400000).toISOString()).all<AvailabilityObservation>();
+  const selection=accountSelection(pollSlots,history.results,timezone);
+  return c.json({...selection,has_response:!!row,is_owner:p.owner_user_id===user.id});
  });
  app.put('/:id/me',async c=>{
   const user=await getUser(c.env,c.req.raw),p=await poll(c.env,c.req.raw,c.req.param('id'));
@@ -62,6 +68,8 @@ export function availabilityRoutes(getUser: (env: Env, request: Request) => Prom
   // The conditional write also prevents a response racing with poll closure.
   const results=await c.env.DB.batch([c.env.DB.prepare(`INSERT INTO availability_responses (poll_id,user_id,slots_json) SELECT ?,?,? WHERE EXISTS (SELECT 1 FROM availability_polls WHERE id = ? AND closed = 0)
    ON CONFLICT(poll_id,user_id) DO UPDATE SET slots_json=excluded.slots_json, updated_at=CURRENT_TIMESTAMP WHERE EXISTS (SELECT 1 FROM availability_polls WHERE id = ? AND closed = 0)`).bind(p.id,user.id,JSON.stringify(slots),p.id,p.id),
+   c.env.DB.prepare(`INSERT INTO account_availability (user_id,slot,available) SELECT ?,s.value,EXISTS (SELECT 1 FROM json_each(?) chosen WHERE chosen.value = s.value) FROM availability_polls p,json_each(p.slots_json) s WHERE p.id = ? AND p.closed = 0
+    ON CONFLICT(user_id,slot) DO UPDATE SET available=excluded.available,updated_at=CURRENT_TIMESTAMP`).bind(user.id,JSON.stringify(slots),p.id),
    c.env.DB.prepare("UPDATE user_tasks SET status = 'completed',completed_at = COALESCE(completed_at,strftime('%Y-%m-%dT%H:%M:%fZ','now')) WHERE tenant_id = ? AND user_id = ? AND kind = 'availability' AND entity_id = ? AND EXISTS (SELECT 1 FROM availability_polls WHERE id = ? AND closed = 0) AND EXISTS (SELECT 1 FROM availability_responses WHERE poll_id = ? AND user_id = ?)").bind(p.tenant_id,user.id,p.id,p.id,p.id,user.id)
   ]);
   const result=results[0];
