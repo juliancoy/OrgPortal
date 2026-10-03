@@ -2,6 +2,7 @@ import { venueRankingRoutes } from './venueRankings';
 import { venueRoutes, eventVenues, setEventVenues } from './venues';
 import { driveCarouselRoutes } from './driveCarousel';
 import { userTaskRoutes } from './userTasks';
+import { onboardingRoutes } from './onboarding';
 import { availabilityRoutes } from './availability';
 import { timebankNotifications, markTimebankNotificationsRead, dispatchTimebankPush } from './timebankNotifications';
 import { importedListings, importedListingImage, importClaimDirectory, requestImportClaim, withdrawImportClaim, reviewImportClaims, resolveImportClaim, claimedImportRecords } from './timebankImports';
@@ -2594,6 +2595,7 @@ app.put('/api/network/events/:eventId/venues',async c=>{
 });
 app.route("/api/availability", availabilityRoutes(currentUser));
 app.route("/api/tasks", userTaskRoutes(currentUser));
+app.route("/api/onboarding", onboardingRoutes(currentUser));
 app.route("/api/media/carousels", driveCarouselRoutes(currentUser));
 
 app.get("/health", (c) => c.json(deploymentHealth(c, true)));

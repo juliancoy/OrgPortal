@@ -9,6 +9,7 @@ import { Header } from './Header'
 import { Footer } from './Footer'
 import { ExternalBrowserPrompt } from '../components/ExternalBrowserPrompt'
 import { FloatingSocialDock } from '../components/FloatingSocialDock'
+import { OnboardingBanner } from '../views/OnboardingPage'
 
 export function AppLayout() {
   const location = useLocation()
@@ -35,6 +36,7 @@ export function AppLayout() {
       <main id="main-content" className="portal-main" ref={mainRef} tabIndex={-1}>
         <div className={`portal-container ${isChatRoute ? 'portal-chat-container' : ''}`}>
           {!timebankShell && <ExternalBrowserPrompt />}
+          {location.pathname !== '/onboarding' && <OnboardingBanner />}
           <Outlet />
         </div>
       </main>

@@ -372,7 +372,39 @@ Apply requires `confirm: true` and its matching ten-minute, one-use `previewId`.
 A changed membership roster invalidates the preview. Repeated assignments preserve
 existing tasks without duplication; the response reports new and prior assignments.
 
-The task is “Fill out your availability calendar” and opens `/availability`.
-Saving availability in a poll saves the account calendar and completes the
-organization calendar task in that tenant. Another user's save cannot complete it.
+On LifeTech the task is “Enter your availability for the next month” and opens
+`/onboarding#availability`; completing it requires saving the reviewed month.
+Other tenants open `/availability` and complete the calendar task on a poll save.
+Another user's save cannot complete either task.
 No emails or external messages are sent. No schema migration is required.
+
+## LifeTech onboarding
+
+Migration `0051_onboarding.sql` enables onboarding for the LifeTech tenant only.
+Every authenticated visitor receives an idempotent enrollment and persistent
+onboarding task when the portal loads their task queue. `/onboarding` presents
+four acknowledgements plus a required, reviewed month of availability. The
+period begins on the enrollment date in America/New_York and ends before the
+same date in the next month (clamped for short months). The grid uses the device
+timezone, includes daylight-saving transitions, and stores explicit available
+and unavailable half-hours in the existing account calendar.
+
+The source is https://codecollective.us/constitution, reviewed October 3, 2026.
+It currently labels itself an unratified draft. General orientation and organizer
+admission requirements are distinct: the organizer guide does not assign roles,
+verify votes, or grant access. Acknowledgements record the user's confirmation;
+they are not evidence of attendance or administrator approval.
+
+`GET /api/onboarding` returns the current user's progress in the resolved tenant.
+`POST /api/onboarding/steps/:step` requires `{acknowledged:true}`.
+`GET /api/onboarding/availability?timezone=...` returns the enrollment's month.
+`PUT /api/onboarding/availability` requires `{timezone,slots,reviewed:true}`.
+All routes require an existing PIdP session; no identity or membership is created.
+The month save completes that tenant's bulk availability task. A single poll
+response cannot complete this month requirement. Generic task completion cannot
+bypass onboarding, and repeated visits do not reset completed steps.
+
+Release backend migration and Worker through CodeCollective's org component,
+then the shared frontend through its site component. LifeTech's edge must route
+`/onboarding` to the shared portal. Test authenticated behavior in local Docker;
+keep production browser checks unauthenticated.

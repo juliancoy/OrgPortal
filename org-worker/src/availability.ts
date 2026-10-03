@@ -1,3 +1,4 @@
+import { onboardingEnabled } from './onboarding';
 import { accountSelection, type AvailabilityObservation } from './accountAvailability';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
@@ -63,6 +64,7 @@ export function availabilityRoutes(getUser: (env: Env, request: Request) => Prom
  });
  app.put('/:id/me',async c=>{
   const user=await getUser(c.env,c.req.raw),p=await poll(c.env,c.req.raw,c.req.param('id'));
+  const tenant=await resolvePortalTenant(c.env.DB,c.req.raw);
   const body=await c.req.json().catch(()=>null) as {slots?:unknown}|null;
   const slots=validateSelection(body?.slots,JSON.parse(p.slots_json));
   // The conditional write also prevents a response racing with poll closure.
@@ -70,7 +72,7 @@ export function availabilityRoutes(getUser: (env: Env, request: Request) => Prom
    ON CONFLICT(poll_id,user_id) DO UPDATE SET slots_json=excluded.slots_json, updated_at=CURRENT_TIMESTAMP WHERE EXISTS (SELECT 1 FROM availability_polls WHERE id = ? AND closed = 0)`).bind(p.id,user.id,JSON.stringify(slots),p.id,p.id),
    c.env.DB.prepare(`INSERT INTO account_availability (user_id,slot,available) SELECT ?,s.value,EXISTS (SELECT 1 FROM json_each(?) chosen WHERE chosen.value = s.value) FROM availability_polls p,json_each(p.slots_json) s WHERE p.id = ? AND p.closed = 0
     ON CONFLICT(user_id,slot) DO UPDATE SET available=excluded.available,updated_at=CURRENT_TIMESTAMP`).bind(user.id,JSON.stringify(slots),p.id),
-   c.env.DB.prepare("UPDATE user_tasks SET status = 'completed',completed_at = COALESCE(completed_at,strftime('%Y-%m-%dT%H:%M:%fZ','now')) WHERE tenant_id = ? AND user_id = ? AND kind = 'personal' AND entity_id LIKE 'availability-calendar:%' AND EXISTS (SELECT 1 FROM availability_responses r JOIN availability_polls p ON p.id = r.poll_id WHERE r.poll_id = ? AND r.user_id = ? AND p.closed = 0)").bind(p.tenant_id,user.id,p.id,user.id),
+   c.env.DB.prepare("UPDATE user_tasks SET status = 'completed',completed_at = COALESCE(completed_at,strftime('%Y-%m-%dT%H:%M:%fZ','now')) WHERE tenant_id = ? AND user_id = ? AND kind = 'personal' AND entity_id LIKE 'availability-calendar:%' AND ? = 0 AND EXISTS (SELECT 1 FROM availability_responses r JOIN availability_polls p ON p.id = r.poll_id WHERE r.poll_id = ? AND r.user_id = ? AND p.closed = 0)").bind(p.tenant_id,user.id,onboardingEnabled(tenant)?1:0,p.id,user.id),
    c.env.DB.prepare("UPDATE user_tasks SET status = 'completed',completed_at = COALESCE(completed_at,strftime('%Y-%m-%dT%H:%M:%fZ','now')) WHERE tenant_id = ? AND user_id = ? AND kind = 'availability' AND entity_id = ? AND EXISTS (SELECT 1 FROM availability_polls WHERE id = ? AND closed = 0) AND EXISTS (SELECT 1 FROM availability_responses WHERE poll_id = ? AND user_id = ?)").bind(p.tenant_id,user.id,p.id,p.id,p.id,user.id)
   ]);
   const result=results[0];

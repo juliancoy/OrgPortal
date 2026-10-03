@@ -1,0 +1,11 @@
+.onboarding-banner{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:14px 18px;margin:12px 0;border:1px solid var(--border-subtle);border-radius:8px;background:var(--panel);color:var(--text-primary)}
+.onboarding-banner span{flex:1;min-width:180px}.onboarding-banner a{font-weight:700}
+.onboarding-page progress{width:100%;accent-color:#16847d}
+.onboarding-page strong{color:inherit}.onboarding-page p{text-align:left}
+.onboarding-steps{padding-left:24px}.onboarding-steps li{padding:12px;margin:12px 0;border:1px solid var(--border-subtle);border-radius:8px}
+.onboarding-steps h2{font-size:19px}.onboarding-steps button{display:block;margin-top:12px}
+.onboarding-calendar,.onboarding-organizers{margin-top:24px;padding-top:16px;border-top:1px solid var(--border-subtle)}
+.onboarding-page .onboarding-review{display:flex;align-items:center;gap:10px;margin:16px 0}
+.onboarding-calendar .availability-grid{min-width:580px}.onboarding-calendar .availability-grid thead th button{writing-mode:horizontal-tb}
+.onboarding-calendar .availability-grid button[aria-pressed=true]{background:#16847d;color:white}
+.onboarding-organizers summary{cursor:pointer;font-weight:700}

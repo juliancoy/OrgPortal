@@ -1,5 +1,6 @@
 import { VenuesPage } from '../views/orgs/VenuesPage'
 import { AvailabilityPage } from '../views/AvailabilityPage'
+import { OnboardingPage } from '../views/OnboardingPage'
 import { PortalProfileBoundary } from '../shell/PortalProfileBoundary'
 import { getDomainCommunity, getDomainTenant, type PortalTenant } from '../../config/timebankCommunity'
 import { useEffect, useState } from 'react'
@@ -369,6 +370,7 @@ export function createAppRouter() {
           { path: '/targets/:target', element: <TargetPage /> },
 
           { path: '/availability', element: <AvailabilityPage /> },
+          { path: '/onboarding', element: <OnboardingPage /> },
           { path: '/availability/:id', element: <AvailabilityPage /> },
           { path: '/events', element: <PublicEventsRoute /> },
           { path: '/events/:slug', element: <PublicEventPage /> },
