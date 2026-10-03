@@ -389,6 +389,10 @@ def _write_local_gateway_config(
             events {{}}
 
             http {{
+              map $http_upgrade $connection_upgrade {{
+                default upgrade;
+                '' close;
+              }}
               server {{
                 listen 8443 ssl;
                 server_name localhost local-orgportal bmoremedtech-local bmoremedtech-local-gateway;
@@ -411,7 +415,9 @@ def _write_local_gateway_config(
                 location /api/chat/ {{
                   rewrite ^/api/chat/?(.*)$ /$1 break;
                   proxy_set_header Upgrade $http_upgrade;
-                  proxy_set_header Connection "upgrade";
+                  proxy_set_header Connection $connection_upgrade;
+                  proxy_read_timeout 1h;
+                  proxy_send_timeout 1h;
                   proxy_pass http://{org_worker_name.removesuffix('org')}chat:8003;
                 }}
 
@@ -426,7 +432,11 @@ def _write_local_gateway_config(
                 location / {{
                   proxy_set_header Host $host;
                   proxy_set_header Upgrade $http_upgrade;
-                  proxy_set_header Connection "upgrade";
+                  proxy_set_header Connection $connection_upgrade;
+                  proxy_read_timeout 1h;
+                  proxy_send_timeout 1h;
+                  proxy_buffering off;
+                  add_header Cache-Control "no-store" always;
                   proxy_pass http://{dev_name}:5173;
                 }}
               }}
@@ -721,11 +731,9 @@ def run(prefix: str, network_name: str) -> None:
             "VITE_PIDP_APP_SLUG": dev_pidp_app_slug,
             "VITE_DATA_SOURCE": data_source,
             "VITE_PUBLIC_BASE": "/",
-            "VITE_HMR_HOST": dev_host or "",
             "VITE_ALLOWED_HOSTS": ",".join([h for h in [dev_host, prod_host, "localhost"] if h]),
             "ORG_API_ORIGIN": org_api_base,
             "CHAT_API_ORIGIN": chat_api_base,
-            "VITE_HMR_PROTOCOL": "wss" if dev_base and dev_base.startswith("https:") else "ws",
         },
         "command": [
             "sh",

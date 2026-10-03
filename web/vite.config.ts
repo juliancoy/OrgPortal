@@ -17,13 +17,6 @@ const allowedHosts = Array.from(
   ]),
 )
 
-const hmrAddress = new URL(`http://${process.env.VITE_HMR_HOST || 'localhost'}`)
-const hmrHost = hmrAddress.hostname
-const hmrProtocol = process.env.VITE_HMR_PROTOCOL || (hmrHost === 'localhost' || hmrHost === '127.0.0.1' ? 'ws' : 'wss')
-const hmrClientPort = Number.parseInt(
-  process.env.VITE_HMR_CLIENT_PORT || hmrAddress.port || (hmrProtocol === 'wss' ? '443' : '5173'),
-  10,
-)
 const parsedBuildNumber = Number.parseInt(process.env.VITE_APP_BUILD_NUMBER || `${Math.floor(Date.now() / 1000)}`, 10)
 const appBuildNumber = Number.isFinite(parsedBuildNumber) ? parsedBuildNumber : Math.floor(Date.now() / 1000)
 const appVersion = process.env.npm_package_version || '0.0.0'
@@ -46,10 +39,12 @@ export default defineConfig(({ command }) => ({
   server: {
     allowedHosts,
     host: true,
-    hmr: {
-      host: hmrHost,
-      protocol: hmrProtocol,
-      clientPort: Number.isFinite(hmrClientPort) ? hmrClientPort : 5173,
+    // Let Vite use the page origin for HTTP and WebSocket connections.
+    // This also works through the local HTTPS gateway on port 8443.
+    watch: {
+      usePolling: process.env.CHOKIDAR_USEPOLLING === '1',
+      interval: Number(process.env.CHOKIDAR_INTERVAL || 200),
+      ignored: ['**/dist/**', '**/playwright-report/**', '**/test-results/**'],
     },
     proxy: {
       ...(chatApiOrigin ? { '/api/chat': { target: chatApiOrigin, changeOrigin: true, xfwd: true, ws: true, rewrite: (path: string) => path.replace(/^\/api\/chat/, '') } } : {}),
