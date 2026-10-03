@@ -10,12 +10,12 @@
 .availability-toolbar,.availability-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin:14px 0}
 .availability-toolbar select{max-width:min(320px,80vw)}
 .availability-grid-wrap{overflow:auto;border:1px solid var(--border-subtle);border-radius:6px;max-height:65vh;background:var(--panel)}
-.availability-grid{border-collapse:separate;border-spacing:2px;width:100%;font-size:12px}
+.availability-grid{border-collapse:separate;border-spacing:1px;width:100%;table-layout:fixed;font-size:12px}
 .availability-grid caption{text-align:left;padding:8px;color:var(--text-secondary)}
-.availability-grid th{background:var(--panel);padding:2px;position:sticky;top:0;z-index:3;min-width:80px}
-.availability-grid tbody th{left:0;z-index:2;min-width:56px}.availability-grid thead th:first-child{left:0;z-index:4;min-width:56px}
-.availability-grid td{min-width:80px;padding:0}
-.availability-grid :is(th,td) button{width:100%;min-height:28px;padding:4px 6px;user-select:none;border-radius:3px;line-height:1.2}
+.availability-grid th{background:var(--panel);padding:2px;position:sticky;top:0;z-index:3;min-width:34px}
+.availability-grid tbody th{left:0;z-index:2;width:58px;min-width:58px}.availability-grid thead th:first-child{left:0;z-index:4;width:58px;min-width:58px}
+.availability-grid td{min-width:34px;padding:0}
+.availability-grid :is(th,td) button{width:100%;min-height:28px;padding:3px 2px;user-select:none;border-radius:3px;line-height:1.2}
 .availability-grid th button{font-weight:600;white-space:nowrap}
 .availability-grid td button{border:1px solid transparent}
 .availability-grid button[aria-pressed=true]{outline:2px solid var(--availability-accent);outline-offset:-2px}
@@ -24,5 +24,12 @@
 .availability-page :is(button,input,select,a):focus-visible{outline:3px solid var(--availability-accent);outline-offset:2px}
 .availability-best{line-height:1.6;font-size:14px}
 @media(pointer:coarse){.availability-grid :is(th,td) button{min-height:36px}}
-@media(max-width:600px){.availability-create{grid-template-columns:1fr;padding:12px}.availability-page{padding:16px 10px 40px}.availability-grid th,.availability-grid td{min-width:76px}}
+@media(max-width:600px){.availability-create{grid-template-columns:1fr;padding:12px}.availability-page{padding:16px 10px 40px}.availability-grid{min-width:550px}}
 .availability-invitations{border:1px solid var(--border-subtle);border-radius:8px;padding:16px;margin:20px 0}.availability-invitations h2{font-size:18px;margin:0 0 8px}.availability-invite-people{max-height:220px;overflow:auto;margin:12px 0;display:grid;gap:8px}.availability-invite-people label{display:flex;align-items:center;gap:8px;padding:4px}.availability-invitations details{margin-top:12px}.availability-invite-people input{accent-color:var(--availability-accent)}
+
+.availability-grid thead th:not(:first-child) button{display:flex;flex-direction:column;align-items:center;gap:5px;padding:6px 2px}
+.availability-weekday{writing-mode:vertical-rl;text-orientation:upright;letter-spacing:1px;font-size:10px;text-transform:uppercase}
+.availability-date{font-size:11px;font-variant-numeric:tabular-nums}
+.availability-grid .availability-weekend{background:color-mix(in srgb,var(--panel) 86%,#438be0)}
+.availability-grid .availability-weekend th,.availability-grid .availability-weekend button:not([aria-pressed=true]){border-color:color-mix(in srgb,var(--border-subtle) 50%,#438be0)}
+.availability-grid thead .availability-weekend button:not([aria-pressed=true]){background:color-mix(in srgb,var(--panel) 80%,#438be0)}
