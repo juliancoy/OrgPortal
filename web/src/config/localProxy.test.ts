@@ -10,7 +10,7 @@ async function loadViteServerConfig(env: Record<string, string | undefined>) {
   const config = typeof configExport === 'function'
     ? await configExport({ command: 'serve', mode: 'test', isSsrBuild: false, isPreview: false })
     : configExport
-  return (config as { server: { proxy: Record<string, { target?: string }>; hmr: { host: string; protocol: string; clientPort: number } } }).server
+  return (config as { server: { proxy: Record<string, { target?: string }>; hmr?: unknown } }).server
 }
 
 describe('local Vite server routing', () => {
@@ -29,9 +29,9 @@ describe('local Vite server routing', () => {
     expect(proxy['/api/org']?.target).toBe('https://org.example.test')
     expect(proxy['/api/chat']?.target).not.toBe(proxy['/api/org']?.target)
   })
-  it('separates the local HTTPS gateway hostname and port for hot reload', async () => {
-    const { hmr } = await loadViteServerConfig({ VITE_HMR_HOST: 'localhost:8443', VITE_HMR_PROTOCOL: 'wss', VITE_HMR_CLIENT_PORT: undefined })
-    expect(hmr).toMatchObject({ host: 'localhost', protocol: 'wss', clientPort: 8443 })
+  it('lets hot reload follow the browser origin through the local HTTPS gateway', async () => {
+    const { hmr } = await loadViteServerConfig({})
+    expect(hmr).toBeUndefined()
   })
 
 })
