@@ -360,3 +360,19 @@ a MedTech grant is not a LifeTech grant. Clients registered before the new
 resource was provisioned may need fresh registration. These connections share
 OrgPortal's implementation, not OAuth audiences or organization access.
 Public motion/event feeds keep their existing visibility rules.
+
+## Organization availability tasks
+
+`preview_organization_tasks` and `apply_organization_tasks` accept
+`organizationId` and `task: "availability-calendar"`. They require
+`org:portal.read`, `org:portal.write`, and live organization management permission.
+The organization-pinned LifeTech connection accepts only its own organization.
+Preview lists every active member, including the owner, and creates no tasks.
+Apply requires `confirm: true` and its matching ten-minute, one-use `previewId`.
+A changed membership roster invalidates the preview. Repeated assignments preserve
+existing tasks without duplication; the response reports new and prior assignments.
+
+The task is “Fill out your availability calendar” and opens `/availability`.
+Saving availability in a poll saves the account calendar and completes the
+organization calendar task in that tenant. Another user's save cannot complete it.
+No emails or external messages are sent. No schema migration is required.

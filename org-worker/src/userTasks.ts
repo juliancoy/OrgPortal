@@ -9,7 +9,7 @@ export function userTaskRoutes(getUser: (env: Env, request: Request) => Promise<
  app.get('/',async c=>{
   const user=await getUser(c.env,c.req.raw),tenant=await resolvePortalTenant(c.env.DB,c.req.raw);
   const rows=await c.env.DB.prepare(`SELECT id,kind,entity_id,title,status,created_at FROM user_tasks WHERE tenant_id = ? AND user_id = ? AND status = 'pending' ORDER BY created_at,id`).bind(tenant.id,user.id).all<Task>();
-  return c.json({tasks:(rows.results||[]).map(task=>({...task,href:task.kind==='availability'?`/availability/${encodeURIComponent(task.entity_id!)}`:null}))});
+  return c.json({tasks:(rows.results||[]).map(task=>({...task,href:task.kind==='personal'&&task.entity_id?.startsWith('availability-calendar:')?'/availability':task.kind==='availability'?`/availability/${encodeURIComponent(task.entity_id!)}`:null}))});
  });
  app.post('/',async c=>{
   const user=await getUser(c.env,c.req.raw),tenant=await resolvePortalTenant(c.env.DB,c.req.raw);

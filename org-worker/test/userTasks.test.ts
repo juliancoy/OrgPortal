@@ -58,3 +58,15 @@ test('closure resolves poll tasks; reopening restores only unanswered invitation
  await request(`/availability/${id}`,'PATCH',{closed:false});assert.equal((await queue('bob')).length,1);assert.equal((await queue('carol')).length,0);
  }finally{db.sqlite.close()}
 });
+
+test('organization calendar task links to availability and completes only for the saving account and tenant',async()=>{
+ const {db,request,queue}=fixture();try{
+ const insert=db.sqlite.prepare("INSERT INTO user_tasks(id,tenant_id,user_id,created_by_user_id,kind,entity_id,title) VALUES (?,? ,?,'alice','personal','availability-calendar:org','Fill out your availability calendar')");
+ insert.run('bob-calendar','baltimore-medtech','bob');insert.run('carol-calendar','baltimore-medtech','carol');insert.run('bob-other-tenant','code-collective','bob');
+ assert.equal((await queue('bob'))[0].href,'/availability');
+ const {id}=await (await request('/availability','POST',{title:'Calendar',timezone:'UTC',slots})).json() as {id:string};
+ assert.equal((await request(`/availability/${id}/me`,'PUT',{slots:['bad']},'bob')).status,400);assert.equal((await queue('bob')).length,1);
+ assert.equal((await request(`/availability/${id}/me`,'PUT',{slots},'bob')).status,200);
+ assert.equal((await queue('bob')).length,0);assert.equal((await queue('carol')).length,1);assert.equal((await queue('bob','codecollective.us')).length,1);
+ }finally{db.sqlite.close()}
+});

@@ -1,3 +1,4 @@
+import { runOrganizationTaskOperation, organizationTaskSchema } from './organizationTasksMcp';
 import { HTTPException } from "hono/http-exception";
 import { runGovernanceOperation, motionListSchema, motionTargetSchema, motionOperationSchema, proposeMotionSchema, amendMotionSchema, motionActionSchema, type GovernanceService } from "./governanceMcp";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -741,6 +742,16 @@ export async function handleEventMcp(request: Request, env: Env, createOrganizat
         inputSchema: schema, annotations: { readOnlyHint: false, destructiveHint: operation === 'action', idempotentHint: false }, _meta: metadata([portalReadScope, portalWriteScope]) },
         (args: Record<string, unknown>) => governanceResult(operation, args));
     }
+    const taskResult = async (args: unknown) => {
+      try {
+        const data = await runOrganizationTaskOperation(env, request, identity, scopedArgs(args));
+        return { content: [{ type: 'text' as const, text: JSON.stringify(data) }], structuredContent: data };
+      } catch (error) {
+        return { isError: true, content: [{ type: 'text' as const, text: await eventErrorResponse(error, env, request).text() }] };
+      }
+    };
+    server.registerTool('preview_organization_tasks', { description: 'Preview assigning the availability-calendar task to all active organization members. Requires organization management permission; no tasks are created.', inputSchema: organizationTaskSchema, annotations: { readOnlyHint: true }, _meta: metadata([portalReadScope, portalWriteScope]) }, args => taskResult({ ...args, confirm: false }));
+    server.registerTool('apply_organization_tasks', { description: 'Assign the availability-calendar task to every active member after reviewing the preview. Requires confirm=true and a matching one-use previewId. Existing assignments are preserved without duplicates.', inputSchema: organizationTaskSchema, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }, _meta: metadata([portalReadScope, portalWriteScope]) }, taskResult);
     server.registerTool('list_organizations', { description: 'List organizations where the signed-in PIdP identity has active membership.',
       inputSchema: z.object({ limit: z.number().int().min(1).max(500).default(100) }).strict(),
       annotations: { readOnlyHint: true }, _meta: metadata([portalReadScope]) }, args => organizationResult('list', args));
