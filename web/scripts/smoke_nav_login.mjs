@@ -51,10 +51,11 @@ try {
     if (result.text !== "Login") {
       throw new Error(`${url}: expected Login text, got ${JSON.stringify(result.text)}`);
     }
-    if (!result.href.startsWith("https://id.codecollective.us/app/login?")) {
+    if (!result.href.startsWith(`${baseUrl}/pidp/auth/sso/start?`)) {
       throw new Error(`${url}: unexpected login href ${result.href}`);
     }
     const loginHref = new URL(result.href);
+    if (loginHref.searchParams.get('app') !== 'code-collective') throw new Error(`${url}: missing application context`);
     const loginNext = loginHref.searchParams.get("next") || "";
     if (!loginNext.startsWith(expectedCallback)) {
       throw new Error(`${url}: login next should land in portal ID, got ${loginNext}`);
@@ -77,13 +78,13 @@ try {
     if (!modalResult.modalVisible) {
       throw new Error(`${url}: login modal did not open`);
     }
-    if (!modalResult.googleHref.startsWith("https://id.codecollective.us/auth/google/login?")) {
+    if (!modalResult.googleHref.startsWith(`${baseUrl}/pidp/auth/sso/start?`)) {
       throw new Error(`${url}: unexpected Google login href ${modalResult.googleHref}`);
     }
-    if (!modalResult.githubHref.startsWith("https://id.codecollective.us/auth/github/login?")) {
+    if (!modalResult.githubHref.startsWith(`${baseUrl}/pidp/auth/sso/start?`)) {
       throw new Error(`${url}: unexpected GitHub login href ${modalResult.githubHref}`);
     }
-    if (!modalResult.passwordHref.startsWith("https://id.codecollective.us/app/login?")) {
+    if (!modalResult.passwordHref.startsWith(`${baseUrl}/pidp/auth/sso/start?`)) {
       throw new Error(`${url}: unexpected password login href ${modalResult.passwordHref}`);
     }
     for (const [label, href] of Object.entries({
@@ -92,12 +93,36 @@ try {
       password: modalResult.passwordHref,
     })) {
       const parsed = new URL(href);
+      if (parsed.searchParams.get('app') !== 'code-collective') throw new Error(`${url}: ${label} missing application context`);
+      const expectedProvider = label === 'password' ? null : label;
+      if (parsed.searchParams.get('provider') !== expectedProvider) throw new Error(`${url}: ${label} incorrect provider`);
       const next = parsed.searchParams.get("next") || "";
       if (!next.startsWith(expectedCallback)) {
         throw new Error(`${url}: ${label} next should land in portal ID, got ${next}`);
       }
     }
 
+    // Exercise navigation hydration with fixtures only on a local server.
+    if (['localhost', '127.0.0.1'].includes(new URL(baseUrl).hostname)) {
+      let sessionRead = false;
+      let userRead = false;
+      await page.route('**/pidp/auth/session-token', async (route) => {
+        sessionRead = route.request().url().startsWith(`${baseUrl}/pidp/`);
+        await route.fulfill({ json: { access_token: 'local-nav-fixture' } });
+      });
+      await page.route('**/pidp/auth/me', async (route) => {
+        userRead = route.request().headers().authorization === 'Bearer local-nav-fixture';
+        await route.fulfill({ json: { full_name: 'Local Test User' } });
+      });
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await page.locator('#portal-login-button[data-portal-authenticated="true"]').waitFor();
+      const account = page.locator('#portal-login-button');
+      if (!sessionRead || !userRead || await account.getAttribute('href') !== '/p/id') {
+        throw new Error(`${url}: session hydration failed`);
+      }
+      if (await account.getAttribute('aria-haspopup')) throw new Error(`${url}: account still opens login modal`);
+      console.log(`${url}: local session hydration ok`);
+    }
     console.log(`${url}: login nav ok`);
     await page.close();
   }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { pidpUrl } from '../../../config/pidp'
+import { pidpSingleSignOnUrl, pidpUrl } from '../../../config/pidp'
 import { portalPath } from '../../../config/portalBase'
 import { useAuth } from '../../../app/AppProviders'
 import './McpConnectPage.css'
@@ -14,11 +14,13 @@ export function McpConnectPage() {
   const [connection, setConnection] = useState<Connection | null>(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [needsSignIn, setNeedsSignIn] = useState(false)
 
   useEffect(() => {
     const controller = new AbortController()
     setConnection(null)
     setError('')
+    setNeedsSignIn(false)
     if (!/^login_[A-Za-z0-9_-]{43,100}$/.test(request)) {
       setError('This connection link is invalid. Start sign-in again from your MCP client.')
       return
@@ -26,7 +28,14 @@ export function McpConnectPage() {
     void fetch(pidpUrl(`/oauth/mcp/handoff?${new URLSearchParams({ request })}`), {
       credentials: 'include', signal: controller.signal, cache: 'no-store',
     }).then(async response => {
-      if (!response.ok) throw new Error('This connection link has expired or your sign-in is no longer active. Start sign-in again from your MCP client.')
+      if (response.status === 401) {
+        if (!controller.signal.aborted) setNeedsSignIn(true)
+        throw new Error('Your browser sign-in is no longer active. Sign in again to connect this account.')
+      }
+      if (!response.ok) {
+        const failure = await response.json().catch(() => ({})) as { error?: string }
+        throw new Error(failure.error === 'login_expired' ? 'This connection link has expired. Start sign-in again from your MCP client.' : 'Unable to load this connection. Start sign-in again from your MCP client.')
+      }
       const data: Connection = await response.json()
       if (data.portal_origin !== window.location.origin || new URL(data.issuer).protocol !== 'https:') {
         throw new Error('This connection belongs to a different portal.')
@@ -85,6 +94,7 @@ export function McpConnectPage() {
         </dl>
       </>}
       <div className="mcp-connect-actions">
+        {needsSignIn && <a className="mcp-connect-continue" href={pidpSingleSignOnUrl(`/users/mcp-connect?${new URLSearchParams({ request })}`)}>Sign in again</a>}
         {connection && <button className="mcp-connect-continue" type="button" disabled={busy} aria-busy={busy} onClick={() => void connect()}>
           {busy ? 'Connecting…' : 'Continue to consent'}
           <span aria-hidden="true">→</span>

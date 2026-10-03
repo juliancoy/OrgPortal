@@ -71,3 +71,17 @@ test('MCP continuation reports an expired request without sending a confirmation
   await expect(page.getByRole('alert')).toContainText('expired')
   await expect(page.getByRole('button', { name: 'Continue to consent' })).toHaveCount(0)
 })
+
+test('MCP handoff distinguishes an inactive browser session and offers same-account sign-in with the return request', async ({ page }) => {
+  await account(page, true)
+  await page.route('**/oauth/mcp/handoff*', route => route.fulfill({ status: 401, json: { error: 'login_required' } }))
+  await page.goto(path)
+  await expect(page.getByRole('alert')).toContainText('browser sign-in is no longer active')
+  const link = page.getByRole('link', { name: 'Sign in again', exact: true })
+  await expect(link).toBeVisible()
+  const destination = new URL(await link.getAttribute('href') || '', page.url())
+  expect(destination.pathname).toContain('/auth/sso/start')
+  const callback = new URL(destination.searchParams.get('next') || '')
+  expect(new URL(callback.searchParams.get('next') || '', page.url()).searchParams.get('request')).toBe(request)
+  await expect(page.getByRole('button', { name: 'Continue to consent' })).toHaveCount(0)
+})
