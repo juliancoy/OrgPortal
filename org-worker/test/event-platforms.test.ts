@@ -92,7 +92,7 @@ test("JWT verifies audience, issuer, expiration and explicit subject mapping", a
       .setProtectedHeader({ alg: "RS256" }).sign(privateKey);
   }
   const request = (token: string) => new Request(authEnv.MCP_PUBLIC_URL!, { headers: { authorization: `Bearer ${token}` } });
-  assert.deepEqual(await authenticateMcp(request(await signed()), authEnv, getKey), { userId: "pidp-user", scopes: ["org:events.read"] });
+  assert.deepEqual(await authenticateMcp(request(await signed()), authEnv, getKey), { userId: "pidp-user", scopes: ["org:events.read"], organizationId: undefined, resource: authEnv.MCP_PUBLIC_URL });
   for (const overrides of [{ aud: "wrong" }, { iss: "wrong" }, { exp: 1 }, { sub: "unmapped" }]) {
     await assert.rejects(authenticateMcp(request(await signed(overrides)), authEnv, getKey), /Invalid/);
   }
@@ -103,7 +103,7 @@ test("MCP routes fail closed, advertise resource metadata, reject origins and re
   const response = await app.request(request, undefined, authEnv);
   assert.equal(response.status, 401);
   const challenge = response.headers.get("www-authenticate") || "";
-  assert.ok(challenge.includes("/.well-known/oauth-protected-resource/api/org/mcp?v=20260910-2"));
+  assert.ok(challenge.includes("/.well-known/oauth-protected-resource/api/org/mcp?v=20261003"));
   assert.equal(protectedResourceMetadata(authEnv).resource, authEnv.MCP_PUBLIC_URL);
   assert.equal((await handleEventMcp(new Request(request, { headers: { origin: "https://evil.example" } }), authEnv)).status, 403);
 });

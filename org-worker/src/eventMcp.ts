@@ -83,8 +83,31 @@ const nativeEventSchema = z.object({
   }).strict(),
 }).strict();
 const keySets = new Map<string, JWTVerifyGetKey>();
-export function mcpConfiguration(env: Env) {
-  const resource = env.MCP_PUBLIC_URL;
+export function mcpConfiguration(env: Env, request?: Request) {
+  const resourceBindingsSchema = z.record(z.string().url().refine(value => {
+    const url = new URL(value);
+    return url.protocol === 'https:' && url.pathname === '/api/org/mcp' && !url.username && !url.password && !url.search && !url.hash;
+  }), z.object({
+    name: z.string().min(1).max(120), organizationId: z.string().min(1).max(200),
+    introspectionSecretBinding: z.string().regex(/^MCP_[A-Z_]+$/).optional(),
+  }).strict());
+  let bindings: z.infer<typeof resourceBindingsSchema>;
+  try {
+    bindings = resourceBindingsSchema.parse(JSON.parse(env.MCP_RESOURCE_CONFIG_JSON || '{}'));
+    const hosts = Object.keys(bindings).map(value => new URL(value).host);
+    if (new Set(hosts).size !== hosts.length) throw new Error();
+  } catch { throw new EventIntegrationError(503, 'Invalid MCP resource configuration'); }
+  let resource = env.MCP_PUBLIC_URL;
+  if (request) {
+    const host = request.headers.get('x-forwarded-host') || new URL(request.url).host;
+    const match = Object.keys(bindings).find(value => new URL(value).host === host);
+    if (match) resource = match;
+    else if (env.MCP_RESOURCE_CONFIG_JSON && host !== (env.MCP_PUBLIC_URL ? new URL(env.MCP_PUBLIC_URL).host : '')
+      && host !== new URL(request.url).host) throw new EventIntegrationError(404, 'MCP resource is not configured for this host');
+  }
+  const binding = resource ? bindings[resource] : undefined;
+  const introspectionSecret = binding?.introspectionSecretBinding
+    ? (env as unknown as Record<string, string>)[binding.introspectionSecretBinding] : env.MCP_OAUTH_INTROSPECTION_SECRET;
   const issuer = env.MCP_OAUTH_ISSUER;
   const jwks = env.MCP_OAUTH_JWKS_URL;
   const introspection = env.MCP_OAUTH_INTROSPECTION_URL;
@@ -99,8 +122,8 @@ export function mcpConfiguration(env: Env) {
   try {
     z.record(z.string().min(1), z.string().trim().min(1)).parse(JSON.parse(env.MCP_SUBJECT_MAP_JSON));
   } catch { throw new EventIntegrationError(503, "Invalid MCP subject mapping"); }
-  if (introspection || env.MCP_OAUTH_INTROSPECTION_SECRET) {
-    if (introspection !== `${issuer.replace(/\/$/, "")}/oauth/mcp/introspect` || !env.MCP_OAUTH_INTROSPECTION_SECRET) {
+  if (introspection || introspectionSecret) {
+    if (introspection !== `${issuer.replace(/\/$/, "")}/oauth/mcp/introspect` || !introspectionSecret) {
       throw new EventIntegrationError(503, "Invalid PIdP introspection configuration");
     }
   }
@@ -112,11 +135,11 @@ export function mcpConfiguration(env: Env) {
   } catch { throw new EventIntegrationError(503, "Invalid PIdP account namespace configuration"); }
   const url = new URL(resource);
   const metadataUrl = new URL(`/.well-known/oauth-protected-resource${url.pathname}`, url.origin);
-  metadataUrl.searchParams.set("v", "20260910-2");
-  return { resource, issuer, jwks, introspection, metadataUrl: metadataUrl.toString() };
+  metadataUrl.searchParams.set("v", "20261003");
+  return { resource, issuer, jwks, introspection, introspectionSecret, name: binding?.name, organizationId: binding?.organizationId, metadataUrl: metadataUrl.toString() };
 }
 export async function authenticateMcp(request: Request, env: Env, getKey?: JWTVerifyGetKey) {
-  const config = mcpConfiguration(env);
+  const config = mcpConfiguration(env, request);
   const token = /^Bearer ([^\s]+)$/i.exec(request.headers.get("authorization") || "")?.[1];
   if (!token) throw new EventIntegrationError(401, "Authentication required");
   try {
@@ -127,6 +150,7 @@ export async function authenticateMcp(request: Request, env: Env, getKey?: JWTVe
     const { payload } = await jwtVerify(token, getKey, {
       issuer: config.issuer, audience: config.resource, algorithms: ["RS256", "ES256"], requiredClaims: ["sub", "exp", "iat"],
     });
+    if (payload.aud !== config.resource) throw new Error();
     const subjectMap = JSON.parse(env.MCP_SUBJECT_MAP_JSON!);
     let userId = payload.sub && Object.hasOwn(subjectMap, payload.sub) ? subjectMap[payload.sub] : undefined;
     if (!userId && typeof payload.sub === 'string') {
@@ -144,7 +168,7 @@ export async function authenticateMcp(request: Request, env: Env, getKey?: JWTVe
       try {
         // Workerd rejects redirect: "error". Manual mode keeps credentials at this endpoint.
         response = await fetch(config.introspection, { method: "POST", redirect: "manual", signal: AbortSignal.timeout(10000),
-          headers: { authorization: `Bearer ${env.MCP_OAUTH_INTROSPECTION_SECRET}`, "content-type": "application/x-www-form-urlencoded" },
+          headers: { authorization: `Bearer ${config.introspectionSecret}`, "content-type": "application/x-www-form-urlencoded" },
           body: new URLSearchParams({ token, resource: config.resource }) });
       } catch {
         console.warn('MCP introspection unavailable', { reason: 'network' });
@@ -161,14 +185,14 @@ export async function authenticateMcp(request: Request, env: Env, getKey?: JWTVe
         || status.aud !== config.resource || status.scope !== payload.scope || status.exp !== payload.exp) throw new Error();
     }
     const scopes = typeof payload.scope === "string" ? payload.scope.split(" ") : [];
-    return { userId, scopes };
+    return { userId, scopes, organizationId: config.organizationId, resource: config.resource };
   } catch (error) {
     if (error instanceof EventIntegrationError) throw error;
     throw new EventIntegrationError(401, "Invalid or unauthorized access token");
   }
 }
-export function protectedResourceMetadata(env: Env) {
-  const config = mcpConfiguration(env);
+export function protectedResourceMetadata(env: Env, request?: Request) {
+  const config = mcpConfiguration(env, request);
   return { resource: config.resource, authorization_servers: [config.issuer],
     scopes_supported: [readScope, writeScope, portalReadScope, portalWriteScope], bearer_methods_supported: ["header"] };
 }
@@ -595,20 +619,20 @@ export async function runEventOperation(env: Env, identity: { userId: string; sc
       message: "Execution or audit finalization failed. Inspect operation status and the provider before retrying." };
   }
 }
-export function eventErrorResponse(error: unknown, env: Env) {
+export function eventErrorResponse(error: unknown, env: Env, request?: Request) {
   const status = error instanceof EventIntegrationError || error instanceof OrganizationIamError || error instanceof HTTPException ? error.status
     : error instanceof z.ZodError ? 400 : 500;
   const message = status === 500 ? "Event integration failed" : error instanceof z.ZodError ? "Invalid event arguments" : (error as Error).message;
   const headers: Record<string, string> = { "cache-control": "no-store" };
   if (status === 401) {
-    headers["www-authenticate"] = `Bearer resource_metadata="${mcpConfiguration(env).metadataUrl}"`;
+    headers["www-authenticate"] = `Bearer resource_metadata="${mcpConfiguration(env, request).metadataUrl}"`;
   }
   if (status === 429) headers["retry-after"] = "60";
   return Response.json({ error: message }, { status, headers });
 }
 export async function handleEventMcp(request: Request, env: Env, createOrganization?: CreateOrganization, governance?: GovernanceService) {
   try {
-    const config = mcpConfiguration(env);
+    const config = mcpConfiguration(env, request);
     const origin = request.headers.get("origin");
     const allowed = [new URL(config.resource).origin, ...(env.MCP_ALLOWED_ORIGINS || "").split(",").map(s => s.trim()).filter(Boolean)];
     if (origin && !allowed.includes(origin)) return new Response("Origin denied", { status: 403 });
@@ -638,9 +662,15 @@ export async function handleEventMcp(request: Request, env: Env, createOrganizat
     let parsedBody: unknown;
     try { parsedBody = JSON.parse(new TextDecoder().decode(bytes)); }
     catch { return new Response("Invalid JSON", { status: 400 }); }
-    const server = new McpServer({ name: "orgportal-events", version: "1.0.0" });
+    const server = new McpServer({ name: config.name ? `${config.name} MCP` : "orgportal-events", version: "1.0.0" });
+    const scopedArgs = (args: unknown) => {
+      if (config.organizationId && (!args || typeof args !== 'object' || !('organizationId' in args)
+        || args.organizationId !== config.organizationId)) throw new EventIntegrationError(403, 'This MCP connection is limited to its own organization');
+      return args;
+    };
     const result = async (operation: "list" | "get" | "plan" | "status" | "native" | "comments" | "mediaPreview" | "mediaApply", args: unknown) => {
       try {
+        args = scopedArgs(args);
         const data = operation === "native" ? await runNativeEventOperation(env, identity, args)
           : operation === "comments" ? await runEventCommentsOperation(env, identity, args)
           : operation === "mediaPreview" ? await runEventMediaOperation(env, identity, args, false)
@@ -649,7 +679,7 @@ export async function handleEventMcp(request: Request, env: Env, createOrganizat
         return { ...("success" in data && data.success === false ? { isError: true } : {}),
           content: [{ type: "text" as const, text: JSON.stringify(data) }], structuredContent: data };
       } catch (error) {
-        const response = eventErrorResponse(error, env);
+        const response = eventErrorResponse(error, env, request);
         const reauthorize = error instanceof EventIntegrationError && error.status === 403 && error.message === "Missing event scope";
         return { isError: true, content: [{ type: "text" as const, text: await response.text() }],
           ...(reauthorize ? { _meta: { "mcp/www_authenticate": [`Bearer resource_metadata="${config.metadataUrl}", error="insufficient_scope", error_description="Authorize the required event scopes", scope="${readScope} ${writeScope}"`] } } : {}) };
@@ -657,10 +687,11 @@ export async function handleEventMcp(request: Request, env: Env, createOrganizat
     };
     const portalResult = async (operation: "get" | "save" | "requestDomain" | "attachDomain", args: unknown) => {
       try {
+        args = scopedArgs(args);
         const data = await runPortalOperation(env, identity, operation, args);
         return { content: [{ type: "text" as const, text: JSON.stringify(data) }], structuredContent: data };
       } catch (error) {
-        const response = eventErrorResponse(error, env);
+        const response = eventErrorResponse(error, env, request);
         const reauthorize = error instanceof EventIntegrationError && error.status === 403 && error.message === "Missing portal scope";
         return { isError: true, content: [{ type: "text" as const, text: await response.text() }],
           ...(reauthorize ? { _meta: { "mcp/www_authenticate": [`Bearer resource_metadata="${config.metadataUrl}", error="insufficient_scope", error_description="Authorize the required portal scopes", scope="${portalReadScope} ${portalWriteScope}"`] } } : {}) };
@@ -669,22 +700,25 @@ export async function handleEventMcp(request: Request, env: Env, createOrganizat
     const metadata = (scopes: string[]) => ({ securitySchemes: [{ type: "oauth2", scopes }] });
     const organizationResult = async (operation: 'create' | 'member' | 'members' | 'list', args: unknown) => {
       try {
+        if (operation !== 'list') args = scopedArgs(args);
         const data = await runOrganizationOperation(env.DB, identity, operation, args, createOrganization || (async () => {
           throw new EventIntegrationError(503, 'Organization creation is unavailable');
         }));
+        if (operation === 'list' && config.organizationId && 'organizations' in data) data.organizations = (data.organizations as { id: string }[]).filter(org => org.id === config.organizationId);
         return { content: [{ type: 'text' as const, text: JSON.stringify(data) }], structuredContent: data };
       } catch (error) {
-        return { isError: true, content: [{ type: 'text' as const, text: await eventErrorResponse(error, env).text() }] };
+        return { isError: true, content: [{ type: 'text' as const, text: await eventErrorResponse(error, env, request).text() }] };
       }
     };
     const governanceResult = async (operation: 'list' | 'get' | 'status' | 'propose' | 'amend' | 'action', args: unknown) => {
       try {
         if (!governance) throw new EventIntegrationError(503, 'Governance service is unavailable');
+        args = scopedArgs(args);
         const data = await runGovernanceOperation(env.DB, identity, operation, args, governance);
         return { content: [{ type: 'text' as const, text: JSON.stringify(data) }], structuredContent: data };
       } catch (error) {
         const reauthorize = error instanceof EventIntegrationError && error.message === 'Missing portal scope';
-        return { isError: true, content: [{ type: 'text' as const, text: await eventErrorResponse(error, env).text() }],
+        return { isError: true, content: [{ type: 'text' as const, text: await eventErrorResponse(error, env, request).text() }],
           ...(reauthorize ? { _meta: { 'mcp/www_authenticate': [`Bearer resource_metadata="${config.metadataUrl}", error="insufficient_scope", scope="${portalReadScope} ${portalWriteScope}"`] } } : {}) };
       }
     };
@@ -713,12 +747,14 @@ export async function handleEventMcp(request: Request, env: Env, createOrganizat
     server.registerTool('list_organization_members', { description: 'Read active organization memberships using existing OrgPortal permissions.',
       inputSchema: z.object({ organizationId: z.string().min(1).max(200) }).strict(),
       annotations: { readOnlyHint: true }, _meta: metadata([portalReadScope]) }, args => organizationResult('members', args));
+    if (!config.organizationId) {
     server.registerTool('preview_organization_creation', { description: 'Preview a separate organization owned by the signed-in identity.',
       inputSchema: organizationCreateSchema, annotations: { readOnlyHint: true }, _meta: metadata([portalReadScope, portalWriteScope]) },
       args => organizationResult('create', { ...args, confirm: false }));
     server.registerTool('apply_organization_creation', { description: 'Create an organization after reviewing its preview. Requires confirm=true and a matching one-use previewId.',
       inputSchema: organizationCreateSchema, annotations: { readOnlyHint: false, destructiveHint: false }, _meta: metadata([portalReadScope, portalWriteScope]) },
       args => organizationResult('create', args));
+    }
     server.registerTool('preview_organization_membership', { description: 'Preview adding an existing PIdP identity or changing its organization role.',
       inputSchema: organizationMemberSchema, annotations: { readOnlyHint: true }, _meta: metadata([portalReadScope, portalWriteScope]) },
       args => organizationResult('member', { ...args, confirm: false }));
@@ -789,5 +825,5 @@ export async function handleEventMcp(request: Request, env: Env, createOrganizat
       headers.delete("content-length");
       return new Response(output, { status: response.status, headers });
     } finally { await server.close(); }
-  } catch (error) { return eventErrorResponse(error, env); }
+  } catch (error) { return eventErrorResponse(error, env, request); }
 }

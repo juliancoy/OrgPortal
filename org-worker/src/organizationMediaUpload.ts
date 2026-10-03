@@ -1,7 +1,7 @@
 import { EventIntegrationError } from './eventPlatforms';
 import { authorizeOrganization } from './organizationIam';
 import { claimEventOperation, enforceEventRateLimit, finishEventOperation, prepareEventOperation, previewFingerprint } from './eventOperationStore';
-import { handleMcpMediaUpload, parseImageUploadRequest, type McpIdentity } from './mediaUpload';
+import { authorizeMcpOrganization, handleMcpMediaUpload, parseImageUploadRequest, type McpIdentity } from './mediaUpload';
 
 export async function uploadOrganizationMedia(request: Request, env: Env, identity: McpIdentity) {
   if (!identity.scopes.includes('org:portal.read') || !identity.scopes.includes('org:portal.write')) {
@@ -11,6 +11,7 @@ export async function uploadOrganizationMedia(request: Request, env: Env, identi
   if (!env.SCAN_IMAGES) throw new EventIntegrationError(503, 'Organization media storage is not configured');
   const { field, image, imageBytes, extension, confirm, sha256 } = await parseImageUploadRequest(request, ['organizationId', 'image', 'label', 'alt', 'confirm', 'previewId']);
   const organizationId = field('organizationId', 200);
+  authorizeMcpOrganization(identity, organizationId);
   const row = await env.DB.prepare('SELECT id, slug, name, media_json FROM organizations WHERE id = ? OR slug = ?')
     .bind(organizationId, organizationId).first<{ id: string; slug: string; name: string; media_json: string }>();
   if (!row) throw new EventIntegrationError(404, 'Organization not found');

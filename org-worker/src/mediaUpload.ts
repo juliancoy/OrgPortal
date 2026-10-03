@@ -3,7 +3,10 @@ import { EventIntegrationError } from './eventPlatforms';
 
 export const maxImageBytes = 8 * 1024 * 1024;
 export const imageExtensionsByType: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' };
-export type McpIdentity = { userId: string; scopes: string[] };
+export type McpIdentity = { userId: string; scopes: string[]; organizationId?: string; resource?: string };
+export function authorizeMcpOrganization(identity: McpIdentity, organizationId: string) {
+  if (identity.organizationId && identity.organizationId !== organizationId) throw new EventIntegrationError(403, 'This MCP connection is limited to its own organization');
+}
 
 type ParsedUpload = {
   field: (key: string, max: number) => string;
@@ -73,11 +76,11 @@ export async function parseImageUploadRequest(request: Request, allowedFields: s
 
 export async function handleMcpMediaUpload(request: Request, env: Env, upload: (identity: McpIdentity) => Promise<unknown>) {
   try {
-    const config = mcpConfiguration(env);
+    const config = mcpConfiguration(env, request);
     if (!config.introspection) throw new EventIntegrationError(503, 'Uploads require account revocation checks');
     const origin = request.headers.get('origin');
     if (origin && origin !== new URL(config.resource).origin) throw new EventIntegrationError(403, 'Origin denied');
     const result = await upload(await authenticateMcp(request, env));
     return Response.json(result, { headers: { 'cache-control': 'no-store' } });
-  } catch (error) { return eventErrorResponse(error, env); }
+  } catch (error) { return eventErrorResponse(error, env, request); }
 }

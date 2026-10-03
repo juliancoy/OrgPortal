@@ -1,0 +1,11 @@
+{
+  "https://medtech.social/api/org/mcp": {
+    "name": "MedTech",
+    "organizationId": "org-baltimore-medtech"
+  },
+  "https://lifetech.fyi/api/org/mcp": {
+    "name": "LifeTech",
+    "organizationId": "ef646755-9443-4c7b-ba4b-a7a29754f666",
+    "introspectionSecretBinding": "MCP_LIFETECH_INTROSPECTION_SECRET"
+  }
+}

@@ -14,6 +14,8 @@ interface Env {
   EMAIL_SENDING_ENABLED?: string;
   EVENT_INTEGRATIONS_JSON?: string;
   MCP_PUBLIC_URL?: string;
+  MCP_RESOURCE_CONFIG_JSON?: string;
+  MCP_LIFETECH_INTROSPECTION_SECRET?: string;
   MCP_OAUTH_ISSUER?: string;
   MCP_OAUTH_JWKS_URL?: string;
   MCP_SUBJECT_MAP_JSON?: string;

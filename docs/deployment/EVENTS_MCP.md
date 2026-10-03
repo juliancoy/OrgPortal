@@ -323,3 +323,40 @@ This is an org Worker change only. Release it from CodeCollective with
 `./deploy.sh --component org --skip-org-migrations`; no schema, frontend, PIdP,
 or chat release is needed. Reconnect or refresh your MCP client's tool list if
 it caches tools.
+
+## Separate MedTech and LifeTech connections
+
+Configure these as distinct MCP connections:
+
+| Connection | Resource URL | Organization ID |
+| --- | --- | --- |
+| MedTech | `https://medtech.social/api/org/mcp` | `org-baltimore-medtech` |
+| LifeTech | `https://lifetech.fyi/api/org/mcp` | `ef646755-9443-4c7b-ba4b-a7a29754f666` |
+
+Each hostname advertises its own protected-resource metadata and authorization
+challenge. Access tokens have one exact resource audience and cannot be reused
+at the other endpoint. Each connection lists only its organization and rejects
+other organization IDs for events, governance, membership, portal settings and
+media uploads. Organization creation belongs to an unscoped portal connection
+and is not exposed on these brand-specific connections. Existing membership,
+management permissions and preview/apply receipts remain required.
+
+`org-worker/config/mcp-resources.json` is the public resource-to-organization
+configuration used by CodeCollective's org Worker release.
+`MCP_RESOURCE_CONFIG_JSON` can override it for another deployment.
+LifeTech uses the separate `MCP_LIFETECH_INTROSPECTION_SECRET` Worker secret;
+MedTech retains its existing resource credential.
+
+PIdP accepts additional resources through `MCP_OAUTH_RESOURCE_ADDITIONS_JSON`,
+a map from resource URL to `{secretHash, portal: {name, loginUrl}}`. It merges
+these into its existing configured resources and portals, rejecting collisions.
+This allows LifeTech provisioning without replacing existing clients, grants,
+signing keys or resource credentials. Both Python and serverless implementations
+use the same configuration contract. The LifeTech login URL is
+`https://lifetech.fyi/users/mcp-connect`, with LifeTech consent branding.
+
+Register/reconnect LifeTech as its own client connection and sign in to LifeTech;
+a MedTech grant is not a LifeTech grant. Clients registered before the new
+resource was provisioned may need fresh registration. These connections share
+OrgPortal's implementation, not OAuth audiences or organization access.
+Public motion/event feeds keep their existing visibility rules.

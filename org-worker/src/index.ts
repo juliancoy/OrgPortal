@@ -2535,9 +2535,9 @@ export function governanceService(db: D1Database): GovernanceService {
 }
 app.post("/mcp/uploads/event-media", (c) => handleEventMediaUpload(c.req.raw, c.env));
 app.post("/mcp/uploads/organization-media", (c) => handleOrganizationMediaUpload(c.req.raw, c.env));
-const oauthProtectedResourceMetadataResponse = (env: Env) => Response.json(protectedResourceMetadata(env), { headers: { "cache-control": "no-store" } });
-const oauthProtectedResourceMetadata = (c: { env: Env }) => {
-  try { return oauthProtectedResourceMetadataResponse(c.env); } catch (error) { return eventErrorResponse(error, c.env); }
+const oauthProtectedResourceMetadataResponse = (env: Env, request: Request) => Response.json(protectedResourceMetadata(env, request), { headers: { "cache-control": "no-store" } });
+const oauthProtectedResourceMetadata = (c: { env: Env; req: { raw: Request } }) => {
+  try { return oauthProtectedResourceMetadataResponse(c.env, c.req.raw); } catch (error) { return eventErrorResponse(error, c.env, c.req.raw); }
 };
 app.get("/.well-known/oauth-protected-resource", oauthProtectedResourceMetadata);
 app.get("/.well-known/oauth-protected-resource/api/org/mcp", oauthProtectedResourceMetadata);
@@ -5115,7 +5115,7 @@ function orgWorkerFetch(request: Request, env: Env, ctx: ExecutionContext) {
   if (request.method === "GET" && (url.pathname === "/.well-known/oauth-protected-resource"
     || url.pathname === "/.well-known/oauth-protected-resource/api/org/mcp"
     || url.pathname.startsWith("/.well-known/oauth-protected-resource/"))) {
-    try { return oauthProtectedResourceMetadataResponse(env); } catch (error) { return eventErrorResponse(error, env); }
+    try { return oauthProtectedResourceMetadataResponse(env, request); } catch (error) { return eventErrorResponse(error, env, request); }
   }
   return app.fetch(request, env, ctx);
 }
