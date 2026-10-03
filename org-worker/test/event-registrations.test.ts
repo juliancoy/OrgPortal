@@ -24,6 +24,7 @@ function setup() {
     '0027_portal_tenant_branding',
     '0028_portal_tenant_home_page',
     '0029_portal_tenant_deployment_model',
+    '0049_event_venues',
     '0032_portal_tenant_org_slug',
     '0033_portal_tenant_custom_domains',
     '0034_event_calendar_feeds',

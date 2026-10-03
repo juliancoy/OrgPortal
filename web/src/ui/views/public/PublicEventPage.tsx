@@ -1,3 +1,4 @@
+import { EventVenues, type Venue } from '../../components/EventVenues'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { CalendarPlus, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, MapPinned, RotateCcw, X, ZoomIn, ZoomOut } from 'lucide-react'
@@ -34,6 +35,9 @@ type PublicEvent = {
   slug: string
   updated_at?: string | null
   description?: string | null
+  venues?: Venue[]
+  event_date?: string | null
+  timezone?: string | null
   starts_at?: string | null
   ends_at?: string | null
   location?: string | null
@@ -923,6 +927,7 @@ export function PublicEventPage() {
       </section>
         </main>
         <aside className="public-event-side public-event-luma-side" aria-label="Event actions and location">
+          <EventVenues eventId={event.id} venues={event.venues||[]} canManage={canManageEvent} onSaved={venues=>setEvent({...event,venues,location:venues.find(v=>v.event_status==='confirmed')?.address||null})} />
           <EventRegistration key={`${event.id}:${user?.id || 'guest'}:${Boolean(token)}`}
             eventId={event.id} slug={event.slug} token={token} authLoading={authLoading} saveToCalendar={saveToCalendar}
             organizationName={event.host_org_id ? event.organization_name || event.host_org_name : null} />
@@ -930,7 +935,7 @@ export function PublicEventPage() {
             <div className="public-event-logistics-list">
               <div className="public-event-logistics-item">
                 <span>Date</span>
-                <strong>{toEventDate(event.starts_at)}</strong>
+                <strong>{toEventDate(event.starts_at || (event.event_date?event.event_date+'T12:00:00':null))}</strong>
               </div>
               <div className="public-event-logistics-item">
                 <span>Time</span>

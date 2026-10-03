@@ -10,6 +10,7 @@ export function OrganizationTools() {
       <Link className="btn-secondary" to="/governance">Governance</Link>
       <Link className="btn-secondary" to="/governance/roberts">Robert’s Rules</Link>
       <Link className="btn-secondary" to="/orgs/initiatives">Initiatives</Link>
+      <Link className="btn-secondary" to="/orgs/events/venues">Venues</Link>
       <Link className="btn-secondary" to="/availability">When I Meet</Link>
     </nav>
   )

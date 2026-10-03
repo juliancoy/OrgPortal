@@ -76,16 +76,21 @@ export class EventTestDb {
         VALUES ('org-one', 'One', 'one', 'https://one.example', 'https://one.example/logo.png', '[]', '');
       INSERT INTO organization_memberships VALUES ('org-one', 'pidp-user', 'owner', 'active');`);
     this.sqlite.exec(readFileSync(new URL("../migrations/0044_event_history.sql", import.meta.url), "utf8"));
+    this.sqlite.exec(readFileSync(new URL("../migrations/0049_event_venues.sql", import.meta.url), "utf8"));
+    this.sqlite.exec(readFileSync(new URL("../migrations/0050_event_venue_rankings.sql", import.meta.url), "utf8"));
   }
   prepare(sql: string) {
     const stmt = this.sqlite.prepare(sql);
     const bound = (values: any[]) => ({
       first: async () => stmt.get(...values) || null,
-      run: async () => stmt.run(...values),
+      run: async () => {const result=stmt.run(...values);return {success:true,meta:{changes:Number(result.changes)}};},
       all: async () => ({ results: stmt.all(...values) }),
       bind: (...next: any[]) => bound(next),
     });
     return bound([]);
+  }
+  async batch(statements: Array<{run:()=>Promise<unknown>}>){
+    this.sqlite.exec('BEGIN');try{const results=[];for(const s of statements)results.push(await s.run());this.sqlite.exec('COMMIT');return results;}catch(e){this.sqlite.exec('ROLLBACK');throw e;}
   }
   close() { this.sqlite.close(); }
 }

@@ -1,3 +1,4 @@
+import { EventVenues, type Venue } from '../../components/EventVenues'
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../../app/AppProviders";
@@ -18,6 +19,8 @@ type NetworkEvent = {
   slug: string;
   updated_at?: string | null;
   description?: string | null;
+  venues?: Venue[];
+  event_date?: string | null;
   starts_at?: string | null;
   ends_at?: string | null;
   location?: string | null;
@@ -58,7 +61,7 @@ function toIsoDateTime(value: string): string | null {
 }
 
 export function OrgEventsPage() {
-  const { token } = useAuth();
+  const { token,user } = useAuth();
   const [events, setEvents] = useState<NetworkEvent[]>([]);
   const [orgs, setOrgs] = useState<Org[]>([]);
   const [status, setStatus] = useState<string | null>(null);
@@ -71,6 +74,7 @@ export function OrgEventsPage() {
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [eventDate,setEventDate]=useState("");
   const [location, setLocation] = useState("");
   const [startsAt, setStartsAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
@@ -192,6 +196,8 @@ export function OrgEventsPage() {
       const payload: Record<string, unknown> = {
         title: title.trim(),
         description: description.trim() || null,
+        event_date: eventDate || null,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         location: location.trim() || null,
         starts_at: toIsoDateTime(startsAt),
         ends_at: toIsoDateTime(endsAt),
@@ -467,6 +473,8 @@ export function OrgEventsPage() {
           rows={3}
           placeholder="Description"
         />
+        <Link to="/orgs/events/venues">Venue directory</Link>
+        <label>Date (when the time is not confirmed)<input type="date" value={eventDate} onChange={e=>setEventDate(e.target.value)}/></label>
         <input
           value={location}
           onChange={(e) => setLocation(e.target.value)}
@@ -712,6 +720,7 @@ export function OrgEventsPage() {
                   </button>
                 </div>
               </details>
+              <EventVenues eventId={event.id} venues={event.venues||[]} canManage={Boolean(token && ((user?.id && event.host_user_id===user.id)||adminOrgs.some(org=>org.id===event.host_org_id)))} onSaved={()=>void loadEvents()} />
               <div
                 className="muted"
                 style={{ fontSize: "0.85rem", overflowWrap: "anywhere" }}
@@ -722,6 +731,7 @@ export function OrgEventsPage() {
                   : ""}
                 {" • "}Claimed: {event.claimed_by_user_id ? "yes" : "no"}
                 {event.location ? ` • ${event.location}` : ""}
+                {event.event_date?` • ${event.event_date}`:""}
               </div>
 
               <div

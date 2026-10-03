@@ -20,6 +20,7 @@ type PublicEvent = {
   title: string
   slug: string
   description?: string | null
+  event_date?: string | null
   starts_at?: string | null
   ends_at?: string | null
   location?: string | null
@@ -237,9 +238,9 @@ export function PublicEventsPage({
   }
 
   const now = Date.now()
-  const isPast = (event: PublicEvent) => Boolean(event.ends_at || event.starts_at) && new Date(event.ends_at || event.starts_at!).getTime() < now
+  const isPast = (event: PublicEvent) => Boolean(event.ends_at || event.starts_at || event.event_date) && new Date(event.ends_at || event.starts_at || event.event_date+'T23:59:59').getTime() < now
   const groups = [
-    { heading: 'Upcoming events', events: events.filter((event) => !isPast(event)).sort((a, b) => Date.parse(a.starts_at || '') - Date.parse(b.starts_at || '')) },
+    { heading: 'Upcoming events', events: events.filter((event) => !isPast(event)).sort((a, b) => Date.parse(a.starts_at || a.event_date || '') - Date.parse(b.starts_at || b.event_date || '')) },
     { heading: 'Past events', events: events.filter(isPast).sort((a, b) => Date.parse(b.starts_at || '') - Date.parse(a.starts_at || '')) },
   ]
 
@@ -303,7 +304,7 @@ export function PublicEventsPage({
                     <h2>{event.title}</h2>
                   </div>
                   <div className="public-event-list-meta">
-                    <span>{formatDate(event.starts_at)}</span>
+                    <span>{event.starts_at?formatDate(event.starts_at):event.event_date?new Date(event.event_date+'T12:00:00').toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})+' · Time TBD':'TBD'}</span>
                     {event.location ? <span>{event.location}</span> : null}
                   </div>
                   {event.description ? <p className="public-event-list-description">{shortDescription(event.description)}</p> : null}

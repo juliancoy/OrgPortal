@@ -1,3 +1,5 @@
+import { venueRankingRoutes } from './venueRankings';
+import { venueRoutes, eventVenues, setEventVenues } from './venues';
 import { driveCarouselRoutes } from './driveCarousel';
 import { userTaskRoutes } from './userTasks';
 import { availabilityRoutes } from './availability';
@@ -219,6 +221,8 @@ type EventRow = {
   title: string;
   slug: string;
   description: string | null;
+  event_date?: string | null;
+  timezone?: string | null;
   starts_at: string | null;
   ends_at: string | null;
   location: string | null;
@@ -931,7 +935,7 @@ async function registeredEventsIcs(env: Env, request: Request, feed: RegisteredE
      JOIN events e ON e.id = r.event_id
      LEFT JOIN organizations o ON o.id = e.host_org_id
      WHERE r.user_id = ?
-     ORDER BY COALESCE(e.starts_at, e.created_at) ASC
+     ORDER BY COALESCE(e.starts_at,e.event_date,e.created_at) ASC
      LIMIT 500`,
   )
     .bind(feed.user_id)
@@ -1378,6 +1382,9 @@ async function mapEvent(env: Env, request: Request, row: EventRow) {
     title: row.title,
     slug: row.slug,
     description: row.description,
+    event_date: row.event_date || null,
+    timezone: row.timezone || null,
+    venues: await eventVenues(env.DB,row.id),
     starts_at: row.starts_at,
     ends_at: row.ends_at,
     location: row.location,
@@ -2572,6 +2579,19 @@ function deploymentHealth(c: { env: Env; req: { url: string }; header: (name: st
   };
 }
 
+app.route('/api/network/events',venueRankingRoutes(currentUser));
+app.route('/api/network/venues',venueRoutes(currentUser,async(env,user,venue)=>{
+  if(adminUser(user,env)||venue.created_by_user_id===user.id)return;
+  if(venue.organization_id){await authorizeOrganization(env.DB,organizationActor(user,env),'manage',venue.organization_id);return;}
+  fail(403,'Venue management access required');
+}));
+app.put('/api/network/events/:eventId/venues',async c=>{
+  const user=await currentUser(c.env,c.req.raw);
+  const row=await c.env.DB.prepare('SELECT * FROM events WHERE id = ?').bind(c.req.param('eventId')).first<EventRow>();
+  if(!row)fail(404,'Event not found');
+  await authorizeEventManager(c.env,user,row);
+  return c.json({venues:await setEventVenues(c.env.DB,row.id,await c.req.json())});
+});
 app.route("/api/availability", availabilityRoutes(currentUser));
 app.route("/api/tasks", userTaskRoutes(currentUser));
 app.route("/api/media/carousels", driveCarouselRoutes(currentUser));
@@ -2961,7 +2981,7 @@ app.get("/api/network/orgs/public", async (c) => {
   const candidateLimit = q ? searchCandidateLimit(limit) : limit;
   const rows = await c.env.DB.prepare(
     `SELECT o.*,
-      (SELECT count(*) FROM events e WHERE e.host_org_id = o.id AND (e.starts_at IS NULL OR e.starts_at >= datetime('now'))) AS upcoming_events_count,
+      (SELECT count(*) FROM events e WHERE e.host_org_id = o.id AND (COALESCE(e.starts_at,e.event_date) IS NULL OR COALESCE(e.starts_at,e.event_date) >= date('now'))) AS upcoming_events_count,
       (SELECT count(*) FROM organization_feedback f WHERE f.organization_id = o.id) AS feedback_count,
       (SELECT count(*) FROM organization_feedback f WHERE f.organization_id = o.id AND f.rating = 'positive') AS feedback_positive_count,
       (SELECT count(*) FROM organization_feedback f WHERE f.organization_id = o.id AND f.rating = 'concern') AS feedback_concern_count,
@@ -3012,8 +3032,8 @@ app.get("/api/network/orgs/public/:slug/events", async (c) => {
      FROM events e
      LEFT JOIN organizations o ON o.id = e.host_org_id
      WHERE (e.host_org_id = ? OR EXISTS (SELECT 1 FROM event_organizations eo WHERE eo.event_id = e.id AND eo.organization_id = ?))
-     ${upcomingOnly ? "AND e.starts_at IS NOT NULL AND julianday(e.starts_at) >= julianday('now')" : ""}
-     ORDER BY COALESCE(e.starts_at, e.created_at) ${upcomingOnly ? "ASC" : "DESC"}
+     ${upcomingOnly ? "AND ((e.starts_at IS NOT NULL AND julianday(e.starts_at) >= julianday('now')) OR (e.starts_at IS NULL AND e.event_date >= date('now')))" : ""}
+     ORDER BY COALESCE(e.starts_at,e.event_date,e.created_at) ${upcomingOnly ? "ASC" : "DESC"}
      LIMIT ?`,
   )
     .bind(org.id, org.id, limit)
@@ -3056,7 +3076,7 @@ app.get("/api/network/events/public", async (c) => {
   const filters: string[] = [];
   const binds: unknown[] = [];
   if (upcomingOnly) {
-    filters.push("(e.starts_at IS NULL OR e.starts_at >= datetime('now'))");
+    filters.push("(COALESCE(e.starts_at,e.event_date) IS NULL OR COALESCE(e.starts_at,e.event_date) >= date('now'))");
   }
   const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
   const candidateLimit = q ? searchCandidateLimit(limit) : limit;
@@ -3065,7 +3085,7 @@ app.get("/api/network/events/public", async (c) => {
      FROM events e
      LEFT JOIN organizations o ON o.id = e.host_org_id
      ${where}
-     ORDER BY COALESCE(e.starts_at, e.created_at) ${upcomingOnly ? "ASC" : "DESC"}
+     ORDER BY COALESCE(e.starts_at,e.event_date,e.created_at) ${upcomingOnly ? "ASC" : "DESC"}
      LIMIT ?`,
   )
     .bind(...binds, candidateLimit)
@@ -3733,7 +3753,7 @@ app.get("/api/network/events", async (c) => {
     `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url
      FROM events e
      LEFT JOIN organizations o ON o.id = e.host_org_id
-     ORDER BY COALESCE(e.starts_at, e.created_at) ASC
+     ORDER BY COALESCE(e.starts_at,e.event_date,e.created_at) ASC
      LIMIT ?`,
   )
     .bind(limit)
@@ -3786,9 +3806,12 @@ app.post("/api/network/events", async (c) => {
     eventPayload.host_org_name = null;
     eventPayload.host_org_source_url = null;
   }
-  const row = await upsertEvent(c.env.DB, {
-    ...eventPayload,
-  });
+  const date=stringField(payload,'event_date',10);
+  if(date && (!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isFinite(Date.parse(date))||new Date(date).toISOString().slice(0,10)!==date))fail(400,'Invalid event date');
+  const timezone=stringField(payload,'timezone',80)||'America/New_York';
+  try{new Intl.DateTimeFormat('en',{timeZone:timezone});}catch{fail(400,'Invalid timezone');}
+  const row = await upsertEvent(c.env.DB, { ...eventPayload });
+  if(date){await c.env.DB.prepare('UPDATE events SET event_date = ?,timezone = ? WHERE id = ?').bind(date,timezone,row!.id).run();row!.event_date=date;row!.timezone=timezone;}
   return c.json(await mapEvent(c.env, c.req.raw, row!), 201);
 });
 
@@ -5036,7 +5059,7 @@ app.get("/api/network/users/public/:slug/events", async (c) => {
      LEFT JOIN organizations o ON o.id = e.host_org_id
      WHERE e.host_user_id = ?
        AND (? = 0 OR e.starts_at IS NULL OR e.starts_at >= datetime('now'))
-     ORDER BY COALESCE(e.starts_at, e.created_at) ASC
+     ORDER BY COALESCE(e.starts_at,e.event_date,e.created_at) ASC
      LIMIT ?`,
   ).bind(contact.user_id, upcomingOnly ? 1 : 0, limit).all<EventRow>();
   return c.json(await Promise.all((rows.results || []).map((row) => mapEvent(c.env, c.req.raw, row))));

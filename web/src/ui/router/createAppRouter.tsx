@@ -1,3 +1,4 @@
+import { VenuesPage } from '../views/orgs/VenuesPage'
 import { AvailabilityPage } from '../views/AvailabilityPage'
 import { PortalProfileBoundary } from '../shell/PortalProfileBoundary'
 import { getDomainCommunity, getDomainTenant, type PortalTenant } from '../../config/timebankCommunity'
@@ -317,6 +318,8 @@ export function createAppRouter() {
           { path: '/orgs/profile', element: <OrgProfilePage /> },
           { path: '/orgs/account', element: <OrgAccountPage /> },
           { path: '/orgs/events', element: <OrgEventsPage /> },
+          { path: '/orgs/events/venues', element: <VenuesPage /> },
+          { path: '/orgs/events/venues/:id', element: <VenuesPage /> },
           {
             path: '/chat',
             element: (
