@@ -1,3 +1,4 @@
+import { OrganizationTools } from '../../components/OrganizationTools'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
@@ -205,6 +206,7 @@ export function PublicOrganizationsPage() {
       <p className="muted" style={{ marginTop: 0 }}>
         Browse registered organizations and their claimed links.
       </p>
+      <OrganizationTools />
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }} role="group" aria-label="Organization list filters">
         <button
           type="button"

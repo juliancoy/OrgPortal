@@ -1,3 +1,4 @@
+import { OrganizationTools } from '../../components/OrganizationTools'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
@@ -356,9 +357,10 @@ export function OrgProfilePage() {
 
       <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
         <Link to="/profile">My Profile</Link>
-        <Link to="/orgs/initiatives">My Initiatives</Link>
         <Link to="/orgs/events">Events</Link>
       </div>
+
+      <OrganizationTools />
 
       <div className="portal-card" style={{ display: 'grid', gap: '0.6rem' }}>
         <h2 style={{ margin: 0, fontSize: '1rem' }}>Find Organizations</h2>

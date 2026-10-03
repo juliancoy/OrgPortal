@@ -1,3 +1,4 @@
+import { OrganizationTools } from '../../components/OrganizationTools'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ClientEvent, EventType, RoomEvent } from 'matrix-js-sdk'
@@ -1361,6 +1362,7 @@ export function PublicAdminPage() {
               />
             </button>
           </div>
+          <OrganizationTools />
           {mergedFrom ? (
             <p className="muted" role="status" style={{ margin: 0 }}>
               Redirected from merged organization <code>{mergedFrom}</code>.
