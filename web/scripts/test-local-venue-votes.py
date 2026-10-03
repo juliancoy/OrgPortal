@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exercise real onboarding on the local Docker stack (no API fixtures).
+"""Exercise real venue voting on the local Docker stack (no API fixtures).
 
 Start with ORGPORTAL_LOCAL_TENANT_HOST=lifetech.fyi python run.py <prefix> <network>.
 PIdP must use local log delivery so verification never sends external email.
@@ -56,6 +56,12 @@ def verification_link(email):
 
 
 preflight()
+# Seed isolated test records in the local Worker database only.
+ORG_CONTAINER = os.environ.get('VENUE_VOTES_ORG_CONTAINER', 'bmoremedtech-org')
+seed = """INSERT OR IGNORE INTO events (id,ingest_key,title,slug,description,created_at,updated_at) VALUES ('local-venue-vote-test','local-venue-vote-test','Local venue vote test','local-venue-vote-test','Local voting integration test',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
+INSERT OR IGNORE INTO venues (id,name,address,image_url) VALUES ('local-vote-a','Checkerspot Brewing','1421 Ridgely St, Baltimore, MD 21230','https://localhost:8443/unavailable-venue-avatar.jpg'),('local-vote-b','City Garage','101 W Dickman St, Baltimore, MD',NULL);
+INSERT OR IGNORE INTO event_venues (event_id,venue_id,status) VALUES ('local-venue-vote-test','local-vote-a','candidate'),('local-venue-vote-test','local-vote-b','candidate');"""
+docker('exec', ORG_CONTAINER, 'npx', 'wrangler', 'd1', 'execute', 'org', '--local', '--command', seed)
 EVENT = 'local-venue-vote-test'
 API = BASE + '/api/org/api/network/events/' + EVENT + '/venue-votes'
 with sync_playwright() as p:

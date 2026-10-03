@@ -3,7 +3,7 @@ import { authorizeOrganization, organizationRole } from './organizationIam';
 import { EventIntegrationError } from './eventPlatforms';
 import { enforceEventRateLimit, prepareEventOperation, previewFingerprint, claimEventOperation, finishEventOperation, eventOperationStatus } from './eventOperationStore';
 
-export type GovernanceAction = 'propose' | 'second' | 'open-voting' | 'table' | 'withdraw' | 'vote' | 'resolve' | 'comment';
+export type GovernanceAction = 'propose' | 'second' | 'recognize' | 'open-voting' | 'table' | 'withdraw' | 'vote' | 'resolve' | 'comment';
 const organizationId = z.string().trim().min(1).max(120);
 const motionId = z.string().trim().min(1).max(120);
 const receipt = { previewId: z.string().uuid().optional(), confirm: z.boolean().optional() };
@@ -14,12 +14,13 @@ export const motionTargetSchema = z.object({ organizationId, motionId }).strict(
 export const motionOperationSchema = z.object({ organizationId, previewId: z.string().uuid() }).strict();
 export const proposeMotionSchema = z.object({ organizationId, title: z.string().trim().min(1).max(500),
   body: z.string().trim().min(1).max(50000), quorumRequired: z.number().int().min(1).max(1000000).default(5),
+  documentChange: z.object({ documentId: z.literal('lifetech-constitution'), sectionId: z.string().min(1).max(80), version: z.number().int().min(1), replacement: z.string().trim().min(1).max(50000) }).strict().optional(),
   ...receipt }).strict();
 export const amendMotionSchema = proposeMotionSchema.extend({ parentMotionId: motionId,
   proposedBodyDiff: z.string().max(50000).optional() });
 export const motionActionSchema = motionTargetSchema.extend({
-  action: z.enum(['second', 'open-voting', 'table', 'withdraw', 'vote', 'resolve', 'comment']),
-  choice: z.enum(['yea', 'nay', 'abstain']).optional(), body: z.string().trim().min(1).max(10000).optional(), ...receipt,
+  action: z.enum(['second', 'recognize', 'open-voting', 'table', 'withdraw', 'vote', 'resolve', 'comment']),
+  choice: z.enum(['yea', 'nay', 'abstain']).optional(), body: z.string().trim().min(1).max(10000).optional(), procedureNote: z.string().trim().min(1).max(10000).optional(), ...receipt,
 }).superRefine((args, ctx) => {
   if (args.action === 'vote' ? !args.choice : args.choice !== undefined) ctx.addIssue({ code: 'custom', message: 'choice is required only for vote', path: ['choice'] });
   if (args.action === 'comment' ? !args.body : args.body !== undefined) ctx.addIssue({ code: 'custom', message: 'body is required only for comment', path: ['body'] });
@@ -52,23 +53,24 @@ export async function runGovernanceOperation(db: D1Database, identity: { userId:
   const target = operation === 'action' ? changes.motionId : operation === 'amend' ? proposal.parentMotionId : null;
   const before = target ? await service.read('get', args.organizationId, { motionId: target }) : null;
   const motion = before?.motion as Record<string, unknown> | undefined;
-  if (['open-voting', 'table', 'resolve'].includes(action)) {
+  if (['recognize', 'open-voting', 'table', 'resolve'].includes(action)) {
     await authorizeOrganization(db, { id: identity.userId, name: identity.userId, email: null, isOperator: false }, 'manage', args.organizationId);
   }
   if (action === 'withdraw' && motion?.proposer_id !== identity.userId) throw new EventIntegrationError(403, 'Only the proposer can withdraw this motion');
   if (action === 'second' && motion?.proposer_id === identity.userId) throw new EventIntegrationError(400, 'Proposer cannot second their own motion');
   const allowed: Partial<Record<GovernanceAction, string[]>> = {
-    second: ['proposed'], 'open-voting': ['discussion', 'seconded'], table: ['discussion'],
+    second: ['proposed'], recognize: ['seconded'], 'open-voting': ['discussion', 'seconded'], table: ['discussion'],
     withdraw: ['proposed'], vote: ['voting'], resolve: ['voting'],
   };
   if (motion && allowed[action] && !allowed[action]!.includes(String(motion.status))) throw new EventIntegrationError(409, 'Motion is not in the required state for this action');
   if (operation === 'amend' && !['proposed', 'seconded', 'discussion', 'tabled'].includes(String(motion?.status))) throw new EventIntegrationError(409, 'Amendments require a motion that is still under consideration');
-  const payload: Record<string, unknown> = operation === 'action' ? { choice: changes.choice, body: changes.body } : {
+  const payload: Record<string, unknown> = operation === 'action' ? { choice: changes.choice, body: changes.body, procedure_note: changes.procedureNote } : {
     title: proposal.title, body: proposal.body, quorum_required: proposal.quorumRequired,
     proposer_type: 'user', proposer_org_id: args.organizationId,
     type: operation === 'amend' ? 'amendment' : 'main',
     parent_motion_id: operation === 'amend' ? proposal.parentMotionId : undefined,
-    proposed_body_diff: operation === 'amend' ? proposal.proposedBodyDiff : undefined,
+    proposed_body_diff: proposal.documentChange?.replacement ?? (operation === 'amend' ? proposal.proposedBodyDiff : undefined),
+    document_id: proposal.documentChange?.documentId, document_section: proposal.documentChange?.sectionId, document_version: proposal.documentChange?.version,
   };
   const preview = { operation, action, organizationId: args.organizationId, motionId: target, changes: payload, before };
   const owner = { userId: identity.userId, organizationId: args.organizationId, eventId: `governance:${operation}:${target || 'new'}` };

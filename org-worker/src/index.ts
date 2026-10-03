@@ -1,3 +1,5 @@
+import { governanceDocumentRoutes, executeDocumentMotion, documentMotionDetail } from './governanceDocuments';
+import { photoTagRoutes } from './photoTags';
 import { venueVoteRoutes } from './venueVotes';
 import { venueRankingRoutes } from './venueRankings';
 import { venueRoutes, eventVenues, setEventVenues } from './venues';
@@ -311,6 +313,12 @@ type BusinessCardScanRow = {
 };
 
 type GovernanceMotionRow = {
+  document_id?: string | null;
+  document_section?: string | null;
+  document_version?: number | null;
+  document_base?: string | null;
+  electorate_json?: string | null;
+  chair_id?: string | null;
   id: string;
   type: string;
   parent_motion_id: string | null;
@@ -2123,6 +2131,8 @@ async function mapGovernanceMotion(db: D1Database, row: GovernanceMotionRow) {
   const score = row.score === undefined || row.score === null ? await governanceScore(db, row.id) : Number(row.score || 0);
   return {
     id: row.id,
+    document_id: row.document_id, document_section: row.document_section, document_version: row.document_version,
+    document_base: row.document_base, electorate_json: row.electorate_json, chair_id: row.chair_id,
     type: row.type,
     parent_motion_id: row.parent_motion_id,
     title: row.title,
@@ -2534,12 +2544,13 @@ export function governanceService(db: D1Database): GovernanceService {
       const comments = await db.prepare('SELECT * FROM governance_comments WHERE motion_id = ? ORDER BY created_at ASC').bind(row.id).all();
       const amendments = await db.prepare('SELECT id, status, updated_at FROM governance_motions WHERE parent_motion_id = ? AND proposer_org_id = ? ORDER BY created_at ASC')
         .bind(row.id, organizationId).all();
+      if (row.document_id) return await documentMotionDetail(db, row);
       return { motion: await mapGovernanceMotion(db, row), comments: comments.results || [], amendments: amendments.results || [],
         results: await formalVoteCounts(db, row.id, row.quorum_required) };
     },
     async execute(userId, action, motionId, payload) {
       const contact = await db.prepare('SELECT user_name FROM user_contact_pages WHERE user_id = ?').bind(userId).first<{ user_name: string }>();
-      return await executeGovernanceAction(db, { id: userId, full_name: contact?.user_name || userId }, action, motionId, payload);
+      return await executeGovernanceAction(db, { id: userId, full_name: contact?.user_name || userId }, action, motionId, payload, false, true);
     },
   };
 }
@@ -2599,6 +2610,7 @@ app.route("/api/availability", availabilityRoutes(currentUser));
 app.route("/api/tasks", userTaskRoutes(currentUser));
 app.route("/api/onboarding", onboardingRoutes(currentUser));
 app.route("/api/media/carousels", driveCarouselRoutes(currentUser));
+app.route("/api/photo-tags", photoTagRoutes(async (env,request)=>organizationActor(await currentUser(env,request),env)));
 
 app.get("/health", (c) => c.json(deploymentHealth(c, true)));
 app.get("/version", (c) => c.json(deploymentHealth(c, false)));
@@ -4754,7 +4766,16 @@ app.post("/api/tax/pay", async (c) => {
 });
 
 export async function executeGovernanceAction(db: D1Database, user: PidpUser, action: GovernanceAction,
-  motionId: string | null, payload: Record<string, unknown>, isOperator = false) {
+  motionId: string | null, payload: Record<string, unknown>, isOperator = false, previewAuthorized = false) {
+  const documentMotion = motionId ? await requireGovernanceMotion(db, motionId) : null;
+  if (payload.document_id || documentMotion?.document_id) {
+    if (!previewAuthorized) fail(409, 'Document tickets require the governance preview and apply flow');
+    const id = await executeDocumentMotion(db, { id: user.id, name: userName(user) }, action, documentMotion, payload);
+    return await mapGovernanceMotion(db, await requireGovernanceMotion(db, id));
+  }
+  if (payload.parent_motion_id && (await requireGovernanceMotion(db, String(payload.parent_motion_id))).document_id) {
+    fail(400, 'Document tickets require an exact-text proposal through their document page');
+  }
   const organizationId = action === 'propose' ? stringField(payload, 'proposer_org_id', 120)
     : (await requireGovernanceMotion(db, motionId!)).proposer_org_id;
   if (organizationId) {
@@ -4887,6 +4908,8 @@ export async function executeGovernanceAction(db: D1Database, user: PidpUser, ac
   fail(400, 'Unknown governance action');
 }
 
+app.route('/api/governance/documents', governanceDocumentRoutes(currentUser, governanceService));
+
 app.get("/api/governance/motions", async (c) => {
   const url = new URL(c.req.url);
   const search = (url.searchParams.get("search") || "").trim().toLowerCase();
@@ -4968,6 +4991,7 @@ app.post("/api/governance/motions/:motionId/resolve", async (c) => {
 
 app.get("/api/governance/motions/:motionId/results", async (c) => {
   const motion = await requireGovernanceMotion(c.env.DB, c.req.param("motionId"));
+  if (motion.document_id) return c.json((await documentMotionDetail(c.env.DB, motion)).results);
   return c.json(await formalVoteCounts(c.env.DB, motion.id, Number(motion.quorum_required || 1)));
 });
 

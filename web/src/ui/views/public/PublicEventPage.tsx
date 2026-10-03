@@ -1,3 +1,4 @@
+import { PhotoTags } from '../../components/PhotoTags'
 import { EventVenues, type Venue } from '../../components/EventVenues'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
@@ -552,6 +553,7 @@ export function PublicEventPage() {
   useEffect(() => {
     if (!selectedMedia) return
     function onKeyDown(event: KeyboardEvent) {
+      if (event.target instanceof HTMLElement && event.target.closest('input,textarea,select,[contenteditable=true]')) return
       if (event.key === 'Escape') setSelectedMediaIndex(-1)
       if (event.key === 'ArrowLeft') setSelectedMediaIndex((current) => (current <= 0 ? mediaItems.length - 1 : current - 1))
       if (event.key === 'ArrowRight') setSelectedMediaIndex((current) => (current + 1) % mediaItems.length)
@@ -1104,6 +1106,7 @@ export function PublicEventPage() {
                 </button>
               ) : null}
             </div>
+            <PhotoTags key={`${selectedMedia.id}:${user?.id || 'guest'}`} source="event" ownerId={event.id} photoId={selectedMedia.id} />
             <p className="public-event-gallery-count">{selectedMediaIndex + 1} of {mediaItems.length}</p>
           </section>
         </div>

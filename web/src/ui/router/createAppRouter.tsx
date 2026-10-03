@@ -1,3 +1,4 @@
+import { GovernanceDocumentPage } from '../views/governance/GovernanceDocumentPage'
 import { VenuesPage } from '../views/orgs/VenuesPage'
 import { AvailabilityPage } from '../views/AvailabilityPage'
 import { OnboardingPage } from '../views/OnboardingPage'
@@ -418,6 +419,8 @@ export function createAppRouter() {
           { path: '/contact-settings', element: <LegacyUserRoute to="/profile" /> },
 
           // Governance
+          { path: '/governance/documents/lifetech-constitution', element: <GovernanceDocumentPage /> },
+          { path: '/governance/documents/lifetech-constitution/tickets/:ticketId', element: <GovernanceDocumentPage /> },
           { path: '/governance/roberts', element: <MotionListPage /> },
           { path: '/governance/roberts/propose', element: <ProposeMotionPage /> },
           { path: '/governance/roberts/:id', element: <MotionDetailPage /> },

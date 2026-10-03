@@ -427,3 +427,26 @@ the native one-use preview/apply receipts. Event IDs and ownership must match th
 existing records; no provider adapter or direct database write is used.
 `--ephemeral` keeps credentials only in memory and revokes the temporary grant
 when the process exits. `--no-browser` prints the authorization URL to open manually.
+
+
+## Event venue votes
+
+Event pages use one venue list with images (initials when an image is unavailable),
+upvote/downvote controls, net score, and separate upvote, downvote, and total counts.
+The existing ranked-ballot records remain intact; rankings are not converted into
+explicit directional votes.
+
+`GET /api/network/events/:id/venue-votes/public` returns candidate venue totals.
+`GET /api/network/events/:id/venue-votes` returns only the authenticated account's
+choices. `PUT /api/network/events/:id/venue-votes/:venueId` accepts `{ "value": 1 }`,
+`-1`, or `0` to clear. The shared currentUser authentication determines user ID;
+client-supplied identity fields are rejected. A composite database primary key
+allows one current choice per event, venue, and user, with creation/update timestamps.
+Repeated writes replace a vote. Public responses contain no voter identities.
+
+The write statement atomically rechecks candidate membership and rejects voting
+when any venue has been confirmed. Private responses disable caching. Deploy
+migrations `0052_venue_details.sql` and `0053_event_venue_votes.sql` before the API
+and frontend. Verify sign-in, account isolation, refresh persistence, and mobile
+controls with `web/scripts/test-local-venue-votes.py` against the local Docker
+stack; production browser checks remain public and read-only.
