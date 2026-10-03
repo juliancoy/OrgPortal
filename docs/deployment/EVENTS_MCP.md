@@ -287,7 +287,8 @@ The same `/api/org/mcp` connection exposes Robert's Rules motion tools:
 | `preview_motion_amendment` / `apply_motion_amendment` | File an amendment with `parentMotionId` |
 | `preview_motion_action` / `apply_motion_action` | Second, comment, vote, withdraw, open voting, table or resolve |
 
-Every request names `organizationId` and requires active membership plus
+Use the actual organization ID returned by `list_organizations`, rather than
+its slug. Every request names `organizationId` and requires active membership plus
 `org:portal.read`. Writes also require `org:portal.write`. Opening voting,
 tabling and resolving require an organization owner or administrator. Only the
 proposer can withdraw, and a proposer cannot second their own motion. These
@@ -302,7 +303,7 @@ storage, and the public website/API still exposes its existing shared feed.
 For example, call `preview_motion` with:
 
 ```json
-{"organizationId":"baltimore-medtech","title":"Schedule the next meeting","body":"Hold our next meeting on Friday.","quorumRequired":5}
+{"organizationId":"org-baltimore-medtech","title":"Schedule the next meeting","body":"Hold our next meeting on Friday.","quorumRequired":5}
 ```
 
 Show the returned preview to the user. After approval, send the same arguments
