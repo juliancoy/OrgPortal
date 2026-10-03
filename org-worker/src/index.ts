@@ -1,3 +1,4 @@
+import { driveCarouselRoutes } from './driveCarousel';
 import { userTaskRoutes } from './userTasks';
 import { availabilityRoutes } from './availability';
 import { timebankNotifications, markTimebankNotificationsRead, dispatchTimebankPush } from './timebankNotifications';
@@ -2573,6 +2574,7 @@ function deploymentHealth(c: { env: Env; req: { url: string }; header: (name: st
 
 app.route("/api/availability", availabilityRoutes(currentUser));
 app.route("/api/tasks", userTaskRoutes(currentUser));
+app.route("/api/media/carousels", driveCarouselRoutes(currentUser));
 
 app.get("/health", (c) => c.json(deploymentHealth(c, true)));
 app.get("/version", (c) => c.json(deploymentHealth(c, false)));

@@ -10,6 +10,7 @@ import { toUserFacingErrorMessage } from '../../../infrastructure/http/userFacin
 import { createQrSvg } from '../../utils/qr'
 import { setSeoMeta } from '../../utils/seo'
 import { createVCard, vCardFileName } from '../../utils/vcard'
+import { HiddenCarouselImages } from '../../components/media/HiddenCarouselImages'
 import { UserProfilePage } from '../users/UserProfilePage'
 
 const ORG_API_BASE = '/api/org'
@@ -415,6 +416,8 @@ export function PublicContactPage({ self = false }: PublicContactPageProps = {})
           </p>
         </aside>
       </article>
+
+      {self && user ? <HiddenCarouselImages key={user.id} /> : null}
 
       {isOwner && editingPage ? (
         <UserProfilePage embedded publicPageUrl={shareUrl} onClose={() => setEditingPage(false)} />
