@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { createQrSvg } from '../utils/qr'
+import { portalPath } from '../../config/portalBase'
 import printStyles from './ConferenceNametag.css?inline'
 import './ConferenceNametag.css'
 
@@ -61,7 +62,7 @@ export function ConferenceNametag({ name, avatarUrl, publicPageUrl }: Props) {
       <div className="conference-nametag-preview">
         <div className="conference-nametag" ref={badgeRef}>
           <div className="conference-nametag-brand">
-            <img src="/assets/images/lifetech-logo.png" alt="" />
+            <img src={portalPath('/assets/images/lifetech-logo.png')} alt="" />
             <span>LifeTech</span>
           </div>
           <div className="conference-nametag-person">
