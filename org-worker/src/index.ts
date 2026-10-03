@@ -1,3 +1,4 @@
+import { userTaskRoutes } from './userTasks';
 import { availabilityRoutes } from './availability';
 import { timebankNotifications, markTimebankNotificationsRead, dispatchTimebankPush } from './timebankNotifications';
 import { importedListings, importedListingImage, importClaimDirectory, requestImportClaim, withdrawImportClaim, reviewImportClaims, resolveImportClaim, claimedImportRecords } from './timebankImports';
@@ -2540,6 +2541,7 @@ function deploymentHealth(c: { env: Env; req: { url: string }; header: (name: st
 }
 
 app.route("/api/availability", availabilityRoutes(currentUser));
+app.route("/api/tasks", userTaskRoutes(currentUser));
 
 app.get("/health", (c) => c.json(deploymentHealth(c, true)));
 app.get("/version", (c) => c.json(deploymentHealth(c, false)));
@@ -2596,7 +2598,11 @@ app.get("/api/network/notifications/summary", async (c) => {
   const pendingConnections = await c.env.DB.prepare("SELECT count(*) AS n FROM user_connections WHERE recipient_user_id = ? AND status = 'pending'")
     .bind(user.id)
     .first<{ n: number }>();
+  const tenant = await resolvePortalTenant(c.env.DB, c.req.raw);
+  const tasks = await c.env.DB.prepare("SELECT count(*) AS n FROM user_tasks WHERE tenant_id = ? AND user_id = ? AND status = 'pending'")
+    .bind(tenant.id, user.id).first<{ n: number }>();
   return c.json({
+    pending_task_count: Number(tasks?.n || 0),
     unread_count: Number(unread?.n || 0),
     pending_connections_count: Number(pendingConnections?.n || 0),
   });

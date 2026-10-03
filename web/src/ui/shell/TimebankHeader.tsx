@@ -1,3 +1,4 @@
+import { TaskQueue, useTaskQueue } from '../tasks/TaskQueue'
 import { useTimebankInbox } from '../timebank/TimebankInbox'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
@@ -26,6 +27,11 @@ export function TimebankHeader() {
   const { user, role, logout } = useAuth()
   const location = useLocation()
   const inbox = useTimebankInbox()
+  const tasks=useTaskQueue()
+  const [tasksOpen,setTasksOpen]=useState(false)
+  const tasksRef=useRef<HTMLDivElement>(null)
+  useEffect(()=>{setTasksOpen(false)},[location.pathname,location.search,role])
+  useEffect(()=>{if(!tasksOpen)return;const close=(event:PointerEvent)=>{if(!tasksRef.current?.contains(event.target as Node))setTasksOpen(false)};const escape=(event:KeyboardEvent)=>{if(event.key==='Escape')setTasksOpen(false)};document.addEventListener('pointerdown',close);document.addEventListener('keydown',escape);return()=>{document.removeEventListener('pointerdown',close);document.removeEventListener('keydown',escape)}},[tasksOpen])
   const [open, setOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -58,7 +64,7 @@ export function TimebankHeader() {
       <span className="tb-shell-mark">{profile.brandImagePath ? <img src={portalPath(profile.brandImagePath)} alt="" /> : <AccountIcon><circle cx="12" cy="12" r="9" /><path d="M12 6v6l4 2" /></AccountIcon>}</span>
       <span>{community?.name || 'Code Collective Timebank'}</span>
     </Link>
-    {role !== 'guest' ? <div className="tb-shell-actions"><Link to="/chat" className="tb-messages-link" aria-label={`Messages${inbox.unreadMessages ? `, ${inbox.unreadMessages} unread` : ''}`} aria-current={location.pathname.startsWith('/chat') ? 'page' : undefined}><AccountIcon><path d="M21 11a9 9 0 0 1-9 9H4l-3 2V11a10 10 0 0 1 20 0Z" /><path d="M7 10h8M7 14h5" /></AccountIcon><span className="tb-messages-label">Messages</span>{inbox.unreadMessages > 0 && <span className="tb-inbox-badge" aria-hidden="true">{inbox.unreadMessages > 99 ? '99+' : inbox.unreadMessages}</span>}</Link><div className="tb-account-menu" ref={menuRef} onBlur={(event) => {
+    {role !== 'guest' ? <div className="tb-shell-actions"><div className="tb-task-menu" ref={tasksRef}><button type="button" className="tb-messages-link" aria-label={`Notifications, ${tasks.tasks.length} unfinished tasks`} aria-expanded={tasksOpen} onClick={()=>{setTasksOpen(value=>!value);void tasks.refresh()}}>Tasks{tasks.tasks.length>0&&<span className="tb-inbox-badge">{tasks.tasks.length}</span>}</button>{tasksOpen&&<div className="tb-task-panel" role="dialog" aria-label="Notifications"><TaskQueue queue={tasks} onNavigate={()=>setTasksOpen(false)}/></div>}</div><Link to="/chat" className="tb-messages-link" aria-label={`Messages${inbox.unreadMessages ? `, ${inbox.unreadMessages} unread` : ''}`} aria-current={location.pathname.startsWith('/chat') ? 'page' : undefined}><AccountIcon><path d="M21 11a9 9 0 0 1-9 9H4l-3 2V11a10 10 0 0 1 20 0Z" /><path d="M7 10h8M7 14h5" /></AccountIcon><span className="tb-messages-label">Messages</span>{inbox.unreadMessages > 0 && <span className="tb-inbox-badge" aria-hidden="true">{inbox.unreadMessages > 99 ? '99+' : inbox.unreadMessages}</span>}</Link><div className="tb-account-menu" ref={menuRef} onBlur={(event) => {
       if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false)
     }}>
       <button type="button" className="tb-account-trigger" ref={triggerRef} aria-label={`${name}: account menu`} aria-expanded={open} aria-controls={panelId} onClick={() => setOpen((value) => !value)}>

@@ -1,0 +1,8 @@
+.user-task-queue{padding:12px;color:var(--text-primary);border-bottom:1px solid var(--border-subtle)}
+.user-task-queue h3{margin:0;font-size:15px}.user-task-queue p{font-size:12px;line-height:1.5;color:var(--text-secondary);margin:8px 0}
+.user-task-queue ol{margin:12px 0;padding-left:20px;max-height:36vh;overflow:auto}.user-task-queue li{padding:8px 0;font-size:14px}.user-task-queue li button{margin-left:8px}
+.user-task-queue form{display:flex;align-items:end;gap:8px}.user-task-queue label{display:grid;gap:4px;flex:1;min-width:0;font-size:12px}
+.user-task-queue :is(input,button){box-sizing:border-box;font:inherit;padding:7px;border:1px solid var(--border-subtle);border-radius:5px;color:var(--text-primary);background:var(--panel);min-width:0}.user-task-queue button{cursor:pointer}.user-task-queue input{width:100%}.user-task-queue button:disabled{opacity:.6;cursor:default}
+.user-task-queue :is(a,input,button):focus-visible{outline:2px solid var(--text-primary);outline-offset:2px}
+.tb-task-menu{position:relative}.tb-task-panel{position:absolute;right:0;top:calc(100% + 8px);z-index:25;width:340px;max-width:calc(100vw - 24px);background:var(--panel);border:1px solid var(--border-subtle);border-radius:8px;box-shadow:0 8px 30px #0003;max-height:75vh;overflow:auto}
+.portal-notification-menu{max-height:min(75dvh,620px);overflow:auto}

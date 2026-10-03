@@ -13,6 +13,7 @@ test('poll validation preserves UTC instants, bounds grids and rejects invalid s
 });
 test('polls isolate tenants and identities, replace responses and refuse saves after closure',async()=>{
  const db=new TimebankDatabase();db.sqlite.exec(readFileSync(new URL('../migrations/0042_availability_polls.sql',import.meta.url),'utf8'));
+ db.sqlite.exec(readFileSync(new URL('../migrations/0046_user_tasks.sql',import.meta.url),'utf8'));
  const app=availabilityRoutes(async(_env,req)=>{const id=req.headers.get('authorization');if(!id)throw new HTTPException(401);return {id}});
  const env={DB:db.asD1()} as Env;
  const request=(path:string,method='GET',body?:unknown,user?:string,host='medtech.social')=>app.fetch(new Request(`https://${host}${path}`,{method,headers:{...(user?{authorization:user}:{}),'content-type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)}),env);

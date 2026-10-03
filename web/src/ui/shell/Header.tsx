@@ -1,3 +1,4 @@
+import { TaskQueue, useTaskQueue } from '../tasks/TaskQueue'
 import { useDomainCommunity, useDomainTenant } from '../../config/timebankCommunity'
 import { hasTenantCalendar, specialtyResourcesForTenant } from '../../config/specialtyResources'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
@@ -174,10 +175,12 @@ export function Header() {
   const [searchOrgs, setSearchOrgs] = useState<SearchOrganization[]>([])
   const [searchEvents, setSearchEvents] = useState<SearchEvent[]>([])
   const [searchUsers, setSearchUsers] = useState<SearchUser[]>([])
+  const taskQueue = useTaskQueue()
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [unreadNotifications, setUnreadNotifications] = useState(0)
   const [connectionRequests, setConnectionRequests] = useState<ConnectionRequest[]>([])
   const [notificationsStatus, setNotificationsStatus] = useState('')
+  const notificationCount = unreadNotifications + taskQueue.tasks.length
 
   const menuRef = useRef<HTMLDivElement | null>(null)
   const notificationsRef = useRef<HTMLDivElement | null>(null)
@@ -891,17 +894,17 @@ export function Header() {
                 <button
                   type="button"
                   className="portal-notification-trigger"
-                  aria-label={`Notifications${unreadNotifications ? `, ${unreadNotifications} unread` : ''}`}
+                  aria-label={`Notifications${notificationCount ? `, ${notificationCount} pending` : ''}`}
                   aria-expanded={notificationsOpen}
                   aria-controls="portal-notification-menu"
                   aria-haspopup="dialog"
-                  onClick={() => setNotificationsOpen((prev) => !prev)}
+                  onClick={() => { setNotificationsOpen((prev) => !prev); void taskQueue.refresh(); void refreshNotifications() }}
                 >
                   <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                     <path d="M10 2a5 5 0 00-5 5v2.6c0 .8-.24 1.58-.68 2.24L3.3 13.38A1 1 0 004.13 15h11.74a1 1 0 00.83-1.56l-1.02-1.54A4 4 0 0115 9.6V7a5 5 0 00-5-5zm0 16a2.5 2.5 0 002.45-2h-4.9A2.5 2.5 0 0010 18z" />
                   </svg>
-                  {unreadNotifications > 0 ? (
-                    <span className="portal-notification-badge">{Math.min(unreadNotifications, 99)}</span>
+                  {notificationCount > 0 ? (
+                    <span className="portal-notification-badge">{Math.min(notificationCount, 99)}</span>
                   ) : null}
                 </button>
 
@@ -909,8 +912,9 @@ export function Header() {
                   <div id="portal-notification-menu" className="portal-notification-menu" role="dialog" aria-label="Notifications">
                     <div className="portal-notification-menu-header">
                       <strong>Notifications</strong>
-                      <button type="button" onClick={() => refreshNotifications()}>Refresh</button>
+                      <button type="button" onClick={() => { void refreshNotifications(); void taskQueue.refresh() }}>Refresh</button>
                     </div>
+                    <TaskQueue queue={taskQueue} onNavigate={() => setNotificationsOpen(false)} />
                     {connectionRequests.length > 0 ? (
                       <div className="portal-notification-list">
                         {connectionRequests.map((request) => (

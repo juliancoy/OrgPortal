@@ -25,3 +25,4 @@
 .availability-best{line-height:1.6;font-size:14px}
 @media(pointer:coarse){.availability-grid :is(th,td) button{min-height:36px}}
 @media(max-width:600px){.availability-create{grid-template-columns:1fr;padding:12px}.availability-page{padding:16px 10px 40px}.availability-grid th,.availability-grid td{min-width:76px}}
+.availability-invitations{border:1px solid var(--border-subtle);border-radius:8px;padding:16px;margin:20px 0}.availability-invitations h2{font-size:18px;margin:0 0 8px}.availability-invite-people{max-height:220px;overflow:auto;margin:12px 0;display:grid;gap:8px}.availability-invite-people label{display:flex;align-items:center;gap:8px;padding:4px}.availability-invitations details{margin-top:12px}.availability-invite-people input{accent-color:var(--availability-accent)}
