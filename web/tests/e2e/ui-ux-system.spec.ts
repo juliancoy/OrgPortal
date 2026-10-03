@@ -54,6 +54,7 @@ async function fulfillJson(route: Route, body: unknown, status = 200) {
 }
 
 async function mockCommon(page: Page) {
+  await page.route('**/api/org/api/portal/tenant', route => fulfillJson(route, {}))
   await page.route('**/assets.test/**', async (route) => {
     await route.fulfill({
       status: 200,
@@ -300,26 +301,28 @@ test.describe('Code Collective UI and UX system coverage', () => {
     await expect(header).toBeVisible()
     await expect(header.getByAltText('Code Collective')).toBeVisible()
     await expect(page.locator('.portal-user-trigger img')).toHaveAttribute('src', authUser.avatar_url)
-    const navigationToggle = page.getByRole('button', { name: 'Navigation', exact: true })
+    const navigationToggle = page.getByRole('button', { name: 'Open navigation', exact: true })
     if (await navigationToggle.isVisible()) await navigationToggle.click()
-    await expect(page.getByRole('link', { name: /^ID$/ })).toBeVisible()
+    await expect(page.getByRole('link', { name: /^ID card$/ })).toBeVisible()
     await expect(page.getByRole('link', { name: /^Chat$/ })).toBeVisible()
     await expect(page.getByRole('link', { name: /log in/i })).toHaveCount(0)
 
-    await page.getByRole('link', { name: /^ID$/ }).click()
+    await page.getByRole('link', { name: /^ID card$/ }).click()
     await expect(page).toHaveURL(/\/id$/)
   })
 
   test('social login buttons route through PIdP OAuth instead of the legacy org endpoint', async ({ page }) => {
+    await page.route('**/auth/session-token', (route) => fulfillJson(route, {}, 401))
+    await page.route('**/auth/me', (route) => fulfillJson(route, {}, 401))
     await page.goto('/users/login')
 
     await expect(page.getByRole('link', { name: 'Continue with Google' })).toHaveAttribute(
       'href',
-      /\/pidp\/auth\/google\/login\?/,
+      /\/pidp\/auth\/sso\/start\?.*provider=google/,
     )
     await expect(page.getByRole('link', { name: 'Continue with GitHub' })).toHaveAttribute(
       'href',
-      /\/pidp\/auth\/github\/login\?/,
+      /\/pidp\/auth\/sso\/start\?.*provider=github/,
     )
     await expect(page.getByRole('link', { name: 'Continue with Google' })).not.toHaveAttribute('href', /\/api\/org\/auth\/social/)
   })
@@ -485,7 +488,9 @@ test.describe('Code Collective UI and UX system coverage', () => {
       await fulfillJson(route, contactPage)
     })
 
-    await page.goto('/users/profile')
+    await page.goto('/profile')
+    await page.getByRole('button', { name: 'Edit page', exact: true }).click()
+    const editor = page.locator('#profile-editor')
     const darkPageBackground = await page.evaluate(() => {
       const root = document.documentElement
       const previousTheme = root.dataset.theme
@@ -497,35 +502,35 @@ test.describe('Code Collective UI and UX system coverage', () => {
       return result
     })
     expect(darkPageBackground).toEqual({ image: 'none', color: 'rgb(8, 27, 49)' })
-    await expect(page.getByText('Manage your account details, profile information, and public contact page.')).toHaveCount(0)
-    await expect(page.locator('.profile-top-actions').getByRole('link', { name: 'Open Public Page' })).toHaveAttribute(
+    await expect(editor.getByText('Manage your account details, profile information, and public contact page.')).toHaveCount(0)
+    await expect(editor.locator('.profile-top-actions').getByRole('link', { name: 'View Public Page' })).toHaveAttribute(
       'href',
       /\/users\/mobile-tester$/,
     )
-    await expect(page.getByLabel('QR code for public profile')).toHaveCount(0)
-    await expect(page.getByText('Profile image')).toHaveCount(0)
-    const trayBox = await page.locator('.profile-top-actions').boundingBox()
-    const photoBox = await page.getByRole('button', { name: 'Replace photo' }).boundingBox()
-    const nameBox = await page.getByRole('heading', { name: 'Name' }).boundingBox()
-    const publicProfileBox = await page.getByRole('heading', { name: 'Public Profile' }).first().boundingBox()
+    await expect(editor.getByLabel('QR code for public profile')).toHaveCount(0)
+    await expect(editor.getByText('Profile image')).toHaveCount(0)
+    const trayBox = await editor.locator('.profile-top-actions').boundingBox()
+    const photoBox = await editor.getByRole('button', { name: 'Replace photo' }).boundingBox()
+    const nameBox = await editor.getByRole('heading', { name: 'Name' }).boundingBox()
+    const publicProfileBox = await editor.getByRole('heading', { name: 'Public Profile' }).first().boundingBox()
     expect(trayBox?.y ?? Number.POSITIVE_INFINITY).toBeLessThan(photoBox?.y ?? 0)
     expect(photoBox?.y ?? Number.POSITIVE_INFINITY).toBeLessThan(nameBox?.y ?? 0)
     expect(nameBox?.y ?? Number.POSITIVE_INFINITY).toBeLessThan(publicProfileBox?.y ?? 0)
-    const saveBox = await page.getByRole('button', { name: 'Save profile' }).boundingBox()
-    const fullNameBox = await page.getByLabel('Full name').boundingBox()
+    const saveBox = await editor.getByRole('button', { name: 'Save profile' }).boundingBox()
+    const fullNameBox = await editor.getByLabel('Full name').boundingBox()
     expect(saveBox?.height).toBeGreaterThanOrEqual(44)
     expect(saveBox?.y ?? Number.POSITIVE_INFINITY).toBeLessThan(fullNameBox?.y ?? 0)
-    const publicToggleBox = await page.getByRole('button', { name: 'Disable' }).boundingBox()
+    const publicToggleBox = await editor.getByRole('button', { name: 'Disable' }).boundingBox()
     expect(publicToggleBox?.height).toBeGreaterThanOrEqual(48)
-    await expect(page.getByRole('heading', { name: 'System Appearance' })).toHaveCount(0)
-    await expect(page.getByRole('heading', { name: 'Account', exact: true })).toHaveCount(0)
-    await expect(page.getByLabel('Professional headline')).toBeVisible()
-    await expect(page.getByLabel('Public email')).toBeVisible()
-    await expect(page.getByLabel('LinkedIn')).toBeVisible()
-    const uuidBox = await page.getByText('User UUID').boundingBox()
+    await expect(editor.getByRole('heading', { name: 'System Appearance' })).toHaveCount(0)
+    await expect(editor.getByRole('heading', { name: 'Account', exact: true })).toHaveCount(0)
+    await expect(editor.getByLabel('Professional headline')).toBeVisible()
+    await expect(editor.getByLabel('Public email')).toBeVisible()
+    await expect(editor.getByLabel('LinkedIn')).toBeVisible()
+    const uuidBox = await editor.getByText('User UUID').boundingBox()
     expect(uuidBox?.y ?? 0).toBeGreaterThan(publicProfileBox?.y ?? Number.POSITIVE_INFINITY)
-    const slugBox = await page.getByLabel('Public slug').boundingBox()
-    const runningForOfficeBox = await page.getByText("I'm running for office").boundingBox()
+    const slugBox = await editor.getByLabel('Public slug').boundingBox()
+    const runningForOfficeBox = await editor.getByText("I'm running for office").boundingBox()
     const maslowBox = await page.locator('details').filter({ hasText: /^Maslow Satisfaction/ }).boundingBox()
     const addressDetails = page.locator('details').filter({ hasText: /^Address/ })
     const addressBox = await addressDetails.boundingBox()
@@ -534,20 +539,20 @@ test.describe('Code Collective UI and UX system coverage', () => {
     expect(maslowBox?.y ?? 0).toBeGreaterThan(publicProfileBox?.y ?? Number.POSITIVE_INFINITY)
     expect(addressBox?.y ?? 0).toBeGreaterThan(publicProfileBox?.y ?? Number.POSITIVE_INFINITY)
     await expect(addressDetails).not.toHaveAttribute('open', '')
-    await expect(page.getByAltText('Profile preview')).toHaveAttribute('src', authUser.avatar_url)
-    await expect(page.getByRole('textbox', { name: 'Bio' })).toHaveCount(1)
-    await expect(page.getByLabel(/profile image url/i)).toHaveCount(0)
-    await expect(page.getByLabel(/profile photo url/i)).toHaveCount(0)
-    await expect(page.getByRole('button', { name: 'Edit photo' })).toHaveCount(0)
-    await expect(page.getByRole('heading', { name: 'Your Organizations' })).toHaveCount(0)
-    await expect(page.getByLabel('First name')).toHaveCount(0)
-    await expect(page.getByLabel('Last name')).toHaveCount(0)
-    await expect(page.getByLabel('Display name')).toHaveCount(0)
-    await expect(page.getByRole('textbox', { name: /organizations/i })).toHaveCount(0)
+    await expect(editor.getByAltText('Profile preview')).toHaveAttribute('src', authUser.avatar_url)
+    await expect(editor.getByRole('textbox', { name: 'Bio' })).toHaveCount(1)
+    await expect(editor.getByLabel(/profile image url/i)).toHaveCount(0)
+    await expect(editor.getByLabel(/profile photo url/i)).toHaveCount(0)
+    await expect(editor.getByRole('button', { name: 'Edit photo' })).toHaveCount(0)
+    await expect(editor.getByRole('heading', { name: 'Your Organizations' })).toHaveCount(0)
+    await expect(editor.getByLabel('First name')).toHaveCount(0)
+    await expect(editor.getByLabel('Last name')).toHaveCount(0)
+    await expect(editor.getByLabel('Display name')).toHaveCount(0)
+    await expect(editor.getByRole('textbox', { name: /organizations/i })).toHaveCount(0)
 
-    await page.getByLabel('Full name').fill('Updated Tester')
-    await page.getByRole('button', { name: 'Save profile' }).click()
-    await expect(page.getByText('Profile saved.', { exact: true })).toBeVisible()
+    await editor.getByLabel('Full name').fill('Updated Tester')
+    await editor.getByRole('button', { name: 'Save profile' }).click()
+    await expect(editor.getByText('Profile saved.', { exact: true })).toBeVisible()
 
     expect(savedProfile?.full_name).toBe('Updated Tester')
     expect(savedProfile?.display_name).toBe('Updated Tester')
@@ -600,13 +605,14 @@ test.describe('Code Collective UI and UX system coverage', () => {
     await expect(page.getByLabel('Theme')).toBeDisabled()
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
     finishSave()
-    await expect(page.getByRole('status')).toContainText('saved to your account')
+    await expect(page.getByRole('status').filter({ hasText: 'saved to your account' })).toBeVisible()
     await expect(page.getByLabel('Theme')).toBeEnabled()
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
     expect(await page.evaluate(() => localStorage.getItem('orgportal.theme'))).toBe('light')
     expect(savedThemePayload?.theme_mode).toBe('light')
 
-    await page.goto('/users/profile')
+    await page.goto('/profile')
+    await page.getByRole('button', { name: 'Edit page', exact: true }).click()
     await expect(page.getByRole('heading', { name: 'System Appearance' })).toHaveCount(0)
     await expect(page.getByText('User UUID')).toBeVisible()
   })
@@ -660,8 +666,9 @@ test.describe('Code Collective UI and UX system coverage', () => {
       await route.fulfill({ status: 200, body: '' })
     })
 
-    await page.goto('/users/profile')
-    await page.getByLabel('Profile photo').setInputFiles({
+    await page.goto('/profile')
+    await page.getByRole('button', { name: 'Edit page', exact: true }).click()
+    await page.getByLabel('Upload profile photo', { exact: true }).setInputFiles({
       name: 'profile.png',
       mimeType: 'image/png',
       buffer: Buffer.from(
@@ -725,7 +732,7 @@ test.describe('Code Collective UI and UX system coverage', () => {
 
   test('core routes avoid horizontal overflow and keep interactive controls accessible', async ({ page }) => {
     await mockNativeChat(page)
-    for (const route of ['/id', '/users/mobile-tester', '/users/profile', '/settings', '/chat/dm-1']) {
+    for (const route of ['/id', '/users/mobile-tester', '/profile', '/settings', '/chat/dm-1']) {
       await page.goto(route)
       await page.waitForLoadState('networkidle')
       await expectNoHorizontalOverflow(page)

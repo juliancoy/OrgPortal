@@ -3379,6 +3379,7 @@ h6 {
 .motion-vote-btn,
 .portal-user-menu-item {
   appearance: none;
+  min-height: 44px;
   border: 2px solid var(--primary);
   border-radius: var(--radius-full);
   padding: 9px 16px;
@@ -3421,6 +3422,22 @@ h6 {
 .motion-list-filter {
   color: var(--primary);
   background: var(--surface-soft);
+}
+
+.people-directory-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.people-directory-actions .btn-primary,
+.people-directory-actions .btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  text-decoration: none;
 }
 
 .portal-button-secondary:hover {

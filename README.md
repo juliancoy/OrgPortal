@@ -145,3 +145,27 @@ This project is being developed within the Civic Tech DC community. It is not a 
 If you’re interested in helping build this platform:
 
 👉 Join the `#ballot-sign` Slack channel in Civic Tech DC and introduce yourself.
+
+
+## Local browser validation
+
+`run.py` starts the portal, org worker, chat worker, and sibling PIdP on the
+local Docker network. Chat and org share local D1 storage for the contact
+directory. The HTTPS gateway serves the app and API/WebSocket routes at
+`https://localhost:8443`; local chat does not use the production chat worker.
+
+With the local deployment running, execute desktop and mobile browser checks:
+
+```bash
+npm --prefix web run test:e2e:local
+```
+
+`ORGPORTAL_LOCAL_TENANT_HOST` selects a tenant hostname from the local org
+database (for example `lifetech.fyi`) while keeping browser and authentication
+traffic on localhost. The default is the Code Collective tenant.
+
+`PLAYWRIGHT_BASE_URL` can select another localhost gateway port.
+`PLAYWRIGHT_CHROMIUM_EXECUTABLE` can select a Chromium executable (the default
+is `/usr/bin/google-chrome`). The local configuration accepts the development
+TLS certificate and does not launch another Vite server. Most browser scenarios
+use API fixtures; real login and session checks use the local PIdP test account.

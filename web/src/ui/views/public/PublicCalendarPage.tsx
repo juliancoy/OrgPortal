@@ -218,11 +218,13 @@ export function PublicCalendarPage() {
   useEffect(() => {
     let cancelled = false
     setStatus('Loading medical events…')
-    Promise.all([
-      fetch(MEDICAL_EVENTS_SOURCE_URL, { cache: 'no-store' }).then((response) => response.ok ? response.json() : []),
-      fetch(orgUrl(MEDTECH_ORG_EVENTS_SOURCE_PATH), { cache: 'no-store' }).then((response) => response.ok ? response.json() : []).catch(() => []),
+    Promise.allSettled([
+      fetch(MEDICAL_EVENTS_SOURCE_URL, { cache: 'no-store' }).then((response) => { if (!response.ok) throw new Error('Regional source unavailable'); return response.json() }),
+      fetch(orgUrl(MEDTECH_ORG_EVENTS_SOURCE_PATH), { cache: 'no-store' }).then((response) => { if (!response.ok) throw new Error('Organization source unavailable'); return response.json() }),
     ])
-      .then(([regional, medtech]) => {
+      .then(([regionalResult, medtechResult]) => {
+        const regional = regionalResult.status === 'fulfilled' ? regionalResult.value : []
+        const medtech = medtechResult.status === 'fulfilled' ? medtechResult.value : []
         if (cancelled) return
         const medtechEvents = Array.isArray(medtech) ? medtech.map(normalizePortalEvent) : []
         const regionalEvents = Array.isArray(regional) ? regional : []
@@ -234,7 +236,10 @@ export function PublicCalendarPage() {
         setEvents(nextEvents)
         const firstUpcoming = nextEvents.find((event) => event.date >= new Date())
         if (firstUpcoming) setVisibleDate(new Date(firstUpcoming.date))
-        setStatus('')
+        setStatus([regionalResult, medtechResult].every((result) => result.status === 'rejected')
+          ? 'The calendar is temporarily unavailable. Please try refreshing.'
+          : [regionalResult, medtechResult].some((result) => result.status === 'rejected')
+            ? 'Some event sources are unavailable. Showing events from the available sources.' : '')
       })
       .catch((reason: unknown) => {
         if (cancelled) return

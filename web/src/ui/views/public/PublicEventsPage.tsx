@@ -192,35 +192,39 @@ export function PublicEventsPage({
       if (!result.ok) {
         throw new Error(result.message)
       }
-      let message = result.message
-      if (!wasRegistered && googleCalendarConnected && event.starts_at) {
-        const calendarResult = await savePortalEventToGoogleCalendar(token, {
-          external_event_id: `portal-event:${event.id}`,
-          summary: event.title,
-          description: event.description || 'Event saved from Org Portal.',
-          starts_at: event.starts_at,
-          ends_at: event.ends_at || event.starts_at,
-          location: event.location || null,
-          source_url: `${window.location.origin}/events/${encodeURIComponent(event.slug)}`,
-        })
-        if (calendarResult.connected) {
-          message = 'Attendance saved and added to Google Calendar.'
-        }
-      } else if (!wasRegistered && microsoftCalendarConnected && event.starts_at) {
-        const calendarResult = await savePortalEventToMicrosoftCalendar(token, {
-          external_event_id: `portal-event:${event.id}`,
-          summary: event.title,
-          description: event.description || 'Event saved from Org Portal.',
-          starts_at: event.starts_at,
-          ends_at: event.ends_at || event.starts_at,
-          location: event.location || null,
-          source_url: `${window.location.origin}/events/${encodeURIComponent(event.slug)}`,
-        })
-        if (calendarResult.connected) {
-          message = 'Attendance saved and added to Microsoft Calendar.'
-        }
-      }
       setAttendanceById((prev) => result.attendance ? ({ ...prev, [eventId]: result.attendance }) : prev)
+      let message = result.message
+      try {
+        if (!wasRegistered && googleCalendarConnected && event.starts_at) {
+          const calendarResult = await savePortalEventToGoogleCalendar(token, {
+            external_event_id: `portal-event:${event.id}`,
+            summary: event.title,
+            description: event.description || 'Event saved from Org Portal.',
+            starts_at: event.starts_at,
+            ends_at: event.ends_at || event.starts_at,
+            location: event.location || null,
+            source_url: `${window.location.origin}/events/${encodeURIComponent(event.slug)}`,
+          })
+          if (calendarResult.connected) {
+            message = 'Attendance saved and added to Google Calendar.'
+          }
+        } else if (!wasRegistered && microsoftCalendarConnected && event.starts_at) {
+          const calendarResult = await savePortalEventToMicrosoftCalendar(token, {
+            external_event_id: `portal-event:${event.id}`,
+            summary: event.title,
+            description: event.description || 'Event saved from Org Portal.',
+            starts_at: event.starts_at,
+            ends_at: event.ends_at || event.starts_at,
+            location: event.location || null,
+            source_url: `${window.location.origin}/events/${encodeURIComponent(event.slug)}`,
+          })
+          if (calendarResult.connected) {
+            message = 'Attendance saved and added to Microsoft Calendar.'
+          }
+        }
+      } catch {
+        message = 'Registration saved. Calendar sync failed; you can download the calendar event below.'
+      }
       setAttendanceStatusById((prev) => ({ ...prev, [eventId]: message }))
     } catch (err) {
       setAttendanceStatusById((prev) => ({

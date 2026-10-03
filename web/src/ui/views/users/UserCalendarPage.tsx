@@ -43,26 +43,38 @@ export function UserCalendarPage() {
   const [message, setMessage] = useState('')
 
   async function refreshCalendarState() {
-    const [googleCalendar, microsoftCalendar, feed] = await Promise.all([
-      loadGoogleCalendarConnection(token),
-      loadMicrosoftCalendarConnection(token),
-      loadRegisteredEventsCalendarFeed(token),
+    const failures: string[] = []
+    await Promise.all([
+      (async () => {
+        try {
+          const calendar = await loadGoogleCalendarConnection(token)
+          setGoogleConnection(calendar)
+          const listing = calendar.connected ? await loadUpcomingGoogleCalendarEvents(token, 12) : null
+          setGoogleEvents(listing?.events || [])
+        } catch {
+          setGoogleConnection(null)
+          setGoogleEvents([])
+          failures.push('Google Calendar is unavailable.')
+        }
+      })(),
+      (async () => {
+        try {
+          const calendar = await loadMicrosoftCalendarConnection(token)
+          setMicrosoftConnection(calendar)
+          const listing = calendar.connected ? await loadUpcomingMicrosoftCalendarEvents(token, 12) : null
+          setMicrosoftEvents(listing?.events || [])
+        } catch {
+          setMicrosoftConnection(null)
+          setMicrosoftEvents([])
+          failures.push('Microsoft Calendar is unavailable.')
+        }
+      })(),
+      loadRegisteredEventsCalendarFeed(token).then(setRegisteredEventsFeed).catch(() => {
+        setRegisteredEventsFeed(null)
+        failures.push('Registered event subscriptions are unavailable.')
+      }),
     ])
-    setGoogleConnection(googleCalendar)
-    setMicrosoftConnection(microsoftCalendar)
-    setRegisteredEventsFeed(feed)
-    if (googleCalendar.connected) {
-      const listing = await loadUpcomingGoogleCalendarEvents(token, 12)
-      setGoogleEvents(Array.isArray(listing.events) ? listing.events : [])
-    } else {
-      setGoogleEvents([])
-    }
-    if (microsoftCalendar.connected) {
-      const listing = await loadUpcomingMicrosoftCalendarEvents(token, 12)
-      setMicrosoftEvents(Array.isArray(listing.events) ? listing.events : [])
-    } else {
-      setMicrosoftEvents([])
-    }
+    setError(failures.length ? `${failures.join(' ')} Please try refreshing.` : '')
   }
 
   useEffect(() => {
@@ -160,7 +172,13 @@ export function UserCalendarPage() {
         </Link>
       </section>
 
-      {error ? <div className="health-insurance-alert error" role="alert">{error}</div> : null}
+      {error ? <div className="health-insurance-alert error" role="alert">
+        {error}
+        <button type="button" className="btn-secondary" disabled={loading} onClick={() => {
+          setLoading(true)
+          void refreshCalendarState().finally(() => setLoading(false))
+        }}>Retry</button>
+      </div> : null}
       {message ? <div className="health-insurance-alert success" role="status">{message}</div> : null}
 
       <section className="portal-card registered-events-calendar-card">
@@ -189,7 +207,7 @@ export function UserCalendarPage() {
                 {feedBusy ? 'Regenerating…' : 'Regenerate Link'}
               </button>
             </div>
-            <input className="registered-events-calendar-url" readOnly value={registeredEventsFeed.feed_url} onFocus={(event) => event.currentTarget.select()} />
+            <input aria-label="Registered events calendar subscription URL" className="registered-events-calendar-url" readOnly value={registeredEventsFeed.feed_url} onFocus={(event) => event.currentTarget.select()} />
             <p className="portal-muted" style={{ margin: 0 }}>
               Regenerate the link if it was shared by mistake. Calendar apps may take a little while to refresh subscriptions.
             </p>
@@ -204,7 +222,9 @@ export function UserCalendarPage() {
           <h2 style={{ margin: 0 }}>Google Calendar Integration</h2>
           {loading ? (
             <p className="portal-muted" style={{ margin: 0 }}>Loading calendar connection…</p>
-          ) : googleConnection?.connected ? (
+          ) : !googleConnection ? (
+            <p className="portal-muted">Google Calendar is unavailable. Please try refreshing.</p>
+          ) : googleConnection.connected ? (
             <>
               <p className="portal-muted" style={{ margin: 0 }}>
                 Connected as {googleConnection.google_email || 'Google account'}.
@@ -276,7 +296,9 @@ export function UserCalendarPage() {
           <h2 style={{ margin: 0 }}>Microsoft Calendar Integration</h2>
           {loading ? (
             <p className="portal-muted" style={{ margin: 0 }}>Loading calendar connection…</p>
-          ) : microsoftConnection?.connected ? (
+          ) : !microsoftConnection ? (
+            <p className="portal-muted">Microsoft Calendar is unavailable. Please try refreshing.</p>
+          ) : microsoftConnection.connected ? (
             <>
               <p className="portal-muted" style={{ margin: 0 }}>
                 Connected as {microsoftConnection.microsoft_email || 'Microsoft account'}.

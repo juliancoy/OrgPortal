@@ -17,10 +17,11 @@ const allowedHosts = Array.from(
   ]),
 )
 
-const hmrHost = process.env.VITE_HMR_HOST || 'localhost'
+const hmrAddress = new URL(`http://${process.env.VITE_HMR_HOST || 'localhost'}`)
+const hmrHost = hmrAddress.hostname
 const hmrProtocol = process.env.VITE_HMR_PROTOCOL || (hmrHost === 'localhost' || hmrHost === '127.0.0.1' ? 'ws' : 'wss')
 const hmrClientPort = Number.parseInt(
-  process.env.VITE_HMR_CLIENT_PORT || (hmrProtocol === 'wss' ? '443' : '5173'),
+  process.env.VITE_HMR_CLIENT_PORT || hmrAddress.port || (hmrProtocol === 'wss' ? '443' : '5173'),
   10,
 )
 const parsedBuildNumber = Number.parseInt(process.env.VITE_APP_BUILD_NUMBER || `${Math.floor(Date.now() / 1000)}`, 10)

@@ -1,13 +1,15 @@
+import { useDomainTenant } from '../../config/timebankCommunity'
 import { portalPath } from '../../config/portalBase'
 
 export function AboutPage() {
+  const tenant = useDomainTenant()
   return (
     <section className="panel">
       <h1 className="serif" style={{ marginTop: 0 }}>
         About
       </h1>
       <p className="sans" style={{ color: 'var(--text-muted)' }}>
-        Meet the team behind Ballot.
+        Meet the team behind {tenant?.name || 'Code Collective'}.
       </p>
       <div
         style={{

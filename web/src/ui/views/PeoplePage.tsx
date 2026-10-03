@@ -21,6 +21,7 @@ export function PeoplePage() {
   const [organizations, setOrganizations] = useState<PublicOrganization[]>([])
   const [status, setStatus] = useState('Loading directory...')
   const [actionStatus, setActionStatus] = useState('')
+  const [connecting, setConnecting] = useState<string[]>([])
 
   useEffect(() => {
     setSeoMeta({
@@ -64,11 +65,13 @@ export function PeoplePage() {
   }, [organizations.length, users.length])
 
   async function requestConnection(person: NetworkUser) {
+    if (connecting.includes(person.user_id)) return
     if (!token) {
       setActionStatus('Sign in to request a connection.')
       return
     }
     setActionStatus('')
+    setConnecting((ids) => [...ids, person.user_id])
     try {
       const response = await fetch(orgUrl('/api/network/connections/request'), {
         method: 'POST',
@@ -79,8 +82,8 @@ export function PeoplePage() {
         body: JSON.stringify({ target_user_id: person.user_id }),
       })
       if (!response.ok) {
-        const text = await response.text().catch(() => '')
-        throw new Error(text || `Connection request failed (${response.status})`)
+        const error = await response.json().catch(() => null) as { detail?: string } | null
+        throw new Error(error?.detail || 'Unable to send the connection request. Please try again.')
       }
       setUsers((prev) =>
         prev.map((item) => (item.user_id === person.user_id ? { ...item, connection_status: 'pending_sent' } : item)),
@@ -88,6 +91,8 @@ export function PeoplePage() {
       setActionStatus(`Connection request sent to ${person.user_name}.`)
     } catch (error) {
       setActionStatus(error instanceof Error ? error.message : 'Connection request failed')
+    } finally {
+      setConnecting((ids) => ids.filter((id) => id !== person.user_id))
     }
   }
 
@@ -111,7 +116,7 @@ export function PeoplePage() {
 
       {!status && users.length === 0 && organizations.length === 0 ? <p className="muted">No profiles found.</p> : null}
       {actionStatus ? (
-        <p className="muted" style={{ margin: 0 }}>
+        <p className="muted" role="status" style={{ margin: 0 }}>
           {actionStatus}
         </p>
       ) : null}
@@ -131,7 +136,7 @@ export function PeoplePage() {
                 : isSelf
                   ? '/profile'
                   : null
-              const dateLabel = person.created_at || person.updated_at
+              const dateLabel = person.updated_at || person.created_at
 
               return (
                 <article
@@ -172,7 +177,7 @@ export function PeoplePage() {
                       {person.user_name.slice(0, 1).toUpperCase()}
                     </span>
                   )}
-                  <div style={{ display: 'grid', gap: '0.42rem', minWidth: 220, flex: '1 1 360px' }}>
+                  <div style={{ display: 'grid', gap: '0.42rem', minWidth: 0, flex: '1 1 360px' }}>
                     <h3 style={{ margin: 0, fontSize: '1.05rem' }}>
                       {profilePath ? (
                         <Link to={profilePath} style={{ textDecoration: 'none' }}>
@@ -185,42 +190,37 @@ export function PeoplePage() {
                     {person.headline ? <p style={{ margin: 0 }}>{person.headline}</p> : null}
                     {dateLabel ? (
                       <p className="muted" style={{ margin: 0 }}>
-                        Updated {new Date(dateLabel).toLocaleDateString()}
+                        {person.updated_at ? 'Updated' : 'Joined'} {new Date(dateLabel).toLocaleDateString()}
                       </p>
                     ) : null}
-                    {profilePath ? (
-                      <Link
-                        to={profilePath}
-                        className="btn-primary"
-                        style={{ textDecoration: 'none', width: 'fit-content' }}
-                      >
-                        View public info
-                      </Link>
-                    ) : (
-                      <span className="muted">No public profile yet</span>
-                    )}
-                    {!isSelf && token ? (
-                      <Link
-                        to={`/chat?start=dm&userId=${encodeURIComponent(person.user_id)}&name=${encodeURIComponent(person.user_name)}`}
-                        className="btn-primary"
-                        style={{ textDecoration: 'none', width: 'fit-content' }}
-                      >
-                        Message {person.user_name}
-                      </Link>
-                    ) : null}
-                    {!token ? (
-                      <span className="muted">Sign in to connect</span>
-                    ) : person.connection_status === 'self' ? null : person.connection_status === 'connected' ? (
-                      <span className="muted">Connected</span>
-                    ) : person.connection_status === 'pending_sent' ? (
-                      <span className="muted">Connection pending</span>
-                    ) : person.connection_status === 'pending_received' ? (
-                      <span className="muted">They requested to connect. Use notifications to respond.</span>
-                    ) : (
-                      <button type="button" onClick={() => requestConnection(person)} style={{ width: 'fit-content' }}>
-                        Connect
-                      </button>
-                    )}
+                    {!profilePath ? <span className="muted">No public profile yet</span> : null}
+                    <div className="people-directory-actions">
+                      {profilePath ? (
+                        <Link to={profilePath} className="btn-secondary">View public info</Link>
+                      ) : null}
+                      {!isSelf && token ? (
+                        <Link
+                          to={`/chat?start=dm&userId=${encodeURIComponent(person.user_id)}&name=${encodeURIComponent(person.user_name)}`}
+                          className="btn-primary"
+                          style={{ textDecoration: 'none', width: 'fit-content' }}
+                        >
+                          Message {person.user_name}
+                        </Link>
+                      ) : null}
+                      {!token ? (
+                        <span className="muted">Sign in to connect</span>
+                      ) : isSelf || person.connection_status === 'self' ? null : person.connection_status === 'connected' ? (
+                        <span className="muted">Connected</span>
+                      ) : person.connection_status === 'pending_sent' ? (
+                        <span className="muted">Connection pending</span>
+                      ) : person.connection_status === 'pending_received' ? (
+                        <span className="muted">They requested to connect. Use notifications to respond.</span>
+                      ) : (
+                        <button type="button" className="btn-secondary" disabled={connecting.includes(person.user_id)} onClick={() => requestConnection(person)} aria-label={`Connect with ${person.user_name}`}>
+                          {connecting.includes(person.user_id) ? 'Connecting…' : 'Connect'}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </article>
               )

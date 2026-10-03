@@ -13,6 +13,7 @@ import docker_utils
 current_dir = Path(os.path.abspath(os.path.dirname(__file__)))
 web_dir = current_dir / "web"
 org_worker_dir = current_dir / "org-worker"
+chat_worker_dir = current_dir / "chat-worker"
 pidp_dir = current_dir.parent / "pidp"
 if not pidp_dir.exists():
     pidp_dir = current_dir.parent / "PIdP"
@@ -402,8 +403,16 @@ def _write_local_gateway_config(
                 proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 
                 location /api/org/ {{
+                  proxy_set_header X-Forwarded-Host {os.getenv("ORGPORTAL_LOCAL_TENANT_HOST", "localhost")};
                   rewrite ^/api/org/?(.*)$ /$1 break;
                   proxy_pass http://{org_worker_name}:{worker_port};
+                }}
+
+                location /api/chat/ {{
+                  rewrite ^/api/chat/?(.*)$ /$1 break;
+                  proxy_set_header Upgrade $http_upgrade;
+                  proxy_set_header Connection "upgrade";
+                  proxy_pass http://{org_worker_name.removesuffix('org')}chat:8003;
                 }}
 
                 location /pidp/ {{
@@ -659,9 +668,34 @@ def run(prefix: str, network_name: str) -> None:
                 "npm run db:migrate:local && "
                 f"npx wrangler dev --local --test-scheduled --ip 0.0.0.0 --port {worker_port} "
                 f"--var {shlex.quote('PIDP_BASE_URL:' + (os.getenv('ORGPORTAL_WORKER_PIDP_BASE_URL') or f'http://{pidp_dev_name}:8000'))} "
-                f"--var {shlex.quote('PUBLIC_PORTAL_BASE_URL:' + gateway_base)}"
+                f"--var {shlex.quote('PUBLIC_PORTAL_BASE_URL:' + gateway_base)} "
+                f"--var {shlex.quote('CHAT_API_ORIGIN:http://' + prefix + 'chat:8003')}"
             ),
         ],
+    }
+
+    chat_worker_name = prefix + "chat"
+    chat_api_base = f"http://{chat_worker_name}:8003"
+    chat_worker = {
+        "image": os.getenv("ORGPORTAL_WORKER_IMAGE", DEFAULT_WORKER_IMAGE),
+        "name": chat_worker_name,
+        "network": network_name,
+        "restart_policy": {"Name": "always"},
+        "detach": True,
+        "working_dir": container_app_dir,
+        "volumes": {
+            str(chat_worker_dir): {"bind": container_app_dir, "mode": "rw"},
+            prefix + "ORGPORTAL_CHAT_WORKER_NODE_MODULES": {"bind": "/app/node_modules", "mode": "rw"},
+            # Shared local storage lets chat resolve contacts from the org database.
+            prefix + "ORGPORTAL_ORG_WORKER_WRANGLER": {"bind": "/app/.wrangler", "mode": "rw"},
+        },
+        "command": ["sh", "-c", (
+            "npm ci && npm run db:migrate:local && "
+            "npx wrangler dev --local --ip 0.0.0.0 --port 8003 "
+            f"--var {shlex.quote('PIDP_BASE_URL:' + (os.getenv('ORGPORTAL_WORKER_PIDP_BASE_URL') or f'http://{pidp_dev_name}:8000'))} "
+            f"--var {shlex.quote('PUBLIC_PORTAL_BASE_URL:' + gateway_base)} "
+            f"--var {shlex.quote('CHAT_ALLOWED_ORIGINS:' + gateway_base)}"
+        )],
     }
 
     dev = {
@@ -690,7 +724,8 @@ def run(prefix: str, network_name: str) -> None:
             "VITE_HMR_HOST": dev_host or "",
             "VITE_ALLOWED_HOSTS": ",".join([h for h in [dev_host, prod_host, "localhost"] if h]),
             "ORG_API_ORIGIN": org_api_base,
-            "CHAT_API_ORIGIN": os.getenv("CHAT_API_ORIGIN", "https://chat-codecollective.jcloiacon.workers.dev"),
+            "CHAT_API_ORIGIN": chat_api_base,
+            "VITE_HMR_PROTOCOL": "wss" if dev_base and dev_base.startswith("https:") else "ws",
         },
         "command": [
             "sh",
@@ -702,7 +737,7 @@ def run(prefix: str, network_name: str) -> None:
         ],
     }
 
-    for name in (prod_name, dev_name, org_worker_name):
+    for name in (prod_name, dev_name, org_worker_name, chat_worker_name):
         try:
             container = docker_utils.DOCKER_CLIENT.containers.get(name)
             container.stop()
@@ -735,6 +770,8 @@ def run(prefix: str, network_name: str) -> None:
         _wait_for_http(f"http://{pidp_dev_name}:8000/health", network_name, retries=60, delay=2)
 
     docker_utils.run_container(org_worker)
+    docker_utils.run_container(chat_worker)
+    docker_utils.wait_for_port(chat_worker_name, 8003, network_name, retries=60, delay=2)
     docker_utils.run_container(dev)
     docker_utils.wait_for_port(org_worker_name, int(worker_port), network_name, retries=60, delay=2)
     _wait_for_http(f"http://{org_worker_name}:{worker_port}/health", network_name, retries=60, delay=2)

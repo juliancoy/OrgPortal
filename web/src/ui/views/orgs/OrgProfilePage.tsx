@@ -366,10 +366,10 @@ export function OrgProfilePage() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search by name or slug"
+            aria-label="Search by name or slug" placeholder="Search by name or slug"
             style={{ flex: '1 1 260px' }}
           />
-          <button type="button" onClick={loadOrgs} disabled={!token || loading}>
+          <button className="btn-secondary" type="button" onClick={loadOrgs} disabled={!token || loading}>
             {loading ? 'Loading…' : 'Search'}
           </button>
         </div>
@@ -377,17 +377,17 @@ export function OrgProfilePage() {
 
       <div className="portal-card" style={{ display: 'grid', gap: '0.6rem' }}>
         <h2 style={{ margin: 0, fontSize: '1rem' }}>Create Organization</h2>
-        <input value={newOrgName} onChange={(e) => setNewOrgName(e.target.value)} placeholder="Organization name" />
-        <input value={newOrgUrl} onChange={(e) => setNewOrgUrl(e.target.value)} placeholder="Source URL (optional)" />
-        <input value={newOrgImage} onChange={(e) => setNewOrgImage(e.target.value)} placeholder="Image URL (optional)" />
-        <input value={newOrgTags} onChange={(e) => setNewOrgTags(e.target.value)} placeholder="Tags, comma separated" />
-        <textarea value={newOrgDescription} onChange={(e) => setNewOrgDescription(e.target.value)} rows={3} placeholder="Description" />
+        <input value={newOrgName} onChange={(e) => setNewOrgName(e.target.value)} aria-label="Organization name" placeholder="Organization name" />
+        <input value={newOrgUrl} onChange={(e) => setNewOrgUrl(e.target.value)} aria-label="Source URL (optional)" placeholder="Source URL (optional)" />
+        <input value={newOrgImage} onChange={(e) => setNewOrgImage(e.target.value)} aria-label="Image URL (optional)" placeholder="Image URL (optional)" />
+        <input value={newOrgTags} onChange={(e) => setNewOrgTags(e.target.value)} aria-label="Tags, comma separated" placeholder="Tags, comma separated" />
+        <textarea value={newOrgDescription} onChange={(e) => setNewOrgDescription(e.target.value)} rows={3} aria-label="Description" placeholder="Description" />
         <div>
-          <button type="button" onClick={createOrg} disabled={!token}>Create</button>
+          <button className="btn-secondary" type="button" onClick={createOrg} disabled={!token}>Create</button>
         </div>
       </div>
 
-      {status ? <p className="muted">{status}</p> : null}
+      {status ? <p className="muted" role="status">{status}</p> : null}
 
       <div style={{ display: 'grid', gap: '0.6rem' }}>
         {orgs.map((org) => {
@@ -430,10 +430,10 @@ export function OrgProfilePage() {
                 </div>
                 <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                   {!org.claimed_by_user_id ? (
-                    <button type="button" onClick={() => claimOrg(org.id)} disabled={!token}>Claim</button>
+                    <button className="btn-secondary" type="button" onClick={() => claimOrg(org.id)} disabled={!token}>Claim</button>
                   ) : null}
                   {canManage ? (
-                    <button type="button" onClick={() => loadMembers(org.id)}>Manage Members</button>
+                    <button className="btn-secondary" type="button" onClick={() => loadMembers(org.id)}>Manage Members</button>
                   ) : null}
                 </div>
               </div>
@@ -442,10 +442,10 @@ export function OrgProfilePage() {
                   <input
                     value={challengeExplanationByOrg[org.id] || ''}
                     onChange={(e) => setChallengeExplanationByOrg((current) => ({ ...current, [org.id]: e.target.value }))}
-                    placeholder="Why should ownership change?"
+                    aria-label="Why should ownership change?" placeholder="Why should ownership change?"
                     style={{ flex: '1 1 260px' }}
                   />
-                  <button type="button" onClick={() => challengeOrg(org.id)} disabled={!token}>Challenge ownership</button>
+                  <button className="btn-secondary" type="button" onClick={() => challengeOrg(org.id)} disabled={!token}>Challenge ownership</button>
                 </div>
               ) : null}
               {canManage ? (
@@ -458,10 +458,10 @@ export function OrgProfilePage() {
                         [org.id]: e.target.value,
                       }))
                     }
-                    placeholder="Organization name"
+                    aria-label="Organization name" placeholder="Organization name"
                     style={{ minWidth: 0, flex: '1 1 220px', maxWidth: '100%' }}
                   />
-                  <button
+                  <button className="btn-secondary"
                     type="button"
                     onClick={() => renameOrg(org.id)}
                     disabled={!token}
@@ -476,10 +476,10 @@ export function OrgProfilePage() {
                         [org.id]: e.target.value,
                       }))
                     }
-                    placeholder="Image URL"
+                    aria-label="Image URL" placeholder="Image URL"
                     style={{ minWidth: 0, flex: '1 1 220px', maxWidth: '100%' }}
                   />
-                  <button type="button" onClick={() => saveOrgImage(org.id)} disabled={!token}>
+                  <button className="btn-secondary" type="button" onClick={() => saveOrgImage(org.id)} disabled={!token}>
                     Save Image
                   </button>
                   <select
@@ -499,7 +499,7 @@ export function OrgProfilePage() {
                       </option>
                     ))}
                   </select>
-                  <button
+                  <button className="btn-secondary"
                     type="button"
                     onClick={() => mergeOrg(org.id)}
                     disabled={!token || !mergeSourceByTarget[org.id]}
@@ -517,15 +517,15 @@ export function OrgProfilePage() {
         <section className="portal-card" style={{ display: 'grid', gap: '0.6rem' }}>
           <h2 style={{ margin: 0, fontSize: '1rem' }}>Members: {selectedOrg.name}</h2>
           <div style={{ display: 'grid', gap: '0.5rem' }}>
-            <input value={memberUserId} onChange={(e) => setMemberUserId(e.target.value)} placeholder="User ID (required)" />
-            <input value={memberName} onChange={(e) => setMemberName(e.target.value)} placeholder="Name (optional)" />
-            <input value={memberEmail} onChange={(e) => setMemberEmail(e.target.value)} placeholder="Email (optional)" />
+            <input value={memberUserId} onChange={(e) => setMemberUserId(e.target.value)} aria-label="User ID (required)" placeholder="User ID (required)" />
+            <input value={memberName} onChange={(e) => setMemberName(e.target.value)} aria-label="Name (optional)" placeholder="Name (optional)" />
+            <input value={memberEmail} onChange={(e) => setMemberEmail(e.target.value)} aria-label="Email (optional)" placeholder="Email (optional)" />
             <select value={memberRole} onChange={(e) => setMemberRole(e.target.value as 'member' | 'administrator')}>
               <option value="member">member</option>
               <option value="administrator">administrator</option>
             </select>
             <div>
-              <button type="button" onClick={upsertMember}>Save Member</button>
+              <button className="btn-secondary" type="button" onClick={upsertMember}>Save Member</button>
             </div>
           </div>
           <ul style={{ margin: 0, paddingLeft: '1.1rem' }}>

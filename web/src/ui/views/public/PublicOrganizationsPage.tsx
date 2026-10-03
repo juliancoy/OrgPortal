@@ -208,7 +208,7 @@ export function PublicOrganizationsPage() {
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }} role="group" aria-label="Organization list filters">
         <button
           type="button"
-          className={!showMineOnly ? 'btn-primary' : undefined}
+          className={!showMineOnly ? 'btn-primary' : 'btn-secondary'}
           onClick={() => setShowMineOnly(false)}
           aria-pressed={!showMineOnly}
         >
@@ -216,7 +216,7 @@ export function PublicOrganizationsPage() {
         </button>
         <button
           type="button"
-          className={showMineOnly ? 'btn-primary' : undefined}
+          className={showMineOnly ? 'btn-primary' : 'btn-secondary'}
           onClick={() => setShowMineOnly(true)}
           disabled={!token}
           aria-pressed={showMineOnly}
@@ -307,7 +307,7 @@ export function PublicOrganizationsPage() {
               <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }} role="group" aria-label={`Actions for ${org.name}`}>
                 <button
                   type="button"
-                  className={myOrgRoles.has(org.slug) ? undefined : 'btn-primary'}
+                  className={myOrgRoles.has(org.slug) ? 'btn-secondary' : 'btn-primary'}
                   onClick={() => void updateOrganizationMembership(org, !myOrgRoles.has(org.slug))}
                   disabled={Boolean(myOrgRoles.get(org.slug) && myOrgRoles.get(org.slug) !== 'member')}
                   aria-pressed={myOrgRoles.has(org.slug)}

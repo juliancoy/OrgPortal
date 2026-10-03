@@ -91,7 +91,7 @@ export function EventRegistration({ eventId, slug, token, authLoading = false, s
           <span aria-hidden="true" />
         </div>
       ) : token ? <>
-        <button type="button" className={attendance?.registered ? 'portal-button-secondary' : undefined}
+        <button type="button" className={attendance?.registered ? 'portal-button-secondary' : 'btn-primary'}
           onClick={updateRegistration} disabled={pending || !attendance}>
           {pending ? 'Saving…' : attendance?.registered ? 'Cancel Registration' : 'Register'}
         </button>

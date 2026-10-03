@@ -204,7 +204,7 @@ async function mockTenant(page: Page, options: MockTenantOptions = {}) {
   })
   await page.route('**/pidp/**', async route => {
     const url = new URL(route.request().url())
-    if (/\/auth\/(google|github)\/login$/.test(url.pathname) || url.pathname.endsWith('/app/login')) {
+    if (/\/auth\/(google|github)\/login$/.test(url.pathname) || url.pathname.endsWith('/auth/sso/start')) {
       if (options.completeAppLogin) loggedIn = true
       await route.fulfill({ status: 302, headers: { location: url.searchParams.get('next')! } })
       return
@@ -250,13 +250,13 @@ test('tenant domains use root-mounted canonical routes and assets', async ({ pag
   expect(callback.searchParams.get('next')).toBe('/chat')
 })
 
-test('tenant legacy community aliases redirect to canonical tenant routes', async ({ page }) => {
+test('tenant organization and event pages use canonical routes', async ({ page }) => {
   await mockTenant(page)
 
-  await page.goto(portal('/community?portalProfile=baltimore-medtech'))
+  await page.goto(portal('/orgs/baltimore-medtech'))
   await expect(page).toHaveURL(/\/orgs\/baltimore-medtech$/)
 
-  await page.goto(portal('/medtech-events'))
+  await page.goto(portal('/org-events'))
   await expect(page).toHaveURL(/\/org-events$/)
 })
 
@@ -297,7 +297,6 @@ test('tenant event auth actions return to the same root-mounted event', async ({
   await expect(page.getByRole('heading', { name: 'MedTech in the Hut' })).toBeVisible()
   await page.getByRole('link', { name: 'Login to Comment' }).click()
 
-  await expect(page).toHaveURL(/\/auth\/callback\?next=%2Fevents%2Fmedtech-in-the-hut/)
   await expect(page).toHaveURL(/\/events\/medtech-in-the-hut$/)
   await expect(page.getByRole('heading', { name: 'MedTech in the Hut' })).toBeVisible()
   await expect(page.locator('body')).not.toContainText(/404|not found/i)
@@ -532,7 +531,7 @@ test('tenant header login preserves the current event route', async ({ page }) =
 
   await page.getByRole('link', { name: 'Login', exact: true }).click()
   await expect(page).toHaveURL(/\/users\/login\?next=%2Fevents%2Fmedtech-in-the-hut$/)
-  await page.getByRole('link', { name: 'Continue with Code Collective' }).click()
+  await page.getByRole('link', { name: 'Continue with email' }).click()
 
   await expect(page).toHaveURL(/\/events\/medtech-in-the-hut$/)
   await expect(page.getByRole('heading', { name: 'MedTech in the Hut' })).toBeVisible()

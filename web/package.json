@@ -39,7 +39,8 @@
     "test:timebank:messaging:selenium": "python3 scripts/selenium-timebank-messaging.py",
     "test:a11y": "node scripts/accessibility/audit.mjs",
     "test:a11y:orca": "bash scripts/accessibility/run-orca.sh",
-    "test:timebank:imports:selenium": "python3 scripts/selenium-timebank-imports.py"
+    "test:timebank:imports:selenium": "python3 scripts/selenium-timebank-imports.py",
+    "test:e2e:local": "playwright test --config playwright.local.config.ts"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.1",

@@ -46,7 +46,7 @@ test('a member claims an open organization and challenges an existing owner', as
   await mockOrganizations(page)
   await page.goto('/orgs/profile')
 
-  await expect(page.getByRole('heading', { name: 'Organization Network' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Organization Profile' })).toBeVisible()
   const openOrganization = page.locator('article').filter({ hasText: 'Open Workshop' })
   await openOrganization.getByRole('button', { name: 'Claim', exact: true }).click()
   await expect(page.getByText('Organization claimed. You are now its owner.')).toBeVisible()

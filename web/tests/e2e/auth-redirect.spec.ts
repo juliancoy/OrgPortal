@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 test('guest provider route redirects to login and uses portal-scoped social assets', async ({ page }) => {
+  await page.route('**/api/org/api/portal/tenant', route => route.fulfill({ json: {} }))
   await page.route('**/auth/session-token', async (route) => {
     await route.fulfill({
       status: 401,
