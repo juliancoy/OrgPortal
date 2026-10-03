@@ -78,7 +78,8 @@ with sync_playwright() as p:
         member.get_by_label('Comment',exact=True).fill('Preserve the LifeTech mission in any adopted change.')
         member.get_by_role('button',name='Review comment',exact=True).click()
         member.get_by_role('button',name='Confirm action',exact=True).click()
-        expect(member.get_by_text('Preserve the LifeTech mission in any adopted change.',exact=True)).to_be_visible()
+        expect(member.get_by_role('dialog')).to_have_count(0)
+        expect(member.locator('article').get_by_text('Preserve the LifeTech mission in any adopted change.',exact=True)).to_be_visible()
         expect(member.get_by_role('button',name='Vote yes',exact=True)).to_have_count(0)
         # Advance only this test ticket's timestamps in local D1; production timing remains enforced.
         assert ticket_id.startswith('mot-') and all(c in '0123456789abcdef-' for c in ticket_id[4:])
