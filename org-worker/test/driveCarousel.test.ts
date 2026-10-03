@@ -27,7 +27,15 @@ test('hide and restore persist only for the authenticated account and tenant, wi
   assert.equal((await request('/me/hidden/image123456789','PUT','alice')).status,200);assert.deepEqual(await state('alice'),['image123456789']);
   assert.equal((await request('/me/hidden/not-in-folder','PUT','alice')).status,404);
   assert.equal((await request('/me','GET','alice','codecollective.us')).status,404);
-  assert.equal((await request('/me','GET','alice','lifetech.fyi')).status,404);
+  assert.equal((await request('', 'GET', '', 'lifetech.fyi')).status,200);
+  const lifeState=async()=>(await (await request('/me','GET','alice','lifetech.fyi')).json() as {hiddenImageIds:string[]}).hiddenImageIds;
+  assert.deepEqual(await lifeState(),[]);
+  assert.equal((await request('/me/hidden/image987654321','PUT','alice','lifetech.fyi')).status,200);
+  assert.deepEqual(await lifeState(),['image987654321']);
+  assert.deepEqual(await state('alice'),['image123456789']);
+  assert.equal((await request('/me/hidden/image987654321','DELETE','alice','lifetech.fyi')).status,200);
+  assert.deepEqual(await lifeState(),[]);
+  assert.deepEqual(await state('alice'),['image123456789']);
   assert.equal((await request('/me/hidden/image123456789','DELETE','bob')).status,200);assert.deepEqual(await state('alice'),['image123456789']);
   const publicFolder=await (await request('')).json() as {images:unknown[]};assert.equal(publicFolder.images.length,2);assert.ok(!JSON.stringify(publicFolder).includes('alice'));
   const privateResponse=await request('/me','GET','alice');assert.ok(privateResponse.headers.get('cache-control')?.includes('no-store'));
