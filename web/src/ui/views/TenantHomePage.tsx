@@ -10,6 +10,7 @@ import { SpecialtyResourcesPanel } from '../components/SpecialtyResourcesPanel'
 import { Header } from '../shell/Header'
 import { Footer } from '../shell/Footer'
 import { ExternalBrowserPrompt } from '../components/ExternalBrowserPrompt'
+import { PublicCalendarPage } from './public/PublicCalendarPage'
 import { PublicEventsPage } from './public/PublicEventsPage'
 import { FloatingSocialDock } from '../components/FloatingSocialDock'
 
@@ -181,12 +182,8 @@ export function TenantEventsContent() {
 
   if (!tenant || !orgSlug) return <TenantHomePage />
 
-  return <PublicEventsPage
-    sourcePath={`/api/network/orgs/public/${encodeURIComponent(orgSlug)}/events?upcoming_only=false&limit=200`}
-    heading={`${profile.brandName} Events`}
-    description={`Upcoming and past events from ${profile.brandName}.`}
-    emptyMessage="No events have been published yet."
-  />
+  if (['lifetech', 'baltimore-medtech'].includes(orgSlug)) return <PublicCalendarPage />
+  return <PublicEventsPage sourcePath={`/api/network/orgs/public/${encodeURIComponent(orgSlug)}/events?upcoming_only=false&limit=200`} heading={`${profile.brandName} Events`} description={`Upcoming and past events from ${profile.brandName}.`} />
 }
 
 export function TenantEventsHomePage() {

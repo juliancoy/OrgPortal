@@ -586,3 +586,50 @@ test('LifeTech keeps its own logo and app icons across chat and event navigation
     await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/lifetech.webmanifest')
   }
 })
+
+for (const path of ['/org-events', '/events', '/calendar']) {
+  test(`combined community events at ${path} preserves dates and separates partners`, async ({ page }, info) => {
+    await page.clock.install({ time: new Date('2026-10-03T16:00:00Z') });
+    await mockTenant(page);
+    await page.route('**/api/org/api/network/orgs/public/baltimore-medtech/events?**', route => route.fulfill({ json: [
+      { id: 'october', title: 'October community gathering', slug: 'october', starts_at: '2026-10-20T18:00:00-04:00', ends_at: '2026-10-20T20:30:00-04:00' },
+      { id: 'november', title: 'November community gathering', slug: 'november', event_date: '2026-11-17', starts_at: null },
+      { id: 'past', title: 'September community gathering', slug: 'past', starts_at: '2026-09-29T18:00:00-04:00' },
+    ] }));
+    await page.route('**/api/org/api/network/orgs/public/lifetech/events?**', route => route.fulfill({ json: [
+      { id: 'lifetech', title: 'LifeTech group gathering', slug: 'lifetech-gathering', starts_at: '2026-10-25T18:00:00-04:00' },
+    ] }));
+    await page.route('https://codecollective.us/baltimore/upcoming_events.json', route => route.fulfill({ json: [
+      { name: 'Main feed partner meetup', startDate: '2026-10-21T18:00:00-04:00', url: 'https://example.com/partner', description: 'Community meetup from the main feed.' },
+    ] }));
+    await page.goto(portal(path));
+    await expect(page.getByRole('heading', { name: 'Events & Calendar', exact: true })).toBeVisible();
+    const owned = page.getByRole('region', { name: 'LifeTech events', exact: true });
+    const partners = page.getByRole('region', { name: 'Partner events', exact: true });
+    await expect(owned.getByRole('heading', { name: 'October community gathering' })).toBeVisible();
+    await expect(owned).toContainText('6:00 PM–8:30 PM Eastern');
+    await expect(owned).toContainText('Nov 17, 2026');
+    await expect(owned).toContainText('Time to be confirmed');
+    await expect(owned.getByRole('heading', { name: 'LifeTech group gathering' })).toBeVisible();
+    await expect(owned.getByRole('heading', { name: 'September community gathering' })).toBeVisible();
+    await expect(partners.getByRole('heading', { name: 'Main feed partner meetup' })).toBeVisible();
+    await expect(owned.getByRole('heading', { name: 'Main feed partner meetup' })).toHaveCount(0);
+    const left = await owned.boundingBox(), right = await partners.boundingBox();
+    if (info.project.name.includes('mobile')) expect(right!.y).toBeGreaterThan(left!.y + left!.height);
+    else expect(right!.x).toBeGreaterThan(left!.x);
+    await expect(page.getByRole('heading', { name: 'October 2026', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Next month', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'November 2026', exact: true })).toBeVisible();
+    await expect(page.locator('.public-calendar-day-event', { hasText: 'November community gathering' })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.screenshot({ path: info.outputPath('combined-events.png'), fullPage: true });
+    if (info.project.name.includes('mobile')) {
+      await page.setViewportSize({ width: 320, height: 640 });
+      const card = owned.locator('article').first();
+      const badge = await card.locator('.public-calendar-event-date').boundingBox();
+      const body = await card.locator('.public-calendar-event-body').boundingBox();
+      expect(body!.y).toBeGreaterThanOrEqual(badge!.y + badge!.height);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    }
+  });
+}

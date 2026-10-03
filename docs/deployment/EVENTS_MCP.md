@@ -408,3 +408,22 @@ Release backend migration and Worker through CodeCollective's org component,
 then the shared frontend through its site component. LifeTech's edge must route
 `/onboarding` to the shared portal. Test authenticated behavior in local Docker;
 keep production browser checks unauthenticated.
+
+## Local event time CLI
+
+From the MedTech checkout, run:
+
+```sh
+node ../OrgPortal/org-worker/scripts/event-times.mjs --connect
+node ../OrgPortal/org-worker/scripts/event-times.mjs
+node ../OrgPortal/org-worker/scripts/event-times.mjs --apply
+```
+
+The tool reuses OrgPortal's browser-bound PIdP authorization and OS keyring
+connection. It previews the October 20 and November 17, 2026 Medtech in the Hut
+updates to 6:00–8:30 PM America/New_York. October uses UTC−04:00; November uses
+UTC−05:00. `--apply` displays both previews and asks for confirmation before using
+the native one-use preview/apply receipts. Event IDs and ownership must match the
+existing records; no provider adapter or direct database write is used.
+`--ephemeral` keeps credentials only in memory and revokes the temporary grant
+when the process exits. `--no-browser` prints the authorization URL to open manually.

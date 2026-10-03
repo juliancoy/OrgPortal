@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { getDomainTenant } from '../../../config/timebankCommunity'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
 
 const MEDICAL_EVENTS_SOURCE_URL = 'https://codecollective.us/baltimore/upcoming_events.json'
-const MEDTECH_ORG_EVENTS_SOURCE_PATH = '/api/network/orgs/public/baltimore-medtech/events?upcoming_only=true&limit=120'
 const EVENT_TIME_ZONE = 'America/New_York'
 const ORG_API_BASE = '/api/org'
 
@@ -12,6 +11,7 @@ type RegionalEvent = {
   title?: string | null
   description?: string | null
   startDate?: string | null
+  event_date?: string | null
   starts_at?: string | null
   endTime?: string | null
   ends_at?: string | null
@@ -44,6 +44,7 @@ type CalendarEvent = {
   source: string
   location: string
   medtechOwned: boolean
+  dateOnly: boolean
 }
 
 function orgUrl(path: string) {
@@ -68,7 +69,8 @@ function safeExternalUrl(value: unknown, fallback = '/events') {
 }
 
 function eventDate(event: RegionalEvent) {
-  const date = new Date(String(event.startDate || event.starts_at || ''))
+  const value = event.startDate || event.starts_at || event.event_date || ''
+  const date = new Date(/^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T12:00:00` : value)
   return Number.isNaN(date.getTime()) ? null : date
 }
 
@@ -110,39 +112,16 @@ function imageUrl(event: RegionalEvent) {
   return ''
 }
 
-const medicalSourceHints = ['nami', 'bio-trac', 'biotrac', 'biobuzz', 'mdtechcouncil', 'johns hopkins', 'hopkins', 'nih', 'national cancer institute', 'university of maryland medical']
-const medicalKeywords = /\b(medtech|medical|medicine|healthcare|health care|public health|mental health|biotech|biopharma|pharma(?:ceutical)?|clinical|clinic|hospital|patient|therapeutics?|life sciences?|genomics?|sequencing|cancer|oncology|nursing|physician|diagnos(?:is|tic|tics)?|disease|vaccine|surgery|surgical|neuroscience|cardiology|dental|pharmacology)\b/i
-const wellnessOnly = /\b(yoga|meditation|fitness|pilates|dance fitness|line dancing|workout)\b/i
-
-function eventBlob(event: RegionalEvent) {
-  return [event.name, event.title, event.description, event.source_group, event.org_name, event.orgName, locationText(event), event.url, event.public_url, event.source]
-    .map((part) => cleanText(part))
-    .join(' ')
-}
-
 function isMedTechOwnedEvent(event: RegionalEvent) {
-  if (event.medtechOwned === true) return true
-  const tags = Array.isArray(event.tags) ? event.tags.map((tag) => String(tag).toLowerCase()) : []
-  const blob = eventBlob(event).toLowerCase()
-  return tags.includes('medtech') || event.host_org_id === 'org-baltimore-medtech' || blob.includes('baltimore medtech') || String(event.url || event.public_url || '').includes('medtech.social/')
-}
-
-function isMedicalEvent(event: RegionalEvent) {
-  if (isMedTechOwnedEvent(event)) return true
-  const tags = Array.isArray(event.tags) ? event.tags.map((tag) => String(tag).toLowerCase()) : []
-  const blob = eventBlob(event)
-  const normalizedBlob = blob.toLowerCase()
-  if (medicalSourceHints.some((hint) => normalizedBlob.includes(hint))) return true
-  if (medicalKeywords.test(blob)) return true
-  return tags.includes('health') && !wellnessOnly.test(blob)
+  return event.medtechOwned === true || ['org-baltimore-medtech', 'ef646755-9443-4c7b-ba4b-a7a29754f666'].includes(event.host_org_id || '') || /(?:lifetech\.fyi|medtech\.social)\/events\//.test(event.url || event.public_url || '')
 }
 
 function normalizePortalEvent(event: RegionalEvent): RegionalEvent {
-  const organizationName = String(event.org_name || event.orgName || event.source_group || 'Baltimore MedTech')
+  const organizationName = String(event.org_name || event.orgName || event.source_group || 'LifeTech community')
   return {
     ...event,
     name: event.title || event.name || 'Baltimore MedTech event',
-    startDate: event.starts_at || event.startDate || '',
+    startDate: event.starts_at || event.startDate || event.event_date || '',
     endTime: event.ends_at || event.endTime || '',
     url: medtechEventUrl(event),
     source_group: organizationName,
@@ -178,7 +157,8 @@ function normalizeCalendarEvent(event: RegionalEvent, index: number): CalendarEv
     id: `${String(event.url || event.public_url || title)}-${index}`,
     title,
     description: cleanText(event.description || '').replace(/\s+/g, ' ').trim(),
-    startsAt: event.startDate || event.starts_at || '',
+    startsAt: event.startDate || event.starts_at || event.event_date || '',
+    dateOnly: !event.starts_at && !event.startDate?.includes('T'),
     endsAt: event.endTime || event.ends_at || null,
     date,
     url: medtechOwned ? medtechEventUrl(event) : safeExternalUrl(event.url || event.public_url),
@@ -202,13 +182,16 @@ function dayKey(date: Date) {
 }
 
 export function PublicCalendarPage() {
+  const tenant = getDomainTenant()
+  const organizationSlug = tenant?.home_org_slug || 'baltimore-medtech'
+  const organizationPaths = [...new Set([organizationSlug, 'baltimore-medtech', ...(organizationSlug === 'lifetech' || organizationSlug === 'baltimore-medtech' ? ['lifetech'] : [])])].map(slug => `/api/network/orgs/public/${encodeURIComponent(slug)}/events?upcoming_only=false&limit=200`)
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [visibleDate, setVisibleDate] = useState(() => new Date())
   const [status, setStatus] = useState('Loading medical events…')
 
   useEffect(() => {
     setSeoMeta({
-      title: 'General Calendar • Baltimore MedTech',
+      title: 'Events & Calendar • LifeTech',
       description: 'Medical, health, biotech, and Baltimore MedTech-hosted events around the region.',
       canonicalUrl: `${window.location.origin}/calendar`,
       type: 'website',
@@ -220,25 +203,24 @@ export function PublicCalendarPage() {
     setStatus('Loading medical events…')
     Promise.allSettled([
       fetch(MEDICAL_EVENTS_SOURCE_URL, { cache: 'no-store' }).then((response) => { if (!response.ok) throw new Error('Regional source unavailable'); return response.json() }),
-      fetch(orgUrl(MEDTECH_ORG_EVENTS_SOURCE_PATH), { cache: 'no-store' }).then((response) => { if (!response.ok) throw new Error('Organization source unavailable'); return response.json() }),
+      ...organizationPaths.map(path => fetch(orgUrl(path), { cache: 'no-store' }).then((response) => { if (!response.ok) throw new Error('Organization source unavailable'); return response.json() })),
     ])
-      .then(([regionalResult, medtechResult]) => {
+      .then(([regionalResult, ...organizationResults]) => {
         const regional = regionalResult.status === 'fulfilled' ? regionalResult.value : []
-        const medtech = medtechResult.status === 'fulfilled' ? medtechResult.value : []
+        const medtech = organizationResults.flatMap(result => result.status === 'fulfilled' && Array.isArray(result.value) ? result.value : [])
         if (cancelled) return
         const medtechEvents = Array.isArray(medtech) ? medtech.map(normalizePortalEvent) : []
         const regionalEvents = Array.isArray(regional) ? regional : []
         const nextEvents = mergeEventSources(medtechEvents, regionalEvents)
-          .filter(isMedicalEvent)
           .map(normalizeCalendarEvent)
           .filter((event): event is CalendarEvent => Boolean(event))
           .sort((a, b) => a.date.getTime() - b.date.getTime())
         setEvents(nextEvents)
         const firstUpcoming = nextEvents.find((event) => event.date >= new Date())
         if (firstUpcoming) setVisibleDate(new Date(firstUpcoming.date))
-        setStatus([regionalResult, medtechResult].every((result) => result.status === 'rejected')
+        setStatus([regionalResult, ...organizationResults].every((result) => result.status === 'rejected')
           ? 'The calendar is temporarily unavailable. Please try refreshing.'
-          : [regionalResult, medtechResult].some((result) => result.status === 'rejected')
+          : [regionalResult, ...organizationResults].some((result) => result.status === 'rejected')
             ? 'Some event sources are unavailable. Showing events from the available sources.' : '')
       })
       .catch((reason: unknown) => {
@@ -247,14 +229,13 @@ export function PublicCalendarPage() {
         setEvents([])
       })
     return () => { cancelled = true }
-  }, [])
+  }, [organizationSlug])
 
   const upcomingEvents = useMemo(() => {
     const now = new Date()
     const upcoming = events.filter((event) => event.date >= now)
-    const medtech = upcoming.filter((event) => event.medtechOwned)
-    const regional = upcoming.filter((event) => !event.medtechOwned).slice(0, Math.max(0, 40 - medtech.length))
-    return [...medtech, ...regional]
+    return upcoming
+
   }, [events])
 
   const monthDays = useMemo(() => {
@@ -287,31 +268,34 @@ export function PublicCalendarPage() {
   return <section className="public-calendar-page">
     <div className="public-events-heading public-calendar-heading">
       <p className="public-event-eyebrow">Around the region</p>
-      <h1>General Calendar</h1>
-      <p className="muted">Medical, health and technology events from organizations across Baltimore, with Baltimore MedTech-hosted gatherings highlighted.</p>
-      <div className="public-calendar-heading-actions">
-        <Link className="btn-primary" to="/org-events">Baltimore MedTech events</Link>
-        <a className="portal-button-secondary" href="https://codecollective.us/calendar.html?city=baltimore&lm=individual_tags&lt=health.science" target="_blank" rel="noreferrer">Open legacy regional source</a>
-      </div>
+      <h1>Events &amp; Calendar</h1>
+      <p className="muted">LifeTech community gatherings and partner events around Baltimore. Browse the listings and monthly calendar together.</p>
     </div>
 
     {status ? <p className="muted" role="status">{status}</p> : null}
 
-    <section className="public-calendar-upcoming" aria-labelledby="public-calendar-upcoming-title">
-      <div className="section-title-row">
-        <h2 id="public-calendar-upcoming-title">Upcoming</h2>
-        <span>{upcomingEvents.length ? `${upcomingEvents.length} shown` : ''}</span>
-      </div>
-      {!status && upcomingEvents.length === 0 ? <p className="muted">No upcoming medical events are published right now.</p> : null}
-      <div className="public-calendar-event-list">
-        {upcomingEvents.map((event) => <article key={event.id} className={`portal-card public-calendar-event-card ${event.medtechOwned ? 'medtech-owned' : ''} ${event.imageUrl ? 'has-image' : ''}`}>
+    <div className="community-events-columns">
+      {[{ title: 'LifeTech events', owned: true }, { title: 'Partner events', owned: false }].map(column => {
+        const now = new Date()
+        const columnEvents = events.filter(event => event.medtechOwned === column.owned).sort((a, b) => {
+          const aPast = (a.endsAt ? new Date(a.endsAt) : a.date) < now
+          const bPast = (b.endsAt ? new Date(b.endsAt) : b.date) < now
+          if (aPast !== bPast) return aPast ? 1 : -1
+          return aPast ? b.date.getTime() - a.date.getTime() : a.date.getTime() - b.date.getTime()
+        })
+        return <section className="public-calendar-upcoming" key={column.title} aria-label={column.title}>
+          <h2>{column.title}</h2>
+          <p className="muted">{column.owned ? 'LifeTech and Baltimore MedTech group events, upcoming and past.' : 'Partner gatherings and the main regional events feed.'}</p>
+          {!status && !columnEvents.length ? <p className="muted">No events listed.</p> : null}
+          <div className="public-calendar-event-list">
+        {columnEvents.map((event) => <article key={event.id} className={`portal-card public-calendar-event-card ${event.medtechOwned ? 'medtech-owned' : ''} ${event.imageUrl ? 'has-image' : ''}`}>
           <div className="public-calendar-event-date">
             {event.date.toLocaleDateString(undefined, { month: 'short' })}<span>{event.date.toLocaleDateString(undefined, { day: 'numeric' })}</span>
           </div>
           <div className="public-calendar-event-body">
-            {event.medtechOwned ? <p className="public-calendar-feature-label">Baltimore MedTech hosted</p> : null}
+            {event.medtechOwned ? <p className="public-calendar-feature-label">LifeTech community</p> : null}
             <h3><a href={event.url}>{event.title}</a></h3>
-            <p className="muted">{[formatEventTime(event.date), event.source, event.location].filter(Boolean).join(' • ')}</p>
+            <p className="muted">{[event.dateOnly ? `${event.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} • Time to be confirmed` : `${formatEventTime(event.date)}${event.endsAt ? `–${new Date(event.endsAt).toLocaleTimeString(undefined, { timeZone: EVENT_TIME_ZONE, hour: 'numeric', minute: '2-digit' })}` : ''} Eastern`, event.source, event.location].filter(Boolean).join(' • ')}</p>
             {event.description ? <p>{event.description.slice(0, 180)}{event.description.length > 180 ? '…' : ''}</p> : null}
             <a className="public-event-open-link" href={event.url}>{event.medtechOwned ? 'Register for this event' : 'Open event'}</a>
           </div>
@@ -319,6 +303,8 @@ export function PublicCalendarPage() {
         </article>)}
       </div>
     </section>
+      })}
+    </div>
 
     <section className="portal-card public-calendar-month" aria-labelledby="public-calendar-month-title">
       <div className="public-calendar-month-toolbar">

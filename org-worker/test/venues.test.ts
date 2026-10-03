@@ -14,6 +14,15 @@ test('venues are reusable, contacts are private, and edits require live ownershi
  assert.equal((await req(`/${id}/manage`,'GET',undefined,'bob')).status,403);
  assert.equal((await req(`/${id}`,'PATCH',{name:'Changed'},'bob')).status,403);
  assert.equal((await req(`/${id}`,'PATCH',{name:'Changed'},'alice')).status,200);
+ assert.equal((await req(`/${id}`,'PATCH',{image_url:'javascript:alert(1)'},'alice')).status,400);
+ assert.equal((await req(`/${id}`,'PATCH',{research_url:'https://user:secret@example.com/'},'alice')).status,400);
+ assert.equal((await req(`/${id}`,'PATCH',{researched_at:'yesterday'},'alice')).status,400);
+ assert.equal((await req(`/${id}`,'PATCH',{researched_at:'2026-02-31'},'alice')).status,400);
+ const details={description:'Community hall',image_url:'https://example.com/hall.jpg',image_source_url:'https://example.com/hall',image_credit:'Hall operator',research_url:'https://example.com/rentals',researched_at:'2026-10-03'};
+ assert.equal((await req(`/${id}`,'PATCH',details,'alice')).status,200);
+ const enriched=await (await req(`/public/${id}`)).json() as Record<string,unknown>;
+ for(const [key,value] of Object.entries(details))assert.equal(enriched[key],value);
+ assert.ok(!('contact_email' in enriched));assert.ok(!('notes' in enriched));
  assert.equal((await req(`/${id}/manage`,'GET',undefined,'alice')).status,200);
  }finally{db.close()}
 });

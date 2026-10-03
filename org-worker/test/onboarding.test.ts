@@ -6,6 +6,7 @@ import { HTTPException } from 'hono/http-exception';
 import { TimebankDatabase } from './helpers/timebankDatabase';
 import { monthSlots, nextMonth, onboardingRoutes, onboardingSteps } from '../src/onboarding';
 import { userTaskRoutes } from '../src/userTasks';
+import { resolvePortalTenant } from '../src/timebank';
 
 test('month bounds clamp short months and preserve local dates across DST',()=>{
  assert.equal(nextMonth('2026-01-31'),'2026-02-28');
@@ -30,9 +31,17 @@ test('onboarding enrolls once, isolates tenants and users, and requires all step
   assert.deepEqual(await (await req('/onboarding','GET',undefined,'alice','codecollective.us')).json(),{enabled:false});
   const initial:any=await (await req('/onboarding')).json();assert.equal(initial.enabled,true);assert.equal(initial.completed_at,null);
   await req('/onboarding');
-  const queue:any=await (await req('/tasks')).json();assert.equal(queue.tasks.length,1);assert.equal(queue.tasks[0].href,'/onboarding');
+  const queue:any=await (await req('/tasks')).json();assert.equal(queue.tasks.length,5);assert.equal(queue.tasks[0].href,'/onboarding#availability');
+  assert.match(queue.tasks[0].title,/meeting availability/);
+  assert.deepEqual(queue.tasks.slice(1).map((t:any)=>t.href),onboardingSteps.map(s=>`/onboarding#${s.id}`));
+  assert.equal((await (await req('/tasks')).json() as any).tasks.length,5);
   assert.equal((await req(`/tasks/${queue.tasks[0].id}/complete`,'POST')).status,409);
-  for(const step of onboardingSteps){assert.equal((await req(`/onboarding/steps/${step.id}`,'POST',{acknowledged:true})).status,200)}
+  for(const [index,step] of onboardingSteps.entries()){
+   assert.equal((await req(`/onboarding/steps/${step.id}`,'POST',{acknowledged:true})).status,200);
+   const pending:any=await (await req('/tasks')).json();
+   assert.equal(pending.tasks.length,4-index);
+   assert.ok(!pending.tasks.some((t:any)=>t.href===`/onboarding#${step.id}`));
+  }
   assert.equal((await req('/onboarding/steps/availability','POST',{acknowledged:true})).status,400);
   assert.equal((await (await req('/onboarding')).json() as any).completed_at,null);
   assert.equal((await req('/onboarding/availability','PUT',{timezone:'America/New_York',slots:[],reviewed:false})).status,400);
@@ -45,5 +54,32 @@ test('onboarding enrolls once, isolates tenants and users, and requires all step
   const bob:any=await (await req('/onboarding','GET',undefined,'bob')).json();assert.equal(bob.completed_at,null);assert.equal(bob.availability_saved_at,null);
   assert.equal(db.sqlite.prepare("SELECT count(*) n FROM account_availability WHERE user_id='alice' AND available=0").get()!.n,calendar.slots.length);
   assert.equal(db.sqlite.prepare("SELECT count(*) n FROM account_availability WHERE user_id='bob'").get()!.n,0);
+ }finally{db.sqlite.close()}
+});
+
+test('existing onboarding progress replaces the aggregate task without reopening completed steps',async()=>{
+ const db=new TimebankDatabase();
+ db.sqlite.exec("ALTER TABLE portal_tenants ADD COLUMN feature_config TEXT NOT NULL DEFAULT '{}'");
+ for(const file of ['0042_availability_polls.sql','0046_user_tasks.sql','0047_account_availability.sql','0051_onboarding.sql'])db.sqlite.exec(readFileSync(new URL(`../migrations/${file}`,import.meta.url),'utf8'));
+ db.sqlite.exec(`UPDATE portal_tenants SET feature_config='{"onboarding":{"enabled":true}}' WHERE hostname='medtech.social'`);
+ const auth=async(_env:Env,req:Request)=>({id:req.headers.get('authorization')!});
+ const app=new Hono<{Bindings:Env}>();app.route('/tasks',userTaskRoutes(auth));
+ const env={DB:db.asD1()} as Env;
+ try{
+  const tenantRow=await resolvePortalTenant(db.asD1(),new Request('https://medtech.social/tasks'));
+  const tenant=tenantRow.id;
+  db.sqlite.prepare('INSERT INTO onboarding_enrollments(tenant_id,user_id,start_date,end_date,acknowledgements,availability_saved_at) VALUES (?,?,?,?,?,?)').run(tenant,'alice','2026-10-03','2026-11-03','{"constitution":"2026-10-03T12:00:00Z"}','2026-10-03T12:00:00Z');
+  const insert=db.sqlite.prepare("INSERT INTO user_tasks(id,tenant_id,user_id,created_by_user_id,kind,entity_id,title) VALUES (?,?,'alice','alice','personal',?,?)");
+  insert.run('legacy',tenant,'onboarding:v1','Complete onboarding');
+  insert.run('calendar',tenant,`availability-calendar:${tenantRow.organization_id}`,'Enter availability');
+  db.sqlite.prepare("INSERT INTO user_tasks(id,tenant_id,user_id,created_by_user_id,kind,title) VALUES ('personal',?,'alice','alice','personal','My own task')").run(tenant);
+  const read=async(user='alice')=>(await (await app.fetch(new Request('https://medtech.social/tasks',{headers:{authorization:user}}),env)).json()) as {tasks:Array<{id:string;href:string}>};
+  assert.deepEqual((await read()).tasks.map(t=>t.href),['/onboarding#participation','/onboarding#communications','/onboarding#meetings',null]);
+  assert.equal((await read()).tasks.length,4);
+  assert.equal((db.sqlite.prepare("SELECT status FROM user_tasks WHERE id='legacy'").get() as {status:string}).status,'completed');
+  assert.equal((await read('bob')).tasks.length,5);
+  assert.equal((await read()).tasks.length,4);
+  const rows=db.sqlite.prepare("SELECT id FROM user_tasks WHERE user_id='alice' AND entity_id LIKE 'onboarding:v1:%'").all() as Array<{id:string}>;
+  for(const task of rows)assert.equal((await app.fetch(new Request(`https://medtech.social/tasks/${task.id}/complete`,{method:'POST',headers:{authorization:'alice'}}),env)).status,409);
  }finally{db.sqlite.close()}
 });

@@ -169,3 +169,23 @@ traffic on localhost. The default is the Code Collective tenant.
 is `/usr/bin/google-chrome`). The local configuration accepts the development
 TLS certificate and does not launch another Vite server. Most browser scenarios
 use API fixtures; real login and session checks use the local PIdP test account.
+
+For the real onboarding click-through (registration, local email verification,
+required steps, month availability, reload persistence, and mobile layout):
+
+```bash
+ORGPORTAL_LOCAL_TENANT_HOST=lifetech.fyi python run.py bmoremedtech- bmoremedtech
+docker exec bmoremedtech-org node_modules/.bin/wrangler d1 execute org --local --file test/fixtures/local-onboarding.sql
+python web/scripts/test-local-onboarding.py
+```
+
+The SQL file seeds a local onboarding-enabled tenant without replacing existing
+tenants. All onboarding reads and writes use the real local APIs.
+The test requires Playwright for Python and Chrome. It uses PIdP's API to create
+and authenticate a fresh test identity, then clicks through the onboarding UI.
+Keep `PIDP_EMAIL_VERIFICATION_DELIVERY=log`; the test reads only the fresh
+account's verification link from the local container log without printing it.
+For a different stack prefix, set `ONBOARDING_PIDP_CONTAINER`; for a different
+gateway port, set `PLAYWRIGHT_BASE_URL` to the same local origin used by the
+launcher. The test checks trusted origins and the tenant's onboarding setting
+before creating the account. Screenshots are saved in `.local/session-test/`.

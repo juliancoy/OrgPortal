@@ -9,6 +9,26 @@ export const onboardingSteps = [
  { id: 'communications', title: 'Review communications and conduct', description: 'Learn the community channels, expectations for respectful conduct, and how to raise concerns with organizers.', href: 'https://codecollective.us/constitution' },
  { id: 'meetings', title: 'Learn meetings and governance', description: 'Review meeting types and the motion, seconding, and voting process. Find an upcoming meeting to attend.', href: '/events' },
 ] as const;
+export const onboardingTasks = [
+ { id: 'availability', title: 'Indicate your meeting availability for the next month' },
+ ...onboardingSteps.map(({ id, title }) => ({ id, title })),
+];
+export function onboardingTaskId(step: string) { return `onboarding:v1:${step}`; }
+function taskUpdates(db: D1Database, tenantId: string, userId: string) {
+ return [
+  ...onboardingTasks.map(step => {
+   const completion = step.id === 'availability' ? 'availability_saved_at' : `json_extract(acknowledgements,'$.${step.id}')`;
+   return db.prepare(`INSERT INTO user_tasks (id,tenant_id,user_id,created_by_user_id,kind,entity_id,title,status,completed_at)
+    SELECT ?,tenant_id,user_id,user_id,'personal',?,?,CASE WHEN ${completion} IS NULL THEN 'pending' ELSE 'completed' END,${completion}
+    FROM onboarding_enrollments WHERE tenant_id=? AND user_id=?
+    ON CONFLICT(tenant_id,user_id,kind,entity_id) DO UPDATE SET
+    status=excluded.status,completed_at=COALESCE(user_tasks.completed_at,excluded.completed_at)`)
+    .bind(crypto.randomUUID(),onboardingTaskId(step.id),step.title,tenantId,userId);
+  }),
+  // Retire the aggregate task after its individual replacements are created.
+  db.prepare("UPDATE user_tasks SET status='completed',completed_at=COALESCE(completed_at,strftime('%Y-%m-%dT%H:%M:%fZ','now')) WHERE tenant_id=? AND user_id=? AND kind='personal' AND entity_id='onboarding:v1'").bind(tenantId,userId),
+ ];
+}
 type Enrollment = { start_date: string; end_date: string; acknowledgements: string; availability_saved_at: string | null; completed_at: string | null };
 export function onboardingEnabled(tenant: PortalTenant) {
  try { return JSON.parse(tenant.feature_config || '{}').onboarding?.enabled === true; } catch { return false; }
@@ -24,7 +44,7 @@ export async function ensureOnboarding(db: D1Database, tenant: PortalTenant, use
  const start = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
  await db.batch([
   db.prepare('INSERT INTO onboarding_enrollments (tenant_id,user_id,start_date,end_date) VALUES (?,?,?,?) ON CONFLICT DO NOTHING').bind(tenant.id,userId,start,nextMonth(start)),
-  db.prepare("INSERT INTO user_tasks (id,tenant_id,user_id,created_by_user_id,kind,entity_id,title) VALUES (?,?,?,?,'personal','onboarding:v1',?) ON CONFLICT(tenant_id,user_id,kind,entity_id) DO NOTHING").bind(crypto.randomUUID(),tenant.id,userId,userId,`Complete ${tenant.name} onboarding`),
+  ...taskUpdates(db,tenant.id,userId),
  ]);
  return db.prepare('SELECT * FROM onboarding_enrollments WHERE tenant_id = ? AND user_id = ?').bind(tenant.id,userId).first<Enrollment>();
 }
@@ -43,7 +63,7 @@ async function finish(db: D1Database, tenantId: string, userId: string) {
   db.prepare(`UPDATE onboarding_enrollments SET completed_at = COALESCE(completed_at,strftime('%Y-%m-%dT%H:%M:%fZ','now'))
    WHERE tenant_id = ? AND user_id = ? AND availability_saved_at IS NOT NULL
    AND ${onboardingSteps.map(s=>`json_extract(acknowledgements,'$.${s.id}') IS NOT NULL`).join(' AND ')}`).bind(tenantId,userId),
-  db.prepare("UPDATE user_tasks SET status='completed',completed_at=COALESCE(completed_at,strftime('%Y-%m-%dT%H:%M:%fZ','now')) WHERE tenant_id=? AND user_id=? AND entity_id='onboarding:v1' AND EXISTS (SELECT 1 FROM onboarding_enrollments WHERE tenant_id=? AND user_id=? AND completed_at IS NOT NULL)").bind(tenantId,userId,tenantId,userId),
+  ...taskUpdates(db,tenantId,userId),
  ]);
 }
 export function onboardingRoutes(getUser: (env: Env, request: Request) => Promise<{id:string}>) {

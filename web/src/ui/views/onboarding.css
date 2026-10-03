@@ -9,3 +9,5 @@
 .onboarding-calendar .availability-grid{min-width:580px}.onboarding-calendar .availability-grid thead th button{writing-mode:horizontal-tb}
 .onboarding-calendar .availability-grid button[aria-pressed=true]{background:#16847d;color:white}
 .onboarding-organizers summary{cursor:pointer;font-weight:700}
+
+.onboarding-page [id]{scroll-margin-top:100px}

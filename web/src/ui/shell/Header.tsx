@@ -977,8 +977,8 @@ export function Header() {
         </button>
         <div id="portal-primary-nav" className="portal-nav">
           {domainTenant && !domainCommunity ? <>
-            {domainTenant.features?.includes('events') && <NavLink to="/org-events">Events</NavLink>}
-            {hasTenantCalendar(domainTenant) && <NavLink to="/calendar" isActive={isCalendarActive}>Calendar</NavLink>}
+            {domainTenant.features?.includes('events') && <NavLink to="/org-events">{['lifetech', 'baltimore-medtech'].includes(domainTenant.home_org_slug || '') ? 'Events & Calendar' : 'Events'}</NavLink>}
+            {hasTenantCalendar(domainTenant) && !['lifetech', 'baltimore-medtech'].includes(domainTenant.home_org_slug || '') && <NavLink to="/calendar" isActive={isCalendarActive}>Calendar</NavLink>}
             {domainTenant.features?.includes('directory') && <NavLink to="/people">People</NavLink>}
             {!isGuest && domainTenant.features?.includes('chat') && <NavLink to="/chat">Messages</NavLink>}
             {tenantResources.length > 0 && <NavLink to="/resources" isActive={isResourcesActive}>Resources</NavLink>}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
 import { refreshRuntimeTokenFromSession } from '../../infrastructure/auth/sessionToken'
 import { signalTasksChanged, useTaskQueue } from '../tasks/TaskQueue'
@@ -19,11 +19,12 @@ async function request(token:string|null,path='',init:RequestInit={}) {
 }
 export function OnboardingBanner() {
  const queue=useTaskQueue()
- const task=queue.tasks.find(task=>task.href==='/onboarding')
- return task ? <aside className="onboarding-banner"><strong>Finish your onboarding</strong><span>Review the community guide and save your availability for the next month.</span><Link to="/onboarding">Continue onboarding</Link></aside> : null
+ const task=queue.tasks.find(task=>task.href?.startsWith('/onboarding'))
+ return task ? <aside className="onboarding-banner"><strong>{task.title}</strong><span>Complete your onboarding tasks, starting with when you can meet.</span><Link to={task.href!}>Continue onboarding</Link></aside> : null
 }
 export function OnboardingPage() {
  const {token}=useAuth()
+ const {hash}=useLocation()
  const [data,setData]=useState<Onboarding|null>(null),[calendar,setCalendar]=useState<Calendar|null>(null)
  const [selected,setSelected]=useState(new Set<string>()),[week,setWeek]=useState(0),[reviewed,setReviewed]=useState(false)
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('')
@@ -37,6 +38,10 @@ export function OnboardingPage() {
   }).catch(e=>{if(active)setError(e.message)})
   return()=>{active=false}
  },[token])
+ useEffect(()=>{
+  if(!data?.enabled||!calendar||!hash)return
+  document.getElementById(hash.slice(1))?.scrollIntoView({block:'start'})
+ },[hash,data,calendar])
  async function save(path:string,body:unknown,method='POST') {
   setBusy(true);setError('');setMessage('')
   try {await request(token,path,{method,body:JSON.stringify(body)});setData(await request(token));signalTasksChanged();setMessage('Progress saved.')}catch(e){setError(e instanceof Error?e.message:'Unable to save.')}finally{setBusy(false)}
@@ -59,13 +64,8 @@ export function OnboardingPage() {
    <p>Complete each required step. Your progress is saved to your account.</p>
    <p role="status"><strong>{data.completed_at?'Onboarding complete':`${completed} of ${data.steps.length+1} steps complete`}</strong></p>
    <progress value={completed} max={data.steps.length+1} aria-label="Onboarding progress" />
-   <ol className="onboarding-steps">{data.steps.map(step=><li key={step.id}>
-    <h2>{step.title}</h2><p>{step.description}</p>
-    <a href={step.href} target={step.href.startsWith('https:')?'_blank':undefined} rel="noreferrer">Open resource{step.href.startsWith('https:')?' (new tab)':''}</a>
-    {data.acknowledgements[step.id]?<p>✓ Confirmed</p>:<button disabled={busy} onClick={()=>void save(`/steps/${step.id}`,{acknowledged:true})}>I have completed this step</button>}
-   </li>)}</ol>
    <section id="availability" className="onboarding-calendar">
-    <h2>Enter your availability for the next month {data.availability_saved_at?'✓':''}</h2>
+    <h2>Indicate your meeting availability for the next month {data.availability_saved_at?'✓':''}</h2>
     <p>Review {data.start_date} through the day before {data.end_date}, in {timezone}. Mark available half-hours; unselected times mean unavailable. Review every week before saving. You can save no available times if that is accurate.</p>
     {calendar&&<>
      {calendar.suggested_slots.length>0&&<p>Some selections are suggestions from your saved history. Review them before saving.</p>}
@@ -76,6 +76,11 @@ export function OnboardingPage() {
      <button disabled={busy||!reviewed} onClick={()=>void save('/availability',{timezone,slots:[...selected],reviewed:true},'PUT')}>Save month availability</button>
     </>}
    </section>
+   <ol className="onboarding-steps">{data.steps.map(step=><li key={step.id} id={step.id}>
+    <h2>{step.title}</h2><p>{step.description}</p>
+    <a href={step.href} target={step.href.startsWith('https:')?'_blank':undefined} rel="noreferrer">Open resource{step.href.startsWith('https:')?' (new tab)':''}</a>
+    {data.acknowledgements[step.id]?<p>✓ Confirmed</p>:<button disabled={busy} onClick={()=>void save(`/steps/${step.id}`,{acknowledged:true})}>I have completed this step</button>}
+   </li>)}</ol>
    <details className="onboarding-organizers"><summary>Becoming an organizer</summary><p>Discuss this path with an existing organizer. The draft calls for relevant skills, regular attendance, two organizer meetings, and a two-thirds admission vote. Organizers then record onboarding, add the person to the website, and arrange appropriate access. An inaugural eMCee role is encouraged.</p><p>This checklist does not grant an organizer role or system permissions. An organizer must verify the prerequisites and use the existing membership and access tools.</p><a href="https://codecollective.us/constitution" target="_blank" rel="noreferrer">Read organizer eligibility and responsibilities</a></details>
   </>}
  </section>

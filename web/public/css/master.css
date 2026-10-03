@@ -270,7 +270,7 @@ p {
 }
 
 b, strong, .bold-text {
-  color: #ffffdb; /* Bright yellow */
+  color: inherit;
   font-weight: bold; /* Ensures it stays bold */
 }
 

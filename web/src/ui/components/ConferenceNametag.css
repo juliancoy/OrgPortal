@@ -1,0 +1,19 @@
+.conference-nametag-section h2 { margin: 0; }
+.conference-nametag-preview { overflow-x: auto; padding: 2px; }
+.conference-nametag {
+  box-sizing: border-box; width: 4in; height: 3in; padding: .16in .2in;
+  display: flex; flex-direction: column; gap: .08in;
+  background: #fff; color: #152c38; border: 1px solid #a6b6bd;
+  font-family: Arial, sans-serif; text-align: left;
+  print-color-adjust: exact; -webkit-print-color-adjust: exact;
+  break-inside: avoid;
+}
+.conference-nametag-brand { display: flex; align-items: center; gap: .1in; font-size: 20pt; font-weight: 700; }
+.conference-nametag-brand img { width: .38in; height: .38in; object-fit: contain; }
+.conference-nametag-person { display: flex; align-items: center; gap: .14in; flex: 1; min-height: 0; }
+.conference-nametag-avatar { width: .8in; height: .8in; flex-shrink: 0; border-radius: 50%; overflow: hidden; background: #e8f1f2; display: grid; place-items: center; font-size: 24pt; font-weight: 700; }
+.conference-nametag-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.conference-nametag-name { font-size: 23pt; line-height: 1.08; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.conference-nametag-footer { display: flex; align-items: center; justify-content: space-between; gap: .1in; font-size: 11pt; }
+.conference-nametag-qr { width: .9in; height: .9in; display: block; }
+.conference-nametag-pending { font-size: 9pt; max-width: 1.4in; }

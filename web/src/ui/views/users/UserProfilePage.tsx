@@ -5,6 +5,7 @@ import { PIDP_BASE_URL, pidpUrl } from '../../../config/pidp'
 import { publicProfileUrl } from '../../../config/portalBase'
 import { resolveSignedS3UploadUrl } from '../../../infrastructure/auth/avatarUpload'
 import { ContactSettingsPage } from '../ContactSettingsPage'
+import { ConferenceNametag } from '../../components/ConferenceNametag'
 
 const ORG_API_BASE = '/api/org'
 const USER_PROFILE_STORAGE_KEY = 'user.profile'
@@ -592,6 +593,12 @@ export function UserProfilePage({ embedded = false, publicPageUrl: publicPageUrl
         ) : null}
       </div>
       </section>
+
+      <ConferenceNametag
+        name={fullName.trim() || user?.displayName || 'Your name'}
+        avatarUrl={avatarUrl || user?.avatarUrl || ''}
+        publicPageUrl={publicPageUrl}
+      />
 
       <ContactSettingsPage embedded hideQr hideProfileImage />
 

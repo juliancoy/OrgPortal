@@ -53,7 +53,7 @@ export async function browserLogin(resource, issuer, clientId, openBrowser = tru
   if (!clientId) {
     if (secureUrl(metadata.registration_endpoint).origin !== new URL(issuer).origin) throw new Error('Unexpected registration endpoint');
     const registration = await json(metadata.registration_endpoint, { method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ client_name: 'OrgPortal image upload', token_endpoint_auth_method: 'none',
+      body: JSON.stringify({ client_name: options.clientName || 'OrgPortal image upload', token_endpoint_auth_method: 'none',
         redirect_uris: ['http://127.0.0.1/callback'], grant_types: ['authorization_code', 'refresh_token'],
         response_types: ['code'], scope: 'org:events.read org:events.write org:portal.read org:portal.write' }) });
     if (typeof registration.client_id !== 'string' || !registration.client_id || registration.client_secret) throw new Error('Invalid public client registration');

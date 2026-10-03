@@ -31,9 +31,11 @@ type PublicEvent = {
 
 function formatDate(value?: string | null) {
   if (!value) return 'TBD'
-  const dt = new Date(value)
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value)
+  const dt = new Date(dateOnly ? `${value}T12:00:00` : value)
   if (Number.isNaN(dt.getTime())) return 'TBD'
-  return dt.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+  if (dateOnly) return `${dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} • Time to be confirmed`
+  return dt.toLocaleString(undefined, { timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
 function shortDescription(value?: string | null) {

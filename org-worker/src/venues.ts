@@ -1,18 +1,19 @@
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-export type VenueRow={id:string;name:string;address:string|null;website:string|null;amenities:string|null;capacity:string|null;cost:string|null;opening_hours:string|null;category:string;status:string;organization_id:string|null;created_by_user_id:string|null;contact_name:string|null;contact_email:string|null;contact_phone:string|null;notes:string|null;source_url:string|null;source_rows_json:string};
+export type VenueRow={id:string;name:string;description:string|null;image_url:string|null;image_source_url:string|null;image_credit:string|null;research_url:string|null;researched_at:string|null;address:string|null;website:string|null;amenities:string|null;capacity:string|null;cost:string|null;opening_hours:string|null;category:string;status:string;organization_id:string|null;created_by_user_id:string|null;contact_name:string|null;contact_email:string|null;contact_phone:string|null;notes:string|null;source_url:string|null;source_rows_json:string};
 const bad=(message:string)=>{throw new HTTPException(400,{message});};
-const fields=['name','address','website','amenities','capacity','cost','opening_hours','category','status','contact_name','contact_email','contact_phone','notes'] as const;
+const fields=['description','image_url','image_source_url','image_credit','research_url','researched_at','name','address','website','amenities','capacity','cost','opening_hours','category','status','contact_name','contact_email','contact_phone','notes'] as const;
 export function venueInput(body:Record<string,unknown>){
  if(!body||typeof body!=='object'||Array.isArray(body))bad('Invalid venue.');
  const values:Record<string,string|null>={};
  for(const field of fields){if(!(field in body))continue;const value=body[field];if(value!==null&&typeof value!=='string')bad(`Invalid ${field}.`);if(typeof value==='string'&&value.length>5000)bad(`${field} is too long.`);values[field]=typeof value==='string'?value.trim()||null:null;}
  if('name' in values&&!values.name)bad('Venue name is required.');
  if('status' in values&&!['active','inactive'].includes(values.status||''))bad('Choose active or inactive.');
- if(values.website){try{if(!['https:','http:'].includes(new URL(values.website).protocol))bad('Use an HTTP or HTTPS website.');}catch{bad('Invalid website.');}}
+ for(const field of ['website','image_url','image_source_url','research_url']){if(values[field]){try{const url=new URL(values[field]!);if(!['https:','http:'].includes(url.protocol)||url.username||url.password)bad(`Use a public HTTP or HTTPS ${field}.`);}catch{bad(`Invalid ${field}.`);}}}
+ if(values.researched_at&&(!/^\d{4}-\d{2}-\d{2}$/.test(values.researched_at)||!Number.isFinite(Date.parse(values.researched_at))||new Date(values.researched_at).toISOString().slice(0,10)!==values.researched_at))bad('Use a valid YYYY-MM-DD research date.');
  return values;
 }
-export function publicVenue(row:VenueRow){return {id:row.id,name:row.name,address:row.address,website:row.website,amenities:row.amenities,capacity:row.capacity,cost:row.cost,opening_hours:row.opening_hours,category:row.category,status:row.status,source_url:row.source_url};}
+export function publicVenue(row:VenueRow){return {id:row.id,name:row.name,description:row.description,image_url:row.image_url,image_source_url:row.image_source_url,image_credit:row.image_credit,research_url:row.research_url,researched_at:row.researched_at,address:row.address,website:row.website,amenities:row.amenities,capacity:row.capacity,cost:row.cost,opening_hours:row.opening_hours,category:row.category,status:row.status,source_url:row.source_url};}
 export async function eventVenues(db:D1Database,eventId:string){
  const rows=await db.prepare('SELECT v.*,ev.status AS event_status FROM event_venues ev JOIN venues v ON v.id = ev.venue_id WHERE ev.event_id = ? ORDER BY ev.status DESC,v.name').bind(eventId).all<VenueRow&{event_status:string}>();
  return rows.results.map(row=>({...publicVenue(row),event_status:row.event_status}));

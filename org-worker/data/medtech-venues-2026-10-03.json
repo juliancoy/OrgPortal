@@ -1,0 +1,963 @@
+{
+  "researched_at": "2026-10-03",
+  "resource": "https://medtech.social/api/network/venues",
+  "updates": [
+    {
+      "id": "venue-4d78dc8e4855e78e2f26",
+      "original_name": "1812 Fast Forward",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "website": null,
+        "amenities": null
+      },
+      "patch": {
+        "description": "Johns Hopkins Technology Ventures innovation hub near the East Baltimore medical campus.",
+        "research_url": "https://ventures.jhu.edu/programs-services/fastforward/locations/",
+        "researched_at": "2026-10-03",
+        "website": "https://ventures.jhu.edu/programs-services/fastforward/locations/",
+        "amenities": "Offices, coworking and conference space, wet labs and shared scientific equipment."
+      }
+    },
+    {
+      "id": "venue-a196b1358ab40ded00da",
+      "original_name": "2640 Space",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "website": null
+      },
+      "patch": {
+        "description": "Community event space at 2640 Saint Paul Street. Event requests go through the venue booking form.",
+        "research_url": "https://www.2640space.net/contact",
+        "researched_at": "2026-10-03",
+        "website": "https://www.2640space.net/"
+      }
+    },
+    {
+      "id": "venue-11defa9251032aceac53",
+      "original_name": "Baltimore Node Hackerspace",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "address": null,
+        "website": null,
+        "amenities": null,
+        "opening_hours": null
+      },
+      "patch": {
+        "description": "Member-run makerspace in Station North offering workshops and shared tools.",
+        "research_url": "https://baltimorenode.org/about/",
+        "researched_at": "2026-10-03",
+        "address": "2106 N Lovegrove Street, Baltimore, MD 21218",
+        "website": "https://baltimorenode.org/",
+        "amenities": "Shared tools and equipment; nearby free street parking.",
+        "opening_hours": "Members have 24/7 access; public visits should follow the venue event schedule."
+      }
+    },
+    {
+      "id": "venue-5c8a5049719c65d69bfd",
+      "original_name": "Baltimore Unity Hall",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "address": null,
+        "website": "https://baltimoreunityhall.org/artist-and-co-working",
+        "amenities": null,
+        "capacity": null,
+        "cost": null
+      },
+      "patch": {
+        "description": "Nonprofit community venue with an auditorium, banquet hall and gallery. Rental income supports community programming.",
+        "research_url": "https://www.baltimoreunityhall.org/events",
+        "researched_at": "2026-10-03",
+        "address": "1505 Eutaw Place, Baltimore, MD 21217",
+        "website": "https://www.baltimoreunityhall.org/events",
+        "amenities": "Tables and chairs included. Auditorium stage, A/V and theater lighting; banquet hall A/V; catering inquiries accepted.",
+        "capacity": "Auditorium: 150 theater, 100 banquet, 230 standing. Lower banquet hall: 300+ theater, 200+ banquet, 400+ standing. Gallery: 60 theater, 130 standing.",
+        "cost": "Nonprofit discounts available; request a booking quote."
+      }
+    },
+    {
+      "id": "venue-33ee543e1273f7a09e77",
+      "original_name": "Checkerspot Brewing",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "capacity": null,
+        "amenities": null
+      },
+      "patch": {
+        "description": "Working brewery in South Baltimore offering taproom gatherings, mezzanine events and whole-building rentals.",
+        "research_url": "https://checkerspotbrewing.com/private-events",
+        "researched_at": "2026-10-03",
+        "capacity": "Small gatherings: 10–20; mezzanine/private events: 20–150; full building: up to 500.",
+        "amenities": "Taproom, mezzanine, in-house kitchen, beer, wine and nonalcoholic drinks; preferred catering options."
+      }
+    },
+    {
+      "id": "venue-e90fa70417bece9489e3",
+      "original_name": "City Garage",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "amenities": "Common conference room; common breakroom/kitchenette"
+      },
+      "patch": {
+        "description": "Science and technology campus in a converted South Baltimore industrial building.",
+        "research_url": "https://citygaragestc.com/wp-content/uploads/2024/11/City-Garage-Brochure_2024_web.pdf",
+        "researched_at": "2026-10-03",
+        "amenities": "Shared conference room and breakroom/kitchenette."
+      }
+    },
+    {
+      "id": "venue-dc2c84aedaeeea10a2a8",
+      "original_name": "Co-Balt",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "address": null
+      },
+      "patch": {
+        "description": "Coworking community in Hampden with private offices, dedicated desks and flexible memberships.",
+        "research_url": "https://cobaltworkspace.com/contact/",
+        "researched_at": "2026-10-03",
+        "address": "1014 W 36th Street, Baltimore, MD 21211"
+      }
+    },
+    {
+      "id": "venue-1cd0547c65698f84aef6",
+      "original_name": "Co-lab",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "address": null,
+        "website": null,
+        "capacity": null,
+        "amenities": null
+      },
+      "patch": {
+        "description": "Workspace and bookstore on Maryland Avenue.",
+        "research_url": "https://www.colabbaltimore.com/",
+        "researched_at": "2026-10-03",
+        "address": "2209 Maryland Avenue, Baltimore, MD 21218",
+        "website": "https://www.colabbaltimore.com/",
+        "capacity": "Meeting room: 8 people.",
+        "amenities": "Large-screen TV and projector in the meeting room; kitchenette and communal tables."
+      }
+    },
+    {
+      "id": "venue-e55d57bb681873f44cfc",
+      "original_name": "Code in the Schools",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "address": "21 E North Ave, Baltimore, MD 21202",
+        "website": null
+      },
+      "patch": {
+        "description": "Computer science education nonprofit with offices on the second floor of 21 East North Avenue.",
+        "research_url": "https://www.codeintheschools.org/contact",
+        "researched_at": "2026-10-03",
+        "address": "21 E North Avenue, 2nd Floor, Baltimore, MD 21202",
+        "website": "https://www.codeintheschools.org/"
+      }
+    },
+    {
+      "id": "venue-604eb0ed42fae4288c06",
+      "original_name": "Coldwell Center (IMET, formerly Christopher Columbus Center)",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "name": "Coldwell Center (IMET, formerly Christopher Columbus Center)",
+        "address": null,
+        "website": null
+      },
+      "patch": {
+        "description": "Home of the Institute of Marine and Environmental Technology. Formerly the Columbus Center; renamed for Rita Rossi Colwell.",
+        "research_url": "https://colwellcenter.usmd.edu/contact",
+        "researched_at": "2026-10-03",
+        "name": "Rita Rossi Colwell Center (IMET)",
+        "address": "701 East Pratt Street, Baltimore, MD 21202",
+        "website": "https://colwellcenter.usmd.edu/"
+      }
+    },
+    {
+      "id": "venue-74189ab05b32b864f07d",
+      "original_name": "Cox Point",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "website": "https://baltimorecountymd.gov"
+      },
+      "patch": {
+        "description": "Waterfront park in Essex; pavilion reservations are handled through the recreation department.",
+        "research_url": "https://essex-stembridgerec.com/parks",
+        "researched_at": "2026-10-03",
+        "website": "https://essex-stembridgerec.com/parks"
+      }
+    },
+    {
+      "id": "venue-b59c33787982caa8e179",
+      "original_name": "Digital Harbor Foundation",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "website": null
+      },
+      "patch": {
+        "description": "Youth technology and fabrication center established in the former South Baltimore Recreation Center.",
+        "research_url": "https://hub.digitalharbor.org/",
+        "researched_at": "2026-10-03",
+        "website": "https://digitalharbor.org/"
+      }
+    },
+    {
+      "id": "venue-f03566c68e3cce0e128b",
+      "original_name": "Druid Hill Park",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "website": null
+      },
+      "patch": {
+        "description": "Historic Baltimore municipal park with lawns, woodland and recreation areas.",
+        "research_url": "https://baltimorecityparks.com/druid-hill-park/",
+        "researched_at": "2026-10-03",
+        "website": "https://baltimorecityparks.com/druid-hill-park/"
+      }
+    },
+    {
+      "id": "venue-1bfc0e842cd096a2c6bc",
+      "original_name": "Enoch Pratt Free Library",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null
+      },
+      "patch": {
+        "description": "Library meeting-room directory. Select a specific branch and room before arranging an event.",
+        "research_url": "https://www.prattlibrary.org/services/meeting-room-reservations",
+        "researched_at": "2026-10-03"
+      }
+    },
+    {
+      "id": "venue-20009db5b10dcaa478f5",
+      "original_name": "Enoch Pratt Waverly Meeting Room",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "website": null,
+        "amenities": null,
+        "capacity": null,
+        "cost": null
+      },
+      "patch": {
+        "description": "Accessible meeting room at the Waverly Branch with built-in audiovisual equipment.",
+        "research_url": "https://www.prattlibrary.org/services/meeting-rooms/waverly",
+        "researched_at": "2026-10-03",
+        "website": "https://www.prattlibrary.org/services/meeting-rooms/waverly",
+        "amenities": "ADA accessible; projector and wireless microphones; laptop, HDMI and VGA hookups available on request.",
+        "capacity": "186 people",
+        "cost": "Nonprofits: up to 4 hours free, 4–8 hours $50. For-profit and out-of-state organizations: up to 4 hours $100, 4–8 hours $120."
+      }
+    },
+    {
+      "id": "venue-b0305327032bd336c197",
+      "original_name": "Glass Pavilion JHU",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "website": null,
+        "capacity": null
+      },
+      "patch": {
+        "description": "Event space in Levering Hall on Johns Hopkins Homewood campus. Capacity varies with room layout.",
+        "research_url": "https://students.jhu.edu/events-spaces/plan-an-event/schedule-a-space/event-spaces/",
+        "researched_at": "2026-10-03",
+        "website": "https://students.jhu.edu/events-spaces/plan-an-event/schedule-a-space/event-spaces/",
+        "capacity": "300 general lecture-style capacity on the scheduling page; confirm capacity for the requested configuration."
+      }
+    },
+    {
+      "id": "venue-4383d14f3b606d57af6b",
+      "original_name": "Greenmount West Community Center",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "address": "Various",
+        "website": null,
+        "category": "outdoor"
+      },
+      "patch": {
+        "description": "Community center in the Station North area.",
+        "research_url": "https://www.stationnorth.org/news/2021/7/15/station-north-skill-up-arts-workshops-for-the-whole-family-7dpaz",
+        "researched_at": "2026-10-03",
+        "address": "1634 Guilford Avenue, Baltimore, MD 21202",
+        "website": "https://greenmountwestcc.org/",
+        "category": "indoor"
+      }
+    },
+    {
+      "id": "venue-a4d40e956ce1f152f770",
+      "original_name": "Guilford Hall Brewery",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "website": null,
+        "capacity": null,
+        "amenities": "Several rooms, as listed in the PDF in this folder"
+      },
+      "patch": {
+        "description": "Historic brewery with several private event spaces.",
+        "research_url": "https://www.guilfordhall.com/book-your-event",
+        "researched_at": "2026-10-03",
+        "website": "https://www.guilfordhall.com/book-your-event",
+        "capacity": "Crown Hall: 200 seated, 160 with dance floor, 300 standing. Biergarten: 100. Private dining room: 22. Whiskey lounge: 50 cocktail style.",
+        "amenities": "Indoor event hall, private dining room, whiskey lounge and outdoor biergarten."
+      }
+    },
+    {
+      "id": "venue-93f1729521ca88c65253",
+      "original_name": "Hotel Revival",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "address": null,
+        "amenities": null
+      },
+      "patch": {
+        "description": "Mount Vernon hotel with four meeting and event spaces, rooftop restaurant, cocktail lounge and karaoke rooms.",
+        "research_url": "https://hotelrevivalbaltimore.com/meetings-events/meetings",
+        "researched_at": "2026-10-03",
+        "address": "101 West Monument Street, Baltimore, MD 21201",
+        "amenities": "Four meeting/event spaces, rooftop restaurant, cocktail lounge and karaoke rooms."
+      }
+    },
+    {
+      "id": "venue-e5792eb3837f708ffc79",
+      "original_name": "Howard County Library",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "website": null
+      },
+      "patch": {
+        "description": "Library system offering reservable rooms. The Central Branch has two meeting rooms and two classrooms; select a branch before booking.",
+        "research_url": "https://www.hclibrary.org/locations/central/",
+        "researched_at": "2026-10-03",
+        "website": "https://www.hclibrary.org/"
+      }
+    },
+    {
+      "id": "venue-67ba6ba8351484baafc0",
+      "original_name": "Impact Hub",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "website": null,
+        "capacity": null,
+        "amenities": null,
+        "cost": null
+      },
+      "patch": {
+        "description": "Coworking community offering meeting, conference and flexible event rooms.",
+        "research_url": "https://baltimore.impacthub.net/spaces/",
+        "researched_at": "2026-10-03",
+        "website": "https://baltimore.impacthub.net/spaces/",
+        "capacity": "Huddle Room 1: 6 adults. Conference Room: 15 adults. Event-room capacities must be checked for the selected room.",
+        "amenities": "Meeting room with whiteboard; conference room with movable tables, TV and whiteboard; event rooms including stage and projector.",
+        "cost": "Huddle Room 1: $30/hour; other rooms priced separately."
+      }
+    },
+    {
+      "id": "venue-1208f421e25bf8b18a99",
+      "original_name": "JHU Technology Innovations Fastforward U",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "address": null,
+        "website": "https://ventures.jhu.edu/programs-services/fastforward-u/our-space/",
+        "amenities": null,
+        "capacity": null,
+        "cost": null,
+        "opening_hours": null
+      },
+      "patch": {
+        "description": "Johns Hopkins entrepreneurship center in Remington, formerly FastForward U. Reservations are subject to the center eligibility and guest rules.",
+        "research_url": "https://pavacenter.jhu.edu/funding-resources/facilities/",
+        "researched_at": "2026-10-03",
+        "address": "320 W 29th Street, Suite 200, Baltimore, MD 21211",
+        "website": "https://pavacenter.jhu.edu/funding-resources/facilities/",
+        "amenities": "Coworking, meeting and event space; university makerspace. Events may share an open working environment.",
+        "capacity": "Maximum 140 attendees for the Pava Center space.",
+        "cost": "Space offered free of charge under the center reservation rules; booking requires confirmation.",
+        "opening_hours": "Academic year: daily 10 AM–10 PM; university closures and revised hours apply."
+      }
+    },
+    {
+      "id": "venue-339d6ccae63785e75702",
+      "original_name": "Pava Center",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "address": null,
+        "website": "https://forms.office.com/pages/responsepage.aspx?id=OPSkn-axO0eAP4b4rt8N7FOckH6z6P1AhuiCdr_XzKFUOEhLTDBPQTNPV1RINk4xR0k4REdaVVZXSS4u",
+        "amenities": null,
+        "capacity": null,
+        "cost": null,
+        "opening_hours": null
+      },
+      "patch": {
+        "description": "Johns Hopkins entrepreneurship center in Remington, formerly FastForward U. Reservations are subject to the center eligibility and guest rules.",
+        "research_url": "https://pavacenter.jhu.edu/funding-resources/facilities/",
+        "researched_at": "2026-10-03",
+        "address": "320 W 29th Street, Suite 200, Baltimore, MD 21211",
+        "website": "https://pavacenter.jhu.edu/funding-resources/facilities/",
+        "amenities": "Coworking, meeting and event space; university makerspace. Events may share an open working environment.",
+        "capacity": "Maximum 140 attendees for the Pava Center space.",
+        "cost": "Space offered free of charge under the center reservation rules; booking requires confirmation.",
+        "opening_hours": "Academic year: daily 10 AM–10 PM; university closures and revised hours apply."
+      }
+    },
+    {
+      "id": "venue-ce1e7968eeb810d47284",
+      "original_name": "The Pava",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "address": "320 W 29th St #200, Baltimore, MD 21211",
+        "website": null,
+        "amenities": null,
+        "capacity": null,
+        "cost": null,
+        "opening_hours": null
+      },
+      "patch": {
+        "description": "Johns Hopkins entrepreneurship center in Remington, formerly FastForward U. Reservations are subject to the center eligibility and guest rules.",
+        "research_url": "https://pavacenter.jhu.edu/funding-resources/facilities/",
+        "researched_at": "2026-10-03",
+        "address": "320 W 29th Street, Suite 200, Baltimore, MD 21211",
+        "website": "https://pavacenter.jhu.edu/funding-resources/facilities/",
+        "amenities": "Coworking, meeting and event space; university makerspace. Events may share an open working environment.",
+        "capacity": "Maximum 140 attendees for the Pava Center space.",
+        "cost": "Space offered free of charge under the center reservation rules; booking requires confirmation.",
+        "opening_hours": "Academic year: daily 10 AM–10 PM; university closures and revised hours apply."
+      }
+    },
+    {
+      "id": "venue-301f90cdbcd38820aad0",
+      "original_name": "Maryland Art Place",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "website": null
+      },
+      "patch": {
+        "description": "Contemporary art gallery offering venue rentals and public arts programming.",
+        "research_url": "https://www.mdartplace.org/events",
+        "researched_at": "2026-10-03",
+        "website": "https://www.mdartplace.org/events"
+      }
+    },
+    {
+      "id": "venue-a09b54c4ad7b609200f2",
+      "original_name": "Mindhub",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "website": null,
+        "capacity": null,
+        "cost": null
+      },
+      "patch": {
+        "description": "Coworking space with private offices, shared workspace and a reservable conference room.",
+        "research_url": "https://mindhubcoworking.com/",
+        "researched_at": "2026-10-03",
+        "website": "https://mindhubcoworking.com/",
+        "capacity": "Conference room: 2–20 people.",
+        "cost": "Conference room: $75/hour, minimum 3 hours. Other workspace plans are separate."
+      }
+    },
+    {
+      "id": "venue-6dc88fb3655e5dd9be68",
+      "original_name": "OCA Mocha (UMBC)",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "address": null,
+        "website": "https://ocamocha.com/overview"
+      },
+      "patch": {
+        "description": "Coffee shop and community gathering space connected with UMBC. Event requests require venue review and reservation.",
+        "research_url": "https://ocamocha.com/book-an-event",
+        "researched_at": "2026-10-03",
+        "address": "5410 East Drive, Arbutus, MD 21227",
+        "website": "https://ocamocha.com/book-an-event"
+      }
+    },
+    {
+      "id": "venue-e9cc95e05bc59c3de685",
+      "original_name": "Onyx Point (Hanover)",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "address": null,
+        "website": null
+      },
+      "patch": {
+        "description": "Technology company headquarters in Hanover. Confirm directly whether the office is available for outside events.",
+        "research_url": "https://www.onyxpoint.com/news-events",
+        "researched_at": "2026-10-03",
+        "address": "7050 Hi Tech Drive, Suite 102, Hanover, MD 21076",
+        "website": "https://www.onyxpoint.com/"
+      }
+    },
+    {
+      "id": "venue-537687d2751fb8fcceff",
+      "original_name": "OpenWorks",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "address": null,
+        "website": null,
+        "capacity": null,
+        "amenities": null,
+        "opening_hours": null
+      },
+      "patch": {
+        "description": "Baltimore makerspace offering classroom rentals and occasional lobby events.",
+        "research_url": "https://www.openworksbmore.org/host-an-event/",
+        "researched_at": "2026-10-03",
+        "address": "1400 Greenmount Avenue, Baltimore, MD 21202",
+        "website": "https://www.openworksbmore.org/host-an-event/",
+        "capacity": "Lobby: maximum 100. Classroom 2: 25–30 seated.",
+        "amenities": "Projector and drop-down screen; lobby Wi-Fi; classroom flexible furniture and whiteboard.",
+        "opening_hours": "Monday–Friday 9 AM–9 PM; Saturday 9 AM–5 PM; Sunday noon–5 PM. Rental times may be arranged separately."
+      }
+    },
+    {
+      "id": "venue-2b4f1a1a9e39f7012a33",
+      "original_name": "Optipub",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "website": null
+      },
+      "patch": {
+        "description": "Publishing technology company. Outside event availability has not been verified.",
+        "research_url": "https://optipub.com/contact-us/",
+        "researched_at": "2026-10-03",
+        "website": "https://optipub.com/"
+      }
+    },
+    {
+      "id": "venue-7e2543bebeb1c339e5a2",
+      "original_name": "Peabody Heights Brewery",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "website": null,
+        "opening_hours": null
+      },
+      "patch": {
+        "description": "Baltimore brewery hosting community gatherings, private parties and employee happy hours.",
+        "research_url": "https://peabodyheightsbrewery.com/",
+        "researched_at": "2026-10-03",
+        "website": "https://peabodyheightsbrewery.com/",
+        "opening_hours": "Monday 4–9 PM; Tuesday–Thursday 4–10 PM; Friday 4–11 PM; Saturday noon–10 PM; Sunday noon–8 PM."
+      }
+    },
+    {
+      "id": "venue-31610282a412a4149fbf",
+      "original_name": "R House",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null
+      },
+      "patch": {
+        "description": "Remington food hall with an adjacent dedicated event venue, The Garage.",
+        "research_url": "https://r.housebaltimore.com/",
+        "researched_at": "2026-10-03"
+      }
+    },
+    {
+      "id": "venue-9a256993674ba05f3196",
+      "original_name": "R House Garage",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "address": null,
+        "website": null,
+        "amenities": null,
+        "cost": null
+      },
+      "patch": {
+        "description": "Flexible 6,500-square-foot industrial event space adjacent to R. House.",
+        "research_url": "https://r.housebaltimore.com/garage/",
+        "researched_at": "2026-10-03",
+        "address": "301 W 29th Street, Baltimore, MD 21211",
+        "website": "https://r.housebaltimore.com/garage/",
+        "amenities": "ADA accessible; projector with HDMI and 102-inch screen; Wi-Fi; banquet and cocktail tables; 250 folding chairs; validated garage parking options.",
+        "cost": "Standard 8.5-hour day rental: Monday–Thursday $4,000; Friday/Sunday $5,000; Saturday $5,500. Nonprofit discount available."
+      }
+    },
+    {
+      "id": "venue-b1e0f816097c062e3754",
+      "original_name": "Red Emma's",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "opening_hours": "Tuesday–Saturday 9 AM–8 PM; Sunday 10 AM–4 PM"
+      },
+      "patch": {
+        "description": "Worker-owned bookstore and coffeehouse with public events and an event proposal process.",
+        "research_url": "https://redemmas.org/links/",
+        "researched_at": "2026-10-03",
+        "opening_hours": "Tuesday–Saturday 9 AM–8 PM; Sunday 10 AM–4 PM."
+      }
+    },
+    {
+      "id": "venue-fb850d5243475e34364e",
+      "original_name": "Reginald F Lewis Museum",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "website": null,
+        "amenities": null
+      },
+      "patch": {
+        "description": "Museum of Maryland African American history and culture offering spaces for corporate, community and private events.",
+        "research_url": "https://www.lewismuseum.org/host-your-event/",
+        "researched_at": "2026-10-03",
+        "website": "https://www.lewismuseum.org/host-your-event/",
+        "amenities": "Upper lobby, fourth-floor meeting/reception spaces, theater, board room, conference room and classroom."
+      }
+    },
+    {
+      "id": "venue-3b05a11cd1050b82f0b8",
+      "original_name": "Spark",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "website": null
+      },
+      "patch": {
+        "description": "Downtown Baltimore coworking community with meeting-room bookings.",
+        "research_url": "https://sparkcoworking.com/baltimore/",
+        "researched_at": "2026-10-03",
+        "website": "https://sparkcoworking.com/baltimore/"
+      }
+    },
+    {
+      "id": "venue-8f64dc4f3a41f9f7bbaf",
+      "original_name": "Spark Coworkorking",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "website": "https://sparkcoworking.com/baltimore/"
+      },
+      "patch": {
+        "description": "Downtown Baltimore coworking community with meeting-room bookings.",
+        "research_url": "https://sparkcoworking.com/baltimore/",
+        "researched_at": "2026-10-03",
+        "website": "https://sparkcoworking.com/baltimore/"
+      }
+    },
+    {
+      "id": "venue-cd313489ef0914ae5c41",
+      "original_name": "Startup Armory",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "address": "307 Washington Ave, Towson, MD 21204",
+        "website": null,
+        "amenities": "Medium space designed  for talks,TV Screen,  bathrooms, water fountain",
+        "cost": null
+      },
+      "patch": {
+        "description": "Towson University entrepreneurship hub with free coworking and reservable conference rooms.",
+        "research_url": "https://www.towson.edu/startup/conference-rooms/",
+        "researched_at": "2026-10-03",
+        "address": "307 Washington Avenue, Towson, MD 21204",
+        "website": "https://www.towson.edu/startup/",
+        "amenities": "Six reservable rooms for meetings and workshops.",
+        "cost": "Conference-room reservations offered at no cost."
+      }
+    },
+    {
+      "id": "venue-b1b7629d6b3c5732aba1",
+      "original_name": "Towson StarTUp at the Armory",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "address": null,
+        "website": "https://www.towson.edu/startup/?utm_source=startup&utm_medium=organic&utm_campaign=gmb-listing",
+        "amenities": null,
+        "cost": null
+      },
+      "patch": {
+        "description": "Towson University entrepreneurship hub with free coworking and reservable conference rooms.",
+        "research_url": "https://www.towson.edu/startup/conference-rooms/",
+        "researched_at": "2026-10-03",
+        "address": "307 Washington Avenue, Towson, MD 21204",
+        "website": "https://www.towson.edu/startup/",
+        "amenities": "Six reservable rooms for meetings and workshops.",
+        "cost": "Conference-room reservations offered at no cost."
+      }
+    },
+    {
+      "id": "venue-b9f06fd110785f6b357c",
+      "original_name": "University of Baltimore",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "website": null
+      },
+      "patch": {
+        "description": "University campus with event reservation policies and room-specific arrangements. Select a building and room before confirming an event.",
+        "research_url": "https://involvement.ubalt.edu/csei/event%20policies%20/",
+        "researched_at": "2026-10-03",
+        "website": "https://www.ubalt.edu/"
+      }
+    },
+    {
+      "id": "venue-d3a941ebf1e1510767a1",
+      "original_name": "West Covington Park",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "address": null,
+        "category": "outdoor"
+      },
+      "patch": {
+        "description": "Waterfront outdoor event site in South Baltimore. Paths include paved and grassy areas with some slopes.",
+        "research_url": "https://www.pitbeeffest.com/directions/",
+        "researched_at": "2026-10-03",
+        "address": "101 West Cromwell Street, Baltimore, MD 21230",
+        "category": "outdoor"
+      }
+    },
+    {
+      "id": "venue-a6a2dd9b443b86ab98cc",
+      "original_name": "WonderFly Arena",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "address": null,
+        "website": null,
+        "capacity": null,
+        "amenities": null,
+        "opening_hours": null
+      },
+      "patch": {
+        "description": "Indoor games and team-building venue in Arbutus with private event packages.",
+        "research_url": "https://www.wonderflyarena.com/arbutus/",
+        "researched_at": "2026-10-03",
+        "address": "4811 Benson Avenue, Arbutus, MD 21227",
+        "website": "https://www.wonderflyarena.com/arbutus/",
+        "capacity": "Up to 150 attendees.",
+        "amenities": "13,000 square feet; turf field; virtual reality lounge; games and event spaces.",
+        "opening_hours": "Reservations required. Monday–Thursday 8 AM–10 PM; Friday–Sunday 8 AM–midnight; after-hours events on request."
+      }
+    },
+    {
+      "id": "venue-c9e724283a3bd707e7df",
+      "original_name": "MAP Technologies",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "amenities": null,
+        "opening_hours": null
+      },
+      "patch": {
+        "description": "Gaming lounge and event space offering parties, live shows and corporate events.",
+        "research_url": "https://www.mapgametech.com/",
+        "researched_at": "2026-10-03",
+        "amenities": "Arcade machines, gaming PCs, consoles and podcast studio.",
+        "opening_hours": "Tuesday–Friday 3:30–8:30 PM; Saturday 11 AM–8:30 PM; Sunday/Monday closed."
+      }
+    },
+    {
+      "id": "venue-2f7f426a573db03e927f",
+      "original_name": "Reveille",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "website": null,
+        "amenities": null
+      },
+      "patch": {
+        "description": "Veteran and community impact hub at Gaslight Square. Access the venue through the courtyard entrance.",
+        "research_url": "https://www.reveillegrounds.com/location",
+        "researched_at": "2026-10-03",
+        "website": "https://www.reveillegrounds.com/location",
+        "amenities": "Free street parking nearby; ADA/elevator access available."
+      }
+    },
+    {
+      "id": "venue-919d84f45a7778d2ae35",
+      "original_name": "Robert Half Baltimore HQ",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "address": "500 E Pratt St 11th Fl, Baltimore",
+        "website": null
+      },
+      "patch": {
+        "description": "Staffing company office. Its current official address differs from the imported venue address; outside event use must be arranged directly.",
+        "research_url": "https://www.roberthalf.com/us/en/locations/md-baltimore",
+        "researched_at": "2026-10-03",
+        "address": "650 S Exeter Street, 8th Floor, Baltimore, MD 21202",
+        "website": "https://www.roberthalf.com/us/en/locations/md-baltimore"
+      }
+    },
+    {
+      "id": "venue-433e0938c9c61caecea2",
+      "original_name": "UMBC Sports Zone",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "address": "1000 Hilltop Cir, Baltimore",
+        "website": null,
+        "amenities": "A big screen, and possibly sound assistance"
+      },
+      "patch": {
+        "description": "Gathering space on the mezzanine level of The Commons at UMBC. Elevator access is available.",
+        "research_url": "https://commencement.umbc.edu/overflow-seating/",
+        "researched_at": "2026-10-03",
+        "address": "The Commons, Mezzanine Level, 1000 Hilltop Circle, Baltimore, MD 21250",
+        "website": "https://commencement.umbc.edu/overflow-seating/",
+        "amenities": "Mezzanine space with elevator access; confirm booking and event equipment with UMBC."
+      }
+    },
+    {
+      "id": "venue-ae0c45747df1232e9f7d",
+      "original_name": "Spaces",
+      "before": {
+        "description": null,
+        "research_url": null,
+        "researched_at": null,
+        "website": "https://www.spacesworks.com/baltimore/harborplace/?utm_source=yext_places_gmb&utm_medium=places&utm_campaign=yext_traffic&utm_content=4741"
+      },
+      "patch": {
+        "description": "Flexible workspace provider with several Baltimore-area locations. Confirm the branch and room before booking.",
+        "research_url": "https://www.spacesworks.com/en/us/maryland/baltimore",
+        "researched_at": "2026-10-03",
+        "website": "https://www.spacesworks.com/en/us/maryland/baltimore"
+      }
+    }
+  ],
+  "unresolved": [
+    {
+      "id": "venue-c3a6b579ed2f2925bd3c",
+      "name": "Baltimore City Recreation and Parks https://bcrp.baltimorecity.gov/recreationcenters#Recreation%20Center",
+      "reason": "Agency/directory rather than a single venue; select a recreation center."
+    },
+    {
+      "id": "venue-ac25360cf1b10c1e3bc4",
+      "name": "Baltimore Innovation orge",
+      "reason": "Likely Baltimore Innovation Forge, but exact identity and address need confirmation."
+    },
+    {
+      "id": "venue-95036c87bf119d5f54ac",
+      "name": "Baltimore Society of Engineers",
+      "reason": "Likely Engineers Club; exact identity needs confirmation before assigning details."
+    },
+    {
+      "id": "venue-11eae3fdedbd0dbed289",
+      "name": "Calvert St. Park",
+      "reason": "Several Calvert Street green spaces; exact park needs confirmation."
+    },
+    {
+      "id": "venue-5c0e3ca22aaeba5a5baf",
+      "name": "Greenmount West Green Spaces",
+      "reason": "Multiple outdoor sites rather than a single venue."
+    },
+    {
+      "id": "venue-dc84cd01b4269681784e",
+      "name": "Grey Matter Space (Defunct)",
+      "reason": "Already inactive; no confirmed current operating venue."
+    },
+    {
+      "id": "venue-f6ea8035dce32632a831",
+      "name": "JHU Bloomberg Center?",
+      "reason": "Could refer to Washington DC center or Baltimore student center; confirm which."
+    },
+    {
+      "id": "venue-8ab28c5547baf031e481",
+      "name": "Mill One",
+      "reason": "Likely Mill No. 1; no confirmed event-space identity."
+    },
+    {
+      "id": "venue-6b3b109f88c9b40a00c3",
+      "name": "Upsurge Railway Building",
+      "reason": "Railway Express building identified; confirm UpSurge event room and suite."
+    },
+    {
+      "id": "venue-e7653a565e7cc8903cf5",
+      "name": "Water Street",
+      "reason": "Street name alone does not identify a venue."
+    }
+  ],
+  "duplicate_groups": [
+    [
+      "venue-3b05a11cd1050b82f0b8",
+      "venue-8f64dc4f3a41f9f7bbaf"
+    ],
+    [
+      "venue-cd313489ef0914ae5c41",
+      "venue-b1b7629d6b3c5732aba1"
+    ],
+    [
+      "venue-1208f421e25bf8b18a99",
+      "venue-339d6ccae63785e75702",
+      "venue-ce1e7968eeb810d47284"
+    ]
+  ]
+}

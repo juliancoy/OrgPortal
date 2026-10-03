@@ -1,3 +1,4 @@
+import { venueVoteRoutes } from './venueVotes';
 import { venueRankingRoutes } from './venueRankings';
 import { venueRoutes, eventVenues, setEventVenues } from './venues';
 import { driveCarouselRoutes } from './driveCarousel';
@@ -2581,6 +2582,7 @@ function deploymentHealth(c: { env: Env; req: { url: string }; header: (name: st
 }
 
 app.route('/api/network/events',venueRankingRoutes(currentUser));
+app.route('/api/network/events',venueVoteRoutes(currentUser));
 app.route('/api/network/venues',venueRoutes(currentUser,async(env,user,venue)=>{
   if(adminUser(user,env)||venue.created_by_user_id===user.id)return;
   if(venue.organization_id){await authorizeOrganization(env.DB,organizationActor(user,env),'manage',venue.organization_id);return;}
