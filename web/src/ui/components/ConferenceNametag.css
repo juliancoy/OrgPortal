@@ -1,6 +1,7 @@
 .conference-nametag-section h2 { margin: 0; }
 .conference-nametag-preview { overflow-x: auto; padding: 2px; }
 .conference-nametag {
+  position: relative; isolation: isolate; overflow: hidden;
   box-sizing: border-box; width: 4in; height: 3in; padding: .16in .2in;
   display: flex; flex-direction: column; gap: .08in;
   background: #fff; color: var(--nametag-ink, #061a26); border: 1px solid #a6b6bd; border-top: .045in solid var(--nametag-accent, #0f6f8f);
@@ -15,8 +16,10 @@
 .conference-nametag-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .conference-nametag-name { font-size: 23pt; line-height: 1.08; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
 .conference-nametag-footer { display: flex; align-items: center; justify-content: flex-end; gap: .1in; font-size: 11pt; }
-.conference-nametag-qr { width: .9in; height: .9in; display: block; }
+.conference-nametag-qr { box-sizing: border-box; width: .9in; height: .9in; display: block; padding: .035in; background: #fff; }
 .conference-nametag-pending { font-size: 9pt; max-width: 1.4in; }
 
 .conference-nametag-lockup { display: flex; flex-direction: column; gap: .04in; line-height: 1; }
 .conference-nametag-lockup small { font-size: 8pt; font-weight: 400; line-height: 1.25; color: var(--nametag-accent, #0f6f8f); }
+
+.conference-nametag-background { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; object-position: center; opacity: .18; pointer-events: none; }

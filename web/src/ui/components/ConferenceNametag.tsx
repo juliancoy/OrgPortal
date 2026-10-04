@@ -31,6 +31,7 @@ export function NametagCard({ name, avatarUrl, publicPageUrl, badgeRef }: Props 
 
   return (
         <div className="conference-nametag" ref={badgeRef} style={brandStyle}>
+          <img className="conference-nametag-background" src={portalPath('/assets/images/lifetech-hero.png')} alt="" aria-hidden="true" />
           <div className="conference-nametag-brand">
             <img src={logo.startsWith('/') ? portalPath(logo) : logo} alt="" />
             <div className="conference-nametag-lockup">
