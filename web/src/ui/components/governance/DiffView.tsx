@@ -14,7 +14,7 @@ type DiffSegment = {
 /**
  * Compute word-level diff between two strings using Myers' algorithm
  */
-function diffWords(oldStr: string, newStr: string): DiffSegment[] {
+export function diffWords(oldStr: string, newStr: string): DiffSegment[] {
   // Split into words and whitespace
   const tokenize = (s: string): string[] => {
     const tokens: string[] = []

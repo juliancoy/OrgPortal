@@ -1,3 +1,4 @@
+import { OrganizationSupport } from '../../components/OrganizationSupport'
 import { OrganizationTools } from '../../components/OrganizationTools'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
@@ -1532,6 +1533,8 @@ export function PublicAdminPage() {
               />
             </div>
           ) : null}
+
+          <OrganizationSupport organizationId={org.id} slug={org.slug} canManage={canManageCurrentOrg} />
 
           <div className="portal-card portal-org-events-card">
             <div className="portal-org-events-heading">

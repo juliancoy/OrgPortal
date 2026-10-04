@@ -7,6 +7,8 @@ import { EventIntegrationError } from './eventPlatforms';
 import { runGovernanceOperation, type GovernanceAction, type GovernanceService } from './governanceMcp';
 
 export type DocumentMotion = {
+ document_action?:'amend'|'ratify'; ratification_snapshot?:string|null; ratification_hash?:string|null;
+ ratification_authority?:string|null; ratification_notice_at?:string|null;
  id:string; document_id?:string|null; document_section?:string|null; document_version?:number|null;
  document_base?:string|null; electorate_json?:string|null; chair_id?:string|null;
  proposer_org_id:string|null; proposer_id:string; proposer_name:string; title:string; body:string;
@@ -18,12 +20,30 @@ const isOrganizer = (role:string|null) => role === 'owner' || role === 'administ
 export async function documentOrganization(db:D1Database) {
  return db.prepare('SELECT id FROM organizations WHERE slug = ?').bind(lifetechConstitution.organizationSlug).first<{id:string}>();
 }
+type RatificationRecord = { version:number; motion_id:string; snapshot_json:string; snapshot_hash:string; ratified_at:string; effective_at:string };
 export async function readGovernanceDocument(db:D1Database) {
  const latest=await db.prepare('SELECT version,sections_json,motion_id,created_at FROM governance_document_revisions WHERE document_id=? ORDER BY version DESC LIMIT 1')
   .bind(lifetechConstitution.id).first<{version:number;sections_json:string;motion_id:string;created_at:string}>();
- return {...lifetechConstitution, version:latest?.version||1,
-  sections:latest ? JSON.parse(latest.sections_json) as typeof lifetechConstitution.sections : lifetechConstitution.sections,
-  organizationId:(await documentOrganization(db))?.id||null, lastMotionId:latest?.motion_id||null};
+ const ratified=await db.prepare('SELECT * FROM governance_document_ratifications WHERE document_id=?').bind(lifetechConstitution.id).first<RatificationRecord>();
+ const adopted=ratified?JSON.parse(ratified.snapshot_json) as {title:string;sections:typeof lifetechConstitution.sections}:null;
+ const pending=await db.prepare("SELECT id FROM governance_motions WHERE document_id=? AND document_action='ratify' AND status NOT IN ('passed','failed','withdrawn')")
+  .bind(lifetechConstitution.id).first<{id:string}>();
+ const open=await db.prepare("SELECT count(*) AS n FROM governance_motions WHERE document_id=? AND document_action='amend' AND status NOT IN ('passed','failed','withdrawn')")
+  .bind(lifetechConstitution.id).first<{n:number}>();
+ const document={...lifetechConstitution, title:adopted?.title||lifetechConstitution.title, version:latest?.version||ratified?.version||1,
+  status:ratified?'Ratified constitution':'Unratified draft',
+  introduction:ratified?'Ratified by LifeTech organizers. The adoption record preserves the full text, vote, and effective date. Subsequent adopted amendments are versioned separately.':lifetechConstitution.introduction,
+  sections:latest ? JSON.parse(latest.sections_json) as typeof lifetechConstitution.sections : adopted?.sections||lifetechConstitution.sections,
+  organizationId:(await documentOrganization(db))?.id||null, lastMotionId:latest?.motion_id||null,
+  pendingRatificationId:pending?.id||null,openChangeTickets:open?.n||0,
+  ratification:ratified?{version:ratified.version,motionId:ratified.motion_id,ratifiedAt:ratified.ratified_at,effectiveAt:ratified.effective_at,snapshotHash:ratified.snapshot_hash}:null};
+ return {...document,candidateHash:await snapshotHash(snapshotDocument(document))};
+}
+function snapshotDocument(doc:{version:number;title:string;sections:typeof lifetechConstitution.sections}) {
+ return JSON.stringify({documentId:lifetechConstitution.id,version:doc.version,title:doc.title,sections:doc.sections});
+}
+async function snapshotHash(text:string) {
+ return [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text)))].map(byte=>byte.toString(16).padStart(2,'0')).join('');
 }
 export function constitutionalResult(votes:{choice:string}[], eligible:number) {
  const yea=votes.filter(v=>v.choice==='yea').length, nay=votes.filter(v=>v.choice==='nay').length;
@@ -42,7 +62,8 @@ export async function documentMotionDetail(db:D1Database,motion:DocumentMotion) 
  const events=await db.prepare('SELECT * FROM governance_motion_events WHERE motion_id=? ORDER BY created_at,id').bind(motion.id).all();
  const comments=await db.prepare('SELECT * FROM governance_comments WHERE motion_id=? ORDER BY created_at').bind(motion.id).all();
  const applied=await db.prepare('SELECT version FROM governance_document_revisions WHERE motion_id=?').bind(motion.id).first<{version:number}>();
- return {motion, votes:votes.results,events:events.results,comments:comments.results,appliedVersion:applied?.version||null,
+ const ratification=await db.prepare('SELECT version,ratified_at,effective_at FROM governance_document_ratifications WHERE motion_id=?').bind(motion.id).first<{version:number;ratified_at:string;effective_at:string}>();
+ return {motion, ratification, votes:votes.results,events:events.results,comments:comments.results,appliedVersion:applied?.version||null,
   results:motion.result ? JSON.parse(motion.result) : constitutionalResult(votes.results,JSON.parse(motion.electorate_json||'[]').length)};
 }
 
@@ -54,7 +75,7 @@ export async function executeDocumentMotion(db:D1Database,user:{id:string;name:s
  if(!doc.organizationId||organizationId!==doc.organizationId)fail(404,'LifeTech organization not found');
  const role=await organizationRole(db,organizationId,user.id);
  if(!role)fail(403,'Active LifeTech membership required');
- if(['second','recognize','open-voting','vote','resolve'].includes(action)&&!isOrganizer(role))fail(403,'Only active LifeTech organizers may perform this action');
+ if(['second','recognize','give-notice','open-voting','vote','resolve'].includes(action)&&!isOrganizer(role))fail(403,'Only active LifeTech organizers may perform this action');
  const now=new Date().toISOString();
  const id=motion?.id || `mot-${crypto.randomUUID()}`;
  const event=(detail:string)=>db.prepare('INSERT INTO governance_motion_events(id,motion_id,actor_id,action,detail,created_at) VALUES(?,?,?,?,?,?)')
@@ -62,6 +83,26 @@ export async function executeDocumentMotion(db:D1Database,user:{id:string;name:s
  if(action==='propose') {
   if(payload.type==='amendment'||payload.parent_motion_id)fail(400,'File an exact-text change ticket; nested amendments use a chaired meeting');
   if(payload.document_id!==doc.id)fail(404,'Document not found');
+  if(doc.pendingRatificationId)fail(409,'Finish the active ratification ticket before proposing changes');
+  if(payload.document_action==='ratify') {
+   if(!isOrganizer(role))fail(403,'Only active LifeTech organizers may propose ratification');
+   if(doc.ratification)fail(409,'The Constitution is already ratified; propose an amendment instead');
+   if(doc.openChangeTickets)fail(409,'Resolve open change tickets before proposing ratification');
+   if(payload.document_version!==doc.version)fail(409,'Document changed; reload the full candidate before proposing ratification');
+   const authority=String(payload.ratification_authority||'').trim();
+   if(authority.length<20||authority.length>10000)fail(400,'Record the prior organizer agreement authorizing this ratification procedure');
+   const body=String(payload.body||'').trim();
+   if(!body||body.length>10000)fail(400,'Provide the reason for ratification');
+   const snapshot=snapshotDocument(doc),hash=await snapshotHash(snapshot);
+   if(payload.ratification_hash!==hash)fail(409,'Candidate text changed; review it again before requesting ratification');
+   await db.batch([
+    db.prepare(`INSERT INTO governance_motions(id,type,title,body,status,proposer_type,proposer_id,proposer_name,proposer_org_id,created_at,updated_at,quorum_required,document_id,document_version,document_action,ratification_snapshot,ratification_hash,ratification_authority)
+     VALUES(?,'main',?,?,'proposed','user',?,?,?,?,?,1,?,?,'ratify',?,?,?)`)
+     .bind(id,`Ratify LifeTech Constitution — revision ${doc.version}`,body,user.id,user.name,organizationId,now,now,doc.id,doc.version,snapshot,hash,authority),
+    event('Full Constitution captured for ratification; effective immediately upon recorded adoption.'),
+   ]);
+   return id;
+  }
   const section=doc.sections.find(s=>s.id===payload.document_section);
   if(!section||payload.document_version!==doc.version)fail(409,'Document changed or section is invalid; reload before proposing');
   const title=String(payload.title||'').trim(),reason=String(payload.body||'').trim(),replacement=String(payload.proposed_body_diff||'').trim();
@@ -89,9 +130,17 @@ export async function executeDocumentMotion(db:D1Database,user:{id:string;name:s
   const note=String(payload.procedure_note||'').trim();
   if(!note)fail(400,'Record the chair stating the exact question');
   await change("UPDATE governance_motions SET status='discussion',chair_id=?,updated_at=? WHERE id=? AND status='seconded'",[user.id,now,id],note);
+ } else if(action==='give-notice') {
+  if(m.document_action!=='ratify'||m.chair_id!==user.id)fail(403,'Only the recorded chair gives ratification notice');
+  const note=String(payload.procedure_note||'').trim();
+  if(!note)fail(400,'Record delivery of the full candidate and ballot procedure to every organizer');
+  if(payload.ratification_authorized!==true)fail(400,'Confirm the prior organizer agreement independently authorizes the ratification procedure');
+  await change("UPDATE governance_motions SET ratification_notice_at=?,updated_at=? WHERE id=? AND status='discussion' AND ratification_notice_at IS NULL",[now,now,id],note);
  } else if(action==='open-voting') {
   if(m.chair_id!==user.id)fail(403,'The recorded chair opens the ballot');
-  if(Date.now()-Date.parse(m.created_at)<7*86400000)fail(409,'Seven full days of notice are required before voting');
+  const noticeAt=m.document_action==='ratify'?m.ratification_notice_at:m.created_at;
+  if(!noticeAt||Date.now()-Date.parse(noticeAt)<7*86400000)fail(409,'Seven full days of recorded notice are required before voting');
+  if(m.document_action==='ratify'&&(doc.ratification||await snapshotHash(snapshotDocument(doc))!==m.ratification_hash))fail(409,'The ratification candidate changed or is already adopted; do not open this ballot');
   if(m.document_version!==doc.version)fail(409,'The document changed; file a rebased ticket');
   const note=String(payload.procedure_note||'').trim();
   if(!note)fail(400,'Record notice to every organizer and that debate is exhausted');
@@ -114,8 +163,24 @@ export async function executeDocumentMotion(db:D1Database,user:{id:string;name:s
   const roll=JSON.parse(m.electorate_json||'[]') as string[];
   const current=await organizers(db,organizationId);
   const votes=await db.prepare('SELECT choice FROM governance_votes WHERE motion_id=?').bind(id).all<{choice:string}>();
-  const result={...constitutionalResult(votes.results,roll.length),electorate_changed:JSON.stringify(current)!==JSON.stringify(roll)};
-  result.passed=result.passed&&!result.electorate_changed;
+  const ratifying=m.document_action==='ratify';
+  const documentChanged=ratifying&&(m.document_version!==doc.version||await snapshotHash(snapshotDocument(doc))!==m.ratification_hash);
+  const result={...constitutionalResult(votes.results,roll.length),electorate_changed:JSON.stringify(current)!==JSON.stringify(roll),document_changed:documentChanged};
+  result.passed=result.passed&&!result.electorate_changed&&!documentChanged;
+  if(ratifying) {
+   if(doc.ratification)fail(409,'The Constitution already has a ratification record');
+   if(!m.ratification_notice_at||!m.ratification_snapshot||!m.ratification_hash||!m.ratification_authority)fail(409,'Ratification record is incomplete');
+   await db.batch([
+    db.prepare(`INSERT INTO governance_document_ratifications(document_id,version,motion_id,snapshot_json,snapshot_hash,authority_record,ratified_at,effective_at)
+     SELECT ?,?,?,?,?,?,?,? WHERE ?=1 AND EXISTS(SELECT 1 FROM governance_motions WHERE id=? AND status='voting')`)
+     .bind(doc.id,m.document_version,id,m.ratification_snapshot,m.ratification_hash,m.ratification_authority,now,now,result.passed?1:0,id),
+    db.prepare("UPDATE governance_motions SET status=?,result=?,updated_at=? WHERE id=? AND status='voting'")
+     .bind(result.passed?'passed':'failed',JSON.stringify(result),now,id),
+    db.prepare('INSERT INTO governance_motion_events(id,motion_id,actor_id,action,detail,created_at) SELECT ?,?,?,?,?,? WHERE changes()>0')
+     .bind(crypto.randomUUID(),id,user.id,action,result.passed?'Constitution ratified; effective immediately.':'Ratification did not pass; the document remains a draft.',now),
+   ]);
+   return id;
+  }
   const sections=doc.sections.map(s=>s.id===m.document_section?{...s,text:m.proposed_body_diff!}:s);
   // A closed ballot is immutable. Conditional writes and the unique revision key
   // prevent a concurrent resolution from overwriting another accepted document.
@@ -171,7 +236,7 @@ export function governanceDocumentRoutes(getUser:(env:Env,request:Request)=>Prom
   if(!org||input.args?.organizationId!==org.id)fail(404,'LifeTech organization not found');
   if(!['propose','action'].includes(input.operation))fail(400,'Invalid operation');
   if(input.operation==='propose') {
-   const change=input.args.documentChange as {documentId?:string}|undefined;
+   const change=(input.args.documentChange||input.args.documentRatification) as {documentId?:string}|undefined;
    if(change?.documentId!==lifetechConstitution.id)fail(400,'Document change required');
   } else {
    const motion=await c.env.DB.prepare('SELECT id FROM governance_motions WHERE id=? AND document_id=? AND proposer_org_id=?')

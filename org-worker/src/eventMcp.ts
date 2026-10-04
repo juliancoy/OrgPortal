@@ -1,3 +1,4 @@
+import { runSupportMcp, supportSchema, supportVoidSchema, supportTargetSchema } from './organizationSupport';
 import { runVenueImageOperation, venueImageSchema } from './venueImagesMcp';
 import { runOrganizationTaskOperation, organizationTaskSchema } from './organizationTasksMcp';
 import { HTTPException } from "hono/http-exception";
@@ -701,6 +702,34 @@ export async function handleEventMcp(request: Request, env: Env, createOrganizat
       }
     };
     const metadata = (scopes: string[]) => ({ securitySchemes: [{ type: "oauth2", scopes }] });
+    const supportResult = async (operation: 'list' | 'record' | 'void', args: unknown) => {
+      try {
+        const data = await runSupportMcp(env.DB, identity, operation, scopedArgs(args));
+        return { content: [{ type: 'text' as const, text: JSON.stringify(data) }], structuredContent: data };
+      } catch (error) {
+        return { isError: true, content: [{ type: 'text' as const, text: await eventErrorResponse(error, env, request).text() }] };
+      }
+    };
+    server.registerTool('list_organization_support', {
+      description: 'Read documented support, direct and transitive descendants, supporters, and source evidence. Terms and aggregates do not establish descendants.',
+      inputSchema: supportTargetSchema, annotations: { readOnlyHint: true }, _meta: metadata([portalReadScope]),
+    }, args => supportResult('list', args));
+    server.registerTool('preview_organization_support', {
+      description: 'Preview a documented monetary or nonmonetary contribution to another organization. Requires live management permission; records evidence without moving account balances.',
+      inputSchema: supportSchema, annotations: { readOnlyHint: true }, _meta: metadata([portalReadScope, portalWriteScope]),
+    }, args => supportResult('record', { ...args, confirm: false }));
+    server.registerTool('apply_organization_support', {
+      description: 'Record support in the master transaction record after reviewing its preview. Requires confirm=true and the matching one-use previewId.',
+      inputSchema: supportSchema, annotations: { readOnlyHint: false, destructiveHint: false }, _meta: metadata([portalReadScope, portalWriteScope]),
+    }, args => supportResult('record', args));
+    server.registerTool('preview_void_organization_support', {
+      description: 'Preview voiding an incorrect support record while retaining its evidence and audit history.',
+      inputSchema: supportVoidSchema, annotations: { readOnlyHint: true }, _meta: metadata([portalReadScope, portalWriteScope]),
+    }, args => supportResult('void', { ...args, confirm: false }));
+    server.registerTool('apply_void_organization_support', {
+      description: 'Void a support record with a reason and matching reviewed one-use previewId. Requires live organization management permission and confirm=true.',
+      inputSchema: supportVoidSchema, annotations: { readOnlyHint: false, destructiveHint: true }, _meta: metadata([portalReadScope, portalWriteScope]),
+    }, args => supportResult('void', args));
     const organizationResult = async (operation: 'create' | 'member' | 'members' | 'list', args: unknown) => {
       try {
         if (operation !== 'list') args = scopedArgs(args);

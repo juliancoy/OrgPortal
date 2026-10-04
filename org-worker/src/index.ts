@@ -1,3 +1,4 @@
+import { organizationSupport, runSupportOperation } from './organizationSupport';
 import { governanceDocumentRoutes, executeDocumentMotion, documentMotionDetail } from './governanceDocuments';
 import { photoTagRoutes } from './photoTags';
 import { venueVoteRoutes } from './venueVotes';
@@ -313,6 +314,11 @@ type BusinessCardScanRow = {
 };
 
 type GovernanceMotionRow = {
+  document_action?: 'amend' | 'ratify';
+  ratification_snapshot?: string | null;
+  ratification_hash?: string | null;
+  ratification_authority?: string | null;
+  ratification_notice_at?: string | null;
   document_id?: string | null;
   document_section?: string | null;
   document_version?: number | null;
@@ -2131,6 +2137,8 @@ async function mapGovernanceMotion(db: D1Database, row: GovernanceMotionRow) {
   const score = row.score === undefined || row.score === null ? await governanceScore(db, row.id) : Number(row.score || 0);
   return {
     id: row.id,
+    document_action: row.document_action, ratification_snapshot: row.ratification_snapshot, ratification_hash: row.ratification_hash,
+    ratification_authority: row.ratification_authority, ratification_notice_at: row.ratification_notice_at,
     document_id: row.document_id, document_section: row.document_section, document_version: row.document_version,
     document_base: row.document_base, electorate_json: row.electorate_json, chair_id: row.chair_id,
     type: row.type,
@@ -3034,6 +3042,31 @@ app.get("/api/network/orgs/public/:slug", async (c) => {
     .bind(row.id)
     .first<{ n: number }>();
   return c.json({ ...mapOrganization(row, Number(count?.n || 0)), public_url: await orgPublicUrl(c.env, c.req.raw, row.slug) });
+});
+
+app.get("/api/network/orgs/public/:slug/support", async (c) => {
+  return c.json(await organizationSupport(c.env.DB, c.req.param("slug")));
+});
+
+app.post("/api/network/orgs/:organizationId/support/:operation", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const operation = c.req.param("operation");
+  if (operation !== "record" && operation !== "void") fail(404, "Support operation not found");
+  const payload = await c.req.json<Record<string, unknown>>().catch(() => { throw new HTTPException(400, { message: "Invalid JSON" }); });
+  try {
+    return c.json(await runSupportOperation(c.env.DB, organizationActor(user, c.env), operation,
+      { ...payload, organizationId: c.req.param("organizationId") }));
+  } catch (error) { return eventErrorResponse(error, c.env, c.req.raw); }
+});
+
+app.get("/api/transactions/master", async (c) => {
+  await currentUser(c.env, c.req.raw);
+  const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "50", 10) || 50, 200));
+  const offset = Math.max(0, Math.min(Number.parseInt(c.req.query("offset") || "0", 10) || 0, 100000));
+  const rows = await c.env.DB.prepare("SELECT * FROM master_transaction_records ORDER BY timestamp DESC, id LIMIT ? OFFSET ?")
+    .bind(limit, offset).all();
+  c.header("Cache-Control", "no-store");
+  return c.json(rows.results);
 });
 
 app.get("/api/network/orgs/public/:slug/events", async (c) => {

@@ -76,7 +76,7 @@ export function onboardingRoutes(getUser: (env: Env, request: Request) => Promis
  }
  app.get('/',async c=>{
   const {tenant,enrollment}=await context(c.env,c.req.raw);
-  return c.json(enrollment ? {enabled:true,organizationName:tenant.name,...enrollment,acknowledgements:JSON.parse(enrollment.acknowledgements),steps:onboardingSteps.map(step => (tenant.home_org_slug === 'lifetech' || tenant.hostname === 'lifetech.fyi') && ['constitution','communications'].includes(step.id) ? {...step,href:'/governance/documents/lifetech-constitution'} : step)} : {enabled:false});
+  return c.json(enrollment ? {enabled:true,organizationName:tenant.name,...enrollment,acknowledgements:JSON.parse(enrollment.acknowledgements),steps:onboardingSteps.map(step => (tenant.home_org_slug === 'lifetech' || tenant.hostname === 'lifetech.fyi') && ['constitution','communications'].includes(step.id) ? {...step,description:step.id==='constitution'?'Read the current Constitution and Bylaws and its ratification status.':step.description,href:'/governance/documents/lifetech-constitution'} : step)} : {enabled:false});
  });
  app.post('/steps/:step',async c=>{
   const {user,tenant,enrollment}=await context(c.env,c.req.raw);

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
 import { publicProfileUrl } from '../../config/portalBase'
 import { createQrSvg } from '../utils/qr'
+import { BioMarkdownEditor } from '../components/profile/BioMarkdownEditor'
 
 const ORG_API_BASE = '/api/org'
 
@@ -442,7 +443,7 @@ export function ContactSettingsPage({ embedded = false, hideQr = false, hideProf
       </div>
       <div className={publicFieldClass('bio', page.bio)}>
         <label className="contact-field-label" htmlFor="contact-bio">Bio</label>
-        <textarea id="contact-bio" value={page.bio || ''} onChange={(e) => setPublicField('bio', e.target.value)} rows={4} placeholder="Bio" />
+        <BioMarkdownEditor id="contact-bio" value={page.bio || ''} onChange={(value) => setPublicField('bio', value)} />
         {visibilityButton('bio')}
       </div>
       {!hideProfileImage && (profileImageEditor ?? (

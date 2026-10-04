@@ -1,3 +1,4 @@
+import { SupportRecordTable, type SupportRecord } from '../components/OrganizationSupport'
 import { useEffect, useMemo, useState, type FormEvent, type MouseEvent } from 'react'
 import { useAuth } from '../../app/AppProviders'
 import { Header } from '../shell/Header'
@@ -22,18 +23,7 @@ type AccountSummary = {
   created_at: string
 }
 
-type RecentTransaction = {
-  id: string
-  timestamp: string
-  transaction_type: string
-  amount: number
-  currency: string
-  description: string
-  from_account_id?: string | null
-  to_account_id?: string | null
-  from_account_name?: string | null
-  to_account_name?: string | null
-}
+type RecentTransaction = SupportRecord
 
 type UbiRuntimeSettings = {
   interval_seconds: number
@@ -171,7 +161,7 @@ export function EconomicOpsPage() {
         orgFetch<MoneySupplyHistory>('/api/system/money-supply/history?days=1825&bucket=day', { headers }),
         orgFetch<AccountSummary[]>('/api/accounts?limit=2000&sort=balance_desc', { headers }),
         orgFetch<AccountSummary[]>('/api/admin/accounts', { headers }),
-        orgFetch<RecentTransaction[]>('/api/transactions/recent?limit=10', { headers }),
+        orgFetch<RecentTransaction[]>('/api/transactions/master?limit=50', { headers }),
         ubiEnabled ? orgFetch<UbiRuntimeSettings>('/api/ubi/settings', { headers }) : Promise.resolve(null),
       ])
         .then(([historyResult, accountsResult, adminsResult, recentTxResult, ubiSettingsResult]) => {
@@ -753,43 +743,10 @@ export function EconomicOpsPage() {
 
           <section className="portal-section" id="transactions">
             <div className="portal-section-header">
-              <h2>Last 10 transactions</h2>
+              <h2>Master transaction record</h2>
             </div>
             <div className="portal-card finance-table-card">
-              <table className="finance-table transactions">
-                <thead>
-                  <tr>
-                    <th>Time</th>
-                    <th>Type</th>
-                    <th>From</th>
-                    <th>To</th>
-                    <th className="number">Amount</th>
-                    <th>Description</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentTransactions.map((txn) => (
-                    <tr key={txn.id}>
-                      <td className="nowrap">
-                        {new Date(txn.timestamp).toLocaleString()}
-                      </td>
-                      <td className="capitalize">
-                        {String(txn.transaction_type || '').toLowerCase().replaceAll('_', ' ')}
-                      </td>
-                      <td>
-                        {txn.from_account_name || (txn.from_account_id ? `${txn.from_account_id.slice(0, 8)}...` : 'System')}
-                      </td>
-                      <td>
-                        {txn.to_account_name || (txn.to_account_id ? `${txn.to_account_id.slice(0, 8)}...` : 'System')}
-                      </td>
-                      <td className="number nowrap">
-                        {formatCurrency(txn.amount, txn.currency || currency)}
-                      </td>
-                      <td>{txn.description || '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <SupportRecordTable records={recentTransactions} />
               {!isLoading && recentTransactions.length === 0 && <p className="portal-muted">No recent transactions found.</p>}
             </div>
           </section>

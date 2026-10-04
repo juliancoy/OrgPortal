@@ -1,3 +1,4 @@
+import { BioMarkdown } from '../components/profile/BioMarkdown'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
@@ -155,7 +156,7 @@ export function IdPage() {
           )}
           <h1 className="id-name">{page.user_name}</h1>
           {page.headline ? <p className="id-headline">{page.headline}</p> : null}
-          {page.bio ? <p className="id-bio">{page.bio}</p> : null}
+          {page.bio ? <BioMarkdown className="id-bio" value={page.bio} /> : null}
         </div>
 
         {rows.length > 0 ? (

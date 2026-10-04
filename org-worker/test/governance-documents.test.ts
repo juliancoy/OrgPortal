@@ -7,7 +7,7 @@ import { runGovernanceOperation } from '../src/governanceMcp';
 import { constitutionalResult, readGovernanceDocument } from '../src/governanceDocuments';
 function fixture() {
  const sql=new DatabaseSync(':memory:');
- for(const file of ['0001_contact_pages.sql','0002_org_event_directories.sql','0003_governance.sql','0015_organization_iam.sql','0017_event_mcp_operations.sql','0055_governance_documents.sql'])sql.exec(readFileSync(new URL('../migrations/'+file,import.meta.url),'utf8'));
+ for(const file of ['0001_contact_pages.sql','0002_org_event_directories.sql','0003_governance.sql','0015_organization_iam.sql','0017_event_mcp_operations.sql','0055_governance_documents.sql','0056_constitution_ratification.sql'])sql.exec(readFileSync(new URL('../migrations/'+file,import.meta.url),'utf8'));
  const db={prepare(query:string){const statement=sql.prepare(query);const bound=(args:any[])=>({bind:(...args:any[])=>bound(args),first:async()=>statement.get(...args)||null,all:async()=>({results:statement.all(...args)}),run:async()=>({meta:{changes:Number(statement.run(...args).changes)}})});return bound([])},async batch(statements:any[]){sql.exec('BEGIN');try{const result=[];for(const s of statements)result.push(await s.run());sql.exec('COMMIT');return result}catch(e){sql.exec('ROLLBACK');throw e}}} as unknown as D1Database;
  sql.exec(`INSERT INTO organizations(id,name,slug,tags,city) VALUES('life','LifeTech','lifetech','[]','Baltimore'),('other','Other','other','[]','Baltimore');
  INSERT INTO organization_memberships(organization_id,user_id,role,status) VALUES('life','member','member','active'),('life','member2','member','active'),('life','chair','owner','active'),('life','second','administrator','active'),('life','third','administrator','active'),('other','outsider','owner','active');`);
@@ -74,5 +74,71 @@ test('changed organizer roll invalidates ballot',async()=>{
   f.sql.exec("UPDATE organization_memberships SET status='inactive' WHERE user_id='second'; UPDATE governance_motions SET voting_deadline='2020-01-01T00:00:00.000Z' WHERE document_id IS NOT NULL");
   await f.apply('action',f.action(ticket.id,'resolve'),'chair');
   const result=await f.run('get',{motionId:ticket.id});assert.equal(result.motion.status,'failed');assert.equal(result.results.electorate_changed,true);assert.equal((await readGovernanceDocument(f.db)).version,1);
+ }finally{f.sql.close()}
+});
+
+async function ratificationProposal(f:ReturnType<typeof fixture>) {
+ const doc=await readGovernanceDocument(f.db);
+ return {title:'Ratify the whole Constitution',body:'The completed revision is ready for adoption.',documentRatification:{documentId:doc.id,version:doc.version,candidateHash:doc.candidateHash,authorityRecord:'Organizing meeting minutes: organizers agreed to organizer voting, majority participation quorum, two-thirds approval, seven-day notice and a 24-hour electronic ballot.'}};
+}
+async function ratificationBallot(f:ReturnType<typeof fixture>,id:string) {
+ await f.apply('action',f.action(id,'second'),'second');
+ await f.apply('action',f.action(id,'recognize',{procedureNote:'Adopt the full frozen revision, effective on adoption.'}),'chair');
+ await assert.rejects(f.apply('action',f.action(id,'open-voting',{procedureNote:'Debate exhausted.'}),'chair'),/recorded notice/);
+ await assert.rejects(f.apply('action',f.action(id,'give-notice',{procedureNote:'Full candidate delivered.'}),'chair'),/prior organizer agreement/);
+ await f.apply('action',f.action(id,'give-notice',{procedureNote:'Full text and agreed procedure delivered to every organizer.',ratificationAuthorized:true}),'chair');
+ await assert.rejects(f.apply('action',f.action(id,'open-voting',{procedureNote:'Debate exhausted.'}),'chair'),/Seven full days/);
+ f.sql.prepare("UPDATE governance_motions SET ratification_notice_at='2020-01-01T00:00:00.000Z' WHERE id=?").run(id);
+ await f.apply('action',f.action(id,'open-voting',{procedureNote:'Seven-day notice complete; debate exhausted.'}),'chair');
+}
+async function finishRatification(f:ReturnType<typeof fixture>,id:string,secondChoice='yea') {
+ await f.apply('action',f.action(id,'vote',{choice:'yea'}),'chair');
+ await f.apply('action',f.action(id,'vote',{choice:secondChoice}),'second');
+ f.sql.prepare("UPDATE governance_motions SET voting_deadline='2020-01-01T00:00:00.000Z' WHERE id=?").run(id);
+ return f.apply('action',f.action(id,'resolve'),'chair');
+}
+test('ratification freezes all nine titles and records adoption independently of subsequent amendments',async()=>{
+ const f=fixture();try{
+  const proposal=await ratificationProposal(f);
+  await assert.rejects(f.apply('propose',proposal),/organizers may propose/);
+  await assert.rejects(f.apply('propose',{...proposal,documentRatification:{...proposal.documentRatification,candidateHash:'0'.repeat(64)}},'chair'),/Candidate text changed/);
+  const ticket=await f.apply('propose',proposal,'chair');
+  assert.equal(ticket.document_action,'ratify');assert.equal(JSON.parse(ticket.ratification_snapshot).sections.length,9);
+  assert.equal((await readGovernanceDocument(f.db)).pendingRatificationId,ticket.id);
+  await assert.rejects(f.apply('propose',f.proposal()),/active ratification/);
+  await assert.rejects(f.apply('propose',proposal,'chair'),/active ratification/);
+  assert.throws(()=>f.sql.prepare('INSERT INTO governance_document_revisions VALUES(?,?,?,?,?)').run('lifetech-constitution',2,'[]',ticket.id,'now'),/frozen/);
+  await ratificationBallot(f,ticket.id);
+  await assert.rejects(f.apply('action',f.action(ticket.id,'resolve'),'chair'),/deadline/);
+  assert.equal((await finishRatification(f,ticket.id)).status,'passed');
+  const adopted=await readGovernanceDocument(f.db);assert.equal(adopted.status,'Ratified constitution');assert.equal(adopted.version,1);assert.equal(adopted.pendingRatificationId,null);
+  assert.equal(adopted.ratification!.motionId,ticket.id);assert.equal(adopted.ratification!.ratifiedAt,adopted.ratification!.effectiveAt);
+  assert.deepEqual(adopted.sections,JSON.parse(ticket.ratification_snapshot).sections);
+  await assert.rejects(f.apply('propose',await ratificationProposal(f),'chair'),/already ratified/);
+  const amendment=await f.apply('propose',f.proposal());await f.ballot(amendment.id);await finishRatification(f,amendment.id);
+  const amended=await readGovernanceDocument(f.db);assert.equal(amended.version,2);assert.equal(amended.status,'Ratified constitution');assert.equal(amended.ratification!.version,1);
+  const original=await f.run('get',{motionId:ticket.id});assert.equal(original.ratification.version,1);assert.equal(original.motion.ratification_snapshot,ticket.ratification_snapshot);
+ }finally{f.sql.close()}
+});
+test('open changes block ratification; withdrawal and failure restore drafting',async()=>{
+ const f=fixture();try{
+  const change=await f.apply('propose',f.proposal());
+  await assert.rejects(f.apply('propose',await ratificationProposal(f),'chair'),/Resolve open change tickets/);
+  await f.apply('action',f.action(change.id,'withdraw'));
+  const withdrawn=await f.apply('propose',await ratificationProposal(f),'chair');await f.apply('action',f.action(withdrawn.id,'withdraw'),'chair');
+  assert.equal((await readGovernanceDocument(f.db)).pendingRatificationId,null);
+  const ticket=await f.apply('propose',await ratificationProposal(f),'chair');await ratificationBallot(f,ticket.id);
+  assert.equal((await finishRatification(f,ticket.id,'nay')).status,'failed');
+  const doc=await readGovernanceDocument(f.db);assert.equal(doc.ratification,null);assert.equal(doc.status,'Unratified draft');assert.equal(doc.pendingRatificationId,null);
+  assert.equal((await f.apply('propose',f.proposal())).status,'proposed');
+ }finally{f.sql.close()}
+});
+test('a stale candidate hash cannot be ratified',async()=>{
+ const f=fixture();try{
+  const ticket=await f.apply('propose',await ratificationProposal(f),'chair');await ratificationBallot(f,ticket.id);
+  f.sql.prepare('UPDATE governance_motions SET ratification_hash=? WHERE id=?').run('0'.repeat(64),ticket.id);
+  assert.equal((await finishRatification(f,ticket.id)).status,'failed');
+  assert.equal((await readGovernanceDocument(f.db)).ratification,null);
+  assert.equal((await f.run('get',{motionId:ticket.id})).results.document_changed,true);
  }finally{f.sql.close()}
 });
