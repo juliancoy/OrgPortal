@@ -16,7 +16,7 @@
 .conference-nametag-avatar { width: .8in; height: .8in; flex-shrink: 0; border-radius: 50%; overflow: hidden; background: #e8f1f2; display: grid; place-items: center; font-size: 24pt; font-weight: 700; color: var(--nametag-ink, #061a26); border: 2px solid #fff; box-shadow: 0 2px 8px #061a26; box-sizing: border-box; }
 .conference-nametag-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .conference-nametag .conference-nametag-name { color: #fff; display: flex; flex-direction: column; justify-content: center; flex: 1; min-height: 0; font-family: "Nametag Mattone", Arial, sans-serif; font-weight: 700; letter-spacing: -.035em; line-height: .98; text-shadow: 0 2px 4px #061a26, 0 0 8px #061a26, 0 0 14px #061a26; }
-.conference-nametag-name span { display: block; overflow-wrap: anywhere; }
+.conference-nametag-name span { display: block; white-space: nowrap; }
 .conference-nametag-footer { display: flex; justify-content: space-between; align-items: flex-end; gap: .1in; font-size: 11pt; }
 .conference-nametag-qr { box-sizing: border-box; width: .8in; height: .8in; display: block; padding: .035in; background: #fff; box-shadow: 0 2px 8px #061a26; }
 .conference-nametag-pending { font-size: 9pt; max-width: 1.4in; }
