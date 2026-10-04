@@ -1500,7 +1500,9 @@ async function eventFlyerSvg(env: Env, request: Request, event: EventRow, format
 }
 
 async function publicEventBySlug(db: D1Database, rawSlug: string) {
-  const slug = slugify(rawSlug);
+  // Stored slugs can include a truncation-boundary hyphen or collision suffix.
+  // Preserve their exact identity instead of re-truncating an existing URL.
+  const slug = /^[a-z0-9][a-z0-9-]{0,199}$/.test(rawSlug) ? rawSlug : slugify(rawSlug);
   const direct = await db.prepare(
     `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url
      FROM events e
