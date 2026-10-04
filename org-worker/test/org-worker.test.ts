@@ -2226,3 +2226,20 @@ test("organization admins can request and attach a custom portal domain", async 
     assert.equal(attachedPayload.portal.canonical_path_prefix, "");
   });
 });
+
+
+test("public event detail preserves trailing hyphens and long collision suffixes", async () => {
+  const db = new FakeD1();
+  const base = 'a'.repeat(79) + '-';
+  for (const [index, slug] of [base, base + '-2'].entries()) {
+    db.events.push({ id: `exact-${index}`, ingest_key: `exact-${index}`, title: 'Long archived title', slug,
+      tags: '["Pitch Competition"]', created_at: '2026-06-07T00:00:00Z', updated_at: '2026-06-07T00:00:00Z' });
+  }
+  for (const [index, slug] of [base, base + '-2'].entries()) {
+    const response = await app.request(`https://org.example.test/api/network/events/public/${slug}`, {}, env(db));
+    assert.equal(response.status, 200);
+    const event = await response.json() as { id: string; slug: string };
+    assert.equal(event.id, `exact-${index}`);
+    assert.equal(event.slug, slug);
+  }
+});
