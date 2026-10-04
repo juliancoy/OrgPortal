@@ -10,7 +10,7 @@ export function ecosystemSupportSql(data) {
   const ids = new Set(data.organizations.map(org => org.id));
   if (ids.size !== data.organizations.length) throw new Error('Duplicate organization identity');
   const endpoint = id => { if (!id) return 'NULL'; if (!ids.has(id)) throw new Error(`Unknown organization: ${id}`); return `(SELECT organization_id FROM organization_source_identities WHERE source = 'bmoremedtech' AND external_id = ${quote(id)})`; };
-  const provenance = record => ({ source: data.source, snapshot: data.updatedAt, ...record.provenance, sourceUrl: record.sourceUrl });
+  const provenance = record => ({ source: data.source, snapshot: data.updatedAt, ...record.provenance, sourceUrl: record.sourceUrl, fromLabel: record.funder || record.sourceLabel, toLabel: record.recipient || record.targetLabel, date: record.date, type: record.type, description: record.description, amountLabel: record.amountLabel, evidence: record.evidence, notes: record.notes });
   const sql = [`-- Generated from ../bmoremedtech/assets/data/ecosystem.json (${data.updatedAt}).`, '-- Public evidence only. No payments, identities, roles or permissions are created.', `CREATE TABLE IF NOT EXISTS organization_source_identities (
     source TEXT NOT NULL, external_id TEXT NOT NULL,
     organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE RESTRICT,

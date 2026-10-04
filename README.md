@@ -189,3 +189,43 @@ For a different stack prefix, set `ONBOARDING_PIDP_CONTAINER`; for a different
 gateway port, set `PLAYWRIGHT_BASE_URL` to the same local origin used by the
 launcher. The test checks trusted origins and the tenant's onboarding setting
 before creating the account. Screenshots are saved in `.local/session-test/`.
+
+## Organization support and the master transaction record
+
+Every organization page includes descendants (direct recipients and organizations
+reached through recipients), supporters, and public evidence records. Descendants
+are derived from `organization_support_records`; relationships confer no
+ownership, membership, or permissions. Cycles are supported without repeating the
+starting organization. Program terms, portfolio/co-investment aggregates, and
+institutional affiliation remain contextual records rather than proof of support
+to a named recipient. Unknown endpoints remain labels, not invented organizations.
+
+`master_transaction_records` unifies the internal payment ledger and documented
+external monetary/nonmonetary support. Economic operations reads
+`GET /api/transactions/master?limit=50&offset=0`; the legacy payment APIs and money
+supply calculations continue to read the settlement ledger. Recording support
+never sends money or changes account balances. Monetary amounts keep their
+currency; nonmonetary contributions keep quantity and unit. Unknown amounts stay
+null, and overlapping source reports are not totaled. The master view orders by
+recording time and retains the original date or period separately.
+
+`GET /api/network/orgs/public/:slug/support` exposes descendants, direct
+supporters, and up to 500 evidence records. Management writes use
+`POST /api/network/orgs/:organizationId/support/record` or `/support/void`.
+Request a preview (`confirm: false`), inspect it, then resubmit the same changes
+with `confirm: true` and its `previewId`. Both API and MCP recheck live organization
+management permissions and require a matching, actor-bound, expiring, one-use
+receipt. Voiding keeps the record, correction reason, and audit history.
+MCP exposes list, preview/apply support, and preview/apply void tools under the
+existing `org:portal.read` and `org:portal.write` scopes.
+
+Migration `0057` adds the records and master view. Migration `0058` imports the
+already-public October 1, 2026 LifeTech Associates snapshot from
+`../bmoremedtech/assets/data/ecosystem.json`: 69 distinct organizations and 51
+records, preserving matched financing/network evidence once, source rows, period,
+amount semantics, and unresolved scopes. Funds and programs retain separate
+identities. No raw spreadsheet contacts, account mappings, or memberships are
+imported. The import generator is
+`node org-worker/scripts/build-ecosystem-support.mjs [snapshot.json] [output.sql]`;
+use a new migration file for later snapshots instead of rewriting an applied
+migration. Shared services continue to release through CodeCollective.
