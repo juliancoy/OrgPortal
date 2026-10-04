@@ -119,6 +119,8 @@ export function EconomicOpsPage() {
   const [accounts, setAccounts] = useState<AccountSummary[]>([])
   const [adminAccounts, setAdminAccounts] = useState<AccountSummary[]>([])
   const [recentTransactions, setRecentTransactions] = useState<RecentTransaction[]>([])
+  const [transactionOffset, setTransactionOffset] = useState(0)
+  const [transactionError, setTransactionError] = useState('')
   const [searchTerm, setSearchTerm] = useState<string>('')
   const [sortDirection, setSortDirection] = useState<'desc' | 'asc'>('desc')
   const [timeframeMs, setTimeframeMs] = useState<number>(DEFAULT_TIMEFRAME_MS)
@@ -161,7 +163,7 @@ export function EconomicOpsPage() {
         orgFetch<MoneySupplyHistory>('/api/system/money-supply/history?days=1825&bucket=day', { headers }),
         orgFetch<AccountSummary[]>('/api/accounts?limit=2000&sort=balance_desc', { headers }),
         orgFetch<AccountSummary[]>('/api/admin/accounts', { headers }),
-        orgFetch<RecentTransaction[]>('/api/transactions/master?limit=50', { headers }),
+        orgFetch<RecentTransaction[]>(`/api/transactions/master?limit=50&offset=${transactionOffset}`, { headers }),
         ubiEnabled ? orgFetch<UbiRuntimeSettings>('/api/ubi/settings', { headers }) : Promise.resolve(null),
       ])
         .then(([historyResult, accountsResult, adminsResult, recentTxResult, ubiSettingsResult]) => {
@@ -193,9 +195,11 @@ export function EconomicOpsPage() {
           }
 
           if (recentTxResult.status === 'fulfilled') {
+            setTransactionError('')
             setRecentTransactions(Array.isArray(recentTxResult.value) ? recentTxResult.value : [])
           } else {
             setRecentTransactions([])
+            setTransactionError('Unable to load the master transaction record.')
           }
 
           if (!ubiEnabled) {
@@ -267,7 +271,7 @@ export function EconomicOpsPage() {
       cancelled = true
       window.clearInterval(refreshId)
     }
-  }, [token, ubiEnabled])
+  }, [token, ubiEnabled, transactionOffset])
 
   const visibleHistory = useMemo(() => {
     if (!history.length) return []
@@ -747,7 +751,13 @@ export function EconomicOpsPage() {
             </div>
             <div className="portal-card finance-table-card">
               <SupportRecordTable records={recentTransactions} />
-              {!isLoading && recentTransactions.length === 0 && <p className="portal-muted">No recent transactions found.</p>}
+              {transactionError && <p role="status">{transactionError}</p>}
+              {!isLoading && !transactionError && recentTransactions.length === 0 && <p className="portal-muted">No transactions on this page.</p>}
+              <nav aria-label="Master transaction pages" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginTop: '1rem' }}>
+                <button type="button" disabled={isLoading || transactionOffset === 0} onClick={() => setTransactionOffset(Math.max(0, transactionOffset - 50))}>Newer records</button>
+                <span>Page {Math.floor(transactionOffset / 50) + 1}</span>
+                <button type="button" disabled={isLoading || recentTransactions.length < 50 || transactionOffset >= 100000} onClick={() => setTransactionOffset(transactionOffset + 50)}>Older records</button>
+              </nav>
             </div>
           </section>
 
