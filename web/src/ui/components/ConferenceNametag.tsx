@@ -27,6 +27,11 @@ export function NametagCard({ name, avatarUrl, publicPageUrl, badgeRef }: Props 
     '--nametag-ink': branding?.theme_color || '#061a26',
   } as CSSProperties
   const logo = branding?.brand_image_path || '/assets/images/lifetech-logo.png'
+  const nameParts = name.trim().split(/\s+/).filter(Boolean)
+  const firstName = nameParts[0] || 'User'
+  const lastName = nameParts.slice(1).join(' ')
+  const longestLine = Math.max(firstName.length, lastName.length)
+  const nameSize = longestLine > 22 ? '21pt' : longestLine > 15 ? '27pt' : '34pt'
   const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase()
 
   return (
@@ -39,13 +44,14 @@ export function NametagCard({ name, avatarUrl, publicPageUrl, badgeRef }: Props 
               <small>{branding?.tagline || 'Health × Medicine × Biotech'}</small>
             </div>
           </div>
-          <div className="conference-nametag-person">
+          <strong className="conference-nametag-name" style={{ fontSize: nameSize }}>
+            <span>{firstName}</span>
+            {lastName && <span>{lastName}</span>}
+          </strong>
+          <div className="conference-nametag-footer">
             <div className="conference-nametag-avatar">
               {avatarUrl ? <img src={avatarUrl} alt={`${name}'s avatar`} /> : <span aria-label="Avatar initials">{initials || '?'}</span>}
             </div>
-            <strong className="conference-nametag-name">{name}</strong>
-          </div>
-          <div className="conference-nametag-footer">
             {qrSrc ? <img className="conference-nametag-qr" src={qrSrc} alt={`QR code linking to ${name}'s public page`} /> : <span className="conference-nametag-pending">Public page needed for QR code</span>}
           </div>
         </div>
