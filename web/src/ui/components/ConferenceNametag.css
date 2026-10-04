@@ -1,4 +1,4 @@
-@font-face { font-family: "Nametag Mattone"; src: url("/fonts/CLT-Mattone/web/Mattone-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Nametag Mattone"; src: url("/assets/fonts/Mattone-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
 .conference-nametag-section h2 { margin: 0; }
 .conference-nametag-preview { overflow-x: auto; padding: 2px; }
 .conference-nametag {
