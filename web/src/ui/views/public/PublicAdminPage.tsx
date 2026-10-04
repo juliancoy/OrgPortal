@@ -1,3 +1,5 @@
+import { OrganizationBrandGuide } from '../../components/OrganizationBrandGuide'
+import { getDomainTenant } from '../../../config/timebankCommunity'
 import { OrganizationSupport } from '../../components/OrganizationSupport'
 import { OrganizationTools } from '../../components/OrganizationTools'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -1364,6 +1366,11 @@ export function PublicAdminPage() {
             </button>
           </div>
           <OrganizationTools />
+          {getDomainTenant()?.home_org_slug === org.slug
+            ? <OrganizationBrandGuide />
+            : portalConfig?.slug_url
+              ? <OrganizationBrandGuide href={`${portalConfig.slug_url.replace(/\/$/, '')}/branding`} />
+              : null}
           {mergedFrom ? (
             <p className="muted" role="status" style={{ margin: 0 }}>
               Redirected from merged organization <code>{mergedFrom}</code>.

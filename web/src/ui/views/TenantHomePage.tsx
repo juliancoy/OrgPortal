@@ -6,6 +6,7 @@ import { portalPath } from '../../config/portalBase'
 import { getActivePortalProfileConfig, portalProfilePath } from '../../config/portalFeatures'
 import { getDomainTenant, parsePortalTenant, setDomainTenant, type PortalTenant } from '../../config/timebankCommunity'
 import { specialtyResourcesForTenant } from '../../config/specialtyResources'
+import { OrganizationBrandGuide } from '../components/OrganizationBrandGuide'
 import { SpecialtyResourcesPanel } from '../components/SpecialtyResourcesPanel'
 import { Header } from '../shell/Header'
 import { Footer } from '../shell/Footer'
@@ -137,6 +138,7 @@ export function TenantHomePage() {
           </div>
         </section>
 
+        <OrganizationBrandGuide />
         <SpecialtyResourcesPanel resources={specialtyResources.slice(0, 4)} compact={specialtyResources.length > 4} />
 
         {tenant.home_org_slug && <section className="tenant-home-events" aria-labelledby="tenant-home-events-title">

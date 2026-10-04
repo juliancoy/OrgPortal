@@ -40,7 +40,7 @@ const DEFAULT_MEDTECH_RESOURCES: SpecialtyResource[] = [
   },
 ]
 
-const TENANT_BRAND_RESOURCE: SpecialtyResource = {
+export const TENANT_BRAND_RESOURCE: SpecialtyResource = {
   id: 'brand-guide',
   label: 'Brand Guide',
   description: 'View approved organization logos, colors, and portal identity details.',
@@ -76,7 +76,7 @@ export function specialtyResourcesForTenant(tenant?: PortalTenant | null): Speci
   const medTechDefaults = isMedTechTenant
     ? DEFAULT_MEDTECH_RESOURCES.filter((resource) => !configuredIds.has(resource.id))
     : []
-  return [...tenantResources, ...medTechDefaults, TENANT_BRAND_RESOURCE]
+  return [...tenantResources, ...medTechDefaults]
 }
 
 export function hasTenantCalendar(tenant?: PortalTenant | null) {

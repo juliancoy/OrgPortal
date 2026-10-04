@@ -14,13 +14,11 @@ function tenant(overrides: Partial<PortalTenant> = {}): PortalTenant {
 }
 
 describe('tenant specialty resources', () => {
-  it('includes the generic brand guide for every tenant', () => {
-    expect(specialtyResourcesForTenant(tenant())).toEqual([
-      expect.objectContaining({ id: 'brand-guide', href: '/branding' }),
-    ])
+  it('keeps branding out of specialty resources', () => {
+    expect(specialtyResourcesForTenant(tenant())).toEqual([])
   })
 
-  it('replaces stale configured brand-guide links with the generic route', () => {
+  it('removes stale configured brand-guide links', () => {
     const resources = specialtyResourcesForTenant(tenant({
       feature_config: {
         specialtyResources: [
@@ -32,14 +30,13 @@ describe('tenant specialty resources', () => {
 
     expect(resources.map(({ id, href }) => ({ id, href }))).toEqual([
       { id: 'docs', href: 'https://example.test/docs' },
-      { id: 'brand-guide', href: '/branding' },
     ])
   })
 
-  it('keeps MedTech specialty defaults alongside tenant branding', () => {
+  it('keeps MedTech specialty defaults without tenant branding', () => {
     const resources = specialtyResourcesForTenant(tenant({ id: 'baltimore-medtech', profile: 'baltimore-medtech' }))
 
     expect(resources.some((resource) => resource.id === 'map')).toBe(true)
-    expect(resources.at(-1)).toMatchObject({ id: 'brand-guide', href: '/branding' })
+    expect(resources.some((resource) => resource.id === 'brand-guide')).toBe(false)
   })
 })
