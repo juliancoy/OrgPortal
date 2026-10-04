@@ -454,10 +454,8 @@ export function PublicContactPage({ self = false }: PublicContactPageProps = {})
 
       {self && user ? <HiddenCarouselImages key={user.id} /> : null}
 
-      {isOwner && <>
-        <ConferenceNametag name={page.user_name} avatarUrl={page.photo_url || ''} publicPageUrl={shareUrl} />
-        <UserProfilePage detailsOnly embedded />
-      </>}
+      <ConferenceNametag name={page.user_name} avatarUrl={page.photo_url || ''} publicPageUrl={shareUrl} />
+      {isOwner && <UserProfilePage detailsOnly embedded />}
 
       {events.length > 0 ? (
         <section className="public-id-events">

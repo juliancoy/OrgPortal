@@ -1,3 +1,4 @@
+import { NametagsPage } from '../views/NametagsPage'
 import { GovernanceDocumentPage } from '../views/governance/GovernanceDocumentPage'
 import { VenuesPage } from '../views/orgs/VenuesPage'
 import { AvailabilityPage } from '../views/AvailabilityPage'
@@ -178,10 +179,11 @@ function ChatRoute() {
 }
 
 function AdminRoute(props: { children: ReactElement }) {
-  const { role, token } = useAuth()
+  const { role, token, isLoading } = useAuth()
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
 
   useEffect(() => {
+    if (isLoading) return
     if (role === 'guest' || !token) {
       setIsAdmin(false)
       return
@@ -212,9 +214,9 @@ function AdminRoute(props: { children: ReactElement }) {
     return () => {
       cancelled = true
     }
-  }, [role, token])
+  }, [role, token, isLoading])
 
-  if (isAdmin === null) return null
+  if (isLoading || isAdmin === null) return null
   if (!isAdmin) return <Navigate to="/" replace />
   return props.children
 }
@@ -357,6 +359,10 @@ export function createAppRouter() {
                 <AdminPage />
               </AdminRoute>
             ),
+          },
+          {
+            path: '/admin/nametags',
+            element: <AdminRoute><NametagsPage /></AdminRoute>,
           },
           {
             path: '/admin/ubi-settings',

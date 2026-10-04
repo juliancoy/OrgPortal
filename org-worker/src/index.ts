@@ -1,3 +1,4 @@
+import { nametagRoutes } from './nametags';
 import { calendarCollectionOptions, addCalendarCollections } from './calendarCollections';
 import { organizationSupport, runSupportOperation } from './organizationSupport';
 import { governanceDocumentRoutes, executeDocumentMotion, documentMotionDetail } from './governanceDocuments';
@@ -2625,6 +2626,11 @@ app.route("/api/photo-tags", photoTagRoutes(async (env,request)=>organizationAct
 
 app.get("/health", (c) => c.json(deploymentHealth(c, true)));
 app.get("/version", (c) => c.json(deploymentHealth(c, false)));
+
+app.route("/admin/nametags", nametagRoutes(async (env, request) => {
+  const user = await currentUser(env, request);
+  if (!adminUser(user, env)) fail(403, "Administrator access is required");
+}));
 
 app.get("/admin/me", async (c) => {
   const user = await currentUser(c.env, c.req.raw);

@@ -1,0 +1,5 @@
+.nametags-controls { margin-bottom: 1.5rem; }
+.nametag-sheet-preview { overflow-x: auto; }
+.nametag-letter-sheet { box-sizing: border-box; width: 8in; height: 10.5in; padding: .5in 0; display: grid; grid-template-columns: repeat(2, 4in); grid-template-rows: repeat(3, 3in); gap: .25in 0; align-content: start; background: white; margin-bottom: 1rem; break-after: page; break-inside: avoid; }
+.nametag-letter-sheet:last-child { break-after: auto; }
+@media print { .nametag-letter-sheet { margin: 0; } }

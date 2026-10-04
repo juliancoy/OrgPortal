@@ -464,6 +464,7 @@ export function AdminPage() {
     <section className="panel" style={{ display: 'grid', gap: '1rem' }}>
       <div>
         <h1 style={{ marginTop: 0, marginBottom: '0.25rem' }}>SysAdmin</h1>
+        <Link to="/admin/nametags" className="btn-secondary">Print everyone’s nametags</Link>
         <p className="muted" style={{ margin: 0 }}>Platform administration and moderation controls.</p>
         <p><Link to="/email">Email campaigns</Link></p>
       </div>
