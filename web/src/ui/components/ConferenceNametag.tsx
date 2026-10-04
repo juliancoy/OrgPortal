@@ -31,14 +31,14 @@ export function NametagCard({ name, avatarUrl, publicPageUrl, badgeRef }: Props 
   const firstName = nameParts[0] || 'User'
   const lastName = nameParts.slice(1).join(' ')
   const longestLine = Math.max(firstName.length, lastName.length)
-  const nameSize = longestLine > 22 ? '21pt' : longestLine > 15 ? '27pt' : '34pt'
+  const nameSize = longestLine > 22 ? '20pt' : longestLine > 15 ? '25pt' : longestLine > 10 ? '31pt' : '40pt'
   const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase()
 
   return (
         <div className="conference-nametag" ref={badgeRef} style={brandStyle}>
           <img className="conference-nametag-background" src={portalPath('/assets/images/lifetech-hero.png')} alt="" aria-hidden="true" />
           <div className="conference-nametag-brand">
-            <img src={logo.startsWith('/') ? portalPath(logo) : logo} alt="" />
+            <div className="conference-nametag-logo"><img src={logo.startsWith('/') ? portalPath(logo) : logo} alt="" /></div>
             <div className="conference-nametag-lockup">
               <span>{branding?.name || 'LifeTech'}</span>
               <small>{branding?.tagline || 'Health × Medicine × Biotech'}</small>
