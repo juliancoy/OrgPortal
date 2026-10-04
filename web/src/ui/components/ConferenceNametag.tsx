@@ -1,4 +1,4 @@
-import { useId, useMemo, useRef, useState, type Ref } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, type Ref } from 'react'
 import { createQrSvg } from '../utils/qr'
 import { portalPath } from '../../config/portalBase'
 import { getDomainTenant } from '../../config/timebankCommunity'
@@ -32,6 +32,23 @@ export function NametagCard({ name, avatarUrl, publicPageUrl, badgeRef }: Props 
   const lastName = nameParts.slice(1).join(' ')
   const longestLine = Math.max(firstName.length, lastName.length)
   const nameSize = longestLine > 22 ? '20pt' : longestLine > 15 ? '25pt' : longestLine > 10 ? '31pt' : '40pt'
+  const nameRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    let cancelled = false
+    const fitName = async () => {
+      await document.fonts.load('700 40pt "Nametag Mattone"')
+      if (cancelled || !nameRef.current) return
+      const element = nameRef.current
+      element.style.fontSize = nameSize
+      const width = element.clientWidth
+      const longestWidth = Math.max(...Array.from(element.children, line => line.scrollWidth))
+      if (width > 0 && longestWidth > width) {
+        element.style.fontSize = `${parseFloat(getComputedStyle(element).fontSize) * width / longestWidth}px`
+      }
+    }
+    void fitName()
+    return () => { cancelled = true }
+  }, [name, nameSize])
   const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase()
 
   return (
@@ -44,7 +61,7 @@ export function NametagCard({ name, avatarUrl, publicPageUrl, badgeRef }: Props 
               <small>{branding?.tagline || 'Health × Medicine × Biotech'}</small>
             </div>
           </div>
-          <strong className="conference-nametag-name" style={{ fontSize: nameSize }}>
+          <strong ref={nameRef} className="conference-nametag-name" style={{ fontSize: nameSize }}>
             <span>{firstName}</span>
             {lastName && <span>{lastName}</span>}
           </strong>
