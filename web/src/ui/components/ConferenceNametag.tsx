@@ -1,6 +1,8 @@
 import { useId, useMemo, useRef, useState, type Ref } from 'react'
 import { createQrSvg } from '../utils/qr'
 import { portalPath } from '../../config/portalBase'
+import { getDomainTenant } from '../../config/timebankCommunity'
+import { type CSSProperties } from 'react'
 import printStyles from './ConferenceNametag.css?inline'
 import './ConferenceNametag.css'
 import { printNametags } from '../utils/printNametags'
@@ -18,13 +20,23 @@ export function NametagCard({ name, avatarUrl, publicPageUrl, badgeRef }: Props 
       return null
     }
   }, [publicPageUrl])
+  const tenant = getDomainTenant()
+  const branding = tenant?.home_org_slug === 'lifetech' ? tenant : null
+  const brandStyle = {
+    '--nametag-accent': branding?.accent_color || '#0f6f8f',
+    '--nametag-ink': branding?.theme_color || '#061a26',
+  } as CSSProperties
+  const logo = branding?.brand_image_path || '/assets/images/lifetech-logo.png'
   const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase()
 
   return (
-        <div className="conference-nametag" ref={badgeRef}>
+        <div className="conference-nametag" ref={badgeRef} style={brandStyle}>
           <div className="conference-nametag-brand">
-            <img src={portalPath('/assets/images/lifetech-logo.png')} alt="" />
-            <span>LifeTech</span>
+            <img src={logo.startsWith('/') ? portalPath(logo) : logo} alt="" />
+            <div className="conference-nametag-lockup">
+              <span>{branding?.name || 'LifeTech'}</span>
+              <small>{branding?.tagline || 'Health × Medicine × Biotech'}</small>
+            </div>
           </div>
           <div className="conference-nametag-person">
             <div className="conference-nametag-avatar">
@@ -33,7 +45,6 @@ export function NametagCard({ name, avatarUrl, publicPageUrl, badgeRef }: Props 
             <strong className="conference-nametag-name">{name}</strong>
           </div>
           <div className="conference-nametag-footer">
-            <span>Connect with me</span>
             {qrSrc ? <img className="conference-nametag-qr" src={qrSrc} alt={`QR code linking to ${name}'s public page`} /> : <span className="conference-nametag-pending">Public page needed for QR code</span>}
           </div>
         </div>
