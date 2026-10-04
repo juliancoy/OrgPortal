@@ -1,0 +1,12 @@
+.inline-profile-field { display: grid; gap: .5rem; width: 100%; min-width: 0; text-align: left; }
+.inline-profile-field + .inline-profile-field { margin-top: .75rem; }
+.inline-profile-field form, .inline-profile-field fieldset { display: grid; gap: .5rem; min-width: 0; }
+.inline-profile-field fieldset { padding: 0; margin: 0; border: 0; }
+.inline-profile-field label { font-weight: 700; }
+.inline-profile-field input, .inline-profile-field textarea { width: 100%; box-sizing: border-box; }
+.inline-profile-value { overflow-wrap: anywhere; min-width: 0; }
+.inline-profile-edit { justify-self: start; }
+.inline-profile-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+.inline-profile-contacts { display: grid; gap: .75rem; padding: 1rem 0; text-align: left; }
+.profile-photo-inline { padding: 0; }
+.profile-photo-inline .profile-public-photo-card { margin: 0; }

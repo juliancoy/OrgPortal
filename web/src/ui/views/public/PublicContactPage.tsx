@@ -1,9 +1,9 @@
+import { BioMarkdown } from '../../components/profile/BioMarkdown'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { Pencil } from 'lucide-react'
 import { useAuth } from '../../../app/AppProviders'
 import { NativeChatApi } from '../../../chat/nativeChatApi'
-import { pidpAppLoginUrl } from '../../../config/pidp'
+import { pidpAppLoginUrl, pidpUrl } from '../../../config/pidp'
 import { portalPath, publicProfileUrl } from '../../../config/portalBase'
 import { refreshRuntimeTokenFromSession } from '../../../infrastructure/auth/sessionToken'
 import { toUserFacingErrorMessage } from '../../../infrastructure/http/userFacingError'
@@ -12,6 +12,8 @@ import { setSeoMeta } from '../../utils/seo'
 import { createVCard, vCardFileName } from '../../utils/vcard'
 import { HiddenCarouselImages } from '../../components/media/HiddenCarouselImages'
 import { UserProfilePage } from '../users/UserProfilePage'
+import { InlineProfileField } from '../../components/profile/InlineProfileField'
+import { ConferenceNametag } from '../../components/ConferenceNametag'
 
 const ORG_API_BASE = '/api/org'
 
@@ -94,7 +96,7 @@ type PublicContactPageProps = {
 }
 
 export function PublicContactPage({ self = false }: PublicContactPageProps = {}) {
-  const { token, user } = useAuth()
+  const { token, user, setUser } = useAuth()
   const { slug } = useParams()
   const navigate = useNavigate()
   const [page, setPage] = useState<ContactPage | null>(null)
@@ -104,7 +106,6 @@ export function PublicContactPage({ self = false }: PublicContactPageProps = {})
   const [messageDraft, setMessageDraft] = useState('')
   const [messageStatus, setMessageStatus] = useState('')
   const [isSendingMessage, setIsSendingMessage] = useState(false)
-  const [editingPage, setEditingPage] = useState(false)
 
   const chatApi = useMemo(
     () =>
@@ -176,10 +177,6 @@ export function PublicContactPage({ self = false }: PublicContactPageProps = {})
       })
   }, [self, slug, token])
 
-  useEffect(() => {
-    setEditingPage(false)
-  }, [self, slug])
-
   const qrSvg = useMemo(() => {
     const shareUrl = publicProfileUrl(page?.slug)
     if (!shareUrl) return null
@@ -244,13 +241,35 @@ export function PublicContactPage({ self = false }: PublicContactPageProps = {})
       })
   }
 
-  function openPageEditor() {
-    setEditingPage(true)
-    window.requestAnimationFrame(() => {
-      const editor = document.getElementById('profile-editor')
-      editor?.scrollIntoView({ block: 'start' })
-      editor?.focus({ preventScroll: true })
+  async function saveField(field: keyof ContactPage, value: unknown) {
+    if (!isOwner || !token) throw new Error('Sign in to edit your own profile.')
+    const response = await fetch(orgUrl('/api/network/contact/me'), {
+      method: 'PUT', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [field]: value }),
     })
+    if (!response.ok) throw new Error(await responseError(response, 'Could not save this field.'))
+    const updated = await response.json() as ContactPage
+    setPage(current => current ? { ...current, [field]: updated[field] } : current)
+  }
+
+  async function saveName(value: string) {
+    if (!isOwner || !token || !user) throw new Error('Sign in to edit your own profile.')
+    const name = value.trim()
+    if (!name) throw new Error('Enter your name.')
+    const [firstName, ...rest] = name.split(/\s+/)
+    const response = await fetch(pidpUrl('/auth/me'), {
+      method: 'PUT', credentials: 'include',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ full_name: name, display_name: name, first_name: firstName, last_name: rest.join(' ') }),
+    })
+    if (!response.ok) throw new Error(await responseError(response, 'Could not save your name.'))
+    setUser({ ...user, fullName: name, displayName: name, firstName, lastName: rest.join(' ') })
+    const contactResponse = await fetch(orgUrl('/api/network/contact/me'), {
+      method: 'PUT', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: '{}',
+    })
+    if (!contactResponse.ok) throw new Error('Name updated, but the public page could not be updated. Please try again.')
+    const updated = await contactResponse.json() as ContactPage
+    setPage(current => current ? { ...current, user_name: updated.user_name } : current)
   }
 
   async function sendMessage() {
@@ -291,16 +310,22 @@ export function PublicContactPage({ self = false }: PublicContactPageProps = {})
     <section className="public-id-page">
       <article className="public-id-card" aria-label={`${page.user_name} public ID`}>
         <div className="public-id-identity">
-          {page.photo_url ? (
+          {isOwner ? <UserProfilePage photoOnly photoUrl={page.photo_url || ''} embedded onPhotoSaved={url => setPage(current => current ? { ...current, photo_url: url || null } : current)} /> : page.photo_url ? (
             <img className="public-id-avatar" src={page.photo_url} alt={page.user_name} />
           ) : (
             <div className="public-id-avatar public-id-avatar-fallback" aria-hidden="true">
               {page.user_name.slice(0, 1).toUpperCase()}
             </div>
           )}
-          <h1 className="public-id-name">{page.user_name}</h1>
-          {page.headline ? <p className="public-id-headline">{page.headline}</p> : null}
-          {page.bio ? <p className="public-id-bio">{page.bio}</p> : null}
+          {isOwner ? <>
+            <InlineProfileField label="Name" value={page.user_name} onSave={saveName}><h1 className="public-id-name">{page.user_name}</h1></InlineProfileField>
+            <InlineProfileField label="Headline" value={page.headline || ''} onSave={value => saveField('headline', value || null)}>{page.headline && <p className="public-id-headline">{page.headline}</p>}</InlineProfileField>
+            <InlineProfileField label="Bio" markdown value={page.bio || ''} onSave={value => saveField('bio', value || null)}>{page.bio && <BioMarkdown className="public-id-bio" value={page.bio} />}</InlineProfileField>
+          </> : <>
+            <h1 className="public-id-name">{page.user_name}</h1>
+            {page.headline ? <p className="public-id-headline">{page.headline}</p> : null}
+            {page.bio ? <BioMarkdown className="public-id-bio" value={page.bio} /> : null}
+          </>}
         </div>
         <button type="button" className="public-id-download-card" onClick={downloadVCard}>
           <span className="public-id-download-icon" aria-hidden="true">
@@ -340,22 +365,32 @@ export function PublicContactPage({ self = false }: PublicContactPageProps = {})
               <span>Message</span>
             </a>
           )}
-          {isOwner ? (
-            <div className="public-id-owner-controls" aria-label="Profile owner controls">
-              <button type="button" className="btn-secondary" onClick={openPageEditor} aria-expanded={editingPage}>
-                <Pencil size={17} aria-hidden="true" />
-                Edit page
-              </button>
-            </div>
-          ) : null}
         </div>
-        {isOwner && !page.enabled ? (
-          <p className="muted public-id-owner-note">
-            This profile is not visible to the public. Go to Edit Profile to enable it.
-          </p>
-        ) : null}
 
-        {contactLinks.length > 0 ? (
+        {isOwner && <div className="inline-profile-contacts">
+          <InlineProfileField label="Profile visibility" options={[{ value: 'public', label: 'Public' }, { value: 'private', label: 'Private' }]} value={page.enabled ? 'public' : 'private'} onSave={value => {
+            if (!['public', 'private'].includes(value.trim().toLowerCase())) return Promise.reject(new Error('Enter public or private.'))
+            return saveField('enabled', value.trim().toLowerCase() === 'public')
+          }}><span>Profile is {page.enabled ? 'public' : 'private'}</span></InlineProfileField>
+          <InlineProfileField label="Profile URL" value={page.slug} onSave={value => value.trim() ? saveField('slug', value.trim()) : Promise.reject(new Error('Enter a profile URL name.'))}><span>{shareUrl}</span></InlineProfileField>
+          {([
+            ['email_public', 'Public email', 'email'], ['phone_public', 'Public phone', 'tel'],
+            ['website_url', 'Website', 'url'], ['linkedin_url', 'LinkedIn', 'url'], ['github_url', 'GitHub', 'url'], ['x_url', 'X', 'url'],
+          ] as const).map(([field, label, type]) => <InlineProfileField key={field} label={label} type={type} value={page[field] || ''} onSave={value => saveField(field, value.trim() || null)}>{page[field] && <span>{label}: {page[field]}</span>}</InlineProfileField>)}
+          <InlineProfileField label="Additional links" multiline value={(page.links || []).map(link => `${link.label}|${link.url}`).join('\n')} onSave={value => {
+            const links = value.split('\n').filter(line => line.trim()).map(line => {
+              const separator = line.indexOf('|')
+              const label = line.slice(0, separator).trim()
+              const url = safeLinkUrl(line.slice(separator + 1).trim())
+              if (separator < 1 || !label || !url) throw new Error('Use one Label|https://example.com link per line.')
+              return { label, url }
+            })
+            return saveField('links', links)
+          }}>{page.links?.length ? <span>{page.links.length} additional links</span> : null}</InlineProfileField>
+        </div>}
+
+
+        {!isOwner && contactLinks.length > 0 ? (
           <div className="public-id-link-list" aria-label="Contact links">
             {contactLinks.map((link) => {
               const key = `${link.label}-${link.url}`
@@ -419,9 +454,10 @@ export function PublicContactPage({ self = false }: PublicContactPageProps = {})
 
       {self && user ? <HiddenCarouselImages key={user.id} /> : null}
 
-      {isOwner && editingPage ? (
-        <UserProfilePage embedded publicPageUrl={shareUrl} onClose={() => setEditingPage(false)} />
-      ) : null}
+      {isOwner && <>
+        <ConferenceNametag name={page.user_name} avatarUrl={page.photo_url || ''} publicPageUrl={shareUrl} />
+        <UserProfilePage detailsOnly embedded />
+      </>}
 
       {events.length > 0 ? (
         <section className="public-id-events">

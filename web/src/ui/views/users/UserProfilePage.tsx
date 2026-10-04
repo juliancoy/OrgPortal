@@ -5,6 +5,7 @@ import { PIDP_BASE_URL, pidpUrl } from '../../../config/pidp'
 import { publicProfileUrl } from '../../../config/portalBase'
 import { resolveSignedS3UploadUrl } from '../../../infrastructure/auth/avatarUpload'
 import { ContactSettingsPage } from '../ContactSettingsPage'
+import { InlineProfileField } from '../../components/profile/InlineProfileField'
 import { ConferenceNametag } from '../../components/ConferenceNametag'
 
 const ORG_API_BASE = '/api/org'
@@ -73,16 +74,20 @@ function splitFullName(value: string) {
 
 type UserProfilePageProps = {
   embedded?: boolean
+  photoOnly?: boolean
+  detailsOnly?: boolean
+  photoUrl?: string
+  onPhotoSaved?: (url: string) => void
   publicPageUrl?: string | null
   onClose?: () => void
 }
 
-export function UserProfilePage({ embedded = false, publicPageUrl: publicPageUrlProp, onClose }: UserProfilePageProps = {}) {
+export function UserProfilePage({ embedded = false, photoOnly = false, detailsOnly = false, photoUrl, onPhotoSaved, publicPageUrl: publicPageUrlProp, onClose }: UserProfilePageProps = {}) {
   const { user, setUser, token, logout } = useAuth()
   const [fullName, setFullName] = useState('')
   const [birthDate, setBirthDate] = useState('')
   const [bio, setBio] = useState('Interested in local policy and civic engagement.')
-  const [avatarUrl, setAvatarUrl] = useState('')
+  const [avatarUrl, setAvatarUrl] = useState(photoUrl || '')
   const [addressLine1, setAddressLine1] = useState('')
   const [addressLine2, setAddressLine2] = useState('')
   const [city, setCity] = useState('')
@@ -459,7 +464,7 @@ export function UserProfilePage({ embedded = false, publicPageUrl: publicPageUrl
         Click the image to replace it. Changes save after you apply the crop.
       </p>
       {avatarUrl ? (
-        <button type="button" onClick={() => setAvatarUrl('')}>
+        <button type="button" onClick={() => void persistProfilePhoto('').catch(error => setStatus(error instanceof Error ? error.message : 'Could not remove photo.'))}>
           Remove
         </button>
       ) : null}
@@ -473,10 +478,6 @@ export function UserProfilePage({ embedded = false, publicPageUrl: publicPageUrl
       return
     }
 
-    const currentFullName = fullName.trim()
-    const currentDisplayName = currentFullName || 'Anonymous'
-    const nameParts = splitFullName(currentFullName)
-
     const resp = await fetch(pidpUrl('/auth/me'), {
       method: 'PUT',
       credentials: 'include',
@@ -484,25 +485,7 @@ export function UserProfilePage({ embedded = false, publicPageUrl: publicPageUrl
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({
-        full_name: currentFullName || null,
-        display_name: currentDisplayName,
-        bio,
-        avatar_url: nextAvatarUrl || null,
-        first_name: nameParts.firstName || null,
-        last_name: nameParts.lastName || null,
-        birth_date: birthDate || null,
-        address_line1: addressLine1,
-        address_line2: addressLine2,
-        city,
-        state,
-        zip,
-        maslow_now: maslowNow,
-        maslow_future: maslowFuture,
-        is_running_for_office: isRunningForOffice,
-        office_title: isRunningForOffice ? officeTitle : null,
-        campaign_statement: isRunningForOffice ? campaignStatement : null,
-      }),
+      body: JSON.stringify({ avatar_url: nextAvatarUrl || null }),
     })
     if (!resp.ok) {
       if (resp.status === 401) {
@@ -512,9 +495,9 @@ export function UserProfilePage({ embedded = false, publicPageUrl: publicPageUrl
       const text = await resp.text().catch(() => '')
       throw new Error(text || `Photo save failed (${resp.status})`)
     }
-    const data = await resp.json()
+    await resp.json()
 
-    await fetch(orgUrl('/api/network/contact/me'), {
+    const contactResponse = await fetch(orgUrl('/api/network/contact/me'), {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -523,27 +506,58 @@ export function UserProfilePage({ embedded = false, publicPageUrl: publicPageUrl
       body: JSON.stringify({
         photo_url: nextAvatarUrl || null,
       }),
-    }).catch(() => null)
+    })
+    if (!contactResponse.ok) throw new Error('Photo updated, but the public page could not be updated. Please try again.')
 
     setAvatarUrl(nextAvatarUrl)
+    onPhotoSaved?.(nextAvatarUrl)
     window.setTimeout(() => setStatus('Photo saved.'), 0)
     if (user) {
       setUser({
         ...user,
-        displayName: currentDisplayName,
-        fullName: data.full_name ?? user.fullName,
-        firstName: nameParts.firstName,
-        lastName: nameParts.lastName,
         avatarUrl: nextAvatarUrl,
       })
     }
   }
 
+  async function saveIdentityField(field: string, value: unknown) {
+    if (!token) throw new Error('Sign in to save your profile.')
+    const response = await fetch(pidpUrl('/auth/me'), {
+      method: 'PUT', credentials: 'include',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [field]: value }),
+    })
+    if (!response.ok) throw new Error('Could not save this field. Please try again.')
+  }
+
   const publicPageUrl = publicPageUrlProp ?? loadedPublicPageUrl
 
   return (
-    <section id="profile-editor" className={`id-page profile-page${embedded ? ' profile-page-embedded' : ''}`} tabIndex={-1}>
-      <article className="id-card profile-editor-card" aria-label="Edit Code Collective ID">
+    <section id={photoOnly ? undefined : detailsOnly ? 'profile-personal-details' : 'profile-editor'} className={`id-page profile-page${embedded ? ' profile-page-embedded' : ''}`} tabIndex={-1}>
+      {photoOnly ? <div className="profile-photo-inline">{profileImageEditor}{status && <p role="status">{status}</p>}</div> : detailsOnly ? <section className="id-qr-card profile-settings-section">
+        <h2>Personal details</h2>
+        <p className="muted">These details are separate from your public contact card.</p>
+        {([
+          ['address_line1', 'Address line 1', addressLine1, setAddressLine1],
+          ['address_line2', 'Address line 2', addressLine2, setAddressLine2],
+          ['city', 'City', city, setCity], ['state', 'State', state, setState], ['zip', 'ZIP code', zip, setZip],
+        ] as const).map(([field, label, value, update]) => <InlineProfileField key={field} label={label} value={value} onSave={async next => { await saveIdentityField(field, next); update(next) }}>{value && <span>{label}: {value}</span>}</InlineProfileField>)}
+        <h3>Maslow satisfaction</h3>
+        {(['now', 'future'] as const).map(period => <div key={period}>
+          <h4>{period === 'now' ? 'Now' : 'Future'}</h4>
+          {MASLOW_NEEDS.map(need => {
+            const ratings = period === 'now' ? maslowNow : maslowFuture
+            return <InlineProfileField key={need.key} label={`${need.label} (${period})`} type="number" value={String(ratings[need.key])} onSave={async next => {
+              const rating = Number(next)
+              if (!Number.isInteger(rating) || rating < 1 || rating > 5) throw new Error('Enter a rating from 1 to 5.')
+              const updated = { ...ratings, [need.key]: rating }
+              await saveIdentityField(`maslow_${period}`, updated)
+              if (period === 'now') setMaslowNow(updated); else setMaslowFuture(updated)
+            }}><span>{need.label}: {ratings[need.key]} / 5</span></InlineProfileField>
+          })}
+        </div>)}
+        <p className="muted">User UUID: <code>{user?.id}</code></p>
+      </section> : <article className="id-card profile-editor-card" aria-label="Edit Code Collective ID">
         {publicPageUrl || onClose ? (
           <div className="id-public-page-action profile-top-actions">
             {publicPageUrl ? (
@@ -752,7 +766,7 @@ export function UserProfilePage({ embedded = false, publicPageUrl: publicPageUrl
           <code style={{ wordBreak: 'break-all' }}>{user?.id || 'Unavailable'}</code>
         </div>
       </section>
-      </article>
+      </article>}
 
       {editorOpen ? (
         <div
