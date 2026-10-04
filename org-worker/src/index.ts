@@ -3055,7 +3055,8 @@ app.get("/api/network/orgs/public/:slug", async (c) => {
 });
 
 app.get("/api/network/orgs/public/:slug/support", async (c) => {
-  return c.json(await organizationSupport(c.env.DB, c.req.param("slug")));
+  try { return c.json(await organizationSupport(c.env.DB, c.req.param("slug"))); }
+  catch (error) { return eventErrorResponse(error, c.env, c.req.raw); }
 });
 
 app.post("/api/network/orgs/:organizationId/support/:operation", async (c) => {
