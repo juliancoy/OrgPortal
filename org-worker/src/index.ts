@@ -1,3 +1,4 @@
+import { calendarCollectionOptions, addCalendarCollections } from './calendarCollections';
 import { governanceDocumentRoutes, executeDocumentMotion, documentMotionDetail } from './governanceDocuments';
 import { photoTagRoutes } from './photoTags';
 import { venueVoteRoutes } from './venueVotes';
@@ -411,6 +412,8 @@ type UbiTickSummary = {
 };
 
 type CalendarIngestPayload = {
+  organization_slugs?: string[];
+  preserve_existing?: boolean;
   organizations?: Record<string, unknown>[];
   events?: Record<string, unknown>[];
 };
@@ -2971,6 +2974,7 @@ app.post("/api/network/ingest/calendar", async (c) => {
   const orgs = Array.isArray(payload.organizations) ? payload.organizations : [];
   const events = Array.isArray(payload.events) ? payload.events : [];
 
+  const collections = await calendarCollectionOptions(c.env.DB, payload);
   let insertedOrUpdatedOrgs = 0;
   let insertedOrUpdatedEvents = 0;
   for (const raw of orgs) {
@@ -2980,8 +2984,14 @@ app.post("/api/network/ingest/calendar", async (c) => {
   }
   for (const raw of events) {
     if (!raw || typeof raw !== "object") continue;
-    const row = await upsertEvent(c.env.DB, raw);
-    if (row) insertedOrUpdatedEvents += 1;
+    const existing = collections.preserveExisting && typeof raw.ingest_key === 'string'
+      ? await c.env.DB.prepare('SELECT * FROM events WHERE ingest_key = ?').bind(raw.ingest_key).first<EventRow>()
+      : null;
+    const row = existing || await upsertEvent(c.env.DB, raw);
+    if (row) {
+      await addCalendarCollections(c.env.DB, row.id, collections.organizationIds, existing ? raw.tags : undefined);
+      insertedOrUpdatedEvents += 1;
+    }
   }
 
   return c.json({

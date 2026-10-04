@@ -396,3 +396,15 @@ serves the actual site Worker and built `.cloudflare/site` assets so tenant root
 navigation is tested. Use Selenium Chrome on port 4446. Browser acceptance tests
 claim/withdraw/reclaim/review, private history, exact opening balances, logout,
 community isolation, and 320px/390px layouts. Test identities and data are synthetic.
+
+### Adding imported events to organization collections
+
+The existing ingest-token-authorized calendar endpoint accepts optional
+`organization_slugs` (up to 20 existing organization slugs) and
+`preserve_existing: true`. Organization slugs are resolved before importing the
+batch. Events are linked through the existing flat `event_organizations` table;
+their actual host organization and metadata are retained. Repeated associations
+are idempotent. When preservation is enabled and an ingest key already exists,
+only new tags and collection associations are added; other event fields remain
+as recorded. This endpoint is an operator ingestion interface, not a substitute
+for member-authorized event administration or MCP preview/apply operations.

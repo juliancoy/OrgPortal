@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from city_source_taxonomy import filter_excluded_org_tags
+from city_source_taxonomy import normalize_tags as normalize_source_tags
 
 DEFAULT_CITIES = ("baltimore", "dc", "hawaii", "pittsburgh", "philadelphia", "virtual", "westvirginia")
 DEFAULT_ORG_CHUNK_SIZE = 40
@@ -89,7 +89,7 @@ def normalize_tags(raw_tags: Any, city: str) -> List[str]:
 
 
 def exclude_tags(tags: Iterable[str], raw_excluded_tags: Any) -> List[str]:
-    return sorted(set(filter_excluded_org_tags(tags, raw_excluded_tags)))
+    return sorted(set(normalize_source_tags(tags)))
 
 
 def render_location(raw: Any) -> Optional[str]:
