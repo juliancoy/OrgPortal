@@ -11,6 +11,7 @@ export async function printNametags(element: HTMLElement, styles: string, title:
     doc.title = title
     doc.body.append(element.cloneNode(true))
     await Promise.all(Array.from(doc.images).map(img => img.decode().catch(() => undefined)))
+    await doc.fonts.ready
     const printWindow = frame.contentWindow!
     printWindow.addEventListener('afterprint', () => frame.remove(), { once: true })
     printWindow.focus()
