@@ -1,3 +1,4 @@
+import { ensureOrganizationRoom } from './organizationRooms';
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { buildMetadata } from "./generated/buildMetadata.ts";
@@ -238,8 +239,20 @@ function selectedWebSocketProtocol(request: Request) {
     .find((item) => item.startsWith("pidp."));
 }
 
-async function requireMember(db: D1Database, conversationId: string, userId: string) {
-  const row = await db
+async function organizationRole(env: Env, orgId: string, userId: string): Promise<string | null> {
+  if (!env.CONTACTS_DB) fail(503, "Organization directory binding is not configured");
+  const member = await env.CONTACTS_DB.prepare(
+    "SELECT role FROM organization_memberships WHERE organization_id = ? AND user_id = ? AND status = 'active'",
+  ).bind(orgId, userId).first<{ role: string }>();
+  return member?.role || null;
+}
+
+async function requireMember(env: Env, conversationId: string, userId: string) {
+  const room = await conversation(env.DB, conversationId);
+  if (room.kind === "org_room" && (!room.org_id || !await organizationRole(env, room.org_id, userId))) {
+    fail(403, "Active organization membership required");
+  }
+  const row = await env.DB
     .prepare(
       `SELECT * FROM chat_conversation_members
        WHERE conversation_id = ? AND user_id = ? AND state = 'active'`,
@@ -584,7 +597,10 @@ app.get("/api/network/chat/conversations", async (c) => {
     .bind(user.id, user.id)
     .all<ConversationRow>();
 
-  const conversations = rows.results || [];
+  const accessible = await Promise.all((rows.results || []).map(async (room) =>
+    room.kind !== "org_room" || (room.org_id && await organizationRole(c.env, room.org_id, user.id)) ? room : null,
+  ));
+  const conversations = accessible.filter((room): room is ConversationRow => room !== null);
   const membersByConversation = await membersForConversations(
     c.env.DB,
     conversations.map((conversation) => conversation.id),
@@ -687,6 +703,37 @@ app.post("/api/network/chat/dm", async (c) => {
   return c.json({ conversation: mapConversation(row!, members, avatarUrls) }, existing ? 200 : 201);
 });
 
+app.post("/api/network/chat/org-room", async (c) => {
+  const user = c.get("user");
+  const payload = await readJsonObject(c.req.raw);
+  const slug = cleanString(payload.organization_slug, 200);
+  if (!slug) fail(400, "organization_slug is required");
+  if (!c.env.CONTACTS_DB) fail(503, "Organization directory binding is not configured");
+  const org = await c.env.CONTACTS_DB.prepare("SELECT id, name, slug FROM organizations WHERE slug = ?")
+    .bind(slug).first<{ id: string; name: string; slug: string }>();
+  if (!org) fail(404, "Organization not found");
+  const role = await organizationRole(c.env, org.id, user.id);
+  if (!role) fail(403, "Active organization membership required");
+
+  const { id: conversationId } = await ensureOrganizationRoom(c.env, org.id);
+  const createdAt = nowIso();
+  const room = await conversation(c.env.DB, conversationId);
+  const existingMember = await c.env.DB.prepare(
+    "SELECT * FROM chat_conversation_members WHERE conversation_id = ? AND user_id = ?",
+  ).bind(conversationId, user.id).first<MemberRow>();
+  if (existingMember?.state === "blocked") fail(403, "You have been blocked from this conversation");
+  await c.env.DB.prepare(
+    `INSERT INTO chat_conversation_members
+     (conversation_id, user_id, user_name, role, state, joined_at)
+     VALUES (?, ?, ?, ?, 'active', ?)
+     ON CONFLICT(conversation_id, user_id) DO UPDATE SET
+       user_name = excluded.user_name, role = excluded.role, state = 'active'`,
+  ).bind(conversationId, user.id, userName(user), role === "administrator" ? "admin" : role, createdAt).run();
+  const members = await membersForConversation(c.env.DB, conversationId);
+  const avatarUrls = await avatarUrlsForUsers(c.env, members.map((member) => member.user_id));
+  return c.json({ conversation: mapConversation(room, members, avatarUrls) });
+});
+
 app.post("/api/network/chat/event-room", async (c) => {
   const user = c.get("user");
   const payload = await readJsonObject(c.req.raw);
@@ -735,7 +782,7 @@ app.post("/api/network/chat/event-room", async (c) => {
 app.get("/api/network/chat/conversations/:conversationId", async (c) => {
   const user = c.get("user");
   const conversationId = c.req.param("conversationId");
-  await requireMember(c.env.DB, conversationId, user.id);
+  await requireMember(c.env, conversationId, user.id);
   const row = await conversation(c.env.DB, conversationId);
   const members = await membersForConversation(c.env.DB, conversationId);
   const avatarUrls = await avatarUrlsForUsers(
@@ -748,7 +795,7 @@ app.get("/api/network/chat/conversations/:conversationId", async (c) => {
 app.get("/api/network/chat/conversations/:conversationId/messages", async (c) => {
   const user = c.get("user");
   const conversationId = c.req.param("conversationId");
-  await requireMember(c.env.DB, conversationId, user.id);
+  await requireMember(c.env, conversationId, user.id);
 
   const limit = Math.min(Math.max(Number(c.req.query("limit") || 50), 1), 100);
   const afterSequence = Math.max(Number(c.req.query("afterSequence") || c.req.query("after_sequence") || 0), 0);
@@ -780,7 +827,7 @@ app.get("/api/network/chat/conversations/:conversationId/messages", async (c) =>
 app.get("/api/network/chat/conversations/:conversationId/sync", async (c) => {
   const user = c.get("user");
   const conversationId = c.req.param("conversationId");
-  await requireMember(c.env.DB, conversationId, user.id);
+  await requireMember(c.env, conversationId, user.id);
   const afterSequence = Math.max(Number(c.req.query("afterSequence") || c.req.query("after_sequence") || 0), 0);
   const limit = Math.min(Math.max(Number(c.req.query("limit") || 100), 1), 250);
 
@@ -836,7 +883,7 @@ app.get("/api/network/chat/conversations/:conversationId/sync", async (c) => {
 app.post("/api/network/chat/conversations/:conversationId/messages", async (c) => {
   const user = c.get("user");
   const conversationId = c.req.param("conversationId");
-  await requireMember(c.env.DB, conversationId, user.id);
+  await requireMember(c.env, conversationId, user.id);
   await conversation(c.env.DB, conversationId);
 
   const payload = await readJsonObject(c.req.raw);
@@ -893,7 +940,7 @@ app.post("/api/network/chat/conversations/:conversationId/messages/:messageId/re
   const user = c.get("user");
   const conversationId = c.req.param("conversationId");
   const messageId = c.req.param("messageId");
-  await requireMember(c.env.DB, conversationId, user.id);
+  await requireMember(c.env, conversationId, user.id);
   await conversation(c.env.DB, conversationId);
   const message = await c.env.DB.prepare(
     "SELECT * FROM chat_messages WHERE id = ? AND conversation_id = ? AND deleted_at IS NULL AND moderation_state = 'visible'",
@@ -936,7 +983,7 @@ app.post("/api/network/chat/conversations/:conversationId/messages/:messageId/re
 app.post("/api/network/chat/conversations/:conversationId/read", async (c) => {
   const user = c.get("user");
   const conversationId = c.req.param("conversationId");
-  await requireMember(c.env.DB, conversationId, user.id);
+  await requireMember(c.env, conversationId, user.id);
   const payload = await readJsonObject(c.req.raw);
   const messageId = cleanNullableString(payload.message_id, 120);
   const readAt = nowIso();
@@ -974,7 +1021,7 @@ app.post("/api/network/chat/conversations/:conversationId/read", async (c) => {
 app.get("/api/network/chat/conversations/:conversationId/socket", async (c) => {
   const user = c.get("user");
   const conversationId = c.req.param("conversationId");
-  await requireMember(c.env.DB, conversationId, user.id);
+  await requireMember(c.env, conversationId, user.id);
   if (!c.env.CHAT_ROOMS) fail(503, "Realtime chat is not configured");
 
   const id = c.env.CHAT_ROOMS.idFromName(conversationId);

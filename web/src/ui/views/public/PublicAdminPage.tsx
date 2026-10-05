@@ -1,3 +1,4 @@
+import { EmbeddedOrganizationChat } from '../../components/EmbeddedOrganizationChat'
 import { resolveOrganizationView } from '../../hooks/useOrganizationView'
 import { OrganizationPortalSections } from '../../components/OrganizationPortalSections'
 import { OrganizationBrandGuide } from '../../components/OrganizationBrandGuide'
@@ -1929,7 +1930,7 @@ export function PublicAdminPage() {
         </div>
         {showChatColumn ? (
         <aside className="portal-org-chat-column">
-          <div className="portal-card" style={{ display: 'grid', gap: '0.55rem' }}>
+          {isOrganizerView ? <EmbeddedOrganizationChat id={org.id} slug={org.slug} name={org.name} /> : <div className="portal-card" style={{ display: 'grid', gap: '0.55rem' }}>
             <h2 style={{ margin: 0, fontSize: '1rem' }}>Public Chat</h2>
             {chatFeedLoading && !publicChatFeed?.rooms?.length ? (
               <p className="muted" style={{ margin: 0 }}>
@@ -2221,6 +2222,7 @@ export function PublicAdminPage() {
               </p>
             ) : null}
           </div>
+          }
         </aside>
         ) : null}
       </div>

@@ -55,6 +55,8 @@ class FakeStmt {
 }
 
 class FakeD1 {
+  organizations: Row[] = [];
+  organizationMemberships: Row[] = [];
   conversations: Row[] = [];
   members: Row[] = [];
   messages: Row[] = [];
@@ -69,6 +71,18 @@ class FakeD1 {
   }
 
   first<T>(sql: string, params: unknown[]): T | null {
+    if (sql.includes("FROM organizations WHERE id = ?")) {
+      return (this.organizations.find((row) => row.id === params[0]) as T) || null;
+    }
+    if (sql.includes("FROM organizations WHERE slug = ?")) {
+      return (this.organizations.find((row) => row.slug === params[0]) as T) || null;
+    }
+    if (sql.includes("FROM organization_memberships")) {
+      return (this.organizationMemberships.find((row) => row.organization_id === params[0] && row.user_id === params[1] && row.status === "active") as T) || null;
+    }
+    if (sql.includes("FROM chat_conversation_members") && !sql.includes("state = 'active'")) {
+      return (this.members.find((row) => row.conversation_id === params[0] && row.user_id === params[1]) as T) || null;
+    }
     if (sql.includes("FROM user_contact_pages WHERE user_id = ?")) {
       return (this.contacts.find((row) => row.user_id === params[0]) as T) || null;
     }
@@ -202,7 +216,13 @@ class FakeD1 {
       if (existing) existing.last_seen_at = params[1];
       else this.presence.push({ user_id: params[0], last_seen_at: params[1] });
     }
-    if (sql.includes("VALUES (?, 'event_room'")) {
+    if (sql.includes("VALUES (?, 'org_room'")) {
+      if (!this.conversations.some((row) => row.id === params[0])) this.conversations.push({
+        id: params[0], kind: "org_room", title: params[1], slug: params[2],
+        created_by_user_id: params[3], org_id: params[4], created_at: params[5], updated_at: params[6],
+        archived_at: null,
+      });
+    } else if (sql.includes("VALUES (?, 'event_room'")) {
       this.conversations.push({
         id: params[0],
         kind: "event_room",
@@ -799,4 +819,34 @@ test("read receipts update membership state", async () => {
   assert.equal(res.status, 200);
   assert.equal(db.members[0].last_read_message_id, "message-1");
   assert.equal(db.receipts.length, 1);
+});
+
+
+test("organization chat shares one room and enforces current organization membership", async () => {
+  const db = new FakeD1();
+  db.organizations.push({ id: "lifetech-id", name: "LifeTech", slug: "lifetech" });
+  const join = () => app.request("https://chat.example.test/api/network/chat/org-room", authedInit({ organization_slug: "lifetech" }), env(db));
+  assert.equal((await join()).status, 403);
+  assert.equal(db.conversations.length, 0);
+  db.organizationMemberships.push({ organization_id: "lifetech-id", user_id: "user-a", role: "member", status: "active" });
+  const response = await join();
+  assert.equal(response.status, 200);
+  const { conversation } = await response.json() as { conversation: { id: string; title: string; kind: string } };
+  assert.equal(conversation.title, "LifeTech Chat");
+  assert.equal(conversation.kind, "org_room");
+  assert.equal((await join()).status, 200);
+  assert.equal(db.conversations.length, 1);
+  const path = `https://chat.example.test/api/network/chat/conversations/${conversation.id}/messages`;
+  assert.equal((await app.request(path, authedInit({ body: "Hello LifeTech", client_message_id: "org-msg" }), env(db))).status, 201);
+  const messages = await app.request(path, authedInit(), env(db));
+  assert.equal(messages.status, 200);
+  assert.equal((await messages.json() as { messages: { body: string }[] }).messages[0].body, "Hello LifeTech");
+  db.members[0].state = "blocked";
+  assert.equal((await join()).status, 403);
+  db.members[0].state = "active";
+  db.organizationMemberships[0].status = "inactive";
+  assert.equal((await app.request(path, authedInit(), env(db))).status, 403);
+  assert.equal((await app.request(path, authedInit({ body: "Should not send" }), env(db))).status, 403);
+  const listed = await app.request("https://chat.example.test/api/network/chat/conversations", authedInit(), env(db));
+  assert.deepEqual((await listed.json() as { conversations: unknown[] }).conversations, []);
 });
