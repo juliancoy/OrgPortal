@@ -1,3 +1,4 @@
+import { resolveOrganizationView } from '../../hooks/useOrganizationView'
 import { OrganizationPortalSections } from '../../components/OrganizationPortalSections'
 import { OrganizationBrandGuide } from '../../components/OrganizationBrandGuide'
 import { getDomainTenant } from '../../../config/timebankCommunity'
@@ -280,6 +281,8 @@ export function PublicAdminPage() {
   const [generalActionPending, setGeneralActionPending] = useState(false)
   const hasExistingAdmins = admins.some((admin) => admin.role === 'administrator' || admin.role === 'owner')
   const canManageCurrentOrg = myAdminOrgs.some((item) => item.id === org?.id)
+  const organizationView = resolveOrganizationView(searchParams.get('view'), canManageCurrentOrg, membership?.status === 'active')
+  const isOrganizerView = canManageCurrentOrg && organizationView === 'organizers'
   const claimActionLabel = hasExistingAdmins ? 'Challenge Ownership' : 'Claim This Organization'
   const generalRoom = useMemo(
     () => (publicChatFeed?.rooms || []).find((room) => room.key === 'public_chat' || room.key === 'general') || null,
@@ -1276,7 +1279,7 @@ export function PublicAdminPage() {
   }
 
   const mergeCandidates = myAdminOrgs.filter((item) => item.id !== org.id)
-  const canEditOrgImage = canManageCurrentOrg && adminView
+  const canEditOrgImage = isOrganizerView && adminView
   const heroImageSource = org.image_url?.trim() || ORG_PLACEHOLDER_SRC
   const upcomingEvents = events
     .filter((event) => {
@@ -1312,7 +1315,7 @@ export function PublicAdminPage() {
         <div className="portal-org-main-column">
           <div className="portal-org-hero">
             <div className="portal-org-hero-copy">
-              <p className="tenant-home-eyebrow">Organization Profile</p>
+              <p className="tenant-home-eyebrow">{isOrganizerView ? 'Organization dashboard' : `${organizationView[0].toUpperCase()}${organizationView.slice(1)} view`}</p>
               <div className="portal-org-hero-header">
                 <h1>{org.name}</h1>
                 {canEditOrgImage ? (
@@ -1344,7 +1347,7 @@ export function PublicAdminPage() {
                     Website
                   </a>
                 ) : null}
-                {canManageCurrentOrg ? (
+                {isOrganizerView ? (
                   <button type="button" className="btn-secondary" onClick={openOrganizationEditor} aria-expanded={adminView}>
                     <Pencil size={17} aria-hidden="true" />
                     Edit page
@@ -1366,7 +1369,8 @@ export function PublicAdminPage() {
               />
             </button>
           </div>
-          <OrganizationTools />
+          {(organizationView === 'members' || isOrganizerView) && <OrganizationTools />}
+          {isOrganizerView && <>
           <OrganizationPortalSections
             name={org.name}
             features={portalConfig?.features ?? (getDomainTenant()?.home_org_slug === org.slug ? getDomainTenant()?.features : undefined) ?? ['directory', 'events', 'chat']}
@@ -1376,6 +1380,15 @@ export function PublicAdminPage() {
             : portalConfig?.slug_url
               ? <OrganizationBrandGuide href={`${portalConfig.slug_url.replace(/\/$/, '')}/branding`} />
               : null}
+          </>}
+          {organizationView !== 'organizers' && organizationView !== 'public' && <section className="portal-card" aria-label={`${organizationView} workspace`} style={{ display: 'grid', gap: '.6rem' }}>
+            <h2>{organizationView === 'members' ? 'Member workspace' : organizationView === 'volunteers' ? 'Volunteer workspace' : 'Attendee workspace'}</h2>
+            <p>{organizationView === 'members' ? 'Members actively participate in a team and can propose and discuss governance changes.' : organizationView === 'volunteers' ? 'Volunteers have helped with a group activity within the previous three months.' : 'Attendees have attended a group activity within the previous three months.'}</p>
+            <div className="portal-org-actions">
+              <Link className="btn-secondary" to="/org-events">Events and registration</Link>
+              {organizationView === 'members' && <Link className="btn-secondary" to="/chat">Messages</Link>}
+            </div>
+          </section>}
           {mergedFrom ? (
             <p className="muted" role="status" style={{ margin: 0 }}>
               Redirected from merged organization <code>{mergedFrom}</code>.
@@ -1642,7 +1655,7 @@ export function PublicAdminPage() {
           </div>
 
 
-          {canManageCurrentOrg && adminView ? (
+          {isOrganizerView && adminView ? (
             <div
               ref={organizationEditorRef}
               id="organization-page-editor"

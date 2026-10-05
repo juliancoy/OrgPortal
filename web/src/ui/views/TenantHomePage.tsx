@@ -1,6 +1,7 @@
+import { useOrganizationAccess, resolveOrganizationView } from '../hooks/useOrganizationView'
 import { useEffect, useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
 import { portalPath } from '../../config/portalBase'
 import { getActivePortalProfileConfig, portalProfilePath } from '../../config/portalFeatures'
@@ -81,6 +82,8 @@ function TenantHomeActions({ tenant }: { tenant: PortalTenant }) {
 export function TenantHomePage() {
   const profile = getActivePortalProfileConfig()
   const tenant = getDomainTenant()
+  const access = useOrganizationAccess(tenant?.home_org_slug)
+  const [viewParams] = useSearchParams()
   const [events, setEvents] = useState<TenantEvent[]>([])
   const [eventStatus, setEventStatus] = useState('')
   const specialtyResources = useMemo(() => specialtyResourcesForTenant(tenant), [tenant])
@@ -108,6 +111,8 @@ export function TenantHomePage() {
 
   if (!tenant) return null
   const imageUrl = tenant.home_image_url || profile.brandImagePath
+
+  if (tenant?.home_org_slug && !access.loading && resolveOrganizationView(viewParams.get('view'), access.organizer, access.member) === 'organizers') return <Navigate to={`/orgs/${encodeURIComponent(tenant.home_org_slug)}?view=organizers`} replace />
 
   return <div className="portal-shell tenant-home-shell">
     <a className="skip-link" href="#main-content">Skip to main content</a>
