@@ -8,6 +8,10 @@ const columns = {
   organizations: ['id','name','slug','description','source_url','image_url','tags','city','created_at','updated_at','media_json'],
   organization_support_records: ['id','from_organization_id','to_organization_id','from_label','to_label','support_kind','amount','currency','amount_label','quantity','unit','description','occurred_at','source_url','evidence','notes','provenance_json','status','void_reason','created_at'],
 } as const;
+export function snapshotEtagMatches(header: string | null | undefined, etag: string | null) {
+  const normalize=(s:string)=>s.trim().replace(/^W\//, "");
+  return !!etag && !!header && header.split(",").some(s=>s.trim()==="*" || normalize(s)===normalize(etag));
+}
 export async function organizationSnapshot(db: D1Database, request: Request) {
   // D1 batch is transactional: organizations and evidence describe one committed state.
   const rows = await db.batch(Object.entries(columns).map(([table, fields]) => db.prepare(`SELECT ${fields.join(',')} FROM ${table} ORDER BY id`)));
@@ -15,7 +19,7 @@ export async function organizationSnapshot(db: D1Database, request: Request) {
   const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(body)))].map(b=>b.toString(16).padStart(2,'0')).join('');
   const etag = `"${hash}"`;
   const headers = {'ETag':etag,'Cache-Control':'public, max-age=60','Content-Type':'application/json'};
-  return new Response(request.headers.get('If-None-Match') === etag ? null : body,{status:request.headers.get('If-None-Match') === etag ? 304 : 200,headers});
+  return new Response(snapshotEtagMatches(request.headers.get('If-None-Match'),etag) ? null : body,{status:snapshotEtagMatches(request.headers.get('If-None-Match'),etag) ? 304 : 200,headers});
 }
 export async function replicaStatus(env: ReplicaEnv) {
   if (!env.ORGANIZATION_REPLICA_SOURCE) return {mode:'primary'};

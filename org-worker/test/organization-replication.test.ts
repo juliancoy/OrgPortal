@@ -26,7 +26,7 @@ test('snapshot covers every org, excludes identities, ETag unchanged checks tran
   expire(local);await replicateOrganizations(env(local),fetcher);assert.equal(calls,2);
   const response=await organizationSnapshot(primary.asD1(),new Request(source));const snapshot=await response.json() as any;
   assert.equal(snapshot.organizations.length,550);assert.ok(!('owner_user_id' in snapshot.organizations[0]));
-  const unchanged=await organizationSnapshot(primary.asD1(),new Request(source,{headers:{'If-None-Match':response.headers.get('etag')!}}));assert.equal(unchanged.status,304);assert.equal(await unchanged.text(),'');
+  const unchanged=await organizationSnapshot(primary.asD1(),new Request(source,{headers:{'If-None-Match':'W/'+response.headers.get('etag')!}}));assert.equal(unchanged.status,304);assert.equal(await unchanged.text(),'');
  }finally{primary.sqlite.close();local.sqlite.close();}
 });
 test('updates, additions, deletions converge; failures retain last committed data and expose stale status',async()=>{

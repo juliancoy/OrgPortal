@@ -1,4 +1,4 @@
-import { organizationSnapshot, replicaStatus, replicateOrganizations } from './organizationReplication';
+import { organizationSnapshot, replicaStatus, replicateOrganizations, snapshotEtagMatches } from './organizationReplication';
 import { memberMeetingRoutes } from './memberMeetings';
 import { runEventEnrichmentOperation } from './eventEnrichment';
 import { runOrganizationRegistryOperation } from './organizationRegistry';
@@ -3043,7 +3043,7 @@ app.get("/api/network/replication/snapshot", async c => {
     response = await organizationSnapshot(c.env.DB, key);
     c.executionCtx.waitUntil(cache.put(key,response.clone()));
   }
-  if (c.req.header("If-None-Match") === response.headers.get("ETag")) return new Response(null,{status:304,headers:response.headers});
+  if (snapshotEtagMatches(c.req.header("If-None-Match"),response.headers.get("ETag"))) return new Response(null,{status:304,headers:response.headers});
   return response;
 });
 app.get("/api/network/replication/status", async c => { c.header("Cache-Control","no-store"); return c.json(await replicaStatus(c.env)); });
