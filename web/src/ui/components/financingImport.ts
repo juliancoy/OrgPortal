@@ -1,7 +1,7 @@
 import { type EvidenceManifest } from './organizationEvidenceImport'
 import { type FundingReport } from './tedcoFunding'
 import { type FinancingEvent, type FinancingReport } from './companyFinancing'
-export async function financingImportBatches(manifest: EvidenceManifest, funding: FundingReport, ledger: FinancingReport) {
+export async function financingImportBatches(manifest: EvidenceManifest, funding: FundingReport, ledger: FinancingReport, registeredOrganizationIds: string[] = []) {
   const events: (Omit<FinancingEvent, 'type'> & {type: string; includedInEventId?: string})[] = [...ledger.events]
   const occurrences = new Map<string, number>()
   for (const company of funding.companies) for (const fact of company.fundingEvidence) {
@@ -20,7 +20,7 @@ export async function financingImportBatches(manifest: EvidenceManifest, funding
       const company=funding.companies.find(c=>c.key===research.key)!
       const {totalUsd:_total,rank:_rank,fundingEvidence:_facts,allFundingEvidence:_all,otherFundingEvidence:_other,...metadata}=company
       void _total; void _rank; void _facts; void _all; void _other
-      return {key:research.key,name:research.name,organizationId:research.existingOrganizationId,metadata,research,audit:ledger.audit.find(a=>a.key===research.key)!}
+      return {key:research.key,name:research.name,organizationId:registeredOrganizationIds.includes(company.organizationId) ? company.organizationId : research.existingOrganizationId,metadata,research,audit:ledger.audit.find(a=>a.key===research.key)!}
     })
     batches.push({organizationId:manifest.organizationId,reviewedAt:ledger.reviewedAt,recipients,events:events.filter(e=>recipients.some(r=>r.key===e.companyKey))})
   }

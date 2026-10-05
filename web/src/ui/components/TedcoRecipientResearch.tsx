@@ -66,7 +66,12 @@ export function TedcoRecipientResearch({ organizationId, registered, onImported 
       if (confirm && previews) {
         await applyEvidenceImport(previews, request, setApplied)
         setPreviews(null); setMessage('TEDCO recipient organizations and sourced support records are registered.'); onImported()
-      } else setPreviews(await previewEvidenceImport(manifest, organizationId, request))
+      } else {
+        const response = await fetch(manifestUrl, { signal: controller.signal })
+        if (!response.ok) throw new Error('Recipient import evidence unavailable')
+        const input = await response.json() as EvidenceManifest
+        setPreviews(await previewEvidenceImport(input, organizationId, request))
+      }
     } catch (error) {
       if (!controller.signal.aborted) {
         setPreviews(null)
@@ -91,7 +96,7 @@ export function TedcoRecipientResearch({ organizationId, registered, onImported 
         const responses=await Promise.all([fetch(manifestUrl),fetch(fundingUrl),fetch(financingUrl)])
         if(responses.some(r=>!r.ok)) throw new Error('Import evidence unavailable')
         const [input,report,ledger]=await Promise.all(responses.map(r=>r.json())) as [EvidenceManifest,FundingReport,FinancingReport]
-        const batches=await financingImportBatches(input,report,ledger), previews=[]
+        const batches=await financingImportBatches(input,report,ledger, registered.map(org => org.id)), previews=[]
         for(const batch of batches) previews.push(await request({...batch,confirm:false}))
         setFinancePreviews(previews)
       }
