@@ -36,13 +36,13 @@ async function organization(db: D1Database, id: string) {
   return row;
 }
 
-export async function organizationSupport(db: D1Database, organizationId: string) {
+export async function organizationSupport(db: D1Database, organizationId: string, offset = 0) {
   const org = await organization(db, organizationId);
   // UNION (rather than UNION ALL) visits each organization once, including cycles.
   const descendants = await db.prepare(`WITH RECURSIVE reachable(id) AS (
     SELECT to_organization_id FROM organization_support_edges WHERE from_organization_id = ?
     UNION SELECT e.to_organization_id FROM organization_support_edges e JOIN reachable r ON e.from_organization_id = r.id
-  ) SELECT o.id, o.name, o.slug,
+  ) SELECT o.id, o.name, o.slug, o.tags,
     EXISTS(SELECT 1 FROM organization_support_edges e WHERE e.from_organization_id = ? AND e.to_organization_id = o.id) AS is_direct
     FROM reachable r JOIN organizations o ON o.id = r.id WHERE o.id != ? ORDER BY lower(o.name)`)
     .bind(org.id, org.id, org.id).all();
@@ -50,9 +50,16 @@ export async function organizationSupport(db: D1Database, organizationId: string
     JOIN organizations o ON o.id = e.from_organization_id WHERE e.to_organization_id = ? ORDER BY lower(o.name)`)
     .bind(org.id).all();
   const records = await db.prepare(`SELECT * FROM master_transaction_records WHERE record_type = 'organization_support'
-    AND (from_organization_id = ? OR to_organization_id = ?) ORDER BY timestamp DESC, id LIMIT 500`)
-    .bind(org.id, org.id).all();
-  return { organization: org, descendants: descendants.results, supporters: supporters.results, records: records.results };
+    AND (from_organization_id = ? OR to_organization_id = ?) ORDER BY timestamp DESC, id LIMIT 500 OFFSET ?`)
+    .bind(org.id, org.id, offset).all();
+  const total = await db.prepare(`SELECT count(*) AS n FROM master_transaction_records WHERE record_type = 'organization_support'
+    AND (from_organization_id = ? OR to_organization_id = ?)`).bind(org.id, org.id).first<{ n: number }>();
+  return { organization: org, descendants: (descendants.results || []).map(row => {
+    let tags: string[] = [];
+    try { const value = JSON.parse(String(row.tags || '[]')); if (Array.isArray(value)) tags = value.filter(item => typeof item === 'string'); } catch {}
+    return { ...row, tags };
+  }), supporters: supporters.results, records: records.results, recordCount: total?.n || 0,
+    nextRecordOffset: offset + (records.results || []).length < (total?.n || 0) ? offset + (records.results || []).length : null };
 }
 
 export async function runSupportOperation(db: D1Database, actor: OrganizationActor, operation: 'record' | 'void', input: unknown) {

@@ -1,8 +1,9 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
 import './organization-support.css'
 import {supportEventLinks} from './supportEventLinks'
+import { TedcoRecipientResearch } from './TedcoRecipientResearch'
 
 export type SupportRecord = {
   id: string; record_id: string; record_type: string; timestamp: string; occurred_at: string
@@ -12,8 +13,8 @@ export type SupportRecord = {
   from_organization_slug: string | null; to_organization_slug: string | null
   status: string; void_reason: string | null; source_url: string; evidence: string; notes: string; provenance_json: string
 }
-type Organization = { id: string; name: string; slug: string; is_direct?: number }
-type Support = { descendants: Organization[]; supporters: Organization[]; records: SupportRecord[] }
+type Organization = { id: string; name: string; slug: string; is_direct?: number; tags?: string[] }
+type Support = { descendants: Organization[]; supporters: Organization[]; records: SupportRecord[]; recordCount: number; nextRecordOffset: number | null }
 const kinds = {
   transfer: 'Monetary support / award', in_kind: 'In-kind contribution', mentoring: 'Mentoring', venue: 'Venue support',
   services: 'Services', incubation: 'Incubation', acceleration: 'Acceleration', collaboration: 'Collaboration',
@@ -58,28 +59,61 @@ export function OrganizationSupport({ organizationId, slug, canManage }: { organ
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
   const [expanded, setExpanded] = useState(false)
+  const [recipientSearch, setRecipientSearch] = useState('')
+  const [adjacentOnly, setAdjacentOnly] = useState(false)
+  const [refresh, setRefresh] = useState(0)
+  const recordRequest = useRef<AbortController | null>(null)
+  const adjacent = (org: Organization) => org.tags?.includes('LifeTech adjacent') || false
+  const descendants = (data?.descendants || []).filter(org => (!adjacentOnly || adjacent(org)) && org.name.toLocaleLowerCase().includes(recipientSearch.trim().toLocaleLowerCase()))
   const prefix = `/api/org/api/network/orgs/${encodeURIComponent(organizationId)}/support`
   useEffect(() => {
     const controller = new AbortController()
+    recordRequest.current?.abort()
+    setBusy(false)
     setData(null)
     setPreview(null)
     setForm(emptyForm)
     setMessage('')
+    setRecipientSearch('')
+    setAdjacentOnly(false)
     fetch(`/api/org/api/network/orgs/public/${encodeURIComponent(slug)}/support`, { signal: controller.signal })
       .then(async response => { if (!response.ok) throw new Error('Unable to load organizational support'); const result = await response.json()
-        if (!Array.isArray(result.descendants) || !Array.isArray(result.supporters) || !Array.isArray(result.records)) throw new Error('Unable to load organizational support')
+        if (!Array.isArray(result.descendants) || !Array.isArray(result.supporters) || !Array.isArray(result.records) || !Number.isInteger(result.recordCount) || (result.nextRecordOffset !== null && !Number.isInteger(result.nextRecordOffset))) throw new Error('Unable to load organizational support')
         return result as Support })
       .then(setData).catch(error => { if (!controller.signal.aborted) setMessage(error.message) })
-    return () => controller.abort()
-  }, [slug])
+    return () => { controller.abort(); recordRequest.current?.abort() }
+  }, [slug, refresh])
   useEffect(() => {
     if (!canManage || !token) { setPreview(null); return }
     const controller = new AbortController()
-    fetch('/api/org/api/network/orgs/public?limit=500', { signal: controller.signal })
-      .then(async response => { if (!response.ok) throw new Error('Unable to load recipient organizations'); return response.json() as Promise<Organization[]> })
+    ;(async () => {
+      const all: Organization[] = []
+      for (let offset = 0; ; offset += 500) {
+        const response = await fetch(`/api/org/api/network/orgs/public?limit=500&offset=${offset}`, { signal: controller.signal })
+        if (!response.ok) throw new Error('Unable to load recipient organizations')
+        const page = await response.json() as Organization[]
+        if (!Array.isArray(page)) throw new Error('Unable to load recipient organizations')
+        all.push(...page)
+        if (page.length < 500) return all
+      }
+    })()
       .then(setOrganizations).catch(error => { if (!controller.signal.aborted) setMessage(error.message) })
     return () => controller.abort()
   }, [canManage, token])
+  async function loadMoreRecords() {
+    if (!data || data.nextRecordOffset === null) return
+    const controller = new AbortController(); recordRequest.current = controller
+    setBusy(true); setMessage('')
+    try {
+      const response = await fetch(`/api/org/api/network/orgs/public/${encodeURIComponent(slug)}/support?offset=${data.nextRecordOffset}`, { signal: controller.signal })
+      if (!response.ok) throw new Error('Unable to load more source evidence')
+      const page = await response.json() as Support
+      if (!Array.isArray(page.records) || (page.nextRecordOffset !== null && (!Number.isInteger(page.nextRecordOffset) || page.nextRecordOffset <= data.nextRecordOffset))) throw new Error('Incomplete source evidence page')
+      if (controller.signal.aborted) return
+      setData(current => current ? { ...page, records: [...new Map([...current.records, ...page.records].map(record => [record.id, record])).values()] } : current)
+    } catch (error) { if (!controller.signal.aborted) setMessage(error instanceof Error ? error.message : 'Unable to load more source evidence') }
+    finally { if (!controller.signal.aborted) setBusy(false) }
+  }
   async function submit(event: FormEvent) {
     event.preventDefault()
     if (!token) return
@@ -101,11 +135,17 @@ export function OrganizationSupport({ organizationId, slug, canManage }: { organ
     <h2>Descendant organizations</h2>
     <p className="muted">Organizations supported with funding, resources, time, or services. Indirect descendants are reached through another supported organization.</p>
     {data ? <>
-      {data.descendants.length ? <ul className="support-organizations">{data.descendants.map(org => <li key={org.id}><Link to={`/orgs/${org.slug}`}>{org.name}</Link> <small>{org.is_direct ? 'Direct support' : 'Indirect descendant'}</small></li>)}</ul> : <p>No documented descendant organizations yet.</p>}
+      {data.descendants.length > 0 && <div className="support-recipient-filters">
+        <label>Find a supported organization<input type="search" value={recipientSearch} onChange={event => setRecipientSearch(event.target.value)} /></label>
+        <label><input type="checkbox" checked={adjacentOnly} onChange={event => setAdjacentOnly(event.target.checked)} /> LifeTech adjacent ({data.descendants.filter(adjacent).length})</label>
+        <p role="status">Showing {descendants.length} of {data.descendants.length} supported organizations</p>
+      </div>}
+      {data.descendants.length ? descendants.length ? <ul className="support-organizations">{descendants.map(org => <li key={org.id}><Link to={`/orgs/${org.slug}`}>{org.name}</Link> <small>{org.is_direct ? 'Direct support' : 'Indirect descendant'}</small>{adjacent(org) && <span className="support-adjacent-tag">LifeTech adjacent</span>}</li>)}</ul> : <p>No supported organizations match these filters.</p> : <p>No documented descendant organizations yet.</p>}
       <h3>Supported by</h3>
       {data.supporters.length ? <ul className="support-organizations">{data.supporters.map(org => <li key={org.id}><Link to={`/orgs/${org.slug}`}>{org.name}</Link></li>)}</ul> : <p>No documented supporters yet.</p>}
-      <details><summary>Support records and source evidence ({data.records.length})</summary>{data.records.length ? <SupportRecordTable records={data.records} /> : <p>No support records yet.</p>}</details>
+      <details><summary>Support records and source evidence ({data.recordCount})</summary>{data.records.length ? <SupportRecordTable records={data.records} /> : <p>No support records yet.</p>}{data.nextRecordOffset !== null && <button disabled={busy} onClick={() => void loadMoreRecords()}>Load more source evidence ({data.records.length} of {data.recordCount})</button>}</details>
     </> : !message && <p role="status">Loading support records…</p>}
+    {slug === 'tedco' && <TedcoRecipientResearch organizationId={organizationId} canManage={canManage} registered={data?.descendants || []} onImported={() => setRefresh(value => value + 1)} />}
     {canManage && token && <details open={expanded} onToggle={event => setExpanded(event.currentTarget.open)}><summary>Record organizational support</summary>
       <form onSubmit={event => void submit(event)} className="support-form">
         <fieldset disabled={busy || Boolean(preview)}><legend>Contribution details</legend>

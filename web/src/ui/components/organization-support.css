@@ -2,6 +2,12 @@
 .organization-support :is(h2,h3,p) { margin: 0; }
 .support-organizations { display: grid; gap: 0.5rem; padding-left: 1.25rem; margin: 0; }
 .support-organizations small { color: var(--text-secondary); }
+.support-recipient-filters { display: grid; gap: 0.5rem; }
+.support-recipient-filters label:first-child { display: grid; gap: 0.3rem; }
+.support-adjacent-tag { display: inline-block; margin-left: 0.5rem; padding: 0.1rem 0.5rem; border: 1px solid var(--border); border-radius: 1rem; font-size: 0.8rem; }
+.tedco-recipient-research { display: grid; gap: 0.7rem; }
+.tedco-recipient-research > :is(p,div,ul) { margin-top: 0.7rem; }
+.research-company-detail { display: block; overflow-wrap: anywhere; }
 .organization-support summary { cursor: pointer; padding: 0.5rem 0; font-weight: 600; }
 .support-table-scroll { overflow-x: auto; max-width: 100%; }
 .support-table { width: 100%; min-width: 660px; }

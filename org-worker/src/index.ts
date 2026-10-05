@@ -1,3 +1,4 @@
+import { importOrganizationEvidence } from './organizationEvidenceImport';
 import {linkEventSupportRecords} from './eventSupportLinks';
 import { organizationSnapshot, replicaStatus, replicateOrganizations, snapshotEtagMatches } from './organizationReplication';
 import { memberMeetingRoutes } from './memberMeetings';
@@ -3053,7 +3054,8 @@ app.get("/api/network/replication/status", async c => { c.header("Cache-Control"
 app.get("/api/network/orgs/public", async (c) => {
   const q = (c.req.query("q") || "").trim();
   const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "300", 10) || 300, 500));
-  const candidateLimit = q ? searchCandidateLimit(limit) : limit;
+  const offset = Math.max(0, Math.min(Number.parseInt(c.req.query("offset") || "0", 10) || 0, 100000));
+  const candidateLimit = q ? searchCandidateLimit(limit + offset) : limit;
   const rows = await c.env.DB.prepare(
     `SELECT o.*,
       (SELECT count(*) FROM events e WHERE e.host_org_id = o.id AND (COALESCE(e.starts_at,e.event_date) IS NULL OR COALESCE(e.starts_at,e.event_date) >= date('now'))) AS upcoming_events_count,
@@ -3065,12 +3067,12 @@ app.get("/api/network/orgs/public", async (c) => {
       (SELECT count(*) FROM organization_memberships m WHERE m.organization_id = o.id AND m.status = 'active') AS membership_count,
       (SELECT count(*) FROM organization_ownership_challenges ch WHERE ch.organization_id = o.id AND ch.status = 'open') AS pending_challenges_count
      FROM organizations o
-     ORDER BY membership_count DESC, (feedback_positive_count - feedback_concern_count) DESC, upcoming_events_count DESC, lower(o.name) ASC
-     LIMIT ?`,
+     ORDER BY membership_count DESC, (feedback_positive_count - feedback_concern_count) DESC, upcoming_events_count DESC, lower(o.name) ASC, o.id ASC
+     LIMIT ? OFFSET ?`,
   )
-    .bind(candidateLimit)
+    .bind(candidateLimit, q ? 0 : offset)
     .all<OrganizationRow & { upcoming_events_count: number }>();
-  const rankedRows = rankSearchResults(rows.results || [], q, (row) => [row.name, row.description, row.slug, row.tags, row.city], limit);
+  const rankedRows = rankSearchResults(rows.results || [], q, (row) => [row.name, row.description, row.slug, row.tags, row.city], q ? limit + offset : limit).slice(q ? offset : 0);
   return c.json(rankedRows.map((row) => mapOrganization(row, Number(row.upcoming_events_count || 0))));
 });
 
@@ -3096,8 +3098,16 @@ app.get("/api/network/orgs/public/:slug", async (c) => {
 });
 
 app.get("/api/network/orgs/public/:slug/support", async (c) => {
-  try { return c.json(await organizationSupport(c.env.DB, c.req.param("slug"))); }
+  const offset = Math.max(0, Math.min(Number.parseInt(c.req.query("offset") || "0", 10) || 0, 100000));
+  try { return c.json(await organizationSupport(c.env.DB, c.req.param("slug"), offset)); }
   catch (error) { return eventErrorResponse(error, c.env, c.req.raw); }
+});
+
+app.post("/api/network/orgs/:organizationId/support/import", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  try { return c.json(await importOrganizationEvidence(c.env.DB, organizationActor(user,c.env),
+    { ...await c.req.json<Record<string,unknown>>(), organizationId:c.req.param("organizationId") })); }
+  catch(error) { return eventErrorResponse(error,c.env,c.req.raw); }
 });
 
 app.post("/api/network/orgs/:organizationId/support/:operation", async (c) => {
