@@ -3057,7 +3057,6 @@ app.get("/api/network/orgs/public", async (c) => {
   const q = (c.req.query("q") || "").trim();
   const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "300", 10) || 300, 500));
   const offset = Math.max(0, Math.min(Number.parseInt(c.req.query("offset") || "0", 10) || 0, 100000));
-  const candidateLimit = q ? searchCandidateLimit(limit + offset) : limit;
   const rows = await c.env.DB.prepare(
     `SELECT o.*,
       (SELECT count(*) FROM events e WHERE e.host_org_id = o.id AND (COALESCE(e.starts_at,e.event_date) IS NULL OR COALESCE(e.starts_at,e.event_date) >= date('now'))) AS upcoming_events_count,
@@ -3070,9 +3069,9 @@ app.get("/api/network/orgs/public", async (c) => {
       (SELECT count(*) FROM organization_ownership_challenges ch WHERE ch.organization_id = o.id AND ch.status = 'open') AS pending_challenges_count
      FROM organizations o
      ORDER BY membership_count DESC, (feedback_positive_count - feedback_concern_count) DESC, upcoming_events_count DESC, lower(o.name) ASC, o.id ASC
-     LIMIT ? OFFSET ?`,
+     ${q ? "" : "LIMIT ? OFFSET ?"}`,
   )
-    .bind(candidateLimit, q ? 0 : offset)
+    .bind(...(q ? [] : [limit, offset]))
     .all<OrganizationRow & { upcoming_events_count: number }>();
   const rankedRows = rankSearchResults(rows.results || [], q, (row) => [row.name, row.description, row.slug, row.tags, row.city], q ? limit + offset : limit).slice(q ? offset : 0);
   return c.json(rankedRows.map((row) => mapOrganization(row, Number(row.upcoming_events_count || 0))));
@@ -3281,7 +3280,6 @@ app.get("/api/network/orgs", async (c) => {
   const mine = (c.req.query("mine") || "").toLowerCase() === "true";
   const q = (c.req.query("q") || "").trim();
   const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "300", 10) || 300, 500));
-  const candidateLimit = q ? searchCandidateLimit(limit) : limit;
   const rows = await c.env.DB.prepare(
     `SELECT o.*,
       (SELECT own.owner_user_id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS claimed_by_user_id,
@@ -3296,9 +3294,9 @@ app.get("/api/network/orgs", async (c) => {
      WHERE (? = 0 OR EXISTS (
        SELECT 1 FROM organization_memberships mine WHERE mine.organization_id = o.id AND mine.user_id = ? AND mine.status = 'active'
      ))
-     ORDER BY lower(o.name) ASC LIMIT ?`,
+     ORDER BY lower(o.name) ASC ${q ? "" : "LIMIT ?"}`,
   )
-    .bind(user.id, mine ? 1 : 0, user.id, candidateLimit)
+    .bind(user.id, mine ? 1 : 0, user.id, ...(q ? [] : [limit]))
     .all<OrganizationRow>();
   const rankedRows = rankSearchResults(rows.results || [], q, (row) => [row.name, row.description, row.slug, row.tags, row.city], limit);
   return c.json(rankedRows.map((row) => mapOrganization(row)));
