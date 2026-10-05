@@ -54,7 +54,18 @@ export async function organizationSupport(db: D1Database, organizationId: string
     .bind(org.id, org.id, offset).all();
   const total = await db.prepare(`SELECT count(*) AS n FROM master_transaction_records WHERE record_type = 'organization_support'
     AND (from_organization_id = ? OR to_organization_id = ?)`).bind(org.id, org.id).first<{ n: number }>();
-  return { organization: org, descendants: (descendants.results || []).map(row => {
+  // Complete canonical totals, independent of paginated evidence. Contextual
+  // aggregates are not transfers and reported awards are not delivery.
+  const totals = await db.prepare(`WITH directions AS (
+    SELECT 'deployed' AS direction, * FROM master_transaction_records WHERE from_organization_id = ?
+    UNION ALL SELECT 'received' AS direction, * FROM master_transaction_records WHERE to_organization_id = ?
+  ) SELECT direction, currency, status, SUM(amount) AS amount, COUNT(*) AS recordCount,
+      SUM(CASE WHEN amount IS NULL THEN 1 ELSE 0 END) AS undisclosedCount
+    FROM directions WHERE record_type = 'organization_support' AND transaction_type = 'transfer'
+      AND status IN ('reported', 'delivered')
+    GROUP BY direction, currency, status ORDER BY direction, currency, status`)
+    .bind(org.id, org.id).all();
+  return { organization: org, financialTotals: { source: 'master_transaction_records', entries: totals.results || [] }, descendants: (descendants.results || []).map(row => {
     let tags: string[] = [];
     try { const value = JSON.parse(String(row.tags || '[]')); if (Array.isArray(value)) tags = value.filter(item => typeof item === 'string'); } catch {}
     return { ...row, tags };

@@ -126,3 +126,22 @@ test('support migrations apply after the full existing migration sequence',()=>{
     Number(db.prepare('SELECT count(*) n FROM ledger_transactions').get()!.n) + Number(db.prepare('SELECT count(*) n FROM organization_support_records').get()!.n));
   db.close();
 });
+
+test('canonical organization totals separate direction, currency, delivery and unknown amounts', async () => {
+  const sqlite = setup();
+  await record(sqlite, { ...contribution(), status: 'delivered' });
+  await record(sqlite, { ...contribution(), currency: 'EUR', amount: 25 });
+  await record(sqlite, { ...contribution('b', 'a'), amount: null, currency: null });
+  await record(sqlite, { ...contribution(), supportKind: 'portfolio', amount: 9000 });
+  const voided = await record(sqlite, contribution());
+  await runSupportOperation(sqlite.asD1(), actor, 'void', { organizationId: 'a', recordId: voided.recordId, reason: 'Duplicate' }).then(preview => runSupportOperation(sqlite.asD1(), actor, 'void', { organizationId: 'a', recordId: voided.recordId, reason: 'Duplicate', previewId: preview.previewId, confirm: true }));
+  const result = await organizationSupport(sqlite.asD1(), 'a', 500);
+  assert.equal(result.records.length, 0);
+  assert.equal(result.financialTotals.source, 'master_transaction_records');
+  assert.deepEqual(result.financialTotals.entries.map(row => ({ ...row })), [
+    { direction: 'deployed', currency: 'EUR', status: 'reported', amount: 25, recordCount: 1, undisclosedCount: 0 },
+    { direction: 'deployed', currency: 'USD', status: 'delivered', amount: 100, recordCount: 1, undisclosedCount: 0 },
+    { direction: 'received', currency: null, status: 'reported', amount: null, recordCount: 1, undisclosedCount: 1 },
+  ]);
+  sqlite.sqlite.close();
+});
