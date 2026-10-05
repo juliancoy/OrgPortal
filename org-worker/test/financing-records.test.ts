@@ -44,3 +44,18 @@ test('snapshots converge atomically, failed refresh retains last good financing 
  assert.equal(unregistered.counterparties[0].counterpartKey,'pixee');
  } finally { db.sqlite.close(); }
  });
+
+test('funding recipients appear as descendants without a parallel support relationship', async () => {
+ const { organizationSupport } = await import('../src/organizationSupport');
+ const db=setup();
+ try {
+  db.sqlite.exec("INSERT INTO organizations(id,name,slug) VALUES('pixee-org','Pixee','pixee'),('limit-org','Program Limit','limit-org')");
+  await apply(db,{...input,recipients:[{...recipient,organizationId:'pixee-org'}]});
+  const report=await organizationSupport(db.asD1(),'tedco');
+  assert.deepEqual(report.descendants.map(row=>row.id),['pixee-org']);
+  assert.equal(report.descendants[0].is_direct,1);
+  assert.deepEqual((await organizationSupport(db.asD1(),'pixee-org')).supporters.map(row=>row.id),['tedco']);
+  await apply(db,{...input,recipients:[{...recipient,key:'limit',name:'Program Limit',organizationId:'limit-org'}],events:[{...contribution,id:'limit-award',companyKey:'limit',amountQualifier:'up-to',includedInEventId:null}]});
+  assert.deepEqual((await organizationSupport(db.asD1(),'tedco')).descendants.map(row=>row.id),['pixee-org']);
+ }finally{db.sqlite.close();}
+});

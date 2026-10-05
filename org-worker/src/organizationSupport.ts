@@ -39,15 +39,23 @@ async function organization(db: D1Database, id: string) {
 
 export async function organizationSupport(db: D1Database, organizationId: string, offset = 0) {
   const org = await organization(db, organizationId);
-  // UNION (rather than UNION ALL) visits each organization once, including cycles.
-  const descendants = await db.prepare(`WITH RECURSIVE reachable(id) AS (
-    SELECT to_organization_id FROM organization_support_edges WHERE from_organization_id = ?
-    UNION SELECT e.to_organization_id FROM organization_support_edges e JOIN reachable r ON e.from_organization_id = r.id
+  // Include monetary recipients recorded directly in the master transaction
+  // database as well as separately documented support relationships.
+  const edges = `edges(from_organization_id, to_organization_id) AS (
+    SELECT from_organization_id, to_organization_id FROM organization_support_edges
+    UNION SELECT from_organization_id, to_organization_id FROM master_transaction_records
+    WHERE record_type = 'company_financing' AND transaction_type IN ('agency', 'equity', 'debt', 'grant')
+      AND amount_label != 'up-to' AND from_organization_id IS NOT NULL AND to_organization_id IS NOT NULL
+  )`;
+  // UNION visits each organization once, including cycles and overlapping sources.
+  const descendants = await db.prepare(`WITH RECURSIVE ${edges}, reachable(id) AS (
+    SELECT to_organization_id FROM edges WHERE from_organization_id = ?
+    UNION SELECT e.to_organization_id FROM edges e JOIN reachable r ON e.from_organization_id = r.id
   ) SELECT o.id, o.name, o.slug, o.tags,
-    EXISTS(SELECT 1 FROM organization_support_edges e WHERE e.from_organization_id = ? AND e.to_organization_id = o.id) AS is_direct
+    EXISTS(SELECT 1 FROM edges e WHERE e.from_organization_id = ? AND e.to_organization_id = o.id) AS is_direct
     FROM reachable r JOIN organizations o ON o.id = r.id WHERE o.id != ? ORDER BY lower(o.name)`)
     .bind(org.id, org.id, org.id).all();
-  const supporters = await db.prepare(`SELECT o.id, o.name, o.slug FROM organization_support_edges e
+  const supporters = await db.prepare(`WITH ${edges} SELECT DISTINCT o.id, o.name, o.slug FROM edges e
     JOIN organizations o ON o.id = e.from_organization_id WHERE e.to_organization_id = ? ORDER BY lower(o.name)`)
     .bind(org.id).all();
   const records = await db.prepare(`SELECT * FROM master_transaction_records WHERE record_type = 'organization_support'

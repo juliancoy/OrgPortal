@@ -57,7 +57,7 @@ export function TedcoRecipientResearch({ organizationId, registered, onImported 
     try {
       if (confirm && previews) {
         await applyEvidenceImport(previews, request, setApplied)
-        setPreviews(null); setMessage('TEDCO recipient organizations and sourced support records are registered.'); onImported()
+        setPreviews(null); setMessage('TEDCO recipient organizations and sourced support records are registered.'); updatePublicOrganizationData(); onImported()
       } else {
         const response = await fetch(manifestUrl, { signal: controller.signal })
         if (!response.ok) throw new Error('Recipient import evidence unavailable')

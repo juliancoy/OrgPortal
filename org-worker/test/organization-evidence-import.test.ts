@@ -10,7 +10,7 @@ const recipient={key:'company-a',name:'Company A',description:'Publicly document
 const input={organizationId:'tedco',recipients:[recipient]};
 function setup(){
  const db=new TimebankDatabase();
- for(const file of ['0002_org_event_directories.sql','0015_organization_iam.sql','0017_event_mcp_operations.sql','0057_organization_support.sql'])db.sqlite.exec(readFileSync(new URL(`../migrations/${file}`,import.meta.url),'utf8'));
+ for(const file of ['0002_org_event_directories.sql','0015_organization_iam.sql','0017_event_mcp_operations.sql','0057_organization_support.sql','0043_organization_media.sql','0061_organization_replication.sql','0065_financing_records.sql','0066_financing_portfolio_tags.sql'])db.sqlite.exec(readFileSync(new URL(`../migrations/${file}`,import.meta.url),'utf8'));
  db.sqlite.exec("INSERT INTO organizations(id,name,slug) VALUES('tedco','TEDCO','tedco')");
  return db;
 }
