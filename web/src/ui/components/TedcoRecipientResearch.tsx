@@ -40,18 +40,12 @@ export function TedcoRecipientResearch({ organizationId, registered, onImported 
         const response = await fetch(`/api/org/api/network/orgs/public/${encodeURIComponent(organizationId)}/financing`, {signal:controller.signal})
         if (!response.ok) throw new Error('Unable to load financing database records')
         let report = await response.json() as RecipientReport
-        let published = false
-        if (organizationId === 'org-tedco') {
-          const response = await fetch(manifestUrl, { signal: controller.signal })
-          if (!response.ok) throw new Error('Unable to load published recipient roster')
-          const manifest = await response.json() as EvidenceManifest
-          published = needsPublishedTedcoRoster(organizationId, report, manifest.recipients.length)
-          if (published) {
-            const responses = await Promise.all([fundingUrl, financingUrl].map(url => fetch(url, { signal: controller.signal })))
-            if (responses.some(response => !response.ok)) throw new Error('Unable to load published recipient evidence')
-            const [funding, financing] = await Promise.all(responses.map(response => response.json()))
-            report = { ...report, manifest, funding, financing }
-          }
+        const published = needsPublishedTedcoRoster(organizationId, report)
+        if (published) {
+          const responses = await Promise.all([manifestUrl, fundingUrl, financingUrl].map(url => fetch(url, { signal: controller.signal })))
+          if (responses.some(response => !response.ok)) throw new Error('Unable to load published recipient evidence')
+          const [manifest, funding, financing] = await Promise.all(responses.map(response => response.json()))
+          report = { ...report, manifest, funding, financing }
         }
         if (!controller.signal.aborted) { setManifest(report.manifest); setFunding(report.funding); setFinancing(report.financing); setConsistency(report.consistency || null); setPublishedResearch(published) }
       } catch (error) { if (!controller.signal.aborted) setMessage(error instanceof Error ? error.message : 'Financing unavailable') }
