@@ -4,12 +4,16 @@ import { useAuth } from '../../app/AppProviders'
 import { applyEvidenceImport, filterEvidenceRecipients, previewEvidenceImport, type EvidenceManifest, type EvidencePreview } from './organizationEvidenceImport'
 import manifestUrl from '../../data/tedco-recipients.json?url'
 import reviewUrl from '../../data/tedco-recipient-review.json?url'
+import fundingUrl from '../../data/tedco-recipient-funding-status.json?url'
+import { rankRecipients, type FundingReport } from './tedcoFunding'
+import { CompanyEvidence } from './TedcoCompanyEvidence'
 
 export function TedcoRecipientResearch({ organizationId, registered, onImported }: {
   organizationId: string; registered: { id: string; name: string; slug: string }[]; onImported: () => void
 }) {
   const { token } = useAuth()
   const [manifest, setManifest] = useState<EvidenceManifest | null>(null)
+  const [funding, setFunding] = useState<FundingReport | null>(null)
   const [query, setQuery] = useState('')
   const [adjacentOnly, setAdjacentOnly] = useState(false)
   const [previews, setPreviews] = useState<EvidencePreview[] | null>(null)
@@ -19,11 +23,12 @@ export function TedcoRecipientResearch({ organizationId, registered, onImported 
   const operation = useRef<AbortController | null>(null)
   useEffect(() => {
     const controller = new AbortController()
-    fetch(manifestUrl, { signal: controller.signal }).then(async response => {
-      if (!response.ok) throw new Error('Unable to load TEDCO recipient research')
-      const value = await response.json() as EvidenceManifest
+    Promise.all([fetch(manifestUrl, { signal: controller.signal }), fetch(fundingUrl, { signal: controller.signal })]).then(async responses => {
+      if (responses.some(response => !response.ok)) throw new Error('Unable to load TEDCO recipient research')
+      const [value, report] = await Promise.all(responses.map(response => response.json())) as [EvidenceManifest, FundingReport]
       if (value.organizationId !== organizationId || !Array.isArray(value.recipients)) throw new Error('Invalid TEDCO recipient research')
-      setManifest(value)
+      if (report.companies.length !== value.recipients.length) throw new Error('Incomplete TEDCO funding research')
+      if (!controller.signal.aborted) { setManifest(value); setFunding(report) }
     }).catch(error => { if (!controller.signal.aborted) setMessage(error.message) })
     return () => controller.abort()
   }, [organizationId])
@@ -57,25 +62,31 @@ export function TedcoRecipientResearch({ organizationId, registered, onImported 
     } finally { if (operation.current === controller) setBusy(false) }
   }
   if (!manifest) return message ? <p role="status">{message}</p> : <p>Loading TEDCO recipient research…</p>
-  const recipients = filterEvidenceRecipients(manifest.recipients, query, adjacentOnly)
+  const filtered = new Set(filterEvidenceRecipients(manifest.recipients, query, adjacentOnly).map(row => row.key))
+  const recipients = rankRecipients(funding?.companies || []).filter(row => filtered.has(row.key))
   const adjacentCount = manifest.recipients.filter(row => row.tags.includes('LifeTech adjacent')).length
-  return <details className="tedco-recipient-research">
-    <summary>TEDCO recipient research ({manifest.recipients.length} companies · {adjacentCount} LifeTech adjacent)</summary>
-    <p>{manifest.coverage} Reviewed {manifest.reviewedAt}. This research includes all sectors and historical recipients. The directory and support records above reflect registered organizations.</p>
-    <p><a href={manifestUrl} download>Download recipient list and support evidence</a> · <a href={reviewUrl} download>Sources, identity matches, and classification notes</a></p>
+  const otherRegistered = registered.filter(org => !funding?.companies.some(row => row.organizationId === org.id))
+  return <div className="tedco-recipient-research">
+    <h3>TEDCO recipient funding ranking ({manifest.recipients.length} companies · {adjacentCount} LifeTech adjacent)</h3>
+    <p>Highest documented funding first. Rank is across all researched recipients and stays the same when filtered. Unknown amounts follow the ranked organizations.</p>
+    <p>{manifest.coverage} Reviewed {manifest.reviewedAt}. Entries without an organization link are researched recipients awaiting directory registration.</p>
+    <details><summary>Funding ranking methodology and coverage</summary><p>{funding?.methodology}</p><p>Operating status records activity on the source date. A bought company can continue operating under its acquirer. Missing or unreachable websites do not establish that a company is defunct.</p></details>
+    <p><a href={fundingUrl} download>Download funding ranking and company status evidence</a> · <a href={manifestUrl} download>Recipient list and support evidence</a> · <a href={reviewUrl} download>Sources and classification notes</a></p>
     <div className="support-recipient-filters">
       <label>Search researched recipients<input type="search" value={query} onChange={event => setQuery(event.target.value)} /></label>
       <label><input type="checkbox" checked={adjacentOnly} onChange={event => setAdjacentOnly(event.target.checked)} /> LifeTech adjacent only</label>
       <p role="status">Showing {recipients.length} of {manifest.recipients.length} researched companies</p>
     </div>
     <ul className="support-organizations">{recipients.map(row => {
-      const org = registered.find(item => item.id === row.existingOrganizationId || item.name === row.name)
+      const recipient = manifest.recipients.find(item => item.key === row.key)!
+      const org = registered.find(item => item.id === row.organizationId)
       return <li key={row.key}>{org ? <Link to={`/orgs/${org.slug}`}>{row.name}</Link> : row.name}
-        {row.tags.includes('LifeTech adjacent') && <span className="support-adjacent-tag">LifeTech adjacent</span>}
-        {' '}<a href={row.support.sourceUrl} target="_blank" rel="noreferrer">Source</a>
-        <small className="research-company-detail">{row.description} {row.support.occurredAt}</small>
+        {recipient.tags.includes('LifeTech adjacent') && <span className="support-adjacent-tag">LifeTech adjacent</span>}
+        {' '}<a href={recipient.support.sourceUrl} target="_blank" rel="noreferrer">Recipient source</a>
+        <CompanyEvidence company={row} />
       </li>
     })}</ul>
+    {otherRegistered.length > 0 && <><h4>Other registered descendants · funding unranked</h4><ul className="support-organizations">{otherRegistered.map(org => <li key={org.id}><Link to={`/orgs/${org.slug}`}>{org.name}</Link> · Funding total unknown · Status unknown</li>)}</ul></>}
     {token && <div className="support-preview">
       <h3>Register researched recipients</h3>
       <p>OrgPortal operator access is required. Review the identity matches, tags and source evidence before confirming. Existing tags are retained. This creates public organization pages and support records; it grants no memberships or ownership and makes no payments.</p>
@@ -87,5 +98,5 @@ export function TedcoRecipientResearch({ organizationId, registered, onImported 
       <button className="btn-primary" disabled={busy} onClick={() => void run(Boolean(previews))}>{busy ? `Working… ${applied} recipients registered` : previews ? 'Confirm reviewed organizations and support' : 'Preview recipient registration'}</button>
       {message && <p role="status">{message}</p>}
     </div>}
-  </details>
+  </div>
 }
