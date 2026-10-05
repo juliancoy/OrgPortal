@@ -7,7 +7,7 @@ export type FinancingEvent = {
 export type FinancingAudit = {
   key: string; name: string; status: 'partial' | 'pending'
   searchedAt: string | null; reviewedAt: string | null; nextReviewAt: string
-  priority: number; query: string; candidateSources: { title: string; url: string }[]
+  priority: number; query: string; candidateSources: { title: string; url: string; outcome?: 'verified' | 'pending'; transactionIds?: string[] }[]
 }
 export type FinancingReport = { reviewedAt: string; methodology: string; events: FinancingEvent[]; audit: FinancingAudit[] }
 

@@ -110,6 +110,53 @@
         "https://finance.yahoo.com/news/pixee-raises-15m-automate-code-140000442.html"
       ],
       "notes": "Includes TEDCO’s $1.5M contribution; do not add that contribution to this $15M round."
+    },
+    {
+      "id": "stayntouch-28ff0229-2023-12-12-equity",
+      "companyKey": "stayntouch-28ff0229",
+      "announcedAt": "2023-12-12",
+      "label": "Growth equity",
+      "type": "equity",
+      "amountUsd": 48000000,
+      "amountQualifier": "exact",
+      "investors": [
+        "Sixth Street Growth"
+      ],
+      "sourceUrls": [
+        "https://www.stayntouch.com/news/stayntouch-raises-48-million-in-strategic-growth-equity-investment-led-by-sixth-street-growth/",
+        "https://sixthstreet.com/investment_announce/stayntouch-raises-48-million-in-strategic-growth-equity-investment-led-by-sixth-street-growth/"
+      ],
+      "notes": "Verified from the company or investor announcement. Agency contributions are not added to this round. Earlier fundraising remains incompletely reviewed."
+    },
+    {
+      "id": "curbio-b3e6468b-2022-01-18-equity",
+      "companyKey": "curbio-b3e6468b",
+      "announcedAt": "2022-01-18",
+      "label": "Series B",
+      "type": "equity",
+      "amountUsd": 65000000,
+      "amountQualifier": "exact",
+      "investors": [
+        "Revolution Growth"
+      ],
+      "sourceUrls": [
+        "https://www.prnewswire.com/news-releases/curbio-raises-65m-to-expand-national-fix-first-pay-at-closing-home-improvement-solution-for-brokerages-and-realtors-301462809.html"
+      ],
+      "notes": "Verified from the company or investor announcement. Agency contributions are not added to this round. Earlier fundraising remains incompletely reviewed."
+    },
+    {
+      "id": "proscia-b9c16a11-2025-03-19-cumulative",
+      "companyKey": "proscia-b9c16a11",
+      "announcedAt": "2025-03-19",
+      "label": "Total financing disclosed",
+      "type": "cumulative",
+      "amountUsd": 130000000,
+      "amountQualifier": "exact",
+      "investors": [],
+      "sourceUrls": [
+        "https://proscia.com/press-release/proscia-raises-50m-to-advance-ai-driven-pathology-and-deliver-the-future-of-precision-medicine"
+      ],
+      "notes": "Company disclosed $130M total funding, including a new $50M financing round on this date. The announcement does not specify instrument terms. This cumulative disclosure is excluded from equity subtotals; do not add $130M and $50M together."
     }
   ],
   "audit": [
@@ -2964,9 +3011,9 @@
     {
       "key": "stayntouch-28ff0229",
       "name": "StayNTouch",
-      "status": "pending",
+      "status": "partial",
       "searchedAt": "2026-10-05",
-      "reviewedAt": null,
+      "reviewedAt": "2026-10-05",
       "nextReviewAt": "2027-01-05",
       "priority": 1,
       "query": "\"StayNTouch\" funding raised million Series seed company",
@@ -5602,9 +5649,9 @@
     {
       "key": "curbio-b3e6468b",
       "name": "Curbio",
-      "status": "pending",
+      "status": "partial",
       "searchedAt": "2026-10-05",
-      "reviewedAt": null,
+      "reviewedAt": "2026-10-05",
       "nextReviewAt": "2027-01-05",
       "priority": 3,
       "query": "\"Curbio\" funding raised million Series seed company",
@@ -9668,9 +9715,9 @@
     {
       "key": "proscia-b9c16a11",
       "name": "Proscia",
-      "status": "pending",
+      "status": "partial",
       "searchedAt": "2026-10-05",
-      "reviewedAt": null,
+      "reviewedAt": "2026-10-05",
       "nextReviewAt": "2027-01-05",
       "priority": 3,
       "query": "\"Proscia\" funding raised million Series seed company",

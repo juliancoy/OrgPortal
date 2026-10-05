@@ -47,7 +47,14 @@ snapshot, record the error, and expose freshness and financing count through
 consuming version 2. No identity, permissions or operation receipts replicate.
 
 The current import includes a search pass across 578 recipients, candidate
-sources for 427 and six verified large equity rounds. All histories remain
+sources for 427 and eight verified large equity rounds and one cumulative financing disclosure. All histories remain
 incomplete. Search results are unverified leads, never automatic financial
 facts. The audit queue prioritizes unknown agency totals and tracks quarterly
 review due dates; it does not claim a scheduled verification has happened.
+
+Research leads persist in each agency-recipient audit record in the same database.
+When a verified event cites that lead URL for the same recipient, the public
+projection marks the lead verified and returns its transaction IDs. Pending
+leads never become monetary amounts automatically. New rounds are additions
+through the same reviewed, idempotent import; subsequent agency and recipient
+views and snapshots regenerate from the committed records.
