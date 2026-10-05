@@ -1,3 +1,4 @@
+import { resolveOrganizationView, useOrganizationAccess } from '../hooks/useOrganizationView'
 import { MemberMeetingsPage } from '../views/MemberMeetingsPage'
 import { NametagsPage } from '../views/NametagsPage'
 import { GovernanceDocumentPage } from '../views/governance/GovernanceDocumentPage'
@@ -100,9 +101,17 @@ function tenantHomeElement(tenant: PortalTenant, role: string, profile: ReturnTy
 
 function HomeRoute() {
   const { role, isLoading } = useAuth()
-  if (isLoading) return null
-  const profile = getActivePortalProfileConfig()
   const tenant = getDomainTenant()
+  const access = useOrganizationAccess(tenant?.home_org_slug)
+  const location = useLocation()
+  if (isLoading || access.loading) return null
+  const profile = getActivePortalProfileConfig()
+  const requestedView = new URLSearchParams(location.search).get('view')
+  if (tenant?.home_org_slug && (access.organizer || requestedView)) {
+    const view = resolveOrganizationView(requestedView, access.organizer, access.member)
+    if (view === 'public') return <TenantHomePage />
+    return <Navigate to={`/orgs/${encodeURIComponent(tenant.home_org_slug)}?view=${view}`} replace />
+  }
   if (tenant) return tenantHomeElement(tenant, role, profile)
   if (getDomainCommunity()) return <Navigate to="/timebanking" replace />
   if (role === 'guest') return <App />
