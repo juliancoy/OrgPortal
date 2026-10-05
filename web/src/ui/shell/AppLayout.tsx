@@ -22,26 +22,27 @@ export function AppLayout() {
     /^\/contact\/[^/]+\/?$/.test(location.pathname) ||
     (/^\/users\/[^/]+\/?$/.test(location.pathname) && !canonicalUserRoutes.has(location.pathname.replace(/\/$/, '')))
   const isChatRoute = location.pathname.startsWith('/chat')
+  const embeddedChat = isChatRoute && window.self !== window.top
 
   useEffect(() => {
     mainRef.current?.focus({ preventScroll: true })
   }, [location.pathname])
 
   return (
-    <TimebankInboxProvider enabled={timebankShell}><div className={`portal-shell ${timebankShell ? 'timebank-shell' : ''} ${brandedAuth ? 'portal-tenant-auth-shell' : ''}`}>
+    <TimebankInboxProvider enabled={timebankShell}><div className={`portal-shell ${timebankShell ? 'timebank-shell' : ''} ${brandedAuth ? 'portal-tenant-auth-shell' : ''} ${embeddedChat ? 'portal-embedded-chat' : ''}`}>
       <a className="skip-link" href="#main-content">
         Skip to main content
       </a>
-      {timebankShell ? <TimebankHeader /> : hideHeader ? null : <Header />}
+      {embeddedChat ? null : timebankShell ? <TimebankHeader /> : hideHeader ? null : <Header />}
       <main id="main-content" className="portal-main" ref={mainRef} tabIndex={-1}>
         <div className={`portal-container ${isChatRoute ? 'portal-chat-container' : ''}`}>
-          {!timebankShell && <ExternalBrowserPrompt />}
-          {location.pathname !== '/onboarding' && <OnboardingBanner />}
+          {!timebankShell && !embeddedChat && <ExternalBrowserPrompt />}
+          {!embeddedChat && location.pathname !== '/onboarding' && <OnboardingBanner />}
           <Outlet />
         </div>
       </main>
-      {timebankShell ? <footer className="tb-shell-footer">Timebank hours are separate from Dena.</footer> : <Footer />}
-      <FloatingSocialDock />
+      {embeddedChat ? null : timebankShell ? <footer className="tb-shell-footer">Timebank hours are separate from Dena.</footer> : <Footer />}
+      {!embeddedChat && <FloatingSocialDock />}
     </div></TimebankInboxProvider>
   )
 }

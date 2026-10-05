@@ -9559,3 +9559,14 @@ textarea:focus {
 .bio-editor textarea[hidden] { display: none; }
 .bio-editor-preview { min-height: 12rem; padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-solid); }
 .bio-editor-help { font-size: 0.85rem; margin: 0.5rem 0 0; }
+
+.portal-embedded-chat .portal-main { padding: 0; }
+.portal-embedded-chat .portal-container { width: 100%; }
+.portal-embedded-chat .portal-chat-shell,
+.portal-embedded-chat .native-chat-shell,
+.portal-embedded-chat .native-chat-shell.sidebar-expanded { display: block; min-height: 100dvh; }
+.portal-embedded-chat .portal-chat-sidebar { display: none; }
+.portal-embedded-chat .portal-chat-main,
+.portal-embedded-chat .native-chat-shell .portal-chat-main {
+  min-height: 100dvh; height: 100dvh; max-height: 100dvh;
+}
