@@ -1,3 +1,4 @@
+import { organizationSnapshot, replicaStatus, replicateOrganizations } from './organizationReplication';
 import { memberMeetingRoutes } from './memberMeetings';
 import { runEventEnrichmentOperation } from './eventEnrichment';
 import { runOrganizationRegistryOperation } from './organizationRegistry';
@@ -446,6 +447,12 @@ type ContactPayload = Partial<{
 const DEFAULT_ADMIN_EMAIL = "julian@codecollective.us";
 
 export const app = new Hono<{ Bindings: Env; Variables: { user: PidpUser } }>();
+app.use("*", async (c, next) => {
+  if (c.env.ORGANIZATION_REPLICA_SOURCE && !["GET", "HEAD", "OPTIONS"].includes(c.req.method)) {
+    return c.json({detail:"Read-only organization replica. Use the primary OrgPortal API with its normal authentication, permissions and preview/apply flow."}, 403);
+  }
+  await next();
+});
 
 function json(payload: unknown, status = 200) {
   return new Response(JSON.stringify(payload), {
@@ -3027,6 +3034,20 @@ app.post("/api/network/ingest/calendar", async (c) => {
   });
 });
 
+app.get("/api/network/replication/snapshot", async c => {
+  if (c.env.ORGANIZATION_REPLICA_SOURCE) return c.json({detail:"Fetch snapshots from the authoritative primary"},409);
+  const key = new Request(c.req.url);
+  const cache = await caches.open("organization-snapshots-v1");
+  let response = await cache.match(key);
+  if (!response) {
+    response = await organizationSnapshot(c.env.DB, key);
+    c.executionCtx.waitUntil(cache.put(key,response.clone()));
+  }
+  if (c.req.header("If-None-Match") === response.headers.get("ETag")) return new Response(null,{status:304,headers:response.headers});
+  return response;
+});
+app.get("/api/network/replication/status", async c => { c.header("Cache-Control","no-store"); return c.json(await replicaStatus(c.env)); });
+
 app.get("/api/network/orgs/public", async (c) => {
   const q = (c.req.query("q") || "").trim();
   const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "300", 10) || 300, 500));
@@ -5252,10 +5273,12 @@ function orgWorkerFetch(request: Request, env: Env, ctx: ExecutionContext) {
 export default {
   fetch: orgWorkerFetch,
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext) {
+    if (env.ORGANIZATION_REPLICA_SOURCE) { ctx.waitUntil(replicateOrganizations(env)); return; }
     ctx.waitUntil(Promise.all([runUbiTick(env.DB, controller.scheduledTime), dispatchTimebankPush(env)]));
     ctx.waitUntil(runEmailDelivery(env));
   },
   async queue(batch: MessageBatch<import("./push").PushDeliveryJob>, env: Env) {
+    if (env.ORGANIZATION_REPLICA_SOURCE) { batch.retryAll(); return; }
     await consumePushBatch(batch, env);
   },
 };

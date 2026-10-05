@@ -623,6 +623,16 @@ def run(prefix: str, network_name: str) -> None:
     prod_image = _resolve_prod_image()
     start_prod = _env_truthy("ORGPORTAL_START_PROD", default=DEFAULT_START_PROD)
     data_source = (os.getenv("ORGPORTAL_DATA_SOURCE") or DEFAULT_DATA_SOURCE).strip() or DEFAULT_DATA_SOURCE
+    replica_source = os.getenv("ORGPORTAL_ORGANIZATION_REPLICA_SOURCE", "https://lifetech.fyi/api/org/api/network/replication/snapshot").strip()
+    replica_interval = os.getenv("ORGPORTAL_ORGANIZATION_REPLICA_INTERVAL_SECONDS", "300")
+    if replica_source:
+        replica_seconds = int(replica_interval)
+        if not 60 <= replica_seconds <= 86400:
+            raise ValueError("Organization replica interval must be 60..86400 seconds")
+    replica_vars = (
+        f" --var {shlex.quote('ORGANIZATION_REPLICA_SOURCE:' + replica_source)}"
+        f" --var {shlex.quote('ORGANIZATION_REPLICA_INTERVAL_SECONDS:' + replica_interval)}"
+    ) if replica_source else ""
     org_api_base = os.getenv("ORGPORTAL_ORG_API_BASE", f"http://{org_worker_name}:8001")
 
     prod = {
@@ -680,6 +690,7 @@ def run(prefix: str, network_name: str) -> None:
                 f"--var {shlex.quote('PIDP_BASE_URL:' + (os.getenv('ORGPORTAL_WORKER_PIDP_BASE_URL') or f'http://{pidp_dev_name}:8000'))} "
                 f"--var {shlex.quote('PUBLIC_PORTAL_BASE_URL:' + gateway_base)} "
                 f"--var {shlex.quote('CHAT_API_ORIGIN:http://' + prefix + 'chat:8003')}"
+                + replica_vars
             ),
         ],
     }
@@ -783,6 +794,16 @@ def run(prefix: str, network_name: str) -> None:
     docker_utils.run_container(dev)
     docker_utils.wait_for_port(org_worker_name, int(worker_port), network_name, retries=60, delay=2)
     _wait_for_http(f"http://{org_worker_name}:{worker_port}/health", network_name, retries=60, delay=2)
+    if replica_source:
+        docker_utils.run_container({
+            "image": "python:3.12-alpine", "name": prefix + "org-replication",
+            "network": network_name, "restart_policy": {"Name": "always"}, "detach": True,
+            "environment": {"REPLICA_TRIGGER": f"http://{org_worker_name}:{worker_port}/__scheduled", "REPLICA_INTERVAL": replica_interval},
+            "volumes": {str(org_worker_dir / "scripts" / "poll-organization-replica.py"): {"bind": "/poll.py", "mode": "ro"}},
+            "command": ["python", "-u", "/poll.py"],
+        })
+    else:
+        _remove_container(prefix + "org-replication")
     if start_prod:
         docker_utils.run_container(prod)
         docker_utils.wait_for_port(prod_name, 8080, network_name, retries=60, delay=2)

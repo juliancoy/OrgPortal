@@ -30,3 +30,18 @@
   accounts, browser state, and application data local. Verify that both the
   portal and authentication endpoints use the local deployment before running.
 - Production browser checks should be read-only and unauthenticated.
+
+## Authoritative organization data
+
+- Always use the remote production OrgPortal API/MCP for real organization data
+  reads and edits. For LifeTech use `https://lifetech.fyi/api/org`; preserve its
+  tenant hostname, member identity, permissions and preview/apply receipts.
+- Local databases are eventually consistent public read replicas, not a source
+  for production edits or proof of current production permissions. Check remote
+  data before acting; inspect `/api/network/replication/status` for freshness.
+- Run local deployments with organization replication enabled (the run.py
+  default). Each replica owns a separate persistent DB; never bind it to the
+  production DB. See [replication operations](org-worker/REPLICATION.md).
+- The browser-test rule above is an explicit exception: isolated local accounts
+  and writable fixture data require `ORGPORTAL_ORGANIZATION_REPLICA_SOURCE=''`.
+  Do not run authenticated fixture tests against production or a read replica.
