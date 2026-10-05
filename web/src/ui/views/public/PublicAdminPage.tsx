@@ -1,3 +1,4 @@
+import { OrganizationPortalSections } from '../../components/OrganizationPortalSections'
 import { OrganizationBrandGuide } from '../../components/OrganizationBrandGuide'
 import { getDomainTenant } from '../../../config/timebankCommunity'
 import { OrganizationSupport } from '../../components/OrganizationSupport'
@@ -1366,6 +1367,10 @@ export function PublicAdminPage() {
             </button>
           </div>
           <OrganizationTools />
+          <OrganizationPortalSections
+            name={org.name}
+            features={portalConfig?.features ?? (getDomainTenant()?.home_org_slug === org.slug ? getDomainTenant()?.features : undefined) ?? ['directory', 'events', 'chat']}
+          />
           {getDomainTenant()?.home_org_slug === org.slug
             ? <OrganizationBrandGuide />
             : portalConfig?.slug_url

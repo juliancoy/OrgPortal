@@ -56,15 +56,6 @@ function formatEventDate(value?: string | null) {
   return date.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
-function featureLabel(feature: string) {
-  if (feature === 'timebank') return 'Timebank'
-  if (feature === 'directory') return 'Directory'
-  if (feature === 'events') return 'Events'
-  if (feature === 'chat') return 'Messages'
-  if (feature === 'ubi') return 'Civic finance'
-  return feature.replace(/[-_]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
-}
-
 function TenantHomeActions({ tenant }: { tenant: PortalTenant }) {
   const { role, isLoading } = useAuth()
   const primaryHref = actionHref(tenant.home_primary_href) || portalProfilePath(role === 'guest' ? '/users/login' : '/chat')
@@ -92,7 +83,6 @@ export function TenantHomePage() {
   const tenant = getDomainTenant()
   const [events, setEvents] = useState<TenantEvent[]>([])
   const [eventStatus, setEventStatus] = useState('')
-  const features = useMemo(() => (tenant?.features || []).filter((feature) => !['ubi', 'calendar'].includes(feature)), [tenant])
   const specialtyResources = useMemo(() => specialtyResourcesForTenant(tenant), [tenant])
 
   useEffect(() => {
@@ -163,13 +153,7 @@ export function TenantHomePage() {
           </div>
         </section>}
 
-        {features.length > 0 && <section className="tenant-home-grid" aria-label={`${profile.brandName} portal sections`}>
-          {features.slice(0, 4).map((feature) => <article className="tenant-home-card" key={feature}>
-            <span>{featureLabel(feature)}</span>
-            <h2>{feature === 'events' ? 'Events and registration' : feature === 'chat' ? 'Messages' : featureLabel(feature)}</h2>
-            <p>{feature === 'events' ? 'Publish events, collect registrations, and keep attendance visible.' : feature === 'chat' ? 'Keep member conversations close to the organization.' : `Use the ${featureLabel(feature).toLowerCase()} tools configured for this tenant.`}</p>
-          </article>)}
-        </section>}
+
       </div>
     </main>
     <Footer />
