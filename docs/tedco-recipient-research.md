@@ -1,6 +1,6 @@
 # TEDCO recipient research and registration
 
-The reviewed public research artifacts live in `web/public/research/tedco-recipients.json` and `tedco-recipient-review.json`. They are research evidence and import inputs, not a second organization database. The live OrgPortal directory and support records remain authoritative. The TEDCO page distinguishes researched companies from registered descendants, links only registered directory identities, and offers public evidence downloads.
+The reviewed public research artifacts live in `web/src/data/tedco-recipients.json` and `tedco-recipient-review.json`. Vite publishes them as content-hashed assets for both shared and tenant-root mounts. They are research evidence and import inputs, not a second organization database. The live OrgPortal directory and support records remain authoritative. The TEDCO page distinguishes researched companies from registered descendants, links only registered directory identities, and offers public evidence downloads.
 
 Reviewed October 5, 2026. The roster includes all sectors, historical portfolio companies and documented service recipients. It is **not certified as every company ever supported by TEDCO**. Public reports overlap, exited companies disappear from current portfolios, several reports omit named rosters, and parts of TEDCO's announcement archive were inaccessible. An exhaustive historical claim needs TEDCO's complete recipient export, including program, legal recipient identity, award date, and source/record identifier.
 

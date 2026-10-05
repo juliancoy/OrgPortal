@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
 import { applyEvidenceImport, filterEvidenceRecipients, previewEvidenceImport, type EvidenceManifest, type EvidencePreview } from './organizationEvidenceImport'
+import manifestUrl from '../../data/tedco-recipients.json?url'
+import reviewUrl from '../../data/tedco-recipient-review.json?url'
 
-const manifestUrl = `${import.meta.env.BASE_URL}research/tedco-recipients.json`
-const reviewUrl = `${import.meta.env.BASE_URL}research/tedco-recipient-review.json`
 export function TedcoRecipientResearch({ organizationId, canManage, registered, onImported }: {
   organizationId: string; canManage: boolean; registered: { id: string; name: string; slug: string }[]; onImported: () => void
 }) {

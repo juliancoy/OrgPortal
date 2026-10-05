@@ -77,8 +77,8 @@ test('source evidence is paginated and malformed tags cannot break descendant re
  }finally{db.sqlite.close();}
 });
 test('the full researched TEDCO roster imports with sourced nonmonetary support and existing identities intact',async()=>{
- const manifest=JSON.parse(readFileSync(new URL('../../web/public/research/tedco-recipients.json',import.meta.url),'utf8'));
- const review=JSON.parse(readFileSync(new URL('../../web/public/research/tedco-recipient-review.json',import.meta.url),'utf8'));
+ const manifest=JSON.parse(readFileSync(new URL('../../web/src/data/tedco-recipients.json',import.meta.url),'utf8'));
+ const review=JSON.parse(readFileSync(new URL('../../web/src/data/tedco-recipient-review.json',import.meta.url),'utf8'));
  const db=setup();let created=0,recorded=0;
  try{
   db.sqlite.exec("UPDATE organizations SET id='org-tedco' WHERE id='tedco'");
