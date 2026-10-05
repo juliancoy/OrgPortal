@@ -251,6 +251,7 @@ test('Google personalized entry preserves the selected account and return contex
   await page.goto(portal('/users/login?next=%2Fpeople'))
   await expect(page.getByRole('heading', { name: 'Log In', exact: true })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Continue with GitHub' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Continue with Google' })).toBeVisible()
   const request = page.waitForRequest(request => request.url().includes('/auth/sso/start'))
   await page.getByRole('button', { name: 'Continue as Test Account' }).click()
   const url = new URL((await request).url())
@@ -260,6 +261,54 @@ test('Google personalized entry preserves the selected account and return contex
   expect(url.searchParams.has('owner')).toBe(false)
   expect(new URL(url.searchParams.get('next')!).searchParams.get('next')).toBe('/people')
 })
+
+test('unlisted alias skips the Google widget and keeps the standard OAuth return context', async ({ page, baseURL }) => {
+  await mockTenant(page)
+  let googleRequests = 0
+  await page.route('https://accounts.google.com/**', route => { googleRequests++; return route.abort() })
+  const alias = new URL(portal('/users/login?next=%2Fpeople'), baseURL)
+  alias.hostname = alias.hostname === 'localhost' ? '127.0.0.1' : 'localhost'
+  await page.goto(alias.toString())
+  const link = page.getByRole('link', { name: 'Continue with Google' })
+  await expect(link).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Continue with GitHub' })).toBeVisible()
+  expect(googleRequests).toBe(0)
+  await expect(page.locator('.portal-google-personalized-button')).toBeHidden()
+  const url = new URL((await link.getAttribute('href'))!, alias.origin)
+  expect(url.searchParams.get('provider')).toBe('google')
+  expect(url.searchParams.has('login_hint')).toBe(false)
+  expect(url.searchParams.has('owner')).toBe(false)
+  const callback = new URL(url.searchParams.get('next')!)
+  expect(callback.origin).toBe(alias.origin)
+  expect(callback.searchParams.get('next')).toBe('/people')
+})
+
+for (const failure of ['configuration unavailable', 'script blocked', 'origin rejected', 'widget renders nothing', 'asynchronous rejection']) {
+  test(`Google fallback survives ${failure}`, async ({ page }) => {
+    await mockTenant(page)
+    await page.route('**/pidp/configuration', route => route.fulfill(failure === 'configuration unavailable'
+      ? { status: 503, json: {} }
+      : { json: { google_client_id: 'test-google-client' } }))
+    await page.route('https://accounts.google.com/gsi/client', route => failure === 'script blocked' ? route.abort() : route.fulfill({
+      contentType: 'application/javascript',
+      body: `window.google = { accounts: { id: {
+        initialize() { ${failure === 'origin rejected' ? "throw new Error('origin not allowed');" : ''} },
+        renderButton(element) { ${failure === 'asynchronous rejection' ? "element.appendChild(document.createElement('iframe')); setTimeout(() => console.error('origin not allowed'), 0);" : ''} }
+      } } };`,
+    }))
+    await page.goto(portal('/users/login?next=%2Fpeople'))
+    const link = page.getByRole('link', { name: 'Continue with Google' })
+    await expect(link).toBeVisible()
+    if (failure === 'asynchronous rejection') await expect(page.locator('.portal-google-personalized-button')).toBeVisible()
+    const request = page.waitForRequest(request => request.url().includes('/auth/sso/start'))
+    await link.click()
+    const url = new URL((await request).url())
+    expect(url.searchParams.get('provider')).toBe('google')
+    expect(url.searchParams.has('login_hint')).toBe(false)
+    expect(url.searchParams.has('owner')).toBe(false)
+    expect(new URL(url.searchParams.get('next')!).searchParams.get('next')).toBe('/people')
+  })
+}
 
 test('tenant domains use root-mounted canonical routes and assets', async ({ page }) => {
   await mockTenant(page)

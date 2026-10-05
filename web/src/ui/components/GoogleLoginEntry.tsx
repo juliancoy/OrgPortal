@@ -11,6 +11,14 @@ function googleIdentity(): GoogleIdentity | undefined {
   return (window as Window & { google?: { accounts?: { id?: GoogleIdentity } } }).google?.accounts?.id
 }
 
+function personalizedGoogleAllowed(): boolean {
+  // Google has no button API for reliably detecting an unauthorized origin.
+  // Enable the widget only on origins explicitly registered with Google.
+  const configured = import.meta.env.VITE_GOOGLE_PERSONALIZED_ORIGINS as string | undefined
+  const origins = (configured ?? 'https://lifetech.fyi').split(',').map(origin => origin.trim())
+  return origins.includes(window.location.origin)
+}
+
 function loadGoogleIdentity(): Promise<void> {
   if (googleIdentity()) return Promise.resolve()
   return new Promise((resolve, reject) => {
@@ -35,6 +43,7 @@ export function GoogleLoginEntry({ next }: { next: string }) {
   const buttonRef = useRef<HTMLDivElement>(null)
   const [ready, setReady] = useState(false)
   useEffect(() => {
+    if (!personalizedGoogleAllowed()) return
     let cancelled = false
     const controller = new AbortController()
     async function render() {
@@ -64,16 +73,16 @@ export function GoogleLoginEntry({ next }: { next: string }) {
         },
       })
       identity.renderButton(buttonRef.current, { type: 'standard', theme: 'outline', size: 'large', text: 'continue_with', width: Math.min(400, Math.max(200, buttonRef.current.parentElement?.clientWidth || 200)) })
-      setReady(true)
+      setReady(buttonRef.current.childElementCount > 0)
     }
     void render().catch(() => { /* Keep the standard OAuth link available. */ })
     return () => { cancelled = true; controller.abort() }
   }, [next])
   return <div className="portal-google-login-entry">
     <div ref={buttonRef} className="portal-google-personalized-button" hidden={!ready} />
-    {!ready && <a href={pidpSingleSignOnUrl(next, 'google')} className="portal-social-login-button" aria-label="Continue with Google">
+    <a href={pidpSingleSignOnUrl(next, 'google')} className="portal-social-login-button" aria-label="Continue with Google">
       <img src={portalPath('/images/google-g-logo.svg')} alt="" className="portal-social-login-logo" />
-      <span>Continue with Google</span>
-    </a>}
+      <span>{ready ? 'Use standard Google sign-in' : 'Continue with Google'}</span>
+    </a>
   </div>
 }
