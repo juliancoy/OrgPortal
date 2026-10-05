@@ -145,7 +145,7 @@ export function OrganizationSupport({ organizationId, slug, canManage }: { organ
       {data.supporters.length ? <ul className="support-organizations">{data.supporters.map(org => <li key={org.id}><Link to={`/orgs/${org.slug}`}>{org.name}</Link></li>)}</ul> : <p>No documented supporters yet.</p>}
       <details><summary>Support records and source evidence ({data.recordCount})</summary>{data.records.length ? <SupportRecordTable records={data.records} /> : <p>No support records yet.</p>}{data.nextRecordOffset !== null && <button disabled={busy} onClick={() => void loadMoreRecords()}>Load more source evidence ({data.records.length} of {data.recordCount})</button>}</details>
     </> : !message && <p role="status">Loading support records…</p>}
-    {slug === 'tedco' && <TedcoRecipientResearch organizationId={organizationId} canManage={canManage} registered={data?.descendants || []} onImported={() => setRefresh(value => value + 1)} />}
+    {slug === 'tedco' && <TedcoRecipientResearch organizationId={organizationId} registered={data?.descendants || []} onImported={() => setRefresh(value => value + 1)} />}
     {canManage && token && <details open={expanded} onToggle={event => setExpanded(event.currentTarget.open)}><summary>Record organizational support</summary>
       <form onSubmit={event => void submit(event)} className="support-form">
         <fieldset disabled={busy || Boolean(preview)}><legend>Contribution details</legend>

@@ -5,8 +5,8 @@ import { applyEvidenceImport, filterEvidenceRecipients, previewEvidenceImport, t
 import manifestUrl from '../../data/tedco-recipients.json?url'
 import reviewUrl from '../../data/tedco-recipient-review.json?url'
 
-export function TedcoRecipientResearch({ organizationId, canManage, registered, onImported }: {
-  organizationId: string; canManage: boolean; registered: { id: string; name: string; slug: string }[]; onImported: () => void
+export function TedcoRecipientResearch({ organizationId, registered, onImported }: {
+  organizationId: string; registered: { id: string; name: string; slug: string }[]; onImported: () => void
 }) {
   const { token } = useAuth()
   const [manifest, setManifest] = useState<EvidenceManifest | null>(null)
@@ -76,7 +76,7 @@ export function TedcoRecipientResearch({ organizationId, canManage, registered, 
         <small className="research-company-detail">{row.description} {row.support.occurredAt}</small>
       </li>
     })}</ul>
-    {canManage && token && <div className="support-preview">
+    {token && <div className="support-preview">
       <h3>Register researched recipients</h3>
       <p>OrgPortal operator access is required. Review the identity matches, tags and source evidence before confirming. Existing tags are retained. This creates public organization pages and support records; it grants no memberships or ownership and makes no payments.</p>
       {previews && <>
