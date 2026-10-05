@@ -1,3 +1,4 @@
+import { OrganizationViewSwitcher } from '../components/OrganizationViewSwitcher'
 import { TaskQueue, useTaskQueue } from '../tasks/TaskQueue'
 import { useDomainCommunity, useDomainTenant } from '../../config/timebankCommunity'
 import { hasTenantCalendar, specialtyResourcesForTenant } from '../../config/specialtyResources'
@@ -812,6 +813,7 @@ export function Header() {
         </div>
 
         <div className="portal-auth">
+          <OrganizationViewSwitcher />
           {isLoading && role === 'guest' ? (
             <div className="portal-auth-loading" role="status" aria-label="Checking sign-in status">
               <span className="portal-auth-loading-avatar" aria-hidden="true" />
