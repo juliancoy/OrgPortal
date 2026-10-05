@@ -6,8 +6,11 @@
 .onboarding-steps h2{font-size:19px}.onboarding-steps button{display:block;margin-top:12px}
 .onboarding-calendar,.onboarding-organizers{margin-top:24px;padding-top:16px;border-top:1px solid var(--border-subtle)}
 .onboarding-page .onboarding-review{display:flex;align-items:center;gap:10px;margin:16px 0}
-.onboarding-calendar .availability-grid{min-width:580px}.onboarding-calendar .availability-grid thead th button{writing-mode:horizontal-tb}
+.onboarding-calendar .availability-grid{min-width:0}.onboarding-calendar .availability-grid thead th button{writing-mode:horizontal-tb}
 .onboarding-calendar .availability-grid button[aria-pressed=true]{background:#16847d;color:white}
 .onboarding-organizers summary{cursor:pointer;font-weight:700}
 
 .onboarding-page [id]{scroll-margin-top:100px}
+
+.onboarding-checklist{margin-top:20px}.onboarding-checklist summary{cursor:pointer;font-weight:600}
+.onboarding-calendar>label{display:inline-flex;align-items:center;gap:6px;margin:0 12px 10px 0}
