@@ -7,6 +7,9 @@ import reviewUrl from '../../data/tedco-recipient-review.json?url'
 import fundingUrl from '../../data/tedco-recipient-funding-status.json?url'
 import { rankRecipients, type FundingReport } from './tedcoFunding'
 import { CompanyEvidence } from './TedcoCompanyEvidence'
+import { fundingAmount, statusLabels } from './tedcoFunding'
+import { CompanyIcon } from './CompanyIcon'
+import { portalPath } from '../../config/portalBase'
 
 export function TedcoRecipientResearch({ organizationId, registered, onImported }: {
   organizationId: string; registered: { id: string; name: string; slug: string }[]; onImported: () => void
@@ -66,11 +69,12 @@ export function TedcoRecipientResearch({ organizationId, registered, onImported 
   if (!manifest) return message ? <p role="status">{message}</p> : <p>Loading TEDCO recipient research…</p>
   const filtered = new Set(filterEvidenceRecipients(manifest.recipients, query, adjacentOnly).map(row => row.key))
   const recipients = rankRecipients(funding?.companies || []).filter(row => filtered.has(row.key))
+  const chartMaximum = Math.max(1,...(funding?.companies || []).map(row=>row.totalUsd ?? 0))
   const adjacentCount = manifest.recipients.filter(row => row.tags.includes('LifeTech adjacent')).length
   const otherRegistered = registered.filter(org => !funding?.companies.some(row => row.organizationId === org.id))
   return <div className="tedco-recipient-research">
     <h3>TEDCO recipient funding ranking ({manifest.recipients.length} companies · {adjacentCount} LifeTech adjacent)</h3>
-    <p>Highest documented funding first. Rank is across all researched recipients and stays the same when filtered. Unknown amounts follow the ranked organizations.</p>
+    <p>Highest documented TEDCO funding first. Click a company icon or name to open its page. Ranks and bar lengths stay the same when filtered. Unknown amounts follow the ranked companies.</p>
     <p>{manifest.coverage} Reviewed {manifest.reviewedAt}. Entries without an organization link are researched recipients awaiting directory registration.</p>
     <details><summary>Funding ranking methodology and coverage</summary><p>{funding?.methodology}</p><p>Operating status records activity on the source date. A bought company can continue operating under its acquirer. Missing or unreachable websites do not establish that a company is defunct.</p></details>
     <p><a href={fundingUrl} download>Download funding ranking and company status evidence</a> · <a href={manifestUrl} download>Recipient list and support evidence</a> · <a href={reviewUrl} download>Sources and classification notes</a></p>
@@ -79,14 +83,22 @@ export function TedcoRecipientResearch({ organizationId, registered, onImported 
       <label><input type="checkbox" checked={adjacentOnly} onChange={event => setAdjacentOnly(event.target.checked)} /> LifeTech adjacent only</label>
       <p role="status">Showing {Math.min(visibleCount, recipients.length)} of {recipients.length} matching companies · {manifest.recipients.length} researched recipients overall</p>
     </div>
-    <ul className="support-organizations">{recipients.slice(0, visibleCount).map(row => {
+    <p className="tedco-chart-scale">Documented TEDCO funding · bars share a $0–{fundingAmount(chartMaximum)} scale, including when filtered.</p>
+    <ul className="tedco-funding-chart" aria-label="TEDCO funding by company">{recipients.slice(0, visibleCount).map(row => {
       const recipient = manifest.recipients.find(item => item.key === row.key)!
       const org = registered.find(item => item.id === row.organizationId)
       const recipientSlug = org?.slug || row.organizationSlug
-      return <li key={row.key}>{recipientSlug ? <Link to={`/orgs/${recipientSlug}`}>{row.name}</Link> : row.name}
-        {recipient.tags.includes('LifeTech adjacent') && <span className="support-adjacent-tag">LifeTech adjacent</span>}
-        {' '}<a href={recipient.support.sourceUrl} target="_blank" rel="noreferrer">Recipient source</a>
-        <CompanyEvidence company={row} />
+      const href = recipientSlug ? `/orgs/${recipientSlug}` : row.websiteUrl || recipient.support.sourceUrl
+      const reference = <><CompanyIcon name={row.name} src={row.iconUrl ? portalPath(row.iconUrl) : undefined} /><span>{row.name}</span></>
+      return <li key={row.key}>
+        <div className="tedco-chart-heading">
+          {recipientSlug ? <Link className="tedco-company-reference" to={href}>{reference}</Link> : <a className="tedco-company-reference" href={href} target="_blank" rel="noreferrer">{reference}</a>}
+          <strong className="tedco-chart-amount">{row.rank !== null && <span>#{row.rank} · </span>}{fundingAmount(row.totalUsd)}</strong>
+        </div>
+        {row.totalUsd !== null ? <div className="tedco-bar-track" role="meter" aria-label={`${row.name} documented TEDCO funding`} aria-valuemin={0} aria-valuemax={chartMaximum} aria-valuenow={row.totalUsd} aria-valuetext={fundingAmount(row.totalUsd)}><span style={{width:`${row.totalUsd/chartMaximum*100}%`}} /></div> : <p className="tedco-funding-unknown">No verified amount — excluded from the chart scale.</p>}
+        <div className="tedco-chart-meta"><span>{statusLabels[row.status.value]}</span>{recipient.tags.includes('LifeTech adjacent') && <span className="support-adjacent-tag">LifeTech adjacent</span>}<a href={recipient.support.sourceUrl} target="_blank" rel="noreferrer">Recipient source</a></div>
+        {row.otherFundingEvidence?.map((fact,index)=><p className="tedco-other-funding" key={index}>{fundingAmount(fact.amountUsd)} {fact.kind} · includes TEDCO’s investment; excluded from the TEDCO subtotal. <a href={fact.sourceUrl} target="_blank" rel="noreferrer">Source</a></p>)}
+        <CompanyEvidence company={row} showSummary={false} />
       </li>
     })}</ul>
     {visibleCount < recipients.length && <button onClick={() => setVisibleCount(count => count + 50)}>Load more recipients ({Math.min(visibleCount, recipients.length)} of {recipients.length})</button>}

@@ -33,3 +33,12 @@ describe('TEDCO descendant funding ranking', () => {
     expect(funding.companies.find(row => row.name === 'GrayBug Vision')?.status.value).toBe('merged')
   })
 })
+
+it('keeps Pixee’s TEDCO investment separate from its multi-investor seed round',()=>{
+ const pixee=funding.companies.find(row=>row.name==='Pixee')! as RecipientFunding
+ expect(pixee.totalUsd).toBe(1500000)
+ expect(pixee.otherFundingEvidence?.[0].amountUsd).toBe(15000000)
+ expect(pixee.fundingEvidence.reduce((total,fact)=>total+fact.amountUsd,0)).toBe(pixee.totalUsd)
+ expect(pixee.websiteUrl).toBe('https://www.pixee.ai/')
+ expect(pixee.iconUrl).toMatch(/^\/assets\/company-icons\/pixee\./)
+})

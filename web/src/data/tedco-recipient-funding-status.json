@@ -137,7 +137,10 @@
         "sourceUrl": null,
         "evidence": "No sufficiently recent, company-specific primary evidence verified. Historical portfolio inclusion does not establish that the company is still operating."
       },
-      "rank": 1
+      "rank": 1,
+      "websiteUrl": "https://www.theradaptive.com/",
+      "iconUrl": "/assets/company-icons/theradaptive.png",
+      "iconSourceUrl": "https://www.theradaptive.com/wp-content/uploads/2026/02/Untitled-design-56-150x150.png"
     },
     {
       "key": "ion-storage-systems-efdac8a9",
@@ -183,7 +186,10 @@
         "sourceUrl": "https://www.tedcomd.com/press-release/tedco-announces-2-million-investment-ion-storage-systems",
         "evidence": "TEDCO describes the company’s active business in a dated investment announcement. This establishes activity on the source date, not a live corporate registry certification."
       },
-      "rank": 2
+      "rank": 2,
+      "websiteUrl": "https://ionstoragesystems.com/",
+      "iconUrl": "/assets/company-icons/ion-storage-systems.png",
+      "iconSourceUrl": "https://ionstoragesystems.com/wp-content/uploads/2025/05/cropped-icon-32x32.png"
     },
     {
       "key": "optoro-4747c1ff",
@@ -286,7 +292,10 @@
         "sourceUrl": "https://aledade.com/newsroom/aledade-news/page/1",
         "evidence": "Company newsroom publishes dated current operations and leadership announcements."
       },
-      "rank": 5
+      "rank": 5,
+      "websiteUrl": "https://aledade.com/",
+      "iconUrl": "/assets/company-icons/aledade.png",
+      "iconSourceUrl": "https://aledade.com/hubfs/Aledade%20Icon_Blue.png"
     },
     {
       "key": "fugue-f34f5aca",
@@ -1264,29 +1273,41 @@
       "fundingEvidence": [
         {
           "amountUsd": 1500000.0,
-          "sourceUrl": "https://www.tedcomd.com/press-release/tedco-announces-15-million-investment-pixee",
+          "sourceUrl": "https://www.tedcomd.com/insight/tedco-announces-15-million-investment-pixee",
           "asOf": "2025-05-22",
-          "kind": "award",
-          "evidence": "Individual TEDCO investment or funding amount in its recipient announcement; an announced award is not independent proof of cash disbursement."
+          "kind": "investment",
+          "evidence": "TEDCO announced a $1.5 million Cybersecurity Investment Fund investment in Pixee on May 22, 2025. This is TEDCO’s investment, not the full $15 million multi-investor seed round; the announcement does not establish cash-disbursement dates."
         }
       ],
       "allFundingEvidence": [
         {
           "amountUsd": 1500000.0,
-          "sourceUrl": "https://www.tedcomd.com/press-release/tedco-announces-15-million-investment-pixee",
+          "sourceUrl": "https://www.tedcomd.com/insight/tedco-announces-15-million-investment-pixee",
           "asOf": "2025-05-22",
-          "kind": "award",
-          "evidence": "Individual TEDCO investment or funding amount in its recipient announcement; an announced award is not independent proof of cash disbursement."
+          "kind": "investment",
+          "evidence": "TEDCO announced a $1.5 million Cybersecurity Investment Fund investment in Pixee on May 22, 2025. This is TEDCO’s investment, not the full $15 million multi-investor seed round; the announcement does not establish cash-disbursement dates."
         }
       ],
       "status": {
-        "value": "unknown",
-        "asOf": null,
+        "value": "operating",
+        "asOf": "2026-10-05",
         "checkedAt": "2026-10-05",
-        "sourceUrl": null,
-        "evidence": "No sufficiently recent, company-specific primary evidence verified. Historical portfolio inclusion does not establish that the company is still operating."
+        "sourceUrl": "https://www.pixee.ai/",
+        "evidence": "The current official company website offers its VulnOps application-security platform, pricing, product integrations and demo requests. Reported website activity does not verify legal or financial standing."
       },
-      "rank": 23
+      "rank": 23,
+      "websiteUrl": "https://www.pixee.ai/",
+      "iconUrl": "/assets/company-icons/pixee.png",
+      "iconSourceUrl": "https://cdn.prod.website-files.com/696822cb241ff5e67581075b/69755f15487a7c6d71e1d76e_pixee-icon.png",
+      "otherFundingEvidence": [
+        {
+          "amountUsd": 15000000,
+          "sourceUrl": "https://www.linkedin.com/posts/pixee_appsec-cybersecurity-ai-activity-7331325497424891904-Cv4Y",
+          "asOf": "2025",
+          "kind": "seed round (all investors)",
+          "evidence": "Pixee announced a $15 million seed round led by Decibel and Wing, with TEDCO, PrimeSet and strategic investors participating. The $1.5 million TEDCO investment is included in this round, not an additional $15 million TEDCO award."
+        }
+      ]
     },
     {
       "key": "remodelmate-27f408cc",

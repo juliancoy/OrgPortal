@@ -7853,7 +7853,7 @@
       "key": "pixee-83504cbc",
       "name": "Pixee",
       "description": "Company documented in TEDCO’s TEDCO published recipient announcement recipient records.",
-      "sourceUrl": "https://www.tedcomd.com/press-release/tedco-announces-15-million-investment-pixee",
+      "sourceUrl": "https://www.tedcomd.com/insight/tedco-announces-15-million-investment-pixee",
       "tags": [
         "Venture",
         "TEDCO recipient"
@@ -7863,9 +7863,9 @@
         "supportKind": "transfer",
         "description": "TEDCO recipient: TEDCO published recipient announcement",
         "occurredAt": "May 22, 2025",
-        "sourceUrl": "https://www.tedcomd.com/press-release/tedco-announces-15-million-investment-pixee",
+        "sourceUrl": "https://www.tedcomd.com/insight/tedco-announces-15-million-investment-pixee",
         "evidence": "TEDCO publicly identifies this company as an investment recipient. Individual monetary amount is not assigned to this consolidated relationship.",
-        "notes": "Consolidated recipient relationship. Published awards and portfolio investments are not proof of cash disbursement. Historical companies may have exited, changed names, or ceased operating. No funding total is summed across sources. Sources: TEDCO published recipient announcement (May 22, 2025): https://www.tedcomd.com/press-release/tedco-announces-15-million-investment-pixee",
+        "notes": "Consolidated recipient relationship. Published awards and portfolio investments are not proof of cash disbursement. Historical companies may have exited, changed names, or ceased operating. No funding total is summed across sources. Sources: TEDCO published recipient announcement (May 22, 2025): https://www.tedcomd.com/insight/tedco-announces-15-million-investment-pixee",
         "status": "reported"
       }
     },

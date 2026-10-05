@@ -21,3 +21,19 @@
 .support-form label { display: grid; gap: 0.35rem; }
 .support-form :is(input,select,textarea) { width: 100%; min-width: 0; }
 .support-preview { display: grid; gap: 0.6rem; padding: 1rem; border: 1px solid var(--border); border-radius: 8px; }
+
+.tedco-funding-chart{list-style:none;padding:0;margin:0;display:grid;gap:12px}
+.tedco-funding-chart>li{padding:14px;border:1px solid var(--border-subtle,var(--border));border-radius:8px;background:var(--panel);min-width:0}
+.tedco-chart-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.tedco-company-reference{display:inline-flex;align-items:center;gap:10px;min-width:0;font-weight:600;text-decoration:none}
+.tedco-company-reference>span:last-child{overflow-wrap:anywhere}
+.tedco-company-icon{display:grid;place-items:center;flex-shrink:0;width:40px;height:40px;border-radius:8px;border:1px solid var(--border-subtle,var(--border));background:var(--panel);color:var(--text-primary);font-size:13px}
+.tedco-company-icon img{width:30px;height:30px;object-fit:contain}
+.tedco-chart-amount{font-variant-numeric:tabular-nums;font-size:14px}
+.tedco-bar-track{height:18px;overflow:hidden;border-radius:4px;background:color-mix(in srgb,var(--text-primary) 10%,var(--panel));margin:12px 0}
+.tedco-bar-track>span{display:block;height:100%;background:var(--accent,#16847d);border-radius:4px}
+.tedco-chart-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px;color:var(--text-secondary)}
+.tedco-chart-meta .support-adjacent-tag{margin:0}.tedco-chart-meta>a{margin-left:auto}
+.tedco-chart-scale,.tedco-funding-unknown,.tedco-other-funding{font-size:13px;color:var(--text-secondary)}
+.tedco-funding-chart .tedco-company-evidence summary{font-size:13px;padding-bottom:0}
+@media(max-width:480px){.tedco-chart-amount{width:100%;padding-left:50px}.tedco-funding-chart>li{padding:10px}}
