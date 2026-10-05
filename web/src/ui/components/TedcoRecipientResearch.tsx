@@ -16,6 +16,7 @@ export function TedcoRecipientResearch({ organizationId, registered, onImported 
   const [funding, setFunding] = useState<FundingReport | null>(null)
   const [query, setQuery] = useState('')
   const [adjacentOnly, setAdjacentOnly] = useState(false)
+  const [visibleCount, setVisibleCount] = useState(50)
   const [previews, setPreviews] = useState<EvidencePreview[] | null>(null)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
@@ -36,6 +37,7 @@ export function TedcoRecipientResearch({ organizationId, registered, onImported 
     operation.current?.abort(); setPreviews(null); setBusy(false); setApplied(0)
     return () => operation.current?.abort()
   }, [token])
+  useEffect(() => { setVisibleCount(50) }, [query, adjacentOnly])
   async function run(confirm: boolean) {
     if (!manifest || !token) return
     const controller = new AbortController(); operation.current = controller
@@ -75,9 +77,9 @@ export function TedcoRecipientResearch({ organizationId, registered, onImported 
     <div className="support-recipient-filters">
       <label>Search researched recipients<input type="search" value={query} onChange={event => setQuery(event.target.value)} /></label>
       <label><input type="checkbox" checked={adjacentOnly} onChange={event => setAdjacentOnly(event.target.checked)} /> LifeTech adjacent only</label>
-      <p role="status">Showing {recipients.length} of {manifest.recipients.length} researched companies</p>
+      <p role="status">Showing {Math.min(visibleCount, recipients.length)} of {recipients.length} matching companies · {manifest.recipients.length} researched recipients overall</p>
     </div>
-    <ul className="support-organizations">{recipients.map(row => {
+    <ul className="support-organizations">{recipients.slice(0, visibleCount).map(row => {
       const recipient = manifest.recipients.find(item => item.key === row.key)!
       const org = registered.find(item => item.id === row.organizationId)
       const recipientSlug = org?.slug || row.organizationSlug
@@ -87,6 +89,7 @@ export function TedcoRecipientResearch({ organizationId, registered, onImported 
         <CompanyEvidence company={row} />
       </li>
     })}</ul>
+    {visibleCount < recipients.length && <button onClick={() => setVisibleCount(count => count + 50)}>Load more recipients ({Math.min(visibleCount, recipients.length)} of {recipients.length})</button>}
     {otherRegistered.length > 0 && <><h4>Other registered descendants · funding unranked</h4><ul className="support-organizations">{otherRegistered.map(org => <li key={org.id}><Link to={`/orgs/${org.slug}`}>{org.name}</Link> · Funding total unknown · Status unknown</li>)}</ul></>}
     {token && <div className="support-preview">
       <h3>Register researched recipients</h3>
