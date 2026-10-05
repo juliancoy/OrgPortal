@@ -80,7 +80,8 @@ export function TedcoRecipientResearch({ organizationId, registered, onImported 
     <ul className="support-organizations">{recipients.map(row => {
       const recipient = manifest.recipients.find(item => item.key === row.key)!
       const org = registered.find(item => item.id === row.organizationId)
-      return <li key={row.key}>{org ? <Link to={`/orgs/${org.slug}`}>{row.name}</Link> : row.name}
+      const recipientSlug = org?.slug || row.organizationSlug
+      return <li key={row.key}>{recipientSlug ? <Link to={`/orgs/${recipientSlug}`}>{row.name}</Link> : row.name}
         {recipient.tags.includes('LifeTech adjacent') && <span className="support-adjacent-tag">LifeTech adjacent</span>}
         {' '}<a href={recipient.support.sourceUrl} target="_blank" rel="noreferrer">Recipient source</a>
         <CompanyEvidence company={row} />

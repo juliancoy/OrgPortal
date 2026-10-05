@@ -1,6 +1,6 @@
 export type FundingEvidence = { amountUsd: number; sourceUrl: string; asOf: string; kind: string; evidence: string }
 export type RecipientStatus = { value: 'operating' | 'acquired' | 'merged' | 'defunct' | 'unknown'; asOf: string | null; checkedAt: string; sourceUrl: string | null; additionalSourceUrl?: string; evidence: string }
-export type RecipientFunding = { key: string; name: string; organizationId: string; totalUsd: number | null; rank: number | null; fundingEvidence: FundingEvidence[]; allFundingEvidence: FundingEvidence[]; status: RecipientStatus }
+export type RecipientFunding = { key: string; name: string; organizationId: string; organizationSlug?: string; totalUsd: number | null; rank: number | null; fundingEvidence: FundingEvidence[]; allFundingEvidence: FundingEvidence[]; status: RecipientStatus }
 export type FundingReport = { reviewedAt: string; methodology: string; companies: RecipientFunding[] }
 export const statusLabels = { operating: 'Operating (reported)', acquired: 'Bought / acquired', merged: 'Merged', defunct: 'Defunct / liquidating', unknown: 'Status unknown' }
 export function rankRecipients(companies: RecipientFunding[]) {

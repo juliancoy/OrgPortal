@@ -8081,7 +8081,8 @@
         "sourceUrl": "https://www.tedcomd.com/press-release/tedco-announces-state-small-business-credit-initiative-investment-irazu-oncology",
         "evidence": "TEDCO describes the company’s active business in a dated investment announcement. This establishes activity on the source date, not a live corporate registry certification."
       },
-      "rank": 170
+      "rank": 170,
+      "organizationSlug": "irazu-oncology"
     },
     {
       "key": "microbilt-e5645d42",
@@ -13587,7 +13588,8 @@
         "sourceUrl": "https://www.tedcomd.com/press-release/tedco-invests-sommos",
         "evidence": "TEDCO describes the company’s active business in a dated investment announcement. This establishes activity on the source date, not a live corporate registry certification."
       },
-      "rank": 259
+      "rank": 259,
+      "organizationSlug": "sommos-d108508c8eb8"
     },
     {
       "key": "sparen-holding-company-a3b4d9e6",
@@ -13761,7 +13763,8 @@
         "sourceUrl": null,
         "evidence": "No sufficiently recent, company-specific primary evidence verified. Historical portfolio inclusion does not establish that the company is still operating."
       },
-      "rank": 259
+      "rank": 259,
+      "organizationSlug": "stacks-data-ba3f846cfd35"
     },
     {
       "key": "subscribe-pro-0c867f67",
@@ -15763,7 +15766,8 @@
         "sourceUrl": "https://www.tedcomd.com/press-release/tedco-announces-postcare-ai-concept-capital-recipient",
         "evidence": "TEDCO describes the company’s active business in a dated investment announcement. This establishes activity on the source date, not a live corporate registry certification."
       },
-      "rank": 374
+      "rank": 374,
+      "organizationSlug": "postcare-ai"
     },
     {
       "key": "sirius-biotech-ventures-de12d933",
@@ -16447,7 +16451,8 @@
         "sourceUrl": "https://www.tedcomd.com/press-release/tedco-and-mbia-announce-awardees-commercialization-innovation-grant",
         "evidence": "TEDCO describes the company’s active business in a dated investment announcement. This establishes activity on the source date, not a live corporate registry certification."
       },
-      "rank": null
+      "rank": null,
+      "organizationSlug": "bluehealer"
     },
     {
       "key": "brickrose-exchange-b925f2ba",
@@ -16463,7 +16468,8 @@
         "sourceUrl": "https://www.tedcomd.com/press-release/tedco-and-mbia-announce-awardees-commercialization-innovation-grant",
         "evidence": "TEDCO describes the company’s active business in a dated investment announcement. This establishes activity on the source date, not a live corporate registry certification."
       },
-      "rank": null
+      "rank": null,
+      "organizationSlug": "brick-rose-exchange-6b7a71155206"
     },
     {
       "key": "bullfrog-ai-6858737d",
