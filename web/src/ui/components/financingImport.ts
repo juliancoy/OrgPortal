@@ -11,7 +11,7 @@ export async function financingImportBatches(manifest: EvidenceManifest, funding
     const occurrence = occurrences.get(identity) || 0
     occurrences.set(identity, occurrence + 1)
     const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(`${identity}:${occurrence}`)))].map(b=>b.toString(16).padStart(2,'0')).join('')
-    events.push({id:`agency-${hash}`,companyKey:company.key,announcedAt:fact.asOf,label:fact.kind,type:'agency',amountUsd:fact.amountUsd,amountQualifier:'exact',investors:[],sourceUrls:[fact.sourceUrl],notes:fact.evidence,
+    events.push({id:`agency-${hash}`,companyKey:company.key,announcedAt:fact.asOf,label:fact.kind,type:'agency',amountUsd:fact.amountUsd,amountQualifier:'exact',investors:[],sourceUrls:[fact.sourceUrl],notes:fact.evidence,tags:[...new Set([...(fact.tags || []),...(/^TEDCO portfolio table:/i.test(fact.evidence) ? ['portfolio:TEDCO'] : [])])],
       ...(company.name === 'Pixee' && fact.amountUsd === 1500000 ? {includedInEventId:ledger.events.find(e=>e.companyKey===company.key&&e.label==='Seed round')!.id} : {})})
   }
   const batches=[]

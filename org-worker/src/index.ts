@@ -3041,7 +3041,7 @@ app.post("/api/network/ingest/calendar", async (c) => {
 app.get("/api/network/replication/snapshot", async c => {
   if (c.env.ORGANIZATION_REPLICA_SOURCE) return c.json({detail:"Fetch snapshots from the authoritative primary"},409);
   const key = new Request(c.req.url);
-  const cache = await caches.open("organization-snapshots-v2");
+  const cache = await caches.open("organization-snapshots-v3");
   let response = await cache.match(key);
   if (!response) {
     response = await organizationSnapshot(c.env.DB, key);

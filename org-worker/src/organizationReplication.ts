@@ -9,7 +9,7 @@ const columns = {
   organization_support_records: ['id','from_organization_id','to_organization_id','from_label','to_label','support_kind','amount','currency','amount_label','quantity','unit','description','occurred_at','source_url','evidence','notes','provenance_json','status','void_reason','created_at'],
   financing_recipients: ['id','name','organization_id','metadata_json','updated_at'],
   financing_agency_recipients: ['id','agency_id','recipient_id','research_json','audit_json','reviewed_at','updated_at'],
-  financing_events: ['id','recipient_id','agency_id','event_type','amount','currency','amount_qualifier','occurred_at','label','investors_json','sources_json','notes','included_in_event_id','updated_at'],
+  financing_events: ['id','recipient_id','agency_id','event_type','amount','currency','amount_qualifier','occurred_at','label','investors_json','sources_json','notes','included_in_event_id','updated_at','tags_json'],
 } as const;
 export function snapshotEtagMatches(header: string | null | undefined, etag: string | null) {
   const normalize=(s:string)=>s.trim().replace(/^W\//, "");
@@ -18,7 +18,7 @@ export function snapshotEtagMatches(header: string | null | undefined, etag: str
 export async function organizationSnapshot(db: D1Database, request: Request) {
   // D1 batch is transactional: organizations and evidence describe one committed state.
   const rows = await db.batch(Object.entries(columns).map(([table, fields]) => db.prepare(`SELECT ${fields.join(',')} FROM ${table} ORDER BY id`)));
-  const body = JSON.stringify({version:2,organizations:rows[0].results,support:rows[1].results,financingRecipients:rows[2].results,financingAgencies:rows[3].results,financingEvents:rows[4].results});
+  const body = JSON.stringify({version:3,organizations:rows[0].results,support:rows[1].results,financingRecipients:rows[2].results,financingAgencies:rows[3].results,financingEvents:rows[4].results});
   const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(body)))].map(b=>b.toString(16).padStart(2,'0')).join('');
   const etag = `"${hash}"`;
   const headers = {'ETag':etag,'Cache-Control':'public, max-age=60','Content-Type':'application/json'};
@@ -61,7 +61,7 @@ export async function replicateOrganizations(env: ReplicaEnv, fetcher: typeof fe
     const body=await response.text();
     if (body.length>8*1024*1024) throw new Error('Snapshot exceeds 8 MiB; retain last successful data');
     const snapshot=JSON.parse(body);
-    if (snapshot.version!==2) throw new Error('Unsupported snapshot version');
+    if (snapshot.version!==3) throw new Error('Unsupported snapshot version');
     validateRows(snapshot.organizations,'organizations');validateRows(snapshot.support,'organization_support_records');
     validateRows(snapshot.financingRecipients,'financing_recipients'); validateRows(snapshot.financingAgencies,'financing_agency_recipients'); validateRows(snapshot.financingEvents,'financing_events');
     const orgs=JSON.stringify(snapshot.organizations),support=JSON.stringify(snapshot.support);

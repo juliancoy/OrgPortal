@@ -2,7 +2,7 @@ export type FinancingEvent = {
   id: string; companyKey: string; announcedAt: string; label: string
   type: 'equity' | 'debt' | 'grant' | 'acquisition' | 'cumulative'
   amountUsd: number; amountQualifier: 'exact' | 'over' | 'up-to'
-  investors: string[]; sourceUrls: string[]; notes: string
+  investors: string[]; sourceUrls: string[]; notes: string; tags?: string[]
 }
 export type FinancingAudit = {
   key: string; name: string; status: 'partial' | 'pending'

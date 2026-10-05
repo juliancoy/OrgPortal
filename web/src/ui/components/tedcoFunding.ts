@@ -1,4 +1,4 @@
-export type FundingEvidence = { amountUsd: number; sourceUrl: string; asOf: string; kind: string; evidence: string }
+export type FundingEvidence = { amountUsd: number; sourceUrl: string; asOf: string; kind: string; evidence: string; tags?: string[] }
 export type RecipientStatus = { value: 'operating' | 'acquired' | 'merged' | 'defunct' | 'unknown'; asOf: string | null; checkedAt: string; sourceUrl: string | null; additionalSourceUrl?: string; evidence: string }
 export type RecipientFunding = { key: string; name: string; organizationId: string; organizationSlug?: string; websiteUrl?: string; iconUrl?: string; iconSourceUrl?: string; otherFundingEvidence?: FundingEvidence[]; totalUsd: number | null; rank: number | null; fundingEvidence: FundingEvidence[]; allFundingEvidence: FundingEvidence[]; status: RecipientStatus }
 export type FundingReport = { reviewedAt: string; methodology: string; companies: RecipientFunding[] }

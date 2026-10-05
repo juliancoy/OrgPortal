@@ -37,14 +37,14 @@ rolls back recipient, event and audit changes together. Completed earlier batche
 are durable; preview again to resume. Reimporting the same IDs is idempotent.
 Missing events in an import are retained; omission is not a deletion request.
 
-Public organization replication snapshot version 2 includes the three financing
+Public organization replication snapshot version 3 includes the three financing
 tables in the same transactional snapshot as organizations and support records.
 Replicas atomically replace that public state and cannot accept writes. ETags
 avoid transferring unchanged snapshots. Default refresh is five minutes; API
 cache lifetime and page polling are one minute. Failures retain the last good
 snapshot, record the error, and expose freshness and financing count through
-`/api/network/replication/status`. All replicas must apply migration 0065 before
-consuming version 2. No identity, permissions or operation receipts replicate.
+`/api/network/replication/status`. All replicas must apply migration 0066 before
+consuming version 3. No identity, permissions or operation receipts replicate.
 
 The current import includes a search pass across 578 recipients, candidate
 sources for 427 and eight verified large equity rounds and one cumulative financing disclosure. All histories remain
@@ -58,3 +58,11 @@ projection marks the lead verified and returns its transaction IDs. Pending
 leads never become monetary amounts automatically. New rounds are additions
 through the same reviewed, idempotent import; subsequent agency and recipient
 views and snapshots regenerate from the committed records.
+
+Financing events carry their own `tags` array, persisted as `tags_json` and
+exposed in the master transaction view and public agency/recipient projections.
+Use `portfolio:<portfolio name>` for evidenced portfolio funding. The TEDCO
+import tags contributions documented by a TEDCO portfolio table as
+`portfolio:TEDCO`; it does not infer that a separate whole-company round or
+grant belongs to that portfolio. Explicit portfolio tags can name other funds.
+Tags travel in the same atomic import and replication snapshot as each event.

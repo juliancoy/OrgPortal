@@ -5,7 +5,7 @@ import {TimebankDatabase} from './helpers/timebankDatabase';
 import {organizationSnapshot,replicateOrganizations,replicaStatus} from '../src/organizationReplication';
 function setup() {
  const db=new TimebankDatabase();
- for(const name of ['0002_org_event_directories.sql','0043_organization_media.sql','0057_organization_support.sql','0061_organization_replication.sql','0065_financing_records.sql']) db.sqlite.exec(readFileSync(new URL(`../migrations/${name}`,import.meta.url),'utf8'));
+ for(const name of ['0002_org_event_directories.sql','0043_organization_media.sql','0057_organization_support.sql','0061_organization_replication.sql','0065_financing_records.sql','0066_financing_portfolio_tags.sql']) db.sqlite.exec(readFileSync(new URL(`../migrations/${name}`,import.meta.url),'utf8'));
  db.sqlite.exec('CREATE TABLE organization_source_identities (organization_id TEXT REFERENCES organizations(id) ON DELETE RESTRICT)');
  return db;
 }
