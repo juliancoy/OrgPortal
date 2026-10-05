@@ -1,0 +1,9 @@
+.organization-members { display: grid; gap: 1rem; }
+.organization-members h2 { margin: 0; font-size: 1.25rem; }
+.organization-members-list { display: grid; gap: .5rem; list-style: none; margin: 0; padding: 0; }
+.organization-members-list li { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; padding: .75rem; border: 1px solid var(--border, #ccc); border-radius: 10px; min-width: 0; }
+.organization-members-list li > :first-child { min-width: 0; flex: 1 1 12rem; overflow-wrap: anywhere; }
+.organization-members-list p { margin: .25rem 0 0; }
+.organization-member-search { display: grid; gap: .6rem; min-width: 0; }
+.organization-member-search input { width: 100%; min-width: 0; box-sizing: border-box; }
+.organization-members [aria-label="Review membership assignment"] { overflow-wrap: anywhere; }
