@@ -1,3 +1,4 @@
+import { usePublicOrganizationReport, updatePublicOrganizationData } from '../../data/publicOrganization/usePublicOrganizationReport'
 import { OrganizationFundingChart, type FundingCounterparty } from './OrganizationFundingChart'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
@@ -69,8 +70,12 @@ export function OrganizationSupport({ organizationId, slug, canManage }: { organ
   const adjacent = (org: Organization) => org.tags?.includes('LifeTech adjacent') || false
   const descendants = (data?.descendants || []).filter(org => (!adjacentOnly || adjacent(org)) && org.name.toLocaleLowerCase().includes(recipientSearch.trim().toLocaleLowerCase()))
   const prefix = `/api/org/api/network/orgs/${encodeURIComponent(organizationId)}/support`
+  const cacheStatus = usePublicOrganizationReport<Support>(`/api/org/api/network/orgs/public/${encodeURIComponent(slug)}/support`, value => {
+    const result = value as Support
+    if (!result || !Array.isArray(result.descendants) || !Array.isArray(result.supporters) || !Array.isArray(result.records) || !result.financialTotals || !Array.isArray(result.financialTotals.entries) || !Array.isArray(result.financialTotals.counterparties) || !Number.isInteger(result.recordCount) || (result.nextRecordOffset !== null && !Number.isInteger(result.nextRecordOffset))) throw new Error('Invalid public support report')
+    return result
+  }, setData, refresh)
   useEffect(() => {
-    const controller = new AbortController()
     recordRequest.current?.abort()
     setBusy(false)
     setData(null)
@@ -79,12 +84,7 @@ export function OrganizationSupport({ organizationId, slug, canManage }: { organ
     setMessage('')
     setRecipientSearch('')
     setAdjacentOnly(false)
-    fetch(`/api/org/api/network/orgs/public/${encodeURIComponent(slug)}/support`, { signal: controller.signal })
-      .then(async response => { if (!response.ok) throw new Error('Unable to load organizational support'); const result = await response.json()
-        if (!Array.isArray(result.descendants) || !Array.isArray(result.supporters) || !Array.isArray(result.records) || !Number.isInteger(result.recordCount) || (result.nextRecordOffset !== null && !Number.isInteger(result.nextRecordOffset))) throw new Error('Unable to load organizational support')
-        return result as Support })
-      .then(setData).catch(error => { if (!controller.signal.aborted) setMessage(error.message) })
-    return () => { controller.abort(); recordRequest.current?.abort() }
+    return () => { recordRequest.current?.abort() }
   }, [slug, refresh])
   useEffect(() => {
     if (!canManage || !token) { setPreview(null); return }
@@ -129,12 +129,17 @@ export function OrganizationSupport({ organizationId, slug, canManage }: { organ
         body: JSON.stringify({ ...changes, ...(preview ? { confirm: true, previewId: preview.previewId } : { confirm: false }) }) })
       const result = await response.json()
       if (!response.ok) throw new Error(result.detail || 'Unable to record support')
-      if (preview) { setData(result.result); setPreview(null); setForm(emptyForm); setMessage('Support recorded in the master transaction record.') }
+      if (preview) { setData(result.result); setPreview(null); setForm(emptyForm); setMessage('Support recorded in the master transaction record.'); updatePublicOrganizationData() }
       else setPreview(result)
     } catch (error) { setMessage(error instanceof Error ? error.message : 'Unable to record support'); setPreview(null) }
     finally { setBusy(false) }
   }
   return <section className="portal-card organization-support" aria-label="Organization support and descendants">
+    <div role="status" aria-label="Public organization data freshness">
+      <p>{cacheStatus.checkedAt ? `${cacheStatus.cached ? 'Saved copy · ' : ''}Last checked ${new Date(cacheStatus.checkedAt).toLocaleString()}.` : 'Checking public organization data…'} Updates every five minutes while this page is open.</p>
+      {cacheStatus.error && <p>{cacheStatus.error}</p>}
+      <button disabled={cacheStatus.refreshing} onClick={updatePublicOrganizationData}>{cacheStatus.refreshing ? 'Updating…' : 'Update now'}</button>
+    </div>
     {slug !== 'tedco' && <TedcoCompanyEvidence organizationId={organizationId} />}
     {data && <div aria-label="Documented financial totals">
       <h2>Documented deployed and received</h2>
@@ -161,7 +166,7 @@ export function OrganizationSupport({ organizationId, slug, canManage }: { organ
       <h3>Supported by</h3>
       {data.supporters.length ? <ul className="support-organizations">{data.supporters.map(org => <li key={org.id}><Link to={`/orgs/${org.slug}`}>{org.name}</Link></li>)}</ul> : <p>No documented supporters yet.</p>}
       <details><summary>Support records and source evidence ({data.recordCount})</summary>{data.records.length ? <SupportRecordTable records={data.records} /> : <p>No support records yet.</p>}{data.nextRecordOffset !== null && <button disabled={busy} onClick={() => void loadMoreRecords()}>Load more source evidence ({data.records.length} of {data.recordCount})</button>}</details>
-    </> : !message && <p role="status">Loading support records…</p>}
+    </> : !message && <p role="status">{cacheStatus.error || 'Loading support records…'}</p>}
     {canManage && token && <details open={expanded} onToggle={event => setExpanded(event.currentTarget.open)}><summary>Record organizational support</summary>
       <form onSubmit={event => void submit(event)} className="support-form">
         <fieldset disabled={busy || Boolean(preview)}><legend>Contribution details</legend>

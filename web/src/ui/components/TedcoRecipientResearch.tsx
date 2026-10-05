@@ -1,3 +1,4 @@
+import { usePublicOrganizationReport, updatePublicOrganizationData } from '../../data/publicOrganization/usePublicOrganizationReport'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
@@ -31,20 +32,11 @@ export function TedcoRecipientResearch({ organizationId, registered, onImported 
   const [financePreviews, setFinancePreviews] = useState<{previewId:string;changes:unknown;expiresAt:string}[] | null>(null)
   const [applied, setApplied] = useState(0)
   const operation = useRef<AbortController | null>(null)
-  useEffect(() => {
-    const controller = new AbortController()
-    const load = async () => {
-      try {
-        const response = await fetch(`/api/org/api/network/orgs/public/${encodeURIComponent(organizationId)}/financing`, {signal:controller.signal})
-        if (!response.ok) throw new Error('Unable to load financing database records')
-        const report = await response.json()
-        if (!controller.signal.aborted) { setManifest(report.manifest); setFunding(report.funding); setFinancing(report.financing); setConsistency(report.consistency || null) }
-      } catch (error) { if (!controller.signal.aborted) setMessage(error instanceof Error ? error.message : 'Financing unavailable') }
-    }
-    void load()
-    const timer = window.setInterval(() => void load(), 60000)
-    return () => { controller.abort(); window.clearInterval(timer) }
-  }, [organizationId])
+  const cacheStatus = usePublicOrganizationReport(`/api/org/api/network/orgs/public/${encodeURIComponent(organizationId)}/financing`, value => {
+    const report = value as { manifest: EvidenceManifest; funding: FundingReport; financing: FinancingReport; consistency?: typeof consistency }
+    if (!report?.manifest || !Array.isArray(report.manifest.recipients) || !Array.isArray(report.funding?.companies) || !Array.isArray(report.financing?.events) || !Array.isArray(report.financing?.audit)) throw new Error('Invalid public financing report')
+    return report
+  }, report => { setManifest(report.manifest); setFunding(report.funding); setFinancing(report.financing); setConsistency(report.consistency || null) })
   useEffect(() => {
     operation.current?.abort(); setPreviews(null); setFinancePreviews(null); setBusy(false); setApplied(0)
     return () => operation.current?.abort()
@@ -91,7 +83,7 @@ export function TedcoRecipientResearch({ organizationId, registered, onImported 
     try {
       if(financePreviews){
         for(const preview of financePreviews) await request({...preview.changes as object,confirm:true,previewId:preview.previewId})
-        setFinancePreviews(null); setMessage('Financing evidence stored in the primary database. Public views refresh automatically.'); onImported()
+        setFinancePreviews(null); setMessage('Financing evidence stored in the primary database. Public views refresh automatically.'); updatePublicOrganizationData(); onImported()
       }else{
         const responses=await Promise.all([fetch(manifestUrl),fetch(fundingUrl),fetch(financingUrl)])
         if(responses.some(r=>!r.ok)) throw new Error('Import evidence unavailable')
@@ -103,7 +95,7 @@ export function TedcoRecipientResearch({ organizationId, registered, onImported 
     }catch(error){setFinancePreviews(null);setMessage(`${error instanceof Error?error.message:'Import failed'}. Completed batches remain stored; preview again to resume.`)}
     finally { setBusy(false) }
   }
-  if (!manifest) return message ? <p role="status">{message}</p> : <p>Loading TEDCO recipient research…</p>
+  if (!manifest) return <p role="status">{message || cacheStatus.error || 'Loading recipient research…'}</p>
   if (organizationId !== 'org-tedco' && manifest.recipients.length === 0) return null
   const filtered = new Set(filterEvidenceRecipients(manifest.recipients, query, adjacentOnly).map(row => row.key))
   const chartRows = (funding?.companies || []).map(row => metric === 'tedco' ? row : { ...row, totalUsd: equitySubtotal(financing?.events.filter(event => event.companyKey === row.key) || []) })
@@ -114,6 +106,7 @@ export function TedcoRecipientResearch({ organizationId, registered, onImported 
   const adjacentCount = manifest.recipients.filter(row => row.tags.includes('LifeTech adjacent')).length
   const otherRegistered = registered.filter(org => !funding?.companies.some(row => row.organizationId === org.id))
   return <div className="tedco-recipient-research">
+    <p role="status">{cacheStatus.checkedAt ? `Financing last checked ${new Date(cacheStatus.checkedAt).toLocaleString()}.` : 'Checking financing data…'}{cacheStatus.cached && ' Saved copy.'}{cacheStatus.error && ` ${cacheStatus.error}`}</p>
     <h3>Recipient funding ranking ({manifest.recipients.length} companies · {adjacentCount} LifeTech adjacent)</h3>
     <p>Highest documented {metricLabel} first. Click a company icon or name to open its page. Ranks and bar lengths stay the same when filtered. Unknown amounts follow the ranked companies.</p>
     {consistency?.mode === 'replica' && <p role="status">Read replica · last applied {consistency.applied_at || 'never'}.{consistency.stale && ' Refresh delayed; showing the last successful snapshot.'}</p>}
