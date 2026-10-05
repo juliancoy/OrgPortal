@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
 import { applyEvidenceImport, filterEvidenceRecipients, previewEvidenceImport, type EvidenceManifest, type EvidencePreview } from './organizationEvidenceImport'
 import manifestUrl from '../../data/tedco-recipients.json?url'
-import reviewUrl from '../../data/tedco-recipient-review.json?url'
 import fundingUrl from '../../data/tedco-recipient-funding-status.json?url'
+import financingUrl from '../../data/tedco-company-financing.json?url'
+import { financingImportBatches } from './financingImport'
+import { equitySubtotal, type FinancingReport } from './companyFinancing'
 import { rankRecipients, type FundingReport } from './tedcoFunding'
 import { CompanyEvidence } from './TedcoCompanyEvidence'
 import { fundingAmount, statusLabels } from './tedcoFunding'
@@ -17,30 +19,37 @@ export function TedcoRecipientResearch({ organizationId, registered, onImported 
   const { token } = useAuth()
   const [manifest, setManifest] = useState<EvidenceManifest | null>(null)
   const [funding, setFunding] = useState<FundingReport | null>(null)
+  const [financing, setFinancing] = useState<FinancingReport | null>(null)
+  const [consistency, setConsistency] = useState<{mode:string;stale?:boolean;applied_at?:string} | null>(null)
+  const [metric, setMetric] = useState<'tedco' | 'equity'>('tedco')
   const [query, setQuery] = useState('')
   const [adjacentOnly, setAdjacentOnly] = useState(false)
   const [visibleCount, setVisibleCount] = useState(50)
   const [previews, setPreviews] = useState<EvidencePreview[] | null>(null)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
+  const [financePreviews, setFinancePreviews] = useState<{previewId:string;changes:unknown;expiresAt:string}[] | null>(null)
   const [applied, setApplied] = useState(0)
   const operation = useRef<AbortController | null>(null)
   useEffect(() => {
     const controller = new AbortController()
-    Promise.all([fetch(manifestUrl, { signal: controller.signal }), fetch(fundingUrl, { signal: controller.signal })]).then(async responses => {
-      if (responses.some(response => !response.ok)) throw new Error('Unable to load TEDCO recipient research')
-      const [value, report] = await Promise.all(responses.map(response => response.json())) as [EvidenceManifest, FundingReport]
-      if (value.organizationId !== organizationId || !Array.isArray(value.recipients)) throw new Error('Invalid TEDCO recipient research')
-      if (report.companies.length !== value.recipients.length) throw new Error('Incomplete TEDCO funding research')
-      if (!controller.signal.aborted) { setManifest(value); setFunding(report) }
-    }).catch(error => { if (!controller.signal.aborted) setMessage(error.message) })
-    return () => controller.abort()
+    const load = async () => {
+      try {
+        const response = await fetch(`/api/org/api/network/orgs/public/${encodeURIComponent(organizationId)}/financing`, {signal:controller.signal})
+        if (!response.ok) throw new Error('Unable to load financing database records')
+        const report = await response.json()
+        if (!controller.signal.aborted) { setManifest(report.manifest); setFunding(report.funding); setFinancing(report.financing); setConsistency(report.consistency || null) }
+      } catch (error) { if (!controller.signal.aborted) setMessage(error instanceof Error ? error.message : 'Financing unavailable') }
+    }
+    void load()
+    const timer = window.setInterval(() => void load(), 60000)
+    return () => { controller.abort(); window.clearInterval(timer) }
   }, [organizationId])
   useEffect(() => {
-    operation.current?.abort(); setPreviews(null); setBusy(false); setApplied(0)
+    operation.current?.abort(); setPreviews(null); setFinancePreviews(null); setBusy(false); setApplied(0)
     return () => operation.current?.abort()
   }, [token])
-  useEffect(() => { setVisibleCount(50) }, [query, adjacentOnly])
+  useEffect(() => { setVisibleCount(50) }, [query, adjacentOnly, metric])
   async function run(confirm: boolean) {
     if (!manifest || !token) return
     const controller = new AbortController(); operation.current = controller
@@ -66,25 +75,58 @@ export function TedcoRecipientResearch({ organizationId, registered, onImported 
       }
     } finally { if (operation.current === controller) setBusy(false) }
   }
+  async function storeFinancing() {
+    if (!token) return
+    setBusy(true); setMessage('')
+    const controller=new AbortController(); operation.current=controller
+    const request=async(body:unknown)=>{
+      const response=await fetch(`/api/org/api/network/orgs/${encodeURIComponent(organizationId)}/financing/import`,{method:'POST',signal:controller.signal,headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify(body)})
+      const result=await response.json(); if(!response.ok) throw new Error(result.detail || 'Financing import failed'); return result
+    }
+    try {
+      if(financePreviews){
+        for(const preview of financePreviews) await request({...preview.changes as object,confirm:true,previewId:preview.previewId})
+        setFinancePreviews(null); setMessage('Financing evidence stored in the primary database. Public views refresh automatically.'); onImported()
+      }else{
+        const responses=await Promise.all([fetch(manifestUrl),fetch(fundingUrl),fetch(financingUrl)])
+        if(responses.some(r=>!r.ok)) throw new Error('Import evidence unavailable')
+        const [input,report,ledger]=await Promise.all(responses.map(r=>r.json())) as [EvidenceManifest,FundingReport,FinancingReport]
+        const batches=await financingImportBatches(input,report,ledger), previews=[]
+        for(const batch of batches) previews.push(await request({...batch,confirm:false}))
+        setFinancePreviews(previews)
+      }
+    }catch(error){setFinancePreviews(null);setMessage(`${error instanceof Error?error.message:'Import failed'}. Completed batches remain stored; preview again to resume.`)}
+    finally { setBusy(false) }
+  }
   if (!manifest) return message ? <p role="status">{message}</p> : <p>Loading TEDCO recipient research…</p>
+  if (organizationId !== 'org-tedco' && manifest.recipients.length === 0) return null
   const filtered = new Set(filterEvidenceRecipients(manifest.recipients, query, adjacentOnly).map(row => row.key))
-  const recipients = rankRecipients(funding?.companies || []).filter(row => filtered.has(row.key))
-  const chartMaximum = Math.max(1,...(funding?.companies || []).map(row=>row.totalUsd ?? 0))
+  const chartRows = (funding?.companies || []).map(row => metric === 'tedco' ? row : { ...row, totalUsd: equitySubtotal(financing?.events.filter(event => event.companyKey === row.key) || []) })
+  const recipients = rankRecipients(chartRows).filter(row => filtered.has(row.key))
+  const chartMaximum = Math.max(1,...chartRows.map(row=>row.totalUsd ?? 0))
+  const metricLabel = metric === 'tedco' ? 'Agency funding' : 'company equity fundraising'
+  const verifiedCompanies = financing?.audit.filter(row => row.status === 'partial').length || 0
   const adjacentCount = manifest.recipients.filter(row => row.tags.includes('LifeTech adjacent')).length
   const otherRegistered = registered.filter(org => !funding?.companies.some(row => row.organizationId === org.id))
   return <div className="tedco-recipient-research">
-    <h3>TEDCO recipient funding ranking ({manifest.recipients.length} companies · {adjacentCount} LifeTech adjacent)</h3>
-    <p>Highest documented TEDCO funding first. Click a company icon or name to open its page. Ranks and bar lengths stay the same when filtered. Unknown amounts follow the ranked companies.</p>
+    <h3>Recipient funding ranking ({manifest.recipients.length} companies · {adjacentCount} LifeTech adjacent)</h3>
+    <p>Highest documented {metricLabel} first. Click a company icon or name to open its page. Ranks and bar lengths stay the same when filtered. Unknown amounts follow the ranked companies.</p>
+    {consistency?.mode === 'replica' && <p role="status">Read replica · last applied {consistency.applied_at || 'never'}.{consistency.stale && ' Refresh delayed; showing the last successful snapshot.'}</p>}
+    {!token && message && <p role="status">{message}</p>}
+    <label>Chart measure <select value={metric} onChange={event => setMetric(event.target.value as 'tedco' | 'equity')}><option value="tedco">Agency funding</option><option value="equity">Company equity fundraising</option></select></label>
+    <p>Company fundraising coverage: {verifiedCompanies} of {manifest.recipients.length} companies have verified rounds; histories remain partial. {financing?.audit.filter(row => row.searchedAt).length || 0} companies searched; {manifest.recipients.length - verifiedCompanies} await primary-source verification. Unknown does not mean zero.</p>
+    <details><summary>Financing methodology and audit queue</summary><p>{financing?.methodology}</p><p>Next review: {financing?.audit[0]?.nextReviewAt}. Search results are leads, not verified financing evidence.</p><ol>{financing?.audit.slice(0,30).map(row => <li key={row.key}>{row.name} · {row.status === 'partial' ? 'Verified rounds; history incomplete' : 'Primary-source verification pending'} · {row.searchedAt ? `Searched ${row.searchedAt}` : 'Search pending'}{row.candidateSources.slice(0,2).map(source => <p key={source.url}><a href={source.url} target="_blank" rel="noreferrer">Unverified lead: {source.title}</a></p>)}</li>)}</ol><a href={`/api/org/api/network/orgs/public/${encodeURIComponent(organizationId)}/financing`} download>Download all financing events and the complete audit queue</a></details>
+    {manifest.recipients.length === 0 && <p>Financing research awaits an authorized import into the primary transactional database.</p>}
     <p>{manifest.coverage} Reviewed {manifest.reviewedAt}. Entries without an organization link are researched recipients awaiting directory registration.</p>
     <details><summary>Funding ranking methodology and coverage</summary><p>{funding?.methodology}</p><p>Operating status records activity on the source date. A bought company can continue operating under its acquirer. Missing or unreachable websites do not establish that a company is defunct.</p></details>
-    <p><a href={fundingUrl} download>Download funding ranking and company status evidence</a> · <a href={manifestUrl} download>Recipient list and support evidence</a> · <a href={reviewUrl} download>Sources and classification notes</a></p>
+    <p><a href={`/api/org/api/network/orgs/public/${encodeURIComponent(organizationId)}/financing`} download>Download current database-derived financing and audit evidence</a></p>
     <div className="support-recipient-filters">
       <label>Search researched recipients<input type="search" value={query} onChange={event => setQuery(event.target.value)} /></label>
       <label><input type="checkbox" checked={adjacentOnly} onChange={event => setAdjacentOnly(event.target.checked)} /> LifeTech adjacent only</label>
       <p role="status">Showing {Math.min(visibleCount, recipients.length)} of {recipients.length} matching companies · {manifest.recipients.length} researched recipients overall</p>
     </div>
-    <p className="tedco-chart-scale">Documented TEDCO funding · bars share a $0–{fundingAmount(chartMaximum)} scale, including when filtered.</p>
-    <ul className="tedco-funding-chart" aria-label="TEDCO funding by company">{recipients.slice(0, visibleCount).map(row => {
+    <p className="tedco-chart-scale">Documented {metricLabel} · bars share a $0–{fundingAmount(chartMaximum)} scale, including when filtered. {metric === 'equity' && 'Partial, minimum documented amounts; not lifetime totals. TEDCO contributions are not added to rounds.'}</p>
+    <ul className="tedco-funding-chart" aria-label={`${metricLabel} by company`}>{recipients.slice(0, visibleCount).map(row => {
       const recipient = manifest.recipients.find(item => item.key === row.key)!
       const org = registered.find(item => item.id === row.organizationId)
       const recipientSlug = org?.slug || row.organizationSlug
@@ -95,14 +137,21 @@ export function TedcoRecipientResearch({ organizationId, registered, onImported 
           {recipientSlug ? <Link className="tedco-company-reference" to={href}>{reference}</Link> : <a className="tedco-company-reference" href={href} target="_blank" rel="noreferrer">{reference}</a>}
           <strong className="tedco-chart-amount">{row.rank !== null && <span>#{row.rank} · </span>}{fundingAmount(row.totalUsd)}</strong>
         </div>
-        {row.totalUsd !== null ? <div className="tedco-bar-track" role="meter" aria-label={`${row.name} documented TEDCO funding`} aria-valuemin={0} aria-valuemax={chartMaximum} aria-valuenow={row.totalUsd} aria-valuetext={fundingAmount(row.totalUsd)}><span style={{width:`${row.totalUsd/chartMaximum*100}%`}} /></div> : <p className="tedco-funding-unknown">No verified amount — excluded from the chart scale.</p>}
+        {row.totalUsd !== null ? <div className="tedco-bar-track" role="meter" aria-label={`${row.name} documented ${metricLabel}`} aria-valuemin={0} aria-valuemax={chartMaximum} aria-valuenow={row.totalUsd} aria-valuetext={`${fundingAmount(row.totalUsd)}${metric === 'equity' ? ' minimum documented; partial history' : ''}`}><span style={{width:`${row.totalUsd/chartMaximum*100}%`}} /></div> : <p className="tedco-funding-unknown">No verified amount — excluded from the chart scale.</p>}
         <div className="tedco-chart-meta"><span>{statusLabels[row.status.value]}</span>{recipient.tags.includes('LifeTech adjacent') && <span className="support-adjacent-tag">LifeTech adjacent</span>}<a href={recipient.support.sourceUrl} target="_blank" rel="noreferrer">Recipient source</a></div>
-        {row.otherFundingEvidence?.map((fact,index)=><p className="tedco-other-funding" key={index}>{fundingAmount(fact.amountUsd)} {fact.kind} · includes TEDCO’s investment; excluded from the TEDCO subtotal. <a href={fact.sourceUrl} target="_blank" rel="noreferrer">Source</a></p>)}
-        <CompanyEvidence company={row} showSummary={false} />
+        <p>Company fundraising: {financing?.audit.find(item => item.key === row.key)?.reviewedAt ? `partial history, reviewed ${financing.audit.find(item => item.key === row.key)?.reviewedAt}` : 'primary-source verification pending'}.</p>
+        {financing?.events.filter(event => event.companyKey === row.key).map(event => <p className="tedco-other-funding" key={event.id}>{event.amountQualifier === 'over' ? 'Over ' : event.amountQualifier === 'up-to' ? 'Up to ' : ''}{fundingAmount(event.amountUsd)} · {event.label} · {event.announcedAt} · {event.type}. {event.investors.length ? `Reported investors: ${event.investors.join(', ')}. ` : 'Investors not documented in this record. '}{event.notes} {event.sourceUrls.map((url,index)=><a key={url} href={url} target="_blank" rel="noreferrer">Source {index + 1} </a>)}</p>)}
+        <CompanyEvidence company={funding!.companies.find(company => company.key === row.key)!} showSummary={false} />
       </li>
     })}</ul>
     {visibleCount < recipients.length && <button onClick={() => setVisibleCount(count => count + 50)}>Load more recipients ({Math.min(visibleCount, recipients.length)} of {recipients.length})</button>}
     {otherRegistered.length > 0 && <><h4>Other registered descendants · funding unranked</h4><ul className="support-organizations">{otherRegistered.map(org => <li key={org.id}><Link to={`/orgs/${org.slug}`}>{org.name}</Link> · Funding total unknown · Status unknown</li>)}</ul></>}
+    {token && organizationId === 'org-tedco' && <div className="support-preview">
+      <h3>Import reviewed financing evidence</h3><p>Operator permission and a fresh preview are required. Public views use database records exclusively.</p>
+      {financePreviews && <details><summary>Review {financePreviews.length} transactional batches before applying</summary>{financePreviews.map(preview=><pre key={preview.previewId} style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>{JSON.stringify(preview.changes,null,2)}</pre>)}<button onClick={()=>setFinancePreviews(null)}>Cancel financing review</button></details>}
+      <button disabled={busy} onClick={()=>void storeFinancing()}>{financePreviews?'Confirm reviewed financing import':'Preview financing database import'}</button>
+      {message && <p role="status">{message}</p>}
+    </div>}
     {token && <div className="support-preview">
       <h3>Register researched recipients</h3>
       <p>OrgPortal operator access is required. Review the identity matches, tags and source evidence before confirming. Existing tags are retained. This creates public organization pages and support records; it grants no memberships or ownership and makes no payments.</p>

@@ -1,3 +1,4 @@
+import { importFinancing, financingAgencyReport, financingRecipientReport } from './financingRecords';
 import { importOrganizationEvidence } from './organizationEvidenceImport';
 import {linkEventSupportRecords} from './eventSupportLinks';
 import { organizationSnapshot, replicaStatus, replicateOrganizations, snapshotEtagMatches } from './organizationReplication';
@@ -3040,7 +3041,7 @@ app.post("/api/network/ingest/calendar", async (c) => {
 app.get("/api/network/replication/snapshot", async c => {
   if (c.env.ORGANIZATION_REPLICA_SOURCE) return c.json({detail:"Fetch snapshots from the authoritative primary"},409);
   const key = new Request(c.req.url);
-  const cache = await caches.open("organization-snapshots-v1");
+  const cache = await caches.open("organization-snapshots-v2");
   let response = await cache.match(key);
   if (!response) {
     response = await organizationSnapshot(c.env.DB, key);
@@ -3101,6 +3102,20 @@ app.get("/api/network/orgs/public/:slug/support", async (c) => {
   const offset = Math.max(0, Math.min(Number.parseInt(c.req.query("offset") || "0", 10) || 0, 100000));
   try { return c.json(await organizationSupport(c.env.DB, c.req.param("slug"), offset)); }
   catch (error) { return eventErrorResponse(error, c.env, c.req.raw); }
+});
+
+app.get("/api/network/orgs/public/:slug/financing", async c => {
+  try { c.header("Cache-Control", "public, max-age=60"); return c.json({...await financingAgencyReport(c.env.DB,c.req.param("slug")),consistency:await replicaStatus(c.env)}); }
+  catch(error) { return eventErrorResponse(error,c.env,c.req.raw); }
+});
+app.get("/api/network/financing/recipients/:id", async c => {
+  try { c.header("Cache-Control", "public, max-age=60"); return c.json(await financingRecipientReport(c.env.DB,c.req.param("id"))); }
+  catch(error) { return eventErrorResponse(error,c.env,c.req.raw); }
+});
+app.post("/api/network/orgs/:organizationId/financing/import", async c => {
+  const user=await currentUser(c.env,c.req.raw);
+  try { return c.json(await importFinancing(c.env.DB,organizationActor(user,c.env),{...await c.req.json<Record<string,unknown>>(),organizationId:c.req.param("organizationId")})); }
+  catch(error) { return eventErrorResponse(error,c.env,c.req.raw); }
 });
 
 app.post("/api/network/orgs/:organizationId/support/import", async (c) => {

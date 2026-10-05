@@ -7,6 +7,9 @@ export interface ReplicaEnv {
 const columns = {
   organizations: ['id','name','slug','description','source_url','image_url','tags','city','created_at','updated_at','media_json'],
   organization_support_records: ['id','from_organization_id','to_organization_id','from_label','to_label','support_kind','amount','currency','amount_label','quantity','unit','description','occurred_at','source_url','evidence','notes','provenance_json','status','void_reason','created_at'],
+  financing_recipients: ['id','name','organization_id','metadata_json','updated_at'],
+  financing_agency_recipients: ['id','agency_id','recipient_id','research_json','audit_json','reviewed_at','updated_at'],
+  financing_events: ['id','recipient_id','agency_id','event_type','amount','currency','amount_qualifier','occurred_at','label','investors_json','sources_json','notes','included_in_event_id','updated_at'],
 } as const;
 export function snapshotEtagMatches(header: string | null | undefined, etag: string | null) {
   const normalize=(s:string)=>s.trim().replace(/^W\//, "");
@@ -15,7 +18,7 @@ export function snapshotEtagMatches(header: string | null | undefined, etag: str
 export async function organizationSnapshot(db: D1Database, request: Request) {
   // D1 batch is transactional: organizations and evidence describe one committed state.
   const rows = await db.batch(Object.entries(columns).map(([table, fields]) => db.prepare(`SELECT ${fields.join(',')} FROM ${table} ORDER BY id`)));
-  const body = JSON.stringify({version:1,organizations:rows[0].results,support:rows[1].results});
+  const body = JSON.stringify({version:2,organizations:rows[0].results,support:rows[1].results,financingRecipients:rows[2].results,financingAgencies:rows[3].results,financingEvents:rows[4].results});
   const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(body)))].map(b=>b.toString(16).padStart(2,'0')).join('');
   const etag = `"${hash}"`;
   const headers = {'ETag':etag,'Cache-Control':'public, max-age=60','Content-Type':'application/json'};
@@ -58,11 +61,15 @@ export async function replicateOrganizations(env: ReplicaEnv, fetcher: typeof fe
     const body=await response.text();
     if (body.length>8*1024*1024) throw new Error('Snapshot exceeds 8 MiB; retain last successful data');
     const snapshot=JSON.parse(body);
-    if (snapshot.version!==1) throw new Error('Unsupported snapshot version');
+    if (snapshot.version!==2) throw new Error('Unsupported snapshot version');
     validateRows(snapshot.organizations,'organizations');validateRows(snapshot.support,'organization_support_records');
+    validateRows(snapshot.financingRecipients,'financing_recipients'); validateRows(snapshot.financingAgencies,'financing_agency_recipients'); validateRows(snapshot.financingEvents,'financing_events');
     const orgs=JSON.stringify(snapshot.organizations),support=JSON.stringify(snapshot.support);
     const remaps = (await env.DB.prepare("SELECT o.id AS old_id,json_extract(r.value,'$.id') AS new_id FROM organizations o JOIN json_each(?) r ON o.slug=json_extract(r.value,'$.slug') WHERE o.id!=json_extract(r.value,'$.id') AND o.id NOT IN (SELECT json_extract(value,'$.id') FROM json_each(?))").bind(orgs,orgs).all<{old_id:string;new_id:string}>()).results || [];
     const statements:D1PreparedStatement[]=[
+      env.DB.prepare('DELETE FROM financing_events'),
+      env.DB.prepare('DELETE FROM financing_agency_recipients'),
+      env.DB.prepare('DELETE FROM financing_recipients'),
       env.DB.prepare('DELETE FROM organization_support_records'),
       // Stage unique slugs within this transaction to allow renames and swaps.
       env.DB.prepare("UPDATE organizations SET slug=? || id").bind('__replica_stage_'+crypto.randomUUID()+'_'),
@@ -94,7 +101,11 @@ export async function replicateOrganizations(env: ReplicaEnv, fetcher: typeof fe
     statements.push(env.DB.prepare("DELETE FROM organization_source_identities WHERE organization_id NOT IN (SELECT json_extract(value,'$.id') FROM json_each(?))").bind(orgs));
     statements.push(env.DB.prepare("DELETE FROM organizations WHERE id NOT IN (SELECT json_extract(value,'$.id') FROM json_each(?))").bind(orgs));
     statements.push(upsert('organization_support_records',support));
+    statements.push(upsert('financing_recipients',JSON.stringify(snapshot.financingRecipients)));
+    statements.push(upsert('financing_agency_recipients',JSON.stringify(snapshot.financingAgencies)));
+    statements.push(upsert('financing_events',JSON.stringify(snapshot.financingEvents)));
     statements.push(env.DB.prepare('INSERT INTO organization_replica_state (id,source,etag,checked_at,applied_at,organization_count,support_count,error) VALUES (1,?,?,?,?,?,?,NULL) ON CONFLICT(id) DO UPDATE SET etag=excluded.etag,checked_at=excluded.checked_at,applied_at=excluded.applied_at,organization_count=excluded.organization_count,support_count=excluded.support_count,error=NULL').bind(source.href,response.headers.get('ETag'),now,now,snapshot.organizations.length,snapshot.support.length));
+    statements.push(env.DB.prepare('UPDATE organization_replica_state SET financing_count=? WHERE id=1').bind(snapshot.financingEvents.length));
     await env.DB.batch(statements);
   } catch (error) {
     const message=error instanceof Error?error.message:'Replication failed';

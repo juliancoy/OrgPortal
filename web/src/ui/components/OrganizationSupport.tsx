@@ -148,7 +148,7 @@ export function OrganizationSupport({ organizationId, slug, canManage }: { organ
     </div>}
     <h2>Descendant organizations</h2>
     <p className="muted">Organizations supported with funding, resources, time, or services. Indirect descendants are reached through another supported organization.</p>
-    {slug === 'tedco' && <TedcoRecipientResearch organizationId={organizationId} registered={data?.descendants || []} onImported={() => setRefresh(value => value + 1)} />}
+    {<TedcoRecipientResearch organizationId={organizationId} registered={data?.descendants || []} onImported={() => setRefresh(value => value + 1)} />}
     {data ? <>
       {slug !== 'tedco' && data.descendants.length > 0 && <div className="support-recipient-filters">
         <label>Find a supported organization<input type="search" value={recipientSearch} onChange={event => setRecipientSearch(event.target.value)} /></label>
