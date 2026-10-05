@@ -1,3 +1,4 @@
+import { runOrganizationOperation } from './organizationMcp';
 import { importFinancing, financingAgencyReport, financingRecipientReport } from './financingRecords';
 import { importOrganizationEvidence } from './organizationEvidenceImport';
 import {linkEventSupportRecords} from './eventSupportLinks';
@@ -3764,6 +3765,21 @@ app.post("/api/network/orgs/:organizationId/claim", async (c) => {
 app.get("/api/network/orgs/:organizationId/members", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   return c.json(await listOrganizationMembers(c.env.DB, c.req.param("organizationId"), organizationActor(user, c.env)));
+});
+// Session-authenticated administration uses the same IAM checks and one-use
+// preview receipts as MCP. Account IDs are explicit; email never links accounts.
+app.post("/api/network/orgs/:organizationId/members/:operation", async (c) => {
+  const operation = c.req.param("operation");
+  if (operation !== "preview" && operation !== "apply") return c.json({ error: "Not found" }, 404);
+  const user = await currentUser(c.env, c.req.raw);
+  const payload = await c.req.json() as Record<string, unknown>;
+  try {
+    const result = await runOrganizationOperation(c.env.DB,
+      { userId: user.id, scopes: ["org:portal.read", "org:portal.write"] }, "member",
+      { ...payload, organizationId: c.req.param("organizationId"), confirm: operation === "apply" },
+      async () => null);
+    return c.json(result);
+  } catch (error) { return eventErrorResponse(error, c.env, c.req.raw); }
 });
 app.post("/api/network/orgs/:organizationId/members", async (c) => {
   const user = await currentUser(c.env, c.req.raw);

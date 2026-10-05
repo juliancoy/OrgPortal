@@ -4,6 +4,7 @@ import { DatabaseSync, type StatementSync } from "node:sqlite";
 import test from "node:test";
 import {
   OrganizationIamError,
+  authorizeOrganization,
   claimOrganization,
   createOwnershipChallenge,
   listAuditEvents,
@@ -32,6 +33,8 @@ class SqliteD1 {
     this.database.exec("PRAGMA foreign_keys = ON");
     this.database.exec(readFileSync(new URL("../migrations/0002_org_event_directories.sql", import.meta.url), "utf8"));
     this.database.exec(readFileSync(new URL("../migrations/0015_organization_iam.sql", import.meta.url), "utf8"));
+    this.database.exec("CREATE TABLE portal_tenants (id TEXT PRIMARY KEY, home_org_slug TEXT, feature_config TEXT NOT NULL DEFAULT '{}');\n CREATE TABLE onboarding_enrollments (tenant_id TEXT, user_id TEXT, completed_at TEXT, PRIMARY KEY(tenant_id,user_id));");
+    this.database.exec(readFileSync(new URL("../migrations/0067_pending_organizers.sql", import.meta.url), "utf8"));
     this.database.exec(`
       INSERT INTO organizations (id, name, slug, tags)
       VALUES ('org-1', 'Open Organization', 'open-organization', '[]');
@@ -95,6 +98,8 @@ test("the first authenticated claimant immediately becomes owner", async () => {
 
   const ownership = await claimOrganization(db, "org-1", owner, "2026-08-08T12:00:00.000Z");
   assert.equal(ownership.owner_user_id, owner.id);
+  assert.equal(await authorizeOrganization(db, owner, 'manage', 'org-1'), 'owner');
+  assert.equal((await claimOrganization(db, 'org-1', owner, '2026-08-08T12:00:01.000Z')).id, ownership.id);
 
   const members = await listOrganizationMembers(db, "org-1", owner);
   assert.deepEqual(members.map((member) => [member.user_id, member.role]), [[owner.id, "owner"]]);
@@ -107,6 +112,30 @@ test("the first authenticated claimant immediately becomes owner", async () => {
     () => listOrganizationMembers(db, "org-1", challenger),
     (error: unknown) => error instanceof OrganizationIamError && error.status === 403,
   );
+});
+
+test("active community members see the complete roster without emails or management rights", async () => {
+  const sqlite = new SqliteD1();
+  const db = asD1(sqlite);
+  try {
+    await claimOrganization(db, 'org-1', owner, '2026-10-05T12:00:00Z');
+    await saveOrganizationMember(db, 'org-1', owner, {
+      user_id: challenger.id, user_name: challenger.name, user_email: 'private@example.test', role: 'member',
+    }, '2026-10-05T12:01:00Z');
+    const roster = await listOrganizationMembers(db, 'org-1', challenger);
+    assert.equal(roster.length, 2);
+    assert.ok(roster.every(member => !('user_email' in member)));
+    assert.equal((await listOrganizationMembers(db, 'org-1', owner)).find(member => member.user_id === challenger.id)?.user_email, 'private@example.test');
+    await saveOrganizationMember(db, 'org-1', owner, { user_id: supporter.id, user_name: supporter.name, role: 'administrator' }, '2026-10-05T12:01:00Z');
+    const unchanged = await saveOrganizationMember(db, 'org-1', owner, { user_id: supporter.id, user_name: 'Overwritten', role: 'member', add_only: true }, '2026-10-05T12:02:00Z');
+    assert.equal(unchanged?.role, 'administrator');
+    assert.equal(unchanged?.user_name, supporter.name);
+    await assert.rejects(() => saveOrganizationMember(db, 'org-1', challenger, { user_id: 'third-person' }, '2026-10-05T12:02:00Z'),
+      (error: unknown) => error instanceof OrganizationIamError && error.status === 403);
+    sqlite.database.prepare("UPDATE organization_memberships SET status='inactive' WHERE user_id=?").run(challenger.id);
+    await assert.rejects(() => listOrganizationMembers(db, 'org-1', challenger),
+      (error: unknown) => error instanceof OrganizationIamError && error.status === 403);
+  } finally { sqlite.database.close(); }
 });
 
 test("a challenge marks ownership disputed and resolution transfers without rewriting history", async () => {
@@ -150,4 +179,51 @@ test("a challenge marks ownership disputed and resolution transfers without rewr
   assert.ok(audit.some((event) => event.action === "organization.claimed"));
   assert.ok(audit.some((event) => event.action === "organization.ownership_challenged"));
   assert.ok(audit.some((event) => event.action === "organization.ownership_transferred"));
+});
+
+test('membership reconciliation grants only the explicit account after an unchanged one-use preview', async t => {
+  const { app } = await import('../src/index');
+  const database = new SqliteD1();
+  t.after(() => database.database.close());
+  database.database.exec(readFileSync(new URL('../migrations/0017_event_mcp_operations.sql', import.meta.url), 'utf8'));
+  await claimOrganization(asD1(database), 'org-1', owner, '2026-10-05T12:00:00Z');
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (_url, init) => Response.json({
+    id: new Headers(init?.headers).get('authorization') === 'Bearer owner' ? owner.id : 'website-member',
+    email: owner.email, full_name: 'Same person', is_sysadmin: false,
+  });
+  t.after(() => { globalThis.fetch = originalFetch; });
+  const environment = { DB: asD1(database), PIDP_BASE_URL: 'https://id.local.test' } as Env;
+  const payload = {user_id: 'website-member', user_name: 'Same person', user_email: owner.email, role: 'administrator'};
+  const request = (operation: string, token: string, body = payload) => app.request(
+    `https://org.local.test/api/network/orgs/org-1/members/${operation}`,
+    {method: 'POST', headers: {authorization: `Bearer ${token}`, 'content-type': 'application/json'}, body: JSON.stringify(body)}, environment);
+  assert.equal((await request('preview', 'member')).status, 403, 'matching email provides no authority');
+  const response = await request('preview', 'owner');
+  assert.equal(response.status, 200);
+  const preview = await response.json() as {previewId: string};
+  assert.equal(database.database.prepare("SELECT role FROM organization_memberships WHERE user_id='website-member'").get(), undefined);
+  assert.equal((await request('apply', 'owner', {...payload, user_id: 'different-account', previewId: preview.previewId} as typeof payload)).status, 409);
+  assert.equal((await request('apply', 'owner', {...payload, previewId: preview.previewId} as typeof payload)).status, 200);
+  assert.equal(database.database.prepare("SELECT role FROM organization_memberships WHERE user_id='website-member'").get()!.role, 'administrator');
+  assert.equal(database.database.prepare('SELECT role FROM organization_memberships WHERE user_id=?').get(owner.id)!.role, 'owner');
+  assert.equal((await request('apply', 'owner', {...payload, previewId: preview.previewId} as typeof payload)).status, 409);
+});
+
+test('organizer nominations retain member permissions until onboarding and authorized activation', async () => {
+  const db = new SqliteD1();
+  db.database.exec(`INSERT INTO portal_tenants VALUES ('tenant', 'open-organization', '{"onboarding":{"enabled":true}}')`);
+  await claimOrganization(asD1(db), 'org-1', owner, '2026-10-05T00:00:00Z');
+  await assert.rejects(saveOrganizationMember(asD1(db), 'org-1', supporter, { user_id: 'candidate', role: 'administrator' }, 'now'), /permission|manage|access/i);
+  const pending = await saveOrganizationMember(asD1(db), 'org-1', owner, { user_id: 'candidate', role: 'administrator' }, 'now') as any;
+  assert.equal(pending.role, 'member'); assert.equal(pending.pending_organizer, 1);
+  await assert.rejects(authorizeOrganization(asD1(db), { ...supporter, id: 'candidate' }, 'manage', 'org-1'), /permission|manage|access/i);
+  await saveOrganizationMember(asD1(db), 'org-1', owner, { user_id: 'candidate', role: 'member', add_only: true }, 'now');
+  assert.equal((await listOrganizationMembers(asD1(db), 'org-1', owner)).find(row => row.user_id === 'candidate')?.pending_organizer, 1);
+  db.database.exec(`INSERT INTO onboarding_enrollments VALUES ('tenant', 'candidate', 'done')`);
+  await assert.rejects(authorizeOrganization(asD1(db), { ...supporter, id: 'candidate' }, 'manage', 'org-1'), /permission|manage|access/i);
+  const active = await saveOrganizationMember(asD1(db), 'org-1', owner, { user_id: 'candidate', role: 'administrator' }, 'now') as any;
+  assert.equal(active.role, 'administrator'); assert.equal(active.pending_organizer, 0);
+  await authorizeOrganization(asD1(db), { ...supporter, id: 'candidate' }, 'manage', 'org-1');
+  db.database.close();
 });

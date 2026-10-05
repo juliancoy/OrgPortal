@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { authorizeOrganization, listOrganizationMembers, saveOrganizationMember, type OrganizationActor } from './organizationIam';
+import { authorizeOrganization, organizerAssignment, listOrganizationMembers, saveOrganizationMember, type OrganizationActor } from './organizationIam';
 import { EventIntegrationError } from './eventPlatforms';
 import { enforceEventRateLimit, prepareEventOperation, previewFingerprint, claimEventOperation, finishEventOperation } from './eventOperationStore';
 
@@ -13,7 +13,7 @@ export const organizationCreateSchema = z.object({
 export const organizationMemberSchema = z.object({
   organizationId: z.string().min(1).max(200), user_id: z.string().min(1).max(200),
   user_name: z.string().max(255).optional(), user_email: z.string().email().optional(),
-  role: z.enum(['member', 'administrator']),
+  role: z.enum(['member', 'administrator']), add_only: z.boolean().optional(),
   previewId: z.string().uuid().optional(), confirm: z.boolean().optional(),
 }).strict();
 export type CreateOrganization = (actor: OrganizationActor, payload: Record<string, unknown>) => Promise<unknown>;
@@ -54,7 +54,10 @@ export async function runOrganizationOperation(db: D1Database, identity: { userI
     await authorizeOrganization(db, actor, 'manage', organizationId);
     before = await listOrganizationMembers(db, organizationId, actor);
   }
-  const preview = { operation, organizationId, changes, before };
+  const member = changes as z.infer<typeof organizationMemberSchema>;
+  const assignment = operation === 'member' && member.role === 'administrator'
+    ? await organizerAssignment(db, organizationId, member.user_id) : null;
+  const preview = { operation, organizationId, changes, before, assignment };
   const owner = { userId: actor.id, organizationId, eventId: `organization:${operation}` };
   const fingerprint = await previewFingerprint(preview);
   if (!confirm) return { ...preview, ...await prepareEventOperation(db, owner, fingerprint) };

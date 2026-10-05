@@ -1,3 +1,4 @@
+import { OrganizationMembers } from '../../components/OrganizationMembers'
 import { EmbeddedOrganizationChat } from '../../components/EmbeddedOrganizationChat'
 import { resolveOrganizationView } from '../../hooks/useOrganizationView'
 import { OrganizationPortalSections } from '../../components/OrganizationPortalSections'
@@ -1560,6 +1561,11 @@ export function PublicAdminPage() {
             </div>
           ) : null}
 
+          <OrganizationMembers
+            key={org.id} organizationId={org.id} name={org.name}
+            canRead={Boolean(token && (canManageCurrentOrg || membership?.status === 'active'))}
+            canManage={canManageCurrentOrg} membershipCount={org.membership_count || 0}
+          />
           <OrganizationSupport organizationId={org.id} slug={org.slug} canManage={canManageCurrentOrg} />
 
           <div className="portal-card portal-org-events-card">

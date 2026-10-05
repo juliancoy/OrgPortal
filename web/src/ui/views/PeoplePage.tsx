@@ -187,6 +187,7 @@ export function PeoplePage() {
                         person.user_name
                       )}
                     </h3>
+                    {users.filter(other => other.user_name.trim().toLowerCase() === person.user_name.trim().toLowerCase()).length > 1 && <small className="muted" style={{ overflowWrap: 'anywhere' }}>Account: {person.user_id}</small>}
                     {person.headline ? <p style={{ margin: 0 }}>{person.headline}</p> : null}
                     {dateLabel ? (
                       <p className="muted" style={{ margin: 0 }}>

@@ -10,6 +10,8 @@ function database() {
   for (const file of ['0002_org_event_directories.sql', '0015_organization_iam.sql', '0017_event_mcp_operations.sql']) {
     sql.exec(readFileSync(new URL(`../migrations/${file}`, import.meta.url), 'utf8'));
   }
+  sql.exec("CREATE TABLE portal_tenants (id TEXT PRIMARY KEY, home_org_slug TEXT, feature_config TEXT NOT NULL DEFAULT '{}');\n CREATE TABLE onboarding_enrollments (tenant_id TEXT, user_id TEXT, completed_at TEXT, PRIMARY KEY(tenant_id,user_id));");
+  sql.exec(readFileSync(new URL("../migrations/0067_pending_organizers.sql", import.meta.url), "utf8"));
   const db = { prepare(query: string) {
     const statement = sql.prepare(query);
     const bound = (args: any[]) => ({ bind: (...args: any[]) => bound(args),
@@ -54,5 +56,28 @@ test('membership writes preserve PIdP IDs and enforce organization permissions',
   const members = await runOrganizationOperation(db, identity, 'members', { organizationId: 'org' }, create) as { members: { user_id: string }[] };
   assert.ok(members.members.some(member => member.user_id === 'same-pidp-member'));
   await assert.rejects(runOrganizationOperation(db, identity, 'create', { name: 'Existing', city: 'Baltimore' }, create), /already exists/);
+  sql.close();
+});
+
+test('pending organizer previews require unchanged onboarding and one-use confirmation', async () => {
+  const { db, sql } = database();
+  sql.exec(`INSERT INTO organizations (id,name,slug,tags) VALUES ('org','LifeTech','lifetech','[]');
+    INSERT INTO portal_tenants VALUES ('tenant','lifetech','{"onboarding":{"enabled":true}}')`);
+  await claimOrganization(db, 'org', { id: identity.userId, name: 'Owner', email: null, isOperator: false }, new Date().toISOString());
+  const args = { organizationId: 'org', user_id: 'candidate', role: 'administrator' };
+  const create = async () => null;
+  const preview = await runOrganizationOperation(db, identity, 'member', args, create) as any;
+  assert.equal(preview.assignment.pending_organizer, 1);
+  assert.equal(sql.prepare("SELECT role FROM organization_memberships WHERE user_id='candidate'").get(), undefined);
+  const applied = await runOrganizationOperation(db, identity, 'member', { ...args, confirm: true, previewId: preview.previewId }, create) as any;
+  assert.equal(applied.result.role, 'member'); assert.equal(applied.result.pending_organizer, 1);
+  await assert.rejects(runOrganizationOperation(db, identity, 'member', { ...args, confirm: true, previewId: preview.previewId }, create), /already used|expired/);
+  const stale = await runOrganizationOperation(db, identity, 'member', args, create) as any;
+  sql.exec(`INSERT INTO onboarding_enrollments VALUES ('tenant','candidate','done')`);
+  await assert.rejects(runOrganizationOperation(db, identity, 'member', { ...args, confirm: true, previewId: stale.previewId }, create), /expired|match/);
+  const ready = await runOrganizationOperation(db, identity, 'member', args, create) as any;
+  assert.equal(ready.assignment.role, 'administrator');
+  await runOrganizationOperation(db, identity, 'member', { ...args, confirm: true, previewId: ready.previewId }, create);
+  assert.equal(sql.prepare("SELECT role FROM organization_memberships WHERE user_id='candidate'").get()!.role, 'administrator');
   sql.close();
 });
