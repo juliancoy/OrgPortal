@@ -1,4 +1,6 @@
 import { memberMeetingRoutes } from './memberMeetings';
+import { runEventEnrichmentOperation } from './eventEnrichment';
+import { runOrganizationRegistryOperation } from './organizationRegistry';
 import { nametagRoutes } from './nametags';
 import { calendarCollectionOptions, addCalendarCollections } from './calendarCollections';
 import { organizationSupport, runSupportOperation } from './organizationSupport';
@@ -3253,6 +3255,13 @@ app.get("/api/network/orgs", async (c) => {
   return c.json(rankedRows.map((row) => mapOrganization(row)));
 });
 
+app.post("/api/network/orgs/registry", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  try {
+    return c.json(await runOrganizationRegistryOperation(c.env.DB, organizationActor(user, c.env), await c.req.json()));
+  } catch (error) { return eventErrorResponse(error, c.env, c.req.raw); }
+});
+
 app.post("/api/network/orgs", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
@@ -3846,6 +3855,13 @@ async function authorizeEventManager(env: Env, user: PidpUser, row: EventRow) {
   if (row.host_user_id === user.id || adminUser(user, env)) return;
   fail(403, "Event management access required");
 }
+
+app.post("/api/network/events/:eventId/enrichment", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  try {
+    return c.json(await runEventEnrichmentOperation(c.env.DB, organizationActor(user, c.env), c.req.param('eventId'), await c.req.json()));
+  } catch (error) { return eventErrorResponse(error, c.env, c.req.raw); }
+});
 
 app.post("/api/network/events", async (c) => {
   const user = await currentUser(c.env, c.req.raw);

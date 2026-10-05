@@ -229,3 +229,19 @@ imported. The import generator is
 `node org-worker/scripts/build-ecosystem-support.mjs [snapshot.json] [output.sql]`;
 use a new migration file for later snapshots instead of rewriting an applied
 migration. Shared services continue to release through CodeCollective.
+
+### Public evidence registration and event enrichment
+
+Authenticated operators can register an **unclaimed** public directory record via
+`POST /api/network/orgs/registry` with `name`, `description`, `sourceUrl`, optional
+`website`/`city`, and `tags`. This differs from creating an organization owned by
+the signed-in account: registration creates no ownership or membership.
+
+`POST /api/network/events/:eventId/enrichment` accepts `sourceUrl` and a strict
+`changes` object containing `description`, `ends_at`, `location`, `image_url`, or
+`host_org_id`. It checks existing and proposed host management permission;
+unclaimed events require an operator. Enrichment updates public metadata only.
+Both endpoints require a reviewed `confirm: false` preview followed by the same
+request with `confirm: true` and its actor-bound, expiring, one-use `previewId`.
+Changes are audited; intervening event edits invalidate the preview. Unknown
+organization locations and websites remain null.
