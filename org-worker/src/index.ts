@@ -1,3 +1,4 @@
+import {linkEventSupportRecords} from './eventSupportLinks';
 import { organizationSnapshot, replicaStatus, replicateOrganizations, snapshotEtagMatches } from './organizationReplication';
 import { memberMeetingRoutes } from './memberMeetings';
 import { runEventEnrichmentOperation } from './eventEnrichment';
@@ -3023,6 +3024,7 @@ app.post("/api/network/ingest/calendar", async (c) => {
     const row = existing || await upsertEvent(c.env.DB, raw);
     if (row) {
       await addCalendarCollections(c.env.DB, row.id, collections.organizationIds, existing ? raw.tags : undefined);
+      await linkEventSupportRecords(c.env.DB, row, raw.support_record_ids, await eventPublicUrl(c.env,c.req.raw,row.slug));
       insertedOrUpdatedEvents += 1;
     }
   }

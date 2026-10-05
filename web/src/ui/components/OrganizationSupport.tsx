@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
 import './organization-support.css'
+import {supportEventLinks} from './supportEventLinks'
 
 export type SupportRecord = {
   id: string; record_id: string; record_type: string; timestamp: string; occurred_at: string
@@ -39,7 +40,7 @@ export function SupportRecordTable({ records }: { records: SupportRecord[] }) {
     <thead><tr><th>From → recipient</th><th>Support</th><th>Amount / quantity</th><th>Period & status</th><th>Evidence</th></tr></thead>
     <tbody>{records.map(record => <tr key={record.id}>
       <td>{record.from_organization_slug ? <Link to={`/orgs/${record.from_organization_slug}`}>{record.from_label}</Link> : record.from_label || 'System'}<br />→ {record.to_organization_slug ? <Link to={`/orgs/${record.to_organization_slug}`}>{record.to_label}</Link> : record.to_label || 'System'}</td>
-      <td>{kinds[record.transaction_type as keyof typeof kinds] || record.transaction_type}<small>{record.description}</small></td>
+      <td>{kinds[record.transaction_type as keyof typeof kinds] || record.transaction_type}<small>{record.description}</small>{supportEventLinks(record.provenance_json).map(event=><small key={event.id}><a href={event.url}>View event: {event.title}</a></small>)}</td>
       <td>{supportAmount(record)}</td>
       <td>{record.occurred_at || record.timestamp}<small>{record.status === 'settled' ? 'Portal settlement' : record.status === 'reported' ? 'Reported support' : record.status}</small></td>
       <td>{record.source_url ? <a href={record.source_url} target="_blank" rel="noreferrer">View source</a> : 'Portal ledger'}<small>{record.evidence}</small><small>{record.notes}</small>{provenanceLabels(record.provenance_json).map((label, index) => <small key={index}>{label}</small>)}{record.void_reason && <small>Correction: {record.void_reason}</small>}</td>
