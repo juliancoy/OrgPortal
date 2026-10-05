@@ -37,30 +37,28 @@ with sync_playwright() as p:
         page.goto(BASE + '/people')
         page.get_by_role('link', name='Continue onboarding').click(timeout=30000)
         expect(page.get_by_role('heading', name=tenant['name'] + ' onboarding', exact=True)).to_be_visible(timeout=30000)
-        save = page.get_by_role('button', name='Save month availability')
+        save = page.get_by_role('button', name='Save typical week')
         expect(save).to_be_disabled()
         expect(page.locator('.onboarding-steps li')).to_have_count(4)
         page.screenshot(path=str(ROOT / 'onboarding-desktop.png'), full_page=True)
         for step in page.locator('.onboarding-steps li').all():
             step.get_by_role('button', name='I have completed this step').click()
             expect(step.get_by_text('✓ Confirmed', exact=True)).to_be_visible()
-        # Select a real half-hour, review every week, and save through the UI.
+        # Select a real half-hour, review the typical week, and save through the UI.
         slot = page.locator('tbody td button').first
         slot_label = slot.get_attribute('aria-label').split(',')[0]
         slot.click()
         expect(slot).to_have_attribute('aria-pressed', 'true')
-        next_week = page.get_by_role('button', name='Next week')
-        while next_week.is_enabled():
-            next_week.click()
+        expect(page.locator('thead th')).to_have_count(8)
         expect(save).to_be_disabled()
-        page.get_by_role('checkbox', name='I reviewed the whole month').check()
+        page.get_by_role('checkbox', name='I reviewed my typical week').check()
         save.click()
         expect(page.get_by_text('Onboarding complete', exact=True)).to_be_visible(timeout=15000)
         page.reload()
         expect(page.get_by_text('Onboarding complete', exact=True)).to_be_visible(timeout=15000)
         expect(page.get_by_role('button', name=slot_label + ', available,', exact=False)).to_have_attribute('aria-pressed', 'true')
         expect(page.get_by_role('link', name='Continue onboarding')).to_have_count(0)
-        print('PASS: all required steps, month review, selected availability, and completion persist after reload', flush=True)
+        print('PASS: all required steps, typical week review, selected availability, and completion persist after reload', flush=True)
         page.set_viewport_size({'width': 390, 'height': 844})
         page.screenshot(path=str(ROOT / 'onboarding-mobile.png'), full_page=True)
         assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth'), 'Page overflows at mobile width'

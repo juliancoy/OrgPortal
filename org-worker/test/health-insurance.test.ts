@@ -40,6 +40,8 @@ class SqliteD1 {
     this.database.exec(readFileSync(new URL("../migrations/0013_health_profile.sql", import.meta.url), "utf8"));
     this.database.exec(readFileSync(new URL("../migrations/0014_health_diagnosis_support.sql", import.meta.url), "utf8"));
     this.database.exec(readFileSync(new URL("../migrations/0016_health_service_hosts_and_user_event_calendars.sql", import.meta.url), "utf8"));
+    this.database.exec("CREATE TABLE portal_tenants(id TEXT PRIMARY KEY)");
+    this.database.exec(readFileSync(new URL("../migrations/0060_member_meetings.sql", import.meta.url), "utf8"));
     this.database.exec(`
       CREATE TABLE IF NOT EXISTS ledger_accounts (
         id TEXT PRIMARY KEY,
@@ -342,4 +344,16 @@ test("provider dashboard lists hosted calendars and booked appointments", async 
   assert.equal(provider.appointments[0]?.attendee_user_id, "member-2");
   assert.equal(provider.appointments[0]?.attendee_name, "Member Two");
   assert.equal(provider.appointments[0]?.attendee_email, "member-2@example.test");
+});
+
+
+test("provider appointments cannot overlap a confirmed member meeting", async () => {
+ const sqlite=new SqliteD1();const db=asD1(sqlite);
+ try {
+  sqlite.database.exec("INSERT INTO portal_tenants(id) VALUES ('test')");
+  sqlite.database.exec("INSERT INTO member_meetings(id,tenant_id,host_user_id,guest_user_id,starts_at,ends_at) VALUES ('meeting','test','host','member-1','2026-08-10T13:00:00.000Z','2026-08-10T13:30:00.000Z')");
+  await assert.rejects(scheduleHealthInsuranceAppointment(db,'member-1',{service_id:'primary-care',starts_at:'2026-08-10T13:00:00.000Z',attested:true},'2026-08-07T12:00:00.000Z'),(error:unknown)=>error instanceof HealthInsuranceError&&error.status===409);
+  sqlite.database.exec("UPDATE member_meetings SET status='cancelled'");
+  assert.ok(await scheduleHealthInsuranceAppointment(db,'member-1',{service_id:'primary-care',starts_at:'2026-08-10T13:00:00.000Z',attested:true},'2026-08-07T12:00:00.000Z'));
+ }finally{sqlite.database.close()}
 });

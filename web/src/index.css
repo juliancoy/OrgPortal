@@ -3500,9 +3500,14 @@ h6 {
 
 .portal-auth-provider-actions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
 }
+
+.portal-google-login-entry { min-width: 0; width: 100%; }
+.portal-google-login-entry > a { width: 100%; }
+.portal-google-personalized-button { display: flex; justify-content: center; min-height: 40px; }
+.portal-google-personalized-button[hidden] { display: none; }
 
 .portal-auth-idp-link {
   justify-content: center;

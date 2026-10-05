@@ -1,5 +1,6 @@
 import { useId, useState, type ReactNode } from 'react'
 import { BioMarkdownEditor } from './BioMarkdownEditor'
+import { Check, Copy, Pencil } from 'lucide-react'
 import './inline-profile.css'
 
 export function InlineProfileField({ label, value, children, onSave, multiline = false, markdown = false, type = 'text', options }: {
@@ -12,6 +13,7 @@ export function InlineProfileField({ label, value, children, onSave, multiline =
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
+  const [copied, setCopied] = useState(false)
   return <div className="inline-profile-field">
     {editing ? <form onSubmit={async event => {
       event.preventDefault(); setBusy(true); setError('')
@@ -30,7 +32,15 @@ export function InlineProfileField({ label, value, children, onSave, multiline =
       {error && <p role="alert">{error}</p>}
     </form> : <>
       <div className="inline-profile-value">{children || <span className="muted">Add {label.toLowerCase()}</span>}</div>
-      <button type="button" className="inline-profile-edit btn-secondary" onClick={() => { setDraft(value); setEditing(true); setSaved(false); setError('') }}>Edit {label.toLowerCase()}</button>
+      <div className="inline-profile-actions inline-profile-tools">
+        <button type="button" className="inline-profile-edit btn-secondary" aria-label={`Edit ${label.toLowerCase()}`} title={`Edit ${label.toLowerCase()}`} onClick={() => { setDraft(value); setEditing(true); setSaved(false); setError('') }}><Pencil size={18} aria-hidden="true" /></button>
+        <button type="button" className="btn-secondary" aria-label={`Copy ${label.toLowerCase()}`} title={`Copy ${label.toLowerCase()}`} disabled={!value} onClick={async () => {
+          try { await navigator.clipboard.writeText(value); setCopied(true); setError(''); window.setTimeout(() => setCopied(false), 1600) }
+          catch { setError('Could not copy. Please try again.') }
+        }}>{copied ? <Check size={18} aria-hidden="true" /> : <Copy size={18} aria-hidden="true" />}</button>
+      </div>
+      {copied && <span className="sr-only" role="status">{label} copied.</span>}
+      {error && <p role="alert">{error}</p>}
       {saved && <span className="sr-only" role="status">{label} saved.</span>}
     </>}
   </div>

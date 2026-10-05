@@ -120,13 +120,15 @@ export function pidpOwnerLoginUrl(next: string): string {
   return pidpUrl(`/app/login?${params.toString()}`)
 }
 
-export function pidpSingleSignOnUrl(next: string, provider?: 'google' | 'github'): string {
+export function pidpSingleSignOnUrl(next: string, provider?: 'google' | 'github', googleSubjectHint?: string): string {
   if (isNativeCapacitorRuntime()) {
     if (!provider) return pidpAppLoginUrl(next)
     const params = new URLSearchParams({ app: PIDP_APP_SLUG, next: getNativeAuthCallbackUrl() })
+    if (provider === 'google' && googleSubjectHint && /^[0-9]{1,255}$/.test(googleSubjectHint)) params.set('login_hint', googleSubjectHint)
     return pidpUrl(`/auth/${provider}/login?${params.toString()}`)
   }
   const params = new URLSearchParams({ app: PIDP_APP_SLUG, next: portalAuthCallbackUrl(next) })
   if (provider) params.set('provider', provider)
+  if (provider === 'google' && googleSubjectHint && /^[0-9]{1,255}$/.test(googleSubjectHint)) params.set('login_hint', googleSubjectHint)
   return pidpUrl(`/auth/sso/start?${params.toString()}`)
 }

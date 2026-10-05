@@ -28,3 +28,15 @@ export function accountSelection(slots:string[], history:AvailabilityObservation
  }
  return {slots:selected,suggested_slots:suggested};
 }
+
+/** Record selected and unselected instants through the shared scheduling store.
+ * An optional poll guard prevents writes after a poll closes.
+ */
+export function saveAccountAvailability(db: D1Database, userId: string, slots: string[], selected: string[], pollId: string | null = null) {
+ return db.prepare(`INSERT INTO account_availability (user_id,slot,available)
+  SELECT ?,s.value,EXISTS (SELECT 1 FROM json_each(?) chosen WHERE chosen.value=s.value)
+  FROM json_each(?) s
+  WHERE (? IS NULL OR EXISTS (SELECT 1 FROM availability_polls WHERE id=? AND closed=0))
+  ON CONFLICT(user_id,slot) DO UPDATE SET available=excluded.available,updated_at=CURRENT_TIMESTAMP`)
+  .bind(userId,JSON.stringify(selected),JSON.stringify(slots),pollId,pollId);
+}

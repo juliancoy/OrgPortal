@@ -115,6 +115,11 @@ test('browser login receives a loopback callback, exchanges PKCE without a secre
     logs.push(message);
     authorization = new URL(message.split('\n')[1]);
     callback = (async () => {
+      const local = message.split('Local CLI link: ')[1];
+      const start = await originalFetch(local, { redirect: 'manual' });
+      assert.equal(start.status, 303);
+      assert.equal(start.headers.get('location'), authorization.toString());
+      assert.equal(start.headers.get('cache-control'), 'no-store');
       const target = new URL(authorization.searchParams.get('redirect_uri')!);
       target.search = new URLSearchParams({ state: 'wrong', iss: 'https://id.example', code: 'issued-code' }).toString();
       assert.equal((await originalFetch(target)).status, 400);

@@ -1,3 +1,4 @@
+import { memberMeetingRoutes } from './memberMeetings';
 import { nametagRoutes } from './nametags';
 import { calendarCollectionOptions, addCalendarCollections } from './calendarCollections';
 import { organizationSupport, runSupportOperation } from './organizationSupport';
@@ -880,7 +881,7 @@ function generateCalendarFeedToken() {
 
 function calendarFeedLinks(request: Request, token: string, count: number, createdAt: string) {
   const feedUrl = calendarFeedPublicUrl(request, token);
-  const name = "OrgPortal registered events";
+  const name = "OrgPortal events and meetings";
   return {
     feed_url: feedUrl,
     download_url: feedUrl,
@@ -894,7 +895,8 @@ function calendarFeedLinks(request: Request, token: string, count: number, creat
 
 async function registeredEventCount(db: D1Database, userId: string) {
   const row = await db.prepare("SELECT count(*) AS count FROM event_registrations WHERE user_id = ?").bind(userId).first<{ count: number }>();
-  return Number(row?.count || 0);
+  const meetings = await db.prepare("SELECT count(*) AS count FROM member_meetings WHERE status='confirmed' AND (host_user_id=? OR guest_user_id=?)").bind(userId,userId).first<{count:number}>();
+  return Number(row?.count || 0) + Number(meetings?.count || 0);
 }
 
 async function registeredEventCalendarFeed(env: Env, request: Request, userId: string, regenerate = false) {
@@ -967,7 +969,7 @@ async function registeredEventsIcs(env: Env, request: Request, feed: RegisteredE
     "PRODID:-//Code Collective//OrgPortal Registered Events//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
-    "X-WR-CALNAME:OrgPortal Registered Events",
+    "X-WR-CALNAME:OrgPortal Events and Meetings",
   ];
   for (const event of rows.results || []) {
     const startsAt = event.starts_at;
@@ -990,6 +992,11 @@ async function registeredEventsIcs(env: Env, request: Request, feed: RegisteredE
     if (event.location?.trim()) lines.push(`LOCATION:${icsEscape(event.location.trim())}`);
     if (url) lines.push(`URL:${icsEscape(url)}`);
     lines.push("END:VEVENT");
+  }
+  const meetings = await env.DB.prepare("SELECT id,starts_at,ends_at FROM member_meetings WHERE status='confirmed' AND (host_user_id=? OR guest_user_id=?) ORDER BY starts_at LIMIT 500").bind(feed.user_id,feed.user_id).all<{id:string;starts_at:string;ends_at:string}>();
+  for (const meeting of meetings.results) {
+    lines.push('BEGIN:VEVENT',`UID:${icsEscape(`${meeting.id}@orgportal.codecollective.us`)}`,`DTSTAMP:${nowStamp}`,
+      `DTSTART:${icsTimestamp(meeting.starts_at)}`,`DTEND:${icsTimestamp(meeting.ends_at)}`,'SUMMARY:Member meeting','END:VEVENT');
   }
   lines.push("END:VCALENDAR");
   return `${lines.map(icsFold).join("\r\n")}\r\n`;
@@ -1501,7 +1508,9 @@ async function eventFlyerSvg(env: Env, request: Request, event: EventRow, format
 }
 
 async function publicEventBySlug(db: D1Database, rawSlug: string) {
-  const slug = slugify(rawSlug);
+  // Stored slugs can include a truncation-boundary hyphen or collision suffix.
+  // Preserve their exact identity instead of re-truncating an existing URL.
+  const slug = /^[a-z0-9][a-z0-9-]{0,199}$/.test(rawSlug) ? rawSlug : slugify(rawSlug);
   const direct = await db.prepare(
     `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url
      FROM events e
@@ -2619,6 +2628,7 @@ app.put('/api/network/events/:eventId/venues',async c=>{
   return c.json({venues:await setEventVenues(c.env.DB,row.id,await c.req.json())});
 });
 app.route("/api/availability", availabilityRoutes(currentUser));
+app.route("/api/meetings", memberMeetingRoutes(currentUser));
 app.route("/api/tasks", userTaskRoutes(currentUser));
 app.route("/api/onboarding", onboardingRoutes(currentUser));
 app.route("/api/media/carousels", driveCarouselRoutes(currentUser));

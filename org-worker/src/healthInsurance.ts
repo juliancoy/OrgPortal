@@ -1098,8 +1098,10 @@ export async function scheduleHealthInsuranceAppointment(
          (id, user_id, service_id, starts_at, ends_at, status, requested_at, updated_at)
        SELECT ?, ?, ?, ?, ?, 'requested', ?, ?
        WHERE (SELECT COUNT(*) FROM health_insurance_appointments
-              WHERE service_id = ? AND starts_at = ? AND status IN ('requested', 'confirmed')) < ?`,
-    ).bind(id, userId, service.id, startsAt, endsAt, now, now, service.id, startsAt, service.capacity_per_slot).run();
+              WHERE service_id = ? AND starts_at = ? AND status IN ('requested', 'confirmed')) < ?
+       AND NOT EXISTS (SELECT 1 FROM member_meetings WHERE status='confirmed' AND starts_at<? AND ends_at>?
+        AND (host_user_id IN (?,?) OR guest_user_id IN (?,?)))`,
+    ).bind(id, userId, service.id, startsAt, endsAt, now, now, service.id, startsAt, service.capacity_per_slot, endsAt, startsAt, userId, service.host_user_id, userId, service.host_user_id).run();
     if (!Number(result.meta.changes || 0)) throw new HealthInsuranceError(409, "That appointment slot is full.");
   } catch {
     throw new HealthInsuranceError(409, "That slot is full or you already have an appointment at that time.");

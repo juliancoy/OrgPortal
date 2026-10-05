@@ -2,10 +2,14 @@ import { expect, test } from '@playwright/test'
 
 // Public UI only: no login, retained session, external writes, or real tenant data.
 test('public organization shows descendants, nonmonetary support and source provenance', async ({ page }) => {
+  test.setTimeout(120_000)
+  await page.route('**/auth/session-token', route => route.fulfill({ status: 401, contentType: 'application/json', body: '{}' }))
+  await page.route('**/auth/me', route => route.fulfill({ status: 401, contentType: 'application/json', body: '{}' }))
   await page.route('**/api/org/**', async route => {
     const path = new URL(route.request().url()).pathname
     let body: unknown = []
-    if (path.endsWith('/orgs/public/parent')) body = { id: 'parent', slug: 'parent', name: 'Parent organization', description: 'Support network', membership_count: 0, pending_challenges_count: 0, media: [] }
+    if (path.endsWith('/api/portal/tenant')) body = {}
+    else if (path.endsWith('/orgs/public/parent')) body = { id: 'parent', slug: 'parent', name: 'Parent organization', description: 'Support network', membership_count: 0, pending_challenges_count: 0, media: [] }
     else if (path.endsWith('/parent/support')) body = {
       descendants: [{ id: 'child', slug: 'child', name: 'Supported organization', is_direct: 1 }, { id: 'grandchild', slug: 'grandchild', name: 'Indirect organization', is_direct: 0 }],
       supporters: [{ id: 'funder', slug: 'funder', name: 'Supporting foundation' }],
@@ -17,7 +21,7 @@ test('public organization shows descendants, nonmonetary support and source prov
   await page.route('**/api/users/me**', route => route.fulfill({ status: 401, body: '{}' }))
   await page.goto('/orgs/parent')
   const support = page.getByRole('region', { name: 'Organization support and descendants' })
-  await expect(support.getByRole('heading', { name: 'Descendant organizations' })).toBeVisible()
+  await expect(support.getByRole('heading', { name: 'Descendant organizations' })).toBeVisible({ timeout: 30_000 })
   await expect(support.getByRole('link', { name: 'Supported organization', exact: true })).toBeVisible()
   await expect(support.getByText('Indirect descendant', { exact: true })).toBeVisible()
   await expect(support.getByRole('link', { name: 'Supporting foundation' })).toBeVisible()

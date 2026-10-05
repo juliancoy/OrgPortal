@@ -1,3 +1,4 @@
+import { MemberMeetingsPage } from '../views/MemberMeetingsPage'
 import { NametagsPage } from '../views/NametagsPage'
 import { GovernanceDocumentPage } from '../views/governance/GovernanceDocumentPage'
 import { VenuesPage } from '../views/orgs/VenuesPage'
@@ -376,6 +377,8 @@ export function createAppRouter() {
           },
           { path: '/targets/:target', element: <TargetPage /> },
 
+          { path: '/meetings', element: <MemberMeetingsPage /> },
+          { path: '/meetings/:host', element: <MemberMeetingsPage /> },
           { path: '/availability', element: <AvailabilityPage /> },
           { path: '/onboarding', element: <OnboardingPage /> },
           { path: '/availability/:id', element: <AvailabilityPage /> },

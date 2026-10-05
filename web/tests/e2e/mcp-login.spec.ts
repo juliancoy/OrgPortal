@@ -5,6 +5,7 @@ const path = `/users/mcp-connect?request=${request}`
 
 async function account(page: Page, signedIn: boolean) {
   await page.route('**/api/org/**', route => route.fulfill({ json: {} }))
+  await page.route('**/api/org/api/tasks*', route => route.fulfill({ json: { tasks: [] } }))
   await page.route('**/auth/session-token', route => route.fulfill({
     status: signedIn ? 200 : 401, json: signedIn ? { access_token: 'header.payload.signature' } : {},
   }))
@@ -26,7 +27,7 @@ test('MCP login uses the existing social login and retains its return path', asy
   expect(new URL(social.searchParams.get('next') || '').searchParams.get('next')).toBe(path)
 })
 
-test('MCP continuation requires an explicit action and safely returns to the issuer', async ({ page }, testInfo) => {
+test('MCP continuation opens one combined account and permissions review', async ({ page }) => {
   await account(page, true)
   let posts = 0
   await page.route('**/oauth/mcp/handoff*', async route => {
@@ -40,14 +41,6 @@ test('MCP continuation requires an explicit action and safely returns to the iss
   })
   await page.route('https://id.example/**', route => route.fulfill({ contentType: 'text/html', body: '<h1>MCP consent</h1>' }))
   await page.goto(path)
-  await expect(page.getByRole('heading', { name: 'Connect MedTech' })).toBeVisible()
-  await expect(page.getByText('member@example.test', { exact: true })).toBeVisible()
-  await expect(page.getByText('Signed in as', { exact: true })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Cancel', exact: true })).toBeVisible()
-  expect(posts).toBe(0)
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
-  await page.screenshot({ path: testInfo.outputPath('mcp-connect.png'), fullPage: true })
-  await page.getByRole('button', { name: 'Continue to consent' }).click()
   await expect(page).toHaveURL('https://id.example/oauth/mcp/resume?code=one-use-code')
   expect(posts).toBe(1)
 })
@@ -59,7 +52,6 @@ test('MCP continuation rejects an unexpected issuer destination', async ({ page 
     : { portal: 'MedTech', portal_origin: new URL(page.url()).origin, issuer: 'https://id.example', account: 'member@example.test' },
   }))
   await page.goto(path)
-  await page.getByRole('button', { name: 'Continue to consent' }).click()
   await expect(page.getByRole('alert')).toHaveText('The identity provider returned an invalid destination.')
   await expect(page).toHaveURL(/\/users\/mcp-connect\?request=/)
 })

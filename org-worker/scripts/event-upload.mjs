@@ -67,7 +67,7 @@ export async function browserLogin(resource, issuer, clientId, openBrowser = tru
   const codePromise = new Promise((resolve, reject) => { complete = resolve; cancel = reject; });
   // Register rejection handling before opening the browser or awaiting listen.
   codePromise.catch(() => {});
-  let redirect;
+  let redirect, authorizationUrl;
   const server = createServer((request, response) => {
     response.setHeader('Cache-Control', 'no-store');
     response.setHeader('Content-Type', 'text/plain; charset=utf-8');
@@ -78,6 +78,9 @@ export async function browserLogin(resource, issuer, clientId, openBrowser = tru
     }
     try {
       const url = new URL(request.url, redirect);
+      if (url.pathname === '/authorize' && !url.search && authorizationUrl) {
+        response.writeHead(303, { Location: authorizationUrl }).end(); return;
+      }
       const code = callbackResult(url, state, issuer);
       response.end('Account connected. You can return to the upload.');
       complete(code);
@@ -95,7 +98,9 @@ export async function browserLogin(resource, issuer, clientId, openBrowser = tru
     url.search = new URLSearchParams({ response_type: 'code', client_id: clientId, redirect_uri: redirect, resource,
       scope, state, code_challenge_method: 'S256',
       code_challenge: createHash('sha256').update(verifier).digest('base64url') }).toString();
-    console.log(`Sign in and approve access in your browser:\n${url}`);
+    authorizationUrl = url.toString();
+    const localStart = new URL('/authorize', redirect).toString();
+    console.log(`Sign in and approve access in your browser:\n${url}\nLocal CLI link: ${localStart}`);
     if (openBrowser) {
       const command = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? null : 'xdg-open';
       if (command) { const child = spawn(command, [url.toString()], { stdio: 'ignore' }); child.on('error', () => {}); child.unref(); }

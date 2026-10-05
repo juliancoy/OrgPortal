@@ -4,6 +4,7 @@ import { useAuth } from '../../../app/AppProviders'
 import { portalPath } from '../../../config/portalBase'
 import { defaultPostLoginPath, normalizePostLoginPath, pidpSingleSignOnUrl } from '../../../config/pidp'
 import { getActivePortalProfileConfig } from '../../../config/portalFeatures'
+import { GoogleLoginEntry } from '../../components/GoogleLoginEntry'
 
 export function UserLoginPage({ defaultNext }: { defaultNext?: string } = {}) {
   const navigate = useNavigate()
@@ -30,25 +31,19 @@ export function UserLoginPage({ defaultNext }: { defaultNext?: string } = {}) {
         <div className="portal-auth-card-header">
           {tenantAuth && portalProfile.brandImagePath && <img className="tenant-auth-logo" src={portalPath(portalProfile.brandImagePath)} alt="" />}
           <p className="portal-auth-eyebrow">{tenantAuth ? portalProfile.tagline : `${portalProfile.brandName} identity`}</p>
-          <h1 id="user-login-title">{tenantAuth ? `Welcome to ${portalProfile.brandName}` : 'Login'}</h1>
-          <p className="muted">{tenantAuth ? `Sign in to continue to ${portalProfile.brandName}.` : 'Sign in to continue.'}</p>
+          <h1 id="user-login-title">Log In</h1>
         </div>
 
         <div className="portal-auth-provider-stack">
           <div className="portal-guest-login-actions portal-auth-provider-actions" aria-label="Sign in options">
-            <a
-              href={socialLoginUrl('google')}
-              className="portal-social-login-button"
-              aria-label="Continue with Google"
-            >
-              <img src={portalPath('/images/google-g-logo.svg')} alt="" className="portal-social-login-logo" />
-            </a>
+            <GoogleLoginEntry next={requestedNext} />
             <a
               href={socialLoginUrl('github')}
               className="portal-social-login-button"
               aria-label="Continue with GitHub"
             >
               <img src={portalPath('/images/github-mark.svg')} alt="" className="portal-social-login-logo" />
+              <span>Continue with GitHub</span>
             </a>
           </div>
           <a

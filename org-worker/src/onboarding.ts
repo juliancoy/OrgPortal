@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { resolvePortalTenant, type PortalTenant } from './timebank';
-import { accountSelection, type AvailabilityObservation } from './accountAvailability';
+import { accountSelection, saveAccountAvailability, type AvailabilityObservation } from './accountAvailability';
 
 export const onboardingSteps = [
  { id: 'constitution', title: 'Read the Constitution and bylaws', description: 'Review the linked document, currently marked as an unratified draft. Bring questions to an organizer.', href: 'https://codecollective.us/constitution' },
@@ -10,7 +10,7 @@ export const onboardingSteps = [
  { id: 'meetings', title: 'Learn meetings and governance', description: 'Review meeting types and the motion, seconding, and voting process. Find an upcoming meeting to attend.', href: '/events' },
 ] as const;
 export const onboardingTasks = [
- { id: 'availability', title: 'Indicate your meeting availability for the next month' },
+ { id: 'availability', title: 'Indicate your meeting availability for a typical week' },
  ...onboardingSteps.map(({ id, title }) => ({ id, title })),
 ];
 export function onboardingTaskId(step: string) { return `onboarding:v1:${step}`; }
@@ -22,7 +22,7 @@ function taskUpdates(db: D1Database, tenantId: string, userId: string) {
     SELECT ?,tenant_id,user_id,user_id,'personal',?,?,CASE WHEN ${completion} IS NULL THEN 'pending' ELSE 'completed' END,${completion}
     FROM onboarding_enrollments WHERE tenant_id=? AND user_id=?
     ON CONFLICT(tenant_id,user_id,kind,entity_id) DO UPDATE SET
-    status=excluded.status,completed_at=COALESCE(user_tasks.completed_at,excluded.completed_at)`)
+    title=excluded.title,status=excluded.status,completed_at=COALESCE(user_tasks.completed_at,excluded.completed_at)`)
     .bind(crypto.randomUUID(),onboardingTaskId(step.id),step.title,tenantId,userId);
   }),
   // Retire the aggregate task after its individual replacements are created.
@@ -47,6 +47,11 @@ export async function ensureOnboarding(db: D1Database, tenant: PortalTenant, use
   ...taskUpdates(db,tenant.id,userId),
  ]);
  return db.prepare('SELECT * FROM onboarding_enrollments WHERE tenant_id = ? AND user_id = ?').bind(tenant.id,userId).first<Enrollment>();
+}
+export function typicalWeekEnd(start: string) {
+ const end = new Date(`${start}T00:00:00Z`);
+ end.setUTCDate(end.getUTCDate() + 7);
+ return end.toISOString().slice(0, 10);
 }
 export function monthSlots(start: string, end: string, timezone: string) {
  let format: Intl.DateTimeFormat;
@@ -93,20 +98,20 @@ export function onboardingRoutes(getUser: (env: Env, request: Request) => Promis
   const {user,enrollment}=await context(c.env,c.req.raw);
   if(!enrollment)throw new HTTPException(404);
   const timezone=c.req.query('timezone')||'America/New_York';
-  const slots=monthSlots(enrollment.start_date,enrollment.end_date,timezone);
+  const slots=monthSlots(enrollment.start_date,typicalWeekEnd(enrollment.start_date),timezone);
   const history=await c.env.DB.prepare('SELECT slot,available FROM account_availability WHERE user_id=? AND slot<=? ORDER BY slot').bind(user.id,slots.at(-1)!).all<AvailabilityObservation>();
   const selection=accountSelection(slots,history.results,timezone);
-  return c.json({start:enrollment.start_date,end:enrollment.end_date,timezone,slots,selected:selection.slots,suggested_slots:selection.suggested_slots});
+  return c.json({start:enrollment.start_date,end:typicalWeekEnd(enrollment.start_date),timezone,slots,selected:selection.slots,suggested_slots:selection.suggested_slots});
  });
  app.put('/availability',async c=>{
   const {user,tenant,enrollment}=await context(c.env,c.req.raw);
   if(!enrollment)throw new HTTPException(404);
   const body=await c.req.json().catch(()=>null);
-  if(typeof body?.timezone!=='string'||body.reviewed!==true)throw new HTTPException(400,{message:'Review the whole month and confirm your availability.'});
-  const slots=monthSlots(enrollment.start_date,enrollment.end_date,body.timezone),allowed=new Set(slots);
+  if(typeof body?.timezone!=='string'||body.reviewed!==true)throw new HTTPException(400,{message:'Review your typical week and confirm your availability.'});
+  const slots=monthSlots(enrollment.start_date,typicalWeekEnd(enrollment.start_date),body.timezone),allowed=new Set(slots);
   if(!Array.isArray(body.slots)||body.slots.length>slots.length||body.slots.some((s:unknown)=>typeof s!=='string'||!allowed.has(s))||new Set(body.slots).size!==body.slots.length)throw new HTTPException(400,{message:'Invalid availability selection.'});
   await c.env.DB.batch([
-   c.env.DB.prepare(`INSERT INTO account_availability(user_id,slot,available) SELECT ?,s.value,EXISTS(SELECT 1 FROM json_each(?) selected WHERE selected.value=s.value) FROM json_each(?) s WHERE true ON CONFLICT(user_id,slot) DO UPDATE SET available=excluded.available,updated_at=CURRENT_TIMESTAMP`).bind(user.id,JSON.stringify(body.slots),JSON.stringify(slots)),
+   saveAccountAvailability(c.env.DB,user.id,slots,body.slots),
    c.env.DB.prepare("UPDATE onboarding_enrollments SET availability_saved_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE tenant_id=? AND user_id=?").bind(tenant.id,user.id),
    c.env.DB.prepare("UPDATE user_tasks SET status='completed',completed_at=COALESCE(completed_at,strftime('%Y-%m-%dT%H:%M:%fZ','now')) WHERE tenant_id=? AND user_id=? AND entity_id=?").bind(tenant.id,user.id,`availability-calendar:${tenant.organization_id}`),
   ]);

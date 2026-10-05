@@ -195,6 +195,7 @@ export function PeoplePage() {
                     ) : null}
                     {!profilePath ? <span className="muted">No public profile yet</span> : null}
                     <div className="people-directory-actions">
+                      {!isSelf && token && <Link to={`/meetings/${encodeURIComponent(person.user_id)}`} className="btn-secondary">Schedule a meeting</Link>}
                       {profilePath ? (
                         <Link to={profilePath} className="btn-secondary">View public info</Link>
                       ) : null}

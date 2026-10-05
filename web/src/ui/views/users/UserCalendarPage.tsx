@@ -165,7 +165,7 @@ export function UserCalendarPage() {
         <div>
           <p className="portal-eyebrow">Account</p>
           <h1>Calendar Integrations</h1>
-          <p className="portal-muted">Connect calendar providers and subscribe to every event you register for.</p>
+          <p className="portal-muted">Connect calendar providers and subscribe to your registered events and member meetings.</p>
         </div>
         <Link className="portal-button secondary" to="/settings">
           Settings
@@ -186,7 +186,7 @@ export function UserCalendarPage() {
           <p className="portal-eyebrow">Registered Events</p>
           <h2>Subscribe Once</h2>
           <p className="portal-muted">
-            Your calendar app will stay synced with events you register for or cancel.
+            Your calendar app will stay synced with your registered events and confirmed member meetings. Cancelled meetings are removed from the feed.
           </p>
         </div>
         {loading ? (
@@ -195,7 +195,7 @@ export function UserCalendarPage() {
           <>
             <div className="registered-events-calendar-stats" aria-label="Registered event calendar summary">
               <strong>{registeredEventsFeed.event_count}</strong>
-              <span>{registeredEventsFeed.event_count === 1 ? 'registered event' : 'registered events'}</span>
+              <span>{registeredEventsFeed.event_count === 1 ? 'event or meeting' : 'events and meetings'}</span>
             </div>
             <div className="registered-events-calendar-actions">
               <a className="portal-button" href={registeredEventsFeed.webcal_url}>Apple/iCal</a>

@@ -233,13 +233,41 @@ async function mockTenant(page: Page, options: MockTenantOptions = {}) {
   }
 }
 
+test('Google personalized entry preserves the selected account and return context', async ({ page }) => {
+  await mockTenant(page)
+  await page.route('**/pidp/configuration', route => route.fulfill({ json: { google_client_id: 'test-google-client' } }))
+  await page.route('https://accounts.google.com/gsi/client', route => route.fulfill({
+    contentType: 'application/javascript',
+    body: `window.google = { accounts: { id: {
+      initialize(options) { window.googleLoginOptions = options; },
+      renderButton(element) {
+        const button = document.createElement('button');
+        button.textContent = 'Continue as Test Account';
+        button.onclick = () => window.googleLoginOptions.callback({credential: 'header.' + btoa(JSON.stringify({sub: '123456789'})) + '.signature'});
+        element.appendChild(button);
+      }
+    } } };`,
+  }))
+  await page.goto(portal('/users/login?next=%2Fpeople'))
+  await expect(page.getByRole('heading', { name: 'Log In', exact: true })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Continue with GitHub' })).toBeVisible()
+  const request = page.waitForRequest(request => request.url().includes('/auth/sso/start'))
+  await page.getByRole('button', { name: 'Continue as Test Account' }).click()
+  const url = new URL((await request).url())
+  expect(url.searchParams.get('provider')).toBe('google')
+  expect(url.searchParams.get('login_hint')).toBe('123456789')
+  expect(url.searchParams.get('app')).toBeTruthy()
+  expect(url.searchParams.has('owner')).toBe(false)
+  expect(new URL(url.searchParams.get('next')!).searchParams.get('next')).toBe('/people')
+})
+
 test('tenant domains use root-mounted canonical routes and assets', async ({ page }) => {
   await mockTenant(page)
   await page.goto(portal('/users/login'))
 
   await expect(page.locator('html')).toHaveAttribute('data-portal-profile', 'baltimore-medtech')
   await expect(page.locator('html')).toHaveAttribute('data-portal-tenant', 'baltimore-medtech')
-  await expect(page.getByRole('heading', { name: 'Welcome to Baltimore MedTech' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Log In', exact: true })).toBeVisible()
   await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', /\/images\/baltimore-medtech-logo-square-v2\.jpg$/)
   await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', /\/medtech\.webmanifest$/)
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { X } from 'lucide-react'
+import { Download, X } from 'lucide-react'
 import { useAuth } from '../../../app/AppProviders'
 import { PIDP_BASE_URL, pidpUrl } from '../../../config/pidp'
 import { publicProfileUrl } from '../../../config/portalBase'
@@ -108,6 +108,7 @@ export function UserProfilePage({ embedded = false, photoOnly = false, detailsOn
   const [editorOffsetX, setEditorOffsetX] = useState(0)
   const [editorOffsetY, setEditorOffsetY] = useState(0)
   const [editorBusy, setEditorBusy] = useState(false)
+  const [downloadingPhoto, setDownloadingPhoto] = useState(false)
   const [editorError, setEditorError] = useState<string | null>(null)
   const editorCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const editorDialogRef = useRef<HTMLDivElement | null>(null)
@@ -419,6 +420,43 @@ export function UserProfilePage({ embedded = false, photoOnly = false, detailsOn
     }
   }
 
+  async function downloadPhoto(format: 'jpg' | 'png') {
+    if (!avatarUrl || downloadingPhoto) return
+    setDownloadingPhoto(true)
+    try {
+      const response = await fetch(avatarUrl)
+      if (!response.ok) throw new Error('Could not load the profile photo.')
+      const bitmap = await createImageBitmap(await response.blob())
+      try {
+        const canvas = document.createElement('canvas')
+        canvas.width = bitmap.width
+        canvas.height = bitmap.height
+        const context = canvas.getContext('2d')
+        if (!context) throw new Error('Could not prepare the photo download.')
+        if (format === 'jpg') {
+          context.fillStyle = '#ffffff'
+          context.fillRect(0, 0, canvas.width, canvas.height)
+        }
+        context.drawImage(bitmap, 0, 0)
+        const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(
+          result => result ? resolve(result) : reject(new Error('Could not convert the profile photo.')),
+          format === 'jpg' ? 'image/jpeg' : 'image/png', 0.95,
+        ))
+        const href = URL.createObjectURL(blob)
+        const anchor = document.createElement('a')
+        anchor.href = href
+        anchor.download = `profile-photo.${format}`
+        document.body.appendChild(anchor)
+        anchor.click()
+        anchor.remove()
+        window.setTimeout(() => URL.revokeObjectURL(href), 1000)
+        setStatus('Photo downloaded.')
+      } finally { bitmap.close() }
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Could not download the profile photo.')
+    } finally { setDownloadingPhoto(false) }
+  }
+
   const profileImageEditor = (
     <div className="profile-public-photo-card">
       <button
@@ -464,9 +502,14 @@ export function UserProfilePage({ embedded = false, photoOnly = false, detailsOn
         Click the image to replace it. Changes save after you apply the crop.
       </p>
       {avatarUrl ? (
+        <div className="inline-profile-actions">
+          {(['jpg', 'png'] as const).map(format => <button key={format} type="button" disabled={downloadingPhoto} onClick={() => void downloadPhoto(format)} aria-label={`Download profile photo as ${format.toUpperCase()}`}>
+            <Download size={16} aria-hidden="true" /> {format.toUpperCase()}
+          </button>)}
         <button type="button" onClick={() => void persistProfilePhoto('').catch(error => setStatus(error instanceof Error ? error.message : 'Could not remove photo.'))}>
           Remove
         </button>
+        </div>
       ) : null}
     </div>
   )

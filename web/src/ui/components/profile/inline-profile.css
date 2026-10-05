@@ -6,6 +6,9 @@
 .inline-profile-field input, .inline-profile-field textarea { width: 100%; box-sizing: border-box; }
 .inline-profile-value { overflow-wrap: anywhere; min-width: 0; }
 .inline-profile-edit { justify-self: start; }
+.inline-profile-field:has(> .inline-profile-tools) { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.inline-profile-tools button { width: 42px; height: 42px; padding: 0; display: grid; place-items: center; }
+.inline-profile-field > form, .inline-profile-field > p { grid-column: 1 / -1; }
 .inline-profile-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
 .inline-profile-contacts { display: grid; gap: .75rem; padding: 1rem 0; text-align: left; }
 .profile-photo-inline { padding: 0; }
