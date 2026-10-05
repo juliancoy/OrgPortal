@@ -1,3 +1,4 @@
+import { OrganizationFundingChart, type FundingCounterparty } from './OrganizationFundingChart'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
@@ -15,8 +16,8 @@ export type SupportRecord = {
   status: string; void_reason: string | null; source_url: string; evidence: string; notes: string; provenance_json: string
 }
 type Organization = { id: string; name: string; slug: string; is_direct?: number; tags?: string[] }
-type FinancialTotal = { direction: 'deployed' | 'received'; currency: string | null; status: 'reported' | 'delivered'; amount: number | null; recordCount: number; undisclosedCount: number }
-type Support = { financialTotals: { source: string; entries: FinancialTotal[] }; descendants: Organization[]; supporters: Organization[]; records: SupportRecord[]; recordCount: number; nextRecordOffset: number | null }
+type FinancialTotal = { direction: 'deployed' | 'received'; currency: string | null; status: 'reported' | 'delivered'; amount: number | null; recordCount: number; undisclosedCount: number; lowerBoundCount: number }
+type Support = { financialTotals: { source: string; entries: FinancialTotal[]; counterparties: FundingCounterparty[] }; descendants: Organization[]; supporters: Organization[]; records: SupportRecord[]; recordCount: number; nextRecordOffset: number | null }
 const kinds = {
   transfer: 'Monetary support / award', in_kind: 'In-kind contribution', mentoring: 'Mentoring', venue: 'Venue support',
   services: 'Services', incubation: 'Incubation', acceleration: 'Acceleration', collaboration: 'Collaboration',
@@ -137,15 +138,16 @@ export function OrganizationSupport({ organizationId, slug, canManage }: { organ
     {slug !== 'tedco' && <TedcoCompanyEvidence organizationId={organizationId} />}
     {data && <div aria-label="Documented financial totals">
       <h2>Documented deployed and received</h2>
-      <p className="muted">Calculated from the shared master transaction database. Delivered support is separate from reported awards and commitments. Currencies are not combined; program limits, fund capitalization, portfolio totals and nonmonetary support are excluded.</p>
+      <p className="muted">Calculated from the shared master transaction database. Delivered support is separate from reported awards and commitments. Currencies are not combined; program limits, fund capitalization, portfolio totals and nonmonetary support are excluded. Reported financing rounds include their documented agency contributions once.</p>
       <div className="support-table-scroll"><table className="finance-table"><caption>Public organization monetary support across all dates. These totals do not establish complete lifetime funding or account balances.</caption>
         <thead><tr><th>Direction</th><th>Documented delivered</th><th>Reported / announced</th></tr></thead>
         <tbody>{(['deployed', 'received'] as const).map(direction => <tr key={direction}><th>{direction === 'deployed' ? 'Deployed' : 'Received'}</th>{(['delivered', 'reported'] as const).map(status => {
           const entries = data.financialTotals.entries.filter(entry => entry.direction === direction && entry.status === status)
-          return <td key={status}>{entries.length ? entries.map(entry => <div key={entry.currency || 'undisclosed'}>{entry.amount !== null && <strong>{entry.amount.toLocaleString(undefined, { maximumFractionDigits: 2 })} {entry.currency}</strong>}{entry.undisclosedCount > 0 && <small>{entry.undisclosedCount} record(s) with undisclosed amounts</small>}<small>{entry.recordCount} source record(s)</small></div>) : 'No documented monetary records'}</td>
+          return <td key={status}>{entries.length ? entries.map(entry => <div key={entry.currency || 'undisclosed'}>{entry.amount !== null && <strong>{entry.lowerBoundCount > 0 ? 'At least ' : ''}{entry.amount.toLocaleString(undefined, { maximumFractionDigits: 2 })} {entry.currency}</strong>}{entry.undisclosedCount > 0 && <small>{entry.undisclosedCount} record(s) with undisclosed amounts</small>}<small>{entry.recordCount} source record(s)</small></div>) : 'No documented monetary records'}</td>
         })}</tr>)}</tbody>
       </table></div>
     </div>}
+    {data && <OrganizationFundingChart key={organizationId} rows={data.financialTotals.counterparties} />}
     <h2>Descendant organizations</h2>
     <p className="muted">Organizations supported with funding, resources, time, or services. Indirect descendants are reached through another supported organization.</p>
     {<TedcoRecipientResearch organizationId={organizationId} registered={data?.descendants || []} onImported={() => setRefresh(value => value + 1)} />}
