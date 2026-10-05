@@ -5262,6 +5262,13 @@ app.all("*", (c) => c.json({ detail: "Endpoint is not implemented in the Cloudfl
 
 function orgWorkerFetch(request: Request, env: Env, ctx: ExecutionContext) {
   const url = new URL(request.url);
+  if (env.ORGANIZATION_REPLICA_SOURCE && ["GET","HEAD"].includes(request.method)
+    && /^\/api\/network\/orgs\/public\/[^/]+\/media\/[^/]+$/.test(url.pathname)) {
+    const upstream = new URL(env.ORGANIZATION_REPLICA_SOURCE);
+    upstream.pathname = upstream.pathname.replace(/\/network\/replication\/snapshot$/, "") + url.pathname.replace(/^\/api/, "");
+    upstream.search = url.search;
+    return fetch(upstream.href,{method:request.method,redirect:"manual"});
+  }
   if (request.method === "GET" && (url.pathname === "/.well-known/oauth-protected-resource"
     || url.pathname === "/.well-known/oauth-protected-resource/api/org/mcp"
     || url.pathname.startsWith("/.well-known/oauth-protected-resource/"))) {

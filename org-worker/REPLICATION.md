@@ -9,8 +9,16 @@ to reference the existing public media service.
 
 ## Deploy a replica
 
-1. Provision a **separate** D1 database (or persistent local Wrangler database),
-   configure its DB binding, and apply this worker's migrations.
+1. Provision a **separate** D1 database (or persistent local Wrangler database).
+   The config generator rejects the primary DB ID and excludes its queues/R2:
+
+   ```sh
+   cd org-worker
+   npx wrangler d1 create my-org-replica
+   node scripts/create-organization-replica-config.mjs --name my-org-replica --database-name my-org-replica --database-id <NEW_DATABASE_ID> --output /tmp/wrangler.replica.json
+   npx wrangler d1 migrations apply my-org-replica --remote --config /tmp/wrangler.replica.json
+   npx wrangler deploy --config /tmp/wrangler.replica.json
+   ```
 2. Set `ORGANIZATION_REPLICA_SOURCE` to
    `https://lifetech.fyi/api/org/api/network/replication/snapshot` and
    `ORGANIZATION_REPLICA_INTERVAL_SECONDS` to `300` (60–86400 allowed).
@@ -33,7 +41,8 @@ are not production credentials. Do not silently forward local session tokens.
 `org-replication` Docker poller after the local worker is ready. The poller drives
 Wrangler's internal `__scheduled` development endpoint; that endpoint must stay
 on the private Docker network. Cloudflare deployments use native cron instead.
-The source and interval are configurable with
+The Node Docker runtime supplies its trusted public CA bundle to local workerd;
+TLS verification remains enabled. The source and interval are configurable with
 `ORGPORTAL_ORGANIZATION_REPLICA_SOURCE` and
 `ORGPORTAL_ORGANIZATION_REPLICA_INTERVAL_SECONDS`.
 
@@ -52,7 +61,9 @@ tables and record the sync version in one atomic D1 batch. Failed downloads,
 invalid payloads and constraint violations retain the last committed snapshot
 and expose an error; the next scheduled event retries. Deletions propagate.
 A local foreign-key reference that prevents deletion fails the entire refresh;
-resolve local fixture references and retry rather than bypassing integrity.
+resolve local fixture references and retry rather than bypassing integrity. Seeded
+local IDs with matching primary slugs are remapped atomically, including foreign
+keys and tenant organization references.
 
 Replicas do not serve snapshots to other replicas. Point every deployment at the
 primary; changing the source requires a new database. Expected healthy lag is

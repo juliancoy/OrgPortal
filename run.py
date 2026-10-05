@@ -684,6 +684,8 @@ def run(prefix: str, network_name: str) -> None:
             "sh",
             "-c",
             (
+                "node scripts/write-local-ca-bundle.cjs && "
+                "export NODE_EXTRA_CA_CERTS=/tmp/orgportal-ca.pem && "
                 "npm ci && "
                 "npm run db:migrate:local && "
                 f"npx wrangler dev --local --test-scheduled --ip 0.0.0.0 --port {worker_port} "

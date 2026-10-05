@@ -33,8 +33,11 @@ test('updates, additions, deletions converge; failures retain last committed dat
  const primary=setup(),local=setup();
  try {
   insert(primary,'tedco','TEDCO');insert(local,'fixture');
+  local.sqlite.prepare('INSERT INTO organizations(id,name,slug) VALUES(?,?,?)').run('seeded-tedco','Old seeded TEDCO','tedco');
+  local.sqlite.exec("CREATE TABLE seeded_reference (organization_id TEXT REFERENCES organizations(id)); INSERT INTO seeded_reference VALUES('seeded-tedco')");
   const fetcher:typeof fetch=async()=>organizationSnapshot(primary.asD1(),new Request(source));
   await replicateOrganizations(env(local),fetcher);assert.equal(local.sqlite.prepare("SELECT count(*) n FROM organizations WHERE id='fixture'").get()!.n,0);
+  assert.equal(local.sqlite.prepare('SELECT organization_id FROM seeded_reference').get()!.organization_id,'tedco');local.sqlite.exec('DROP TABLE seeded_reference');
   primary.sqlite.prepare("UPDATE organizations SET name='TEDCO updated' WHERE id='tedco'").run();insert(primary,'new');expire(local);await replicateOrganizations(env(local),fetcher);
   assert.equal(local.sqlite.prepare("SELECT name FROM organizations WHERE id='tedco'").get()!.name,'TEDCO updated');
   primary.sqlite.exec("DELETE FROM organizations WHERE id='tedco'");expire(local);await replicateOrganizations(env(local),fetcher);
@@ -62,4 +65,16 @@ test('replicas reject mutations including MCP uploads before identity handlers',
   const response=await app.request('https://replica.example'+path,{method}, {ORGANIZATION_REPLICA_SOURCE:source} as Env);
   assert.equal(response.status,403,path);assert.match(await response.text(),/primary OrgPortal/);
  }
+});
+test('documented support evidence replicates without its creator identity',async()=>{
+ const primary=setup(),local=setup();
+ try {
+  insert(primary,'funder');insert(primary,'recipient');
+  primary.sqlite.exec("INSERT INTO organization_support_records(id,from_organization_id,to_organization_id,from_label,to_label,support_kind,description,source_url,created_at,created_by_user_id) VALUES('support','funder','recipient','Funder','Recipient','mentoring','Mentorship','https://example.test/evidence','2026-10-05','private-creator')");
+  await replicateOrganizations(env(local),async()=>organizationSnapshot(primary.asD1(),new Request(source)));
+  const row=local.sqlite.prepare('SELECT * FROM organization_support_records').get()!;assert.equal(row.description,'Mentorship');assert.equal(row.created_by_user_id,null);
+  primary.sqlite.exec("DELETE FROM organization_support_records; DELETE FROM organizations WHERE id='recipient'");expire(local);
+  await replicateOrganizations(env(local),async()=>organizationSnapshot(primary.asD1(),new Request(source)));
+  assert.equal(local.sqlite.prepare('SELECT count(*) n FROM organization_support_records').get()!.n,0);
+ }finally{primary.sqlite.close();local.sqlite.close();}
 });
