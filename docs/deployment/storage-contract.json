@@ -9,6 +9,9 @@
   "localWrites": "Newsletter archive and immutable change log; upstream snapshots never prune them",
   "remoteWrites": "Account-private PIdP-authenticated newsletter sync with live revocation, portal scopes and exact preview/apply receipts; local capability grants no remote access",
   "remoteSqlMigration": "0072_private_newsletter_sync.sql",
+  "changeJournalMigration": "0073_change_journal.sql",
+  "secondaryJournalMigration": "journal-migrations/0001_change_journal.sql",
+  "changeJournal": "Atomic business-row triggers; independent D1 copy with transactional checkpoints; private local SQLite WAL mirror",
   "recovery": "SQL online backup plus IndexedDB history and pending outbox export",
   "sourceVersions": "Git HEAD, merge parents, source SHA-256, migration SHA-256, content-addressed deployment archive"
 }

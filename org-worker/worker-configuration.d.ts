@@ -1,4 +1,5 @@
 interface Env {
+  JOURNAL_DB?: JournalStorageBindings['JOURNAL_DB'];
   ORGANIZATION_REPLICA_SOURCE?: string;
   ORGANIZATION_REPLICA_INTERVAL_SECONDS?: string;
   ENV?: string;

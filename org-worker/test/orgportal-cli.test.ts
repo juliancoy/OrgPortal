@@ -50,3 +50,12 @@ test('failed revocation reports failure and still releases the keyring lock', as
   }), /Revocation unavailable/);
   assert.equal(released, true);
 });
+test('journal mirror uses infrastructure credentials without starting PIdP account login', async () => {
+  let mirrored = false;
+  await run(['journal', 'sync', '--file', '/tmp/operator-journal.sqlite'], { env: {}, log: () => {},
+    credentialStore: async () => { assert.fail('Journal operator command must not use account credentials'); },
+    mirrorChangeJournal: async file => { assert.equal(file, '/tmp/operator-journal.sqlite'); mirrored = true; return { entries: 0 }; },
+  });
+  assert.equal(mirrored, true);
+  assert.throws(() => parseCommand(['journal', 'sync', '--portal', 'https://medtech.social'], {}), /operator credentials/);
+});

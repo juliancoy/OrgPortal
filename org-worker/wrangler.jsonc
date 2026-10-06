@@ -31,6 +31,12 @@
   ],
   "d1_databases": [
     {
+      "binding": "JOURNAL_DB",
+      "database_name": "org-journal",
+      "database_id": "ba4abef1-be7d-4109-86c2-e87b349d22bf",
+      "migrations_dir": "journal-migrations"
+    },
+    {
       "binding": "DB",
       "database_name": "org",
       "database_id": "a71a2306-3d82-44cb-a50c-d7fdffaacdc7"

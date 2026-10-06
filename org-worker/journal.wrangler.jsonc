@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "org-journal-storage",
+  "compatibility_date": "2026-06-07",
+  "d1_databases": [
+    {
+      "binding": "JOURNAL_DB",
+      "database_name": "org-journal",
+      "database_id": "ba4abef1-be7d-4109-86c2-e87b349d22bf",
+      "migrations_dir": "journal-migrations"
+    }
+  ]
+}

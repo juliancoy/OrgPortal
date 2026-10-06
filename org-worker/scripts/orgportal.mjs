@@ -13,6 +13,7 @@ const help = `Usage:
   orgportal auth login [--portal https://lifetech.fyi] [--connection NAME] [--browser]
   orgportal auth logout [--portal https://lifetech.fyi] [--connection NAME]
   orgportal sync [--portal https://lifetech.fyi] [--connection NAME] [--dry-run]
+  orgportal journal sync [--file SQLITE_PATH] (requires Cloudflare operator login)
 
 Options: --resource HTTPS_MCP_URL, --issuer HTTPS_PIDP_ORIGIN, --client-id ID
 Sync options: --dry-run, --local LOOPBACK_HTTPS_ORIGIN, --deployment CONFIG_JSON, --cert CA_FILE
@@ -29,8 +30,13 @@ export function parseCommand(args, env = process.env) {
     connection: { type: 'string' }, 'client-id': { type: 'string' },
     browser: { type: 'boolean' }, 'no-browser': { type: 'boolean' }, help: { type: 'boolean', short: 'h' },
     'dry-run': { type: 'boolean' }, local: { type: 'string' }, deployment: { type: 'string' }, cert: { type: 'string' },
+    file: { type: 'string' },
   } });
   if (values.help || !args.length) return { help: true };
+  if (positionals.length === 2 && positionals[0] === 'journal' && positionals[1] === 'sync') {
+    if (Object.keys(values).some(key => key !== 'file')) throw Error('Journal sync accepts only --file and uses Cloudflare operator credentials.');
+    return { action: 'journal', file: resolve(values.file || root + '/.local/journal/change-journal.sqlite') };
+  }
   const sync = positionals.length === 1 && positionals[0] === 'sync';
   if (!sync && (positionals.length !== 2 || positionals[0] !== 'auth' || !['login', 'logout'].includes(positionals[1]))) {
     throw new Error('Use orgportal auth login, orgportal auth logout, or orgportal sync (see --help).');
@@ -59,6 +65,10 @@ export async function run(args, dependencies = {}) {
   const command = parseCommand(args, dependencies.env || process.env);
   const log = dependencies.log || console.log;
   if (command.help) { log(help); return; }
+  if (command.action === 'journal') {
+    const mirror = dependencies.mirrorChangeJournal || (await import('./journal-mirror.mjs')).mirrorChangeJournal;
+    log(JSON.stringify(await mirror(command.file))); return;
+  }
   const store = await (dependencies.credentialStore || credentialStore)(command.resource, command.issuer, command.connection);
   let account;
   try {

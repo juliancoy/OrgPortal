@@ -1,6 +1,7 @@
 import { provisionEventChat, provisionPendingEventChats } from './eventChat';
 import { localNewsletterRoutes } from './localNewsletters';
 import { newsletterSyncRoutes } from './newsletterSync';
+import { replicateChangeJournal } from './changeJournal';
 import {onboardingSettingsRoutes} from './onboardingSettings';
 import { importFinancing, financingAgencyReport, financingRecipientReport } from './financingRecords';
 import { provisionOrganizationChat, provisionPendingOrganizationChats } from './organizationChat';
@@ -5350,6 +5351,7 @@ export default {
   fetch: orgWorkerFetch,
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext) {
     if (env.ORGANIZATION_REPLICA_SOURCE) { ctx.waitUntil(replicateOrganizations(env)); return; }
+    ctx.waitUntil(replicateChangeJournal(env));
     ctx.waitUntil(Promise.all([runUbiTick(env.DB, controller.scheduledTime), dispatchTimebankPush(env)]));
     ctx.waitUntil(runOrganizationStatusEmail(env).then(() => runEmailDelivery(env)));
     ctx.waitUntil(dispatchOrganizationStatusPush(env));
