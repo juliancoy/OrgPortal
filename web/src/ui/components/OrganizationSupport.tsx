@@ -1,4 +1,5 @@
 import { usePublicOrganizationReport, updatePublicOrganizationData } from '../../data/publicOrganization/usePublicOrganizationReport'
+import { OrganizationFunds } from './OrganizationFunds'
 import { OrganizationFundingChart, type FundingCounterparty } from './OrganizationFundingChart'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
@@ -18,7 +19,7 @@ export type SupportRecord = {
 }
 type Organization = { id: string; name: string; slug: string; is_direct?: number; tags?: string[] }
 type FinancialTotal = { direction: 'deployed' | 'received'; currency: string | null; status: 'reported' | 'delivered'; amount: number | null; recordCount: number; undisclosedCount: number; lowerBoundCount: number }
-type Support = { financialTotals: { source: string; entries: FinancialTotal[]; counterparties: FundingCounterparty[] }; descendants: Organization[]; supporters: Organization[]; records: SupportRecord[]; recordCount: number; nextRecordOffset: number | null }
+type Support = { organization: { id: string; name: string; slug: string }; financialTotals: { source: string; entries: FinancialTotal[]; counterparties: FundingCounterparty[] }; descendants: Organization[]; supporters: Organization[]; records: SupportRecord[]; recordCount: number; nextRecordOffset: number | null }
 const kinds = {
   transfer: 'Monetary support / award', in_kind: 'In-kind contribution', mentoring: 'Mentoring', venue: 'Venue support',
   services: 'Services', incubation: 'Incubation', acceleration: 'Acceleration', collaboration: 'Collaboration',
@@ -152,6 +153,7 @@ export function OrganizationSupport({ organizationId, slug, canManage }: { organ
         })}</tr>)}</tbody>
       </table></div>
     </div>}
+    {data && <OrganizationFunds organization={data.organization} refresh={cacheStatus.checkedAt} />}
     {data && <OrganizationFundingChart key={organizationId} rows={data.financialTotals.counterparties} />}
     <h2>Descendant organizations</h2>
     <p className="muted">Organizations supported with funding, resources, time, or services. Indirect descendants are reached through another supported organization.</p>
