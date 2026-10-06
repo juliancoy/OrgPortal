@@ -62,10 +62,13 @@ function rebuild() {
  let visibleIds=new Set(visible.map(n=>n.id))
  const moneyOnly=$('#network-view').value==='money'
  edges=graphRelationships(data,{moneyOnly,includeCapitalization:context}).filter(e=>visibleIds.has(e.source) && visibleIds.has(e.target) && (moneyOnly || rels.has(e.relationship)))
- if(moneyOnly){const connected=new Set(edges.flatMap(e=>[e.source,e.target]));visible=visible.filter(n=>connected.has(n.id));visibleIds=new Set(visible.map(n=>n.id))}
  if ($('#neighbors').checked && selected) {
   const neighbors=new Set([selected]); edges.forEach(e=>{if(e.source===selected)neighbors.add(e.target);if(e.target===selected)neighbors.add(e.source)})
   visible=visible.filter(n=>neighbors.has(n.id)); visibleIds=new Set(visible.map(n=>n.id)); edges=edges.filter(e=>visibleIds.has(e.source)&&visibleIds.has(e.target))
+ }
+ if ($('#hide-isolated').checked) {
+  const connected=new Set(edges.flatMap(e=>[e.source,e.target]))
+  visible=visible.filter(n=>connected.has(n.id))
  }
  const amounts=financialNodeAmounts(data,{includeCapitalization:context})
  nodes=visible.map(n=>({...n,financialAmount:amounts.get(n.id) ?? null})); edges=edges.map(e=>({...e}))
@@ -192,11 +195,11 @@ async function start(){
   $('#event-search').addEventListener('input',()=>{eventLimit=100;renderEvents()});$('#event-org-only').addEventListener('change',()=>{eventLimit=100;renderEvents()});$('#event-more').addEventListener('click',()=>{eventLimit+=100;renderEvents()});renderEvents()
   initWebgl();search()
   $('#network-search').addEventListener('input',search)
-  root.querySelectorAll('[name=node-category],[name=relationship],#include-context,#neighbors,#network-view').forEach(el=>el.addEventListener('change',()=>{applyTable();rebuild()}))
+  root.querySelectorAll('[name=node-category],[name=relationship],#include-context,#neighbors,#network-view,#hide-isolated').forEach(el=>el.addEventListener('change',()=>{applyTable();rebuild()}))
   $('#table-scope').addEventListener('change',applyTable)
   $('#network-fit').addEventListener('click',fit)
   for(const [id,factor] of [['#zoom-in',1.25],['#zoom-out',.8]]) $(id).addEventListener('click',()=>{if(!webgl){zoomSvg(factor);return}camera.zoom=Math.max(.35,Math.min(6,camera.zoom*factor));camera.updateProjectionMatrix();requestRender()})
-  $('#network-reset').addEventListener('click',()=>{selected=null;root.querySelectorAll('[name=node-category],[name=relationship]').forEach(c=>c.checked=true);$('#network-view').value='all';$('#include-context').checked=false;$('#neighbors').checked=false;$('#neighbors').disabled=true;$('#network-search').value='';$('#table-scope').value='';$('#network-detail').innerHTML='<h2>Select an organization</h2><p>Search or select a graph label to explore its evidence.</p>';history.replaceState(history.state,'',location.pathname);renderEvents();search();applyTable();rebuild()})
+  $('#network-reset').addEventListener('click',()=>{selected=null;root.querySelectorAll('[name=node-category],[name=relationship]').forEach(c=>c.checked=true);$('#network-view').value='all';$('#include-context').checked=false;$('#hide-isolated').checked=true;$('#neighbors').checked=false;$('#neighbors').disabled=true;$('#network-search').value='';$('#table-scope').value='';$('#network-detail').innerHTML='<h2>Select an organization</h2><p>Search or select a graph label to explore its evidence.</p>';history.replaceState(history.state,'',location.pathname);renderEvents();search();applyTable();rebuild()})
   const initial=new URL(location.href).searchParams.get('org');if(initial&&data.organizations.some(n=>n.id===initial)){select(initial)}else rebuild()
   loadPortalEvidence(data, (url, options) => fetch(url,{...options,signal:abort.signal}),apiPrefix).then(updated=>{if(disposed)return;data=mergeNetworkHistory(updated,historyData);renderEvents();$('#network-table .eco-table-scroll').outerHTML=relationshipTable(data);search();applyTable();if(selected)select(selected);else rebuild();$('#network-source').textContent='Public relationship evidence updated '+new Date(data.portalUpdatedAt).toLocaleString()+'. Awards and commitments do not establish payment; amounts may overlap.'}).catch(()=>{if(disposed)return;$('#network-source').textContent='Showing saved public evidence. Live refresh is temporarily unavailable.'})
  }catch(error){if(disposed)return;status.textContent='Network data is unavailable. Reload to try again or browse the organization directory.';host.hidden=true;console.error(error)}

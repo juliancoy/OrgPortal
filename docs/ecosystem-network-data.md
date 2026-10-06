@@ -17,3 +17,12 @@ Federal departments, agencies and their Maryland recipients retain separate iden
 The 2026 TEDCO FAST award amount remains undisclosed. FDA CERSI's $50M maximum is a program ceiling (`terms`), excluded from money-only links. Completed DARPA work and the 2013 NIST award remain explicitly historical. CDC PHIG's cumulative total is excluded because the individual yearly records already represent the funding. NSF's $25M institute award is not repeated as an award to every partner. Every added relationship carries its evidence URL and review date. Coverage remains a sourced selection, not a complete inventory of federal spending.
 
 The shared page is `/ecosystem/network` (under `/p/` on CodeCollective). It uses the common portal navigation and live public tenant API. LifeTech owns its static directory and links into this shared page. The graph renderer aborts pending requests and releases graphics resources when the page unmounts.
+
+## Connected organizations by default
+
+“Hide organizations without connections” is checked initially and after Reset.
+It removes nodes with no edges in the currently filtered graph, after category,
+relationship, money-view and neighbor filters. Unchecking it reveals otherwise
+eligible isolated organizations, including in the money view. Search, organization
+details and evidence tables remain available for organizations hidden from the
+map. No organization or relationship records are deleted.
