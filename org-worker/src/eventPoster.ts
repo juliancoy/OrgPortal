@@ -2,11 +2,11 @@ import QRCode from 'qrcode';
 
 export type PosterFormat = 'letter' | 'letter-4up' | 'postcard' | 'social';
 export type PosterTheme = 'light' | 'dark';
-export type PosterBackground = 'solid' | 'city' | 'gradient';
+export type PosterBackground = 'solid' | 'city' | 'gradient' | 'lifetech';
 type PosterEvent = { title: string; social_title?: string | null; description?: string | null; social_description?: string | null;
   starts_at?: string | null; ends_at?: string | null; location?: string | null };
 export type PosterBrand = { name: string; tagline?: string | null; logo?: string };
-export type PosterOptions = { background?: PosterBackground; backgroundImage?: string };
+export type PosterOptions = { background?: PosterBackground; backgroundImage?: string; backgroundOnly?: boolean };
 const escape = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]!));
 const clean = (value: unknown) => String(value || '').replace(/\s+/g, ' ').trim();
 
@@ -58,6 +58,12 @@ function posterBackgroundParts(width: number, height: number, palette: ReturnTyp
       `<rect width="${width}" height="${height}" fill="#000000" opacity="0.2"/>`,
     ];
   }
+  if (background === 'lifetech' && backgroundImage) {
+    return [
+      `<rect width="${width}" height="${height}" fill="#061a26"/>`,
+      `<image href="${escape(backgroundImage)}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="xMidYMax meet"/>`,
+    ];
+  }
   if (background === 'city' && backgroundImage) {
     return [
       `<rect width="${width}" height="${height}" fill="${palette.paper}"/>`,
@@ -74,6 +80,12 @@ export async function renderEventPoster(event: PosterEvent, publicUrl: string, f
   const social = format === 'social', small = format === 'postcard';
   const background = options.background || 'solid';
   const palette = posterPalette(theme, background);
+  if (options.backgroundOnly) {
+    const artwork = posterBackgroundParts(width, height, palette, background, options.backgroundImage).join('');
+    const physical = format === 'postcard' ? 'width="4in" height="6in"' : format === 'social' ? `width="${width}" height="${height}"` : 'width="8.5in" height="11in"';
+    const copies = [0, 1].flatMap(row => [0, 1].map(column => `<use href="#background-art" transform="translate(${25 + column * 410} ${25 + row * 535 + (515 - height * (390 / width)) / 2}) scale(${390 / width})"/>`)).join('');
+    return `<svg xmlns="http://www.w3.org/2000/svg" ${physical} viewBox="0 0 ${width} ${height}" role="img" aria-label="Plain poster background"><rect width="${width}" height="${height}" fill="${palette.paper}"/>${format === 'letter-4up' ? `<defs><g id="background-art">${artwork}</g></defs>${copies}` : artwork}</svg>`;
+  }
   const margin = small ? 28 : 56;
   const contentWidth = width - margin * 2;
   const textArea = social ? 830 : contentWidth;
@@ -90,7 +102,9 @@ export async function renderEventPoster(event: PosterEvent, publicUrl: string, f
     parts.push(`<text fill="${color}" font-size="${size}" font-weight="${weight}">${lines.map((line, i) => `<tspan x="${x}" y="${y + i * size * 1.25}">${escape(line)}</tspan>`).join('')}</text>`);
     return y + lines.length * size * 1.25;
   }
-  parts.push(...posterBackgroundParts(width, height, palette, background, options.backgroundImage), `<rect width="${width}" height="${small ? 8 : 12}" fill="${palette.accent}"/>`);
+  parts.push(...posterBackgroundParts(width, height, palette, background, options.backgroundImage));
+  if (background === 'lifetech') parts.push(`<rect width="${width}" height="${height}" fill="#000000" opacity="0.66"/>`);
+  parts.push(`<rect width="${width}" height="${small ? 8 : 12}" fill="${palette.accent}"/>`);
   const logoSize = small ? 42 : 68, brandY = small ? 27 : 40;
   if (brand.logo) parts.push(`<image href="${escape(brand.logo)}" x="${margin}" y="${brandY}" width="${logoSize}" height="${logoSize}" preserveAspectRatio="xMidYMid meet"/>`);
   const brandX = margin + (brand.logo ? logoSize + (small ? 12 : 20) : 0);
@@ -163,5 +177,5 @@ export async function posterLogo(url: URL): Promise<string | undefined> {
 }
 
 export async function posterBackgroundImage(url: URL): Promise<string | undefined> {
-  return posterDataImage(url, 1600000);
+  return posterDataImage(url, 3000000);
 }

@@ -1488,10 +1488,11 @@ function flyerBackground(value: string | null): PosterBackground {
   const normalized = String(value || "").trim().toLowerCase();
   if (normalized === "city" || normalized === "photo" || normalized === "image") return "city";
   if (normalized === "gradient") return "gradient";
+  if (normalized === "lifetech") return "lifetech";
   return "solid";
 }
 
-async function eventFlyerSvg(env: Env, request: Request, event: EventRow, format: FlyerFormat, theme: PosterTheme, background: PosterBackground) {
+async function eventFlyerSvg(env: Env, request: Request, event: EventRow, format: FlyerFormat, theme: PosterTheme, background: PosterBackground, backgroundOnly = false) {
   const publicUrl = await eventPublicUrl(env, request, event.slug);
   const tenant = await resolvePortalTenant(env.DB, request);
   const name = event.organization_name || event.host_org_name || event.host_user_name || tenant.name || "Community event";
@@ -1503,6 +1504,10 @@ async function eventFlyerSvg(env: Env, request: Request, event: EventRow, format
     if (base.protocol === "https:" && asset.origin === base.origin && asset.pathname.startsWith("/images/")) {
       logo = await posterLogo(asset);
     }
+  }
+  if (background === "lifetech") {
+    backgroundData = await posterBackgroundImage(new URL("https://lifetech.fyi/assets/images/lifetech-hero.png"));
+    if (!backgroundData) fail(503, "LifeTech background is temporarily unavailable");
   }
   if (background === "city" && tenant.public_base_url) {
     const base = new URL(tenant.public_base_url);
@@ -1518,7 +1523,7 @@ async function eventFlyerSvg(env: Env, request: Request, event: EventRow, format
       }
     }
   }
-  return renderEventPoster(event, publicUrl, format, { name, tagline: tenant.tagline, logo }, theme, { background, backgroundImage: backgroundData });
+  return renderEventPoster(event, publicUrl, format, { name, tagline: tenant.tagline, logo }, theme, { background, backgroundImage: backgroundData, backgroundOnly });
 }
 
 async function publicEventBySlug(db: D1Database, rawSlug: string) {
@@ -3263,7 +3268,7 @@ app.get("/api/network/events/public/:slug/flyer.svg", async (c) => {
   const format = flyerFormat(c.req.query("format") || c.req.query("size") || null);
   const theme = flyerTheme(c.req.query("theme") || c.req.query("mode") || null);
   const background = flyerBackground(c.req.query("background") || c.req.query("bg") || null);
-  const svg = await eventFlyerSvg(c.env, c.req.raw, row, format, theme, background);
+  const svg = await eventFlyerSvg(c.env, c.req.raw, row, format, theme, background, c.req.query("backgroundOnly") === "true");
   const dispositionName = `${row.slug}-${format === "postcard" ? "4x6" : format}${theme === "dark" ? "-dark" : ""}${background !== "solid" ? `-${background}` : ""}-flyer.svg`;
   return new Response(svg, {
     headers: {

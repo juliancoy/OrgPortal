@@ -1,10 +1,11 @@
 import { useEffect, useId, useState } from 'react'
 import { Download, FileImage, Moon, Printer, RefreshCw, Sun, X } from 'lucide-react'
 import './eventPoster.css'
+import { useDomainTenant } from '../../config/timebankCommunity'
 
 type Format = 'letter' | 'letter-4up' | 'postcard' | 'social'
 type Theme = 'light' | 'dark'
-type Background = 'solid' | 'city' | 'gradient'
+type Background = 'solid' | 'city' | 'gradient' | 'lifetech'
 const formats: Record<Format, { label: string; width: number; height: number; print: string }> = {
   letter: { label: '8.5 x 11', width: 2550, height: 3300, print: '8.5in 11in' },
   'letter-4up': { label: 'Letter 2 × 2', width: 2550, height: 3300, print: '8.5in 11in' },
@@ -15,6 +16,7 @@ const backgrounds: Record<Background, string> = {
   solid: 'Solid color',
   city: 'Baltimore city photo',
   gradient: 'High-contrast gradient',
+  lifetech: 'LifeTech plain artwork',
 }
 
 type Props = { slug: string; title: string; revision?: string; inline?: boolean }
@@ -31,6 +33,8 @@ export function EventPosterTools({ inline = false, ...props }: Props) {
 
 function PosterEditor({ slug, title, revision = '' }: Props) {
   const id = useId()
+  const tenant = useDomainTenant()
+  const isLifeTech = tenant?.home_org_slug === 'lifetech'
   const [format, setFormat] = useState<Format>('letter')
   const [theme, setTheme] = useState<Theme>('light')
   const [background, setBackground] = useState<Background>('solid')
@@ -45,7 +49,7 @@ function PosterEditor({ slug, title, revision = '' }: Props) {
     let url: string | undefined
     const timeout = window.setTimeout(() => { setError('Poster request timed out. Try again.'); abort.abort() }, 30000)
     setPoster(null); setError('')
-    const query = new URLSearchParams({ format, theme, background, version: '2', revision })
+    const query = new URLSearchParams({ format, theme, background, version: '3', revision })
     fetch(`/api/org/api/network/events/public/${encodeURIComponent(slug)}/flyer.svg?${query}`, { signal: abort.signal, cache: 'no-cache' })
       .then(async response => {
         if (!response.ok || !response.headers.get('content-type')?.includes('image/svg+xml')) throw new Error('Poster unavailable. Try again.')
@@ -59,20 +63,27 @@ function PosterEditor({ slug, title, revision = '' }: Props) {
     return () => { window.clearTimeout(timeout); abort.abort(); if (url) URL.revokeObjectURL(url) }
   }, [slug, format, theme, background, revision, retry, key])
 
-  function download(blob: Blob, extension: string) {
+  function download(blob: Blob, extension: string, backgroundOnly = false) {
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
-    link.href = url; link.download = `${slug}-${format}${theme === 'dark' ? '-dark' : ''}${background !== 'solid' ? `-${background}` : ''}.${extension}`
+    link.href = url; link.download = `${slug}-${format}${theme === 'dark' ? '-dark' : ''}${background !== 'solid' ? `-${background}` : ''}${backgroundOnly ? '-background' : ''}.${extension}`
     document.body.append(link); link.click(); link.remove()
     window.setTimeout(() => URL.revokeObjectURL(url), 10000)
   }
-  async function downloadPng() {
+  async function downloadPng(backgroundOnly = false) {
     if (!ready || exporting) return
     setExporting(true); setError('')
     try {
       const image = new Image()
-      image.src = ready.url
-      await image.decode()
+      let backgroundUrl: string | undefined
+      if (backgroundOnly) {
+        const query = new URLSearchParams({ format, theme, background, backgroundOnly: 'true', version: '3' })
+        const response = await fetch(`/api/org/api/network/events/public/${encodeURIComponent(slug)}/flyer.svg?${query}`, { signal: AbortSignal.timeout(30000) })
+        if (!response.ok || !response.headers.get('content-type')?.includes('image/svg+xml')) throw new Error()
+        backgroundUrl = URL.createObjectURL(await response.blob())
+      }
+      image.src = backgroundUrl || ready.url
+      try { await image.decode() } finally { if (backgroundUrl) URL.revokeObjectURL(backgroundUrl) }
       const canvas = document.createElement('canvas')
       canvas.width = formats[format].width; canvas.height = formats[format].height
       const context = canvas.getContext('2d')
@@ -80,7 +91,7 @@ function PosterEditor({ slug, title, revision = '' }: Props) {
       context.fillStyle = theme === 'dark' ? '#101820' : '#ffffff'; context.fillRect(0, 0, canvas.width, canvas.height)
       context.drawImage(image, 0, 0, canvas.width, canvas.height)
       const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error()), 'image/png'))
-      download(blob, 'png')
+      download(blob, 'png', backgroundOnly)
     } catch { setError('PNG export failed. Retry or download SVG.') }
     finally { setExporting(false) }
   }
@@ -111,11 +122,12 @@ function PosterEditor({ slug, title, revision = '' }: Props) {
       <label className="event-poster-background">
         <span>Background</span>
         <select value={background} onChange={event => setBackground(event.target.value as Background)} disabled={exporting}>
-          {(Object.keys(backgrounds) as Background[]).map(value => <option key={value} value={value}>{backgrounds[value]}</option>)}
+          {(Object.keys(backgrounds) as Background[]).filter(value => value !== 'lifetech' || isLifeTech).map(value => <option key={value} value={value}>{backgrounds[value]}</option>)}
         </select>
       </label>
       <div className="event-poster-actions">
-        <button type="button" disabled={!ready || exporting} onClick={downloadPng} title="Download PNG"><Download size={18} aria-hidden="true"/>{exporting ? 'Exporting...' : 'PNG'}</button>
+        <button type="button" disabled={!ready || exporting} onClick={() => void downloadPng()} title="Download PNG"><Download size={18} aria-hidden="true"/>{exporting ? 'Exporting...' : 'PNG'}</button>
+        {background === 'lifetech' && <button type="button" disabled={!ready || exporting} onClick={() => void downloadPng(true)} title={`Download plain background, ${formats[format].width} × ${formats[format].height} pixels`}><Download size={18} aria-hidden="true"/>Background PNG</button>}
         <button type="button" disabled={!ready || exporting} onClick={() => ready && download(ready.blob, 'svg')} title="Download SVG"><FileImage size={18} aria-hidden="true"/>SVG</button>
         <button type="button" disabled={!ready || exporting} onClick={print} title="Print poster"><Printer size={18} aria-hidden="true"/>Print</button>
       </div>

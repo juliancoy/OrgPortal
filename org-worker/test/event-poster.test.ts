@@ -92,3 +92,21 @@ test('brand image loading rejects redirects, SVG and oversized images', async ()
     assert.equal(await posterLogo(new URL('https://example.org/images/logo.png')), 'data:image/png;base64,AQID');
   } finally { globalThis.fetch = original; }
 });
+
+test('LifeTech plain background exports preserve artwork and contain no event text or QR code', async () => {
+  for (const format of ['letter', 'letter-4up', 'postcard', 'social'] as const) {
+    const svg = await renderEventPoster({title:'Private event copy'}, 'https://example.org/event', format, {name:'LifeTech'}, 'light', {
+      background:'lifetech', backgroundImage:'data:image/png;base64,AQID', backgroundOnly:true,
+    });
+    const {width,height}=posterGeometry(format);
+    assert.ok(svg.includes(`viewBox="0 0 ${width} ${height}"`));
+    assert.match(svg, /preserveAspectRatio="xMidYMax meet"/);
+    assert.match(svg, /data:image\/png;base64,AQID/);
+    assert.doesNotMatch(svg, /<text|Private event copy|Scan to RSVP|<path/);
+    if(format==='letter-4up')assert.equal(svg.match(/<use href="#background-art"/g)?.length,4);
+  }
+  const poster=await renderEventPoster({title:'LifeTech Social'},'https://example.org/event','letter',{name:'LifeTech'},'light',{background:'lifetech',backgroundImage:'data:image/png;base64,AQID'});
+  assert.match(poster, /LifeTech Social/);
+  assert.match(poster, /opacity="0.66"/);
+  assert.match(poster, /Scan to RSVP/);
+});
