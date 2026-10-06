@@ -25,10 +25,20 @@ test('loads directories and support evidence beyond 500 without dropping recipie
  const fetcher=async path=>{calls.push(path);const url=new URL(path,'https://example.test');const offset=Number(url.searchParams.get('offset'));return {ok:true,json:async()=>url.pathname.endsWith('/orgs/public')?directory.slice(offset,offset+500):{records:records.slice(offset,offset+499),nextRecordOffset:offset===0?499:null}}}
  const data=await loadPortalEvidence(base,fetcher)
  assert.equal(data.organizations.length,501);assert.equal(data.relationships.length,500)
- assert(calls.some(path=>path.includes('offset=500')));assert(calls.some(path=>path.includes('support?offset=499')))
+ assert(calls.some(path=>path.includes('offset=500')));assert(calls.some(path=>path.includes('relationships/public?offset=499')))
+ assert.equal(calls.length,4,'Two directory pages and two relationship pages, independent of organization count')
 })
 test('rejects incomplete or looping support pagination',async()=>{
- for(const nextRecordOffset of [undefined,0,'500'])await assert.rejects(()=>loadPortalEvidence(base,async path=>({ok:true,json:async()=>path.includes('/support?')?{records:[record],nextRecordOffset}:[orgs[0]]})),/incomplete/)
+ for(const nextRecordOffset of [undefined,0,'500'])await assert.rejects(()=>loadPortalEvidence(base,async path=>({ok:true,json:async()=>path.includes('/relationships/public?')?{records:[record],nextRecordOffset}:[orgs[0]]})),/incomplete/)
+})
+test('older deployments retain per-organization support refresh until their public feed is available',async()=>{
+ const calls=[]
+ const data=await loadPortalEvidence(base,async path=>{
+  calls.push(path)
+  if(path.includes('/relationships/public?'))return {ok:false,status:404}
+  return {ok:true,json:async()=>path.includes('/support?')?{records:[record],nextRecordOffset:null}:orgs}
+ })
+ assert.equal(data.relationships.length,1);assert(calls.some(path=>path.includes('/support?')))
 })
 
 

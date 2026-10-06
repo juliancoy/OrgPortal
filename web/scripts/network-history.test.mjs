@@ -4,8 +4,8 @@ import {mergeNetworkHistory} from '../src/features/ecosystem/network-history.js'
 import {loadPortalEvidence} from '../src/features/ecosystem/portal-ecosystem.js'
 test('non-LifeTech organizations are included in live evidence refresh',async()=>{
  const directory=[{id:'cc',name:'Code Collective',slug:'code-collective',tags:['Technology']}]
- const calls=[];const data=await loadPortalEvidence({organizations:[],relationships:[],financing:[]},async url=>{calls.push(url);return {ok:true,json:async()=>url.includes('/support?')?{records:[],nextRecordOffset:null}:directory}})
- assert.equal(data.organizations[0].name,'Code Collective');assert(calls.some(url=>url.includes('code-collective/support')))
+ const calls=[];const data=await loadPortalEvidence({organizations:[],relationships:[],financing:[]},async url=>{calls.push(url);return {ok:true,json:async()=>url.includes('/relationships/public?')?{records:[],nextRecordOffset:null}:directory}})
+ assert.equal(data.organizations[0].name,'Code Collective');assert(calls.some(url=>url.includes('/relationships/public?')))
 })
 test('history joins existing organization identities, retains unassigned events and does not duplicate awards',()=>{
  const base={organizations:[{id:'cc',name:'Code Collective'}],relationships:[],financing:[]}

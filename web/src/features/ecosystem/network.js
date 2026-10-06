@@ -5,8 +5,35 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { layoutNetwork } from './ecosystem-physics.js'
 import { orgDetails, edgeDetails, relationshipTable } from './ecosystem-view.js'
 import { loadPortalEvidence, graphRelationships, financialNodeAmounts, financialNodeRadius } from './portal-ecosystem.js'
+import { refreshPublicReport } from '../../data/publicOrganization/cache'
 export function mountEcosystemNetwork(root, {dataUrl, historyUrl, apiPrefix, portalPath}) {
 const abort = new AbortController(); let disposed=false, resizeObserver;
+let oldestCheck=Infinity, usingOfflineCopy=false
+const cachedPublicJson = async (url, validate) => {
+ let saved
+ try {
+  const entry=await refreshPublicReport(url, {signal:abort.signal, validate, onCached:entry=>{saved=entry}})
+  oldestCheck=Math.min(oldestCheck,entry.checkedAt);return entry.data
+ }catch(error) {
+  if(saved && !abort.signal.aborted){usingOfflineCopy=true;oldestCheck=Math.min(oldestCheck,saved.checkedAt);return saved.data}
+  throw error
+ }
+}
+const validateSnapshot = value => {
+ if(!value || !['organizations','relationships','financing'].every(key=>Array.isArray(value[key])))throw new Error('Network data is incomplete')
+ return value
+}
+const cachedEvidenceFetch = async (url, options) => {
+ const cacheUrl=url.replace(/\/support\?offset=0$/, '/support')
+ if(cacheUrl.endsWith('/support') || /\/orgs\/public\?limit=500&offset=\d+$/.test(cacheUrl) || /\/relationships\/public\?offset=\d+$/.test(cacheUrl)) {
+  const value=await cachedPublicJson(cacheUrl, value=>{
+   if(cacheUrl.includes('/orgs/public?') ? !Array.isArray(value) : !Array.isArray(value?.records))throw new Error('Public evidence is incomplete')
+   return value
+  })
+  return {ok:true,json:async()=>value}
+ }
+ return fetch(url,{...options,signal:abort.signal,credentials:'omit'})
+}
 const $ = s => root.querySelector(s)
 const rewriteLinks = () => root.querySelectorAll('a[href^="/"]').forEach(a => { const path=a.getAttribute('href'); if(!a.dataset.portalLinked){a.setAttribute('href', path.startsWith('/ecosystem-data/') ? new URL(path.split('/').pop(),historyUrl.startsWith('http')?historyUrl:new URL(historyUrl,location.origin)).pathname : portalPath(path));a.dataset.portalLinked='true'} });
 
@@ -206,8 +233,8 @@ function initWebgl() {
 }
 async function start(){
  try {
-  const response=await fetch(dataUrl, {signal:abort.signal});if(!response.ok)throw new Error('Data unavailable');data=await response.json()
-  const historyResponse=await fetch(historyUrl, {signal:abort.signal});if(!historyResponse.ok)throw new Error('Event history unavailable');const historyData=await historyResponse.json();data=mergeNetworkHistory(data,historyData); if(disposed)return; $('#network-table .eco-table-scroll').outerHTML=relationshipTable(data); rewriteLinks()
+  const snapshots=await Promise.all([cachedPublicJson(dataUrl,validateSnapshot),cachedPublicJson(historyUrl,validateSnapshot)])
+  const historyData=snapshots[1];data=mergeNetworkHistory(snapshots[0],historyData); if(disposed)return; $('#network-table .eco-table-scroll').outerHTML=relationshipTable(data); rewriteLinks()
   $('#event-search').addEventListener('input',()=>{eventLimit=100;renderEvents()});$('#event-org-only').addEventListener('change',()=>{eventLimit=100;renderEvents()});$('#event-more').addEventListener('click',()=>{eventLimit+=100;renderEvents()});renderEvents()
   initWebgl();search()
   host.addEventListener('wheel',event=>{
@@ -226,7 +253,7 @@ async function start(){
   $('#network-reset').addEventListener('click',()=>{selected=null;inspectorKey=null;root.querySelectorAll('[name=node-category],[name=relationship]').forEach(c=>c.checked=true);$('#network-view').value='all';$('#include-context').checked=false;$('#hide-isolated').checked=true;$('#neighbors').checked=false;$('#neighbors').disabled=true;$('#network-search').value='';$('#table-scope').value='';$('#network-detail').innerHTML='<h2>Select an organization</h2><p>Search or select a graph label to explore its evidence.</p>';history.replaceState(history.state,'',location.pathname);renderEvents();search();applyTable();rebuild()})
   const initial=new URL(location.href).searchParams.get('org');if(initial&&data.organizations.some(n=>n.id===initial)){select(initial)}else rebuild()
   if(location.hash==='#network-events')$('#eco-dialog-events').showModal();else if(location.hash==='#network-table')$('#eco-dialog-sources').showModal()
-  loadPortalEvidence(data, (url, options) => fetch(url,{...options,signal:abort.signal}),apiPrefix).then(updated=>{if(disposed)return;data=mergeNetworkHistory(updated,historyData);renderEvents();$('#network-table .eco-table-scroll').outerHTML=relationshipTable(data);search();applyTable();if(selected)select(selected);else rebuild();$('#network-source').textContent='Public relationship evidence updated '+new Date(data.portalUpdatedAt).toLocaleString()+'. Awards and commitments do not establish payment; amounts may overlap.'}).catch(()=>{if(disposed)return;$('#network-source').textContent='Showing saved public evidence. Live refresh is temporarily unavailable.'})
+  loadPortalEvidence(data, cachedEvidenceFetch,apiPrefix).then(updated=>{if(disposed)return;data=mergeNetworkHistory(updated,historyData);renderEvents();$('#network-table .eco-table-scroll').outerHTML=relationshipTable(data);search();applyTable();if(selected)select(selected);else rebuild();$('#network-source').textContent=(usingOfflineCopy?'Showing saved public evidence; live refresh unavailable. Last checked ':'Public relationship evidence checked ')+new Date(oldestCheck).toLocaleString()+'. Awards and commitments do not establish payment; amounts may overlap.'}).catch(()=>{if(disposed)return;$('#network-source').textContent='Showing saved public evidence. Live refresh is temporarily unavailable.'})
  }catch(error){if(disposed)return;status.textContent='Network data is unavailable. Reload to try again or browse the organization directory.';host.hidden=true;console.error(error)}
 }
 // Auxiliary content stays available without extending the page below the map.

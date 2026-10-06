@@ -2,7 +2,7 @@ import { TimebankInboxProvider } from '../timebank/TimebankInbox'
 import { TimebankHeader } from './TimebankHeader'
 import { useDomainCommunity } from '../../config/timebankCommunity'
 import { getActivePortalProfileConfig } from '../../config/portalFeatures'
-import { useEffect, useRef } from 'react'
+import { Suspense, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Outlet } from 'react-router-dom'
 import { Header } from './Header'
@@ -38,7 +38,7 @@ export function AppLayout() {
         <div className={`portal-container ${isChatRoute ? 'portal-chat-container' : ''}`}>
           {!timebankShell && !embeddedChat && <ExternalBrowserPrompt />}
           {!embeddedChat && location.pathname !== '/onboarding' && <OnboardingBanner />}
-          <Outlet />
+          <Suspense fallback={<p role="status">Loading page…</p>}><Outlet /></Suspense>
         </div>
       </main>
       {embeddedChat ? null : timebankShell ? <footer className="tb-shell-footer">Timebank hours are separate from Dena.</footer> : <Footer />}

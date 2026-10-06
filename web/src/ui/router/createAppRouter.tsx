@@ -1,85 +1,86 @@
-import { LocalNewslettersPage } from '../views/LocalNewslettersPage'
-import { EcosystemNetworkPage } from '../views/EcosystemNetworkPage'
-import { MemberMeetingsPage } from '../views/MemberMeetingsPage'
 import { resolveOrganizationView, useOrganizationAccess, useOrganizationViewPreference } from '../hooks/useOrganizationView'
-import { NametagsPage } from '../views/NametagsPage'
-import { GovernanceDocumentPage } from '../views/governance/GovernanceDocumentPage'
-import { VenuesPage } from '../views/orgs/VenuesPage'
-import { AvailabilityPage } from '../views/AvailabilityPage'
-import { OnboardingPage } from '../views/OnboardingPage'
 import { PortalProfileBoundary } from '../shell/PortalProfileBoundary'
 import { getDomainCommunity, getDomainTenant, type PortalTenant } from '../../config/timebankCommunity'
-import { useEffect, useState } from 'react'
+import { lazy, useEffect, useState } from 'react'
 import type { ReactElement } from 'react'
 import { Navigate, createBrowserRouter, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { AppLayout } from '../shell/AppLayout'
 import { TimebankHeader } from '../shell/TimebankHeader'
 import App from '../../App'
 import { useAuth } from '../../app/AppProviders'
-import { EconomicOpsPage } from '../views/EconomicOpsPage'
-import { DepartmentsPage } from '../views/DepartmentsPage'
-import { AuthCallbackPage } from '../views/AuthCallbackPage'
-import { InitiativeDetailPage } from '../views/InitiativeDetailPage'
-import { InitiativeSignPage } from '../views/InitiativeSignPage'
-import { UserCalendarPage } from '../views/users/UserCalendarPage'
-import { UserSettingsPage } from '../views/users/UserSettingsPage'
-import { UserLoginPage } from '../views/users/UserLoginPage'
-import { McpConnectPage } from '../views/users/McpConnectPage'
-import { OrgLoginPage } from '../views/orgs/OrgLoginPage'
-import { OrgRegisterPage } from '../views/orgs/OrgRegisterPage'
-import { OrgInitiativesPage } from '../views/orgs/OrgInitiativesPage'
-import { OrgInitiativeEditorPage } from '../views/orgs/OrgInitiativeEditorPage'
-import { OrgInitiativeBallotPage } from '../views/orgs/OrgInitiativeBallotPage'
-import { OrgProfilePage } from '../views/orgs/OrgProfilePage'
-import { OrgAccountPage } from '../views/orgs/OrgAccountPage'
-import { OrgEventsPage } from '../views/orgs/OrgEventsPage'
-import { PublicAdminPage } from '../views/public/PublicAdminPage'
-import { PublicContactPage } from '../views/public/PublicContactPage'
-import { PublicEventsPage } from '../views/public/PublicEventsPage'
-import { PublicCalendarPage } from '../views/public/PublicCalendarPage'
-import { PublicEventPage } from '../views/public/PublicEventPage'
-import { EmailCampaignsPage } from '../views/email/EmailCampaignsPage'
-import { EmailPreferencesPage } from '../views/email/EmailPreferencesPage'
-import { NotificationSettingsPage } from '../views/NotificationSettingsPage'
-import { PublicOrganizationsPage } from '../views/public/PublicOrganizationsPage'
-import { GlobalSearchPage } from '../views/public/GlobalSearchPage'
-import { MotionListPage } from '../views/governance/MotionListPage'
-import { MotionDetailPage } from '../views/governance/MotionDetailPage'
-import { ProposeMotionPage } from '../views/governance/ProposeMotionPage'
-import { ProposeAmendmentPage } from '../views/governance/ProposeAmendmentPage'
-import { NotFoundPage } from '../views/NotFoundPage'
-import { AboutPage } from '../views/AboutPage'
-import { TermsPage } from '../views/TermsPage'
-import { AndroidInstallPage } from '../views/AndroidInstallPage'
-import { DashboardPage } from '../dashboard/DashboardPage'
-import { AdminPage } from '../views/AdminPage'
-import { TargetPage } from '../views/TargetPage'
-import { OrgEditableInitiativesPage } from '../views/orgs/OrgEditableInitiativesPage'
-import { IdPage } from '../views/IdPage'
-import { SendPage } from '../views/SendPage'
-import { ReceivePage } from '../views/ReceivePage'
-import { TimebankPage } from '../views/TimebankPage'
 import { TimebankInboxProvider } from '../timebank/TimebankInbox'
 import { TenantEventsContent, TenantEventsHomePage, TenantHomePage, TenantSlugHomePage } from '../views/TenantHomePage'
-import { TenantResourcesPage } from '../views/TenantResourcesPage'
-import { TenantBrandingPage } from '../views/TenantBrandingPage'
-import { CreatePage } from '../views/CreatePage'
-import { CreateForProfitPage } from '../views/CreateForProfitPage'
-import { CreateNonProfitPage } from '../views/CreateNonProfitPage'
-import { OrgChatPage } from '../views/chat/OrgChatPage'
-import { NativeChatPage } from '../views/chat/NativeChatPage'
-import { DevToolsPage } from '../views/DevToolsPage'
-import { BusinessCardIntakePage } from '../views/BusinessCardIntakePage'
-import { PeoplePage } from '../views/PeoplePage'
 import { refreshRuntimeTokenFromSession } from '../../infrastructure/auth/sessionToken'
-import { UbiSettingsPage } from '../views/UbiSettingsPage'
-import { LifeInsurancePage } from '../views/LifeInsurancePage'
-import { HealthInsurancePage } from '../views/HealthInsurancePage'
-import { ProviderSchedulingPage } from '../views/ProviderSchedulingPage'
-import { PropertyCasualtyInsurancePage } from '../views/PropertyCasualtyInsurancePage'
 import { portalBasePath } from '../../config/portalBase'
 import { getActivePortalProfileConfig, portalProfilePath, isPortalFeatureEnabled, type PortalFeature } from '../../config/portalFeatures'
 import { tenantHomeAction } from '../../config/tenantHome'
+
+const LocalNewslettersPage = lazy(() => import('../views/LocalNewslettersPage').then(module => ({ default: module.LocalNewslettersPage })))
+const EcosystemNetworkPage = lazy(() => import('../views/EcosystemNetworkPage').then(module => ({ default: module.EcosystemNetworkPage })))
+const MemberMeetingsPage = lazy(() => import('../views/MemberMeetingsPage').then(module => ({ default: module.MemberMeetingsPage })))
+const NametagsPage = lazy(() => import('../views/NametagsPage').then(module => ({ default: module.NametagsPage })))
+const GovernanceDocumentPage = lazy(() => import('../views/governance/GovernanceDocumentPage').then(module => ({ default: module.GovernanceDocumentPage })))
+const VenuesPage = lazy(() => import('../views/orgs/VenuesPage').then(module => ({ default: module.VenuesPage })))
+const AvailabilityPage = lazy(() => import('../views/AvailabilityPage').then(module => ({ default: module.AvailabilityPage })))
+const OnboardingPage = lazy(() => import('../views/OnboardingPage').then(module => ({ default: module.OnboardingPage })))
+const EconomicOpsPage = lazy(() => import('../views/EconomicOpsPage').then(module => ({ default: module.EconomicOpsPage })))
+const DepartmentsPage = lazy(() => import('../views/DepartmentsPage').then(module => ({ default: module.DepartmentsPage })))
+const AuthCallbackPage = lazy(() => import('../views/AuthCallbackPage').then(module => ({ default: module.AuthCallbackPage })))
+const InitiativeDetailPage = lazy(() => import('../views/InitiativeDetailPage').then(module => ({ default: module.InitiativeDetailPage })))
+const InitiativeSignPage = lazy(() => import('../views/InitiativeSignPage').then(module => ({ default: module.InitiativeSignPage })))
+const UserCalendarPage = lazy(() => import('../views/users/UserCalendarPage').then(module => ({ default: module.UserCalendarPage })))
+const UserSettingsPage = lazy(() => import('../views/users/UserSettingsPage').then(module => ({ default: module.UserSettingsPage })))
+const UserLoginPage = lazy(() => import('../views/users/UserLoginPage').then(module => ({ default: module.UserLoginPage })))
+const McpConnectPage = lazy(() => import('../views/users/McpConnectPage').then(module => ({ default: module.McpConnectPage })))
+const OrgLoginPage = lazy(() => import('../views/orgs/OrgLoginPage').then(module => ({ default: module.OrgLoginPage })))
+const OrgRegisterPage = lazy(() => import('../views/orgs/OrgRegisterPage').then(module => ({ default: module.OrgRegisterPage })))
+const OrgInitiativesPage = lazy(() => import('../views/orgs/OrgInitiativesPage').then(module => ({ default: module.OrgInitiativesPage })))
+const OrgInitiativeEditorPage = lazy(() => import('../views/orgs/OrgInitiativeEditorPage').then(module => ({ default: module.OrgInitiativeEditorPage })))
+const OrgInitiativeBallotPage = lazy(() => import('../views/orgs/OrgInitiativeBallotPage').then(module => ({ default: module.OrgInitiativeBallotPage })))
+const OrgProfilePage = lazy(() => import('../views/orgs/OrgProfilePage').then(module => ({ default: module.OrgProfilePage })))
+const OrgAccountPage = lazy(() => import('../views/orgs/OrgAccountPage').then(module => ({ default: module.OrgAccountPage })))
+const OrgEventsPage = lazy(() => import('../views/orgs/OrgEventsPage').then(module => ({ default: module.OrgEventsPage })))
+const PublicAdminPage = lazy(() => import('../views/public/PublicAdminPage').then(module => ({ default: module.PublicAdminPage })))
+const PublicContactPage = lazy(() => import('../views/public/PublicContactPage').then(module => ({ default: module.PublicContactPage })))
+const PublicEventsPage = lazy(() => import('../views/public/PublicEventsPage').then(module => ({ default: module.PublicEventsPage })))
+const PublicCalendarPage = lazy(() => import('../views/public/PublicCalendarPage').then(module => ({ default: module.PublicCalendarPage })))
+const PublicEventPage = lazy(() => import('../views/public/PublicEventPage').then(module => ({ default: module.PublicEventPage })))
+const EmailCampaignsPage = lazy(() => import('../views/email/EmailCampaignsPage').then(module => ({ default: module.EmailCampaignsPage })))
+const EmailPreferencesPage = lazy(() => import('../views/email/EmailPreferencesPage').then(module => ({ default: module.EmailPreferencesPage })))
+const NotificationSettingsPage = lazy(() => import('../views/NotificationSettingsPage').then(module => ({ default: module.NotificationSettingsPage })))
+const PublicOrganizationsPage = lazy(() => import('../views/public/PublicOrganizationsPage').then(module => ({ default: module.PublicOrganizationsPage })))
+const GlobalSearchPage = lazy(() => import('../views/public/GlobalSearchPage').then(module => ({ default: module.GlobalSearchPage })))
+const MotionListPage = lazy(() => import('../views/governance/MotionListPage').then(module => ({ default: module.MotionListPage })))
+const MotionDetailPage = lazy(() => import('../views/governance/MotionDetailPage').then(module => ({ default: module.MotionDetailPage })))
+const ProposeMotionPage = lazy(() => import('../views/governance/ProposeMotionPage').then(module => ({ default: module.ProposeMotionPage })))
+const ProposeAmendmentPage = lazy(() => import('../views/governance/ProposeAmendmentPage').then(module => ({ default: module.ProposeAmendmentPage })))
+const NotFoundPage = lazy(() => import('../views/NotFoundPage').then(module => ({ default: module.NotFoundPage })))
+const AboutPage = lazy(() => import('../views/AboutPage').then(module => ({ default: module.AboutPage })))
+const TermsPage = lazy(() => import('../views/TermsPage').then(module => ({ default: module.TermsPage })))
+const AndroidInstallPage = lazy(() => import('../views/AndroidInstallPage').then(module => ({ default: module.AndroidInstallPage })))
+const DashboardPage = lazy(() => import('../dashboard/DashboardPage').then(module => ({ default: module.DashboardPage })))
+const AdminPage = lazy(() => import('../views/AdminPage').then(module => ({ default: module.AdminPage })))
+const TargetPage = lazy(() => import('../views/TargetPage').then(module => ({ default: module.TargetPage })))
+const OrgEditableInitiativesPage = lazy(() => import('../views/orgs/OrgEditableInitiativesPage').then(module => ({ default: module.OrgEditableInitiativesPage })))
+const IdPage = lazy(() => import('../views/IdPage').then(module => ({ default: module.IdPage })))
+const SendPage = lazy(() => import('../views/SendPage').then(module => ({ default: module.SendPage })))
+const ReceivePage = lazy(() => import('../views/ReceivePage').then(module => ({ default: module.ReceivePage })))
+const TimebankPage = lazy(() => import('../views/TimebankPage').then(module => ({ default: module.TimebankPage })))
+const TenantResourcesPage = lazy(() => import('../views/TenantResourcesPage').then(module => ({ default: module.TenantResourcesPage })))
+const TenantBrandingPage = lazy(() => import('../views/TenantBrandingPage').then(module => ({ default: module.TenantBrandingPage })))
+const CreatePage = lazy(() => import('../views/CreatePage').then(module => ({ default: module.CreatePage })))
+const CreateForProfitPage = lazy(() => import('../views/CreateForProfitPage').then(module => ({ default: module.CreateForProfitPage })))
+const CreateNonProfitPage = lazy(() => import('../views/CreateNonProfitPage').then(module => ({ default: module.CreateNonProfitPage })))
+const OrgChatPage = lazy(() => import('../views/chat/OrgChatPage').then(module => ({ default: module.OrgChatPage })))
+const NativeChatPage = lazy(() => import('../views/chat/NativeChatPage').then(module => ({ default: module.NativeChatPage })))
+const DevToolsPage = lazy(() => import('../views/DevToolsPage').then(module => ({ default: module.DevToolsPage })))
+const BusinessCardIntakePage = lazy(() => import('../views/BusinessCardIntakePage').then(module => ({ default: module.BusinessCardIntakePage })))
+const PeoplePage = lazy(() => import('../views/PeoplePage').then(module => ({ default: module.PeoplePage })))
+const UbiSettingsPage = lazy(() => import('../views/UbiSettingsPage').then(module => ({ default: module.UbiSettingsPage })))
+const LifeInsurancePage = lazy(() => import('../views/LifeInsurancePage').then(module => ({ default: module.LifeInsurancePage })))
+const HealthInsurancePage = lazy(() => import('../views/HealthInsurancePage').then(module => ({ default: module.HealthInsurancePage })))
+const ProviderSchedulingPage = lazy(() => import('../views/ProviderSchedulingPage').then(module => ({ default: module.ProviderSchedulingPage })))
+const PropertyCasualtyInsurancePage = lazy(() => import('../views/PropertyCasualtyInsurancePage').then(module => ({ default: module.PropertyCasualtyInsurancePage })))
 
 function AuthenticatedRoute(props: { children: ReactElement }) {
   const { role, isLoading } = useAuth()

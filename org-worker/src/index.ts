@@ -17,7 +17,7 @@ import { runEventEnrichmentOperation } from './eventEnrichment';
 import { runOrganizationRegistryOperation } from './organizationRegistry';
 import { nametagRoutes } from './nametags';
 import { calendarCollectionOptions, addCalendarCollections } from './calendarCollections';
-import { organizationSupport, runSupportOperation } from './organizationSupport';
+import { organizationSupport, publicRelationshipRecords, runSupportOperation } from './organizationSupport';
 import { governanceDocumentRoutes, executeDocumentMotion, documentMotionDetail } from './governanceDocuments';
 import { photoTagRoutes } from './photoTags';
 import { venueVoteRoutes } from './venueVotes';
@@ -3114,6 +3114,12 @@ app.get("/api/network/orgs/public/:slug", async (c) => {
     .bind(row.id)
     .first<{ n: number }>();
   return c.json({ ...mapOrganization(row, Number(count?.n || 0)), public_url: await orgPublicUrl(c.env, c.req.raw, row.slug) });
+});
+
+app.get("/api/network/relationships/public", async (c) => {
+  const offset = Math.max(0, Math.min(Number.parseInt(c.req.query("offset") || "0", 10) || 0, 100000));
+  c.header("Cache-Control", "public, max-age=60");
+  return c.json(await publicRelationshipRecords(c.env.DB, offset));
 });
 
 app.get("/api/network/orgs/public/:slug/support", async (c) => {

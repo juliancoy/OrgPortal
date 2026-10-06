@@ -4,9 +4,12 @@ const databaseName = 'orgportal-public-organization-data-v1'
 
 export function publicReportUrl(path: string) {
   const url = new URL(path, location.origin)
-  if (url.origin !== location.origin || url.username || url.password || url.search || url.hash ||
-    !/^\/api\/org\/api\/network\/orgs\/public\/[^/]+\/(support|financing)$/.test(url.pathname)) {
-    throw new Error('Only same-origin public organization reports can be cached')
+  const report = /^\/api\/org\/api\/network\/orgs\/public\/[^/]+\/(support|financing)$/.test(url.pathname) && !url.search
+  const snapshot = /^\/(?:p\/)?ecosystem-data\/ecosystem-(portal|history)\.json$/.test(url.pathname) && !url.search
+  const directory = url.pathname === '/api/org/api/network/orgs/public' && /^\?limit=500&offset=\d+$/.test(url.search)
+  const relationships = url.pathname === '/api/org/api/network/relationships/public' && /^\?offset=\d+$/.test(url.search)
+  if (url.origin !== location.origin || url.username || url.password || url.hash || !(report || snapshot || directory || relationships)) {
+    throw new Error('Only same-origin public organization data can be cached')
   }
   return url.href
 }

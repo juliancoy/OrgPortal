@@ -37,6 +37,15 @@ async function organization(db: D1Database, id: string) {
   return row;
 }
 
+export async function publicRelationshipRecords(db: D1Database, offset = 0) {
+  // Exactly the published support records exposed by per-organization reports.
+  // Other ledger record types (including private account data) never enter this feed.
+  const rows = await db.prepare(`SELECT * FROM master_transaction_records
+    WHERE record_type = 'organization_support' ORDER BY timestamp DESC, id LIMIT 501 OFFSET ?`)
+    .bind(offset).all();
+  return { records: (rows.results || []).slice(0, 500), nextRecordOffset: (rows.results || []).length > 500 ? offset + 500 : null };
+}
+
 export async function organizationSupport(db: D1Database, organizationId: string, offset = 0) {
   const org = await organization(db, organizationId);
   // Include monetary recipients recorded directly in the master transaction

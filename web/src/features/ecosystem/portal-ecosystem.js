@@ -46,10 +46,24 @@ export async function loadPortalEvidence(base, fetcher = fetch, prefix='/api/org
   if(page.length<500)break
  }
  const scoped=directory
- const records=[], queue=[...scoped]
+ const records=[]
+ // One paginated public feed avoids a report request for every organization.
+ let offset=0,legacy=false
+ do {
+  const response=await fetcher(prefix+`/relationships/public?offset=${offset}`)
+  if(response.status===404 || response.status===501){legacy=true;break}
+  if(!response.ok)throw new Error(`Public evidence unavailable (${response.status})`)
+  const result=await response.json()
+  if(!Array.isArray(result.records) || (result.nextRecordOffset!==null && (!Number.isInteger(result.nextRecordOffset) || result.nextRecordOffset<=offset)))throw new Error('Support evidence is incomplete')
+  records.push(...result.records);offset=result.nextRecordOffset
+ }while(offset!==null)
+ if(legacy){
+ records.length=0
+ const queue=[...scoped]
  await Promise.all(Array.from({length:Math.min(6,queue.length)},async()=>{
   while(queue.length){const org=queue.shift();let offset=0;do{const result=await get('/orgs/public/'+encodeURIComponent(org.slug)+`/support?offset=${offset}`);if(!Array.isArray(result.records) || (result.nextRecordOffset!==null && (!Number.isInteger(result.nextRecordOffset) || result.nextRecordOffset<=offset)))throw new Error('Support evidence is incomplete');records.push(...result.records);offset=result.nextRecordOffset;}while(offset!==null)}
  }))
+ }
  const endpoints=new Set(records.flatMap(r=>[r.from_organization_id,r.to_organization_id]).filter(Boolean))
  const included=directory.filter(o=>scoped.some(s=>s.id===o.id) || endpoints.has(o.id))
  return mergePortalEvidence(base,included,records)

@@ -3,7 +3,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import test from 'node:test';
 import { TimebankDatabase } from './helpers/timebankDatabase';
-import { organizationSupport, runSupportOperation, runSupportMcp } from '../src/organizationSupport';
+import { organizationSupport, publicRelationshipRecords, runSupportOperation, runSupportMcp } from '../src/organizationSupport';
 import { EventIntegrationError } from '../src/eventPlatforms';
 import { OrganizationIamError, type OrganizationActor } from '../src/organizationIam';
 const actor: OrganizationActor = { id: 'manager', name: 'Manager', email: null, isOperator: false };
@@ -21,6 +21,21 @@ function setup() {
 const contribution = (from='a',to='b') => ({ organizationId: from, recipientOrganizationId: to, supportKind: 'transfer', amount: 100, currency: 'USD',
   description: 'Documented grant', occurredAt: '2026-10-04', sourceUrl: 'https://example.test/grant', evidence: 'Award announcement' });
 const errorStatus = (status:number) => (error:unknown) => (error instanceof EventIntegrationError || error instanceof OrganizationIamError) && error.status===status;
+test('bulk public relationships paginate published support records without mixing ledger record types', async () => {
+  const db=setup();
+  assert.ok(Number(db.sqlite.prepare("SELECT count(*) n FROM master_transaction_records WHERE record_type='ledger'").get()!.n)>0);
+  const insert=db.sqlite.prepare(`INSERT INTO organization_support_records(id,from_label,to_label,support_kind,description,source_url,created_at)
+    VALUES(?,'Funder','Recipient','collaboration','Public evidence','https://example.test','2026-10-06')`);
+  for(let i=0;i<503;i++)insert.run(String(i).padStart(4,'0'));
+  const first=await publicRelationshipRecords(db.asD1());
+  assert.equal(first.records.length,500);assert.equal(first.nextRecordOffset,500);
+  const last=await publicRelationshipRecords(db.asD1(),500);
+  assert.equal(last.records.length,3);assert.equal(last.nextRecordOffset,null);
+  const rows=[...first.records,...last.records];
+  assert.equal(new Set(rows.map(row=>row.id)).size,503);
+  assert.ok(rows.every(row=>row.record_type==='organization_support'));
+  db.sqlite.close();
+});
 async function record(sqlite:TimebankDatabase,input:Record<string,unknown>) {
   const preview = await runSupportOperation(sqlite.asD1(),actor,'record',input);
   return runSupportOperation(sqlite.asD1(),actor,'record',{...input,previewId:preview.previewId,confirm:true});
