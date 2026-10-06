@@ -16,7 +16,10 @@
       "sourceRows": [
         4
       ],
-      "directory": true
+      "directory": true,
+      "imageUrl": "https://assets.zyrosite.com/cdn-cgi/image/format=auto,w=1440,h=756,fit=crop,f=jpeg/Yyv9PZlXrQSa60jM/amplify-medtech-high-resolution-logo-2-YBg78z5LrOcZEvNB.png",
+      "imageSourceUrl": "https://www.amplifymedtech.com/",
+      "imageCaption": "Published website preview image"
     },
     {
       "id": "org-the-launchport",
@@ -61,7 +64,10 @@
       "sourceRows": [
         7
       ],
-      "directory": true
+      "directory": true,
+      "imageUrl": "https://cdn.bfldr.com/70W92OEX/at/gxhqvh8c4pjrfv993bx88p9/TS_SocialShare_1200x630.png",
+      "imageSourceUrl": "https://www.techstars.com/accelerators/baltimore-ai-health",
+      "imageCaption": "Published website preview image"
     },
     {
       "id": "org-university-of-maryland-baltimore-um-ventures",
@@ -76,7 +82,10 @@
       "sourceRows": [
         54
       ],
-      "directory": true
+      "directory": true,
+      "imageUrl": "https://www.umaryland.edu/media/umb/ord/images/ORDpagecollage.jpg",
+      "imageSourceUrl": "https://www.umaryland.edu/ord/",
+      "imageCaption": "Published website preview image"
     },
     {
       "id": "org-hexcite-johns-hopkins-technology-ventures",
@@ -413,7 +422,10 @@
       "sourceRows": [
         56
       ],
-      "directory": true
+      "directory": true,
+      "imageUrl": "http://static1.squarespace.com/static/6777ed99c71fbb3094cb93d7/t/677828650cccf17d6dd212f7/1735927909155/srbf-logo-horizontal-white.png?format=1500w",
+      "imageSourceUrl": "https://www.bisciotti.org/",
+      "imageCaption": "Published website preview image"
     },
     {
       "id": "org-maryland-tech-council",
@@ -687,7 +699,10 @@
       "sourceRows": [
         35
       ],
-      "directory": true
+      "directory": true,
+      "imageUrl": "https://www.towson.edu/campus/images/startup-og.jpg",
+      "imageSourceUrl": "https://www.towson.edu/startup/",
+      "imageCaption": "Published website preview image"
     },
     {
       "id": "org-morgan-state-innovation-entrepreneurship-center",
@@ -897,7 +912,10 @@
       "relevance": "",
       "proximity": null,
       "sourceRows": [],
-      "directory": false
+      "directory": false,
+      "imageUrl": "https://www.nih.gov/sites/default/files/styles/thumbnail_large/public/2025-01/thumbnail-generic.png",
+      "imageSourceUrl": "https://www.nih.gov/",
+      "imageCaption": "Published website preview image"
     },
     {
       "id": "org-rarebreed-ventures-fund-i",
@@ -945,7 +963,10 @@
       "relevance": "",
       "proximity": null,
       "sourceRows": [],
-      "directory": false
+      "directory": false,
+      "imageUrl": "https://cdn.bfldr.com/70W92OEX/at/gxhqvh8c4pjrfv993bx88p9/TS_SocialShare_1200x630.png",
+      "imageSourceUrl": "https://www.techstars.com/",
+      "imageCaption": "Published website preview image"
     },
     {
       "id": "org-tedco-equitech-growth-fund",
@@ -1005,7 +1026,10 @@
       "relevance": "",
       "proximity": null,
       "sourceRows": [],
-      "directory": false
+      "directory": false,
+      "imageUrl": "https://umbc.edu/wp-content/uploads/2023/09/UMBC-Campus-Drone.jpeg",
+      "imageSourceUrl": "https://umbc.edu/",
+      "imageCaption": "Published website preview image"
     },
     {
       "id": "org-university-system-of-maryland",
@@ -1031,7 +1055,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "lifetech"
+      "portalSlug": "lifetech",
+      "imageUrl": "https://lifetech.fyi/assets/images/lifetech-logo.png",
+      "imageSourceUrl": "https://lifetech.fyi/"
     },
     {
       "id": "org-baltimore-medtech",
@@ -1045,7 +1071,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "baltimore-medtech"
+      "portalSlug": "baltimore-medtech",
+      "imageUrl": "https://images.lumacdn.com/uploads/gx/e8fdf4fb-b1ba-4269-8e6f-38103e820ff9.png",
+      "imageSourceUrl": "https://medtech.social/"
     },
     {
       "id": "6260df0f-6e82-4bb1-ac88-a92644d59572",
@@ -1059,7 +1087,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "dar-al-taqwa"
+      "portalSlug": "dar-al-taqwa",
+      "imageUrl": "https://taqwa.net/wp-content/uploads/2023/03/logo-w.png",
+      "imageSourceUrl": "https://taqwa.net/events/"
     },
     {
       "id": "a9a0f0f7-6c6f-4efa-a9ca-7b8fc17f7e91",
@@ -1073,7 +1103,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "towson-lodge-79"
+      "portalSlug": "towson-lodge-79",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=towsonlodge.us&sz=256",
+      "imageSourceUrl": "https://towsonlodge.us/calendar-%26-events"
     },
     {
       "id": "c7bab4c0-ba1a-423b-930b-b83fc08c20f6",
@@ -1087,7 +1119,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "greater-baltimore-chamber"
+      "portalSlug": "greater-baltimore-chamber",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=www.greaterbaltimorechamber.org&sz=256",
+      "imageSourceUrl": "https://www.greaterbaltimorechamber.org/calendarandevents/eventcalendar"
     },
     {
       "id": "73add496-f616-471e-bbff-bd1e5f22cd66",
@@ -1101,7 +1135,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "unallocated-space"
+      "portalSlug": "unallocated-space",
+      "imageUrl": "https://www.unallocatedspace.org/wp-content/uploads/2017/03/UnallocatedLogoSmall.png",
+      "imageSourceUrl": "https://www.unallocatedspace.org/events/"
     },
     {
       "id": "fa7d87d6-884f-40af-9d8e-280e169732bc",
@@ -1115,7 +1151,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "columbia-community-care"
+      "portalSlug": "columbia-community-care",
+      "imageUrl": "https://columbiacommunitycare.org/wp-content/uploads/2025/06/Organizational.webp",
+      "imageSourceUrl": "https://columbiacommunitycare.org/"
     },
     {
       "id": "f1ae9ac5-daee-48c9-9482-5a1079d300d7",
@@ -1129,7 +1167,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "ccan-baltimore"
+      "portalSlug": "ccan-baltimore",
+      "imageUrl": "https://chesapeakeclimate.org/wp-content/uploads/2022/02/CCAN-Logo-2022-300RGB-wht-e1643743097559.png",
+      "imageSourceUrl": "https://chesapeakeclimate.org/"
     },
     {
       "id": "146a4730-d1f7-4134-8308-3845b312ce0a",
@@ -1143,7 +1183,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "baltimore-ravens-schedule"
+      "portalSlug": "baltimore-ravens-schedule",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=baltimoreravens.com&sz=256",
+      "imageSourceUrl": "https://www.baltimoreravens.com/schedule/"
     },
     {
       "id": "b8bdc353-26d5-49d0-b591-3ad8e547fce1",
@@ -1157,7 +1199,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "python-frederick"
+      "portalSlug": "python-frederick",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/python-frederick/events/"
     },
     {
       "id": "8a9dbcf6-fae8-49db-a72b-441b8024d602",
@@ -1171,7 +1215,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "baltimore-node"
+      "portalSlug": "baltimore-node",
+      "imageUrl": "https://www.baltimorenode.org/wp-content/uploads/2013/11/node-logo.png",
+      "imageSourceUrl": "https://baltimorenode.org/events/"
     },
     {
       "id": "f74cd33d-872d-4d80-b17c-986d6834727c",
@@ -1185,7 +1231,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "maryland-port-administration-dmmp"
+      "portalSlug": "maryland-port-administration-dmmp",
+      "imageUrl": "https://maryland-dmmp.com/wp-content/uploads/2022/12/cropped-favicon-32x32.png",
+      "imageSourceUrl": "https://maryland-dmmp.com/events/"
     },
     {
       "id": "1c89ff37-87c1-4637-a90f-8bd9b493608b",
@@ -1199,7 +1247,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "ottobar"
+      "portalSlug": "ottobar",
+      "imageUrl": "https://theottobar.com/wp-content/uploads/2021/07/Ottobar-since-1997-logo-black-1.png",
+      "imageSourceUrl": "https://theottobar.com/events/"
     },
     {
       "id": "69d4a2be-94db-41f6-a211-7f93efb7f757",
@@ -1213,7 +1263,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "api-lu-ma-3"
+      "portalSlug": "api-lu-ma-3",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=api.lu.ma&sz=256",
+      "imageSourceUrl": "https://api.lu.ma/user/profile/events-hosting?user_api_id=usr-zbARQX9qqtQoF6E"
     },
     {
       "id": "75d373ae-f223-4a91-bba2-596b25097bcc",
@@ -1227,7 +1279,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "luma-com-35"
+      "portalSlug": "luma-com-35",
+      "imageUrl": "https://images.unsplash.com/photo-1522071901873-411886a10004?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3wxMjQyMjF8MHwxfHNlYXJjaHwxOXx8Y29tcHV0ZXIlMjBwZW9wbGUlMjB3b3JraW5nJTIwdG9nZXRoZXJ8ZW58MHx8fHwxNzc4MjY1MjA5fDI&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageSourceUrl": "https://luma.com/the-mindfultech-club"
     },
     {
       "id": "89e57b9d-6682-4bca-a089-f6224542f12f",
@@ -1241,7 +1295,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "luma-com-7"
+      "portalSlug": "luma-com-7",
+      "imageUrl": "https://images.lumacdn.com/uploads/09/9f70cf08-3fe0-4e7c-9d18-1ade6d458d2a.png",
+      "imageSourceUrl": "https://luma.com/vcdc"
     },
     {
       "id": "509f8728-bde9-4663-aa52-5fa804117296",
@@ -1255,7 +1311,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "maryland-bankers-association-events-2"
+      "portalSlug": "maryland-bankers-association-events-2",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=mdbankers.com&sz=256",
+      "imageSourceUrl": "https://www.mdbankers.com/education-events/calendar/"
     },
     {
       "id": "f29db77e-bae1-43b8-804d-7d5077398767",
@@ -1269,7 +1327,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "maryland-food-bank-baltimore-office"
+      "portalSlug": "maryland-food-bank-baltimore-office",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=mdfoodbank.org&sz=256",
+      "imageSourceUrl": "https://mdfoodbank.org/events/"
     },
     {
       "id": "548fab7e-d008-4b22-ba77-fd84ecefa945",
@@ -1283,7 +1343,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "baltimore-soundstage"
+      "portalSlug": "baltimore-soundstage",
+      "imageUrl": "https://www.baltimoresoundstage.com/wp-content/themes/baltimore-soundstage-2/assets/img/logo.png",
+      "imageSourceUrl": "https://www.baltimoresoundstage.com/events-feed/"
     },
     {
       "id": "b99361c2-2dea-4e45-9c05-9cd1d3eb0198",
@@ -1297,7 +1359,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "bmnt-ventures"
+      "portalSlug": "bmnt-ventures",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=api.lu.ma&sz=256",
+      "imageSourceUrl": "https://api.lu.ma/user/profile/events-hosting?user_api_id=usr-WdW6dzEEpKMRMGq"
     },
     {
       "id": "c503ced0-fb35-4b58-bec8-08297e0f12a1",
@@ -1311,7 +1375,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "howard-county-economic-development-authority"
+      "portalSlug": "howard-county-economic-development-authority",
+      "imageUrl": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F739710519%2F41590819956%2F1%2Foriginal.20240409-200515?w=2000&amp;auto=format%2Ccompress&amp;q=75&amp;sharp=10&amp;rect=0%2C27%2C687%2C687&amp;s=03f784969062c33a9088c6e64743ca6c",
+      "imageSourceUrl": "https://www.eventbrite.com/o/howard-county-economic-development-authority-2805856464"
     },
     {
       "id": "f6c228ae-8110-4e45-9cf7-1554a389c47e",
@@ -1325,7 +1391,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "my-sisters-place-womens-center"
+      "portalSlug": "my-sisters-place-womens-center",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=cc-md.org&sz=256",
+      "imageSourceUrl": "https://cc-md.org/get-involved/events/"
     },
     {
       "id": "bed80d6f-8016-40b0-bda1-ce9bc559a092",
@@ -1339,7 +1407,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "baltimore-indie-games"
+      "portalSlug": "baltimore-indie-games",
+      "imageUrl": "https://baltimoreindiegames.com/wp-content/uploads/2025/03/BIG_small.png",
+      "imageSourceUrl": "https://baltimoreindiegames.com/events/"
     },
     {
       "id": "2111ba9e-190b-49a2-99a6-e24b56d8b717",
@@ -1353,7 +1423,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "baltimore-sister-cities-events"
+      "portalSlug": "baltimore-sister-cities-events",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=baltimoresistercities.org&sz=256",
+      "imageSourceUrl": "https://baltimoresistercities.org/events/"
     },
     {
       "id": "6f1c2c57-968e-4a08-9a1f-69342bc64358",
@@ -1367,7 +1439,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "climate-draft-community"
+      "portalSlug": "climate-draft-community",
+      "imageUrl": "https://images.lumacdn.com/cdn-cgi/image/format=auto,fit=cover,width=100,height=100/calendar-covers/0d/0dd0b2e6-0e34-4e4a-ac8a-3ee5ca69efea",
+      "imageSourceUrl": "https://luma.com/climatedraft-community"
     },
     {
       "id": "8b07828e-4461-45d1-b9ee-ad73ee7f58d0",
@@ -1381,7 +1455,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "digital-equity-baltimore"
+      "portalSlug": "digital-equity-baltimore",
+      "imageUrl": "https://static.wixstatic.com/media/8dc51b_7123df01d68e47a1b4b717c89ad4aea7~mv2.png/v1/fill/w_223,h_90,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/BDEC%20(1).png",
+      "imageSourceUrl": "https://www.digitalequitybaltimore.org/general-clean"
     },
     {
       "id": "a25d145d-fb43-4653-85ee-8c9b523effea",
@@ -1395,7 +1471,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "eventbrite-com-12"
+      "portalSlug": "eventbrite-com-12",
+      "imageUrl": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F201506079%2F51056954280%2F1%2Foriginal.20211215-203514?w=2000&amp;auto=format%2Ccompress&amp;q=75&amp;sharp=10&amp;rect=0%2C0%2C1042%2C1042&amp;s=eab2146b0f826f5f374ff6379037e553",
+      "imageSourceUrl": "https://www.eventbrite.com/o/better-tomorrow-speaker-series-39225126213"
     },
     {
       "id": "a4816eba-b455-46ac-b67c-538946ce9676",
@@ -1409,7 +1487,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "greater-grace-world-outreach"
+      "portalSlug": "greater-grace-world-outreach",
+      "imageUrl": "https://ggwo.org/wp-content/uploads/2018/11/ggwo-logo-with-world-wide-local-church-800-162-png1.png",
+      "imageSourceUrl": "https://ggwo.org/gg-events/"
     },
     {
       "id": "cfa89bcd-7188-44d6-9e1e-a829cf711fd9",
@@ -1423,7 +1503,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "hopewell-cancer-support-program-events-2"
+      "portalSlug": "hopewell-cancer-support-program-events-2",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=hopewellcancersupport.org&sz=256",
+      "imageSourceUrl": "https://www.hopewellcancersupport.org/fundraising-events"
     },
     {
       "id": "6f063d84-d771-4aed-95ca-5df2b26d5825",
@@ -1451,7 +1533,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "lets-go-organization"
+      "portalSlug": "lets-go-organization",
+      "imageUrl": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1071012583%2F2818929482001%2F1%2Foriginal.20250710-190009?w=2000&amp;auto=format%2Ccompress&amp;q=75&amp;sharp=10&amp;s=ec65c3f4361737f916065edc20fc25e2",
+      "imageSourceUrl": "https://www.eventbrite.com/o/lets-go-113135073431"
     },
     {
       "id": "9d050744-9154-4214-8d03-d35302c14573",
@@ -1465,7 +1549,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "luma-com-8"
+      "portalSlug": "luma-com-8",
+      "imageUrl": "https://images.lumacdn.com/uploads/g0/40802a6a-d670-4a07-933b-af1be67544d0.png",
+      "imageSourceUrl": "https://luma.com/squadra"
     },
     {
       "id": "2a4b5f6a-be1e-4ec8-a7bb-142a48ea89b4",
@@ -1479,7 +1565,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "maryland-food-bank-pantry-on-the-go-3"
+      "portalSlug": "maryland-food-bank-pantry-on-the-go-3",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=mdfoodbank.org&sz=256",
+      "imageSourceUrl": "https://mdfoodbank.org/event/foodworks-halethorpe-graduation-class-57/"
     },
     {
       "id": "fbee1f11-fa09-4514-ab95-e086e6eb2e30",
@@ -1493,7 +1581,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "maryland-food-bank-pantry-on-the-go-2"
+      "portalSlug": "maryland-food-bank-pantry-on-the-go-2",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=mdfoodbank.org&sz=256",
+      "imageSourceUrl": "https://mdfoodbank.org/event/foodworks-halethorpe-graduation-class-56/"
     },
     {
       "id": "4e793cbd-16b9-474d-9cf9-1b4650c8c9a5",
@@ -1507,7 +1597,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "maryland-port-commission"
+      "portalSlug": "maryland-port-commission",
+      "imageUrl": "https://mpa.maryland.gov/_catalogs/masterpage/images/favicon.ico",
+      "imageSourceUrl": "https://mpa.maryland.gov/Pages/port-commission.aspx"
     },
     {
       "id": "fc4415ae-557b-4bf5-9ed1-67a6d6a26051",
@@ -1521,7 +1613,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "meetup-com-18"
+      "portalSlug": "meetup-com-18",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/carbonfreedc/"
     },
     {
       "id": "44b9de74-269d-43c1-b9d2-86899034a499",
@@ -1535,7 +1629,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "pikesville-armory-foundation"
+      "portalSlug": "pikesville-armory-foundation",
+      "imageUrl": "https://transformpikesvillearmory.org/wp-content/uploads/2024/01/PA_Temp_Logo_Horizontal_RustWhite_RGB.png",
+      "imageSourceUrl": "https://transformpikesvillearmory.org/events"
     },
     {
       "id": "94155d16-4a18-4e4a-98f3-07d87fe01d28",
@@ -1563,7 +1659,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "waterfrontpartnership-org"
+      "portalSlug": "waterfrontpartnership-org",
+      "imageUrl": "https://www.baltimoresoundstage.com/wp-content/themes/baltimore-soundstage-2/assets/img/logo.png",
+      "imageSourceUrl": "https://waterfrontpartnership.org/events/"
     },
     {
       "id": "0fb82046-3f96-468c-8d67-3ab793c4477d",
@@ -1633,7 +1731,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "ai-performance-engineering-washington-dc"
+      "portalSlug": "ai-performance-engineering-washington-dc",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/ai-performance-engineering-washington-dc/"
     },
     {
       "id": "registry-a12fae0e-6134-4cea-b8f1-8caa852c067a",
@@ -1703,7 +1803,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "api-lu-ma-9"
+      "portalSlug": "api-lu-ma-9",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=api.lu.ma&sz=256",
+      "imageSourceUrl": "https://api.lu.ma/user/profile/events-hosting?user_api_id=usr-TH1lmTVVf9uMKIz"
     },
     {
       "id": "247594f3-62b1-4b95-8fe5-989c52d55116",
@@ -1731,7 +1833,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "api-lu-ma-11"
+      "portalSlug": "api-lu-ma-11",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=api.lu.ma&sz=256",
+      "imageSourceUrl": "https://api.lu.ma/user/profile/events-hosting?user_api_id=usr-cWlmpHTclGHVHjr"
     },
     {
       "id": "3928f0a0-6ab7-4747-8fc0-7adc2886c1c2",
@@ -1773,7 +1877,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "api-lu-ma-5"
+      "portalSlug": "api-lu-ma-5",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=api.lu.ma&sz=256",
+      "imageSourceUrl": "https://api.lu.ma/user/profile/events-hosting?user_api_id=usr-dH29J9OUY8BFf5c"
     },
     {
       "id": "8b4b3a53-419b-48a3-9e75-c7fb79544fcc",
@@ -1857,7 +1963,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "backwater-books-events-6"
+      "portalSlug": "backwater-books-events-6",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=backwaterbooks.com&sz=256",
+      "imageSourceUrl": "https://backwaterbooks.com/event/2026-06-10/unbook-club"
     },
     {
       "id": "5344b96b-b774-47c7-844c-08549a809577",
@@ -1871,7 +1979,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "backwater-books-events-4"
+      "portalSlug": "backwater-books-events-4",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=backwaterbooks.com&sz=256",
+      "imageSourceUrl": "https://backwaterbooks.com/event/2026-06-07/tales-trails-audiobook-walk"
     },
     {
       "id": "73b20ffe-28f4-47bb-8b9a-fcb44c710b73",
@@ -1885,7 +1995,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "backwater-books-events-3"
+      "portalSlug": "backwater-books-events-3",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=backwaterbooks.com&sz=256",
+      "imageSourceUrl": "https://backwaterbooks.com/event/2026-06-06/backwater-sessions-ahmed-warshanna"
     },
     {
       "id": "b3609806-19a1-46f3-8db4-282d965ff492",
@@ -1899,7 +2011,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "backwater-books-events-7"
+      "portalSlug": "backwater-books-events-7",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=backwaterbooks.com&sz=256",
+      "imageSourceUrl": "https://backwaterbooks.com/event/2026-06-11/bibliolove-book-club"
     },
     {
       "id": "b47ffa9b-83e5-4522-9a0d-781953c5dc2b",
@@ -1913,7 +2027,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "backwater-books-events-5"
+      "portalSlug": "backwater-books-events-5",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=backwaterbooks.com&sz=256",
+      "imageSourceUrl": "https://backwaterbooks.com/event/2026-06-09/ellicott-city-mutual-aid-social"
     },
     {
       "id": "c363d72c-c33c-461a-9fbe-4f32441fefd8",
@@ -1941,7 +2057,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "backwater-books-events-8"
+      "portalSlug": "backwater-books-events-8",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=backwaterbooks.com&sz=256",
+      "imageSourceUrl": "https://backwaterbooks.com/event/2026-06-12/sara-goodman-confino-record"
     },
     {
       "id": "fdb84c35-8678-4121-b7e1-bd97fd62aa2c",
@@ -1955,7 +2073,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "backwater-books-events-2"
+      "portalSlug": "backwater-books-events-2",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=backwaterbooks.com&sz=256",
+      "imageSourceUrl": "https://backwaterbooks.com/event/2026-06-06/meet-authors-enfys-book-and-ron-padron"
     },
     {
       "id": "febd1650-eedd-4ec8-b92d-0edf40c5b3cb",
@@ -1969,7 +2089,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "backwater-books-events-9"
+      "portalSlug": "backwater-books-events-9",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=backwaterbooks.com&sz=256",
+      "imageSourceUrl": "https://backwaterbooks.com/event/2026-06-13/backwater-sessions-flatwounds"
     },
     {
       "id": "780c3187-2c22-40af-ba07-a50ebb3a060d",
@@ -1997,7 +2119,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "baltimore-bitcoin"
+      "portalSlug": "baltimore-bitcoin",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/baltimorebitcoin/events/"
     },
     {
       "id": "01d502e1-29c4-42ec-a2dc-fed97e67386a",
@@ -2039,7 +2163,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "baltimore-city-council-legislative-calendar"
+      "portalSlug": "baltimore-city-council-legislative-calendar",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=baltimore.legistar.com&sz=256",
+      "imageSourceUrl": "https://baltimore.legistar.com/Calendar.aspx"
     },
     {
       "id": "93a6e843-0457-4657-9014-97fa69fccf19",
@@ -2067,7 +2193,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "baltimore-code-and-coffee"
+      "portalSlug": "baltimore-code-and-coffee",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/baltimore-code-and-coffee/events/"
     },
     {
       "id": "33058696-9298-40e2-891c-40a4cffbe4d0",
@@ -2081,7 +2209,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "baltimore-convention-center-events"
+      "portalSlug": "baltimore-convention-center-events",
+      "imageUrl": "https://www.bccenter.org/images/logo.png",
+      "imageSourceUrl": "https://www.bccenter.org/events/"
     },
     {
       "id": "ad71eea3-5f96-4e5e-b96a-ef3a3c021742",
@@ -2193,7 +2323,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "baltimore-hackerspace"
+      "portalSlug": "baltimore-hackerspace",
+      "imageUrl": "https://baltimorehackerspace.com/wp-content/uploads/2013/06/bahalogotop.png",
+      "imageSourceUrl": "https://www.meetup.com/Baltimore-Hackerspace/"
     },
     {
       "id": "dec52771-7746-4a5a-8552-4facc0196143",
@@ -2221,7 +2353,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "baltimore-investors-meetup"
+      "portalSlug": "baltimore-investors-meetup",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/baltimoreinvestors/"
     },
     {
       "id": "1ea029c9-6344-443c-b8f7-22c50e7f2856",
@@ -2249,7 +2383,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "baltimore-orioles-schedule-2"
+      "portalSlug": "baltimore-orioles-schedule-2",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=mlb.com&sz=256",
+      "imageSourceUrl": "https://www.mlb.com/events"
     },
     {
       "id": "d58882a6-4f58-4754-9620-388f782b449b",
@@ -2263,7 +2399,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "baltimore-orioles-schedule"
+      "portalSlug": "baltimore-orioles-schedule",
+      "imageUrl": "https://www.mlbstatic.com/team-logos/team-cap-on-dark/110.svg",
+      "imageSourceUrl": "https://www.mlb.com/orioles/schedule"
     },
     {
       "id": "50de38d6-8fc3-4be5-a3f1-dd8c896fb7dc",
@@ -2291,7 +2429,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "baltimore-robotics-center"
+      "portalSlug": "baltimore-robotics-center",
+      "imageUrl": "https://www.baltimoreroboticscenter.com/wp-content/uploads/2021/02/cropped-Balto-Robotics-CTR-logo-new.png",
+      "imageSourceUrl": "https://www.eventbrite.com/o/baltimore-robotics-center-14997527925"
     },
     {
       "id": "bf146ddf-d1a8-4d4e-a4b4-7028e47dcf13",
@@ -2305,7 +2445,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "baltimore-roundtable-for-economic-development"
+      "portalSlug": "baltimore-roundtable-for-economic-development",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=eventbrite.com&sz=256",
+      "imageSourceUrl": "https://www.eventbrite.com/o/30286628672"
     },
     {
       "id": "30ecd160-d422-4232-90a2-75745290abb4",
@@ -2361,7 +2503,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "baltimore-underground-science-space"
+      "portalSlug": "baltimore-underground-science-space",
+      "imageUrl": "https://bugssonline.org/wp-content/themes/BUGS3/assets/images/bugsslogo-square300.png",
+      "imageSourceUrl": "https://www.eventbrite.com/o/baltimore-under-ground-science-space-bugss-4318633291"
     },
     {
       "id": "04ec149e-2f0d-4a3c-8576-eaa5007de49d",
@@ -2403,7 +2547,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "baltimore-veg-vegan-meetup"
+      "portalSlug": "baltimore-veg-vegan-meetup",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/baltimoreveg-vegan/"
     },
     {
       "id": "ff57a95e-1aa5-4b17-8e33-d593692d1d21",
@@ -2417,7 +2563,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "baltimore-wordpress-group"
+      "portalSlug": "baltimore-wordpress-group",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/the-baltimore-wordpress-group/events/"
     },
     {
       "id": "registry-0c6e72c7-af48-4165-8f13-b30f6ed964c1",
@@ -2529,7 +2677,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "blue-water-baltimore-events"
+      "portalSlug": "blue-water-baltimore-events",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=bluewaterbaltimore.org&sz=256",
+      "imageSourceUrl": "https://bluewaterbaltimore.org/events/photo/"
     },
     {
       "id": "760df7eb-8c5f-4668-b937-89c6376d3915",
@@ -2557,7 +2707,10 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "bluehealer"
+      "portalSlug": "bluehealer",
+      "imageUrl": "https://media.licdn.com/dms/image/v2/D4E03AQEi3GdzHjIbQg/profile-displayphoto-shrink_200_200/profile-displayphoto-shrink_200_200/0/1718224764925?e=2147483647&v=beta&t=YWjuu9jbSarQxsS9tWHMeDFmyMsNsyq_whiIdIrCHr8",
+      "imageSourceUrl": "https://www.linkedin.com/in/tailor-jay",
+      "imageCaption": "Published website preview image"
     },
     {
       "id": "registry-29fe704d-bfac-4b32-81a6-840333e3a018",
@@ -2585,7 +2738,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "bluewaterbaltimore-org"
+      "portalSlug": "bluewaterbaltimore-org",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=bluewaterbaltimore.org&sz=256",
+      "imageSourceUrl": "https://bluewaterbaltimore.org/events/"
     },
     {
       "id": "7f46aad3-3c70-4adb-bea6-54a05e89321f",
@@ -2613,7 +2768,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "bmore-ethical"
+      "portalSlug": "bmore-ethical",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/bmorethical/"
     },
     {
       "id": "d58cb646-146b-4347-bb1e-0b0734247444",
@@ -2627,7 +2784,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "bmore-on-rails"
+      "portalSlug": "bmore-on-rails",
+      "imageUrl": "https://images.lumacdn.com/event-covers/an/6019b8e3-1a1a-48e3-8ba6-5d387d29ef60.png",
+      "imageSourceUrl": "https://luma.com/bmore-on-rails"
     },
     {
       "id": "registry-4ebd6376-8b6b-49df-a2b5-743e91da55a3",
@@ -2767,7 +2926,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "cathedral-of-the-incarnation"
+      "portalSlug": "cathedral-of-the-incarnation",
+      "imageUrl": "https://incarnationbmore.org/wp-content/uploads/2022/09/Incarnation-Logo-Words-Color.png",
+      "imageSourceUrl": "https://incarnationbmore.org/events/"
     },
     {
       "id": "c8f9b4ba-2adb-47ae-9a95-812be909582c",
@@ -2781,7 +2942,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "catonsvilleumc-org"
+      "portalSlug": "catonsvilleumc-org",
+      "imageUrl": "https://www.catonsvilleumc.org/wp-content/uploads/2021/11/CUMC-Logo-Color.png",
+      "imageSourceUrl": "https://www.catonsvilleumc.org/upcoming-events/"
     },
     {
       "id": "2e4889a4-b376-4215-95db-fed52b7b99b9",
@@ -2879,7 +3042,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "charm-city-eats"
+      "portalSlug": "charm-city-eats",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/charmcityeats/"
     },
     {
       "id": "12d2fdf8-d757-4893-becb-a48e58358ac0",
@@ -3005,7 +3170,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "code-collective"
+      "portalSlug": "code-collective",
+      "imageUrl": "https://images.lumacdn.com/event-covers/g9/c8f37734-4941-4ed9-bd3c-b14b7d453112.png",
+      "imageSourceUrl": "https://luma.com/codecollective"
     },
     {
       "id": "b1d85d7e-cf52-41c7-a173-68159c3d0ed7",
@@ -3019,7 +3186,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "cohousing-of-greater-baltimore"
+      "portalSlug": "cohousing-of-greater-baltimore",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/cohousing-of-greater-baltimore/"
     },
     {
       "id": "d1939268-2a04-4f5a-852a-04f3f688b93a",
@@ -3047,7 +3216,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "columbia-politics-meetup"
+      "portalSlug": "columbia-politics-meetup",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/columbia-politics-meetup-group/"
     },
     {
       "id": "87e8456b-064a-42ba-aaa0-9723727a217d",
@@ -3061,7 +3232,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "columbiapres-org"
+      "portalSlug": "columbiapres-org",
+      "imageUrl": "https://columbiapres.org/wp-content/uploads/2020/10/cpc-social-share.jpg",
+      "imageSourceUrl": "https://columbiapres.org/"
     },
     {
       "id": "registry-4575e54d-b216-499d-939e-e5ad3896b49a",
@@ -3103,7 +3276,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "cyber-steam-global-innovation-alliance"
+      "portalSlug": "cyber-steam-global-innovation-alliance",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/cyber-steam-global-innovation-alliance/"
     },
     {
       "id": "registry-75e81db7-795a-4874-8b39-99429b36def8",
@@ -3145,7 +3320,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "dc-climate-week"
+      "portalSlug": "dc-climate-week",
+      "imageUrl": "https://images.lumacdn.com/avatars/ln/f11ce87e-b740-4c3a-9cac-b7398062aa10.png",
+      "imageSourceUrl": "https://api.lu.ma/user/profile/events-hosting?user_api_id=usr-Kwz0Nj6rc80jQ3D"
     },
     {
       "id": "3e76ea4c-4b47-4d7f-af51-d78ab6b78804",
@@ -3257,7 +3434,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "enoch-pratt-free-library-events"
+      "portalSlug": "enoch-pratt-free-library-events",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=prattlibrary.org&sz=256",
+      "imageSourceUrl": "https://www.prattlibrary.org/events"
     },
     {
       "id": "463d9f95-be77-4243-ba4a-9477fb6bdd31",
@@ -3271,7 +3450,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "essex-bitcoin-for-beginners"
+      "portalSlug": "essex-bitcoin-for-beginners",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/essex-bitcoin-for-beginners-meetup-group/"
     },
     {
       "id": "registry-4418f0f8-46aa-4a4d-9af7-37e6b4985149",
@@ -3481,7 +3662,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "farm-alliance-field-day-workshops"
+      "portalSlug": "farm-alliance-field-day-workshops",
+      "imageUrl": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F720492859%2F223881898333%2F1%2Foriginal.20240315-162011?w=2000&amp;auto=format%2Ccompress&amp;q=75&amp;sharp=10&amp;rect=0%2C0%2C600%2C600&amp;s=fa384b502d89a06464ad0dbb89bd2a47",
+      "imageSourceUrl": "https://www.eventbrite.com/o/farm-alliance-of-baltimore-33824037405"
     },
     {
       "id": "cbd5d4c3-7bcd-4116-8457-70ae5ae51784",
@@ -3621,7 +3804,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "greater-baltimore-urban-league"
+      "portalSlug": "greater-baltimore-urban-league",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=eventbrite.com&sz=256",
+      "imageSourceUrl": "https://www.eventbrite.com/o/2103730749"
     },
     {
       "id": "e89eed4e-81cd-4fae-a861-83f7a29db588",
@@ -3649,7 +3834,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "haicbaltimore-org"
+      "portalSlug": "haicbaltimore-org",
+      "imageUrl": "https://haicbaltimore.org/wp-content/uploads/2023/10/cropped-HAIC-Logo.png",
+      "imageSourceUrl": "https://haicbaltimore.org/upcoming-events/"
     },
     {
       "id": "registry-b2c40893-b4bf-4e3e-b53b-9724a193f568",
@@ -3677,7 +3864,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "harford-county-government-calendar-2"
+      "portalSlug": "harford-county-government-calendar-2",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=harfordcountymd.gov&sz=256",
+      "imageSourceUrl": "https://www.harfordcountymd.gov/Calendar.aspx?EID=13888&month=6&year=2026&day=5&calType=0"
     },
     {
       "id": "180875d4-9e34-4222-a977-d380904e7931",
@@ -3691,7 +3880,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "harford-county-government-calendar-8"
+      "portalSlug": "harford-county-government-calendar-8",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=harfordcountymd.gov&sz=256",
+      "imageSourceUrl": "https://www.harfordcountymd.gov/Calendar.aspx?EID=13939&month=6&year=2026&day=5&calType=0"
     },
     {
       "id": "1c6d1acd-ff40-458c-a663-9975b759b5b8",
@@ -3705,7 +3896,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "harford-county-government-calendar-9"
+      "portalSlug": "harford-county-government-calendar-9",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=harfordcountymd.gov&sz=256",
+      "imageSourceUrl": "https://www.harfordcountymd.gov/Calendar.aspx?EID=13954&month=6&year=2026&day=5&calType=0"
     },
     {
       "id": "1e743d72-6882-4339-bdea-388df52832dc",
@@ -3719,7 +3912,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "harford-county-government-calendar"
+      "portalSlug": "harford-county-government-calendar",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=harfordcountymd.gov&sz=256",
+      "imageSourceUrl": "https://www.harfordcountymd.gov/calendar.aspx"
     },
     {
       "id": "2817b965-b94f-4f45-b10e-d78108567b2b",
@@ -3733,7 +3928,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "harford-county-government-calendar-6"
+      "portalSlug": "harford-county-government-calendar-6",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=harfordcountymd.gov&sz=256",
+      "imageSourceUrl": "https://www.harfordcountymd.gov/Calendar.aspx?EID=13964&month=6&year=2026&day=5&calType=0"
     },
     {
       "id": "3de166a3-ad22-4e48-8c68-52d22e6b869d",
@@ -3747,7 +3944,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "harford-county-government-calendar-7"
+      "portalSlug": "harford-county-government-calendar-7",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=harfordcountymd.gov&sz=256",
+      "imageSourceUrl": "https://www.harfordcountymd.gov/Calendar.aspx?EID=11882&month=6&year=2026&day=5&calType=0"
     },
     {
       "id": "59f508e9-85ae-49db-9af8-42cafc8fe6f0",
@@ -3761,7 +3960,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "harford-county-government-calendar-5"
+      "portalSlug": "harford-county-government-calendar-5",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=harfordcountymd.gov&sz=256",
+      "imageSourceUrl": "https://www.harfordcountymd.gov/Calendar.aspx?EID=11881&month=6&year=2026&day=5&calType=0"
     },
     {
       "id": "8fc129de-70a9-4231-95fc-51a85a84ac9d",
@@ -3775,7 +3976,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "harford-county-government-calendar-3"
+      "portalSlug": "harford-county-government-calendar-3",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=harfordcountymd.gov&sz=256",
+      "imageSourceUrl": "https://www.harfordcountymd.gov/Calendar.aspx?EID=14015&month=6&year=2026&day=5&calType=0"
     },
     {
       "id": "bcbcf836-74b9-473e-bb5b-e82de9794a94",
@@ -3789,7 +3992,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "harford-county-government-calendar-4"
+      "portalSlug": "harford-county-government-calendar-4",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=harfordcountymd.gov&sz=256",
+      "imageSourceUrl": "https://www.harfordcountymd.gov/Calendar.aspx?EID=14013&month=6&year=2026&day=5&calType=0"
     },
     {
       "id": "registry-83d67d1d-a81f-4ad6-8e9b-8ffe6152f968",
@@ -3831,7 +4036,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "hopewell-cancer-support-program-events"
+      "portalSlug": "hopewell-cancer-support-program-events",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=hopewellcancersupport.org&sz=256",
+      "imageSourceUrl": "https://www.hopewellcancersupport.org/programs/programevents"
     },
     {
       "id": "79f800ed-581b-4ae0-a152-4f3ee1beb30b",
@@ -3929,7 +4136,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "impact-hub-baltimore"
+      "portalSlug": "impact-hub-baltimore",
+      "imageUrl": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F44379906%2F150891471011%2F2%2Foriginal.jpeg?w=2000&amp;auto=format%2Ccompress&amp;q=75&amp;sharp=10&amp;s=e71d5373028233b4af7f889141b948ab",
+      "imageSourceUrl": "https://www.eventbrite.com/o/impact-hub-baltimore-8423440202"
     },
     {
       "id": "48864ee1-4c8e-433d-9a83-56de061c04d6",
@@ -4027,7 +4236,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "kmc-maryland"
+      "portalSlug": "kmc-maryland",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/KMC-Maryland/"
     },
     {
       "id": "registry-c308dedc-5d0d-47b1-b6c8-55c5912650da",
@@ -4069,7 +4280,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "le-mondo"
+      "portalSlug": "le-mondo",
+      "imageUrl": "https://static.wixstatic.com/media/5c4b5d_cc4aba7ac8e7429989e750359a8dc987%7Emv2.png/v1/fill/w_192,h_192,lg_1,usm_0.66_1.00_0.01/5c4b5d_cc4aba7ac8e7429989e750359a8dc987%7Emv2.png",
+      "imageSourceUrl": "https://www.lemondo.org/"
     },
     {
       "id": "01b4b507-bbf5-430b-bc60-a944dfabf0fd",
@@ -4153,7 +4366,10 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "liquet-medical"
+      "portalSlug": "liquet-medical",
+      "imageUrl": "https://media.licdn.com/dms/image/v2/D4E0BAQGXU_GhCndrmg/company-logo_200_200/B4EaBDHg8pH4AE-/0/1787832438792/liquet_medical_inc_logo?e=2147483647&v=beta&t=JqJhEDARgLu8Qwa9WNM768BNCiRJ6U4HJKmbzbRu-1w",
+      "imageSourceUrl": "https://www.linkedin.com/company/liquet-medical-inc/",
+      "imageCaption": "Published website preview image"
     },
     {
       "id": "registry-15b90573-63a1-4620-9bb7-38c38d74f9a8",
@@ -4195,7 +4411,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "lu-ma"
+      "portalSlug": "lu-ma",
+      "imageUrl": "https://images.lumacdn.com/uploads/4j/b0fee201-0c0a-4722-8355-2621dcfe8982.png",
+      "imageSourceUrl": "https://lu.ma/civic-tech-dc"
     },
     {
       "id": "92591a92-ca2d-432a-be35-8e61b604378a",
@@ -4237,7 +4455,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "luma-user-2ewbpcn6lj9dzqz"
+      "portalSlug": "luma-user-2ewbpcn6lj9dzqz",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=api.lu.ma&sz=256",
+      "imageSourceUrl": "https://api.lu.ma/user/profile/events-hosting?user_api_id=usr-2eWBPcn6lj9Dzqz"
     },
     {
       "id": "f5dd1357-c285-4f64-915f-8198a326362e",
@@ -4251,7 +4471,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "luma-user-ctlmpnsi6jhywep"
+      "portalSlug": "luma-user-ctlmpnsi6jhywep",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=api.lu.ma&sz=256",
+      "imageSourceUrl": "https://api.lu.ma/user/profile/events-hosting?user_api_id=usr-cTlmPNsi6jHYweP"
     },
     {
       "id": "ea7046ad-2491-4da6-a171-a9dee1d8dff7",
@@ -4265,7 +4487,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "luma-user-d4s75dzyc9voxad"
+      "portalSlug": "luma-user-d4s75dzyc9voxad",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=api.lu.ma&sz=256",
+      "imageSourceUrl": "https://api.lu.ma/user/profile/events-hosting?user_api_id=usr-d4s75dZyC9VOXAd"
     },
     {
       "id": "42d42ba2-af03-476c-a909-d91665588810",
@@ -4279,7 +4503,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "luma-user-izfykynctuztfld"
+      "portalSlug": "luma-user-izfykynctuztfld",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=api.lu.ma&sz=256",
+      "imageSourceUrl": "https://api.lu.ma/user/profile/events-hosting?user_api_id=usr-iZFykYNctUzTFLd"
     },
     {
       "id": "c847dd22-120e-49d1-ac70-8b0922477984",
@@ -4335,7 +4561,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "luma-com-28"
+      "portalSlug": "luma-com-28",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=luma.com&sz=256",
+      "imageSourceUrl": "https://luma.com/hikeandheal"
     },
     {
       "id": "1dd6ab51-722c-4fe4-b974-c49b87e5f66f",
@@ -4433,7 +4661,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "luma-com-26"
+      "portalSlug": "luma-com-26",
+      "imageUrl": "https://images.lumacdn.com/uploads/rp/213f6ac2-3c27-4596-9254-acd09314fd44.png",
+      "imageSourceUrl": "https://luma.com/getsentry"
     },
     {
       "id": "55f1654e-620c-4caa-a041-e1974a94df6d",
@@ -4489,7 +4719,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "luma-com-25"
+      "portalSlug": "luma-com-25",
+      "imageUrl": "https://images.lumacdn.com/uploads/s8/c8dcbbad-cea0-467d-b7af-f040839a5ec6.png",
+      "imageSourceUrl": "https://luma.com/globaltechtritionistalliance"
     },
     {
       "id": "6c3146c9-51bb-435c-9413-4136e6972ceb",
@@ -4545,7 +4777,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "luma-com-10"
+      "portalSlug": "luma-com-10",
+      "imageUrl": "https://images.lumacdn.com/event-covers/nf/e62a4a8f-48cb-45f9-bc74-5a88111b3113.png",
+      "imageSourceUrl": "https://luma.com/pgpforcrypto"
     },
     {
       "id": "8b5ca472-6c1f-4612-b01a-32123134ec30",
@@ -4559,7 +4793,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "luma-com-13"
+      "portalSlug": "luma-com-13",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=luma.com&sz=256",
+      "imageSourceUrl": "https://luma.com/theupskillinglabs"
     },
     {
       "id": "a28febab-1a7e-4519-bb9f-ec2feac016ff",
@@ -4587,7 +4823,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "luma-com-29"
+      "portalSlug": "luma-com-29",
+      "imageUrl": "https://images.lumacdn.com/uploads/da/92654a55-ca81-4676-9bc4-5feb21b42251.png",
+      "imageSourceUrl": "https://luma.com/ucitysquare"
     },
     {
       "id": "a5f92be5-67c4-4abb-b3c1-36cd258346bb",
@@ -4601,7 +4839,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "luma-com-5"
+      "portalSlug": "luma-com-5",
+      "imageUrl": "https://images.lumacdn.com/uploads/m7/bdc2669c-5967-4b44-9e2d-102260824f1d.webp",
+      "imageSourceUrl": "https://luma.com/ai-discussion-club"
     },
     {
       "id": "a7e8ea67-2e95-4ee5-abd5-d3d1deba52ef",
@@ -4643,7 +4883,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "luma-com-4"
+      "portalSlug": "luma-com-4",
+      "imageUrl": "https://images.lumacdn.com/uploads/jd/7a1fe068-d26e-4180-b6d9-fa5b7d2cb84c.png",
+      "imageSourceUrl": "https://luma.com/girliesintechdinner"
     },
     {
       "id": "b90196eb-3535-46d6-8b6c-d2394af4f241",
@@ -4671,7 +4913,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "luma-com-11"
+      "portalSlug": "luma-com-11",
+      "imageUrl": "https://images.lumacdn.com/event-covers/nf/365f03f2-2c4f-4825-bb2a-889a89987e86.png",
+      "imageSourceUrl": "https://luma.com/bitcoindistrict"
     },
     {
       "id": "d1ae1b3e-7cb1-45f3-bc0e-2f29817728d6",
@@ -4685,7 +4929,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "luma-com-34"
+      "portalSlug": "luma-com-34",
+      "imageUrl": "https://images.lumacdn.com/uploads/97/7b5ba93e-1512-42d1-a57f-080cc855c8ec.jpg",
+      "imageSourceUrl": "https://luma.com/blackhippieart"
     },
     {
       "id": "dab3ded8-cc9d-4b5e-80c4-a4d46412ec1c",
@@ -4699,7 +4945,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "luma-com-31"
+      "portalSlug": "luma-com-31",
+      "imageUrl": "https://images.lumacdn.com/event-covers/fh/b16a1b79-07e6-4f44-a258-262fa30a696f.jpg",
+      "imageSourceUrl": "https://luma.com/letmeknowclub"
     },
     {
       "id": "de0c83fb-3adb-492f-b532-e2c1452cf21a",
@@ -4713,7 +4961,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "luma-com-12"
+      "portalSlug": "luma-com-12",
+      "imageUrl": "https://images.lumacdn.com/uploads/1w/7167bc75-e4c0-41ce-a6cc-f4c9eb4d1454.png",
+      "imageSourceUrl": "https://luma.com/stationdc"
     },
     {
       "id": "e138dae1-1494-494d-857f-521e87299f6b",
@@ -4727,7 +4977,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "luma-com-2"
+      "portalSlug": "luma-com-2",
+      "imageUrl": "https://images.lumacdn.com/event-covers/1e/76e1f068-30cb-4a73-9c44-a5d14d1d5f05.png",
+      "imageSourceUrl": "https://luma.com/defense-tech-dc"
     },
     {
       "id": "f71cd133-9db4-4ecd-b275-e21ef50f84e4",
@@ -4741,7 +4993,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "luma-com-32"
+      "portalSlug": "luma-com-32",
+      "imageUrl": "https://images.lumacdn.com/uploads/qd/d3b135a4-db0e-40d0-b85f-24d351083e5f.png",
+      "imageSourceUrl": "https://luma.com/uev"
     },
     {
       "id": "fe67bb6a-ee7c-45bd-8355-f8b401c17506",
@@ -4755,7 +5009,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "luma-com-3"
+      "portalSlug": "luma-com-3",
+      "imageUrl": "https://images.unsplash.com/photo-1545987796-200677ee1011?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3wxMjQyMjF8MHwxfHNlYXJjaHw3fHxkYXRhfGVufDB8fHx8MTc3MjEzNjY1NHwy&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageSourceUrl": "https://luma.com/DC2"
     },
     {
       "id": "696fbd32-b492-4a46-9e90-82d4972af234",
@@ -4797,7 +5053,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "maryland-blockchain-association-meetup"
+      "portalSlug": "maryland-blockchain-association-meetup",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/www-marylandblockchainassociation-org/"
     },
     {
       "id": "0346cf3e-838b-4537-85e7-e2b3bb30c8c7",
@@ -4825,7 +5083,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "maryland-chamber-of-commerce"
+      "portalSlug": "maryland-chamber-of-commerce",
+      "imageUrl": "https://www.mdchamber.org/wp-content/uploads/sites/47/2017/09/Maryland-Chamber-logo.png",
+      "imageSourceUrl": "https://www.mdchamber.org/events/"
     },
     {
       "id": "46c059c9-7a78-434b-bddf-86e341d3b831",
@@ -4853,7 +5113,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "maryland-democratic-party"
+      "portalSlug": "maryland-democratic-party",
+      "imageUrl": "https://mddems.org/wp-content/uploads/2023/05/MD-DEMS-LOGO.png",
+      "imageSourceUrl": "https://mddems.org/events/"
     },
     {
       "id": "4ec56967-765e-4fb4-a939-63aaf9769f58",
@@ -4923,7 +5185,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "maryland-events-on-new-technology-and-education"
+      "portalSlug": "maryland-events-on-new-technology-and-education",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/maryland-education-technology-meetup-group/"
     },
     {
       "id": "30e5a06b-3f2b-48f2-bfe5-3230d2037d96",
@@ -4937,7 +5201,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "maryland-food-bank-events-2"
+      "portalSlug": "maryland-food-bank-events-2",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=mdfoodbank.org&sz=256",
+      "imageSourceUrl": "https://mdfoodbank.org/events/category/foodworks/day/2026-06-26/"
     },
     {
       "id": "c75e30ba-df7d-42a4-a22f-85bc8731b878",
@@ -4965,7 +5231,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "maryland-food-bank-pantry-on-the-go"
+      "portalSlug": "maryland-food-bank-pantry-on-the-go",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=mdfoodbank.org&sz=256",
+      "imageSourceUrl": "https://mdfoodbank.org/events/week/"
     },
     {
       "id": "47ee2f62-6d08-4964-99ec-e0682dc32794",
@@ -4979,7 +5247,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "maryland-forward-party-2"
+      "portalSlug": "maryland-forward-party-2",
+      "imageUrl": "https://static.wixstatic.com/media/d08726_f0a40763c1b0494d9747efd59718dced%7Emv2.png/v1/fill/w_192%2Ch_192%2Clg_1%2Cusm_0.66_1.00_0.01/d08726_f0a40763c1b0494d9747efd59718dced%7Emv2.png",
+      "imageSourceUrl": "https://www.marylandforwardparty.com/get-involved"
     },
     {
       "id": "ef07c669-4947-4845-9612-15191e17a529",
@@ -4993,7 +5263,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "maryland-forward-party"
+      "portalSlug": "maryland-forward-party",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/marylandforwardparty/"
     },
     {
       "id": "eb9a96a2-b7d9-4147-969d-38603b786f0c",
@@ -5007,7 +5279,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "maryland-gop"
+      "portalSlug": "maryland-gop",
+      "imageUrl": "https://mdgop.org/wp-content/uploads/sites/30/2025/10/MDGOP-logo-2.png",
+      "imageSourceUrl": "https://mdgop.org/calendar/"
     },
     {
       "id": "54e1cf24-3ea4-49d1-8a68-6b29c0c886df",
@@ -5049,7 +5323,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "meditation-modern-buddhism-canton"
+      "portalSlug": "meditation-modern-buddhism-canton",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/meditation-modern-buddhism-in-canton/"
     },
     {
       "id": "b14173c1-5170-4c4d-aea6-bc1f921a59e0",
@@ -5091,7 +5367,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "meetup-com-21"
+      "portalSlug": "meetup-com-21",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/honolulu-tech-network/"
     },
     {
       "id": "08d45ee9-df8e-4113-a914-43db414dc4a8",
@@ -5105,7 +5383,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "meetup-com-24"
+      "portalSlug": "meetup-com-24",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/pydata-pittsburgh/"
     },
     {
       "id": "08d66bff-9f66-4722-878f-abff33717ac3",
@@ -5133,7 +5413,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "meetup-com-2"
+      "portalSlug": "meetup-com-2",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/lfdt-washington-dc/"
     },
     {
       "id": "129ef14b-dbe1-4c69-aa3f-98938d7816a2",
@@ -5161,7 +5443,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "meetup-com-34"
+      "portalSlug": "meetup-com-34",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/Philadelphia-Cyber-Security-for-Control-Systems"
     },
     {
       "id": "1f0d42a3-3dc3-4cc8-8067-6fc42d2d1552",
@@ -5301,7 +5585,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "meetup-com-17"
+      "portalSlug": "meetup-com-17",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/sierradc/"
     },
     {
       "id": "3fd7a75c-9329-4239-9980-552fb9c17bc2",
@@ -5329,7 +5615,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "meetup-com-43"
+      "portalSlug": "meetup-com-43",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/philly-data-and-ai/"
     },
     {
       "id": "42356981-ff65-41af-82bd-0017ff34ea67",
@@ -5357,7 +5645,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "meetup-com-23"
+      "portalSlug": "meetup-com-23",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/write-the-docs-pittsburgh/"
     },
     {
       "id": "55b9cc65-4792-4876-8fc0-ddd55b26e802",
@@ -5385,7 +5675,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "meetup-com-20"
+      "portalSlug": "meetup-com-20",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/oahuai/"
     },
     {
       "id": "638b7242-7629-49b6-8376-04ab0c5283bb",
@@ -5399,7 +5691,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "meetup-com-5"
+      "portalSlug": "meetup-com-5",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/bethesda-ted-talk-discussion-club/"
     },
     {
       "id": "7647d175-9260-4b46-96cd-1dc84351b86f",
@@ -5413,7 +5707,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "meetup-com-16"
+      "portalSlug": "meetup-com-16",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/dc-ai-llms/"
     },
     {
       "id": "8171be0e-1108-4a1d-9fbd-1f56d3bae5ef",
@@ -5455,7 +5751,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "meetup-com-37"
+      "portalSlug": "meetup-com-37",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/ai-safety-awareness-group-philadelphia"
     },
     {
       "id": "8bd56727-de08-4de0-aa7e-c1fbefac6aae",
@@ -5469,7 +5767,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "meetup-com-3"
+      "portalSlug": "meetup-com-3",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/openanalyticsdc/"
     },
     {
       "id": "917ba01e-6963-4940-8f38-ffcd51c59963",
@@ -5497,7 +5797,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "meetup-com-12"
+      "portalSlug": "meetup-com-12",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/platform-engineers-washington-dc/"
     },
     {
       "id": "9b0a9c4b-96cc-4142-b6f2-0fde7d4542d5",
@@ -5525,7 +5827,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "meetup-com-22"
+      "portalSlug": "meetup-com-22",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/code-and-coffee-pgh/"
     },
     {
       "id": "a16b1639-4e2c-428a-9670-8eba3baa4336",
@@ -5539,7 +5843,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "meetup-com-10"
+      "portalSlug": "meetup-com-10",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/geo-dc/"
     },
     {
       "id": "a5397bd1-ba1f-4e09-ac0d-20974b12b6ae",
@@ -5567,7 +5873,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "meetup-com-49"
+      "portalSlug": "meetup-com-49",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/philadelphia-linux-user-group-meetup/"
     },
     {
       "id": "aef6589d-9985-4003-8907-8cf669d78966",
@@ -5581,7 +5889,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "meetup-com-13"
+      "portalSlug": "meetup-com-13",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/washington-dc-cyber-security-for-control-systems/"
     },
     {
       "id": "b4d2690c-5c67-44e5-9560-26d6c96ecce7",
@@ -5609,7 +5919,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "meetup-com-53"
+      "portalSlug": "meetup-com-53",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/code-coffee-philly/"
     },
     {
       "id": "bc336d15-4e60-4b45-ab93-87b6c141634e",
@@ -5623,7 +5935,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "meetup-com-26"
+      "portalSlug": "meetup-com-26",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/sci-and-sci-fi/"
     },
     {
       "id": "bd78624b-35e1-48a5-992f-37d9250f5923",
@@ -5637,7 +5951,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "meetup-com-40"
+      "portalSlug": "meetup-com-40",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/gdg-philly"
     },
     {
       "id": "c3560a90-89c1-4796-8f58-4dcbe5d988c4",
@@ -5651,7 +5967,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "meetup-com-4"
+      "portalSlug": "meetup-com-4",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/meetup-group-xfwllgfg/"
     },
     {
       "id": "c4c00247-994f-4768-8a93-5d0462620977",
@@ -5665,7 +5983,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "meetup-com-42"
+      "portalSlug": "meetup-com-42",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/ai-philly/"
     },
     {
       "id": "c5a8d28c-4506-47a7-8f4c-3d34fbdb694a",
@@ -5707,7 +6027,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "meetup-com-7"
+      "portalSlug": "meetup-com-7",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/dc-code-coffee/"
     },
     {
       "id": "d85e5030-21c2-4558-8e0c-0481d7d32ed5",
@@ -5735,7 +6057,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "meetup-com-41"
+      "portalSlug": "meetup-com-41",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/Mid-Atlantic-Computational-Chemistry-MACC"
     },
     {
       "id": "d87c6ba1-5d6a-42cb-b821-7fe574ac83e8",
@@ -5777,7 +6101,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "meetup-com-8"
+      "portalSlug": "meetup-com-8",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/dcprofessonals/"
     },
     {
       "id": "f78dee7c-ac76-4e68-9683-89ff92d250f9",
@@ -5833,7 +6159,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "meetup-com-29"
+      "portalSlug": "meetup-com-29",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/TechinMotionPhilly"
     },
     {
       "id": "fe05aa19-f60d-453e-af45-0664e90d6796",
@@ -5847,7 +6175,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "meetup-com-15"
+      "portalSlug": "meetup-com-15",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/content-strategy-dc/"
     },
     {
       "id": "32240c9c-0bb3-47fe-a795-2fb65bf0b007",
@@ -5945,7 +6275,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "mosaicchristian-org"
+      "portalSlug": "mosaicchristian-org",
+      "imageUrl": "https://mosaicchristian.org/wp-content/uploads/2023/09/Mosaic-Logo.png",
+      "imageSourceUrl": "https://mosaicchristian.org/events/"
     },
     {
       "id": "9426f30f-9058-48c9-9013-d7d0a6dc8b4f",
@@ -6015,7 +6347,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "nami-metro-baltimore-events"
+      "portalSlug": "nami-metro-baltimore-events",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=namibaltimore.org&sz=256",
+      "imageSourceUrl": "https://namibaltimore.org/get-involved/events/"
     },
     {
       "id": "registry-db0e6767-ec4d-4803-89f8-bab9c3aec19a",
@@ -6043,7 +6377,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "nsbe-baltimore"
+      "portalSlug": "nsbe-baltimore",
+      "imageUrl": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F34165011%2F1065005214%2F2%2Foriginal.jpg?w=2000&amp;auto=format%2Ccompress&amp;q=75&amp;sharp=10&amp;s=23b19d46cebcb2b4743fcd96f09feb9b",
+      "imageSourceUrl": "https://www.eventbrite.com/o/11070919734"
     },
     {
       "id": "registry-76b95dab-0718-49d9-b989-19d24df0caf7",
@@ -6099,7 +6435,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "open-works-baltimore"
+      "portalSlug": "open-works-baltimore",
+      "imageUrl": "https://www.openworksbmore.org/wp-content/uploads/2021/04/openworks-logo.svg",
+      "imageSourceUrl": "https://www.eventbrite.com/o/open-works-86343210063"
     },
     {
       "id": "23a730f9-dc99-47c6-9c31-53ae9f6a6d1b",
@@ -6141,7 +6479,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "parks-and-people-events-2"
+      "portalSlug": "parks-and-people-events-2",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=parksandpeople.org&sz=256",
+      "imageSourceUrl": "https://www.parksandpeople.org/events/onqdkuhzd7v2hjrvgsrbk5reyqf3xo"
     },
     {
       "id": "b97604c2-1ac4-463e-978b-42115f00d6e8",
@@ -6169,7 +6509,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "parks-and-people-events-3"
+      "portalSlug": "parks-and-people-events-3",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=parksandpeople.org&sz=256",
+      "imageSourceUrl": "https://www.parksandpeople.org/events/picnic-in-the-park-2026"
     },
     {
       "id": "registry-98d4c27c-187d-4a53-a584-a7e0c41e2d78",
@@ -6295,7 +6637,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "pratt-compassion-clothing-closet-2"
+      "portalSlug": "pratt-compassion-clothing-closet-2",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=calendar.prattlibrary.org&sz=256",
+      "imageSourceUrl": "https://calendar.prattlibrary.org/"
     },
     {
       "id": "33ee28bd-70b7-4004-a41d-affbc502d13c",
@@ -6309,7 +6653,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "prince-george-s-parks-events"
+      "portalSlug": "prince-george-s-parks-events",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=pgparks.com&sz=256",
+      "imageSourceUrl": "https://www.pgparks.com/events"
     },
     {
       "id": "d83ad18d-874b-4d8d-9da3-b3706f6574ae",
@@ -6323,7 +6669,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "prince-george-s-parks-events-2"
+      "portalSlug": "prince-george-s-parks-events-2",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=pgparks.com&sz=256",
+      "imageSourceUrl": "https://www.pgparks.com/event_list/250"
     },
     {
       "id": "46e98b55-28b3-48a2-a868-4a841c2c16c6",
@@ -6337,7 +6685,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "profs-and-pints-baltimore"
+      "portalSlug": "profs-and-pints-baltimore",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/profs-and-pints-baltimore/"
     },
     {
       "id": "registry-b86f3acd-d9b3-4b41-ae66-bb9ee83f2479",
@@ -6393,7 +6743,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "red-emma-s"
+      "portalSlug": "red-emma-s",
+      "imageUrl": "https://redemmas.org/static/logo-2096e46fa2115c72698cb268ccbd90c7.png",
+      "imageSourceUrl": "https://redemmas.org/events/"
     },
     {
       "id": "registry-75fe1699-3bcc-4f2c-ad70-036e503eb5ed",
@@ -6477,7 +6829,10 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "rubitection"
+      "portalSlug": "rubitection",
+      "imageUrl": "https://media.licdn.com/dms/image/v2/C560BAQH-HhDV-rvDyQ/company-logo_200_200/company-logo_200_200/0/1630643442986/rubitection_inc_logo?e=2147483647&v=beta&t=zfd-mGusVjUjonimnyxKb0PKQXiI3poMOwKYw5beiCo",
+      "imageSourceUrl": "https://www.linkedin.com/company/rubitection-inc/",
+      "imageCaption": "Published website preview image"
     },
     {
       "id": "c69ce871-4f1b-49fc-a3db-1ab0906a98a4",
@@ -6603,7 +6958,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "st-ambrose-housing-aid-center-events-2"
+      "portalSlug": "st-ambrose-housing-aid-center-events-2",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=stambros.org&sz=256",
+      "imageSourceUrl": "https://www.stambros.org/event/homebuying-workshops-virtual-june-14/"
     },
     {
       "id": "c857273c-337e-415d-8715-4994f24ea3f9",
@@ -6617,7 +6974,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "st-ambrose-housing-aid-center-events-3"
+      "portalSlug": "st-ambrose-housing-aid-center-events-3",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=stambros.org&sz=256",
+      "imageSourceUrl": "https://www.stambros.org/event/homebuying-workshop-june-20-in-person/"
     },
     {
       "id": "registry-b8bbca4a-be2f-4a72-b4b8-b93b914fdea3",
@@ -6673,7 +7032,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "techconnect-west-virginia"
+      "portalSlug": "techconnect-west-virginia",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=eventbrite.com&sz=256",
+      "imageSourceUrl": "https://www.eventbrite.com/o/techconnect-west-virginia-111407937521"
     },
     {
       "id": "registry-aec45e4d-574d-4256-9c69-39d27e7281e9",
@@ -6743,7 +7104,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "the-chronically-chill-meetup-group"
+      "portalSlug": "the-chronically-chill-meetup-group",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/the-chronically-chill-meetup-group/"
     },
     {
       "id": "1beb57d4-61e1-4ed8-8841-ff7c36ee8d49",
@@ -6785,7 +7148,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "thread-baltimore-upcoming-events"
+      "portalSlug": "thread-baltimore-upcoming-events",
+      "imageUrl": "https://www.thread.org/wp-content/uploads/2021/01/thread-official-trademarked-logo.png",
+      "imageSourceUrl": "https://my.thread.org/api/v2/help_center/en-us/categories/360005554572/articles.json"
     },
     {
       "id": "registry-ea6f8f4d-fb3b-4ba0-a79b-bf1b06118cba",
@@ -6925,7 +7290,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "visit-baltimore"
+      "portalSlug": "visit-baltimore",
+      "imageUrl": "https://baltimore.org/wp-content/uploads/2024/06/visit-baltimore-logo.svg",
+      "imageSourceUrl": "https://baltimore.org/events/"
     },
     {
       "id": "9e79078b-47cf-42b6-a9c1-899ed45091f1",
@@ -6953,7 +7320,10 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "wearabledose"
+      "portalSlug": "wearabledose",
+      "imageUrl": "https://media.licdn.com/dms/image/v2/D4E0BAQEBCeVlgE40bg/company-logo_200_200/B4EZ0OQmk_HgAI-/0/1774060726866/wearabledose_logo?e=2147483647&v=beta&t=Y8dT6AmrhlgdWYKHpU5SpGJeGeiDYzkwevPJiQaTr0o",
+      "imageSourceUrl": "https://www.linkedin.com/company/wearabledose/",
+      "imageCaption": "Published website preview image"
     },
     {
       "id": "3334969c-c3c0-4a46-8db0-ba2178963f36",
@@ -6967,7 +7337,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "web3-maryland"
+      "portalSlug": "web3-maryland",
+      "imageUrl": "https://images.lumacdn.com/avatars/4g/431276ef-4081-4db7-a077-9a45da105826.png",
+      "imageSourceUrl": "https://api.lu.ma/user/profile/events-hosting?user_api_id=usr-A83YmR5Onz1uMdp"
     },
     {
       "id": "e55e7e3e-35dd-4a66-afb9-0512d881c3d1",
@@ -7009,7 +7381,9 @@
       "publicEmails": [],
       "sourceRows": [],
       "sourceCategory": "OrgPortal",
-      "portalSlug": "wordpress-frederick"
+      "portalSlug": "wordpress-frederick",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=meetup.com&sz=256",
+      "imageSourceUrl": "https://www.meetup.com/wordpress-frederick/"
     },
     {
       "id": "registry-1cb5a821-8354-4563-b6ae-009fe4ef351f",
@@ -7167,7 +7541,9 @@
       "proximity": null,
       "publicEmails": [],
       "sourceRows": [],
-      "sourceCategory": "Code Collective event sources"
+      "sourceCategory": "Code Collective event sources",
+      "imageUrl": "https://www.bccenter.org/images/logo.png",
+      "imageSourceUrl": "https://www.bccenter.org/events/"
     },
     {
       "id": "history-org-visit-baltimore-events",
@@ -7180,7 +7556,9 @@
       "proximity": null,
       "publicEmails": [],
       "sourceRows": [],
-      "sourceCategory": "Code Collective event sources"
+      "sourceCategory": "Code Collective event sources",
+      "imageUrl": "https://baltimore.org/wp-content/uploads/2024/06/visit-baltimore-logo.svg",
+      "imageSourceUrl": "https://baltimore.org/events/"
     },
     {
       "id": "history-org-saintmos-org",
@@ -7297,7 +7675,9 @@
       "proximity": null,
       "publicEmails": [],
       "sourceRows": [],
-      "sourceCategory": "Code Collective event sources"
+      "sourceCategory": "Code Collective event sources",
+      "imageUrl": "https://www.mlbstatic.com/team-logos/team-cap-on-dark/110.svg",
+      "imageSourceUrl": "https://www.mlb.com/orioles/schedule"
     },
     {
       "id": "history-org-power-plant-live",
@@ -7375,7 +7755,9 @@
       "proximity": null,
       "publicEmails": [],
       "sourceRows": [],
-      "sourceCategory": "Code Collective event sources"
+      "sourceCategory": "Code Collective event sources",
+      "imageUrl": "https://www.google.com/s2/favicons?domain=baltimoresistercities.org&sz=256",
+      "imageSourceUrl": "https://baltimoresistercities.org/events/"
     },
     {
       "id": "history-org-community-co-op-development",
@@ -7518,7 +7900,10 @@
       "proximity": null,
       "publicEmails": [],
       "sourceRows": [],
-      "sourceCategory": "Public research"
+      "sourceCategory": "Public research",
+      "imageUrl": "https://cdn.maryland.gov/maryland-cms/prod/www-maryland-gov/s3fs-public/2025-12/City-large.png?versionId=NpKsJwfb13bax1tMplRo2JPLR2TQ6BUc&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEKP%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLWVhc3QtMSJHMEUCIH3PFGRi1%2Fg3MUdlWD9%2FVsBWbcfjTBhoB6gIshmHSS6bAiEAluq4sGYvEiVbBcsZLpknX7JZ1fDn0M0Xu5eP3rBJmOQqugUIbBAAGgw3MTYwNjc2Njc5NDIiDKP1OhQs%2BwKYC6CHRyqXBTcY0aWfYF8WguUh8TQY5%2FlDygytz4rzQgXCKeF4qiDjzidBUODUWKDyx1%2BUN43Qe%2BzzDDh9kZX94SVAeN1xDvPbf%2BddPkSgXhsiuo5aCu41H%2FnajR7Ms7XLb903oahTJ%2Bzk66E5e%2F4WTsszJEQCiq7xSjgZzOxhijmFsUfsk1cQxqWhXIO225amQ%2B0XFHa0Ae2TVIuC5HvXilwqG%2BHTQi9enrwB9SgVLcBNsQyW5GZWcOR7OZsxfXDwXIZOMH9VgOo6qx8SuY%2FUtQqtrLzWM2P7%2BkmXk0W6vYj2Iy6qefAa3dqrXZrDq%2BTCGlEfB4LrHlpFwXcTjISe0aVlwlJLMhIV1a8%2FRSPGy7c80k1qtrk5TtRCOPbyhmCmG%2BorrWCLGg93Qz0c0b4djBMErrja633gBumH4GFzfmsDWlAI4wxGVakeB441xQIqkdf1Rdb94iyAy4Dm33Z9c1hCK0zYktR50dG3ckY38%2FRoR%2Fy2wjWKbUOkxmtUorgRPe5I4d7Vz5En9edN4vegYCluqwzKk%2BFyUeAGzgWwVz8do5L1OCe2xVqHNyjSvki9wggKdRERWOSCSbFrRxLg1sdqFgVUh%2BZn%2BUrJqYRM53Nd5yUhvXYQMCGrLjHGB766kZQzlidE0GgIgpOqmG05tLWp%2BwZL0WCfvvBLiMxKqythi3B%2BDDi%2Bf63BK4TcuQGV9mDIOIL%2FJkOPqjthS%2FOdrs%2F3vaGlAHS11KGwy0yy2S5HJzuON2tzfwGczyahSaBeh08fau8dzEOkmlz4cyxGwpT0oz7z7OUgoBFKaPBQ4VLyMRzet2no1BCIYIVwNhA7beWDl9hdICtk1bkIbCQG6vGOA7pkBexdNt6eAA9jQO8RBa49PVmARLd5B%2B4FYTDytfXVBjqxAYLw%2FayKYgUW2ax8eeqeMVM8QaqbTtTfswURDBV6GWue%2B3UAmd64Bhqfx%2FDxquM3fqY0y0khfWpGDAnWOIkAZj1tJ4qp2KezuI%2FOaXUiMX3XeQSUmY4u%2F3SufrdE45YhLdRC%2BsklvvrCBsCdhTRpVsliVtrjAiOjPQO6Jqw6m2jaE1rRd%2FU7trvr6%2BEg3IVcAST4knIjDAQcvJFIUjfkFG0tX59iiYDvU6qHn67Tk%2BdUQQ%3D%3D&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=ASIA2NOHVP7TOAEPZYJ4%2F20260930%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260930T191139Z&X-Amz-SignedHeaders=host&X-Amz-Expires=600&X-Amz-Signature=b959fe8f28efbe9542b9c95b541887cf32ac5855bf8e73a66c576870e8b25dff",
+      "imageSourceUrl": "https://www.maryland.gov/",
+      "imageCaption": "Published website preview image"
     },
     {
       "id": "research-maryland-commerce",
@@ -7531,7 +7916,10 @@
       "proximity": null,
       "publicEmails": [],
       "sourceRows": [],
-      "sourceCategory": "Public research"
+      "sourceCategory": "Public research",
+      "imageUrl": "https://cdn.maryland.gov/maryland-cms/prod/commerce/s3fs-public/images/2026-09/Commerce_home-header%20-%20Edited.jpg?versionId=3PhT3WbI6u0ty09AAfKJpX0_btvBjKut&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEC4aCXVzLWVhc3QtMSJHMEUCIQDwrCisfy1g0h92nQrfxIa%2BZj4D%2FJhe%2Fpja98Y%2FeWHhAgIgb66wcYKgDWtRC1UaDmeIyznT3CiGUXdDELFInGVrTWAqwwUI9%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FARAAGgw3MTYwNjc2Njc5NDIiDPlQ12ltQ26Hziz8qCqXBXKCku52EDSIJnz8h1jOIiIHp%2BSt27dU447asLmgYkA4C6Ejm0NnSXksmRE4LFkaPPQ2HVHfIF9cTfet5s8dcyTKkVKtO%2BzTKjx1EGLH1846yp4%2BYHxltqMEK5GCqT3SH%2BqpgFn%2BkLVKa0DZ7P2Plaf4jeFTDcDIVcmjSr3NGGq8%2B19aDnLb2aW%2B42cV9uqwlo%2BbINUt%2BhYB14Soj53fd9n35cHOlEUjkuFrSqcLru821Pio88BBYbY%2BE5NivBIN50su6g52OoPY%2BAuH12udPTj0D4%2FHMaEIDrzLMhnrtyl0qhcQLyAlLhC86Zs5Y2VBMk66d152fMlNIkeY7X%2FSlO%2B3o%2FzKIIN4N7NUj6jniULhqcb9IWTd1cwNSG2QOtcmY2aLArNwGukxqBFcQJb8QUncyj%2F1zxzt7kswS6TddX4nE5vxlXgXM0EzIX1oezeqG4lSW6XrSjbRHKiEFNrPfA%2FjsgevxE4W4gbCizRunO32NkowlefDGm2vRX29u%2BYo6xUhjKLxc2vLh15Tv9%2FZDOXm4zTbha098B0JKmf%2Bai9c2sVEo8WCjtCSvj%2FAkgcOCwF5lxtFAQwr4qBGLox32YrePlLmlE%2BXEZ9y6LVPMRUMcytytUW5dsM9yEHPWQEIMfewl%2BwFV%2F947sKzr83L%2Bi9buwVBC7XLUTSQvT%2FhxlQ1u9i7%2B34vFixZq2uSB3oa5aLs4ebfj1BvgPg5bIMOepuKylYuey2voYo3bhkHmss%2BNPyvgsxjKjRpdkaMEEc7wtJTYT39DK3MyYuQlIDFGKrnrGv9Poh%2BQ6jOdPj091Pl8m%2FH5CJvXMiDZTU6fA9LFhRl4y1qedRVNmjv6aL5wOaHaJxhfaqgROXz8maAlu97y0gXqv2rZDCl%2F5PWBjqxAaE4ybbAPZ%2B7OfByoCB78VMdr4NxNSE%2F5XlGWqZM9bBJMGNx6lghZKr7XR%2FS1HAuehjc1dfC%2FgBaaLpCaZ4MPJp9jI3ywKXe1Nj7XikzfpKA%2FhHMKNhu3jfodtKKi4wRvKIZwt6eGQGdPWneuDkqxEkblte%2BHDdfY%2Bcdyh0%2FQ4YHVkK4PNPX7w4sIE%2B4xuyKSTX4ge4Oa5y3cCP9iZupc570Vt89qCHaPN9RRrtOG1r3EA%3D%3D&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=ASIA2NOHVP7TNL7OSGFG%2F20261006%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20261006T144828Z&X-Amz-SignedHeaders=host&X-Amz-Expires=600&X-Amz-Signature=e6cfb48389f7887cebe2606b8f3fc26627fd44d41eb2fbeb7d7746e571752850",
+      "imageSourceUrl": "https://commerce.maryland.gov/",
+      "imageCaption": "Published website preview image"
     },
     {
       "id": "research-build-future-recipient-1",
@@ -7648,7 +8036,10 @@
       "proximity": null,
       "publicEmails": [],
       "sourceRows": [],
-      "sourceCategory": "Public research"
+      "sourceCategory": "Public research",
+      "imageUrl": "https://www.standwithcrypto.org/api/public/og/eyJ0aXRsZSI6IlN0YW5kJTIwV2l0aCUyMENyeXB0byUyMEFsbGlhbmNlJTIwaXMlMjBhJTIwbm9uLXByb2ZpdCUyMG9yZ2FuaXphdGlvbiUyMGRlZGljYXRlZCUyMHRvJTIwdW5pdGluZyUyMGdsb2JhbCUyMGNyeXB0byUyMGFkdm9jYXRlcy4ifQ==",
+      "imageSourceUrl": "https://www.standwithcrypto.org/",
+      "imageCaption": "Published website preview image"
     }
   ],
   "dashboard": [

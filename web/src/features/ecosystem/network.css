@@ -156,3 +156,7 @@
 
 .portal-ecosystem [data-class=federal-government]{ --node-color:#234c8c }
 .portal-ecosystem [data-class=state-government]{ --node-color:#a54161 }
+
+.portal-ecosystem .eco-inspector-picture { margin:12px 0; }
+.portal-ecosystem .eco-inspector-picture img { display:block; width:100%; max-height:220px; object-fit:contain; border-radius:8px; }
+.portal-ecosystem .eco-inspector-picture figcaption { font-size:12px; margin-top:6px; overflow-wrap:anywhere; }

@@ -11,7 +11,10 @@
       "proximity": null,
       "publicEmails": [],
       "sourceRows": [],
-      "sourceCategory": "Public research"
+      "sourceCategory": "Public research",
+      "imageUrl": "https://cdn.maryland.gov/maryland-cms/prod/www-maryland-gov/s3fs-public/2025-12/City-large.png?versionId=NpKsJwfb13bax1tMplRo2JPLR2TQ6BUc&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEKP%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLWVhc3QtMSJHMEUCIH3PFGRi1%2Fg3MUdlWD9%2FVsBWbcfjTBhoB6gIshmHSS6bAiEAluq4sGYvEiVbBcsZLpknX7JZ1fDn0M0Xu5eP3rBJmOQqugUIbBAAGgw3MTYwNjc2Njc5NDIiDKP1OhQs%2BwKYC6CHRyqXBTcY0aWfYF8WguUh8TQY5%2FlDygytz4rzQgXCKeF4qiDjzidBUODUWKDyx1%2BUN43Qe%2BzzDDh9kZX94SVAeN1xDvPbf%2BddPkSgXhsiuo5aCu41H%2FnajR7Ms7XLb903oahTJ%2Bzk66E5e%2F4WTsszJEQCiq7xSjgZzOxhijmFsUfsk1cQxqWhXIO225amQ%2B0XFHa0Ae2TVIuC5HvXilwqG%2BHTQi9enrwB9SgVLcBNsQyW5GZWcOR7OZsxfXDwXIZOMH9VgOo6qx8SuY%2FUtQqtrLzWM2P7%2BkmXk0W6vYj2Iy6qefAa3dqrXZrDq%2BTCGlEfB4LrHlpFwXcTjISe0aVlwlJLMhIV1a8%2FRSPGy7c80k1qtrk5TtRCOPbyhmCmG%2BorrWCLGg93Qz0c0b4djBMErrja633gBumH4GFzfmsDWlAI4wxGVakeB441xQIqkdf1Rdb94iyAy4Dm33Z9c1hCK0zYktR50dG3ckY38%2FRoR%2Fy2wjWKbUOkxmtUorgRPe5I4d7Vz5En9edN4vegYCluqwzKk%2BFyUeAGzgWwVz8do5L1OCe2xVqHNyjSvki9wggKdRERWOSCSbFrRxLg1sdqFgVUh%2BZn%2BUrJqYRM53Nd5yUhvXYQMCGrLjHGB766kZQzlidE0GgIgpOqmG05tLWp%2BwZL0WCfvvBLiMxKqythi3B%2BDDi%2Bf63BK4TcuQGV9mDIOIL%2FJkOPqjthS%2FOdrs%2F3vaGlAHS11KGwy0yy2S5HJzuON2tzfwGczyahSaBeh08fau8dzEOkmlz4cyxGwpT0oz7z7OUgoBFKaPBQ4VLyMRzet2no1BCIYIVwNhA7beWDl9hdICtk1bkIbCQG6vGOA7pkBexdNt6eAA9jQO8RBa49PVmARLd5B%2B4FYTDytfXVBjqxAYLw%2FayKYgUW2ax8eeqeMVM8QaqbTtTfswURDBV6GWue%2B3UAmd64Bhqfx%2FDxquM3fqY0y0khfWpGDAnWOIkAZj1tJ4qp2KezuI%2FOaXUiMX3XeQSUmY4u%2F3SufrdE45YhLdRC%2BsklvvrCBsCdhTRpVsliVtrjAiOjPQO6Jqw6m2jaE1rRd%2FU7trvr6%2BEg3IVcAST4knIjDAQcvJFIUjfkFG0tX59iiYDvU6qHn67Tk%2BdUQQ%3D%3D&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=ASIA2NOHVP7TOAEPZYJ4%2F20260930%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260930T191139Z&X-Amz-SignedHeaders=host&X-Amz-Expires=600&X-Amz-Signature=b959fe8f28efbe9542b9c95b541887cf32ac5855bf8e73a66c576870e8b25dff",
+      "imageSourceUrl": "https://www.maryland.gov/",
+      "imageCaption": "Published website preview image"
     },
     {
       "id": "research-maryland-commerce",
@@ -24,7 +27,10 @@
       "proximity": null,
       "publicEmails": [],
       "sourceRows": [],
-      "sourceCategory": "Public research"
+      "sourceCategory": "Public research",
+      "imageUrl": "https://cdn.maryland.gov/maryland-cms/prod/commerce/s3fs-public/images/2026-09/Commerce_home-header%20-%20Edited.jpg?versionId=3PhT3WbI6u0ty09AAfKJpX0_btvBjKut&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEC4aCXVzLWVhc3QtMSJHMEUCIQDwrCisfy1g0h92nQrfxIa%2BZj4D%2FJhe%2Fpja98Y%2FeWHhAgIgb66wcYKgDWtRC1UaDmeIyznT3CiGUXdDELFInGVrTWAqwwUI9%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FARAAGgw3MTYwNjc2Njc5NDIiDPlQ12ltQ26Hziz8qCqXBXKCku52EDSIJnz8h1jOIiIHp%2BSt27dU447asLmgYkA4C6Ejm0NnSXksmRE4LFkaPPQ2HVHfIF9cTfet5s8dcyTKkVKtO%2BzTKjx1EGLH1846yp4%2BYHxltqMEK5GCqT3SH%2BqpgFn%2BkLVKa0DZ7P2Plaf4jeFTDcDIVcmjSr3NGGq8%2B19aDnLb2aW%2B42cV9uqwlo%2BbINUt%2BhYB14Soj53fd9n35cHOlEUjkuFrSqcLru821Pio88BBYbY%2BE5NivBIN50su6g52OoPY%2BAuH12udPTj0D4%2FHMaEIDrzLMhnrtyl0qhcQLyAlLhC86Zs5Y2VBMk66d152fMlNIkeY7X%2FSlO%2B3o%2FzKIIN4N7NUj6jniULhqcb9IWTd1cwNSG2QOtcmY2aLArNwGukxqBFcQJb8QUncyj%2F1zxzt7kswS6TddX4nE5vxlXgXM0EzIX1oezeqG4lSW6XrSjbRHKiEFNrPfA%2FjsgevxE4W4gbCizRunO32NkowlefDGm2vRX29u%2BYo6xUhjKLxc2vLh15Tv9%2FZDOXm4zTbha098B0JKmf%2Bai9c2sVEo8WCjtCSvj%2FAkgcOCwF5lxtFAQwr4qBGLox32YrePlLmlE%2BXEZ9y6LVPMRUMcytytUW5dsM9yEHPWQEIMfewl%2BwFV%2F947sKzr83L%2Bi9buwVBC7XLUTSQvT%2FhxlQ1u9i7%2B34vFixZq2uSB3oa5aLs4ebfj1BvgPg5bIMOepuKylYuey2voYo3bhkHmss%2BNPyvgsxjKjRpdkaMEEc7wtJTYT39DK3MyYuQlIDFGKrnrGv9Poh%2BQ6jOdPj091Pl8m%2FH5CJvXMiDZTU6fA9LFhRl4y1qedRVNmjv6aL5wOaHaJxhfaqgROXz8maAlu97y0gXqv2rZDCl%2F5PWBjqxAaE4ybbAPZ%2B7OfByoCB78VMdr4NxNSE%2F5XlGWqZM9bBJMGNx6lghZKr7XR%2FS1HAuehjc1dfC%2FgBaaLpCaZ4MPJp9jI3ywKXe1Nj7XikzfpKA%2FhHMKNhu3jfodtKKi4wRvKIZwt6eGQGdPWneuDkqxEkblte%2BHDdfY%2Bcdyh0%2FQ4YHVkK4PNPX7w4sIE%2B4xuyKSTX4ge4Oa5y3cCP9iZupc570Vt89qCHaPN9RRrtOG1r3EA%3D%3D&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=ASIA2NOHVP7TNL7OSGFG%2F20261006%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20261006T144828Z&X-Amz-SignedHeaders=host&X-Amz-Expires=600&X-Amz-Signature=e6cfb48389f7887cebe2606b8f3fc26627fd44d41eb2fbeb7d7746e571752850",
+      "imageSourceUrl": "https://commerce.maryland.gov/",
+      "imageCaption": "Published website preview image"
     },
     {
       "id": "research-build-future-recipient-0",
@@ -180,7 +186,9 @@
       "proximity": null,
       "publicEmails": [],
       "sourceRows": [],
-      "sourceCategory": "Public research"
+      "sourceCategory": "Public research",
+      "imageUrl": "https://images.lumacdn.com/event-covers/g9/c8f37734-4941-4ed9-bd3c-b14b7d453112.png",
+      "imageSourceUrl": "https://luma.com/codecollective"
     },
     {
       "id": "research-stand-with-crypto",
@@ -193,7 +201,10 @@
       "proximity": null,
       "publicEmails": [],
       "sourceRows": [],
-      "sourceCategory": "Public research"
+      "sourceCategory": "Public research",
+      "imageUrl": "https://www.standwithcrypto.org/api/public/og/eyJ0aXRsZSI6IlN0YW5kJTIwV2l0aCUyMENyeXB0byUyMEFsbGlhbmNlJTIwaXMlMjBhJTIwbm9uLXByb2ZpdCUyMG9yZ2FuaXphdGlvbiUyMGRlZGljYXRlZCUyMHRvJTIwdW5pdGluZyUyMGdsb2JhbCUyMGNyeXB0byUyMGFkdm9jYXRlcy4ifQ==",
+      "imageSourceUrl": "https://www.standwithcrypto.org/",
+      "imageCaption": "Published website preview image"
     },
     {
       "id": "federal-nsf",
@@ -206,7 +217,10 @@
       "proximity": null,
       "publicEmails": [],
       "sourceRows": [],
-      "sourceCategory": "Federal agency and recipient evidence"
+      "sourceCategory": "Federal agency and recipient evidence",
+      "imageUrl": "https://www.nsf.gov/themes/custom/nsf_theme/logo-200x200.png",
+      "imageSourceUrl": "https://www.nsf.gov/",
+      "imageCaption": "Published website preview image"
     },
     {
       "id": "federal-sba",
@@ -219,7 +233,10 @@
       "proximity": null,
       "publicEmails": [],
       "sourceRows": [],
-      "sourceCategory": "Federal agency and recipient evidence"
+      "sourceCategory": "Federal agency and recipient evidence",
+      "imageUrl": "https://www.sba.gov/app/uploads/2026/07/frontpage.png",
+      "imageSourceUrl": "https://www.sba.gov/",
+      "imageCaption": "Published website preview image"
     },
     {
       "id": "federal-doe",
@@ -232,7 +249,10 @@
       "proximity": null,
       "publicEmails": [],
       "sourceRows": [],
-      "sourceCategory": "Federal agency and recipient evidence"
+      "sourceCategory": "Federal agency and recipient evidence",
+      "imageUrl": "https://www.energy.gov/sites/default/files/2025-04/white-fallback_0.png",
+      "imageSourceUrl": "https://www.energy.gov/",
+      "imageCaption": "Published website preview image"
     },
     {
       "id": "federal-arpa-e",
@@ -271,7 +291,10 @@
       "proximity": null,
       "publicEmails": [],
       "sourceRows": [],
-      "sourceCategory": "Federal agency and recipient evidence"
+      "sourceCategory": "Federal agency and recipient evidence",
+      "imageUrl": "https://www.darpa.mil/sites/default/files/gallery/2024-12/og-luke-arm.png",
+      "imageSourceUrl": "https://www.darpa.mil/",
+      "imageCaption": "Published website preview image"
     },
     {
       "id": "federal-nasa",
@@ -284,7 +307,10 @@
       "proximity": null,
       "publicEmails": [],
       "sourceRows": [],
-      "sourceCategory": "Federal agency and recipient evidence"
+      "sourceCategory": "Federal agency and recipient evidence",
+      "imageUrl": "https://www.nasa.gov/wp-content/uploads/2018/07/174116main_2006_01777_highres.jpg",
+      "imageSourceUrl": "https://www.nasa.gov/",
+      "imageCaption": "Published website preview image"
     },
     {
       "id": "federal-nist",
@@ -297,7 +323,10 @@
       "proximity": null,
       "publicEmails": [],
       "sourceRows": [],
-      "sourceCategory": "Federal agency and recipient evidence"
+      "sourceCategory": "Federal agency and recipient evidence",
+      "imageUrl": "https://www.nist.gov/themes/custom/nist_www/img/homepage/nist_mark.png",
+      "imageSourceUrl": "https://www.nist.gov/",
+      "imageCaption": "Published website preview image"
     },
     {
       "id": "federal-commerce",
@@ -349,7 +378,10 @@
       "proximity": null,
       "publicEmails": [],
       "sourceRows": [],
-      "sourceCategory": "Federal agency and recipient evidence"
+      "sourceCategory": "Federal agency and recipient evidence",
+      "imageUrl": "https://www.fda.gov/themes/custom/preview/img/FDA-Social-Graphic.png",
+      "imageSourceUrl": "https://www.fda.gov/",
+      "imageCaption": "Published website preview image"
     },
     {
       "id": "federal-cdc",
@@ -388,7 +420,10 @@
       "proximity": null,
       "publicEmails": [],
       "sourceRows": [],
-      "sourceCategory": "Federal agency and recipient evidence"
+      "sourceCategory": "Federal agency and recipient evidence",
+      "imageUrl": "https://umd-main.transforms.svdcdn.com/production/umd/images/default/research-preview.jpg?w=960&h=540&auto=compress&fit=crop&dm=1745870682&s=992cb5c8772b2a7abf963b2e0b204698",
+      "imageSourceUrl": "https://umd.edu/",
+      "imageCaption": "Published website preview image"
     },
     {
       "id": "federal-recipient-umes",
@@ -401,7 +436,10 @@
       "proximity": null,
       "publicEmails": [],
       "sourceRows": [],
-      "sourceCategory": "Federal agency and recipient evidence"
+      "sourceCategory": "Federal agency and recipient evidence",
+      "imageUrl": "https://www.umes.edu/wp-content/uploads/2026/09/Presentation2.png",
+      "imageSourceUrl": "https://www.umes.edu/",
+      "imageCaption": "Published website preview image"
     },
     {
       "id": "federal-recipient-jhu-apl",
@@ -414,7 +452,10 @@
       "proximity": null,
       "publicEmails": [],
       "sourceRows": [],
-      "sourceCategory": "Federal agency and recipient evidence"
+      "sourceCategory": "Federal agency and recipient evidence",
+      "imageUrl": "https://www.jhuapl.edu/sites/default/files/2026-03/IMG-Home-Dragonfly-July2025.jpg",
+      "imageSourceUrl": "https://www.jhuapl.edu/",
+      "imageCaption": "Published website preview image"
     },
     {
       "id": "federal-recipient-jhu",
@@ -479,7 +520,10 @@
       "proximity": null,
       "publicEmails": [],
       "sourceRows": [],
-      "sourceCategory": "Federal agency and recipient evidence"
+      "sourceCategory": "Federal agency and recipient evidence",
+      "imageUrl": "https://health.maryland.gov/_layouts/15/MDH/img/logo.png",
+      "imageSourceUrl": "https://health.maryland.gov/Pages/Home.aspx",
+      "imageCaption": "Published website preview image"
     },
     {
       "id": "federal-recipient-rqs",
@@ -518,7 +562,10 @@
       "proximity": null,
       "publicEmails": [],
       "sourceRows": [],
-      "sourceCategory": "Federal agency and recipient evidence"
+      "sourceCategory": "Federal agency and recipient evidence",
+      "imageUrl": "https://www.nih.gov/sites/default/files/styles/thumbnail_large/public/2025-01/thumbnail-generic.png",
+      "imageSourceUrl": "https://www.nih.gov/",
+      "imageCaption": "Published website preview image"
     },
     {
       "id": "federal-eda",

@@ -3,12 +3,26 @@ export const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':
 const e = escapeHtml
 export const evidenceLink = (url, label = 'View source ↗') => safeUrl(url) ? `<a href="${e(safeUrl(url))}" target="_blank" rel="noopener noreferrer">${e(label)}</a>` : '<span>Source not supplied</span>'
 export const organizationPagePath = org => `/orgs/${encodeURIComponent(org.portalSlug || org.id.replace(/^org-/, ''))}`
+export function organizationPicture(org) {
+ const image=safeUrl(org.imageUrl)
+ return image ? `<figure class="eco-inspector-picture"><img src="${e(image)}" alt="Published image for ${e(org.name)}" loading="lazy" referrerpolicy="no-referrer"><figcaption>${e(org.name)}${org.imageCaption ? ` · ${e(org.imageCaption)}` : ''} · ${evidenceLink(org.imageSourceUrl || org.website,'Image source ↗')}</figcaption></figure>` : '<p class="eco-note">No published picture supplied.</p>'
+}
+export function edgeDetails(edge,data) {
+ const id=value=>typeof value==='object'?value?.id:value
+ const organizations=[edge.source,edge.target].map(value=>data.organizations.find(o=>o.id===id(value))).filter(Boolean)
+ return `<p class="eco-eyebrow">Relationship preview</p><h2>${e(edge.sourceLabel)} → ${e(edge.targetLabel)}</h2>
+ ${safeUrl(edge.imageUrl) ? `<figure class="eco-inspector-picture"><img src="${e(safeUrl(edge.imageUrl))}" alt="Published relationship image" loading="lazy" referrerpolicy="no-referrer"><figcaption>${evidenceLink(edge.sourceUrl,'Image source ↗')}</figcaption></figure>` : organizations.map(org=>`<h3>${e(org.name)}</h3>${organizationPicture(org)}`).join('')}
+ <p><strong>${e(edge.type || edge.description || edge.relationship)}</strong></p>
+ <p>${e(semantics[edge.kind] || edge.relationship)}${edge.amountLabel ? ` · ${e(edge.amountLabel)}` : ''}${edge.date ? ` · ${e(edge.date)}` : ''}</p>
+ <p>${e(edge.evidence || 'Evidence description not supplied.')}</p><p>${e(edge.notes || edge.description || '')}</p>
+ <p>${evidenceLink(edge.sourceUrl)}</p><p class="eco-note">${e(edge.provenance?.sheet || 'Public evidence')}${edge.provenance?.row ? ` · row ${e(edge.provenance.row)}` : ''}${edge.status ? ` · ${e(edge.status)}` : ''}. Awards and commitments do not establish payment. Organization pictures identify the endpoints, not the transaction.</p>`
+}
 export function orgDetails(org, data) {
   const relations = data.relationships.filter(r => r.source === org.id || r.target === org.id)
   const money = data.financing.filter(f => f.funderId === org.id || f.recipientId === org.id)
   const events=(data.events || []).filter(event=>event.organizationId===org.id)
   const dashboard = data.dashboard.find(d => d.organizationId === org.id)
-  return `<p class="eco-eyebrow">${e(categories[org.category])}</p><h2>${e(org.name)}</h2><p>${e(org.type)}</p>
+  return `<p class="eco-eyebrow">${e(categories[org.category])}</p><h2>${e(org.name)}</h2>${organizationPicture(org)}<p>${e(org.type)}</p>
   <p>${e(org.relevance || 'Included in the documented funding network; proximity has not been scored.')}</p>
   <p><strong>LifeTech proximity:</strong> ${org.proximity == null ? 'Not scored' : `${org.proximity}/100`}</p>
   ${dashboard ? `<p><strong>Dashboard contribution:</strong> ${e(dashboard.contribution)}</p>` : ''}

@@ -41,3 +41,17 @@ test('government classes distinguish jurisdiction without reclassifying universi
  assert.equal(merged.organizations.find(o=>o.id==='gov').category,'state-government')
  assert.equal(applyGovernmentClasses({organizations:[{name:'NIH',website:'https://www.nih.gov/',category:'funding'}]}).organizations[0].category,'federal-government')
 })
+
+
+test('inspector preserves sourced pictures and escapes relationship evidence',async()=>{
+ const {orgDetails,edgeDetails}=await import('../src/features/ecosystem/ecosystem-view.js')
+ const data=mergePortalEvidence(base,[{...orgs[0],image_url:'https://funder.test/logo.png',source_url:'https://funder.test/'}],[])
+ assert.equal(data.organizations[0].imageUrl,'https://funder.test/logo.png')
+ const websitePhoto=mergePortalEvidence({...base,organizations:[{...base.organizations[0],imageUrl:'https://funder.test/preview.png',imageCaption:'Published website preview image'}]},[{...orgs[0],image_url:null}],[])
+ assert.equal(websitePhoto.organizations[0].imageUrl,'https://funder.test/preview.png')
+ data.organizations[0].sourceRows=[]
+ const detail=orgDetails(data.organizations[0],data);assert(detail.includes('logo.png'));assert(detail.includes('Image source'))
+ const html=edgeDetails({source:'org-funder',target:null,sourceLabel:'<script>',targetLabel:'Recipient',type:'Award',amountLabel:'USD 100',sourceUrl:'https://source.test/',evidence:'<img onerror=bad>',notes:'Payment unverified',provenance:{sheet:'OrgPortal'}},data)
+ assert(html.includes('https://source.test/'));assert(html.includes('&lt;script&gt;'));assert(!html.includes('<img onerror=bad>'))
+ const unsafe=orgDetails({...data.organizations[0],imageUrl:'javascript:bad'},data);assert(!unsafe.includes('src="javascript:'))
+})

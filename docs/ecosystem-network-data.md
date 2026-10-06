@@ -35,3 +35,37 @@ hide all relationships and reset the map.
 Both LifeTech and MedTech passed: 143 connected organizations appear by default,
 unchecking the option reveals all 570 organizations, disabling all relationship
 kinds leaves zero nodes, and Reset restores the checked option and 143 nodes.
+
+## Hover inspector
+
+Hovering a node or its label previews its organization details in the right
+column; hovering an edge previews the relationship, amount, date, evidence,
+notes and source. Hover does not change selection, the URL, filters or layout.
+The last preview stays available when moving into the inspector to use its links.
+Clicking a node still selects it. Keyboard focus on node labels and SVG edge
+paths provides the same preview; touching an edge opens its evidence.
+
+Pictures come from published OrgPortal organization media or published website
+Open Graph/Twitter metadata, with an image-source link. Edge previews label
+endpoint images as organization images rather than implying they show an award
+or transaction. Missing pictures and failed image loads remain explicit.
+`python3 web/scripts/sync-ecosystem-pictures.py` fills missing connected-node
+pictures from current public website metadata without credentials or database
+writes. Financial sizing and the default connected-node filter remain unchanged.
+
+Published October 6, 2026 in shared frontend version
+`548621bf-f76c-417f-ad8d-478683ff9b1a`. Sixteen ecosystem tests passed,
+including image URL safety, source escaping and retention of attributed website
+preview images during live refresh. Deployment route smoke checks passed.
+Headless SVG checks on both domains verify physical node/edge hover, image/source
+presentation, unchanged URL and node counts, persistent source links and keyboard
+edge focus. WebGL uses raycasting for nodes and widened invisible edge hit areas;
+SVG uses widened transparent stroke targets.
+
+Repeat the read-only browser smoke test with
+`BROWSER_BINARY=/usr/bin/google-chrome node web/scripts/check-ecosystem-hover.mjs`
+(or omit `BROWSER_BINARY` to use Playwright's installed Chromium). The test forces
+the SVG renderer and an unavailable live API to verify the saved public snapshot.
+Both domains also passed an actual image-loading check. Screenshots are retained
+in `docs/screenshots/ecosystem-hover-lifetech.png` and
+`docs/screenshots/ecosystem-hover-medtech.png`.

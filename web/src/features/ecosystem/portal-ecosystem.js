@@ -13,8 +13,10 @@ export function mergePortalEvidence(base, organizations, records, refreshedAt = 
   const matches=data.organizations.filter(o => o.id===org.id || key(o.name)===key(org.name) || (safeUrl(o.website) && safeUrl(o.website)===safeUrl(org.source_url)))
   const match=matches.find(o=>o.id===org.id) || (matches.length===1 ? matches[0] : null)
   const id=match?.id || org.id;mapping.set(org.id,id)
+  const image=safeUrl(org.image_url)
+  if(match && 'image_url' in org && (image || match.imageCaption!=='Published website preview image')){match.imageUrl=image;match.imageSourceUrl=safeUrl(org.source_url);match.portalSlug=org.slug}
   if(match && governmentCategory(org))match.category=governmentCategory(org)
-  if (!match) byId.set(id,{id,name:org.name,type:(org.tags || []).includes('Venture')?'Venture':'Organization',category:governmentCategory(org) || ((org.tags || []).includes('Venture')?'company':'general'),website:safeUrl(org.source_url),relevance:org.description || '',proximity:null,directory:true,publicEmails:[],sourceRows:[],sourceCategory:'OrgPortal',portalSlug:org.slug})
+  if (!match) byId.set(id,{id,name:org.name,type:(org.tags || []).includes('Venture')?'Venture':'Organization',category:governmentCategory(org) || ((org.tags || []).includes('Venture')?'company':'general'),website:safeUrl(org.source_url),relevance:org.description || '',proximity:null,directory:true,publicEmails:[],sourceRows:[],sourceCategory:'OrgPortal',portalSlug:org.slug,imageUrl:image,imageSourceUrl:safeUrl(org.source_url)})
  }
  data.organizations=[...byId.values()];applyGovernmentClasses(data)
  const known=new Set()
