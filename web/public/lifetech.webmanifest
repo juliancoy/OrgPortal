@@ -9,6 +9,6 @@
   "background_color": "#061a26",
   "theme_color": "#061a26",
   "icons": [
-    { "src": "/assets/images/lifetech-logo.png", "sizes": "1254x1254", "type": "image/png", "purpose": "any" }
+    { "src": "/assets/images/lifetech-logo-v2.png", "sizes": "1254x1254", "type": "image/png", "purpose": "any" }
   ]
 }
