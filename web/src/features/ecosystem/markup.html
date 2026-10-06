@@ -1,0 +1,155 @@
+<section class="eco-network-heading">
+<div>
+<p class="eco-eyebrow">FOLLOW THE CONNECTIONS</p>
+<h1>Baltimore, connected.</h1>
+<p>Explore the institutions, programs and capital behind the ecosystem.</p>
+</div>
+<nav class="eco-tabs" aria-label="Ecosystem views">
+<a href="/orgs">Organization directory</a>
+<a href="/ecosystem/network" aria-current="page">Relationship network</a>
+</nav>
+</section>
+<p id="network-source" class="eco-note">Sourced organization evidence · snapshot 2026-10-01. Public relationship evidence refreshed 2026-10-06. Directory, Dashboard, Financing & Money Flows, and Funding Network remain separate inputs. Proximity is a curated relevance score, not a quality rating. Amounts overlap and must not be summed.</p>
+<div class="eco-network-shell">
+<aside class="eco-network-controls" aria-label="Network controls">
+<label>Find an organization<input type="search" id="network-search" placeholder="Try Blackbird, TEDCO, Hopkins…" aria-controls="network-results">
+</label>
+<div id="network-results" class="eco-results">
+</div>
+<fieldset>
+<legend>Organization classes</legend>
+<label>
+<input type="checkbox" name="node-category" value="ecosystem" checked>
+<span class="eco-category-dot" data-class="ecosystem">
+</span>LifeTech / MedTech ecosystem</label>
+<label>
+<input type="checkbox" name="node-category" value="company" checked>
+<span class="eco-category-dot" data-class="company">
+</span>Companies & ventures</label>
+<label>
+<input type="checkbox" name="node-category" value="health" checked>
+<span class="eco-category-dot" data-class="health">
+</span>Hospitals & health systems</label>
+<label>
+<input type="checkbox" name="node-category" value="university" checked>
+<span class="eco-category-dot" data-class="university">
+</span>Universities & research</label>
+<label>
+<input type="checkbox" name="node-category" value="funding" checked>
+<span class="eco-category-dot" data-class="funding">
+</span>Funding & commercialization</label>
+<label>
+<input type="checkbox" name="node-category" value="general" checked>
+<span class="eco-category-dot" data-class="general">
+</span>General entrepreneurship</label>
+</fieldset>
+<label>Map view<select id="network-view">
+<option value="all">All relationships</option>
+<option value="money">Money only — funding &amp; awards</option>
+</select>
+</label>
+<fieldset>
+<legend>Relationships</legend>
+<label>
+<input type="checkbox" name="relationship" value="funding" checked>Funding</label>
+<label>
+<input type="checkbox" name="relationship" value="affiliation" checked>Institutional affiliation</label>
+<label>
+<input type="checkbox" name="relationship" value="incubation" checked>Incubation</label>
+<label>
+<input type="checkbox" name="relationship" value="acceleration" checked>Acceleration</label>
+<label>
+<input type="checkbox" name="relationship" value="collaboration" checked>Collaboration</label>
+<label>
+<input type="checkbox" name="relationship" value="services" checked>Services</label>
+<label>
+<input type="checkbox" name="relationship" value="mentoring" checked>Mentoring</label>
+<label>
+<input type="checkbox" name="relationship" value="in_kind" checked>In-kind support</label>
+<label>
+<input type="checkbox" name="relationship" value="venue" checked>Venue support</label>
+</fieldset>
+<label class="eco-check">
+<input type="checkbox" id="include-context">Include fund capitalization</label>
+<p class="eco-note">Program terms and aggregate scopes remain in the table below. They are not individual organizations.</p>
+<label class="eco-check">
+<input type="checkbox" id="neighbors" disabled>Only selected organization + neighbors</label>
+<button id="network-reset" type="button">Reset view</button>
+</aside>
+<section class="eco-graph-panel" aria-label="Interactive relationship network">
+<div class="eco-graph-top">
+<output id="network-status" aria-live="polite">Preparing interactive network…</output>
+<div>
+<button id="zoom-in" type="button" aria-label="Zoom in">+</button>
+<button id="zoom-out" type="button" aria-label="Zoom out">−</button>
+<button id="network-fit" type="button">Fit</button>
+</div>
+</div>
+<div id="network-canvas" role="img" aria-label="Interactive organization network. Use the organization list and relationship table for keyboard access.">
+<div id="network-labels">
+</div>
+<p id="network-tooltip" hidden>
+</p>
+</div>
+<p class="eco-graph-help">Drag to pan · pinch / scroll to zoom · right-drag to orbit · select a label for details. Node size = log of largest disclosed USD funding/award (sent or received); unknown amounts use a small baseline. Amounts are not summed; larger documented USD funding creates stronger attraction; nodes keep a collision gap; funding width = log amount; arrows point to recipients. Solid = funding, dashed = affiliation, dotted = programs, green = USD funding, yellow = in-kind donations, teal = collaboration.</p>
+<div class="eco-graph-key">
+<span>● Larger disclosed funding/award, larger node</span>
+<span>→ Documented direction</span>
+<span><span style="color:#269c4a" aria-hidden="true">→</span> USD funding (green)</span>
+<span><span style="color:#e4b624" aria-hidden="true">→</span> In-kind donations (yellow)</span>
+<a href="#network-table">Accessible relationship table ↓</a>
+</div>
+</section>
+<aside id="network-detail" class="eco-detail" aria-label="Selected organization">
+<p class="eco-eyebrow">MAKE A CONNECTION</p>
+<h2>Start with an organization.</h2>
+<p>Select a label or search by name to see its public details, relationships and sources.</p>
+<p>Missing links mean “not documented here,” not “no relationship.”</p>
+</aside>
+</div>
+<noscript>
+<p>The interactive network requires JavaScript. All relationships and organization details remain available below and in the <a href="/ecosystem">directory</a>.</p>
+</noscript>
+<section id="network-events" class="eco-table-section">
+<h2>Events across the ecosystem</h2>
+<p>Past and upcoming events from all available Code Collective calendar sources. Listings do not imply funding or hosting.</p>
+<label>Search events<input id="event-search" type="search" placeholder="Event, organization, location, or date">
+</label>
+<label>
+<input id="event-org-only" type="checkbox">Only selected organization</label>
+<output id="event-count" aria-live="polite">
+</output>
+<ul id="event-results">
+</ul>
+<button id="event-more" type="button">Show more events</button>
+<p>
+<a href="/ecosystem-data/ecosystem-history.json">Download the complete sourced event history</a>
+</p>
+</section>
+<section id="network-table" class="eco-table-section">
+<h2>Every relationship, with its source.</h2>
+<p>Includes aggregate scopes and per-company terms excluded from the organization graph. These figures are not additive.</p>
+<label>Table scope<select id="table-scope">
+<option value="">All records</option>
+<option value="selected">Selected organization</option>
+<option value="transfer">Documented funding / award</option>
+<option value="terms">Per-company program terms</option>
+<option value="capitalization">Fund capitalization</option>
+<option value="portfolio">Portfolio aggregate</option>
+<option value="coinvestment">Co-investment aggregate</option>
+<option value="affiliation">Institutional affiliation</option>
+<option value="incubation">Incubation</option>
+<option value="acceleration">Acceleration</option>
+<option value="collaboration">Collaboration</option>
+</select>
+</label>
+<div class="eco-table-scroll">
+<p>Loading sourced relationships…</p>
+</div>
+</section>
+<details class="eco-method">
+<summary>How to read this ecosystem</summary>
+<p>Proximity combines mission alignment (40%), functional complement (25%), Baltimore connectivity (20%), and community accessibility (15%). Scores come from the directory; Dashboard contributions are shown separately where supplied.</p>
+<p>Funding awards, per-company program terms, fund capitalization, portfolio aggregates and co-investment totals are distinct. An award or commitment is not proof of cash disbursement. Undisclosed amounts stay unknown. Sources and their evidence labels are preserved from the spreadsheet and have not been independently audited.</p>
+<p>Programs such as Pava, FastForward and Hexcite retain distinct IDs and connect to their parent institutions. Generic recipients such as “portfolio companies” are shown in the relationship table, never invented as individual companies. Contact names and personal email columns are withheld; public organization websites and matching role mailboxes remain available.</p>
+</details>

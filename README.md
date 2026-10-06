@@ -271,3 +271,9 @@ Organization managers can configure onboarding through
 the matching `previewId` and `confirm: true`. These operations preserve all other
 tenant settings and write an audit event. Saving a slug portal retains attached
 custom domains and existing onboarding preferences.
+
+## Organization ecosystem network
+
+The shared `/ecosystem/network` page includes sourced organization relationships, funding evidence, and event-history search. It is public and uses the common portal navigation. CodeCollective serves it at `/p/ecosystem/network`; tenant sites serve it at `/ecosystem/network`. LifeTech keeps its static directory and consumes these shared snapshots.
+
+From `web`, run `npm run test:ecosystem` for evidence and layout checks, `npm run sync:ecosystem` to refresh public workbook/API evidence, and `npm run build:ecosystem-history` to rebuild the event archive from sibling CodeCollective (or `CODECOLLECTIVE_DIR`). See [the data guide](docs/ecosystem-network-data.md). These commands produce public read snapshots; organization writes continue through the authorized API preview/apply flow.

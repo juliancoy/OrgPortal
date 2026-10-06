@@ -1,3 +1,4 @@
+import { EcosystemNetworkPage } from '../views/EcosystemNetworkPage'
 import { MemberMeetingsPage } from '../views/MemberMeetingsPage'
 import { resolveOrganizationView, useOrganizationAccess, useOrganizationViewPreference } from '../hooks/useOrganizationView'
 import { NametagsPage } from '../views/NametagsPage'
@@ -269,6 +270,7 @@ export function createAppRouter() {
           { path: '/org-events', element: <TenantOrgEventsRoute /> },
           { path: '/community', element: <TenantCommunityAliasRoute /> },
           { path: '/medtech-events', element: <TenantEventsAliasRoute /> },
+          { path: '/ecosystem/network', element: <EcosystemNetworkPage /> },
           { path: '/resources', element: <TenantResourcesPage /> },
           { path: '/branding', element: <TenantBrandingPage /> },
           { path: '/branding.html', element: <Navigate to="/branding" replace /> },

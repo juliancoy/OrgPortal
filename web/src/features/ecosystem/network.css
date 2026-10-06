@@ -1,0 +1,155 @@
+.portal-ecosystem { --teal:var(--accent, #16847d); --line:var(--border, #d9dfe1); --paper:var(--surface, #fff); --ink:var(--text-primary, #192a32); --muted:var(--text-muted, #64747c); color:var(--ink); }
+.portal-ecosystem .ecosystem-body{ display:block }
+.portal-ecosystem{ max-width:1600px; margin:auto; padding:48px clamp(20px,4vw,64px) 64px }
+.portal-ecosystem h1, .portal-ecosystem h2, .portal-ecosystem h3{ letter-spacing:-.035em; line-height:1.12 }
+.portal-ecosystem p{ line-height:1.65 }
+.portal-ecosystem .eco-eyebrow{ font-size:11px; font-weight:800; letter-spacing:.15em; color:var(--teal); text-transform:uppercase }
+.portal-ecosystem .eco-hero{ display:grid; grid-template-columns:1fr 300px; gap:60px; align-items:center; padding:30px 0 42px; border-bottom:1px solid var(--line) }
+.portal-ecosystem .eco-hero h1{ font-size:clamp(44px,5.2vw,76px); margin:16px 0 22px; font-weight:650 }
+.portal-ecosystem .eco-hero h1 em{ color:var(--teal); font-family:Georgia,serif; font-weight:400 }
+.portal-ecosystem .eco-hero p:not(.eco-eyebrow){ max-width:630px; color:var(--muted); font-size:18px }
+.portal-ecosystem .eco-stats{ display:grid; gap:24px; border-left:1px solid var(--line); padding:24px 0 24px 40px }
+.portal-ecosystem .eco-stats strong{ font-size:38px; font-weight:550; display:block; letter-spacing:-.05em }
+.portal-ecosystem .eco-stats span{ color:var(--muted); font-size:13px }
+.portal-ecosystem .eco-tabs{ display:flex; flex-wrap:wrap; gap:8px; margin-top:24px }
+.portal-ecosystem .eco-tabs a{ padding:12px 18px; border:1px solid var(--line); border-radius:7px; text-decoration:none; font-weight:650; font-size:13px }
+.portal-ecosystem .eco-tabs a[aria-current]{ color:var(--paper); background:var(--ink); border-color:var(--ink) }
+.portal-ecosystem .eco-note{ font-size:12px; color:var(--muted); max-width:1100px }
+.portal-ecosystem .eco-controls{ display:flex; align-items:end; flex-wrap:wrap; gap:18px; padding:25px 0; border-bottom:1px solid var(--line) }
+.portal-ecosystem label{ display:grid; gap:7px; font-size:12px; font-weight:650 }
+.portal-ecosystem .eco-controls label:first-child{ flex:1; min-width:200px }
+.portal-ecosystem input[type=search], .portal-ecosystem select{ width:100%; padding:12px; border:1px solid var(--line); background:var(--paper); color:var(--ink); border-radius:6px; font:inherit; font-size:14px; min-width:0 }
+.portal-ecosystem .eco-controls output{ padding:12px 0; color:var(--muted); font-size:13px }
+.portal-ecosystem .eco-category{ margin:38px 0 }
+.portal-ecosystem .eco-category>header{ display:flex; gap:12px; align-items:center; margin-bottom:20px }
+.portal-ecosystem .eco-category>header h2{ font-size:23px; margin:0 }
+.portal-ecosystem .eco-category>header>span:last-child{ font-size:12px; color:var(--muted); margin-left:auto }
+.portal-ecosystem .eco-category-dot{ --node-color:#16847d; width:10px; height:10px; display:inline-block; border-radius:50%; background:var(--node-color); flex-shrink:0 }
+.portal-ecosystem [data-class=ecosystem]{ --node-color:#16847d }
+.portal-ecosystem [data-class=company]{ --node-color:#357db7 }
+.portal-ecosystem [data-class=health]{ --node-color:#c76e57 }
+.portal-ecosystem [data-class=university]{ --node-color:#8564b3 }
+.portal-ecosystem [data-class=funding]{ --node-color:#ad7b26 }
+.portal-ecosystem [data-class=general]{ --node-color:#77878c }
+.portal-ecosystem .eco-cards{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px }
+.portal-ecosystem .eco-card{ padding:24px; background:var(--paper); border:1px solid var(--line); border-radius:10px; align-self:start; overflow-wrap:anywhere }
+.portal-ecosystem .eco-card-top{ display:flex; justify-content:space-between; align-items:start; gap:16px; font-size:11px; color:var(--muted) }
+.portal-ecosystem .eco-card-top strong{ color:var(--teal); font-size:25px; flex-shrink:0; font-weight:600; letter-spacing:-.04em }
+.portal-ecosystem .eco-card-top small{ font-size:10px; color:var(--muted); letter-spacing:0 }
+.portal-ecosystem .eco-card h3{ font-size:21px; margin:18px 0 10px }
+.portal-ecosystem .eco-card>p{ font-size:13px; color:var(--muted); min-height:43px }
+.portal-ecosystem .eco-card-links{ display:flex; justify-content:space-between; gap:12px; font-size:12px; font-weight:700; padding:12px 0 }
+.portal-ecosystem .eco-card details{ border-top:1px solid var(--line); margin-top:8px; padding-top:14px; font-size:13px }
+.portal-ecosystem summary{ cursor:pointer; font-weight:650; font-size:12px; line-height:1.6 }
+.portal-ecosystem .eco-card details h2{ font-size:20px }
+.portal-ecosystem .eco-relations{ list-style:none; padding:0; font-size:12px }
+.portal-ecosystem .eco-relations li{ border-bottom:1px solid var(--line); padding:14px 0; line-height:1.55 }
+.portal-ecosystem .eco-relations strong, .portal-ecosystem .eco-relations span, .portal-ecosystem .eco-relations small{ display:block; margin-bottom:5px }
+.portal-ecosystem .eco-relations small{ color:var(--muted); font-size:11px }
+.portal-ecosystem .eco-method{ margin:36px 0 0; padding:22px; border:1px solid var(--line); border-radius:8px; background:var(--paper) }
+.portal-ecosystem .eco-method p{ max-width:1000px; color:var(--muted); font-size:14px }
+.portal-ecosystem .eco-footer{ border-top:1px solid var(--line); padding:30px 4vw; display:flex; flex-wrap:wrap; gap:24px; font-size:13px }
+.portal-ecosystem .eco-footer>span{ color:var(--muted); margin-right:auto }
+.portal-ecosystem .eco-network-page{ max-width:1800px; padding-top:26px }
+.portal-ecosystem .eco-network-heading{ display:flex; justify-content:space-between; gap:24px; align-items:center }
+.portal-ecosystem .eco-network-heading h1{ font-size:clamp(32px,3.2vw,48px); margin:10px 0 }
+.portal-ecosystem .eco-network-heading p{ margin:8px 0; color:var(--muted) }
+.portal-ecosystem .eco-network-shell{ display:grid; grid-template-columns:230px minmax(0,1fr) 290px; border:1px solid var(--line); border-radius:10px; overflow:hidden; background:var(--paper); margin-top:26px }
+.portal-ecosystem .eco-network-controls{ padding:20px; border-right:1px solid var(--line) }
+.portal-ecosystem .eco-network-controls fieldset{ border:0; margin:20px 0; padding:0; display:grid; gap:12px }
+.portal-ecosystem .eco-network-controls legend{ font-size:11px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); margin-bottom:14px }
+.portal-ecosystem .eco-network-controls fieldset label, .portal-ecosystem .eco-network-controls .eco-check{ display:flex; gap:7px; align-items:center; font-weight:450; font-size:11px; line-height:1.5 }
+.portal-ecosystem .eco-network-controls input[type=checkbox]{ accent-color:var(--teal); flex-shrink:0 }
+.portal-ecosystem button{ border:1px solid var(--line); border-radius:5px; background:var(--paper); color:var(--ink); padding:8px 12px; cursor:pointer; font:inherit; font-size:12px }
+.portal-ecosystem :is(a, .portal-ecosystem button, .portal-ecosystem input, .portal-ecosystem select, .portal-ecosystem summary):focus-visible{ outline:3px solid var(--teal); outline-offset:3px }
+.portal-ecosystem .eco-results{ display:grid; gap:4px; max-height:190px; overflow:auto; margin-top:8px }
+.portal-ecosystem .eco-results button{ text-align:left; font-size:11px; line-height:1.5 }
+.portal-ecosystem .eco-results button:hover{ background:var(--nav-active-bg) }
+.portal-ecosystem .eco-graph-panel{ min-width:0; background:var(--surface-subtle); display:flex; flex-direction:column }
+.portal-ecosystem .eco-graph-top{ padding:12px 14px; display:flex; justify-content:space-between; gap:8px; align-items:center; font-size:11px; border-bottom:1px solid var(--line) }
+.portal-ecosystem .eco-graph-top>div{ display:flex; gap:4px }
+.portal-ecosystem #network-canvas{ height:620px; min-height:400px; position:relative; overflow:hidden; flex:1 }
+.portal-ecosystem #network-canvas canvas{ display:block; width:100%; height:100%; touch-action:none }
+.portal-ecosystem #network-labels{ position:absolute; inset:0; pointer-events:none; overflow:hidden }
+.portal-ecosystem #network-labels button{ position:absolute; pointer-events:auto; padding:3px 5px; border:0; background:var(--header-bg); border-radius:3px; white-space:nowrap; font-size:10px; max-width:155px; overflow:hidden; text-overflow:ellipsis; transform:translate(-50%,8px); box-shadow:0 1px 3px #0001 }
+.portal-ecosystem #network-labels button[aria-pressed=true]{ background:var(--ink); color:var(--paper) }
+.portal-ecosystem #network-tooltip{ position:absolute; top:12px; left:12px; right:12px; background:var(--paper); border:1px solid var(--line); border-radius:6px; padding:12px; pointer-events:none; font-size:12px; z-index:2 }
+.portal-ecosystem .eco-graph-help, .portal-ecosystem .eco-graph-key{ margin:0; padding:12px 16px; font-size:11px; color:var(--muted); border-top:1px solid var(--line) }
+.portal-ecosystem .eco-graph-key{ display:flex; flex-wrap:wrap; gap:12px }
+.portal-ecosystem .eco-detail{ padding:24px; border-left:1px solid var(--line); max-height:850px; overflow:auto; overflow-wrap:anywhere }
+.portal-ecosystem .eco-detail h2{ font-size:25px }
+.portal-ecosystem .eco-detail h3{ font-size:16px; margin-top:28px }
+.portal-ecosystem .eco-detail>p{ font-size:13px }
+.portal-ecosystem .eco-table-section{ margin-top:40px }
+.portal-ecosystem .eco-table-section>label{ max-width:300px; margin:20px 0 }
+.portal-ecosystem .eco-table-scroll{ overflow:auto; border:1px solid var(--line); border-radius:8px; background:var(--paper) }
+.portal-ecosystem .eco-table{ width:100%; border-collapse:collapse; text-align:left; font-size:12px }
+.portal-ecosystem .eco-table caption{ text-align:left; padding:16px; color:var(--muted) }
+.portal-ecosystem .eco-table th{ background:var(--surface-subtle); color:var(--muted); font-size:11px }
+.portal-ecosystem .eco-table :is(td, .portal-ecosystem th){ padding:16px; border-top:1px solid var(--line); vertical-align:top; min-width:155px }
+.portal-ecosystem .eco-table small{ display:block; margin-top:6px; color:var(--muted); line-height:1.6 }
+
+@media (max-width:1200px) {.portal-ecosystem .eco-network-shell{ grid-template-columns:210px minmax(0,1fr) }
+.portal-ecosystem .eco-detail{ grid-column:1/-1; border-left:0; border-top:1px solid var(--line); max-height:440px }
+.portal-ecosystem .eco-cards{ grid-template-columns:repeat(2,minmax(0,1fr)) }
+ }
+@media (max-width:700px) {.portal-ecosystem{ padding:24px 18px 40px }
+.portal-ecosystem .eco-hero{ grid-template-columns:1fr; gap:20px; padding-top:10px }
+.portal-ecosystem .eco-stats{ grid-template-columns:repeat(3,1fr); border-left:0; border-top:1px solid var(--line); padding:24px 0 0; gap:14px }
+.portal-ecosystem .eco-stats strong{font-size:30px}
+.portal-ecosystem .eco-stats span{font-size:11px}
+.portal-ecosystem .eco-cards{grid-template-columns:1fr}
+.portal-ecosystem .eco-controls label{width:100%}
+.portal-ecosystem .eco-category>header{flex-wrap:wrap}
+.portal-ecosystem .eco-category>header h2{font-size:20px}
+.portal-ecosystem .eco-network-heading{display:block}
+.portal-ecosystem .eco-network-shell{grid-template-columns:1fr}
+.portal-ecosystem .eco-network-controls{border-right:0;border-bottom:1px solid var(--line)}
+.portal-ecosystem .eco-network-controls fieldset{display:flex;flex-wrap:wrap;gap:12px}
+.portal-ecosystem .eco-network-controls fieldset label{min-height:30px}
+.portal-ecosystem .eco-results{max-height:120px}
+.portal-ecosystem #network-canvas{height:460px;flex:auto}
+.portal-ecosystem .eco-detail{max-height:520px}
+.portal-ecosystem .eco-tabs a{font-size:12px;padding:10px 12px}
+.portal-ecosystem .eco-graph-top{flex-wrap:wrap}
+.portal-ecosystem .eco-table :is(td, .portal-ecosystem th){padding:12px}
+.portal-ecosystem .eco-footer{padding:24px 18px;gap:16px}
+ }
+@media(prefers-reduced-motion:reduce) {.portal-ecosystem *{ scroll-behavior:auto!important }
+ }.portal-ecosystem .eco-proximity{ margin:32px 0; padding:24px; border:1px solid var(--line); border-radius:10px; background:var(--paper) }
+.portal-ecosystem .eco-proximity h2{ margin:0; font-size:28px }
+.portal-ecosystem .eco-proximity>p{ color:var(--muted); font-size:13px; max-width:850px }
+.portal-ecosystem .eco-bar-scroll{ max-height:540px; overflow:auto; scrollbar-gutter:stable }
+.portal-ecosystem .eco-bars{ list-style:none; padding:0; margin:0 }
+.portal-ecosystem .eco-bar-row{ display:grid; grid-template-columns:minmax(150px,32%) 1fr 76px; align-items:center; gap:16px; padding:12px 6px; color:var(--ink); text-decoration:none; border-bottom:1px solid var(--line); min-height:64px }
+.portal-ecosystem .eco-bar-row:hover, .portal-ecosystem .eco-bar-row:focus-visible{ background:var(--surface-subtle) }
+.portal-ecosystem .eco-bar-name{ font-size:13px; font-weight:650; overflow-wrap:anywhere }
+.portal-ecosystem .eco-bar-name small{ display:block; color:var(--muted); font-size:10px; font-weight:400; margin-top:5px }
+.portal-ecosystem .eco-bar-track{ height:24px; background:var(--surface-subtle); border-inline:1px solid var(--line); position:relative }
+.portal-ecosystem .eco-bar-track::before{ content:""; position:absolute; left:50%; height:100%; border-left:1px solid var(--line) }
+.portal-ecosystem .eco-bar-fill{ position:relative; display:block; height:100%; background:var(--node-color); border-radius:0 3px 3px 0 }
+.portal-ecosystem .eco-bar-row strong{ font-size:12px; text-align:right; font-variant-numeric:tabular-nums }
+.portal-ecosystem .eco-bar-missing{ font-size:11px; color:var(--muted) }
+.portal-ecosystem .eco-bar-axis{ display:flex; justify-content:space-between; margin:20px 108px 8px calc(32% + 12px); font-size:11px; color:var(--muted) }
+.portal-ecosystem .eco-card{ scroll-margin-top:100px }
+.portal-ecosystem .eco-card:target{ outline:2px solid var(--teal); outline-offset:3px }
+.portal-ecosystem .eco-bars li[hidden]{ display:none }
+
+@media(max-width:700px) {.portal-ecosystem .eco-proximity{ padding:18px 12px }
+.portal-ecosystem .eco-bar-row{ grid-template-columns:minmax(0,1fr) 65px; gap:8px; padding:14px 4px }
+.portal-ecosystem .eco-bar-name{ grid-column:1/-1 }
+.portal-ecosystem .eco-bar-axis{ margin-left:4px; margin-right:81px }
+.portal-ecosystem .eco-bar-track{ height:20px }
+ }
+
+.portal-ecosystem.eco-page { max-width:1600px; margin:auto; width:100%; padding:32px clamp(16px,3vw,40px) 48px; }
+.portal-ecosystem .eco-network-controls input[type=checkbox],
+.portal-ecosystem #event-org-only { width:14px; height:14px; margin:0; flex:0 0 14px; }
+.portal-ecosystem .eco-network-controls label { min-width:0; width:auto; overflow-wrap:anywhere; }
+.portal-ecosystem .eco-network-controls .eco-check { margin:16px 0; }
+.portal-ecosystem #network-reset, .portal-ecosystem .eco-graph-top button,
+.portal-ecosystem #event-more { padding:8px 12px; border:1px solid var(--line); border-radius:6px; background:var(--paper); color:var(--ink); cursor:pointer; }
+.portal-ecosystem #network-labels button { background:var(--surface, #fff); color:var(--ink); }
+@media(max-width:700px) {
+ .portal-ecosystem .eco-network-controls fieldset { display:grid; grid-template-columns:1fr; }
+}

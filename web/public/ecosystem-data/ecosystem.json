@@ -1,0 +1,2812 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-10-01T19:51:37.942Z",
+  "source": "LifeTech Associates",
+  "organizations": [
+    {
+      "id": "org-amplify-medtech",
+      "name": "Amplify MedTech",
+      "category": "ecosystem",
+      "sourceCategory": "LifeTech / MedTech Ecosystem",
+      "type": "MedTech network / ESO",
+      "website": "https://www.amplifymedtech.com/",
+      "publicEmails": [],
+      "relevance": "Core — directly aligned with regional MedTech community-building",
+      "proximity": 98,
+      "sourceRows": [
+        4
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-the-launchport",
+      "name": "The LaunchPort",
+      "category": "ecosystem",
+      "sourceCategory": "LifeTech / MedTech Ecosystem",
+      "type": "MedTech accelerator / manufacturing",
+      "website": "https://thelaunchport.com/",
+      "publicEmails": [],
+      "relevance": "Core — medical-device commercialization and manufacturing",
+      "proximity": 96,
+      "sourceRows": [
+        5
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-mdc-studio-maryland-development-center",
+      "name": "MDC Studio / Maryland Development Center",
+      "category": "ecosystem",
+      "sourceCategory": "LifeTech / MedTech Ecosystem",
+      "type": "MedTech venture studio",
+      "website": "https://mdcstudio.com/",
+      "publicEmails": [],
+      "relevance": "Core — medical-device venture creation and commercialization",
+      "proximity": 95,
+      "sourceRows": [
+        6
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-techstars-ai-health-baltimore",
+      "name": "Techstars AI Health Baltimore",
+      "category": "ecosystem",
+      "sourceCategory": "LifeTech / MedTech Ecosystem",
+      "type": "Health accelerator",
+      "website": "https://www.techstars.com/accelerators/baltimore-ai-health",
+      "publicEmails": [],
+      "relevance": "Very high — AI/health venture acceleration",
+      "proximity": 94,
+      "sourceRows": [
+        7
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-university-of-maryland-baltimore-um-ventures",
+      "name": "University of Maryland, Baltimore / UM Ventures",
+      "category": "university",
+      "sourceCategory": "Newly Uncovered — Health Systems, Funders & Companies",
+      "type": "Academic medical commercialization / research",
+      "website": "https://www.umaryland.edu/ord/",
+      "publicEmails": [],
+      "relevance": "Very high — biomedical research, tech transfer, BioPark and venture funding",
+      "proximity": 94,
+      "sourceRows": [
+        54
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-hexcite-johns-hopkins-technology-ventures",
+      "name": "Hexcite — Johns Hopkins Technology Ventures",
+      "category": "ecosystem",
+      "sourceCategory": "LifeTech / MedTech Ecosystem",
+      "type": "Digital-health venture program",
+      "website": "https://ventures.jhu.edu/programs-services/cohort-based-programs/hexcite/",
+      "publicEmails": [],
+      "relevance": "Very high — clinical, design and digital-health translation",
+      "proximity": 93,
+      "sourceRows": [
+        8,
+        42
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-healthworx-carefirst",
+      "name": "Healthworx / CareFirst",
+      "category": "funding",
+      "sourceCategory": "Newly Uncovered — Health Systems, Funders & Companies",
+      "type": "Healthcare innovation + investment arm",
+      "website": "https://healthworx.com/",
+      "publicEmails": [
+        "comms@healthworx.com"
+      ],
+      "relevance": "Very high — Baltimore healthcare capital, accelerator and strategic partner",
+      "proximity": 92,
+      "sourceRows": [
+        52
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-fastforward-johns-hopkins-technology-ventures",
+      "name": "FastForward / Johns Hopkins Technology Ventures",
+      "category": "university",
+      "sourceCategory": "LifeTech / MedTech Ecosystem",
+      "type": "University commercialization / incubator",
+      "website": "https://ventures.jhu.edu/fastforward/",
+      "publicEmails": [],
+      "relevance": "Very high — Hopkins translation, labs and startup support",
+      "proximity": 91,
+      "sourceRows": [
+        9
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-lifebridge-health",
+      "name": "LifeBridge Health",
+      "category": "health",
+      "sourceCategory": "Newly Uncovered — Health Systems, Funders & Companies",
+      "type": "Health system / innovation partner",
+      "website": "https://www.lifebridgehealth.org/",
+      "publicEmails": [],
+      "relevance": "Very high — provider network, clinical access and co-founder of 1501 Health",
+      "proximity": 90,
+      "sourceRows": [
+        53
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-city-garage",
+      "name": "City Garage",
+      "category": "ecosystem",
+      "type": "Life-science lab & manufacturing space",
+      "website": "https://citygaragestc.com/",
+      "relevance": "Very high — Baltimore life-science R&D, laboratory and manufacturing hub housing LaunchPort at 101 W. Dickman Street. Proximity: mission alignment 38/40, functional complement 23/25, Baltimore connectivity 20/20, community accessibility 9/15; access through leasing or resident programs.",
+      "proximity": 90,
+      "directory": true,
+      "publicEmails": [],
+      "sourceRows": [],
+      "sourceCategory": "LifeTech curated addition"
+    },
+    {
+      "id": "org-blackbird-laboratories",
+      "name": "Blackbird Laboratories",
+      "category": "ecosystem",
+      "sourceCategory": "LifeTech / MedTech Ecosystem",
+      "type": "Biotech incubator / venture studio",
+      "website": "https://blackbirdlab.org/",
+      "publicEmails": [
+        "info@blackbirdlab.org"
+      ],
+      "relevance": "Very high — life-science venture creation and lab ecosystem",
+      "proximity": 89,
+      "sourceRows": [
+        10
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-connect-labs-by-wexford-baltimore",
+      "name": "Connect Labs by Wexford — Baltimore",
+      "category": "ecosystem",
+      "sourceCategory": "LifeTech / MedTech Ecosystem",
+      "type": "Life-science labs / incubator",
+      "website": "https://www.connectlabsbywexford.com/",
+      "publicEmails": [],
+      "relevance": "Very high — lab infrastructure beside Baltimore BioPark",
+      "proximity": 88,
+      "sourceRows": [
+        11
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-nucleate-baltimore-dmv",
+      "name": "Nucleate Baltimore / DMV",
+      "category": "ecosystem",
+      "sourceCategory": "Imported from Baltimore Economy — Life / Medical Network",
+      "type": "Biotech / ecotech venture community",
+      "website": "https://nucleate.xyz/locations/baltimore-md/",
+      "publicEmails": [],
+      "relevance": "Very high — JHU/UMD-linked biotech founder and scientist network",
+      "proximity": 88,
+      "sourceRows": [
+        59
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-chesapeake-digital-health-exchange-cdhx",
+      "name": "Chesapeake Digital Health Exchange (CDHX)",
+      "category": "ecosystem",
+      "sourceCategory": "Imported from Baltimore Economy — Life / Medical Network",
+      "type": "Digital-health commercialization network",
+      "website": "https://chesapeakedhx.org/about.html",
+      "publicEmails": [],
+      "relevance": "Very high — JHU-linked digital health and commercialization network",
+      "proximity": 87,
+      "sourceRows": [
+        60
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-harbor-launch-at-imet",
+      "name": "Harbor Launch at IMET",
+      "category": "ecosystem",
+      "sourceCategory": "LifeTech / MedTech Ecosystem",
+      "type": "Life-science incubator",
+      "website": "https://www.harborlaunch.com/",
+      "publicEmails": [],
+      "relevance": "Very high — Baltimore wet-lab and biotech founder infrastructure",
+      "proximity": 87,
+      "sourceRows": [
+        12
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-biohealth-innovation",
+      "name": "BioHealth Innovation",
+      "category": "ecosystem",
+      "sourceCategory": "LifeTech / MedTech Ecosystem",
+      "type": "BioHealth commercialization / ESO",
+      "website": "https://biohealthinnovation.org/",
+      "publicEmails": [],
+      "relevance": "Very high — health/life-science commercialization and funding",
+      "proximity": 86,
+      "sourceRows": [
+        13
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-lifebridge-health-bioincubator-at-sinai-hospital",
+      "name": "LifeBridge Health BioIncubator at Sinai Hospital",
+      "category": "ecosystem",
+      "sourceCategory": "Imported from Baltimore Economy — Life / Medical Network",
+      "type": "Health-system bioincubator",
+      "website": "https://www.lifebridgehealth.org/",
+      "publicEmails": [],
+      "relevance": "Very high — hospital-linked life-science lab and incubation infrastructure",
+      "proximity": 86,
+      "sourceRows": [
+        61
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-1501-health",
+      "name": "1501 Health",
+      "category": "ecosystem",
+      "sourceCategory": "LifeTech / MedTech Ecosystem",
+      "type": "Health accelerator",
+      "website": "https://1501health.com/",
+      "publicEmails": [],
+      "relevance": "Very high — healthcare venture support and payer connectivity",
+      "proximity": 85,
+      "sourceRows": [
+        14
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-the-grid-um-ventures",
+      "name": "The GRID | UM Ventures",
+      "category": "university",
+      "sourceCategory": "Imported from Baltimore Economy — Life / Medical Network",
+      "type": "Academic entrepreneurship / health innovation hub",
+      "website": "https://www.graduate.umaryland.edu/grid/",
+      "publicEmails": [],
+      "relevance": "Very high — UMB founder infrastructure embedded in academic medicine",
+      "proximity": 85,
+      "sourceRows": [
+        62
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-irazu-oncology",
+      "name": "Irazu Oncology",
+      "category": "company",
+      "sourceCategory": "Newly Uncovered — Health Systems, Funders & Companies",
+      "type": "Biotech company",
+      "website": "https://www.irazuoncology.com/",
+      "publicEmails": [],
+      "relevance": "Very high — Baltimore oncology biotech with UMB license and local financing links",
+      "proximity": 84,
+      "sourceRows": [
+        55
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-pava-marie-lapere-center-for-entrepreneurship",
+      "name": "Pava Marie LaPere Center for Entrepreneurship",
+      "category": "university",
+      "sourceCategory": "Funding & Commercialization — Cross-Sector",
+      "type": "University entrepreneurship center",
+      "website": "https://pavacenter.jhu.edu/",
+      "publicEmails": [],
+      "relevance": "High — founder pipeline and Hopkins commercialization",
+      "proximity": 83,
+      "sourceRows": [
+        24
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-bwtech-umbc-biotech-incubator",
+      "name": "bwtech@UMBC Biotech Incubator",
+      "category": "ecosystem",
+      "sourceCategory": "LifeTech / MedTech Ecosystem",
+      "type": "Biotech incubator",
+      "website": "https://bwtech.umbc.edu/incubators/biotech/",
+      "publicEmails": [],
+      "relevance": "Very high — wet-lab and life-science startup infrastructure",
+      "proximity": 82,
+      "sourceRows": [
+        15
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-harbor-designs-manufacturing",
+      "name": "Harbor Designs & Manufacturing",
+      "category": "company",
+      "sourceCategory": "Imported from Baltimore Economy — Life / Medical Network",
+      "type": "Medical-device design / manufacturing",
+      "website": "https://www.harbordesigns.net/",
+      "publicEmails": [
+        "sales@harbordesigns.net"
+      ],
+      "relevance": "High — ISO 13485-capable product development and manufacturing resource",
+      "proximity": 82,
+      "sourceRows": [
+        69
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-dmv-petri-dish",
+      "name": "DMV Petri Dish",
+      "category": "ecosystem",
+      "sourceCategory": "Imported from Baltimore Economy — Life / Medical Network",
+      "type": "Biotech community / meetup",
+      "website": "https://www.dmvpetridish.com/",
+      "publicEmails": [],
+      "relevance": "High — regional public biotech community and networking",
+      "proximity": 80,
+      "sourceRows": [
+        63
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-tedco",
+      "name": "TEDCO",
+      "category": "funding",
+      "sourceCategory": "Funding & Commercialization — Cross-Sector",
+      "type": "State innovation funder / ESO",
+      "website": "https://www.tedcomd.com/",
+      "publicEmails": [],
+      "relevance": "High — grants, investment and commercialization pathways",
+      "proximity": 80,
+      "sourceRows": [
+        25
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-biohub-maryland",
+      "name": "BioHub Maryland",
+      "category": "ecosystem",
+      "sourceCategory": "Imported from Baltimore Economy — Life / Medical Network",
+      "type": "Biopharma workforce / training",
+      "website": "https://www.biohubmaryland.com/",
+      "publicEmails": [],
+      "relevance": "High — Maryland Tech Council biopharma workforce infrastructure",
+      "proximity": 79,
+      "sourceRows": [
+        64
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-stephen-renee-bisciotti-foundation",
+      "name": "Stephen & Renee Bisciotti Foundation",
+      "category": "funding",
+      "sourceCategory": "Newly Uncovered — Health Systems, Funders & Companies",
+      "type": "Philanthropic funder",
+      "website": "https://www.bisciotti.org/",
+      "publicEmails": [
+        "info@bisciotti.org"
+      ],
+      "relevance": "High — major Baltimore ecosystem funder and Blackbird founder",
+      "proximity": 79,
+      "sourceRows": [
+        56
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-maryland-tech-council",
+      "name": "Maryland Tech Council",
+      "category": "ecosystem",
+      "sourceCategory": "LifeTech / MedTech Ecosystem",
+      "type": "Industry association",
+      "website": "https://mdtechcouncil.com/",
+      "publicEmails": [],
+      "relevance": "High — statewide life-science/technology network",
+      "proximity": 78,
+      "sourceRows": [
+        16
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-rpm-tech",
+      "name": "RPM Tech",
+      "category": "company",
+      "sourceCategory": "Imported from Baltimore Economy — Life / Medical Network",
+      "type": "MedTech engineering / prototyping",
+      "website": "https://rpm-tech.com/",
+      "publicEmails": [],
+      "relevance": "High — local product development, electronics and prototyping capacity",
+      "proximity": 78,
+      "sourceRows": [
+        70
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-biobuild",
+      "name": "BioBuild",
+      "category": "company",
+      "sourceCategory": "Life / Medical Companies",
+      "type": "Life-science startup",
+      "website": "https://www.biobuild.bio/",
+      "publicEmails": [],
+      "relevance": "High — local life-science founder peer",
+      "proximity": 77,
+      "sourceRows": [
+        19
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-materic-early-charm",
+      "name": "Materic / Early Charm",
+      "category": "company",
+      "sourceCategory": "Imported from Baltimore Economy — Life / Medical Network",
+      "type": "Advanced materials / medical-device manufacturing",
+      "website": "https://matericgroup.com/capabilities/",
+      "publicEmails": [],
+      "relevance": "High — Baltimore manufacturing capacity serving medical devices",
+      "proximity": 77,
+      "sourceRows": [
+        72
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-postcare-ai",
+      "name": "PostCare.ai",
+      "category": "company",
+      "sourceCategory": "Imported from Baltimore Economy — Life / Medical Network",
+      "type": "Digital-health / clinical AI company",
+      "website": "https://postcare.ai/",
+      "publicEmails": [],
+      "relevance": "High — clinical documentation and provider workflow technology",
+      "proximity": 76,
+      "sourceRows": [
+        67
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-salynt",
+      "name": "Salynt",
+      "category": "company",
+      "sourceCategory": "Life / Medical Companies",
+      "type": "Health-tech company",
+      "website": "https://www.salynt.io/",
+      "publicEmails": [],
+      "relevance": "High — healthcare technology founder peer",
+      "proximity": 76,
+      "sourceRows": [
+        20
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-protenus",
+      "name": "Protenus",
+      "category": "company",
+      "sourceCategory": "Life / Medical Companies",
+      "type": "Health-tech company",
+      "website": "https://www.protenus.com/",
+      "publicEmails": [
+        "info@protenus.com"
+      ],
+      "relevance": "High — Baltimore healthcare technology network",
+      "proximity": 75,
+      "sourceRows": [
+        21
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-tessa-g-lebinger-m-d-llc",
+      "name": "Tessa G. Lebinger, M.D. LLC",
+      "category": "company",
+      "sourceCategory": "Imported from Baltimore Economy — Life / Medical Network",
+      "type": "FDA medical-device regulatory consulting",
+      "website": "https://www.youtube.com/watch?v=QCtEqu9cRC0&t=1263s",
+      "publicEmails": [],
+      "relevance": "High — specialized medical-device regulatory expertise",
+      "proximity": 75,
+      "sourceRows": [
+        71
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-baltimore-regional-tech-council",
+      "name": "Baltimore Regional Tech Council",
+      "category": "ecosystem",
+      "sourceCategory": "Imported from Baltimore Economy — Life / Medical Network",
+      "type": "Regional tech / life-science council",
+      "website": "https://mdtechcouncil.com/chapter/brtc/",
+      "publicEmails": [],
+      "relevance": "High — Baltimore-facing arm of Maryland Tech Council",
+      "proximity": 74,
+      "sourceRows": [
+        65
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-baltimore-underground-science-space-bugss",
+      "name": "Baltimore Underground Science Space (BUGSS)",
+      "category": "ecosystem",
+      "sourceCategory": "Imported from Baltimore Economy — Life / Medical Network",
+      "type": "Community biology lab",
+      "website": "https://bugssonline.org/",
+      "publicEmails": [
+        "info@bugssonline.org"
+      ],
+      "relevance": "High — accessible community wet-lab and biology education resource",
+      "proximity": 73,
+      "sourceRows": [
+        66
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-early-charm-ventures",
+      "name": "Early Charm Ventures",
+      "category": "funding",
+      "sourceCategory": "Funding & Commercialization — Cross-Sector",
+      "type": "Venture studio",
+      "website": "https://earlycharm.com/",
+      "publicEmails": [],
+      "relevance": "High — science commercialization and company formation",
+      "proximity": 73,
+      "sourceRows": [
+        26
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-biobuzz",
+      "name": "BioBuzz",
+      "category": "ecosystem",
+      "sourceCategory": "LifeTech / MedTech Ecosystem",
+      "type": "Life-science ecosystem media / community",
+      "website": "https://www.biobuzz.io/",
+      "publicEmails": [],
+      "relevance": "High — community discovery and life-science connectivity",
+      "proximity": 72,
+      "sourceRows": [
+        17
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-healthier-forms",
+      "name": "Healthier Forms",
+      "category": "company",
+      "sourceCategory": "Imported from Baltimore Economy — Life / Medical Network",
+      "type": "Digital-health / MRI safety company",
+      "website": "https://bemrisafe.com/",
+      "publicEmails": [],
+      "relevance": "High — medical workflow and MRI safety technology",
+      "proximity": 72,
+      "sourceRows": [
+        68
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-bdc-emerging-technology-center-etc",
+      "name": "BDC Emerging Technology Center (ETC)",
+      "category": "general",
+      "sourceCategory": "General Entrepreneurship / Non-LifeTech",
+      "type": "Incubator / ESO",
+      "website": "https://baltimoredevelopment.com/",
+      "publicEmails": [],
+      "relevance": "High — Baltimore startup infrastructure",
+      "proximity": 70,
+      "sourceRows": [
+        33
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-the-novella-center-for-entrepreneurship",
+      "name": "The Novella Center for Entrepreneurship",
+      "category": "general",
+      "sourceCategory": "General Entrepreneurship / Non-LifeTech",
+      "type": "Entrepreneurship center",
+      "website": "https://www.novellacenter.com/",
+      "publicEmails": [],
+      "relevance": "High — Baltimore founder and venture network",
+      "proximity": 68,
+      "sourceRows": [
+        34
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-usm-maryland-momentum-fund",
+      "name": "USM Maryland Momentum Fund",
+      "category": "funding",
+      "sourceCategory": "Funding & Commercialization — Cross-Sector",
+      "type": "Venture fund",
+      "website": "https://www.usmd.edu/usm-momentum-fund/",
+      "publicEmails": [],
+      "relevance": "High — Maryland university commercialization capital",
+      "proximity": 67,
+      "sourceRows": [
+        27
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-conscious-venture-partners",
+      "name": "Conscious Venture Partners",
+      "category": "funding",
+      "sourceCategory": "Funding & Commercialization — Cross-Sector",
+      "type": "Venture capital",
+      "website": "https://consciousventurepartners.com/",
+      "publicEmails": [],
+      "relevance": "High — early-stage regional capital and founder network",
+      "proximity": 65,
+      "sourceRows": [
+        28
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-startup-at-the-armory",
+      "name": "StarTUp at the Armory",
+      "category": "university",
+      "sourceCategory": "General Entrepreneurship / Non-LifeTech",
+      "type": "University incubator / entrepreneurship hub",
+      "website": "https://www.towson.edu/startup/",
+      "publicEmails": [],
+      "relevance": "Moderate — founder pipeline and regional startup network",
+      "proximity": 63,
+      "sourceRows": [
+        35
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-morgan-state-innovation-entrepreneurship-center",
+      "name": "Morgan State Innovation & Entrepreneurship Center",
+      "category": "university",
+      "sourceCategory": "General Entrepreneurship / Non-LifeTech",
+      "type": "University entrepreneurship center",
+      "website": "https://www.morgan.edu/",
+      "publicEmails": [],
+      "relevance": "Moderate — Baltimore founder and student pipeline",
+      "proximity": 61,
+      "sourceRows": [
+        36
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-squadra-ventures",
+      "name": "Squadra Ventures",
+      "category": "funding",
+      "sourceCategory": "Funding & Commercialization — Cross-Sector",
+      "type": "Venture capital",
+      "website": "https://squadraventures.com/",
+      "publicEmails": [],
+      "relevance": "High — Baltimore technology investment network",
+      "proximity": 60,
+      "sourceRows": [
+        29
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-tcp-venture-capital",
+      "name": "TCP Venture Capital",
+      "category": "funding",
+      "sourceCategory": "Funding & Commercialization — Cross-Sector",
+      "type": "Venture capital",
+      "website": "https://tcpventurecapital.com/",
+      "publicEmails": [],
+      "relevance": "High — local early-stage investment network",
+      "proximity": 59,
+      "sourceRows": [
+        30
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-rarebreed-ventures",
+      "name": "RareBreed Ventures",
+      "category": "funding",
+      "sourceCategory": "Funding & Commercialization — Cross-Sector",
+      "type": "Venture capital",
+      "website": "https://rarebreed.vc/",
+      "publicEmails": [],
+      "relevance": "Moderate — Baltimore early-stage capital network",
+      "proximity": 58,
+      "sourceRows": [
+        31
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-innovation-works",
+      "name": "Innovation Works",
+      "category": "general",
+      "sourceCategory": "General Entrepreneurship / Non-LifeTech",
+      "type": "Inclusive entrepreneurship ESO",
+      "website": "https://iwbmore.org/",
+      "publicEmails": [],
+      "relevance": "Moderate — community entrepreneurship and founder support",
+      "proximity": 55,
+      "sourceRows": [
+        37
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-the-gateway-howard-county-eda",
+      "name": "The Gateway / Howard County EDA",
+      "category": "general",
+      "sourceCategory": "General Entrepreneurship / Non-LifeTech",
+      "type": "Economic development / incubator",
+      "website": "https://www.hceda.org/",
+      "publicEmails": [],
+      "relevance": "Moderate — regional startup support and facilities",
+      "proximity": 53,
+      "sourceRows": [
+        38
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-loyola-simon-center-for-innovation-entrepreneurship",
+      "name": "Loyola Simon Center for Innovation & Entrepreneurship",
+      "category": "university",
+      "sourceCategory": "General Entrepreneurship / Non-LifeTech",
+      "type": "University entrepreneurship center",
+      "website": "https://www.loyola.edu/sellinger-business/centers/simon-center/",
+      "publicEmails": [],
+      "relevance": "Moderate — founder pipeline and regional network",
+      "proximity": 50,
+      "sourceRows": [
+        39
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-world-trade-center-institute-wtci",
+      "name": "World Trade Center Institute (WTCI)",
+      "category": "general",
+      "sourceCategory": "General Entrepreneurship / Non-LifeTech",
+      "type": "Global business network",
+      "website": "https://www.wtci.org/",
+      "publicEmails": [],
+      "relevance": "Moderate — partnerships and international commercialization",
+      "proximity": 47,
+      "sourceRows": [
+        40
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-hutch-fearless",
+      "name": "Hutch / Fearless",
+      "category": "general",
+      "sourceCategory": "General Entrepreneurship / Non-LifeTech",
+      "type": "Tech accelerator / community",
+      "website": "https://fearless.tech/hutch/",
+      "publicEmails": [],
+      "relevance": "Moderate — Baltimore technology founder network",
+      "proximity": 45,
+      "sourceRows": [
+        41
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-visurraga-enterprises",
+      "name": "Visurraga Enterprises",
+      "category": "company",
+      "sourceCategory": "Life / Medical Companies",
+      "type": "Medical / engineering company",
+      "website": "https://www.visurragaenterprises.com/",
+      "publicEmails": [],
+      "relevance": "Moderate — local industry relationship",
+      "proximity": 42,
+      "sourceRows": [
+        22
+      ],
+      "directory": true
+    },
+    {
+      "id": "org-baltimore-city",
+      "name": "Baltimore City",
+      "category": "general",
+      "type": "Funding-network organization",
+      "website": "",
+      "publicEmails": [],
+      "relevance": "",
+      "proximity": null,
+      "sourceRows": [],
+      "directory": false
+    },
+    {
+      "id": "org-conscious-venture-fund-ii",
+      "name": "Conscious Venture Fund II",
+      "category": "funding",
+      "type": "Funding-network organization",
+      "website": "",
+      "publicEmails": [],
+      "relevance": "",
+      "proximity": null,
+      "sourceRows": [],
+      "directory": false
+    },
+    {
+      "id": "org-johns-hopkins-technology-ventures",
+      "name": "Johns Hopkins Technology Ventures",
+      "category": "university",
+      "type": "Funding-network organization",
+      "website": "https://ventures.jhu.edu/",
+      "publicEmails": [],
+      "relevance": "",
+      "proximity": null,
+      "sourceRows": [],
+      "directory": false
+    },
+    {
+      "id": "org-johns-hopkins-university",
+      "name": "Johns Hopkins University",
+      "category": "university",
+      "type": "Funding-network organization",
+      "website": "https://www.jhu.edu/",
+      "publicEmails": [],
+      "relevance": "",
+      "proximity": null,
+      "sourceRows": [],
+      "directory": false
+    },
+    {
+      "id": "org-national-institutes-of-health",
+      "name": "National Institutes of Health",
+      "category": "funding",
+      "type": "Funding-network organization",
+      "website": "https://www.nih.gov/",
+      "publicEmails": [],
+      "relevance": "",
+      "proximity": null,
+      "sourceRows": [],
+      "directory": false
+    },
+    {
+      "id": "org-rarebreed-ventures-fund-i",
+      "name": "RareBreed Ventures Fund I",
+      "category": "funding",
+      "type": "Funding-network organization",
+      "website": "",
+      "publicEmails": [],
+      "relevance": "",
+      "proximity": null,
+      "sourceRows": [],
+      "directory": false
+    },
+    {
+      "id": "org-sagamore-ventures",
+      "name": "Sagamore Ventures",
+      "category": "funding",
+      "type": "Funding-network organization",
+      "website": "",
+      "publicEmails": [],
+      "relevance": "",
+      "proximity": null,
+      "sourceRows": [],
+      "directory": false
+    },
+    {
+      "id": "org-squadra-ii",
+      "name": "Squadra II",
+      "category": "funding",
+      "type": "Funding-network organization",
+      "website": "",
+      "publicEmails": [],
+      "relevance": "",
+      "proximity": null,
+      "sourceRows": [],
+      "directory": false
+    },
+    {
+      "id": "org-techstars",
+      "name": "Techstars",
+      "category": "funding",
+      "type": "Funding-network organization",
+      "website": "https://www.techstars.com/",
+      "publicEmails": [],
+      "relevance": "",
+      "proximity": null,
+      "sourceRows": [],
+      "directory": false
+    },
+    {
+      "id": "org-tedco-equitech-growth-fund",
+      "name": "TEDCO Equitech Growth Fund",
+      "category": "funding",
+      "type": "Funding-network organization",
+      "website": "",
+      "publicEmails": [],
+      "relevance": "",
+      "proximity": null,
+      "sourceRows": [],
+      "directory": false
+    },
+    {
+      "id": "org-tedco-life-science-investment-fund",
+      "name": "TEDCO Life Science Investment Fund",
+      "category": "funding",
+      "type": "Funding-network organization",
+      "website": "",
+      "publicEmails": [],
+      "relevance": "",
+      "proximity": null,
+      "sourceRows": [],
+      "directory": false
+    },
+    {
+      "id": "org-tedco-seed-funds-ssbci",
+      "name": "TEDCO Seed Funds / SSBCI",
+      "category": "funding",
+      "type": "Funding-network organization",
+      "website": "",
+      "publicEmails": [],
+      "relevance": "",
+      "proximity": null,
+      "sourceRows": [],
+      "directory": false
+    },
+    {
+      "id": "org-u-s-economic-development-administration",
+      "name": "U.S. Economic Development Administration",
+      "category": "funding",
+      "type": "Funding-network organization",
+      "website": "https://www.eda.gov/",
+      "publicEmails": [],
+      "relevance": "",
+      "proximity": null,
+      "sourceRows": [],
+      "directory": false
+    },
+    {
+      "id": "org-university-of-maryland-baltimore-county",
+      "name": "University of Maryland, Baltimore County",
+      "category": "university",
+      "type": "Funding-network organization",
+      "website": "https://umbc.edu/",
+      "publicEmails": [],
+      "relevance": "",
+      "proximity": null,
+      "sourceRows": [],
+      "directory": false
+    },
+    {
+      "id": "org-university-system-of-maryland",
+      "name": "University System of Maryland",
+      "category": "university",
+      "type": "Funding-network organization",
+      "website": "https://www.usmd.edu/",
+      "publicEmails": [],
+      "relevance": "",
+      "proximity": null,
+      "sourceRows": [],
+      "directory": false
+    }
+  ],
+  "dashboard": [
+    {
+      "organizationId": "org-amplify-medtech",
+      "contribution": "Community / MedTech network",
+      "sourceCategory": "LifeTech / MedTech Ecosystem"
+    },
+    {
+      "organizationId": "org-the-launchport",
+      "contribution": "Devices / manufacturing",
+      "sourceCategory": "LifeTech / MedTech Ecosystem"
+    },
+    {
+      "organizationId": "org-mdc-studio-maryland-development-center",
+      "contribution": "MedTech commercialization",
+      "sourceCategory": "LifeTech / MedTech Ecosystem"
+    },
+    {
+      "organizationId": "org-techstars-ai-health-baltimore",
+      "contribution": "Health venture acceleration",
+      "sourceCategory": "LifeTech / MedTech Ecosystem"
+    },
+    {
+      "organizationId": "org-hexcite-johns-hopkins-technology-ventures",
+      "contribution": "Digital health / clinical translation",
+      "sourceCategory": "LifeTech / MedTech Ecosystem"
+    },
+    {
+      "organizationId": "org-fastforward-johns-hopkins-technology-ventures",
+      "contribution": "Commercialization / labs",
+      "sourceCategory": "LifeTech / MedTech Ecosystem"
+    },
+    {
+      "organizationId": "org-blackbird-laboratories",
+      "contribution": "Biotech venture creation",
+      "sourceCategory": "LifeTech / MedTech Ecosystem"
+    },
+    {
+      "organizationId": "org-connect-labs-by-wexford-baltimore",
+      "contribution": "Lab infrastructure",
+      "sourceCategory": "LifeTech / MedTech Ecosystem"
+    },
+    {
+      "organizationId": "org-harbor-launch-at-imet",
+      "contribution": "Wet lab / incubation",
+      "sourceCategory": "LifeTech / MedTech Ecosystem"
+    },
+    {
+      "organizationId": "org-biohealth-innovation",
+      "contribution": "Commercialization / funding",
+      "sourceCategory": "LifeTech / MedTech Ecosystem"
+    },
+    {
+      "organizationId": "org-1501-health",
+      "contribution": "Health venture acceleration",
+      "sourceCategory": "LifeTech / MedTech Ecosystem"
+    },
+    {
+      "organizationId": "org-pava-marie-lapere-center-for-entrepreneurship",
+      "contribution": "Founder pipeline / commercialization",
+      "sourceCategory": "Funding & Commercialization"
+    },
+    {
+      "organizationId": "org-bwtech-umbc-biotech-incubator",
+      "contribution": "Biotech incubation",
+      "sourceCategory": "LifeTech / MedTech Ecosystem"
+    },
+    {
+      "organizationId": "org-tedco",
+      "contribution": "Capital / commercialization",
+      "sourceCategory": "Funding & Commercialization"
+    },
+    {
+      "organizationId": "org-maryland-tech-council",
+      "contribution": "Industry network",
+      "sourceCategory": "LifeTech / MedTech Ecosystem"
+    },
+    {
+      "organizationId": "org-biobuild",
+      "contribution": "Life-science company",
+      "sourceCategory": "Life / Medical Companies"
+    },
+    {
+      "organizationId": "org-salynt",
+      "contribution": "Health-tech company",
+      "sourceCategory": "Life / Medical Companies"
+    },
+    {
+      "organizationId": "org-protenus",
+      "contribution": "Health-tech company",
+      "sourceCategory": "Life / Medical Companies"
+    },
+    {
+      "organizationId": "org-early-charm-ventures",
+      "contribution": "Science venture creation",
+      "sourceCategory": "Funding & Commercialization"
+    },
+    {
+      "organizationId": "org-biobuzz",
+      "contribution": "Community / media",
+      "sourceCategory": "LifeTech / MedTech Ecosystem"
+    },
+    {
+      "organizationId": "org-bdc-emerging-technology-center-etc",
+      "contribution": "Startup infrastructure",
+      "sourceCategory": "General Entrepreneurship"
+    },
+    {
+      "organizationId": "org-the-novella-center-for-entrepreneurship",
+      "contribution": "Founder support",
+      "sourceCategory": "General Entrepreneurship"
+    },
+    {
+      "organizationId": "org-usm-maryland-momentum-fund",
+      "contribution": "Capital",
+      "sourceCategory": "Funding & Commercialization"
+    },
+    {
+      "organizationId": "org-conscious-venture-partners",
+      "contribution": "Capital",
+      "sourceCategory": "Funding & Commercialization"
+    },
+    {
+      "organizationId": "org-startup-at-the-armory",
+      "contribution": "Founder support",
+      "sourceCategory": "General Entrepreneurship"
+    },
+    {
+      "organizationId": "org-morgan-state-innovation-entrepreneurship-center",
+      "contribution": "Founder pipeline",
+      "sourceCategory": "General Entrepreneurship"
+    },
+    {
+      "organizationId": "org-squadra-ventures",
+      "contribution": "Capital",
+      "sourceCategory": "Funding & Commercialization"
+    },
+    {
+      "organizationId": "org-tcp-venture-capital",
+      "contribution": "Capital",
+      "sourceCategory": "Funding & Commercialization"
+    },
+    {
+      "organizationId": "org-rarebreed-ventures",
+      "contribution": "Capital",
+      "sourceCategory": "Funding & Commercialization"
+    },
+    {
+      "organizationId": "org-innovation-works",
+      "contribution": "Community entrepreneurship",
+      "sourceCategory": "General Entrepreneurship"
+    },
+    {
+      "organizationId": "org-the-gateway-howard-county-eda",
+      "contribution": "Startup infrastructure",
+      "sourceCategory": "General Entrepreneurship"
+    },
+    {
+      "organizationId": "org-loyola-simon-center-for-innovation-entrepreneurship",
+      "contribution": "Founder pipeline",
+      "sourceCategory": "General Entrepreneurship"
+    },
+    {
+      "organizationId": "org-world-trade-center-institute-wtci",
+      "contribution": "International network",
+      "sourceCategory": "General Entrepreneurship"
+    },
+    {
+      "organizationId": "org-hutch-fearless",
+      "contribution": "Tech community",
+      "sourceCategory": "General Entrepreneurship"
+    },
+    {
+      "organizationId": "org-visurraga-enterprises",
+      "contribution": "Medical / engineering company",
+      "sourceCategory": "Life / Medical Companies"
+    }
+  ],
+  "financing": [
+    {
+      "id": "fin-blackbird-laboratories-stephen-renee-bisciotti-foundation-100-000-000-2023-11-07-founding-grant",
+      "recipient": "Blackbird Laboratories",
+      "funder": "Stephen & Renee Bisciotti Foundation",
+      "recipientId": "org-blackbird-laboratories",
+      "funderId": "org-stephen-renee-bisciotti-foundation",
+      "amountLabel": "$100,000,000",
+      "amount": 100000000,
+      "date": "2023-11-07",
+      "type": "Founding grant",
+      "scope": "Into listed organization",
+      "evidence": "Primary source",
+      "notes": "Founding grant used to launch Baltimore life-sciences accelerator.",
+      "sourceUrl": "https://blackbirdlab.org/baltimore-community-release/",
+      "kind": "transfer",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 2
+      }
+    },
+    {
+      "id": "fin-blackbird-research-infrastructure-blackbird-laboratories-33-000-000-current-reported-total-research-infrastructure-commitments",
+      "recipient": "Blackbird research + infrastructure",
+      "funder": "Blackbird Laboratories",
+      "recipientId": null,
+      "funderId": "org-blackbird-laboratories",
+      "amountLabel": "$33,000,000",
+      "amount": 33000000,
+      "date": "Current reported total",
+      "type": "Research / infrastructure commitments",
+      "scope": "Deployed by listed organization",
+      "evidence": "Primary source",
+      "notes": "Blackbird reports $33M committed to research and infrastructure.",
+      "sourceUrl": "https://blackbirdlab.org/what-we-do/",
+      "kind": "portfolio",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 3
+      }
+    },
+    {
+      "id": "fin-blackbird-investments-blackbird-laboratories-37-000-000-current-reported-total-strategic-investments",
+      "recipient": "Blackbird investments",
+      "funder": "Blackbird Laboratories",
+      "recipientId": null,
+      "funderId": "org-blackbird-laboratories",
+      "amountLabel": "$37,000,000",
+      "amount": 37000000,
+      "date": "Current reported total",
+      "type": "Strategic investments",
+      "scope": "Deployed by listed organization",
+      "evidence": "Primary source",
+      "notes": "Blackbird reports $37M in investments.",
+      "sourceUrl": "https://blackbirdlab.org/what-we-do/",
+      "kind": "portfolio",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 4
+      }
+    },
+    {
+      "id": "fin-johns-hopkins-research-initiatives-blackbird-laboratories-3-500-000-2024-2025-cumulative-research-support",
+      "recipient": "Johns Hopkins research initiatives",
+      "funder": "Blackbird Laboratories",
+      "recipientId": null,
+      "funderId": "org-blackbird-laboratories",
+      "amountLabel": "$3,500,000",
+      "amount": 3500000,
+      "date": "2024-2025 cumulative",
+      "type": "Research support",
+      "scope": "Between ecosystem organizations",
+      "evidence": "Primary source",
+      "notes": "JHTV reports Blackbird support exceeding $3.5M.",
+      "sourceUrl": "https://ventures.jhu.edu/wp-content/uploads/2025/09/JHTV-FY25-Annual-Report.pdf",
+      "kind": "portfolio",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 5
+      }
+    },
+    {
+      "id": "fin-protenus-early-investors-1-200-000-2014-09-angel-seed",
+      "recipient": "Protenus",
+      "funder": "Early investors",
+      "recipientId": "org-protenus",
+      "funderId": null,
+      "amountLabel": "$1,200,000",
+      "amount": 1200000,
+      "date": "2014-09",
+      "type": "Angel / seed",
+      "scope": "Into listed company",
+      "evidence": "Secondary corroborated",
+      "notes": "Early disclosed angel round.",
+      "sourceUrl": "https://app.dealroom.co/companies/protenus",
+      "kind": "transfer",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 6
+      }
+    },
+    {
+      "id": "fin-protenus-investors-incl-arthur-ventures-4-000-000-2016-01-series-a",
+      "recipient": "Protenus",
+      "funder": "Investors incl. Arthur Ventures",
+      "recipientId": "org-protenus",
+      "funderId": null,
+      "amountLabel": "$4,000,000",
+      "amount": 4000000,
+      "date": "2016-01",
+      "type": "Series A",
+      "scope": "Into listed company",
+      "evidence": "Secondary corroborated",
+      "notes": "Disclosed Series A financing.",
+      "sourceUrl": "https://app.dealroom.co/companies/protenus",
+      "kind": "transfer",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 7
+      }
+    },
+    {
+      "id": "fin-protenus-investors-incl-f-prime-lionbird-kaiser-permanente-ventures-3-000-000-2017-07-series-a-extension",
+      "recipient": "Protenus",
+      "funder": "Investors incl. F-Prime, LionBird, Kaiser Permanente Ventures",
+      "recipientId": "org-protenus",
+      "funderId": null,
+      "amountLabel": "$3,000,000",
+      "amount": 3000000,
+      "date": "2017-07",
+      "type": "Series A extension",
+      "scope": "Into listed company",
+      "evidence": "Secondary corroborated",
+      "notes": "Disclosed extension financing.",
+      "sourceUrl": "https://app.dealroom.co/companies/protenus",
+      "kind": "transfer",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 8
+      }
+    },
+    {
+      "id": "fin-protenus-f-prime-kaiser-permanente-ventures-arthur-ventures-lionbird-cognosante-11-000-000-2018-01-series-b",
+      "recipient": "Protenus",
+      "funder": "F-Prime, Kaiser Permanente Ventures, Arthur Ventures, LionBird, Cognosante",
+      "recipientId": "org-protenus",
+      "funderId": null,
+      "amountLabel": "$11,000,000",
+      "amount": 11000000,
+      "date": "2018-01",
+      "type": "Series B",
+      "scope": "Into listed company",
+      "evidence": "Primary/company release",
+      "notes": "Series B financing.",
+      "sourceUrl": "https://email.protenus.com/hubfs/Protenus_Sep2020/Resources/Protenus-raises-11-in-funding-Press-Release-Jan-2018.pdf",
+      "kind": "transfer",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 9
+      }
+    },
+    {
+      "id": "fin-protenus-investors-incl-transformation-capital-and-providence-ventures-17-000-000-2019-08-series-c",
+      "recipient": "Protenus",
+      "funder": "Investors incl. Transformation Capital and Providence Ventures",
+      "recipientId": "org-protenus",
+      "funderId": null,
+      "amountLabel": "$17,000,000",
+      "amount": 17000000,
+      "date": "2019-08",
+      "type": "Series C",
+      "scope": "Into listed company",
+      "evidence": "Secondary corroborated",
+      "notes": "Disclosed Series C round.",
+      "sourceUrl": "https://app.dealroom.co/companies/protenus",
+      "kind": "transfer",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 10
+      }
+    },
+    {
+      "id": "fin-protenus-investors-incl-memorialcare-f-prime-kaiser-permanente-ventures-arthur-ventures-lionbird-21-000-000-2021-06-series-d",
+      "recipient": "Protenus",
+      "funder": "Investors incl. MemorialCare, F-Prime, Kaiser Permanente Ventures, Arthur Ventures, LionBird",
+      "recipientId": "org-protenus",
+      "funderId": null,
+      "amountLabel": "$21,000,000",
+      "amount": 21000000,
+      "date": "2021-06",
+      "type": "Series D",
+      "scope": "Into listed company",
+      "evidence": "Secondary corroborated",
+      "notes": "Disclosed Series D round.",
+      "sourceUrl": "https://www.cbinsights.com/company/protenus/financials",
+      "kind": "transfer",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 11
+      }
+    },
+    {
+      "id": "fin-early-charm-ventures-baltimore-city-economic-development-bond-funds-100-000-2023-03-convertible-term-loan",
+      "recipient": "Early Charm Ventures",
+      "funder": "Baltimore City / Economic Development Bond Funds",
+      "recipientId": "org-early-charm-ventures",
+      "funderId": "org-baltimore-city",
+      "amountLabel": "$100,000",
+      "amount": 100000,
+      "date": "2023-03",
+      "type": "Convertible term loan",
+      "scope": "Into listed organization",
+      "evidence": "Government record",
+      "notes": "Five-year equipment loan for Bayard Street manufacturing facility.",
+      "sourceUrl": "https://comptroller.baltimorecity.gov/sites/default/files/comptroller_baltimorecity_gov/attachments/3152023_Final%20Agenda.pdf",
+      "kind": "transfer",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 12
+      }
+    },
+    {
+      "id": "fin-biohealth-innovation-u-s-economic-development-administration-495-000-2015-i6-grant",
+      "recipient": "BioHealth Innovation",
+      "funder": "U.S. Economic Development Administration",
+      "recipientId": "org-biohealth-innovation",
+      "funderId": "org-u-s-economic-development-administration",
+      "amountLabel": "$495,000",
+      "amount": 495000,
+      "date": "2015",
+      "type": "i6 grant",
+      "scope": "Into listed organization",
+      "evidence": "Federal record",
+      "notes": "Expansion of Venture Commercialization Model.",
+      "sourceUrl": "https://www.eda.gov/funding/programs/build-to-scale/past-grantees/2015-venture-challenge/BioHealth-Innovation",
+      "kind": "transfer",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 13
+      }
+    },
+    {
+      "id": "fin-umbc-umb-national-institutes-of-health-4-000-000-2023-reach-grant",
+      "recipient": "UMBC + UMB",
+      "funder": "National Institutes of Health",
+      "recipientId": null,
+      "funderId": "org-national-institutes-of-health",
+      "amountLabel": "$4,000,000",
+      "amount": 4000000,
+      "date": "2023",
+      "type": "REACH grant",
+      "scope": "Ecosystem infrastructure",
+      "evidence": "Institutional source",
+      "notes": "Four-year biomedical/life-sciences accelerator and commercialization award.",
+      "sourceUrl": "https://bwtech.umbc.edu/umbc-umb-to-create-innovation-hub-in-west-baltimore/",
+      "kind": "transfer",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 14
+      }
+    },
+    {
+      "id": "fin-hutch-fearless-u-s-economic-development-administration-661-725-2022-build-to-scale-grant",
+      "recipient": "Hutch / Fearless",
+      "funder": "U.S. Economic Development Administration",
+      "recipientId": "org-hutch-fearless",
+      "funderId": "org-u-s-economic-development-administration",
+      "amountLabel": "$661,725",
+      "amount": 661725,
+      "date": "2022",
+      "type": "Build to Scale grant",
+      "scope": "Into listed program",
+      "evidence": "Federal record",
+      "notes": "Federal share.",
+      "sourceUrl": "https://www.eda.gov/funding/programs/build-to-scale/past-grantees/2022-venture-challenge/Fearless-Solutions",
+      "kind": "transfer",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 15
+      }
+    },
+    {
+      "id": "fin-hutch-fearless-local-match-661-725-2022-matching-funds",
+      "recipient": "Hutch / Fearless",
+      "funder": "Local match",
+      "recipientId": "org-hutch-fearless",
+      "funderId": null,
+      "amountLabel": "$661,725",
+      "amount": 661725,
+      "date": "2022",
+      "type": "Matching funds",
+      "scope": "Into listed program",
+      "evidence": "Federal record",
+      "notes": "Required local match.",
+      "sourceUrl": "https://www.eda.gov/funding/programs/build-to-scale/past-grantees/2022-venture-challenge/Fearless-Solutions",
+      "kind": "transfer",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 16
+      }
+    },
+    {
+      "id": "fin-launchport-tedco-equitech-growth-fund-41-500-fy2025-workforce-grant",
+      "recipient": "LaunchPort",
+      "funder": "TEDCO Equitech Growth Fund",
+      "recipientId": "org-the-launchport",
+      "funderId": "org-tedco-equitech-growth-fund",
+      "amountLabel": "$41,500",
+      "amount": 41500,
+      "date": "FY2025",
+      "type": "Workforce grant",
+      "scope": "Into listed organization",
+      "evidence": "State record",
+      "notes": "First of two Equitech awards.",
+      "sourceUrl": "https://www.tedcomd.com/insight/tedcos-first-round-equitech-growth-fund-awardees-unveiled-0",
+      "kind": "transfer",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 17
+      }
+    },
+    {
+      "id": "fin-launchport-tedco-equitech-growth-fund-234-100-fy2025-infrastructure-grant",
+      "recipient": "LaunchPort",
+      "funder": "TEDCO Equitech Growth Fund",
+      "recipientId": "org-the-launchport",
+      "funderId": "org-tedco-equitech-growth-fund",
+      "amountLabel": "$234,100",
+      "amount": 234100,
+      "date": "FY2025",
+      "type": "Infrastructure grant",
+      "scope": "Into listed organization",
+      "evidence": "State record",
+      "notes": "Second of two Equitech awards.",
+      "sourceUrl": "https://www.tedcomd.com/insight/tedcos-first-round-equitech-growth-fund-awardees-unveiled-0",
+      "kind": "transfer",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 18
+      }
+    },
+    {
+      "id": "fin-biobuzz-networks-tedco-equitech-growth-fund-224-800-fy2026-workforce-grant",
+      "recipient": "BioBuzz Networks",
+      "funder": "TEDCO Equitech Growth Fund",
+      "recipientId": "org-biobuzz",
+      "funderId": "org-tedco-equitech-growth-fund",
+      "amountLabel": "$224,800",
+      "amount": 224800,
+      "date": "FY2026",
+      "type": "Workforce grant",
+      "scope": "Into listed organization",
+      "evidence": "State record",
+      "notes": "Healthcare, life sciences and bioinformatics project.",
+      "sourceUrl": "https://www.tedcomd.com/sites/default/files/2026-02/FY27%20TEDCO%20budget%20Testimony%20FINAL.pdf",
+      "kind": "transfer",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 19
+      }
+    },
+    {
+      "id": "fin-techstars-ai-health-cohort-company-techstars-220-000-current-terms-accelerator-investment",
+      "recipient": "Techstars AI Health cohort company",
+      "funder": "Techstars",
+      "recipientId": null,
+      "funderId": "org-techstars",
+      "amountLabel": "$220,000",
+      "amount": 220000,
+      "date": "Current terms",
+      "type": "Accelerator investment",
+      "scope": "Deployed by listed program",
+      "evidence": "Primary source",
+      "notes": "Per participating company.",
+      "sourceUrl": "https://www.techstars.com/accelerators/baltimore-ai-health",
+      "kind": "terms",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 20
+      }
+    },
+    {
+      "id": "fin-1501-health-cohort-company-healthworx-carefirst-lifebridge-health-100-000-2021-2022-incubator-investment",
+      "recipient": "1501 Health cohort company",
+      "funder": "Healthworx / CareFirst + LifeBridge Health",
+      "recipientId": null,
+      "funderId": null,
+      "amountLabel": "$100,000",
+      "amount": 100000,
+      "date": "2021-2022",
+      "type": "Incubator investment",
+      "scope": "Deployed by listed program",
+      "evidence": "Primary source",
+      "notes": "Up to $100K per company in early cohorts.",
+      "sourceUrl": "https://www.lifebridgehealth.org/news/healthworx-and-lifebridge-health-launch-startup-incubator-1501-health",
+      "kind": "terms",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 21
+      }
+    },
+    {
+      "id": "fin-1501-health-cohort-company-healthworx-carefirst-lifebridge-health-125-000-2023-terms-incubator-investment",
+      "recipient": "1501 Health cohort company",
+      "funder": "Healthworx / CareFirst + LifeBridge Health",
+      "recipientId": null,
+      "funderId": null,
+      "amountLabel": "$125,000",
+      "amount": 125000,
+      "date": "2023 terms",
+      "type": "Incubator investment",
+      "scope": "Deployed by listed program",
+      "evidence": "Institutional source",
+      "notes": "Up to $125K per company for third cohort.",
+      "sourceUrl": "https://ventures.jhu.edu/event/1501-health-incubator-application/",
+      "kind": "terms",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 22
+      }
+    },
+    {
+      "id": "fin-hexcite-selected-project-johns-hopkins-technology-ventures-10-000-2026-venture-lab-award",
+      "recipient": "Hexcite selected project",
+      "funder": "Johns Hopkins Technology Ventures",
+      "recipientId": null,
+      "funderId": "org-johns-hopkins-technology-ventures",
+      "amountLabel": "$10,000",
+      "amount": 10000,
+      "date": "2026",
+      "type": "Venture lab award",
+      "scope": "Deployed by listed program",
+      "evidence": "Primary source",
+      "notes": "Select project receives $10K.",
+      "sourceUrl": "https://ventures.jhu.edu/programs-services/cohort-based-programs/hexcite/",
+      "kind": "terms",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 23
+      }
+    },
+    {
+      "id": "fin-mdc-studio-client-companies-contracts-grants-and-investors-15-000-000-cumulative-aggregate-financing",
+      "recipient": "MDC Studio client companies",
+      "funder": "Contracts, grants and investors",
+      "recipientId": null,
+      "funderId": null,
+      "amountLabel": "$15,000,000",
+      "amount": 15000000,
+      "date": "Cumulative",
+      "type": "Aggregate financing",
+      "scope": "Portfolio aggregate",
+      "evidence": "Primary source",
+      "notes": "Over $15M raised; includes overlapping categories below.",
+      "sourceUrl": "https://mdcstudio.com/",
+      "kind": "portfolio",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 24
+      }
+    },
+    {
+      "id": "fin-mdc-studio-client-companies-contract-and-grant-funders-13-000-000-cumulative-contracts-grants",
+      "recipient": "MDC Studio client companies",
+      "funder": "Contract and grant funders",
+      "recipientId": null,
+      "funderId": null,
+      "amountLabel": "$13,000,000",
+      "amount": 13000000,
+      "date": "Cumulative",
+      "type": "Contracts + grants",
+      "scope": "Portfolio aggregate",
+      "evidence": "Primary source",
+      "notes": "About $13M; subset of aggregate.",
+      "sourceUrl": "https://www.mdcstudio.com/for-entrepreneurs/",
+      "kind": "portfolio",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 25
+      }
+    },
+    {
+      "id": "fin-mdc-studio-client-companies-angel-investors-3-000-000-cumulative-angel-investment",
+      "recipient": "MDC Studio client companies",
+      "funder": "Angel investors",
+      "recipientId": null,
+      "funderId": null,
+      "amountLabel": "$3,000,000",
+      "amount": 3000000,
+      "date": "Cumulative",
+      "type": "Angel investment",
+      "scope": "Portfolio aggregate",
+      "evidence": "Primary source",
+      "notes": "About $3M; may overlap aggregate.",
+      "sourceUrl": "https://mdcstudio.com/",
+      "kind": "portfolio",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 26
+      }
+    },
+    {
+      "id": "fin-maryland-momentum-portfolio-maryland-momentum-fund-usm-11-700-000-since-2017-equity-investments",
+      "recipient": "Maryland Momentum portfolio",
+      "funder": "Maryland Momentum Fund / USM",
+      "recipientId": null,
+      "funderId": "org-usm-maryland-momentum-fund",
+      "amountLabel": "$11,700,000",
+      "amount": 11700000,
+      "date": "Since 2017",
+      "type": "Equity investments",
+      "scope": "Deployed by listed fund",
+      "evidence": "Institutional report",
+      "notes": "27 companies across 8 USM institutions.",
+      "sourceUrl": "https://mpower.maryland.edu/center-for-maryland-advanced-ventures/",
+      "kind": "portfolio",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 27
+      }
+    },
+    {
+      "id": "fin-maryland-momentum-portfolio-co-investors-125-000-000-since-2017-co-investment",
+      "recipient": "Maryland Momentum portfolio",
+      "funder": "Co-investors",
+      "recipientId": null,
+      "funderId": null,
+      "amountLabel": "$125,000,000",
+      "amount": 125000000,
+      "date": "Since 2017",
+      "type": "Co-investment",
+      "scope": "Portfolio aggregate",
+      "evidence": "Institutional report",
+      "notes": "230+ unique co-investors.",
+      "sourceUrl": "https://mpower.maryland.edu/center-for-maryland-advanced-ventures/",
+      "kind": "coinvestment",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 28
+      }
+    },
+    {
+      "id": "fin-maryland-momentum-fund-university-system-of-maryland-16-000-000-current-fund-size-fund-capitalization",
+      "recipient": "Maryland Momentum Fund",
+      "funder": "University System of Maryland",
+      "recipientId": "org-usm-maryland-momentum-fund",
+      "funderId": "org-university-system-of-maryland",
+      "amountLabel": "$16,000,000",
+      "amount": 16000000,
+      "date": "Current fund size",
+      "type": "Fund capitalization",
+      "scope": "Into listed fund",
+      "evidence": "Institutional source",
+      "notes": "USM early-stage investment fund.",
+      "sourceUrl": "https://innovate.umd.edu/resources/momentum-fund",
+      "kind": "capitalization",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 29
+      }
+    },
+    {
+      "id": "fin-tedco-life-science-investment-fund-portfolio-tedco-500-000-fy2025-life-science-investment",
+      "recipient": "TEDCO Life Science Investment Fund portfolio",
+      "funder": "TEDCO",
+      "recipientId": null,
+      "funderId": "org-tedco",
+      "amountLabel": "$500,000",
+      "amount": 500000,
+      "date": "FY2025",
+      "type": "Life-science investment",
+      "scope": "Deployed by listed fund",
+      "evidence": "Annual report",
+      "notes": "One LSIF investment in FY2025.",
+      "sourceUrl": "https://www.tedcomd.com/sites/default/files/2025-12/TEDCO%20Annual%20Report%20FY%202025.pdf",
+      "kind": "portfolio",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 30
+      }
+    },
+    {
+      "id": "fin-irazu-oncology-tedco-life-science-investment-fund-500-000-2025-03-life-science-investment",
+      "recipient": "Irazu Oncology",
+      "funder": "TEDCO Life Science Investment Fund",
+      "recipientId": "org-irazu-oncology",
+      "funderId": "org-tedco-life-science-investment-fund",
+      "amountLabel": "$500,000",
+      "amount": 500000,
+      "date": "2025-03",
+      "type": "Life-science investment",
+      "scope": "Named ecosystem transaction",
+      "evidence": "Primary source",
+      "notes": "Cancer immunotherapy company.",
+      "sourceUrl": "https://www.tedcomd.com/insight/tedco-invests-irazu-oncology-0",
+      "kind": "transfer",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 31
+      }
+    },
+    {
+      "id": "fin-conscious-venture-fund-ii-investors-led-by-sagamore-ventures-15-800-000-2022-07-vc-fund-commitments",
+      "recipient": "Conscious Venture Fund II",
+      "funder": "Investors led by Sagamore Ventures",
+      "recipientId": "org-conscious-venture-fund-ii",
+      "funderId": null,
+      "amountLabel": "$15,800,000",
+      "amount": 15800000,
+      "date": "2022-07",
+      "type": "VC fund commitments",
+      "scope": "Into listed fund manager",
+      "evidence": "Primary release",
+      "notes": "Raised at announcement toward $50M goal.",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/conscious-venture-partners-raises-15-8-million-for-conscious-venture-fund-ii-led-locally-by-kevin-planks-sagamore-ventures-301585334.html",
+      "kind": "capitalization",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 32
+      }
+    },
+    {
+      "id": "fin-conscious-venture-fund-ii-sagamore-ventures-2-500-000-2022-07-lp-commitment",
+      "recipient": "Conscious Venture Fund II",
+      "funder": "Sagamore Ventures",
+      "recipientId": "org-conscious-venture-fund-ii",
+      "funderId": "org-sagamore-ventures",
+      "amountLabel": "$2,500,000",
+      "amount": 2500000,
+      "date": "2022-07",
+      "type": "LP commitment",
+      "scope": "Into listed fund manager",
+      "evidence": "Primary release",
+      "notes": "Named lead commitment; included in fund total above.",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/conscious-venture-partners-raises-15-8-million-for-conscious-venture-fund-ii-led-locally-by-kevin-planks-sagamore-ventures-301585334.html",
+      "kind": "capitalization",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 33
+      }
+    },
+    {
+      "id": "fin-squadra-ii-limited-partners-investors-105-000-000-2023-07-vc-fund-raise",
+      "recipient": "Squadra II",
+      "funder": "Limited partners / investors",
+      "recipientId": "org-squadra-ii",
+      "funderId": null,
+      "amountLabel": "$105,000,000",
+      "amount": 105000000,
+      "date": "2023-07",
+      "type": "VC fund raise",
+      "scope": "Into listed fund manager",
+      "evidence": "Primary source",
+      "notes": "Fund raise announced at $105M.",
+      "sourceUrl": "https://blog.squadra.vc/articles/squadra-ventures-raises-105-million-to-invest-in-early-stage-cyber-and-national-security-companies",
+      "kind": "capitalization",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 34
+      }
+    },
+    {
+      "id": "fin-rarebreed-ventures-fund-i-limited-partners-investors-10-000-000-2022-reported-vc-fund-raise",
+      "recipient": "RareBreed Ventures Fund I",
+      "funder": "Limited partners / investors",
+      "recipientId": "org-rarebreed-ventures-fund-i",
+      "funderId": null,
+      "amountLabel": "$10,000,000",
+      "amount": 10000000,
+      "date": "2022 reported",
+      "type": "VC fund raise",
+      "scope": "Into listed fund manager",
+      "evidence": "Secondary reported",
+      "notes": "Reported first fund close.",
+      "sourceUrl": "https://www.bizjournals.com/baltimore/inno/stories/fundings/2022/03/03/mac-conwell-rarebreed-ventures-second-fund.html",
+      "kind": "capitalization",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 35
+      }
+    },
+    {
+      "id": "fin-startup-accelerator-company-towson-university-startup-10-000-current-program-equity-free-stipend",
+      "recipient": "StarTUp Accelerator company",
+      "funder": "Towson University StarTUp",
+      "recipientId": null,
+      "funderId": "org-startup-at-the-armory",
+      "amountLabel": "$10,000",
+      "amount": 10000,
+      "date": "Current program",
+      "type": "Equity-free stipend",
+      "scope": "Deployed by listed program",
+      "evidence": "Primary source",
+      "notes": "Per selected accelerator company.",
+      "sourceUrl": "https://www.towson.edu/startup/programs/community-entrepreneurship/accelerator/",
+      "kind": "terms",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 36
+      }
+    },
+    {
+      "id": "fin-morgan-entrepreneurship-research-awardee-morgan-innovation-entrepreneurship-center-10-000-current-program-research-grant",
+      "recipient": "Morgan entrepreneurship research awardee",
+      "funder": "Morgan Innovation & Entrepreneurship Center",
+      "recipientId": null,
+      "funderId": "org-morgan-state-innovation-entrepreneurship-center",
+      "amountLabel": "$10,000",
+      "amount": 10000,
+      "date": "Current program",
+      "type": "Research grant",
+      "scope": "Deployed by listed program",
+      "evidence": "Primary source",
+      "notes": "Per research award.",
+      "sourceUrl": "https://www.morgan.edu/innovation-and-entrepreneurship-center/research",
+      "kind": "terms",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 37
+      }
+    },
+    {
+      "id": "fin-pava-center-supported-teams-various-investors-and-funders-200-000-000-cumulative-reported-capital-raised-by-supported-teams",
+      "recipient": "Pava Center supported teams",
+      "funder": "Various investors and funders",
+      "recipientId": null,
+      "funderId": null,
+      "amountLabel": "$200,000,000",
+      "amount": 200000000,
+      "date": "Cumulative reported",
+      "type": "Capital raised by supported teams",
+      "scope": "Portfolio aggregate",
+      "evidence": "Institutional source",
+      "notes": "More than $200M raised by student/community teams; not direct Pava disbursement.",
+      "sourceUrl": "https://hub.jhu.edu/2024/04/08/pava-center-dedication/",
+      "kind": "portfolio",
+      "provenance": {
+        "sheet": "Financing & Money Flows",
+        "row": 38
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "id": "edge-stephen-renee-bisciotti-foundation-blackbird-laboratories-100-000-000-founding-grant-2023",
+      "source": "org-stephen-renee-bisciotti-foundation",
+      "target": "org-blackbird-laboratories",
+      "sourceLabel": "Stephen & Renee Bisciotti Foundation",
+      "targetLabel": "Blackbird Laboratories",
+      "relationship": "funding",
+      "kind": "transfer",
+      "amountLabel": "$100,000,000",
+      "amount": 100000000,
+      "type": "Founding grant",
+      "date": "2023",
+      "description": "Foundation → ecosystem organization",
+      "sourceUrl": "https://blackbirdlab.org/baltimore-community-release/",
+      "evidence": "Primary source",
+      "notes": "Founding grant used to launch Baltimore life-sciences accelerator.",
+      "financingId": "fin-blackbird-laboratories-stephen-renee-bisciotti-foundation-100-000-000-2023-11-07-founding-grant",
+      "provenance": {
+        "sheet": "Funding Network",
+        "row": 3
+      }
+    },
+    {
+      "id": "edge-blackbird-laboratories-johns-hopkins-research-initiatives-3-500-000-research-support-2024-2025",
+      "source": "org-blackbird-laboratories",
+      "target": null,
+      "sourceLabel": "Blackbird Laboratories",
+      "targetLabel": "Johns Hopkins research initiatives",
+      "relationship": "funding",
+      "kind": "portfolio",
+      "amountLabel": "$3,500,000",
+      "amount": 3500000,
+      "type": "Research support",
+      "date": "2024–2025",
+      "description": "Ecosystem organization → university research",
+      "sourceUrl": "https://ventures.jhu.edu/wp-content/uploads/2025/09/JHTV-FY25-Annual-Report.pdf",
+      "evidence": "Primary source",
+      "notes": "JHTV reports Blackbird support exceeding $3.5M.",
+      "financingId": "fin-johns-hopkins-research-initiatives-blackbird-laboratories-3-500-000-2024-2025-cumulative-research-support",
+      "provenance": {
+        "sheet": "Funding Network",
+        "row": 4
+      }
+    },
+    {
+      "id": "edge-blackbird-laboratories-research-infrastructure-portfolio-33-000-000-research-infrastructure-commitments-current-total",
+      "source": "org-blackbird-laboratories",
+      "target": null,
+      "sourceLabel": "Blackbird Laboratories",
+      "targetLabel": "Research + infrastructure portfolio",
+      "relationship": "funding",
+      "kind": "portfolio",
+      "amountLabel": "$33,000,000",
+      "amount": 33000000,
+      "type": "Research/infrastructure commitments",
+      "date": "Current total",
+      "description": "Ecosystem organization → portfolio",
+      "sourceUrl": "https://blackbirdlab.org/what-we-do/",
+      "evidence": "Primary source",
+      "notes": "Blackbird reports $33M committed to research and infrastructure.",
+      "financingId": "fin-blackbird-research-infrastructure-blackbird-laboratories-33-000-000-current-reported-total-research-infrastructure-commitments",
+      "provenance": {
+        "sheet": "Funding Network",
+        "row": 5
+      }
+    },
+    {
+      "id": "edge-blackbird-laboratories-strategic-investment-portfolio-37-000-000-investment-current-total",
+      "source": "org-blackbird-laboratories",
+      "target": null,
+      "sourceLabel": "Blackbird Laboratories",
+      "targetLabel": "Strategic investment portfolio",
+      "relationship": "funding",
+      "kind": "portfolio",
+      "amountLabel": "$37,000,000",
+      "amount": 37000000,
+      "type": "Investment",
+      "date": "Current total",
+      "description": "Ecosystem organization → portfolio",
+      "sourceUrl": "https://blackbirdlab.org/what-we-do/",
+      "evidence": "Primary source",
+      "notes": "Blackbird reports $37M in investments.",
+      "financingId": "fin-blackbird-investments-blackbird-laboratories-37-000-000-current-reported-total-strategic-investments",
+      "provenance": {
+        "sheet": "Funding Network",
+        "row": 6
+      }
+    },
+    {
+      "id": "edge-baltimore-city-early-charm-ventures-100-000-convertible-loan-2023",
+      "source": "org-baltimore-city",
+      "target": "org-early-charm-ventures",
+      "sourceLabel": "Baltimore City",
+      "targetLabel": "Early Charm Ventures",
+      "relationship": "funding",
+      "kind": "transfer",
+      "amountLabel": "$100,000",
+      "amount": 100000,
+      "type": "Convertible loan",
+      "date": "2023",
+      "description": "Government → venture studio",
+      "sourceUrl": "https://comptroller.baltimorecity.gov/sites/default/files/comptroller_baltimorecity_gov/attachments/3152023_Final%20Agenda.pdf",
+      "evidence": "Government record",
+      "notes": "Five-year equipment loan for Bayard Street manufacturing facility.",
+      "financingId": "fin-early-charm-ventures-baltimore-city-economic-development-bond-funds-100-000-2023-03-convertible-term-loan",
+      "provenance": {
+        "sheet": "Funding Network",
+        "row": 7
+      }
+    },
+    {
+      "id": "edge-u-s-eda-biohealth-innovation-495-000-i6-grant-2015",
+      "source": "org-u-s-economic-development-administration",
+      "target": "org-biohealth-innovation",
+      "sourceLabel": "U.S. EDA",
+      "targetLabel": "BioHealth Innovation",
+      "relationship": "funding",
+      "kind": "transfer",
+      "amountLabel": "$495,000",
+      "amount": 495000,
+      "type": "i6 grant",
+      "date": "2015",
+      "description": "Federal → commercialization organization",
+      "sourceUrl": "https://www.eda.gov/funding/programs/build-to-scale/past-grantees/2015-venture-challenge/BioHealth-Innovation",
+      "evidence": "Federal record",
+      "notes": "Expansion of Venture Commercialization Model.",
+      "financingId": "fin-biohealth-innovation-u-s-economic-development-administration-495-000-2015-i6-grant",
+      "provenance": {
+        "sheet": "Funding Network",
+        "row": 8
+      }
+    },
+    {
+      "id": "edge-nih-umbc-umb-4-000-000-reach-grant-2023",
+      "source": "org-national-institutes-of-health",
+      "target": null,
+      "sourceLabel": "NIH",
+      "targetLabel": "UMBC + UMB",
+      "relationship": "funding",
+      "kind": "transfer",
+      "amountLabel": "$4,000,000",
+      "amount": 4000000,
+      "type": "REACH grant",
+      "date": "2023",
+      "description": "Federal → universities",
+      "sourceUrl": "https://bwtech.umbc.edu/umbc-umb-to-create-innovation-hub-in-west-baltimore/",
+      "evidence": "Institutional source",
+      "notes": "Four-year biomedical/life-sciences accelerator and commercialization award.",
+      "financingId": "fin-umbc-umb-national-institutes-of-health-4-000-000-2023-reach-grant",
+      "provenance": {
+        "sheet": "Funding Network",
+        "row": 9
+      }
+    },
+    {
+      "id": "edge-u-s-eda-hutch-fearless-661-725-build-to-scale-grant-2022",
+      "source": "org-u-s-economic-development-administration",
+      "target": "org-hutch-fearless",
+      "sourceLabel": "U.S. EDA",
+      "targetLabel": "Hutch / Fearless",
+      "relationship": "funding",
+      "kind": "transfer",
+      "amountLabel": "$661,725",
+      "amount": 661725,
+      "type": "Build to Scale grant",
+      "date": "2022",
+      "description": "Federal → accelerator",
+      "sourceUrl": "https://www.eda.gov/funding/programs/build-to-scale/past-grantees/2022-venture-challenge/Fearless-Solutions",
+      "evidence": "Federal record",
+      "notes": "Federal share.",
+      "financingId": "fin-hutch-fearless-u-s-economic-development-administration-661-725-2022-build-to-scale-grant",
+      "provenance": {
+        "sheet": "Funding Network",
+        "row": 10
+      }
+    },
+    {
+      "id": "edge-local-match-hutch-fearless-661-725-matching-funds-2022",
+      "source": null,
+      "target": "org-hutch-fearless",
+      "sourceLabel": "Local match",
+      "targetLabel": "Hutch / Fearless",
+      "relationship": "funding",
+      "kind": "transfer",
+      "amountLabel": "$661,725",
+      "amount": 661725,
+      "type": "Matching funds",
+      "date": "2022",
+      "description": "Local → accelerator",
+      "sourceUrl": "https://www.eda.gov/funding/programs/build-to-scale/past-grantees/2022-venture-challenge/Fearless-Solutions",
+      "evidence": "Federal record",
+      "notes": "Required local match.",
+      "financingId": "fin-hutch-fearless-local-match-661-725-2022-matching-funds",
+      "provenance": {
+        "sheet": "Funding Network",
+        "row": 11
+      }
+    },
+    {
+      "id": "edge-tedco-equitech-growth-fund-the-launchport-41-500-workforce-grant-fy2025",
+      "source": "org-tedco-equitech-growth-fund",
+      "target": "org-the-launchport",
+      "sourceLabel": "TEDCO Equitech Growth Fund",
+      "targetLabel": "The LaunchPort",
+      "relationship": "funding",
+      "kind": "transfer",
+      "amountLabel": "$41,500",
+      "amount": 41500,
+      "type": "Workforce grant",
+      "date": "FY2025",
+      "description": "State fund → MedTech organization",
+      "sourceUrl": "https://www.tedcomd.com/insight/tedcos-first-round-equitech-growth-fund-awardees-unveiled-0",
+      "evidence": "State record",
+      "notes": "First of two Equitech awards.",
+      "financingId": "fin-launchport-tedco-equitech-growth-fund-41-500-fy2025-workforce-grant",
+      "provenance": {
+        "sheet": "Funding Network",
+        "row": 12
+      }
+    },
+    {
+      "id": "edge-tedco-equitech-growth-fund-the-launchport-234-100-infrastructure-grant-fy2025",
+      "source": "org-tedco-equitech-growth-fund",
+      "target": "org-the-launchport",
+      "sourceLabel": "TEDCO Equitech Growth Fund",
+      "targetLabel": "The LaunchPort",
+      "relationship": "funding",
+      "kind": "transfer",
+      "amountLabel": "$234,100",
+      "amount": 234100,
+      "type": "Infrastructure grant",
+      "date": "FY2025",
+      "description": "State fund → MedTech organization",
+      "sourceUrl": "https://www.tedcomd.com/insight/tedcos-first-round-equitech-growth-fund-awardees-unveiled-0",
+      "evidence": "State record",
+      "notes": "Second of two Equitech awards.",
+      "financingId": "fin-launchport-tedco-equitech-growth-fund-234-100-fy2025-infrastructure-grant",
+      "provenance": {
+        "sheet": "Funding Network",
+        "row": 13
+      }
+    },
+    {
+      "id": "edge-tedco-equitech-growth-fund-biobuzz-networks-224-800-workforce-grant-fy2026",
+      "source": "org-tedco-equitech-growth-fund",
+      "target": "org-biobuzz",
+      "sourceLabel": "TEDCO Equitech Growth Fund",
+      "targetLabel": "BioBuzz Networks",
+      "relationship": "funding",
+      "kind": "transfer",
+      "amountLabel": "$224,800",
+      "amount": 224800,
+      "type": "Workforce grant",
+      "date": "FY2026",
+      "description": "State fund → life-science community",
+      "sourceUrl": "https://www.tedcomd.com/sites/default/files/2026-02/FY27%20TEDCO%20budget%20Testimony%20FINAL.pdf",
+      "evidence": "State record",
+      "notes": "Healthcare, life sciences and bioinformatics project.",
+      "financingId": "fin-biobuzz-networks-tedco-equitech-growth-fund-224-800-fy2026-workforce-grant",
+      "provenance": {
+        "sheet": "Funding Network",
+        "row": 14
+      }
+    },
+    {
+      "id": "edge-techstars-ai-health-baltimore-cohort-company-220-000-accelerator-investment-current",
+      "source": "org-techstars",
+      "target": null,
+      "sourceLabel": "Techstars",
+      "targetLabel": "AI Health Baltimore cohort company",
+      "relationship": "acceleration",
+      "kind": "terms",
+      "amountLabel": "$220,000",
+      "amount": 220000,
+      "type": "Accelerator investment",
+      "date": "Current",
+      "description": "Accelerator → company (per participant)",
+      "sourceUrl": "https://www.techstars.com/accelerators/baltimore-ai-health",
+      "evidence": "Primary source",
+      "notes": "Per participating company.",
+      "financingId": "fin-techstars-ai-health-cohort-company-techstars-220-000-current-terms-accelerator-investment",
+      "provenance": {
+        "sheet": "Funding Network",
+        "row": 15
+      }
+    },
+    {
+      "id": "edge-healthworx-carefirst-lifebridge-health-1501-health-cohort-company-100-000-incubator-investment-2021-2022",
+      "source": null,
+      "target": null,
+      "sourceLabel": "Healthworx / CareFirst + LifeBridge Health",
+      "targetLabel": "1501 Health cohort company",
+      "relationship": "acceleration",
+      "kind": "terms",
+      "amountLabel": "$100,000",
+      "amount": 100000,
+      "type": "Incubator investment",
+      "date": "2021–2022",
+      "description": "Health systems → company (up to)",
+      "sourceUrl": "https://www.lifebridgehealth.org/news/healthworx-and-lifebridge-health-launch-startup-incubator-1501-health",
+      "evidence": "Primary source",
+      "notes": "Up to $100K per company in early cohorts.",
+      "financingId": "fin-1501-health-cohort-company-healthworx-carefirst-lifebridge-health-100-000-2021-2022-incubator-investment",
+      "provenance": {
+        "sheet": "Funding Network",
+        "row": 16
+      }
+    },
+    {
+      "id": "edge-healthworx-carefirst-lifebridge-health-1501-health-cohort-company-125-000-incubator-investment-2023",
+      "source": null,
+      "target": null,
+      "sourceLabel": "Healthworx / CareFirst + LifeBridge Health",
+      "targetLabel": "1501 Health cohort company",
+      "relationship": "acceleration",
+      "kind": "terms",
+      "amountLabel": "$125,000",
+      "amount": 125000,
+      "type": "Incubator investment",
+      "date": "2023",
+      "description": "Health systems → company (up to)",
+      "sourceUrl": "https://ventures.jhu.edu/event/1501-health-incubator-application/",
+      "evidence": "Institutional source",
+      "notes": "Up to $125K per company for third cohort.",
+      "financingId": "fin-1501-health-cohort-company-healthworx-carefirst-lifebridge-health-125-000-2023-terms-incubator-investment",
+      "provenance": {
+        "sheet": "Funding Network",
+        "row": 17
+      }
+    },
+    {
+      "id": "edge-johns-hopkins-technology-ventures-hexcite-selected-project-10-000-venture-lab-award-2026",
+      "source": "org-johns-hopkins-technology-ventures",
+      "target": null,
+      "sourceLabel": "Johns Hopkins Technology Ventures",
+      "targetLabel": "Hexcite selected project",
+      "relationship": "acceleration",
+      "kind": "terms",
+      "amountLabel": "$10,000",
+      "amount": 10000,
+      "type": "Venture lab award",
+      "date": "2026",
+      "description": "University commercialization → project",
+      "sourceUrl": "https://ventures.jhu.edu/programs-services/cohort-based-programs/hexcite/",
+      "evidence": "Primary source",
+      "notes": "Select project receives $10K.",
+      "financingId": "fin-hexcite-selected-project-johns-hopkins-technology-ventures-10-000-2026-venture-lab-award",
+      "provenance": {
+        "sheet": "Funding Network",
+        "row": 18
+      }
+    },
+    {
+      "id": "edge-maryland-momentum-fund-usm-portfolio-companies-11-700-000-equity-investment-since-2017",
+      "source": "org-usm-maryland-momentum-fund",
+      "target": null,
+      "sourceLabel": "Maryland Momentum Fund / USM",
+      "targetLabel": "Portfolio companies",
+      "relationship": "funding",
+      "kind": "portfolio",
+      "amountLabel": "$11,700,000",
+      "amount": 11700000,
+      "type": "Equity investment",
+      "date": "Since 2017",
+      "description": "University fund → companies",
+      "sourceUrl": "https://mpower.maryland.edu/center-for-maryland-advanced-ventures/",
+      "evidence": "Institutional report",
+      "notes": "27 companies across 8 USM institutions.",
+      "financingId": "fin-maryland-momentum-portfolio-maryland-momentum-fund-usm-11-700-000-since-2017-equity-investments",
+      "provenance": {
+        "sheet": "Funding Network",
+        "row": 19
+      }
+    },
+    {
+      "id": "edge-co-investors-maryland-momentum-portfolio-companies-125-000-000-co-investment-since-2017",
+      "source": null,
+      "target": null,
+      "sourceLabel": "Co-investors",
+      "targetLabel": "Maryland Momentum portfolio companies",
+      "relationship": "funding",
+      "kind": "coinvestment",
+      "amountLabel": "$125,000,000",
+      "amount": 125000000,
+      "type": "Co-investment",
+      "date": "Since 2017",
+      "description": "Private investors → portfolio",
+      "sourceUrl": "https://mpower.maryland.edu/center-for-maryland-advanced-ventures/",
+      "evidence": "Institutional report",
+      "notes": "230+ unique co-investors.",
+      "financingId": "fin-maryland-momentum-portfolio-co-investors-125-000-000-since-2017-co-investment",
+      "provenance": {
+        "sheet": "Funding Network",
+        "row": 20
+      }
+    },
+    {
+      "id": "edge-university-system-of-maryland-maryland-momentum-fund-16-000-000-fund-capitalization-current",
+      "source": "org-university-system-of-maryland",
+      "target": "org-usm-maryland-momentum-fund",
+      "sourceLabel": "University System of Maryland",
+      "targetLabel": "Maryland Momentum Fund",
+      "relationship": "funding",
+      "kind": "capitalization",
+      "amountLabel": "$16,000,000",
+      "amount": 16000000,
+      "type": "Fund capitalization",
+      "date": "Current",
+      "description": "University system → fund",
+      "sourceUrl": "https://innovate.umd.edu/resources/momentum-fund",
+      "evidence": "Institutional source",
+      "notes": "USM early-stage investment fund.",
+      "financingId": "fin-maryland-momentum-fund-university-system-of-maryland-16-000-000-current-fund-size-fund-capitalization",
+      "provenance": {
+        "sheet": "Funding Network",
+        "row": 21
+      }
+    },
+    {
+      "id": "edge-tedco-life-science-investment-fund-irazu-oncology-500-000-life-science-investment-2025",
+      "source": "org-tedco-life-science-investment-fund",
+      "target": "org-irazu-oncology",
+      "sourceLabel": "TEDCO Life Science Investment Fund",
+      "targetLabel": "Irazu Oncology",
+      "relationship": "funding",
+      "kind": "transfer",
+      "amountLabel": "$500,000",
+      "amount": 500000,
+      "type": "Life-science investment",
+      "date": "2025",
+      "description": "State fund → biotech company",
+      "sourceUrl": "https://www.tedcomd.com/insight/tedco-invests-irazu-oncology-0",
+      "evidence": "Primary source",
+      "notes": "Cancer immunotherapy company.",
+      "financingId": "fin-irazu-oncology-tedco-life-science-investment-fund-500-000-2025-03-life-science-investment",
+      "provenance": {
+        "sheet": "Funding Network",
+        "row": 22
+      }
+    },
+    {
+      "id": "edge-tedco-seed-funds-ssbci-irazu-oncology-250-000-equity-seed-investment-2026",
+      "source": "org-tedco-seed-funds-ssbci",
+      "target": "org-irazu-oncology",
+      "sourceLabel": "TEDCO Seed Funds / SSBCI",
+      "targetLabel": "Irazu Oncology",
+      "relationship": "funding",
+      "kind": "transfer",
+      "amountLabel": "$250,000",
+      "amount": 250000,
+      "type": "Equity/seed investment",
+      "date": "2026",
+      "description": "State fund → biotech company",
+      "sourceUrl": "https://www.tedcomd.com/insight/tedco-announces-state-small-business-credit-initiative-investment-irazu-oncology",
+      "evidence": "Source linked in Funding Network",
+      "notes": "",
+      "financingId": null,
+      "provenance": {
+        "sheet": "Funding Network",
+        "row": 23
+      }
+    },
+    {
+      "id": "edge-investors-irazu-oncology-2-600-000-seed-investment-2023",
+      "source": null,
+      "target": "org-irazu-oncology",
+      "sourceLabel": "Investors",
+      "targetLabel": "Irazu Oncology",
+      "relationship": "funding",
+      "kind": "transfer",
+      "amountLabel": "$2,600,000",
+      "amount": 2600000,
+      "type": "Seed investment",
+      "date": "2023",
+      "description": "Investors → biotech company",
+      "sourceUrl": "https://www.irazuoncology.com/news/",
+      "evidence": "Source linked in Funding Network",
+      "notes": "",
+      "financingId": null,
+      "provenance": {
+        "sheet": "Funding Network",
+        "row": 24
+      }
+    },
+    {
+      "id": "edge-investors-led-by-sagamore-ventures-conscious-venture-fund-ii-15-800-000-fund-commitments-2022",
+      "source": null,
+      "target": "org-conscious-venture-fund-ii",
+      "sourceLabel": "Investors led by Sagamore Ventures",
+      "targetLabel": "Conscious Venture Fund II",
+      "relationship": "funding",
+      "kind": "capitalization",
+      "amountLabel": "$15,800,000",
+      "amount": 15800000,
+      "type": "Fund commitments",
+      "date": "2022",
+      "description": "LPs → VC fund",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/conscious-venture-partners-raises-15-8-million-for-conscious-venture-fund-ii-led-locally-by-kevin-planks-sagamore-ventures-301585334.html",
+      "evidence": "Primary release",
+      "notes": "Raised at announcement toward $50M goal.",
+      "financingId": "fin-conscious-venture-fund-ii-investors-led-by-sagamore-ventures-15-800-000-2022-07-vc-fund-commitments",
+      "provenance": {
+        "sheet": "Funding Network",
+        "row": 25
+      }
+    },
+    {
+      "id": "edge-sagamore-ventures-conscious-venture-fund-ii-2-500-000-lp-commitment-2022",
+      "source": "org-sagamore-ventures",
+      "target": "org-conscious-venture-fund-ii",
+      "sourceLabel": "Sagamore Ventures",
+      "targetLabel": "Conscious Venture Fund II",
+      "relationship": "funding",
+      "kind": "capitalization",
+      "amountLabel": "$2,500,000",
+      "amount": 2500000,
+      "type": "LP commitment",
+      "date": "2022",
+      "description": "Local investor → VC fund (included above)",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/conscious-venture-partners-raises-15-8-million-for-conscious-venture-fund-ii-led-locally-by-kevin-planks-sagamore-ventures-301585334.html",
+      "evidence": "Primary release",
+      "notes": "Named lead commitment; included in fund total above.",
+      "financingId": "fin-conscious-venture-fund-ii-sagamore-ventures-2-500-000-2022-07-lp-commitment",
+      "provenance": {
+        "sheet": "Funding Network",
+        "row": 26
+      }
+    },
+    {
+      "id": "edge-limited-partners-squadra-ii-105-000-000-vc-fund-raise-2023",
+      "source": null,
+      "target": "org-squadra-ii",
+      "sourceLabel": "Limited partners",
+      "targetLabel": "Squadra II",
+      "relationship": "funding",
+      "kind": "capitalization",
+      "amountLabel": "$105,000,000",
+      "amount": 105000000,
+      "type": "VC fund raise",
+      "date": "2023",
+      "description": "LPs → VC fund",
+      "sourceUrl": "https://blog.squadra.vc/articles/squadra-ventures-raises-105-million-to-invest-in-early-stage-cyber-and-national-security-companies",
+      "evidence": "Primary source",
+      "notes": "Fund raise announced at $105M.",
+      "financingId": "fin-squadra-ii-limited-partners-investors-105-000-000-2023-07-vc-fund-raise",
+      "provenance": {
+        "sheet": "Funding Network",
+        "row": 27
+      }
+    },
+    {
+      "id": "edge-limited-partners-rarebreed-ventures-fund-i-10-000-000-vc-fund-raise-2022",
+      "source": null,
+      "target": "org-rarebreed-ventures-fund-i",
+      "sourceLabel": "Limited partners",
+      "targetLabel": "RareBreed Ventures Fund I",
+      "relationship": "funding",
+      "kind": "capitalization",
+      "amountLabel": "$10,000,000",
+      "amount": 10000000,
+      "type": "VC fund raise",
+      "date": "2022",
+      "description": "LPs → VC fund",
+      "sourceUrl": "https://www.bizjournals.com/baltimore/inno/stories/fundings/2022/03/03/mac-conwell-rarebreed-ventures-second-fund.html",
+      "evidence": "Secondary reported",
+      "notes": "Reported first fund close.",
+      "financingId": "fin-rarebreed-ventures-fund-i-limited-partners-investors-10-000-000-2022-reported-vc-fund-raise",
+      "provenance": {
+        "sheet": "Funding Network",
+        "row": 28
+      }
+    },
+    {
+      "id": "edge-towson-university-startup-accelerator-company-10-000-equity-free-stipend-current",
+      "source": "org-startup-at-the-armory",
+      "target": null,
+      "sourceLabel": "Towson University StarTUp",
+      "targetLabel": "Accelerator company",
+      "relationship": "acceleration",
+      "kind": "terms",
+      "amountLabel": "$10,000",
+      "amount": 10000,
+      "type": "Equity-free stipend",
+      "date": "Current",
+      "description": "University accelerator → company",
+      "sourceUrl": "https://www.towson.edu/startup/programs/community-entrepreneurship/accelerator/",
+      "evidence": "Primary source",
+      "notes": "Per selected accelerator company.",
+      "financingId": "fin-startup-accelerator-company-towson-university-startup-10-000-current-program-equity-free-stipend",
+      "provenance": {
+        "sheet": "Funding Network",
+        "row": 29
+      }
+    },
+    {
+      "id": "edge-morgan-innovation-entrepreneurship-center-research-awardee-10-000-research-grant-current",
+      "source": "org-morgan-state-innovation-entrepreneurship-center",
+      "target": null,
+      "sourceLabel": "Morgan Innovation & Entrepreneurship Center",
+      "targetLabel": "Research awardee",
+      "relationship": "acceleration",
+      "kind": "terms",
+      "amountLabel": "$10,000",
+      "amount": 10000,
+      "type": "Research grant",
+      "date": "Current",
+      "description": "University center → researcher",
+      "sourceUrl": "https://www.morgan.edu/innovation-and-entrepreneurship-center/research",
+      "evidence": "Primary source",
+      "notes": "Per research award.",
+      "financingId": "fin-morgan-entrepreneurship-research-awardee-morgan-innovation-entrepreneurship-center-10-000-current-program-research-grant",
+      "provenance": {
+        "sheet": "Funding Network",
+        "row": 30
+      }
+    },
+    {
+      "id": "rel-org-techstars-ai-health-baltimore-org-techstars-acceleration",
+      "source": "org-techstars-ai-health-baltimore",
+      "target": "org-techstars",
+      "sourceLabel": "Techstars AI Health Baltimore",
+      "targetLabel": "Techstars",
+      "relationship": "acceleration",
+      "kind": null,
+      "amount": null,
+      "amountLabel": "",
+      "date": "",
+      "type": "Techstars accelerator program",
+      "description": "Techstars accelerator program",
+      "notes": "",
+      "sourceUrl": "https://www.techstars.com/accelerators/baltimore-ai-health",
+      "evidence": "Directory affiliation / program description",
+      "provenance": {
+        "sheet": "Sheet1",
+        "row": 7
+      }
+    },
+    {
+      "id": "rel-org-hexcite-johns-hopkins-technology-ventures-org-johns-hopkins-technology-ventures-affiliation",
+      "source": "org-hexcite-johns-hopkins-technology-ventures",
+      "target": "org-johns-hopkins-technology-ventures",
+      "sourceLabel": "Hexcite — Johns Hopkins Technology Ventures",
+      "targetLabel": "Johns Hopkins Technology Ventures",
+      "relationship": "affiliation",
+      "kind": null,
+      "amount": null,
+      "amountLabel": "",
+      "date": "",
+      "type": "Hexcite is a JHTV venture program",
+      "description": "Hexcite is a JHTV venture program",
+      "notes": "",
+      "sourceUrl": "https://ventures.jhu.edu/programs-services/cohort-based-programs/hexcite/",
+      "evidence": "Directory affiliation / program description",
+      "provenance": {
+        "sheet": "Sheet1",
+        "row": 8
+      }
+    },
+    {
+      "id": "rel-org-fastforward-johns-hopkins-technology-ventures-org-johns-hopkins-technology-ventures-affiliation",
+      "source": "org-fastforward-johns-hopkins-technology-ventures",
+      "target": "org-johns-hopkins-technology-ventures",
+      "sourceLabel": "FastForward / Johns Hopkins Technology Ventures",
+      "targetLabel": "Johns Hopkins Technology Ventures",
+      "relationship": "affiliation",
+      "kind": null,
+      "amount": null,
+      "amountLabel": "",
+      "date": "",
+      "type": "FastForward is a JHTV commercialization program",
+      "description": "FastForward is a JHTV commercialization program",
+      "notes": "",
+      "sourceUrl": "https://ventures.jhu.edu/fastforward/",
+      "evidence": "Directory affiliation / program description",
+      "provenance": {
+        "sheet": "Sheet1",
+        "row": 9
+      }
+    },
+    {
+      "id": "rel-org-1501-health-org-lifebridge-health-collaboration",
+      "source": "org-1501-health",
+      "target": "org-lifebridge-health",
+      "sourceLabel": "1501 Health",
+      "targetLabel": "LifeBridge Health",
+      "relationship": "collaboration",
+      "kind": null,
+      "amount": null,
+      "amountLabel": "",
+      "date": "",
+      "type": "Co-founded 1501 Health",
+      "description": "Co-founded 1501 Health",
+      "notes": "",
+      "sourceUrl": "https://www.lifebridgehealth.org/news/healthworx-and-lifebridge-health-launch-startup-incubator-1501-health",
+      "evidence": "Directory affiliation / program description",
+      "provenance": {
+        "sheet": "Sheet1",
+        "row": 14
+      }
+    },
+    {
+      "id": "rel-org-1501-health-org-healthworx-carefirst-collaboration",
+      "source": "org-1501-health",
+      "target": "org-healthworx-carefirst",
+      "sourceLabel": "1501 Health",
+      "targetLabel": "Healthworx / CareFirst",
+      "relationship": "collaboration",
+      "kind": null,
+      "amount": null,
+      "amountLabel": "",
+      "date": "",
+      "type": "Co-founded 1501 Health",
+      "description": "Co-founded 1501 Health",
+      "notes": "",
+      "sourceUrl": "https://www.lifebridgehealth.org/news/healthworx-and-lifebridge-health-launch-startup-incubator-1501-health",
+      "evidence": "Directory affiliation / program description",
+      "provenance": {
+        "sheet": "Sheet1",
+        "row": 14
+      }
+    },
+    {
+      "id": "rel-org-bwtech-umbc-biotech-incubator-org-university-of-maryland-baltimore-county-incubation",
+      "source": "org-bwtech-umbc-biotech-incubator",
+      "target": "org-university-of-maryland-baltimore-county",
+      "sourceLabel": "bwtech@UMBC Biotech Incubator",
+      "targetLabel": "University of Maryland, Baltimore County",
+      "relationship": "incubation",
+      "kind": null,
+      "amount": null,
+      "amountLabel": "",
+      "date": "",
+      "type": "University biotech incubator",
+      "description": "University biotech incubator",
+      "notes": "",
+      "sourceUrl": "https://bwtech.umbc.edu/incubators/biotech/",
+      "evidence": "Directory affiliation / program description",
+      "provenance": {
+        "sheet": "Sheet1",
+        "row": 15
+      }
+    },
+    {
+      "id": "rel-org-pava-marie-lapere-center-for-entrepreneurship-org-johns-hopkins-university-affiliation",
+      "source": "org-pava-marie-lapere-center-for-entrepreneurship",
+      "target": "org-johns-hopkins-university",
+      "sourceLabel": "Pava Marie LaPere Center for Entrepreneurship",
+      "targetLabel": "Johns Hopkins University",
+      "relationship": "affiliation",
+      "kind": null,
+      "amount": null,
+      "amountLabel": "",
+      "date": "",
+      "type": "University entrepreneurship center",
+      "description": "University entrepreneurship center",
+      "notes": "",
+      "sourceUrl": "https://pavacenter.jhu.edu/",
+      "evidence": "Directory affiliation / program description",
+      "provenance": {
+        "sheet": "Sheet1",
+        "row": 24
+      }
+    },
+    {
+      "id": "rel-org-lifebridge-health-bioincubator-at-sinai-hospital-org-lifebridge-health-incubation",
+      "source": "org-lifebridge-health-bioincubator-at-sinai-hospital",
+      "target": "org-lifebridge-health",
+      "sourceLabel": "LifeBridge Health BioIncubator at Sinai Hospital",
+      "targetLabel": "LifeBridge Health",
+      "relationship": "incubation",
+      "kind": null,
+      "amount": null,
+      "amountLabel": "",
+      "date": "",
+      "type": "Health-system bioincubator",
+      "description": "Health-system bioincubator",
+      "notes": "",
+      "sourceUrl": "https://www.lifebridgehealth.org/",
+      "evidence": "Directory affiliation / program description",
+      "provenance": {
+        "sheet": "Sheet1",
+        "row": 61
+      }
+    },
+    {
+      "id": "rel-org-the-grid-um-ventures-org-university-of-maryland-baltimore-um-ventures-affiliation",
+      "source": "org-the-grid-um-ventures",
+      "target": "org-university-of-maryland-baltimore-um-ventures",
+      "sourceLabel": "The GRID | UM Ventures",
+      "targetLabel": "University of Maryland, Baltimore / UM Ventures",
+      "relationship": "affiliation",
+      "kind": null,
+      "amount": null,
+      "amountLabel": "",
+      "date": "",
+      "type": "UMB entrepreneurship hub",
+      "description": "UMB entrepreneurship hub",
+      "notes": "",
+      "sourceUrl": "https://www.graduate.umaryland.edu/grid/",
+      "evidence": "Directory affiliation / program description",
+      "provenance": {
+        "sheet": "Sheet1",
+        "row": 62
+      }
+    },
+    {
+      "id": "rel-org-biohub-maryland-org-maryland-tech-council-affiliation",
+      "source": "org-biohub-maryland",
+      "target": "org-maryland-tech-council",
+      "sourceLabel": "BioHub Maryland",
+      "targetLabel": "Maryland Tech Council",
+      "relationship": "affiliation",
+      "kind": null,
+      "amount": null,
+      "amountLabel": "",
+      "date": "",
+      "type": "Maryland Tech Council workforce program",
+      "description": "Maryland Tech Council workforce program",
+      "notes": "",
+      "sourceUrl": "https://www.biohubmaryland.com/",
+      "evidence": "Directory affiliation / program description",
+      "provenance": {
+        "sheet": "Sheet1",
+        "row": 64
+      }
+    },
+    {
+      "id": "rel-org-baltimore-regional-tech-council-org-maryland-tech-council-affiliation",
+      "source": "org-baltimore-regional-tech-council",
+      "target": "org-maryland-tech-council",
+      "sourceLabel": "Baltimore Regional Tech Council",
+      "targetLabel": "Maryland Tech Council",
+      "relationship": "affiliation",
+      "kind": null,
+      "amount": null,
+      "amountLabel": "",
+      "date": "",
+      "type": "Regional chapter",
+      "description": "Regional chapter",
+      "notes": "",
+      "sourceUrl": "https://mdtechcouncil.com/chapter/brtc/",
+      "evidence": "Directory affiliation / program description",
+      "provenance": {
+        "sheet": "Sheet1",
+        "row": 65
+      }
+    },
+    {
+      "id": "rel-org-johns-hopkins-technology-ventures-org-johns-hopkins-university-affiliation",
+      "source": "org-johns-hopkins-technology-ventures",
+      "target": "org-johns-hopkins-university",
+      "sourceLabel": "Johns Hopkins Technology Ventures",
+      "targetLabel": "Johns Hopkins University",
+      "relationship": "affiliation",
+      "kind": null,
+      "amount": null,
+      "amountLabel": "",
+      "date": "",
+      "type": "University technology ventures",
+      "description": "University technology ventures",
+      "notes": "",
+      "sourceUrl": "https://ventures.jhu.edu/",
+      "evidence": "Directory affiliation / program description",
+      "provenance": {
+        "sheet": "Sheet1",
+        "row": null
+      }
+    }
+  ]
+}

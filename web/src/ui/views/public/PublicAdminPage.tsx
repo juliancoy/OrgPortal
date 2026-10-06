@@ -1,3 +1,4 @@
+import { groupOrganizationEvents } from './organizationEvents'
 import { EmbeddedOrganizationChat } from '../../components/EmbeddedOrganizationChat'
 import { PeerOrganizations } from '../../components/PeerOrganizations'
 import { OrganizationMembers } from '../../components/OrganizationMembers'
@@ -104,6 +105,9 @@ type PublicEvent = {
   slug: string
   description?: string | null
   starts_at?: string | null
+  event_date?: string | null
+  host_org_id?: string | null
+  organization_slug?: string | null
   location?: string | null
   image_url?: string | null
   media?: EventMediaItem[]
@@ -278,7 +282,7 @@ export function PublicAdminPage() {
     setEventsLoading(true)
     setAdminsLoading(true)
     Promise.all([
-      fetch(orgUrl(`/api/network/orgs/public/${encodeURIComponent(org.slug)}/events?upcoming_only=false&limit=60`)).then(
+      fetch(orgUrl(`/api/network/orgs/public/${encodeURIComponent(org.slug)}/events?upcoming_only=true&limit=200`)).then(
         async (resp) => {
           if (!resp.ok) return []
           return (await resp.json()) as PublicEvent[]
@@ -971,15 +975,9 @@ export function PublicAdminPage() {
   const mergeCandidates = myAdminOrgs.filter((item) => item.id !== org.id)
   const canEditOrgImage = isOrganizerView && adminView
   const heroImageSource = org.image_url?.trim() || ORG_PLACEHOLDER_SRC
-  const upcomingEvents = events
-    .filter((event) => {
-      if (!event.starts_at) return true
-      const eventTime = new Date(event.starts_at).getTime()
-      return Number.isNaN(eventTime) || eventTime >= Date.now() - 1000 * 60 * 60 * 24
-    })
-    .sort((a, b) => (Date.parse(a.starts_at || '') || Infinity) - (Date.parse(b.starts_at || '') || Infinity))
-    .slice(0, 3)
-  const visibleEvents = upcomingEvents.length ? upcomingEvents : events.slice(0, 3)
+  const eventGroups = groupOrganizationEvents(events, org).map(group => ({
+    ...group, events: group.events.slice(0, 3),
+  }))
   function openImageEditor() {
     if (!canEditOrgImage) return
     setEditorSource(heroImageSource)
@@ -1057,11 +1055,11 @@ export function PublicAdminPage() {
               />
             </button>
           </div>
-          <div id="organization-events" className="portal-card portal-org-events-card portal-org-nav-target" tabIndex={-1}>
+          {eventGroups.map((group) => <div key={group.kind} id={group.kind === 'hosted' ? 'organization-events' : 'organization-related-events'} className="portal-card portal-org-events-card portal-org-nav-target" tabIndex={-1}>
             <div className="portal-org-events-heading">
               <div>
                 <p className="tenant-home-eyebrow">{org.name}</p>
-                <h2>{upcomingEvents.length ? 'Upcoming Events' : 'Events'}</h2>
+                <h2>{group.kind === 'hosted' ? `${org.name} upcoming events` : 'Events from nearby organizations'}</h2>
               </div>
               <Link to="/events">View all events</Link>
             </div>
@@ -1069,13 +1067,13 @@ export function PublicAdminPage() {
               <p className="muted" style={{ margin: 0 }}>
                 Loading events…
               </p>
-            ) : visibleEvents.length === 0 ? (
+            ) : group.events.length === 0 ? (
               <p className="muted" style={{ margin: 0 }}>
-                No hosted events listed.
+                {group.kind === 'hosted' ? `No upcoming events hosted by ${org.name} are listed.` : 'No upcoming related events are listed.'}
               </p>
             ) : (
               <div className="portal-org-events-grid">
-                {visibleEvents.map((event) => (
+                {group.events.map((event) => (
                   <article key={event.id} className="portal-org-event-card">
                     {event.image_url ? (
                       <img
@@ -1148,7 +1146,7 @@ export function PublicAdminPage() {
                 ))}
               </div>
             )}
-          </div>
+          </div>)}
 
 
           {(organizationView === 'members' || isOrganizerView) && <OrganizationTools />}

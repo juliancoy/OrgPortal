@@ -41,7 +41,11 @@
     "test:a11y:orca": "bash scripts/accessibility/run-orca.sh",
     "test:timebank:imports:selenium": "python3 scripts/selenium-timebank-imports.py",
     "test:e2e:local": "playwright test --config playwright.local.config.ts",
-    "test:organizer:local": "python3 scripts/test-local-organizer.py"
+    "test:organizer:local": "python3 scripts/test-local-organizer.py",
+    "test:ecosystem": "node --test scripts/portal-ecosystem.test.mjs scripts/network-history.test.mjs scripts/ecosystem-physics.test.mjs",
+    "sync:ecosystem": "node scripts/sync-ecosystem.mjs && node scripts/sync-portal-ecosystem.mjs",
+    "build:ecosystem-history": "node scripts/build-network-history.mjs",
+    "test:ecosystem:local": "python3 scripts/test-local-ecosystem-network.py"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.1",
@@ -57,7 +61,9 @@
     "react-easy-crop": "^5.5.7",
     "react-markdown": "^10.1.0",
     "react-router-dom": "^7.11.0",
-    "remark-breaks": "^4.0.0"
+    "remark-breaks": "^4.0.0",
+    "three": "^0.186.1",
+    "d3-force": "^3.0.0"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",

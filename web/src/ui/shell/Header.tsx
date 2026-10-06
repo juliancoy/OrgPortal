@@ -992,6 +992,7 @@ export function Header() {
             {tenantResources.length > 0 && <NavLink to="/resources" isActive={isResourcesActive}>Resources</NavLink>}
           </> : domainCommunity ? <>
             <NavLink to="/timebanking">Timebank</NavLink>
+            <NavLink to="/ecosystem/network" isActive={location.pathname.startsWith('/ecosystem/network')}>Network</NavLink>
             <NavLink to="/people">People</NavLink>
             <NavLink to="/chat">Chat</NavLink>
             <NavLink to="/calendar" isActive={isCalendarActive}>Calendar</NavLink>

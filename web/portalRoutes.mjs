@@ -17,6 +17,7 @@ const paths = [
   "/org-events",
   "/community",
   "/medtech-events",
+  "/ecosystem/network",
   "/resources",
   "/branding",
   "/branding.html",
