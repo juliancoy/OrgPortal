@@ -21,11 +21,11 @@ const radius = n => financialNodeRadius(n.financialAmount)
 const financialLabel = n => n.financialAmount ? `Largest disclosed funding/award: ${new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(n.financialAmount)}; payment unverified` : 'Funding amount undisclosed'
 function previewNode(org) {
  const key='node:'+org.id;if(inspectorKey===key)return;inspectorKey=key
- $('#network-detail').innerHTML=orgDetails(org,data);rewriteLinks()
+ $('#network-detail').innerHTML=orgDetails(org,data);rewriteLinks();if(matchMedia('(max-width:900px)').matches){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
 }
 function previewEdge(edge) {
  const key='edge:'+edge.id;if(inspectorKey===key)return;inspectorKey=key
- $('#network-detail').innerHTML=edgeDetails(edge,data);rewriteLinks()
+ $('#network-detail').innerHTML=edgeDetails(edge,data);rewriteLinks();if(matchMedia('(max-width:900px)').matches){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
 }
 function bindNodePreview(button,node) {
  button.addEventListener('pointerenter',()=>previewNode(node))
@@ -40,7 +40,7 @@ function applyTable() {
 function select(id) {
  const org = data.organizations.find(o=>o.id===id); if (!org) return
  selected = id; inspectorKey='node:'+id; $('#neighbors').disabled=false
- $('#network-detail').innerHTML = orgDetails(org,data); rewriteLinks()
+ $('#network-detail').innerHTML = orgDetails(org,data); rewriteLinks();if(matchMedia('(max-width:900px)').matches){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
  const u = new URL(location.href); u.searchParams.set('org',id); history.replaceState(history.state,'',u)
  renderEvents(); applyTable(); rebuild()
 }
@@ -210,6 +210,13 @@ async function start(){
   const historyResponse=await fetch(historyUrl, {signal:abort.signal});if(!historyResponse.ok)throw new Error('Event history unavailable');const historyData=await historyResponse.json();data=mergeNetworkHistory(data,historyData); if(disposed)return; $('#network-table .eco-table-scroll').outerHTML=relationshipTable(data); rewriteLinks()
   $('#event-search').addEventListener('input',()=>{eventLimit=100;renderEvents()});$('#event-org-only').addEventListener('change',()=>{eventLimit=100;renderEvents()});$('#event-more').addEventListener('click',()=>{eventLimit+=100;renderEvents()});renderEvents()
   initWebgl();search()
+  host.addEventListener('wheel',event=>{
+   event.preventDefault();event.stopPropagation()
+   const pixels=event.deltaY*(event.deltaMode===1?16:event.deltaMode===2?host.clientHeight:1)
+   const factor=Math.exp(-Math.max(-300,Math.min(300,pixels))*.002)
+   if(!webgl){zoomSvg(factor);return}
+   camera.zoom=Math.max(.35,Math.min(6,camera.zoom*factor));camera.updateProjectionMatrix();requestRender()
+  },{passive:false,capture:true,signal:abort.signal})
   $('#network-detail').addEventListener('error',event=>{if(event.target.tagName==='IMG'){event.target.hidden=true;const note=document.createElement('p');note.className='eco-note';note.textContent='Published image is currently unavailable.';event.target.after(note)}},true)
   $('#network-search').addEventListener('input',search)
   root.querySelectorAll('[name=node-category],[name=relationship],#include-context,#neighbors,#network-view,#hide-isolated').forEach(el=>el.addEventListener('change',()=>{applyTable();rebuild()}))
@@ -218,9 +225,35 @@ async function start(){
   for(const [id,factor] of [['#zoom-in',1.25],['#zoom-out',.8]]) $(id).addEventListener('click',()=>{if(!webgl){zoomSvg(factor);return}camera.zoom=Math.max(.35,Math.min(6,camera.zoom*factor));camera.updateProjectionMatrix();requestRender()})
   $('#network-reset').addEventListener('click',()=>{selected=null;inspectorKey=null;root.querySelectorAll('[name=node-category],[name=relationship]').forEach(c=>c.checked=true);$('#network-view').value='all';$('#include-context').checked=false;$('#hide-isolated').checked=true;$('#neighbors').checked=false;$('#neighbors').disabled=true;$('#network-search').value='';$('#table-scope').value='';$('#network-detail').innerHTML='<h2>Select an organization</h2><p>Search or select a graph label to explore its evidence.</p>';history.replaceState(history.state,'',location.pathname);renderEvents();search();applyTable();rebuild()})
   const initial=new URL(location.href).searchParams.get('org');if(initial&&data.organizations.some(n=>n.id===initial)){select(initial)}else rebuild()
+  if(location.hash==='#network-events')$('#eco-dialog-events').showModal();else if(location.hash==='#network-table')$('#eco-dialog-sources').showModal()
   loadPortalEvidence(data, (url, options) => fetch(url,{...options,signal:abort.signal}),apiPrefix).then(updated=>{if(disposed)return;data=mergeNetworkHistory(updated,historyData);renderEvents();$('#network-table .eco-table-scroll').outerHTML=relationshipTable(data);search();applyTable();if(selected)select(selected);else rebuild();$('#network-source').textContent='Public relationship evidence updated '+new Date(data.portalUpdatedAt).toLocaleString()+'. Awards and commitments do not establish payment; amounts may overlap.'}).catch(()=>{if(disposed)return;$('#network-source').textContent='Showing saved public evidence. Live refresh is temporarily unavailable.'})
  }catch(error){if(disposed)return;status.textContent='Network data is unavailable. Reload to try again or browse the organization directory.';host.hidden=true;console.error(error)}
 }
+// Auxiliary content stays available without extending the page below the map.
+const heading=$('.eco-network-heading')
+heading.innerHTML='<h1>Organization network</h1><nav aria-label="Map panels"><button type="button" data-panel="controls">Filters</button><button type="button" data-panel="inspector">Details</button><button type="button" data-dialog="events">Events</button><button type="button" data-dialog="sources">Sources & help</button><a href="/orgs">Directory ↗</a></nav>'
+const createDialog=(id,title,sections)=>{
+ const dialog=document.createElement('dialog');dialog.id='eco-dialog-'+id;dialog.className='eco-map-dialog'
+ const header=document.createElement('header'),label=document.createElement('h2'),close=document.createElement('button');label.id=dialog.id+'-title';label.textContent=title;dialog.setAttribute('aria-labelledby',label.id);close.type='button';close.textContent='Close';close.addEventListener('click',()=>dialog.close());header.append(label,close);dialog.append(header)
+ const content=document.createElement('div');content.className='eco-dialog-content';sections.forEach(section=>content.append(section));dialog.append(content);root.append(dialog)
+}
+createDialog('events','Ecosystem events',[$('#network-events')])
+createDialog('sources','Sources & evidence',[$('#network-source'),$('#network-table'),$('.eco-method')])
+const media=matchMedia('(max-width:900px)')
+const panelState=()=>{
+ for(const panel of ['controls','inspector']){const open=root.classList.contains('eco-'+panel+'-open');root.querySelector(`[data-panel="${panel}"]`).setAttribute('aria-expanded',String(open))}
+}
+const responsivePanels=()=>{root.classList.toggle('eco-controls-open',!media.matches);root.classList.toggle('eco-inspector-open',!media.matches);panelState()}
+responsivePanels();media.addEventListener('change',responsivePanels,{signal:abort.signal})
+root.querySelectorAll('[data-panel]').forEach(button=>button.addEventListener('click',()=>{const panel=button.dataset.panel;root.classList.toggle('eco-'+panel+'-open');if(media.matches&&root.classList.contains('eco-'+panel+'-open'))root.classList.remove('eco-'+(panel==='controls'?'inspector':'controls')+'-open');panelState()}))
+root.querySelectorAll('[data-dialog]').forEach(button=>button.addEventListener('click',()=>$('#eco-dialog-'+button.dataset.dialog).showModal()))
+root.addEventListener('click',event=>{
+ const link=event.target.closest('a');if(!link)return;const url=new URL(link.href,location.href)
+ if(url.pathname!==location.pathname || !['#network-table','#network-events'].includes(url.hash))return
+ event.preventDefault()
+ if(url.hash==='#network-events'){const org=url.searchParams.get('org');if(org){select(org);$('#event-org-only').checked=true;renderEvents()}}
+ $('#eco-dialog-'+(url.hash==='#network-events'?'events':'sources')).showModal()
+})
 rewriteLinks(); start();
 return () => { disposed=true; abort.abort(); resizeObserver?.disconnect(); cancelAnimationFrame(frame); controls?.dispose();
  group?.traverse(o=>{o.geometry?.dispose(); if(Array.isArray(o.material))o.material.forEach(m=>m.dispose());else o.material?.dispose()}); renderer?.dispose(); root.replaceChildren(); };

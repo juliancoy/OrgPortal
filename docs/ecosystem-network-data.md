@@ -69,3 +69,28 @@ the SVG renderer and an unavailable live API to verify the saved public snapshot
 Both domains also passed an actual image-loading check. Screenshots are retained
 in `docs/screenshots/ecosystem-hover-lifetech.png` and
 `docs/screenshots/ecosystem-hover-medtech.png`.
+
+## Viewport map workspace
+
+The network fills the available viewport below the portal header. Vertical page
+scrolling is disabled only while this route is mounted and restored on leaving.
+The compact toolbar opens Filters, Details, Events, and Sources & help. The filter
+and inspector panels scroll independently; events, evidence tables and methodology
+remain available in internally scrolling dialogs. Small screens use closable panel
+overlays so the map keeps the remaining viewport. The wheel handler covers the
+entire canvas, including node labels, and zooms without moving the page.
+
+A headless local check passed at 1440×900, 390×844 and 900×480: document height
+stayed within the viewport, wheel over a label changed SVG zoom without scrolling,
+controls scrolled internally, and event/source dialogs and mobile panels worked.
+Repeat with `BROWSER_BINARY=/usr/bin/google-chrome node web/scripts/check-ecosystem-viewport.mjs`.
+Set `MAP_ORIGINS` to comma-separated origins for a local preview.
+
+Published October 6, 2026 in shared frontend version
+`c3338606-56f3-4166-ba92-bfdbf13bf64a`. Both live domains passed the viewport
+checks in SVG and WebGL modes, including desktop, mobile and short landscape
+sizes, wheel zoom over labels, internal panel scrolling and dialog access. The
+16 ecosystem tests and production route smoke checks passed. Set
+`ECOSYSTEM_RENDERER=webgl` to repeat the browser check with WebGL enabled.
+Screenshots: `docs/screenshots/ecosystem-viewport-desktop.png` and
+`docs/screenshots/ecosystem-viewport-mobile.png`.
