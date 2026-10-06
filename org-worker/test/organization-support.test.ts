@@ -9,7 +9,7 @@ import { OrganizationIamError, type OrganizationActor } from '../src/organizatio
 const actor: OrganizationActor = { id: 'manager', name: 'Manager', email: null, isOperator: false };
 function setup() {
   const db = new TimebankDatabase();
-  for (const migration of ['0002_org_event_directories.sql','0015_organization_iam.sql','0017_event_mcp_operations.sql','0057_organization_support.sql'])
+  for (const migration of ['0002_org_event_directories.sql','0015_organization_iam.sql','0017_event_mcp_operations.sql','0057_organization_support.sql','0043_organization_media.sql','0061_organization_replication.sql','0065_financing_records.sql'])
     db.sqlite.exec(readFileSync(new URL(`../migrations/${migration}`,import.meta.url),'utf8'));
   for (const id of ['a','b','c','d']) {
     db.sqlite.prepare('INSERT INTO organizations (id,name,slug) VALUES (?,?,?)').run(id,`Organization ${id}`,`org-${id}`);
@@ -125,4 +125,23 @@ test('support migrations apply after the full existing migration sequence',()=>{
   assert.equal(db.prepare('SELECT count(*) n FROM master_transaction_records').get()!.n,
     Number(db.prepare('SELECT count(*) n FROM ledger_transactions').get()!.n) + Number(db.prepare('SELECT count(*) n FROM organization_support_records').get()!.n));
   db.close();
+});
+
+test('canonical organization totals separate direction, currency, delivery and unknown amounts', async () => {
+  const sqlite = setup();
+  await record(sqlite, { ...contribution(), status: 'delivered' });
+  await record(sqlite, { ...contribution(), currency: 'EUR', amount: 25 });
+  await record(sqlite, { ...contribution('b', 'a'), amount: null, currency: null });
+  await record(sqlite, { ...contribution(), supportKind: 'portfolio', amount: 9000 });
+  const voided = await record(sqlite, contribution());
+  await runSupportOperation(sqlite.asD1(), actor, 'void', { organizationId: 'a', recordId: voided.recordId, reason: 'Duplicate' }).then(preview => runSupportOperation(sqlite.asD1(), actor, 'void', { organizationId: 'a', recordId: voided.recordId, reason: 'Duplicate', previewId: preview.previewId, confirm: true }));
+  const result = await organizationSupport(sqlite.asD1(), 'a', 500);
+  assert.equal(result.records.length, 0);
+  assert.equal(result.financialTotals.source, 'master_transaction_records');
+  assert.deepEqual(result.financialTotals.entries.map(row => ({ ...row })), [
+    { direction: 'deployed', currency: 'EUR', status: 'reported', amount: 25, recordCount: 1, undisclosedCount: 0, lowerBoundCount: 0 },
+    { direction: 'deployed', currency: 'USD', status: 'delivered', amount: 100, recordCount: 1, undisclosedCount: 0, lowerBoundCount: 0 },
+    { direction: 'received', currency: null, status: 'reported', amount: null, recordCount: 1, undisclosedCount: 1, lowerBoundCount: 0 },
+  ]);
+  sqlite.sqlite.close();
 });

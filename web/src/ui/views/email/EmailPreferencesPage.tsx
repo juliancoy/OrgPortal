@@ -3,18 +3,19 @@ import { useAuth } from '../../../app/AppProviders'
 import { emailApi } from './emailApi'
 
 type Subscription = { id: string; topic_name: string | null; topic_type: string; status: string }
-export function EmailPreferencesPage() {
+export function EmailPreferencesPage({embedded=false}:{embedded?:boolean}) {
   const { token } = useAuth()
   const [subscriptions, setSubscriptions] = useState<Subscription[] | null>(null)
   const [pending, setPending] = useState<string | null>(null)
   const [error, setError] = useState('')
   useEffect(() => {
     let cancelled = false
+    setSubscriptions(null); setPending(null); setError('')
     emailApi<Subscription[]>(token, '/subscriptions/me').then((data) => { if (!cancelled) setSubscriptions(data) })
       .catch((err: Error) => { if (!cancelled) setError(err.message) })
     return () => { cancelled = true }
   }, [token])
-  return <section className="panel"><h1>Email preferences</h1><p>Choose which event updates and organization announcements you receive.</p>
+  return <section className={embedded?'':'panel'}>{embedded?<h2>Event updates and organization announcements</h2>:<h1>Email preferences</h1>}<p>Choose which event updates and organization announcements you receive.</p>
     {error && <p role="alert">{error}</p>}
     {!subscriptions && !error && <p>Loading email preferences…</p>}
     {subscriptions?.length === 0 && <p>No subscriptions yet. You can opt in when registering for an event.</p>}

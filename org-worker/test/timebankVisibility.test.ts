@@ -1,3 +1,4 @@
+import {identityProfile} from './helpers/identityProfile';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { app } from '../src/index';
@@ -73,7 +74,7 @@ test('HTTP visibility protects details and photos, rejects invalid credentials, 
   t.mock.method(globalThis, 'fetch', async (_input: unknown, init: RequestInit) => {
     const id = new Headers(init.headers).get('Authorization')?.replace('Bearer ', '');
     return id === 'alice' || id === 'bob'
-      ? Response.json({ id, full_name: id }) : Response.json({}, { status: 401 });
+      ? Response.json(identityProfile({ id, full_name: id })) : Response.json({}, { status: 401 });
   });
   const env = { DB: database.asD1(), SCAN_IMAGES: bucket.asR2(), PIDP_BASE_URL: 'https://identity.example.test' };
   const base = 'https://bmoretimebank.codecollective.us/api/timebank';

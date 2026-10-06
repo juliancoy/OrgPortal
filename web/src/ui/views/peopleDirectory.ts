@@ -1,8 +1,11 @@
+import { uniqueAccounts } from '../components/organizationMemberSearch'
+
 const ORG_API_BASE = '/api/org'
 
 export type NetworkUser = {
   user_id: string
   user_name: string
+  email?: string | null
   created_at?: string | null
   updated_at?: string | null
   slug?: string | null
@@ -78,7 +81,7 @@ export async function loadPeopleDirectory({
     fetchRows<PublicOrganization>(fetcher, orgUrl(`/api/network/orgs/public?${orgParams.toString()}`), { signal }),
   ])
 
-  const users = userResult.status === 'fulfilled' ? userResult.value : []
+  const users = userResult.status === 'fulfilled' ? uniqueAccounts(userResult.value) : []
   const organizations = organizationResult.status === 'fulfilled' ? organizationResult.value : []
   const status =
     userResult.status === 'rejected' && organizationResult.status === 'rejected'

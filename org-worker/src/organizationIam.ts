@@ -119,7 +119,7 @@ export async function authorizeOrganization(
   if (action === "claim" || action === "challenge") return organizationRole(db, organizationId, actor.id);
   const role = await organizationRole(db, organizationId, actor.id);
   if (action === "read_members") {
-    if (!actor.isOperator && role !== "owner" && role !== "administrator") fail(403, "Organization management access required");
+    if (!actor.isOperator && !role) fail(403, "Active organization membership required");
     return role;
   }
   if (!actor.isOperator && role !== "owner" && role !== "administrator") fail(403, "Organization management access required");
@@ -169,16 +169,35 @@ export async function claimOrganization(db: D1Database, organizationId: string, 
   return ownership;
 }
 
+export async function organizerAssignment(db: D1Database, organizationId: string, userId: string) {
+  const existing = await db.prepare("SELECT role FROM organization_memberships WHERE organization_id = ? AND user_id = ? AND status = 'active'")
+    .bind(organizationId, userId).first<{ role: string }>();
+  if (existing?.role === "administrator") return { role: "administrator", pending_organizer: 0, onboarding_tenant_id: null };
+  const tenant = await db.prepare(`SELECT t.id FROM portal_tenants t
+    JOIN organizations o ON o.slug = t.home_org_slug
+    WHERE o.id = ? AND json_extract(t.feature_config, '$.onboarding.enabled') = 1
+    ORDER BY t.id LIMIT 1`).bind(organizationId).first<{ id: string }>();
+  if (!tenant) return { role: "administrator", pending_organizer: 0, onboarding_tenant_id: null };
+  const enrollment = await db.prepare("SELECT completed_at FROM onboarding_enrollments WHERE tenant_id = ? AND user_id = ?")
+    .bind(tenant.id, userId).first<{ completed_at: string | null }>();
+  return { role: enrollment?.completed_at ? "administrator" : "member",
+    pending_organizer: enrollment?.completed_at ? 0 : 1, onboarding_tenant_id: tenant.id };
+}
+
 export async function listOrganizationMembers(db: D1Database, organizationId: string, actor: OrganizationActor) {
   const organization = await requireOrganization(db, organizationId);
-  await authorizeOrganization(db, actor, "read_members", organization.id);
+  const role = await authorizeOrganization(db, actor, "read_members", organization.id);
   const rows = await db.prepare(
-    `SELECT organization_id, user_id, user_name, user_email, role, status, created_at, updated_at
-     FROM organization_memberships
-     WHERE organization_id = ? AND status = 'active'
-     ORDER BY CASE role WHEN 'owner' THEN 0 WHEN 'administrator' THEN 1 ELSE 2 END, lower(COALESCE(user_name, user_email, user_id))`,
+    `SELECT m.organization_id, m.user_id, m.user_name, m.user_email, m.role, m.status, m.created_at, m.updated_at,
+       m.pending_organizer, e.completed_at AS onboarding_completed_at
+     FROM organization_memberships m
+     LEFT JOIN onboarding_enrollments e ON e.tenant_id = m.onboarding_tenant_id AND e.user_id = m.user_id
+     WHERE m.organization_id = ? AND m.status = 'active'
+     ORDER BY CASE m.role WHEN 'owner' THEN 0 WHEN 'administrator' THEN 1 ELSE 2 END, lower(COALESCE(m.user_name, m.user_email, m.user_id))`,
   ).bind(organization.id).all<Record<string, unknown>>();
-  return rows.results || [];
+  const members = rows.results || [];
+  if (actor.isOperator || role === "owner" || role === "administrator") return members;
+  return members.map(({ user_email: _email, ...member }) => member);
 }
 
 export async function saveOrganizationMember(
@@ -198,21 +217,28 @@ export async function saveOrganizationMember(
   if (ownership?.owner_user_id === userId) fail(400, "The current owner's role cannot be changed here");
   const userName = String(payload.user_name || "").trim().slice(0, 255) || null;
   const userEmail = String(payload.user_email || "").trim().toLowerCase().slice(0, 320) || null;
+  const assignment = role === "administrator" ? await organizerAssignment(db, organization.id, userId)
+    : { role, pending_organizer: 0, onboarding_tenant_id: null };
   await db.batch([
     db.prepare(
       `INSERT INTO organization_memberships
-        (organization_id, user_id, user_name, user_email, role, status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, 'active', ?, ?)
+        (organization_id, user_id, user_name, user_email, role, status, created_at, updated_at, pending_organizer, onboarding_tenant_id)
+       VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?, ?)
        ON CONFLICT(organization_id, user_id) DO UPDATE SET
-         user_name = excluded.user_name,
-         user_email = excluded.user_email,
+         user_name = COALESCE(excluded.user_name, organization_memberships.user_name),
+         user_email = COALESCE(excluded.user_email, organization_memberships.user_email),
          role = excluded.role,
+         pending_organizer = excluded.pending_organizer,
+         onboarding_tenant_id = excluded.onboarding_tenant_id,
          status = 'active',
-         updated_at = excluded.updated_at`,
-    ).bind(organization.id, userId, userName, userEmail, role, now, now),
-    auditStatement(db, actor.id, "organization.membership.saved", "organization", organization.id, userId, { role }, now),
+         updated_at = excluded.updated_at
+       WHERE organization_memberships.status != 'active' OR ? = 0`,
+    ).bind(organization.id, userId, userName, userEmail, assignment.role, now, now, assignment.pending_organizer, assignment.onboarding_tenant_id, payload.add_only === true ? 1 : 0),
+    auditStatement(db, actor.id, "organization.membership.saved", "organization", organization.id, userId, { requested_role: role, add_only: payload.add_only === true, ...assignment }, now),
   ]);
-  return { organization_id: organization.id, user_id: userId, user_name: userName, user_email: userEmail, role, status: "active", updated_at: now };
+  return db.prepare(
+    "SELECT organization_id, user_id, user_name, user_email, role, status, pending_organizer, updated_at FROM organization_memberships WHERE organization_id = ? AND user_id = ?",
+  ).bind(organization.id, userId).first();
 }
 
 export async function createOwnershipChallenge(

@@ -275,6 +275,9 @@ def _pidp_env(pidp_editme, db_url: str, gateway_base: str, allowed_origins: list
         "GOOGLE_WORKSPACE_SMTP_PASSWORD": os.getenv("PIDP_GOOGLE_WORKSPACE_SMTP_PASSWORD", ""),
         "GOOGLE_WORKSPACE_EMAIL_FROM": os.getenv("PIDP_GOOGLE_WORKSPACE_EMAIL_FROM", ""),
         "GOOGLE_WORKSPACE_ALLOWED_SENDERS": os.getenv("PIDP_GOOGLE_WORKSPACE_ALLOWED_SENDERS", ""),
+        "PUBLIC_BASE_URL": pidp_base,
+        "PORTAL_AUTH_ORIGINS": ",".join(allowed_origins),
+        "PORTAL_SSO_APP_SLUG": os.getenv("ORGPORTAL_DEV_PIDP_APP_SLUG") or os.getenv("ORGPORTAL_PIDP_APP_SLUG", "code-collective"),
         "FRONTEND_REDIRECT_URL": f"{pidp_base}/auth/callback",
         "GOOGLE_CLIENT_ID": getattr(pidp_editme, "PIDP_GOOGLE_CLIENT_ID", "google-client-id"),
         "GOOGLE_CLIENT_SECRET": getattr(pidp_editme, "PIDP_GOOGLE_CLIENT_SECRET", "google-client-secret"),
@@ -423,7 +426,10 @@ def _write_local_gateway_config(
 
                 location /pidp/ {{
                   rewrite ^/pidp/?(.*)$ /$1 break;
-                  proxy_set_header Host $host;
+                  proxy_set_header Host $http_host;
+                  proxy_set_header X-Forwarded-Host "";
+                  proxy_set_header X-Forwarded-Proto https;
+                  proxy_set_header X-Forwarded-Prefix /pidp;
                   proxy_set_header Origin $http_origin;
                   proxy_set_header Referer $http_referer;
                   proxy_pass http://{pidp_dev_name}:8000;
@@ -549,7 +555,7 @@ def _start_pidp_if_available(prefix: str, network_name: str, gateway_base: str) 
             (
                 "python -m venv /venv && "
                 "/venv/bin/pip install -r /app/requirements.txt && "
-                "exec /venv/bin/uvicorn main:app --app-dir /app --host 0.0.0.0 --port 8000 --reload --reload-dir /app"
+                "exec /venv/bin/uvicorn main:app --app-dir /app --host 0.0.0.0 --port 8000 --root-path /pidp --forwarded-allow-ips '*' --reload --reload-dir /app"
             ),
         ],
     }
@@ -586,8 +592,39 @@ def _ensure_prod_image_available(requested_image: str, pidp_base_url: str, pidp_
     )
 
 
+def _configure_local_newsletters(prefix: str) -> Path:
+    """Persist a deployment identity and local capability, never production secrets."""
+    import json
+    import uuid
+
+    local_dir.mkdir(parents=True, exist_ok=True)
+    path = local_dir / f"{prefix}newsletter-storage.json"
+    if path.exists():
+        config = json.loads(path.read_text())
+    else:
+        config = {"datasetId": str(uuid.uuid4()), "token": secrets.token_urlsafe(48)}
+        path.write_text(json.dumps(config) + "\n")
+    path.chmod(0o600)
+    selected = {
+        "LOCAL_NEWSLETTER_WRITES": "true" if _env_truthy("ORGPORTAL_LOCAL_NEWSLETTER_WRITES", default=True) else "false",
+        "LOCAL_NEWSLETTER_DATASET": config["datasetId"],
+        "LOCAL_NEWSLETTER_TOKEN": config["token"],
+    }
+    # Wrangler reads these as local secrets; deploy never uploads .dev.vars.
+    vars_path = local_dir / f"{prefix}newsletter.dev.vars"
+    base_vars_path = org_worker_dir / ".dev.vars"
+    lines = base_vars_path.read_text().splitlines() if base_vars_path.exists() else []
+    lines = [line for line in lines if line.split("=", 1)[0].strip() not in selected]
+    lines.extend(f"{key}={value}" for key, value in selected.items())
+    vars_path.write_text("\n".join(lines) + "\n")
+    vars_path.chmod(0o600)
+    print(f"Local newsletter storage: {path} (dataset {config['datasetId']})")
+    return vars_path
+
+
 def run(prefix: str, network_name: str) -> None:
     docker_utils.ensure_network(network_name)
+    local_newsletter_vars_path = _configure_local_newsletters(prefix)
 
     gateway_port = (os.getenv("ORGPORTAL_LOCAL_GATEWAY_PORT") or DEFAULT_LOCAL_GATEWAY_PORT).strip()
     worker_port = (os.getenv("ORGPORTAL_WORKER_PORT") or DEFAULT_WORKER_PORT).strip()
@@ -623,6 +660,16 @@ def run(prefix: str, network_name: str) -> None:
     prod_image = _resolve_prod_image()
     start_prod = _env_truthy("ORGPORTAL_START_PROD", default=DEFAULT_START_PROD)
     data_source = (os.getenv("ORGPORTAL_DATA_SOURCE") or DEFAULT_DATA_SOURCE).strip() or DEFAULT_DATA_SOURCE
+    replica_source = os.getenv("ORGPORTAL_ORGANIZATION_REPLICA_SOURCE", "https://lifetech.fyi/api/org/api/network/replication/snapshot").strip()
+    replica_interval = os.getenv("ORGPORTAL_ORGANIZATION_REPLICA_INTERVAL_SECONDS", "300")
+    if replica_source:
+        replica_seconds = int(replica_interval)
+        if not 60 <= replica_seconds <= 86400:
+            raise ValueError("Organization replica interval must be 60..86400 seconds")
+    replica_vars = (
+        f" --var {shlex.quote('ORGANIZATION_REPLICA_SOURCE:' + replica_source)}"
+        f" --var {shlex.quote('ORGANIZATION_REPLICA_INTERVAL_SECONDS:' + replica_interval)}"
+    ) if replica_source else ""
     org_api_base = os.getenv("ORGPORTAL_ORG_API_BASE", f"http://{org_worker_name}:8001")
 
     prod = {
@@ -648,6 +695,8 @@ def run(prefix: str, network_name: str) -> None:
         "working_dir": container_app_dir,
         "volumes": {
             str(org_worker_dir): {"bind": container_app_dir, "mode": "rw"},
+            str(local_newsletter_vars_path): {"bind": "/app/.dev.vars", "mode": "ro"},
+            str(current_dir / "shared"): {"bind": "/shared", "mode": "ro"},
             prefix + "ORGPORTAL_ORG_WORKER_NODE_MODULES": {
                 "bind": "/app/node_modules",
                 "mode": "rw",
@@ -674,12 +723,15 @@ def run(prefix: str, network_name: str) -> None:
             "sh",
             "-c",
             (
+                "node scripts/write-local-ca-bundle.cjs && "
+                "export NODE_EXTRA_CA_CERTS=/tmp/orgportal-ca.pem && "
                 "npm ci && "
                 "npm run db:migrate:local && "
                 f"npx wrangler dev --local --test-scheduled --ip 0.0.0.0 --port {worker_port} "
                 f"--var {shlex.quote('PIDP_BASE_URL:' + (os.getenv('ORGPORTAL_WORKER_PIDP_BASE_URL') or f'http://{pidp_dev_name}:8000'))} "
                 f"--var {shlex.quote('PUBLIC_PORTAL_BASE_URL:' + gateway_base)} "
                 f"--var {shlex.quote('CHAT_API_ORIGIN:http://' + prefix + 'chat:8003')}"
+                + replica_vars
             ),
         ],
     }
@@ -717,6 +769,7 @@ def run(prefix: str, network_name: str) -> None:
         "working_dir": container_app_dir,
         "volumes": {
             str(web_dir): {"bind": container_app_dir, "mode": "rw"},
+            str(current_dir / "shared"): {"bind": "/shared", "mode": "ro"},
             prefix + "ORGPORTAL_DEV_NODE_MODULES": {
                 "bind": "/app/node_modules",
                 "mode": "rw",
@@ -783,6 +836,16 @@ def run(prefix: str, network_name: str) -> None:
     docker_utils.run_container(dev)
     docker_utils.wait_for_port(org_worker_name, int(worker_port), network_name, retries=60, delay=2)
     _wait_for_http(f"http://{org_worker_name}:{worker_port}/health", network_name, retries=60, delay=2)
+    if replica_source:
+        docker_utils.run_container({
+            "image": "python:3.12-alpine", "name": prefix + "org-replication",
+            "network": network_name, "restart_policy": {"Name": "always"}, "detach": True,
+            "environment": {"REPLICA_TRIGGER": f"http://{org_worker_name}:{worker_port}/__scheduled", "REPLICA_INTERVAL": replica_interval},
+            "volumes": {str(org_worker_dir / "scripts" / "poll-organization-replica.py"): {"bind": "/poll.py", "mode": "ro"}},
+            "command": ["python", "-u", "/poll.py"],
+        })
+    else:
+        _remove_container(prefix + "org-replication")
     if start_prod:
         docker_utils.run_container(prod)
         docker_utils.wait_for_port(prod_name, 8080, network_name, retries=60, delay=2)

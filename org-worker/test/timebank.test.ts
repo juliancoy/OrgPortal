@@ -1,3 +1,4 @@
+import {identityProfile} from './helpers/identityProfile';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { app } from '../src/index';
@@ -109,7 +110,7 @@ test('HTTP routes authenticate mutations and reject malformed bodies', async (t)
   t.mock.method(globalThis, 'fetch', async (_input: unknown, init: RequestInit) => {
     const token = new Headers(init.headers).get('Authorization');
     return token === 'Bearer alice'
-      ? Response.json({ id: alice.id, full_name: alice.name })
+      ? Response.json(identityProfile({ id: alice.id, full_name: alice.name }))
       : Response.json({ detail: 'Invalid credentials' }, { status: 401 });
   });
   const env = { DB: database.asD1(), PIDP_BASE_URL: 'https://identity.example.test' };
@@ -153,7 +154,7 @@ test('communities isolate boards, balances, mutations and retry IDs for the same
 test('domain selection rejects unknown communities; only admins can customize or create them', async (t) => {
   const database = new TimebankDatabase();
   t.after(() => database.sqlite.close());
-  t.mock.method(globalThis, 'fetch', async (_input: unknown, init: RequestInit) => Response.json({ id: 'alice', full_name: 'Alice', is_sysadmin: new Headers(init.headers).get('Authorization') === 'Bearer admin' }));
+  t.mock.method(globalThis, 'fetch', async (_input: unknown, init: RequestInit) => Response.json(identityProfile({ id: 'alice', full_name: 'Alice', is_sysadmin: new Headers(init.headers).get('Authorization') === 'Bearer admin' })));
   const env = { DB: database.asD1(), PIDP_BASE_URL: 'https://identity.example.test' };
   const request = (path: string, options: RequestInit = {}) => app.request(`https://bmoretimebank.codecollective.us/api/timebank${path}`, options, env);
   assert.equal((await (await request('/community')).json() as { id: string }).id, 'bmoretimebank');
@@ -181,7 +182,7 @@ test('photo uploads validate content and size, enforce ownership and community, 
   t.after(() => database.sqlite.close());
   t.mock.method(globalThis, 'fetch', async (_input: unknown, init: RequestInit) => {
     const id = new Headers(init.headers).get('Authorization')?.replace('Bearer ', '');
-    return id ? Response.json({ id, full_name: id }) : Response.json({}, { status: 401 });
+    return id ? Response.json(identityProfile({ id, full_name: id })) : Response.json({}, { status: 401 });
   });
   const env = { DB: database.asD1(), SCAN_IMAGES: bucket.asR2(), PIDP_BASE_URL: 'https://identity.example.test' };
   const listing = await createTimebankListing(database.asD1(), alice, listingInput(), 'bmoretimebank');
@@ -368,7 +369,7 @@ test('analytics are admin-only and all new routes enforce authentication and hos
   t.after(() => database.sqlite.close());
   t.mock.method(globalThis, 'fetch', async (_input: unknown, init: RequestInit) => {
     const id = new Headers(init.headers).get('Authorization')?.replace('Bearer ', '');
-    return Response.json({ id, full_name: id, is_sysadmin: id === 'alice' });
+    return Response.json(identityProfile({ id, full_name: id, is_sysadmin: id === 'alice' }));
   });
   const env = { DB: database.asD1(), PIDP_BASE_URL: 'https://identity.example.test' };
   const request = await createTimebankListing(database.asD1(), alice, listingInput('request'), 'bmoretimebank');

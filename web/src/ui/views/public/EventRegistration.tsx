@@ -144,7 +144,7 @@ export function EventRegistration({ eventId, slug, token, authLoading = false, s
         {organizationName && <label><input type="checkbox" disabled={pending} checked={organizationAnnouncements} onChange={(event) => setOrganizationAnnouncements(event.target.checked)} /> <span>Also send me announcements from {organizationName}</span></label>}
       </div>}
       {token && <div className="public-event-registration-links">
-        <Link to="/email/preferences" className="public-event-preferences-link">Manage email preferences</Link>
+        <Link to="/settings/notifications" className="public-event-preferences-link">Manage notification settings</Link>
         {attendance?.registered ? <Link to="/calendar/integrations" className="public-event-preferences-link">Subscribe to registered events</Link> : null}
       </div>}
       {message && <p role="status" className="public-event-status-message">{message}</p>}

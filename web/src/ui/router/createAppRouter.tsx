@@ -1,5 +1,7 @@
-import { resolveOrganizationView, useOrganizationAccess } from '../hooks/useOrganizationView'
+import { LocalNewslettersPage } from '../views/LocalNewslettersPage'
+import { EcosystemNetworkPage } from '../views/EcosystemNetworkPage'
 import { MemberMeetingsPage } from '../views/MemberMeetingsPage'
+import { resolveOrganizationView, useOrganizationAccess, useOrganizationViewPreference } from '../hooks/useOrganizationView'
 import { NametagsPage } from '../views/NametagsPage'
 import { GovernanceDocumentPage } from '../views/governance/GovernanceDocumentPage'
 import { VenuesPage } from '../views/orgs/VenuesPage'
@@ -38,6 +40,7 @@ import { PublicCalendarPage } from '../views/public/PublicCalendarPage'
 import { PublicEventPage } from '../views/public/PublicEventPage'
 import { EmailCampaignsPage } from '../views/email/EmailCampaignsPage'
 import { EmailPreferencesPage } from '../views/email/EmailPreferencesPage'
+import { NotificationSettingsPage } from '../views/NotificationSettingsPage'
 import { PublicOrganizationsPage } from '../views/public/PublicOrganizationsPage'
 import { GlobalSearchPage } from '../views/public/GlobalSearchPage'
 import { MotionListPage } from '../views/governance/MotionListPage'
@@ -104,9 +107,9 @@ function HomeRoute() {
   const tenant = getDomainTenant()
   const access = useOrganizationAccess(tenant?.home_org_slug)
   const location = useLocation()
+  const requestedView = useOrganizationViewPreference(tenant?.home_org_slug, new URLSearchParams(location.search).get('view'))
   if (isLoading || access.loading) return null
   const profile = getActivePortalProfileConfig()
-  const requestedView = new URLSearchParams(location.search).get('view')
   if (tenant?.home_org_slug && (access.organizer || requestedView)) {
     const view = resolveOrganizationView(requestedView, access.organizer, access.member)
     if (view === 'public') return <TenantHomePage />
@@ -189,6 +192,7 @@ function ChatRoute() {
 }
 
 function AdminRoute(props: { children: ReactElement }) {
+  const location = useLocation()
   const { role, token, isLoading } = useAuth()
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
 
@@ -227,7 +231,11 @@ function AdminRoute(props: { children: ReactElement }) {
   }, [role, token, isLoading])
 
   if (isLoading || isAdmin === null) return null
-  if (!isAdmin) return <Navigate to="/" replace />
+  if (!isAdmin) return <section className="panel">
+    <h1>{role === 'guest' ? 'Sign in required' : 'Access denied'}</h1>
+    <p>This page requires system administrator access.</p>
+    {role === 'guest' && <a href={`${portalBasePath()}/users/login?next=${encodeURIComponent(location.pathname + location.search)}`}>Sign in</a>}
+  </section>
   return props.children
 }
 
@@ -263,7 +271,9 @@ export function createAppRouter() {
           { path: '/org-events', element: <TenantOrgEventsRoute /> },
           { path: '/community', element: <TenantCommunityAliasRoute /> },
           { path: '/medtech-events', element: <TenantEventsAliasRoute /> },
+          { path: '/ecosystem/network', element: <EcosystemNetworkPage /> },
           { path: '/resources', element: <TenantResourcesPage /> },
+          { path: '/local/newsletters', element: <LocalNewslettersPage /> },
           { path: '/branding', element: <TenantBrandingPage /> },
           { path: '/branding.html', element: <Navigate to="/branding" replace /> },
           { path: '/about', element: <AboutPage /> },
@@ -271,6 +281,7 @@ export function createAppRouter() {
           { path: '/legal', element: <TermsPage /> },
           { path: '/email', element: <AdminRoute><EmailCampaignsPage /></AdminRoute> },
           { path: '/email/preferences', element: <AuthenticatedRoute><EmailPreferencesPage /></AuthenticatedRoute> },
+          { path: '/settings/notifications', element: <AuthenticatedRoute><NotificationSettingsPage /></AuthenticatedRoute> },
           { path: '/android/install', element: <AndroidInstallPage /> },
 
           // Canonical user routes

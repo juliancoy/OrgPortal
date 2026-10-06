@@ -1,0 +1,516 @@
+[
+  {
+    "id": "org-amplify-medtech",
+    "name": "Amplify MedTech",
+    "aliases": []
+  },
+  {
+    "id": "org-the-launchport",
+    "name": "The LaunchPort",
+    "aliases": [
+      "LaunchPort"
+    ]
+  },
+  {
+    "id": "org-mdc-studio-maryland-development-center",
+    "name": "MDC Studio / Maryland Development Center",
+    "aliases": []
+  },
+  {
+    "id": "org-techstars-ai-health-baltimore",
+    "name": "Techstars AI Health Baltimore",
+    "aliases": [],
+    "relationships": [
+      {
+        "target": "org-techstars",
+        "type": "acceleration",
+        "label": "Techstars accelerator program"
+      }
+    ]
+  },
+  {
+    "id": "org-hexcite-johns-hopkins-technology-ventures",
+    "name": "Hexcite \u2014 Johns Hopkins Technology Ventures",
+    "aliases": [],
+    "relationships": [
+      {
+        "target": "org-johns-hopkins-technology-ventures",
+        "type": "affiliation",
+        "label": "Hexcite is a JHTV venture program"
+      }
+    ]
+  },
+  {
+    "id": "org-fastforward-johns-hopkins-technology-ventures",
+    "name": "FastForward / Johns Hopkins Technology Ventures",
+    "aliases": [],
+    "relationships": [
+      {
+        "target": "org-johns-hopkins-technology-ventures",
+        "type": "affiliation",
+        "label": "FastForward is a JHTV commercialization program"
+      }
+    ]
+  },
+  {
+    "id": "org-blackbird-laboratories",
+    "name": "Blackbird Laboratories",
+    "aliases": []
+  },
+  {
+    "id": "org-connect-labs-by-wexford-baltimore",
+    "name": "Connect Labs by Wexford \u2014 Baltimore",
+    "aliases": []
+  },
+  {
+    "id": "org-harbor-launch-at-imet",
+    "name": "Harbor Launch at IMET",
+    "aliases": []
+  },
+  {
+    "id": "org-biohealth-innovation",
+    "name": "BioHealth Innovation",
+    "aliases": []
+  },
+  {
+    "id": "org-1501-health",
+    "name": "1501 Health",
+    "aliases": [],
+    "relationships": [
+      {
+        "target": "org-lifebridge-health",
+        "type": "collaboration",
+        "label": "Co-founded 1501 Health",
+        "sourceUrl": "https://www.lifebridgehealth.org/news/healthworx-and-lifebridge-health-launch-startup-incubator-1501-health"
+      },
+      {
+        "target": "org-healthworx-carefirst",
+        "type": "collaboration",
+        "label": "Co-founded 1501 Health",
+        "sourceUrl": "https://www.lifebridgehealth.org/news/healthworx-and-lifebridge-health-launch-startup-incubator-1501-health"
+      }
+    ]
+  },
+  {
+    "id": "org-bwtech-umbc-biotech-incubator",
+    "name": "bwtech@UMBC Biotech Incubator",
+    "aliases": [],
+    "relationships": [
+      {
+        "target": "org-university-of-maryland-baltimore-county",
+        "type": "incubation",
+        "label": "University biotech incubator"
+      }
+    ]
+  },
+  {
+    "id": "org-maryland-tech-council",
+    "name": "Maryland Tech Council",
+    "aliases": []
+  },
+  {
+    "id": "org-biobuzz",
+    "name": "BioBuzz",
+    "aliases": [
+      "BioBuzz Networks"
+    ]
+  },
+  {
+    "id": "org-biobuild",
+    "name": "BioBuild",
+    "aliases": []
+  },
+  {
+    "id": "org-salynt",
+    "name": "Salynt",
+    "aliases": []
+  },
+  {
+    "id": "org-protenus",
+    "name": "Protenus",
+    "aliases": []
+  },
+  {
+    "id": "org-visurraga-enterprises",
+    "name": "Visurraga Enterprises",
+    "aliases": []
+  },
+  {
+    "id": "org-pava-marie-lapere-center-for-entrepreneurship",
+    "name": "Pava Marie LaPere Center for Entrepreneurship",
+    "aliases": [],
+    "relationships": [
+      {
+        "target": "org-johns-hopkins-university",
+        "type": "affiliation",
+        "label": "University entrepreneurship center"
+      }
+    ]
+  },
+  {
+    "id": "org-tedco",
+    "name": "TEDCO",
+    "aliases": []
+  },
+  {
+    "id": "org-early-charm-ventures",
+    "name": "Early Charm Ventures",
+    "aliases": []
+  },
+  {
+    "id": "org-usm-maryland-momentum-fund",
+    "name": "USM Maryland Momentum Fund",
+    "aliases": [
+      "Maryland Momentum Fund",
+      "Maryland Momentum Fund / USM"
+    ]
+  },
+  {
+    "id": "org-conscious-venture-partners",
+    "name": "Conscious Venture Partners",
+    "aliases": []
+  },
+  {
+    "id": "org-squadra-ventures",
+    "name": "Squadra Ventures",
+    "aliases": []
+  },
+  {
+    "id": "org-tcp-venture-capital",
+    "name": "TCP Venture Capital",
+    "aliases": []
+  },
+  {
+    "id": "org-rarebreed-ventures",
+    "name": "RareBreed Ventures",
+    "aliases": []
+  },
+  {
+    "id": "org-bdc-emerging-technology-center-etc",
+    "name": "BDC Emerging Technology Center (ETC)",
+    "aliases": []
+  },
+  {
+    "id": "org-the-novella-center-for-entrepreneurship",
+    "name": "The Novella Center for Entrepreneurship",
+    "aliases": []
+  },
+  {
+    "id": "org-startup-at-the-armory",
+    "name": "StarTUp at the Armory",
+    "aliases": [
+      "Towson University StarTUp"
+    ]
+  },
+  {
+    "id": "org-morgan-state-innovation-entrepreneurship-center",
+    "name": "Morgan State Innovation & Entrepreneurship Center",
+    "aliases": [
+      "Morgan Innovation & Entrepreneurship Center"
+    ]
+  },
+  {
+    "id": "org-innovation-works",
+    "name": "Innovation Works",
+    "aliases": []
+  },
+  {
+    "id": "org-the-gateway-howard-county-eda",
+    "name": "The Gateway / Howard County EDA",
+    "aliases": []
+  },
+  {
+    "id": "org-loyola-simon-center-for-innovation-entrepreneurship",
+    "name": "Loyola Simon Center for Innovation & Entrepreneurship",
+    "aliases": []
+  },
+  {
+    "id": "org-world-trade-center-institute-wtci",
+    "name": "World Trade Center Institute (WTCI)",
+    "aliases": []
+  },
+  {
+    "id": "org-hutch-fearless",
+    "name": "Hutch / Fearless",
+    "aliases": []
+  },
+  {
+    "id": "org-healthworx-carefirst",
+    "name": "Healthworx / CareFirst",
+    "aliases": []
+  },
+  {
+    "id": "org-lifebridge-health",
+    "name": "LifeBridge Health",
+    "aliases": []
+  },
+  {
+    "id": "org-university-of-maryland-baltimore-um-ventures",
+    "name": "University of Maryland, Baltimore / UM Ventures",
+    "aliases": [
+      "UMB",
+      "University of Maryland, Baltimore",
+      "UM Ventures"
+    ]
+  },
+  {
+    "id": "org-irazu-oncology",
+    "name": "Irazu Oncology",
+    "aliases": []
+  },
+  {
+    "id": "org-stephen-renee-bisciotti-foundation",
+    "name": "Stephen & Renee Bisciotti Foundation",
+    "aliases": []
+  },
+  {
+    "id": "org-nucleate-baltimore-dmv",
+    "name": "Nucleate Baltimore / DMV",
+    "aliases": []
+  },
+  {
+    "id": "org-chesapeake-digital-health-exchange-cdhx",
+    "name": "Chesapeake Digital Health Exchange (CDHX)",
+    "aliases": []
+  },
+  {
+    "id": "org-lifebridge-health-bioincubator-at-sinai-hospital",
+    "name": "LifeBridge Health BioIncubator at Sinai Hospital",
+    "aliases": [],
+    "relationships": [
+      {
+        "target": "org-lifebridge-health",
+        "type": "incubation",
+        "label": "Health-system bioincubator"
+      }
+    ]
+  },
+  {
+    "id": "org-the-grid-um-ventures",
+    "name": "The GRID | UM Ventures",
+    "aliases": [],
+    "relationships": [
+      {
+        "target": "org-university-of-maryland-baltimore-um-ventures",
+        "type": "affiliation",
+        "label": "UMB entrepreneurship hub"
+      }
+    ]
+  },
+  {
+    "id": "org-dmv-petri-dish",
+    "name": "DMV Petri Dish",
+    "aliases": []
+  },
+  {
+    "id": "org-biohub-maryland",
+    "name": "BioHub Maryland",
+    "aliases": [],
+    "relationships": [
+      {
+        "target": "org-maryland-tech-council",
+        "type": "affiliation",
+        "label": "Maryland Tech Council workforce program"
+      }
+    ]
+  },
+  {
+    "id": "org-baltimore-regional-tech-council",
+    "name": "Baltimore Regional Tech Council",
+    "aliases": [],
+    "relationships": [
+      {
+        "target": "org-maryland-tech-council",
+        "type": "affiliation",
+        "label": "Regional chapter"
+      }
+    ]
+  },
+  {
+    "id": "org-baltimore-underground-science-space-bugss",
+    "name": "Baltimore Underground Science Space (BUGSS)",
+    "aliases": []
+  },
+  {
+    "id": "org-postcare-ai",
+    "name": "PostCare.ai",
+    "aliases": []
+  },
+  {
+    "id": "org-healthier-forms",
+    "name": "Healthier Forms",
+    "aliases": []
+  },
+  {
+    "id": "org-harbor-designs-manufacturing",
+    "name": "Harbor Designs & Manufacturing",
+    "aliases": []
+  },
+  {
+    "id": "org-rpm-tech",
+    "name": "RPM Tech",
+    "aliases": []
+  },
+  {
+    "id": "org-tessa-g-lebinger-m-d-llc",
+    "name": "Tessa G. Lebinger, M.D. LLC",
+    "aliases": []
+  },
+  {
+    "id": "org-materic-early-charm",
+    "name": "Materic / Early Charm",
+    "aliases": []
+  },
+  {
+    "id": "org-johns-hopkins-technology-ventures",
+    "name": "Johns Hopkins Technology Ventures",
+    "aliases": [
+      "JHTV"
+    ],
+    "category": "university",
+    "supplemental": true,
+    "website": "https://ventures.jhu.edu/",
+    "relationships": [
+      {
+        "target": "org-johns-hopkins-university",
+        "type": "affiliation",
+        "label": "University technology ventures"
+      }
+    ]
+  },
+  {
+    "id": "org-johns-hopkins-university",
+    "name": "Johns Hopkins University",
+    "aliases": [],
+    "category": "university",
+    "supplemental": true,
+    "website": "https://www.jhu.edu/"
+  },
+  {
+    "id": "org-university-system-of-maryland",
+    "name": "University System of Maryland",
+    "aliases": [],
+    "category": "university",
+    "supplemental": true,
+    "website": "https://www.usmd.edu/"
+  },
+  {
+    "id": "org-university-of-maryland-baltimore-county",
+    "name": "University of Maryland, Baltimore County",
+    "aliases": [
+      "UMBC"
+    ],
+    "category": "university",
+    "supplemental": true,
+    "website": "https://umbc.edu/"
+  },
+  {
+    "id": "org-baltimore-city",
+    "name": "Baltimore City",
+    "aliases": [
+      "Baltimore City / Economic Development Bond Funds"
+    ],
+    "category": "general",
+    "supplemental": true,
+    "website": ""
+  },
+  {
+    "id": "org-u-s-economic-development-administration",
+    "name": "U.S. Economic Development Administration",
+    "aliases": [
+      "U.S. EDA"
+    ],
+    "category": "funding",
+    "supplemental": true,
+    "website": "https://www.eda.gov/"
+  },
+  {
+    "id": "org-national-institutes-of-health",
+    "name": "National Institutes of Health",
+    "aliases": [
+      "NIH"
+    ],
+    "category": "funding",
+    "supplemental": true,
+    "website": "https://www.nih.gov/"
+  },
+  {
+    "id": "org-techstars",
+    "name": "Techstars",
+    "aliases": [],
+    "category": "funding",
+    "supplemental": true,
+    "website": "https://www.techstars.com/"
+  },
+  {
+    "id": "org-tedco-equitech-growth-fund",
+    "name": "TEDCO Equitech Growth Fund",
+    "aliases": [],
+    "category": "funding",
+    "supplemental": true,
+    "website": ""
+  },
+  {
+    "id": "org-tedco-life-science-investment-fund",
+    "name": "TEDCO Life Science Investment Fund",
+    "aliases": [],
+    "category": "funding",
+    "supplemental": true,
+    "website": ""
+  },
+  {
+    "id": "org-tedco-seed-funds-ssbci",
+    "name": "TEDCO Seed Funds / SSBCI",
+    "aliases": [],
+    "category": "funding",
+    "supplemental": true,
+    "website": ""
+  },
+  {
+    "id": "org-sagamore-ventures",
+    "name": "Sagamore Ventures",
+    "aliases": [],
+    "category": "funding",
+    "supplemental": true,
+    "website": ""
+  },
+  {
+    "id": "org-conscious-venture-fund-ii",
+    "name": "Conscious Venture Fund II",
+    "aliases": [],
+    "category": "funding",
+    "supplemental": true,
+    "website": ""
+  },
+  {
+    "id": "org-squadra-ii",
+    "name": "Squadra II",
+    "aliases": [],
+    "category": "funding",
+    "supplemental": true,
+    "website": ""
+  },
+  {
+    "id": "org-rarebreed-ventures-fund-i",
+    "name": "RareBreed Ventures Fund I",
+    "aliases": [],
+    "category": "funding",
+    "supplemental": true,
+    "website": ""
+  },
+  {
+    "id": "org-city-garage",
+    "name": "City Garage",
+    "aliases": [
+      "City Garage Science & Technology Center"
+    ],
+    "category": "ecosystem",
+    "supplemental": true,
+    "directory": true,
+    "type": "Life-science lab & manufacturing space",
+    "website": "https://citygaragestc.com/",
+    "relevance": "Very high \u2014 Baltimore life-science R&D, laboratory and manufacturing hub housing LaunchPort at 101 W. Dickman Street. Proximity: mission alignment 38/40, functional complement 23/25, Baltimore connectivity 20/20, community accessibility 9/15; access through leasing or resident programs.",
+    "proximity": 90,
+    "sourceCategory": "LifeTech curated addition"
+  }
+]

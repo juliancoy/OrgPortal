@@ -243,6 +243,12 @@ export function NativeChatPage() {
         setStatus('Loading conversations...')
         setError(null)
         const start = searchParams.get('start')
+        const organizationSlug = searchParams.get('org')
+        if (start === 'org' && organizationSlug) {
+          const conversation = await api.startOrganizationRoom(organizationSlug)
+          if (!cancelled) navigate(`/chat/${encodeURIComponent(conversation.id)}`, { replace: true })
+          return
+        }
         const targetUser = searchParams.get('user')
         const targetUserId = searchParams.get('userId')
         const targetUserName = searchParams.get('name')
@@ -706,7 +712,7 @@ export function NativeChatPage() {
                 ) : null}
               </div>
               <p className="native-chat-room-status">
-                {status || (realtimeState === 'connected' ? 'Connected' : realtimeState === 'reconnecting' ? 'Reconnecting…' : 'Direct message')}
+                {status || (realtimeState === 'connected' ? 'Connected' : realtimeState === 'reconnecting' ? 'Reconnecting…' : selectedConversation?.kind === 'org_room' ? 'Organization chat' : selectedConversation?.kind === 'event_room' ? 'Event chat' : 'Direct message')}
               </p>
               {error ? <p className="portal-chat-error" role="alert" aria-live="assertive">{error}</p> : null}
             </header>

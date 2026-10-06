@@ -5,6 +5,7 @@ import { getDomainTenant } from '../../config/timebankCommunity'
 import { type CSSProperties } from 'react'
 import printStyles from './ConferenceNametag.css?inline'
 import './ConferenceNametag.css'
+import { downloadNametag } from '../utils/downloadNametag'
 import { printNametags } from '../utils/printNametags'
 
 type Props = { name: string; avatarUrl: string; publicPageUrl: string | null }
@@ -80,6 +81,14 @@ export function ConferenceNametag({ name, avatarUrl, publicPageUrl }: Props) {
   const headingId = useId()
   const [printing, setPrinting] = useState(false)
   const [error, setError] = useState('')
+  const [downloading, setDownloading] = useState<'png' | 'jpg' | null>(null)
+  async function downloadBadge(format: 'png' | 'jpg') {
+    if (!badgeRef.current || !publicPageUrl) return
+    setDownloading(format); setError('')
+    try { await downloadNametag(badgeRef.current, name, format) }
+    catch { setError('Could not download the nametag. Check that its images have loaded and try again.') }
+    finally { setDownloading(null) }
+  }
   async function printBadge() {
     if (!badgeRef.current || !publicPageUrl) return
     setPrinting(true)
@@ -93,11 +102,14 @@ export function ConferenceNametag({ name, avatarUrl, publicPageUrl }: Props) {
   return <section className="id-qr-card profile-settings-section conference-nametag-section" aria-labelledby={headingId}>
     <div className="profile-detail-header">
       <h2 id={headingId}>Conference nametag</h2>
-      <button type="button" onClick={() => void printBadge()} disabled={!publicPageUrl || printing}>{printing ? 'Preparing…' : 'Print nametag'}</button>
+      <button type="button" onClick={() => void printBadge()} disabled={!publicPageUrl || printing || !!downloading}>{printing ? 'Preparing…' : 'Print nametag'}</button>
     </div>
-    <p className="muted">4 × 3 inches (102 × 76 mm). Print at 100% / actual size.</p>
+    <div className="conference-nametag-downloads" role="group" aria-label="Download nametag">
+      {(['png', 'jpg'] as const).map(format => <button key={format} type="button" disabled={!publicPageUrl || printing || !!downloading} onClick={() => void downloadBadge(format)}>{downloading === format ? 'Preparing…' : `Download ${format.toUpperCase()}`}</button>)}
+    </div>
+    <p className="muted">4 × 3 inches (102 × 76 mm). Print at 100% / actual size. Image downloads: 1200 × 900 pixels.</p>
     <div className="conference-nametag-preview"><NametagCard name={name} avatarUrl={avatarUrl} publicPageUrl={publicPageUrl} badgeRef={badgeRef} /></div>
-    {!publicPageUrl && <p className="muted" role="status">Your nametag will be ready to print when your public page is available.</p>}
+    {!publicPageUrl && <p className="muted" role="status">Your nametag will be ready to print or download when your public page is available.</p>}
     {error && <p role="alert">{error}</p>}
   </section>
 }

@@ -1,3 +1,4 @@
+import { DeploymentSwitcher } from '../components/DeploymentSwitcher'
 import { OrganizationViewSwitcher } from '../components/OrganizationViewSwitcher'
 import { TaskQueue, useTaskQueue } from '../tasks/TaskQueue'
 import { useDomainCommunity, useDomainTenant } from '../../config/timebankCommunity'
@@ -813,7 +814,7 @@ export function Header() {
         </div>
 
         <div className="portal-auth">
-          <OrganizationViewSwitcher />
+          <OrganizationViewSwitcher indicator />
           {isLoading && role === 'guest' ? (
             <div className="portal-auth-loading" role="status" aria-label="Checking sign-in status">
               <span className="portal-auth-loading-avatar" aria-hidden="true" />
@@ -842,6 +843,9 @@ export function Header() {
 
                 {menuOpen && (
                   <div id="portal-user-menu" className="portal-user-menu" role="menu" aria-label="User menu">
+                  <div className="portal-user-menu-item">
+                    <OrganizationViewSwitcher />
+                  </div>
                   <div className="portal-user-menu-meta">
                     <span>{roleLabel}</span>
                   </div>
@@ -883,8 +887,9 @@ export function Header() {
                   )}
 
                   {isAdmin && <Link to="/email" onClick={() => setMenuOpen(false)} className="portal-user-menu-item admin" role="menuitem">Email campaigns</Link>}
-                  <Link to="/email/preferences" onClick={() => setMenuOpen(false)} className="portal-user-menu-item" role="menuitem">Email preferences</Link>
+                  <Link to="/settings/notifications" onClick={() => setMenuOpen(false)} className="portal-user-menu-item" role="menuitem">Notification settings</Link>
 
+                  <DeploymentSwitcher menu />
                   <button type="button" onClick={logout} className="portal-user-menu-item logout" role="menuitem">
                     Sign out
                   </button>
@@ -940,6 +945,7 @@ export function Header() {
                       <p className="muted portal-notification-empty">No pending connection requests.</p>
                     )}
                     {notificationsStatus ? <p className="muted portal-notification-empty" role="status">{notificationsStatus}</p> : null}
+                    <Link to="/settings/notifications" onClick={() => setNotificationsOpen(false)}>Notification settings</Link>
                   </div>
                 ) : null}
               </div>
@@ -986,6 +992,7 @@ export function Header() {
             {tenantResources.length > 0 && <NavLink to="/resources" isActive={isResourcesActive}>Resources</NavLink>}
           </> : domainCommunity ? <>
             <NavLink to="/timebanking">Timebank</NavLink>
+            <NavLink to="/ecosystem/network" isActive={location.pathname.startsWith('/ecosystem/network')}>Network</NavLink>
             <NavLink to="/people">People</NavLink>
             <NavLink to="/chat">Chat</NavLink>
             <NavLink to="/calendar" isActive={isCalendarActive}>Calendar</NavLink>

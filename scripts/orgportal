@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+orgportal_script="$(readlink -f "${BASH_SOURCE[0]}")"
+orgportal_root="$(cd "$(dirname "$orgportal_script")/.." && pwd)"
+exec node "$orgportal_root/org-worker/scripts/orgportal.mjs" "$@"

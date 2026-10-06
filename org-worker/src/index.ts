@@ -1,4 +1,17 @@
+import { localNewsletterRoutes } from './localNewsletters';
+import {onboardingSettingsRoutes} from './onboardingSettings';
+import { importFinancing, financingAgencyReport, financingRecipientReport } from './financingRecords';
+import { provisionOrganizationChat, provisionPendingOrganizationChats } from './organizationChat';
+import { runOrganizationOperation } from './organizationMcp';
+import { notificationPreferenceRoutes } from './notificationPreferences';
+import { dispatchOrganizationStatusPush, runOrganizationStatusEmail } from './organizationStatusNotifications';
+import { importOrganizationEvidence } from './organizationEvidenceImport';
+import { nextEventSlug, runEventSlugOperation } from './eventSlugs';
+import {linkEventSupportRecords} from './eventSupportLinks';
+import { organizationSnapshot, replicaStatus, replicateOrganizations, snapshotEtagMatches } from './organizationReplication';
 import { memberMeetingRoutes } from './memberMeetings';
+import { runEventEnrichmentOperation } from './eventEnrichment';
+import { runOrganizationRegistryOperation } from './organizationRegistry';
 import { nametagRoutes } from './nametags';
 import { calendarCollectionOptions, addCalendarCollections } from './calendarCollections';
 import { organizationSupport, runSupportOperation } from './organizationSupport';
@@ -9,6 +22,7 @@ import { venueRankingRoutes } from './venueRankings';
 import { venueRoutes, eventVenues, setEventVenues } from './venues';
 import { driveCarouselRoutes } from './driveCarousel';
 import { userTaskRoutes } from './userTasks';
+import { identityMembershipRoutes } from "./identityMembership";
 import { onboardingRoutes } from './onboarding';
 import { availabilityRoutes } from './availability';
 import { timebankNotifications, markTimebankNotificationsRead, dispatchTimebankPush } from './timebankNotifications';
@@ -87,6 +101,9 @@ type EventMediaItem = {
 
 type PidpUser = {
   id: string;
+  canonical_user_id?: string;
+  account_id?: string;
+  account_subject?: string;
   email?: string | null;
   full_name?: string | null;
   avatar_url?: string | null;
@@ -444,6 +461,14 @@ type ContactPayload = Partial<{
 const DEFAULT_ADMIN_EMAIL = "julian@codecollective.us";
 
 export const app = new Hono<{ Bindings: Env; Variables: { user: PidpUser } }>();
+app.use("*", async (c, next) => {
+  if (c.env.ORGANIZATION_REPLICA_SOURCE && !c.req.path.startsWith('/api/local/newsletters/') && !["GET", "HEAD", "OPTIONS"].includes(c.req.method)) {
+    return c.json({detail:"Read-only organization replica. Use the primary OrgPortal API with its normal authentication, permissions and preview/apply flow."}, 403);
+  }
+  await next();
+});
+
+app.route('/api/local/newsletters', localNewsletterRoutes());
 
 function json(payload: unknown, status = 200) {
   return new Response(JSON.stringify(payload), {
@@ -487,13 +512,13 @@ async function proxyChatRequest(request: Request, env: Env) {
   headers.set("x-forwarded-host", requestUrl.host);
   headers.set("x-forwarded-proto", requestUrl.protocol.replace(":", ""));
 
-  const upstream = await fetch(chatProxyTarget(request.url, origin), {
+  const upstreamRequest = new Request(chatProxyTarget(request.url, origin), {
     method: request.method,
     headers,
     body: request.body,
     redirect: "manual",
-    cf: { cacheEverything: false },
   });
+  const upstream = env.CHAT_SERVICE ? await env.CHAT_SERVICE.fetch(upstreamRequest) : await fetch(upstreamRequest);
 
   return new Response(upstream.body, {
     status: upstream.status,
@@ -573,31 +598,13 @@ function parseEventMedia(value: string | null | undefined): EventMediaItem[] {
 }
 
 function adminUser(user: PidpUser, env: Env) {
-  const adminEmails = parseList(env.ADMIN_EMAILS);
-  const adminIds = parseList(env.ADMIN_USER_IDS);
-  const identity = user.identity_data || {};
-  const roles = Array.isArray(identity.roles)
-    ? identity.roles.map((item) => String(item || "").trim().toLowerCase()).filter(Boolean)
-    : [];
-  return (
-    Boolean(user.is_sysadmin) ||
-    Boolean(user.is_admin) ||
-    identity.is_sysadmin === true ||
-    identity.is_admin === true ||
-    roles.includes("sysadmin") ||
-    roles.includes("admin") ||
-    roles.includes("cis_admin") ||
-    roles.includes("cis-admin") ||
-    adminIds.includes(user.id.toLowerCase()) ||
-    (user.email ? adminEmails.includes(user.email.toLowerCase()) : false)
-  );
+  // PIdP owns system authority. Profile metadata and duplicate portal allowlists
+  // must not promote a website account that shares an owner's email or UUID.
+  return user.is_sysadmin === true || user.is_admin === true;
 }
 
 function operatorUser(user: PidpUser, env: Env) {
-  const roles = Array.isArray(user.identity_data?.roles)
-    ? user.identity_data.roles.map((item) => String(item || "").trim().toLowerCase())
-    : [];
-  return adminUser(user, env) || roles.includes("operator");
+  return adminUser(user, env);
 }
 
 function slugify(value: string) {
@@ -810,9 +817,11 @@ function requestPublicHostname(request: Request) {
 async function tenantPublicPortalBase(env: Env, request: Request): Promise<string | null> {
   const hostname = requestPublicHostname(request);
   try {
-    const tenant = await env.DB.prepare("SELECT public_base_url, canonical_path_prefix FROM portal_tenants WHERE hostname = ?")
+    let tenant = await env.DB.prepare("SELECT public_base_url, canonical_path_prefix FROM portal_tenants WHERE hostname = ?")
       .bind(hostname)
       .first<{ public_base_url?: string | null; canonical_path_prefix?: string | null }>();
+    if (!tenant) tenant = await env.DB.prepare("SELECT 'https://' || custom_domain_hostname AS public_base_url, '' AS canonical_path_prefix FROM portal_tenants WHERE custom_domain_hostname=? AND custom_domain_status='attached'")
+      .bind(hostname).first<{public_base_url:string;canonical_path_prefix:string}>();
     if (!tenant) return null;
     const configured = String(tenant.public_base_url || "").replace(/\/+$/g, "");
     if (configured) return configured;
@@ -1068,7 +1077,8 @@ async function currentUser(env: Env, request: Request): Promise<PidpUser> {
   });
   if (!resp.ok) fail(401, "Invalid credentials");
   const user = (await resp.json()) as PidpUser;
-  if (!user.id) fail(401, "Invalid credentials");
+  if (!user.id || !user.canonical_user_id || !user.account_id || !user.account_subject) fail(401, "Invalid PIdP identity");
+  if (user.id !== user.canonical_user_id) fail(401, "Inconsistent PIdP identity");
   return user;
 }
 
@@ -2016,7 +2026,15 @@ async function upsertOrganization(db: D1Database, raw: Record<string, unknown>) 
   return db.prepare("SELECT * FROM organizations WHERE id = ?").bind(id).first<OrganizationRow>();
 }
 
-async function upsertEvent(db: D1Database, raw: Record<string, unknown>) {
+async function createOrganization(env: Env, actor: OrganizationActor, payload: Record<string, unknown>) {
+  const row = await upsertOrganization(env.DB, payload);
+  if (!row) fail(500, "Organization creation failed");
+  await claimOrganization(env.DB, row.id, actor, nowIso());
+  await provisionOrganizationChat(env, row.id);
+  return row;
+}
+
+async function upsertEvent(db: D1Database, raw: Record<string, unknown>, requestedSlug?: string) {
   const ingestKey = stringField(raw, "ingest_key", 255);
   const title = stringField(raw, "title", 500);
   if (!ingestKey || !title) return null;
@@ -2024,7 +2042,7 @@ async function upsertEvent(db: D1Database, raw: Record<string, unknown>) {
   const hostOrgSourceUrl = cleanUrl(raw.host_org_source_url);
   const hostOrg = await organizationBySourceUrl(db, hostOrgSourceUrl);
   const id = existing?.id || crypto.randomUUID();
-  const slug = existing?.slug || (await uniqueTableSlug(db, "events", `${title}-${ingestKey.slice(0, 8)}`));
+  const slug = existing?.slug || requestedSlug || (await uniqueTableSlug(db, "events", `${title}-${ingestKey.slice(0, 8)}`));
   const updatedAt = nowIso();
   const mediaJson = Array.isArray(raw.media) ? JSON.stringify(sanitizeEventMedia(raw.media)) : existing?.media_json || "[]";
   const eventLinksJson = Array.isArray(raw.links) ? JSON.stringify(sanitizeEventLinks(raw.links)) : existing?.event_links_json || "[]";
@@ -2542,9 +2560,7 @@ app.onError((err) => {
 
 // Register MCP before generic CORS; do not grant arbitrary origins event access.
 app.all("/mcp", (c) => handleEventMcp(c.req.raw, c.env, async (actor, payload) => {
-  const row = await upsertOrganization(c.env.DB, payload);
-  await claimOrganization(c.env.DB, row!.id, actor, nowIso());
-  return row!;
+  return createOrganization(c.env, actor, payload);
 }, governanceService(c.env.DB)));
 
 export function governanceService(db: D1Database): GovernanceService {
@@ -2631,6 +2647,9 @@ app.route("/api/availability", availabilityRoutes(currentUser));
 app.route("/api/meetings", memberMeetingRoutes(currentUser));
 app.route("/api/tasks", userTaskRoutes(currentUser));
 app.route("/api/onboarding", onboardingRoutes(currentUser));
+app.route("/api/onboarding/settings", onboardingSettingsRoutes(currentUser));
+app.route("/api/identity-membership", identityMembershipRoutes(currentUser));
+app.route('/api/notifications/preferences', notificationPreferenceRoutes(currentUser));
 app.route("/api/media/carousels", driveCarouselRoutes(currentUser));
 app.route("/api/photo-tags", photoTagRoutes(async (env,request)=>organizationActor(await currentUser(env,request),env)));
 
@@ -3014,6 +3033,7 @@ app.post("/api/network/ingest/calendar", async (c) => {
     const row = existing || await upsertEvent(c.env.DB, raw);
     if (row) {
       await addCalendarCollections(c.env.DB, row.id, collections.organizationIds, existing ? raw.tags : undefined);
+      await linkEventSupportRecords(c.env.DB, row, raw.support_record_ids, await eventPublicUrl(c.env,c.req.raw,row.slug));
       insertedOrUpdatedEvents += 1;
     }
   }
@@ -3025,10 +3045,24 @@ app.post("/api/network/ingest/calendar", async (c) => {
   });
 });
 
+app.get("/api/network/replication/snapshot", async c => {
+  if (c.env.ORGANIZATION_REPLICA_SOURCE) return c.json({detail:"Fetch snapshots from the authoritative primary"},409);
+  const key = new Request(c.req.url);
+  const cache = await caches.open("organization-snapshots-v3");
+  let response = await cache.match(key);
+  if (!response) {
+    response = await organizationSnapshot(c.env.DB, key);
+    c.executionCtx.waitUntil(cache.put(key,response.clone()));
+  }
+  if (snapshotEtagMatches(c.req.header("If-None-Match"),response.headers.get("ETag"))) return new Response(null,{status:304,headers:response.headers});
+  return response;
+});
+app.get("/api/network/replication/status", async c => { c.header("Cache-Control","no-store"); return c.json(await replicaStatus(c.env)); });
+
 app.get("/api/network/orgs/public", async (c) => {
   const q = (c.req.query("q") || "").trim();
   const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "300", 10) || 300, 500));
-  const candidateLimit = q ? searchCandidateLimit(limit) : limit;
+  const offset = Math.max(0, Math.min(Number.parseInt(c.req.query("offset") || "0", 10) || 0, 100000));
   const rows = await c.env.DB.prepare(
     `SELECT o.*,
       (SELECT count(*) FROM events e WHERE e.host_org_id = o.id AND (COALESCE(e.starts_at,e.event_date) IS NULL OR COALESCE(e.starts_at,e.event_date) >= date('now'))) AS upcoming_events_count,
@@ -3040,12 +3074,12 @@ app.get("/api/network/orgs/public", async (c) => {
       (SELECT count(*) FROM organization_memberships m WHERE m.organization_id = o.id AND m.status = 'active') AS membership_count,
       (SELECT count(*) FROM organization_ownership_challenges ch WHERE ch.organization_id = o.id AND ch.status = 'open') AS pending_challenges_count
      FROM organizations o
-     ORDER BY membership_count DESC, (feedback_positive_count - feedback_concern_count) DESC, upcoming_events_count DESC, lower(o.name) ASC
-     LIMIT ?`,
+     ORDER BY membership_count DESC, (feedback_positive_count - feedback_concern_count) DESC, upcoming_events_count DESC, lower(o.name) ASC, o.id ASC
+     ${q ? "" : "LIMIT ? OFFSET ?"}`,
   )
-    .bind(candidateLimit)
+    .bind(...(q ? [] : [limit, offset]))
     .all<OrganizationRow & { upcoming_events_count: number }>();
-  const rankedRows = rankSearchResults(rows.results || [], q, (row) => [row.name, row.description, row.slug, row.tags, row.city], limit);
+  const rankedRows = rankSearchResults(rows.results || [], q, (row) => [row.name, row.description, row.slug, row.tags, row.city], q ? limit + offset : limit).slice(q ? offset : 0);
   return c.json(rankedRows.map((row) => mapOrganization(row, Number(row.upcoming_events_count || 0))));
 });
 
@@ -3071,8 +3105,30 @@ app.get("/api/network/orgs/public/:slug", async (c) => {
 });
 
 app.get("/api/network/orgs/public/:slug/support", async (c) => {
-  try { return c.json(await organizationSupport(c.env.DB, c.req.param("slug"))); }
+  const offset = Math.max(0, Math.min(Number.parseInt(c.req.query("offset") || "0", 10) || 0, 100000));
+  try { return c.json(await organizationSupport(c.env.DB, c.req.param("slug"), offset)); }
   catch (error) { return eventErrorResponse(error, c.env, c.req.raw); }
+});
+
+app.get("/api/network/orgs/public/:slug/financing", async c => {
+  try { c.header("Cache-Control", "public, max-age=60"); return c.json({...await financingAgencyReport(c.env.DB,c.req.param("slug")),consistency:await replicaStatus(c.env)}); }
+  catch(error) { return eventErrorResponse(error,c.env,c.req.raw); }
+});
+app.get("/api/network/financing/recipients/:id", async c => {
+  try { c.header("Cache-Control", "public, max-age=60"); return c.json(await financingRecipientReport(c.env.DB,c.req.param("id"))); }
+  catch(error) { return eventErrorResponse(error,c.env,c.req.raw); }
+});
+app.post("/api/network/orgs/:organizationId/financing/import", async c => {
+  const user=await currentUser(c.env,c.req.raw);
+  try { return c.json(await importFinancing(c.env.DB,organizationActor(user,c.env),{...await c.req.json<Record<string,unknown>>(),organizationId:c.req.param("organizationId")})); }
+  catch(error) { return eventErrorResponse(error,c.env,c.req.raw); }
+});
+
+app.post("/api/network/orgs/:organizationId/support/import", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  try { return c.json(await importOrganizationEvidence(c.env.DB, organizationActor(user,c.env),
+    { ...await c.req.json<Record<string,unknown>>(), organizationId:c.req.param("organizationId") })); }
+  catch(error) { return eventErrorResponse(error,c.env,c.req.raw); }
 });
 
 app.post("/api/network/orgs/:organizationId/support/:operation", async (c) => {
@@ -3230,7 +3286,6 @@ app.get("/api/network/orgs", async (c) => {
   const mine = (c.req.query("mine") || "").toLowerCase() === "true";
   const q = (c.req.query("q") || "").trim();
   const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "300", 10) || 300, 500));
-  const candidateLimit = q ? searchCandidateLimit(limit) : limit;
   const rows = await c.env.DB.prepare(
     `SELECT o.*,
       (SELECT own.owner_user_id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS claimed_by_user_id,
@@ -3245,18 +3300,25 @@ app.get("/api/network/orgs", async (c) => {
      WHERE (? = 0 OR EXISTS (
        SELECT 1 FROM organization_memberships mine WHERE mine.organization_id = o.id AND mine.user_id = ? AND mine.status = 'active'
      ))
-     ORDER BY lower(o.name) ASC LIMIT ?`,
+     ORDER BY lower(o.name) ASC ${q ? "" : "LIMIT ?"}`,
   )
-    .bind(user.id, mine ? 1 : 0, user.id, candidateLimit)
+    .bind(user.id, mine ? 1 : 0, user.id, ...(q ? [] : [limit]))
     .all<OrganizationRow>();
   const rankedRows = rankSearchResults(rows.results || [], q, (row) => [row.name, row.description, row.slug, row.tags, row.city], limit);
   return c.json(rankedRows.map((row) => mapOrganization(row)));
 });
 
+app.post("/api/network/orgs/registry", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  try {
+    return c.json(await runOrganizationRegistryOperation(c.env.DB, organizationActor(user, c.env), await c.req.json()));
+  } catch (error) { return eventErrorResponse(error, c.env, c.req.raw); }
+});
+
 app.post("/api/network/orgs", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
-  const row = await upsertOrganization(c.env.DB, {
+  const row = await createOrganization(c.env, organizationActor(user, c.env), {
     name: stringField(payload, "name", 255) || "Organization",
     description: stringField(payload, "description", 5000),
     source_url: cleanUrl(payload.source_url),
@@ -3264,7 +3326,6 @@ app.post("/api/network/orgs", async (c) => {
     tags: Array.isArray(payload.tags) ? payload.tags : [],
     city: stringField(payload, "city", 80),
   });
-  await claimOrganization(c.env.DB, row!.id, organizationActor(user, c.env), nowIso());
   const created = await c.env.DB.prepare(
     `SELECT o.*,
       (SELECT own.owner_user_id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS claimed_by_user_id,
@@ -3467,7 +3528,7 @@ app.put("/api/network/orgs/:organizationId/portal", async (c) => {
     ON CONFLICT(id) DO UPDATE SET
       organization_id = excluded.organization_id,
       slug = excluded.slug,
-      hostname = excluded.hostname,
+      hostname = CASE WHEN portal_tenants.custom_domain_status='attached' THEN portal_tenants.custom_domain_hostname ELSE excluded.hostname END,
       name = excluded.name,
       tagline = excluded.tagline,
       accent_color = excluded.accent_color,
@@ -3488,9 +3549,9 @@ app.put("/api/network/orgs/:organizationId/portal", async (c) => {
       home_secondary_label = excluded.home_secondary_label,
       home_secondary_href = excluded.home_secondary_href,
       home_image_url = excluded.home_image_url,
-      public_base_url = excluded.public_base_url,
-      canonical_path_prefix = excluded.canonical_path_prefix,
-      feature_config = excluded.feature_config,
+      public_base_url = CASE WHEN portal_tenants.custom_domain_status='attached' THEN 'https://' || portal_tenants.custom_domain_hostname ELSE excluded.public_base_url END,
+      canonical_path_prefix = CASE WHEN portal_tenants.custom_domain_status='attached' THEN '' ELSE excluded.canonical_path_prefix END,
+      feature_config = json_patch(portal_tenants.feature_config,excluded.feature_config),
       updated_at = excluded.updated_at`,
   )
     .bind(
@@ -3708,11 +3769,22 @@ app.get("/api/network/orgs/:organizationId/members", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   return c.json(await listOrganizationMembers(c.env.DB, c.req.param("organizationId"), organizationActor(user, c.env)));
 });
-app.post("/api/network/orgs/:organizationId/members", async (c) => {
+// Session-authenticated administration uses the same IAM checks and one-use
+// preview receipts as MCP. Account IDs are explicit; email never links accounts.
+app.post("/api/network/orgs/:organizationId/members/:operation", async (c) => {
+  const operation = c.req.param("operation");
+  if (operation !== "preview" && operation !== "apply") return c.json({ error: "Not found" }, 404);
   const user = await currentUser(c.env, c.req.raw);
-  const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
-  return c.json(await saveOrganizationMember(c.env.DB, c.req.param("organizationId"), organizationActor(user, c.env), payload, nowIso()));
+  const payload = await c.req.json() as Record<string, unknown>;
+  try {
+    const result = await runOrganizationOperation(c.env.DB,
+      { userId: user.id, scopes: ["org:portal.read", "org:portal.write"] }, "member",
+      { ...payload, organizationId: c.req.param("organizationId"), confirm: operation === "apply" },
+      async () => null);
+    return c.json(result);
+  } catch (error) { return eventErrorResponse(error, c.env, c.req.raw); }
 });
+
 app.get("/api/network/orgs/:organizationId/ownership-challenges", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   return c.json(await listOwnershipChallenges(c.env.DB, organizationActor(user, c.env), {
@@ -3847,6 +3919,24 @@ async function authorizeEventManager(env: Env, user: PidpUser, row: EventRow) {
   fail(403, "Event management access required");
 }
 
+app.post("/api/network/events/:eventId/enrichment", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  try {
+    return c.json(await runEventEnrichmentOperation(c.env.DB, organizationActor(user, c.env), c.req.param('eventId'), await c.req.json()));
+  } catch (error) { return eventErrorResponse(error, c.env, c.req.raw); }
+});
+
+app.get('/api/network/events/next-slug', async c => {
+  await currentUser(c.env, c.req.raw);
+  try { return c.json(await nextEventSlug(c.env.DB, c.req.query('series') || '')); }
+  catch (error) { return eventErrorResponse(error, c.env, c.req.raw); }
+});
+app.post('/api/network/events/:eventId/slug', async c => {
+  const user = await currentUser(c.env, c.req.raw);
+  try { return c.json(await runEventSlugOperation(c.env.DB, organizationActor(user, c.env), { ...await c.req.json(), eventId: c.req.param('eventId') })); }
+  catch (error) { return eventErrorResponse(error, c.env, c.req.raw); }
+});
+
 app.post("/api/network/events", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
@@ -3886,7 +3976,17 @@ app.post("/api/network/events", async (c) => {
   if(date && (!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isFinite(Date.parse(date))||new Date(date).toISOString().slice(0,10)!==date))fail(400,'Invalid event date');
   const timezone=stringField(payload,'timezone',80)||'America/New_York';
   try{new Intl.DateTimeFormat('en',{timeZone:timezone});}catch{fail(400,'Invalid timezone');}
-  const row = await upsertEvent(c.env.DB, { ...eventPayload });
+  let numberedSlug: string | undefined;
+  if (payload.event_series) {
+    try { numberedSlug = (await nextEventSlug(c.env.DB, String(payload.event_series))).slug; }
+    catch (error) { return eventErrorResponse(error, c.env, c.req.raw); }
+  }
+  let row;
+  try { row = await upsertEvent(c.env.DB, { ...eventPayload }, numberedSlug); }
+  catch (error) {
+    if (numberedSlug && String(error).includes('UNIQUE')) fail(409, 'This event number was just used. Create the event again to use the next number.');
+    throw error;
+  }
   if(date){await c.env.DB.prepare('UPDATE events SET event_date = ?,timezone = ? WHERE id = ?').bind(date,timezone,row!.id).run();row!.event_date=date;row!.timezone=timezone;}
   return c.json(await mapEvent(c.env, c.req.raw, row!), 201);
 });
@@ -5225,6 +5325,13 @@ app.all("*", (c) => c.json({ detail: "Endpoint is not implemented in the Cloudfl
 
 function orgWorkerFetch(request: Request, env: Env, ctx: ExecutionContext) {
   const url = new URL(request.url);
+  if (env.ORGANIZATION_REPLICA_SOURCE && ["GET","HEAD"].includes(request.method)
+    && /^\/api\/network\/orgs\/public\/[^/]+\/media\/[^/]+$/.test(url.pathname)) {
+    const upstream = new URL(env.ORGANIZATION_REPLICA_SOURCE);
+    upstream.pathname = upstream.pathname.replace(/\/network\/replication\/snapshot$/, "") + url.pathname.replace(/^\/api/, "");
+    upstream.search = url.search;
+    return fetch(upstream.href,{method:request.method,redirect:"manual"});
+  }
   if (request.method === "GET" && (url.pathname === "/.well-known/oauth-protected-resource"
     || url.pathname === "/.well-known/oauth-protected-resource/api/org/mcp"
     || url.pathname.startsWith("/.well-known/oauth-protected-resource/"))) {
@@ -5236,10 +5343,14 @@ function orgWorkerFetch(request: Request, env: Env, ctx: ExecutionContext) {
 export default {
   fetch: orgWorkerFetch,
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext) {
+    if (env.ORGANIZATION_REPLICA_SOURCE) { ctx.waitUntil(replicateOrganizations(env)); return; }
     ctx.waitUntil(Promise.all([runUbiTick(env.DB, controller.scheduledTime), dispatchTimebankPush(env)]));
-    ctx.waitUntil(runEmailDelivery(env));
+    ctx.waitUntil(runOrganizationStatusEmail(env).then(() => runEmailDelivery(env)));
+    ctx.waitUntil(dispatchOrganizationStatusPush(env));
+    ctx.waitUntil(provisionPendingOrganizationChats(env));
   },
   async queue(batch: MessageBatch<import("./push").PushDeliveryJob>, env: Env) {
+    if (env.ORGANIZATION_REPLICA_SOURCE) { batch.retryAll(); return; }
     await consumePushBatch(batch, env);
   },
 };

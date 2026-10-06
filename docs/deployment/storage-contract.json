@@ -1,0 +1,13 @@
+{
+  "contractVersion": 1,
+  "newsletterProtocolVersion": 1,
+  "indexedDbVersion": 2,
+  "sqlMigration": "0071_newsletter_source_archives.sql",
+  "serverEngines": ["Cloudflare D1", "SQLite through local Wrangler"],
+  "browserEngine": "IndexedDB",
+  "datasetIdentity": "Persistent local deployment UUID; browser stores partition by dataset",
+  "localWrites": "Newsletter archive and immutable change log; upstream snapshots never prune them",
+  "remoteWrites": "Separate authenticated publication workflow; local capability grants no production permission",
+  "recovery": "SQL online backup plus IndexedDB history and pending outbox export",
+  "sourceVersions": "Git HEAD, merge parents, source SHA-256, migration SHA-256, content-addressed deployment archive"
+}

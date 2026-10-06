@@ -1,4 +1,6 @@
 interface Env {
+  ORGANIZATION_REPLICA_SOURCE?: string;
+  ORGANIZATION_REPLICA_INTERVAL_SECONDS?: string;
   ENV?: string;
   MCP_OAUTH_INTROSPECTION_URL?: string;
   MCP_OAUTH_INTROSPECTION_SECRET?: string;
@@ -12,6 +14,7 @@ interface Env {
   EMAIL_POSTAL_ADDRESS?: string;
   EMAIL_DAILY_LIMIT?: string;
   EMAIL_SENDING_ENABLED?: string;
+  ORGANIZATION_STATUS_EMAIL_ENABLED?: string;
   EVENT_INTEGRATIONS_JSON?: string;
   MCP_PUBLIC_URL?: string;
   MCP_RESOURCE_CONFIG_JSON?: string;
@@ -20,6 +23,7 @@ interface Env {
   MCP_OAUTH_JWKS_URL?: string;
   MCP_SUBJECT_MAP_JSON?: string;
   MCP_PIDP_ACCOUNT_NAMESPACES_JSON?: string;
+  MCP_PIDP_PORTAL_ACCOUNT_NAMESPACE?: string;
   MCP_ALLOWED_ORIGINS?: string;
   DB: D1Database;
   SCAN_IMAGES?: R2Bucket;
@@ -28,6 +32,8 @@ interface Env {
   PIDP_SERVICE_TOKEN?: string;
   PUBLIC_PORTAL_BASE_URL?: string;
   CHAT_API_ORIGIN?: string;
+  CHAT_SERVICE?: Fetcher;
+  CHAT_ORGANIZATION_ROOMS?: { ensure(organizationId: string): Promise<{ id: string; organizationId: string }> };
   ORG_BUSINESS_CARD_OCR_PROVIDER?: string;
   ORG_BUSINESS_CARD_OCR_MODEL?: string;
   ORG_OPENAI_API_KEY?: string;

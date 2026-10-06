@@ -1,3 +1,7 @@
+import { getDomainTenant } from '../../../config/timebankCommunity'
+import { getActivePortalProfileConfig } from '../../../config/portalFeatures'
+import { portalPath } from '../../../config/portalBase'
+import type { CSSProperties } from 'react'
 import { PhotoTags } from '../../components/PhotoTags'
 import { EventVenues, type Venue } from '../../components/EventVenues'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -256,6 +260,9 @@ function uuid() {
 export function PublicEventPage() {
   const { token, user, isLoading: authLoading } = useAuth()
   const { slug } = useParams()
+  const tenant = getDomainTenant()
+  const brand = getActivePortalProfileConfig()
+  const lifeTech = tenant?.home_org_slug === 'lifetech'
   const [event, setEvent] = useState<PublicEvent | null>(null)
   const [status, setStatus] = useState<string>('Loading event…')
   const [googleCalendarConnected, setGoogleCalendarConnected] = useState(false)
@@ -688,7 +695,7 @@ export function PublicEventPage() {
   } : null
 
   return (
-    <article className="public-event-page">
+    <article className={`public-event-page${lifeTech ? ' lifetech-event-page' : ''}`} style={lifeTech ? { '--event-brand-accent': tenant.accent_color, '--event-brand-navy': brand.themeColor } as CSSProperties : undefined}>
       <div className="public-event-layout public-event-luma-layout">
         <main className="public-event-main">
           <section className="public-event-hero">
@@ -696,6 +703,10 @@ export function PublicEventPage() {
               <img className="public-event-hero-image" src={event.image_url} alt="" />
             ) : <div className="public-event-hero-image public-event-hero-placeholder" aria-hidden="true" />}
             <div className="public-event-hero-content">
+              {lifeTech ? <Link className="lifetech-event-lockup" to="/branding" aria-label="LifeTech brand guide">
+                <img src={portalPath(brand.brandImagePath || '/assets/images/lifetech-logo.png')} alt="" />
+                <span><strong>{brand.brandName}</strong><small>{brand.tagline}</small></span>
+              </Link> : null}
               {event.organization_slug ? (
                 <Link
                   className="public-event-organizer-link"

@@ -112,7 +112,8 @@ export function OrgProfilePage() {
         const text = await resp.text().catch(() => '')
         throw new Error(text || `Claim failed (${resp.status})`)
       }
-      setStatus('Organization claimed. You are now its owner.')
+      window.dispatchEvent(new Event('organization-access-change'))
+      setStatus('Organization claimed. You are now an organizer and its owner.')
       await loadOrgs()
     } catch (err) {
       setStatus(err instanceof Error ? err.message : 'Claim failed')

@@ -21,7 +21,7 @@ export function UserLoginPage({ defaultNext }: { defaultNext?: string } = {}) {
 
   useEffect(() => {
     if (!isLoading && role !== 'guest') {
-      navigate(requestedNext)
+      navigate(requestedNext, { replace: true })
     }
   }, [isLoading, role, navigate, requestedNext])
 
@@ -31,7 +31,8 @@ export function UserLoginPage({ defaultNext }: { defaultNext?: string } = {}) {
         <div className="portal-auth-card-header">
           {tenantAuth && portalProfile.brandImagePath && <img className="tenant-auth-logo" src={portalPath(portalProfile.brandImagePath)} alt="" />}
           <p className="portal-auth-eyebrow">{tenantAuth ? portalProfile.tagline : `${portalProfile.brandName} identity`}</p>
-          <h1 id="user-login-title">Log In</h1>
+          <h1 id="user-login-title">Sign in to {portalProfile.brandName}</h1>
+          <p className="portal-auth-intro">Choose how you’d like to continue.</p>
         </div>
 
         <div className="portal-auth-provider-stack">
@@ -46,15 +47,16 @@ export function UserLoginPage({ defaultNext }: { defaultNext?: string } = {}) {
               <span>Continue with GitHub</span>
             </a>
           </div>
+          <div className="portal-auth-divider" aria-hidden="true">or</div>
           <a
             href={pidpSingleSignOnUrl(requestedNext)}
-            className="portal-button portal-auth-idp-link"
+            className="portal-auth-email-link"
           >
             Continue with email
           </a>
         </div>
 
-        <p className="muted">Sign in once to use your account across connected services.</p>
+        <p className="portal-auth-help">Sign in or create an account using any option above.</p>
 
         {tenantAuth && <p className="tenant-shared-account">Your existing Code Collective account works here.</p>}
       </div>

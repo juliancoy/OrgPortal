@@ -1,3 +1,4 @@
+import {identityProfile} from './helpers/identityProfile';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { DatabaseSync, type StatementSync } from 'node:sqlite';
@@ -49,7 +50,7 @@ function setup() {
 test('registration requires verified identity; repeated requests and cancellation are scoped to the account', async (t) => {
   t.mock.method(globalThis, 'fetch', async (_url: unknown, options: RequestInit) => {
     const token = new Headers(options.headers).get('Authorization')?.replace('Bearer ', '');
-    return token === 'invalid' ? new Response('', { status: 401 }) : Response.json({ id: token });
+    return token === 'invalid' ? new Response('', { status: 401 }) : Response.json(identityProfile({ id: token }));
   });
   const { database, request } = setup();
   t.after(() => database.close());
@@ -95,12 +96,12 @@ test('registration refreshes placeholder contact rows with the real name and ava
   t.mock.method(globalThis, 'fetch', async (_url: unknown, options: RequestInit) => {
     const token = new Headers(options.headers).get('Authorization')?.replace('Bearer ', '');
     return token === 'bob'
-      ? Response.json({
+      ? Response.json(identityProfile({
         id: 'bob',
         email: 'bob@example.test',
         full_name: 'Bob Builder',
         identity_data: { avatar_url: 'https://images.test/bob.png' },
-      })
+      }))
       : new Response('', { status: 401 });
   });
   const { database, request } = setup();
@@ -135,7 +136,7 @@ test('registration refreshes placeholder contact rows with the real name and ava
 test('registered events calendar feed is private, subscribable, and host-rooted', async (t) => {
   t.mock.method(globalThis, 'fetch', async (_url: unknown, options: RequestInit) => {
     const token = new Headers(options.headers).get('Authorization')?.replace('Bearer ', '');
-    return token ? Response.json({ id: token }) : new Response('', { status: 401 });
+    return token ? Response.json(identityProfile({ id: token })) : new Response('', { status: 401 });
   });
   const { database } = setup();
   t.after(() => database.close());

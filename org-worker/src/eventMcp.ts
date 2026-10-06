@@ -1,3 +1,4 @@
+import { eventSlugSchema, runEventSlugOperation } from './eventSlugs';
 import { runSupportMcp, supportSchema, supportVoidSchema, supportTargetSchema } from './organizationSupport';
 import { runVenueImageOperation, venueImageSchema } from './venueImagesMcp';
 import { runOrganizationTaskOperation, organizationTaskSchema } from './organizationTasksMcp';
@@ -86,6 +87,12 @@ const nativeEventSchema = z.object({
   }).strict(),
 }).strict();
 const keySets = new Map<string, JWTVerifyGetKey>();
+function approvedAccountNamespaces(env: Env) {
+  return z.array(z.string().regex(/^(owner|website:[^:]+)$/)).parse([
+    ...JSON.parse(env.MCP_PIDP_ACCOUNT_NAMESPACES_JSON || '[]'),
+    ...(env.MCP_PIDP_PORTAL_ACCOUNT_NAMESPACE ? [env.MCP_PIDP_PORTAL_ACCOUNT_NAMESPACE] : []),
+  ]);
+}
 export function mcpConfiguration(env: Env, request?: Request) {
   const resourceBindingsSchema = z.record(z.string().url().refine(value => {
     const url = new URL(value);
@@ -131,7 +138,7 @@ export function mcpConfiguration(env: Env, request?: Request) {
     }
   }
   try {
-    const namespaces = z.array(z.string().regex(/^(owner|website:[^:]+)$/)).parse(JSON.parse(env.MCP_PIDP_ACCOUNT_NAMESPACES_JSON || '[]'));
+    const namespaces = approvedAccountNamespaces(env);
     if (namespaces.length && (!introspection || issuer !== env.PIDP_BASE_URL?.replace(/\/$/, ''))) {
       throw new Error();
     }
@@ -145,6 +152,7 @@ export async function authenticateMcp(request: Request, env: Env, getKey?: JWTVe
   const config = mcpConfiguration(env, request);
   const token = /^Bearer ([^\s]+)$/i.exec(request.headers.get("authorization") || "")?.[1];
   if (!token) throw new EventIntegrationError(401, "Authentication required");
+  let validationStage = "signature";
   try {
     if (!getKey) {
       getKey = keySets.get(config.jwks);
@@ -154,10 +162,11 @@ export async function authenticateMcp(request: Request, env: Env, getKey?: JWTVe
       issuer: config.issuer, audience: config.resource, algorithms: ["RS256", "ES256"], requiredClaims: ["sub", "exp", "iat"],
     });
     if (payload.aud !== config.resource) throw new Error();
+    validationStage = "account_namespace";
     const subjectMap = JSON.parse(env.MCP_SUBJECT_MAP_JSON!);
     let userId = payload.sub && Object.hasOwn(subjectMap, payload.sub) ? subjectMap[payload.sub] : undefined;
     if (!userId && typeof payload.sub === 'string') {
-      const namespaces: string[] = JSON.parse(env.MCP_PIDP_ACCOUNT_NAMESPACES_JSON || '[]');
+      const namespaces = approvedAccountNamespaces(env);
       const separator = payload.sub.lastIndexOf(':');
       const namespace = payload.sub.slice(0, separator);
       const accountId = payload.sub.slice(separator + 1);
@@ -185,12 +194,16 @@ export async function authenticateMcp(request: Request, env: Env, getKey?: JWTVe
       try { status = await response.json() as Record<string, unknown>; }
       catch { throw new EventIntegrationError(503, "PIdP token status is unavailable"); }
       if (!status || status.active !== true || status.sub !== payload.sub || status.iss !== config.issuer
-        || status.aud !== config.resource || status.scope !== payload.scope || status.exp !== payload.exp) throw new Error();
+        || status.aud !== config.resource || status.scope !== payload.scope || status.exp !== payload.exp
+        || status.account_subject !== payload.sub || typeof status.canonical_user_id !== 'string'
+        || !status.canonical_user_id || typeof status.account_id !== 'string' || !status.account_id) throw new Error();
+      userId = status.canonical_user_id;
     }
     const scopes = typeof payload.scope === "string" ? payload.scope.split(" ") : [];
     return { userId, scopes, organizationId: config.organizationId, resource: config.resource };
   } catch (error) {
     if (error instanceof EventIntegrationError) throw error;
+    console.warn("MCP access token rejected", { stage: validationStage });
     throw new EventIntegrationError(401, "Invalid or unauthorized access token");
   }
 }
@@ -815,6 +828,17 @@ export async function handleEventMcp(request: Request, env: Env, createOrganizat
     server.registerTool("apply_event_changes", { description: "Update an event or grant collaborator access after showing a preview and obtaining user approval. Requires confirm=true and the matching one-use previewId (expires after ten minutes). Changes may notify guests and are not atomic; inspect failures before retrying.",
       inputSchema: eventPlanSchema, annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
       _meta: metadata([readScope, writeScope]) }, args => result("plan", args));
+    const slugResult = async (args: unknown) => {
+      try {
+        const parsed = eventSlugSchema.parse(args);
+        if (config.organizationId && parsed.organizationId !== config.organizationId) throw new EventIntegrationError(403, "This MCP connection is limited to its own organization");
+        if (!identity.scopes.includes(readScope) || (parsed.confirm && !identity.scopes.includes(writeScope))) throw new EventIntegrationError(403, 'Missing event scope');
+        const result = await runEventSlugOperation(env.DB, { id: identity.userId, name: identity.userId, email: null, isOperator: false }, parsed, config.organizationId);
+        return { content: [{ type: 'text' as const, text: JSON.stringify(result) }], structuredContent: result };
+      } catch (error) { return { isError: true, content: [{ type: 'text' as const, text: await eventErrorResponse(error, env, request).text() }] }; }
+    };
+    server.registerTool('preview_event_slug', { description: 'Preview changing an event URL slug. Requires event-management permission.', inputSchema: eventSlugSchema, annotations: { readOnlyHint: true }, _meta: metadata([readScope]) }, args => slugResult({ ...args, confirm: false }));
+    server.registerTool('apply_event_slug', { description: 'Apply the reviewed event slug using the matching one-use previewId and confirm=true.', inputSchema: eventSlugSchema, annotations: { readOnlyHint: false }, _meta: metadata([readScope, writeScope]) }, args => slugResult(args));
     server.registerTool("preview_org_event_changes", { description: "Preview creating or updating a native OrgPortal event without writing. Use this when the portal, not an external provider, is the event system of record.",
       inputSchema: nativeEventSchema, annotations: { readOnlyHint: true, openWorldHint: false }, _meta: metadata([readScope]) },
       args => result("native", { ...args, confirm: false }));

@@ -21,7 +21,7 @@ if (process.env.TIMEBANK_TEST_IMPORTS === '1') await loadSnapshot(importFixture(
 for (const migration of ['0001_chat.sql', '0002_message_idempotency_sync.sql', '0003_presence.sql']) {
   database.sqlite.exec(readFileSync(new URL(`../../../chat-worker/migrations/${migration}`, import.meta.url), 'utf8'));
 }
-const member = (id: string) => ({ id, email: `${id}@example.test`, full_name: id === 'alice' ? 'Alice' : 'Bob', identity_data: { avatar_url: id === 'alice' && process.env.TIMEBANK_TEST_AVATAR_PATH ? '/auth/timebank-test-avatar' : null }, is_sysadmin: id === 'alice' });
+const member = (id: string) => ({ id, canonical_user_id:id,account_id:id,account_subject:`owner:${id}`, email: `${id}@example.test`, full_name: id === 'alice' ? 'Alice' : 'Bob', identity_data: { avatar_url: id === 'alice' && process.env.TIMEBANK_TEST_AVATAR_PATH ? '/auth/timebank-test-avatar' : null }, is_sysadmin: id === 'alice' });
 globalThis.fetch = async (_input, init) => {
   const id = new Headers(init?.headers).get('Authorization')?.replace('Bearer ', '');
   if (id !== 'alice' && id !== 'bob') return Response.json({}, { status: 401 });

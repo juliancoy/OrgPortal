@@ -46,7 +46,7 @@ test('tokens cannot cross resources; introspection uses the selected resource cr
         assert.equal(form.get('resource'), resource);
         assert.equal((options!.headers as any).authorization, `Bearer ${resource === medtech ? 'medtech-secret' : 'lifetech-secret'}`);
         const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString());
-        return Response.json({ active: true, sub: payload.sub, iss: payload.iss, aud: resource, scope: payload.scope, exp: payload.exp });
+        return Response.json({ active: true, canonical_user_id:payload.sub.split(':').at(-1), account_id:payload.sub.split(':').at(-1),account_subject:payload.sub, sub: payload.sub, iss: payload.iss, aud: resource, scope: payload.scope, exp: payload.exp });
       };
       const identity = await authenticateMcp(request(resource, '/mcp', { authorization: `Bearer ${token}` }), env, keySet);
       assert.equal(identity.organizationId, resource === medtech ? 'medtech-org' : 'lifetech-org');
@@ -66,7 +66,7 @@ test('brand tool discovery and calls cannot escape their organization, including
   const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString());
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async url => String(url).includes('jwks') ? Response.json({ keys: [jwk] })
-    : Response.json({ active: true, sub: payload.sub, iss: payload.iss, aud: lifetech, scope: payload.scope, exp: payload.exp });
+    : Response.json({ active: true, canonical_user_id:payload.sub.split(':').at(-1), account_id:payload.sub.split(':').at(-1),account_subject:payload.sub, sub: payload.sub, iss: payload.iss, aud: lifetech, scope: payload.scope, exp: payload.exp });
   const rpc = async (method: string, params: unknown) => {
     const req = new Request('https://worker.example/mcp', { method: 'POST', headers: {
       'x-forwarded-host': 'lifetech.fyi', authorization: `Bearer ${token}`, 'content-type': 'application/json', accept: 'application/json, text/event-stream',

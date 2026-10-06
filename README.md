@@ -229,3 +229,51 @@ imported. The import generator is
 `node org-worker/scripts/build-ecosystem-support.mjs [snapshot.json] [output.sql]`;
 use a new migration file for later snapshots instead of rewriting an applied
 migration. Shared services continue to release through CodeCollective.
+
+### Public evidence registration and event enrichment
+
+Authenticated operators can register an **unclaimed** public directory record via
+`POST /api/network/orgs/registry` with `name`, `description`, `sourceUrl`, optional
+`website`/`city`, and `tags`. This differs from creating an organization owned by
+the signed-in account: registration creates no ownership or membership.
+
+`POST /api/network/events/:eventId/enrichment` accepts `sourceUrl` and a strict
+`changes` object containing `description`, `ends_at`, `location`, `image_url`, or
+`host_org_id`. It checks existing and proposed host management permission;
+unclaimed events require an operator. Enrichment updates public metadata only.
+Both endpoints require a reviewed `confirm: false` preview followed by the same
+request with `confirm: true` and its actor-bound, expiring, one-use `previewId`.
+Changes are audited; intervening event edits invalidate the preview. Unknown
+organization locations and websites remain null.
+
+### Onboarding identity and persistence
+
+PIdP owns identity linking and the shared personal profile. Its authenticated
+`GET /auth/me` response supplies `id = canonical_user_id`, `account_id`, and
+`account_subject`; incomplete identity responses are rejected. Browser and MCP
+organization authorization use the verified canonical person and live OrgPortal
+memberships. OAuth subjects and website credential namespaces remain unchanged.
+
+Onboarding completion and acknowledgements persist in `onboarding_enrollments`
+by tenant and canonical person. Existing source-account progress is combined on
+the next onboarding or task-queue read. Availability keeps the newest saved
+observation for each slot. Duplicate memberships and tasks can be consolidated
+through `/api/identity-membership/:organizationId/preview` and `/apply`, after
+PIdP verifies the linked account and OrgPortal verifies management authority.
+The one-use preview preserves completed work and records an audit event.
+
+Apply PIdP migration 0010 and release PIdP first, then deploy the OrgPortal Worker
+through CodeCollective. Account linking requires authentication to both accounts;
+email matching never establishes identity or authority.
+
+Organization managers can configure onboarding through
+`POST /api/onboarding/settings/preview` and `/apply` with `enabled`, followed by
+the matching `previewId` and `confirm: true`. These operations preserve all other
+tenant settings and write an audit event. Saving a slug portal retains attached
+custom domains and existing onboarding preferences.
+
+## Organization ecosystem network
+
+The shared `/ecosystem/network` page includes sourced organization relationships, funding evidence, and event-history search. It is public and uses the common portal navigation. CodeCollective serves it at `/p/ecosystem/network`; tenant sites serve it at `/ecosystem/network`. LifeTech keeps its static directory and consumes these shared snapshots.
+
+From `web`, run `npm run test:ecosystem` for evidence and layout checks, `npm run sync:ecosystem` to refresh public workbook/API evidence, and `npm run build:ecosystem-history` to rebuild the event archive from sibling CodeCollective (or `CODECOLLECTIVE_DIR`). See [the data guide](docs/ecosystem-network-data.md). These commands produce public read snapshots; organization writes continue through the authorized API preview/apply flow.

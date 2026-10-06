@@ -1,12 +1,28 @@
 # React + TypeScript + Vite
 
+## Same-URL frontend preview
+
+The avatar menu offers **App version → Deployed app / Development preview** on
+hosts configured with a private `DEV_ASSETS` service binding. Selection is stored
+in a secure, host-only HttpOnly browser cookie and reloads the current URL,
+including query and fragment. It changes frontend assets only: account and
+organization operations still use the existing tenant APIs and permissions.
+Development pages show a banner and disable caching and search indexing.
+
+Shared edge selection lives in `web/deployment.mjs`; the React menus and static
+LifeTech menu share the selection client. CodeCollective owns the private asset
+Worker, build, and deployment command. Run
+`./cloudflare/scripts/deploy_web_preview.sh` from CodeCollective to update the
+development build without publishing production frontends or any backends.
+Cloudflare credentials are loaded from its ignored `.env.cloudflare`.
+
 ## App Update Channel (Web + Android)
 
 OrgPortal checks for update metadata from `mobile-update.json` and prompts users when a newer build exists.
 
 - Web: compares current build constant (`__APP_BUILD_NUMBER__`) to `web.buildNumber`, then offers reload.
 - Native Android (Capacitor): compares `App.getInfo().build` to `android.buildNumber`, then opens `android.apkUrl`.
-- Optional updates can be dismissed per target/build in local storage; mandatory updates (below `minSupportedBuildNumber`) cannot.
+- Optional updates appear in a nonblocking banner and can be dismissed for the current app session; they are offered again on the next startup. Required Android updates (below `minSupportedBuildNumber`) use a blocking prompt. Web reloads happen only after the user selects Update. Checks run on startup, every five minutes, and on return to the foreground.
 
 Manifest locations used by deployment:
 
@@ -19,6 +35,8 @@ Release flow:
 2. Update `android.versionName`, `android.buildNumber`, and `android.minSupportedBuildNumber` as needed.
 3. Update `web.versionName` and `web.buildNumber` for web deploys.
 4. Publish both manifest files with the release.
+
+CodeCollective’s site build automatically assigns one `VITE_APP_BUILD_NUMBER` to both `/p/` and tenant-root bundles, then writes matching web metadata to their output manifests. Set `PORTAL_RELEASE_NOTES` for user-facing release notes. The generated files preserve Android version, APK URL, and minimum supported build; a web deploy never advertises a new Android release. Source manifests are not modified by the site build.
 
 Android CI/CD is handled by the root `.github/workflows/android.yml` workflow:
 

@@ -450,3 +450,25 @@ migrations `0052_venue_details.sql` and `0053_event_venue_votes.sql` before the 
 and frontend. Verify sign-in, account isolation, refresh persistence, and mobile
 controls with `web/scripts/test-local-venue-votes.py` against the local Docker
 stack; production browser checks remain public and read-only.
+
+## Numbered event links
+
+In Organization Events, set the optional Event series (for example,
+`lifetech-social`) when creating an event. The portal uses one above the highest
+existing exact numeric suffix. Date-based suffixes and other series do not count.
+Concurrent creation cannot overwrite another event; a collision asks you to retry.
+Existing events have Event link & numbering, Use next event number, and an
+explicit preview/apply flow. Renaming changes only the slug and update timestamp;
+registrations, venues, comments and the event ID stay attached to the same event.
+
+The authenticated REST interfaces are `GET /api/network/events/next-slug?series=...`
+and `POST /api/network/events/:eventId/slug`. MCP exposes `preview_event_slug`
+and `apply_event_slug`; scoped connections require their own `organizationId`.
+`scripts/event-slug.mjs` previews a rename by default. Apply the reviewed receipt
+with `--apply --preview-id RECEIPT`. Use the owning organization's MCP resource.
+
+`MCP_PIDP_PORTAL_ACCOUNT_NAMESPACE` adds the verified registered portal website
+namespace to the existing approved namespace list. CodeCollective's release
+config uses its registered `code-collective` application. Existing subject mappings
+and namespaces remain intact; live introspection and organization permission
+checks are still required.

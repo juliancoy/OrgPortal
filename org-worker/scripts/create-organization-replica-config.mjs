@@ -1,0 +1,12 @@
+import {parseArgs} from 'node:util';
+import {readFile,writeFile} from 'node:fs/promises';
+import {fileURLToPath} from 'node:url';
+const {values}=parseArgs({options:{name:{type:'string'},'database-id':{type:'string'},'database-name':{type:'string'},source:{type:'string',default:'https://lifetech.fyi/api/org/api/network/replication/snapshot'},interval:{type:'string',default:'300'},output:{type:'string',default:'wrangler.replica.json'}}});
+const primary=JSON.parse(await readFile(new URL('../wrangler.jsonc',import.meta.url),'utf8'));
+if (!values.name || !values['database-name'] || !/^[\da-f-]{36}$/i.test(values['database-id'] || '')) throw new Error('Specify --name, --database-name and --database-id for a separate replica database');
+if(primary.d1_databases.some(d=>d.database_id===values['database-id'])) throw new Error('A replica must never use the primary database');
+if(new URL(values.source).protocol!=='https:') throw new Error('The primary snapshot source must use HTTPS');
+if(!Number.isFinite(Number(values.interval)) || Number(values.interval)<60 || Number(values.interval)>86400) throw new Error('Interval must be 60..86400 seconds');
+const config={name:values.name,main:fileURLToPath(new URL('../src/index.ts',import.meta.url)),compatibility_date:primary.compatibility_date,compatibility_flags:primary.compatibility_flags,workers_dev:true,observability:{enabled:true},triggers:{crons:['* * * * *']},vars:{ORGANIZATION_REPLICA_SOURCE:values.source,ORGANIZATION_REPLICA_INTERVAL_SECONDS:values.interval},d1_databases:[{binding:'DB',database_name:values['database-name'],database_id:values['database-id'],migrations_dir:fileURLToPath(new URL('../migrations',import.meta.url))}]};
+await writeFile(values.output,JSON.stringify(config,null,2)+'\n');
+console.log('Replica configuration written to '+values.output);

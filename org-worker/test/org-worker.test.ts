@@ -699,7 +699,7 @@ function env(db = new FakeD1(), overrides: Partial<Env> = {}): Env {
 async function withPidpUser<T>(user: Row, callback: () => Promise<T>) {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async () =>
-    new Response(JSON.stringify(user), {
+    new Response(JSON.stringify({...user,canonical_user_id:user.id,account_id:user.id,account_subject:`owner:${user.id}`}), {
       status: 200,
       headers: { "content-type": "application/json" },
     });
@@ -844,11 +844,11 @@ test("PIdP sysadmins have Dena UBI admin access", async () => {
   });
 });
 
-test("PIdP CIS admin roles are accepted for UBI admin access", async () => {
-  await withPidpUser({ id: "cis-1", email: "cis@example.test", identity_data: { roles: ["cis_admin"] } }, async () => {
+test("profile roles cannot grant UBI admin access", async () => {
+  await withPidpUser({ id: "cis-1", email: "cis@example.test", identity_data: { roles: ["cis_admin", "operator"], is_admin: true, is_sysadmin: true } }, async () => {
     const res = await app.request("https://org.example.test/admin/me", { headers: { authorization: "Bearer cis-token" } }, env());
     assert.equal(res.status, 200);
-    assert.deepEqual(await res.json(), { is_admin: true, is_sysadmin: true });
+    assert.deepEqual(await res.json(), { is_admin: false, is_sysadmin: false });
   });
 });
 
@@ -1195,7 +1195,7 @@ test("disabled public contact route is visible only to the exact owner", async (
 
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async () =>
-    new Response(JSON.stringify({ id: "user-1", email: "julian@example.test", name: "Julian Coy" }), {
+    new Response(JSON.stringify({ id: "user-1", canonical_user_id:"user-1",account_id:"user-1",account_subject:"owner:user-1",email: "julian@example.test", name: "Julian Coy" }), {
       status: 200,
       headers: { "content-type": "application/json" },
     });

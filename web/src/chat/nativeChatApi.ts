@@ -171,6 +171,14 @@ export class NativeChatApi {
     return payload.conversation
   }
 
+  async startOrganizationRoom(slug: string): Promise<NativeChatConversation> {
+    const payload = await this.request<{ conversation: NativeChatConversation }>('/api/network/chat/org-room', {
+      method: 'POST',
+      body: JSON.stringify({ organization_slug: slug }),
+    })
+    return payload.conversation
+  }
+
   async startEventRoom(event: { eventId: string; title: string; orgId?: string | null }): Promise<NativeChatConversation> {
     const payload = await this.request<{ conversation: NativeChatConversation }>('/api/network/chat/event-room', {
       method: 'POST',
