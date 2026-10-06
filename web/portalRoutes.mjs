@@ -100,6 +100,22 @@ export function isPortalPagePath(path) {
   try { return patterns.some(pattern => pattern.test(decodeURIComponent(path))); }
   catch { return false; }
 }
+export async function missingPortalResource(request, path, apiOrigin) {
+  if (!apiOrigin || !['GET', 'HEAD'].includes(request.method) || path === '/users/me' || paths.includes(path.replace(/\/$/, '') || '/')) return null;
+  const match = /^\/(events|orgs|users)\/([^/]+)\/?$/.exec(path);
+  if (!match) return null;
+  const url = new URL(request.url);
+  let slug;
+  try { slug = decodeURIComponent(match[2]); } catch { return notFoundResponse(request); }
+  try {
+    const response = await fetch(`${apiOrigin.replace(/\/$/, '')}/api/network/${match[1]}/public/${encodeURIComponent(slug)}`, {
+      headers: { 'x-forwarded-host': url.host, 'x-forwarded-proto': url.protocol.replace(':', '') }, redirect: 'manual',
+    });
+    if (response.status === 404) return notFoundResponse(request);
+    if (response.ok) return null;
+  } catch { /* An unavailable API is not evidence that a resource is missing. */ }
+  return new Response(request.method === 'HEAD' ? null : 'This page is temporarily unavailable.', { status: 503, headers: { 'cache-control': 'no-store' } });
+}
 export function notFoundResponse(request) {
   const html = '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>404 — Page not found</title><meta name="robots" content="noindex"><style>body{font:18px/1.6 system-ui;margin:10vh auto;padding:24px;max-width:640px}a{color:#087b91}</style></head><body><main><h1>404 — Page not found</h1><p>The page you’re looking for does not exist.</p><a href="/">Go home</a></main></body></html>';
   return new Response(request.method === 'HEAD' ? null : html, {status:404,headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-robots-tag':'noindex'}});
