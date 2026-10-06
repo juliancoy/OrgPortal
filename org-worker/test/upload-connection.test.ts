@@ -110,3 +110,29 @@ test('dynamic registration and consent happen once; later process reuses saved a
     assert.deepEqual([registrations, consents, refreshes], [1, 1, 1]);
   } finally { globalThis.fetch = originalFetch; console.log = originalLog; }
 });
+
+test('named connections isolate accounts while preserving existing default keys', () => {
+  const resource = 'https://portal.example/mcp', issuer = 'https://id.example';
+  assert.equal(connectionKey(resource, issuer), connectionKey(resource, issuer, 'default'));
+  assert.notEqual(connectionKey(resource, issuer, 'work'), connectionKey(resource, issuer, 'personal'));
+  assert.notEqual(connectionKey(resource, issuer, 'work'), connectionKey(resource, issuer));
+  assert.throws(() => connectionKey(resource, issuer, '../work'), /Connection name/);
+});
+
+test('simultaneous account connections survive process close and logout is isolated', async () => {
+  const work = memoryStore(), personal = memoryStore();
+  const first = await tokenConnection({ ...base, token: { ...token, refresh_token: 'work' }, store: work });
+  const second = await tokenConnection({ ...base, token: { ...token, refresh_token: 'personal' }, store: personal });
+  await Promise.all([first.close(), second.close()]);
+  const original = globalThis.fetch;
+  try {
+    globalThis.fetch = async (_url, init) => {
+      assert.equal((init!.body as URLSearchParams).get('token'), 'work');
+      return new Response(null, { status: 200 });
+    };
+    await first.disconnect();
+    assert.equal((await work.load()).refreshToken, undefined);
+    assert.equal((await personal.load()).refreshToken, 'personal');
+    assert.equal(await second.accessToken(), 'access');
+  } finally { globalThis.fetch = original; }
+});

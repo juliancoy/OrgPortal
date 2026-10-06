@@ -86,3 +86,48 @@ describe('portal feature profiles', () => {
     expect(parsePortalTenant({ hostname: 'missing-id' })).toBeNull()
   })
 })
+
+
+it('resolves Deism branding and routes from tenant metadata on either mount', () => {
+  for (const canonical_path_prefix of ['/p', '']) {
+    const domain = vi.spyOn(communities, 'getDomainTenant').mockReturnValue({
+      id: 'deism', hostname: 'portal.deism.church', name: 'Deism',
+      tagline: 'Reason, nature, and community', accent_color: '#14532d',
+      profile: 'deism', features: ['directory', 'events', 'calendar', 'chat'],
+      canonical_path_prefix,
+    })
+    try {
+      const profile = getActivePortalProfileConfig()
+      expect(profile.id).toBe('deism')
+      expect(profile.tenantId).toBe('deism')
+      expect(profile.brandImagePath).toBe('/images/deism/icon-512.png')
+      expect(profile.manifestPath).toBe('/deism.webmanifest')
+      expect(profile.homeUrl).toBe('https://deism.church/')
+      expect(profile.memberHomePath).toBe('/chat')
+      expect(isPortalFeatureEnabled('ubi', profile)).toBe(false)
+    } finally { domain.mockRestore() }
+  }
+})
+
+
+it('uses the attached domain homepage for a stale slug-portal logo link', () => {
+  const domain = vi.spyOn(communities, 'getDomainTenant').mockReturnValue({
+    id: 'lifetech', name: 'LifeTech', slug: 'lifetech', hostname: 'lifetech.fyi',
+    tagline: '', accent_color: '#155e59', home_url: 'https://lifetech.fyi/portals/lifetech',
+    custom_domain_hostname: 'lifetech.fyi', custom_domain_status: 'attached',
+  })
+  try { expect(getActivePortalProfileConfig().homeUrl).toBe('https://lifetech.fyi/') }
+  finally { domain.mockRestore() }
+})
+
+it('preserves configured shared portal and external homepage destinations', () => {
+  for (const home_url of ['https://codecollective.us/p/portals/lifetech', 'https://lifetech.fyi/about']) {
+    const domain = vi.spyOn(communities, 'getDomainTenant').mockReturnValue({
+      id: 'lifetech', name: 'LifeTech', slug: 'lifetech', hostname: 'lifetech.fyi',
+      tagline: '', accent_color: '#155e59', home_url,
+      custom_domain_hostname: 'lifetech.fyi', custom_domain_status: 'attached',
+    })
+    try { expect(getActivePortalProfileConfig().homeUrl).toBe(home_url) }
+    finally { domain.mockRestore() }
+  }
+})

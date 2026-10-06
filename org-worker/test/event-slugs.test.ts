@@ -28,6 +28,8 @@ test('rename requires permission and a reviewed unchanged one-use receipt, prese
   await assert.rejects(runEventSlugOperation(db, actor, { ...args, slug: 'changed', previewId: preview.previewId, confirm: true }));
   const applied = await runEventSlugOperation(db, actor, { ...args, previewId: preview.previewId, confirm: true });
   assert.equal(applied.success, true);
+  const alias = await db.prepare('SELECT event_id FROM event_slug_aliases WHERE slug = ?').bind('old-event').first();
+  assert.equal(alias.event_id, 'second');
   const event = await db.prepare("SELECT id, slug, description FROM events WHERE id='second'").first();
   assert.deepEqual({ ...event }, { id: 'second', slug: 'lifetech-social-2', description: 'Keep this' });
   await assert.rejects(runEventSlugOperation(db, actor, { ...args, previewId: preview.previewId, confirm: true }));

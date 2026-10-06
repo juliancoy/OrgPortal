@@ -33,7 +33,7 @@ interface Env {
   PUBLIC_PORTAL_BASE_URL?: string;
   CHAT_API_ORIGIN?: string;
   CHAT_SERVICE?: Fetcher;
-  CHAT_ORGANIZATION_ROOMS?: { ensure(organizationId: string): Promise<{ id: string; organizationId: string }> };
+  CHAT_ORGANIZATION_ROOMS?: { ensureEvent?(eventId: string): Promise<{ id: string; eventId: string }>; ensure(organizationId: string): Promise<{ id: string; organizationId: string }> };
   ORG_BUSINESS_CARD_OCR_PROVIDER?: string;
   ORG_BUSINESS_CARD_OCR_MODEL?: string;
   ORG_OPENAI_API_KEY?: string;

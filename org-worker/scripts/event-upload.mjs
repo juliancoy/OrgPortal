@@ -113,27 +113,33 @@ export async function browserLogin(resource, issuer, clientId, openBrowser = tru
 }
 
 async function main() {
-  const { values } = parseArgs({ options: { resource: { type: 'string' }, issuer: { type: 'string', default: 'https://id.codecollective.us' },
+  const { values } = parseArgs({ options: { connection: { type: 'string' }, status: { type: 'boolean' }, resource: { type: 'string' }, issuer: { type: 'string', default: 'https://id.codecollective.us' },
     'client-id': { type: 'string' }, organization: { type: 'string' }, event: { type: 'string' },
     connect: { type: 'boolean' }, disconnect: { type: 'boolean' }, ephemeral: { type: 'boolean' },
     directory: { type: 'string' }, yes: { type: 'boolean' }, 'no-browser': { type: 'boolean' }, help: { type: 'boolean' } } });
-  if (values.help) { console.log('event-upload.mjs --resource https://HOST/api/org/mcp [--connect | --disconnect | --organization ORG_ID [--event SLUG] --directory PATH] [--yes] [--no-browser] [--ephemeral]'); return; }
-  if ((values.connect && values.disconnect) || (values.ephemeral && (values.connect || values.disconnect))) throw new Error('Choose one connection mode');
-  if (!values.resource || (!(values.connect || values.disconnect) && (!values.organization || !values.directory))) throw new Error('Specify --resource and a connection command or upload arguments (see --help)');
+  if (values.help) { console.log('event-upload.mjs --resource https://HOST/api/org/mcp [--connect | --disconnect | --status | --organization ORG_ID [--event SLUG] --directory PATH] [--connection NAME] [--yes] [--no-browser] [--ephemeral]'); return; }
+  if ([values.connect, values.disconnect, values.status].filter(Boolean).length > 1 || (values.ephemeral && (values.connect || values.disconnect || values.status))) throw new Error('Choose one connection mode');
+  if (!values.resource || (!(values.connect || values.disconnect || values.status) && (!values.organization || !values.directory))) throw new Error('Specify --resource and a connection command or upload arguments (see --help)');
   const resource = secureUrl(values.resource).toString();
   const scope = values.event ? 'org:events.read org:events.write'
-    : values.connect || values.disconnect ? 'org:events.read org:events.write org:portal.read org:portal.write'
+    : values.connect || values.disconnect || values.status ? 'org:events.read org:events.write org:portal.read org:portal.write'
     : 'org:portal.read org:portal.write';
   const extensions = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.gif': 'image/gif', '.webp': 'image/webp' };
-  const files = values.connect || values.disconnect ? [] : (await readdir(values.directory)).filter(name => extensions[extname(name).toLowerCase()]).sort();
-  if (!(values.connect || values.disconnect) && (!files.length || files.length > 12)) throw new Error('Choose a directory with 1 to 12 supported images');
+  const files = values.connect || values.disconnect || values.status ? [] : (await readdir(values.directory)).filter(name => extensions[extname(name).toLowerCase()]).sort();
+  if (!(values.connect || values.disconnect || values.status) && (!files.length || files.length > 12)) throw new Error('Choose a directory with 1 to 12 supported images');
   for (const name of files) {
     const info = await stat(resolve(values.directory, name));
     if (!info.isFile() || !info.size || info.size > 8 * 1024 * 1024) throw new Error(`${name}: expected an image up to 8 MB`);
   }
-  const store = values.ephemeral ? null : await credentialStore(resource, values.issuer);
+  const store = values.ephemeral ? null : await credentialStore(resource, values.issuer, values.connection);
   let connection;
   try {
+    if (values.status) {
+      const saved = await store?.load();
+      console.log(JSON.stringify({ connection: values.connection || process.env.ORGPORTAL_CONNECTION || 'default', resource,
+        connected: Boolean(saved?.refreshToken), needsReconnect: Boolean(saved?.pending) }));
+      return;
+    }
     connection = await browserLogin(resource, values.issuer, values['client-id'], !values['no-browser'], { store, disconnect: values.disconnect, scope });
     if (values.disconnect) { await connection.disconnect(); console.log('Disconnected.'); return; }
     if (values.connect) { await connection.accessToken(); console.log('Account connection saved in the OS keyring.'); return; }

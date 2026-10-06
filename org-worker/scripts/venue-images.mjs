@@ -6,7 +6,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { browserLogin } from './event-upload.mjs';
 import { credentialStore } from './upload-connection.mjs';
-const { values } = parseArgs({ options: { file: { type: 'string' }, apply: { type: 'boolean' }, 'no-browser': { type: 'boolean' } } });
+const { values } = parseArgs({ options: { connection: { type: 'string' }, file: { type: 'string' }, apply: { type: 'boolean' }, 'no-browser': { type: 'boolean' } } });
 let store, connection, client;
 try {
   if (!values.file) throw new Error('Use --file data/lifetech-venue-avatars-2026-10-03.json [--apply]');
@@ -14,7 +14,7 @@ try {
   const resource = new URL(plan.resource);
   if (resource.protocol !== 'https:' || resource.username || resource.password || resource.search || resource.hash) throw new Error('Expected a public HTTPS MCP resource.');
   const issuer = 'https://id.codecollective.us';
-  store = await credentialStore(resource.href, issuer);
+  store = await credentialStore(resource.href, issuer, values.connection);
   connection = await browserLogin(resource.href, issuer, undefined, !values['no-browser'], {
     store, scope: 'org:events.read org:events.write', clientName: 'OrgPortal venue images',
   });

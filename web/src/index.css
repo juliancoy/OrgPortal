@@ -9682,3 +9682,16 @@ textarea:focus {
   background: var(--surface-hover, var(--border));
 }
 .portal-org-nav-target { scroll-margin-top: 110px; }
+
+.venue-hover-card { position: relative; }
+.venue-hover-popup {
+  display: none; position: absolute; left: 0; bottom: calc(100% + 8px);
+  width: min(300px, 65vw); padding: 14px; border: 1px solid var(--border);
+  border-radius: 12px; background: var(--surface-solid);
+  color: var(--text-primary); box-shadow: 0 8px 24px #0003; z-index: 20;
+  overflow-wrap: anywhere;
+}
+.venue-hover-popup p { margin: 6px 0 0; font-size: .875rem; }
+.venue-hover-card:hover .venue-hover-popup,
+.venue-hover-card:focus-within .venue-hover-popup { display: block; }
+.venue-hover-card::after { content: ''; position: absolute; left: 0; bottom: 100%; width: 100%; height: 8px; }

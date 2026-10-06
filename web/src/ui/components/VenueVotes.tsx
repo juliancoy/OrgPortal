@@ -87,10 +87,22 @@ export function VenueVotes({ eventId, venues }: { eventId: string; venues: Venue
             <strong className="venue-vote-score" aria-label={totals ? `Score ${totals.score}` : 'Score loading'}>{totals ? totals.score : '—'}</strong>
             <button type="button" aria-label={`Downvote ${venue.name}`} aria-pressed={own === -1} disabled={disabled} className="venue-downvote" onClick={() => void vote(venue, -1)}><ArrowBigDown size={24} aria-hidden="true" /></button>
           </div>
-          <Link className="venue-vote-avatar" to={`/orgs/events/venues/${encodeURIComponent(venue.id)}`} aria-label={`View ${venue.name}`}>
+          <div className="venue-hover-card">
+          <Link className="venue-vote-avatar" to={`/orgs/events/venues/${encodeURIComponent(venue.id)}`} aria-label={`View ${venue.name}`} aria-describedby={`venue-details-${venue.id}`}>
             <span aria-hidden="true">{initials}</span>
             {venue.image_url ? <img src={venue.image_url} alt="" loading="lazy" onError={event => { event.currentTarget.style.display = 'none' }} /> : null}
           </Link>
+          <div className="venue-hover-popup" id={`venue-details-${venue.id}`} role="tooltip">
+            <strong>{venue.name}</strong>
+            {venue.address ? <p>{venue.address}</p> : null}
+            {venue.description ? <p>{venue.description}</p> : null}
+            {venue.opening_hours ? <p><b>Hours:</b> {venue.opening_hours}</p> : null}
+            {venue.amenities ? <p><b>Amenities:</b> {venue.amenities}</p> : null}
+            {venue.capacity ? <p><b>Capacity:</b> {venue.capacity}</p> : null}
+            {venue.cost ? <p><b>Cost:</b> {venue.cost}</p> : null}
+            {venue.website ? <p>{venue.website}</p> : null}
+          </div>
+          </div>
           <div className="venue-vote-details">
             <div className="venue-vote-title"><h3><Link to={`/orgs/events/venues/${encodeURIComponent(venue.id)}`}>{venue.name}</Link></h3><span className="venue-vote-status">{venue.event_status === 'confirmed' ? 'Confirmed' : 'Candidate'}</span></div>
             {venue.address ? <p className="muted">{venue.address}</p> : null}

@@ -75,6 +75,7 @@ export class EventTestDb {
       INSERT INTO organizations (id, name, slug, source_url, image_url, media_json, updated_at)
         VALUES ('org-one', 'One', 'one', 'https://one.example', 'https://one.example/logo.png', '[]', '');
       INSERT INTO organization_memberships VALUES ('org-one', 'pidp-user', 'owner', 'active');`);
+    this.sqlite.exec(readFileSync(new URL("../migrations/0035_event_slug_aliases.sql", import.meta.url), "utf8"));
     this.sqlite.exec(readFileSync(new URL("../migrations/0044_event_history.sql", import.meta.url), "utf8"));
     this.sqlite.exec(readFileSync(new URL("../migrations/0049_event_venues.sql", import.meta.url), "utf8"));
     this.sqlite.exec(readFileSync(new URL("../migrations/0050_event_venue_rankings.sql", import.meta.url), "utf8"));

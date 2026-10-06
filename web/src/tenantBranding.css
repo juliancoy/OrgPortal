@@ -107,3 +107,32 @@
 
 .portal-tenant-auth-shell .tenant-auth-logo { width: 52px; height: 52px; object-fit: contain; }
 .portal-tenant-auth-shell .portal-auth-card { box-shadow: 0 16px 48px rgb(0 0 0 / .14); }
+
+:root[data-portal-profile='deism'] {
+  --primary: #166534;
+  --primary-2: #15803d;
+  --primary-bg: #dcfce7;
+  --primary-hover: #14532d;
+  --btn-primary-bg: #166534;
+  --btn-primary-text: #fff;
+  --body-bg: #f0fdf4;
+  --hero-bg: #dcfce7;
+  --icon-tile-bg: #dcfce7;
+  --selection-bg: #166534;
+  --border-hover: #15803d;
+  --focus-ring: 0 0 0 3px var(--panel), 0 0 0 6px #15803d;
+}
+
+:root[data-portal-profile='deism'][data-theme='dark'] {
+  --primary: #86efac;
+  --primary-2: #bbf7d0;
+  --primary-bg: #14532d;
+  --primary-hover: #bbf7d0;
+  --btn-primary-bg: #86efac;
+  --btn-primary-text: #052e16;
+  --body-bg: #052e16;
+  --hero-bg: #14532d;
+  --icon-tile-bg: #14532d;
+  --selection-bg: #166534;
+  --border-hover: #86efac;
+}

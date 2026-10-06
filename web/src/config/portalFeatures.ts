@@ -1,7 +1,7 @@
 import { getDomainTenant, type PortalTenant } from './timebankCommunity'
 export type PortalFeature = 'ubi'
 
-export type PortalProfileId = 'code-collective' | 'baltimore-medtech'
+export type PortalProfileId = 'code-collective' | 'baltimore-medtech' | 'deism'
 
 export type PortalProfileConfig = {
   id: PortalProfileId
@@ -36,6 +36,21 @@ const PORTAL_PROFILES: Record<PortalProfileId, PortalProfileConfig> = {
     appleTouchIconPath: '/codecollective_logo.png',
     themeColor: '#12325b',
   },
+  deism: {
+    id: 'deism',
+    brandName: 'Deism',
+    portalTitle: 'Deism Portal',
+    tagline: 'Reason, nature, and community',
+    brandImagePath: '/images/deism/icon-512.png',
+    homeUrl: 'https://deism.church/',
+    memberHomePath: '/chat',
+    disabledFeatures: ['ubi'],
+    manifestPath: '/deism.webmanifest',
+    faviconPath: '/images/deism/icon-192.png',
+    faviconType: 'image/png',
+    appleTouchIconPath: '/images/deism/apple-touch-icon.png',
+    themeColor: '#14532d',
+  },
   'baltimore-medtech': {
     id: 'baltimore-medtech',
     brandName: 'Baltimore MedTech',
@@ -56,6 +71,7 @@ const PORTAL_PROFILES: Record<PortalProfileId, PortalProfileConfig> = {
 function normalizeProfileId(value?: string | null): PortalProfileId | null {
   const normalized = String(value || '').trim().toLowerCase()
   if (!normalized) return null
+  if (normalized === 'deism') return 'deism'
   if (['baltimore-medtech', 'bmore-medtech', 'baltimoremedtech', 'medtech'].includes(normalized)) {
     return 'baltimore-medtech'
   }
@@ -63,6 +79,19 @@ function normalizeProfileId(value?: string | null): PortalProfileId | null {
     return 'code-collective'
   }
   return null
+}
+
+function tenantBrandHomeUrl(tenant: PortalTenant, fallback: string): string {
+  const configured = tenant.home_url || fallback
+  if (tenant.custom_domain_status !== 'attached' || !tenant.custom_domain_hostname || !tenant.slug) return configured
+  try {
+    const canonical = new URL(`https://${tenant.custom_domain_hostname}/`)
+    const home = new URL(configured, canonical)
+    if (home.origin === canonical.origin && home.pathname.replace(/\/$/, '') === `/portals/${encodeURIComponent(tenant.slug)}`) {
+      return canonical.href
+    }
+  } catch { /* Keep other configured destinations unchanged. */ }
+  return configured
 }
 
 function tenantProfileConfig(tenant: PortalTenant): PortalProfileConfig {
@@ -94,7 +123,7 @@ function tenantProfileConfig(tenant: PortalTenant): PortalProfileConfig {
     portalTitle: tenant.name ? `${tenant.name} Portal` : base.portalTitle,
     tagline: tenant.tagline || base.tagline,
     brandImagePath,
-    homeUrl: tenant.home_url || base.homeUrl,
+    homeUrl: tenantBrandHomeUrl(tenant, base.homeUrl),
     memberHomePath: tenant.member_home_path || (profileId === 'code-collective' && tenant.features?.includes('timebank') ? '/' : base.memberHomePath),
     disabledFeatures,
     manifestPath: tenant.manifest_path || (isTimebank ? '/timebank.webmanifest' : base.manifestPath),

@@ -6,26 +6,27 @@ import { browserLogin } from './event-upload.mjs';
 import { credentialStore } from './upload-connection.mjs';
 const { values } = parseArgs({ options: {
   connection: { type: 'string' },
-  resource: { type: 'string', default: 'https://medtech.social/api/org/mcp' },
+  resource: { type: 'string', default: 'https://lifetech.fyi/api/org/mcp' },
   issuer: { type: 'string', default: 'https://id.codecollective.us' },
-  event: { type: 'string' }, slug: { type: 'string' }, organization: { type: 'string', default: 'org-baltimore-medtech' },
+  event: { type: 'string' }, tags: { type: 'string' }, organization: { type: 'string', default: 'ef646755-9443-4c7b-ba4b-a7a29754f666' },
   'preview-id': { type: 'string' }, apply: { type: 'boolean' },
 } });
-if (!values.event || !values.slug || (values.apply && !values['preview-id'])) {
-  console.error('event-slug.mjs --event EVENT_ID --slug NEW_SLUG [--apply --preview-id REVIEWED_PREVIEW_ID] [--resource MCP_URL]');
+if (!values.event || (values.apply && !values['preview-id'])) {
+  console.error('event-host.mjs --event EVENT_ID --organization DESTINATION_ORG_ID [--tags COMMA_SEPARATED] [--connection NAME] [--apply --preview-id REVIEWED_PREVIEW_ID] [--resource MCP_URL]');
   process.exit(1);
 }
 let store, connection, client;
 try {
   store = await credentialStore(values.resource, values.issuer, values.connection);
-  connection = await browserLogin(values.resource, values.issuer, undefined, true, { store, scope: 'org:events.read org:events.write', clientName: 'OrgPortal event links' });
-  client = new Client({ name: 'orgportal-event-links', version: '1.0.0' });
+  connection = await browserLogin(values.resource, values.issuer, undefined, true, { store, scope: 'org:events.read org:events.write', clientName: 'OrgPortal event host' });
+  client = new Client({ name: 'orgportal-event-host', version: '1.0.0' });
   await client.connect(new StreamableHTTPClientTransport(new URL(values.resource), { fetch: async (url, init) => {
     const headers = new Headers(init?.headers); headers.set('authorization', `Bearer ${await connection.accessToken()}`);
     return fetch(url, { ...init, headers });
   } }));
-  const result = await client.callTool({ name: values.apply ? 'apply_event_slug' : 'preview_event_slug', arguments: {
-    eventId: values.event, organizationId: values.organization, slug: values.slug,
+  const result = await client.callTool({ name: values.apply ? 'apply_event_host' : 'preview_event_host', arguments: {
+    eventId: values.event, organizationId: values.organization,
+    ...(values.tags ? { tags: values.tags.split(',').map(tag => tag.trim()).filter(Boolean) } : {}),
     ...(values.apply ? { confirm: true, previewId: values['preview-id'] } : {}),
   } });
   if (result.isError) throw new Error(result.content.filter(item => item.type === 'text').map(item => item.text).join('\n'));

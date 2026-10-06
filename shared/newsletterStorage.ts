@@ -1,5 +1,5 @@
 /** Version contract shared by the D1/SQLite backend and browser IndexedDB. */
-export const NEWSLETTER_STORAGE = { protocol: 1, indexedDb: 2, sqlMigration: '0071_newsletter_source_archives.sql' } as const
+export const NEWSLETTER_STORAGE = { protocol: 1, indexedDb: 2, sqlMigration: '0071_newsletter_source_archives.sql', remoteSqlMigration: '0072_private_newsletter_sync.sql' } as const
 
 export type NewsletterDocument = {
   schemaVersion: 1

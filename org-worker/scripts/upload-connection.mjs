@@ -4,13 +4,18 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import lockfile from 'proper-lockfile';
 
-export function connectionKey(resource, issuer) {
-  return createHash('sha256').update(JSON.stringify([issuer, resource])).digest('hex');
+export function connectionKey(resource, issuer, connection = 'default') {
+  if (typeof connection !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,79}$/.test(connection)) {
+    throw new Error('Connection name must be 1 to 80 letters, numbers, dots, underscores or hyphens');
+  }
+  // Preserve existing saved logins for the default profile.
+  const namespace = connection === 'default' ? [issuer, resource] : [issuer, resource, connection];
+  return createHash('sha256').update(JSON.stringify(namespace)).digest('hex');
 }
 
-export async function credentialStore(resource, issuer) {
+export async function credentialStore(resource, issuer, connection = process.env.ORGPORTAL_CONNECTION || 'default') {
   const { AsyncEntry } = await import('@napi-rs/keyring');
-  const key = connectionKey(resource, issuer);
+  const key = connectionKey(resource, issuer, connection);
   const directory = join(homedir(), '.orgportal-connections');
   await mkdir(directory, { mode: 0o700, recursive: true });
   const info = await lstat(directory);

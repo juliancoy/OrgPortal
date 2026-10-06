@@ -112,7 +112,10 @@ test("writes require write scope before consulting database or provider", async 
 });
 test("native event changes preview, apply once, and write OrgPortal events", async () => {
   const db = new EventTestDb();
-  const env = { ...authEnv, DB: db } as unknown as Env;
+  const createdRooms: string[] = [];
+  const env = { ...authEnv, DB: db, CHAT_ORGANIZATION_ROOMS: {
+    async ensureEvent(eventId: string) { createdRooms.push(eventId); return { id: `room-${eventId}`, eventId }; },
+  } } as unknown as Env;
   const input = { organizationId: "org-one", event: {
     ingestKey: "manual:event-one",
     title: "Native formation",
@@ -140,6 +143,9 @@ test("native event changes preview, apply once, and write OrgPortal events", asy
     assert.equal(preview.event.slug, "native-formation");
     const applied = await runNativeEventOperation(env, identity, { ...input, confirm: true, previewId: preview.previewId }) as { success: boolean };
     assert.equal(applied.success, true);
+    assert.equal(createdRooms.length, 1);
+    const chat = await db.prepare("SELECT event_chat_room_id FROM events WHERE ingest_key = ?").bind("manual:event-one").first();
+    assert.equal(chat.event_chat_room_id, `room-${createdRooms[0]}`);
     const rows = await db.prepare("SELECT title, slug, host_org_id, source_url, event_links_json, tags FROM events WHERE ingest_key = ?")
       .bind("manual:event-one").all();
     assert.deepEqual(rows.results.map(row => ({ ...row })), [
@@ -220,12 +226,13 @@ test("authenticated MCP initializes, lists tools and previews through the shared
   try {
     assert.equal((await rpc("initialize", { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "test", version: "1" } })).result.serverInfo.name, "orgportal-events");
     const listed = await rpc("tools/list", {});
-    assert.equal(listed.result.tools.length, 41);
+    assert.equal(listed.result.tools.length, 43);
     for (const name of ['list_organization_support', 'preview_organization_support', 'apply_organization_support', 'preview_void_organization_support', 'apply_void_organization_support']) {
       assert.ok(listed.result.tools.some((tool: { name: string }) => tool.name === name), `Missing support tool: ${name}`);
     }
     assert.ok(listed.result.tools.some((tool: { name: string }) => tool.name === 'preview_venue_image_changes'));
     assert.ok(listed.result.tools.some((tool: { name: string }) => tool.name === 'apply_venue_image_changes'));
+    for (const name of ['preview_event_host', 'apply_event_host']) assert.ok(listed.result.tools.some((tool: { name: string }) => tool.name === name));
     assert.ok(listed.result.tools.some((tool: { name: string }) => tool.name === 'apply_organization_tasks'));
     assert.ok(listed.result.tools.some((tool: { name: string }) => tool.name === 'preview_organization_creation'));
     assert.ok(listed.result.tools.some((tool: { name: string }) => tool.name === 'apply_organization_membership'));
@@ -281,6 +288,13 @@ test("MCP exposes organization portal setup and custom-domain flow", async () =>
     assert.equal(attached.portal.hostname, "one.example.org");
     assert.equal(attached.portal.public_base_url, "https://one.example.org");
     assert.equal(attached.portal.home_url, "https://one.example.org/");
+    await db.prepare("UPDATE portal_tenants SET feature_config = json_patch(feature_config, '{\"onboarding\":{\"enabled\":true}}') WHERE organization_id = 'org-one'").run();
+    const updated = await rpc("save_portal_setup", { organizationId: "org-one", slug: "one", name: "One Updated", homeKind: "main" });
+    assert.equal(updated.portal.hostname, "one.example.org");
+    assert.equal(updated.portal.home_url, "https://one.example.org/");
+    assert.equal(updated.portal.public_base_url, "https://one.example.org");
+    assert.equal(updated.portal.canonical_path_prefix, "");
+    assert.equal(JSON.parse(updated.portal.feature_config).onboarding.enabled, true);
     const loaded = await rpc("get_portal_setup", { organizationId: "org-one" });
     assert.equal(loaded.portal.custom_domain_status, "attached");
   } finally { globalThis.fetch = originalFetch; db.close(); }

@@ -23,3 +23,24 @@ export async function ensureOrganizationRoom(env: { DB: D1Database; CONTACTS_DB?
   for (let offset = 0; offset < statements.length; offset += 50) await env.DB.batch(statements.slice(offset, offset + 50));
   return { id, organizationId: org.id };
 }
+
+// Only callable over the trusted service binding; event data comes from OrgPortal.
+export async function ensureEventRoom(env: { DB: D1Database; CONTACTS_DB?: D1Database }, eventId: string) {
+  if (!env.CONTACTS_DB) throw new Error('Event directory binding is not configured');
+  const event = await env.CONTACTS_DB.prepare(
+    'SELECT id, title, slug, host_org_id, host_user_id, event_chat_room_id FROM events WHERE id = ?',
+  ).bind(eventId).first<{ id: string; title: string; slug: string; host_org_id: string | null;
+    host_user_id: string | null; event_chat_room_id: string | null }>();
+  if (!event) throw new Error('Event not found');
+  const existing = await env.DB.prepare("SELECT id FROM chat_conversations WHERE kind = 'event_room' AND event_id = ?")
+    .bind(event.id).first<{ id: string }>();
+  const id = existing?.id || `event-room-${event.id}`;
+  const now = new Date().toISOString();
+  await env.DB.prepare(`INSERT INTO chat_conversations
+    (id, kind, title, slug, created_by_user_id, org_id, event_id, created_at, updated_at)
+    VALUES (?, 'event_room', ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET title = excluded.title, slug = excluded.slug, org_id = excluded.org_id`)
+    .bind(id, `${event.title} comments`, event.slug, event.host_user_id || `event:${event.id}`,
+      event.host_org_id, event.id, now, now).run();
+  return { id, eventId: event.id };
+}

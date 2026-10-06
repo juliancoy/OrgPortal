@@ -2243,3 +2243,15 @@ test("public event detail preserves trailing hyphens and long collision suffixes
     assert.equal(event.slug, slug);
   }
 });
+
+test('event creation preserves an explicit organization ID without a source URL', async () => {
+  const db = new FakeD1();
+  db.organizations.push({ id: 'org-lifetech', name: 'LifeTech', slug: 'lifetech', source_url: null });
+  const response = await app.request('https://org.example.test/api/network/ingest/calendar', {
+    method: 'POST', headers: { authorization: 'Bearer test-ingest-token', 'content-type': 'application/json' },
+    body: JSON.stringify({ events: [{ ingest_key: 'lifetech-social', title: 'LifeTech Social',
+      host_org_id: 'org-lifetech', host_org_name: 'LifeTech' }] }),
+  }, env(db));
+  assert.equal(response.status, 200);
+  assert.equal(db.events[0].host_org_id, 'org-lifetech');
+});

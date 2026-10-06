@@ -28,6 +28,8 @@ export async function runEventSlugOperation(db: D1Database, actor: OrganizationA
   else if (event.host_user_id !== actor.id && !actor.isOperator) throw new EventIntegrationError(403, 'Event management access required');
   const conflict = await db.prepare('SELECT id FROM events WHERE slug = ? AND id != ?').bind(args.slug, event.id).first();
   if (conflict) throw new EventIntegrationError(409, 'Event slug is already used');
+  const aliasConflict = await db.prepare('SELECT event_id FROM event_slug_aliases WHERE slug IN (?, ?) AND event_id != ?').bind(args.slug, event.slug, event.id).first();
+  if (aliasConflict) throw new EventIntegrationError(409, 'Event slug is already used by an existing link');
   const preview = { eventId: event.id, before: event.slug, slug: args.slug, updatedAt: event.updated_at, publicUrl: `/events/${args.slug}` };
   const fingerprint = await previewFingerprint(preview);
   const owner = { userId: actor.id, organizationId: event.host_org_id || `user:${actor.id}`, eventId: `slug:${event.id}` };
@@ -35,8 +37,15 @@ export async function runEventSlugOperation(db: D1Database, actor: OrganizationA
   if (!args.previewId) throw new EventIntegrationError(409, 'Preview the new event link first');
   await claimEventOperation(db, owner, args.previewId, fingerprint);
   try {
-    const changed = await db.prepare('UPDATE events SET slug = ?, updated_at = ? WHERE id = ? AND slug = ? AND updated_at = ? RETURNING id').bind(args.slug, new Date().toISOString(), event.id, event.slug, event.updated_at).first();
-    if (!changed) throw new EventIntegrationError(409, 'Event changed; request a new preview');
+    const updatedAt = new Date().toISOString();
+    const results = await db.batch([
+      db.prepare('UPDATE events SET slug = ?, updated_at = ? WHERE id = ? AND slug = ? AND updated_at = ?')
+        .bind(args.slug, updatedAt, event.id, event.slug, event.updated_at),
+      db.prepare(`INSERT INTO event_slug_aliases (slug, event_id)
+        SELECT ?, id FROM events WHERE id = ? AND slug = ? AND updated_at = ?
+        ON CONFLICT(slug) DO NOTHING`).bind(event.slug, event.id, args.slug, updatedAt),
+    ]);
+    if (!results[0].meta.changes) throw new EventIntegrationError(409, 'Event changed; request a new preview');
     await finishEventOperation(db, args.previewId, true, ['rename_event_slug']);
     return { ...preview, success: true };
   } catch (error) { await finishEventOperation(db, args.previewId, false, []); throw error; }

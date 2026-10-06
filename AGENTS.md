@@ -42,7 +42,11 @@
 - Local newsletter imports and browser edits are explicitly writable through
   `/api/local/newsletters/*`, using the local deployment capability. Their
   durable change log is outside snapshot replacement. This user-authorized
-  local data is not published to production and must survive replica refresh.
+  local data must survive replica refresh. The user has authorized private remote
+  newsletter sync through `/api/newsletters/*` using PIdP account consent, live
+  introspection, portal scopes and exact preview/apply receipts. Remote newsletter
+  histories and originals are isolated by account and resource, and never join
+  the public organization snapshot. Local capabilities grant no remote access.
 - Run local deployments with organization replication enabled (the run.py
   default). Each replica owns a separate persistent DB; never bind it to the
   production DB. See [replication operations](org-worker/REPLICATION.md).

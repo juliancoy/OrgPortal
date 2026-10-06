@@ -7,7 +7,8 @@
   "browserEngine": "IndexedDB",
   "datasetIdentity": "Persistent local deployment UUID; browser stores partition by dataset",
   "localWrites": "Newsletter archive and immutable change log; upstream snapshots never prune them",
-  "remoteWrites": "Separate authenticated publication workflow; local capability grants no production permission",
+  "remoteWrites": "Account-private PIdP-authenticated newsletter sync with live revocation, portal scopes and exact preview/apply receipts; local capability grants no remote access",
+  "remoteSqlMigration": "0072_private_newsletter_sync.sql",
   "recovery": "SQL online backup plus IndexedDB history and pending outbox export",
   "sourceVersions": "Git HEAD, merge parents, source SHA-256, migration SHA-256, content-addressed deployment archive"
 }

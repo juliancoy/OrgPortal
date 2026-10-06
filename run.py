@@ -17,7 +17,7 @@ chat_worker_dir = current_dir / "chat-worker"
 pidp_dir = current_dir.parent / "pidp"
 if not pidp_dir.exists():
     pidp_dir = current_dir.parent / "PIdP"
-local_dir = current_dir / ".local"
+local_dir = Path(os.getenv("ORGPORTAL_LOCAL_STATE_DIR", str(current_dir / ".local"))).expanduser().resolve()
 local_certs_dir = local_dir / "certs"
 local_nginx_conf = local_dir / "nginx.conf"
 container_app_dir = "/app"
@@ -827,15 +827,15 @@ def run(prefix: str, network_name: str) -> None:
 
     started_pidp = _start_pidp_if_available(prefix, network_name, gateway_base)
     if started_pidp:
-        docker_utils.wait_for_port(pidp_dev_name, 8000, network_name, retries=60, delay=2)
-        _wait_for_http(f"http://{pidp_dev_name}:8000/health", network_name, retries=60, delay=2)
+        docker_utils.wait_for_port(pidp_dev_name, 8000, network_name, retries=120, delay=2)
+        _wait_for_http(f"http://{pidp_dev_name}:8000/health", network_name, retries=120, delay=2)
 
     docker_utils.run_container(org_worker)
     docker_utils.run_container(chat_worker)
-    docker_utils.wait_for_port(chat_worker_name, 8003, network_name, retries=60, delay=2)
+    docker_utils.wait_for_port(chat_worker_name, 8003, network_name, retries=120, delay=2)
     docker_utils.run_container(dev)
-    docker_utils.wait_for_port(org_worker_name, int(worker_port), network_name, retries=60, delay=2)
-    _wait_for_http(f"http://{org_worker_name}:{worker_port}/health", network_name, retries=60, delay=2)
+    docker_utils.wait_for_port(org_worker_name, int(worker_port), network_name, retries=120, delay=2)
+    _wait_for_http(f"http://{org_worker_name}:{worker_port}/health", network_name, retries=120, delay=2)
     if replica_source:
         docker_utils.run_container({
             "image": "python:3.12-alpine", "name": prefix + "org-replication",
@@ -848,10 +848,10 @@ def run(prefix: str, network_name: str) -> None:
         _remove_container(prefix + "org-replication")
     if start_prod:
         docker_utils.run_container(prod)
-        docker_utils.wait_for_port(prod_name, 8080, network_name, retries=60, delay=2)
-        _wait_for_http(f"http://{prod_name}:8080/", network_name, retries=60, delay=2)
-    docker_utils.wait_for_port(dev_name, 5173, network_name, retries=60, delay=2)
-    _wait_for_http(f"http://{dev_name}:5173/availability", network_name, retries=60, delay=2)
+        docker_utils.wait_for_port(prod_name, 8080, network_name, retries=120, delay=2)
+        _wait_for_http(f"http://{prod_name}:8080/", network_name, retries=120, delay=2)
+    docker_utils.wait_for_port(dev_name, 5173, network_name, retries=120, delay=2)
+    _wait_for_http(f"http://{dev_name}:5173/availability", network_name, retries=120, delay=2)
     if _env_truthy("ORGPORTAL_START_LOCAL_GATEWAY", default=True):
         local_url = _start_local_gateway(prefix, network_name, dev_name, org_worker_name, pidp_dev_name, worker_port)
         _wait_for_http(f"https://{prefix}local-gateway:8443/availability", network_name, retries=30, delay=2)

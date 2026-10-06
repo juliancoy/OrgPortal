@@ -75,5 +75,8 @@ consistent backup into a separate deployment and preserve the outgoing queue.
 
 The cloud D1 migration and receiving code are versioned and exercised against the
 D1-compatible SQLite adapter, but enabling remote writes requires a separately
-authorized authenticated publication deployment. Do not place local capability
+authorized authenticated publication deployment. The private remote sync is now
+implemented under `/api/newsletters/*`; see [CLI synchronization](CLI_AUTH.md).
+It preserves per-account newsletter history and full originals separately from
+the public replica. Do not place local capability
 secrets into the public Worker configuration.

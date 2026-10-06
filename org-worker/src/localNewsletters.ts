@@ -73,6 +73,21 @@ export function localNewsletterRoutes() {
     const page = await c.env.DB.prepare("SELECT * FROM ecosystem_sync_changes WHERE entity='newsletter' AND pending=0 AND sequence>? ORDER BY sequence LIMIT 100").bind(input.after || 0).all<{ sequence: number; id: string; entity: 'newsletter'; record_id: string; replica_id: string; counter: number; deleted: number; value_json: string }>()
     return c.json({ datasetId: input.datasetId, acknowledged: changes.map(change => change.id), changes: page.results.map(row => ({ id: row.id, entity: row.entity, recordId: row.record_id, replicaId: row.replica_id, counter: row.counter, deleted: !!row.deleted, value: JSON.parse(row.value_json) })), cursor: page.results.at(-1)?.sequence ?? (input.after || 0), hasMore: page.results.length === 100 })
   })
+  routes.get('/archives/:hash', async c => {
+    const hash = c.req.param('hash')
+    if (!/^[a-f0-9]{64}$/.test(hash)) return c.json({ detail: 'Invalid archive hash' }, 400)
+    const row = await c.env.DB.prepare('SELECT source_json FROM newsletter_source_archives WHERE id=?').bind(hash).first<{ source_json: string }>()
+    return row ? c.json(JSON.parse(row.source_json)) : c.json({ detail: 'Source archive not found' }, 404)
+  })
+  routes.post('/archives', async c => {
+    const input = await c.req.json<{ archive: Record<string, unknown>; recordId: string }>()
+    if (!input.archive || typeof input.archive.id !== 'string' || !input.archive.payload || !/^newsletter-[a-f0-9]{64}$/.test(input.recordId || '')) return c.json({ detail: 'Invalid archive' }, 400)
+    const hash = await contentHash(input.archive)
+    const match = await c.env.DB.prepare("SELECT id FROM ecosystem_sync_changes WHERE entity='newsletter' AND record_id=? AND json_extract(value_json,'$.source.sourceArchiveSha256')=? AND json_extract(value_json,'$.source.gmailMessageId')=? LIMIT 1").bind(input.recordId, hash, input.archive.id).first()
+    if (!match) return c.json({ detail: 'Source archive does not match local newsletter history' }, 409)
+    await c.env.DB.prepare('INSERT INTO newsletter_source_archives(id,gmail_message_id,record_id,source_json,created_at) VALUES(?,?,?,?,?) ON CONFLICT(id) DO NOTHING').bind(hash, input.archive.id, input.recordId, canonicalJson(input.archive), new Date().toISOString()).run()
+    return c.json({ stored: true, hash })
+  })
   routes.get('/export', async c => {
     const after = Number(c.req.query('after') || 0)
     if (!Number.isSafeInteger(after) || after < 0) return c.json({ detail: 'Invalid export cursor' }, 400)

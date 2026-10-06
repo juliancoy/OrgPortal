@@ -8,6 +8,7 @@ import { browserLogin } from './event-upload.mjs';
 import { credentialStore } from './upload-connection.mjs';
 
 const { values } = parseArgs({ options: {
+  connection: { type: 'string' },
   resource: { type: 'string', default: 'https://medtech.social/api/org/mcp' },
   organization: { type: 'string', default: 'org-baltimore-medtech' },
   issuer: { type: 'string', default: 'https://id.codecollective.us' },
@@ -20,7 +21,7 @@ if (values.help) {
 }
 let store, connection, client;
 try {
-  store = values.ephemeral ? null : await credentialStore(values.resource, values.issuer);
+  store = values.ephemeral ? null : await credentialStore(values.resource, values.issuer, values.connection);
   connection = await browserLogin(values.resource, values.issuer, undefined, !values['no-browser'], {
     store, scope: 'org:events.read org:events.write', clientName: 'OrgPortal event times',
   });

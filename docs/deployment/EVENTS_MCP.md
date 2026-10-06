@@ -472,3 +472,46 @@ namespace to the existing approved namespace list. CodeCollective's release
 config uses its registered `code-collective` application. Existing subject mappings
 and namespaces remain intact; live introspection and organization permission
 checks are still required.
+
+
+## Persistent CLI account connections
+
+CLI commands save refresh credentials in the OS keyring and retain them when the
+process exits. They reuse the saved account and rotate expiring access tokens
+without another browser sign-in. Explicit `--disconnect` revokes only the selected
+connection. PIdP revocation and invalid grants still require reconnecting.
+
+Use `--connection NAME` (or `ORGPORTAL_CONNECTION=NAME`) to keep multiple accounts
+for the same service. Each issuer, exact resource URL, and connection name has its
+own keyring entry and lock, so distinct connections can run simultaneously.
+The default profile keeps the previous keyring namespace and existing logins.
+The upload, event times, event slug, and venue image CLIs all accept this option.
+
+```sh
+node scripts/event-upload.mjs --resource https://lifetech.fyi/api/org/mcp --connection work --connect
+node scripts/event-upload.mjs --resource https://lifetech.fyi/api/org/mcp --connection personal --connect
+node scripts/event-upload.mjs --resource https://lifetech.fyi/api/org/mcp --connection work --status
+node scripts/event-upload.mjs --resource https://lifetech.fyi/api/org/mcp --connection work --disconnect
+```
+
+`--status` reads the selected connection without starting login or printing tokens.
+`--ephemeral` remains an explicit temporary grant, revoked on process exit.
+
+## Automatic event comments
+
+Event creation through REST and native MCP provisions a chat room through the
+trusted chat service binding. Room IDs derive from the stable event ID, so slug
+changes and retries preserve the conversation. Existing configured rooms are
+retained. The scheduled org Worker retries missing rooms, including older events.
+Replicas never provision rooms in production. Release the chat Worker before the
+org Worker so `OrganizationRooms.ensureEvent` is available, then release the
+shared frontend. No schema migration is required.
+
+
+Host corrections use `preview_event_host` and `apply_event_host`, with the
+connection's `organizationId` as the destination. Both the existing event host
+and the destination require live management permission, rechecked at apply.
+The one-use preview includes the event version and exact next tags. The event ID,
+registrations, venues and chat remain intact. `scripts/event-host.mjs` supports
+this flow and named connections. Slug corrections retain the previous slug as an
+alias in the same database batch as the rename.

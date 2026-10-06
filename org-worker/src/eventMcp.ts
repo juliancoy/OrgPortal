@@ -1,3 +1,5 @@
+import { eventHostSchema, runEventHostOperation } from './eventHost';
+import { provisionEventChat } from './eventChat';
 import { eventSlugSchema, runEventSlugOperation } from './eventSlugs';
 import { runSupportMcp, supportSchema, supportVoidSchema, supportTargetSchema } from './organizationSupport';
 import { runVenueImageOperation, venueImageSchema } from './venueImagesMcp';
@@ -342,17 +344,20 @@ async function runPortalOperation(env: Env, identity: { userId: string; scopes: 
         home_image_url, public_base_url, canonical_path_prefix, feature_config, created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, 'community', ?, ?, ?, '/chat', '/manifest.webmanifest', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '/p', ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
-        organization_id = excluded.organization_id, slug = excluded.slug, hostname = excluded.hostname,
+        organization_id = excluded.organization_id, slug = excluded.slug,
+        hostname = CASE WHEN portal_tenants.custom_domain_status='attached' THEN portal_tenants.custom_domain_hostname ELSE excluded.hostname END,
         name = excluded.name, tagline = excluded.tagline, accent_color = excluded.accent_color,
-        features = excluded.features, brand_image_path = excluded.brand_image_path, home_url = excluded.home_url,
+        features = excluded.features, brand_image_path = excluded.brand_image_path,
+        home_url = CASE WHEN portal_tenants.custom_domain_status='attached' THEN 'https://' || portal_tenants.custom_domain_hostname || '/' ELSE excluded.home_url END,
         member_home_path = excluded.member_home_path, manifest_path = excluded.manifest_path,
         theme_color = excluded.theme_color, home_kind = excluded.home_kind, home_path = excluded.home_path,
         home_org_slug = excluded.home_org_slug, home_heading = excluded.home_heading,
         home_description = excluded.home_description, home_primary_label = excluded.home_primary_label,
         home_primary_href = excluded.home_primary_href, home_secondary_label = excluded.home_secondary_label,
         home_secondary_href = excluded.home_secondary_href, home_image_url = excluded.home_image_url,
-        public_base_url = excluded.public_base_url, canonical_path_prefix = excluded.canonical_path_prefix,
-        feature_config = excluded.feature_config, updated_at = excluded.updated_at`,
+        public_base_url = CASE WHEN portal_tenants.custom_domain_status='attached' THEN 'https://' || portal_tenants.custom_domain_hostname ELSE excluded.public_base_url END,
+        canonical_path_prefix = CASE WHEN portal_tenants.custom_domain_status='attached' THEN '' ELSE excluded.canonical_path_prefix END,
+        feature_config = json_patch(portal_tenants.feature_config,excluded.feature_config), updated_at = excluded.updated_at`,
     ).bind(existing?.id || `org-${organization.id}-portal`, organization.id, slug, `${slug}.slug.portal.local`,
       setup.name || organization.name, setup.tagline || `Portal for ${organization.name}`, setup.accentColor || "#155e59",
       JSON.stringify(setup.features || ["directory", "events", "chat"]), setup.homeImageUrl || null, `${portalBase(env)}/portals/${encodeURIComponent(slug)}`,
@@ -492,6 +497,8 @@ async function applyNativeEvent(env: Env, input: NativeEventInput) {
   ).bind(event.id, event.ingest_key, event.title, event.slug, event.description, event.starts_at, event.ends_at, event.location,
     event.source_url, event.image_url, JSON.stringify(event.links), event.host_user_id, event.host_user_name, event.host_org_id, event.host_org_name,
     event.host_org_source_url, JSON.stringify(event.tags), event.city, now, now).run();
+  const saved = await env.DB.prepare("SELECT id FROM events WHERE ingest_key = ?").bind(event.ingest_key).first<{ id: string }>();
+  if (saved) await provisionEventChat(env, saved.id);
   return { success: true, completed: ["upsert_native_event"], event: (await previewNativeEvent(env, input)).event,
     publicUrl: preview.publicUrl };
 }
@@ -828,6 +835,16 @@ export async function handleEventMcp(request: Request, env: Env, createOrganizat
     server.registerTool("apply_event_changes", { description: "Update an event or grant collaborator access after showing a preview and obtaining user approval. Requires confirm=true and the matching one-use previewId (expires after ten minutes). Changes may notify guests and are not atomic; inspect failures before retrying.",
       inputSchema: eventPlanSchema, annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
       _meta: metadata([readScope, writeScope]) }, args => result("plan", args));
+    const hostResult = async (args: unknown) => {
+      try {
+        const parsed = eventHostSchema.parse(scopedArgs(args));
+        if (!identity.scopes.includes(readScope) || (parsed.confirm && !identity.scopes.includes(writeScope))) throw new EventIntegrationError(403, 'Missing event scope');
+        const result = await runEventHostOperation(env.DB, { id: identity.userId, name: identity.userId, email: null, isOperator: false }, parsed);
+        return { content: [{ type: 'text' as const, text: JSON.stringify(result) }], structuredContent: result };
+      } catch (error) { return { isError: true, content: [{ type: 'text' as const, text: await eventErrorResponse(error, env, request).text() }] }; }
+    };
+    server.registerTool('preview_event_host', { description: 'Preview moving an event to this organization. Requires management permission for both the current and destination host.', inputSchema: eventHostSchema, annotations: { readOnlyHint: true }, _meta: metadata([readScope]) }, args => hostResult({ ...args, confirm: false }));
+    server.registerTool('apply_event_host', { description: 'Apply the reviewed event host using confirm=true and a matching one-use previewId. Rechecks management permission at both organizations.', inputSchema: eventHostSchema, annotations: { readOnlyHint: false }, _meta: metadata([readScope, writeScope]) }, args => hostResult(args));
     const slugResult = async (args: unknown) => {
       try {
         const parsed = eventSlugSchema.parse(args);

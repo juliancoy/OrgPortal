@@ -1,4 +1,6 @@
+import { provisionEventChat, provisionPendingEventChats } from './eventChat';
 import { localNewsletterRoutes } from './localNewsletters';
+import { newsletterSyncRoutes } from './newsletterSync';
 import {onboardingSettingsRoutes} from './onboardingSettings';
 import { importFinancing, financingAgencyReport, financingRecipientReport } from './financingRecords';
 import { provisionOrganizationChat, provisionPendingOrganizationChats } from './organizationChat';
@@ -469,6 +471,7 @@ app.use("*", async (c, next) => {
 });
 
 app.route('/api/local/newsletters', localNewsletterRoutes());
+app.route('/api/newsletters', newsletterSyncRoutes());
 
 function json(payload: unknown, status = 200) {
   return new Response(JSON.stringify(payload), {
@@ -2034,13 +2037,15 @@ async function createOrganization(env: Env, actor: OrganizationActor, payload: R
   return row;
 }
 
-async function upsertEvent(db: D1Database, raw: Record<string, unknown>, requestedSlug?: string) {
+async function upsertEvent(env: Env, raw: Record<string, unknown>, requestedSlug?: string) {
+  const db = env.DB;
   const ingestKey = stringField(raw, "ingest_key", 255);
   const title = stringField(raw, "title", 500);
   if (!ingestKey || !title) return null;
   const existing = await db.prepare("SELECT * FROM events WHERE ingest_key = ?").bind(ingestKey).first<EventRow>();
   const hostOrgSourceUrl = cleanUrl(raw.host_org_source_url);
-  const hostOrg = await organizationBySourceUrl(db, hostOrgSourceUrl);
+  const requestedHostOrgId = stringField(raw, "host_org_id", 255);
+  const hostOrg = requestedHostOrgId ? await organizationByIdOrSlug(db, requestedHostOrgId) : await organizationBySourceUrl(db, hostOrgSourceUrl);
   const id = existing?.id || crypto.randomUUID();
   const slug = existing?.slug || requestedSlug || (await uniqueTableSlug(db, "events", `${title}-${ingestKey.slice(0, 8)}`));
   const updatedAt = nowIso();
@@ -2101,15 +2106,16 @@ async function upsertEvent(db: D1Database, raw: Record<string, unknown>, request
       hostOrg?.id || null,
       stringField(raw, "host_org_name", 255),
       hostOrgSourceUrl,
-      stringField(raw, "event_chat_room_id", 255),
-      stringField(raw, "event_chat_room_alias", 255),
-      stringField(raw, "event_chat_room_name", 255),
+      stringField(raw, "event_chat_room_id", 255) || existing?.event_chat_room_id || null,
+      stringField(raw, "event_chat_room_alias", 255) || existing?.event_chat_room_alias || null,
+      stringField(raw, "event_chat_room_name", 255) || existing?.event_chat_room_name || null,
       tagsField(raw),
       stringField(raw, "city", 80),
       existing?.created_at || updatedAt,
       updatedAt,
     )
     .run();
+  await provisionEventChat(env, id);
   return db.prepare("SELECT * FROM events WHERE ingest_key = ?").bind(ingestKey).first<EventRow>();
 }
 
@@ -3030,7 +3036,7 @@ app.post("/api/network/ingest/calendar", async (c) => {
     const existing = collections.preserveExisting && typeof raw.ingest_key === 'string'
       ? await c.env.DB.prepare('SELECT * FROM events WHERE ingest_key = ?').bind(raw.ingest_key).first<EventRow>()
       : null;
-    const row = existing || await upsertEvent(c.env.DB, raw);
+    const row = existing || await upsertEvent(c.env, raw);
     if (row) {
       await addCalendarCollections(c.env.DB, row.id, collections.organizationIds, existing ? raw.tags : undefined);
       await linkEventSupportRecords(c.env.DB, row, raw.support_record_ids, await eventPublicUrl(c.env,c.req.raw,row.slug));
@@ -3535,7 +3541,7 @@ app.put("/api/network/orgs/:organizationId/portal", async (c) => {
       profile = excluded.profile,
       features = excluded.features,
       brand_image_path = excluded.brand_image_path,
-      home_url = excluded.home_url,
+      home_url = CASE WHEN portal_tenants.custom_domain_status='attached' THEN 'https://' || portal_tenants.custom_domain_hostname || '/' ELSE excluded.home_url END,
       member_home_path = excluded.member_home_path,
       manifest_path = excluded.manifest_path,
       theme_color = excluded.theme_color,
@@ -3982,7 +3988,7 @@ app.post("/api/network/events", async (c) => {
     catch (error) { return eventErrorResponse(error, c.env, c.req.raw); }
   }
   let row;
-  try { row = await upsertEvent(c.env.DB, { ...eventPayload }, numberedSlug); }
+  try { row = await upsertEvent(c.env, { ...eventPayload }, numberedSlug); }
   catch (error) {
     if (numberedSlug && String(error).includes('UNIQUE')) fail(409, 'This event number was just used. Create the event again to use the next number.');
     throw error;
@@ -4236,7 +4242,7 @@ app.post("/api/network/scans", async (c) => {
       createdTargetName = org.name;
     }
   } else if (extracted.scanKind === "event" && extracted.extractedTitle) {
-    const event = await upsertEvent(c.env.DB, {
+    const event = await upsertEvent(c.env, {
       ingest_key: `scan:${scanId}`,
       title: extracted.extractedTitle,
       description: extracted.description,
@@ -5348,6 +5354,7 @@ export default {
     ctx.waitUntil(runOrganizationStatusEmail(env).then(() => runEmailDelivery(env)));
     ctx.waitUntil(dispatchOrganizationStatusPush(env));
     ctx.waitUntil(provisionPendingOrganizationChats(env));
+    ctx.waitUntil(provisionPendingEventChats(env));
   },
   async queue(batch: MessageBatch<import("./push").PushDeliveryJob>, env: Env) {
     if (env.ORGANIZATION_REPLICA_SOURCE) { batch.retryAll(); return; }

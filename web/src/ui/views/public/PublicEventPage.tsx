@@ -935,7 +935,7 @@ export function PublicEventPage() {
             )}
           </>
         ) : !chatLoading && !chatStatus ? (
-          <p className="muted" style={{ margin: 0 }}>Comments are not available for this event yet.</p>
+          <p className="muted" style={{ margin: 0 }}>Comments are being set up. Refresh to try again.</p>
         ) : null}
       </section>
         </main>
