@@ -99,6 +99,21 @@ export function DevToolsPage() {
   const origin = window.location.origin
   const orgApiBase = `${origin}/api/org`
   const mcpEndpoint = `${origin}/api/org/mcp`
+  const [agentCopyStatus, setAgentCopyStatus] = useState('')
+  const agentRequestRef = useRef<HTMLTextAreaElement>(null)
+  const agentRequest = `Connect to ${mcpEndpoint} using OAuth and the same account I use on this website. Discovery: ${origin}/.well-known/oauth-protected-resource/api/org/mcp. Let me approve the browser connection; never ask for pasted tokens or use an owner account in place of mine.
+Discover the available tools and use list_organizations to help me choose an organization where I have the required permissions. Help me manage events, organization membership, governance or availability tasks. Preview changes and ask for approval before applying them with the matching previewId and confirm=true. Inspect operation status after uncertain failures before retrying.
+For photo uploads, ask which local files and whether they belong in the organization gallery or a specific event gallery. Use ${mcpEndpoint}/uploads/organization-media (organizationId, image, optional label and alt; org:portal.read and org:portal.write) or ${mcpEndpoint}/uploads/event-media (eventId, image, optional label and alt; org:events.read and org:events.write). JPEG, PNG, GIF and WebP are supported, up to 8 MB each and 12 pictures per gallery. Submit without confirm first, show me the destination and pictures, and ask for approval. Only then resubmit identical files and metadata with confirm=true and the returned previewId. Return confirmed gallery links. These uploads do not change the separate Drive-backed homepage carousel.`
+  async function copyAgentRequest() {
+    try {
+      await navigator.clipboard.writeText(agentRequest)
+      setAgentCopyStatus('Copied. Paste the request into your AI agent.')
+    } catch {
+      agentRequestRef.current?.focus()
+      agentRequestRef.current?.select()
+      setAgentCopyStatus('Select and copy the request below.')
+    }
+  }
 
   const scopeOptions: Array<{ value: ApiTokenScope; label: string }> = [
     { value: 'org_admin', label: 'org_admin (Full access)' },
@@ -615,6 +630,27 @@ export function DevToolsPage() {
               </div>
             </div>
           </article>
+
+        <article className="portal-card" id="ai-agents" aria-labelledby="ai-agents-title">
+          <h2 id="ai-agents-title" style={{ marginTop: 0 }}>AI agents &amp; MCP</h2>
+          <p>Connect your AI agent with your account to use the platform. Your organization permissions still apply; review proposed changes before publishing.</p>
+          <ul>
+            <li>Organizations: list memberships and members, create organizations, and manage membership.</li>
+            <li>Events: read managed events, preview and apply event changes, update gallery media, and enable event comments.</li>
+            <li>Galleries: upload local photos to an organization or event gallery after reviewing the upload.</li>
+            <li>Governance: read motions and results, and preview and apply governance actions.</li>
+            <li>Availability: preview and assign availability-calendar tasks to active members.</li>
+            <li>Portal setup: manage tenant setup and request custom-domain configuration.</li>
+          </ul>
+          <p className="muted">Availability depends on the tenant's configuration and your access. Ask your agent to discover the live tools before starting.</p>
+          <p>MCP server: <code>{mcpEndpoint}</code></p>
+          <p><a href={`${origin}/.well-known/oauth-protected-resource/api/org/mcp`}>Connection discovery</a></p>
+          <p>Connect through browser OAuth using your website account. Review connection permissions there. Never paste passwords or account tokens into a chat.</p>
+          <label htmlFor="mcp-agent-request">Request for your AI agent</label>
+          <textarea id="mcp-agent-request" ref={agentRequestRef} value={agentRequest} readOnly rows={10} spellCheck={false} style={{ width: '100%', boxSizing: 'border-box' }} />
+          <button type="button" className="btn-secondary" onClick={() => void copyAgentRequest()}>Copy request for my AI</button>
+          <p role="status" aria-live="polite">{agentCopyStatus}</p>
+        </article>
 
         <article className="portal-card">
           <h2 style={{ marginTop: 0 }}>Endpoints</h2>

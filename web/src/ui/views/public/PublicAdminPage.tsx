@@ -986,19 +986,31 @@ export function PublicAdminPage() {
     setShowImageEditor(true)
   }
 
-  function openOrganizationEditor() {
+  function openOrganizationEditor(sectionId = 'organization-page-editor') {
     setAdminView(true)
     window.requestAnimationFrame(() => {
-      organizationEditorRef.current?.scrollIntoView({ block: 'start' })
-      organizationEditorRef.current?.focus({ preventScroll: true })
+      const section = document.getElementById(sectionId) || organizationEditorRef.current
+      section?.scrollIntoView({ block: 'start' })
+      section?.focus({ preventScroll: true })
     })
   }
 
   return (
     <section className="panel portal-org-page">
+      {isOrganizerView && <nav className="portal-org-organizer-nav" aria-label={`${org.name} organizer navigation`}>
+        <span className="portal-org-organizer-nav-label">Organizer tools</span>
+        <a href="#organization-overview">Overview</a>
+        <a href="#organization-branding" onClick={event => { event.preventDefault(); openOrganizationEditor('organization-branding') }}>Branding</a>
+        <a href="#organization-members">Members</a>
+        <a href="#organization-events">Events</a>
+        <a href="#organization-support">Support</a>
+        <a href="#organization-feedback" onClick={event => { event.preventDefault(); openOrganizationEditor('organization-feedback') }}>Feedback</a>
+        <a href="#organization-domain" onClick={event => { event.preventDefault(); openOrganizationEditor('organization-domain') }}>Domain</a>
+        <a href="#organization-page-editor" onClick={event => { event.preventDefault(); openOrganizationEditor() }}>Settings</a>
+      </nav>}
       <div className={`portal-org-layout${org.claimed_by_user_id ? '' : ' portal-org-layout-single'}`}>
         <div className="portal-org-main-column">
-          <div className="portal-org-hero">
+          <div id="organization-overview" className="portal-org-hero portal-org-nav-target" tabIndex={-1}>
             <div className="portal-org-hero-copy">
               <p className="tenant-home-eyebrow">{isOrganizerView ? 'Organization dashboard' : `${organizationView[0].toUpperCase()}${organizationView.slice(1)} view`}</p>
               <div className="portal-org-hero-header">
@@ -1024,7 +1036,7 @@ export function PublicAdminPage() {
                   </a>
                 ) : null}
                 {isOrganizerView ? (
-                  <button type="button" className="btn-secondary" onClick={openOrganizationEditor} aria-expanded={adminView}>
+                  <button type="button" className="btn-secondary" onClick={() => openOrganizationEditor()} aria-expanded={adminView}>
                     <Pencil size={17} aria-hidden="true" />
                     Edit page
                   </button>
@@ -1045,7 +1057,7 @@ export function PublicAdminPage() {
               />
             </button>
           </div>
-          <div className="portal-card portal-org-events-card">
+          <div id="organization-events" className="portal-card portal-org-events-card portal-org-nav-target" tabIndex={-1}>
             <div className="portal-org-events-heading">
               <div>
                 <p className="tenant-home-eyebrow">{org.name}</p>
@@ -1199,6 +1211,7 @@ export function PublicAdminPage() {
             ) : null}
             {membershipStatus ? <p className="muted" role="status" style={{ margin: 0 }}>{membershipStatus}</p> : null}
           </div>
+          <div id="organization-members" className="portal-org-nav-target" tabIndex={-1}>
           <OrganizationMembers
             key={org.id}
             organizationId={org.id}
@@ -1207,6 +1220,7 @@ export function PublicAdminPage() {
             canManage={canManageCurrentOrg}
             membershipCount={org.membership_count || 0}
           />
+          </div>
 
           {token ? (
             <div className="portal-card" style={{ display: 'grid', gap: '0.65rem' }}>
@@ -1343,7 +1357,9 @@ export function PublicAdminPage() {
 
           <PeerOrganizations organizationId={org.id} tags={org.tags} />
 
-          <OrganizationSupport organizationId={org.id} slug={org.slug} canManage={canManageCurrentOrg} />
+          <div id="organization-support" className="portal-org-nav-target" tabIndex={-1}>
+            <OrganizationSupport organizationId={org.id} slug={org.slug} canManage={canManageCurrentOrg} />
+          </div>
 
           {isOrganizerView && adminView ? (
             <div
@@ -1370,7 +1386,7 @@ export function PublicAdminPage() {
                       {myAdminOrgsStatus}
                     </p>
                   ) : null}
-                  <div className="portal-card portal-org-portal-setup" style={{ display: 'grid', gap: '0.65rem', boxShadow: 'none' }}>
+                  <div id="organization-branding" tabIndex={-1} className="portal-card portal-org-portal-setup portal-org-nav-target" style={{ display: 'grid', gap: '0.65rem', boxShadow: 'none' }}>
                     <div>
                       <h3 style={{ margin: 0, fontSize: '0.98rem' }}>Portal</h3>
                       <p className="muted" style={{ margin: '0.2rem 0 0' }}>
@@ -1409,7 +1425,7 @@ export function PublicAdminPage() {
                         Portal URL will be available after saving.
                       </p>
                     )}
-                    <div className="portal-org-domain-flow">
+                    <div id="organization-domain" tabIndex={-1} className="portal-org-domain-flow portal-org-nav-target">
                       <div>
                         <h4 style={{ margin: 0, fontSize: '0.92rem' }}>Custom domain</h4>
                         <p className="muted" style={{ margin: '0.15rem 0 0' }}>
@@ -1509,7 +1525,7 @@ export function PublicAdminPage() {
                     </label>
                     {portalStatus ? <p className="muted" role="status" style={{ margin: 0 }}>{portalStatus}</p> : null}
                   </div>
-                  <div className="portal-card" style={{ display: 'grid', gap: '0.55rem', boxShadow: 'none' }}>
+                  <div id="organization-feedback" tabIndex={-1} className="portal-card portal-org-nav-target" style={{ display: 'grid', gap: '0.55rem', boxShadow: 'none' }}>
                     <div>
                       <h3 style={{ margin: 0, fontSize: '0.98rem' }}>Feedback Inbox</h3>
                       <p className="muted" style={{ margin: '0.2rem 0 0' }}>

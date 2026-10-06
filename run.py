@@ -275,6 +275,9 @@ def _pidp_env(pidp_editme, db_url: str, gateway_base: str, allowed_origins: list
         "GOOGLE_WORKSPACE_SMTP_PASSWORD": os.getenv("PIDP_GOOGLE_WORKSPACE_SMTP_PASSWORD", ""),
         "GOOGLE_WORKSPACE_EMAIL_FROM": os.getenv("PIDP_GOOGLE_WORKSPACE_EMAIL_FROM", ""),
         "GOOGLE_WORKSPACE_ALLOWED_SENDERS": os.getenv("PIDP_GOOGLE_WORKSPACE_ALLOWED_SENDERS", ""),
+        "PUBLIC_BASE_URL": pidp_base,
+        "PORTAL_AUTH_ORIGINS": ",".join(allowed_origins),
+        "PORTAL_SSO_APP_SLUG": os.getenv("ORGPORTAL_DEV_PIDP_APP_SLUG") or os.getenv("ORGPORTAL_PIDP_APP_SLUG", "code-collective"),
         "FRONTEND_REDIRECT_URL": f"{pidp_base}/auth/callback",
         "GOOGLE_CLIENT_ID": getattr(pidp_editme, "PIDP_GOOGLE_CLIENT_ID", "google-client-id"),
         "GOOGLE_CLIENT_SECRET": getattr(pidp_editme, "PIDP_GOOGLE_CLIENT_SECRET", "google-client-secret"),
@@ -423,7 +426,10 @@ def _write_local_gateway_config(
 
                 location /pidp/ {{
                   rewrite ^/pidp/?(.*)$ /$1 break;
-                  proxy_set_header Host $host;
+                  proxy_set_header Host $http_host;
+                  proxy_set_header X-Forwarded-Host "";
+                  proxy_set_header X-Forwarded-Proto https;
+                  proxy_set_header X-Forwarded-Prefix /pidp;
                   proxy_set_header Origin $http_origin;
                   proxy_set_header Referer $http_referer;
                   proxy_pass http://{pidp_dev_name}:8000;
@@ -549,7 +555,7 @@ def _start_pidp_if_available(prefix: str, network_name: str, gateway_base: str) 
             (
                 "python -m venv /venv && "
                 "/venv/bin/pip install -r /app/requirements.txt && "
-                "exec /venv/bin/uvicorn main:app --app-dir /app --host 0.0.0.0 --port 8000 --reload --reload-dir /app"
+                "exec /venv/bin/uvicorn main:app --app-dir /app --host 0.0.0.0 --port 8000 --root-path /pidp --forwarded-allow-ips '*' --reload --reload-dir /app"
             ),
         ],
     }

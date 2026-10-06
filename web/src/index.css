@@ -9652,3 +9652,33 @@ textarea:focus {
 .portal-embedded-chat .native-chat-shell .portal-chat-main {
   min-height: 100dvh; height: 100dvh; max-height: 100dvh;
 }
+
+/* Organization tools sit below the shared site navigation. */
+.portal-org-organizer-nav {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  flex-wrap: wrap;
+  padding: .65rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.portal-org-organizer-nav-label {
+  margin-right: .4rem;
+  font-size: .8rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+.portal-org-organizer-nav a {
+  padding: .5rem .65rem;
+  border-radius: 8px;
+  color: var(--text-primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+.portal-org-organizer-nav a:hover,
+.portal-org-organizer-nav a:focus-visible {
+  background: var(--surface-hover, var(--border));
+}
+.portal-org-nav-target { scroll-margin-top: 110px; }
