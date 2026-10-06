@@ -7,6 +7,8 @@ test('CLI selects portal-bound account connections and rejects malformed targets
   assert.equal(command.resource, 'https://medtech.social/api/org/mcp');
   assert.equal(command.connection, 'work');
   assert.equal(command.openBrowser, false);
+  assert.equal(parseCommand(['auth', 'login'], {}).openBrowser, false);
+  assert.equal(parseCommand(['auth', 'login', '--browser'], {}).openBrowser, true);
   assert.equal(parseCommand(['auth', 'logout'], {}).resource, 'https://lifetech.fyi/api/org/mcp');
   for (const args of [['auth', 'delete'], ['auth', 'login', '--portal', 'http://example.com'],
     ['auth', 'login', '--issuer', 'https://example.com/path'], ['auth', 'login', '--resource', 'https://user:secret@example.com/mcp'],

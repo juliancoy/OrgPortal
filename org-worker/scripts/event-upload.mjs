@@ -36,7 +36,7 @@ export function callbackResult(url, state, issuer) {
   return code;
 }
 
-export async function browserLogin(resource, issuer, clientId, openBrowser = true, options = {}) {
+export async function browserLogin(resource, issuer, clientId, openBrowser = false, options = {}) {
   secureUrl(resource); secureUrl(issuer);
   const metadata = await json(`${issuer}/.well-known/oauth-authorization-server`);
   if (metadata.issuer !== issuer || !metadata.code_challenge_methods_supported?.includes('S256')

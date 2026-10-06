@@ -14,8 +14,10 @@ orgportal auth logout --portal https://medtech.social --connection medtech
 The default portal is `https://lifetech.fyi`. `ORGPORTAL_PORTAL`,
 `ORGPORTAL_ISSUER`, and `ORGPORTAL_CONNECTION` set defaults. `--resource`
 selects an explicit HTTPS MCP endpoint instead of `--portal`. `--issuer`
-defaults to `https://id.codecollective.us`. Use `--no-browser` to open the
-printed sign-in link yourself. `--client-id` selects an already registered
+defaults to `https://id.codecollective.us`. The CLI prints a sign-in link and does
+not open a browser by default. Paste the link into the browser profile with your
+chosen Google account. Use `--browser` to opt into opening the default browser.
+`--client-id` selects an already registered
 public native client when dynamic client registration is disabled.
 
 Login delegates account sign-in and explicit consent to PIdP, using S256 PKCE

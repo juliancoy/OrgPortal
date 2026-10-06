@@ -10,7 +10,7 @@ import { resolve } from 'node:path';
 const root = fileURLToPath(new URL('../../', import.meta.url));
 
 const help = `Usage:
-  orgportal auth login [--portal https://lifetech.fyi] [--connection NAME] [--no-browser]
+  orgportal auth login [--portal https://lifetech.fyi] [--connection NAME] [--browser]
   orgportal auth logout [--portal https://lifetech.fyi] [--connection NAME]
   orgportal sync [--portal https://lifetech.fyi] [--connection NAME] [--dry-run]
 
@@ -18,6 +18,7 @@ Options: --resource HTTPS_MCP_URL, --issuer HTTPS_PIDP_ORIGIN, --client-id ID
 Defaults: ORGPORTAL_PORTAL or https://lifetech.fyi;
           ORGPORTAL_ISSUER or https://id.codecollective.us;
           ORGPORTAL_CONNECTION or default.
+Login prints a pasteable link; --browser explicitly opens your default browser.
 Login uses browser consent and the OS keyring. Logout revokes the saved grant.
 Account permissions and preview/apply requirements still govern remote updates.`;
 
@@ -25,7 +26,7 @@ export function parseCommand(args, env = process.env) {
   const { values, positionals } = parseArgs({ args, allowPositionals: true, options: {
     portal: { type: 'string' }, resource: { type: 'string' }, issuer: { type: 'string' },
     connection: { type: 'string' }, 'client-id': { type: 'string' },
-    'no-browser': { type: 'boolean' }, help: { type: 'boolean', short: 'h' },
+    browser: { type: 'boolean' }, 'no-browser': { type: 'boolean' }, help: { type: 'boolean', short: 'h' },
     'dry-run': { type: 'boolean' }, local: { type: 'string' }, deployment: { type: 'string' }, cert: { type: 'string' },
   } });
   if (values.help || !args.length) return { help: true };
@@ -48,7 +49,7 @@ export function parseCommand(args, env = process.env) {
   const connection = values.connection || env.ORGPORTAL_CONNECTION || 'default';
   if (!/^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,79}$/.test(connection)) throw new Error('Invalid connection name.');
   return { action: sync ? 'sync' : positionals[1], resource: resource.href, issuer: issuer.origin,
-    connection, clientId: values['client-id'], openBrowser: !values['no-browser'], dryRun: !!values['dry-run'],
+    connection, clientId: values['client-id'], openBrowser: !!values.browser && !values['no-browser'], dryRun: !!values['dry-run'],
     local: values.local || 'https://localhost:8443', deployment: resolve(values.deployment || root + '/.local/bmoremedtech-newsletter-storage.json'),
     cert: resolve(values.cert || root + '/.local/certs/localhost.crt') };
 }
