@@ -989,6 +989,7 @@ export function Header() {
             {hasTenantCalendar(domainTenant) && !['lifetech', 'baltimore-medtech'].includes(domainTenant.home_org_slug || '') && <NavLink to="/calendar" isActive={isCalendarActive}>Calendar</NavLink>}
             {domainTenant.features?.includes('directory') && <NavLink to="/people">People</NavLink>}
             {!isGuest && domainTenant.features?.includes('chat') && <NavLink to="/chat">Messages</NavLink>}
+            {['lifetech', 'baltimore-medtech'].includes(domainTenant.home_org_slug || '') && <NavLink to="/ecosystem/network" isActive={location.pathname.startsWith('/ecosystem/network')}>Research</NavLink>}
             {tenantResources.length > 0 && <NavLink to="/resources" isActive={isResourcesActive}>Resources</NavLink>}
           </> : domainCommunity ? <>
             <NavLink to="/timebanking">Timebank</NavLink>
