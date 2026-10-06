@@ -1,4 +1,4 @@
-import {key,safeUrl} from './ecosystem.js'
+import {key,safeUrl,applyGovernmentClasses} from './ecosystem.js'
 export function mergeNetworkHistory(base,history){
  const data=structuredClone(base),ids=new Map(),byName=new Map()
  for(const org of data.organizations)byName.set(key(org.name),org.id)
@@ -15,5 +15,5 @@ export function mergeNetworkHistory(base,history){
   const edge={...record,funderId:ids.get(record.funderId),recipientId:ids.get(record.recipientId)}
   if(!data.financing.some(r=>r.id===edge.id || (r.funderId===edge.funderId && r.recipientId===edge.recipientId && r.amount===edge.amount && r.date===edge.date && safeUrl(r.sourceUrl)===safeUrl(edge.sourceUrl))))data.financing.push(edge)
  }
- return data
+ return applyGovernmentClasses(data)
 }

@@ -30,3 +30,14 @@ test('loads directories and support evidence beyond 500 without dropping recipie
 test('rejects incomplete or looping support pagination',async()=>{
  for(const nextRecordOffset of [undefined,0,'500'])await assert.rejects(()=>loadPortalEvidence(base,async path=>({ok:true,json:async()=>path.includes('/support?')?{records:[record],nextRecordOffset}:[orgs[0]]})),/incomplete/)
 })
+
+
+test('government classes distinguish jurisdiction without reclassifying universities or municipalities',async()=>{
+ const {governmentCategory,applyGovernmentClasses}=await import('../src/features/ecosystem/ecosystem.js')
+ for(const name of ['National Institutes of Health','U.S. Economic Development Administration'])assert.equal(governmentCategory({name}),'federal-government')
+ for(const name of ['TEDCO','TEDCO Equitech Growth Fund','Maryland Department of Commerce','Maryland Port Commission'])assert.equal(governmentCategory({name}),'state-government')
+ for(const name of ['University of Maryland, Baltimore','Morgan State University','Baltimore City','Howard County Government','Maryland Food Bank'])assert.equal(governmentCategory({name}),null)
+ const merged=mergePortalEvidence(base,[...orgs,{id:'gov',name:'Example agency',tags:['State government']}],[])
+ assert.equal(merged.organizations.find(o=>o.id==='gov').category,'state-government')
+ assert.equal(applyGovernmentClasses({organizations:[{name:'NIH',website:'https://www.nih.gov/',category:'funding'}]}).organizations[0].category,'federal-government')
+})

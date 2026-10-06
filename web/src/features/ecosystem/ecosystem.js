@@ -2,6 +2,7 @@
 export const categories = {
   ecosystem: 'LifeTech / MedTech ecosystem', company: 'Companies & ventures',
   health: 'Hospitals & health systems', university: 'Universities & research',
+  'federal-government': 'Federal government', 'state-government': 'State government',
   funding: 'Funding & commercialization', general: 'General entrepreneurship',
 }
 export const semantics = {
@@ -12,6 +13,19 @@ export const semantics = {
 export const key = (s) => String(s || '').normalize('NFKD').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 export function safeUrl(value) {
   try { const u = new URL(value); return ['https:', 'http:'].includes(u.protocol) && !u.username && !u.password ? u.href : '' } catch { return '' }
+}
+// Government jurisdiction is independent of a funding role. Public universities
+// and municipal/county bodies retain their existing classes.
+export function governmentCategory(org) {
+ const name=org.name || '', type=org.type || '', tags=org.tags || []
+ let host='';try { host=new URL(org.website || org.source_url).hostname } catch {}
+ if(tags.includes('Federal government') || /federal government|federal agency/i.test(type) || /^(?:National Institutes of Health|U\.?S\.? Economic Development Administration)(?:$| \()/i.test(name) || /(?:^|\.)(?:nih|eda)\.gov$/.test(host))return 'federal-government'
+ if(tags.includes('State government') || /state government|state agency|state innovation funder/i.test(type) || /^(?:TEDCO(?:$| )|tedcomd\.com$|Maryland (?:Department|Commission|Port Administration|Port Commission)\b)/i.test(name) || /(?:^|\.)maryland\.gov$/.test(host) || /(?:^|\.)tedcomd\.com$/.test(host))return 'state-government'
+ return null
+}
+export function applyGovernmentClasses(data) {
+ for(const org of data.organizations)org.category=governmentCategory(org) || org.category
+ return data
 }
 export function parseCsv(text) {
   const rows = []; let row = [], field = '', quoted = false
@@ -65,13 +79,13 @@ export function normalizeWorkbook(tabs, registry, updatedAt) {
     // role mailboxes that match the organization's website; website is always available.
     const host = new URL(r[3]).hostname.replace(/^www\./, '')
     const emails = (r[2] || '').split(/[;,]/).map(s => s.trim()).filter(e => /^(info|hello|contact|sales|comms|office|support)@/i.test(e) && e.split('@')[1]?.toLowerCase() === host)
-    organizations.set(id, { id, name: r[0], category: classify(r[0], r[4], section), sourceCategory: section,
+    organizations.set(id, { id, name: r[0], category: governmentCategory({name:r[0],type:r[4],website:r[3]}) || classify(r[0], r[4], section), sourceCategory: section,
       type: r[4], website: safeUrl(r[3]), publicEmails: emails, relevance: r[5] || '',
       proximity: Math.min(100, Math.max(0, Number(r[6]))), sourceRows: [index + 1], directory: true })
   })
   // Explicit entities from funding sources keep funds and programs distinct from parents.
   for (const r of registry) if (!organizations.has(r.id) && r.supplemental) organizations.set(r.id, {
-    id: r.id, name: r.name, category: r.category, type: r.type || 'Funding-network organization',
+    id: r.id, name: r.name, category: governmentCategory(r) || r.category, type: r.type || 'Funding-network organization',
     website: safeUrl(r.website), publicEmails: [], relevance: r.relevance || '', proximity: r.proximity ?? null,
     sourceRows: [], directory: r.directory === true, ...(r.sourceCategory ? { sourceCategory: r.sourceCategory } : {}),
   })

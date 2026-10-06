@@ -371,7 +371,7 @@
     {
       "id": "org-tedco",
       "name": "TEDCO",
-      "category": "funding",
+      "category": "state-government",
       "sourceCategory": "Funding & Commercialization — Cross-Sector",
       "type": "State innovation funder / ESO",
       "website": "https://www.tedcomd.com/",
@@ -890,7 +890,7 @@
     {
       "id": "org-national-institutes-of-health",
       "name": "National Institutes of Health",
-      "category": "funding",
+      "category": "federal-government",
       "type": "Funding-network organization",
       "website": "https://www.nih.gov/",
       "publicEmails": [],
@@ -950,7 +950,7 @@
     {
       "id": "org-tedco-equitech-growth-fund",
       "name": "TEDCO Equitech Growth Fund",
-      "category": "funding",
+      "category": "state-government",
       "type": "Funding-network organization",
       "website": "",
       "publicEmails": [],
@@ -962,7 +962,7 @@
     {
       "id": "org-tedco-life-science-investment-fund",
       "name": "TEDCO Life Science Investment Fund",
-      "category": "funding",
+      "category": "state-government",
       "type": "Funding-network organization",
       "website": "",
       "publicEmails": [],
@@ -974,7 +974,7 @@
     {
       "id": "org-tedco-seed-funds-ssbci",
       "name": "TEDCO Seed Funds / SSBCI",
-      "category": "funding",
+      "category": "state-government",
       "type": "Funding-network organization",
       "website": "",
       "publicEmails": [],
@@ -986,7 +986,7 @@
     {
       "id": "org-u-s-economic-development-administration",
       "name": "U.S. Economic Development Administration",
-      "category": "funding",
+      "category": "federal-government",
       "type": "Funding-network organization",
       "website": "https://www.eda.gov/",
       "publicEmails": [],
