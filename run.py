@@ -623,6 +623,10 @@ def _configure_local_newsletters(prefix: str) -> Path:
 
 
 def run(prefix: str, network_name: str) -> None:
+    if _env_truthy("ORGPORTAL_JOURNAL_AUTO_SYNC", default=True):
+        result = subprocess.run([sys.executable, str(current_dir / "scripts/setup-journal-sync.py")])
+        if result.returncode:
+            print("Local journal timer was not enabled; see the setup error above. Portal startup continues.")
     docker_utils.ensure_network(network_name)
     local_newsletter_vars_path = _configure_local_newsletters(prefix)
 

@@ -37,6 +37,29 @@ trigger definitions from migrations through 0072.
 
 ## Local WAL mirror
 
+`run.py` enables a user-level systemd timer by default. It mirrors the remote
+journal every minute, starts again with your user session, and retries failures
+on the next run. An already-running sync is never overlapped. No Docker credential
+mount or additional container is needed.
+
+For setup without restarting the portal:
+
+```sh
+python3 scripts/setup-journal-sync.py
+```
+
+Install Node.js 22.13+ and `npm ci` in `org-worker` first. The timer uses your
+existing Cloudflare operator login; it never opens a browser. If authentication
+expires, refresh that login manually and the next run resumes automatically.
+It runs while your user session is active and catches up after downtime.
+Check `systemctl --user status orgportal-journal-sync.timer` and
+`journalctl --user -u orgportal-journal-sync.service` for status and errors.
+To disable it, run `systemctl --user disable --now orgportal-journal-sync.timer`
+and set `ORGPORTAL_JOURNAL_AUTO_SYNC=0` for subsequent portal starts. Hosts without
+user systemd can use the same one-shot command below in their existing scheduler.
+
+Manual sync remains available:
+
 ```sh
 orgportal journal sync
 orgportal journal sync --file /private/path/change-journal.sqlite
@@ -54,8 +77,8 @@ SQLite's backup API; do not copy only its main file while WAL writes are active.
 
 CodeCollective's org release applies the secondary `journal-migrations` first,
 then primary migrations, and preserves the `JOURNAL_DB` binding. Both schemas and
-the binding ID are versioned. No additional Worker, queue or background service
-is required. Cloudflare manages D1's physical journaling; the local mirror uses
+the binding ID are versioned. No additional cloud Worker or queue is required.
+Cloudflare manages D1's physical journaling; the local mirror uses
 SQLite WAL. The logical journal remains after WAL checkpoints.
 
 Compare the primary journal's maximum sequence with `org-journal`'s matching

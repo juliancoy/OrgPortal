@@ -149,6 +149,11 @@ If you’re interested in helping build this platform:
 
 ## Local browser validation
 
+`run.py` also enables automatic local transactional-journal sync every minute
+using your existing Cloudflare operator login. For setup without restarting,
+run `python3 scripts/setup-journal-sync.py`. See
+[journal operations](docs/deployment/CHANGE_JOURNAL.md) for requirements and status.
+
 `run.py` starts the portal, org worker, chat worker, and sibling PIdP on the
 local Docker network. Chat and org share local D1 storage for the contact
 directory. The HTTPS gateway serves the app and API/WebSocket routes at
