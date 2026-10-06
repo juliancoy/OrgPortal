@@ -26,3 +26,12 @@ relationship, money-view and neighbor filters. Unchecking it reveals otherwise
 eligible isolated organizations, including in the money view. Search, organization
 details and evidence tables remain available for organizations hidden from the
 map. No organization or relationship records are deleted.
+
+Published October 6, 2026 in shared frontend version
+`1704c534-3f22-4d66-886d-905b231a8121`. Fifteen ecosystem tests passed,
+and the deployment's production route smoke checks passed. A headless browser
+check uses saved public evidence to test the default, reveal isolated nodes,
+hide all relationships and reset the map.
+Both LifeTech and MedTech passed: 143 connected organizations appear by default,
+unchecking the option reveals all 570 organizations, disabling all relationship
+kinds leaves zero nodes, and Reset restores the checked option and 143 nodes.
