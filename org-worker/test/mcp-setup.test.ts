@@ -1,3 +1,4 @@
+import {identityProfile} from './helpers/identityProfile';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { app } from '../src/index';
@@ -19,7 +20,7 @@ test('setup status requires a portal administrator even when MCP OAuth is absent
   const originalFetch = globalThis.fetch;
   try {
     let admin = false;
-    globalThis.fetch = async () => Response.json({ id: 'user', is_sysadmin: admin });
+    globalThis.fetch = async () => Response.json(identityProfile({ id: 'user', is_sysadmin: admin }));
     const options = { headers: { authorization: 'Bearer test-token' } };
     assert.equal((await app.request(url, options, env)).status, 403);
     admin = true;

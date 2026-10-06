@@ -1,4 +1,5 @@
 import webpush from "web-push";
+import { accountPushEnabled, notificationPreferences } from './notificationPreferences';
 
 export type PushDeliveryJob = {
   eventId: string;
@@ -7,6 +8,7 @@ export type PushDeliveryJob = {
   title: string;
   body: string;
   deepLink: string;
+  organizationStatusId?: string;
   data?: { notificationId: string; communityId: string; type: string; path: string };
 };
 
@@ -81,10 +83,12 @@ export function matrixJobs(notification: MatrixNotification): { jobs: PushDelive
 
 export async function enqueueUserPush(env: Env, job: PushDeliveryJob): Promise<void> {
   if (!env.PUSH_QUEUE) return;
+  if (job.userId && !await accountPushEnabled(env.DB, job.userId)) return;
   await env.PUSH_QUEUE.send(job);
 }
 
 async function deliverToSubscription(env: Env, job: PushDeliveryJob, subscription: PushSubscriptionRow): Promise<void> {
+  if (!await accountPushEnabled(env.DB, subscription.user_id)) return;
   const now = new Date().toISOString();
   await env.DB.prepare(
     `INSERT OR IGNORE INTO push_deliveries
@@ -129,6 +133,12 @@ export async function consumePushBatch(batch: MessageBatch<PushDeliveryJob>, env
   for (const message of batch.messages) {
     try {
       const job = message.body;
+      if (job.organizationStatusId) {
+        const notice = await env.DB.prepare('SELECT id FROM organization_status_notifications WHERE id=? AND user_id=?')
+          .bind(job.organizationStatusId, job.userId || '').first();
+        const prefs = await notificationPreferences(env.DB, job.userId || '');
+        if (!notice || !prefs.push_enabled || !prefs.organization_status_push) { message.ack(); continue; }
+      }
       if (job.data) {
         const unread = await env.DB.prepare("SELECT id FROM user_notifications WHERE id = ? AND user_id = ? AND community_id = ? AND status = 'unread'")
           .bind(job.data.notificationId, job.userId || '', job.data.communityId).first();

@@ -1,3 +1,4 @@
+import {identityProfile} from './helpers/identityProfile';
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { DatabaseSync, type StatementSync } from "node:sqlite";
@@ -188,10 +189,10 @@ test('membership reconciliation grants only the explicit account after an unchan
   database.database.exec(readFileSync(new URL('../migrations/0017_event_mcp_operations.sql', import.meta.url), 'utf8'));
   await claimOrganization(asD1(database), 'org-1', owner, '2026-10-05T12:00:00Z');
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = async (_url, init) => Response.json({
+  globalThis.fetch = async (_url, init) => Response.json(identityProfile({
     id: new Headers(init?.headers).get('authorization') === 'Bearer owner' ? owner.id : 'website-member',
     email: owner.email, full_name: 'Same person', is_sysadmin: false,
-  });
+  }));
   t.after(() => { globalThis.fetch = originalFetch; });
   const environment = { DB: asD1(database), PIDP_BASE_URL: 'https://id.local.test' } as Env;
   const payload = {user_id: 'website-member', user_name: 'Same person', user_email: owner.email, role: 'administrator'};

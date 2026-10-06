@@ -13,12 +13,13 @@ export function AppUpdatePrompt(props: AppUpdatePromptProps) {
   const notes = update.notes.trim()
 
   return (
-    <div className="app-update-backdrop" role="presentation">
-      <section className="app-update-modal" role="dialog" aria-modal="true" aria-labelledby="app-update-title">
-        <h2 id="app-update-title">Update available</h2>
+    <div className={update.mandatory ? 'app-update-backdrop' : 'app-update-banner'} role="presentation">
+      <section className="app-update-modal" role={update.mandatory ? 'dialog' : 'status'} aria-modal={update.mandatory ? true : undefined} aria-labelledby="app-update-title">
+        <h2 id="app-update-title">{update.mandatory ? 'Update required' : 'A new version is available'}</h2>
         <p className="app-update-summary">
-          Current build: <strong>{update.current.versionName}</strong> ({update.current.buildNumber})<br />
-          Latest build: <strong>{update.latestVersionName}</strong> ({update.latestBuildNumber})
+          {update.target === 'web'
+            ? 'Reload when you’re ready. Save any changes first.'
+            : 'Download the latest app to get the newest improvements.'}
         </p>
         {notes ? <p className="app-update-notes">{notes}</p> : null}
         <div className="app-update-actions">

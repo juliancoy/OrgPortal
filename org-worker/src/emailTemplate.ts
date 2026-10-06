@@ -25,13 +25,17 @@ function mimeBase64(value: string) {
 }
 export function campaignMime(env: Env, campaign: EmailCampaign, recipient: { email: string; name: string; id: string; kind: string }, unsubscribe: string | null) {
   const rendered = renderCampaign(env, campaign, recipient.name, unsubscribe);
-  const boundary = `portal-${crypto.randomUUID()}`;
   const subject = (recipient.kind === 'test' ? '[Test] ' : '') + rendered.subject;
+  return emailMime(campaign.sender_email, recipient, { ...rendered, subject }, unsubscribe);
+}
+export function emailMime(sender: string, recipient: {email: string; id: string}, rendered: {subject: string; text: string; html: string}, unsubscribe: string | null = null) {
+  const boundary = `portal-${crypto.randomUUID()}`;
+  const subject = rendered.subject.replace(/[\r\n\0]/g, ' ').slice(0,240);
   const encodedSubject = btoa(Array.from(new TextEncoder().encode(subject), (byte) => String.fromCharCode(byte)).join(''));
   const headers = [
-    `From: ${campaign.sender_email}`, `To: ${recipient.email}`, `Reply-To: ${campaign.sender_email}`,
+    `From: ${sender}`, `To: ${recipient.email}`, `Reply-To: ${sender}`,
     `Subject: =?UTF-8?B?${encodedSubject}?=`, `Date: ${new Date().toUTCString()}`,
-    `Message-ID: <${recipient.id}@${campaign.sender_email.split('@')[1]}>`, 'MIME-Version: 1.0',
+    `Message-ID: <${recipient.id}@${sender.split('@')[1]}>`, 'MIME-Version: 1.0',
     `Content-Type: multipart/alternative; boundary="${boundary}"`,
   ];
   if (unsubscribe) headers.push(`List-Unsubscribe: <${unsubscribe}>`, 'List-Unsubscribe-Post: List-Unsubscribe=One-Click');

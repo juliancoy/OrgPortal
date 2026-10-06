@@ -1,3 +1,4 @@
+import { EventSlugEditor } from '../../components/EventSlugEditor';
 import { EventVenues, type Venue } from '../../components/EventVenues'
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
@@ -73,6 +74,7 @@ export function OrgEventsPage() {
   const [hostFilter, setHostFilter] = useState<"all" | HostType>("all");
 
   const [title, setTitle] = useState("");
+  const [eventSeries, setEventSeries] = useState("");
   const [description, setDescription] = useState("");
   const [eventDate,setEventDate]=useState("");
   const [location, setLocation] = useState("");
@@ -197,6 +199,7 @@ export function OrgEventsPage() {
         title: title.trim(),
         description: description.trim() || null,
         event_date: eventDate || null,
+        event_series: eventSeries.trim() || undefined,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         location: location.trim() || null,
         starts_at: toIsoDateTime(startsAt),
@@ -467,6 +470,8 @@ export function OrgEventsPage() {
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Title"
         />
+        <label>Event series (optional)<input value={eventSeries} onChange={event => setEventSeries(event.target.value)} placeholder="lifetech-social" pattern="[a-z0-9]+(-[a-z0-9]+)*" /></label>
+        <p className="muted" style={{ margin: 0 }}>Set a series to automatically use the next numbered link, such as lifetech-social-3.</p>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
@@ -633,6 +638,7 @@ export function OrgEventsPage() {
                   {event.description}
                 </div>
               ) : null}
+              {(adminOrgs.some(org => org.id === event.host_org_id) || event.host_user_id === user?.id) ? <EventSlugEditor eventId={event.id} slug={event.slug} onSaved={() => void loadEvents()} /> : null}
               <EventPosterTools slug={event.slug} title={event.title} revision={event.updated_at || JSON.stringify([event.title, event.description, event.social_title, event.social_description, event.starts_at, event.ends_at, event.location])} />
               <details className="portal-card" style={{ padding: "0.75rem" }}>
                 <summary>Social preview</summary>

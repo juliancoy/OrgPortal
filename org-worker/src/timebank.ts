@@ -454,6 +454,9 @@ export async function resolvePortalTenant(db: D1Database, request: Request): Pro
   try {
     const tenant = await db.prepare('SELECT * FROM portal_tenants WHERE hostname = ?').bind(hostname).first<Community & { profile: string; features: string; public_base_url?: string | null; canonical_path_prefix?: string | null; feature_config?: string | null }>();
     if (tenant) return { ...tenant, features: tenantFeatures(tenant.features) };
+    // An attached domain remains authoritative when the slug portal is saved.
+    const attached=await db.prepare("SELECT * FROM portal_tenants WHERE custom_domain_hostname=? AND custom_domain_status='attached'").bind(hostname).first<Community & {profile:string;features:string}>();
+    if(attached)return {...attached,hostname,public_base_url:`https://${hostname}`,canonical_path_prefix:'',features:tenantFeatures(attached.features)};
   } catch {
     // Older local databases may not have the tenant table yet.
   }

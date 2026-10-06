@@ -1,3 +1,4 @@
+import {identityProfile} from './helpers/identityProfile';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { TimebankDatabase } from './helpers/timebankDatabase';
@@ -108,7 +109,7 @@ test('outbox retries queue failures and emits stable, community-aware push paylo
 
 test('inbox requires authentication and listing links reject cross-community reads', async (t) => {
   const database = new TimebankDatabase();t.after(() => database.sqlite.close());
-  t.mock.method(globalThis, 'fetch', async (_input: unknown, init: RequestInit) => Response.json({ id: new Headers(init.headers).get('Authorization')?.replace('Bearer ', ''), full_name: 'Alice' }));
+  t.mock.method(globalThis, 'fetch', async (_input: unknown, init: RequestInit) => Response.json(identityProfile({ id: new Headers(init.headers).get('Authorization')?.replace('Bearer ', ''), full_name: 'Alice' })));
   const env = { DB: database.asD1(), PIDP_BASE_URL: 'https://identity.example.test' };
   const listing = await createTimebankListing(database.asD1(), alice, input(), community);
   const base = 'https://bmoretimebank.codecollective.us/api/timebank';

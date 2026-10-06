@@ -813,19 +813,33 @@ h6 {
 }
 
 .portal-social-login-button {
-  min-height: 56px;
-  padding: 0;
+  min-height: 48px;
+  padding: 12px 16px;
+  border: 1px solid #747775;
+  border-radius: 6px;
+  color: #1f1f1f;
   background: #fff;
+  font-family: Arial, sans-serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  gap: 12px;
 }
 
 .portal-social-login-logo {
-  width: 28px;
-  height: 28px;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
   object-fit: contain;
   display: block;
 }
 
-.portal-social-login-button:hover,
+.portal-social-login-button:hover {
+  color: #1f1f1f;
+  background: #f2f2f2;
+  border-color: #1f1f1f;
+  text-decoration: none;
+}
+
 .portal-identity-provider-link:hover {
   border-color: var(--primary);
   color: var(--primary);
@@ -3503,11 +3517,6 @@ h6 {
   grid-template-columns: minmax(0, 1fr);
   gap: 8px;
 }
-
-.portal-google-login-entry { min-width: 0; width: 100%; }
-.portal-google-login-entry > a { width: 100%; }
-.portal-google-personalized-button { display: flex; justify-content: center; min-height: 40px; }
-.portal-google-personalized-button[hidden] { display: none; }
 
 .portal-auth-idp-link {
   justify-content: center;
@@ -8492,6 +8501,23 @@ textarea:focus {
   }
 }
 
+.app-update-banner {
+  position: fixed;
+  z-index: 1200;
+  bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  right: 1rem;
+  width: min(420px, calc(100vw - 2rem));
+  pointer-events: none;
+}
+
+.app-update-banner .app-update-modal {
+  pointer-events: auto;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 1rem;
+  gap: 0.65rem;
+}
+
 .app-update-backdrop {
   position: fixed;
   inset: 0;
@@ -9559,6 +9585,62 @@ textarea:focus {
 .bio-editor textarea[hidden] { display: none; }
 .bio-editor-preview { min-height: 12rem; padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-solid); }
 .bio-editor-help { font-size: 0.85rem; margin: 0.5rem 0 0; }
+
+.organization-view-indicator { font-size: .8rem; white-space: nowrap; opacity: .85; }
+
+.venue-search form { display: grid; gap: 8px; }
+.venue-search label { font-weight: 700; }
+.venue-search input { width: 100%; min-width: 0; }
+.venue-search-results { display: grid; gap: 6px; max-height: 20rem; overflow-y: auto; padding: 0; margin: 8px 0 0; list-style: none; }
+.venue-search-results a { display: grid; gap: 4px; padding: 10px 12px; color: var(--text-primary); text-decoration: none; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.venue-search-results a:hover { background: var(--primary-bg); }
+.venue-search-results span { color: var(--text-muted); font-size: .85rem; overflow-wrap: anywhere; }
+
+.organization-members { display: grid; gap: 1rem; }
+.organization-members h2 { margin: 0; font-size: 1.25rem; }
+.organization-members-list { display: grid; gap: .5rem; list-style: none; margin: 0; padding: 0; }
+.organization-members-list li { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .75rem; border: 1px solid var(--border); border-radius: 10px; min-width: 0; }
+.organization-members-list li > :first-child { min-width: 0; overflow-wrap: anywhere; }
+.organization-members-list li > :last-child { flex-shrink: 0; }
+.organization-members-list p { margin: .25rem 0 0; }
+.organization-member-search { display: grid; gap: .6rem; }
+.organization-member-search input { width: 100%; min-width: 0; }
+
+.peer-organizations { display: grid; gap: .75rem; }
+.peer-organizations h2, .peer-organizations p { margin: 0; }
+.peer-organizations input { width: 100%; min-width: 0; }
+.peer-organizations-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: .75rem; }
+.peer-organization-card { display: flex; align-items: center; gap: .75rem; padding: .75rem; border: 1px solid var(--border); border-radius: 10px; text-decoration: none; color: var(--text-primary); min-width: 0; }
+.peer-organization-card:hover { background: var(--primary-bg); }
+.peer-organization-card > div { min-width: 0; overflow-wrap: anywhere; }
+.peer-organization-card .peer-organization-image { width: 48px; height: 48px; object-fit: contain; border-radius: 8px; flex-shrink: 0; }
+.peer-organization-card p { margin-top: .25rem; font-size: .85rem; }
+
+.portal-auth-email-link {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-input);
+  border-radius: 6px;
+  padding: 12px 16px;
+  background: transparent;
+  color: var(--text-primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+.portal-auth-email-link:hover { background: var(--surface-input); color: var(--text-primary); text-decoration: none; }
+.portal-auth-intro, .portal-auth-help { margin: 0; color: var(--text-secondary); line-height: 1.5; }
+.portal-auth-help { font-size: .875rem; text-align: center; }
+.portal-auth-provider-stack { gap: 16px; }
+.portal-auth-provider-actions { gap: 12px; }
+.portal-auth-provider-actions > a { width: 100%; box-sizing: border-box; }
+.portal-auth-card a:focus-visible { outline: 3px solid var(--primary); outline-offset: 4px; }
+
+.portal-deployment-switcher { padding: 8px 0; border-top: 1px solid var(--border, #ddd); }
+.portal-deployment-label { display: block; padding: 4px 12px; font-size: 12px; opacity: .75; }
+.portal-deployment-switcher button { display: block; width: 100%; min-height: 44px; text-align: left; }
+.portal-deployment-error { padding: 0 12px; font-size: 13px; color: var(--danger, #b42318); }
 
 .portal-embedded-chat .portal-main { padding: 0; }
 .portal-embedded-chat .portal-container { width: 100%; }

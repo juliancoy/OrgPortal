@@ -25,6 +25,10 @@
     "ADMIN_EMAILS": "",
     "ADMIN_USER_IDS": ""
   },
+  "services": [
+    { "binding": "CHAT_ORGANIZATION_ROOMS", "service": "chat-codecollective", "entrypoint": "OrganizationRooms" },
+    { "binding": "CHAT_SERVICE", "service": "chat-codecollective" }
+  ],
   "d1_databases": [
     {
       "binding": "DB",

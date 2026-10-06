@@ -245,3 +245,29 @@ Both endpoints require a reviewed `confirm: false` preview followed by the same
 request with `confirm: true` and its actor-bound, expiring, one-use `previewId`.
 Changes are audited; intervening event edits invalidate the preview. Unknown
 organization locations and websites remain null.
+
+### Onboarding identity and persistence
+
+PIdP owns identity linking and the shared personal profile. Its authenticated
+`GET /auth/me` response supplies `id = canonical_user_id`, `account_id`, and
+`account_subject`; incomplete identity responses are rejected. Browser and MCP
+organization authorization use the verified canonical person and live OrgPortal
+memberships. OAuth subjects and website credential namespaces remain unchanged.
+
+Onboarding completion and acknowledgements persist in `onboarding_enrollments`
+by tenant and canonical person. Existing source-account progress is combined on
+the next onboarding or task-queue read. Availability keeps the newest saved
+observation for each slot. Duplicate memberships and tasks can be consolidated
+through `/api/identity-membership/:organizationId/preview` and `/apply`, after
+PIdP verifies the linked account and OrgPortal verifies management authority.
+The one-use preview preserves completed work and records an audit event.
+
+Apply PIdP migration 0010 and release PIdP first, then deploy the OrgPortal Worker
+through CodeCollective. Account linking requires authentication to both accounts;
+email matching never establishes identity or authority.
+
+Organization managers can configure onboarding through
+`POST /api/onboarding/settings/preview` and `/apply` with `enabled`, followed by
+the matching `previewId` and `confirm: true`. These operations preserve all other
+tenant settings and write an audit event. Saving a slug portal retains attached
+custom domains and existing onboarding preferences.

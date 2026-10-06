@@ -7,7 +7,7 @@ import { claimOrganization } from '../src/organizationIam';
 const identity={userId:'owner',scopes:['org:portal.read','org:portal.write']};
 test('bulk availability tasks require management, scopes and unchanged one-use preview; active members only, no duplicates',async()=>{
  const db=new TimebankDatabase();
- for(const file of ['0002_org_event_directories.sql','0015_organization_iam.sql','0017_event_mcp_operations.sql','0046_user_tasks.sql'])db.sqlite.exec(readFileSync(new URL(`../migrations/${file}`,import.meta.url),'utf8'));
+ for(const file of ['0002_org_event_directories.sql','0015_organization_iam.sql','0067_pending_organizers.sql','0029_portal_tenant_deployment_model.sql','0051_onboarding.sql','0017_event_mcp_operations.sql','0046_user_tasks.sql'])db.sqlite.exec(readFileSync(new URL(`../migrations/${file}`,import.meta.url),'utf8'));
  const env={DB:db.asD1()} as Env,request=new Request('https://medtech.social/api/org/mcp');
  db.sqlite.exec("INSERT INTO organizations(id,name,slug,tags,city) VALUES ('org','LifeTech','lifetech','[]','Baltimore')");
  await claimOrganization(env.DB,'org',{id:'owner',name:'Owner',email:null,isOperator:false},new Date().toISOString());

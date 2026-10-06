@@ -1,9 +1,9 @@
-import { onboardingEnabled } from './onboarding';
+import { onboardingEnabled, type OnboardingActor } from './onboarding';
 import { accountSelection, saveAccountAvailability, type AvailabilityObservation } from './accountAvailability';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { resolvePortalTenant } from './timebank';
-type Actor = { id: string };
+type Actor = OnboardingActor;
 type Poll = { id: string; tenant_id: string; owner_user_id: string; title: string; timezone: string; slots_json: string; closed: number; created_at: string };
 const reject = (message: string) => { throw new HTTPException(400, { message }); };
 export function validatePoll(value: unknown) {

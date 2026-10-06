@@ -1,3 +1,4 @@
+import {identityProfile} from './helpers/identityProfile';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
@@ -27,7 +28,7 @@ test('public quick search finds organizations beyond the old candidate cap and p
 });
 test('authenticated search covers all organizations while an explicit mine filter stays scoped',async t=>{
  const {sql,env}=fixture();t.after(()=>sql.close());
- const original=globalThis.fetch;globalThis.fetch=async()=>Response.json({id:'local-member',full_name:'Local member',is_sysadmin:false});t.after(()=>{globalThis.fetch=original});
+ const original=globalThis.fetch;globalThis.fetch=async()=>Response.json(identityProfile({id:'local-member',full_name:'Local member',is_sysadmin:false}));t.after(()=>{globalThis.fetch=original});
  for(const mine of [false,true]){
   const response=await app.request(`https://local-portal.test/api/network/orgs?q=TEDCO&limit=5&mine=${mine}`,{headers:{authorization:'Bearer local-fixture'}},env);
   assert.equal(response.status,200);assert.deepEqual((await response.json() as any[]).map(r=>r.id),mine?[]:['tedco']);

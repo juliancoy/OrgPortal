@@ -1,5 +1,5 @@
 import { MemberMeetingsPage } from '../views/MemberMeetingsPage'
-import { resolveOrganizationView, useOrganizationAccess } from '../hooks/useOrganizationView'
+import { resolveOrganizationView, useOrganizationAccess, useOrganizationViewPreference } from '../hooks/useOrganizationView'
 import { NametagsPage } from '../views/NametagsPage'
 import { GovernanceDocumentPage } from '../views/governance/GovernanceDocumentPage'
 import { VenuesPage } from '../views/orgs/VenuesPage'
@@ -38,6 +38,7 @@ import { PublicCalendarPage } from '../views/public/PublicCalendarPage'
 import { PublicEventPage } from '../views/public/PublicEventPage'
 import { EmailCampaignsPage } from '../views/email/EmailCampaignsPage'
 import { EmailPreferencesPage } from '../views/email/EmailPreferencesPage'
+import { NotificationSettingsPage } from '../views/NotificationSettingsPage'
 import { PublicOrganizationsPage } from '../views/public/PublicOrganizationsPage'
 import { GlobalSearchPage } from '../views/public/GlobalSearchPage'
 import { MotionListPage } from '../views/governance/MotionListPage'
@@ -104,9 +105,9 @@ function HomeRoute() {
   const tenant = getDomainTenant()
   const access = useOrganizationAccess(tenant?.home_org_slug)
   const location = useLocation()
+  const requestedView = useOrganizationViewPreference(tenant?.home_org_slug, new URLSearchParams(location.search).get('view'))
   if (isLoading || access.loading) return null
   const profile = getActivePortalProfileConfig()
-  const requestedView = new URLSearchParams(location.search).get('view')
   if (tenant?.home_org_slug && (access.organizer || requestedView)) {
     const view = resolveOrganizationView(requestedView, access.organizer, access.member)
     if (view === 'public') return <TenantHomePage />
@@ -271,6 +272,7 @@ export function createAppRouter() {
           { path: '/legal', element: <TermsPage /> },
           { path: '/email', element: <AdminRoute><EmailCampaignsPage /></AdminRoute> },
           { path: '/email/preferences', element: <AuthenticatedRoute><EmailPreferencesPage /></AuthenticatedRoute> },
+          { path: '/settings/notifications', element: <AuthenticatedRoute><NotificationSettingsPage /></AuthenticatedRoute> },
           { path: '/android/install', element: <AndroidInstallPage /> },
 
           // Canonical user routes

@@ -52,7 +52,23 @@ test('onboarding enrolls once, isolates tenants and users, and requires all step
   assert.equal((Date.parse(calendar.end)-Date.parse(calendar.start))/86400000,7);
   assert.equal((await req('/onboarding/availability','PUT',{timezone:'America/New_York',slots:[new Date(Date.parse(calendar.slots.at(-1))+1800000).toISOString()],reviewed:true})).status,400);
   assert.equal((await req('/onboarding/availability','PUT',{timezone:'America/New_York',slots:[],reviewed:true})).status,200);
-  assert.ok((await (await req('/onboarding')).json() as any).completed_at);
+  const completed:any=await (await req('/onboarding')).json();
+  assert.ok(completed.completed_at);
+  const stored=db.sqlite.prepare('SELECT acknowledgements,availability_saved_at,completed_at FROM onboarding_enrollments WHERE tenant_id=? AND user_id=?').get(completed.tenant_id,'alice')!;
+  assert.equal(stored.completed_at,completed.completed_at);
+  assert.equal(stored.availability_saved_at,completed.availability_saved_at);
+  assert.deepEqual(JSON.parse(stored.acknowledgements as string),completed.acknowledgements);
+  // A fresh API instance restores progress without previous request or browser state.
+  const restarted=new Hono<{Bindings:Env}>();
+  restarted.route('/onboarding',onboardingRoutes(auth));
+  restarted.route('/tasks',userTaskRoutes(auth));
+  const freshRequest=(path:string,user='alice')=>restarted.fetch(new Request(`https://medtech.social${path}`,{headers:{authorization:user}}),env);
+  const restored:any=await (await freshRequest('/onboarding')).json();
+  assert.equal(restored.completed_at,completed.completed_at);
+  assert.equal(restored.availability_saved_at,completed.availability_saved_at);
+  assert.deepEqual(restored.acknowledgements,completed.acknowledgements);
+  assert.equal((await (await freshRequest('/tasks')).json() as any).tasks.length,0);
+  assert.equal((await (await freshRequest('/onboarding','bob')).json() as any).completed_at,null);
   assert.equal((await (await req('/tasks')).json() as any).tasks.length,0);
   const bob:any=await (await req('/onboarding','GET',undefined,'bob')).json();assert.equal(bob.completed_at,null);assert.equal(bob.availability_saved_at,null);
   assert.equal(db.sqlite.prepare("SELECT count(*) n FROM account_availability WHERE user_id='alice' AND available=0").get()!.n,calendar.slots.length);
@@ -114,5 +130,65 @@ test('onboarding availability feeds scheduling polls across DST with private sug
   assert.equal((await req(`/availability/${id}/me`,'PUT',{slots:[]})).status,200);
   assert.equal((await overlap()).counts[future],0);
   assert.deepEqual((await (await req(`/availability/${id}/me`)).json() as {slots:string[]}).slots,[]);
+ }finally{db.sqlite.close()}
+});
+
+ test('LifeTech removes conduct and governance steps, retires their tasks, and preserves confirmations',async()=>{
+ const db=new TimebankDatabase();
+ try {
+  db.sqlite.exec("ALTER TABLE portal_tenants ADD COLUMN feature_config TEXT NOT NULL DEFAULT '{}'");
+  for(const file of ['0042_availability_polls.sql','0046_user_tasks.sql','0047_account_availability.sql','0051_onboarding.sql'])db.sqlite.exec(readFileSync(new URL(`../migrations/${file}`,import.meta.url),'utf8'));
+  db.sqlite.exec(`UPDATE portal_tenants SET hostname='lifetech.fyi',home_org_slug='lifetech',feature_config='{"onboarding":{"enabled":true}}' WHERE hostname='medtech.social'`);
+  const tenant=await resolvePortalTenant(db.asD1(),new Request('https://lifetech.fyi/'));
+  const confirmed='2026-10-03T12:00:00Z';
+  db.sqlite.prepare('INSERT INTO onboarding_enrollments(tenant_id,user_id,start_date,end_date,acknowledgements,availability_saved_at) VALUES (?,?,?,?,?,?)').run(tenant.id,'alice','2026-10-03','2026-11-03',JSON.stringify({constitution:confirmed,participation:confirmed}),confirmed);
+  for(const step of ['communications','meetings'])db.sqlite.prepare("INSERT INTO user_tasks(id,tenant_id,user_id,created_by_user_id,kind,entity_id,title) VALUES (?,?,'alice','alice','personal',?,?)").run(step,tenant.id,`onboarding:v1:${step}`,step);
+  const app=new Hono<{Bindings:Env}>();const auth=async()=>({id:'alice'});
+  app.route('/onboarding',onboardingRoutes(auth));app.route('/tasks',userTaskRoutes(auth));
+  const request=(path:string,method='GET')=>app.fetch(new Request(`https://lifetech.fyi${path}`,{method,headers:{'content-type':'application/json'},body:method==='POST'?JSON.stringify({acknowledged:true}):undefined}),{DB:db.asD1()} as Env);
+  const data:any=await (await request('/onboarding')).json();
+  assert.deepEqual(data.steps.map((step:any)=>step.id),['constitution','participation']);
+  assert.deepEqual(data.acknowledgements,{constitution:confirmed,participation:confirmed});
+  assert.ok(data.completed_at);
+  assert.deepEqual((await (await request('/tasks')).json() as any).tasks,[]);
+  assert.equal(db.sqlite.prepare("SELECT count(*) n FROM user_tasks WHERE entity_id IN ('onboarding:v1:communications','onboarding:v1:meetings')").get()!.n,0);
+  assert.equal((await request('/onboarding/steps/meetings','POST')).status,400);
+ } finally {db.sqlite.close()}
+});
+
+test('verified personal identity restores and merges onboarding and uses the same canonical person for private tasks and poll ownership',async()=>{
+ const db=new TimebankDatabase();
+ try {
+  db.sqlite.exec("ALTER TABLE portal_tenants ADD COLUMN feature_config TEXT NOT NULL DEFAULT '{}'");
+  for(const file of ['0042_availability_polls.sql','0046_user_tasks.sql','0047_account_availability.sql','0051_onboarding.sql'])db.sqlite.exec(readFileSync(new URL(`../migrations/${file}`,import.meta.url),'utf8'));
+  db.sqlite.exec(`UPDATE portal_tenants SET feature_config='{"onboarding":{"enabled":true}}' WHERE hostname='medtech.social'`);
+  const tenant=await resolvePortalTenant(db.asD1(),new Request('https://medtech.social/'));
+  const confirmed='2026-10-03T12:00:00Z';
+  const insert=db.sqlite.prepare('INSERT INTO onboarding_enrollments(tenant_id,user_id,start_date,end_date,acknowledgements,availability_saved_at) VALUES (?,?,?,?,?,?)');
+  insert.run(tenant.id,'owner','2026-10-03','2026-11-03',JSON.stringify({constitution:confirmed}),confirmed);
+  insert.run(tenant.id,'member','2026-10-03','2026-11-03',JSON.stringify({participation:confirmed,communications:confirmed,meetings:confirmed}),null);
+  db.sqlite.prepare("INSERT INTO account_availability(user_id,slot,available,updated_at) VALUES ('owner','2026-10-05T13:00:00.000Z',1,'2026-10-03 12:00:00'),('member','2026-10-05T13:00:00.000Z',0,'2026-10-04 12:00:00')").run();
+  for(const user of ['owner','member'])db.sqlite.prepare("INSERT INTO user_tasks(id,tenant_id,user_id,created_by_user_id,kind,title) VALUES (?,?,?,?,'personal',?)").run(`${user}-task`,tenant.id,user,user,`${user} only`);
+  const auth=async(_env:Env,request:Request)=>{const id=request.headers.get('authorization')!;return {id:id==='member'?'owner':id,account_id:id}};
+  const app=new Hono<{Bindings:Env}>();
+  app.route('/onboarding',onboardingRoutes(auth));app.route('/tasks',userTaskRoutes(auth));app.route('/availability',availabilityRoutes(auth));
+  const req=(path:string,method='GET',body?:unknown,user='member')=>app.fetch(new Request(`https://medtech.social${path}`,{method,headers:{authorization:user,'content-type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)}),{DB:db.asD1()} as Env);
+  const restored:any=await (await req('/onboarding')).json();
+  assert.equal(restored.user_id,'owner');assert.ok(restored.completed_at);
+  assert.equal(Object.keys(restored.acknowledgements).length,4);
+  assert.deepEqual((await (await req('/onboarding','GET',undefined,'owner')).json() as any).acknowledgements,restored.acknowledgements);
+  assert.deepEqual((await (await req('/tasks')).json() as any).tasks.map((t:any)=>t.id),['owner-task']);
+  assert.equal((await req('/tasks/owner-task/complete','POST')).status,200);
+  assert.equal((await (await req('/onboarding','GET',undefined,'stranger')).json() as any).completed_at,null);
+  const calendar:any=await (await req('/onboarding/availability?timezone=America%2FNew_York')).json();
+  assert.ok(!calendar.selected.includes('2026-10-05T13:00:00.000Z'));
+  assert.equal((await req('/onboarding/availability','PUT',{timezone:'America/New_York',slots:['2026-10-05T13:00:00.000Z'],reviewed:true})).status,200);
+  const again:any=await (await req('/onboarding/availability?timezone=America%2FNew_York')).json();
+  assert.ok(again.selected.includes('2026-10-05T13:00:00.000Z'));
+  const ownerWeek:any=await (await req('/onboarding/availability?timezone=America%2FNew_York','GET',undefined,'owner')).json();
+  assert.deepEqual(ownerWeek.selected,again.selected);
+  assert.equal((await (await req('/onboarding')).json() as any).completed_at,restored.completed_at);
+  const poll:any=await (await req('/availability','POST',{title:'Owner poll',timezone:'UTC',slots:['2026-10-05T13:00:00.000Z']},'owner')).json();
+  assert.equal((await req(`/availability/${poll.id}`,'PATCH',{closed:true})).status,200);
  }finally{db.sqlite.close()}
 });

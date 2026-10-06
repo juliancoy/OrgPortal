@@ -58,7 +58,6 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null)
 const NATIVE_TOKEN_STORAGE_KEY = 'pidp.native.token'
 const BROWSER_TOKEN_STORAGE_KEY = 'orgportal.auth.accessToken'
-const UPDATE_DISMISS_STORAGE_KEY = 'orgportal.update.dismissed'
 
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext)
@@ -124,6 +123,7 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
   const lastSessionHydratedAtRef = useRef(0)
   const [showMigration, setShowMigration] = useState(false)
   const [pendingMigration, setPendingMigration] = useState<{guestId: string, userId: string, displayName: string} | null>(null)
+  const dismissedUpdateRef = useRef<string | null>(null)
   const [availableUpdate, setAvailableUpdate] = useState<AvailableUpdate | null>(null)
   const [updateActionBusy, setUpdateActionBusy] = useState(false)
 
@@ -156,14 +156,7 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
 
   const isDismissedUpdate = useCallback((update: AvailableUpdate): boolean => {
     if (update.mandatory) return false
-    const raw = localStorage.getItem(UPDATE_DISMISS_STORAGE_KEY)
-    if (!raw) return false
-    try {
-      const parsed = JSON.parse(raw) as { target?: string; buildNumber?: number }
-      return parsed.target === update.target && parsed.buildNumber === update.latestBuildNumber
-    } catch {
-      return false
-    }
+    return dismissedUpdateRef.current === `${update.target}:${update.latestBuildNumber}`
   }, [])
 
   useEffect(() => {
@@ -182,6 +175,10 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
       setAvailableUpdate(available)
     }
 
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void runUpdateCheck()
+    }
+    document.addEventListener('visibilitychange', onVisible)
     void runUpdateCheck()
     intervalId = setInterval(() => {
       void runUpdateCheck()
@@ -203,6 +200,7 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
 
     return () => {
       cancelled = true
+      document.removeEventListener('visibilitychange', onVisible)
       if (intervalId) clearInterval(intervalId)
       if (appStateListener) {
         void appStateListener.remove()
@@ -553,10 +551,7 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
 
   const dismissAvailableUpdate = useCallback(() => {
     if (!availableUpdate || availableUpdate.mandatory) return
-    localStorage.setItem(
-      UPDATE_DISMISS_STORAGE_KEY,
-      JSON.stringify({ target: availableUpdate.target, buildNumber: availableUpdate.latestBuildNumber }),
-    )
+    dismissedUpdateRef.current = `${availableUpdate.target}:${availableUpdate.latestBuildNumber}`
     setAvailableUpdate(null)
   }, [availableUpdate])
 

@@ -1,3 +1,4 @@
+import {identityProfile} from './helpers/identityProfile';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { DatabaseSync, type StatementSync } from 'node:sqlite';
@@ -44,7 +45,7 @@ function setup(t: TestContext) {
 function mockIdentity(url: string, options?: RequestInit) {
   if (!url.startsWith('https://identity.test/')) return null;
   const user = new Headers(options?.headers).get('Authorization')?.replace('Bearer ', '');
-  return Response.json({ id: user, email: user === 'admin' ? 'julian@codecollective.us' : `${user}@example.test`, full_name: 'Julian', is_admin: user === 'admin' || user === 'other-admin' });
+  return Response.json(identityProfile({ id: user, email: user === 'admin' ? 'julian@codecollective.us' : `${user}@example.test`, full_name: 'Julian', is_admin: user === 'admin' || user === 'other-admin' }));
 }
 function network(t: TestContext, gmail?: (options: RequestInit) => Promise<Response>) {
   t.mock.method(globalThis, 'fetch', async (input: string | URL | Request, options?: RequestInit) => {

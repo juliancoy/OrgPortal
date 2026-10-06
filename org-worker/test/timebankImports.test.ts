@@ -1,3 +1,4 @@
+import {identityProfile} from './helpers/identityProfile';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -110,7 +111,7 @@ test('imported board includes only advertised offers/requests and never exposes 
 });
 test('HTTP import endpoints require authentication, enforce admin review and reject malformed claims',async()=>{
  const {db,d1,snapshot,execute}=fixture();await loadSnapshot(snapshot,execute);
- const original=globalThis.fetch;globalThis.fetch=async()=>Response.json({id:'bob',full_name:'Bob',email:bob.email});
+ const original=globalThis.fetch;globalThis.fetch=async()=>Response.json(identityProfile({id:'bob',full_name:'Bob',email:bob.email}));
  const env={DB:d1,PIDP_BASE_URL:'https://identity.example.test'};const auth={Authorization:'Bearer bob','X-Forwarded-Host':'bmoretimebank.codecollective.us'};
  try {
   for(const path of ['/accounts','/me','/review']) assert.equal((await app.request('http://localhost/api/timebank/imports'+path,{},env)).status,401);

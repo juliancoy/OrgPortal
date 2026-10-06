@@ -1,6 +1,7 @@
-import { OrganizationMembers } from '../../components/OrganizationMembers'
 import { EmbeddedOrganizationChat } from '../../components/EmbeddedOrganizationChat'
-import { resolveOrganizationView } from '../../hooks/useOrganizationView'
+import { PeerOrganizations } from '../../components/PeerOrganizations'
+import { OrganizationMembers } from '../../components/OrganizationMembers'
+import { resolveOrganizationView, useOrganizationViewPreference } from '../../hooks/useOrganizationView'
 import { OrganizationPortalSections } from '../../components/OrganizationPortalSections'
 import { OrganizationBrandGuide } from '../../components/OrganizationBrandGuide'
 import { getDomainTenant } from '../../../config/timebankCommunity'
@@ -8,27 +9,17 @@ import { OrganizationSupport } from '../../components/OrganizationSupport'
 import { OrganizationTools } from '../../components/OrganizationTools'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { ClientEvent, EventType, RoomEvent } from 'matrix-js-sdk'
 import { Pencil, X } from 'lucide-react'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
-import type { ChatMessage } from '../../../application/ports/ChatService'
-import { useAuth, useServices } from '../../../app/AppProviders'
-import { bootstrapMatrixSessionFromOrg } from '../../../chat/bootstrapSession'
+import { useAuth } from '../../../app/AppProviders'
 import { PIDP_BASE_URL, pidpAppLoginUrl, pidpUrl } from '../../../config/pidp'
 import { OrgImage } from '../../components/media/OrgImage'
 import { ImageEditorModal } from '../../components/media/ImageEditorModal'
 import { resolveSignedS3UploadUrl } from '../../../infrastructure/auth/avatarUpload'
 import { toUserFacingErrorMessage } from '../../../infrastructure/http/userFacingError'
-import {
-  readCachedOrgChatFeed,
-  readCachedRoomMessages,
-  writeCachedOrgChatFeed,
-  writeCachedRoomMessages,
-} from '../../../infrastructure/utils/chatWindowCache'
 
 const ORG_API_BASE = '/api/org'
 const ORG_PLACEHOLDER_SRC = '/images/org-placeholder.svg'
-const QUICK_REACTIONS = ['👍', '❤️', '🔥', '🎉']
 
 function orgUrl(path: string) {
   if (!path.startsWith('/')) return `${ORG_API_BASE}/${path}`
@@ -132,32 +123,6 @@ type PublicOrgAdmin = {
   role: string
 }
 
-type PublicOrgChatMessage = {
-  event_id: string
-  sender?: string | null
-  body: string
-  sent_at?: string | null
-}
-
-type PublicOrgChatRoomFeed = {
-  key: 'public_chat' | 'general' | 'announcements' | string
-  label: string
-  room_id?: string | null
-  room_alias?: string | null
-  room_name?: string | null
-  messages: PublicOrgChatMessage[]
-}
-
-type PublicOrgChatFeed = {
-  organization_slug: string
-  rooms: PublicOrgChatRoomFeed[]
-}
-
-type MatrixEventedClient = {
-  on: (event: string, listener: (...args: unknown[]) => void) => void
-  off: (event: string, listener: (...args: unknown[]) => void) => void
-}
-
 type MyOrganization = {
   id: string
   name: string
@@ -195,28 +160,9 @@ function normalizeDomain(value: string) {
   return value.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '')
 }
 
-function messageAuthorLabel(message: ChatMessage, myUserId: string | null): string {
-  if (myUserId && message.sender === myUserId) return 'You'
-  if (message.senderDisplayName?.trim()) return message.senderDisplayName.trim()
-  const sender = String(message.sender || 'unknown')
-  const parts = sender.split(':')[0].split('@')
-  return parts[1] || sender
-}
-
-function messageAuthorInitial(message: ChatMessage, myUserId: string | null): string {
-  const label = messageAuthorLabel(message, myUserId).trim()
-  return (label[0] || '?').toUpperCase()
-}
-
-function reactionOwnerText(reaction: { key?: string; count?: number; users?: Array<{ user_name?: string | null; user_id: string }> }) {
-  const names = (reaction.users || []).map((owner) => owner.user_name?.trim() || owner.user_id).filter(Boolean)
-  return names.length ? names.join(', ') : 'No reactions yet'
-}
-
 export function PublicAdminPage() {
   const navigate = useNavigate()
   const { token } = useAuth()
-  const { chatService } = useServices()
   const { handle } = useParams()
   const [searchParams] = useSearchParams()
   const [org, setOrg] = useState<PublicOrganization | null>(null)
@@ -224,8 +170,6 @@ export function PublicAdminPage() {
   const [eventsLoading, setEventsLoading] = useState(false)
   const [admins, setAdmins] = useState<PublicOrgAdmin[]>([])
   const [adminsLoading, setAdminsLoading] = useState(false)
-  const [publicChatFeed, setPublicChatFeed] = useState<PublicOrgChatFeed | null>(null)
-  const [chatFeedLoading, setChatFeedLoading] = useState(false)
   const [status, setStatus] = useState<string>('Loading organization…')
   const [claimStatus, setClaimStatus] = useState<string | null>(null)
   const [feedbackRating, setFeedbackRating] = useState<FeedbackRating>('neutral')
@@ -269,43 +213,12 @@ export function PublicAdminPage() {
   const organizationEditorRef = useRef<HTMLDivElement | null>(null)
   const [showImageEditor, setShowImageEditor] = useState(false)
   const [editorSource, setEditorSource] = useState<string | null>(null)
-  const [generalLiveMessages, setGeneralLiveMessages] = useState<ChatMessage[]>([])
-  const [generalChatStatus, setGeneralChatStatus] = useState<string | null>(null)
-  const [generalDraft, setGeneralDraft] = useState('')
-  const [sendingGeneral, setSendingGeneral] = useState(false)
-  const [canPostGeneral, setCanPostGeneral] = useState(false)
-  const [generalSessionReady, setGeneralSessionReady] = useState(false)
-  const [generalLiveEnabled, setGeneralLiveEnabled] = useState(false)
-  const [myUserId, setMyUserId] = useState<string | null>(null)
-  const [openGeneralMenuMessageId, setOpenGeneralMenuMessageId] = useState<string | null>(null)
-  const [editingGeneralMessageId, setEditingGeneralMessageId] = useState<string | null>(null)
-  const [generalEditDraft, setGeneralEditDraft] = useState('')
-  const [generalActionPending, setGeneralActionPending] = useState(false)
   const hasExistingAdmins = admins.some((admin) => admin.role === 'administrator' || admin.role === 'owner')
   const canManageCurrentOrg = myAdminOrgs.some((item) => item.id === org?.id)
-  const organizationView = resolveOrganizationView(searchParams.get('view'), canManageCurrentOrg, membership?.status === 'active')
+  const requestedView = useOrganizationViewPreference(org?.slug, searchParams.get('view'))
+  const organizationView = resolveOrganizationView(requestedView, canManageCurrentOrg, membership?.status === 'active')
   const isOrganizerView = canManageCurrentOrg && organizationView === 'organizers'
   const claimActionLabel = hasExistingAdmins ? 'Challenge Ownership' : 'Claim This Organization'
-  const generalRoom = useMemo(
-    () => (publicChatFeed?.rooms || []).find((room) => room.key === 'public_chat' || room.key === 'general') || null,
-    [publicChatFeed],
-  )
-  const announcementsRoom = useMemo(
-    () => (publicChatFeed?.rooms || []).find((room) => room.key === 'announcements') || null,
-    [publicChatFeed],
-  )
-  const fallbackGeneralMessages = useMemo<ChatMessage[]>(
-    () =>
-      (generalRoom?.messages || []).map((message) => ({
-        id: message.event_id,
-        sender: message.sender || 'unknown',
-        body: message.body,
-        ts: message.sent_at ? new Date(message.sent_at).getTime() : Date.now(),
-      })),
-    [generalRoom],
-  )
-  const renderedGeneralMessages = generalLiveMessages.length > 0 ? generalLiveMessages : fallbackGeneralMessages
-
   useEffect(() => {
     if (!handle) return
     const canonicalUrl = currentOrgUrl(handle)
@@ -349,14 +262,12 @@ export function PublicAdminPage() {
         setPortalImageDraft(orgData.image_url || '')
         setEvents([])
         setAdmins([])
-        setPublicChatFeed(null)
         setStatus('')
       })
       .catch((err) => {
         setOrg(null)
         setEvents([])
         setAdmins([])
-        setPublicChatFeed(null)
         setStatus(toUserFacingErrorMessage(err, 'Organization unavailable'))
       })
   }, [handle, navigate])
@@ -364,13 +275,8 @@ export function PublicAdminPage() {
   useEffect(() => {
     if (!org?.slug) return
     let cancelled = false
-    const cachedFeed = readCachedOrgChatFeed<PublicOrgChatFeed>(org.slug)
-    if (cachedFeed?.rooms?.length) {
-      setPublicChatFeed(cachedFeed)
-    }
     setEventsLoading(true)
     setAdminsLoading(true)
-    setChatFeedLoading(true)
     Promise.all([
       fetch(orgUrl(`/api/network/orgs/public/${encodeURIComponent(org.slug)}/events?upcoming_only=false&limit=60`)).then(
         async (resp) => {
@@ -382,25 +288,16 @@ export function PublicAdminPage() {
         if (!resp.ok) return []
         return (await resp.json()) as PublicOrgAdmin[]
       }),
-      fetch(orgUrl(`/api/network/orgs/public/${encodeURIComponent(org.slug)}/chat-feed`)).then(async (resp) => {
-        if (!resp.ok) return null
-        return (await resp.json()) as PublicOrgChatFeed
-      }),
     ])
-      .then(([eventData, adminData, chatFeedData]) => {
+      .then(([eventData, adminData]) => {
         if (cancelled) return
         setEvents(Array.isArray(eventData) ? eventData : [])
         setAdmins(Array.isArray(adminData) ? adminData : [])
-        setPublicChatFeed(chatFeedData)
-        if (chatFeedData?.rooms?.length) {
-          writeCachedOrgChatFeed(org.slug, chatFeedData)
-        }
       })
       .finally(() => {
         if (cancelled) return
         setEventsLoading(false)
         setAdminsLoading(false)
-        setChatFeedLoading(false)
       })
     return () => {
       cancelled = true
@@ -576,125 +473,6 @@ export function PublicAdminPage() {
     }
   }, [canManageCurrentOrg, org?.id, org?.image_url, org?.name, org?.slug, org?.description, token])
 
-  useEffect(() => {
-    if (!org?.slug) return
-    let cancelled = false
-    const cachedFeed = readCachedOrgChatFeed<PublicOrgChatFeed>(org.slug)
-    if (cachedFeed?.rooms?.length) {
-      setPublicChatFeed((prev) => (prev?.rooms?.length ? prev : cachedFeed))
-    }
-    const refresh = () => {
-      fetch(orgUrl(`/api/network/orgs/public/${encodeURIComponent(org.slug)}/chat-feed`))
-        .then(async (resp) => {
-          if (!resp.ok) return null
-          return (await resp.json()) as PublicOrgChatFeed
-        })
-        .then((payload) => {
-          if (cancelled || !payload) return
-          setPublicChatFeed(payload)
-          if (payload.rooms?.length) {
-            writeCachedOrgChatFeed(org.slug, payload)
-          }
-        })
-        .catch(() => {})
-    }
-    refresh()
-    const timer = window.setInterval(refresh, 15000)
-    return () => {
-      cancelled = true
-      window.clearInterval(timer)
-    }
-  }, [org?.slug])
-
-  useEffect(() => {
-    const roomId = generalRoom?.room_id || ''
-    setCanPostGeneral(Boolean(token && roomId))
-    if (!token) setMyUserId(null)
-    setOpenGeneralMenuMessageId(null)
-    setEditingGeneralMessageId(null)
-    setGeneralEditDraft('')
-  }, [token, generalRoom?.room_id])
-
-  useEffect(() => {
-    // Public Chat is writable by all signed-in users.
-    if (token && generalRoom?.room_id) setGeneralLiveEnabled(true)
-  }, [token, generalRoom?.room_id])
-
-  useEffect(() => {
-    const activeToken = (token || '').trim()
-    const roomId = generalRoom?.room_id || ''
-    let cancelled = false
-    setGeneralSessionReady(false)
-    if (roomId) {
-      const cachedMessages = readCachedRoomMessages(roomId)
-      setGeneralLiveMessages(cachedMessages)
-    } else {
-      setGeneralLiveMessages([])
-    }
-    if (!generalLiveEnabled || !activeToken || !roomId) return
-
-    async function initGeneralLiveChat() {
-      try {
-        setGeneralChatStatus('Connecting to live chat…')
-        const session = await bootstrapMatrixSessionFromOrg(activeToken)
-        const client = await chatService.start(session)
-        await chatService.verifySession()
-        await chatService.joinRoom(roomId)
-        if (cancelled) return
-        setMyUserId(client.getUserId())
-        setGeneralSessionReady(true)
-        setGeneralChatStatus(null)
-        const initialMessages = chatService.listMessages(roomId)
-        setGeneralLiveMessages(initialMessages)
-        writeCachedRoomMessages(roomId, initialMessages)
-
-        const refreshMessages = () => {
-          if (cancelled) return
-          const nextMessages = chatService.listMessages(roomId)
-          setGeneralLiveMessages(nextMessages)
-          writeCachedRoomMessages(roomId, nextMessages)
-        }
-        const onTimeline = (event: unknown, room: { roomId: string } | undefined, toStartOfTimeline?: boolean) => {
-          if (toStartOfTimeline) return
-          const matrixEvent = event as { getType?: () => string }
-          if (matrixEvent.getType?.() !== EventType.RoomMessage) return
-          if (!room || room.roomId !== roomId) return
-          refreshMessages()
-        }
-        const onSync = () => {
-          refreshMessages()
-        }
-        const eventedClient = client as unknown as MatrixEventedClient
-        const timelineListener = onTimeline as (...args: unknown[]) => void
-        eventedClient.on(RoomEvent.Timeline, timelineListener)
-        eventedClient.on(ClientEvent.Sync, onSync)
-
-        return () => {
-          eventedClient.off(RoomEvent.Timeline, timelineListener)
-          eventedClient.off(ClientEvent.Sync, onSync)
-        }
-      } catch (err) {
-        if (cancelled) return
-        setGeneralSessionReady(false)
-        setGeneralChatStatus(toUserFacingErrorMessage(err, 'Live chat unavailable'))
-      }
-      return undefined
-    }
-
-    let cleanupListeners: (() => void) | undefined
-    initGeneralLiveChat()
-      .then((cleanup) => {
-        cleanupListeners = cleanup
-      })
-      .catch(() => {})
-
-    return () => {
-      cancelled = true
-      if (cleanupListeners) cleanupListeners()
-      chatService.stop()
-    }
-  }, [generalLiveEnabled, token, generalRoom?.room_id, chatService])
-
   const jsonLd = useMemo(() => {
     if (!org) return null
     return [
@@ -737,19 +515,6 @@ export function PublicAdminPage() {
     if (!jsonLd) return
     upsertJsonLd('org-profile', jsonLd)
   }, [jsonLd])
-
-  useEffect(() => {
-    if (!openGeneralMenuMessageId) return
-    const onMouseDown = (event: MouseEvent) => {
-      const target = event.target as HTMLElement | null
-      if (target?.closest('.portal-chat-card-menu')) return
-      setOpenGeneralMenuMessageId(null)
-    }
-    document.addEventListener('mousedown', onMouseDown)
-    return () => {
-      document.removeEventListener('mousedown', onMouseDown)
-    }
-  }, [openGeneralMenuMessageId])
 
   async function claimOrganizationBySlug() {
     if (!handle || !token || !org) {
@@ -800,7 +565,12 @@ export function PublicAdminPage() {
         const text = await resp.text().catch(() => '')
         throw new Error(text || `Claim failed (${resp.status})`)
       }
-      setClaimStatus('Organization claimed. You are now its owner.')
+      const claimed = await resp.json() as PublicOrganization & MyOrganization
+      setOrg(claimed)
+      setMyAdminOrgs(previous => [...previous.filter(item => item.id !== claimed.id), claimed])
+      setMembership({ organization_id: claimed.id, role: 'owner', status: 'active', membership_count: claimed.membership_count || 1 })
+      window.dispatchEvent(new Event('organization-access-change'))
+      setClaimStatus('Organization claimed. You are now an organizer and its owner.')
       const [freshOrgResp, freshAdminsResp] = await Promise.all([
         fetch(orgUrl(`/api/network/orgs/public/${encodeURIComponent(handle)}`)),
         fetch(orgUrl(`/api/network/orgs/public/${encodeURIComponent(handle)}/admins`)),
@@ -1188,88 +958,6 @@ export function PublicAdminPage() {
     }
   }
 
-  async function sendGeneralMessage() {
-    const body = generalDraft.trim()
-    if (!generalRoom?.room_id || !body || !canPostGeneral || !generalSessionReady) return
-    try {
-      setSendingGeneral(true)
-      setGeneralChatStatus(null)
-      await chatService.sendTextMessage(generalRoom.room_id, body)
-      setGeneralDraft('')
-      const nextMessages = chatService.listMessages(generalRoom.room_id)
-      setGeneralLiveMessages(nextMessages)
-      writeCachedRoomMessages(generalRoom.room_id, nextMessages)
-    } catch (err) {
-      setGeneralChatStatus(toUserFacingErrorMessage(err, 'Failed to send message'))
-    } finally {
-      setSendingGeneral(false)
-    }
-  }
-
-  function startGeneralEdit(message: ChatMessage) {
-    if ((message.messageType ?? 'text') !== 'text') return
-    setEditingGeneralMessageId(message.id)
-    setGeneralEditDraft(message.body)
-    setOpenGeneralMenuMessageId(null)
-  }
-
-  function cancelGeneralEdit() {
-    setEditingGeneralMessageId(null)
-    setGeneralEditDraft('')
-  }
-
-  async function saveGeneralEdit() {
-    const body = generalEditDraft.trim()
-    if (!generalRoom?.room_id || !editingGeneralMessageId || !body || !generalSessionReady) return
-    try {
-      setGeneralActionPending(true)
-      setGeneralChatStatus(null)
-      await chatService.editMessage(generalRoom.room_id, editingGeneralMessageId, body)
-      const nextMessages = chatService.listMessages(generalRoom.room_id)
-      setGeneralLiveMessages(nextMessages)
-      writeCachedRoomMessages(generalRoom.room_id, nextMessages)
-      cancelGeneralEdit()
-    } catch (err) {
-      setGeneralChatStatus(toUserFacingErrorMessage(err, 'Failed to edit message'))
-    } finally {
-      setGeneralActionPending(false)
-    }
-  }
-
-  async function deleteGeneralMessage(messageId: string) {
-    if (!generalRoom?.room_id || !generalSessionReady) return
-    try {
-      setGeneralActionPending(true)
-      setGeneralChatStatus(null)
-      await chatService.deleteMessage(generalRoom.room_id, messageId)
-      setOpenGeneralMenuMessageId(null)
-      const nextMessages = chatService.listMessages(generalRoom.room_id)
-      setGeneralLiveMessages(nextMessages)
-      writeCachedRoomMessages(generalRoom.room_id, nextMessages)
-    } catch (err) {
-      setGeneralChatStatus(toUserFacingErrorMessage(err, 'Failed to delete message'))
-    } finally {
-      setGeneralActionPending(false)
-    }
-  }
-
-  async function reactToGeneralMessage(messageId: string, emoji: string) {
-    if (!generalRoom?.room_id || !generalSessionReady) return
-    try {
-      setGeneralActionPending(true)
-      setGeneralChatStatus(null)
-      await chatService.sendReaction(generalRoom.room_id, messageId, emoji)
-      setOpenGeneralMenuMessageId(null)
-      const nextMessages = chatService.listMessages(generalRoom.room_id)
-      setGeneralLiveMessages(nextMessages)
-      writeCachedRoomMessages(generalRoom.room_id, nextMessages)
-    } catch (err) {
-      setGeneralChatStatus(toUserFacingErrorMessage(err, 'Failed to send reaction'))
-    } finally {
-      setGeneralActionPending(false)
-    }
-  }
-
   if (!org) {
     return (
       <section className="panel">
@@ -1289,14 +977,9 @@ export function PublicAdminPage() {
       const eventTime = new Date(event.starts_at).getTime()
       return Number.isNaN(eventTime) || eventTime >= Date.now() - 1000 * 60 * 60 * 24
     })
+    .sort((a, b) => (Date.parse(a.starts_at || '') || Infinity) - (Date.parse(b.starts_at || '') || Infinity))
     .slice(0, 3)
-  const featuredEvent = upcomingEvents[0]
   const visibleEvents = upcomingEvents.length ? upcomingEvents : events.slice(0, 3)
-  const hasPublicChatContent = Boolean(
-    publicChatFeed?.rooms?.some((room) => room.room_id || room.messages.length > 0),
-  )
-  const showChatColumn = Boolean(token || hasPublicChatContent)
-
   function openImageEditor() {
     if (!canEditOrgImage) return
     setEditorSource(heroImageSource)
@@ -1313,7 +996,7 @@ export function PublicAdminPage() {
 
   return (
     <section className="panel portal-org-page">
-      <div className={`portal-org-layout${showChatColumn ? '' : ' portal-org-layout-single'}`}>
+      <div className={`portal-org-layout${org.claimed_by_user_id ? '' : ' portal-org-layout-single'}`}>
         <div className="portal-org-main-column">
           <div className="portal-org-hero">
             <div className="portal-org-hero-copy">
@@ -1326,15 +1009,6 @@ export function PublicAdminPage() {
               </div>
               {org.description ? <p>{org.description}</p> : null}
               <div className="portal-org-actions" aria-label={`${org.name} actions`}>
-                {featuredEvent ? (
-                  <Link className="btn-primary" to={`/events/${featuredEvent.slug}`}>
-                    View Next Event
-                  </Link>
-                ) : (
-                  <Link className="btn-primary" to="/events">
-                    Browse Events
-                  </Link>
-                )}
                 {token ? (
                   <Link className="btn-secondary" to={`/chat?start=group&org=${encodeURIComponent(org.slug)}`}>
                     Message Group
@@ -1371,6 +1045,100 @@ export function PublicAdminPage() {
               />
             </button>
           </div>
+          <div className="portal-card portal-org-events-card">
+            <div className="portal-org-events-heading">
+              <div>
+                <p className="tenant-home-eyebrow">{org.name}</p>
+                <h2>{upcomingEvents.length ? 'Upcoming Events' : 'Events'}</h2>
+              </div>
+              <Link to="/events">View all events</Link>
+            </div>
+            {eventsLoading ? (
+              <p className="muted" style={{ margin: 0 }}>
+                Loading events…
+              </p>
+            ) : visibleEvents.length === 0 ? (
+              <p className="muted" style={{ margin: 0 }}>
+                No hosted events listed.
+              </p>
+            ) : (
+              <div className="portal-org-events-grid">
+                {visibleEvents.map((event) => (
+                  <article key={event.id} className="portal-org-event-card">
+                    {event.image_url ? (
+                      <img
+                        src={event.image_url}
+                        alt={event.title}
+
+                      />
+                    ) : null}
+                    <Link to={`/events/${event.slug}`}>
+                      {event.title}
+                    </Link>
+                    <span className="muted">{formatDate(event.starts_at)}{event.location ? ` • ${event.location}` : ''}</span>
+                    {(event.media || []).length ? (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(86px, 1fr))', gap: '0.45rem', marginTop: '0.35rem' }}>
+                        {(event.media || []).map((item) => (
+                          <figure key={item.id} style={{ margin: 0, display: 'grid', gap: '0.25rem' }}>
+                            <img
+                              src={item.url}
+                              alt={item.alt || item.label}
+                              style={{ width: '100%', aspectRatio: '3 / 4', objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }}
+                            />
+                            <figcaption className="muted" style={{ fontSize: '0.78rem' }}>{item.label}</figcaption>
+                            {adminView && canManageCurrentOrg ? (
+                              <button
+                                type="button"
+                                className="btn-secondary"
+                                disabled={eventMediaPending[event.id]}
+                                onClick={() => void saveEventMediaList(event, (event.media || []).filter((candidate) => candidate.id !== item.id))}
+                              >
+                                Remove
+                              </button>
+                            ) : null}
+                          </figure>
+                        ))}
+                      </div>
+                    ) : null}
+                    {adminView && canManageCurrentOrg ? (
+                      <div style={{ display: 'grid', gap: '0.45rem', marginTop: '0.45rem', paddingTop: '0.45rem', borderTop: '1px solid var(--border)' }}>
+                        <label className="muted" htmlFor={`event-media-upload-${event.id}`}>Upload event image</label>
+                        <input
+                          id={`event-media-upload-${event.id}`}
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/gif"
+                          disabled={eventMediaPending[event.id]}
+                          onChange={(e) => {
+                            const file = e.currentTarget.files?.[0] || null
+                            void uploadEventMediaFile(event, file)
+                            e.currentTarget.value = ''
+                          }}
+                        />
+                        <label className="muted" htmlFor={`event-media-url-${event.id}`}>Or attach hosted image URL</label>
+                        <input
+                          id={`event-media-url-${event.id}`}
+                          value={eventMediaUrlDrafts[event.id] || ''}
+                          onChange={(e) => setEventMediaUrlDrafts((prev) => ({ ...prev, [event.id]: e.target.value }))}
+                          placeholder="https://example.com/menu.jpg"
+                        />
+                        <input
+                          value={eventMediaLabelDrafts[event.id] || ''}
+                          onChange={(e) => setEventMediaLabelDrafts((prev) => ({ ...prev, [event.id]: e.target.value }))}
+                          placeholder="Menu label"
+                        />
+                        <button type="button" disabled={eventMediaPending[event.id]} onClick={() => void addEventMediaUrl(event)}>
+                          {eventMediaPending[event.id] ? 'Saving…' : 'Attach Image URL'}
+                        </button>
+                        {eventMediaStatus[event.id] ? <p className="muted" role="status" style={{ margin: 0 }}>{eventMediaStatus[event.id]}</p> : null}
+                      </div>
+                    ) : null}
+                  </article>
+                ))}
+              </div>
+            )}
+          </div>
+
+
           {(organizationView === 'members' || isOrganizerView) && <OrganizationTools />}
           {isOrganizerView && <>
           <OrganizationPortalSections
@@ -1398,10 +1166,6 @@ export function PublicAdminPage() {
           ) : null}
           <div className="portal-card portal-org-stats-card" style={{ display: 'grid', gap: '0.8rem' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.6rem' }}>
-              <div>
-                <strong>{org.membership_count || 0}</strong>
-                <p className="muted" style={{ margin: 0 }}>Community members</p>
-              </div>
               <div>
                 <strong>{org.upcoming_events_count}</strong>
                 <p className="muted" style={{ margin: 0 }}>Upcoming events</p>
@@ -1435,6 +1199,15 @@ export function PublicAdminPage() {
             ) : null}
             {membershipStatus ? <p className="muted" role="status" style={{ margin: 0 }}>{membershipStatus}</p> : null}
           </div>
+          <OrganizationMembers
+            key={org.id}
+            organizationId={org.id}
+            name={org.name}
+            canRead={Boolean(token && (canManageCurrentOrg || membership?.status === 'active'))}
+            canManage={canManageCurrentOrg}
+            membershipCount={org.membership_count || 0}
+          />
+
           {token ? (
             <div className="portal-card" style={{ display: 'grid', gap: '0.65rem' }}>
             <div>
@@ -1532,6 +1305,13 @@ export function PublicAdminPage() {
             <p className="muted" style={{ margin: 0 }}>
               You already administer this organization.
             </p>
+          ) : !hasExistingAdmins ? (
+            <div>
+              <a className="btn-secondary" href={pidpAppLoginUrl(`/orgs/${encodeURIComponent(org.slug)}`)}>
+                Sign in to claim this organization
+              </a>
+              <p className="muted">Claim this organization to become its organizer and manage its profile, members, and events.</p>
+            </div>
           ) : null}
           {claimStatus ? (
             <p className="muted" role="status" style={{ margin: 0 }}>
@@ -1561,106 +1341,9 @@ export function PublicAdminPage() {
             </div>
           ) : null}
 
-          <OrganizationMembers
-            key={org.id} organizationId={org.id} name={org.name}
-            canRead={Boolean(token && (canManageCurrentOrg || membership?.status === 'active'))}
-            canManage={canManageCurrentOrg} membershipCount={org.membership_count || 0}
-          />
+          <PeerOrganizations organizationId={org.id} tags={org.tags} />
+
           <OrganizationSupport organizationId={org.id} slug={org.slug} canManage={canManageCurrentOrg} />
-
-          <div className="portal-card portal-org-events-card">
-            <div className="portal-org-events-heading">
-              <div>
-                <p className="tenant-home-eyebrow">Upcoming</p>
-                <h2>Hosted Events</h2>
-              </div>
-              <Link to="/events">View all events</Link>
-            </div>
-            {eventsLoading ? (
-              <p className="muted" style={{ margin: 0 }}>
-                Loading events…
-              </p>
-            ) : visibleEvents.length === 0 ? (
-              <p className="muted" style={{ margin: 0 }}>
-                No hosted events listed.
-              </p>
-            ) : (
-              <div className="portal-org-events-grid">
-                {visibleEvents.map((event) => (
-                  <article key={event.id} className="portal-org-event-card">
-                    {event.image_url ? (
-                      <img
-                        src={event.image_url}
-                        alt={event.title}
-                        
-                      />
-                    ) : null}
-                    <Link to={`/events/${event.slug}`}>
-                      {event.title}
-                    </Link>
-                    <span className="muted">{formatDate(event.starts_at)}{event.location ? ` • ${event.location}` : ''}</span>
-                    {(event.media || []).length ? (
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(86px, 1fr))', gap: '0.45rem', marginTop: '0.35rem' }}>
-                        {(event.media || []).map((item) => (
-                          <figure key={item.id} style={{ margin: 0, display: 'grid', gap: '0.25rem' }}>
-                            <img
-                              src={item.url}
-                              alt={item.alt || item.label}
-                              style={{ width: '100%', aspectRatio: '3 / 4', objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }}
-                            />
-                            <figcaption className="muted" style={{ fontSize: '0.78rem' }}>{item.label}</figcaption>
-                            {adminView && canManageCurrentOrg ? (
-                              <button
-                                type="button"
-                                className="btn-secondary"
-                                disabled={eventMediaPending[event.id]}
-                                onClick={() => void saveEventMediaList(event, (event.media || []).filter((candidate) => candidate.id !== item.id))}
-                              >
-                                Remove
-                              </button>
-                            ) : null}
-                          </figure>
-                        ))}
-                      </div>
-                    ) : null}
-                    {adminView && canManageCurrentOrg ? (
-                      <div style={{ display: 'grid', gap: '0.45rem', marginTop: '0.45rem', paddingTop: '0.45rem', borderTop: '1px solid var(--border)' }}>
-                        <label className="muted" htmlFor={`event-media-upload-${event.id}`}>Upload event image</label>
-                        <input
-                          id={`event-media-upload-${event.id}`}
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp,image/gif"
-                          disabled={eventMediaPending[event.id]}
-                          onChange={(e) => {
-                            const file = e.currentTarget.files?.[0] || null
-                            void uploadEventMediaFile(event, file)
-                            e.currentTarget.value = ''
-                          }}
-                        />
-                        <label className="muted" htmlFor={`event-media-url-${event.id}`}>Or attach hosted image URL</label>
-                        <input
-                          id={`event-media-url-${event.id}`}
-                          value={eventMediaUrlDrafts[event.id] || ''}
-                          onChange={(e) => setEventMediaUrlDrafts((prev) => ({ ...prev, [event.id]: e.target.value }))}
-                          placeholder="https://example.com/menu.jpg"
-                        />
-                        <input
-                          value={eventMediaLabelDrafts[event.id] || ''}
-                          onChange={(e) => setEventMediaLabelDrafts((prev) => ({ ...prev, [event.id]: e.target.value }))}
-                          placeholder="Menu label"
-                        />
-                        <button type="button" disabled={eventMediaPending[event.id]} onClick={() => void addEventMediaUrl(event)}>
-                          {eventMediaPending[event.id] ? 'Saving…' : 'Attach Image URL'}
-                        </button>
-                        {eventMediaStatus[event.id] ? <p className="muted" role="status" style={{ margin: 0 }}>{eventMediaStatus[event.id]}</p> : null}
-                      </div>
-                    ) : null}
-                  </article>
-                ))}
-              </div>
-            )}
-          </div>
-
 
           {isOrganizerView && adminView ? (
             <div
@@ -1934,303 +1617,23 @@ export function PublicAdminPage() {
           ) : null}
 
         </div>
-        {showChatColumn ? (
-        <aside className="portal-org-chat-column">
-          {isOrganizerView ? <EmbeddedOrganizationChat id={org.id} slug={org.slug} name={org.name} /> : <div className="portal-card" style={{ display: 'grid', gap: '0.55rem' }}>
-            <h2 style={{ margin: 0, fontSize: '1rem' }}>Public Chat</h2>
-            {chatFeedLoading && !publicChatFeed?.rooms?.length ? (
-              <p className="muted" style={{ margin: 0 }}>
-                Loading chat…
-              </p>
-            ) : null}
-            <section className="portal-card" style={{ display: 'grid', gap: '0.5rem' }}>
-              <h3 style={{ margin: 0, fontSize: '0.98rem' }}>Public Chat</h3>
-              {chatFeedLoading && !generalRoom?.room_id ? (
-                <p className="muted" style={{ margin: 0 }}>Loading public chat room…</p>
-              ) : generalRoom?.room_id ? (
-                <>
-                  <p className="muted" style={{ margin: 0 }}>
-                    {generalRoom.room_name || 'Public Chat'}
-                    {generalRoom.room_alias ? ` • ${generalRoom.room_alias}` : ''}
-                  </p>
-                  {!generalLiveEnabled && token ? (
-                    <div style={{ display: 'flex', gap: '0.45rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                      <button
-                        type="button"
-                        className="btn-secondary"
-                        onClick={() => setGeneralLiveEnabled(true)}
-                      >
-                        Enable Live Chat
-                      </button>
-                      <span className="muted">Feed is cached until live mode is enabled.</span>
-                    </div>
-                  ) : null}
-                  {generalChatStatus ? <p className="muted" style={{ margin: 0 }}>{generalChatStatus}</p> : null}
-                  <div
-                    style={{
-                      maxHeight: 340,
-                      overflowY: 'auto',
-                      border: '1px solid var(--border)',
-                      borderRadius: 12,
-                      padding: '0.55rem',
-                      display: 'grid',
-                      gap: '0.45rem',
-                      background: 'rgba(0,0,0,0.08)',
-                    }}
-                  >
-                    {renderedGeneralMessages.length === 0 ? (
-                      <p className="muted" style={{ margin: 0 }}>No messages yet.</p>
-                    ) : (
-                      renderedGeneralMessages.map((message) => {
-                        const isMine = Boolean(myUserId && message.sender === myUserId)
-                        const isEditing = editingGeneralMessageId === message.id
-                        return (
-                          <article
-                            key={message.id}
-                            style={{ borderLeft: '2px solid var(--border)', paddingLeft: '0.55rem', display: 'grid', gap: '0.35rem' }}
-                          >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.4rem', alignItems: 'center' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', minWidth: 0 }}>
-                                <span className="portal-avatar" style={{ width: 22, height: 22, fontSize: '0.62rem', flex: '0 0 auto' }}>
-                                  {message.senderAvatarUrl ? (
-                                    <img src={message.senderAvatarUrl} alt={messageAuthorLabel(message, myUserId)} />
-                                  ) : (
-                                    messageAuthorInitial(message, myUserId)
-                                  )}
-                                </span>
-                                <p className="muted" style={{ margin: 0 }}>
-                                  {messageAuthorLabel(message, myUserId)} • {new Date(message.ts).toLocaleString()}
-                                  {message.edited ? ' • edited' : ''}
-                                </p>
-                              </div>
-                              {isMine && generalSessionReady ? (
-                                <div style={{ position: 'relative' }}>
-                                  <button
-                                    type="button"
-                                    className="btn-secondary"
-                                    onClick={() =>
-                                      setOpenGeneralMenuMessageId((prev) => (prev === message.id ? null : message.id))
-                                    }
-                                    aria-label="Message options"
-                                    style={{ padding: '0.15rem 0.4rem', minWidth: 'auto' }}
-                                  >
-                                    ⋯
-                                  </button>
-                                  {openGeneralMenuMessageId === message.id ? (
-                                    <div
-                                      className="portal-chat-card-menu"
-                                      style={{
-                                        position: 'absolute',
-                                        right: 0,
-                                        top: 'calc(100% + 0.25rem)',
-                                        zIndex: 5,
-                                        border: '1px solid var(--border)',
-                                        borderRadius: 10,
-                                        background: 'var(--panel)',
-                                        boxShadow: '0 8px 20px rgba(0,0,0,0.22)',
-                                        padding: '0.35rem',
-                                        display: 'grid',
-                                        gap: '0.25rem',
-                                        minWidth: 120,
-                                      }}
-                                    >
-                                      <button
-                                        type="button"
-                                        className="btn-secondary"
-                                        onClick={() => startGeneralEdit(message)}
-                                        disabled={(message.messageType ?? 'text') !== 'text' || generalActionPending}
-                                      >
-                                        Edit
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className="btn-secondary"
-                                        onClick={() => {
-                                          deleteGeneralMessage(message.id).catch(() => {})
-                                        }}
-                                        disabled={generalActionPending}
-                                      >
-                                        Delete
-                                      </button>
-                                    </div>
-                                  ) : null}
-                                </div>
-                              ) : null}
-                            </div>
-                            {isEditing ? (
-                              <div style={{ display: 'grid', gap: '0.35rem' }}>
-                                <textarea
-                                  value={generalEditDraft}
-                                  onChange={(event) => setGeneralEditDraft(event.target.value)}
-                                  rows={3}
-                                  onKeyDown={(event) => {
-                                    if (event.key === 'Enter' && !event.shiftKey) {
-                                      event.preventDefault()
-                                      saveGeneralEdit().catch(() => {})
-                                    }
-                                  }}
-                                  disabled={generalActionPending}
-                                  style={{
-                                    width: '100%',
-                                    padding: '10px 12px',
-                                    borderRadius: 10,
-                                    border: '1px solid var(--border)',
-                                    background: 'var(--panel)',
-                                    color: 'var(--text-primary)',
-                                  }}
-                                />
-                                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                                  <button
-                                    type="button"
-                                    className="btn-primary"
-                                    onClick={() => {
-                                      saveGeneralEdit().catch(() => {})
-                                    }}
-                                    disabled={!generalEditDraft.trim() || generalActionPending}
-                                  >
-                                    Save
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="btn-secondary"
-                                    onClick={cancelGeneralEdit}
-                                    disabled={generalActionPending}
-                                  >
-                                    Cancel
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{message.body}</p>
-                            )}
-                            {generalSessionReady ? (
-                              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                                {QUICK_REACTIONS.map((emoji) => {
-                                  const reaction = message.reactions?.find((reaction) => reaction.key === emoji)
-                                  const count = reaction?.count || 0
-                                  return (
-                                    <button
-                                      key={`${message.id}-${emoji}`}
-                                      type="button"
-                                      className="btn-secondary"
-                                      onClick={() => {
-                                        reactToGeneralMessage(message.id, emoji).catch(() => {})
-                                      }}
-                                      disabled={generalActionPending}
-                                      style={{ padding: '0.15rem 0.45rem', minWidth: 'auto' }}
-                                      title={reaction ? `Reacted by ${reactionOwnerText(reaction)}` : undefined}
-                                    >
-                                      {emoji} {count > 0 ? count : ''}
-                                    </button>
-                                  )
-                                })}
-                              </div>
-                            ) : null}
-                          </article>
-                        )
-                      })
-                    )}
-                  </div>
-                  <div style={{ display: 'grid', gap: '0.45rem' }}>
-                    <textarea
-                      value={generalDraft}
-                      onChange={(event) => setGeneralDraft(event.target.value)}
-                      placeholder={
-                        !token
-                          ? 'Sign in to post.'
-                          : generalSessionReady
-                            ? 'Write a message…'
-                            : 'Connecting chat…'
-                      }
-                      rows={3}
-                      disabled={!canPostGeneral || !generalSessionReady || sendingGeneral || generalActionPending}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' && !event.shiftKey) {
-                          event.preventDefault()
-                          sendGeneralMessage().catch(() => {})
-                        }
-                      }}
-                      onFocus={() => {
-                        if (token && !generalLiveEnabled) setGeneralLiveEnabled(true)
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px',
-                        borderRadius: 10,
-                        border: '1px solid var(--border)',
-                        background: 'var(--panel)',
-                        color: 'var(--text-primary)',
-                        resize: 'vertical',
-                      }}
-                    />
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                      <button
-                        type="button"
-                        className="btn-primary"
-                        onClick={() => {
-                          sendGeneralMessage().catch(() => {})
-                        }}
-                        disabled={!canPostGeneral || !generalSessionReady || sendingGeneral || generalActionPending || !generalDraft.trim()}
-                      >
-                        {sendingGeneral ? 'Sending…' : 'Send to Public Chat'}
-                      </button>
-                      {!token ? <span className="muted">Sign in to post.</span> : null}
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <p className="muted" style={{ margin: 0 }}>Public chat room not found.</p>
-              )}
-            </section>
-
-            <section className="portal-card" style={{ display: 'grid', gap: '0.45rem' }}>
-              <h3 style={{ margin: 0, fontSize: '0.98rem' }}>Announcements</h3>
-              {chatFeedLoading && !announcementsRoom?.room_id ? (
-                <p className="muted" style={{ margin: 0 }}>Loading announcements room…</p>
-              ) : announcementsRoom?.room_id ? (
-                <>
-                  <p className="muted" style={{ margin: 0 }}>
-                    {announcementsRoom.room_name || 'Announcements'}
-                    {announcementsRoom.room_alias ? ` • ${announcementsRoom.room_alias}` : ''}
-                  </p>
-                  {announcementsRoom.messages.length > 0 ? (
-                    <div style={{ display: 'grid', gap: '0.4rem' }}>
-                      {announcementsRoom.messages.map((message) => (
-                        <article key={message.event_id} style={{ borderLeft: '2px solid var(--border)', paddingLeft: '0.55rem' }}>
-                          <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{message.body}</p>
-                          <p className="muted" style={{ margin: 0 }}>
-                            {message.sender || 'Unknown'} • {formatDate(message.sent_at)}
-                          </p>
-                        </article>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="muted" style={{ margin: 0 }}>No recent messages.</p>
-                  )}
-                  {token && announcementsRoom.room_id ? (
-                    <Link
-                      className="btn-secondary"
-                      to={`/chat/${encodeURIComponent(announcementsRoom.room_id)}`}
-                      style={{ textDecoration: 'none', width: 'fit-content' }}
-                    >
-                      Open Announcements
-                    </Link>
-                  ) : null}
-                </>
-              ) : (
-                <p className="muted" style={{ margin: 0 }}>Announcements room not found.</p>
-              )}
-            </section>
-
-            {!publicChatFeed?.rooms?.length ? (
-              <p className="muted" style={{ margin: 0 }}>
-                No public org rooms discovered yet.
-              </p>
-            ) : null}
-          </div>
-          }
-        </aside>
-        ) : null}
+        {org.claimed_by_user_id && <aside className="portal-org-chat-column">
+          {isOrganizerView ? <EmbeddedOrganizationChat id={org.id} slug={org.slug} name={org.name} /> : <div className="portal-card" style={{ display: 'grid', gap: '0.75rem' }}>
+            <h2 style={{ margin: 0, fontSize: '1rem' }}>{org.name} Chat</h2>
+            <p className="muted" style={{ margin: 0 }}>Connect with {org.name} members in our shared chat room.</p>
+            {token ? (
+              membership?.status === 'active' ? (
+                <Link className="btn-primary" to={`/chat?start=org&org=${encodeURIComponent(org.slug)}`}>
+                  Open {org.name} Chat
+                </Link>
+              ) : <p className="muted" style={{ margin: 0 }}>Join {org.name} above to take part in the chat.</p>
+            ) : (
+              <a className="btn-primary" href={pidpAppLoginUrl(`/orgs/${encodeURIComponent(org.slug)}`)}>
+                Sign in to join {org.name} Chat
+              </a>
+            )}
+          </div>}
+        </aside>}
       </div>
       {showImageEditor && editorSource ? (
         <ImageEditorModal

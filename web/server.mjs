@@ -1,3 +1,4 @@
+import { applySeo } from './seo.mjs'
 import { createServer } from 'node:http'
 import { readFile, stat } from 'node:fs/promises'
 import path from 'node:path'
@@ -24,9 +25,6 @@ function escapeHtml(input) {
     .replaceAll("'", '&#39;')
 }
 
-function escapeJsonForHtml(data) {
-  return JSON.stringify(data).replaceAll('</script', '<\\/script')
-}
 
 function toIsoDate(value) {
   if (!value) return null
@@ -116,37 +114,6 @@ async function fetchJsonWithCache(url, cacheKey) {
   return data
 }
 
-function buildSeoHead(input) {
-  const tags = []
-  tags.push(`<title>${escapeHtml(input.title)}</title>`)
-  tags.push(`<meta name="description" content="${escapeHtml(input.description)}">`)
-  if (input.robots) tags.push(`<meta name="robots" content="${escapeHtml(input.robots)}">`)
-  tags.push(`<link rel="canonical" href="${escapeHtml(input.canonicalUrl)}">`)
-  tags.push(`<meta property="og:type" content="${escapeHtml(input.type || 'website')}">`)
-  tags.push(`<meta property="og:title" content="${escapeHtml(input.title)}">`)
-  tags.push(`<meta property="og:description" content="${escapeHtml(input.description)}">`)
-  tags.push(`<meta property="og:url" content="${escapeHtml(input.canonicalUrl)}">`)
-  if (input.imageUrl) tags.push(`<meta property="og:image" content="${escapeHtml(input.imageUrl)}">`)
-  tags.push(`<meta name="twitter:card" content="${input.imageUrl ? 'summary_large_image' : 'summary'}">`)
-  tags.push(`<meta name="twitter:title" content="${escapeHtml(input.title)}">`)
-  tags.push(`<meta name="twitter:description" content="${escapeHtml(input.description)}">`)
-  if (input.imageUrl) tags.push(`<meta name="twitter:image" content="${escapeHtml(input.imageUrl)}">`)
-  for (const jsonLd of input.jsonLd || []) {
-    tags.push(`<script type="application/ld+json">${escapeJsonForHtml(jsonLd)}</script>`)
-  }
-  return tags.join('\n')
-}
-
-function applySeo(html, seo) {
-  const cleaned = html
-    .replace(/<title>[\s\S]*?<\/title>/i, '')
-    .replace(/<meta\s+name=["']description["'][^>]*>/gi, '')
-    .replace(/<link\s+rel=["']canonical["'][^>]*>/gi, '')
-    .replace(/<meta\s+property=["']og:[^"']+["'][^>]*>/gi, '')
-    .replace(/<meta\s+name=["']twitter:[^"']+["'][^>]*>/gi, '')
-    .replace(/<script\s+type=["']application\/ld\+json["'][\s\S]*?<\/script>/gi, '')
-  return cleaned.replace('</head>', `${buildSeoHead(seo)}\n</head>`)
-}
 
 function summary(text, fallback = 'Event details and schedule on Org Portal.') {
   const clean = String(text || '').replace(/\s+/g, ' ').trim()
