@@ -1,4 +1,5 @@
 import {mergeChanges,validateChange,type EcosystemChange} from '../../shared/ecosystemSync'
+import {canonicalJson} from '../../shared/newsletterStorage'
 type Row={sequence:number;id:string;entity:EcosystemChange['entity'];record_id:string;replica_id:string;counter:number;deleted:number;value_json:string;pending:number}
 const decode=(row:Row):EcosystemChange=>({id:row.id,entity:row.entity,recordId:row.record_id,replicaId:row.replica_id,counter:row.counter,deleted:!!row.deleted,value:JSON.parse(row.value_json)})
 /** Call only after the application has authorized every change in the batch. */
@@ -7,10 +8,17 @@ export async function receiveAuthorizedChanges(db:D1Database,input:unknown[],pen
  mergeChanges({},changes)
  if(changes.length>100)throw Error('Sync batch exceeds 100 changes')
  if(!changes.length)return []
- await db.batch(changes.map(c=>db.prepare(`INSERT INTO ecosystem_sync_changes(id,entity,record_id,replica_id,counter,deleted,value_json,pending)
+ const statements=await Promise.all(changes.map(async c=>{
+ const existing=await db.prepare('SELECT * FROM ecosystem_sync_changes WHERE id=?').bind(c.id).first<Row>()
+ if(existing&&canonicalJson(decode(existing))!==canonicalJson(c))throw Error('Conflicting reuse of change ID')
+ // Preserve a matching historical serialization: immutability must not reject
+ // equivalent JSON merely because another client sorted its object keys.
+ return db.prepare(`INSERT INTO ecosystem_sync_changes(id,entity,record_id,replica_id,counter,deleted,value_json,pending)
  VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET value_json=excluded.value_json
  WHERE entity!=excluded.entity OR record_id!=excluded.record_id OR replica_id!=excluded.replica_id OR counter!=excluded.counter OR deleted!=excluded.deleted OR value_json!=excluded.value_json`)
- .bind(c.id,c.entity,c.recordId,c.replicaId,c.counter,Number(c.deleted),JSON.stringify(c.value),Number(pending))))
+ .bind(c.id,c.entity,c.recordId,c.replicaId,c.counter,Number(c.deleted),existing?.value_json??canonicalJson(c.value),Number(pending))
+ }))
+ await db.batch(statements)
  return changes.map(c=>c.id)
 }
 export async function syncPage(db:D1Database,after=0){

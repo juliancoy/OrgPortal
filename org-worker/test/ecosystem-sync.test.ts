@@ -30,3 +30,14 @@ test('conflicting identity reuse rolls back the whole delivery and pending chang
  await assert.rejects(()=>receiveAuthorizedChanges(db.asD1(),[change('new','d1',2),{...change('a','sqlite',1),value:{amount:800}}]));assert.equal((await pendingSqliteChanges(db.asD1())).length,1);assert.equal(Object.keys(await sqliteSyncState(db.asD1())).length,1)
  }finally{db.sqlite.close()}
 })
+test('replaying semantically identical JSON preserves legacy serialization and feed positions',async()=>{
+ const db=setup();try{
+ const original=change('legacy','sqlite',1)
+ const encoded=JSON.stringify({id:'legacy',amount:600})
+ db.sqlite.prepare('INSERT INTO ecosystem_sync_changes(id,entity,record_id,replica_id,counter,deleted,value_json,pending) VALUES(?,?,?,?,?,?,?,0)').run(original.id,original.entity,original.recordId,original.replicaId,original.counter,0,encoded)
+ const before=await syncPage(db.asD1())
+ await receiveAuthorizedChanges(db.asD1(),[original])
+ assert.equal((await syncPage(db.asD1())).cursor,before.cursor)
+ assert.equal(db.sqlite.prepare('SELECT value_json FROM ecosystem_sync_changes').get()!.value_json,encoded)
+ }finally{db.sqlite.close()}
+})

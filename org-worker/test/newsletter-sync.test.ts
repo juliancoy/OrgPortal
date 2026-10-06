@@ -120,6 +120,8 @@ test('CLI sync preserves original MIME and converges local SQL with private remo
     const before = remote.db.sqlite.prepare('SELECT COUNT(*) n FROM private_newsletter_previews').get()!.n
     await syncNewsletterHistory({ ...args, command: { resource, dryRun: true } })
     assert.equal(remote.db.sqlite.prepare('SELECT COUNT(*) n FROM private_newsletter_previews').get()!.n, before)
+    await syncNewsletterHistory(args)
+    assert.equal(remote.db.sqlite.prepare('SELECT COUNT(*) n FROM private_newsletter_previews').get()!.n, before)
     const changes = await collectFeed(callRemote, '/changes')
     const update = { ...changes[0], id: 'remote-edit', replicaId: 'another-device', counter: 2, value: { ...doc, items: [{ ...doc.items[0], title: 'Updated source annotation' }] } }
     const updatePayload = { changes: [update], archives: [] }

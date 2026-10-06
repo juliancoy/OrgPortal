@@ -89,7 +89,7 @@ export async function syncNewsletterHistory({ command, config, callLocal, callRe
   const receipts = [];
   // One issue per transaction keeps full MIME originals within the request limit.
   // Replaying accepted change IDs is inert after a lost response or process crash.
-  for (const change of localChanges) {
+  for (const change of plan.push) {
     const hash = change.value?.source?.sourceArchiveSha256;
     const archives = hash ? [await callLocal('/archives/' + hash)] : [];
     if (archives.length && fingerprint(archives[0]) !== hash) throw Error('Corrupt local source archive');
@@ -100,7 +100,7 @@ export async function syncNewsletterHistory({ command, config, callLocal, callRe
     const applied = await callRemote('/apply', { ...payload, previewId: preview.previewId });
     if (applied.fingerprint !== preview.fingerprint || applied.ownerId !== status.ownerId || applied.resource !== command.resource || !applied.acknowledged?.includes(change.id)) throw Error('Remote acknowledgement mismatch');
     receipts.push({ changeId: change.id, previewId: preview.previewId, fingerprint: preview.fingerprint });
-    if (receipts.length % 10 === 0) log(`Verified ${receipts.length}/${localChanges.length} uploaded changes.`);
+    if (receipts.length % 10 === 0) log(`Verified ${receipts.length}/${plan.push.length} uploaded changes.`);
   }
   const received = await collectFeed(callRemote, '/changes');
   for (let start = 0; start < received.length; start += 20) {

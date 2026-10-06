@@ -1,4 +1,5 @@
-/** Public ecosystem records only; authorization belongs to the receiving API. */
+import { canonicalJson } from './newsletterStorage'
+/** Authorization and visibility belong to the receiving API. */
 export type EcosystemEntity = 'organization' | 'event' | 'funding' | 'newsletter'
 export type EcosystemChange = {
   id: string
@@ -28,7 +29,7 @@ export function mergeChanges(state: EcosystemState, changes: unknown[]): Ecosyst
   const validated=changes.map(validateChange), result={...state}
   const identities=new Map<string,string>()
   for(const change of [...Object.values(state),...validated]){
-    const signature=JSON.stringify({entity:change.entity,recordId:change.recordId,replicaId:change.replicaId,counter:change.counter,deleted:change.deleted,value:change.value})
+    const signature=canonicalJson({entity:change.entity,recordId:change.recordId,replicaId:change.replicaId,counter:change.counter,deleted:change.deleted,value:change.value})
     if(identities.has(change.id)&&identities.get(change.id)!==signature)throw new Error('Conflicting reuse of change ID')
     identities.set(change.id,signature)
   }

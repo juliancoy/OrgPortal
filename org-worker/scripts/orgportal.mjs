@@ -15,6 +15,7 @@ const help = `Usage:
   orgportal sync [--portal https://lifetech.fyi] [--connection NAME] [--dry-run]
 
 Options: --resource HTTPS_MCP_URL, --issuer HTTPS_PIDP_ORIGIN, --client-id ID
+Sync options: --dry-run, --local LOOPBACK_HTTPS_ORIGIN, --deployment CONFIG_JSON, --cert CA_FILE
 Defaults: ORGPORTAL_PORTAL or https://lifetech.fyi;
           ORGPORTAL_ISSUER or https://id.codecollective.us;
           ORGPORTAL_CONNECTION or default.
