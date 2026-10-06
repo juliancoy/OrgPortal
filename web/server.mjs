@@ -1,4 +1,5 @@
 import { applySeo } from './seo.mjs'
+import { isPortalPagePath, notFoundResponse } from './portalRoutes.mjs'
 import { createServer } from 'node:http'
 import { readFile, stat } from 'node:fs/promises'
 import path from 'node:path'
@@ -431,6 +432,12 @@ async function serveStatic(req, res, pathname) {
 }
 
 async function serveSpa(req, res, pathname) {
+  if (!isPortalPagePath(pathname)) {
+    const response = notFoundResponse(new Request('http://localhost' + pathname, { method: req.method || 'GET' }))
+    res.writeHead(response.status, Object.fromEntries(response.headers))
+    res.end(await response.text())
+    return
+  }
   const base = getCanonicalBase(req)
   const template = await readFile(indexPath, 'utf8')
 

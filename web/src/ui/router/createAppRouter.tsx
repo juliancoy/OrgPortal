@@ -190,6 +190,7 @@ function ChatRoute() {
 }
 
 function AdminRoute(props: { children: ReactElement }) {
+  const location = useLocation()
   const { role, token, isLoading } = useAuth()
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
 
@@ -228,7 +229,11 @@ function AdminRoute(props: { children: ReactElement }) {
   }, [role, token, isLoading])
 
   if (isLoading || isAdmin === null) return null
-  if (!isAdmin) return <Navigate to="/" replace />
+  if (!isAdmin) return <section className="panel">
+    <h1>{role === 'guest' ? 'Sign in required' : 'Access denied'}</h1>
+    <p>This page requires system administrator access.</p>
+    {role === 'guest' && <a href={`${portalBasePath()}/users/login?next=${encodeURIComponent(location.pathname + location.search)}`}>Sign in</a>}
+  </section>
   return props.children
 }
 
