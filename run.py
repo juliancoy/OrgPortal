@@ -656,6 +656,7 @@ def run(prefix: str, network_name: str) -> None:
         or "code-collective"
     ).strip()
     dev_pidp_app_slug = (os.getenv("ORGPORTAL_DEV_PIDP_APP_SLUG") or prod_pidp_app_slug).strip()
+    _set_env_default("ORGPORTAL_DEV_PIDP_APP_SLUG", dev_pidp_app_slug)
 
     prod_name = prefix + "portal"
     dev_name = prefix + "portal-dev"
@@ -833,6 +834,7 @@ def run(prefix: str, network_name: str) -> None:
     if started_pidp:
         docker_utils.wait_for_port(pidp_dev_name, 8000, network_name, retries=120, delay=2)
         _wait_for_http(f"http://{pidp_dev_name}:8000/health", network_name, retries=120, delay=2)
+        subprocess.check_call(["docker", "exec", pidp_dev_name, "/venv/bin/python", "/app/scripts/register_local_portal.py"])
 
     docker_utils.run_container(org_worker)
     docker_utils.run_container(chat_worker)
