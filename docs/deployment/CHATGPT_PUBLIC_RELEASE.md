@@ -44,9 +44,9 @@ The source is NOT submission-ready. Complete these items before final packaging:
    current in-app purchases are confirmed. Support and privacy contact:
    julian@codecollective.us. See ../privacy/RETENTION_AND_DELETION.md for policy
    and ../privacy/OPERATIONS.md for enforcement gaps and operator procedures.
-2. Confirm the public support destination and published privacy/terms covering
-   actual integration data use, sharing, retention and deletion. Existing `/terms`
-   requires review; unverified listing URL fields are intentionally omitted.
+2. Deploy OrgPortal commit c468c40 (or a descendant) and verify the new public
+   `/api/org/support`, `/api/org/privacy`, and `/api/org/terms` pages. These URLs
+   are populated in the package but are NOT verified live yet.
 3. Create a dedicated reviewer account with a sample organization, native event
    and motion. Keep credentials in secure submission fields, never in the ZIP.
 4. Run the cases in ChatGPT against the deployed version. Record connect/consent,
@@ -89,3 +89,68 @@ frontend routing tests pass, in addition to prior backend/OAuth tests and builds
 Real-account ChatGPT linking and authenticated read/preview/apply remain unverified.
 Repository rules limit production browser checks to anonymous reads; authenticated
 regression fixtures remain local. This deployment is not public directory approval.
+
+## Laptop handoff — October 7, 2026, 17:48 America/New_York
+
+All implementation source is committed and pushed:
+
+- OrgPortal: `c468c40c49e3e2245f14b8eab254de3940c633d4`.
+- PIdP: `6928287855a9c2003ed6abb4b6d35dc5d95e9730`.
+- Publisher: Julian Coy; all supported countries; currently FOSS, no in-app
+  purchases. Support/privacy: julian@codecollective.us.
+
+### Actual production state
+
+PIdP retention is deployed: active version
+`6457a389-7648-44f8-8c74-c88ee9dee1e9`, source `6928287`.
+The settings update generated this version after the initial retention version
+`f349a6ba-0035-4835-91ef-0f0a16b76a4c`. Its cron is `*/5 * * * *`.
+Expired MCP codes went from two eligible rows before deployment to zero in the
+read-only production verification. Query-string redaction is enabled.
+
+OrgPortal is still serving the previous implementation, source `416b1df`.
+Its active version is `f8735a49-2d3d-4e4d-8cc8-0b85f68b489f`, created by the
+query-redaction settings update, with its existing minute cron. The new OrgPortal
+bundle upload was interrupted and no new source version was visible in the
+subsequent inventory. Do not infer deployment from the source commit or settings
+version: cleanup and public policy routes from `c468c40` are NOT live yet.
+No account/content purge or schema migration ran.
+
+### Review and validation
+
+- OrgPortal typecheck, seven targeted MCP/retention tests, and Wrangler dry-run
+  passed; typecheck and seven tests were repeated from a fresh checkout.
+- PIdP typecheck, 19 Worker OAuth/retention tests, Python retention test and 18
+  Python OAuth tests passed during implementation; Wrangler dry-run passed.
+- Cleanup uses bounded batches, correct per-table timestamp units, dry-run counts
+  and safe aggregate logs. Live rows, unresolved event operations and refresh
+  replay evidence are preserved. No deletion triggers archive temporary secrets.
+- Full account erasure, shared-content decisions, support-mail retention and
+  backup/export reconciliation remain operator-managed. Do not describe this as
+  full automated enforcement of every retention-policy category.
+
+### Resume on the laptop
+
+1. Pull main in OrgPortal and sibling PIdP. Preserve any laptop changes while
+   updating; do not reset them to these commits blindly.
+2. Deploy the OrgPortal backend through the existing CodeCollective shared-release
+   procedure, using OrgPortal `c468c40` or later. Build metadata now also generates
+   the public policy pages. Preserve bindings, secrets and existing cron.
+3. Verify `https://orgportal.cc/api/org/version`, the three policy URLs above,
+   and `orgportal.retention` cron logs. Confirm eligible temporary records drain
+   without backlog. Avoid a second PIdP deployment unless its source changes.
+4. Finish the manual retention inventory and provider backup verification in
+   `docs/privacy/OPERATIONS.md`; keep real requests/evidence outside this repo.
+5. Rehearse and record a real ChatGPT demo using a dedicated reviewer account and
+   sample organization/event/motion: connect/consent, list organizations, read an
+   event, preview a description edit, explicitly approve it, verify the saved
+   result, and demonstrate that bank transfers are unsupported. Do not record
+   credentials or unrelated private data. Host the video with reviewer access and
+   add its verified URL to `review.demo_recording_url`.
+6. Build and inspect a ZIP of `plugins/orgportal`. No final submission ZIP or
+   portal draft was created in this session. Complete developer verification,
+   secure reviewer access, saved-version connection/tests, and publisher legal
+   attestations; then submit. Public review submission has NOT occurred.
+
+The automated upload calls stalled twice; Cloudflare read-only inventory was
+checked after interruption. Inspect current versions again before retrying.
