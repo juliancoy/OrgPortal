@@ -20,7 +20,7 @@ try {
  await page.locator('#network-canvas').hover();await page.mouse.wheel(0,-400)
  await page.waitForFunction(n=>[...document.querySelectorAll('#network-canvas circle')].filter(c=>c.style.display!=='none').length>n,overview)
  await page.locator('#network-fit').click()
- await page.locator('#visibility-factor').fill('16');await page.locator('#visibility-factor').dispatchEvent('input')
+ await page.locator('#visibility-factor').evaluate(el=>{el.value='16';el.dispatchEvent(new Event('input',{bubbles:true}))})
  await page.waitForFunction(n=>[...document.querySelectorAll('#network-canvas circle')].filter(c=>c.style.display!=='none').length<n,overview)
  console.log('Default visibility, reveal on zoom, adjustable factor, and disabling passed',{overview,total})
 }finally{await browser.close()}
