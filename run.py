@@ -9,6 +9,7 @@ import textwrap
 from pathlib import Path
 
 import docker_utils
+from service_names import service_name
 
 current_dir = Path(os.path.abspath(os.path.dirname(__file__)))
 web_dir = current_dir / "web"
@@ -308,7 +309,8 @@ def _pidp_env(pidp_editme, db_url: str, gateway_base: str, allowed_origins: list
             or os.getenv("PIDP_ACCESS_TOKEN_EXPIRE_MINUTES")
             or "525600"
         ),
-        "WATCHFILES_FORCE_POLLING": "true",
+        # Native notifications avoid repeatedly scanning Linux bind mounts.
+        "WATCHFILES_FORCE_POLLING": os.getenv("WATCHFILES_FORCE_POLLING", "false"),
         "BACKEND_IMAGE_RUNNING": "dev-bind-mount",
     }
 
@@ -409,6 +411,14 @@ def _write_local_gateway_config(
                 proxy_set_header X-Forwarded-Host localhost;
                 proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 
+                location = /services {{ return 302 /services/; }}
+                location ^~ /services/ {{
+                  resolver 127.0.0.11 ipv6=off valid=10s;
+                  set $service_directory local-service-directory:8080;
+                  rewrite ^/services/(.*)$ /$1 break;
+                  proxy_pass http://$service_directory;
+                }}
+
                 location /api/org/ {{
                   proxy_set_header X-Forwarded-Host {os.getenv("ORGPORTAL_LOCAL_TENANT_HOST", "localhost")};
                   rewrite ^/api/org/?(.*)$ /$1 break;
@@ -421,7 +431,7 @@ def _write_local_gateway_config(
                   proxy_set_header Connection $connection_upgrade;
                   proxy_read_timeout 1h;
                   proxy_send_timeout 1h;
-                  proxy_pass http://{org_worker_name.removesuffix('org')}chat:8003;
+                  proxy_pass http://{org_worker_name.removesuffix('community-api')}chat-api:8003;
                 }}
 
                 location /pidp/ {{
@@ -461,7 +471,7 @@ def _start_local_gateway(
     pidp_dev_name: str,
     worker_port: str,
 ) -> str:
-    gateway_name = prefix + "local-gateway"
+    gateway_name = service_name(prefix, "local-gateway")
     gateway_port = (os.getenv("ORGPORTAL_LOCAL_GATEWAY_PORT") or DEFAULT_LOCAL_GATEWAY_PORT).strip()
     _ensure_local_tls_certificates()
     _write_local_gateway_config(dev_name, org_worker_name, pidp_dev_name, gateway_port, worker_port)
@@ -501,7 +511,7 @@ def _start_pidp_if_available(prefix: str, network_name: str, gateway_base: str) 
 
     selected_env_path = _apply_pidp_secret_defaults()
     pidp_editme = _load_pidp_editme()
-    db_name = prefix + "pidpdb"
+    db_name = service_name(prefix, "pidpdb")
     db_user = getattr(pidp_editme, "PIDP_POSTGRES_USER", "PIdP")
     db_password = getattr(pidp_editme, "PIDP_POSTGRES_PASSWORD", "changeme")
     db_url = f"postgresql+asyncpg://{db_user}:{db_password}@{db_name}:5432/PIdP"
@@ -536,7 +546,7 @@ def _start_pidp_if_available(prefix: str, network_name: str, gateway_base: str) 
     }
     pidp_dev = {
         "image": os.getenv("PIDP_DEV_RUNTIME_IMAGE", "python:3.11-slim"),
-        "name": prefix + "pidp-dev",
+        "name": service_name(prefix, "pidp-dev"),
         "volumes": {
             str(pidp_dir): {"bind": container_app_dir, "mode": "rw"},
             prefix + "PIDP_DEV_VENV": {"bind": "/venv", "mode": "rw"},
@@ -561,8 +571,8 @@ def _start_pidp_if_available(prefix: str, network_name: str, gateway_base: str) 
     }
 
     if _env_truthy("ORGPORTAL_RECREATE_PIDP", default=True):
-        _remove_container(prefix + "pidp-dev")
-        _remove_container(prefix + "pidp")
+        _remove_container(service_name(prefix, "pidp-dev"))
+        _remove_container(service_name(prefix, "pidp"))
     print(f"PIdP secrets pinned from {selected_env_path}")
     docker_utils.run_container(pidp_db)
     docker_utils.wait_for_db(network_name, db_url=db_url, db_user=db_user)
@@ -635,7 +645,7 @@ def run(prefix: str, network_name: str) -> None:
     gateway_base = f"https://localhost:{gateway_port}"
     _set_env_default("ORGPORTAL_DEV_PUBLIC_BASE_URL", gateway_base)
     _set_env_default("ORGPORTAL_DEV_PIDP_BASE_URL", "/pidp")
-    _set_env_default("ORGPORTAL_ORG_API_BASE", f"http://{prefix}org:{worker_port}")
+    _set_env_default("ORGPORTAL_ORG_API_BASE", f"http://{service_name(prefix, 'org')}:{worker_port}")
 
     prod_base = os.getenv("ORGPORTAL_PROD_PUBLIC_BASE_URL")
     dev_base = os.getenv("ORGPORTAL_DEV_PUBLIC_BASE_URL") or _derive_dev_base(prod_base)
@@ -658,10 +668,10 @@ def run(prefix: str, network_name: str) -> None:
     dev_pidp_app_slug = (os.getenv("ORGPORTAL_DEV_PIDP_APP_SLUG") or prod_pidp_app_slug).strip()
     _set_env_default("ORGPORTAL_DEV_PIDP_APP_SLUG", dev_pidp_app_slug)
 
-    prod_name = prefix + "portal"
-    dev_name = prefix + "portal-dev"
-    org_worker_name = prefix + "org"
-    pidp_dev_name = prefix + "pidp-dev"
+    prod_name = service_name(prefix, "portal")
+    dev_name = service_name(prefix, "portal-dev")
+    org_worker_name = service_name(prefix, "org")
+    pidp_dev_name = service_name(prefix, "pidp-dev")
     prod_image = _resolve_prod_image()
     start_prod = _env_truthy("ORGPORTAL_START_PROD", default=DEFAULT_START_PROD)
     data_source = (os.getenv("ORGPORTAL_DATA_SOURCE") or DEFAULT_DATA_SOURCE).strip() or DEFAULT_DATA_SOURCE
@@ -735,13 +745,13 @@ def run(prefix: str, network_name: str) -> None:
                 f"npx wrangler dev --local --test-scheduled --ip 0.0.0.0 --port {worker_port} "
                 f"--var {shlex.quote('PIDP_BASE_URL:' + (os.getenv('ORGPORTAL_WORKER_PIDP_BASE_URL') or f'http://{pidp_dev_name}:8000'))} "
                 f"--var {shlex.quote('PUBLIC_PORTAL_BASE_URL:' + gateway_base)} "
-                f"--var {shlex.quote('CHAT_API_ORIGIN:http://' + prefix + 'chat:8003')}"
+                f"--var {shlex.quote('CHAT_API_ORIGIN:http://' + service_name(prefix, 'chat') + ':8003')}"
                 + replica_vars
             ),
         ],
     }
 
-    chat_worker_name = prefix + "chat"
+    chat_worker_name = service_name(prefix, "chat")
     chat_api_base = f"http://{chat_worker_name}:8003"
     chat_worker = {
         "image": os.getenv("ORGPORTAL_WORKER_IMAGE", DEFAULT_WORKER_IMAGE),
@@ -789,7 +799,7 @@ def run(prefix: str, network_name: str) -> None:
             "VITE_PIDP_APP_SLUG": dev_pidp_app_slug,
             "VITE_DATA_SOURCE": data_source,
             "VITE_PUBLIC_BASE": "/",
-            "VITE_ALLOWED_HOSTS": ",".join([h for h in [dev_host, prod_host, "localhost"] if h]),
+            "VITE_ALLOWED_HOSTS": ",".join([h for h in [dev_host, prod_host, "localhost", dev_name] if h]),
             "ORG_API_ORIGIN": org_api_base,
             "CHAT_API_ORIGIN": chat_api_base,
         },
@@ -844,14 +854,14 @@ def run(prefix: str, network_name: str) -> None:
     _wait_for_http(f"http://{org_worker_name}:{worker_port}/health", network_name, retries=120, delay=2)
     if replica_source:
         docker_utils.run_container({
-            "image": "python:3.12-alpine", "name": prefix + "org-replication",
+            "image": "python:3.12-alpine", "name": service_name(prefix, "org-replication"),
             "network": network_name, "restart_policy": {"Name": "always"}, "detach": True,
             "environment": {"REPLICA_TRIGGER": f"http://{org_worker_name}:{worker_port}/__scheduled", "REPLICA_INTERVAL": replica_interval},
             "volumes": {str(org_worker_dir / "scripts" / "poll-organization-replica.py"): {"bind": "/poll.py", "mode": "ro"}},
             "command": ["python", "-u", "/poll.py"],
         })
     else:
-        _remove_container(prefix + "org-replication")
+        _remove_container(service_name(prefix, "org-replication"))
     if start_prod:
         docker_utils.run_container(prod)
         docker_utils.wait_for_port(prod_name, 8080, network_name, retries=120, delay=2)
@@ -860,7 +870,7 @@ def run(prefix: str, network_name: str) -> None:
     _wait_for_http(f"http://{dev_name}:5173/availability", network_name, retries=120, delay=2)
     if _env_truthy("ORGPORTAL_START_LOCAL_GATEWAY", default=True):
         local_url = _start_local_gateway(prefix, network_name, dev_name, org_worker_name, pidp_dev_name, worker_port)
-        _wait_for_http(f"https://{prefix}local-gateway:8443/availability", network_name, retries=30, delay=2)
+        _wait_for_http(f"https://{service_name(prefix, 'local-gateway')}:8443/availability", network_name, retries=30, delay=2)
         print(f"Local portal gateway: {local_url}/availability")
     else:
         print("Skipping local HTTPS gateway because ORGPORTAL_START_LOCAL_GATEWAY is disabled")

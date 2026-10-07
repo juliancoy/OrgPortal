@@ -1,7 +1,7 @@
 import { getDomainTenant, type PortalTenant } from './timebankCommunity'
 export type PortalFeature = 'ubi'
 
-export type PortalProfileId = 'code-collective' | 'baltimore-medtech' | 'deism' | 'orgportal'
+export type PortalProfileId = 'code-collective' | 'baltimore-medtech' | 'deism' | 'orgportal' | 'lifetech'
 
 export type PortalProfileConfig = {
   id: PortalProfileId
@@ -21,6 +21,13 @@ export type PortalProfileConfig = {
 }
 
 const PORTAL_PROFILES: Record<PortalProfileId, PortalProfileConfig> = {
+  lifetech: {
+    id: 'lifetech', brandName: 'LifeTech', portalTitle: 'LifeTech Portal',
+    tagline: 'Health × Medicine × Biotech', brandImagePath: 'https://lifetech.fyi/assets/images/lifetech-logo.png',
+    homeUrl: 'https://lifetech.fyi/', memberHomePath: '/chat', disabledFeatures: ['ubi'],
+    manifestPath: '/manifest.webmanifest', faviconPath: 'https://lifetech.fyi/assets/images/lifetech-logo.png',
+    faviconType: 'image/png', appleTouchIconPath: 'https://lifetech.fyi/assets/images/lifetech-logo.png', themeColor: '#155e59',
+  },
   orgportal: {
     id: 'orgportal', brandName: 'OrgPortal', portalTitle: 'OrgPortal',
     tagline: 'A place for every community.', brandImagePath: '/orgportal.svg',
@@ -79,6 +86,7 @@ function normalizeProfileId(value?: string | null): PortalProfileId | null {
   const normalized = String(value || '').trim().toLowerCase()
   if (!normalized) return null
   if (normalized === 'orgportal') return 'orgportal'
+  if (normalized === 'lifetech') return 'lifetech'
   if (normalized === 'deism') return 'deism'
   if (['baltimore-medtech', 'bmore-medtech', 'baltimoremedtech', 'medtech'].includes(normalized)) {
     return 'baltimore-medtech'
@@ -103,7 +111,7 @@ function tenantBrandHomeUrl(tenant: PortalTenant, fallback: string): string {
 }
 
 function tenantProfileConfig(tenant: PortalTenant): PortalProfileConfig {
-  const profileId = normalizeProfileId(tenant.profile) || 'code-collective'
+  const profileId = normalizeProfileId(tenant.profile) || (tenant.slug === 'lifetech' ? 'lifetech' : 'code-collective')
   const base = PORTAL_PROFILES[profileId]
   const features = new Set(tenant.features || [])
   const isTimebank = features.has('timebank')

@@ -11,6 +11,9 @@ const allowedHosts = Array.from(
   new Set([
     'localhost',
     '127.0.0.1',
+    'lifetech-community-web',
+    'deism-community-web',
+    'codecollective-community-web',
     'codecollective.us',
     'www.codecollective.us',
     ...envAllowedHosts,

@@ -9,7 +9,7 @@ import { OrganizationIamError, type OrganizationActor } from '../src/organizatio
 const actor: OrganizationActor = { id: 'manager', name: 'Manager', email: null, isOperator: false };
 function setup() {
   const db = new TimebankDatabase();
-  for (const migration of ['0002_org_event_directories.sql','0015_organization_iam.sql','0017_event_mcp_operations.sql','0057_organization_support.sql','0043_organization_media.sql','0061_organization_replication.sql','0065_financing_records.sql','0066_financing_portfolio_tags.sql','0075_funding_fact_model.sql'])
+  for (const migration of ['0002_org_event_directories.sql','0015_organization_iam.sql','0017_event_mcp_operations.sql','0057_organization_support.sql','0043_organization_media.sql','0061_organization_replication.sql','0065_financing_records.sql','0066_financing_portfolio_tags.sql','0075_funding_fact_model.sql','0076_compass_program_listings.sql'])
     db.sqlite.exec(readFileSync(new URL(`../migrations/${migration}`,import.meta.url),'utf8'));
   for (const id of ['a','b','c','d']) {
     db.sqlite.prepare('INSERT INTO organizations (id,name,slug) VALUES (?,?,?)').run(id,`Organization ${id}`,`org-${id}`);
@@ -193,5 +193,22 @@ test('funding totals separate announcements, obligations and payments and exclud
     db.sqlite.exec("INSERT INTO funding_facts(id,fact_type,scope,amount,currency,measurement,source_url,evidence,reviewed_at,supersedes_fact_id) VALUES('replacement','obligation','award',70,'USD','cumulative','https://example.test','Correction','2026-10-06','obligation')");
     const corrected=await organizationSupport(db.asD1(),'a');
     assert.ok(corrected.financialTotals.entries.every(r=>r.financialFactType!=='obligation'));
+  } finally {db.sqlite.close();}
+});
+
+test('program reports preserve directory details and ordered requirements without implying payment', async () => {
+  const db=setup();
+  try {
+    db.sqlite.exec("INSERT INTO funding_program_listings(id,source,external_id,organization_id,agency_organization_id,source_slug,compass_url,program_name,max_amount_int,max_amount_str,contact_email,retrieved_at,source_sha256) VALUES('listing','maryland_compass','123','b','a','sample','https://compass.maryland.gov/incentives/#/incentive/sample','Sample program',50000,'Up to $50,000','public@example.test','2026-10-06','hash')");
+    db.sqlite.exec("INSERT INTO funding_program_properties VALUES('listing','requirements_list',0,'First requirement','string'),('listing','requirements_list',1,'Second requirement','string')");
+    for(const org of ['a','b']) {
+      const report=await organizationSupport(db.asD1(),org);
+      assert.equal(report.fundingPrograms.records.length,1);
+      assert.equal(report.fundingPrograms.records[0].max_amount_int,50000);
+      assert.deepEqual(report.fundingPrograms.properties.map(r=>r.value),['First requirement','Second requirement']);
+      assert.equal(report.fundingPrograms.nextOffset,null);
+      assert.equal(report.fundingFacts.records.length,0);
+      assert.equal(report.financialTotals.entries.length,0);
+    }
   } finally {db.sqlite.close();}
 });

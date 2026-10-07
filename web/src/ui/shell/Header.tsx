@@ -11,7 +11,7 @@ import { refreshRuntimeTokenFromSession } from '../../infrastructure/auth/sessio
 import { isAndroidDevice } from '../../infrastructure/platform/androidApp'
 import { OrgImage } from '../components/media/OrgImage'
 import { getActivePortalProfileConfig, portalProfilePath, isPortalFeatureEnabled } from '../../config/portalFeatures'
-import { portalPath } from '../../config/portalBase'
+import { portalAssetPath } from '../../config/portalBase'
 
 const ORG_API_BASE = '/api/org'
 const SEARCH_MIN_LEN = 2
@@ -528,7 +528,7 @@ export function Header() {
       <div className="portal-header-inner">
         <a href={portalProfile.homeUrl} className="portal-brand">
           {portalProfile.brandImagePath ? (
-            <img src={portalPath(portalProfile.brandImagePath)} alt={portalProfile.brandName} />
+            <img src={portalAssetPath(portalProfile.brandImagePath)} alt={portalProfile.brandName} />
           ) : (
             <span
               aria-hidden="true"

@@ -87,7 +87,16 @@ export async function organizationSupport(db: D1Database, organizationId: string
     .bind(org.id, org.id, org.id, org.id, org.id, org.id, org.id, offset).all();
   const fundingFacts = { records: (facts.results || []).slice(0, 500),
     nextOffset: (facts.results || []).length > 500 ? offset + 500 : null };
-  return { organization: org, financialTotals, fundingEntity, fundingFacts, descendants: (descendants.results || []).map(row => {
+  const programs = await db.prepare(`SELECT * FROM funding_program_listings
+    WHERE organization_id = ? OR agency_organization_id = ?
+    ORDER BY program_name, id LIMIT 501 OFFSET ?`).bind(org.id, org.id, offset).all();
+  const programRecords = (programs.results || []).slice(0, 500);
+  const properties = programRecords.length ? await db.prepare(`SELECT * FROM funding_program_properties
+    WHERE listing_id IN (SELECT value FROM json_each(?)) ORDER BY listing_id, field, position`)
+    .bind(JSON.stringify(programRecords.map(row => row.id))).all() : { results: [] };
+  const fundingPrograms = { records: programRecords, properties: properties.results || [],
+    nextOffset: (programs.results || []).length > 500 ? offset + 500 : null };
+  return { organization: org, financialTotals, fundingEntity, fundingFacts, fundingPrograms, descendants: (descendants.results || []).map(row => {
     let tags: string[] = [];
     try { const value = JSON.parse(String(row.tags || '[]')); if (Array.isArray(value)) tags = value.filter(item => typeof item === 'string'); } catch {}
     return { ...row, tags };

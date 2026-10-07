@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { portalAssetPath } from '../../../config/portalBase'
+import { useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
 
 const ORG_PLACEHOLDER_SRC = '/images/org-placeholder.svg'
@@ -8,6 +9,7 @@ type OrgImageProps = {
   alt: string
   className?: string
   style?: CSSProperties
+  fallbackSrc?: string | null
   fallbackLetter?: string
 }
 
@@ -17,22 +19,20 @@ function safeInitial(value: string | undefined): string {
 }
 
 export function OrgImage(props: OrgImageProps) {
-  const { src, alt, className, style, fallbackLetter } = props
-  const [errored, setErrored] = useState(false)
-  const finalSrc = useMemo(() => {
-    const candidate = (src || '').trim()
-    if (!candidate || errored) return ORG_PLACEHOLDER_SRC
-    return candidate
-  }, [src, errored])
+  const { src, alt, className, style, fallbackLetter, fallbackSrc } = props
+  const [failedSources, setFailedSources] = useState<string[]>([])
+  useEffect(() => { setFailedSources([]) }, [src, fallbackSrc])
+  const candidates = [src?.trim(), fallbackSrc?.trim(), ORG_PLACEHOLDER_SRC].filter((candidate): candidate is string => Boolean(candidate))
+  const finalSrc = candidates.find(candidate => !failedSources.includes(candidate)) || ORG_PLACEHOLDER_SRC
 
   return (
     <img
-      src={finalSrc}
+      src={portalAssetPath(finalSrc)}
       alt={alt}
       className={className}
       style={style}
       data-fallback-letter={safeInitial(fallbackLetter || alt)}
-      onError={() => setErrored(true)}
+      onError={() => setFailedSources(previous => previous.includes(finalSrc) ? previous : [...previous, finalSrc])}
     />
   )
 }

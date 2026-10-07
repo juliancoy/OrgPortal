@@ -1,6 +1,6 @@
 import { getDomainTenant } from '../../../config/timebankCommunity'
 import { getActivePortalProfileConfig } from '../../../config/portalFeatures'
-import { portalPath } from '../../../config/portalBase'
+import { portalAssetPath } from '../../../config/portalBase'
 import type { CSSProperties } from 'react'
 import { PhotoTags } from '../../components/PhotoTags'
 import { EventVenues, type Venue } from '../../components/EventVenues'
@@ -704,7 +704,7 @@ export function PublicEventPage() {
             ) : <div className="public-event-hero-image public-event-hero-placeholder" aria-hidden="true" />}
             <div className="public-event-hero-content">
               {lifeTech ? <Link className="lifetech-event-lockup" to="/branding" aria-label="LifeTech brand guide">
-                <img src={portalPath(brand.brandImagePath || '/assets/images/lifetech-logo.png')} alt="" />
+                <img src={portalAssetPath(brand.brandImagePath || '/assets/images/lifetech-logo.png')} alt="" />
                 <span><strong>{brand.brandName}</strong><small>{brand.tagline}</small></span>
               </Link> : null}
               {event.organization_slug ? (

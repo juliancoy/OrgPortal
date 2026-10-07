@@ -9,10 +9,10 @@ const site = process.env.DEISM_SITE_URL || 'http://localhost:8878';
 const local = url => ['localhost', '127.0.0.1'].includes(new URL(url).hostname);
 assert.ok(local(base) && local(site), 'Use only the local Docker deployment');
 const inspect = name => JSON.parse(execFileSync('docker', ['inspect', name], { encoding: 'utf8' }))[0];
-const org = inspect('deism-org');
+const org = inspect('deism-community-api');
 assert.ok(org.State.Running);
 assert.ok(!org.Config.Cmd.join(' ').includes('--var ORGANIZATION_REPLICA_SOURCE:'), 'Use an isolated writable fixture database');
-const pidp = inspect('deism-pidp-dev');
+const pidp = inspect('deism-identity-api');
 const env = Object.fromEntries(pidp.Config.Env.map(value => value.split(/=(.*)/s).slice(0, 2)));
 assert.ok(env.ALLOWED_ORIGINS.split(',').includes(base));
 assert.equal(env.EMAIL_VERIFICATION_DELIVERY, 'log');
@@ -42,13 +42,37 @@ try {
     if (response.url().startsWith(base + '/api/') && response.status() >= 500) portalErrors.push('API HTTP ' + response.status() + ': ' + new URL(response.url()).pathname);
   });
   await page.goto(site);
-  await page.locator('#deismuButton').click();
-  await expect(page.locator('#selected-node-text').getByRole('heading', { name: 'DeismU', exact: true })).toBeVisible();
-  await expect(page.locator('#curriculumList .section-title').first()).toBeVisible();
-  await page.screenshot({ path: new URL('website-deismu.png', artifacts).pathname, fullPage: true });
-  pass('local website DeismU curriculum click-through');
+  await expect(page.getByRole('heading', { name: 'Church of God (Deist)', exact: true })).toBeVisible();
+  await expect(page.locator('.hero-image')).toHaveAttribute('src', '/images/church-hero.png');
+  await page.screenshot({ path: new URL('website-latest-home.png', artifacts).pathname, fullPage: true });
+  await page.getByRole('link', { name: 'Read the Book of Doctrine', exact: true }).click();
+  await expect(page).toHaveURL(site + '/book_of_doctrine/');
+  await expect(page.locator('#overview-tree')).toContainText('Nature');
+  for (const colorScheme of ['light', 'dark']) {
+    await page.emulateMedia({ colorScheme });
+    await page.locator('img').evaluateAll(async images => {
+      if (!images.length) throw new Error('Doctrine diagrams are missing');
+      await Promise.all(images.map(image => image.decode()));
+    });
+  }
+  pass('doctrine diagrams decode in light and dark mode');
+  await page.locator('#navSearchInput').fill('annihilation');
+  await expect(page.locator('#navSearchResults button').first()).toBeVisible();
+  await page.locator('#navSearchInput').press('ArrowDown');
+  await page.locator('#navSearchInput').press('ArrowUp');
+  await expect(page.locator('#navSearchResults button').first()).toHaveClass(/is-active/);
+  await page.locator('#navSearchInput').press('Enter');
+  await expect(page).toHaveURL(/annihilation/);
+  await expect(page.locator('#selected-node-text')).toContainText('Universal Annihilation');
+  pass('latest landing page → doctrine reader → fuzzy search and keyboard navigation');
   await page.goto(site);
-  await page.locator('#loginButton').click();
+  await page.getByRole('link', { name: 'Hadith', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Curriculum', exact: true })).toBeVisible();
+  await expect(page.locator('#curriculumList .section-title').first()).toBeVisible();
+  await page.screenshot({ path: new URL('website-hadith.png', artifacts).pathname, fullPage: true });
+  pass('latest Hadith curriculum click-through');
+  await page.goto(site);
+  await page.getByRole('link', { name: 'Login', exact: true }).click();
   await expect(page).toHaveURL(base + '/users/login');
   await expect(page.getByRole('heading', { name: 'Sign in to Deism', exact: true })).toBeVisible();
   pass('local website Login uses Deism OrgPortal');
@@ -88,7 +112,7 @@ try {
   async function verifyAccount(app = '') {
     let verification;
     for (let attempt = 0; attempt < 30 && !verification; attempt++) {
-      const logResult = spawnSync('docker', ['logs', '--since', '5m', 'deism-pidp-dev'], { encoding: 'utf8' });
+      const logResult = spawnSync('docker', ['logs', '--since', '5m', 'deism-identity-api'], { encoding: 'utf8' });
       const logs = logResult.stdout + logResult.stderr;
       for (const candidate of logs.match(/https?:\/\/[^\s]+/g) || []) {
         const url = new URL(candidate);

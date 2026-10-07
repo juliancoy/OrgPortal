@@ -155,3 +155,67 @@
   --btn-primary-text: #102d27;
 }
 [data-portal-profile='orgportal'] .portal-brand img { width: 42px; height: 42px; object-fit: contain; }
+
+:root[data-portal-profile='lifetech'] {
+  --primary: #155e59;
+  --primary-2: #1b8b84;
+  --primary-bg: #e0f6f8;
+  --primary-hover: #064c5b;
+  --btn-primary-bg: #155e59;
+  --btn-primary-text: #fff;
+  --body-bg: #f1f8f9;
+  --hero-bg: #e0f6f8;
+  --icon-tile-bg: #e0f6f8;
+  --selection-bg: #155e59;
+  --border-hover: #1b8b84;
+  --focus-ring: 0 0 0 3px var(--panel), 0 0 0 6px #1b8b84;
+}
+
+:root[data-portal-profile='lifetech'][data-theme='dark'] {
+  --primary: #7bddcf;
+  --primary-2: #8ee5ef;
+  --primary-bg: #123b47;
+  --primary-hover: #9aeaf1;
+  --btn-primary-bg: #58c9b5;
+  --btn-primary-text: #061a26;
+  --body-bg: #061a26;
+  --panel: #0b2733;
+  --panel-2: #12323e;
+  --surface-softer: #0b2733;
+  --surface-input: #061a26;
+  --header-bg: #0b2733;
+  --footer-bg: #0b2733;
+  --border: #315563;
+  --border-input: #638a96;
+  --text-primary: #edfcff;
+  --text-secondary: #bddde5;
+  --text-muted: #a2c5cf;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-portal-profile='lifetech']:not([data-theme]) {
+    --primary: #7bddcf;
+    --primary-2: #8ee5ef;
+    --primary-bg: #123b47;
+    --primary-hover: #9aeaf1;
+    --btn-primary-bg: #58c9b5;
+    --btn-primary-text: #061a26;
+    --body-bg: #061a26;
+    --panel: #0b2733;
+    --panel-2: #12323e;
+    --surface-softer: #0b2733;
+    --surface-input: #061a26;
+    --header-bg: #0b2733;
+    --footer-bg: #0b2733;
+    --border: #315563;
+    --border-input: #638a96;
+    --text-primary: #edfcff;
+    --text-secondary: #bddde5;
+    --text-muted: #a2c5cf;
+  }
+}
+
+
+[data-portal-profile='lifetech'] .portal-brand img { width: 46px; height: 46px; object-fit: contain; border: 0; border-radius: 0; background: transparent; }
+[data-portal-profile='lifetech'] .portal-brand-title { font-family: inherit; text-transform: none; font-weight: 800; }
+[data-portal-profile='lifetech'] .portal-brand-sub { font-size: .68rem; letter-spacing: .03em; }

@@ -144,3 +144,15 @@ it('OrgPortal is neutral even while tenant metadata is unavailable', () => {
     expect(isPortalFeatureEnabled('ubi', profile)).toBe(false)
   } finally { domain.mockRestore() }
 })
+
+
+it('uses LifeTech identity from explicit tenant metadata', () => {
+  const domain = vi.spyOn(communities, 'getDomainTenant').mockReturnValue({
+    id: 'lifetech', slug: 'lifetech', hostname: 'lifetech.fyi', name: 'LifeTech',
+    profile: 'community', features: ['directory', 'events', 'chat'], tagline: '', accent_color: '#155e59',
+  })
+  try {
+    expect(getActivePortalProfileConfig().id).toBe('lifetech')
+    expect(getActivePortalProfileConfig().brandImagePath).toContain('lifetech-logo.png')
+  } finally { domain.mockRestore() }
+})

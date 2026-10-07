@@ -974,7 +974,9 @@ export function PublicAdminPage() {
 
   const mergeCandidates = myAdminOrgs.filter((item) => item.id !== org.id)
   const canEditOrgImage = isOrganizerView && adminView
-  const heroImageSource = org.image_url?.trim() || ORG_PLACEHOLDER_SRC
+  const tenant = getDomainTenant()
+  const organizationBrandImage = tenant?.organization_id === org.id ? tenant.brand_image_path : null
+  const heroImageSource = org.image_url?.trim() || organizationBrandImage || ORG_PLACEHOLDER_SRC
   const eventGroups = groupOrganizationEvents(events, org).map(group => ({
     ...group, events: group.events.slice(0, 3),
   }))
@@ -1049,9 +1051,10 @@ export function PublicAdminPage() {
               aria-label={canEditOrgImage ? 'Change organization image' : 'Organization image'}
             >
               <OrgImage
-                src={org.image_url}
+                src={heroImageSource}
+                fallbackSrc={organizationBrandImage}
                 alt={org.name}
-                className="portal-org-hero-image"
+                className={`portal-org-hero-image${organizationBrandImage ? ' portal-org-brand-image' : ''}`}
               />
             </button>
           </div>
@@ -1075,14 +1078,13 @@ export function PublicAdminPage() {
               <div className="portal-org-events-grid">
                 {group.events.map((event) => (
                   <article key={event.id} className="portal-org-event-card">
-                    {event.image_url ? (
-                      <img
-                        src={event.image_url}
-                        alt={event.title}
-
-                      />
-                    ) : null}
-                    <Link to={`/events/${event.slug}`}>
+                    <OrgImage
+                      src={event.image_url || event.media?.[0]?.url || heroImageSource}
+                      fallbackSrc={organizationBrandImage}
+                      alt=""
+                      className={!event.image_url && !event.media?.length ? 'portal-org-event-brand-image' : undefined}
+                    />
+                    <Link className="portal-org-event-link" to={`/events/${encodeURIComponent(event.slug)}`}>
                       {event.title}
                     </Link>
                     <span className="muted">{formatDate(event.starts_at)}{event.location ? ` • ${event.location}` : ''}</span>

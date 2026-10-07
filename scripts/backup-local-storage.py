@@ -17,7 +17,7 @@ await scan('/app/.wrangler');console.log(folder);"""
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--container', default='bmoremedtech-org')
+    parser.add_argument('--container', default='lifetech-community-api')
     parser.add_argument('--output', type=Path, default=ROOT / '.local/storage-backups')
     args = parser.parse_args()
     attrs = json.loads(subprocess.check_output(['docker', 'inspect', args.container], text=True))[0]

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { normalizePostLoginPath, portalAuthCallbackUrl } from './pidp'
-import { normalizePortalBasePath, portalPath, portalUrl, toInternalPortalPath } from './portalBase'
+import { normalizePortalBasePath, portalAssetPath, portalPath, portalUrl, toInternalPortalPath } from './portalBase'
 
 describe('portal base URL helpers', () => {
   afterEach(() => {
@@ -35,4 +35,13 @@ describe('portal base URL helpers', () => {
     const callback = new URL(portalAuthCallbackUrl('/p/chat'))
     expect(callback.toString()).toBe('https://codecollective.us/p/auth/callback?next=%2Fchat')
   })
+})
+
+
+it('keeps full brand image URLs intact and mounts local image assets', () => {
+  vi.stubEnv('BASE_URL', '/p/')
+  try {
+    expect(portalAssetPath('https://lifetech.fyi/assets/images/lifetech-logo.png')).toBe('https://lifetech.fyi/assets/images/lifetech-logo.png')
+    expect(portalAssetPath('/images/org-placeholder.svg')).toBe('/p/images/org-placeholder.svg')
+  } finally { vi.unstubAllEnvs() }
 })

@@ -68,3 +68,8 @@ export function publicProfileUrl(slug?: string | null, fallback?: string | null)
   if (cleanSlug) return portalUrl(`/users/${encodeURIComponent(cleanSlug)}`)
   return fallback?.trim() || null
 }
+
+
+export function portalAssetPath(path: string): string {
+  return /^https?:\/\//i.test(path) ? path : portalPath(path)
+}
