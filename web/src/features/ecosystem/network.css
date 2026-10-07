@@ -203,3 +203,5 @@ html.eco-map-open .portal-footer, html.eco-map-open .tb-shell-footer { display:n
  .portal-ecosystem .eco-graph-key { display:none; }
  .portal-ecosystem .eco-graph-top { flex-wrap:nowrap; padding:8px; }
 }
+
+.eco-fund-breakdown svg{display:block;width:110px;height:110px;margin:.75rem auto}.eco-fund-swatch{display:inline-block;width:.8rem;height:.8rem;border-radius:50%;margin-right:.4rem}

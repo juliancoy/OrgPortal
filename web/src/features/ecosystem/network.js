@@ -2,6 +2,7 @@ import { transactionVisibility, transactionCounts } from './zoom-visibility.js'
 import { quantityEdgeWidths } from './edge-quantity.js'
 import { relationshipColor } from './relationship-colors.js'
 import {mergeNetworkHistory} from './network-history.js'
+import { applyFundHierarchy, foldFundNodes, financialNodePies, pieWedgePath, pieLabel } from './fund-pies.js'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { layoutNetwork } from './ecosystem-physics.js'
@@ -48,10 +49,10 @@ let data, selected = null, scene, camera, renderer, controls, group, nodes=[], e
 let inspectorKey=null, edgeMeshes=[]
 let webgl = false, svg, svgView = { x: -400, y: -400, w: 800, h: 800 }
 const radius = n => financialNodeRadius($('#scale-node-finances').checked ? n.financialAmount : null)
-const financialLabel = n => n.financialAmount ? `Largest disclosed funding/award: ${new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(n.financialAmount)}; payment unverified` : 'Funding amount undisclosed'
+const financialLabel = n => n.financialPie ? pieLabel(n.financialPie) : n.financialAmount ? `Largest disclosed funding/award: ${new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(n.financialAmount)}; payment unverified` : 'Funding amount undisclosed'
 function previewNode(org) {
  const key='node:'+org.id;if(inspectorKey===key)return;inspectorKey=key
- $('#network-detail').innerHTML=orgDetails(org,data);rewriteLinks();if(matchMedia('(max-width:900px)').matches){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
+ $('#network-detail').innerHTML=orgDetails(org,data,{includeCapitalization:$('#include-context').checked});rewriteLinks();if(matchMedia('(max-width:900px)').matches){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
 }
 function previewEdge(edge) {
  const key='edge:'+edge.id;if(inspectorKey===key)return;inspectorKey=key
@@ -62,9 +63,10 @@ function bindNodePreview(button,node) {
  button.addEventListener('focus',()=>previewNode(node))
 }
 function select(id) {
- const org = data.organizations.find(o=>o.id===id); if (!org) return
+ let org = data.organizations.find(o=>o.id===id); if (!org) return
+ if(org.administratorId){id=org.administratorId;org=data.organizations.find(o=>o.id===id);if(!org)return}
  selected = id; inspectorKey='node:'+id; $('#neighbors').disabled=false
- $('#network-detail').innerHTML = orgDetails(org,data); rewriteLinks();if(matchMedia('(max-width:900px)').matches){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
+ $('#network-detail').innerHTML = orgDetails(org,data,{includeCapitalization:$('#include-context').checked}); rewriteLinks();if(matchMedia('(max-width:900px)').matches){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
  const u = new URL(location.href); u.searchParams.set('org',id); history.replaceState(history.state,'',u)
  rebuild()
 }
@@ -84,10 +86,11 @@ function rebuild() {
  if (!data) return
  inspectorKey=null
  const cats=selectedCategories(), rels=selectedRelationships(), context=$('#include-context').checked
- let visible=data.organizations.filter(n=>cats.has(n.category))
+ const graphData=foldFundNodes(data), pies=financialNodePies(data,{includeCapitalization:context})
+ let visible=graphData.organizations.filter(n=>cats.has(n.category))
  let visibleIds=new Set(visible.map(n=>n.id))
  const moneyOnly=$('#network-view').value==='money'
- edges=graphRelationships(data,{moneyOnly,includeCapitalization:context}).filter(e=>visibleIds.has(e.source) && visibleIds.has(e.target) && (moneyOnly || rels.has(e.relationship)))
+ edges=graphRelationships(graphData,{moneyOnly,includeCapitalization:context}).filter(e=>visibleIds.has(e.source) && visibleIds.has(e.target) && (moneyOnly || rels.has(e.relationship)))
  if ($('#neighbors').checked && selected) {
   const neighbors=new Set([selected]); edges.forEach(e=>{if(e.source===selected)neighbors.add(e.target);if(e.target===selected)neighbors.add(e.source)})
   visible=visible.filter(n=>neighbors.has(n.id)); visibleIds=new Set(visible.map(n=>n.id)); edges=edges.filter(e=>visibleIds.has(e.source)&&visibleIds.has(e.target))
@@ -96,10 +99,10 @@ function rebuild() {
   const connected=new Set(edges.flatMap(e=>[e.source,e.target]))
   visible=visible.filter(n=>connected.has(n.id))
  }
- recordedCounts=transactionCounts(graphRelationships(data,{includeCapitalization:context}))
- const amounts=financialNodeAmounts(data,{includeCapitalization:context})
- const widths=quantityEdgeWidths(graphRelationships(data,{includeCapitalization:context}),$('#scale-edge-quantity').checked)
- nodes=visible.map(n=>({...n,financialAmount:amounts.get(n.id) ?? null})); edges=edges.map(e=>({...e,quantityWidth:widths.get(e.id) ?? 1.4}))
+ recordedCounts=transactionCounts(graphRelationships(graphData,{includeCapitalization:context}))
+ const amounts=financialNodeAmounts(graphData,{includeCapitalization:context})
+ const widths=quantityEdgeWidths(graphRelationships(graphData,{includeCapitalization:context}),$('#scale-edge-quantity').checked)
+ nodes=visible.map(n=>({...n,financialAmount:amounts.get(n.id) ?? null,financialPie:pies.get(n.id) || null})); edges=edges.map(e=>({...e,quantityWidth:widths.get(e.id) ?? 1.4}))
  status.textContent=`${nodes.length} organizations · ${edges.length} links${webgl ? '' : ' · SVG fallback'}`
  if(webgl) clearGraph()
  else { labels.replaceChildren(); labelItems=[]; svg.replaceChildren() }
@@ -108,9 +111,18 @@ function rebuild() {
  layoutNetwork(nodes,edges,radius,center)
  if(!webgl) { renderSvg(); fit(); requestRender(); return }
  for(const n of nodes) {
-  const mesh=new THREE.Mesh(new THREE.SphereGeometry(radius(n),16,12),new THREE.MeshBasicMaterial({color:n.id===selected?0xe56d3c:colors[n.category]}))
+  const r=radius(n), color=n.id===selected?0xe56d3c:colors[n.category]
+  const mesh=new THREE.Mesh(n.financialPie?new THREE.CircleGeometry(r,48):new THREE.SphereGeometry(r,16,12),new THREE.MeshBasicMaterial({color,side:THREE.DoubleSide}))
+  if(n.financialPie){
+   for(const slice of n.financialPie.slices){
+    // SVG angles run clockwise; Three's circles run counterclockwise.
+    const sector=new THREE.Mesh(new THREE.CircleGeometry(r,Math.max(3,Math.ceil(slice.share*64)),-slice.endAngle,slice.endAngle-slice.startAngle),new THREE.MeshBasicMaterial({color:new THREE.Color(slice.color),side:THREE.DoubleSide}))
+    sector.position.z=.2;mesh.add(sector)
+   }
+   const ring=new THREE.Mesh(new THREE.RingGeometry(r,r+(n.id===selected?2:1),48),new THREE.MeshBasicMaterial({color,side:THREE.DoubleSide}));ring.position.z=.3;mesh.add(ring)
+  }
   mesh.position.set(n.x,n.y,0);mesh.userData.node=n;group.add(mesh);meshes.push(mesh)
-  const button=document.createElement('button');button.type='button';button.textContent=n.name;button.title=`${n.name} · ${financialLabel(n)}`;button.setAttribute('aria-pressed',String(n.id===selected));button.addEventListener('click',()=>select(n.id));bindNodePreview(button,n);labels.append(button);labelItems.push({button,n})
+  const button=document.createElement('button');button.type='button';button.textContent=n.name;button.title=`${n.name} · ${financialLabel(n)}`;if(n.financialPie){button.dataset.fundingSlices=String(n.financialPie.slices.length);button.dataset.fundingTotal=String(n.financialPie.total);button.setAttribute('aria-label',button.title)}button.setAttribute('aria-pressed',String(n.id===selected));button.addEventListener('click',()=>select(n.id));bindNodePreview(button,n);labels.append(button);labelItems.push({button,n})
  }
  const parallel=new Map()
  for(const edge of edges) {
@@ -198,7 +210,7 @@ function initSvg() {
  svg.style.cssText='width:100%;height:100%;display:block;touch-action:none;cursor:grab'
  host.prepend(svg)
  let drag=null
- svg.addEventListener('pointerdown',event=>{if(event.target.tagName==='circle')return;drag={x:event.clientX,y:event.clientY,vx:svgView.x,vy:svgView.y};svg.setPointerCapture(event.pointerId)})
+ svg.addEventListener('pointerdown',event=>{if(event.target.closest('[data-node-id]'))return;drag={x:event.clientX,y:event.clientY,vx:svgView.x,vy:svgView.y};svg.setPointerCapture(event.pointerId)})
  svg.addEventListener('pointermove',event=>{if(!drag)return;svgView.x=drag.vx-(event.clientX-drag.x)/host.clientWidth*svgView.w;svgView.y=drag.vy-(event.clientY-drag.y)/host.clientHeight*svgView.h;requestRender()})
  svg.addEventListener('pointerup',()=>{drag=null});svg.addEventListener('pointercancel',()=>{drag=null})
  resizeObserver=new ResizeObserver(fit); resizeObserver.observe(host)
@@ -218,9 +230,12 @@ function renderSvg() {
   const hitPath=svgElement('path',{d:line.getAttribute('d'),fill:'none',stroke:'transparent','stroke-width':12,'vector-effect':'non-scaling-stroke','pointer-events':'stroke','aria-hidden':'true'});hitPath.setAttribute('data-edge-id',edge.id);hitPath.addEventListener('pointerenter',()=>previewEdge(edge));hitPath.addEventListener('click',()=>previewEdge(edge));svg.append(hitPath)
  }
  for(const n of nodes) {
-  const circle=svgElement('circle',{cx:n.x,cy:n.y,r:radius(n),fill:`#${(n.id===selected?0xe56d3c:colors[n.category]).toString(16).padStart(6,'0')}`})
-  const title=svgElement('title');title.textContent=`${n.name} · ${financialLabel(n)}`;circle.setAttribute('data-node-id',n.id);circle.append(title);circle.addEventListener('pointerenter',()=>previewNode(n));circle.addEventListener('click',()=>select(n.id));svg.append(circle)
-  const button=document.createElement('button');button.type='button';button.textContent=n.name;button.title=`${n.name} · ${financialLabel(n)}`;button.setAttribute('aria-pressed',String(n.id===selected));button.addEventListener('click',()=>select(n.id));bindNodePreview(button,n);labels.append(button);labelItems.push({button,n})
+  const color=`#${(n.id===selected?0xe56d3c:colors[n.category]).toString(16).padStart(6,'0')}`,node=svgElement('g',{'data-node-id':n.id})
+  const title=svgElement('title');title.textContent=`${n.name} · ${financialLabel(n)}`;node.append(title)
+  if(n.financialPie){for(const slice of n.financialPie.slices)node.append(svgElement('path',{d:pieWedgePath(n.x,n.y,radius(n),slice.startAngle,slice.endAngle),fill:slice.color}));node.append(svgElement('circle',{cx:n.x,cy:n.y,r:radius(n),fill:'none',stroke:color,'stroke-width':n.id===selected?2:1}))}
+  else node.append(svgElement('circle',{cx:n.x,cy:n.y,r:radius(n),fill:color}))
+  node.addEventListener('pointerenter',()=>previewNode(n));node.addEventListener('click',()=>select(n.id));svg.append(node)
+  const button=document.createElement('button');button.type='button';button.textContent=n.name;button.title=`${n.name} · ${financialLabel(n)}`;if(n.financialPie){button.dataset.fundingSlices=String(n.financialPie.slices.length);button.dataset.fundingTotal=String(n.financialPie.total);button.setAttribute('aria-label',button.title)}button.setAttribute('aria-pressed',String(n.id===selected));button.addEventListener('click',()=>select(n.id));bindNodePreview(button,n);labels.append(button);labelItems.push({button,n})
  }
 }
 function initWebgl() {
@@ -231,7 +246,7 @@ function initWebgl() {
   webgl=true
   resizeObserver=new ResizeObserver(()=>{renderer.setSize(host.clientWidth,host.clientHeight);fit()}); resizeObserver.observe(host)
   const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();ray.params.Line.threshold=5
-  const hit=event=>{const rect=renderer.domElement.getBoundingClientRect();pointer.set((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1);ray.setFromCamera(pointer,camera);const node=ray.intersectObjects(meshes.filter(m=>m.visible))[0]?.object.userData.node;if(node)return {node};return {edge:ray.intersectObjects(edgeMeshes.filter(m=>m.visible))[0]?.object.userData.edge}}
+  const hit=event=>{const rect=renderer.domElement.getBoundingClientRect();pointer.set((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1);ray.setFromCamera(pointer,camera);const hitNode=ray.intersectObjects(meshes.filter(m=>m.visible),false)[0]?.object;const node=hitNode?.userData.node;if(node)return {node};return {edge:ray.intersectObjects(edgeMeshes.filter(m=>m.visible))[0]?.object.userData.edge}}
   let down=null
   renderer.domElement.addEventListener('pointerdown',ev=>{down={x:ev.clientX,y:ev.clientY}})
   renderer.domElement.addEventListener('pointerup',ev=>{if(down&&Math.hypot(ev.clientX-down.x,ev.clientY-down.y)<6){const hitItem=hit(ev);if(hitItem.node)select(hitItem.node.id);else if(hitItem.edge)previewEdge(hitItem.edge)}down=null})
@@ -243,7 +258,7 @@ function initWebgl() {
 async function start(){
  try {
   const snapshots=await Promise.all([cachedPublicJson(dataUrl,validateSnapshot),cachedPublicJson(historyUrl,validateSnapshot)])
-  const historyData=snapshots[1];data=mergeNetworkHistory(snapshots[0],historyData); if(disposed)return; rewriteLinks()
+  const historyData=snapshots[1];data=applyFundHierarchy(mergeNetworkHistory(snapshots[0],historyData)); if(disposed)return; rewriteLinks()
   initWebgl();search()
   root.addEventListener('wheel',event=>{
    if(!host.contains(event.target))return
@@ -262,7 +277,7 @@ async function start(){
   for(const [id,factor] of [['#zoom-in',1.25],['#zoom-out',.8]]) $(id).addEventListener('click',()=>{if(!webgl){zoomSvg(factor);return}zoomWebgl(factor)})
   $('#network-reset').addEventListener('click',()=>{selected=null;inspectorKey=null;root.querySelectorAll('[name=node-category],[name=relationship]').forEach(c=>c.checked=true);$('#network-view').value='all';$('#include-context').checked=false;$('#hide-isolated').checked=true;$('#scale-node-finances').checked=true;$('#scale-edge-quantity').checked=true;$('#zoom-sparse').checked=true;$('#visibility-factor').value='4';$('#visibility-factor-value').textContent='4';$('#neighbors').checked=false;$('#neighbors').disabled=true;$('#network-search').value='';$('#network-detail').innerHTML='<h2>Select an organization</h2><p>Search or select a graph label to explore its evidence.</p>';history.replaceState(history.state,'',location.pathname);search();rebuild()})
   const initial=new URL(location.href).searchParams.get('org');if(initial&&data.organizations.some(n=>n.id===initial)){select(initial)}else rebuild()
-  loadPortalEvidence(data, cachedEvidenceFetch,apiPrefix).then(updated=>{if(disposed)return;data=mergeNetworkHistory(updated,historyData);search();if(selected)select(selected);else rebuild();$('#network-source').textContent=(usingOfflineCopy?'Offline · last checked ':'Checked ')+new Date(oldestCheck).toLocaleString()}).catch(()=>{if(disposed)return;$('#network-source').textContent='Saved public evidence · refresh unavailable'})
+  loadPortalEvidence(data, cachedEvidenceFetch,apiPrefix).then(updated=>{if(disposed)return;data=applyFundHierarchy(mergeNetworkHistory(updated,historyData));search();if(selected)select(selected);else rebuild();$('#network-source').textContent=(usingOfflineCopy?'Offline · last checked ':'Checked ')+new Date(oldestCheck).toLocaleString()}).catch(()=>{if(disposed)return;$('#network-source').textContent='Saved public evidence · refresh unavailable'})
  }catch(error){if(disposed)return;status.textContent='Network data is unavailable. Reload to try again or browse the organization directory.';host.hidden=true;console.error(error)}
 }
 const media=matchMedia('(max-width:900px)')
