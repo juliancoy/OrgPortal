@@ -180,8 +180,12 @@ def collect_orgs_and_events(repo_root: Path, cities: Iterable[str]) -> Tuple[Lis
             if not title:
                 continue
             source_url = normalize_url(raw.get("url"))
-            host_org_source_url = normalize_url(raw.get("source")) or normalize_url(raw.get("source_url"))
-            host_org_name = derive_host_org_name(raw, host_org_source_url)
+            # source_url identifies the configured group; source can be an
+            # embedded calendar, pagination URL, or individual scraper page.
+            legacy_host_source_url = normalize_url(raw.get("source")) or normalize_url(raw.get("source_url"))
+            host_org_source_url = normalize_url(raw.get("source_url")) or legacy_host_source_url
+            registered_org = orgs_by_key.get(host_org_source_url, {})
+            host_org_name = registered_org.get("name") or derive_host_org_name(raw, host_org_source_url)
             host_org_image_url = normalize_url(raw.get("orgImageUrl"))
             image_url = normalize_url(raw.get("imageUrl")) or host_org_image_url
             event = {
@@ -198,7 +202,9 @@ def collect_orgs_and_events(repo_root: Path, cities: Iterable[str]) -> Tuple[Lis
                 "tags": normalize_tags(raw.get("tags"), city),
                 "city": city,
             }
-            event["ingest_key"] = build_ingest_key(event)
+            # Keep the identity used by earlier imports while correcting the
+            # host. Existing event URLs, rooms and registrations must survive.
+            event["ingest_key"] = build_ingest_key({**event, "host_org_source_url": legacy_host_source_url})
             events_by_key[event["ingest_key"]] = event
 
             if host_org_source_url:
