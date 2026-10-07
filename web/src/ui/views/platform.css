@@ -26,3 +26,10 @@
 .platform-explore a { display: grid; gap: .7rem; padding: 1.5rem; border: 1px solid var(--border); border-radius: 12px; text-decoration: none; }
 .platform-explore strong { color: var(--text-primary); font-size: 1.05rem; }
 .platform-explore span { color: var(--text-muted); line-height: 1.6; }
+
+.platform-chatgpt { margin: 1rem 0 3rem; padding: clamp(1.2rem, 4vw, 2.5rem); border: 1px solid var(--border-color, #cadbd7); border-radius: 20px; scroll-margin-top: 5rem; }
+.platform-chatgpt h2 { font-size: clamp(1.7rem, 4vw, 2.5rem); margin: 0 0 1rem; }
+.platform-chatgpt-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2rem; padding-left: 1.3rem; margin: 2rem 0; }
+.platform-chatgpt-steps strong, .platform-chatgpt-steps span { display: block; margin-bottom: .6rem; }
+.platform-chatgpt-steps span { color: var(--text-muted); line-height: 1.6; }
+@media (max-width: 600px) { .platform-chatgpt-steps { grid-template-columns: 1fr; gap: 1rem; } }

@@ -96,6 +96,12 @@ test('brand tool discovery and calls cannot escape their organization, including
     const initialize = await rpc('initialize', { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'test', version: '1' } });
     assert.equal(initialize.result.serverInfo.name, 'LifeTech MCP');
     const tools = (await rpc('tools/list', {})).result.tools;
+    for (const tool of tools) {
+      assert.deepEqual(tool.securitySchemes, tool._meta.securitySchemes);
+      assert.equal(tool.securitySchemes[0].type, 'oauth2');
+      assert.ok(tool.securitySchemes[0].scopes.length > 0);
+      for (const hint of ['readOnlyHint', 'destructiveHint', 'openWorldHint']) assert.equal(typeof tool.annotations[hint], 'boolean');
+    }
     const scopedEnv = env as unknown as { DB: D1Database };
     scopedEnv.DB = { prepare() { return { bind() { return {
       first: async () => ({ requests: 1 }),
@@ -130,4 +136,23 @@ test('brand tool discovery and calls cannot escape their organization, including
   assert.equal(metadata.status, 200);
   assert.equal((await metadata.json() as any).resource, resource);
   assert.equal((await handleEventMcp(request(resource), platformEnv)).status, 401);
+});
+
+test('MCP failure telemetry excludes credentials and user-controlled data', async () => {
+  const entries: string[] = [];
+  const original = console.info;
+  console.info = value => entries.push(String(value));
+  try {
+    const response = await handleEventMcp(new Request('https://worker.example/mcp?private=do-not-log', {
+      method: 'POST', headers: { 'x-forwarded-host': 'lifetech.fyi', 'content-type': 'application/json' },
+      body: JSON.stringify({ method: 'secret-method', params: { private: 'do-not-log' } }),
+    }), env);
+    assert.equal(response.status, 401);
+    const entry = entries.map(value => JSON.parse(value)).find(value => value.event === 'orgportal.mcp.request');
+    assert.equal(entry.outcome, 'error');
+    assert.equal(entry.status, 401);
+    assert.deepEqual(Object.keys(entry).sort(), ['durationMs', 'event', 'method', 'outcome', 'status']);
+    assert.ok(!JSON.stringify(entry).includes('do-not-log'));
+    assert.ok(!JSON.stringify(entry).includes('secret-method'));
+  } finally { console.info = original; }
 });
