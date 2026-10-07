@@ -13,14 +13,14 @@ try {
   await page.locator('#network-labels button:not([hidden])').first().click()
   const marker=page.locator('#network-labels button[aria-pressed=true]')
   await marker.waitFor()
+  await page.waitForFunction(()=>document.querySelector('#network-labels button[aria-pressed=true]')?.style.left)
   const point=()=>marker.evaluate(el=>{const b=el.parentElement.getBoundingClientRect();return {x:b.x+parseFloat(el.style.left),y:b.y+parseFloat(el.style.top)}})
   const before=await point()
   await page.mouse.move(before.x,before.y)
   for(const delta of [-120,120]){
-   const changed=mode==='svg'?await page.locator('#network-canvas svg').getAttribute('viewBox'):await page.locator('#network-canvas').evaluate(el=>el.querySelector('canvas').toDataURL())
+   const changed=await page.locator('#network-labels button').evaluateAll(ns=>JSON.stringify(ns.map(n=>n.style.cssText)))
    await page.mouse.wheel(0,delta)
-   if(mode==='svg')await page.waitForFunction(old=>document.querySelector('#network-canvas svg').getAttribute('viewBox')!==old,changed)
-   else await page.waitForFunction(old=>document.querySelector('#network-canvas canvas').toDataURL()!==old,changed)
+   await page.waitForFunction(old=>JSON.stringify([...document.querySelectorAll('#network-labels button')].map(n=>n.style.cssText))!==old,changed)
    const after=await point();assert(Math.hypot(after.x-before.x,after.y-before.y)<1,`${mode} cursor anchor drifted`)
   }
   assert.equal(await page.evaluate(()=>scrollY),0)
