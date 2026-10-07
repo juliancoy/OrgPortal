@@ -46,7 +46,7 @@ const selectedRelationships = () => new Set([...root.querySelectorAll('[name=rel
 const host = $('#network-canvas'), labels = $('#network-labels'), status = $('#network-status')
 let fittedSvgWidth=1, recordedCounts=new Map()
 let data, selected = null, scene, camera, renderer, controls, group, nodes=[], edges=[], meshes=[], labelItems=[], frame=0
-let inspectorKey=null, edgeMeshes=[], simulation, lastTick=0, fitted=false
+let inspectorKey=null, edgeMeshes=[], simulation, lastTick=0, fitted=false, renderDirty=true, visibilityKey=null, visible=new Set(), visibleEdges=new Set(), labelPriority=[]
 const savedPositions=new Map(), movingEdges=[], movingNodes=[]
 const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)')
 const physicsEnabled=()=>!document.hidden&&!reducedMotion.matches&&$('#live-physics').checked
@@ -54,7 +54,8 @@ function motionChange(){lastTick=0;requestRender()}
 document.addEventListener('visibilitychange',motionChange,{signal:abort.signal})
 reducedMotion.addEventListener('change',motionChange,{signal:abort.signal})
 let webgl = false, svg, svgView = { x: -400, y: -400, w: 800, h: 800 }
-const radius = n => financialNodeRadius($('#scale-node-finances').checked ? n.financialAmount : null)
+const radius = n => n.renderRadius
+const forceOptions=()=>({live:true,attraction:Number($('#attraction').value),repulsion:Number($('#repulsion').value),proximity:Number($('#proximity').value)})
 const financialLabel = n => n.financialAmount ? `Recorded USD transaction volume: ${new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(n.financialAmount)}; incoming + outgoing; payment unverified${n.financialPie ? '. '+pieLabel(n.financialPie) : ''}` : 'USD volume undisclosed'
 function previewNode(org) {
  const key='node:'+org.id;if(inspectorKey===key)return;inspectorKey=key
@@ -93,6 +94,7 @@ function rebuild() {
  inspectorKey=null
  simulation?.stop()
  nodes.forEach(n=>savedPositions.set(n.id,{x:n.x,y:n.y,vx:n.vx,vy:n.vy}))
+ visibilityKey=null;labelPriority=[]
  movingEdges.length=0;movingNodes.length=0;lastTick=0
  const cats=selectedCategories(), rels=selectedRelationships(), context=$('#include-context').checked
  const graphData=foldFundNodes(data), pies=financialNodePies(data,{includeCapitalization:context})
@@ -112,12 +114,14 @@ function rebuild() {
  const amounts=financialNodeAmounts(graphData,{includeCapitalization:context})
  const widths=quantityEdgeWidths(graphRelationships(graphData,{includeCapitalization:context}),$('#scale-edge-quantity').checked)
  nodes=visible.map(n=>({...n,...savedPositions.get(n.id),financialAmount:amounts.get(n.id) ?? null,financialPie:pies.get(n.id) || null})); edges=edges.map(e=>({...e,quantityWidth:widths.get(e.id) ?? 1.4}))
+ const scaleFinances=$('#scale-node-finances').checked
+ nodes.forEach(n=>{n.renderRadius=financialNodeRadius(scaleFinances?n.financialAmount:null)})
  status.textContent=`${nodes.length} organizations · ${edges.length} links${webgl ? '' : ' · SVG fallback'}`
  if(webgl) clearGraph()
  else { labels.replaceChildren(); labelItems=[]; svg.replaceChildren() }
  const classKeys=Object.keys(colors), clusters=classKeys.length, spread=230
  const center=n=>{const i=classKeys.indexOf(n.category),a=i/clusters*Math.PI*2;return {x:Math.cos(a)*spread,y:Math.sin(a)*spread}}
- simulation=layoutNetwork(nodes,edges,radius,center,{live:true,attraction:Number($('#attraction').value),repulsion:Number($('#repulsion').value)})
+ simulation=layoutNetwork(nodes,edges,radius,center,forceOptions())
  // A short bounded warmup provides a useful first frame without blocking for convergence.
  if(!fitted)simulation.tick(8)
  if(!webgl) { renderSvg(); if(!fitted){fit();fitted=true} requestRender(); return }
@@ -142,15 +146,15 @@ function rebuild() {
   const dir=b.clone().sub(a).normalize(),normal=new THREE.Vector3(-dir.y,dir.x,0)
   const start=a.clone().addScaledVector(dir,radius(edge.source)+2),end=b.clone().addScaledVector(dir,-radius(edge.target)-3)
   const midpoint=start.clone().add(end).multiplyScalar(.5).addScaledVector(normal,15+idx*18)
-  const curve=new THREE.QuadraticBezierCurve3(start,midpoint,end),points=curve.getPoints(36),color=relationshipColor(edge)
+  const curve=new THREE.QuadraticBezierCurve3(start,midpoint,end),points=curve.getPoints(18),color=relationshipColor(edge)
   let visual
   if(edge.relationship==='funding') {
    const width=(edge.quantityWidth || 1.4)/2
-   const mesh=new THREE.Mesh(new THREE.TubeGeometry(curve,36,width,4,false),new THREE.MeshBasicMaterial({color,transparent:true,opacity:.5}));mesh.userData.edge=edge;group.add(mesh);edgeMeshes.push(mesh);visual=mesh
+   const mesh=new THREE.Mesh(new THREE.TubeGeometry(curve,18,width,4,false),new THREE.MeshBasicMaterial({color,transparent:true,opacity:.5}));mesh.userData.edge=edge;group.add(mesh);edgeMeshes.push(mesh);visual=mesh
   } else {
    const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),new THREE.LineDashedMaterial({color,dashSize:edge.relationship==='affiliation'?8:3,gapSize:5,transparent:true,opacity:.65}));line.computeLineDistances();line.userData.edge=edge;group.add(line);edgeMeshes.push(line);visual=line
   }
-  const hitMesh=new THREE.Mesh(new THREE.TubeGeometry(curve,36,4,4,false),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));hitMesh.userData.edge=edge;group.add(hitMesh);edgeMeshes.push(hitMesh)
+  const hitMesh=new THREE.Mesh(new THREE.TubeGeometry(curve,18,4,4,false),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));hitMesh.userData.edge=edge;group.add(hitMesh);edgeMeshes.push(hitMesh)
   const tangent=curve.getTangent(1).normalize(),arrow=new THREE.ArrowHelper(tangent,end.clone().addScaledVector(tangent,-8),8,color,7,4);arrow.userData.edge=edge;group.add(arrow);movingEdges.push({edge,idx,visual,hitMesh,arrow,curve})
  }
  if(!fitted){fit();fitted=true} requestRender()
@@ -172,31 +176,41 @@ function fit() {
 function render(time=0) {
  frame=0;
  if(simulation&&physicsEnabled()&&simulation.alpha()>simulation.alphaMin()){
-  // Fixed 60 Hz integration, at most two steps per frame; discard background catch-up.
-  const step=1000/60,elapsed=lastTick?time-lastTick:step
-  const steps=Math.min(2,Math.floor((elapsed+.001)/step))
-  if(steps>0){simulation.tick(steps);lastTick=lastTick&&elapsed<=2*step?lastTick+steps*step:time;updatePositions()}
+  // Cap active simulation and geometry work at 30 Hz. Never catch up a stalled tab.
+  const step=1000/30,elapsed=lastTick?time-lastTick:step
+  const steps=Math.min(1,Math.floor((elapsed+.001)/step))
+  if(!steps&&!renderDirty){requestRender(false);return}
+  if(steps>0){simulation.tick(steps);lastTick=lastTick&&elapsed<=step*2?lastTick+steps*step:time;updatePositions()}
  }else lastTick=0;
+ renderDirty=false
  const zoom=webgl?camera.zoom:fittedSvgWidth/svgView.w
- const visible=new Set(nodes.filter(n=>n.id===selected||!$('#zoom-sparse').checked||transactionVisibility(recordedCounts.get(n.id)||0,zoom,Number($('#visibility-factor').value))).map(n=>n.id))
+ const key=[zoom,selected,$('#zoom-sparse').checked,$('#visibility-factor').value].join('|')
+ const visibilityChanged=key!==visibilityKey
+ if(visibilityChanged){
+ visibilityKey=key
+ visible=new Set(nodes.filter(n=>n.id===selected||!$('#zoom-sparse').checked||transactionVisibility(recordedCounts.get(n.id)||0,zoom,Number($('#visibility-factor').value))).map(n=>n.id))
  const edgeVisible=e=>visible.has(e.source.id||e.source)&&visible.has(e.target.id||e.target)
- const visibleEdges=new Set(edges.filter(edgeVisible).map(e=>e.id))
- if(webgl){for(const o of group.children){if(o.userData.node)o.visible=visible.has(o.userData.node.id);if(o.userData.edge)o.visible=edgeVisible(o.userData.edge)}renderer.render(scene,camera)}
+ visibleEdges=new Set(edges.filter(edgeVisible).map(e=>e.id))
+ if(webgl){for(const o of group.children){if(o.userData.node)o.visible=visible.has(o.userData.node.id);if(o.userData.edge)o.visible=edgeVisible(o.userData.edge)}}
  else {for(const c of svg.querySelectorAll('[data-node-id]'))c.style.display=visible.has(c.dataset.nodeId)?'':'none';for(const c of svg.querySelectorAll('[data-edge-id]'))c.style.display=visibleEdges.has(c.dataset.edgeId)?'':'none'}
  status.textContent=`${visible.size} visible / ${nodes.length} organizations · ${visibleEdges.size} visible links`
+ }
+ if(visibilityChanged)updatePositions()
+ if(webgl)renderer.render(scene,camera)
  if(!webgl) svg?.setAttribute('viewBox',`${svgView.x} ${svgView.y} ${svgView.w} ${svgView.h}`)
  const positions=[]
- const priority=[...labelItems].sort((a,b)=>(b.n.id===selected)-(a.n.id===selected)||(b.n.financialAmount??0)-(a.n.financialAmount??0))
- for(const item of priority) {
+ if(!labelPriority.length)labelPriority=[...labelItems].sort((a,b)=>(b.n.id===selected)-(a.n.id===selected)||(b.n.financialAmount??0)-(a.n.financialAmount??0))
+ for(const item of labelPriority) {
+  if(!visible.has(item.n.id)){item.button.hidden=true;continue}
   const p=webgl?new THREE.Vector3(item.n.x,item.n.y,0).project(camera):new THREE.Vector3((item.n.x-svgView.x)/svgView.w*2-1,1-(item.n.y-svgView.y)/svgView.h*2,0),x=(p.x*.5+.5)*host.clientWidth,y=(-p.y*.5+.5)*host.clientHeight
   const width=Math.min(155,item.n.name.length*5.5+10)
   const overlapping=positions.some(r=>Math.abs(x-r.x)<(width+r.width)/2+8&&Math.abs(y-r.y)<28)
   item.button.hidden=!visible.has(item.n.id)||p.z>1||Math.abs(p.x)>1||Math.abs(p.y)>1||(overlapping&&item.n.id!==selected)
   if(!item.button.hidden){item.button.style.left=`${x}px`;item.button.style.top=`${y}px`;positions.push({x,y,width})}
  }
- if(simulation&&physicsEnabled()&&simulation.alpha()>simulation.alphaMin())requestRender()
+ if(simulation&&physicsEnabled()&&simulation.alpha()>simulation.alphaMin())requestRender(false)
 }
-function requestRender(){if(!disposed&&!frame)frame=requestAnimationFrame(render)}
+function requestRender(force=true){if(force!==false)renderDirty=true;if(!disposed&&!frame)frame=requestAnimationFrame(render)}
 function edgePoints(edge,idx) {
  const a=edge.source,b=edge.target,dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||1,ux=dx/d,uy=dy/d
  const start=new THREE.Vector3(a.x+ux*(radius(a)+2),a.y+uy*(radius(a)+2),0)
@@ -206,8 +220,8 @@ function edgePoints(edge,idx) {
 }
 function updateTube(mesh,curve,width) {
  const position=mesh.geometry.attributes.position,point=new THREE.Vector3(),tangent=new THREE.Vector3()
- for(let i=0;i<=36;i++){
-  curve.getPoint(i/36,point);curve.getTangent(i/36,tangent).normalize()
+ for(let i=0;i<=18;i++){
+  curve.getPoint(i/18,point);curve.getTangent(i/18,tangent).normalize()
   for(let j=0;j<=4;j++){
    const angle=j/4*Math.PI*2,c=Math.cos(angle)*width
    position.setXYZ(i*5+j,point.x-tangent.y*c,point.y+tangent.x*c,Math.sin(angle)*width)
@@ -219,11 +233,12 @@ function updatePositions(){
  if(webgl){
   for(const mesh of meshes){const n=mesh.userData.node;mesh.position.set(n.x,n.y,0)}
   for(const item of movingEdges){
+   if(!item.visual.visible)continue
    const {start,end,middle}=edgePoints(item.edge,item.idx),curve=item.curve
    curve.v0.copy(start);curve.v1.copy(middle);curve.v2.copy(end)
    if(item.visual.isLine){
     const position=item.visual.geometry.attributes.position,point=new THREE.Vector3()
-    for(let i=0;i<=36;i++){curve.getPoint(i/36,point);position.setXYZ(i,point.x,point.y,0)}
+    for(let i=0;i<=18;i++){curve.getPoint(i/18,point);position.setXYZ(i,point.x,point.y,0)}
     position.needsUpdate=true;item.visual.geometry.computeBoundingSphere();item.visual.computeLineDistances()
    }else updateTube(item.visual,curve,(item.edge.quantityWidth||1.4)/2)
    updateTube(item.hitMesh,curve,4)
@@ -231,7 +246,7 @@ function updatePositions(){
   }
  }else{
   for(const {node,n} of movingNodes)node.setAttribute('transform',`translate(${n.x} ${n.y})`)
-  for(const {edge,idx,line,hitPath} of movingEdges){const {start:a,end:b,middle:m}=edgePoints(edge,idx),d=`M${a.x},${a.y} Q${m.x},${m.y} ${b.x},${b.y}`;line.setAttribute('d',d);hitPath.setAttribute('d',d)}
+  for(const {edge,idx,line,hitPath} of movingEdges){if(line.style.display==='none')continue;const {start:a,end:b,middle:m}=edgePoints(edge,idx),d=`M${a.x},${a.y} Q${m.x},${m.y} ${b.x},${b.y}`;line.setAttribute('d',d);hitPath.setAttribute('d',d)}
  }
 }
 function svgElement(tag,attrs={}) {
@@ -329,17 +344,17 @@ async function start(){
   root.querySelectorAll('[name=node-category],[name=relationship],#include-context,#neighbors,#network-view,#hide-isolated,#scale-node-finances,#scale-edge-quantity').forEach(el=>el.addEventListener('change',rebuild))
   $('#live-physics').checked=!reducedMotion.matches
   $('#live-physics').addEventListener('change',()=>{simulation?.alpha(Math.max(simulation.alpha(),.15));motionChange()})
-  for(const name of ['attraction','repulsion'])$('#'+name).addEventListener('input',()=>{
+  for(const name of ['attraction','repulsion','proximity'])$('#'+name).addEventListener('input',()=>{
    $('#'+name+'-value').textContent=Number($('#'+name).value).toFixed(1)
    simulation?.stop()
-   simulation=layoutNetwork(nodes,edges,radius,()=>({x:0,y:0}),{live:true,attraction:Number($('#attraction').value),repulsion:Number($('#repulsion').value)})
+   simulation=layoutNetwork(nodes,edges,radius,()=>({x:0,y:0}),forceOptions())
    motionChange()
   })
   $('#zoom-sparse').addEventListener('change',requestRender)
   $('#visibility-factor').addEventListener('input',()=>{$('#visibility-factor-value').textContent=$('#visibility-factor').value;requestRender()})
   $('#network-fit').addEventListener('click',fit)
   for(const [id,factor] of [['#zoom-in',1.25],['#zoom-out',.8]]) $(id).addEventListener('click',()=>{if(!webgl){zoomSvg(factor);return}zoomWebgl(factor)})
-  $('#network-reset').addEventListener('click',()=>{selected=null;inspectorKey=null;fitted=false;for(const name of ['attraction','repulsion']){$('#'+name).value='1';$('#'+name+'-value').textContent='1.0'}$('#live-physics').checked=!reducedMotion.matches;root.querySelectorAll('[name=node-category],[name=relationship]').forEach(c=>c.checked=true);$('#network-view').value='all';$('#include-context').checked=false;$('#hide-isolated').checked=true;$('#scale-node-finances').checked=true;$('#scale-edge-quantity').checked=true;$('#zoom-sparse').checked=true;$('#visibility-factor').value='4';$('#visibility-factor-value').textContent='4';$('#neighbors').checked=false;$('#neighbors').disabled=true;$('#network-search').value='';$('#network-detail').innerHTML='<h2>Select an organization</h2><p>Search or select a graph label to explore its evidence.</p>';history.replaceState(history.state,'',location.pathname);search();rebuild()})
+  $('#network-reset').addEventListener('click',()=>{selected=null;inspectorKey=null;fitted=false;for(const name of ['attraction','repulsion','proximity']){$('#'+name).value='1';$('#'+name+'-value').textContent='1.0'}$('#live-physics').checked=!reducedMotion.matches;root.querySelectorAll('[name=node-category],[name=relationship]').forEach(c=>c.checked=true);$('#network-view').value='all';$('#include-context').checked=false;$('#hide-isolated').checked=true;$('#scale-node-finances').checked=true;$('#scale-edge-quantity').checked=true;$('#zoom-sparse').checked=true;$('#visibility-factor').value='4';$('#visibility-factor-value').textContent='4';$('#neighbors').checked=false;$('#neighbors').disabled=true;$('#network-search').value='';$('#network-detail').innerHTML='<h2>Select an organization</h2><p>Search or select a graph label to explore its evidence.</p>';history.replaceState(history.state,'',location.pathname);search();rebuild()})
   const initial=new URL(location.href).searchParams.get('org');if(initial&&data.organizations.some(n=>n.id===initial)){select(initial)}else rebuild()
   loadPortalEvidence(data, cachedEvidenceFetch,apiPrefix).then(updated=>{if(disposed)return;data=applyFundHierarchy(mergeNetworkHistory(updated,historyData));search();if(selected)select(selected);else rebuild();$('#network-source').textContent=(usingOfflineCopy?'Offline · last checked ':'Checked ')+new Date(oldestCheck).toLocaleString()}).catch(()=>{if(disposed)return;$('#network-source').textContent='Saved public evidence · refresh unavailable'})
  }catch(error){if(disposed)return;status.textContent='Network data is unavailable. Reload to try again or browse the organization directory.';host.hidden=true;console.error(error)}

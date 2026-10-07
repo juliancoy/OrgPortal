@@ -19,6 +19,8 @@
 <p class="eco-note">Show when recorded transactions × zoom² ≥ factor. Higher factors hide more organizations. Selected organizations stay visible.</p>
 <label class="eco-check"><input type="checkbox" id="live-physics" checked>Animate node physics</label>
 <label>Attraction <output id="attraction-value">1.0</output>×<input id="attraction" type="range" min="0" max="3" step="0.1" value="1"></label>
+<label>Source–recipient proximity <output id="proximity-value">1.0</output>×<input id="proximity" type="range" min="0" max="3" step="0.1" value="1"></label>
+<p class="eco-note">Support links keep recipients near their sources. Larger values tighten these ties, independently of global attraction. Several sources and crowded hubs share the available space.</p>
 <label>Repulsion <output id="repulsion-value">1.0</output>×<input id="repulsion" type="range" min="0" max="3" step="0.1" value="1"></label>
 <p class="eco-note">Larger icons attract more strongly. Repulsion acts nearby; collision spacing remains active. Radius = 6 + 2 × log₁₀(1 + recorded USD volume). Volume counts incoming and outgoing records, not balances or verified payments.</p>
 <p class="eco-note">Gentle gravity, repulsion and collision spacing. Animation pauses in background tabs and respects reduced motion.</p>

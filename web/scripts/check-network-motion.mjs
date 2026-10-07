@@ -10,7 +10,7 @@ try{
   await page.goto((process.env.MAP_ORIGIN||'http://127.0.0.1:5193')+'/ecosystem/network')
   await page.waitForFunction(()=>document.querySelector('#network-status')?.textContent.includes('visible links'))
   const positions=()=>page.locator('#network-labels button').evaluateAll(ns=>JSON.stringify(ns.map(n=>n.style.cssText)))
-  for(const name of ['attraction','repulsion']){
+  for(const name of ['attraction','repulsion','proximity']){
    await page.locator('#'+name).evaluate(el=>{el.value='1.5';el.dispatchEvent(new Event('input'))})
    assert.equal(await page.locator('#'+name+'-value').textContent(),'1.5')
   }
@@ -18,9 +18,10 @@ try{
   await page.locator('#live-physics').evaluate(el=>{el.checked=false;el.dispatchEvent(new Event('change'))})
   await page.waitForTimeout(100);const paused=await positions();await page.waitForTimeout(250);assert.equal(await positions(),paused,`${mode} should pause`)
   if(mode==='svg'){
-   const before=await page.locator('[data-edge-id]').first().getAttribute('d')
+   const moving=page.locator('[data-edge-id]:visible').first()
+   const before=await moving.getAttribute('d')
    await page.locator('#live-physics').evaluate(el=>{el.checked=true;el.dispatchEvent(new Event('change'))})
-   await page.waitForTimeout(200);assert.notEqual(await page.locator('[data-edge-id]').first().getAttribute('d'),before)
+   await page.waitForTimeout(200);assert.notEqual(await moving.getAttribute('d'),before)
   }
   assert.deepEqual(errors,[]);console.log(mode,'motion, pause and geometry verified');await page.close()
  }
