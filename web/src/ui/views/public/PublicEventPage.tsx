@@ -6,7 +6,7 @@ import { PhotoTags } from '../../components/PhotoTags'
 import { EventVenues, type Venue } from '../../components/EventVenues'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { CalendarPlus, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, MapPinned, RotateCcw, X, ZoomIn, ZoomOut } from 'lucide-react'
+import { CalendarPlus, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, MapPinned, Pencil, RotateCcw, X, ZoomIn, ZoomOut } from 'lucide-react'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
 import { downloadIcsEvent, googleCalendarUrl, outlookCalendarUrl } from '../../utils/calendar'
 import { useAuth } from '../../../app/AppProviders'
@@ -14,6 +14,7 @@ import { NativeChatApi, type NativeChatMessage, type NativeChatReaction } from '
 import { refreshRuntimeTokenFromSession } from '../../../infrastructure/auth/sessionToken'
 import { pidpAppLoginUrl } from '../../../config/pidp'
 import { EventRegistration } from './EventRegistration'
+import { EventDetailsEditor } from '../../components/EventDetailsEditor'
 import { EventPosterTools } from '../../components/EventPosterTools'
 import { toUserFacingErrorMessage } from '../../../infrastructure/http/userFacingError'
 import { loadGoogleCalendarConnection, savePortalEventToGoogleCalendar } from '../googleCalendarApi'
@@ -278,6 +279,7 @@ export function PublicEventPage() {
   const [chatActionPending, setChatActionPending] = useState(false)
   const [myUserId, setMyUserId] = useState<string | null>(null)
   const [canManageEvent, setCanManageEvent] = useState(false)
+  const [editingEvent, setEditingEvent] = useState(false)
   const [addressCopied, setAddressCopied] = useState(false)
   const [selectedMediaIndex, setSelectedMediaIndex] = useState(-1)
   const [mediaZoom, setMediaZoom] = useState(1)
@@ -437,43 +439,14 @@ export function PublicEventPage() {
     setCanManageEvent(false)
     if (authLoading || !event || !token) return
 
-    async function checkEventManagerAccess() {
-      try {
-        const adminCheck = fetch(orgUrl('/admin/me'), {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-          .then((resp) => (resp.ok ? resp.json() : { is_sysadmin: false }))
-          .catch(() => ({ is_sysadmin: false }))
+    setEditingEvent(false)
+    fetch(orgUrl(`/api/network/events/${encodeURIComponent(event.id)}/access`), {
+      headers: { Authorization: `Bearer ${token}` }, cache: 'no-store',
+    }).then(async response => response.ok ? response.json() : { can_manage: false })
+      .then(access => { if (!cancelled) setCanManageEvent(access.can_manage === true) })
+      .catch(() => { if (!cancelled) setCanManageEvent(false) })
+    return () => { cancelled = true }
 
-        const orgCheck = event?.host_org_id
-          ? fetch(orgUrl('/api/network/orgs?mine=true&limit=300'), {
-              headers: { Authorization: `Bearer ${token}` },
-            })
-              .then(async (resp) => {
-                if (!resp.ok) return []
-                const data = await resp.json()
-                return Array.isArray(data) ? data : []
-              })
-              .catch(() => [])
-          : Promise.resolve([])
-
-        const [adminData, orgRows] = await Promise.all([adminCheck, orgCheck])
-        if (cancelled) return
-        const isSysadmin = Boolean((adminData as { is_sysadmin?: boolean }).is_sysadmin)
-        const managesHostOrg = (orgRows as Array<{ id?: string; my_role?: string | null }>).some((org) => (
-          org.id === event?.host_org_id && (org.my_role === 'owner' || org.my_role === 'administrator')
-        ))
-        const managesIndividualEvent = Boolean(event?.host_user_id && user?.id && event.host_user_id === user.id)
-        setCanManageEvent(isSysadmin || managesHostOrg || managesIndividualEvent)
-      } catch {
-        if (!cancelled) setCanManageEvent(false)
-      }
-    }
-
-    checkEventManagerAccess().catch(() => {})
-    return () => {
-      cancelled = true
-    }
   }, [authLoading, event, token, user?.id])
 
   const eventJsonLd = useMemo(() => {
@@ -721,7 +694,10 @@ export function PublicEventPage() {
               ) : (
                 <p className="public-event-eyebrow">{organizerName}</p>
               )}
-              <h1>{event.title}</h1>
+              <div className="public-event-title-row">
+                <h1>{event.title}</h1>
+                {canManageEvent ? <button type="button" className="public-event-edit-button" aria-label="Edit event" title="Edit event" aria-expanded={editingEvent} aria-controls="event-details-editor" onClick={() => setEditingEvent(value => !value)}><Pencil size={20} aria-hidden="true" /></button> : null}
+              </div>
               {canManageEvent ? (
                 <Link className="btn-primary public-event-manage-button" to={`/orgs/events#event-${encodeURIComponent(event.slug)}`}>
                   Manage Event
@@ -729,6 +705,7 @@ export function PublicEventPage() {
               ) : null}
             </div>
           </section>
+          {canManageEvent && editingEvent && token ? <EventDetailsEditor key={event.id} event={event} token={token} onCancel={() => setEditingEvent(false)} onSaved={updated => { setEvent({ ...event, ...updated, media: (updated as PublicEvent).media?.map(item => ({ ...item, url: item.url.startsWith('/api/network/') ? orgUrl(item.url) : item.url })) || event.media }); setEditingEvent(false) }} /> : null}
           {mediaItems.length ? (
             <section className="portal-card public-event-media" aria-labelledby="event-media-title">
               <div className="public-event-card-heading public-event-media-heading-row">

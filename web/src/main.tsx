@@ -18,6 +18,7 @@ async function start() {
   await loadDomainTenant().catch(() => undefined)
   const router = createAppRouter()
   applyPortalBranding()
+  applyThemeMode(readThemeMode())
   createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AppProviders services={services}>

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generateKeyPair, exportJWK, SignJWT, createLocalJWKSet } from 'jose';
-import { authenticateMcp, handleEventMcp, protectedResourceMetadata } from '../src/eventMcp';
+import { authenticateMcp, handleEventMcp, protectedResourceMetadata, mcpConfiguration, eventErrorResponse } from '../src/eventMcp';
 import { app } from '../src/index';
 import { authorizeMcpOrganization } from '../src/mediaUpload';
 const medtech = 'https://medtech.social/api/org/mcp', lifetech = 'https://lifetech.fyi/api/org/mcp';
@@ -28,9 +28,27 @@ test('each host advertises its own resource and authentication challenge', async
     assert.equal(metadata.headers.get('cache-control'), 'no-store');
     const denied = await handleEventMcp(request(resource), env);
     assert.equal(denied.status, 401);
+    assert.ok(!denied.headers.get('www-authenticate')!.includes('invalid_token'));
     assert.ok(denied.headers.get('www-authenticate')!.includes(new URL(resource).host));
     assert.ok(!denied.headers.get('www-authenticate')!.includes(new URL(resource === medtech ? lifetech : medtech).host));
   }
+});
+
+test('expired tokens return the invalid_token challenge so clients can refresh', async () => {
+  const { privateKey, publicKey } = await generateKeyPair('ES256');
+  const keySet = createLocalJWKSet({ keys: [await exportJWK(publicKey)] });
+  const token = await new SignJWT({ scope: 'org:portal.read' }).setProtectedHeader({ alg: 'ES256' })
+    .setIssuer(env.MCP_OAUTH_ISSUER!).setSubject('member').setAudience(lifetech)
+    .setIssuedAt(Math.floor(Date.now() / 1000) - 600).setExpirationTime(Math.floor(Date.now() / 1000) - 1).sign(privateKey);
+  const req = request(lifetech, '/mcp', { authorization: `Bearer ${token}` });
+  let rejection: unknown;
+  try { await authenticateMcp(req, env, keySet); } catch (error) { rejection = error; }
+  assert.ok(rejection);
+  const response = eventErrorResponse(rejection, env, req);
+  assert.equal(response.status, 401);
+  assert.match(response.headers.get('www-authenticate')!, /error="invalid_token"/);
+  assert.match(response.headers.get('www-authenticate')!, /lifetech\.fyi/);
+  assert.equal(response.headers.get('cache-control'), 'no-store');
 });
 
 test('tokens cannot cross resources; introspection uses the selected resource credential', async () => {
@@ -99,4 +117,17 @@ test('brand tool discovery and calls cannot escape their organization, including
     }
     assert.throws(() => authorizeMcpOrganization({ userId: 'member-id', scopes: [], organizationId: 'lifetech-org' }, 'medtech-org'), /own organization/);
   } finally { globalThis.fetch = originalFetch; }
+});
+
+ test('OrgPortal platform resource has its own audience and no organization restriction', async () => {
+  const resource = 'https://orgportal.cc/api/org/mcp';
+  const platformEnv = { ...env, MCP_ORGPORTAL_INTROSPECTION_SECRET: 'platform-secret', MCP_RESOURCE_CONFIG_JSON: JSON.stringify({ ...JSON.parse(env.MCP_RESOURCE_CONFIG_JSON!), [resource]: { name: 'OrgPortal', introspectionSecretBinding: 'MCP_ORGPORTAL_INTROSPECTION_SECRET' } }) };
+  const config = mcpConfiguration(platformEnv, request(resource));
+  assert.equal(config.resource, resource);
+  assert.equal(config.organizationId, undefined);
+  assert.equal(config.introspectionSecret, 'platform-secret');
+  const metadata = await app.fetch(request(resource, '/.well-known/oauth-protected-resource/api/org/mcp'), platformEnv);
+  assert.equal(metadata.status, 200);
+  assert.equal((await metadata.json() as any).resource, resource);
+  assert.equal((await handleEventMcp(request(resource), platformEnv)).status, 401);
 });

@@ -100,7 +100,7 @@ export function mcpConfiguration(env: Env, request?: Request) {
     const url = new URL(value);
     return url.protocol === 'https:' && url.pathname === '/api/org/mcp' && !url.username && !url.password && !url.search && !url.hash;
   }), z.object({
-    name: z.string().min(1).max(120), organizationId: z.string().min(1).max(200),
+    name: z.string().min(1).max(120), organizationId: z.string().min(1).max(200).optional(),
     introspectionSecretBinding: z.string().regex(/^MCP_[A-Z_]+$/).optional(),
   }).strict());
   let bindings: z.infer<typeof resourceBindingsSchema>;
@@ -648,7 +648,8 @@ export function eventErrorResponse(error: unknown, env: Env, request?: Request) 
   const message = status === 500 ? "Event integration failed" : error instanceof z.ZodError ? "Invalid event arguments" : (error as Error).message;
   const headers: Record<string, string> = { "cache-control": "no-store" };
   if (status === 401) {
-    headers["www-authenticate"] = `Bearer resource_metadata="${mcpConfiguration(env, request).metadataUrl}"`;
+    const rejectedToken = /^Bearer \S+$/i.test(request?.headers.get("authorization") || "");
+    headers["www-authenticate"] = `Bearer resource_metadata="${mcpConfiguration(env, request).metadataUrl}"${rejectedToken ? ', error="invalid_token"' : ''}`;
   }
   if (status === 429) headers["retry-after"] = "60";
   return Response.json({ error: message }, { status, headers });

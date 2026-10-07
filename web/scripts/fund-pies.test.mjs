@@ -46,3 +46,14 @@ test('real TEDCO breakdown excludes portfolio overlap and preserves fund-specifi
  const html=orgDetails(data.organizations.find(o=>o.id==='org-tedco'),data)
  assert.match(html,/Funds within TEDCO/);assert.match(html,/Fund administered by TEDCO/);assert.match(html,/\$250,000/);assert.match(html,/not fund size/)
 })
+
+test('compact previews show both funding totals without evidence lists',async()=>{
+ const {networkPreviewSummaries,organizationPreview}=await import('../src/features/ecosystem/ecosystem-view.js')
+ const data={organizations:[{id:'a',name:'A'},{id:'b',name:'B'}],relationships:[{id:'award',source:'a',target:'b',kind:'transfer',amount:100,currency:'USD',financingId:'finance'}],financing:[{id:'finance',funderId:'a',recipientId:'b',kind:'transfer',amount:100,currency:'USD'}]}
+ const summaries=networkPreviewSummaries(data)
+ assert.deepEqual(summaries.totals.get('a'),{received:0,disbursed:100})
+ assert.deepEqual(summaries.totals.get('b'),{received:100,disbursed:0})
+ const html=organizationPreview(data.organizations[1],summaries)
+ assert.match(html,/Total received/);assert.match(html,/Total disbursed/);assert.match(html,/href="\/orgs\/b"/)
+ assert.doesNotMatch(html,/View source|Documented relationships|eco-relations/)
+})

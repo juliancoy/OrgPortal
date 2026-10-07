@@ -1979,6 +1979,18 @@ async function organizationPortalByOrg(db: D1Database, organization: Organizatio
     .first<OrganizationPortalRow>();
 }
 
+async function organizationTenantHome(env: Env, request: Request, organization: OrganizationRow) {
+  const tenant = await organizationPortalByOrg(env.DB, organization);
+  if (!tenant) return { tenant_id: null, tenant_home_url: null };
+  let home: string | null = null;
+  if (tenant.custom_domain_status === 'attached' && tenant.custom_domain_hostname) {
+    home = `https://${tenant.custom_domain_hostname}/`;
+  } else {
+    home = tenant.home_url || (tenant.slug ? await organizationPortalSlugUrl(env, request, tenant.slug) : null);
+  }
+  return { tenant_id: tenant.id, tenant_home_url: home };
+}
+
 async function organizationPortalResponse(env: Env, request: Request, tenant: OrganizationPortalRow | null) {
   if (!tenant) return null;
   const slug = String(tenant.slug || "").trim();
@@ -3114,7 +3126,7 @@ app.get("/api/network/orgs/public/:slug", async (c) => {
   const count = await c.env.DB.prepare("SELECT count(*) AS n FROM events WHERE host_org_id = ? AND (starts_at IS NULL OR starts_at >= datetime('now'))")
     .bind(row.id)
     .first<{ n: number }>();
-  return c.json({ ...mapOrganization(row, Number(count?.n || 0)), public_url: await orgPublicUrl(c.env, c.req.raw, row.slug) });
+  return c.json({ ...mapOrganization(row, Number(count?.n || 0)), public_url: await orgPublicUrl(c.env, c.req.raw, row.slug), ...await organizationTenantHome(c.env, c.req.raw, row) });
 });
 
 app.get("/api/network/relationships/public", async (c) => {
@@ -3177,17 +3189,18 @@ app.get("/api/network/orgs/public/:slug/events", async (c) => {
     .first<OrganizationRow>();
   if (!org) return c.json([]);
   const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "60", 10) || 60, 200));
+  const hostedOnly = c.req.query("hosted_only") === "true";
   const upcomingOnly = c.req.query("upcoming_only") === "true";
   const rows = await c.env.DB.prepare(
     `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url
      FROM events e
      LEFT JOIN organizations o ON o.id = e.host_org_id
-     WHERE (e.host_org_id = ? OR EXISTS (SELECT 1 FROM event_organizations eo WHERE eo.event_id = e.id AND eo.organization_id = ?))
-     ${upcomingOnly ? "AND ((e.starts_at IS NOT NULL AND julianday(e.starts_at) >= julianday('now')) OR (e.starts_at IS NULL AND e.event_date >= date('now')))" : ""}
+     WHERE (e.host_org_id = ? OR (? = 0 AND EXISTS (SELECT 1 FROM event_organizations eo WHERE eo.event_id = e.id AND eo.organization_id = ?)))
+     ${upcomingOnly ? "AND ((e.starts_at IS NOT NULL AND julianday(COALESCE(e.ends_at, e.starts_at)) >= julianday('now')) OR (e.starts_at IS NULL AND e.event_date >= date('now')))" : ""}
      ORDER BY COALESCE(e.starts_at,e.event_date,e.created_at) ${upcomingOnly ? "ASC" : "DESC"}
      LIMIT ?`,
   )
-    .bind(org.id, org.id, limit)
+    .bind(org.id, hostedOnly ? 1 : 0, org.id, limit)
     .all<EventRow>();
   return c.json(await Promise.all((rows.results || []).map((row) => mapEvent(c.env, c.req.raw, row))));
 });
@@ -4011,6 +4024,15 @@ app.post("/api/network/events", async (c) => {
 });
 
 
+app.get("/api/network/events/:eventId/access", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await c.env.DB.prepare("SELECT * FROM events WHERE id = ?").bind(c.req.param("eventId")).first<EventRow>();
+  if (!row) fail(404, "Event not found");
+  await authorizeEventManager(c.env, user, row);
+  c.header("Cache-Control", "no-store");
+  return c.json({ can_manage: true });
+});
+
 app.patch("/api/network/events/:eventId", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   const row = await c.env.DB.prepare("SELECT * FROM events WHERE id = ?").bind(c.req.param("eventId")).first<EventRow>();
@@ -4018,6 +4040,44 @@ app.patch("/api/network/events/:eventId", async (c) => {
   await authorizeEventManager(c.env, user, row);
   const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
   const updates: Record<string, unknown> = {};
+  if ("title" in payload) {
+    const title = stringField(payload, "title", 500);
+    if (!title) fail(400, "title is required");
+    updates.title = title;
+  }
+  if ("description" in payload) updates.description = stringField(payload, "description", 20000);
+  if ("location" in payload) updates.location = stringField(payload, "location", 1000);
+  if ("image_url" in payload) {
+    const image = stringField(payload, "image_url", 1000);
+    if (image) {
+      try {
+        const url = new URL(image);
+        if (!['https:', 'http:'].includes(url.protocol)) fail(400, "Invalid image URL");
+      } catch { fail(400, "Invalid image URL"); }
+    }
+    updates.image_url = image;
+  }
+  if ("event_date" in payload) {
+    const date = stringField(payload, "event_date", 10);
+    if (date && (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(Date.parse(date)) || new Date(date).toISOString().slice(0,10) !== date)) fail(400, "Invalid event date");
+    updates.event_date = date;
+  }
+  if ("timezone" in payload) {
+    const timezone = stringField(payload, "timezone", 80);
+    if (!timezone) fail(400, "Timezone is required");
+    try { new Intl.DateTimeFormat('en', { timeZone: timezone }); } catch { fail(400, "Invalid timezone"); }
+    updates.timezone = timezone;
+  }
+  for (const field of ["starts_at", "ends_at"] as const) {
+    if (!(field in payload)) continue;
+    const value = stringField(payload, field, 80);
+    if (value && (!/T.*(?:Z|[+-]\d{2}:\d{2})$/.test(value) || !Number.isFinite(Date.parse(value)))) fail(400, `Invalid ${field}`);
+    updates[field] = value ? new Date(value).toISOString() : null;
+  }
+  const start = "starts_at" in updates ? updates.starts_at : row.starts_at;
+  const end = "ends_at" in updates ? updates.ends_at : row.ends_at;
+  if (end && !start) fail(400, "Start time is required when an end time is set");
+  if (start && end && Date.parse(String(end)) < Date.parse(String(start))) fail(400, "End time must be after start time");
   if ("social_title" in payload) updates.social_title = stringField(payload, "social_title", 140);
   if ("social_description" in payload) updates.social_description = stringField(payload, "social_description", 300);
   if ("social_image_url" in payload) updates.social_image_url = cleanPublicAssetUrl(payload.social_image_url);

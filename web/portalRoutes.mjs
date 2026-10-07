@@ -1,3 +1,5 @@
+import { organizationTenantRedirect } from './organizationTenantRedirect.mjs';
+
 // Keep aligned with createAppRouter.tsx; route tests enforce this contract.
 const paths = [
   "/local/newsletters",
@@ -120,7 +122,17 @@ export async function missingPortalResource(request, path, apiOrigin) {
       headers: { 'x-forwarded-host': url.host, 'x-forwarded-proto': url.protocol.replace(':', '') }, redirect: 'manual',
     });
     if (response.status === 404) return notFoundResponse(request);
-    if (response.ok) return null;
+    if (response.ok) {
+      if (match[1] === 'orgs') {
+        const organization = await response.json();
+        const destination = organizationTenantRedirect(organization, request.url);
+        // Same-origin slug portals resolve their active tenant in the browser.
+        if (destination && new URL(destination).origin !== url.origin) {
+          return new Response(null, { status: 302, headers: { location: destination, 'cache-control': 'no-store' } });
+        }
+      }
+      return null;
+    }
   } catch { /* An unavailable API is not evidence that a resource is missing. */ }
   return new Response(request.method === 'HEAD' ? null : 'This page is temporarily unavailable.', { status: 503, headers: { 'cache-control': 'no-store' } });
 }

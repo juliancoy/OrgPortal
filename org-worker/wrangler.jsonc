@@ -21,6 +21,7 @@
   "vars": {
     "PIDP_BASE_URL": "https://id.codecollective.us",
     "PUBLIC_PORTAL_BASE_URL": "https://orgportal.cc",
+    "MCP_RESOURCE_CONFIG_JSON": "{\"https://medtech.social/api/org/mcp\": {\"name\": \"MedTech\", \"organizationId\": \"org-baltimore-medtech\"}, \"https://lifetech.fyi/api/org/mcp\": {\"name\": \"LifeTech\", \"organizationId\": \"ef646755-9443-4c7b-ba4b-a7a29754f666\", \"introspectionSecretBinding\": \"MCP_LIFETECH_INTROSPECTION_SECRET\"}, \"https://orgportal.cc/api/org/mcp\": {\"name\": \"OrgPortal\", \"introspectionSecretBinding\": \"MCP_ORGPORTAL_INTROSPECTION_SECRET\"}}",
     "CHAT_API_ORIGIN": "https://chat-codecollective.jcloiacon.workers.dev",
     "ADMIN_EMAILS": "",
     "ADMIN_USER_IDS": ""

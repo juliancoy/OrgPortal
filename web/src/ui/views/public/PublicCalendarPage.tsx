@@ -191,7 +191,7 @@ export function PublicCalendarPage() {
 
   useEffect(() => {
     setSeoMeta({
-      title: 'Events & Calendar • LifeTech',
+      title: 'Events • LifeTech',
       description: 'Medical, health, biotech, and Baltimore MedTech-hosted events around the region.',
       canonicalUrl: `${window.location.origin}/calendar`,
       type: 'website',
@@ -267,9 +267,7 @@ export function PublicCalendarPage() {
 
   return <section className="public-calendar-page">
     <div className="public-events-heading public-calendar-heading">
-      <p className="public-event-eyebrow">Around the region</p>
-      <h1>Events &amp; Calendar</h1>
-      <p className="muted">LifeTech community gatherings and partner events around Baltimore. Browse the listings and monthly calendar together.</p>
+      <h1>Events</h1>
     </div>
 
     {status ? <p className="muted" role="status">{status}</p> : null}

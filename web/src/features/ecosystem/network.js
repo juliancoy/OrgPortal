@@ -5,8 +5,8 @@ import {mergeNetworkHistory} from './network-history.js'
 import { applyFundHierarchy, foldFundNodes, financialNodePies, pieWedgePath, pieLabel } from './fund-pies.js'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
-import { layoutNetwork } from './ecosystem-physics.js'
-import { orgDetails, edgeDetails } from './ecosystem-view.js'
+import { layoutNetwork, assignEdgeCurvature } from './ecosystem-physics.js'
+import { organizationPreview, relationshipPreview, networkPreviewSummaries } from './ecosystem-view.js'
 import { loadPortalEvidence, graphRelationships, financialNodeAmounts, financialNodeRadius } from './portal-ecosystem.js'
 import { refreshPublicReport } from '../../data/publicOrganization/cache'
 export function mountEcosystemNetwork(root, {dataUrl, historyUrl, apiPrefix, portalPath}) {
@@ -45,7 +45,7 @@ const selectedCategories = () => new Set([...root.querySelectorAll('[name=node-c
 const selectedRelationships = () => new Set([...root.querySelectorAll('[name=relationship]:checked')].map(c=>c.value))
 const host = $('#network-canvas'), labels = $('#network-labels'), status = $('#network-status')
 let fittedSvgWidth=1, recordedCounts=new Map()
-let data, selected = null, scene, camera, renderer, controls, group, nodes=[], edges=[], meshes=[], labelItems=[], frame=0
+let previewSummaries, data, selected = null, scene, camera, renderer, controls, group, nodes=[], edges=[], meshes=[], labelItems=[], frame=0
 let inspectorKey=null, edgeMeshes=[], simulation, lastTick=0, fitted=false
 const savedPositions=new Map(), movingEdges=[], movingNodes=[]
 const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)')
@@ -57,12 +57,14 @@ let webgl = false, svg, svgView = { x: -400, y: -400, w: 800, h: 800 }
 const radius = n => financialNodeRadius($('#scale-node-finances').checked ? n.financialAmount : null)
 const financialLabel = n => n.financialPie ? pieLabel(n.financialPie) : n.financialAmount ? `Largest disclosed funding/award: ${new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(n.financialAmount)}; payment unverified` : 'Funding amount undisclosed'
 function previewNode(org) {
+ if(selected)return
  const key='node:'+org.id;if(inspectorKey===key)return;inspectorKey=key
- $('#network-detail').innerHTML=orgDetails(org,data,{includeCapitalization:$('#include-context').checked});rewriteLinks();if(matchMedia('(max-width:900px)').matches){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
+ $('#network-detail').innerHTML=organizationPreview(org,previewSummaries);rewriteLinks();if(matchMedia('(max-width:900px)').matches){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
 }
 function previewEdge(edge) {
+ if(selected)return
  const key='edge:'+edge.id;if(inspectorKey===key)return;inspectorKey=key
- $('#network-detail').innerHTML=edgeDetails(edge,data);rewriteLinks();if(matchMedia('(max-width:900px)').matches){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
+ $('#network-detail').innerHTML=relationshipPreview(edge,data,previewSummaries);rewriteLinks();if(matchMedia('(max-width:900px)').matches){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
 }
 function bindNodePreview(button,node) {
  button.addEventListener('pointerenter',()=>previewNode(node))
@@ -71,11 +73,21 @@ function bindNodePreview(button,node) {
 function select(id) {
  let org = data.organizations.find(o=>o.id===id); if (!org) return
  if(org.administratorId){id=org.administratorId;org=data.organizations.find(o=>o.id===id);if(!org)return}
+ previewSummaries=networkPreviewSummaries(data)
  selected = id; inspectorKey='node:'+id; $('#neighbors').disabled=false
- $('#network-detail').innerHTML = orgDetails(org,data,{includeCapitalization:$('#include-context').checked}); rewriteLinks();if(matchMedia('(max-width:900px)').matches){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
+ $('#network-tooltip').hidden=true
+ $('#network-detail').innerHTML = '<button type="button" data-unpin-node aria-label="Close pinned organization">Close</button>'+organizationPreview(org,previewSummaries); rewriteLinks();if(matchMedia('(max-width:900px)').matches){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
  const u = new URL(location.href); u.searchParams.set('org',id); history.replaceState(history.state,'',u)
  rebuild()
 }
+function unpin() {
+ selected=null;inspectorKey=null
+ $('#neighbors').checked=false;$('#neighbors').disabled=true
+ $('#network-detail').innerHTML='<h2>Select an organization</h2><p>Hover a node or edge to preview it, or click a node to pin its details.</p>'
+ const u=new URL(location.href);u.searchParams.delete('org');history.replaceState(history.state,'',u)
+ rebuild()
+}
+$('#network-detail').addEventListener('click',event=>{if(event.target.closest('[data-unpin-node]'))unpin()},{signal:abort.signal})
 function search() {
  const q = $('#network-search').value.trim().toLowerCase()
  const result = $('#network-results'); result.replaceChildren()
@@ -91,6 +103,7 @@ function clearGraph() {
 function rebuild() {
  if (!data) return
  inspectorKey=null
+ previewSummaries=networkPreviewSummaries(data)
  simulation?.stop()
  nodes.forEach(n=>savedPositions.set(n.id,{x:n.x,y:n.y,vx:n.vx,vy:n.vy}))
  movingEdges.length=0;movingNodes.length=0;lastTick=0
@@ -118,6 +131,7 @@ function rebuild() {
  const classKeys=Object.keys(colors), clusters=classKeys.length, spread=230
  const center=n=>{const i=classKeys.indexOf(n.category),a=i/clusters*Math.PI*2;return {x:Math.cos(a)*spread,y:Math.sin(a)*spread}}
  simulation=layoutNetwork(nodes,edges,radius,center,{live:true})
+ assignEdgeCurvature(edges)
  // A short bounded warmup provides a useful first frame without blocking for convergence.
  if(!fitted)simulation.tick(8)
  if(!webgl) { renderSvg(); if(!fitted){fit();fitted=true} requestRender(); return }
@@ -135,13 +149,8 @@ function rebuild() {
   mesh.position.set(n.x,n.y,0);mesh.userData.node=n;group.add(mesh);meshes.push(mesh)
   const button=document.createElement('button');button.type='button';button.textContent=n.name;button.title=`${n.name} · ${financialLabel(n)}`;if(n.financialPie){button.dataset.fundingSlices=String(n.financialPie.slices.length);button.dataset.fundingTotal=String(n.financialPie.total);button.setAttribute('aria-label',button.title)}button.setAttribute('aria-pressed',String(n.id===selected));button.addEventListener('click',()=>select(n.id));bindNodePreview(button,n);labels.append(button);labelItems.push({button,n})
  }
- const parallel=new Map()
  for(const edge of edges) {
-  const a=new THREE.Vector3(edge.source.x,edge.source.y,0),b=new THREE.Vector3(edge.target.x,edge.target.y,0)
-  const pair=`${edge.source.id}-${edge.target.id}`,idx=parallel.get(pair)||0;parallel.set(pair,idx+1)
-  const dir=b.clone().sub(a).normalize(),normal=new THREE.Vector3(-dir.y,dir.x,0)
-  const start=a.clone().addScaledVector(dir,radius(edge.source)+2),end=b.clone().addScaledVector(dir,-radius(edge.target)-3)
-  const midpoint=start.clone().add(end).multiplyScalar(.5).addScaledVector(normal,15+idx*18)
+  const {start,end,middle:midpoint}=edgePoints(edge)
   const curve=new THREE.QuadraticBezierCurve3(start,midpoint,end),points=curve.getPoints(36),color=relationshipColor(edge)
   let visual
   if(edge.relationship==='funding') {
@@ -151,7 +160,7 @@ function rebuild() {
    const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),new THREE.LineDashedMaterial({color,dashSize:edge.relationship==='affiliation'?8:3,gapSize:5,transparent:true,opacity:.65}));line.computeLineDistances();line.userData.edge=edge;group.add(line);edgeMeshes.push(line);visual=line
   }
   const hitMesh=new THREE.Mesh(new THREE.TubeGeometry(curve,36,4,4,false),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));hitMesh.userData.edge=edge;group.add(hitMesh);edgeMeshes.push(hitMesh)
-  const tangent=curve.getTangent(1).normalize(),arrow=new THREE.ArrowHelper(tangent,end.clone().addScaledVector(tangent,-8),8,color,7,4);arrow.userData.edge=edge;group.add(arrow);movingEdges.push({edge,idx,visual,hitMesh,arrow,curve})
+  const tangent=curve.getTangent(1).normalize(),arrow=new THREE.ArrowHelper(tangent,end.clone().addScaledVector(tangent,-8),8,color,7,4);arrow.userData.edge=edge;group.add(arrow);movingEdges.push({edge,visual,hitMesh,arrow,curve})
  }
  if(!fitted){fit();fitted=true} requestRender()
 }
@@ -197,11 +206,11 @@ function render(time=0) {
  if(simulation&&physicsEnabled()&&simulation.alpha()>simulation.alphaMin())requestRender()
 }
 function requestRender(){if(!disposed&&!frame)frame=requestAnimationFrame(render)}
-function edgePoints(edge,idx) {
+function edgePoints(edge) {
  const a=edge.source,b=edge.target,dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||1,ux=dx/d,uy=dy/d
  const start=new THREE.Vector3(a.x+ux*(radius(a)+2),a.y+uy*(radius(a)+2),0)
  const end=new THREE.Vector3(b.x-ux*(radius(b)+3),b.y-uy*(radius(b)+3),0)
- const middle=start.clone().add(end).multiplyScalar(.5).add(new THREE.Vector3(-uy,ux,0).multiplyScalar(15+idx*18))
+ const middle=start.clone().add(end).multiplyScalar(.5).add(new THREE.Vector3(-uy,ux,0).multiplyScalar(edge.curveOffset))
  return {start,end,middle}
 }
 function updateTube(mesh,curve,width) {
@@ -219,7 +228,7 @@ function updatePositions(){
  if(webgl){
   for(const mesh of meshes){const n=mesh.userData.node;mesh.position.set(n.x,n.y,0)}
   for(const item of movingEdges){
-   const {start,end,middle}=edgePoints(item.edge,item.idx),curve=item.curve
+   const {start,end,middle}=edgePoints(item.edge),curve=item.curve
    curve.v0.copy(start);curve.v1.copy(middle);curve.v2.copy(end)
    if(item.visual.isLine){
     const position=item.visual.geometry.attributes.position,point=new THREE.Vector3()
@@ -231,7 +240,7 @@ function updatePositions(){
   }
  }else{
   for(const {node,n} of movingNodes)node.setAttribute('transform',`translate(${n.x} ${n.y})`)
-  for(const {edge,idx,line,hitPath} of movingEdges){const {start:a,end:b,middle:m}=edgePoints(edge,idx),d=`M${a.x},${a.y} Q${m.x},${m.y} ${b.x},${b.y}`;line.setAttribute('d',d);hitPath.setAttribute('d',d)}
+  for(const {edge,line,hitPath} of movingEdges){const {start:a,end:b,middle:m}=edgePoints(edge),d=`M${a.x},${a.y} Q${m.x},${m.y} ${b.x},${b.y}`;line.setAttribute('d',d);hitPath.setAttribute('d',d)}
  }
 }
 function svgElement(tag,attrs={}) {
@@ -274,16 +283,13 @@ function initSvg() {
 function renderSvg() {
  const defs=svgElement('defs'), marker=svgElement('marker',{id:'eco-arrow',viewBox:'0 0 10 10',refX:9,refY:5,markerWidth:5,markerHeight:5,orient:'auto-start-reverse'})
  marker.append(svgElement('path',{d:'M 0 0 L 10 5 L 0 10 z',fill:'context-stroke'}));defs.append(marker);svg.append(defs)
- const parallel=new Map()
  for(const edge of edges) {
-  const a=edge.source,b=edge.target,dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||1,ux=dx/d,uy=dy/d
-  const pair=`${a.id}-${b.id}`,idx=parallel.get(pair)||0;parallel.set(pair,idx+1)
-  const sx=a.x+ux*(radius(a)+2),sy=a.y+uy*(radius(a)+2),tx=b.x-ux*(radius(b)+3),ty=b.y-uy*(radius(b)+3)
+  const {start:a,end:b,middle:m}=edgePoints(edge)
   const width=edge.quantityWidth || 1.4
-  const line=svgElement('path',{d:`M${sx},${sy} Q${(sx+tx)/2-uy*(15+idx*18)},${(sy+ty)/2+ux*(15+idx*18)} ${tx},${ty}`,fill:'none',stroke:`#${relationshipColor(edge).toString(16).padStart(6,'0')}`,'stroke-width':width,'stroke-opacity':.6,'marker-end':'url(#eco-arrow)'})
+  const line=svgElement('path',{d:`M${a.x},${a.y} Q${m.x},${m.y} ${b.x},${b.y}`,fill:'none',stroke:`#${relationshipColor(edge).toString(16).padStart(6,'0')}`,'stroke-width':width,'stroke-opacity':.6,'marker-end':'url(#eco-arrow)'})
   if(edge.relationship!=='funding')line.setAttribute('stroke-dasharray',edge.relationship==='affiliation'?'8 5':'3 5')
   const title=svgElement('title');title.textContent=`${edge.sourceLabel} → ${edge.targetLabel}: ${edge.type} ${edge.amountLabel||''}`;line.setAttribute('data-edge-id',edge.id);line.append(title);line.style.pointerEvents='stroke';line.addEventListener('pointerenter',()=>previewEdge(edge));line.addEventListener('click',()=>previewEdge(edge));line.setAttribute('tabindex','0');line.setAttribute('role','button');line.setAttribute('aria-label',title.textContent);line.addEventListener('focus',()=>previewEdge(edge));svg.append(line)
-  const hitPath=svgElement('path',{d:line.getAttribute('d'),fill:'none',stroke:'transparent','stroke-width':12,'vector-effect':'non-scaling-stroke','pointer-events':'stroke','aria-hidden':'true'});hitPath.setAttribute('data-edge-id',edge.id);hitPath.addEventListener('pointerenter',()=>previewEdge(edge));hitPath.addEventListener('click',()=>previewEdge(edge));svg.append(hitPath);movingEdges.push({edge,idx,line,hitPath})
+  const hitPath=svgElement('path',{d:line.getAttribute('d'),fill:'none',stroke:'transparent','stroke-width':12,'vector-effect':'non-scaling-stroke','pointer-events':'stroke','aria-hidden':'true'});hitPath.setAttribute('data-edge-id',edge.id);hitPath.addEventListener('pointerenter',()=>previewEdge(edge));hitPath.addEventListener('click',()=>previewEdge(edge));svg.append(hitPath);movingEdges.push({edge,line,hitPath})
  }
  for(const n of nodes) {
   const color=`#${(n.id===selected?0xe56d3c:colors[n.category]).toString(16).padStart(6,'0')}`,node=svgElement('g',{'data-node-id':n.id,transform:`translate(${n.x} ${n.y})`})
@@ -306,7 +312,7 @@ function initWebgl() {
   let down=null
   renderer.domElement.addEventListener('pointerdown',ev=>{down={x:ev.clientX,y:ev.clientY}})
   renderer.domElement.addEventListener('pointerup',ev=>{if(down&&Math.hypot(ev.clientX-down.x,ev.clientY-down.y)<6){const hitItem=hit(ev);if(hitItem.node)select(hitItem.node.id);else if(hitItem.edge)previewEdge(hitItem.edge)}down=null})
-  renderer.domElement.addEventListener('pointermove',ev=>{const item=hit(ev),n=item.node,tip=$('#network-tooltip');tip.hidden=!n;if(n){tip.textContent=`${n.name} · ${financialLabel(n)}`;previewNode(n)}else if(item.edge)previewEdge(item.edge);renderer.domElement.style.cursor=n||item.edge?'pointer':'grab'})
+  renderer.domElement.addEventListener('pointermove',ev=>{if(selected)return;const item=hit(ev),n=item.node,tip=$('#network-tooltip');tip.hidden=!n;if(n){tip.textContent=`${n.name} · ${financialLabel(n)}`;previewNode(n)}else if(item.edge)previewEdge(item.edge);renderer.domElement.style.cursor=n||item.edge?'pointer':'grab'})
   renderer.domElement.addEventListener('pointerleave',()=>{$('#network-tooltip').hidden=true})
   renderer.domElement.addEventListener('webglcontextlost',event=>{event.preventDefault();webgl=false;labels.replaceChildren();status.textContent='Graphics unavailable. Use search, details or the Relationships view.'})
  } catch { webgl=false; initSvg() }
@@ -333,7 +339,7 @@ async function start(){
   $('#visibility-factor').addEventListener('input',()=>{$('#visibility-factor-value').textContent=$('#visibility-factor').value;requestRender()})
   $('#network-fit').addEventListener('click',fit)
   for(const [id,factor] of [['#zoom-in',1.25],['#zoom-out',.8]]) $(id).addEventListener('click',()=>{if(!webgl){zoomSvg(factor);return}zoomWebgl(factor)})
-  $('#network-reset').addEventListener('click',()=>{selected=null;inspectorKey=null;fitted=false;$('#live-physics').checked=!reducedMotion.matches;root.querySelectorAll('[name=node-category],[name=relationship]').forEach(c=>c.checked=true);$('#network-view').value='all';$('#include-context').checked=false;$('#hide-isolated').checked=true;$('#scale-node-finances').checked=true;$('#scale-edge-quantity').checked=true;$('#zoom-sparse').checked=true;$('#visibility-factor').value='4';$('#visibility-factor-value').textContent='4';$('#neighbors').checked=false;$('#neighbors').disabled=true;$('#network-search').value='';$('#network-detail').innerHTML='<h2>Select an organization</h2><p>Search or select a graph label to explore its evidence.</p>';history.replaceState(history.state,'',location.pathname);search();rebuild()})
+  $('#network-reset').addEventListener('click',()=>{selected=null;inspectorKey=null;fitted=false;$('#live-physics').checked=!reducedMotion.matches;root.querySelectorAll('[name=node-category],[name=relationship]').forEach(c=>c.checked=true);$('#network-view').value='all';$('#include-context').checked=false;$('#hide-isolated').checked=true;$('#scale-node-finances').checked=true;$('#scale-edge-quantity').checked=true;$('#zoom-sparse').checked=false;$('#visibility-factor').value='4';$('#visibility-factor-value').textContent='4';$('#neighbors').checked=false;$('#neighbors').disabled=true;$('#network-search').value='';$('#network-detail').innerHTML='<h2>Select an organization</h2><p>Search or select a graph label to explore its evidence.</p>';history.replaceState(history.state,'',location.pathname);search();rebuild()})
   const initial=new URL(location.href).searchParams.get('org');if(initial&&data.organizations.some(n=>n.id===initial)){select(initial)}else rebuild()
   loadPortalEvidence(data, cachedEvidenceFetch,apiPrefix).then(updated=>{if(disposed)return;data=applyFundHierarchy(mergeNetworkHistory(updated,historyData));search();if(selected)select(selected);else rebuild();$('#network-source').textContent=(usingOfflineCopy?'Offline · last checked ':'Checked ')+new Date(oldestCheck).toLocaleString()}).catch(()=>{if(disposed)return;$('#network-source').textContent='Saved public evidence · refresh unavailable'})
  }catch(error){if(disposed)return;status.textContent='Network data is unavailable. Reload to try again or browse the organization directory.';host.hidden=true;console.error(error)}
@@ -344,7 +350,7 @@ const panelState=()=>{
 }
 const responsivePanels=()=>{root.classList.remove('eco-controls-open');root.classList.toggle('eco-inspector-open',!media.matches);panelState()}
 responsivePanels();media.addEventListener('change',responsivePanels,{signal:abort.signal})
-root.querySelectorAll('[data-panel]').forEach(button=>button.addEventListener('click',()=>{const panel=button.dataset.panel;root.classList.toggle('eco-'+panel+'-open');if(media.matches&&root.classList.contains('eco-'+panel+'-open'))root.classList.remove('eco-'+(panel==='controls'?'inspector':'controls')+'-open');panelState()}))
+root.querySelectorAll('[data-panel]').forEach(button=>button.addEventListener('click',()=>{const panel=button.dataset.panel;root.classList.toggle('eco-'+panel+'-open');if(media.matches&&root.classList.contains('eco-'+panel+'-open'))root.classList.remove('eco-'+(panel==='controls'?'inspector':'controls')+'-open');if(panel==='inspector'&&!root.classList.contains('eco-inspector-open')&&selected)unpin();panelState()}))
 rewriteLinks(); start();
 return () => { disposed=true; simulation?.stop(); abort.abort(); resizeObserver?.disconnect(); cancelAnimationFrame(frame); controls?.dispose();
  group?.traverse(o=>{o.geometry?.dispose(); if(Array.isArray(o.material))o.material.forEach(m=>m.dispose());else o.material?.dispose()}); renderer?.dispose(); root.replaceChildren(); };

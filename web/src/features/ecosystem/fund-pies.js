@@ -27,9 +27,7 @@ export function sliceColor(label) {
  return `hsl(${hash%360}, 62%, 48%)`
 }
 const dollars = r => (r.currency==='USD' || (!r.currency && /^\$/.test(r.amountLabel || ''))) && Number.isFinite(r.amount) && r.amount>0
-export function financialNodePies(data,{includeCapitalization=false}={}) {
- applyFundHierarchy(data)
- const organizations=new Map(data.organizations.map(o=>[o.id,o]))
+function financialRecords(data,includeCapitalization=false) {
  const records=[],seen=new Set(),links=new Set()
  // Relationships and financing often describe the same award. Prefer the edge,
  // then add only financing evidence not represented there.
@@ -42,6 +40,26 @@ export function financialNodePies(data,{includeCapitalization=false}={}) {
   seen.add(signature);if(raw.financingId)links.add(raw.financingId)
   records.push({...raw,source,target})
  }
+ return records
+}
+export function financialNodeTotals(data) {
+ applyFundHierarchy(data)
+ const records=financialRecords(data).filter(dollars),totals=new Map()
+ for(const org of data.organizations) {
+  const family=new Set([org.id,...data.organizations.filter(o=>o.administratorId===org.id).map(o=>o.id)])
+  let received=0,disbursed=0
+  for(const record of records) {
+   if(family.has(record.target)&&!family.has(record.source))received+=record.amount
+   if(family.has(record.source)&&!family.has(record.target))disbursed+=record.amount
+  }
+  totals.set(org.id,{received,disbursed})
+ }
+ return totals
+}
+export function financialNodePies(data,{includeCapitalization=false}={}) {
+ applyFundHierarchy(data)
+ const organizations=new Map(data.organizations.map(o=>[o.id,o]))
+ const records=financialRecords(data,includeCapitalization)
  const pies=new Map()
  for(const org of data.organizations) {
   const family=new Set([org.id,...data.organizations.filter(o=>o.administratorId===org.id).map(o=>o.id)])
