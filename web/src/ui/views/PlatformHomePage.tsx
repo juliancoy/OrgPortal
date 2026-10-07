@@ -1,11 +1,20 @@
-import { useEffect, useMemo, useState } from 'react'
+import { type CSSProperties, useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
 import { Header } from '../shell/Header'
 import { Footer } from '../shell/Footer'
 import './platform.css'
 
-type Community = { id: string; name: string; tagline: string; url: string; features: string[] }
+type Community = { id: string; name: string; tagline: string; url: string; features: string[]; logoUrl?: string | null; accentColor?: string | null }
+
+function CommunityMark({ community }: { community: Community }) {
+  const [failed, setFailed] = useState(false)
+  return <div className="platform-community-mark" aria-hidden="true">
+    {community.logoUrl && !failed
+      ? <img src={community.logoUrl} alt="" loading="lazy" onError={() => setFailed(true)} />
+      : <span>{community.name.split(' ').slice(0, 2).map(word => word[0]).join('')}</span>}
+  </div>
+}
 
 export function CommunitiesPage({ preview = false }: { preview?: boolean }) {
   const [communities, setCommunities] = useState<Community[]>([])
@@ -39,8 +48,8 @@ export function CommunitiesPage({ preview = false }: { preview?: boolean }) {
     {status && <p role="status">{status} {status !== 'Loading communities…' && <button type="button" className="btn-secondary" onClick={() => setAttempt(value => value + 1)}>Try again</button>}</p>}
     {!status && !visible.length && <p>No communities match your search.</p>}
     <div className="platform-community-grid">
-      {visible.map(community => <article className="platform-community-card" key={community.id}>
-        <div className="platform-community-mark" aria-hidden="true">{community.name.split(' ').slice(0, 2).map(word => word[0]).join('')}</div>
+      {visible.map(community => <article className="platform-community-card" key={community.id} style={{ '--community-accent': /^#[0-9a-f]{6}$/i.test(community.accentColor || '') ? community.accentColor : '#155e59' } as CSSProperties}>
+        <CommunityMark community={community} />
         <h3>{community.name}</h3><p>{community.tagline}</p>
         <div className="platform-community-features">{community.features.filter(feature => ['timebank', 'events', 'directory', 'chat'].includes(feature)).map(feature => <span key={feature}>{feature === 'directory' ? 'People & organizations' : feature === 'chat' ? 'Messages' : feature === 'timebank' ? 'Timebank' : 'Events'}</span>)}</div>
         <a href={community.url} className="platform-community-open">Open community <span aria-hidden="true">↗</span></a>

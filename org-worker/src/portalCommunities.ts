@@ -1,5 +1,6 @@
 type PublicPortalRow = {
   id: string; name: string; tagline: string; hostname: string; profile: string;
+  brand_image_path?: string | null; accent_color?: string | null;
   features: string; slug: string | null; public_base_url: string | null;
   custom_domain_hostname: string | null; custom_domain_status: string;
 };
@@ -17,12 +18,22 @@ export function publicCommunity(row: PublicPortalRow) {
     const parsed = JSON.parse(row.features);
     if (Array.isArray(parsed)) features = parsed.filter((value): value is string => typeof value === 'string');
   } catch { /* A missing feature list does not grant features. */ }
-  return { id: row.id, name: row.name, tagline: row.tagline, url: url.href, features };
+  const image = row.brand_image_path || (features.includes('timebank') ? '/images/timebank/timebank-mark.svg' : null);
+  let logoUrl: string | null = null;
+  if (image) {
+    try {
+      const logo = new URL(image, 'https://orgportal.cc');
+      if (logo.protocol === 'https:' && !logo.username && !logo.password && !logo.port
+        && !logo.hostname.endsWith('.local') && logo.hostname !== 'localhost') logoUrl = logo.href;
+    } catch { /* Invalid branding falls back to the community initials. */ }
+  }
+  const accentColor = /^#[0-9a-f]{6}$/i.test(row.accent_color || '') ? row.accent_color : null;
+  return { id: row.id, name: row.name, tagline: row.tagline, url: url.href, features, logoUrl, accentColor };
 }
 
 export async function listPublicCommunities(db: D1Database) {
   const rows = await db.prepare(`SELECT id, name, tagline, hostname, profile, features,
-    slug, public_base_url, custom_domain_hostname, custom_domain_status
+    brand_image_path, accent_color, slug, public_base_url, custom_domain_hostname, custom_domain_status
     FROM portal_tenants WHERE profile <> 'orgportal' ORDER BY name COLLATE NOCASE`).all<PublicPortalRow>();
   return rows.results.map(publicCommunity).filter(value => value !== null);
 }
