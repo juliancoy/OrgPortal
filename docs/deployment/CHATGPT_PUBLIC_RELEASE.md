@@ -25,7 +25,10 @@
 ## Public package
 
 `plugins/orgportal` is a separate public-upload source based on the owned private
-1.0.1 package, preserving its name and publisher metadata, versioned 1.1.0.
+1.0.1 package, preserving its plugin name, versioned 1.1.0. The publisher has confirmed the
+public identity Julian Coy, all supported countries, and that OrgPortal is
+currently free and open-source software (FOSS). Country restrictions are explicitly
+removed with publication.countries = []. Identity verification remains pending.
 The existing private installation remains available for development.
 Portable mcp.json is required for submission; do not add private app bindings.
 Importing a ZIP does not publish a public directory listing.
@@ -37,8 +40,9 @@ Five positive and three negative cases are embedded in plugin.json. They are
 
 The source is NOT submission-ready. Complete these items before final packaging:
 
-1. Confirm the verified publisher identity (existing package: Julian Loiacono),
-   supported countries, and whether users make purchases or payments.
+1. Verify the selected publisher identity Julian Coy in the portal. FOSS is
+   confirmed; separately confirm whether any purchases or payments occur through
+   the plugin before completing the commerce declaration.
 2. Confirm the public support destination and published privacy/terms covering
    actual integration data use, sharing, retention and deletion. Existing `/terms`
    requires review; unverified listing URL fields are intentionally omitted.
