@@ -205,3 +205,5 @@ html.eco-map-open .portal-footer, html.eco-map-open .tb-shell-footer { display:n
 }
 
 .eco-fund-breakdown svg{display:block;width:110px;height:110px;margin:.75rem auto}.eco-fund-swatch{display:inline-block;width:.8rem;height:.8rem;border-radius:50%;margin-right:.4rem}
+
+.eco-preview-totals{display:grid;grid-template-columns:1fr auto;gap:8px;margin:16px 0}.eco-preview-totals dd{margin:0;font-weight:600}.eco-organization-preview+ .eco-organization-preview{margin-top:24px;padding-top:16px;border-top:1px solid #ccd5df}

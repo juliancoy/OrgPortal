@@ -53,3 +53,15 @@ paths, community domains, and static assets. Authenticated browser tests use onl
 isolated local sessions or local fixtures; production checks are unauthenticated.
 Journal tests count scenario writes relative to audited migration seed entries,
 so initial platform configuration remains in immutable deployment history.
+
+## ChatGPT MCP connection
+
+Connect ChatGPT to `https://orgportal.cc/api/org/mcp` using OAuth. The platform
+resource has no fixed organization; live membership and operation permissions
+still apply. MedTech and LifeTech retain their separate organization resources.
+
+`org-worker/config/mcp-resources.json` and the Worker deployment variable
+`MCP_RESOURCE_CONFIG_JSON` include the platform resource. Its dedicated
+`MCP_ORGPORTAL_INTROSPECTION_SECRET` is provisioned in Cloudflare. PIdP's
+`MCP_OAUTH_RESOURCE_CONFIG_JSON` adds its credential hash and OrgPortal login
+handoff without replacing existing secret resource additions or signing keys.

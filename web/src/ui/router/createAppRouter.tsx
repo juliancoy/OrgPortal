@@ -18,6 +18,7 @@ import { tenantHomeAction } from '../../config/tenantHome'
 
 const LocalNewslettersPage = lazy(() => import('../views/LocalNewslettersPage').then(module => ({ default: module.LocalNewslettersPage })))
 const EcosystemNetworkPage = lazy(() => import('../views/EcosystemNetworkPage').then(module => ({ default: module.EcosystemNetworkPage })))
+const EcosystemNetworkGPUPage = lazy(() => import('../views/EcosystemNetworkGPUPage').then(module => ({ default: module.EcosystemNetworkGPUPage })))
 const SeriesAFundingGapPage = lazy(() => import('../views/SeriesAFundingGapPage').then(module => ({ default: module.SeriesAFundingGapPage })))
 const EcosystemNetworkViews = lazy(() => import('../views/EcosystemNetworkViews').then(module => ({ default: module.EcosystemNetworkViews })))
 const MemberMeetingsPage = lazy(() => import('../views/MemberMeetingsPage').then(module => ({ default: module.MemberMeetingsPage })))
@@ -279,6 +280,7 @@ export function createAppRouter() {
           { path: '/community', element: <TenantCommunityAliasRoute /> },
           { path: '/medtech-events', element: <TenantEventsAliasRoute /> },
           { path: '/ecosystem/network', element: <EcosystemNetworkPage /> },
+          { path: '/ecosystem/network/webgpu', element: <EcosystemNetworkGPUPage /> },
           { path: '/ecosystem/network/events', element: <EcosystemNetworkViews view="events" /> },
           { path: '/ecosystem/network/relationships', element: <EcosystemNetworkViews view="relationships" /> },
           { path: '/ecosystem/network/funding', element: <SeriesAFundingGapPage /> },

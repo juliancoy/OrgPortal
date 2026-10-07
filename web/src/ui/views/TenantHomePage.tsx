@@ -54,7 +54,7 @@ function formatEventDate(value?: string | null) {
   if (!value) return 'Date to be announced'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return 'Date to be announced'
-  return date.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+  return date.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
 function TenantHomeActions({ tenant }: { tenant: PortalTenant }) {
@@ -113,7 +113,8 @@ export function TenantHomePage() {
   if (!tenant) return null
   const imageUrl = tenant.home_image_url || profile.brandImagePath
 
-  if (tenant?.home_org_slug && !access.loading && resolveOrganizationView(requestedView, access.organizer, access.member) === 'organizers') return <Navigate to={`/orgs/${encodeURIComponent(tenant.home_org_slug)}?view=organizers`} replace />
+  const organizationView = resolveOrganizationView(requestedView, access.organizer, access.member)
+  if (tenant?.home_org_slug && !access.loading && (organizationView === 'organizers' || organizationView === 'members')) return <Navigate to={`/orgs/${encodeURIComponent(tenant.home_org_slug)}?view=${organizationView}`} replace />
 
   return <div className="portal-shell tenant-home-shell">
     <a className="skip-link" href="#main-content">Skip to main content</a>

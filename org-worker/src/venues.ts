@@ -43,3 +43,12 @@ export function venueRoutes<User extends {id:string}>(auth:(env:Env,request:Requ
  app.patch('/:id',async c=>{const user=await auth(c.env,c.req.raw);const row=await c.env.DB.prepare('SELECT * FROM venues WHERE id = ?').bind(c.req.param('id')).first<VenueRow>();if(!row)throw new HTTPException(404);await manage(c.env,user,row);const input=venueInput(await c.req.json());if(Object.keys(input).length)await c.env.DB.prepare(`UPDATE venues SET ${Object.keys(input).map(key=>key+' = ?').join(',')},updated_at = CURRENT_TIMESTAMP WHERE id = ?`).bind(...Object.values(input),row.id).run();return c.json({ok:true});});
  return app;
 }
+
+export async function pastVenueEvents<T>(db: D1Database, venueId: string) {
+  const rows = await db.prepare(`SELECT e.* FROM events e
+    JOIN event_venues ev ON ev.event_id = e.id
+    WHERE ev.venue_id = ? AND ev.status = 'confirmed'
+      AND julianday(COALESCE(e.ends_at, e.starts_at, e.event_date)) < julianday('now')
+    ORDER BY COALESCE(e.starts_at, e.event_date) DESC LIMIT 100`).bind(venueId).all<T>();
+  return rows.results;
+}

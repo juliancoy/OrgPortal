@@ -2,6 +2,19 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {mergeNetworkHistory} from '../src/features/ecosystem/network-history.js'
 import {loadPortalEvidence} from '../src/features/ecosystem/portal-ecosystem.js'
+test('Blue Water Baltimore archive events are assigned to its existing directory identity',async()=>{
+ const {readFile}=await import('node:fs/promises')
+ const history=JSON.parse(await readFile(new URL('../public/ecosystem-data/ecosystem-history.json',import.meta.url)))
+ const base=JSON.parse(await readFile(new URL('../public/ecosystem-data/ecosystem-portal.json',import.meta.url)))
+ const org=base.organizations.find(o=>o.name==='Blue Water Baltimore Events')
+ assert(org,'Blue Water Baltimore directory entry')
+ const graph=mergeNetworkHistory(base,history)
+ const events=graph.events.filter(e=>new URL(e.sourceUrl).hostname.replace(/^www\./,'')==='bluewaterbaltimore.org')
+ assert(events.length>0,'Blue Water Baltimore events are retained')
+ assert(events.every(e=>e.organizationId===org.id),'Archived events belong to the directory organization')
+ assert(events.some(e=>e.archiveSources.includes('baltimore/event_history.json')),'Historical events are retained')
+ assert(events.some(e=>e.archiveSources.includes('baltimore/upcoming_events.json')),'Upcoming events are retained')
+})
 test('non-LifeTech organizations are included in live evidence refresh',async()=>{
  const directory=[{id:'cc',name:'Code Collective',slug:'code-collective',tags:['Technology']}]
  const calls=[];const data=await loadPortalEvidence({organizations:[],relationships:[],financing:[]},async url=>{calls.push(url);return {ok:true,json:async()=>url.includes('/relationships/public?')?{records:[],nextRecordOffset:null}:directory}})

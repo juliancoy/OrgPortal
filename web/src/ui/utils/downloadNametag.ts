@@ -1,4 +1,4 @@
-export async function downloadNametag(element: HTMLElement, name: string, format: 'png' | 'jpg') {
+export async function downloadNametag(element: HTMLElement, name: string, format: 'png' | 'jpg', side?: 'front' | 'back') {
   await document.fonts.ready
   await Promise.all(Array.from(element.querySelectorAll('img')).map(image => image.decode()))
   const { toCanvas } = await import('html-to-image')
@@ -7,7 +7,7 @@ export async function downloadNametag(element: HTMLElement, name: string, format
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = `conference-nametag-${name.trim().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '') || 'guest'}.${format}`
+  link.download = `conference-nametag-${name.trim().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '') || 'guest'}${side ? `-${side}` : ''}.${format}`
   document.body.append(link)
   link.click()
   link.remove()

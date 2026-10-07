@@ -1,5 +1,8 @@
 .kilocode
 
+# Independent local identity checkout; PIdP is maintained in its own repository.
+/pidp/
+
 # Dependencies
 **/node_modules/
 

@@ -762,6 +762,7 @@ def run(prefix: str, network_name: str) -> None:
         "working_dir": container_app_dir,
         "volumes": {
             str(chat_worker_dir): {"bind": container_app_dir, "mode": "rw"},
+            str(current_dir / "shared"): {"bind": "/shared", "mode": "ro"},
             prefix + "ORGPORTAL_CHAT_WORKER_NODE_MODULES": {"bind": "/app/node_modules", "mode": "rw"},
             # Shared local storage lets chat resolve contacts from the org database.
             prefix + "ORGPORTAL_ORG_WORKER_WRANGLER": {"bind": "/app/.wrangler", "mode": "rw"},

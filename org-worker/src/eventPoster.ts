@@ -102,7 +102,12 @@ export async function renderEventPoster(event: PosterEvent, publicUrl: string, f
     parts.push(`<text fill="${color}" font-size="${size}" font-weight="${weight}">${lines.map((line, i) => `<tspan x="${x}" y="${y + i * size * 1.25}">${escape(line)}</tspan>`).join('')}</text>`);
     return y + lines.length * size * 1.25;
   }
-  parts.push(...posterBackgroundParts(width, height, palette, background, options.backgroundImage));
+  const qrSize = small ? 100 : 168;
+  const qrX = width - margin - qrSize;
+  // Fit the complete artwork into a separate column; never put the RSVP code over it.
+  const artworkWidth = background === 'lifetech' ? qrX - (small ? 16 : 28) : width;
+  parts.push(...posterBackgroundParts(artworkWidth, height, palette, background, options.backgroundImage));
+  if (background === 'lifetech') parts.push(`<rect x="${artworkWidth}" width="${width - artworkWidth}" height="${height}" fill="${palette.paper}"/>`);
   if (background === 'lifetech') parts.push(`<rect width="${width}" height="${height}" fill="#000000" opacity="0.66"/>`);
   parts.push(`<rect width="${width}" height="${small ? 8 : 12}" fill="${palette.accent}"/>`);
   const logoSize = small ? 42 : 68, brandY = small ? 27 : 40;
@@ -132,8 +137,6 @@ export async function renderEventPoster(event: PosterEvent, publicUrl: string, f
   y += small ? 15 : 26;
   const descLines = Math.min(social ? 2 : 5, Math.floor((footerTop - 25 - y) / (descriptionSize * 1.25)));
   if (descLines > 0) block(clean(event.social_description || event.description), margin, y, textArea, descriptionSize, descLines, palette.muted);
-  const qrSize = small ? 100 : social ? 168 : 168;
-  const qrX = width - margin - qrSize;
   const qrY = social ? 380 : footerTop + (small ? 17 : 28);
   const qr = await QRCode.toString(publicUrl, { type: 'svg', margin: 4, errorCorrectionLevel: 'M', color: { dark: palette.qrDark, light: palette.qrLight } });
   parts.push(`<path d="M${margin} ${footerTop}H${social ? 876 : width - margin}" stroke="${palette.rule}" stroke-width="2"/>`);

@@ -1,5 +1,6 @@
+import { profileEvents } from './profileEvents';
 import { listPublicCommunities } from './portalCommunities';
-import { provisionEventChat, provisionPendingEventChats } from './eventChat';
+import { profileAvailability } from './profileAvailability';
 import { localNewsletterRoutes } from './localNewsletters';
 import { newsletterSyncRoutes } from './newsletterSync';
 import { replicateChangeJournal } from './changeJournal';
@@ -23,7 +24,7 @@ import { governanceDocumentRoutes, executeDocumentMotion, documentMotionDetail }
 import { photoTagRoutes } from './photoTags';
 import { venueVoteRoutes } from './venueVotes';
 import { venueRankingRoutes } from './venueRankings';
-import { venueRoutes, eventVenues, setEventVenues } from './venues';
+import { venueRoutes, eventVenues, setEventVenues, pastVenueEvents } from './venues';
 import { driveCarouselRoutes } from './driveCarousel';
 import { userTaskRoutes } from './userTasks';
 import { identityMembershipRoutes } from "./identityMembership";
@@ -1502,7 +1503,8 @@ async function eventFlyerSvg(env: Env, request: Request, event: EventRow, format
   if (tenant.public_base_url && tenant.brand_image_path) {
     const base = new URL(tenant.public_base_url);
     const asset = new URL(tenant.brand_image_path, base);
-    if (base.protocol === "https:" && asset.origin === base.origin && asset.pathname.startsWith("/images/")) {
+    if (base.protocol === "https:" && asset.origin === base.origin
+        && (asset.pathname.startsWith("/images/") || asset.pathname.startsWith("/assets/images/"))) {
       logo = await posterLogo(asset);
     }
   }
@@ -1979,6 +1981,18 @@ async function organizationPortalByOrg(db: D1Database, organization: Organizatio
     .first<OrganizationPortalRow>();
 }
 
+async function organizationTenantHome(env: Env, request: Request, organization: OrganizationRow) {
+  const tenant = await organizationPortalByOrg(env.DB, organization);
+  if (!tenant) return { tenant_id: null, tenant_home_url: null };
+  let home: string | null = null;
+  if (tenant.custom_domain_status === 'attached' && tenant.custom_domain_hostname) {
+    home = `https://${tenant.custom_domain_hostname}/`;
+  } else {
+    home = tenant.home_url || (tenant.slug ? await organizationPortalSlugUrl(env, request, tenant.slug) : null);
+  }
+  return { tenant_id: tenant.id, tenant_home_url: home };
+}
+
 async function organizationPortalResponse(env: Env, request: Request, tenant: OrganizationPortalRow | null) {
   if (!tenant) return null;
   const slug = String(tenant.slug || "").trim();
@@ -2122,7 +2136,6 @@ async function upsertEvent(env: Env, raw: Record<string, unknown>, requestedSlug
       updatedAt,
     )
     .run();
-  await provisionEventChat(env, id);
   return db.prepare("SELECT * FROM events WHERE ingest_key = ?").bind(ingestKey).first<EventRow>();
 }
 
@@ -2644,6 +2657,12 @@ function deploymentHealth(c: { env: Env; req: { url: string }; header: (name: st
 
 app.route('/api/network/events',venueRankingRoutes(currentUser));
 app.route('/api/network/events',venueVoteRoutes(currentUser));
+app.get('/api/network/venues/public/:id/events', async c => {
+  const venueId = c.req.param('id');
+  if (!await c.env.DB.prepare('SELECT id FROM venues WHERE id = ?').bind(venueId).first()) fail(404, 'Venue not found');
+  const rows = await pastVenueEvents<EventRow>(c.env.DB, venueId);
+  return c.json(await Promise.all(rows.map(row => mapEvent(c.env, c.req.raw, row))));
+});
 app.route('/api/network/venues',venueRoutes(currentUser,async(env,user,venue)=>{
   if(adminUser(user,env)||venue.created_by_user_id===user.id)return;
   if(venue.organization_id){await authorizeOrganization(env.DB,organizationActor(user,env),'manage',venue.organization_id);return;}
@@ -2689,6 +2708,28 @@ app.get("/admin/mcp/status", async (c) => {
   return c.json(checkEventConfiguration(c.env));
 });
 
+app.get('/api/network/contact/me/availability', async c => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await contactForUser(c.env, c.req.raw, user);
+  c.header('Cache-Control', 'no-store');
+  return c.json(await profileAvailability(c.env.DB, user.id, Boolean(row.enabled), true));
+});
+app.put('/api/network/contact/me/availability', async c => {
+  const user = await currentUser(c.env, c.req.raw);
+  const payload = await c.req.json().catch(() => null);
+  if (!payload || typeof payload.public !== 'boolean' || Object.keys(payload).some(key => key !== 'public')) fail(400, 'Choose public or hidden availability');
+  await c.env.DB.prepare(`INSERT INTO profile_availability_settings (user_id, public) VALUES (?, ?)
+    ON CONFLICT(user_id) DO UPDATE SET public = excluded.public, updated_at = CURRENT_TIMESTAMP`).bind(user.id, payload.public ? 1 : 0).run();
+  const row = await contactForUser(c.env, c.req.raw, user);
+  c.header('Cache-Control', 'no-store');
+  return c.json(await profileAvailability(c.env.DB, user.id, Boolean(row.enabled), true));
+});
+app.get('/api/network/contact/:slug/availability', async c => {
+  const row = await c.env.DB.prepare('SELECT user_id, enabled FROM user_contact_pages WHERE slug = ?').bind(c.req.param('slug')).first<{user_id:string;enabled:number}>();
+  if (!row) fail(404, 'Public profile not found');
+  c.header('Cache-Control', 'no-store');
+  return c.json(await profileAvailability(c.env.DB, row.user_id, Boolean(row.enabled)));
+});
 app.get("/api/network/contact/me", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   const row = await contactForUser(c.env, c.req.raw, user);
@@ -3114,7 +3155,7 @@ app.get("/api/network/orgs/public/:slug", async (c) => {
   const count = await c.env.DB.prepare("SELECT count(*) AS n FROM events WHERE host_org_id = ? AND (starts_at IS NULL OR starts_at >= datetime('now'))")
     .bind(row.id)
     .first<{ n: number }>();
-  return c.json({ ...mapOrganization(row, Number(count?.n || 0)), public_url: await orgPublicUrl(c.env, c.req.raw, row.slug) });
+  return c.json({ ...mapOrganization(row, Number(count?.n || 0)), public_url: await orgPublicUrl(c.env, c.req.raw, row.slug), ...await organizationTenantHome(c.env, c.req.raw, row) });
 });
 
 app.get("/api/network/relationships/public", async (c) => {
@@ -3177,17 +3218,18 @@ app.get("/api/network/orgs/public/:slug/events", async (c) => {
     .first<OrganizationRow>();
   if (!org) return c.json([]);
   const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "60", 10) || 60, 200));
+  const hostedOnly = c.req.query("hosted_only") === "true";
   const upcomingOnly = c.req.query("upcoming_only") === "true";
   const rows = await c.env.DB.prepare(
     `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url
      FROM events e
      LEFT JOIN organizations o ON o.id = e.host_org_id
-     WHERE (e.host_org_id = ? OR EXISTS (SELECT 1 FROM event_organizations eo WHERE eo.event_id = e.id AND eo.organization_id = ?))
-     ${upcomingOnly ? "AND ((e.starts_at IS NOT NULL AND julianday(e.starts_at) >= julianday('now')) OR (e.starts_at IS NULL AND e.event_date >= date('now')))" : ""}
+     WHERE (e.host_org_id = ? OR (? = 0 AND EXISTS (SELECT 1 FROM event_organizations eo WHERE eo.event_id = e.id AND eo.organization_id = ?)))
+     ${upcomingOnly ? "AND ((e.starts_at IS NOT NULL AND julianday(COALESCE(e.ends_at, e.starts_at)) >= julianday('now')) OR (e.starts_at IS NULL AND e.event_date >= date('now')))" : ""}
      ORDER BY COALESCE(e.starts_at,e.event_date,e.created_at) ${upcomingOnly ? "ASC" : "DESC"}
      LIMIT ?`,
   )
-    .bind(org.id, org.id, limit)
+    .bind(org.id, hostedOnly ? 1 : 0, org.id, limit)
     .all<EventRow>();
   return c.json(await Promise.all((rows.results || []).map((row) => mapEvent(c.env, c.req.raw, row))));
 });
@@ -4011,6 +4053,15 @@ app.post("/api/network/events", async (c) => {
 });
 
 
+app.get("/api/network/events/:eventId/access", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await c.env.DB.prepare("SELECT * FROM events WHERE id = ?").bind(c.req.param("eventId")).first<EventRow>();
+  if (!row) fail(404, "Event not found");
+  await authorizeEventManager(c.env, user, row);
+  c.header("Cache-Control", "no-store");
+  return c.json({ can_manage: true });
+});
+
 app.patch("/api/network/events/:eventId", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   const row = await c.env.DB.prepare("SELECT * FROM events WHERE id = ?").bind(c.req.param("eventId")).first<EventRow>();
@@ -4018,6 +4069,44 @@ app.patch("/api/network/events/:eventId", async (c) => {
   await authorizeEventManager(c.env, user, row);
   const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
   const updates: Record<string, unknown> = {};
+  if ("title" in payload) {
+    const title = stringField(payload, "title", 500);
+    if (!title) fail(400, "title is required");
+    updates.title = title;
+  }
+  if ("description" in payload) updates.description = stringField(payload, "description", 20000);
+  if ("location" in payload) updates.location = stringField(payload, "location", 1000);
+  if ("image_url" in payload) {
+    const image = stringField(payload, "image_url", 1000);
+    if (image) {
+      try {
+        const url = new URL(image);
+        if (!['https:', 'http:'].includes(url.protocol)) fail(400, "Invalid image URL");
+      } catch { fail(400, "Invalid image URL"); }
+    }
+    updates.image_url = image;
+  }
+  if ("event_date" in payload) {
+    const date = stringField(payload, "event_date", 10);
+    if (date && (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(Date.parse(date)) || new Date(date).toISOString().slice(0,10) !== date)) fail(400, "Invalid event date");
+    updates.event_date = date;
+  }
+  if ("timezone" in payload) {
+    const timezone = stringField(payload, "timezone", 80);
+    if (!timezone) fail(400, "Timezone is required");
+    try { new Intl.DateTimeFormat('en', { timeZone: timezone }); } catch { fail(400, "Invalid timezone"); }
+    updates.timezone = timezone;
+  }
+  for (const field of ["starts_at", "ends_at"] as const) {
+    if (!(field in payload)) continue;
+    const value = stringField(payload, field, 80);
+    if (value && (!/T.*(?:Z|[+-]\d{2}:\d{2})$/.test(value) || !Number.isFinite(Date.parse(value)))) fail(400, `Invalid ${field}`);
+    updates[field] = value ? new Date(value).toISOString() : null;
+  }
+  const start = "starts_at" in updates ? updates.starts_at : row.starts_at;
+  const end = "ends_at" in updates ? updates.ends_at : row.ends_at;
+  if (end && !start) fail(400, "Start time is required when an end time is set");
+  if (start && end && Date.parse(String(end)) < Date.parse(String(start))) fail(400, "End time must be after start time");
   if ("social_title" in payload) updates.social_title = stringField(payload, "social_title", 140);
   if ("social_description" in payload) updates.social_description = stringField(payload, "social_description", 300);
   if ("social_image_url" in payload) updates.social_image_url = cleanPublicAssetUrl(payload.social_image_url);
@@ -5265,16 +5354,9 @@ app.get("/api/network/users/public/:slug/events", async (c) => {
   const contact = await publicContact(c.env, c.req.raw, c.req.param("slug"));
   const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "60", 10) || 60, 200));
   const upcomingOnly = (c.req.query("upcoming_only") || "true").toLowerCase() !== "false";
-  const rows = await c.env.DB.prepare(
-    `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url
-     FROM events e
-     LEFT JOIN organizations o ON o.id = e.host_org_id
-     WHERE e.host_user_id = ?
-       AND (? = 0 OR e.starts_at IS NULL OR e.starts_at >= datetime('now'))
-     ORDER BY COALESCE(e.starts_at,e.event_date,e.created_at) ASC
-     LIMIT ?`,
-  ).bind(contact.user_id, upcomingOnly ? 1 : 0, limit).all<EventRow>();
-  return c.json(await Promise.all((rows.results || []).map((row) => mapEvent(c.env, c.req.raw, row))));
+  const registered = c.req.query('participation') === 'registered';
+  const rows = await profileEvents<EventRow>(c.env.DB, contact.user_id, registered, upcomingOnly, limit);
+  return c.json(await Promise.all(rows.map((row) => mapEvent(c.env, c.req.raw, row))));
 });
 
 app.post("/api/health-insurance/services", async (c) => {
@@ -5373,7 +5455,6 @@ export default {
     ctx.waitUntil(runOrganizationStatusEmail(env).then(() => runEmailDelivery(env)));
     ctx.waitUntil(dispatchOrganizationStatusPush(env));
     ctx.waitUntil(provisionPendingOrganizationChats(env));
-    ctx.waitUntil(provisionPendingEventChats(env));
   },
   async queue(batch: MessageBatch<import("./push").PushDeliveryJob>, env: Env) {
     if (env.ORGANIZATION_REPLICA_SOURCE) { batch.retryAll(); return; }

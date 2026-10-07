@@ -1,3 +1,4 @@
+import { organizationTenantRedirect } from '../../../../organizationTenantRedirect.mjs'
 import { groupOrganizationEvents } from './organizationEvents'
 import { EmbeddedOrganizationChat } from '../../components/EmbeddedOrganizationChat'
 import { PeerOrganizations } from '../../components/PeerOrganizations'
@@ -44,6 +45,8 @@ type PublicOrganization = {
   claimed_by_user_id?: string | null
   pending_challenges_count: number
   is_disputed: boolean
+  tenant_id?: string | null
+  tenant_home_url?: string | null
   redirected_from_slug?: string | null
 }
 
@@ -209,10 +212,6 @@ export function PublicAdminPage() {
   const [orgImageDraft, setOrgImageDraft] = useState('')
   const [savingOrgName, setSavingOrgName] = useState(false)
   const [savingOrgImage, setSavingOrgImage] = useState(false)
-  const [eventMediaStatus, setEventMediaStatus] = useState<Record<string, string>>({})
-  const [eventMediaUrlDrafts, setEventMediaUrlDrafts] = useState<Record<string, string>>({})
-  const [eventMediaLabelDrafts, setEventMediaLabelDrafts] = useState<Record<string, string>>({})
-  const [eventMediaPending, setEventMediaPending] = useState<Record<string, boolean>>({})
   const [adminView, setAdminView] = useState(false)
   const organizationEditorRef = useRef<HTMLDivElement | null>(null)
   const [showImageEditor, setShowImageEditor] = useState(false)
@@ -222,6 +221,7 @@ export function PublicAdminPage() {
   const requestedView = useOrganizationViewPreference(org?.slug, searchParams.get('view'))
   const organizationView = resolveOrganizationView(requestedView, canManageCurrentOrg, membership?.status === 'active')
   const isOrganizerView = canManageCurrentOrg && organizationView === 'organizers'
+  const isWorkspaceView = organizationView === 'members' || isOrganizerView
   const claimActionLabel = hasExistingAdmins ? 'Challenge Ownership' : 'Claim This Organization'
   useEffect(() => {
     if (!handle) return
@@ -236,6 +236,7 @@ export function PublicAdminPage() {
 
   useEffect(() => {
     if (!handle) return
+    let cancelled = false
     setStatus('Loading organization…')
     fetch(orgUrl(`/api/network/orgs/public/${encodeURIComponent(handle)}`))
       .then(async (resp) => {
@@ -246,6 +247,12 @@ export function PublicAdminPage() {
         return resp.json() as Promise<PublicOrganization>
       })
       .then((orgData) => {
+        if (cancelled) return
+        const tenantHome = organizationTenantRedirect(orgData, window.location.href, getDomainTenant()?.id)
+        if (tenantHome) {
+          window.location.replace(tenantHome)
+          return
+        }
         if (orgData.redirected_from_slug && orgData.slug !== handle) {
           navigate(
             `/orgs/${encodeURIComponent(orgData.slug)}?merged_from=${encodeURIComponent(orgData.redirected_from_slug)}`,
@@ -269,11 +276,13 @@ export function PublicAdminPage() {
         setStatus('')
       })
       .catch((err) => {
+        if (cancelled) return
         setOrg(null)
         setEvents([])
         setAdmins([])
         setStatus(toUserFacingErrorMessage(err, 'Organization unavailable'))
       })
+    return () => { cancelled = true }
   }, [handle, navigate])
 
   useEffect(() => {
@@ -844,7 +853,7 @@ export function PublicAdminPage() {
   }
 
   async function handleSaveCroppedOrgImage(base64Image: string) {
-    if (!org || !token) return
+    if (!org || !token || !isOrganizerView) return
     setSavingOrgImage(true)
     setMergeStatus(null)
     try {
@@ -877,88 +886,11 @@ export function PublicAdminPage() {
       setMergeStatus('Image uploaded. Save organization settings to publish it.')
       setShowImageEditor(false)
       setEditorSource(null)
+      openOrganizationEditor('org-image-url')
     } catch (err) {
       setMergeStatus(toUserFacingErrorMessage(err, 'Image upload failed'))
     } finally {
       setSavingOrgImage(false)
-    }
-  }
-
-  function updateEventInList(updated: PublicEvent) {
-    setEvents((prev) => prev.map((event) => (event.id === updated.id ? updated : event)))
-  }
-
-  async function saveEventMediaList(event: PublicEvent, media: EventMediaItem[]) {
-    if (!token) {
-      setEventMediaStatus((prev) => ({ ...prev, [event.id]: 'Sign in to manage event media.' }))
-      return
-    }
-    setEventMediaPending((prev) => ({ ...prev, [event.id]: true }))
-    setEventMediaStatus((prev) => ({ ...prev, [event.id]: '' }))
-    try {
-      const resp = await fetch(orgUrl(`/api/network/events/${encodeURIComponent(event.id)}/media`), {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ media }),
-      })
-      if (!resp.ok) {
-        const text = await resp.text().catch(() => '')
-        throw new Error(text || `Media update failed (${resp.status})`)
-      }
-      updateEventInList((await resp.json()) as PublicEvent)
-      setEventMediaStatus((prev) => ({ ...prev, [event.id]: 'Event media updated.' }))
-    } catch (err) {
-      setEventMediaStatus((prev) => ({ ...prev, [event.id]: toUserFacingErrorMessage(err, 'Event media update failed') }))
-    } finally {
-      setEventMediaPending((prev) => ({ ...prev, [event.id]: false }))
-    }
-  }
-
-  async function addEventMediaUrl(event: PublicEvent) {
-    const url = (eventMediaUrlDrafts[event.id] || '').trim()
-    if (!url) {
-      setEventMediaStatus((prev) => ({ ...prev, [event.id]: 'Enter an image URL first.' }))
-      return
-    }
-    const label = (eventMediaLabelDrafts[event.id] || '').trim() || 'Event image'
-    await saveEventMediaList(event, [
-      ...(event.media || []),
-      { id: crypto.randomUUID(), url, label, alt: label, kind: 'image' },
-    ])
-    setEventMediaUrlDrafts((prev) => ({ ...prev, [event.id]: '' }))
-    setEventMediaLabelDrafts((prev) => ({ ...prev, [event.id]: '' }))
-  }
-
-  async function uploadEventMediaFile(event: PublicEvent, file: File | null) {
-    if (!file) return
-    if (!token) {
-      setEventMediaStatus((prev) => ({ ...prev, [event.id]: 'Sign in to upload event media.' }))
-      return
-    }
-    setEventMediaPending((prev) => ({ ...prev, [event.id]: true }))
-    setEventMediaStatus((prev) => ({ ...prev, [event.id]: '' }))
-    try {
-      const formData = new FormData()
-      formData.append('image', file)
-      formData.append('label', file.name.replace(/\.[^.]+$/, '') || 'Event image')
-      const resp = await fetch(orgUrl(`/api/network/events/${encodeURIComponent(event.id)}/media`), {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      })
-      if (!resp.ok) {
-        const text = await resp.text().catch(() => '')
-        throw new Error(text || `Upload failed (${resp.status})`)
-      }
-      updateEventInList((await resp.json()) as PublicEvent)
-      setEventMediaStatus((prev) => ({ ...prev, [event.id]: 'Event media uploaded.' }))
-    } catch (err) {
-      setEventMediaStatus((prev) => ({ ...prev, [event.id]: toUserFacingErrorMessage(err, 'Event media upload failed') }))
-    } finally {
-      setEventMediaPending((prev) => ({ ...prev, [event.id]: false }))
     }
   }
 
@@ -973,7 +905,7 @@ export function PublicAdminPage() {
   }
 
   const mergeCandidates = myAdminOrgs.filter((item) => item.id !== org.id)
-  const canEditOrgImage = isOrganizerView && adminView
+  const canEditOrgImage = isOrganizerView
   const tenant = getDomainTenant()
   const organizationBrandImage = tenant?.organization_id === org.id ? tenant.brand_image_path : null
   const heroImageSource = org.image_url?.trim() || organizationBrandImage || ORG_PLACEHOLDER_SRC
@@ -987,6 +919,7 @@ export function PublicAdminPage() {
   }
 
   function openOrganizationEditor(sectionId = 'organization-page-editor') {
+    if (!isOrganizerView) return
     setAdminView(true)
     window.requestAnimationFrame(() => {
       const section = document.getElementById(sectionId) || organizationEditorRef.current
@@ -997,16 +930,16 @@ export function PublicAdminPage() {
 
   return (
     <section className="panel portal-org-page">
-      {isOrganizerView && <nav className="portal-org-organizer-nav" aria-label={`${org.name} organizer navigation`}>
-        <span className="portal-org-organizer-nav-label">Organizer tools</span>
+      {isWorkspaceView && <nav className="portal-org-organizer-nav" aria-label={`${org.name} workspace navigation`}>
+        <span className="portal-org-organizer-nav-label">{isOrganizerView ? 'Organizer tools' : 'Member tools'}</span>
         <a href="#organization-overview">Overview</a>
-        <a href="#organization-branding" onClick={event => { event.preventDefault(); openOrganizationEditor('organization-branding') }}>Branding</a>
+        <a href="#organization-brand-guide">Branding</a>
         <a href="#organization-members">Members</a>
         <a href="#organization-events">Events</a>
         <a href="#organization-support">Support</a>
-        <a href="#organization-feedback" onClick={event => { event.preventDefault(); openOrganizationEditor('organization-feedback') }}>Feedback</a>
-        <a href="#organization-domain" onClick={event => { event.preventDefault(); openOrganizationEditor('organization-domain') }}>Domain</a>
-        <a href="#organization-page-editor" onClick={event => { event.preventDefault(); openOrganizationEditor() }}>Settings</a>
+        <a href="#organization-member-feedback">Feedback</a>
+        {isOrganizerView && <a href="#organization-domain" onClick={event => { event.preventDefault(); openOrganizationEditor('organization-domain') }}>Domain</a>}
+        {isOrganizerView && <a href="#organization-page-editor" onClick={event => { event.preventDefault(); openOrganizationEditor() }}>Settings</a>}
       </nav>}
       <div className={`portal-org-layout${org.claimed_by_user_id ? '' : ' portal-org-layout-single'}`}>
         <div className="portal-org-main-column">
@@ -1015,11 +948,13 @@ export function PublicAdminPage() {
               <p className="tenant-home-eyebrow">{isOrganizerView ? 'Organization dashboard' : `${organizationView[0].toUpperCase()}${organizationView.slice(1)} view`}</p>
               <div className="portal-org-hero-header">
                 <h1>{org.name}</h1>
+                {isOrganizerView && <button type="button" className="btn-secondary" onClick={() => openOrganizationEditor('org-name')} aria-label="Edit organization name"><Pencil size={17} aria-hidden="true" /></button>}
                 {canEditOrgImage ? (
                   <span className="portal-org-image-hint">Click image to change</span>
                 ) : null}
               </div>
               {org.description ? <p>{org.description}</p> : null}
+              {isOrganizerView && <button type="button" className="btn-secondary" onClick={() => openOrganizationEditor('org-description')}>Edit description</button>}
               <div className="portal-org-actions" aria-label={`${org.name} actions`}>
                 {token ? (
                   <Link className="btn-secondary" to={`/chat?start=group&org=${encodeURIComponent(org.slug)}`}>
@@ -1065,6 +1000,7 @@ export function PublicAdminPage() {
                 <h2>{group.kind === 'hosted' ? `${org.name} upcoming events` : 'Events from nearby organizations'}</h2>
               </div>
               <Link to="/events">View all events</Link>
+              {isOrganizerView && group.kind === 'hosted' && <Link className="btn-secondary" to="/orgs/events">Manage events</Link>}
             </div>
             {eventsLoading ? (
               <p className="muted" style={{ margin: 0 }}>
@@ -1077,98 +1013,43 @@ export function PublicAdminPage() {
             ) : (
               <div className="portal-org-events-grid">
                 {group.events.map((event) => (
-                  <article key={event.id} className="portal-org-event-card">
+                  <Link key={event.id} className="portal-org-event-card" to={`/events/${encodeURIComponent(event.slug)}`}>
                     <OrgImage
                       src={event.image_url || event.media?.[0]?.url || heroImageSource}
                       fallbackSrc={organizationBrandImage}
                       alt=""
                       className={!event.image_url && !event.media?.length ? 'portal-org-event-brand-image' : undefined}
                     />
-                    <Link className="portal-org-event-link" to={`/events/${encodeURIComponent(event.slug)}`}>
-                      {event.title}
-                    </Link>
-                    <span className="muted">{formatDate(event.starts_at)}{event.location ? ` • ${event.location}` : ''}</span>
-                    {(event.media || []).length ? (
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(86px, 1fr))', gap: '0.45rem', marginTop: '0.35rem' }}>
-                        {(event.media || []).map((item) => (
-                          <figure key={item.id} style={{ margin: 0, display: 'grid', gap: '0.25rem' }}>
-                            <img
-                              src={item.url}
-                              alt={item.alt || item.label}
-                              style={{ width: '100%', aspectRatio: '3 / 4', objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }}
-                            />
-                            <figcaption className="muted" style={{ fontSize: '0.78rem' }}>{item.label}</figcaption>
-                            {adminView && canManageCurrentOrg ? (
-                              <button
-                                type="button"
-                                className="btn-secondary"
-                                disabled={eventMediaPending[event.id]}
-                                onClick={() => void saveEventMediaList(event, (event.media || []).filter((candidate) => candidate.id !== item.id))}
-                              >
-                                Remove
-                              </button>
-                            ) : null}
-                          </figure>
-                        ))}
-                      </div>
-                    ) : null}
-                    {adminView && canManageCurrentOrg ? (
-                      <div style={{ display: 'grid', gap: '0.45rem', marginTop: '0.45rem', paddingTop: '0.45rem', borderTop: '1px solid var(--border)' }}>
-                        <label className="muted" htmlFor={`event-media-upload-${event.id}`}>Upload event image</label>
-                        <input
-                          id={`event-media-upload-${event.id}`}
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp,image/gif"
-                          disabled={eventMediaPending[event.id]}
-                          onChange={(e) => {
-                            const file = e.currentTarget.files?.[0] || null
-                            void uploadEventMediaFile(event, file)
-                            e.currentTarget.value = ''
-                          }}
-                        />
-                        <label className="muted" htmlFor={`event-media-url-${event.id}`}>Or attach hosted image URL</label>
-                        <input
-                          id={`event-media-url-${event.id}`}
-                          value={eventMediaUrlDrafts[event.id] || ''}
-                          onChange={(e) => setEventMediaUrlDrafts((prev) => ({ ...prev, [event.id]: e.target.value }))}
-                          placeholder="https://example.com/menu.jpg"
-                        />
-                        <input
-                          value={eventMediaLabelDrafts[event.id] || ''}
-                          onChange={(e) => setEventMediaLabelDrafts((prev) => ({ ...prev, [event.id]: e.target.value }))}
-                          placeholder="Menu label"
-                        />
-                        <button type="button" disabled={eventMediaPending[event.id]} onClick={() => void addEventMediaUrl(event)}>
-                          {eventMediaPending[event.id] ? 'Saving…' : 'Attach Image URL'}
-                        </button>
-                        {eventMediaStatus[event.id] ? <p className="muted" role="status" style={{ margin: 0 }}>{eventMediaStatus[event.id]}</p> : null}
-                      </div>
-                    ) : null}
-                  </article>
+                    <strong className="portal-org-event-title">{event.title}</strong>
+                    <span className="muted">{event.starts_at ? new Date(event.starts_at).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'Date to be announced'}</span>
+                    {event.location ? <span className="muted portal-org-event-location">{event.location}</span> : null}
+                  </Link>
                 ))}
               </div>
             )}
           </div>)}
 
 
-          {(organizationView === 'members' || isOrganizerView) && <OrganizationTools />}
-          {isOrganizerView && <>
+          {isWorkspaceView && <OrganizationTools />}
+          {isWorkspaceView && <>
           <OrganizationPortalSections
             name={org.name}
             features={portalConfig?.features ?? (getDomainTenant()?.home_org_slug === org.slug ? getDomainTenant()?.features : undefined) ?? ['directory', 'events', 'chat']}
           />
+          <div id="organization-brand-guide" className="portal-org-nav-target" tabIndex={-1}>
           {getDomainTenant()?.home_org_slug === org.slug
             ? <OrganizationBrandGuide />
             : portalConfig?.slug_url
               ? <OrganizationBrandGuide href={`${portalConfig.slug_url.replace(/\/$/, '')}/branding`} />
               : null}
+          {isOrganizerView && <button type="button" className="btn-secondary" onClick={() => openOrganizationEditor('organization-branding')}>Edit branding and portal sections</button>}
+          </div>
           </>}
-          {organizationView !== 'organizers' && organizationView !== 'public' && <section className="portal-card" aria-label={`${organizationView} workspace`} style={{ display: 'grid', gap: '.6rem' }}>
-            <h2>{organizationView === 'members' ? 'Member workspace' : organizationView === 'volunteers' ? 'Volunteer workspace' : 'Attendee workspace'}</h2>
-            <p>{organizationView === 'members' ? 'Members actively participate in a team and can propose and discuss governance changes.' : organizationView === 'volunteers' ? 'Volunteers have helped with a group activity within the previous three months.' : 'Attendees have attended a group activity within the previous three months.'}</p>
+          {(organizationView === 'attendees' || organizationView === 'volunteers') && <section className="portal-card" aria-label={`${organizationView} workspace`} style={{ display: 'grid', gap: '.6rem' }}>
+            <h2>{organizationView === 'volunteers' ? 'Volunteer workspace' : 'Attendee workspace'}</h2>
+            <p>{organizationView === 'volunteers' ? 'Volunteers have helped with a group activity within the previous three months.' : 'Attendees have attended a group activity within the previous three months.'}</p>
             <div className="portal-org-actions">
               <Link className="btn-secondary" to="/org-events">Events and registration</Link>
-              {organizationView === 'members' && <Link className="btn-secondary" to="/chat">Messages</Link>}
             </div>
           </section>}
           {mergedFrom ? (
@@ -1217,15 +1098,16 @@ export function PublicAdminPage() {
             organizationId={org.id}
             name={org.name}
             canRead={Boolean(token && (canManageCurrentOrg || membership?.status === 'active'))}
-            canManage={canManageCurrentOrg}
+            canManage={isOrganizerView}
             membershipCount={org.membership_count || 0}
           />
           </div>
 
           {token ? (
-            <div className="portal-card" style={{ display: 'grid', gap: '0.65rem' }}>
+            <div id="organization-member-feedback" className="portal-card portal-org-nav-target" tabIndex={-1} style={{ display: 'grid', gap: '0.65rem' }}>
             <div>
               <h2 style={{ margin: 0, fontSize: '1rem' }}>Group Feedback</h2>
+              {isOrganizerView && <button type="button" className="btn-secondary" onClick={() => openOrganizationEditor('organization-feedback')}>Manage feedback</button>}
               <p className="muted" style={{ margin: '0.25rem 0 0' }}>
                 {org.feedback_positive_count || 0} positive • {org.feedback_concern_count || 0} concerns
               </p>
@@ -1358,7 +1240,7 @@ export function PublicAdminPage() {
           <PeerOrganizations organizationId={org.id} tags={org.tags} />
 
           <div id="organization-support" className="portal-org-nav-target" tabIndex={-1}>
-            <OrganizationSupport organizationId={org.id} slug={org.slug} canManage={canManageCurrentOrg} />
+            <OrganizationSupport organizationId={org.id} slug={org.slug} canManage={isOrganizerView} />
           </div>
 
           {isOrganizerView && adminView ? (
@@ -1634,7 +1516,7 @@ export function PublicAdminPage() {
 
         </div>
         {org.claimed_by_user_id && <aside className="portal-org-chat-column">
-          {isOrganizerView ? <EmbeddedOrganizationChat id={org.id} slug={org.slug} name={org.name} /> : <div className="portal-card" style={{ display: 'grid', gap: '0.75rem' }}>
+          {isWorkspaceView ? <EmbeddedOrganizationChat id={org.id} slug={org.slug} name={org.name} /> : <div className="portal-card" style={{ display: 'grid', gap: '0.75rem' }}>
             <h2 style={{ margin: 0, fontSize: '1rem' }}>{org.name} Chat</h2>
             <p className="muted" style={{ margin: 0 }}>Connect with {org.name} members in our shared chat room.</p>
             {token ? (

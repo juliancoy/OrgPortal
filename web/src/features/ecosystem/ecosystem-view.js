@@ -1,4 +1,4 @@
-import { applyFundHierarchy, financialNodePies, pieWedgePath, formatPieAmount } from './fund-pies.js'
+import { applyFundHierarchy, financialNodePies, pieWedgePath, formatPieAmount, financialNodeTotals } from './fund-pies.js'
 import { categories, semantics, safeUrl } from './ecosystem.js'
 export const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))
 const e = escapeHtml
@@ -7,6 +7,21 @@ export const organizationPagePath = org => `/orgs/${encodeURIComponent(org.porta
 export function organizationPicture(org) {
  const image=safeUrl(org.imageUrl)
  return image ? `<figure class="eco-inspector-picture"><img src="${e(image)}" alt="Published image for ${e(org.name)}" loading="lazy" referrerpolicy="no-referrer"><figcaption>${e(org.name)}${org.imageCaption ? ` · ${e(org.imageCaption)}` : ''} · ${evidenceLink(org.imageSourceUrl || org.website,'Image source ↗')}</figcaption></figure>` : '<p class="eco-note">No published picture supplied.</p>'
+}
+export function organizationPreview(org, {pies,totals}) {
+ const image=safeUrl(org.imageUrl),pie=pies.get(org.id),amounts=totals.get(org.id) || {received:0,disbursed:0}
+ return `<section class="eco-organization-preview"><h2><a href="${organizationPagePath(org)}">${e(org.name)}</a></h2>
+ ${image?`<figure class="eco-inspector-picture"><a href="${organizationPagePath(org)}"><img src="${e(image)}" alt="${e(org.name)}" loading="lazy" referrerpolicy="no-referrer"></a></figure>`:''}
+ ${pie?`<div class="eco-fund-breakdown"><svg viewBox="-52 -52 104 104" role="img" aria-label="${e(pie.basis)}">${pie.slices.map(slice=>`<path d="${pieWedgePath(0,0,50,slice.startAngle,slice.endAngle)}" fill="${e(slice.color)}"><title>${e(slice.label)}: ${e(formatPieAmount(slice.amount))}</title></path>`).join('')}</svg></div>`:''}
+ <dl class="eco-preview-totals" aria-label="Recorded USD funding"><dt>Total received</dt><dd>${e(formatPieAmount(amounts.received))}</dd><dt>Total disbursed</dt><dd>${e(formatPieAmount(amounts.disbursed))}</dd></dl>
+ <a href="${organizationPagePath(org)}">Full company breakdown →</a></section>`
+}
+export function networkPreviewSummaries(data) {
+ return {pies:financialNodePies(data),totals:financialNodeTotals(data)}
+}
+export function relationshipPreview(edge,data,summaries) {
+ const id=value=>typeof value==='object'?value?.id:value
+ return [...new Set([id(edge.source),id(edge.target)])].map(value=>data.organizations.find(org=>org.id===value)).filter(Boolean).map(org=>organizationPreview(org,summaries)).join('')
 }
 export function edgeDetails(edge,data) {
  const id=value=>typeof value==='object'?value?.id:value

@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
-import { portalPath } from '../../../config/portalBase'
+import { portalAssetPath, portalPath } from '../../../config/portalBase'
 import { defaultPostLoginPath, normalizePostLoginPath, pidpSingleSignOnUrl } from '../../../config/pidp'
 import { getActivePortalProfileConfig } from '../../../config/portalFeatures'
 import { GoogleLoginEntry } from '../../components/GoogleLoginEntry'
@@ -29,7 +29,7 @@ export function UserLoginPage({ defaultNext }: { defaultNext?: string } = {}) {
     <section className="portal-auth-page" aria-labelledby="user-login-title">
       <div className="panel portal-auth-card">
         <div className="portal-auth-card-header">
-          {tenantAuth && portalProfile.brandImagePath && <img className="tenant-auth-logo" src={portalPath(portalProfile.brandImagePath)} alt="" />}
+          {tenantAuth && portalProfile.brandImagePath && <img className="tenant-auth-logo" src={portalAssetPath(portalProfile.brandImagePath)} alt="" />}
           <p className="portal-auth-eyebrow">{tenantAuth ? portalProfile.tagline : `${portalProfile.brandName} identity`}</p>
           <h1 id="user-login-title">Sign in to {portalProfile.brandName}</h1>
           <p className="portal-auth-intro">Choose how you’d like to continue.</p>

@@ -138,3 +138,18 @@ test('local WAL mirror survives process restart, retains exact rows and resumes 
     finally { db.close() }
   } finally { f.close(); rmSync(directory, { recursive: true, force: true }) }
 })
+
+
+test('availability visibility changes are audited atomically and no-op saves are inert', () => {
+ const f = fixture()
+ try {
+  f.primary.sqlite.exec("INSERT INTO profile_availability_settings(user_id) VALUES('alice'); UPDATE profile_availability_settings SET public=1 WHERE user_id='alice'")
+  f.primary.sqlite.exec("UPDATE profile_availability_settings SET public=public WHERE user_id='alice'")
+  const rows = f.primary.sqlite.prepare("SELECT operation,before_json,after_json FROM change_journal WHERE table_name='profile_availability_settings'").all()
+  assert.deepEqual(rows.map(row=>row.operation),['insert','update'])
+  assert.equal(JSON.parse(String(rows[1].before_json)).public,0)
+  assert.equal(JSON.parse(String(rows[1].after_json)).public,1)
+  f.primary.sqlite.exec("BEGIN; UPDATE profile_availability_settings SET public=0 WHERE user_id='alice'; ROLLBACK")
+  assert.equal(f.primary.sqlite.prepare("SELECT COUNT(*) n FROM change_journal WHERE table_name='profile_availability_settings'").get()!.n,2)
+ } finally { f.close() }
+})

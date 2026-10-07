@@ -1,3 +1,5 @@
+import { getActivePortalProfileConfig } from './portalFeatures'
+
 export type ThemeMode = 'system' | 'dark' | 'light'
 
 export const THEME_STORAGE_KEY = 'orgportal.theme'
@@ -5,7 +7,7 @@ export const ACCOUNT_THEME_FIELD = 'theme_mode'
 
 export function normalizeThemeMode(value: string | null | undefined): ThemeMode {
   if (value === 'dark' || value === 'light') return value
-  return 'system'
+  return getActivePortalProfileConfig().id === 'lifetech' ? 'dark' : 'system'
 }
 
 export function accountThemeMode(value: unknown): ThemeMode | null {
@@ -16,7 +18,7 @@ export function readThemeMode(storage: Pick<Storage, 'getItem'> = localStorage):
   try {
     return normalizeThemeMode(storage.getItem(THEME_STORAGE_KEY))
   } catch {
-    return 'system'
+    return normalizeThemeMode(null)
   }
 }
 
@@ -27,7 +29,9 @@ export function applyThemeMode(mode: ThemeMode, storage: Pick<Storage, 'setItem'
     // Storage can be unavailable in private or embedded contexts.
   }
   if (typeof document !== 'undefined') {
-    if (mode === 'system') {
+    if (mode === 'system' && getActivePortalProfileConfig().id === 'lifetech') {
+      document.documentElement.setAttribute('data-theme', 'dark')
+    } else if (mode === 'system') {
       document.documentElement.removeAttribute('data-theme')
     } else {
       document.documentElement.setAttribute('data-theme', mode)

@@ -110,3 +110,16 @@ test('LifeTech plain background exports preserve artwork and contain no event te
   assert.match(poster, /opacity="0.66"/);
   assert.match(poster, /Scan to RSVP/);
 });
+
+test('LifeTech artwork stays left of the QR code in every poster format, with a separate header logo', async () => {
+  for (const format of ['letter', 'letter-4up', 'postcard', 'social'] as const) {
+    const svg = await renderEventPoster({ title: 'Life Tech Social [#2]' }, 'https://lifetech.fyi/events/life-tech-social-2', format,
+      { name: 'LifeTech', logo: 'data:image/png;base64,BAUG' }, 'dark',
+      { background: 'lifetech', backgroundImage: 'data:image/png;base64,AQID' });
+    const artwork = svg.match(/<image href="data:image\/png;base64,AQID"[^>]*width="(\d+)"/);
+    const qr = svg.match(/<svg x="(\d+)" y="(\d+)" width="(\d+)"/);
+    assert.ok(artwork && qr);
+    assert.ok(Number(artwork[1]) < Number(qr[1]), `${format}: artwork must end before the QR code`);
+    assert.match(svg, /<image href="data:image\/png;base64,BAUG"/);
+  }
+});

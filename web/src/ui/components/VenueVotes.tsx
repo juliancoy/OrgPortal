@@ -71,13 +71,15 @@ export function VenueVotes({ eventId, venues }: { eventId: string; venues: Venue
 
   if (!venues.length) return <p>Venue to be confirmed.</p>
   const closed = summary?.closed || venues.some(venue => venue.event_status === 'confirmed')
-  // Keep rows in place while voting so focus and touch targets do not jump.
+  const totalsById = new Map(summary?.venues.map(venue => [venue.id, venue]))
+  const rankedVenues = [...venues].sort((a, b) =>
+    (totalsById.get(b.id)?.score ?? 0) - (totalsById.get(a.id)?.score ?? 0)
+  )
   return <div className="venue-voting">
-    <p className="muted">{closed ? 'A venue is confirmed. Voting is closed.' : 'Vote on each candidate. Select the same arrow again to clear your vote. You can change votes until a venue is confirmed.'}</p>
     {!token && !closed ? <p><Link to={`/users/login?next=${encodeURIComponent(location.pathname)}`}>Sign in to vote</Link>. Community totals are public; individual votes are private.</p> : null}
     <ul className="venue-vote-list" aria-label="Event venues and community votes">
-      {venues.map(venue => {
-        const totals = summary?.venues.find(item => item.id === venue.id)
+      {rankedVenues.map(venue => {
+        const totals = totalsById.get(venue.id)
         const own = ready ? votes[venue.id] || 0 : 0
         const disabled = !token || !ready || !!pending || closed
         const initials = venue.name.split(/\s+/).slice(0, 2).map(word => word[0]).join('')
@@ -94,7 +96,9 @@ export function VenueVotes({ eventId, venues }: { eventId: string; venues: Venue
           </Link>
           <div className="venue-hover-popup" id={`venue-details-${venue.id}`} role="tooltip">
             <strong>{venue.name}</strong>
+            <p>{venue.event_status === 'confirmed' ? 'Confirmed' : 'Candidate'}</p>
             {venue.address ? <p>{venue.address}</p> : null}
+            {totals ? <p>{totals.upvotes} upvotes · {totals.downvotes} downvotes · {totals.upvotes + totals.downvotes} total votes</p> : null}
             {venue.description ? <p>{venue.description}</p> : null}
             {venue.opening_hours ? <p><b>Hours:</b> {venue.opening_hours}</p> : null}
             {venue.amenities ? <p><b>Amenities:</b> {venue.amenities}</p> : null}
@@ -104,9 +108,7 @@ export function VenueVotes({ eventId, venues }: { eventId: string; venues: Venue
           </div>
           </div>
           <div className="venue-vote-details">
-            <div className="venue-vote-title"><h3><Link to={`/orgs/events/venues/${encodeURIComponent(venue.id)}`}>{venue.name}</Link></h3><span className="venue-vote-status">{venue.event_status === 'confirmed' ? 'Confirmed' : 'Candidate'}</span></div>
-            {venue.address ? <p className="muted">{venue.address}</p> : null}
-            <p className="venue-vote-totals">{totals ? `${totals.upvotes} upvotes · ${totals.downvotes} downvotes · ${totals.upvotes + totals.downvotes} total votes` : 'Loading vote totals…'}{pending === venue.id ? ' · Saving…' : own ? ` · You ${own === 1 ? 'upvoted' : 'downvoted'}` : ''}</p>
+            <div className="venue-vote-title"><h3><Link to={`/orgs/events/venues/${encodeURIComponent(venue.id)}`}>{venue.name}</Link></h3></div>
           </div>
         </li>
       })}

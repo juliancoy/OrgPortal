@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { financialPull, layoutNetwork } from '../src/features/ecosystem/ecosystem-physics.js'
+import { financialPull, layoutNetwork, assignEdgeCurvature, forceNodeEdgeRepulsion, forceCrossingAttraction } from '../src/features/ecosystem/ecosystem-physics.js'
 import { graphRelationships, financialNodeAmounts, financialNodeRadius } from '../src/features/ecosystem/portal-ecosystem.js'
 const edge=amount=>({source:'a',target:'b',kind:'transfer',currency:'USD',amount})
 const distance=amount=>{
@@ -82,4 +82,35 @@ test('live force evaluation caches node radii rather than repeatedly reading UI 
  const sim=layoutNetwork(nodes,edges,radius,()=>({x:0,y:0}),{live:true});const initial=calls
  sim.tick(100);assert.equal(calls,initial);assert.equal(initial,nodes.length)
  assert.equal(sim.force('collision').iterations(),2)
+})
+
+test('single edges stay straight and reverse reports occupy symmetric lanes',()=>{
+ const edges=[{id:'single',source:'x',target:'y'},{id:'one',source:'a',target:'b'},{id:'two',source:'b',target:'a'}]
+ assignEdgeCurvature(edges)
+ assert.equal(edges[0].curveOffset,0)
+ const offsets=()=>edges.slice(1).map(e=>e.curveOffset*(e.source==='a'?1:-1))
+ assert.deepEqual(offsets(),[-9,9])
+ assignEdgeCurvature(edges.slice().reverse())
+ assert.deepEqual(offsets(),[-9,9])
+})
+test('edge clearance separates collinear nodes with balanced endpoint reactions',()=>{
+ const a={id:'a',x:-100,y:0,vx:0,vy:0},b={id:'b',x:100,y:0,vx:0,vy:0}
+ const n={id:'n',x:0,y:0,vx:0,vy:0},far={id:'far',x:0,y:100,vx:0,vy:0}
+ forceNodeEdgeRepulsion([a,b,n,far],[{source:a,target:b}],()=>10)(1)
+ assert.ok(n.vy>0)
+ assert.ok(a.vy<0&&b.vy<0)
+ assert.equal(a.vy+b.vy+n.vy,0)
+ assert.equal(far.vy,0)
+ assert.ok([a,b,n,far].every(node=>Number.isFinite(node.vx)&&Number.isFinite(node.vy)))
+})
+
+test('crossings attract children while shared endpoints do not',()=>{
+ const node=(x,y)=>({x,y,vx:0,vy:0})
+ const a=node(-100,-100),b=node(100,100),c=node(-100,100),d=node(100,-100)
+ forceCrossingAttraction([{source:a,target:b},{source:c,target:d}],()=>10)(1)
+ assert.ok(b.vx<0&&b.vy<0&&d.vx<0&&d.vy>0)
+ assert.equal(a.vx,0);assert.equal(c.vx,0)
+ const e=node(100,-100)
+ forceCrossingAttraction([{source:a,target:c},{source:a,target:e}],()=>10)(1)
+ assert.equal(e.vx,0)
 })

@@ -145,9 +145,9 @@ test("native event changes preview, apply once, and write OrgPortal events", asy
     assert.equal(preview.event.slug, "native-formation");
     const applied = await runNativeEventOperation(env, identity, { ...input, confirm: true, previewId: preview.previewId }) as { success: boolean };
     assert.equal(applied.success, true);
-    assert.equal(createdRooms.length, 1);
+    assert.equal(createdRooms.length, 0);
     const chat = await db.prepare("SELECT event_chat_room_id FROM events WHERE ingest_key = ?").bind("manual:event-one").first();
-    assert.equal(chat.event_chat_room_id, `room-${createdRooms[0]}`);
+    assert.equal(chat.event_chat_room_id, null);
     const rows = await db.prepare("SELECT title, slug, host_org_id, source_url, event_links_json, tags FROM events WHERE ingest_key = ?")
       .bind("manual:event-one").all();
     assert.deepEqual(rows.results.map(row => ({ ...row })), [

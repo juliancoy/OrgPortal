@@ -41,3 +41,17 @@ test('events distinguish candidates from one confirmed venue, reuse records, and
  await setEventVenues(d1,'event-one',{candidate_venue_ids:[],confirmed_venue_id:null});assert.equal((await eventVenues(d1,'event-one')).length,0);assert.equal((await eventVenues(d1,'event-two')).length,1);
  }finally{db.close()}
 });
+
+test('venue history includes past confirmed events and excludes candidates and future events', async () => {
+ const { pastVenueEvents } = await import('../src/venues');
+ const db = new EventTestDb();
+ try {
+  await db.prepare("INSERT INTO venues (id,name) VALUES ('hall','Hall')").run();
+  for (const [id,date,status] of [['past','2020-01-01','confirmed'],['candidate','2020-01-01','candidate'],['future','2099-01-01','confirmed']]) {
+   await db.prepare("INSERT INTO events (id,ingest_key,title,slug,starts_at,created_at,updated_at) VALUES (?,?,?,?,?,'','')").bind(id,id,id,id,date).run();
+   await db.prepare('INSERT INTO event_venues (event_id,venue_id,status) VALUES (?, ?, ?)').bind(id,'hall',status).run();
+  }
+  const rows = await pastVenueEvents<{id:string}>(db as unknown as D1Database,'hall');
+  assert.deepEqual(rows.map(row=>row.id),['past']);
+ } finally { db.close(); }
+});

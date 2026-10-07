@@ -14,6 +14,7 @@ import { HiddenCarouselImages } from '../../components/media/HiddenCarouselImage
 import { UserProfilePage } from '../users/UserProfilePage'
 import { InlineProfileField } from '../../components/profile/InlineProfileField'
 import { ConferenceNametag } from '../../components/ConferenceNametag'
+import { ProfileAvailability } from '../../components/profile/ProfileAvailability'
 
 const ORG_API_BASE = '/api/org'
 
@@ -87,6 +88,8 @@ type PublicEvent = {
   title: string
   slug: string
   starts_at?: string | null
+  event_date?: string | null
+  organization_name?: string | null
   location?: string | null
   image_url?: string | null
 }
@@ -141,7 +144,7 @@ export function PublicContactPage({ self = false }: PublicContactPageProps = {})
 
     loadPage
       .then(async (data) => {
-        const eventRows = await fetch(orgUrl(`/api/network/users/public/${encodeURIComponent(data.slug)}/events?upcoming_only=true&limit=8`))
+        const eventRows = await fetch(orgUrl(`/api/network/users/public/${encodeURIComponent(data.slug)}/events?upcoming_only=true&participation=registered&limit=60`))
           .then(async (resp) => (resp.ok ? ((await resp.json()) as PublicEvent[]) : []))
           .catch(() => [])
         return [data, eventRows] as const
@@ -390,6 +393,7 @@ export function PublicContactPage({ self = false }: PublicContactPageProps = {})
         </div>}
 
 
+        <ProfileAvailability key={page.user_id} slug={page.slug} owner={isOwner} profilePublic={page.enabled} token={token || null} />
         {!isOwner && contactLinks.length > 0 ? (
           <div className="public-id-link-list" aria-label="Contact links">
             {contactLinks.map((link) => {
@@ -458,26 +462,15 @@ export function PublicContactPage({ self = false }: PublicContactPageProps = {})
       {isOwner && <UserProfilePage detailsOnly embedded />}
 
       {events.length > 0 ? (
-        <section className="public-id-events">
-          <h2 style={{ margin: 0 }}>Upcoming Events</h2>
-          <div style={{ display: 'grid', gap: '0.5rem' }}>
-            {events.map((event) => (
-              <a key={event.id} className="portal-card" href={`/events/${encodeURIComponent(event.slug)}`} style={{ padding: '0.8rem', textDecoration: 'none' }}>
-                {event.image_url ? (
-                  <img
-                    src={event.image_url}
-                    alt={event.title}
-                    style={{ width: '100%', maxHeight: 180, objectFit: 'cover', borderRadius: 10, border: '1px solid var(--border)', marginBottom: '0.45rem' }}
-                  />
-                ) : null}
-                <div><strong>{event.title}</strong></div>
-                <div className="muted">
-                  {event.starts_at ? new Date(event.starts_at).toLocaleString() : 'Date TBD'}
-                  {event.location ? ` • ${event.location}` : ''}
-                </div>
-              </a>
-            ))}
-          </div>
+        <section className="public-id-events" aria-label="Registered upcoming events">
+          <h2>Events signed up for</h2>
+          <div className="profile-event-grid">{events.map(event => <Link key={event.id} className="portal-card profile-event-card" to={`/events/${encodeURIComponent(event.slug)}`}>
+            <div className="profile-event-image">{event.image_url ? <img src={event.image_url} alt="" loading="lazy" onError={e=>{e.currentTarget.style.display='none'}}/> : <span>Event</span>}</div>
+            <div className="profile-event-copy"><span className="profile-event-status">Signed up</span><h3>{event.title}</h3>
+              <p className="muted">{event.starts_at ? new Date(event.starts_at).toLocaleString(undefined,{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}) : event.event_date ? new Date(event.event_date+'T12:00:00').toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})+' · Time TBD' : 'Date to be announced'}</p>
+              <p className="muted">{event.location || 'Venue to be confirmed'}</p>{event.organization_name && <p className="muted">Hosted by {event.organization_name}</p>}
+            </div>
+          </Link>)}</div>
         </section>
       ) : null}
 

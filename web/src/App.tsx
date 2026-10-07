@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth, useServices } from './app/AppProviders'
-import { portalPath } from './config/portalBase'
+import { portalAssetPath, portalPath } from './config/portalBase'
 import { Header } from './ui/shell/Header'
 import { Footer } from './ui/shell/Footer'
 import { ExternalBrowserPrompt } from './ui/components/ExternalBrowserPrompt'
@@ -126,7 +126,7 @@ export default function App() {
           <div className="portal-guest-brand">
             {portalProfile.brandImagePath ? (
               <img
-                src={portalPath(portalProfile.brandImagePath)}
+                src={portalAssetPath(portalProfile.brandImagePath)}
                 alt={portalProfile.brandName}
               />
             ) : (

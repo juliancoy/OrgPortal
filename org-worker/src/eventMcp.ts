@@ -1,5 +1,4 @@
 import { eventHostSchema, runEventHostOperation } from './eventHost';
-import { provisionEventChat } from './eventChat';
 import { eventSlugSchema, runEventSlugOperation } from './eventSlugs';
 import { runSupportMcp, supportSchema, supportVoidSchema, supportTargetSchema } from './organizationSupport';
 import { runVenueImageOperation, venueImageSchema } from './venueImagesMcp';
@@ -100,7 +99,7 @@ export function mcpConfiguration(env: Env, request?: Request) {
     const url = new URL(value);
     return url.protocol === 'https:' && url.pathname === '/api/org/mcp' && !url.username && !url.password && !url.search && !url.hash;
   }), z.object({
-    name: z.string().min(1).max(120), organizationId: z.string().min(1).max(200),
+    name: z.string().min(1).max(120), organizationId: z.string().min(1).max(200).optional(),
     introspectionSecretBinding: z.string().regex(/^MCP_[A-Z_]+$/).optional(),
   }).strict());
   let bindings: z.infer<typeof resourceBindingsSchema>;
@@ -497,8 +496,6 @@ async function applyNativeEvent(env: Env, input: NativeEventInput) {
   ).bind(event.id, event.ingest_key, event.title, event.slug, event.description, event.starts_at, event.ends_at, event.location,
     event.source_url, event.image_url, JSON.stringify(event.links), event.host_user_id, event.host_user_name, event.host_org_id, event.host_org_name,
     event.host_org_source_url, JSON.stringify(event.tags), event.city, now, now).run();
-  const saved = await env.DB.prepare("SELECT id FROM events WHERE ingest_key = ?").bind(event.ingest_key).first<{ id: string }>();
-  if (saved) await provisionEventChat(env, saved.id);
   return { success: true, completed: ["upsert_native_event"], event: (await previewNativeEvent(env, input)).event,
     publicUrl: preview.publicUrl };
 }
@@ -648,7 +645,8 @@ export function eventErrorResponse(error: unknown, env: Env, request?: Request) 
   const message = status === 500 ? "Event integration failed" : error instanceof z.ZodError ? "Invalid event arguments" : (error as Error).message;
   const headers: Record<string, string> = { "cache-control": "no-store" };
   if (status === 401) {
-    headers["www-authenticate"] = `Bearer resource_metadata="${mcpConfiguration(env, request).metadataUrl}"`;
+    const rejectedToken = /^Bearer \S+$/i.test(request?.headers.get("authorization") || "");
+    headers["www-authenticate"] = `Bearer resource_metadata="${mcpConfiguration(env, request).metadataUrl}"${rejectedToken ? ', error="invalid_token"' : ''}`;
   }
   if (status === 429) headers["retry-after"] = "60";
   return Response.json({ error: message }, { status, headers });

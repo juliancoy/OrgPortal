@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { isLifeTechMedicalEvent, eventCalendarDateKey } from '../../../features/events/medicalEvents'
 import { getDomainTenant } from '../../../config/timebankCommunity'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
 
@@ -39,6 +41,7 @@ type CalendarEvent = {
   startsAt: string
   endsAt?: string | null
   date: Date
+  dateKey: string
   url: string
   imageUrl: string
   source: string
@@ -161,6 +164,7 @@ function normalizeCalendarEvent(event: RegionalEvent, index: number): CalendarEv
     dateOnly: !event.starts_at && !event.startDate?.includes('T'),
     endsAt: event.endTime || event.ends_at || null,
     date,
+    dateKey: eventCalendarDateKey(event.startDate || event.starts_at || event.event_date || ''),
     url: medtechOwned ? medtechEventUrl(event) : safeExternalUrl(event.url || event.public_url),
     imageUrl: imageUrl(event),
     source: cleanText(event.source_group || event.org_name || event.orgName || '').trim(),
@@ -170,11 +174,7 @@ function normalizeCalendarEvent(event: RegionalEvent, index: number): CalendarEv
 }
 
 function formatEventTime(date: Date) {
-  return date.toLocaleString(undefined, { timeZone: EVENT_TIME_ZONE, weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
-}
-
-function monthKey(date: Date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+  return date.toLocaleString(undefined, { timeZone: EVENT_TIME_ZONE, weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
 function dayKey(date: Date) {
@@ -182,6 +182,9 @@ function dayKey(date: Date) {
 }
 
 export function PublicCalendarPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const view = searchParams.get('view') === 'list' ? 'list' : 'calendar'
+  const setView = (value: 'calendar' | 'list') => { const next = new URLSearchParams(searchParams); next.set('view', value); setSearchParams(next) }
   const tenant = getDomainTenant()
   const organizationSlug = tenant?.home_org_slug || 'baltimore-medtech'
   const organizationPaths = [...new Set([organizationSlug, 'baltimore-medtech', ...(organizationSlug === 'lifetech' || organizationSlug === 'baltimore-medtech' ? ['lifetech'] : [])])].map(slug => `/api/network/orgs/public/${encodeURIComponent(slug)}/events?upcoming_only=false&limit=200`)
@@ -191,9 +194,9 @@ export function PublicCalendarPage() {
 
   useEffect(() => {
     setSeoMeta({
-      title: 'Events & Calendar • LifeTech',
+      title: 'Events • LifeTech',
       description: 'Medical, health, biotech, and Baltimore MedTech-hosted events around the region.',
-      canonicalUrl: `${window.location.origin}/calendar`,
+      canonicalUrl: `${window.location.origin}${window.location.pathname}`,
       type: 'website',
     })
   }, [])
@@ -209,15 +212,15 @@ export function PublicCalendarPage() {
         const regional = regionalResult.status === 'fulfilled' ? regionalResult.value : []
         const medtech = organizationResults.flatMap(result => result.status === 'fulfilled' && Array.isArray(result.value) ? result.value : [])
         if (cancelled) return
-        const medtechEvents = Array.isArray(medtech) ? medtech.map(normalizePortalEvent) : []
-        const regionalEvents = Array.isArray(regional) ? regional : []
+        const medtechEvents = Array.isArray(medtech) ? medtech.filter(isLifeTechMedicalEvent).map(normalizePortalEvent) : []
+        const regionalEvents = Array.isArray(regional) ? regional.filter(isLifeTechMedicalEvent) : []
         const nextEvents = mergeEventSources(medtechEvents, regionalEvents)
           .map(normalizeCalendarEvent)
           .filter((event): event is CalendarEvent => Boolean(event))
           .sort((a, b) => a.date.getTime() - b.date.getTime())
         setEvents(nextEvents)
         const firstUpcoming = nextEvents.find((event) => event.date >= new Date())
-        if (firstUpcoming) setVisibleDate(new Date(firstUpcoming.date))
+        if (firstUpcoming) setVisibleDate(new Date(`${firstUpcoming.dateKey}T12:00:00`))
         setStatus([regionalResult, ...organizationResults].every((result) => result.status === 'rejected')
           ? 'The calendar is temporarily unavailable. Please try refreshing.'
           : [regionalResult, ...organizationResults].some((result) => result.status === 'rejected')
@@ -243,8 +246,8 @@ export function PublicCalendarPage() {
     const firstGridDate = new Date(monthStart)
     firstGridDate.setDate(monthStart.getDate() - monthStart.getDay())
     const eventsByDay = new Map<string, CalendarEvent[]>()
-    for (const event of events.filter((event) => monthKey(event.date) === monthKey(visibleDate))) {
-      const key = dayKey(event.date)
+    for (const event of events) {
+      const key = event.dateKey
       eventsByDay.set(key, [...(eventsByDay.get(key) || []), event])
     }
     return Array.from({ length: 42 }, (_, index) => {
@@ -267,14 +270,16 @@ export function PublicCalendarPage() {
 
   return <section className="public-calendar-page">
     <div className="public-events-heading public-calendar-heading">
-      <p className="public-event-eyebrow">Around the region</p>
-      <h1>Events &amp; Calendar</h1>
-      <p className="muted">LifeTech community gatherings and partner events around Baltimore. Browse the listings and monthly calendar together.</p>
+      <div><h1>Events</h1><p className="muted">LifeTech community, medical, health, and biotech events.</p></div>
+      <div className="public-calendar-view-switch" role="group" aria-label="Event view">
+        <button type="button" aria-pressed={view === 'calendar'} onClick={() => setView('calendar')}>Calendar</button>
+        <button type="button" aria-pressed={view === 'list'} onClick={() => setView('list')}>List</button>
+      </div>
     </div>
 
     {status ? <p className="muted" role="status">{status}</p> : null}
 
-    <div className="community-events-columns">
+    {view === 'list' ? <div className="community-events-columns">
       {[{ title: 'LifeTech events', owned: true }, { title: 'Partner events', owned: false }].map(column => {
         const now = new Date()
         const columnEvents = events.filter(event => event.medtechOwned === column.owned).sort((a, b) => {
@@ -285,7 +290,7 @@ export function PublicCalendarPage() {
         })
         return <section className="public-calendar-upcoming" key={column.title} aria-label={column.title}>
           <h2>{column.title}</h2>
-          <p className="muted">{column.owned ? 'LifeTech and Baltimore MedTech group events, upcoming and past.' : 'Partner gatherings and the main regional events feed.'}</p>
+          <p className="muted">{column.owned ? 'LifeTech and Baltimore MedTech group events, upcoming and past.' : 'Medical, health, and biotech gatherings from partner organizations.'}</p>
           {!status && !columnEvents.length ? <p className="muted">No events listed.</p> : null}
           <div className="public-calendar-event-list">
         {columnEvents.map((event) => <article key={event.id} className={`portal-card public-calendar-event-card ${event.medtechOwned ? 'medtech-owned' : ''} ${event.imageUrl ? 'has-image' : ''}`}>
@@ -304,9 +309,7 @@ export function PublicCalendarPage() {
       </div>
     </section>
       })}
-    </div>
-
-    <section className="portal-card public-calendar-month" aria-labelledby="public-calendar-month-title">
+    </div> : <section className="portal-card public-calendar-month" aria-labelledby="public-calendar-month-title">
       <div className="public-calendar-month-toolbar">
         <button type="button" onClick={() => setVisibleDate((date) => new Date(date.getFullYear(), date.getMonth() - 1, 1))} aria-label="Previous month">‹</button>
         <h2 id="public-calendar-month-title">{visibleDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</h2>
@@ -316,10 +319,9 @@ export function PublicCalendarPage() {
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((label) => <div key={label} className="public-calendar-weekday">{label}</div>)}
         {monthDays.map(({ date, events: dayEvents, inMonth }) => <div key={date.toISOString()} className={`public-calendar-day ${inMonth ? '' : 'outside'}`}>
           <span className="public-calendar-day-number">{date.getDate()}</span>
-          {dayEvents.slice(0, 3).map((event) => <a key={event.id} className={`public-calendar-day-event ${event.medtechOwned ? 'medtech-owned' : ''}`} href={event.url}>{event.title}</a>)}
-          {dayEvents.length > 3 ? <span className="public-calendar-day-more">+{dayEvents.length - 3} more</span> : null}
+          {dayEvents.map((event) => <a key={event.id} className={`public-calendar-day-event ${event.medtechOwned ? 'medtech-owned' : ''}`} href={event.url}>{event.title}</a>)}
         </div>)}
       </div>
-    </section>
+    </section>}
   </section>
 }

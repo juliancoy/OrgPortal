@@ -191,6 +191,12 @@ export class NativeChatApi {
     return payload.conversation
   }
 
+  async postEventComment(eventId: string, clientMessageId: string, body: string): Promise<{ conversation: NativeChatConversation; message: NativeChatMessage }> {
+    return this.request('/api/network/chat/event-room', {
+      method: 'POST', body: JSON.stringify({ event_id: eventId, initial_comment: body, client_message_id: clientMessageId }),
+    })
+  }
+
   async getConversation(conversationId: string): Promise<NativeChatConversation> {
     const payload = await this.request<{ conversation: NativeChatConversation }>(
       `/api/network/chat/conversations/${encodeURIComponent(conversationId)}`,

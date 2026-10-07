@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { VenueVotes } from './VenueVotes'
 import { useEffect, useState } from 'react'
 import { VenueSearch } from './VenueSearch'
@@ -7,6 +8,31 @@ export function EventVenues({eventId,venues,canManage,onSaved}:{eventId:string;v
  const {token}=useAuth(),[catalog,setCatalog]=useState<Venue[]>([]),[selected,setSelected]=useState<string[]>(venues.map(v=>v.id)),[confirmed,setConfirmed]=useState(venues.find(v=>v.event_status==='confirmed')?.id||''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false)
  useEffect(()=>{setSelected(venues.map(v=>v.id));setConfirmed(venues.find(v=>v.event_status==='confirmed')?.id||'')},[venues])
  useEffect(()=>{if(canManage)fetch('/api/org/api/network/venues/public').then(r=>{if(!r.ok)throw new Error('Unable to load venues');return r.json()}).then(setCatalog).catch(e=>setMessage(e.message))},[canManage])
- async function save(){setBusy(true);setMessage('');try{const r=await fetch(`/api/org/api/network/events/${eventId}/venues`,{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({candidate_venue_ids:selected,confirmed_venue_id:confirmed||null})});if(!r.ok)throw new Error(await r.text());onSaved((await r.json()).venues);setMessage('Venues saved.')}catch(e){setMessage(e instanceof Error?e.message:'Unable to save venues')}finally{setBusy(false)}}
- return <section className="portal-card" style={{display:'grid',gap:8}}><h2>Event venues</h2><VenueVotes eventId={eventId} venues={venues}/><VenueSearch/>{canManage&&<details><summary>Choose candidate venues</summary><div style={{maxHeight:240,overflow:'auto'}}>{catalog.filter(v=>v.status==='active').map(v=><label key={v.id} style={{display:'flex',gap:8,padding:5}}><input type="checkbox" checked={selected.includes(v.id)} onChange={e=>{setSelected(e.target.checked?[...selected,v.id]:selected.filter(id=>id!==v.id));if(!e.target.checked&&confirmed===v.id)setConfirmed('')}}/>{v.name}</label>)}</div><label>Confirmed venue<select value={confirmed} onChange={e=>setConfirmed(e.target.value)}><option value="">Not confirmed</option>{catalog.filter(v=>selected.includes(v.id)).map(v=><option key={v.id} value={v.id}>{v.name}</option>)}</select></label><button disabled={busy} onClick={()=>void save()}>Save venues</button></details>}{message&&<p role="status">{message}</p>}</section>
+ async function save(venueId: string | null = confirmed || null){if(!canManage||!token||busy)return;setBusy(true);setMessage('');try{const r=await fetch(`/api/org/api/network/events/${encodeURIComponent(eventId)}/venues`,{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({candidate_venue_ids:selected,confirmed_venue_id:venueId})});if(!r.ok)throw new Error(await r.text());onSaved((await r.json()).venues);setMessage(venueId ? 'Venue confirmed.' : 'Candidate venues saved.')}catch(e){setMessage(e instanceof Error?e.message:'Unable to save venues')}finally{setBusy(false)}}
+ const confirmedVenue = venues.find(venue => venue.event_status === 'confirmed')
+ const choices = [...venues, ...catalog.filter(venue => !venues.some(existing => existing.id === venue.id))].filter(venue => selected.includes(venue.id) && venue.status === 'active')
+ return <section className="portal-card" style={{display:'grid',gap:8}}>
+  <h2>{confirmedVenue ? 'Event venue' : 'Event venues'}</h2>
+  {confirmedVenue ? <Link className="venue-vote-title" to={`/orgs/events/venues/${encodeURIComponent(confirmedVenue.id)}`}>
+   {confirmedVenue.image_url && <img src={confirmedVenue.image_url} alt="" style={{width:56,height:56,objectFit:'cover',borderRadius:8}}/>}
+   <h3>{confirmedVenue.name}</h3>
+  </Link> : <><VenueVotes eventId={eventId} venues={venues}/><VenueSearch/></>}
+  {canManage && <div style={{display:'grid',gap:8}}>
+   <label>Choose the event venue
+    <select value={confirmed} disabled={busy} onChange={event => setConfirmed(event.target.value)}>
+     <option value="">Select a venue</option>
+     {choices.map(venue => <option key={venue.id} value={venue.id}>{venue.name}</option>)}
+    </select>
+   </label>
+   <button type="button" disabled={busy || !confirmed || confirmed === confirmedVenue?.id} onClick={() => void save(confirmed)}>{busy ? 'Saving…' : confirmedVenue ? 'Change confirmed venue' : 'Confirm venue'}</button>
+   {confirmedVenue && <button type="button" disabled={busy} onClick={() => void save(null)}>Reopen venue voting</button>}
+   <details><summary>Manage candidate venues</summary>
+    <div style={{maxHeight:240,overflow:'auto'}}>{catalog.filter(venue => venue.status==='active').map(venue => <label key={venue.id} style={{display:'flex',gap:8,padding:5}}>
+     <input type="checkbox" disabled={busy || venue.id === confirmedVenue?.id} checked={selected.includes(venue.id)} onChange={event => {setSelected(event.target.checked ? [...selected,venue.id] : selected.filter(id => id!==venue.id));if(!event.target.checked && confirmed===venue.id)setConfirmed('')}}/>{venue.name}
+    </label>)}</div>
+    <button type="button" disabled={busy} onClick={() => void save(confirmedVenue?.id || null)}>Save candidates</button>
+   </details>
+  </div>}
+  {message && <p role="status">{message}</p>}
+ </section>
 }
