@@ -4,7 +4,8 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { chromium, expect as baseExpect } from '@playwright/test';
 
-const base = process.env.PLAYWRIGHT_BASE_URL || 'https://localhost:8444';
+const base = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:8878';
+const community = base + '/community';
 const site = process.env.DEISM_SITE_URL || 'http://localhost:8878';
 const local = url => ['localhost', '127.0.0.1'].includes(new URL(url).hostname);
 assert.ok(local(base) && local(site), 'Use only the local Docker deployment');
@@ -37,6 +38,9 @@ try {
 
   const page = await context.newPage();
   const portalErrors = [];
+  page.on('framenavigated', frame => {
+    if (frame === page.mainFrame() && frame.url() !== 'about:blank') assert.equal(new URL(frame.url()).origin, base, 'Navigation left the combined Deism origin');
+  });
   page.on('pageerror', error => { if (page.url().startsWith(base)) portalErrors.push(error.message); });
   page.on('response', response => {
     if (response.url().startsWith(base + '/api/') && response.status() >= 500) portalErrors.push('API HTTP ' + response.status() + ': ' + new URL(response.url()).pathname);
@@ -74,11 +78,11 @@ try {
   await page.goto(site);
   await page.getByRole('link', { name: 'Login', exact: true }).click();
   await expect(page).toHaveURL(base + '/users/login');
-  await expect(page.getByRole('heading', { name: 'Sign in to Deism', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Continue with email', exact: true })).toBeVisible();
   pass('local website Login uses Deism OrgPortal');
   await page.goto(site);
-  await expect(page.getByRole('link', { name: 'Community Portal', exact: true }).first()).toBeVisible();
-  await page.getByRole('link', { name: 'Community Portal', exact: true }).first().click();
+  await expect(page.getByRole('link', { name: 'Community', exact: true }).first()).toBeVisible();
+  await page.getByRole('link', { name: 'Community', exact: true }).first().click();
   await expect(page.locator('#tenant-home-title')).toHaveText('Deism');
   await expect(page.getByRole('link', { name: 'Join Deism', exact: true })).toBeVisible();
   assert.equal(await page.locator('html').getAttribute('data-portal-profile'), 'deism');
@@ -98,7 +102,7 @@ try {
   await expect(page).toHaveURL(base + '/events/deism-local-community-gathering');
   await expect(page.locator('main').first()).toContainText('Local test venue');
   pass('landing page → Deism organization events → sample event detail');
-  await page.goto(base);
+  await page.goto(community);
   const doctrine = page.getByRole('link', { name: 'Book of Doctrine', exact: false }).first();
   assert.ok((await doctrine.getAttribute('href')).startsWith(site));
   const [book] = await Promise.all([context.waitForEvent('page'), doctrine.click()]);
@@ -148,7 +152,7 @@ try {
   assert.ok(linked.ok());
   pass('local portal app, verified member, and explicit credential-proven identity link');
   await page.getByRole('link', { name: 'Join Deism', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Sign in to Deism', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Continue with email', exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Continue with email', exact: true }).click();
   assert.ok(local(page.url()));
   await page.locator('#login-email').fill(account.email);
