@@ -48,12 +48,11 @@ export function CommunitiesPage({ preview = false }: { preview?: boolean }) {
     {status && <p role="status">{status} {status !== 'Loading communities…' && <button type="button" className="btn-secondary" onClick={() => setAttempt(value => value + 1)}>Try again</button>}</p>}
     {!status && !visible.length && <p>No communities match your search.</p>}
     <div className="platform-community-grid">
-      {visible.map(community => <article className="platform-community-card" key={community.id} style={{ '--community-accent': /^#[0-9a-f]{6}$/i.test(community.accentColor || '') ? community.accentColor : '#155e59' } as CSSProperties}>
+      {visible.map(community => <a href={community.url} aria-label={community.name} className="platform-community-card" key={community.id} style={{ '--community-accent': /^#[0-9a-f]{6}$/i.test(community.accentColor || '') ? community.accentColor : '#155e59' } as CSSProperties}>
         <CommunityMark community={community} />
         <h3>{community.name}</h3><p>{community.tagline}</p>
         <div className="platform-community-features">{community.features.filter(feature => ['timebank', 'events', 'directory', 'chat'].includes(feature)).map(feature => <span key={feature}>{feature === 'directory' ? 'People & organizations' : feature === 'chat' ? 'Messages' : feature === 'timebank' ? 'Timebank' : 'Events'}</span>)}</div>
-        <a href={community.url} className="platform-community-open">Open community <span aria-hidden="true">↗</span></a>
-      </article>)}
+      </a>)}
     </div>
     {!preview && <p className="platform-account-note">Your account identifies you across communities. Joining a community and receiving a role are separate choices.</p>}
   </section>
