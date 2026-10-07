@@ -73,7 +73,21 @@ export async function organizationSupport(db: D1Database, organizationId: string
   const total = await db.prepare(`SELECT count(*) AS n FROM master_transaction_records WHERE record_type = 'organization_support'
     AND (from_organization_id = ? OR to_organization_id = ?)`).bind(org.id, org.id).first<{ n: number }>();
   const financialTotals = await organizationFunding(db, org.id);
-  return { organization: org, financialTotals, descendants: (descendants.results || []).map(row => {
+  const fundingEntity = await db.prepare('SELECT * FROM funding_entities WHERE organization_id = ?')
+    .bind(org.id).first();
+  // Financial observations retain their own measurement and scope. Never add
+  // appropriations, balances, award announcements and disbursements together.
+  const facts = await db.prepare(`SELECT f.*, a.award_identifier, a.recipient_uei, a.assistance_listing_number
+    FROM current_funding_facts f LEFT JOIN funding_awards a ON a.id = f.award_id
+    LEFT JOIN organization_support_records s ON s.id = f.support_record_id
+    WHERE f.administering_agency_id = ? OR f.program_organization_id = ?
+      OR f.fund_organization_id = ? OR f.account_organization_id = ?
+      OR a.recipient_organization_id = ? OR s.from_organization_id = ? OR s.to_organization_id = ?
+    ORDER BY f.reviewed_at DESC, f.id LIMIT 501 OFFSET ?`)
+    .bind(org.id, org.id, org.id, org.id, org.id, org.id, org.id, offset).all();
+  const fundingFacts = { records: (facts.results || []).slice(0, 500),
+    nextOffset: (facts.results || []).length > 500 ? offset + 500 : null };
+  return { organization: org, financialTotals, fundingEntity, fundingFacts, descendants: (descendants.results || []).map(row => {
     let tags: string[] = [];
     try { const value = JSON.parse(String(row.tags || '[]')); if (Array.isArray(value)) tags = value.filter(item => typeof item === 'string'); } catch {}
     return { ...row, tags };

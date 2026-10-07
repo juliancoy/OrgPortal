@@ -9,7 +9,7 @@ import { OrganizationIamError, type OrganizationActor } from '../src/organizatio
 const actor: OrganizationActor = { id: 'manager', name: 'Manager', email: null, isOperator: false };
 function setup() {
   const db = new TimebankDatabase();
-  for (const migration of ['0002_org_event_directories.sql','0015_organization_iam.sql','0017_event_mcp_operations.sql','0057_organization_support.sql','0043_organization_media.sql','0061_organization_replication.sql','0065_financing_records.sql'])
+  for (const migration of ['0002_org_event_directories.sql','0015_organization_iam.sql','0017_event_mcp_operations.sql','0057_organization_support.sql','0043_organization_media.sql','0061_organization_replication.sql','0065_financing_records.sql','0066_financing_portfolio_tags.sql','0075_funding_fact_model.sql'])
     db.sqlite.exec(readFileSync(new URL(`../migrations/${migration}`,import.meta.url),'utf8'));
   for (const id of ['a','b','c','d']) {
     db.sqlite.prepare('INSERT INTO organizations (id,name,slug) VALUES (?,?,?)').run(id,`Organization ${id}`,`org-${id}`);
@@ -153,10 +153,45 @@ test('canonical organization totals separate direction, currency, delivery and u
   const result = await organizationSupport(sqlite.asD1(), 'a', 500);
   assert.equal(result.records.length, 0);
   assert.equal(result.financialTotals.source, 'master_transaction_records');
-  assert.deepEqual(result.financialTotals.entries.map(row => ({ ...row })), [
+  assert.deepEqual(result.financialTotals.entries.map(({ financialFactType, measurement, fiscalYear, ...row }) => { assert.equal(financialFactType, 'unclassified'); assert.equal(measurement, null); assert.equal(fiscalYear, null); return row; }), [
     { direction: 'deployed', currency: 'EUR', status: 'reported', amount: 25, recordCount: 1, undisclosedCount: 0, lowerBoundCount: 0 },
     { direction: 'deployed', currency: 'USD', status: 'delivered', amount: 100, recordCount: 1, undisclosedCount: 0, lowerBoundCount: 0 },
     { direction: 'received', currency: null, status: 'reported', amount: null, recordCount: 1, undisclosedCount: 1, lowerBoundCount: 0 },
   ]);
   sqlite.sqlite.close();
+});
+
+test('fund reports expose typed entities, zero balances, and distinct award facts', async () => {
+  const db=setup();
+  try {
+    db.sqlite.exec("INSERT INTO funding_entities(organization_id,entity_type,source_url,evidence,reviewed_at) VALUES('a','agency','https://example.test','Agency','2026-10-06'),('b','statutory_fund','https://example.test','Fund','2026-10-06')");
+    const award=await record(db,contribution());
+    db.sqlite.prepare(`INSERT INTO funding_facts(id,support_record_id,fact_type,scope,amount,currency,measurement,administering_agency_id,fund_organization_id,source_url,evidence,reviewed_at)
+      VALUES('announced',?,'reported_award','award',100,'USD','cumulative','a','b','https://example.test','Announcement','2026-10-06')`).run(award.recordId);
+    db.sqlite.exec("INSERT INTO funding_facts(id,fact_type,scope,amount,currency,measurement,fund_organization_id,source_url,evidence,reviewed_at) VALUES('zero','balance','fund',0,'USD','snapshot','b','https://example.test','Zero closing balance','2026-10-06')");
+    const report=await organizationSupport(db.asD1(),'b');
+    assert.equal(report.fundingEntity?.entity_type,'statutory_fund');
+    assert.deepEqual(report.fundingFacts.records.map(r=>r.fact_type).sort(),['balance','reported_award']);
+    assert.equal(report.fundingFacts.nextOffset,null);
+    const feed=await publicRelationshipRecords(db.asD1());
+    assert.equal(feed.records[0].financial_fact_type,'reported_award');
+    assert.equal(feed.records[0].fund_organization_id,'b');
+    assert.equal(db.sqlite.prepare('SELECT COUNT(*) n FROM funding_disbursements').get()!.n,0);
+  } finally {db.sqlite.close();}
+});
+
+test('funding totals separate announcements, obligations and payments and exclude superseded facts', async () => {
+  const db=setup();
+  try {
+    for(const [factType,amount] of [['reported_award',100],['obligation',80],['disbursement',20]] as const) {
+      const award=await record(db,{...contribution(),amount});
+      db.sqlite.prepare("INSERT INTO funding_facts(id,support_record_id,fact_type,scope,amount,currency,measurement,source_url,evidence,reviewed_at) VALUES(?,?,?,'award',?,'USD','cumulative','https://example.test','Evidence','2026-10-06')").run(factType,award.recordId,factType,amount);
+    }
+    const report=await organizationSupport(db.asD1(),'a');
+    assert.equal(report.financialTotals.entries.length,3);
+    assert.deepEqual(report.financialTotals.entries.map(r=>[r.financialFactType,r.amount]).sort(),[['disbursement',20],['obligation',80],['reported_award',100]]);
+    db.sqlite.exec("INSERT INTO funding_facts(id,fact_type,scope,amount,currency,measurement,source_url,evidence,reviewed_at,supersedes_fact_id) VALUES('replacement','obligation','award',70,'USD','cumulative','https://example.test','Correction','2026-10-06','obligation')");
+    const corrected=await organizationSupport(db.asD1(),'a');
+    assert.ok(corrected.financialTotals.entries.every(r=>r.financialFactType!=='obligation'));
+  } finally {db.sqlite.close();}
 });
