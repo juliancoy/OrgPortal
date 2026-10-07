@@ -12,11 +12,12 @@ for(const file of files){
  for(const row of rows){
   const url=safeUrl(row.url || row.source_url),date=row.startDate || row.starts_at || row.event_date || ''
   const title=row.name || row.title;if(!title || !url)continue
-  const name=row.org_name || row.orgName || row.source_group || (/code[\s_-]*collective/i.test(url)?'Code Collective':'')
+  const sourceHost=new URL(url).hostname.toLowerCase().replace(/^www\./,'')
+  const name=sourceHost==='bluewaterbaltimore.org'?'Blue Water Baltimore Events':row.org_name || row.orgName || row.source_group || (/code[\s_-]*collective/i.test(url)?'Code Collective':'')
   const organizationId=name?`history-org-${key(name)}`:null
   if(name&&!organizations.has(organizationId))organizations.set(organizationId,{id:organizationId,name,type:'Community organization',category:'general',website:safeUrl(row.source_url || row.source),relevance:'Listed in Code Collective event sources.',directory:false,proximity:null,publicEmails:[],sourceRows:[],sourceCategory:'Code Collective event sources'})
   const id=JSON.stringify([url,date]);const existing=events.get(id)
-  if(existing){if(!existing.archiveSources.includes(file))existing.archiveSources.push(file);continue}
+  if(existing){if(!existing.archiveSources.includes(file))existing.archiveSources.push(file);if(!existing.organizationId && organizationId){existing.organizationId=organizationId;existing.organizationName=name}continue}
   events.set(id,{id,title,date,sourceUrl:url,organizationId,organizationName:name,location:row.location?.name || row.location?.address || '',archiveSources:[file]})
  }
 }
