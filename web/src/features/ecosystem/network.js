@@ -1,3 +1,5 @@
+import { transactionVisibility, transactionCounts } from './zoom-visibility.js'
+import { quantityEdgeWidths } from './edge-quantity.js'
 import { relationshipColor } from './relationship-colors.js'
 import {mergeNetworkHistory} from './network-history.js'
 import * as THREE from 'three'
@@ -41,10 +43,11 @@ const colors = { ecosystem:0x16847d, company:0x357db7, health:0xc76e57, universi
 const selectedCategories = () => new Set([...root.querySelectorAll('[name=node-category]:checked')].map(c=>c.value))
 const selectedRelationships = () => new Set([...root.querySelectorAll('[name=relationship]:checked')].map(c=>c.value))
 const host = $('#network-canvas'), labels = $('#network-labels'), status = $('#network-status')
+let fittedSvgWidth=1, recordedCounts=new Map()
 let data, selected = null, scene, camera, renderer, controls, group, nodes=[], edges=[], meshes=[], labelItems=[], frame=0
 let inspectorKey=null, edgeMeshes=[]
 let webgl = false, svg, svgView = { x: -400, y: -400, w: 800, h: 800 }
-const radius = n => financialNodeRadius(n.financialAmount)
+const radius = n => financialNodeRadius($('#scale-node-finances').checked ? n.financialAmount : null)
 const financialLabel = n => n.financialAmount ? `Largest disclosed funding/award: ${new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(n.financialAmount)}; payment unverified` : 'Funding amount undisclosed'
 function previewNode(org) {
  const key='node:'+org.id;if(inspectorKey===key)return;inspectorKey=key
@@ -93,8 +96,10 @@ function rebuild() {
   const connected=new Set(edges.flatMap(e=>[e.source,e.target]))
   visible=visible.filter(n=>connected.has(n.id))
  }
+ recordedCounts=transactionCounts(graphRelationships(data,{includeCapitalization:context}))
  const amounts=financialNodeAmounts(data,{includeCapitalization:context})
- nodes=visible.map(n=>({...n,financialAmount:amounts.get(n.id) ?? null})); edges=edges.map(e=>({...e}))
+ const widths=quantityEdgeWidths(graphRelationships(data,{includeCapitalization:context}),$('#scale-edge-quantity').checked)
+ nodes=visible.map(n=>({...n,financialAmount:amounts.get(n.id) ?? null})); edges=edges.map(e=>({...e,quantityWidth:widths.get(e.id) ?? 1.4}))
  status.textContent=`${nodes.length} organizations · ${edges.length} links${webgl ? '' : ' · SVG fallback'}`
  if(webgl) clearGraph()
  else { labels.replaceChildren(); labelItems=[]; svg.replaceChildren() }
@@ -116,13 +121,13 @@ function rebuild() {
   const midpoint=start.clone().add(end).multiplyScalar(.5).addScaledVector(normal,15+idx*18)
   const curve=new THREE.QuadraticBezierCurve3(start,midpoint,end),points=curve.getPoints(36),color=relationshipColor(edge)
   if(edge.relationship==='funding') {
-   const width=edge.kind==='transfer' && edge.amount ? .55+Math.max(0,Math.log10(edge.amount)-4)*.35 : .8
+   const width=(edge.quantityWidth || 1.4)/2
    const mesh=new THREE.Mesh(new THREE.TubeGeometry(curve,36,width,4,false),new THREE.MeshBasicMaterial({color,transparent:true,opacity:.5}));mesh.userData.edge=edge;group.add(mesh);edgeMeshes.push(mesh)
   } else {
    const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),new THREE.LineDashedMaterial({color,dashSize:edge.relationship==='affiliation'?8:3,gapSize:5,transparent:true,opacity:.65}));line.computeLineDistances();line.userData.edge=edge;group.add(line);edgeMeshes.push(line)
   }
   const hitMesh=new THREE.Mesh(new THREE.TubeGeometry(curve,36,4,4,false),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));hitMesh.userData.edge=edge;group.add(hitMesh);edgeMeshes.push(hitMesh)
-  const tangent=curve.getTangent(1).normalize(),arrow=new THREE.ArrowHelper(tangent,end.clone().addScaledVector(tangent,-8),8,color,7,4);group.add(arrow)
+  const tangent=curve.getTangent(1).normalize(),arrow=new THREE.ArrowHelper(tangent,end.clone().addScaledVector(tangent,-8),8,color,7,4);arrow.userData.edge=edge;group.add(arrow)
  }
  fit(); requestRender()
 }
@@ -131,7 +136,7 @@ function fit() {
   const xs=nodes.map(n=>n.x),ys=nodes.map(n=>n.y),aspect=host.clientWidth/host.clientHeight
   const width=nodes.length?Math.max(...xs)-Math.min(...xs)+120:400,height=nodes.length?Math.max(...ys)-Math.min(...ys)+120:400
   const h=Math.max(height,width/aspect),w=h*aspect,cx=nodes.length?(Math.max(...xs)+Math.min(...xs))/2:0,cy=nodes.length?(Math.max(...ys)+Math.min(...ys))/2:0
-  svgView={x:cx-w/2,y:cy-h/2,w,h}; requestRender(); return
+  fittedSvgWidth=w; svgView={x:cx-w/2,y:cy-h/2,w,h}; requestRender(); return
  }
  const box=new THREE.Box3().setFromObject(group),center=new THREE.Vector3(),size=new THREE.Vector3()
  if(nodes.length) {box.getCenter(center);box.getSize(size)}
@@ -141,15 +146,22 @@ function fit() {
  camera.position.set(center.x,center.y,1000);controls.target.copy(center);camera.updateProjectionMatrix();controls.update();requestRender()
 }
 function render() {
- frame=0; if(webgl) renderer.render(scene,camera)
- else svg?.setAttribute('viewBox',`${svgView.x} ${svgView.y} ${svgView.w} ${svgView.h}`)
+ frame=0;
+ const zoom=webgl?camera.zoom:fittedSvgWidth/svgView.w
+ const visible=new Set(nodes.filter(n=>n.id===selected||!$('#zoom-sparse').checked||transactionVisibility(recordedCounts.get(n.id)||0,zoom,Number($('#visibility-factor').value))).map(n=>n.id))
+ const edgeVisible=e=>visible.has(e.source.id||e.source)&&visible.has(e.target.id||e.target)
+ const visibleEdges=new Set(edges.filter(edgeVisible).map(e=>e.id))
+ if(webgl){for(const o of group.children){if(o.userData.node)o.visible=visible.has(o.userData.node.id);if(o.userData.edge)o.visible=edgeVisible(o.userData.edge)}renderer.render(scene,camera)}
+ else {for(const c of svg.querySelectorAll('[data-node-id]'))c.style.display=visible.has(c.dataset.nodeId)?'':'none';for(const c of svg.querySelectorAll('[data-edge-id]'))c.style.display=visibleEdges.has(c.dataset.edgeId)?'':'none'}
+ status.textContent=`${visible.size} visible / ${nodes.length} organizations · ${visibleEdges.size} visible links`
+ if(!webgl) svg?.setAttribute('viewBox',`${svgView.x} ${svgView.y} ${svgView.w} ${svgView.h}`)
  const positions=[]
  const priority=[...labelItems].sort((a,b)=>(b.n.id===selected)-(a.n.id===selected)||(b.n.financialAmount??0)-(a.n.financialAmount??0))
  for(const item of priority) {
   const p=webgl?new THREE.Vector3(item.n.x,item.n.y,0).project(camera):new THREE.Vector3((item.n.x-svgView.x)/svgView.w*2-1,1-(item.n.y-svgView.y)/svgView.h*2,0),x=(p.x*.5+.5)*host.clientWidth,y=(-p.y*.5+.5)*host.clientHeight
   const width=Math.min(155,item.n.name.length*5.5+10)
   const overlapping=positions.some(r=>Math.abs(x-r.x)<(width+r.width)/2+8&&Math.abs(y-r.y)<28)
-  item.button.hidden=p.z>1||Math.abs(p.x)>1||Math.abs(p.y)>1||(overlapping&&item.n.id!==selected)
+  item.button.hidden=!visible.has(item.n.id)||p.z>1||Math.abs(p.x)>1||Math.abs(p.y)>1||(overlapping&&item.n.id!==selected)
   if(!item.button.hidden){item.button.style.left=`${x}px`;item.button.style.top=`${y}px`;positions.push({x,y,width})}
  }
 }
@@ -184,15 +196,15 @@ function renderSvg() {
   const a=edge.source,b=edge.target,dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||1,ux=dx/d,uy=dy/d
   const pair=`${a.id}-${b.id}`,idx=parallel.get(pair)||0;parallel.set(pair,idx+1)
   const sx=a.x+ux*(radius(a)+2),sy=a.y+uy*(radius(a)+2),tx=b.x-ux*(radius(b)+3),ty=b.y-uy*(radius(b)+3)
-  const width=edge.kind==='transfer'&&edge.amount?1+Math.max(0,Math.log10(edge.amount)-4)*.7:1.4
+  const width=edge.quantityWidth || 1.4
   const line=svgElement('path',{d:`M${sx},${sy} Q${(sx+tx)/2-uy*(15+idx*18)},${(sy+ty)/2+ux*(15+idx*18)} ${tx},${ty}`,fill:'none',stroke:`#${relationshipColor(edge).toString(16).padStart(6,'0')}`,'stroke-width':width,'stroke-opacity':.6,'marker-end':'url(#eco-arrow)'})
   if(edge.relationship!=='funding')line.setAttribute('stroke-dasharray',edge.relationship==='affiliation'?'8 5':'3 5')
-  const title=svgElement('title');title.textContent=`${edge.sourceLabel} → ${edge.targetLabel}: ${edge.type} ${edge.amountLabel||''}`;line.append(title);line.style.pointerEvents='stroke';line.addEventListener('pointerenter',()=>previewEdge(edge));line.addEventListener('click',()=>previewEdge(edge));line.setAttribute('tabindex','0');line.setAttribute('role','button');line.setAttribute('aria-label',title.textContent);line.addEventListener('focus',()=>previewEdge(edge));svg.append(line)
-  const hitPath=svgElement('path',{d:line.getAttribute('d'),fill:'none',stroke:'transparent','stroke-width':12,'vector-effect':'non-scaling-stroke','pointer-events':'stroke','aria-hidden':'true'});hitPath.addEventListener('pointerenter',()=>previewEdge(edge));hitPath.addEventListener('click',()=>previewEdge(edge));svg.append(hitPath)
+  const title=svgElement('title');title.textContent=`${edge.sourceLabel} → ${edge.targetLabel}: ${edge.type} ${edge.amountLabel||''}`;line.setAttribute('data-edge-id',edge.id);line.append(title);line.style.pointerEvents='stroke';line.addEventListener('pointerenter',()=>previewEdge(edge));line.addEventListener('click',()=>previewEdge(edge));line.setAttribute('tabindex','0');line.setAttribute('role','button');line.setAttribute('aria-label',title.textContent);line.addEventListener('focus',()=>previewEdge(edge));svg.append(line)
+  const hitPath=svgElement('path',{d:line.getAttribute('d'),fill:'none',stroke:'transparent','stroke-width':12,'vector-effect':'non-scaling-stroke','pointer-events':'stroke','aria-hidden':'true'});hitPath.setAttribute('data-edge-id',edge.id);hitPath.addEventListener('pointerenter',()=>previewEdge(edge));hitPath.addEventListener('click',()=>previewEdge(edge));svg.append(hitPath)
  }
  for(const n of nodes) {
   const circle=svgElement('circle',{cx:n.x,cy:n.y,r:radius(n),fill:`#${(n.id===selected?0xe56d3c:colors[n.category]).toString(16).padStart(6,'0')}`})
-  const title=svgElement('title');title.textContent=`${n.name} · ${financialLabel(n)}`;circle.append(title);circle.addEventListener('pointerenter',()=>previewNode(n));circle.addEventListener('click',()=>select(n.id));svg.append(circle)
+  const title=svgElement('title');title.textContent=`${n.name} · ${financialLabel(n)}`;circle.setAttribute('data-node-id',n.id);circle.append(title);circle.addEventListener('pointerenter',()=>previewNode(n));circle.addEventListener('click',()=>select(n.id));svg.append(circle)
   const button=document.createElement('button');button.type='button';button.textContent=n.name;button.title=`${n.name} · ${financialLabel(n)}`;button.setAttribute('aria-pressed',String(n.id===selected));button.addEventListener('click',()=>select(n.id));bindNodePreview(button,n);labels.append(button);labelItems.push({button,n})
  }
 }
@@ -204,7 +216,7 @@ function initWebgl() {
   webgl=true
   resizeObserver=new ResizeObserver(()=>{renderer.setSize(host.clientWidth,host.clientHeight);fit()}); resizeObserver.observe(host)
   const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();ray.params.Line.threshold=5
-  const hit=event=>{const rect=renderer.domElement.getBoundingClientRect();pointer.set((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1);ray.setFromCamera(pointer,camera);const node=ray.intersectObjects(meshes)[0]?.object.userData.node;if(node)return {node};return {edge:ray.intersectObjects(edgeMeshes)[0]?.object.userData.edge}}
+  const hit=event=>{const rect=renderer.domElement.getBoundingClientRect();pointer.set((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1);ray.setFromCamera(pointer,camera);const node=ray.intersectObjects(meshes.filter(m=>m.visible))[0]?.object.userData.node;if(node)return {node};return {edge:ray.intersectObjects(edgeMeshes.filter(m=>m.visible))[0]?.object.userData.edge}}
   let down=null
   renderer.domElement.addEventListener('pointerdown',ev=>{down={x:ev.clientX,y:ev.clientY}})
   renderer.domElement.addEventListener('pointerup',ev=>{if(down&&Math.hypot(ev.clientX-down.x,ev.clientY-down.y)<6){const hitItem=hit(ev);if(hitItem.node)select(hitItem.node.id);else if(hitItem.edge)previewEdge(hitItem.edge)}down=null})
@@ -227,10 +239,12 @@ async function start(){
   },{passive:false,capture:true,signal:abort.signal})
   $('#network-detail').addEventListener('error',event=>{if(event.target.tagName==='IMG'){event.target.hidden=true;const note=document.createElement('p');note.className='eco-note';note.textContent='Published image is currently unavailable.';event.target.after(note)}},true)
   $('#network-search').addEventListener('input',search)
-  root.querySelectorAll('[name=node-category],[name=relationship],#include-context,#neighbors,#network-view,#hide-isolated').forEach(el=>el.addEventListener('change',rebuild))
+  root.querySelectorAll('[name=node-category],[name=relationship],#include-context,#neighbors,#network-view,#hide-isolated,#scale-node-finances,#scale-edge-quantity').forEach(el=>el.addEventListener('change',rebuild))
+  $('#zoom-sparse').addEventListener('change',requestRender)
+  $('#visibility-factor').addEventListener('input',()=>{$('#visibility-factor-value').textContent=$('#visibility-factor').value;requestRender()})
   $('#network-fit').addEventListener('click',fit)
   for(const [id,factor] of [['#zoom-in',1.25],['#zoom-out',.8]]) $(id).addEventListener('click',()=>{if(!webgl){zoomSvg(factor);return}camera.zoom=Math.max(.35,Math.min(6,camera.zoom*factor));camera.updateProjectionMatrix();requestRender()})
-  $('#network-reset').addEventListener('click',()=>{selected=null;inspectorKey=null;root.querySelectorAll('[name=node-category],[name=relationship]').forEach(c=>c.checked=true);$('#network-view').value='all';$('#include-context').checked=false;$('#hide-isolated').checked=true;$('#neighbors').checked=false;$('#neighbors').disabled=true;$('#network-search').value='';$('#network-detail').innerHTML='<h2>Select an organization</h2><p>Search or select a graph label to explore its evidence.</p>';history.replaceState(history.state,'',location.pathname);search();rebuild()})
+  $('#network-reset').addEventListener('click',()=>{selected=null;inspectorKey=null;root.querySelectorAll('[name=node-category],[name=relationship]').forEach(c=>c.checked=true);$('#network-view').value='all';$('#include-context').checked=false;$('#hide-isolated').checked=true;$('#scale-node-finances').checked=true;$('#scale-edge-quantity').checked=true;$('#zoom-sparse').checked=true;$('#visibility-factor').value='4';$('#visibility-factor-value').textContent='4';$('#neighbors').checked=false;$('#neighbors').disabled=true;$('#network-search').value='';$('#network-detail').innerHTML='<h2>Select an organization</h2><p>Search or select a graph label to explore its evidence.</p>';history.replaceState(history.state,'',location.pathname);search();rebuild()})
   const initial=new URL(location.href).searchParams.get('org');if(initial&&data.organizations.some(n=>n.id===initial)){select(initial)}else rebuild()
   loadPortalEvidence(data, cachedEvidenceFetch,apiPrefix).then(updated=>{if(disposed)return;data=mergeNetworkHistory(updated,historyData);search();if(selected)select(selected);else rebuild();$('#network-source').textContent=(usingOfflineCopy?'Offline · last checked ':'Checked ')+new Date(oldestCheck).toLocaleString()}).catch(()=>{if(disposed)return;$('#network-source').textContent='Saved public evidence · refresh unavailable'})
  }catch(error){if(disposed)return;status.textContent='Network data is unavailable. Reload to try again or browse the organization directory.';host.hidden=true;console.error(error)}
@@ -239,7 +253,7 @@ const media=matchMedia('(max-width:900px)')
 const panelState=()=>{
  for(const panel of ['controls','inspector']){const open=root.classList.contains('eco-'+panel+'-open');root.querySelector(`[data-panel="${panel}"]`).setAttribute('aria-expanded',String(open))}
 }
-const responsivePanels=()=>{root.classList.toggle('eco-controls-open',!media.matches);root.classList.toggle('eco-inspector-open',!media.matches);panelState()}
+const responsivePanels=()=>{root.classList.remove('eco-controls-open');root.classList.toggle('eco-inspector-open',!media.matches);panelState()}
 responsivePanels();media.addEventListener('change',responsivePanels,{signal:abort.signal})
 root.querySelectorAll('[data-panel]').forEach(button=>button.addEventListener('click',()=>{const panel=button.dataset.panel;root.classList.toggle('eco-'+panel+'-open');if(media.matches&&root.classList.contains('eco-'+panel+'-open'))root.classList.remove('eco-'+(panel==='controls'?'inspector':'controls')+'-open');panelState()}))
 rewriteLinks(); start();
