@@ -60,8 +60,27 @@ Release PIdP separately; deploy the shared OrgPortal backend and rebuild the
 frontend through CodeCollective with ORGPORTAL_DIR pointing at the intended
 checkout. No database migration or secret replacement is needed.
 
-This environment has no authenticated Wrangler session. Do not use a temporary
-Cloudflare account. A GitHub push does not deploy these services: OrgPortal CI is
-check-only. After deployment verify discovery, logo, homepage and genuine ChatGPT
-OAuth/read/preview/apply. Repository rules limit production browser checks to
-anonymous reads; authenticated regression fixtures must remain local.
+Deployed through the connected Cloudflare API on October 7, 2026:
+
+| Service | Active Worker version | Source commit |
+| --- | --- | --- |
+| PIdP | `0290ef7a-de7a-432f-9096-76d9cd117b79` | `f2206c81ac6c982acbc1a8db3279239b8d1296ad` |
+| OrgPortal backend | `5b3e4876-2f11-481e-a54c-b033fbaa2111` | `416b1df634b130157476c758d1ac9f8e17b43ad5` |
+| Shared frontend | `a549b261-b47b-4450-977d-b28a4902b747` | CodeCollective `ab1348558ec9f8d8e93d74b6bf7bd25f6d42177d`, OrgPortal `416b1df` |
+
+All three versions serve 100% of traffic. Existing production bindings and
+secrets were retained; PIdP retains its 1000ms CPU limit. No migrations ran.
+The shared frontend was built through CodeCollective and its assets uploaded
+using Cloudflare's asset-upload session, with run_worker_first retained.
+
+Verified live: all three frontend origins return HTTP 200; the homepage's JS/CSS
+and OrgPortal logo load; the served JS contains the new onboarding copy; both
+backend version endpoints report the expected clean commits; OAuth discovery
+advertises DCR and S256; the protected resource is the canonical OrgPortal URL;
+an unauthenticated initialize returns 401 with the correct resource metadata
+challenge; its safe failure telemetry appears in Cloudflare logs. The 27 shared
+frontend routing tests pass, in addition to prior backend/OAuth tests and builds.
+
+Real-account ChatGPT linking and authenticated read/preview/apply remain unverified.
+Repository rules limit production browser checks to anonymous reads; authenticated
+regression fixtures remain local. This deployment is not public directory approval.
