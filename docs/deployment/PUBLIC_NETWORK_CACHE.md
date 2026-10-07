@@ -24,3 +24,14 @@ storage, which may contain pending newsletter edits.
 Local browser verification: `.local/network-performance.json` records cold,
 warm and expired-cache/offline checks. A warm graph visit should make no network
 requests for its data within the freshness interval.
+
+The graph is a fixed viewport workspace; its wheel input zooms the graph. Events,
+Relationships, and Sources & help are separate routes below `/ecosystem/network/`.
+Those views scroll their content inside the viewport rather than scrolling the
+document. The graph uses `ecosystem-relationships.json`, which preserves all
+relationship evidence while omitting the full event history. Only the Events
+view requests `ecosystem-history.json`. The history builder writes both files.
+
+Run `npm run test:ecosystem:local` with the local portal running to verify desktop
+and mobile sizing, wheel zoom, navigation, and the graph's lightweight requests.
+The receipt is `.local/network-workspace-verification.json`.

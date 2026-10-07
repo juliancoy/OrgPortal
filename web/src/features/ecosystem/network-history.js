@@ -6,7 +6,7 @@ export function mergeNetworkHistory(base,history){
   const id=byName.get(key(org.name)) || org.id;ids.set(org.id,id)
   if(!byName.has(key(org.name))){data.organizations.push(org);byName.set(key(org.name),id)}
  }
- data.events=(history.events || []).map(event=>({...event,organizationId:ids.get(event.organizationId) || null}))
+ if(Array.isArray(history.events))data.events=history.events.map(event=>({...event,organizationId:ids.get(event.organizationId) || null}))
  for(const record of history.relationships){
   const edge={...record,source:ids.get(record.source),target:ids.get(record.target)}
   if(!data.relationships.some(r=>r.id===edge.id || (r.source===edge.source && r.target===edge.target && r.amount===edge.amount && r.date===edge.date && safeUrl(r.sourceUrl)===safeUrl(edge.sourceUrl))))data.relationships.push(edge)

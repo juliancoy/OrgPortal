@@ -29,7 +29,7 @@ export function orgDetails(org, data) {
   ${org.directory ? `<p><a href="${organizationPagePath(org)}">Organization page →</a></p>` : ''}
   <p>${org.website ? evidenceLink(org.website, 'Organization website ↗') : 'Website not listed'}</p>
   ${org.publicEmails.map(email => `<p><a href="mailto:${e(email)}">${e(email)}</a></p>`).join('')}
-  <h3>Events <span>${events.length}</span></h3>${events.length ? `<p><a href="/ecosystem/network?org=${encodeURIComponent(org.id)}#network-events">Browse all events for this organization →</a></p><ul>${events.slice(0,20).map(event=>`<li>${evidenceLink(event.sourceUrl,event.title)} · ${e(event.date)}</li>`).join('')}</ul>` : '<p>No events linked in the available sources.</p>'}
+  <h3>Events${Array.isArray(data.events) ? ` <span>${events.length}</span>` : ''}</h3><p><a href="/ecosystem/network/events?org=${encodeURIComponent(org.id)}">Browse events for this organization →</a></p>
   <h3>Documented relationships <span>${relations.length}</span></h3>
   ${relations.length ? `<ul class="eco-relations">${relations.map(r => `<li><strong>${e(r.sourceLabel)} → ${e(r.targetLabel)}</strong><span>${e(r.type)}${r.amountLabel ? ` · ${e(r.amountLabel)}` : ''}</span><small>${e(semantics[r.kind] || r.relationship)}${r.date ? ` · ${e(r.date)}` : ''}</small><p>${e(r.notes || r.description)}</p>${evidenceLink(r.sourceUrl)}<small>${e(r.evidence)}${r.status ? ` · ${e(r.status==='reported'?(r.kind==='transfer'?'Reported award/funding; payment unverified':'Reported support'):r.status)}` : ''} · ${e(r.provenance.sheet)}${r.provenance.row ? `, row ${r.provenance.row}` : ''}</small></li>`).join('')}</ul>` : '<p>No relationship recorded. This does not mean none exists.</p>'}
   <h3>Financing & money flows <span>${money.length}</span></h3>

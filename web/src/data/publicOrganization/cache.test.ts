@@ -13,7 +13,7 @@ beforeEach(() => {
 })
 describe('public organization IndexedDB cache', () => {
   it('caches network snapshots and directory pages while rejecting private or arbitrary URLs', async () => {
-    for (const path of ['/ecosystem-data/ecosystem-portal.json', '/p/ecosystem-data/ecosystem-history.json', '/api/org/api/network/orgs/public?limit=500&offset=500', '/api/org/api/network/relationships/public?offset=0']) {
+    for (const path of ['/ecosystem-data/ecosystem-portal.json', '/p/ecosystem-data/ecosystem-history.json', '/ecosystem-data/ecosystem-relationships.json', '/api/org/api/network/orgs/public?limit=500&offset=500', '/api/org/api/network/relationships/public?offset=0']) {
       const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ recipients: 12 })))
       vi.stubGlobal('fetch', fetcher)
       await refreshPublicReport(path, { validate })
