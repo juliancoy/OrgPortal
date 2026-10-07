@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build:metadata": "node scripts/build-metadata.mjs",
+    "build:metadata": "node scripts/build-policy-pages.mjs && node scripts/build-metadata.mjs",
     "pretypecheck": "npm run build:metadata",
     "pretest": "npm run build:metadata",
     "precheck:bundle": "npm run build:metadata",

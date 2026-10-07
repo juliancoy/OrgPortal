@@ -11,6 +11,7 @@
   ],
   "workers_dev": true,
   "observability": {
+    "redact_query_string": true,
     "enabled": true
   },
   "triggers": {

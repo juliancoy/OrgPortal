@@ -10,12 +10,12 @@ of production data, creation of identity mappings, or bypassing preview/approval
 | Control | Evidence/status | Required follow-up |
 | --- | --- | --- |
 | MCP diagnostic minimization | `org-worker/src/eventMcp.ts` emits method category, status, outcome and duration without arguments/results/tokens | Preserve privacy regression tests; inspect other logging paths separately |
-| Token/state expiry | PIdP `serverless/src/mcpAuthorization.ts` checks expiry and removes some consumed/expired state | Expiry is not comprehensive physical deletion; inventory all temporary tables and enforce the 24-hour cleanup target in both PIdP implementations |
+| Token/state expiry | `retention.ts` in both Workers removes expired temporary state in batches of 500; PIdP Python has equivalent cleanup | Verify scheduled execution and backlog logs after deployment; grants and refresh replay evidence are deliberately excluded |
 | Account deletion | No complete cross-service erasure workflow verified | Use the manual process below; do not advertise a self-service erasure button |
-| Production log retention | Observability is enabled; provider retention settings not verified | Record actual settings for each Worker and any export destination; configure at most 30 days for routine logs |
+| Production log retention | Workers Logs has a provider maximum of 7 days; both backend Workers have no Logpush or tail exports; query redaction is enabled in source | Verify redaction on deployment; re-audit any future export destination |
 | Backup retention | Actual recovery windows and exports not verified | Inventory D1 recovery, object versions, snapshots and exports; record actual windows and resolve gaps against the 30-day target |
-| Periodic retention enforcement | Existing scheduled handler handles other operational work, not a complete retention sweep | Owner conducts monthly inventory/review; automation remains open work |
-| Public website policy | Existing `/terms` predates this policy | Publish a synchronized user-facing notice before claiming the website or submission URLs cover these rules |
+| Periodic retention enforcement | OrgPortal cleanup uses its existing minute cron; PIdP uses a five-minute cron/Python loop | Watch count=500 backlog signals; manual account/content and exception review remains necessary |
+| Public website policy | Public `/api/org/privacy`, `/api/org/support`, `/api/org/terms` routes are generated from repository policy documents | Verify deployed content and listing URLs; regeneration is part of the backend build |
 
 ## Inventory and monthly review
 
@@ -85,3 +85,31 @@ must not be restored to production without reconciling all intervening deletions
   Deletion jobs require a reviewed inventory, dry-run counts and proper authority.
 - Keep policy, actual configuration and public notice consistent. Mark unverified
   controls honestly; passing unit tests is not proof of production erasure.
+
+## Cleanup inventory and safeguards
+
+OrgPortal: `event_mcp_operations` (milliseconds; only prepared/completed),
+`email_oauth_states` (milliseconds), `event_mcp_rate_limits` (minute windows),
+`private_newsletter_previews` and `local_newsletter_previews` (UTC ISO strings).
+These tables are excluded from change-journal payload replication; production
+trigger inspection confirmed cleanup does not archive the removed secrets.
+Executing/uncertain operations require operator review and a documented security
+exception, with review within 30 days; do not retry provider writes blindly.
+
+PIdP: MCP requests/codes/login handoffs, provider OAuth states, portal SSO,
+identity-link requests/previews (seconds); SSO rate windows (minutes) and client
+registration limits (hours). Python provider OAuth uses different storage; the
+shared persistent MCP/SSO/link tables use equivalent cleanup. Zero-expiry grants
+and used refresh hashes are not temporary garbage: removing them indiscriminately
+would break persistent connections or refresh-token replay protection.
+
+Every sweep selects rows older than 23 hours after expiry, bounded at 500 per
+table. It preserves the boundary, live rows and unrelated account/content data.
+A full batch sets `backlog=true`; investigate persistent backlog or error events
+before the 24-hour limit is exceeded. These are aggregate logs, never payloads.
+Clock/SQL failures must not be reported as successful cleanup.
+
+Cloudflare evidence: https://developers.cloudflare.com/workers/observability/logs/workers-logs/
+(maximum seven-day built-in log retention at the October 7 review). Account-level
+Logpush job inventory was empty; both backend Workers had no tail consumers.
+This evidence does not cover independent copies outside this Cloudflare account.

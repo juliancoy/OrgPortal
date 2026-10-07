@@ -29,7 +29,9 @@ a recipient's copy, an exported file or a third-party calendar event.
 ## Retention schedule
 
 These are adopted operational limits and review deadlines, not a claim that
-every store already has automatic expiry. Current controls and implementation
+every store already has automatic expiry. Temporary authorization state and
+completed/unused preview receipts have scheduled cleanup; account erasure and
+shared-content review remain operator-managed. Current controls and implementation
 gaps are tracked in [operations](OPERATIONS.md). The owner must perform manual
 reviews where automation is missing and record exceptions rather than silently
 retaining data indefinitely. Shorter configured retention takes precedence.

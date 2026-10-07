@@ -1,3 +1,5 @@
+import policyPages from './generated/policyPages.json';
+import { runRetention } from './retention';
 import { listPublicCommunities } from './portalCommunities';
 import { provisionEventChat, provisionPendingEventChats } from './eventChat';
 import { localNewsletterRoutes } from './localNewsletters';
@@ -472,6 +474,15 @@ app.use("*", async (c, next) => {
   await next();
 });
 
+for (const page of ['privacy','support','terms'] as const) {
+  app.get('/'+page, c => {
+    c.header('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'");
+    c.header('X-Content-Type-Options', 'nosniff');
+    c.header('Referrer-Policy', 'no-referrer');
+    c.header('Cache-Control', 'public, max-age=300');
+    return c.html(policyPages[page]);
+  });
+}
 app.route('/api/local/newsletters', localNewsletterRoutes());
 app.route('/api/newsletters', newsletterSyncRoutes());
 
@@ -5428,6 +5439,9 @@ export default {
   fetch: orgWorkerFetch,
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext) {
     if (env.ORGANIZATION_REPLICA_SOURCE) { ctx.waitUntil(replicateOrganizations(env)); return; }
+    ctx.waitUntil(runRetention(env.DB, controller.scheduledTime).then(counts => {
+      console.info(JSON.stringify({event:'orgportal.retention',counts,backlog:Object.values(counts).some(n=>n===500)}));
+    }).catch(() => { console.error(JSON.stringify({event:'orgportal.retention',outcome:'error'})); throw new Error('Retention cleanup failed'); }));
     ctx.waitUntil(replicateChangeJournal(env));
     ctx.waitUntil(Promise.all([runUbiTick(env.DB, controller.scheduledTime), dispatchTimebankPush(env)]));
     ctx.waitUntil(runOrganizationStatusEmail(env).then(() => runEmailDelivery(env)));
