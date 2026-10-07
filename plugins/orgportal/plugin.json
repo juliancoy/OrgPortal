@@ -4,7 +4,7 @@
   "version": "1.1.0",
   "description": "Connect to OrgPortal to access organization portal and event tools available to your signed-in account.",
   "author": {
-    "name": "Julian Loiacono",
+    "name": "Julian Coy",
     "email": "jcloiacon@gmail.com",
     "url": "https://orgportal.cc"
   },
@@ -23,7 +23,7 @@
         "displayName": "OrgPortal",
         "shortDescription": "Organization and event tools",
         "longDescription": "Use your OrgPortal account to find your organizations, read managed events, and preview and approve event changes. Access follows your current organization membership and permissions. Sign in and approve access when prompted.",
-        "developerName": "Julian Loiacono",
+        "developerName": "Julian Coy",
         "category": "Productivity",
         "capabilities": [
           "Read",
@@ -41,7 +41,8 @@
         "logoDark": "./assets/orgportal.png"
       },
       "publication": {
-        "release_notes": "Prepare public remote-MCP distribution with OrgPortal branding, scoped OAuth tools and reviewed event changes."
+        "release_notes": "Prepare public remote-MCP distribution with OrgPortal branding, scoped OAuth tools and reviewed event changes.",
+        "countries": []
       },
       "review": {
         "test_cases": {
@@ -91,7 +92,8 @@
               "prompt": "Book a flight for me to attend this event."
             }
           ]
-        }
+        },
+        "commerce_description": "OrgPortal is currently free and open-source software (FOSS)."
       }
     }
   }
