@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
@@ -271,6 +272,10 @@ def parse_args() -> argparse.Namespace:
         default=int(os.getenv("ORG_BACKEND_EVENT_CHUNK_SIZE", str(DEFAULT_EVENT_CHUNK_SIZE))),
         help=f"Events per request (default: {DEFAULT_EVENT_CHUNK_SIZE}).",
     )
+    parser.add_argument(
+        "--event-workers", type=int, choices=range(1, 5), default=1,
+        help="Concurrent independent event batches, after all organizations import (1–4; default: 1).",
+    )
     return parser.parse_args()
 
 
@@ -327,7 +332,8 @@ def main() -> int:
             org_count += int(data.get("organizations") or 0)
             print(f"Imported org batch {index}: {data.get('organizations', 0)} organizations.")
 
-        for index, event_chunk in enumerate(chunks(events, args.event_chunk_size), start=1):
+        def import_event_batch(batch: Tuple[int, List[Dict[str, Any]]]) -> Tuple[int, Dict[str, Any]]:
+            index, event_chunk = batch
             data = post_payload(
                 args.url,
                 args.token,
@@ -341,8 +347,15 @@ def main() -> int:
                     "events": event_chunk,
                 },
             )
-            event_count += int(data.get("events") or 0)
-            print(f"Imported event batch {index}: {data.get('events', 0)} events.")
+            return index, data
+
+        # Distinct ingest keys make event batches independent. Organizations
+        # finish first so every event resolves against the complete registry.
+        batches = enumerate(chunks(events, args.event_chunk_size), start=1)
+        with ThreadPoolExecutor(max_workers=args.event_workers) as executor:
+            for index, data in executor.map(import_event_batch, batches):
+                event_count += int(data.get("events") or 0)
+                print(f"Imported event batch {index}: {data.get('events', 0)} events.", flush=True)
     except RuntimeError as exc:
         print(str(exc))
         return 1
