@@ -29,3 +29,10 @@ test('missing pages return HTTP 404, noindex, and an empty HEAD body', async () 
   assert.equal(get.headers.get('x-robots-tag'), 'noindex');
   assert.equal(await notFoundResponse(new Request('https://example.org/missing', { method: 'HEAD' })).text(), '');
 });
+
+test('network evidence views support direct navigation', () => {
+  for (const view of ['events', 'relationships', 'help']) {
+    assert.equal(isPortalPagePath(`/ecosystem/network/${view}`), true);
+    assert.equal(isPortalPagePath(`/ecosystem/network/${view}/missing`), false);
+  }
+});
