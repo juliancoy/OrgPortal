@@ -1,0 +1,16 @@
+.about-orgportal { max-width: 960px; margin: 0 auto; padding: 2rem 0 3rem; line-height: 1.75; }
+.about-orgportal-intro { max-width: 780px; margin-bottom: 3rem; }
+.about-orgportal-eyebrow { color: var(--primary); font-size: .8rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.about-orgportal h1 { font-size: clamp(2.3rem, 5vw, 3.7rem); line-height: 1.15; margin: .6rem 0 1.25rem; }
+.about-orgportal-lead { font-size: 1.2rem; color: var(--text-muted); }
+.about-orgportal section { margin-top: 3rem; }
+.about-orgportal h2 { font-size: clamp(1.4rem, 3vw, 1.8rem); line-height: 1.35; }
+.about-orgportal h3 { margin-top: 0; font-size: 1.15rem; }
+.about-orgportal-layers { list-style: none; padding: 0; display: grid; gap: .75rem; margin: 1.5rem 0; }
+.about-orgportal-layers li { display: grid; gap: .3rem; background: var(--panel); border: 1px solid var(--border); border-left: 4px solid var(--primary); border-radius: 10px; padding: 1rem 1.25rem; }
+.about-orgportal-layers span { color: var(--text-muted); }
+.about-orgportal-responsibilities { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 1rem; margin: 1.5rem 0; }
+.about-orgportal-responsibilities > div { padding: 1.5rem; border: 1px solid var(--border); border-radius: 12px; background: var(--panel); }
+.about-orgportal-responsibilities p:last-child { margin-bottom: 0; }
+.about-orgportal-actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1.5rem; }
+.about-orgportal-actions a { text-decoration: none; }
