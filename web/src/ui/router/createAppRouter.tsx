@@ -148,6 +148,7 @@ function TenantOrgEventsRoute() {
 
 function TenantCommunityAliasRoute() {
   const tenant = getDomainTenant()
+  if (tenant?.id === 'deism') return <HomeRoute />
   if (tenant?.home_org_slug) return <Navigate to="/" replace />
   return <Navigate to={getActivePortalProfileConfig().id === 'orgportal' ? '/communities' : tenant ? '/people' : '/orgs'} replace />
 }

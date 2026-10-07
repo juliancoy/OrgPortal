@@ -517,7 +517,7 @@ def _start_pidp_if_available(prefix: str, network_name: str, gateway_base: str) 
     db_url = f"postgresql+asyncpg://{db_user}:{db_password}@{db_name}:5432/PIdP"
     gateway_port = gateway_base.rsplit(":", 1)[-1]
     allowed_origins = [f"https://{host}:{gateway_port}" for host in LOCAL_GATEWAY_ALIASES]
-    allowed_origins.extend([f"http://localhost:{gateway_port}", f"http://127.0.0.1:{gateway_port}"])
+    allowed_origins.extend([f"http://localhost:{gateway_port}", f"http://127.0.0.1:{gateway_port}", gateway_base, gateway_base.replace("localhost", "127.0.0.1")])
     _set_env_default("PIDP_DEV_PUBLIC_BASE_URL", f"{gateway_base}/pidp/")
     _merge_csv_env_default("PIDP_DEV_ALLOWED_ORIGINS", allowed_origins)
     _merge_csv_env_default("PIDP_ALLOWED_ORIGINS", allowed_origins)
@@ -642,7 +642,7 @@ def run(prefix: str, network_name: str) -> None:
 
     gateway_port = (os.getenv("ORGPORTAL_LOCAL_GATEWAY_PORT") or DEFAULT_LOCAL_GATEWAY_PORT).strip()
     worker_port = (os.getenv("ORGPORTAL_WORKER_PORT") or DEFAULT_WORKER_PORT).strip()
-    gateway_base = f"https://localhost:{gateway_port}"
+    gateway_base = (os.getenv("ORGPORTAL_LOCAL_PUBLIC_BASE_URL") or f"https://localhost:{gateway_port}").rstrip("/")
     _set_env_default("ORGPORTAL_DEV_PUBLIC_BASE_URL", gateway_base)
     _set_env_default("ORGPORTAL_DEV_PIDP_BASE_URL", "/pidp")
     _set_env_default("ORGPORTAL_ORG_API_BASE", f"http://{service_name(prefix, 'org')}:{worker_port}")
