@@ -1,5 +1,14 @@
 # OrgPortal
 
+## Privacy, support and data lifecycle
+
+Publisher: Julian Coy. Support and deletion requests: **julian@codecollective.us**.
+OrgPortal is currently FOSS with no in-app purchases.
+
+- [Retention and deletion policy](docs/privacy/RETENTION_AND_DELETION.md): user-facing rules and retention periods.
+- [Operations for humans and agents](docs/privacy/OPERATIONS.md): verification, deletion, backups and known enforcement gaps.
+
+
 OrgPortal is the shared organization and community application used by
 CodeCollective and tenant sites such as MedTech. `web/` owns the portal UI;
 the organization, governance, and chat services own their domain workflows.

@@ -40,9 +40,10 @@ Five positive and three negative cases are embedded in plugin.json. They are
 
 The source is NOT submission-ready. Complete these items before final packaging:
 
-1. Verify the selected publisher identity Julian Coy in the portal. FOSS is
-   confirmed; separately confirm whether any purchases or payments occur through
-   the plugin before completing the commerce declaration.
+1. Verify the selected publisher identity Julian Coy in the portal. FOSS and no
+   current in-app purchases are confirmed. Support and privacy contact:
+   julian@codecollective.us. See ../privacy/RETENTION_AND_DELETION.md for policy
+   and ../privacy/OPERATIONS.md for enforcement gaps and operator procedures.
 2. Confirm the public support destination and published privacy/terms covering
    actual integration data use, sharing, retention and deletion. Existing `/terms`
    requires review; unverified listing URL fields are intentionally omitted.

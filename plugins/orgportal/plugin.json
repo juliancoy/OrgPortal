@@ -5,7 +5,7 @@
   "description": "Connect to OrgPortal to access organization portal and event tools available to your signed-in account.",
   "author": {
     "name": "Julian Coy",
-    "email": "jcloiacon@gmail.com",
+    "email": "julian@codecollective.us",
     "url": "https://orgportal.cc"
   },
   "homepage": "https://orgportal.cc",
@@ -93,7 +93,7 @@
             }
           ]
         },
-        "commerce_description": "OrgPortal is currently free and open-source software (FOSS)."
+        "commerce_description": "OrgPortal is currently free and open-source software (FOSS). There are currently no in-app purchases."
       }
     }
   }
