@@ -46,3 +46,23 @@ test('live physics advances on caller ticks and preserves positions on rebuild',
  sim.tick(400)
  assert.ok(Math.hypot(nodes[0].x-nodes[1].x,nodes[0].y-nodes[1].y)>=32)
 })
+test('size-based attraction reaches disconnected nodes and repulsion stays local',()=>{
+ const move=(size,options={})=>{
+  const nodes=[{id:'a',x:0,y:0,fx:0,fy:0},{id:'b',x:500,y:0}]
+  const sim=layoutNetwork(nodes,[],n=>n.id==='a'?size:6,()=>({x:0,y:0}),{live:true,repulsion:0,...options})
+  sim.tick();return 500-nodes[1].x
+ }
+ assert.ok(move(30)>move(6),'larger USD icons exert stronger attraction')
+ assert.ok(move(6)>0,'disconnected nodes attract')
+ assert.equal(move(30,{attraction:0,repulsion:3}),0,'distant nodes do not repel apart')
+ const nodes=[{id:'a',x:-50,y:0},{id:'b',x:50,y:0}]
+ const sim=layoutNetwork(nodes,[],()=>6,()=>({x:0,y:0}),{live:true,attraction:0,repulsion:1})
+ sim.tick();assert.ok(nodes[1].x>50,'nearby nodes repel')
+})
+test('maximum control settings stay finite with a dense financial hub',()=>{
+ const nodes=Array.from({length:60},(_,i)=>({id:String(i),x:0,y:0}))
+ const edges=nodes.slice(1).map(n=>({...edge(1e12),source:'0',target:n.id}))
+ const sim=layoutNetwork(nodes,edges,()=>30,()=>({x:0,y:0}),{live:true,attraction:3,repulsion:3})
+ sim.tick(300)
+ for(const n of nodes)assert.ok(Number.isFinite(n.x)&&Number.isFinite(n.y)&&Math.abs(n.x)<10000&&Math.abs(n.y)<10000)
+})

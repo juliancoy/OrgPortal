@@ -70,10 +70,12 @@ export async function loadPortalEvidence(base, fetcher = fetch, prefix='/api/org
 }
 
 export function financialNodeAmounts(data, {includeCapitalization = false} = {}) {
- const amounts = new Map()
+ const amounts = new Map(), seen = new Set()
  for (const edge of graphRelationships(data, {moneyOnly:true, includeCapitalization})) {
+  if(edge.status==='voided'||(edge.id&&seen.has(edge.id)))continue
+  if(edge.id)seen.add(edge.id)
   if (!(edge.currency === 'USD' || (!edge.currency && /^\$/.test(edge.amountLabel || ''))) || !Number.isFinite(edge.amount) || edge.amount <= 0) continue
-  for (const id of [edge.source,edge.target]) amounts.set(id,Math.max(amounts.get(id) || 0,edge.amount))
+  for (const id of new Set([edge.source,edge.target])) amounts.set(id,(amounts.get(id) || 0)+edge.amount)
  }
  return amounts
 }

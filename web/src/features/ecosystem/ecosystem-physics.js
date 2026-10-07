@@ -7,7 +7,7 @@ export function financialPull(edge) {
   ? Math.log1p(edge.amount/1000)/Math.log(10) : 0
 }
 
-export function layoutNetwork(nodes, edges, radius, center, { live = false } = {}) {
+export function layoutNetwork(nodes, edges, radius, center, { live = false, attraction = 1, repulsion = 1 } = {}) {
  const byId=new Map(nodes.map(n=>[n.id,n])), pairs=new Map()
  for(const edge of edges) {
   const a=typeof edge.source==='object'?edge.source.id:edge.source,b=typeof edge.target==='object'?edge.target.id:edge.target
@@ -20,11 +20,11 @@ export function layoutNetwork(nodes, edges, radius, center, { live = false } = {
  const links=[...pairs.values()]
  const gravity=alpha=>{
   for(const link of links) {
-   if(!link.pull)continue
+   if(!link.pull||!attraction)continue
    const a=link.source,b=link.target,dx=b.x-a.x,dy=b.y-a.y
    const softening=radius(a)+radius(b)+40
    const distance=Math.sqrt(dx*dx+dy*dy+softening*softening)
-   const impulse=Math.min(2,1600*link.pull/(distance*distance))*alpha
+   const impulse=Math.min(2,1600*link.pull/(distance*distance))*alpha*attraction
    a.vx+=dx/distance*impulse;a.vy+=dy/distance*impulse
    b.vx-=dx/distance*impulse;b.vy-=dy/distance*impulse
   }
@@ -32,11 +32,13 @@ export function layoutNetwork(nodes, edges, radius, center, { live = false } = {
  const simulation=forceSimulation(nodes).stop().velocityDecay(.45)
   .force('link',forceLink(links).id(n=>n.id)
    .distance(e=>radius(e.source)+radius(e.target)+24+90/(1+e.pull))
-   .strength(e=>.08+.5*e.pull/(1+e.pull)))
+   .strength(e=>Math.min(.9,attraction*(.08+.5*e.pull/(1+e.pull)))))
   .force('gravity',gravity)
-  .force('charge',forceManyBody().strength(-220).distanceMin(30))
-  .force('x',forceX(n=>center(n).x).strength(.035))
-  .force('y',forceY(n=>center(n).y).strength(.035))
+  // Larger rendered area acts as gravitational mass; repulsion is local.
+  .force('attraction',forceManyBody().strength(n=>12*attraction*(radius(n)/10)**2).distanceMin(80))
+  .force('charge',forceManyBody().strength(-80*repulsion).distanceMin(30).distanceMax(180))
+  .force('x',forceX(0).strength(.012*attraction))
+  .force('y',forceY(0).strength(.012*attraction))
   .force('collision',forceCollide(n=>radius(n)+12).strength(1).iterations(6))
  // Live callers own the clock: no independent D3 timer or blocking layout pass.
  if(live)return simulation.alpha(.35).alphaDecay(.012)

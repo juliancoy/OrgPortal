@@ -12,8 +12,8 @@ test('imported workbook records are not duplicated and unsafe evidence is omitte
 test('financial sizing avoids overlap, unknown amounts and currency mixing',()=>{
  const edge=(amount,currency='USD',kind='transfer')=>({source:'a',target:'b',amount,currency,kind})
  const data={relationships:[edge(1000),edge(2000),edge(null),edge(10000,'EUR'),edge(100000,'USD','capitalization')]}
- assert.equal(financialNodeAmounts(data).get('a'),2000)
- assert.equal(financialNodeAmounts(data,{includeCapitalization:true}).get('b'),100000)
+ assert.equal(financialNodeAmounts(data).get('a'),3000)
+ assert.equal(financialNodeAmounts(data,{includeCapitalization:true}).get('b'),103000)
  assert.equal(financialNodeAmounts({relationships:[{...edge(1000000),currency:undefined,amountLabel:'$1,000,000'}]}).get('a'),1000000)
  assert.equal(financialNodeRadius(null),6)
  assert(financialNodeRadius(100000000)>financialNodeRadius(2000))
@@ -64,4 +64,9 @@ test('inspector preserves sourced pictures and escapes relationship evidence',as
  const html=edgeDetails({source:'org-funder',target:null,sourceLabel:'<script>',targetLabel:'Recipient',type:'Award',amountLabel:'USD 100',sourceUrl:'https://source.test/',evidence:'<img onerror=bad>',notes:'Payment unverified',provenance:{sheet:'OrgPortal'}},data)
  assert(html.includes('https://source.test/'));assert(html.includes('&lt;script&gt;'));assert(!html.includes('<img onerror=bad>'))
  const unsafe=orgDetails({...data.organizations[0],imageUrl:'javascript:bad'},data);assert(!unsafe.includes('src="javascript:'))
+})
+test('USD volume sums distinct records, counts self-transfers once and excludes voided records',()=>{
+ const one={id:'one',source:'a',target:'b',kind:'transfer',currency:'USD',amount:1000}
+ const amounts=financialNodeAmounts({relationships:[one,one,{...one,id:'two',amount:2000},{...one,id:'self',target:'a',amount:500},{...one,id:'void',status:'voided',amount:999999}]})
+ assert.equal(amounts.get('a'),3500);assert.equal(amounts.get('b'),3000)
 })
