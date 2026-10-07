@@ -20,7 +20,7 @@ try{
   }
   assert.deepEqual(errors,[]);console.log(mode,'motion, pause and geometry verified');await page.close()
  }
- const page=await browser.newPage({reducedMotion:'reduce'})
+ const page=await browser.newPage({reducedMotion:'reduce',viewport:{width:1440,height:900}})
  await page.route('**/api/org/api/network/**',r=>r.fulfill({status:503,body:'Saved evidence'}))
  await page.goto((process.env.MAP_ORIGIN||'http://127.0.0.1:5193')+'/ecosystem/network')
  await page.waitForFunction(()=>document.querySelector('#network-status')?.textContent.includes('visible links'))
