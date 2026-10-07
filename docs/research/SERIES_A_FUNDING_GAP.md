@@ -24,11 +24,14 @@ at least month precision, and excludes missing intervals. It is not an estimated
 conversion rate. As-of dates filter rounds, not historical company membership
 or source publication dates. Regional coverage is a selected sample, not a census.
 
-2026-10-06 initial checks: 86 companies, 10 known stages, 76 unknown; four seed-only,
-four highest A, two beyond A. Six companies have disclosed A amounts: median
-$29.5M, range $4M–$150M. Only one observed seed-to-A interval (16 months).
-Live evidence can change these counts. The reviewed regional sample alone has
-nine companies: four seed, four highest A, and one B.
+2026-10-06 wider regional sample: 18 companies, 17 known stages, one unknown;
+five before A (including one explicitly Pre-Series A), seven highest A, five
+beyond A. Ten companies have disclosed A amounts: median $20.5M, range
+$8M–$150M. No complete dated seed-to-A pairs are documented for this sample;
+therefore no regional transition rate or median waiting time is estimated.
+The regional sample is the default; portal-only and combined scopes remain available.
+Records of financing with undisclosed stage retain the disclosed amount without
+inventing an equity instrument or Series label. Amount and stage sorting are separate.
 
 To establish a funding gap, define a seed cohort, obtain complete subsequent
 rounds and company status, and compare consistent follow-up windows. Do not label

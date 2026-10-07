@@ -4,6 +4,7 @@ export type CompanyFunding = { id: string; name: string; portal: boolean; region
 export const companyKey = (name: string) => name.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\b(inc|llc|limited|ltd)\b/g, '').replace(/[^a-z0-9]/g, '')
 export function fundingStage(type: string): { label: string; rank: number } | null {
   if (/grant|award|prize|loan|debt|fund capital|portfolio|aggregate|commitment|program terms|seeking|target|planned/i.test(type)) return null
+  if (/pre[- ]series\s+a\b/i.test(type)) return { label: 'Pre-Series A', rank: 2 }
   const series = type.match(/\bseries\s+([a-z])(?:\b|\d)/i)
   if (series) return { label: `Series ${series[1].toUpperCase()}`, rank: 3 + series[1].toUpperCase().charCodeAt(0) - 65 }
   if (/pre[- ]?seed/i.test(type)) return { label: 'Pre-seed', rank: 1 }
@@ -29,10 +30,10 @@ export function compileFunding(organizations: FundingOrganization[], financing: 
   }
   const seen = new Set<string>()
   for (const round of [...financing, ...research]) {
-    if (round.kind !== 'transfer' || !fundingStage(round.type) || !round.date || round.date > asOf || !/^https?:\/\//i.test(round.sourceUrl)) continue
+    if (round.kind !== 'transfer' || (!fundingStage(round.type) && round.type !== 'Financing round (stage undisclosed)') || !round.date || round.date > asOf || !/^https?:\/\//i.test(round.sourceUrl)) continue
     const key = (round.recipientId && ids.get(round.recipientId)) || companyKey(round.recipient)
     const company = companies.get(key); if (!company) continue
-    const duplicate = `${key}|${fundingStage(round.type)!.label}|${round.date}|${round.amount}|${round.type.toLowerCase()}`
+    const duplicate = `${key}|${(fundingStage(round.type)?.label || 'Unknown')}|${round.date}|${round.amount}|${round.type.toLowerCase()}`
     if (seen.has(duplicate)) continue; seen.add(duplicate)
     company.rounds.push(round)
   }
@@ -44,12 +45,12 @@ export function compileFunding(organizations: FundingOrganization[], financing: 
       if (!prior || prior.date < round.date) families.set(round.roundKey, round)
     }
     company.rounds = company.rounds.filter(r => !r.roundKey || families.get(r.roundKey) === r)
-    company.highest = [...company.rounds].sort((a,b) => fundingStage(b.type)!.rank - fundingStage(a.type)!.rank || b.date.localeCompare(a.date))[0] || null
+    company.highest = [...company.rounds].sort((a,b) => (fundingStage(b.type)?.rank || 0) - (fundingStage(a.type)?.rank || 0) || b.date.localeCompare(a.date))[0] || null
     const stage = company.highest && fundingStage(company.highest.type)
     company.stage = stage?.label || 'Unknown'; company.stageRank = stage?.rank || 0
     company.largest = largest(company.rounds)
     company.seriesA = largest(company.rounds.filter(r => fundingStage(r.type)?.label === 'Series A'))
-    const seeds = company.rounds.filter(r => fundingStage(r.type)!.rank <= 2).map(r => month(r.date)).filter((m): m is number => m !== null)
+    const seeds = company.rounds.filter(r => Boolean(fundingStage(r.type)) && fundingStage(r.type)!.rank <= 2).map(r => month(r.date)).filter((m): m is number => m !== null)
     const aDates = company.rounds.filter(r => fundingStage(r.type)?.label === 'Series A').map(r => month(r.date)).filter((m): m is number => m !== null)
     if (seeds.length && aDates.length && Math.min(...aDates) >= Math.min(...seeds)) company.seedToAMonths = Math.min(...aDates) - Math.min(...seeds)
   }

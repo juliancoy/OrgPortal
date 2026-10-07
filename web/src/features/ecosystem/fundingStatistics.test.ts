@@ -6,6 +6,7 @@ const compile=(rounds:FundingRound[],research:FundingRound[]=[])=>compileFunding
 describe('Series A funding statistics',()=>{
  it('uses explicit stages and keeps A extensions and numbered tranches in A',()=>{
   for(const type of ['Series A-2','Series A extension','Series A1'])expect(fundingStage(type)?.label).toBe('Series A')
+  expect(fundingStage('Pre-Series A')?.rank).toBe(2)
   expect(fundingStage('Series B1 / B2')?.label).toBe('Series B')
   expect(fundingStage('Seed')?.rank).toBeLessThan(fundingStage('Series A')!.rank)
  })
@@ -30,6 +31,9 @@ describe('Series A funding statistics',()=>{
   const data=compile([round()]);expect(fundingSummary(data)).toMatchObject({seedOnly:1,unknown:1,transitionCount:0,transitionMedian:null})
   const transition=compile([round(),round({id:'a',type:'Series A',date:'2023-05'})]);expect(transition[0].seedToAMonths).toBe(16)
   expect(compile([round({date:'2022'}),round({id:'a',type:'Series A',date:'2023-05'})])[0].seedToAMonths).toBeNull()
+ })
+ it('retains an unstaged closed financing amount without inventing its stage',()=>{
+  const data=compile([round({type:'Financing round (stage undisclosed)',amount:40_000_000})]);expect(data[0].stage).toBe('Unknown');expect(data[0].largest?.amount).toBe(40_000_000);expect(fundingSummary(data).known).toBe(0)
  })
  it('normalizes company aliases and exports source-linked rows safely',()=>{
   const data=compile([round({recipient:'Irazu Oncology LLC'})]);expect(data).toHaveLength(2)
