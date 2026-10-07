@@ -1,19 +1,26 @@
 """Read-only graph checks using the existing Selenium Chrome service."""
 import json, os, time
+from urllib.parse import urlparse
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 options=webdriver.ChromeOptions()
+options.page_load_strategy='none'
 options.add_argument('--headless=new')
 options.add_argument('--no-sandbox')
 options.add_argument('--disable-dev-shm-usage')
 options.add_argument('--window-size=1440,900')
 options.set_capability('goog:loggingPrefs',{'browser':'ALL'})
 origin=os.environ.get('MAP_ORIGIN','https://lifetech.fyi')
+# Optional host-side DNS resolution for Selenium containers without external DNS.
+if os.environ.get('SELENIUM_SITE_IP'):
+ options.add_argument('--host-resolver-rules=MAP '+urlparse(origin).hostname+' '+os.environ['SELENIUM_SITE_IP'])
 for mode in ('svg','webgl'):
  driver=webdriver.Remote(os.environ.get('SELENIUM_URL','http://127.0.0.1:4445/wd/hub'),options=options)
  try:
+  driver.set_page_load_timeout(30)
+  print(mode,'Selenium session started',flush=True)
   driver.execute_cdp_cmd('Network.enable',{})
-  driver.execute_cdp_cmd('Network.setBlockedURLs',{'urls':['*/api/org/api/network/*']})
+  driver.execute_cdp_cmd('Network.setBlockedURLs',{'urls':['*/api/org/api/network/*','*fonts.googleapis.com/*','*fonts.gstatic.com/*']})
   if mode=='svg':
    driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument',{'source':"const old=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(k,...a){return k.includes('webgl')?null:old.call(this,k,...a)}"})
   driver.get(origin+'/ecosystem/network')
@@ -33,7 +40,7 @@ for mode in ('svg','webgl'):
   assert before==driver.execute_script(position),'paused graph should remain still'
   print(mode,'source proximity, movement and pause verified using Selenium')
  except Exception:
-  print(json.dumps({'url':driver.current_url,'browserErrors':driver.get_log('browser')[-5:]}))
+  print(json.dumps({'url':driver.current_url,'error':'Selenium browser check failed'}))
   raise
  finally:
   driver.quit()
