@@ -9,6 +9,7 @@ try {
   await page.goto((process.env.MAP_ORIGIN||'https://lifetech.fyi')+'/ecosystem/network',{waitUntil:'domcontentloaded'})
   await page.waitForFunction(()=>document.querySelector('#network-status')?.textContent.includes('visible links'))
   await page.evaluate(()=>document.fonts.ready)
+  if(await page.locator('#live-physics').count()){await page.locator('#live-physics').evaluate(el=>{el.checked=false;el.dispatchEvent(new Event('change'))});await page.waitForTimeout(80)}
   if(mode==='webgl')assert(await page.locator('#network-canvas canvas').count(),'WebGL renderer unavailable')
   await page.locator('#network-labels button:not([hidden])').first().click()
   const marker=page.locator('#network-labels button[aria-pressed=true]')

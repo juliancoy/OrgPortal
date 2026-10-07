@@ -7,7 +7,7 @@ export function financialPull(edge) {
   ? Math.log1p(edge.amount/1000)/Math.log(10) : 0
 }
 
-export function layoutNetwork(nodes, edges, radius, center) {
+export function layoutNetwork(nodes, edges, radius, center, { live = false } = {}) {
  const byId=new Map(nodes.map(n=>[n.id,n])), pairs=new Map()
  for(const edge of edges) {
   const a=typeof edge.source==='object'?edge.source.id:edge.source,b=typeof edge.target==='object'?edge.target.id:edge.target
@@ -38,6 +38,8 @@ export function layoutNetwork(nodes, edges, radius, center) {
   .force('x',forceX(n=>center(n).x).strength(.035))
   .force('y',forceY(n=>center(n).y).strength(.035))
   .force('collision',forceCollide(n=>radius(n)+12).strength(1).iterations(6))
+ // Live callers own the clock: no independent D3 timer or blocking layout pass.
+ if(live)return simulation.alpha(.35).alphaDecay(.012)
  // Fixed integration steps, independent of display refresh rate. Cool to rest.
  for(let i=0;i<360;i++)simulation.tick()
  // D3 collision is a soft velocity constraint. Project remaining penetrations

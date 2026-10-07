@@ -34,3 +34,15 @@ test('public evidence snapshot remains collision-free',()=>{
  const radius=n=>financialNodeRadius(n.financialAmount)
  layoutNetwork(nodes,graphRelationships(data).map(e=>({...e})),radius,()=>({x:0,y:0}));check(nodes,radius)
 })
+test('live physics advances on caller ticks and preserves positions on rebuild',()=>{
+ const nodes=[{id:'a',x:-300,y:0},{id:'b',x:300,y:0}]
+ const sim=layoutNetwork(nodes,[edge(1000)],()=>10,()=>({x:0,y:0}),{live:true})
+ assert.equal(nodes[0].x,-300)
+ sim.tick(60)
+ assert.ok(nodes[0].x>-300&&nodes[1].x<300)
+ const before=nodes.map(n=>[n.x,n.y])
+ layoutNetwork(nodes,[edge(1000)],()=>10,()=>({x:0,y:0}),{live:true})
+ assert.deepEqual(nodes.map(n=>[n.x,n.y]),before)
+ sim.tick(400)
+ assert.ok(Math.hypot(nodes[0].x-nodes[1].x,nodes[0].y-nodes[1].y)>=32)
+})
