@@ -171,11 +171,27 @@ function svgElement(tag,attrs={}) {
  for(const [key,value] of Object.entries(attrs))el.setAttribute(key,String(value))
  return el
 }
-function zoomSvg(factor) {
+function cursorPosition(event) {
+ const rect=host.getBoundingClientRect()
+ return event?{x:Math.max(0,Math.min(1,(event.clientX-rect.left)/rect.width)),y:Math.max(0,Math.min(1,(event.clientY-rect.top)/rect.height))}:{x:.5,y:.5}
+}
+function zoomSvg(factor, event) {
  const nextWidth=svgView.w/factor
  if(nextWidth<80||nextWidth>4000)return
- const cx=svgView.x+svgView.w/2,cy=svgView.y+svgView.h/2
- svgView.w/=factor;svgView.h/=factor;svgView.x=cx-svgView.w/2;svgView.y=cy-svgView.h/2;requestRender()
+ const cursor=cursorPosition(event), worldX=svgView.x+cursor.x*svgView.w, worldY=svgView.y+cursor.y*svgView.h
+ svgView.w/=factor;svgView.h/=factor
+ svgView.x=worldX-cursor.x*svgView.w;svgView.y=worldY-cursor.y*svgView.h;requestRender()
+}
+function zoomWebgl(factor,event) {
+ const cursor=cursorPosition(event), pointer=new THREE.Vector2(cursor.x*2-1,1-cursor.y*2)
+ const ray=new THREE.Raycaster(),plane=new THREE.Plane(new THREE.Vector3(0,0,1),0)
+ camera.updateMatrixWorld();ray.setFromCamera(pointer,camera)
+ const before=ray.ray.intersectPlane(plane,new THREE.Vector3())
+ camera.zoom=Math.max(.35,Math.min(6,camera.zoom*factor));camera.updateProjectionMatrix();camera.updateMatrixWorld()
+ ray.setFromCamera(pointer,camera)
+ const after=ray.ray.intersectPlane(plane,new THREE.Vector3())
+ if(before&&after){const shift=before.sub(after);camera.position.add(shift);controls.target.add(shift);controls.update()}
+ requestRender()
 }
 function initSvg() {
  svg=svgElement('svg',{'aria-label':'D3 organization network (SVG fallback)',role:'img'})
@@ -185,7 +201,6 @@ function initSvg() {
  svg.addEventListener('pointerdown',event=>{if(event.target.tagName==='circle')return;drag={x:event.clientX,y:event.clientY,vx:svgView.x,vy:svgView.y};svg.setPointerCapture(event.pointerId)})
  svg.addEventListener('pointermove',event=>{if(!drag)return;svgView.x=drag.vx-(event.clientX-drag.x)/host.clientWidth*svgView.w;svgView.y=drag.vy-(event.clientY-drag.y)/host.clientHeight*svgView.h;requestRender()})
  svg.addEventListener('pointerup',()=>{drag=null});svg.addEventListener('pointercancel',()=>{drag=null})
- svg.addEventListener('wheel',event=>{event.preventDefault();zoomSvg(event.deltaY<0?1.1:1/1.1)},{passive:false})
  resizeObserver=new ResizeObserver(fit); resizeObserver.observe(host)
 }
 function renderSvg() {
@@ -231,11 +246,12 @@ async function start(){
   const historyData=snapshots[1];data=mergeNetworkHistory(snapshots[0],historyData); if(disposed)return; rewriteLinks()
   initWebgl();search()
   root.addEventListener('wheel',event=>{
+   if(!host.contains(event.target))return
    event.preventDefault();event.stopPropagation()
    const pixels=event.deltaY*(event.deltaMode===1?16:event.deltaMode===2?host.clientHeight:1)
    const factor=Math.exp(-Math.max(-300,Math.min(300,pixels))*.002)
-   if(!webgl){zoomSvg(factor);return}
-   camera.zoom=Math.max(.35,Math.min(6,camera.zoom*factor));camera.updateProjectionMatrix();requestRender()
+   if(!webgl){zoomSvg(factor,event);return}
+   zoomWebgl(factor,event)
   },{passive:false,capture:true,signal:abort.signal})
   $('#network-detail').addEventListener('error',event=>{if(event.target.tagName==='IMG'){event.target.hidden=true;const note=document.createElement('p');note.className='eco-note';note.textContent='Published image is currently unavailable.';event.target.after(note)}},true)
   $('#network-search').addEventListener('input',search)
@@ -243,7 +259,7 @@ async function start(){
   $('#zoom-sparse').addEventListener('change',requestRender)
   $('#visibility-factor').addEventListener('input',()=>{$('#visibility-factor-value').textContent=$('#visibility-factor').value;requestRender()})
   $('#network-fit').addEventListener('click',fit)
-  for(const [id,factor] of [['#zoom-in',1.25],['#zoom-out',.8]]) $(id).addEventListener('click',()=>{if(!webgl){zoomSvg(factor);return}camera.zoom=Math.max(.35,Math.min(6,camera.zoom*factor));camera.updateProjectionMatrix();requestRender()})
+  for(const [id,factor] of [['#zoom-in',1.25],['#zoom-out',.8]]) $(id).addEventListener('click',()=>{if(!webgl){zoomSvg(factor);return}zoomWebgl(factor)})
   $('#network-reset').addEventListener('click',()=>{selected=null;inspectorKey=null;root.querySelectorAll('[name=node-category],[name=relationship]').forEach(c=>c.checked=true);$('#network-view').value='all';$('#include-context').checked=false;$('#hide-isolated').checked=true;$('#scale-node-finances').checked=true;$('#scale-edge-quantity').checked=true;$('#zoom-sparse').checked=true;$('#visibility-factor').value='4';$('#visibility-factor-value').textContent='4';$('#neighbors').checked=false;$('#neighbors').disabled=true;$('#network-search').value='';$('#network-detail').innerHTML='<h2>Select an organization</h2><p>Search or select a graph label to explore its evidence.</p>';history.replaceState(history.state,'',location.pathname);search();rebuild()})
   const initial=new URL(location.href).searchParams.get('org');if(initial&&data.organizations.some(n=>n.id===initial)){select(initial)}else rebuild()
   loadPortalEvidence(data, cachedEvidenceFetch,apiPrefix).then(updated=>{if(disposed)return;data=mergeNetworkHistory(updated,historyData);search();if(selected)select(selected);else rebuild();$('#network-source').textContent=(usingOfflineCopy?'Offline · last checked ':'Checked ')+new Date(oldestCheck).toLocaleString()}).catch(()=>{if(disposed)return;$('#network-source').textContent='Saved public evidence · refresh unavailable'})
