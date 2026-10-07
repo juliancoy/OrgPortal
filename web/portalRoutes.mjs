@@ -1,5 +1,7 @@
 // Keep aligned with createAppRouter.tsx; route tests enforce this contract.
 const paths = [
+  "/local/newsletters",
+
   "/",
   "/portals/:tenantSlug",
   "/finance",
@@ -16,6 +18,7 @@ const paths = [
   "/initiatives/:slug/sign",
   "/org-events",
   "/community",
+  "/communities",
   "/medtech-events",
   "/ecosystem/network",
   "/ecosystem/network/events",

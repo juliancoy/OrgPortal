@@ -3,6 +3,7 @@ import { getActivePortalProfileConfig } from './portalFeatures'
 
 export function applyPortalBranding() {
   const profile = getActivePortalProfileConfig()
+  document.title = profile.portalTitle
   document.documentElement.dataset.portalProfile = profile.id
   if (profile.tenantId) document.documentElement.dataset.portalTenant = profile.tenantId
   else delete document.documentElement.dataset.portalTenant

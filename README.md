@@ -6,6 +6,13 @@ the organization, governance, and chat services own their domain workflows.
 PIdP is a separate identity provider maintained in the sibling `../pidp`
 checkout, not a vendored service in this repository.
 
+OrgPortal is the neutral platform at https://orgportal.cc/. Its homepage and
+community directory are independent of the Code Collective tenant. Communities
+retain their own branding, memberships, roles, and Timebank ledgers. The shared
+account namespace is preserved for existing members. Hosting remains on the
+`codecollective-site` Worker; Code Collective remains at `https://codecollective.us/p/`.
+See [platform operations](docs/deployment/ORGPORTAL_PLATFORM.md).
+
 ## Account and Service Boundaries
 
 These are ownership rules, not a claim that all migration work is complete.

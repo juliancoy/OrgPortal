@@ -388,3 +388,20 @@ test('analytics are admin-only and all new routes enforce authentication and hos
   assert.equal((await app.request(url + vote, { method: 'PUT', headers: { Authorization: 'Bearer bob', 'Content-Type': 'application/json' }, body: JSON.stringify({ direction: 'up' }) }, env)).status, 200);
   assert.equal((await app.request(url.replace('bmoretimebank.', '') + vote, { method: 'PUT', headers: { Authorization: 'Bearer bob', 'Content-Type': 'application/json' }, body: JSON.stringify({ direction: null }) }, env)).status, 404);
 });
+
+
+test('attached portal domains share the existing timebank ledger; pending domains do not', async t => {
+  const database = new TimebankDatabase();
+  t.after(() => database.sqlite.close());
+  database.sqlite.exec("ALTER TABLE portal_tenants ADD COLUMN custom_domain_hostname TEXT; ALTER TABLE portal_tenants ADD COLUMN custom_domain_status TEXT DEFAULT 'none';");
+  database.sqlite.prepare("UPDATE portal_tenants SET custom_domain_hostname = ?, custom_domain_status = 'attached' WHERE hostname = 'codecollective.us'").run('orgportal.cc');
+  const env = { DB: database.asD1() };
+  const original = await app.request('https://codecollective.us/api/timebank/community', {}, env);
+  const attached = await app.request('https://orgportal.cc/api/timebank/community', {}, env);
+  assert.equal(attached.status, 200);
+  const community = await attached.json() as { id: string; hostname: string };
+  assert.equal(community.id, (await original.json() as { id: string }).id);
+  assert.equal(community.hostname, 'orgportal.cc');
+  database.sqlite.exec("UPDATE portal_tenants SET custom_domain_status = 'requested' WHERE custom_domain_hostname = 'orgportal.cc'");
+  assert.equal((await app.request('https://orgportal.cc/api/timebank/community', {}, env)).status, 404);
+});

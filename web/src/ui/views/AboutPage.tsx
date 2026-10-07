@@ -1,8 +1,16 @@
+import { Link } from 'react-router-dom'
+import { getActivePortalProfileConfig } from '../../config/portalFeatures'
 import { useDomainTenant } from '../../config/timebankCommunity'
 import { portalPath } from '../../config/portalBase'
 
 export function AboutPage() {
   const tenant = useDomainTenant()
+  if (getActivePortalProfileConfig().id === 'orgportal') return <section className="panel">
+    <h1>About OrgPortal</h1>
+    <p>OrgPortal connects people, organizations, and communities through shared tools for events, conversations, and collaboration.</p>
+    <p>Each community keeps its own identity, membership, and roles. Your account identifies you; the community determines where you belong and what you can do.</p>
+    <p><Link to="/communities">Find a community</Link> or <Link to="/orgs">explore organizations</Link>.</p>
+  </section>
   return (
     <section className="panel">
       <h1 className="serif" style={{ marginTop: 0 }}>

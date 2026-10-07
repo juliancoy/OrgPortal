@@ -58,7 +58,7 @@ export function UserLoginPage({ defaultNext }: { defaultNext?: string } = {}) {
 
         <p className="portal-auth-help">Sign in or create an account using any option above.</p>
 
-        {tenantAuth && <p className="tenant-shared-account">Your existing Code Collective account works here.</p>}
+        {tenantAuth && <p className="tenant-shared-account">Your existing OrgPortal or community account works here. Signing in does not join a community.</p>}
       </div>
     </section>
   )

@@ -1,0 +1,12 @@
+{
+  "id": "./",
+  "name": "OrgPortal",
+  "short_name": "OrgPortal",
+  "description": "Find communities, organizations, and events. Connect and participate with one shared account.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f7fb",
+  "theme_color": "#155e59",
+  "icons": [{ "src": "orgportal.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

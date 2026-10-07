@@ -1,3 +1,4 @@
+import { CommunitiesPage, PlatformHomePage } from '../views/PlatformHomePage'
 import { resolveOrganizationView, useOrganizationAccess, useOrganizationViewPreference } from '../hooks/useOrganizationView'
 import { PortalProfileBoundary } from '../shell/PortalProfileBoundary'
 import { getDomainCommunity, getDomainTenant, type PortalTenant } from '../../config/timebankCommunity'
@@ -112,6 +113,7 @@ function HomeRoute() {
   const requestedView = useOrganizationViewPreference(tenant?.home_org_slug, new URLSearchParams(location.search).get('view'))
   if (isLoading || access.loading) return null
   const profile = getActivePortalProfileConfig()
+  if (profile.id === 'orgportal') return <PlatformHomePage />
   if (tenant?.home_org_slug && (access.organizer || requestedView)) {
     const view = resolveOrganizationView(requestedView, access.organizer, access.member)
     if (view === 'public') return <TenantHomePage />
@@ -146,7 +148,7 @@ function TenantOrgEventsRoute() {
 function TenantCommunityAliasRoute() {
   const tenant = getDomainTenant()
   if (tenant?.home_org_slug) return <Navigate to="/" replace />
-  return <Navigate to={tenant ? '/people' : '/orgs'} replace />
+  return <Navigate to={getActivePortalProfileConfig().id === 'orgportal' ? '/communities' : tenant ? '/people' : '/orgs'} replace />
 }
 
 function TenantEventsAliasRoute() {
@@ -164,6 +166,7 @@ function TimebankRoute() {
   const { user } = useAuth()
   // Reset member data when identity changes, while keeping guest dialogs open
   // during background session checks.
+  if (getActivePortalProfileConfig().id === 'orgportal') return <Navigate to="/communities?feature=timebank" replace />
   return <TimebankPage key={user?.id || 'guest'} />
 }
 
@@ -281,6 +284,7 @@ export function createAppRouter() {
           { path: '/local/newsletters', element: <LocalNewslettersPage /> },
           { path: '/branding', element: <TenantBrandingPage /> },
           { path: '/branding.html', element: <Navigate to="/branding" replace /> },
+          { path: '/communities', element: <CommunitiesPage /> },
           { path: '/about', element: <AboutPage /> },
           { path: '/terms', element: <TermsPage /> },
           { path: '/legal', element: <TermsPage /> },

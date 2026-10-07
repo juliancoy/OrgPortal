@@ -11,8 +11,8 @@
   },
   "vars": {
     "PIDP_BASE_URL": "https://id.codecollective.us",
-    "PUBLIC_PORTAL_BASE_URL": "https://codecollective.us/p",
-    "CHAT_ALLOWED_ORIGINS": "https://codecollective.us,http://127.0.0.1:8080,http://localhost:8080"
+    "PUBLIC_PORTAL_BASE_URL": "https://orgportal.cc",
+    "CHAT_ALLOWED_ORIGINS": "https://orgportal.cc,https://codecollective.us,http://127.0.0.1:8080,http://localhost:8080"
   },
   "d1_databases": [
     {

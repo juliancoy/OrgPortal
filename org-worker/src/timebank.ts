@@ -430,8 +430,18 @@ export async function resolveTimebankCommunity(db: D1Database, request: Request)
   const defaults = ['localhost', '127.0.0.1', 'www.codecollective.us', 'org-codecollective.jcloiacon.workers.dev', 'codecollective-site.jcloiacon.workers.dev'];
   const hostname = defaults.includes(host) ? 'codecollective.us' : host;
   const row = await db.prepare('SELECT * FROM timebank_communities WHERE hostname = ?').bind(hostname).first<Community>();
-  if (!row) throw new TimebankError('This timebank community has not been configured.', 404);
-  return row;
+  if (row) return row;
+  // Attached portal domains share the original community and ledger.
+  try {
+    const attached = await db.prepare(`SELECT community.* FROM timebank_communities community
+      JOIN portal_tenants tenant ON tenant.hostname = community.hostname
+      WHERE tenant.custom_domain_hostname = ? AND tenant.custom_domain_status = 'attached'`)
+      .bind(hostname).first<Community>();
+    if (attached) return { ...attached, hostname };
+  } catch {
+    // Older local databases may not have custom-domain columns yet.
+  }
+  throw new TimebankError('This timebank community has not been configured.', 404);
 }
 
 function requestHostname(request: Request) {

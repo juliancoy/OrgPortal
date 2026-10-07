@@ -20,7 +20,7 @@
   },
   "vars": {
     "PIDP_BASE_URL": "https://id.codecollective.us",
-    "PUBLIC_PORTAL_BASE_URL": "https://codecollective.us/p",
+    "PUBLIC_PORTAL_BASE_URL": "https://orgportal.cc",
     "CHAT_API_ORIGIN": "https://chat-codecollective.jcloiacon.workers.dev",
     "ADMIN_EMAILS": "",
     "ADMIN_USER_IDS": ""

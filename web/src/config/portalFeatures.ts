@@ -1,7 +1,7 @@
 import { getDomainTenant, type PortalTenant } from './timebankCommunity'
 export type PortalFeature = 'ubi'
 
-export type PortalProfileId = 'code-collective' | 'baltimore-medtech' | 'deism'
+export type PortalProfileId = 'code-collective' | 'baltimore-medtech' | 'deism' | 'orgportal'
 
 export type PortalProfileConfig = {
   id: PortalProfileId
@@ -21,6 +21,13 @@ export type PortalProfileConfig = {
 }
 
 const PORTAL_PROFILES: Record<PortalProfileId, PortalProfileConfig> = {
+  orgportal: {
+    id: 'orgportal', brandName: 'OrgPortal', portalTitle: 'OrgPortal',
+    tagline: 'A place for every community.', brandImagePath: '/orgportal.svg',
+    homeUrl: '/', memberHomePath: '/communities', disabledFeatures: ['ubi'],
+    manifestPath: '/orgportal.webmanifest', faviconPath: '/orgportal.svg',
+    faviconType: 'image/svg+xml', appleTouchIconPath: '/orgportal.svg', themeColor: '#155e59',
+  },
   'code-collective': {
     id: 'code-collective',
     brandName: 'Code Collective',
@@ -71,6 +78,7 @@ const PORTAL_PROFILES: Record<PortalProfileId, PortalProfileConfig> = {
 function normalizeProfileId(value?: string | null): PortalProfileId | null {
   const normalized = String(value || '').trim().toLowerCase()
   if (!normalized) return null
+  if (normalized === 'orgportal') return 'orgportal'
   if (normalized === 'deism') return 'deism'
   if (['baltimore-medtech', 'bmore-medtech', 'baltimoremedtech', 'medtech'].includes(normalized)) {
     return 'baltimore-medtech'
@@ -120,7 +128,7 @@ function tenantProfileConfig(tenant: PortalTenant): PortalProfileConfig {
     id: profileId,
     tenantId: tenant.id,
     brandName: tenant.name || base.brandName,
-    portalTitle: tenant.name ? `${tenant.name} Portal` : base.portalTitle,
+    portalTitle: profileId === 'orgportal' ? 'OrgPortal' : tenant.name ? `${tenant.name} Portal` : base.portalTitle,
     tagline: tenant.tagline || base.tagline,
     brandImagePath,
     homeUrl: tenantBrandHomeUrl(tenant, base.homeUrl),
@@ -141,7 +149,7 @@ export function getActivePortalProfileConfig(
 ): PortalProfileConfig {
   const tenant = getDomainTenant()
   if (tenant) return tenantProfileConfig(tenant)
-  return PORTAL_PROFILES['code-collective']
+  return PORTAL_PROFILES[_hostname === 'orgportal.cc' ? 'orgportal' : 'code-collective']
 }
 
 export function isPortalFeatureEnabled(feature: PortalFeature, profile = getActivePortalProfileConfig()): boolean {

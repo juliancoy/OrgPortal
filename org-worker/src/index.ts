@@ -1,3 +1,4 @@
+import { listPublicCommunities } from './portalCommunities';
 import { provisionEventChat, provisionPendingEventChats } from './eventChat';
 import { localNewsletterRoutes } from './localNewsletters';
 import { newsletterSyncRoutes } from './newsletterSync';
@@ -4477,6 +4478,11 @@ app.get("/api/health-insurance/diagnoses", async (c) => {
 app.get("/api/timebank/community", async (c) => {
   c.header("Cache-Control", "no-store");
   return c.json(await resolveTimebankCommunity(c.env.DB, c.req.raw));
+});
+
+app.get("/api/portal/communities", async (c) => {
+  c.header("Cache-Control", "no-store");
+  return c.json(await listPublicCommunities(c.env.DB));
 });
 
 app.get("/api/portal/tenant", async (c) => {

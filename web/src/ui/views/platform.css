@@ -1,0 +1,25 @@
+.platform-hero { padding: clamp(2rem, 7vw, 5rem) 0; max-width: 850px; }
+.platform-eyebrow { color: var(--primary); font-weight: 700; letter-spacing: .1em; text-transform: uppercase; font-size: .78rem; margin: 0 0 .8rem; }
+.platform-hero h1 { font-size: clamp(2.8rem, 7vw, 5.7rem); line-height: 1.05; letter-spacing: -.045em; margin: 0 0 1.5rem; }
+.platform-hero h1 span { color: var(--primary); }
+.platform-hero-description { font-size: 1.15rem; line-height: 1.7; max-width: 620px; color: var(--text-muted); }
+.platform-hero-actions { display: flex; flex-wrap: wrap; gap: .8rem; margin: 1.8rem 0 1rem; }
+.platform-hero-actions a { text-decoration: none; padding: .85rem 1.2rem; }
+.platform-account-note { font-size: .9rem; color: var(--text-muted); line-height: 1.6; }
+.platform-communities { padding: 1.5rem 0 2.5rem; }
+.platform-section-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+.platform-section-heading h2 { margin: 0; font-size: clamp(1.5rem, 3vw, 2rem); }
+.platform-search { display: grid; gap: .5rem; max-width: 460px; margin: 1.5rem 0; }
+.platform-search input { width: 100%; box-sizing: border-box; border: 1px solid var(--border); border-radius: 8px; padding: .8rem; background: var(--panel); color: var(--text-primary); font: inherit; }
+.platform-community-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr)); gap: 1rem; margin: 1.5rem 0; }
+.platform-community-card { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; display: flex; flex-direction: column; align-items: flex-start; }
+.platform-community-mark { border-radius: 10px; padding: .75rem; background: var(--primary-bg); color: var(--primary); font-weight: 800; min-width: 2rem; text-align: center; }
+.platform-community-card h3 { margin: 1rem 0 .4rem; }
+.platform-community-card p { color: var(--text-muted); line-height: 1.6; margin: 0 0 1rem; }
+.platform-community-features { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1.5rem; }
+.platform-community-features span { background: var(--primary-bg); color: var(--primary); border-radius: 6px; padding: .3rem .5rem; font-size: .75rem; }
+.platform-community-open { margin-top: auto; font-weight: 700; }
+.platform-explore { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 1rem; padding: 0 0 3rem; }
+.platform-explore a { display: grid; gap: .7rem; padding: 1.5rem; border: 1px solid var(--border); border-radius: 12px; text-decoration: none; }
+.platform-explore strong { color: var(--text-primary); font-size: 1.05rem; }
+.platform-explore span { color: var(--text-muted); line-height: 1.6; }

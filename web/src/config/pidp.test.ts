@@ -91,3 +91,17 @@ it('single sign-on keeps callback and navigation on the current tenant origin', 
   expect(callback.pathname).toBe('/auth/callback')
   expect(callback.searchParams.get('next')).toBe('/people?q=medicine')
 })
+
+
+it('OrgPortal uses neutral destinations while preserving the shared account application', () => {
+  vi.stubGlobal('window', { location: { origin: 'https://orgportal.cc', hostname: 'orgportal.cc' } })
+  setDomainTenant({ id: 'orgportal', hostname: 'orgportal.cc', name: 'OrgPortal', tagline: '', accent_color: '#155e59', profile: 'orgportal', features: ['directory', 'events', 'chat'], member_home_path: '/communities', canonical_path_prefix: '' })
+  expect(defaultPostLoginPath()).toBe('/communities')
+  const callback = new URL(portalAuthCallbackUrl('/orgs?view=mine'))
+  expect(callback.origin + callback.pathname).toBe('https://orgportal.cc/auth/callback')
+  expect(callback.searchParams.get('next')).toBe('/orgs?view=mine')
+  for (const next of ['//evil.example', 'https://evil.example', '/users/login', '/auth/callback']) expect(normalizePostLoginPath(next)).toBe('/communities')
+  const login = new URL(pidpSingleSignOnUrl('/communities'), 'https://orgportal.cc')
+  expect(login.origin).toBe('https://orgportal.cc')
+  expect(login.searchParams.get('app')).toBe('code-collective')
+})

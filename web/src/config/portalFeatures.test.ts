@@ -131,3 +131,16 @@ it('preserves configured shared portal and external homepage destinations', () =
     finally { domain.mockRestore() }
   }
 })
+
+
+it('OrgPortal is neutral even while tenant metadata is unavailable', () => {
+  const domain = vi.spyOn(communities, 'getDomainTenant').mockReturnValue(null)
+  try {
+    const profile = getActivePortalProfileConfig('', null, 'orgportal.cc')
+    expect(profile.id).toBe('orgportal')
+    expect(profile.brandName).toBe('OrgPortal')
+    expect(profile.memberHomePath).toBe('/communities')
+    expect(profile.brandImagePath).toBe('/orgportal.svg')
+    expect(isPortalFeatureEnabled('ubi', profile)).toBe(false)
+  } finally { domain.mockRestore() }
+})

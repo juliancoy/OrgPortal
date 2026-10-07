@@ -32,7 +32,10 @@ function fixture() {
   for (const name of readdirSync(folder).filter(name => name.endsWith('.sql')).sort()) primary.sqlite.exec(readFileSync(new URL(name, folder), 'utf8'))
   secondary.sqlite.exec(readFileSync(new URL('../journal-migrations/0001_change_journal.sql', import.meta.url), 'utf8'))
   const env = { DB: primary, JOURNAL_DB: secondary } as unknown as Env
-  return { primary, secondary, env, close: () => { primary.sqlite.close(); secondary.sqlite.close() } }
+  // Seed migrations after journal creation are audited too. Measure scenario writes
+  // relative to that immutable history rather than assuming an empty journal.
+  const baseline = Number(primary.sqlite.prepare('SELECT COALESCE(MAX(sequence),0) n FROM change_journal').get()!.n)
+  return { primary, secondary, env, baseline, close: () => { primary.sqlite.close(); secondary.sqlite.close() } }
 }
 
 test('direct SQL writes journal before/after state and roll back atomically; no-op updates are inert', () => {
@@ -40,12 +43,12 @@ test('direct SQL writes journal before/after state and roll back atomically; no-
   try {
     f.primary.sqlite.exec("INSERT INTO organizations(id,name,slug) VALUES('org','Original','org')")
     f.primary.sqlite.exec("UPDATE organizations SET name=name WHERE id='org'")
-    assert.equal(f.primary.sqlite.prepare('SELECT COUNT(*) n FROM change_journal').get()!.n, 1)
+    assert.equal(f.primary.sqlite.prepare('SELECT COUNT(*) n FROM change_journal').get()!.n, f.baseline + 1)
     f.primary.sqlite.exec("BEGIN; UPDATE organizations SET name='Rolled back' WHERE id='org'; ROLLBACK")
-    assert.equal(f.primary.sqlite.prepare('SELECT COUNT(*) n FROM change_journal').get()!.n, 1)
+    assert.equal(f.primary.sqlite.prepare('SELECT COUNT(*) n FROM change_journal').get()!.n, f.baseline + 1)
     f.primary.sqlite.exec("UPDATE organizations SET name='Renamed' WHERE id='org'")
     f.primary.sqlite.exec("DELETE FROM organizations WHERE id='org'")
-    const rows = f.primary.sqlite.prepare('SELECT * FROM change_journal ORDER BY sequence').all()
+    const rows = f.primary.sqlite.prepare('SELECT * FROM change_journal WHERE sequence > ? ORDER BY sequence').all(f.baseline)
     assert.deepEqual(rows.map(row => row.operation), ['insert', 'update', 'delete'])
     assert.equal(JSON.parse(String(rows[1].before_json)).name, 'Original')
     assert.equal(JSON.parse(String(rows[1].after_json)).name, 'Renamed')
@@ -90,18 +93,18 @@ test('secondary copy retries are inert, checkpoints are atomic and rewinds fail 
   try {
     f.primary.sqlite.exec("INSERT INTO organizations(id,name,slug) VALUES('org','First','org'); UPDATE organizations SET name='Second' WHERE id='org'")
     const result = await replicateChangeJournal(f.env)
-    assert.equal(result!.cursor, 2)
+    assert.equal(result!.cursor, f.baseline + 2)
     await replicateChangeJournal(f.env)
-    assert.equal(f.secondary.sqlite.prepare('SELECT COUNT(*) n FROM journal_entries').get()!.n, 2)
+    assert.equal(f.secondary.sqlite.prepare('SELECT COUNT(*) n FROM journal_entries').get()!.n, f.baseline + 2)
     assert.throws(() => f.secondary.sqlite.exec('DELETE FROM journal_entries'))
     // Simulate a stale checkpoint: replaying the page cannot duplicate entries.
     f.secondary.sqlite.exec('UPDATE journal_checkpoints SET sequence=0')
     await replicateChangeJournal(f.env)
-    assert.equal(f.secondary.sqlite.prepare('SELECT sequence FROM journal_checkpoints').get()!.sequence, 2)
+    assert.equal(f.secondary.sqlite.prepare('SELECT sequence FROM journal_checkpoints').get()!.sequence, f.baseline + 2)
     // A source identity restored to an older head must never erase the backup.
     f.secondary.sqlite.exec('UPDATE journal_checkpoints SET sequence=999')
     await assert.rejects(replicateChangeJournal(f.env), /rewound/)
-    assert.equal(f.secondary.sqlite.prepare('SELECT COUNT(*) n FROM journal_entries').get()!.n, 2)
+    assert.equal(f.secondary.sqlite.prepare('SELECT COUNT(*) n FROM journal_entries').get()!.n, f.baseline + 2)
   } finally { f.close() }
 })
 
@@ -124,12 +127,12 @@ test('local WAL mirror survives process restart, retains exact rows and resumes 
     await replicateChangeJournal(f.env)
     const query = async (sql: string) => f.secondary.sqlite.prepare(sql).all()
     const first = await mirrorChangeJournal(file, query)
-    assert.equal(first.entries, 1); assert.equal(first.journalMode, 'wal')
+    assert.equal(first.entries, f.baseline + 1); assert.equal(first.journalMode, 'wal')
     assert.equal(statSync(file).mode & 0o777, 0o600)
-    assert.equal((await mirrorChangeJournal(file, query)).entries, 1)
+    assert.equal((await mirrorChangeJournal(file, query)).entries, f.baseline + 1)
     f.primary.sqlite.exec("UPDATE organizations SET name='Next' WHERE id='org'")
     await replicateChangeJournal(f.env)
-    assert.equal((await mirrorChangeJournal(file, query)).entries, 2)
+    assert.equal((await mirrorChangeJournal(file, query)).entries, f.baseline + 2)
     const db = new DatabaseSync(file)
     try { assert.equal(db.prepare('PRAGMA integrity_check').get()!.integrity_check, 'ok'); assert.equal(db.prepare('PRAGMA synchronous').get()!.synchronous, 2) }
     finally { db.close() }

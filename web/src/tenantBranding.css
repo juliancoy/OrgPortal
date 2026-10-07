@@ -136,3 +136,22 @@
   --selection-bg: #166534;
   --border-hover: #86efac;
 }
+
+
+:root[data-portal-profile='orgportal'] {
+  --primary: #155e59;
+  --primary-2: #0f766e;
+  --primary-bg: #e1f4ee;
+  --primary-hover: #104842;
+  --btn-primary-bg: #155e59;
+  --btn-primary-text: #fff;
+}
+:root[data-portal-profile='orgportal'][data-theme='dark'] {
+  --primary: #8be4cd;
+  --primary-2: #99f6e4;
+  --primary-bg: #153d36;
+  --primary-hover: #99f6e4;
+  --btn-primary-bg: #8be4cd;
+  --btn-primary-text: #102d27;
+}
+[data-portal-profile='orgportal'] .portal-brand img { width: 42px; height: 42px; object-fit: contain; }

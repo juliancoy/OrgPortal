@@ -984,7 +984,13 @@ export function Header() {
           </svg>
         </button>
         <div id="portal-primary-nav" className="portal-nav">
-          {domainTenant && !domainCommunity ? <>
+          {portalProfile.id === 'orgportal' ? <>
+            <NavLink to="/communities">Communities</NavLink>
+            <NavLink to="/orgs" isActive={isOrgDirectoryActive}>Organizations</NavLink>
+            <NavLink to="/events">Events</NavLink>
+            <NavLink to="/people">People</NavLink>
+            {!isGuest && <NavLink to="/chat">Messages</NavLink>}
+          </> : domainTenant && !domainCommunity ? <>
             {domainTenant.features?.includes('events') && <NavLink to="/org-events">{['lifetech', 'baltimore-medtech'].includes(domainTenant.home_org_slug || '') ? 'Events & Calendar' : 'Events'}</NavLink>}
             {hasTenantCalendar(domainTenant) && !['lifetech', 'baltimore-medtech'].includes(domainTenant.home_org_slug || '') && <NavLink to="/calendar" isActive={isCalendarActive}>Calendar</NavLink>}
             {domainTenant.features?.includes('directory') && <NavLink to="/people">People</NavLink>}
@@ -997,7 +1003,7 @@ export function Header() {
             <NavLink to="/people">People</NavLink>
             <NavLink to="/chat">Chat</NavLink>
             <NavLink to="/calendar" isActive={isCalendarActive}>Calendar</NavLink>
-            <a className="portal-nav-link" href="https://codecollective.us/p/">Code Collective portal ↗</a>
+            <a className="portal-nav-link" href="https://orgportal.cc/">OrgPortal ↗</a>
           </> : <>
           <NavLink to="/" isActive={isCivicActive}>
             <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
