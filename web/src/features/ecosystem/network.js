@@ -173,8 +173,9 @@ function render(time=0) {
  frame=0;
  if(simulation&&physicsEnabled()&&simulation.alpha()>simulation.alphaMin()){
   // Fixed 60 Hz integration, at most two steps per frame; discard background catch-up.
-  const steps=lastTick?Math.min(2,Math.floor((time-lastTick)/(1000/60))):1
-  if(steps>0){simulation.tick(steps);lastTick=time;updatePositions()}
+  const step=1000/60,elapsed=lastTick?time-lastTick:step
+  const steps=Math.min(2,Math.floor((elapsed+.001)/step))
+  if(steps>0){simulation.tick(steps);lastTick=lastTick&&elapsed<=2*step?lastTick+steps*step:time;updatePositions()}
  }else lastTick=0;
  const zoom=webgl?camera.zoom:fittedSvgWidth/svgView.w
  const visible=new Set(nodes.filter(n=>n.id===selected||!$('#zoom-sparse').checked||transactionVisibility(recordedCounts.get(n.id)||0,zoom,Number($('#visibility-factor').value))).map(n=>n.id))
