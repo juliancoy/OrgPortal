@@ -4,6 +4,7 @@ import { useAuth } from '../../app/AppProviders'
 import { Header } from '../shell/Header'
 import { Footer } from '../shell/Footer'
 import './platform.css'
+import { ChatGptIntegration, chatGptInstallUrl } from './ChatGptIntegration'
 
 type Community = { id: string; name: string; tagline: string; url: string; features: string[]; logoUrl?: string | null; accentColor?: string | null }
 
@@ -69,9 +70,10 @@ export function PlatformHomePage() {
         <p className="platform-eyebrow">OrgPortal</p>
         <h1 id="platform-title">A place for<br /><span>every community.</span></h1>
         <p className="platform-hero-description">Find organizations, meet people, and make things happen together. Each community brings its own identity. OrgPortal gives you a shared place to connect.</p>
-        <div className="platform-hero-actions"><Link className="btn-primary" to="/communities">Find your community</Link><Link className="btn-secondary" to={role === 'guest' ? '/users/login' : '/orgs'}>{role === 'guest' ? 'Sign in' : 'Your organizations'}</Link></div>
+        <div className="platform-hero-actions"><a className="btn-primary" href={chatGptInstallUrl || '#chatgpt'}>Use OrgPortal with ChatGPT</a><Link className="btn-primary" to="/communities">Find your community</Link><Link className="btn-secondary" to={role === 'guest' ? '/users/login' : '/orgs'}>{role === 'guest' ? 'Sign in' : 'Your organizations'}</Link></div>
         <p className="platform-account-note">One account. Community membership by choice.</p>
       </section>
+      <ChatGptIntegration />
       <CommunitiesPage preview />
       <section className="platform-explore" aria-label="Explore OrgPortal">
         <Link to="/orgs"><strong>Discover organizations</strong><span>Browse public profiles and find groups you care about. →</span></Link>

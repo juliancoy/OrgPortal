@@ -655,6 +655,21 @@ export function eventErrorResponse(error: unknown, env: Env, request?: Request) 
   return Response.json({ error: message }, { status, headers });
 }
 export async function handleEventMcp(request: Request, env: Env, createOrganization?: CreateOrganization, governance?: GovernanceService) {
+  const started = Date.now();
+  const observation = { method: 'unparsed', rpcError: false };
+  let status = 500;
+  try {
+    const response = await handleEventMcpRequest(request, env, observation, createOrganization, governance);
+    status = response.status;
+    return response;
+  } finally {
+    // Deliberately exclude tokens, subjects, arguments, results, URLs and error text.
+    console.info(JSON.stringify({ event: 'orgportal.mcp.request', method: observation.method,
+      status, outcome: status >= 400 || observation.rpcError ? 'error' : 'ok',
+      durationMs: Date.now() - started }));
+  }
+}
+async function handleEventMcpRequest(request: Request, env: Env, observation: { method: string; rpcError: boolean }, createOrganization?: CreateOrganization, governance?: GovernanceService) {
   try {
     const config = mcpConfiguration(env, request);
     const origin = request.headers.get("origin");
@@ -686,7 +701,9 @@ export async function handleEventMcp(request: Request, env: Env, createOrganizat
     let parsedBody: unknown;
     try { parsedBody = JSON.parse(new TextDecoder().decode(bytes)); }
     catch { return new Response("Invalid JSON", { status: 400 }); }
-    const server = new McpServer({ name: config.name ? `${config.name} MCP` : "orgportal-events", version: "1.0.0" });
+    const method = parsedBody && typeof parsedBody === 'object' && 'method' in parsedBody ? parsedBody.method : undefined;
+    observation.method = typeof method === 'string' && ['initialize', 'notifications/initialized', 'tools/list', 'tools/call', 'ping'].includes(method) ? method : 'other';
+    const server = new McpServer({ name: config.name ? `${config.name} MCP` : "orgportal-events", version: "1.1.0", ...(config.name === "OrgPortal" ? { icons: [{ src: "https://orgportal.cc/orgportal.svg", mimeType: "image/svg+xml", sizes: ["any"] }] } : {}) });
     const scopedArgs = (args: unknown) => {
       if (config.organizationId && (!args || typeof args !== 'object' || !('organizationId' in args)
         || args.organizationId !== config.organizationId)) throw new EventIntegrationError(403, 'This MCP connection is limited to its own organization');
@@ -899,13 +916,20 @@ export async function handleEventMcp(request: Request, env: Env, createOrganizat
       const response = await transport.handleRequest(request, { parsedBody });
       // Materialize before closing the stateless transport.
       const body = await response.arrayBuffer();
+      if (response.headers.get('content-type')?.includes('application/json') && body.byteLength) {
+        const message = JSON.parse(new TextDecoder().decode(body));
+        observation.rpcError = Boolean(message.error || message.result?.isError);
+      }
       // SDK 1.x exposes extension metadata only under _meta. Mirror auth policy at
       // the top level for clients following OpenAI's current tool descriptor schema.
       let output: ArrayBuffer | string | null = body.byteLength ? body : null;
       if (response.ok && typeof parsedBody === "object" && parsedBody !== null && "method" in parsedBody && parsedBody.method === "tools/list") {
         const message = JSON.parse(new TextDecoder().decode(body));
         if (Array.isArray(message.result?.tools)) {
-          for (const tool of message.result.tools) tool.securitySchemes = tool._meta?.securitySchemes;
+          for (const tool of message.result.tools) {
+            tool.securitySchemes = tool._meta?.securitySchemes;
+            tool.annotations = { readOnlyHint: false, destructiveHint: false, openWorldHint: false, ...tool.annotations };
+          }
           output = JSON.stringify(message);
         }
       }
