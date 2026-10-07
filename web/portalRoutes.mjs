@@ -24,6 +24,7 @@ const paths = [
   "/ecosystem/network/events",
   "/ecosystem/network/relationships",
   "/ecosystem/network/help",
+  "/ecosystem/network/funding",
   "/resources",
   "/branding",
   "/branding.html",

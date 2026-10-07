@@ -18,6 +18,7 @@ import { tenantHomeAction } from '../../config/tenantHome'
 
 const LocalNewslettersPage = lazy(() => import('../views/LocalNewslettersPage').then(module => ({ default: module.LocalNewslettersPage })))
 const EcosystemNetworkPage = lazy(() => import('../views/EcosystemNetworkPage').then(module => ({ default: module.EcosystemNetworkPage })))
+const SeriesAFundingGapPage = lazy(() => import('../views/SeriesAFundingGapPage').then(module => ({ default: module.SeriesAFundingGapPage })))
 const EcosystemNetworkViews = lazy(() => import('../views/EcosystemNetworkViews').then(module => ({ default: module.EcosystemNetworkViews })))
 const MemberMeetingsPage = lazy(() => import('../views/MemberMeetingsPage').then(module => ({ default: module.MemberMeetingsPage })))
 const NametagsPage = lazy(() => import('../views/NametagsPage').then(module => ({ default: module.NametagsPage })))
@@ -279,6 +280,7 @@ export function createAppRouter() {
           { path: '/ecosystem/network', element: <EcosystemNetworkPage /> },
           { path: '/ecosystem/network/events', element: <EcosystemNetworkViews view="events" /> },
           { path: '/ecosystem/network/relationships', element: <EcosystemNetworkViews view="relationships" /> },
+          { path: '/ecosystem/network/funding', element: <SeriesAFundingGapPage /> },
           { path: '/ecosystem/network/help', element: <EcosystemNetworkViews view="help" /> },
           { path: '/resources', element: <TenantResourcesPage /> },
           { path: '/local/newsletters', element: <LocalNewslettersPage /> },
