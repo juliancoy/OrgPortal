@@ -1,4 +1,4 @@
-import { ensureOrganizationRoom } from './organizationRooms';
+import { ensureOrganizationRoom, ensureEventRoom } from './organizationRooms';
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { buildMetadata } from "./generated/buildMetadata.ts";
@@ -739,23 +739,12 @@ app.post("/api/network/chat/event-room", async (c) => {
   const payload = await readJsonObject(c.req.raw);
   const eventId = cleanString(payload.event_id || payload.eventId, 200);
   if (!eventId) fail(400, "event_id is required");
-  const title = cleanString(payload.title, 255) || "Event comments";
-  const orgId = cleanNullableString(payload.org_id || payload.orgId, 200);
   const existing = await c.env.DB.prepare("SELECT * FROM chat_conversations WHERE kind = 'event_room' AND event_id = ?")
     .bind(eventId)
     .first<ConversationRow>();
 
   const createdAt = nowIso();
-  const conversationId = existing?.id || crypto.randomUUID();
-  if (!existing) {
-    await c.env.DB.prepare(
-      `INSERT INTO chat_conversations
-       (id, kind, title, slug, dm_key, created_by_user_id, org_id, event_id, created_at, updated_at)
-       VALUES (?, 'event_room', ?, ?, NULL, ?, ?, ?, ?, ?)`,
-    )
-      .bind(conversationId, title, cleanSlug(title), user.id, orgId, eventId, createdAt, createdAt)
-      .run();
-  }
+  const conversationId = existing?.id || (await ensureEventRoom(c.env, eventId)).id;
 
   await c.env.DB.prepare(
     `INSERT INTO chat_conversation_members

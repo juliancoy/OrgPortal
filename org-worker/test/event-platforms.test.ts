@@ -112,6 +112,8 @@ test("writes require write scope before consulting database or provider", async 
 });
 test("native event changes preview, apply once, and write OrgPortal events", async () => {
   const db = new EventTestDb();
+  await db.prepare('CREATE TABLE organization_ownerships (organization_id TEXT, owner_user_id TEXT, status TEXT)').run();
+  await db.prepare("INSERT INTO organization_ownerships VALUES('org-one','pidp-user','active')").run();
   const createdRooms: string[] = [];
   const env = { ...authEnv, DB: db, CHAT_ORGANIZATION_ROOMS: {
     async ensureEvent(eventId: string) { createdRooms.push(eventId); return { id: `room-${eventId}`, eventId }; },
