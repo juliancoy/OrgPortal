@@ -5,7 +5,7 @@ import { TimebankDatabase } from './helpers/timebankDatabase';
 import { provisionOrganizationChat, provisionPendingOrganizationChats } from '../src/organizationChat';
 import { ensureOrganizationRoom } from '../../chat-worker/src/organizationRooms';
 
-test('every organization insert provisions one room, with durable retry and rename reconciliation', async () => {
+test('claimed organizations provision one room, with durable retry and rename reconciliation', async () => {
   const org = new TimebankDatabase();
   const chat = new TimebankDatabase();
   try {
@@ -13,11 +13,13 @@ test('every organization insert provisions one room, with durable retry and rena
       org.sqlite.exec(readFileSync(new URL(`../migrations/${file}`, import.meta.url), 'utf8'));
     }
     org.sqlite.exec("INSERT INTO organizations(id,name,slug) VALUES('existing','Existing','existing')");
+    org.sqlite.exec("INSERT INTO organizations(id,name,slug) VALUES('unclaimed','Imported Group','unclaimed')");
     org.sqlite.exec(readFileSync(new URL('../migrations/0062_organization_chat.sql', import.meta.url), 'utf8'));
     chat.sqlite.exec(readFileSync(new URL('../../chat-worker/migrations/0001_chat.sql', import.meta.url), 'utf8'));
     org.sqlite.exec("INSERT INTO organizations(id,name,slug) VALUES('lifetech','LifeTech','lifetech')");
     org.sqlite.exec("INSERT INTO organization_memberships(organization_id,user_id,role) VALUES('lifetech','alice','owner')");
-    assert.equal(org.sqlite.prepare('SELECT count(*) n FROM organization_chat_provisioning').get()!.n, 2);
+    org.sqlite.exec("INSERT INTO organization_ownerships(id,organization_id,owner_user_id,status,started_at) VALUES('own-life','lifetech','alice','active','2026-10-06'),('own-existing','existing','alice','active','2026-10-06')");
+    assert.equal(org.sqlite.prepare('SELECT count(*) n FROM organization_chat_provisioning').get()!.n, 3);
     let unavailable = true;
     const env = {
       DB: org.asD1(),
@@ -26,12 +28,15 @@ test('every organization insert provisions one room, with durable retry and rena
         return ensureOrganizationRoom({ DB: chat.asD1(), CONTACTS_DB: org.asD1() }, id);
       } },
     } as Env;
+    assert.equal(await provisionOrganizationChat(env, 'unclaimed'), false);
+    assert.equal(org.sqlite.prepare("SELECT attempts FROM organization_chat_provisioning WHERE organization_id='unclaimed'").get()!.attempts, 0);
     assert.equal(await provisionOrganizationChat(env, 'lifetech'), false);
     assert.equal(org.sqlite.prepare("SELECT completed_at FROM organization_chat_provisioning WHERE organization_id='lifetech'").get()!.completed_at, null);
     unavailable = false;
     await provisionPendingOrganizationChats(env);
     assert.equal(chat.sqlite.prepare('SELECT count(*) n FROM chat_conversations').get()!.n, 2);
-    assert.equal(org.sqlite.prepare('SELECT count(*) n FROM organization_chat_provisioning WHERE completed_at IS NULL').get()!.n, 0);
+    assert.equal(org.sqlite.prepare('SELECT count(*) n FROM organization_chat_provisioning WHERE completed_at IS NULL').get()!.n, 1);
+    await assert.rejects(() => env.CHAT_ORGANIZATION_ROOMS!.ensure('unclaimed'), /Claim this organization/);
     assert.equal(chat.sqlite.prepare("SELECT role FROM chat_conversation_members WHERE user_id='alice'").get()!.role, 'owner');
     assert.equal(await provisionOrganizationChat(env, 'lifetech'), true);
     assert.equal(chat.sqlite.prepare('SELECT count(*) n FROM chat_conversations').get()!.n, 2);

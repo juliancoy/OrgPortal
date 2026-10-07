@@ -3,6 +3,9 @@ export async function ensureOrganizationRoom(env: { DB: D1Database; CONTACTS_DB?
   const org = await env.CONTACTS_DB.prepare('SELECT id, name, slug FROM organizations WHERE id = ?')
     .bind(organizationId).first<{ id: string; name: string; slug: string }>();
   if (!org) throw new Error('Organization not found');
+  if (!await organizationAllowsChat(env.CONTACTS_DB, org.id)) {
+    throw new HTTPException(403, { message: 'Claim this organization before opening its chat.' });
+  }
   const id = `org-room-${org.id}`;
   const now = new Date().toISOString();
   await env.DB.prepare(`INSERT INTO chat_conversations
@@ -31,10 +34,13 @@ export async function ensureEventRoom(env: { DB: D1Database; CONTACTS_DB?: D1Dat
     'SELECT id, title, slug, host_org_id, host_user_id, event_chat_room_id FROM events WHERE id = ?',
   ).bind(eventId).first<{ id: string; title: string; slug: string; host_org_id: string | null;
     host_user_id: string | null; event_chat_room_id: string | null }>();
-  if (!event) throw new Error('Event not found');
+  if (!event) throw new HTTPException(404, { message: 'Event not found' });
   const existing = await env.DB.prepare("SELECT id FROM chat_conversations WHERE kind = 'event_room' AND event_id = ?")
     .bind(event.id).first<{ id: string }>();
   const id = existing?.id || `event-room-${event.id}`;
+  if (!existing && !await eventAllowsChat(env.CONTACTS_DB, event.id)) {
+    throw new HTTPException(403, { message: 'Claim the host organization before opening event comments.' });
+  }
   const now = new Date().toISOString();
   await env.DB.prepare(`INSERT INTO chat_conversations
     (id, kind, title, slug, created_by_user_id, org_id, event_id, created_at, updated_at)
@@ -44,3 +50,5 @@ export async function ensureEventRoom(env: { DB: D1Database; CONTACTS_DB?: D1Dat
       event.host_org_id, event.id, now, now).run();
   return { id, eventId: event.id };
 }
+import { HTTPException } from 'hono/http-exception';
+import { organizationAllowsChat, eventAllowsChat } from '../../shared/chatEligibility';

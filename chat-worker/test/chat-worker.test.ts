@@ -56,6 +56,8 @@ class FakeStmt {
 
 class FakeD1 {
   organizations: Row[] = [];
+  organizationOwnerships: Row[] = [];
+  events: Row[] = [];
   organizationMemberships: Row[] = [];
   conversations: Row[] = [];
   members: Row[] = [];
@@ -71,6 +73,18 @@ class FakeD1 {
   }
 
   first<T>(sql: string, params: unknown[]): T | null {
+    const owned = (id: unknown) => this.organizationOwnerships.some(row =>
+      row.organization_id === id && row.status === 'active' && String(row.owner_user_id || '').trim());
+    if (sql.includes('SELECT o.id FROM organizations o')) {
+      return (owned(params[0]) ? this.organizations.find(row => row.id === params[0]) as T : null) || null;
+    }
+    if (sql.includes('SELECT e.id FROM events e')) {
+      const event = this.events.find(row => row.id === params[0]);
+      return event && (event.host_org_id ? owned(event.host_org_id) : String(event.host_user_id || '').trim()) ? event as T : null;
+    }
+    if (sql.includes('FROM events WHERE id = ?')) {
+      return this.events.find(row => row.id === params[0]) as T || null;
+    }
     if (sql.includes("FROM organizations WHERE id = ?")) {
       return (this.organizations.find((row) => row.id === params[0]) as T) || null;
     }
@@ -594,6 +608,7 @@ test("messages require membership and persist for listed conversations", async (
 
 test("event room route supports comments, replies, and reactions", async () => {
   const db = new FakeD1();
+  db.events.push({ id: 'event-1', title: 'MedTech in the Hut', slug: 'medtech-in-the-hut', host_user_id: 'user-a', host_org_id: null });
   db.contacts.push({ user_id: "user-a", user_name: "Alice Example", slug: "alice", enabled: 1, photo_url: "https://images.example/alice.jpg" });
   const room = await app.request(
     "https://chat.example.test/api/network/chat/event-room",
@@ -829,6 +844,9 @@ test("organization chat shares one room and enforces current organization member
   assert.equal((await join()).status, 403);
   assert.equal(db.conversations.length, 0);
   db.organizationMemberships.push({ organization_id: "lifetech-id", user_id: "user-a", role: "member", status: "active" });
+  assert.equal((await join()).status, 403);
+  assert.equal(db.conversations.length, 0);
+  db.organizationOwnerships.push({ organization_id: 'lifetech-id', owner_user_id: 'human-owner', status: 'active' });
   const response = await join();
   assert.equal(response.status, 200);
   const { conversation } = await response.json() as { conversation: { id: string; title: string; kind: string } };
@@ -849,4 +867,18 @@ test("organization chat shares one room and enforces current organization member
   assert.equal((await app.request(path, authedInit({ body: "Should not send" }), env(db))).status, 403);
   const listed = await app.request("https://chat.example.test/api/network/chat/conversations", authedInit(), env(db));
   assert.deepEqual((await listed.json() as { conversations: unknown[] }).conversations, []);
+});
+
+test('event room requests cannot provision an unclaimed imported organization by spoofing the host', async () => {
+  const db = new FakeD1();
+  db.organizations.push({ id: 'imported', name: 'Imported group', slug: 'imported' });
+  db.events.push({ id: 'imported-event', title: 'Imported event', slug: 'imported-event', host_org_id: 'imported', host_user_id: null });
+  const request = () => app.request('https://chat.example.test/api/network/chat/event-room',
+    authedInit({ event_id: 'imported-event', org_id: 'claimed-group', title: 'Spoofed title' }), env(db));
+  assert.equal((await request()).status, 403);
+  assert.equal(db.conversations.length, 0);
+  db.organizationOwnerships.push({ organization_id: 'imported', owner_user_id: 'human-owner', status: 'active' });
+  assert.equal((await request()).status, 201);
+  assert.equal(db.conversations[0].org_id, 'imported');
+  assert.equal(db.conversations[0].title, 'Imported event comments');
 });
