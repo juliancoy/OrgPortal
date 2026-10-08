@@ -42,7 +42,7 @@ export function mergePortalEvidence(base, organizations, records, refreshedAt = 
  data.portalUpdatedAt=refreshedAt;data.portalRecordCount=known.size
  return data
 }
-export async function loadPortalEvidence(base, fetcher = fetch, prefix='/api/org/api/network') {
+export async function loadPortalEvidence(base, fetcher = fetch, prefix='/api/org/api/network',merge=mergePortalEvidence) {
  const get=async path=>{const response=await fetcher(prefix+path);if(!response.ok)throw new Error(`Public evidence unavailable (${response.status})`);return response.json()}
  const directory=[]
  for(let offset=0;;offset+=500){
@@ -70,7 +70,7 @@ export async function loadPortalEvidence(base, fetcher = fetch, prefix='/api/org
   while(queue.length){const org=queue.shift();let offset=0;do{const result=await get('/orgs/public/'+encodeURIComponent(org.slug)+`/support?offset=${offset}`);if(!Array.isArray(result.records) || (result.nextRecordOffset!==null && (!Number.isInteger(result.nextRecordOffset) || result.nextRecordOffset<=offset)))throw new Error('Support evidence is incomplete');records.push(...result.records);offset=result.nextRecordOffset;}while(offset!==null)}
  }))
  }
- return mergePortalEvidence(base,directory,records)
+ return merge(base,directory,records)
 }
 
 export function financialNodeAmounts(data, {includeCapitalization = false} = {}) {

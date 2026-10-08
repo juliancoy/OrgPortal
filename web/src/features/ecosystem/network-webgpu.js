@@ -6,6 +6,7 @@ import { applyFundHierarchy, foldFundNodes, financialNodePies, pieLabel } from '
 import { createNetworkGPU, curvePoints } from './webgpu-renderer.js'
 import { assignEdgeCurvature } from './ecosystem-physics.js'
 import { createNetworkLayout } from './network-layout.js'
+import { prepareNetworkData } from './network-data.js'
 import { organizationPreview, relationshipPreview, networkPreviewSummaries } from './ecosystem-view.js'
 import { loadPortalEvidence, graphRelationships, financialNodeAmounts, financialNodeRadius } from './portal-ecosystem.js'
 import { refreshPublicReport } from '../../data/publicOrganization/cache'
@@ -45,7 +46,7 @@ const selectedCategories = () => new Set([...root.querySelectorAll('[name=node-c
 const selectedRelationships = () => new Set([...root.querySelectorAll('[name=relationship]:checked')].map(c=>c.value))
 const host = $('#network-canvas'), labels = $('#network-labels'), status = $('#network-status')
 let fittedWidth=1, recordedCounts=new Map()
-let previewSummaries, data, selected = null, renderer, canvas, nodes=[], edges=[], labelItems=[], frame=0
+let preparedData, previewSummaries, data, selected = null, renderer, canvas, nodes=[], edges=[], labelItems=[], frame=0
 let inspectorKey=null, simulation, fitted=false, geometryDirty=true, visibilityKey=null, visible=new Set(), visibleEdges=new Set(), labelPriority=[]
 const savedPositions=new Map()
 const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)')
@@ -74,7 +75,7 @@ function bindNodePreview(button,node) {
 function select(id) {
  let org = data.organizations.find(o=>o.id===id); if (!org) return
  if(org.administratorId){id=org.administratorId;org=data.organizations.find(o=>o.id===id);if(!org)return}
- previewSummaries=networkPreviewSummaries(data)
+ previewSummaries=preparedData?.data===data?preparedData.summaries:networkPreviewSummaries(data)
  selected = id; inspectorKey='node:'+id; $('#neighbors').disabled=false
  $('#network-tooltip').hidden=true
  $('#network-detail').innerHTML = '<button type="button" data-unpin-node aria-label="Close pinned organization">Close</button>'+organizationPreview(org,previewSummaries); rewriteLinks();if(matchMedia('(max-width:900px)').matches){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
@@ -99,12 +100,13 @@ function search() {
 function rebuild() {
  if (!data || !gpuReady) return
  inspectorKey=null
- previewSummaries=networkPreviewSummaries(data)
+ previewSummaries=preparedData?.data===data?preparedData.summaries:networkPreviewSummaries(data)
  simulation?.stop()
  nodes.forEach(n=>savedPositions.set(n.id,{x:n.x,y:n.y,vx:n.vx,vy:n.vy}))
  visibilityKey=null;geometryDirty=true;labelPriority=[]
  const cats=selectedCategories(), rels=selectedRelationships(), context=$('#include-context').checked
- const graphData=foldFundNodes(data), pies=financialNodePies(data,{includeCapitalization:context})
+ const graphData=preparedData?.data===data?preparedData.folded:foldFundNodes(data)
+ const pies=preparedData?.data===data?(context?preparedData.contextPies:preparedData.summaries.pies):financialNodePies(data,{includeCapitalization:context})
  let visible=graphData.organizations.filter(n=>cats.has(n.category))
  let visibleIds=new Set(visible.map(n=>n.id))
  const moneyOnly=$('#network-view').value==='money'
@@ -137,7 +139,8 @@ function rebuild() {
 function fit(){
  const aspect=host.clientWidth/Math.max(1,host.clientHeight),xs=nodes.map(n=>n.x),ys=nodes.map(n=>n.y)
  const minX=nodes.length?Math.min(...xs):0,maxX=nodes.length?Math.max(...xs):0,minY=nodes.length?Math.min(...ys):0,maxY=nodes.length?Math.max(...ys):0
- const height=Math.max(maxY-minY+120,(maxX-minX+120)/aspect,200),width=height*aspect
+ const padding=Math.max(120,(maxY-minY)*.12,(maxX-minX)*.12)
+ const height=Math.max(maxY-minY+padding,(maxX-minX+padding)/aspect,200),width=height*aspect
  fittedWidth=width;view={x:(minX+maxX-width)/2,y:(minY+maxY-height)/2,w:width,h:height};requestRender()
 }
 function render(time=0) {
@@ -241,7 +244,7 @@ async function start(){
   for(const [id,factor] of [['#zoom-in',1.25],['#zoom-out',.8]]) $(id).addEventListener('click',()=>zoomGPU(factor))
   $('#network-reset').addEventListener('click',()=>{selected=null;inspectorKey=null;fitted=false;for(const name of ['attraction','repulsion','proximity']){$('#'+name).value='1';$('#'+name+'-value').textContent='1.0'}$('#live-physics').checked=!reducedMotion.matches;root.querySelectorAll('[name=node-category],[name=relationship]').forEach(c=>c.checked=true);$('#network-view').value='all';$('#include-context').checked=false;$('#hide-isolated').checked=true;$('#scale-node-finances').checked=true;$('#scale-edge-quantity').checked=true;$('#zoom-sparse').checked=false;$('#visibility-factor').value='4';$('#visibility-factor-value').textContent='4';$('#neighbors').checked=false;$('#neighbors').disabled=true;$('#network-search').value='';$('#network-detail').innerHTML='<h2>Select an organization</h2><p>Search or select a graph label to explore its evidence.</p>';history.replaceState(history.state,'',location.pathname);search();rebuild()})
   const initial=new URL(location.href).searchParams.get('org');if(initial&&data.organizations.some(n=>n.id===initial)){select(initial)}else rebuild()
-  loadPortalEvidence(data, cachedEvidenceFetch,apiPrefix).then(updated=>{if(disposed)return;data=applyFundHierarchy(mergeNetworkHistory(updated,historyData));search();if(selected)select(selected);else rebuild();$('#network-source').textContent=(usingOfflineCopy?'Offline · last checked ':'Checked ')+new Date(oldestCheck).toLocaleString()}).catch(()=>{if(disposed)return;$('#network-source').textContent='Saved public evidence · refresh unavailable'})
+  loadPortalEvidence(data, cachedEvidenceFetch,apiPrefix,(base,directory,records)=>prepareNetworkData(base,directory,records,historyData,abort.signal)).then(prepared=>{if(disposed)return;preparedData=prepared;data=prepared.data;search();if(selected)select(selected);else rebuild();$('#network-source').textContent=(usingOfflineCopy?'Offline · last checked ':'Checked ')+new Date(oldestCheck).toLocaleString()}).catch(()=>{if(disposed)return;$('#network-source').textContent='Saved public evidence · refresh unavailable'})
  }catch(error){if(disposed)return;status.textContent=error.message || 'WebGPU network unavailable.';host.hidden=true;console.error(error)}
 }
 const media=matchMedia('(max-width:900px)')

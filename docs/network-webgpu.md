@@ -25,3 +25,5 @@ The default graph uses `canvas-renderer.js` to batch edge paths, arrowheads, nod
 `node scripts/check-network-longevity.mjs` verifies a delayed, paginated 5,000-organization directory refresh, 65 seconds of repeated zoom interaction, pin/reload/unpin, mobile controls, and the absence of multi-second UI stalls on isolated public fixtures.
 
 Directory refresh uses precomputed ID/name/website indexes and funding records indexed by endpoint and direct fund administrator. It preserves ambiguous-match handling, exact-ID precedence, and separate received/disbursed totals without rescanning the entire directory for every record.
+
+`network-data.worker.js` performs full-directory reconciliation, history merging, and funding-summary preparation. Its cached summaries and folded graph are reused by the UI controller; the short-lived worker terminates after preparation or when navigation aborts it.
