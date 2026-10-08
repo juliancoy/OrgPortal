@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { OnboardingPage } from '../../views/OnboardingPage'
 import { InlineProfileField } from './InlineProfileField'
 
 type Availability = { public: boolean; sharing_required?: boolean; slots: string[] }
@@ -41,7 +42,8 @@ export function ProfileAvailability({ slug, owner, profilePublic, token }: { slu
       const response = await fetch(url, { method:'PUT', headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'}, body:JSON.stringify({public:value==='public'}) })
       if (!response.ok) throw Error('Unable to save availability visibility.')
       setData(await response.json())
-    }}><span>{data.public ? 'Public' : 'Hidden'}</span></InlineProfileField><p className="muted">{!data.public ? 'Only you can see your availability here.' : !profilePublic ? 'Availability is hidden while your profile is private.' : 'People who have shared their own availability can see your saved availability for the next 30 days.'}</p><Link to="/availability">Update my availability</Link></>}
-    {error ? <p role="status">{error} <button type="button" onClick={()=>setRetry(value=>value+1)}>Retry</button></p> : !data ? <p className="muted">Loading availability…</p> : <><p className="muted">Next 30 days · Times in {timezone}</p>{days.size ? <dl>{[...days].map(([key,day])=><div key={key} style={{marginBottom:12}}><dt><strong>{day.label}</strong></dt><dd style={{marginLeft:0}}>{day.ranges.map(range=>`${time(range.start)}–${time(range.end)}`).join(', ')}</dd></div>)}</dl> : <p className="muted">No upcoming availability has been saved.</p>}</>}
+    }}><span>{data.public ? 'Public' : 'Hidden'}</span></InlineProfileField><p className="muted">{!data.public ? 'Only you can see your availability here.' : !profilePublic ? 'Availability is hidden while your profile is private.' : 'People who have shared their own availability can see your saved availability for the next 30 days.'}</p></>}
+    {owner && <OnboardingPage availabilityOnly />}
+    {error ? <p role="status">{error} <button type="button" onClick={()=>setRetry(value=>value+1)}>Retry</button></p> : owner ? null : !data ? <p className="muted">Loading availability…</p> : <><p className="muted">Next 30 days · Times in {timezone}</p>{days.size ? <dl>{[...days].map(([key,day])=><div key={key} style={{marginBottom:12}}><dt><strong>{day.label}</strong></dt><dd style={{marginLeft:0}}>{day.ranges.map(range=>`${time(range.start)}–${time(range.end)}`).join(', ')}</dd></div>)}</dl> : <p className="muted">No upcoming availability has been saved.</p>}</>}
   </section>
 }
