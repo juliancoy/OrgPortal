@@ -8,6 +8,7 @@ import { EventCompanyVotes } from '../../components/EventCompanyVotes'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { CalendarPlus, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, MapPinned, Pencil, RotateCcw, X, ZoomIn, ZoomOut } from 'lucide-react'
+import { externalEventListings } from '../../utils/externalEventListings'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
 import { downloadIcsEvent, googleCalendarUrl, outlookCalendarUrl } from '../../utils/calendar'
 import { useAuth } from '../../../app/AppProviders'
@@ -50,6 +51,9 @@ type PublicEvent = {
   location?: string | null
   source_url?: string | null
   image_url?: string | null
+  social_title?: string | null
+  social_description?: string | null
+  social_image_url?: string | null
   media?: EventMediaItem[]
   links?: EventLinkItem[]
   organization_name?: string | null
@@ -427,10 +431,10 @@ export function PublicEventPage() {
   useEffect(() => {
     if (!event) return
     setSeoMeta({
-      title: `${event.title} • Org Portal`,
-      description: summary(event.description),
+      title: event.social_title || externalEventListings(event, window.location.origin)[0]?.title || event.title,
+      description: summary(event.social_description || externalEventListings(event, window.location.origin)[0]?.description || event.description),
       canonicalUrl: eventUrl(event.slug),
-      imageUrl: event.image_url || undefined,
+      imageUrl: event.social_image_url || externalEventListings(event, window.location.origin)[0]?.image_url || event.image_url || undefined,
       type: 'article',
     })
   }, [event])
@@ -513,7 +517,7 @@ export function PublicEventPage() {
   }, [eventChatMessages])
 
   const mediaItems = event?.media || []
-  const eventLinks = event?.links || []
+  const eventLinks = event ? externalEventListings(event, window.location.origin) : []
   const selectedMedia = selectedMediaIndex >= 0 ? mediaItems[selectedMediaIndex] : null
   const mediaRailRef = useRef<HTMLDivElement>(null)
   const galleryStageRef = useRef<HTMLDivElement>(null)
@@ -676,6 +680,12 @@ export function PublicEventPage() {
 
   return (
     <article className={`public-event-page${lifeTech ? ' lifetech-event-page' : ''}`} style={lifeTech ? { '--event-brand-accent': tenant.accent_color, '--event-brand-navy': brand.themeColor } as CSSProperties : undefined}>
+      {eventLinks.length ? <nav className="public-event-listing-banner" aria-label="External event listings">
+        {eventLinks.map(link => <a key={link.url} href={link.url}>
+          <span>View this event on {linkHost(link.url)}</span>
+          <ExternalLink size={20} aria-hidden="true" />
+        </a>)}
+      </nav> : null}
       <div className="public-event-layout public-event-luma-layout">
         <main className="public-event-main">
           <section className="public-event-hero">
@@ -760,35 +770,6 @@ export function PublicEventPage() {
             </section>
           ) : null}
           <EventCompanyVotes key={event.id} eventId={event.id} />
-          {eventLinks.length > 0 ? (
-            <section className="portal-card public-event-links" aria-labelledby="event-links-title">
-              <div className="public-event-card-heading">
-                <p className="public-event-eyebrow">Related Links</p>
-                <h2 id="event-links-title">Event Links</h2>
-              </div>
-              <div className="public-event-link-list">
-                {eventLinks.map((link) => (
-                  <a key={link.id || link.url} className={`public-event-link-card${link.image_url ? '' : ' public-event-link-card-text-only'}`} href={link.url} target="_blank" rel="noreferrer">
-                    {link.image_url ? (
-                      <img src={link.image_url} alt="" loading="lazy" decoding="async" />
-                    ) : null}
-                    <span className="public-event-link-copy">
-                      <span className="public-event-link-label">{link.label}</span>
-                      <strong>{link.title || linkHost(link.url)}</strong>
-                      {link.description ? <span>{link.description}</span> : null}
-                      <span className="public-event-link-url">{linkHost(link.url)} <ExternalLink size={15} aria-hidden="true" /></span>
-                    </span>
-                  </a>
-                ))}
-              </div>
-            </section>
-          ) : event.source_url ? (
-            <p style={{ margin: 0, overflowWrap: 'anywhere' }}>
-              <a href={event.source_url} target="_blank" rel="noreferrer">
-                Source / RSVP
-              </a>
-            </p>
-          ) : null}
       <section className="portal-card public-event-chat">
         <div className="public-event-card-heading">
           <p className="public-event-eyebrow">Conversation</p>

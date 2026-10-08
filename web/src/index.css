@@ -9689,3 +9689,23 @@ textarea:focus {
 .public-calendar-view-switch button[aria-pressed="true"] { background:var(--primary); color:var(--on-primary, #fff); border-color:var(--primary); }
 .public-calendar-view-switch button:focus-visible { outline:2px solid var(--primary); outline-offset:3px; }
 .public-calendar-page .public-calendar-day-event { white-space:normal; overflow:visible; overflow-wrap:anywhere; }
+
+.public-event-listing-banner {
+  background: #e00000;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.public-event-listing-banner a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 24px;
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.public-event-listing-banner a:hover { background: #b80000; }
+.public-event-listing-banner a:focus-visible { outline: 3px solid #fff; outline-offset: -5px; }
