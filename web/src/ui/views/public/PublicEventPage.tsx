@@ -28,6 +28,7 @@ type PublicEvent = {
   image_url?: string | null
   organization_name?: string | null
   host_org_name?: string | null
+  host_org_id?: string | null
 }
 
 type PublicEventChatMessage = {
@@ -270,7 +271,8 @@ export function PublicEventPage() {
       </p>
       {event.location ? <p style={{ margin: 0, overflowWrap: 'anywhere' }}><strong>Location:</strong> {event.location}</p> : null}
       <EventRegistration key={`${event.id}:${user?.id || 'guest'}:${Boolean(token)}`}
-        eventId={event.id} slug={event.slug} token={token} saveToCalendar={saveToCalendar} />
+        eventId={event.id} slug={event.slug} token={token} saveToCalendar={saveToCalendar}
+        organizationName={event.host_org_id ? event.organization_name || event.host_org_name : null} />
       {event.image_url ? (
         <img
           src={event.image_url}

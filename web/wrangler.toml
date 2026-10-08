@@ -12,3 +12,5 @@ binding = "ASSETS"
 # PIDP_API_ORIGIN = "https://id.codecollective.us"
 GOVERNANCE_API_ORIGIN = ""
 PIDP_API_ORIGIN = "https://id.codecollective.us"
+# Required when the standalone frontend proxies event registration and email routes.
+ORG_API_ORIGIN = ""

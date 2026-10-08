@@ -1,0 +1,12 @@
+# Local development only. Use Wrangler secrets for deployed values.
+EMAIL_GOOGLE_CLIENT_ID=
+EMAIL_GOOGLE_CLIENT_SECRET=
+EMAIL_GOOGLE_REDIRECT_URI=
+# Base64 of exactly 32 random bytes; keep stable to decrypt existing connections.
+EMAIL_TOKEN_ENCRYPTION_KEY=
+# A separate high-entropy secret, at least 32 characters; keep stable for unsubscribe links.
+EMAIL_UNSUBSCRIBE_SECRET=
+EMAIL_ALLOWED_SENDERS=julian@codecollective.us
+EMAIL_POSTAL_ADDRESS=
+EMAIL_DAILY_LIMIT=250
+EMAIL_SENDING_ENABLED=false

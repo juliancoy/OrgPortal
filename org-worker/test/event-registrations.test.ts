@@ -15,11 +15,15 @@ class Statement {
 function setup() {
   const database = new DatabaseSync(':memory:');
   database.exec('PRAGMA foreign_keys = ON');
-  for (const name of ['0001_contact_pages', '0002_org_event_directories', '0018_event_registrations']) {
+  for (const name of ['0001_contact_pages', '0002_org_event_directories', '0018_event_registrations', '0019_email_campaigns']) {
     database.exec(readFileSync(new URL(`../migrations/${name}.sql`, import.meta.url), 'utf8'));
   }
   database.exec("INSERT INTO events (id, ingest_key, title, slug) VALUES ('event-1', 'one', 'First event', 'first-event'), ('event-2', 'two', 'Second event', 'second-event')");
-  const env = { DB: { prepare: (sql: string) => new Statement(database.prepare(sql)) }, PIDP_BASE_URL: 'https://identity.test' } as unknown as Env;
+  const env = { DB: { prepare: (sql: string) => new Statement(database.prepare(sql)), batch: async (statements: Statement[]) => {
+    const results = [];
+    for (const statement of statements) results.push(await statement.run());
+    return results;
+  } }, PIDP_BASE_URL: 'https://identity.test' } as unknown as Env;
   const request = (method = 'GET', user?: string, eventId = 'event-1', body?: string) => app.request(
     `https://org.test/api/network/events/${eventId}/attendance`,
     { method, headers: user ? { Authorization: `Bearer ${user}` } : {}, body }, env,

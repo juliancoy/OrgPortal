@@ -118,6 +118,12 @@ python3 scripts/push_org_network_feed.py
 
 The endpoint is idempotent by organization source URL and event ingest key, so rerunning the command updates the imported records instead of duplicating them.
 
+## Email campaigns
+
+The portal's `/email` page manages Google Workspace campaigns. Registrations support separate event-update and organization-announcement subscriptions. The existing minute cron drains a durable D1 email outbox alongside the independent UBI task.
+
+Follow [the Google Workspace setup and deployment guide](../docs/deployment/email-campaigns.md) before enabling sending. Sender OAuth secrets, migration `0019_email_campaigns.sql`, and the frontend org API proxy are required. Sending defaults to disabled.
+
 ## Checks
 
 ```sh
