@@ -4,11 +4,12 @@ import { relationshipColor } from './relationship-colors.js'
 import {mergeNetworkHistory} from './network-history.js'
 import { applyFundHierarchy, foldFundNodes, financialNodePies, pieLabel } from './fund-pies.js'
 import { createNetworkGPU, curvePoints } from './webgpu-renderer.js'
-import { layoutNetwork, assignEdgeCurvature } from './ecosystem-physics.js'
+import { assignEdgeCurvature } from './ecosystem-physics.js'
+import { createNetworkLayout } from './network-layout.js'
 import { organizationPreview, relationshipPreview, networkPreviewSummaries } from './ecosystem-view.js'
 import { loadPortalEvidence, graphRelationships, financialNodeAmounts, financialNodeRadius } from './portal-ecosystem.js'
 import { refreshPublicReport } from '../../data/publicOrganization/cache'
-export function mountEcosystemNetworkGPU(root, {dataUrl, historyUrl, apiPrefix, portalPath}) {
+export function mountEcosystemNetworkGPU(root, {dataUrl, historyUrl, apiPrefix, portalPath, renderer: rendererKind = 'webgpu'}) {
 const abort = new AbortController(); let disposed=false, resizeObserver;
 let oldestCheck=Infinity, usingOfflineCopy=false
 const cachedPublicJson = async (url, validate) => {
@@ -45,11 +46,11 @@ const selectedRelationships = () => new Set([...root.querySelectorAll('[name=rel
 const host = $('#network-canvas'), labels = $('#network-labels'), status = $('#network-status')
 let fittedWidth=1, recordedCounts=new Map()
 let previewSummaries, data, selected = null, renderer, canvas, nodes=[], edges=[], labelItems=[], frame=0
-let inspectorKey=null, simulation, lastTick=0, fitted=false, renderDirty=true, geometryDirty=true, visibilityKey=null, visible=new Set(), visibleEdges=new Set(), labelPriority=[]
+let inspectorKey=null, simulation, fitted=false, geometryDirty=true, visibilityKey=null, visible=new Set(), visibleEdges=new Set(), labelPriority=[]
 const savedPositions=new Map()
 const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)')
 const physicsEnabled=()=>!document.hidden&&!reducedMotion.matches&&$('#live-physics').checked
-function motionChange(){lastTick=0;requestRender()}
+function motionChange(){simulation?.motion(physicsEnabled());requestRender()}
 document.addEventListener('visibilitychange',motionChange,{signal:abort.signal})
 reducedMotion.addEventListener('change',motionChange,{signal:abort.signal})
 let gpuReady = false, view = { x: -400, y: -400, w: 800, h: 800 }
@@ -102,7 +103,6 @@ function rebuild() {
  simulation?.stop()
  nodes.forEach(n=>savedPositions.set(n.id,{x:n.x,y:n.y,vx:n.vx,vy:n.vy}))
  visibilityKey=null;geometryDirty=true;labelPriority=[]
- lastTick=0
  const cats=selectedCategories(), rels=selectedRelationships(), context=$('#include-context').checked
  const graphData=foldFundNodes(data), pies=financialNodePies(data,{includeCapitalization:context})
  let visible=graphData.organizations.filter(n=>cats.has(n.category))
@@ -123,14 +123,10 @@ function rebuild() {
  nodes=visible.map(n=>({...n,...savedPositions.get(n.id),financialAmount:amounts.get(n.id) ?? null,financialPie:pies.get(n.id) || null})); edges=edges.map(e=>({...e,quantityWidth:widths.get(e.id) ?? 1.4}))
  const scaleFinances=$('#scale-node-finances').checked
  nodes.forEach(n=>{n.renderRadius=financialNodeRadius(scaleFinances?n.financialAmount:null)})
- status.textContent=`${nodes.length} organizations · ${edges.length} links · WebGPU`
+ status.textContent=`${nodes.length} organizations · ${edges.length} links`
  labels.replaceChildren();labelItems=[]
- const classKeys=Object.keys(colors), clusters=classKeys.length, spread=230
- const center=n=>{const i=classKeys.indexOf(n.category),a=i/clusters*Math.PI*2;return {x:Math.cos(a)*spread,y:Math.sin(a)*spread}}
- simulation=layoutNetwork(nodes,edges,radius,center,forceOptions())
+ simulation=createNetworkLayout(nodes,edges,forceOptions(),physicsEnabled(),()=>{geometryDirty=true;requestRender()})
  assignEdgeCurvature(edges)
- // A short bounded warmup provides a useful first frame without blocking for convergence.
- if(!fitted)simulation.tick(8)
  for(const n of nodes){
   const button=document.createElement('button');button.type='button';button.textContent=n.name;button.title=`${n.name} · ${financialLabel(n)}`
   if(n.financialPie){button.dataset.fundingSlices=String(n.financialPie.slices.length);button.dataset.fundingTotal=String(n.financialPie.total)}
@@ -147,14 +143,6 @@ function fit(){
 function render(time=0) {
  frame=0;
  if(!gpuReady)return;
- if(simulation&&physicsEnabled()&&simulation.alpha()>simulation.alphaMin()){
-  // Cap active simulation and geometry work at 30 Hz. Never catch up a stalled tab.
-  const step=1000/30,elapsed=lastTick?time-lastTick:step
-  const steps=Math.min(1,Math.floor((elapsed+.001)/step))
-  if(!steps&&!renderDirty){requestRender(false);return}
-  if(steps>0){simulation.tick(steps);geometryDirty=true;lastTick=lastTick&&elapsed<=step*2?lastTick+steps*step:time;}
- }else lastTick=0;
- renderDirty=false
  const zoom=fittedWidth/view.w
  const key=[zoom,selected,$('#zoom-sparse').checked,$('#visibility-factor').value].join('|')
  const visibilityChanged=key!==visibilityKey
@@ -178,9 +166,8 @@ function render(time=0) {
   item.button.hidden=!visible.has(item.n.id)||p.z>1||Math.abs(p.x)>1||Math.abs(p.y)>1||(overlapping&&item.n.id!==selected)
   if(!item.button.hidden){item.button.style.left=`${x}px`;item.button.style.top=`${y}px`;positions.push({x,y,width})}
  }
- if(simulation&&physicsEnabled()&&simulation.alpha()>simulation.alphaMin())requestRender(false)
 }
-function requestRender(force=true){if(force!==false)renderDirty=true;if(!disposed&&!frame)frame=requestAnimationFrame(render)}
+function requestRender(){if(!disposed&&!frame)frame=requestAnimationFrame(render)}
 function updatePositions(){if(gpuReady)renderer.update(nodes,edges,visible,visibleEdges,selected,colors,relationshipColor)}
 function cursorPosition(event) {
  const rect=host.getBoundingClientRect()
@@ -194,8 +181,10 @@ function zoomGPU(factor, event) {
  view.x=worldX-cursor.x*view.w;view.y=worldY-cursor.y*view.h;requestRender()
 }
 async function initGPU(){
- canvas=document.createElement('canvas');canvas.style.cssText='width:100%;height:100%;display:block;touch-action:none;cursor:grab';canvas.setAttribute('aria-label','Native WebGPU organization network');canvas.dataset.renderer='webgpu';host.prepend(canvas)
- renderer=await createNetworkGPU(canvas,message=>{if(disposed)return;console.error(message);gpuReady=false;simulation?.stop();cancelAnimationFrame(frame);frame=0;status.textContent='WebGPU graphics were lost. Reload to retry, or use the original Graph view.'})
+ canvas=document.createElement('canvas');canvas.style.cssText='width:100%;height:100%;display:block;touch-action:none;cursor:grab';canvas.setAttribute('aria-label',rendererKind==='canvas'?'Organization network':'Native WebGPU organization network');canvas.dataset.renderer=rendererKind;host.prepend(canvas)
+ if(rendererKind==='canvas') {
+  const {createNetworkCanvasWorker}=await import('./canvas-renderer-client.js');renderer=createNetworkCanvasWorker(canvas)
+ } else renderer=await createNetworkGPU(canvas,message=>{if(disposed)return;console.error(message);gpuReady=false;simulation?.stop();cancelAnimationFrame(frame);frame=0;status.textContent='WebGPU graphics were lost. Reload to retry, or use the original Graph view.'})
  if(disposed){renderer.dispose();return}gpuReady=true
  const resize=()=>{const width=host.clientWidth,height=host.clientHeight;renderer.resize(width,height);if(fitted){const nextHeight=view.w/(width/Math.max(1,height));view.y+=(view.h-nextHeight)/2;view.h=nextHeight;requestRender()}}
  resize();resizeObserver=new ResizeObserver(resize);resizeObserver.observe(host)
@@ -239,11 +228,11 @@ async function start(){
   $('#network-search').addEventListener('input',search)
   root.querySelectorAll('[name=node-category],[name=relationship],#include-context,#neighbors,#network-view,#hide-isolated,#scale-node-finances,#scale-edge-quantity').forEach(el=>el.addEventListener('change',rebuild))
   $('#live-physics').checked=!reducedMotion.matches
-  $('#live-physics').addEventListener('change',()=>{simulation?.alpha(Math.max(simulation.alpha(),.15));motionChange()})
+  $('#live-physics').addEventListener('change',()=>{simulation?.motion(physicsEnabled(),true);requestRender()})
   for(const name of ['attraction','repulsion','proximity'])$('#'+name).addEventListener('input',()=>{
    $('#'+name+'-value').textContent=Number($('#'+name).value).toFixed(1)
    simulation?.stop()
-   simulation=layoutNetwork(nodes,edges,radius,()=>({x:0,y:0}),forceOptions())
+   simulation=createNetworkLayout(nodes,edges,forceOptions(),physicsEnabled(),()=>{geometryDirty=true;requestRender()})
    motionChange()
   })
   $('#zoom-sparse').addEventListener('change',requestRender)

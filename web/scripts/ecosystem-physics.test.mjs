@@ -114,3 +114,15 @@ test('crossings attract children while shared endpoints do not',()=>{
  forceCrossingAttraction([{source:a,target:c},{source:a,target:e}],()=>10)(1)
  assert.equal(e.vx,0)
 })
+
+test('distant endpoints do not expand force searches into empty world space',()=>{
+ const node=(x,y)=>({x,y,vx:0,vy:0})
+ const a=node(-1e9,-1e9),b=node(1e9,1e9),near=node(0,5),far=node(0,1000)
+ forceNodeEdgeRepulsion([a,b,near,far],[{source:a,target:b}],()=>10)(1)
+ assert.ok(near.vy>0)
+ assert.equal(far.vy,0)
+ const c=node(-1e9,1e9),d=node(1e9,-1e9)
+ forceCrossingAttraction([{source:a,target:b},{source:c,target:d}],()=>10)(1)
+ assert.ok(b.vx<0&&d.vx<0&&d.vy>0)
+ assert.ok([a,b,c,d,near,far].every(n=>Number.isFinite(n.vx)&&Number.isFinite(n.vy)))
+})

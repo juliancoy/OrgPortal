@@ -21,18 +21,21 @@ export function forceNodeEdgeRepulsion(nodes, links, radius) {
  return alpha=>{
   const cellSize=100, grid=new Map()
   for(const node of nodes) {
-   const key=`${Math.floor(node.x/cellSize)},${Math.floor(node.y/cellSize)}`
-   if(!grid.has(key))grid.set(key,[])
-   grid.get(key).push(node)
+   const x=Math.floor(node.x/cellSize),y=Math.floor(node.y/cellSize),key=`${x},${y}`
+   if(!grid.has(key))grid.set(key,{x,y,nodes:[]})
+   grid.get(key).nodes.push(node)
   }
   const padding=Math.max(0,...nodes.map(radius))+16
   for(const {source:a,target:b} of links) {
    const dx=b.x-a.x,dy=b.y-a.y,lengthSquared=dx*dx+dy*dy
    if(lengthSquared<1e-6)continue
    const length=Math.sqrt(lengthSquared)
-   for(let x=Math.floor((Math.min(a.x,b.x)-padding)/cellSize);x<=Math.floor((Math.max(a.x,b.x)+padding)/cellSize);x++)
-    for(let y=Math.floor((Math.min(a.y,b.y)-padding)/cellSize);y<=Math.floor((Math.max(a.y,b.y)+padding)/cellSize);y++)
-     for(const node of grid.get(`${x},${y}`)||[]) {
+   const minX=Math.floor((Math.min(a.x,b.x)-padding)/cellSize),maxX=Math.floor((Math.max(a.x,b.x)+padding)/cellSize)
+   const minY=Math.floor((Math.min(a.y,b.y)-padding)/cellSize),maxY=Math.floor((Math.max(a.y,b.y)+padding)/cellSize)
+   // Scan occupied cells only. A long edge must not walk millions of empty cells.
+   for(const {x,y,nodes:bucket} of grid.values()) {
+    if(x<minX||x>maxX||y<minY||y>maxY)continue
+    for(const node of bucket) {
       if(node===a||node===b)continue
       const t=((node.x-a.x)*dx+(node.y-a.y)*dy)/lengthSquared
       if(t<=0||t>=1)continue
@@ -46,6 +49,7 @@ export function forceNodeEdgeRepulsion(nodes, links, radius) {
       a.vx-=fx*(1-t);a.vy-=fy*(1-t)
       b.vx-=fx*t;b.vy-=fy*t
      }
+   }
   }
  }
 }
@@ -57,23 +61,13 @@ export function forceCrossingAttraction(links,radius) {
  return alpha=>{
   if(tick++%6===0) {
    crossing=new Set()
-   const grid=new Map(),checked=new Set(),cellSize=150
-   links.forEach((link,i)=>{
-    const a=link.source,b=link.target
-    for(let x=Math.floor(Math.min(a.x,b.x)/cellSize);x<=Math.floor(Math.max(a.x,b.x)/cellSize);x++)
-     for(let y=Math.floor(Math.min(a.y,b.y)/cellSize);y<=Math.floor(Math.max(a.y,b.y)/cellSize);y++) {
-      const key=`${x},${y}`,bucket=grid.get(key)||[]
-      for(const j of bucket) {
-       const pair=`${j},${i}`
-       if(checked.has(pair))continue
-       checked.add(pair)
-       const c=links[j].source,d=links[j].target
-       if(a===c||a===d||b===c||b===d)continue
-       if(side(a,b,c)*side(a,b,d)<0&&side(c,d,a)*side(c,d,b)<0){crossing.add(link);crossing.add(links[j])}
-      }
-      bucket.push(i);grid.set(key,bucket)
-     }
-   })
+   // Bounded by actual links, independent of the world-space length of edges.
+   for(let i=0;i<links.length;i++)for(let j=0;j<i;j++) {
+    const link=links[i],a=link.source,b=link.target,c=links[j].source,d=links[j].target
+    if(a===c||a===d||b===c||b===d)continue
+    if(Math.max(a.x,b.x)<Math.min(c.x,d.x)||Math.max(c.x,d.x)<Math.min(a.x,b.x)||Math.max(a.y,b.y)<Math.min(c.y,d.y)||Math.max(c.y,d.y)<Math.min(a.y,b.y))continue
+    if(side(a,b,c)*side(a,b,d)<0&&side(c,d,a)*side(c,d,b)<0){crossing.add(link);crossing.add(links[j])}
+   }
   }
   for(const {source:a,target:b} of crossing) {
    const dx=a.x-b.x,dy=a.y-b.y,distance=Math.hypot(dx,dy),gap=distance-radius(a)-radius(b)-24
