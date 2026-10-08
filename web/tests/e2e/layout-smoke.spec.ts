@@ -64,7 +64,8 @@ test.describe('OrgPortal responsive shell', () => {
 
     for (const route of routes) {
       await page.goto(route)
-      await page.waitForLoadState('networkidle')
+      await expect(page.locator('main')).toBeVisible()
+      await expect(page.locator('.portal-user-trigger')).toBeVisible()
       const overflow = await page.evaluate(() => {
         const doc = document.documentElement
         return {

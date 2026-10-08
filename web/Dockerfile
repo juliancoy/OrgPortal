@@ -1,18 +1,19 @@
 FROM node:24-alpine AS build
 
-WORKDIR /app
+WORKDIR /app/web
 
-COPY package*.json ./
-RUN npm install
+COPY web/package*.json ./
+RUN npm ci
 
-COPY . .
+COPY web/ ./
+COPY shared/ ../shared/
 
 ARG VITE_PIDP_BASE_URL=/pidp
 ARG VITE_PIDP_APP_SLUG=code-collective
 ARG VITE_DATA_SOURCE=mock
 ARG VITE_API_BASE_URL=/api/governance
-ARG VITE_PUBLIC_BASE=./
-ARG VITE_PORTAL_MOUNT_PATH=/p
+ARG VITE_PUBLIC_BASE=/
+ARG VITE_PORTAL_MOUNT_PATH=/
 
 ENV VITE_PIDP_BASE_URL=${VITE_PIDP_BASE_URL}
 ENV VITE_PIDP_APP_SLUG=${VITE_PIDP_APP_SLUG}
@@ -27,8 +28,8 @@ FROM node:24-alpine AS runtime
 
 WORKDIR /app
 
-COPY --from=build /app/dist ./dist
-COPY server.mjs ./server.mjs
+COPY --from=build /app/web/dist ./dist
+COPY web/*.mjs ./
 
 EXPOSE 8080
 
