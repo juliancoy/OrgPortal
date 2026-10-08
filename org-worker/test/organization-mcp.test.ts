@@ -81,3 +81,33 @@ test('pending organizer previews require unchanged onboarding and one-use confir
   assert.equal(sql.prepare("SELECT role FROM organization_memberships WHERE user_id='candidate'").get()!.role, 'administrator');
   sql.close();
 });
+
+test('profile edits enforce scope, management, exact previews, state changes and clearing', async () => {
+  const { db, sql } = database();
+  const { runOrganizationProfileOperation: run } = await import('../src/organizationProfileMcp');
+  sql.exec("INSERT INTO organizations (id,name,slug,description,image_url,tags,city) VALUES ('org','Existing','existing','Old','https://example.com/old.png','[\"startup\"]','Baltimore')");
+  await claimOrganization(db,'org',{id:identity.userId,name:'Owner',email:null,isOperator:false},new Date().toISOString());
+  const args={organizationId:'org',description:'Researched description',image_url:'https://example.com/new.png'};
+  try {
+    await assert.rejects(run(db,{...identity,scopes:['org:portal.read']},'update',args),/scope/);
+    await assert.rejects(run(db,{...identity,userId:'outsider'},'update',args),/management/);
+    for(const fields of [{image_url:'javascript:alert(1)'},{image_url:'https://user:password@example.com/img.png'},{description:'x'.repeat(5001)},{claimed_by_user_id:'owner'},{}]) await assert.rejects(run(db,identity,'update',{organizationId:'org',...fields}));
+    await assert.rejects(run(db,identity,'update',{...args,confirm:true}),/preview first/);
+    const preview=await run(db,identity,'update',args) as any;
+    assert.equal(sql.prepare("SELECT description FROM organizations WHERE id='org'").get()!.description,'Old');
+    await assert.rejects(run(db,identity,'update',{...args,description:'Changed',confirm:true,previewId:preview.previewId}),/expired|changed/);
+    const saved=await run(db,identity,'update',{...args,confirm:true,previewId:preview.previewId}) as any;
+    assert.equal(saved.organization.description,args.description);assert.deepEqual(saved.organization.tags,['startup']);assert.equal(saved.organization.name,'Existing');
+    assert.equal((await run(db,identity,'status',{organizationId:'org',previewId:preview.previewId}) as any).status,'completed');
+    await assert.rejects(run(db,identity,'update',{...args,confirm:true,previewId:preview.previewId}),/already used|changed/);
+    const stale=await run(db,identity,'update',args) as any;
+    sql.exec("UPDATE organizations SET name='Concurrent edit' WHERE id='org'");
+    await assert.rejects(run(db,identity,'update',{...args,confirm:true,previewId:stale.previewId}),/expired|changed/);
+    const clear={organizationId:'org',description:null,image_url:null};const fresh=await run(db,identity,'update',clear) as any;
+    sql.exec("UPDATE organization_memberships SET role='member' WHERE user_id='existing-pidp-user'");
+    await assert.rejects(run(db,identity,'update',{...clear,confirm:true,previewId:fresh.previewId}),/management/);
+    sql.exec("UPDATE organization_memberships SET role='administrator' WHERE user_id='existing-pidp-user'");
+    const cleared=await run(db,identity,'update',{...clear,confirm:true,previewId:fresh.previewId}) as any;
+    assert.equal(cleared.organization.image_url,null);assert.equal(cleared.organization.description,null);
+  } finally {sql.close();}
+});

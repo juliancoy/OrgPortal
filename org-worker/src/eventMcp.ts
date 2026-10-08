@@ -1,3 +1,4 @@
+import { runOrganizationProfileOperation, organizationProfileTargetSchema, organizationProfileUpdateSchema, organizationProfileStatusSchema } from './organizationProfileMcp';
 import { eventHostSchema, runEventHostOperation } from './eventHost';
 import { eventSlugSchema, runEventSlugOperation } from './eventSlugs';
 import { runSupportMcp, supportSchema, supportVoidSchema, supportTargetSchema } from './organizationSupport';
@@ -818,6 +819,22 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
     };
     server.registerTool('preview_organization_tasks', { description: 'Preview assigning the availability-calendar task to all active organization members. Requires organization management permission; no tasks are created.', inputSchema: organizationTaskSchema, annotations: { readOnlyHint: true }, _meta: metadata([portalReadScope, portalWriteScope]) }, args => taskResult({ ...args, confirm: false }));
     server.registerTool('apply_organization_tasks', { description: 'Assign the availability-calendar task to every active member after reviewing the preview. Requires confirm=true and a matching one-use previewId. Existing assignments are preserved without duplicates.', inputSchema: organizationTaskSchema, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }, _meta: metadata([portalReadScope, portalWriteScope]) }, taskResult);
+    const profileResult = async (operation: 'get' | 'update' | 'status', args: unknown) => {
+      try {
+        const data = await runOrganizationProfileOperation(env.DB, identity, operation, scopedArgs(args));
+        return { content: [{ type: 'text' as const, text: JSON.stringify(data) }], structuredContent: data };
+      } catch (error) {
+        return { isError: true, content: [{ type: 'text' as const, text: await eventErrorResponse(error, env, request).text() }] };
+      }
+    };
+    server.registerTool('get_organization_profile', { description: 'Read the current organization profile as an active member.',
+      inputSchema: organizationProfileTargetSchema, annotations: { readOnlyHint: true }, _meta: metadata([portalReadScope]) }, args => profileResult('get', args));
+    server.registerTool('preview_organization_profile', { description: 'Preview profile edits without changing the organization. Requires live organization management permission.',
+      inputSchema: organizationProfileUpdateSchema, annotations: { readOnlyHint: true }, _meta: metadata([portalReadScope, portalWriteScope]) }, args => profileResult('update', { ...args, confirm: false }));
+    server.registerTool('apply_organization_profile', { description: 'Save reviewed profile changes with confirm=true and the matching one-use previewId. Requires unchanged profile state and live management permission.',
+      inputSchema: organizationProfileUpdateSchema, annotations: { readOnlyHint: false, destructiveHint: false }, _meta: metadata([portalReadScope, portalWriteScope]) }, args => profileResult('update', args));
+    server.registerTool('get_organization_profile_operation', { description: 'Inspect a profile edit receipt before retrying an uncertain write.',
+      inputSchema: organizationProfileStatusSchema, annotations: { readOnlyHint: true }, _meta: metadata([portalReadScope]) }, args => profileResult('status', args));
     server.registerTool('list_organizations', { description: 'List organizations where the signed-in PIdP identity has active membership.',
       inputSchema: z.object({ limit: z.number().int().min(1).max(500).default(100) }).strict(),
       annotations: { readOnlyHint: true }, _meta: metadata([portalReadScope]) }, args => organizationResult('list', args));

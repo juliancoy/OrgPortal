@@ -50,6 +50,8 @@ The October 8, 2026 research and exact profile PATCH payloads are in
 records the official website and logo provenance. Update only the manifest's
 `patch` fields through the authenticated production organization profile API;
 preserve organization names, tags, memberships and support relationships.
-The API requires a portal member session and live management permission. MCP
-OAuth tokens are not accepted by that session-only endpoint. A saved MCP grant
-is not proof of organization management permission.
+The browser profile API requires a portal member session. CLI/MCP clients use
+`get_organization_profile`, `preview_organization_profile`,
+`apply_organization_profile`, and `get_organization_profile_operation`.
+These require portal OAuth scopes and live organization permissions. A saved
+MCP grant is not proof of organization management permission.

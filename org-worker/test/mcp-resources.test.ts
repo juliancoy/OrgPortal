@@ -109,9 +109,12 @@ test('brand tool discovery and calls cannot escape their organization, including
     }; } }; } } as unknown as D1Database;
     const organizations = (await rpc('tools/call', { name: 'list_organizations', arguments: {} })).result.structuredContent.organizations;
     assert.deepEqual(organizations, [{ id: 'lifetech-org' }]);
+    for (const name of ['get_organization_profile','preview_organization_profile','apply_organization_profile','get_organization_profile_operation']) assert.ok(tools.some((t: any) => t.name === name));
     assert.ok(tools.some((t: any) => t.name === 'preview_motion'));
     assert.ok(!tools.some((t: any) => t.name === 'apply_organization_creation'));
     for (const [name, args] of [
+      ['get_organization_profile', { organizationId: 'medtech-org' }],
+      ['preview_organization_profile', { organizationId: 'medtech-org', description: 'Test' }],
       ['get_motion', { organizationId: 'medtech-org', motionId: 'motion' }],
       ['get_event', { organizationId: 'medtech-org', eventId: 'event' }],
       ['get_portal_setup', { organizationId: 'medtech-org' }],

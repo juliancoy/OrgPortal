@@ -6,12 +6,16 @@ import { credentialStore } from './upload-connection.mjs';
 import { syncNewsletterDatabase } from './newsletter-sync.mjs';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
+import { readFile } from 'node:fs/promises';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 
 const help = `Usage:
   orgportal auth login [--portal https://lifetech.fyi] [--connection NAME] [--browser]
   orgportal auth logout [--portal https://lifetech.fyi] [--connection NAME]
+  orgportal profile get|preview|apply|status --organization ID [--file PATCH_JSON] [--preview-id UUID]
   orgportal sync [--portal https://lifetech.fyi] [--connection NAME] [--dry-run]
   orgportal journal sync [--file SQLITE_PATH] (requires Cloudflare operator login)
 
@@ -30,15 +34,18 @@ export function parseCommand(args, env = process.env) {
     connection: { type: 'string' }, 'client-id': { type: 'string' },
     browser: { type: 'boolean' }, 'no-browser': { type: 'boolean' }, help: { type: 'boolean', short: 'h' },
     'dry-run': { type: 'boolean' }, local: { type: 'string' }, deployment: { type: 'string' }, cert: { type: 'string' },
-    file: { type: 'string' },
+    file: { type: 'string' }, organization: { type: 'string' }, 'preview-id': { type: 'string' },
   } });
   if (values.help || !args.length) return { help: true };
   if (positionals.length === 2 && positionals[0] === 'journal' && positionals[1] === 'sync') {
     if (Object.keys(values).some(key => key !== 'file')) throw Error('Journal sync accepts only --file and uses Cloudflare operator credentials.');
     return { action: 'journal', file: resolve(values.file || root + '/.local/journal/change-journal.sqlite') };
   }
+  const profile = positionals.length === 2 && positionals[0] === 'profile' && ['get','preview','apply','status'].includes(positionals[1]);
+  if (profile && (!values.organization || (['preview','apply'].includes(positionals[1]) && !values.file) || (['apply','status'].includes(positionals[1]) && !values['preview-id']))) throw Error('Profile commands require --organization; preview/apply require --file; apply/status require --preview-id.');
+  if (profile && values['dry-run']) throw Error('Use profile preview instead of --dry-run.');
   const sync = positionals.length === 1 && positionals[0] === 'sync';
-  if (!sync && (positionals.length !== 2 || positionals[0] !== 'auth' || !['login', 'logout'].includes(positionals[1]))) {
+  if (!profile && !sync && (positionals.length !== 2 || positionals[0] !== 'auth' || !['login', 'logout'].includes(positionals[1]))) {
     throw new Error('Use orgportal auth login, orgportal auth logout, or orgportal sync (see --help).');
   }
   if (values.portal && values.resource) throw new Error('Choose --portal or --resource.');
@@ -55,7 +62,7 @@ export function parseCommand(args, env = process.env) {
   }
   const connection = values.connection || env.ORGPORTAL_CONNECTION || 'default';
   if (!/^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,79}$/.test(connection)) throw new Error('Invalid connection name.');
-  return { action: sync ? 'sync' : positionals[1], resource: resource.href, issuer: issuer.origin,
+  return { action: profile ? 'profile' : sync ? 'sync' : positionals[1], profileAction: profile ? positionals[1] : undefined, organizationId: values.organization, previewId: values['preview-id'], profileFile: values.file ? resolve(values.file) : undefined, resource: resource.href, issuer: issuer.origin,
     connection, clientId: values['client-id'], openBrowser: !!values.browser && !values['no-browser'], dryRun: !!values['dry-run'],
     local: values.local || 'https://localhost:8443', deployment: resolve(values.deployment || root + '/.local/bmoremedtech-newsletter-storage.json'),
     cert: resolve(values.cert || root + '/.local/certs/localhost.crt') };
@@ -72,7 +79,7 @@ export async function run(args, dependencies = {}) {
   const store = await (dependencies.credentialStore || credentialStore)(command.resource, command.issuer, command.connection);
   let account;
   try {
-    if (command.action === 'sync' && !(await store.load())?.refreshToken) throw Error('Sign in first: orgportal auth login');
+    if (['sync','profile'].includes(command.action) && !(await store.load())?.refreshToken) throw Error('Sign in first: orgportal auth login');
     // Logging out an absent connection needs neither a browser nor a network call.
     if (command.action === 'logout' && !(await store.load())?.refreshToken) {
       log(`Already logged out (${command.connection}).`); return;
@@ -80,7 +87,9 @@ export async function run(args, dependencies = {}) {
     account = await (dependencies.browserLogin || browserLogin)(command.resource, command.issuer,
       command.clientId, command.openBrowser, { store, disconnect: command.action === 'logout',
         clientName: 'OrgPortal CLI', scope: 'org:events.read org:events.write org:portal.read org:portal.write' });
-    if (command.action === 'sync') {
+    if (command.action === 'profile') {
+      log(JSON.stringify(await (dependencies.runProfileCommand || runProfileCommand)(command, account), null, 2));
+    } else if (command.action === 'sync') {
       await (dependencies.syncNewsletterDatabase || syncNewsletterDatabase)(command, account, root, log);
     } else if (command.action === 'logout') {
       await account.disconnect();
@@ -92,6 +101,32 @@ export async function run(args, dependencies = {}) {
   } finally {
     try { await account?.close(); } finally { await store.release(); }
   }
+}
+
+export async function runProfileCommand(command, account) {
+  const toolNames = {get:'get_organization_profile',preview:'preview_organization_profile',apply:'apply_organization_profile',status:'get_organization_profile_operation'};
+  let patch = {};
+  if (['preview','apply'].includes(command.profileAction)) {
+    patch = JSON.parse(await readFile(command.profileFile, 'utf8'));
+    const allowed = ['name','description','image_url','city','tags'];
+    if (!patch || Array.isArray(patch) || typeof patch !== 'object' || Object.keys(patch).some(key => !allowed.includes(key))) throw Error('Patch file must contain only organization profile fields.');
+  }
+  const args = { ...patch, organizationId: command.organizationId,
+    ...(command.previewId ? { previewId: command.previewId } : {}),
+    ...(command.profileAction === 'apply' ? { confirm: true } : {}) };
+  const client = new Client({ name: 'OrgPortal CLI', version: '1.0.0' });
+  const transport = new StreamableHTTPClientTransport(new URL(command.resource), {
+    fetch: async (url, init) => {
+      const headers = new Headers(init?.headers); headers.set('Authorization', `Bearer ${await account.accessToken()}`);
+      return fetch(url, { ...init, headers, redirect: 'error' });
+    },
+  });
+  try {
+    await client.connect(transport);
+    const result = await client.callTool({ name: toolNames[command.profileAction], arguments: args });
+    if (result.isError) throw Error(result.content?.filter(item => item.type === 'text').map(item => item.text).join('\n') || 'Profile operation failed');
+    return result.structuredContent || result;
+  } finally { await client.close(); }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
