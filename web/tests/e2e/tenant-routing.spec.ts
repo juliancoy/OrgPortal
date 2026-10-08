@@ -125,7 +125,7 @@ test('event gallery resolves stored images through the org API without rewriting
   await page.goto(portal('/events/medtech-in-the-hut'));
   const image = page.getByRole('img', { name: 'Menu photo', exact: true });
   await expect(image).toHaveAttribute('src', '/api/org/api/network/events/public/medtech-in-the-hut/media/stored');
-  const labelFits = await image.locator('..').locator('strong').evaluate(label => label.scrollWidth <= label.parentElement!.clientWidth);
+  const labelFits = await page.getByRole('button', { name: 'Open Menu photo in gallery', exact: true }).evaluate(label => label.scrollWidth <= label.parentElement!.clientWidth);
   expect(labelFits).toBe(true);
   await expect(page.getByRole('img', { name: 'External photo', exact: true })).toHaveAttribute('src', 'https://images.test/event.png');
   await expect(page.getByRole('button', { name: 'Next event media', exact: true })).toBeVisible();
@@ -177,6 +177,7 @@ async function mockTenant(page: Page, options: MockTenantOptions = {}) {
         feature_config: { externalCalendarUrl: 'https://medtech.social/calendar.html' },
       } })
     }
+    if (path.endsWith('/company-votes/public')) return route.fulfill({ json: { available: false, closed: false, closes_at: null, companies: [] } })
     if (path.endsWith('/admin/me')) return route.fulfill({ json: { is_sysadmin: false } })
     if (path.includes('/network/orgs/public/baltimore-medtech/events')) return route.fulfill({ json: [] })
     if (path.endsWith('/network/events/public/medtech-in-the-hut/chat')) {
@@ -233,33 +234,21 @@ async function mockTenant(page: Page, options: MockTenantOptions = {}) {
   }
 }
 
-test('Google personalized entry preserves the selected account and return context', async ({ page }) => {
+test('Google sign-in delegates account selection to PIdP and preserves return context', async ({ page }) => {
   await mockTenant(page)
-  await page.route('**/pidp/configuration', route => route.fulfill({ json: { google_client_id: 'test-google-client' } }))
-  await page.route('https://accounts.google.com/gsi/client', route => route.fulfill({
-    contentType: 'application/javascript',
-    body: `window.google = { accounts: { id: {
-      initialize(options) { window.googleLoginOptions = options; },
-      renderButton(element) {
-        const button = document.createElement('button');
-        button.textContent = 'Continue as Test Account';
-        button.onclick = () => window.googleLoginOptions.callback({credential: 'header.' + btoa(JSON.stringify({sub: '123456789'})) + '.signature'});
-        element.appendChild(button);
-      }
-    } } };`,
-  }))
+  let widgetRequests = 0
+  await page.route('https://accounts.google.com/**', route => { widgetRequests++; return route.abort() })
   await page.goto(portal('/users/login?next=%2Fpeople'))
-  await expect(page.getByRole('heading', { name: 'Log In', exact: true })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Continue with GitHub' })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Continue with Google' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Sign in to Baltimore MedTech', exact: true })).toBeVisible()
   const request = page.waitForRequest(request => request.url().includes('/auth/sso/start'))
-  await page.getByRole('button', { name: 'Continue as Test Account' }).click()
+  await page.getByRole('link', { name: 'Continue with Google' }).click()
   const url = new URL((await request).url())
   expect(url.searchParams.get('provider')).toBe('google')
-  expect(url.searchParams.get('login_hint')).toBe('123456789')
+  expect(url.searchParams.has('login_hint')).toBe(false)
   expect(url.searchParams.get('app')).toBeTruthy()
   expect(url.searchParams.has('owner')).toBe(false)
   expect(new URL(url.searchParams.get('next')!).searchParams.get('next')).toBe('/people')
+  expect(widgetRequests).toBe(0)
 })
 
 test('unlisted alias skips the Google widget and keeps the standard OAuth return context', async ({ page, baseURL }) => {
@@ -283,40 +272,13 @@ test('unlisted alias skips the Google widget and keeps the standard OAuth return
   expect(callback.searchParams.get('next')).toBe('/people')
 })
 
-for (const failure of ['configuration unavailable', 'script blocked', 'origin rejected', 'widget renders nothing', 'asynchronous rejection']) {
-  test(`Google fallback survives ${failure}`, async ({ page }) => {
-    await mockTenant(page)
-    await page.route('**/pidp/configuration', route => route.fulfill(failure === 'configuration unavailable'
-      ? { status: 503, json: {} }
-      : { json: { google_client_id: 'test-google-client' } }))
-    await page.route('https://accounts.google.com/gsi/client', route => failure === 'script blocked' ? route.abort() : route.fulfill({
-      contentType: 'application/javascript',
-      body: `window.google = { accounts: { id: {
-        initialize() { ${failure === 'origin rejected' ? "throw new Error('origin not allowed');" : ''} },
-        renderButton(element) { ${failure === 'asynchronous rejection' ? "element.appendChild(document.createElement('iframe')); setTimeout(() => console.error('origin not allowed'), 0);" : ''} }
-      } } };`,
-    }))
-    await page.goto(portal('/users/login?next=%2Fpeople'))
-    const link = page.getByRole('link', { name: 'Continue with Google' })
-    await expect(link).toBeVisible()
-    if (failure === 'asynchronous rejection') await expect(page.locator('.portal-google-personalized-button')).toBeVisible()
-    const request = page.waitForRequest(request => request.url().includes('/auth/sso/start'))
-    await link.click()
-    const url = new URL((await request).url())
-    expect(url.searchParams.get('provider')).toBe('google')
-    expect(url.searchParams.has('login_hint')).toBe(false)
-    expect(url.searchParams.has('owner')).toBe(false)
-    expect(new URL(url.searchParams.get('next')!).searchParams.get('next')).toBe('/people')
-  })
-}
-
 test('tenant domains use root-mounted canonical routes and assets', async ({ page }) => {
   await mockTenant(page)
   await page.goto(portal('/users/login'))
 
   await expect(page.locator('html')).toHaveAttribute('data-portal-profile', 'baltimore-medtech')
   await expect(page.locator('html')).toHaveAttribute('data-portal-tenant', 'baltimore-medtech')
-  await expect(page.getByRole('heading', { name: 'Log In', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Sign in to Baltimore MedTech', exact: true })).toBeVisible()
   await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', /\/images\/baltimore-medtech-logo-square-v2\.jpg$/)
   await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', /\/medtech\.webmanifest$/)
 

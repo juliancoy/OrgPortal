@@ -39,7 +39,7 @@ jobs:
         run: |
           docker run --detach --name orgportal-ci --publish 8080:8080 orgportal-ci:local
           trap 'docker logs orgportal-ci; docker rm --force orgportal-ci' EXIT
-          curl --fail --retry 15 --retry-connrefused --retry-delay 1 http://127.0.0.1:8080/
+          curl --fail --retry 15 --retry-all-errors --retry-delay 1 --max-time 5 http://127.0.0.1:8080/
           test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:8080/not-a-route)" = 404
 
   build-and-publish:
