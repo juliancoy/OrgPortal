@@ -140,6 +140,23 @@ test('local WAL mirror survives process restart, retains exact rows and resumes 
 })
 
 
+test('ballot settings and rosters are audited but cleared company votes never enter immutable copies', () => {
+ const f = fixture()
+ try {
+  f.primary.sqlite.exec(`INSERT INTO events(id,ingest_key,title,slug) VALUES('pitch-fixture','pitch-fixture','Pitch','pitch-fixture');
+   INSERT INTO organizations(id,name,slug) VALUES('pitch-company','Company','pitch-company');
+   INSERT INTO event_company_ballots VALUES('pitch-fixture','2099-10-09T00:00:00Z',1);
+   INSERT INTO event_pitch_companies VALUES('pitch-fixture','pitch-company');
+   INSERT INTO event_company_votes(event_id,organization_id,user_id,value,expires_at)
+   VALUES('pitch-fixture','pitch-company','private-voter',1,'2099-12-01T00:00:00Z');
+   DELETE FROM event_company_votes WHERE user_id='private-voter';`)
+  const config = f.primary.sqlite.prepare("SELECT table_name FROM change_journal WHERE table_name IN ('event_company_ballots','event_pitch_companies') ORDER BY sequence").all()
+  assert.deepEqual(config.map(row=>row.table_name),['event_company_ballots','event_pitch_companies'])
+  assert.equal(f.primary.sqlite.prepare("SELECT COUNT(*) n FROM change_journal WHERE table_name='event_company_votes' OR after_json LIKE '%private-voter%' OR before_json LIKE '%private-voter%'").get()!.n,0)
+  assert.equal(f.primary.sqlite.prepare('SELECT COUNT(*) n FROM event_company_votes').get()!.n,0)
+ } finally { f.close() }
+})
+
 test('availability visibility changes are audited atomically and no-op saves are inert', () => {
  const f = fixture()
  try {

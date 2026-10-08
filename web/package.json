@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "test:company-votes": "node scripts/test-company-votes.mjs",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "android:prepare": "npm run build && node scripts/prepare-android-project.mjs",

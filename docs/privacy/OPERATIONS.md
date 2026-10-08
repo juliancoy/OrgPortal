@@ -15,6 +15,7 @@ of production data, creation of identity mappings, or bypassing preview/approval
 | Production log retention | Workers Logs has a provider maximum of 7 days; both backend Workers have no Logpush or tail exports; query redaction is enabled in source | Verify redaction on deployment; re-audit any future export destination |
 | Backup retention | Actual recovery windows and exports not verified | Inventory D1 recovery, object versions, snapshots and exports; record actual windows and resolve gaps against the 30-day target |
 | Periodic retention enforcement | OrgPortal cleanup uses its existing minute cron; PIdP uses a five-minute cron/Python loop | Watch count=500 backlog signals; manual account/content and exception review remains necessary |
+| Event company votes | `companyVotes.ts` exposes only public totals and the authenticated account's own votes; clearing deletes the row. `retention.ts` removes expired records in batches of 500. Unit tests verify isolation, deletion and expiry boundaries | Deploy migration 0080 and verify cron before advertising production cleanup; account deletion must include this store |
 | Public website policy | Public `/api/org/privacy`, `/api/org/support`, `/api/org/terms` routes are generated from repository policy documents | Verify deployed content and listing URLs; regeneration is part of the backend build |
 
 ## Inventory and monthly review
@@ -108,6 +109,25 @@ table. It preserves the boundary, live rows and unrelated account/content data.
 A full batch sets `backlog=true`; investigate persistent backlog or error events
 before the 24-hour limit is exceeded. These are aggregate logs, never payloads.
 Clock/SQL failures must not be reported as successful cleanup.
+
+### Event company vote inventory
+
+`event_company_votes` stores a portal account ID, event/company IDs, direction and
+timestamps to enforce one preference per person per company. The retention clock
+is `expires_at`, fixed to the ballot's closing time plus 90 days at write time.
+Expired rows never contribute to public totals or private saved-vote responses.
+The scheduled sweep removes rows older than expiry plus 23 hours, at most 500 per
+run. No individual vote rows enter the public organization replica or change
+journal. Public totals disappear as votes expire or are cleared.
+
+The authenticated voter can erase a row with
+`PUT /api/network/events/:eventId/company-votes/:companyId` and `{ "value": 0 }`,
+including after the ballot closes. For verified account erasure, inventory that
+account's rows and remove them with parameterized, bounded batches by `user_id`;
+never infer the ID from email. Record the minimal deletion ledger, reapply erasure
+before any backup restoration and follow the backup process above. Event,
+company and roster deletions cascade to their votes. Authentication remains with
+PIdP; this feature does not create memberships or authorization grants.
 
 Cloudflare evidence: https://developers.cloudflare.com/workers/observability/logs/workers-logs/
 (maximum seven-day built-in log retention at the October 7 review). Account-level

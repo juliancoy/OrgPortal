@@ -4,6 +4,7 @@ import { portalAssetPath } from '../../../config/portalBase'
 import type { CSSProperties } from 'react'
 import { PhotoTags } from '../../components/PhotoTags'
 import { EventVenues, type Venue } from '../../components/EventVenues'
+import { EventCompanyVotes } from '../../components/EventCompanyVotes'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { CalendarPlus, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, MapPinned, Pencil, RotateCcw, X, ZoomIn, ZoomOut } from 'lucide-react'
@@ -758,6 +759,7 @@ export function PublicEventPage() {
               <p>{event.description}</p>
             </section>
           ) : null}
+          <EventCompanyVotes key={event.id} eventId={event.id} />
           {eventLinks.length > 0 ? (
             <section className="portal-card public-event-links" aria-labelledby="event-links-title">
               <div className="public-event-card-heading">

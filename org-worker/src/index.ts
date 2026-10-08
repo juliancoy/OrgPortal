@@ -25,6 +25,7 @@ import { organizationSupport, publicRelationshipRecords, runSupportOperation } f
 import { governanceDocumentRoutes, executeDocumentMotion, documentMotionDetail } from './governanceDocuments';
 import { photoTagRoutes } from './photoTags';
 import { venueVoteRoutes } from './venueVotes';
+import { companyVoteRoutes } from './companyVotes';
 import { venueRankingRoutes } from './venueRankings';
 import { venueRoutes, eventVenues, setEventVenues, pastVenueEvents } from './venues';
 import { driveCarouselRoutes } from './driveCarousel';
@@ -2668,6 +2669,7 @@ function deploymentHealth(c: { env: Env; req: { url: string }; header: (name: st
 
 app.route('/api/network/events',venueRankingRoutes(currentUser));
 app.route('/api/network/events',venueVoteRoutes(currentUser));
+app.route('/api/network/events',companyVoteRoutes(currentUser));
 app.get('/api/network/venues/public/:id/events', async c => {
   const venueId = c.req.param('id');
   if (!await c.env.DB.prepare('SELECT id FROM venues WHERE id = ?').bind(venueId).first()) fail(404, 'Venue not found');

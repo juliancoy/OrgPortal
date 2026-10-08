@@ -81,6 +81,7 @@ export class EventTestDb {
     this.sqlite.exec(readFileSync(new URL("../migrations/0050_event_venue_rankings.sql", import.meta.url), "utf8"));
     this.sqlite.exec(readFileSync(new URL("../migrations/0052_venue_details.sql", import.meta.url), "utf8"));
     this.sqlite.exec(readFileSync(new URL("../migrations/0053_event_venue_votes.sql", import.meta.url), "utf8"));
+    this.sqlite.exec(readFileSync(new URL("../migrations/0080_event_company_votes.sql", import.meta.url), "utf8"));
   }
   prepare(sql: string) {
     const stmt = this.sqlite.prepare(sql);
