@@ -1,6 +1,5 @@
 import { getDomainTenant } from '../../../config/timebankCommunity'
 import { getActivePortalProfileConfig } from '../../../config/portalFeatures'
-import { portalAssetPath } from '../../../config/portalBase'
 import type { CSSProperties } from 'react'
 import { PhotoTags } from '../../components/PhotoTags'
 import { EventVenues, type Venue } from '../../components/EventVenues'
@@ -667,6 +666,7 @@ export function PublicEventPage() {
   const mapsUrl = event.location ? googleMapsUrl(event.location) : null
   const mapsEmbedUrl = event.location ? googleMapsEmbedUrl(event.location) : null
   const organizerName = getEventOrganizerName(event)
+  const heroImage = event.social_image_url || eventLinks[0]?.image_url || event.image_url
   const organizerAvatar = event.organization_image_url?.trim() || ''
   const publicEventUrl = event.source_url || eventUrl(event.slug)
   const calendarDownloadEvent = eventStart && eventEnd ? {
@@ -689,14 +689,10 @@ export function PublicEventPage() {
       <div className="public-event-layout public-event-luma-layout">
         <main className="public-event-main">
           <section className="public-event-hero">
-            {event.image_url ? (
-              <img className="public-event-hero-image" src={event.image_url} alt="" />
+            {heroImage ? (
+              <img className="public-event-hero-image" src={heroImage} alt="" />
             ) : <div className="public-event-hero-image public-event-hero-placeholder" aria-hidden="true" />}
             <div className="public-event-hero-content">
-              {lifeTech ? <Link className="lifetech-event-lockup" to="/branding" aria-label="LifeTech brand guide">
-                <img src={portalAssetPath(brand.brandImagePath || '/assets/images/lifetech-logo.png')} alt="" />
-                <span><strong>{brand.brandName}</strong><small>{brand.tagline}</small></span>
-              </Link> : null}
               {event.organization_slug ? (
                 <Link
                   className="public-event-organizer-link"
