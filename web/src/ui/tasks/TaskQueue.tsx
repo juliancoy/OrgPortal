@@ -14,7 +14,9 @@ export function useTaskQueue() {
   let response=await send(token)
   if(response.status===401){const refreshed=await refreshRuntimeTokenFromSession();if(refreshed)response=await send(refreshed)}
   if(!response.ok)throw new Error('Tasks could not be updated. Please try again.')
-  return response.json()
+  const data=await response.json()
+  if(path===''&&(!init.method||init.method==='GET')&&(!data||!Array.isArray(data.tasks)))throw new Error('Tasks unavailable. Please try again.')
+  return data
  },[token])
  const refresh=useCallback(async()=>{
   if(!token)return

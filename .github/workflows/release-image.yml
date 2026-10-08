@@ -8,8 +8,11 @@ on:
       - "v*"
     paths:
       - "web/**"
+      - "shared/**"
       - "run.py"
       - ".github/workflows/release-image.yml"
+  pull_request:
+    paths: ["web/**", "shared/**", ".github/workflows/release-image.yml"]
   workflow_dispatch:
 
 permissions:
@@ -17,7 +20,31 @@ permissions:
   packages: write
 
 jobs:
+  check-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image before publishing
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./web/Dockerfile
+          push: false
+          load: true
+          tags: orgportal-ci:local
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Smoke test the runtime image
+        run: |
+          docker run --detach --name orgportal-ci --publish 8080:8080 orgportal-ci:local
+          trap 'docker logs orgportal-ci; docker rm --force orgportal-ci' EXIT
+          curl --fail --retry 15 --retry-connrefused --retry-delay 1 http://127.0.0.1:8080/
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:8080/not-a-route)" = 404
+
   build-and-publish:
+    needs: check-image
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -49,7 +76,7 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
-          context: ./web
+          context: .
           file: ./web/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
