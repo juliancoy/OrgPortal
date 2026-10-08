@@ -4,8 +4,17 @@ import { ArrowBigDown, ArrowBigUp } from 'lucide-react'
 import { useAuth } from '../../app/AppProviders'
 import './event-company-votes.css'
 
-type Company = { id: string; name: string; slug: string; image_url: string | null; upvotes: number; downvotes: number; score: number }
+type Company = { id: string; name: string; slug: string; image_url: string | null; description: string | null; upvotes: number; downvotes: number; score: number }
 type Summary = { available: boolean; closed: boolean; closes_at: string | null; companies: Company[] }
+
+function CompanyImage({ company }: { company: Company }) {
+  const [failed, setFailed] = useState(false)
+  return <div className="company-vote-image">
+    {company.image_url && !failed
+      ? <img src={company.image_url} alt={`${company.name} organization image`} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={() => setFailed(true)} />
+      : <span aria-hidden="true">{company.name.slice(0, 1)}</span>}
+  </div>
+}
 
 export function EventCompanyVotes({ eventId }: { eventId: string }) {
   const { token } = useAuth()
@@ -105,8 +114,10 @@ export function EventCompanyVotes({ eventId }: { eventId: string }) {
             <button type="button" aria-label={`${closed && own === -1 ? 'Clear downvote for' : 'Downvote'} ${company.name}`} aria-pressed={own === -1} disabled={disabled || (closed && own !== -1)} className="company-downvote" onClick={() => void vote(company, -1)}><ArrowBigDown size={24} aria-hidden="true" /></button>
           </div>
           <div className="company-vote-details">
+            <CompanyImage key={company.image_url} company={company} />
             <h3><Link to={`/orgs/${encodeURIComponent(company.slug)}`}>{company.name}</Link></h3>
-            <p>{company.upvotes} upvotes · {company.downvotes} downvotes</p>
+            {company.description ? <p className="company-vote-description">{company.description}</p> : null}
+            <p className="company-vote-totals">{company.upvotes} upvotes · {company.downvotes} downvotes</p>
             {pending === company.id ? <span role="status">Saving…</span> : null}
           </div>
         </li>

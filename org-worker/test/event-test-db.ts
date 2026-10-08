@@ -6,7 +6,7 @@ export class EventTestDb {
   private sqlite = new DatabaseSync(":memory:");
   constructor() {
     this.sqlite.exec(readFileSync(new URL("../migrations/0017_event_mcp_operations.sql", import.meta.url), "utf8"));
-    this.sqlite.exec(`CREATE TABLE organizations (id TEXT PRIMARY KEY, name TEXT, slug TEXT, source_url TEXT, image_url TEXT, media_json TEXT NOT NULL DEFAULT '[]', updated_at TEXT DEFAULT '');
+    this.sqlite.exec(`CREATE TABLE organizations (id TEXT PRIMARY KEY, name TEXT, slug TEXT, description TEXT, source_url TEXT, image_url TEXT, media_json TEXT NOT NULL DEFAULT '[]', updated_at TEXT DEFAULT '');
       CREATE TABLE organization_memberships (organization_id TEXT, user_id TEXT, role TEXT, status TEXT);
       CREATE TABLE portal_tenants (
         id TEXT PRIMARY KEY,

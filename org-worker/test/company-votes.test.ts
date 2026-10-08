@@ -12,6 +12,7 @@ test('company voting isolates users/events, replaces votes, rejects non-roster c
     await db.prepare(`INSERT INTO events (id,ingest_key,title,slug,created_at,updated_at)
       VALUES ('pitch','pitch','Pitch','pitch','',''),('other','other','Other','other','',''),('ordinary','ordinary','Ordinary','ordinary','','')`).run();
     await db.prepare("INSERT INTO organizations (id,name,slug) VALUES ('a','Alpha','alpha'),('b','Beta','beta'),('outsider','Outsider','outsider')").run();
+    await db.prepare("UPDATE organizations SET description='Shared organization description', image_url='https://alpha.example/logo.png' WHERE id='a'").run();
     await db.prepare("INSERT INTO event_company_ballots VALUES ('pitch','2099-10-09T00:00:00Z',1),('other','2099-10-09T00:00:00Z',1)").run();
     await db.prepare("INSERT INTO event_pitch_companies VALUES ('pitch','a'),('pitch','b'),('other','a')").run();
     const d1 = db as unknown as D1Database;
@@ -24,7 +25,7 @@ test('company voting isolates users/events, replaces votes, rejects non-roster c
       method: body === undefined ? 'GET' : 'PUT', headers: { 'Content-Type': 'application/json', ...(user ? { Authorization: user } : {}) },
       body: body === undefined ? undefined : JSON.stringify(body),
     }), { DB: d1 } as Env);
-    const summary = async () => (await request('pitch/company-votes/public')).json() as Promise<{companies: {id: string; upvotes: number; downvotes: number; score: number}[]; closed: boolean}>;
+    const summary = async () => (await request('pitch/company-votes/public')).json() as Promise<{companies: {id: string; description: string | null; upvotes: number; downvotes: number; score: number}[]; closed: boolean}>;
     assert.equal((await request('pitch/company-votes/a', undefined, { value: 1 })).status, 401);
     assert.equal((await request('pitch/company-votes')).status, 401);
     for (const body of [{value:2},{value:'1'},{value:true},{value:null},{value:1,user_id:'victim'},[],null])
@@ -37,7 +38,9 @@ test('company voting isolates users/events, replaces votes, rejects non-roster c
     await request('pitch/company-votes/a', 'bob', { value: -1 });
     await request('other/company-votes/a', 'alice', { value: 1 });
     let data = await summary();
-    assert.deepEqual(data.companies.find(company => company.id === 'a'), {id:'a',name:'Alpha',slug:'alpha',image_url:null,upvotes:1,downvotes:1,score:0});
+    assert.deepEqual(data.companies.find(company => company.id === 'a'), {id:'a',name:'Alpha',slug:'alpha',image_url:'https://alpha.example/logo.png',description:'Shared organization description',upvotes:1,downvotes:1,score:0});
+    await db.prepare("UPDATE organizations SET description='Updated profile description' WHERE id='a'").run();
+    assert.equal((await summary()).companies.find(company => company.id === 'a')!.description, 'Updated profile description');
     assert.ok(!JSON.stringify(data).includes('alice') && !JSON.stringify(data).includes('user_id'));
     assert.deepEqual(await (await request('pitch/company-votes', 'alice')).json(), {votes:{a:1}});
     assert.deepEqual(await (await request('pitch/company-votes', 'victim')).json(), {votes:{}});

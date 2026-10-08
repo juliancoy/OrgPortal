@@ -13,7 +13,7 @@ async function eventBallot(db: D1Database, eventId: string) {
 export async function companyVoteSummary(db: D1Database, eventId: string) {
   const ballot = await eventBallot(db, eventId);
   if (!ballot) return { available: false, closed: true, closes_at: null, companies: [] };
-  const rows = await db.prepare(`SELECT o.id, o.name, o.slug, o.image_url,
+  const rows = await db.prepare(`SELECT o.id, o.name, o.slug, o.image_url, o.description,
     COALESCE(SUM(v.value = 1), 0) AS upvotes,
     COALESCE(SUM(v.value = -1), 0) AS downvotes, COALESCE(SUM(v.value), 0) AS score
     FROM event_pitch_companies p JOIN organizations o ON o.id = p.organization_id

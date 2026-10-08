@@ -37,3 +37,19 @@ does not create or edit the underlying organizations or event.
 Validation: `npm --prefix org-worker test`, `npm --prefix org-worker run typecheck`,
 `npm --prefix web run test:company-votes`, and `npm --prefix web run build`.
 The browser check uses only synthetic local fixtures and runs headlessly.
+
+## Organization profile content
+
+Voting summaries select `description` and `image_url` directly from the existing
+organization records. Voting cards display those same fields and link to the
+organization page; no separate pitch biography or image is stored. Missing or
+unavailable images fall back to a company initial, without blocking voting.
+
+The October 8, 2026 research and exact profile PATCH payloads are in
+[the research manifest](research/amplify-pitch-startups-2026-10-08.json). Each entry
+records the official website and logo provenance. Update only the manifest's
+`patch` fields through the authenticated production organization profile API;
+preserve organization names, tags, memberships and support relationships.
+The API requires a portal member session and live management permission. MCP
+OAuth tokens are not accepted by that session-only endpoint. A saved MCP grant
+is not proof of organization management permission.

@@ -8,3 +8,10 @@
 .company-vote-controls .company-downvote[aria-pressed="true"] { color: #4057bd; background: #edf0ff; opacity: 1; }
 .company-vote-details h3 { margin: 0 0 .5rem; overflow-wrap: anywhere; }
 .company-vote-details p { margin: 0; color: var(--muted); }
+.company-vote-details { min-width: 0; }
+.company-vote-image { width: 180px; max-width: 100%; height: 88px; margin-bottom: .75rem; display: grid; place-items: center; border-radius: 8px; background: #fff; border: 1px solid var(--border); overflow: hidden; }
+.company-vote-image img { width: 100%; height: 100%; object-fit: contain; padding: .5rem; box-sizing: border-box; }
+.company-vote-image span { color: #155e59; font-size: 2rem; font-weight: 700; }
+.company-vote-details .company-vote-description { color: var(--text); line-height: 1.55; white-space: pre-line; overflow-wrap: anywhere; margin-bottom: .75rem; }
+.company-vote-totals { font-size: .875rem; }
+@media (max-width: 480px) { .company-vote-row { gap: .75rem; padding: .75rem; } }

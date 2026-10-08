@@ -1,0 +1,62 @@
+{
+  "researched_at": "2026-10-08",
+  "portal": "https://lifetech.fyi",
+  "event_id": "15dc061b-d8a5-4cc5-ad94-e9a704c24b01",
+  "organizations": [
+    {
+      "id": "org-bluehealer",
+      "slug": "bluehealer",
+      "name": "BlueHealer",
+      "source_url": "https://bluehealer.co/",
+      "image_credit": "Official company website logo",
+      "patch": {
+        "description": "BlueHealer is a Baltimore startup spun out of Johns Hopkins’ Center for Bioengineering Innovation and Design. It is developing a device for tibial transverse bone transport, an emerging approach intended to support blood-vessel growth and limb salvage for patients with vascular disease or diabetes-related wounds. The device remains in preclinical development and is not cleared for patient use.",
+        "image_url": "https://bluehealer.co/bluehealer-logo-new.png"
+      }
+    },
+    {
+      "id": "org-salynt",
+      "slug": "salynt",
+      "name": "Salynt",
+      "source_url": "https://www.salynt.io/",
+      "image_credit": "Official company website logo",
+      "patch": {
+        "description": "Salynt is a Baltimore health technology startup developing SmartMed, an AI-assisted brain tumor imaging platform. It helps neuro-oncology and imaging research teams identify tumor regions, measure volumes and changes across scans, and organize findings for expert review. SmartMed remains a research-stage platform, with independent clinical evaluation being prepared.",
+        "image_url": "https://www.salynt.io/assets/salynt-logo.png"
+      }
+    },
+    {
+      "id": "org-liquet-medical",
+      "slug": "liquet-medical",
+      "name": "Liquet Medical Inc.",
+      "source_url": "https://www.liquetmedical.com/",
+      "image_credit": "Official company website logo",
+      "patch": {
+        "description": "Liquet Medical develops catheter technology that combines infusion delivery with real-time pressure monitoring. Its Versus catheter pairs bilateral infusion into the pulmonary arteries with integrated pulmonary artery pressure measurements, giving clinicians hemodynamic information during care. The company’s stated FDA clearance covers infusion and pressure monitoring; the catheter has not yet been evaluated for treatment of pulmonary embolism.",
+        "image_url": "https://static.wixstatic.com/media/eefd35_8454984792094ebdbe5f3b83b92479e4~mv2.png"
+      }
+    },
+    {
+      "id": "org-rubitection",
+      "slug": "rubitection",
+      "name": "Rubitection Inc.",
+      "source_url": "https://rubitection.com/",
+      "image_credit": "Official company website logo",
+      "patch": {
+        "description": "Rubitection develops technology for objective skin assessment and care management. Its Rubitect Assessment System combines a measurement probe with software to help care teams track skin changes and support early pressure injury prevention and monitoring. The company emphasizes assessment across skin tones and is pursuing applications in wound care, dermatology, and vascular health.",
+        "image_url": "https://rubitection.com/wp-content/uploads/2026/03/Rubitection-logo.png"
+      }
+    },
+    {
+      "id": "org-wearabledose",
+      "slug": "wearabledose",
+      "name": "WearableDose",
+      "source_url": "https://wearabledose.com/",
+      "image_credit": "Official company website logo",
+      "patch": {
+        "description": "WearableDose is developing a flexible, adhesive radiation dosimetry patch and a connected software platform for real-time exposure monitoring. Its intended applications include radiation oncology, research, and occupational radiation safety. The startup aims to make surface radiation measurements easier to collect, review, and use in treatment verification and exposure tracking.",
+        "image_url": "https://d2xsxph8kpxj0f.cloudfront.net/310519663053496798/J3gaGrWBwkehzjWfSHGKp3/wearabledose-logo_62f0f9ce.png"
+      }
+    }
+  ]
+}
