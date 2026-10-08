@@ -129,7 +129,9 @@ test('browser login receives a loopback callback, exchanges PKCE without a secre
     callback.catch(() => {});
   };
   try {
-    const connection = await browserLogin('https://portal.example/mcp', 'https://id.example', 'local', false);
+    const connection = await browserLogin('https://portal.example/mcp', 'https://id.example', 'local', false, { admin: true });
+    assert.equal(authorization.searchParams.get('account'), 'system_admin');
+    assert.equal(authorization.searchParams.get('prompt'), 'login');
     await callback!;
     assert.equal(await connection.accessToken(), 'private-access-token');
     await connection.close(); assert.equal(revoked, true);
