@@ -11,6 +11,9 @@ test('public organization shows descendants, nonmonetary support and source prov
     if (path.endsWith('/api/portal/tenant')) body = {}
     else if (path.endsWith('/orgs/public/parent')) body = { id: 'parent', slug: 'parent', name: 'Parent organization', description: 'Support network', membership_count: 0, pending_challenges_count: 0, media: [] }
     else if (path.endsWith('/parent/support')) body = {
+      organization: { id: 'parent', slug: 'parent', name: 'Parent organization' },
+      financialTotals: { source: 'shared master transactions', entries: [], counterparties: [] },
+      recordCount: 1, nextRecordOffset: null,
       descendants: [{ id: 'child', slug: 'child', name: 'Supported organization', is_direct: 1 }, { id: 'grandchild', slug: 'grandchild', name: 'Indirect organization', is_direct: 0 }],
       supporters: [{ id: 'funder', slug: 'funder', name: 'Supporting foundation' }],
       records: [{ id: 'support:mentoring', record_id: 'mentoring', record_type: 'organization_support', timestamp: '2026-10-04', occurred_at: 'Fall 2026', transaction_type: 'mentoring', amount: null, currency: null, amount_label: '', quantity: 12, unit: 'hours', description: 'Startup office hours', from_label: 'Parent organization', to_label: 'Supported organization', from_organization_id: 'parent', to_organization_id: 'child', from_organization_slug: 'parent', to_organization_slug: 'child', status: 'reported', void_reason: null, source_url: 'https://example.test/report', evidence: 'Public report', notes: '', provenance_json: JSON.stringify([{ source: 'LifeTech Associates', sheet: 'Funding Network', row: 3, snapshot: '2026-10-01' }]) }],

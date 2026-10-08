@@ -2,9 +2,9 @@ name: Check portal web integrations
 
 on:
   push:
-    paths: ['web/**', 'shared/**', '.github/workflows/check-web.yml']
+    paths: ['web/**', 'shared/**', 'org-worker/**', '.github/workflows/check-web.yml']
   pull_request:
-    paths: ['web/**', 'shared/**', '.github/workflows/check-web.yml']
+    paths: ['web/**', 'shared/**', 'org-worker/**', '.github/workflows/check-web.yml']
   workflow_dispatch:
 
 permissions:
@@ -23,7 +23,12 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: |
+            web/package-lock.json
+            org-worker/package-lock.json
+      - name: Install backend integration dependencies
+        run: npm ci --ignore-scripts
+        working-directory: org-worker
       - run: npm ci
       - run: npm test -- --maxWorkers=2
       - name: Test HTTP routing and release contracts
