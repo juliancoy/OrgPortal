@@ -98,6 +98,7 @@ export async function browserLogin(resource, issuer, clientId, openBrowser = fal
     url.search = new URLSearchParams({ response_type: 'code', client_id: clientId, redirect_uri: redirect, resource,
       scope, state, code_challenge_method: 'S256',
       code_challenge: createHash('sha256').update(verifier).digest('base64url') }).toString();
+    if (options.admin) url.searchParams.set('account', 'system_admin');
     authorizationUrl = url.toString();
     const localStart = new URL('/authorize', redirect).toString();
     console.log(`Sign in and approve access in your browser:\n${url}\nLocal CLI link: ${localStart}`);

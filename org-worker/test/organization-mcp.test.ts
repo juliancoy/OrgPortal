@@ -111,3 +111,17 @@ test('profile edits enforce scope, management, exact previews, state changes and
     assert.equal(cleared.organization.image_url,null);assert.equal(cleared.organization.description,null);
   } finally {sql.close();}
 });
+
+test('verified operators edit catalog profiles without claiming organizations; scopes and receipts remain required',async()=>{
+ const {db,sql}=database();const {runOrganizationProfileOperation:run}=await import('../src/organizationProfileMcp');
+ sql.exec("INSERT INTO organizations(id,name,slug,tags) VALUES('unclaimed','Startup','startup','[\"startup\"]')");const admin={...identity,isOperator:true};const args={organizationId:'unclaimed',description:'Verified research'};
+ try{
+  await assert.rejects(run(db,identity,'update',args),/management/);
+  await assert.rejects(run(db,{...admin,scopes:['org:events.write']},'update',args),/scope/);
+  await assert.rejects(run(db,identity,'update',{...args,isOperator:true}));
+  const preview=await run(db,admin,'update',args) as any;
+  await assert.rejects(run(db,{...admin,isOperator:false},'update',{...args,confirm:true,previewId:preview.previewId}),/management/);
+  const result=await run(db,admin,'update',{...args,confirm:true,previewId:preview.previewId}) as any;assert.equal(result.organization.description,args.description);
+  assert.equal(sql.prepare("SELECT COUNT(*) n FROM organization_memberships WHERE organization_id='unclaimed'").get()!.n,0);
+ }finally{sql.close()}
+});

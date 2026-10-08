@@ -22,13 +22,13 @@ const columns = ['name', 'description', 'image_url', 'city', 'tags', 'updated_at
 type ProfileRow = { id: string; slug: string; name: string; description: string | null; image_url: string | null; city: string | null; tags: string; updated_at: string };
 function profile(row: ProfileRow) { return { ...row, tags: JSON.parse(row.tags || '[]') as string[] }; }
 
-export async function runOrganizationProfileOperation(db: D1Database, identity: { userId: string; scopes: string[] },
+export async function runOrganizationProfileOperation(db: D1Database, identity: { userId: string; scopes: string[]; isOperator?: boolean },
   operation: 'get' | 'update' | 'status', input: unknown) {
   if (!identity.scopes.includes('org:portal.read') || (operation === 'update' && !identity.scopes.includes('org:portal.write')))
     throw new EventIntegrationError(403, 'Missing portal scope');
   const args = operation === 'update' ? organizationProfileUpdateSchema.parse(input)
     : operation === 'status' ? organizationProfileStatusSchema.parse(input) : target.parse(input);
-  const actor = { id: identity.userId, name: identity.userId, email: null, isOperator: false };
+  const actor = { id: identity.userId, name: identity.userId, email: null, isOperator: identity.isOperator === true };
   await enforceEventRateLimit(db, actor.id);
   await authorizeOrganization(db, actor, operation === 'get' ? 'read_members' : 'manage', args.organizationId);
   if (operation === 'status') return eventOperationStatus(db, actor.id, args.organizationId, (args as z.infer<typeof organizationProfileStatusSchema>).previewId);
@@ -49,10 +49,10 @@ export async function runOrganizationProfileOperation(db: D1Database, identity: 
     // Check profile state AND live management membership in the same atomic write.
     const result = await db.prepare(`UPDATE organizations SET name=?, description=?, image_url=?, city=?, tags=?, updated_at=?
       WHERE id=? AND ${columns.map(column => `${column} IS ?`).join(' AND ')}
-      AND EXISTS (SELECT 1 FROM organization_memberships WHERE organization_id=? AND user_id=? AND status='active' AND role IN ('owner','administrator'))
+      AND (? = 1 OR EXISTS (SELECT 1 FROM organization_memberships WHERE organization_id=? AND user_id=? AND status='active' AND role IN ('owner','administrator')))
       RETURNING id, slug, name, description, image_url, city, tags, updated_at`)
       .bind(after.name, after.description, after.image_url, after.city, after.tags, new Date().toISOString(), organizationId,
-        ...columns.map(column => before[column]), organizationId, actor.id).first<ProfileRow>();
+        ...columns.map(column => before[column]), actor.isOperator ? 1 : 0, organizationId, actor.id).first<ProfileRow>();
     if (!result) throw new EventIntegrationError(409, 'Profile or management permission changed; request a new preview');
     await finishEventOperation(db, previewId, true, ['profile']);
     return { organization: profile(result), previewId };

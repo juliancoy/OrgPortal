@@ -159,3 +159,18 @@ test('MCP failure telemetry excludes credentials and user-controlled data', asyn
     assert.ok(!JSON.stringify(entry).includes('secret-method'));
   } finally { console.info = original; }
 });
+
+test('operator authority comes only from live primary-account introspection, never token claims or website accounts', async () => {
+  const {privateKey,publicKey}=await generateKeyPair('ES256');const keySet=createLocalJWKSet({keys:[await exportJWK(publicKey)]});const originalFetch=globalThis.fetch;
+  try{
+    for(const subject of ['owner:admin','website:site:admin']){
+      const token=await new SignJWT({scope:'org:portal.read org:portal.write',is_sysadmin:true}).setProtectedHeader({alg:'ES256'}).setIssuer(env.MCP_OAUTH_ISSUER!).setSubject(subject).setAudience(lifetech).setIssuedAt().setExpirationTime('5m').sign(privateKey);
+      const payload=JSON.parse(Buffer.from(token.split('.')[1],'base64url').toString());const config={...env,MCP_SUBJECT_MAP_JSON:JSON.stringify({[subject]:'admin'})};
+      for(const authority of [false,true]){
+        globalThis.fetch=async()=>Response.json({active:true,canonical_user_id:'admin',account_id:'admin',account_subject:subject,sub:subject,iss:payload.iss,aud:lifetech,scope:payload.scope,exp:payload.exp,is_sysadmin:authority});
+        const identity=await authenticateMcp(request(lifetech,'/mcp',{authorization:`Bearer ${token}`}),config,keySet);
+        assert.equal(identity.isOperator,authority&&subject.startsWith('owner:'));
+      }
+    }
+  }finally{globalThis.fetch=originalFetch;}
+});

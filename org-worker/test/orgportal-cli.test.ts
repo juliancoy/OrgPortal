@@ -102,3 +102,11 @@ test('profile CLI transports reviewed patches and receipts over authenticated MC
     await assert.rejects(runProfileCommand({profileAction:'apply',profileFile:file},{}),/only organization profile fields/);
   }finally{await new Promise<void>((resolve,reject)=>server.close(error=>error?reject(error):resolve()));await rm(directory,{recursive:true,force:true});}
 });
+
+test('explicit admin login requires a separate named connection and primary-account portal scopes', async()=>{
+ assert.throws(()=>parseCommand(['auth','login','--admin'],{}),/explicit --connection/);
+ assert.throws(()=>parseCommand(['profile','get','--organization','org','--admin'],{}),/auth login/);
+ const claims={sub:'owner:admin',scope:'org:portal.read org:portal.write'};
+ const token=`fixture.${Buffer.from(JSON.stringify(claims)).toString('base64url')}.fixture`;
+ await run(['auth','login','--admin','--portal','https://orgportal.cc','--connection','admin'],{env:{},log:()=>{},credentialStore:async()=>({load:async()=>null,release:async()=>{}}),browserLogin:async(_r,_i,_c,_b,options)=>{assert.equal(options.admin,true);return{accessToken:async()=>token,close:async()=>{}}}});
+});

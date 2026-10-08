@@ -177,6 +177,7 @@ export async function authenticateMcp(request: Request, env: Env, getKey?: JWTVe
       }
     }
     if (typeof userId !== "string" || !userId) throw new Error();
+    let isOperator = false;
     if (config.introspection) {
       let response: Response;
       try {
@@ -200,9 +201,10 @@ export async function authenticateMcp(request: Request, env: Env, getKey?: JWTVe
         || status.account_subject !== payload.sub || typeof status.canonical_user_id !== 'string'
         || !status.canonical_user_id || typeof status.account_id !== 'string' || !status.account_id) throw new Error();
       userId = status.canonical_user_id;
+      isOperator = status.is_sysadmin === true && typeof payload.sub === 'string' && payload.sub.startsWith('owner:');
     }
     const scopes = typeof payload.scope === "string" ? payload.scope.split(" ") : [];
-    return { userId, scopes, organizationId: config.organizationId, resource: config.resource };
+    return { userId, scopes, isOperator, organizationId: config.organizationId, resource: config.resource };
   } catch (error) {
     if (error instanceof EventIntegrationError) throw error;
     console.warn("MCP access token rejected", { stage: validationStage });

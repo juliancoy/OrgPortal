@@ -14,7 +14,7 @@ node org-worker/scripts/orgportal.mjs profile status --organization ORGANIZATION
 All commands accept `--portal` and `--connection` as with existing CLI commands.
 Profile commands require a saved connection. `get` requires active membership;
 `preview`, `apply`, and `status` require owner or administrator access to that
-specific organization. Membership in a parent or supporter does not grant access
+specific organization, or verified PIdP system-administrator authority. Membership in a parent or supporter does not grant access
 to descendants. OAuth consent alone does not grant management permission.
 
 `patch.json` contains only the fields to change: `name`, `description`,
@@ -39,3 +39,21 @@ Research for the five Amplify pitch companies is in
 [the research manifest](research/amplify-pitch-startups-2026-10-08.json). Extract
 one entry's `patch` object to a JSON file, then preview/apply it against that
 entry's organization ID. The voting section reads the saved organization fields.
+
+## Primary administrator connection
+
+System administrators use an explicit primary-account consent flow and a separate
+named connection on the unscoped OrgPortal platform resource:
+
+```sh
+node org-worker/scripts/orgportal.mjs auth login --admin --portal https://orgportal.cc --connection platform-admin --browser
+node org-worker/scripts/orgportal.mjs profile preview --portal https://orgportal.cc --connection platform-admin --organization org-bluehealer --file patch.json
+```
+
+PIdP verifies the active primary account against its system-admin authority and
+reports that role through live token introspection. Website accounts do not
+inherit it from matching emails, UUIDs, profile fields or identity links. The
+profile tools honor this verified operator role without claiming organizations
+or modifying their memberships. Portal scopes, resource restrictions and exact
+preview/apply receipts still apply. Removing system-admin authority is reflected
+on the next MCP request. Existing website-member grants remain unchanged.
