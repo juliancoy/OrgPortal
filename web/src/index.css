@@ -9709,3 +9709,14 @@ textarea:focus {
 }
 .public-event-listing-banner a:hover { background: #b80000; }
 .public-event-listing-banner a:focus-visible { outline: 3px solid #fff; outline-offset: -5px; }
+
+/* Keep mobile tenant branding readable beside signed-in account controls. */
+@media(max-width:600px){
+.portal-header-inner{grid-template-columns:minmax(120px,1fr) auto auto;gap:8px;width:calc(100% - 24px)}
+.portal-brand{gap:8px;min-width:0}.portal-brand>img{flex:0 0 38px!important;width:38px!important;height:38px!important;object-fit:contain}
+.portal-brand-title{font-size:1rem;overflow:visible;white-space:normal}.portal-brand-sub{display:none}
+.portal-auth{gap:8px;position:relative}.portal-auth .organization-view-indicator{position:absolute;right:0;top:calc(100% + 4px);font-size:.7rem;white-space:nowrap}
+.portal-user-trigger,.portal-notification-trigger,.portal-nav-toggle{box-sizing:border-box;width:40px!important;min-width:40px!important;height:40px!important;min-height:40px!important;padding:6px!important;flex:0 0 40px}
+.portal-avatar{display:block;flex:0 0 28px!important;width:28px!important;height:28px!important;aspect-ratio:1;overflow:hidden}.portal-avatar img{display:block;width:100%!important;height:100%!important;object-fit:cover!important}
+.portal-middle{margin-top:20px;min-width:0}.portal-search{width:100%;min-width:0}
+}

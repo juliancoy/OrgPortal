@@ -430,7 +430,7 @@ export function PublicEventPage() {
   useEffect(() => {
     if (!event) return
     setSeoMeta({
-      title: event.social_title || externalEventListings(event, window.location.origin)[0]?.title || event.title,
+      title: `${event.social_title || event.title} on ${window.location.hostname}`,
       description: summary(event.social_description || externalEventListings(event, window.location.origin)[0]?.description || event.description),
       canonicalUrl: eventUrl(event.slug),
       imageUrl: event.social_image_url || externalEventListings(event, window.location.origin)[0]?.image_url || event.image_url || undefined,
