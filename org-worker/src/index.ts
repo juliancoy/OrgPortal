@@ -2741,7 +2741,8 @@ app.get('/api/network/contact/:slug/availability', async c => {
   const row = await c.env.DB.prepare('SELECT user_id, enabled FROM user_contact_pages WHERE slug = ?').bind(c.req.param('slug')).first<{user_id:string;enabled:number}>();
   if (!row) fail(404, 'Public profile not found');
   c.header('Cache-Control', 'no-store');
-  return c.json(await profileAvailability(c.env.DB, row.user_id, Boolean(row.enabled)));
+  const viewer = c.req.header('Authorization') ? await currentUser(c.env, c.req.raw) : null;
+  return c.json(await profileAvailability(c.env.DB, row.user_id, Boolean(row.enabled), viewer?.id === row.user_id, new Date(), viewer?.id));
 });
 app.get("/api/network/contact/me", async (c) => {
   const user = await currentUser(c.env, c.req.raw);

@@ -17,6 +17,9 @@ features and enforce permissions. PIdP manages sign-in, credentials, sessions,
 provider connections and OAuth grants. Cloudflare hosts the deployed services.
 Authorized organization administrators and recipients can access information
 according to its visibility and their permissions; public content is public.
+Profile availability is visible to its owner and, when sharing is enabled, to
+signed-in people who also share a saved upcoming schedule through a public
+profile. Visitors who have not shared a schedule receive no availability slots.
 
 When you use OrgPortal through ChatGPT or another MCP client, that client sends
 tool arguments and receives authorized tool results. Those results may contain
