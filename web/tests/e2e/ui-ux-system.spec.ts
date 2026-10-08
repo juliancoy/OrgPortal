@@ -649,7 +649,9 @@ test.describe('Code Collective UI and UX system coverage', () => {
     await expect(page.getByText('Existing hello from Jordan')).toBeVisible()
 
     await page.getByRole('textbox', { name: 'Message', exact: true }).fill('Hello from Playwright')
+    const confirmation = page.waitForResponse(response => response.url().endsWith('/conversations/dm-1/messages') && response.request().method() === 'POST')
     await page.getByRole('button', { name: 'Send' }).click()
+    expect((await (await confirmation).json()).message).toMatchObject({ id: 'msg-2', sequence: 2, body: 'Hello from Playwright' })
     const sentMessage = page.locator('.portal-chat-message').filter({ hasText: 'Hello from Playwright' })
     await expect(sentMessage).toBeVisible()
     await expect(page.getByText('Sending...')).toHaveCount(0)
