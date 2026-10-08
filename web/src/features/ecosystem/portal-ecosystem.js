@@ -9,9 +9,15 @@ export function mergePortalEvidence(base, organizations, records, refreshedAt = 
  data.relationships=data.relationships.filter(r=>!r.id.startsWith('portal:'))
  data.financing=data.financing.filter(r=>!r.id.startsWith('portal:'))
  const byId = new Map(data.organizations.map(o => [o.id,o])), mapping = new Map()
+ // Normalize the snapshot once, rather than reparsing every website for every
+ // directory row. Keep ambiguous name/website matches separate from exact IDs.
+ const names=new Map(),websites=new Map()
+ const index=(map,value,org)=>{if(!value)return;if(!map.has(value))map.set(value,[]);map.get(value).push(org)}
+ for(const org of data.organizations){index(names,key(org.name),org);index(websites,safeUrl(org.website),org)}
+ const snapshotIds=new Map(byId)
  for (const org of organizations) {
-  const matches=data.organizations.filter(o => o.id===org.id || key(o.name)===key(org.name) || (safeUrl(o.website) && safeUrl(o.website)===safeUrl(org.source_url)))
-  const match=matches.find(o=>o.id===org.id) || (matches.length===1 ? matches[0] : null)
+  const candidates=new Set([...(names.get(key(org.name))||[]),...(websites.get(safeUrl(org.source_url))||[])])
+  const match=snapshotIds.get(org.id) || (candidates.size===1 ? [...candidates][0] : null)
   const id=match?.id || org.id;mapping.set(org.id,id)
   const image=safeUrl(org.image_url)
   if(match && 'image_url' in org && (image || match.imageCaption!=='Published website preview image')){match.imageUrl=image;match.imageSourceUrl=safeUrl(org.source_url);match.portalSlug=org.slug}
@@ -64,9 +70,7 @@ export async function loadPortalEvidence(base, fetcher = fetch, prefix='/api/org
   while(queue.length){const org=queue.shift();let offset=0;do{const result=await get('/orgs/public/'+encodeURIComponent(org.slug)+`/support?offset=${offset}`);if(!Array.isArray(result.records) || (result.nextRecordOffset!==null && (!Number.isInteger(result.nextRecordOffset) || result.nextRecordOffset<=offset)))throw new Error('Support evidence is incomplete');records.push(...result.records);offset=result.nextRecordOffset;}while(offset!==null)}
  }))
  }
- const endpoints=new Set(records.flatMap(r=>[r.from_organization_id,r.to_organization_id]).filter(Boolean))
- const included=directory.filter(o=>scoped.some(s=>s.id===o.id) || endpoints.has(o.id))
- return mergePortalEvidence(base,included,records)
+ return mergePortalEvidence(base,directory,records)
 }
 
 export function financialNodeAmounts(data, {includeCapitalization = false} = {}) {

@@ -22,4 +22,6 @@ Software-adapter timing is not evidence of hardware performance. Compare both ro
 
 The default graph uses `canvas-renderer.js` to batch edge paths, arrowheads, nodes, and pie sectors. Painting uses an OffscreenCanvas worker where supported, with one paint in flight and only the latest pending graph/view retained. Its backing store is limited to two million pixels. Neither graph route imports Three.js or creates per-edge tube geometry.
 
-`node scripts/check-network-longevity.mjs` verifies a delayed evidence refresh, 65 seconds of repeated zoom interaction, pin/reload/unpin, mobile controls, and the absence of multi-second UI stalls on isolated public fixtures.
+`node scripts/check-network-longevity.mjs` verifies a delayed, paginated 5,000-organization directory refresh, 65 seconds of repeated zoom interaction, pin/reload/unpin, mobile controls, and the absence of multi-second UI stalls on isolated public fixtures.
+
+Directory refresh uses precomputed ID/name/website indexes and funding records indexed by endpoint and direct fund administrator. It preserves ambiguous-match handling, exact-ID precedence, and separate received/disbursed totals without rescanning the entire directory for every record.

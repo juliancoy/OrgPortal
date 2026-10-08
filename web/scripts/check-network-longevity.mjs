@@ -11,9 +11,9 @@ try {
   window.networkTasks=[]
   new PerformanceObserver(list=>{for(const e of list.getEntries())window.networkTasks.push({start:e.startTime,duration:e.duration})}).observe({type:'longtask',buffered:true})
  })
- const orgs=Array.from({length:240},(_,i)=>({id:`longevity-${i}`,name:`Medical organization ${i}`,slug:`longevity-${i}`,tags:[],description:'Synthetic graph refresh fixture'}))
- const records=orgs.slice(1).map((org,i)=>({id:`support:longevity-${i}`,record_type:'organization_support',from_organization_id:orgs[0].id,to_organization_id:org.id,transaction_type:'transfer',currency:'USD',amount:10000+i,description:'Synthetic public evidence',status:'active'}))
- await page.route('**/api/org/api/network/orgs/public?*',async route=>{await new Promise(resolve=>setTimeout(resolve,1200));await route.fulfill({json:orgs})})
+ const orgs=Array.from({length:5000},(_,i)=>({id:`longevity-${i}`,name:`Medical organization ${i}`,slug:`longevity-${i}`,tags:[],description:'Synthetic graph refresh fixture'}))
+ const records=orgs.slice(1,240).map((org,i)=>({id:`support:longevity-${i}`,record_type:'organization_support',from_organization_id:orgs[0].id,to_organization_id:org.id,transaction_type:'transfer',currency:'USD',amount:10000+i,description:'Synthetic public evidence',status:'active'}))
+ await page.route('**/api/org/api/network/orgs/public?*',async route=>{const offset=Number(new URL(route.request().url()).searchParams.get('offset'));await new Promise(resolve=>setTimeout(resolve,offset===0?6000:20));await route.fulfill({json:orgs.slice(offset,offset+500)})})
  await page.route('**/api/org/api/network/relationships/public?*',route=>route.fulfill({json:{records,nextRecordOffset:null}}))
  await page.goto(origin+'/ecosystem/network')
  await page.waitForFunction(()=>document.querySelector('#network-status')?.textContent.includes('visible links'))
@@ -21,7 +21,7 @@ try {
  assert.equal(await page.locator('canvas[data-renderer=canvas]').count(),1)
  assert.equal(await page.evaluate(()=>performance.getEntriesByType('resource').some(r=>/\/three(?:_|\.|\/)/.test(r.name))),false)
  console.log('Refreshed graph:',await page.locator('#network-status').textContent(),await page.locator('#network-labels button').count());
- assert.equal(await page.locator('#network-labels button').filter({hasText:'Medical organization '}).count(),orgs.length,'delayed refresh retains every fixture organization')
+ assert.equal(await page.locator('#network-labels button').filter({hasText:'Medical organization '}).count(),240,'delayed refresh retains every connected fixture organization')
  const start=Date.now()
  while(Date.now()-start<65_000){
   await page.locator('#zoom-in').click({timeout:1500})
@@ -38,7 +38,7 @@ try {
  await page.reload();await page.locator('[data-unpin-node]').waitFor();await page.locator('[data-unpin-node]').click()
  assert.equal(new URL(page.url()).searchParams.has('org'),false)
  assert.deepEqual(errors,[])
- console.log(JSON.stringify({mode:'canvas',durationSeconds:65,maxLongTaskMs:maxTask,refreshNodes:orgs.length,pinReload:true,errors},null,2))
+ console.log(JSON.stringify({mode:'canvas',durationSeconds:65,maxLongTaskMs:maxTask,directoryNodes:orgs.length,connectedFixtureNodes:240,pinReload:true,errors},null,2))
  await page.setViewportSize({width:390,height:844});await page.reload()
  await page.locator('canvas[data-renderer=canvas]').waitFor()
  await page.locator('#network-fit').click();assert.deepEqual(errors,[])

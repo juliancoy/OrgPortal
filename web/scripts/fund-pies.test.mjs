@@ -57,3 +57,13 @@ test('compact previews show both funding totals without evidence lists',async()=
  assert.match(html,/Total received/);assert.match(html,/Total disbursed/);assert.match(html,/href="\/orgs\/b"/)
  assert.doesNotMatch(html,/View source|Documented relationships|eco-relations/)
 })
+
+test('family accounting excludes internal movements and handles nested direct administrators',async()=>{
+ const {financialNodeTotals}=await import('../src/features/ecosystem/fund-pies.js')
+ const data={organizations:[{id:'parent',name:'Parent'},{id:'fund',name:'Fund',administratorId:'parent'},{id:'child',name:'Child',administratorId:'fund'},{id:'outside',name:'Outside'}],relationships:[edge({id:'one',source:'outside',target:'child',amount:100}),edge({id:'two',source:'fund',target:'child',amount:20}),edge({id:'three',source:'parent',target:'fund',amount:40})],financing:[]}
+ const totals=financialNodeTotals(data)
+ assert.deepEqual(totals.get('parent'),{received:0,disbursed:20})
+ assert.deepEqual(totals.get('fund'),{received:140,disbursed:0})
+ assert.deepEqual(totals.get('child'),{received:120,disbursed:0})
+ assert.equal(financialNodePies(data).get('fund').total,140)
+})

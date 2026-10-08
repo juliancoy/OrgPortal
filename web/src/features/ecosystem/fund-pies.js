@@ -7,10 +7,12 @@ export const managedFunds = [
  {name:'TEDCO Seed Funds / SSBCI', administrator:'TEDCO', sourceUrl:'https://www.tedcomd.com/insight/tedco-announces-state-small-business-credit-initiative-investment-irazu-oncology'},
 ]
 export function applyFundHierarchy(data) {
+ const names=new Map()
+ for(const org of data.organizations){const name=key(org.name);if(!names.has(name))names.set(name,[]);names.get(name).push(org)}
  for(const fund of managedFunds) {
-  const administrator=data.organizations.find(o=>key(o.name)===key(fund.administrator))
+  const administrator=names.get(key(fund.administrator))?.[0]
   if(!administrator)continue
-  for(const org of data.organizations.filter(o=>key(o.name)===key(fund.name)))Object.assign(org,{entityType:'fund',administratorId:administrator.id,administratorName:administrator.name,administrationSourceUrl:fund.sourceUrl,fundUmbrella:fund.umbrella || null})
+  for(const org of names.get(key(fund.name))||[])Object.assign(org,{entityType:'fund',administratorId:administrator.id,administratorName:administrator.name,administrationSourceUrl:fund.sourceUrl,fundUmbrella:fund.umbrella || null})
  }
  return data
 }
@@ -42,30 +44,35 @@ function financialRecords(data,includeCapitalization=false) {
  }
  return records
 }
+// Index each record at its endpoints and direct fund administrator once.
+// This preserves family accounting without scanning the full directory per node.
+function familyRecords(data,records) {
+ const organizations=new Map(data.organizations.map(o=>[o.id,o])),incoming=new Map(),outgoing=new Map(),administrators=new Set()
+ for(const org of data.organizations)if(org.administratorId&&org.administratorId!==org.id)administrators.add(org.administratorId)
+ const owners=value=>new Set([value,organizations.get(value)?.administratorId].filter(Boolean))
+ const append=(map,key,record)=>{if(!map.has(key))map.set(key,[]);map.get(key).push(record)}
+ for(const record of records){
+  const sources=owners(record.source),targets=owners(record.target)
+  for(const target of targets)if(!sources.has(target))append(incoming,target,record)
+  for(const source of sources)if(!targets.has(source))append(outgoing,source,record)
+ }
+ return {organizations,incoming,outgoing,administrators}
+}
 export function financialNodeTotals(data) {
  applyFundHierarchy(data)
- const records=financialRecords(data).filter(dollars),totals=new Map()
- for(const org of data.organizations) {
-  const family=new Set([org.id,...data.organizations.filter(o=>o.administratorId===org.id).map(o=>o.id)])
-  let received=0,disbursed=0
-  for(const record of records) {
-   if(family.has(record.target)&&!family.has(record.source))received+=record.amount
-   if(family.has(record.source)&&!family.has(record.target))disbursed+=record.amount
-  }
-  totals.set(org.id,{received,disbursed})
- }
+ const {incoming,outgoing}=familyRecords(data,financialRecords(data).filter(dollars)),totals=new Map()
+ for(const org of data.organizations)totals.set(org.id,{received:(incoming.get(org.id)||[]).reduce((sum,r)=>sum+r.amount,0),disbursed:(outgoing.get(org.id)||[]).reduce((sum,r)=>sum+r.amount,0)})
  return totals
 }
 export function financialNodePies(data,{includeCapitalization=false}={}) {
  applyFundHierarchy(data)
- const organizations=new Map(data.organizations.map(o=>[o.id,o]))
  const records=financialRecords(data,includeCapitalization)
+ const {organizations,incoming:receipts,outgoing:awards,administrators}=familyRecords(data,records)
  const pies=new Map()
  for(const org of data.organizations) {
-  const family=new Set([org.id,...data.organizations.filter(o=>o.administratorId===org.id).map(o=>o.id)])
-  const incoming=records.filter(r=>family.has(r.target)&&!family.has(r.source))
-  const outgoing=records.filter(r=>family.has(r.source)&&!family.has(r.target))
-  const administers=family.size>1
+  const incoming=receipts.get(org.id)||[],outgoing=awards.get(org.id)||[]
+  if(!incoming.length&&!outgoing.length)continue
+  const administers=administrators.has(org.id)
   // Never mix receipts with onward awards: those can be the same dollars.
   const direction=administers&&outgoing.some(dollars)?'outgoing':incoming.some(dollars)?'incoming':'outgoing'
   const selected=direction==='incoming'?incoming:outgoing,groups=new Map()

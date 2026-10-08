@@ -12,13 +12,15 @@ export const semantics = {
 }
 export const key = (s) => String(s || '').normalize('NFKD').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 export function safeUrl(value) {
+  if (!value) return ''
   try { const u = new URL(value); return ['https:', 'http:'].includes(u.protocol) && !u.username && !u.password ? u.href : '' } catch { return '' }
 }
 // Government jurisdiction is independent of a funding role. Public universities
 // and municipal/county bodies retain their existing classes.
 export function governmentCategory(org) {
  const name=org.name || '', type=org.type || '', tags=org.tags || []
- let host='';try { host=new URL(org.website || org.source_url).hostname } catch {}
+ let host='';const website=org.website || org.source_url
+ if(website)try { host=new URL(website).hostname } catch {}
  if(tags.includes('Federal government') || /federal government|federal agency/i.test(type) || /^(?:National Institutes of Health|U\.?S\.? Economic Development Administration)(?:$| \()/i.test(name) || /(?:^|\.)(?:nih|eda)\.gov$/.test(host))return 'federal-government'
  if(tags.includes('State government') || /state government|state agency|state innovation funder/i.test(type) || /^(?:TEDCO(?:$| )|tedcomd\.com$|Maryland (?:Department|Commission|Port Administration|Port Commission)\b)/i.test(name) || /(?:^|\.)maryland\.gov$/.test(host) || /(?:^|\.)tedcomd\.com$/.test(host))return 'state-government'
  return null
