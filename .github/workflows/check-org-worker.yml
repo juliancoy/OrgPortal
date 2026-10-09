@@ -1,9 +1,9 @@
 name: Check shared org worker
 on:
   push:
-    paths: ['org-worker/**', '.github/workflows/check-org-worker.yml']
+    paths: ['org-worker/**', 'chat-worker/**', 'shared/**', 'docs/privacy/**', '.github/workflows/check-org-worker.yml']
   pull_request:
-    paths: ['org-worker/**', '.github/workflows/check-org-worker.yml']
+    paths: ['org-worker/**', 'chat-worker/**', 'shared/**', 'docs/privacy/**', '.github/workflows/check-org-worker.yml']
 permissions:
   contents: read
 jobs:
@@ -18,7 +18,12 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-          cache-dependency-path: org-worker/package-lock.json
+          cache-dependency-path: |
+            org-worker/package-lock.json
+            chat-worker/package-lock.json
+      - name: Install chat integration dependencies
+        run: npm ci --ignore-scripts
+        working-directory: chat-worker
       - run: npm ci --ignore-scripts
       - run: npm run typecheck
       - run: npm test

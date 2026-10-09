@@ -1,14 +1,14 @@
 services:
   orgportal-playwright:
     build:
-      context: ../..
-      dockerfile: docker/playwright/Dockerfile
-    working_dir: /app
+      context: ../../..
+      dockerfile: web/docker/playwright/Dockerfile
+    working_dir: /app/web
     environment:
       - CI=1
       - PLAYWRIGHT_PORT=4173
       - PLAYWRIGHT_HOST=0.0.0.0
       - PLAYWRIGHT_BASE_URL=http://127.0.0.1:4173
     volumes:
-      - ../../playwright-report:/app/playwright-report
-      - ../../test-results:/app/test-results
+      - ../../playwright-report:/app/web/playwright-report
+      - ../../test-results:/app/web/test-results

@@ -125,7 +125,7 @@ test('event gallery resolves stored images through the org API without rewriting
   await page.goto(portal('/events/medtech-in-the-hut'));
   const image = page.getByRole('img', { name: 'Menu photo', exact: true });
   await expect(image).toHaveAttribute('src', '/api/org/api/network/events/public/medtech-in-the-hut/media/stored');
-  const labelFits = await image.locator('..').locator('strong').evaluate(label => label.scrollWidth <= label.parentElement!.clientWidth);
+  const labelFits = await page.getByRole('button', { name: 'Open Menu photo in gallery', exact: true }).locator('strong').evaluate(label => label.scrollWidth <= label.parentElement!.clientWidth);
   expect(labelFits).toBe(true);
   await expect(page.getByRole('img', { name: 'External photo', exact: true })).toHaveAttribute('src', 'https://images.test/event.png');
   await expect(page.getByRole('button', { name: 'Next event media', exact: true })).toBeVisible();
@@ -177,6 +177,8 @@ async function mockTenant(page: Page, options: MockTenantOptions = {}) {
         feature_config: { externalCalendarUrl: 'https://medtech.social/calendar.html' },
       } })
     }
+    if (path.includes('/photo-tags/')) return route.fulfill({ json: { tags: [], canEdit: false } })
+    if (path.endsWith('/company-votes/public')) return route.fulfill({ json: { available: false, closed: false, closes_at: null, companies: [] } })
     if (path.endsWith('/admin/me')) return route.fulfill({ json: { is_sysadmin: false } })
     if (path.includes('/network/orgs/public/baltimore-medtech/events')) return route.fulfill({ json: [] })
     if (path.endsWith('/network/events/public/medtech-in-the-hut/chat')) {
@@ -233,33 +235,21 @@ async function mockTenant(page: Page, options: MockTenantOptions = {}) {
   }
 }
 
-test('Google personalized entry preserves the selected account and return context', async ({ page }) => {
+test('Google sign-in delegates account selection to PIdP and preserves return context', async ({ page }) => {
   await mockTenant(page)
-  await page.route('**/pidp/configuration', route => route.fulfill({ json: { google_client_id: 'test-google-client' } }))
-  await page.route('https://accounts.google.com/gsi/client', route => route.fulfill({
-    contentType: 'application/javascript',
-    body: `window.google = { accounts: { id: {
-      initialize(options) { window.googleLoginOptions = options; },
-      renderButton(element) {
-        const button = document.createElement('button');
-        button.textContent = 'Continue as Test Account';
-        button.onclick = () => window.googleLoginOptions.callback({credential: 'header.' + btoa(JSON.stringify({sub: '123456789'})) + '.signature'});
-        element.appendChild(button);
-      }
-    } } };`,
-  }))
+  let widgetRequests = 0
+  await page.route('https://accounts.google.com/**', route => { widgetRequests++; return route.abort() })
   await page.goto(portal('/users/login?next=%2Fpeople'))
-  await expect(page.getByRole('heading', { name: 'Log In', exact: true })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Continue with GitHub' })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Continue with Google' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Sign in to Baltimore MedTech', exact: true })).toBeVisible()
   const request = page.waitForRequest(request => request.url().includes('/auth/sso/start'))
-  await page.getByRole('button', { name: 'Continue as Test Account' }).click()
+  await page.getByRole('link', { name: 'Continue with Google' }).click()
   const url = new URL((await request).url())
   expect(url.searchParams.get('provider')).toBe('google')
-  expect(url.searchParams.get('login_hint')).toBe('123456789')
+  expect(url.searchParams.has('login_hint')).toBe(false)
   expect(url.searchParams.get('app')).toBeTruthy()
   expect(url.searchParams.has('owner')).toBe(false)
   expect(new URL(url.searchParams.get('next')!).searchParams.get('next')).toBe('/people')
+  expect(widgetRequests).toBe(0)
 })
 
 test('unlisted alias skips the Google widget and keeps the standard OAuth return context', async ({ page, baseURL }) => {
@@ -283,40 +273,13 @@ test('unlisted alias skips the Google widget and keeps the standard OAuth return
   expect(callback.searchParams.get('next')).toBe('/people')
 })
 
-for (const failure of ['configuration unavailable', 'script blocked', 'origin rejected', 'widget renders nothing', 'asynchronous rejection']) {
-  test(`Google fallback survives ${failure}`, async ({ page }) => {
-    await mockTenant(page)
-    await page.route('**/pidp/configuration', route => route.fulfill(failure === 'configuration unavailable'
-      ? { status: 503, json: {} }
-      : { json: { google_client_id: 'test-google-client' } }))
-    await page.route('https://accounts.google.com/gsi/client', route => failure === 'script blocked' ? route.abort() : route.fulfill({
-      contentType: 'application/javascript',
-      body: `window.google = { accounts: { id: {
-        initialize() { ${failure === 'origin rejected' ? "throw new Error('origin not allowed');" : ''} },
-        renderButton(element) { ${failure === 'asynchronous rejection' ? "element.appendChild(document.createElement('iframe')); setTimeout(() => console.error('origin not allowed'), 0);" : ''} }
-      } } };`,
-    }))
-    await page.goto(portal('/users/login?next=%2Fpeople'))
-    const link = page.getByRole('link', { name: 'Continue with Google' })
-    await expect(link).toBeVisible()
-    if (failure === 'asynchronous rejection') await expect(page.locator('.portal-google-personalized-button')).toBeVisible()
-    const request = page.waitForRequest(request => request.url().includes('/auth/sso/start'))
-    await link.click()
-    const url = new URL((await request).url())
-    expect(url.searchParams.get('provider')).toBe('google')
-    expect(url.searchParams.has('login_hint')).toBe(false)
-    expect(url.searchParams.has('owner')).toBe(false)
-    expect(new URL(url.searchParams.get('next')!).searchParams.get('next')).toBe('/people')
-  })
-}
-
 test('tenant domains use root-mounted canonical routes and assets', async ({ page }) => {
   await mockTenant(page)
   await page.goto(portal('/users/login'))
 
   await expect(page.locator('html')).toHaveAttribute('data-portal-profile', 'baltimore-medtech')
   await expect(page.locator('html')).toHaveAttribute('data-portal-tenant', 'baltimore-medtech')
-  await expect(page.getByRole('heading', { name: 'Log In', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Sign in to Baltimore MedTech', exact: true })).toBeVisible()
   await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', /\/images\/baltimore-medtech-logo-square-v2\.jpg$/)
   await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', /\/medtech\.webmanifest$/)
 
@@ -352,7 +315,7 @@ test('tenant brand guide uses the active organization identity', async ({ page }
   await page.goto(portal('/branding'))
 
   await expect(page.getByRole('heading', { name: 'Baltimore MedTech', exact: true })).toBeVisible()
-  await expect(page.getByText('Health x Medicine x Biotech', { exact: true }).first()).toBeVisible()
+  await expect(page.locator('main').getByText('Health x Medicine x Biotech', { exact: true }).first()).toBeVisible()
   await expect(page.locator('.tenant-brand-lockup strong')).toHaveCSS('color', 'rgb(23, 32, 51)')
   await expect(page.getByRole('img', { name: 'Baltimore MedTech primary logo' })).toHaveAttribute('src', /\/images\/baltimore-medtech-logo-square-v2\.jpg$/)
   await expect(page.getByText('#0f6f8f', { exact: true })).toBeVisible()
@@ -393,10 +356,10 @@ test('tenant event page keeps the hero compact and removes redundant labels', as
   await expect(body).not.toContainText('You’re registered')
   await expect(body).not.toContainText('Details')
   await expect(body).not.toContainText('When And Where')
-  await expect(page.getByRole('heading', { name: 'Event Links', exact: true })).toBeVisible()
-  const lumaLink = page.getByRole('link', { name: /Palava Night #3: Medtech & Healthcare/ })
+  const listings = page.getByRole('navigation', { name: 'External event listings' })
+  await expect(listings).toBeVisible()
+  const lumaLink = listings.getByRole('link', { name: 'View this event on luma.com' })
   await expect(lumaLink).toHaveAttribute('href', 'https://luma.com/csd7fvgm?tk=iQTYPW')
-  await expect(lumaLink.getByText('luma.com')).toBeVisible()
   await page.locator('.public-event-calendar-menu summary').click()
   await expect(page.getByRole('link', { name: 'Google Calendar', exact: true })).toHaveAttribute('href', /calendar\.google\.com/)
   await expect(page.getByRole('link', { name: 'Outlook Calendar', exact: true })).toHaveAttribute('href', /outlook\.live\.com/)
@@ -462,6 +425,7 @@ test('tenant event comments use the chat API for room, comments, replies, and re
   const rootText = 'Excited to meet other medtech builders.'
   const replyText = 'Saving a seat near the front.'
   const chatRequests: string[] = []
+  let createdRoot: Record<string, unknown> | null = null
 
   await mockTenant(page, { initiallyLoggedIn: true, mockEventChatRoutes: false })
   await page.route('**/api/chat/api/network/chat/**', async route => {
@@ -470,17 +434,22 @@ test('tenant event comments use the chat API for room, comments, replies, and re
     chatRequests.push(`${request.method()} ${url.pathname}${url.search}`)
 
     if (url.pathname.endsWith('/api/network/chat/event-room')) {
-      const payload = request.postDataJSON() as { event_id?: string; title?: string; org_id?: string | null }
-      expect(payload).toEqual({
-        event_id: 'evt-medtech-hut',
-        title: 'Event comments',
-        org_id: 'org-medtech',
-      })
-      return route.fulfill({ json: { conversation: { id: 'conv-event', kind: 'event_room', event_id: 'evt-medtech-hut', title: 'Event comments', updated_at: '2026-09-10T12:00:00Z' } } })
+      const payload = request.postDataJSON() as { event_id: string; initial_comment: string; client_message_id: string }
+      if (!payload.initial_comment) {
+        expect(payload).toEqual({ event_id: 'evt-medtech-hut', title: 'Event comments', org_id: 'org-medtech' })
+        return route.fulfill({ json: { conversation: { id: 'conv-event', kind: 'event_room', title: 'Event comments' } } })
+      }
+      expect(payload).toMatchObject({ event_id: 'evt-medtech-hut', initial_comment: rootText })
+      expect(payload.client_message_id).toBeTruthy()
+      createdRoot = { id: 'root-message', conversation_id: 'conv-event', sender_user_id: 'user-a', sender_name: 'Alice Example', body: payload.initial_comment, client_message_id: payload.client_message_id, sequence: 1, message_type: 'text', created_at: '2026-09-10T12:01:00Z', reactions: [], reply_to_message_id: null, thread_root_message_id: null }
+      return route.fulfill({ json: {
+        conversation: { id: 'conv-event', kind: 'event_room', event_id: 'evt-medtech-hut', title: 'Event comments', updated_at: '2026-09-10T12:00:00Z' },
+        message: createdRoot,
+      } })
     }
 
     if (url.pathname.endsWith('/api/network/chat/conversations/conv-event/messages') && request.method() === 'GET') {
-      return route.fulfill({ json: { latest_sequence: 0, messages: [] } })
+      return route.fulfill({ json: { latest_sequence: createdRoot ? 1 : 0, messages: createdRoot ? [createdRoot] : [] } })
     }
 
     if (url.pathname.endsWith('/api/network/chat/conversations/conv-event/messages') && request.method() === 'POST') {
@@ -550,7 +519,6 @@ test('tenant event comments use the chat API for room, comments, replies, and re
 
   expect(chatRequests).toEqual(expect.arrayContaining([
     'POST /api/chat/api/network/chat/event-room',
-    'GET /api/chat/api/network/chat/conversations/conv-event/messages?afterSequence=0',
     'POST /api/chat/api/network/chat/conversations/conv-event/messages',
     'POST /api/chat/api/network/chat/conversations/conv-event/messages/root-message/reactions',
   ]))
@@ -617,8 +585,9 @@ test('tenant header login preserves the current event route', async ({ page }) =
 
 test('event lists separate past gatherings, show sourced attendance to guests, and close past registration', async ({ page }) => {
   await mockTenant(page)
+  await page.route('**/api/org/api/portal/tenant', route => route.fulfill({ json: {} }))
   await page.clock.install({ time: new Date('2026-10-02T16:00:00Z') })
-  await page.route('**/api/org/api/network/orgs/public/baltimore-medtech/events?**', route => {
+  await page.route('**/api/org/api/network/events/public?**', route => {
     expect(new URL(route.request().url()).searchParams.get('upcoming_only')).toBe('false')
     return route.fulfill({ json: [
       { ...medtechEvent, attendance_count: 76, attendance_source_url: 'https://luma.com/csd7fvgm' },
@@ -669,18 +638,19 @@ for (const path of ['/org-events', '/events', '/calendar']) {
     await page.clock.install({ time: new Date('2026-10-03T16:00:00Z') });
     await mockTenant(page);
     await page.route('**/api/org/api/network/orgs/public/baltimore-medtech/events?**', route => route.fulfill({ json: [
-      { id: 'october', title: 'October community gathering', slug: 'october', starts_at: '2026-10-20T18:00:00-04:00', ends_at: '2026-10-20T20:30:00-04:00' },
-      { id: 'november', title: 'November community gathering', slug: 'november', event_date: '2026-11-17', starts_at: null },
-      { id: 'past', title: 'September community gathering', slug: 'past', starts_at: '2026-09-29T18:00:00-04:00' },
+      { id: 'october', tags: ['medtech'], title: 'October community gathering', slug: 'october', starts_at: '2026-10-20T18:00:00-04:00', ends_at: '2026-10-20T20:30:00-04:00' },
+      { id: 'november', tags: ['medtech'], title: 'November community gathering', slug: 'november', event_date: '2026-11-17', starts_at: null },
+      { id: 'past', tags: ['medtech'], title: 'September community gathering', slug: 'past', starts_at: '2026-09-29T18:00:00-04:00' },
     ] }));
     await page.route('**/api/org/api/network/orgs/public/lifetech/events?**', route => route.fulfill({ json: [
       { id: 'lifetech', title: 'LifeTech group gathering', slug: 'lifetech-gathering', starts_at: '2026-10-25T18:00:00-04:00' },
     ] }));
     await page.route('https://codecollective.us/baltimore/upcoming_events.json', route => route.fulfill({ json: [
-      { name: 'Main feed partner meetup', startDate: '2026-10-21T18:00:00-04:00', url: 'https://example.com/partner', description: 'Community meetup from the main feed.' },
+      { name: 'Main feed partner meetup', startDate: '2026-10-21T18:00:00-04:00', url: 'https://example.com/partner', description: 'Medical meetup from the main feed.' },
     ] }));
     await page.goto(portal(path));
-    await expect(page.getByRole('heading', { name: 'Events & Calendar', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'List', exact: true }).click();
     const owned = page.getByRole('region', { name: 'LifeTech events', exact: true });
     const partners = page.getByRole('region', { name: 'Partner events', exact: true });
     await expect(owned.getByRole('heading', { name: 'October community gathering' })).toBeVisible();
@@ -694,6 +664,7 @@ for (const path of ['/org-events', '/events', '/calendar']) {
     const left = await owned.boundingBox(), right = await partners.boundingBox();
     if (info.project.name.includes('mobile')) expect(right!.y).toBeGreaterThan(left!.y + left!.height);
     else expect(right!.x).toBeGreaterThan(left!.x);
+    await page.getByRole('button', { name: 'Calendar', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'October 2026', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Next month', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'November 2026', exact: true })).toBeVisible();
@@ -702,6 +673,7 @@ for (const path of ['/org-events', '/events', '/calendar']) {
     await page.screenshot({ path: info.outputPath('combined-events.png'), fullPage: true });
     if (info.project.name.includes('mobile')) {
       await page.setViewportSize({ width: 320, height: 640 });
+      await page.getByRole('button', { name: 'List', exact: true }).click();
       const card = owned.locator('article').first();
       const badge = await card.locator('.public-calendar-event-date').boundingBox();
       const body = await card.locator('.public-calendar-event-body').boundingBox();

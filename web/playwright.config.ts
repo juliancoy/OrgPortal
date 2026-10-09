@@ -28,7 +28,7 @@ export default defineConfig({
   ],
   webServer: {
     env: { VITE_GOOGLE_PERSONALIZED_ORIGINS: process.env.VITE_GOOGLE_PERSONALIZED_ORIGINS ?? new URL(baseURL).origin },
-    command: `VITE_CACHE_DIR=.vite-playwright-cache npm run dev -- --host ${HOST} --port ${PORT}`,
+    command: `VITE_CACHE_DIR=node_modules/.vite-playwright-cache npm run dev -- --host ${HOST} --port ${PORT}`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

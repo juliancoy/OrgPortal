@@ -9,8 +9,8 @@ try {
 }
 
 const baseUrl = process.env.SMOKE_BASE_URL || "https://codecollective.us";
-const executablePath = process.env.PLAYWRIGHT_CHROME_PATH || "/usr/bin/google-chrome";
-const expectedCallback = `${baseUrl}/p/auth/callback?next=/id`;
+const executablePath = process.env.PLAYWRIGHT_CHROME_PATH || undefined;
+const expectedCallback = `${baseUrl}/auth/callback?next=/id`;
 const paths = (process.env.SMOKE_PATHS || "/,/platform.html,/calendar.html,/projects.html")
   .split(",")
   .map((path) => path.trim())
@@ -117,7 +117,7 @@ try {
       await page.reload({ waitUntil: 'domcontentloaded' });
       await page.locator('#portal-login-button[data-portal-authenticated="true"]').waitFor();
       const account = page.locator('#portal-login-button');
-      if (!sessionRead || !userRead || await account.getAttribute('href') !== '/p/id') {
+      if (!sessionRead || !userRead || await account.getAttribute('href') !== '/id') {
         throw new Error(`${url}: session hydration failed`);
       }
       if (await account.getAttribute('aria-haspopup')) throw new Error(`${url}: account still opens login modal`);
