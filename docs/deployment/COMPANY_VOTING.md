@@ -43,10 +43,16 @@ requires live host-organization management permission. Voting always uses the
 authenticated caller and never accepts an arbitrary voter ID. Writes require
 `confirm=true` and an exact, expiring, one-use preview receipt.
 
-With an existing `orgportal auth login` connection:
+Tenant MCP connections are restricted to their configured organization. For an
+organization outside that exact tenant, use the global OrgPortal connection;
+live management permissions still apply.
+
+Sign in to the global resource, then preview Amplify’s ballot:
 
 ```sh
-node org-worker/scripts/company-ballot.mjs --organization org-amplify-medtech \
+orgportal auth login --portal https://orgportal.cc
+node org-worker/scripts/company-ballot.mjs --resource https://orgportal.cc/api/org/mcp \
+  --organization org-amplify-medtech \
   --event 15dc061b-d8a5-4cc5-ad94-e9a704c24b01 --mode favorites --fraction 0.25
 ```
 
