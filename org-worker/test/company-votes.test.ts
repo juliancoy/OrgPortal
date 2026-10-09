@@ -13,7 +13,7 @@ test('company voting isolates users/events, replaces votes, rejects non-roster c
       VALUES ('pitch','pitch','Pitch','pitch','',''),('other','other','Other','other','',''),('ordinary','ordinary','Ordinary','ordinary','','')`).run();
     await db.prepare("INSERT INTO organizations (id,name,slug) VALUES ('a','Alpha','alpha'),('b','Beta','beta'),('outsider','Outsider','outsider')").run();
     await db.prepare("UPDATE organizations SET description='Shared organization description', image_url='https://alpha.example/logo.png' WHERE id='a'").run();
-    await db.prepare("INSERT INTO event_company_ballots VALUES ('pitch','2099-10-09T00:00:00Z',1),('other','2099-10-09T00:00:00Z',1)").run();
+    await db.prepare("INSERT INTO event_company_ballots (event_id,closes_at,enabled) VALUES ('pitch','2099-10-09T00:00:00Z',1),('other','2099-10-09T00:00:00Z',1)").run();
     await db.prepare("INSERT INTO event_pitch_companies VALUES ('pitch','a'),('pitch','b'),('other','a')").run();
     const d1 = db as unknown as D1Database;
     const app = companyVoteRoutes(async (_env, req) => {

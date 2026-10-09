@@ -1,3 +1,4 @@
+import { companyBallotSchema, companyVoteSchema, companyVotesTargetSchema, getCompanyVotes, runCompanyBallotOperation, runCompanyVoteOperation } from './companyVotesMcp';
 import { runOrganizationProfileOperation, organizationProfileTargetSchema, organizationProfileUpdateSchema, organizationProfileStatusSchema } from './organizationProfileMcp';
 import { eventHostSchema, runEventHostOperation } from './eventHost';
 import { eventSlugSchema, runEventSlugOperation } from './eventSlugs';
@@ -709,10 +710,13 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
         || args.organizationId !== config.organizationId)) throw new EventIntegrationError(403, 'This MCP connection is limited to its own organization');
       return args;
     };
-    const result = async (operation: "list" | "get" | "plan" | "status" | "native" | "comments" | "mediaPreview" | "mediaApply" | "venueImage", args: unknown) => {
+    const result = async (operation: "list" | "get" | "plan" | "status" | "native" | "comments" | "mediaPreview" | "mediaApply" | "venueImage" | "companyBallot" | "companyVote" | "companyVotesGet", args: unknown) => {
       try {
         args = scopedArgs(args);
-        const data = operation === "venueImage" ? await runVenueImageOperation(env, identity, args)
+        const data = operation === "companyBallot" ? await runCompanyBallotOperation(env, identity, args)
+          : operation === "companyVote" ? await runCompanyVoteOperation(env, identity, args)
+          : operation === "companyVotesGet" ? await getCompanyVotes(env, identity, args)
+          : operation === "venueImage" ? await runVenueImageOperation(env, identity, args)
           : operation === "native" ? await runNativeEventOperation(env, identity, args)
           : operation === "comments" ? await runEventCommentsOperation(env, identity, args)
           : operation === "mediaPreview" ? await runEventMediaOperation(env, identity, args, false)
@@ -896,6 +900,11 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
     server.registerTool("apply_org_event_changes", { description: "Create or update a native OrgPortal event after showing a preview and obtaining user approval. Requires confirm=true and the matching one-use previewId.",
       inputSchema: nativeEventSchema, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       _meta: metadata([readScope, writeScope]) }, args => result("native", args));
+    server.registerTool('get_event_company_votes', { description: 'Read public company totals, voting mode and rounded-up favorite limit, plus only the authenticated account’s saved votes.', inputSchema: companyVotesTargetSchema, annotations: { readOnlyHint: true }, _meta: metadata([readScope]) }, args => result('companyVotesGet', args));
+    server.registerTool('preview_event_company_ballot', { description: 'Preview switching an existing company ballot between up/down and favorites. Favorites allow ceil(roster size × selectionFraction) choices; fraction defaults to 0.25. Requires host organization management permission. Preserves votes separately by mode and keeps the closing date.', inputSchema: companyBallotSchema, annotations: { readOnlyHint: true }, _meta: metadata([readScope]) }, args => result('companyBallot', { ...args, confirm: false }));
+    server.registerTool('apply_event_company_ballot', { description: 'Apply the reviewed company voting configuration with confirm=true and its one-use previewId. Rechecks live host management permission; refuses budgets below existing saved favorites.', inputSchema: companyBallotSchema, annotations: { readOnlyHint: false, destructiveHint: false }, _meta: metadata([readScope, writeScope]) }, args => result('companyBallot', args));
+    server.registerTool('preview_event_company_vote', { description: 'Preview this account’s company vote. In favorites mode use value=1 to select or value=0 to deselect; downvotes are forbidden. Never accepts another voter identity.', inputSchema: companyVoteSchema, annotations: { readOnlyHint: true }, _meta: metadata([readScope]) }, args => result('companyVote', { ...args, confirm: false }));
+    server.registerTool('apply_event_company_vote', { description: 'Save this account’s reviewed vote with confirm=true and one-use previewId. Enforces deadline, roster and favorite limit atomically. Clearing is allowed after voting closes.', inputSchema: companyVoteSchema, annotations: { readOnlyHint: false, destructiveHint: false }, _meta: metadata([readScope, writeScope]) }, args => result('companyVote', args));
     server.registerTool("preview_venue_image_changes", { description: "Preview an organization-owned venue avatar and its source/credit without writing. Requires live organization management permission.",
       inputSchema: venueImageSchema, annotations: { readOnlyHint: true, openWorldHint: false }, _meta: metadata([readScope]) },
       args => result("venueImage", { ...args, confirm: false }));

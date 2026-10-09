@@ -8,6 +8,7 @@ export async function runRetention(db: D1Database, now = Date.now(), dryRun = fa
     ['email_oauth_states', 'expires_at < ?', cutoff],
     ['private_newsletter_previews', 'expires_at < ?', new Date(cutoff).toISOString()],
     ['local_newsletter_previews', 'expires_at < ?', new Date(cutoff).toISOString()],
+    ['event_company_favorites', 'expires_at < ?', new Date(cutoff).toISOString()],
     ['event_company_votes', 'expires_at < ?', new Date(cutoff).toISOString()],
   ];
   const counts: Record<string, number> = {};

@@ -11,6 +11,7 @@ test('expiry units, bounds, dry-run, retries and unresolved operations',async()=
  sql.exec(`CREATE TABLE email_oauth_states(state_hash TEXT PRIMARY KEY,expires_at INTEGER);
  CREATE TABLE private_newsletter_previews(id TEXT PRIMARY KEY,expires_at TEXT);
  CREATE TABLE local_newsletter_previews(id TEXT PRIMARY KEY,expires_at TEXT);`);
+ sql.exec('CREATE TABLE event_company_favorites(id TEXT PRIMARY KEY, expires_at TEXT);');
  sql.exec('CREATE TABLE event_company_votes(id TEXT PRIMARY KEY, expires_at TEXT);');
  const now=1800000000000,cutoff=now-23*3600000;
  const put=sql.prepare("INSERT INTO event_mcp_operations VALUES(?, 'actor','org','event','fingerprint',?,0,?,NULL,'[]')");
@@ -21,6 +22,7 @@ test('expiry units, bounds, dry-run, retries and unresolved operations',async()=
  sql.prepare('INSERT INTO event_company_votes VALUES (?,?)').run('expired-vote',new Date(cutoff-1).toISOString());
  sql.prepare('INSERT INTO event_company_votes VALUES (?,?)').run('boundary-vote',new Date(cutoff).toISOString());
  for(let i=0;i<501;i++)sql.prepare('INSERT INTO private_newsletter_previews VALUES (?,?)').run(String(i),new Date(cutoff-1).toISOString());
+ sql.prepare('INSERT INTO event_company_favorites VALUES (?,?)').run('expired-favorite',new Date(cutoff-1).toISOString());
  const db=adapter(sql) as unknown as D1Database;
  assert.equal((await runRetention(db,now,true)).private_newsletter_previews,501);
  assert.equal(sql.prepare('SELECT COUNT(*) n FROM email_oauth_states').get()!.n,2);
@@ -28,6 +30,7 @@ test('expiry units, bounds, dry-run, retries and unresolved operations',async()=
  const first=await runRetention(db,now);
  assert.equal(first.private_newsletter_previews,500);assert.equal(first.event_mcp_operations,2);assert.equal(first.email_oauth_states,1);
  assert.equal(first.event_company_votes,1);
+ assert.equal(first.event_company_favorites,1);
  assert.equal(sql.prepare('SELECT id FROM event_company_votes').get()!.id,'boundary-vote');
  assert.equal((await runRetention(db,now)).private_newsletter_previews,1);
  assert.equal((await runRetention(db,now)).private_newsletter_previews,0);

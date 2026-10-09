@@ -15,3 +15,12 @@
 .company-vote-details .company-vote-description { color: var(--text); line-height: 1.55; white-space: pre-line; overflow-wrap: anywhere; margin-bottom: .75rem; }
 .company-vote-totals { font-size: .875rem; }
 @media (max-width: 480px) { .company-vote-row { gap: .75rem; padding: .75rem; } }
+.company-favorite-card { position: relative; grid-template-columns: minmax(0, 1fr); padding-top: 3rem; }
+.company-favorite-card.is-selected { background: #dbeafe; border-color: #2563eb; color: #172554; }
+.company-favorite-card.is-selected .company-vote-description { color: #172554; }
+.company-favorite-card.is-selected .company-vote-totals { color: #1e3a8a; }
+.company-favorite-select { position: absolute; inset: 0; z-index: 1; width: 100%; border: 0; border-radius: inherit; background: transparent; cursor: pointer; color: inherit; }
+.company-favorite-select:focus-visible { outline: 3px solid #2563eb; outline-offset: 3px; }
+.company-favorite-select:disabled { cursor: default; }
+.company-favorite-state { position: absolute; top: .75rem; right: 1rem; font-weight: 600; }
+.company-favorite-card .company-vote-details a { position: relative; z-index: 2; }

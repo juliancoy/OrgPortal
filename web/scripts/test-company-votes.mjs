@@ -32,15 +32,16 @@ await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
 const origin = `http://127.0.0.1:${server.address().port}`
 let browser
 try {
-  browser = await chromium.launch({ headless: true })
+  browser = process.env.COMPANY_VOTES_BROWSER_CDP ? await chromium.connectOverCDP(process.env.COMPANY_VOTES_BROWSER_CDP) : await chromium.launch({ headless: true })
   const page = await browser.newPage()
   const errors = []
   page.on('pageerror', error => errors.push(error.message))
   const votes = new Map()
+  let mode = 'up_down', fraction = .25
   let closed = false, fail = false, writes = 0, delayWrite = false, releaseWrite
   const companies = ['BlueHealer','Salynt','Liquet Medical Inc.','Rubitection Inc.','WearableDose']
     .map((name, i) => ({id:`c${i}`,name,slug:`company-${i}`,image_url:i===4?null:`${origin}/company-image-${i}.svg`,description:`${name} researched organization description.`,upvotes:0,downvotes:0,score:0}))
-  const summary = () => ({ available:true,closed,closes_at:'2099-10-16T00:00:00Z',companies:companies.map(company => {
+  const summary = () => ({ available:true,closed,mode,selection_fraction:fraction,selection_limit:mode==='favorites'?Math.ceil(companies.length*fraction):null,closes_at:'2099-10-16T00:00:00Z',companies:companies.map(company => {
     const values=[...votes].filter(([key])=>key.startsWith(`pitch:${company.id}:`)).map(([,v])=>v)
     return {...company,upvotes:values.filter(v=>v===1).length,downvotes:values.filter(v=>v===-1).length,score:values.reduce((a,b)=>a+b,0)}
   }) })
@@ -115,10 +116,30 @@ try {
   assert.equal(await down().isDisabled(),true)
   await page.setViewportSize({width:390,height:844})
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Mobile page must not overflow')
+  closed=false; mode='favorites'; votes.clear()
+  await render('bob')
+  await page.getByText('0 of 2 favorites selected. Your choices save immediately.',{exact:true}).waitFor()
+  assert.equal(await page.locator('.company-downvote').count(),0)
+  const favorite=(name,selected=false)=>page.getByRole('button',{name:`${selected?'Deselect':'Select'} ${name} as a favorite`,exact:true})
+  await favorite('BlueHealer').click();await favorite('BlueHealer',true).waitFor()
+  assert.equal(await favorite('BlueHealer',true).getAttribute('aria-pressed'),'true')
+  assert.equal(await page.locator('.company-favorite-card.is-selected').count(),1)
+  assert.equal(await page.locator('.company-favorite-card.is-selected').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(219, 234, 254)')
+  await favorite('Salynt').focus();await page.keyboard.press('Space');await favorite('Salynt',true).waitFor()
+  await page.getByText('2 of 2 favorites selected. Your choices save immediately.',{exact:true}).waitFor()
+  assert.equal(await favorite('WearableDose').isDisabled(),true)
+  await favorite('BlueHealer',true).click();await favorite('BlueHealer').waitFor()
+  await favorite('WearableDose').click();await favorite('WearableDose',true).waitFor()
+  await page.getByRole('button',{name:'Refresh totals',exact:true}).click();await favorite('WearableDose',true).waitFor()
+  assert.equal(await page.locator('.company-favorite-card.is-selected').count(),2)
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Favorite cards must fit mobile')
+  await render('alice');await page.getByText('0 of 2 favorites selected. Your choices save immediately.',{exact:true}).waitFor()
+  assert.equal(await page.locator('.company-favorite-card.is-selected').count(),0)
+  mode='up_down'
   await render('alice','ordinary')
   await page.waitForFunction(()=>!document.querySelector('.company-voting'))
   assert.deepEqual(errors,[])
-  console.log('PASS: five company cards; sign-in gating; upvote/downvote/clear; persisted reload; failed-save recovery; account-switch race; closed ballot clearing; ordinary events hidden; mobile layout.')
+  console.log('PASS: five company cards; sign-in gating; upvote/downvote/clear; persisted reload; failed-save recovery; account-switch race; closed ballot clearing; ordinary events hidden; mobile layout; favorites two-of-five, blue cards, keyboard selection, cap, deselection, persisted reload and account isolation.')
 } finally {
   if (browser) await browser.close()
   await new Promise(resolve=>server.close(resolve))

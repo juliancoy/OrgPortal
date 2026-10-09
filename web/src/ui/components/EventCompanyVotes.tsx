@@ -5,7 +5,7 @@ import { useAuth } from '../../app/AppProviders'
 import './event-company-votes.css'
 
 type Company = { id: string; name: string; slug: string; image_url: string | null; description: string | null; upvotes: number; downvotes: number; score: number }
-type Summary = { available: boolean; closed: boolean; closes_at: string | null; companies: Company[] }
+type Summary = { mode?: 'up_down' | 'favorites'; selection_fraction?: number; selection_limit?: number | null; available: boolean; closed: boolean; closes_at: string | null; companies: Company[] }
 
 function CompanyImage({ company }: { company: Company }) {
   const [failed, setFailed] = useState(false)
@@ -29,6 +29,9 @@ export function EventCompanyVotes({ eventId }: { eventId: string }) {
   const generation = useRef(0)
   const inFlight = useRef(false)
   const base = `/api/org/api/network/events/${encodeURIComponent(eventId)}/company-votes`
+  const favorites = summary?.mode === 'favorites'
+  const selectionLimit = summary?.selection_limit || 0
+  const selectedCount = summary?.companies.filter(company => votes[company.id] === 1).length || 0
   const closed = !!summary?.closed || (!!summary?.closes_at && Date.parse(summary.closes_at) <= clock)
 
   useEffect(() => {
@@ -69,20 +72,21 @@ export function EventCompanyVotes({ eventId }: { eventId: string }) {
     if (!token || !ready || inFlight.current) return
     const value = votes[company.id] === direction ? 0 : direction
     if (closed && value !== 0) return
+    if (favorites && value === 1 && selectedCount >= selectionLimit) { setMessage(`You can choose ${selectionLimit} favorites. Deselect one to choose another.`); return }
     const currentGeneration = generation.current
     inFlight.current = true
     setPending(company.id); setMessage('')
     try {
       const response = await fetch(`${base}/${encodeURIComponent(company.id)}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ value }), signal: AbortSignal.timeout(15000),
+        body: JSON.stringify({ value, ...(summary?.mode ? { mode: summary.mode } : {}) }), signal: AbortSignal.timeout(15000),
       })
       const data = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(data.message || data.error || 'Unable to save your vote. Reload votes to check whether it saved.')
       if (currentGeneration !== generation.current) return
       setSummary(data); setClock(Date.now())
-      setVotes(previous => ({ ...previous, [company.id]: data.my_vote }))
-      setMessage(value === 0 ? `Your vote for ${company.name} was cleared.` : `Your ${value === 1 ? 'upvote' : 'downvote'} for ${company.name} is saved.`)
+      setVotes(previous => data.votes || ({ ...previous, [company.id]: data.my_vote }))
+      setMessage(value === 0 ? `Your vote for ${company.name} was cleared.` : favorites ? `${company.name} is saved as a favorite.` : `Your ${value === 1 ? 'upvote' : 'downvote'} for ${company.name} is saved.`)
     } catch (error) {
       if (currentGeneration === generation.current) {
         setReady(false)
@@ -100,24 +104,32 @@ export function EventCompanyVotes({ eventId }: { eventId: string }) {
       <p className="public-event-eyebrow">Community picks</p>
       <h2 id="company-voting-title">Meet the pitching companies</h2>
     </div>
-    <p>Upvote or downvote each company. You get one vote per company; select your vote again to clear it. These are community preferences.</p>
+    {favorites ? <>
+      <p>Choose up to {selectionLimit} of your favorite companies by selecting their cards. Selected cards turn blue. Select again to deselect; there are no downvotes.</p>
+      <p className="muted">The limit is {Number(((summary?.selection_fraction || 0.25) * 100).toFixed(4))}% of the companies, rounded up.</p>
+      {token && ready ? <p role="status">{selectedCount} of {selectionLimit} favorites selected. Your choices save immediately.</p> : null}
+    </> : <p>Upvote or downvote each company. You get one vote per company; select your vote again to clear it. These are community preferences.</p>}
     {summary?.closes_at ? <p>{closed ? 'Voting closed' : 'Voting closes'} {new Date(summary.closes_at).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}.</p> : null}
     {!token && !closed ? <p><Link to={`/users/login?next=${encodeURIComponent(location.pathname + location.search)}`}>Sign in to vote</Link>.</p> : null}
     <ul className="company-vote-list" aria-label="Pitching companies and community votes">
       {summary?.companies.map(company => {
         const own = ready ? votes[company.id] || 0 : 0
         const disabled = !token || !ready || !!pending
-        return <li className="company-vote-row" key={company.id}>
-          <div className="company-vote-controls" aria-label={`Votes for ${company.name}`}>
+        return <li className={`company-vote-row${favorites ? ' company-favorite-card' : ''}${favorites && own === 1 ? ' is-selected' : ''}`} key={company.id}>
+          {favorites ? <button type="button" className="company-favorite-select" aria-pressed={own === 1}
+            aria-label={`${own === 1 ? 'Deselect' : 'Select'} ${company.name} as a favorite`}
+            disabled={disabled || (own !== 1 && (closed || selectedCount >= selectionLimit))}
+            onClick={() => void vote(company, 1)}><span className="company-favorite-state" aria-hidden="true">{own === 1 ? '✓ Selected' : 'Select favorite'}</span></button> : null}
+          {!favorites && <div className="company-vote-controls" aria-label={`Votes for ${company.name}`}>
             <button type="button" aria-label={`${closed && own === 1 ? 'Clear upvote for' : 'Upvote'} ${company.name}`} aria-pressed={own === 1} disabled={disabled || (closed && own !== 1)} className="company-upvote" onClick={() => void vote(company, 1)}><ArrowBigUp size={24} aria-hidden="true" /></button>
             <strong aria-label={`Score ${company.score}`}>{company.score}</strong>
             <button type="button" aria-label={`${closed && own === -1 ? 'Clear downvote for' : 'Downvote'} ${company.name}`} aria-pressed={own === -1} disabled={disabled || (closed && own !== -1)} className="company-downvote" onClick={() => void vote(company, -1)}><ArrowBigDown size={24} aria-hidden="true" /></button>
-          </div>
+          </div>}
           <div className="company-vote-details">
             <CompanyImage key={company.image_url} company={company} />
             <h3><Link to={`/orgs/${encodeURIComponent(company.slug)}`}>{company.name}</Link></h3>
             {company.description ? <p className="company-vote-description">{company.description}</p> : null}
-            <p className="company-vote-totals">{company.upvotes} upvotes · {company.downvotes} downvotes</p>
+            <p className="company-vote-totals">{favorites ? `${company.upvotes} favorites` : `${company.upvotes} upvotes · ${company.downvotes} downvotes`}</p>
             {pending === company.id ? <span role="status">Saving…</span> : null}
           </div>
         </li>

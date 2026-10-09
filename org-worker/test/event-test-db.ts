@@ -82,6 +82,7 @@ export class EventTestDb {
     this.sqlite.exec(readFileSync(new URL("../migrations/0052_venue_details.sql", import.meta.url), "utf8"));
     this.sqlite.exec(readFileSync(new URL("../migrations/0053_event_venue_votes.sql", import.meta.url), "utf8"));
     this.sqlite.exec(readFileSync(new URL("../migrations/0080_event_company_votes.sql", import.meta.url), "utf8"));
+    this.sqlite.exec(readFileSync(new URL("../migrations/0082_company_favorites.sql", import.meta.url), "utf8").split('INSERT INTO change_journal_exclusions')[0]);
   }
   prepare(sql: string) {
     const stmt = this.sqlite.prepare(sql);

@@ -145,15 +145,23 @@ test('ballot settings and rosters are audited but cleared company votes never en
  try {
   f.primary.sqlite.exec(`INSERT INTO events(id,ingest_key,title,slug) VALUES('pitch-fixture','pitch-fixture','Pitch','pitch-fixture');
    INSERT INTO organizations(id,name,slug) VALUES('pitch-company','Company','pitch-company');
-   INSERT INTO event_company_ballots VALUES('pitch-fixture','2099-10-09T00:00:00Z',1);
+   INSERT INTO event_company_ballots(event_id,closes_at,enabled) VALUES('pitch-fixture','2099-10-09T00:00:00Z',1);
    INSERT INTO event_pitch_companies VALUES('pitch-fixture','pitch-company');
    INSERT INTO event_company_votes(event_id,organization_id,user_id,value,expires_at)
    VALUES('pitch-fixture','pitch-company','private-voter',1,'2099-12-01T00:00:00Z');
-   DELETE FROM event_company_votes WHERE user_id='private-voter';`)
+   DELETE FROM event_company_votes WHERE user_id='private-voter';
+   UPDATE event_company_ballots SET mode='favorites',selection_fraction=0.5 WHERE event_id='pitch-fixture';
+   INSERT INTO event_company_favorites(event_id,organization_id,user_id,expires_at)
+   VALUES('pitch-fixture','pitch-company','private-favorite-voter','2099-12-01T00:00:00Z');
+   DELETE FROM event_company_favorites WHERE user_id='private-favorite-voter';`)
   const config = f.primary.sqlite.prepare("SELECT table_name FROM change_journal WHERE table_name IN ('event_company_ballots','event_pitch_companies') ORDER BY sequence").all()
-  assert.deepEqual(config.map(row=>row.table_name),['event_company_ballots','event_pitch_companies'])
-  assert.equal(f.primary.sqlite.prepare("SELECT COUNT(*) n FROM change_journal WHERE table_name='event_company_votes' OR after_json LIKE '%private-voter%' OR before_json LIKE '%private-voter%'").get()!.n,0)
+  assert.deepEqual(config.map(row=>row.table_name),['event_company_ballots','event_pitch_companies','event_company_ballots'])
+  assert.equal(f.primary.sqlite.prepare("SELECT COUNT(*) n FROM change_journal WHERE table_name IN ('event_company_votes','event_company_favorites') OR after_json LIKE '%private-voter%' OR before_json LIKE '%private-voter%'").get()!.n,0)
   assert.equal(f.primary.sqlite.prepare('SELECT COUNT(*) n FROM event_company_votes').get()!.n,0)
+  assert.equal(f.primary.sqlite.prepare('SELECT COUNT(*) n FROM event_company_favorites').get()!.n,0)
+  const last=f.primary.sqlite.prepare("SELECT after_json FROM change_journal WHERE table_name='event_company_ballots' ORDER BY sequence DESC LIMIT 1").get()!
+  assert.equal(JSON.parse(String(last.after_json)).mode,'favorites')
+  assert.equal(JSON.parse(String(last.after_json)).selection_fraction,0.5)
  } finally { f.close() }
 })
 

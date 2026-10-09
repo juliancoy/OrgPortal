@@ -228,12 +228,14 @@ test("authenticated MCP initializes, lists tools and previews through the shared
   try {
     assert.equal((await rpc("initialize", { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "test", version: "1" } })).result.serverInfo.name, "orgportal-events");
     const listed = await rpc("tools/list", {});
-    assert.equal(listed.result.tools.length, 47);
+    assert.equal(listed.result.tools.length, 52);
     for (const name of ['list_organization_support', 'preview_organization_support', 'apply_organization_support', 'preview_void_organization_support', 'apply_void_organization_support']) {
       assert.ok(listed.result.tools.some((tool: { name: string }) => tool.name === name), `Missing support tool: ${name}`);
     }
     assert.ok(listed.result.tools.some((tool: { name: string }) => tool.name === 'preview_venue_image_changes'));
     assert.ok(listed.result.tools.some((tool: { name: string }) => tool.name === 'apply_venue_image_changes'));
+    for (const name of ['get_event_company_votes','preview_event_company_ballot','apply_event_company_ballot','preview_event_company_vote','apply_event_company_vote'])
+      assert.ok(listed.result.tools.some((tool: { name: string }) => tool.name === name));
     for (const name of ['preview_event_host', 'apply_event_host']) assert.ok(listed.result.tools.some((tool: { name: string }) => tool.name === name));
     assert.ok(listed.result.tools.some((tool: { name: string }) => tool.name === 'apply_organization_tasks'));
     assert.ok(listed.result.tools.some((tool: { name: string }) => tool.name === 'preview_organization_creation'));
