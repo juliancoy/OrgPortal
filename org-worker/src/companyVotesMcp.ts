@@ -9,12 +9,12 @@ const receipt = { previewId: z.string().uuid().optional(), confirm: z.boolean().
 export const companyVotesTargetSchema = z.object(target).strict();
 export const companyBallotSchema = z.object({ ...target, ...receipt, mode: z.enum(['up_down','favorites']), selectionFraction: z.number().gt(0).max(1).default(0.25) }).strict();
 export const companyVoteSchema = z.object({ ...target, ...receipt, companyId: z.string().min(1).max(200), value: z.union([z.literal(-1),z.literal(0),z.literal(1)]), mode: z.enum(['up_down','favorites']) }).strict();
-type Identity = { userId: string; scopes: string[] };
+type Identity = { userId: string; scopes: string[]; isOperator?: boolean };
 async function checkTarget(env: Env, identity: Identity, args: { organizationId: string; eventId: string; confirm?: boolean }, manage = false) {
   if (!identity.scopes.includes('org:events.read') || (args.confirm && !identity.scopes.includes('org:events.write'))) throw new EventIntegrationError(403, 'Missing event scope');
   const event = await env.DB.prepare('SELECT id,title,host_org_id FROM events WHERE id = ?').bind(args.eventId).first<{id:string;title:string;host_org_id:string|null}>();
   if (!event || event.host_org_id !== args.organizationId) throw new EventIntegrationError(404, 'Event not found in this organization');
-  if (manage) await authorizeOrganization(env.DB, { id: identity.userId, name: identity.userId, email: null, isOperator: false }, 'manage', args.organizationId);
+  if (manage) await authorizeOrganization(env.DB, { id: identity.userId, name: identity.userId, email: null, isOperator: identity.isOperator === true }, 'manage', args.organizationId);
   return event;
 }
 export async function getCompanyVotes(env: Env, identity: Identity, input: unknown) {
@@ -43,12 +43,14 @@ export async function runCompanyBallotOperation(env: Env, identity: Identity, in
     const changed = await env.DB.prepare(`UPDATE event_company_ballots SET mode = ?,selection_fraction = ?
       WHERE event_id = ? AND mode = ? AND selection_fraction = ? AND closes_at = ? AND enabled = ?
       AND EXISTS (SELECT 1 FROM events WHERE id = ? AND host_org_id = ?)
+      AND (? = 1 OR EXISTS (SELECT 1 FROM organization_memberships WHERE organization_id = ? AND user_id = ?
+        AND status = 'active' AND role IN ('owner','administrator')))
       AND (SELECT COUNT(*) FROM event_pitch_companies WHERE event_id = ?) = ?
       AND NOT EXISTS (SELECT 1 FROM event_pitch_companies WHERE event_id = ? AND organization_id NOT IN (SELECT value FROM json_each(?)))
       AND (? != 'favorites' OR NOT EXISTS (SELECT user_id FROM event_company_favorites WHERE event_id = ?
         AND julianday(expires_at) > julianday('now') GROUP BY user_id HAVING COUNT(*) > ?))`)
       .bind(args.mode,args.selectionFraction,args.eventId,before.mode,before.selection_fraction,before.closes_at,before.enabled,
-        args.eventId,args.organizationId,args.eventId,roster.length,args.eventId,JSON.stringify(roster),args.mode,args.eventId,limit).run();
+        args.eventId,args.organizationId,identity.isOperator === true ? 1 : 0,args.organizationId,identity.userId,args.eventId,roster.length,args.eventId,JSON.stringify(roster),args.mode,args.eventId,limit).run();
     if (changed.meta.changes !== 1) throw new EventIntegrationError(409,'Configuration changed or the new budget is below saved favorites. Request a fresh preview with a sufficient budget.');
     await finishEventOperation(env.DB,args.previewId,true,['configure_company_ballot']);
     return { success: true, previewId: args.previewId, ...await companyVoteSummary(env.DB,args.eventId) };

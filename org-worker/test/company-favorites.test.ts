@@ -70,3 +70,13 @@ test('MCP voting shares website limits, authenticates voter identity, isolates a
   const clear={...vote,value:0},receipt=await runCompanyVoteOperation(env,voter,clear);const r=await runCompanyVoteOperation(env,voter,{...clear,confirm:true,previewId:receipt.previewId});assert.equal('success' in r && r.success,true);
  }finally{db.close();}
 });
+
+test('verified primary operators can configure ballots without organization membership',async()=>{
+ const {db,env}=await setup();try {
+  const operator={...admin,userId:'verified-operator',isOperator:true};
+  await assert.rejects(runCompanyBallotOperation(env,{...operator,isOperator:false},plan));
+  const p=await runCompanyBallotOperation(env,operator,plan);
+  const r=await runCompanyBallotOperation(env,operator,{...plan,confirm:true,previewId:p.previewId});
+  assert.equal('success' in r && r.success,true);
+ }finally {db.close();}
+});

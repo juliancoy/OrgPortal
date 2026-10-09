@@ -39,7 +39,8 @@ MCP exposes `get_event_company_votes`, `preview_event_company_ballot`,
 `apply_event_company_ballot`, `preview_event_company_vote`, and
 `apply_event_company_vote`. Every tool uses explicit `organizationId` and
 `eventId`, the connection’s tenant boundary, and event scopes. Configuration
-requires live host-organization management permission. Voting always uses the
+requires live host-organization management permission or verified primary operator
+status from PIdP introspection. A website session never inherits operator access. Voting always uses the
 authenticated caller and never accepts an arbitrary voter ID. Writes require
 `confirm=true` and an exact, expiring, one-use preview receipt.
 
@@ -50,9 +51,9 @@ live management permissions still apply.
 Sign in to the global resource, then preview Amplify’s ballot:
 
 ```sh
-orgportal auth login --portal https://orgportal.cc
+orgportal auth login --admin --portal https://orgportal.cc --connection admin
 node org-worker/scripts/company-ballot.mjs --resource https://orgportal.cc/api/org/mcp \
-  --organization org-amplify-medtech \
+  --connection admin --organization org-amplify-medtech \
   --event 15dc061b-d8a5-4cc5-ad94-e9a704c24b01 --mode favorites --fraction 0.25
 ```
 
