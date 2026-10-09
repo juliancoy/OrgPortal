@@ -900,7 +900,7 @@ export function PublicEventPage() {
       </section>
         </main>
         <aside className="public-event-side public-event-luma-side" aria-label="Event actions and location">
-          <EventVenues eventId={event.id} venues={event.venues||[]} canManage={canManageEvent} onSaved={venues=>{const confirmed=venues.find(v=>v.event_status==='confirmed');setEvent({...event,venues,location:confirmed?[confirmed.name,confirmed.address].filter(Boolean).join(' · '):null})}} />
+          <EventVenues location={event.location} organizationSlug={event.organization_slug} eventId={event.id} venues={event.venues||[]} canManage={canManageEvent} onSaved={venues=>{const confirmed=venues.find(v=>v.event_status==='confirmed');setEvent({...event,venues,location:confirmed?[confirmed.name,confirmed.address].filter(Boolean).join(' · '):null})}} />
           <EventRegistration key={`${event.id}:${user?.id || 'guest'}:${Boolean(token)}`}
             eventId={event.id} slug={event.slug} token={token} authLoading={authLoading} saveToCalendar={saveToCalendar}
             organizationName={event.host_org_id ? event.organization_name || event.host_org_name : null} />
