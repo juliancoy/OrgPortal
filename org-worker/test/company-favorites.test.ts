@@ -73,10 +73,13 @@ test('MCP voting shares website limits, authenticates voter identity, isolates a
 
 test('verified primary operators can configure ballots without organization membership',async()=>{
  const {db,env}=await setup();try {
+  await db.prepare('CREATE TABLE ballot_audit(event_id TEXT)').run();
+  await db.prepare('CREATE TRIGGER audit_ballot AFTER UPDATE ON event_company_ballots BEGIN INSERT INTO ballot_audit VALUES (NEW.event_id); END').run();
   const operator={...admin,userId:'verified-operator',isOperator:true};
   await assert.rejects(runCompanyBallotOperation(env,{...operator,isOperator:false},plan));
   const p=await runCompanyBallotOperation(env,operator,plan);
   const r=await runCompanyBallotOperation(env,operator,{...plan,confirm:true,previewId:p.previewId});
   assert.equal('success' in r && r.success,true);
+  assert.equal((await db.prepare('SELECT COUNT(*) n FROM ballot_audit').first())!.n,1);
  }finally {db.close();}
 });

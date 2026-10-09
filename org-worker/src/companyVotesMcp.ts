@@ -48,10 +48,10 @@ export async function runCompanyBallotOperation(env: Env, identity: Identity, in
       AND (SELECT COUNT(*) FROM event_pitch_companies WHERE event_id = ?) = ?
       AND NOT EXISTS (SELECT 1 FROM event_pitch_companies WHERE event_id = ? AND organization_id NOT IN (SELECT value FROM json_each(?)))
       AND (? != 'favorites' OR NOT EXISTS (SELECT user_id FROM event_company_favorites WHERE event_id = ?
-        AND julianday(expires_at) > julianday('now') GROUP BY user_id HAVING COUNT(*) > ?))`)
+        AND julianday(expires_at) > julianday('now') GROUP BY user_id HAVING COUNT(*) > ?)) RETURNING event_id`)
       .bind(args.mode,args.selectionFraction,args.eventId,before.mode,before.selection_fraction,before.closes_at,before.enabled,
-        args.eventId,args.organizationId,identity.isOperator === true ? 1 : 0,args.organizationId,identity.userId,args.eventId,roster.length,args.eventId,JSON.stringify(roster),args.mode,args.eventId,limit).run();
-    if (changed.meta.changes !== 1) throw new EventIntegrationError(409,'Configuration changed or the new budget is below saved favorites. Request a fresh preview with a sufficient budget.');
+        args.eventId,args.organizationId,identity.isOperator === true ? 1 : 0,args.organizationId,identity.userId,args.eventId,roster.length,args.eventId,JSON.stringify(roster),args.mode,args.eventId,limit).first<{event_id:string}>();
+    if (!changed) throw new EventIntegrationError(409,'Configuration changed or the new budget is below saved favorites. Request a fresh preview with a sufficient budget.');
     await finishEventOperation(env.DB,args.previewId,true,['configure_company_ballot']);
     return { success: true, previewId: args.previewId, ...await companyVoteSummary(env.DB,args.eventId) };
   } catch (error) { await finishEventOperation(env.DB,args.previewId,false,[]); throw error; }
