@@ -5366,6 +5366,13 @@ app.post("/api/governance/motions/:motionId/comments", async (c) => {
 });
 
 app.get("/api/network/contact/:slug", async (c) => c.json(await publicContact(c.env, c.req.raw, c.req.param("slug"))));
+app.get('/api/network/users/by-id/:userId/profile', async c => {
+  c.header('Cache-Control', 'no-store');
+  const row = await c.env.DB.prepare('SELECT slug FROM user_contact_pages WHERE user_id = ?').bind(c.req.param('userId')).first<{slug:string}>();
+  if (!row) fail(404, 'Public profile not found');
+  await publicContact(c.env, c.req.raw, row.slug);
+  return c.redirect(`/users/${encodeURIComponent(row.slug)}`, 302);
+});
 app.get("/api/network/users/public/:slug", async (c) => c.json(await publicContact(c.env, c.req.raw, c.req.param("slug"))));
 app.get("/api/network/users/public/:slug/events", async (c) => {
   const contact = await publicContact(c.env, c.req.raw, c.req.param("slug"));

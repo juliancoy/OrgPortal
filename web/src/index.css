@@ -9720,3 +9720,7 @@ textarea:focus {
 .portal-avatar{display:block;flex:0 0 28px!important;width:28px!important;height:28px!important;aspect-ratio:1;overflow:hidden}.portal-avatar img{display:block;width:100%!important;height:100%!important;object-fit:cover!important}
 .portal-middle{margin-top:20px;min-width:0}.portal-search{width:100%;min-width:0}
 }
+
+a.public-event-comment-avatar { text-decoration: none; flex-shrink: 0; }
+a.public-event-comment-avatar:hover { outline: 2px solid var(--primary); outline-offset: 2px; }
+a.public-event-comment-avatar:focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; }
