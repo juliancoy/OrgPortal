@@ -550,7 +550,10 @@ async function publicEventChatMessages(env: Env, roomId: string) {
   if (!origin || !roomId) return [];
   try {
     const url = `${origin}/api/network/public/event-chat/${encodeURIComponent(roomId)}/messages?limit=100`;
-    const response = await fetch(url, { headers: { accept: "application/json" }, cf: { cacheEverything: false } });
+    const request = new Request(url, { headers: { accept: "application/json" } });
+    const response = env.CHAT_SERVICE
+      ? await env.CHAT_SERVICE.fetch(request)
+      : await fetch(request, { cf: { cacheEverything: false } });
     if (!response.ok) return [];
     const payload = await response.json().catch(() => null) as { messages?: unknown[] } | null;
     return Array.isArray(payload?.messages) ? payload.messages : [];
