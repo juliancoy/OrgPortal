@@ -195,15 +195,16 @@ function reactionOwnerSummary(reaction: NativeChatReaction) {
 }
 
 function CommentAvatar({ message, myUserId }: { message: NativeChatMessage; myUserId: string | null }) {
-  return (
-    <div className="public-event-comment-avatar" aria-hidden="true">
-      {message.sender_avatar_url ? (
-        <img src={message.sender_avatar_url} alt="" loading="lazy" />
-      ) : (
-        messageAuthorInitial(message, myUserId)
-      )}
-    </div>
-  )
+  const image = message.sender_avatar_url
+    ? <img src={message.sender_avatar_url} alt="" loading="lazy" />
+    : messageAuthorInitial(message, myUserId)
+  if (!message.sender_user_id) return <span className="public-event-comment-avatar" aria-hidden="true">{image}</span>
+  return <a
+    className="public-event-comment-avatar"
+    href={orgUrl(`/api/network/users/by-id/${encodeURIComponent(message.sender_user_id)}/profile`)}
+    aria-label={`View ${message.sender_name?.trim() || 'this person'}’s public profile`}
+    title="View public profile"
+  >{image}</a>
 }
 
 function ReactionControls({
