@@ -66,6 +66,7 @@ export function EmailCampaignsPage() {
   async function openCampaign(id: string) { setPreview(await emailApi<CampaignPreview>(token, `/campaigns/${id}`)) }
   const recipientCount = audience==='selected' && segmentId ? segments.find(s=>s.id===segmentId)?.subscription_ids.filter(id=>audienceInfo?.contacts.some(c=>c.id===id)).length : audience === 'event' ? audienceInfo?.event_count : audience === 'organization' ? audienceInfo?.organization_count : selected.length
 
+  const needsSenderHost=Boolean(sender?.connection_origin && sender.connection_origin!==window.location.origin)
   if(!groupsReady)return <p>Checking organizer access…</p>
   if(!groups.length || (groupId && !groups.some(group=>group.id===groupId)))return <section className="panel"><h1>Organizer access required</h1><p>You can manage email only for groups where you are an active owner or organizer.</p></section>
   return <main className="panel email-campaigns">
@@ -84,12 +85,13 @@ export function EmailCampaignsPage() {
         {sender?.configured && !sender.sending_enabled && <p>Sending is disabled. You can connect your account and prepare previews.</p>}
       </div>
       <div className="email-actions">
-        <button disabled={busy || !sender?.configured} onClick={() => void act(async () => {
-          const result = await emailApi<{ url: string }>(token, '/google/connect', 'POST')
+        <button disabled={busy || !sender?.configured || needsSenderHost} onClick={() => void act(async () => {
+          const result = await emailApi<{ url: string }>(token, '/google/connect', 'POST',{organization_id:groupId})
           const url = new URL(result.url)
           if (url.origin !== 'https://accounts.google.com') throw new Error('Unexpected Google sign-in address.')
           window.location.assign(url.toString())
         })}>{sender?.connected ? 'Reconnect Google' : 'Connect Google Workspace'}</button>
+        {needsSenderHost && sender?.configured && <a href={`${sender.connection_origin}/email?organization_id=${encodeURIComponent(groupId)}`}>Continue sender setup on OrgPortal</a>}
         {sender?.connected && <button className="portal-button-secondary" disabled={busy} onClick={() => void act(async () => {
           await emailApi(token, '/sender', 'DELETE'); await refresh(); setMessage('Sender disconnected. Queued campaigns are paused.')
         })}>Disconnect sender</button>}
@@ -112,7 +114,7 @@ export function EmailCampaignsPage() {
           <span>{person.name} — {person.email}</span></label>)}
       </fieldset>}
       <label>Subject<input value={subject} maxLength={200} disabled={busy} onChange={(e) => { changed(); setSubject(e.target.value) }} /></label>
-      <label>Message<textarea rows={8} value={body} maxLength={20000} disabled={busy} onChange={(e) => { changed(); setBody(e.target.value) }} /></label>
+      <label htmlFor="email-campaign-message">Message</label><textarea id="email-campaign-message" rows={8} value={body} maxLength={20000} disabled={busy} onChange={(e) => { changed(); setBody(e.target.value) }} />
       <p className="muted">Personalize with {'{{first_name}}'}, {'{{event_title}}'}, or {'{{organization}}'}. Event details are added when you select an event. Group announcements link to the group homepage.</p>
       <label>Schedule (optional, your local time)<input type="datetime-local" value={schedule} disabled={busy} onChange={(e) => { changed(); setSchedule(e.target.value) }} /></label>
       <div className="email-actions"><button disabled={busy || !sender?.connected || !sender.configured || !groupId || (audience==='event' && !eventId) || !subject.trim() || !body.trim()} onClick={() => void act(async () => {

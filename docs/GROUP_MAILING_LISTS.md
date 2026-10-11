@@ -37,7 +37,9 @@ The UI exposes exports only when the API confirms they are enabled.
 Sending still requires approved Gmail sender setup, configured encryption and
 unsubscribe secrets, a postal address, and `EMAIL_SENDING_ENABLED=true`. This
 feature does not enable sending, connect Google accounts, or send a campaign by
-itself. Group organizers authorize their own delegated Google sender connection.
+itself. Group organizers authorize their own delegated Google sender connection on the
+registered callback host. Branded sites link there for setup; the browser-bound
+callback retains the selected group and rechecks organizer access.
 
 ## Storage, retention and deletion
 

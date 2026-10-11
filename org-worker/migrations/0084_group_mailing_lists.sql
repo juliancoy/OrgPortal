@@ -37,3 +37,5 @@ INSERT INTO change_journal_exclusions VALUES
  ('email_segments','private subscriber selections expire after one year; access and changes audited without selections'),
  ('email_mailing_audit','minimal email audit expires after one year; do not duplicate into immutable journal'),
  ('email_campaign_previews','short lived one use email send receipts');
+
+ALTER TABLE email_oauth_states ADD COLUMN organization_id TEXT;

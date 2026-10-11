@@ -135,6 +135,20 @@ test('general group announcements require fresh one-use preview and revoked orga
   assert.equal(database.prepare('SELECT status FROM email_deliveries').get()!.status,'skipped');
 });
 
+test('Google sender setup starts only on the configured callback host and rechecks group access',async t=>{
+  const {env,request,database}=setup(t);network(t);
+  const sender=await (await request('/sender')).json();assert.equal(sender.connection_origin,'https://portal.test');
+  const bad=await app.request('https://medtech.social/api/email/google/connect',{method:'POST',headers:{Authorization:'Bearer admin','Content-Type':'application/json'},body:JSON.stringify({organization_id:'org-1'})},env);
+  assert.equal(bad.status,409);assert.equal(database.prepare('SELECT count(*) n FROM email_oauth_states').get()!.n,0);
+  assert.equal((await request('/google/connect','POST',{organization_id:'org-2'})).status,403);
+  const result=await request('/google/connect','POST',{organization_id:'org-1'});assert.equal(result.status,200);
+  const response=await result.json(),state=new URL(response.url).searchParams.get('state')!;
+  assert.equal(database.prepare('SELECT organization_id FROM email_oauth_states').get()!.organization_id,'org-1');
+  const cookie=result.headers.get('set-cookie')!.match(/__Host-portal-email-oauth=([^;]+)/)![1];
+  database.exec("UPDATE organization_memberships SET role='member' WHERE user_id='admin'");
+  await assert.rejects(()=>finishGoogleConnection(env,state,cookie,'code'),{status:403});
+});
+
 test('same email address never transfers subscription ownership to another account',async t=>{
   const {env,database}=setup(t);
   await subscriptionStatement(env.DB,{id:'original',email:'shared@example.test'},'organization','org-1',true).run();
@@ -146,7 +160,7 @@ test('same email address never transfers subscription ownership to another accou
 test('sender OAuth binds browser, account, nonce and one-use state; refresh tokens are encrypted', async (t) => {
   const { env, database } = setup(t);
   const user = { id: 'admin', email: 'julian@codecollective.us' };
-  const started = await startGoogleConnection(env, user);
+  const started = await startGoogleConnection(env, user,'org-1');
   const url = new URL(started.url);
   assert.equal(url.searchParams.get('scope'), 'openid email https://www.googleapis.com/auth/gmail.send');
   assert.equal(url.searchParams.get('code_challenge_method'), 'S256');
@@ -162,7 +176,7 @@ test('sender OAuth binds browser, account, nonce and one-use state; refresh toke
     if (String(input) === 'https://oauth2.googleapis.com/token') { exchanges++; return Response.json({ id_token: idToken, refresh_token: 'actual-refresh-token', scope: 'https://www.googleapis.com/auth/gmail.send' }); }
     throw new Error('Unexpected request');
   });
-  await finishGoogleConnection(env, url.searchParams.get('state')!, started.browser, 'code');
+  assert.equal(await finishGoogleConnection(env, url.searchParams.get('state')!, started.browser, 'code'),'org-1');
   const sender = database.prepare('SELECT * FROM email_senders').get()!;
   assert.equal(sender.email, user.email);
   assert.notEqual(sender.refresh_token_ciphertext, 'actual-refresh-token');

@@ -59,16 +59,23 @@ export function emailRoutes(getUser: GetActor) {
     const user = await getOrganizer(c.env, c.req.raw);
     const sender = await senderFor(c.env, user.id);
     let configured = true;
-    try { googleConfig(c.env); emailPortalBase(c.env); await unsubscribeUrl(c.env, 'configuration-check'); if (!c.env.EMAIL_POSTAL_ADDRESS?.trim()) configured = false; } catch { configured = false; }
+    let connectionOrigin:string | null=null;
+    try { connectionOrigin=new URL(googleConfig(c.env).redirectUri).origin; if(new URL(emailPortalBase(c.env)).origin!==connectionOrigin) configured=false; emailPortalBase(c.env); await unsubscribeUrl(c.env, 'configuration-check'); if (!c.env.EMAIL_POSTAL_ADDRESS?.trim()) configured = false; } catch { configured = false; }
     const usage = await c.env.DB.prepare('SELECT count(*) AS n FROM email_send_attempts WHERE sender_user_id = ? AND attempted_at > ?')
       .bind(user.id, Date.now() - 86_400_000).first<{ n: number }>();
-    return c.json({ configured, sending_enabled: c.env.EMAIL_SENDING_ENABLED === 'true', email: sender?.email || user.email,
+    return c.json({ configured, connection_origin:connectionOrigin, sending_enabled: c.env.EMAIL_SENDING_ENABLED === 'true', email: sender?.email || user.email,
       connected: sender?.status === 'connected', status: sender?.status || 'disconnected', cooldown_until: sender?.cooldown_until || 0,
       daily_limit: emailDailyLimit(c.env), used_today: Number(usage?.n || 0) });
   });
   routes.post('/google/connect', async (c) => {
     const user = await getOrganizer(c.env, c.req.raw);
-    const result = await startGoogleConnection(c.env, user);
+    const expectedOrigin=new URL(googleConfig(c.env).redirectUri).origin;
+    if(new URL(emailPortalBase(c.env)).origin!==expectedOrigin) emailFail(503,'Email setup and callback must use the same registered host.');
+    const hostname=c.req.header('x-forwarded-host');
+    const origin=hostname ? `https://${hostname}` : new URL(c.req.url).origin;
+    if(origin!==expectedOrigin) emailFail(409,'Continue sender authorization on the registered email callback site.');
+    const payload=await c.req.json().catch(()=>({})) as {organization_id?:string};
+    const result = await startGoogleConnection(c.env,user,payload.organization_id || null);
     setCookie(c, '__Host-portal-email-oauth', result.browser, { httpOnly: true, secure: true, sameSite: 'Lax', path: '/', maxAge: 600 });
     return c.json({ url: result.url });
   });
@@ -76,8 +83,8 @@ export function emailRoutes(getUser: GetActor) {
     const browser = getCookie(c, '__Host-portal-email-oauth') || '';
     deleteCookie(c, '__Host-portal-email-oauth', { secure: true, httpOnly: true, sameSite: 'Lax', path: '/' });
     if (c.req.query('error')) return c.redirect(`${emailPortalBase(c.env)}/email?connection=cancelled`);
-    await finishGoogleConnection(c.env, c.req.query('state') || '', browser, c.req.query('code') || '');
-    return c.redirect(`${emailPortalBase(c.env)}/email?connection=connected`);
+    const group=await finishGoogleConnection(c.env, c.req.query('state') || '', browser, c.req.query('code') || '');
+    return c.redirect(`${emailPortalBase(c.env)}/email?connection=connected${group ? `&organization_id=${encodeURIComponent(group)}` : ''}`);
   });
   routes.delete('/sender', async (c) => {
     const user = await getOrganizer(c.env, c.req.raw);

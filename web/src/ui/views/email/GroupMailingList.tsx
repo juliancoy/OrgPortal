@@ -6,6 +6,8 @@ import './emailCampaigns.css'
 
 type Subscriber = {id:string;name:string;email:string;status:string;consent_source:string;consented_at:number|null;unsubscribed_at:number|null}
 type Segment = {id:string;name:string;subscription_ids:string[]}
+const consentLabels:Record<string,string>={'group-email-preferences':'Group email preferences','registration-form':'Event registration','account-preferences':'Account preferences','organizer-suppression':'Organizer unsubscribed','unsubscribe-link':'Unsubscribe link'}
+const actionLabels:Record<string,string>={'subscribers.view':'Subscriber list viewed','subscribers.export':'Subscriber list exported','audience.view':'Campaign audience viewed','segment.created':'Segment created','segment.deleted':'Segment deleted','subscription.opt-in':'Subscriber opted in','subscription.opt-out':'Subscriber opted out','subscription.suppressed':'Organizer unsubscribed a recipient','campaign.created':'Campaign draft created','campaign.view':'Campaign previewed','campaign.test-queued':'Test email queued','campaign.send-requested':'Send requested','campaign.send-queued':'Campaign queued','campaign.paused':'Campaign paused','campaign.resumed':'Campaign resumed'}
 type Audit = {action:string;actor_user_id:string;record_count:number;created_at:number}
 
 export function GroupMailingList({organizationId}:{organizationId:string}) {
@@ -33,7 +35,7 @@ export function GroupMailingList({organizationId}:{organizationId:string}) {
     </select></label>
     <div className="email-table"><table><thead><tr><th>Select</th><th>Subscriber</th><th>Status</th><th>Consent</th><th>Action</th></tr></thead><tbody>
       {items.map(person=><tr key={person.id}><td><input type="checkbox" aria-label={`Select ${person.email}`} disabled={busy||person.status!=='subscribed'} checked={selected.includes(person.id)} onChange={e=>setSelected(e.target.checked?[...selected,person.id]:selected.filter(id=>id!==person.id))}/></td>
-        <td>{person.name}<br/>{person.email}</td><td>{person.status}</td><td>{person.consent_source}<br/>{person.consented_at?new Date(person.consented_at).toLocaleString():'Consent date not recorded'}
+        <td>{person.name}<br/>{person.email}</td><td>{person.status}</td><td>{consentLabels[person.consent_source] || 'Recorded subscription preference'}<br/>{person.consented_at?new Date(person.consented_at).toLocaleString():'Consent date not recorded'}
           {person.unsubscribed_at && <><br/>Unsubscribed {new Date(person.unsubscribed_at).toLocaleString()}</>}</td>
         <td>{person.status==='subscribed' && <button disabled={busy} onClick={()=>void act(async()=>{await emailApi(token,`${base}/subscribers/${person.id}/unsubscribe`,'POST');setSelected(ids=>ids.filter(id=>id!==person.id))})}>Unsubscribe</button>}</td></tr>)}
     </tbody></table></div>
@@ -47,7 +49,7 @@ export function GroupMailingList({organizationId}:{organizationId:string}) {
       const csv=await emailApi<string>(token,`${base}/export`)
       const url=URL.createObjectURL(new Blob([csv],{type:'text/csv'})),a=document.createElement('a');a.href=url;a.download='group-subscribers.csv';a.click();URL.revokeObjectURL(url)
     })}>Export CSV</button>}
-    <details><summary>Mailing-list activity</summary><ul>{audit.map((row,index)=><li key={index}>{new Date(row.created_at).toLocaleString()} · {row.action} · Account {row.actor_user_id}{row.record_count?` · ${row.record_count} records`:''}</li>)}</ul></details>
+    <details><summary>Mailing-list activity</summary><ul>{audit.map((row,index)=><li key={index}>{new Date(row.created_at).toLocaleString()} · {actionLabels[row.action] || 'Mailing-list action'} · Account {row.actor_user_id}{row.record_count?` · ${row.record_count} records`:''}</li>)}</ul></details>
   </section>
 }
 
