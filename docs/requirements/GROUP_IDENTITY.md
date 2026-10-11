@@ -46,7 +46,8 @@ access to another resource or group.
 
 A group organizer requests a domain. A platform operator verifies ownership,
 provisions routing and HTTPS, adds the exact origin to the shared application's
-login hosts, redirect origins, and PIdP SSO origin allowlist, and verifies the
+login hosts, redirect origins, PIdP SSO origin allowlist, and exact callback
+registration in `PIdP/shared/portal-clients.json` (or `PORTAL_CLIENTS_JSON`), and verifies the
 sign-in handoff before activating the requested domain. The attach API requires
 operator authority and a matching pending request. Provisioning remains an
 operator workflow; saving a request does not provision DNS or certificates.
