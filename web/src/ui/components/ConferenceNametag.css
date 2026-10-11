@@ -27,3 +27,20 @@
 .conference-nametag-background { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; object-position: center; opacity: 1; pointer-events: none; }
 
 .conference-nametag-downloads { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.conference-nametag-preview[hidden] { display: none; }
+.conference-nametag-front .conference-nametag-brand { font-size: 16pt; }
+.conference-nametag-front .conference-nametag-logo { width: .5in; height: .5in; }
+.conference-nametag-front .conference-nametag-logo img { width: .43in; height: .43in; }
+.conference-nametag-back { background: #061a26; align-items: center; text-align: center; }
+.conference-nametag-back .conference-nametag-background { opacity: .16; }
+.conference-nametag-back .conference-nametag-brand { font-size: 13pt; width: 100%; gap: .09in; }
+.conference-nametag-back .conference-nametag-logo { width: .35in; height: .35in; }
+.conference-nametag-back .conference-nametag-logo img { width: .3in; height: .3in; }
+.conference-nametag-back .conference-nametag-lockup small { display: none; }
+.conference-nametag-connect { margin: .04in 0 0; font-size: 14pt; font-weight: 700; }
+.conference-nametag-back .conference-nametag-name { flex: 0; flex-direction: row; gap: .08in; font-family: Arial, sans-serif; font-size: 10pt !important; line-height: 1.25; letter-spacing: 0; }
+.conference-nametag-back .conference-nametag-name span { white-space: normal; }
+.conference-nametag-back .conference-nametag-footer { justify-content: center; flex: 1; align-items: center; }
+.conference-nametag-back .conference-nametag-qr { width: 1.3in; height: 1.3in; padding: .04in; box-shadow: none; }
+.conference-nametag-profile-link { display: grid; gap: .03in; font-size: 10pt; max-width: 100%; }
+.conference-nametag-profile-link small { font-size: 7pt; overflow-wrap: anywhere; }

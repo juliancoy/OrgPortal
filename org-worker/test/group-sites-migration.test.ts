@@ -8,7 +8,7 @@ test('site schema migrates in place with intact identities, progress, foreign ke
   try {
     db.exec('PRAGMA foreign_keys=ON');
     const directory = new URL('../migrations/', import.meta.url);
-    for (const name of readdirSync(directory).filter(name => name.endsWith('.sql') && Number(name.slice(0, 4)) < 78).sort()) {
+    for (const name of readdirSync(directory).filter(name => name.endsWith('.sql') && Number(name.slice(0, 4)) < 83).sort()) {
       db.exec(readFileSync(new URL(name, directory), 'utf8'));
     }
     db.exec(`INSERT INTO organizations(id,name,slug) VALUES('group','Group','group');
@@ -20,7 +20,7 @@ test('site schema migrates in place with intact identities, progress, foreign ke
         VALUES('task','orgportal','person','person','personal','Attend a meeting');`);
     const journal = db.prepare('SELECT * FROM change_journal ORDER BY sequence').all();
     const sites = db.prepare('SELECT * FROM portal_tenants ORDER BY id').all();
-    const migration = readFileSync(new URL('0078_group_sites.sql', directory), 'utf8');
+    const migration = readFileSync(new URL('0083_group_sites.sql', directory), 'utf8');
     db.exec('BEGIN');
     db.exec(migration);
     db.exec('ROLLBACK');

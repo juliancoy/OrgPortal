@@ -275,3 +275,21 @@ export default defineConfig([
   },
 ])
 ```
+
+### Push integration checks
+
+GitHub Actions runs org and chat Worker tests (including SQLite migrations and
+cross-worker room provisioning), frontend unit and HTTP contract tests, and the
+local fixture-based Playwright suite on relevant pushes and pull requests. Docker
+image builds use the repository root so `web/` can import `shared/`:
+
+```sh
+docker build -f web/Dockerfile -t orgportal:local .
+```
+
+Run that command from the OrgPortal root. The image check starts the runtime and
+verifies the homepage and a missing route before publishing. Authenticated
+insurance fixtures must use an isolated local Docker deployment; the fixture
+runner rejects remote portal, PIdP, and org URLs. CI exercises birthday and
+insurance behavior with local browser fixtures and Worker tests rather than
+creating production accounts.

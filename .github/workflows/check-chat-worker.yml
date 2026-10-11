@@ -1,0 +1,28 @@
+name: Check shared chat worker
+
+on:
+  push:
+    paths: ['chat-worker/**', 'shared/**', '.github/workflows/check-chat-worker.yml']
+  pull_request:
+    paths: ['chat-worker/**', 'shared/**', '.github/workflows/check-chat-worker.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: chat-worker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: chat-worker/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: npm run typecheck
+      - run: npm test

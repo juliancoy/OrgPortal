@@ -1,5 +1,6 @@
+import { companyBallotSchema, companyVoteSchema, companyVotesTargetSchema, getCompanyVotes, runCompanyBallotOperation, runCompanyVoteOperation } from './companyVotesMcp';
+import { runOrganizationProfileOperation, organizationProfileTargetSchema, organizationProfileUpdateSchema, organizationProfileStatusSchema } from './organizationProfileMcp';
 import { eventHostSchema, runEventHostOperation } from './eventHost';
-import { provisionEventChat } from './eventChat';
 import { eventSlugSchema, runEventSlugOperation } from './eventSlugs';
 import { runSupportMcp, supportSchema, supportVoidSchema, supportTargetSchema } from './organizationSupport';
 import { runVenueImageOperation, venueImageSchema } from './venueImagesMcp';
@@ -177,6 +178,7 @@ export async function authenticateMcp(request: Request, env: Env, getKey?: JWTVe
       }
     }
     if (typeof userId !== "string" || !userId) throw new Error();
+    let isOperator = false;
     if (config.introspection) {
       let response: Response;
       try {
@@ -200,9 +202,10 @@ export async function authenticateMcp(request: Request, env: Env, getKey?: JWTVe
         || status.account_subject !== payload.sub || typeof status.canonical_user_id !== 'string'
         || !status.canonical_user_id || typeof status.account_id !== 'string' || !status.account_id) throw new Error();
       userId = status.canonical_user_id;
+      isOperator = status.is_sysadmin === true && typeof payload.sub === 'string' && payload.sub.startsWith('owner:');
     }
     const scopes = typeof payload.scope === "string" ? payload.scope.split(" ") : [];
-    return { userId, scopes, organizationId: config.organizationId, resource: config.resource };
+    return { userId, scopes, isOperator, organizationId: config.organizationId, resource: config.resource };
   } catch (error) {
     if (error instanceof EventIntegrationError) throw error;
     console.warn("MCP access token rejected", { stage: validationStage });
@@ -488,8 +491,6 @@ async function applyNativeEvent(env: Env, input: NativeEventInput) {
   ).bind(event.id, event.ingest_key, event.title, event.slug, event.description, event.starts_at, event.ends_at, event.location,
     event.source_url, event.image_url, JSON.stringify(event.links), event.host_user_id, event.host_user_name, event.host_org_id, event.host_org_name,
     event.host_org_source_url, JSON.stringify(event.tags), event.city, now, now).run();
-  const saved = await env.DB.prepare("SELECT id FROM events WHERE ingest_key = ?").bind(event.ingest_key).first<{ id: string }>();
-  if (saved) await provisionEventChat(env, saved.id);
   return { success: true, completed: ["upsert_native_event"], event: (await previewNativeEvent(env, input)).event,
     publicUrl: preview.publicUrl };
 }
@@ -646,6 +647,21 @@ export function eventErrorResponse(error: unknown, env: Env, request?: Request) 
   return Response.json({ error: message }, { status, headers });
 }
 export async function handleEventMcp(request: Request, env: Env, createOrganization?: CreateOrganization, governance?: GovernanceService) {
+  const started = Date.now();
+  const observation = { method: 'unparsed', rpcError: false };
+  let status = 500;
+  try {
+    const response = await handleEventMcpRequest(request, env, observation, createOrganization, governance);
+    status = response.status;
+    return response;
+  } finally {
+    // Deliberately exclude tokens, subjects, arguments, results, URLs and error text.
+    console.info(JSON.stringify({ event: 'orgportal.mcp.request', method: observation.method,
+      status, outcome: status >= 400 || observation.rpcError ? 'error' : 'ok',
+      durationMs: Date.now() - started }));
+  }
+}
+async function handleEventMcpRequest(request: Request, env: Env, observation: { method: string; rpcError: boolean }, createOrganization?: CreateOrganization, governance?: GovernanceService) {
   try {
     const config = mcpConfiguration(env, request);
     const origin = request.headers.get("origin");
@@ -677,16 +693,21 @@ export async function handleEventMcp(request: Request, env: Env, createOrganizat
     let parsedBody: unknown;
     try { parsedBody = JSON.parse(new TextDecoder().decode(bytes)); }
     catch { return new Response("Invalid JSON", { status: 400 }); }
-    const server = new McpServer({ name: config.name ? `${config.name} MCP` : "orgportal-events", version: "1.0.0" });
+    const method = parsedBody && typeof parsedBody === 'object' && 'method' in parsedBody ? parsedBody.method : undefined;
+    observation.method = typeof method === 'string' && ['initialize', 'notifications/initialized', 'tools/list', 'tools/call', 'ping'].includes(method) ? method : 'other';
+    const server = new McpServer({ name: config.name ? `${config.name} MCP` : "orgportal-events", version: "1.1.0", ...(config.name === "OrgPortal" ? { icons: [{ src: "https://orgportal.cc/orgportal.svg", mimeType: "image/svg+xml", sizes: ["any"] }] } : {}) });
     const scopedArgs = (args: unknown) => {
       if (config.organizationId && (!args || typeof args !== 'object' || !('organizationId' in args)
         || args.organizationId !== config.organizationId)) throw new EventIntegrationError(403, 'This MCP connection is limited to its own organization');
       return args;
     };
-    const result = async (operation: "list" | "get" | "plan" | "status" | "native" | "comments" | "mediaPreview" | "mediaApply" | "venueImage", args: unknown) => {
+    const result = async (operation: "list" | "get" | "plan" | "status" | "native" | "comments" | "mediaPreview" | "mediaApply" | "venueImage" | "companyBallot" | "companyVote" | "companyVotesGet", args: unknown) => {
       try {
         args = scopedArgs(args);
-        const data = operation === "venueImage" ? await runVenueImageOperation(env, identity, args)
+        const data = operation === "companyBallot" ? await runCompanyBallotOperation(env, identity, args)
+          : operation === "companyVote" ? await runCompanyVoteOperation(env, identity, args)
+          : operation === "companyVotesGet" ? await getCompanyVotes(env, identity, args)
+          : operation === "venueImage" ? await runVenueImageOperation(env, identity, args)
           : operation === "native" ? await runNativeEventOperation(env, identity, args)
           : operation === "comments" ? await runEventCommentsOperation(env, identity, args)
           : operation === "mediaPreview" ? await runEventMediaOperation(env, identity, args, false)
@@ -795,6 +816,22 @@ export async function handleEventMcp(request: Request, env: Env, createOrganizat
     };
     server.registerTool('preview_organization_tasks', { description: 'Preview assigning the availability-calendar task to all active organization members. Requires organization management permission; no tasks are created.', inputSchema: organizationTaskSchema, annotations: { readOnlyHint: true }, _meta: metadata([portalReadScope, portalWriteScope]) }, args => taskResult({ ...args, confirm: false }));
     server.registerTool('apply_organization_tasks', { description: 'Assign the availability-calendar task to every active member after reviewing the preview. Requires confirm=true and a matching one-use previewId. Existing assignments are preserved without duplicates.', inputSchema: organizationTaskSchema, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }, _meta: metadata([portalReadScope, portalWriteScope]) }, taskResult);
+    const profileResult = async (operation: 'get' | 'update' | 'status', args: unknown) => {
+      try {
+        const data = await runOrganizationProfileOperation(env.DB, identity, operation, scopedArgs(args));
+        return { content: [{ type: 'text' as const, text: JSON.stringify(data) }], structuredContent: data };
+      } catch (error) {
+        return { isError: true, content: [{ type: 'text' as const, text: await eventErrorResponse(error, env, request).text() }] };
+      }
+    };
+    server.registerTool('get_organization_profile', { description: 'Read the current organization profile as an active member.',
+      inputSchema: organizationProfileTargetSchema, annotations: { readOnlyHint: true }, _meta: metadata([portalReadScope]) }, args => profileResult('get', args));
+    server.registerTool('preview_organization_profile', { description: 'Preview profile edits without changing the organization. Requires live organization management permission.',
+      inputSchema: organizationProfileUpdateSchema, annotations: { readOnlyHint: true }, _meta: metadata([portalReadScope, portalWriteScope]) }, args => profileResult('update', { ...args, confirm: false }));
+    server.registerTool('apply_organization_profile', { description: 'Save reviewed profile changes with confirm=true and the matching one-use previewId. Requires unchanged profile state and live management permission.',
+      inputSchema: organizationProfileUpdateSchema, annotations: { readOnlyHint: false, destructiveHint: false }, _meta: metadata([portalReadScope, portalWriteScope]) }, args => profileResult('update', args));
+    server.registerTool('get_organization_profile_operation', { description: 'Inspect a profile edit receipt before retrying an uncertain write.',
+      inputSchema: organizationProfileStatusSchema, annotations: { readOnlyHint: true }, _meta: metadata([portalReadScope]) }, args => profileResult('status', args));
     server.registerTool('list_organizations', { description: 'List organizations where the signed-in PIdP identity has active membership.',
       inputSchema: z.object({ limit: z.number().int().min(1).max(500).default(100) }).strict(),
       annotations: { readOnlyHint: true }, _meta: metadata([portalReadScope]) }, args => organizationResult('list', args));
@@ -854,6 +891,11 @@ export async function handleEventMcp(request: Request, env: Env, createOrganizat
     server.registerTool("apply_org_event_changes", { description: "Create or update a native OrgPortal event after showing a preview and obtaining user approval. Requires confirm=true and the matching one-use previewId.",
       inputSchema: nativeEventSchema, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       _meta: metadata([readScope, writeScope]) }, args => result("native", args));
+    server.registerTool('get_event_company_votes', { description: 'Read public company totals, voting mode and rounded-up favorite limit, plus only the authenticated account’s saved votes.', inputSchema: companyVotesTargetSchema, annotations: { readOnlyHint: true }, _meta: metadata([readScope]) }, args => result('companyVotesGet', args));
+    server.registerTool('preview_event_company_ballot', { description: 'Preview switching an existing company ballot between up/down and favorites. Favorites allow ceil(roster size × selectionFraction) choices; fraction defaults to 0.25. Requires host organization management permission. Preserves votes separately by mode and keeps the closing date.', inputSchema: companyBallotSchema, annotations: { readOnlyHint: true }, _meta: metadata([readScope]) }, args => result('companyBallot', { ...args, confirm: false }));
+    server.registerTool('apply_event_company_ballot', { description: 'Apply the reviewed company voting configuration with confirm=true and its one-use previewId. Rechecks live host management permission; refuses budgets below existing saved favorites.', inputSchema: companyBallotSchema, annotations: { readOnlyHint: false, destructiveHint: false }, _meta: metadata([readScope, writeScope]) }, args => result('companyBallot', args));
+    server.registerTool('preview_event_company_vote', { description: 'Preview this account’s company vote. In favorites mode use value=1 to select or value=0 to deselect; downvotes are forbidden. Never accepts another voter identity.', inputSchema: companyVoteSchema, annotations: { readOnlyHint: true }, _meta: metadata([readScope]) }, args => result('companyVote', { ...args, confirm: false }));
+    server.registerTool('apply_event_company_vote', { description: 'Save this account’s reviewed vote with confirm=true and one-use previewId. Enforces deadline, roster and favorite limit atomically. Clearing is allowed after voting closes.', inputSchema: companyVoteSchema, annotations: { readOnlyHint: false, destructiveHint: false }, _meta: metadata([readScope, writeScope]) }, args => result('companyVote', args));
     server.registerTool("preview_venue_image_changes", { description: "Preview an organization-owned venue avatar and its source/credit without writing. Requires live organization management permission.",
       inputSchema: venueImageSchema, annotations: { readOnlyHint: true, openWorldHint: false }, _meta: metadata([readScope]) },
       args => result("venueImage", { ...args, confirm: false }));
@@ -887,13 +929,20 @@ export async function handleEventMcp(request: Request, env: Env, createOrganizat
       const response = await transport.handleRequest(request, { parsedBody });
       // Materialize before closing the stateless transport.
       const body = await response.arrayBuffer();
+      if (response.headers.get('content-type')?.includes('application/json') && body.byteLength) {
+        const message = JSON.parse(new TextDecoder().decode(body));
+        observation.rpcError = Boolean(message.error || message.result?.isError);
+      }
       // SDK 1.x exposes extension metadata only under _meta. Mirror auth policy at
       // the top level for clients following OpenAI's current tool descriptor schema.
       let output: ArrayBuffer | string | null = body.byteLength ? body : null;
       if (response.ok && typeof parsedBody === "object" && parsedBody !== null && "method" in parsedBody && parsedBody.method === "tools/list") {
         const message = JSON.parse(new TextDecoder().decode(body));
         if (Array.isArray(message.result?.tools)) {
-          for (const tool of message.result.tools) tool.securitySchemes = tool._meta?.securitySchemes;
+          for (const tool of message.result.tools) {
+            tool.securitySchemes = tool._meta?.securitySchemes;
+            tool.annotations = { readOnlyHint: false, destructiveHint: false, openWorldHint: false, ...tool.annotations };
+          }
           output = JSON.stringify(message);
         }
       }

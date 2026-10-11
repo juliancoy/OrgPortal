@@ -12,6 +12,7 @@ type Person = { user_id: string; name: string; slug: string; avatar_url: string;
 
 export function NametagsPage() {
   const { token } = useAuth()
+  const [side, setSide] = useState<'front' | 'back'>('front')
   const [people, setPeople] = useState<Person[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -42,6 +43,7 @@ export function NametagsPage() {
     <div className="nametags-controls">
       <Link to="/admin">Back to admin</Link>
       <h1>Print everyone’s nametags</h1>
+      <label>Nametag side <select value={side} disabled={printing} onChange={event=>setSide(event.target.value as 'front' | 'back')}><option value="front">Front · Name and photo</option><option value="back">Back · Profile and QR</option></select></label>
       <p>Six 4 × 3 inch nametags per 8.5 × 11 inch sheet. Print at 100% / actual size with browser headers and footers turned off.</p>
       {loading ? <p role="status">Loading all people…</p> : <p>{people.length} people · {sheets.length} printable sheets</p>}
       {people.some(person => !person.public) && <p className="muted">Private profiles are included; their QR links will not show private profiles to visitors.</p>}
@@ -51,14 +53,14 @@ export function NametagsPage() {
         try { await printNametags(sheetsRef.current, `${badgeStyles}\n${sheetStyles}\n@page { size: letter portrait; margin: .25in; } body { margin: 0; } .nametag-letter-sheet { margin: 0; }`, 'LifeTech nametags — Letter sheets') }
         catch { setError('Could not open printing. Please try again.') }
         finally { setPrinting(false) }
-      }}>{printing ? 'Preparing…' : 'Print all nametags'}</button>
+      }}>{printing ? 'Preparing…' : `Print all ${side}s`}</button>
       {error && <p role="alert">{error}</p>}
       {!loading && !error && !people.length && <p>No people with profiles are available yet.</p>}
     </div>
     <div className="nametag-sheet-preview">
       <div ref={sheetsRef} className="nametag-sheets">
         {sheets.map((sheet, index) => <div className="nametag-letter-sheet" key={index} aria-label={`Letter sheet ${index + 1}`}>
-          {sheet.map(person => <NametagCard key={person.user_id} name={person.name} avatarUrl={person.avatar_url} publicPageUrl={publicProfileUrl(person.slug)} />)}
+          {sheet.map(person => <NametagCard key={person.user_id} side={side} name={person.name} avatarUrl={person.avatar_url} publicPageUrl={publicProfileUrl(person.slug)} />)}
         </div>)}
       </div>
     </div>

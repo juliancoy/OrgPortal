@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "test:company-votes": "node scripts/test-company-votes.mjs",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "android:prepare": "npm run build && node scripts/prepare-android-project.mjs",
@@ -45,6 +46,7 @@
     "test:ecosystem": "node --test scripts/portal-ecosystem.test.mjs scripts/fund-pies.test.mjs scripts/network-history.test.mjs scripts/ecosystem-physics.test.mjs",
     "sync:ecosystem": "node scripts/sync-ecosystem.mjs && node scripts/sync-portal-ecosystem.mjs",
     "build:ecosystem-history": "node scripts/build-network-history.mjs",
+    "test:ecosystem:webgpu": "node scripts/check-network-webgpu.mjs",
     "test:ecosystem:local": "node scripts/test-local-ecosystem-network.mjs"
   },
   "dependencies": {

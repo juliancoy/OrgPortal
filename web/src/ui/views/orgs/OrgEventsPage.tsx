@@ -726,7 +726,7 @@ export function OrgEventsPage() {
                   </button>
                 </div>
               </details>
-              <EventVenues eventId={event.id} venues={event.venues||[]} canManage={Boolean(token && ((user?.id && event.host_user_id===user.id)||adminOrgs.some(org=>org.id===event.host_org_id)))} onSaved={()=>void loadEvents()} />
+              <EventVenues location={event.location} organizationSlug={orgs.find(org=>org.id===event.host_org_id)?.slug} eventId={event.id} venues={event.venues||[]} canManage={Boolean(token && ((user?.id && event.host_user_id===user.id)||adminOrgs.some(org=>org.id===event.host_org_id)))} onSaved={()=>void loadEvents()} />
               <div
                 className="muted"
                 style={{ fontSize: "0.85rem", overflowWrap: "anywhere" }}

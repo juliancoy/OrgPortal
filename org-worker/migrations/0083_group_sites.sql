@@ -1,5 +1,4 @@
--- Sites are group presentation configuration, never identity tenants.
--- Rename in place: memberships, progress, task IDs, and immutable history survive.
+-- Group presentation sites share OrgPortal identity. Rename in place and retain immutable history.
 DROP TRIGGER "organization_chat_member_added";
 DROP TRIGGER "organization_chat_member_changed";
 DROP TRIGGER "organization_status_added";

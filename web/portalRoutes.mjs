@@ -21,6 +21,7 @@ const paths = [
   "/communities",
   "/medtech-events",
   "/ecosystem/network",
+  "/ecosystem/network/webgpu",
   "/ecosystem/network/events",
   "/ecosystem/network/relationships",
   "/ecosystem/network/help",

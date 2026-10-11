@@ -1,0 +1,50 @@
+name: Check portal web integrations
+
+on:
+  push:
+    paths: ['web/**', 'shared/**', 'org-worker/**', '.github/workflows/check-web.yml']
+  pull_request:
+    paths: ['web/**', 'shared/**', 'org-worker/**', '.github/workflows/check-web.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            web/package-lock.json
+            org-worker/package-lock.json
+      - name: Install backend integration dependencies
+        run: npm ci --ignore-scripts
+        working-directory: org-worker
+      - run: npm ci
+      - run: npm test -- --maxWorkers=2
+      - name: Test HTTP routing and release contracts
+        run: node --test tests/unit/*.test.mjs
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      # These tests run against local Vite with fixture API responses. No real accounts.
+      - name: Test browser integrations, including insurance birthday flows
+        run: npm run test:e2e -- --workers=2
+        env:
+          CI: '1'
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: portal-browser-failures
+          path: |
+            web/playwright-report
+            web/test-results
+          retention-days: 7

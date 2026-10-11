@@ -499,13 +499,13 @@ node scripts/event-upload.mjs --resource https://lifetech.fyi/api/org/mcp --conn
 
 ## Automatic event comments
 
-Event creation through REST and native MCP provisions a chat room through the
-trusted chat service binding. Room IDs derive from the stable event ID, so slug
-changes and retries preserve the conversation. Existing configured rooms are
-retained. The scheduled org Worker retries missing rooms, including older events.
-Replicas never provision rooms in production. Release the chat Worker before the
-org Worker so `OrganizationRooms.ensureEvent` is available, then release the
-shared frontend. No schema migration is required.
+The first authenticated comment submission creates the event chat room and posts
+the comment. Viewing or saving an event does not create a room, and the scheduled
+org Worker does not provision missing rooms. Room IDs derive from the stable event
+ID, so slug changes preserve the conversation. Comment retries reuse a client
+message ID to avoid duplicate posts. Existing configured rooms are retained.
+Release the chat Worker and org Worker before the shared frontend. No schema
+migration is required for this change.
 
 
 Host corrections use `preview_event_host` and `apply_event_host`, with the

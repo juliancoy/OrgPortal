@@ -1,11 +1,14 @@
-FROM mcr.microsoft.com/playwright:v1.59.1-jammy
+FROM node:22-bookworm
 
-WORKDIR /app
+# Install the browser matching package-lock.json instead of a drifting image tag.
 
-COPY package*.json ./
-RUN npm ci
+WORKDIR /app/web
 
-COPY . .
+COPY web/package*.json ./
+RUN npm ci && npx playwright install --with-deps chromium
+
+COPY web/ ./
+COPY shared/ ../shared/
 
 ENV CI=1
 

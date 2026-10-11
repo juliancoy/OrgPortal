@@ -23,7 +23,7 @@ Branding and domains are presentation configuration for the same group. They
 do not create accounts, credential stores, OAuth clients, or permission scopes.
 `group_sites` holds site configuration. Site-linked workflow columns use
 `group_site_id`, including onboarding, tasks, photos, and meeting preferences.
-Migration `0078_group_sites.sql` renames the tables and columns in place, updates
+Migration `0083_group_sites.sql` renames the tables and columns in place, updates
 foreign keys and journal triggers, and keeps immutable historical journal entries
 unchanged. The site discovery API is `/api/portal/site`.
 

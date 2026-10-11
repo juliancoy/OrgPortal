@@ -12,8 +12,8 @@ test('imported workbook records are not duplicated and unsafe evidence is omitte
 test('financial sizing avoids overlap, unknown amounts and currency mixing',()=>{
  const edge=(amount,currency='USD',kind='transfer')=>({source:'a',target:'b',amount,currency,kind})
  const data={relationships:[edge(1000),edge(2000),edge(null),edge(10000,'EUR'),edge(100000,'USD','capitalization')]}
- assert.equal(financialNodeAmounts(data).get('a'),2000)
- assert.equal(financialNodeAmounts(data,{includeCapitalization:true}).get('b'),100000)
+ assert.equal(financialNodeAmounts(data).get('a'),3000)
+ assert.equal(financialNodeAmounts(data,{includeCapitalization:true}).get('b'),103000)
  assert.equal(financialNodeAmounts({relationships:[{...edge(1000000),currency:undefined,amountLabel:'$1,000,000'}]}).get('a'),1000000)
  assert.equal(financialNodeRadius(null),6)
  assert(financialNodeRadius(100000000)>financialNodeRadius(2000))
@@ -64,4 +64,18 @@ test('inspector preserves sourced pictures and escapes relationship evidence',as
  const html=edgeDetails({source:'org-funder',target:null,sourceLabel:'<script>',targetLabel:'Recipient',type:'Award',amountLabel:'USD 100',sourceUrl:'https://source.test/',evidence:'<img onerror=bad>',notes:'Payment unverified',provenance:{sheet:'OrgPortal'}},data)
  assert(html.includes('https://source.test/'));assert(html.includes('&lt;script&gt;'));assert(!html.includes('<img onerror=bad>'))
  const unsafe=orgDetails({...data.organizations[0],imageUrl:'javascript:bad'},data);assert(!unsafe.includes('src="javascript:'))
+})
+test('USD volume sums distinct records, counts self-transfers once and excludes voided records',()=>{
+ const one={id:'one',source:'a',target:'b',kind:'transfer',currency:'USD',amount:1000}
+ const amounts=financialNodeAmounts({relationships:[one,one,{...one,id:'two',amount:2000},{...one,id:'self',target:'a',amount:500},{...one,id:'void',status:'voided',amount:999999}]})
+ assert.equal(amounts.get('a'),3500);assert.equal(amounts.get('b'),3000)
+})
+
+test('directory matching preserves exact IDs and ambiguous name/website evidence',()=>{
+ const snapshot={organizations:[{id:'a',name:'Same',website:'https://a.test/'},{id:'b',name:'Same',website:'https://b.test/'},{id:'c',name:'Unique',website:'https://c.test/'}],relationships:[],financing:[]}
+ const merged=mergePortalEvidence(snapshot,[{id:'remote-ambiguous',name:'Same',slug:'ambiguous',source_url:'https://a.test/'},{id:'remote-c',name:'Different',slug:'unique',image_url:null,source_url:'https://c.test/'},{id:'b',name:'Unique',slug:'exact',image_url:null}],[])
+ assert.ok(merged.organizations.some(o=>o.id==='remote-ambiguous'))
+ assert.equal(merged.organizations.some(o=>o.id==='remote-c'),false)
+ assert.equal(merged.organizations.find(o=>o.id==='b').portalSlug,'exact')
+ assert.equal(merged.organizations.find(o=>o.id==='c').portalSlug,'unique')
 })

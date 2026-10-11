@@ -23,7 +23,7 @@ export function OnboardingBanner() {
  const task=queue.tasks.find(task=>task.href?.startsWith('/onboarding'))
  return task ? <aside className="onboarding-banner"><strong>{task.title}</strong><span>Complete your onboarding tasks, starting with when you can meet.</span><Link to={task.href!}>Continue onboarding</Link></aside> : null
 }
-export function OnboardingPage() {
+export function OnboardingPage({ availabilityOnly = false }: { availabilityOnly?: boolean } = {}) {
  const {token,user}=useAuth()
  const {hash}=useLocation()
  const [data,setData]=useState<Onboarding|null>(null),[calendar,setCalendar]=useState<Calendar|null>(null)
@@ -78,16 +78,18 @@ export function OnboardingPage() {
  const times=Array.from({length:48},(_,i)=>`${String(Math.floor(i/2)).padStart(2,'0')}:${i%2?'30':'00'}`).filter(time=>showOvernight||(time>='08:00'&&time<'23:00'))
  function toggle(slots:string[]) {const next=new Set(selected),add=!slots.every(s=>next.has(s));for(const s of slots){if(add)next.add(s);else next.delete(s)}selectionRef.current=next;setSelected(next);setDirty(true);setMessage('');setRetry(0);if(user&&calendar)writeAvailabilityDraft(user.id,calendar.start,timezone,[...next])}
  const completed=data ? data.steps.filter(s=>data.acknowledgements[s.id]).length+Number(!!data.availability_saved_at) : 0
- return <section className="availability-page onboarding-page">
-  <h1>{data?.organizationName||'Community'} onboarding</h1>
+ return <section className={`availability-page onboarding-page${availabilityOnly ? ' profile-availability-matrix' : ''}`}>
+  {!availabilityOnly && <h1>{data?.organizationName||'Community'} onboarding</h1>}
   {!token&&<p><Link to="/users/login?next=%2Fonboarding">Sign in</Link> to start your onboarding.</p>}
   {error&&<p role="alert">{error}</p>}{message&&<p role="status">{message}</p>}
-  {token&&!data&&!error&&<p>Loading onboarding…</p>}
-  {data&&!data.enabled&&<p>This portal does not have an onboarding flow enabled.</p>}
+  {token&&!data&&!error&&<p>{availabilityOnly ? 'Loading availability…' : 'Loading onboarding…'}</p>}
+  {data&&!data.enabled&&<p>{availabilityOnly ? <>Open <Link to="/availability">availability scheduling</Link> to enter your times.</> : 'This portal does not have an onboarding flow enabled.'}</p>}
   {data?.enabled&&<>
+   {!availabilityOnly && <>
    <p>Set your availability, then complete the two introductions below.</p>
    <p role="status"><strong>{data.completed_at?'Onboarding complete':`${completed} of ${data.steps.length+1} steps complete`}</strong></p>
    <progress value={completed} max={data.steps.length+1} aria-label="Onboarding progress" />
+   </>}
    <section id="availability" className="onboarding-calendar">
     <h2>When can you meet? {data.availability_saved_at?'✓':''}</h2>
     <p>Select the times you’re usually free in {timezone}. Changes save automatically. Unselected times mean unavailable; update your week anytime.</p>
@@ -102,12 +104,14 @@ export function OnboardingPage() {
      <p><Link to="/availability">Open When I Meet scheduling polls</Link> · <Link to="/meetings">Manage member meeting bookings</Link></p>
     </>}
    </section>
+   {!availabilityOnly && <>
    <details className="onboarding-checklist"><summary>Finish onboarding · {data.steps.filter(s=>data.acknowledgements[s.id]).length} of {data.steps.length} complete</summary><ol className="onboarding-steps">{data.steps.map(step=><li key={step.id} id={step.id}>
     <h2>{step.title}</h2><p>{step.description}</p>
     <a href={step.href} target={step.href.startsWith('https:')?'_blank':undefined} rel="noreferrer">Open resource{step.href.startsWith('https:')?' (new tab)':''}</a>
     {data.acknowledgements[step.id]?<p>✓ Confirmed</p>:<button disabled={busy} onClick={()=>void save(`/steps/${step.id}`,{acknowledged:true})}>I have completed this step</button>}
    </li>)}</ol></details>
    <details className="onboarding-organizers"><summary>Becoming an organizer</summary><p>Discuss this path with an existing organizer. The Constitution describes relevant skills, regular attendance, two organizer meetings, and a two-thirds admission vote. Organizers then record onboarding, add the person to the website, and arrange appropriate access. An inaugural eMCee role is encouraged.</p><p>This checklist does not grant an organizer role or system permissions. An organizer must verify the prerequisites and use the existing membership and access tools.</p><a href={data.steps.find(step=>step.id==='constitution')?.href||'https://codecollective.us/constitution'}>Read organizer eligibility and responsibilities</a></details>
+   </>}
   </>}
  </section>
 }

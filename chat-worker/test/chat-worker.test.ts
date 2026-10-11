@@ -612,7 +612,7 @@ test("event room route supports comments, replies, and reactions", async () => {
   db.contacts.push({ user_id: "user-a", user_name: "Alice Example", slug: "alice", enabled: 1, photo_url: "https://images.example/alice.jpg" });
   const room = await app.request(
     "https://chat.example.test/api/network/chat/event-room",
-    authedInit({ event_id: "event-1", title: "MedTech in the Hut Comments", org_id: "org-baltimore-medtech" }),
+    authedInit({ event_id: "event-1", title: "MedTech in the Hut Comments", org_id: "org-baltimore-medtech", initial_comment: "Looking forward to this.", client_message_id: "event-comment-1" }),
     env(db),
   );
   assert.equal(room.status, 201);
@@ -620,6 +620,8 @@ test("event room route supports comments, replies, and reactions", async () => {
   assert.equal(roomBody.conversation.kind, "event_room");
   assert.equal(roomBody.conversation.event_id, "event-1");
   assert.equal(roomBody.conversation.members[0].role, "owner");
+  assert.equal(db.messages.length, 1);
+  assert.equal(db.messages[0].body, "Looking forward to this.");
 
   const reused = await app.request(
     "https://chat.example.test/api/network/chat/event-room",
@@ -634,7 +636,7 @@ test("event room route supports comments, replies, and reactions", async () => {
     authedInit({ client_message_id: "event-comment-1", body: "Looking forward to this." }),
     env(db),
   );
-  assert.equal(root.status, 201);
+  assert.equal(root.status, 200);
   const rootBody = (await root.json()) as { message: { id: string; body: string; sender_avatar_url: string | null; reactions: unknown[] } };
   assert.equal(rootBody.message.body, "Looking forward to this.");
   assert.equal(rootBody.message.sender_avatar_url, "https://images.example/alice.jpg");
@@ -874,11 +876,21 @@ test('event room requests cannot provision an unclaimed imported organization by
   db.organizations.push({ id: 'imported', name: 'Imported group', slug: 'imported' });
   db.events.push({ id: 'imported-event', title: 'Imported event', slug: 'imported-event', host_org_id: 'imported', host_user_id: null });
   const request = () => app.request('https://chat.example.test/api/network/chat/event-room',
-    authedInit({ event_id: 'imported-event', org_id: 'claimed-group', title: 'Spoofed title' }), env(db));
+    authedInit({ event_id: 'imported-event', org_id: 'claimed-group', title: 'Spoofed title', initial_comment: 'First comment', client_message_id: 'imported-comment' }), env(db));
   assert.equal((await request()).status, 403);
   assert.equal(db.conversations.length, 0);
   db.organizationOwnerships.push({ organization_id: 'imported', owner_user_id: 'human-owner', status: 'active' });
   assert.equal((await request()).status, 201);
   assert.equal(db.conversations[0].org_id, 'imported');
   assert.equal(db.conversations[0].title, 'Imported event comments');
+});
+
+test('opening an event does not create a room; blank first comments do not create one', async () => {
+ const db = new FakeD1();
+ db.events.push({id:'first-comment-event', title:'Event', slug:'event', host_user_id:'user-a',host_org_id:null});
+ for (const payload of [{event_id:'first-comment-event'},{event_id:'first-comment-event',initial_comment:'   ',client_message_id:'blank'}]) {
+  const response = await app.request('https://chat.example.test/api/network/chat/event-room',authedInit(payload),env(db));
+  assert.ok([400,409].includes(response.status));
+  assert.equal(db.conversations.length,0);
+ }
 });

@@ -14,3 +14,6 @@
 
 .onboarding-checklist{margin-top:20px}.onboarding-checklist summary{cursor:pointer;font-weight:600}
 .onboarding-calendar>label{display:inline-flex;align-items:center;gap:6px;margin:0 12px 10px 0}
+
+.profile-availability-matrix{max-width:none;padding:0;margin:0}
+.profile-availability-matrix .onboarding-calendar{margin-top:16px}

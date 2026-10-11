@@ -743,6 +743,12 @@ app.post("/api/network/chat/event-room", async (c) => {
     .bind(eventId)
     .first<ConversationRow>();
 
+  const initialComment = cleanString(payload.initial_comment, 4000);
+  if ('initial_comment' in payload && !initialComment) fail(400, 'Comment body is required');
+  if (!existing && !initialComment) fail(409, 'Post a comment to start this event conversation');
+  const clientMessageId = cleanString(payload.client_message_id, 160);
+  if (initialComment && !clientMessageId) fail(400, 'client_message_id is required');
+
   const createdAt = nowIso();
   const conversationId = existing?.id || (await ensureEventRoom(c.env, eventId)).id;
 
@@ -765,7 +771,18 @@ app.post("/api/network/chat/event-room", async (c) => {
     c.env,
     members.map((member) => member.user_id),
   );
-  return c.json({ conversation: mapConversation(row!, members, avatarUrls) }, existing ? 200 : 201);
+  let message;
+  if (initialComment) {
+    const response = await app.fetch(new Request(new URL(`/api/network/chat/conversations/${encodeURIComponent(conversationId)}/messages`, c.req.url), {
+      method: 'POST', headers: c.req.raw.headers,
+      body: JSON.stringify({ body: initialComment, client_message_id: clientMessageId }),
+    }), c.env);
+    if (!response.ok) return response;
+    message = (await response.json() as {message: unknown}).message;
+    await c.env.CONTACTS_DB!.prepare(`UPDATE events SET event_chat_room_id = ?, event_chat_room_name = title || ' comments'
+      WHERE id = ? AND event_chat_room_id IS NULL`).bind(conversationId, eventId).run();
+  }
+  return c.json({ conversation: mapConversation(row!, members, avatarUrls), ...(message ? { message } : {}) }, existing ? 200 : 201);
 });
 
 app.get("/api/network/chat/conversations/:conversationId", async (c) => {

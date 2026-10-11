@@ -92,7 +92,7 @@ test("JWT verifies audience, issuer, expiration and explicit subject mapping", a
       .setProtectedHeader({ alg: "RS256" }).sign(privateKey);
   }
   const request = (token: string) => new Request(authEnv.MCP_PUBLIC_URL!, { headers: { authorization: `Bearer ${token}` } });
-  assert.deepEqual(await authenticateMcp(request(await signed()), authEnv, getKey), { userId: "pidp-user", scopes: ["org:events.read"], organizationId: undefined, resource: authEnv.MCP_PUBLIC_URL });
+  assert.deepEqual(await authenticateMcp(request(await signed()), authEnv, getKey), { userId: "pidp-user", scopes: ["org:events.read"], isOperator: false, organizationId: undefined, resource: authEnv.MCP_PUBLIC_URL });
   for (const overrides of [{ aud: "wrong" }, { iss: "wrong" }, { exp: 1 }, { sub: "unmapped" }]) {
     await assert.rejects(authenticateMcp(request(await signed(overrides)), authEnv, getKey), /Invalid/);
   }
@@ -145,9 +145,9 @@ test("native event changes preview, apply once, and write OrgPortal events", asy
     assert.equal(preview.event.slug, "native-formation");
     const applied = await runNativeEventOperation(env, identity, { ...input, confirm: true, previewId: preview.previewId }) as { success: boolean };
     assert.equal(applied.success, true);
-    assert.equal(createdRooms.length, 1);
+    assert.equal(createdRooms.length, 0);
     const chat = await db.prepare("SELECT event_chat_room_id FROM events WHERE ingest_key = ?").bind("manual:event-one").first();
-    assert.equal(chat.event_chat_room_id, `room-${createdRooms[0]}`);
+    assert.equal(chat.event_chat_room_id, null);
     const rows = await db.prepare("SELECT title, slug, host_org_id, source_url, event_links_json, tags FROM events WHERE ingest_key = ?")
       .bind("manual:event-one").all();
     assert.deepEqual(rows.results.map(row => ({ ...row })), [
@@ -228,12 +228,14 @@ test("authenticated MCP initializes, lists tools and previews through the shared
   try {
     assert.equal((await rpc("initialize", { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "test", version: "1" } })).result.serverInfo.name, "orgportal-events");
     const listed = await rpc("tools/list", {});
-    assert.equal(listed.result.tools.length, 42);
+    assert.equal(listed.result.tools.length, 51);
     for (const name of ['list_organization_support', 'preview_organization_support', 'apply_organization_support', 'preview_void_organization_support', 'apply_void_organization_support']) {
       assert.ok(listed.result.tools.some((tool: { name: string }) => tool.name === name), `Missing support tool: ${name}`);
     }
     assert.ok(listed.result.tools.some((tool: { name: string }) => tool.name === 'preview_venue_image_changes'));
     assert.ok(listed.result.tools.some((tool: { name: string }) => tool.name === 'apply_venue_image_changes'));
+    for (const name of ['get_event_company_votes','preview_event_company_ballot','apply_event_company_ballot','preview_event_company_vote','apply_event_company_vote'])
+      assert.ok(listed.result.tools.some((tool: { name: string }) => tool.name === name));
     for (const name of ['preview_event_host', 'apply_event_host']) assert.ok(listed.result.tools.some((tool: { name: string }) => tool.name === name));
     assert.ok(listed.result.tools.some((tool: { name: string }) => tool.name === 'apply_organization_tasks'));
     assert.ok(listed.result.tools.some((tool: { name: string }) => tool.name === 'preview_organization_creation'));

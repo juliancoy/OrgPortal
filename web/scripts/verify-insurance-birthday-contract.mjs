@@ -129,7 +129,11 @@ async function bootstrapPortalSession(page, token) {
 async function verifyBrowserLifeAndProperty(portalBaseUrl, token, birthday, expectedAge, nextOfKinName, nextOfKinRelationship) {
   const browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] });
   try {
-    const context = await browser.newContext({ viewport: { width: 1366, height: 900 } });
+    const context = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 1366, height: 900 } });
+    await context.route("**/*", (route) => {
+      const host = new URL(route.request().url()).hostname;
+      return ["localhost", "127.0.0.1", "[::1]"].includes(host) ? route.continue() : route.abort();
+    });
     const page = await context.newPage();
     await page.goto(`${portalBaseUrl}/`, { waitUntil: "domcontentloaded", timeout: 45_000 });
     await bootstrapPortalSession(page, token);
@@ -187,14 +191,20 @@ async function verifyBrowserLifeAndProperty(portalBaseUrl, token, birthday, expe
 
 async function main() {
   if (process.argv.includes("--help")) {
-    console.log("Verifies PIdP birthday persistence and the insurance portal contract against deployed Cloudflare origins.");
+    console.log("Verifies PIdP birthday persistence and the insurance portal contract against an isolated local Docker deployment.");
     process.exit(0);
   }
 
-  const portalBaseUrl = trimBase(env("VERIFY_PORTAL_BASE_URL", "https://codecollective.us/p"));
-  const pidpBaseUrl = trimBase(env("VERIFY_PIDP_BASE_URL", "https://id.codecollective.us"));
-  const orgApiBaseUrl = trimBase(env("VERIFY_ORG_API_BASE_URL", "https://codecollective.us/api/org"));
+  const portalBaseUrl = trimBase(env("VERIFY_PORTAL_BASE_URL", "http://localhost:5173"));
+  const pidpBaseUrl = trimBase(env("VERIFY_PIDP_BASE_URL", "http://localhost:8000"));
+  const orgApiBaseUrl = trimBase(env("VERIFY_ORG_API_BASE_URL", "http://localhost:8001"));
   const timestamp = Date.now();
+  for (const base of [portalBaseUrl, pidpBaseUrl, orgApiBaseUrl]) {
+    if (!["localhost", "127.0.0.1", "[::1]"].includes(new URL(base).hostname)) {
+      throw new Error("Insurance fixtures require localhost portal, PIdP, and org endpoints.");
+    }
+  }
+
   const primaryBirthday = env("VERIFY_PRIMARY_BIRTHDAY", "1990-04-15");
   const secondaryBirthday = env("VERIFY_SECONDARY_BIRTHDAY", "1988-02-09");
   const primaryAge = calculateAge(primaryBirthday);

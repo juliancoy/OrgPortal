@@ -1,0 +1,12 @@
+**/node_modules
+**/dist
+**/.git
+**/.env*
+**/.dev.vars*
+**/.local
+**/.wrangler
+**/test-results
+**/playwright-report
+**/__pycache__
+**/*.pem
+**/*.key

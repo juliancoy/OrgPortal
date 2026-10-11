@@ -49,7 +49,7 @@ test('a member claims an open organization and challenges an existing owner', as
   await expect(page.getByRole('heading', { name: 'Organization Profile' })).toBeVisible()
   const openOrganization = page.locator('article').filter({ hasText: 'Open Workshop' })
   await openOrganization.getByRole('button', { name: 'Claim', exact: true }).click()
-  await expect(page.getByText('Organization claimed. You are now its owner.')).toBeVisible()
+  await expect(page.getByText('Organization claimed. You are now an organizer and its owner.')).toBeVisible()
   await expect(openOrganization.getByText('Ownership: claimed')).toBeVisible()
   await expect(openOrganization.getByRole('button', { name: 'Manage Members' })).toBeVisible()
 

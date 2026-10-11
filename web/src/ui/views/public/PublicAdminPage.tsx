@@ -219,6 +219,7 @@ export function PublicAdminPage() {
   const requestedView = useOrganizationViewPreference(org?.slug, searchParams.get('view'))
   const organizationView = resolveOrganizationView(requestedView, canManageCurrentOrg, membership?.status === 'active')
   const isOrganizerView = canManageCurrentOrg && organizationView === 'organizers'
+  const isWorkspaceView = organizationView === 'members' || isOrganizerView
   const claimActionLabel = hasExistingAdmins ? 'Challenge Ownership' : 'Claim This Organization'
   useEffect(() => {
     if (!handle) return
@@ -845,7 +846,7 @@ export function PublicAdminPage() {
   }
 
   async function handleSaveCroppedOrgImage(base64Image: string) {
-    if (!org || !token) return
+    if (!org || !token || !isOrganizerView) return
     setSavingOrgImage(true)
     setMergeStatus(null)
     try {
@@ -878,6 +879,7 @@ export function PublicAdminPage() {
       setMergeStatus('Image uploaded. Save organization settings to publish it.')
       setShowImageEditor(false)
       setEditorSource(null)
+      openOrganizationEditor('org-image-url')
     } catch (err) {
       setMergeStatus(toUserFacingErrorMessage(err, 'Image upload failed'))
     } finally {
@@ -896,7 +898,7 @@ export function PublicAdminPage() {
   }
 
   const mergeCandidates = myAdminOrgs.filter((item) => item.id !== org.id)
-  const canEditOrgImage = isOrganizerView && adminView
+  const canEditOrgImage = isOrganizerView
   const tenant = getGroupSite()
   const organizationBrandImage = tenant?.organization_id === org.id ? tenant.brand_image_path : null
   const heroImageSource = org.image_url?.trim() || organizationBrandImage || ORG_PLACEHOLDER_SRC
@@ -910,6 +912,7 @@ export function PublicAdminPage() {
   }
 
   function openOrganizationEditor(sectionId = 'organization-page-editor') {
+    if (!isOrganizerView) return
     setAdminView(true)
     window.requestAnimationFrame(() => {
       const section = document.getElementById(sectionId) || organizationEditorRef.current
@@ -920,16 +923,16 @@ export function PublicAdminPage() {
 
   return (
     <section className="panel portal-org-page">
-      {isOrganizerView && <nav className="portal-org-organizer-nav" aria-label={`${org.name} organizer navigation`}>
-        <span className="portal-org-organizer-nav-label">Organizer tools</span>
+      {isWorkspaceView && <nav className="portal-org-organizer-nav" aria-label={`${org.name} workspace navigation`}>
+        <span className="portal-org-organizer-nav-label">{isOrganizerView ? 'Organizer tools' : 'Member tools'}</span>
         <a href="#organization-overview">Overview</a>
-        <a href="#organization-branding" onClick={event => { event.preventDefault(); openOrganizationEditor('organization-branding') }}>Branding</a>
+        <a href="#organization-brand-guide">Branding</a>
         <a href="#organization-members">Members</a>
         <a href="#organization-events">Events</a>
         <a href="#organization-support">Support</a>
-        <a href="#organization-feedback" onClick={event => { event.preventDefault(); openOrganizationEditor('organization-feedback') }}>Feedback</a>
-        <a href="#organization-domain" onClick={event => { event.preventDefault(); openOrganizationEditor('organization-domain') }}>Domain</a>
-        <a href="#organization-page-editor" onClick={event => { event.preventDefault(); openOrganizationEditor() }}>Settings</a>
+        <a href="#organization-member-feedback">Feedback</a>
+        {isOrganizerView && <a href="#organization-domain" onClick={event => { event.preventDefault(); openOrganizationEditor('organization-domain') }}>Domain</a>}
+        {isOrganizerView && <a href="#organization-page-editor" onClick={event => { event.preventDefault(); openOrganizationEditor() }}>Settings</a>}
       </nav>}
       <div className={`portal-org-layout${org.claimed_by_user_id ? '' : ' portal-org-layout-single'}`}>
         <div className="portal-org-main-column">
@@ -938,11 +941,13 @@ export function PublicAdminPage() {
               <p className="tenant-home-eyebrow">{isOrganizerView ? 'Organization dashboard' : `${organizationView[0].toUpperCase()}${organizationView.slice(1)} view`}</p>
               <div className="portal-org-hero-header">
                 <h1>{org.name}</h1>
+                {isOrganizerView && <button type="button" className="btn-secondary" onClick={() => openOrganizationEditor('org-name')} aria-label="Edit organization name"><Pencil size={17} aria-hidden="true" /></button>}
                 {canEditOrgImage ? (
                   <span className="portal-org-image-hint">Click image to change</span>
                 ) : null}
               </div>
               {org.description ? <p>{org.description}</p> : null}
+              {isOrganizerView && <button type="button" className="btn-secondary" onClick={() => openOrganizationEditor('org-description')}>Edit description</button>}
               <div className="portal-org-actions" aria-label={`${org.name} actions`}>
                 {token ? (
                   <Link className="btn-secondary" to={`/chat?start=group&org=${encodeURIComponent(org.slug)}`}>
@@ -991,6 +996,7 @@ export function PublicAdminPage() {
                 <h2>{group.kind === 'hosted' ? `${org.name} upcoming events` : 'Events from nearby organizations'}</h2>
               </div>
               <Link to="/events">View all events</Link>
+              {isOrganizerView && group.kind === 'hosted' && <Link className="btn-secondary" to="/orgs/events">Manage events</Link>}
             </div>
             {eventsLoading ? (
               <p className="muted" style={{ margin: 0 }}>
@@ -1011,7 +1017,7 @@ export function PublicAdminPage() {
                       className={!event.image_url && !event.media?.length ? 'portal-org-event-brand-image' : undefined}
                     />
                     <strong className="portal-org-event-title">{event.title}</strong>
-                    <span className="muted">{event.starts_at ? new Date(event.starts_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'Date to be announced'}</span>
+                    <span className="muted">{event.starts_at ? new Date(event.starts_at).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'Date to be announced'}</span>
                     {event.location ? <span className="muted portal-org-event-location">{event.location}</span> : null}
                   </Link>
                 ))}
@@ -1020,24 +1026,26 @@ export function PublicAdminPage() {
           </div>)}
 
 
-          {(organizationView === 'members' || isOrganizerView) && <OrganizationTools />}
-          {isOrganizerView && <>
+          {isWorkspaceView && <OrganizationTools />}
+          {isWorkspaceView && <>
           <OrganizationPortalSections
             name={org.name}
             features={portalConfig?.features ?? (getGroupSite()?.home_org_slug === org.slug ? getGroupSite()?.features : undefined) ?? ['directory', 'events', 'chat']}
           />
+          <div id="organization-brand-guide" className="portal-org-nav-target" tabIndex={-1}>
           {getGroupSite()?.home_org_slug === org.slug
             ? <OrganizationBrandGuide />
             : portalConfig?.slug_url
               ? <OrganizationBrandGuide href={`${portalConfig.slug_url.replace(/\/$/, '')}/branding`} />
               : null}
+          {isOrganizerView && <button type="button" className="btn-secondary" onClick={() => openOrganizationEditor('organization-branding')}>Edit branding and portal sections</button>}
+          </div>
           </>}
-          {organizationView !== 'organizers' && organizationView !== 'public' && <section className="portal-card" aria-label={`${organizationView} workspace`} style={{ display: 'grid', gap: '.6rem' }}>
-            <h2>{organizationView === 'members' ? 'Member workspace' : organizationView === 'volunteers' ? 'Volunteer workspace' : 'Attendee workspace'}</h2>
-            <p>{organizationView === 'members' ? 'Members actively participate in a team and can propose and discuss governance changes.' : organizationView === 'volunteers' ? 'Volunteers have helped with a group activity within the previous three months.' : 'Attendees have attended a group activity within the previous three months.'}</p>
+          {(organizationView === 'attendees' || organizationView === 'volunteers') && <section className="portal-card" aria-label={`${organizationView} workspace`} style={{ display: 'grid', gap: '.6rem' }}>
+            <h2>{organizationView === 'volunteers' ? 'Volunteer workspace' : 'Attendee workspace'}</h2>
+            <p>{organizationView === 'volunteers' ? 'Volunteers have helped with a group activity within the previous three months.' : 'Attendees have attended a group activity within the previous three months.'}</p>
             <div className="portal-org-actions">
               <Link className="btn-secondary" to="/org-events">Events and registration</Link>
-              {organizationView === 'members' && <Link className="btn-secondary" to="/chat">Messages</Link>}
             </div>
           </section>}
           {mergedFrom ? (
@@ -1086,15 +1094,16 @@ export function PublicAdminPage() {
             organizationId={org.id}
             name={org.name}
             canRead={Boolean(token && (canManageCurrentOrg || membership?.status === 'active'))}
-            canManage={canManageCurrentOrg}
+            canManage={isOrganizerView}
             membershipCount={org.membership_count || 0}
           />
           </div>
 
           {token ? (
-            <div className="portal-card" style={{ display: 'grid', gap: '0.65rem' }}>
+            <div id="organization-member-feedback" className="portal-card portal-org-nav-target" tabIndex={-1} style={{ display: 'grid', gap: '0.65rem' }}>
             <div>
               <h2 style={{ margin: 0, fontSize: '1rem' }}>Group Feedback</h2>
+              {isOrganizerView && <button type="button" className="btn-secondary" onClick={() => openOrganizationEditor('organization-feedback')}>Manage feedback</button>}
               <p className="muted" style={{ margin: '0.25rem 0 0' }}>
                 {org.feedback_positive_count || 0} positive • {org.feedback_concern_count || 0} concerns
               </p>
@@ -1227,7 +1236,7 @@ export function PublicAdminPage() {
           <PeerOrganizations organizationId={org.id} tags={org.tags} />
 
           <div id="organization-support" className="portal-org-nav-target" tabIndex={-1}>
-            <OrganizationSupport organizationId={org.id} slug={org.slug} canManage={canManageCurrentOrg} />
+            <OrganizationSupport organizationId={org.id} slug={org.slug} canManage={isOrganizerView} />
           </div>
 
           {isOrganizerView && adminView ? (
@@ -1497,7 +1506,7 @@ export function PublicAdminPage() {
 
         </div>
         {org.claimed_by_user_id && <aside className="portal-org-chat-column">
-          {isOrganizerView ? <EmbeddedOrganizationChat id={org.id} slug={org.slug} name={org.name} /> : <div className="portal-card" style={{ display: 'grid', gap: '0.75rem' }}>
+          {isWorkspaceView ? <EmbeddedOrganizationChat id={org.id} slug={org.slug} name={org.name} /> : <div className="portal-card" style={{ display: 'grid', gap: '0.75rem' }}>
             <h2 style={{ margin: 0, fontSize: '1rem' }}>{org.name} Chat</h2>
             <p className="muted" style={{ margin: 0 }}>Connect with {org.name} members in our shared chat room.</p>
             {token ? (

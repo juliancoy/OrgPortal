@@ -135,7 +135,7 @@ function formatEventDate(value?: string | null): string {
   if (!value) return 'Date TBD'
   const dt = new Date(value)
   if (Number.isNaN(dt.getTime())) return 'Date TBD'
-  return dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  return dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 function authReturnQuery(location: ReturnType<typeof useLocation>): string {

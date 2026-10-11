@@ -20,7 +20,7 @@ test('guest provider route redirects to login and uses portal-scoped social asse
 
   await page.goto('/provider-scheduling')
   await expect(page).toHaveURL(/\/users\/login\?next=%2Fprovider-scheduling$/)
-  await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Sign in to Code Collective' })).toBeVisible()
 
   const googleLogo = page.locator('img.portal-social-login-logo').first()
   const githubLogo = page.locator('img.portal-social-login-logo').nth(1)

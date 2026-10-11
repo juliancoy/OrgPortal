@@ -1,5 +1,16 @@
 # Agent Notes
 
+## Personal data lifecycle
+
+- Follow [retention and deletion policy](docs/privacy/RETENTION_AND_DELETION.md)
+  and [human/agent operations runbook](docs/privacy/OPERATIONS.md) for data changes.
+- Every new personal-data store needs a retention clock, deletion path and
+  downstream/backup handling. Do not log credentials or private tool payloads.
+- Policy targets are not proof of automation. Preserve the implementation-status
+  table and verify controls before advertising them. Never run blanket production
+  deletion or infer account ownership from an email address.
+- Support and privacy contact: julian@codecollective.us.
+
 - The PIdP source is not a submodule of this repository. Use the sibling checkout at `../pidp` when you need to inspect or change PIdP code.
 - Do not re-add `pidp/` or `PIdP/` as submodules. Keep OrgPortal changes in this repository and PIdP changes in `../pidp`.
 

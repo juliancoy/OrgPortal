@@ -1,12 +1,13 @@
 import { getGroupSite } from '../../../config/timebankCommunity'
 import { getActivePortalProfileConfig } from '../../../config/portalFeatures'
-import { portalAssetPath } from '../../../config/portalBase'
 import type { CSSProperties } from 'react'
 import { PhotoTags } from '../../components/PhotoTags'
 import { EventVenues, type Venue } from '../../components/EventVenues'
+import { EventCompanyVotes } from '../../components/EventCompanyVotes'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { CalendarPlus, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, MapPinned, Pencil, RotateCcw, X, ZoomIn, ZoomOut } from 'lucide-react'
+import { externalEventListings } from '../../utils/externalEventListings'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
 import { downloadIcsEvent, googleCalendarUrl, outlookCalendarUrl } from '../../utils/calendar'
 import { useAuth } from '../../../app/AppProviders'
@@ -49,6 +50,9 @@ type PublicEvent = {
   location?: string | null
   source_url?: string | null
   image_url?: string | null
+  social_title?: string | null
+  social_description?: string | null
+  social_image_url?: string | null
   media?: EventMediaItem[]
   links?: EventLinkItem[]
   organization_name?: string | null
@@ -191,15 +195,16 @@ function reactionOwnerSummary(reaction: NativeChatReaction) {
 }
 
 function CommentAvatar({ message, myUserId }: { message: NativeChatMessage; myUserId: string | null }) {
-  return (
-    <div className="public-event-comment-avatar" aria-hidden="true">
-      {message.sender_avatar_url ? (
-        <img src={message.sender_avatar_url} alt="" loading="lazy" />
-      ) : (
-        messageAuthorInitial(message, myUserId)
-      )}
-    </div>
-  )
+  const image = message.sender_avatar_url
+    ? <img src={message.sender_avatar_url} alt="" loading="lazy" />
+    : messageAuthorInitial(message, myUserId)
+  if (!message.sender_user_id) return <span className="public-event-comment-avatar" aria-hidden="true">{image}</span>
+  return <a
+    className="public-event-comment-avatar"
+    href={orgUrl(`/api/network/users/by-id/${encodeURIComponent(message.sender_user_id)}/profile`)}
+    aria-label={`View ${message.sender_name?.trim() || 'this person'}’s public profile`}
+    title="View public profile"
+  >{image}</a>
 }
 
 function ReactionControls({
@@ -426,10 +431,10 @@ export function PublicEventPage() {
   useEffect(() => {
     if (!event) return
     setSeoMeta({
-      title: `${event.title} • Org Portal`,
-      description: summary(event.description),
+      title: `${event.social_title || event.title} on ${window.location.hostname}`,
+      description: summary(event.social_description || externalEventListings(event, window.location.origin)[0]?.description || event.description),
       canonicalUrl: eventUrl(event.slug),
-      imageUrl: event.image_url || undefined,
+      imageUrl: event.social_image_url || externalEventListings(event, window.location.origin)[0]?.image_url || event.image_url || undefined,
       type: 'article',
     })
   }, [event])
@@ -512,7 +517,7 @@ export function PublicEventPage() {
   }, [eventChatMessages])
 
   const mediaItems = event?.media || []
-  const eventLinks = event?.links || []
+  const eventLinks = event ? externalEventListings(event, window.location.origin) : []
   const selectedMedia = selectedMediaIndex >= 0 ? mediaItems[selectedMediaIndex] : null
   const mediaRailRef = useRef<HTMLDivElement>(null)
   const galleryStageRef = useRef<HTMLDivElement>(null)
@@ -554,13 +559,19 @@ export function PublicEventPage() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [mediaItems.length, selectedMedia])
 
+  const commentSubmission = useRef<{ eventId: string; body: string; id: string } | null>(null)
   async function postEventComment() {
     const body = commentDraft.trim()
-    if (!eventChat?.conversation_id || !body || !eventChatReady) return
+    if (!event || !token || !body || chatActionPending) return
+    if (commentSubmission.current?.body !== body || commentSubmission.current.eventId !== event.id) commentSubmission.current = { eventId: event.id, body, id: uuid() }
     try {
       setChatActionPending(true)
       setChatStatus('')
-      const message = await chatApi.sendMessage(eventChat.conversation_id, uuid(), body)
+      const { conversation, message } = await chatApi.postEventComment(event.id, commentSubmission.current.id, body)
+      setEventChat(current => ({ ...current, room_exists: true, event_slug: event.slug, conversation_id: conversation.id, room_name: conversation.title }))
+      setMyUserId(user?.id || null)
+      setEventChatReady(true)
+      commentSubmission.current = null
       setCommentDraft('')
       setEventChatMessages((current) => [...current, message])
     } catch (err) {
@@ -656,6 +667,7 @@ export function PublicEventPage() {
   const mapsUrl = event.location ? googleMapsUrl(event.location) : null
   const mapsEmbedUrl = event.location ? googleMapsEmbedUrl(event.location) : null
   const organizerName = getEventOrganizerName(event)
+  const heroImage = event.social_image_url || eventLinks[0]?.image_url || event.image_url
   const organizerAvatar = event.organization_image_url?.trim() || ''
   const publicEventUrl = event.source_url || eventUrl(event.slug)
   const calendarDownloadEvent = eventStart && eventEnd ? {
@@ -669,17 +681,19 @@ export function PublicEventPage() {
 
   return (
     <article className={`public-event-page${lifeTech ? ' lifetech-event-page' : ''}`} style={lifeTech ? { '--event-brand-accent': tenant.accent_color, '--event-brand-navy': brand.themeColor } as CSSProperties : undefined}>
+      {eventLinks.length ? <nav className="public-event-listing-banner" aria-label="External event listings">
+        {eventLinks.map(link => <a key={link.url} href={link.url}>
+          <span>View this event on {linkHost(link.url)}</span>
+          <ExternalLink size={20} aria-hidden="true" />
+        </a>)}
+      </nav> : null}
       <div className="public-event-layout public-event-luma-layout">
         <main className="public-event-main">
           <section className="public-event-hero">
-            {event.image_url ? (
-              <img className="public-event-hero-image" src={event.image_url} alt="" />
+            {heroImage ? (
+              <img className="public-event-hero-image" src={heroImage} alt="" />
             ) : <div className="public-event-hero-image public-event-hero-placeholder" aria-hidden="true" />}
             <div className="public-event-hero-content">
-              {lifeTech ? <Link className="lifetech-event-lockup" to="/branding" aria-label="LifeTech brand guide">
-                <img src={portalAssetPath(brand.brandImagePath || '/assets/images/lifetech-logo.png')} alt="" />
-                <span><strong>{brand.brandName}</strong><small>{brand.tagline}</small></span>
-              </Link> : null}
               {event.organization_slug ? (
                 <Link
                   className="public-event-organizer-link"
@@ -752,35 +766,7 @@ export function PublicEventPage() {
               <p>{event.description}</p>
             </section>
           ) : null}
-          {eventLinks.length > 0 ? (
-            <section className="portal-card public-event-links" aria-labelledby="event-links-title">
-              <div className="public-event-card-heading">
-                <p className="public-event-eyebrow">Related Links</p>
-                <h2 id="event-links-title">Event Links</h2>
-              </div>
-              <div className="public-event-link-list">
-                {eventLinks.map((link) => (
-                  <a key={link.id || link.url} className={`public-event-link-card${link.image_url ? '' : ' public-event-link-card-text-only'}`} href={link.url} target="_blank" rel="noreferrer">
-                    {link.image_url ? (
-                      <img src={link.image_url} alt="" loading="lazy" decoding="async" />
-                    ) : null}
-                    <span className="public-event-link-copy">
-                      <span className="public-event-link-label">{link.label}</span>
-                      <strong>{link.title || linkHost(link.url)}</strong>
-                      {link.description ? <span>{link.description}</span> : null}
-                      <span className="public-event-link-url">{linkHost(link.url)} <ExternalLink size={15} aria-hidden="true" /></span>
-                    </span>
-                  </a>
-                ))}
-              </div>
-            </section>
-          ) : event.source_url ? (
-            <p style={{ margin: 0, overflowWrap: 'anywhere' }}>
-              <a href={event.source_url} target="_blank" rel="noreferrer">
-                Source / RSVP
-              </a>
-            </p>
-          ) : null}
+          <EventCompanyVotes key={event.id} eventId={event.id} />
       <section className="portal-card public-event-chat">
         <div className="public-event-card-heading">
           <p className="public-event-eyebrow">Conversation</p>
@@ -792,7 +778,7 @@ export function PublicEventPage() {
         {chatStatus ? (
           <p className="muted" style={{ margin: 0 }}>{chatStatus}</p>
         ) : null}
-        {eventChat?.room_exists ? (
+        {eventChat ? (
           <>
             <p className="muted" style={{ margin: 0 }}>
               {eventChat.room_name || 'Event comments'}
@@ -806,15 +792,15 @@ export function PublicEventPage() {
                 <textarea
                   value={commentDraft}
                   onChange={(event) => setCommentDraft(event.target.value)}
-                  placeholder={eventChatReady ? 'Add a comment...' : 'Connecting before comments can be posted...'}
+                  placeholder="Add a comment..."
                   rows={3}
-                  disabled={!eventChatReady || chatActionPending}
+                  disabled={chatActionPending}
                 />
                 <div className="public-event-comment-actions">
                   <button
                     type="button"
                     className="btn-primary"
-                    disabled={!eventChatReady || chatActionPending || !commentDraft.trim()}
+                    disabled={chatActionPending || !commentDraft.trim()}
                     onClick={() => postEventComment().catch(() => {})}
                   >
                     Post Comment
@@ -911,13 +897,11 @@ export function PublicEventPage() {
               <p className="muted" style={{ margin: 0 }}>No comments yet.</p>
             )}
           </>
-        ) : !chatLoading && !chatStatus ? (
-          <p className="muted" style={{ margin: 0 }}>Comments are being set up. Refresh to try again.</p>
         ) : null}
       </section>
         </main>
         <aside className="public-event-side public-event-luma-side" aria-label="Event actions and location">
-          <EventVenues eventId={event.id} venues={event.venues||[]} canManage={canManageEvent} onSaved={venues=>setEvent({...event,venues,location:venues.find(v=>v.event_status==='confirmed')?.address||null})} />
+          <EventVenues location={event.location} organizationSlug={event.organization_slug} eventId={event.id} venues={event.venues||[]} canManage={canManageEvent} onSaved={venues=>{const confirmed=venues.find(v=>v.event_status==='confirmed');setEvent({...event,venues,location:confirmed?[confirmed.name,confirmed.address].filter(Boolean).join(' · '):null})}} />
           <EventRegistration key={`${event.id}:${user?.id || 'guest'}:${Boolean(token)}`}
             eventId={event.id} slug={event.slug} token={token} authLoading={authLoading} saveToCalendar={saveToCalendar}
             organizationName={event.host_org_id ? event.organization_name || event.host_org_name : null} />
