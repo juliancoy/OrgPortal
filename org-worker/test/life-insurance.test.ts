@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readCurrentSchemaFileSync as readFileSync } from './helpers/currentSchema';
 import { DatabaseSync, type StatementSync } from "node:sqlite";
 import test from "node:test";
 import {

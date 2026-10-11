@@ -91,8 +91,8 @@ export async function replicateOrganizations(env: ReplicaEnv, fetcher: typeof fe
         if (table.name==='organization_chat_provisioning') continue;
         if (table.name==='organization_support_records' || table.name.startsWith('_cf_') || table.name.startsWith('sqlite_')) continue;
         const keys=(await env.DB.prepare(`PRAGMA foreign_key_list(${quote(table.name)})`).all<{table:string;from:string}>()).results || [];
-        if (table.name==='portal_tenants') {
-          const fields=(await env.DB.prepare('PRAGMA table_info(portal_tenants)').all<{name:string}>()).results || [];
+        if (table.name==='group_sites') {
+          const fields=(await env.DB.prepare('PRAGMA table_info(group_sites)').all<{name:string}>()).results || [];
           if (fields.some(f=>f.name==='organization_id')) keys.push({table:'organizations',from:'organization_id'});
         }
         for (const fk of keys.filter(k=>k.table==='organizations')) {

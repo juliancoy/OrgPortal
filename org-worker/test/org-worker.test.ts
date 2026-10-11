@@ -153,14 +153,14 @@ class FakeD1 {
     if (sql.includes("SELECT * FROM user_contact_pages WHERE slug = ?")) {
       return (this.contacts.find((row) => row.slug === params[0]) as T) || null;
     }
-    if (sql.includes("FROM portal_tenants WHERE hostname = ?")) {
+    if (sql.includes("FROM group_sites WHERE hostname = ?")) {
       const row = this.portalTenants.find((row) => row.hostname === params[0] && (!sql.includes("id <> ?") || row.id !== params[1]));
       return (row as T) || null;
     }
-    if (sql.includes("FROM portal_tenants WHERE slug = ?")) {
+    if (sql.includes("FROM group_sites WHERE slug = ?")) {
       return (this.portalTenants.find((row) => row.slug === params[0]) as T) || null;
     }
-    if (sql.includes("FROM portal_tenants") && sql.includes("organization_id = ?")) {
+    if (sql.includes("FROM group_sites") && sql.includes("organization_id = ?")) {
       const [organizationId, slug] = params;
       const row =
         this.portalTenants.find((row) => row.organization_id === organizationId) ||
@@ -617,7 +617,7 @@ class FakeD1 {
         row.updated_at = params[0];
       }
     }
-    if (sql.includes("INSERT INTO portal_tenants")) {
+    if (sql.includes("INSERT INTO group_sites")) {
       const existing = this.portalTenants.find((row) => row.id === params[0]);
       const row = {
         id: params[0],
@@ -2123,7 +2123,7 @@ test("organization admins can publish a slug portal for their organization", asy
     assert.equal(loaded.status, 200);
     assert.equal(((await loaded.json()) as { portal: Row }).portal.slug, "test-org");
 
-    const publicTenant = await app.request("https://org.example.test/api/portal/tenants/test-org", {}, env(db));
+    const publicTenant = await app.request("https://org.example.test/api/portal/sites/test-org", {}, env(db));
     assert.equal(publicTenant.status, 200);
     const publicPayload = await publicTenant.json() as Row;
     assert.equal(publicPayload.name, "Test Org Portal");
@@ -2161,7 +2161,7 @@ test("non-admins cannot publish organization slug portals", async () => {
   });
 });
 
-test("organization admins can request and attach a custom portal domain", async () => {
+test("organization admins can request a custom domain but only operators can activate it", async () => {
   const db = new FakeD1();
   db.organizations.push({
     id: "org-1",
@@ -2218,8 +2218,15 @@ test("organization admins can request and attach a custom portal domain", async 
       },
       env(db),
     );
-    assert.equal(attached.status, 200);
-    const attachedPayload = await attached.json() as { portal: Row };
+    assert.equal(attached.status, 403);
+    const activated = await withPidpUser({ id: "admin-1", is_sysadmin: true }, () => app.request(
+      "https://org.example.test/api/network/orgs/test-org/portal/custom-domain/attach",
+      { method: "POST", headers: { authorization: "Bearer admin-token", "content-type": "application/json" },
+        body: JSON.stringify({ hostname: "portal.test-org.example" }) },
+      env(db),
+    ));
+    assert.equal(activated.status, 200);
+    const attachedPayload = await activated.json() as { portal: Row };
     assert.equal(attachedPayload.portal.custom_domain_status, "attached");
     assert.equal(attachedPayload.portal.hostname, "portal.test-org.example");
     assert.equal(attachedPayload.portal.public_base_url, "https://portal.test-org.example");

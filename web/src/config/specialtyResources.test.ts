@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import type { PortalTenant } from './timebankCommunity'
+import type { GroupSite } from './timebankCommunity'
 import { specialtyResourcesForTenant } from './specialtyResources'
 
-function tenant(overrides: Partial<PortalTenant> = {}): PortalTenant {
+function tenant(overrides: Partial<GroupSite> = {}): GroupSite {
   return {
     id: 'example',
     hostname: 'example.test',

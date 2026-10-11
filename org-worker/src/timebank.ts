@@ -5,7 +5,7 @@ export class TimebankError extends Error {
 }
 
 export type Community = { id: string; hostname: string; name: string; tagline: string; accent_color: string };
-export type PortalTenant = Community & {
+export type GroupSite = Community & {
   organization_id?: string | null;
   slug?: string | null;
   profile: string;
@@ -434,7 +434,7 @@ export async function resolveTimebankCommunity(db: D1Database, request: Request)
   // Attached portal domains share the original community and ledger.
   try {
     const attached = await db.prepare(`SELECT community.* FROM timebank_communities community
-      JOIN portal_tenants tenant ON tenant.hostname = community.hostname
+      JOIN group_sites tenant ON tenant.hostname = community.hostname
       WHERE tenant.custom_domain_hostname = ? AND tenant.custom_domain_status = 'attached'`)
       .bind(hostname).first<Community>();
     if (attached) return { ...attached, hostname };
@@ -459,13 +459,13 @@ function tenantFeatures(value: string | null | undefined) {
   }
 }
 
-export async function resolvePortalTenant(db: D1Database, request: Request): Promise<PortalTenant> {
+export async function resolveGroupSite(db: D1Database, request: Request): Promise<GroupSite> {
   const hostname = requestHostname(request);
   try {
-    const tenant = await db.prepare('SELECT * FROM portal_tenants WHERE hostname = ?').bind(hostname).first<Community & { profile: string; features: string; public_base_url?: string | null; canonical_path_prefix?: string | null; feature_config?: string | null }>();
+    const tenant = await db.prepare('SELECT * FROM group_sites WHERE hostname = ?').bind(hostname).first<Community & { profile: string; features: string; public_base_url?: string | null; canonical_path_prefix?: string | null; feature_config?: string | null }>();
     if (tenant) return { ...tenant, features: tenantFeatures(tenant.features) };
     // An attached domain remains authoritative when the slug portal is saved.
-    const attached=await db.prepare("SELECT * FROM portal_tenants WHERE custom_domain_hostname=? AND custom_domain_status='attached'").bind(hostname).first<Community & {profile:string;features:string}>();
+    const attached=await db.prepare("SELECT * FROM group_sites WHERE custom_domain_hostname=? AND custom_domain_status='attached'").bind(hostname).first<Community & {profile:string;features:string}>();
     if(attached)return {...attached,hostname,public_base_url:`https://${hostname}`,canonical_path_prefix:'',features:tenantFeatures(attached.features)};
   } catch {
     // Older local databases may not have the tenant table yet.
@@ -474,11 +474,11 @@ export async function resolvePortalTenant(db: D1Database, request: Request): Pro
   return { ...community, profile: 'community', features: ['timebank'] };
 }
 
-export async function resolvePortalTenantBySlug(db: D1Database, slug: string): Promise<PortalTenant | null> {
+export async function resolveGroupSiteBySlug(db: D1Database, slug: string): Promise<GroupSite | null> {
   const normalized = slug.toLowerCase().trim();
   if (!/^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/.test(normalized)) return null;
   try {
-    const tenant = await db.prepare('SELECT * FROM portal_tenants WHERE slug = ?')
+    const tenant = await db.prepare('SELECT * FROM group_sites WHERE slug = ?')
       .bind(normalized)
       .first<Community & { profile: string; features: string }>();
     return tenant ? { ...tenant, features: tenantFeatures(tenant.features) } : null;
@@ -499,7 +499,7 @@ export async function saveTimebankCommunity(db: D1Database, id: string, body: un
   await db.prepare(`INSERT INTO timebank_communities (id, hostname, name, tagline, accent_color) VALUES (?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET name = excluded.name, tagline = excluded.tagline, accent_color = excluded.accent_color`)
     .bind(id, hostname, name, tagline, accent).run();
-  await db.prepare(`INSERT INTO portal_tenants (id, hostname, name, tagline, accent_color, profile, features) VALUES (?, ?, ?, ?, ?, 'community', '["timebank"]')
+  await db.prepare(`INSERT INTO group_sites (id, hostname, name, tagline, accent_color, profile, features) VALUES (?, ?, ?, ?, ?, 'community', '["timebank"]')
     ON CONFLICT(id) DO UPDATE SET hostname = excluded.hostname, name = excluded.name, tagline = excluded.tagline,
       accent_color = excluded.accent_color, profile = excluded.profile, features = excluded.features, updated_at = CURRENT_TIMESTAMP`)
     .bind(id, hostname, name, tagline, accent).run();

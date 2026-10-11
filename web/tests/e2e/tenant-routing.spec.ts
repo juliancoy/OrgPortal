@@ -152,7 +152,7 @@ async function mockTenant(page: Page, options: MockTenantOptions = {}) {
   let loggedIn = Boolean(options.initiallyLoggedIn)
   await page.route('**/api/org/**', route => {
     const path = new URL(route.request().url()).pathname
-    if (path.endsWith('/portal/tenant')) {
+    if (path.endsWith('/portal/site')) {
       return route.fulfill({ json: {
         id: 'baltimore-medtech',
         hostname: 'medtech.social',
@@ -646,7 +646,7 @@ test('LifeTech keeps its own logo and app icons across chat and event navigation
     const html = (await response.text()).replace(/<link[^>]+rel="manifest"[^>]*>/g, '')
     return route.fulfill({ response, body: html })
   })
-  await page.route('**/api/org/api/portal/tenant', route => route.fulfill({ json: {
+  await page.route('**/api/org/api/portal/site', route => route.fulfill({ json: {
     id: 'lifetech', hostname: 'lifetech.fyi', name: 'LifeTech', tagline: 'Health × Medicine × Biotech',
     accent_color: '#061a26', profile: 'community', features: ['directory', 'events', 'chat'],
     home_kind: 'auth', home_org_slug: 'lifetech', canonical_path_prefix: '',

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
-import { readFileSync } from 'node:fs';
+import { readCurrentSchemaFileSync as readFileSync } from './helpers/currentSchema';
 import { generateKeyPair, exportJWK, SignJWT } from 'jose';
 import { app, governanceService, executeGovernanceAction } from '../src/index';
 import { runGovernanceOperation } from '../src/governanceMcp';

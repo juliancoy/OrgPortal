@@ -1,4 +1,4 @@
-import { getDomainTenant } from '../../../config/timebankCommunity'
+import { getGroupSite } from '../../../config/timebankCommunity'
 import { getActivePortalProfileConfig } from '../../../config/portalFeatures'
 import { portalAssetPath } from '../../../config/portalBase'
 import type { CSSProperties } from 'react'
@@ -261,7 +261,7 @@ function uuid() {
 export function PublicEventPage() {
   const { token, user, isLoading: authLoading } = useAuth()
   const { slug } = useParams()
-  const tenant = getDomainTenant()
+  const tenant = getGroupSite()
   const brand = getActivePortalProfileConfig()
   const lifeTech = tenant?.home_org_slug === 'lifetech'
   const [event, setEvent] = useState<PublicEvent | null>(null)

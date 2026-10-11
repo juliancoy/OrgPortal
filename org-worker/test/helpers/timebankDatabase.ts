@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readCurrentSchemaFileSync as readFileSync } from './currentSchema';
 import { DatabaseSync, type SQLInputValue, type StatementSync } from 'node:sqlite';
 
 class SqliteStatement {

@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readCurrentSchemaFileSync as readFileSync } from './helpers/currentSchema';
 import { TimebankDatabase } from './helpers/timebankDatabase'
 import { localNewsletterRoutes } from '../src/localNewsletters'
 import { newsletterId } from '../../shared/newsletterStorage'

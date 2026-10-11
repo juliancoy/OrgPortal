@@ -1,12 +1,12 @@
 # OrgPortal Agent Onboarding
 
-This guide is for people using coding agents to set up an organization-branded OrgPortal tenant. It covers the MCP server API where available and the operator work that still happens outside MCP.
+This guide is for people using coding agents to set up an branded OrgPortal group homepage. It covers the MCP server API where available and the operator work that still happens outside MCP.
 
 ## Model
 
-OrgPortal has one web app and one org worker. CodeCollective is mounted at `https://codecollective.us/p`; organization tenant domains are mounted at their root, for example `https://medtech.social/users/login`.
+OrgPortal has one web app and one org worker. CodeCollective is mounted at `https://codecollective.us/p`; group homepage domains are mounted at their root, for example `https://medtech.social/users/login`.
 
-Do not build a parallel portal for a new organization. A tenant is data in `portal_tenants`, connected to an existing `organizations` row and the existing event, member, group, chat, and auth systems.
+Do not build a parallel portal for a new organization. A group homepage is site configuration in `group_sites`, connected to an existing `organizations` row and the existing event, member, group, chat, and auth systems.
 
 ## Agent Workflow
 
@@ -16,7 +16,7 @@ Do not build a parallel portal for a new organization. A tenant is data in `port
 4. Save the slug portal with `save_portal_setup`.
 5. Request the custom domain with `request_portal_custom_domain`.
 6. Hand the returned checklist to the operator.
-7. After Cloudflare, PIdP, MCP metadata, and providers are provisioned, attach the domain with `attach_portal_custom_domain`.
+7. After verifying DNS ownership, HTTPS, and the shared OrgPortal sign-in handoff, an operator activates the matching domain request through `POST /api/network/orgs/:organizationId/portal/custom-domain/attach`. Activation is not available through member MCP tools.
 8. Run the checks in `LLMs.Tests.md`.
 
 Every MCP write should be treated as an approved operation. Show the preview or current state to the user before applying a change that affects public URLs, events, comments, or provider integrations.

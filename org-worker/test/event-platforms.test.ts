@@ -228,7 +228,7 @@ test("authenticated MCP initializes, lists tools and previews through the shared
   try {
     assert.equal((await rpc("initialize", { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "test", version: "1" } })).result.serverInfo.name, "orgportal-events");
     const listed = await rpc("tools/list", {});
-    assert.equal(listed.result.tools.length, 43);
+    assert.equal(listed.result.tools.length, 42);
     for (const name of ['list_organization_support', 'preview_organization_support', 'apply_organization_support', 'preview_void_organization_support', 'apply_void_organization_support']) {
       assert.ok(listed.result.tools.some((tool: { name: string }) => tool.name === name), `Missing support tool: ${name}`);
     }
@@ -244,7 +244,7 @@ test("authenticated MCP initializes, lists tools and previews through the shared
     assert.equal(listed.result.tools.find((t: any) => t.name === "apply_event_comments").annotations.idempotentHint, true);
     assert.ok(listed.result.tools.find((t: any) => t.name === "save_portal_setup"));
     assert.ok(listed.result.tools.find((t: any) => t.name === "request_portal_custom_domain"));
-    assert.ok(listed.result.tools.find((t: any) => t.name === "attach_portal_custom_domain"));
+    assert.equal(listed.result.tools.find((t: any) => t.name === "attach_portal_custom_domain"), undefined);
     const preview = await rpc("tools/call", { name: "preview_event_changes", arguments: { ...plan, confirm: true } });
     assert.equal(preview.result.structuredContent.dryRun, true);
     assert.match(preview.result.structuredContent.previewId, /^[0-9a-f-]{36}$/);
@@ -286,11 +286,9 @@ test("MCP exposes organization portal setup and custom-domain flow", async () =>
     const requested = await rpc("request_portal_custom_domain", { organizationId: "org-one", hostname: "one.example.org", notes: "ready for DNS" });
     assert.equal(requested.portal.custom_domain_status, "requested");
     assert.ok(requested.checklist.some((item: string) => item.includes("Cloudflare custom domain")));
-    const attached = await rpc("attach_portal_custom_domain", { organizationId: "org-one", hostname: "one.example.org" });
-    assert.equal(attached.portal.hostname, "one.example.org");
-    assert.equal(attached.portal.public_base_url, "https://one.example.org");
-    assert.equal(attached.portal.home_url, "https://one.example.org/");
-    await db.prepare("UPDATE portal_tenants SET feature_config = json_patch(feature_config, '{\"onboarding\":{\"enabled\":true}}') WHERE organization_id = 'org-one'").run();
+    // Operator provisioning uses the protected REST route, never a member MCP tool.
+    await db.prepare("UPDATE group_sites SET hostname='one.example.org', public_base_url='https://one.example.org', home_url='https://one.example.org/', canonical_path_prefix='', custom_domain_status='attached' WHERE organization_id='org-one'").run();
+    await db.prepare("UPDATE group_sites SET feature_config = json_patch(feature_config, '{\"onboarding\":{\"enabled\":true}}') WHERE organization_id = 'org-one'").run();
     const updated = await rpc("save_portal_setup", { organizationId: "org-one", slug: "one", name: "One Updated", homeKind: "main" });
     assert.equal(updated.portal.hostname, "one.example.org");
     assert.equal(updated.portal.home_url, "https://one.example.org/");

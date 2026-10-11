@@ -1,7 +1,7 @@
 import { CommunitiesPage, PlatformHomePage } from '../views/PlatformHomePage'
 import { resolveOrganizationView, useOrganizationAccess, useOrganizationViewPreference } from '../hooks/useOrganizationView'
 import { PortalProfileBoundary } from '../shell/PortalProfileBoundary'
-import { getDomainCommunity, getDomainTenant, type PortalTenant } from '../../config/timebankCommunity'
+import { getDomainCommunity, getGroupSite, type GroupSite } from '../../config/timebankCommunity'
 import { lazy, useEffect, useState } from 'react'
 import type { ReactElement } from 'react'
 import { Navigate, createBrowserRouter, useLocation, useNavigate, useParams } from 'react-router-dom'
@@ -98,7 +98,7 @@ function AuthenticatedRoute(props: { children: ReactElement }) {
   return props.children
 }
 
-function tenantHomeElement(tenant: PortalTenant, role: string, profile: ReturnType<typeof getActivePortalProfileConfig>) {
+function tenantHomeElement(tenant: GroupSite, role: string, profile: ReturnType<typeof getActivePortalProfileConfig>) {
   const action = tenantHomeAction(tenant, role, profile.memberHomePath)
   if (action.kind === 'landing') return <TenantHomePage />
   if (action.kind === 'events') return <TenantEventsHomePage />
@@ -108,7 +108,7 @@ function tenantHomeElement(tenant: PortalTenant, role: string, profile: ReturnTy
 
 function HomeRoute() {
   const { role, isLoading } = useAuth()
-  const tenant = getDomainTenant()
+  const tenant = getGroupSite()
   const access = useOrganizationAccess(tenant?.home_org_slug)
   const location = useLocation()
   const requestedView = useOrganizationViewPreference(tenant?.home_org_slug, new URLSearchParams(location.search).get('view'))
@@ -141,24 +141,24 @@ function TimebankTenantRoot() {
 }
 
 function TenantOrgEventsRoute() {
-  const tenant = getDomainTenant()
+  const tenant = getGroupSite()
   if (tenant?.home_org_slug) return <TenantEventsContent />
   return <PublicEventsPage />
 }
 
 function TenantCommunityAliasRoute() {
-  const tenant = getDomainTenant()
+  const tenant = getGroupSite()
   if (tenant?.id === 'deism') return <HomeRoute />
   if (tenant?.home_org_slug) return <Navigate to="/" replace />
   return <Navigate to={getActivePortalProfileConfig().id === 'orgportal' ? '/communities' : tenant ? '/people' : '/orgs'} replace />
 }
 
 function TenantEventsAliasRoute() {
-  return <Navigate to={getDomainTenant() ? '/org-events' : '/events'} replace />
+  return <Navigate to={getGroupSite() ? '/org-events' : '/events'} replace />
 }
 
 function PublicEventsRoute() {
-  const tenant = getDomainTenant()
+  const tenant = getGroupSite()
   if (tenant?.home_org_slug) return <TenantEventsContent />
   return <PublicEventsPage />
 }

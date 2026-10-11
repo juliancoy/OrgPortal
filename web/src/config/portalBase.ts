@@ -1,4 +1,4 @@
-import { getDomainTenant } from './timebankCommunity'
+import { getGroupSite } from './timebankCommunity'
 
 const DEFAULT_ORIGIN = 'https://codecollective.us'
 
@@ -18,7 +18,7 @@ export function normalizePortalBasePath(rawBase: string, origin = runtimeOrigin(
 }
 
 export function portalBasePath(): string {
-  const tenant = getDomainTenant()
+  const tenant = getGroupSite()
   if (tenant && (tenant.canonical_path_prefix || '') === '') return ''
   return normalizePortalBasePath(
     (import.meta.env.VITE_PORTAL_MOUNT_PATH as string | undefined) ||
@@ -49,7 +49,7 @@ export function toInternalPortalPath(rawPath: string, fallback = '/'): string {
     if (parsed.origin !== origin) return fallback
     const basePath = portalBasePath()
     let path = `${parsed.pathname}${parsed.search}${parsed.hash}` || fallback
-    if (!basePath && getDomainTenant() && (path === '/p' || path.startsWith('/p/') || path.startsWith('/p?'))) {
+    if (!basePath && getGroupSite() && (path === '/p' || path.startsWith('/p/') || path.startsWith('/p?'))) {
       path = path.slice(2) || '/'
       if (!path.startsWith('/')) path = `/${path}`
     }

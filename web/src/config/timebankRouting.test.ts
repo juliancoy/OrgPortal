@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from 'vitest'
-import { setDomainCommunity, setDomainTenant, timebankHomePath } from './timebankCommunity'
+import { setDomainCommunity, setGroupSite, timebankHomePath } from './timebankCommunity'
 import { portalBasePath, portalPath } from './portalBase'
 import { defaultPostLoginPath, normalizePostLoginPath, portalAuthCallbackUrl } from './pidp'
 import { timebankListingPath, timebankNoticePath } from '../ui/timebank/links'
@@ -38,7 +38,7 @@ test('dashboard communities keep tenant timebank routing metadata', () => {
 
 test('non-timebank tenant domains also use root portal routes', () => {
   vi.stubEnv('BASE_URL', '/p/')
-  setDomainTenant({
+  setGroupSite({
     id: 'baltimore-medtech',
     hostname: 'medtech.social',
     name: 'Baltimore MedTech',

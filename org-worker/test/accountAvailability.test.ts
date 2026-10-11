@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { readFileSync } from 'node:fs';
+import { readCurrentSchemaFileSync as readFileSync } from './helpers/currentSchema';
 import { HTTPException } from 'hono/http-exception';
 import { accountSelection } from '../src/accountAvailability';
 import { availabilityRoutes } from '../src/availability';
@@ -44,8 +44,8 @@ test('account entries persist across polls and tenants, remain private, and neve
 test('migration preserves latest existing responses, including explicit unavailability',()=>{
  const db=new TimebankDatabase();try{
  db.sqlite.exec(readFileSync(new URL('../migrations/0042_availability_polls.sql',import.meta.url),'utf8'));
- const tenant=(db.sqlite.prepare('SELECT id FROM portal_tenants LIMIT 1').get() as {id:string}).id;
- for(const id of ['old','new'])db.sqlite.prepare('INSERT INTO availability_polls (id,tenant_id,owner_user_id,title,timezone,slots_json) VALUES (?,?,?,?,?,?)').run(id,tenant,'alice','History','UTC',JSON.stringify([monday]));
+ const tenant=(db.sqlite.prepare('SELECT id FROM group_sites LIMIT 1').get() as {id:string}).id;
+ for(const id of ['old','new'])db.sqlite.prepare('INSERT INTO availability_polls (id,group_site_id,owner_user_id,title,timezone,slots_json) VALUES (?,?,?,?,?,?)').run(id,tenant,'alice','History','UTC',JSON.stringify([monday]));
  db.sqlite.prepare('INSERT INTO availability_responses (poll_id,user_id,slots_json,updated_at) VALUES (?,?,?,?)').run('old','alice',JSON.stringify([monday]),'2026-10-01 00:00:00');
  db.sqlite.prepare('INSERT INTO availability_responses (poll_id,user_id,slots_json,updated_at) VALUES (?,?,?,?)').run('new','alice','[]','2026-10-02 00:00:00');
  db.sqlite.exec(readFileSync(new URL('../migrations/0047_account_availability.sql',import.meta.url),'utf8'));

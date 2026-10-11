@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { readFileSync } from 'node:fs';
+import { readCurrentSchemaFileSync as readFileSync } from './helpers/currentSchema';
 import { HTTPException } from 'hono/http-exception';
 import { availabilityRoutes, validatePoll, validateSelection } from '../src/availability';
 import { TimebankDatabase } from './helpers/timebankDatabase';

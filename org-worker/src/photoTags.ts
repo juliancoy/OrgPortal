@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
-import { resolvePortalTenant } from './timebank';
+import { resolveGroupSite } from './timebank';
 import { authorizeOrganization, type OrganizationActor } from './organizationIam';
 import { MEDTECH_CAROUSEL, publicDriveFolder } from './driveCarousel';
 import { claimEventOperation, enforceEventRateLimit, finishEventOperation, prepareEventOperation, previewFingerprint } from './eventOperationStore';
@@ -21,7 +21,7 @@ export function photoTagRoutes(getActor:(env:Env,request:Request)=>Promise<Organ
  app.use('*',async(c,next)=>{c.header('Cache-Control','private, no-store');await next();});
  app.onError((error,c)=>{const status=error instanceof HTTPException?error.status:((error as {status?:number}).status||500);return new Response(JSON.stringify({error:status===500?'Unable to update photo tags.':error.message}),{status,headers:{'Content-Type':'application/json','Cache-Control':'private, no-store'}});});
  async function target(env:Env,request:Request,source:string,owner:string,photo:string){
-  const tenant=await resolvePortalTenant(env.DB,request);
+  const tenant=await resolveGroupSite(env.DB,request);
   let ownerId=owner,organizationId:string|null|undefined;
   if(source==='carousel'){
    if(owner!==MEDTECH_CAROUSEL.id||!MEDTECH_CAROUSEL.tenantHostnames.includes(tenant.hostname))throw new HTTPException(404);
@@ -35,7 +35,7 @@ export function photoTagRoutes(getActor:(env:Env,request:Request)=>Promise<Organ
   }else throw new HTTPException(404);
   if(!organizationId)throw new HTTPException(409,{message:'Photo tagging requires an organization gallery.'});
   const key=[tenant.id,source,ownerId,photo];
-  const existing=await env.DB.prepare('SELECT tags_json,version FROM photo_annotations WHERE tenant_id=? AND source=? AND owner_id=? AND photo_id=?').bind(...key).first<{tags_json:string;version:number}>();
+  const existing=await env.DB.prepare('SELECT tags_json,version FROM photo_annotations WHERE group_site_id=? AND source=? AND owner_id=? AND photo_id=?').bind(...key).first<{tags_json:string;version:number}>();
   return {key,organizationId,existing,tags:JSON.parse(existing?.tags_json||'[]')};
  }
  app.get('/:source/:owner/:photo',async c=>{
@@ -63,8 +63,8 @@ export function photoTagRoutes(getActor:(env:Env,request:Request)=>Promise<Organ
   if(!previewId)throw new HTTPException(409,{message:'Preview the tags before saving.'});
   await claimEventOperation(c.env.DB,owner,previewId,fingerprint);
   try{
-   const updated=await c.env.DB.prepare(`INSERT INTO photo_annotations(tenant_id,source,owner_id,photo_id,tags_json,version,updated_by_user_id)
-    VALUES (?,?,?,?,?,1,?) ON CONFLICT(tenant_id,source,owner_id,photo_id) DO UPDATE SET tags_json=excluded.tags_json,version=photo_annotations.version+1,updated_by_user_id=excluded.updated_by_user_id,updated_at=CURRENT_TIMESTAMP WHERE photo_annotations.version=? RETURNING version`)
+   const updated=await c.env.DB.prepare(`INSERT INTO photo_annotations(group_site_id,source,owner_id,photo_id,tags_json,version,updated_by_user_id)
+    VALUES (?,?,?,?,?,1,?) ON CONFLICT(group_site_id,source,owner_id,photo_id) DO UPDATE SET tags_json=excluded.tags_json,version=photo_annotations.version+1,updated_by_user_id=excluded.updated_by_user_id,updated_at=CURRENT_TIMESTAMP WHERE photo_annotations.version=? RETURNING version`)
     .bind(...t.key,JSON.stringify(tags),actor.id,preview.version).first();
    if(!updated)throw new HTTPException(409,{message:'Photo tags changed. Review them again.'});
    await finishEventOperation(c.env.DB,previewId,true,['photo-tags-saved']);

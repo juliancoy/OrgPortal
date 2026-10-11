@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
-import { readFileSync } from 'node:fs';
+import { readCurrentSchemaFileSync as readFileSync } from './helpers/currentSchema';
 
 const migration = readFileSync(new URL('../migrations/0069_deism_tenant.sql', import.meta.url), 'utf8');
 function fixture() {
@@ -16,7 +16,7 @@ test('Deism seed links its organization, publishes the slug portal, and leaves d
   const db = fixture();
   try {
     db.exec(migration);
-    const row = db.prepare("SELECT * FROM portal_tenants WHERE id = 'deism'").get()!;
+    const row = db.prepare("SELECT * FROM group_sites WHERE id = 'deism'").get()!;
     assert.equal(row.organization_id, 'deism');
     assert.equal(row.profile, 'deism');
     assert.equal(row.slug, 'deism');
@@ -30,9 +30,9 @@ test('Deism seed links its organization, publishes the slug portal, and leaves d
     assert.equal(config.orgEvents.enabled, true);
     assert.equal(config.specialtyResources.length, 2);
     assert.ok(config.specialtyResources.every((resource: {external: boolean; href: string}) => resource.external && resource.href.startsWith('https://deism.church/')));
-    db.exec("UPDATE portal_tenants SET home_heading='Community edited heading' WHERE id='deism'");
+    db.exec("UPDATE group_sites SET home_heading='Community edited heading' WHERE id='deism'");
     db.exec(migration);
-    assert.equal(db.prepare("SELECT home_heading FROM portal_tenants WHERE id='deism'").get()!.home_heading, 'Community edited heading');
+    assert.equal(db.prepare("SELECT home_heading FROM group_sites WHERE id='deism'").get()!.home_heading, 'Community edited heading');
   } finally { db.close(); }
 });
 
@@ -41,7 +41,7 @@ test('Deism seed reuses an existing organization without changing its public pro
   try {
     db.exec("INSERT INTO organizations(id,name,slug) VALUES('existing-deism','Existing Deist organization','deism')");
     db.exec(migration);
-    assert.equal(db.prepare("SELECT organization_id FROM portal_tenants WHERE id='deism'").get()!.organization_id, 'existing-deism');
+    assert.equal(db.prepare("SELECT organization_id FROM group_sites WHERE id='deism'").get()!.organization_id, 'existing-deism');
     assert.equal(db.prepare("SELECT name FROM organizations WHERE slug='deism'").get()!.name, 'Existing Deist organization');
   } finally { db.close(); }
 });

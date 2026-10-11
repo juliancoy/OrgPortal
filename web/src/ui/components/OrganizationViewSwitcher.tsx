@@ -1,12 +1,12 @@
 import { useLocation, useNavigate } from 'react-router-dom'
-import { getDomainTenant } from '../../config/timebankCommunity'
+import { getGroupSite } from '../../config/timebankCommunity'
 import { organizationViews, resolveOrganizationView, useOrganizationAccess, useOrganizationViewPreference, saveOrganizationView } from '../hooks/useOrganizationView'
 
 export function OrganizationViewSwitcher({ indicator = false }: { indicator?: boolean }) {
   const location = useLocation()
   const navigate = useNavigate()
   const match = location.pathname.match(/^\/orgs\/([^/]+)\/?$/)
-  const slug = match && !['login', 'register', 'profile', 'account', 'initiatives', 'events'].includes(match[1]) ? decodeURIComponent(match[1]) : getDomainTenant()?.home_org_slug
+  const slug = match && !['login', 'register', 'profile', 'account', 'initiatives', 'events'].includes(match[1]) ? decodeURIComponent(match[1]) : getGroupSite()?.home_org_slug
   const access = useOrganizationAccess(slug)
   const requested = useOrganizationViewPreference(slug, new URLSearchParams(location.search).get('view'))
   if (!slug) return null

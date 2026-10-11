@@ -54,7 +54,7 @@ async function fulfillJson(route: Route, body: unknown, status = 200) {
 }
 
 async function mockCommon(page: Page) {
-  await page.route('**/api/org/api/portal/tenant', route => fulfillJson(route, {}))
+  await page.route('**/api/org/api/portal/site', route => fulfillJson(route, {}))
   await page.route('**/assets.test/**', async (route) => {
     await route.fulfill({
       status: 200,

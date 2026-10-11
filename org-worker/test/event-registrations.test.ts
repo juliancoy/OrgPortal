@@ -1,6 +1,6 @@
 import {identityProfile} from './helpers/identityProfile';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readCurrentSchemaFileSync as readFileSync } from './helpers/currentSchema';
 import { DatabaseSync, type StatementSync } from 'node:sqlite';
 import test from 'node:test';
 import { app } from '../src/index';
@@ -144,7 +144,7 @@ test('registered events calendar feed is private, subscribable, and host-rooted'
   database.exec("UPDATE events SET starts_at = '2026-10-01T22:00:00.000Z', ends_at = '2026-10-02T00:00:00.000Z' WHERE id = 'event-2'");
   database.exec("INSERT INTO event_registrations (event_id, user_id) VALUES ('event-1', 'alice'), ('event-2', 'bob')");
 
-  database.exec("INSERT INTO member_meetings(id,tenant_id,host_user_id,guest_user_id,starts_at,ends_at) VALUES ('meeting-1','baltimore-medtech','alice','carol','2026-10-02T22:00:00.000Z','2026-10-02T22:30:00.000Z'),('meeting-private','baltimore-medtech','bob','carol','2026-10-03T22:00:00.000Z','2026-10-03T22:30:00.000Z')");
+  database.exec("INSERT INTO member_meetings(id,group_site_id,host_user_id,guest_user_id,starts_at,ends_at) VALUES ('meeting-1','baltimore-medtech','alice','carol','2026-10-02T22:00:00.000Z','2026-10-02T22:30:00.000Z'),('meeting-private','baltimore-medtech','bob','carol','2026-10-03T22:00:00.000Z','2026-10-03T22:30:00.000Z')");
   const metadataResponse = await app.request('https://medtech.social/api/network/calendar/feed', {
     headers: { Authorization: 'Bearer alice' },
   }, { DB: { prepare: (sql: string) => new Statement(database.prepare(sql)), batch: async (statements: Statement[]) => {

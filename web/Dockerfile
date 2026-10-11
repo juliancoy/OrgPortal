@@ -8,7 +8,7 @@ RUN npm install
 COPY . .
 
 ARG VITE_PIDP_BASE_URL=/pidp
-ARG VITE_PIDP_APP_SLUG=code-collective
+ARG VITE_PIDP_APP_SLUG=orgportal
 ARG VITE_DATA_SOURCE=mock
 ARG VITE_API_BASE_URL=/api/governance
 ARG VITE_PUBLIC_BASE=./

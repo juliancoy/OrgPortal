@@ -1,7 +1,7 @@
 # OrgPortal platform
 
 `https://orgportal.cc/` is the neutral platform entry point. The `orgportal`
-portal tenant has no organization owner or Timebank community. Its public
+site configuration has no organization owner or Timebank community. Its public
 homepage, community picker, organization directory, and sign-in use the
 `orgportal` branding profile. Code Collective remains a separate community at
 `https://codecollective.us/p/`.
@@ -16,10 +16,10 @@ must not silently select Code Collective's board or ledger.
 ## Accounts
 
 PIdP continues to own credentials, sessions, provider callbacks, and account
-linking. The registered member application is displayed as OrgPortal but retains
-its existing ID and `code-collective` slug. That slug is an internal compatibility
-identifier, not community membership. Renaming it or creating a replacement
-application would create a new account namespace and is not part of this change.
+linking. The registered member application is displayed as OrgPortal and uses
+the `orgportal` slug. Migration `0012_orgportal_login.sql` renames the existing
+application in place; its stable ID, subjects, and accounts are unchanged.
+Groups and custom domains do not register separate login applications.
 Sign-in defaults to `/communities`; validated explicit return paths are preserved.
 OrgPortal continues to check current organization membership and permissions.
 Opening or signing in to the platform grants no community membership or role.
@@ -42,8 +42,8 @@ Apply only the reviewed migrations:
 Shared frontend and org releases continue through CodeCollective. Keep
 `orgportal.cc` in the frontend custom domains and tenant-host configuration,
 PIdP portal authentication origins, and chat origins. Deployment defaults use
-OrgPortal for public links and the shared identity display name. Tenant-specific
-public base URLs remain authoritative.
+OrgPortal for public links and the shared identity display name. Group homepage URLs remain authoritative for branding and public home links.
+Organization profiles and management routes stay in OrgPortal.
 
 The platform has its own `orgportal.webmanifest` and vector mark. Existing
 community manifests and branding remain available on their domains.

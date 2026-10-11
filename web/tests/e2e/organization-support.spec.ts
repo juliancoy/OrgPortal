@@ -8,7 +8,7 @@ test('public organization shows descendants, nonmonetary support and source prov
   await page.route('**/api/org/**', async route => {
     const path = new URL(route.request().url()).pathname
     let body: unknown = []
-    if (path.endsWith('/api/portal/tenant')) body = {}
+    if (path.endsWith('/api/portal/site')) body = {}
     else if (path.endsWith('/orgs/public/parent')) body = { id: 'parent', slug: 'parent', name: 'Parent organization', description: 'Support network', membership_count: 0, pending_challenges_count: 0, media: [] }
     else if (path.endsWith('/parent/support')) body = {
       descendants: [{ id: 'child', slug: 'child', name: 'Supported organization', is_direct: 1 }, { id: 'grandchild', slug: 'grandchild', name: 'Indirect organization', is_direct: 0 }],

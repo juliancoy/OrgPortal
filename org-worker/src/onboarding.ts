@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-import { resolvePortalTenant, type PortalTenant } from './timebank';
+import { resolveGroupSite, type GroupSite } from './timebank';
 import { accountSelection, saveAccountAvailability, type AvailabilityObservation } from './accountAvailability';
 
 export const onboardingSteps = [
@@ -9,33 +9,33 @@ export const onboardingSteps = [
  { id: 'communications', title: 'Review communications and conduct', description: 'Learn the community channels, expectations for respectful conduct, and how to raise concerns with organizers.', href: 'https://codecollective.us/constitution' },
  { id: 'meetings', title: 'Learn meetings and governance', description: 'Review meeting types and the motion, seconding, and voting process. Find an upcoming meeting to attend.', href: '/events' },
 ] as const;
-function lifeTech(tenant: PortalTenant) { return tenant.home_org_slug === 'lifetech' || tenant.hostname === 'lifetech.fyi'; }
-function stepsFor(tenant: PortalTenant) { return onboardingSteps.filter(step => !lifeTech(tenant) || !['communications', 'meetings'].includes(step.id)); }
+function lifeTech(tenant: GroupSite) { return tenant.home_org_slug === 'lifetech' || tenant.hostname === 'lifetech.fyi'; }
+function stepsFor(tenant: GroupSite) { return onboardingSteps.filter(step => !lifeTech(tenant) || !['communications', 'meetings'].includes(step.id)); }
 export const onboardingTasks = [
  { id: 'availability', title: 'Indicate your meeting availability for a typical week' },
  ...onboardingSteps.map(({ id, title }) => ({ id, title })),
 ];
 export function onboardingTaskId(step: string) { return `onboarding:v1:${step}`; }
-function taskUpdates(db: D1Database, tenant: PortalTenant, userId: string) {
- const tenantId = tenant.id;
+function taskUpdates(db: D1Database, tenant: GroupSite, userId: string) {
+ const groupSiteId = tenant.id;
  const tasks = [{ id: 'availability', title: onboardingTasks[0].title }, ...stepsFor(tenant)];
  return [
   ...tasks.map(step => {
    const completion = step.id === 'availability' ? 'availability_saved_at' : `json_extract(acknowledgements,'$.${step.id}')`;
-   return db.prepare(`INSERT INTO user_tasks (id,tenant_id,user_id,created_by_user_id,kind,entity_id,title,status,completed_at)
-    SELECT ?,tenant_id,user_id,user_id,'personal',?,?,CASE WHEN ${completion} IS NULL THEN 'pending' ELSE 'completed' END,${completion}
-    FROM onboarding_enrollments WHERE tenant_id=? AND user_id=?
-    ON CONFLICT(tenant_id,user_id,kind,entity_id) DO UPDATE SET
+   return db.prepare(`INSERT INTO user_tasks (id,group_site_id,user_id,created_by_user_id,kind,entity_id,title,status,completed_at)
+    SELECT ?,group_site_id,user_id,user_id,'personal',?,?,CASE WHEN ${completion} IS NULL THEN 'pending' ELSE 'completed' END,${completion}
+    FROM onboarding_enrollments WHERE group_site_id=? AND user_id=?
+    ON CONFLICT(group_site_id,user_id,kind,entity_id) DO UPDATE SET
     title=excluded.title,status=excluded.status,completed_at=COALESCE(user_tasks.completed_at,excluded.completed_at)`)
-    .bind(crypto.randomUUID(),onboardingTaskId(step.id),step.title,tenantId,userId);
+    .bind(crypto.randomUUID(),onboardingTaskId(step.id),step.title,groupSiteId,userId);
   }),
-  ...(lifeTech(tenant) ? [db.prepare("DELETE FROM user_tasks WHERE tenant_id=? AND user_id=? AND kind='personal' AND entity_id IN ('onboarding:v1:communications','onboarding:v1:meetings')").bind(tenantId,userId)] : []),
+  ...(lifeTech(tenant) ? [db.prepare("DELETE FROM user_tasks WHERE group_site_id=? AND user_id=? AND kind='personal' AND entity_id IN ('onboarding:v1:communications','onboarding:v1:meetings')").bind(groupSiteId,userId)] : []),
   // Retire the aggregate task after its individual replacements are created.
-  db.prepare("UPDATE user_tasks SET status='completed',completed_at=COALESCE(completed_at,strftime('%Y-%m-%dT%H:%M:%fZ','now')) WHERE tenant_id=? AND user_id=? AND kind='personal' AND entity_id='onboarding:v1'").bind(tenantId,userId),
+  db.prepare("UPDATE user_tasks SET status='completed',completed_at=COALESCE(completed_at,strftime('%Y-%m-%dT%H:%M:%fZ','now')) WHERE group_site_id=? AND user_id=? AND kind='personal' AND entity_id='onboarding:v1'").bind(groupSiteId,userId),
  ];
 }
 type Enrollment = { start_date: string; end_date: string; acknowledgements: string; availability_saved_at: string | null; completed_at: string | null };
-export function onboardingEnabled(tenant: PortalTenant) {
+export function onboardingEnabled(tenant: GroupSite) {
  try { return JSON.parse(tenant.feature_config || '{}').onboarding?.enabled === true; } catch { return false; }
 }
 export function nextMonth(date: string) {
@@ -46,12 +46,12 @@ export function nextMonth(date: string) {
 }
 export type OnboardingActor = { id: string; account_id?: string };
 
-export function identityProgressStatements(db: D1Database, tenant: PortalTenant, userId: string, sourceUserId: string) {
+export function identityProgressStatements(db: D1Database, tenant: GroupSite, userId: string, sourceUserId: string) {
  if (sourceUserId === userId) return [];
  return [
-  ...(onboardingEnabled(tenant) ? [db.prepare(`INSERT INTO onboarding_enrollments (tenant_id,user_id,start_date,end_date,acknowledgements,availability_saved_at,completed_at,created_at)
-    SELECT tenant_id,?,start_date,end_date,acknowledgements,availability_saved_at,completed_at,created_at FROM onboarding_enrollments WHERE tenant_id=? AND user_id=?
-    ON CONFLICT(tenant_id,user_id) DO UPDATE SET
+  ...(onboardingEnabled(tenant) ? [db.prepare(`INSERT INTO onboarding_enrollments (group_site_id,user_id,start_date,end_date,acknowledgements,availability_saved_at,completed_at,created_at)
+    SELECT group_site_id,?,start_date,end_date,acknowledgements,availability_saved_at,completed_at,created_at FROM onboarding_enrollments WHERE group_site_id=? AND user_id=?
+    ON CONFLICT(group_site_id,user_id) DO UPDATE SET
     acknowledgements=json_patch(excluded.acknowledgements,onboarding_enrollments.acknowledgements),
     availability_saved_at=COALESCE(onboarding_enrollments.availability_saved_at,excluded.availability_saved_at),
     completed_at=COALESCE(onboarding_enrollments.completed_at,excluded.completed_at)`).bind(userId,tenant.id,sourceUserId)] : []),
@@ -62,7 +62,7 @@ export function identityProgressStatements(db: D1Database, tenant: PortalTenant,
  ];
 }
 
-export async function ensureOnboarding(db: D1Database, tenant: PortalTenant, userId: string, sourceUserId = userId) {
+export async function ensureOnboarding(db: D1Database, tenant: GroupSite, userId: string, sourceUserId = userId) {
  if (!onboardingEnabled(tenant)) {
   const statements=identityProgressStatements(db,tenant,userId,sourceUserId);
   if(statements.length) await db.batch(statements);
@@ -71,10 +71,10 @@ export async function ensureOnboarding(db: D1Database, tenant: PortalTenant, use
  const start = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
  await db.batch([
   ...identityProgressStatements(db,tenant,userId,sourceUserId),
-  db.prepare('INSERT INTO onboarding_enrollments (tenant_id,user_id,start_date,end_date) VALUES (?,?,?,?) ON CONFLICT DO NOTHING').bind(tenant.id,userId,start,nextMonth(start)),
+  db.prepare('INSERT INTO onboarding_enrollments (group_site_id,user_id,start_date,end_date) VALUES (?,?,?,?) ON CONFLICT DO NOTHING').bind(tenant.id,userId,start,nextMonth(start)),
  ]);
  await finish(db,tenant,userId);
- return db.prepare('SELECT * FROM onboarding_enrollments WHERE tenant_id = ? AND user_id = ?').bind(tenant.id,userId).first<Enrollment>();
+ return db.prepare('SELECT * FROM onboarding_enrollments WHERE group_site_id = ? AND user_id = ?').bind(tenant.id,userId).first<Enrollment>();
 }
 export function typicalWeekEnd(start: string) {
  const end = new Date(`${start}T00:00:00Z`);
@@ -91,12 +91,12 @@ export function monthSlots(start: string, end: string, timezone: string) {
  }
  return slots;
 }
-async function finish(db: D1Database, tenant: PortalTenant, userId: string) {
- const tenantId = tenant.id;
+async function finish(db: D1Database, tenant: GroupSite, userId: string) {
+ const groupSiteId = tenant.id;
  await db.batch([
   db.prepare(`UPDATE onboarding_enrollments SET completed_at = COALESCE(completed_at,strftime('%Y-%m-%dT%H:%M:%fZ','now'))
-   WHERE tenant_id = ? AND user_id = ? AND availability_saved_at IS NOT NULL
-   AND ${stepsFor(tenant).map(s=>`json_extract(acknowledgements,'$.${s.id}') IS NOT NULL`).join(' AND ')}`).bind(tenantId,userId),
+   WHERE group_site_id = ? AND user_id = ? AND availability_saved_at IS NOT NULL
+   AND ${stepsFor(tenant).map(s=>`json_extract(acknowledgements,'$.${s.id}') IS NOT NULL`).join(' AND ')}`).bind(groupSiteId,userId),
   ...taskUpdates(db,tenant,userId),
  ]);
 }
@@ -104,7 +104,7 @@ export function onboardingRoutes(getUser: (env: Env, request: Request) => Promis
  const app = new Hono<{Bindings:Env}>();
  app.use('*',async(c,next)=>{c.header('Cache-Control','no-store');await next();});
  async function context(env:Env,request:Request) {
-  const user=await getUser(env,request),tenant=await resolvePortalTenant(env.DB,request);
+  const user=await getUser(env,request),tenant=await resolveGroupSite(env.DB,request);
   const accountId=user.id;
   const enrollment=await ensureOnboarding(env.DB,tenant,accountId,user.account_id || user.id);
   return {user,accountId,tenant,enrollment};
@@ -120,7 +120,7 @@ export function onboardingRoutes(getUser: (env: Env, request: Request) => Promis
   if(!stepsFor(tenant).some(s=>s.id===step))throw new HTTPException(400,{message:'Unknown onboarding step.'});
   const body=await c.req.json().catch(()=>null);
   if(body?.acknowledged!==true)throw new HTTPException(400,{message:'Confirm that you completed this step.'});
-  await c.env.DB.prepare('UPDATE onboarding_enrollments SET acknowledgements=json_set(acknowledgements,?,?) WHERE tenant_id=? AND user_id=?').bind(`$.${step}`,new Date().toISOString(),tenant.id,accountId).run();
+  await c.env.DB.prepare('UPDATE onboarding_enrollments SET acknowledgements=json_set(acknowledgements,?,?) WHERE group_site_id=? AND user_id=?').bind(`$.${step}`,new Date().toISOString(),tenant.id,accountId).run();
   await finish(c.env.DB,tenant,accountId);
   return c.json({ok:true});
  });
@@ -142,8 +142,8 @@ export function onboardingRoutes(getUser: (env: Env, request: Request) => Promis
   if(!Array.isArray(body.slots)||body.slots.length>slots.length||body.slots.some((s:unknown)=>typeof s!=='string'||!allowed.has(s))||new Set(body.slots).size!==body.slots.length)throw new HTTPException(400,{message:'Invalid availability selection.'});
   await c.env.DB.batch([
    saveAccountAvailability(c.env.DB,accountId,slots,body.slots),
-   c.env.DB.prepare("UPDATE onboarding_enrollments SET availability_saved_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE tenant_id=? AND user_id=?").bind(tenant.id,accountId),
-   c.env.DB.prepare("UPDATE user_tasks SET status='completed',completed_at=COALESCE(completed_at,strftime('%Y-%m-%dT%H:%M:%fZ','now')) WHERE tenant_id=? AND user_id=? AND entity_id=?").bind(tenant.id,user.id,`availability-calendar:${tenant.organization_id}`),
+   c.env.DB.prepare("UPDATE onboarding_enrollments SET availability_saved_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE group_site_id=? AND user_id=?").bind(tenant.id,accountId),
+   c.env.DB.prepare("UPDATE user_tasks SET status='completed',completed_at=COALESCE(completed_at,strftime('%Y-%m-%dT%H:%M:%fZ','now')) WHERE group_site_id=? AND user_id=? AND entity_id=?").bind(tenant.id,user.id,`availability-calendar:${tenant.organization_id}`),
   ]);
   await finish(c.env.DB,tenant,accountId);
   return c.json({ok:true});

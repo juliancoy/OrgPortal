@@ -23,9 +23,9 @@ with sync_playwright() as p:
         for path in ('/pidp/health', '/api/org/health'):
             response = context.request.get(BASE + path, max_redirects=0)
             assert response.ok, f'Local service unavailable: {path} (HTTP {response.status})'
-        tenant = context.request.get(BASE + '/api/org/api/portal/tenant', max_redirects=0).json()
+        tenant = context.request.get(BASE + '/api/org/api/portal/site', max_redirects=0).json()
         assert json.loads(tenant.get('feature_config') or '{}').get('onboarding', {}).get('enabled'), (
-            'Select an onboarding-enabled local tenant with ORGPORTAL_LOCAL_TENANT_HOST=lifetech.fyi'
+            'Select an onboarding-enabled local tenant with ORGPORTAL_LOCAL_SITE_HOST=lifetech.fyi'
         )
         response = context.request.post(BASE + '/pidp/auth/register', data={**account, 'full_name': 'Local Onboarding Test'}, max_redirects=0)
         assert response.ok, f'Registration failed (HTTP {response.status})'

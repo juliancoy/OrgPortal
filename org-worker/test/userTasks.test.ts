@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { readFileSync } from 'node:fs';
+import { readCurrentSchemaFileSync as readFileSync } from './helpers/currentSchema';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { availabilityRoutes } from '../src/availability';
@@ -61,7 +61,7 @@ test('closure resolves poll tasks; reopening restores only unanswered invitation
 
 test('organization calendar task links to availability and completes only for the saving account and tenant',async()=>{
  const {db,request,queue}=fixture();try{
- const insert=db.sqlite.prepare("INSERT INTO user_tasks(id,tenant_id,user_id,created_by_user_id,kind,entity_id,title) VALUES (?,? ,?,'alice','personal','availability-calendar:org','Fill out your availability calendar')");
+ const insert=db.sqlite.prepare("INSERT INTO user_tasks(id,group_site_id,user_id,created_by_user_id,kind,entity_id,title) VALUES (?,? ,?,'alice','personal','availability-calendar:org','Fill out your availability calendar')");
  insert.run('bob-calendar','baltimore-medtech','bob');insert.run('carol-calendar','baltimore-medtech','carol');insert.run('bob-other-tenant','code-collective','bob');
  assert.equal((await queue('bob'))[0].href,'/availability');
  const {id}=await (await request('/availability','POST',{title:'Calendar',timezone:'UTC',slots})).json() as {id:string};

@@ -1,17 +1,17 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defaultPostLoginPath, normalizePidpBase, normalizePostLoginPath, portalAuthCallbackUrl, pidpSingleSignOnUrl } from './pidp'
 import * as profiles from './portalFeatures'
-import { setDomainTenant } from './timebankCommunity'
+import { setGroupSite } from './timebankCommunity'
 
 afterEach(() => {
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
-  setDomainTenant(null)
+  setGroupSite(null)
 })
 
 describe('profile-aware authentication destinations', () => {
   function medtech() {
-    setDomainTenant({
+    setGroupSite({
       id: 'baltimore-medtech',
       hostname: 'medtech.social',
       name: 'Baltimore MedTech',
@@ -47,7 +47,7 @@ describe('profile-aware authentication destinations', () => {
 
   it('keeps shared slug portal login callbacks under the shared mount', () => {
     vi.stubEnv('BASE_URL', '/p/')
-    setDomainTenant({
+    setGroupSite({
       id: 'org-test-portal',
       organization_id: 'org-test',
       slug: 'test-org',
@@ -82,7 +82,7 @@ describe('profile-aware authentication destinations', () => {
 
 it('single sign-on keeps callback and navigation on the current tenant origin', () => {
   vi.stubGlobal('window', { location: { origin: 'https://tenant.example', hostname: 'tenant.example' } })
-  setDomainTenant({ id: 'tenant', hostname: 'tenant.example', name: 'Tenant', tagline: '', accent_color: '#123456', canonical_path_prefix: '' })
+  setGroupSite({ id: 'tenant', hostname: 'tenant.example', name: 'Tenant', tagline: '', accent_color: '#123456', canonical_path_prefix: '' })
   const login = new URL(pidpSingleSignOnUrl('/people?q=medicine', 'google'), 'https://tenant.example')
   expect(login.pathname).toBe('/pidp/auth/sso/start')
   expect(login.searchParams.get('provider')).toBe('google')
@@ -95,7 +95,7 @@ it('single sign-on keeps callback and navigation on the current tenant origin', 
 
 it('OrgPortal uses neutral destinations while preserving the shared account application', () => {
   vi.stubGlobal('window', { location: { origin: 'https://orgportal.cc', hostname: 'orgportal.cc' } })
-  setDomainTenant({ id: 'orgportal', hostname: 'orgportal.cc', name: 'OrgPortal', tagline: '', accent_color: '#155e59', profile: 'orgportal', features: ['directory', 'events', 'chat'], member_home_path: '/communities', canonical_path_prefix: '' })
+  setGroupSite({ id: 'orgportal', hostname: 'orgportal.cc', name: 'OrgPortal', tagline: '', accent_color: '#155e59', profile: 'orgportal', features: ['directory', 'events', 'chat'], member_home_path: '/communities', canonical_path_prefix: '' })
   expect(defaultPostLoginPath()).toBe('/communities')
   const callback = new URL(portalAuthCallbackUrl('/orgs?view=mine'))
   expect(callback.origin + callback.pathname).toBe('https://orgportal.cc/auth/callback')
@@ -103,5 +103,5 @@ it('OrgPortal uses neutral destinations while preserving the shared account appl
   for (const next of ['//evil.example', 'https://evil.example', '/users/login', '/auth/callback']) expect(normalizePostLoginPath(next)).toBe('/communities')
   const login = new URL(pidpSingleSignOnUrl('/communities'), 'https://orgportal.cc')
   expect(login.origin).toBe('https://orgportal.cc')
-  expect(login.searchParams.get('app')).toBe('code-collective')
+  expect(login.searchParams.get('app')).toBe('orgportal')
 })

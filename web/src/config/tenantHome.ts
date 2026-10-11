@@ -1,4 +1,4 @@
-import type { PortalTenant } from './timebankCommunity'
+import type { GroupSite } from './timebankCommunity'
 
 export type TenantHomeAction =
   | { kind: 'landing' }
@@ -20,7 +20,7 @@ export function internalTenantHomePath(path?: string | null) {
 }
 
 export function tenantHomeAction(
-  tenant: PortalTenant,
+  tenant: GroupSite,
   role: string,
   memberHomePath: string,
 ): TenantHomeAction {

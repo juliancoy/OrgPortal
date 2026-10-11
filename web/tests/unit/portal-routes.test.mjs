@@ -37,22 +37,9 @@ test('network evidence views support direct navigation', () => {
   }
 });
 
-test('tenant organization links redirect to their homepage while preserving query and fragment', async t => {
-  t.mock.method(globalThis, 'fetch', async () => Response.json({ tenant_id: 'life', tenant_home_url: 'https://lifetech.fyi/' }));
+test('group profiles stay in OrgPortal even when the group has a custom homepage', async t => {
+  t.mock.method(globalThis, 'fetch', async () => Response.json({ group_home_url: 'https://lifetech.fyi/' }));
   for (const method of ['GET', 'HEAD']) {
-    const response = await missingPortalResource(new Request('https://medtech.social/orgs/lifetech?view=public#events', { method }), '/orgs/lifetech', 'https://org.example');
-    assert.equal(response.status, 302);
-    assert.equal(response.headers.get('location'), 'https://lifetech.fyi/?view=public#events');
-    assert.equal(response.headers.get('cache-control'), 'no-store');
-    assert.equal(await response.text(), '');
-  }
-  assert.equal(await missingPortalResource(new Request('https://lifetech.fyi/orgs/lifetech'), '/orgs/lifetech', 'https://org.example'), null);
-});
-
-test('ordinary organization profiles remain in place and unsafe tenant destinations are ignored', async t => {
-  for (const tenant_home_url of [null, 'javascript:alert(1)', 'not a URL']) {
-    t.mock.method(globalThis, 'fetch', async () => Response.json({ tenant_home_url }));
-    assert.equal(await missingPortalResource(new Request('https://medtech.social/orgs/partner'), '/orgs/partner', 'https://org.example'), null);
-    t.mock.restoreAll();
+    assert.equal(await missingPortalResource(new Request('https://orgportal.cc/orgs/lifetech?view=organizer#members', { method }), '/orgs/lifetech', 'https://org.example'), null);
   }
 });

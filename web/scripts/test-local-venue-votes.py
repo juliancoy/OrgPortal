@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Exercise real venue voting on the local Docker stack (no API fixtures).
 
-Start with ORGPORTAL_LOCAL_TENANT_HOST=lifetech.fyi python run.py <prefix> <network>.
+Start with ORGPORTAL_LOCAL_SITE_HOST=lifetech.fyi python run.py <prefix> <network>.
 PIdP must use local log delivery so verification never sends external email.
 """
 import json

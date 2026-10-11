@@ -285,7 +285,7 @@ function portalSlug(value: string) {
 function customHostname(value: string) {
   const hostname = value.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
   if (!/^(?!-)(?:[a-z0-9-]{1,63}\.)+[a-z]{2,63}$/.test(hostname) || hostname.includes("..")) throw new EventIntegrationError(400, "Enter a valid custom domain.");
-  if (hostname === "codecollective.us" || hostname.endsWith(".codecollective.us") || hostname.endsWith(".slug.portal.local")) throw new EventIntegrationError(400, "That domain is reserved.");
+  if (hostname === "orgportal.cc" || hostname.endsWith(".orgportal.cc") || hostname === "codecollective.us" || hostname.endsWith(".codecollective.us") || hostname.endsWith(".slug.portal.local")) throw new EventIntegrationError(400, "That domain is reserved.");
   return hostname;
 }
 
@@ -299,7 +299,7 @@ function parseFeatures(value: string | string[] | undefined) {
 
 async function portalTenantByOrg(db: D1Database, organization: { id: string; slug: string }) {
   return db.prepare(
-    `SELECT * FROM portal_tenants
+    `SELECT * FROM group_sites
      WHERE organization_id = ? OR home_org_slug = ?
      ORDER BY CASE WHEN organization_id = ? THEN 0 ELSE 1 END
      LIMIT 1`,
@@ -317,7 +317,7 @@ async function portalResponse(env: Env, tenant: Record<string, unknown> | null) 
 }
 
 async function runPortalOperation(env: Env, identity: { userId: string; scopes: string[] },
-  operation: "get" | "save" | "requestDomain" | "attachDomain", input: unknown) {
+  operation: "get" | "save" | "requestDomain", input: unknown) {
   const args = operation === "get" ? z.object({ organizationId: z.string().min(1).max(200) }).strict().parse(input)
     : operation === "save" ? portalSetupSchema.parse(input) : portalDomainSchema.parse(input);
   const writes = operation !== "get";
@@ -331,12 +331,12 @@ async function runPortalOperation(env: Env, identity: { userId: string; scopes: 
   if (operation === "save") {
     const setup = args as z.infer<typeof portalSetupSchema>;
     const slug = portalSlug(setup.slug || organization.slug || organization.name);
-    const slugOwner = await env.DB.prepare("SELECT id, organization_id FROM portal_tenants WHERE slug = ?").bind(slug).first<{ id: string; organization_id?: string | null }>();
+    const slugOwner = await env.DB.prepare("SELECT id, organization_id FROM group_sites WHERE slug = ?").bind(slug).first<{ id: string; organization_id?: string | null }>();
     if (slugOwner && slugOwner.id !== existing?.id && slugOwner.organization_id !== organization.id) throw new EventIntegrationError(409, "That portal slug is already in use.");
     const now = new Date().toISOString();
     const homeKind = setup.homeKind || "landing";
     await env.DB.prepare(
-      `INSERT INTO portal_tenants (
+      `INSERT INTO group_sites (
         id, organization_id, slug, hostname, name, tagline, accent_color, profile, features,
         brand_image_path, home_url, member_home_path, manifest_path, theme_color,
         home_kind, home_path, home_org_slug, home_heading, home_description,
@@ -345,19 +345,19 @@ async function runPortalOperation(env: Env, identity: { userId: string; scopes: 
       ) VALUES (?, ?, ?, ?, ?, ?, ?, 'community', ?, ?, ?, '/chat', '/manifest.webmanifest', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '/p', ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         organization_id = excluded.organization_id, slug = excluded.slug,
-        hostname = CASE WHEN portal_tenants.custom_domain_status='attached' THEN portal_tenants.custom_domain_hostname ELSE excluded.hostname END,
+        hostname = CASE WHEN group_sites.custom_domain_status='attached' THEN group_sites.custom_domain_hostname ELSE excluded.hostname END,
         name = excluded.name, tagline = excluded.tagline, accent_color = excluded.accent_color,
         features = excluded.features, brand_image_path = excluded.brand_image_path,
-        home_url = CASE WHEN portal_tenants.custom_domain_status='attached' THEN 'https://' || portal_tenants.custom_domain_hostname || '/' ELSE excluded.home_url END,
+        home_url = CASE WHEN group_sites.custom_domain_status='attached' THEN 'https://' || group_sites.custom_domain_hostname || '/' ELSE excluded.home_url END,
         member_home_path = excluded.member_home_path, manifest_path = excluded.manifest_path,
         theme_color = excluded.theme_color, home_kind = excluded.home_kind, home_path = excluded.home_path,
         home_org_slug = excluded.home_org_slug, home_heading = excluded.home_heading,
         home_description = excluded.home_description, home_primary_label = excluded.home_primary_label,
         home_primary_href = excluded.home_primary_href, home_secondary_label = excluded.home_secondary_label,
         home_secondary_href = excluded.home_secondary_href, home_image_url = excluded.home_image_url,
-        public_base_url = CASE WHEN portal_tenants.custom_domain_status='attached' THEN 'https://' || portal_tenants.custom_domain_hostname ELSE excluded.public_base_url END,
-        canonical_path_prefix = CASE WHEN portal_tenants.custom_domain_status='attached' THEN '' ELSE excluded.canonical_path_prefix END,
-        feature_config = json_patch(portal_tenants.feature_config,excluded.feature_config), updated_at = excluded.updated_at`,
+        public_base_url = CASE WHEN group_sites.custom_domain_status='attached' THEN 'https://' || group_sites.custom_domain_hostname ELSE excluded.public_base_url END,
+        canonical_path_prefix = CASE WHEN group_sites.custom_domain_status='attached' THEN '' ELSE excluded.canonical_path_prefix END,
+        feature_config = json_patch(group_sites.feature_config,excluded.feature_config), updated_at = excluded.updated_at`,
     ).bind(existing?.id || `org-${organization.id}-portal`, organization.id, slug, `${slug}.slug.portal.local`,
       setup.name || organization.name, setup.tagline || `Portal for ${organization.name}`, setup.accentColor || "#155e59",
       JSON.stringify(setup.features || ["directory", "events", "chat"]), setup.homeImageUrl || null, `${portalBase(env)}/portals/${encodeURIComponent(slug)}`,
@@ -370,29 +370,20 @@ async function runPortalOperation(env: Env, identity: { userId: string; scopes: 
   if (!existing) throw new EventIntegrationError(409, "Save the organization portal before configuring a custom domain.");
   const domain = args as z.infer<typeof portalDomainSchema>;
   const hostname = customHostname(domain.hostname);
-  const owner = await env.DB.prepare("SELECT id FROM portal_tenants WHERE hostname = ? AND id <> ?").bind(hostname, existing.id).first<{ id: string }>();
-  if (owner) throw new EventIntegrationError(409, "That domain is already attached to another tenant.");
+  const owner = await env.DB.prepare("SELECT id FROM group_sites WHERE hostname = ? AND id <> ?").bind(hostname, existing.id).first<{ id: string }>();
+  if (owner) throw new EventIntegrationError(409, "That domain is already attached to another group.");
   const now = new Date().toISOString();
-  if (operation === "requestDomain") {
-    await env.DB.prepare(
-      `UPDATE portal_tenants SET custom_domain_hostname = ?, custom_domain_status = 'requested',
-       custom_domain_requested_at = ?, custom_domain_attached_at = NULL, custom_domain_notes = ?, updated_at = ? WHERE id = ?`,
-    ).bind(hostname, now, domain.notes || null, now, existing.id).run();
-    return { portal: await portalResponse(env, await portalTenantByOrg(env.DB, organization)), checklist: [
-      `Add the Cloudflare custom domain for ${hostname} to the OrgPortal web deployment.`,
-      `Allow https://${hostname} in PIdP origins and redirect/callback settings.`,
-      "Confirm MCP protected resource metadata advertises the tenant worker URL.",
-      "Configure any provider bindings required by this tenant's enabled features.",
-      `After the domain serves the portal, attach it to make https://${hostname} canonical.`,
-    ] };
-  }
-  if (existing.custom_domain_hostname && existing.custom_domain_hostname !== hostname) throw new EventIntegrationError(409, "Request this domain before attaching it.");
   await env.DB.prepare(
-    `UPDATE portal_tenants SET hostname = ?, public_base_url = ?, home_url = ?, canonical_path_prefix = '',
-     custom_domain_hostname = ?, custom_domain_status = 'attached', custom_domain_attached_at = ?,
-     custom_domain_notes = ?, updated_at = ? WHERE id = ?`,
-  ).bind(hostname, `https://${hostname}`, `https://${hostname}/`, hostname, now, domain.notes || null, now, existing.id).run();
-  return { portal: await portalResponse(env, await portalTenantByOrg(env.DB, organization)) };
+    `UPDATE group_sites SET custom_domain_hostname = ?, custom_domain_status = 'requested',
+     custom_domain_requested_at = ?, custom_domain_attached_at = NULL, custom_domain_notes = ?, updated_at = ? WHERE id = ?`,
+  ).bind(hostname, now, domain.notes || null, now, existing.id).run();
+  return { portal: await portalResponse(env, await portalTenantByOrg(env.DB, organization)), checklist: [
+    `Add the Cloudflare custom domain for ${hostname} to the OrgPortal web deployment.`,
+    `Allow https://${hostname} in PIdP origins and redirect/callback settings for the shared orgportal application.`,
+    `Verify DNS ownership, HTTPS certificate activation, and the browser-bound single sign-on handoff for ${hostname}.`,
+    "Use the same OrgPortal identity and organization memberships; do not register a new login application.",
+    `After the domain serves the portal, attach it to make https://${hostname} canonical.`,
+  ] };
 }
 
 async function nativeExistingEvent(db: D1Database, event: { ingest_key: string; slug: string }) {
@@ -710,7 +701,7 @@ export async function handleEventMcp(request: Request, env: Env, createOrganizat
           ...(reauthorize ? { _meta: { "mcp/www_authenticate": [`Bearer resource_metadata="${config.metadataUrl}", error="insufficient_scope", error_description="Authorize the required event scopes", scope="${readScope} ${writeScope}"`] } } : {}) };
       }
     };
-    const portalResult = async (operation: "get" | "save" | "requestDomain" | "attachDomain", args: unknown) => {
+    const portalResult = async (operation: "get" | "save" | "requestDomain", args: unknown) => {
       try {
         args = scopedArgs(args);
         const data = await runPortalOperation(env, identity, operation, args);
@@ -881,18 +872,15 @@ export async function handleEventMcp(request: Request, env: Env, createOrganizat
     server.registerTool("apply_event_media_changes", { description: "Replace a native OrgPortal event's public image/media URL list after previewing it. Use admin UI for direct binary uploads.",
       inputSchema: eventMediaSchema, annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
       _meta: metadata([readScope, writeScope]) }, args => result("mediaApply", args));
-    server.registerTool("get_portal_setup", { description: "Read the tenant portal setup for an organization, including shared slug URL and custom-domain status.",
+    server.registerTool("get_portal_setup", { description: "Read the group homepage setup for an organization, including shared slug URL and custom-domain status.",
       inputSchema: z.object({ organizationId: z.string().min(1).max(200) }).strict(),
       annotations: { readOnlyHint: true, openWorldHint: false }, _meta: metadata([portalReadScope]) }, args => portalResult("get", args));
-    server.registerTool("save_portal_setup", { description: "Create or update the organization tenant portal available at /portals/:slug using existing OrgPortal primitives.",
+    server.registerTool("save_portal_setup", { description: "Create or update the branded group homepage available at /portals/:slug using existing OrgPortal primitives.",
       inputSchema: portalSetupSchema, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       _meta: metadata([portalReadScope, portalWriteScope]) }, args => portalResult("save", args));
     server.registerTool("request_portal_custom_domain", { description: "Record an org admin's desired custom domain and return the operator provisioning checklist. This does not change canonical routing.",
       inputSchema: portalDomainSchema, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       _meta: metadata([portalReadScope, portalWriteScope]) }, args => portalResult("requestDomain", args));
-    server.registerTool("attach_portal_custom_domain", { description: "Mark an externally provisioned custom domain as attached and make that domain the tenant's canonical root-mounted base URL.",
-      inputSchema: portalDomainSchema, annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
-      _meta: metadata([portalReadScope, portalWriteScope]) }, args => portalResult("attachDomain", args));
     const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
     await server.connect(transport);
     try {

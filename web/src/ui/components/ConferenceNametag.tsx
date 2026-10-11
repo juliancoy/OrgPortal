@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState, type Ref } from 'react'
 import { createQrSvg } from '../utils/qr'
 import { portalPath } from '../../config/portalBase'
-import { getDomainTenant } from '../../config/timebankCommunity'
+import { getGroupSite } from '../../config/timebankCommunity'
 import { type CSSProperties } from 'react'
 import printStyles from './ConferenceNametag.css?inline'
 import './ConferenceNametag.css'
@@ -21,7 +21,7 @@ export function NametagCard({ name, avatarUrl, publicPageUrl, badgeRef }: Props 
       return null
     }
   }, [publicPageUrl])
-  const tenant = getDomainTenant()
+  const tenant = getGroupSite()
   const branding = tenant?.home_org_slug === 'lifetech' ? tenant : null
   const brandStyle = {
     '--nametag-accent': branding?.accent_color || '#0f6f8f',

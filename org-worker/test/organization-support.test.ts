@@ -1,5 +1,7 @@
+import { readFileSync as readHistoricalMigration } from 'node:fs';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readdirSync } from 'node:fs';
+import { readCurrentSchemaFileSync as readFileSync } from './helpers/currentSchema';
 import { DatabaseSync } from 'node:sqlite';
 import test from 'node:test';
 import { TimebankDatabase } from './helpers/timebankDatabase';
@@ -136,7 +138,7 @@ test('MedTech import preserves distinct identities, deduplicated evidence, and u
 });
 test('support migrations apply after the full existing migration sequence',()=>{
   const db=new DatabaseSync(':memory:');db.exec('PRAGMA foreign_keys=ON');const directory=new URL('../migrations/',import.meta.url);
-  for(const name of readdirSync(directory).filter(name=>name.endsWith('.sql')).sort()) db.exec(readFileSync(new URL(name,directory),'utf8'));
+  for(const name of readdirSync(directory).filter(name=>name.endsWith('.sql')).sort()) db.exec(readHistoricalMigration(new URL(name,directory),'utf8'));
   assert.equal(db.prepare('SELECT count(*) n FROM master_transaction_records').get()!.n,
     Number(db.prepare('SELECT count(*) n FROM ledger_transactions').get()!.n) + Number(db.prepare('SELECT count(*) n FROM organization_support_records').get()!.n));
   db.close();

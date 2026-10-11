@@ -1,6 +1,6 @@
 import {Hono} from 'hono';
 import {authorizeOrganization} from './organizationIam';
-import {resolvePortalTenant} from './timebank';
+import {resolveGroupSite} from './timebank';
 import {ensureOnboarding,identityProgressStatements} from './onboarding';
 import {EventIntegrationError} from './eventPlatforms';
 import {prepareEventOperation,previewFingerprint,claimEventOperation,finishEventOperation} from './eventOperationStore';
@@ -35,9 +35,9 @@ export function identityMembershipRoutes(getUser:(env:Env,request:Request)=>Prom
    const role=canonical&&roles.indexOf(canonical.role)>roles.indexOf(source.role)?canonical.role:source.role;
    const ownership=await c.env.DB.prepare("SELECT id,owner_user_id FROM organization_ownerships WHERE organization_id=? AND status='active'").bind(organizationId).first<{id:string;owner_user_id:string}>();
    if(role==='owner'&&(!ownership||![sourceId,user.id].includes(ownership.owner_user_id)))throw new EventIntegrationError(409,'Membership and ownership disagree; an organization administrator must review the conflict');
-   const tenant=await resolvePortalTenant(c.env.DB,c.req.raw);
-   const tasks=await c.env.DB.prepare('SELECT id,entity_id,status FROM user_tasks WHERE tenant_id=? AND user_id=? ORDER BY id').bind(tenant.id,sourceId).all();
-   const plan={organizationId,tenantId:tenant.id,canonicalUserId:user.id,sourceAccountId:sourceId,link:linked,sourceMembership:source,canonicalMembership:canonical,role,ownership,sourceTasks:tasks.results};
+   const tenant=await resolveGroupSite(c.env.DB,c.req.raw);
+   const tasks=await c.env.DB.prepare('SELECT id,entity_id,status FROM user_tasks WHERE group_site_id=? AND user_id=? ORDER BY id').bind(tenant.id,sourceId).all();
+   const plan={organizationId,groupSiteId:tenant.id,canonicalUserId:user.id,sourceAccountId:sourceId,link:linked,sourceMembership:source,canonicalMembership:canonical,role,ownership,sourceTasks:tasks.results};
    const owner={userId:user.id,organizationId,eventId:`identity-membership:${sourceId}`},fingerprint=await previewFingerprint(plan);
    if(operation==='preview')return c.json({...plan,...await prepareEventOperation(c.env.DB,owner,fingerprint)});
    if(body.confirm!==true||typeof body.previewId!=='string')throw new EventIntegrationError(409,'Confirm the reviewed preview');
@@ -60,10 +60,10 @@ export function identityMembershipRoutes(getUser:(env:Env,request:Request)=>Prom
      c.env.DB.prepare("UPDATE organization_ownerships SET owner_user_id=? WHERE organization_id=? AND owner_user_id=? AND status='active'").bind(user.id,organizationId,sourceId),
      c.env.DB.prepare("UPDATE organization_memberships SET status='inactive',updated_at=? WHERE organization_id=? AND user_id=? AND status='active'").bind(at,organizationId,sourceId),
      c.env.DB.prepare(`UPDATE user_tasks AS canonical SET status='completed',completed_at=COALESCE(completed_at,?)
-      WHERE tenant_id=? AND user_id=? AND EXISTS(SELECT 1 FROM user_tasks source WHERE source.tenant_id=canonical.tenant_id AND source.user_id=? AND source.kind=canonical.kind AND source.entity_id=canonical.entity_id AND source.status='completed')`).bind(at,tenant.id,user.id,sourceId),
-     c.env.DB.prepare(`UPDATE user_tasks AS source SET user_id=? WHERE tenant_id=? AND user_id=? AND NOT EXISTS(
-      SELECT 1 FROM user_tasks canonical WHERE canonical.tenant_id=source.tenant_id AND canonical.user_id=? AND canonical.kind=source.kind AND canonical.entity_id=source.entity_id)`).bind(user.id,tenant.id,sourceId,user.id),
-     c.env.DB.prepare("UPDATE user_tasks SET status='completed',completed_at=COALESCE(completed_at,?) WHERE tenant_id=? AND user_id=?").bind(at,tenant.id,sourceId),
+      WHERE group_site_id=? AND user_id=? AND EXISTS(SELECT 1 FROM user_tasks source WHERE source.group_site_id=canonical.group_site_id AND source.user_id=? AND source.kind=canonical.kind AND source.entity_id=canonical.entity_id AND source.status='completed')`).bind(at,tenant.id,user.id,sourceId),
+     c.env.DB.prepare(`UPDATE user_tasks AS source SET user_id=? WHERE group_site_id=? AND user_id=? AND NOT EXISTS(
+      SELECT 1 FROM user_tasks canonical WHERE canonical.group_site_id=source.group_site_id AND canonical.user_id=? AND canonical.kind=source.kind AND canonical.entity_id=source.entity_id)`).bind(user.id,tenant.id,sourceId,user.id),
+     c.env.DB.prepare("UPDATE user_tasks SET status='completed',completed_at=COALESCE(completed_at,?) WHERE group_site_id=? AND user_id=?").bind(at,tenant.id,sourceId),
      ...identityProgressStatements(c.env.DB,tenant,user.id,sourceId),
      c.env.DB.prepare(`INSERT INTO audit_events(id,actor_user_id,action,resource_type,resource_id,subject_user_id,metadata_json,created_at)
       VALUES(?,?,'organization.identity_consolidated','organization',?,?,?,?)`).bind(crypto.randomUUID(),user.id,organizationId,sourceId,JSON.stringify({previewId:body.previewId,canonical_user_id:user.id,account_subject:linked.subject,sourceMembership:source,canonicalMembership:canonical}),at),

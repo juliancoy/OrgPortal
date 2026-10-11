@@ -1,17 +1,18 @@
 # OrgPortal
 
 OrgPortal is the shared organization and community application used by
-CodeCollective and tenant sites such as MedTech. `web/` owns the portal UI;
+CodeCollective and groups such as MedTech. `web/` owns the portal UI;
 the organization, governance, and chat services own their domain workflows.
 PIdP is a separate identity provider maintained in the sibling `../pidp`
 checkout, not a vendored service in this repository.
 
 OrgPortal is the neutral platform at https://orgportal.cc/. Its homepage and
-community directory are independent of the Code Collective tenant. Communities
-retain their own branding, memberships, roles, and Timebank ledgers. The shared
-account namespace is preserved for existing members. Hosting remains on the
+community directory are independent of the Code Collective group. Communities
+retain their own branding, memberships, roles, and Timebank ledgers. All groups use one OrgPortal login application and account identity. Hosting remains on the
 `codecollective-site` Worker; Code Collective remains at `https://codecollective.us/p/`.
 See [platform operations](docs/deployment/ORGPORTAL_PLATFORM.md).
+
+See [group identity and custom domains](docs/requirements/GROUP_IDENTITY.md) for the access model and release requirements.
 
 ## Account and Service Boundaries
 
@@ -25,7 +26,7 @@ These are ownership rules, not a claim that all migration work is complete.
 | Organizations, membership, invitations, roles, and domain authorization | OrgPortal |
 | Member directories, organization-specific profiles/preferences, governance, chat, and event administration | OrgPortal |
 | Personal calendar and event workflows, including event galleries | OrgPortal, using existing PIdP provider-credential/calendar interfaces where applicable |
-| Tenant branding, navigation, sign-in entry points, and post-login application routing | OrgPortal |
+| Group homepage branding, custom domains, navigation, and post-login routing | OrgPortal |
 | Medical datasets, taxonomy/strategy analysis, and public medical event presentation | MedTech |
 
 Reusable account and security screens belong in PIdP. Portal account pages may
@@ -37,7 +38,7 @@ membership-profile edits stay in OrgPortal.
 
 For MCP, the intended flow is: client -> PIdP authorization -> existing account
 sign-in -> explicit PIdP consent -> client callback -> OrgPortal tools. Preserve
-the requesting portal and its account namespace through sign-in. Never silently
+the requesting group homepage and the single OrgPortal account through sign-in. Never silently
 substitute PIdP owner login for a portal website-user account. Portal sessions
 and issuer sessions are not automatically interchangeable across domains; any
 handoff must be validated and preserve OAuth state, exact redirects, and PKCE.
@@ -178,7 +179,7 @@ With the local deployment running, execute desktop and mobile browser checks:
 npm --prefix web run test:e2e:local
 ```
 
-`ORGPORTAL_LOCAL_TENANT_HOST` selects a tenant hostname from the local org
+`ORGPORTAL_LOCAL_SITE_HOST` selects a tenant hostname from the local org
 database (for example `lifetech.fyi`) while keeping browser and authentication
 traffic on localhost. The default is the Code Collective tenant.
 
@@ -192,7 +193,7 @@ For the real onboarding click-through (registration, local email verification,
 required steps, month availability, reload persistence, and mobile layout):
 
 ```bash
-ORGPORTAL_LOCAL_TENANT_HOST=lifetech.fyi python run.py bmoremedtech- bmoremedtech
+ORGPORTAL_LOCAL_SITE_HOST=lifetech.fyi python run.py bmoremedtech- bmoremedtech
 docker exec bmoremedtech-org node_modules/.bin/wrangler d1 execute org --local --file test/fixtures/local-onboarding.sql
 python web/scripts/test-local-onboarding.py
 ```

@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {readFileSync} from 'node:fs'
+import { readCurrentSchemaFileSync as readFileSync } from './helpers/currentSchema';
 import {TimebankDatabase} from './helpers/timebankDatabase'
 import {receiveAuthorizedChanges,sqliteSyncState,syncPage,pendingSqliteChanges,acknowledgeSqliteChanges} from '../src/ecosystemSyncStore'
 function setup(){const db=new TimebankDatabase();db.sqlite.exec(readFileSync(new URL('../migrations/0068_ecosystem_sync.sql',import.meta.url),'utf8'));return db}

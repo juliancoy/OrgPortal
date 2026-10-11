@@ -1,4 +1,3 @@
-import { organizationTenantRedirect } from '../../../../organizationTenantRedirect.mjs'
 import { groupOrganizationEvents } from './organizationEvents'
 import { EmbeddedOrganizationChat } from '../../components/EmbeddedOrganizationChat'
 import { PeerOrganizations } from '../../components/PeerOrganizations'
@@ -6,7 +5,7 @@ import { OrganizationMembers } from '../../components/OrganizationMembers'
 import { resolveOrganizationView, useOrganizationViewPreference } from '../../hooks/useOrganizationView'
 import { OrganizationPortalSections } from '../../components/OrganizationPortalSections'
 import { OrganizationBrandGuide } from '../../components/OrganizationBrandGuide'
-import { getDomainTenant } from '../../../config/timebankCommunity'
+import { getGroupSite } from '../../../config/timebankCommunity'
 import { OrganizationSupport } from '../../components/OrganizationSupport'
 import { OrganizationTools } from '../../components/OrganizationTools'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -45,8 +44,7 @@ type PublicOrganization = {
   claimed_by_user_id?: string | null
   pending_challenges_count: number
   is_disputed: boolean
-  tenant_id?: string | null
-  tenant_home_url?: string | null
+  group_home_url?: string | null
   redirected_from_slug?: string | null
 }
 
@@ -247,11 +245,6 @@ export function PublicAdminPage() {
       })
       .then((orgData) => {
         if (cancelled) return
-        const tenantHome = organizationTenantRedirect(orgData, window.location.href, getDomainTenant()?.id)
-        if (tenantHome) {
-          window.location.replace(tenantHome)
-          return
-        }
         if (orgData.redirected_from_slug && orgData.slug !== handle) {
           navigate(
             `/orgs/${encodeURIComponent(orgData.slug)}?merged_from=${encodeURIComponent(orgData.redirected_from_slug)}`,
@@ -777,7 +770,7 @@ export function PublicAdminPage() {
     }
   }
 
-  async function updatePortalCustomDomain(action: 'request' | 'attach') {
+  async function updatePortalCustomDomain() {
     if (!org || !token) return
     const hostname = normalizeDomain(portalDomainDraft)
     if (!hostname) {
@@ -787,7 +780,7 @@ export function PublicAdminPage() {
     setSavingPortalDomain(true)
     setPortalStatus(null)
     try {
-      const resp = await fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/portal/custom-domain/${action}`), {
+      const resp = await fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/portal/custom-domain/request`), {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -803,7 +796,7 @@ export function PublicAdminPage() {
       setPortalConfig(payload.portal)
       setPortalDomainDraft(payload.portal.custom_domain_hostname || hostname)
       setPortalDomainChecklist(Array.isArray(payload.checklist) ? payload.checklist : [])
-      setPortalStatus(action === 'request' ? 'Custom domain request saved.' : 'Custom domain attached.')
+      setPortalStatus('Custom domain request saved. An operator will verify DNS, HTTPS, and single sign-on before activation.')
     } catch (err) {
       setPortalStatus(toUserFacingErrorMessage(err, 'Could not update custom domain'))
     } finally {
@@ -904,7 +897,7 @@ export function PublicAdminPage() {
 
   const mergeCandidates = myAdminOrgs.filter((item) => item.id !== org.id)
   const canEditOrgImage = isOrganizerView && adminView
-  const tenant = getDomainTenant()
+  const tenant = getGroupSite()
   const organizationBrandImage = tenant?.organization_id === org.id ? tenant.brand_image_path : null
   const heroImageSource = org.image_url?.trim() || organizationBrandImage || ORG_PLACEHOLDER_SRC
   const eventGroups = groupOrganizationEvents(events, org).map(group => ({
@@ -960,7 +953,10 @@ export function PublicAdminPage() {
                     Log in to join
                   </a>
                 )}
-                {org.source_url ? (
+                {org.group_home_url ? (
+                  <a className="btn-secondary" href={org.group_home_url}>Group homepage</a>
+                ) : null}
+                {org.source_url && org.source_url !== org.group_home_url ? (
                   <a className="btn-secondary" href={org.source_url} target="_blank" rel="noreferrer">
                     Website
                   </a>
@@ -1028,9 +1024,9 @@ export function PublicAdminPage() {
           {isOrganizerView && <>
           <OrganizationPortalSections
             name={org.name}
-            features={portalConfig?.features ?? (getDomainTenant()?.home_org_slug === org.slug ? getDomainTenant()?.features : undefined) ?? ['directory', 'events', 'chat']}
+            features={portalConfig?.features ?? (getGroupSite()?.home_org_slug === org.slug ? getGroupSite()?.features : undefined) ?? ['directory', 'events', 'chat']}
           />
-          {getDomainTenant()?.home_org_slug === org.slug
+          {getGroupSite()?.home_org_slug === org.slug
             ? <OrganizationBrandGuide />
             : portalConfig?.slug_url
               ? <OrganizationBrandGuide href={`${portalConfig.slug_url.replace(/\/$/, '')}/branding`} />
@@ -1263,7 +1259,7 @@ export function PublicAdminPage() {
                     <div>
                       <h3 style={{ margin: 0, fontSize: '0.98rem' }}>Portal</h3>
                       <p className="muted" style={{ margin: '0.2rem 0 0' }}>
-                        Publish an organization portal at a shared slug URL. A custom domain can be attached to the same portal later.
+                        Publish a branded group homepage. Its URL and custom domain use the same OrgPortal accounts, members, and organizer roles.
                       </p>
                     </div>
                     <div className="portal-org-portal-grid">
@@ -1302,7 +1298,7 @@ export function PublicAdminPage() {
                       <div>
                         <h4 style={{ margin: 0, fontSize: '0.92rem' }}>Custom domain</h4>
                         <p className="muted" style={{ margin: '0.15rem 0 0' }}>
-                          Status: {portalConfig?.custom_domain_status || 'none'}
+                          Activation requires verified DNS, HTTPS, and OrgPortal sign-in. Status: {portalConfig?.custom_domain_status || 'none'}
                         </p>
                       </div>
                       <div className="portal-org-portal-grid">
@@ -1331,18 +1327,12 @@ export function PublicAdminPage() {
                       <div style={{ display: 'flex', gap: '0.55rem', alignItems: 'center', flexWrap: 'wrap' }}>
                         <button
                           type="button"
-                          onClick={() => void updatePortalCustomDomain('request')}
+                          onClick={() => void updatePortalCustomDomain()}
                           disabled={savingPortalDomain || !portalConfig}
                         >
                           Request Domain
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => void updatePortalCustomDomain('attach')}
-                          disabled={savingPortalDomain || !portalConfig}
-                        >
-                          Attach Provisioned Domain
-                        </button>
+
                       </div>
                     </div>
                     <div className="portal-org-portal-grid">

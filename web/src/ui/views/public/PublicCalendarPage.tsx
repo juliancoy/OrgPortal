@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { getDomainTenant } from '../../../config/timebankCommunity'
+import { getGroupSite } from '../../../config/timebankCommunity'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
 
 const MEDICAL_EVENTS_SOURCE_URL = 'https://codecollective.us/baltimore/upcoming_events.json'
@@ -182,7 +182,7 @@ function dayKey(date: Date) {
 }
 
 export function PublicCalendarPage() {
-  const tenant = getDomainTenant()
+  const tenant = getGroupSite()
   const organizationSlug = tenant?.home_org_slug || 'baltimore-medtech'
   const organizationPaths = [...new Set([organizationSlug, 'baltimore-medtech', ...(organizationSlug === 'lifetech' || organizationSlug === 'baltimore-medtech' ? ['lifetech'] : [])])].map(slug => `/api/network/orgs/public/${encodeURIComponent(slug)}/events?upcoming_only=false&limit=200`)
   const [events, setEvents] = useState<CalendarEvent[]>([])

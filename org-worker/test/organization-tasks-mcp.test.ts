@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { readFileSync } from 'node:fs';
+import { readCurrentSchemaFileSync as readFileSync } from './helpers/currentSchema';
 import { TimebankDatabase } from './helpers/timebankDatabase';
 import { runOrganizationTaskOperation } from '../src/organizationTasksMcp';
 import { claimOrganization } from '../src/organizationIam';

@@ -13,7 +13,7 @@ export function organizationStatusMessage(row:OrganizationStatusNotice) {
   return {title:`Your ${row.organization_name} status changed`,body:`Your status changed from ${organizationStatusLabel(row.previous_role,row.previous_status)} to ${organizationStatusLabel(row.role,row.status)}.`};
 }
 async function noticeLinks(env:Env,row:OrganizationStatusNotice) {
-  const tenant=await env.DB.prepare('SELECT hostname,canonical_path_prefix FROM portal_tenants WHERE organization_id=? ORDER BY id LIMIT 1').bind(row.organization_id).first<{hostname:string;canonical_path_prefix:string}>();
+  const tenant=await env.DB.prepare('SELECT hostname,canonical_path_prefix FROM group_sites WHERE organization_id=? ORDER BY id LIMIT 1').bind(row.organization_id).first<{hostname:string;canonical_path_prefix:string}>();
   const base=tenant&&/^[a-z0-9.-]+$/i.test(tenant.hostname)?`https://${tenant.hostname}${tenant.canonical_path_prefix||''}`:emailPortalBase(env);
   return {profile:`${base}/orgs/${encodeURIComponent(row.organization_slug)}`,settings:`${base}/settings/notifications`};
 }

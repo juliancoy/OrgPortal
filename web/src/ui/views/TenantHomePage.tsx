@@ -5,7 +5,7 @@ import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
 import { portalPath } from '../../config/portalBase'
 import { getActivePortalProfileConfig, portalProfilePath } from '../../config/portalFeatures'
-import { getDomainTenant, parsePortalTenant, setDomainTenant, type PortalTenant } from '../../config/timebankCommunity'
+import { getGroupSite, parseGroupSite, setGroupSite, type GroupSite } from '../../config/timebankCommunity'
 import { specialtyResourcesForTenant } from '../../config/specialtyResources'
 import { OrganizationBrandGuide } from '../components/OrganizationBrandGuide'
 import { SpecialtyResourcesPanel } from '../components/SpecialtyResourcesPanel'
@@ -57,7 +57,7 @@ function formatEventDate(value?: string | null) {
   return date.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
-function TenantHomeActions({ tenant }: { tenant: PortalTenant }) {
+function TenantHomeActions({ tenant }: { tenant: GroupSite }) {
   const { role, isLoading } = useAuth()
   const primaryHref = actionHref(tenant.home_primary_href) || portalProfilePath(role === 'guest' ? '/users/login' : '/chat')
   const secondaryHref = actionHref(tenant.home_secondary_href) || (tenant.home_org_slug ? portalProfilePath('/org-events') : portalProfilePath('/events'))
@@ -81,7 +81,7 @@ function TenantHomeActions({ tenant }: { tenant: PortalTenant }) {
 
 export function TenantHomePage() {
   const profile = getActivePortalProfileConfig()
-  const tenant = getDomainTenant()
+  const tenant = getGroupSite()
   const access = useOrganizationAccess(tenant?.home_org_slug)
   const [viewParams] = useSearchParams()
   const requestedView = useOrganizationViewPreference(tenant?.home_org_slug, viewParams.get('view'))
@@ -169,7 +169,7 @@ export function TenantHomePage() {
 
 export function TenantEventsContent() {
   const profile = getActivePortalProfileConfig()
-  const tenant = getDomainTenant()
+  const tenant = getGroupSite()
   const orgSlug = tenant?.home_org_slug || ''
 
   if (!tenant || !orgSlug) return <TenantHomePage />
@@ -179,7 +179,7 @@ export function TenantEventsContent() {
 }
 
 export function TenantEventsHomePage() {
-  const tenant = getDomainTenant()
+  const tenant = getGroupSite()
   if (!tenant?.home_org_slug) return <TenantHomePage />
 
   return <div className="portal-shell tenant-home-shell">
@@ -202,26 +202,26 @@ export function TenantSlugHomePage() {
 
   useEffect(() => {
     if (!tenantSlug) return
-    const previousTenant = getDomainTenant()
+    const previousTenant = getGroupSite()
     const controller = new AbortController()
     setStatus('Loading portal...')
-    fetch(`/api/org/api/portal/tenants/${encodeURIComponent(tenantSlug)}`, { signal: controller.signal })
+    fetch(`/api/org/api/portal/sites/${encodeURIComponent(tenantSlug)}`, { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error('Portal not found.')
-        const parsed = parsePortalTenant(await response.json())
+        const parsed = parseGroupSite(await response.json())
         if (!parsed) throw new Error('Portal not found.')
-        setDomainTenant(parsed)
+        setGroupSite(parsed)
         setStatus('')
       })
       .catch(() => {
         if (!controller.signal.aborted) {
-          setDomainTenant(null)
+          setGroupSite(null)
           setStatus('Portal not found.')
         }
       })
     return () => {
       controller.abort()
-      setDomainTenant(previousTenant)
+      setGroupSite(previousTenant)
     }
   }, [tenantSlug])
 

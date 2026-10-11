@@ -11,12 +11,12 @@ export function UserLoginPage({ defaultNext }: { defaultNext?: string } = {}) {
   const [searchParams] = useSearchParams()
   const { isLoading, role } = useAuth()
   const portalProfile = getActivePortalProfileConfig()
-  const tenantAuth = Boolean(portalProfile.tenantId)
+  const groupBranding = Boolean(portalProfile.groupSiteId)
   const requestedNext = normalizePostLoginPath(searchParams.get('next') || defaultNext || defaultPostLoginPath())
   const socialLoginUrl = (provider: 'google' | 'github') => pidpSingleSignOnUrl(requestedNext, provider)
 
   useEffect(() => {
-    document.title = `${portalProfile.portalTitle} • User login`
+    document.title = 'OrgPortal • Sign in'
   }, [portalProfile.portalTitle])
 
   useEffect(() => {
@@ -29,10 +29,10 @@ export function UserLoginPage({ defaultNext }: { defaultNext?: string } = {}) {
     <section className="portal-auth-page" aria-labelledby="user-login-title">
       <div className="panel portal-auth-card">
         <div className="portal-auth-card-header">
-          {tenantAuth && portalProfile.brandImagePath && <img className="tenant-auth-logo" src={portalPath(portalProfile.brandImagePath)} alt="" />}
-          <p className="portal-auth-eyebrow">{tenantAuth ? portalProfile.tagline : `${portalProfile.brandName} identity`}</p>
-          <h1 id="user-login-title">Sign in to {portalProfile.brandName}</h1>
-          <p className="portal-auth-intro">Choose how you’d like to continue.</p>
+          {groupBranding && portalProfile.brandImagePath && <img className="tenant-auth-logo" src={portalPath(portalProfile.brandImagePath)} alt="" />}
+          <p className="portal-auth-eyebrow">{groupBranding ? portalProfile.tagline : `${portalProfile.brandName} identity`}</p>
+          <h1 id="user-login-title">Sign in to OrgPortal</h1>
+          <p className="portal-auth-intro">One account for all your groups. Choose how you’d like to continue.</p>
         </div>
 
         <div className="portal-auth-provider-stack">
@@ -58,7 +58,7 @@ export function UserLoginPage({ defaultNext }: { defaultNext?: string } = {}) {
 
         <p className="portal-auth-help">Sign in or create an account using any option above.</p>
 
-        {tenantAuth && <p className="tenant-shared-account">Your existing OrgPortal or community account works here. Signing in does not join a community.</p>}
+        <p className="tenant-shared-account">Group membership and organizer access are managed separately for each group.</p>
       </div>
     </section>
   )

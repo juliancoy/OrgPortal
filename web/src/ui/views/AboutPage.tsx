@@ -2,11 +2,11 @@ import { useEffect } from 'react'
 import './aboutOrgPortal.css'
 import { Link } from 'react-router-dom'
 import { getActivePortalProfileConfig } from '../../config/portalFeatures'
-import { useDomainTenant } from '../../config/timebankCommunity'
+import { useGroupSite } from '../../config/timebankCommunity'
 import { portalPath } from '../../config/portalBase'
 
 export function AboutPage() {
-  const tenant = useDomainTenant()
+  const tenant = useGroupSite()
   if (getActivePortalProfileConfig().id === 'orgportal') return <AboutOrgPortal />
   return (
     <section className="panel">

@@ -2,10 +2,10 @@ import { useLayoutEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 import { applyPortalBranding } from '../../config/portalBranding'
 import { getActivePortalProfileConfig } from '../../config/portalFeatures'
-import { useDomainTenant } from '../../config/timebankCommunity'
+import { useGroupSite } from '../../config/timebankCommunity'
 
 export function PortalProfileBoundary() {
-  const tenant = useDomainTenant()
+  const tenant = useGroupSite()
   const profile = getActivePortalProfileConfig()
 
   useLayoutEffect(() => {

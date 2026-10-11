@@ -40,7 +40,7 @@ import { handleEventMediaUpload } from "./eventMediaUpload";
 import { handleOrganizationMediaUpload } from "./organizationMediaUpload";
 import { checkEventConfiguration } from "./eventConfiguration";
 import {
-  getTimebankListing, setTimebankUptake, setTimebankListingVote, timebankAnalytics, resolvePortalTenant, resolvePortalTenantBySlug, resolveTimebankCommunity, saveTimebankCommunity, setTimebankPhoto, getTimebankPhoto,
+  getTimebankListing, setTimebankUptake, setTimebankListingVote, timebankAnalytics, resolveGroupSite, resolveGroupSiteBySlug, resolveTimebankCommunity, saveTimebankCommunity, setTimebankPhoto, getTimebankPhoto,
   TimebankError, timebankDashboard, publicTimebankOffers, createTimebankListing, updateTimebankListing,
   proposeTimebankExchange, resolveTimebankExchange,
 } from "./timebank";
@@ -822,10 +822,10 @@ function requestPublicHostname(request: Request) {
 async function tenantPublicPortalBase(env: Env, request: Request): Promise<string | null> {
   const hostname = requestPublicHostname(request);
   try {
-    let tenant = await env.DB.prepare("SELECT public_base_url, canonical_path_prefix FROM portal_tenants WHERE hostname = ?")
+    let tenant = await env.DB.prepare("SELECT public_base_url, canonical_path_prefix FROM group_sites WHERE hostname = ?")
       .bind(hostname)
       .first<{ public_base_url?: string | null; canonical_path_prefix?: string | null }>();
-    if (!tenant) tenant = await env.DB.prepare("SELECT 'https://' || custom_domain_hostname AS public_base_url, '' AS canonical_path_prefix FROM portal_tenants WHERE custom_domain_hostname=? AND custom_domain_status='attached'")
+    if (!tenant) tenant = await env.DB.prepare("SELECT 'https://' || custom_domain_hostname AS public_base_url, '' AS canonical_path_prefix FROM group_sites WHERE custom_domain_hostname=? AND custom_domain_status='attached'")
       .bind(hostname).first<{public_base_url:string;canonical_path_prefix:string}>();
     if (!tenant) return null;
     const configured = String(tenant.public_base_url || "").replace(/\/+$/g, "");
@@ -1495,7 +1495,7 @@ function flyerBackground(value: string | null): PosterBackground {
 
 async function eventFlyerSvg(env: Env, request: Request, event: EventRow, format: FlyerFormat, theme: PosterTheme, background: PosterBackground, backgroundOnly = false) {
   const publicUrl = await eventPublicUrl(env, request, event.slug);
-  const tenant = await resolvePortalTenant(env.DB, request);
+  const tenant = await resolveGroupSite(env.DB, request);
   const name = event.organization_name || event.host_org_name || event.host_user_name || tenant.name || "Community event";
   let logo: string | undefined;
   let backgroundData: string | undefined;
@@ -1942,7 +1942,7 @@ function portalTenantFeaturesField(payload: Record<string, unknown>) {
   return JSON.stringify(raw.map((feature) => String(feature || "").trim()).filter(Boolean).slice(0, 12));
 }
 
-function parsePortalTenantFeatures(value: string | string[]) {
+function parseGroupSiteFeatures(value: string | string[]) {
   if (Array.isArray(value)) return value.filter((feature): feature is string => typeof feature === "string" && Boolean(feature.trim()));
   try {
     const parsed = JSON.parse(String(value || "[]"));
@@ -1957,7 +1957,7 @@ function customDomainField(payload: Record<string, unknown>) {
   if (!/^(?!-)(?:[a-z0-9-]{1,63}\.)+[a-z]{2,63}$/.test(hostname) || hostname.includes("..")) {
     fail(400, "Enter a valid custom domain.");
   }
-  if (hostname === "codecollective.us" || hostname.endsWith(".codecollective.us") || hostname.endsWith(".slug.portal.local")) {
+  if (hostname === "orgportal.cc" || hostname.endsWith(".orgportal.cc") || hostname === "codecollective.us" || hostname.endsWith(".codecollective.us") || hostname.endsWith(".slug.portal.local")) {
     fail(400, "That domain is reserved.");
   }
   return hostname;
@@ -1970,7 +1970,7 @@ async function organizationPortalSlugUrl(env: Env, request: Request, slug: strin
 
 async function organizationPortalByOrg(db: D1Database, organization: OrganizationRow) {
   return db.prepare(
-    `SELECT * FROM portal_tenants
+    `SELECT * FROM group_sites
      WHERE organization_id = ? OR home_org_slug = ?
      ORDER BY CASE WHEN organization_id = ? THEN 0 ELSE 1 END
      LIMIT 1`,
@@ -1979,16 +1979,22 @@ async function organizationPortalByOrg(db: D1Database, organization: Organizatio
     .first<OrganizationPortalRow>();
 }
 
-async function organizationTenantHome(env: Env, request: Request, organization: OrganizationRow) {
+async function organizationGroupHome(env: Env, request: Request, organization: OrganizationRow) {
   const tenant = await organizationPortalByOrg(env.DB, organization);
-  if (!tenant) return { tenant_id: null, tenant_home_url: null };
+  if (!tenant) return { group_home_url: null };
   let home: string | null = null;
   if (tenant.custom_domain_status === 'attached' && tenant.custom_domain_hostname) {
     home = `https://${tenant.custom_domain_hostname}/`;
   } else {
     home = tenant.home_url || (tenant.slug ? await organizationPortalSlugUrl(env, request, tenant.slug) : null);
   }
-  return { tenant_id: tenant.id, tenant_home_url: home };
+  try {
+    const url = new URL(home || '');
+    if (url.protocol !== 'https:' || url.username || url.password) return { group_home_url: null };
+    return { group_home_url: url.href };
+  } catch {
+    return { group_home_url: null };
+  }
 }
 
 async function organizationPortalResponse(env: Env, request: Request, tenant: OrganizationPortalRow | null) {
@@ -1996,7 +2002,7 @@ async function organizationPortalResponse(env: Env, request: Request, tenant: Or
   const slug = String(tenant.slug || "").trim();
   return {
     ...tenant,
-    features: parsePortalTenantFeatures(tenant.features),
+    features: parseGroupSiteFeatures(tenant.features),
     slug_url: slug ? await organizationPortalSlugUrl(env, request, slug) : null,
   };
 }
@@ -2004,9 +2010,9 @@ async function organizationPortalResponse(env: Env, request: Request, tenant: Or
 function customDomainChecklist(hostname: string) {
   return [
     `Add the Cloudflare custom domain for ${hostname} to the OrgPortal web deployment.`,
-    `Allow https://${hostname} in PIdP origins and redirect/callback settings.`,
-    `Confirm MCP protected resource metadata advertises the tenant worker URL.`,
-    "Configure any provider bindings required by this tenant's enabled features.",
+    `Allow https://${hostname} in PIdP origins and redirect/callback settings for the shared orgportal application.`,
+    `Verify DNS ownership, HTTPS certificate activation, and the browser-bound single sign-on handoff for ${hostname}.`,
+    "Use the same OrgPortal identity and organization memberships; do not register a new login application.",
     `After the domain serves the portal, attach it to make https://${hostname} canonical.`,
   ];
 }
@@ -2738,8 +2744,8 @@ app.get("/api/network/notifications/summary", async (c) => {
   const pendingConnections = await c.env.DB.prepare("SELECT count(*) AS n FROM user_connections WHERE recipient_user_id = ? AND status = 'pending'")
     .bind(user.id)
     .first<{ n: number }>();
-  const tenant = await resolvePortalTenant(c.env.DB, c.req.raw);
-  const tasks = await c.env.DB.prepare("SELECT count(*) AS n FROM user_tasks WHERE tenant_id = ? AND user_id = ? AND status = 'pending'")
+  const tenant = await resolveGroupSite(c.env.DB, c.req.raw);
+  const tasks = await c.env.DB.prepare("SELECT count(*) AS n FROM user_tasks WHERE group_site_id = ? AND user_id = ? AND status = 'pending'")
     .bind(tenant.id, user.id).first<{ n: number }>();
   return c.json({
     pending_task_count: Number(tasks?.n || 0),
@@ -3126,7 +3132,7 @@ app.get("/api/network/orgs/public/:slug", async (c) => {
   const count = await c.env.DB.prepare("SELECT count(*) AS n FROM events WHERE host_org_id = ? AND (starts_at IS NULL OR starts_at >= datetime('now'))")
     .bind(row.id)
     .first<{ n: number }>();
-  return c.json({ ...mapOrganization(row, Number(count?.n || 0)), public_url: await orgPublicUrl(c.env, c.req.raw, row.slug), ...await organizationTenantHome(c.env, c.req.raw, row) });
+  return c.json({ ...mapOrganization(row, Number(count?.n || 0)), public_url: await orgPublicUrl(c.env, c.req.raw, row.slug), ...await organizationGroupHome(c.env, c.req.raw, row) });
 });
 
 app.get("/api/network/relationships/public", async (c) => {
@@ -3533,7 +3539,7 @@ app.put("/api/network/orgs/:organizationId/portal", async (c) => {
   const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
   const slug = tenantSlugField(payload, row.slug);
   const existing = await organizationPortalByOrg(c.env.DB, row);
-  const slugOwner = await c.env.DB.prepare("SELECT id, organization_id FROM portal_tenants WHERE slug = ?").bind(slug).first<{ id: string; organization_id?: string | null }>();
+  const slugOwner = await c.env.DB.prepare("SELECT id, organization_id FROM group_sites WHERE slug = ?").bind(slug).first<{ id: string; organization_id?: string | null }>();
   if (slugOwner && slugOwner.id !== existing?.id && slugOwner.organization_id !== row.id) {
     fail(409, "That portal slug is already in use.");
   }
@@ -3550,7 +3556,7 @@ app.put("/api/network/orgs/:organizationId/portal", async (c) => {
   const slugUrl = await organizationPortalSlugUrl(c.env, c.req.raw, slug);
   const timestamp = nowIso();
   await c.env.DB.prepare(
-    `INSERT INTO portal_tenants (
+    `INSERT INTO group_sites (
       id, organization_id, slug, hostname, name, tagline, accent_color, profile, features,
       brand_image_path, home_url, member_home_path, manifest_path, theme_color,
       home_kind, home_path, home_org_slug, home_heading, home_description,
@@ -3560,14 +3566,14 @@ app.put("/api/network/orgs/:organizationId/portal", async (c) => {
     ON CONFLICT(id) DO UPDATE SET
       organization_id = excluded.organization_id,
       slug = excluded.slug,
-      hostname = CASE WHEN portal_tenants.custom_domain_status='attached' THEN portal_tenants.custom_domain_hostname ELSE excluded.hostname END,
+      hostname = CASE WHEN group_sites.custom_domain_status='attached' THEN group_sites.custom_domain_hostname ELSE excluded.hostname END,
       name = excluded.name,
       tagline = excluded.tagline,
       accent_color = excluded.accent_color,
       profile = excluded.profile,
       features = excluded.features,
       brand_image_path = excluded.brand_image_path,
-      home_url = CASE WHEN portal_tenants.custom_domain_status='attached' THEN 'https://' || portal_tenants.custom_domain_hostname || '/' ELSE excluded.home_url END,
+      home_url = CASE WHEN group_sites.custom_domain_status='attached' THEN 'https://' || group_sites.custom_domain_hostname || '/' ELSE excluded.home_url END,
       member_home_path = excluded.member_home_path,
       manifest_path = excluded.manifest_path,
       theme_color = excluded.theme_color,
@@ -3581,9 +3587,9 @@ app.put("/api/network/orgs/:organizationId/portal", async (c) => {
       home_secondary_label = excluded.home_secondary_label,
       home_secondary_href = excluded.home_secondary_href,
       home_image_url = excluded.home_image_url,
-      public_base_url = CASE WHEN portal_tenants.custom_domain_status='attached' THEN 'https://' || portal_tenants.custom_domain_hostname ELSE excluded.public_base_url END,
-      canonical_path_prefix = CASE WHEN portal_tenants.custom_domain_status='attached' THEN '' ELSE excluded.canonical_path_prefix END,
-      feature_config = json_patch(portal_tenants.feature_config,excluded.feature_config),
+      public_base_url = CASE WHEN group_sites.custom_domain_status='attached' THEN 'https://' || group_sites.custom_domain_hostname ELSE excluded.public_base_url END,
+      canonical_path_prefix = CASE WHEN group_sites.custom_domain_status='attached' THEN '' ELSE excluded.canonical_path_prefix END,
+      feature_config = json_patch(group_sites.feature_config,excluded.feature_config),
       updated_at = excluded.updated_at`,
   )
     .bind(
@@ -3626,13 +3632,13 @@ app.post("/api/network/orgs/:organizationId/portal/custom-domain/request", async
   if (!tenant) fail(409, "Save the organization portal before requesting a custom domain.");
   const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
   const hostname = customDomainField(payload);
-  const owner = await c.env.DB.prepare("SELECT id FROM portal_tenants WHERE hostname = ? AND id <> ?")
+  const owner = await c.env.DB.prepare("SELECT id FROM group_sites WHERE hostname = ? AND id <> ?")
     .bind(hostname, tenant.id)
     .first<{ id: string }>();
-  if (owner) fail(409, "That domain is already attached to another tenant.");
+  if (owner) fail(409, "That domain is already attached to another group.");
   const timestamp = nowIso();
   await c.env.DB.prepare(
-    `UPDATE portal_tenants
+    `UPDATE group_sites
      SET custom_domain_hostname = ?,
       custom_domain_status = 'requested',
       custom_domain_requested_at = ?,
@@ -3651,6 +3657,7 @@ app.post("/api/network/orgs/:organizationId/portal/custom-domain/request", async
 
 app.post("/api/network/orgs/:organizationId/portal/custom-domain/attach", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
+  if (!organizationActor(user, c.env).isOperator) fail(403, "Operator access required to activate a verified domain.");
   const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
   if (!row) fail(404, "Organization not found");
   await authorizeOrganization(c.env.DB, organizationActor(user, c.env), "manage", row.id);
@@ -3658,16 +3665,16 @@ app.post("/api/network/orgs/:organizationId/portal/custom-domain/attach", async 
   if (!tenant) fail(409, "Save the organization portal before attaching a custom domain.");
   const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
   const hostname = customDomainField(payload);
-  if (tenant.custom_domain_hostname && tenant.custom_domain_hostname !== hostname) {
+  if (tenant.custom_domain_status !== "requested" || tenant.custom_domain_hostname !== hostname) {
     fail(409, "Request this domain before attaching it.");
   }
-  const owner = await c.env.DB.prepare("SELECT id FROM portal_tenants WHERE hostname = ? AND id <> ?")
+  const owner = await c.env.DB.prepare("SELECT id FROM group_sites WHERE hostname = ? AND id <> ?")
     .bind(hostname, tenant.id)
     .first<{ id: string }>();
-  if (owner) fail(409, "That domain is already attached to another tenant.");
+  if (owner) fail(409, "That domain is already attached to another group.");
   const timestamp = nowIso();
   await c.env.DB.prepare(
-    `UPDATE portal_tenants
+    `UPDATE group_sites
      SET hostname = ?,
       public_base_url = ?,
       canonical_path_prefix = '',
@@ -4545,14 +4552,14 @@ app.get("/api/portal/communities", async (c) => {
   return c.json(await listPublicCommunities(c.env.DB));
 });
 
-app.get("/api/portal/tenant", async (c) => {
+app.get("/api/portal/site", async (c) => {
   c.header("Cache-Control", "no-store");
-  return c.json(await resolvePortalTenant(c.env.DB, c.req.raw));
+  return c.json(await resolveGroupSite(c.env.DB, c.req.raw));
 });
 
-app.get("/api/portal/tenants/:slug", async (c) => {
+app.get("/api/portal/sites/:slug", async (c) => {
   c.header("Cache-Control", "no-store");
-  const tenant = await resolvePortalTenantBySlug(c.env.DB, c.req.param("slug"));
+  const tenant = await resolveGroupSiteBySlug(c.env.DB, c.req.param("slug"));
   if (!tenant) fail(404, "Tenant portal not found");
   return c.json(tenant);
 });

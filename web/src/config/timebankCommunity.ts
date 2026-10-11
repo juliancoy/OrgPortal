@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 
-export type PortalTenant = {
+export type GroupSite = {
   id: string
   organization_id?: string | null
   slug?: string | null
@@ -35,28 +35,28 @@ export type PortalTenant = {
   custom_domain_attached_at?: string | null
   custom_domain_notes?: string | null
 }
-export type TimebankCommunity = PortalTenant
-let tenant: PortalTenant | null = null
+export type TimebankCommunity = GroupSite
+let tenant: GroupSite | null = null
 const listeners = new Set<() => void>()
-export function getDomainTenant() { return tenant?.id !== 'code-collective' ? tenant : null }
+export function getGroupSite() { return tenant?.id !== 'code-collective' ? tenant : null }
 export function getDomainCommunity() {
-  const domainTenant = getDomainTenant()
+  const domainTenant = getGroupSite()
   return domainTenant?.features?.includes('timebank') ? domainTenant : null
 }
 export function timebankHomePath() { return getDomainCommunity() ? '/' : '/timebanking' }
-export function setDomainTenant(value: PortalTenant | null) {
+export function setGroupSite(value: GroupSite | null) {
   tenant = value
   for (const listener of listeners) listener()
 }
 export function setDomainCommunity(value: TimebankCommunity) {
   const features = new Set([...(value.features || []), 'timebank'])
-  setDomainTenant({ ...value, profile: value.profile || 'community', features: Array.from(features), home_kind: value.home_kind || 'timebank' })
+  setGroupSite({ ...value, profile: value.profile || 'community', features: Array.from(features), home_kind: value.home_kind || 'timebank' })
 }
 export function useDomainCommunity() {
   return useSyncExternalStore((listener) => { listeners.add(listener); return () => { listeners.delete(listener) } }, getDomainCommunity, () => null)
 }
-export function useDomainTenant() {
-  return useSyncExternalStore((listener) => { listeners.add(listener); return () => { listeners.delete(listener) } }, getDomainTenant, () => null)
+export function useGroupSite() {
+  return useSyncExternalStore((listener) => { listeners.add(listener); return () => { listeners.delete(listener) } }, getGroupSite, () => null)
 }
 const HOME_KINDS = new Set(['default', 'main', 'landing', 'route', 'org', 'org-events', 'timebank', 'auth'])
 
@@ -76,7 +76,7 @@ function optionalObject(value: unknown): Record<string, unknown> | undefined {
   }
 }
 
-export function parsePortalTenant(value: unknown): PortalTenant | null {
+export function parseGroupSite(value: unknown): GroupSite | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null
   const input = value as Record<string, unknown>
   const id = optionalString(input.id)
@@ -102,7 +102,7 @@ export function parsePortalTenant(value: unknown): PortalTenant | null {
     member_home_path: optionalString(input.member_home_path),
     manifest_path: optionalString(input.manifest_path),
     theme_color: optionalString(input.theme_color),
-    home_kind: homeKind && HOME_KINDS.has(homeKind) ? homeKind as PortalTenant['home_kind'] : null,
+    home_kind: homeKind && HOME_KINDS.has(homeKind) ? homeKind as GroupSite['home_kind'] : null,
     home_path: optionalString(input.home_path),
     home_org_slug: optionalString(input.home_org_slug),
     home_heading: optionalString(input.home_heading),
@@ -116,7 +116,7 @@ export function parsePortalTenant(value: unknown): PortalTenant | null {
     canonical_path_prefix: optionalString(input.canonical_path_prefix),
     feature_config: optionalObject(input.feature_config),
     custom_domain_hostname: optionalString(input.custom_domain_hostname),
-    custom_domain_status: optionalString(input.custom_domain_status) as PortalTenant['custom_domain_status'],
+    custom_domain_status: optionalString(input.custom_domain_status) as GroupSite['custom_domain_status'],
     custom_domain_requested_at: optionalString(input.custom_domain_requested_at),
     custom_domain_attached_at: optionalString(input.custom_domain_attached_at),
     custom_domain_notes: optionalString(input.custom_domain_notes),
@@ -124,9 +124,9 @@ export function parsePortalTenant(value: unknown): PortalTenant | null {
 }
 
 export async function loadDomainTenant() {
-  const response = await fetch('/api/org/api/portal/tenant', { signal: AbortSignal.timeout(5000) })
+  const response = await fetch('/api/org/api/portal/site', { signal: AbortSignal.timeout(5000) })
   if (!response.ok) return
-  const parsed = parsePortalTenant(await response.json())
-  if (parsed) setDomainTenant(parsed)
+  const parsed = parseGroupSite(await response.json())
+  if (parsed) setGroupSite(parsed)
 }
 export async function loadDomainCommunity() { return loadDomainTenant() }

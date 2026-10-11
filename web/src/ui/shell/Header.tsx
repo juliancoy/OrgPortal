@@ -1,7 +1,7 @@
 import { DeploymentSwitcher } from '../components/DeploymentSwitcher'
 import { OrganizationViewSwitcher } from '../components/OrganizationViewSwitcher'
 import { TaskQueue, useTaskQueue } from '../tasks/TaskQueue'
-import { useDomainCommunity, useDomainTenant } from '../../config/timebankCommunity'
+import { useDomainCommunity, useGroupSite } from '../../config/timebankCommunity'
 import { hasTenantCalendar, specialtyResourcesForTenant } from '../../config/specialtyResources'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -161,7 +161,7 @@ export function Header() {
   const roleLabel = role === 'campaign_manager' ? 'Org' : role === 'constituent' ? 'User' : 'Guest'
   const showAndroidDownload = isAndroidDevice()
   const domainCommunity = useDomainCommunity()
-  const domainTenant = useDomainTenant()
+  const domainTenant = useGroupSite()
   const portalProfile = getActivePortalProfileConfig()
   const ubiEnabled = isPortalFeatureEnabled('ubi', portalProfile)
   const authNextQuery = authReturnQuery(location)
@@ -550,7 +550,7 @@ export function Header() {
           )}
           <div>
             <div className="portal-brand-title">{portalProfile.brandName}</div>
-            {portalProfile.tenantId && <div className="portal-brand-sub">{portalProfile.tagline}</div>}
+            {portalProfile.groupSiteId && <div className="portal-brand-sub">{portalProfile.tagline}</div>}
           </div>
         </a>
 

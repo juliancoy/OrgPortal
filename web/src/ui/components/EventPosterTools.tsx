@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import { Download, FileImage, Moon, Printer, RefreshCw, Sun, X } from 'lucide-react'
 import './eventPoster.css'
-import { useDomainTenant } from '../../config/timebankCommunity'
+import { useGroupSite } from '../../config/timebankCommunity'
 
 type Format = 'letter' | 'letter-4up' | 'postcard' | 'social'
 type Theme = 'light' | 'dark'
@@ -33,7 +33,7 @@ export function EventPosterTools({ inline = false, ...props }: Props) {
 
 function PosterEditor({ slug, title, revision = '' }: Props) {
   const id = useId()
-  const tenant = useDomainTenant()
+  const tenant = useGroupSite()
   const isLifeTech = tenant?.home_org_slug === 'lifetech'
   const [format, setFormat] = useState<Format>('letter')
   const [theme, setTheme] = useState<Theme>('light')
