@@ -5452,11 +5452,7 @@ app.post("/api/network/chat/bootstrap", async (c) => {
 app.all("/api/chat", (c) => proxyChatRequest(c.req.raw, c.env));
 app.all("/api/chat/*", (c) => proxyChatRequest(c.req.raw, c.env));
 
-app.route('/api/email', emailRoutes(currentUser, async (env, request) => {
-  const user = await currentUser(env, request);
-  if (!adminUser(user, env)) fail(403, 'Administrator access is required for email campaigns.');
-  return user;
-}));
+app.route('/api/email', emailRoutes(currentUser));
 
 app.all("*", (c) => c.json({ detail: "Endpoint is not implemented in the Cloudflare org worker" }, 501));
 

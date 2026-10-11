@@ -16,6 +16,7 @@ of production data, creation of identity mappings, or bypassing preview/approval
 | Backup retention | Actual recovery windows and exports not verified | Inventory D1 recovery, object versions, snapshots and exports; record actual windows and resolve gaps against the 30-day target |
 | Periodic retention enforcement | OrgPortal cleanup uses its existing minute cron; PIdP uses a five-minute cron/Python loop | Watch count=500 backlog signals; manual account/content and exception review remains necessary |
 | Event company votes | `companyVotes.ts` exposes only public totals and the authenticated account's own votes; clearing deletes the row. `retention.ts` removes expired records in batches of 500. Unit tests verify isolation, deletion and expiry boundaries | Deploy migration 0080 and verify cron before advertising production cleanup; account deletion must include this store |
+| Group mailing lists | Group-specific live organizer authorization; self-only preferences; one-use preview receipts; outbox role/consent rechecks; private segment/audit expiry through bounded retention; isolated regression tests | Verify release/cron; sender setup remains operator-controlled. Account erasure must remove selections, receipts and audit actor links and address older email/journal/provider copies |
 | Public website policy | Public `/api/org/privacy`, `/api/org/support`, `/api/org/terms` routes are generated from repository policy documents | Verify deployed content and listing URLs; regeneration is part of the backend build |
 
 ## Inventory and monthly review

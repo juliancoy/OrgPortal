@@ -11,9 +11,11 @@ test('expiry units, bounds, dry-run, retries and unresolved operations',async()=
  sql.exec(`CREATE TABLE email_oauth_states(state_hash TEXT PRIMARY KEY,expires_at INTEGER);
  CREATE TABLE private_newsletter_previews(id TEXT PRIMARY KEY,expires_at TEXT);
  CREATE TABLE local_newsletter_previews(id TEXT PRIMARY KEY,expires_at TEXT);`);
+ for(const name of ['email_segments','email_mailing_audit','email_campaign_previews'])sql.exec(`CREATE TABLE ${name}(id TEXT PRIMARY KEY,expires_at INTEGER);`);
  sql.exec('CREATE TABLE event_company_favorites(id TEXT PRIMARY KEY, expires_at TEXT);');
  sql.exec('CREATE TABLE event_company_votes(id TEXT PRIMARY KEY, expires_at TEXT);');
  const now=1800000000000,cutoff=now-23*3600000;
+ for(const name of ['email_segments','email_mailing_audit','email_campaign_previews']){sql.prepare(`INSERT INTO ${name} VALUES(?,?)`).run('expired',cutoff-1);sql.prepare(`INSERT INTO ${name} VALUES(?,?)`).run('valid',now+1000)}
  const put=sql.prepare("INSERT INTO event_mcp_operations VALUES(?, 'actor','org','event','fingerprint',?,0,?,NULL,'[]')");
  for(const status of ['prepared','completed','executing','uncertain'])put.run(status,status,cutoff-1);
  put.run('boundary','prepared',cutoff);
@@ -27,7 +29,9 @@ test('expiry units, bounds, dry-run, retries and unresolved operations',async()=
  assert.equal((await runRetention(db,now,true)).private_newsletter_previews,501);
  assert.equal(sql.prepare('SELECT COUNT(*) n FROM email_oauth_states').get()!.n,2);
  assert.equal((await runRetention(db,now,true)).event_company_votes,1);
+ for(const name of ['email_segments','email_mailing_audit','email_campaign_previews'])assert.equal((await runRetention(db,now,true))[name],1);
  const first=await runRetention(db,now);
+ for(const name of ['email_segments','email_mailing_audit','email_campaign_previews']){assert.equal(first[name],1);assert.equal(sql.prepare(`SELECT id FROM ${name}`).get()!.id,'valid')}
  assert.equal(first.private_newsletter_previews,500);assert.equal(first.event_mcp_operations,2);assert.equal(first.email_oauth_states,1);
  assert.equal(first.event_company_votes,1);
  assert.equal(first.event_company_favorites,1);

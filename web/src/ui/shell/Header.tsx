@@ -886,7 +886,7 @@ export function Header() {
                     </Link>
                   )}
 
-                  {isAdmin && <Link to="/email" onClick={() => setMenuOpen(false)} className="portal-user-menu-item admin" role="menuitem">Email campaigns</Link>}
+
                   <Link to="/settings/notifications" onClick={() => setMenuOpen(false)} className="portal-user-menu-item" role="menuitem">Notification settings</Link>
 
                   <DeploymentSwitcher menu />

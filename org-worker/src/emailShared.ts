@@ -1,7 +1,7 @@
 import { HTTPException } from 'hono/http-exception';
 
 export type EmailActor = { id: string; email?: string | null; full_name?: string | null };
-export type EmailSubscription = { id: string; user_id: string; email: string; name: string; topic_type: string; topic_id: string; status: string };
+export type EmailSubscription = { id: string; user_id: string; email: string; name: string; topic_type: string; topic_id: string; status: string; consent_source: string; consented_at: number | null; unsubscribed_at: number | null; updated_at: number };
 export type EmailEvent = { id: string; title: string; slug: string; starts_at: string | null; location: string | null; image_url: string | null; host_org_id: string | null; organization_name: string | null };
 export type EmailCampaign = { id: string; owner_user_id: string; sender_email: string; organization_id: string; event_id: string; event_json: string; audience: string; subject: string; body: string; status: string; scheduled_at: number; created_at: number };
 
@@ -75,12 +75,17 @@ export async function verifyUnsubscribe(env: Env, token: string) {
   return id;
 }
 
-export function subscriptionStatement(db: D1Database, user: EmailActor, type: 'event' | 'organization', topicId: string, subscribed: boolean) {
+export function subscriptionStatement(db: D1Database, user: EmailActor, type: 'event' | 'organization', topicId: string, subscribed: boolean, source = 'registration-form') {
   const email = normalizeEmail(user.email);
   if (!email) emailFail(400, 'An email address on your account is required for email updates.');
-  return db.prepare(`INSERT INTO email_subscriptions (id, user_id, email, name, topic_type, topic_id, status, consent_source, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 'registration-form', ?)
-    ON CONFLICT(email, topic_type, topic_id) DO UPDATE SET user_id = excluded.user_id, name = excluded.name,
-      status = excluded.status, consent_source = excluded.consent_source, updated_at = excluded.updated_at`)
-    .bind(crypto.randomUUID(), user.id, email, user.full_name || 'Member', type, topicId, subscribed ? 'subscribed' : 'unsubscribed', Date.now());
+  const now = Date.now();
+  return db.prepare(`INSERT INTO email_subscriptions (id,user_id,email,name,topic_type,topic_id,status,consent_source,updated_at,consented_at,unsubscribed_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?)
+    ON CONFLICT(email,topic_type,topic_id) DO UPDATE SET
+      name=excluded.name,status=excluded.status,consent_source=excluded.consent_source,updated_at=excluded.updated_at,
+      consented_at=CASE WHEN excluded.status='subscribed' THEN excluded.consented_at ELSE email_subscriptions.consented_at END,
+      unsubscribed_at=excluded.unsubscribed_at
+    WHERE email_subscriptions.user_id=excluded.user_id`)
+    .bind(crypto.randomUUID(),user.id,email,user.full_name || 'Member',type,topicId,
+      subscribed ? 'subscribed' : 'unsubscribed',source,now,subscribed ? now : null,subscribed ? null : now);
 }

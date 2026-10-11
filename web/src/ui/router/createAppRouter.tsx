@@ -293,7 +293,7 @@ export function createAppRouter() {
           { path: '/about', element: <AboutPage /> },
           { path: '/terms', element: <TermsPage /> },
           { path: '/legal', element: <TermsPage /> },
-          { path: '/email', element: <AdminRoute><EmailCampaignsPage /></AdminRoute> },
+          { path: '/email', element: <AuthenticatedRoute><EmailCampaignsPage /></AuthenticatedRoute> },
           { path: '/email/preferences', element: <AuthenticatedRoute><EmailPreferencesPage /></AuthenticatedRoute> },
           { path: '/settings/notifications', element: <AuthenticatedRoute><NotificationSettingsPage /></AuthenticatedRoute> },
           { path: '/android/install', element: <AndroidInstallPage /> },

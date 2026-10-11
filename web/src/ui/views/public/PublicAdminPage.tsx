@@ -1,3 +1,4 @@
+import { GroupMailingList, GroupEmailPreference } from '../email/GroupMailingList'
 import { groupOrganizationEvents } from './organizationEvents'
 import { EmbeddedOrganizationChat } from '../../components/EmbeddedOrganizationChat'
 import { PeerOrganizations } from '../../components/PeerOrganizations'
@@ -931,6 +932,7 @@ export function PublicAdminPage() {
         <a href="#organization-events">Events</a>
         <a href="#organization-support">Support</a>
         <a href="#organization-member-feedback">Feedback</a>
+        {isOrganizerView && <a href="#organization-mailing-list">Mailing list</a>}
         {isOrganizerView && <a href="#organization-domain" onClick={event => { event.preventDefault(); openOrganizationEditor('organization-domain') }}>Domain</a>}
         {isOrganizerView && <a href="#organization-page-editor" onClick={event => { event.preventDefault(); openOrganizationEditor() }}>Settings</a>}
       </nav>}
@@ -1026,6 +1028,8 @@ export function PublicAdminPage() {
           </div>)}
 
 
+          {isOrganizerView && <GroupMailingList organizationId={org.id} />}
+          {token && <GroupEmailPreference organizationId={org.id} />}
           {isWorkspaceView && <OrganizationTools />}
           {isWorkspaceView && <>
           <OrganizationPortalSections

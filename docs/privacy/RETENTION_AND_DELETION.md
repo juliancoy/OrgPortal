@@ -15,6 +15,9 @@ OrgPortal uses account identifiers, profiles, memberships, roles, event records,
 messages, uploaded media and other community content to provide requested
 features and enforce permissions. PIdP manages sign-in, credentials, sessions,
 provider connections and OAuth grants. Cloudflare hosts the deployed services.
+Group mailing-list subscriber data is visible only to active group owners and
+organizers. Membership does not imply email consent. Subscribers control their
+own preferences, and unsubscribes apply before queued delivery.
 Authorized organization administrators and recipients can access information
 according to its visibility and their permissions; public content is public.
 Profile availability is visible to its owner and, when sharing is enabled, to
@@ -45,6 +48,7 @@ retaining data indefinitely. Shorter configured retention takes precedence.
 | Account data approved for deletion | Target removal from live systems within 30 days of a verified request; explain any delay or exception before that deadline | Timely removal and accountable handling |
 | Public organization, event and governance records | Review annually and on deletion requests; remove unnecessary personal identifiers, retain shared records only for a documented continuing organizational purpose | Preserve shared history without blanket permanent personal-data retention |
 | Event company votes | Expire 90 days after the ballot closes; exclude expired votes from totals immediately and remove personal records within 24 hours of expiry through bounded cleanup; voters can clear each vote at any time | Per-company up/down preferences or a bounded favorites ballot per account; expose totals without individual votes |
+| Group email segments and mailing audit | Segments and minimal audit expire one year after creation; omit expired records from the UI immediately and remove them through bounded cleanup within 24 hours | Keep subscriber selections and organizer activity private and bounded |
 | Routine application and request logs | Maximum 30 days | Diagnose faults and availability |
 | Security incident evidence | Maximum 90 days unless an active documented investigation requires longer; review extensions every 30 days | Investigate abuse and protect accounts |
 | Expired or consumed temporary OAuth state and previews | Remove within 24 hours after expiry/consumption; protocol validity remains much shorter and unchanged | Finish authorization and prevent replay |

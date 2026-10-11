@@ -1,3 +1,5 @@
+import { emailAudit, requireEmailOrganizer } from './emailAccess';
+import { emailGroups } from './emailGroups';
 import { Hono } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import { finishGoogleConnection, senderFor, startGoogleConnection } from './emailGoogle';
@@ -9,6 +11,7 @@ type GetActor = (env: Env, request: Request) => Promise<EmailActor>;
 async function ownCampaign(env: Env, id: string, ownerId: string) {
   const row = await env.DB.prepare('SELECT * FROM email_campaigns WHERE id = ? AND owner_user_id = ?').bind(id, ownerId).first<EmailCampaign>();
   if (!row) emailFail(404, 'Campaign not found.');
+  await requireEmailOrganizer(env,{id:ownerId},row.organization_id);
   return row;
 }
 async function audience(env: Env, event: EmailEvent, kind: string, selected: unknown) {
@@ -41,12 +44,19 @@ async function campaignPreview(env: Env, campaign: EmailCampaign) {
   return { ...campaign, preview: renderCampaign(env, campaign, 'Alex', null), fingerprint, recipient_count: eligible.length, counts, deliveries: rows };
 }
 
-export function emailRoutes(getUser: GetActor, getAdmin: GetActor) {
+export function emailRoutes(getUser: GetActor) {
+  const getOrganizer: GetActor = async (env,request) => {
+    const user=await getUser(env,request);
+    await requireEmailOrganizer(env,user);
+    return user;
+  };
   const routes = new Hono<{ Bindings: Env }>();
   routes.use('*', async (c, next) => { c.header('Cache-Control', 'no-store'); c.header('Referrer-Policy', 'no-referrer'); await next(); });
 
+  routes.route('/groups',emailGroups(getUser));
+
   routes.get('/sender', async (c) => {
-    const user = await getAdmin(c.env, c.req.raw);
+    const user = await getOrganizer(c.env, c.req.raw);
     const sender = await senderFor(c.env, user.id);
     let configured = true;
     try { googleConfig(c.env); emailPortalBase(c.env); await unsubscribeUrl(c.env, 'configuration-check'); if (!c.env.EMAIL_POSTAL_ADDRESS?.trim()) configured = false; } catch { configured = false; }
@@ -57,7 +67,7 @@ export function emailRoutes(getUser: GetActor, getAdmin: GetActor) {
       daily_limit: emailDailyLimit(c.env), used_today: Number(usage?.n || 0) });
   });
   routes.post('/google/connect', async (c) => {
-    const user = await getAdmin(c.env, c.req.raw);
+    const user = await getOrganizer(c.env, c.req.raw);
     const result = await startGoogleConnection(c.env, user);
     setCookie(c, '__Host-portal-email-oauth', result.browser, { httpOnly: true, secure: true, sameSite: 'Lax', path: '/', maxAge: 600 });
     return c.json({ url: result.url });
@@ -70,7 +80,7 @@ export function emailRoutes(getUser: GetActor, getAdmin: GetActor) {
     return c.redirect(`${emailPortalBase(c.env)}/email?connection=connected`);
   });
   routes.delete('/sender', async (c) => {
-    const user = await getAdmin(c.env, c.req.raw);
+    const user = await getOrganizer(c.env, c.req.raw);
     await c.env.DB.batch([
       c.env.DB.prepare("UPDATE email_campaigns SET status = 'paused' WHERE owner_user_id = ? AND status = 'queued'").bind(user.id),
       c.env.DB.prepare('DELETE FROM email_senders WHERE owner_user_id = ?').bind(user.id),
@@ -92,8 +102,8 @@ export function emailRoutes(getUser: GetActor, getAdmin: GetActor) {
     const user = await getUser(c.env, c.req.raw);
     const payload = await c.req.json().catch(() => ({})) as { subscribed?: unknown };
     if (typeof payload.subscribed !== 'boolean') emailFail(400, 'Choose an email preference.');
-    const row = await c.env.DB.prepare(`UPDATE email_subscriptions SET status = ?, consent_source = 'account-preferences', updated_at = ?
-      WHERE id = ? AND user_id = ? RETURNING id`).bind(payload.subscribed ? 'subscribed' : 'unsubscribed', Date.now(), c.req.param('id'), user.id).first();
+    const row = await c.env.DB.prepare(`UPDATE email_subscriptions SET status = ?, consent_source = 'account-preferences', updated_at = ?, consented_at=CASE WHEN ? THEN ? ELSE consented_at END, unsubscribed_at=CASE WHEN ? THEN NULL ELSE ? END
+      WHERE id = ? AND user_id = ? RETURNING id`).bind(payload.subscribed ? 'subscribed' : 'unsubscribed', Date.now(), payload.subscribed ? 1 : 0, Date.now(), payload.subscribed ? 1 : 0, Date.now(), c.req.param('id'), user.id).first();
     if (!row) emailFail(404, 'Subscription not found.');
     return c.json({ ok: true });
   });
@@ -108,28 +118,34 @@ export function emailRoutes(getUser: GetActor, getAdmin: GetActor) {
   routes.post('/unsubscribe', async (c) => {
     const data = await c.req.parseBody().catch(() => ({})) as Record<string, unknown>;
     const id = await verifyUnsubscribe(c.env, c.req.query('token') || String(data.token || ''));
-    const result = await c.env.DB.prepare("UPDATE email_subscriptions SET status = 'unsubscribed', updated_at = ? WHERE id = ? RETURNING id").bind(Date.now(), id).first();
+    const result = await c.env.DB.prepare("UPDATE email_subscriptions SET status = 'unsubscribed', consent_source='unsubscribe-link', unsubscribed_at=?, updated_at = ? WHERE id = ? RETURNING id").bind(Date.now(), Date.now(), id).first();
     if (!result) emailFail(404, 'Subscription not found.');
     return c.html('<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>Unsubscribed</title></head><body><h1>You are unsubscribed.</h1><p>Your event registration is unchanged.</p></body></html>');
   });
 
   routes.get('/audience/:eventId', async (c) => {
-    await getAdmin(c.env, c.req.raw);
+    const user=await getOrganizer(c.env, c.req.raw);
     const event = await c.env.DB.prepare('SELECT * FROM events WHERE id = ?').bind(c.req.param('eventId')).first<EmailEvent>();
     if (!event?.host_org_id) emailFail(400, 'Choose an organization-hosted event.');
+    await requireEmailOrganizer(c.env,user,event.host_org_id);
+    await emailAudit(c.env,user.id,event.host_org_id,'audience.view',event.id).run();
     const [eventRecipients, organizationRecipients] = await Promise.all([audience(c.env, event, 'event', null), audience(c.env, event, 'organization', null)]);
     return c.json({ event_count: eventRecipients.length, organization_count: organizationRecipients.length,
       contacts: organizationRecipients.map(({ id, name, email }) => ({ id, name, email })) });
   });
   routes.get('/campaigns', async (c) => {
-    const user = await getAdmin(c.env, c.req.raw);
+    const user = await getOrganizer(c.env, c.req.raw);
+    const group=c.req.query('organization_id') || null;
+    if(group) await requireEmailOrganizer(c.env,user,group);
     const rows = await c.env.DB.prepare(`SELECT c.*, (SELECT count(*) FROM email_deliveries d WHERE d.campaign_id = c.id AND d.kind = 'campaign') AS recipient_count,
       (SELECT count(*) FROM email_deliveries d WHERE d.campaign_id = c.id AND d.kind = 'campaign' AND d.status = 'sent') AS sent_count
-      FROM email_campaigns c WHERE owner_user_id = ? ORDER BY created_at DESC LIMIT 100`).bind(user.id).all();
+      FROM email_campaigns c WHERE owner_user_id = ? AND (? IS NULL OR c.organization_id=?)
+        AND EXISTS(SELECT 1 FROM organization_memberships m WHERE m.organization_id=c.organization_id AND m.user_id=? AND m.status='active' AND m.role IN ('owner','administrator'))
+        ORDER BY created_at DESC LIMIT 100`).bind(user.id,group,group,user.id).all();
     return c.json(rows.results || []);
   });
   routes.post('/campaigns', async (c) => {
-    const user = await getAdmin(c.env, c.req.raw);
+    const user = await getOrganizer(c.env, c.req.raw);
     const sender = await senderFor(c.env, user.id);
     if (sender?.status !== 'connected') emailFail(409, 'Connect your Google sender account first.');
     const payload = await c.req.json().catch(() => ({})) as Record<string, unknown>;
@@ -137,14 +153,30 @@ export function emailRoutes(getUser: GetActor, getAdmin: GetActor) {
     const body = typeof payload.body === 'string' ? payload.body.trim() : '';
     const kind = String(payload.audience || 'event');
     if (!subject || subject.length > 200 || /[\r\n\0]/.test(subject) || !body || body.length > 20_000 || !['event', 'organization', 'selected'].includes(kind)) emailFail(400, 'Enter a subject, message, and valid audience.');
-    const event = await c.env.DB.prepare(`SELECT e.*, o.name AS organization_name FROM events e LEFT JOIN organizations o ON o.id = e.host_org_id WHERE e.id = ?`)
-      .bind(String(payload.event_id || '')).first<EmailEvent>();
-    if (!event?.host_org_id) emailFail(400, 'Choose an organization-hosted event.');
+    let event = payload.event_id ? await c.env.DB.prepare(`SELECT e.*, o.name AS organization_name FROM events e LEFT JOIN organizations o ON o.id=e.host_org_id WHERE e.id=?`)
+      .bind(String(payload.event_id)).first<EmailEvent>() : null;
+    const groupId=String(payload.organization_id || event?.host_org_id || '');
+    await requireEmailOrganizer(c.env,user,groupId || '__missing_group__');
+    if(event && event.host_org_id!==groupId) emailFail(400,'The event must belong to this group.');
+    if(payload.event_id && !event) emailFail(404,'Event not found.');
+    if(!event) {
+      if(kind==='event') emailFail(400,'Choose an organization-hosted event for event updates.');
+      const group=await c.env.DB.prepare('SELECT id,name,slug FROM organizations WHERE id=?').bind(groupId).first<{id:string;name:string;slug:string}>();
+      if(!group) emailFail(404,'Group not found.');
+      event={id:'',title:group.name,slug:group.slug,host_org_id:group.id,organization_name:group.name,starts_at:null,location:null,image_url:null};
+    }
     const scheduled = payload.scheduled_at ? Date.parse(String(payload.scheduled_at)) : Date.now();
     if (!Number.isFinite(scheduled) || scheduled < Date.now() - 60_000 || scheduled > Date.now() + 365 * 86_400_000) emailFail(400, 'Choose a future send time within one year.');
+    if(payload.segment_id) {
+      const segment=await c.env.DB.prepare('SELECT subscription_ids_json FROM email_segments WHERE id=? AND organization_id=? AND expires_at>?').bind(String(payload.segment_id),groupId,Date.now()).first<{subscription_ids_json:string}>();
+      if(!segment || kind!=='selected') emailFail(400,'Choose a current segment from this group.');
+      const ids=JSON.parse(segment.subscription_ids_json);
+      const current=await audience(c.env,event,'organization',null);
+      payload.selected_ids=current.filter(row=>ids.includes(row.id)).map(row=>row.id);
+    }
     const recipients = await audience(c.env, event, kind, payload.selected_ids);
     const campaign: EmailCampaign = { id: crypto.randomUUID(), owner_user_id: user.id, sender_email: sender.email,
-      organization_id: event.host_org_id, event_id: event.id, event_json: JSON.stringify(event), audience: kind, subject, body,
+      organization_id: groupId, event_id: event.id, event_json: JSON.stringify(event), audience: kind, subject, body,
       status: 'draft', scheduled_at: scheduled, created_at: Date.now() };
     renderCampaign(c.env, campaign, 'Alex', null);
     await c.env.DB.batch([
@@ -156,14 +188,19 @@ export function emailRoutes(getUser: GetActor, getAdmin: GetActor) {
         WHERE s.status = 'subscribed' AND s.id IN (SELECT value FROM json_each(?))`)
         .bind(campaign.id, user.id, JSON.stringify(recipients.map((person) => person.id))),
     ]);
+    await emailAudit(c.env,user.id,campaign.organization_id,'campaign.created',campaign.id,recipients.length).run();
     return c.json(await campaignPreview(c.env, campaign), 201);
   });
   routes.get('/campaigns/:id', async (c) => {
-    const user = await getAdmin(c.env, c.req.raw);
-    return c.json(await campaignPreview(c.env, await ownCampaign(c.env, c.req.param('id'), user.id)));
+    const user = await getOrganizer(c.env, c.req.raw);
+    const campaign=await ownCampaign(c.env,c.req.param('id'),user.id);
+    const preview=await campaignPreview(c.env,campaign);
+    const id=crypto.randomUUID(),now=Date.now();
+    await c.env.DB.batch([c.env.DB.prepare(`INSERT INTO email_campaign_previews(id,campaign_id,organization_id,actor_user_id,fingerprint,expires_at) VALUES(?,?,?,?,?,?)`).bind(id,campaign.id,campaign.organization_id,user.id,preview.fingerprint,now+600000),emailAudit(c.env,user.id,campaign.organization_id,'campaign.view',campaign.id,preview.recipient_count)]);
+    return c.json({...preview,preview_id:id});
   });
   routes.post('/campaigns/:id/test', async (c) => {
-    const user = await getAdmin(c.env, c.req.raw);
+    const user = await getOrganizer(c.env, c.req.raw);
     const campaign = await ownCampaign(c.env, c.req.param('id'), user.id);
     const sender = await senderFor(c.env, user.id);
     if (c.env.EMAIL_SENDING_ENABLED !== 'true' || sender?.status !== 'connected' || sender.email !== campaign.sender_email) emailFail(409, 'Email sending is not enabled or the sender needs reconnecting.');
@@ -178,37 +215,49 @@ export function emailRoutes(getUser: GetActor, getAdmin: GetActor) {
       ON CONFLICT DO NOTHING RETURNING id`)
       .bind(crypto.randomUUID(), campaign.id, user.id, sender.email, user.full_name || 'Alex', user.id, Date.now() - 86_400_000).first();
     if (!inserted) emailFail(409, 'A test is already pending or the daily test-email limit was reached.');
+    await emailAudit(c.env,user.id,campaign.organization_id,'campaign.test-queued',campaign.id,1).run();
     return c.json({ queued: true, recipient: sender.email });
   });
   routes.post('/campaigns/:id/send', async (c) => {
-    const user = await getAdmin(c.env, c.req.raw);
+    const user = await getOrganizer(c.env, c.req.raw);
     const campaign = await ownCampaign(c.env, c.req.param('id'), user.id);
     const sender = await senderFor(c.env, user.id);
     if (c.env.EMAIL_SENDING_ENABLED !== 'true' || sender?.status !== 'connected' || sender.email !== campaign.sender_email) emailFail(409, 'Email sending is not enabled or the sender needs reconnecting.');
     if (campaign.status !== 'draft') emailFail(409, 'This campaign has already been queued.');
     const preview = await campaignPreview(c.env, campaign);
-    const payload = await c.req.json().catch(() => ({})) as { fingerprint?: string };
+    const payload = await c.req.json().catch(() => ({})) as { fingerprint?: string; preview_id?:string; confirm?:unknown };
     if (!payload.fingerprint || payload.fingerprint !== preview.fingerprint) emailFail(409, 'The audience changed. Refresh the preview before sending.');
+    if(payload.confirm!==true || !payload.preview_id) emailFail(400,'Confirm a fresh preview before sending.');
+    const receipt=await c.env.DB.prepare(`SELECT id FROM email_campaign_previews WHERE id=? AND campaign_id=? AND actor_user_id=? AND fingerprint=? AND expires_at>? AND consumed_at IS NULL`)
+      .bind(payload.preview_id,campaign.id,user.id,preview.fingerprint,Date.now()).first();
+    if(!receipt) emailFail(409,'The preview expired or has already been used. Refresh it before sending.');
     if (!preview.recipient_count) emailFail(400, 'No subscribed recipients are selected.');
-    await c.env.DB.batch([
-      c.env.DB.prepare("UPDATE email_campaigns SET status = 'queued', queued_at = ? WHERE id = ? AND status = 'draft'").bind(Date.now(), campaign.id),
-      c.env.DB.prepare("UPDATE email_deliveries SET status = 'queued' WHERE campaign_id = ? AND kind = 'campaign' AND status = 'draft'").bind(campaign.id),
+    const results=await c.env.DB.batch([
+      c.env.DB.prepare(`UPDATE email_campaigns SET status='queued',queued_at=? WHERE id=? AND status='draft'
+        AND EXISTS(SELECT 1 FROM email_campaign_previews WHERE id=? AND consumed_at IS NULL AND expires_at>?)`).bind(Date.now(),campaign.id,payload.preview_id,Date.now()),
+      c.env.DB.prepare('UPDATE email_campaign_previews SET consumed_at=? WHERE id=? AND consumed_at IS NULL').bind(Date.now(),payload.preview_id),
+      emailAudit(c.env,user.id,campaign.organization_id,'campaign.send-requested',campaign.id,preview.recipient_count),
+      c.env.DB.prepare("UPDATE email_deliveries SET status = 'queued' WHERE campaign_id = ? AND kind = 'campaign' AND status = 'draft' AND EXISTS(SELECT 1 FROM email_campaigns WHERE id=campaign_id AND status='queued')").bind(campaign.id),
     ]);
+    if(Number(results[0]?.meta?.changes ?? (results[0] as unknown as {changes:number})?.changes)<1) emailFail(409,'This preview or campaign has already been used.');
+    await emailAudit(c.env,user.id,campaign.organization_id,'campaign.send-queued',campaign.id,preview.recipient_count).run();
     return c.json({ queued: true });
   });
   routes.post('/campaigns/:id/pause', async (c) => {
-    const user = await getAdmin(c.env, c.req.raw);
+    const user = await getOrganizer(c.env, c.req.raw);
     const campaign = await ownCampaign(c.env, c.req.param('id'), user.id);
     if (campaign.status !== 'queued') emailFail(409, 'Only a queued campaign can be paused.');
     await c.env.DB.prepare("UPDATE email_campaigns SET status = 'paused' WHERE id = ? AND status = 'queued'").bind(campaign.id).run();
+    await emailAudit(c.env,user.id,campaign.organization_id,'campaign.paused',campaign.id).run();
     return c.json({ paused: true });
   });
   routes.post('/campaigns/:id/resume', async (c) => {
-    const user = await getAdmin(c.env, c.req.raw);
+    const user = await getOrganizer(c.env, c.req.raw);
     const campaign = await ownCampaign(c.env, c.req.param('id'), user.id);
     const sender = await senderFor(c.env, user.id);
     if (campaign.status !== 'paused' || sender?.status !== 'connected' || sender.email !== campaign.sender_email || c.env.EMAIL_SENDING_ENABLED !== 'true') emailFail(409, 'Reconnect the sender and enable sending before resuming this campaign.');
     await c.env.DB.prepare("UPDATE email_campaigns SET status = 'queued' WHERE id = ? AND status = 'paused'").bind(campaign.id).run();
+    await emailAudit(c.env,user.id,campaign.organization_id,'campaign.resumed',campaign.id).run();
     return c.json({ queued: true });
   });
   return routes;
