@@ -1,0 +1,14 @@
+{
+  "NODE_VERSION": {
+    "is_secret": false,
+    "value": "22"
+  },
+  "SKIP_DEPENDENCY_INSTALL": {
+    "is_secret": false,
+    "value": "true"
+  },
+  "CLOUDFLARE_ACCOUNT_ID": {
+    "is_secret": false,
+    "value": "42d86bec91224cb6ef236aff4db81d30"
+  }
+}

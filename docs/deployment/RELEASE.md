@@ -9,6 +9,9 @@ secrets or API consumers. PIdP remains an independently released identity servic
 
 Cloudflare Workers Builds connects directly to `juliancoy/OrgPortal`, branch
 `main`, using the account's existing Workers Builds deployment credential.
+Build environment: `NODE_VERSION=22`, `SKIP_DEPENDENCY_INSTALL=true`, and
+`CLOUDFLARE_ACCOUNT_ID` set to the deployment account. Dependencies are installed
+explicitly in each package directory by the build command.
 The trigger's build and deployment commands are recorded in
 `cloudflare/build-trigger.json`. Every release checks and builds both targets
 from one clean Git commit, deploys the API followed by the frontend, and verifies
@@ -16,6 +19,9 @@ both service identity and commit through public health endpoints. A stale build
 cannot release after `main` moves. Pull requests run checks without credentials.
 
 No CodeCollective checkout, frontend build or deployment job is involved.
+The existing `codecollective-site-preview` service remains a compatibility
+binding for explicitly selected private previews; it is not a production build
+dependency.
 The frontend artifact includes only `web/dist`, the update manifest, and a
 commit-stamped health manifest. Database migrations are never run implicitly.
 
