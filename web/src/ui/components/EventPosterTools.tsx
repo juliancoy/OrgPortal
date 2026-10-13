@@ -13,7 +13,7 @@ const formats: Record<Format, { label: string; width: number; height: number; pr
   social: { label: 'Social', width: 1200, height: 630, print: '12in 6.3in' },
 }
 const backgrounds: Record<Background, string> = {
-  gallery: 'Event gallery',
+  gallery: 'Event & organization images',
   solid: 'Solid color',
   city: 'Baltimore city photo',
   gradient: 'High-contrast gradient',
@@ -39,20 +39,19 @@ function PosterEditor({ slug, title, revision = '' }: Props) {
   const [format, setFormat] = useState<Format>('letter')
   const [theme, setTheme] = useState<Theme>('light')
   const [background, setBackground] = useState<Background>('solid')
-  const [gallery, setGallery] = useState<{ id: string; label: string; alt?: string }[]>([])
+  const [gallery, setGallery] = useState<{ id: string; label: string; alt?: string; source: string; url: string }[]>([])
   const [galleryStatus, setGalleryStatus] = useState('Loading gallery...')
   const [mediaId, setMediaId] = useState('')
   const [galleryRetry, setGalleryRetry] = useState(0)
   useEffect(() => {
     const abort = new AbortController()
     setGallery([]); setMediaId(''); setGalleryStatus('Loading gallery...')
-    fetch(`/api/org/api/network/events/public/${encodeURIComponent(slug)}`, { signal: AbortSignal.any([abort.signal, AbortSignal.timeout(15000)]), cache: 'no-cache' })
+    fetch(`/api/org/api/network/events/public/${encodeURIComponent(slug)}/poster-images`, { signal: AbortSignal.any([abort.signal, AbortSignal.timeout(15000)]), cache: 'no-cache' })
       .then(async response => {
         if (!response.ok) throw new Error()
-        const event = await response.json()
+        const images = await response.json()
         if (abort.signal.aborted) return
-        const images = (event.media || []).filter((item: { kind: string; image_key?: string }) => item.kind === 'image' && item.image_key)
-        setGallery(images); setGalleryStatus(images.length ? '' : 'No uploaded gallery images. Add images to this event’s gallery first.')
+        setGallery(images); setGalleryStatus(images.length ? '' : 'No images yet. Add images to this event or an attached organization.')
       })
       .catch(() => { if (!abort.signal.aborted) setGalleryStatus('Could not load gallery.') })
     return () => abort.abort()
@@ -70,7 +69,7 @@ function PosterEditor({ slug, title, revision = '' }: Props) {
     let url: string | undefined
     const timeout = window.setTimeout(() => { setError('Poster request timed out. Try again.'); abort.abort() }, 30000)
     setPoster(null); setError('')
-    const query = new URLSearchParams({ format, theme, background, version: '4', revision, mediaId: background === 'gallery' ? selectedMediaId : '' })
+    const query = new URLSearchParams({ format, theme, background, version: '5', revision, mediaId: background === 'gallery' ? selectedMediaId : '' })
     fetch(`/api/org/api/network/events/public/${encodeURIComponent(slug)}/flyer.svg?${query}`, { signal: abort.signal, cache: 'no-cache' })
       .then(async response => {
         if (!response.ok || !response.headers.get('content-type')?.includes('image/svg+xml')) throw new Error('Poster unavailable. Try again.')
@@ -157,8 +156,8 @@ function PosterEditor({ slug, title, revision = '' }: Props) {
       {galleryStatus && <p role="status">{galleryStatus}</p>}
       {galleryStatus === 'Could not load gallery.' && <button type="button" onClick={() => setGalleryRetry(value => value + 1)}>Retry gallery</button>}
       {gallery.map((item, index) => <button type="button" key={item.id} aria-pressed={selectedMediaId === item.id} disabled={exporting} onClick={() => setMediaId(item.id)}>
-        <img src={`/api/org/api/network/events/public/${encodeURIComponent(slug)}/media/${encodeURIComponent(item.id)}`} alt={item.alt || ''} loading="lazy"/>
-        <span>{item.label || `Image ${index + 1}`}</span>
+        <img src={item.url.startsWith('/api/') ? `/api/org${item.url}` : item.url} alt={item.alt || ''} loading="lazy"/>
+        <span>{item.label || `Image ${index + 1}`}<small style={{ display: 'block' }}>{item.source}</small></span>
       </button>)}
     </div>}
     {error && <div role="alert" className="event-poster-error">{error}<button type="button" title="Retry poster" onClick={() => setRetry(value => value + 1)}><RefreshCw size={18} aria-hidden="true"/>Retry</button></div>}

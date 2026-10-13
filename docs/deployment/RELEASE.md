@@ -23,6 +23,20 @@ The main-branch trigger is configured, but push-triggered builds have not fired
 during the cutover. Confirm the Cloudflare GitHub App has access to OrgPortal
 before relying on automatic deployment. A direct build has been verified.
 
+**Deployment status, 2026-10-13:** do not treat a GitHub push or green GitHub
+checks as proof of a production release. Until GitHub push delivery is fixed,
+start the native Cloudflare build explicitly, wait for success, and compare
+`/health` and `/api/org/health` against the intended commit. The outstanding
+setup is to check the Cloudflare GitHub App installation and OrgPortal repository
+access, then confirm a real main-branch push creates a build without a manual
+request. Do not restore CodeCollective as the deployment path.
+
+The moved domains are `orgportal.cc`, `timebank.codecollective.us`, and
+`bmoretimebank.codecollective.us`. LifeTech still requests legacy
+`/__portal_root/*` URLs from CodeCollective; those requests are forwarded through
+its `ORGPORTAL_WEB` service binding to the independently deployed artifacts.
+Keep that compatibility forward until the LifeTech wrapper is updated.
+
 No CodeCollective checkout, frontend build or deployment job is involved.
 The existing `codecollective-site-preview` service remains a compatibility
 binding for explicitly selected private previews; it is not a production build

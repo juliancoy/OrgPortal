@@ -1,3 +1,4 @@
+import { posterGallery } from './posterGallery';
 import { organizationFollowRoutes, dispatchFollowEventNotifications } from './organizationFollows';
 import { compareOrganizationActivity } from './organizationSearchActivity';
 import { personalizeSearch, type SearchResults } from './personalSearch';
@@ -41,7 +42,7 @@ import { availabilityRoutes } from './availability';
 import { timebankNotifications, markTimebankNotificationsRead, dispatchTimebankPush } from './timebankNotifications';
 import { importedListings, importedListingImage, importClaimDirectory, requestImportClaim, withdrawImportClaim, reviewImportClaims, resolveImportClaim, claimedImportRecords } from './timebankImports';
 import { Hono } from "hono";
-import { renderEventPoster, posterBackgroundImage, posterLogo, type PosterBackground, type PosterTheme } from "./eventPoster";
+import { renderEventPoster, posterBackgroundImage, posterGalleryImage, posterLogo, type PosterBackground, type PosterTheme } from "./eventPoster";
 import { buildMetadata } from "./generated/buildMetadata";
 import { HTTPException } from "hono/http-exception";
 import { handleEventMcp, protectedResourceMetadata, eventErrorResponse } from "./eventMcp";
@@ -1439,16 +1440,24 @@ async function eventFlyerSvg(env: Env, request: Request, event: EventRow, format
     }
   }
   if (background === "gallery") {
-    const media = parseEventMedia(event.media_json).find(item => item.id === mediaId && item.kind === "image");
-    if (!media?.image_key || !env.SCAN_IMAGES) fail(404, "Gallery image is not available");
-    const object = await env.SCAN_IMAGES.get(media.image_key);
-    if (!object) fail(404, "Gallery image is not available");
-    const mime = object.httpMetadata?.contentType?.split(";")[0];
-    if (!mime || !["image/png", "image/jpeg", "image/webp", "image/gif"].includes(mime) || object.size > 8 * 1024 * 1024) {
-      await object.body.cancel();
-      fail(400, "Unsupported gallery image");
+    // Retain old event-only IDs; scoped IDs come from the server-owned catalog.
+    const media = parseEventMedia(event.media_json).find(item => item.id === mediaId && item.kind === "image")
+      || (await posterGallery(env.DB, event)).find(item => item.id === mediaId);
+    if (!media) fail(404, "Gallery image is not available");
+    if (!media.image_key) {
+      backgroundData = await posterGalleryImage(media.url);
+      if (!backgroundData) fail(400, "Gallery image could not be loaded or is unsupported");
+    } else {
+      if (!env.SCAN_IMAGES) fail(404, "Gallery image is not available");
+      const object = await env.SCAN_IMAGES.get(media.image_key);
+      if (!object) fail(404, "Gallery image is not available");
+      const mime = object.httpMetadata?.contentType?.split(";")[0];
+      if (!mime || !["image/png", "image/jpeg", "image/webp", "image/gif"].includes(mime) || object.size > 8 * 1024 * 1024) {
+        await object.body.cancel();
+        fail(400, "Unsupported gallery image");
+      }
+      backgroundData = `data:${mime};base64,${arrayBufferToBase64(await object.arrayBuffer())}`;
     }
-    backgroundData = `data:${mime};base64,${arrayBufferToBase64(await object.arrayBuffer())}`;
   }
   if (background === "lifetech") {
     backgroundData = await posterBackgroundImage(new URL("https://lifetech.fyi/assets/images/lifetech-hero.png"));
@@ -3284,6 +3293,13 @@ app.get("/api/network/events/public/:slug/media/:mediaId", async (c) => {
   return new Response(object.body, { status: 200, headers });
 });
 
+app.get("/api/network/events/public/:slug/poster-images", async (c) => {
+  const row = await publicEventBySlug(c.env.DB, c.req.param("slug"));
+  if (!row) fail(404, "Event not found");
+  const images = await posterGallery(c.env.DB, row);
+  return c.json(images.map(({ image_key, ...image }) => image), 200, { "cache-control": "no-store" });
+});
+
 app.get("/api/network/events/public/:slug/flyer.svg", async (c) => {
   const row = await publicEventBySlug(c.env.DB, c.req.param("slug"));
   if (!row) fail(404, "Event not found");
@@ -3295,7 +3311,7 @@ app.get("/api/network/events/public/:slug/flyer.svg", async (c) => {
   return new Response(svg, {
     headers: {
       "content-type": "image/svg+xml; charset=utf-8",
-      "cache-control": "public, max-age=300, s-maxage=900",
+      "cache-control": background === "gallery" ? "no-store" : "public, max-age=300, s-maxage=900",
       "content-disposition": `inline; filename="${dispositionName}"`,
     },
   });
