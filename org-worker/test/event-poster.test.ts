@@ -123,3 +123,17 @@ test('LifeTech artwork stays left of the QR code in every poster format, with a 
     assert.match(svg, /<image href="data:image\/png;base64,BAUG"/);
   }
 });
+
+test('crop is bounded, clipped and shared by poster and plain-background exports', async () => {
+  for (const format of ['letter', 'letter-4up', 'postcard', 'social'] as const) {
+    const {width,height}=posterGeometry(format);
+    for (const backgroundOnly of [false,true]) {
+      const svg=await renderEventPoster({title:'Crop test'},'https://example.com',format,{name:'Test'},'light',{background:'gallery',backgroundImage:'data:image/png;base64,AQID',zoom:2,offsetX:50,offsetY:-50,backgroundOnly});
+      assert.ok(svg.includes(`x="${-width/4}" y="${-height*3/4}" width="${width*2}" height="${height*2}"`));
+      assert.ok(svg.includes(`width="${width}" height="${height}" overflow="hidden"`));
+    }
+  }
+  const svg=await renderEventPoster({title:'Limits'},'https://example.com','postcard',{name:'Test'},'light',{background:'gallery',backgroundImage:'data:image/png;base64,AQID',zoom:Infinity,offsetX:1000,offsetY:NaN});
+  assert.ok(svg.includes('x="200" y="0" width="400" height="600"'));
+  assert.ok(!svg.includes('NaN') && !svg.includes('Infinity'));
+});

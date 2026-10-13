@@ -44,3 +44,13 @@ or removed associations return 404. Legacy event-only media IDs still work.
 Clients cannot provide arbitrary image URLs or R2 keys. No image copies or new
 data stores are created. Images are public, consistent with the existing public
 organization and event galleries.
+
+### Zoom and position
+
+Photo and artwork backgrounds have Zoom (100–300%), Horizontal position, and
+Vertical position sliders, plus Reset image. Selecting a different image resets
+its crop. The preview updates after a short pause; PNG, SVG, print, four-up, and
+plain-background downloads use the same crop. Only the background image moves;
+text, logos, overlays, and the RSVP code stay fixed. Images are clipped to their
+artwork area. Moving an image beyond the edge reveals the background color.
+The flyer API accepts bounded `zoom` (1–3), `offsetX`, and `offsetY` (−100–100).

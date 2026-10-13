@@ -7,7 +7,7 @@ export type PosterBackground = 'solid' | 'city' | 'gradient' | 'lifetech' | 'gal
 type PosterEvent = { title: string; social_title?: string | null; description?: string | null; social_description?: string | null;
   starts_at?: string | null; ends_at?: string | null; location?: string | null };
 export type PosterBrand = { name: string; tagline?: string | null; logo?: string };
-export type PosterOptions = { background?: PosterBackground; backgroundImage?: string; backgroundOnly?: boolean };
+export type PosterOptions = { background?: PosterBackground; backgroundImage?: string; backgroundOnly?: boolean; zoom?: number; offsetX?: number; offsetY?: number };
 const escape = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]!));
 const clean = (value: unknown) => String(value || '').replace(/\s+/g, ' ').trim();
 
@@ -51,7 +51,12 @@ function posterPalette(theme: PosterTheme, background: PosterBackground) {
     : { paper: '#ffffff', accent: '#087f8c', brand: '#075e68', text: '#172033', muted: '#435362', rule: '#c8d9dc', qrDark: '#101820', qrLight: '#ffffff' };
 }
 
-function posterBackgroundParts(width: number, height: number, palette: ReturnType<typeof posterPalette>, background: PosterBackground, backgroundImage?: string) {
+function posterBackgroundParts(width: number, height: number, palette: ReturnType<typeof posterPalette>, background: PosterBackground, backgroundImage?: string, options: PosterOptions = {}) {
+  const bounded = (value: number | undefined, fallback: number, min: number, max: number) => Number.isFinite(value) ? Math.max(min, Math.min(max, value!)) : fallback;
+  const zoom = bounded(options.zoom, 1, 1, 3);
+  const x = width * ((1 - zoom) / 2 + bounded(options.offsetX, 0, -100, 100) / 200);
+  const y = height * ((1 - zoom) / 2 + bounded(options.offsetY, 0, -100, 100) / 200);
+  const image = (aspect: string) => `<svg width="${width}" height="${height}" overflow="hidden"><image href="${escape(backgroundImage)}" x="${x}" y="${y}" width="${width * zoom}" height="${height * zoom}" preserveAspectRatio="${aspect}"/></svg>`;
   if (background === 'gradient') {
     return [
       `<defs><linearGradient id="poster-bg-gradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#061a26"/><stop offset="56%" stop-color="#087482"/><stop offset="100%" stop-color="#101820"/></linearGradient></defs>`,
@@ -62,13 +67,13 @@ function posterBackgroundParts(width: number, height: number, palette: ReturnTyp
   if (background === 'lifetech' && backgroundImage) {
     return [
       `<rect width="${width}" height="${height}" fill="#061a26"/>`,
-      `<image href="${escape(backgroundImage)}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="xMidYMax meet"/>`,
+      image('xMidYMax meet'),
     ];
   }
   if ((background === 'city' || background === 'gallery') && backgroundImage) {
     return [
       `<rect width="${width}" height="${height}" fill="${palette.paper}"/>`,
-      `<image href="${escape(backgroundImage)}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice"/>`,
+      image('xMidYMid slice'),
       `<rect width="${width}" height="${height}" fill="#000000" opacity="0.66"/>`,
       `<rect width="${width}" height="${height}" fill="#061a26" opacity="0.26"/>`,
     ];
@@ -82,7 +87,7 @@ export async function renderEventPoster(event: PosterEvent, publicUrl: string, f
   const background = options.background || 'solid';
   const palette = posterPalette(theme, background);
   if (options.backgroundOnly) {
-    const artwork = posterBackgroundParts(width, height, palette, background, options.backgroundImage).join('');
+    const artwork = posterBackgroundParts(width, height, palette, background, options.backgroundImage, options).join('');
     const physical = format === 'postcard' ? 'width="4in" height="6in"' : format === 'social' ? `width="${width}" height="${height}"` : 'width="8.5in" height="11in"';
     const copies = [0, 1].flatMap(row => [0, 1].map(column => `<use href="#background-art" transform="translate(${25 + column * 410} ${25 + row * 535 + (515 - height * (390 / width)) / 2}) scale(${390 / width})"/>`)).join('');
     return `<svg xmlns="http://www.w3.org/2000/svg" ${physical} viewBox="0 0 ${width} ${height}" role="img" aria-label="Plain poster background"><rect width="${width}" height="${height}" fill="${palette.paper}"/>${format === 'letter-4up' ? `<defs><g id="background-art">${artwork}</g></defs>${copies}` : artwork}</svg>`;
@@ -107,7 +112,7 @@ export async function renderEventPoster(event: PosterEvent, publicUrl: string, f
   const qrX = width - margin - qrSize;
   // Fit the complete artwork into a separate column; never put the RSVP code over it.
   const artworkWidth = background === 'lifetech' ? qrX - (small ? 16 : 28) : width;
-  parts.push(...posterBackgroundParts(artworkWidth, height, palette, background, options.backgroundImage));
+  parts.push(...posterBackgroundParts(artworkWidth, height, palette, background, options.backgroundImage, options));
   if (background === 'lifetech') parts.push(`<rect x="${artworkWidth}" width="${width - artworkWidth}" height="${height}" fill="${palette.paper}"/>`);
   if (background === 'lifetech') parts.push(`<rect width="${width}" height="${height}" fill="#000000" opacity="0.66"/>`);
   parts.push(`<rect width="${width}" height="${small ? 8 : 12}" fill="${palette.accent}"/>`);

@@ -24,3 +24,7 @@
 .event-poster-gallery button { flex-direction: column; width: 120px; overflow: hidden; }
 .event-poster-gallery img { width: 100%; height: 80px; object-fit: cover; border-radius: 3px; }
 .event-poster-gallery span { max-width: 100%; overflow-wrap: anywhere; }
+
+.event-poster-crop { display: flex; flex-wrap: wrap; gap: 1rem; margin: 0 0 1rem; border: 1px solid var(--border); border-radius: 4px; padding: .75rem; }
+.event-poster-crop label { display: grid; gap: .4rem; flex: 1 1 180px; font-size: .875rem; }
+.event-poster-crop input { width: 100%; min-height: 32px; accent-color: #087482; }

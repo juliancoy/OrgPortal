@@ -42,6 +42,12 @@ function PosterEditor({ slug, title, revision = '' }: Props) {
   const [gallery, setGallery] = useState<{ id: string; label: string; alt?: string; source: string; url: string }[]>([])
   const [galleryStatus, setGalleryStatus] = useState('Loading gallery...')
   const [mediaId, setMediaId] = useState('')
+  const [zoom, setZoom] = useState(1)
+  const [offsetX, setOffsetX] = useState(0)
+  const [offsetY, setOffsetY] = useState(0)
+  const imageBackground = ['gallery', 'city', 'lifetech'].includes(background)
+  const crop = { zoom: String(zoom), offsetX: String(offsetX), offsetY: String(offsetY) }
+  useEffect(() => { setZoom(1); setOffsetX(0); setOffsetY(0) }, [slug, background, mediaId])
   const [galleryRetry, setGalleryRetry] = useState(0)
   useEffect(() => {
     const abort = new AbortController()
@@ -61,7 +67,7 @@ function PosterEditor({ slug, title, revision = '' }: Props) {
   const [poster, setPoster] = useState<{ url: string; blob: Blob; key: string } | null>(null)
   const [error, setError] = useState('')
   const [exporting, setExporting] = useState(false)
-  const key = JSON.stringify([slug, format, theme, background, selectedMediaId, revision, retry])
+  const key = JSON.stringify([slug, format, theme, background, selectedMediaId, revision, retry, zoom, offsetX, offsetY])
   const ready = poster?.key === key ? poster : null
   useEffect(() => {
     if (background === 'gallery' && !selectedMediaId) { setPoster(null); setError(''); return }
@@ -69,8 +75,8 @@ function PosterEditor({ slug, title, revision = '' }: Props) {
     let url: string | undefined
     const timeout = window.setTimeout(() => { setError('Poster request timed out. Try again.'); abort.abort() }, 30000)
     setPoster(null); setError('')
-    const query = new URLSearchParams({ format, theme, background, version: '5', revision, mediaId: background === 'gallery' ? selectedMediaId : '' })
-    fetch(`/api/org/api/network/events/public/${encodeURIComponent(slug)}/flyer.svg?${query}`, { signal: abort.signal, cache: 'no-cache' })
+    const query = new URLSearchParams({ format, theme, background, version: '6', ...crop, revision, mediaId: background === 'gallery' ? selectedMediaId : '' })
+    const debounce = window.setTimeout(() => { fetch(`/api/org/api/network/events/public/${encodeURIComponent(slug)}/flyer.svg?${query}`, { signal: abort.signal, cache: 'no-cache' })
       .then(async response => {
         if (!response.ok || !response.headers.get('content-type')?.includes('image/svg+xml')) throw new Error('Poster unavailable. Try again.')
         const blob = await response.blob()
@@ -80,8 +86,9 @@ function PosterEditor({ slug, title, revision = '' }: Props) {
       })
       .catch(() => { if (!abort.signal.aborted) setError('Poster unavailable. Try again.') })
       .finally(() => window.clearTimeout(timeout))
-    return () => { window.clearTimeout(timeout); abort.abort(); if (url) URL.revokeObjectURL(url) }
-  }, [slug, format, theme, background, selectedMediaId, revision, retry, key])
+    }, 250)
+    return () => { window.clearTimeout(debounce); window.clearTimeout(timeout); abort.abort(); if (url) URL.revokeObjectURL(url) }
+  }, [slug, format, theme, background, selectedMediaId, revision, retry, key, zoom, offsetX, offsetY])
 
   function download(blob: Blob, extension: string, backgroundOnly = false) {
     const url = URL.createObjectURL(blob)
@@ -97,7 +104,7 @@ function PosterEditor({ slug, title, revision = '' }: Props) {
       const image = new Image()
       let backgroundUrl: string | undefined
       if (backgroundOnly) {
-        const query = new URLSearchParams({ format, theme, background, backgroundOnly: 'true', version: '3' })
+        const query = new URLSearchParams({ format, theme, background, backgroundOnly: 'true', version: '6', ...crop })
         const response = await fetch(`/api/org/api/network/events/public/${encodeURIComponent(slug)}/flyer.svg?${query}`, { signal: AbortSignal.timeout(30000) })
         if (!response.ok || !response.headers.get('content-type')?.includes('image/svg+xml')) throw new Error()
         backgroundUrl = URL.createObjectURL(await response.blob())
@@ -160,6 +167,13 @@ function PosterEditor({ slug, title, revision = '' }: Props) {
         <span>{item.label || `Image ${index + 1}`}<small style={{ display: 'block' }}>{item.source}</small></span>
       </button>)}
     </div>}
+    {imageBackground && (background !== 'gallery' || selectedMediaId) && <fieldset className="event-poster-crop" disabled={exporting}>
+      <legend>Adjust background image</legend>
+      <label>Zoom: {Math.round(zoom * 100)}%<input type="range" min="1" max="3" step="0.05" value={zoom} onChange={event => setZoom(Number(event.target.value))}/></label>
+      <label>Horizontal position: {offsetX}<input type="range" min="-100" max="100" step="1" value={offsetX} onChange={event => setOffsetX(Number(event.target.value))}/></label>
+      <label>Vertical position: {offsetY}<input type="range" min="-100" max="100" step="1" value={offsetY} onChange={event => setOffsetY(Number(event.target.value))}/></label>
+      <button type="button" onClick={() => { setZoom(1); setOffsetX(0); setOffsetY(0) }}>Reset image</button>
+    </fieldset>}
     {error && <div role="alert" className="event-poster-error">{error}<button type="button" title="Retry poster" onClick={() => setRetry(value => value + 1)}><RefreshCw size={18} aria-hidden="true"/>Retry</button></div>}
     <div className={`event-poster-preview event-poster-preview-${format}`} aria-busy={!ready && !error && (background !== 'gallery' || Boolean(selectedMediaId))}>
       {ready ? <img src={ready.url} alt={`${title}, ${formats[format].label}, ${theme}, ${backgrounds[background]} poster`} onError={() => { setPoster(null); setError('Poster preview failed. Try again.') }}/> : <span role="status">{error ? 'Preview unavailable' : background === 'gallery' && !selectedMediaId ? 'Select a gallery image to preview your poster.' : 'Generating poster...'}</span>}
