@@ -15,7 +15,7 @@ of production data, creation of identity mappings, or bypassing preview/approval
 | Production log retention | Workers Logs has a provider maximum of 7 days; both backend Workers have no Logpush or tail exports; query redaction is enabled in source | Verify redaction on deployment; re-audit any future export destination |
 | Backup retention | Actual recovery windows and exports not verified | Inventory D1 recovery, object versions, snapshots and exports; record actual windows and resolve gaps against the 30-day target |
 | Periodic retention enforcement | OrgPortal cleanup uses its existing minute cron; PIdP uses a five-minute cron/Python loop | Watch count=500 backlog signals; manual account/content and exception review remains necessary |
-| Event company votes | `companyVotes.ts` exposes only public totals and the authenticated account's own votes; clearing deletes the row. `retention.ts` removes expired records in batches of 500. Unit tests verify isolation, deletion and expiry boundaries | Deploy migration 0080 and verify cron before advertising production cleanup; account deletion must include this store |
+| Event company votes | `companyVotes.ts` exposes public totals and the authenticated account's own votes. `profileFavoriteCompanies.ts` additionally lists unexpired favorites only for the owner or on an enabled public profile after owner opt-in; it excludes up/down votes and deduplicates companies. Clearing deletes the row. Sharing preferences cascade with contact-profile deletion and are excluded from public replicas and immutable history. `retention.ts` removes expired records in batches of 500. Unit tests verify isolation, deletion and expiry boundaries | Deploy migration 0080 and verify cron before advertising production cleanup; account deletion must include this store |
 | Public website policy | Public `/api/org/privacy`, `/api/org/support`, `/api/org/terms` routes are generated from repository policy documents | Verify deployed content and listing URLs; regeneration is part of the backend build |
 
 ## Inventory and monthly review
@@ -133,3 +133,30 @@ Cloudflare evidence: https://developers.cloudflare.com/workers/observability/log
 (maximum seven-day built-in log retention at the October 7 review). Account-level
 Logpush job inventory was empty; both backend Workers had no tail consumers.
 This evidence does not cover independent copies outside this Cloudflare account.
+
+## Organization follows and event notifications
+
+Follows are private account preferences, separate from memberships and permissions.
+The preference persists while following, and Unfollow physically removes that
+account's row. The Following feed derives public upcoming events from current
+preferences. Newly inserted public events enqueue bounded in-app notification
+work for existing followers; following does not create a historic notification backlog.
+Completed work is removed immediately, undelivered work expires after seven days,
+and organization-event notifications expire 90 days after creation. The minute
+retention job removes at most 500 eligible rows per table per run.
+
+Neither follow preferences, notification jobs nor organization-event notices enter
+public organization snapshots or the immutable change journal. Other notification
+categories retain their existing journal behavior. In-app delivery uses the
+existing notification inbox; this feature sends no email or browser push.
+
+For verified account deletion, inventory and delete `organization_follows` and
+`user_notifications` by the canonical `user_id`, using parameterized bounded
+batches and the existing deletion ledger. Jobs retain only the last recipient ID
+as a pagination cursor, for at most seven days. Reset matching `last_user_id`
+cursors to the empty string during erasure; deterministic notification IDs make
+replayed pages inert. Delivery rechecks live follows, so deleted preferences
+cannot generate new notices. Organization and event deletion cascade their related work.
+Include these stores in backup inventories and reapply the account erasure ledger
+before restoring any backup; deletion from independent exports or old backups
+requires the existing operator process. Do not infer ownership from email.

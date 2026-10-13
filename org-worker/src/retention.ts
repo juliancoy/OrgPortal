@@ -9,6 +9,8 @@ export async function runRetention(db: D1Database, now = Date.now(), dryRun = fa
     ['private_newsletter_previews', 'expires_at < ?', new Date(cutoff).toISOString()],
     ['local_newsletter_previews', 'expires_at < ?', new Date(cutoff).toISOString()],
     ['event_company_favorites', 'expires_at < ?', new Date(cutoff).toISOString()],
+    ['organization_follow_event_jobs', 'expires_at < ?', new Date(now).toISOString()],
+    ['user_notifications', "type = 'organization_event' AND created_at < ?", new Date(now - 90 * 86400_000).toISOString()],
     ['event_company_votes', 'expires_at < ?', new Date(cutoff).toISOString()],
   ];
   const counts: Record<string, number> = {};

@@ -17,6 +17,7 @@ export type NetworkUser = {
   connection_status?: 'self' | 'none' | 'pending_sent' | 'pending_received' | 'connected' | 'declined'
 }
 
+// Shared with organization cards; the People page fetches people only.
 export type PublicOrganization = {
   id: string
   name: string
@@ -40,7 +41,6 @@ type DirectoryRequest = {
 
 export type DirectoryResult = {
   users: NetworkUser[]
-  organizations: PublicOrganization[]
   status: string
 }
 
@@ -68,29 +68,17 @@ export async function loadPeopleDirectory({
     sort: 'recent',
   })
   if (query.trim()) params.set('q', query.trim())
-  const orgParams = new URLSearchParams(params)
-  orgParams.set('sort', 'popular')
 
   const userPath = token ? '/api/network/users' : '/api/network/users/public'
   const userOptions: RequestInit = token
     ? { headers: { Authorization: `Bearer ${token}` }, signal }
     : { signal }
 
-  const [userResult, organizationResult] = await Promise.allSettled([
-    fetchRows<NetworkUser>(fetcher, orgUrl(`${userPath}?${params.toString()}`), userOptions),
-    fetchRows<PublicOrganization>(fetcher, orgUrl(`/api/network/orgs/public?${orgParams.toString()}`), { signal }),
-  ])
-
-  const users = userResult.status === 'fulfilled' ? uniqueAccounts(userResult.value) : []
-  const organizations = organizationResult.status === 'fulfilled' ? organizationResult.value : []
-  const status =
-    userResult.status === 'rejected' && organizationResult.status === 'rejected'
-      ? 'Directory is temporarily unavailable.'
-      : userResult.status === 'rejected'
-        ? 'People are temporarily unavailable.'
-        : organizationResult.status === 'rejected'
-          ? 'Organizations are temporarily unavailable.'
-          : ''
-
-  return { users, organizations, status }
+  try {
+    const users = uniqueAccounts(await fetchRows<NetworkUser>(fetcher, orgUrl(`${userPath}?${params.toString()}`), userOptions))
+    return { users, status: '' }
+  } catch (error) {
+    if (signal.aborted) throw error
+    return { users: [], status: 'People are temporarily unavailable.' }
+  }
 }

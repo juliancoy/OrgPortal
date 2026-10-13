@@ -2255,3 +2255,47 @@ test('event creation preserves an explicit organization ID without a source URL'
   assert.equal(response.status, 200);
   assert.equal(db.events[0].host_org_id, 'org-lifetech');
 });
+
+test('global search uses public fuzzy candidates, hides private profiles, and rejects an invalid ranking identity', async () => {
+  const db = new FakeD1();
+  db.organizations.push({id:'org-fuzzy',name:'Code Collective',slug:'code-collective',tags:'[]'});
+  db.contacts.push({id:'public-contact',user_id:'public-user',user_name:'Code Person',slug:'public-person',enabled:1,links:'[]'},
+    {id:'private-contact',user_id:'private-user',user_name:'Code Person',slug:'private-person',enabled:0,links:'[]'});
+  const ctx = {waitUntil() {},passThroughOnException() {},props:{}} as unknown as ExecutionContext;
+  const response = await app.fetch(new Request('https://org.example.test/api/network/search?q=cdo&limit=5'),env(db),ctx);
+  assert.equal(response.status,200);
+  assert.equal(response.headers.get('cache-control'),'no-store');
+  assert.equal(response.headers.get('vary'),'Authorization');
+  const result = await response.json() as {orgs:{id:string}[];users:{user_id:string}[];personalized:boolean};
+  assert.deepEqual(result.orgs.map(row=>row.id),['org-fuzzy']);
+  assert.deepEqual(result.users.map(row=>row.user_id),['public-user']);
+  assert.equal(result.personalized,false);
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response('{}',{status:401});
+  try {
+    const invalid = await app.fetch(new Request('https://org.example.test/api/network/search?q=cdo&user_id=public-user',{
+      headers:{Authorization:'Bearer invalid-test-token'},
+    }),env(db),ctx);
+    assert.equal(invalid.status,401);
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+
+test("signed-in and public People directories exclude disabled profiles, including chat robots", async () => {
+  const db = new FakeD1();
+  for (const [id,name,enabled] of [['person','Visible Person',1],['robot','Code Collective Chat Robot A',0],['private','Private Person',0]] as const) {
+    db.contacts.push({id,user_id:id,user_name:name,user_email:`${id}@example.test`,slug:id,enabled,links:'[]',created_at:'2026-10-09T00:00:00Z',updated_at:'2026-10-09T00:00:00Z'});
+  }
+  const publicResponse = await app.request('https://org.example.test/api/network/users/public',{},env(db));
+  assert.equal(publicResponse.status,200);
+  assert.deepEqual((await publicResponse.json() as Row[]).map(row=>row.user_id),['person']);
+  await withPidpUser({id:'viewer',email:'viewer@example.test'},async () => {
+    const options = {headers:{authorization:'Bearer viewer-token'}};
+    const response = await app.request('https://org.example.test/api/network/users',options,env(db));
+    assert.equal(response.status,200);
+    assert.deepEqual((await response.json() as Row[]).map(row=>row.user_id),['person']);
+    const search = await app.request('https://org.example.test/api/network/users?q=robot',options,env(db));
+    assert.equal(search.status,200);
+    assert.deepEqual(await search.json(),[]);
+  });
+});

@@ -29,6 +29,18 @@ and any connected provider manage their own copies under their own policies.
 Removing an OrgPortal record does not delete an existing ChatGPT conversation,
 a recipient's copy, an exported file or a third-party calendar event.
 
+Favorite companies are derived from unexpired favorites ballots and shared only
+when the account owner enables sharing and their profile is public. Clearing a
+favorite removes it from the list unless it is also selected in another ballot.
+The sharing preference is retained with the contact profile and deleted with it;
+private preferences and ballot choices are excluded from public replication and
+immutable history. No separate copy of favorite history is retained.
+
+Signed-in search ranks public results using existing memberships, accepted
+connections, event registrations, and unexpired company favorites. These signals
+are not included in search responses or copied into a new store. Guest search
+uses text relevance. Personalized responses are not publicly cached.
+
 ## Retention schedule
 
 These are adopted operational limits and review deadlines, not a claim that
@@ -44,7 +56,8 @@ retaining data indefinitely. Shorter configured retention takes precedence.
 | Active account and private service data | While needed to provide the account; review accounts after 24 months of inactivity, notify before closure, and allow 30 days to respond | Service continuity without indefinite unattended retention |
 | Account data approved for deletion | Target removal from live systems within 30 days of a verified request; explain any delay or exception before that deadline | Timely removal and accountable handling |
 | Public organization, event and governance records | Review annually and on deletion requests; remove unnecessary personal identifiers, retain shared records only for a documented continuing organizational purpose | Preserve shared history without blanket permanent personal-data retention |
-| Event company votes | Expire 90 days after the ballot closes; exclude expired votes from totals immediately and remove personal records within 24 hours of expiry through bounded cleanup; voters can clear each vote at any time | Per-company up/down preferences or a bounded favorites ballot per account; expose totals without individual votes |
+| Event company votes | Expire 90 days after the ballot closes; exclude expired votes from totals immediately and remove personal records within 24 hours of expiry through bounded cleanup; voters can clear each vote at any time | Per-company up/down preferences or a bounded favorites ballot per account; expose totals; owners can opt in to listing their selected favorite companies on an enabled public profile |
+| Organization follows and event notices | Follow preferences last until unfollow or account deletion; notification work expires after seven days or delivery; organization-event notices expire 90 days after creation | Private personalized event feed and requested in-app notifications |
 | Routine application and request logs | Maximum 30 days | Diagnose faults and availability |
 | Security incident evidence | Maximum 90 days unless an active documented investigation requires longer; review extensions every 30 days | Investigate abuse and protect accounts |
 | Expired or consumed temporary OAuth state and previews | Remove within 24 hours after expiry/consumption; protocol validity remains much shorter and unchanged | Finish authorization and prevent replay |
@@ -87,3 +100,30 @@ requirements or a claim of worldwide compliance. The design follows purpose
 limitation, data minimization, periodic review and accountable erasure described
 in the [ICO storage limitation guidance](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/data-protection-principles/a-guide-to-the-data-protection-principles/storage-limitation/).
 Changes to actual behavior, published notices and these documents must stay in sync.
+
+## Organization follows and event notifications
+
+Follows are private account preferences, separate from memberships and permissions.
+The preference persists while following, and Unfollow physically removes that
+account's row. The Following feed derives public upcoming events from current
+preferences. Newly inserted public events enqueue bounded in-app notification
+work for existing followers; following does not create a historic notification backlog.
+Completed work is removed immediately, undelivered work expires after seven days,
+and organization-event notifications expire 90 days after creation. The minute
+retention job removes at most 500 eligible rows per table per run.
+
+Neither follow preferences, notification jobs nor organization-event notices enter
+public organization snapshots or the immutable change journal. Other notification
+categories retain their existing journal behavior. In-app delivery uses the
+existing notification inbox; this feature sends no email or browser push.
+
+For verified account deletion, inventory and delete `organization_follows` and
+`user_notifications` by the canonical `user_id`, using parameterized bounded
+batches and the existing deletion ledger. Jobs retain only the last recipient ID
+as a pagination cursor, for at most seven days. Reset matching `last_user_id`
+cursors to the empty string during erasure; deterministic notification IDs make
+replayed pages inert. Delivery rechecks live follows, so deleted preferences
+cannot generate new notices. Organization and event deletion cascade their related work.
+Include these stores in backup inventories and reapply the account erasure ledger
+before restoring any backup; deletion from independent exports or old backups
+requires the existing operator process. Do not infer ownership from email.

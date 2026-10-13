@@ -94,6 +94,9 @@ type PublicEvent = {
   image_url?: string | null
 }
 
+type FavoriteCompany = { id: string; name: string; slug: string; image_url?: string | null; description?: string | null }
+type FavoriteCompanies = { public: boolean; companies: FavoriteCompany[] }
+
 type PublicContactPageProps = {
   self?: boolean
 }
@@ -104,6 +107,9 @@ export function PublicContactPage({ self = false }: PublicContactPageProps = {})
   const navigate = useNavigate()
   const [page, setPage] = useState<ContactPage | null>(null)
   const [events, setEvents] = useState<PublicEvent[]>([])
+  const [favorites, setFavorites] = useState<FavoriteCompanies | null>(null)
+  const [favoriteMessage, setFavoriteMessage] = useState('')
+  const [savingFavorites, setSavingFavorites] = useState(false)
   const [status, setStatus] = useState<string>('Loading…')
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
   const [messageDraft, setMessageDraft] = useState('')
@@ -127,6 +133,9 @@ export function PublicContactPage({ self = false }: PublicContactPageProps = {})
       return
     }
 
+    let active = true
+    setFavorites(null)
+    setFavoriteMessage('')
     const headers = token ? { Authorization: `Bearer ${token}` } : undefined
     const loadPage = self
       ? fetch(orgUrl('/api/network/contact/me'), { headers }).then(async (resp) => {
@@ -147,9 +156,16 @@ export function PublicContactPage({ self = false }: PublicContactPageProps = {})
         const eventRows = await fetch(orgUrl(`/api/network/users/public/${encodeURIComponent(data.slug)}/events?upcoming_only=true&participation=registered&limit=60`))
           .then(async (resp) => (resp.ok ? ((await resp.json()) as PublicEvent[]) : []))
           .catch(() => [])
-        return [data, eventRows] as const
+        const favoriteRows = await fetch(orgUrl(`/api/network/users/public/${encodeURIComponent(data.slug)}/favorite-companies`), { headers })
+          .then(async resp => {
+            if (!resp.ok) throw new Error('Favorite companies could not be loaded.')
+            return resp.json() as Promise<FavoriteCompanies>
+          }).catch(() => null)
+        return [data, eventRows, favoriteRows] as const
       })
-      .then(([data, eventRows]) => {
+      .then(([data, eventRows, favoriteRows]) => {
+        if (!active) return
+        setFavorites(favoriteRows)
         setPage(data)
         setEvents(eventRows)
         setStatus('')
@@ -167,6 +183,7 @@ export function PublicContactPage({ self = false }: PublicContactPageProps = {})
         })
       })
       .catch((err) => {
+        if (!active) return
         setPage(null)
         setEvents([])
         setStatus(err instanceof Error ? err.message : 'Public profile unavailable')
@@ -178,6 +195,7 @@ export function PublicContactPage({ self = false }: PublicContactPageProps = {})
           robots: 'noindex, nofollow, noarchive, nosnippet, noimageindex',
         })
       })
+    return () => { active = false }
   }, [self, slug, token])
 
   const qrSvg = useMemo(() => {
@@ -253,6 +271,22 @@ export function PublicContactPage({ self = false }: PublicContactPageProps = {})
     if (!response.ok) throw new Error(await responseError(response, 'Could not save this field.'))
     const updated = await response.json() as ContactPage
     setPage(current => current ? { ...current, [field]: updated[field] } : current)
+  }
+
+  async function saveFavoriteSharing(shared: boolean) {
+    if (!isOwner || !token) return
+    setSavingFavorites(true)
+    setFavoriteMessage('')
+    try {
+      const response = await fetch(orgUrl('/api/network/contact/me/favorite-companies'), {
+        method: 'PUT', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ public: shared }),
+      })
+      if (!response.ok) throw new Error(await responseError(response, 'Could not save favorite sharing.'))
+      setFavorites(await response.json() as FavoriteCompanies)
+      setFavoriteMessage(shared ? 'Favorite companies will appear when your profile is public.' : 'Favorite companies are private.')
+    } catch (error) { setFavoriteMessage(error instanceof Error ? error.message : 'Could not save favorite sharing.') }
+    finally { setSavingFavorites(false) }
   }
 
   async function saveName(value: string) {
@@ -460,6 +494,32 @@ export function PublicContactPage({ self = false }: PublicContactPageProps = {})
 
       <ConferenceNametag name={page.user_name} avatarUrl={page.photo_url || ''} publicPageUrl={shareUrl} />
       {isOwner && <UserProfilePage detailsOnly embedded />}
+
+      {(isOwner || Boolean(page.enabled && favorites?.public)) && <section className="public-id-events" aria-label="Favorite Companies">
+        <h2>Favorite Companies</h2>
+        {isOwner && <>
+          <label><input type="checkbox" checked={favorites?.public ?? false} disabled={savingFavorites || !favorites}
+            onChange={event => void saveFavoriteSharing(event.target.checked)} /> Show on my public page</label>
+          <p className="muted">Companies selected in favorites ballots. Choices remain available for 90 days after voting closes.</p>
+          {!page.enabled && favorites?.public && <p className="muted">Make your profile public to share this list.</p>}
+        </>}
+        {favorites ? favorites.companies.length ? <ul className="favorite-company-grid">{favorites.companies.map(company =>
+          <li key={company.id}>
+            <Link className="portal-card favorite-company-card" to={`/orgs/${encodeURIComponent(company.slug)}`}>
+              <div className="favorite-company-logo">
+                <span aria-hidden="true">{company.name.trim().slice(0, 1).toUpperCase()}</span>
+                {company.image_url && <img src={company.image_url} alt={`${company.name} logo`} loading="lazy"
+                  onError={event => { event.currentTarget.style.display = 'none' }} />}
+              </div>
+              <div className="favorite-company-copy">
+                <h3>{company.name}</h3>
+                {company.description && <p>{company.description}</p>}
+              </div>
+            </Link>
+          </li>
+        )}</ul> : <p>No favorite companies yet.</p> : <p>Favorite companies could not be loaded.</p>}
+        {favoriteMessage && <p role="status">{favoriteMessage}</p>}
+      </section>}
 
       {events.length > 0 ? (
         <section className="public-id-events" aria-label="Registered upcoming events">

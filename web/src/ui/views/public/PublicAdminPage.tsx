@@ -1,3 +1,4 @@
+import { OrganizationFollowButton } from '../../components/OrganizationFollowButton'
 import { organizationTenantRedirect } from '../../../../organizationTenantRedirect.mjs'
 import { groupOrganizationEvents } from './organizationEvents'
 import { EmbeddedOrganizationChat } from '../../components/EmbeddedOrganizationChat'
@@ -956,6 +957,7 @@ export function PublicAdminPage() {
               {org.description ? <p>{org.description}</p> : null}
               {isOrganizerView && <button type="button" className="btn-secondary" onClick={() => openOrganizationEditor('org-description')}>Edit description</button>}
               <div className="portal-org-actions" aria-label={`${org.name} actions`}>
+                <OrganizationFollowButton orgId={org.id} slug={org.slug} />
                 {token ? (
                   <Link className="btn-secondary" to={`/chat?start=group&org=${encodeURIComponent(org.slug)}`}>
                     Message Group

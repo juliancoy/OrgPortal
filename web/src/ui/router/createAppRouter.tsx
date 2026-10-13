@@ -416,6 +416,7 @@ export function createAppRouter() {
           { path: '/availability', element: <AvailabilityPage /> },
           { path: '/onboarding', element: <OnboardingPage /> },
           { path: '/availability/:id', element: <AvailabilityPage /> },
+          { path: '/following', element: <AuthenticatedRoute><PublicEventsPage sourcePath="/api/network/following/events?limit=200" heading="Following" description="Upcoming events from organizations you follow." emptyMessage="Follow an organization to see its events here." requiresAuth /></AuthenticatedRoute> },
           { path: '/events', element: <PublicEventsRoute /> },
           { path: '/events/:slug', element: <PublicEventPage /> },
           { path: '/orgs', element: <PublicOrganizationsPage /> },

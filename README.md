@@ -1,5 +1,12 @@
 # OrgPortal
 
+Shared-account migration: OrgPortal and all tenants use primary PIdP credentials
+and the central sign-in at `id.orgportal.cc`. Legacy member subjects remain aliases;
+separate community login screens are retired. See
+[shared identity operations](../PIdP/docs/shared-orgportal-identity.md).
+The older architecture notes below describe compatibility namespaces.
+
+
 ## Privacy, support and data lifecycle
 
 Publisher: Julian Coy. Support and deletion requests: **julian@codecollective.us**.

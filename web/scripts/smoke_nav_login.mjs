@@ -55,7 +55,7 @@ try {
       throw new Error(`${url}: unexpected login href ${result.href}`);
     }
     const loginHref = new URL(result.href);
-    if (loginHref.searchParams.get('app') !== 'code-collective') throw new Error(`${url}: missing application context`);
+    if (loginHref.searchParams.get('app') !== 'orgportal') throw new Error(`${url}: missing application context`);
     const loginNext = loginHref.searchParams.get("next") || "";
     if (!loginNext.startsWith(expectedCallback)) {
       throw new Error(`${url}: login next should land in portal ID, got ${loginNext}`);
@@ -93,7 +93,7 @@ try {
       password: modalResult.passwordHref,
     })) {
       const parsed = new URL(href);
-      if (parsed.searchParams.get('app') !== 'code-collective') throw new Error(`${url}: ${label} missing application context`);
+      if (parsed.searchParams.get('app') !== 'orgportal') throw new Error(`${url}: ${label} missing application context`);
       const expectedProvider = label === 'password' ? null : label;
       if (parsed.searchParams.get('provider') !== expectedProvider) throw new Error(`${url}: ${label} incorrect provider`);
       const next = parsed.searchParams.get("next") || "";

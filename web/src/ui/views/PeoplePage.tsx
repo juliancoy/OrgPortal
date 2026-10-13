@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
-import { OrgImage } from '../components/media/OrgImage'
 import { setSeoMeta } from '../utils/seo'
 import { getActivePortalProfileConfig } from '../../config/portalFeatures'
-import { loadPeopleDirectory, type NetworkUser, type PublicOrganization } from './peopleDirectory'
+import { loadPeopleDirectory, type NetworkUser } from './peopleDirectory'
 
 const ORG_API_BASE = '/api/org'
 
@@ -18,15 +17,14 @@ export function PeoplePage() {
   const { token, user } = useAuth()
   const [query, setQuery] = useState('')
   const [users, setUsers] = useState<NetworkUser[]>([])
-  const [organizations, setOrganizations] = useState<PublicOrganization[]>([])
   const [status, setStatus] = useState('Loading directory...')
   const [actionStatus, setActionStatus] = useState('')
   const [connecting, setConnecting] = useState<string[]>([])
 
   useEffect(() => {
     setSeoMeta({
-      title: `People & Organizations • ${portalProfile.portalTitle}`,
-      description: 'Browse public people and organization profiles across Org Portal.',
+      title: `People • ${portalProfile.portalTitle}`,
+      description: 'Browse people profiles across Org Portal.',
       canonicalUrl: `${window.location.origin}/people`,
       type: 'website',
     })
@@ -40,12 +38,10 @@ export function PeoplePage() {
         const result = await loadPeopleDirectory({ token, query, signal: controller.signal })
         if (controller.signal.aborted) return
         setUsers(result.users)
-        setOrganizations(result.organizations)
         setStatus(result.status)
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') return
         setUsers([])
-        setOrganizations([])
         setStatus(error instanceof Error ? error.message : 'Unable to load directory')
       }
     }, 180)
@@ -56,13 +52,7 @@ export function PeoplePage() {
     }
   }, [token, query])
 
-  const totalLabel = useMemo(() => {
-    const peopleLabel = `${users.length.toLocaleString()} ${users.length === 1 ? 'person' : 'people'}`
-    const orgLabel = `${organizations.length.toLocaleString()} ${
-      organizations.length === 1 ? 'organization' : 'organizations'
-    }`
-    return `${peopleLabel}, ${orgLabel}`
-  }, [organizations.length, users.length])
+  const totalLabel = `${users.length.toLocaleString()} ${users.length === 1 ? 'person' : 'people'}`
 
   async function requestConnection(person: NetworkUser) {
     if (connecting.includes(person.user_id)) return
@@ -100,21 +90,21 @@ export function PeoplePage() {
     <section className="panel" style={{ display: 'grid', gap: '1rem' }}>
       <h1 style={{ marginTop: 0 }}>People</h1>
       <p className="muted" style={{ marginTop: 0 }}>
-        Search public people and organization profiles. {status ? status : `Showing ${totalLabel}.`}
+        Search people profiles. {status ? status : `Showing ${totalLabel}.`}
       </p>
 
       <label style={{ display: 'grid', gap: '0.35rem', maxWidth: 420 }}>
-        <span className="muted">Filter directory</span>
+        <span className="muted">Filter people</span>
         <input
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search by name or organization"
-          aria-label="Search people and organizations by name"
+          placeholder="Search by name"
+          aria-label="Search people by name"
         />
       </label>
 
-      {!status && users.length === 0 && organizations.length === 0 ? <p className="muted">No profiles found.</p> : null}
+      {!status && users.length === 0 ? <p className="muted">No profiles found.</p> : null}
       {actionStatus ? (
         <p className="muted" role="status" style={{ margin: 0 }}>
           {actionStatus}
@@ -127,79 +117,34 @@ export function PeoplePage() {
             <h2 id="people-directory-heading" style={{ margin: 0, fontSize: '1.05rem' }}>
               People
             </h2>
-            {users.map((person) => {
+            <ul className="people-directory-grid">{users.map((person) => {
               const isSelf = Boolean(user?.id && user.id === person.user_id)
               const contactSlug = person.contact_slug || person.slug
               const contactEnabled = person.contact_enabled ?? person.enabled ?? true
               const profilePath = contactSlug && (contactEnabled || isSelf)
                 ? `/users/${encodeURIComponent(contactSlug)}`
-                : isSelf
-                  ? '/profile'
-                  : null
-              const dateLabel = person.updated_at || person.created_at
-
-              return (
-                <article
-                  key={person.user_id}
-                  className="portal-card"
-                  style={{ display: 'flex', gap: '0.85rem', alignItems: 'flex-start', flexWrap: 'wrap' }}
-                >
-                  {person.photo_url ? (
-                    <img
-                      src={person.photo_url}
-                      alt={person.user_name}
-                      style={{
-                        width: 76,
-                        height: 76,
-                        objectFit: 'cover',
-                        borderRadius: 12,
-                        border: '1px solid var(--border)',
-                        flex: '0 0 auto',
-                      }}
-                    />
-                  ) : (
-                    <span
-                      aria-hidden="true"
-                      style={{
-                        width: 76,
-                        height: 76,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        borderRadius: 12,
-                        border: '1px solid var(--border)',
-                        background: 'rgba(0,42,97,0.25)',
-                        fontWeight: 700,
-                        fontSize: '1.4rem',
-                        flex: '0 0 auto',
-                      }}
-                    >
-                      {person.user_name.slice(0, 1).toUpperCase()}
-                    </span>
-                  )}
-                  <div style={{ display: 'grid', gap: '0.42rem', minWidth: 0, flex: '1 1 360px' }}>
-                    <h3 style={{ margin: 0, fontSize: '1.05rem' }}>
-                      {profilePath ? (
-                        <Link to={profilePath} style={{ textDecoration: 'none' }}>
-                          {person.user_name}
-                        </Link>
-                      ) : (
-                        person.user_name
-                      )}
-                    </h3>
+                : isSelf ? '/profile' : null
+              const summary = <>
+                <div className="people-directory-photo">
+                  <span aria-hidden="true">{person.user_name.trim().slice(0, 1).toUpperCase()}</span>
+                  {person.photo_url && <img src={person.photo_url} alt={person.user_name} loading="lazy"
+                    onError={event => { event.currentTarget.style.display = 'none' }} />}
+                </div>
+                <div className="people-directory-copy">
+                  <h3>{person.user_name}</h3>
+                  {person.headline && <p>{person.headline}</p>}
+                  {!profilePath && <p>No public profile yet</p>}
+                </div>
+              </>
+              return <li key={person.user_id}>
+                <article className="portal-card people-directory-card">
+                  {profilePath ? <Link className="people-directory-summary" to={profilePath}>{summary}</Link>
+                    : <div className="people-directory-summary">{summary}</div>}
+                  <details className="people-directory-details">
+                    <summary>Actions and details<span className="sr-only"> for {person.user_name}</span></summary>
                     {users.filter(other => other.user_name.trim().toLowerCase() === person.user_name.trim().toLowerCase()).length > 1 && <small className="muted" style={{ overflowWrap: 'anywhere' }}>Account: {person.user_id}</small>}
-                    {person.headline ? <p style={{ margin: 0 }}>{person.headline}</p> : null}
-                    {dateLabel ? (
-                      <p className="muted" style={{ margin: 0 }}>
-                        {person.updated_at ? 'Updated' : 'Joined'} {new Date(dateLabel).toLocaleDateString()}
-                      </p>
-                    ) : null}
-                    {!profilePath ? <span className="muted">No public profile yet</span> : null}
                     <div className="people-directory-actions">
                       {!isSelf && token && <Link to={`/meetings/${encodeURIComponent(person.user_id)}`} className="btn-secondary">Schedule a meeting</Link>}
-                      {profilePath ? (
-                        <Link to={profilePath} className="btn-secondary">View public info</Link>
-                      ) : null}
                       {!isSelf && token ? (
                         <Link
                           to={`/chat?start=dm&userId=${encodeURIComponent(person.user_id)}&name=${encodeURIComponent(person.user_name)}`}
@@ -223,70 +168,14 @@ export function PeoplePage() {
                         </button>
                       )}
                     </div>
-                  </div>
+                  </details>
                 </article>
-              )
-            })}
+              </li>
+            })}</ul>
           </section>
         ) : null}
 
-        {organizations.length > 0 ? (
-          <section aria-labelledby="organizations-directory-heading" style={{ display: 'grid', gap: '0.9rem' }}>
-            <h2 id="organizations-directory-heading" style={{ margin: 0, fontSize: '1.05rem' }}>
-              Organizations
-            </h2>
-            {organizations.map((org) => (
-              <article
-                key={org.id}
-                className="portal-card"
-                style={{ display: 'flex', gap: '0.85rem', alignItems: 'flex-start', flexWrap: 'wrap' }}
-              >
-                <OrgImage
-                  src={org.image_url}
-                  alt={org.name}
-                  style={{
-                    width: 76,
-                    height: 76,
-                    objectFit: 'cover',
-                    borderRadius: 12,
-                    border: '1px solid var(--border)',
-                    flex: '0 0 auto',
-                  }}
-                />
-                <div style={{ display: 'grid', gap: '0.42rem', minWidth: 220, flex: '1 1 360px' }}>
-                  <h3 style={{ margin: 0, fontSize: '1.05rem' }}>
-                    <Link to={`/orgs/${encodeURIComponent(org.slug)}`} style={{ textDecoration: 'none' }}>
-                      {org.name}
-                    </Link>
-                  </h3>
-                  {org.description ? <p style={{ margin: 0, overflowWrap: 'anywhere' }}>{org.description}</p> : null}
-                  <p className="muted" style={{ margin: 0 }}>
-                    Organization
-                    {typeof org.membership_count === 'number' ? ` • Members: ${org.membership_count}` : ''}
-                    {typeof org.upcoming_events_count === 'number'
-                      ? ` • Upcoming events: ${org.upcoming_events_count}`
-                      : ''}
-                    {typeof org.feedback_count === 'number'
-                      ? ` • Feedback: ${org.feedback_count}`
-                      : ''}
-                  </p>
-                  {org.tags?.length ? (
-                    <p className="muted" style={{ margin: 0 }}>
-                      {org.tags.slice(0, 6).join(' • ')}
-                    </p>
-                  ) : null}
-                  <Link
-                    to={`/orgs/${encodeURIComponent(org.slug)}`}
-                    className="btn-primary"
-                    style={{ textDecoration: 'none', width: 'fit-content' }}
-                  >
-                    View public page
-                  </Link>
-                </div>
-              </article>
-            ))}
-          </section>
-        ) : null}
+
       </div>
     </section>
   )

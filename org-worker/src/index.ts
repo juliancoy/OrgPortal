@@ -1,3 +1,7 @@
+import { organizationFollowRoutes, dispatchFollowEventNotifications } from './organizationFollows';
+import { compareOrganizationActivity } from './organizationSearchActivity';
+import { personalizeSearch, type SearchResults } from './personalSearch';
+import { rankSearchResults } from './fuzzySearch';
 import { profileEvents } from './profileEvents';
 import policyPages from './generated/policyPages.json';
 import { runRetention } from './retention';
@@ -26,6 +30,7 @@ import { governanceDocumentRoutes, executeDocumentMotion, documentMotionDetail }
 import { photoTagRoutes } from './photoTags';
 import { venueVoteRoutes } from './venueVotes';
 import { companyVoteRoutes } from './companyVotes';
+import { profileFavoriteCompanies, setFavoriteCompaniesSharing } from './profileFavoriteCompanies';
 import { venueRankingRoutes } from './venueRankings';
 import { venueRoutes, eventVenues, setEventVenues, pastVenueEvents } from './venues';
 import { driveCarouselRoutes } from './driveCarousel';
@@ -637,97 +642,6 @@ function slugify(value: string) {
     .replace(/^-+|-+$/g, "")
     .slice(0, 80);
   return slug || "contact";
-}
-
-function normalizeSearchText(value: unknown) {
-  return String(value || "")
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim()
-    .replace(/\s+/g, " ");
-}
-
-function searchTokens(value: unknown) {
-  const normalized = normalizeSearchText(value);
-  return normalized ? normalized.split(" ") : [];
-}
-
-function fuzzyDistanceLimit(token: string) {
-  if (token.length <= 2) return 0;
-  if (token.length <= 4) return 1;
-  return 2;
-}
-
-function boundedLevenshtein(a: string, b: string, maxDistance: number) {
-  if (Math.abs(a.length - b.length) > maxDistance) return maxDistance + 1;
-  if (a === b) return 0;
-  let previous = Array.from({ length: b.length + 1 }, (_, index) => index);
-  for (let i = 1; i <= a.length; i += 1) {
-    const current = [i];
-    let rowMin = current[0];
-    for (let j = 1; j <= b.length; j += 1) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      const value = Math.min(
-        current[j - 1] + 1,
-        previous[j] + 1,
-        previous[j - 1] + cost,
-      );
-      current[j] = value;
-      rowMin = Math.min(rowMin, value);
-    }
-    if (rowMin > maxDistance) return maxDistance + 1;
-    previous = current;
-  }
-  return previous[b.length];
-}
-
-function scoreSearchToken(queryToken: string, fieldToken: string) {
-  if (!queryToken || !fieldToken) return 0;
-  if (fieldToken === queryToken) return 70;
-  if (fieldToken.startsWith(queryToken)) return 58;
-  if (fieldToken.includes(queryToken)) return 45;
-  const maxDistance = fuzzyDistanceLimit(queryToken);
-  if (!maxDistance) return 0;
-  const distance = boundedLevenshtein(queryToken, fieldToken, maxDistance);
-  if (distance <= maxDistance) return 35 - distance * 8 + Math.min(queryToken.length, 8);
-  return 0;
-}
-
-function scoreSearchCandidate(query: string, fields: Array<unknown>) {
-  const normalizedQuery = normalizeSearchText(query);
-  const queryTokens = searchTokens(normalizedQuery);
-  if (!normalizedQuery || !queryTokens.length) return 0;
-
-  const normalizedFields = fields.map(normalizeSearchText).filter(Boolean);
-  const fieldTokens = normalizedFields.flatMap((field) => field.split(" "));
-  let score = 0;
-
-  for (const field of normalizedFields) {
-    if (field === normalizedQuery) score = Math.max(score, 140);
-    else if (field.startsWith(normalizedQuery)) score = Math.max(score, 115);
-    else if (field.includes(normalizedQuery)) score = Math.max(score, 95);
-  }
-
-  for (const token of queryTokens) {
-    const best = fieldTokens.reduce((bestScore, fieldToken) => Math.max(bestScore, scoreSearchToken(token, fieldToken)), 0);
-    if (!best) return 0;
-    score += best;
-  }
-
-  return score;
-}
-
-function rankSearchResults<T>(rows: T[], query: string, fieldsForRow: (row: T) => Array<unknown>, limit: number) {
-  const q = query.trim();
-  if (!q) return rows.slice(0, limit);
-  return rows
-    .map((row, index) => ({ row, index, score: scoreSearchCandidate(q, fieldsForRow(row)) }))
-    .filter((item) => item.score > 0)
-    .sort((a, b) => b.score - a.score || a.index - b.index)
-    .slice(0, limit)
-    .map((item) => item.row);
 }
 
 function searchCandidateLimit(limit: number) {
@@ -2698,6 +2612,7 @@ app.route("/api/onboarding", onboardingRoutes(currentUser));
 app.route("/api/onboarding/settings", onboardingSettingsRoutes(currentUser));
 app.route("/api/identity-membership", identityMembershipRoutes(currentUser));
 app.route('/api/notifications/preferences', notificationPreferenceRoutes(currentUser));
+app.route('/api/network', organizationFollowRoutes(currentUser, mapEvent));
 app.route("/api/media/carousels", driveCarouselRoutes(currentUser));
 app.route("/api/photo-tags", photoTagRoutes(async (env,request)=>organizationActor(await currentUser(env,request),env)));
 
@@ -2799,11 +2714,11 @@ app.get("/api/network/notifications", async (c) => {
   const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "20", 10) || 20, 100));
   const rows = await c.env.DB.prepare(
     `SELECT * FROM user_notifications
-     WHERE user_id = ?
-     ORDER BY created_at DESC
+     WHERE user_id = ? AND (? = 0 OR (type = 'organization_event' AND status = 'unread'))
+     ORDER BY created_at DESC,id DESC
      LIMIT ?`,
   )
-    .bind(user.id, limit)
+    .bind(user.id, c.req.query('follow_events') === 'true' ? 1 : 0, limit)
     .all<NotificationRow>();
   return c.json((rows.results || []).map(mapNotification));
 });
@@ -3059,6 +2974,7 @@ async function networkUsers(env: Env, request: Request, query = "", limit = 500)
   const candidateLimit = q ? searchCandidateLimit(safeLimit) : safeLimit;
   const rows = await env.DB.prepare(
     `SELECT * FROM user_contact_pages
+     WHERE enabled = 1
      ORDER BY updated_at DESC
      LIMIT ?`,
   )
@@ -3130,6 +3046,27 @@ app.get("/api/network/replication/snapshot", async c => {
 });
 app.get("/api/network/replication/status", async c => { c.header("Cache-Control","no-store"); return c.json(await replicaStatus(c.env)); });
 
+app.get('/api/network/search', async c => {
+  c.header('Cache-Control','no-store');
+  c.header('Vary','Authorization');
+  const q = (c.req.query('q') || '').trim().slice(0,200);
+  const limit = Math.max(1,Math.min(Number.parseInt(c.req.query('limit') || '40',10) || 40,40));
+  const user = c.req.header('Authorization') ? await currentUser(c.env,c.req.raw) : null;
+  if (q.length < 2) return c.json({orgs:[],events:[],users:[],personalized:Boolean(user)});
+  const candidates = 160; // Same candidate pool for header suggestions and the full results page.
+  const publicPaths = ['/api/network/orgs/public','/api/network/events/public','/api/network/users/public'];
+  const responses = await Promise.all(publicPaths.map(path => {
+    const url = new URL(path,c.req.url);
+    url.search = new URLSearchParams({q,limit:String(candidates),upcoming_only:'true'}).toString();
+    const headers = new Headers(c.req.raw.headers);
+    headers.delete('Authorization');
+    return app.fetch(new Request(url,{headers}),c.env,c.executionCtx);
+  }));
+  if (responses.some(response=>!response.ok)) fail(503,'Search is temporarily unavailable.');
+  const [orgs,events,users] = await Promise.all(responses.map(response=>response.json())) as [SearchResults['orgs'],SearchResults['events'],SearchResults['users']];
+  const results = user ? await personalizeSearch(c.env.DB,user.id,q,{orgs,events,users}) : {orgs,events,users};
+  return c.json({orgs:results.orgs.slice(0,limit),events:results.events.slice(0,limit),users:results.users.slice(0,limit),personalized:Boolean(user)});
+});
 app.get("/api/network/orgs/public", async (c) => {
   const q = (c.req.query("q") || "").trim();
   const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "300", 10) || 300, 500));
@@ -3150,7 +3087,7 @@ app.get("/api/network/orgs/public", async (c) => {
   )
     .bind(...(q ? [] : [limit, offset]))
     .all<OrganizationRow & { upcoming_events_count: number }>();
-  const rankedRows = rankSearchResults(rows.results || [], q, (row) => [row.name, row.description, row.slug, row.tags, row.city], q ? limit + offset : limit).slice(q ? offset : 0);
+  const rankedRows = rankSearchResults(rows.results || [], q, (row) => [row.name, row.description, row.slug, row.tags, row.city], q ? limit + offset : limit, compareOrganizationActivity).slice(q ? offset : 0);
   return c.json(rankedRows.map((row) => mapOrganization(row, Number(row.upcoming_events_count || 0))));
 });
 
@@ -5374,6 +5311,19 @@ app.get('/api/network/users/by-id/:userId/profile', async c => {
   return c.redirect(`/users/${encodeURIComponent(row.slug)}`, 302);
 });
 app.get("/api/network/users/public/:slug", async (c) => c.json(await publicContact(c.env, c.req.raw, c.req.param("slug"))));
+app.get("/api/network/users/public/:slug/favorite-companies", async c => {
+  c.header('Cache-Control', 'no-store');
+  const contact = await publicContact(c.env, c.req.raw, c.req.param('slug'));
+  const owner = c.req.header('Authorization') ? (await currentUser(c.env, c.req.raw)).id === contact.user_id : false;
+  return c.json(await profileFavoriteCompanies(c.env.DB, contact.user_id, contact.enabled, owner));
+});
+app.put("/api/network/contact/me/favorite-companies", async c => {
+  c.header('Cache-Control', 'no-store');
+  const user = await currentUser(c.env, c.req.raw);
+  const contact = await contactForUser(c.env, c.req.raw, user);
+  await setFavoriteCompaniesSharing(c.env.DB, user.id, await c.req.json().catch(() => null));
+  return c.json(await profileFavoriteCompanies(c.env.DB, user.id, Boolean(contact.enabled), true));
+});
 app.get("/api/network/users/public/:slug/events", async (c) => {
   const contact = await publicContact(c.env, c.req.raw, c.req.param("slug"));
   const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "60", 10) || 60, 200));
@@ -5455,12 +5405,23 @@ app.all("*", (c) => c.json({ detail: "Endpoint is not implemented in the Cloudfl
 
 function orgWorkerFetch(request: Request, env: Env, ctx: ExecutionContext) {
   const url = new URL(request.url);
-  if (env.ORGANIZATION_REPLICA_SOURCE && ["GET","HEAD"].includes(request.method)
-    && /^\/api\/network\/orgs\/public\/[^/]+\/media\/[^/]+$/.test(url.pathname)) {
+  const privateFollowRoute = /^\/api\/network\/(following\/(events|orgs)|orgs\/[^/]+\/follow|notifications(?:\/.*)?)$/.test(url.pathname);
+  if (env.ORGANIZATION_REPLICA_SOURCE && privateFollowRoute) {
     const upstream = new URL(env.ORGANIZATION_REPLICA_SOURCE);
     upstream.pathname = upstream.pathname.replace(/\/network\/replication\/snapshot$/, "") + url.pathname.replace(/^\/api/, "");
     upstream.search = url.search;
-    return fetch(upstream.href,{method:request.method,redirect:"manual"});
+    return fetch(new Request(upstream.href,request),{redirect:'manual'});
+  }
+  if (env.ORGANIZATION_REPLICA_SOURCE && ["GET","HEAD"].includes(request.method)
+    && (/^\/api\/network\/orgs\/public\/[^/]+\/media\/[^/]+$/.test(url.pathname)
+      || /^\/api\/network\/users\/public\/[^/]+\/favorite-companies$/.test(url.pathname)
+      || url.pathname === '/api/network/search')) {
+    const upstream = new URL(env.ORGANIZATION_REPLICA_SOURCE);
+    upstream.pathname = upstream.pathname.replace(/\/network\/replication\/snapshot$/, "") + url.pathname.replace(/^\/api/, "");
+    upstream.search = url.search;
+    return fetch(upstream.href,{method:request.method,redirect:"manual",
+      headers: (url.pathname.endsWith("/favorite-companies") || url.pathname === "/api/network/search") && request.headers.has("Authorization")
+        ? {Authorization: request.headers.get("Authorization")!} : undefined});
   }
   if (request.method === "GET" && (url.pathname === "/.well-known/oauth-protected-resource"
     || url.pathname === "/.well-known/oauth-protected-resource/api/org/mcp"
@@ -5477,6 +5438,7 @@ export default {
     ctx.waitUntil(runRetention(env.DB, controller.scheduledTime).then(counts => {
       console.info(JSON.stringify({event:'orgportal.retention',counts,backlog:Object.values(counts).some(n=>n===500)}));
     }).catch(() => { console.error(JSON.stringify({event:'orgportal.retention',outcome:'error'})); throw new Error('Retention cleanup failed'); }));
+    ctx.waitUntil(dispatchFollowEventNotifications(env.DB));
     ctx.waitUntil(replicateChangeJournal(env));
     ctx.waitUntil(Promise.all([runUbiTick(env.DB, controller.scheduledTime), dispatchTimebankPush(env)]));
     ctx.waitUntil(runOrganizationStatusEmail(env).then(() => runEmailDelivery(env)));

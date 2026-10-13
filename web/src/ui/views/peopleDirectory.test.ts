@@ -9,7 +9,7 @@ function jsonResponse(status: number, body: unknown) {
 }
 
 describe('loadPeopleDirectory', () => {
-  it('keeps people visible when organizations are unavailable', async () => {
+  it('loads only public people without requesting organizations', async () => {
     const fetcher = vi.fn<typeof fetch>(async (input) => {
       const url = String(input)
       if (url.includes('/users/public')) {
@@ -26,12 +26,13 @@ describe('loadPeopleDirectory', () => {
     })
 
     expect(result.users).toEqual([{ user_id: 'user-1', user_name: 'Ada' }])
-    expect(result.organizations).toEqual([])
-    expect(result.status).toBe('Organizations are temporarily unavailable.')
+    expect(fetcher).toHaveBeenCalledTimes(1)
+    expect(String(fetcher.mock.calls[0][0])).toContain('/users/public')
+    expect(result.status).toBe('')
     expect(result.status).not.toContain('Internal server error')
   })
 
-  it('keeps organizations visible when people are unavailable', async () => {
+  it('reports unavailable people without requesting organizations', async () => {
     const fetcher = vi.fn<typeof fetch>(async (input) => {
       const url = String(input)
       if (url.includes('/orgs/public')) {
@@ -48,11 +49,11 @@ describe('loadPeopleDirectory', () => {
     })
 
     expect(result.users).toEqual([])
-    expect(result.organizations).toHaveLength(1)
+    expect(fetcher).toHaveBeenCalledTimes(1)
     expect(result.status).toBe('People are temporarily unavailable.')
   })
 
-  it('loads both datasets and authenticates the private people request', async () => {
+  it('authenticates the people request and forwards the search filter', async () => {
     const fetcher = vi.fn<typeof fetch>(async (input) => {
       const url = String(input)
       return url.includes('/orgs/public')
@@ -69,8 +70,9 @@ describe('loadPeopleDirectory', () => {
 
     expect(result.status).toBe('')
     expect(result.users).toHaveLength(1)
-    expect(result.organizations).toHaveLength(1)
+    expect(fetcher).toHaveBeenCalledTimes(1)
     const userCall = fetcher.mock.calls.find(([input]) => String(input).includes('/api/network/users?'))
     expect(userCall?.[1]?.headers).toEqual({ Authorization: 'Bearer test-token' })
+    expect(String(userCall?.[0])).toContain('q=Ada')
   })
 })

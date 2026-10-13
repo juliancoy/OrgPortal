@@ -180,6 +180,9 @@ export function Header() {
   const taskQueue = useTaskQueue()
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [unreadNotifications, setUnreadNotifications] = useState(0)
+  const [followEventNotifications, setFollowEventNotifications] = useState<{ id: string; entity_id: string; title: string; body: string; type: string; status: string }[]>([])
+  const notificationAuthRef = useRef(token)
+  notificationAuthRef.current = token
   const [connectionRequests, setConnectionRequests] = useState<ConnectionRequest[]>([])
   const [notificationsStatus, setNotificationsStatus] = useState('')
   const notificationCount = unreadNotifications + taskQueue.tasks.length
@@ -237,7 +240,7 @@ export function Header() {
 
     document.addEventListener('keydown', handleGlobalSearchShortcut)
     return () => document.removeEventListener('keydown', handleGlobalSearchShortcut)
-  }, [searchQuery])
+  }, [searchQuery, token, user?.id])
 
   useEffect(() => {
     function handleClick(event: MouseEvent) {
@@ -269,26 +272,32 @@ export function Header() {
     if (!token || isGuest) {
       setUnreadNotifications(0)
       setConnectionRequests([])
+      setFollowEventNotifications([])
       return
     }
     try {
-      const [summaryResp, requestsResp] = await Promise.all([
+      const [summaryResp, eventsResp, requestsResp] = await Promise.all([
         fetch(orgUrl('/api/network/notifications/summary'), {
           headers: { Authorization: `Bearer ${token}` },
           signal,
         }),
+        fetch(orgUrl('/api/network/notifications?limit=100&follow_events=true'), { headers: { Authorization: `Bearer ${token}` }, signal, cache: 'no-store' }),
         fetch(orgUrl('/api/network/connections/requests'), {
           headers: { Authorization: `Bearer ${token}` },
           signal,
         }),
       ])
-      if (!summaryResp.ok || !requestsResp.ok) throw new Error('Notifications unavailable')
+      if (!summaryResp.ok || !requestsResp.ok || !eventsResp.ok) throw new Error('Notifications unavailable')
       const summary = (await summaryResp.json()) as { unread_count?: number; pending_connections_count?: number }
       const requests = (await requestsResp.json()) as ConnectionRequest[]
+      const events = await eventsResp.json() as typeof followEventNotifications
+      if (signal?.aborted || notificationAuthRef.current !== token) return
+      setFollowEventNotifications(Array.isArray(events) ? events.filter(item => item.type === 'organization_event' && item.status === 'unread') : [])
       setUnreadNotifications(Number(summary.unread_count || summary.pending_connections_count || 0))
       setConnectionRequests(Array.isArray(requests) ? requests : [])
       setNotificationsStatus('')
     } catch (error) {
+      if (signal?.aborted || notificationAuthRef.current !== token) return
       if (error instanceof DOMException && error.name === 'AbortError') return
       setNotificationsStatus('Notifications unavailable')
     }
@@ -298,6 +307,7 @@ export function Header() {
     if (!token || role === 'guest') {
       setUnreadNotifications(0)
       setConnectionRequests([])
+      setFollowEventNotifications([])
       return
     }
     const controller = new AbortController()
@@ -311,6 +321,21 @@ export function Header() {
       window.removeEventListener('focus', handleFocus)
     }
   }, [isGuest, token])
+
+  async function markEventNotificationRead(id: string) {
+    if (!token) return
+    try {
+      const response = await fetch(orgUrl(`/api/network/notifications/${encodeURIComponent(id)}/read`), {
+        method: 'POST', headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!response.ok) throw new Error('Unable to mark notification read')
+      if (notificationAuthRef.current !== token) return
+      setFollowEventNotifications(items => items.filter(item => item.id !== id))
+      void refreshNotifications()
+    } catch {
+      if (notificationAuthRef.current === token) setNotificationsStatus('Unable to mark notification read.')
+    }
+  }
 
   async function respondToConnectionRequest(id: string, action: 'accept' | 'decline') {
     if (!token) return
@@ -342,6 +367,14 @@ export function Header() {
   }, [searchOpen])
 
   useEffect(() => {
+    searchCacheRef.current.clear()
+    setSearchOrgs([])
+    setSearchEvents([])
+    setSearchUsers([])
+    setActiveResultIndex(-1)
+  }, [token, user?.id])
+
+  useEffect(() => {
     const query = searchQuery.trim()
     if (query.length < SEARCH_MIN_LEN) {
       setSearchLoading(false)
@@ -353,10 +386,11 @@ export function Header() {
       return
     }
 
-    const cached = searchCacheRef.current.get(query)
+    const cacheKey = `${user?.id || "guest"}:${query}`
+    const cached = token ? undefined : searchCacheRef.current.get(cacheKey)
     if (cached) {
-      searchCacheRef.current.delete(query)
-      searchCacheRef.current.set(query, cached)
+      searchCacheRef.current.delete(cacheKey)
+      searchCacheRef.current.set(cacheKey, cached)
       setSearchError('')
       setSearchLoading(false)
       setSearchOrgs(cached.orgs)
@@ -371,27 +405,22 @@ export function Header() {
       setSearchError('')
       try {
         const encoded = encodeURIComponent(query)
-        const [orgResp, eventResp, userResp] = await Promise.all([
-          fetch(orgUrl(`/api/network/orgs/public?q=${encoded}&sort=popular&limit=5`), { signal: controller.signal }),
-          fetch(orgUrl(`/api/network/events/public?q=${encoded}&upcoming_only=true&limit=5`), { signal: controller.signal }),
-          fetch(orgUrl(`/api/network/users/public?q=${encoded}&sort=popular&limit=5`), { signal: controller.signal }),
-        ])
-
-        if (!orgResp.ok || !eventResp.ok || !userResp.ok) {
-          throw new Error('Search unavailable')
-        }
-
-        const [orgRows, eventRows, userRows] = await Promise.all([
-          orgResp.json() as Promise<SearchOrganization[]>,
-          eventResp.json() as Promise<SearchEvent[]>,
-          userResp.json() as Promise<SearchUser[]>,
-        ])
+        const response = await fetch(orgUrl(`/api/network/search?q=${encoded}&limit=5`), {
+          signal: controller.signal, cache: 'no-store',
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        })
+        if (!response.ok) throw new Error('Search unavailable')
+        const data = await response.json() as SearchCacheEntry
+        if (controller.signal.aborted) return
+        const orgRows = data.orgs
+        const eventRows = data.events
+        const userRows = data.users
 
         const orgs = Array.isArray(orgRows) ? orgRows : []
         const events = Array.isArray(eventRows) ? eventRows : []
         const users = Array.isArray(userRows) ? userRows : []
 
-        searchCacheRef.current.set(query, { orgs, events, users })
+        if (!token) searchCacheRef.current.set(cacheKey, { orgs, events, users })
         if (searchCacheRef.current.size > SEARCH_CACHE_MAX) {
           const oldestKey = searchCacheRef.current.keys().next().value
           if (oldestKey) searchCacheRef.current.delete(oldestKey)
@@ -401,13 +430,13 @@ export function Header() {
         setSearchEvents(events)
         setSearchUsers(users)
       } catch (error) {
-        if (error instanceof DOMException && error.name === 'AbortError') return
+        if (controller.signal.aborted || (error instanceof DOMException && error.name === 'AbortError')) return
         setSearchError('Unable to search right now')
         setSearchOrgs([])
         setSearchEvents([])
         setSearchUsers([])
       } finally {
-        setSearchLoading(false)
+        if (!controller.signal.aborted) setSearchLoading(false)
       }
     }, 220)
 
@@ -415,7 +444,7 @@ export function Header() {
       window.clearTimeout(timer)
       controller.abort()
     }
-  }, [searchQuery])
+  }, [searchQuery, token, user?.id])
 
   const results = useMemo<SearchResultItem[]>(() => {
     const orgResults: SearchResultItem[] = searchOrgs.map((org) => ({
@@ -921,6 +950,15 @@ export function Header() {
                       <strong>Notifications</strong>
                       <button type="button" onClick={() => { void refreshNotifications(); void taskQueue.refresh() }}>Refresh</button>
                     </div>
+                    {followEventNotifications.length > 0 && <section aria-label="Events from organizations you follow" className="portal-notification-list">
+                      <strong>Events from organizations you follow</strong>
+                      {followEventNotifications.map(item => <article className="portal-notification-item" key={item.id}>
+                        <Link to={`/events/${encodeURIComponent(item.entity_id)}`} onClick={() => { setNotificationsOpen(false); void markEventNotificationRead(item.id) }}>
+                          <strong>{item.title}</strong><p className="muted">{item.body}</p>
+                        </Link>
+                        <button type="button" onClick={() => void markEventNotificationRead(item.id)}>Mark read</button>
+                      </article>)}
+                    </section>}
                     <TaskQueue queue={taskQueue} onNavigate={() => setNotificationsOpen(false)} />
                     {connectionRequests.length > 0 ? (
                       <div className="portal-notification-list">
@@ -986,7 +1024,8 @@ export function Header() {
         <div id="portal-primary-nav" className="portal-nav">
           {portalProfile.id === 'orgportal' ? <>
             <NavLink to="/communities">Communities</NavLink>
-            <NavLink to="/orgs" isActive={isOrgDirectoryActive}>Organizations</NavLink>
+            {!isGuest && <NavLink to="/following" isActive={location.pathname === '/following'}>Following</NavLink>}
+          <NavLink to="/orgs" isActive={isOrgDirectoryActive}>Organizations</NavLink>
             <NavLink to="/events">Events</NavLink>
             <NavLink to="/people">People</NavLink>
             {!isGuest && <NavLink to="/chat">Messages</NavLink>}

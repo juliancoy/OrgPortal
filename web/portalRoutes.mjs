@@ -81,6 +81,7 @@ const paths = [
   "/availability",
   "/onboarding",
   "/availability/:id",
+  "/following",
   "/events",
   "/events/:slug",
   "/orgs",
