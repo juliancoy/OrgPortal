@@ -931,7 +931,7 @@ export function PublicAdminPage() {
         <a href="#organization-brand-guide">Branding</a>
         <a href="#organization-members">Members</a>
         <a href="#organization-events">Events</a>
-        <a href="#organization-support">Support</a>
+        <a href="#organization-support">Money and support</a>
         <a href="#organization-member-feedback">Feedback</a>
         {isOrganizerView && <a href="#organization-mailing-list">Mailing list</a>}
         {isOrganizerView && <a href="#organization-domain" onClick={event => { event.preventDefault(); openOrganizationEditor('organization-domain') }}>Domain</a>}
