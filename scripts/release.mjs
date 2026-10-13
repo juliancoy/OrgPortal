@@ -113,9 +113,17 @@ async function verify() {
       if (!response.ok || !asset) throw new Error('Frontend page or entry asset is missing');
       const entry = await fetch(`${origin}${asset[1]}`, { signal: AbortSignal.timeout(30000) });
       if (!entry.ok || !(entry.headers.get('content-type') || '').includes('javascript')) throw new Error('Frontend entry asset failed');
-      const upstream = await fetch(`${origin}/api/org/health`, { signal: AbortSignal.timeout(30000) });
-      const apiHealth = await upstream.json();
-      if (!upstream.ok || apiHealth.service !== 'org-worker' || (api && apiHealth.commit !== commit)) throw new Error('Frontend API proxy failed');
+      let proxyVerified = false;
+      for (let attempt = 0; attempt < 12; attempt++) {
+        try {
+          const upstream = await fetch(`${origin}/api/org/health?release=${commit}&attempt=${attempt}`, { cache: 'no-store', signal: AbortSignal.timeout(15000) });
+          const apiHealth = await upstream.json();
+          proxyVerified = upstream.ok && apiHealth.ok && apiHealth.service === 'org-worker' && (!api || apiHealth.commit === commit);
+          if (proxyVerified) break;
+        } catch { /* A new version can take time to reach every edge. */ }
+        if (attempt < 11) await new Promise(resolve => setTimeout(resolve, 5000));
+      }
+      if (!proxyVerified) throw new Error('Frontend API proxy failed after propagation retries');
       console.log(JSON.stringify({ verified: origin, page: true, entryAsset: true, apiProxy: true }));
     }
   }
