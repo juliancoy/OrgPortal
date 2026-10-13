@@ -2,13 +2,13 @@ import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { resolveGroupSite } from './timebank';
 
-export const MEDTECH_CAROUSEL = { id: 'medtech-photos', tenantHostnames: ['medtech.social', 'lifetech.fyi'], folderId: '1PoJ9KQvInRhJeoY91ODJ-915_eGuPAmb', title: 'Community photos' };
+export const MEDTECH_CAROUSEL = { id: 'medtech-photos', organizationId: 'ef646755-9443-4c7b-ba4b-a7a29754f666', tenantHostnames: ['medtech.social', 'lifetech.fyi'], folderId: '1PoJ9KQvInRhJeoY91ODJ-915_eGuPAmb', title: 'Community photos' };
 export type CarouselImage = { id: string; name: string; imageUrl: string; driveUrl: string };
 export type CarouselFolder = { title: string; folderUrl: string; images: CarouselImage[] };
 const decode = (value: string) => value.replace(/&(?:amp|quot|apos|lt|gt|#39|#(\d+)|#x([a-f0-9]+));/gi, (match, decimal, hex) => decimal || hex ? String.fromCodePoint(parseInt(decimal || hex, hex ? 16 : 10)) : ({'&amp;':'&','&quot;':'"','&apos;':"'",'&#39;':"'",'&lt;':'<','&gt;':'>'}[match.toLowerCase()] || match));
 
 // Google's public folder view is the source. No private Drive credentials or arbitrary URLs are accepted.
-export function parsePublicDriveFolder(html: string): CarouselFolder {
+export function parsePublicDriveFolder(html: string, folderId = MEDTECH_CAROUSEL.folderId): CarouselFolder {
   if (!html.includes('flip-entry') && !html.includes('flip-entries')) throw new HTTPException(502, { message: 'The photo folder is unavailable. Open it in Google Drive.' });
   const images: CarouselImage[] = [];
   const blocks = html.split(/<div\s+class="flip-entry"\s+id="entry-/).slice(1);
@@ -21,22 +21,25 @@ export function parsePublicDriveFolder(html: string): CarouselFolder {
     if (url.protocol !== 'https:' || url.hostname !== 'lh3.googleusercontent.com' || !url.pathname.startsWith('/drive-storage/')) continue;
     images.push({ id, name: decode(name), imageUrl: url.href.replace(/=s\d+$/, '=w1600'), driveUrl: `https://drive.google.com/file/d/${id}/view` });
   }
-  return { title: MEDTECH_CAROUSEL.title, folderUrl: `https://drive.google.com/drive/folders/${MEDTECH_CAROUSEL.folderId}`, images };
+  return { title: MEDTECH_CAROUSEL.title, folderUrl: `https://drive.google.com/drive/folders/${folderId}`, images };
 }
-let cached: { expires: number; folder: CarouselFolder } | undefined;
-export async function publicDriveFolder(): Promise<CarouselFolder> {
+const cachedFolders = new Map<string, { expires: number; folder: CarouselFolder }>();
+export async function publicDriveFolder(folderId = MEDTECH_CAROUSEL.folderId): Promise<CarouselFolder> {
+  if (!/^[A-Za-z0-9_-]{10,100}$/.test(folderId)) throw new HTTPException(400, { message: 'Invalid photo folder.' });
+  const cached = cachedFolders.get(folderId);
   if (cached && cached.expires > Date.now()) return cached.folder;
   let response: Response;
   try {
-    response = await fetch(`https://drive.google.com/embeddedfolderview?id=${MEDTECH_CAROUSEL.folderId}`, { redirect: 'manual', signal: AbortSignal.timeout(10000) });
+    response = await fetch(`https://drive.google.com/embeddedfolderview?id=${folderId}`, { redirect: 'manual', signal: AbortSignal.timeout(10000) });
   } catch {
     throw new HTTPException(502, { message: 'The photo folder is unavailable. Please try again.' });
   }
   if (!response.ok) throw new HTTPException(502, { message: 'The photo folder is unavailable. Please try again.' });
   const html = await response.text();
   if (html.length > 2_000_000) throw new HTTPException(502, { message: 'The photo folder is too large to display.' });
-  const folder = parsePublicDriveFolder(html);
-  cached = { expires: Date.now() + 120_000, folder };
+  const folder = parsePublicDriveFolder(html, folderId);
+  if (cachedFolders.size >= 32) cachedFolders.delete(cachedFolders.keys().next().value!);
+  cachedFolders.set(folderId, { expires: Date.now() + 120_000, folder });
   return folder;
 }
 
