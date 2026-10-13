@@ -278,7 +278,7 @@ def _pidp_env(pidp_editme, db_url: str, gateway_base: str, allowed_origins: list
         "GOOGLE_WORKSPACE_ALLOWED_SENDERS": os.getenv("PIDP_GOOGLE_WORKSPACE_ALLOWED_SENDERS", ""),
         "PUBLIC_BASE_URL": pidp_base,
         "PORTAL_AUTH_ORIGINS": ",".join(allowed_origins),
-        "PORTAL_SSO_APP_SLUG": os.getenv("ORGPORTAL_DEV_PIDP_APP_SLUG") or os.getenv("ORGPORTAL_PIDP_APP_SLUG", "code-collective"),
+        "PORTAL_SSO_APP_SLUG": os.getenv("ORGPORTAL_DEV_PIDP_APP_SLUG") or os.getenv("ORGPORTAL_PIDP_APP_SLUG", "orgportal"),
         "FRONTEND_REDIRECT_URL": f"{pidp_base}/auth/callback",
         "GOOGLE_CLIENT_ID": getattr(pidp_editme, "PIDP_GOOGLE_CLIENT_ID", "google-client-id"),
         "GOOGLE_CLIENT_SECRET": getattr(pidp_editme, "PIDP_GOOGLE_CLIENT_SECRET", "google-client-secret"),
@@ -420,7 +420,7 @@ def _write_local_gateway_config(
                 }}
 
                 location /api/org/ {{
-                  proxy_set_header X-Forwarded-Host {os.getenv("ORGPORTAL_LOCAL_TENANT_HOST", "localhost")};
+                  proxy_set_header X-Forwarded-Host {os.getenv("ORGPORTAL_LOCAL_SITE_HOST", "localhost")};
                   rewrite ^/api/org/?(.*)$ /$1 break;
                   proxy_pass http://{org_worker_name}:{worker_port};
                 }}
@@ -663,7 +663,7 @@ def run(prefix: str, network_name: str) -> None:
     prod_pidp_app_slug = (
         os.getenv("ORGPORTAL_PROD_PIDP_APP_SLUG")
         or os.getenv("ORGPORTAL_PIDP_APP_SLUG")
-        or "code-collective"
+        or "orgportal"
     ).strip()
     dev_pidp_app_slug = (os.getenv("ORGPORTAL_DEV_PIDP_APP_SLUG") or prod_pidp_app_slug).strip()
     _set_env_default("ORGPORTAL_DEV_PIDP_APP_SLUG", dev_pidp_app_slug)

@@ -42,7 +42,7 @@ const messages = [
 ]
 
 test.beforeEach(async ({ page }) => {
-  await page.route('**/api/org/api/portal/tenant', route => route.fulfill({ json: null }))
+  await page.route('**/api/org/api/portal/site', route => route.fulfill({ json: null }))
   await page.addInitScript(() => {
     class MockWebSocket extends EventTarget {
       static OPEN = 1

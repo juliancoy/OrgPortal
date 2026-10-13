@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readCurrentSchemaFileSync as readFileSync } from './helpers/currentSchema';
 import { DatabaseSync, type StatementSync } from "node:sqlite";
 import test from "node:test";
 import {
@@ -40,7 +40,7 @@ class SqliteD1 {
     this.database.exec(readFileSync(new URL("../migrations/0013_health_profile.sql", import.meta.url), "utf8"));
     this.database.exec(readFileSync(new URL("../migrations/0014_health_diagnosis_support.sql", import.meta.url), "utf8"));
     this.database.exec(readFileSync(new URL("../migrations/0016_health_service_hosts_and_user_event_calendars.sql", import.meta.url), "utf8"));
-    this.database.exec("CREATE TABLE portal_tenants(id TEXT PRIMARY KEY)");
+    this.database.exec("CREATE TABLE group_sites(id TEXT PRIMARY KEY)");
     this.database.exec(readFileSync(new URL("../migrations/0060_member_meetings.sql", import.meta.url), "utf8"));
     this.database.exec(`
       CREATE TABLE IF NOT EXISTS ledger_accounts (
@@ -350,8 +350,8 @@ test("provider dashboard lists hosted calendars and booked appointments", async 
 test("provider appointments cannot overlap a confirmed member meeting", async () => {
  const sqlite=new SqliteD1();const db=asD1(sqlite);
  try {
-  sqlite.database.exec("INSERT INTO portal_tenants(id) VALUES ('test')");
-  sqlite.database.exec("INSERT INTO member_meetings(id,tenant_id,host_user_id,guest_user_id,starts_at,ends_at) VALUES ('meeting','test','host','member-1','2026-08-10T13:00:00.000Z','2026-08-10T13:30:00.000Z')");
+  sqlite.database.exec("INSERT INTO group_sites(id) VALUES ('test')");
+  sqlite.database.exec("INSERT INTO member_meetings(id,group_site_id,host_user_id,guest_user_id,starts_at,ends_at) VALUES ('meeting','test','host','member-1','2026-08-10T13:00:00.000Z','2026-08-10T13:30:00.000Z')");
   await assert.rejects(scheduleHealthInsuranceAppointment(db,'member-1',{service_id:'primary-care',starts_at:'2026-08-10T13:00:00.000Z',attested:true},'2026-08-07T12:00:00.000Z'),(error:unknown)=>error instanceof HealthInsuranceError&&error.status===409);
   sqlite.database.exec("UPDATE member_meetings SET status='cancelled'");
   assert.ok(await scheduleHealthInsuranceAppointment(db,'member-1',{service_id:'primary-care',starts_at:'2026-08-10T13:00:00.000Z',attested:true},'2026-08-07T12:00:00.000Z'));

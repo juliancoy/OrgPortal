@@ -8,6 +8,14 @@ type Delivery = { id: string; campaign_id: string; subscription_id: string | nul
 export async function runEmailDelivery(env: Env) {
   if (env.EMAIL_SENDING_ENABLED !== 'true') return;
   const start = Date.now();
+  // Revocation stops already queued work, including test messages.
+  await env.DB.prepare(`UPDATE email_deliveries SET status='skipped',error='Sender no longer has organizer access.'
+    WHERE status='queued' AND campaign_id IN (SELECT c.id FROM email_campaigns c WHERE NOT EXISTS
+      (SELECT 1 FROM organization_memberships m WHERE m.organization_id=c.organization_id AND m.user_id=c.owner_user_id
+        AND m.status='active' AND m.role IN ('owner','administrator')))`).run();
+  await env.DB.prepare(`UPDATE email_campaigns SET status='paused' WHERE status='queued' AND NOT EXISTS
+    (SELECT 1 FROM organization_memberships m WHERE m.organization_id=email_campaigns.organization_id
+      AND m.user_id=email_campaigns.owner_user_id AND m.status='active' AND m.role IN ('owner','administrator'))`).run();
   const senders = await env.DB.prepare(`SELECT s.* FROM email_senders s WHERE s.status = 'connected'
     AND s.cooldown_until <= ? AND EXISTS (SELECT 1 FROM email_deliveries d JOIN email_campaigns c ON c.id = d.campaign_id
       WHERE d.sender_user_id = s.owner_user_id AND d.status = 'queued' AND d.next_attempt_at <= ?
@@ -53,7 +61,9 @@ export async function runEmailDelivery(env: Env) {
         const raw = campaignMime(env, campaign, pending, unsubscribe);
         const claimed = await env.DB.prepare(`UPDATE email_deliveries SET status = 'sending', attempted_at = ?, attempts = attempts + 1, error = NULL
           WHERE id = ? AND status = 'queued' AND EXISTS (SELECT 1 FROM email_campaigns c WHERE c.id = campaign_id
-            AND (kind = 'test' OR c.status = 'queued')) RETURNING id`)
+            AND (kind = 'test' OR c.status = 'queued') AND EXISTS(SELECT 1 FROM organization_memberships m
+              WHERE m.organization_id=c.organization_id AND m.user_id=c.owner_user_id AND m.status='active' AND m.role IN ('owner','administrator')))
+            AND (kind='test' OR EXISTS(SELECT 1 FROM email_subscriptions s WHERE s.id=subscription_id AND s.status='subscribed' AND s.email=email_deliveries.email)) RETURNING id`)
           .bind(now, pending.id).first();
         if (!claimed) continue;
         await env.DB.prepare('INSERT INTO email_send_attempts (id, sender_user_id, attempted_at) VALUES (?, ?, ?)')

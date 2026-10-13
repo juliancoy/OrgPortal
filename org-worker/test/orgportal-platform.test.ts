@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { readFileSync } from 'node:fs';
+import { readCurrentSchemaFileSync as readFileSync } from './helpers/currentSchema';
 import { app } from '../src/index';
 import { TimebankDatabase } from './helpers/timebankDatabase';
 import { publicCommunity } from '../src/portalCommunities';
@@ -11,7 +11,7 @@ function fixture() {
   for (const file of ['0002_org_event_directories.sql', '0029_portal_tenant_deployment_model.sql', '0032_portal_tenant_org_slug.sql', '0033_portal_tenant_custom_domains.sql']) {
     db.sqlite.exec(readFileSync(new URL('../migrations/' + file, import.meta.url), 'utf8'));
   }
-  db.sqlite.exec("UPDATE portal_tenants SET custom_domain_hostname='orgportal.cc',custom_domain_status='attached' WHERE id='code-collective'");
+  db.sqlite.exec("UPDATE group_sites SET custom_domain_hostname='orgportal.cc',custom_domain_status='attached' WHERE id='code-collective'");
   return db;
 }
 
@@ -23,7 +23,7 @@ test('platform migration separates OrgPortal without changing community identity
   assert.deepEqual(db.sqlite.prepare('SELECT * FROM timebank_communities ORDER BY id').all(), communities);
   assert.deepEqual(db.sqlite.prepare('SELECT * FROM organizations ORDER BY id').all(), organizations);
   const env = { DB: db.asD1() };
-  const platformResponse = await app.request('https://orgportal.cc/api/portal/tenant', {}, env);
+  const platformResponse = await app.request('https://orgportal.cc/api/portal/site', {}, env);
   assert.equal(platformResponse.status, 200);
   const platform = await platformResponse.json() as { id: string; features: string[]; public_base_url: string };
   assert.equal(platform.id, 'orgportal');
@@ -31,11 +31,11 @@ test('platform migration separates OrgPortal without changing community identity
   assert.equal(platform.features.includes('timebank'), false);
   assert.equal((await app.request('https://orgportal.cc/api/timebank/community', {}, env)).status, 404);
   assert.equal((await app.request('https://codecollective.us/api/timebank/community', {}, env)).status, 200);
-  const old = await app.request('https://codecollective.us/api/portal/tenant', {}, env);
+  const old = await app.request('https://codecollective.us/api/portal/site', {}, env);
   assert.equal((await old.json() as { id: string }).id, 'code-collective');
-  db.sqlite.exec("UPDATE portal_tenants SET tagline='Operator edited tagline' WHERE id='orgportal'");
+  db.sqlite.exec("UPDATE group_sites SET tagline='Operator edited tagline' WHERE id='orgportal'");
   db.sqlite.exec(migration);
-  assert.equal(db.sqlite.prepare("SELECT tagline FROM portal_tenants WHERE id='orgportal'").get()!.tagline, 'Operator edited tagline');
+  assert.equal(db.sqlite.prepare("SELECT tagline FROM group_sites WHERE id='orgportal'").get()!.tagline, 'Operator edited tagline');
 });
 
 test('community directory publishes safe destinations and omits platform and private tenant configuration', async t => {

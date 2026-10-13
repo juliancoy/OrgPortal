@@ -15,7 +15,7 @@ export function AppLayout() {
   const location = useLocation()
   const community = useDomainCommunity()
   const timebankShell = Boolean(community) || location.pathname.startsWith('/timebanking')
-  const brandedAuth = Boolean(getActivePortalProfileConfig().tenantId) && ['/users/login', '/users/register'].includes(location.pathname)
+  const brandedAuth = Boolean(getActivePortalProfileConfig().groupSiteId) && ['/users/login', '/users/register'].includes(location.pathname)
   const mainRef = useRef<HTMLElement | null>(null)
   const canonicalUserRoutes = new Set(['/profile', '/users/register', '/users/login', '/users/dashboard', '/users/profile', '/users/account'])
   const hideHeader =

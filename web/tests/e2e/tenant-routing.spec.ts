@@ -152,7 +152,7 @@ async function mockTenant(page: Page, options: MockTenantOptions = {}) {
   let loggedIn = Boolean(options.initiallyLoggedIn)
   await page.route('**/api/org/**', route => {
     const path = new URL(route.request().url()).pathname
-    if (path.endsWith('/portal/tenant')) {
+    if (path.endsWith('/portal/site')) {
       return route.fulfill({ json: {
         id: 'baltimore-medtech',
         hostname: 'medtech.social',
@@ -585,7 +585,7 @@ test('tenant header login preserves the current event route', async ({ page }) =
 
 test('event lists separate past gatherings, show sourced attendance to guests, and close past registration', async ({ page }) => {
   await mockTenant(page)
-  await page.route('**/api/org/api/portal/tenant', route => route.fulfill({ json: {} }))
+  await page.route('**/api/org/api/portal/site', route => route.fulfill({ json: {} }))
   await page.clock.install({ time: new Date('2026-10-02T16:00:00Z') })
   await page.route('**/api/org/api/network/events/public?**', route => {
     expect(new URL(route.request().url()).searchParams.get('upcoming_only')).toBe('false')
@@ -615,7 +615,7 @@ test('LifeTech keeps its own logo and app icons across chat and event navigation
     const html = (await response.text()).replace(/<link[^>]+rel="manifest"[^>]*>/g, '')
     return route.fulfill({ response, body: html })
   })
-  await page.route('**/api/org/api/portal/tenant', route => route.fulfill({ json: {
+  await page.route('**/api/org/api/portal/site', route => route.fulfill({ json: {
     id: 'lifetech', hostname: 'lifetech.fyi', name: 'LifeTech', tagline: 'Health × Medicine × Biotech',
     accent_color: '#061a26', profile: 'community', features: ['directory', 'events', 'chat'],
     home_kind: 'auth', home_org_slug: 'lifetech', canonical_path_prefix: '',

@@ -34,6 +34,6 @@ export function publicCommunity(row: PublicPortalRow) {
 export async function listPublicCommunities(db: D1Database) {
   const rows = await db.prepare(`SELECT id, name, tagline, hostname, profile, features,
     brand_image_path, accent_color, slug, public_base_url, custom_domain_hostname, custom_domain_status
-    FROM portal_tenants WHERE profile <> 'orgportal' ORDER BY name COLLATE NOCASE`).all<PublicPortalRow>();
+    FROM group_sites WHERE profile <> 'orgportal' ORDER BY name COLLATE NOCASE`).all<PublicPortalRow>();
   return rows.results.map(publicCommunity).filter(value => value !== null);
 }

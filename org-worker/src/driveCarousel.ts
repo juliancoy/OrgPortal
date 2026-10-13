@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-import { resolvePortalTenant } from './timebank';
+import { resolveGroupSite } from './timebank';
 
 export const MEDTECH_CAROUSEL = { id: 'medtech-photos', tenantHostnames: ['medtech.social', 'lifetech.fyi'], folderId: '1PoJ9KQvInRhJeoY91ODJ-915_eGuPAmb', title: 'Community photos' };
 export type CarouselImage = { id: string; name: string; imageUrl: string; driveUrl: string };
@@ -44,32 +44,32 @@ export function driveCarouselRoutes(getUser: (env: Env, request: Request) => Pro
   const app = new Hono<{ Bindings: Env; Variables: { carouselTenant: string } }>();
   app.use('/:carousel/*', async (c, next) => {
     c.header('Cache-Control', 'private, no-store');
-    const tenant = await resolvePortalTenant(c.env.DB, c.req.raw);
+    const tenant = await resolveGroupSite(c.env.DB, c.req.raw);
     if (!MEDTECH_CAROUSEL.tenantHostnames.includes(tenant.hostname) || c.req.param('carousel') !== MEDTECH_CAROUSEL.id) throw new HTTPException(404, { message: 'Photo carousel not found.' });
     c.set('carouselTenant', tenant.id);
     await next();
   });
   app.get('/:carousel', async c => {
     c.header('Cache-Control', 'private, no-store');
-    const tenant = await resolvePortalTenant(c.env.DB, c.req.raw);
+    const tenant = await resolveGroupSite(c.env.DB, c.req.raw);
     if (!MEDTECH_CAROUSEL.tenantHostnames.includes(tenant.hostname) || c.req.param('carousel') !== MEDTECH_CAROUSEL.id) throw new HTTPException(404, { message: 'Photo carousel not found.' });
     return c.json(await loadFolder());
   });
   app.get('/:carousel/me', async c => {
     const user = await getUser(c.env, c.req.raw);
-    const rows = await c.env.DB.prepare('SELECT file_id FROM user_hidden_carousel_images WHERE tenant_id = ? AND user_id = ? AND carousel_id = ? ORDER BY hidden_at,file_id').bind(c.get('carouselTenant'), user.id, MEDTECH_CAROUSEL.id).all<{ file_id: string }>();
+    const rows = await c.env.DB.prepare('SELECT file_id FROM user_hidden_carousel_images WHERE group_site_id = ? AND user_id = ? AND carousel_id = ? ORDER BY hidden_at,file_id').bind(c.get('carouselTenant'), user.id, MEDTECH_CAROUSEL.id).all<{ file_id: string }>();
     return c.json({ hiddenImageIds: (rows.results || []).map(row => row.file_id) });
   });
   app.put('/:carousel/me/hidden/:file', async c => {
     const user = await getUser(c.env, c.req.raw), id = c.req.param('file');
     const folder = await loadFolder();
     if (!folder.images.some(image => image.id === id)) throw new HTTPException(404, { message: 'Image not found in this folder.' });
-    await c.env.DB.prepare('INSERT INTO user_hidden_carousel_images (tenant_id,user_id,carousel_id,file_id) VALUES (?,?,?,?) ON CONFLICT DO NOTHING').bind(c.get('carouselTenant'), user.id, MEDTECH_CAROUSEL.id, id).run();
+    await c.env.DB.prepare('INSERT INTO user_hidden_carousel_images (group_site_id,user_id,carousel_id,file_id) VALUES (?,?,?,?) ON CONFLICT DO NOTHING').bind(c.get('carouselTenant'), user.id, MEDTECH_CAROUSEL.id, id).run();
     return c.json({ hidden: true, fileId: id });
   });
   app.delete('/:carousel/me/hidden/:file', async c => {
     const user = await getUser(c.env, c.req.raw), id = c.req.param('file');
-    await c.env.DB.prepare('DELETE FROM user_hidden_carousel_images WHERE tenant_id = ? AND user_id = ? AND carousel_id = ? AND file_id = ?').bind(c.get('carouselTenant'), user.id, MEDTECH_CAROUSEL.id, id).run();
+    await c.env.DB.prepare('DELETE FROM user_hidden_carousel_images WHERE group_site_id = ? AND user_id = ? AND carousel_id = ? AND file_id = ?').bind(c.get('carouselTenant'), user.id, MEDTECH_CAROUSEL.id, id).run();
     return c.json({ hidden: false, fileId: id });
   });
   return app;

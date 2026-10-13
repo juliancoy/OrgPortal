@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { accountSelection, type AvailabilityObservation } from './accountAvailability';
-import { resolvePortalTenant, type PortalTenant } from './timebank';
+import { resolveGroupSite, type GroupSite } from './timebank';
 
 export const organizersMeetupTag = 'lifetech-organizers-meetup';
 const halfHour = 1800000;
@@ -21,14 +21,14 @@ function startTime(value:unknown) {
 async function member(db:D1Database,organizationId:string|null|undefined,userId:string) {
  if(!organizationId || !(await db.prepare("SELECT 1 FROM organization_memberships WHERE organization_id=? AND user_id=? AND status='active'").bind(organizationId,userId).first()))reject(403,'Active organization membership is required to schedule meetings.');
 }
-async function preference(db:D1Database,tenantId:string,userId:string) {
- return db.prepare('SELECT enabled,timezone FROM member_meeting_preferences WHERE tenant_id=? AND user_id=?').bind(tenantId,userId).first<Preference>();
+async function preference(db:D1Database,groupSiteId:string,userId:string) {
+ return db.prepare('SELECT enabled,timezone FROM member_meeting_preferences WHERE group_site_id=? AND user_id=?').bind(groupSiteId,userId).first<Preference>();
 }
 async function history(db:D1Database,userId:string) {
  return (await db.prepare('SELECT slot,available FROM account_availability WHERE user_id=? ORDER BY slot').bind(userId).all<AvailabilityObservation>()).results;
 }
 // These events are maintained through the native event MCP preview/apply tools.
-async function organizersEvents(db:D1Database,tenant:PortalTenant) {
+async function organizersEvents(db:D1Database,tenant:GroupSite) {
  return (await db.prepare(`SELECT starts_at,ends_at FROM events WHERE host_org_id=?
   AND EXISTS (SELECT 1 FROM json_each(events.tags) WHERE value=?) AND starts_at IS NOT NULL AND ends_at IS NOT NULL ORDER BY starts_at,ends_at`)
   .bind(tenant.organization_id,organizersMeetupTag).all<Interval>()).results;
@@ -36,7 +36,7 @@ async function organizersEvents(db:D1Database,tenant:PortalTenant) {
 function month(value:string) {
  return new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit'}).format(new Date(value));
 }
-function clearOfOrganizers(tenant:PortalTenant,start:string,end:string,events:Interval[]) {
+function clearOfOrganizers(tenant:GroupSite,start:string,end:string,events:Interval[]) {
  // Until the month's organizers meetup is established, do not promise conflict-free bookings.
  if(tenant.home_org_slug==='lifetech' && !events.some(event=>month(event.starts_at)===month(start)))return false;
  return !events.some(event=>overlaps(start,end,event));
@@ -55,7 +55,7 @@ export function memberMeetingRoutes(getUser:(env:Env,request:Request)=>Promise<{
  const app=new Hono<{Bindings:Env}>();
  app.use('*',async(c,next)=>{c.header('Cache-Control','no-store');await next();});
  async function context(env:Env,request:Request) {
-  const user=await getUser(env,request),tenant=await resolvePortalTenant(env.DB,request);
+  const user=await getUser(env,request),tenant=await resolveGroupSite(env.DB,request);
   await member(env.DB,tenant.organization_id,user.id);
   return {user,tenant};
  }
@@ -68,18 +68,18 @@ export function memberMeetingRoutes(getUser:(env:Env,request:Request)=>Promise<{
   const {user,tenant}=await context(c.env,c.req.raw),body=await c.req.json().catch(()=>null);
   if(typeof body?.enabled!=='boolean'||typeof body?.timezone!=='string')reject(400,'Choose whether members can book meetings and a timezone.');
   try {new Intl.DateTimeFormat('en',{timeZone:body.timezone});}catch{reject(400,'Invalid timezone.');}
-  await c.env.DB.prepare(`INSERT INTO member_meeting_preferences(tenant_id,user_id,enabled,timezone) VALUES (?,?,?,?)
-   ON CONFLICT(tenant_id,user_id) DO UPDATE SET enabled=excluded.enabled,timezone=excluded.timezone`).bind(tenant.id,user.id,body.enabled?1:0,body.timezone).run();
+  await c.env.DB.prepare(`INSERT INTO member_meeting_preferences(group_site_id,user_id,enabled,timezone) VALUES (?,?,?,?)
+   ON CONFLICT(group_site_id,user_id) DO UPDATE SET enabled=excluded.enabled,timezone=excluded.timezone`).bind(tenant.id,user.id,body.enabled?1:0,body.timezone).run();
   return c.json({ok:true});
  });
  app.get('/',async c=>{
   const {user,tenant}=await context(c.env,c.req.raw);
-  const rows=await c.env.DB.prepare("SELECT * FROM member_meetings WHERE tenant_id=? AND (host_user_id=? OR guest_user_id=?) ORDER BY starts_at DESC LIMIT 100").bind(tenant.id,user.id,user.id).all<Meeting>();
+  const rows=await c.env.DB.prepare("SELECT * FROM member_meetings WHERE group_site_id=? AND (host_user_id=? OR guest_user_id=?) ORDER BY starts_at DESC LIMIT 100").bind(tenant.id,user.id,user.id).all<Meeting>();
   return c.json({meetings:rows.results});
  });
  app.post('/:id/cancel',async c=>{
   const {user,tenant}=await context(c.env,c.req.raw);
-  const result=await c.env.DB.prepare("UPDATE member_meetings SET status='cancelled' WHERE id=? AND tenant_id=? AND (host_user_id=? OR guest_user_id=?)").bind(c.req.param('id'),tenant.id,user.id,user.id).run();
+  const result=await c.env.DB.prepare("UPDATE member_meetings SET status='cancelled' WHERE id=? AND group_site_id=? AND (host_user_id=? OR guest_user_id=?)").bind(c.req.param('id'),tenant.id,user.id,user.id).run();
   if(!result.meta.changes)reject(404,'Meeting not found.');
   return c.json({ok:true});
  });
@@ -111,8 +111,8 @@ export function memberMeetingRoutes(getUser:(env:Env,request:Request)=>Promise<{
   if(!clearOfOrganizers(tenant,start,end,events)||conflicts.some(interval=>overlaps(start,end,interval)))reject(409,'This time conflicts with another meeting or the organizers meetup.');
   // Recheck snapshots and booking conflicts within the atomic write, so racing requests cannot double-book.
   const id=crypto.randomUUID();
-  const result=await c.env.DB.prepare(`INSERT INTO member_meetings(id,tenant_id,host_user_id,guest_user_id,starts_at,ends_at)
-   SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM member_meeting_preferences WHERE tenant_id=? AND user_id=? AND enabled=1 AND timezone=?)
+  const result=await c.env.DB.prepare(`INSERT INTO member_meetings(id,group_site_id,host_user_id,guest_user_id,starts_at,ends_at)
+   SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM member_meeting_preferences WHERE group_site_id=? AND user_id=? AND enabled=1 AND timezone=?)
    AND (SELECT json_group_array(json_object('slot',slot,'available',available)) FROM (SELECT slot,available FROM account_availability WHERE user_id=? ORDER BY slot))=?
    AND NOT EXISTS (SELECT 1 FROM member_meetings WHERE status='confirmed' AND starts_at<? AND ends_at>?
     AND (host_user_id IN (?,?) OR guest_user_id IN (?,?)))

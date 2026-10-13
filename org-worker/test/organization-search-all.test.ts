@@ -1,7 +1,7 @@
 import {identityProfile} from './helpers/identityProfile';
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { readFileSync } from 'node:fs';
+import { readCurrentSchemaFileSync as readFileSync } from './helpers/currentSchema';
 import { DatabaseSync } from 'node:sqlite';
 import { app } from '../src/index';
 function fixture() {

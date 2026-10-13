@@ -1,7 +1,7 @@
 // Local browser acceptance server: production Worker routes + real SQLite,
 // with only the external identity provider replaced by two test members.
 import { createServer } from 'node:http';
-import { readFileSync } from 'node:fs';
+import { readCurrentSchemaFileSync as readFileSync } from './currentSchema';
 import { app } from '../../src/index';
 import { app as chatApp } from '../../../chat-worker/src/index';
 import { TimebankDatabase } from './timebankDatabase';

@@ -4,7 +4,7 @@ import {
   getActivePortalProfileConfig,
   isPortalFeatureEnabled,
 } from './portalFeatures'
-import { parsePortalTenant } from './timebankCommunity'
+import { parseGroupSite } from './timebankCommunity'
 
 describe('portal feature profiles', () => {
   it('does not infer MedTech from hostname without tenant metadata', () => {
@@ -20,7 +20,7 @@ describe('portal feature profiles', () => {
   })
 
   it('lets a hostname timebank tenant keep its identity and landing page', () => {
-    const domain = vi.spyOn(communities, 'getDomainTenant').mockReturnValue({
+    const domain = vi.spyOn(communities, 'getGroupSite').mockReturnValue({
       id: 'bmoretimebank', hostname: 'bmoretimebank.codecollective.us',
       name: 'Bmore Timebank', tagline: 'Neighbors helping neighbors', accent_color: '#18745b',
       profile: 'community', features: ['timebank'],
@@ -38,7 +38,7 @@ describe('portal feature profiles', () => {
   })
 
   it('lets a configured tenant provide MedTech-level branding without a hostname special case', () => {
-    const domain = vi.spyOn(communities, 'getDomainTenant').mockReturnValue({
+    const domain = vi.spyOn(communities, 'getGroupSite').mockReturnValue({
       id: 'baltimore-medtech',
       hostname: 'medtech.social',
       name: 'Baltimore MedTech',
@@ -55,7 +55,7 @@ describe('portal feature profiles', () => {
     try {
       const profile = getActivePortalProfileConfig('', null, 'custom.example')
       expect(profile.id).toBe('baltimore-medtech')
-      expect(profile.tenantId).toBe('baltimore-medtech')
+      expect(profile.groupSiteId).toBe('baltimore-medtech')
       expect(profile.brandImagePath).toBe('/images/baltimore-medtech-logo-square-v2.jpg')
       expect(profile.memberHomePath).toBe('/chat')
       expect(profile.manifestPath).toBe('/medtech.webmanifest')
@@ -64,7 +64,7 @@ describe('portal feature profiles', () => {
   })
 
   it('validates tenant config from the backend before applying routing and branding', () => {
-    const tenant = parsePortalTenant({
+    const tenant = parseGroupSite({
       id: 'medtech',
       hostname: 'medtech.social',
       name: 'Baltimore MedTech',
@@ -83,14 +83,14 @@ describe('portal feature profiles', () => {
     expect(tenant?.home_kind).toBe('main')
     expect(tenant?.public_base_url).toBe('https://medtech.social')
     expect(tenant?.feature_config?.orgEvents).toEqual({ enabled: true })
-    expect(parsePortalTenant({ hostname: 'missing-id' })).toBeNull()
+    expect(parseGroupSite({ hostname: 'missing-id' })).toBeNull()
   })
 })
 
 
 it('resolves Deism branding and routes from tenant metadata on either mount', () => {
   for (const canonical_path_prefix of ['/p', '']) {
-    const domain = vi.spyOn(communities, 'getDomainTenant').mockReturnValue({
+    const domain = vi.spyOn(communities, 'getGroupSite').mockReturnValue({
       id: 'deism', hostname: 'portal.deism.church', name: 'Deism',
       tagline: 'Reason, nature, and community', accent_color: '#14532d',
       profile: 'deism', features: ['directory', 'events', 'calendar', 'chat'],
@@ -99,7 +99,7 @@ it('resolves Deism branding and routes from tenant metadata on either mount', ()
     try {
       const profile = getActivePortalProfileConfig()
       expect(profile.id).toBe('deism')
-      expect(profile.tenantId).toBe('deism')
+      expect(profile.groupSiteId).toBe('deism')
       expect(profile.brandImagePath).toBe('/images/deism/icon-512.png')
       expect(profile.manifestPath).toBe('/deism.webmanifest')
       expect(profile.homeUrl).toBe('https://deism.church/')
@@ -111,7 +111,7 @@ it('resolves Deism branding and routes from tenant metadata on either mount', ()
 
 
 it('uses the attached domain homepage for a stale slug-portal logo link', () => {
-  const domain = vi.spyOn(communities, 'getDomainTenant').mockReturnValue({
+  const domain = vi.spyOn(communities, 'getGroupSite').mockReturnValue({
     id: 'lifetech', name: 'LifeTech', slug: 'lifetech', hostname: 'lifetech.fyi',
     tagline: '', accent_color: '#155e59', home_url: 'https://lifetech.fyi/portals/lifetech',
     custom_domain_hostname: 'lifetech.fyi', custom_domain_status: 'attached',
@@ -122,7 +122,7 @@ it('uses the attached domain homepage for a stale slug-portal logo link', () => 
 
 it('preserves configured shared portal and external homepage destinations', () => {
   for (const home_url of ['https://codecollective.us/p/portals/lifetech', 'https://lifetech.fyi/about']) {
-    const domain = vi.spyOn(communities, 'getDomainTenant').mockReturnValue({
+    const domain = vi.spyOn(communities, 'getGroupSite').mockReturnValue({
       id: 'lifetech', name: 'LifeTech', slug: 'lifetech', hostname: 'lifetech.fyi',
       tagline: '', accent_color: '#155e59', home_url,
       custom_domain_hostname: 'lifetech.fyi', custom_domain_status: 'attached',
@@ -134,7 +134,7 @@ it('preserves configured shared portal and external homepage destinations', () =
 
 
 it('OrgPortal is neutral even while tenant metadata is unavailable', () => {
-  const domain = vi.spyOn(communities, 'getDomainTenant').mockReturnValue(null)
+  const domain = vi.spyOn(communities, 'getGroupSite').mockReturnValue(null)
   try {
     const profile = getActivePortalProfileConfig('', null, 'orgportal.cc')
     expect(profile.id).toBe('orgportal')
@@ -147,7 +147,7 @@ it('OrgPortal is neutral even while tenant metadata is unavailable', () => {
 
 
 it('uses LifeTech identity from explicit tenant metadata', () => {
-  const domain = vi.spyOn(communities, 'getDomainTenant').mockReturnValue({
+  const domain = vi.spyOn(communities, 'getGroupSite').mockReturnValue({
     id: 'lifetech', slug: 'lifetech', hostname: 'lifetech.fyi', name: 'LifeTech',
     profile: 'community', features: ['directory', 'events', 'chat'], tagline: '', accent_color: '#155e59',
   })

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
-import { readFileSync } from 'node:fs';
+import { readCurrentSchemaFileSync as readFileSync } from './helpers/currentSchema';
 import { runOrganizationOperation } from '../src/organizationMcp';
 import { claimOrganization } from '../src/organizationIam';
 
@@ -10,7 +10,7 @@ function database() {
   for (const file of ['0002_org_event_directories.sql', '0015_organization_iam.sql', '0017_event_mcp_operations.sql']) {
     sql.exec(readFileSync(new URL(`../migrations/${file}`, import.meta.url), 'utf8'));
   }
-  sql.exec("CREATE TABLE portal_tenants (id TEXT PRIMARY KEY, home_org_slug TEXT, feature_config TEXT NOT NULL DEFAULT '{}');\n CREATE TABLE onboarding_enrollments (tenant_id TEXT, user_id TEXT, completed_at TEXT, PRIMARY KEY(tenant_id,user_id));");
+  sql.exec("CREATE TABLE group_sites (id TEXT PRIMARY KEY, home_org_slug TEXT, feature_config TEXT NOT NULL DEFAULT '{}');\n CREATE TABLE onboarding_enrollments (group_site_id TEXT, user_id TEXT, completed_at TEXT, PRIMARY KEY(group_site_id,user_id));");
   sql.exec(readFileSync(new URL("../migrations/0067_pending_organizers.sql", import.meta.url), "utf8"));
   const db = { prepare(query: string) {
     const statement = sql.prepare(query);
@@ -62,7 +62,7 @@ test('membership writes preserve PIdP IDs and enforce organization permissions',
 test('pending organizer previews require unchanged onboarding and one-use confirmation', async () => {
   const { db, sql } = database();
   sql.exec(`INSERT INTO organizations (id,name,slug,tags) VALUES ('org','LifeTech','lifetech','[]');
-    INSERT INTO portal_tenants VALUES ('tenant','lifetech','{"onboarding":{"enabled":true}}')`);
+    INSERT INTO group_sites VALUES ('tenant','lifetech','{"onboarding":{"enabled":true}}')`);
   await claimOrganization(db, 'org', { id: identity.userId, name: 'Owner', email: null, isOperator: false }, new Date().toISOString());
   const args = { organizationId: 'org', user_id: 'candidate', role: 'administrator' };
   const create = async () => null;

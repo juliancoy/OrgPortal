@@ -59,7 +59,7 @@ export function normalizePidpBase(rawBase: string): string {
 export const PIDP_BASE_URL = normalizePidpBase(
   (import.meta.env.VITE_PIDP_BASE_URL as string | undefined) ?? '/pidp',
 )
-export const PIDP_APP_SLUG = ((import.meta.env.VITE_PIDP_APP_SLUG as string | undefined) ?? 'code-collective').trim()
+export const PIDP_APP_SLUG = ((import.meta.env.VITE_PIDP_APP_SLUG as string | undefined) ?? 'orgportal').trim()
 export function pidpUrl(path: string): string {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
   return `${PIDP_BASE_URL}${normalizedPath}`

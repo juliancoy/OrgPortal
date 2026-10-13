@@ -1,6 +1,6 @@
 import { Navigate } from 'react-router-dom'
 import { getActivePortalProfileConfig } from '../../config/portalFeatures'
-import { getDomainTenant } from '../../config/timebankCommunity'
+import { getGroupSite } from '../../config/timebankCommunity'
 import { specialtyResourcesForTenant } from '../../config/specialtyResources'
 import { ExternalBrowserPrompt } from '../components/ExternalBrowserPrompt'
 import { SpecialtyResourcesPanel } from '../components/SpecialtyResourcesPanel'
@@ -8,7 +8,7 @@ import { Footer } from '../shell/Footer'
 import { Header } from '../shell/Header'
 
 export function TenantResourcesPage() {
-  const tenant = getDomainTenant()
+  const tenant = getGroupSite()
   const profile = getActivePortalProfileConfig()
   const resources = specialtyResourcesForTenant(tenant)
   if (!tenant) return <Navigate to="/" replace />

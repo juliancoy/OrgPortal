@@ -1,11 +1,11 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { getActivePortalProfileConfig, portalProfilePath } from '../../config/portalFeatures'
-import { useDomainTenant } from '../../config/timebankCommunity'
+import { useGroupSite } from '../../config/timebankCommunity'
 
 export function TermsPage() {
   const profile = getActivePortalProfileConfig()
-  const tenant = useDomainTenant()
+  const tenant = useGroupSite()
   const brandName = profile.brandName || 'OrgPortal'
   const tenantName = tenant?.name || brandName
 

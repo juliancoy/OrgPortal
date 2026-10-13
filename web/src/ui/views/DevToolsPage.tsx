@@ -640,9 +640,9 @@ For photo uploads, ask which local files and whether they belong in the organiza
             <li>Galleries: upload local photos to an organization or event gallery after reviewing the upload.</li>
             <li>Governance: read motions and results, and preview and apply governance actions.</li>
             <li>Availability: preview and assign availability-calendar tasks to active members.</li>
-            <li>Portal setup: manage tenant setup and request custom-domain configuration.</li>
+            <li>Portal setup: manage group homepage setup and request custom-domain configuration.</li>
           </ul>
-          <p className="muted">Availability depends on the tenant's configuration and your access. Ask your agent to discover the live tools before starting.</p>
+          <p className="muted">Availability depends on the group's configuration and your access. Ask your agent to discover the live tools before starting.</p>
           <p>MCP server: <code>{mcpEndpoint}</code></p>
           <p><a href={`${origin}/.well-known/oauth-protected-resource/api/org/mcp`}>Connection discovery</a></p>
           <p>Connect through browser OAuth using your website account. Review connection permissions there. Never paste passwords or account tokens into a chat.</p>

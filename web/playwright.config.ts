@@ -27,6 +27,7 @@ export default defineConfig({
     },
   ],
   webServer: {
+    ignoreHTTPSErrors: new URL(baseURL).hostname === 'localhost',
     env: { VITE_GOOGLE_PERSONALIZED_ORIGINS: process.env.VITE_GOOGLE_PERSONALIZED_ORIGINS ?? new URL(baseURL).origin },
     command: `VITE_CACHE_DIR=node_modules/.vite-playwright-cache npm run dev -- --host ${HOST} --port ${PORT}`,
     url: baseURL,

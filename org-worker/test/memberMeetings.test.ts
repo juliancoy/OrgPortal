@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { readFileSync } from 'node:fs';
+import { readCurrentSchemaFileSync as readFileSync } from './helpers/currentSchema';
 import { HTTPException } from 'hono/http-exception';
 import { memberMeetingRoutes, organizersMeetupTag, overlaps } from '../src/memberMeetings';
 import { TimebankDatabase } from './helpers/timebankDatabase';
-import { resolvePortalTenant } from '../src/timebank';
+import { resolveGroupSite } from '../src/timebank';
 
 test('interval conflicts allow meetings immediately before and after an event',()=>{
  const event={starts_at:'2026-10-20T22:00:00Z',ends_at:'2026-10-21T00:30:00Z'};
@@ -17,8 +17,8 @@ test('member booking reuses availability, excludes meetup conflicts, requires pu
  const db=new TimebankDatabase();
  try {
   for(const file of ['0002_org_event_directories.sql','0012_health_insurance.sql','0015_organization_iam.sql','0016_health_service_hosts_and_user_event_calendars.sql','0018_event_registrations.sql','0032_portal_tenant_org_slug.sql','0042_availability_polls.sql','0047_account_availability.sql','0060_member_meetings.sql'])db.sqlite.exec(readFileSync(new URL(`../migrations/${file}`,import.meta.url),'utf8'));
-  db.sqlite.exec("INSERT INTO organizations(id,name,slug) VALUES ('lifetech','LifeTech','lifetech'); UPDATE portal_tenants SET organization_id='lifetech',home_org_slug='lifetech' WHERE hostname='medtech.social'");
-  const tenant=await resolvePortalTenant(db.asD1(),new Request('https://medtech.social/'));
+  db.sqlite.exec("INSERT INTO organizations(id,name,slug) VALUES ('lifetech','LifeTech','lifetech'); UPDATE group_sites SET organization_id='lifetech',home_org_slug='lifetech' WHERE hostname='medtech.social'");
+  const tenant=await resolveGroupSite(db.asD1(),new Request('https://medtech.social/'));
   for(const user of ['alice','bob','carol'])db.sqlite.prepare("INSERT INTO organization_memberships(organization_id,user_id,role) VALUES ('lifetech',?,'member')").run(user);
   const app=memberMeetingRoutes(async(_env,req)=>{const id=req.headers.get('authorization');if(!id)throw new HTTPException(401);return {id}});
   const req=(path:string,method='GET',body?:unknown,user='bob',host='medtech.social')=>app.fetch(new Request(`https://${host}${path}`,{method,headers:{...(user?{authorization:user}:{}),'content-type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)}),{DB:db.asD1()} as Env);
@@ -57,6 +57,6 @@ test('member booking reuses availability, excludes meetup conflicts, requires pu
   assert.equal((await req('/alice/book','POST',{starts_at:start})).status,201);
   assert.equal((await req('/preferences','PUT',{enabled:false,timezone:'UTC'},'alice')).status,200);
   assert.deepEqual((await (await req(query)).json() as {slots:string[]}).slots,[]);
-  assert.equal((db.sqlite.prepare('SELECT count(*) n FROM member_meetings WHERE tenant_id=?').get(tenant.id) as {n:number}).n,2);
+  assert.equal((db.sqlite.prepare('SELECT count(*) n FROM member_meetings WHERE group_site_id=?').get(tenant.id) as {n:number}).n,2);
  }finally{db.sqlite.close()}
 });

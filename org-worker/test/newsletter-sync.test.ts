@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync, mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, rmSync } from 'node:fs';
+import { readCurrentSchemaFileSync as readFileSync } from './helpers/currentSchema';
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { newsletterSyncRoutes } from '../src/newsletterSync'

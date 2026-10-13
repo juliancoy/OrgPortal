@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { readFileSync } from 'node:fs';
+import { readCurrentSchemaFileSync as readFileSync } from './helpers/currentSchema';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { driveCarouselRoutes, parsePublicDriveFolder, MEDTECH_CAROUSEL } from '../src/driveCarousel';
@@ -15,7 +15,7 @@ test('public folder parser includes images and HEIC previews, excludes videos an
 test('hide and restore persist only for the authenticated account and tenant, without changing the public folder', async () => {
  const db = new TimebankDatabase();
  db.sqlite.exec(readFileSync(new URL('../migrations/0048_user_hidden_carousel_images.sql',import.meta.url),'utf8'));
- db.sqlite.exec("INSERT INTO portal_tenants (id,hostname,name,tagline) VALUES ('org-lifetech-portal','lifetech.fyi','LifeTech','Health')");
+ db.sqlite.exec("INSERT INTO group_sites (id,hostname,name,tagline) VALUES ('org-lifetech-portal','lifetech.fyi','LifeTech','Health')");
  const auth = async (_env: Env, req: Request) => { const id=req.headers.get('authorization'); if(!id)throw new HTTPException(401);return {id}; };
  const app=new Hono<{Bindings:Env}>();app.route('/carousel',driveCarouselRoutes(auth,async()=>parsePublicDriveFolder(html)));
  const request=(path:string,method='GET',user='',host='medtech.social',body?:unknown)=>app.fetch(new Request(`https://${host}/carousel/${MEDTECH_CAROUSEL.id}${path}`,{method,headers:{...(user?{authorization:user}:{}),'content-type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)}),{DB:db.asD1()} as Env);

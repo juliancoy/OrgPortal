@@ -1,7 +1,7 @@
 import { organizationFunding } from '../src/organizationFunding';
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {readFileSync} from 'node:fs';
+import { readCurrentSchemaFileSync as readFileSync } from './helpers/currentSchema';
 import {TimebankDatabase} from './helpers/timebankDatabase';
 import {importFinancing,financingAgencyReport,financingRecipientReport} from '../src/financingRecords';
 import {organizationSnapshot,replicateOrganizations,replicaStatus} from '../src/organizationReplication';

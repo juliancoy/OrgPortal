@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { readFileSync } from 'node:fs';
+import { readCurrentSchemaFileSync as readFileSync } from './helpers/currentSchema';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { TimebankDatabase } from './helpers/timebankDatabase';
 import { monthSlots, nextMonth, onboardingRoutes, onboardingSteps } from '../src/onboarding';
 import { availabilityRoutes } from '../src/availability';
 import { userTaskRoutes } from '../src/userTasks';
-import { resolvePortalTenant } from '../src/timebank';
+import { resolveGroupSite } from '../src/timebank';
 
 test('month bounds clamp short months and preserve local dates across DST',()=>{
  assert.equal(nextMonth('2026-01-31'),'2026-02-28');
@@ -20,9 +20,9 @@ test('month bounds clamp short months and preserve local dates across DST',()=>{
 });
 test('onboarding enrolls once, isolates tenants and users, and requires all steps plus a reviewed typical week',async()=>{
  const db=new TimebankDatabase();
- db.sqlite.exec("ALTER TABLE portal_tenants ADD COLUMN feature_config TEXT NOT NULL DEFAULT '{}'");
+ db.sqlite.exec("ALTER TABLE group_sites ADD COLUMN feature_config TEXT NOT NULL DEFAULT '{}'");
  for(const file of ['0042_availability_polls.sql','0046_user_tasks.sql','0047_account_availability.sql','0051_onboarding.sql'])db.sqlite.exec(readFileSync(new URL(`../migrations/${file}`,import.meta.url),'utf8'));
- db.sqlite.exec(`UPDATE portal_tenants SET feature_config='{"onboarding":{"enabled":true}}' WHERE hostname='medtech.social'`);
+ db.sqlite.exec(`UPDATE group_sites SET feature_config='{"onboarding":{"enabled":true}}' WHERE hostname='medtech.social'`);
  const auth=async(_env:Env,req:Request)=>{const id=req.headers.get('authorization');if(!id)throw new HTTPException(401);return {id}};
  const app=new Hono<{Bindings:Env}>();app.route('/onboarding',onboardingRoutes(auth));app.route('/tasks',userTaskRoutes(auth));
  const env={DB:db.asD1()} as Env;
@@ -54,7 +54,7 @@ test('onboarding enrolls once, isolates tenants and users, and requires all step
   assert.equal((await req('/onboarding/availability','PUT',{timezone:'America/New_York',slots:[],reviewed:true})).status,200);
   const completed:any=await (await req('/onboarding')).json();
   assert.ok(completed.completed_at);
-  const stored=db.sqlite.prepare('SELECT acknowledgements,availability_saved_at,completed_at FROM onboarding_enrollments WHERE tenant_id=? AND user_id=?').get(completed.tenant_id,'alice')!;
+  const stored=db.sqlite.prepare('SELECT acknowledgements,availability_saved_at,completed_at FROM onboarding_enrollments WHERE group_site_id=? AND user_id=?').get(completed.group_site_id,'alice')!;
   assert.equal(stored.completed_at,completed.completed_at);
   assert.equal(stored.availability_saved_at,completed.availability_saved_at);
   assert.deepEqual(JSON.parse(stored.acknowledgements as string),completed.acknowledgements);
@@ -78,20 +78,20 @@ test('onboarding enrolls once, isolates tenants and users, and requires all step
 
 test('existing onboarding progress replaces the aggregate task without reopening completed steps',async()=>{
  const db=new TimebankDatabase();
- db.sqlite.exec("ALTER TABLE portal_tenants ADD COLUMN feature_config TEXT NOT NULL DEFAULT '{}'");
+ db.sqlite.exec("ALTER TABLE group_sites ADD COLUMN feature_config TEXT NOT NULL DEFAULT '{}'");
  for(const file of ['0042_availability_polls.sql','0046_user_tasks.sql','0047_account_availability.sql','0051_onboarding.sql'])db.sqlite.exec(readFileSync(new URL(`../migrations/${file}`,import.meta.url),'utf8'));
- db.sqlite.exec(`UPDATE portal_tenants SET feature_config='{"onboarding":{"enabled":true}}' WHERE hostname='medtech.social'`);
+ db.sqlite.exec(`UPDATE group_sites SET feature_config='{"onboarding":{"enabled":true}}' WHERE hostname='medtech.social'`);
  const auth=async(_env:Env,req:Request)=>({id:req.headers.get('authorization')!});
  const app=new Hono<{Bindings:Env}>();app.route('/tasks',userTaskRoutes(auth));
  const env={DB:db.asD1()} as Env;
  try{
-  const tenantRow=await resolvePortalTenant(db.asD1(),new Request('https://medtech.social/tasks'));
+  const tenantRow=await resolveGroupSite(db.asD1(),new Request('https://medtech.social/tasks'));
   const tenant=tenantRow.id;
-  db.sqlite.prepare('INSERT INTO onboarding_enrollments(tenant_id,user_id,start_date,end_date,acknowledgements,availability_saved_at) VALUES (?,?,?,?,?,?)').run(tenant,'alice','2026-10-03','2026-11-03','{"constitution":"2026-10-03T12:00:00Z"}','2026-10-03T12:00:00Z');
-  const insert=db.sqlite.prepare("INSERT INTO user_tasks(id,tenant_id,user_id,created_by_user_id,kind,entity_id,title) VALUES (?,?,'alice','alice','personal',?,?)");
+  db.sqlite.prepare('INSERT INTO onboarding_enrollments(group_site_id,user_id,start_date,end_date,acknowledgements,availability_saved_at) VALUES (?,?,?,?,?,?)').run(tenant,'alice','2026-10-03','2026-11-03','{"constitution":"2026-10-03T12:00:00Z"}','2026-10-03T12:00:00Z');
+  const insert=db.sqlite.prepare("INSERT INTO user_tasks(id,group_site_id,user_id,created_by_user_id,kind,entity_id,title) VALUES (?,?,'alice','alice','personal',?,?)");
   insert.run('legacy',tenant,'onboarding:v1','Complete onboarding');
   insert.run('calendar',tenant,`availability-calendar:${tenantRow.organization_id}`,'Enter availability');
-  db.sqlite.prepare("INSERT INTO user_tasks(id,tenant_id,user_id,created_by_user_id,kind,title) VALUES ('personal',?,'alice','alice','personal','My own task')").run(tenant);
+  db.sqlite.prepare("INSERT INTO user_tasks(id,group_site_id,user_id,created_by_user_id,kind,title) VALUES ('personal',?,'alice','alice','personal','My own task')").run(tenant);
   const read=async(user='alice')=>(await (await app.fetch(new Request('https://medtech.social/tasks',{headers:{authorization:user}}),env)).json()) as {tasks:Array<{id:string;href:string}>};
   assert.deepEqual((await read()).tasks.map(t=>t.href),['/onboarding#participation','/onboarding#communications','/onboarding#meetings',null]);
   assert.equal((await read()).tasks.length,4);
@@ -107,11 +107,11 @@ test('existing onboarding progress replaces the aggregate task without reopening
 test('onboarding availability feeds scheduling polls across DST with private suggestions and explicit confirmation',async()=>{
  const db=new TimebankDatabase();
  try {
-  db.sqlite.exec("ALTER TABLE portal_tenants ADD COLUMN feature_config TEXT NOT NULL DEFAULT '{}'");
+  db.sqlite.exec("ALTER TABLE group_sites ADD COLUMN feature_config TEXT NOT NULL DEFAULT '{}'");
   for(const file of ['0042_availability_polls.sql','0046_user_tasks.sql','0047_account_availability.sql','0051_onboarding.sql'])db.sqlite.exec(readFileSync(new URL(`../migrations/${file}`,import.meta.url),'utf8'));
-  db.sqlite.exec(`UPDATE portal_tenants SET feature_config='{"onboarding":{"enabled":true}}' WHERE hostname='medtech.social'`);
-  const tenant=await resolvePortalTenant(db.asD1(),new Request('https://medtech.social/'));
-  db.sqlite.prepare('INSERT INTO onboarding_enrollments(tenant_id,user_id,start_date,end_date) VALUES (?,?,?,?)').run(tenant.id,'alice','2026-10-03','2026-11-03');
+  db.sqlite.exec(`UPDATE group_sites SET feature_config='{"onboarding":{"enabled":true}}' WHERE hostname='medtech.social'`);
+  const tenant=await resolveGroupSite(db.asD1(),new Request('https://medtech.social/'));
+  db.sqlite.prepare('INSERT INTO onboarding_enrollments(group_site_id,user_id,start_date,end_date) VALUES (?,?,?,?)').run(tenant.id,'alice','2026-10-03','2026-11-03');
   const auth=async(_env:Env,req:Request)=>{const id=req.headers.get('authorization');if(!id)throw new HTTPException(401);return {id}};
   const app=new Hono<{Bindings:Env}>();
   app.route('/onboarding',onboardingRoutes(auth));app.route('/availability',availabilityRoutes(auth));
@@ -136,13 +136,13 @@ test('onboarding availability feeds scheduling polls across DST with private sug
  test('LifeTech removes conduct and governance steps, retires their tasks, and preserves confirmations',async()=>{
  const db=new TimebankDatabase();
  try {
-  db.sqlite.exec("ALTER TABLE portal_tenants ADD COLUMN feature_config TEXT NOT NULL DEFAULT '{}'");
+  db.sqlite.exec("ALTER TABLE group_sites ADD COLUMN feature_config TEXT NOT NULL DEFAULT '{}'");
   for(const file of ['0042_availability_polls.sql','0046_user_tasks.sql','0047_account_availability.sql','0051_onboarding.sql'])db.sqlite.exec(readFileSync(new URL(`../migrations/${file}`,import.meta.url),'utf8'));
-  db.sqlite.exec(`UPDATE portal_tenants SET hostname='lifetech.fyi',home_org_slug='lifetech',feature_config='{"onboarding":{"enabled":true}}' WHERE hostname='medtech.social'`);
-  const tenant=await resolvePortalTenant(db.asD1(),new Request('https://lifetech.fyi/'));
+  db.sqlite.exec(`UPDATE group_sites SET hostname='lifetech.fyi',home_org_slug='lifetech',feature_config='{"onboarding":{"enabled":true}}' WHERE hostname='medtech.social'`);
+  const tenant=await resolveGroupSite(db.asD1(),new Request('https://lifetech.fyi/'));
   const confirmed='2026-10-03T12:00:00Z';
-  db.sqlite.prepare('INSERT INTO onboarding_enrollments(tenant_id,user_id,start_date,end_date,acknowledgements,availability_saved_at) VALUES (?,?,?,?,?,?)').run(tenant.id,'alice','2026-10-03','2026-11-03',JSON.stringify({constitution:confirmed,participation:confirmed}),confirmed);
-  for(const step of ['communications','meetings'])db.sqlite.prepare("INSERT INTO user_tasks(id,tenant_id,user_id,created_by_user_id,kind,entity_id,title) VALUES (?,?,'alice','alice','personal',?,?)").run(step,tenant.id,`onboarding:v1:${step}`,step);
+  db.sqlite.prepare('INSERT INTO onboarding_enrollments(group_site_id,user_id,start_date,end_date,acknowledgements,availability_saved_at) VALUES (?,?,?,?,?,?)').run(tenant.id,'alice','2026-10-03','2026-11-03',JSON.stringify({constitution:confirmed,participation:confirmed}),confirmed);
+  for(const step of ['communications','meetings'])db.sqlite.prepare("INSERT INTO user_tasks(id,group_site_id,user_id,created_by_user_id,kind,entity_id,title) VALUES (?,?,'alice','alice','personal',?,?)").run(step,tenant.id,`onboarding:v1:${step}`,step);
   const app=new Hono<{Bindings:Env}>();const auth=async()=>({id:'alice'});
   app.route('/onboarding',onboardingRoutes(auth));app.route('/tasks',userTaskRoutes(auth));
   const request=(path:string,method='GET')=>app.fetch(new Request(`https://lifetech.fyi${path}`,{method,headers:{'content-type':'application/json'},body:method==='POST'?JSON.stringify({acknowledged:true}):undefined}),{DB:db.asD1()} as Env);
@@ -159,16 +159,16 @@ test('onboarding availability feeds scheduling polls across DST with private sug
 test('verified personal identity restores and merges onboarding and uses the same canonical person for private tasks and poll ownership',async()=>{
  const db=new TimebankDatabase();
  try {
-  db.sqlite.exec("ALTER TABLE portal_tenants ADD COLUMN feature_config TEXT NOT NULL DEFAULT '{}'");
+  db.sqlite.exec("ALTER TABLE group_sites ADD COLUMN feature_config TEXT NOT NULL DEFAULT '{}'");
   for(const file of ['0042_availability_polls.sql','0046_user_tasks.sql','0047_account_availability.sql','0051_onboarding.sql'])db.sqlite.exec(readFileSync(new URL(`../migrations/${file}`,import.meta.url),'utf8'));
-  db.sqlite.exec(`UPDATE portal_tenants SET feature_config='{"onboarding":{"enabled":true}}' WHERE hostname='medtech.social'`);
-  const tenant=await resolvePortalTenant(db.asD1(),new Request('https://medtech.social/'));
+  db.sqlite.exec(`UPDATE group_sites SET feature_config='{"onboarding":{"enabled":true}}' WHERE hostname='medtech.social'`);
+  const tenant=await resolveGroupSite(db.asD1(),new Request('https://medtech.social/'));
   const confirmed='2026-10-03T12:00:00Z';
-  const insert=db.sqlite.prepare('INSERT INTO onboarding_enrollments(tenant_id,user_id,start_date,end_date,acknowledgements,availability_saved_at) VALUES (?,?,?,?,?,?)');
+  const insert=db.sqlite.prepare('INSERT INTO onboarding_enrollments(group_site_id,user_id,start_date,end_date,acknowledgements,availability_saved_at) VALUES (?,?,?,?,?,?)');
   insert.run(tenant.id,'owner','2026-10-03','2026-11-03',JSON.stringify({constitution:confirmed}),confirmed);
   insert.run(tenant.id,'member','2026-10-03','2026-11-03',JSON.stringify({participation:confirmed,communications:confirmed,meetings:confirmed}),null);
   db.sqlite.prepare("INSERT INTO account_availability(user_id,slot,available,updated_at) VALUES ('owner','2026-10-05T13:00:00.000Z',1,'2026-10-03 12:00:00'),('member','2026-10-05T13:00:00.000Z',0,'2026-10-04 12:00:00')").run();
-  for(const user of ['owner','member'])db.sqlite.prepare("INSERT INTO user_tasks(id,tenant_id,user_id,created_by_user_id,kind,title) VALUES (?,?,?,?,'personal',?)").run(`${user}-task`,tenant.id,user,user,`${user} only`);
+  for(const user of ['owner','member'])db.sqlite.prepare("INSERT INTO user_tasks(id,group_site_id,user_id,created_by_user_id,kind,title) VALUES (?,?,?,?,'personal',?)").run(`${user}-task`,tenant.id,user,user,`${user} only`);
   const auth=async(_env:Env,request:Request)=>{const id=request.headers.get('authorization')!;return {id:id==='member'?'owner':id,account_id:id}};
   const app=new Hono<{Bindings:Env}>();
   app.route('/onboarding',onboardingRoutes(auth));app.route('/tasks',userTaskRoutes(auth));app.route('/availability',availabilityRoutes(auth));

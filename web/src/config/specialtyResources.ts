@@ -1,4 +1,4 @@
-import type { PortalTenant } from './timebankCommunity'
+import type { GroupSite } from './timebankCommunity'
 
 export type SpecialtyResource = {
   id: string
@@ -65,7 +65,7 @@ function cleanResource(value: unknown): SpecialtyResource | null {
   }
 }
 
-export function specialtyResourcesForTenant(tenant?: PortalTenant | null): SpecialtyResource[] {
+export function specialtyResourcesForTenant(tenant?: GroupSite | null): SpecialtyResource[] {
   if (!tenant) return []
   const configured = Array.isArray(tenant.feature_config?.specialtyResources)
     ? tenant.feature_config.specialtyResources.map(cleanResource).filter((resource): resource is SpecialtyResource => Boolean(resource))
@@ -79,7 +79,7 @@ export function specialtyResourcesForTenant(tenant?: PortalTenant | null): Speci
   return [...tenantResources, ...medTechDefaults]
 }
 
-export function hasTenantCalendar(tenant?: PortalTenant | null) {
+export function hasTenantCalendar(tenant?: GroupSite | null) {
   if (!tenant) return false
   if (tenant.features?.includes('calendar')) return true
   return tenant.features?.includes('events') || tenant.profile === 'baltimore-medtech'

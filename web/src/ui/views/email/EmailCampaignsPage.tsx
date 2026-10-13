@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
 import { emailApi, type CampaignPreview, type CampaignSummary, type EmailAudience, type EmailSender } from './emailApi'
 import './emailCampaigns.css'
@@ -9,11 +10,18 @@ const date = (value: number) => new Date(value).toLocaleString()
 
 export function EmailCampaignsPage() {
   const { token } = useAuth()
+  const [params,setParams]=useSearchParams()
+  const groupId=params.get('organization_id') || ''
+  const [groupsReady,setGroupsReady]=useState(false)
+  const [groups,setGroups]=useState<{id:string;name:string}[]>([])
+  const [segments,setSegments]=useState<{id:string;name:string;subscription_ids:string[]}[]>([])
+  const [segmentId,setSegmentId]=useState('')
+  useEffect(()=>{let cancelled=false;emailApi<{id:string;name:string}[]>(token,'/groups').then(rows=>{if(!cancelled){setGroups(rows);setGroupsReady(true)}}).catch(err=>{if(!cancelled){setError(err.message);setGroupsReady(true)}});return()=>{cancelled=true}},[token])
   const [sender, setSender] = useState<EmailSender | null>(null)
   const [events, setEvents] = useState<EventChoice[]>([])
   const [campaigns, setCampaigns] = useState<CampaignSummary[]>([])
   const [eventId, setEventId] = useState('')
-  const [audience, setAudience] = useState('event')
+  const [audience, setAudience] = useState('organization')
   const [audienceInfo, setAudienceInfo] = useState<EmailAudience | null>(null)
   const [selected, setSelected] = useState<string[]>([])
   const [subject, setSubject] = useState('You’re invited: {{event_title}}')
@@ -26,28 +34,28 @@ export function EmailCampaignsPage() {
 
   async function refresh() {
     const [nextSender, nextCampaigns] = await Promise.all([
-      emailApi<EmailSender>(token, '/sender'), emailApi<CampaignSummary[]>(token, '/campaigns'),
+      emailApi<EmailSender>(token, '/sender'), emailApi<CampaignSummary[]>(token, `/campaigns?organization_id=${encodeURIComponent(groupId)}`),
     ])
     setSender(nextSender); setCampaigns(nextCampaigns)
   }
   useEffect(() => {
     let cancelled = false
-    Promise.all([emailApi<EmailSender>(token, '/sender'), emailApi<CampaignSummary[]>(token, '/campaigns'),
-      fetch('/api/org/api/network/events?limit=500', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
-        .then(async (response) => { if (!response.ok) throw new Error('Unable to load events.'); return response.json() as Promise<EventChoice[]> })])
-      .then(([nextSender, nextCampaigns, nextEvents]) => {
-        if (cancelled) return
-        setSender(nextSender); setCampaigns(nextCampaigns); setEvents(nextEvents.filter((event) => event.host_org_id))
-      }).catch((err: Error) => { if (!cancelled) setError(err.message) })
-    return () => { cancelled = true }
-  }, [token])
-  useEffect(() => {
-    if (!eventId) return
-    let cancelled = false
-    emailApi<EmailAudience>(token, `/audience/${encodeURIComponent(eventId)}`).then((data) => { if (!cancelled) setAudienceInfo(data) })
-      .catch((err: Error) => { if (!cancelled) setError(err.message) })
-    return () => { cancelled = true }
-  }, [eventId, token])
+    setSender(null);setCampaigns([]);setEvents([]);setAudienceInfo(null);setPreview(null);setEventId('');setSelected([]);setSegments([]);setSegmentId('');setError('')
+    if(!groupId) return
+    Promise.all([emailApi<EmailSender>(token,'/sender'),emailApi<CampaignSummary[]>(token,`/campaigns?organization_id=${encodeURIComponent(groupId)}`),
+      emailApi<EventChoice[]>(token,`/groups/${groupId}/events`),emailApi<{id:string;name:string;subscription_ids:string[]}[]>(token,`/groups/${groupId}/segments`)])
+      .then(([nextSender,nextCampaigns,nextEvents,nextSegments])=>{if(cancelled)return;setSender(nextSender);setCampaigns(nextCampaigns);setEvents(nextEvents);setSegments(nextSegments)})
+      .catch((err:Error)=>{if(!cancelled)setError(err.message)})
+    return()=>{cancelled=true}
+  },[token,groupId])
+  useEffect(()=>{
+    if(!groupId) return
+    let cancelled=false
+    setAudienceInfo(null)
+    emailApi<EmailAudience>(token,eventId?`/audience/${encodeURIComponent(eventId)}`:`/groups/${groupId}/audience`).then(data=>{if(!cancelled)setAudienceInfo(data)})
+      .catch((err:Error)=>{if(!cancelled)setError(err.message)})
+    return()=>{cancelled=true}
+  },[eventId,token,groupId])
 
   async function act(action: () => Promise<void>) {
     if (busy) return
@@ -56,11 +64,15 @@ export function EmailCampaignsPage() {
   }
   function changed() { setPreview(null); setMessage('') }
   async function openCampaign(id: string) { setPreview(await emailApi<CampaignPreview>(token, `/campaigns/${id}`)) }
-  const recipientCount = audience === 'event' ? audienceInfo?.event_count : audience === 'organization' ? audienceInfo?.organization_count : selected.length
+  const recipientCount = audience==='selected' && segmentId ? segments.find(s=>s.id===segmentId)?.subscription_ids.filter(id=>audienceInfo?.contacts.some(c=>c.id===id)).length : audience === 'event' ? audienceInfo?.event_count : audience === 'organization' ? audienceInfo?.organization_count : selected.length
 
+  const needsSenderHost=Boolean(sender?.connection_origin && sender.connection_origin!==window.location.origin)
+  if(!groupsReady)return <p>Checking organizer access…</p>
+  if(!groups.length || (groupId && !groups.some(group=>group.id===groupId)))return <section className="panel"><h1>Organizer access required</h1><p>You can manage email only for groups where you are an active owner or organizer.</p></section>
   return <main className="panel email-campaigns">
-    <div className="email-heading"><div><h1>Email campaigns</h1><p className="muted">Invite your community and keep event registrants updated.</p></div>
+    <div className="email-heading"><div><h1>Group email campaigns</h1><p className="muted">Invite your community and keep event registrants updated.</p></div>
       <button className="portal-button-secondary" disabled={busy} onClick={() => void act(async () => { await refresh(); if (preview) await openCampaign(preview.id) })}>Refresh status</button></div>
+    <label>Group<select value={groupId} onChange={e=>setParams({organization_id:e.target.value})}><option value="">Choose a group you organize</option>{groups.map(group=><option key={group.id} value={group.id}>{group.name}</option>)}</select></label>
     {error && <p role="alert" className="email-notice">{error}</p>}
     {message && <p role="status" className="email-notice">{message}</p>}
     <section className="portal-card email-sender" aria-label="Email sender">
@@ -73,12 +85,13 @@ export function EmailCampaignsPage() {
         {sender?.configured && !sender.sending_enabled && <p>Sending is disabled. You can connect your account and prepare previews.</p>}
       </div>
       <div className="email-actions">
-        <button disabled={busy || !sender?.configured} onClick={() => void act(async () => {
-          const result = await emailApi<{ url: string }>(token, '/google/connect', 'POST')
+        <button disabled={busy || !sender?.configured || needsSenderHost} onClick={() => void act(async () => {
+          const result = await emailApi<{ url: string }>(token, '/google/connect', 'POST',{organization_id:groupId})
           const url = new URL(result.url)
           if (url.origin !== 'https://accounts.google.com') throw new Error('Unexpected Google sign-in address.')
           window.location.assign(url.toString())
         })}>{sender?.connected ? 'Reconnect Google' : 'Connect Google Workspace'}</button>
+        {needsSenderHost && sender?.configured && <a href={`${sender.connection_origin}/email?organization_id=${encodeURIComponent(groupId)}`}>Continue sender setup on OrgPortal</a>}
         {sender?.connected && <button className="portal-button-secondary" disabled={busy} onClick={() => void act(async () => {
           await emailApi(token, '/sender', 'DELETE'); await refresh(); setMessage('Sender disconnected. Queued campaigns are paused.')
         })}>Disconnect sender</button>}
@@ -86,27 +99,28 @@ export function EmailCampaignsPage() {
     </section>
 
     <section className="portal-card email-compose">
-      <h2>Compose an event email</h2>
-      <label>Event<select value={eventId} disabled={busy} onChange={(e) => { changed(); setEventId(e.target.value); setSelected([]); setAudienceInfo(null) }}>
-        <option value="">Choose an organization-hosted event</option>{events.map((event) => <option key={event.id} value={event.id}>{event.title}</option>)}
+      <h2>Compose a group email</h2>
+      <label>Event<select value={eventId} disabled={busy} onChange={(e) => { changed(); setEventId(e.target.value); if(!e.target.value)setAudience('organization'); setSelected([]); setSegmentId(''); setAudienceInfo(null) }}>
+        <option value="">Group announcement (no event)</option>{events.map((event) => <option key={event.id} value={event.id}>{event.title}</option>)}
       </select></label>
       <label>Audience<select value={audience} disabled={busy} onChange={(e) => { changed(); setAudience(e.target.value) }}>
-        <option value="event">Subscribers to this event’s updates</option><option value="organization">Organization announcement subscribers</option><option value="selected">Selected organization subscribers</option>
+        <option value="event" disabled={!eventId}>Subscribers to this event’s updates</option><option value="organization">Organization announcement subscribers</option><option value="selected">Selected organization subscribers</option>
       </select></label>
-      {eventId && audienceInfo && <p>{recipientCount || 0} subscribed recipients. {audience === 'event' ? 'Use this audience for updates about the selected event.' : 'Only people who opted in to organization announcements are included.'}</p>}
-      {audience === 'selected' && audienceInfo && <fieldset className="email-contact-list"><legend>Select recipients</legend>
+      {groupId && audienceInfo && <p>{recipientCount || 0} subscribed recipients. {audience === 'event' ? 'Use this audience for updates about the selected event.' : 'Only people who opted in to organization announcements are included.'}</p>}
+      {audience==='selected' && <label>Saved segment<select value={segmentId} onChange={e=>{changed();setSegmentId(e.target.value);setSelected([])}}><option value="">Choose individual subscribers</option>{segments.map(segment=><option key={segment.id} value={segment.id}>{segment.name}</option>)}</select></label>}
+      {audience === 'selected' && !segmentId && audienceInfo && <fieldset className="email-contact-list"><legend>Select recipients</legend>
         {audienceInfo.contacts.length === 0 ? <p>No organization subscribers yet.</p> : audienceInfo.contacts.map((person) => <label key={person.id} className="email-checkbox">
           <input type="checkbox" checked={selected.includes(person.id)} disabled={busy} onChange={(e) => { changed(); setSelected(e.target.checked ? [...selected, person.id] : selected.filter((id) => id !== person.id)) }} />
           <span>{person.name} — {person.email}</span></label>)}
       </fieldset>}
       <label>Subject<input value={subject} maxLength={200} disabled={busy} onChange={(e) => { changed(); setSubject(e.target.value) }} /></label>
-      <label>Message<textarea rows={8} value={body} maxLength={20000} disabled={busy} onChange={(e) => { changed(); setBody(e.target.value) }} /></label>
-      <p className="muted">Personalize with {'{{first_name}}'}, {'{{event_title}}'}, or {'{{organization}}'}. Event details and a registration button are added automatically.</p>
+      <label htmlFor="email-campaign-message">Message</label><textarea id="email-campaign-message" rows={8} value={body} maxLength={20000} disabled={busy} onChange={(e) => { changed(); setBody(e.target.value) }} />
+      <p className="muted">Personalize with {'{{first_name}}'}, {'{{event_title}}'}, or {'{{organization}}'}. Event details are added when you select an event. Group announcements link to the group homepage.</p>
       <label>Schedule (optional, your local time)<input type="datetime-local" value={schedule} disabled={busy} onChange={(e) => { changed(); setSchedule(e.target.value) }} /></label>
-      <div className="email-actions"><button disabled={busy || !sender?.connected || !sender.configured || !eventId || !subject.trim() || !body.trim()} onClick={() => void act(async () => {
-        const draft = await emailApi<CampaignPreview>(token, '/campaigns', 'POST', { event_id: eventId, audience, selected_ids: selected, subject, body,
+      <div className="email-actions"><button disabled={busy || !sender?.connected || !sender.configured || !groupId || (audience==='event' && !eventId) || !subject.trim() || !body.trim()} onClick={() => void act(async () => {
+        const draft = await emailApi<CampaignPreview>(token, '/campaigns', 'POST', { organization_id:groupId, event_id: eventId || null, audience, selected_ids: selected, segment_id:segmentId || null, subject, body,
           scheduled_at: schedule ? new Date(schedule).toISOString() : null })
-        setPreview(draft); await refresh(); setMessage('Draft saved. Review the email and recipients below.')
+        await openCampaign(draft.id); await refresh(); setMessage('Draft saved. Review the email and recipients below.')
       })}>{busy ? 'Working…' : 'Save draft & preview'}</button></div>
     </section>
 
@@ -122,7 +136,7 @@ export function EmailCampaignsPage() {
           setMessage(`Test queued for ${result.recipient}. Check status after the next minute.`); await openCampaign(preview.id)
         })}>Send test to myself</button>
         {preview.status === 'draft' && <button disabled={busy || !sender?.sending_enabled || !sender.connected || !preview.recipient_count} onClick={() => void act(async () => {
-          await emailApi(token, `/campaigns/${preview.id}/send`, 'POST', { fingerprint: preview.fingerprint }); await openCampaign(preview.id); await refresh()
+          await emailApi(token, `/campaigns/${preview.id}/send`, 'POST', { fingerprint: preview.fingerprint, preview_id:preview.preview_id, confirm:true }); await openCampaign(preview.id); await refresh()
           setMessage('Campaign queued. You can follow its progress or pause it below.')
         })}>{preview.scheduled_at > Date.now() ? 'Schedule' : 'Send'} to {preview.recipient_count} recipients</button>}
         {['queued', 'paused'].includes(preview.status) && <button className="portal-button-secondary" disabled={busy} onClick={() => void act(async () => {

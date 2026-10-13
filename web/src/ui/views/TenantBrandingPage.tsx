@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom'
 import { Check, Copy, ExternalLink } from 'lucide-react'
 import { portalPath } from '../../config/portalBase'
 import { getActivePortalProfileConfig } from '../../config/portalFeatures'
-import { getDomainTenant } from '../../config/timebankCommunity'
+import { getGroupSite } from '../../config/timebankCommunity'
 
 function assetUrl(value?: string | null) {
   if (!value) return ''
@@ -11,7 +11,7 @@ function assetUrl(value?: string | null) {
 }
 
 export function TenantBrandingPage() {
-  const tenant = getDomainTenant()
+  const tenant = getGroupSite()
   const profile = getActivePortalProfileConfig()
   const [copiedColor, setCopiedColor] = useState<string | null>(null)
   const copyResetTimer = useRef<number | null>(null)

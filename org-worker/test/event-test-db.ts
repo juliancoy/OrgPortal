@@ -1,5 +1,5 @@
 import { DatabaseSync } from "node:sqlite";
-import { readFileSync } from "node:fs";
+import { readCurrentSchemaFileSync as readFileSync } from './helpers/currentSchema';
 
 // Exercise actual SQL and migration semantics, not a string-matching storage mock.
 export class EventTestDb {
@@ -8,7 +8,7 @@ export class EventTestDb {
     this.sqlite.exec(readFileSync(new URL("../migrations/0017_event_mcp_operations.sql", import.meta.url), "utf8"));
     this.sqlite.exec(`CREATE TABLE organizations (id TEXT PRIMARY KEY, name TEXT, slug TEXT, description TEXT, source_url TEXT, image_url TEXT, media_json TEXT NOT NULL DEFAULT '[]', updated_at TEXT DEFAULT '');
       CREATE TABLE organization_memberships (organization_id TEXT, user_id TEXT, role TEXT, status TEXT);
-      CREATE TABLE portal_tenants (
+      CREATE TABLE group_sites (
         id TEXT PRIMARY KEY,
         organization_id TEXT,
         slug TEXT UNIQUE,

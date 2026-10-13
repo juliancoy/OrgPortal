@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';import test from 'node:test';import {readFileSync} from 'node:fs';
+import assert from 'node:assert/strict';import test from 'node:test';import { readCurrentSchemaFileSync as readFileSync } from './helpers/currentSchema';
 import {TimebankDatabase} from './helpers/timebankDatabase';import {linkEventSupportRecords} from '../src/eventSupportLinks';
 test('authorized ingestion links existing evidence to an event, preserves provenance and rejects unrelated records',async()=>{
  const db=new TimebankDatabase();

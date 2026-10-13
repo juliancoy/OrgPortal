@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {readFileSync} from 'node:fs';
+import { readCurrentSchemaFileSync as readFileSync } from './helpers/currentSchema';
 import {TimebankDatabase} from './helpers/timebankDatabase';
 import {claimOrganization,saveOrganizationMember} from '../src/organizationIam';
 import {notificationPreferenceRoutes,notificationPreferences} from '../src/notificationPreferences';

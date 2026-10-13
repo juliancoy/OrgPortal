@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { isLifeTechMedicalEvent, eventCalendarDateKey } from '../../../features/events/medicalEvents'
-import { getDomainTenant } from '../../../config/timebankCommunity'
+import { getGroupSite } from '../../../config/timebankCommunity'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
 
 const MEDICAL_EVENTS_SOURCE_URL = 'https://codecollective.us/baltimore/upcoming_events.json'
@@ -185,7 +185,7 @@ export function PublicCalendarPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const view = searchParams.get('view') === 'list' ? 'list' : 'calendar'
   const setView = (value: 'calendar' | 'list') => { const next = new URLSearchParams(searchParams); next.set('view', value); setSearchParams(next) }
-  const tenant = getDomainTenant()
+  const tenant = getGroupSite()
   const organizationSlug = tenant?.home_org_slug || 'baltimore-medtech'
   const organizationPaths = [...new Set([organizationSlug, 'baltimore-medtech', ...(organizationSlug === 'lifetech' || organizationSlug === 'baltimore-medtech' ? ['lifetech'] : [])])].map(slug => `/api/network/orgs/public/${encodeURIComponent(slug)}/events?upcoming_only=false&limit=200`)
   const [events, setEvents] = useState<CalendarEvent[]>([])

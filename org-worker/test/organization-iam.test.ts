@@ -1,6 +1,6 @@
 import {identityProfile} from './helpers/identityProfile';
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readCurrentSchemaFileSync as readFileSync } from './helpers/currentSchema';
 import { DatabaseSync, type StatementSync } from "node:sqlite";
 import test from "node:test";
 import {
@@ -34,7 +34,7 @@ class SqliteD1 {
     this.database.exec("PRAGMA foreign_keys = ON");
     this.database.exec(readFileSync(new URL("../migrations/0002_org_event_directories.sql", import.meta.url), "utf8"));
     this.database.exec(readFileSync(new URL("../migrations/0015_organization_iam.sql", import.meta.url), "utf8"));
-    this.database.exec("CREATE TABLE portal_tenants (id TEXT PRIMARY KEY, home_org_slug TEXT, feature_config TEXT NOT NULL DEFAULT '{}');\n CREATE TABLE onboarding_enrollments (tenant_id TEXT, user_id TEXT, completed_at TEXT, PRIMARY KEY(tenant_id,user_id));");
+    this.database.exec("CREATE TABLE group_sites (id TEXT PRIMARY KEY, home_org_slug TEXT, feature_config TEXT NOT NULL DEFAULT '{}');\n CREATE TABLE onboarding_enrollments (group_site_id TEXT, user_id TEXT, completed_at TEXT, PRIMARY KEY(group_site_id,user_id));");
     this.database.exec(readFileSync(new URL("../migrations/0067_pending_organizers.sql", import.meta.url), "utf8"));
     this.database.exec(`
       INSERT INTO organizations (id, name, slug, tags)
@@ -213,7 +213,7 @@ test('membership reconciliation grants only the explicit account after an unchan
 
 test('organizer nominations retain member permissions until onboarding and authorized activation', async () => {
   const db = new SqliteD1();
-  db.database.exec(`INSERT INTO portal_tenants VALUES ('tenant', 'open-organization', '{"onboarding":{"enabled":true}}')`);
+  db.database.exec(`INSERT INTO group_sites VALUES ('tenant', 'open-organization', '{"onboarding":{"enabled":true}}')`);
   await claimOrganization(asD1(db), 'org-1', owner, '2026-10-05T00:00:00Z');
   await assert.rejects(saveOrganizationMember(asD1(db), 'org-1', supporter, { user_id: 'candidate', role: 'administrator' }, 'now'), /permission|manage|access/i);
   const pending = await saveOrganizationMember(asD1(db), 'org-1', owner, { user_id: 'candidate', role: 'administrator' }, 'now') as any;

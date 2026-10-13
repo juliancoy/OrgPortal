@@ -2,9 +2,9 @@ import { onboardingEnabled, type OnboardingActor } from './onboarding';
 import { accountSelection, saveAccountAvailability, type AvailabilityObservation } from './accountAvailability';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-import { resolvePortalTenant } from './timebank';
+import { resolveGroupSite } from './timebank';
 type Actor = OnboardingActor;
-type Poll = { id: string; tenant_id: string; owner_user_id: string; title: string; timezone: string; slots_json: string; closed: number; created_at: string };
+type Poll = { id: string; group_site_id: string; owner_user_id: string; title: string; timezone: string; slots_json: string; closed: number; created_at: string };
 const reject = (message: string) => { throw new HTTPException(400, { message }); };
 export function validatePoll(value: unknown) {
  const p = value as { title?: unknown; timezone?: unknown; slots?: unknown } | null;
@@ -27,21 +27,21 @@ export function availabilityRoutes(getUser: (env: Env, request: Request) => Prom
  const app = new Hono<{ Bindings: Env }>();
  app.use('*', async(c,next)=>{c.header('Cache-Control','no-store'); await next();});
  async function poll(env: Env, request: Request, id: string) {
-  const tenant = await resolvePortalTenant(env.DB, request);
-  const row = await env.DB.prepare('SELECT * FROM availability_polls WHERE id = ? AND tenant_id = ?').bind(id,tenant.id).first<Poll>();
+  const tenant = await resolveGroupSite(env.DB, request);
+  const row = await env.DB.prepare('SELECT * FROM availability_polls WHERE id = ? AND group_site_id = ?').bind(id,tenant.id).first<Poll>();
   if (!row) throw new HTTPException(404,{message:'Poll not found.'});
   return row;
  }
  app.get('/',async c=>{
-  const user=await getUser(c.env,c.req.raw), tenant=await resolvePortalTenant(c.env.DB,c.req.raw);
-  const rows=await c.env.DB.prepare('SELECT id,title,timezone,closed,created_at FROM availability_polls WHERE tenant_id = ? AND (owner_user_id = ? OR EXISTS (SELECT 1 FROM availability_invites WHERE poll_id = availability_polls.id AND user_id = ?)) ORDER BY created_at DESC LIMIT 100').bind(tenant.id,user.id,user.id).all();
+  const user=await getUser(c.env,c.req.raw), tenant=await resolveGroupSite(c.env.DB,c.req.raw);
+  const rows=await c.env.DB.prepare('SELECT id,title,timezone,closed,created_at FROM availability_polls WHERE group_site_id = ? AND (owner_user_id = ? OR EXISTS (SELECT 1 FROM availability_invites WHERE poll_id = availability_polls.id AND user_id = ?)) ORDER BY created_at DESC LIMIT 100').bind(tenant.id,user.id,user.id).all();
   return c.json({polls:rows.results});
  });
  app.post('/',async c=>{
-  const user=await getUser(c.env,c.req.raw), tenant=await resolvePortalTenant(c.env.DB,c.req.raw);
+  const user=await getUser(c.env,c.req.raw), tenant=await resolveGroupSite(c.env.DB,c.req.raw);
   const p=validatePoll(await c.req.json().catch(()=>null));
   const id=crypto.randomUUID();
-  await c.env.DB.prepare('INSERT INTO availability_polls (id,tenant_id,owner_user_id,title,timezone,slots_json) VALUES (?,?,?,?,?,?)').bind(id,tenant.id,user.id,p.title,p.timezone,JSON.stringify(p.slots)).run();
+  await c.env.DB.prepare('INSERT INTO availability_polls (id,group_site_id,owner_user_id,title,timezone,slots_json) VALUES (?,?,?,?,?,?)').bind(id,tenant.id,user.id,p.title,p.timezone,JSON.stringify(p.slots)).run();
   return c.json({id},201);
  });
  app.get('/:id',async c=>{
@@ -64,15 +64,15 @@ export function availabilityRoutes(getUser: (env: Env, request: Request) => Prom
  });
  app.put('/:id/me',async c=>{
   const user=await getUser(c.env,c.req.raw),p=await poll(c.env,c.req.raw,c.req.param('id'));
-  const tenant=await resolvePortalTenant(c.env.DB,c.req.raw);
+  const tenant=await resolveGroupSite(c.env.DB,c.req.raw);
   const body=await c.req.json().catch(()=>null) as {slots?:unknown}|null;
   const slots=validateSelection(body?.slots,JSON.parse(p.slots_json));
   // The conditional write also prevents a response racing with poll closure.
   const results=await c.env.DB.batch([c.env.DB.prepare(`INSERT INTO availability_responses (poll_id,user_id,slots_json) SELECT ?,?,? WHERE EXISTS (SELECT 1 FROM availability_polls WHERE id = ? AND closed = 0)
    ON CONFLICT(poll_id,user_id) DO UPDATE SET slots_json=excluded.slots_json, updated_at=CURRENT_TIMESTAMP WHERE EXISTS (SELECT 1 FROM availability_polls WHERE id = ? AND closed = 0)`).bind(p.id,user.id,JSON.stringify(slots),p.id,p.id),
    saveAccountAvailability(c.env.DB,user.id,JSON.parse(p.slots_json),slots,p.id),
-   c.env.DB.prepare("UPDATE user_tasks SET status = 'completed',completed_at = COALESCE(completed_at,strftime('%Y-%m-%dT%H:%M:%fZ','now')) WHERE tenant_id = ? AND user_id = ? AND kind = 'personal' AND entity_id LIKE 'availability-calendar:%' AND ? = 0 AND EXISTS (SELECT 1 FROM availability_responses r JOIN availability_polls p ON p.id = r.poll_id WHERE r.poll_id = ? AND r.user_id = ? AND p.closed = 0)").bind(p.tenant_id,user.id,onboardingEnabled(tenant)?1:0,p.id,user.id),
-   c.env.DB.prepare("UPDATE user_tasks SET status = 'completed',completed_at = COALESCE(completed_at,strftime('%Y-%m-%dT%H:%M:%fZ','now')) WHERE tenant_id = ? AND user_id = ? AND kind = 'availability' AND entity_id = ? AND EXISTS (SELECT 1 FROM availability_polls WHERE id = ? AND closed = 0) AND EXISTS (SELECT 1 FROM availability_responses WHERE poll_id = ? AND user_id = ?)").bind(p.tenant_id,user.id,p.id,p.id,p.id,user.id)
+   c.env.DB.prepare("UPDATE user_tasks SET status = 'completed',completed_at = COALESCE(completed_at,strftime('%Y-%m-%dT%H:%M:%fZ','now')) WHERE group_site_id = ? AND user_id = ? AND kind = 'personal' AND entity_id LIKE 'availability-calendar:%' AND ? = 0 AND EXISTS (SELECT 1 FROM availability_responses r JOIN availability_polls p ON p.id = r.poll_id WHERE r.poll_id = ? AND r.user_id = ? AND p.closed = 0)").bind(p.group_site_id,user.id,onboardingEnabled(tenant)?1:0,p.id,user.id),
+   c.env.DB.prepare("UPDATE user_tasks SET status = 'completed',completed_at = COALESCE(completed_at,strftime('%Y-%m-%dT%H:%M:%fZ','now')) WHERE group_site_id = ? AND user_id = ? AND kind = 'availability' AND entity_id = ? AND EXISTS (SELECT 1 FROM availability_polls WHERE id = ? AND closed = 0) AND EXISTS (SELECT 1 FROM availability_responses WHERE poll_id = ? AND user_id = ?)").bind(p.group_site_id,user.id,p.id,p.id,p.id,user.id)
   ]);
   const result=results[0];
   if (!result.meta.changes) throw new HTTPException(409,{message:'This poll is closed.'});
@@ -85,7 +85,7 @@ export function availabilityRoutes(getUser: (env: Env, request: Request) => Prom
   if(typeof body?.closed!=='boolean') reject('Choose closed or open.');
   await c.env.DB.batch([
    c.env.DB.prepare('UPDATE availability_polls SET closed = ? WHERE id = ? AND owner_user_id = ?').bind(body!.closed?1:0,p.id,user.id),
-   c.env.DB.prepare(`UPDATE user_tasks SET status = CASE WHEN ? = 1 OR EXISTS (SELECT 1 FROM availability_responses WHERE poll_id = ? AND user_id = user_tasks.user_id) THEN 'completed' ELSE 'pending' END,completed_at = CASE WHEN ? = 1 OR EXISTS (SELECT 1 FROM availability_responses WHERE poll_id = ? AND user_id = user_tasks.user_id) THEN COALESCE(completed_at,strftime('%Y-%m-%dT%H:%M:%fZ','now')) ELSE NULL END WHERE tenant_id = ? AND kind = 'availability' AND entity_id = ?`).bind(body!.closed?1:0,p.id,body!.closed?1:0,p.id,p.tenant_id,p.id)
+   c.env.DB.prepare(`UPDATE user_tasks SET status = CASE WHEN ? = 1 OR EXISTS (SELECT 1 FROM availability_responses WHERE poll_id = ? AND user_id = user_tasks.user_id) THEN 'completed' ELSE 'pending' END,completed_at = CASE WHEN ? = 1 OR EXISTS (SELECT 1 FROM availability_responses WHERE poll_id = ? AND user_id = user_tasks.user_id) THEN COALESCE(completed_at,strftime('%Y-%m-%dT%H:%M:%fZ','now')) ELSE NULL END WHERE group_site_id = ? AND kind = 'availability' AND entity_id = ?`).bind(body!.closed?1:0,p.id,body!.closed?1:0,p.id,p.group_site_id,p.id)
   ]);
   return c.json({ok:true});
  });
@@ -106,7 +106,7 @@ export function availabilityRoutes(getUser: (env: Env, request: Request) => Prom
   if(rows.results.length!==ids.length)reject('One or more selected members no longer exist.');
   const statements=ids.flatMap(id=>[
    c.env.DB.prepare('INSERT INTO availability_invites (poll_id,user_id,invited_by_user_id) SELECT ?,?,? WHERE EXISTS (SELECT 1 FROM availability_polls WHERE id = ? AND closed = 0) ON CONFLICT(poll_id,user_id) DO NOTHING').bind(p.id,id,user.id,p.id),
-   c.env.DB.prepare(`INSERT INTO user_tasks (id,tenant_id,user_id,created_by_user_id,kind,entity_id,title,status,completed_at) SELECT ?,?,?,?,'availability',?, ?,CASE WHEN EXISTS (SELECT 1 FROM availability_responses WHERE poll_id = ? AND user_id = ?) THEN 'completed' ELSE 'pending' END,CASE WHEN EXISTS (SELECT 1 FROM availability_responses WHERE poll_id = ? AND user_id = ?) THEN strftime('%Y-%m-%dT%H:%M:%fZ','now') ELSE NULL END WHERE EXISTS (SELECT 1 FROM availability_polls WHERE id = ? AND closed = 0) ON CONFLICT(tenant_id,user_id,kind,entity_id) DO NOTHING`).bind(crypto.randomUUID(),p.tenant_id,id,user.id,p.id,`Respond to ${p.title}`,p.id,id,p.id,id,p.id)
+   c.env.DB.prepare(`INSERT INTO user_tasks (id,group_site_id,user_id,created_by_user_id,kind,entity_id,title,status,completed_at) SELECT ?,?,?,?,'availability',?, ?,CASE WHEN EXISTS (SELECT 1 FROM availability_responses WHERE poll_id = ? AND user_id = ?) THEN 'completed' ELSE 'pending' END,CASE WHEN EXISTS (SELECT 1 FROM availability_responses WHERE poll_id = ? AND user_id = ?) THEN strftime('%Y-%m-%dT%H:%M:%fZ','now') ELSE NULL END WHERE EXISTS (SELECT 1 FROM availability_polls WHERE id = ? AND closed = 0) ON CONFLICT(group_site_id,user_id,kind,entity_id) DO NOTHING`).bind(crypto.randomUUID(),p.group_site_id,id,user.id,p.id,`Respond to ${p.title}`,p.id,id,p.id,id,p.id)
   ]);
   await c.env.DB.batch(statements);
   const latest=await poll(c.env,c.req.raw,p.id);if(latest.closed)throw new HTTPException(409,{message:'This poll is closed.'});

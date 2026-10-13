@@ -158,12 +158,12 @@ test('domain selection rejects unknown communities; only admins can customize or
   const env = { DB: database.asD1(), PIDP_BASE_URL: 'https://identity.example.test' };
   const request = (path: string, options: RequestInit = {}) => app.request(`https://bmoretimebank.codecollective.us/api/timebank${path}`, options, env);
   assert.equal((await (await request('/community')).json() as { id: string }).id, 'bmoretimebank');
-  const tenant = await app.request('https://medtech.social/api/portal/tenant', {}, env);
+  const tenant = await app.request('https://medtech.social/api/portal/site', {}, env);
   const medtech = await tenant.json() as { id: string; profile: string; features: string[] };
   assert.equal(medtech.id, 'baltimore-medtech');
   assert.equal(medtech.profile, 'baltimore-medtech');
   assert.deepEqual(medtech.features, ['directory', 'events', 'calendar', 'chat']);
-  assert.equal((await app.request('https://community.medtech.social/api/portal/tenant', {}, env)).status, 404);
+  assert.equal((await app.request('https://community.medtech.social/api/portal/site', {}, env)).status, 404);
   assert.equal((await app.request('https://unknown.codecollective.us/api/timebank/community', {}, env)).status, 404);
   const body = JSON.stringify({ name: 'Neighbor Time', tagline: 'Share your time.', accent_color: '#453876' });
   assert.equal((await request('/communities/neighbortime', { method: 'PUT', body, headers: { Authorization: 'Bearer alice' } })).status, 403);
@@ -171,7 +171,7 @@ test('domain selection rejects unknown communities; only admins can customize or
   assert.equal((await request('/communities/id', { method: 'PUT', body, headers: { Authorization: 'Bearer admin' } })).status, 400);
   const created = await app.request('https://neighbortime.codecollective.us/api/timebank/community', {}, env);
   assert.equal((await created.json() as { name: string }).name, 'Neighbor Time');
-  const createdTenant = await app.request('https://neighbortime.codecollective.us/api/portal/tenant', {}, env);
+  const createdTenant = await app.request('https://neighbortime.codecollective.us/api/portal/site', {}, env);
   assert.equal((await createdTenant.json() as { features: string[] }).features.includes('timebank'), true);
 });
 
@@ -393,8 +393,8 @@ test('analytics are admin-only and all new routes enforce authentication and hos
 test('attached portal domains share the existing timebank ledger; pending domains do not', async t => {
   const database = new TimebankDatabase();
   t.after(() => database.sqlite.close());
-  database.sqlite.exec("ALTER TABLE portal_tenants ADD COLUMN custom_domain_hostname TEXT; ALTER TABLE portal_tenants ADD COLUMN custom_domain_status TEXT DEFAULT 'none';");
-  database.sqlite.prepare("UPDATE portal_tenants SET custom_domain_hostname = ?, custom_domain_status = 'attached' WHERE hostname = 'codecollective.us'").run('orgportal.cc');
+  database.sqlite.exec("ALTER TABLE group_sites ADD COLUMN custom_domain_hostname TEXT; ALTER TABLE group_sites ADD COLUMN custom_domain_status TEXT DEFAULT 'none';");
+  database.sqlite.prepare("UPDATE group_sites SET custom_domain_hostname = ?, custom_domain_status = 'attached' WHERE hostname = 'codecollective.us'").run('orgportal.cc');
   const env = { DB: database.asD1() };
   const original = await app.request('https://codecollective.us/api/timebank/community', {}, env);
   const attached = await app.request('https://orgportal.cc/api/timebank/community', {}, env);
@@ -402,6 +402,6 @@ test('attached portal domains share the existing timebank ledger; pending domain
   const community = await attached.json() as { id: string; hostname: string };
   assert.equal(community.id, (await original.json() as { id: string }).id);
   assert.equal(community.hostname, 'orgportal.cc');
-  database.sqlite.exec("UPDATE portal_tenants SET custom_domain_status = 'requested' WHERE custom_domain_hostname = 'orgportal.cc'");
+  database.sqlite.exec("UPDATE group_sites SET custom_domain_status = 'requested' WHERE custom_domain_hostname = 'orgportal.cc'");
   assert.equal((await app.request('https://orgportal.cc/api/timebank/community', {}, env)).status, 404);
 });

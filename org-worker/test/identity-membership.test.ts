@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import { readCurrentSchemaFileSync as readFileSync } from './helpers/currentSchema';
 import {TimebankDatabase} from './helpers/timebankDatabase';
 import {identityMembershipRoutes} from '../src/identityMembership';
-import {resolvePortalTenant} from '../src/timebank';
+import {resolveGroupSite} from '../src/timebank';
 function fixture(){
  const db=new TimebankDatabase();
- db.sqlite.exec("ALTER TABLE portal_tenants ADD COLUMN feature_config TEXT NOT NULL DEFAULT '{}'");
+ db.sqlite.exec("ALTER TABLE group_sites ADD COLUMN feature_config TEXT NOT NULL DEFAULT '{}'");
  for(const file of ['0002_org_event_directories.sql','0015_organization_iam.sql','0017_event_mcp_operations.sql','0042_availability_polls.sql','0046_user_tasks.sql','0047_account_availability.sql','0051_onboarding.sql'])db.sqlite.exec(readFileSync(new URL(`../migrations/${file}`,import.meta.url),'utf8'));
  db.sqlite.exec(`INSERT INTO organizations(id,name,slug) VALUES('org','LifeTech','lifetech');
  INSERT INTO organization_memberships(organization_id,user_id,role,status,created_at,updated_at) VALUES ('org','person','owner','active','2026-10-05','2026-10-05'),('org','member','administrator','active','2026-10-05','2026-10-05');
@@ -20,8 +20,8 @@ function fixture(){
 }
 test('reviewed consolidation preserves ownership, combines personal tasks, retires the duplicate membership, and records an audit',async()=>{
  const f=fixture();try{
-  const tenant=await resolvePortalTenant(f.db.asD1(),new Request('https://medtech.social/'));
-  const insert=f.db.sqlite.prepare("INSERT INTO user_tasks(id,tenant_id,user_id,created_by_user_id,kind,entity_id,title,status) VALUES(?,?,?,?,'personal',?,'Task',?)");
+  const tenant=await resolveGroupSite(f.db.asD1(),new Request('https://medtech.social/'));
+  const insert=f.db.sqlite.prepare("INSERT INTO user_tasks(id,group_site_id,user_id,created_by_user_id,kind,entity_id,title,status) VALUES(?,?,?,?,'personal',?,'Task',?)");
   insert.run('canonical',tenant.id,'person','person','shared','pending');insert.run('duplicate',tenant.id,'member','member','shared','completed');insert.run('unique',tenant.id,'member','member',null,'pending');
   const preview=await f.req('preview',{sourceAccountId:'member'});assert.equal(preview.status,200);
   const plan=await preview.json() as {previewId:string;role:string};assert.equal(plan.role,'owner');

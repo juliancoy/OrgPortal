@@ -1,4 +1,4 @@
-import { getDomainTenant, type PortalTenant } from './timebankCommunity'
+import { getGroupSite, type GroupSite } from './timebankCommunity'
 export type PortalFeature = 'ubi'
 
 export type PortalProfileId = 'code-collective' | 'baltimore-medtech' | 'deism' | 'orgportal' | 'lifetech'
@@ -17,7 +17,7 @@ export type PortalProfileConfig = {
   faviconType: string
   appleTouchIconPath: string
   themeColor: string
-  tenantId?: string
+  groupSiteId?: string
 }
 
 const PORTAL_PROFILES: Record<PortalProfileId, PortalProfileConfig> = {
@@ -97,7 +97,7 @@ function normalizeProfileId(value?: string | null): PortalProfileId | null {
   return null
 }
 
-function tenantBrandHomeUrl(tenant: PortalTenant, fallback: string): string {
+function tenantBrandHomeUrl(tenant: GroupSite, fallback: string): string {
   const configured = tenant.home_url || fallback
   if (tenant.custom_domain_status !== 'attached' || !tenant.custom_domain_hostname || !tenant.slug) return configured
   try {
@@ -110,7 +110,7 @@ function tenantBrandHomeUrl(tenant: PortalTenant, fallback: string): string {
   return configured
 }
 
-function tenantProfileConfig(tenant: PortalTenant): PortalProfileConfig {
+function tenantProfileConfig(tenant: GroupSite): PortalProfileConfig {
   const profileId = normalizeProfileId(tenant.profile) || (tenant.slug === 'lifetech' ? 'lifetech' : 'code-collective')
   const base = PORTAL_PROFILES[profileId]
   const features = new Set(tenant.features || [])
@@ -134,7 +134,7 @@ function tenantProfileConfig(tenant: PortalTenant): PortalProfileConfig {
   return {
     ...base,
     id: profileId,
-    tenantId: tenant.id,
+    groupSiteId: tenant.id,
     brandName: tenant.name || base.brandName,
     portalTitle: profileId === 'orgportal' ? 'OrgPortal' : tenant.name ? `${tenant.name} Portal` : base.portalTitle,
     tagline: tenant.tagline || base.tagline,
@@ -155,7 +155,7 @@ export function getActivePortalProfileConfig(
   _storage: Pick<Storage, 'getItem' | 'setItem'> | null = null,
   _hostname = typeof window === 'undefined' ? '' : window.location.hostname,
 ): PortalProfileConfig {
-  const tenant = getDomainTenant()
+  const tenant = getGroupSite()
   if (tenant) return tenantProfileConfig(tenant)
   return PORTAL_PROFILES[_hostname === 'orgportal.cc' ? 'orgportal' : 'code-collective']
 }
@@ -165,7 +165,7 @@ export function isPortalFeatureEnabled(feature: PortalFeature, profile = getActi
 }
 
 export function portalProfilePath(path: string, profile = getActivePortalProfileConfig()): string {
-  if (!profile.tenantId) return path
+  if (!profile.groupSiteId) return path
   const url = new URL(path, 'https://portal.invalid')
   if (url.origin !== 'https://portal.invalid') throw new Error('Expected an internal portal path')
   return `${url.pathname}${url.search}${url.hash}`

@@ -20,9 +20,8 @@ Release through CodeCollective after applying the migration to the authoritative
 org database. Establish an active owner/admin through the existing organization
 membership workflow; never infer ownership from an email address. Provision
 `portal.deism.church` on the shared site, configure PIdP trusted origins and exact
-callbacks, and configure MCP resource metadata if MCP access is needed. Then use
-the existing Portal panel or `attach_portal_custom_domain` workflow to attach the
-provisioned domain. Do not deploy shared services from the Deism repository.
+callbacks, and configure MCP resource metadata if MCP access is needed. An operator then verifies DNS ownership, HTTPS, and the shared OrgPortal sign-in
+and activates the requested domain through the operator-protected REST route. Do not deploy shared services from the Deism repository.
 
 Verify the shared slug landing page, then the dedicated domain's home, login,
 auth callback, organization profile, events, people, chat, install manifest,

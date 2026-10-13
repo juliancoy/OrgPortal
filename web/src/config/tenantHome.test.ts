@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { internalTenantHomePath, tenantHomeAction } from './tenantHome'
-import type { PortalTenant } from './timebankCommunity'
+import type { GroupSite } from './timebankCommunity'
 
-const baseTenant: PortalTenant = {
+const baseTenant: GroupSite = {
   id: 'tenant',
   hostname: 'tenant.test',
   name: 'Tenant',

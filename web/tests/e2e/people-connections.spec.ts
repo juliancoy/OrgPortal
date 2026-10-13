@@ -2,7 +2,7 @@ import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
 
 test.beforeEach(async ({ page }) => {
-  await page.route('**/api/org/api/portal/tenant', route => route.fulfill({ json: { id: 'lifetech', hostname: 'localhost', name: 'LifeTech', profile: 'community', features: ['directory', 'events', 'chat'], accent_color: '#155e59' } }))
+  await page.route('**/api/org/api/portal/site', route => route.fulfill({ json: { id: 'lifetech', hostname: 'localhost', name: 'LifeTech', profile: 'community', features: ['directory', 'events', 'chat'], accent_color: '#155e59' } }))
   await page.route('**/auth/session-token', route => route.fulfill({ json: { access_token: 'local-test-token' } }))
   await page.route('**/auth/me', route => route.fulfill({ json: { id: 'self', full_name: 'Local Tester', email: 'test@example.test' } }))
   await page.route('**/api/org/api/network/orgs/public?**', route => route.fulfill({ json: [] }))

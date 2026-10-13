@@ -156,7 +156,7 @@ The endpoint is idempotent by organization source URL and event ingest key, so r
 
 ## Email campaigns
 
-The portal's `/email` page manages Google Workspace campaigns. Registrations support separate event-update and organization-announcement subscriptions. The existing minute cron drains a durable D1 email outbox alongside the independent UBI task. Sending defaults to disabled; when `EMAIL_SENDING_ENABLED` is not `true`, the cron returns before touching D1 for email delivery.
+Group organizers use **Mailing list** in the group dashboard and `/email?organization_id=...` for Google Workspace campaigns. See [group mailing lists](../docs/GROUP_MAILING_LISTS.md) for authorization, consent, audit, exports, and retention. `EMAIL_EXPORTS_ENABLED` defaults off. Registrations support separate event-update and organization-announcement subscriptions. The existing minute cron drains a durable D1 email outbox alongside the independent UBI task. Sending defaults to disabled; when `EMAIL_SENDING_ENABLED` is not `true`, the cron returns before touching D1 for email delivery.
 
 Follow [the Google Workspace setup and deployment guide](../docs/deployment/email-campaigns.md) before enabling sending. Sender OAuth secrets, migration `0019_email_campaigns.sql`, and the frontend org API proxy are required. Sending defaults to disabled.
 

@@ -11,15 +11,15 @@ export async function emailApi<T>(token: string | null, path: string, method = '
     const refreshed = await refreshRuntimeTokenFromSession()
     if (refreshed) response = await send(refreshed)
   }
-  const result = await response.json().catch(() => ({})) as T & { detail?: string }
+  const result = (response.headers.get('content-type')?.includes('text/csv') ? await response.text() : await response.json().catch(() => ({}))) as T & { detail?: string }
   if (!response.ok) throw new Error(result.detail || 'Unable to complete this email action. Please try again.')
   return result
 }
 
-export type EmailSender = { configured: boolean; sending_enabled: boolean; connected: boolean; status: string; email: string; daily_limit: number; used_today: number; cooldown_until: number }
+export type EmailSender = { configured: boolean; connection_origin?:string|null; sending_enabled: boolean; connected: boolean; status: string; email: string; daily_limit: number; used_today: number; cooldown_until: number }
 export type CampaignSummary = { id: string; subject: string; status: string; created_at: number; scheduled_at: number; recipient_count: number; sent_count: number }
 export type CampaignPreview = CampaignSummary & {
-  sender_email: string; audience: string; body: string; event_id: string; fingerprint: string;
+  sender_email: string; audience: string; body: string; event_id: string; fingerprint: string; preview_id?: string;
   preview: { subject: string; html: string; text: string }; counts: Record<string, number>;
   deliveries: { id: string; email: string; name: string; status: string; kind: string; error: string | null; gmail_message_id: string | null }[]
 }

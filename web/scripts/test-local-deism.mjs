@@ -29,7 +29,7 @@ try {
   // No browser authentication, application data, or test account leaves localhost.
   await context.route('**/*', route => local(route.request().url()) ? route.continue() : route.abort());
   for (const path of ['/api/org/health', '/pidp/health']) assert.ok((await context.request.get(base + path)).ok());
-  const tenant = await (await context.request.get(base + '/api/org/api/portal/tenant')).json();
+  const tenant = await (await context.request.get(base + '/api/org/api/portal/site')).json();
   assert.equal(tenant.id, 'deism');
   assert.equal(tenant.hostname, 'portal.deism.church');
   const replication = await (await context.request.get(base + '/api/org/api/network/replication/status')).json();

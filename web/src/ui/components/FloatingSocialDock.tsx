@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { getActivePortalProfileConfig } from '../../config/portalFeatures'
-import { useDomainTenant } from '../../config/timebankCommunity'
+import { useGroupSite } from '../../config/timebankCommunity'
 
 const MEDTECH_WHATSAPP_URL = 'https://chat.whatsapp.com/D52d1XHKZQCFZyFfFq0KIR'
 const MEDTECH_GITHUB_URL = 'https://github.com/juliancoy/BmoreMedTech'
@@ -24,7 +24,7 @@ function LumaIcon() {
 
 function isMedTechProfile() {
   const profile = getActivePortalProfileConfig()
-  return profile.id === 'baltimore-medtech' || profile.tenantId === 'baltimore-medtech' || (typeof window !== 'undefined' && window.location.hostname.endsWith('medtech.social'))
+  return profile.id === 'baltimore-medtech' || profile.groupSiteId === 'baltimore-medtech' || (typeof window !== 'undefined' && window.location.hostname.endsWith('medtech.social'))
 }
 
 function externalUrlFromFeatureConfig(value: unknown) {
@@ -32,7 +32,7 @@ function externalUrlFromFeatureConfig(value: unknown) {
 }
 
 export function FloatingSocialDock() {
-  const tenant = useDomainTenant()
+  const tenant = useGroupSite()
   if (!isMedTechProfile()) return null
 
   const githubUrl = externalUrlFromFeatureConfig(tenant?.feature_config?.githubUrl) || MEDTECH_GITHUB_URL
