@@ -19,3 +19,8 @@
 .event-poster-error { display: flex; gap: .75rem; align-items: center; margin-bottom: 1rem; color: var(--text-danger); }
 @media (max-width: 480px) { .event-poster-toolbar { align-items: flex-start; flex-direction: column; } }
 .event-poster-entry > button { display: inline-flex; align-items: center; gap: .5rem; }
+
+.event-poster-gallery { display: flex; flex-wrap: wrap; gap: .75rem; margin-bottom: 1rem; }
+.event-poster-gallery button { flex-direction: column; width: 120px; overflow: hidden; }
+.event-poster-gallery img { width: 100%; height: 80px; object-fit: cover; border-radius: 3px; }
+.event-poster-gallery span { max-width: 100%; overflow-wrap: anywhere; }

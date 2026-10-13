@@ -1008,6 +1008,26 @@ test("tenant host public URLs are root-mounted even when shared portal base is c
   assert.match(flyer, /Scan to RSVP/);
   assert.match(flyer, /dark solid 4×6/);
   assert.match(flyer, /fill="#101820"/);
+
+  const bucket = new TimebankBucket();
+  await bucket.put("event-media/event-1/photo.png", new Uint8Array([1, 2, 3]), { httpMetadata: { contentType: "image/png" } });
+  db.events[0].media_json = JSON.stringify([{ id: "photo", url: "/api/network/events/public/founder-night/media/photo", kind: "image", image_key: "event-media/event-1/photo.png" }]);
+  const galleryUrl = "https://medtech.social/api/network/events/public/founder-night/flyer.svg?background=gallery";
+  for (const format of ["letter", "letter-4up", "postcard", "social"]) {
+    const response = await app.request(`${galleryUrl}&mediaId=photo&format=${format}`, {}, env(db, { SCAN_IMAGES: bucket.asR2() }));
+    assert.equal(response.status, 200);
+    const svg = await response.text();
+    assert.match(svg, /href="data:image\/png;base64,AQID"/);
+    assert.match(svg, /opacity="0\.66"/);
+    assert.match(svg, /Scan to RSVP/);
+  }
+  for (const mediaId of ["", "another-event-photo", "https://example.com/image.png"]) {
+    const response = await app.request(`${galleryUrl}&mediaId=${encodeURIComponent(mediaId)}`, {}, env(db, { SCAN_IMAGES: bucket.asR2() }));
+    assert.equal(response.status, 404);
+  }
+  await bucket.put("event-media/event-1/photo.png", new Uint8Array([1]), { httpMetadata: { contentType: "image/svg+xml" } });
+  assert.equal((await app.request(`${galleryUrl}&mediaId=photo`, {}, env(db, { SCAN_IMAGES: bucket.asR2() }))).status, 400);
+
 });
 
 test("removing uploaded event media deletes the backing R2 object", async () => {

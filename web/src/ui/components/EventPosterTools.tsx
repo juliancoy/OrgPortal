@@ -5,7 +5,7 @@ import { useGroupSite } from '../../config/timebankCommunity'
 
 type Format = 'letter' | 'letter-4up' | 'postcard' | 'social'
 type Theme = 'light' | 'dark'
-type Background = 'solid' | 'city' | 'gradient' | 'lifetech'
+type Background = 'solid' | 'city' | 'gradient' | 'lifetech' | 'gallery'
 const formats: Record<Format, { label: string; width: number; height: number; print: string }> = {
   letter: { label: '8.5 x 11', width: 2550, height: 3300, print: '8.5in 11in' },
   'letter-4up': { label: 'Letter 2 × 2', width: 2550, height: 3300, print: '8.5in 11in' },
@@ -13,6 +13,7 @@ const formats: Record<Format, { label: string; width: number; height: number; pr
   social: { label: 'Social', width: 1200, height: 630, print: '12in 6.3in' },
 }
 const backgrounds: Record<Background, string> = {
+  gallery: 'Event gallery',
   solid: 'Solid color',
   city: 'Baltimore city photo',
   gradient: 'High-contrast gradient',
@@ -38,18 +39,38 @@ function PosterEditor({ slug, title, revision = '' }: Props) {
   const [format, setFormat] = useState<Format>('letter')
   const [theme, setTheme] = useState<Theme>('light')
   const [background, setBackground] = useState<Background>('solid')
+  const [gallery, setGallery] = useState<{ id: string; label: string; alt?: string }[]>([])
+  const [galleryStatus, setGalleryStatus] = useState('Loading gallery...')
+  const [mediaId, setMediaId] = useState('')
+  const [galleryRetry, setGalleryRetry] = useState(0)
+  useEffect(() => {
+    const abort = new AbortController()
+    setGallery([]); setMediaId(''); setGalleryStatus('Loading gallery...')
+    fetch(`/api/org/api/network/events/public/${encodeURIComponent(slug)}`, { signal: AbortSignal.any([abort.signal, AbortSignal.timeout(15000)]), cache: 'no-cache' })
+      .then(async response => {
+        if (!response.ok) throw new Error()
+        const event = await response.json()
+        if (abort.signal.aborted) return
+        const images = (event.media || []).filter((item: { kind: string; image_key?: string }) => item.kind === 'image' && item.image_key)
+        setGallery(images); setGalleryStatus(images.length ? '' : 'No uploaded gallery images. Add images to this event’s gallery first.')
+      })
+      .catch(() => { if (!abort.signal.aborted) setGalleryStatus('Could not load gallery.') })
+    return () => abort.abort()
+  }, [slug, revision, galleryRetry])
+  const selectedMediaId = gallery.some(item => item.id === mediaId) ? mediaId : ''
   const [retry, setRetry] = useState(0)
   const [poster, setPoster] = useState<{ url: string; blob: Blob; key: string } | null>(null)
   const [error, setError] = useState('')
   const [exporting, setExporting] = useState(false)
-  const key = JSON.stringify([slug, format, theme, background, revision, retry])
+  const key = JSON.stringify([slug, format, theme, background, selectedMediaId, revision, retry])
   const ready = poster?.key === key ? poster : null
   useEffect(() => {
+    if (background === 'gallery' && !selectedMediaId) { setPoster(null); setError(''); return }
     const abort = new AbortController()
     let url: string | undefined
     const timeout = window.setTimeout(() => { setError('Poster request timed out. Try again.'); abort.abort() }, 30000)
     setPoster(null); setError('')
-    const query = new URLSearchParams({ format, theme, background, version: '3', revision })
+    const query = new URLSearchParams({ format, theme, background, version: '4', revision, mediaId: background === 'gallery' ? selectedMediaId : '' })
     fetch(`/api/org/api/network/events/public/${encodeURIComponent(slug)}/flyer.svg?${query}`, { signal: abort.signal, cache: 'no-cache' })
       .then(async response => {
         if (!response.ok || !response.headers.get('content-type')?.includes('image/svg+xml')) throw new Error('Poster unavailable. Try again.')
@@ -61,7 +82,7 @@ function PosterEditor({ slug, title, revision = '' }: Props) {
       .catch(() => { if (!abort.signal.aborted) setError('Poster unavailable. Try again.') })
       .finally(() => window.clearTimeout(timeout))
     return () => { window.clearTimeout(timeout); abort.abort(); if (url) URL.revokeObjectURL(url) }
-  }, [slug, format, theme, background, revision, retry, key])
+  }, [slug, format, theme, background, selectedMediaId, revision, retry, key])
 
   function download(blob: Blob, extension: string, backgroundOnly = false) {
     const url = URL.createObjectURL(blob)
@@ -132,9 +153,17 @@ function PosterEditor({ slug, title, revision = '' }: Props) {
         <button type="button" disabled={!ready || exporting} onClick={print} title="Print poster"><Printer size={18} aria-hidden="true"/>Print</button>
       </div>
     </div>
+    {background === 'gallery' && <div className="event-poster-gallery" role="group" aria-label="Gallery background image">
+      {galleryStatus && <p role="status">{galleryStatus}</p>}
+      {galleryStatus === 'Could not load gallery.' && <button type="button" onClick={() => setGalleryRetry(value => value + 1)}>Retry gallery</button>}
+      {gallery.map((item, index) => <button type="button" key={item.id} aria-pressed={selectedMediaId === item.id} disabled={exporting} onClick={() => setMediaId(item.id)}>
+        <img src={`/api/org/api/network/events/public/${encodeURIComponent(slug)}/media/${encodeURIComponent(item.id)}`} alt={item.alt || ''} loading="lazy"/>
+        <span>{item.label || `Image ${index + 1}`}</span>
+      </button>)}
+    </div>}
     {error && <div role="alert" className="event-poster-error">{error}<button type="button" title="Retry poster" onClick={() => setRetry(value => value + 1)}><RefreshCw size={18} aria-hidden="true"/>Retry</button></div>}
-    <div className={`event-poster-preview event-poster-preview-${format}`} aria-busy={!ready && !error}>
-      {ready ? <img src={ready.url} alt={`${title}, ${formats[format].label}, ${theme}, ${backgrounds[background]} poster`} onError={() => { setPoster(null); setError('Poster preview failed. Try again.') }}/> : <span role="status">{error ? 'Preview unavailable' : 'Generating poster...'}</span>}
+    <div className={`event-poster-preview event-poster-preview-${format}`} aria-busy={!ready && !error && (background !== 'gallery' || Boolean(selectedMediaId))}>
+      {ready ? <img src={ready.url} alt={`${title}, ${formats[format].label}, ${theme}, ${backgrounds[background]} poster`} onError={() => { setPoster(null); setError('Poster preview failed. Try again.') }}/> : <span role="status">{error ? 'Preview unavailable' : background === 'gallery' && !selectedMediaId ? 'Select a gallery image to preview your poster.' : 'Generating poster...'}</span>}
     </div>
   </section>
 }
