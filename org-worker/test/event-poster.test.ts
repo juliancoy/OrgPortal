@@ -137,3 +137,19 @@ test('crop is bounded, clipped and shared by poster and plain-background exports
   assert.ok(svg.includes('x="200" y="0" width="400" height="600"'));
   assert.ok(!svg.includes('NaN') && !svg.includes('Infinity'));
 });
+
+test('elements independently resize, move and hide in every format without reflowing others', async () => {
+  const event={title:'Editable title',starts_at:'2026-10-20T22:00:00Z',location:'City Garage'};
+  for (const format of ['letter','letter-4up','postcard','social'] as const) {
+    const base=await renderEventPoster(event,'https://example.com',format,{name:'Example'});
+    const svg=await renderEventPoster(event,'https://example.com',format,{name:'Example'},'light',{elements:{time:{hidden:true},title:{scale:1.5,x:10,y:-5},qr:{hidden:true}}});
+    assert.ok(!svg.includes('data-poster-element="time"'));
+    assert.ok(!svg.includes('data-poster-element="qr"'));
+    assert.ok(!svg.includes('Scan to RSVP'));
+    const {width,height}=posterGeometry(format);
+    assert.ok(svg.includes(`data-poster-element="title" transform="translate(${width/10} ${-height/20})`));
+    assert.ok(svg.includes('scale(1.5)'));
+    const date=(value:string)=>value.match(/<g data-poster-element="date"[^]*?<\/g>/)?.[0];
+    assert.equal(date(svg),date(base));
+  }
+});

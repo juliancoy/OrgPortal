@@ -20,6 +20,10 @@ const backgrounds: Record<Background, string> = {
   lifetech: 'LifeTech plain artwork',
 }
 
+const elementLabels = { logo: 'Logo', brand: 'Organization name', tagline: 'Tagline', title: 'Title', date: 'Date', time: 'Time', location: 'Location', description: 'Description', qr: 'RSVP QR code', invitation: 'Join us', website: 'Website' }
+type ElementId = keyof typeof elementLabels
+type ElementLayout = { hidden?: boolean; scale?: number; x?: number; y?: number }
+
 type Props = { slug: string; title: string; revision?: string; inline?: boolean }
 export function EventPosterTools({ inline = false, ...props }: Props) {
   const [open, setOpen] = useState(false)
@@ -42,6 +46,12 @@ function PosterEditor({ slug, title, revision = '' }: Props) {
   const [gallery, setGallery] = useState<{ id: string; label: string; alt?: string; source: string; url: string }[]>([])
   const [galleryStatus, setGalleryStatus] = useState('Loading gallery...')
   const [mediaId, setMediaId] = useState('')
+  const [elements, setElements] = useState<Partial<Record<ElementId, ElementLayout>>>({})
+  const [selectedElement, setSelectedElement] = useState<ElementId>('time')
+  const elementLayout = elements[selectedElement] || {}
+  const elementsQuery = JSON.stringify(elements)
+  function updateElement(change: ElementLayout) { setElements(value => ({ ...value, [selectedElement]: { ...value[selectedElement], ...change } })) }
+  useEffect(() => { setElements({}) }, [slug])
   const [zoom, setZoom] = useState(1)
   const [offsetX, setOffsetX] = useState(0)
   const [offsetY, setOffsetY] = useState(0)
@@ -67,7 +77,7 @@ function PosterEditor({ slug, title, revision = '' }: Props) {
   const [poster, setPoster] = useState<{ url: string; blob: Blob; key: string } | null>(null)
   const [error, setError] = useState('')
   const [exporting, setExporting] = useState(false)
-  const key = JSON.stringify([slug, format, theme, background, selectedMediaId, revision, retry, zoom, offsetX, offsetY])
+  const key = JSON.stringify([slug, format, theme, background, selectedMediaId, revision, retry, zoom, offsetX, offsetY, elementsQuery])
   const ready = poster?.key === key ? poster : null
   useEffect(() => {
     if (background === 'gallery' && !selectedMediaId) { setPoster(null); setError(''); return }
@@ -75,7 +85,7 @@ function PosterEditor({ slug, title, revision = '' }: Props) {
     let url: string | undefined
     const timeout = window.setTimeout(() => { setError('Poster request timed out. Try again.'); abort.abort() }, 30000)
     setPoster(null); setError('')
-    const query = new URLSearchParams({ format, theme, background, version: '6', ...crop, revision, mediaId: background === 'gallery' ? selectedMediaId : '' })
+    const query = new URLSearchParams({ format, theme, background, version: '7', elements: elementsQuery, ...crop, revision, mediaId: background === 'gallery' ? selectedMediaId : '' })
     const debounce = window.setTimeout(() => { fetch(`/api/org/api/network/events/public/${encodeURIComponent(slug)}/flyer.svg?${query}`, { signal: abort.signal, cache: 'no-cache' })
       .then(async response => {
         if (!response.ok || !response.headers.get('content-type')?.includes('image/svg+xml')) throw new Error('Poster unavailable. Try again.')
@@ -88,7 +98,7 @@ function PosterEditor({ slug, title, revision = '' }: Props) {
       .finally(() => window.clearTimeout(timeout))
     }, 250)
     return () => { window.clearTimeout(debounce); window.clearTimeout(timeout); abort.abort(); if (url) URL.revokeObjectURL(url) }
-  }, [slug, format, theme, background, selectedMediaId, revision, retry, key, zoom, offsetX, offsetY])
+  }, [slug, format, theme, background, selectedMediaId, revision, retry, key, zoom, offsetX, offsetY, elementsQuery])
 
   function download(blob: Blob, extension: string, backgroundOnly = false) {
     const url = URL.createObjectURL(blob)
@@ -174,6 +184,22 @@ function PosterEditor({ slug, title, revision = '' }: Props) {
       <label>Vertical position: {offsetY}<input type="range" min="-100" max="100" step="1" value={offsetY} onChange={event => setOffsetY(Number(event.target.value))}/></label>
       <button type="button" onClick={() => { setZoom(1); setOffsetX(0); setOffsetY(0) }}>Reset image</button>
     </fieldset>}
+    <details className="event-poster-elements">
+      <summary>Adjust text and other elements</summary>
+      <fieldset className="event-poster-crop" disabled={exporting}>
+        <legend>Element settings</legend>
+        <label>Element<select value={selectedElement} onChange={event => setSelectedElement(event.target.value as ElementId)}>
+          {Object.entries(elementLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+        </select></label>
+        <label className="event-poster-visible"><input type="checkbox" checked={!elementLayout.hidden} onChange={event => updateElement({ hidden: !event.target.checked })}/>Show {elementLabels[selectedElement].toLowerCase()}</label>
+        <label>Size: {Math.round((elementLayout.scale ?? 1) * 100)}%<input type="range" min="0.25" max="3" step="0.05" value={elementLayout.scale ?? 1} onChange={event => updateElement({ scale: Number(event.target.value) })}/></label>
+        <label>Horizontal position: {elementLayout.x ?? 0}<input type="range" min="-100" max="100" value={elementLayout.x ?? 0} onChange={event => updateElement({ x: Number(event.target.value) })}/></label>
+        <label>Vertical position: {elementLayout.y ?? 0}<input type="range" min="-100" max="100" value={elementLayout.y ?? 0} onChange={event => updateElement({ y: Number(event.target.value) })}/></label>
+        <button type="button" onClick={() => setElements(value => { const next = { ...value }; delete next[selectedElement]; return next })}>Reset element</button>
+        <button type="button" onClick={() => setElements({})}>Reset all elements</button>
+      </fieldset>
+      <p>Positions are relative to the original layout. Hidden elements leave their space available for manual positioning.</p>
+    </details>
     {error && <div role="alert" className="event-poster-error">{error}<button type="button" title="Retry poster" onClick={() => setRetry(value => value + 1)}><RefreshCw size={18} aria-hidden="true"/>Retry</button></div>}
     <div className={`event-poster-preview event-poster-preview-${format}`} aria-busy={!ready && !error && (background !== 'gallery' || Boolean(selectedMediaId))}>
       {ready ? <img src={ready.url} alt={`${title}, ${formats[format].label}, ${theme}, ${backgrounds[background]} poster`} onError={() => { setPoster(null); setError('Poster preview failed. Try again.') }}/> : <span role="status">{error ? 'Preview unavailable' : background === 'gallery' && !selectedMediaId ? 'Select a gallery image to preview your poster.' : 'Generating poster...'}</span>}
