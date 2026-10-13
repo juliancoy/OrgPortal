@@ -1477,7 +1477,7 @@ async function eventFlyerSvg(env: Env, request: Request, event: EventRow, format
       }
     }
   }
-  return renderEventPoster(event, publicUrl, format, { name, tagline: tenant.tagline, logo }, theme, { background, backgroundImage: backgroundData, backgroundOnly });
+  return renderEventPoster(event, publicUrl, format, { name, tagline: tenant.tagline, logo }, theme, { background, backgroundImage: backgroundData, backgroundOnly, ...Object.fromEntries(["zoom", "offsetX", "offsetY"].map(key => [key, new URL(request.url).searchParams.has(key) ? Number(new URL(request.url).searchParams.get(key)) : undefined])) });
 }
 
 async function publicEventBySlug(db: D1Database, rawSlug: string) {
