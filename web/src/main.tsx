@@ -1,4 +1,5 @@
 import { loadDomainTenant } from './config/timebankCommunity'
+import { installChunkRecovery } from './infrastructure/platform/chunkRecovery'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router-dom'
@@ -11,6 +12,7 @@ import { applyThemeMode, readThemeMode } from './config/theme'
 import { createAppRouter } from './ui/router/createAppRouter'
 
 applyThemeMode(readThemeMode())
+installChunkRecovery(window, import.meta.env.VITE_APP_BUILD_NUMBER || 'development')
 
 const services = createServices()
 
