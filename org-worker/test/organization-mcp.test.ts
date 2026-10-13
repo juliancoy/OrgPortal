@@ -125,3 +125,22 @@ test('verified operators edit catalog profiles without claiming organizations; s
   assert.equal(sql.prepare("SELECT COUNT(*) n FROM organization_memberships WHERE organization_id='unclaimed'").get()!.n,0);
  }finally{sql.close()}
 });
+
+test('creation never overwrites an existing source match and creates distinct owned IDs atomically', async () => {
+ const {insertOwnedOrganization}=await import('../src/organizationCreation');
+ const {db,sql}=database(); const actor={id:identity.userId,name:'Owner',email:null,isOperator:false};
+ try {
+  const life:any=await insertOwnedOrganization(db,actor,{name:'LifeTech',slug:'lifetech',city:'Baltimore',source_url:'https://lifetech.fyi/',tags:'[]'});
+  const before=sql.prepare('SELECT * FROM organizations WHERE id=?').get(life.id);
+  await assert.rejects(insertOwnedOrganization(db,actor,{name:'medtech.social',slug:'medtech',city:'Baltimore',source_url:'https://lifetech.fyi',tags:'[]'}),/already exists/);
+  assert.deepEqual(sql.prepare('SELECT * FROM organizations WHERE id=?').get(life.id),before);
+  await assert.rejects(runOrganizationOperation(db,identity,'create',{name:'different',city:'Baltimore',source_url:'https://lifetech.fyi'},async()=>null),/already exists/);
+  const med:any=await insertOwnedOrganization(db,actor,{name:'medtech.social',slug:'medtech',city:'Baltimore',source_url:'https://medtech.social',tags:'[]'});
+  assert.notEqual(med.id,life.id);
+  assert.equal(sql.prepare('SELECT count(*) n FROM organization_memberships WHERE user_id=? AND role=\'owner\'').get(identity.userId)!.n,2);
+  sql.exec("CREATE TRIGGER reject_membership BEFORE INSERT ON organization_memberships BEGIN SELECT RAISE(ABORT,'fixture failure'); END");
+  await assert.rejects(insertOwnedOrganization(db,actor,{name:'Rollback',slug:'rollback',city:'Baltimore',tags:'[]'}),/fixture failure/);
+  assert.equal(sql.prepare("SELECT count(*) n FROM organizations WHERE slug='rollback'").get()!.n,0);
+  assert.deepEqual(sql.prepare('SELECT * FROM organizations WHERE id=?').get(life.id),before);
+ }finally{sql.close();}
+});

@@ -1,3 +1,4 @@
+import { organizationCreationConflict, organizationCreationIdentity } from './organizationCreation';
 import { z } from 'zod';
 import { authorizeOrganization, organizerAssignment, listOrganizationMembers, saveOrganizationMember, type OrganizationActor } from './organizationIam';
 import { EventIntegrationError } from './eventPlatforms';
@@ -43,9 +44,9 @@ export async function runOrganizationOperation(db: D1Database, identity: { userI
   let before: unknown;
   if (operation === 'create') {
     const fields = changes as z.infer<typeof organizationCreateSchema>;
-    const existing = await db.prepare(`SELECT id FROM organizations WHERE
-      (lower(name) = lower(?) AND lower(city) = lower(?)) OR source_url = ? LIMIT 1`)
-      .bind(fields.name, fields.city, fields.source_url || null).first();
+    const key = organizationCreationIdentity(fields);
+    const existing = await db.prepare(`SELECT id FROM organizations WHERE ${organizationCreationConflict} LIMIT 1`)
+      .bind(key.name, key.city, key.sourceUrl, key.sourceUrl).first();
     if (existing) throw new EventIntegrationError(409, 'Organization already exists; manage its existing portal instead');
     organizationId = `new:${await previewFingerprint(changes)}`;
     before = null;

@@ -71,11 +71,12 @@ custom layouts to each individual poster.
 
 ### Opacity, persistence, and live rendering
 
-Background image opacity is adjustable from 0–100%; the underlying paper and
-contrast overlays remain unchanged. The flyer API accepts `opacity` (0–1),
+Background image opacity is adjustable from 0–100%; the underlying paper remains unchanged. Background dimming separately controls the
+contrast overlay from 0–100%; choose 0% for full image brightness with no dark
+overlay. Dimming defaults to 66% for readable text and is also saved locally. The flyer API accepts `opacity` (0–1),
 clamped with a default of 1, including plain-background exports.
 
-Format, theme, background, selected gallery image, zoom, position, opacity,
+Format, theme, background, selected gallery image, zoom, position, opacity, dimming,
 selected element, poster link destination, and all element layouts are stored in localStorage under
 `orgportal:poster:v1:<event slug>`. Storage is scoped to the website origin and
 browser, not synced between devices. Reset all settings restores defaults for
@@ -105,3 +106,5 @@ The choice persists with the other local settings. If the association is removed
 the editor falls back to OrgPortal. The server validates the `link` query parameter
 against that event's current source and links, allowing HTTP(S) without credentials;
 unassociated or unsafe URLs cannot replace the QR destination.
+
+The flyer API also accepts `dimming` (0–1). Preview, SVG, PNG, and print use the same adjustable overlay.

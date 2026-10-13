@@ -30,7 +30,7 @@ export function posterLinkTarget(publicUrl: string, requested: string | null, as
     return ['https:', 'http:'].includes(url.protocol) && !url.username && !url.password ? url.href : publicUrl;
   } catch { return publicUrl; }
 }
-export type PosterOptions = { background?: PosterBackground; backgroundImage?: string; backgroundOnly?: boolean; zoom?: number; offsetX?: number; offsetY?: number; opacity?: number; elements?: PosterElementLayout };
+export type PosterOptions = { background?: PosterBackground; backgroundImage?: string; backgroundOnly?: boolean; zoom?: number; offsetX?: number; offsetY?: number; opacity?: number; dimming?: number; elements?: PosterElementLayout };
 const escape = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]!));
 const clean = (value: unknown) => String(value || '').replace(/\s+/g, ' ').trim();
 
@@ -97,8 +97,7 @@ function posterBackgroundParts(width: number, height: number, palette: ReturnTyp
     return [
       `<rect width="${width}" height="${height}" fill="${palette.paper}"/>`,
       image('xMidYMid slice'),
-      `<rect width="${width}" height="${height}" fill="#000000" opacity="0.66"/>`,
-      `<rect width="${width}" height="${height}" fill="#061a26" opacity="0.26"/>`,
+      `<rect width="${width}" height="${height}" fill="#000000" data-poster-dimming="true" opacity="${Number.isFinite(options.dimming) ? Math.max(0, Math.min(1, options.dimming!)) : .66}"/>`,
     ];
   }
   return [`<rect width="${width}" height="${height}" fill="${palette.paper}"/>`];
@@ -146,7 +145,7 @@ export async function renderEventPoster(event: PosterEvent, publicUrl: string, f
   const artworkWidth = background === 'lifetech' ? qrX - (small ? 16 : 28) : width;
   parts.push(...posterBackgroundParts(artworkWidth, height, palette, background, options.backgroundImage, options));
   if (background === 'lifetech') parts.push(`<rect x="${artworkWidth}" width="${width - artworkWidth}" height="${height}" fill="${palette.paper}"/>`);
-  if (background === 'lifetech') parts.push(`<rect width="${width}" height="${height}" fill="#000000" opacity="0.66"/>`);
+  if (background === 'lifetech') parts.push(`<rect width="${width}" height="${height}" fill="#000000" data-poster-dimming="true" opacity="${Number.isFinite(options.dimming) ? Math.max(0, Math.min(1, options.dimming!)) : .66}"/>`);
   parts.push(`<rect width="${width}" height="${small ? 8 : 12}" fill="${palette.accent}"/>`);
   const logoSize = small ? 42 : 68, brandY = small ? 27 : 40;
   if (brand.logo) element('logo', margin, brandY, () => parts.push(`<image href="${escape(brand.logo)}" x="${margin}" y="${brandY}" width="${logoSize}" height="${logoSize}" preserveAspectRatio="xMidYMid meet"/>`));

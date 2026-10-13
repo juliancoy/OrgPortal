@@ -1,3 +1,4 @@
+import { insertOwnedOrganization } from './organizationCreation';
 import { posterGallery } from './posterGallery';
 import { organizationFollowRoutes, dispatchFollowEventNotifications } from './organizationFollows';
 import { compareOrganizationActivity } from './organizationSearchActivity';
@@ -1477,7 +1478,7 @@ async function eventFlyerSvg(env: Env, request: Request, event: EventRow, format
       }
     }
   }
-  return renderEventPoster(event, posterLinkTarget(publicUrl, new URL(request.url).searchParams.get("link"), [event.source_url, ...parseEventLinks(event.event_links_json).map(item => item.url)]), format, { name, tagline: tenant.tagline, logo }, theme, { background, backgroundImage: backgroundData, backgroundOnly, elements: parsePosterElements(new URL(request.url).searchParams.get("elements")), ...Object.fromEntries(["zoom", "offsetX", "offsetY", "opacity"].map(key => [key, new URL(request.url).searchParams.has(key) ? Number(new URL(request.url).searchParams.get(key)) : undefined])) });
+  return renderEventPoster(event, posterLinkTarget(publicUrl, new URL(request.url).searchParams.get("link"), [event.source_url, ...parseEventLinks(event.event_links_json).map(item => item.url)]), format, { name, tagline: tenant.tagline, logo }, theme, { background, backgroundImage: backgroundData, backgroundOnly, elements: parsePosterElements(new URL(request.url).searchParams.get("elements")), ...Object.fromEntries(["zoom", "offsetX", "offsetY", "opacity", "dimming"].map(key => [key, new URL(request.url).searchParams.has(key) ? Number(new URL(request.url).searchParams.get(key)) : undefined])) });
 }
 
 async function publicEventBySlug(db: D1Database, rawSlug: string) {
@@ -2008,9 +2009,12 @@ async function upsertOrganization(db: D1Database, raw: Record<string, unknown>) 
 }
 
 async function createOrganization(env: Env, actor: OrganizationActor, payload: Record<string, unknown>) {
-  const row = await upsertOrganization(env.DB, payload);
-  if (!row) fail(500, "Organization creation failed");
-  await claimOrganization(env.DB, row.id, actor, nowIso());
+  const name = stringField(payload, 'name', 255) || 'Organization';
+  const row = await insertOwnedOrganization(env.DB, actor, {
+    name, slug: await uniqueTableSlug(env.DB, 'organizations', name),
+    description: stringField(payload, 'description', 5000), source_url: cleanUrl(payload.source_url),
+    image_url: cleanPublicAssetUrl(payload.image_url), tags: tagsField(payload), city: stringField(payload, 'city', 80),
+  }) as unknown as OrganizationRow;
   await provisionOrganizationChat(env, row.id);
   return row;
 }
