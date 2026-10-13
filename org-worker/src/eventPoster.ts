@@ -2,7 +2,7 @@ import QRCode from 'qrcode';
 
 export type PosterFormat = 'letter' | 'letter-4up' | 'postcard' | 'social';
 export type PosterTheme = 'light' | 'dark';
-export type PosterBackground = 'solid' | 'city' | 'gradient' | 'lifetech';
+export type PosterBackground = 'solid' | 'city' | 'gradient' | 'lifetech' | 'gallery';
 type PosterEvent = { title: string; social_title?: string | null; description?: string | null; social_description?: string | null;
   starts_at?: string | null; ends_at?: string | null; location?: string | null };
 export type PosterBrand = { name: string; tagline?: string | null; logo?: string };
@@ -64,7 +64,7 @@ function posterBackgroundParts(width: number, height: number, palette: ReturnTyp
       `<image href="${escape(backgroundImage)}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="xMidYMax meet"/>`,
     ];
   }
-  if (background === 'city' && backgroundImage) {
+  if ((background === 'city' || background === 'gallery') && backgroundImage) {
     return [
       `<rect width="${width}" height="${height}" fill="${palette.paper}"/>`,
       `<image href="${escape(backgroundImage)}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice"/>`,

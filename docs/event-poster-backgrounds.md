@@ -20,3 +20,16 @@ BROWSER_BINARY=/usr/bin/google-chrome node web/scripts/check-lifetech-poster-bac
 ```
 
 `POSTER_ORIGIN` and `POSTER_EVENT` override the default LifeTech host and October 20 event.
+
+## Event gallery backgrounds
+
+Choose **Event gallery** in the poster Background menu, then select an uploaded
+image thumbnail. The selected image is embedded in preview, PNG, SVG and print
+output for every poster format, with a dark overlay to keep text readable.
+Externally linked gallery images are not offered; upload them to the event first.
+
+The flyer endpoint accepts `background=gallery&mediaId=<event-media-id>`. It
+resolves the ID only from the current event gallery and reads the existing R2
+object directly. Supported formats are JPEG, PNG, WebP and GIF up to 8 MiB.
+Missing images return 404; unsupported formats or oversized images return 400.
+No new image copies or data stores are created.

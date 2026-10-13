@@ -7,7 +7,7 @@ export class TimebankBucket {
   async get(key: string) {
     const object = this.objects.get(key);
     if (!object) return null;
-    return { body: object.bytes, httpEtag: '"fixture-photo"', writeHttpMetadata(headers: Headers) { headers.set('Content-Type', object.type); } };
+    return { body: new Blob([object.bytes]).stream(), size: object.bytes.byteLength, httpMetadata: { contentType: object.type }, async arrayBuffer() { return object.bytes.slice().buffer; }, httpEtag: '"fixture-photo"', writeHttpMetadata(headers: Headers) { headers.set('Content-Type', object.type); } };
   }
   asR2() { return this as unknown as R2Bucket; }
 }
