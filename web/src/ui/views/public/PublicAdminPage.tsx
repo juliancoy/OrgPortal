@@ -1,5 +1,4 @@
 import { OrganizationFollowButton } from '../../components/OrganizationFollowButton'
-import { organizationTenantRedirect } from '../../../../organizationTenantRedirect.mjs'
 import { GroupMailingList, GroupEmailPreference } from '../email/GroupMailingList'
 import { groupOrganizationEvents } from './organizationEvents'
 import { EmbeddedOrganizationChat } from '../../components/EmbeddedOrganizationChat'
