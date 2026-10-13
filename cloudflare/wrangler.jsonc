@@ -43,5 +43,8 @@
       "binding": "DEV_ASSETS",
       "service": "codecollective-site-preview"
     }
+  ],
+  "compatibility_flags": [
+    "global_fetch_strictly_public"
   ]
 }
