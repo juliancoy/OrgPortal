@@ -48,8 +48,7 @@ organization and event galleries.
 ### Zoom and position
 
 Photo and artwork backgrounds have Zoom (100–300%), Horizontal position, and
-Vertical position sliders, plus Reset image. Selecting a different image resets
-its crop. The preview updates after a short pause; PNG, SVG, print, four-up, and
+Vertical position sliders, plus Reset image. Crop and opacity are retained when switching images. The preview updates locally on the next animation frame; PNG, SVG, print, four-up, and
 plain-background downloads use the same crop. Only the background image moves;
 text, logos, overlays, and the RSVP code stay fixed. Images are clipped to their
 artwork area. Moving an image beyond the edge reveals the background color.
@@ -57,14 +56,52 @@ The flyer API accepts bounded `zoom` (1–3), `offsetX`, and `offsetY` (−100�
 
 ### Individual elements
 
-Open **Adjust text and other elements**, choose an element, then change its
+Click an element in the preview to select it and open its controls, or open
+**Adjust text and other elements** and choose it from the list. Then change its
 visibility, size (25–300%), or horizontal/vertical position. Controls cover the
 logo, organization name, tagline, title, date, time, location, description,
 RSVP code with its label, invitation, and website. Reset one element or all.
 Hidden elements keep their original layout space, so other elements do not jump.
-Changes apply to this editor session and all poster exports, including four-up;
+Changes are saved locally per event and apply to all poster exports, including four-up;
 they do not edit event details. Elements that lack source content remain absent.
 The API accepts an `elements` JSON object keyed by these element IDs, with
 `hidden`, `scale`, `x`, and `y`. Position is a percentage of the poster dimensions;
 values are bounded and unknown element IDs are ignored. Four-up copies clip
 custom layouts to each individual poster.
+
+### Opacity, persistence, and live rendering
+
+Background image opacity is adjustable from 0–100%; the underlying paper and
+contrast overlays remain unchanged. The flyer API accepts `opacity` (0–1),
+clamped with a default of 1, including plain-background exports.
+
+Format, theme, background, selected gallery image, zoom, position, opacity,
+selected element, poster link destination, and all element layouts are stored in localStorage under
+`orgportal:poster:v1:<event slug>`. Storage is scoped to the website origin and
+browser, not synced between devices. Reset all settings restores defaults for
+this event; Reset image and element resets remain available. Invalid stored
+values are bounded or discarded. Blocked/full storage shows a message and does
+not prevent editing. No event content, image bytes, or credentials are stored.
+These preferences remain until reset or browser site data is cleared; they have
+no server copy or backup.
+
+The preview fetches a base SVG only when content, format, theme, or selected
+background changes. Sliders update the retained SVG on requestAnimationFrame,
+without network requests, SVG re-decoding, or rebuilding image data. This uses
+the browser's native vector renderer rather than adding a WebGL texture pipeline;
+GPU acceleration is browser-dependent. A restricted SVG vocabulary and shadow
+root keep active content, remote resources, page styles, and IDs isolated. PNG,
+SVG, and print serialize the same current layout, including edits made just
+before export. Four-up copies share the same editable source artwork.
+
+Local fixture browser check: `cd web && node --import ../org-worker/node_modules/tsx/dist/loader.mjs scripts/check-poster-editor.mjs` (install Playwright Chromium first, or set `BROWSER_BINARY`).
+
+### Poster link destination
+
+The Poster link menu defaults to this OrgPortal event page and also lists the
+event's associated source and saved links (such as Luma). The chosen URL is
+encoded in the RSVP QR code and its hostname is printed in the website element.
+The choice persists with the other local settings. If the association is removed,
+the editor falls back to OrgPortal. The server validates the `link` query parameter
+against that event's current source and links, allowing HTTP(S) without credentials;
+unassociated or unsafe URLs cannot replace the QR destination.

@@ -22,7 +22,15 @@ export function parsePosterElements(value: string | null): PosterElementLayout {
     return result;
   } catch { return {}; }
 }
-export type PosterOptions = { background?: PosterBackground; backgroundImage?: string; backgroundOnly?: boolean; zoom?: number; offsetX?: number; offsetY?: number; elements?: PosterElementLayout };
+export function posterLinkTarget(publicUrl: string, requested: string | null, associated: (string | null | undefined)[]) {
+  if (!requested || requested === 'portal') return publicUrl;
+  if (!associated.includes(requested)) return publicUrl;
+  try {
+    const url = new URL(requested);
+    return ['https:', 'http:'].includes(url.protocol) && !url.username && !url.password ? url.href : publicUrl;
+  } catch { return publicUrl; }
+}
+export type PosterOptions = { background?: PosterBackground; backgroundImage?: string; backgroundOnly?: boolean; zoom?: number; offsetX?: number; offsetY?: number; opacity?: number; elements?: PosterElementLayout };
 const escape = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]!));
 const clean = (value: unknown) => String(value || '').replace(/\s+/g, ' ').trim();
 
@@ -71,7 +79,7 @@ function posterBackgroundParts(width: number, height: number, palette: ReturnTyp
   const zoom = bounded(options.zoom, 1, 1, 3);
   const x = width * ((1 - zoom) / 2 + bounded(options.offsetX, 0, -100, 100) / 200);
   const y = height * ((1 - zoom) / 2 + bounded(options.offsetY, 0, -100, 100) / 200);
-  const image = (aspect: string) => `<svg width="${width}" height="${height}" overflow="hidden"><image href="${escape(backgroundImage)}" x="${x}" y="${y}" width="${width * zoom}" height="${height * zoom}" preserveAspectRatio="${aspect}"/></svg>`;
+  const image = (aspect: string) => `<svg width="${width}" height="${height}" overflow="hidden"><image href="${escape(backgroundImage)}" x="${x}" y="${y}" width="${width * zoom}" height="${height * zoom}" preserveAspectRatio="${aspect}" data-poster-background="true" data-width="${width}" data-height="${height}" opacity="${bounded(options.opacity, 1, 0, 1)}"/></svg>`;
   if (background === 'gradient') {
     return [
       `<defs><linearGradient id="poster-bg-gradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#061a26"/><stop offset="56%" stop-color="#087482"/><stop offset="100%" stop-color="#101820"/></linearGradient></defs>`,
