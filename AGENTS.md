@@ -30,8 +30,10 @@
   across origins. Never create privileged identity mappings from email.
 - PIdP scopes/consent do not grant membership or domain permissions. Check live
   OrgPortal permissions and required preview/apply receipts for API and MCP alike.
-- Shared portal releases use CodeCollective. PIdP releases are separate and must
-  preserve Python/serverless parity. Do not deploy shared services from MedTech.
+- OrgPortal owns its frontend and API releases. Use `scripts/release.mjs` and
+  `docs/deployment/RELEASE.md`; never build or deploy it through CodeCollective.
+  PIdP releases remain separate and preserve Python/serverless parity.
+  Database migrations require explicit review and are not part of ordinary releases.
 
 ## Browser tests
 

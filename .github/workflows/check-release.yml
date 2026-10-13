@@ -1,0 +1,29 @@
+name: Verify independent OrgPortal release
+on:
+  pull_request:
+    paths: ['cloudflare/**', 'scripts/release.mjs', '.github/workflows/check-release.yml']
+  push:
+    branches: [main]
+    paths: ['cloudflare/**', 'scripts/release.mjs', '.github/workflows/check-release.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: orgportal-release-check-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --prefix web
+      - run: npm ci --prefix org-worker
+      - run: npm ci --prefix chat-worker
+      - run: node scripts/release.mjs check all
+      - run: node scripts/release.mjs build all
+      # Production publication is Cloudflare Workers Builds, connected directly
+      # to this repository. PR jobs have no production token and cannot deploy.
