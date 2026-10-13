@@ -5,9 +5,9 @@ API Worker. The latter name is a stable infrastructure identifier, not a
 CodeCollective build dependency. Keeping it avoids moving databases, queues,
 secrets or API consumers. PIdP remains an independently released identity service.
 
-## Automatic production releases
+## Production releases
 
-Cloudflare Workers Builds connects directly to `juliancoy/OrgPortal`, branch
+Cloudflare Workers Builds builds directly from `juliancoy/OrgPortal`, branch
 `main`, using the account's existing Workers Builds deployment credential.
 Build environment: `NODE_VERSION=22`, `SKIP_DEPENDENCY_INSTALL=true`, and
 `CLOUDFLARE_ACCOUNT_ID` set to the deployment account. Dependencies are installed
@@ -17,6 +17,11 @@ The trigger's build and deployment commands are recorded in
 from one clean Git commit, deploys the API followed by the frontend, and verifies
 both service identity and commit through public health endpoints. A stale build
 cannot release after `main` moves. Pull requests run checks without credentials.
+
+The build can be started directly from Cloudflare Builds or the Builds API.
+The main-branch trigger is configured, but push-triggered builds have not fired
+during the cutover. Confirm the Cloudflare GitHub App has access to OrgPortal
+before relying on automatic deployment. A direct build has been verified.
 
 No CodeCollective checkout, frontend build or deployment job is involved.
 The existing `codecollective-site-preview` service remains a compatibility

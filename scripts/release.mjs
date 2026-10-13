@@ -106,6 +106,18 @@ async function verify() {
     }
     if (!result?.ok || result.service !== expectedService || result.commit !== commit || result.dirty !== false) throw new Error(`Release health verification failed: ${origin}`);
     console.log(JSON.stringify({ verified: origin, commit, version: result.workerVersionId }));
+    if (expectedService === 'orgportal-web') {
+      const response = await fetch(`${origin}/`, { headers: { accept: 'text/html' }, signal: AbortSignal.timeout(30000) });
+      const html = await response.text();
+      const asset = html.match(/src="(\/assets\/[^" ]+\.js)"/);
+      if (!response.ok || !asset) throw new Error('Frontend page or entry asset is missing');
+      const entry = await fetch(`${origin}${asset[1]}`, { signal: AbortSignal.timeout(30000) });
+      if (!entry.ok || !(entry.headers.get('content-type') || '').includes('javascript')) throw new Error('Frontend entry asset failed');
+      const upstream = await fetch(`${origin}/api/org/health`, { signal: AbortSignal.timeout(30000) });
+      const apiHealth = await upstream.json();
+      if (!upstream.ok || apiHealth.service !== 'org-worker' || (api && apiHealth.commit !== commit)) throw new Error('Frontend API proxy failed');
+      console.log(JSON.stringify({ verified: origin, page: true, entryAsset: true, apiProxy: true }));
+    }
   }
 }
 if (action === 'verify') await verify();
