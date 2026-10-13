@@ -1,3 +1,4 @@
+import { BioMarkdown } from '../../components/profile/BioMarkdown'
 import { getGroupSite } from '../../../config/timebankCommunity'
 import { getActivePortalProfileConfig } from '../../../config/portalFeatures'
 import type { CSSProperties } from 'react'
@@ -763,7 +764,7 @@ export function PublicEventPage() {
                 <p className="public-event-eyebrow">About The Event</p>
                 <h2>What To Expect</h2>
               </div>
-              <p>{event.description}</p>
+              <BioMarkdown value={event.description} />
             </section>
           ) : null}
           <EventCompanyVotes key={event.id} eventId={event.id} />
