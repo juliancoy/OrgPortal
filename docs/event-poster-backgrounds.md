@@ -26,12 +26,13 @@ BROWSER_BINARY=/usr/bin/google-chrome node web/scripts/check-lifetech-poster-bac
 Choose **Event & organization images** in the Background menu. The picker combines:
 
 - The current event's gallery, cover, and social images.
-- Gallery and profile images from the host organization and every attached organization.
-- Gallery, cover, and social images from other events hosted by or attached to those organizations, including past events.
+- Gallery and profile images from the event’s host organization.
+- Gallery, cover, and social images from completed events hosted by that same organization. Calendar associations alone do not qualify, and future events are excluded.
+- Public Google Drive image links and photo folders saved in those galleries or event links. LifeTech’s existing public community photo album is included only for LifeTech-hosted events.
 
 Each thumbnail names its source. Duplicate images are shown once. Uploaded
 JPEG, PNG, WebP, and GIF files and saved public HTTPS image links are supported,
-up to 8 MiB. Remote redirects, SVGs, private/local addresses, credential-bearing
+up to 8 MiB. Drive file share links resolve to Google image previews; folders expand through the existing public album reader (including image previews of HEIC photos). Private Drive files remain inaccessible and no Google credentials are used. Remote redirects, SVGs, private/local addresses, credential-bearing
 URLs, and unsupported content are rejected. A failed image produces an error;
 it is never silently replaced. PNG, SVG, print, and every format use the same
 embedded image and contrast overlay.
