@@ -42,7 +42,7 @@ import { availabilityRoutes } from './availability';
 import { timebankNotifications, markTimebankNotificationsRead, dispatchTimebankPush } from './timebankNotifications';
 import { importedListings, importedListingImage, importClaimDirectory, requestImportClaim, withdrawImportClaim, reviewImportClaims, resolveImportClaim, claimedImportRecords } from './timebankImports';
 import { Hono } from "hono";
-import { renderEventPoster, posterBackgroundImage, posterGalleryImage, posterLogo, type PosterBackground, type PosterTheme } from "./eventPoster";
+import { parsePosterElements, renderEventPoster, posterBackgroundImage, posterGalleryImage, posterLogo, type PosterBackground, type PosterTheme } from "./eventPoster";
 import { buildMetadata } from "./generated/buildMetadata";
 import { HTTPException } from "hono/http-exception";
 import { handleEventMcp, protectedResourceMetadata, eventErrorResponse } from "./eventMcp";
@@ -1477,7 +1477,7 @@ async function eventFlyerSvg(env: Env, request: Request, event: EventRow, format
       }
     }
   }
-  return renderEventPoster(event, publicUrl, format, { name, tagline: tenant.tagline, logo }, theme, { background, backgroundImage: backgroundData, backgroundOnly, ...Object.fromEntries(["zoom", "offsetX", "offsetY"].map(key => [key, new URL(request.url).searchParams.has(key) ? Number(new URL(request.url).searchParams.get(key)) : undefined])) });
+  return renderEventPoster(event, publicUrl, format, { name, tagline: tenant.tagline, logo }, theme, { background, backgroundImage: backgroundData, backgroundOnly, elements: parsePosterElements(new URL(request.url).searchParams.get("elements")), ...Object.fromEntries(["zoom", "offsetX", "offsetY"].map(key => [key, new URL(request.url).searchParams.has(key) ? Number(new URL(request.url).searchParams.get(key)) : undefined])) });
 }
 
 async function publicEventBySlug(db: D1Database, rawSlug: string) {

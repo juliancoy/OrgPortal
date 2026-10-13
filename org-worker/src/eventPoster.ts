@@ -7,7 +7,22 @@ export type PosterBackground = 'solid' | 'city' | 'gradient' | 'lifetech' | 'gal
 type PosterEvent = { title: string; social_title?: string | null; description?: string | null; social_description?: string | null;
   starts_at?: string | null; ends_at?: string | null; location?: string | null };
 export type PosterBrand = { name: string; tagline?: string | null; logo?: string };
-export type PosterOptions = { background?: PosterBackground; backgroundImage?: string; backgroundOnly?: boolean; zoom?: number; offsetX?: number; offsetY?: number };
+export const posterElementIds = ['logo', 'brand', 'tagline', 'title', 'date', 'time', 'location', 'description', 'qr', 'invitation', 'website'] as const;
+export type PosterElementId = typeof posterElementIds[number];
+export type PosterElementLayout = Partial<Record<PosterElementId, { hidden?: boolean; scale?: number; x?: number; y?: number }>>;
+export function parsePosterElements(value: string | null): PosterElementLayout {
+  try {
+    if (!value || value.length > 4096) return {};
+    const input = JSON.parse(value), result: PosterElementLayout = {};
+    const bound = (n: unknown, fallback: number, min: number, max: number) => typeof n === 'number' && Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : fallback;
+    for (const id of posterElementIds) {
+      const item = input?.[id];
+      if (item && typeof item === 'object') result[id] = { hidden: item.hidden === true, scale: bound(item.scale, 1, .25, 3), x: bound(item.x, 0, -100, 100), y: bound(item.y, 0, -100, 100) };
+    }
+    return result;
+  } catch { return {}; }
+}
+export type PosterOptions = { background?: PosterBackground; backgroundImage?: string; backgroundOnly?: boolean; zoom?: number; offsetX?: number; offsetY?: number; elements?: PosterElementLayout };
 const escape = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]!));
 const clean = (value: unknown) => String(value || '').replace(/\s+/g, ' ').trim();
 
@@ -97,6 +112,15 @@ export async function renderEventPoster(event: PosterEvent, publicUrl: string, f
   const textArea = social ? 830 : contentWidth;
   const title = clean(event.social_title || event.title || 'Community event');
   const parts: string[] = [];
+  const layouts = parsePosterElements(JSON.stringify(options.elements || {}));
+  function element<T>(id: PosterElementId, anchorX: number, anchorY: number, draw: () => T): T {
+    const start = parts.length;
+    const value = draw();
+    const markup = parts.splice(start).join('');
+    const layout = layouts[id] || {};
+    if (!layout.hidden) parts.push(`<g data-poster-element="${id}" transform="translate(${(layout.x || 0) * width / 100} ${(layout.y || 0) * height / 100}) translate(${anchorX} ${anchorY}) scale(${layout.scale || 1}) translate(${-anchorX} ${-anchorY})">${markup}</g>`);
+    return value;
+  }
   function block(value: string, x: number, y: number, maxWidth: number, size: number, maxLines: number, color = palette.text, weight = 400) {
     let lines = wrap(value, maxWidth, size);
     if (lines.length > maxLines) {
@@ -117,16 +141,16 @@ export async function renderEventPoster(event: PosterEvent, publicUrl: string, f
   if (background === 'lifetech') parts.push(`<rect width="${width}" height="${height}" fill="#000000" opacity="0.66"/>`);
   parts.push(`<rect width="${width}" height="${small ? 8 : 12}" fill="${palette.accent}"/>`);
   const logoSize = small ? 42 : 68, brandY = small ? 27 : 40;
-  if (brand.logo) parts.push(`<image href="${escape(brand.logo)}" x="${margin}" y="${brandY}" width="${logoSize}" height="${logoSize}" preserveAspectRatio="xMidYMid meet"/>`);
+  if (brand.logo) element('logo', margin, brandY, () => parts.push(`<image href="${escape(brand.logo)}" x="${margin}" y="${brandY}" width="${logoSize}" height="${logoSize}" preserveAspectRatio="xMidYMid meet"/>`));
   const brandX = margin + (brand.logo ? logoSize + (small ? 12 : 20) : 0);
   const brandWidth = width - margin - brandX;
-  block(clean(brand.name), brandX, brandY + (small ? 17 : 26), brandWidth, small ? 13 : 22, 1, palette.brand, 700);
-  if (brand.tagline) block(clean(brand.tagline), brandX, brandY + (small ? 35 : 52), brandWidth, small ? 10 : 15, 1, palette.muted);
+  element('brand', brandX, brandY, () => block(clean(brand.name), brandX, brandY + (small ? 17 : 26), brandWidth, small ? 13 : 22, 1, palette.brand, 700));
+  if (brand.tagline) element('tagline', brandX, brandY, () => block(clean(brand.tagline), brandX, brandY + (small ? 35 : 52), brandWidth, small ? 10 : 15, 1, palette.muted));
   const titleY = small ? 119 : social ? 181 : 232;
   const titleHeight = small ? 121 : social ? 146 : 242;
   let titleSize = small ? 35 : social ? 64 : 70;
   while (titleSize > (small ? 19 : 30) && wrap(title, textArea, titleSize).length * titleSize * 1.25 > titleHeight) titleSize--;
-  const titleBottom = block(title, margin, titleY, textArea, titleSize, Math.floor(titleHeight / (titleSize * 1.25)), palette.text, 800);
+  const titleBottom = element('title', margin, titleY, () => block(title, margin, titleY, textArea, titleSize, Math.floor(titleHeight / (titleSize * 1.25)), palette.text, 800));
   let y = Math.max(titleBottom + (small ? 14 : 22), small ? 217 : social ? 323 : 450);
   const start = event.starts_at ? new Date(event.starts_at) : null;
   const valid = start && !Number.isNaN(start.getTime());
@@ -135,28 +159,30 @@ export async function renderEventPoster(event: PosterEvent, publicUrl: string, f
   const end = event.ends_at ? new Date(event.ends_at) : null;
   const time = valid ? `${timeFormat.format(start)}${end && !Number.isNaN(end.getTime()) ? ` - ${timeFormat.format(end)}` : ''}` : '';
   const detailSize = small ? 15 : social ? 25 : 28;
-  y = block(date, margin, y, textArea, detailSize, 2, palette.brand, 700);
-  if (time) y = block(time, margin, y + 3, textArea, detailSize, 1, palette.brand, 700);
-  y = block(clean(event.location) || 'Location to be announced', margin, y + (small ? 14 : 22), textArea, small ? 14 : 24, small ? 3 : 2, palette.text, 500);
+  y = element('date', margin, y, () => block(date, margin, y, textArea, detailSize, 2, palette.brand, 700));
+  if (time) y = element('time', margin, y + 3, () => block(time, margin, y + 3, textArea, detailSize, 1, palette.brand, 700));
+  y = element('location', margin, y + (small ? 14 : 22), () => block(clean(event.location) || 'Location to be announced', margin, y + (small ? 14 : 22), textArea, small ? 14 : 24, small ? 3 : 2, palette.text, 500));
   const footerTop = small ? 444 : social ? 553 : 854;
   const descriptionSize = small ? 13 : social ? 20 : 23;
   y += small ? 15 : 26;
   const descLines = Math.min(social ? 2 : 5, Math.floor((footerTop - 25 - y) / (descriptionSize * 1.25)));
-  if (descLines > 0) block(clean(event.social_description || event.description), margin, y, textArea, descriptionSize, descLines, palette.muted);
+  if (descLines > 0) element('description', margin, y, () => block(clean(event.social_description || event.description), margin, y, textArea, descriptionSize, descLines, palette.muted));
   const qrY = social ? 380 : footerTop + (small ? 17 : 28);
   const qr = await QRCode.toString(publicUrl, { type: 'svg', margin: 4, errorCorrectionLevel: 'M', color: { dark: palette.qrDark, light: palette.qrLight } });
   parts.push(`<path d="M${margin} ${footerTop}H${social ? 876 : width - margin}" stroke="${palette.rule}" stroke-width="2"/>`);
+  element('qr', qrX, qrY, () => {
   parts.push(qr.replace('<svg ', `<svg x="${qrX}" y="${qrY}" width="${qrSize}" height="${qrSize}" `));
   parts.push(`<text x="${qrX + qrSize / 2}" y="${qrY + qrSize + (small ? 15 : 24)}" text-anchor="middle" fill="${palette.brand}" font-size="${small ? 11 : 16}" font-weight="700">Scan to RSVP</text>`);
-  block('Join us', margin, footerTop + (small ? 40 : social ? 33 : 55), social ? 800 : qrX - margin - 16, small ? 23 : social ? 26 : 34, 1, palette.brand, 700);
-  block(new URL(publicUrl).hostname, margin, footerTop + (small ? 65 : social ? 64 : 89), social ? 800 : qrX - margin - 16, small ? 12 : 19, social ? 1 : 2, palette.muted);
+  });
+  element('invitation', margin, footerTop, () => block('Join us', margin, footerTop + (small ? 40 : social ? 33 : 55), social ? 800 : qrX - margin - 16, small ? 23 : social ? 26 : 34, 1, palette.brand, 700));
+  element('website', margin, footerTop, () => block(new URL(publicUrl).hostname, margin, footerTop + (small ? 65 : social ? 64 : 89), social ? 800 : qrX - margin - 16, small ? 12 : 19, social ? 1 : 2, palette.muted));
   if (format === 'letter-4up') {
     // 100 units per inch: quarter-inch outer margins and a fifth-inch gutter.
     const scale = 390 / width;
     const insetY = (515 - height * scale) / 2;
     const copies = [0, 1].flatMap(row => [0, 1].map(column =>
       `<use href="#poster-art" transform="translate(${25 + column * 410} ${25 + row * 535 + insetY}) scale(${scale})"/>`));
-    return `<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" width="8.5in" height="11in" viewBox="0 0 850 1100" role="img" aria-labelledby="title desc" font-family="Arial, Helvetica, sans-serif" letter-spacing="0"><title id="title">${escape(title)} - four posters</title><desc id="desc">Four identical ${theme} ${background} event posters in a 2 by 2 grid on US Letter paper. Text uses a high-contrast foreground over the selected background.</desc><rect width="850" height="1100" fill="${palette.paper}"/><defs><g id="poster-art">${parts.join('')}</g></defs>${copies.join('')}</svg>`;
+    return `<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" width="8.5in" height="11in" viewBox="0 0 850 1100" role="img" aria-labelledby="title desc" font-family="Arial, Helvetica, sans-serif" letter-spacing="0"><title id="title">${escape(title)} - four posters</title><desc id="desc">Four identical ${theme} ${background} event posters in a 2 by 2 grid on US Letter paper. Text uses a high-contrast foreground over the selected background.</desc><rect width="850" height="1100" fill="${palette.paper}"/><defs><svg id="poster-art" width="${width}" height="${height}" overflow="hidden">${parts.join('')}</svg></defs>${copies.join('')}</svg>`;
   }
   const physical = format === 'letter' ? 'width="8.5in" height="11in"' : format === 'postcard' ? 'width="4in" height="6in"' : `width="${width}" height="${height}"`;
   return `<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" ${physical} viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="title desc" font-family="Arial, Helvetica, sans-serif" letter-spacing="0"><title id="title">${escape(title)} flyer</title><desc id="desc">${escape(`${brand.name}. ${date}. ${time}. ${event.location || ''}. ${theme} ${background} ${format === 'postcard' ? '4×6' : format === 'letter' ? '8.5×11' : 'Social'} event poster. Text uses a high-contrast foreground over the selected background.`)}</desc>${parts.join('')}</svg>`;

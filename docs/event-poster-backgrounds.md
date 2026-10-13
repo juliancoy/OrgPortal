@@ -54,3 +54,17 @@ plain-background downloads use the same crop. Only the background image moves;
 text, logos, overlays, and the RSVP code stay fixed. Images are clipped to their
 artwork area. Moving an image beyond the edge reveals the background color.
 The flyer API accepts bounded `zoom` (1–3), `offsetX`, and `offsetY` (−100–100).
+
+### Individual elements
+
+Open **Adjust text and other elements**, choose an element, then change its
+visibility, size (25–300%), or horizontal/vertical position. Controls cover the
+logo, organization name, tagline, title, date, time, location, description,
+RSVP code with its label, invitation, and website. Reset one element or all.
+Hidden elements keep their original layout space, so other elements do not jump.
+Changes apply to this editor session and all poster exports, including four-up;
+they do not edit event details. Elements that lack source content remain absent.
+The API accepts an `elements` JSON object keyed by these element IDs, with
+`hidden`, `scale`, `x`, and `y`. Position is a percentage of the poster dimensions;
+values are bounded and unknown element IDs are ignored. Four-up copies clip
+custom layouts to each individual poster.
