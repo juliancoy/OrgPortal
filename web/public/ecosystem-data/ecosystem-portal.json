@@ -7890,7 +7890,7 @@
       "sourceCategory": "Code Collective event sources"
     },
     {
-      "id": "research-state-maryland",
+      "id": "research-state-maryland", "portalSlug": "state-of-maryland",
       "name": "State of Maryland",
       "type": "Funding source",
       "category": "state-government",

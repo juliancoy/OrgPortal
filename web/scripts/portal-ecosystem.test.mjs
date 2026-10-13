@@ -79,3 +79,11 @@ test('directory matching preserves exact IDs and ambiguous name/website evidence
  assert.equal(merged.organizations.find(o=>o.id==='b').portalSlug,'exact')
  assert.equal(merged.organizations.find(o=>o.id==='c').portalSlug,'unique')
 })
+
+test('research nodes retain canonical portal slugs even when a website preview has no replacement image',async()=>{
+ const {organizationPagePath}=await import('../src/features/ecosystem/ecosystem-view.js')
+ const research={...base.organizations[0],id:'research-state-maryland',name:'State of Maryland',imageCaption:'Published website preview image'}
+ const data=mergePortalEvidence({...base,organizations:[research]},[{id:'md-budget:state-of-maryland',name:'State of Maryland',slug:'state-of-maryland',image_url:null}],[])
+ assert.equal(organizationPagePath(data.organizations[0]),'https://orgportal.cc/orgs/state-of-maryland')
+ assert.equal(organizationPagePath({id:'research-unregistered',name:'Unregistered agency'}),'https://orgportal.cc/search?q=Unregistered%20agency')
+})
