@@ -1,3 +1,4 @@
+import { publicPosterImageUrl } from './posterGallery';
 import QRCode from 'qrcode';
 
 export type PosterFormat = 'letter' | 'letter-4up' | 'postcard' | 'social';
@@ -156,11 +157,11 @@ export async function renderEventPoster(event: PosterEvent, publicUrl: string, f
   return `<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" ${physical} viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="title desc" font-family="Arial, Helvetica, sans-serif" letter-spacing="0"><title id="title">${escape(title)} flyer</title><desc id="desc">${escape(`${brand.name}. ${date}. ${time}. ${event.location || ''}. ${theme} ${background} ${format === 'postcard' ? '4×6' : format === 'letter' ? '8.5×11' : 'Social'} event poster. Text uses a high-contrast foreground over the selected background.`)}</desc>${parts.join('')}</svg>`;
 }
 
-async function posterDataImage(url: URL, maxBytes: number): Promise<string | undefined> {
+async function posterDataImage(url: URL, maxBytes: number, allowGif = false): Promise<string | undefined> {
   try {
     const response = await fetch(url, { redirect: 'manual', signal: AbortSignal.timeout(5000) });
     const mime = response.headers.get('content-type')?.split(';')[0];
-    if (!response.ok || !['image/png', 'image/jpeg', 'image/webp'].includes(mime || '') || !response.body) return;
+    if (!response.ok || !["image/png", "image/jpeg", "image/webp", ...(allowGif ? ["image/gif"] : [])].includes(mime || '') || !response.body) { await response.body?.cancel(); return; }
     const reader = response.body.getReader();
     const chunks: Uint8Array[] = []; let length = 0;
     while (true) {
@@ -181,4 +182,9 @@ export async function posterLogo(url: URL): Promise<string | undefined> {
 
 export async function posterBackgroundImage(url: URL): Promise<string | undefined> {
   return posterDataImage(url, 3000000);
+}
+
+export async function posterGalleryImage(value: string): Promise<string | undefined> {
+  const url = publicPosterImageUrl(value);
+  return url ? posterDataImage(new URL(url), 8 * 1024 * 1024, true) : undefined;
 }
