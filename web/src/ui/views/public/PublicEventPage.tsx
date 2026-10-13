@@ -977,7 +977,7 @@ export function PublicEventPage() {
               </div>
             ) : null}
           </section>
-          <EventPosterTools slug={event.slug} title={event.title} revision={event.updated_at || ''} inline />
+          <EventPosterTools sourceUrl={event.source_url} eventLinks={event.links} slug={event.slug} title={event.title} revision={event.updated_at || ''} inline />
         </aside>
       </div>
       {selectedMedia ? (

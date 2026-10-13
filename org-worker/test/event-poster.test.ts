@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { renderEventPoster, posterLogo, posterGeometry } from '../src/eventPoster';
+import { posterLinkTarget, renderEventPoster, posterLogo, posterGeometry } from '../src/eventPoster';
 
 function luminance([r, g, b]: [number, number, number]) {
   const linear = [r, g, b].map(value => {
@@ -151,5 +151,25 @@ test('elements independently resize, move and hide in every format without reflo
     assert.ok(svg.includes('scale(1.5)'));
     const date=(value:string)=>value.match(/<g data-poster-element="date"[^]*?<\/g>/)?.[0];
     assert.equal(date(svg),date(base));
+  }
+});
+
+test('image opacity defaults and clamps without fading foreground text', async () => {
+  for (const format of ['letter', 'letter-4up', 'postcard', 'social'] as const) {
+    for (const [opacity, expected] of [[undefined, 1], [NaN, 1], [-1, 0], [2, 1], [.35, .35]] as const) {
+      const svg = await renderEventPoster({ title: 'Visible title' }, 'https://example.com', format, { name: 'Test' }, 'light', { background: 'gallery', backgroundImage: 'data:image/png;base64,AQID', opacity });
+      assert.match(svg, new RegExp(`data-poster-background="true"[^>]+opacity="${expected}"`));
+      assert.match(svg, /Visible title/);
+      assert.doesNotMatch(svg, /<g[^>]+opacity=/);
+    }
+  }
+});
+
+
+test('poster links only select safe URLs already associated with the event', () => {
+  const portal = 'https://example.org/events/test', luma = 'https://luma.com/example';
+  assert.equal(posterLinkTarget(portal, luma, [luma]), luma);
+  for (const value of ['portal', null, 'https://unrelated.example', 'javascript:alert(1)', 'https://user:password@example.com']) {
+    assert.equal(posterLinkTarget(portal, value, [luma, 'javascript:alert(1)', 'https://user:password@example.com']), portal);
   }
 });
