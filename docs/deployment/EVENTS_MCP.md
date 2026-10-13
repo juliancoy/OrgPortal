@@ -515,3 +515,20 @@ The one-use preview includes the event version and exact next tags. The event ID
 registrations, venues and chat remain intact. `scripts/event-host.mjs` supports
 this flow and named connections. Slug corrections retain the previous slug as an
 alias in the same database batch as the rename.
+
+## Connection diagnostics (2026-10-13)
+
+The frontend must proxy both `/.well-known/oauth-protected-resource` and the
+resource-specific `/.well-known/oauth-protected-resource/api/org/mcp` to the API.
+The root path previously returned the frontend 404 page even though the
+resource-specific metadata and issuer discovery worked. A regression test in
+`cloudflare/orgportal-platform.test.mjs` now covers both paths. An unauthenticated
+MCP request should still return 401 with its resource-metadata challenge; do not
+remove OAuth or bypass membership checks to work around a disconnected client.
+A successful discovery response alone does not prove user sign-in is complete.
+
+The private standalone OrgPortal package was updated from 1.0.1 to 1.0.2 to use
+the existing PNG in `plugins/orgportal/assets/orgportal.png` for logo and composer
+icons in both manifests. Its identity, MCP URL, prompts and audience are unchanged.
+This private update is separate from the draft public 1.1.0 package. After updating,
+reopen the plugin and complete its account connection to expose authenticated tools.

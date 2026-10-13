@@ -1028,7 +1028,7 @@ const productionWorker = {
       return proxyRequest(request, env.ORG_API_ORIGIN || env.GOVERNANCE_API_ORIGIN);
     }
 
-    if (pathMatchesPrefix(path, "/.well-known/oauth-protected-resource/api/org/mcp")) {
+    if (pathMatchesPrefix(path, "/.well-known/oauth-protected-resource")) {
       return proxyRequest(request, env.ORG_API_ORIGIN || env.GOVERNANCE_API_ORIGIN);
     }
 
