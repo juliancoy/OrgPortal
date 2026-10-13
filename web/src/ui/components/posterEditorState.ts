@@ -4,10 +4,10 @@ export type ElementLayout = { hidden?: boolean; scale?: number; x?: number; y?: 
 export type PosterSettings = {
   format: 'letter' | 'letter-4up' | 'postcard' | 'social'; theme: 'light' | 'dark'
   background: 'solid' | 'city' | 'gradient' | 'lifetech' | 'gallery'; mediaId: string
-  link: string; zoom: number; offsetX: number; offsetY: number; opacity: number
+  link: string; zoom: number; offsetX: number; offsetY: number; opacity: number; dimming: number
   elements: Partial<Record<ElementId, ElementLayout>>; selectedElement: ElementId
 }
-export const defaults: PosterSettings = { format: 'letter', theme: 'light', background: 'solid', mediaId: '', link: 'portal', zoom: 1, offsetX: 0, offsetY: 0, opacity: 1, elements: {}, selectedElement: 'time' }
+export const defaults: PosterSettings = { format: 'letter', theme: 'light', background: 'solid', mediaId: '', link: 'portal', zoom: 1, offsetX: 0, offsetY: 0, opacity: 1, dimming: .66, elements: {}, selectedElement: 'time' }
 const bound = (value: unknown, fallback: number, min: number, max: number) => typeof value === 'number' && Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : fallback
 export function parseSettings(raw: string | null): PosterSettings {
   try {
@@ -21,6 +21,7 @@ export function parseSettings(raw: string | null): PosterSettings {
     if (Object.hasOwn(elementLabels, v.selectedElement)) s.selectedElement = v.selectedElement
     if (typeof v.link === 'string' && v.link.length <= 2048) s.link = v.link
     s.zoom = bound(v.zoom, 1, 1, 3); s.offsetX = bound(v.offsetX, 0, -100, 100); s.offsetY = bound(v.offsetY, 0, -100, 100); s.opacity = bound(v.opacity, 1, 0, 1)
+    s.dimming = bound(v.dimming, .66, 0, 1)
     s.elements = {}
     for (const id of Object.keys(elementLabels) as ElementId[]) {
       const item = v.elements?.[id]
@@ -36,7 +37,7 @@ export function parsePosterSvg(source: string): SVGSVGElement {
   const doc = new DOMParser().parseFromString(source, 'image/svg+xml')
   if (doc.querySelector('parsererror') || doc.documentElement.localName !== 'svg') throw new Error('Invalid poster')
   const tags = new Set(['svg', 'g', 'defs', 'use', 'rect', 'image', 'text', 'tspan', 'path', 'title', 'desc', 'linearGradient', 'stop'])
-  const attrs = new Set(['xmlns', 'width', 'height', 'viewBox', 'role', 'aria-label', 'aria-labelledby', 'font-family', 'letter-spacing', 'id', 'transform', 'x', 'y', 'x1', 'x2', 'y1', 'y2', 'fill', 'opacity', 'overflow', 'preserveAspectRatio', 'href', 'font-size', 'font-weight', 'text-anchor', 'd', 'stroke', 'stroke-width', 'offset', 'stop-color', 'data-poster-element', 'data-poster-background', 'data-width', 'data-height'])
+  const attrs = new Set(['xmlns', 'width', 'height', 'viewBox', 'role', 'aria-label', 'aria-labelledby', 'font-family', 'letter-spacing', 'id', 'transform', 'x', 'y', 'x1', 'x2', 'y1', 'y2', 'fill', 'opacity', 'overflow', 'preserveAspectRatio', 'href', 'font-size', 'font-weight', 'text-anchor', 'd', 'stroke', 'stroke-width', 'offset', 'stop-color', 'data-poster-element', 'data-poster-background', 'data-poster-dimming', 'data-width', 'data-height'])
   for (const node of [doc.documentElement, ...doc.documentElement.querySelectorAll('*')]) {
     if (!tags.has(node.localName) || node.namespaceURI !== 'http://www.w3.org/2000/svg') { node.remove(); continue }
     for (const attr of [...node.attributes]) {
@@ -57,6 +58,7 @@ export function applySettings(svg: SVGSVGElement, settings: PosterSettings) {
     image.setAttribute('width', String(w * settings.zoom)); image.setAttribute('height', String(h * settings.zoom))
     image.setAttribute('opacity', String(settings.opacity))
   }
+  for (const overlay of svg.querySelectorAll('[data-poster-dimming]')) overlay.setAttribute('opacity', String(settings.dimming))
   for (const node of svg.querySelectorAll('[data-poster-element]')) {
     const layout = settings.elements[node.getAttribute('data-poster-element') as ElementId] || {}
     const base = node.getAttribute('data-base-transform') || ''

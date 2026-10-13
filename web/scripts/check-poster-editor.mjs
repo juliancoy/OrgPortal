@@ -31,11 +31,13 @@ try {
   const before = requests;
   await page.getByLabel('Opacity:').fill('0.35');
   await page.getByLabel('Zoom:').fill('2');
+  await page.getByLabel('Background dimming:').fill('0');
   await page.locator('[data-poster-element="title"]').click();
   await page.waitForFunction(() => document.querySelector('select[aria-label="Element"]')?.value === 'title');
   await page.getByLabel('Element', { exact: true }).selectOption('time');
   await page.getByLabel('Show time').uncheck();
   await page.waitForFunction(() => document.querySelector('.event-poster-preview > div')?.shadowRoot?.querySelector('[data-poster-background]')?.getAttribute('opacity') === '0.35');
+  await expect(page.locator('[data-poster-dimming]')).toHaveAttribute('opacity', '0');
   assert.equal(requests, before, 'sliders must not request new SVGs');
   await expect(page.locator('[data-poster-element="time"]')).toHaveAttribute('display', 'none');
   const downloadPromise = page.waitForEvent('download'); await page.getByRole('button', { name: 'SVG', exact: true }).click();
@@ -51,6 +53,7 @@ try {
     await page.getByRole('button', { name, exact: true }).click(); await svg.waitFor();
     await page.waitForFunction(() => document.querySelector('.event-poster-preview > div')?.shadowRoot?.querySelector('[data-poster-background]')?.getAttribute('opacity') === '0.35');
     if (name === 'Letter 2 × 2') {
+      await page.locator('.event-poster-preview').scrollIntoViewIfNeeded();
       const point = await page.evaluate(() => {
         const root = document.querySelector('.event-poster-preview > div').shadowRoot;
         const title = root.querySelector('[data-poster-element="title"]'), box = title.getBBox();

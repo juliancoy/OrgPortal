@@ -173,3 +173,11 @@ test('poster links only select safe URLs already associated with the event', () 
     assert.equal(posterLinkTarget(portal, value, [luma, 'javascript:alert(1)', 'https://user:password@example.com']), portal);
   }
 });
+
+test('zero dimming removes all fixed photo darkening', async () => {
+ for (const background of ['city','gallery','lifetech'] as const) {
+  const svg=await renderEventPoster({title:'Bright image'},'https://example.org','social',{name:'Test'},'light',{background,backgroundImage:'data:image/png;base64,AQID',dimming:0});
+  assert.match(svg,/data-poster-dimming="true" opacity="0"/);
+  assert.doesNotMatch(svg,/opacity="0\.66"|opacity="0\.26"/);
+ }
+});

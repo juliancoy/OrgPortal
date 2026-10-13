@@ -40,7 +40,7 @@ function PosterEditor({ slug, title, revision = '', sourceUrl, eventLinks = [] }
   const [settings, setSettings] = useState<PosterSettings>(() => {
     try { return parseSettings(localStorage.getItem(storageKey)) } catch { return { ...defaults } }
   })
-  const { format, theme, background, mediaId, elements, selectedElement, zoom, offsetX, offsetY, opacity, link } = settings
+  const { format, theme, background, mediaId, elements, selectedElement, zoom, offsetX, offsetY, opacity, dimming, link } = settings
   function setter<K extends keyof PosterSettings>(key: K) {
     return (value: PosterSettings[K] | ((old: PosterSettings[K]) => PosterSettings[K])) => setSettings(old => ({ ...old, [key]: typeof value === 'function' ? value(old[key]) : value }))
   }
@@ -51,7 +51,7 @@ function PosterEditor({ slug, title, revision = '', sourceUrl, eventLinks = [] }
   const setLink = setter('link')
   const setFormat = setter('format'), setTheme = setter('theme'), setBackground = setter('background'), setMediaId = setter('mediaId')
   const setElements = setter('elements'), setSelectedElement = setter('selectedElement')
-  const setZoom = setter('zoom'), setOffsetX = setter('offsetX'), setOffsetY = setter('offsetY'), setOpacity = setter('opacity')
+  const setZoom = setter('zoom'), setOffsetX = setter('offsetX'), setOffsetY = setter('offsetY'), setOpacity = setter('opacity'), setDimming = setter('dimming')
   const [storageError, setStorageError] = useState(false)
   useEffect(() => {
     try { localStorage.setItem(storageKey, JSON.stringify({ version: 1, ...settings })); setStorageError(false) }
@@ -66,7 +66,7 @@ function PosterEditor({ slug, title, revision = '', sourceUrl, eventLinks = [] }
   const elementLayout = elements[selectedElement] || {}
   function updateElement(change: ElementLayout) { setElements(value => ({ ...value, [selectedElement]: { ...value[selectedElement], ...change } })) }
   const imageBackground = ['gallery', 'city', 'lifetech'].includes(background)
-  const crop = { zoom: String(zoom), offsetX: String(offsetX), offsetY: String(offsetY), opacity: String(opacity) }
+  const crop = { zoom: String(zoom), offsetX: String(offsetX), offsetY: String(offsetY), opacity: String(opacity), dimming: String(dimming) }
   const [galleryRetry, setGalleryRetry] = useState(0)
   useEffect(() => {
     const abort = new AbortController()
@@ -251,10 +251,11 @@ function PosterEditor({ slug, title, revision = '', sourceUrl, eventLinks = [] }
     {imageBackground && (background !== 'gallery' || selectedMediaId) && <fieldset className="event-poster-crop" disabled={exporting}>
       <legend>Adjust background image</legend>
       <label>Opacity: {Math.round(opacity * 100)}%<input type="range" min="0" max="1" step="0.01" value={opacity} onChange={event => setOpacity(Number(event.target.value))}/></label>
+      <label>Background dimming: {Math.round(dimming * 100)}% (0% = full brightness)<input type="range" min="0" max="1" step="0.01" value={dimming} onChange={event => setDimming(Number(event.target.value))}/></label>
       <label>Zoom: {Math.round(zoom * 100)}%<input type="range" min="1" max="3" step="0.05" value={zoom} onChange={event => setZoom(Number(event.target.value))}/></label>
       <label>Horizontal position: {offsetX}<input type="range" min="-100" max="100" step="1" value={offsetX} onChange={event => setOffsetX(Number(event.target.value))}/></label>
       <label>Vertical position: {offsetY}<input type="range" min="-100" max="100" step="1" value={offsetY} onChange={event => setOffsetY(Number(event.target.value))}/></label>
-      <button type="button" onClick={() => { setZoom(1); setOffsetX(0); setOffsetY(0); setOpacity(1) }}>Reset image</button>
+      <button type="button" onClick={() => { setZoom(1); setOffsetX(0); setOffsetY(0); setOpacity(1); setDimming(.66) }}>Reset image</button>
     </fieldset>}
     <details ref={elementControls} className="event-poster-elements">
       <summary>Adjust text and other elements</summary>
