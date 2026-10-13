@@ -1,0 +1,1211 @@
+import { withEventSourcePreview } from '../web/eventSourcePreview.mjs';
+import { eventListingPreview } from '../web/eventListingPreview.mjs';
+import { deploymentResponse, deploymentCachePolicy, deploymentPath, isDeploymentAssetRequest } from '../web/deployment.mjs';
+import { previewResponse } from "./preview.js";
+import { isPortalPagePath, notFoundResponse, missingPortalResource } from '../web/portalRoutes.mjs';
+import { handleDatasetApi as handleMedTechDatasetApi } from './medtech/datasets.js';
+function trimTrailingSlash(value) {
+  return (value || "").replace(/\/+$/, "");
+}
+
+function buildTargetUrl(requestUrl, targetOrigin, stripPrefix = "") {
+  const url = new URL(requestUrl);
+  const normalizedPath = stripPrefix && pathMatchesPrefix(url.pathname, stripPrefix)
+    ? url.pathname.slice(stripPrefix.length) || "/"
+    : url.pathname;
+  return `${trimTrailingSlash(targetOrigin)}${normalizedPath}${url.search}`;
+}
+
+function pathMatchesPrefix(path, prefix) {
+  return path === prefix || path.startsWith(`${prefix}/`);
+}
+
+
+function medTechSpecialtyRedirect(path) {
+  const redirects = {
+    "/map.html": "/specialty/baltimore-medtech/map",
+    "/datasets.html": "/specialty/baltimore-medtech/datasets",
+    "/taxonomy.html": "/specialty/baltimore-medtech/taxonomy",
+    "/need-availability-distortions.html": "/specialty/baltimore-medtech/need-availability-distortions",
+  };
+  return redirects[path] || null;
+}
+
+async function handleMedTechDatasetRequest(request, env, url) {
+  const rewritten = new URL(url.toString());
+  rewritten.pathname = rewritten.pathname.slice("/specialty/baltimore-medtech".length) || "/";
+  const response = await handleMedTechDatasetApi(new Request(rewritten.toString(), request), env, rewritten, `${url.origin}/__portal_root/specialty/baltimore-medtech`);
+  if (!response) return null;
+  const headers = new Headers(response.headers);
+  headers.set("access-control-allow-origin", "*");
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
+function configuredTenantHosts(env) {
+  const raw = String(env?.ORGPORTAL_SITE_HOSTS || "").trim();
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed.map(String);
+    if (parsed && typeof parsed === "object") return Object.keys(parsed);
+  } catch {
+    return raw.split(",");
+  }
+  return [];
+}
+
+function normalizeHostname(value) {
+  return String(value || "").toLowerCase().split(":")[0].trim();
+}
+
+function isOrgGroupSiteHost(hostname, env) {
+  const host = normalizeHostname(hostname);
+  if (!host) return false;
+  const configured = configuredTenantHosts(env).map(normalizeHostname).filter(Boolean);
+  if (configured.includes(host)) return true;
+  const reserved = new Set([
+    "codecollective.us",
+    "www.codecollective.us",
+    "id.codecollective.us",
+    "api.codecollective.us",
+    "org.codecollective.us",
+    "chat.codecollective.us",
+  ]);
+  return host.endsWith(".codecollective.us") && !reserved.has(host);
+}
+
+async function verifyOrgGroupSite(hostname, env) {
+  const origin = trimTrailingSlash(env?.ORG_API_ORIGIN || env?.GOVERNANCE_API_ORIGIN);
+  if (!origin) return { ok: false, status: 502 };
+  const response = await fetch(`${origin}/api/portal/site`, {
+    headers: { "x-forwarded-host": hostname },
+    cf: { cacheEverything: false },
+  });
+  return { ok: response.ok, status: response.status };
+}
+
+async function proxyRequest(request, targetOrigin, options = {}) {
+  const origin = trimTrailingSlash(targetOrigin);
+  if (!origin) {
+    return new Response("Upstream origin is not configured", { status: 502 });
+  }
+
+  const targetUrl = buildTargetUrl(request.url, origin, options.stripPrefix || "");
+  const headers = new Headers(request.headers);
+  const requestUrl = new URL(request.url);
+  headers.delete("host");
+  headers.set("x-forwarded-host", requestUrl.host);
+  headers.set("x-forwarded-proto", requestUrl.protocol.replace(":", ""));
+
+  const upstream = await fetch(targetUrl, {
+    method: request.method,
+    headers,
+    body: request.body,
+    redirect: "manual",
+    cf: { cacheEverything: false },
+  });
+
+  if (upstream.status === 101) return upstream;
+  const responseHeaders = new Headers(upstream.headers);
+  if (options.hostOnlyCookies) {
+    const cookies = typeof upstream.headers.getSetCookie === "function"
+      ? upstream.headers.getSetCookie()
+      : [];
+    responseHeaders.delete("set-cookie");
+    if (cookies.length) {
+      for (const cookie of cookies) {
+        responseHeaders.append("set-cookie", cookie.replace(/;\s*Domain=[^;]*/gi, ""));
+      }
+    } else {
+      const cookie = upstream.headers.get("set-cookie");
+      if (cookie) responseHeaders.append("set-cookie", cookie.replace(/;\s*Domain=[^;]*/gi, ""));
+    }
+  }
+  return new Response(upstream.body, {
+    status: upstream.status,
+    statusText: upstream.statusText,
+    headers: responseHeaders,
+  });
+}
+
+function isHtmlNavigation(request) {
+  if (request.method !== "GET" && request.method !== "HEAD") return false;
+  const accept = request.headers.get("accept") || "";
+  return accept.includes("text/html");
+}
+
+function looksLikeSpaRoute(path) {
+  const lastSegment = path.split("/").filter(Boolean).pop() || "";
+  return !lastSegment.includes(".");
+}
+
+function isPublicCalendarAsset(path) {
+  return /^\/(?:baltimore|dc|hawaii|multicity|philadelphia|pittsburgh|virtual)\/(?:upcoming_events|manual_events|scrape_errors|skipped_events|calendar_lenses)\.json$/i.test(path)
+    || /^\/(?:baltimore|dc|hawaii|multicity|philadelphia|pittsburgh|virtual)\/cc_events\.ics$/i.test(path)
+    || path === "/upcoming_events.json"
+    || path === "/cc_events.ics";
+}
+
+function applyPublicCors(headers) {
+  headers.set("access-control-allow-origin", "*");
+  headers.set("access-control-allow-methods", "GET,HEAD,OPTIONS");
+  headers.set("access-control-max-age", "86400");
+}
+
+function spaEntrypointRequest(url, request, pathname) {
+  return new Request(`${url.origin}${pathname}`, {
+    method: request.method === "HEAD" ? "HEAD" : "GET",
+    headers: request.headers,
+  });
+}
+
+function applyStaticCachePolicy(path, response) {
+  const headers = new Headers(response.headers);
+
+  if (path.startsWith("/assets/") || path.startsWith("/__portal_root/assets/") || path.startsWith("/r8-rowhome/assets/")) {
+    headers.set("cache-control", "public, max-age=31536000, immutable");
+  } else if (path.endsWith("/mobile-update.json")) {
+    headers.set("cache-control", "no-store");
+  } else if (path === "/__portal_root/index.html") {
+    headers.set("cache-control", "public, max-age=0, must-revalidate");
+  } else if (
+    /\.(?:png|jpg|jpeg|gif|webp|avif|svg|ico|woff|woff2|ttf|otf|mp4|webm|mp3|wav)$/i.test(path)
+  ) {
+    headers.set("cache-control", "public, max-age=2592000");
+  } else if (path.endsWith(".html") || path === "/") {
+    headers.set("cache-control", "public, max-age=0, must-revalidate");
+  }
+
+  if (isPublicCalendarAsset(path)) {
+    applyPublicCors(headers);
+  }
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+function withNoStore(response) {
+  const headers = new Headers(response.headers);
+  headers.set("cache-control", "no-store, no-cache, must-revalidate, max-age=0");
+  headers.set("cdn-cache-control", "no-store");
+  headers.set("cloudflare-cdn-cache-control", "no-store");
+  headers.set("pragma", "no-cache");
+  headers.set("expires", "0");
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+function escapeHtml(value) {
+  return String(value || "").replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  }[char]));
+}
+
+function absolutePublicUrl(value, origin) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  try {
+    return new URL(raw, origin).toString();
+  } catch {
+    return "";
+  }
+}
+
+
+function versionedPublicUrl(value, origin, version) {
+  const absolute = absolutePublicUrl(value, origin);
+  if (!absolute) return "";
+  const cleanVersion = String(version || "").replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "");
+  if (!cleanVersion) return absolute;
+  try {
+    const url = new URL(absolute);
+    url.searchParams.set("v", cleanVersion);
+    return url.toString();
+  } catch {
+    return absolute;
+  }
+}
+
+function eventSocialImageVersion(event, env) {
+  return event.social_image_updated_at || event.updated_at || event.created_at || env?.CF_VERSION_METADATA?.id || env?.SITE_BUILD_COMMIT || "";
+}
+
+function compactText(value, max = 240) {
+  const text = String(value || "").replace(/\s+/g, " ").trim();
+  return text.length > max ? `${text.slice(0, max - 1).trim()}…` : text;
+}
+
+function jsonForHtml(value) {
+  return JSON.stringify(value).replace(/[<>&\u2028\u2029]/g, (char) => ({
+    "<": "\\u003c",
+    ">": "\\u003e",
+    "&": "\\u0026",
+    "\u2028": "\\u2028",
+    "\u2029": "\\u2029",
+  }[char] || char));
+}
+
+function optionalAbsolutePublicUrl(value, origin) {
+  return absolutePublicUrl(value, origin) || undefined;
+}
+
+function socialImageType(image) {
+  try {
+    const pathname = new URL(image).pathname.toLowerCase();
+    if (pathname.endsWith(".png")) return "image/png";
+    if (pathname.endsWith(".jpg") || pathname.endsWith(".jpeg")) return "image/jpeg";
+    if (pathname.endsWith(".webp")) return "image/webp";
+    if (pathname.endsWith(".svg")) return "image/svg+xml";
+  } catch {}
+  return "";
+}
+
+function eventKeywords(event) {
+  if (!Array.isArray(event?.tags)) return "";
+  return event.tags.map((tag) => String(tag || "").trim()).filter(Boolean).slice(0, 12).join(", ");
+}
+
+function eventJsonLd(event, metadata, url) {
+  const name = compactText(event.social_title || event.title, 120);
+  const canonical = metadata.canonical;
+  const organizerName = metadata.siteName || event.organization_name || event.host_org_name || event.host_user_name || "Org Portal";
+  const sourceUrl = optionalAbsolutePublicUrl(event.source_url, url.origin) || canonical;
+  const image = metadata.image ? [metadata.image] : undefined;
+  const location = event.location
+    ? {
+        "@type": "Place",
+        name: compactText(event.location, 160),
+        address: compactText(event.location, 240),
+      }
+    : undefined;
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "@id": `${canonical}#webpage`,
+        url: canonical,
+        name: metadata.title,
+        description: metadata.description,
+        primaryImageOfPage: metadata.image ? { "@id": `${canonical}#primaryimage` } : undefined,
+        breadcrumb: { "@id": `${canonical}#breadcrumb` },
+        mainEntity: { "@id": `${canonical}#event` },
+      },
+      metadata.image ? {
+        "@type": "ImageObject",
+        "@id": `${canonical}#primaryimage`,
+        url: metadata.image,
+        contentUrl: metadata.image,
+        caption: metadata.title,
+      } : undefined,
+      {
+        "@type": "BreadcrumbList",
+        "@id": `${canonical}#breadcrumb`,
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Events", item: `${url.origin}/events` },
+          { "@type": "ListItem", position: 2, name, item: canonical },
+        ],
+      },
+      {
+        "@type": "Event",
+        "@id": `${canonical}#event`,
+        name,
+        description: metadata.description,
+        startDate: event.starts_at || undefined,
+        endDate: event.ends_at || undefined,
+        eventAttendanceMode: "https://schema.org/MixedEventAttendanceMode",
+        eventStatus: "https://schema.org/EventScheduled",
+        image,
+        url: canonical,
+        location,
+        organizer: {
+          "@type": "Organization",
+          name: organizerName,
+          url: event.host_org_source_url ? optionalAbsolutePublicUrl(event.host_org_source_url, url.origin) : undefined,
+        },
+        performer: {
+          "@type": "Organization",
+          name: organizerName,
+        },
+        offers: {
+          "@type": "Offer",
+          url: sourceUrl,
+          price: "0",
+          priceCurrency: "USD",
+          availability: "https://schema.org/InStock",
+          validFrom: event.created_at || event.updated_at || undefined,
+        },
+      },
+    ].filter(Boolean),
+  };
+}
+
+async function eventSocialMetadata(url, request, env) {
+  const match = /^\/events\/([^/?#]+)\/?$/.exec(url.pathname);
+  if (!match) return null;
+  const origin = trimTrailingSlash(env?.ORG_API_ORIGIN || env?.GOVERNANCE_API_ORIGIN);
+  if (!origin) return null;
+  const slug = decodeURIComponent(match[1]);
+  let response;
+  try {
+    response = await fetch(`${origin}/api/network/events/public/${encodeURIComponent(slug)}`, {
+      headers: { "x-forwarded-host": url.host, "x-forwarded-proto": url.protocol.replace(":", "") },
+      cf: { cacheEverything: false },
+    });
+  } catch {
+    return null;
+  }
+  if (!response.ok) return null;
+  let event;
+  try { event = await response.json(); } catch { return null; }
+  event = await withEventSourcePreview(event);
+  const preview = eventListingPreview(event, url.origin);
+  const title = compactText(preview.title, 120);
+  if (!title) return null;
+  const group = compactText(event.organization_name || event.host_org_name || "Org Portal", 80);
+  const description = compactText(preview.description || `${title} hosted by ${group}.`, 240);
+  const image = preview.externalImage ? absolutePublicUrl(preview.image, url.origin)
+    : versionedPublicUrl(preview.image, url.origin, eventSocialImageVersion(event, env));
+  const canonical = absolutePublicUrl(event.public_url || url.pathname, url.origin) || url.toString();
+  const keywords = eventKeywords(event);
+  return {
+    title: preview.externalTitle ? title : `${title} • ${group}`,
+    description,
+    image,
+    imageType: socialImageType(image),
+    imageAlt: image ? `${title} event preview for ${group}` : "",
+    canonical,
+    siteName: group,
+    startsAt: event.starts_at || "",
+    endsAt: event.ends_at || "",
+    keywords,
+    jsonLd: eventJsonLd(event, { title: `${title} • ${group}`, description, image, canonical, siteName: group }, url),
+  };
+}
+
+async function withSocialMetadata(response, url, request, env) {
+  if (!response.ok || request.method === "HEAD") return applyStaticCachePolicy("/__portal_root/index.html", response);
+  const contentType = response.headers.get("content-type") || "";
+  if (!contentType.includes("text/html")) return applyStaticCachePolicy("/__portal_root/index.html", response);
+  const metadata = await eventSocialMetadata(url, request, env);
+  if (!metadata) return applyStaticCachePolicy("/__portal_root/index.html", response);
+  let html = await response.text();
+  const tags = [
+    `<title>${escapeHtml(metadata.title)}</title>`,
+    `<link rel="canonical" href="${escapeHtml(metadata.canonical)}" />`,
+    `<meta name="description" content="${escapeHtml(metadata.description)}" />`,
+    `<meta name="robots" content="index,follow,max-image-preview:large" />`,
+    metadata.keywords ? `<meta name="keywords" content="${escapeHtml(metadata.keywords)}" />` : "",
+    `<meta property="og:type" content="event" />`,
+    `<meta property="og:locale" content="en_US" />`,
+    `<meta property="og:site_name" content="${escapeHtml(metadata.siteName)}" />`,
+    `<meta property="og:title" content="${escapeHtml(metadata.title)}" />`,
+    `<meta property="og:description" content="${escapeHtml(metadata.description)}" />`,
+    `<meta property="og:url" content="${escapeHtml(metadata.canonical)}" />`,
+    `<meta name="twitter:card" content="${metadata.image ? "summary_large_image" : "summary"}" />`,
+    `<meta name="twitter:title" content="${escapeHtml(metadata.title)}" />`,
+    `<meta name="twitter:description" content="${escapeHtml(metadata.description)}" />`,
+  ];
+  if (metadata.image) {
+    tags.push(`<meta property="og:image" content="${escapeHtml(metadata.image)}" />`);
+    tags.push(`<meta property="og:image:secure_url" content="${escapeHtml(metadata.image)}" />`);
+    if (metadata.imageType) tags.push(`<meta property="og:image:type" content="${escapeHtml(metadata.imageType)}" />`);
+    tags.push(`<meta property="og:image:width" content="1200" />`);
+    tags.push(`<meta property="og:image:height" content="630" />`);
+    if (metadata.imageAlt) tags.push(`<meta property="og:image:alt" content="${escapeHtml(metadata.imageAlt)}" />`);
+    tags.push(`<meta name="twitter:image" content="${escapeHtml(metadata.image)}" />`);
+    if (metadata.imageAlt) tags.push(`<meta name="twitter:image:alt" content="${escapeHtml(metadata.imageAlt)}" />`);
+  }
+  if (metadata.startsAt) tags.push(`<meta property="event:start_time" content="${escapeHtml(metadata.startsAt)}" />`);
+  if (metadata.endsAt) tags.push(`<meta property="event:end_time" content="${escapeHtml(metadata.endsAt)}" />`);
+  tags.push(`<script type="application/ld+json">${jsonForHtml(metadata.jsonLd)}</script>`);
+  html = html
+    .replace(/<title>.*?<\/title>/i, "")
+    .replace(/<link\s+rel=["']canonical["'][^>]*>/gi, "")
+    .replace(/<meta\s+name=["'](?:description|robots|keywords|twitter:[^"']+)["'][^>]*>/gi, "")
+    .replace(/<meta\s+property=["'](?:og:[^"']+|event:[^"']+)["'][^>]*>/gi, "")
+    .replace(/<script\s+type=["']application\/ld\+json["'][\s\S]*?<\/script>/gi, "");
+  html = html.replace("</head>", `${tags.filter(Boolean).join("\n    ")}\n  </head>`);
+  const headers = new Headers(response.headers);
+  headers.set("content-type", "text/html; charset=utf-8");
+  headers.set("cache-control", "public, max-age=0, must-revalidate");
+  headers.delete("content-length");
+  return new Response(html, { status: response.status, statusText: response.statusText, headers });
+}
+
+function jsonResponse(payload, status = 200, headers = {}) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "public, max-age=60",
+      "access-control-allow-origin": "*",
+      ...headers,
+    },
+  });
+}
+
+async function siteBuildMetadata(env) {
+  if (!env?.ASSETS) return {};
+  try {
+    const response = await env.ASSETS.fetch("https://orgportal.cc/__deployment.json");
+    if (!response.ok) return {};
+    const data = await response.json();
+    return data && typeof data === "object" ? data : {};
+  } catch {
+    return {};
+  }
+}
+
+async function healthResponse(request, env, service = "orgportal-web") {
+  const url = new URL(request.url);
+  const metadata = await siteBuildMetadata(env);
+  return jsonResponse({
+    ok: true,
+    service,
+    time: new Date().toISOString(),
+    commit: metadata.commit ?? null,
+    dirty: metadata.dirty ?? null,
+    builtAt: metadata.builtAt ?? null,
+    workerVersionId: env?.CF_VERSION_METADATA?.id ?? null,
+    hostname: url.hostname,
+    environment: env?.ENVIRONMENT ?? "production",
+  }, 200, { "cache-control": "no-store" });
+}
+
+const PUBLIC_MAP_FEEDS = {
+  flock: "https://flocklocations.com/api/cameras/export?format=geojson",
+  chartIncidents: "https://chartexp1.sha.maryland.gov/CHARTExportClientService/getEventMapDataJSON.do",
+  chartSpeeds: "https://chartexp1.sha.maryland.gov/CHARTExportClientService/getTSSMapDataJSON.do",
+};
+
+function parseMapBbox(url, { maxArea = Infinity } = {}) {
+  const values = (url.searchParams.get("bbox") || "").split(",").map(Number);
+  if (values.length !== 4 || values.some((value) => !Number.isFinite(value))) return null;
+  const [west, south, east, north] = values;
+  if (west < -180 || east > 180 || south < -90 || north > 90 || west >= east || south >= north) return null;
+  if ((east - west) * (north - south) > maxArea) return null;
+  return values;
+}
+
+function pointInBbox(longitude, latitude, bbox) {
+  return Number.isFinite(longitude) && Number.isFinite(latitude)
+    && longitude >= bbox[0] && longitude <= bbox[2]
+    && latitude >= bbox[1] && latitude <= bbox[3];
+}
+
+async function fetchPublicMapJson(url, cacheTtl) {
+  const response = await fetch(url, {
+    headers: { accept: "application/json", "user-agent": "CodeCollective public map/1.0" },
+    cf: { cacheEverything: true, cacheTtl },
+  });
+  if (!response.ok) throw new Error(`Upstream returned HTTP ${response.status}`);
+  return response.json();
+}
+
+function mapFeedResponse(features, source, generatedAt = new Date().toISOString()) {
+  return jsonResponse({
+    type: "FeatureCollection",
+    metadata: { source, generated_at: generatedAt, feature_count: features.length },
+    features,
+  }, 200, { "cache-control": "public, max-age=60, s-maxage=300" });
+}
+
+async function handleFlockCameraMap(url) {
+  const bbox = parseMapBbox(url, { maxArea: 25 });
+  if (!bbox) return jsonResponse({ error: "bbox is invalid or too large; zoom in before requesting camera records" }, 400);
+  const data = await fetchPublicMapJson(PUBLIC_MAP_FEEDS.flock, 900);
+  const features = (data.features || []).filter((feature) => {
+    const [longitude, latitude] = feature.geometry?.coordinates || [];
+    return feature.geometry?.type === "Point" && pointInBbox(Number(longitude), Number(latitude), bbox);
+  }).map((feature) => ({
+    type: "Feature",
+    geometry: feature.geometry,
+    properties: {
+      id: feature.properties?.id,
+      address: feature.properties?.address,
+      city: feature.properties?.city,
+      state: feature.properties?.state,
+      camera_type: feature.properties?.camera_type,
+      mounted_on: feature.properties?.mounted_on,
+      verified: Boolean(feature.properties?.verified),
+      confirm_count: Number(feature.properties?.confirm_count) || 0,
+      reported_at: feature.properties?.reported_at,
+      source_url: feature.properties?.source_url,
+    },
+  }));
+  return mapFeedResponse(features, data.source || "https://flocklocations.com", data.generated);
+}
+
+function overpassFeature(element) {
+  const latitude = Number(element.lat ?? element.center?.lat);
+  const longitude = Number(element.lon ?? element.center?.lon);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+  const tags = element.tags || {};
+  return {
+    type: "Feature",
+    geometry: { type: "Point", coordinates: [longitude, latitude] },
+    properties: {
+      osm_id: `${element.type}/${element.id}`,
+      operator: tags.operator,
+      brand: tags.brand,
+      manufacturer: tags.manufacturer,
+      direction: tags.direction,
+      camera_mount: tags.camera_mount || tags.mounting,
+      surveillance_type: tags["surveillance:type"],
+      source_url: `https://www.openstreetmap.org/${element.type}/${element.id}`,
+    },
+  };
+}
+
+async function handleAlprMap(url) {
+  const bbox = parseMapBbox(url, { maxArea: 4 });
+  if (!bbox) return jsonResponse({ error: "bbox is invalid or too large; zoom in before requesting ALPR records" }, 400);
+  const [west, south, east, north] = bbox;
+  const query = `[out:json][timeout:20];node["man_made"="surveillance"]["surveillance:type"="ALPR"](${south},${west},${north},${east});out body qt;`;
+  const response = await fetch("https://overpass-api.de/api/interpreter", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded", "user-agent": "CodeCollective public map/1.0" },
+    body: new URLSearchParams({ data: query }),
+  });
+  if (!response.ok) throw new Error(`Overpass returned HTTP ${response.status}`);
+  const data = await response.json();
+  return mapFeedResponse((data.elements || []).map(overpassFeature).filter(Boolean), "OpenStreetMap Overpass API", data.osm3s?.timestamp_osm_base);
+}
+
+function chartPoint(record, properties) {
+  const latitude = Number(record.lat);
+  const longitude = Number(record.lon);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+  return { type: "Feature", geometry: { type: "Point", coordinates: [longitude, latitude] }, properties };
+}
+
+async function handleChartMap(url, kind) {
+  const bbox = parseMapBbox(url);
+  if (!bbox) return jsonResponse({ error: "bbox must be west,south,east,north" }, 400);
+  const feedUrl = kind === "speeds" ? PUBLIC_MAP_FEEDS.chartSpeeds : PUBLIC_MAP_FEEDS.chartIncidents;
+  const data = await fetchPublicMapJson(feedUrl, kind === "speeds" ? 60 : 120);
+  const policeOnly = kind === "incidents" && url.searchParams.get("kind") === "police";
+  const features = (data.data || []).filter((record) => pointInBbox(Number(record.lon), Number(record.lat), bbox)).filter((record) => (
+    !policeOnly || String(record.incidentType).toLowerCase() === "police activity"
+  )).map((record) => {
+    if (kind === "speeds") {
+      const zones = (record.zones || []).filter((zone) => Number(zone.speed) >= 0 && Number(zone.speed) <= 120);
+      const speeds = zones.map((zone) => Number(zone.speed));
+      return chartPoint(record, {
+        id: record.id,
+        name: record.name,
+        description: record.description,
+        operating_status: record.opStatus,
+        owner: record.owningOrg,
+        speed_mph: speeds.length ? Math.round(speeds.reduce((sum, speed) => sum + speed, 0) / speeds.length) : null,
+        directions: zones.map((zone) => zone.direction).filter(Boolean).join(", "),
+        last_updated: record.lastUpdateTime,
+      });
+    }
+    return chartPoint(record, {
+      id: record.id,
+      name: record.name,
+      description: record.description,
+      incident_type: record.incidentType,
+      county: record.county,
+      direction: record.direction,
+      lanes_status: record.lanesStatus,
+      closed: Boolean(record.closed),
+      traffic_alert: Boolean(record.trafficAlert),
+      traffic_alert_text: record.trafficAlertTextMsg,
+      started_at: record.startDateTime,
+      last_updated: record.lastCachedDataUpdateTime,
+    });
+  }).filter(Boolean);
+  return mapFeedResponse(features, "Maryland CHART", data.lastCachedDataUpdateTime);
+}
+
+async function handlePublicMapData(request, url) {
+  if (request.method !== "GET" && request.method !== "HEAD") return jsonResponse({ error: "Method not allowed" }, 405);
+  try {
+    if (url.pathname === "/api/map-data/flock-cameras") return await handleFlockCameraMap(url);
+    if (url.pathname === "/api/map-data/alpr") return await handleAlprMap(url);
+    if (url.pathname === "/api/map-data/chart/incidents") return await handleChartMap(url, "incidents");
+    if (url.pathname === "/api/map-data/chart/speeds") return await handleChartMap(url, "speeds");
+    return jsonResponse({ error: "Map feed not found" }, 404);
+  } catch (error) {
+    return jsonResponse({ error: `Public map feed unavailable: ${error.message}` }, 502);
+  }
+}
+
+function getRangeContentLength(range) {
+  if (!range || typeof range.offset !== "number" || typeof range.length !== "number") {
+    return null;
+  }
+
+  return String(range.length);
+}
+
+function getContentRangeHeader(range, size) {
+  if (!range || typeof range.offset !== "number" || typeof range.length !== "number") {
+    return null;
+  }
+
+  const end = range.offset + range.length - 1;
+  return `bytes ${range.offset}-${end}/${size}`;
+}
+
+async function handleAudioRequest(request, env, path) {
+  if (!env.MEDIA_BUCKET || !pathMatchesPrefix(path, "/audio")) {
+    return null;
+  }
+
+  const key = path.replace(/^\/+/, "");
+  const object =
+    request.method === "HEAD"
+      ? await env.MEDIA_BUCKET.head(key)
+      : await env.MEDIA_BUCKET.get(key, { range: request.headers });
+
+  if (!object) {
+    return null;
+  }
+
+  const headers = new Headers();
+  object.writeHttpMetadata(headers);
+  headers.set("etag", object.httpEtag);
+  headers.set("accept-ranges", "bytes");
+  headers.set("cache-control", headers.get("cache-control") || "public, max-age=2592000");
+
+  const contentLength = getRangeContentLength(object.range) || String(object.size);
+  headers.set("content-length", contentLength);
+
+  const contentRange = getContentRangeHeader(object.range, object.size);
+  if (contentRange) {
+    headers.set("content-range", contentRange);
+  }
+
+  return new Response(request.method === "HEAD" ? null : object.body, {
+    status: object.range ? 206 : 200,
+    headers,
+  });
+}
+
+async function readLatestJobsPointer(env) {
+  if (!env.JOBS_BUCKET) return null;
+  const object = await env.JOBS_BUCKET.get("jobs/latest.json");
+  if (!object) return null;
+  return object.json();
+}
+
+async function readJobsManifest(env, version = "") {
+  if (!env.JOBS_BUCKET) return null;
+  let manifestKey = "";
+  let resolvedVersion = version;
+
+  if (resolvedVersion) {
+    manifestKey = `jobs/${resolvedVersion}/manifest.json`;
+  } else {
+    const latest = await readLatestJobsPointer(env);
+    if (!latest || !latest.manifest_key) return null;
+    manifestKey = String(latest.manifest_key);
+    resolvedVersion = String(latest.version || "");
+  }
+
+  const object = await env.JOBS_BUCKET.get(manifestKey);
+  if (!object) return null;
+  const manifest = await object.json();
+  return { manifest, version: resolvedVersion, manifestKey };
+}
+
+function normalizeStateParam(raw) {
+  const value = String(raw || "ALL").trim().toUpperCase();
+  if (!value) return "ALL";
+  return value;
+}
+
+async function handleJobsMeta(request, env) {
+  const url = new URL(request.url);
+  const version = url.searchParams.get("version") || "";
+  const loaded = await readJobsManifest(env, version);
+  if (!loaded) {
+    return jsonResponse({ error: "Jobs manifest not found" }, 404);
+  }
+
+  return jsonResponse({
+    version: loaded.version || loaded.manifest.version || "",
+    manifest_key: loaded.manifestKey,
+    ...loaded.manifest,
+  });
+}
+
+async function handleJobsPage(request, env) {
+  const url = new URL(request.url);
+  const version = url.searchParams.get("version") || "";
+  const state = normalizeStateParam(url.searchParams.get("state"));
+  const page = Number.parseInt(url.searchParams.get("page") || "1", 10);
+
+  if (!Number.isInteger(page) || page < 1) {
+    return jsonResponse({ error: "Invalid page query parameter" }, 400);
+  }
+
+  const loaded = await readJobsManifest(env, version);
+  if (!loaded) {
+    return jsonResponse({ error: "Jobs manifest not found" }, 404);
+  }
+
+  const manifest = loaded.manifest;
+  const states = manifest.states || {};
+  const stateEntry = states[state] || states.ALL;
+  if (!stateEntry) {
+    return jsonResponse({ error: `State not found: ${state}` }, 404);
+  }
+
+  const shard = (stateEntry.shards || []).find((item) => Number(item.page) === page);
+  if (!shard || !shard.key) {
+    return jsonResponse({ error: `Page not found for state ${state}: ${page}` }, 404);
+  }
+
+  const object = await env.JOBS_BUCKET.get(String(shard.key));
+  if (!object) {
+    return jsonResponse({ error: "Shard object not found" }, 404);
+  }
+
+  const headers = new Headers();
+  object.writeHttpMetadata(headers);
+  headers.set("etag", object.httpEtag);
+  headers.set("cache-control", "public, max-age=300");
+  headers.set("access-control-allow-origin", "*");
+
+  return new Response(object.body, { status: 200, headers });
+}
+
+async function readLatestVacantsPointer(env) {
+  if (!env.VACANTS_BUCKET) return null;
+  const object = await env.VACANTS_BUCKET.get("vacants/latest.json");
+  if (!object) return null;
+  return object.json();
+}
+
+async function readVacantsManifest(env, version = "") {
+  if (!env.VACANTS_BUCKET) return null;
+  let manifestKey = "";
+  let resolvedVersion = version;
+
+  if (resolvedVersion) {
+    manifestKey = `vacants/${resolvedVersion}/manifest.json`;
+  } else {
+    const latest = await readLatestVacantsPointer(env);
+    if (!latest || !latest.manifest_key) return null;
+    manifestKey = String(latest.manifest_key);
+    resolvedVersion = String(latest.version || "");
+  }
+
+  const object = await env.VACANTS_BUCKET.get(manifestKey);
+  if (!object) return null;
+  const manifest = await object.json();
+  return { manifest, version: resolvedVersion, manifestKey };
+}
+
+function normalizeVacantsGroup(raw) {
+  const value = String(raw || "ALL").trim().toUpperCase();
+  return value || "ALL";
+}
+
+async function handleVacantsMeta(request, env) {
+  const url = new URL(request.url);
+  const version = url.searchParams.get("version") || "";
+  const loaded = await readVacantsManifest(env, version);
+  if (!loaded) {
+    return jsonResponse({ error: "Vacants manifest not found" }, 404);
+  }
+
+  return jsonResponse({
+    version: loaded.version || loaded.manifest.version || "",
+    manifest_key: loaded.manifestKey,
+    ...loaded.manifest,
+  });
+}
+
+async function handleVacantsPage(request, env) {
+  const url = new URL(request.url);
+  const version = url.searchParams.get("version") || "";
+  const group = normalizeVacantsGroup(url.searchParams.get("group"));
+  const page = Number.parseInt(url.searchParams.get("page") || "1", 10);
+
+  if (!Number.isInteger(page) || page < 1) {
+    return jsonResponse({ error: "Invalid page query parameter" }, 400);
+  }
+
+  const loaded = await readVacantsManifest(env, version);
+  if (!loaded) {
+    return jsonResponse({ error: "Vacants manifest not found" }, 404);
+  }
+
+  const groups = loaded.manifest.groups || {};
+  const groupEntry = groups[group] || groups.ALL;
+  if (!groupEntry) {
+    return jsonResponse({ error: `Group not found: ${group}` }, 404);
+  }
+
+  const shard = (groupEntry.shards || []).find((item) => Number(item.page) === page);
+  if (!shard || !shard.key) {
+    return jsonResponse({ error: `Page not found for group ${group}: ${page}` }, 404);
+  }
+
+  const object = await env.VACANTS_BUCKET.get(String(shard.key));
+  if (!object) {
+    return jsonResponse({ error: "Shard object not found" }, 404);
+  }
+
+  const headers = new Headers();
+  object.writeHttpMetadata(headers);
+  headers.set("etag", object.httpEtag);
+  headers.set("cache-control", "public, max-age=300");
+  headers.set("access-control-allow-origin", "*");
+
+  return new Response(object.body, { status: 200, headers });
+}
+
+async function readLatestVacantsParcelsPointer(env) {
+  if (!env.VACANTS_BUCKET) return null;
+  const object = await env.VACANTS_BUCKET.get("vacants_parcels/latest.json");
+  if (!object) return null;
+  return object.json();
+}
+
+async function readVacantsParcelsManifest(env, version = "") {
+  if (!env.VACANTS_BUCKET) return null;
+  let manifestKey = "";
+  let resolvedVersion = version;
+
+  if (resolvedVersion) {
+    manifestKey = `vacants_parcels/${resolvedVersion}/manifest.json`;
+  } else {
+    const latest = await readLatestVacantsParcelsPointer(env);
+    if (!latest || !latest.manifest_key) return null;
+    manifestKey = String(latest.manifest_key);
+    resolvedVersion = String(latest.version || "");
+  }
+
+  const object = await env.VACANTS_BUCKET.get(manifestKey);
+  if (!object) return null;
+  const manifest = await object.json();
+  return { manifest, version: resolvedVersion, manifestKey };
+}
+
+function normalizeVacantsParcelsGroup(raw) {
+  const value = String(raw || "ALL").trim().toUpperCase();
+  return value || "ALL";
+}
+
+async function handleVacantsParcelsMeta(request, env) {
+  const url = new URL(request.url);
+  const version = url.searchParams.get("version") || "";
+  const loaded = await readVacantsParcelsManifest(env, version);
+  if (!loaded) {
+    return jsonResponse({ error: "Vacants parcels manifest not found" }, 404);
+  }
+
+  return jsonResponse({
+    version: loaded.version || loaded.manifest.version || "",
+    manifest_key: loaded.manifestKey,
+    ...loaded.manifest,
+  });
+}
+
+async function handleVacantsParcelsPage(request, env) {
+  const url = new URL(request.url);
+  const version = url.searchParams.get("version") || "";
+  const group = normalizeVacantsParcelsGroup(url.searchParams.get("group"));
+  const page = Number.parseInt(url.searchParams.get("page") || "1", 10);
+
+  if (!Number.isInteger(page) || page < 1) {
+    return jsonResponse({ error: "Invalid page query parameter" }, 400);
+  }
+
+  const loaded = await readVacantsParcelsManifest(env, version);
+  if (!loaded) {
+    return jsonResponse({ error: "Vacants parcels manifest not found" }, 404);
+  }
+
+  const groups = loaded.manifest.groups || {};
+  const groupEntry = groups[group] || groups.ALL;
+  if (!groupEntry) {
+    return jsonResponse({ error: `Group not found: ${group}` }, 404);
+  }
+
+  const shard = (groupEntry.shards || []).find((item) => Number(item.page) === page);
+  if (!shard || !shard.key) {
+    return jsonResponse({ error: `Page not found for group ${group}: ${page}` }, 404);
+  }
+
+  const object = await env.VACANTS_BUCKET.get(String(shard.key));
+  if (!object) {
+    return jsonResponse({ error: "Shard object not found" }, 404);
+  }
+
+  const headers = new Headers();
+  object.writeHttpMetadata(headers);
+  headers.set("etag", object.httpEtag);
+  headers.set("cache-control", "public, max-age=300");
+  headers.set("access-control-allow-origin", "*");
+
+  return new Response(object.body, { status: 200, headers });
+}
+
+const productionWorker = {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    const path = url.pathname;
+    const tenantHost = isOrgGroupSiteHost(url.hostname, env);
+
+    if (url.hostname === "orgportal.cc" && ["/timebanking", "/timebanking/"].includes(path)) {
+      url.pathname = "/communities";
+      url.searchParams.set("feature", "timebank");
+      return Response.redirect(url.toString(), 308);
+    }
+
+    if (!tenantHost && pathMatchesPrefix(path, "/orgs") && (request.method === "GET" || request.method === "HEAD")) {
+      url.hostname = "orgportal.cc";
+      return Response.redirect(url.toString(), 302);
+    }
+
+    if (path === "/health" || path === "/version") {
+      return healthResponse(request, env);
+    }
+
+    if (request.method === "GET" && (tenantHost && path === "/clear-cache")) {
+      url.pathname = "/users/login";
+      return new Response(null, {
+        status: 303,
+        headers: {
+          "location": url.toString(),
+          "clear-site-data": '"cache"',
+          "cache-control": "no-store",
+        },
+      });
+    }
+
+    if (tenantHost && (path === "/calendar.html" || path === "/calendar_cards.html" || path === "/simplecalendar.html")) {
+      url.pathname = "/calendar";
+      return Response.redirect(url.toString(), 308);
+    }
+
+    if (path === "/favicon.ico") {
+      url.pathname = url.hostname === "orgportal.cc" ? "/orgportal.svg" : tenantHost && url.hostname.includes("timebank") ? "/images/timebank/favicon-64.png" : tenantHost ? "/codecollective_logo.png" : "/images/favicons/favicon.png";
+      return Response.redirect(url.toString(), 308);
+    }
+
+    if (path === "/R8-rowhome" || path.startsWith("/R8-rowhome/")) {
+      url.pathname = `/r8-rowhome${path.slice("/R8-rowhome".length)}`;
+      return Response.redirect(url.toString(), 308);
+    }
+
+    if (request.method === "OPTIONS" && isPublicCalendarAsset(path)) {
+      const headers = new Headers();
+      applyPublicCors(headers);
+      return new Response(null, { status: 204, headers });
+    }
+
+    if (request.method === "OPTIONS" && (path.startsWith("/api/governance") || pathMatchesPrefix(path, "/api/org") || pathMatchesPrefix(path, "/api/chat") || pathMatchesPrefix(path, "/.well-known/oauth-protected-resource") || path.startsWith("/pidp") || path.startsWith("/auth/avatar/upload") || path.startsWith("/api/jobs") || path.startsWith("/api/vacants") || path.startsWith("/api/vacants_parcels") || path.startsWith("/api/map-data") || pathMatchesPrefix(path, "/specialty/baltimore-medtech/api/datasets"))) {
+      return new Response(null, {
+        status: 204,
+        headers: {
+          "access-control-allow-origin": "*",
+          "access-control-allow-methods": "GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS",
+          "access-control-allow-headers": "authorization,content-type,x-requested-with",
+        },
+      });
+    }
+
+    if (path.startsWith("/api/governance")) {
+      return proxyRequest(request, env.ORG_API_ORIGIN || env.GOVERNANCE_API_ORIGIN);
+    }
+
+    if (pathMatchesPrefix(path, "/.well-known/oauth-protected-resource/api/org/mcp")) {
+      return proxyRequest(request, env.ORG_API_ORIGIN || env.GOVERNANCE_API_ORIGIN);
+    }
+
+    if (pathMatchesPrefix(path, "/api/org")) {
+      const response = await proxyRequest(request, env.ORG_API_ORIGIN || env.GOVERNANCE_API_ORIGIN, { stripPrefix: "/api/org" });
+      if (request.method === "GET" && /^\/api\/org\/api\/network\/events\/public\/[^/]+$/.test(path) && response.ok) {
+        try {
+          const event = await response.clone().json();
+          const enriched = await withEventSourcePreview(event);
+          if (enriched !== event) {
+            const headers = new Headers(response.headers);
+            headers.delete("content-length");
+            headers.delete("content-encoding");
+            headers.delete("etag");
+            headers.set("cache-control", "no-store");
+            return Response.json(enriched, { status: response.status, headers });
+          }
+        } catch { /* Preserve the original API response if preview lookup fails. */ }
+      }
+      return response;
+    }
+
+    if (pathMatchesPrefix(path, "/api/chat")) {
+      return proxyRequest(request, env.CHAT_API_ORIGIN, { stripPrefix: "/api/chat" });
+    }
+
+    if (pathMatchesPrefix(path, "/specialty/baltimore-medtech/api/datasets")) {
+      const datasetResponse = await handleMedTechDatasetRequest(request, env, url);
+      if (datasetResponse) return datasetResponse;
+    }
+
+    if (pathMatchesPrefix(path, "/api/map-data")) {
+      return handlePublicMapData(request, url);
+    }
+
+    if (path === "/api/jobs/meta") {
+      return handleJobsMeta(request, env);
+    }
+
+    if (path === "/api/jobs") {
+      return handleJobsPage(request, env);
+    }
+
+    if (path === "/api/vacants/meta") {
+      return handleVacantsMeta(request, env);
+    }
+
+    if (path === "/api/vacants") {
+      return handleVacantsPage(request, env);
+    }
+
+    if (path === "/api/vacants_parcels/meta") {
+      return handleVacantsParcelsMeta(request, env);
+    }
+
+    if (path === "/api/vacants_parcels") {
+      return handleVacantsParcelsPage(request, env);
+    }
+
+    if (path.startsWith("/pidp")) {
+      return proxyRequest(request, env.PIDP_PROXY_ORIGIN || env.PIDP_API_ORIGIN, {
+        stripPrefix: "/pidp",
+        hostOnlyCookies: Boolean(tenantHost),
+      });
+    }
+
+    if (path.startsWith("/auth/avatar/upload")) {
+      return proxyRequest(request, env.PIDP_PROXY_ORIGIN || env.PIDP_API_ORIGIN);
+    }
+
+    if (path === "/auth/callback" && !tenantHost) {
+      url.hostname = "orgportal.cc";
+      return Response.redirect(url.toString(), 308);
+    }
+
+    if (pathMatchesPrefix(path, "/audio")) {
+      const audioResponse = await handleAudioRequest(request, env, path);
+      if (audioResponse) {
+        return audioResponse;
+      }
+    }
+
+    // Tenant domains mount the shared OrgPortal app at their root.
+    if (tenantHost) {
+      const specialtyTarget = medTechSpecialtyRedirect(path);
+      if (specialtyTarget) {
+        url.pathname = specialtyTarget;
+        return Response.redirect(url.toString(), 308);
+      }
+      if (path === "/calendar.html" || path === "/calendar_cards.html" || path === "/simplecalendar.html") {
+        url.pathname = "/calendar";
+        return Response.redirect(url.toString(), 308);
+      }
+      const portalPath = path;
+      if (
+        pathMatchesPrefix(path, "/assets")
+        || pathMatchesPrefix(path, "/ecosystem-data")
+        || pathMatchesPrefix(path, "/specialty")
+        || pathMatchesPrefix(path, "/css")
+        || pathMatchesPrefix(path, "/fonts")
+        || pathMatchesPrefix(path, "/images")
+        || path === "/orgportal.svg"
+        || path === "/orgportal.webmanifest"
+        || path === "/manifest.webmanifest"
+        || path === "/medtech.webmanifest"
+        || path === "/deism.webmanifest"
+        || path === "/timebank.webmanifest"
+        || path === "/mobile-update.json"
+        || path === "/push-sw.js"
+        || path === "/codecollective_logo.png"
+      ) {
+        let assetPath = path;
+        if (pathMatchesPrefix(path, "/specialty") && assetPath.endsWith(".html")) {
+          assetPath = assetPath.slice(0, -5);
+        }
+        url.pathname = `/__portal_root${assetPath}`;
+        const response = await env.ASSETS.fetch(new Request(url, request));
+        return applyStaticCachePolicy(assetPath, response);
+      }
+      const navigation = (request.method === "GET" || request.method === "HEAD")
+        && (isHtmlNavigation(request) || looksLikeSpaRoute(path) || path.endsWith(".html"));
+      if (navigation) {
+        if (!isPortalPagePath(portalPath)) return notFoundResponse(request);
+        const tenant = await verifyOrgGroupSite(url.hostname, env);
+        if (!tenant.ok) {
+          return new Response("This community is not available yet.", {
+            status: tenant.status === 404 ? 404 : 503,
+            headers: { "cache-control": "no-store" },
+          });
+        }
+        const canonicalPath = ["/timebanking", "/timebanking/", "/index.html"].includes(portalPath) ? "/" : portalPath;
+        if (path !== canonicalPath) {
+          url.pathname = canonicalPath;
+          return Response.redirect(url.toString(), 308);
+        }
+        const response = await env.ASSETS.fetch(spaEntrypointRequest(url, request, "/__portal_root/index.html"));
+        return withNoStore(await withSocialMetadata(response, url, request, env));
+      }
+      return new Response("Not found", { status: 404 });
+    }
+
+    const assetResponse = await env.ASSETS.fetch(request);
+    if (assetResponse.status !== 404) {
+      return applyStaticCachePolicy(path, assetResponse);
+    }
+
+    if ((path === "/r8-rowhome" || path.startsWith("/r8-rowhome/")) && (isHtmlNavigation(request) || looksLikeSpaRoute(path))) {
+      const spaResponse = await env.ASSETS.fetch(spaEntrypointRequest(url, request, "/r8-rowhome/"));
+      return applyStaticCachePolicy("/r8-rowhome/index.html", spaResponse);
+    }
+
+    return assetResponse;
+  },
+};
+
+export default {
+  async fetch(request, env) {
+    if (env.WEB_PREVIEW === 'true') return previewResponse(request, env);
+    const url = new URL(request.url);
+    // The independent Worker preview uses the platform tenant, without trusting
+    // client-supplied forwarding headers as a tenant selector.
+    if (url.hostname === 'orgportal-web.jcloiacon.workers.dev' && !['/health', '/version'].includes(url.pathname)) {
+      url.hostname = 'orgportal.cc';
+      request = new Request(url, request);
+    }
+    const tenant = isOrgGroupSiteHost(url.hostname, env);
+    if (pathMatchesPrefix(url.pathname, '/p')) return notFoundResponse(request);
+    if (tenant) {
+      const missing = await missingPortalResource(request, url.pathname, env.ORG_API_ORIGIN || env.GOVERNANCE_API_ORIGIN);
+      if (missing) return missing;
+    }
+    const selected = await deploymentResponse(request, env, {
+      enabled: tenant || url.pathname === deploymentPath,
+      mount: 'root',
+    });
+    if (selected) return selected;
+    const response = await productionWorker.fetch(request, env);
+    return isDeploymentAssetRequest(request) ? deploymentCachePolicy(response, env) : response;
+  },
+};

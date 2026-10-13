@@ -72,7 +72,7 @@ mapping in PIdP; do not accept a client-supplied issuer or portal destination.
 Move reusable account UI upstream incrementally while preserving existing
 subjects and sessions, with integration tests before switching routes.
 
-Shared portal releases go through the CodeCollective checkout. PIdP is released
+OrgPortal frontend and API releases are owned by this repository; see [release operations](docs/deployment/RELEASE.md). PIdP is released
 separately, with equivalent account/OAuth behavior in Python and serverless.
 MedTech deployment must not deploy either shared service.
 
@@ -263,7 +263,7 @@ identities. No raw spreadsheet contacts, account mappings, or memberships are
 imported. The import generator is
 `node org-worker/scripts/build-ecosystem-support.mjs [snapshot.json] [output.sql]`;
 use a new migration file for later snapshots instead of rewriting an applied
-migration. Shared services continue to release through CodeCollective.
+migration. OrgPortal releases use its independent release workflow.
 
 ### Public evidence registration and event enrichment
 
@@ -298,7 +298,7 @@ PIdP verifies the linked account and OrgPortal verifies management authority.
 The one-use preview preserves completed work and records an audit event.
 
 Apply PIdP migration 0010 and release PIdP first, then deploy the OrgPortal Worker
-through CodeCollective. Account linking requires authentication to both accounts;
+through the OrgPortal release workflow. Account linking requires authentication to both accounts;
 email matching never establishes identity or authority.
 
 Organization managers can configure onboarding through
