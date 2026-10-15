@@ -13,7 +13,7 @@ beforeEach(() => {
 })
 describe('public organization IndexedDB cache', () => {
   it('caches network snapshots and directory pages while rejecting private or arbitrary URLs', async () => {
-    for (const path of ['/ecosystem-data/ecosystem-portal.json', '/ecosystem-data/ecosystem-nonprofits.json', '/p/ecosystem-data/ecosystem-history.json', '/ecosystem-data/ecosystem-relationships.json', '/api/org/api/network/orgs/public?limit=500&offset=500', '/api/org/api/network/relationships/public?offset=0']) {
+    for (const path of ['/api/org/api/network/orgs/public/tedco/support?offset=500', '/ecosystem-data/ecosystem-portal.json', '/ecosystem-data/ecosystem-nonprofits.json', '/p/ecosystem-data/ecosystem-history.json', '/ecosystem-data/ecosystem-relationships.json', '/api/org/api/network/orgs/public?limit=500&offset=500', '/api/org/api/network/relationships/public?offset=0']) {
       const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ recipients: 12 })))
       vi.stubGlobal('fetch', fetcher)
       await refreshPublicReport(path, { validate })
@@ -27,11 +27,18 @@ describe('public organization IndexedDB cache', () => {
   it('persists validated remote data, reuses fresh records and supports forced conditional refresh', async () => {
     const fetcher = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({ recipients: 578 }), { headers: { ETag: '"v1"' } })).mockResolvedValueOnce(new Response(null, { status: 304 }))
     vi.stubGlobal('fetch', fetcher)
-    expect((await refreshPublicReport(path, { validate })).fromCache).toBe(false)
+    const original = await refreshPublicReport(path, { validate })
+    expect(original.fromCache).toBe(false)
+    vi.spyOn(Date, 'now').mockReturnValue(original.checkedAt + PUBLIC_DATA_REFRESH_MS + 1)
     expect((await readPublicReport<{ recipients: number }>(path))?.data.recipients).toBe(578)
+    vi.spyOn(Date, 'now').mockReturnValue(original.checkedAt + 1)
     expect((await refreshPublicReport(path, { validate })).fromCache).toBe(true)
     expect(fetcher).toHaveBeenCalledTimes(1)
+    vi.spyOn(Date, 'now').mockReturnValue(original.checkedAt + PUBLIC_DATA_REFRESH_MS + 1)
     const updated = await refreshPublicReport(path, { validate, force: true })
+    expect(updated.updatedAt).toBe(original.updatedAt);
+    expect(updated.checkedAt).toBeGreaterThan(original.checkedAt);
+    expect(updated.etag).toBe('"v1"');
     expect(updated.data.recipients).toBe(578); expect(updated.fromCache).toBe(false)
     expect(fetcher.mock.calls[1][1].headers.get('If-None-Match')).toBe('"v1"')
     expect(fetcher.mock.calls[0][1].credentials).toBe('omit')

@@ -31,7 +31,7 @@ const validateSnapshot = value => {
 }
 const cachedEvidenceFetch = async (url, options) => {
  const cacheUrl=url.replace(/\/support\?offset=0$/, '/support')
- if(cacheUrl.endsWith('/support') || /\/orgs\/public\?limit=500&offset=\d+$/.test(cacheUrl) || /\/relationships\/public\?offset=\d+$/.test(cacheUrl)) {
+ if(/\/support(?:\?offset=\d+)?$/.test(cacheUrl) || /\/orgs\/public\?limit=500&offset=\d+$/.test(cacheUrl) || /\/relationships\/public\?offset=\d+$/.test(cacheUrl)) {
   const value=await cachedPublicJson(cacheUrl, value=>{
    if(cacheUrl.includes('/orgs/public?') ? !Array.isArray(value) : !Array.isArray(value?.records))throw new Error('Public evidence is incomplete')
    return value
@@ -43,6 +43,7 @@ const cachedEvidenceFetch = async (url, options) => {
 const $ = s => root.querySelector(s)
 const rewriteLinks = () => root.querySelectorAll('a[href^="/"]').forEach(a => { const path=a.getAttribute('href'); if(!a.dataset.portalLinked){a.setAttribute('href', path.startsWith('/ecosystem-data/') ? new URL(path.split('/').pop(),historyUrl.startsWith('http')?historyUrl:new URL(historyUrl,location.origin)).pathname : portalPath(path));a.dataset.portalLinked='true'} });
 
+const closeDetailsButton = '<button type="button" class="eco-close-details" data-unpin-node aria-label="Close details">Close details ×</button>'
 const colors = { ecosystem:0x16847d, company:0x357db7, health:0xc76e57, university:0x8564b3, funding:0xad7b26, general:0x77878c, 'federal-government':0x234c8c, 'state-government':0xa54161 }
 const selectedCategories = () => new Set([...root.querySelectorAll('[name=node-category]:checked')].map(c=>c.value))
 const selectedRelationships = () => new Set([...root.querySelectorAll('[name=relationship]:checked')].map(c=>c.value))
@@ -66,12 +67,12 @@ const financialLabel = n => n.financialAmount ? `Recorded USD transaction volume
 function previewNode(org) {
  if(selected)return
  const key='node:'+org.id;if(inspectorKey===key)return;inspectorKey=key
- $('#network-detail').innerHTML=organizationPreview(org,previewSummaries);rewriteLinks();if(matchMedia('(max-width:900px)').matches&&!root.classList.contains('eco-controls-open')){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
+ $('#network-detail').innerHTML=closeDetailsButton+organizationPreview(org,previewSummaries);rewriteLinks();if(matchMedia('(max-width:900px)').matches&&!root.classList.contains('eco-controls-open')){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
 }
 function previewEdge(edge) {
  if(selected)return
  const key='edge:'+edge.id;if(inspectorKey===key)return;inspectorKey=key
- $('#network-detail').innerHTML=relationshipPreview(edge,data,previewSummaries);rewriteLinks();if(matchMedia('(max-width:900px)').matches&&!root.classList.contains('eco-controls-open')){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
+ $('#network-detail').innerHTML=closeDetailsButton+relationshipPreview(edge,data,previewSummaries);rewriteLinks();if(matchMedia('(max-width:900px)').matches&&!root.classList.contains('eco-controls-open')){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
 }
 function bindNodePreview(button,node) {
  button.addEventListener('pointerenter',()=>previewNode(node))
@@ -82,7 +83,7 @@ function select(id) {
  if(org.administratorId){id=org.administratorId;org=data.organizations.find(o=>o.id===id);if(!org)return}
  previewSummaries=preparedData?.data===data?preparedData.summaries:networkPreviewSummaries(data)
  selected = id; inspectorKey='node:'+id; $('#neighbors').disabled=false
- $('#network-detail').innerHTML = '<button type="button" data-unpin-node aria-label="Close pinned organization">Close</button>'+organizationPreview(org,previewSummaries); rewriteLinks();if(matchMedia('(max-width:900px)').matches&&!root.classList.contains('eco-controls-open')){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
+ $('#network-detail').innerHTML = closeDetailsButton+organizationPreview(org,previewSummaries); rewriteLinks();if(matchMedia('(max-width:900px)').matches&&!root.classList.contains('eco-controls-open')){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
  const u = new URL(location.href); u.searchParams.set('org',id); history.replaceState(history.state,'',u)
  refreshSelection()
 }
@@ -98,7 +99,12 @@ function unpin() {
  const u=new URL(location.href);u.searchParams.delete('org');history.replaceState(history.state,'',u)
  if(filtered)rebuild();else refreshSelection()
 }
-$('#network-detail').addEventListener('click',event=>{if(event.target.closest('[data-unpin-node]'))unpin()},{signal:abort.signal})
+$('#network-detail').addEventListener('click',event=>{if(event.target.closest('[data-unpin-node]'))closeDetails()},{signal:abort.signal})
+function closeDetails() {
+ unpin();root.classList.remove('eco-inspector-open');panelState()
+ root.querySelector('[data-panel="inspector"]').focus()
+}
+root.addEventListener('keydown',event=>{if(event.key==='Escape'&&root.classList.contains('eco-inspector-open'))closeDetails()},{signal:abort.signal})
 function search() {
  const q = $('#network-search').value.trim().toLowerCase()
  const result = $('#network-results'); result.replaceChildren()

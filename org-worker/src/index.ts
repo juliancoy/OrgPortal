@@ -1,3 +1,4 @@
+import { publicDataResponse } from './publicDataResponse';
 import { EventIntegrationError } from './eventPlatforms';
 import { bodyLimit } from 'hono/body-limit';
 import {publicInitiatives,initiativeAccess,saveInitiative,initiativeHistory} from './interventions';
@@ -3124,7 +3125,7 @@ app.get("/api/network/orgs/public", async (c) => {
     .bind(...(q ? [] : [limit, offset]))
     .all<OrganizationRow & { upcoming_events_count: number }>();
   const rankedRows = rankSearchResults(rows.results || [], q, (row) => [row.name, row.description, row.slug, row.tags, row.city], q ? limit + offset : limit, compareOrganizationActivity).slice(q ? offset : 0);
-  return c.json(rankedRows.map((row) => mapOrganization(row, Number(row.upcoming_events_count || 0))));
+  return publicDataResponse(c.req.raw, rankedRows.map((row) => mapOrganization(row, Number(row.upcoming_events_count || 0))));
 });
 
 app.get("/api/network/orgs/public/:slug", async (c) => {
@@ -3169,12 +3170,12 @@ app.post('/api/network/initiatives',bodyLimit({maxSize:32768}),async c=>{
 app.get("/api/network/relationships/public", async (c) => {
   const offset = Math.max(0, Math.min(Number.parseInt(c.req.query("offset") || "0", 10) || 0, 100000));
   c.header("Cache-Control", "public, max-age=60");
-  return c.json(await publicRelationshipRecords(c.env.DB, offset));
+  return publicDataResponse(c.req.raw, await publicRelationshipRecords(c.env.DB, offset));
 });
 
 app.get("/api/network/orgs/public/:slug/support", async (c) => {
   const offset = Math.max(0, Math.min(Number.parseInt(c.req.query("offset") || "0", 10) || 0, 100000));
-  try { return c.json(await organizationSupport(c.env.DB, c.req.param("slug"), offset)); }
+  try { return publicDataResponse(c.req.raw, await organizationSupport(c.env.DB, c.req.param("slug"), offset)); }
   catch (error) { return eventErrorResponse(error, c.env, c.req.raw); }
 });
 
