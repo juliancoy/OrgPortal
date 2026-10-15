@@ -153,3 +153,32 @@ test('central gravity remains finite and respects pinned nodes at maximum settin
  assert.equal(nodes[0].x,nodes[0].fx);assert.equal(nodes[0].y,nodes[0].fy)
  assert.ok(nodes.every(n=>[n.x,n.y,n.vx,n.vy].every(Number.isFinite)))
 })
+
+test('dither supplies bounded random acceleration and preserves pinned axes',async()=>{
+ const {forceDither}=await import('../src/features/ecosystem/ecosystem-physics.js')
+ const nodes=[{vx:0,vy:0},{vx:0,vy:0,fx:10},{vx:0,vy:0,fx:0,fy:0}]
+ const force=forceDither(3);force.initialize(nodes,()=>.75);force(1)
+ assert.ok(nodes[0].vx>0&&nodes[0].vy>0)
+ assert.ok(Math.hypot(nodes[0].vx,nodes[0].vy)<=Math.sqrt(2)*2.1)
+ assert.equal(nodes[1].vx,0);assert.ok(nodes[1].vy>0)
+ assert.equal(nodes[2].vx,0);assert.equal(nodes[2].vy,0)
+ const off=forceDither(0);off.initialize(nodes,()=>{throw Error('Disabled dither must not consume randomness')});const before=JSON.stringify(nodes);off(1);assert.equal(JSON.stringify(nodes),before)
+})
+test('dither keeps a cooled layout moving, is repeatable, and is off by default',()=>{
+ const run=dither=>{
+  const nodes=[{id:'a',x:400,y:300}]
+  const sim=layoutNetwork(nodes,[],()=>10,()=>({x:0,y:0}),{live:true,attraction:0,repulsion:0,dither})
+  sim.tick(600);const before=[nodes[0].x,nodes[0].y];sim.tick()
+  return {before,after:[nodes[0].x,nodes[0].y],alpha:sim.alpha(),target:sim.alphaTarget()}
+ }
+ const on=run(1);assert.notDeepEqual(on.before,on.after,'dither keeps moving after ordinary cooling would stop')
+ assert.ok(on.alpha>.001&&on.target>0);assert.deepEqual(run(1),on,'same graph uses seeded reproducible nudges')
+ const off=run(0);assert.deepEqual(off.before,[400,300]);assert.deepEqual(off.before,off.after);assert.equal(off.target,0)
+ assert.deepEqual(run(undefined),off)
+})
+test('maximum dither and gravity remain finite under sustained ticks',()=>{
+ const nodes=Array.from({length:30},(_,i)=>({id:String(i),x:Math.cos(i)*200,y:Math.sin(i)*200}))
+ const edges=nodes.slice(1).map(n=>({...edge(1e6),source:'0',target:n.id}))
+ const sim=layoutNetwork(nodes,edges,()=>30,()=>({x:0,y:0}),{live:true,centralGravity:3,dither:3,attraction:3,repulsion:3})
+ sim.tick(900);assert.ok(nodes.every(n=>[n.x,n.y,n.vx,n.vy].every(Number.isFinite)))
+})

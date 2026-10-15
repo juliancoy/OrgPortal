@@ -85,7 +85,23 @@ export function financialPull(edge) {
   ? Math.log1p(edge.amount/1000)/Math.log(10) : 0
 }
 
-export function layoutNetwork(nodes, edges, radius, center, { live = false, attraction = 1, repulsion = 1, proximity = 1, centralGravity = 0 } = {}) {
+// Small, unbiased random accelerations keep a live layout from sticking.
+// Use D3's seeded random source so identical graphs remain reproducible.
+export function forceDither(strength) {
+ let nodes=[],random=Math.random
+ const force=alpha=>{
+  if(!strength)return
+  const amplitude=.7*strength*Math.sqrt(alpha)
+  for(const node of nodes) {
+   if(node.fx==null)node.vx+=(random()*2-1)*amplitude
+   if(node.fy==null)node.vy+=(random()*2-1)*amplitude
+  }
+ }
+ force.initialize=(next,source)=>{nodes=next;random=source}
+ return force
+}
+
+export function layoutNetwork(nodes, edges, radius, center, { live = false, attraction = 1, repulsion = 1, proximity = 1, centralGravity = 0, dither = 0 } = {}) {
  const radii=new Map(nodes.map(n=>[n.id,radius(n)])), size=n=>radii.get(n.id)
  const byId=new Map(nodes.map(n=>[n.id,n])), pairs=new Map()
  for(const edge of edges) {
@@ -112,8 +128,9 @@ export function layoutNetwork(nodes, edges, radius, center, { live = false, attr
   .force('collision',forceCollide(n=>size(n)+12).strength(1).iterations(live?2:6))
   .force('crossings',forceCrossingAttraction(links,size))
   .force('edgeClearance',forceNodeEdgeRepulsion(nodes,links,size))
+  .force('dither',forceDither(dither))
  // Live callers own the clock: no independent D3 timer or blocking layout pass.
- if(live)return simulation.alpha(.35).alphaDecay(.025)
+ if(live)return simulation.alpha(.35).alphaDecay(.025).alphaTarget(dither>0?.04:0)
  // Fixed integration steps, independent of display refresh rate. Cool to rest.
  for(let i=0;i<360;i++)simulation.tick()
  // D3 collision is a soft velocity constraint. Project remaining penetrations

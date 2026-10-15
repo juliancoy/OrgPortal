@@ -28,6 +28,8 @@
 <p class="eco-note">Support links keep recipients near their sources. Larger values tighten these ties, independently of global attraction. Several sources and crowded hubs share the available space.</p>
 <label>Central gravity <output id="central-gravity-value">0.0</output>×<input id="central-gravity" type="range" min="0" max="3" step="0.1" value="0"></label>
 <p class="eco-note">Optional pull toward a fixed central point. Larger icons are pulled more strongly, in proportion to their area. Set to 0 to turn it off. Zooming and panning do not move the center.</p>
+<label>Dither <output id="dither-value">0.0</output>×<input id="dither" type="range" min="0" max="3" step="0.1" value="0"></label>
+<p class="eco-note">Small random accelerations keep nodes from getting stuck. Set to 0 to turn it off. Dither continues while animation is enabled and pauses with the graph.</p>
 <label>Repulsion <output id="repulsion-value">1.0</output>×<input id="repulsion" type="range" min="0" max="3" step="0.1" value="1"></label>
 <p class="eco-note">Larger icons attract more strongly. Repulsion acts nearby; collision spacing remains active. Radius = 6 + 2 × log₁₀(1 + recorded USD volume). Volume counts incoming and outgoing records, not balances or verified payments.</p>
 <p class="eco-note">Attraction, optional central gravity, repulsion and collision spacing. Animation pauses in background tabs and respects reduced motion.</p>
