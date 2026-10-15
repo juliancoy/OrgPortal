@@ -29,11 +29,25 @@ try {
   await page.getByRole('button', { name: 'Fixture photo Host' }).click();
   await page.locator('[data-poster-background]').waitFor();
   const before = requests;
+  await page.getByLabel('Blur image into empty edges').check();
+  await page.getByLabel('Zoom:').fill('0.5');
+  await page.getByRole('button', { name: 'Select background on canvas' }).click();
+  const handle = page.locator('[data-resize="1,1"]');
+  const bounds = await handle.boundingBox();
+  await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+  await page.mouse.down(); await page.mouse.move(bounds.x + bounds.width / 2 + 20, bounds.y + bounds.height / 2 + 20); await page.mouse.up();
+  assert.ok(Number(await page.getByLabel('Zoom:').inputValue()) > .5, 'canvas corner resizes the background');
+  await expect(page.locator('[data-poster-edge-fill] image')).toHaveAttribute('preserveAspectRatio', 'xMidYMid slice');
+  const previewBox = await page.locator('.event-poster-preview').boundingBox();
+  await page.mouse.move(previewBox.x + 8, previewBox.y + previewBox.height / 2);
+  await page.mouse.down(); await page.mouse.move(previewBox.x + 28, previewBox.y + previewBox.height / 2); await page.mouse.up();
+  assert.ok(Number(await page.getByLabel('Horizontal position:').first().inputValue()) > 0, 'canvas drag moves the background');
   await page.getByLabel('Opacity:').fill('0.35');
   await page.getByLabel('Zoom:').fill('2');
   await page.getByLabel('Background dimming:').fill('0');
   await page.locator('[data-poster-element="title"]').click();
   await page.waitForFunction(() => document.querySelector('select[aria-label="Element"]')?.value === 'title');
+  await page.getByText('Adjust text and other elements', { exact: true }).click();
   await page.getByLabel('Element', { exact: true }).selectOption('time');
   await page.getByLabel('Show time').uncheck();
   await page.waitForFunction(() => document.querySelector('.event-poster-preview > div')?.shadowRoot?.querySelector('[data-poster-background]')?.getAttribute('opacity') === '0.35');
@@ -46,8 +60,10 @@ try {
     const image = new Image(), url = URL.createObjectURL(new Blob([source], {type:'image/svg+xml'}));
     try { image.src = url; await image.decode(); } finally { URL.revokeObjectURL(url); }
   }, exported);
+  assert.match(exported, /feGaussianBlur/); assert.doesNotMatch(exported, /data-editor-ui|data-resize/);
   assert.match(exported, /opacity="0.35"/); assert.match(exported, /display="none"/);
   await page.reload(); await page.locator('[data-poster-background]').waitFor();
+  await expect(page.getByLabel('Blur image into empty edges')).toBeChecked();
   assert.equal(await page.getByLabel('Opacity:').inputValue(), '0.35'); assert.equal(await page.getByLabel('Zoom:').inputValue(), '2');
   for (const name of ['8.5 x 11', 'Letter 2 × 2', '4 x 6', 'Social']) {
     await page.getByRole('button', { name, exact: true }).click(); await svg.waitFor();

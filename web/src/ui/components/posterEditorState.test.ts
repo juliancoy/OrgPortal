@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { defaults, parseSettings } from './posterEditorState'
 describe('poster local preferences', () => {
   it('restores all controls including hidden elements and selected image', () => {
-    const value = { ...defaults, format: 'social', background: 'gallery', mediaId: 'org-photo', zoom: 2, offsetX: 40, offsetY: -20, opacity: .37, theme: 'dark', selectedElement: 'qr', elements: { time: { hidden: true, scale: .5, x: 10, y: -10 } } }
+    const value = { ...defaults, format: 'social', background: 'gallery', mediaId: 'org-photo', zoom: .5, edgeBlur: true, imageFit: 'contain', offsetX: 40, offsetY: -20, opacity: .37, theme: 'dark', selectedElement: 'qr', elements: { time: { hidden: true, scale: .5, x: 10, y: -10 } } }
     expect(parseSettings(JSON.stringify({ version: 1, ...value }))).toEqual(value)
   })
   it('bounds and filters corrupt or old stored settings', () => {

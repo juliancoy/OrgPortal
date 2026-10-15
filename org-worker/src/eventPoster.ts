@@ -76,7 +76,7 @@ function posterPalette(theme: PosterTheme, background: PosterBackground) {
 
 function posterBackgroundParts(width: number, height: number, palette: ReturnType<typeof posterPalette>, background: PosterBackground, backgroundImage?: string, options: PosterOptions = {}) {
   const bounded = (value: number | undefined, fallback: number, min: number, max: number) => Number.isFinite(value) ? Math.max(min, Math.min(max, value!)) : fallback;
-  const zoom = bounded(options.zoom, 1, 1, 3);
+  const zoom = bounded(options.zoom, 1, .25, 3);
   const x = width * ((1 - zoom) / 2 + bounded(options.offsetX, 0, -100, 100) / 200);
   const y = height * ((1 - zoom) / 2 + bounded(options.offsetY, 0, -100, 100) / 200);
   const image = (aspect: string) => `<svg width="${width}" height="${height}" overflow="hidden"><image href="${escape(backgroundImage)}" x="${x}" y="${y}" width="${width * zoom}" height="${height * zoom}" preserveAspectRatio="${aspect}" data-poster-background="true" data-width="${width}" data-height="${height}" opacity="${bounded(options.opacity, 1, 0, 1)}"/></svg>`;
@@ -142,9 +142,8 @@ export async function renderEventPoster(event: PosterEvent, publicUrl: string, f
   const qrSize = small ? 100 : 168;
   const qrX = width - margin - qrSize;
   // Fit the complete artwork into a separate column; never put the RSVP code over it.
-  const artworkWidth = background === 'lifetech' ? qrX - (small ? 16 : 28) : width;
+  const artworkWidth = width;
   parts.push(...posterBackgroundParts(artworkWidth, height, palette, background, options.backgroundImage, options));
-  if (background === 'lifetech') parts.push(`<rect x="${artworkWidth}" width="${width - artworkWidth}" height="${height}" fill="${palette.paper}"/>`);
   if (background === 'lifetech') parts.push(`<rect width="${width}" height="${height}" fill="#000000" data-poster-dimming="true" opacity="${Number.isFinite(options.dimming) ? Math.max(0, Math.min(1, options.dimming!)) : .66}"/>`);
   parts.push(`<rect width="${width}" height="${small ? 8 : 12}" fill="${palette.accent}"/>`);
   const logoSize = small ? 42 : 68, brandY = small ? 27 : 40;
