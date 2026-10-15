@@ -1,3 +1,4 @@
+import {persistNetworkSettings} from './network-settings.js'
 import { transactionVisibility, transactionCounts } from './zoom-visibility.js'
 import { quantityEdgeWidths } from './edge-quantity.js'
 import { relationshipColor } from './relationship-colors.js'
@@ -51,6 +52,8 @@ let preparedData, previewSummaries, data, selected = null, renderer, canvas, nod
 let inspectorKey=null, simulation, fitted=false, geometryDirty=true, visibilityKey=null, visible=new Set(), visibleEdges=new Set(), labelPriority=[]
 const savedPositions=new Map()
 const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)')
+$('#live-physics').checked=!reducedMotion.matches
+persistNetworkSettings(root,abort.signal)
 const physicsEnabled=()=>!document.hidden&&!reducedMotion.matches&&$('#live-physics').checked
 function applyProjection(){if(four)simulation?.projection(['xw','yw','zw'].map(axis=>Number($('#life-'+axis).value)),Number($('#life-perspective').value))}
 function motionChange(){simulation?.motion(physicsEnabled());requestRender()}
@@ -243,7 +246,6 @@ async function start(){
   $('#network-detail').addEventListener('error',event=>{if(event.target.tagName==='IMG'){event.target.hidden=true;const note=document.createElement('p');note.className='eco-note';note.textContent='Published image is currently unavailable.';event.target.after(note)}},true)
   $('#network-search').addEventListener('input',search)
   root.querySelectorAll('[name=node-category],[name=relationship],#include-context,#neighbors,#network-view,#hide-isolated,#scale-node-finances,#scale-edge-quantity,#node-size-algorithm').forEach(el=>el.addEventListener('change',rebuild))
-  $('#live-physics').checked=!reducedMotion.matches
   $('#live-physics').addEventListener('change',()=>{simulation?.motion(physicsEnabled(),true);requestRender()})
   for(const name of ['attraction','repulsion','proximity','central-gravity','dither'])$('#'+name).addEventListener('input',()=>{
    $('#'+name+'-value').textContent=Number($('#'+name).value).toFixed(1)

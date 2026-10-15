@@ -406,3 +406,11 @@ Validation: `npm run test:ecosystem`, `node scripts/check-network-4d.mjs`,
 and `node scripts/check-network-4d-full.mjs` (local Vite preview on port 5187).
 The last browser check uses public snapshots and disables live API calls;
 it checks full-dataset animation and finite 4D state, not production freshness.
+
+Graph preferences persist in this browser's local storage under
+`orgportal.ecosystem.network.settings`. Common controls and category/relationship
+filters are shared across graph tabs; 4D projection and Particle Life controls
+survive visits to other tabs. Reset persists the default controls for the current
+view. Searches, selected organizations, neighbor-only mode and camera positions
+are not stored. Invalid saved values fall back to defaults, storage failures are
+ignored, and reduced-motion preferences still prevent animation.
