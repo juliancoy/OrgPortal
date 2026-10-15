@@ -63,12 +63,12 @@ const financialLabel = n => n.financialAmount ? `Recorded USD transaction volume
 function previewNode(org) {
  if(selected)return
  const key='node:'+org.id;if(inspectorKey===key)return;inspectorKey=key
- $('#network-detail').innerHTML=organizationPreview(org,previewSummaries);rewriteLinks();if(matchMedia('(max-width:900px)').matches){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
+ $('#network-detail').innerHTML=organizationPreview(org,previewSummaries);rewriteLinks();if(matchMedia('(max-width:900px)').matches&&!root.classList.contains('eco-controls-open')){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
 }
 function previewEdge(edge) {
  if(selected)return
  const key='edge:'+edge.id;if(inspectorKey===key)return;inspectorKey=key
- $('#network-detail').innerHTML=relationshipPreview(edge,data,previewSummaries);rewriteLinks();if(matchMedia('(max-width:900px)').matches){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
+ $('#network-detail').innerHTML=relationshipPreview(edge,data,previewSummaries);rewriteLinks();if(matchMedia('(max-width:900px)').matches&&!root.classList.contains('eco-controls-open')){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
 }
 function bindNodePreview(button,node) {
  button.addEventListener('pointerenter',()=>previewNode(node))
@@ -79,7 +79,7 @@ function select(id) {
  if(org.administratorId){id=org.administratorId;org=data.organizations.find(o=>o.id===id);if(!org)return}
  previewSummaries=preparedData?.data===data?preparedData.summaries:networkPreviewSummaries(data)
  selected = id; inspectorKey='node:'+id; $('#neighbors').disabled=false
- $('#network-detail').innerHTML = '<button type="button" data-unpin-node aria-label="Close pinned organization">Close</button>'+organizationPreview(org,previewSummaries); rewriteLinks();if(matchMedia('(max-width:900px)').matches){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
+ $('#network-detail').innerHTML = '<button type="button" data-unpin-node aria-label="Close pinned organization">Close</button>'+organizationPreview(org,previewSummaries); rewriteLinks();if(matchMedia('(max-width:900px)').matches&&!root.classList.contains('eco-controls-open')){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
  const u = new URL(location.href); u.searchParams.set('org',id); history.replaceState(history.state,'',u)
  refreshSelection()
 }
@@ -269,11 +269,11 @@ async function start(){
 }
 const media=matchMedia('(max-width:900px)')
 const panelState=()=>{
- for(const panel of ['controls','inspector']){const open=root.classList.contains('eco-'+panel+'-open');root.querySelector(`[data-panel="${panel}"]`).setAttribute('aria-expanded',String(open))}
+ for(const panel of ['controls','inspector']){const open=root.classList.contains('eco-'+panel+'-open')&&(panel==='controls'||!root.classList.contains('eco-controls-open'));root.querySelector(`[data-panel="${panel}"]`).setAttribute('aria-expanded',String(open))}
 }
 const responsivePanels=()=>{root.classList.remove('eco-controls-open');root.classList.toggle('eco-inspector-open',!media.matches);panelState()}
 responsivePanels();media.addEventListener('change',responsivePanels,{signal:abort.signal})
-root.querySelectorAll('[data-panel]').forEach(button=>button.addEventListener('click',()=>{const panel=button.dataset.panel;root.classList.toggle('eco-'+panel+'-open');if(media.matches&&root.classList.contains('eco-'+panel+'-open'))root.classList.remove('eco-'+(panel==='controls'?'inspector':'controls')+'-open');if(panel==='inspector'&&!root.classList.contains('eco-inspector-open')&&selected)unpin();panelState()}))
+root.querySelectorAll('[data-panel]').forEach(button=>button.addEventListener('click',()=>{const panel=button.dataset.panel;if(panel==='inspector'&&root.classList.contains('eco-controls-open')){root.classList.remove('eco-controls-open');root.classList.add('eco-inspector-open')}else root.classList.toggle('eco-'+panel+'-open');if(panel==='inspector'&&!root.classList.contains('eco-inspector-open')&&selected)unpin();panelState()}))
 rewriteLinks(); start();
 return () => { disposed=true;simulation?.stop();abort.abort();resizeObserver?.disconnect();cancelAnimationFrame(frame);renderer?.dispose();root.replaceChildren() };
 }

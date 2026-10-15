@@ -172,14 +172,14 @@ html.eco-map-open .portal-footer, html.eco-map-open .tb-shell-footer { display:n
 .portal-ecosystem .eco-network-heading a { font-size:12px; padding:6px; }
 .portal-ecosystem .eco-network-heading a[aria-current="page"] { background:var(--surface-subtle); border-radius:5px; font-weight:700; }
 .portal-ecosystem .eco-graph-top #network-source { display:block; margin:3px 0 0; font-size:11px; }
-.portal-ecosystem .eco-network-shell { flex:1; min-height:0; margin:0; border:0; border-radius:0; grid-template-columns:var(--eco-controls-width,0px) minmax(0,1fr) var(--eco-detail-width,0px); }
-.portal-ecosystem.eco-controls-open { --eco-controls-width:240px; }
+.portal-ecosystem .eco-network-shell { flex:1; min-height:0; margin:0; border:0; border-radius:0; grid-template-columns:minmax(0,1fr) var(--eco-detail-width,0px); }
+.portal-ecosystem.eco-controls-open { --eco-detail-width:320px; }
 .portal-ecosystem.eco-inspector-open { --eco-detail-width:320px; }
-.portal-ecosystem:not(.eco-controls-open) .eco-network-controls, .portal-ecosystem:not(.eco-inspector-open) .eco-detail { display:none; }
+.portal-ecosystem.eco-controls-open .eco-detail, .portal-ecosystem:not(.eco-controls-open) .eco-network-controls, .portal-ecosystem:not(.eco-inspector-open) .eco-detail { display:none; }
 .portal-ecosystem .eco-network-controls, .portal-ecosystem .eco-detail { min-height:0; max-height:none; height:100%; overflow:auto; overscroll-behavior:contain; scrollbar-gutter:stable; }
-.portal-ecosystem .eco-network-controls { grid-column:1; }
-.portal-ecosystem .eco-detail { grid-column:3; border-top:0; }
-.portal-ecosystem .eco-graph-panel { grid-column:2; min-height:0; overflow:hidden; }
+.portal-ecosystem .eco-network-controls { grid-column:2; grid-row:1; border-right:0; border-left:1px solid var(--line); }
+.portal-ecosystem .eco-detail { grid-column:2; grid-row:1; border-top:0; }
+.portal-ecosystem .eco-graph-panel { grid-column:1; grid-row:1; min-height:0; overflow:hidden; }
 .portal-ecosystem #network-canvas { height:auto; min-height:0; flex:1 1 0; overscroll-behavior:none; }
 .portal-ecosystem .eco-graph-top, .portal-ecosystem .eco-graph-key { flex:0 0 auto; }
 .portal-ecosystem .eco-graph-help { display:none; }
@@ -197,7 +197,7 @@ html.eco-map-open .portal-footer, html.eco-map-open .tb-shell-footer { display:n
  .portal-ecosystem .eco-network-shell { display:block; position:relative; }
  .portal-ecosystem .eco-graph-panel { height:100%; }
  .portal-ecosystem .eco-network-controls, .portal-ecosystem .eco-detail { position:absolute; top:0; bottom:0; width:min(320px,88vw); z-index:5; background:var(--paper); box-shadow:0 4px 24px #0003; }
- .portal-ecosystem .eco-network-controls { left:0; }
+ .portal-ecosystem .eco-network-controls { right:0; }
  .portal-ecosystem .eco-detail { right:0; }
  .portal-ecosystem .eco-graph-key { display:none; }
  .portal-ecosystem .eco-graph-top { flex-wrap:nowrap; padding:8px; }
