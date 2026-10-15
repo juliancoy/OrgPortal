@@ -11,6 +11,7 @@ import { organizationPreview, relationshipPreview, networkPreviewSummaries } fro
 import { loadPortalEvidence, graphRelationships, financialNodeAmounts, financialNodeRadius } from './portal-ecosystem.js'
 import { refreshPublicReport } from '../../data/publicOrganization/cache'
 export function mountEcosystemNetworkGPU(root, {dataUrl, historyUrl, apiPrefix, portalPath, renderer: rendererKind = 'webgpu'}) {
+const spatial=rendererKind==='webgpu3d'
 const abort = new AbortController(); let disposed=false, resizeObserver;
 let oldestCheck=Infinity, usingOfflineCopy=false
 const cachedPublicJson = async (url, validate) => {
@@ -56,7 +57,7 @@ document.addEventListener('visibilitychange',motionChange,{signal:abort.signal})
 reducedMotion.addEventListener('change',motionChange,{signal:abort.signal})
 let gpuReady = false, view = { x: -400, y: -400, w: 800, h: 800 }
 const radius = n => n.renderRadius
-const forceOptions=()=>({live:true,attraction:Number($('#attraction').value),repulsion:Number($('#repulsion').value),proximity:Number($('#proximity').value),centralGravity:Number($('#central-gravity').value),dither:Number($('#dither').value)})
+const forceOptions=()=>({live:true,dimensions:spatial?3:2,attraction:Number($('#attraction').value),repulsion:Number($('#repulsion').value),proximity:Number($('#proximity').value),centralGravity:Number($('#central-gravity').value),dither:Number($('#dither').value)})
 const financialLabel = n => n.financialAmount ? `Recorded USD transaction volume: ${new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(n.financialAmount)}; incoming + outgoing; payment unverified${n.financialPie ? '. '+pieLabel(n.financialPie) : ''}` : 'USD volume undisclosed'
 function previewNode(org) {
  if(selected)return
@@ -106,7 +107,7 @@ function rebuild() {
  inspectorKey=null
  previewSummaries=preparedData?.data===data?preparedData.summaries:networkPreviewSummaries(data)
  simulation?.stop()
- nodes.forEach(n=>savedPositions.set(n.id,{x:n.x,y:n.y,vx:n.vx,vy:n.vy}))
+ nodes.forEach(n=>savedPositions.set(n.id,{x:n.x,y:n.y,z:n.z,vx:n.vx,vy:n.vy,vz:n.vz}))
  visibilityKey=null;geometryDirty=true;labelPriority=[]
  const cats=selectedCategories(), rels=selectedRelationships(), context=$('#include-context').checked
  const graphData=preparedData?.data===data?preparedData.folded:foldFundNodes(data)
@@ -142,6 +143,7 @@ function rebuild() {
  if(!fitted){fit();fitted=true}requestRender()
 }
 function fit(){
+ if(spatial){renderer.fit(nodes);requestRender();return}
  const aspect=host.clientWidth/Math.max(1,host.clientHeight),xs=nodes.map(n=>n.x),ys=nodes.map(n=>n.y)
  const minX=nodes.length?Math.min(...xs):0,maxX=nodes.length?Math.max(...xs):0,minY=nodes.length?Math.min(...ys):0,maxY=nodes.length?Math.max(...ys):0
  const padding=Math.max(120,(maxY-minY)*.12,(maxX-minX)*.12)
@@ -151,7 +153,7 @@ function fit(){
 function render(time=0) {
  frame=0;
  if(!gpuReady)return;
- const zoom=fittedWidth/view.w
+ const zoom=spatial?renderer.zoomLevel():fittedWidth/view.w
  const key=[zoom,selected,$('#show-links').checked,$('#zoom-sparse').checked,$('#visibility-factor').value].join('|')
  const visibilityChanged=key!==visibilityKey
  if(visibilityChanged){
@@ -168,7 +170,8 @@ function render(time=0) {
  if(!labelPriority.length)labelPriority=[...labelItems].sort((a,b)=>(b.n.id===selected)-(a.n.id===selected)||(b.n.financialAmount??0)-(a.n.financialAmount??0))
  for(const item of labelPriority) {
   if(!visible.has(item.n.id)){item.button.hidden=true;continue}
-  const p={x:(item.n.x-view.x)/view.w*2-1,y:1-(item.n.y-view.y)/view.h*2,z:0},x=(p.x*.5+.5)*viewportWidth,y=(-p.y*.5+.5)*viewportHeight
+  const projected=spatial?renderer.project(item.n):null
+  const p=projected?{x:projected.x/viewportWidth*2-1,y:1-projected.y/viewportHeight*2,z:projected.visible?0:2}:{x:(item.n.x-view.x)/view.w*2-1,y:1-(item.n.y-view.y)/view.h*2,z:0},x=(p.x*.5+.5)*viewportWidth,y=(-p.y*.5+.5)*viewportHeight
   const width=Math.min(155,item.n.name.length*5.5+10)
   const overlapping=positions.some(r=>Math.abs(x-r.x)<(width+r.width)/2+8&&Math.abs(y-r.y)<28)
   item.button.hidden=!visible.has(item.n.id)||p.z>1||Math.abs(p.x)>1||Math.abs(p.y)>1||(overlapping&&item.n.id!==selected)
@@ -182,6 +185,7 @@ function cursorPosition(event) {
  return event?{x:Math.max(0,Math.min(1,(event.clientX-rect.left)/rect.width)),y:Math.max(0,Math.min(1,(event.clientY-rect.top)/rect.height))}:{x:.5,y:.5}
 }
 function zoomGPU(factor, event) {
+ if(spatial){renderer.zoom(factor);return}
  const zoom=Math.max(.35,Math.min(6,fittedWidth/view.w*factor))
  factor=view.w/(fittedWidth/zoom)
  const cursor=cursorPosition(event), worldX=view.x+cursor.x*view.w, worldY=view.y+cursor.y*view.h
@@ -189,14 +193,16 @@ function zoomGPU(factor, event) {
  view.x=worldX-cursor.x*view.w;view.y=worldY-cursor.y*view.h;requestRender()
 }
 async function initGPU(){
- canvas=document.createElement('canvas');canvas.style.cssText='width:100%;height:100%;display:block;touch-action:none;cursor:grab';canvas.setAttribute('aria-label',rendererKind==='canvas'?'Organization network':'Native WebGPU organization network');canvas.dataset.renderer=rendererKind;host.prepend(canvas)
+ canvas=document.createElement('canvas');canvas.style.cssText='width:100%;height:100%;display:block;touch-action:none;cursor:grab';canvas.setAttribute('aria-label',spatial?'3D WebGPU organization network':rendererKind==='canvas'?'Organization network':'Native WebGPU organization network');canvas.dataset.renderer=rendererKind;host.prepend(canvas)
  if(rendererKind==='canvas') {
   const {createNetworkCanvasWorker}=await import('./canvas-renderer-client.js');renderer=createNetworkCanvasWorker(canvas)
- } else renderer=await createNetworkGPU(canvas,message=>{if(disposed)return;console.error(message);gpuReady=false;simulation?.stop();cancelAnimationFrame(frame);frame=0;status.textContent='WebGPU graphics were lost. Reload to retry, or use the original Graph view.'})
+ } else if(spatial){const {createNetworkGPU3D}=await import('./webgpu-3d-renderer.js');renderer=await createNetworkGPU3D(canvas,message=>{if(disposed)return;gpuReady=false;simulation?.stop();status.textContent='3D WebGPU unavailable: '+message},requestRender)}
+ else renderer=await createNetworkGPU(canvas,message=>{if(disposed)return;console.error(message);gpuReady=false;simulation?.stop();cancelAnimationFrame(frame);frame=0;status.textContent='WebGPU graphics were lost. Reload to retry, or use the original Graph view.'})
  if(disposed){renderer.dispose();return}gpuReady=true
- const resize=()=>{const width=host.clientWidth,height=host.clientHeight;renderer.resize(width,height);if(fitted){const nextHeight=view.w/(width/Math.max(1,height));view.y+=(view.h-nextHeight)/2;view.h=nextHeight;requestRender()}}
+ const resize=()=>{const width=host.clientWidth,height=host.clientHeight;renderer.resize(width,height);if(spatial){requestRender();return}if(fitted&&!spatial){const nextHeight=view.w/(width/Math.max(1,height));view.y+=(view.h-nextHeight)/2;view.h=nextHeight;requestRender()}}
  resize();resizeObserver=new ResizeObserver(resize);resizeObserver.observe(host)
  const hit=event=>{
+  if(spatial)return renderer.hit(event)
   const rect=canvas.getBoundingClientRect(),x=view.x+(event.clientX-rect.left)/rect.width*view.w,y=view.y+(event.clientY-rect.top)/rect.height*view.h
   for(let i=nodes.length-1;i>=0;i--){const n=nodes[i];if(visible.has(n.id)&&Math.hypot(x-n.x,y-n.y)<=radius(n))return {node:n}}
   const tolerance=6*view.w/rect.width
@@ -208,13 +214,14 @@ async function initGPU(){
  }
  const pointers=new Map();let down=null,drag=null,pinch=null
  const pinchState=()=>{const [a,b]=[...pointers.values()];return {distance:Math.hypot(a.x-b.x,a.y-b.y),x:(a.x+b.x)/2,y:(a.y+b.y)/2}}
- canvas.addEventListener('pointerdown',event=>{if(event.button!==0)return;canvas.setPointerCapture(event.pointerId);pointers.set(event.pointerId,{x:event.clientX,y:event.clientY});down={x:event.clientX,y:event.clientY};drag={x:event.clientX,y:event.clientY,vx:view.x,vy:view.y};if(pointers.size===2){pinch=pinchState();down=null}},{signal:abort.signal})
+ canvas.addEventListener('pointerdown',event=>{if(event.button!==0)return;if(spatial){pointers.set(event.pointerId,{x:event.clientX,y:event.clientY});down=pointers.size===1?{x:event.clientX,y:event.clientY}:null;return}canvas.setPointerCapture(event.pointerId);pointers.set(event.pointerId,{x:event.clientX,y:event.clientY});down={x:event.clientX,y:event.clientY};drag={x:event.clientX,y:event.clientY,vx:view.x,vy:view.y};if(pointers.size===2){pinch=pinchState();down=null}},{signal:abort.signal})
  canvas.addEventListener('pointermove',event=>{
-  if(pointers.has(event.pointerId)){
+  if(!spatial&&pointers.has(event.pointerId)){
    pointers.set(event.pointerId,{x:event.clientX,y:event.clientY})
    if(pointers.size===2){const next=pinchState();if(pinch){zoomGPU(next.distance/Math.max(1,pinch.distance),{clientX:next.x,clientY:next.y});view.x-=(next.x-pinch.x)/host.clientWidth*view.w;view.y-=(next.y-pinch.y)/host.clientHeight*view.h}pinch=next;requestRender()}
    else if(drag){view.x=drag.vx-(event.clientX-drag.x)/host.clientWidth*view.w;view.y=drag.vy-(event.clientY-drag.y)/host.clientHeight*view.h;requestRender()}return
   }
+  if(spatial&&(pointers.size>1||(down&&Math.hypot(event.clientX-down.x,event.clientY-down.y)>6)))return
   if(selected)return;const item=hit(event);if(item.node)previewNode(item.node);else if(item.edge)previewEdge(item.edge);canvas.style.cursor=item.node||item.edge?'pointer':'grab'
  },{signal:abort.signal})
  const release=event=>{if(event.type==='pointerup'&&down&&Math.hypot(event.clientX-down.x,event.clientY-down.y)<6){const item=hit(event);if(item.node)select(item.node.id);else if(item.edge)previewEdge(item.edge)}pointers.delete(event.pointerId);down=null;pinch=null;drag=null;if(pointers.size===1){const a=[...pointers.values()][0];drag={x:a.x,y:a.y,vx:view.x,vy:view.y}}}

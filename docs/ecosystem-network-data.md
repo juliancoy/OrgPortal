@@ -360,3 +360,21 @@ State pilot records require unique `md-commerce:` award keys and `md-commerce:re
 Cohorts must share program, metric, units, direction and methodology (validated). Reviewers must explain project scale, agreement differences and observation windows. No universal composite score or company performance rollup is published. Higher attainment is actual/target; lower is target/actual. Zero actual for lower-is-better meets the target but has no finite ratio, so no arbitrary percentage is invented. Ratio-scale positive targets are required. Unknown outcomes, unidentified records and immature projects are unassessed. Signed adjustments and allegations never establish misconduct. Public publishing uses reviewed data releases; there is no anonymous rating API.
 
 Comprehensive contracts, state/local incentives, loans, audit findings, CPARS, causal impact and cost-effectiveness remain outside coverage. Source discovery links are labeled accordingly. No current best/worst company ranking has been established.
+
+### 3D WebGPU graph
+
+`/ecosystem/network/3d` is a separate graph tab using native WebGPU, perspective
+spheres and directed 3D links. Drag to orbit, right-drag to pan, and scroll or
+pinch to zoom. It requires an available WebGPU device; unsupported browsers keep
+the Graph navigation link and receive an explicit message rather than silently
+switching to WebGL. The Three.js WebGPU renderer loads only for this tab.
+
+The force layout runs in a dedicated worker with x/y/z coordinates and 3D link,
+repulsion, collision, size-weighted central gravity and random-acceleration
+forces. Layout depth is computed for visualization, not a geographic or factual
+coordinate. Existing evidence, category filters, node-sizing curves, link
+visibility and inspector summaries are shared with the 2D views. Funding pies
+remain in the inspector; spatial spheres use organization category colors.
+Pinning details does not restart physics or move nodes. Background-tab and
+reduced-motion settings pause the layout. Navigation disposes the camera
+controls, GPU resources and workers.
