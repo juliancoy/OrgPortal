@@ -67,3 +67,19 @@ test('family accounting excludes internal movements and handles nested direct ad
  assert.deepEqual(totals.get('child'),{received:120,disbursed:0})
  assert.equal(financialNodePies(data).get('fund').total,140)
 })
+
+test('top counterparties aggregate net USD awards, deduplicate copies and exclude internal fund transfers',async()=>{
+ const {financialNodeCounterparties}=await import('../src/features/ecosystem/fund-pies.js')
+ const {networkPreviewSummaries,organizationPreview}=await import('../src/features/ecosystem/ecosystem-view.js')
+ const orgs=['org','funder-a','funder-b','recipient-a','recipient-b'].map(id=>({id,name:id}))
+ orgs.push({id:'fund',name:'Managed fund',administratorId:'org'})
+ const record=(id,source,target,amount,extra={})=>({id,source,target,amount,kind:'transfer',currency:'USD',...extra})
+ const grant=record('grant','funder-a','org',120,{financingId:'copy'})
+ const data={organizations:orgs,relationships:[grant,record('adjustment','funder-a','org',-50,{financialMeasure:'cumulative_obligations'}),record('other-funder','funder-b','org',100),record('r1','org','recipient-a',90),record('r2a','fund','recipient-b',60),record('r2b','org','recipient-b',50),record('internal','org','fund',1e6),record('terms','funder-a','org',1e9,{kind:'terms'}),record('eur','funder-a','org',1e9,{currency:'EUR'})],financing:[{...grant,id:'copy',source:undefined,target:undefined,funderId:'funder-a',recipientId:'org'}]}
+ const top=financialNodeCounterparties(data).get('org')
+ assert.deepEqual(top.funder,{id:'funder-b',name:'funder-b',amount:100})
+ assert.deepEqual(top.recipient,{id:'recipient-b',name:'recipient-b',amount:110})
+ const html=organizationPreview(orgs[0],networkPreviewSummaries(data))
+ assert.match(html,/Top funder<\/dt><dd>funder-b · \$100/)
+ assert.match(html,/Top recipient<\/dt><dd>recipient-b · \$110/)
+})

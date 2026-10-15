@@ -6,7 +6,7 @@ const browser=await chromium.launch({headless:true,executablePath:'/usr/bin/goog
 try{
  const receipts=[]
  for(const mode of ['canvas','webgpu']){
-  const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message))
+  const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];let layouts=0;page.on('worker',worker=>{if(worker.url().includes('network-layout'))layouts++});page.on('pageerror',e=>errors.push(e.message))
   await page.route('**/ecosystem-data/ecosystem-*.json',r=>r.fulfill({json:r.request().url().endsWith('ecosystem-portal.json')?base:{organizations:[],relationships:[],financing:[]}}))
   await page.route('**/api/org/api/network/**',r=>r.fulfill({status:503,body:'Read-only synthetic fixture'}))
   await page.goto('http://127.0.0.1:5187/ecosystem/network'+(mode==='webgpu'?'/webgpu':''))
@@ -26,11 +26,23 @@ try{
   await hover(points[0]);assert.equal(await detail.locator('h2').innerText(),'Hover Alpha')
   await hover({x:(points[0].x+points[1].x)/2,y:(points[0].y+points[1].y)/2})
   assert.equal(await detail.locator('h2').count(),2,'edge hover retains both endpoints in the right column')
-  await labels.first().dispatchEvent('click');await detail.locator('[data-unpin-node]').waitFor()
+  const before=await labels.evaluateAll(ns=>ns.map(n=>[n.style.left,n.style.top])),layoutCount=layouts
+  const original=await labels.first().elementHandle()
+  // Hit the circle artwork directly rather than its DOM text label.
+  await labels.evaluateAll(ns=>ns.forEach(n=>n.style.pointerEvents='none'))
+  await page.mouse.click(box.x+points[0].x,box.y+points[0].y)
+  await detail.locator('[data-unpin-node]').waitFor();await page.waitForTimeout(100)
+  assert.deepEqual(await labels.evaluateAll(ns=>ns.map(n=>[n.style.left,n.style.top])),before,'pinning does not move circles')
+  assert.equal(layouts,layoutCount,'pinning must not restart the layout worker')
+  assert(await original.evaluate(n=>n.isConnected),'pinning does not replace graph labels')
+  assert.match(await detail.innerText(),/Top recipient[\s\S]*Hover Beta · \$100/)
   await labels.nth(1).dispatchEvent('pointerenter');assert.equal(await detail.locator('h2').innerText(),'Hover Alpha','pinning still locks the right column')
   await detail.locator('[data-unpin-node]').click();await labels.nth(1).dispatchEvent('pointerenter');assert.equal(await detail.locator('h2').innerText(),'Hover Beta')
+  assert.match(await detail.innerText(),/Top funder[\s\S]*Hover Alpha · \$100/)
+  assert.equal(layouts,layoutCount,'closing the inspector must not restart the layout worker')
+  assert.deepEqual(await labels.evaluateAll(ns=>ns.map(n=>[n.style.left,n.style.top])),before)
   assert.equal(await page.locator('#network-labels [title]').count(),0);assert.deepEqual(errors,[])
-  receipts.push({mode,nodeHover:true,edgeHover:true,keyboardFocus:true,pinning:true,floatingText:false,nativeTitles:false,errors});await page.close()
+  receipts.push({mode,nodeHover:true,edgeHover:true,keyboardFocus:true,pinning:true,stableCirclePositions:true,stableLayoutWorker:true,topCounterparties:true,floatingText:false,nativeTitles:false,errors});await page.close()
  }
  await mkdir('../artifacts/hover-panel',{recursive:true});await writeFile('../artifacts/hover-panel/browser-check.json',JSON.stringify(receipts,null,2)+'\n');console.log(JSON.stringify(receipts))
 }finally{await browser.close()}

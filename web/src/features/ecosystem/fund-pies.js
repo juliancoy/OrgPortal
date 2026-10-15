@@ -65,6 +65,21 @@ export function financialNodeTotals(data) {
  for(const org of data.organizations)totals.set(org.id,{received:(incoming.get(org.id)||[]).reduce((sum,r)=>sum+r.amount,0),disbursed:(outgoing.get(org.id)||[]).reduce((sum,r)=>sum+r.amount,0)})
  return totals
 }
+// Compare signed, deduplicated USD evidence per counterparty, not pie slices:
+// administrators' pies group funds, while their top recipients are organizations.
+export function financialNodeCounterparties(data) {
+ applyFundHierarchy(data)
+ const records=financialRecords(data).filter(r=>dollars(r)||(r.financialMeasure==='cumulative_obligations'&&r.currency==='USD'&&Number.isFinite(r.amount)))
+ const {organizations,incoming,outgoing}=familyRecords(data,records),result=new Map()
+ const top=(rows,field)=>{
+  const groups=new Map()
+  for(const r of rows||[]){const key=r[field];const group=groups.get(key)||{id:key,name:organizations.get(key)?.name||(field==='source'?r.sourceLabel:r.targetLabel)||'Unidentified organization',amount:0};group.amount+=r.amount;groups.set(key,group)}
+  return [...groups.values()].filter(r=>r.amount>0).sort((a,b)=>b.amount-a.amount||a.id.localeCompare(b.id))[0]||null
+ }
+ for(const org of data.organizations)result.set(org.id,{funder:top(incoming.get(org.id),'source'),recipient:top(outgoing.get(org.id),'target')})
+ return result
+}
+
 export function financialNodePies(data,{includeCapitalization=false}={}) {
  applyFundHierarchy(data)
  const records=financialRecords(data,includeCapitalization)

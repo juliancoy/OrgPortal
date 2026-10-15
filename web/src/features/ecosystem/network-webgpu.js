@@ -79,14 +79,19 @@ function select(id) {
  selected = id; inspectorKey='node:'+id; $('#neighbors').disabled=false
  $('#network-detail').innerHTML = '<button type="button" data-unpin-node aria-label="Close pinned organization">Close</button>'+organizationPreview(org,previewSummaries); rewriteLinks();if(matchMedia('(max-width:900px)').matches){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
  const u = new URL(location.href); u.searchParams.set('org',id); history.replaceState(history.state,'',u)
- rebuild()
+ refreshSelection()
+}
+function refreshSelection(){
+ for(const {button,n} of labelItems)button.setAttribute('aria-pressed',String(n.id===selected))
+ geometryDirty=true;labelPriority=[];requestRender()
 }
 function unpin() {
+ const filtered=$('#neighbors').checked
  selected=null;inspectorKey=null
  $('#neighbors').checked=false;$('#neighbors').disabled=true
  $('#network-detail').innerHTML='<h2>Select an organization</h2><p>Hover a node or edge to preview it, or click a node to pin its details.</p>'
  const u=new URL(location.href);u.searchParams.delete('org');history.replaceState(history.state,'',u)
- rebuild()
+ if(filtered)rebuild();else refreshSelection()
 }
 $('#network-detail').addEventListener('click',event=>{if(event.target.closest('[data-unpin-node]'))unpin()},{signal:abort.signal})
 function search() {
@@ -242,8 +247,8 @@ async function start(){
   $('#network-fit').addEventListener('click',fit)
   for(const [id,factor] of [['#zoom-in',1.25],['#zoom-out',.8]]) $(id).addEventListener('click',()=>zoomGPU(factor))
   $('#network-reset').addEventListener('click',()=>{selected=null;inspectorKey=null;fitted=false;for(const name of ['attraction','repulsion','proximity','central-gravity','dither']){const value=['central-gravity','dither'].includes(name)?'0':'1';$('#'+name).value=value;$('#'+name+'-value').textContent=Number(value).toFixed(1)}$('#live-physics').checked=!reducedMotion.matches;root.querySelectorAll('[name=node-category],[name=relationship]').forEach(c=>c.checked=true);$('#network-view').value='all';$('#include-context').checked=false;$('#hide-isolated').checked=true;$('#scale-node-finances').checked=true;$('#scale-edge-quantity').checked=true;$('#zoom-sparse').checked=false;$('#visibility-factor').value='4';$('#visibility-factor-value').textContent='4';$('#neighbors').checked=false;$('#neighbors').disabled=true;$('#network-search').value='';$('#network-detail').innerHTML='<h2>Select an organization</h2><p>Search or select a graph label to explore its evidence.</p>';history.replaceState(history.state,'',location.pathname);search();rebuild()})
-  const initial=new URL(location.href).searchParams.get('org');if(initial&&data.organizations.some(n=>n.id===initial)){select(initial)}else rebuild()
-  loadPortalEvidence(data, cachedEvidenceFetch,apiPrefix,(base,directory,records)=>prepareNetworkData(base,directory,records,historyData,abort.signal)).then(prepared=>{if(disposed)return;preparedData=prepared;data=prepared.data;search();if(selected)select(selected);else rebuild();$('#network-source').textContent=(usingOfflineCopy?'Offline · last checked ':'Checked ')+new Date(oldestCheck).toLocaleString()}).catch(()=>{if(disposed)return;$('#network-source').textContent='Saved public evidence · refresh unavailable'})
+  const initial=new URL(location.href).searchParams.get('org');if(initial&&data.organizations.some(n=>n.id===initial)){select(initial);rebuild()}else rebuild()
+  loadPortalEvidence(data, cachedEvidenceFetch,apiPrefix,(base,directory,records)=>prepareNetworkData(base,directory,records,historyData,abort.signal)).then(prepared=>{if(disposed)return;preparedData=prepared;data=prepared.data;search();if(selected)select(selected);rebuild();$('#network-source').textContent=(usingOfflineCopy?'Offline · last checked ':'Checked ')+new Date(oldestCheck).toLocaleString()}).catch(()=>{if(disposed)return;$('#network-source').textContent='Saved public evidence · refresh unavailable'})
  }catch(error){if(disposed)return;status.textContent=error.message || 'WebGPU network unavailable.';host.hidden=true;console.error(error)}
 }
 const media=matchMedia('(max-width:900px)')
