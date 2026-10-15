@@ -201,6 +201,15 @@ def run_container(config):
         print(f"No container is running with name {container_name}")
     # Now run it
     print(f"Starting {container_name}")
+    # Descriptive service names retain the historical DNS aliases used by
+    # sibling local wrappers. Volume namespaces remain unchanged.
+    from service_names import RENAMES
+    network = config.get("network")
+    aliases = [old for old, current in RENAMES.items() if current == container_name]
+    if network and aliases and not config.get("networking_config"):
+        config = {**config, "networking_config": {
+            network: DOCKER_CLIENT.api.create_endpoint_config(aliases=[container_name, *aliases])
+        }}
     return DOCKER_CLIENT.containers.run(**config)
 
 
@@ -265,49 +274,26 @@ def init_cockroach(
 
 
 def wait_for_db(network, db_url, db_user="postgres", max_attempts=30, delay=2):
-    print(f"Using db_url: {db_url}")
-    print(f"Waiting for the database to respond on {db_url}...")
-    if "://" in db_url:
-        parsed = urlparse(db_url)
-        host = parsed.hostname
-        port = parsed.port or 5432
-    else:
-        host_port = db_url.split("/", 1)[0]
-        if ":" in host_port:
-            host, port_str = host_port.rsplit(":", 1)
-            port = int(port_str)
-        else:
-            host = host_port
-            port = 5432
-
+    # Readiness needs only a host, port and user. Never log the credential URL.
+    parsed = urlparse(db_url if "://" in db_url else "postgresql://" + db_url)
+    host, port = parsed.hostname, parsed.port or 5432
     if not host:
-        raise ValueError(f"Could not parse host from db_url: {db_url}")
-
-    while True:
+        raise ValueError("The database URL must contain a hostname")
+    target = f"{host}:{port}"
+    print(f"Waiting for the database on {target}...")
+    for attempt in range(max_attempts):
         try:
-            subprocess.run(
-                [
-                    "docker",
-                    "run",
-                    "--rm",
-                    "--network",
-                    network,
-                    "postgres:15-alpine",
-                    "sh",
-                    "-c",
-                    f"pg_isready -h {host} -p {port} -U {db_user} >/dev/null 2>&1",
-                ],
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-            print(f"The database is accepting connections on {db_url}!")
-            break
-        except subprocess.CalledProcessError:
-            print(
-                f"Still waiting for the database to accept connections on {db_url}..."
-            )
-            time.sleep(2)
+            subprocess.run(["docker", "run", "--rm", "--network", network,
+                "postgres:15-alpine", "pg_isready", "-h", host, "-p", str(port), "-U", db_user],
+                check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10)
+            print(f"The database is accepting connections on {target}!")
+            return
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            if attempt + 1 < max_attempts:
+                print(f"Still waiting for the database on {target}...")
+                time.sleep(delay)
+    raise RuntimeError(f"Database readiness timed out after {max_attempts} attempts: {target}")
+
 
 def wait_for_db_localhost(db_port=5432, db_user="postgres", max_attempts=30, delay=2):
     """

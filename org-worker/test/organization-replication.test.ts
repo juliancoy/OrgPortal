@@ -81,3 +81,40 @@ test('documented support evidence replicates without its creator identity',async
   assert.equal(local.sqlite.prepare('SELECT count(*) n FROM organization_support_records').get()!.n,0);
  }finally{primary.sqlite.close();local.sqlite.close();}
 });
+
+test('multi-megabyte UTF-8 snapshots fit D1 bindings and late failures roll back every chunk',async()=>{
+ const primary=setup(),local=setup();
+ try {
+  const description='é'.repeat(5000);
+  for(let i=0;i<240;i++) {
+   insert(primary,'large-'+i);
+   primary.sqlite.prepare('UPDATE organizations SET description=? WHERE id=?').run(description,'large-'+i);
+  }
+  for(let i=0;i<240;i++) {
+   primary.sqlite.prepare("INSERT INTO organization_support_records(id,from_organization_id,to_organization_id,from_label,to_label,support_kind,description,source_url,created_at) VALUES(?,?,?,?,?,'mentoring',?,'https://example.test','2026-10-15')")
+    .run('evidence-'+i,'large-0','large-1','Source','Recipient',description);
+  }
+  const database=local.asD1(),prepare=database.prepare.bind(database),encoder=new TextEncoder();
+  database.prepare=query=>{
+   const statement=prepare(query),bind=statement.bind.bind(statement);
+   statement.bind=(...values)=>{
+    for(const value of values)if(typeof value==='string')assert(encoder.encode(value).byteLength<=2_000_000,'D1 binding exceeds 2 MB');
+    return bind(...values);
+   };
+   return statement;
+  };
+  const snapshot=await (await organizationSnapshot(primary.asD1(),new Request(source))).json() as any;
+  assert(encoder.encode(JSON.stringify(snapshot.organizations)).byteLength>2_000_000);
+  assert(encoder.encode(JSON.stringify(snapshot.support)).byteLength>2_000_000);
+  const environment={...env(local),DB:database};
+  await replicateOrganizations(environment,async()=>Response.json(snapshot));
+  assert.equal(local.sqlite.prepare('SELECT count(*) n FROM organizations').get()!.n,240);
+  assert.equal(local.sqlite.prepare('SELECT count(*) n FROM organization_support_records').get()!.n,240);
+  expire(local);
+  snapshot.organizations[0].name='Must roll back';
+  snapshot.support.at(-1).status='invalid-status';
+  await assert.rejects(()=>replicateOrganizations(environment,async()=>Response.json(snapshot)));
+  assert.equal(local.sqlite.prepare('SELECT count(*) n FROM organization_support_records').get()!.n,240);
+  assert.equal(local.sqlite.prepare("SELECT name FROM organizations WHERE id=?").get(snapshot.organizations[0].id)!.name,snapshot.organizations[0].id);
+ }finally{primary.sqlite.close();local.sqlite.close()}
+});

@@ -43,6 +43,20 @@ function validateRows(rows: unknown, table: keyof typeof columns): asserts rows 
     ids.add(row.id);
   }
 }
+// D1 limits each bound string to 2 MB, independently of the total snapshot.
+// Keep the import atomic while splitting evidence into smaller JSON parameters.
+function jsonChunks(rows: Record<string,unknown>[]): string[] {
+  const chunks:string[]=[], encoder=new TextEncoder();
+  let parts:string[]=[], bytes=2;
+  for(const row of rows) {
+    const part=JSON.stringify(row), size=encoder.encode(part).byteLength;
+    if(size+2>2_000_000) throw new Error('Snapshot row exceeds the D1 string limit; retain last successful data');
+    if(parts.length && bytes+size+1>512*1024) {chunks.push('['+parts.join(',')+']');parts=[];bytes=2;}
+    parts.push(part);bytes+=size+1;
+  }
+  if(parts.length)chunks.push('['+parts.join(',')+']');
+  return chunks;
+}
 export async function replicateOrganizations(env: ReplicaEnv, fetcher: typeof fetch = fetch) {
   if (!env.ORGANIZATION_REPLICA_SOURCE) return;
   const source=new URL(env.ORGANIZATION_REPLICA_SOURCE);
@@ -64,7 +78,8 @@ export async function replicateOrganizations(env: ReplicaEnv, fetcher: typeof fe
     if (snapshot.version!==3) throw new Error('Unsupported snapshot version');
     validateRows(snapshot.organizations,'organizations');validateRows(snapshot.support,'organization_support_records');
     validateRows(snapshot.financingRecipients,'financing_recipients'); validateRows(snapshot.financingAgencies,'financing_agency_recipients'); validateRows(snapshot.financingEvents,'financing_events');
-    const orgs=JSON.stringify(snapshot.organizations),support=JSON.stringify(snapshot.support);
+    const orgs=JSON.stringify(snapshot.organizations.map((row:Record<string,unknown>)=>({id:row.id,slug:row.slug})));
+    const payloads = {organizations:jsonChunks(snapshot.organizations), organization_support_records:jsonChunks(snapshot.support), financing_recipients:jsonChunks(snapshot.financingRecipients), financing_agency_recipients:jsonChunks(snapshot.financingAgencies), financing_events:jsonChunks(snapshot.financingEvents)};
     const remaps = (await env.DB.prepare("SELECT o.id AS old_id,json_extract(r.value,'$.id') AS new_id FROM organizations o JOIN json_each(?) r ON o.slug=json_extract(r.value,'$.slug') WHERE o.id!=json_extract(r.value,'$.id') AND o.id NOT IN (SELECT json_extract(value,'$.id') FROM json_each(?))").bind(orgs,orgs).all<{old_id:string;new_id:string}>()).results || [];
     const statements:D1PreparedStatement[]=[
       env.DB.prepare('DELETE FROM financing_events'),
@@ -74,11 +89,11 @@ export async function replicateOrganizations(env: ReplicaEnv, fetcher: typeof fe
       // Stage unique slugs within this transaction to allow renames and swaps.
       env.DB.prepare("UPDATE organizations SET slug=? || id").bind('__replica_stage_'+crypto.randomUUID()+'_'),
     ];
-    function upsert(table: keyof typeof columns, data: string) {
+    function upserts(table: keyof typeof columns) {
       const fields=columns[table];
-      return env.DB.prepare(`INSERT INTO ${table} (${fields.join(',')}) SELECT ${fields.map(c=>`json_extract(value,'$.${c}')`).join(',')} FROM json_each(?) WHERE true ON CONFLICT(id) DO UPDATE SET ${fields.filter(c=>c!=='id').map(c=>`${c}=excluded.${c}`).join(',')}`).bind(data);
+      return payloads[table].map(data=>env.DB.prepare(`INSERT INTO ${table} (${fields.join(',')}) SELECT ${fields.map(c=>`json_extract(value,'$.${c}')`).join(',')} FROM json_each(?) WHERE true ON CONFLICT(id) DO UPDATE SET ${fields.filter(c=>c!=='id').map(c=>`${c}=excluded.${c}`).join(',')}`).bind(data));
     }
-    statements.push(upsert('organizations',orgs));
+    statements.push(...upserts('organizations'));
     if (remaps.length) {
       // Seeded local IDs can differ for the same organization slug. Repoint local
       // references after the primary ID exists, before pruning the seeded row.
@@ -103,10 +118,10 @@ export async function replicateOrganizations(env: ReplicaEnv, fetcher: typeof fe
     }
     statements.push(env.DB.prepare("DELETE FROM organization_source_identities WHERE organization_id NOT IN (SELECT json_extract(value,'$.id') FROM json_each(?))").bind(orgs));
     statements.push(env.DB.prepare("DELETE FROM organizations WHERE id NOT IN (SELECT json_extract(value,'$.id') FROM json_each(?))").bind(orgs));
-    statements.push(upsert('organization_support_records',support));
-    statements.push(upsert('financing_recipients',JSON.stringify(snapshot.financingRecipients)));
-    statements.push(upsert('financing_agency_recipients',JSON.stringify(snapshot.financingAgencies)));
-    statements.push(upsert('financing_events',JSON.stringify(snapshot.financingEvents)));
+    statements.push(...upserts('organization_support_records'));
+    statements.push(...upserts('financing_recipients'));
+    statements.push(...upserts('financing_agency_recipients'));
+    statements.push(...upserts('financing_events'));
     statements.push(env.DB.prepare('INSERT INTO organization_replica_state (id,source,etag,checked_at,applied_at,organization_count,support_count,error) VALUES (1,?,?,?,?,?,?,NULL) ON CONFLICT(id) DO UPDATE SET etag=excluded.etag,checked_at=excluded.checked_at,applied_at=excluded.applied_at,organization_count=excluded.organization_count,support_count=excluded.support_count,error=NULL').bind(source.href,response.headers.get('ETag'),now,now,snapshot.organizations.length,snapshot.support.length));
     statements.push(env.DB.prepare('UPDATE organization_replica_state SET financing_count=? WHERE id=1').bind(snapshot.financingEvents.length));
     await env.DB.batch(statements);

@@ -312,3 +312,50 @@ custom domains and existing onboarding preferences.
 The shared `/ecosystem/network` page includes sourced organization relationships, funding evidence, and event-history search. It is public and uses the common portal navigation. CodeCollective serves it at `/p/ecosystem/network`; tenant sites serve it at `/ecosystem/network`. LifeTech keeps its static directory and consumes these shared snapshots.
 
 From `web`, run `npm run test:ecosystem` for evidence and layout checks, `npm run sync:ecosystem` to refresh public workbook/API evidence, and `npm run build:ecosystem-history` to rebuild the event archive from sibling CodeCollective (or `CODECOLLECTIVE_DIR`). See [the data guide](docs/ecosystem-network-data.md). These commands produce public read snapshots; organization writes continue through the authorized API preview/apply flow.
+
+### Quick local sign-in
+
+The workspace parent directory now has the main startup command:
+
+```sh
+./run.py                       # Start/restart the shared local Docker stack
+./run.py --login admin          # Start it and open a local administrator session
+```
+
+Run these from `Organization/`. The launcher delegates to this repository's
+`run.py`, reuses the existing LifeTech Docker network and volume namespace, and
+preserves local accounts, newsletters, replica storage and developer-admin setup.
+The default portal URL is `https://localhost:8443/`; `--port` selects another port.
+For startup diagnostics, use `./run.py --help`.
+
+With the local Docker deployment running, open restricted local features without
+entering a password:
+
+```sh
+./local-login                   # Local portal member; opens research
+./local-login --admin           # Local system administrator; opens /admin
+./local-login --admin --next /ecosystem/network/3d
+```
+
+The helper checks the loopback gateway and its identity/database Docker containers,
+creates a persistent synthetic account, and opens a short-lived, one-use localhost
+link in your normal browser. The link installs a normal secure, HTTP-only session
+cookie; session tokens are never placed in URLs or written to disk. The session
+lasts up to eight hours. Use `--no-open` to copy the link into another browser.
+An ordinary logout removes the session; rerun the command whenever needed.
+
+Administrator setup explicitly allowlists the synthetic local admin ID in the
+local PIdP container. The first admin use briefly restarts that identity container,
+preserves its database, volumes, environment and signing keys, and retains the
+stopped original for rollback. `.local/developer-admins.json` preserves this local
+allowlist when `run.py` restarts the stack. Member mode retains a website-user
+namespace; administrator mode uses the explicitly requested system-admin context.
+Neither mode changes production authentication, membership or credentials. The
+organization replica remains read-only; writable fixture testing still uses an
+isolated deployment with `ORGPORTAL_ORGANIZATION_REPLICA_SOURCE=''`.
+
+For another local stack, supply its matching origin and identity container:
+`./local-login --base https://localhost:8444 --container deism-identity-api`.
+The configured PIdP public origin must match that gateway. The gateway must use
+`localhost` so the browser can receive its secure host-only cookie over the
+loopback handoff. No production endpoint or login-bypass route is added.

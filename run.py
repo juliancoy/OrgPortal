@@ -10,6 +10,7 @@ from pathlib import Path
 
 import docker_utils
 from service_names import service_name
+from local_developer import local_admin_ids
 
 current_dir = Path(os.path.abspath(os.path.dirname(__file__)))
 web_dir = current_dir / "web"
@@ -155,18 +156,19 @@ def _apply_pidp_secret_defaults() -> Path:
     return selected_path
 
 
-def _wait_for_http(url: str, network_name: str, retries: int = 60, delay: int = 2, expect_status: int | None = None) -> None:
+def _wait_for_http(url: str, network_name: str, retries: int = 60, delay: int = 2, expect_status: int | None = None, host_header: str | None = None) -> None:
     print(f"Waiting for {url}")
+    host_option = f' -H {shlex.quote("Host: " + host_header)}' if host_header else ''
     status_expr = ""
     if expect_status is not None:
         status_expr = f'test "$status" = "{expect_status}"'
     else:
-        status_expr = 'test "$status" -ge 200 -a "$status" -lt 500'
+        status_expr = 'test "$status" -ge 200 -a "$status" -lt 400'
     script = textwrap.dedent(
         f"""
         i=0
         while [ "$i" -lt {retries} ]; do
-          status="$(curl -k -s -o /dev/null -w '%{{http_code}}' --connect-timeout 5 "$TEST_URL" || true)"
+          status="$(curl -k -s -o /dev/null -w '%{{http_code}}' --connect-timeout 5{host_option} "$TEST_URL" || true)"
           if {status_expr}; then
             echo "Service $TEST_URL responded with $status"
             exit 0
@@ -262,7 +264,7 @@ def _pidp_env(pidp_editme, db_url: str, gateway_base: str, allowed_origins: list
         "PII_ENCRYPTION_KEYS": os.getenv("PIDP_PII_ENCRYPTION_KEYS") or os.getenv("PII_ENCRYPTION_KEYS", ""),
         "AUTO_CREATE_TABLES": "true",
         "ADMIN_EMAILS": os.getenv("PIDP_ADMIN_EMAILS", ""),
-        "ADMIN_USER_IDS": os.getenv("PIDP_ADMIN_USER_IDS", ""),
+        "ADMIN_USER_IDS": local_admin_ids(gateway_base, os.getenv("PIDP_ADMIN_USER_IDS", "")),
         "EMAIL_VERIFICATION_REQUIRED": os.getenv("PIDP_EMAIL_VERIFICATION_REQUIRED", "true"),
         "EMAIL_VERIFICATION_TOKEN_MINUTES": os.getenv("PIDP_EMAIL_VERIFICATION_TOKEN_MINUTES", "1440"),
         "EMAIL_VERIFICATION_DELIVERY": os.getenv("PIDP_EMAIL_VERIFICATION_DELIVERY", "log"),
@@ -426,12 +428,14 @@ def _write_local_gateway_config(
                 }}
 
                 location /api/chat/ {{
+                  resolver 127.0.0.11 ipv6=off valid=10s;
+                  set $chat_upstream {org_worker_name.removesuffix('community-api')}chat-api:8003;
                   rewrite ^/api/chat/?(.*)$ /$1 break;
                   proxy_set_header Upgrade $http_upgrade;
                   proxy_set_header Connection $connection_upgrade;
                   proxy_read_timeout 1h;
                   proxy_send_timeout 1h;
-                  proxy_pass http://{org_worker_name.removesuffix('community-api')}chat-api:8003;
+                  proxy_pass http://$chat_upstream;
                 }}
 
                 location /pidp/ {{
@@ -494,7 +498,7 @@ def _start_local_gateway(
                 str(local_nginx_conf): {"bind": "/etc/nginx/nginx.conf", "mode": "ro"},
                 str(local_certs_dir): {"bind": "/certs", "mode": "ro"},
             },
-            "ports": {"8443/tcp": int(gateway_port)},
+            "ports": {"8443/tcp": ("127.0.0.1", int(gateway_port))},
         }
     )
     docker_utils.wait_for_port(gateway_name, 8443, network_name, retries=30, delay=2)
@@ -871,7 +875,11 @@ def run(prefix: str, network_name: str) -> None:
     _wait_for_http(f"http://{dev_name}:5173/availability", network_name, retries=120, delay=2)
     if _env_truthy("ORGPORTAL_START_LOCAL_GATEWAY", default=True):
         local_url = _start_local_gateway(prefix, network_name, dev_name, org_worker_name, pidp_dev_name, worker_port)
-        _wait_for_http(f"https://{service_name(prefix, 'local-gateway')}:8443/availability", network_name, retries=30, delay=2)
+        paths = ['/availability', '/api/org/health', '/api/chat/health']
+        if started_pidp:
+            paths.append('/pidp/health')
+        for path in paths:
+            _wait_for_http(f"https://{service_name(prefix, 'local-gateway')}:8443{path}", network_name, retries=30, delay=2, expect_status=200, host_header=f'localhost:{gateway_port}')
         print(f"Local portal gateway: {local_url}/availability")
     else:
         print("Skipping local HTTPS gateway because ORGPORTAL_START_LOCAL_GATEWAY is disabled")

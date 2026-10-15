@@ -75,3 +75,9 @@ not a truncated directory query. R2 media replication and private-data
 replication are separate features.
 
 Tests: `node --import tsx --test test/organization-replication.test.ts`.
+
+Snapshot imports split public rows into bounded JSON parameters inside one D1
+transaction. This avoids the 2 MB per-string limit when a complete table grows
+larger than that limit. ID/slug reconciliation uses compact metadata rather than
+rebinding full organization descriptions. Validation or an insertion failure in
+any chunk rolls back the complete refresh and retains the previous snapshot.
