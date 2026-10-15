@@ -94,3 +94,19 @@ test('research nodes retain canonical portal slugs even when a website preview h
  assert.equal(organizationPagePath(data.organizations[0]),'https://orgportal.cc/orgs/state-of-maryland')
  assert.equal(organizationPagePath({id:'research-unregistered',name:'Unregistered agency'}),'https://orgportal.cc/search?q=Unregistered%20agency')
 })
+
+test('node sizing curves stay bounded and ordered across the full funding range',()=>{
+ for(const algorithm of ['linear','log','exp','power'])for(const alpha of [.1,1,5]){
+  const options={algorithm,alpha,maxAmount:1e11}
+  const sizes=[null,-1,0,1,1e3,1e8,1e11,Number.MAX_VALUE].map(n=>financialNodeRadius(n,options))
+  assert(sizes.every(n=>Number.isFinite(n)&&n>=6&&n<=30))
+  assert(sizes.every((n,i)=>!i||n>=sizes[i-1]))
+  assert.equal(financialNodeRadius(Infinity,options),6)
+ }
+ const radius=(algorithm,alpha)=>financialNodeRadius(25,{algorithm,alpha,maxAmount:100})
+ assert.equal(radius('linear',1),12)
+ assert.equal(radius('power',.5),18)
+ assert(radius('log',5)>radius('log',1))
+ assert(radius('exp',5)<radius('exp',1))
+ assert(radius('power',2)<radius('power',1))
+})

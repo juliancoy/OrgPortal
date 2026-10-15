@@ -85,4 +85,19 @@ export function financialNodeAmounts(data, {includeCapitalization = false} = {})
  }
  return amounts
 }
-export const financialNodeRadius = amount => 6 + (Number.isFinite(amount) && amount > 0 ? 2 * Math.log10(1 + amount) : 0)
+// Normalize against the full evidence set so filtering cannot resize a company.
+// Bound the output and exponent so even exponential scaling stays finite.
+export function financialNodeRadius(amount,{algorithm='log',alpha=1,maxAmount=1e11}={}) {
+ if(!Number.isFinite(amount)||amount<=0)return 6
+ const a=Number.isFinite(alpha)?Math.max(.1,Math.min(5,alpha)):1
+ const reference=Number.isFinite(maxAmount)&&maxAmount>0?maxAmount:amount
+ const x=Math.min(1,amount/reference)
+ let scaled
+ switch(algorithm){
+  case 'linear':scaled=Math.min(1,a*x);break
+  case 'exp':scaled=Math.expm1(a*x)/Math.expm1(a);break
+  case 'power':scaled=x**a;break
+  default:scaled=Math.log1p(9*a*x)/Math.log1p(9*a)
+ }
+ return 6+24*scaled
+}
