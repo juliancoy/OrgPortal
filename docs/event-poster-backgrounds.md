@@ -108,3 +108,21 @@ against that event's current source and links, allowing HTTP(S) without credenti
 unassociated or unsafe URLs cannot replace the QR destination.
 
 The flyer API also accepts `dimming` (0–1). Preview, SVG, PNG, and print use the same adjustable overlay.
+
+## Canvas composition
+
+The poster editor supports pointer/touch dragging and uniform corner resizing for
+backgrounds, text, logos and QR codes. Sliders remain available for keyboard use.
+`Fit image` preserves the whole image; `Fill canvas` crops to cover the canvas;
+both reset zoom and position. `Center image` preserves zoom. Optional **Blur image
+into empty edges** places an overscanned, blurred cover copy behind the sharp
+image. Text stays sharp; dimming applies to both image layers. LifeTech artwork
+now extends across the complete canvas, including behind the QR region.
+
+These framing options follow JCut's `editor_scale_to_fill.h` and
+`render_decode.cpp::buildBlurredFillBackground`: preserve the source aspect ratio
+and use a separate cover-sized blurred image for uncovered areas. The SVG
+implementation uses a local Gaussian blur instead of JCut's Qt/Vulkan paths.
+Preview, PNG, SVG and print use the same composed artwork; editing handles are
+removed from exports. Settings persist with the existing per-event browser
+preferences. A four-up poster edits the shared source so all four copies match.

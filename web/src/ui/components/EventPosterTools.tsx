@@ -1,6 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { Download, FileImage, Moon, Printer, RefreshCw, Sun, X } from 'lucide-react'
 import './eventPoster.css'
+import { bindCanvas, drawSelection } from './posterCanvas'
 import { applySettings, defaults, elementLabels, parsePosterSvg, parseSettings, type ElementId, type ElementLayout, type PosterSettings } from './posterEditorState'
 import { useGroupSite } from '../../config/timebankCommunity'
 
@@ -40,7 +41,9 @@ function PosterEditor({ slug, title, revision = '', sourceUrl, eventLinks = [] }
   const [settings, setSettings] = useState<PosterSettings>(() => {
     try { return parseSettings(localStorage.getItem(storageKey)) } catch { return { ...defaults } }
   })
-  const { format, theme, background, mediaId, elements, selectedElement, zoom, offsetX, offsetY, opacity, dimming, link } = settings
+  const { format, theme, background, mediaId, elements, selectedElement, zoom, offsetX, offsetY, opacity, dimming, edgeBlur, link } = settings
+  const settingsRef = useRef(settings)
+  settingsRef.current = settings
   function setter<K extends keyof PosterSettings>(key: K) {
     return (value: PosterSettings[K] | ((old: PosterSettings[K]) => PosterSettings[K])) => setSettings(old => ({ ...old, [key]: typeof value === 'function' ? value(old[key]) : value }))
   }
@@ -66,7 +69,6 @@ function PosterEditor({ slug, title, revision = '', sourceUrl, eventLinks = [] }
   const elementLayout = elements[selectedElement] || {}
   function updateElement(change: ElementLayout) { setElements(value => ({ ...value, [selectedElement]: { ...value[selectedElement], ...change } })) }
   const imageBackground = ['gallery', 'city', 'lifetech'].includes(background)
-  const crop = { zoom: String(zoom), offsetX: String(offsetX), offsetY: String(offsetY), opacity: String(opacity), dimming: String(dimming) }
   const [galleryRetry, setGalleryRetry] = useState(0)
   useEffect(() => {
     const abort = new AbortController()
@@ -95,7 +97,7 @@ function PosterEditor({ slug, title, revision = '', sourceUrl, eventLinks = [] }
     if (background === 'gallery' && !selectedMediaId) { setPoster(null); setError(''); return }
     const abort = new AbortController()
     setPoster(null); setError('')
-    const query = new URLSearchParams({ format, theme, background, version: '8', link: selectedLink, revision, mediaId: background === 'gallery' ? selectedMediaId : '' })
+    const query = new URLSearchParams({ format, theme, background, version: '9', link: selectedLink, revision, mediaId: background === 'gallery' ? selectedMediaId : '' })
     fetch(`/api/org/api/network/events/public/${encodeURIComponent(slug)}/flyer.svg?${query}`, { signal: AbortSignal.any([abort.signal, AbortSignal.timeout(30000)]), cache: 'no-cache' })
       .then(async response => {
         if (!response.ok || !response.headers.get('content-type')?.includes('image/svg+xml')) throw new Error()
@@ -110,51 +112,34 @@ function PosterEditor({ slug, title, revision = '', sourceUrl, eventLinks = [] }
     // Shadow DOM isolates SVG IDs and typography from the surrounding page.
     const root = preview.current.shadowRoot || preview.current.attachShadow({ mode: 'open' })
     const style = document.createElement('style')
-    style.textContent = ':host { display:block; width:100%; height:100% } :host > svg { width:100%; height:100%; display:block }'
+    style.textContent = ':host { display:block; width:100%; height:100% } :host > svg { width:100%; height:100%; display:block; touch-action:none; user-select:none } [data-poster-dimming] { pointer-events:none }'
     style.textContent += ' [data-poster-element] { cursor:pointer; pointer-events:bounding-box } [data-poster-element]:hover, [data-poster-selected] { outline:2px dashed #33c6d4; outline-offset:4px }'
     root.replaceChildren(style, ready.svg)
-    const select = (event: Event) => {
-      let target = (event.target as Element).closest('[data-poster-element]')
-      // SVG <use> retargets clicks to the copy, so hit-test its source artwork.
-      const copy = (event.target as Element).closest('use') as SVGUseElement | null
-      if (!target && copy && event instanceof MouseEvent) {
-        const matrix = copy.getScreenCTM()
-        if (matrix) {
-          const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse())
-          const nodes = [...ready.svg.querySelectorAll<SVGGElement>('[data-poster-element]')].reverse()
-          target = nodes.find(node => {
-            if (node.getAttribute('display') === 'none') return false
-            const transform = node.transform.baseVal.consolidate()?.matrix
-            const local = transform ? point.matrixTransform(transform.inverse()) : point
-            const box = node.getBBox()
-            return local.x >= box.x && local.x <= box.x + box.width && local.y >= box.y && local.y <= box.y + box.height
-          }) || null
-        }
-      }
-      const element = target?.getAttribute('data-poster-element') as ElementId | null
-      if (element && Object.hasOwn(elementLabels, element)) {
-        setSettings(old => ({ ...old, selectedElement: element }))
-        if (elementControls.current) elementControls.current.open = true
-      }
-    }
-    root.addEventListener('click', select)
-    return () => root.removeEventListener('click', select)
+    return bindCanvas(ready.svg, () => settingsRef.current, next => {
+      settingsRef.current = next
+      setSettings(next)
+    })
   }, [ready])
   useLayoutEffect(() => {
     if (!ready) return
     const frame = requestAnimationFrame(() => {
       applySettings(ready.svg, settings)
+      drawSelection(ready.svg, settings)
       for (const node of ready.svg.querySelectorAll('[data-poster-element]')) {
         node.toggleAttribute('data-poster-selected', node.getAttribute('data-poster-element') === selectedElement)
       }
     })
     return () => cancelAnimationFrame(frame)
   }, [ready, settings, selectedElement])
-  function posterBlob() {
+  function posterBlob(backgroundOnly = false) {
     if (!ready) throw new Error('Poster not ready')
     // Apply synchronously too, so exporting in the same frame cannot use stale controls.
     applySettings(ready.svg, settings)
-    return new Blob([new XMLSerializer().serializeToString(ready.svg)], { type: 'image/svg+xml' })
+    const exported = ready.svg.cloneNode(true) as SVGSVGElement
+    exported.querySelectorAll('[data-editor-ui]').forEach(node => node.remove())
+    exported.querySelectorAll('[data-poster-selected]').forEach(node => node.removeAttribute('data-poster-selected'))
+    if (backgroundOnly) exported.querySelectorAll('[data-poster-element]').forEach(node => node.remove())
+    return new Blob([new XMLSerializer().serializeToString(exported)], { type: 'image/svg+xml' })
   }
 
   function download(blob: Blob, extension: string, backgroundOnly = false) {
@@ -169,14 +154,7 @@ function PosterEditor({ slug, title, revision = '', sourceUrl, eventLinks = [] }
     setExporting(true); setError('')
     try {
       const image = new Image()
-      let backgroundUrl: string | undefined
-      if (backgroundOnly) {
-        const query = new URLSearchParams({ format, theme, background, backgroundOnly: 'true', version: '8', ...crop })
-        const response = await fetch(`/api/org/api/network/events/public/${encodeURIComponent(slug)}/flyer.svg?${query}`, { signal: AbortSignal.timeout(30000) })
-        if (!response.ok || !response.headers.get('content-type')?.includes('image/svg+xml')) throw new Error()
-        backgroundUrl = URL.createObjectURL(await response.blob())
-      }
-      backgroundUrl ||= URL.createObjectURL(posterBlob())
+      const backgroundUrl = URL.createObjectURL(posterBlob(backgroundOnly))
       image.src = backgroundUrl
       try { await image.decode() } finally { if (backgroundUrl) URL.revokeObjectURL(backgroundUrl) }
       const canvas = document.createElement('canvas')
@@ -250,12 +228,19 @@ function PosterEditor({ slug, title, revision = '', sourceUrl, eventLinks = [] }
     </div>}
     {imageBackground && (background !== 'gallery' || selectedMediaId) && <fieldset className="event-poster-crop" disabled={exporting}>
       <legend>Adjust background image</legend>
+      <button type="button" aria-pressed={selectedElement === 'background'} onClick={() => setSelectedElement('background')}>Select background on canvas</button>
+      <label className="event-poster-visible"><input type="checkbox" checked={edgeBlur} onChange={event => setter('edgeBlur')(event.target.checked)}/>Blur image into empty edges</label>
+      <div className="event-poster-actions" role="group" aria-label="Image framing">
+        <button type="button" aria-pressed={settings.imageFit === 'contain'} onClick={() => setSettings(old => ({ ...old, imageFit: 'contain', zoom: 1, offsetX: 0, offsetY: 0, selectedElement: 'background' }))}>Fit image</button>
+        <button type="button" aria-pressed={settings.imageFit === 'cover'} onClick={() => setSettings(old => ({ ...old, imageFit: 'cover', zoom: 1, offsetX: 0, offsetY: 0, selectedElement: 'background' }))}>Fill canvas</button>
+        <button type="button" onClick={() => { setOffsetX(0); setOffsetY(0) }}>Center image</button>
+      </div>
       <label>Opacity: {Math.round(opacity * 100)}%<input type="range" min="0" max="1" step="0.01" value={opacity} onChange={event => setOpacity(Number(event.target.value))}/></label>
       <label>Background dimming: {Math.round(dimming * 100)}% (0% = full brightness)<input type="range" min="0" max="1" step="0.01" value={dimming} onChange={event => setDimming(Number(event.target.value))}/></label>
-      <label>Zoom: {Math.round(zoom * 100)}%<input type="range" min="1" max="3" step="0.05" value={zoom} onChange={event => setZoom(Number(event.target.value))}/></label>
-      <label>Horizontal position: {offsetX}<input type="range" min="-100" max="100" step="1" value={offsetX} onChange={event => setOffsetX(Number(event.target.value))}/></label>
-      <label>Vertical position: {offsetY}<input type="range" min="-100" max="100" step="1" value={offsetY} onChange={event => setOffsetY(Number(event.target.value))}/></label>
-      <button type="button" onClick={() => { setZoom(1); setOffsetX(0); setOffsetY(0); setOpacity(1); setDimming(.66) }}>Reset image</button>
+      <label>Zoom: {Math.round(zoom * 100)}%<input type="range" min="0.25" max="3" step="0.05" value={zoom} onChange={event => setZoom(Number(event.target.value))}/></label>
+      <label>Horizontal position: {Math.round(offsetX)}<input type="range" min="-100" max="100" step="1" value={offsetX} onChange={event => setOffsetX(Number(event.target.value))}/></label>
+      <label>Vertical position: {Math.round(offsetY)}<input type="range" min="-100" max="100" step="1" value={offsetY} onChange={event => setOffsetY(Number(event.target.value))}/></label>
+      <button type="button" onClick={() => { setZoom(1); setOffsetX(0); setOffsetY(0); setOpacity(1); setDimming(.66); setter('edgeBlur')(false); setter('imageFit')('original') }}>Reset image</button>
     </fieldset>}
     <details ref={elementControls} className="event-poster-elements">
       <summary>Adjust text and other elements</summary>
@@ -264,16 +249,16 @@ function PosterEditor({ slug, title, revision = '', sourceUrl, eventLinks = [] }
         <label>Element<select aria-label="Element" value={selectedElement} onChange={event => setSelectedElement(event.target.value as ElementId)}>
           {Object.entries(elementLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
         </select></label>
-        <label className="event-poster-visible"><input type="checkbox" checked={!elementLayout.hidden} onChange={event => updateElement({ hidden: !event.target.checked })}/>Show {elementLabels[selectedElement].toLowerCase()}</label>
-        <label>Size: {Math.round((elementLayout.scale ?? 1) * 100)}%<input type="range" min="0.25" max="3" step="0.05" value={elementLayout.scale ?? 1} onChange={event => updateElement({ scale: Number(event.target.value) })}/></label>
-        <label>Horizontal position: {elementLayout.x ?? 0}<input type="range" min="-100" max="100" value={elementLayout.x ?? 0} onChange={event => updateElement({ x: Number(event.target.value) })}/></label>
-        <label>Vertical position: {elementLayout.y ?? 0}<input type="range" min="-100" max="100" value={elementLayout.y ?? 0} onChange={event => updateElement({ y: Number(event.target.value) })}/></label>
+        {selectedElement !== 'background' && <label className="event-poster-visible"><input type="checkbox" checked={!elementLayout.hidden} onChange={event => updateElement({ hidden: !event.target.checked })}/>Show {elementLabels[selectedElement].toLowerCase()}</label>}
+        {selectedElement !== 'background' && <><label>Size: {Math.round((elementLayout.scale ?? 1) * 100)}%<input type="range" min="0.25" max="3" step="0.05" value={elementLayout.scale ?? 1} onChange={event => updateElement({ scale: Number(event.target.value) })}/></label>
+        <label>Horizontal position: {Math.round(elementLayout.x ?? 0)}<input type="range" min="-100" max="100" value={elementLayout.x ?? 0} onChange={event => updateElement({ x: Number(event.target.value) })}/></label>
+        <label>Vertical position: {Math.round(elementLayout.y ?? 0)}<input type="range" min="-100" max="100" value={elementLayout.y ?? 0} onChange={event => updateElement({ y: Number(event.target.value) })}/></label>
         <button type="button" onClick={() => setElements(value => { const next = { ...value }; delete next[selectedElement]; return next })}>Reset element</button>
-        <button type="button" onClick={() => setElements({})}>Reset all elements</button>
+        <button type="button" onClick={() => setElements({})}>Reset all elements</button></>}
       </fieldset>
-      <p>Click an element in the preview to select it. Positions are relative to the original layout. Hidden elements leave their space available for manual positioning.</p>
     </details>
     {error && <div role="alert" className="event-poster-error">{error}<button type="button" title="Retry poster" onClick={() => setRetry(value => value + 1)}><RefreshCw size={18} aria-hidden="true"/>Retry</button></div>}
+      <p>Drag an image or text on the canvas to move it. Drag a corner handle to resize. Select the background above to show its resize handles; drag an empty area to move it. Sliders provide precise positioning.</p>
     <div className={`event-poster-preview event-poster-preview-${format}`} aria-busy={!ready && !error && (background !== 'gallery' || Boolean(selectedMediaId))}>
       {ready ? <div ref={preview} role="img" aria-label={`${title}, ${formats[format].label}, ${theme}, ${backgrounds[background]} poster`}/> : <span role="status">{error ? 'Preview unavailable' : background === 'gallery' && !selectedMediaId ? 'Select a gallery image to preview your poster.' : 'Generating poster...'}</span>}
     </div>
