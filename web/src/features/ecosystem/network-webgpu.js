@@ -7,7 +7,7 @@ import { applyFundHierarchy, foldFundNodes, financialNodePies, pieLabel } from '
 import { createNetworkGPU, curvePoints } from './webgpu-renderer.js'
 import { assignEdgeCurvature } from './ecosystem-physics.js'
 import { createNetworkLayout } from './network-layout.js'
-import { prepareNetworkData } from './network-data.js'
+import { prepareNetworkData, loadSharedNetworkData } from './network-data.js'
 import { organizationPreview, relationshipPreview, networkPreviewSummaries } from './ecosystem-view.js'
 import { loadPortalEvidence, graphRelationships, financialNodeAmounts, financialNodeRadius } from './portal-ecosystem.js'
 import { refreshPublicReport } from '../../data/publicOrganization/cache'
@@ -15,30 +15,35 @@ export function mountEcosystemNetworkGPU(root, {dataUrl, historyUrl, apiPrefix, 
 const four=rendererKind==='webgpu4d',spatial=four||rendererKind==='webgpu3d'
 const abort = new AbortController(); let disposed=false, resizeObserver;
 let oldestCheck=Infinity, usingOfflineCopy=false
-const cachedPublicJson = async (url, validate) => {
+const cachedPublicJson = (url, validate) => new Promise((resolve,reject) => {
  let saved
- try {
-  const entry=await refreshPublicReport(url, {signal:abort.signal, validate, onCached:entry=>{saved=entry}})
-  oldestCheck=Math.min(oldestCheck,entry.checkedAt);return entry.data
- }catch(error) {
-  if(saved && !abort.signal.aborted){usingOfflineCopy=true;oldestCheck=Math.min(oldestCheck,saved.checkedAt);return saved.data}
-  throw error
- }
-}
+ // Render saved evidence immediately; revalidation updates the shared cache
+ // for subsequent views without blocking GPU startup on network latency.
+ void refreshPublicReport(url, {signal:abort.signal, validate, onCached:entry=>{
+  saved=entry;oldestCheck=Math.min(oldestCheck,entry.checkedAt);resolve(entry.data)
+ }}).then(entry=>{
+  oldestCheck=Math.min(oldestCheck,entry.checkedAt);resolve(entry.data)
+ }).catch(error=>{
+  if(saved && !abort.signal.aborted){usingOfflineCopy=true;resolve(saved.data)}
+  else reject(error)
+ })
+})
 const validateSnapshot = value => {
  if(!value || !['organizations','relationships','financing'].every(key=>Array.isArray(value[key])))throw new Error('Network data is incomplete')
  return value
 }
-const cachedEvidenceFetch = async (url, options) => {
- const cacheUrl=url.replace(/\/support\?offset=0$/, '/support')
- if(/\/support(?:\?offset=\d+)?$/.test(cacheUrl) || /\/orgs\/public\?limit=500&offset=\d+$/.test(cacheUrl) || /\/relationships\/public\?offset=\d+$/.test(cacheUrl)) {
-  const value=await cachedPublicJson(cacheUrl, value=>{
-   if(cacheUrl.includes('/orgs/public?') ? !Array.isArray(value) : !Array.isArray(value?.records))throw new Error('Public evidence is incomplete')
-   return value
+const sharedEvidenceFetch = async url => {
+ let saved
+ try {
+  const entry=await refreshPublicReport(url.replace(/\/support\?offset=0$/, '/support'), {
+   validate:value=>{if(url.includes('/orgs/public?')?!Array.isArray(value):!Array.isArray(value?.records))throw new Error('Public evidence is incomplete');return value},
+   onCached:entry=>{saved=entry},
   })
-  return {ok:true,json:async()=>value}
+  return {ok:true,status:200,json:async()=>entry.data}
+ } catch(error) {
+  if(saved)return {ok:true,status:200,json:async()=>saved.data}
+  throw error
  }
- return fetch(url,{...options,signal:abort.signal,credentials:'omit'})
 }
 const $ = s => root.querySelector(s)
 const rewriteLinks = () => root.querySelectorAll('a[href^="/"]').forEach(a => { const path=a.getAttribute('href'); if(!a.dataset.portalLinked){a.setAttribute('href', path.startsWith('/ecosystem-data/') ? new URL(path.split('/').pop(),historyUrl.startsWith('http')?historyUrl:new URL(historyUrl,location.origin)).pathname : portalPath(path));a.dataset.portalLinked='true'} });
@@ -208,7 +213,7 @@ async function initGPU(){
   const {createNetworkCanvasWorker}=await import('./canvas-renderer-client.js');renderer=createNetworkCanvasWorker(canvas)
  } else if(spatial){const {createNetworkGPU3D}=await import('./webgpu-3d-renderer.js');renderer=await createNetworkGPU3D(canvas,message=>{if(disposed)return;gpuReady=false;simulation?.stop();status.textContent=(four?'4D':'3D')+' WebGPU unavailable: '+message},requestRender,four?'4D':'3D')}
  else renderer=await createNetworkGPU(canvas,message=>{if(disposed)return;console.error(message);gpuReady=false;simulation?.stop();cancelAnimationFrame(frame);frame=0;status.textContent='WebGPU graphics were lost. Reload to retry, or use the original Graph view.'})
- if(disposed){renderer.dispose();return}gpuReady=true
+ if(disposed){renderer.dispose();return}canvas.dataset.backend=renderer.backend || rendererKind;gpuReady=true
  const resize=()=>{const width=host.clientWidth,height=host.clientHeight;renderer.resize(width,height);if(spatial){requestRender();return}if(fitted&&!spatial){const nextHeight=view.w/(width/Math.max(1,height));view.y+=(view.h-nextHeight)/2;view.h=nextHeight;requestRender()}}
  resize();resizeObserver=new ResizeObserver(resize);resizeObserver.observe(host)
  const hit=event=>{
@@ -272,7 +277,7 @@ async function start(){
   for(const [id,factor] of [['#zoom-in',1.25],['#zoom-out',.8]]) $(id).addEventListener('click',()=>zoomGPU(factor))
   $('#network-reset').addEventListener('click',()=>{selected=null;inspectorKey=null;fitted=false;for(const name of ['attraction','repulsion','proximity','central-gravity','dither']){const value=['central-gravity','dither'].includes(name)?'0':'1';$('#'+name).value=value;$('#'+name+'-value').textContent=Number(value).toFixed(1)}$('#live-physics').checked=!reducedMotion.matches;root.querySelectorAll('[name=node-category],[name=relationship]').forEach(c=>c.checked=true);$('#network-view').value='all';$('#include-context').checked=false;$('#hide-isolated').checked=true;$('#scale-node-finances').checked=true;$('#node-size-algorithm').value='log';$('#node-size-alpha').value='1';$('#node-size-alpha-value').textContent='1.0';$('#scale-edge-quantity').checked=true;$('#show-links').checked=true;$('#zoom-sparse').checked=false;$('#visibility-factor').value='4';$('#visibility-factor-value').textContent='4';$('#neighbors').checked=false;$('#neighbors').disabled=true;$('#network-search').value='';$('#network-detail').innerHTML='<h2>Select an organization</h2><p>Search or select a graph label to explore its evidence.</p>';history.replaceState(history.state,'',location.pathname);search();rebuild()})
   const initial=new URL(location.href).searchParams.get('org');if(initial&&data.organizations.some(n=>n.id===initial)){select(initial);rebuild()}else rebuild()
-  loadPortalEvidence(data, cachedEvidenceFetch,apiPrefix,(base,directory,records)=>prepareNetworkData(base,directory,records,historyData,abort.signal)).then(prepared=>{if(disposed)return;preparedData=prepared;data=prepared.data;search();if(selected)select(selected);rebuild();$('#network-source').textContent=(usingOfflineCopy?'Offline · last checked ':'Checked ')+new Date(oldestCheck).toLocaleString()}).catch(()=>{if(disposed)return;$('#network-source').textContent='Saved public evidence · refresh unavailable'})
+  loadSharedNetworkData(JSON.stringify([location.origin,dataUrl,historyUrl,apiPrefix]), () => loadPortalEvidence(data, sharedEvidenceFetch,apiPrefix,(base,directory,records)=>prepareNetworkData(base,directory,records,historyData,new AbortController().signal)), abort.signal).then(prepared=>{if(disposed)return;preparedData=prepared;data=prepared.data;search();if(selected)select(selected);rebuild();$('#network-source').textContent=(usingOfflineCopy?'Offline · last checked ':'Checked ')+new Date(oldestCheck).toLocaleString()}).catch(()=>{if(disposed)return;$('#network-source').textContent='Saved public evidence · refresh unavailable'})
  }catch(error){if(disposed)return;status.textContent=error.message || 'WebGPU network unavailable.';host.hidden=true;console.error(error)}
 }
 const media=matchMedia('(max-width:900px)')

@@ -1,13 +1,13 @@
-import {WebGPURenderer,Scene,PerspectiveCamera,AmbientLight,DirectionalLight,InstancedMesh,SphereGeometry,CylinderGeometry,ConeGeometry,MeshStandardMaterial,MeshBasicMaterial,Object3D,Vector3,Vector2,Color,Raycaster,Box3} from 'three/webgpu'
+import {WebGPURenderer,Scene,PerspectiveCamera,AmbientLight,DirectionalLight,InstancedMesh,SphereGeometry,CylinderGeometry,ConeGeometry,MeshStandardMaterial,MeshBasicMaterial,Object3D,Vector3,Vector2,Color,Raycaster,Box3,WebGLCoordinateSystem} from 'three/webgpu'
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js'
 export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D'){
- if(!navigator.gpu||!await navigator.gpu.requestAdapter())throw Error(dimension+' WebGPU requires a supported browser and a secure connection. Use the Graph tab instead.')
+ // Three.js falls back to WebGL 2 when WebGPU has no usable adapter.
  const renderer=new WebGPURenderer({canvas,antialias:true,alpha:true})
- try{await renderer.init();if(!renderer.backend.isWebGPUBackend)throw Error('A native WebGPU device is required for this tab.')}catch(error){renderer.dispose();throw error}
+ try{await renderer.init()}catch(error){renderer.dispose();throw new Error(dimension+' graphics could not start. Use the Graph tab instead.',{cause:error})}
  let disposed=false,width=1,height=1,compiled=false,compiling=false,referenceDistance=1
  const device=renderer.backend.device
- device.lost.then(info=>{if(!disposed)onLost(info.message||'WebGPU device lost')})
- device.addEventListener('uncapturederror',event=>{if(!disposed)onLost(event.error.message)})
+ device?.lost.then(info=>{if(!disposed)onLost(info.message||'WebGPU device lost')})
+ device?.addEventListener('uncapturederror',event=>{if(!disposed)onLost(event.error.message)})
  const scene=new Scene(),camera=new PerspectiveCamera(45,1,.1,1e7)
  camera.position.set(200,120,400)
  scene.add(new AmbientLight(0xffffff,2));const light=new DirectionalLight(0xffffff,3);light.position.set(300,600,500);scene.add(light)
@@ -27,6 +27,7 @@ export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D'){
  function place(m,index,position,scale,rotation,tint){object.position.copy(position);object.scale.copy(scale);object.quaternion.copy(rotation);object.updateMatrix();m.setMatrixAt(index,object.matrix);m.setColorAt(index,color.set(tint))}
  const scale=new Vector3(),identity=object.quaternion.clone()
  return {
+  backend:renderer.backend.isWebGPUBackend?'webgpu':'webgl2',
   update(nodes,edges,visible,visibleEdges,selected,colors,edgeColor){
    renderedNodes=nodes.filter(n=>visible.has(n.id));renderedEdges=edges.filter(e=>visibleEdges.has(e.id))
    const spheres=mesh(0,renderedNodes.length),bodies=mesh(1,renderedEdges.length),arrows=mesh(2,renderedEdges.length)
@@ -47,7 +48,7 @@ export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D'){
    renderer.render(scene,camera)
   },
   resize(w,h){width=Math.max(1,w);height=Math.max(1,h);renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(width,height,false);camera.aspect=width/height;camera.updateProjectionMatrix()},
-  project(n){const p=new Vector3(n.x,n.y,n.z||0).project(camera);return {x:(p.x+1)*width/2,y:(1-p.y)*height/2,visible:p.z>=0&&p.z<=1&&Math.abs(p.x)<=1&&Math.abs(p.y)<=1,depth:p.z}},
+  project(n){const p=new Vector3(n.x,n.y,n.z||0).project(camera);return {x:(p.x+1)*width/2,y:(1-p.y)*height/2,visible:p.z>=(camera.coordinateSystem===WebGLCoordinateSystem?-1:0)&&p.z<=1&&Math.abs(p.x)<=1&&Math.abs(p.y)<=1,depth:p.z}},
   fit(nodes){
    const box=new Box3();for(const n of nodes)box.expandByPoint(new Vector3(n.x,n.y,n.z||0))
    const center=nodes.length?box.getCenter(new Vector3()):new Vector3(),extent=nodes.length?box.getSize(new Vector3()).length()/2:50

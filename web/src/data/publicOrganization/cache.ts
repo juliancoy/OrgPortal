@@ -1,5 +1,17 @@
 export const PUBLIC_DATA_REFRESH_MS = 5 * 60 * 1000
 export type PublicReportEntry<T> = { url: string; data: T; etag: string | null; checkedAt: number; updatedAt?: number; lastModified?: string | null }
+const memory = new Map<string, PublicReportEntry<unknown>>()
+function remember(entry: PublicReportEntry<unknown>) {
+  memory.delete(entry.url)
+  memory.set(entry.url, structuredClone(entry))
+  if (memory.size > 128) memory.delete(memory.keys().next().value!)
+}
+const pending = new Map<string, Promise<PublicReportEntry<unknown>>>()
+let storage: IDBFactory | undefined
+function syncStorage() {
+  const current = typeof indexedDB === 'undefined' ? undefined : indexedDB
+  if (storage !== current) { memory.clear(); pending.clear(); storage = current }
+}
 const databaseName = 'orgportal-public-organization-data-v1'
 
 export function publicReportUrl(path: string) {
@@ -30,13 +42,20 @@ async function database(): Promise<IDBDatabase | null> {
   })
 }
 export async function readPublicReport<T>(path: string): Promise<PublicReportEntry<T> | null> {
-  const url = publicReportUrl(path), db = await database()
+  const url = publicReportUrl(path)
+  syncStorage()
+  const resident = memory.get(url)
+  if (resident) return structuredClone(resident) as PublicReportEntry<T>
+  const db = await database()
   if (!db) return null
   try {
     return await new Promise(resolve => {
       const transaction = db.transaction('reports', 'readonly')
       const request = transaction.objectStore('reports').get(url)
-      request.onsuccess = () => resolve(request.result || null)
+      request.onsuccess = () => {
+        if (request.result) remember(request.result)
+        resolve(request.result || null)
+      }
       request.onerror = () => resolve(null)
       transaction.onabort = () => resolve(null)
     })
@@ -45,6 +64,8 @@ export async function readPublicReport<T>(path: string): Promise<PublicReportEnt
 }
 export async function savePublicReport<T>(entry: PublicReportEntry<T>) {
   publicReportUrl(entry.url)
+  syncStorage()
+  remember(entry)
   const db = await database()
   if (!db) return
   try {
@@ -74,18 +95,28 @@ export async function refreshPublicReport<T>(path: string, options: {
     options.onCached?.(cached)
     if (!options.force && Date.now() - cached.checkedAt < PUBLIC_DATA_REFRESH_MS) return { ...cached, fromCache: true }
   }
-  const headers = new Headers()
-  if (cached?.etag) headers.set('If-None-Match', cached.etag)
-  else if (cached?.lastModified) headers.set('If-Modified-Since', cached.lastModified)
-  // Public reads never carry a session, OAuth token or permission context.
-  const response = await fetch(url, { signal: options.signal, headers, credentials: 'omit', cache: 'no-cache' })
-  let entry: PublicReportEntry<T>
-  if (response.status === 304 && cached) entry = { ...cached, checkedAt: Date.now() }
-  else {
-    if (!response.ok) throw new Error('Update unavailable. Showing the last saved data, if available.')
-    entry = { url, data: options.validate(await response.json()), etag: response.headers.get('ETag'), lastModified: response.headers.get('Last-Modified'), updatedAt: Date.now(), checkedAt: Date.now() }
+  let request = pending.get(url)
+  if (!request) {
+    // A view's cancellation must not cancel a request shared with another view.
+    request = (async () => {
+      const headers = new Headers()
+      if (cached?.etag) headers.set('If-None-Match', cached.etag)
+      else if (cached?.lastModified) headers.set('If-Modified-Since', cached.lastModified)
+      const response = await fetch(url, { headers, credentials: 'omit', cache: 'no-cache' })
+      let entry: PublicReportEntry<T>
+      if (response.status === 304 && cached) entry = { ...cached, checkedAt: Date.now() }
+      else {
+        if (!response.ok) throw new Error('Update unavailable. Showing the last saved data, if available.')
+        entry = { url, data: options.validate(await response.json()), etag: response.headers.get('ETag'), lastModified: response.headers.get('Last-Modified'), updatedAt: Date.now(), checkedAt: Date.now() }
+      }
+      await savePublicReport(entry)
+      return entry
+    })()
+    pending.set(url, request)
+    void request.finally(() => { if (pending.get(url) === request) pending.delete(url) }).catch(() => {})
   }
+  const entry = structuredClone(await request) as PublicReportEntry<T>
   options.signal?.throwIfAborted()
-  await savePublicReport(entry)
+  entry.data = options.validate(entry.data)
   return { ...entry, fromCache: false }
 }

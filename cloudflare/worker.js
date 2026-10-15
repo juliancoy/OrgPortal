@@ -1,3 +1,4 @@
+import { identityRequest, isResearchPage, researchAccess } from './identity.js';
 import { withEventSourcePreview } from '../web/eventSourcePreview.mjs';
 import { eventListingPreview } from '../web/eventListingPreview.mjs';
 import { deploymentResponse, deploymentCachePolicy, deploymentPath, isDeploymentAssetRequest } from '../web/deployment.mjs';
@@ -1088,11 +1089,8 @@ const productionWorker = {
       return handleVacantsParcelsPage(request, env);
     }
 
-    if (path.startsWith("/pidp")) {
-      return proxyRequest(request, env.PIDP_PROXY_ORIGIN || env.PIDP_API_ORIGIN, {
-        stripPrefix: "/pidp",
-        hostOnlyCookies: Boolean(tenantHost),
-      });
+    if (pathMatchesPrefix(path, "/pidp")) {
+      return identityRequest(request, env, path.slice(5) || "/");
     }
 
     if (path.startsWith("/auth/avatar/upload")) {
@@ -1200,12 +1198,21 @@ export default {
       const missing = await missingPortalResource(request, url.pathname, env.ORG_API_ORIGIN || env.GOVERNANCE_API_ORIGIN);
       if (missing) return missing;
     }
+    const research=isResearchPage(url.pathname);
+    if(research) {const denied=await researchAccess(request,env);if(denied)return denied;}
     const selected = await deploymentResponse(request, env, {
       enabled: tenant || url.pathname === deploymentPath,
       mount: 'root',
     });
-    if (selected) return selected;
+    if (selected) return research ? privateResearchResponse(selected) : selected;
     const response = await productionWorker.fetch(request, env);
+    if(research)return privateResearchResponse(response);
     return isDeploymentAssetRequest(request) ? deploymentCachePolicy(response, env) : response;
   },
 };
+
+function privateResearchResponse(response) {
+  const headers=new Headers(response.headers);
+  headers.set('cache-control','private, no-store');headers.set('vary','Cookie, Authorization');
+  return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
+}

@@ -33,7 +33,7 @@ export function normalizePidpBase(rawBase: string): string {
   } catch {
     if (isNativeCapacitorRuntime() && trimmed.startsWith('/')) {
       const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env
-      const nativeBase = env?.VITE_NATIVE_PIDP_BASE_URL?.trim() || 'https://id.orgportal.cc'
+      const nativeBase = env?.VITE_NATIVE_PIDP_BASE_URL?.trim() || 'https://orgportal.cc'
       return `${nativeBase.replace(/\/$/, '')}${trimmed}`
     }
     return trimmed.replace(/\/$/, '') || fallback
@@ -45,7 +45,7 @@ export function normalizePidpBase(rawBase: string): string {
 
   if (!isNativeCapacitorRuntime() && parsed.origin !== window.location.origin) {
     const firstPartyPidpHosts = new Set(['id.orgportal.cc', 'dev.id.orgportal.cc', 'id.codecollective.us', 'dev.id.codecollective.us'])
-    if (firstPartyPidpHosts.has(parsed.hostname)) return fallback
+    if (firstPartyPidpHosts.has(parsed.hostname) || (parsed.hostname === 'orgportal.cc' && parsed.pathname.replace(/\/+$/, '') === '/pidp')) return fallback
   }
 
   const lane = detectLane(window.location.hostname)

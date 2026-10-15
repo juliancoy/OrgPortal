@@ -69,3 +69,25 @@ describe('public organization IndexedDB cache', () => {
     expect((await refreshPublicReport(path, { validate })).data.recipients).toBe(578)
   })
 })
+
+it('shares concurrent refreshes without letting a departing view cancel another', async () => {
+  let finish!: (response: Response) => void
+  const fetcher = vi.fn(() => new Promise<Response>(resolve => { finish = resolve }))
+  vi.stubGlobal('fetch', fetcher)
+  const departing = new AbortController()
+  const first = refreshPublicReport(path, { validate, signal: departing.signal })
+  const rejected = expect(first).rejects.toThrow()
+  const second = refreshPublicReport(path, { validate })
+  await vi.waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1))
+  departing.abort()
+  finish(new Response(JSON.stringify({ recipients: 12 })))
+  await rejected
+  expect((await second).data.recipients).toBe(12)
+  expect(fetcher).toHaveBeenCalledTimes(1)
+})
+it('isolates renderer mutations from the shared memory cache', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ recipients: 12 }))))
+  const first = await refreshPublicReport(path, { validate })
+  first.data.recipients = 99
+  expect((await refreshPublicReport(path, { validate })).data.recipients).toBe(12)
+})

@@ -105,3 +105,8 @@ it('OrgPortal uses neutral destinations while preserving the shared account appl
   expect(login.origin).toBe('https://orgportal.cc')
   expect(login.searchParams.get('app')).toBe('orgportal')
 })
+
+it('keeps central path-mounted identity on the tenant proxy for browser cookies', () => {
+  vi.stubGlobal('window', {location:{origin:'https://lifetech.fyi',hostname:'lifetech.fyi'}})
+  expect(normalizePidpBase('https://orgportal.cc/pidp')).toBe('/pidp')
+})

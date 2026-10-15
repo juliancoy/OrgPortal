@@ -54,6 +54,6 @@ try{
  await page.goto('about:blank');await page.waitForTimeout(100);assert.deepEqual(errors,[])
  const unsupported=await browser.newContext();await unsupported.addInitScript(()=>Object.defineProperty(navigator,'gpu',{value:undefined}));const p=await unsupported.newPage()
  await p.route('**/ecosystem-data/ecosystem-*.json',r=>r.fulfill({json:r.request().url().endsWith('ecosystem-portal.json')?base:{organizations:[],relationships:[],financing:[]}}))
- await p.goto('http://127.0.0.1:5187/ecosystem/network/3d',{waitUntil:'domcontentloaded'});await p.getByText('3D WebGPU requires a supported browser and a secure connection. Use the Graph tab instead.',{exact:true}).waitFor();receipt.unsupported=true
+ await p.goto('http://127.0.0.1:5187/ecosystem/network/3d',{waitUntil:'domcontentloaded'});await p.waitForFunction(()=>document.querySelector('#network-status')?.textContent.includes('visible links'));assert.equal(await p.locator('canvas').getAttribute('data-backend'),'webgl2');receipt.webglFallback=true
  await writeFile('../artifacts/graph-3d/browser-check.json',JSON.stringify(receipt,null,2)+'\n');console.log(JSON.stringify(receipt))
 }finally{await browser.close()}

@@ -17,9 +17,9 @@
     "redact_query_string": true
   },
   "vars": {
-    "ORG_API_ORIGIN": "https://org-codecollective.jcloiacon.workers.dev",
-    "GOVERNANCE_API_ORIGIN": "https://org-codecollective.jcloiacon.workers.dev",
-    "PIDP_API_ORIGIN": "https://id.orgportal.cc",
+    "ORG_API_ORIGIN": "https://org-api.orgportal.cc",
+    "GOVERNANCE_API_ORIGIN": "https://org-api.orgportal.cc",
+    "PIDP_API_ORIGIN": "https://orgportal.cc/pidp",
     "PIDP_PROXY_ORIGIN": "https://pidp-codecollective.jcloiacon.workers.dev",
     "CHAT_API_ORIGIN": "https://chat-codecollective.jcloiacon.workers.dev",
     "ORGPORTAL_SITE_HOSTS": "orgportal.cc,medtech.social,lifetech.fyi,portal.deism.church"
@@ -39,6 +39,7 @@
     }
   ],
   "services": [
+    {"binding":"PIDP","service":"pidp-codecollective"},
     {
       "binding": "DEV_ASSETS",
       "service": "codecollective-site-preview"

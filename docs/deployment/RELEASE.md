@@ -90,3 +90,21 @@ checks pass. A domain can be reassigned to the old frontend for rollback; do not
 delete the old Worker or any of its static-site resources. Authenticated login
 checks use the isolated local deployment per AGENTS.md; live checks are public
 and read-only.
+
+## Identity mount and research access
+
+PIdP's canonical browser base is `https://orgportal.cc/pidp`. The frontend's
+`PIDP` service binding targets the existing `pidp-codecollective` Worker; PIdP
+remains independently released and retains its database, keys and account subjects.
+The central proxy strips `/pidp` and untrusted forwarding headers. Tenant proxies
+retain the validated requesting origin for browser-bound SSO. Registered provider
+callback URLs and existing OAuth issuers remain compatible.
+
+All `/ecosystem/network` pages require authentication in both the server Worker
+and the browser router. Server checks call PIdP's read-only `/auth/session` endpoint.
+Guests return through `/users/login?next=...`; outages fail closed with HTTP 503.
+Research HTML is private and must never be cached publicly. The evidence snapshots
+remain public data; IndexedDB caches them independently of session permissions.
+
+Deploy the PIdP endpoint before releasing the frontend gate. The identity routing
+cutover does not run migrations or merge primary/member accounts.
