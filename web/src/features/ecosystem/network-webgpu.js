@@ -77,7 +77,6 @@ function select(id) {
  if(org.administratorId){id=org.administratorId;org=data.organizations.find(o=>o.id===id);if(!org)return}
  previewSummaries=preparedData?.data===data?preparedData.summaries:networkPreviewSummaries(data)
  selected = id; inspectorKey='node:'+id; $('#neighbors').disabled=false
- $('#network-tooltip').hidden=true
  $('#network-detail').innerHTML = '<button type="button" data-unpin-node aria-label="Close pinned organization">Close</button>'+organizationPreview(org,previewSummaries); rewriteLinks();if(matchMedia('(max-width:900px)').matches){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
  const u = new URL(location.href); u.searchParams.set('org',id); history.replaceState(history.state,'',u)
  rebuild()
@@ -130,9 +129,9 @@ function rebuild() {
  simulation=createNetworkLayout(nodes,edges,forceOptions(),physicsEnabled(),()=>{geometryDirty=true;requestRender()})
  assignEdgeCurvature(edges)
  for(const n of nodes){
-  const button=document.createElement('button');button.type='button';button.textContent=n.name;button.title=`${n.name} · ${financialLabel(n)}`
+  const button=document.createElement('button');button.type='button';button.textContent=n.name
   if(n.financialPie){button.dataset.fundingSlices=String(n.financialPie.slices.length);button.dataset.fundingTotal=String(n.financialPie.total)}
-  button.setAttribute('aria-label',button.title);button.setAttribute('aria-pressed',String(n.id===selected));button.addEventListener('click',()=>select(n.id));bindNodePreview(button,n);labels.append(button);labelItems.push({button,n})
+  button.setAttribute('aria-label',`${n.name} · ${financialLabel(n)}`);button.setAttribute('aria-pressed',String(n.id===selected));button.addEventListener('click',()=>select(n.id));bindNodePreview(button,n);labels.append(button);labelItems.push({button,n})
  }
  if(!fitted){fit();fitted=true}requestRender()
 }
@@ -210,10 +209,10 @@ async function initGPU(){
    if(pointers.size===2){const next=pinchState();if(pinch){zoomGPU(next.distance/Math.max(1,pinch.distance),{clientX:next.x,clientY:next.y});view.x-=(next.x-pinch.x)/host.clientWidth*view.w;view.y-=(next.y-pinch.y)/host.clientHeight*view.h}pinch=next;requestRender()}
    else if(drag){view.x=drag.vx-(event.clientX-drag.x)/host.clientWidth*view.w;view.y=drag.vy-(event.clientY-drag.y)/host.clientHeight*view.h;requestRender()}return
   }
-  if(selected)return;const item=hit(event),tip=$('#network-tooltip');tip.hidden=!item.node;if(item.node){tip.textContent=`${item.node.name} · ${financialLabel(item.node)}`;previewNode(item.node)}else if(item.edge)previewEdge(item.edge);canvas.style.cursor=item.node||item.edge?'pointer':'grab'
+  if(selected)return;const item=hit(event);if(item.node)previewNode(item.node);else if(item.edge)previewEdge(item.edge);canvas.style.cursor=item.node||item.edge?'pointer':'grab'
  },{signal:abort.signal})
  const release=event=>{if(event.type==='pointerup'&&down&&Math.hypot(event.clientX-down.x,event.clientY-down.y)<6){const item=hit(event);if(item.node)select(item.node.id);else if(item.edge)previewEdge(item.edge)}pointers.delete(event.pointerId);down=null;pinch=null;drag=null;if(pointers.size===1){const a=[...pointers.values()][0];drag={x:a.x,y:a.y,vx:view.x,vy:view.y}}}
- canvas.addEventListener('pointerup',release,{signal:abort.signal});canvas.addEventListener('pointercancel',release,{signal:abort.signal});canvas.addEventListener('pointerleave',()=>{$('#network-tooltip').hidden=true},{signal:abort.signal})
+ canvas.addEventListener('pointerup',release,{signal:abort.signal});canvas.addEventListener('pointercancel',release,{signal:abort.signal})
 }
 async function start(){
  try {
