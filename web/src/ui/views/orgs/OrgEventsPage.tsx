@@ -26,6 +26,7 @@ type NetworkEvent = {
   ends_at?: string | null;
   location?: string | null;
   source_url?: string | null;
+  links?: { url: string; label?: string }[];
   image_url?: string | null;
   social_title?: string | null;
   social_description?: string | null;
@@ -639,7 +640,7 @@ export function OrgEventsPage() {
                 </div>
               ) : null}
               {(adminOrgs.some(org => org.id === event.host_org_id) || event.host_user_id === user?.id) ? <EventSlugEditor eventId={event.id} slug={event.slug} onSaved={() => void loadEvents()} /> : null}
-              <EventPosterTools slug={event.slug} title={event.title} revision={event.updated_at || JSON.stringify([event.title, event.description, event.social_title, event.social_description, event.starts_at, event.ends_at, event.location])} />
+              <EventPosterTools sourceUrl={event.source_url} eventLinks={event.links} slug={event.slug} title={event.title} revision={event.updated_at || JSON.stringify([event.title, event.description, event.social_title, event.social_description, event.starts_at, event.ends_at, event.location])} />
               <details className="portal-card" style={{ padding: "0.75rem" }}>
                 <summary>Social preview</summary>
                 <div

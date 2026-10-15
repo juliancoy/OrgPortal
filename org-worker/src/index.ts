@@ -1,6 +1,13 @@
 import { EventIntegrationError } from './eventPlatforms';
 import { bodyLimit } from 'hono/body-limit';
 import {publicInitiatives,initiativeAccess,saveInitiative,initiativeHistory} from './interventions';
+import { insertOwnedOrganization } from './organizationCreation';
+import { posterGallery } from './posterGallery';
+import { organizationFollowRoutes, dispatchFollowEventNotifications } from './organizationFollows';
+import { compareOrganizationActivity } from './organizationSearchActivity';
+import { personalizeSearch, type SearchResults } from './personalSearch';
+import { rankSearchResults } from './fuzzySearch';
+
 import { profileEvents } from './profileEvents';
 import policyPages from './generated/policyPages.json';
 import { runRetention } from './retention';
@@ -29,6 +36,7 @@ import { governanceDocumentRoutes, executeDocumentMotion, documentMotionDetail }
 import { photoTagRoutes } from './photoTags';
 import { venueVoteRoutes } from './venueVotes';
 import { companyVoteRoutes } from './companyVotes';
+import { profileFavoriteCompanies, setFavoriteCompaniesSharing } from './profileFavoriteCompanies';
 import { venueRankingRoutes } from './venueRankings';
 import { venueRoutes, eventVenues, setEventVenues, pastVenueEvents } from './venues';
 import { driveCarouselRoutes } from './driveCarousel';
@@ -39,7 +47,7 @@ import { availabilityRoutes } from './availability';
 import { timebankNotifications, markTimebankNotificationsRead, dispatchTimebankPush } from './timebankNotifications';
 import { importedListings, importedListingImage, importClaimDirectory, requestImportClaim, withdrawImportClaim, reviewImportClaims, resolveImportClaim, claimedImportRecords } from './timebankImports';
 import { Hono } from "hono";
-import { renderEventPoster, posterBackgroundImage, posterLogo, type PosterBackground, type PosterTheme } from "./eventPoster";
+import { posterLinkTarget, parsePosterElements, renderEventPoster, posterBackgroundImage, posterGalleryImage, posterLogo, type PosterBackground, type PosterTheme } from "./eventPoster";
 import { buildMetadata } from "./generated/buildMetadata";
 import { HTTPException } from "hono/http-exception";
 import { handleEventMcp, protectedResourceMetadata, eventErrorResponse } from "./eventMcp";
@@ -640,97 +648,6 @@ function slugify(value: string) {
     .replace(/^-+|-+$/g, "")
     .slice(0, 80);
   return slug || "contact";
-}
-
-function normalizeSearchText(value: unknown) {
-  return String(value || "")
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim()
-    .replace(/\s+/g, " ");
-}
-
-function searchTokens(value: unknown) {
-  const normalized = normalizeSearchText(value);
-  return normalized ? normalized.split(" ") : [];
-}
-
-function fuzzyDistanceLimit(token: string) {
-  if (token.length <= 2) return 0;
-  if (token.length <= 4) return 1;
-  return 2;
-}
-
-function boundedLevenshtein(a: string, b: string, maxDistance: number) {
-  if (Math.abs(a.length - b.length) > maxDistance) return maxDistance + 1;
-  if (a === b) return 0;
-  let previous = Array.from({ length: b.length + 1 }, (_, index) => index);
-  for (let i = 1; i <= a.length; i += 1) {
-    const current = [i];
-    let rowMin = current[0];
-    for (let j = 1; j <= b.length; j += 1) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      const value = Math.min(
-        current[j - 1] + 1,
-        previous[j] + 1,
-        previous[j - 1] + cost,
-      );
-      current[j] = value;
-      rowMin = Math.min(rowMin, value);
-    }
-    if (rowMin > maxDistance) return maxDistance + 1;
-    previous = current;
-  }
-  return previous[b.length];
-}
-
-function scoreSearchToken(queryToken: string, fieldToken: string) {
-  if (!queryToken || !fieldToken) return 0;
-  if (fieldToken === queryToken) return 70;
-  if (fieldToken.startsWith(queryToken)) return 58;
-  if (fieldToken.includes(queryToken)) return 45;
-  const maxDistance = fuzzyDistanceLimit(queryToken);
-  if (!maxDistance) return 0;
-  const distance = boundedLevenshtein(queryToken, fieldToken, maxDistance);
-  if (distance <= maxDistance) return 35 - distance * 8 + Math.min(queryToken.length, 8);
-  return 0;
-}
-
-function scoreSearchCandidate(query: string, fields: Array<unknown>) {
-  const normalizedQuery = normalizeSearchText(query);
-  const queryTokens = searchTokens(normalizedQuery);
-  if (!normalizedQuery || !queryTokens.length) return 0;
-
-  const normalizedFields = fields.map(normalizeSearchText).filter(Boolean);
-  const fieldTokens = normalizedFields.flatMap((field) => field.split(" "));
-  let score = 0;
-
-  for (const field of normalizedFields) {
-    if (field === normalizedQuery) score = Math.max(score, 140);
-    else if (field.startsWith(normalizedQuery)) score = Math.max(score, 115);
-    else if (field.includes(normalizedQuery)) score = Math.max(score, 95);
-  }
-
-  for (const token of queryTokens) {
-    const best = fieldTokens.reduce((bestScore, fieldToken) => Math.max(bestScore, scoreSearchToken(token, fieldToken)), 0);
-    if (!best) return 0;
-    score += best;
-  }
-
-  return score;
-}
-
-function rankSearchResults<T>(rows: T[], query: string, fieldsForRow: (row: T) => Array<unknown>, limit: number) {
-  const q = query.trim();
-  if (!q) return rows.slice(0, limit);
-  return rows
-    .map((row, index) => ({ row, index, score: scoreSearchCandidate(q, fieldsForRow(row)) }))
-    .filter((item) => item.score > 0)
-    .sort((a, b) => b.score - a.score || a.index - b.index)
-    .slice(0, limit)
-    .map((item) => item.row);
 }
 
 function searchCandidateLimit(limit: number) {
@@ -1507,12 +1424,13 @@ function flyerTheme(value: string | null): PosterTheme {
 function flyerBackground(value: string | null): PosterBackground {
   const normalized = String(value || "").trim().toLowerCase();
   if (normalized === "city" || normalized === "photo" || normalized === "image") return "city";
+  if (normalized === "gallery") return "gallery";
   if (normalized === "gradient") return "gradient";
   if (normalized === "lifetech") return "lifetech";
   return "solid";
 }
 
-async function eventFlyerSvg(env: Env, request: Request, event: EventRow, format: FlyerFormat, theme: PosterTheme, background: PosterBackground, backgroundOnly = false) {
+async function eventFlyerSvg(env: Env, request: Request, event: EventRow, format: FlyerFormat, theme: PosterTheme, background: PosterBackground, backgroundOnly = false, mediaId = "") {
   const publicUrl = await eventPublicUrl(env, request, event.slug);
   const tenant = await resolveGroupSite(env.DB, request);
   const name = event.organization_name || event.host_org_name || event.host_user_name || tenant.name || "Community event";
@@ -1524,6 +1442,26 @@ async function eventFlyerSvg(env: Env, request: Request, event: EventRow, format
     if (base.protocol === "https:" && asset.origin === base.origin
         && (asset.pathname.startsWith("/images/") || asset.pathname.startsWith("/assets/images/"))) {
       logo = await posterLogo(asset);
+    }
+  }
+  if (background === "gallery") {
+    // Retain old event-only IDs; scoped IDs come from the server-owned catalog.
+    const media = parseEventMedia(event.media_json).find(item => item.id === mediaId && item.kind === "image")
+      || (await posterGallery(env.DB, event)).find(item => item.id === mediaId);
+    if (!media) fail(404, "Gallery image is not available");
+    if (!media.image_key) {
+      backgroundData = await posterGalleryImage(media.url);
+      if (!backgroundData) fail(400, "Gallery image could not be loaded or is unsupported");
+    } else {
+      if (!env.SCAN_IMAGES) fail(404, "Gallery image is not available");
+      const object = await env.SCAN_IMAGES.get(media.image_key);
+      if (!object) fail(404, "Gallery image is not available");
+      const mime = object.httpMetadata?.contentType?.split(";")[0];
+      if (!mime || !["image/png", "image/jpeg", "image/webp", "image/gif"].includes(mime) || object.size > 8 * 1024 * 1024) {
+        await object.body.cancel();
+        fail(400, "Unsupported gallery image");
+      }
+      backgroundData = `data:${mime};base64,${arrayBufferToBase64(await object.arrayBuffer())}`;
     }
   }
   if (background === "lifetech") {
@@ -1544,7 +1482,7 @@ async function eventFlyerSvg(env: Env, request: Request, event: EventRow, format
       }
     }
   }
-  return renderEventPoster(event, publicUrl, format, { name, tagline: tenant.tagline, logo }, theme, { background, backgroundImage: backgroundData, backgroundOnly });
+  return renderEventPoster(event, posterLinkTarget(publicUrl, new URL(request.url).searchParams.get("link"), [event.source_url, ...parseEventLinks(event.event_links_json).map(item => item.url)]), format, { name, tagline: tenant.tagline, logo }, theme, { background, backgroundImage: backgroundData, backgroundOnly, elements: parsePosterElements(new URL(request.url).searchParams.get("elements")), ...Object.fromEntries(["zoom", "offsetX", "offsetY", "opacity", "dimming"].map(key => [key, new URL(request.url).searchParams.has(key) ? Number(new URL(request.url).searchParams.get(key)) : undefined])) });
 }
 
 async function publicEventBySlug(db: D1Database, rawSlug: string) {
@@ -2075,9 +2013,12 @@ async function upsertOrganization(db: D1Database, raw: Record<string, unknown>) 
 }
 
 async function createOrganization(env: Env, actor: OrganizationActor, payload: Record<string, unknown>) {
-  const row = await upsertOrganization(env.DB, payload);
-  if (!row) fail(500, "Organization creation failed");
-  await claimOrganization(env.DB, row.id, actor, nowIso());
+  const name = stringField(payload, 'name', 255) || 'Organization';
+  const row = await insertOwnedOrganization(env.DB, actor, {
+    name, slug: await uniqueTableSlug(env.DB, 'organizations', name),
+    description: stringField(payload, 'description', 5000), source_url: cleanUrl(payload.source_url),
+    image_url: cleanPublicAssetUrl(payload.image_url), tags: tagsField(payload), city: stringField(payload, 'city', 80),
+  }) as unknown as OrganizationRow;
   await provisionOrganizationChat(env, row.id);
   return row;
 }
@@ -2707,6 +2648,7 @@ app.route("/api/onboarding", onboardingRoutes(currentUser));
 app.route("/api/onboarding/settings", onboardingSettingsRoutes(currentUser));
 app.route("/api/identity-membership", identityMembershipRoutes(currentUser));
 app.route('/api/notifications/preferences', notificationPreferenceRoutes(currentUser));
+app.route('/api/network', organizationFollowRoutes(currentUser, mapEvent));
 app.route("/api/media/carousels", driveCarouselRoutes(currentUser));
 app.route("/api/photo-tags", photoTagRoutes(async (env,request)=>organizationActor(await currentUser(env,request),env)));
 
@@ -2808,11 +2750,11 @@ app.get("/api/network/notifications", async (c) => {
   const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "20", 10) || 20, 100));
   const rows = await c.env.DB.prepare(
     `SELECT * FROM user_notifications
-     WHERE user_id = ?
-     ORDER BY created_at DESC
+     WHERE user_id = ? AND (? = 0 OR (type = 'organization_event' AND status = 'unread'))
+     ORDER BY created_at DESC,id DESC
      LIMIT ?`,
   )
-    .bind(user.id, limit)
+    .bind(user.id, c.req.query('follow_events') === 'true' ? 1 : 0, limit)
     .all<NotificationRow>();
   return c.json((rows.results || []).map(mapNotification));
 });
@@ -3068,6 +3010,7 @@ async function networkUsers(env: Env, request: Request, query = "", limit = 500)
   const candidateLimit = q ? searchCandidateLimit(safeLimit) : safeLimit;
   const rows = await env.DB.prepare(
     `SELECT * FROM user_contact_pages
+     WHERE enabled = 1
      ORDER BY updated_at DESC
      LIMIT ?`,
   )
@@ -3139,6 +3082,27 @@ app.get("/api/network/replication/snapshot", async c => {
 });
 app.get("/api/network/replication/status", async c => { c.header("Cache-Control","no-store"); return c.json(await replicaStatus(c.env)); });
 
+app.get('/api/network/search', async c => {
+  c.header('Cache-Control','no-store');
+  c.header('Vary','Authorization');
+  const q = (c.req.query('q') || '').trim().slice(0,200);
+  const limit = Math.max(1,Math.min(Number.parseInt(c.req.query('limit') || '40',10) || 40,40));
+  const user = c.req.header('Authorization') ? await currentUser(c.env,c.req.raw) : null;
+  if (q.length < 2) return c.json({orgs:[],events:[],users:[],personalized:Boolean(user)});
+  const candidates = 160; // Same candidate pool for header suggestions and the full results page.
+  const publicPaths = ['/api/network/orgs/public','/api/network/events/public','/api/network/users/public'];
+  const responses = await Promise.all(publicPaths.map(path => {
+    const url = new URL(path,c.req.url);
+    url.search = new URLSearchParams({q,limit:String(candidates),upcoming_only:'true'}).toString();
+    const headers = new Headers(c.req.raw.headers);
+    headers.delete('Authorization');
+    return app.fetch(new Request(url,{headers}),c.env,c.executionCtx);
+  }));
+  if (responses.some(response=>!response.ok)) fail(503,'Search is temporarily unavailable.');
+  const [orgs,events,users] = await Promise.all(responses.map(response=>response.json())) as [SearchResults['orgs'],SearchResults['events'],SearchResults['users']];
+  const results = user ? await personalizeSearch(c.env.DB,user.id,q,{orgs,events,users}) : {orgs,events,users};
+  return c.json({orgs:results.orgs.slice(0,limit),events:results.events.slice(0,limit),users:results.users.slice(0,limit),personalized:Boolean(user)});
+});
 app.get("/api/network/orgs/public", async (c) => {
   const q = (c.req.query("q") || "").trim();
   const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "300", 10) || 300, 500));
@@ -3159,7 +3123,7 @@ app.get("/api/network/orgs/public", async (c) => {
   )
     .bind(...(q ? [] : [limit, offset]))
     .all<OrganizationRow & { upcoming_events_count: number }>();
-  const rankedRows = rankSearchResults(rows.results || [], q, (row) => [row.name, row.description, row.slug, row.tags, row.city], q ? limit + offset : limit).slice(q ? offset : 0);
+  const rankedRows = rankSearchResults(rows.results || [], q, (row) => [row.name, row.description, row.slug, row.tags, row.city], q ? limit + offset : limit, compareOrganizationActivity).slice(q ? offset : 0);
   return c.json(rankedRows.map((row) => mapOrganization(row, Number(row.upcoming_events_count || 0))));
 });
 
@@ -3355,18 +3319,25 @@ app.get("/api/network/events/public/:slug/media/:mediaId", async (c) => {
   return new Response(object.body, { status: 200, headers });
 });
 
+app.get("/api/network/events/public/:slug/poster-images", async (c) => {
+  const row = await publicEventBySlug(c.env.DB, c.req.param("slug"));
+  if (!row) fail(404, "Event not found");
+  const images = await posterGallery(c.env.DB, row);
+  return c.json(images.map(({ image_key, ...image }) => image), 200, { "cache-control": "no-store" });
+});
+
 app.get("/api/network/events/public/:slug/flyer.svg", async (c) => {
   const row = await publicEventBySlug(c.env.DB, c.req.param("slug"));
   if (!row) fail(404, "Event not found");
   const format = flyerFormat(c.req.query("format") || c.req.query("size") || null);
   const theme = flyerTheme(c.req.query("theme") || c.req.query("mode") || null);
   const background = flyerBackground(c.req.query("background") || c.req.query("bg") || null);
-  const svg = await eventFlyerSvg(c.env, c.req.raw, row, format, theme, background, c.req.query("backgroundOnly") === "true");
+  const svg = await eventFlyerSvg(c.env, c.req.raw, row, format, theme, background, c.req.query("backgroundOnly") === "true", c.req.query("mediaId") || "");
   const dispositionName = `${row.slug}-${format === "postcard" ? "4x6" : format}${theme === "dark" ? "-dark" : ""}${background !== "solid" ? `-${background}` : ""}-flyer.svg`;
   return new Response(svg, {
     headers: {
       "content-type": "image/svg+xml; charset=utf-8",
-      "cache-control": "public, max-age=300, s-maxage=900",
+      "cache-control": background === "gallery" ? "no-store" : "public, max-age=300, s-maxage=900",
       "content-disposition": `inline; filename="${dispositionName}"`,
     },
   });
@@ -5402,6 +5373,19 @@ app.get('/api/network/users/by-id/:userId/profile', async c => {
   return c.redirect(`/users/${encodeURIComponent(row.slug)}`, 302);
 });
 app.get("/api/network/users/public/:slug", async (c) => c.json(await publicContact(c.env, c.req.raw, c.req.param("slug"))));
+app.get("/api/network/users/public/:slug/favorite-companies", async c => {
+  c.header('Cache-Control', 'no-store');
+  const contact = await publicContact(c.env, c.req.raw, c.req.param('slug'));
+  const owner = c.req.header('Authorization') ? (await currentUser(c.env, c.req.raw)).id === contact.user_id : false;
+  return c.json(await profileFavoriteCompanies(c.env.DB, contact.user_id, contact.enabled, owner));
+});
+app.put("/api/network/contact/me/favorite-companies", async c => {
+  c.header('Cache-Control', 'no-store');
+  const user = await currentUser(c.env, c.req.raw);
+  const contact = await contactForUser(c.env, c.req.raw, user);
+  await setFavoriteCompaniesSharing(c.env.DB, user.id, await c.req.json().catch(() => null));
+  return c.json(await profileFavoriteCompanies(c.env.DB, user.id, Boolean(contact.enabled), true));
+});
 app.get("/api/network/users/public/:slug/events", async (c) => {
   const contact = await publicContact(c.env, c.req.raw, c.req.param("slug"));
   const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "60", 10) || 60, 200));
@@ -5479,13 +5463,24 @@ app.all("*", (c) => c.json({ detail: "Endpoint is not implemented in the Cloudfl
 
 function orgWorkerFetch(request: Request, env: Env, ctx: ExecutionContext) {
   const url = new URL(request.url);
-  if (env.ORGANIZATION_REPLICA_SOURCE && ["GET","HEAD"].includes(request.method)
-    && (/^\/api\/network\/orgs\/public\/[^/]+\/media\/[^/]+$/.test(url.pathname)
-      || /^\/api\/network\/initiatives\/public(?:\/[^/]+\/history)?$/.test(url.pathname))) {
+const privateFollowRoute = /^\/api\/network\/(following\/(events|orgs)|orgs\/[^/]+\/follow|notifications(?:\/.*)?)$/.test(url.pathname);
+  if (env.ORGANIZATION_REPLICA_SOURCE && privateFollowRoute) {
     const upstream = new URL(env.ORGANIZATION_REPLICA_SOURCE);
     upstream.pathname = upstream.pathname.replace(/\/network\/replication\/snapshot$/, "") + url.pathname.replace(/^\/api/, "");
     upstream.search = url.search;
-    return fetch(upstream.href,{method:request.method,redirect:"manual"});
+    return fetch(new Request(upstream.href,request),{redirect:'manual'});
+  }
+  if (env.ORGANIZATION_REPLICA_SOURCE && ["GET","HEAD"].includes(request.method)
+    && (/^\/api\/network\/orgs\/public\/[^/]+\/media\/[^/]+$/.test(url.pathname)
+      || /^\/api\/network\/initiatives\/public(?:\/[^/]+\/history)?$/.test(url.pathname)
+      || /^\/api\/network\/users\/public\/[^/]+\/favorite-companies$/.test(url.pathname)
+      || url.pathname === '/api/network/search')) {
+    const upstream = new URL(env.ORGANIZATION_REPLICA_SOURCE);
+    upstream.pathname = upstream.pathname.replace(/\/network\/replication\/snapshot$/, "") + url.pathname.replace(/^\/api/, "");
+    upstream.search = url.search;
+    return fetch(upstream.href,{method:request.method,redirect:"manual",
+      headers: (url.pathname.endsWith("/favorite-companies") || url.pathname === "/api/network/search") && request.headers.has("Authorization")
+        ? {Authorization: request.headers.get("Authorization")!} : undefined});
   }
   if (request.method === "GET" && (url.pathname === "/.well-known/oauth-protected-resource"
     || url.pathname === "/.well-known/oauth-protected-resource/api/org/mcp"
@@ -5502,6 +5497,7 @@ export default {
     ctx.waitUntil(runRetention(env.DB, controller.scheduledTime).then(counts => {
       console.info(JSON.stringify({event:'orgportal.retention',counts,backlog:Object.values(counts).some(n=>n===500)}));
     }).catch(() => { console.error(JSON.stringify({event:'orgportal.retention',outcome:'error'})); throw new Error('Retention cleanup failed'); }));
+    ctx.waitUntil(dispatchFollowEventNotifications(env.DB));
     ctx.waitUntil(replicateChangeJournal(env));
     ctx.waitUntil(Promise.all([runUbiTick(env.DB, controller.scheduledTime), dispatchTimebankPush(env)]));
     ctx.waitUntil(runOrganizationStatusEmail(env).then(() => runEmailDelivery(env)));

@@ -1,3 +1,4 @@
+import { GlobalSearchForm } from '../../components/GlobalSearchForm'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { setSeoMeta } from '../../utils/seo'
@@ -60,7 +61,7 @@ function formatEventDate(value?: string | null): string {
 
 export function GlobalSearchPage() {
   const portalProfile = getActivePortalProfileConfig()
-  const { token } = useAuth()
+  const { token, user } = useAuth()
   const [searchParams] = useSearchParams()
   const q = (searchParams.get('q') || '').trim()
   const requestedScope = (searchParams.get('scope') || 'all').trim().toLowerCase()
@@ -85,6 +86,8 @@ export function GlobalSearchPage() {
     })
   }, [q, scope, portalProfile.portalTitle])
 
+  useEffect(() => { cacheRef.current.clear() }, [token, user?.id])
+
   useEffect(() => {
     if (q.length < MIN_QUERY_LEN) {
       setStatus('Enter at least 2 characters to search.')
@@ -94,10 +97,11 @@ export function GlobalSearchPage() {
       return
     }
 
-    const cached = cacheRef.current.get(q)
+    const cacheKey = `${user?.id || "guest"}:${q}`
+    const cached = token ? undefined : cacheRef.current.get(cacheKey)
     if (cached) {
-      cacheRef.current.delete(q)
-      cacheRef.current.set(q, cached)
+      cacheRef.current.delete(cacheKey)
+      cacheRef.current.set(cacheKey, cached)
       setStatus('')
       setOrgs(cached.orgs)
       setEvents(cached.events)
@@ -108,32 +112,23 @@ export function GlobalSearchPage() {
     const controller = new AbortController()
     setStatus('Searching...')
 
-    Promise.all([
-      fetch(orgUrl(`/api/network/orgs/public?q=${encodeURIComponent(q)}&sort=popular&limit=40`), {
-        signal: controller.signal,
-      }),
-      fetch(orgUrl(`/api/network/events/public?q=${encodeURIComponent(q)}&upcoming_only=true&limit=40`), {
-        signal: controller.signal,
-      }),
-      fetch(orgUrl(`/api/network/users/public?q=${encodeURIComponent(q)}&sort=popular&limit=40`), {
-        signal: controller.signal,
-      }),
-    ])
-      .then(async ([orgResp, eventResp, userResp]) => {
-        if (!orgResp.ok || !eventResp.ok || !userResp.ok) {
-          throw new Error('Search is unavailable right now')
-        }
-        const [orgRows, eventRows, userRows] = await Promise.all([
-          orgResp.json() as Promise<SearchOrganization[]>,
-          eventResp.json() as Promise<SearchEvent[]>,
-          userResp.json() as Promise<SearchUser[]>,
-        ])
+    fetch(orgUrl(`/api/network/search?q=${encodeURIComponent(q)}&limit=40`), {
+      signal: controller.signal, cache: 'no-store',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    })
+      .then(async response => {
+        if (!response.ok) throw new Error('Search is unavailable right now')
+        const data = await response.json() as SearchCacheEntry
+        if (controller.signal.aborted) return
+        const orgRows = data.orgs
+        const eventRows = data.events
+        const userRows = data.users
         const next: SearchCacheEntry = {
           orgs: Array.isArray(orgRows) ? orgRows : [],
           events: Array.isArray(eventRows) ? eventRows : [],
           users: Array.isArray(userRows) ? userRows : [],
         }
-        cacheRef.current.set(q, next)
+        if (!token) cacheRef.current.set(cacheKey, next)
         if (cacheRef.current.size > CACHE_MAX) {
           const oldestKey = cacheRef.current.keys().next().value
           if (oldestKey) cacheRef.current.delete(oldestKey)
@@ -144,7 +139,7 @@ export function GlobalSearchPage() {
         setStatus('')
       })
       .catch((err: unknown) => {
-        if (err instanceof DOMException && err.name === 'AbortError') return
+        if (controller.signal.aborted || (err instanceof DOMException && err.name === 'AbortError')) return
         setOrgs([])
         setEvents([])
         setUsers([])
@@ -152,16 +147,15 @@ export function GlobalSearchPage() {
       })
 
     return () => controller.abort()
-  }, [q])
+  }, [q, token, user?.id])
 
   const total = useMemo(() => orgs.length + events.length + users.length, [events.length, orgs.length, users.length])
 
   return (
     <section className="panel search-page">
       <h1 style={{ marginTop: 0 }}>Search</h1>
-      <p className="muted" style={{ marginTop: 0 }}>
-        Query: <strong>{q || '(none)'}</strong>
-      </p>
+      <GlobalSearchForm key={q} initialQuery={q} />
+      {token && <p className="muted">Ranked for you using your memberships, connections, registrations, and favorites.</p>}
       {status ? <p className="muted">{status}</p> : <p className="muted">{total} results</p>}
 
       {!status ? (

@@ -1,11 +1,11 @@
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { Download, FileImage, Moon, Printer, RefreshCw, Sun, X } from 'lucide-react'
 import './eventPoster.css'
+import { applySettings, defaults, elementLabels, parsePosterSvg, parseSettings, type ElementId, type ElementLayout, type PosterSettings } from './posterEditorState'
 import { useGroupSite } from '../../config/timebankCommunity'
 
 type Format = 'letter' | 'letter-4up' | 'postcard' | 'social'
-type Theme = 'light' | 'dark'
-type Background = 'solid' | 'city' | 'gradient' | 'lifetech'
+type Background = 'solid' | 'city' | 'gradient' | 'lifetech' | 'gallery'
 const formats: Record<Format, { label: string; width: number; height: number; print: string }> = {
   letter: { label: '8.5 x 11', width: 2550, height: 3300, print: '8.5in 11in' },
   'letter-4up': { label: 'Letter 2 × 2', width: 2550, height: 3300, print: '8.5in 11in' },
@@ -13,55 +13,149 @@ const formats: Record<Format, { label: string; width: number; height: number; pr
   social: { label: 'Social', width: 1200, height: 630, print: '12in 6.3in' },
 }
 const backgrounds: Record<Background, string> = {
+  gallery: 'Event & organization images',
   solid: 'Solid color',
   city: 'Baltimore city photo',
   gradient: 'High-contrast gradient',
   lifetech: 'LifeTech plain artwork',
 }
 
-type Props = { slug: string; title: string; revision?: string; inline?: boolean }
+type Props = { slug: string; title: string; revision?: string; inline?: boolean; sourceUrl?: string | null; eventLinks?: { url: string; label?: string }[] }
 export function EventPosterTools({ inline = false, ...props }: Props) {
   const [open, setOpen] = useState(false)
-  if (inline) return <PosterEditor {...props} />
+  if (inline) return <PosterEditor key={props.slug} {...props} />
   return <div className="event-poster-entry">
     <button type="button" className="portal-button-secondary" aria-expanded={open} onClick={() => setOpen(value => !value)}>
       {open ? <X size={18} aria-hidden="true"/> : <FileImage size={18} aria-hidden="true"/>}{open ? 'Close poster' : 'Create poster'}
     </button>
-    {open && <PosterEditor {...props}/>}
+    {open && <PosterEditor key={props.slug} {...props}/>}
   </div>
 }
 
-function PosterEditor({ slug, title, revision = '' }: Props) {
+function PosterEditor({ slug, title, revision = '', sourceUrl, eventLinks = [] }: Props) {
   const id = useId()
   const tenant = useGroupSite()
   const isLifeTech = tenant?.home_org_slug === 'lifetech'
-  const [format, setFormat] = useState<Format>('letter')
-  const [theme, setTheme] = useState<Theme>('light')
-  const [background, setBackground] = useState<Background>('solid')
-  const [retry, setRetry] = useState(0)
-  const [poster, setPoster] = useState<{ url: string; blob: Blob; key: string } | null>(null)
-  const [error, setError] = useState('')
-  const [exporting, setExporting] = useState(false)
-  const key = JSON.stringify([slug, format, theme, background, revision, retry])
-  const ready = poster?.key === key ? poster : null
+  const storageKey = `orgportal:poster:v1:${slug}`
+  const [settings, setSettings] = useState<PosterSettings>(() => {
+    try { return parseSettings(localStorage.getItem(storageKey)) } catch { return { ...defaults } }
+  })
+  const { format, theme, background, mediaId, elements, selectedElement, zoom, offsetX, offsetY, opacity, dimming, link } = settings
+  function setter<K extends keyof PosterSettings>(key: K) {
+    return (value: PosterSettings[K] | ((old: PosterSettings[K]) => PosterSettings[K])) => setSettings(old => ({ ...old, [key]: typeof value === 'function' ? value(old[key]) : value }))
+  }
+  const links = [...new Set([sourceUrl, ...eventLinks.map(item => item.url)])].filter((url): url is string => {
+    try { const parsed = new URL(url || ''); return ['http:', 'https:'].includes(parsed.protocol) && !parsed.username && !parsed.password } catch { return false }
+  })
+  const selectedLink = links.includes(link) ? link : 'portal'
+  const setLink = setter('link')
+  const setFormat = setter('format'), setTheme = setter('theme'), setBackground = setter('background'), setMediaId = setter('mediaId')
+  const setElements = setter('elements'), setSelectedElement = setter('selectedElement')
+  const setZoom = setter('zoom'), setOffsetX = setter('offsetX'), setOffsetY = setter('offsetY'), setOpacity = setter('opacity'), setDimming = setter('dimming')
+  const [storageError, setStorageError] = useState(false)
+  useEffect(() => {
+    try { localStorage.setItem(storageKey, JSON.stringify({ version: 1, ...settings })); setStorageError(false) }
+    catch { setStorageError(true) }
+  }, [storageKey, settings])
+  function resetSettings() {
+    try { localStorage.removeItem(storageKey) } catch { /* Editing still works without storage. */ }
+    setSettings({ ...defaults })
+  }
+  const [gallery, setGallery] = useState<{ id: string; label: string; alt?: string; source: string; url: string }[]>([])
+  const [galleryStatus, setGalleryStatus] = useState('Loading gallery...')
+  const elementLayout = elements[selectedElement] || {}
+  function updateElement(change: ElementLayout) { setElements(value => ({ ...value, [selectedElement]: { ...value[selectedElement], ...change } })) }
+  const imageBackground = ['gallery', 'city', 'lifetech'].includes(background)
+  const crop = { zoom: String(zoom), offsetX: String(offsetX), offsetY: String(offsetY), opacity: String(opacity), dimming: String(dimming) }
+  const [galleryRetry, setGalleryRetry] = useState(0)
   useEffect(() => {
     const abort = new AbortController()
-    let url: string | undefined
-    const timeout = window.setTimeout(() => { setError('Poster request timed out. Try again.'); abort.abort() }, 30000)
-    setPoster(null); setError('')
-    const query = new URLSearchParams({ format, theme, background, version: '3', revision })
-    fetch(`/api/org/api/network/events/public/${encodeURIComponent(slug)}/flyer.svg?${query}`, { signal: abort.signal, cache: 'no-cache' })
+    setGallery([]); setGalleryStatus('Loading gallery...')
+    fetch(`/api/org/api/network/events/public/${encodeURIComponent(slug)}/poster-images`, { signal: AbortSignal.any([abort.signal, AbortSignal.timeout(15000)]), cache: 'no-cache' })
       .then(async response => {
-        if (!response.ok || !response.headers.get('content-type')?.includes('image/svg+xml')) throw new Error('Poster unavailable. Try again.')
-        const blob = await response.blob()
+        if (!response.ok) throw new Error()
+        const images = await response.json()
         if (abort.signal.aborted) return
-        url = URL.createObjectURL(blob)
-        setPoster({ url, blob, key })
+        setGallery(images); setGalleryStatus(images.length ? '' : 'No images yet. Add images to this event or an attached organization.')
+      })
+      .catch(() => { if (!abort.signal.aborted) setGalleryStatus('Could not load gallery.') })
+    return () => abort.abort()
+  }, [slug, revision, galleryRetry])
+  const selectedMediaId = gallery.some(item => item.id === mediaId) ? mediaId : ''
+  const [retry, setRetry] = useState(0)
+  const [poster, setPoster] = useState<{ svg: SVGSVGElement; key: string } | null>(null)
+  const preview = useRef<HTMLDivElement>(null)
+  const elementControls = useRef<HTMLDetailsElement>(null)
+  const [error, setError] = useState('')
+  const [exporting, setExporting] = useState(false)
+  // Layout controls never change this key: they are applied locally each frame.
+  const key = JSON.stringify([slug, format, theme, background, selectedMediaId, selectedLink, revision, retry])
+  const ready = poster?.key === key ? poster : null
+  useEffect(() => {
+    if (background === 'gallery' && !selectedMediaId) { setPoster(null); setError(''); return }
+    const abort = new AbortController()
+    setPoster(null); setError('')
+    const query = new URLSearchParams({ format, theme, background, version: '8', link: selectedLink, revision, mediaId: background === 'gallery' ? selectedMediaId : '' })
+    fetch(`/api/org/api/network/events/public/${encodeURIComponent(slug)}/flyer.svg?${query}`, { signal: AbortSignal.any([abort.signal, AbortSignal.timeout(30000)]), cache: 'no-cache' })
+      .then(async response => {
+        if (!response.ok || !response.headers.get('content-type')?.includes('image/svg+xml')) throw new Error()
+        const svg = parsePosterSvg(await response.text())
+        if (!abort.signal.aborted) setPoster({ svg, key })
       })
       .catch(() => { if (!abort.signal.aborted) setError('Poster unavailable. Try again.') })
-      .finally(() => window.clearTimeout(timeout))
-    return () => { window.clearTimeout(timeout); abort.abort(); if (url) URL.revokeObjectURL(url) }
-  }, [slug, format, theme, background, revision, retry, key])
+    return () => abort.abort()
+  }, [slug, format, theme, background, selectedMediaId, selectedLink, revision, retry, key])
+  useLayoutEffect(() => {
+    if (!ready || !preview.current) return
+    // Shadow DOM isolates SVG IDs and typography from the surrounding page.
+    const root = preview.current.shadowRoot || preview.current.attachShadow({ mode: 'open' })
+    const style = document.createElement('style')
+    style.textContent = ':host { display:block; width:100%; height:100% } :host > svg { width:100%; height:100%; display:block }'
+    style.textContent += ' [data-poster-element] { cursor:pointer; pointer-events:bounding-box } [data-poster-element]:hover, [data-poster-selected] { outline:2px dashed #33c6d4; outline-offset:4px }'
+    root.replaceChildren(style, ready.svg)
+    const select = (event: Event) => {
+      let target = (event.target as Element).closest('[data-poster-element]')
+      // SVG <use> retargets clicks to the copy, so hit-test its source artwork.
+      const copy = (event.target as Element).closest('use') as SVGUseElement | null
+      if (!target && copy && event instanceof MouseEvent) {
+        const matrix = copy.getScreenCTM()
+        if (matrix) {
+          const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse())
+          const nodes = [...ready.svg.querySelectorAll<SVGGElement>('[data-poster-element]')].reverse()
+          target = nodes.find(node => {
+            if (node.getAttribute('display') === 'none') return false
+            const transform = node.transform.baseVal.consolidate()?.matrix
+            const local = transform ? point.matrixTransform(transform.inverse()) : point
+            const box = node.getBBox()
+            return local.x >= box.x && local.x <= box.x + box.width && local.y >= box.y && local.y <= box.y + box.height
+          }) || null
+        }
+      }
+      const element = target?.getAttribute('data-poster-element') as ElementId | null
+      if (element && Object.hasOwn(elementLabels, element)) {
+        setSettings(old => ({ ...old, selectedElement: element }))
+        if (elementControls.current) elementControls.current.open = true
+      }
+    }
+    root.addEventListener('click', select)
+    return () => root.removeEventListener('click', select)
+  }, [ready])
+  useLayoutEffect(() => {
+    if (!ready) return
+    const frame = requestAnimationFrame(() => {
+      applySettings(ready.svg, settings)
+      for (const node of ready.svg.querySelectorAll('[data-poster-element]')) {
+        node.toggleAttribute('data-poster-selected', node.getAttribute('data-poster-element') === selectedElement)
+      }
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [ready, settings, selectedElement])
+  function posterBlob() {
+    if (!ready) throw new Error('Poster not ready')
+    // Apply synchronously too, so exporting in the same frame cannot use stale controls.
+    applySettings(ready.svg, settings)
+    return new Blob([new XMLSerializer().serializeToString(ready.svg)], { type: 'image/svg+xml' })
+  }
 
   function download(blob: Blob, extension: string, backgroundOnly = false) {
     const url = URL.createObjectURL(blob)
@@ -77,12 +171,13 @@ function PosterEditor({ slug, title, revision = '' }: Props) {
       const image = new Image()
       let backgroundUrl: string | undefined
       if (backgroundOnly) {
-        const query = new URLSearchParams({ format, theme, background, backgroundOnly: 'true', version: '3' })
+        const query = new URLSearchParams({ format, theme, background, backgroundOnly: 'true', version: '8', ...crop })
         const response = await fetch(`/api/org/api/network/events/public/${encodeURIComponent(slug)}/flyer.svg?${query}`, { signal: AbortSignal.timeout(30000) })
         if (!response.ok || !response.headers.get('content-type')?.includes('image/svg+xml')) throw new Error()
         backgroundUrl = URL.createObjectURL(await response.blob())
       }
-      image.src = backgroundUrl || ready.url
+      backgroundUrl ||= URL.createObjectURL(posterBlob())
+      image.src = backgroundUrl
       try { await image.decode() } finally { if (backgroundUrl) URL.revokeObjectURL(backgroundUrl) }
       const canvas = document.createElement('canvas')
       canvas.width = formats[format].width; canvas.height = formats[format].height
@@ -107,10 +202,15 @@ function PosterEditor({ slug, title, revision = '' }: Props) {
     image.alt = title
     image.onload = () => { popup.focus(); popup.print() }
     image.onerror = () => { popup.close(); setError('Print preview failed. Try again.') }
-    popup.document.head.append(style); popup.document.body.append(image); image.src = ready.url
+    const url = URL.createObjectURL(posterBlob())
+    image.addEventListener('load', () => URL.revokeObjectURL(url), { once: true })
+    image.addEventListener('error', () => URL.revokeObjectURL(url), { once: true })
+    popup.document.head.append(style); popup.document.body.append(image); image.src = url
   }
   return <section className="event-poster" aria-labelledby={id}>
     <h2 id={id}>Event poster</h2>
+    <p>{storageError ? "Settings could not be saved in this browser." : "Settings are saved automatically for this event in this browser."}</p>
+    <button type="button" onClick={resetSettings} disabled={exporting}>Reset all settings</button>
     <div className="event-poster-toolbar">
       <div className="event-poster-formats" role="group" aria-label="Poster format">
         {(Object.keys(formats) as Format[]).map(value => <button type="button" key={value} aria-pressed={format === value} onClick={() => setFormat(value)} disabled={exporting}>{formats[value].label}</button>)}
@@ -121,20 +221,61 @@ function PosterEditor({ slug, title, revision = '' }: Props) {
       </div>
       <label className="event-poster-background">
         <span>Background</span>
-        <select value={background} onChange={event => setBackground(event.target.value as Background)} disabled={exporting}>
+        <select aria-label="Background" value={background} onChange={event => setBackground(event.target.value as Background)} disabled={exporting}>
           {(Object.keys(backgrounds) as Background[]).filter(value => value !== 'lifetech' || isLifeTech).map(value => <option key={value} value={value}>{backgrounds[value]}</option>)}
         </select>
+      </label>
+      <label className="event-poster-background">
+        <span>Poster link</span>
+        <select aria-label="Poster link" value={selectedLink} onChange={event => setLink(event.target.value)} disabled={exporting}>
+          <option value="portal">This event page (OrgPortal)</option>
+          {links.map(url => <option key={url} value={url}>{eventLinks.find(item => item.url === url)?.label || 'Associated event'} — {url}</option>)}
+        </select>
+        <small>Used by the RSVP QR code and printed website.{!links.length && ' No external event link is attached yet.'}</small>
       </label>
       <div className="event-poster-actions">
         <button type="button" disabled={!ready || exporting} onClick={() => void downloadPng()} title="Download PNG"><Download size={18} aria-hidden="true"/>{exporting ? 'Exporting...' : 'PNG'}</button>
         {background === 'lifetech' && <button type="button" disabled={!ready || exporting} onClick={() => void downloadPng(true)} title={`Download plain background, ${formats[format].width} × ${formats[format].height} pixels`}><Download size={18} aria-hidden="true"/>Background PNG</button>}
-        <button type="button" disabled={!ready || exporting} onClick={() => ready && download(ready.blob, 'svg')} title="Download SVG"><FileImage size={18} aria-hidden="true"/>SVG</button>
+        <button type="button" disabled={!ready || exporting} onClick={() => ready && download(posterBlob(), 'svg')} title="Download SVG"><FileImage size={18} aria-hidden="true"/>SVG</button>
         <button type="button" disabled={!ready || exporting} onClick={print} title="Print poster"><Printer size={18} aria-hidden="true"/>Print</button>
       </div>
     </div>
+    {background === 'gallery' && <div className="event-poster-gallery" role="group" aria-label="Gallery background image">
+      {galleryStatus && <p role="status">{galleryStatus}</p>}
+      {galleryStatus === 'Could not load gallery.' && <button type="button" onClick={() => setGalleryRetry(value => value + 1)}>Retry gallery</button>}
+      {gallery.map((item, index) => <button type="button" key={item.id} aria-pressed={selectedMediaId === item.id} disabled={exporting} onClick={() => setMediaId(item.id)}>
+        <img src={item.url.startsWith('/api/') ? `/api/org${item.url}` : item.url} alt={item.alt || ''} loading="lazy"/>
+        <span>{item.label || `Image ${index + 1}`}<small style={{ display: 'block' }}>{item.source}</small></span>
+      </button>)}
+    </div>}
+    {imageBackground && (background !== 'gallery' || selectedMediaId) && <fieldset className="event-poster-crop" disabled={exporting}>
+      <legend>Adjust background image</legend>
+      <label>Opacity: {Math.round(opacity * 100)}%<input type="range" min="0" max="1" step="0.01" value={opacity} onChange={event => setOpacity(Number(event.target.value))}/></label>
+      <label>Background dimming: {Math.round(dimming * 100)}% (0% = full brightness)<input type="range" min="0" max="1" step="0.01" value={dimming} onChange={event => setDimming(Number(event.target.value))}/></label>
+      <label>Zoom: {Math.round(zoom * 100)}%<input type="range" min="1" max="3" step="0.05" value={zoom} onChange={event => setZoom(Number(event.target.value))}/></label>
+      <label>Horizontal position: {offsetX}<input type="range" min="-100" max="100" step="1" value={offsetX} onChange={event => setOffsetX(Number(event.target.value))}/></label>
+      <label>Vertical position: {offsetY}<input type="range" min="-100" max="100" step="1" value={offsetY} onChange={event => setOffsetY(Number(event.target.value))}/></label>
+      <button type="button" onClick={() => { setZoom(1); setOffsetX(0); setOffsetY(0); setOpacity(1); setDimming(.66) }}>Reset image</button>
+    </fieldset>}
+    <details ref={elementControls} className="event-poster-elements">
+      <summary>Adjust text and other elements</summary>
+      <fieldset className="event-poster-crop" disabled={exporting}>
+        <legend>Element settings</legend>
+        <label>Element<select aria-label="Element" value={selectedElement} onChange={event => setSelectedElement(event.target.value as ElementId)}>
+          {Object.entries(elementLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+        </select></label>
+        <label className="event-poster-visible"><input type="checkbox" checked={!elementLayout.hidden} onChange={event => updateElement({ hidden: !event.target.checked })}/>Show {elementLabels[selectedElement].toLowerCase()}</label>
+        <label>Size: {Math.round((elementLayout.scale ?? 1) * 100)}%<input type="range" min="0.25" max="3" step="0.05" value={elementLayout.scale ?? 1} onChange={event => updateElement({ scale: Number(event.target.value) })}/></label>
+        <label>Horizontal position: {elementLayout.x ?? 0}<input type="range" min="-100" max="100" value={elementLayout.x ?? 0} onChange={event => updateElement({ x: Number(event.target.value) })}/></label>
+        <label>Vertical position: {elementLayout.y ?? 0}<input type="range" min="-100" max="100" value={elementLayout.y ?? 0} onChange={event => updateElement({ y: Number(event.target.value) })}/></label>
+        <button type="button" onClick={() => setElements(value => { const next = { ...value }; delete next[selectedElement]; return next })}>Reset element</button>
+        <button type="button" onClick={() => setElements({})}>Reset all elements</button>
+      </fieldset>
+      <p>Click an element in the preview to select it. Positions are relative to the original layout. Hidden elements leave their space available for manual positioning.</p>
+    </details>
     {error && <div role="alert" className="event-poster-error">{error}<button type="button" title="Retry poster" onClick={() => setRetry(value => value + 1)}><RefreshCw size={18} aria-hidden="true"/>Retry</button></div>}
-    <div className={`event-poster-preview event-poster-preview-${format}`} aria-busy={!ready && !error}>
-      {ready ? <img src={ready.url} alt={`${title}, ${formats[format].label}, ${theme}, ${backgrounds[background]} poster`} onError={() => { setPoster(null); setError('Poster preview failed. Try again.') }}/> : <span role="status">{error ? 'Preview unavailable' : 'Generating poster...'}</span>}
+    <div className={`event-poster-preview event-poster-preview-${format}`} aria-busy={!ready && !error && (background !== 'gallery' || Boolean(selectedMediaId))}>
+      {ready ? <div ref={preview} role="img" aria-label={`${title}, ${formats[format].label}, ${theme}, ${backgrounds[background]} poster`}/> : <span role="status">{error ? 'Preview unavailable' : background === 'gallery' && !selectedMediaId ? 'Select a gallery image to preview your poster.' : 'Generating poster...'}</span>}
     </div>
   </section>
 }

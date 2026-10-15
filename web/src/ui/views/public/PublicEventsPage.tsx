@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type KeyboardEvent, type MouseEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
 import { downloadIcsEvent, outlookCalendarUrl } from '../../utils/calendar'
 import { useAuth } from '../../../app/AppProviders'
@@ -25,6 +25,8 @@ type PublicEvent = {
   ends_at?: string | null
   location?: string | null
   image_url?: string | null
+  organization_name?: string | null
+  organization_slug?: string | null
   attendance_count?: number | null
   attendance_source_url?: string | null
 }
@@ -61,7 +63,8 @@ export function PublicEventsPage({
   heading = 'Events',
   description = 'Browse upcoming and past events from users and organizations in the Org network.',
   emptyMessage = 'No events are listed right now.',
-}: { sourcePath?: string; heading?: string; description?: string; emptyMessage?: string } = {}) {
+  requiresAuth = false,
+}: { sourcePath?: string; heading?: string; description?: string; emptyMessage?: string; requiresAuth?: boolean } = {}) {
   const { token } = useAuth()
   const navigate = useNavigate()
   const [events, setEvents] = useState<PublicEvent[]>([])
@@ -102,7 +105,8 @@ export function PublicEventsPage({
     const controller = new AbortController()
     setEvents([])
     setStatus('Loading events…')
-    fetch(orgUrl(sourcePath), { signal: controller.signal })
+    if (requiresAuth && !token) { setStatus('Sign in to see followed events.'); return () => controller.abort() }
+    fetch(orgUrl(sourcePath), { signal: controller.signal, ...(requiresAuth ? { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' as const } : {}) })
       .then(async (resp) => {
         if (!resp.ok) {
           const text = await resp.text().catch(() => '')
@@ -113,6 +117,7 @@ export function PublicEventsPage({
         return data as PublicEvent[]
       })
       .then((data) => {
+        if (controller.signal.aborted) return
         setEvents(Array.isArray(data) ? data : [])
         setStatus('')
       })
@@ -122,7 +127,7 @@ export function PublicEventsPage({
         setStatus(err instanceof Error ? err.message : 'Unable to load events')
       })
     return () => controller.abort()
-  }, [sourcePath])
+  }, [sourcePath, requiresAuth, token])
 
   useEffect(() => {
     if (!token || events.length === 0) {
@@ -252,6 +257,7 @@ export function PublicEventsPage({
         <p className="public-event-eyebrow">Events</p>
         <h1>{heading}</h1>
         <p className="muted">{description}</p>
+        <nav className="public-events-feed-nav" aria-label="Event feeds"><Link to="/events">All events</Link><Link to="/following">Following</Link></nav>
       </div>
       {status ? <p className="muted">{status}</p> : null}
       {!status && events.length === 0 && <p role="status">{emptyMessage}</p>}
@@ -306,6 +312,7 @@ export function PublicEventsPage({
                     <h2>{event.title}</h2>
                   </div>
                   <div className="public-event-list-meta">
+                    {requiresAuth && event.organization_name && <span>{event.organization_slug ? <Link to={`/orgs/${encodeURIComponent(event.organization_slug)}`}>{event.organization_name}</Link> : event.organization_name}</span>}
                     <span>{event.starts_at?formatDate(event.starts_at):event.event_date?new Date(event.event_date+'T12:00:00').toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})+' · Time TBD':'TBD'}</span>
                     {event.location ? <span>{event.location}</span> : null}
                   </div>

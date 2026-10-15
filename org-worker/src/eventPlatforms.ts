@@ -67,6 +67,13 @@ export type EventIntegration = z.infer<typeof integrationSchema>;
 type ProviderFactory = (config: EventIntegration, apiKey: string) => EventProvider;
 // New platforms implement the same contract; callers cannot supply endpoints or credentials.
 export const eventProviders = new Map<string, ProviderFactory>();
+export function hasEventIntegration(env: Env, organizationId: string) {
+  try {
+    const all = JSON.parse(env.EVENT_INTEGRATIONS_JSON || '{}');
+    if (!all || typeof all !== 'object' || Array.isArray(all)) throw new Error();
+    return Object.hasOwn(all, organizationId);
+  } catch { throw new EventIntegrationError(503, 'Event integration configuration is invalid'); }
+}
 export function configuredProvider(env: Env, organizationId: string) {
   let config: EventIntegration;
   try {

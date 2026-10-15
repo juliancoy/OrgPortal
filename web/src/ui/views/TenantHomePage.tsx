@@ -1,3 +1,4 @@
+import { GlobalSearchForm } from '../components/GlobalSearchForm'
 import { useOrganizationAccess, resolveOrganizationView, useOrganizationViewPreference } from '../hooks/useOrganizationView'
 import { useEffect, useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
@@ -131,6 +132,7 @@ export function TenantHomePage() {
             <p className="tenant-home-eyebrow">{profile.tagline}</p>
             <h1 id="tenant-home-title">{tenant.home_heading || profile.brandName}</h1>
             <p>{tenant.home_description || `Welcome to the ${profile.brandName} portal.`}</p>
+        <GlobalSearchForm />
             <TenantHomeActions tenant={tenant} />
           </div>
         </section>

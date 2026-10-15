@@ -43,3 +43,9 @@ test('group profiles stay in OrgPortal even when the group has a custom homepage
     assert.equal(await missingPortalResource(new Request('https://orgportal.cc/orgs/lifetech?view=organizer#members', { method }), '/orgs/lifetech', 'https://org.example'), null);
   }
 });
+
+test('research graph aliases lead to the canonical OrgPortal profile', async () => {
+ const response = await missingPortalResource(new Request('https://lifetech.fyi/orgs/research-state-maryland?view=public'), '/orgs/research-state-maryland', 'https://org.example');
+ assert.equal(response.status,308);
+ assert.equal(response.headers.get('location'),'https://orgportal.cc/orgs/state-of-maryland?view=public');
+});

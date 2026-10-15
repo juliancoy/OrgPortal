@@ -515,3 +515,54 @@ The one-use preview includes the event version and exact next tags. The event ID
 registrations, venues and chat remain intact. `scripts/event-host.mjs` supports
 this flow and named connections. Slug corrections retain the previous slug as an
 alias in the same database batch as the rename.
+
+## Connection diagnostics (2026-10-13)
+
+The frontend must proxy both `/.well-known/oauth-protected-resource` and the
+resource-specific `/.well-known/oauth-protected-resource/api/org/mcp` to the API.
+The root path previously returned the frontend 404 page even though the
+resource-specific metadata and issuer discovery worked. A regression test in
+`cloudflare/orgportal-platform.test.mjs` now covers both paths. An unauthenticated
+MCP request should still return 401 with its resource-metadata challenge; do not
+remove OAuth or bypass membership checks to work around a disconnected client.
+A successful discovery response alone does not prove user sign-in is complete.
+
+The private standalone OrgPortal package was updated from 1.0.1 to 1.0.2 to use
+the existing PNG in `plugins/orgportal/assets/orgportal.png` for logo and composer
+icons in both manifests. Its identity, MCP URL, prompts and audience are unchanged.
+This private update is separate from the draft public 1.1.0 package. After updating,
+reopen the plugin and complete its account connection to expose authenticated tools.
+
+## Native event discovery (2026-10-13)
+
+`list_events` and `get_event` no longer require an external provider integration
+for OrgPortal-native records. Listing defaults to native hosted events when the
+organization has no entry in `EVENT_INTEGRATIONS_JSON`; explicitly use
+`source: "native"` for native records or `source: "provider"` for the external
+calendar. Configured-but-invalid integrations still fail visibly, rather than
+silently switching data sources. Native cursors are bound to their organization.
+
+Native reads return `systemOfRecord: "orgportal"`, the stable ID and ingest key,
+current fields, and `nativeEvent` arguments for `preview_org_event_changes`.
+Use that tool and its matching one-use apply receipt for portal edits. External
+provider changes still require configured credentials; a ChatGPT Luma connection
+does not automatically provision a Worker API key. No database or OAuth change
+is needed for native discovery. Existing organization-management permissions,
+resource scope, event scopes, and rate limits apply before any read.
+
+Baltimore MedTech and LifeTech remain distinct organizations. Membership in one
+does not grant access to the other. An active-membership error on LifeTech must
+be resolved through its existing account/membership workflow, not by changing
+provider configuration or copying an identity. Deploy from OrgPortal using
+`docs/deployment/RELEASE.md`; older CodeCollective release instructions above
+are historical and superseded.
+
+
+## Insert-only organization creation
+
+Organization creation uses a new UUID and a single database batch for the record,
+owner membership, ownership record and audit entry. It never calls the directory
+import upsert. A name/city or normalized source-URL match returns conflict without
+modifying the existing record. Preview and apply use the same normalized identity
+check; a race or failure rolls back creation. Existing events and memberships are
+not renamed, moved or reassigned. No migration is required.

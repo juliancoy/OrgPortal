@@ -1008,6 +1008,26 @@ test("tenant host public URLs are root-mounted even when shared portal base is c
   assert.match(flyer, /Scan to RSVP/);
   assert.match(flyer, /dark solid 4×6/);
   assert.match(flyer, /fill="#101820"/);
+
+  const bucket = new TimebankBucket();
+  await bucket.put("event-media/event-1/photo.png", new Uint8Array([1, 2, 3]), { httpMetadata: { contentType: "image/png" } });
+  db.events[0].media_json = JSON.stringify([{ id: "photo", url: "/api/network/events/public/founder-night/media/photo", kind: "image", image_key: "event-media/event-1/photo.png" }]);
+  const galleryUrl = "https://medtech.social/api/network/events/public/founder-night/flyer.svg?background=gallery";
+  for (const format of ["letter", "letter-4up", "postcard", "social"]) {
+    const response = await app.request(`${galleryUrl}&mediaId=photo&format=${format}`, {}, env(db, { SCAN_IMAGES: bucket.asR2() }));
+    assert.equal(response.status, 200);
+    const svg = await response.text();
+    assert.match(svg, /href="data:image\/png;base64,AQID"/);
+    assert.match(svg, /opacity="0\.66"/);
+    assert.match(svg, /Scan to RSVP/);
+  }
+  for (const mediaId of ["", "another-event-photo", "https://example.com/image.png"]) {
+    const response = await app.request(`${galleryUrl}&mediaId=${encodeURIComponent(mediaId)}`, {}, env(db, { SCAN_IMAGES: bucket.asR2() }));
+    assert.equal(response.status, 404);
+  }
+  await bucket.put("event-media/event-1/photo.png", new Uint8Array([1]), { httpMetadata: { contentType: "image/svg+xml" } });
+  assert.equal((await app.request(`${galleryUrl}&mediaId=photo`, {}, env(db, { SCAN_IMAGES: bucket.asR2() }))).status, 400);
+
 });
 
 test("removing uploaded event media deletes the backing R2 object", async () => {
@@ -2261,4 +2281,48 @@ test('event creation preserves an explicit organization ID without a source URL'
   }, env(db));
   assert.equal(response.status, 200);
   assert.equal(db.events[0].host_org_id, 'org-lifetech');
+});
+
+test('global search uses public fuzzy candidates, hides private profiles, and rejects an invalid ranking identity', async () => {
+  const db = new FakeD1();
+  db.organizations.push({id:'org-fuzzy',name:'Code Collective',slug:'code-collective',tags:'[]'});
+  db.contacts.push({id:'public-contact',user_id:'public-user',user_name:'Code Person',slug:'public-person',enabled:1,links:'[]'},
+    {id:'private-contact',user_id:'private-user',user_name:'Code Person',slug:'private-person',enabled:0,links:'[]'});
+  const ctx = {waitUntil() {},passThroughOnException() {},props:{}} as unknown as ExecutionContext;
+  const response = await app.fetch(new Request('https://org.example.test/api/network/search?q=cdo&limit=5'),env(db),ctx);
+  assert.equal(response.status,200);
+  assert.equal(response.headers.get('cache-control'),'no-store');
+  assert.equal(response.headers.get('vary'),'Authorization');
+  const result = await response.json() as {orgs:{id:string}[];users:{user_id:string}[];personalized:boolean};
+  assert.deepEqual(result.orgs.map(row=>row.id),['org-fuzzy']);
+  assert.deepEqual(result.users.map(row=>row.user_id),['public-user']);
+  assert.equal(result.personalized,false);
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response('{}',{status:401});
+  try {
+    const invalid = await app.fetch(new Request('https://org.example.test/api/network/search?q=cdo&user_id=public-user',{
+      headers:{Authorization:'Bearer invalid-test-token'},
+    }),env(db),ctx);
+    assert.equal(invalid.status,401);
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+
+test("signed-in and public People directories exclude disabled profiles, including chat robots", async () => {
+  const db = new FakeD1();
+  for (const [id,name,enabled] of [['person','Visible Person',1],['robot','Code Collective Chat Robot A',0],['private','Private Person',0]] as const) {
+    db.contacts.push({id,user_id:id,user_name:name,user_email:`${id}@example.test`,slug:id,enabled,links:'[]',created_at:'2026-10-09T00:00:00Z',updated_at:'2026-10-09T00:00:00Z'});
+  }
+  const publicResponse = await app.request('https://org.example.test/api/network/users/public',{},env(db));
+  assert.equal(publicResponse.status,200);
+  assert.deepEqual((await publicResponse.json() as Row[]).map(row=>row.user_id),['person']);
+  await withPidpUser({id:'viewer',email:'viewer@example.test'},async () => {
+    const options = {headers:{authorization:'Bearer viewer-token'}};
+    const response = await app.request('https://org.example.test/api/network/users',options,env(db));
+    assert.equal(response.status,200);
+    assert.deepEqual((await response.json() as Row[]).map(row=>row.user_id),['person']);
+    const search = await app.request('https://org.example.test/api/network/users?q=robot',options,env(db));
+    assert.equal(search.status,200);
+    assert.deepEqual(await search.json(),[]);
+  });
 });

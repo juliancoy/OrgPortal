@@ -79,6 +79,7 @@ const paths = [
   "/availability",
   "/onboarding",
   "/availability/:id",
+  "/following",
   "/events",
   "/events/:slug",
   "/orgs",
@@ -110,6 +111,12 @@ export function isPortalPagePath(path) {
   catch { return false; }
 }
 export async function missingPortalResource(request, path, apiOrigin) {
+  if (['GET', 'HEAD'].includes(request.method) && /^\/orgs\/research-state-maryland\/?$/.test(path)) {
+    const target = new URL(request.url);
+    target.hostname = 'orgportal.cc';
+    target.pathname = '/orgs/state-of-maryland';
+    return Response.redirect(target.toString(), 308);
+  }
   if (!apiOrigin || !['GET', 'HEAD'].includes(request.method) || path === '/users/me' || paths.includes(path.replace(/\/$/, '') || '/')) return null;
   const match = /^\/(events|orgs|users)\/([^/]+)\/?$/.exec(path);
   if (!match) return null;

@@ -1,0 +1,21 @@
+{
+  "trigger_name": "OrgPortal production",
+  "branch_includes": [
+    "main"
+  ],
+  "branch_excludes": [],
+  "path_includes": [
+    "web/**",
+    "shared/**",
+    "org-worker/**",
+    "chat-worker/**",
+    "cloudflare/**",
+    "scripts/release.mjs",
+    "docs/privacy/**"
+  ],
+  "path_excludes": [],
+  "root_directory": "/",
+  "build_command": "bash cloudflare/build.sh",
+  "deploy_command": "node scripts/release.mjs deploy all",
+  "build_caching_enabled": true
+}

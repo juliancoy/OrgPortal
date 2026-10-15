@@ -39,7 +39,7 @@ Apply only the reviewed migrations:
   display name and adds `orgportal.cc` to its login hosts and return origins.
   It preserves the application ID, slug, existing hosts, and account records.
 
-Shared frontend and org releases continue through CodeCollective. Keep
+Shared frontend and org releases now use the independent [OrgPortal workflow](RELEASE.md). Keep
 `orgportal.cc` in the frontend custom domains and tenant-host configuration,
 PIdP portal authentication origins, and chat origins. Deployment defaults use
 OrgPortal for public links and the shared identity display name. Group homepage URLs remain authoritative for branding and public home links.

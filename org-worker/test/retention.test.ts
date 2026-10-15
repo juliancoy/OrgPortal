@@ -14,6 +14,7 @@ test('expiry units, bounds, dry-run, retries and unresolved operations',async()=
  for(const name of ['email_segments','email_mailing_audit','email_campaign_previews'])sql.exec(`CREATE TABLE ${name}(id TEXT PRIMARY KEY,expires_at INTEGER);`);
  sql.exec('CREATE TABLE event_company_favorites(id TEXT PRIMARY KEY, expires_at TEXT);');
  sql.exec('CREATE TABLE event_company_votes(id TEXT PRIMARY KEY, expires_at TEXT);');
+ sql.exec('CREATE TABLE organization_follow_event_jobs(id TEXT PRIMARY KEY, expires_at TEXT); CREATE TABLE user_notifications(id TEXT PRIMARY KEY,type TEXT,created_at TEXT);');
  const now=1800000000000,cutoff=now-23*3600000;
  for(const name of ['email_segments','email_mailing_audit','email_campaign_previews']){sql.prepare(`INSERT INTO ${name} VALUES(?,?)`).run('expired',cutoff-1);sql.prepare(`INSERT INTO ${name} VALUES(?,?)`).run('valid',now+1000)}
  const put=sql.prepare("INSERT INTO event_mcp_operations VALUES(?, 'actor','org','event','fingerprint',?,0,?,NULL,'[]')");
@@ -25,6 +26,9 @@ test('expiry units, bounds, dry-run, retries and unresolved operations',async()=
  sql.prepare('INSERT INTO event_company_votes VALUES (?,?)').run('boundary-vote',new Date(cutoff).toISOString());
  for(let i=0;i<501;i++)sql.prepare('INSERT INTO private_newsletter_previews VALUES (?,?)').run(String(i),new Date(cutoff-1).toISOString());
  sql.prepare('INSERT INTO event_company_favorites VALUES (?,?)').run('expired-favorite',new Date(cutoff-1).toISOString());
+ sql.prepare('INSERT INTO user_notifications VALUES (?,?,?)').run('expired-event','organization_event',new Date(now-91*86400_000).toISOString());
+ sql.prepare('INSERT INTO user_notifications VALUES (?,?,?)').run('other','connection_request',new Date(now-91*86400_000).toISOString());
+ sql.prepare('INSERT INTO user_notifications VALUES (?,?,?)').run('recent-event','organization_event',new Date(now).toISOString());
  const db=adapter(sql) as unknown as D1Database;
  assert.equal((await runRetention(db,now,true)).private_newsletter_previews,501);
  assert.equal(sql.prepare('SELECT COUNT(*) n FROM email_oauth_states').get()!.n,2);
@@ -33,6 +37,8 @@ test('expiry units, bounds, dry-run, retries and unresolved operations',async()=
  const first=await runRetention(db,now);
  for(const name of ['email_segments','email_mailing_audit','email_campaign_previews']){assert.equal(first[name],1);assert.equal(sql.prepare(`SELECT id FROM ${name}`).get()!.id,'valid')}
  assert.equal(first.private_newsletter_previews,500);assert.equal(first.event_mcp_operations,2);assert.equal(first.email_oauth_states,1);
+ assert.equal(first.user_notifications,1);
+ assert.deepEqual(sql.prepare('SELECT id FROM user_notifications ORDER BY id').all().map(r=>r.id),['other','recent-event']);
  assert.equal(first.event_company_votes,1);
  assert.equal(first.event_company_favorites,1);
  assert.equal(sql.prepare('SELECT id FROM event_company_votes').get()!.id,'boundary-vote');

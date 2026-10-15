@@ -5,6 +5,7 @@ import { getDomainCommunity, getGroupSite, type GroupSite } from '../../config/t
 import { lazy, useEffect, useState } from 'react'
 import type { ReactElement } from 'react'
 import { Navigate, createBrowserRouter, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { RouteErrorPage } from '../components/RouteErrorPage'
 import { AppLayout } from '../shell/AppLayout'
 import { TimebankHeader } from '../shell/TimebankHeader'
 import App from '../../App'
@@ -260,7 +261,7 @@ export function createAppRouter() {
   const basename = portalBasePath() || '/'
 
   return createBrowserRouter(
-    [{ element: <PortalProfileBoundary />, children: [
+    [{ element: <PortalProfileBoundary />, errorElement: <RouteErrorPage />, children: [
       { path: '/', element: <HomeRoute /> },
       { path: '/portals/:tenantSlug', element: <TenantSlugHomePage /> },
       { path: '/finance', element: <EconomicOpsPage /> },
@@ -424,6 +425,7 @@ export function createAppRouter() {
           { path: '/availability', element: <AvailabilityPage /> },
           { path: '/onboarding', element: <OnboardingPage /> },
           { path: '/availability/:id', element: <AvailabilityPage /> },
+          { path: '/following', element: <AuthenticatedRoute><PublicEventsPage sourcePath="/api/network/following/events?limit=200" heading="Following" description="Upcoming events from organizations you follow." emptyMessage="Follow an organization to see its events here." requiresAuth /></AuthenticatedRoute> },
           { path: '/events', element: <PublicEventsRoute /> },
           { path: '/events/:slug', element: <PublicEventPage /> },
           { path: '/orgs', element: <PublicOrganizationsPage /> },

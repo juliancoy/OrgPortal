@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { renderEventPoster, posterLogo, posterGeometry } from '../src/eventPoster';
+import { posterLinkTarget, renderEventPoster, posterLogo, posterGeometry } from '../src/eventPoster';
 
 function luminance([r, g, b]: [number, number, number]) {
   const linear = [r, g, b].map(value => {
@@ -122,4 +122,62 @@ test('LifeTech artwork stays left of the QR code in every poster format, with a 
     assert.ok(Number(artwork[1]) < Number(qr[1]), `${format}: artwork must end before the QR code`);
     assert.match(svg, /<image href="data:image\/png;base64,BAUG"/);
   }
+});
+
+test('crop is bounded, clipped and shared by poster and plain-background exports', async () => {
+  for (const format of ['letter', 'letter-4up', 'postcard', 'social'] as const) {
+    const {width,height}=posterGeometry(format);
+    for (const backgroundOnly of [false,true]) {
+      const svg=await renderEventPoster({title:'Crop test'},'https://example.com',format,{name:'Test'},'light',{background:'gallery',backgroundImage:'data:image/png;base64,AQID',zoom:2,offsetX:50,offsetY:-50,backgroundOnly});
+      assert.ok(svg.includes(`x="${-width/4}" y="${-height*3/4}" width="${width*2}" height="${height*2}"`));
+      assert.ok(svg.includes(`width="${width}" height="${height}" overflow="hidden"`));
+    }
+  }
+  const svg=await renderEventPoster({title:'Limits'},'https://example.com','postcard',{name:'Test'},'light',{background:'gallery',backgroundImage:'data:image/png;base64,AQID',zoom:Infinity,offsetX:1000,offsetY:NaN});
+  assert.ok(svg.includes('x="200" y="0" width="400" height="600"'));
+  assert.ok(!svg.includes('NaN') && !svg.includes('Infinity'));
+});
+
+test('elements independently resize, move and hide in every format without reflowing others', async () => {
+  const event={title:'Editable title',starts_at:'2026-10-20T22:00:00Z',location:'City Garage'};
+  for (const format of ['letter','letter-4up','postcard','social'] as const) {
+    const base=await renderEventPoster(event,'https://example.com',format,{name:'Example'});
+    const svg=await renderEventPoster(event,'https://example.com',format,{name:'Example'},'light',{elements:{time:{hidden:true},title:{scale:1.5,x:10,y:-5},qr:{hidden:true}}});
+    assert.ok(!svg.includes('data-poster-element="time"'));
+    assert.ok(!svg.includes('data-poster-element="qr"'));
+    assert.ok(!svg.includes('Scan to RSVP'));
+    const {width,height}=posterGeometry(format);
+    assert.ok(svg.includes(`data-poster-element="title" transform="translate(${width/10} ${-height/20})`));
+    assert.ok(svg.includes('scale(1.5)'));
+    const date=(value:string)=>value.match(/<g data-poster-element="date"[^]*?<\/g>/)?.[0];
+    assert.equal(date(svg),date(base));
+  }
+});
+
+test('image opacity defaults and clamps without fading foreground text', async () => {
+  for (const format of ['letter', 'letter-4up', 'postcard', 'social'] as const) {
+    for (const [opacity, expected] of [[undefined, 1], [NaN, 1], [-1, 0], [2, 1], [.35, .35]] as const) {
+      const svg = await renderEventPoster({ title: 'Visible title' }, 'https://example.com', format, { name: 'Test' }, 'light', { background: 'gallery', backgroundImage: 'data:image/png;base64,AQID', opacity });
+      assert.match(svg, new RegExp(`data-poster-background="true"[^>]+opacity="${expected}"`));
+      assert.match(svg, /Visible title/);
+      assert.doesNotMatch(svg, /<g[^>]+opacity=/);
+    }
+  }
+});
+
+
+test('poster links only select safe URLs already associated with the event', () => {
+  const portal = 'https://example.org/events/test', luma = 'https://luma.com/example';
+  assert.equal(posterLinkTarget(portal, luma, [luma]), luma);
+  for (const value of ['portal', null, 'https://unrelated.example', 'javascript:alert(1)', 'https://user:password@example.com']) {
+    assert.equal(posterLinkTarget(portal, value, [luma, 'javascript:alert(1)', 'https://user:password@example.com']), portal);
+  }
+});
+
+test('zero dimming removes all fixed photo darkening', async () => {
+ for (const background of ['city','gallery','lifetech'] as const) {
+  const svg=await renderEventPoster({title:'Bright image'},'https://example.org','social',{name:'Test'},'light',{background,backgroundImage:'data:image/png;base64,AQID',dimming:0});
+  assert.match(svg,/data-poster-dimming="true" opacity="0"/);
+  assert.doesNotMatch(svg,/opacity="0\.66"|opacity="0\.26"/);
+ }
 });

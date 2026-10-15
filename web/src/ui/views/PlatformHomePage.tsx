@@ -1,3 +1,4 @@
+import { GlobalSearchForm } from '../components/GlobalSearchForm'
 import { type CSSProperties, useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
@@ -70,7 +71,8 @@ export function PlatformHomePage() {
         <p className="platform-eyebrow">OrgPortal</p>
         <h1 id="platform-title">A place for<br /><span>every community.</span></h1>
         <p className="platform-hero-description">Find organizations, meet people, and make things happen together. Each community brings its own identity. OrgPortal gives you a shared place to connect.</p>
-        <div className="platform-hero-actions"><a className="btn-primary" href={chatGptInstallUrl || '#chatgpt'}>Use OrgPortal with ChatGPT</a><Link className="btn-primary" to="/communities">Find your community</Link><Link className="btn-secondary" to={role === 'guest' ? '/users/login' : '/orgs'}>{role === 'guest' ? 'Sign in' : 'Your organizations'}</Link></div>
+        <GlobalSearchForm />
+        <div className="platform-hero-actions"><a className="btn-primary" href={chatGptInstallUrl || '#chatgpt'}>Use OrgPortal with ChatGPT</a><Link className="btn-primary" to="/communities">Find your community</Link><Link className="btn-secondary" to={role === 'guest' ? '/users/login' : '/orgs'}>{role === 'guest' ? 'Sign in' : 'Your organizations'}</Link>{role !== 'guest' && <Link className="btn-secondary" to="/following">Following</Link>}</div>
         <p className="platform-account-note">One account. Community membership by choice.</p>
       </section>
       <ChatGptIntegration />

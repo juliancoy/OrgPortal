@@ -3,7 +3,9 @@ import { categories, semantics, safeUrl } from './ecosystem.js'
 export const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))
 const e = escapeHtml
 export const evidenceLink = (url, label = 'View source ↗') => safeUrl(url) ? `<a href="${e(safeUrl(url))}" target="_blank" rel="noopener noreferrer">${e(label)}</a>` : '<span>Source not supplied</span>'
-export const organizationPagePath = org => `/orgs/${encodeURIComponent(org.portalSlug || org.id.replace(/^org-/, ''))}`
+export const organizationPagePath = org => org.portalSlug
+ ? `https://orgportal.cc/orgs/${encodeURIComponent(org.portalSlug)}`
+ : `https://orgportal.cc/search?q=${encodeURIComponent(org.name)}`
 export function organizationPicture(org) {
  const image=safeUrl(org.imageUrl)
  return image ? `<figure class="eco-inspector-picture"><img src="${e(image)}" alt="Published image for ${e(org.name)}" loading="lazy" referrerpolicy="no-referrer"><figcaption>${e(org.name)}${org.imageCaption ? ` · ${e(org.imageCaption)}` : ''} · ${evidenceLink(org.imageSourceUrl || org.website,'Image source ↗')}</figcaption></figure>` : '<p class="eco-note">No published picture supplied.</p>'

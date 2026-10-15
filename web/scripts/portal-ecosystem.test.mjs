@@ -86,3 +86,11 @@ test('official EIN identities never merge with portal directory records on name 
  assert.equal(result.organizations.length,2)
  assert.equal(result.organizations.find(o=>o.id==='nonprofit:012345678').portalSlug,undefined)
 })
+
+test('research nodes retain canonical portal slugs even when a website preview has no replacement image',async()=>{
+ const {organizationPagePath}=await import('../src/features/ecosystem/ecosystem-view.js')
+ const research={...base.organizations[0],id:'research-state-maryland',name:'State of Maryland',imageCaption:'Published website preview image'}
+ const data=mergePortalEvidence({...base,organizations:[research]},[{id:'md-budget:state-of-maryland',name:'State of Maryland',slug:'state-of-maryland',image_url:null}],[])
+ assert.equal(organizationPagePath(data.organizations[0]),'https://orgportal.cc/orgs/state-of-maryland')
+ assert.equal(organizationPagePath({id:'research-unregistered',name:'Unregistered agency'}),'https://orgportal.cc/search?q=Unregistered%20agency')
+})

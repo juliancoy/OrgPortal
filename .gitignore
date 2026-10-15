@@ -66,3 +66,11 @@ web/public/*.apk
 org-worker/src/generated/
 pidp/serverless/src/generated/
 chat-worker/src/generated/
+
+/.release/
+**/.wrangler/
+
+**/.release/
+
+# Generated validation receipts and disposable evidence databases
+/artifacts/
