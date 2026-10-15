@@ -31,7 +31,7 @@ test('missing pages return HTTP 404, noindex, and an empty HEAD body', async () 
 });
 
 test('network evidence views support direct navigation', () => {
-  for (const view of ['events', 'relationships', 'help']) {
+  for (const view of ['events', 'relationships', 'help', 'performance', 'overview', 'nonprofits', 'interventions']) {
     assert.equal(isPortalPagePath(`/ecosystem/network/${view}`), true);
     assert.equal(isPortalPagePath(`/ecosystem/network/${view}/missing`), false);
   }
