@@ -85,7 +85,7 @@ export function financialPull(edge) {
   ? Math.log1p(edge.amount/1000)/Math.log(10) : 0
 }
 
-export function layoutNetwork(nodes, edges, radius, center, { live = false, attraction = 1, repulsion = 1, proximity = 1 } = {}) {
+export function layoutNetwork(nodes, edges, radius, center, { live = false, attraction = 1, repulsion = 1, proximity = 1, centralGravity = 0 } = {}) {
  const radii=new Map(nodes.map(n=>[n.id,radius(n)])), size=n=>radii.get(n.id)
  const byId=new Map(nodes.map(n=>[n.id,n])), pairs=new Map()
  for(const edge of edges) {
@@ -106,8 +106,9 @@ export function layoutNetwork(nodes, edges, radius, center, { live = false, attr
   // Larger rendered area acts as gravitational mass; repulsion is local.
   .force('attraction',forceManyBody().strength(n=>12*attraction*(size(n)/10)**2).distanceMin(80))
   .force('charge',forceManyBody().strength(-80*repulsion).distanceMin(30).distanceMax(180))
-  .force('x',forceX(0).strength(.012*attraction))
-  .force('y',forceY(0).strength(.012*attraction))
+  // Optional pull to the fixed graph origin, weighted by rendered node area.
+  .force('centralX',forceX(0).strength(n=>.006*centralGravity*(size(n)/10)**2))
+  .force('centralY',forceY(0).strength(n=>.006*centralGravity*(size(n)/10)**2))
   .force('collision',forceCollide(n=>size(n)+12).strength(1).iterations(live?2:6))
   .force('crossings',forceCrossingAttraction(links,size))
   .force('edgeClearance',forceNodeEdgeRepulsion(nodes,links,size))

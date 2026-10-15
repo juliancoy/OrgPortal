@@ -126,3 +126,30 @@ test('distant endpoints do not expand force searches into empty world space',()=
  assert.ok(b.vx<0&&d.vx<0&&d.vy>0)
  assert.ok([a,b,c,d,near,far].every(n=>Number.isFinite(n.vx)&&Number.isFinite(n.vy)))
 })
+
+test('optional central gravity pulls larger nodes more strongly toward the fixed origin',()=>{
+ const run=centralGravity=>{
+  const nodes=[{id:'small',x:400,y:0},{id:'large',x:0,y:400}]
+  const sim=layoutNetwork(nodes,[],n=>n.id==='small'?6:30,()=>({x:0,y:0}),{live:true,attraction:0,repulsion:0,centralGravity})
+  sim.tick();return nodes
+ }
+ const off=run(0);assert.equal(off[0].x,400);assert.equal(off[1].y,400)
+ const lone=[{id:'alone',x:400,y:300}]
+ layoutNetwork(lone,[],()=>10,()=>({x:0,y:0}),{live:true,attraction:1}).tick()
+ assert.equal(lone[0].x,400);assert.equal(lone[0].y,300,'global attraction does not silently enable central gravity')
+ assert.deepEqual(run(undefined).map(n=>[n.x,n.y]),off.map(n=>[n.x,n.y]),'gravity defaults to off')
+ const on=run(1),strong=run(3)
+ assert.ok(on[0].x<400&&on[1].y<400,'both nodes accelerate toward the origin')
+ assert.ok(400-on[1].y>400-on[0].x,'larger rendered area produces stronger pull at equal distance')
+ assert.ok(strong[1].y<on[1].y,'strength control increases the central pull')
+ assert.equal(on[0].y,0);assert.equal(on[1].x,0,'pull has no sideways component')
+})
+test('central gravity remains finite and respects pinned nodes at maximum settings',()=>{
+ const nodes=Array.from({length:60},(_,i)=>({id:String(i),x:Math.cos(i)*600,y:Math.sin(i)*600}))
+ nodes[0].fx=nodes[0].x;nodes[0].fy=nodes[0].y
+ const edges=nodes.slice(1).map(n=>({...edge(1e12),source:'0',target:n.id}))
+ const sim=layoutNetwork(nodes,edges,()=>30,()=>({x:0,y:0}),{live:true,attraction:3,repulsion:3,centralGravity:3})
+ sim.tick(300)
+ assert.equal(nodes[0].x,nodes[0].fx);assert.equal(nodes[0].y,nodes[0].fy)
+ assert.ok(nodes.every(n=>[n.x,n.y,n.vx,n.vy].every(Number.isFinite)))
+})

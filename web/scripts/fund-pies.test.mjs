@@ -49,12 +49,12 @@ test('real TEDCO breakdown excludes portfolio overlap and preserves fund-specifi
 
 test('compact previews show both funding totals without evidence lists',async()=>{
  const {networkPreviewSummaries,organizationPreview}=await import('../src/features/ecosystem/ecosystem-view.js')
- const data={organizations:[{id:'a',name:'A'},{id:'b',name:'B',directory:true}],relationships:[{id:'award',source:'a',target:'b',kind:'transfer',amount:100,currency:'USD',financingId:'finance'}],financing:[{id:'finance',funderId:'a',recipientId:'b',kind:'transfer',amount:100,currency:'USD'}]}
+ const data={organizations:[{id:'a',name:'A'},{id:'b',name:'B',directory:true,portalSlug:'b'}],relationships:[{id:'award',source:'a',target:'b',kind:'transfer',amount:100,currency:'USD',financingId:'finance'}],financing:[{id:'finance',funderId:'a',recipientId:'b',kind:'transfer',amount:100,currency:'USD'}]}
  const summaries=networkPreviewSummaries(data)
  assert.deepEqual(summaries.totals.get('a'),{received:0,disbursed:100})
  assert.deepEqual(summaries.totals.get('b'),{received:100,disbursed:0})
  const html=organizationPreview(data.organizations[1],summaries)
- assert.match(html,/Total received/);assert.match(html,/Total disbursed/);assert.match(html,/href="\/orgs\/b"/)
+ assert.match(html,/Total received/);assert.match(html,/Total disbursed/);assert.match(html,/href="https:\/\/orgportal\.cc\/orgs\/b"/)
  assert.doesNotMatch(html,/View source|Documented relationships|eco-relations/)
 })
 
