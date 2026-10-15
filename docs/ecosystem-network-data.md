@@ -414,3 +414,36 @@ survive visits to other tabs. Reset persists the default controls for the curren
 view. Searches, selected organizations, neighbor-only mode and camera positions
 are not stored. Invalid saved values fall back to defaults, storage failures are
 ignored, and reduced-motion preferences still prevent animation.
+
+### Company location and post-funding retention
+
+The Overview dashboard includes a historical statewide company-location
+benchmark from TEDCO's *The Economic and Fiscal Impacts of TEDCO's Five Core
+Programs* (2018 observations, published in 2019). Footnote 5 spans PDF pages 7–8:
+432 assisted companies in the reconstructed source cohort, including 326 active
+Maryland companies, 43 outside Maryland, and 63 without operating information.
+The outside-Maryland share is **43 / 432 × 100 = 9.95%**. Unknown outcomes stay
+in the denominator; the result is neither 43 / 326 nor 43 / 369. No new funding
+observations or corporate identity matches are added to the money totals.
+
+The reviewed aggregate lives in `web/data/company-location-benchmark.json`.
+The public primary-source PDF is preserved at
+`web/public/ecosystem-data/sources/tedco-2018-impact.pdf`, SHA-256
+`cba9d9dbbab85d4640f5fffccd16ee3dbe09d710202b9c96ca335313833a76b8`.
+The embedded PDF metadata has an unrelated Howard County title; the visible
+cover and report contents identify TEDCO. Both the PDF and the transcription
+must be reviewed together before changing these counts. The later 2023 TEDCO
+study removes closed and out-of-state companies from its analytical database
+but does not give the original cohort and separate out-of-state count needed
+to replace this benchmark. This is not a current estimate.
+
+The requested percentage of Baltimore-funded companies that subsequently left
+Maryland is explicitly **not yet measurable** from the imported evidence.
+Maryland is the proposed departure boundary, which avoids treating moves
+between Baltimore City and nearby Maryland counties as departures from the
+state. An actual rate needs a defined Baltimore funding cohort, unique company
+identities, evidence of money received while located there, and a dated later
+relocation. Current recipient addresses, headquarters changes, facility
+closures, acquisitions and missing operating data cannot independently prove
+that sequence or a full corporate departure. The statewide aggregate supplies
+neither Baltimore origins nor company-level funding/relocation chronology.

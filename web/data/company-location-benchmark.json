@@ -1,0 +1,34 @@
+{
+  "id": "tedco-2018-company-location",
+  "observationYear": 2018,
+  "cohort": "TEDCO-supported companies reconstructed for the 2018 economic impact study",
+  "geography": "Maryland statewide; no Baltimore-only breakdown",
+  "totalCompanies": 432,
+  "inMaryland": 326,
+  "outsideMaryland": 43,
+  "operatingInformationUnavailable": 63,
+  "sourceTitle": "The Economic and Fiscal Impacts of TEDCO’s Five Core Programs",
+  "publisher": "Maryland Technology Development Corporation (TEDCO)",
+  "authors": "University of Baltimore Jacob France Institute and TEConomy Partners",
+  "sourceUrl": "https://www.tedcomd.com/sites/default/files/2019-02/TEDCO%202018%20Final.pdf",
+  "sourcePages": [
+    7,
+    8
+  ],
+  "sourceFootnote": 5,
+  "archiveUrl": "/ecosystem-data/sources/tedco-2018-impact.pdf",
+  "sourceSha256": "cba9d9dbbab85d4640f5fffccd16ee3dbe09d710202b9c96ca335313833a76b8",
+  "retrievedAt": "2026-10-15T03:31:37.480488+00:00",
+  "methodology": "Company counts transcribed from footnote 5, which begins on PDF page 7 and continues on page 8. The denominator includes the 63 companies without operating information; these are not treated as retained or as having left. Each source-reported company counts once, not once per award or per dollar. The study reconstructs its assisted-company portfolio using TEDCO records and companies from the earlier study; this is not a census of all publicly funded businesses.",
+  "limitations": [
+    "A statewide 2018 location snapshot, not a current departure rate or a Baltimore-funded cohort.",
+    "The source does not establish funding dates, original locations, relocation dates, or the order of funding and departure for the 43 companies.",
+    "TEDCO-supported does not establish a verified cash disbursement for every company. The report uses TEDCO data, commercial databases and web research; the aggregate is not an independent government location registry.",
+    "No company identities, funding amounts, repayment status or causes of relocation are assigned from these aggregate counts. They are not added to the transactional money totals."
+  ],
+  "laterReport": {
+    "observationYear": 2023,
+    "sourceUrl": "https://www.tedcomd.com/sites/default/files/2024-02/2023%20Economic%20Impact%20Study.pdf#page=7",
+    "note": "The later study removes firms that closed or moved out of state from its analytical database (footnote 7), but does not supply separate departure and original-cohort counts needed to update this percentage."
+  }
+}

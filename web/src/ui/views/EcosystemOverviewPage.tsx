@@ -1,6 +1,7 @@
 import {useEffect,useMemo,useRef,useState} from 'react'
 import {Link} from 'react-router-dom'
 import {loadNetworkViewData,type NetworkData} from '../../features/ecosystem/networkViewData'
+import {CompanyRetentionSummary} from '../../features/ecosystem/CompanyRetentionSummary'
 import {ecosystemOverview} from '../../features/ecosystem/ecosystemOverview'
 import {useNetworkViewport} from '../../features/ecosystem/useNetworkViewport'
 import '../../features/ecosystem/network.css'
@@ -31,8 +32,9 @@ export function EcosystemOverviewPage(){
     </div>
     {data.governmentCoverage&&<p className="eco-note">Government coverage: {data.governmentCoverage.recipientState} recipients · USAspending date filter {data.governmentCoverage.start} through {data.governmentCoverage.end}{data.governmentCoverage.retrievedAt?` · retrieved ${new Date(data.governmentCoverage.retrievedAt).toLocaleString()}`:''}.</p>}
     {data.nonprofitCoverage&&<p><Link to="/ecosystem/network/nonprofits">Nonprofit evidence →</Link> {data.nonprofitCoverage.profileCount} profiles and {data.nonprofitCoverage.grantRecordCount.toLocaleString()} grant observations. {dollars(stats.nonprofitUsd)} in reported grant volume is included above; {dollars(stats.futureNonprofitUsd)} approved for future payment is excluded. Annual revenue, expenses and balance sheets remain separate from the funding volume above.</p>}
+    <CompanyRetentionSummary/>
     <h2>Network coverage</h2>
-    <dl className="eco-overview-counts">
+    <dl className="eco-overview-counts" aria-label="Network coverage">
      {[[stats.relationships,'Relationships recorded'],[stats.connectedOrganizations,'Organizations with connections'],[stats.events,'Event occurrences'],[stats.sourceLinks,'Distinct evidence links'],[stats.fundingRecords,'Funding observations'],[stats.undisclosedOrOtherCurrency,'Funding records without a disclosed USD amount']].map(([value,label])=><div key={label}><dt>{label}</dt><dd>{count(Number(value))}</dd></div>)}
     </dl>
     <details><summary>How these totals are counted</summary><p>The totals use the full public network, including organizations hidden by graph filters. Financial records are deduplicated by government award ID, record links, and matching source, recipient, amount, date and evidence URL. Voided records are excluded. Negative obligations reduce the money total; zero-dollar records remain in the counts. Relationship and financing copies of the same evidence are counted once.</p><p>Undisclosed amounts and non-USD currencies are omitted from USD totals without assuming zero. Incoming and outgoing amounts are not added together. These figures measure the available evidence, not a complete census or an additive transactional ledger. True money velocity would require actual dated transfers and a defined money supply.</p><p>Events are deduplicated by archive event identity. Evidence refresh times indicate when public data was checked, not when an award was paid.</p></details>

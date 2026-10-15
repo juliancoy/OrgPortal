@@ -1,7 +1,7 @@
 .eco-overview .eco-overview-intro{font-size:1.15rem;margin-top:0}
 .eco-overview .eco-overview-metrics{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:18px;margin:20px 0}
 .eco-overview .eco-overview-metrics article{padding:24px;border:1px solid var(--line);border-radius:12px;background:var(--paper);min-width:0}
-.eco-overview .eco-overview-metrics h2{font-size:1rem;margin:0 0 12px}
+.eco-overview .eco-overview-metrics h2,.eco-overview .eco-overview-metrics h3{font-size:1rem;margin:0 0 12px}
 .eco-overview .eco-overview-metrics strong{display:block;font-size:clamp(1.5rem,3.2vw,2.8rem);font-variant-numeric:tabular-nums;overflow-wrap:anywhere;line-height:1.2}
 .eco-overview .eco-overview-money{border-top:4px solid #269c4a!important}
 .eco-overview .eco-overview-metrics p{font-size:.9rem;line-height:1.6}
@@ -12,3 +12,7 @@
 .eco-overview .eco-overview-counts dd{font-size:1.8rem;font-weight:700;margin:0;font-variant-numeric:tabular-nums}
 .eco-overview details{padding:20px 0}.eco-overview summary{cursor:pointer;font-weight:600}
 @media(max-width:700px){.eco-overview .eco-overview-metrics,.eco-overview .eco-overview-breakdown{grid-template-columns:1fr}.eco-overview .eco-overview-counts{grid-template-columns:repeat(2,minmax(0,1fr))}.eco-overview .eco-overview-metrics article{padding:18px}}
+
+.eco-company-retention{margin-block:28px;padding-block:8px;border-top:1px solid var(--line)}
+.eco-company-retention code{overflow-wrap:anywhere}
+.eco-company-retention li{margin-block:8px}
