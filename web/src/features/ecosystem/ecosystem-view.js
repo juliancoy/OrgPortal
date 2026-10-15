@@ -8,16 +8,17 @@ export function organizationPicture(org) {
  const image=safeUrl(org.imageUrl)
  return image ? `<figure class="eco-inspector-picture"><img src="${e(image)}" alt="Published image for ${e(org.name)}" loading="lazy" referrerpolicy="no-referrer"><figcaption>${e(org.name)}${org.imageCaption ? ` · ${e(org.imageCaption)}` : ''} · ${evidenceLink(org.imageSourceUrl || org.website,'Image source ↗')}</figcaption></figure>` : '<p class="eco-note">No published picture supplied.</p>'
 }
-export function organizationPreview(org, {pies,totals}) {
+export function organizationPreview(org, {pies,totals,obligationIds=new Set()}) {
  const image=safeUrl(org.imageUrl),pie=pies.get(org.id),amounts=totals.get(org.id) || {received:0,disbursed:0}
- return `<section class="eco-organization-preview"><h2><a href="${organizationPagePath(org)}">${e(org.name)}</a></h2>
+ const obligations=obligationIds.has(org.id),format=obligations?amount=>Number(amount).toLocaleString('en-US',{style:'currency',currency:'USD'}):formatPieAmount
+ return `<section class="eco-organization-preview"><h2>${org.portalSlug || org.directory ? `<a href="${organizationPagePath(org)}">${e(org.name)}</a>` : e(org.name)}</h2>
  ${image?`<figure class="eco-inspector-picture"><a href="${organizationPagePath(org)}"><img src="${e(image)}" alt="${e(org.name)}" loading="lazy" referrerpolicy="no-referrer"></a></figure>`:''}
  ${pie?`<div class="eco-fund-breakdown"><svg viewBox="-52 -52 104 104" role="img" aria-label="${e(pie.basis)}">${pie.slices.map(slice=>`<path d="${pieWedgePath(0,0,50,slice.startAngle,slice.endAngle)}" fill="${e(slice.color)}"><title>${e(slice.label)}: ${e(formatPieAmount(slice.amount))}</title></path>`).join('')}</svg></div>`:''}
- <dl class="eco-preview-totals" aria-label="Recorded USD funding"><dt>Total received</dt><dd>${e(formatPieAmount(amounts.received))}</dd><dt>Total disbursed</dt><dd>${e(formatPieAmount(amounts.disbursed))}</dd></dl>
- <a href="${organizationPagePath(org)}">Full company breakdown →</a></section>`
+ <dl class="eco-preview-totals" aria-label="Recorded USD funding"><dt>${obligations?'Net obligations to recipient':'Total received'}</dt><dd>${e(format(amounts.received))}</dd><dt>${obligations?'Net obligations by agency':'Total disbursed'}</dt><dd>${e(format(amounts.disbursed))}</dd></dl>
+ ${org.portalSlug || org.directory ? `<a href="${organizationPagePath(org)}">Full company breakdown →</a>` : `<p>${e(org.identifiers?.uei ? `UEI: ${org.identifiers.uei}` : org.sourceCategory || 'Public evidence')}</p>`}</section>`
 }
 export function networkPreviewSummaries(data) {
- return {pies:financialNodePies(data),totals:financialNodeTotals(data)}
+ return {pies:financialNodePies(data),totals:financialNodeTotals(data),obligationIds:new Set(data.relationships.filter(r=>r.financialMeasure==='cumulative_obligations').flatMap(r=>[r.source,r.target]))}
 }
 export function relationshipPreview(edge,data,summaries) {
  const id=value=>typeof value==='object'?value?.id:value
@@ -43,6 +44,7 @@ export function orgDetails(org, data, options = {}) {
   const dashboard = data.dashboard.find(d => d.organizationId === org.id)
   return `<p class="eco-eyebrow">${e(categories[org.category])}</p><h2>${e(org.name)}</h2>${organizationPicture(org)}<p>${e(org.type)}</p>
   <p>${e(org.relevance || 'Included in the documented funding network; proximity has not been scored.')}</p>
+  ${org.identifiers?.uei ? `<p><strong>UEI:</strong> ${e(org.identifiers.uei)}</p>` : ''}
   <p><strong>LifeTech proximity:</strong> ${org.proximity == null ? 'Not scored' : `${org.proximity}/100`}</p>
   ${dashboard ? `<p><strong>Dashboard contribution:</strong> ${e(dashboard.contribution)}</p>` : ''}
   ${org.directory ? `<p><a href="${organizationPagePath(org)}">Organization page →</a></p>` : ''}
@@ -58,7 +60,7 @@ export function orgDetails(org, data, options = {}) {
   <p class="eco-note">Source: ${e(org.sourceCategory || 'LifeTech Associates')}${org.sourceCategory === 'LifeTech curated addition' ? '' : org.sourceRows.length ? `, directory rows ${org.sourceRows.join(', ')}` : ', Funding Network'}. Personal contact columns are withheld; only matching organization role mailboxes are published.</p>`
 }
 export function relationshipTable(data) {
- return `<div class="eco-table-scroll"><table class="eco-table"><caption>All source relationships, including program terms and aggregate scopes</caption><thead><tr><th scope="col">Source → recipient / scope</th><th scope="col">Relationship</th><th scope="col">Amount / meaning</th><th scope="col">Evidence</th></tr></thead><tbody>${data.relationships.map(r=>`<tr data-source="${e(r.source || '')}" data-target="${e(r.target || '')}" data-kind="${e(r.kind || r.relationship)}" data-relationship="${e(r.relationship)}"><td>${e(r.sourceLabel)}<br>→ ${e(r.targetLabel)}</td><td>${e(r.type)}<small>${e(r.date)}</small></td><td>${e(r.amountLabel || '—')}<small>${e(semantics[r.kind] || r.relationship)}</small>${r.notes ? `<small>${e(r.notes)}</small>` : ''}</td><td>${evidenceLink(r.sourceUrl)}<small>${e(r.evidence)}</small><small>${e(r.provenance.sheet)}${r.provenance.row ? ` · row ${r.provenance.row}` : ''}</small></td></tr>`).join('')}</tbody></table></div>`
+ return `<div class="eco-table-scroll"><table class="eco-table"><caption>All source relationships, including program terms and aggregate scopes${data.governmentCoverage ? ` · USAspending: ${e(data.governmentCoverage.awardCount)} Maryland-recipient grants matching the date filter ${e(data.governmentCoverage.start)} through ${e(data.governmentCoverage.end)}; cumulative obligations, not period spending or cash payments. Redacted: ${e(data.governmentCoverage.unidentifiedAwardCount)} awards totaling ${e(Number(data.governmentCoverage.unidentifiedObligationsUsd).toLocaleString('en-US',{style:'currency',currency:'USD'}))} net obligations.` : ''}</caption><thead><tr><th scope="col">Source → recipient / scope</th><th scope="col">Relationship</th><th scope="col">Amount / meaning</th><th scope="col">Evidence</th></tr></thead><tbody>${data.relationships.map(r=>`<tr data-source="${e(r.source || '')}" data-target="${e(r.target || '')}" data-kind="${e(r.kind || r.relationship)}" data-relationship="${e(r.relationship)}"><td>${e(r.sourceLabel)}<br>→ ${e(r.targetLabel)}</td><td>${e(r.type)}<small>${e(r.date)}</small></td><td>${e(r.amountLabel || '—')}<small>${e(semantics[r.kind] || r.relationship)}</small>${r.notes ? `<small>${e(r.notes)}</small>` : ''}</td><td>${evidenceLink(r.sourceUrl)}<small>${e(r.evidence)}</small><small>${e(r.provenance.sheet)}${r.provenance.row ? ` · row ${r.provenance.row}` : ''}</small></td></tr>`).join('')}</tbody></table></div>`
 }
 export function financingTable(data) {
  return `<div class="eco-table-scroll"><table class="eco-table"><caption>Financing & Money Flows — separate source records, not an additive transaction ledger</caption><thead><tr><th scope="col">Funder → recipient / vehicle</th><th scope="col">Amount / classification</th><th scope="col">Period & scope</th><th scope="col">Evidence & caveats</th></tr></thead><tbody>${data.financing.map(f=>`<tr><td>${e(f.funder)}<br>→ ${e(f.recipient)}</td><td><strong>${e(f.amountLabel)}</strong><small>${e(semantics[f.kind])}</small><small>${e(f.type)}</small></td><td>${e(f.date)}<small>${e(f.scope)}</small></td><td>${evidenceLink(f.sourceUrl)}<small>${e(f.evidence)} · row ${f.provenance.row}</small><small>${e(f.notes)}</small></td></tr>`).join('')}</tbody></table></div>`

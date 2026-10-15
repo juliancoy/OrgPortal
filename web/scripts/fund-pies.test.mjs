@@ -49,7 +49,7 @@ test('real TEDCO breakdown excludes portfolio overlap and preserves fund-specifi
 
 test('compact previews show both funding totals without evidence lists',async()=>{
  const {networkPreviewSummaries,organizationPreview}=await import('../src/features/ecosystem/ecosystem-view.js')
- const data={organizations:[{id:'a',name:'A'},{id:'b',name:'B'}],relationships:[{id:'award',source:'a',target:'b',kind:'transfer',amount:100,currency:'USD',financingId:'finance'}],financing:[{id:'finance',funderId:'a',recipientId:'b',kind:'transfer',amount:100,currency:'USD'}]}
+ const data={organizations:[{id:'a',name:'A'},{id:'b',name:'B',directory:true}],relationships:[{id:'award',source:'a',target:'b',kind:'transfer',amount:100,currency:'USD',financingId:'finance'}],financing:[{id:'finance',funderId:'a',recipientId:'b',kind:'transfer',amount:100,currency:'USD'}]}
  const summaries=networkPreviewSummaries(data)
  assert.deepEqual(summaries.totals.get('a'),{received:0,disbursed:100})
  assert.deepEqual(summaries.totals.get('b'),{received:100,disbursed:0})

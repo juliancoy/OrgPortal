@@ -22,8 +22,14 @@ for(const file of files){
  }
 }
 const curated=JSON.parse(await readFile(new URL('../public/ecosystem-data/ecosystem-research.json',import.meta.url)))
+const government=JSON.parse(await readFile(new URL('../public/ecosystem-data/ecosystem-government.json',import.meta.url)))
 const result={updatedAt:new Date().toISOString(),organizations:[...organizations.values(),...curated.organizations],events:[...events.values()].sort((a,b)=>b.date.localeCompare(a.date)),relationships:curated.relationships,financing:curated.financing}
 await writeFile(new URL('../public/ecosystem-data/ecosystem-history.json',import.meta.url),JSON.stringify(result)+'\n')
 const { events: _events, ...relationships } = result
+relationships.organizations.push(...government.organizations)
+relationships.relationships=[...relationships.relationships,...government.relationships]
+relationships.governmentCoverage=government.coverage
 await writeFile(new URL('../public/ecosystem-data/ecosystem-relationships.json',import.meta.url),JSON.stringify(relationships)+'\n')
 console.log(`Collected ${result.events.length} event occurrences across ${organizations.size} source organizations`)
+
+await import('./build-initiative-directory.mjs')

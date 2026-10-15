@@ -19,6 +19,23 @@ of production data, creation of identity mappings, or bypassing preview/approval
 | Group mailing lists | Group-specific live organizer authorization; self-only preferences; one-use preview receipts; outbox role/consent rechecks; private segment/audit expiry through bounded retention; isolated regression tests | Verify release/cron; sender setup remains operator-controlled. Account erasure must remove selections, receipts and audit actor links and address older email/journal/provider copies |
 | Public website policy | Public `/api/org/privacy`, `/api/org/support`, `/api/org/terms` routes are generated from repository policy documents | Verify deployed content and listing URLs; regeneration is part of the backend build |
 
+## Public intervention planning
+
+`ecosystem_initiatives` stores public organization-owned plans;
+`ecosystem_initiative_versions` retains their published revisions. `updated_at`
+is the annual-review clock, enforced by operator review rather than automated
+expiry. A manager-confirmed deletion removes the plan and cascades all versions;
+minimal audit entries contain IDs/revision only. Review and remove this minimal
+audit within 12 months under the audit policy; no new automatic cleanup is claimed.
+Do not enter private people or contact details in public plans. Account erasure
+reviews audit actor references under the existing shared-record process.
+
+Include both tables in backup/restore and correction/deletion inventories.
+Reapply confirmed deletions before restored data is served and remove related
+exports. Browser drafts are page memory only. Production schema/publication and
+authenticated browser acceptance are pending; API permission, receipt, stale-edit,
+rollback and cascading-deletion checks run against isolated test databases.
+
 ## Inventory and monthly review
 
 Maintain a restricted operational inventory outside this public repository:
@@ -134,3 +151,11 @@ Cloudflare evidence: https://developers.cloudflare.com/workers/observability/log
 (maximum seven-day built-in log retention at the October 7 review). Account-level
 Logpush job inventory was empty; both backend Workers had no tail consumers.
 This evidence does not cover independent copies outside this Cloudflare account.
+
+Ecosystem journal coverage: migration 0088 explicitly excludes reproducible
+public government/IRS observations from payload journaling; their reviewed source
+artifacts and checksums support reconstruction. Initiative content and deletable
+revision history are also excluded. Mutations retain only organization ID and
+revision in the existing minimal audit metadata; do not add plan content to the
+immutable journal. Apply the manual audit retention and backup-restoration rules
+above. This is not an automated annual deletion job.

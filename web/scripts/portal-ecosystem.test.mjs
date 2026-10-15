@@ -79,3 +79,10 @@ test('directory matching preserves exact IDs and ambiguous name/website evidence
  assert.equal(merged.organizations.find(o=>o.id==='b').portalSlug,'exact')
  assert.equal(merged.organizations.find(o=>o.id==='c').portalSlug,'unique')
 })
+
+test('official EIN identities never merge with portal directory records on name alone',()=>{
+ const base={organizations:[{id:'nonprofit:012345678',name:'Example Foundation',identifiers:{ein:'012345678'}}],relationships:[],financing:[]}
+ const result=mergePortalEvidence(base,[{id:'portal-foundation',slug:'foundation',name:'Example Foundation',tags:[]}],[])
+ assert.equal(result.organizations.length,2)
+ assert.equal(result.organizations.find(o=>o.id==='nonprofit:012345678').portalSlug,undefined)
+})

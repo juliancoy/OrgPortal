@@ -94,3 +94,269 @@ sizes, wheel zoom over labels, internal panel scrolling and dialog access. The
 `ECOSYSTEM_RENDERER=webgl` to repeat the browser check with WebGL enabled.
 Screenshots: `docs/screenshots/ecosystem-viewport-desktop.png` and
 `docs/screenshots/ecosystem-viewport-mobile.png`.
+
+## Direct government award feed (October 14, 2026)
+
+`npm run sync:government` in `web/` fetches Maryland-recipient federal grants
+(types 02–05), defaulting to the October 1, 2024–September 30, 2025 date filter.
+Pass alternative dates with `npm run sync:government -- YYYY-MM-DD YYYY-MM-DD`.
+USAspending's default award date filter compares the latest action date against
+start and the base transaction date against end. It is an overlap query, not a
+claim that all returned awards began or incurred their full amounts in FY2025.
+Amounts are lifetime cumulative obligations, not cash payments or period spending.
+Loans, contracts, subawards and other states are outside this first feed.
+
+The importer reconciles unique award IDs against the independent grant count.
+USAspending caps searches at 10,000 even with `hasNext=false`; inclusive obligation
+amount ranges recover the tail, deduplicating the boundary award. A count mismatch,
+malformed response or unpartitionable boundary aborts publication. The last
+successful normalized snapshot remains available. Count reconciliation detects
+missing records, but does not turn the multi-request API into an atomic snapshot.
+
+The first reconciled search contains **10,888 grants**, including **48 unidentified
+awards with $2,066,483.31 net cumulative obligations**. The production organization
+`Redacted` (`13bb4caf-d044-488d-a79d-bd7f678be3be`, slug `redacted`) groups these
+recipients. Each award retains its government ID and source; the grouping does not
+claim that the underlying recipients are one legal entity. Negative and zero
+obligations remain records. Summaries use signed integer cents.
+
+Normalized evidence lives in `web/public/ecosystem-data/ecosystem-government.json`.
+A timestamped source artifact retains requested public award fields, API messages,
+query parameters and count verification. It does not request contact fields.
+The relationship snapshot includes these awards; the event archive is kept
+separate. UEI or government recipient IDs distinguish legal recipients; name-only
+matches do not merge them into existing directory organizations. Records sharing
+an explicit `awardKey` count once. Curated announcements lacking government award
+IDs still need reconciliation; they are not a complete additive spending ledger.
+
+`0085_government_award_records.sql` adds government observations to
+`master_transaction_records` as `government_award`, with obligation/cumulative
+financial semantics. `government_award_summary` exposes identified/unidentified
+counts and net, positive and negative obligations. Nullable organization links
+preserve unidentified or unregistered counterparties without inventing identities.
+The importer generates `artifacts/government/award-records.sql`, which upserts each
+award and links Redacted when that production ID exists in the target database.
+It never changes ledger balances. The source snapshot is the audit reference;
+the table retains the latest observation per award. An award disappearing from a
+later query is not evidence of cancellation and does not delete its transaction.
+
+Validation uses the full migration chain, signed unidentified sums, idempotent
+imports, count reconciliation, identity matching and local headless browser checks.
+The initial dataset and migration have been validated in an isolated SQLite
+artifact, not applied to production D1. The new table is not yet included in the
+organization-replication snapshot. Production publication must include the schema,
+reviewed data import and frontend assets; the organization itself is already live.
+
+Operational handling: review this public organization dataset annually and on
+correction/deletion requests under the existing retention policy. Remove a record
+by its award ID from the source artifact, normalized evidence and generated graph,
+and from `government_award_records`; rebuild and redeploy assets, purge cached
+copies, and reapply removals before restoring backups. Upstream corrections should
+normally replace the observation while retaining the government source ID. Source
+artifacts and exports require the same review; this importer does not implement
+automatic expiry or cross-service deletion. Do not import contact columns.
+
+## Ecosystem overview
+
+`/ecosystem/network/overview` shows the full network's tracked USD observation
+volume, government obligations, other reported USD funding, Redacted subtotal,
+organization/connected-organization counts, relationships, event occurrences and
+evidence links. Overview links are present in graph and auxiliary navigation.
+The full directory count includes the explicitly labeled Redacted grouping;
+identity counts do not claim a deduplicated census of legal entities.
+
+`ecosystemOverview.ts` counts a funding observation once across both endpoints
+and relationship/financing copies. Award keys take precedence over descriptive
+signatures; signed adjustments remain in net totals. Voided records, ceilings,
+capitalization, portfolio aggregates and in-kind quantities do not enter USD
+volume. Undisclosed/non-USD amounts remain counted separately. Cross-source
+observations lacking common award identifiers may overlap; the headline is an
+observation total, not verified economic throughput or a money velocity rate.
+Government and other funding are broken out so users can inspect their meaning.
+
+The overview loads both relationship evidence and the event archive through the
+shared public cache. If the live directory refresh fails, it displays saved
+snapshot evidence with an explicit stale-data message. The government retrieval
+date and query coverage remain distinct from the time the assets were checked.
+Focused accounting tests cover signed obligations, financing duplicates, voided
+records, different award IDs, undisclosed amounts and currency separation.
+`node scripts/check-ecosystem-overview.mjs` validates desktop/mobile layout,
+exact government/Redacted sums, event counts, fallback state and navigation
+against a local Vite server on port 5187. Production publication remains pending.
+
+## Nonprofit evidence (October 14, 2026)
+
+`/ecosystem/network/nonprofits` displays EIN, fiscal period, annual revenue,
+expenses, book assets and liabilities, filing date and accounting basis, with
+links to the filing viewer and original IRS archive. These annual statements
+never enter tracked funding volume. The overview links to this page and reports
+its evidence coverage. Grant rows join the Relationships view and the graph
+where both organization identities are supported by EINs.
+
+The initial scope is six Maryland nonprofits/foundations discovered through
+ProPublica's public API: Abell, Baltimore Community Foundation, Annie E. Casey,
+Harry and Jeanette Weinberg, United Way of Central Maryland, and Blue Water
+Baltimore. Discovery is a selected sample, not a census. The chosen 2025 IRS
+index supplies fiscal 2024 filings for all six; United Way's fiscal year ends
+June 30 while the other five end December 31. The API's latest extracted
+financial period can lag the filing viewer, so original IRS XML supplies every
+financial number and grant row. API financial summaries are not substituted
+for a missing XML figure.
+
+The imported snapshot contains 3,938 annual grant observations: 3,622 reported
+cash grant rows totaling $271,225,559, and 316 future approvals totaling
+$71,180,065. Future approvals are retained as `terms` and excluded from tracked
+money volume. Schedule I rows follow the filer's accounting basis and are not
+independently verified bank payments. Private-foundation paid/future schedules
+are reconciled exactly to their stated totals. Noncash assistance is a separate
+kind; zero-valued optional noncash fields do not create extra observations.
+
+Only an EIN establishes recipient identity. Named recipients without one retain
+their evidence and amount with a nullable target, rather than name-based merging.
+Unidentified recipients retain financial rows under the existing Redacted
+placeholder. Personal recipient names/addresses, officers, compensation and
+donor fields are not published. For unidentified recipients, purpose text is
+withheld as well. Portal directory names cannot merge into EIN identities.
+Distinct disclosure rows remain distinct even when their amounts and dates match.
+Across sources, shared identifiers still need reconciliation before claiming an
+additive measure of economic activity.
+
+The normalized `ecosystem-nonprofits.json` includes the selected filing object
+IDs, fiscal periods, original archive URLs, checksums, amendment indicators,
+retrieval time and retained versions for the chosen fiscal period. The newest
+unambiguous filing timestamp selects a version for each filer/period; ambiguous
+versions or missing timezones stop publication for review. Published snapshots
+are replaced only after all selected organizations have been processed. Raw XML
+returns stay in memory; original source archives are not copied into public
+assets. HTTP byte ranges retrieve only the archive directory and selected filing,
+with ZIP CRC, response-range and size validation. IRS archives using Deflate64
+require the pinned decoder in `scripts/requirements-nonprofits.txt`.
+
+Set up and refresh from `web/`:
+
+```sh
+python3 -m venv .local/nonprofit-venv
+.local/nonprofit-venv/bin/pip install -r scripts/requirements-nonprofits.txt
+.local/nonprofit-venv/bin/python scripts/sync-nonprofits.py --index-year 2025
+.local/nonprofit-venv/bin/python scripts/nonprofits_test.py
+```
+
+An index year is a processing year, not a tax year. Only the selected EINs are
+retained while streaming the index. Add reviewed EINs to `TARGETS` to expand the
+scope. `--index-file` accepts a filtered IRS index JSON for reproducible retrieval.
+The importer generates `artifacts/nonprofits/filing-records.sql`. Migration
+`0086_nonprofit_filing_records.sql` separates annual statements and grant rows;
+only selected grant observations join `master_transaction_records` as
+`nonprofit_grant`. Unknown organizations retain nullable links. Superseded filing
+versions remain stored but do not double count in the master view. No ledger
+balances change, and no production imports are performed by the refresh script.
+
+Validation: parser tests exercise EIN/period checks, namespace handling, paid
+versus future grants, accounting basis, zero/missing values, Schedule I noncash
+amounts, personal-field exclusion and schedule reconciliation. Full migration
+checks verify amendment selection, unknown counterparties and the separation of
+annual statements. The real 3,938-row SQL import was run twice in isolated SQLite
+and checked for row counts, foreign keys and integrity. Headless browser checks
+cover financial values, EIN search, fiscal evidence links, grant/future drill-down,
+overview separation and desktop/mobile layouts.
+
+Retention follows the public organization-record policy: review the dataset
+annually from `retrievedAt` and on correction/deletion requests. Remove a subject
+EIN from the source target list and published profile, associated grants,
+retained versions, caches and transaction artifacts; delete its grant rows before
+its filing rows in the database, rebuild/redeploy public evidence, and reapply
+removals before restoring backups. Store correction/deletion approvals outside
+this public repository. This is an operator procedure, not automated expiry.
+The new nonprofit tables are not yet part of the public organization-replication
+snapshot. Schema, data import and frontend publication remain local/pending.
+
+Apply each generated data import as one atomic database transaction/batch. A
+stale filing must not deselect a newer selected return: the generated selection
+update compares filing timestamps, and the unique selected-period index rejects
+conflicting older selections. A changed checksum for the same IRS filing object
+also stops the database import for explicit source-correction review.
+
+## Maryland intervention dashboard
+
+`/ecosystem/network/interventions` is a separate planning dashboard linked from
+all ecosystem navigation. It references the common organization index without
+turning financial observations into authority, approval, or political influence.
+`build-initiative-directory.mjs` generates a small, public ID/name/category index
+from the same merged identities used by the network; rebuilding history also
+refreshes this index. After refreshing nonprofit evidence independently, rebuild
+this index too. It contains no contacts, permissions or account identities.
+
+The dashboard records outcomes, metrics, baseline/target/current values and dates,
+institutional authority with a source, a policy instrument, decision/action
+deadlines, the steward organization, next action, constraints, documented facts,
+working hypotheses, and result evidence. Proposed, authorized, active, paused and
+completed states remain distinct. “Authorized” denotes documented steward
+organization authorization; it does not assert government approval. Only a live
+organization owner/administrator (or existing platform operator) can publish,
+edit or delete. The owning organization also owns the next action; this feature
+does not assign duties or permissions to an unrelated organization.
+
+No real initiatives or government decisions are seeded. Anonymous users may
+outline an unsaved proposal in page memory, but cannot preview or publish. Page
+reload discards that unsaved outline. Published records are explicitly public;
+users should describe organization responsibilities rather than private people.
+Unavailable API data is shown as unavailable, not as an empty list or zero counts.
+
+Migration `0087_ecosystem_initiatives.sql` adds shared records and version history.
+`GET /api/network/initiatives/public?offset=0` and
+`GET /api/network/initiatives/public/:id/history?offset=0` paginate public records.
+The authenticated `/api/network/initiatives/access` endpoint supplies managed
+organizations. `POST /api/network/initiatives` uses existing preview receipts:
+submit `{operation:'save'|'delete',initiative}` for a preview, then the identical
+payload with `previewId` and `confirm:true`. Permissions and revision numbers are
+rechecked at apply time. Receipts are actor-bound, expire and are one-use. A
+revision trigger prevents concurrent overwrites; record/version/audit changes
+share an atomic database batch. Body and field lengths are bounded.
+
+Authorized/active/completed work requires reviewed facts and their source,
+authority and its source, baseline value/date, target/unit/date and authorization
+evidence. Completed work also requires a measured result/date and source.
+Reviewed evidence is a steward assertion supported by a link, not automatic
+verification of external content. Lower-is-better metrics use the same progress
+calculation as increasing metrics. Missing measurements never become zero.
+Paused/completed records do not appear in overdue counts.
+
+Replica reads of public initiatives/history proxy to the configured primary
+without forwarding authentication; local copies do not become authoritative.
+Replica writes remain blocked by the existing middleware, and management access
+must be checked on the primary. New initiative tables do not enter the public
+organization replica snapshot. The dashboard never uses public organization
+metadata to infer account permissions.
+
+Retention: public plans and their versions are reviewed annually from
+`updated_at`, and on correction/deletion requests, under the existing public
+organization-record policy. Confirmed deletion physically removes the plan and
+cascades through its versions. Minimal existing audit metadata retains only the
+organization ID, revision, resource ID and actor identity under the existing
+12-month deletion-audit policy; plan text is not copied there. Apply removals to
+exports/caches and replay them before backup restores. These are operator-managed
+controls, not automatic annual expiry. Existing preview cleanup applies to
+receipts; no credentials or private tool payloads are stored in the new tables.
+
+Validation covers live-role rechecks, preview binding/replay, evidence gates,
+stale edits, version retention/deletion and atomic audit failure, plus deadline
+and progress arithmetic. Read-only headless browser checks use explicit synthetic
+fixtures for cards, filters, draft controls, failure state and desktop/mobile
+layout. They do not create accounts or exercise authenticated browser sessions.
+Schema/backend publication and authenticated end-to-end acceptance remain pending.
+
+### Public funding performance
+
+`/ecosystem/network/performance` combines the reconciled Maryland federal grant snapshot with a separate, selected historical Maryland Commerce pilot. It includes all signed government award observations and unidentified recipients. It does not imply company-only coverage or rank funding volume as performance. Source-scoped recipient names are not merged with federal legal identities by name.
+
+The historical pilot contains three MEDAAF conditional-loan employment reviews (Advanced BioScience Laboratories, Amick Farms and CD Capital), measured December 31, 2018. The original government PDF is preserved at `web/public/ecosystem-data/sources/maryland-medaaf-fy2019.pdf` with checksum and source-transcription notes in `maryland-medaaf-review.json`. The FY19 filename contains a table titled FY18; individual row dates govern the observations. Later resolution is unknown. The source distinguishes certified and company-reported employment. The historical target attainment views do not imply present-day company quality, job creation, independent verification or causal impact. Company sizes differ.
+
+Run `cd web && npm run build:performance`. Government sync also rebuilds this snapshot. Reviewed input is `web/data/performance-assessments.json`, containing `records` (state pilot observations) and `assessments`. To validate a candidate without changing the reviewed input, run `node scripts/build-performance.mjs --assessments /path/to/candidate.json`; this replaces only the generated snapshot. Copy accepted records into the tracked input and update the source-review record before releasing. Validation completes before the snapshot is replaced. Rebuild and inspect through the shared portal release workflow.
+
+Assessments require: exact `awardKey`, `cohort`, `metric`, `unit`, `direction` (`higher` or `lower`), positive numeric `target`, nonnegative numeric `actual`, `commitment`, `result`, `methodology`, `reviewerOrganization`, `evidenceBasis` (`certified`, `company-reported` or `agency-measured`), HTTPS `commitmentUrl` and `resultUrl`, public `reviewUrl`, and ISO dates `dueDate`, `measuredDate`, `reviewedDate`. The preserved source review path is also accepted for `reviewUrl`. Measurement must occur at or after the reporting deadline and review after measurement. One current review per award; retain original commitments and corrections in version control and the linked review record. Review dates do not refresh measurement dates. Future-dated reviews remain unassessed until their review date. No people or private contacts are collected.
+
+State pilot records require unique `md-commerce:` award keys and `md-commerce:reported-name:` recipient IDs, a named recipient, official Commerce HTTPS source, SHA256, program and original conditional-loan principal measure. They are outside the common transactional ledger and are never added to federal obligations. Federal descriptions are 300-character excerpts linked to original award detail, reducing the dashboard payload from 16 MB to approximately 7 MB.
+
+Cohorts must share program, metric, units, direction and methodology (validated). Reviewers must explain project scale, agreement differences and observation windows. No universal composite score or company performance rollup is published. Higher attainment is actual/target; lower is target/actual. Zero actual for lower-is-better meets the target but has no finite ratio, so no arbitrary percentage is invented. Ratio-scale positive targets are required. Unknown outcomes, unidentified records and immature projects are unassessed. Signed adjustments and allegations never establish misconduct. Public publishing uses reviewed data releases; there is no anonymous rating API.
+
+Comprehensive contracts, state/local incentives, loans, audit findings, CPARS, causal impact and cost-effectiveness remain outside coverage. Source discovery links are labeled accordingly. No current best/worst company ranking has been established.

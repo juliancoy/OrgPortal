@@ -1,3 +1,6 @@
+import { EventIntegrationError } from './eventPlatforms';
+import { bodyLimit } from 'hono/body-limit';
+import {publicInitiatives,initiativeAccess,saveInitiative,initiativeHistory} from './interventions';
 import { profileEvents } from './profileEvents';
 import policyPages from './generated/policyPages.json';
 import { runRetention } from './retention';
@@ -3181,6 +3184,24 @@ app.get("/api/network/orgs/public/:slug", async (c) => {
   return c.json({ ...mapOrganization(row, Number(count?.n || 0)), public_url: await orgPublicUrl(c.env, c.req.raw, row.slug), ...await organizationGroupHome(c.env, c.req.raw, row) });
 });
 
+app.get('/api/network/initiatives/public',async c=>{
+  const offset=Math.max(0,Math.min(100000,Number.parseInt(c.req.query('offset')||'0',10)||0));
+  c.header('Cache-Control','no-store');return c.json(await publicInitiatives(c.env.DB,offset));
+});
+app.get('/api/network/initiatives/public/:id/history',async c=>{
+  const offset=Math.max(0,Math.min(100000,Number.parseInt(c.req.query('offset')||'0',10)||0));c.header('Cache-Control','no-store');return c.json(await initiativeHistory(c.env.DB,c.req.param('id'),offset));
+});
+app.get('/api/network/initiatives/access',async c=>{
+  if(c.env.ORGANIZATION_REPLICA_SOURCE)return c.json({detail:'Check management access on the authoritative portal'},409);
+  const user=await currentUser(c.env,c.req.raw);c.header('Cache-Control','no-store');
+  return c.json(await initiativeAccess(c.env.DB,organizationActor(user,c.env)));
+});
+app.post('/api/network/initiatives',bodyLimit({maxSize:32768}),async c=>{
+  const user=await currentUser(c.env,c.req.raw);
+  try{return c.json(await saveInitiative(c.env.DB,organizationActor(user,c.env),await c.req.json().catch(()=>{throw new EventIntegrationError(400,'Invalid JSON')})));}
+  catch(error){return eventErrorResponse(error,c.env,c.req.raw)}
+});
+
 app.get("/api/network/relationships/public", async (c) => {
   const offset = Math.max(0, Math.min(Number.parseInt(c.req.query("offset") || "0", 10) || 0, 100000));
   c.header("Cache-Control", "public, max-age=60");
@@ -5459,7 +5480,8 @@ app.all("*", (c) => c.json({ detail: "Endpoint is not implemented in the Cloudfl
 function orgWorkerFetch(request: Request, env: Env, ctx: ExecutionContext) {
   const url = new URL(request.url);
   if (env.ORGANIZATION_REPLICA_SOURCE && ["GET","HEAD"].includes(request.method)
-    && /^\/api\/network\/orgs\/public\/[^/]+\/media\/[^/]+$/.test(url.pathname)) {
+    && (/^\/api\/network\/orgs\/public\/[^/]+\/media\/[^/]+$/.test(url.pathname)
+      || /^\/api\/network\/initiatives\/public(?:\/[^/]+\/history)?$/.test(url.pathname))) {
     const upstream = new URL(env.ORGANIZATION_REPLICA_SOURCE);
     upstream.pathname = upstream.pathname.replace(/\/network\/replication\/snapshot$/, "") + url.pathname.replace(/^\/api/, "");
     upstream.search = url.search;

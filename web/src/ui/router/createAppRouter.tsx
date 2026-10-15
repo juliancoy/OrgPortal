@@ -20,6 +20,10 @@ const LocalNewslettersPage = lazy(() => import('../views/LocalNewslettersPage').
 const EcosystemNetworkPage = lazy(() => import('../views/EcosystemNetworkPage').then(module => ({ default: module.EcosystemNetworkPage })))
 const EcosystemNetworkGPUPage = lazy(() => import('../views/EcosystemNetworkGPUPage').then(module => ({ default: module.EcosystemNetworkGPUPage })))
 const SeriesAFundingGapPage = lazy(() => import('../views/SeriesAFundingGapPage').then(module => ({ default: module.SeriesAFundingGapPage })))
+const PublicFundingPerformancePage = lazy(() => import('../views/PublicFundingPerformancePage').then(module => ({ default: module.PublicFundingPerformancePage })))
+const InterventionDashboardPage = lazy(() => import('../views/InterventionDashboardPage').then(module => ({ default: module.InterventionDashboardPage })))
+const NonprofitNetworkPage = lazy(() => import('../views/NonprofitNetworkPage').then(module => ({ default: module.NonprofitNetworkPage })))
+const EcosystemOverviewPage = lazy(() => import('../views/EcosystemOverviewPage').then(module => ({ default: module.EcosystemOverviewPage })))
 const EcosystemNetworkViews = lazy(() => import('../views/EcosystemNetworkViews').then(module => ({ default: module.EcosystemNetworkViews })))
 const MemberMeetingsPage = lazy(() => import('../views/MemberMeetingsPage').then(module => ({ default: module.MemberMeetingsPage })))
 const NametagsPage = lazy(() => import('../views/NametagsPage').then(module => ({ default: module.NametagsPage })))
@@ -279,6 +283,10 @@ export function createAppRouter() {
           { path: '/org-events', element: <TenantOrgEventsRoute /> },
           { path: '/community', element: <TenantCommunityAliasRoute /> },
           { path: '/medtech-events', element: <TenantEventsAliasRoute /> },
+          { path: '/ecosystem/network/performance', element: <PublicFundingPerformancePage /> },
+          { path: '/ecosystem/network/interventions', element: <InterventionDashboardPage /> },
+          { path: '/ecosystem/network/nonprofits', element: <NonprofitNetworkPage /> },
+          { path: '/ecosystem/network/overview', element: <EcosystemOverviewPage /> },
           { path: '/ecosystem/network', element: <EcosystemNetworkPage /> },
           { path: '/ecosystem/network/webgpu', element: <EcosystemNetworkGPUPage /> },
           { path: '/ecosystem/network/events', element: <EcosystemNetworkViews view="events" /> },

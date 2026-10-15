@@ -30,15 +30,16 @@ export function sliceColor(label) {
 }
 const dollars = r => (r.currency==='USD' || (!r.currency && /^\$/.test(r.amountLabel || ''))) && Number.isFinite(r.amount) && r.amount>0
 function financialRecords(data,includeCapitalization=false) {
- const records=[],seen=new Set(),links=new Set()
+ const records=[],seen=new Set(),links=new Set(),awardKeys=new Set()
  // Relationships and financing often describe the same award. Prefer the edge,
  // then add only financing evidence not represented there.
  for(const raw of [...data.relationships,...(data.financing || [])]) {
   if(!(raw.kind==='transfer' || (includeCapitalization && raw.kind==='capitalization')) || raw.status==='voided')continue
   const source=id(raw.source ?? raw.funderId),target=id(raw.target ?? raw.recipientId)
   if(!source || !target || source===target)continue
-  const signature=JSON.stringify([source,target,raw.kind,raw.amount,raw.date,safeUrl(raw.sourceUrl)])
-  if(seen.has(signature) || links.has(raw.id))continue
+  const signature=raw.awardKey || JSON.stringify([source,target,raw.kind,raw.amount,raw.date,safeUrl(raw.sourceUrl)])
+  if(seen.has(signature) || links.has(raw.id) || (raw.awardKey && awardKeys.has(raw.awardKey)))continue
+  if(raw.awardKey)awardKeys.add(raw.awardKey)
   seen.add(signature);if(raw.financingId)links.add(raw.financingId)
   records.push({...raw,source,target})
  }
@@ -60,7 +61,7 @@ function familyRecords(data,records) {
 }
 export function financialNodeTotals(data) {
  applyFundHierarchy(data)
- const {incoming,outgoing}=familyRecords(data,financialRecords(data).filter(dollars)),totals=new Map()
+ const {incoming,outgoing}=familyRecords(data,financialRecords(data).filter(r=>dollars(r)||(r.financialMeasure==='cumulative_obligations'&&r.currency==='USD'&&Number.isFinite(r.amount)))),totals=new Map()
  for(const org of data.organizations)totals.set(org.id,{received:(incoming.get(org.id)||[]).reduce((sum,r)=>sum+r.amount,0),disbursed:(outgoing.get(org.id)||[]).reduce((sum,r)=>sum+r.amount,0)})
  return totals
 }

@@ -1,7 +1,7 @@
 import { transactionVisibility, transactionCounts } from './zoom-visibility.js'
 import { quantityEdgeWidths } from './edge-quantity.js'
 import { relationshipColor } from './relationship-colors.js'
-import {mergeNetworkHistory} from './network-history.js'
+import {mergeNetworkHistory,appendNonprofitEvidence} from './network-history.js'
 import { applyFundHierarchy, foldFundNodes, financialNodePies, pieLabel } from './fund-pies.js'
 import { createNetworkGPU, curvePoints } from './webgpu-renderer.js'
 import { assignEdgeCurvature } from './ecosystem-physics.js'
@@ -217,8 +217,8 @@ async function initGPU(){
 }
 async function start(){
  try {
-  const snapshots=await Promise.all([cachedPublicJson(dataUrl,validateSnapshot),cachedPublicJson(historyUrl,validateSnapshot)])
-  const historyData=snapshots[1];data=applyFundHierarchy(mergeNetworkHistory(snapshots[0],historyData)); if(disposed)return; rewriteLinks()
+  const snapshots=await Promise.all([cachedPublicJson(dataUrl,validateSnapshot),cachedPublicJson(historyUrl,validateSnapshot),cachedPublicJson(new URL('ecosystem-nonprofits.json',new URL(historyUrl,location.origin)).href,validateSnapshot)])
+  const historyData=appendNonprofitEvidence(snapshots[1],snapshots[2]);data=applyFundHierarchy(mergeNetworkHistory(snapshots[0],historyData)); if(disposed)return; rewriteLinks()
   search();await initGPU();if(disposed)return
   root.addEventListener('wheel',event=>{
    if(!host.contains(event.target))return

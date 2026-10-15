@@ -42,3 +42,13 @@ test('federal evidence keeps ceilings and historical programs separate from repo
  assert.equal(federal.find(r=>r.id.endsWith('nist-mdmep-2013')).date,'2013-09-06')
  assert(!federal.some(r=>r.type==='Public Health Infrastructure Grant funding'&&r.amount===70896629))
 })
+
+test('IRS evidence uses EIN identity and retains distinct grant rows with equal amounts',()=>{
+ const base={organizations:[{id:'existing',name:'Old legal name',identifiers:{ein:'012345678'}}],relationships:[],financing:[]}
+ const row={source:'filer',target:null,amount:100,date:'2024-12-31',sourceUrl:'https://example.test/filing',kind:'transfer'}
+ const snapshot={organizations:[{id:'filer',name:'New legal name',identifiers:{ein:'012345678'}}],relationships:[{...row,id:'one',awardKey:'one'},{...row,id:'two',awardKey:'two'}],financing:[],nonprofitCoverage:{profileCount:1},nonprofitProfiles:[{organizationId:'filer',ein:'012345678'}]}
+ const merged=mergeNetworkHistory(base,snapshot)
+ assert.equal(merged.organizations.length,1);assert.equal(merged.relationships.length,2);assert.equal(merged.nonprofitProfiles[0].organizationId,'existing')
+ assert(merged.relationships.every(r=>r.source==='existing'))
+ assert.equal(mergeNetworkHistory(merged,snapshot).relationships.length,2)
+})

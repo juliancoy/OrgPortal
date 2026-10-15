@@ -13,7 +13,7 @@ export function mergePortalEvidence(base, organizations, records, refreshedAt = 
  // directory row. Keep ambiguous name/website matches separate from exact IDs.
  const names=new Map(),websites=new Map()
  const index=(map,value,org)=>{if(!value)return;if(!map.has(value))map.set(value,[]);map.get(value).push(org)}
- for(const org of data.organizations){index(names,key(org.name),org);index(websites,safeUrl(org.website),org)}
+ for(const org of data.organizations){if(org.identifiers?.ein)continue;index(names,key(org.name),org);index(websites,safeUrl(org.website),org)}
  const snapshotIds=new Map(byId)
  for (const org of organizations) {
   const candidates=new Set([...(names.get(key(org.name))||[]),...(websites.get(safeUrl(org.source_url))||[])])
@@ -76,8 +76,9 @@ export async function loadPortalEvidence(base, fetcher = fetch, prefix='/api/org
 export function financialNodeAmounts(data, {includeCapitalization = false} = {}) {
  const amounts = new Map(), seen = new Set()
  for (const edge of graphRelationships(data, {moneyOnly:true, includeCapitalization})) {
-  if(edge.status==='voided'||(edge.id&&seen.has(edge.id)))continue
-  if(edge.id)seen.add(edge.id)
+  const identity=edge.awardKey || edge.id
+  if(edge.status==='voided'||(identity&&seen.has(identity)))continue
+  if(identity)seen.add(identity)
   if (!(edge.currency === 'USD' || (!edge.currency && /^\$/.test(edge.amountLabel || ''))) || !Number.isFinite(edge.amount) || edge.amount <= 0) continue
   for (const id of new Set([edge.source,edge.target])) amounts.set(id,(amounts.get(id) || 0)+edge.amount)
  }
