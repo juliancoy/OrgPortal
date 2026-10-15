@@ -152,13 +152,13 @@ function render(time=0) {
  frame=0;
  if(!gpuReady)return;
  const zoom=fittedWidth/view.w
- const key=[zoom,selected,$('#zoom-sparse').checked,$('#visibility-factor').value].join('|')
+ const key=[zoom,selected,$('#show-links').checked,$('#zoom-sparse').checked,$('#visibility-factor').value].join('|')
  const visibilityChanged=key!==visibilityKey
  if(visibilityChanged){
  visibilityKey=key
  visible=new Set(nodes.filter(n=>n.id===selected||!$('#zoom-sparse').checked||transactionVisibility(recordedCounts.get(n.id)||0,zoom,Number($('#visibility-factor').value))).map(n=>n.id))
  const edgeVisible=e=>visible.has(e.source.id||e.source)&&visible.has(e.target.id||e.target)
- visibleEdges=new Set(edges.filter(edgeVisible).map(e=>e.id))
+ visibleEdges=new Set($('#show-links').checked?edges.filter(edgeVisible).map(e=>e.id):[])
  status.textContent=`${visible.size} visible / ${nodes.length} organizations · ${visibleEdges.size} visible links`
  }
  if(geometryDirty||visibilityChanged){updatePositions();geometryDirty=false}
@@ -244,11 +244,12 @@ async function start(){
    motionChange()
   })
   $('#node-size-alpha').addEventListener('input',()=>{$('#node-size-alpha-value').textContent=Number($('#node-size-alpha').value).toFixed(1);rebuild()})
+  $('#show-links').addEventListener('change',requestRender)
   $('#zoom-sparse').addEventListener('change',requestRender)
   $('#visibility-factor').addEventListener('input',()=>{$('#visibility-factor-value').textContent=$('#visibility-factor').value;requestRender()})
   $('#network-fit').addEventListener('click',fit)
   for(const [id,factor] of [['#zoom-in',1.25],['#zoom-out',.8]]) $(id).addEventListener('click',()=>zoomGPU(factor))
-  $('#network-reset').addEventListener('click',()=>{selected=null;inspectorKey=null;fitted=false;for(const name of ['attraction','repulsion','proximity','central-gravity','dither']){const value=['central-gravity','dither'].includes(name)?'0':'1';$('#'+name).value=value;$('#'+name+'-value').textContent=Number(value).toFixed(1)}$('#live-physics').checked=!reducedMotion.matches;root.querySelectorAll('[name=node-category],[name=relationship]').forEach(c=>c.checked=true);$('#network-view').value='all';$('#include-context').checked=false;$('#hide-isolated').checked=true;$('#scale-node-finances').checked=true;$('#node-size-algorithm').value='log';$('#node-size-alpha').value='1';$('#node-size-alpha-value').textContent='1.0';$('#scale-edge-quantity').checked=true;$('#zoom-sparse').checked=false;$('#visibility-factor').value='4';$('#visibility-factor-value').textContent='4';$('#neighbors').checked=false;$('#neighbors').disabled=true;$('#network-search').value='';$('#network-detail').innerHTML='<h2>Select an organization</h2><p>Search or select a graph label to explore its evidence.</p>';history.replaceState(history.state,'',location.pathname);search();rebuild()})
+  $('#network-reset').addEventListener('click',()=>{selected=null;inspectorKey=null;fitted=false;for(const name of ['attraction','repulsion','proximity','central-gravity','dither']){const value=['central-gravity','dither'].includes(name)?'0':'1';$('#'+name).value=value;$('#'+name+'-value').textContent=Number(value).toFixed(1)}$('#live-physics').checked=!reducedMotion.matches;root.querySelectorAll('[name=node-category],[name=relationship]').forEach(c=>c.checked=true);$('#network-view').value='all';$('#include-context').checked=false;$('#hide-isolated').checked=true;$('#scale-node-finances').checked=true;$('#node-size-algorithm').value='log';$('#node-size-alpha').value='1';$('#node-size-alpha-value').textContent='1.0';$('#scale-edge-quantity').checked=true;$('#show-links').checked=true;$('#zoom-sparse').checked=false;$('#visibility-factor').value='4';$('#visibility-factor-value').textContent='4';$('#neighbors').checked=false;$('#neighbors').disabled=true;$('#network-search').value='';$('#network-detail').innerHTML='<h2>Select an organization</h2><p>Search or select a graph label to explore its evidence.</p>';history.replaceState(history.state,'',location.pathname);search();rebuild()})
   const initial=new URL(location.href).searchParams.get('org');if(initial&&data.organizations.some(n=>n.id===initial)){select(initial);rebuild()}else rebuild()
   loadPortalEvidence(data, cachedEvidenceFetch,apiPrefix,(base,directory,records)=>prepareNetworkData(base,directory,records,historyData,abort.signal)).then(prepared=>{if(disposed)return;preparedData=prepared;data=prepared.data;search();if(selected)select(selected);rebuild();$('#network-source').textContent=(usingOfflineCopy?'Offline · last checked ':'Checked ')+new Date(oldestCheck).toLocaleString()}).catch(()=>{if(disposed)return;$('#network-source').textContent='Saved public evidence · refresh unavailable'})
  }catch(error){if(disposed)return;status.textContent=error.message || 'WebGPU network unavailable.';host.hidden=true;console.error(error)}

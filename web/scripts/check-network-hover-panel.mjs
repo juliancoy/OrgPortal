@@ -24,7 +24,15 @@ try{
   const points=await labels.evaluateAll(ns=>ns.map(n=>({x:parseFloat(n.style.left),y:parseFloat(n.style.top)}))),box=await canvas.boundingBox()
   const hover=async p=>canvas.dispatchEvent('pointermove',{clientX:box.x+p.x,clientY:box.y+p.y})
   await hover(points[0]);assert.equal(await detail.locator('h2').innerText(),'Hover Alpha')
-  await hover({x:(points[0].x+points[1].x)/2,y:(points[0].y+points[1].y)/2})
+  const midpoint={x:(points[0].x+points[1].x)/2,y:(points[0].y+points[1].y)/2}
+  const linksLayout=layouts,linkPositions=await labels.evaluateAll(ns=>ns.map(n=>[n.style.left,n.style.top]))
+  await page.locator('#show-links').evaluate(el=>{el.checked=false;el.dispatchEvent(new Event('change'))})
+  await page.waitForFunction(()=>document.querySelector('#network-status')?.textContent.includes('0 visible links'))
+  await hover(midpoint);assert.equal(await detail.locator('h2').innerText(),'Hover Alpha','hidden links cannot capture hover')
+  assert.equal(layouts,linksLayout);assert.deepEqual(await labels.evaluateAll(ns=>ns.map(n=>[n.style.left,n.style.top])),linkPositions,'hiding links does not change layout')
+  await page.locator('#show-links').evaluate(el=>{el.checked=true;el.dispatchEvent(new Event('change'))})
+  await page.waitForFunction(()=>document.querySelector('#network-status')?.textContent.includes('1 visible links'))
+  await hover(midpoint)
   assert.equal(await detail.locator('h2').count(),2,'edge hover retains both endpoints in the right column')
   const before=await labels.evaluateAll(ns=>ns.map(n=>[n.style.left,n.style.top])),layoutCount=layouts
   const original=await labels.first().elementHandle()
@@ -42,7 +50,7 @@ try{
   assert.equal(layouts,layoutCount,'closing the inspector must not restart the layout worker')
   assert.deepEqual(await labels.evaluateAll(ns=>ns.map(n=>[n.style.left,n.style.top])),before)
   assert.equal(await page.locator('#network-labels [title]').count(),0);assert.deepEqual(errors,[])
-  receipts.push({mode,nodeHover:true,edgeHover:true,keyboardFocus:true,pinning:true,stableCirclePositions:true,stableLayoutWorker:true,topCounterparties:true,floatingText:false,nativeTitles:false,errors});await page.close()
+  receipts.push({mode,nodeHover:true,edgeHover:true,hideLinks:true,keyboardFocus:true,pinning:true,stableCirclePositions:true,stableLayoutWorker:true,topCounterparties:true,floatingText:false,nativeTitles:false,errors});await page.close()
  }
  await mkdir('../artifacts/hover-panel',{recursive:true});await writeFile('../artifacts/hover-panel/browser-check.json',JSON.stringify(receipts,null,2)+'\n');console.log(JSON.stringify(receipts))
 }finally{await browser.close()}
