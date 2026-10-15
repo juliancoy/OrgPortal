@@ -1,10 +1,10 @@
 export const PUBLIC_DATA_REFRESH_MS = 5 * 60 * 1000
-export type PublicReportEntry<T> = { url: string; data: T; etag: string | null; checkedAt: number }
+export type PublicReportEntry<T> = { url: string; data: T; etag: string | null; checkedAt: number; updatedAt?: number; lastModified?: string | null }
 const databaseName = 'orgportal-public-organization-data-v1'
 
 export function publicReportUrl(path: string) {
   const url = new URL(path, location.origin)
-  const report = /^\/api\/org\/api\/network\/orgs\/public\/[^/]+\/(support|financing)$/.test(url.pathname) && !url.search
+  const report = /^\/api\/org\/api\/network\/orgs\/public\/[^/]+\/(support|financing)$/.test(url.pathname) && (!url.search || /^\?offset=\d+$/.test(url.search))
   const snapshot = /^\/(?:p\/)?ecosystem-data\/ecosystem-(portal|history|relationships|nonprofits|performance)\.json$/.test(url.pathname) && !url.search
   const directory = url.pathname === '/api/org/api/network/orgs/public' && /^\?limit=500&offset=\d+$/.test(url.search)
   const relationships = url.pathname === '/api/org/api/network/relationships/public' && /^\?offset=\d+$/.test(url.search)
@@ -76,13 +76,14 @@ export async function refreshPublicReport<T>(path: string, options: {
   }
   const headers = new Headers()
   if (cached?.etag) headers.set('If-None-Match', cached.etag)
+  else if (cached?.lastModified) headers.set('If-Modified-Since', cached.lastModified)
   // Public reads never carry a session, OAuth token or permission context.
   const response = await fetch(url, { signal: options.signal, headers, credentials: 'omit', cache: 'no-cache' })
   let entry: PublicReportEntry<T>
   if (response.status === 304 && cached) entry = { ...cached, checkedAt: Date.now() }
   else {
     if (!response.ok) throw new Error('Update unavailable. Showing the last saved data, if available.')
-    entry = { url, data: options.validate(await response.json()), etag: response.headers.get('ETag'), checkedAt: Date.now() }
+    entry = { url, data: options.validate(await response.json()), etag: response.headers.get('ETag'), lastModified: response.headers.get('Last-Modified'), updatedAt: Date.now(), checkedAt: Date.now() }
   }
   options.signal?.throwIfAborted()
   await savePublicReport(entry)
