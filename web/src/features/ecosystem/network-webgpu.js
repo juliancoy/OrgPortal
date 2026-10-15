@@ -11,7 +11,7 @@ import { organizationPreview, relationshipPreview, networkPreviewSummaries } fro
 import { loadPortalEvidence, graphRelationships, financialNodeAmounts, financialNodeRadius } from './portal-ecosystem.js'
 import { refreshPublicReport } from '../../data/publicOrganization/cache'
 export function mountEcosystemNetworkGPU(root, {dataUrl, historyUrl, apiPrefix, portalPath, renderer: rendererKind = 'webgpu'}) {
-const spatial=rendererKind==='webgpu3d'
+const four=rendererKind==='webgpu4d',spatial=four||rendererKind==='webgpu3d'
 const abort = new AbortController(); let disposed=false, resizeObserver;
 let oldestCheck=Infinity, usingOfflineCopy=false
 const cachedPublicJson = async (url, validate) => {
@@ -52,12 +52,13 @@ let inspectorKey=null, simulation, fitted=false, geometryDirty=true, visibilityK
 const savedPositions=new Map()
 const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)')
 const physicsEnabled=()=>!document.hidden&&!reducedMotion.matches&&$('#live-physics').checked
+function applyProjection(){if(four)simulation?.projection(['xw','yw','zw'].map(axis=>Number($('#life-'+axis).value)),Number($('#life-perspective').value))}
 function motionChange(){simulation?.motion(physicsEnabled());requestRender()}
 document.addEventListener('visibilitychange',motionChange,{signal:abort.signal})
 reducedMotion.addEventListener('change',motionChange,{signal:abort.signal})
 let gpuReady = false, view = { x: -400, y: -400, w: 800, h: 800 }
 const radius = n => n.renderRadius
-const forceOptions=()=>({live:true,dimensions:spatial?3:2,attraction:Number($('#attraction').value),repulsion:Number($('#repulsion').value),proximity:Number($('#proximity').value),centralGravity:Number($('#central-gravity').value),dither:Number($('#dither').value)})
+const forceOptions=()=>({live:true,dimensions:four?4:spatial?3:2,lifeRadius:Number($('#life-radius')?.value??300),lifeFriction:Number($('#life-friction')?.value??.85),lifeSeed:Number($('#life-seed')?.value??1),attraction:Number($('#attraction').value),repulsion:Number($('#repulsion').value),proximity:Number($('#proximity').value),centralGravity:Number($('#central-gravity').value),dither:Number($('#dither').value)})
 const financialLabel = n => n.financialAmount ? `Recorded USD transaction volume: ${new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(n.financialAmount)}; incoming + outgoing; payment unverified${n.financialPie ? '. '+pieLabel(n.financialPie) : ''}` : 'USD volume undisclosed'
 function previewNode(org) {
  if(selected)return
@@ -107,7 +108,7 @@ function rebuild() {
  inspectorKey=null
  previewSummaries=preparedData?.data===data?preparedData.summaries:networkPreviewSummaries(data)
  simulation?.stop()
- nodes.forEach(n=>savedPositions.set(n.id,{x:n.x,y:n.y,z:n.z,vx:n.vx,vy:n.vy,vz:n.vz}))
+ nodes.forEach(n=>savedPositions.set(n.id,{q:n.q,velocity4:n.velocity4,x:n.x,y:n.y,z:n.z,vx:n.vx,vy:n.vy,vz:n.vz}))
  visibilityKey=null;geometryDirty=true;labelPriority=[]
  const cats=selectedCategories(), rels=selectedRelationships(), context=$('#include-context').checked
  const graphData=preparedData?.data===data?preparedData.folded:foldFundNodes(data)
@@ -133,7 +134,7 @@ function rebuild() {
  nodes.forEach(n=>{n.renderRadius=financialNodeRadius(scaleFinances?n.financialAmount:null,sizing)})
  status.textContent=`${nodes.length} organizations · ${edges.length} links`
  labels.replaceChildren();labelItems=[]
- simulation=createNetworkLayout(nodes,edges,forceOptions(),physicsEnabled(),()=>{geometryDirty=true;requestRender()})
+ simulation=createNetworkLayout(nodes,edges,forceOptions(),physicsEnabled(),()=>{geometryDirty=true;requestRender()});applyProjection()
  assignEdgeCurvature(edges)
  for(const n of nodes){
   const button=document.createElement('button');button.type='button';button.textContent=n.name
@@ -193,10 +194,10 @@ function zoomGPU(factor, event) {
  view.x=worldX-cursor.x*view.w;view.y=worldY-cursor.y*view.h;requestRender()
 }
 async function initGPU(){
- canvas=document.createElement('canvas');canvas.style.cssText='width:100%;height:100%;display:block;touch-action:none;cursor:grab';canvas.setAttribute('aria-label',spatial?'3D WebGPU organization network':rendererKind==='canvas'?'Organization network':'Native WebGPU organization network');canvas.dataset.renderer=rendererKind;host.prepend(canvas)
+ canvas=document.createElement('canvas');canvas.style.cssText='width:100%;height:100%;display:block;touch-action:none;cursor:grab';canvas.setAttribute('aria-label',four?'4D Particle Life organization network':spatial?'3D WebGPU organization network':rendererKind==='canvas'?'Organization network':'Native WebGPU organization network');canvas.dataset.renderer=rendererKind;host.prepend(canvas)
  if(rendererKind==='canvas') {
   const {createNetworkCanvasWorker}=await import('./canvas-renderer-client.js');renderer=createNetworkCanvasWorker(canvas)
- } else if(spatial){const {createNetworkGPU3D}=await import('./webgpu-3d-renderer.js');renderer=await createNetworkGPU3D(canvas,message=>{if(disposed)return;gpuReady=false;simulation?.stop();status.textContent='3D WebGPU unavailable: '+message},requestRender)}
+ } else if(spatial){const {createNetworkGPU3D}=await import('./webgpu-3d-renderer.js');renderer=await createNetworkGPU3D(canvas,message=>{if(disposed)return;gpuReady=false;simulation?.stop();status.textContent=(four?'4D':'3D')+' WebGPU unavailable: '+message},requestRender,four?'4D':'3D')}
  else renderer=await createNetworkGPU(canvas,message=>{if(disposed)return;console.error(message);gpuReady=false;simulation?.stop();cancelAnimationFrame(frame);frame=0;status.textContent='WebGPU graphics were lost. Reload to retry, or use the original Graph view.'})
  if(disposed){renderer.dispose();return}gpuReady=true
  const resize=()=>{const width=host.clientWidth,height=host.clientHeight;renderer.resize(width,height);if(spatial){requestRender();return}if(fitted&&!spatial){const nextHeight=view.w/(width/Math.max(1,height));view.y+=(view.h-nextHeight)/2;view.h=nextHeight;requestRender()}}
@@ -247,9 +248,14 @@ async function start(){
   for(const name of ['attraction','repulsion','proximity','central-gravity','dither'])$('#'+name).addEventListener('input',()=>{
    $('#'+name+'-value').textContent=Number($('#'+name).value).toFixed(1)
    simulation?.stop()
-   simulation=createNetworkLayout(nodes,edges,forceOptions(),physicsEnabled(),()=>{geometryDirty=true;requestRender()})
+   simulation=createNetworkLayout(nodes,edges,forceOptions(),physicsEnabled(),()=>{geometryDirty=true;requestRender()});applyProjection()
    motionChange()
   })
+  if(four){
+   for(const id of ['xw','yw','zw','perspective'])$('#life-'+id).addEventListener('input',()=>{$('#life-'+id+'-value').textContent=$('#life-'+id).value;applyProjection()})
+   for(const id of ['radius','friction','seed'])$('#life-'+id).addEventListener('change',()=>{simulation?.stop();simulation=createNetworkLayout(nodes,edges,forceOptions(),physicsEnabled(),()=>{geometryDirty=true;requestRender()});applyProjection()})
+   $('#network-reset').addEventListener('click',()=>{for(const [id,value] of Object.entries({xw:0,yw:0,zw:0,perspective:.35,radius:300,friction:.85,seed:1})){$('#life-'+id).value=value;const output=$('#life-'+id+'-value');if(output)output.textContent=value}savedPositions.clear();nodes.forEach(n=>{delete n.q;delete n.velocity4})})
+  }
   $('#node-size-alpha').addEventListener('input',()=>{$('#node-size-alpha-value').textContent=Number($('#node-size-alpha').value).toFixed(1);rebuild()})
   $('#show-links').addEventListener('change',requestRender)
   $('#zoom-sparse').addEventListener('change',requestRender)

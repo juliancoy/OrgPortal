@@ -290,6 +290,7 @@ export function createAppRouter() {
           { path: '/ecosystem/network/overview', element: <EcosystemOverviewPage /> },
           { path: '/ecosystem/network', element: <EcosystemNetworkPage /> },
           { path: '/ecosystem/network/webgpu', element: <EcosystemNetworkGPUPage /> },
+          { path: '/ecosystem/network/4d', element: <EcosystemNetworkGPUPage four /> },
           { path: '/ecosystem/network/3d', element: <EcosystemNetworkGPUPage spatial /> },
           { path: '/ecosystem/network/events', element: <EcosystemNetworkViews view="events" /> },
           { path: '/ecosystem/network/relationships', element: <EcosystemNetworkViews view="relationships" /> },

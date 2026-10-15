@@ -378,3 +378,31 @@ remain in the inspector; spatial spheres use organization category colors.
 Pinning details does not restart physics or move nodes. Background-tab and
 reduced-motion settings pause the layout. Navigation disposes the camera
 controls, GPU resources and workers.
+
+### 4D Particle Life view
+
+`/ecosystem/network/4d` is a separate native WebGPU tab. Organizations are
+particles with four spatial coordinates and four velocity components. The
+worker evaluates distances in XYZW, including W, using a four-dimensional
+spatial grid. A seeded asymmetric category interaction matrix attracts or
+repels particles within a finite radius, with a repulsive core, velocity
+damping, bounded speed, and reflecting boundaries. This is an original 4D
+adaptation of the [Particle Life model](https://github.com/tom-mohr/particle-life),
+not a port of a particular game. Category forces are synthetic exploration
+rules; they do not infer financial relationships or performance.
+
+XW, YW and ZW rotations and optional 4D perspective project XYZW into the
+3D WebGPU scene. These projection controls work while paused and do not
+restart physics. Camera orbit and zoom operate on the projected scene.
+Interaction radius, velocity retention and matrix seed are adjustable; the
+shared attraction, repulsion, gravity, dither, financial sizing and link
+visibility controls remain available. Funding edges are documented evidence
+and do not drive Particle Life forces. Pinning only freezes inspector details.
+The simulation pauses for reduced motion and hidden documents and terminates
+its worker and GPU renderer when leaving the page. All simulation state is
+in memory; it does not modify organization or transaction records.
+
+Validation: `npm run test:ecosystem`, `node scripts/check-network-4d.mjs`,
+and `node scripts/check-network-4d-full.mjs` (local Vite preview on port 5187).
+The last browser check uses public snapshots and disables live API calls;
+it checks full-dataset animation and finite 4D state, not production freshness.

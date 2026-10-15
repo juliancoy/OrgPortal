@@ -1,7 +1,7 @@
 import {WebGPURenderer,Scene,PerspectiveCamera,AmbientLight,DirectionalLight,InstancedMesh,SphereGeometry,CylinderGeometry,ConeGeometry,MeshStandardMaterial,MeshBasicMaterial,Object3D,Vector3,Vector2,Color,Raycaster,Box3} from 'three/webgpu'
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js'
-export async function createNetworkGPU3D(canvas,onLost,changed){
- if(!navigator.gpu||!await navigator.gpu.requestAdapter())throw Error('3D WebGPU requires a supported browser and a secure connection. Use the Graph tab instead.')
+export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D'){
+ if(!navigator.gpu||!await navigator.gpu.requestAdapter())throw Error(dimension+' WebGPU requires a supported browser and a secure connection. Use the Graph tab instead.')
  const renderer=new WebGPURenderer({canvas,antialias:true,alpha:true})
  try{await renderer.init();if(!renderer.backend.isWebGPUBackend)throw Error('A native WebGPU device is required for this tab.')}catch(error){renderer.dispose();throw error}
  let disposed=false,width=1,height=1,compiled=false,compiling=false,referenceDistance=1
