@@ -205,4 +205,4 @@ html.eco-map-open .portal-footer, html.eco-map-open .tb-shell-footer { display:n
 
 .eco-fund-breakdown svg{display:block;width:110px;height:110px;margin:.75rem auto}.eco-fund-swatch{display:inline-block;width:.8rem;height:.8rem;border-radius:50%;margin-right:.4rem}
 
-.eco-preview-totals{display:grid;grid-template-columns:1fr auto;gap:8px;margin:16px 0}.eco-preview-totals dd{margin:0;font-weight:600}.eco-organization-preview+ .eco-organization-preview{margin-top:24px;padding-top:16px;border-top:1px solid #ccd5df}
+.eco-preview-totals{display:grid;grid-template-columns:minmax(0,1fr);gap:4px;margin:16px 0}.eco-preview-totals dt{margin-top:12px;font-size:12px;line-height:1.5}.eco-preview-totals dt:first-child{margin-top:0}.eco-preview-totals dd{min-width:0;margin:0;font-weight:600;overflow-wrap:anywhere}.eco-organization-preview+ .eco-organization-preview{margin-top:24px;padding-top:16px;border-top:1px solid #ccd5df}
