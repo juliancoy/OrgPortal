@@ -257,7 +257,19 @@ def _load_pidp_editme():
     return module
 
 
+def _local_oauth_credentials(pidp_editme, provider):
+    prefix = provider.upper()
+    client_id = os.getenv(f"PIDP_{prefix}_CLIENT_ID") or os.getenv(f"{prefix}_CLIENT_ID") or getattr(pidp_editme, f"PIDP_{prefix}_CLIENT_ID", None)
+    client_secret = os.getenv(f"PIDP_{prefix}_CLIENT_SECRET") or os.getenv(f"{prefix}_CLIENT_SECRET") or getattr(pidp_editme, f"PIDP_{prefix}_CLIENT_SECRET", None)
+    placeholders = {f"{provider}-client-id", f"{provider}-client-secret", "changeme"}
+    if not all(isinstance(value, str) and value.strip() and value.strip().lower() not in placeholders for value in (client_id, client_secret)):
+        return None, None
+    return client_id.strip(), client_secret.strip()
+
+
 def _pidp_env(pidp_editme, db_url: str, gateway_base: str, allowed_origins: list[str]) -> dict[str, str | None]:
+    google_id, google_secret = _local_oauth_credentials(pidp_editme, "google")
+    github_id, github_secret = _local_oauth_credentials(pidp_editme, "github")
     pidp_base = f"{gateway_base}/pidp"
     account_app = os.getenv("ORGPORTAL_DEV_PIDP_APP_SLUG") or os.getenv("ORGPORTAL_PIDP_APP_SLUG", "orgportal")
     # SSO requires both the origin allowlist and an explicit client registration.
@@ -291,11 +303,11 @@ def _pidp_env(pidp_editme, db_url: str, gateway_base: str, allowed_origins: list
         "PORTAL_CLIENTS_JSON": portal_clients,
         "PORTAL_SSO_APP_SLUG": os.getenv("ORGPORTAL_DEV_PIDP_APP_SLUG") or os.getenv("ORGPORTAL_PIDP_APP_SLUG", "orgportal"),
         "FRONTEND_REDIRECT_URL": f"{pidp_base}/auth/callback",
-        "GOOGLE_CLIENT_ID": getattr(pidp_editme, "PIDP_GOOGLE_CLIENT_ID", "google-client-id"),
-        "GOOGLE_CLIENT_SECRET": getattr(pidp_editme, "PIDP_GOOGLE_CLIENT_SECRET", "google-client-secret"),
+        "GOOGLE_CLIENT_ID": google_id,
+        "GOOGLE_CLIENT_SECRET": google_secret,
         "GOOGLE_REDIRECT_URI": f"{pidp_base}/auth/google/callback",
-        "GITHUB_CLIENT_ID": getattr(pidp_editme, "PIDP_GITHUB_CLIENT_ID", "github-client-id"),
-        "GITHUB_CLIENT_SECRET": getattr(pidp_editme, "PIDP_GITHUB_CLIENT_SECRET", "github-client-secret"),
+        "GITHUB_CLIENT_ID": github_id,
+        "GITHUB_CLIENT_SECRET": github_secret,
         "GITHUB_REDIRECT_URI": f"{pidp_base}/auth/github/callback",
         "JWT_PRIVATE_KEY": os.getenv("PIDP_JWT_PRIVATE_KEY"),
         "JWT_PUBLIC_KEY": os.getenv("PIDP_JWT_PUBLIC_KEY"),

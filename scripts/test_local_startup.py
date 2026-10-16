@@ -33,6 +33,15 @@ class StartupTests(unittest.TestCase):
             self.assertNotIn('restartOrigin',client)
 
 
+    def test_oauth_uses_explicit_environment_credentials_and_rejects_examples(self):
+        spec=importlib.util.spec_from_file_location('portal_run_oauth',PORTAL/'run.py')
+        portal_run=importlib.util.module_from_spec(spec);spec.loader.exec_module(portal_run)
+        example=SimpleNamespace(PIDP_GOOGLE_CLIENT_ID='google-client-id',PIDP_GOOGLE_CLIENT_SECRET='google-client-secret')
+        with patch.dict(os.environ,{},clear=True):
+            self.assertEqual(portal_run._local_oauth_credentials(example,'google'),(None,None))
+        with patch.dict(os.environ,{'PIDP_GOOGLE_CLIENT_ID':'configured-id','PIDP_GOOGLE_CLIENT_SECRET':'configured-secret'},clear=True):
+            self.assertEqual(portal_run._local_oauth_credentials(example,'google'),('configured-id','configured-secret'))
+
     def test_root_launcher_reuses_existing_local_data_namespace(self):
         args=launcher.parse_args([])
         self.assertEqual((args.prefix,args.network,args.port),('bmoremedtech-','bmoremedtech',8443))

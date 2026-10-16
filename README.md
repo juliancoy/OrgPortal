@@ -330,6 +330,17 @@ For startup diagnostics, use `./run.py --help`.
 The launcher registers its configured local gateway origins with PIdP SSO,
 allowing `/auth/callback` returns without relying on production portal registrations.
 Run `node web/scripts/test-local-sso-registration.mjs` to check the local handoff.
+For actual password-form, profile, reload and logout checks with the established
+local bot fixtures, run `node web/scripts/check-local-login-clickthrough.mjs`.
+It provisions separate unprivileged local member fixtures and never links primary
+identities automatically or injects authentication cookies.
+
+Local Google sign-in needs real `PIDP_GOOGLE_CLIENT_ID` and
+`PIDP_GOOGLE_CLIENT_SECRET` in the private sibling `PIdP/.env.pidp` file (or the
+launcher's environment). The OAuth client must register
+`https://localhost:8443/pidp/auth/google/callback` as an authorized redirect URI.
+Restart the local identity service after changing environment credentials.
+Example credentials from `pidp_editme.py` do not enable a provider.
 
 With the local Docker deployment running, open restricted local features without
 entering a password:
