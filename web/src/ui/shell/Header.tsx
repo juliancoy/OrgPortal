@@ -1024,6 +1024,7 @@ export function Header() {
         <div id="portal-primary-nav" className="portal-nav">
           {portalProfile.id === 'orgportal' ? <>
             <NavLink to="/communities">Communities</NavLink>
+            <NavLink to="/ecosystem/network" isActive={location.pathname.startsWith('/ecosystem/network')}>Research</NavLink>
             {!isGuest && <NavLink to="/following" isActive={location.pathname === '/following'}>Following</NavLink>}
           <NavLink to="/orgs" isActive={isOrgDirectoryActive}>Organizations</NavLink>
             <NavLink to="/events">Events</NavLink>

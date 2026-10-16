@@ -9,11 +9,11 @@ import { parseGroupSite } from './timebankCommunity'
 describe('portal feature profiles', () => {
   it('does not infer MedTech from hostname without tenant metadata', () => {
     const profile = getActivePortalProfileConfig('', null, 'medtech.social')
-    expect(profile.id).toBe('code-collective')
-    expect(profile.memberHomePath).toBe('/chat')
+    expect(profile.id).toBe('orgportal')
+    expect(profile.memberHomePath).toBe('/communities')
   })
-  it('keeps UBI enabled for the default Code Collective profile', () => {
-    const profile = getActivePortalProfileConfig()
+  it('keeps UBI enabled for the explicit Code Collective host', () => {
+    const profile = getActivePortalProfileConfig('', null, 'codecollective.us')
 
     expect(profile.id).toBe('code-collective')
     expect(isPortalFeatureEnabled('ubi', profile)).toBe(true)
@@ -156,3 +156,17 @@ it('uses LifeTech identity from explicit tenant metadata', () => {
     expect(getActivePortalProfileConfig().brandImagePath).toContain('lifetech-logo.png')
   } finally { domain.mockRestore() }
 })
+
+for (const hostname of ['localhost', '127.0.0.1', '[::1]']) {
+  it(`keeps ${hostname} neutral even with the historical Code Collective API default`, () => {
+    const domain = vi.spyOn(communities, 'getGroupSite').mockReturnValue({ id:'code-collective', hostname:'codecollective.us',name:'Code Collective',profile:'code-collective',tagline:'Coding a New Economy',accent_color:'#12325b',features:['directory','events','chat','ubi'] })
+    try {
+      const profile = getActivePortalProfileConfig('',null,hostname)
+      expect(profile.id).toBe('orgportal')
+      expect(profile.brandName).toBe('OrgPortal')
+      expect(profile.brandImagePath).toBe('/orgportal.svg')
+      expect(profile.manifestPath).toBe('/orgportal.webmanifest')
+      expect(profile.memberHomePath).toBe('/')
+    } finally { domain.mockRestore() }
+  })
+}

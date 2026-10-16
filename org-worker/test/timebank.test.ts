@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { app } from '../src/index';
 import { TimebankDatabase } from './helpers/timebankDatabase';
-import { createTimebankListing, proposeTimebankExchange, resolveTimebankExchange, updateTimebankListing, timebankDashboard, setTimebankListingVote, getTimebankListing } from '../src/timebank';
+import { resolveGroupSite, createTimebankListing, proposeTimebankExchange, resolveTimebankExchange, updateTimebankListing, timebankDashboard, setTimebankListingVote, getTimebankListing } from '../src/timebank';
 
 const alice = { id: 'alice', name: 'Alice' };
 const bob = { id: 'bob', name: 'Bob' };
@@ -404,4 +404,20 @@ test('attached portal domains share the existing timebank ledger; pending domain
   assert.equal(community.hostname, 'orgportal.cc');
   database.sqlite.exec("UPDATE group_sites SET custom_domain_status = 'requested' WHERE custom_domain_hostname = 'orgportal.cc'");
   assert.equal((await app.request('https://orgportal.cc/api/timebank/community', {}, env)).status, 404);
+});
+
+test('local platform site resolution is separate from explicit Code Collective tenant aliases', async () => {
+  const database = new TimebankDatabase();
+  database.sqlite.prepare(`INSERT INTO group_sites(id,hostname,name,tagline,accent_color,profile,features)
+    VALUES('orgportal','orgportal.cc','OrgPortal','A place for every community.','#155e59','orgportal','["directory","events","chat"]')`).run();
+  const db = database.asD1();
+  for (const host of ['localhost:8443','127.0.0.1:8443','[::1]:8443','orgportal.cc']) {
+    const site = await resolveGroupSite(db,new Request('http://worker/api/portal/site',{headers:{'x-forwarded-host':host}}));
+    assert.equal(site.id,'orgportal');
+    assert.equal(site.name,'OrgPortal');
+  }
+  for (const host of ['codecollective.us','www.codecollective.us','org-codecollective.jcloiacon.workers.dev']) {
+    const site = await resolveGroupSite(db,new Request(`https://${host}/api/portal/site`));
+    assert.equal(site.id,'code-collective');
+  }
 });

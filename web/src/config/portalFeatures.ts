@@ -156,8 +156,15 @@ export function getActivePortalProfileConfig(
   _hostname = typeof window === 'undefined' ? '' : window.location.hostname,
 ): PortalProfileConfig {
   const tenant = getGroupSite()
+  const local = ['localhost', '127.0.0.1', '[::1]'].includes(_hostname.toLowerCase())
+  // Loopback is the platform workspace, even when an older API still returns
+  // its historical Code Collective default. Explicit tenant previews keep their branding.
+  if (local && (!tenant || tenant.id === 'code-collective' || tenant.id === 'orgportal')) {
+    return { ...PORTAL_PROFILES.orgportal, memberHomePath: '/', groupSiteId: tenant?.id === 'orgportal' ? tenant.id : undefined }
+  }
   if (tenant) return tenantProfileConfig(tenant)
-  return PORTAL_PROFILES[_hostname === 'orgportal.cc' ? 'orgportal' : 'code-collective']
+  const codeCollectiveHost = ['codecollective.us', 'www.codecollective.us', 'org-codecollective.jcloiacon.workers.dev', 'codecollective-site.jcloiacon.workers.dev'].includes(_hostname.toLowerCase())
+  return PORTAL_PROFILES[codeCollectiveHost ? 'code-collective' : 'orgportal']
 }
 
 export function isPortalFeatureEnabled(feature: PortalFeature, profile = getActivePortalProfileConfig()): boolean {

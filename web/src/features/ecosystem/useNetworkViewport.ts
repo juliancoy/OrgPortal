@@ -1,9 +1,11 @@
 import { useEffect, type RefObject } from 'react'
+import { mountNetworkFullscreen } from './network-fullscreen'
 
 export function useNetworkViewport(root: RefObject<HTMLDivElement | null>) {
   useEffect(() => {
     const host = root.current
     if (!host) return
+    const cleanupFullscreen = mountNetworkFullscreen(host)
     document.documentElement.classList.add('eco-map-open')
     window.scrollTo(0, 0)
     const header = document.querySelector('.portal-header, .tb-shell-header')
@@ -13,6 +15,7 @@ export function useNetworkViewport(root: RefObject<HTMLDivElement | null>) {
     if (header) observer.observe(header)
     window.addEventListener('resize', measure)
     return () => {
+      cleanupFullscreen()
       observer.disconnect()
       window.removeEventListener('resize', measure)
       document.documentElement.classList.remove('eco-map-open')

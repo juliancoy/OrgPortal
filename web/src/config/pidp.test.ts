@@ -41,6 +41,7 @@ describe('profile-aware authentication destinations', () => {
   })
 
   it('uses the shared chat for the Code Collective profile', () => {
+    vi.stubGlobal('window', { location: { origin:'https://codecollective.us',hostname:'codecollective.us',search:'' } })
     expect(defaultPostLoginPath()).toBe('/chat')
     expect(new URL(portalAuthCallbackUrl('/people')).searchParams.has('portalProfile')).toBe(false)
   })

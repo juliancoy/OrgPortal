@@ -1,0 +1,47 @@
+.workspace-home { --workspace-accent: var(--primary); }
+.workspace-home p { text-indent: 0; }
+.workspace-header { background: var(--panel); border-bottom: 1px solid var(--border); }
+.workspace-header-inner { min-height: 80px; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding-block: 16px; }
+.workspace-brand { display: flex; align-items: center; gap: 10px; font-size: 1.2rem; font-weight: 750; }
+.workspace-brand > span { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: var(--workspace-accent); color: var(--btn-primary-text); font-size: 1rem; }
+.workspace-brand small { margin-left: 10px; padding-left: 20px; border-left: 1px solid var(--border); font-size: .75rem; color: var(--text-muted); font-weight: 500; }
+.workspace-account { display: flex; flex-wrap: wrap; align-items: center; justify-content: end; gap: 14px; font-size: .8rem; }
+.workspace-account button { border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; background: var(--panel); color: var(--text-muted); cursor: pointer; }
+.workspace-hero { padding: 38px 0 48px; border-bottom: 1px solid var(--border); }
+.workspace-hero .workspace-eyebrow { color: var(--workspace-accent); text-transform: uppercase; letter-spacing: .13em; font-size: .75rem; font-weight: 750; margin: 0 0 18px; }
+.workspace-hero h1 { margin: 0 0 24px; font-size: clamp(2rem, 4.6vw, 3.8rem); line-height: 1.12; letter-spacing: -.035em; }
+.workspace-hero h1 span { color: var(--workspace-accent); }
+.workspace-hero > p:not(.workspace-eyebrow) { max-width: 65ch; color: var(--text-muted); line-height: 1.65; margin: 0; }
+.workspace-quick-links { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+.workspace-quick-links a { display: inline-flex; align-items: center; gap: 12px; min-height: 46px; padding: 12px 18px; border: 1px solid var(--border); border-radius: 9px; font-size: .85rem; font-weight: 650; background: var(--panel); }
+.workspace-quick-links a:first-child { background: var(--workspace-accent); color: var(--btn-primary-text); border-color: var(--workspace-accent); }
+.workspace-directory-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px; padding: 36px 0 24px; }
+.workspace-directory-heading h2 { font-size: 1.25rem; margin: 0 0 8px; }
+.workspace-directory-heading p { font-size: .85rem; color: var(--text-muted); margin: 0; }
+.workspace-directory-heading label { width: min(100%, 300px); }
+.workspace-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; align-items: start; }
+.workspace-section { padding: 26px; border: 1px solid var(--border); border-radius: 14px; background: var(--panel); min-width: 0; }
+.workspace-section-title { display: flex; align-items: center; gap: 10px; color: var(--workspace-accent); }
+.workspace-section h3 { margin: 0; color: var(--text-primary); font-size: 1rem; }
+.workspace-section > p { margin: 14px 0 20px; font-size: .85rem; line-height: 1.6; color: var(--text-muted); }
+.workspace-section ul { margin: 0; padding: 0; list-style: none; }
+.workspace-section li a, .workspace-section li > a { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 42px; padding: 9px 0; font-size: .85rem; border-top: 1px solid var(--border); }
+.workspace-section a svg { flex-shrink: 0; color: var(--text-muted); }
+.workspace-section a:hover { color: var(--workspace-accent); }
+.workspace-empty { padding: 30px 0; color: var(--text-muted); }
+@media (max-width: 1000px) { .workspace-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 620px) {
+  .workspace-header-inner { align-items: start; }
+  .workspace-brand { flex-wrap: wrap; gap: 8px; font-size: 1rem; }
+  .workspace-brand small { width: 100%; margin: 0; padding: 0; border: 0; }
+  .workspace-account { max-width: 45%; }
+  .workspace-hero { padding-top: 14px; }
+  .workspace-quick-links { display: grid; }
+  .workspace-quick-links a { justify-content: space-between; }
+  .workspace-grid { grid-template-columns: minmax(0, 1fr); }
+  .workspace-directory-heading label { width: 100%; }
+  .workspace-section { padding: 22px; }
+}
+
+.workspace-footer { border-top: 1px solid var(--border); padding: 24px 0; color: var(--text-muted); font-size: .8rem; }
+.workspace-footer > div, .workspace-footer nav { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px; }

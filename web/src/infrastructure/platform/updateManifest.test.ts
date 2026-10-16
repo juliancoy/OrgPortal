@@ -21,6 +21,7 @@ function setWindow(hostname: string, protocol = 'https:') {
     location: {
       hostname,
       protocol,
+      origin: `${protocol}//${hostname}`,
       reload,
       assign,
     },
@@ -41,6 +42,12 @@ describe('updateManifest', () => {
   it('resolves static manifest URL from portal host', () => {
     setWindow('codecollective.us')
     expect(resolveUpdateManifestUrl()).toBe('https://codecollective.us/p/mobile-update.json')
+  })
+
+  it('uses the current localhost gateway and port instead of a separate static server', () => {
+    setWindow('localhost')
+    window.location.origin = 'https://localhost:9445'
+    expect(resolveUpdateManifestUrl()).toBe('https://localhost:9445/mobile-update.json')
   })
 
   it('detects available web update when manifest build is newer', async () => {

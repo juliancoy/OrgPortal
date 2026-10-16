@@ -82,7 +82,7 @@ function manifestUrlFromPortalBase(portalBase: string): string | null {
     const staticHost = deriveStaticHost(parsed.hostname)
     if (!staticHost) return null
     if (staticHost === 'localhost' || staticHost === '127.0.0.1') {
-      return `${parsed.protocol}//${staticHost}:8080${DEFAULT_STATIC_MANIFEST_PATH}`
+      return new URL(DEFAULT_STATIC_MANIFEST_PATH, parsed.origin).href
     }
     return `https://${staticHost}${DEFAULT_STATIC_MANIFEST_PATH}`
   } catch {
@@ -99,7 +99,7 @@ export function resolveUpdateManifestUrl(): string {
     const staticHost = deriveStaticHost(window.location.hostname)
     if (staticHost) {
       if (staticHost === 'localhost' || staticHost === '127.0.0.1') {
-        return `${window.location.protocol}//${staticHost}:8080${DEFAULT_STATIC_MANIFEST_PATH}`
+        return new URL(DEFAULT_STATIC_MANIFEST_PATH, window.location.origin).href
       }
       return `https://${staticHost}${DEFAULT_STATIC_MANIFEST_PATH}`
     }

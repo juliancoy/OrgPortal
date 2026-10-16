@@ -445,9 +445,11 @@ export async function resolveTimebankCommunity(db: D1Database, request: Request)
 }
 
 function requestHostname(request: Request) {
-  const host = (request.headers.get('x-forwarded-host') || new URL(request.url).host).toLowerCase().split(':')[0];
-  const defaults = ['localhost', '127.0.0.1', 'www.codecollective.us', 'org-codecollective.jcloiacon.workers.dev', 'codecollective-site.jcloiacon.workers.dev'];
-  return defaults.includes(host) ? 'codecollective.us' : host;
+  const authority = request.headers.get('x-forwarded-host') || new URL(request.url).host;
+  const host = new URL(`http://${authority}`).hostname.toLowerCase();
+  if (['localhost', '127.0.0.1', '[::1]'].includes(host)) return 'orgportal.cc';
+  const aliases = ['www.codecollective.us', 'org-codecollective.jcloiacon.workers.dev', 'codecollective-site.jcloiacon.workers.dev'];
+  return aliases.includes(host) ? 'codecollective.us' : host;
 }
 
 function tenantFeatures(value: string | null | undefined) {
@@ -470,6 +472,7 @@ export async function resolveGroupSite(db: D1Database, request: Request): Promis
   } catch {
     // Older local databases may not have the tenant table yet.
   }
+  if (hostname === 'orgportal.cc') throw new TimebankError('The OrgPortal site has not been configured.', 404);
   const community = await resolveTimebankCommunity(db, request);
   return { ...community, profile: 'community', features: ['timebank'] };
 }

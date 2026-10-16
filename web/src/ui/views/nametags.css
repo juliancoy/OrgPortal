@@ -1,5 +1,12 @@
-.nametags-controls { margin-bottom: 1.5rem; }
+.nametags-page { padding: clamp(18px, 3vw, 28px); }
+.nametags-controls { display: grid; gap: 16px; margin-bottom: 1.5rem; line-height: 1.5; }
+.nametags-controls h1 { font-size: clamp(1.5rem, 4vw, 2rem); line-height: 1.2; margin: 0; }
+.nametags-controls p { margin: 0; }
+.nametags-controls label { display: grid; gap: 8px; max-width: 440px; font-weight: 600; }
+.nametags-controls > button { justify-self: start; }
 .nametag-sheet-preview { overflow-x: auto; }
 .nametag-letter-sheet { box-sizing: border-box; width: 8in; height: 10.5in; padding: .5in 0; display: grid; grid-template-columns: repeat(2, 4in); grid-template-rows: repeat(3, 3in); gap: .25in 0; align-content: start; background: white; margin-bottom: 1rem; break-after: page; break-inside: avoid; }
 .nametag-letter-sheet:last-child { break-after: auto; }
 @media print { .nametag-letter-sheet { margin: 0; } }
+
+.nametags-page p { text-indent: 0; }

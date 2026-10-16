@@ -518,6 +518,75 @@ alias in the same database batch as the rename.
 
 ## Connection diagnostics (2026-10-13)
 
+### Remote client access (2026-10-14)
+
+OrgPortal uses remote Streamable HTTP at `https://orgportal.cc/api/org/mcp`;
+it requires no desktop process, local executable, or OS keyring. Desktop CLI
+keyring storage is a client feature, not a server requirement. Each hosted
+client still needs its own PIdP OAuth connection and supported MCP integration.
+
+Cloudflare Browser Integrity Check previously rejected non-browser requests
+with error 1010 at both the portal and identity discovery endpoints. Live
+configuration rules now disable only that check for the portal MCP endpoint,
+its upload paths, and its two protected-resource metadata paths. On
+`id.codecollective.us`, the exception covers OAuth/OIDC discovery, JWKS, and
+MCP registration, token, revocation and introspection endpoints. Browser login
+and consent retain their existing protection, as do application authorization
+and all organization permission checks.
+
+The frontend API origins now use `https://org-api.orgportal.cc`, a custom domain
+of the existing `org-codecollective` Worker. Its MCP and metadata paths have the
+same narrow exception. Forwarding through the former public `workers.dev`
+upstream still triggered error 1010 after fixing the frontend zone. These are
+infrastructure/settings changes; no Worker code or database migration was
+deployed. The checked-in frontend configuration preserves the new API origin.
+
+Verified from a non-browser client: both portal metadata endpoints, issuer
+discovery and JWKS return 200; unauthenticated MCP initialization returns the
+expected 401 with its OAuth resource-metadata challenge. All 40 targeted MCP
+tests and three frontend routing tests passed.
+
+The subsequent authenticated ChatGPT web test found `invalid_request` during
+OAuth: PIdP's live `MCP_OAUTH_RESOURCE_CONFIG_JSON` binding was missing, so
+dynamic clients recognized only the MedTech and LifeTech resources. Restored
+the exact OrgPortal addition from PIdP's checked-in configuration, preserving
+all other bindings and the existing issuer. Browser Google sign-in, portal
+handoff, consent, and ChatGPT's OAuth callback then completed. ChatGPT showed
+the connected account and successfully executed `list_organizations` through
+the main OrgPortal plugin. The temporary public diagnostic OAuth client was
+removed after verifying it had no grants. No organization data was changed.
+
+OrgPortal2 and OrgPortal3 were deleted through ChatGPT's owner controls and
+verified absent from the owned-plugin registry. The main package and its
+required registered OrgPortal app remain. ChatGPT's developer `Refresh tools`
+control reported an update error, but the actual web chat tool call succeeded.
+Native mobile-host behavior remains unverified.
+
+Multiple account connections were also verified in ChatGPT web. Use **Connect
+another account**, retain the existing grant, and give each connection a distinct
+nickname. Select the intended named account when invoking tools; memberships
+are account-specific and must not be inferred from another connection's result.
+The cross-profile pairing flow completed a second account connection, and a
+read-only `list_organizations` call selected that connection successfully.
+All 20 serverless and 38 Python OAuth tests passed, including new regression
+coverage for multiple grants on one client/resource, separate account subjects,
+independent refresh, and revoking one grant without invalidating the others.
+No backend feature flag, identity migration, or code release was needed to
+enable this already-supported behavior.
+
+Browser sign-in still uses the legacy `id.codecollective.us` identity hostname:
+production `PUBLIC_BASE_URL` retains that value. The same PIdP Worker already
+has the `id.orgportal.cc` custom domain, but the local identity cutover (including
+callback forwarding and credential consolidation) is not deployed. Preserve
+the existing MCP issuer and grants when completing that separate cutover;
+changing the hostname alone is not a tested identity release.
+
+Configuration rulesets: OrgPortal `8e54543b58154ec69b24697d45ac606b`, identity
+`df1807f05d73473cb2521c987c9faaa2`. Restore the former frontend API origins and
+disable the added rules to roll back routing/security configuration; doing so
+also restores the observed non-browser connectivity failure. Keep the API
+custom domain while any frontend version references it.
+
 The frontend must proxy both `/.well-known/oauth-protected-resource` and the
 resource-specific `/.well-known/oauth-protected-resource/api/org/mcp` to the API.
 The root path previously returned the frontend 404 page even though the

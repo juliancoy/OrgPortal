@@ -39,7 +39,7 @@ export function NametagsPage() {
     return () => controller.abort()
   }, [token])
   const sheets = Array.from({ length: Math.ceil(people.length / 6) }, (_, index) => people.slice(index * 6, index * 6 + 6))
-  return <section className="panel nametags-page">
+  return <section className="portal-card nametags-page">
     <div className="nametags-controls">
       <Link to="/admin">Back to admin</Link>
       <h1>Print everyone’s nametags</h1>
@@ -47,7 +47,7 @@ export function NametagsPage() {
       <p>Six 4 × 3 inch nametags per 8.5 × 11 inch sheet. Print at 100% / actual size with browser headers and footers turned off.</p>
       {loading ? <p role="status">Loading all people…</p> : <p>{people.length} people · {sheets.length} printable sheets</p>}
       {people.some(person => !person.public) && <p className="muted">Private profiles are included; their QR links will not show private profiles to visitors.</p>}
-      <button disabled={loading || !people.length || printing} onClick={async () => {
+      <button className="btn-primary" disabled={loading || !people.length || printing} onClick={async () => {
         if (!sheetsRef.current) return
         setPrinting(true); setError('')
         try { await printNametags(sheetsRef.current, `${badgeStyles}\n${sheetStyles}\n@page { size: letter portrait; margin: .25in; } body { margin: 0; } .nametag-letter-sheet { margin: 0; }`, 'LifeTech nametags — Letter sheets') }

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
+import './admin.css'
 import { useAuth } from '../../app/AppProviders'
 import { refreshRuntimeTokenFromSession } from '../../infrastructure/auth/sessionToken'
 
@@ -123,11 +124,17 @@ function metricValue(metrics: SystemMetricsResponse | null, key: string): string
 
 export function AdminPage() {
   const { token } = useAuth()
-  const [tab, setTab] = useState<AdminTabKey>('abuse')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const requestedTab = searchParams.get('tab')
+  const tab: AdminTabKey = requestedTab === 'stats' || requestedTab === 'users' || requestedTab === 'ops' ? requestedTab : 'abuse'
+  function setTab(next: AdminTabKey) {
+    setSearchParams(previous => {
+      const params = new URLSearchParams(previous)
+      params.set('tab', next)
+      return params
+    })
+  }
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
-
-  const [status, setStatus] = useState<string | null>(null)
-  const [isRunning, setIsRunning] = useState(false)
 
   const [claimRequests, setClaimRequests] = useState<OwnershipChallengeQueueItem[]>([])
   const [claimQueueStatus, setClaimQueueStatus] = useState<string | null>(null)
@@ -405,19 +412,18 @@ export function AdminPage() {
     if (!isAdmin || !token) {
       return
     }
-    void loadClaimQueue()
-    void loadBusinessCardSettings()
-    void loadStatistics()
-    void loadUsers('')
-  }, [isAdmin, token])
+    if (tab === 'ops') void loadClaimQueue()
+    if (tab === 'abuse') void loadBusinessCardSettings()
+    if (tab === 'stats') void loadStatistics()
+  }, [isAdmin, token, tab])
 
   useEffect(() => {
-    if (!isAdmin || !token) return
+    if (!isAdmin || !token || tab !== 'users') return
     const timeout = window.setTimeout(() => {
       void loadUsers(userQuery)
     }, 250)
     return () => window.clearTimeout(timeout)
-  }, [userQuery, isAdmin, token])
+  }, [userQuery, isAdmin, token, tab])
 
   const activeUsersLast7Days = useMemo(() => {
     if (!stats) return 0
@@ -451,48 +457,51 @@ export function AdminPage() {
     { key: 'ops', label: 'Operations' },
   ]
 
-  if (isAdmin === false) {
+  if (isAdmin !== true) {
     return (
-      <section className="panel">
-        <h1 style={{ marginTop: 0 }}>SysAdmin</h1>
-        <p className="muted">You do not have access to this page.</p>
+      <section className="portal-card sysadmin-page">
+        <h1>Administration</h1>
+        <p className="muted" role="status">{isAdmin === null ? 'Checking administrator access…' : 'You do not have access to this page.'}</p>
       </section>
     )
   }
 
   return (
-    <section className="panel" style={{ display: 'grid', gap: '1rem' }}>
-      <div>
-        <h1 style={{ marginTop: 0, marginBottom: '0.25rem' }}>SysAdmin</h1>
-        <Link to="/admin/nametags" className="btn-secondary">Print everyone’s nametags</Link>
-        <p className="muted" style={{ margin: 0 }}>Platform administration and moderation controls.</p>
-        <p><Link to="/email">Email campaigns</Link></p>
-      </div>
+    <section className="sysadmin-page" aria-labelledby="sysadmin-title">
+      <header className="sysadmin-heading">
+        <div>
+          <span className="sysadmin-eyebrow">System administrator</span>
+          <h1 id="sysadmin-title">Administration</h1>
+          <p className="muted">Manage platform safety, review activity, and support your community.</p>
+        </div>
+        <div className="sysadmin-actions">
+          <Link to="/admin/nametags" className="btn-secondary">Print nametags</Link>
+          <Link to="/email" className="btn-secondary">Email campaigns</Link>
+        </div>
+      </header>
 
-      <div className="sysadmin-layout" style={{ display: 'grid', gap: '1rem' }}>
-        <aside className="portal-card sysadmin-sidebar" style={{ height: 'fit-content', display: 'grid', gap: '0.4rem', padding: '0.65rem' }}>
+      <div className="sysadmin-workspace">
+        <nav className="sysadmin-tabs" aria-label="Administration sections">
           {tabItems.map((item) => (
             <button
               key={item.key}
               type="button"
               onClick={() => setTab(item.key)}
-              className="portal-user-menu-item"
-              style={{
-                background: tab === item.key ? 'var(--surface-strong)' : 'transparent',
-                borderColor: tab === item.key ? 'var(--border-subtle)' : 'transparent',
-              }}
+              className="sysadmin-tab"
+              aria-current={tab === item.key ? 'page' : undefined}
+              aria-controls="sysadmin-content"
             >
               {item.label}
             </button>
           ))}
-        </aside>
+        </nav>
 
-        <div style={{ display: 'grid', gap: '0.9rem' }}>
+        <div id="sysadmin-content" className="sysadmin-content">
           {tab === 'abuse' ? (
             <>
               <div className="portal-card" style={{ display: 'grid', gap: '0.75rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
-                  <h2 style={{ margin: 0, fontSize: '1rem' }}>Business Card Abuse Settings</h2>
+                  <h2 style={{ margin: 0, fontSize: '1rem' }}>Business card protections</h2>
                   <button type="button" onClick={() => void loadBusinessCardSettings()} disabled={businessCardLoading || businessCardSaving}>
                     {businessCardLoading ? 'Refreshing…' : 'Refresh'}
                   </button>
@@ -508,13 +517,13 @@ export function AdminPage() {
                   </p>
                 ) : (
                   <form
-                    style={{ display: 'grid', gap: '0.6rem' }}
+                    className="sysadmin-settings-form"
                     onSubmit={(event) => {
                       event.preventDefault()
                       void saveBusinessCardSettings()
                     }}
                   >
-                    <label style={{ display: 'grid', gap: '0.3rem' }}>
+                    <label className="sysadmin-check">
                       <span>Submissions enabled</span>
                       <input
                         type="checkbox"
@@ -604,7 +613,7 @@ export function AdminPage() {
                         }
                       />
                     </label>
-                    <label style={{ display: 'grid', gap: '0.3rem' }}>
+                    <label className="sysadmin-wide" style={{ display: 'grid', gap: '0.3rem' }}>
                       <span>Allowed content types (comma-separated)</span>
                       <input
                         type="text"
@@ -616,7 +625,7 @@ export function AdminPage() {
                         }
                       />
                     </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <label className="sysadmin-check">
                       <input
                         type="checkbox"
                         checked={businessCardForm.auto_clarification_enabled}
@@ -674,7 +683,7 @@ export function AdminPage() {
             <>
               <div className="portal-card" style={{ display: 'grid', gap: '0.75rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <h2 style={{ margin: 0, fontSize: '1rem' }}>Platform Statistics</h2>
+                  <h2 style={{ margin: 0, fontSize: '1rem' }}>Platform statistics</h2>
                   <button type="button" onClick={() => void loadStatistics()} disabled={statsLoading}>
                     {statsLoading ? 'Refreshing…' : 'Refresh'}
                   </button>
@@ -712,7 +721,7 @@ export function AdminPage() {
               </div>
 
               <div className="portal-card" style={{ display: 'grid', gap: '0.5rem' }}>
-                <h3 style={{ margin: 0, fontSize: '0.95rem' }}>Top Activity Types</h3>
+                <h3 style={{ margin: 0, fontSize: '0.95rem' }}>Recent activity</h3>
                 {topAuditEventTypes.length === 0 ? (
                   <p className="muted" style={{ margin: 0 }}>No audit activity found.</p>
                 ) : (
@@ -737,6 +746,7 @@ export function AdminPage() {
               </div>
 
               <input
+                aria-label="Search users by name or email"
                 type="search"
                 placeholder="Search by name or email"
                 value={userQuery}
@@ -772,7 +782,7 @@ export function AdminPage() {
             <>
               <div className="portal-card" style={{ display: 'grid', gap: '0.75rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
-                  <h2 style={{ margin: 0, fontSize: '1rem' }}>Contested Ownerships</h2>
+                  <h2 style={{ margin: 0, fontSize: '1rem' }}>Ownership disputes</h2>
                   <button type="button" onClick={() => void loadClaimQueue()} disabled={claimQueueLoading}>
                     {claimQueueLoading ? 'Refreshing…' : 'Refresh'}
                   </button>
@@ -826,53 +836,6 @@ export function AdminPage() {
                 ) : null}
               </div>
 
-              <div className="portal-card" style={{ display: 'grid', gap: '0.75rem' }}>
-                <h2 style={{ margin: 0, fontSize: '1rem' }}>Maintenance</h2>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (!token) {
-                      setStatus('Login required.')
-                      return
-                    }
-                    setIsRunning(true)
-                    setStatus(null)
-                    try {
-                      const requestDedupe = (authToken: string) =>
-                        fetch('/api/ballot/admin/dedupe-signatures', {
-                          method: 'POST',
-                          headers: { Authorization: `Bearer ${authToken}` },
-                        })
-                      let resp = await requestDedupe(token)
-                      if (resp.status === 401) {
-                        const refreshed = await refreshRuntimeTokenFromSession()
-                        if (refreshed) {
-                          resp = await requestDedupe(refreshed)
-                        }
-                      }
-                      if (!resp.ok) {
-                        const text = await resp.text().catch(() => '')
-                        throw new Error(text || `Dedupe failed (${resp.status})`)
-                      }
-                      const data = await resp.json()
-                      setStatus(`Deduped signatures. Kept: ${data.kept ?? 0}, removed: ${data.removed ?? 0}.`)
-                    } catch (err) {
-                      setStatus(err instanceof Error ? err.message : 'Dedupe failed.')
-                    } finally {
-                      setIsRunning(false)
-                    }
-                  }}
-                  disabled={isRunning}
-                  style={{ background: '#b42318', color: '#fff', border: 'none', borderRadius: 8, padding: '0.6rem 1rem', width: 'fit-content' }}
-                >
-                  {isRunning ? 'Deduplicating…' : 'Deduplicate signatures'}
-                </button>
-                {status ? (
-                  <p className="muted" role="status" style={{ marginBottom: 0 }}>
-                    {status}
-                  </p>
-                ) : null}
-              </div>
             </>
           ) : null}
         </div>

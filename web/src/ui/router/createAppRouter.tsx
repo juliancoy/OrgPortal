@@ -1,4 +1,5 @@
 import { CommunitiesPage, PlatformHomePage } from '../views/PlatformHomePage'
+import { LocalHomePage } from '../views/LocalHomePage'
 import { resolveOrganizationView, useOrganizationAccess, useOrganizationViewPreference } from '../hooks/useOrganizationView'
 import { PortalProfileBoundary } from '../shell/PortalProfileBoundary'
 import { getDomainCommunity, getGroupSite, type GroupSite } from '../../config/timebankCommunity'
@@ -118,6 +119,7 @@ function HomeRoute() {
   const access = useOrganizationAccess(tenant?.home_org_slug)
   const location = useLocation()
   const requestedView = useOrganizationViewPreference(tenant?.home_org_slug, new URLSearchParams(location.search).get('view'))
+  if (['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)) return <LocalHomePage />
   if (isLoading || access.loading) return null
   const profile = getActivePortalProfileConfig()
   if (profile.id === 'orgportal') return <PlatformHomePage />
