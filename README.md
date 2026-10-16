@@ -327,6 +327,9 @@ Run these from `Organization/`. The launcher delegates to this repository's
 preserves local accounts, newsletters, replica storage and developer-admin setup.
 The default portal URL is `https://localhost:8443/`; `--port` selects another port.
 For startup diagnostics, use `./run.py --help`.
+The launcher registers its configured local gateway origins with PIdP SSO,
+allowing `/auth/callback` returns without relying on production portal registrations.
+Run `node web/scripts/test-local-sso-registration.mjs` to check the local handoff.
 
 With the local Docker deployment running, open restricted local features without
 entering a password:

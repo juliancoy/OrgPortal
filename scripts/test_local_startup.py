@@ -2,6 +2,9 @@
 import contextlib
 import importlib.util
 import io
+import json
+import os
+from types import SimpleNamespace
 from pathlib import Path
 import subprocess
 import sys
@@ -15,6 +18,21 @@ spec=importlib.util.spec_from_file_location('organization_run',PORTAL.parent/'ru
 launcher=importlib.util.module_from_spec(spec);spec.loader.exec_module(launcher)
 
 class StartupTests(unittest.TestCase):
+    def test_local_identity_registers_only_configured_portal_origins(self):
+        spec=importlib.util.spec_from_file_location('portal_run',PORTAL/'run.py')
+        portal_run=importlib.util.module_from_spec(spec);spec.loader.exec_module(portal_run)
+        origins=['https://localhost:8443','https://127.0.0.1:8443']
+        with patch.dict(os.environ,{},clear=True):
+            env=portal_run._pidp_env(SimpleNamespace(),'local-database','https://localhost:8443',origins)
+        registrations=json.loads(env['PORTAL_CLIENTS_JSON'])
+        self.assertEqual(set(registrations),set(origins))
+        self.assertEqual(env['PORTAL_AUTH_ORIGINS'],','.join(origins))
+        for client in registrations.values():
+            self.assertEqual(client['accountApp'],'orgportal')
+            self.assertEqual(client['callbacks'],['/auth/callback'])
+            self.assertNotIn('restartOrigin',client)
+
+
     def test_root_launcher_reuses_existing_local_data_namespace(self):
         args=launcher.parse_args([])
         self.assertEqual((args.prefix,args.network,args.port),('bmoremedtech-','bmoremedtech',8443))
