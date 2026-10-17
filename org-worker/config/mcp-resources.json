@@ -8,7 +8,7 @@
     "organizationId": "ef646755-9443-4c7b-ba4b-a7a29754f666",
     "introspectionSecretBinding": "MCP_LIFETECH_INTROSPECTION_SECRET"
   },
-  "https://orgportal.cc/api/org/mcp": {
+  "https://orgportal.cc/mcp": {
     "name": "OrgPortal",
     "introspectionSecretBinding": "MCP_ORGPORTAL_INTROSPECTION_SECRET"
   }

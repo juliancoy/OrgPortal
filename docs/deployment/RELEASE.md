@@ -93,7 +93,11 @@ and read-only.
 
 ## Identity mount and research access
 
-PIdP's canonical browser base is `https://orgportal.cc/pidp`. The frontend's
+The public MCP resource is `https://orgportal.cc/mcp`. Its OAuth issuer is
+`https://orgportal.cc`, with `/oauth/mcp/*` endpoints and root
+`/.well-known/oauth-authorization-server` and `/.well-known/jwks.json` discovery.
+The platform `/api/org/mcp` path is retired; brand-specific MCP audiences remain
+separate. PIdP's canonical browser base is `https://orgportal.cc/pidp`. The frontend's
 `PIDP` service binding targets the existing `pidp-codecollective` Worker; PIdP
 remains independently released and retains its database, keys and account subjects.
 The central proxy strips `/pidp` and untrusted forwarding headers. Tenant proxies

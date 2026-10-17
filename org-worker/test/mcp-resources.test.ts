@@ -129,7 +129,7 @@ test('brand tool discovery and calls cannot escape their organization, including
 });
 
  test('OrgPortal platform resource has its own audience and no organization restriction', async () => {
-  const resource = 'https://orgportal.cc/api/org/mcp';
+  const resource = 'https://orgportal.cc/mcp';
   const platformEnv = { ...env, MCP_ORGPORTAL_INTROSPECTION_SECRET: 'platform-secret', MCP_RESOURCE_CONFIG_JSON: JSON.stringify({ ...JSON.parse(env.MCP_RESOURCE_CONFIG_JSON!), [resource]: { name: 'OrgPortal', introspectionSecretBinding: 'MCP_ORGPORTAL_INTROSPECTION_SECRET' } }) };
   const config = mcpConfiguration(platformEnv, request(resource));
   assert.equal(config.resource, resource);

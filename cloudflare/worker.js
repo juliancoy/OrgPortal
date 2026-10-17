@@ -1014,7 +1014,7 @@ const productionWorker = {
       return new Response(null, { status: 204, headers });
     }
 
-    if (request.method === "OPTIONS" && (path.startsWith("/api/governance") || pathMatchesPrefix(path, "/api/org") || pathMatchesPrefix(path, "/api/chat") || pathMatchesPrefix(path, "/.well-known/oauth-protected-resource") || path.startsWith("/pidp") || path.startsWith("/auth/avatar/upload") || path.startsWith("/api/jobs") || path.startsWith("/api/vacants") || path.startsWith("/api/vacants_parcels") || path.startsWith("/api/map-data") || pathMatchesPrefix(path, "/specialty/baltimore-medtech/api/datasets"))) {
+    if (request.method === "OPTIONS" && (pathMatchesPrefix(path, "/mcp") || pathMatchesPrefix(path, "/oauth/mcp") || path.startsWith("/api/governance") || pathMatchesPrefix(path, "/api/org") || pathMatchesPrefix(path, "/api/chat") || pathMatchesPrefix(path, "/.well-known/oauth-protected-resource") || path.startsWith("/pidp") || path.startsWith("/auth/avatar/upload") || path.startsWith("/api/jobs") || path.startsWith("/api/vacants") || path.startsWith("/api/vacants_parcels") || path.startsWith("/api/map-data") || pathMatchesPrefix(path, "/specialty/baltimore-medtech/api/datasets"))) {
       return new Response(null, {
         status: 204,
         headers: {
@@ -1023,6 +1023,19 @@ const productionWorker = {
           "access-control-allow-headers": "authorization,content-type,x-requested-with",
         },
       });
+    }
+
+    // OrgPortal exposes MCP and its authorization server on its own origin.
+    if (url.hostname === "orgportal.cc" && (pathMatchesPrefix(path, "/oauth/mcp")
+      || ["/.well-known/oauth-authorization-server", "/.well-known/jwks.json"].includes(path))) {
+      return identityRequest(request, env, path);
+    }
+    if (url.hostname === "orgportal.cc" && pathMatchesPrefix(path, "/mcp")) {
+      return proxyRequest(request, env.ORG_API_ORIGIN || env.GOVERNANCE_API_ORIGIN);
+    }
+    if (url.hostname === "orgportal.cc" && (pathMatchesPrefix(path, "/api/org/mcp")
+      || path === "/.well-known/oauth-protected-resource/api/org/mcp")) {
+      return new Response("Not found", { status: 404 });
     }
 
     if (path.startsWith("/api/governance")) {

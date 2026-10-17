@@ -101,7 +101,7 @@ function approvedAccountNamespaces(env: Env) {
 export function mcpConfiguration(env: Env, request?: Request) {
   const resourceBindingsSchema = z.record(z.string().url().refine(value => {
     const url = new URL(value);
-    return url.protocol === 'https:' && url.pathname === '/api/org/mcp' && !url.username && !url.password && !url.search && !url.hash;
+    return url.protocol === 'https:' && url.pathname === (url.hostname === 'orgportal.cc' ? '/mcp' : '/api/org/mcp') && !url.username && !url.password && !url.search && !url.hash;
   }), z.object({
     name: z.string().min(1).max(120), organizationId: z.string().min(1).max(200).optional(),
     introspectionSecretBinding: z.string().regex(/^MCP_[A-Z_]+$/).optional(),

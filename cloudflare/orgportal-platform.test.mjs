@@ -24,12 +24,12 @@ test('OAuth discovery routes reach the API for root and resource-specific metada
   const paths = [];
   t.mock.method(globalThis, 'fetch', async request => {
     paths.push(new URL(typeof request === 'string' ? request : request.url).pathname);
-    return Response.json({resource:'https://orgportal.cc/api/org/mcp'});
+    return Response.json({resource:'https://orgportal.cc/mcp'});
   });
-  for (const path of ['/.well-known/oauth-protected-resource', '/.well-known/oauth-protected-resource/api/org/mcp']) {
+  for (const path of ['/.well-known/oauth-protected-resource', '/.well-known/oauth-protected-resource/mcp']) {
     const response = await worker.fetch(new Request('https://orgportal.cc' + path), { ORG_API_ORIGIN: 'https://api.example.com' });
     assert.equal(response.status, 200);
-    assert.equal((await response.json()).resource, 'https://orgportal.cc/api/org/mcp');
+    assert.equal((await response.json()).resource, 'https://orgportal.cc/mcp');
   }
-  assert.deepEqual(paths, ['/.well-known/oauth-protected-resource', '/.well-known/oauth-protected-resource/api/org/mcp']);
+  assert.deepEqual(paths, ['/.well-known/oauth-protected-resource', '/.well-known/oauth-protected-resource/mcp']);
 });
