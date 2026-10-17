@@ -205,7 +205,7 @@ async function readJsonObject(request: Request) {
 }
 
 async function currentUser(env: Env, request: Request): Promise<PidpUser> {
-  const base = (env.PIDP_BASE_URL || "https://id.codecollective.us").replace(/\/+$/g, "");
+  const base = (env.PIDP_BASE_URL || "https://orgportal.cc/pidp").replace(/\/+$/g, "");
   const resp = await fetch(`${base}/auth/me`, {
     headers: { Authorization: `Bearer ${bearerToken(request)}` },
   });

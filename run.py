@@ -230,14 +230,7 @@ def _resolve_prod_image() -> str:
 
 
 def _default_pidp_base(portal_host: str | None, dev: bool = False) -> str:
-    if portal_host in {"codecollective.us", "www.codecollective.us"}:
-        return "https://id.codecollective.us"
-    if portal_host and "." in portal_host:
-        domain = portal_host.split(".", 1)[1]
-        if dev:
-            return f"https://dev.pidp.{domain}"
-        return f"https://pidp.{domain}"
-    return "https://id.codecollective.us"
+    return "/pidp" if dev else "https://orgportal.cc/pidp"
 
 
 def _load_pidp_editme():

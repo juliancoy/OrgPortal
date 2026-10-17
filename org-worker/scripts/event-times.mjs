@@ -11,7 +11,7 @@ const { values } = parseArgs({ options: {
   connection: { type: 'string' },
   resource: { type: 'string', default: 'https://medtech.social/api/org/mcp' },
   organization: { type: 'string', default: 'org-baltimore-medtech' },
-  issuer: { type: 'string', default: 'https://id.codecollective.us' },
+  issuer: { type: 'string', default: 'https://orgportal.cc' },
   connect: { type: 'boolean' }, apply: { type: 'boolean' }, ephemeral: { type: 'boolean' },
   'no-browser': { type: 'boolean' }, help: { type: 'boolean' },
 } });

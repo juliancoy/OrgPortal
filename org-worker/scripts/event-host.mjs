@@ -7,7 +7,7 @@ import { credentialStore } from './upload-connection.mjs';
 const { values } = parseArgs({ options: {
   connection: { type: 'string' },
   resource: { type: 'string', default: 'https://lifetech.fyi/api/org/mcp' },
-  issuer: { type: 'string', default: 'https://id.codecollective.us' },
+  issuer: { type: 'string', default: 'https://orgportal.cc' },
   event: { type: 'string' }, tags: { type: 'string' }, organization: { type: 'string', default: 'ef646755-9443-4c7b-ba4b-a7a29754f666' },
   'preview-id': { type: 'string' }, apply: { type: 'boolean' },
 } });

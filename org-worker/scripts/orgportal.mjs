@@ -22,7 +22,7 @@ const help = `Usage:
 Options: --resource HTTPS_MCP_URL, --issuer HTTPS_PIDP_ORIGIN, --client-id ID
 Sync options: --dry-run, --local LOOPBACK_HTTPS_ORIGIN, --deployment CONFIG_JSON, --cert CA_FILE
 Defaults: ORGPORTAL_PORTAL or https://lifetech.fyi;
-          ORGPORTAL_ISSUER or https://id.codecollective.us;
+          ORGPORTAL_ISSUER or https://orgportal.cc;
           ORGPORTAL_CONNECTION or default.
 Login prints a pasteable link; --browser explicitly opens your default browser.
 Login uses browser consent and the OS keyring. Logout revokes the saved grant.
@@ -50,13 +50,13 @@ export function parseCommand(args, env = process.env) {
   }
   if (values.portal && values.resource) throw new Error('Choose --portal or --resource.');
   const portal = new URL(values.portal || env.ORGPORTAL_PORTAL || 'https://lifetech.fyi');
-  const issuer = new URL(values.issuer || env.ORGPORTAL_ISSUER || 'https://id.codecollective.us');
+  const issuer = new URL(values.issuer || env.ORGPORTAL_ISSUER || 'https://orgportal.cc');
   for (const url of [portal, issuer]) {
     if (url.protocol !== 'https:' || url.username || url.password || url.pathname !== '/' || url.search || url.hash) {
       throw new Error('Portal and issuer must be HTTPS origins.');
     }
   }
-  const resource = new URL(values.resource || '/api/org/mcp', portal);
+  const resource = new URL(values.resource || (portal.hostname === 'orgportal.cc' ? '/mcp' : '/api/org/mcp'), portal);
   if (resource.protocol !== 'https:' || resource.username || resource.password || resource.search || resource.hash || !resource.pathname.endsWith('/mcp')) {
     throw new Error('Resource must be an HTTPS MCP endpoint.');
   }

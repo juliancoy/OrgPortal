@@ -10,7 +10,7 @@
     "enabled": true
   },
   "vars": {
-    "PIDP_BASE_URL": "https://id.codecollective.us",
+    "PIDP_BASE_URL": "https://orgportal.cc/pidp",
     "PUBLIC_PORTAL_BASE_URL": "https://orgportal.cc",
     "CHAT_ALLOWED_ORIGINS": "https://orgportal.cc,https://codecollective.us,http://127.0.0.1:8080,http://localhost:8080"
   },

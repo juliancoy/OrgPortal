@@ -7,7 +7,7 @@ import { credentialStore } from './upload-connection.mjs';
 const { values } = parseArgs({ options: {
   connection: { type: 'string' },
   resource: { type: 'string', default: 'https://medtech.social/api/org/mcp' },
-  issuer: { type: 'string', default: 'https://id.codecollective.us' },
+  issuer: { type: 'string', default: 'https://orgportal.cc' },
   event: { type: 'string' }, slug: { type: 'string' }, organization: { type: 'string', default: 'org-baltimore-medtech' },
   'preview-id': { type: 'string' }, apply: { type: 'boolean' },
 } });

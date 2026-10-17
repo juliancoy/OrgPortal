@@ -87,7 +87,7 @@ The parent site Worker serves the static assets and proxies:
 Do not deploy `portal/web` as a standalone Worker. The former standalone Worker
 has been deleted; `https://codecollective.us/p/` is the only supported URL.
 
-For the full end-to-end setup with hosted PIdP (`https://id.codecollective.us`), see:
+For the full end-to-end setup with hosted PIdP (`https://orgportal.cc/pidp`), see:
 
 - `../docs/deployment/CLOUDFLARE_PIDP_DEPLOYMENT.md`
 

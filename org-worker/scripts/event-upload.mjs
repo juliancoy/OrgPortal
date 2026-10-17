@@ -117,7 +117,7 @@ export async function browserLogin(resource, issuer, clientId, openBrowser = fal
 }
 
 async function main() {
-  const { values } = parseArgs({ options: { connection: { type: 'string' }, status: { type: 'boolean' }, resource: { type: 'string' }, issuer: { type: 'string', default: 'https://id.codecollective.us' },
+  const { values } = parseArgs({ options: { connection: { type: 'string' }, status: { type: 'boolean' }, resource: { type: 'string' }, issuer: { type: 'string', default: 'https://orgportal.cc' },
     'client-id': { type: 'string' }, organization: { type: 'string' }, event: { type: 'string' },
     connect: { type: 'boolean' }, disconnect: { type: 'boolean' }, ephemeral: { type: 'boolean' },
     directory: { type: 'string' }, yes: { type: 'boolean' }, 'no-browser': { type: 'boolean' }, help: { type: 'boolean' } } });
