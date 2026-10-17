@@ -1,5 +1,6 @@
 import base64
 import importlib.util
+import json
 import os
 import secrets
 import shlex
@@ -251,6 +252,11 @@ def _load_pidp_editme():
 
 def _pidp_env(pidp_editme, db_url: str, gateway_base: str, allowed_origins: list[str]) -> dict[str, str | None]:
     pidp_base = f"{gateway_base}/pidp"
+    app_slug = os.getenv("ORGPORTAL_DEV_PIDP_APP_SLUG") or os.getenv("ORGPORTAL_PIDP_APP_SLUG", "orgportal")
+    portal_clients = {
+        origin: {"name": "OrgPortal Local", "accountApp": app_slug, "callbacks": ["/auth/callback"]}
+        for origin in allowed_origins
+    }
     return {
         "DATABASE_URL": db_url,
         "SECRET_KEY": os.getenv("PIDP_SECRET_KEY", ""),
@@ -273,7 +279,8 @@ def _pidp_env(pidp_editme, db_url: str, gateway_base: str, allowed_origins: list
         "GOOGLE_WORKSPACE_ALLOWED_SENDERS": os.getenv("PIDP_GOOGLE_WORKSPACE_ALLOWED_SENDERS", ""),
         "PUBLIC_BASE_URL": pidp_base,
         "PORTAL_AUTH_ORIGINS": ",".join(allowed_origins),
-        "PORTAL_SSO_APP_SLUG": os.getenv("ORGPORTAL_DEV_PIDP_APP_SLUG") or os.getenv("ORGPORTAL_PIDP_APP_SLUG", "orgportal"),
+        "PORTAL_CLIENTS_JSON": json.dumps(portal_clients),
+        "PORTAL_SSO_APP_SLUG": app_slug,
         "FRONTEND_REDIRECT_URL": f"{pidp_base}/auth/callback",
         "GOOGLE_CLIENT_ID": getattr(pidp_editme, "PIDP_GOOGLE_CLIENT_ID", "google-client-id"),
         "GOOGLE_CLIENT_SECRET": getattr(pidp_editme, "PIDP_GOOGLE_CLIENT_SECRET", "google-client-secret"),
