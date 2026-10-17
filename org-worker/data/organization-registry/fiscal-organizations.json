@@ -1,0 +1,26 @@
+[
+  {
+    "name": "Federal Reserve System",
+    "description": "The central bank of the United States. Conducts monetary policy, supports financial stability, and provides payment and settlement services. Included as a monetary and financial institution; this record does not assert a grant or direct funding relationship with ecosystem organizations.",
+    "sourceUrl": "https://www.federalreserve.gov/aboutthefed.htm",
+    "website": "https://www.federalreserve.gov/",
+    "tags": [
+      "Fiscal organization",
+      "Central bank",
+      "Monetary policy",
+      "funding"
+    ]
+  },
+  {
+    "name": "Taxpayer",
+    "description": "Collective representation of individual and business taxpayers as a source of public revenue. This is a public funding-source node, not a separately incorporated organization or an account owned by an individual. No contribution amounts or recipient relationships are asserted by this record.",
+    "sourceUrl": "https://fiscaldata.treasury.gov/americas-finance-guide/government-revenue/",
+    "tags": [
+      "Fiscal organization",
+      "Public funding source",
+      "Collective",
+      "Taxpayers",
+      "funding"
+    ]
+  }
+]

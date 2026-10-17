@@ -20,10 +20,11 @@ export function mergePortalEvidence(base, organizations, records, refreshedAt = 
   const match=snapshotIds.get(org.id) || (candidates.size===1 ? [...candidates][0] : null)
   const id=match?.id || org.id;mapping.set(org.id,id)
   const image=safeUrl(org.image_url)
+  const category=governmentCategory(org) || ((org.tags || []).includes('Fiscal organization')?'funding':null)
   if(match && org.slug)match.portalSlug=org.slug
   if(match && 'image_url' in org && (image || match.imageCaption!=='Published website preview image')){match.imageUrl=image;match.imageSourceUrl=safeUrl(org.source_url);match.portalSlug=org.slug}
-  if(match && governmentCategory(org))match.category=governmentCategory(org)
-  if (!match) byId.set(id,{id,name:org.name,type:(org.tags || []).includes('Venture')?'Venture':'Organization',category:governmentCategory(org) || ((org.tags || []).includes('Venture')?'company':'general'),website:safeUrl(org.source_url),relevance:org.description || '',proximity:null,directory:true,publicEmails:[],sourceRows:[],sourceCategory:'OrgPortal',portalSlug:org.slug,imageUrl:image,imageSourceUrl:safeUrl(org.source_url)})
+  if(match && category)match.category=category
+  if (!match) byId.set(id,{id,name:org.name,type:(org.tags || []).includes('Venture')?'Venture':'Organization',category:category || ((org.tags || []).includes('Venture')?'company':'general'),website:safeUrl(org.source_url),relevance:org.description || '',proximity:null,directory:true,publicEmails:[],sourceRows:[],sourceCategory:'OrgPortal',portalSlug:org.slug,imageUrl:image,imageSourceUrl:safeUrl(org.source_url)})
  }
  data.organizations=[...byId.values()];applyGovernmentClasses(data)
  const known=new Set()
