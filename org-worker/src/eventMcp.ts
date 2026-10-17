@@ -144,7 +144,9 @@ export function mcpConfiguration(env: Env, request?: Request) {
   }
   try {
     const namespaces = approvedAccountNamespaces(env);
-    if (namespaces.length && (!introspection || issuer !== env.PIDP_BASE_URL?.replace(/\/$/, ''))) {
+    // Browser identity can live at /pidp while OAuth is mounted at the root.
+    // Namespace trust belongs to the configured identity origin, not its mount.
+    if (namespaces.length && (!introspection || issuer !== new URL(env.PIDP_BASE_URL || '').origin)) {
       throw new Error();
     }
   } catch { throw new EventIntegrationError(503, "Invalid PIdP account namespace configuration"); }

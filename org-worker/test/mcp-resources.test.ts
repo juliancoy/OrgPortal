@@ -19,6 +19,12 @@ const request = (resource: string, path = '/mcp', headers: Record<string, string
   headers: { 'x-forwarded-host': new URL(resource).host, ...headers },
 });
 
+test('namespace trust accepts a path-mounted identity on the issuer origin and rejects other origins', () => {
+  const configured = { ...env, PIDP_BASE_URL: 'https://id.example/pidp', MCP_PIDP_ACCOUNT_NAMESPACES_JSON: '["owner"]' };
+  assert.equal(mcpConfiguration(configured).issuer, 'https://id.example');
+  assert.throws(() => mcpConfiguration({ ...configured, PIDP_BASE_URL: 'https://other.example/pidp' }), /Invalid PIdP account namespace configuration/);
+});
+
 test('each host advertises its own resource and authentication challenge', async () => {
   for (const resource of [medtech, lifetech]) {
     const req = request(resource, '/.well-known/oauth-protected-resource/api/org/mcp');
