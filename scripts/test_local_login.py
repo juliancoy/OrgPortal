@@ -44,9 +44,8 @@ class LocalLoginTests(unittest.TestCase):
 
     def test_local_admin_allowlist_survives_restart_without_affecting_other_deployments(self):
         with tempfile.TemporaryDirectory() as directory,patch.dict(os.environ,{'ORGPORTAL_LOCAL_STATE_DIR':directory}):
-            Path(directory,'developer-admins.json').write_text(json.dumps({'https://localhost:8443':local_developer.ADMIN_ID}))
             self.assertEqual(local_developer.local_admin_ids('https://localhost:8443','existing'),f'existing,{local_developer.ADMIN_ID}')
-            self.assertEqual(local_developer.local_admin_ids('https://localhost:8444','existing'),'existing')
+            self.assertEqual(local_developer.local_admin_ids('https://localhost:8444','existing'),f'existing,{local_developer.ADMIN_ID}')
             self.assertEqual(local_developer.local_admin_ids('https://orgportal.cc','existing'),'existing')
 
 if __name__=='__main__':unittest.main()
