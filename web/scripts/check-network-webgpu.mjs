@@ -23,9 +23,9 @@ try{
  await page.locator('#network-fit').click();await page.waitForTimeout(100)
  const label=page.locator('#network-labels button:not([hidden])').first(),name=await label.textContent()
  await label.dispatchEvent('pointerenter');await page.locator('#network-detail .eco-preview-totals').waitFor()
- await label.click();await page.locator('[data-unpin-node]').waitFor();assert.ok(new URL(page.url()).searchParams.get('org'))
- await page.reload();await ready(page);await page.locator('[data-unpin-node]').waitFor();await pause(page)
- await page.locator('[data-unpin-node]').click();assert.equal(new URL(page.url()).searchParams.has('org'),false)
+ await label.click();await page.waitForFunction(()=>new URL(location.href).searchParams.has('org'));assert.ok(new URL(page.url()).searchParams.get('org'))
+ await page.reload();await ready(page);await page.waitForFunction(()=>new URL(location.href).searchParams.has('org'));await pause(page)
+ await page.locator('[data-panel="inspector"]').focus();await page.keyboard.press('Escape');assert.equal(new URL(page.url()).searchParams.has('org'),false)
  await page.locator('[data-panel=controls]').click()
  await page.locator('#network-search').fill(name);assert.ok(await page.locator('#network-results button').count()>0)
  await page.locator('#zoom-sparse').check();await page.locator('#visibility-factor').fill('16');await page.waitForFunction(()=>Number(document.querySelector('#network-status').textContent.split(' ')[0])<140)
@@ -38,7 +38,7 @@ try{
  await page.waitForFunction(({name,before})=>{const b=[...document.querySelectorAll('#network-labels button')].find(b=>b.textContent===name);return b&&Math.abs(parseFloat(b.style.left)-before.x-60)<1&&Math.abs(parseFloat(b.style.top)-before.y-40)<1},{name:panName,before})
  // Clicking actual canvas artwork pins a node, independent of the DOM label.
  const button=page.locator('#network-labels button:not([hidden])').first(),point=await button.evaluate(b=>({x:parseFloat(b.style.left),y:parseFloat(b.style.top)}))
- await page.mouse.click(box.x+point.x,box.y+point.y);await page.locator('[data-unpin-node]').waitFor()
+ await page.mouse.click(box.x+point.x,box.y+point.y);await page.waitForFunction(()=>new URL(location.href).searchParams.has('org'))
  await page.screenshot({path:process.env.GPU_SCREENSHOT||'/tmp/network-webgpu-verified.png'})
  assert.deepEqual(errors,[]);assert.deepEqual(await page.evaluate(()=>window.gpuErrors),[])
  // Verify actual GPU pixels: pie orientation, HSL colors, transparent background and link rasterization.

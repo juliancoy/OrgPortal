@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import './admin.css'
 import { useAuth } from '../../app/AppProviders'
 import { refreshRuntimeTokenFromSession } from '../../infrastructure/auth/sessionToken'
+import { VisitorStatistics } from './VisitorStatistics'
 
 const ORG_API_BASE = '/api/org'
 
@@ -681,6 +682,7 @@ export function AdminPage() {
 
           {tab === 'stats' ? (
             <>
+              {token && <VisitorStatistics token={token} />}
               <div className="portal-card" style={{ display: 'grid', gap: '0.75rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
                   <h2 style={{ margin: 0, fontSize: '1rem' }}>Platform statistics</h2>
@@ -695,15 +697,15 @@ export function AdminPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.5rem' }}>
                   <article className="portal-card" style={{ padding: '0.65rem', display: 'grid', gap: '0.2rem' }}>
                     <strong>{metricValue(stats?.metrics || null, 'total_accounts')}</strong>
-                    <span className="muted">Accounts</span>
+                    <span className="muted">Ledger accounts</span>
                   </article>
                   <article className="portal-card" style={{ padding: '0.65rem', display: 'grid', gap: '0.2rem' }}>
                     <strong>{stats?.orgCount.toLocaleString() || '0'}</strong>
-                    <span className="muted">Orgs</span>
+                    <span className="muted">Orgs loaded (up to 500)</span>
                   </article>
                   <article className="portal-card" style={{ padding: '0.65rem', display: 'grid', gap: '0.2rem' }}>
                     <strong>{stats?.eventCount.toLocaleString() || '0'}</strong>
-                    <span className="muted">Events</span>
+                    <span className="muted">Events loaded (up to 500)</span>
                   </article>
                   <article className="portal-card" style={{ padding: '0.65rem', display: 'grid', gap: '0.2rem' }}>
                     <strong>{stats?.motionCount.toLocaleString() || '0'}</strong>
@@ -711,11 +713,11 @@ export function AdminPage() {
                   </article>
                   <article className="portal-card" style={{ padding: '0.65rem', display: 'grid', gap: '0.2rem' }}>
                     <strong>{activeUsersLast7Days.toLocaleString()}</strong>
-                    <span className="muted">Active users (7d)</span>
+                    <span className="muted">Actors in loaded audit events (7d)</span>
                   </article>
                   <article className="portal-card" style={{ padding: '0.65rem', display: 'grid', gap: '0.2rem' }}>
                     <strong>{stats?.auditEvents.length.toLocaleString() || '0'}</strong>
-                    <span className="muted">Clickstream/Audit events</span>
+                    <span className="muted">Audit events loaded (up to 500)</span>
                   </article>
                 </div>
               </div>

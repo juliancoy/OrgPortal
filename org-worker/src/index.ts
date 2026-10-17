@@ -1,4 +1,5 @@
 import { publicDataResponse } from './publicDataResponse';
+import { visitorStatisticsRoutes } from './visitorStatistics';
 import { EventIntegrationError } from './eventPlatforms';
 import { bodyLimit } from 'hono/body-limit';
 import {publicInitiatives,initiativeAccess,saveInitiative,initiativeHistory} from './interventions';
@@ -4986,6 +4987,8 @@ app.get("/api/ubi/eligibility", async (c) => {
     total_payments_received: Number(row.total_payments_received || 0),
   });
 });
+
+app.route('/api/admin/visitor-statistics', visitorStatisticsRoutes(currentUser));
 
 app.get("/api/system/metrics", async (c) => {
   await currentUser(c.env, c.req.raw);

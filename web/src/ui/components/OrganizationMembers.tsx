@@ -80,6 +80,7 @@ export function OrganizationMembers({ organizationId, name, canRead, canManage, 
     finally { setAdding(null) }
   }
 
+  if(!canManage && !error && ((!canRead && membershipCount === 0) || (canRead && !loading && members.length === 0)))return null
   return <section className="portal-card organization-members" aria-label="Community members">
     <h2>Community members <span className="muted">({canRead && !loading && !error ? members.length : membershipCount})</span></h2>
     {!canRead ? <p className="muted">{token ? `Join ${name} to see community members.` : 'Sign in to see community members.'}</p> : <>

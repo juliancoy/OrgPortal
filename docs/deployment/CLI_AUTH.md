@@ -16,7 +16,13 @@ The default portal is `https://lifetech.fyi`. `ORGPORTAL_PORTAL`,
 selects an explicit HTTPS MCP endpoint instead of `--portal`. `--issuer`
 defaults to `https://orgportal.cc`. The CLI prints a sign-in link and does
 not open a browser by default. Paste the link into the browser profile with your
-chosen Google account. Use `--browser` to opt into opening the default browser.
+chosen Google account. Use `--browser` to opt into opening the default browser. On a Linux desktop,
+use `--dialog` for Open in browser, Copy sign-in link, and Wait for sign-in
+choices (requires Zenity and xclip or wl-copy). For the platform connection:
+
+```bash
+node org-worker/scripts/orgportal.mjs auth login --portal https://orgportal.cc --dialog
+```
 `--client-id` selects an already registered
 public native client when dynamic client registration is disabled.
 

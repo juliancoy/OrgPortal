@@ -8,14 +8,15 @@ export function persistNetworkSettings(root,signal){
  for(const el of controls){
   const value=saved[key(el)]
   if(el.type==='checkbox'){if(typeof value==='boolean')el.checked=value}
+  else if(el.type==='color'){if(typeof value==='string'&&/^#[0-9a-f]{6}$/i.test(value))el.value=value}
   else if(el.tagName==='SELECT'){if([...el.options].some(option=>option.value===value))el.value=value}
   else if(typeof value==='number'&&Number.isFinite(value)&&(!el.hasAttribute('min')||value>=Number(el.min))&&(!el.hasAttribute('max')||value<=Number(el.max))){el.value=String(value)}
   const output=el.id&&root.querySelector(`#${el.id}-value`)
-  if(output)output.textContent=el.step==='0.1'?Number(el.value).toFixed(1):el.value
+  if(output)output.textContent=el.id==='link-width'?Number(el.value).toFixed(2):el.step==='0.1'?Number(el.value).toFixed(1):el.value
  }
  const save=()=>{
   const values=read()
-  for(const el of controls){const value=el.type==='checkbox'?el.checked:el.tagName==='SELECT'?el.value:el.valueAsNumber;if(el.validity.valid&&(typeof value!=='number'||Number.isFinite(value)))values[key(el)]=value}
+  for(const el of controls){const value=el.type==='checkbox'?el.checked:(el.tagName==='SELECT'||el.type==='color')?el.value:el.valueAsNumber;if(el.validity.valid&&(typeof value!=='number'||Number.isFinite(value)))values[key(el)]=value}
   try{localStorage.setItem(STORAGE_KEY,JSON.stringify(values))}catch{/* Storage can be disabled or full; preferences still work for this visit. */}
  }
  root.querySelector('.eco-network-controls').addEventListener('input',save,{signal})

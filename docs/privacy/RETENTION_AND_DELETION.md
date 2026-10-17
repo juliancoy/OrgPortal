@@ -46,6 +46,12 @@ uses text relevance. Personalized responses are not publicly cached.
 
 ## Retention schedule
 
+Visitor reporting uses Cloudflare Web Analytics aggregates, separate from account,
+membership and audit activity. OrgPortal retrieves daily hostname totals and
+popular page paths for administrators without storing a separate visitor history,
+visitor identifiers, or analytics backups. Cloudflare manages collection and
+retention; see [Cloudflare Web Analytics](https://developers.cloudflare.com/web-analytics/).
+
 These are adopted operational limits and review deadlines, not a claim that
 every store already has automatic expiry. Temporary authorization state and
 completed/unused preview receipts have scheduled cleanup; account erasure and

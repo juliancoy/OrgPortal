@@ -139,20 +139,47 @@
 
 
 :root[data-portal-profile='orgportal'] {
-  --primary: #155e59;
-  --primary-2: #0f766e;
-  --primary-bg: #e1f4ee;
-  --primary-hover: #104842;
-  --btn-primary-bg: #155e59;
-  --btn-primary-text: #fff;
-}
-:root[data-portal-profile='orgportal'][data-theme='dark'] {
-  --primary: #8be4cd;
-  --primary-2: #99f6e4;
-  --primary-bg: #153d36;
-  --primary-hover: #99f6e4;
-  --btn-primary-bg: #8be4cd;
-  --btn-primary-text: #102d27;
+  /* Resolve against the active color-scheme, including the system preference. */
+  --primary: light-dark(#155e59, #8be4cd);
+  --primary-2: light-dark(#0f766e, #a6efda);
+  --primary-bg: light-dark(#e1f4ee, #1b4034);
+  --primary-hover: light-dark(#104842, #b3f3e1);
+  --body-bg: light-dark(#f4f8f5, #0b1915);
+  --surface: light-dark(#f0f6f2, #0e201a);
+  --panel: light-dark(#ffffff, #132820);
+  --panel-2: light-dark(#f2f8f4, #1b352a);
+  --border: light-dark(#c5d9ce, #36594b);
+  --border-subtle: light-dark(#dce8e0, #294638);
+  --border-hover: light-dark(#588678, #79bca3);
+  --border-input: light-dark(#799d8d, #638f7b);
+  --text-primary: light-dark(#18372b, #edf7f1);
+  --text-secondary: light-dark(#3e6152, #c0d8cb);
+  --text-muted: light-dark(#506f60, #a6c3b2);
+  --btn-primary-bg: light-dark(#155e59, #8be4cd);
+  --btn-primary-text: light-dark(#ffffff, #102d24);
+  --icon-tile-bg: light-dark(#e1f4ee, #1b4034);
+  --icon-stroke: light-dark(#155e59, #8be4cd);
+  --bg-surface: var(--surface);
+  --surface-solid: var(--panel);
+  --surface-soft: var(--panel-2);
+  --surface-softer: var(--panel);
+  --surface-strong: light-dark(#ffffff, #244535);
+  --surface-input: light-dark(#ffffff, #10241b);
+  --surface-muted: light-dark(#e8f1eb, #203d2f);
+  --header-bg: light-dark(#ffffff, #10231c);
+  --hero-bg: light-dark(#e1f4ee, #153a2c);
+  --footer-bg: var(--header-bg);
+  --color-border: var(--border);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-cream-dark: var(--surface-muted);
+  --color-sage: light-dark(#6f9280, #9bc5ae);
+  --selection-bg: light-dark(#155e59, #8be4cd);
+  --selection-text: light-dark(#ffffff, #102d24);
+  --focus-ring: 0 0 0 3px var(--body-bg), 0 0 0 6px var(--primary);
+  --shadow-card: 0 2px 4px #03120b12, 0 10px 24px #03120b12;
+  --shadow-card-hover: 0 4px 8px #03120b20, 0 16px 32px #03120b20;
+  --shadow-lg: 0 18px 44px #03120b40;
 }
 [data-portal-profile='orgportal'] .portal-brand img { width: 42px; height: 42px; object-fit: contain; }
 

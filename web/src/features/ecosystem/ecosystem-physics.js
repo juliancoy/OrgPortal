@@ -1,4 +1,5 @@
-import { forceSimulation, forceLink, forceManyBody, forceCollide, forceX, forceY } from 'd3-force'
+import {forceDistanceLaw} from './force-law.js'
+import { forceSimulation, forceLink, forceCollide, forceX, forceY } from 'd3-force'
 
 // Canonical pairing keeps reverse-direction reports in the same curve bundle.
 export function assignEdgeCurvature(edges) {
@@ -101,7 +102,7 @@ export function forceDither(strength) {
  return force
 }
 
-export function layoutNetwork(nodes, edges, radius, center, { live = false, attraction = 1, repulsion = 1, proximity = 1, centralGravity = 0, dither = 0 } = {}) {
+export function layoutNetwork(nodes, edges, radius, center, { live = false, attraction = 1, repulsion = 1, attractionLaw = "power", repulsionLaw = "power", attractionAlpha = 1, repulsionAlpha = 1, proximity = 1, centralGravity = 0, dither = 0 } = {}) {
  const radii=new Map(nodes.map(n=>[n.id,radius(n)])), size=n=>radii.get(n.id)
  const byId=new Map(nodes.map(n=>[n.id,n])), pairs=new Map()
  for(const edge of edges) {
@@ -120,8 +121,8 @@ export function layoutNetwork(nodes, edges, radius, center, { live = false, attr
    .distance(e=>size(e.source)+size(e.target)+(e.support?18+30/(1+e.pull):70))
    .strength(e=>Math.min(.9,e.support?proximity*(.55+.2*e.pull/(1+e.pull)):attraction*.08)))
   // Larger rendered area acts as gravitational mass; repulsion is local.
-  .force('attraction',forceManyBody().strength(n=>12*attraction*(size(n)/10)**2).distanceMin(80))
-  .force('charge',forceManyBody().strength(-80*repulsion).distanceMin(30).distanceMax(180))
+  .force('attraction',forceDistanceLaw({strength:n=>12*attraction*(size(n)/10)**2,law:attractionLaw,exponent:attractionAlpha,min:80,dimensions:2}))
+  .force('charge',forceDistanceLaw({strength:()=>-80*repulsion,law:repulsionLaw,exponent:repulsionAlpha,min:30,max:180,dimensions:2}))
   // Optional pull to the fixed graph origin, weighted by rendered node area.
   .force('centralX',forceX(0).strength(n=>.006*centralGravity*(size(n)/10)**2))
   .force('centralY',forceY(0).strength(n=>.006*centralGravity*(size(n)/10)**2))

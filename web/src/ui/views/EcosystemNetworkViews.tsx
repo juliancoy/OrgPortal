@@ -39,7 +39,6 @@ export function EcosystemNetworkViews({ view }: { view: keyof typeof labels }) {
       {Object.entries(labels).map(([key, label]) => <Link key={key} to={`/ecosystem/network/${key}${selected ? `?org=${encodeURIComponent(selected)}` : ''}`} aria-current={view === key ? 'page' : undefined}>{label}</Link>)}
       <Link to="/ecosystem/network/funding">Funding gap</Link>
       <Link to="/orgs">Directory ↗</Link>
-      <button type="button" data-eco-fullscreen aria-pressed="false" title="Expand map to fullscreen">Fullscreen</button>
     </nav></header>
     <section className="eco-view-content" tabIndex={0} aria-label={labels[view]}>
       {view === 'help' ? <>

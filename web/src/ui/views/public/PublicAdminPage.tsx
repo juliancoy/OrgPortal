@@ -904,7 +904,7 @@ export function PublicAdminPage() {
   const tenant = getGroupSite()
   const organizationBrandImage = tenant?.organization_id === org.id ? tenant.brand_image_path : null
   const heroImageSource = org.image_url?.trim() || organizationBrandImage || ORG_PLACEHOLDER_SRC
-  const eventGroups = groupOrganizationEvents(events, org).map(group => ({
+  const eventGroups = groupOrganizationEvents(events, org).filter(group => group.events.length > 0).map(group => ({
     ...group, events: group.events.slice(0, 3),
   }))
   function openImageEditor() {
@@ -1059,13 +1059,13 @@ export function PublicAdminPage() {
               Redirected from merged organization <code>{mergedFrom}</code>.
             </p>
           ) : null}
-          <div className="portal-card portal-org-stats-card" style={{ display: 'grid', gap: '0.8rem' }}>
+          {(token || org.upcoming_events_count > 0 || (canManageCurrentOrg && (org.feedback_count || 0) > 0)) && <div className="portal-card portal-org-stats-card" style={{ display: 'grid', gap: '0.8rem' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.6rem' }}>
-              <div>
+              {org.upcoming_events_count > 0 && <div>
                 <strong>{org.upcoming_events_count}</strong>
                 <p className="muted" style={{ margin: 0 }}>Upcoming events</p>
-              </div>
-              {token || canManageCurrentOrg ? (
+              </div>}
+              {(token || canManageCurrentOrg) && (org.feedback_count || 0) > 0 ? (
                 <div>
                   <strong>{org.feedback_count || 0}</strong>
                   <p className="muted" style={{ margin: 0 }}>Feedback notes</p>
@@ -1093,8 +1093,8 @@ export function PublicAdminPage() {
               </div>
             ) : null}
             {membershipStatus ? <p className="muted" role="status" style={{ margin: 0 }}>{membershipStatus}</p> : null}
-          </div>
-          <div id="organization-members" className="portal-org-nav-target" tabIndex={-1}>
+          </div>}
+          {(isOrganizerView || (org.membership_count || 0) > 0) && <div id="organization-members" className="portal-org-nav-target" tabIndex={-1}>
           <OrganizationMembers
             key={org.id}
             organizationId={org.id}
@@ -1103,9 +1103,9 @@ export function PublicAdminPage() {
             canManage={isOrganizerView}
             membershipCount={org.membership_count || 0}
           />
-          </div>
+          </div>}
 
-          {token ? (
+          {token && (isOrganizerView || (org.feedback_count || 0) > 0 || feedbackComment || feedbackRating !== 'neutral') ? (
             <div id="organization-member-feedback" className="portal-card portal-org-nav-target" tabIndex={-1} style={{ display: 'grid', gap: '0.65rem' }}>
             <div>
               <h2 style={{ margin: 0, fontSize: '1rem' }}>Group Feedback</h2>
@@ -1169,7 +1169,7 @@ export function PublicAdminPage() {
               ))}
             </div>
           ) : null}
-          {token || canManageCurrentOrg ? (
+          {(token || canManageCurrentOrg) && admins.length > 0 ? (
             <div className="portal-card" style={{ display: 'grid', gap: '0.55rem' }}>
             <h2 style={{ margin: 0, fontSize: '1rem' }}>Organization Admins</h2>
             {adminsLoading ? (

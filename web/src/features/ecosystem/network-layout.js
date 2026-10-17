@@ -2,9 +2,9 @@ import {project4D,createParticleLife4D} from './particle-life-4d.js'
 // Keep layout integration off the UI thread; terminate old graphs on rebuild.
 export function createNetworkLayout(nodes, edges, options, enabled, changed) {
  const four=options.dimensions===4,spatial=options.dimensions>=3
- let angles=[0,0,0],perspective=.35
+ let angles=[0,0,0],perspective=.35,camera=[0,0,0,0]
  const extent=Math.max(180,90*Math.pow(nodes.length,.25))
- const project=()=>{if(four)nodes.forEach(n=>{if(n.q)[n.x,n.y,n.z]=project4D(n.q,angles,perspective,extent)})}
+ const project=()=>{if(four)nodes.forEach(n=>{if(n.q){const point=project4D(n.q,angles,perspective,extent,camera);n.clipped4D=!point;[n.x,n.y,n.z]=point||[0,0,0]}})}
  const byId = new Map(nodes.map((node, i) => {
   if (!Number.isFinite(node.x) || !Number.isFinite(node.y)) {
    const radius=10*Math.sqrt(.5+i),angle=i*Math.PI*(3-Math.sqrt(5))
@@ -26,5 +26,5 @@ export function createNetworkLayout(nodes, edges, options, enabled, changed) {
   project();changed()
  }
  worker.postMessage({type:'graph',nodes:nodes.map(({id,category,q,velocity4,x,y,z,vx,vy,vz,renderRadius})=>({id,category,q,velocity4,x,y,z,vx,vy,vz,renderRadius})),edges:links,options,enabled})
- return {projection(nextAngles,nextPerspective){angles=nextAngles;perspective=nextPerspective;project();changed()},stop(){worker.terminate()},motion(enabled,reheat=false){worker.postMessage({type:'motion',enabled,reheat})}}
+ return {projection(nextAngles,nextPerspective,nextCamera=[0,0,0,0]){angles=nextAngles;perspective=nextPerspective;camera=[...nextCamera];project();changed()},stop(){worker.terminate()},motion(enabled,reheat=false){worker.postMessage({type:'motion',enabled,reheat})}}
 }

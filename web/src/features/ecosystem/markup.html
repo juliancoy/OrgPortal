@@ -6,43 +6,56 @@
 <a href="/ecosystem/network/nonprofits">Nonprofits</a>
 <a href="/ecosystem/network/overview">Overview</a>
 <a href="/ecosystem/network" aria-current="page">Graph</a>
-<a href="/ecosystem/network/webgpu">WebGPU graph</a>
-<a href="/ecosystem/network/3d">3D WebGPU</a>
-<a href="/ecosystem/network/4d">4D Particle Life</a>
 <a href="/ecosystem/network/events">Events</a>
 <a href="/ecosystem/network/relationships">Relationships</a>
 <a href="/ecosystem/network/funding">Funding gap</a>
 <a href="/ecosystem/network/help">Sources &amp; help</a>
 <a href="/orgs">Directory ↗</a>
-<button type="button" data-eco-fullscreen aria-pressed="false" title="Expand map to fullscreen">Fullscreen</button>
-<button type="button" data-panel="controls" aria-label="Graph settings">⚙ Settings</button>
-<button type="button" data-panel="inspector">Details</button>
 </nav>
 </header>
 <div class="eco-network-shell">
-<aside class="eco-network-controls" aria-label="Graph settings">
+<section class="eco-network-sidebar" aria-label="Network visualization, settings and details">
+<div class="eco-panel-tabs" role="tablist" aria-label="Network panel">
+<button type="button" id="network-visualization-tab" role="tab" data-panel="visualization" aria-controls="network-visualization-panel" aria-selected="false" tabindex="-1" aria-label="Visualization" title="Visualization">🎨</button>
+<button type="button" id="network-settings-tab" role="tab" data-panel="controls" aria-controls="network-settings-panel" aria-selected="false" tabindex="-1" aria-label="Settings" title="Settings">⚙️</button>
+<button type="button" id="network-details-tab" role="tab" data-panel="inspector" aria-controls="network-detail" aria-selected="true" aria-label="Details" title="Details">ℹ️</button>
+</div>
+<aside id="network-visualization-panel" role="tabpanel" aria-labelledby="network-visualization-tab" hidden>
+<h2>Visualization</h2>
+<nav class="eco-graph-types" aria-label="Graph type">
+<a data-graph-type="2d" href="/ecosystem/network?panel=visualization">▦ 2D</a>
+<a data-graph-type="3d" href="/ecosystem/network/3d?panel=visualization">◈ 3D</a>
+<a data-graph-type="4d" href="/ecosystem/network/4d?panel=visualization">✧ 4D</a>
+</nav>
+<button type="button" data-practice-4d>4D navigation practice</button>
+</aside>
+<aside id="network-settings-panel" class="eco-network-controls" role="tabpanel" aria-labelledby="network-settings-tab" hidden>
 <h2>Graph settings</h2>
+<label data-camera-settings class="eco-slider-row"><span class="eco-slider-name">Camera speed</span><input id="camera-speed" type="range" min="0.1" max="50" step="0.1" value="1"><span class="eco-slider-value"><output id="camera-speed-value">1.0</output>×</span></label>
 <label class="eco-check"><input type="checkbox" id="show-links" checked>Show links</label>
+<label class="eco-slider-row"><span class="eco-slider-name">Link width</span><input id="link-width" type="range" min="0.01" max="20" step="0.01" value="1"><span class="eco-slider-value"><output id="link-width-value">1.00</output>×</span></label>
+<label class="eco-check"><input type="checkbox" id="custom-link-color">Use custom link color</label>
+<label>Link color<input id="link-color" type="color" value="#77878c"></label>
 <label class="eco-check"><input type="checkbox" id="zoom-sparse">Reveal sparse organizations as you zoom in</label>
-<label>Visibility factor <output id="visibility-factor-value">4</output><input id="visibility-factor" type="range" min="1" max="16" step="1" value="4"></label>
-<p class="eco-note">Show when recorded transactions × zoom² ≥ factor. Higher factors hide more organizations. Selected organizations stay visible.</p>
+<label class="eco-slider-row"><span class="eco-slider-name">Visibility factor</span><input id="visibility-factor" type="range" min="1" max="100" step="1" value="4"><span class="eco-slider-value"><output id="visibility-factor-value">4</output></span></label>
 <label class="eco-check"><input type="checkbox" id="live-physics" checked>Animate node physics</label>
-<label>Attraction <output id="attraction-value">1.0</output>×<input id="attraction" type="range" min="0" max="3" step="0.1" value="1"></label>
-<label>Source–recipient proximity <output id="proximity-value">1.0</output>×<input id="proximity" type="range" min="0" max="3" step="0.1" value="1"></label>
-<p class="eco-note">Support links keep recipients near their sources. Larger values tighten these ties, independently of global attraction. Several sources and crowded hubs share the available space.</p>
-<label>Central gravity <output id="central-gravity-value">0.0</output>×<input id="central-gravity" type="range" min="0" max="3" step="0.1" value="0"></label>
-<p class="eco-note">Optional pull toward a fixed central point. Larger icons are pulled more strongly, in proportion to their area. Set to 0 to turn it off. Zooming and panning do not move the center.</p>
-<label>Dither <output id="dither-value">0.0</output>×<input id="dither" type="range" min="0" max="3" step="0.1" value="0"></label>
-<p class="eco-note">Small random accelerations keep nodes from getting stuck. Set to 0 to turn it off. Dither continues while animation is enabled and pauses with the graph.</p>
-<label>Repulsion <output id="repulsion-value">1.0</output>×<input id="repulsion" type="range" min="0" max="3" step="0.1" value="1"></label>
-<p class="eco-note">Larger icons attract more strongly. Repulsion acts nearby; collision spacing remains active. Volume counts incoming and outgoing records, not balances or verified payments.</p>
-<p class="eco-note">Attraction, optional central gravity, repulsion and collision spacing. Animation pauses in background tabs and respects reduced motion.</p>
+<div class="eco-slider-row"><button type="button" class="eco-law-trigger eco-slider-name" data-law-dialog="attraction-law-dialog" aria-haspopup="dialog" aria-controls="attraction-law-dialog" aria-label="Attraction law settings">Attraction</button><input id="attraction" aria-label="Attraction strength" type="range" min="0" max="20" step="0.1" value="1"><span class="eco-slider-value"><output id="attraction-value">1.0</output>×</span></div>
+<dialog id="attraction-law-dialog" class="eco-law-dialog" aria-labelledby="attraction-law-title">
+<header><h2 id="attraction-law-title">Attraction law</h2><button type="button" data-close-law aria-label="Close attraction law settings">×</button></header>
+<div class="eco-force-law"><label>Law<select id="attraction-law" aria-label="Attraction law"><option value="power">Power</option><option value="linear">Linear</option></select></label><label class="eco-slider-row"><span class="eco-slider-name">α</span><input id="attraction-alpha" aria-label="Attraction alpha" type="range" min="0.1" max="10" step="0.1" value="1"><span class="eco-slider-value"><output id="attraction-alpha-value">1.0</output></span></label></div>
+</dialog>
+<label class="eco-slider-row"><span class="eco-slider-name">Source proximity</span><input id="proximity" type="range" min="0" max="20" step="0.1" value="1"><span class="eco-slider-value"><output id="proximity-value">1.0</output>×</span></label>
+<label class="eco-slider-row"><span class="eco-slider-name">Central gravity</span><input id="central-gravity" type="range" min="0" max="20" step="0.1" value="0"><span class="eco-slider-value"><output id="central-gravity-value">0.0</output>×</span></label>
+<label class="eco-slider-row"><span class="eco-slider-name">Dither</span><input id="dither" type="range" min="0" max="20" step="0.1" value="0"><span class="eco-slider-value"><output id="dither-value">0.0</output>×</span></label>
+<div class="eco-slider-row"><button type="button" class="eco-law-trigger eco-slider-name" data-law-dialog="repulsion-law-dialog" aria-haspopup="dialog" aria-controls="repulsion-law-dialog" aria-label="Repulsion law settings">Repulsion</button><input id="repulsion" aria-label="Repulsion strength" type="range" min="0" max="20" step="0.1" value="1"><span class="eco-slider-value"><output id="repulsion-value">1.0</output>×</span></div>
+<dialog id="repulsion-law-dialog" class="eco-law-dialog" aria-labelledby="repulsion-law-title">
+<header><h2 id="repulsion-law-title">Repulsion law</h2><button type="button" data-close-law aria-label="Close repulsion law settings">×</button></header>
+<div class="eco-force-law"><label>Law<select id="repulsion-law" aria-label="Repulsion law"><option value="power">Power</option><option value="linear">Linear</option></select></label><label class="eco-slider-row"><span class="eco-slider-name">α</span><input id="repulsion-alpha" aria-label="Repulsion alpha" type="range" min="0.1" max="10" step="0.1" value="1"><span class="eco-slider-value"><output id="repulsion-alpha-value">1.0</output></span></label></div>
+</dialog>
 <label class="eco-check"><input type="checkbox" id="scale-edge-quantity" checked>Scale edges by quantity</label>
-<p class="eco-note">Thickness compares disclosed quantities within the same transaction class and unit. Unknown quantities use a standard width.</p>
 <label class="eco-check"><input type="checkbox" id="scale-node-finances" checked>Scale organization icons by USD volume</label>
 <label>Node sizing algorithm<select id="node-size-algorithm"><option value="linear">Linear</option><option value="log" selected>Logarithmic</option><option value="exp">Exponential</option><option value="power">Power</option></select></label>
-<label>Sizing parameter α <output id="node-size-alpha-value">1.0</output><input id="node-size-alpha" type="range" min="0.1" max="5" step="0.1" value="1"></label>
-<p class="eco-note">Radii range from 6 to 30, using volume relative to the largest organization in the full evidence set. Missing volume uses 6. α controls linear gain, logarithmic compression, exponential curvature, or the power exponent (0.5 gives square-root scaling). Larger α increases small-node sizes for log and emphasizes large nodes for exponential and power. Turn volume scaling off for equal icons.</p>
+<label class="eco-slider-row"><span class="eco-slider-name">Sizing α</span><input id="node-size-alpha" type="range" min="0.1" max="20" step="0.1" value="1"><span class="eco-slider-value"><output id="node-size-alpha-value">1.0</output></span></label>
 <label>Find an organization<input type="search" id="network-search" placeholder="Try Blackbird, TEDCO, Hopkins…" aria-controls="network-results">
 </label>
 <div id="network-results" class="eco-results">
@@ -104,13 +117,15 @@
 </fieldset>
 <label class="eco-check">
 <input type="checkbox" id="include-context">Include fund capitalization</label>
-<p class="eco-note">Funded nodes are pies: slice area shows disclosed USD amounts. Hover or select for names, amounts and percentages. TEDCO funds are grouped inside TEDCO.</p>
-<p class="eco-note">Program terms and aggregate scopes are available in the Relationships view. They are not individual organizations.</p>
 <label class="eco-check"><input type="checkbox" id="hide-isolated" checked>Hide organizations without connections</label>
 <label class="eco-check">
 <input type="checkbox" id="neighbors" disabled>Only selected organization + neighbors</label>
 <button id="network-reset" type="button">Reset view</button>
 </aside>
+<aside id="network-detail" class="eco-detail" role="tabpanel" aria-labelledby="network-details-tab">
+<h2>Select an organization</h2>
+</aside>
+</section>
 <section class="eco-graph-panel" aria-label="Interactive relationship network">
 <div class="eco-graph-top">
 <div><output id="network-status" aria-live="polite">Preparing interactive network…</output><output id="network-source" class="eco-note">Loading public evidence…</output></div>
@@ -125,10 +140,5 @@
 </div>
 </div>
 </section>
-<aside id="network-detail" class="eco-detail" aria-label="Selected organization">
-<p class="eco-eyebrow">MAKE A CONNECTION</p>
-<h2>Start with an organization.</h2>
-<p>Hover a node or edge to preview its picture, details and sources. Select a label or search by name for organization details.</p>
-<p>Missing links mean “not documented here,” not “no relationship.”</p>
-</aside>
+
 </div>

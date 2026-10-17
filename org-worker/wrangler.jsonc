@@ -20,6 +20,8 @@
     ]
   },
   "vars": {
+    "CLOUDFLARE_ANALYTICS_ACCOUNT_ID": "42d86bec91224cb6ef236aff4db81d30",
+    "CLOUDFLARE_ANALYTICS_HOSTS": "orgportal.cc,lifetech.fyi,medtech.social,timebank.codecollective.us,bmoretimebank.codecollective.us,portal.deism.church",
     "PIDP_BASE_URL": "https://orgportal.cc/pidp",
     "PUBLIC_PORTAL_BASE_URL": "https://orgportal.cc",
     "MCP_RESOURCE_CONFIG_JSON": "{\"https://medtech.social/api/org/mcp\": {\"name\": \"MedTech\", \"organizationId\": \"org-baltimore-medtech\"}, \"https://lifetech.fyi/api/org/mcp\": {\"name\": \"LifeTech\", \"organizationId\": \"ef646755-9443-4c7b-ba4b-a7a29754f666\", \"introspectionSecretBinding\": \"MCP_LIFETECH_INTROSPECTION_SECRET\"}, \"https://orgportal.cc/mcp\": {\"name\": \"OrgPortal\", \"introspectionSecretBinding\": \"MCP_ORGPORTAL_INTROSPECTION_SECRET\"}}",

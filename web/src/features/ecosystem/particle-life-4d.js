@@ -1,11 +1,22 @@
+import {lawMagnitude} from './force-law.js'
 // Particle Life: asymmetric category forces, extended to four spatial axes.
 export const LIFE_TYPES=['ecosystem','company','health','university','funding','general','federal-government','state-government']
 export function lifeMatrix(seed=1){let state=Number(seed)>>>0;return LIFE_TYPES.map(()=>LIFE_TYPES.map(()=>{state=(Math.imul(1664525,state)+1013904223)>>>0;return state/4294967296*2-1}))}
-export function project4D(q,angles=[0,0,0],perspective=.35,extent=600){
- const p=[...q]
+// Camera coordinates use the same world units as particle coordinates. Translate
+// before rotating into the 4D viewing frame; the separate 3D camera displays it.
+export function project4D(q,angles=[0,0,0],perspective=.35,extent=600,camera=[0,0,0,0]){
+ const p=q.map((v,i)=>v-camera[i])
  angles.forEach((degrees,axis)=>{const a=degrees*Math.PI/180,c=Math.cos(a),s=Math.sin(a),v=p[axis];p[axis]=c*v-s*p[3];p[3]=s*v+c*p[3]})
- const scale=1/(1-Math.max(0,Math.min(.8,perspective))*p[3]/(extent*2.1))
- return p.slice(0,3).map(v=>v*scale)
+ const depth=1-Math.max(0,Math.min(.8,perspective))*p[3]/(extent*2.1)
+ // Clip the 4D near plane instead of pinning points to a maximum scale.
+ if(depth<=.05)return null
+ return p.slice(0,3).map(v=>v/depth)
+}
+// Convert movement in the rotated viewing frame back to world coordinates.
+export function movement4D(delta,angles=[0,0,0]){
+ const p=[...delta]
+ for(let axis=2;axis>=0;axis--){const a=angles[axis]*Math.PI/180,c=Math.cos(a),s=Math.sin(a),v=p[axis];p[axis]=c*v+s*p[3];p[3]=-s*v+c*p[3]}
+ return p
 }
 export function createParticleLife4D(nodes,options={}){
  const extent=options.extent??Math.max(180,90*Math.pow(nodes.length, .25)),radius=Math.max(50,Math.min(600,Number(options.lifeRadius)||300)),friction=Math.max(.1,Math.min(.98,Number(options.lifeFriction)||.85)),matrix=lifeMatrix(options.lifeSeed??1)
@@ -27,7 +38,7 @@ export function createParticleLife4D(nodes,options={}){
    for(const offset of offsets){const bucket=cells.get(cell.map((v,k)=>v+offset[k]).join(','));if(!bucket)continue
     for(const j of bucket){if(i===j)continue;const delta=nodes[j].q.map((v,k)=>v-n.q[k]),distance=Math.hypot(...delta);if(distance>=radius)continue
      if(distance<1e-8){for(let k=0;k<4;k++)acc[k]+=random()*.1;continue}
-     const r=distance/radius,beta=.25,force=r<beta?(r/beta-1)*(options.repulsion??1):matrix[types[i]][types[j]]*(1-Math.abs(2*r-1-beta)/(1-beta))*(options.attraction??1)
+     const r=distance/radius,beta=.25,force=r<beta?-lawMagnitude(1-r/beta,options.repulsionLaw,options.repulsionAlpha)*(options.repulsion??1):matrix[types[i]][types[j]]*lawMagnitude(1-Math.abs(2*r-1-beta)/(1-beta),options.attractionLaw,options.attractionAlpha)*(options.attraction??1)
      for(let k=0;k<4;k++)acc[k]+=delta[k]/distance*force*.65
     }
    }
