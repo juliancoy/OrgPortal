@@ -1,6 +1,7 @@
+import { contactUnsubscribeToken } from './emailContactPreferences';
 import { Hono } from 'hono';
 import { emailAudit, requireEmailOrganizer } from './emailAccess';
-import { emailFail, normalizeEmail, subscriptionStatement, type EmailActor } from './emailShared';
+import { emailFail, emailPortalBase, normalizeEmail, subscriptionStatement, type EmailActor } from './emailShared';
 
 export function emailGroups(getUser: (env: Env, request: Request) => Promise<EmailActor>) {
   const routes = new Hono<{Bindings: Env}>();
@@ -26,7 +27,7 @@ export function emailGroups(getUser: (env: Env, request: Request) => Promise<Ema
     if(typeof payload.subscribed!=='boolean') emailFail(400,'Choose an email preference.');
     const existing=await c.env.DB.prepare("SELECT user_id FROM email_subscriptions WHERE email=? AND topic_type='organization' AND topic_id=?").bind(normalizeEmail(user.email),organizationId).first<{user_id:string}>();
     if(existing && existing.user_id!==user.id) emailFail(409,'This email preference cannot be changed from this account.');
-    await c.env.DB.batch([subscriptionStatement(c.env.DB,user,'organization',organizationId,payload.subscribed,'group-email-preferences'),
+    await c.env.DB.batch([...(payload.subscribed ? [c.env.DB.prepare('DELETE FROM email_contact_suppressions WHERE organization_id=? AND email=?').bind(organizationId,normalizeEmail(user.email))] : []),subscriptionStatement(c.env.DB,user,'organization',organizationId,payload.subscribed,'group-email-preferences'),
       emailAudit(c.env,user.id,organizationId,payload.subscribed?'subscription.opt-in':'subscription.opt-out')]);
     return c.json({ok:true});
   });
@@ -37,13 +38,26 @@ export function emailGroups(getUser: (env: Env, request: Request) => Promise<Ema
   });
   routes.get('/:organizationId/audience',async c=>{
     const user=await getUser(c.env,c.req.raw),organizationId=c.req.param('organizationId');
-    const rows=await c.env.DB.prepare(`SELECT id,name,email FROM email_subscriptions WHERE topic_type='organization' AND topic_id=? AND status='subscribed' ORDER BY email LIMIT 1001`).bind(organizationId).all();
+    const rows=await c.env.DB.prepare(`SELECT id,name,email FROM email_subscriptions WHERE topic_type='organization' AND topic_id=? AND status='subscribed' AND NOT EXISTS(SELECT 1 FROM email_contact_suppressions x WHERE x.organization_id=email_subscriptions.topic_id AND x.email=email_subscriptions.email) ORDER BY email LIMIT 1001`).bind(organizationId).all();
     if((rows.results?.length || 0)>1000) emailFail(400,'Use an audience of 1,000 or fewer subscribers.');
     await emailAudit(c.env,user.id,organizationId,'audience.view',null,rows.results?.length || 0).run();
     return c.json({event_count:0,organization_count:rows.results?.length || 0,contacts:rows.results || []});
   });
   routes.get('/:organizationId/events',async c=>{
     const rows=await c.env.DB.prepare('SELECT id,title,host_org_id FROM events WHERE host_org_id=? ORDER BY starts_at DESC LIMIT 500').bind(c.req.param('organizationId')).all();
+    return c.json(rows.results || []);
+  });
+  routes.post('/:organizationId/unsubscribe-link',async c=>{
+    const user=await getUser(c.env,c.req.raw),organizationId=c.req.param('organizationId');
+    const payload=await c.req.json().catch(()=>({})) as {email?:unknown};
+    const email=normalizeEmail(payload.email);
+    if(!email)emailFail(400,'Enter a valid recipient email.');
+    const token=await contactUnsubscribeToken(c.env,{email,organizationId});
+    await emailAudit(c.env,user.id,organizationId,'unsubscribe-link.create').run();
+    return c.json({url:`${new URL(emailPortalBase(c.env)).origin}/api/org/api/email/contact-unsubscribe?token=${encodeURIComponent(token)}`});
+  });
+  routes.get('/:organizationId/suppressions',async c=>{
+    const rows=await c.env.DB.prepare('SELECT email,source,unsubscribed_at,updated_at FROM email_contact_suppressions WHERE organization_id=? ORDER BY email LIMIT 1001').bind(c.req.param('organizationId')).all();
     return c.json(rows.results || []);
   });
   routes.get('/:organizationId/subscribers',async c=>{

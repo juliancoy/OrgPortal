@@ -137,3 +137,25 @@ cannot generate new notices. Organization and event deletion cascade their relat
 Include these stores in backup inventories and reapply the account erasure ledger
 before restoring any backup; deletion from independent exports or old backups
 requires the existing operator process. Do not infer ownership from email.
+
+## Recipient contact suppression
+
+`email_contact_suppressions` keeps a normalized recipient email address, sending
+organization ID, source, and first/last opt-out timestamps. This is a private
+contact preference in the organization database, shared across that group's
+announcements and event invitations. An address can be a personal contact or an
+organizational role inbox; it does not establish account ownership or opt out an
+entire recipient organization. Public contacts/imports never override this state.
+Existing account subscriptions are updated when the same address opts out.
+
+Suppression is retained while the mailing group exists to prevent reimporting
+an opted-out address. `updated_at` is the annual operational-review clock; it is
+not an automatic expiry that would silently permit sending again. A verified
+recipient can explicitly re-consent to that group; group deletion cascades, and
+verified erasure requests remove matching address rows through the manual
+privacy workflow. Restore operations must reapply opt-outs and erasure requests
+before resuming delivery. The table is excluded from public replicas and the
+immutable change journal; it remains in protected operational database backups.
+Encrypted unsubscribe links do not expire and contain no plaintext address.
+Keep their encryption key stable; do not rotate it without retaining decryption
+support for previously issued links. These links authorize only opting out.

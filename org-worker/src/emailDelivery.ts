@@ -57,7 +57,8 @@ export async function runEmailDelivery(env: Env) {
         // Check subscription again immediately before claiming; queued campaigns honor later unsubscribes.
         const subscription = pending.subscription_id ? await env.DB.prepare("SELECT id FROM email_subscriptions WHERE id = ? AND status = 'subscribed' AND email = ?")
           .bind(pending.subscription_id, pending.email).first() : null;
-        if (pending.kind === 'campaign' && !subscription) {
+        const suppressed = await env.DB.prepare('SELECT email FROM email_contact_suppressions WHERE organization_id=? AND email=?').bind(campaign.organization_id,pending.email).first();
+        if (pending.kind === 'campaign' && (!subscription || suppressed)) {
           await env.DB.prepare("UPDATE email_deliveries SET status = 'skipped', error = 'Recipient unsubscribed.' WHERE id = ? AND status = 'queued'").bind(pending.id).run();
           continue;
         }
@@ -68,7 +69,7 @@ export async function runEmailDelivery(env: Env) {
           WHERE id = ? AND status = 'queued' AND EXISTS (SELECT 1 FROM email_campaigns c WHERE c.id = campaign_id
             AND (kind = 'test' OR c.status = 'queued') AND EXISTS(SELECT 1 FROM organization_memberships m
               WHERE m.organization_id=c.organization_id AND m.user_id=c.owner_user_id AND m.status='active' AND m.role IN ('owner','administrator')))
-            AND (kind='test' OR EXISTS(SELECT 1 FROM email_subscriptions s WHERE s.id=subscription_id AND s.status='subscribed' AND s.email=email_deliveries.email)) RETURNING id`)
+            AND (kind='test' OR (EXISTS(SELECT 1 FROM email_subscriptions s WHERE s.id=subscription_id AND s.status='subscribed' AND s.email=email_deliveries.email) AND NOT EXISTS(SELECT 1 FROM email_contact_suppressions x JOIN email_campaigns c ON c.organization_id=x.organization_id WHERE c.id=email_deliveries.campaign_id AND x.email=email_deliveries.email))) RETURNING id`)
           .bind(now, pending.id).first();
         if (!claimed) continue;
         await env.DB.prepare('INSERT INTO email_send_attempts (id, sender_user_id, attempted_at) VALUES (?, ?, ?)')

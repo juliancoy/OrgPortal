@@ -10,3 +10,6 @@ EMAIL_ALLOWED_SENDERS=julian@codecollective.us
 EMAIL_POSTAL_ADDRESS=
 EMAIL_DAILY_LIMIT=250
 EMAIL_SENDING_ENABLED=false
+
+# Base64 32-byte AES key for address-level unsubscribe links. Keep stable.
+EMAIL_CONTACT_UNSUBSCRIBE_KEY=

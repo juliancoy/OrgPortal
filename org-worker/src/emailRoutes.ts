@@ -1,3 +1,4 @@
+import { emailContactPreferences } from './emailContactPreferences';
 import { emailAudit, requireEmailOrganizer } from './emailAccess';
 import { emailGroups } from './emailGroups';
 import { Hono } from 'hono';
@@ -18,8 +19,8 @@ async function ownCampaign(env: Env, id: string, ownerId: string) {
 async function audience(env: Env, event: EmailEvent, kind: string, selected: unknown) {
   const type = kind === 'event' ? 'event' : 'organization';
   const topicId = type === 'event' ? event.id : event.host_org_id;
-  const rows = await env.DB.prepare("SELECT * FROM email_subscriptions WHERE topic_type = ? AND topic_id = ? AND status = 'subscribed' ORDER BY email LIMIT 1001")
-    .bind(type, topicId).all<EmailSubscription>();
+  const rows = await env.DB.prepare("SELECT * FROM email_subscriptions WHERE topic_type = ? AND topic_id = ? AND status = 'subscribed' AND NOT EXISTS(SELECT 1 FROM email_contact_suppressions x WHERE x.organization_id=? AND x.email=email_subscriptions.email) ORDER BY email LIMIT 1001")
+    .bind(type, topicId, event.host_org_id).all<EmailSubscription>();
   if ((rows.results || []).length > 1000) emailFail(400, 'Use an audience of 1,000 or fewer subscribers for this sender.');
   if (kind !== 'selected') return rows.results || [];
   if (!Array.isArray(selected) || selected.length > 1000 || selected.some((id) => typeof id !== 'string')) emailFail(400, 'Select subscribers for this campaign.');
@@ -55,6 +56,7 @@ export function emailRoutes(getUser: GetActor) {
   routes.use('*', async (c, next) => { c.header('Cache-Control', 'no-store'); c.header('Referrer-Policy', 'no-referrer'); await next(); });
 
   routes.route('/groups',emailGroups(getUser));
+  routes.route('/contact-unsubscribe',emailContactPreferences());
 
   routes.get('/sender', async (c) => {
     const user = await getOrganizer(c.env, c.req.raw);

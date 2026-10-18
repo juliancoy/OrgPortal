@@ -1,3 +1,4 @@
+import { contactUnsubscribeToken } from '../src/emailContactPreferences';
 import {identityProfile} from './helpers/identityProfile';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -407,4 +408,47 @@ test('OAuth callback failures show a recovery action instead of a raw JSON dead 
     assert.doesNotMatch(html,/private network|private provider|test-code/);
     t.mock.restoreAll();
   }
+});
+
+
+test('contact opt-out is anonymous, group scoped, idempotent, and blocks reimported addresses', async t => {
+  const {env,request,database}=setup(t);network(t);await connect(env);
+  env.EMAIL_CONTACT_UNSUBSCRIBE_KEY=btoa('k'.repeat(32));
+  await subscribe(env,'alice');await subscribe(env,'alice','organization','org-1');await subscribe(env,'alice','organization','org-2');
+  const draft=await (await request('/campaigns','POST',payload)).json();
+  recordSelfTest(database,draft.id);
+  database.prepare("UPDATE email_campaigns SET status='queued' WHERE id=?").run(draft.id);
+  database.prepare("UPDATE email_deliveries SET status='queued' WHERE campaign_id=? AND kind='campaign'").run(draft.id);
+  const token=await contactUnsubscribeToken(env,{email:'alice@example.test',organizationId:'org-1'});
+  assert.doesNotMatch(token,/alice|org-1/);
+  const path=`/contact-unsubscribe?token=${encodeURIComponent(token)}`;
+  assert.equal((await request(path,'GET',undefined,'')).status,200);
+  assert.equal(database.prepare('SELECT count(*) n FROM email_contact_suppressions').get()!.n,0);
+  assert.equal((await request(path,'POST',undefined,'')).status,200);
+  assert.equal((await request(path,'POST',undefined,'')).status,200);
+  assert.equal(database.prepare('SELECT count(*) n FROM email_contact_suppressions').get()!.n,1);
+  assert.equal(database.prepare("SELECT status FROM email_subscriptions WHERE topic_id='org-2'").get()!.status,'subscribed');
+  assert.equal(database.prepare("SELECT status FROM email_subscriptions WHERE topic_id='org-1'").get()!.status,'unsubscribed');
+  assert.equal(database.prepare("SELECT status FROM email_deliveries WHERE campaign_id=? AND kind='campaign'").get(draft.id)!.status,'skipped');
+  // An import or old job restoring subscription/queue rows cannot override suppression.
+  database.exec("UPDATE email_subscriptions SET status='subscribed'; UPDATE email_deliveries SET status='queued' WHERE kind='campaign'");
+  assert.equal((await (await request('/audience/event-1')).json()).event_count,0);
+  await runEmailDelivery(env);
+  assert.equal(database.prepare("SELECT status FROM email_deliveries WHERE campaign_id=? AND kind='campaign'").get(draft.id)!.status,'skipped');
+  assert.equal((await request('/groups/org-1/suppressions','GET',undefined,'alice')).status,403);
+  assert.equal((await request('/groups/org-1/suppressions')).status,200);
+  assert.equal((await request(`/contact-unsubscribe?token=x${token}`,'POST',undefined,'')).status,400);
+});
+
+test('external contacts can opt out without creating an account; only deliberate self opt-in clears suppression',async t=>{
+ const {env,request,database}=setup(t);network(t);env.EMAIL_CONTACT_UNSUBSCRIBE_KEY=btoa('k'.repeat(32));
+ const link=await (await request('/groups/org-1/unsubscribe-link','POST',{email:'admin@example.test'})).json();
+ assert.ok(link.url.includes('/contact-unsubscribe?token='));
+ assert.equal((await request('/groups/org-1/unsubscribe-link','POST',{email:'external@example.test'},'alice')).status,403);
+ const token=await contactUnsubscribeToken(env,{email:'julian@codecollective.us',organizationId:'org-1'});
+ await request(`/contact-unsubscribe?token=${token}`,'POST',undefined,'');
+ assert.equal(database.prepare('SELECT count(*) n FROM email_subscriptions').get()!.n,0);
+ assert.equal(database.prepare('SELECT count(*) n FROM email_contact_suppressions').get()!.n,1);
+ await request('/groups/org-1/subscription','PUT',{subscribed:true});
+ assert.equal(database.prepare('SELECT count(*) n FROM email_contact_suppressions').get()!.n,0);
 });
