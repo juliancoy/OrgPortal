@@ -40,11 +40,15 @@ export async function finishGoogleConnection(env: Env, state: string, browser: s
     }>();
   if (!pending) emailFail(400, 'Google connection expired. Please connect again.');
   await requireEmailOrganizer(env,{id:pending.owner_user_id},pending.organization_id || undefined);
+  let verifier: string;
+  try { verifier = await decryptSecret(env, pending.verifier_ciphertext, `oauth:${pending.owner_user_id}`); }
+  catch { emailFail(400, 'This Google connection can no longer be verified. Start a new connection from the Email page.'); }
+  // Workerd rejects redirect: 'error'. Manual mode also keeps credentials from following redirects.
   let response: Response;
   try {
-    response = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', redirect: 'error', signal: AbortSignal.timeout(15_000),
+    response = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', redirect: 'manual', signal: AbortSignal.timeout(15_000),
       body: new URLSearchParams({ grant_type: 'authorization_code', code, client_id: config.clientId, client_secret: config.clientSecret,
-        redirect_uri: config.redirectUri, code_verifier: await decryptSecret(env, pending.verifier_ciphertext, `oauth:${pending.owner_user_id}`) }) });
+        redirect_uri: config.redirectUri, code_verifier: verifier }) });
   } catch { emailFail(503, 'OrgPortal could not reach Google to finish authorization. Start a new connection from the Email page.'); }
   if (!response.ok) {
     const failure = await response.json().catch(() => ({})) as { error?: unknown };
@@ -83,7 +87,7 @@ export async function googleAccessToken(env: Env, sender: Sender): Promise<strin
   const config = googleConfig(env);
   let response: Response;
   try {
-    response = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', redirect: 'error', signal: AbortSignal.timeout(10_000),
+    response = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', redirect: 'manual', signal: AbortSignal.timeout(10_000),
       body: new URLSearchParams({ grant_type: 'refresh_token', client_id: config.clientId, client_secret: config.clientSecret,
         refresh_token: await decryptSecret(env, sender.refresh_token_ciphertext, `sender:${sender.owner_user_id}:${sender.email}`) }) });
   } catch { return null; }
@@ -101,7 +105,7 @@ export async function sendGmail(accessToken: string, raw: string): Promise<{ sta
   try {
     response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
       method: 'POST', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ raw: base64Url(new TextEncoder().encode(raw)) }), redirect: 'error', signal: AbortSignal.timeout(10_000),
+      body: JSON.stringify({ raw: base64Url(new TextEncoder().encode(raw)) }), redirect: 'manual', signal: AbortSignal.timeout(10_000),
     });
   } catch { return { status: 'uncertain', error: 'No definitive Gmail response. Check Sent mail before sending again.' }; }
   if (response.ok) {
