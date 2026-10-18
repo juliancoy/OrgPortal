@@ -63,6 +63,7 @@ export function emailSetupIssues(env: Env): string[] {
   } catch { issues.push('Valid Google OAuth callback URL'); callback = undefined; }
   try { encryptionBytes(env); } catch { issues.push('Sender token encryption key'); }
   if (!env.EMAIL_UNSUBSCRIBE_SECRET || env.EMAIL_UNSUBSCRIBE_SECRET.length < 32) issues.push('Unsubscribe signing secret');
+  try { if(decodeBase64(env.EMAIL_CONTACT_UNSUBSCRIBE_KEY || '').length!==32)throw new Error(); } catch { issues.push('Contact unsubscribe encryption key'); }
   try {
     const portal = new URL(emailPortalBase(env));
     if (callback && portal.origin !== callback.origin) issues.push('Matching portal and Google callback hosts');

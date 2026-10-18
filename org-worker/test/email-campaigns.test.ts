@@ -36,7 +36,7 @@ function setup(t: TestContext) {
   } }, PIDP_BASE_URL: 'https://identity.test', PUBLIC_PORTAL_BASE_URL: 'https://portal.test/p',
     EMAIL_GOOGLE_CLIENT_ID: 'client-id', EMAIL_GOOGLE_CLIENT_SECRET: 'test-client-secret', EMAIL_GOOGLE_REDIRECT_URI: 'https://portal.test/api/org/api/email/google/callback',
     EMAIL_ALLOWED_SENDERS: 'julian@codecollective.us', EMAIL_TOKEN_ENCRYPTION_KEY: btoa('x'.repeat(32)), EMAIL_UNSUBSCRIBE_SECRET: 'test-unsubscribe-secret-with-32-characters',
-    EMAIL_POSTAL_ADDRESS: 'Test mailing address', EMAIL_SENDING_ENABLED: 'true', EMAIL_DAILY_LIMIT: '250',
+    EMAIL_CONTACT_UNSUBSCRIBE_KEY: btoa('c'.repeat(32)), EMAIL_POSTAL_ADDRESS: 'Test mailing address', EMAIL_SENDING_ENABLED: 'true', EMAIL_DAILY_LIMIT: '250',
   } as unknown as Env;
   const request = (path: string, method = 'GET', body?: unknown, user = 'admin') => app.request(`https://portal.test/api/email${path}`, {
     method, headers: user ? { Authorization: `Bearer ${user}`, 'Content-Type': 'application/json' } : {},
@@ -294,7 +294,7 @@ test('templates escape personalized HTML and encode Unicode mail with individual
   const campaign = database.prepare('SELECT * FROM email_campaigns WHERE id = ?').get(draft.id) as unknown as EmailCampaign;
   const rendered = renderCampaign(env, campaign, '<img>\r\nBcc:bad@example.test', null);
   assert.doesNotMatch(rendered.html, /<script>/); assert.match(rendered.html, /&lt;script&gt;/);
-  const raw = campaignMime(env, campaign, { id: 'id-1', email: 'alice@example.test', name: 'Álice', kind: 'campaign' }, 'https://portal.test/unsubscribe?token=test');
+  const raw = await campaignMime(env, campaign, { id: 'id-1', email: 'alice@example.test', name: 'Álice', kind: 'campaign' }, 'https://portal.test/unsubscribe?token=test');
   assert.match(raw, /Subject: =\?UTF-8\?B\?/); assert.match(raw, /multipart\/alternative/); assert.doesNotMatch(raw, /^Bcc:/m);
   assert.match(raw, /To: alice@example.test/);
 });
@@ -330,7 +330,7 @@ test('configured send-as aliases change message headers without changing Google 
   const draft = await (await request('/campaigns', 'POST', payload)).json();
   assert.equal(draft.sender_email, 'julian@codecollective.us');
   assert.equal(draft.from_email, 'events@codecollective.us');
-  const mime = campaignMime(env, draft, {email:'alice@example.test',name:'Alice',id:'delivery',kind:'test'},null);
+  const mime = await campaignMime(env, draft, {email:'alice@example.test',name:'Alice',id:'delivery',kind:'test'},null);
   assert.match(mime, /^From: events@codecollective.us\r\n/);
   assert.match(mime, /Reply-To: events@codecollective.us\r\n/);
   env.EMAIL_SENDER_ALIASES = JSON.stringify({'julian@codecollective.us':'events@example.test\r\nBcc: other@example.test'});
@@ -451,4 +451,43 @@ test('external contacts can opt out without creating an account; only deliberate
  assert.equal(database.prepare('SELECT count(*) n FROM email_contact_suppressions').get()!.n,1);
  await request('/groups/org-1/subscription','PUT',{subscribed:true});
  assert.equal(database.prepare('SELECT count(*) n FROM email_contact_suppressions').get()!.n,0);
+});
+
+test('engagement is signed, unique, private, expiry bounded and attributes one-click opt-outs',async t=>{
+  const {env,request,database}=setup(t);let raw='';
+  network(t,async options=>{raw=Buffer.from(JSON.parse(String(options.body)).raw,'base64url').toString();return Response.json({id:'gmail-engagement'});});
+  await connect(env);await subscribe(env);
+  const draft=await(await request('/campaigns','POST',{...payload,body:'RSVP: https://luma.com/example?ref=one&source=email'})).json();
+  recordSelfTest(database,draft.id);
+  const preview=await(await request(`/campaigns/${draft.id}`)).json();
+  await request(`/campaigns/${draft.id}/send`,'POST',{fingerprint:preview.fingerprint,preview_id:preview.preview_id,confirm:true});
+  await runEmailDelivery(env);
+  const html=Buffer.from(raw.split('Content-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n')[1].split('\r\n--')[0].replace(/\r\n/g,''),'base64').toString();
+  const urls=[...html.matchAll(/(?:href|src)="([^"]+)"/g)].map(m=>m[1].replace(/&amp;/g,'&'));
+  const open=urls.find(u=>u.includes('/engagement/open'))!;
+  const click=urls.find(u=>u.includes('/engagement/click')&&new URL(u).searchParams.get('url')?.includes('luma.com'))!;
+  const unsub=raw.match(/List-Unsubscribe: <([^>]+)>/)![1];
+  assert.ok(open&&click);assert.doesNotMatch(open,/alice|example.test/);
+  assert.match(html,/90 days/);assert.equal(database.prepare('SELECT count(*) n FROM email_engagement').get()!.n,1);
+  const publicRequest=(url:string,method='GET',headers?:Record<string,string>)=>app.request(url.replace('/api/org/api/','/api/'),{method,headers},env);
+  const stats=async()=> (await(await request(`/campaigns/${draft.id}`)).json()).engagement;
+  assert.deepEqual(await stats(),{sent:1,tracked:1,opened:0,clicked:0,unsubscribed:0});
+  await publicRequest(open,'HEAD');await publicRequest(click,'GET',{'Sec-Purpose':'prefetch'});
+  assert.equal((await stats()).opened,0);assert.equal((await stats()).clicked,0);
+  const bad=new URL(click);bad.searchParams.set('url','https://attacker.test/');assert.equal((await publicRequest(bad.toString())).status,404);
+  const pixel=await publicRequest(open);assert.equal(pixel.status,200);assert.equal(pixel.headers.get('Content-Type'),'image/gif');assert.match(pixel.headers.get('Cache-Control')!,/no-store/);
+  await publicRequest(open);
+  const redirect=await publicRequest(click);assert.equal(redirect.status,302);assert.equal(redirect.headers.get('Location'),'https://luma.com/example?ref=one&source=email');await publicRequest(click);
+  assert.deepEqual(await stats(),{sent:1,tracked:1,opened:1,clicked:1,unsubscribed:0});
+  assert.equal((await request(`/campaigns/${draft.id}`,'GET',undefined,'other-admin')).status,404);
+  await publicRequest(unsub);assert.equal((await stats()).unsubscribed,0);
+  await publicRequest(unsub,'POST',{'Content-Type':'application/x-www-form-urlencoded'});await publicRequest(unsub,'POST');
+  assert.equal((await stats()).unsubscribed,1);assert.equal(database.prepare('SELECT count(*) n FROM email_contact_suppressions').get()!.n,1);
+  const first=database.prepare('SELECT * FROM email_engagement').get()!;await publicRequest(open);assert.equal(database.prepare('SELECT opened_at FROM email_engagement').get()!.opened_at,first.opened_at);
+  database.exec('UPDATE email_engagement SET expires_at=1');
+  assert.deepEqual(await stats(),{sent:1,tracked:0,opened:0,clicked:0,unsubscribed:0});
+  database.exec('DELETE FROM email_engagement');
+  assert.equal((await publicRequest(click)).headers.get('Location'),'https://luma.com/example?ref=one&source=email');
+  assert.equal((await publicRequest(unsub,'POST')).status,200);
+  assert.equal(database.prepare('SELECT count(*) n FROM email_engagement').get()!.n,0);
 });

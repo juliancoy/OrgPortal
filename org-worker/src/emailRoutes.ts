@@ -1,3 +1,4 @@
+import { campaignEngagement, emailEngagementRoutes } from './emailEngagement';
 import { emailContactPreferences } from './emailContactPreferences';
 import { emailAudit, requireEmailOrganizer } from './emailAccess';
 import { emailGroups } from './emailGroups';
@@ -43,7 +44,7 @@ async function campaignPreview(env: Env, campaign: EmailCampaign) {
   ]));
   const counts: Record<string, number> = {};
   for (const row of rows.filter((row) => row.kind === 'campaign')) counts[String(row.status)] = (counts[String(row.status)] || 0) + 1;
-  return { ...campaign, self_test_sent: await hasSuccessfulSelfTest(env, campaign), from_email: emailFromAddress(env, campaign.sender_email), preview: renderCampaign(env, campaign, 'Alex', null), fingerprint, recipient_count: eligible.length, counts, deliveries: rows };
+  return { ...campaign, engagement: await campaignEngagement(env,campaign.id), self_test_sent: await hasSuccessfulSelfTest(env, campaign), from_email: emailFromAddress(env, campaign.sender_email), preview: renderCampaign(env, campaign, 'Alex', null), fingerprint, recipient_count: eligible.length, counts, deliveries: rows };
 }
 
 export function emailRoutes(getUser: GetActor) {
@@ -56,6 +57,7 @@ export function emailRoutes(getUser: GetActor) {
   routes.use('*', async (c, next) => { c.header('Cache-Control', 'no-store'); c.header('Referrer-Policy', 'no-referrer'); await next(); });
 
   routes.route('/groups',emailGroups(getUser));
+  routes.route('/engagement',emailEngagementRoutes());
   routes.route('/contact-unsubscribe',emailContactPreferences());
 
   routes.get('/sender', async (c) => {

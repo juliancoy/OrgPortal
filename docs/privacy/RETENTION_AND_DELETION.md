@@ -159,3 +159,29 @@ immutable change journal; it remains in protected operational database backups.
 Encrypted unsubscribe links do not expire and contain no plaintext address.
 Keep their encryption key stable; do not rotate it without retaining decryption
 support for previously issued links. These links authorize only opting out.
+
+## Campaign engagement
+
+New OrgPortal campaign sends measure image loads, link clicks and opt-outs through
+that email's unsubscribe link. The message footer discloses this measurement.
+Image blocking, privacy proxies, forwarding and security scanners mean open and
+click signals are estimates, not proof a person read or clicked. Tests are excluded.
+Each rate counts unique recipients among tracked, Gmail-accepted campaign sends;
+the three rates overlap and must not be summed. Gmail acceptance is not delivery.
+
+`email_engagement` links a delivery ID to first-action timestamps and a 90-day
+expiry measured from initial send preparation. It stores no IP or user agent.
+The existing scheduled retention job deletes expired rows in batches of 500,
+even when sending is disabled. Reads/writes exclude expired data immediately.
+Older sends are not backfilled; expired/untracked data is shown as unavailable.
+No permanent engagement aggregates are retained. Signed click destinations remain
+usable after analytics expire, and opt-outs remain valid indefinitely.
+
+This store is excluded from public replicas and immutable change journals.
+Deletion of a campaign/delivery cascades; verified erasure must also inventory
+these rows by the delivery's canonical account/address under the manual workflow.
+Unsubscribe suppression is independent and is not removed by analytics expiry.
+Protected operational backups may contain older data: reapply erasure and expiry
+before restoring service and inventory independent exports under OPERATIONS.md.
+The application does not log tracking tokens, addresses, IPs or user agents;
+provider request logs remain subject to the separately documented log controls.

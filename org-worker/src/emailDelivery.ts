@@ -1,5 +1,6 @@
 import { googleAccessToken, sendGmail, type Sender } from './emailGoogle';
-import { emailDailyLimit, type EmailCampaign, unsubscribeUrl } from './emailShared';
+import { contactUnsubscribeToken } from './emailContactPreferences';
+import { emailDailyLimit, emailPortalBase, type EmailCampaign } from './emailShared';
 import { campaignMime } from './emailTemplate';
 
 type Delivery = { id: string; campaign_id: string; subscription_id: string | null; email: string; name: string; kind: string; attempts: number };
@@ -63,8 +64,11 @@ export async function runEmailDelivery(env: Env) {
           continue;
         }
         // Render before the sending claim so a configuration error cannot look like an attempted delivery.
-        const unsubscribe = pending.subscription_id ? await unsubscribeUrl(env, pending.subscription_id) : null;
-        const raw = campaignMime(env, campaign, pending, unsubscribe);
+        const token = pending.kind==='campaign' ? await contactUnsubscribeToken(env,{email:pending.email,organizationId:campaign.organization_id,deliveryId:pending.id}) : null;
+        const unsubscribe = token ? new URL('/api/org/api/email/contact-unsubscribe?token='+encodeURIComponent(token),emailPortalBase(env)).toString() : null;
+        const raw = await campaignMime(env, campaign, pending, unsubscribe);
+        if(pending.kind==='campaign') await env.DB.prepare('INSERT INTO email_engagement(delivery_id,expires_at) VALUES(?,?) ON CONFLICT(delivery_id) DO NOTHING')
+          .bind(pending.id,now+90*86_400_000).run();
         const claimed = await env.DB.prepare(`UPDATE email_deliveries SET status = 'sending', attempted_at = ?, attempts = attempts + 1, error = NULL
           WHERE id = ? AND status = 'queued' AND EXISTS (SELECT 1 FROM email_campaigns c WHERE c.id = campaign_id
             AND (kind = 'test' OR c.status = 'queued') AND EXISTS(SELECT 1 FROM organization_memberships m

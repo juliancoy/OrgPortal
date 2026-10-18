@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
 import { emailApi, type CampaignPreview, type CampaignSummary, type EmailAudience, type EmailSender } from './emailApi'
 import './emailCampaigns.css'
+import { EmailCampaignStats } from './EmailCampaignStats'
 
 type EventChoice = { id: string; title: string; host_org_id?: string | null; host_type?: string; organization_name?: string }
 const initialBody = 'Hi {{first_name}},\n\nJoin us for {{event_title}}. We’d love to see you there!\n\n{{organization}}'
@@ -164,6 +165,7 @@ export function EmailCampaignsPage() {
         })}>{preview.status === 'queued' ? 'Pause campaign' : 'Resume campaign'}</button>}
       </div>
       {preview.status !== 'draft' && <p>{Object.entries(preview.counts).map(([state, count]) => `${count} ${state}`).join(' · ')}. Sent means Gmail accepted the email.</p>}
+      {preview.engagement && <EmailCampaignStats stats={preview.engagement} />}
       <details><summary>Recipients and delivery history ({preview.deliveries.length})</summary><div className="email-table"><table><thead><tr><th>Recipient</th><th>Type</th><th>Status</th><th>Details</th></tr></thead><tbody>
         {preview.deliveries.map((delivery) => <tr key={delivery.id}><td>{delivery.name}<br />{delivery.email}</td><td>{delivery.kind}</td><td>{delivery.status}</td><td>{delivery.error || (delivery.gmail_message_id ? 'Accepted by Gmail' : '—')}</td></tr>)}
       </tbody></table></div></details>

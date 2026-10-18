@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { base64Url, decodeBase64, emailFail, normalizeEmail } from './emailShared';
 import { escapeHtml } from './emailTemplate';
 
-type Contact = { email: string; organizationId: string };
+type Contact = { email: string; organizationId: string; deliveryId?: string };
 async function key(env: Env) {
   const bytes = decodeBase64(env.EMAIL_CONTACT_UNSUBSCRIBE_KEY || '');
   if (bytes.length !== 32) emailFail(503, 'Email preferences are temporarily unavailable. Please reply to the sender for help.');
@@ -14,7 +14,7 @@ export async function contactUnsubscribeToken(env: Env, contact: Contact) {
   const email = normalizeEmail(contact.email);
   if (!email || !contact.organizationId || contact.organizationId.length > 200) emailFail(400, 'Invalid mailing contact.');
   const iv = crypto.getRandomValues(new Uint8Array(12));
-  const encrypted = await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:new TextEncoder().encode('orgportal-contact-unsubscribe-v1')},await key(env),new TextEncoder().encode(JSON.stringify({email,organizationId:contact.organizationId})));
+  const encrypted = await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:new TextEncoder().encode('orgportal-contact-unsubscribe-v1')},await key(env),new TextEncoder().encode(JSON.stringify({email,organizationId:contact.organizationId,...(contact.deliveryId?{deliveryId:contact.deliveryId}:{})})));
   return `${base64Url(iv)}.${base64Url(new Uint8Array(encrypted))}`;
 }
 async function readToken(env: Env, token: string): Promise<Contact> {
@@ -24,6 +24,7 @@ async function readToken(env: Env, token: string): Promise<Contact> {
     if (!iv || !data || extra || token.length > 1800) throw new Error();
     const value = JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:decodeBase64(iv),additionalData:new TextEncoder().encode('orgportal-contact-unsubscribe-v1')},cryptoKey,decodeBase64(data))));
     if (!normalizeEmail(value.email) || normalizeEmail(value.email)!==value.email || typeof value.organizationId!=='string' || !value.organizationId || value.organizationId.length>200) throw new Error();
+    if(value.deliveryId!==undefined && (typeof value.deliveryId!=='string'||value.deliveryId.length>200))throw new Error();
     return value;
   } catch { emailFail(400, 'This unsubscribe link is invalid. Please reply to the sender for help.'); }
 }
@@ -48,6 +49,10 @@ export function emailContactPreferences() {
     if(!await c.env.DB.prepare('SELECT id FROM organizations WHERE id=?').bind(contact.organizationId).first())emailFail(404,'Mailing group not found.');
     const now=Date.now();
     await c.env.DB.batch([
+      c.env.DB.prepare(`UPDATE email_engagement SET unsubscribed_at=COALESCE(unsubscribed_at,?) WHERE delivery_id=? AND expires_at>? AND EXISTS(
+        SELECT 1 FROM email_deliveries d JOIN email_campaigns c ON c.id=d.campaign_id
+        WHERE d.id=delivery_id AND d.email=? AND c.organization_id=? AND d.kind='campaign' AND d.status IN ('sending','sent'))`)
+        .bind(now,contact.deliveryId||'',now,contact.email,contact.organizationId),
       c.env.DB.prepare(`INSERT INTO email_contact_suppressions(organization_id,email,unsubscribed_at,updated_at) VALUES(?,?,?,?) ON CONFLICT(organization_id,email) DO UPDATE SET updated_at=excluded.updated_at`).bind(contact.organizationId,contact.email,now,now),
       c.env.DB.prepare(`UPDATE email_subscriptions SET status='unsubscribed',consent_source='recipient-unsubscribe',unsubscribed_at=COALESCE(unsubscribed_at,?),updated_at=? WHERE email=? AND ((topic_type='organization' AND topic_id=?) OR (topic_type='event' AND topic_id IN(SELECT id FROM events WHERE host_org_id=?)))`).bind(now,now,contact.email,contact.organizationId,contact.organizationId),
       c.env.DB.prepare(`UPDATE email_deliveries SET status='skipped',error='Recipient unsubscribed.' WHERE email=? AND kind='campaign' AND status='queued' AND campaign_id IN(SELECT id FROM email_campaigns WHERE organization_id=?)`).bind(contact.email,contact.organizationId),
