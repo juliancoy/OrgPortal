@@ -385,3 +385,26 @@ test('campaigns require their own Gmail-accepted self-test before send, schedule
   await runEmailDelivery(env);
   assert.equal(database.prepare('SELECT status FROM email_campaigns WHERE id=?').get(next.id)!.status,'paused');
 });
+
+
+test('OAuth callback failures show a recovery action instead of a raw JSON dead end', async t => {
+  const {env}=setup(t);
+  for (const failure of ['expired','network','invalid_client']) {
+    let query='',cookie='';
+    if(failure!=='expired') {
+      const started=await startGoogleConnection(env,{id:'admin',email:'julian@codecollective.us'},'org-1');
+      query=`?state=${new URL(started.url).searchParams.get('state')}&code=test-code`;
+      cookie=`__Host-portal-email-oauth=${started.browser}`;
+      t.mock.method(globalThis,'fetch',async()=>{if(failure==='network')throw new Error('private network diagnostics');return Response.json({error:'invalid_client',error_description:'private provider diagnostics'},{status:401});});
+    }
+    const response=await app.request(`https://portal.test/api/email/google/callback${query}`,{headers:{Cookie:cookie}},env);
+    assert.equal(response.status,failure==='network'?503:400);
+    assert.match(response.headers.get('content-type')||'',/text\/html/);
+    assert.match(response.headers.get('cache-control')||'',/no-store/);
+    const html=await response.text();
+    assert.match(html,/href="https:\/\/portal.test\/p\/email"/);
+    assert.match(html,/Return to Email and reconnect Google/);
+    assert.doesNotMatch(html,/private network|private provider|test-code/);
+    t.mock.restoreAll();
+  }
+});

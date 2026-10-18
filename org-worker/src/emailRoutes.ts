@@ -1,6 +1,7 @@
 import { emailAudit, requireEmailOrganizer } from './emailAccess';
 import { emailGroups } from './emailGroups';
 import { Hono } from 'hono';
+import { HTTPException } from 'hono/http-exception';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import { finishGoogleConnection, senderFor, startGoogleConnection } from './emailGoogle';
 import { hasSuccessfulSelfTest, emailFromAddress, digest, emailDailyLimit, emailFail, emailPortalBase, emailSetupIssues, googleConfig, unsubscribeUrl, verifyUnsubscribe,
@@ -83,8 +84,21 @@ export function emailRoutes(getUser: GetActor) {
     const browser = getCookie(c, '__Host-portal-email-oauth') || '';
     deleteCookie(c, '__Host-portal-email-oauth', { secure: true, httpOnly: true, sameSite: 'Lax', path: '/' });
     if (c.req.query('error')) return c.redirect(`${emailPortalBase(c.env)}/email?connection=cancelled`);
-    const group=await finishGoogleConnection(c.env, c.req.query('state') || '', browser, c.req.query('code') || '');
-    return c.redirect(`${emailPortalBase(c.env)}/email?connection=connected${group ? `&organization_id=${encodeURIComponent(group)}` : ''}`);
+    try {
+      const group=await finishGoogleConnection(c.env, c.req.query('state') || '', browser, c.req.query('code') || '');
+      return c.redirect(`${emailPortalBase(c.env)}/email?connection=connected${group ? `&organization_id=${encodeURIComponent(group)}` : ''}`);
+    } catch (error) {
+      let detail = 'Google connection could not be completed. Start a new connection from the Email page.';
+      if (error instanceof HTTPException) {
+        const body = await error.getResponse().json().catch(() => ({})) as { detail?: unknown };
+        if (typeof body.detail === 'string') detail = body.detail;
+      }
+      let actionUrl = 'https://orgportal.cc/email';
+      try { actionUrl = `${emailPortalBase(c.env)}/email`; } catch { /* Keep a usable recovery link if configuration is incomplete. */ }
+      c.header('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'");
+      c.header('X-Robots-Tag', 'noindex');
+      return c.html(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Reconnect Google — OrgPortal</title><style>body{font:18px/1.6 system-ui,sans-serif;max-width:36rem;margin:10vh auto;padding:24px;color:#18212b}a{display:inline-block;background:#155eef;color:white;padding:12px 18px;border-radius:8px;text-decoration:none}a:focus-visible{outline:3px solid #18212b;outline-offset:4px}</style></head><body><main><h1>Google connection wasn’t completed</h1><p>${escapeHtml(detail)}</p><p><a href="${escapeHtml(actionUrl)}">Return to Email and reconnect Google</a></p><p>Choose your group, then select Connect Google Workspace. Complete the connection in the same browser.</p></main></body></html>`, error instanceof HTTPException && error.status < 500 ? 400 : 503);
+    }
   });
   routes.delete('/sender', async (c) => {
     const user = await getOrganizer(c.env, c.req.raw);
