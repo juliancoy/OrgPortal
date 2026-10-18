@@ -45,8 +45,20 @@ export async function finishGoogleConnection(env: Env, state: string, browser: s
     response = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', redirect: 'error', signal: AbortSignal.timeout(15_000),
       body: new URLSearchParams({ grant_type: 'authorization_code', code, client_id: config.clientId, client_secret: config.clientSecret,
         redirect_uri: config.redirectUri, code_verifier: await decryptSecret(env, pending.verifier_ciphertext, `oauth:${pending.owner_user_id}`) }) });
-  } catch { emailFail(503, 'Google connection could not be completed. Please connect again.'); }
-  if (!response.ok) emailFail(400, 'Google connection could not be completed. Please connect again.');
+  } catch { emailFail(503, 'OrgPortal could not reach Google to finish authorization. Start a new connection from the Email page.'); }
+  if (!response.ok) {
+    const failure = await response.json().catch(() => ({})) as { error?: unknown };
+    // Return only known error categories. Google response bodies can include credentials.
+    const messages: Record<string, string> = {
+      invalid_client: 'Google rejected the configured OAuth client credentials (invalid_client). The portal operator must check the client ID and secret.',
+      invalid_grant: 'Google rejected the authorization code or its verification (invalid_grant). Start a new connection from the Email page and complete it once in the same browser.',
+      redirect_uri_mismatch: 'Google rejected the callback URL (redirect_uri_mismatch). Register the exact OrgPortal email callback on this OAuth client.',
+      unauthorized_client: 'Google does not permit this OAuth client to complete this authorization (unauthorized_client). Check its Google Cloud configuration.',
+      access_denied: 'Google denied this authorization (access_denied). Check the account permissions and Workspace policy.',
+    };
+    const message = typeof failure.error === 'string' && Object.hasOwn(messages, failure.error) ? messages[failure.error] : `Google could not finish authorization (HTTP ${response.status}). Start a new connection from the Email page.`;
+    emailFail(response.status >= 500 ? 503 : 400, message);
+  }
   const tokens = await response.json() as { id_token?: string; refresh_token?: string; scope?: string };
   if (!tokens.id_token || !tokens.scope?.split(' ').includes(gmailScope)) emailFail(400, 'Please grant permission to send email and reconnect.');
   let email: string;

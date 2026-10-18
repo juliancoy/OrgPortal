@@ -328,3 +328,23 @@ test('configured send-as aliases change message headers without changing Google 
   env.EMAIL_SENDER_ALIASES = JSON.stringify({'julian@codecollective.us':'events@example.test\r\nBcc: other@example.test'});
   assert.throws(() => emailFromAddress(env, 'julian@codecollective.us'));
 });
+
+
+test('Google exchange failures expose only actionable error categories and never provider details', async t => {
+  const { env } = setup(t);
+  for (const code of ['invalid_client', 'invalid_grant', 'redirect_uri_mismatch', 'unauthorized_client', 'access_denied', 'unknown-sensitive-provider-response']) {
+    const started = await startGoogleConnection(env, {id:'admin', email:'julian@codecollective.us'}, 'org-1');
+    const state = new URL(started.url).searchParams.get('state')!;
+    t.mock.method(globalThis, 'fetch', async () => Response.json({error:code,error_description:'private-token-and-provider-details'}, {status:400}));
+    await assert.rejects(() => finishGoogleConnection(env,state,started.browser,'code'));
+    // Use a separate attempt because exchange states are deliberately one-use.
+    const retry = await startGoogleConnection(env, {id:'admin',email:'julian@codecollective.us'},'org-1');
+    try { await finishGoogleConnection(env,new URL(retry.url).searchParams.get('state')!,retry.browser,'code'); assert.fail('Expected provider rejection'); }
+    catch(error) {
+      const detail = await (error as {res:Response}).res.text();
+      assert.doesNotMatch(detail,/private-token|provider-details|unknown-sensitive-provider-response/);
+      assert.match(detail, code === 'unknown-sensitive-provider-response' ? /HTTP 400/ : new RegExp(code));
+    }
+    t.mock.restoreAll();
+  }
+});
