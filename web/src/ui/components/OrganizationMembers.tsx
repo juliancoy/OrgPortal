@@ -1,3 +1,4 @@
+import { SignInLink } from './SignInLink'
 import './OrganizationMembers.css'
 import { useEffect, useId, useState } from 'react'
 import { useAuth } from '../../app/AppProviders'
@@ -83,7 +84,7 @@ export function OrganizationMembers({ organizationId, name, canRead, canManage, 
   if(!canManage && !error && ((!canRead && membershipCount === 0) || (canRead && !loading && members.length === 0)))return null
   return <section className="portal-card organization-members" aria-label="Community members">
     <h2>Community members <span className="muted">({canRead && !loading && !error ? members.length : membershipCount})</span></h2>
-    {!canRead ? <p className="muted">{token ? `Join ${name} to see community members.` : 'Sign in to see community members.'}</p> : <>
+    {!canRead ? <p className="muted">{token ? `Join ${name} to see community members.` : <><SignInLink /> to see community members.</>}</p> : <>
       {loading && <p role="status">Loading members…</p>}
       {error && <p role="alert">{error} <button type="button" onClick={() => setRevision(value => value + 1)}>Retry</button></p>}
       {!loading && !error && (members.length ? <ul className="organization-members-list">

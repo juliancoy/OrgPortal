@@ -1,3 +1,4 @@
+import { SignInLink } from '../components/SignInLink'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useAuth } from '../../app/AppProviders'
 import { Header } from '../shell/Header'
@@ -188,7 +189,7 @@ export function CreateNonProfitPage() {
                   <textarea rows={4} value={form.mission_statement} onChange={(event) => setForm({ ...form, mission_statement: event.target.value })} />
                 </label>
                 <button type="submit" disabled={busy}>{busy ? 'Creating…' : 'Create'}</button>
-                {status && <p className="portal-muted">{status}</p>}
+                {status && <p className="portal-muted">{status === 'Sign in required.' ? <><SignInLink /> to continue.</> : status}</p>}
               </form>
 
               <div className="portal-card">

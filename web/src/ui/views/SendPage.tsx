@@ -1,3 +1,4 @@
+import { SignInLink } from '../components/SignInLink'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useAuth } from '../../app/AppProviders'
 import { Header } from '../shell/Header'
@@ -152,7 +153,7 @@ export function SendPage() {
               <button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? 'Sending…' : 'Send'}
               </button>
-              {status && <p className="portal-muted">{status}</p>}
+              {status && <p className="portal-muted">{status === 'Sign in required.' ? <><SignInLink /> to continue.</> : status}</p>}
             </form>
           </section>
         </div>

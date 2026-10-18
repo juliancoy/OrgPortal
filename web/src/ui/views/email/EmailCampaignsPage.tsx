@@ -86,7 +86,7 @@ export function EmailCampaignsPage() {
           <p>Email sending is not configured on OrgPortal yet. Your administrator role does not complete the Google connection setup.</p>
           <p>Missing or invalid server settings:</p>
           <ul>{sender.setup_issues.map(issue => <li key={issue}>{issue}</li>)}</ul>
-          <p>Once setup is complete, refresh status and connect your Google account.</p>
+          <p><a href="mailto:julian@codecollective.us?subject=OrgPortal%20email%20setup">Contact portal support</a> to complete these server settings. Then refresh status and connect your Google account.</p>
         </div>}
         {sender?.configured && !sender.sending_enabled && <p>Sending is disabled. You can connect your account and prepare previews.</p>}
       </div>
