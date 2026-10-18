@@ -1,6 +1,6 @@
 # Google Workspace email campaigns
 
-OrgPortal now has an administrator-only `/email` screen for event campaigns and an authenticated `/email/preferences` screen for subscribers. This change builds on the event-registration work and its `0018_event_registrations.sql` migration.
+OrgPortal now has an organizer-only `/email` screen for event campaigns and an authenticated `/email/preferences` screen for subscribers. This change builds on the event-registration work and its `0018_event_registrations.sql` migration.
 
 ## What is implemented
 
@@ -16,9 +16,9 @@ The new registration form captures choices prospectively. Existing users, contac
 
 ## Google setup
 
-1. Use a Google Cloud project under the Code Collective Workspace organization. Enable the Gmail API and create a **Web application** OAuth client for the portal sender connection. A dedicated client keeps its grant separate from the existing PIdP Calendar integration. No PIdP source modification or Workspace domain-wide delegation is required.
+1. Use a Google Cloud project under the Code Collective Workspace organization. Enable the Gmail API and create a **Web application** OAuth client for the portal sender connection. You may extend the existing Google Web application client by adding the email callback and Gmail send scope; retain every existing callback. A dedicated client is also supported. No PIdP source modification or Workspace domain-wide delegation is required.
 2. Configure the consent screen for the intended audience. For a connection limited to Code Collective Workspace accounts, use an internal audience where the Google Cloud organization permits it. If publishing externally, resolve Google's sensitive-scope verification requirements before relying on it in production. Avoid leaving a production background sender in an expiring external testing configuration.
-3. Authorize the exact callback URL served through the same origin as the portal. With the current Code Collective proxy this is `https://codecollective.us/api/org/api/email/google/callback`. If a different host serves the portal, use that same host for the callback and configure it consistently in Google and the worker. The browser-binding cookie is host-only.
+3. Authorize the exact callback URL served through the same origin as the portal. On OrgPortal this is `https://orgportal.cc/api/org/api/email/google/callback`. If a different host serves the portal, use that same host for the callback and configure it consistently in Google and the worker. The browser-binding cookie is host-only.
 4. Request `openid`, `email`, and `https://www.googleapis.com/auth/gmail.send`. No inbox-reading or Gmail draft-management permission is requested. The connected Google email must equal the allowlisted, signed-in administrator's account email.
 5. Ensure PIdP identifies Julian as an existing portal administrator. Do not grant campaign access based only on a browser-supplied email address. The worker uses the established administrator check and verifies Google identity independently.
 
@@ -39,11 +39,11 @@ Store secrets with `wrangler secret put NAME` from `org-worker`. Do not paste re
 | `EMAIL_POSTAL_ADDRESS` | The real sender mailing address to display in every email footer. |
 | `EMAIL_DAILY_LIMIT` | Defaults to 250 portal submissions per rolling 24 hours; hard-capped at 1,500 in code. This is a local allowance, not a report of Google's remaining quota. |
 | `EMAIL_SENDING_ENABLED` | Defaults to `false`. Set to `true` only after setup is complete and Julian is ready to use the sending controls. |
-| `PUBLIC_PORTAL_BASE_URL` | Existing setting. For the current deployment, `https://codecollective.us/p`; email buttons link to this base plus `/events/:slug`. |
+| `PUBLIC_PORTAL_BASE_URL` | Existing setting. For the current deployment, `https://orgportal.cc`; email buttons link to this base plus `/events/:slug`. |
 
 Generate the encryption and unsubscribe secrets independently. Preserve the encryption key to keep existing connections usable, and preserve the unsubscribe secret so old unsubscribe links remain valid. Rotating either requires a planned migration, not simply replacing its value.
 
-The root Code Collective Worker forwards `/api/org/*` to the deployed org Worker, including Authorization, Cookie, Set-Cookie, request bodies, and redirects. Both the callback and the public unsubscribe endpoint must reach the org Worker without a portal login redirect. Use a Workers/D1 plan that supports the application's existing workload and the outbox's bounded queries.
+The OrgPortal frontend Worker forwards `/api/org/*` to the deployed org Worker, including Authorization, Cookie, Set-Cookie, request bodies, and redirects. Both the callback and the public unsubscribe endpoint must reach the org Worker without a portal login redirect. Use a Workers/D1 plan that supports the application's existing workload and the outbox's bounded queries.
 
 ## Rollout
 
@@ -82,3 +82,20 @@ npm run build
 The backend tests use a real in-memory SQLite database with all migrations and mocked Google/identity responses. They exercise OAuth state binding and replay prevention, token encryption, admin and sender ownership, distinct consent, signed unsubscribe, stale previews, concurrent dispatch, quota, scheduling, pause/resume, and uncertain-result handling. They do not send real email.
 
 For rollback, first disable email sending, then roll back application code as needed. Preserve the additive tables, sender encryption key, unsubscribe signing secret, and existing unsubscribe endpoint so recorded consent and old unsubscribe links remain usable.
+
+
+## Setup status
+
+`GET /api/email/sender` returns `setup_issues` with missing or invalid setting
+labels, never credential values. The organizer screen displays these issues.
+Administrator privileges do not configure the Google Cloud OAuth application or
+Worker secrets. Complete the settings above before connecting a sender. The
+production frontend and API deploy independently from CodeCollective through
+`scripts/release.mjs`; see [release operations](RELEASE.md).
+
+
+`EMAIL_SENDER_ALIASES` optionally maps verified account emails to Workspace send-as
+aliases, for example `{"julian@codecollective.us":"events@codecollective.us"}`.
+Configure the alias in Gmail before sending. Google consent and stored credential
+ownership remain attached to the primary account. The sender panel and campaign
+preview display the effective From address, and MIME From/Reply-To use that alias.

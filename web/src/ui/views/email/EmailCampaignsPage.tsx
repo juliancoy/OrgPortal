@@ -76,12 +76,18 @@ export function EmailCampaignsPage() {
     {error && <p role="alert" className="email-notice">{error}</p>}
     {message && <p role="status" className="email-notice">{message}</p>}
     <section className="portal-card email-sender" aria-label="Email sender">
-      <div><h2>Sender</h2><strong>{sender?.email || 'Loading sender…'}</strong>
+      <div><h2>Sender</h2><strong>{sender?.from_email || sender?.email || 'Loading sender…'}</strong>
+        {sender && sender.from_email !== sender.email && <p className="muted">Connect as {sender.email} to send using this alias.</p>}
         {sender && <p className="muted">{sender.connected ? 'Google account connected' : sender.status === 'reconnect' ? 'Reconnect your Google account to continue sending' : 'Connect Google Workspace to send email'}</p>}
         {sender?.connected && <p>{sender.used_today} of {sender.daily_limit} portal sends used in the last 24 hours.</p>}
         {sender?.connected && <p className="muted">Your regular Gmail messages also count toward Google’s sending limits.</p>}
         {sender && sender.cooldown_until > Date.now() && <p>Google requested a pause until {date(sender.cooldown_until)}.</p>}
-        {sender && !sender.configured && <p>Google email setup must be completed by the portal administrator.</p>}
+        {sender && !sender.configured && <div role="status">
+          <p>Email sending is not configured on OrgPortal yet. Your administrator role does not complete the Google connection setup.</p>
+          <p>Missing or invalid server settings:</p>
+          <ul>{sender.setup_issues.map(issue => <li key={issue}>{issue}</li>)}</ul>
+          <p>Once setup is complete, refresh status and connect your Google account.</p>
+        </div>}
         {sender?.configured && !sender.sending_enabled && <p>Sending is disabled. You can connect your account and prepare previews.</p>}
       </div>
       <div className="email-actions">
@@ -126,7 +132,7 @@ export function EmailCampaignsPage() {
 
     {preview && <section className="portal-card email-preview">
       <div className="email-heading"><h2>{preview.status === 'draft' ? 'Review your campaign' : 'Campaign status'}</h2><span>{preview.status}</span></div>
-      <p><strong>From:</strong> {preview.sender_email}<br /><strong>Subject:</strong> {preview.preview.subject}<br />
+      <p><strong>From:</strong> {preview.from_email}<br /><strong>Subject:</strong> {preview.preview.subject}<br />
         <strong>Audience:</strong> {preview.recipient_count} subscribed recipients<br /><strong>Send time:</strong> {preview.scheduled_at > Date.now() ? date(preview.scheduled_at) : 'As soon as queued'}</p>
       <p className="muted">Example personalized for Alex. Each recipient receives an individual email and their unsubscribe link.</p>
       <iframe title="Email preview" sandbox="" referrerPolicy="no-referrer" srcDoc={preview.preview.html} />

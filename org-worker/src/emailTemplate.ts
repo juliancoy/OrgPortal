@@ -1,4 +1,4 @@
-import { emailFail, emailPortalBase, type EmailCampaign, type EmailEvent } from './emailShared';
+import { emailFromAddress, emailFail, emailPortalBase, type EmailCampaign, type EmailEvent } from './emailShared';
 
 export function escapeHtml(value: string) { return value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]!)); }
 function publicImage(value: string | null) { try { const url = new URL(value || ''); return url.protocol === 'https:' && !url.username && !url.password ? url.toString() : null; } catch { return null; } }
@@ -27,7 +27,7 @@ function mimeBase64(value: string) {
 export function campaignMime(env: Env, campaign: EmailCampaign, recipient: { email: string; name: string; id: string; kind: string }, unsubscribe: string | null) {
   const rendered = renderCampaign(env, campaign, recipient.name, unsubscribe);
   const subject = (recipient.kind === 'test' ? '[Test] ' : '') + rendered.subject;
-  return emailMime(campaign.sender_email, recipient, { ...rendered, subject }, unsubscribe);
+  return emailMime(emailFromAddress(env, campaign.sender_email), recipient, { ...rendered, subject }, unsubscribe);
 }
 export function emailMime(sender: string, recipient: {email: string; id: string}, rendered: {subject: string; text: string; html: string}, unsubscribe: string | null = null) {
   const boundary = `portal-${crypto.randomUUID()}`;

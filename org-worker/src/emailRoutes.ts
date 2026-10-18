@@ -3,7 +3,7 @@ import { emailGroups } from './emailGroups';
 import { Hono } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import { finishGoogleConnection, senderFor, startGoogleConnection } from './emailGoogle';
-import { digest, emailDailyLimit, emailFail, emailPortalBase, googleConfig, unsubscribeUrl, verifyUnsubscribe,
+import { emailFromAddress, digest, emailDailyLimit, emailFail, emailPortalBase, emailSetupIssues, googleConfig, unsubscribeUrl, verifyUnsubscribe,
   type EmailActor, type EmailCampaign, type EmailEvent, type EmailSubscription } from './emailShared';
 import { escapeHtml, renderCampaign } from './emailTemplate';
 
@@ -41,7 +41,7 @@ async function campaignPreview(env: Env, campaign: EmailCampaign) {
   ]));
   const counts: Record<string, number> = {};
   for (const row of rows.filter((row) => row.kind === 'campaign')) counts[String(row.status)] = (counts[String(row.status)] || 0) + 1;
-  return { ...campaign, preview: renderCampaign(env, campaign, 'Alex', null), fingerprint, recipient_count: eligible.length, counts, deliveries: rows };
+  return { ...campaign, from_email: emailFromAddress(env, campaign.sender_email), preview: renderCampaign(env, campaign, 'Alex', null), fingerprint, recipient_count: eligible.length, counts, deliveries: rows };
 }
 
 export function emailRoutes(getUser: GetActor) {
@@ -58,12 +58,12 @@ export function emailRoutes(getUser: GetActor) {
   routes.get('/sender', async (c) => {
     const user = await getOrganizer(c.env, c.req.raw);
     const sender = await senderFor(c.env, user.id);
-    let configured = true;
-    let connectionOrigin:string | null=null;
-    try { connectionOrigin=new URL(googleConfig(c.env).redirectUri).origin; if(new URL(emailPortalBase(c.env)).origin!==connectionOrigin) configured=false; emailPortalBase(c.env); await unsubscribeUrl(c.env, 'configuration-check'); if (!c.env.EMAIL_POSTAL_ADDRESS?.trim()) configured = false; } catch { configured = false; }
+    const setupIssues = emailSetupIssues(c.env);
+    let connectionOrigin: string | null = null;
+    try { connectionOrigin = new URL(c.env.EMAIL_GOOGLE_REDIRECT_URI || '').origin; } catch { /* Reported in setupIssues. */ }
     const usage = await c.env.DB.prepare('SELECT count(*) AS n FROM email_send_attempts WHERE sender_user_id = ? AND attempted_at > ?')
       .bind(user.id, Date.now() - 86_400_000).first<{ n: number }>();
-    return c.json({ configured, connection_origin:connectionOrigin, sending_enabled: c.env.EMAIL_SENDING_ENABLED === 'true', email: sender?.email || user.email,
+    return c.json({ configured: setupIssues.length === 0, setup_issues: setupIssues, connection_origin:connectionOrigin, sending_enabled: c.env.EMAIL_SENDING_ENABLED === 'true', email: sender?.email || user.email, from_email: emailFromAddress(c.env, sender?.email || user.email || ''),
       connected: sender?.status === 'connected', status: sender?.status || 'disconnected', cooldown_until: sender?.cooldown_until || 0,
       daily_limit: emailDailyLimit(c.env), used_today: Number(usage?.n || 0) });
   });

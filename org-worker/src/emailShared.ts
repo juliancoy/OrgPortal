@@ -52,6 +52,26 @@ export function emailPortalBase(env: Env) {
   if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) emailFail(503, 'Public portal URL is not configured.');
   return url.toString().replace(/\/+$/, '');
 }
+export function emailSetupIssues(env: Env): string[] {
+  const issues: string[] = [];
+  if (!env.EMAIL_GOOGLE_CLIENT_ID?.trim()) issues.push('Google OAuth client ID');
+  if (!env.EMAIL_GOOGLE_CLIENT_SECRET?.trim()) issues.push('Google OAuth client secret');
+  let callback: URL | undefined;
+  try {
+    callback = new URL(env.EMAIL_GOOGLE_REDIRECT_URI || '');
+    if (callback.protocol !== 'https:' || callback.username || callback.password || callback.search || callback.hash || !callback.pathname.endsWith('/api/email/google/callback')) throw new Error();
+  } catch { issues.push('Valid Google OAuth callback URL'); callback = undefined; }
+  try { encryptionBytes(env); } catch { issues.push('Sender token encryption key'); }
+  if (!env.EMAIL_UNSUBSCRIBE_SECRET || env.EMAIL_UNSUBSCRIBE_SECRET.length < 32) issues.push('Unsubscribe signing secret');
+  try {
+    const portal = new URL(emailPortalBase(env));
+    if (callback && portal.origin !== callback.origin) issues.push('Matching portal and Google callback hosts');
+  } catch { issues.push('Public portal URL'); }
+  if (!env.EMAIL_POSTAL_ADDRESS?.trim()) issues.push('Sender mailing address');
+  if (!(env.EMAIL_ALLOWED_SENDERS || '').split(',').some(value => normalizeEmail(value))) issues.push('Approved sender email');
+  return issues;
+}
+
 export function emailDailyLimit(env: Env) {
   const value = Number(env.EMAIL_DAILY_LIMIT || 250);
   return Number.isFinite(value) ? Math.max(1, Math.min(1500, Math.floor(value))) : 250;
@@ -88,4 +108,18 @@ export function subscriptionStatement(db: D1Database, user: EmailActor, type: 'e
     WHERE email_subscriptions.user_id=excluded.user_id`)
     .bind(crypto.randomUUID(),user.id,email,user.full_name || 'Member',type,topicId,
       subscribed ? 'subscribed' : 'unsubscribed',source,now,subscribed ? now : null,subscribed ? null : now);
+}
+
+// Operator-configured Gmail send-as aliases; Google account ownership stays unchanged.
+export function emailFromAddress(env: Env, accountEmail: string): string {
+  if (!env.EMAIL_SENDER_ALIASES) return accountEmail;
+  let aliases: Record<string, unknown>;
+  try {
+    aliases = JSON.parse(env.EMAIL_SENDER_ALIASES);
+    if (!aliases || Array.isArray(aliases) || typeof aliases !== 'object') throw new Error();
+  } catch { emailFail(503, 'Email sender aliases need configuration.'); }
+  const alias = aliases[normalizeEmail(accountEmail)];
+  if (alias === undefined) return accountEmail;
+  if (typeof alias !== 'string' || !/^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+$/.test(alias)) emailFail(503, 'Email sender alias is invalid.');
+  return normalizeEmail(alias);
 }

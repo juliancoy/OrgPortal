@@ -7,7 +7,7 @@ import { exportJWK, generateKeyPair, SignJWT } from 'jose';
 import { app } from '../src/index';
 import { runEmailDelivery } from '../src/emailDelivery';
 import { finishGoogleConnection, startGoogleConnection } from '../src/emailGoogle';
-import { decryptSecret, encryptSecret, subscriptionStatement, unsubscribeUrl, type EmailCampaign } from '../src/emailShared';
+import { emailFromAddress, decryptSecret, encryptSecret, subscriptionStatement, unsubscribeUrl, type EmailCampaign } from '../src/emailShared';
 import { campaignMime, renderCampaign } from '../src/emailTemplate';
 
 class Statement {
@@ -289,4 +289,42 @@ test('templates escape personalized HTML and encode Unicode mail with individual
   const raw = campaignMime(env, campaign, { id: 'id-1', email: 'alice@example.test', name: 'Álice', kind: 'campaign' }, 'https://portal.test/unsubscribe?token=test');
   assert.match(raw, /Subject: =\?UTF-8\?B\?/); assert.match(raw, /multipart\/alternative/); assert.doesNotMatch(raw, /^Bcc:/m);
   assert.match(raw, /To: alice@example.test/);
+});
+
+
+test('sender setup reports missing configuration without exposing secrets or treating it as an access denial', async t => {
+  const { env, request } = setup(t); network(t);
+  const ready = await (await request('/sender')).json();
+  assert.equal(ready.configured, true);
+  assert.deepEqual(ready.setup_issues, []);
+  delete env.EMAIL_GOOGLE_CLIENT_ID;
+  delete env.EMAIL_POSTAL_ADDRESS;
+  env.EMAIL_TOKEN_ENCRYPTION_KEY = 'invalid';
+  env.EMAIL_GOOGLE_REDIRECT_URI = 'https://other.test/api/email/google/callback';
+  const response = await request('/sender');
+  assert.equal(response.status, 200);
+  const result = await response.json();
+  assert.equal(result.configured, false);
+  assert.deepEqual(result.setup_issues, ['Google OAuth client ID', 'Sender token encryption key', 'Matching portal and Google callback hosts', 'Sender mailing address']);
+  assert.doesNotMatch(JSON.stringify(result), /test-client-secret|test-unsubscribe-secret/);
+  assert.equal((await request('/sender', 'GET', undefined, '')).status, 401);
+});
+
+
+test('configured send-as aliases change message headers without changing Google account ownership', async t => {
+  const { env, request } = setup(t); network(t);
+  env.EMAIL_SENDER_ALIASES = JSON.stringify({ 'julian@codecollective.us': 'events@codecollective.us' });
+  const sender = await (await request('/sender')).json();
+  assert.equal(sender.email, 'julian@codecollective.us');
+  assert.equal(sender.from_email, 'events@codecollective.us');
+  assert.equal(emailFromAddress(env, 'other@example.test'), 'other@example.test');
+  await connect(env); await subscribe(env);
+  const draft = await (await request('/campaigns', 'POST', payload)).json();
+  assert.equal(draft.sender_email, 'julian@codecollective.us');
+  assert.equal(draft.from_email, 'events@codecollective.us');
+  const mime = campaignMime(env, draft, {email:'alice@example.test',name:'Alice',id:'delivery',kind:'test'},null);
+  assert.match(mime, /^From: events@codecollective.us\r\n/);
+  assert.match(mime, /Reply-To: events@codecollective.us\r\n/);
+  env.EMAIL_SENDER_ALIASES = JSON.stringify({'julian@codecollective.us':'events@example.test\r\nBcc: other@example.test'});
+  assert.throws(() => emailFromAddress(env, 'julian@codecollective.us'));
 });
