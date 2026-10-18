@@ -52,7 +52,7 @@ Sign in to the global resource, then preview Amplify’s ballot:
 
 ```sh
 orgportal auth login --admin --portal https://orgportal.cc --connection admin
-node org-worker/scripts/company-ballot.mjs --resource https://orgportal.cc/api/org/mcp \
+node org-worker/scripts/company-ballot.mjs --resource https://orgportal.cc/mcp \
   --connection admin --organization org-amplify-medtech \
   --event 15dc061b-d8a5-4cc5-ad94-e9a704c24b01 --mode favorites --fraction 0.25
 ```

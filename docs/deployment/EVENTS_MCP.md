@@ -468,8 +468,12 @@ and `apply_event_slug`; scoped connections require their own `organizationId`.
 with `--apply --preview-id RECEIPT`. Use the owning organization's MCP resource.
 
 `MCP_PIDP_PORTAL_ACCOUNT_NAMESPACE` adds the verified registered portal website
-namespace to the existing approved namespace list. CodeCollective's release
-config uses its registered `code-collective` application. Existing subject mappings
+namespace to the existing approved namespace list. The OrgPortal production
+worker uses `website:79e69d87-9bd0-4226-a214-e3007cbe3606`, the registered
+`orgportal` application. CodeCollective uses its separate registered
+`code-collective` application. A valid JWT from an unapproved namespace is
+rejected before live introspection; verify the registered application ID when
+configuring a deployment. Existing subject mappings
 and namespaces remain intact; live introspection and organization permission
 checks are still required.
 
@@ -520,7 +524,7 @@ alias in the same database batch as the rename.
 
 ### Remote client access (2026-10-14)
 
-OrgPortal uses remote Streamable HTTP at `https://orgportal.cc/api/org/mcp`;
+OrgPortal uses remote Streamable HTTP at `https://orgportal.cc/mcp`;
 it requires no desktop process, local executable, or OS keyring. Desktop CLI
 keyring storage is a client feature, not a server requirement. Each hosted
 client still needs its own PIdP OAuth connection and supported MCP integration.

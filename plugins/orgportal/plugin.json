@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "orgportal",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Connect to OrgPortal to access organization portal and event tools available to your signed-in account.",
   "author": {
     "name": "Julian Coy",
@@ -44,7 +44,7 @@
         "termsOfServiceURL": "https://orgportal.cc/api/org/terms"
       },
       "publication": {
-        "release_notes": "Prepare public remote-MCP distribution with OrgPortal branding, scoped OAuth tools and reviewed event changes.",
+        "release_notes": "Correct the OrgPortal connector URL to the canonical /mcp endpoint.",
         "countries": []
       },
       "review": {
