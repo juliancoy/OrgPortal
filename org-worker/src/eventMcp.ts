@@ -16,6 +16,7 @@ import { getNativeEvent, listNativeEvents } from './nativeEventReads';
 import { hasEventIntegration, configuredProvider, eventPlanSchema, eventTargetSchema, executeEventPlan, EventIntegrationError } from "./eventPlatforms";
 import { enforceEventRateLimit, prepareEventOperation, claimEventOperation, finishEventOperation, previewFingerprint, eventOperationStatus } from "./eventOperationStore";
 import { runOrganizationOperation, organizationCreateSchema, organizationMemberSchema, type CreateOrganization } from './organizationMcp';
+import { emailContactLinkSchema, prepareEmailContactLink } from './emailContactMcp';
 
 const readScope = "org:events.read";
 const writeScope = "org:events.write";
@@ -753,6 +754,18 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
       }
     };
     const metadata = (scopes: string[]) => ({ securitySchemes: [{ type: "oauth2", scopes }] });
+    server.registerTool('prepare_email_contact_link', {
+      description: 'Prepare an individual recipient unsubscribe link for a group email or test. Requires active group organizer access. Does not subscribe, unsubscribe, queue, or send email. Never reuse a link for another recipient.',
+      inputSchema: emailContactLinkSchema, annotations: { readOnlyHint: true },
+      _meta: metadata([portalReadScope, portalWriteScope]),
+    }, async args => {
+      try {
+        const data = await prepareEmailContactLink(env, identity, scopedArgs(args));
+        return { content: [{ type: 'text' as const, text: JSON.stringify(data) }], structuredContent: data };
+      } catch (error) {
+        return { isError: true, content: [{ type: 'text' as const, text: await eventErrorResponse(error, env, request).text() }] };
+      }
+    });
     const supportResult = async (operation: 'list' | 'record' | 'void', args: unknown) => {
       try {
         const data = await runSupportMcp(env.DB, identity, operation, scopedArgs(args));

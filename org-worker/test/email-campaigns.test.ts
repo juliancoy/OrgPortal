@@ -1,4 +1,5 @@
 import { contactUnsubscribeToken } from '../src/emailContactPreferences';
+import { prepareEmailContactLink } from '../src/emailContactMcp';
 import {identityProfile} from './helpers/identityProfile';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -71,6 +72,25 @@ function recordSelfTest(database: DatabaseSync, campaignId: string) {
     VALUES (? ,?,'admin','julian@codecollective.us','Julian','test','sent')`).run(crypto.randomUUID(),campaignId);
 }
 const payload = { event_id: 'event-1', audience: 'event', subject: 'Hello {{first_name}}', body: 'Join {{event_title}}.' };
+
+test('MCP contact links require group organizer scopes and opt out only their exact recipient', async t => {
+  const { env, request, database } = setup(t);
+  const scopes = ['org:portal.read', 'org:portal.write'];
+  await assert.rejects(prepareEmailContactLink(env, {userId:'admin',scopes:[]}, {organizationId:'org-1',email:'personal@example.test'}));
+  await assert.rejects(prepareEmailContactLink(env, {userId:'other-admin',scopes}, {organizationId:'org-1',email:'personal@example.test'}));
+  const link = await prepareEmailContactLink(env, {userId:'admin',scopes}, {organizationId:'org-1',email:' PERSONAL@example.test '});
+  assert.equal(link.email, 'personal@example.test');
+  assert.equal(link.unsubscribed, false);
+  assert.equal(link.sent, false);
+  assert.equal(database.prepare('SELECT count(*) AS n FROM email_subscriptions').get()!.n, 0);
+  const token = new URL(link.unsubscribeUrl).searchParams.get('token')!;
+  assert.equal((await request('/contact-unsubscribe?token='+encodeURIComponent(token),'GET',undefined,'')).status, 200);
+  assert.equal(database.prepare('SELECT count(*) AS n FROM email_contact_suppressions').get()!.n, 0);
+  const result = await app.request('https://portal.test/api/email/contact-unsubscribe', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({token})},env);
+  assert.equal(result.status, 200);
+  assert.equal(database.prepare('SELECT email FROM email_contact_suppressions').get()!.email, 'personal@example.test');
+  assert.equal((await prepareEmailContactLink(env, {userId:'admin',scopes}, {organizationId:'org-1',email:'personal@example.test'})).unsubscribed, true);
+});
 
 test('mailing lists are group-scoped, no global-admin bypass, and consent never follows membership', async t => {
   const {env,request,database}=setup(t);network(t);

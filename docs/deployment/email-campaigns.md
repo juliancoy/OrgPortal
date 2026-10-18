@@ -110,3 +110,14 @@ do not qualify. The UI asks the organizer to inspect their inbox before final
 confirmation. New drafts require new tests; another campaign's test never counts.
 The backend enforces this requirement and pauses queued campaigns without a
 successful self-test. Gmail acceptance does not prove inbox delivery or reading.
+
+## Individual test opt-out links through MCP
+
+`prepare_email_contact_link` accepts `organizationId` and the exact recipient
+`email`. It requires both portal scopes and active owner/administrator membership
+in that group, including for operator accounts. It returns an individual signed
+unsubscribe URL and current opt-out status; it never subscribes, unsubscribes,
+queues or sends a message. Preparing the link records the existing minimal audit
+event. Use the returned URL only for that recipient, including when sending a
+test to a different address from the connected Google account. Do not copy the
+primary account's preview link into another recipient's test.
