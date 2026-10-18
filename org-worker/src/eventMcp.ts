@@ -703,7 +703,7 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
         const { done, value } = await reader.read();
         if (done) break;
         size += value.length;
-        if (size > 65536) { await reader.cancel(); return new Response(null, { status: 413 }); }
+        if (size > 1048576) { await reader.cancel(); return new Response(null, { status: 413 }); }
         chunks.push(value);
       }
     }
@@ -713,6 +713,12 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
     let parsedBody: unknown;
     try { parsedBody = JSON.parse(new TextDecoder().decode(bytes)); }
     catch { return new Response("Invalid JSON", { status: 400 }); }
+    // Only authenticated history imports need room for 500 evidence rows and a
+    // 300 KB inline image. Other MCP operations keep their 64 KB request cap.
+    if(size>65536){
+      const envelope=parsedBody as {method?:unknown;params?:{name?:unknown}};
+      if(envelope?.method!=='tools/call'||!['preview_email_history_import','apply_email_history_import'].includes(String(envelope.params?.name)))return new Response(null,{status:413});
+    }
     const method = parsedBody && typeof parsedBody === 'object' && 'method' in parsedBody ? parsedBody.method : undefined;
     observation.method = typeof method === 'string' && ['initialize', 'notifications/initialized', 'tools/list', 'tools/call', 'ping'].includes(method) ? method : 'other';
     const server = new McpServer({ name: config.name ? `${config.name} MCP` : "orgportal-events", version: "1.1.0", ...(config.name === "OrgPortal" ? { icons: [{ src: "https://orgportal.cc/orgportal.svg", mimeType: "image/svg+xml", sizes: ["any"] }] } : {}) });

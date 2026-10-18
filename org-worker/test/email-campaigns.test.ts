@@ -568,3 +568,9 @@ test('bounce evidence requires a permanent failed DSN and exact original message
  assert.equal(bounceEvidence(part(failed.replace('Status: 5.1.1','Status: 4.2.1'))),null);
  assert.deepEqual(bounceEvidence(part(failed.replace(/Original-Message-ID:[^\n]+/,'')))?.deliveryIds,[]);
 });
+
+test('opted-in bounce monitoring continues after the outbox is empty without submitting email',async t=>{
+ const {env,database}=setup(t);await connect(env);env.EMAIL_SENDING_ENABLED='false';database.exec('UPDATE email_senders SET can_read_bounces=1');let scans=0;
+ t.mock.method(globalThis,'fetch',async(input:string|URL|Request)=>{const url=String(input);if(url==='https://oauth2.googleapis.com/token')return Response.json({access_token:'test-access'});if(url.startsWith('https://gmail.googleapis.com/gmail/v1/users/me/messages?')){scans++;return Response.json({messages:[]})}throw Error('Unexpected network request')});
+ await runEmailDelivery(env);assert.equal(scans,1);assert.equal(database.prepare('SELECT count(*) n FROM email_send_attempts').get()!.n,0);
+});

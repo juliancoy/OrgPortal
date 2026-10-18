@@ -24,9 +24,9 @@ export async function runEmailDelivery(env: Env) {
       AND t.sender_user_id=email_campaigns.owner_user_id AND t.email=email_campaigns.sender_email
       AND t.kind='test' AND t.status='sent')`).run();
   const senders = await env.DB.prepare(`SELECT s.* FROM email_senders s WHERE s.status = 'connected'
-    AND s.cooldown_until <= ? AND EXISTS (SELECT 1 FROM email_deliveries d JOIN email_campaigns c ON c.id = d.campaign_id
+    AND s.cooldown_until <= ? AND (s.can_read_bounces=1 OR EXISTS (SELECT 1 FROM email_deliveries d JOIN email_campaigns c ON c.id = d.campaign_id
       WHERE d.sender_user_id = s.owner_user_id AND d.status = 'queued' AND d.next_attempt_at <= ?
-      AND (d.kind = 'test' OR (c.status = 'queued' AND c.scheduled_at <= ? AND ?=1))) LIMIT 5`)
+      AND (d.kind = 'test' OR (c.status = 'queued' AND c.scheduled_at <= ? AND ?=1)))) LIMIT 5`)
     .bind(start, start, start,massEnabled?1:0).all<Sender>();
   // A crashed worker may have sent the message before recording the result. Never retry it automatically.
   await env.DB.prepare("UPDATE email_deliveries SET status = 'uncertain', error = 'Sending stopped before a result was recorded. Check Gmail Sent mail.' WHERE status = 'sending' AND attempted_at < ?")
