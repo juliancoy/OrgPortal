@@ -35,14 +35,15 @@ export function curvePoints(edge) {
  const a=edge.source,b=edge.target,dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||1,ux=dx/d,uy=dy/d
  const start={x:a.x+ux*(a.renderRadius+2),y:a.y+uy*(a.renderRadius+2)}
  const end={x:b.x-ux*(b.renderRadius+3),y:b.y-uy*(b.renderRadius+3)}
+ if(!edge.curveOffset)return [start,end]
  const mid={x:(start.x+end.x)/2-uy*edge.curveOffset,y:(start.y+end.y)/2+ux*edge.curveOffset}
  return Array.from({length:19},(_,i)=>{const t=i/18,s=1-t;return {x:s*s*start.x+2*s*t*mid.x+t*t*end.x,y:s*s*start.y+2*s*t*mid.y+t*t*end.y}})
 }
-export async function createNetworkGPU(canvas,onLost) {
+export async function createNetworkGPU(canvas,onLost,onPaint=()=>{}) {
  if(!navigator.gpu)throw new Error('WebGPU requires a supported browser and a secure connection.')
  const adapter=await navigator.gpu.requestAdapter();if(!adapter)throw new Error('No WebGPU adapter is available in this browser.')
  const device=await adapter.requestDevice(),context=canvas.getContext('webgpu');if(!context){device.destroy();throw new Error('WebGPU canvas unavailable.')}
- let disposed=false
+ let disposed=false,busy=false,pendingView=null
  device.lost.then(info=>{if(!disposed)onLost(info.message)})
  device.addEventListener('uncapturederror',event=>{if(!disposed)onLost(event.error.message)})
  const format=navigator.gpu.getPreferredCanvasFormat();context.configure({device,format,alphaMode:'premultiplied'})
@@ -59,26 +60,31 @@ export async function createNetworkGPU(canvas,onLost) {
  }catch(error){disposed=true;context.unconfigure();uniform.destroy();device.destroy();throw error}
  const bind=device.createBindGroup({layout,entries:[{binding:0,resource:{buffer:uniform}}]})
  let nodeBuffer,edgeBuffer,nodeCount=0,edgeCount=0
+ const nodeRanges=new Map(),edgeRanges=new Map()
  const upload=(old,values)=>{const array=new Float32Array(values);if(!old||old.size<array.byteLength){old?.destroy();old=device.createBuffer({size:Math.max(256,2**Math.ceil(Math.log2(array.byteLength||1))),usage:GPUBufferUsage.VERTEX|GPUBufferUsage.COPY_DST})}if(array.length)device.queue.writeBuffer(old,0,array);return old}
  return {
-  update(nodes,edges,visible,visibleEdges,selected,colors,edgeColor){
+  update(nodes,edges,visible,visibleEdges,selected,colors,edgeColor,updated=null){
+   if(!nodeBuffer||!edgeBuffer)updated=null
+   if(!updated){nodeRanges.clear();edgeRanges.clear()}
    const disks=[],vertices=[]
    const vertex=(p,color)=>vertices.push(p.x,p.y,...color)
-   for(const e of edges){if(!visibleEdges.has(e.id))continue;const points=curvePoints(e),color=rgba(edgeColor(e),.65),width=(e.quantityWidth||1.4)/2
+   for(const e of edges){if(!visibleEdges.has(e.id)||(updated&&!updated.has(e.source.id)&&!updated.has(e.target.id)))continue;const start=vertices.length;const points=curvePoints(e),color=rgba(edgeColor(e),.65),width=(e.quantityWidth||1.4)/2
     for(let i=1;i<points.length;i++){if(e.relationship!=='funding'&&i%(e.relationship==='affiliation'?4:2)===0)continue;const a=points[i-1],b=points[i],d=Math.hypot(b.x-a.x,b.y-a.y)||1,nx=-(b.y-a.y)/d*width,ny=(b.x-a.x)/d*width
      const p={x:a.x+nx,y:a.y+ny},q={x:a.x-nx,y:a.y-ny},r={x:b.x+nx,y:b.y+ny},s={x:b.x-nx,y:b.y-ny};for(const v of [p,q,r,r,q,s])vertex(v,color)
     }
     const a=points.at(-2),b=points.at(-1),d=Math.hypot(b.x-a.x,b.y-a.y)||1,ux=(b.x-a.x)/d,uy=(b.y-a.y)/d
     for(const p of [b,{x:b.x-ux*8-uy*4,y:b.y-uy*8+ux*4},{x:b.x-ux*8+uy*4,y:b.y-uy*8-ux*4}])vertex(p,color)
+    if(updated){const offset=edgeRanges.get(e.id);if(offset!==undefined)device.queue.writeBuffer(edgeBuffer,offset*4,new Float32Array(vertices.slice(start)))}else edgeRanges.set(e.id,start)
    }
-   for(const n of nodes){if(!visible.has(n.id))continue;const color=n.id===selected?0xe56d3c:colors[n.category]??0x77878c
+   for(const n of nodes){if(!visible.has(n.id)||(updated&&!updated.has(n.id)))continue;const start=disks.length;const color=n.id===selected?0xe56d3c:colors[n.category]??0x77878c
     disks.push(n.x,n.y,n.renderRadius+(n.financialPie?(n.id===selected?2:1):0),0,Math.PI*2,...rgba(color))
     for(const slice of n.financialPie?.slices||[])disks.push(n.x,n.y,n.renderRadius,slice.startAngle+Math.PI/2,slice.endAngle+Math.PI/2,...rgba(slice.color))
+    if(updated){const offset=nodeRanges.get(n.id);if(offset!==undefined)device.queue.writeBuffer(nodeBuffer,offset*4,new Float32Array(disks.slice(start)))}else nodeRanges.set(n.id,start)
    }
-   nodeBuffer=upload(nodeBuffer,disks);edgeBuffer=upload(edgeBuffer,vertices);nodeCount=disks.length/9;edgeCount=vertices.length/6
+   if(!updated){nodeBuffer=upload(nodeBuffer,disks);edgeBuffer=upload(edgeBuffer,vertices);nodeCount=disks.length/9;edgeCount=vertices.length/6}
   },
-  render(view){if(disposed)return;device.queue.writeBuffer(uniform,0,new Float32Array([view.x,view.y,view.w,view.h]));const encoder=device.createCommandEncoder(),pass=encoder.beginRenderPass({colorAttachments:[{view:context.getCurrentTexture().createView(),clearValue:{r:0,g:0,b:0,a:0},loadOp:'clear',storeOp:'store'}]});pass.setBindGroup(0,bind)
-   if(edgeCount){pass.setPipeline(lines);pass.setVertexBuffer(0,edgeBuffer);pass.draw(edgeCount)}if(nodeCount){pass.setPipeline(circles);pass.setVertexBuffer(0,nodeBuffer);pass.draw(6,nodeCount)}pass.end();device.queue.submit([encoder.finish()])
+  render: function paint(view){if(disposed)return false;if(busy){pendingView={...view};return false}busy=true;device.queue.writeBuffer(uniform,0,new Float32Array([view.x,view.y,view.w,view.h]));const encoder=device.createCommandEncoder(),pass=encoder.beginRenderPass({colorAttachments:[{view:context.getCurrentTexture().createView(),clearValue:{r:0,g:0,b:0,a:0},loadOp:'clear',storeOp:'store'}]});pass.setBindGroup(0,bind)
+   if(edgeCount){pass.setPipeline(lines);pass.setVertexBuffer(0,edgeBuffer);pass.draw(edgeCount)}if(nodeCount){pass.setPipeline(circles);pass.setVertexBuffer(0,nodeBuffer);pass.draw(6,nodeCount)}pass.end();device.queue.submit([encoder.finish()]);device.queue.onSubmittedWorkDone().then(()=>{busy=false;if(!disposed){onPaint();const next=pendingView;pendingView=null;if(next)paint(next)}}).catch(error=>{busy=false;if(!disposed)onLost(error.message)});return true
   },
   resize(width,height){const dpr=Math.min(devicePixelRatio,2);const w=Math.max(1,Math.min(device.limits.maxTextureDimension2D,Math.round(width*dpr))),h=Math.max(1,Math.min(device.limits.maxTextureDimension2D,Math.round(height*dpr)));if(canvas.width!==w)canvas.width=w;if(canvas.height!==h)canvas.height=h},
   dispose(){disposed=true;nodeBuffer?.destroy();edgeBuffer?.destroy();uniform.destroy();context.unconfigure();device.destroy()},

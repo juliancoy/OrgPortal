@@ -1,3 +1,5 @@
+import {createFrameBudget,createFrameRate} from './frame-budget.js'
+import {createLabelGrid} from './label-layout.js'
 import {mountNetworkLawDialogs} from './network-law-dialogs.js'
 import {movement4D} from './particle-life-4d.js'
 import {shortGroupName} from '../../domain/organization/groupNames'
@@ -56,14 +58,24 @@ const colors = { ecosystem:0x16847d, company:0x357db7, health:0xc76e57, universi
 const selectedCategories = () => new Set([...root.querySelectorAll('[name=node-category]:checked')].map(c=>c.value))
 const selectedRelationships = () => new Set([...root.querySelectorAll('[name=relationship]:checked')].map(c=>c.value))
 const host = $('#network-canvas'), labels = $('#network-labels'), status = $('#network-status')
+const fpsOutput=document.createElement('output');fpsOutput.className='eco-network-fps';fpsOutput.setAttribute('aria-label','Graph frame rate');fpsOutput.textContent='FPS —';host.append(fpsOutput)
+const frameBudget=createFrameBudget(),frameRate=createFrameRate()
+let previousFrame=0,labelCursor=0,labelsRemaining=0,paintInterval=0,lastPaint=0
+const fpsTimer=setInterval(()=>{const fps=frameRate.value(performance.now());fpsOutput.textContent=fps===null?'FPS — (idle)':`${fps.toFixed(1)} FPS · ${frameBudget.count(nodes.length)}/${nodes.length} nodes/frame`},500)
 let fittedWidth=1, recordedCounts=new Map()
 let preparedData, previewSummaries, data, selected = null, renderer, canvas, nodes=[], edges=[], labelItems=[], frame=0
 let inspectorKey=null, simulation, fitted=false, geometryDirty=true, visibilityKey=null, visible=new Set(), visibleEdges=new Set(), labelPriority=[]
 const savedPositions=new Map()
+let defaultPositions={}
 const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)')
 $('#live-physics').checked=!reducedMotion.matches
-persistNetworkSettings(root,abort.signal)
+$('#network-share-status').insertAdjacentHTML('afterend','<label class="eco-slider-row"><span class="eco-slider-name">Minimum FPS</span><input id="minimum-fps" type="range" min="1" max="120" step="1" value="10"><span class="eco-slider-value"><output id="minimum-fps-value">10</output> FPS</span></label>')
+const minimumFPS=()=>Number($('#minimum-fps').value)
+$('#minimum-fps').addEventListener('input',()=>{$('#minimum-fps-value').textContent=$('#minimum-fps').value;frameBudget.reset();requestRender()},{signal:abort.signal})
+rewriteLinks()
+const settingsReady=persistNetworkSettings(root,abort.signal,four?'4d':spatial?'3d':'2d')
 $('#camera-speed').addEventListener('input',()=>{$('#camera-speed-value').textContent=Number($('#camera-speed').value).toFixed(1)},{signal:abort.signal})
+const recordPaint=()=>{const now=performance.now();paintInterval=lastPaint&&now-lastPaint<1000?now-lastPaint:0;lastPaint=now;frameRate.frame(now)}
 const physicsEnabled=()=>!document.hidden&&!reducedMotion.matches&&$('#live-physics').checked
 let fourthPosition=[0,0,0,0]
 function moveFourth(delta){const world=movement4D(delta,['xw','yw','zw'].map(axis=>Number($('#life-'+axis).value)));fourthPosition=fourthPosition.map((v,i)=>v+world[i]);$('#life-w-position').textContent=fourthPosition[3].toFixed(2);applyProjection()}
@@ -147,16 +159,16 @@ function rebuild() {
  recordedCounts=transactionCounts(graphRelationships(graphData,{includeCapitalization:context}))
  const amounts=financialNodeAmounts(graphData,{includeCapitalization:context})
  const widths=quantityEdgeWidths(graphRelationships(graphData,{includeCapitalization:context}),$('#scale-edge-quantity').checked)
- nodes=visible.map(n=>({...n,...savedPositions.get(n.id),financialAmount:amounts.get(n.id) ?? null,financialPie:pies.get(n.id) || null})); edges=edges.map(e=>({...e,quantityWidth:widths.get(e.id) ?? 1.4}))
+ nodes=visible.map(n=>({...n,...(savedPositions.get(n.id)||defaultPositions[n.id]?.[four?'4d':spatial?'3d':'2d']),financialAmount:amounts.get(n.id) ?? null,financialPie:pies.get(n.id) || null})); edges=edges.map(e=>({...e,quantityWidth:widths.get(e.id) ?? 1.4}))
  const scaleFinances=$('#scale-node-finances').checked
  const sizing={algorithm:$('#node-size-algorithm').value,alpha:Number($('#node-size-alpha').value),maxAmount:Math.max(0,...amounts.values())}
  nodes.forEach(n=>{n.renderRadius=financialNodeRadius(scaleFinances?n.financialAmount:null,sizing)})
  status.textContent=`${nodes.length} organizations · ${edges.length} links`
  labels.replaceChildren();labelItems=[]
- simulation=createNetworkLayout(nodes,edges,forceOptions(),physicsEnabled(),()=>{geometryDirty=true;requestRender()});applyProjection()
+ simulation=createNetworkLayout(nodes,edges,forceOptions(),physicsEnabled(),reprojected=>{geometryDirty ||= reprojected;requestRender()});applyProjection()
  assignEdgeCurvature(edges)
  for(const n of nodes){
-  const button=document.createElement('button');button.type='button';button.textContent=shortGroupName(n.name)
+  const button=document.createElement('button');button.hidden=true;button.type='button';button.textContent=shortGroupName(n.name)
   if(n.financialPie){button.dataset.fundingSlices=String(n.financialPie.slices.length);button.dataset.fundingTotal=String(n.financialPie.total)}
   button.setAttribute('aria-label',`${n.name} · ${financialLabel(n)}`);button.setAttribute('aria-pressed',String(n.id===selected));button.addEventListener('click',()=>select(n.id));bindNodePreview(button,n);labels.append(button);labelItems.push({button,n,width:Math.min(155,button.textContent.length*5.5+10)})
  }
@@ -172,7 +184,11 @@ function fit(){
 }
 function render(time=0) {
  frame=0;
- if(!gpuReady)return;
+ if(!gpuReady||document.hidden){previousFrame=0;frameBudget.reset();frameRate.reset();return}
+ const started=performance.now(),interval=previousFrame?time-previousFrame:0
+ previousFrame=time
+ const updated=simulation?.consume(frameBudget.count(nodes.length))||new Set()
+
  const zoom=spatial?renderer.zoomLevel():fittedWidth/view.w
  const key=[zoom,selected,$('#show-links').checked,$('#zoom-sparse').checked,$('#visibility-factor').value].join('|')
  const visibilityChanged=key!==visibilityKey
@@ -183,26 +199,43 @@ function render(time=0) {
  visibleEdges=new Set($('#show-links').checked?edges.filter(edgeVisible).map(e=>e.id):[])
  status.textContent=`${visible.size} visible / ${nodes.length} organizations · ${visibleEdges.size} visible links`
  }
- if(geometryDirty||visibilityChanged){updatePositions();geometryDirty=false}
- renderer.render(view)
+ if(geometryDirty||visibilityChanged||updated.size){updatePositions(geometryDirty||visibilityChanged?null:updated);geometryDirty=false}
+ const painted=renderer.render(view)
+ if(painted!==false&&spatial)frameRate.frame(performance.now())
  // Read layout once before changing any label styles or visibility.
- const viewportWidth=host.clientWidth,viewportHeight=host.clientHeight,positions=[]
+ const viewportWidth=host.clientWidth,viewportHeight=host.clientHeight,positions=createLabelGrid()
  if(!labelPriority.length)labelPriority=[...labelItems].sort((a,b)=>(b.n.id===selected)-(a.n.id===selected)||(b.n.financialAmount??0)-(a.n.financialAmount??0))
- for(const item of labelPriority) {
-  if(!visible.has(item.n.id)){item.button.hidden=true;continue}
+ const labelCount=frameBudget.count(labelPriority.length)
+ const batch=new Set(Array.from({length:labelCount},(_,i)=>(labelCursor+i)%Math.max(1,labelPriority.length)))
+ labelCursor=(labelCursor+labelCount)%Math.max(1,labelPriority.length)
+ // Reuse unchanged label rectangles as collision obstacles between update turns.
+ for(let i=0;i<labelPriority.length;i++){const item=labelPriority[i];if(!batch.has(i)&&!item.button.hidden&&item.labelX!==undefined)positions.add(item.labelX,item.labelY,item.width)}
+ for(const i of batch) {const item=labelPriority[i];if(!item)continue
+  if(!visible.has(item.n.id)){if(!item.button.hidden)item.button.hidden=true;continue}
   const projected=spatial?renderer.project(item.n):null
   const p=projected?{x:projected.x/viewportWidth*2-1,y:1-projected.y/viewportHeight*2,z:projected.visible?0:2}:{x:(item.n.x-view.x)/view.w*2-1,y:1-(item.n.y-view.y)/view.h*2,z:0},x=(p.x*.5+.5)*viewportWidth,y=(-p.y*.5+.5)*viewportHeight
-  const width=item.width
-  const overlapping=positions.some(r=>Math.abs(x-r.x)<(width+r.width)/2+8&&Math.abs(y-r.y)<28)
-  item.button.hidden=!visible.has(item.n.id)||p.z>1||Math.abs(p.x)>1||Math.abs(p.y)>1||(overlapping&&item.n.id!==selected)
-  if(!item.button.hidden){item.button.style.left=`${x}px`;item.button.style.top=`${y}px`;positions.push({x,y,width})}
+  // Cull before testing label collisions; hidden nodes need no DOM position writes.
+  if(p.z>1||Math.abs(p.x)>1||Math.abs(p.y)>1){if(!item.button.hidden)item.button.hidden=true;continue}
+  const width=item.width,hidden=item.n.id!==selected&&positions.overlaps(x,y,width)
+  if(item.button.hidden!==hidden)item.button.hidden=hidden
+  if(!hidden){
+   if(item.labelX!==x){item.button.style.left=`${x}px`;item.labelX=x}
+   if(item.labelY!==y){item.button.style.top=`${y}px`;item.labelY=y}
+   positions.add(x,y,width)
+  }
  }
+ labelsRemaining=Math.max(0,labelsRemaining-labelCount)
+ const frameMs=Math.max(performance.now()-started,interval&&interval<1000?interval:0,paintInterval)
+ frameBudget.observe(frameMs,nodes.length,minimumFPS());renderer.adapt?.(frameMs,minimumFPS())
+ if(physicsEnabled()||simulation?.pending()||labelsRemaining>0)scheduleRender()
+ else previousFrame=0
 }
-function requestRender(){if(!disposed&&!frame)frame=requestAnimationFrame(render)}
-function updatePositions(){
+function scheduleRender(){if(!disposed&&!frame)frame=requestAnimationFrame(render)}
+function requestRender(){labelsRemaining=labelItems.length;scheduleRender()}
+function updatePositions(updated=null){
  if(!gpuReady)return
  const width=Number($('#link-width').value),color=$('#custom-link-color').checked?parseInt($('#link-color').value.slice(1),16):null
- renderer.update(nodes,edges.map(edge=>({...edge,quantityWidth:(edge.quantityWidth||1.4)*width})),visible,visibleEdges,selected,colors,color===null?relationshipColor:()=>color)
+ renderer.update(nodes,edges.map(edge=>({...edge,quantityWidth:(edge.quantityWidth||1.4)*width})),visible,visibleEdges,selected,colors,color===null?relationshipColor:()=>color,updated)
 }
 function cursorPosition(event) {
  const rect=host.getBoundingClientRect()
@@ -219,9 +252,9 @@ function zoomGPU(factor, event) {
 async function initGPU(){
  canvas=document.createElement('canvas');canvas.style.cssText='width:100%;height:100%;display:block;touch-action:none;cursor:grab';canvas.setAttribute('aria-label',four?'4D Particle Life organization network':spatial?'3D WebGPU organization network':rendererKind==='canvas'?'Organization network':'Native WebGPU organization network');canvas.dataset.renderer=rendererKind;host.prepend(canvas)
  if(rendererKind==='canvas') {
-  const {createNetworkCanvasWorker}=await import('./canvas-renderer-client.js');renderer=createNetworkCanvasWorker(canvas)
+  const {createNetworkCanvasWorker}=await import('./canvas-renderer-client.js');renderer=createNetworkCanvasWorker(canvas,recordPaint)
  } else if(spatial){const {createNetworkGPU3D}=await import('./webgpu-3d-renderer.js');renderer=await createNetworkGPU3D(canvas,message=>{if(disposed)return;gpuReady=false;simulation?.stop();status.textContent=(four?'4D':'3D')+' WebGPU unavailable: '+message},requestRender,four?'4D':'3D',()=>Number($('#camera-speed').value),moveFourth)}
- else renderer=await createNetworkGPU(canvas,message=>{if(disposed)return;console.error(message);gpuReady=false;simulation?.stop();cancelAnimationFrame(frame);frame=0;status.textContent='WebGPU graphics were lost. Reload to retry, or use the original Graph view.'})
+ else renderer=await createNetworkGPU(canvas,message=>{if(disposed)return;console.error(message);gpuReady=false;simulation?.stop();cancelAnimationFrame(frame);frame=0;status.textContent='WebGPU graphics were lost. Reload to retry, or use the original Graph view.'},recordPaint)
  if(disposed){renderer.dispose();return}canvas.dataset.backend=renderer.backend || rendererKind;gpuReady=true
  const resize=()=>{const width=host.clientWidth,height=host.clientHeight;renderer.resize(width,height);if(spatial){requestRender();return}if(fitted&&!spatial){const nextHeight=view.w/(width/Math.max(1,height));view.y+=(view.h-nextHeight)/2;view.h=nextHeight;requestRender()}}
  resize();resizeObserver=new ResizeObserver(resize);resizeObserver.observe(host)
@@ -238,26 +271,26 @@ async function initGPU(){
  }
  if(!spatial){
   canvas.tabIndex=0
-  canvas.setAttribute('aria-label','2D organization network. W zooms in, S zooms out, A pans left, D pans right, E pans up, Q pans down. Hold Shift for 10× speed.')
+  canvas.setAttribute('aria-label','2D organization network. W zooms in, S zooms out, A pans left, D pans right, E pans up, Q pans down. Hold Shift for 10× speed; Control for 0.1× speed.')
   const keys=new Set(),navigationKeys=new Set(['KeyW','KeyS','KeyA','KeyD','KeyE','KeyQ'])
-  let navigationFrame=0,lastNavigation=0,boosted=false
-  const stopNavigation=()=>{boosted=false;keys.clear();cancelAnimationFrame(navigationFrame);navigationFrame=0;lastNavigation=0}
+  let navigationFrame=0,lastNavigation=0,boosted=false,slowed=false
+  const stopNavigation=()=>{boosted=false;slowed=false;keys.clear();cancelAnimationFrame(navigationFrame);navigationFrame=0;lastNavigation=0}
   const navigate=time=>{
    navigationFrame=0
    if(disposed||!keys.size)return
    const dt=lastNavigation?Math.min((time-lastNavigation)/1000,.05):0;lastNavigation=time
-   const speed=Number($('#camera-speed').value)*(boosted?10:1),zoom=Number(keys.has('KeyW'))-Number(keys.has('KeyS'))
+   const speed=Number($('#camera-speed').value)*(boosted?10:1)*(slowed?0.1:1),zoom=Number(keys.has('KeyW'))-Number(keys.has('KeyS'))
    if(zoom)zoomGPU(Math.exp(zoom*1.2*speed*dt))
    const x=Number(keys.has('KeyD'))-Number(keys.has('KeyA')),y=Number(keys.has('KeyQ'))-Number(keys.has('KeyE')),length=Math.hypot(x,y)||1
    view.x+=x/length*view.w*.7*speed*dt;view.y+=y/length*view.h*.7*speed*dt
    requestRender();navigationFrame=requestAnimationFrame(navigate)
   }
   canvas.addEventListener('keydown',event=>{
-   boosted=event.shiftKey
-   if(!navigationKeys.has(event.code)||event.ctrlKey||event.metaKey||event.altKey)return
+   boosted=event.shiftKey;slowed=event.ctrlKey
+   if(!navigationKeys.has(event.code)||event.metaKey||event.altKey)return
    event.preventDefault();keys.add(event.code);if(!navigationFrame)navigationFrame=requestAnimationFrame(navigate)
   },{signal:abort.signal})
-  window.addEventListener('keyup',event=>{boosted=event.shiftKey;keys.delete(event.code);if(!keys.size)stopNavigation()},{signal:abort.signal})
+  window.addEventListener('keyup',event=>{boosted=event.shiftKey;slowed=event.ctrlKey;keys.delete(event.code);if(!keys.size)stopNavigation()},{signal:abort.signal})
   canvas.addEventListener('blur',stopNavigation,{signal:abort.signal});window.addEventListener('blur',stopNavigation,{signal:abort.signal})
   document.addEventListener('visibilitychange',()=>{if(document.hidden)stopNavigation()},{signal:abort.signal})
   abort.signal.addEventListener('abort',stopNavigation,{once:true})
@@ -279,6 +312,8 @@ async function initGPU(){
 }
 async function start(){
  try {
+  await settingsReady
+  try{const response=await fetch(new URL('network-default-positions.json',new URL(historyUrl,location.origin)),{signal:abort.signal});if(response.ok)defaultPositions=(await response.json()).organizations||{}}catch{/* New organizations still get deterministic initial coordinates. */}
   const snapshots=await Promise.all([cachedPublicJson(dataUrl,validateSnapshot),cachedPublicJson(historyUrl,validateSnapshot),cachedPublicJson(new URL('ecosystem-nonprofits.json',new URL(historyUrl,location.origin)).href,validateSnapshot)])
   const historyData=appendNonprofitEvidence(snapshots[1],snapshots[2]);data=applyFundHierarchy(mergeNetworkHistory(snapshots[0],historyData)); if(disposed)return; rewriteLinks()
   search();await initGPU();if(disposed)return
@@ -296,13 +331,12 @@ async function start(){
   for(const name of ['attraction','repulsion','proximity','central-gravity','dither','attraction-law','repulsion-law','attraction-alpha','repulsion-alpha'])$('#'+name).addEventListener('input',()=>{
    const output=$('#'+name+'-value');if(output)output.textContent=Number($('#'+name).value).toFixed(1)
    simulation?.stop()
-   simulation=createNetworkLayout(nodes,edges,forceOptions(),physicsEnabled(),()=>{geometryDirty=true;requestRender()});applyProjection()
+   simulation=createNetworkLayout(nodes,edges,forceOptions(),physicsEnabled(),reprojected=>{geometryDirty ||= reprojected;requestRender()});applyProjection()
    motionChange()
   })
   if(four){
    for(const id of ['xw','yw','zw','perspective'])$('#life-'+id).addEventListener('input',()=>{$('#life-'+id+'-value').textContent=$('#life-'+id).value;applyProjection()})
-   for(const id of ['radius','friction','seed'])$('#life-'+id).addEventListener('change',()=>{simulation?.stop();simulation=createNetworkLayout(nodes,edges,forceOptions(),physicsEnabled(),()=>{geometryDirty=true;requestRender()});applyProjection()})
-   $('#network-reset').addEventListener('click',()=>{fourthPosition=[0,0,0,0];$('#life-w-position').textContent='0.00';for(const [id,value] of Object.entries({xw:0,yw:0,zw:0,perspective:.35,radius:300,friction:.85,seed:1})){$('#life-'+id).value=value;const output=$('#life-'+id+'-value');if(output)output.textContent=value}savedPositions.clear();nodes.forEach(n=>{delete n.q;delete n.velocity4})})
+   for(const id of ['radius','friction','seed'])$('#life-'+id).addEventListener('change',()=>{simulation?.stop();simulation=createNetworkLayout(nodes,edges,forceOptions(),physicsEnabled(),reprojected=>{geometryDirty ||= reprojected;requestRender()});applyProjection()})
   }
   $('#node-size-alpha').addEventListener('input',()=>{$('#node-size-alpha-value').textContent=Number($('#node-size-alpha').value).toFixed(1);rebuild()})
   const linkStyleChanged=()=>{geometryDirty=true;requestRender()}
@@ -314,7 +348,21 @@ async function start(){
   $('#visibility-factor').addEventListener('input',()=>{$('#visibility-factor-value').textContent=$('#visibility-factor').value;requestRender()})
   $('#network-fit').addEventListener('click',fit)
   for(const [id,factor] of [['#zoom-in',1.25],['#zoom-out',.8]]) $(id).addEventListener('click',()=>zoomGPU(factor))
-  $('#network-reset').addEventListener('click',()=>{selected=null;inspectorKey=null;fitted=false;for(const kind of ['attraction','repulsion']){$('#'+kind+'-law').value='power';$('#'+kind+'-alpha').value='1';$('#'+kind+'-alpha-value').textContent='1.0'}for(const name of ['attraction','repulsion','proximity','central-gravity','dither']){const value=['central-gravity','dither'].includes(name)?'0':'1';$('#'+name).value=value;$('#'+name+'-value').textContent=Number(value).toFixed(1)}$('#live-physics').checked=!reducedMotion.matches;root.querySelectorAll('[name=node-category],[name=relationship]').forEach(c=>c.checked=true);$('#network-view').value='all';$('#include-context').checked=false;$('#hide-isolated').checked=true;$('#scale-node-finances').checked=true;$('#node-size-algorithm').value='log';$('#node-size-alpha').value='1';$('#node-size-alpha-value').textContent='1.0';$('#scale-edge-quantity').checked=true;$('#camera-speed').value='1';$('#camera-speed-value').textContent='1.0';$('#link-width').value='1';$('#link-width-value').textContent='1.00';$('#custom-link-color').checked=false;$('#link-color').value='#77878c';$('#show-links').checked=true;$('#zoom-sparse').checked=false;$('#visibility-factor').value='4';$('#visibility-factor-value').textContent='4';$('#neighbors').checked=false;$('#neighbors').disabled=true;$('#network-search').value='';$('#network-detail').innerHTML='<h2>Select an organization</h2>';history.replaceState(history.state,'',location.pathname);search();rebuild()})
+  $('#network-reset').addEventListener('click',()=>{
+   selected=null;inspectorKey=null;fitted=false;fourthPosition=[0,0,0,0]
+   if(four)$('#life-w-position').textContent='0.00'
+   savedPositions.clear();nodes=[]
+   for(const el of root.querySelectorAll('.eco-network-controls input,.eco-network-controls select')){
+    if(el.tagName==='SELECT')el.value=([...el.options].find(o=>o.defaultSelected)||el.options[0]).value
+    else if(el.type==='checkbox')el.checked=el.defaultChecked
+    else el.value=el.defaultValue
+    const output=el.id&&$('#'+el.id+'-value')
+    if(output)output.textContent=el.id==='link-width'?Number(el.value).toFixed(2):el.step==='0.1'?Number(el.value).toFixed(1):el.value
+   }
+   $('#live-physics').checked=!reducedMotion.matches;$('#neighbors').disabled=true
+   $('#network-detail').innerHTML='<h2>Select an organization</h2>'
+   history.replaceState(history.state,'',location.pathname);search();rebuild()
+  })
   const initial=new URL(location.href).searchParams.get('org');if(initial&&data.organizations.some(n=>n.id===initial)){select(initial);rebuild()}else rebuild()
   loadSharedNetworkData(JSON.stringify([location.origin,dataUrl,historyUrl,apiPrefix]), () => loadPortalEvidence(data, sharedEvidenceFetch,apiPrefix,(base,directory,records)=>prepareNetworkData(base,directory,records,historyData,new AbortController().signal)), abort.signal).then(prepared=>{if(disposed)return;preparedData=prepared;data=prepared.data;search();if(selected)select(selected);rebuild();$('#network-source').textContent=(usingOfflineCopy?'Offline · last checked ':'Checked ')+new Date(oldestCheck).toLocaleString()}).catch(()=>{if(disposed)return;$('#network-source').textContent='Saved public evidence · refresh unavailable'})
  }catch(error){if(disposed)return;status.textContent=error.message || 'WebGPU network unavailable.';host.hidden=true;console.error(error)}
@@ -344,5 +392,5 @@ root.querySelectorAll('[data-panel]').forEach(button=>{
  },{signal:abort.signal})
 })
 rewriteLinks(); start();
-return () => { disposed=true;simulation?.stop();abort.abort();resizeObserver?.disconnect();cancelAnimationFrame(frame);renderer?.dispose();root.replaceChildren() };
+return () => { disposed=true;simulation?.stop();abort.abort();resizeObserver?.disconnect();cancelAnimationFrame(frame);clearInterval(fpsTimer);renderer?.dispose();root.replaceChildren() };
 }

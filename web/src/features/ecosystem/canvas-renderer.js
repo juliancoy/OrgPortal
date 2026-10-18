@@ -4,36 +4,37 @@ const cssColor = color => typeof color === 'string' ? color : `#${color.toString
 export function createNetworkCanvas(canvas) {
  const context = canvas.getContext('2d')
  if (!context) throw new Error('The network canvas is unavailable.')
+ const edgePaths=new Map(),nodePaths=new Map()
  let strokes = [], arrows = [], disks = [], disposed = false
  const circle = (path, x, y, radius) => { path.moveTo(x + radius, y); path.arc(x, y, radius, 0, Math.PI * 2) }
  return {
-  update(nodes, edges, visible, visibleEdges, selected, colors, edgeColor) {
-   const batches = new Map(), heads = new Map(), fills = new Map()
-   for (const edge of edges) {
-    if (!visibleEdges.has(edge.id)) continue
-    const points = curvePoints(edge), color = cssColor(edgeColor(edge)), width = edge.quantityWidth || 1.4
-    const dash = edge.relationship === 'funding' ? [] : edge.relationship === 'affiliation' ? [8, 5] : [3, 5]
-    const key = `${color}|${width}|${dash.join(',')}`
-    if (!batches.has(key)) batches.set(key, { path: new Path2D(), color, width, dash })
-    const path = batches.get(key).path
-    path.moveTo(points[0].x, points[0].y)
-    for (const point of points.slice(1)) path.lineTo(point.x, point.y)
-    if (!heads.has(color)) heads.set(color, new Path2D())
-    const head = heads.get(color), a = points.at(-2), b = points.at(-1), length = Math.hypot(b.x-a.x, b.y-a.y) || 1
-    const ux = (b.x-a.x)/length, uy = (b.y-a.y)/length
-    head.moveTo(b.x, b.y); head.lineTo(b.x-ux*8-uy*4, b.y-uy*8+ux*4); head.lineTo(b.x-ux*8+uy*4, b.y-uy*8-ux*4); head.closePath()
+  update(nodes, edges, visible, visibleEdges, selected, colors, edgeColor,updated=null) {
+   if(!updated){edgePaths.clear();nodePaths.clear()}
+   for(const edge of edges){
+    if(!visibleEdges.has(edge.id)||(updated&&!updated.has(edge.source.id)&&!updated.has(edge.target.id)))continue
+    const points=curvePoints(edge),color=cssColor(edgeColor(edge)),width=edge.quantityWidth||1.4
+    const dash=edge.relationship==='funding'?[]:edge.relationship==='affiliation'?[8,5]:[3,5]
+    const path=new Path2D(),head=new Path2D()
+    path.moveTo(points[0].x,points[0].y);for(const p of points.slice(1))path.lineTo(p.x,p.y)
+    const a=points.at(-2),b=points.at(-1),length=Math.hypot(b.x-a.x,b.y-a.y)||1,ux=(b.x-a.x)/length,uy=(b.y-a.y)/length
+    head.moveTo(b.x,b.y);head.lineTo(b.x-ux*8-uy*4,b.y-uy*8+ux*4);head.lineTo(b.x-ux*8+uy*4,b.y-uy*8-ux*4);head.closePath()
+    edgePaths.set(edge.id,{key:`${color}|${width}|${dash.join(',')}`,path,head,color,width,dash})
    }
-   const fill = color => { if (!fills.has(color)) fills.set(color, new Path2D()); return fills.get(color) }
-   for (const node of nodes) {
-    if (!visible.has(node.id)) continue
-    const color = cssColor(node.id === selected ? 0xe56d3c : colors[node.category] ?? 0x77878c)
-    circle(fill(color), node.x, node.y, node.renderRadius + (node.financialPie ? node.id === selected ? 2 : 1 : 0))
-    for (const slice of node.financialPie?.slices || []) {
-     const path = fill(slice.color)
-     path.moveTo(node.x, node.y); path.arc(node.x, node.y, node.renderRadius, slice.startAngle, slice.endAngle); path.closePath()
-    }
+   for(const n of nodes){
+    if(!visible.has(n.id)||(updated&&!updated.has(n.id)))continue
+    const color=cssColor(n.id===selected?0xe56d3c:colors[n.category]??0x77878c),path=new Path2D(),pieces=[[color,path]]
+    circle(path,n.x,n.y,n.renderRadius+(n.financialPie?n.id===selected?2:1:0))
+    for(const slice of n.financialPie?.slices||[]){const path=new Path2D();path.moveTo(n.x,n.y);path.arc(n.x,n.y,n.renderRadius,slice.startAngle,slice.endAngle);path.closePath();pieces.push([slice.color,path])}
+    nodePaths.set(n.id,pieces)
    }
-   strokes = [...batches.values()]; arrows = [...heads]; disks = [...fills]
+   const batches=new Map(),heads=new Map(),fills=new Map()
+   for(const entry of edgePaths.values()){
+    if(!batches.has(entry.key))batches.set(entry.key,{...entry,path:new Path2D()})
+    batches.get(entry.key).path.addPath(entry.path)
+    if(!heads.has(entry.color))heads.set(entry.color,new Path2D());heads.get(entry.color).addPath(entry.head)
+   }
+   for(const pieces of nodePaths.values())for(const [color,path] of pieces){if(!fills.has(color))fills.set(color,new Path2D());fills.get(color).addPath(path)}
+   strokes=[...batches.values()];arrows=[...heads];disks=[...fills]
   },
   render(view) {
    if (disposed) return
@@ -53,7 +54,7 @@ export function createNetworkCanvas(canvas) {
    if (canvas.width !== w) canvas.width=w
    if (canvas.height !== h) canvas.height=h
   },
-  dispose() { disposed=true; strokes=[]; arrows=[]; disks=[]; canvas.width=canvas.height=1 },
+  dispose() { edgePaths.clear();nodePaths.clear();disposed=true; strokes=[]; arrows=[]; disks=[]; canvas.width=canvas.height=1 },
  }
 }
 

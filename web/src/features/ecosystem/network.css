@@ -312,3 +312,5 @@ html.eco-map-open .portal-footer, html.eco-map-open .tb-shell-footer { display:n
 .portal-ecosystem .eco-law-dialog .eco-force-law { display:grid; grid-template-columns:1fr; gap:16px; margin:0; }
 .portal-ecosystem .eco-law-dialog .eco-force-law > label:first-child { display:grid; grid-template-columns:48px 1fr; }
 .portal-ecosystem .eco-law-dialog .eco-force-law label.eco-slider-row { grid-template-columns:48px minmax(0,1fr) 4ch; }
+
+.portal-ecosystem .eco-network-fps{position:absolute;top:8px;left:8px;z-index:4;pointer-events:none;padding:4px 7px;border-radius:4px;background:var(--surface,#fff);color:var(--ink,#18242c);font:12px/1.4 monospace;font-variant-numeric:tabular-nums;box-shadow:0 1px 4px #0002}

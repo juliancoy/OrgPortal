@@ -63,14 +63,18 @@ export function forceCrossingAttraction(links,radius) {
   if(tick++%6===0) {
    crossing=new Set()
    // Bounded by actual links, independent of the world-space length of edges.
-   for(let i=0;i<links.length;i++)for(let j=0;j<i;j++) {
+   for(let i=0;i<links.length;i++){
+    if(crossing.has(links[i]))continue
+    for(let j=0;j<links.length;j++) {
+    if(i===j)continue
     const link=links[i],a=link.source,b=link.target,c=links[j].source,d=links[j].target
     if(a===c||a===d||b===c||b===d)continue
     if(Math.max(a.x,b.x)<Math.min(c.x,d.x)||Math.max(c.x,d.x)<Math.min(a.x,b.x)||Math.max(a.y,b.y)<Math.min(c.y,d.y)||Math.max(c.y,d.y)<Math.min(a.y,b.y))continue
-    if(side(a,b,c)*side(a,b,d)<0&&side(c,d,a)*side(c,d,b)<0){crossing.add(link);crossing.add(links[j])}
+    if(side(a,b,c)*side(a,b,d)<0&&side(c,d,a)*side(c,d,b)<0){crossing.add(link);crossing.add(links[j]);break}
+   }
    }
   }
-  for(const {source:a,target:b} of crossing) {
+  for(const {source:a,target:b} of links.filter(link=>crossing.has(link))) {
    const dx=a.x-b.x,dy=a.y-b.y,distance=Math.hypot(dx,dy),gap=distance-radius(a)-radius(b)-24
    if(gap<=0)continue
    const impulse=Math.min(1.2,gap*.012)*alpha
