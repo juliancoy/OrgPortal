@@ -17,6 +17,9 @@ export function EmailCampaignsPage() {
   const [segments,setSegments]=useState<{id:string;name:string;subscription_ids:string[]}[]>([])
   const [segmentId,setSegmentId]=useState('')
   useEffect(()=>{let cancelled=false;emailApi<{id:string;name:string}[]>(token,'/groups').then(rows=>{if(!cancelled){setGroups(rows);setGroupsReady(true)}}).catch(err=>{if(!cancelled){setError(err.message);setGroupsReady(true)}});return()=>{cancelled=true}},[token])
+  const [senderLoading, setSenderLoading] = useState(true)
+  const [senderError, setSenderError] = useState('')
+  const [senderRevision, setSenderRevision] = useState(0)
   const [sender, setSender] = useState<EmailSender | null>(null)
   const [events, setEvents] = useState<EventChoice[]>([])
   const [campaigns, setCampaigns] = useState<CampaignSummary[]>([])
@@ -32,19 +35,27 @@ export function EmailCampaignsPage() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
+  useEffect(() => {
+    let cancelled = false
+    setSender(null); setSenderError(''); setSenderLoading(true)
+    emailApi<EmailSender>(token, '/sender')
+      .then(data => { if (!cancelled) setSender(data) })
+      .catch((err: Error) => { if (!cancelled) setSenderError(err.message) })
+      .finally(() => { if (!cancelled) setSenderLoading(false) })
+    return () => { cancelled = true }
+  }, [token, senderRevision])
+
   async function refresh() {
-    const [nextSender, nextCampaigns] = await Promise.all([
-      emailApi<EmailSender>(token, '/sender'), emailApi<CampaignSummary[]>(token, `/campaigns?organization_id=${encodeURIComponent(groupId)}`),
-    ])
-    setSender(nextSender); setCampaigns(nextCampaigns)
+    setSenderRevision(value => value + 1)
+    if (groupId) setCampaigns(await emailApi<CampaignSummary[]>(token, `/campaigns?organization_id=${encodeURIComponent(groupId)}`))
   }
   useEffect(() => {
     let cancelled = false
-    setSender(null);setCampaigns([]);setEvents([]);setAudienceInfo(null);setPreview(null);setEventId('');setSelected([]);setSegments([]);setSegmentId('');setError('')
+    setCampaigns([]);setEvents([]);setAudienceInfo(null);setPreview(null);setEventId('');setSelected([]);setSegments([]);setSegmentId('');setError('')
     if(!groupId) return
-    Promise.all([emailApi<EmailSender>(token,'/sender'),emailApi<CampaignSummary[]>(token,`/campaigns?organization_id=${encodeURIComponent(groupId)}`),
+    Promise.all([emailApi<CampaignSummary[]>(token,`/campaigns?organization_id=${encodeURIComponent(groupId)}`),
       emailApi<EventChoice[]>(token,`/groups/${groupId}/events`),emailApi<{id:string;name:string;subscription_ids:string[]}[]>(token,`/groups/${groupId}/segments`)])
-      .then(([nextSender,nextCampaigns,nextEvents,nextSegments])=>{if(cancelled)return;setSender(nextSender);setCampaigns(nextCampaigns);setEvents(nextEvents);setSegments(nextSegments)})
+      .then(([nextCampaigns,nextEvents,nextSegments])=>{if(cancelled)return;setCampaigns(nextCampaigns);setEvents(nextEvents);setSegments(nextSegments)})
       .catch((err:Error)=>{if(!cancelled)setError(err.message)})
     return()=>{cancelled=true}
   },[token,groupId])
@@ -76,7 +87,8 @@ export function EmailCampaignsPage() {
     {error && <p role="alert" className="email-notice">{error}</p>}
     {message && <p role="status" className="email-notice">{message}</p>}
     <section className="portal-card email-sender" aria-label="Email sender">
-      <div><h2>Sender</h2><strong>{sender?.from_email || sender?.email || 'Loading sender…'}</strong>
+      <div><h2>Sender</h2><strong>{sender?.from_email || sender?.email || (senderLoading ? 'Loading sender…' : 'Sender unavailable')}</strong>
+        {senderError && <div role="alert"><p>{senderError}</p><button type="button" disabled={senderLoading} onClick={() => setSenderRevision(value => value + 1)}>Retry sender</button></div>}
         {sender && sender.from_email !== sender.email && <p className="muted">Connect as {sender.email} to send using this alias.</p>}
         {sender && <p className="muted">{sender.connected ? 'Google account connected' : sender.status === 'reconnect' ? 'Reconnect your Google account to continue sending' : 'Connect Google Workspace to send email'}</p>}
         {sender?.connected && <p>{sender.used_today} of {sender.daily_limit} portal sends used in the last 24 hours.</p>}
@@ -104,7 +116,8 @@ export function EmailCampaignsPage() {
       </div>
     </section>
 
-    <section className="portal-card email-compose">
+    {!groupId && <p className="email-notice">Choose a group above to compose an email and view its campaigns.</p>}
+    {groupId && <section className="portal-card email-compose">
       <h2>Compose a group email</h2>
       <label>Event<select value={eventId} disabled={busy} onChange={(e) => { changed(); setEventId(e.target.value); if(!e.target.value)setAudience('organization'); setSelected([]); setSegmentId(''); setAudienceInfo(null) }}>
         <option value="">Group announcement (no event)</option>{events.map((event) => <option key={event.id} value={event.id}>{event.title}</option>)}
@@ -128,7 +141,7 @@ export function EmailCampaignsPage() {
           scheduled_at: schedule ? new Date(schedule).toISOString() : null })
         await openCampaign(draft.id); await refresh(); setMessage('Draft saved. Review the email and recipients below.')
       })}>{busy ? 'Working…' : 'Save draft & preview'}</button></div>
-    </section>
+    </section>}
 
     {preview && <section className="portal-card email-preview">
       <div className="email-heading"><h2>{preview.status === 'draft' ? 'Review your campaign' : 'Campaign status'}</h2><span>{preview.status}</span></div>
@@ -156,10 +169,10 @@ export function EmailCampaignsPage() {
       </tbody></table></div></details>
     </section>}
 
-    <section className="portal-card"><h2>Campaign history</h2>
+    {groupId && <section className="portal-card"><h2>Campaign history</h2>
       {campaigns.length === 0 ? <p className="muted">Your drafts and sent campaigns will appear here.</p> : <div className="email-table"><table><thead><tr><th>Campaign</th><th>Status</th><th>Sent</th><th>Created</th><th /></tr></thead><tbody>
         {campaigns.map((campaign) => <tr key={campaign.id}><td>{campaign.subject}</td><td>{campaign.status}</td><td>{campaign.sent_count} / {campaign.recipient_count}</td><td>{date(campaign.created_at)}</td><td><button className="portal-button-secondary" disabled={busy} onClick={() => void act(() => openCampaign(campaign.id))}>View</button></td></tr>)}
       </tbody></table></div>}
-    </section>
+    </section>}
   </main>
 }
