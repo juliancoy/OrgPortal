@@ -511,3 +511,60 @@ test('engagement is signed, unique, private, expiry bounded and attributes one-c
   assert.equal((await publicRequest(unsub,'POST')).status,200);
   assert.equal(database.prepare('SELECT count(*) n FROM email_engagement').get()!.n,0);
 });
+
+test('reviewed outreach never subscribes contacts; live opt-outs and bounces block every batch, capped at 50',async t=>{
+ const {env,request,database}=setup(t);await connect(env);let calls=0;network(t,async()=>Response.json({id:`receipt-${++calls}`}));
+ const recipients=Array.from({length:53},(_,i)=>({email:`person${i}@example.test`,name:`Person ${i}`,source_url:'https://example.test/contact',source_checked_at:new Date().toISOString(),approved:true}));
+ const response=await request('/outreach','POST',{organizationId:'org-1',subject:'A reviewed invitation',body:'Join our community.',content:{heading:'Community evening',rsvp_url:'https://example.test/rsvp'},recipients:[...recipients,recipients[0],{...recipients[0],email:'invalid'}]});
+ assert.equal(response.status,201,await response.clone().text());const created=await response.json() as {id:string;duplicates:number;invalid:number};assert.equal(created.duplicates,1);assert.equal(created.invalid,1);
+ assert.equal(database.prepare('SELECT count(*) n FROM email_subscriptions').get()!.n,0);
+ await env.DB.prepare("UPDATE email_deliveries SET dns_status='mx_present' WHERE campaign_id=?").bind(created.id).run();
+ await env.DB.prepare("INSERT INTO email_contact_suppressions VALUES('org-1','person51@example.test','recipient-unsubscribe',1,1)").run();
+ await env.DB.prepare("INSERT INTO email_bounces VALUES('org-1','person52@example.test','Mailbox gone','notice',1,1)").run();
+ let p=await(await request(`/campaigns/${created.id}`)).json() as any;assert.equal(p.recipient_count,51);
+ assert.equal((await request(`/campaigns/${created.id}/send`,'POST',{fingerprint:p.fingerprint,preview_id:p.preview_id,confirm:true})).status,409);
+ recordSelfTest(database,created.id);p=await(await request(`/campaigns/${created.id}`)).json() as any;
+ assert.equal((await request(`/campaigns/${created.id}/send`,'POST',{fingerprint:p.fingerprint,preview_id:p.preview_id,confirm:true})).status,200);
+ for(let i=0;i<7;i++)await runEmailDelivery(env);
+ assert.equal(calls,50);assert.equal(database.prepare('SELECT status FROM email_campaigns WHERE id=?').get(created.id)!.status,'paused');
+ p=await(await request(`/campaigns/${created.id}`)).json() as any;
+ assert.equal((await request(`/campaigns/${created.id}/resume`,'POST')).status,409);
+ assert.equal((await request(`/campaigns/${created.id}/resume`,'POST',{fingerprint:p.fingerprint,preview_id:p.preview_id,confirm:true})).status,200);
+ await runEmailDelivery(env);assert.equal(calls,51);assert.equal(database.prepare('SELECT status FROM email_campaigns WHERE id=?').get(created.id)!.status,'completed');
+ assert.equal(database.prepare("SELECT count(*) n FROM email_deliveries WHERE campaign_id=? AND kind='campaign' AND status='skipped'").get(created.id)!.n,2);
+});
+
+test('external campaign history is owner-scoped, idempotent, untracked and cannot be resent',async t=>{
+ const {env,request,database}=setup(t);await connect(env);network(t);
+ const payload={organizationId:'org-1',import_key:'completed-campaign',sent_at:Date.now(),subject:'Historical invitation',body:'Already sent.',content:{},recipients:[{email:'one@example.test',status:'sent',gmail_message_id:'original-1'},{email:'two@example.test',status:'bounced',gmail_message_id:'original-2',notice_id:'bounce-2',error:'550 recipient missing'},{email:'held@example.test',status:'held'}]};
+ const preview=await(await request('/outreach/history','POST',payload)).json() as any;assert.equal(preview.accepted,2);assert.equal(preview.known_bounced,1);
+ const result=await request('/outreach/history','POST',{...payload,confirm:true,previewId:preview.previewId});assert.equal(result.status,200,await result.clone().text());const {id}=await result.json() as any;
+ const read=await(await request(`/campaigns/${id}`)).json() as any;assert.equal(read.report_only,1);assert.equal(read.delivery_stats.accepted,2);assert.equal(read.delivery_stats.bounced,1);assert.equal(read.delivery_stats.skipped,1);assert.equal(read.engagement.tracked,0);
+ const {readEmailReport}=await import('../src/emailOutreach');const report=await readEmailReport(env,{userId:'admin',scopes:['org:portal.read']},{organizationId:'org-1',campaignId:id});assert.equal(report.delivery_stats?.accepted,2);assert.match(report.analytics_url,/campaign_id=/);await assert.rejects(()=>readEmailReport(env,{userId:'other-admin',scopes:['org:portal.read']},{organizationId:'org-1',campaignId:id}));
+ assert.equal((await request(`/campaigns/${id}/test`,'POST')).status,409);assert.equal((await request(`/campaigns/${id}`,'GET',undefined,'other-admin')).status,404);
+ assert.equal((await(await request('/outreach/history','POST',{...payload,confirm:true,previewId:preview.previewId})).json() as any).id,id);
+ assert.equal(database.prepare('SELECT count(*) n FROM email_campaigns').get()!.n,1);assert.equal(database.prepare('SELECT count(*) n FROM email_subscriptions').get()!.n,0);
+ assert.equal((await request(`/outreach/${id}`,'DELETE')).status,200);assert.equal(database.prepare('SELECT count(*) n FROM email_deliveries').get()!.n,0);assert.equal(database.prepare('SELECT count(*) n FROM email_bounces').get()!.n,1);
+});
+
+test('self-tests work with mass sending disabled; review copies follow the primary test and retain individual links and inline photo',async t=>{
+ const {env,request,database}=setup(t);await connect(env);let raw='';network(t,async options=>{raw=Buffer.from(JSON.parse(String(options.body)).raw,'base64url').toString();return Response.json({id:'test-receipt'});});
+ env.EMAIL_SENDING_ENABLED='false';env.EMAIL_CONTACT_UNSUBSCRIBE_KEY=btoa('k'.repeat(32));
+ const image='data:image/jpeg;base64,'+Buffer.from([255,216,255,0]).toString('base64');
+ const made=await request('/outreach','POST',{organizationId:'org-1',subject:'Review photo',body:'An invitation.',content:{sender_name:'Community Team',image_data:image},recipients:[{email:'invite@example.test'}]});assert.equal(made.status,201);const {id}=await made.json() as any;
+ assert.equal((await request(`/campaigns/${id}/test`,'POST',{recipient:'review@example.test'})).status,409);
+ assert.equal((await request(`/campaigns/${id}/test`,'POST')).status,200);await runEmailDelivery(env);
+ assert.match(raw,/Content-Type: multipart\/related/);assert.match(raw,/Content-ID: <campaign-photo>/);assert.match(raw,/List-Unsubscribe-Post: List-Unsubscribe=One-Click/);assert.match(raw,/Reply-To: julian@codecollective.us/);
+ assert.equal((await request(`/campaigns/${id}/test`,'POST',{recipient:'review@example.test'})).status,200);await runEmailDelivery(env);assert.match(raw,/To: review@example.test/);
+ assert.equal(database.prepare("SELECT count(*) n FROM email_deliveries WHERE kind='campaign' AND status='sent'").get()!.n,0);
+});
+
+test('bounce evidence requires a permanent failed DSN and exact original message id',async()=>{
+ const {bounceEvidence}=await import('../src/emailBounces');
+ const part=(text:string)=>({body:{data:Buffer.from(text).toString('base64url')}});
+ const failed='Final-Recipient: rfc822; person@example.test\nAction: failed\nStatus: 5.1.1\nOriginal-Message-ID: <12345678-1234-1234-1234-123456789abc@example.test>\nDiagnostic-Code: smtp; 550 mailbox missing';
+ assert.deepEqual(bounceEvidence(part(failed)),{email:'person@example.test',deliveryIds:['12345678-1234-1234-1234-123456789abc'],reason:'550 mailbox missing'});
+ assert.equal(bounceEvidence(part(failed.replace('Action: failed','Action: delayed'))),null);
+ assert.equal(bounceEvidence(part(failed.replace('Status: 5.1.1','Status: 4.2.1'))),null);
+ assert.deepEqual(bounceEvidence(part(failed.replace(/Original-Message-ID:[^\n]+/,'')))?.deliveryIds,[]);
+});

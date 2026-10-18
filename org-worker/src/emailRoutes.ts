@@ -1,3 +1,5 @@
+import { emailBounceRoutes } from './emailBounces';
+import { emailOutreachRoutes } from './emailOutreach';
 import { campaignEngagement, emailEngagementRoutes } from './emailEngagement';
 import { emailContactPreferences } from './emailContactPreferences';
 import { emailAudit, requireEmailOrganizer } from './emailAccess';
@@ -7,13 +9,13 @@ import { HTTPException } from 'hono/http-exception';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import { finishGoogleConnection, senderFor, startGoogleConnection } from './emailGoogle';
 import { hasSuccessfulSelfTest, emailFromAddress, digest, emailDailyLimit, emailFail, emailPortalBase, emailSetupIssues, googleConfig, unsubscribeUrl, verifyUnsubscribe,
-  type EmailActor, type EmailCampaign, type EmailEvent, type EmailSubscription } from './emailShared';
+  normalizeEmail, type EmailActor, type EmailCampaign, type EmailEvent, type EmailSubscription } from './emailShared';
 import { escapeHtml, renderCampaign } from './emailTemplate';
 
 type GetActor = (env: Env, request: Request) => Promise<EmailActor>;
 async function ownCampaign(env: Env, id: string, ownerId: string) {
   const row = await env.DB.prepare('SELECT * FROM email_campaigns WHERE id = ? AND owner_user_id = ?').bind(id, ownerId).first<EmailCampaign>();
-  if (!row) emailFail(404, 'Campaign not found.');
+  if (!row || (row.expires_at && row.expires_at<=Date.now())) emailFail(404, 'Campaign not found.');
   await requireEmailOrganizer(env,{id:ownerId},row.organization_id);
   return row;
 }
@@ -32,19 +34,23 @@ async function audience(env: Env, event: EmailEvent, kind: string, selected: unk
 }
 async function campaignPreview(env: Env, campaign: EmailCampaign) {
   const deliveries = await env.DB.prepare(`SELECT d.id, d.email, d.name, d.status, d.kind, d.error, d.gmail_message_id,
-    d.sent_at, d.subscription_id, COALESCE(s.status, 'unsubscribed') AS subscription_status
+    d.sent_at,d.source_url,d.source_checked_at,d.review_status,d.dns_status,d.bounced_at,d.bounce_notice_id,
+    EXISTS(SELECT 1 FROM email_contact_suppressions x WHERE x.organization_id=? AND x.email=d.email) AS suppressed,
+    EXISTS(SELECT 1 FROM email_bounces x WHERE x.organization_id=? AND x.email=d.email) AS known_bounced,
+    d.subscription_id, COALESCE(s.status, 'unsubscribed') AS subscription_status
     FROM email_deliveries d LEFT JOIN email_subscriptions s ON s.id = d.subscription_id WHERE d.campaign_id = ? ORDER BY d.kind, d.email, d.id`)
-    .bind(campaign.id).all<Record<string, unknown>>();
+    .bind(campaign.organization_id,campaign.organization_id,campaign.id).all<Record<string, unknown>>();
   const rows = deliveries.results || [];
-  const eligible = rows.filter((row) => row.kind === 'campaign' && row.subscription_status === 'subscribed');
+  const eligible = rows.filter((row) => row.kind === 'campaign' && row.review_status==='approved' && !row.suppressed && !row.known_bounced && (campaign.audience_mode==='outreach' ? row.dns_status==='mx_present' : row.subscription_status === 'subscribed'));
   const fingerprint = await digest(JSON.stringify([
     campaign.id, campaign.owner_user_id, campaign.sender_email, campaign.organization_id, campaign.event_id,
-    campaign.event_json, campaign.audience, campaign.subject, campaign.body, campaign.scheduled_at,
+    campaign.event_json,campaign.content_json||null,campaign.audience_mode||'subscribers', campaign.audience, campaign.subject, campaign.body, campaign.scheduled_at,
     eligible.map((row) => [row.id, row.email]),
   ]));
   const counts: Record<string, number> = {};
   for (const row of rows.filter((row) => row.kind === 'campaign')) counts[String(row.status)] = (counts[String(row.status)] || 0) + 1;
-  return { ...campaign, engagement: await campaignEngagement(env,campaign.id), self_test_sent: await hasSuccessfulSelfTest(env, campaign), from_email: emailFromAddress(env, campaign.sender_email), preview: renderCampaign(env, campaign, 'Alex', null), fingerprint, recipient_count: eligible.length, counts, deliveries: rows };
+  const delivery_stats={total:rows.filter(r=>r.kind==='campaign').length,accepted:rows.filter(r=>r.kind==='campaign'&&r.status==='sent').length,bounced:rows.filter(r=>r.kind==='campaign'&&r.bounced_at).length,failed:rows.filter(r=>r.kind==='campaign'&&r.status==='failed').length,uncertain:rows.filter(r=>r.kind==='campaign'&&r.status==='uncertain').length,skipped:rows.filter(r=>r.kind==='campaign'&&(r.status==='skipped'||r.review_status==='held')).length,pending:rows.filter(r=>r.kind==='campaign'&&['draft','queued','sending'].includes(String(r.status))&&r.review_status==='approved').length};
+  return { ...campaign,delivery_stats, engagement: await campaignEngagement(env,campaign.id), self_test_sent: await hasSuccessfulSelfTest(env, campaign), from_email: emailFromAddress(env, campaign.sender_email), preview: renderCampaign(env, campaign, 'Alex', null), fingerprint, recipient_count: eligible.length, counts, deliveries: rows };
 }
 
 export function emailRoutes(getUser: GetActor) {
@@ -57,6 +63,8 @@ export function emailRoutes(getUser: GetActor) {
   routes.use('*', async (c, next) => { c.header('Cache-Control', 'no-store'); c.header('Referrer-Policy', 'no-referrer'); await next(); });
 
   routes.route('/groups',emailGroups(getUser));
+  routes.route('/outreach',emailOutreachRoutes(getUser));
+  routes.route('/campaigns',emailBounceRoutes(getUser));
   routes.route('/engagement',emailEngagementRoutes());
   routes.route('/contact-unsubscribe',emailContactPreferences());
 
@@ -69,7 +77,7 @@ export function emailRoutes(getUser: GetActor) {
     const usage = await c.env.DB.prepare('SELECT count(*) AS n FROM email_send_attempts WHERE sender_user_id = ? AND attempted_at > ?')
       .bind(user.id, Date.now() - 86_400_000).first<{ n: number }>();
     return c.json({ configured: setupIssues.length === 0, setup_issues: setupIssues, connection_origin:connectionOrigin, sending_enabled: c.env.EMAIL_SENDING_ENABLED === 'true', email: sender?.email || user.email, from_email: emailFromAddress(c.env, sender?.email || user.email || ''),
-      connected: sender?.status === 'connected', status: sender?.status || 'disconnected', cooldown_until: sender?.cooldown_until || 0,
+      connected: sender?.status === 'connected', status: sender?.status || 'disconnected',can_read_bounces:Boolean(sender?.can_read_bounces), cooldown_until: sender?.cooldown_until || 0,
       daily_limit: emailDailyLimit(c.env), used_today: Number(usage?.n || 0) });
   });
   routes.post('/google/connect', async (c) => {
@@ -79,8 +87,8 @@ export function emailRoutes(getUser: GetActor) {
     const hostname=c.req.header('x-forwarded-host');
     const origin=hostname ? `https://${hostname}` : new URL(c.req.url).origin;
     if(origin!==expectedOrigin) emailFail(409,'Continue sender authorization on the registered email callback site.');
-    const payload=await c.req.json().catch(()=>({})) as {organization_id?:string};
-    const result = await startGoogleConnection(c.env,user,payload.organization_id || null);
+    const payload=await c.req.json().catch(()=>({})) as {organization_id?:string;monitor_bounces?:boolean};
+    const result = await startGoogleConnection(c.env,user,payload.organization_id || null,payload.monitor_bounces===true);
     setCookie(c, '__Host-portal-email-oauth', result.browser, { httpOnly: true, secure: true, sameSite: 'Lax', path: '/', maxAge: 600 });
     return c.json({ url: result.url });
   });
@@ -229,8 +237,13 @@ export function emailRoutes(getUser: GetActor) {
   routes.post('/campaigns/:id/test', async (c) => {
     const user = await getOrganizer(c.env, c.req.raw);
     const campaign = await ownCampaign(c.env, c.req.param('id'), user.id);
+    if(campaign.report_only)emailFail(409,'This is an imported report; it cannot send messages.');
     const sender = await senderFor(c.env, user.id);
-    if (c.env.EMAIL_SENDING_ENABLED !== 'true' || sender?.status !== 'connected' || sender.email !== campaign.sender_email) emailFail(409, 'Email sending is not enabled or the sender needs reconnecting.');
+    if (sender?.status !== 'connected' || sender.email !== campaign.sender_email) emailFail(409, 'Email sending is not enabled or the sender needs reconnecting.');
+    const testPayload=await c.req.json().catch(()=>({})) as {recipient?:string};
+    const recipient=testPayload.recipient?normalizeEmail(testPayload.recipient):sender.email;
+    if(!recipient)emailFail(400,'Enter a valid review recipient.');
+    if(recipient!==sender.email&&!await hasSuccessfulSelfTest(c.env,campaign))emailFail(409,'Send the required test to your connected account first.');
     const pending = await c.env.DB.prepare("SELECT id FROM email_deliveries WHERE campaign_id = ? AND kind = 'test' AND status IN ('queued', 'sending')").bind(campaign.id).first();
     if (pending) emailFail(409, 'A test email is already queued.');
     const recent = await c.env.DB.prepare("SELECT count(*) AS n FROM email_deliveries d WHERE d.sender_user_id = ? AND d.kind = 'test' AND d.created_at > ?")
@@ -240,14 +253,15 @@ export function emailRoutes(getUser: GetActor) {
       SELECT ?, ?, ?, ?, ?, 'test', 'queued' WHERE
         (SELECT count(*) FROM email_deliveries WHERE sender_user_id = ? AND kind = 'test' AND created_at > ?) < 20
       ON CONFLICT DO NOTHING RETURNING id`)
-      .bind(crypto.randomUUID(), campaign.id, user.id, sender.email, user.full_name || 'Alex', user.id, Date.now() - 86_400_000).first();
+      .bind(crypto.randomUUID(), campaign.id, user.id, recipient, user.full_name || 'Alex', user.id, Date.now() - 86_400_000).first();
     if (!inserted) emailFail(409, 'A test is already pending or the daily test-email limit was reached.');
     await emailAudit(c.env,user.id,campaign.organization_id,'campaign.test-queued',campaign.id,1).run();
-    return c.json({ queued: true, recipient: sender.email });
+    return c.json({ queued: true, recipient });
   });
   routes.post('/campaigns/:id/send', async (c) => {
     const user = await getOrganizer(c.env, c.req.raw);
     const campaign = await ownCampaign(c.env, c.req.param('id'), user.id);
+    if(campaign.report_only)emailFail(409,'This is an imported report; it cannot send messages.');
     const sender = await senderFor(c.env, user.id);
     if (c.env.EMAIL_SENDING_ENABLED !== 'true' || sender?.status !== 'connected' || sender.email !== campaign.sender_email) emailFail(409, 'Email sending is not enabled or the sender needs reconnecting.');
     if (campaign.status !== 'draft') emailFail(409, 'This campaign has already been queued.');
@@ -259,7 +273,7 @@ export function emailRoutes(getUser: GetActor) {
     const receipt=await c.env.DB.prepare(`SELECT id FROM email_campaign_previews WHERE id=? AND campaign_id=? AND actor_user_id=? AND fingerprint=? AND expires_at>? AND consumed_at IS NULL`)
       .bind(payload.preview_id,campaign.id,user.id,preview.fingerprint,Date.now()).first();
     if(!receipt) emailFail(409,'The preview expired or has already been used. Refresh it before sending.');
-    if (!preview.recipient_count) emailFail(400, 'No subscribed recipients are selected.');
+    if (!preview.recipient_count) emailFail(400, 'No eligible recipients are selected.');
     const results=await c.env.DB.batch([
       c.env.DB.prepare(`UPDATE email_campaigns SET status='queued',queued_at=? WHERE id=? AND status='draft'
         AND EXISTS(SELECT 1 FROM email_campaign_previews WHERE id=? AND consumed_at IS NULL AND expires_at>?)`).bind(Date.now(),campaign.id,payload.preview_id,Date.now()),
@@ -282,10 +296,21 @@ export function emailRoutes(getUser: GetActor) {
   routes.post('/campaigns/:id/resume', async (c) => {
     const user = await getOrganizer(c.env, c.req.raw);
     const campaign = await ownCampaign(c.env, c.req.param('id'), user.id);
+    if(campaign.report_only)emailFail(409,'Imported reports cannot send messages.');
     const sender = await senderFor(c.env, user.id);
     if (campaign.status !== 'paused' || sender?.status !== 'connected' || sender.email !== campaign.sender_email || c.env.EMAIL_SENDING_ENABLED !== 'true') emailFail(409, 'Reconnect the sender and enable sending before resuming this campaign.');
     if (!await hasSuccessfulSelfTest(c.env, campaign)) emailFail(409, 'Send a successful test email to yourself before resuming this campaign.');
-    await c.env.DB.prepare("UPDATE email_campaigns SET status = 'queued' WHERE id = ? AND status = 'paused'").bind(campaign.id).run();
+    if(campaign.audience_mode==='outreach') {
+      const preview=await campaignPreview(c.env,campaign),payload=await c.req.json().catch(()=>({})) as {fingerprint?:string;preview_id?:string;confirm?:boolean};
+      if(payload.confirm!==true||payload.fingerprint!==preview.fingerprint||!payload.preview_id)emailFail(409,'Review a fresh preview before sending the next batch.');
+      if(Number(preview.counts.uncertain||0)>0)emailFail(409,'Reconcile uncertain messages before continuing. They will not be resent.');
+      const receipt=await c.env.DB.prepare('SELECT id FROM email_campaign_previews WHERE id=? AND campaign_id=? AND actor_user_id=? AND fingerprint=? AND expires_at>? AND consumed_at IS NULL').bind(payload.preview_id,campaign.id,user.id,preview.fingerprint,Date.now()).first();
+      if(!receipt)emailFail(409,'Refresh this campaign preview before continuing.');
+      await c.env.DB.batch([
+        c.env.DB.prepare(`UPDATE email_campaigns SET status='queued', batch_limit=CASE WHEN batch_limit>(SELECT count(*) FROM email_deliveries WHERE campaign_id=? AND kind='campaign' AND status IN ('sent','sending','failed','uncertain')) THEN batch_limit ELSE batch_limit+batch_size END WHERE id=? AND status='paused' AND EXISTS(SELECT 1 FROM email_campaign_previews WHERE id=? AND consumed_at IS NULL AND expires_at>?)`).bind(campaign.id,campaign.id,payload.preview_id,Date.now()),
+        c.env.DB.prepare('UPDATE email_campaign_previews SET consumed_at=? WHERE id=? AND consumed_at IS NULL').bind(Date.now(),payload.preview_id),
+      ]);
+    } else await c.env.DB.prepare("UPDATE email_campaigns SET status = 'queued' WHERE id = ? AND status = 'paused'").bind(campaign.id).run();
     await emailAudit(c.env,user.id,campaign.organization_id,'campaign.resumed',campaign.id).run();
     return c.json({ queued: true });
   });

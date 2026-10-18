@@ -7,7 +7,7 @@ OrgPortal now has an organizer-only `/email` screen for event campaigns and an a
 - Connect the administrator's allowlisted Google account with OAuth, browser-bound single-use state, PKCE, verified Google ID tokens, and encrypted refresh tokens. Campaigns and Google credentials are owned by the connecting PIdP user ID. Other administrators cannot access or send that owner's campaigns.
 - Choose an organization-hosted event and send to its event-update subscribers, organization-announcement subscribers, or selected announcement subscribers. Every campaign snapshots its recipients; changing or adding subscriptions does not silently expand an approved audience.
 - Compose plain text with `{{first_name}}`, `{{event_title}}`, and `{{organization}}`. The HTML/plain-text template includes the organization name, event image, title, date, location, registration link, sender mailing address, and unsubscribe link. Dates are explicitly labeled Eastern time. The template escapes supplied content; custom HTML is not accepted.
-- Save immutable drafts, preview the message and recipient list, queue a test only to the connected sender, send or schedule, pause/resume, and inspect per-recipient status. Editing the composer and saving again creates a new draft. Previews are fingerprinted; audience changes require a refreshed preview before queueing.
+- Save immutable drafts, preview the message and recipient list, queue a required self-test and optional additional review copies, send or schedule, pause/resume, and inspect per-recipient status. Editing the composer and saving again creates a new draft. Previews are fingerprinted; audience changes require a refreshed preview before queueing.
 - Persist an outbox in D1 and drain it from the existing minute cron. There is no additional Cloudflare Queue binding. Delivery checks current subscription status, enforces a rolling sender allowance, serializes concurrent cron invocations with a lease, and processes at most ten messages per sender per invocation within a bounded runtime.
 - Keep event updates and organization announcements separate. Organization announcements start unchecked on registration; event updates have their own visible checkbox. Cancelling a registration stops event-update emails without unsubscribing from organization announcements. Subscription changes do not cancel event registration.
 - Provide a signed unsubscribe URL that works without login. GET displays a confirmation form; POST performs the unsubscribe and supports Gmail's one-click unsubscribe header format. This prevents link-preview GET requests from unsubscribing people.
@@ -19,7 +19,7 @@ The new registration form captures choices prospectively. Existing users, contac
 1. Use a Google Cloud project under the Code Collective Workspace organization. Enable the Gmail API and create a **Web application** OAuth client for the portal sender connection. You may extend the existing Google Web application client by adding the email callback and Gmail send scope; retain every existing callback. A dedicated client is also supported. No PIdP source modification or Workspace domain-wide delegation is required.
 2. Configure the consent screen for the intended audience. For a connection limited to Code Collective Workspace accounts, use an internal audience where the Google Cloud organization permits it. If publishing externally, resolve Google's sensitive-scope verification requirements before relying on it in production. Avoid leaving a production background sender in an expiring external testing configuration.
 3. Authorize the exact callback URL served through the same origin as the portal. On OrgPortal this is `https://orgportal.cc/api/org/api/email/google/callback`. If a different host serves the portal, use that same host for the callback and configure it consistently in Google and the worker. The browser-binding cookie is host-only.
-4. Request `openid`, `email`, and `https://www.googleapis.com/auth/gmail.send`. No inbox-reading or Gmail draft-management permission is requested. The connected Google email must equal the allowlisted, signed-in administrator's account email.
+4. Request `openid`, `email`, and `https://www.googleapis.com/auth/gmail.send`. Delivery-failure monitoring is optional and adds `gmail.readonly` only when explicitly selected. Gmail draft-management permission is not requested. The connected Google email must equal the allowlisted, signed-in administrator's account email.
 5. Ensure PIdP identifies Julian as an existing portal administrator. Do not grant campaign access based only on a browser-supplied email address. The worker uses the established administrator check and verifies Google identity independently.
 
 References: [Google server-side OAuth](https://developers.google.com/identity/protocols/oauth2/web-server), [Gmail scopes](https://developers.google.com/workspace/gmail/api/auth/scopes), [sending messages](https://developers.google.com/workspace/gmail/api/guides/sending), [sending limits](https://knowledge.workspace.google.com/admin/gmail/gmail-sending-limits-in-google-workspace).
@@ -51,18 +51,18 @@ The OrgPortal frontend Worker forwards `/api/org/*` to the deployed org Worker, 
 2. Install dependencies and run the checks below. Review pending migrations, then apply them with `npm run db:migrate:remote` from `org-worker`. Migration `0019_email_campaigns.sql` is additive; it creates sender, consent, campaign, delivery, OAuth-state, and send-attempt tables.
 3. Configure Google and worker settings. Keep sending disabled during setup. Deploy the org worker and the web frontend using their existing production pipelines. Preserve the existing cron and push/UBI bindings.
 4. Julian signs in as administrator, opens **Email campaigns**, and chooses **Connect Google Workspace** to consent as `julian@codecollective.us`. Credentials must never be collected through chat or committed to GitHub.
-5. Complete any desired validation with the sending gate still disabled. Enable sending only when ready. Julian can then choose **Send test to myself** in the portal and inspect the result after the next minute. Do not automatically send a test or campaign merely because this deployment guide exists.
+5. Complete any desired validation with the sending gate still disabled. Enable mass sending only when ready. With the gate still disabled, Julian can choose **Send test to myself** in the portal and inspect the result after the next minute. Do not automatically send a test or campaign merely because this deployment guide exists.
 
 ## Delivery behavior and recovery
 
-- Gmail-accepted messages are labeled **sent**, not delivered. Bounce, open, and reply tracking are not implemented and do not request broader inbox permissions.
+- Gmail-accepted messages are labeled **sent**, not delivered. Open/click estimates and campaign-link opt-outs are measured for portal sends. Bounce monitoring is optional and requires the additional read permission described below. Reply tracking is not implemented.
 - The local allowance counts all submissions, including tests and rejected attempts. Normal use of Julian's mailbox also consumes Google's quota but is not visible to this send-only integration. A definitive Google rate-limit response defers sending for an hour, with bounded retries.
 - Network failures, timeouts, server errors, and crashes after a sending claim become **uncertain**. They are never blindly retried. Check Gmail Sent mail before intentionally creating a replacement campaign for affected recipients. A Message-ID aids inspection but is not treated as a Gmail idempotency guarantee.
 - Pausing or disconnecting stops future submissions; a submission already in flight can finish. Disconnect removes the local refresh token and pauses queued campaigns. Reconnect and explicitly resume when ready. A reconnect does not resend failed or uncertain deliveries.
 - The outbox rechecks unsubscribe status just before sending, although an unsubscribe cannot recall an email already in flight. There is no admin control to silently re-subscribe a recipient.
-- Campaigns are limited to 1,000 recipients per draft. Test sends are limited to 20 per sender per rolling day and one pending test per campaign.
+- Subscriber campaigns are limited to 1,000 recipients per draft; one-time outreach is limited to 500. Test sends are limited to 20 per sender per rolling day and one pending test per campaign.
 - Scheduled campaigns run on or after their chosen time, subject to the minute cron, quota, pause state, and connection health. This is not an exact-second scheduler.
-- This first release covers event campaign composition and scheduled sends. Automatic registration-confirmation/reminder rules, imported mailing lists, arbitrary organization branding, and external email-provider delivery adapters are future extensions.
+- Event campaigns and reviewed one-time outreach use the workflow below. Automatic registration-confirmation/reminder rules and external email-provider delivery adapters are future extensions.
 
 ## Checks
 
@@ -121,3 +121,45 @@ queues or sends a message. Preparing the link records the existing minimal audit
 event. Use the returned URL only for that recipient, including when sending a
 test to a different address from the connected Google account. Do not copy the
 primary account's preview link into another recipient's test.
+
+## Outreach and campaign reports
+
+On `/email`, choose a group and open **Prepare a one-time outreach campaign**.
+Import CSV columns `email,name,source_url,source_checked_at`, review the source
+links, and explicitly approve the one-time audience. Duplicates and malformed
+addresses are removed. Missing/stale evidence, specialist addresses and unresolved
+mail routing remain held. Organizers can document verified review decisions;
+current opt-outs and known permanent failures are never overridden by imports.
+Contacts are not inserted into subscription lists.
+
+The composer supports a brand color, logo, inline JPEG/PNG up to 300 KB, sender
+name, mailing footer and RSVP button. Drafts use the existing individual MIME,
+open/click measurement, private outbox, quota, role rechecks and uncertain-result
+handling. A self-test to the connected primary account is required; optional
+review copies become available afterward. Self-tests work while mass sending
+is disabled. Sending still requires the operator's mass-send gate.
+
+Outreach pauses at each 50-attempt boundary. Refresh the campaign, inspect its
+recipient and delivery charts, then **Approve next batch of 50** using a fresh
+one-use preview. Uncertain submissions pause sending and require a documented
+Sent-mail/provider outcome; they are never requeued automatically.
+
+**Campaign history → View analytics** shows the delivery pie and independent
+opened/clicked/unsubscribed pies. These actions overlap; they are not slices of
+one combined engagement pie. Unknown historic engagement is unavailable. JSON
+completed-campaign imports are report-only and cannot send or create subscribers.
+Their import key prevents duplicate histories; evidence and receipts remain
+private to the connected campaign owner with current group organizer access.
+
+Automatic bounce monitoring needs the visible **Read Gmail delivery failures**
+option followed by Google reconnection, requesting `gmail.readonly` in addition
+to `gmail.send`. Google may require Workspace administrator approval or OAuth
+verification for that additional permission. Monitoring uses exact original
+message-ID/recipient matches, not email-only attribution. A manual **Record
+bounce** action supports reviewed provider notices, including historical mail.
+
+Migration `0091_email_outreach.sql` is reviewed separately from release. It adds
+campaign/delivery metadata, failure protection and temporary bounce receipts;
+excludes future private campaign/sender journal copies without deleting old
+history; and adds a per-campaign recipient uniqueness constraint. The unique index rejects preexisting duplicate recipients atomically instead of deleting or merging delivery history. No email is queued
+or sent by the migration or a report import. See the privacy retention schedule.

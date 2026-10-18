@@ -228,7 +228,7 @@ test("authenticated MCP initializes, lists tools and previews through the shared
   try {
     assert.equal((await rpc("initialize", { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "test", version: "1" } })).result.serverInfo.name, "orgportal-events");
     const listed = await rpc("tools/list", {});
-    assert.equal(listed.result.tools.length, 52);
+    assert.equal(listed.result.tools.length, 55);
     const contactLink = listed.result.tools.find((tool: { name: string }) => tool.name === 'prepare_email_contact_link');
     assert.equal(contactLink.annotations.readOnlyHint, true);
     assert.deepEqual(contactLink.securitySchemes[0].scopes, ['org:portal.read', 'org:portal.write']);

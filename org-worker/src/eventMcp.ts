@@ -1,3 +1,4 @@
+import { emailHistorySchema, importEmailHistory, emailReportSchema, readEmailReport } from './emailOutreach';
 import { companyBallotSchema, companyVoteSchema, companyVotesTargetSchema, getCompanyVotes, runCompanyBallotOperation, runCompanyVoteOperation } from './companyVotesMcp';
 import { runOrganizationProfileOperation, organizationProfileTargetSchema, organizationProfileUpdateSchema, organizationProfileStatusSchema } from './organizationProfileMcp';
 import { eventHostSchema, runEventHostOperation } from './eventHost';
@@ -766,6 +767,14 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
         return { isError: true, content: [{ type: 'text' as const, text: await eventErrorResponse(error, env, request).text() }] };
       }
     });
+    server.registerTool('get_email_campaign_report',{
+      description:'Read an owned campaign delivery and engagement summary, with its analytics link. Requires current group organizer access. Historical engagement remains unavailable.',
+      inputSchema:emailReportSchema,annotations:{readOnlyHint:true},_meta:metadata([portalReadScope]),
+    },async args=>{try{const data=await readEmailReport(env,identity,scopedArgs(args));return {content:[{type:'text' as const,text:JSON.stringify(data)}],structuredContent:data}}catch(error){return {isError:true,content:[{type:'text' as const,text:await eventErrorResponse(error,env,request).text()}]}}});
+    for(const operation of ['preview','apply'] as const) server.registerTool(`${operation}_email_history_import`,{
+      description:'Import an already-sent campaign report with source evidence, Gmail receipts and failures. Never queues or sends messages. Apply requires confirm=true and the matching one-use previewId. Missing historical engagement is unavailable, never invented.',
+      inputSchema:emailHistorySchema,annotations:{readOnlyHint:operation==='preview',destructiveHint:false},_meta:metadata([portalReadScope,portalWriteScope]),
+    },async args=>{try{const data=await importEmailHistory(env,identity,scopedArgs({...args,confirm:operation==='apply'&&args.confirm===true}));return {content:[{type:'text' as const,text:JSON.stringify(data)}],structuredContent:data}}catch(error){return {isError:true,content:[{type:'text' as const,text:await eventErrorResponse(error,env,request).text()}]}}});
     const supportResult = async (operation: 'list' | 'record' | 'void', args: unknown) => {
       try {
         const data = await runSupportMcp(env.DB, identity, operation, scopedArgs(args));

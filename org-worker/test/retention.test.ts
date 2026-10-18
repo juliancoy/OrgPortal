@@ -8,7 +8,7 @@ function adapter(sql) { return {prepare(q){return {bind(...v){return {async firs
 test('expiry units, bounds, dry-run, retries and unresolved operations',async()=>{
  const sql=new DatabaseSync(':memory:');
  sql.exec(readFileSync(new URL('../migrations/0017_event_mcp_operations.sql',import.meta.url),'utf8'));
- sql.exec(`CREATE TABLE email_oauth_states(state_hash TEXT PRIMARY KEY,expires_at INTEGER);
+ sql.exec(`CREATE TABLE email_oauth_states(state_hash TEXT PRIMARY KEY,expires_at INTEGER); CREATE TABLE email_bounce_receipts(id TEXT PRIMARY KEY,expires_at INTEGER); CREATE TABLE email_campaigns(id TEXT PRIMARY KEY,expires_at INTEGER,status TEXT);
  CREATE TABLE private_newsletter_previews(id TEXT PRIMARY KEY,expires_at TEXT);
  CREATE TABLE local_newsletter_previews(id TEXT PRIMARY KEY,expires_at TEXT);`);
  for(const name of ['email_engagement','email_segments','email_mailing_audit','email_campaign_previews'])sql.exec(`CREATE TABLE ${name}(id TEXT PRIMARY KEY,expires_at INTEGER);`);

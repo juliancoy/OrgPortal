@@ -4,12 +4,12 @@ import { base64Url, decryptSecret, digest, emailFail, encryptSecret, googleConfi
 
 const gmailScope = 'https://www.googleapis.com/auth/gmail.send';
 const googleKeys = createRemoteJWKSet(new URL('https://www.googleapis.com/oauth2/v3/certs'));
-export type Sender = { owner_user_id: string; email: string; refresh_token_ciphertext: string; status: string; cooldown_until: number };
+export type Sender = { owner_user_id: string; email: string; refresh_token_ciphertext: string; status: string; cooldown_until: number; can_read_bounces?:number; bounce_page_token?:string|null };
 
 export async function senderFor(env: Env, userId: string) {
   return env.DB.prepare('SELECT * FROM email_senders WHERE owner_user_id = ?').bind(userId).first<Sender>();
 }
-export async function startGoogleConnection(env: Env, user: EmailActor, organizationId: string | null = null) {
+export async function startGoogleConnection(env: Env, user: EmailActor, organizationId: string | null = null, monitorBounces=false) {
   const config = googleConfig(env);
   await requireEmailOrganizer(env,user,organizationId || undefined);
   const email = normalizeEmail(user.email);
@@ -25,7 +25,7 @@ export async function startGoogleConnection(env: Env, user: EmailActor, organiza
     .bind(await digest(state), user.id, email, await digest(browser), await encryptSecret(env, verifier, `oauth:${user.id}`), nonce, Date.now() + 600_000, organizationId).run();
   const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
   url.search = new URLSearchParams({ client_id: config.clientId, redirect_uri: config.redirectUri, response_type: 'code',
-    scope: `openid email ${gmailScope}`, state, nonce, access_type: 'offline', prompt: 'consent', login_hint: email,
+    scope: `openid email ${gmailScope}${monitorBounces ? " https://www.googleapis.com/auth/gmail.readonly" : ""}`, state, nonce, access_type: 'offline', prompt: 'consent', login_hint: email,
     code_challenge: await digest(verifier), code_challenge_method: 'S256' }).toString();
   return { url: url.toString(), browser };
 }
@@ -77,10 +77,10 @@ export async function finishGoogleConnection(env: Env, state: string, browser: s
   const encrypted = tokens.refresh_token ? await encryptSecret(env, tokens.refresh_token, `sender:${pending.owner_user_id}:${email}`)
     : previous?.email === email ? previous.refresh_token_ciphertext : null;
   if (!encrypted) emailFail(400, 'Google did not provide background sending access. Please reconnect with consent.');
-  await env.DB.prepare(`INSERT INTO email_senders (owner_user_id, email, refresh_token_ciphertext, connected_at)
-    VALUES (?, ?, ?, ?) ON CONFLICT(owner_user_id) DO UPDATE SET email = excluded.email,
-      refresh_token_ciphertext = excluded.refresh_token_ciphertext, status = 'connected', connected_at = excluded.connected_at, cooldown_until = 0`)
-    .bind(pending.owner_user_id, email, encrypted, Date.now()).run();
+  await env.DB.prepare(`INSERT INTO email_senders (owner_user_id, email, refresh_token_ciphertext, connected_at,can_read_bounces)
+    VALUES (?, ?, ?, ?,?) ON CONFLICT(owner_user_id) DO UPDATE SET email = excluded.email,
+      refresh_token_ciphertext = excluded.refresh_token_ciphertext, status = 'connected', connected_at = excluded.connected_at, cooldown_until = 0,can_read_bounces=excluded.can_read_bounces,bounce_page_token=NULL`)
+    .bind(pending.owner_user_id, email, encrypted, Date.now(),tokens.scope?.split(' ').includes('https://www.googleapis.com/auth/gmail.readonly')?1:0).run();
   return pending.organization_id;
 }
 export async function googleAccessToken(env: Env, sender: Sender): Promise<string | null> {

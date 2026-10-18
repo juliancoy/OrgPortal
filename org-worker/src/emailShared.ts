@@ -3,7 +3,7 @@ import { HTTPException } from 'hono/http-exception';
 export type EmailActor = { id: string; email?: string | null; full_name?: string | null };
 export type EmailSubscription = { id: string; user_id: string; email: string; name: string; topic_type: string; topic_id: string; status: string; consent_source: string; consented_at: number | null; unsubscribed_at: number | null; updated_at: number };
 export type EmailEvent = { id: string; title: string; slug: string; starts_at: string | null; location: string | null; image_url: string | null; host_org_id: string | null; organization_name: string | null };
-export type EmailCampaign = { id: string; owner_user_id: string; sender_email: string; organization_id: string; event_id: string; event_json: string; audience: string; subject: string; body: string; status: string; scheduled_at: number; created_at: number };
+export type EmailCampaign = { id: string; owner_user_id: string; sender_email: string; organization_id: string; event_id: string; event_json: string; audience: string; subject: string; body: string; status: string; scheduled_at: number; created_at: number; audience_mode?: string; batch_size?: number; batch_limit?: number; content_json?: string | null; report_only?: number; expires_at?: number | null };
 
 export function emailFail(status: 400 | 401 | 403 | 404 | 409 | 429 | 503, message: string): never {
   throw new HTTPException(status, { res: Response.json({ detail: message }, { status }) });

@@ -185,3 +185,38 @@ Protected operational backups may contain older data: reapply erasure and expiry
 before restoring service and inventory independent exports under OPERATIONS.md.
 The application does not log tracking tokens, addresses, IPs or user agents;
 provider request logs remain subject to the separately documented log controls.
+
+## Reviewed one-time email outreach
+
+An organizer can import a source-backed list for one campaign without subscribing
+any contact or treating portal login as consent. The private campaign recipient
+snapshot holds source URLs, check dates, review state, mail-routing results and
+provider receipt/failure IDs. Draft, paused and completed outreach campaigns and
+report-only imports expire 90 days after creation/import; the existing bounded
+retention job deletes them and cascades recipients, previews and engagement.
+Expired campaigns are not eligible for dispatch. Queued expired campaigns are
+paused before sending, then removed on a subsequent retention run.
+
+New campaign content, inline JPEG/PNG photos and Google connection state are
+excluded from the immutable journal and public replicas. This does not erase
+older journal entries, provider mail or independent exports: inventory and handle
+those under OPERATIONS.md and reapply deletions when restoring backups. Account
+erasure must remove the owner's campaigns and bounce-processing receipts; group
+deletion must also inventory these owner records. Every temporary export retains
+its own seven-day task review deadline.
+
+`email_bounces` stores a group/address, provider reason, notice ID and first/last
+failure timestamps to prevent further delivery attempts. It is distinct from
+unsubscribe state and retained while the mailing group exists, with annual
+operational review using `updated_at`. Corrections and verified erasure follow
+the existing manual process; removing a failure must never clear an opt-out.
+Group deletion cascades this protection. Include it in protected backup and
+restore inventories and reapply failure/opt-out corrections before sending.
+
+Optional delivery monitoring requests Google Gmail read-only permission in a
+separate, visible reconnect flow. It reads delivery-failure notices, matches the
+original recipient and message ID against this connected owner's campaigns,
+and stores only the failure evidence needed for the recipient record. Full
+mail bodies are not retained or logged. Private processed-notice identifiers
+expire in 30 days through bounded cleanup. Imported historical Gmail campaigns
+have no fabricated opens/clicks; analytics show those measurements as unavailable.

@@ -186,3 +186,5 @@ cannot generate new notices. Organization and event deletion cascade their relat
 Include these stores in backup inventories and reapply the account erasure ledger
 before restoring any backup; deletion from independent exports or old backups
 requires the existing operator process. Do not infer ownership from email.
+
+Outreach rollout: migration 0091 adds private campaign source/review metadata, optional Gmail bounce monitoring, 50-attempt gates and 90-day outreach/report retention. Tests verify account/group isolation, report-only imports, opt-out/bounce exclusion and self-test enforcement. Live deployment and cron verification must be recorded before claiming production enforcement. Existing older campaign/sender journal copies are not automatically erased by this migration.
