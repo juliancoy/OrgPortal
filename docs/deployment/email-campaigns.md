@@ -99,3 +99,14 @@ aliases, for example `{"julian@codecollective.us":"events@codecollective.us"}`.
 Configure the alias in Gmail before sending. Google consent and stored credential
 ownership remain attached to the primary account. The sender panel and campaign
 preview display the effective From address, and MIME From/Reply-To use that alias.
+
+
+## Required self-preview
+
+Every immutable campaign draft must first send a test to its connected account's
+primary email. Only a test marked sent (accepted by Gmail) unlocks sending,
+scheduling, or resuming that same campaign. Queued, failed, and uncertain tests
+do not qualify. The UI asks the organizer to inspect their inbox before final
+confirmation. New drafts require new tests; another campaign's test never counts.
+The backend enforces this requirement and pauses queued campaigns without a
+successful self-test. Gmail acceptance does not prove inbox delivery or reading.

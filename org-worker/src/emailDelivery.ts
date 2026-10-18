@@ -16,6 +16,11 @@ export async function runEmailDelivery(env: Env) {
   await env.DB.prepare(`UPDATE email_campaigns SET status='paused' WHERE status='queued' AND NOT EXISTS
     (SELECT 1 FROM organization_memberships m WHERE m.organization_id=email_campaigns.organization_id
       AND m.user_id=email_campaigns.owner_user_id AND m.status='active' AND m.role IN ('owner','administrator'))`).run();
+  // Existing queued campaigns also require a completed self-test before dispatch.
+  await env.DB.prepare(`UPDATE email_campaigns SET status='paused' WHERE status='queued' AND NOT EXISTS
+    (SELECT 1 FROM email_deliveries t WHERE t.campaign_id=email_campaigns.id
+      AND t.sender_user_id=email_campaigns.owner_user_id AND t.email=email_campaigns.sender_email
+      AND t.kind='test' AND t.status='sent')`).run();
   const senders = await env.DB.prepare(`SELECT s.* FROM email_senders s WHERE s.status = 'connected'
     AND s.cooldown_until <= ? AND EXISTS (SELECT 1 FROM email_deliveries d JOIN email_campaigns c ON c.id = d.campaign_id
       WHERE d.sender_user_id = s.owner_user_id AND d.status = 'queued' AND d.next_attempt_at <= ?

@@ -136,16 +136,17 @@ export function EmailCampaignsPage() {
         <strong>Audience:</strong> {preview.recipient_count} subscribed recipients<br /><strong>Send time:</strong> {preview.scheduled_at > Date.now() ? date(preview.scheduled_at) : 'As soon as queued'}</p>
       <p className="muted">Example personalized for Alex. Each recipient receives an individual email and their unsubscribe link.</p>
       <iframe title="Email preview" sandbox="" referrerPolicy="no-referrer" srcDoc={preview.preview.html} />
+      <p>{preview.self_test_sent ? 'Test email accepted by Gmail. Check it in your inbox before sending to the group.' : 'First send a test to yourself. After Gmail accepts it, refresh status, review the email in your inbox, then send or schedule the campaign. Each new draft requires its own test.'}</p>
       <div className="email-actions">
         <button className="portal-button-secondary" disabled={busy || !sender?.sending_enabled || !sender.connected} onClick={() => void act(async () => {
           const result = await emailApi<{ recipient: string }>(token, `/campaigns/${preview.id}/test`, 'POST')
           setMessage(`Test queued for ${result.recipient}. Check status after the next minute.`); await openCampaign(preview.id)
         })}>Send test to myself</button>
-        {preview.status === 'draft' && <button disabled={busy || !sender?.sending_enabled || !sender.connected || !preview.recipient_count} onClick={() => void act(async () => {
+        {preview.status === 'draft' && <button disabled={busy || !sender?.sending_enabled || !sender.connected || !preview.self_test_sent || !preview.recipient_count} onClick={() => void act(async () => {
           await emailApi(token, `/campaigns/${preview.id}/send`, 'POST', { fingerprint: preview.fingerprint, preview_id:preview.preview_id, confirm:true }); await openCampaign(preview.id); await refresh()
           setMessage('Campaign queued. You can follow its progress or pause it below.')
         })}>{preview.scheduled_at > Date.now() ? 'Schedule' : 'Send'} to {preview.recipient_count} recipients</button>}
-        {['queued', 'paused'].includes(preview.status) && <button className="portal-button-secondary" disabled={busy} onClick={() => void act(async () => {
+        {['queued', 'paused'].includes(preview.status) && <button className="portal-button-secondary" disabled={busy || (preview.status === 'paused' && !preview.self_test_sent)} onClick={() => void act(async () => {
           await emailApi(token, `/campaigns/${preview.id}/${preview.status === 'queued' ? 'pause' : 'resume'}`, 'POST'); await openCampaign(preview.id); await refresh()
         })}>{preview.status === 'queued' ? 'Pause campaign' : 'Resume campaign'}</button>}
       </div>

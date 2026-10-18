@@ -3,7 +3,7 @@ import { emailGroups } from './emailGroups';
 import { Hono } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import { finishGoogleConnection, senderFor, startGoogleConnection } from './emailGoogle';
-import { emailFromAddress, digest, emailDailyLimit, emailFail, emailPortalBase, emailSetupIssues, googleConfig, unsubscribeUrl, verifyUnsubscribe,
+import { hasSuccessfulSelfTest, emailFromAddress, digest, emailDailyLimit, emailFail, emailPortalBase, emailSetupIssues, googleConfig, unsubscribeUrl, verifyUnsubscribe,
   type EmailActor, type EmailCampaign, type EmailEvent, type EmailSubscription } from './emailShared';
 import { escapeHtml, renderCampaign } from './emailTemplate';
 
@@ -41,7 +41,7 @@ async function campaignPreview(env: Env, campaign: EmailCampaign) {
   ]));
   const counts: Record<string, number> = {};
   for (const row of rows.filter((row) => row.kind === 'campaign')) counts[String(row.status)] = (counts[String(row.status)] || 0) + 1;
-  return { ...campaign, from_email: emailFromAddress(env, campaign.sender_email), preview: renderCampaign(env, campaign, 'Alex', null), fingerprint, recipient_count: eligible.length, counts, deliveries: rows };
+  return { ...campaign, self_test_sent: await hasSuccessfulSelfTest(env, campaign), from_email: emailFromAddress(env, campaign.sender_email), preview: renderCampaign(env, campaign, 'Alex', null), fingerprint, recipient_count: eligible.length, counts, deliveries: rows };
 }
 
 export function emailRoutes(getUser: GetActor) {
@@ -231,6 +231,7 @@ export function emailRoutes(getUser: GetActor) {
     const sender = await senderFor(c.env, user.id);
     if (c.env.EMAIL_SENDING_ENABLED !== 'true' || sender?.status !== 'connected' || sender.email !== campaign.sender_email) emailFail(409, 'Email sending is not enabled or the sender needs reconnecting.');
     if (campaign.status !== 'draft') emailFail(409, 'This campaign has already been queued.');
+    if (!await hasSuccessfulSelfTest(c.env, campaign)) emailFail(409, 'Send a test email to yourself first and wait until Gmail accepts it before sending or scheduling this campaign.');
     const preview = await campaignPreview(c.env, campaign);
     const payload = await c.req.json().catch(() => ({})) as { fingerprint?: string; preview_id?:string; confirm?:unknown };
     if (!payload.fingerprint || payload.fingerprint !== preview.fingerprint) emailFail(409, 'The audience changed. Refresh the preview before sending.');
@@ -263,6 +264,7 @@ export function emailRoutes(getUser: GetActor) {
     const campaign = await ownCampaign(c.env, c.req.param('id'), user.id);
     const sender = await senderFor(c.env, user.id);
     if (campaign.status !== 'paused' || sender?.status !== 'connected' || sender.email !== campaign.sender_email || c.env.EMAIL_SENDING_ENABLED !== 'true') emailFail(409, 'Reconnect the sender and enable sending before resuming this campaign.');
+    if (!await hasSuccessfulSelfTest(c.env, campaign)) emailFail(409, 'Send a successful test email to yourself before resuming this campaign.');
     await c.env.DB.prepare("UPDATE email_campaigns SET status = 'queued' WHERE id = ? AND status = 'paused'").bind(campaign.id).run();
     await emailAudit(c.env,user.id,campaign.organization_id,'campaign.resumed',campaign.id).run();
     return c.json({ queued: true });

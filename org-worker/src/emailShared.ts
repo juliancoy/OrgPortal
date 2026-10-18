@@ -123,3 +123,10 @@ export function emailFromAddress(env: Env, accountEmail: string): string {
   if (typeof alias !== 'string' || !/^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+$/.test(alias)) emailFail(503, 'Email sender alias is invalid.');
   return normalizeEmail(alias);
 }
+
+
+export async function hasSuccessfulSelfTest(env: Env, campaign: EmailCampaign): Promise<boolean> {
+  return Boolean(await env.DB.prepare(`SELECT id FROM email_deliveries WHERE campaign_id = ?
+    AND sender_user_id = ? AND email = ? AND kind = 'test' AND status = 'sent' LIMIT 1`)
+    .bind(campaign.id, campaign.owner_user_id, campaign.sender_email).first());
+}

@@ -65,6 +65,10 @@ async function connect(env: Env) {
 async function subscribe(env: Env, id = 'alice', type: 'event' | 'organization' = 'event', topic = 'event-1', subscribed = true) {
   await subscriptionStatement(env.DB, { id, email: `${id}@example.test`, full_name: `${id} Person` }, type, topic, subscribed).run();
 }
+function recordSelfTest(database: DatabaseSync, campaignId: string) {
+  database.prepare(`INSERT INTO email_deliveries (id,campaign_id,sender_user_id,email,name,kind,status)
+    VALUES (? ,?,'admin','julian@codecollective.us','Julian','test','sent')`).run(crypto.randomUUID(),campaignId);
+}
 const payload = { event_id: 'event-1', audience: 'event', subject: 'Hello {{first_name}}', body: 'Join {{event_title}}.' };
 
 test('mailing lists are group-scoped, no global-admin bypass, and consent never follows membership', async t => {
@@ -119,7 +123,7 @@ test('general group announcements require fresh one-use preview and revoked orga
   const {env,request,database}=setup(t);let sends=0;network(t,async()=>{sends++;return Response.json({id:'sent'})});await connect(env);
   await subscribe(env,'alice','organization','org-1');await subscribe(env,'bob','organization','org-2');
   const create=await request('/campaigns','POST',{organization_id:'org-1',audience:'organization',subject:'Group update',body:'Hello {{first_name}} from {{organization}}'});
-  assert.equal(create.status,201);const draft=await create.json();assert.equal(draft.recipient_count,1);assert.match(draft.preview.html,/Visit group/);assert.doesNotMatch(draft.preview.html,/Date to be announced/);
+  assert.equal(create.status,201);const draft=await create.json();recordSelfTest(database,draft.id);assert.equal(draft.recipient_count,1);assert.match(draft.preview.html,/Visit group/);assert.doesNotMatch(draft.preview.html,/Date to be announced/);
   assert.equal((await request('/campaigns','POST',{...payload,organization_id:'org-2'})).status,403);
   assert.equal((await request('/campaigns/'+draft.id+'/send','POST',{fingerprint:draft.fingerprint})).status,400);
   let preview=await (await request('/campaigns/'+draft.id)).json();
@@ -132,7 +136,7 @@ test('general group announcements require fresh one-use preview and revoked orga
   database.exec("UPDATE organization_memberships SET role='member' WHERE user_id='admin'");
   assert.equal((await request('/campaigns/'+draft.id)).status,403);
   await runEmailDelivery(env);assert.equal(sends,0);assert.equal(database.prepare('SELECT status FROM email_campaigns').get()!.status,'paused');
-  assert.equal(database.prepare('SELECT status FROM email_deliveries').get()!.status,'skipped');
+  assert.equal(database.prepare("SELECT status FROM email_deliveries WHERE kind='campaign'").get()!.status,'skipped');
 });
 
 test('Google sender setup starts only on the configured callback host and rechecks group access',async t=>{
@@ -222,6 +226,7 @@ test('unsubscribe links are signed, GET is inert, and changed audiences invalida
   const { env, request, database } = setup(t);
   network(t); await connect(env); await subscribe(env);
   const draft = await (await request('/campaigns', 'POST', payload)).json();
+  recordSelfTest(database,draft.id);
   const preview=await (await request(`/campaigns/${draft.id}`)).json();
   const subscription = database.prepare('SELECT id FROM email_subscriptions').get()!;
   const url = await unsubscribeUrl(env, String(subscription.id));
@@ -243,6 +248,7 @@ test('outbox deduplicates dispatch, honors pauses and late unsubscribes, and cou
   network(t, async (options) => { const data = JSON.parse(String(options.body)); sent.push(Buffer.from(data.raw, 'base64url').toString()); return Response.json({ id: `gmail-${sent.length}` }); });
   await connect(env); await subscribe(env); await subscribe(env, 'bob');
   const draft = await (await request('/campaigns', 'POST', payload)).json();
+  recordSelfTest(database,draft.id);
   const preview=await (await request(`/campaigns/${draft.id}`)).json();
   assert.equal((await request(`/campaigns/${preview.id}/send`, 'POST', { fingerprint: preview.fingerprint, preview_id:preview.preview_id,confirm:true })).status, 200);
   assert.equal((await request(`/campaigns/${preview.id}/send`, 'POST', { fingerprint: preview.fingerprint, preview_id:preview.preview_id,confirm:true })).status, 409);
@@ -269,6 +275,7 @@ test('ambiguous sends are never automatically retried; scheduled and disabled ca
   network(t, async () => { attempts++; throw new Error('Network timeout after submission'); });
   await connect(env); await subscribe(env);
   const draft = await (await request('/campaigns', 'POST', { ...payload, scheduled_at: new Date(Date.now() + 3600_000).toISOString() })).json();
+  recordSelfTest(database,draft.id);
   const preview=await (await request(`/campaigns/${draft.id}`)).json();
   assert.equal((await request(`/campaigns/${draft.id}/send`, 'POST', {fingerprint:preview.fingerprint,preview_id:preview.preview_id,confirm:true})).status,200);
   await runEmailDelivery(env); assert.equal(attempts, 0);
@@ -276,7 +283,7 @@ test('ambiguous sends are never automatically retried; scheduled and disabled ca
   env.EMAIL_SENDING_ENABLED = 'false'; await runEmailDelivery(env); assert.equal(attempts, 0);
   env.EMAIL_SENDING_ENABLED = 'true'; await runEmailDelivery(env); await runEmailDelivery(env);
   assert.equal(attempts, 1);
-  assert.equal(database.prepare('SELECT status FROM email_deliveries').get()!.status, 'uncertain');
+  assert.equal(database.prepare("SELECT status FROM email_deliveries WHERE kind='campaign'").get()!.status, 'uncertain');
 });
 
 test('templates escape personalized HTML and encode Unicode mail with individual recipients', async (t) => {
@@ -347,4 +354,34 @@ test('Google exchange failures expose only actionable error categories and never
     }
     t.mock.restoreAll();
   }
+});
+
+
+test('campaigns require their own Gmail-accepted self-test before send, schedule or resume', async t => {
+  const {env,request,database}=setup(t);
+  const sent: string[]=[];
+  network(t,async options=>{sent.push(Buffer.from(JSON.parse(String(options.body)).raw,'base64url').toString());return Response.json({id:'gmail-test'});});
+  await connect(env); await subscribe(env);
+  const draft=await (await request('/campaigns','POST',payload)).json();
+  const preview=await (await request(`/campaigns/${draft.id}`)).json();
+  const confirm={fingerprint:preview.fingerprint,preview_id:preview.preview_id,confirm:true};
+  assert.equal(preview.self_test_sent,false);
+  assert.equal((await request(`/campaigns/${draft.id}/send`,'POST',confirm)).status,409);
+  assert.equal((await request(`/campaigns/${draft.id}/test`,'POST')).status,200);
+  assert.equal((await request(`/campaigns/${draft.id}/send`,'POST',confirm)).status,409);
+  database.prepare("UPDATE email_deliveries SET status='failed' WHERE kind='test'").run();
+  assert.equal((await request(`/campaigns/${draft.id}/send`,'POST',confirm)).status,409);
+  database.prepare("UPDATE email_deliveries SET status='queued' WHERE kind='test'").run();
+  await runEmailDelivery(env);
+  assert.equal(sent.length,1);assert.match(sent[0],/To: julian@codecollective.us/);
+  assert.equal((await (await request(`/campaigns/${draft.id}`)).json()).self_test_sent,true);
+  assert.equal((await request(`/campaigns/${draft.id}/send`,'POST',confirm)).status,200);
+  const next=await (await request('/campaigns','POST',{...payload,scheduled_at:new Date(Date.now()+3600000).toISOString()})).json();
+  const nextPreview=await (await request(`/campaigns/${next.id}`)).json();
+  assert.equal((await request(`/campaigns/${next.id}/send`,'POST',{fingerprint:nextPreview.fingerprint,preview_id:nextPreview.preview_id,confirm:true})).status,409);
+  database.prepare("UPDATE email_campaigns SET status='paused' WHERE id=?").run(next.id);
+  assert.equal((await request(`/campaigns/${next.id}/resume`,'POST')).status,409);
+  database.prepare("UPDATE email_campaigns SET status='queued' WHERE id=?").run(next.id);
+  await runEmailDelivery(env);
+  assert.equal(database.prepare('SELECT status FROM email_campaigns WHERE id=?').get(next.id)!.status,'paused');
 });
