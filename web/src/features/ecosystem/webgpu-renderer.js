@@ -68,16 +68,16 @@ export async function createNetworkGPU(canvas,onLost,onPaint=()=>{}) {
    if(!updated){nodeRanges.clear();edgeRanges.clear()}
    const disks=[],vertices=[]
    const vertex=(p,color)=>vertices.push(p.x,p.y,...color)
-   for(const e of edges){if(!visibleEdges.has(e.id)||(updated&&!updated.has(e.source.id)&&!updated.has(e.target.id)))continue;const start=vertices.length;const points=curvePoints(e),color=rgba(edgeColor(e),.65),width=(e.quantityWidth||1.4)/2
+   for(const e of edges){if(!visibleEdges.has(e.id)||(updated&&!updated.has(e.source.id)&&!updated.has(e.target.id)))continue;const start=vertices.length;const points=curvePoints(e),color=rgba(edgeColor(e),e.opacity??.65),width=(e.quantityWidth||1.4)/2
     for(let i=1;i<points.length;i++){if(e.relationship!=='funding'&&i%(e.relationship==='affiliation'?4:2)===0)continue;const a=points[i-1],b=points[i],d=Math.hypot(b.x-a.x,b.y-a.y)||1,nx=-(b.y-a.y)/d*width,ny=(b.x-a.x)/d*width
      const p={x:a.x+nx,y:a.y+ny},q={x:a.x-nx,y:a.y-ny},r={x:b.x+nx,y:b.y+ny},s={x:b.x-nx,y:b.y-ny};for(const v of [p,q,r,r,q,s])vertex(v,color)
     }
     const a=points.at(-2),b=points.at(-1),d=Math.hypot(b.x-a.x,b.y-a.y)||1,ux=(b.x-a.x)/d,uy=(b.y-a.y)/d
-    for(const p of [b,{x:b.x-ux*8-uy*4,y:b.y-uy*8+ux*4},{x:b.x-ux*8+uy*4,y:b.y-uy*8-ux*4}])vertex(p,color)
+    if(e.directional)for(const p of [b,{x:b.x-ux*8-uy*4,y:b.y-uy*8+ux*4},{x:b.x-ux*8+uy*4,y:b.y-uy*8-ux*4}])vertex(p,color)
     if(updated){const offset=edgeRanges.get(e.id);if(offset!==undefined)device.queue.writeBuffer(edgeBuffer,offset*4,new Float32Array(vertices.slice(start)))}else edgeRanges.set(e.id,start)
    }
    for(const n of nodes){if(!visible.has(n.id)||(updated&&!updated.has(n.id)))continue;const start=disks.length;const color=n.id===selected?0xe56d3c:colors[n.category]??0x77878c
-    disks.push(n.x,n.y,n.renderRadius+(n.financialPie?(n.id===selected?2:1):0),0,Math.PI*2,...rgba(color))
+    disks.push(n.x,n.y,n.renderRadius+(n.financialPie?(n.id===selected?2:1):0),0,Math.PI*2,...rgba(color,n.opacity??1))
     for(const slice of n.financialPie?.slices||[])disks.push(n.x,n.y,n.renderRadius,slice.startAngle+Math.PI/2,slice.endAngle+Math.PI/2,...rgba(slice.color))
     if(updated){const offset=nodeRanges.get(n.id);if(offset!==undefined)device.queue.writeBuffer(nodeBuffer,offset*4,new Float32Array(disks.slice(start)))}else nodeRanges.set(n.id,start)
    }

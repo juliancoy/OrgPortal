@@ -10,30 +10,39 @@ export function lawMagnitude(distance,law='power',alpha=1){
 // Barnes-Hut aggregation keeps the configurable law practical on large graphs.
 export function forceDistanceLaw({strength,law='power',exponent=1,reference=100,min=1,max=Infinity,dimensions=2}){
  let nodes=[],random=Math.random
- const axes=['x','y','z'].slice(0,dimensions)
  function force(alpha){
-  const tree=dimensions===3?octree(nodes,n=>n.x,n=>n.y,n=>n.z):quadtree(nodes,n=>n.x,n=>n.y)
+  const spatial=dimensions===3
+  const tree=spatial?octree(nodes,n=>n.x,n=>n.y,n=>n.z):quadtree(nodes,n=>n.x,n=>n.y)
   tree.visitAfter(cell=>{
-   cell.weight=0;cell.center=axes.map(()=>0)
-   const add=(point,weight)=>{cell.weight+=weight;axes.forEach((a,k)=>cell.center[k]+=point[k]*weight)}
-   if(cell.length){for(const child of cell)if(child?.weight)add(child.center,child.weight)}
-   else {let leaf=cell;do{add(axes.map(a=>leaf.data[a]),strength(leaf.data))}while(leaf=leaf.next)}
-   if(cell.weight)cell.center=cell.center.map(v=>v/cell.weight)
+   let weight=0,x=0,y=0,z=0
+   if(cell.length){for(const child of cell)if(child?.weight){weight+=child.weight;x+=child.cx*child.weight;y+=child.cy*child.weight;z+=child.cz*child.weight}}
+   else {let leaf=cell;do{const n=leaf.data,w=strength(n);weight+=w;x+=n.x*w;y+=n.y*w;if(spatial)z+=n.z*w}while(leaf=leaf.next)}
+   cell.weight=weight;cell.cx=weight?x/weight:0;cell.cy=weight?y/weight:0;cell.cz=weight?z/weight:0
   })
-  for(const n of nodes)tree.visit((cell,...bounds)=>{
-   if(!cell.weight)return true
-   const delta=axes.map((a,k)=>cell.center[k]-n[a]),distance=Math.hypot(...delta),width=bounds[dimensions]-bounds[0]
-   const apply=(point,weight)=>{let d=axes.map((a,k)=>point[k]-n[a]),length=Math.hypot(...d);if(length>max)return;if(length<1e-6){d=axes.map(()=>random()-.5);length=Math.hypot(...d)||1}const magnitude=weight*alpha/reference*lawMagnitude(Math.max(min,length)/reference,law,exponent);axes.forEach((a,k)=>{n['v'+a]+=d[k]/length*magnitude})}
-   if(cell.length){
-    // Never approximate a cell intersecting the repulsion cutoff or containing n.
-    const contains=axes.every((a,k)=>n[a]>=bounds[k]&&n[a]<bounds[k+dimensions])
-    if(!contains&&width/distance<.7&&distance+Math.sqrt(dimensions)*width<max){apply(cell.center,cell.weight);return true}
-    if(distance-Math.sqrt(dimensions)*width>max)return true
-    return false
+  const factor=alpha/reference,diagonal=Math.sqrt(dimensions)
+  for(const n of nodes){
+   const apply=(x,y,z,weight)=>{
+    let dx=x-n.x,dy=y-n.y,dz=spatial?z-n.z:0,length=Math.sqrt(dx*dx+dy*dy+dz*dz)
+    if(length>max)return
+    if(length<1e-6){dx=random()-.5;dy=random()-.5;dz=spatial?random()-.5:0;length=Math.sqrt(dx*dx+dy*dy+dz*dz)||1}
+    const magnitude=weight*factor*lawMagnitude(Math.max(min,length)/reference,law,exponent)/length
+    n.vx+=dx*magnitude;n.vy+=dy*magnitude;if(spatial)n.vz+=dz*magnitude
    }
-   let leaf=cell;do{if(leaf.data!==n)apply(axes.map(a=>leaf.data[a]),strength(leaf.data))}while(leaf=leaf.next)
-   return true
-  })
+   tree.visit((cell,x0,y0,a,b,c,d)=>{
+    if(!cell.weight)return true
+    const x1=spatial?b:a,y1=spatial?c:b,z0=spatial?a:0,z1=spatial?d:0
+    const dx=cell.cx-n.x,dy=cell.cy-n.y,dz=spatial?cell.cz-n.z:0,distance=Math.sqrt(dx*dx+dy*dy+dz*dz),width=x1-x0
+    if(cell.length){
+     // Keep the cutoff and self-exclusion exact; approximate only distant cells.
+     const contains=n.x>=x0&&n.x<x1&&n.y>=y0&&n.y<y1&&(!spatial||(n.z>=z0&&n.z<z1))
+     if(!contains&&width/distance<.7&&distance+diagonal*width<max){apply(cell.cx,cell.cy,cell.cz,cell.weight);return true}
+     if(distance-diagonal*width>max)return true
+     return false
+    }
+    let leaf=cell;do{const other=leaf.data;if(other!==n)apply(other.x,other.y,other.z,strength(other))}while(leaf=leaf.next)
+    return true
+   })
+  }
  }
  force.initialize=(next,source)=>{nodes=next;random=source||Math.random}
  return force

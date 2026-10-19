@@ -314,3 +314,18 @@ html.eco-map-open .portal-footer, html.eco-map-open .tb-shell-footer { display:n
 .portal-ecosystem .eco-law-dialog .eco-force-law label.eco-slider-row { grid-template-columns:48px minmax(0,1fr) 4ch; }
 
 .portal-ecosystem .eco-network-fps{position:absolute;top:8px;left:8px;z-index:4;pointer-events:none;padding:4px 7px;border-radius:4px;background:var(--surface,#fff);color:var(--ink,#18242c);font:12px/1.4 monospace;font-variant-numeric:tabular-nums;box-shadow:0 1px 4px #0002}
+
+
+.portal-ecosystem[data-network-theme=dark]{--paper:#101820;--ink:#e8eef4;--muted:#b5c2cf;--line:#425363;--surface-subtle:#192632;--header-bg:#192632;--surface:#192632}
+.portal-ecosystem[data-network-theme=light]{--paper:#fff;--ink:#182630;--muted:#51616f;--line:#b9c5cf;--surface-subtle:#f0f4f7;--header-bg:#fff;--surface:#fff}
+.portal-ecosystem .eco-visibility{display:grid;gap:10px;min-width:0}
+.portal-ecosystem .eco-visibility label{display:grid;gap:4px}
+.portal-ecosystem .eco-visibility input{max-width:100%;min-width:0}
+.portal-ecosystem #network-community-list{max-height:190px;overflow:auto;display:grid;gap:5px}
+.portal-ecosystem #network-community-list button{text-align:left;overflow-wrap:anywhere}
+.portal-ecosystem .eco-network-advanced{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
+.portal-ecosystem .eco-network-advanced summary{cursor:pointer;font-weight:600}
+.portal-ecosystem[data-network-theme=dark] a{color:#75c6f2}
+.portal-ecosystem[data-network-theme=light] a{color:#005b91}
+.portal-ecosystem[data-network-theme] :focus-visible{outline:2px solid currentColor;outline-offset:3px}
+.portal-ecosystem .eco-network-controls [hidden]{display:none!important}

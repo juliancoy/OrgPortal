@@ -1,21 +1,16 @@
-# Network visualization overhaul
+# Remaining network visualization work
 
-Completion evidence: [PLAN_HISTORY.md](PLAN_HISTORY.md).
+Completion records and commit references: [PLAN_HISTORY.md](PLAN_HISTORY.md).
+Implementation and benchmark details: [docs/network-exploration.md](docs/network-exploration.md).
 
-## Phase 1 — Indexed analysis and financial semantics
-- [ ] Build cached adjacency, bounded hop traversal, deterministic community membership, aggregate counts, and conservative financial metrics. Verify disconnected nodes, missing values, inferred links, and 1–3 hops with Node tests.
+## Performance acceptance
+- [ ] Profile sustained live physics on a hardware GPU, including six-dimensional projection and All mode. Confirm the 10 FPS default budget, investigate long frame-time tails, and measure peak retained memory. The completed headless samples pause motion and cannot establish sustained live-physics performance.
 
-## Phase 2 — Progressive exploration (depends on phase 1)
-- [ ] Integrate Overview / Focus / All disclosure, community expansion and grouping, bounded size metrics, label modes, neutral edges and opacity into shared renderer without restarting physics for visibility changes. Verify unit tests, build and headless browser interactions.
-- [ ] Add reliable funding-flow filters and verified geographic layout, missing-data reporting, inspection provenance and legends. Verify fixtures and browser interactions.
+## Release reconciliation and deployment
+- [ ] Reconcile the pre-existing, unstaged N-dimensional UI/projection changes with the release candidate. They remain preserved in the working checkout; the isolated committed overhaul builds against the previously committed projection implementation. Preserve unrelated login, home-page and other edits. Use a detached clean release checkout if needed; do not create a branch.
+- [ ] Run the authorized OrgPortal frontend release from the clean candidate, then verify frontend commit identity, API proxy health, public navigation, and a read-only deployed visualization smoke test.
 
-## Phase 3 — Navigation, accessibility and persistence
-- [ ] Add camera projection and bounded transitions, responsive Visibility controls, theme selection and reset; reuse existing compact settings URLs and local storage. Verify keyboard, mobile, reduced motion and URL restoration.
-
-## Phase 4 — Acceptance and release
-- [ ] Measure before/after frame time, FPS, heap and interaction latency at statewide scale. Record hardware-independent analysis benchmarks and browser limitations.
-- [ ] Run ecosystem checks and production build, document behavior and remaining data limitations; commit coherent milestones on current branch.
-- [ ] Release through OrgPortal release flow only when checkout/release prerequisites pass; verify public frontend/API commit identity.
-
-## Known release constraint
-The checkout has pre-existing tracked and untracked changes across renderer, physics, navigation, login and home files. Preserve those edits. The documented release command requires a clean checkout; do not commit unrelated work to bypass that requirement.
+## Blockers and data limits
+- Manual deployment credentials (`CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`) are absent in this environment. No push or production deployment has been performed. An authenticated native-build alternative was not configured or verified during this task.
+- The local checkout retains independent existing edits. Do not bypass the release cleanliness check or commit unrelated work to satisfy it.
+- Geographic layout uses supplied coordinates and state metadata only. Real geographic coverage is limited by missing coordinates; county/municipality centroid aggregation is covered by synthetic tests. Legislative-district boundaries were not supplied and remain unavailable.

@@ -2,19 +2,21 @@
 export const endpoint = value => typeof value === 'object' ? value?.id : value
 export function financialEvidence(edge) {
  const kind=edge.kind || edge.relationship
- const uncertain=/inferred|shared|coinvest|portfolio|capitalization/i.test(kind || '') || edge.inferred===true
+ const uncertain=/inferred|shared|coinvest|portfolio|capitalization/i.test(kind || '') || edge.inferred===true || /inferred|uncertain|unconfirmed/i.test(edge.status||'')
  const directed=!uncertain && ['transfer','grant','donation','contract'].includes(kind) && edge.status!=='voided'
  const amount=directed && edge.currency==='USD' && Number.isFinite(edge.amount) && edge.amount>=0 ? edge.amount : null
  return {directed,amount,kind:kind || 'unspecified',verified:directed && edge.status==='verified'}
 }
 export function createNetworkAnalysis(nodes,edges) {
  const byId=new Map(nodes.map(n=>[n.id,n])),adjacency=new Map(nodes.map(n=>[n.id,new Set()])),incoming=new Map(),outgoing=new Map()
+ const financialIds=new Set()
  for(const edge of edges){
   const a=endpoint(edge.source),b=endpoint(edge.target)
   if(!byId.has(a)||!byId.has(b))continue
   adjacency.get(a).add(b);adjacency.get(b).add(a)
   const evidence=financialEvidence(edge)
-  if(evidence.amount!==null){outgoing.set(a,(outgoing.get(a)||0)+evidence.amount);incoming.set(b,(incoming.get(b)||0)+evidence.amount)}
+  const identity=edge.awardKey||edge.id
+  if(evidence.amount!==null&&(!identity||!financialIds.has(identity))){if(identity)financialIds.add(identity);outgoing.set(a,(outgoing.get(a)||0)+evidence.amount);incoming.set(b,(incoming.get(b)||0)+evidence.amount)}
  }
  const neighborhoods=new Map(),groups=new Map()
  return {byId,adjacency,incoming,outgoing,
@@ -38,7 +40,7 @@ export function createNetworkAnalysis(nodes,edges) {
       if(best!==membership.get(id)){membership.set(id,best);changed=true}
      }if(!changed)break
     }
-   }else for(const node of nodes)membership.set(node.id,mode==='sector'?(node.sector || node.category || 'Unknown sector'):(node.county || node.municipality || node.city || 'Unknown location'))
+   }else for(const node of nodes)membership.set(node.id,mode==='sector'?(node.sector || node.category || 'Unknown sector'):(mode==='county'?(node.county||'Unknown county'):mode==='municipality'?(node.municipality||node.city||'Unknown municipality'):(node.county || node.municipality || node.city || 'Unknown location')))
    const clusters=new Map()
    for(const node of nodes){const id=membership.get(node.id);if(!clusters.has(id))clusters.set(id,{id,members:[],internal:0,external:0});clusters.get(id).members.push(node.id)}
    for(const edge of edges){const a=membership.get(endpoint(edge.source)),b=membership.get(endpoint(edge.target));if(!clusters.has(a)||!clusters.has(b))continue;if(a===b)clusters.get(a).internal++;else{clusters.get(a).external++;clusters.get(b).external++}}
@@ -46,7 +48,7 @@ export function createNetworkAnalysis(nodes,edges) {
   },
  }
 }
-export function metricRadius(value,max){return 3+7*Math.sqrt(Math.max(0,value||0)/Math.max(1,max||0))}
+export function metricRadius(value,max){return 3+7*Math.sqrt(Math.min(Math.max(1,max||0),Math.max(0,value||0))/Math.max(1,max||0))}
 export function disclosure(analysis,edges,{mode='overview',selected=null,depth=1,grouping='community',expanded=new Set()}={}){
  const focus=selected?analysis.neighborhood(selected,depth):new Set(),{membership,clusters}=analysis.communities(grouping)
  const representatives=new Set()

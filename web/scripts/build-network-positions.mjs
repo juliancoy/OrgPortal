@@ -1,3 +1,5 @@
+import {layoutConnections} from '../src/features/ecosystem/network-edge-bundles.js'
+import {createNetworkAnalysis,metricRadius} from '../src/features/ecosystem/network-analysis.js'
 import {readFile,writeFile} from 'node:fs/promises'
 import {createHash} from 'node:crypto'
 import {layoutNetwork} from '../src/features/ecosystem/ecosystem-physics.js'
@@ -6,9 +8,9 @@ import {createParticleLife4D} from '../src/features/ecosystem/particle-life-4d.j
 import {initializeNetworkPositions} from '../src/features/ecosystem/network-initial-positions.js'
 import {applyFundHierarchy,foldFundNodes} from '../src/features/ecosystem/fund-pies.js'
 import {mergeNetworkHistory,appendNonprofitEvidence} from '../src/features/ecosystem/network-history.js'
-import {graphRelationships,financialNodeAmounts,financialNodeRadius} from '../src/features/ecosystem/portal-ecosystem.js'
+import {graphRelationships} from '../src/features/ecosystem/portal-ecosystem.js'
 const root=new URL('../',import.meta.url),output=new URL('public/ecosystem-data/network-default-positions.json',root)
-const inputs=['src/features/ecosystem/markup.html','src/ui/views/EcosystemNetworkPage.tsx','src/features/ecosystem/ecosystem-physics.js','src/features/ecosystem/ecosystem-physics-3d.js','src/features/ecosystem/particle-life-4d.js','src/features/ecosystem/force-law.js','src/features/ecosystem/network-initial-positions.js','src/features/ecosystem/fund-pies.js','src/features/ecosystem/portal-ecosystem.js','src/features/ecosystem/network-history.js','public/ecosystem-data/ecosystem-portal.json','public/ecosystem-data/ecosystem-relationships.json','public/ecosystem-data/ecosystem-nonprofits.json','scripts/build-network-positions.mjs']
+const inputs=['src/features/ecosystem/markup.html','src/ui/views/EcosystemNetworkPage.tsx','src/features/ecosystem/ecosystem-physics.js','src/features/ecosystem/ecosystem-physics-3d.js','src/features/ecosystem/particle-life-4d.js','src/features/ecosystem/force-law.js','src/features/ecosystem/network-initial-positions.js','src/features/ecosystem/fund-pies.js','src/features/ecosystem/portal-ecosystem.js','src/features/ecosystem/network-history.js','public/ecosystem-data/ecosystem-portal.json','public/ecosystem-data/ecosystem-relationships.json','public/ecosystem-data/ecosystem-nonprofits.json','scripts/build-network-positions.mjs','src/features/ecosystem/network-edge-bundles.js','src/features/ecosystem/network-analysis.js']
 const contents=await Promise.all(inputs.map(path=>readFile(new URL(path,root),'utf8')))
 const fingerprint=createHash('sha256').update(contents.join('\n')).digest('hex')
 if(!process.argv.includes('--force')){try{const previous=JSON.parse(await readFile(output,'utf8'));if(previous.fingerprint===fingerprint){console.log('Default graph positions are current');process.exit(0)}}catch{}}
@@ -28,16 +30,16 @@ const base=readJSON('public/ecosystem-data/ecosystem-portal.json')
 const history=appendNonprofitEvidence(readJSON('public/ecosystem-data/ecosystem-relationships.json'),readJSON('public/ecosystem-data/ecosystem-nonprofits.json'))
 const data=foldFundNodes(applyFundHierarchy(mergeNetworkHistory(base,history)))
 const edges=graphRelationships(data,{moneyOnly:value('network-view')==='money',includeCapitalization:value('include-context')})
+const layoutAnalysis=createNetworkAnalysis(data.organizations,edges),maxDegree=Math.max(1,...[...layoutAnalysis.adjacency.values()].map(n=>n.size))
 const connected=new Set(edges.flatMap(e=>[e.source,e.target]))
-const amounts=financialNodeAmounts(data,{includeCapitalization:value('include-context')})
-const sizing={algorithm:value('node-size-algorithm'),alpha:Number(value('node-size-alpha')),maxAmount:Math.max(0,...amounts.values())}
+const sizing={metric:'connections',minRadius:3,maxRadius:10}
 const organizations=Object.fromEntries(data.organizations.map(n=>[n.id,{}]))
 const diagnostics={}
 for(const dimensions of [2,3,4]){
- const all=data.organizations.map(n=>({...n,renderRadius:financialNodeRadius(value('scale-node-finances')?amounts.get(n.id):null,sizing)}))
+ const all=data.organizations.map(n=>({...n,renderRadius:metricRadius(layoutAnalysis.adjacency.get(n.id).size,maxDegree)}))
  initializeNetworkPositions(all,dimensions)
  const nodes=all.filter(n=>!value('hide-isolated')||connected.has(n.id))
- const ids=new Set(nodes.map(n=>n.id)),links=structuredClone(edges.filter(e=>ids.has(e.source)&&ids.has(e.target)))
+ const ids=new Set(nodes.map(n=>n.id)),links=structuredClone(layoutConnections(edges.filter(e=>ids.has(e.source)&&ids.has(e.target))))
  const simulation=dimensions===4?createParticleLife4D(nodes,options):dimensions===3?layoutNetwork3D(nodes,links,options):layoutNetwork(nodes,links,n=>n.renderRadius,()=>({x:0,y:0}),options)
  const ticks=dimensions===4?360:480
  console.log(`Generating ${dimensions}D: ${nodes.length} organizations, ${links.length} links`)

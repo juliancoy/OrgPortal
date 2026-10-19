@@ -20,7 +20,7 @@ export function createNetworkCanvasWorker(canvas,onPaint=()=>{}) {
    if(updated){for(const n of nodes)if(updated.has(n.id))patches.set(n.id,{id:n.id,x:n.x,y:n.y});return}
    patches.clear()
    const point=({x,y,renderRadius})=>({x,y,renderRadius})
-   graph={selected,colors,nodes:nodes.filter(n=>visible.has(n.id)).map(n=>({id:n.id,category:n.category,...point(n),financialPie:n.financialPie?{slices:n.financialPie.slices.map(({startAngle,endAngle,color})=>({startAngle,endAngle,color}))}:null})),edges:edges.filter(e=>visibleEdges.has(e.id)).map(e=>({id:e.id,sourceId:e.source.id,targetId:e.target.id,curveOffset:e.curveOffset,relationship:e.relationship,quantityWidth:e.quantityWidth,color:edgeColor(e)}))}
+   graph={selected,colors,nodes:nodes.filter(n=>visible.has(n.id)).map(n=>({id:n.id,category:n.category,opacity:n.opacity,...point(n),financialPie:n.financialPie?{slices:n.financialPie.slices.map(({startAngle,endAngle,color})=>({startAngle,endAngle,color}))}:null})),edges:edges.filter(e=>visibleEdges.has(e.id)).map(e=>({id:e.id,sourceId:e.source.id,targetId:e.target.id,curveOffset:e.curveOffset,relationship:e.relationship,quantityWidth:e.quantityWidth,opacity:e.opacity,directional:e.directional,color:edgeColor(e)}))}
   },
   render(next){view={...next};flush()},
   resize(width,height){size=[width,height,devicePixelRatio]},

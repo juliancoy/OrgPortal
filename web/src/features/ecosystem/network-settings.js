@@ -6,6 +6,7 @@ export async function persistNetworkSettings(root,signal,graphType){
  const compressionKey=storageKey+'.compressed'
  const controls=[...root.querySelectorAll('.eco-network-controls input[id],.eco-network-controls select[id],.eco-network-controls input[name]')].filter(el=>el.id!=='network-search'&&el.id!=='neighbors'&&el.id!=='compress-network-settings')
  const key=el=>el.id||`${el.name}:${el.value}`
+ const defaults=Object.fromEntries(controls.map(el=>[key(el),el.type==='checkbox'?el.defaultChecked:el.tagName==='SELECT'?([...el.options].find(o=>o.defaultSelected)||el.options[0]).value:['color','date','text'].includes(el.type)?el.defaultValue:Number(el.defaultValue)]))
  const read=()=>{try{const value=JSON.parse(localStorage.getItem(storageKey));return value&&typeof value==='object'&&!Array.isArray(value)?value:{}}catch{return {}}}
  const params=new URL(location.href).searchParams
  let urlValues={}
@@ -29,6 +30,8 @@ export async function persistNetworkSettings(root,signal,graphType){
   if(el.type==='checkbox'){if(typeof value==='boolean')el.checked=value}
   else if(el.type==='color'){if(typeof value==='string'&&/^#[0-9a-f]{6}$/i.test(value))el.value=value}
   else if(el.tagName==='SELECT'){if([...el.options].some(option=>option.value===value))el.value=value}
+  else if(el.type==='text'){if(typeof value==='string'&&value.length<=8000)el.value=value}
+  else if(el.type==='date'){if(typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value))el.value=value}
   else if(typeof value==='number'&&Number.isFinite(value)&&(!el.hasAttribute('min')||value>=Number(el.min))&&(!el.hasAttribute('max')||value<=Number(el.max))){el.value=String(value)}
   const output=el.id&&root.querySelector(`#${el.id}-value`)
   if(output)output.textContent=el.id==='link-width'?Number(el.value).toFixed(2):el.step==='0.1'?Number(el.value).toFixed(1):el.value
@@ -36,16 +39,17 @@ export async function persistNetworkSettings(root,signal,graphType){
  const save=async()=>{
   const version=++revision
   const values={...saved}
-  for(const el of controls){const value=el.type==='checkbox'?el.checked:(el.tagName==='SELECT'||el.type==='color')?el.value:el.valueAsNumber;if(el.validity.valid&&(typeof value!=='number'||Number.isFinite(value)))values[key(el)]=value}
+  for(const el of controls){const value=el.type==='checkbox'?el.checked:(el.tagName==='SELECT'||el.type==='color'||el.type==='date'||el.type==='text')?el.value:el.valueAsNumber;if(el.validity.valid&&(typeof value!=='number'||Number.isFinite(value)))values[key(el)]=value}
   try{localStorage.setItem(storageKey,JSON.stringify(values));localStorage.setItem(compressionKey,String(compact.checked))}catch{/* Optional preference storage. */}
   try{
-   const compressed=compact.checked?await encodeSettings(values):null
+   const sharedValues=Object.fromEntries(Object.entries(values).filter(([key,value])=>Object.hasOwn(defaults,key)&&value!==defaults[key]))
+   const compressed=compact.checked?await encodeSettings(sharedValues):null
    if(signal.aborted||version!==revision)return
    const url=new URL(location.href)
    for(const key of [...url.searchParams.keys()])if(key==='s'||key==='graph-settings'||key.startsWith('g.'))url.searchParams.delete(key)
    url.searchParams.set('graph-settings',graphType)
    if(compressed)url.searchParams.set('s',compressed)
-   else{for(const [key,value] of Object.entries(values))url.searchParams.set('g.'+key,JSON.stringify(value))}
+   else{for(const [key,value] of Object.entries(sharedValues))url.searchParams.set('g.'+key,JSON.stringify(value))}
    history.replaceState(history.state,'',url);updateLinks()
   }catch{root.querySelector('#network-share-status').textContent='Could not encode settings URL.'}
  }
