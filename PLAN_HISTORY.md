@@ -33,3 +33,10 @@ Production release and sustained hardware-GPU acceptance remain in PLAN.md.
 - Local Canvas and six-dimensional exploration passed with 11,916 records retained in All mode, settings reload, inspection and mobile checks. N-dimensional acceptance passed dimensions 8/16/32, all six algorithms, independent 2D/3D display, worker payloads, live physics, hidden-axis movement and reset with no browser errors. Live WebGPU 3D interpolation showed no partial frames and stabilized when paused.
 - Production release uses the existing authenticated OrgPortal Workers Builds trigger, followed by frontend/API commit identity and read-only public navigation checks. Deployment results are reported with the release rather than inferred from the push.
 - Sustained hardware-GPU performance and missing geographic coverage remain tracked in PLAN.md.
+
+## Release acceptance follow-up
+
+- Browser acceptance found and fixed navigation practice calling the graph-only settings helper without a graph type, URL settings leaking across graph-type switches, and restored selection overriding the requested panel.
+- Updated browser fixtures to select organizations through Search and import the same React dependency URLs as the running Vite server.
+- Navigation-practice and 2D → 3D → N-D → 2D/Back checks passed, including fullscreen, mobile layout, search, selected organization, cached evidence, independent settings, and hidden-axis movement.
+- Repeated required frontend release checks and all 18 ecosystem files passed. The first production build published 6aa14a0 to both workers with clean commit metadata; the follow-up release publishes these acceptance fixes through the same pipeline.

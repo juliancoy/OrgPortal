@@ -35,6 +35,9 @@ export function EcosystemNetworkPage({ renderer = 'canvas' }: { renderer?: Netwo
       const url = new URL(link.href)
       if (url.pathname === window.location.pathname) return
       const params = new URLSearchParams(window.location.search)
+      for (const key of [...params.keys()]) {
+        if (key === 's' || key === 'graph-settings' || key.startsWith('g.')) params.delete(key)
+      }
       params.set('panel', 'visualization')
       navigate(`${url.pathname}?${params}`)
     }

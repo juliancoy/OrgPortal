@@ -1,7 +1,6 @@
 import {BufferGeometry,Float32BufferAttribute,LineBasicMaterial,LineSegments,Color} from 'three/webgpu'
 import {createNetworkGPU3D} from './webgpu-3d-renderer.js'
 import {projectND} from './particle-life-4d.js'
-import {persistNetworkSettings} from './network-settings.js'
 
 const axes=['X','Y','Z'],axisColors=['#f67d75','#62d8a0','#75baff'],layers=[-200,-100,0,100,200],spacing=50,extent=100
 export function practiceGrid(){
@@ -59,7 +58,6 @@ export function mountNavigationPractice(root){
  </div><div class="eco-practice-actions"><button type="button" data-w-step="-50">− (Q)</button><button type="button" data-w-step="50">+ (E)</button><button type="button" data-reset-practice>Reset position</button><button type="button" data-practice-exit>Return to graph</button></div>
  </aside></div>`
  const $=selector=>root.querySelector(selector),canvas=$('canvas'),view=$('.eco-practice-view'),status=$('.eco-practice-status')
- persistNetworkSettings(root,abort.signal)
  $('#camera-speed').addEventListener('input',()=>{$('#camera-speed-value').textContent=Number($('#camera-speed').value).toFixed(1)},{signal:abort.signal})
  let segments=[],labelItems=[]
  const geometry=new BufferGeometry()
