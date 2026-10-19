@@ -191,7 +191,7 @@ def _wait_for_http(url: str, network_name: str, retries: int = 60, delay: int = 
             network_name,
             "-e",
             f"TEST_URL={url}",
-            "curlimages/curl:8.4.0",
+            "curlimages/curl:8.11.0",
             "sh",
             "-c",
             script,
@@ -328,7 +328,7 @@ def _ensure_local_tls_certificates() -> None:
             capture_output=True,
             text=True,
         ).stdout
-        if all(f"DNS:{name}" in cert_text for name in required_names):
+        if all(f"DNS:{name}" in cert_text for name in required_names) and "IP Address:192.168.50.141" in cert_text:
             return
 
     local_certs_dir.mkdir(parents=True, exist_ok=True)
@@ -353,6 +353,7 @@ def _ensure_local_tls_certificates() -> None:
             [alt_names]
             {alt_names}
             IP.1 = 127.0.0.1
+            IP.2 = 192.168.50.141
             """
         ).strip()
         + "\n",
@@ -410,7 +411,7 @@ def _write_local_gateway_config(
                 proxy_http_version 1.1;
                 proxy_set_header Host $host;
                 proxy_set_header X-Forwarded-Proto https;
-                proxy_set_header X-Forwarded-Host localhost;
+                proxy_set_header X-Forwarded-Host $http_host;
                 proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 
                 location = /services {{ return 302 /services/; }}
@@ -498,11 +499,11 @@ def _start_local_gateway(
                 str(local_nginx_conf): {"bind": "/etc/nginx/nginx.conf", "mode": "ro"},
                 str(local_certs_dir): {"bind": "/certs", "mode": "ro"},
             },
-            "ports": {"8443/tcp": ("127.0.0.1", int(gateway_port))},
+            "ports": {"8443/tcp": (os.getenv("ORGPORTAL_LOCAL_BIND_ADDRESS", "127.0.0.1"), int(gateway_port))},
         }
     )
     docker_utils.wait_for_port(gateway_name, 8443, network_name, retries=30, delay=2)
-    return f"https://localhost:{gateway_port}"
+    return os.getenv("ORGPORTAL_LOCAL_PUBLIC_BASE_URL", f"https://localhost:{gateway_port}")
 
 
 def _start_pidp_if_available(prefix: str, network_name: str, gateway_base: str) -> bool:
@@ -714,6 +715,7 @@ def run(prefix: str, network_name: str) -> None:
         "working_dir": container_app_dir,
         "volumes": {
             str(org_worker_dir): {"bind": container_app_dir, "mode": "rw"},
+            str(current_dir / "docs"): {"bind": "/docs", "mode": "ro"},
             str(local_newsletter_vars_path): {"bind": "/app/.dev.vars", "mode": "ro"},
             str(current_dir / "shared"): {"bind": "/shared", "mode": "ro"},
             prefix + "ORGPORTAL_ORG_WORKER_NODE_MODULES": {
@@ -745,6 +747,7 @@ def run(prefix: str, network_name: str) -> None:
                 "node scripts/write-local-ca-bundle.cjs && "
                 "export NODE_EXTRA_CA_CERTS=/tmp/orgportal-ca.pem && "
                 "npm ci && "
+                "npm run build:metadata && "
                 "npm run db:migrate:local && "
                 f"npx wrangler dev --local --test-scheduled --ip 0.0.0.0 --port {worker_port} "
                 f"--var {shlex.quote('PIDP_BASE_URL:' + (os.getenv('ORGPORTAL_WORKER_PIDP_BASE_URL') or f'http://{pidp_dev_name}:8000'))} "
