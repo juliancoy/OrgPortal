@@ -4,7 +4,7 @@
 
 ## Visualization implementation milestone
 
-Commit reference: the implementation commit titled `Overhaul organization network exploration and financial inspection` (exact hash recorded after commit).
+Commit: `96d5689` — `Overhaul organization network exploration and financial inspection`.
 
 Completed phases:
 - Progressive Overview / Focus / All disclosure; computational, sector, county and municipality groups; expansion and stable IDs; full-record retention with shared geometry for identical visual semantics.
