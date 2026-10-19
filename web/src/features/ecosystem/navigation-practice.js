@@ -1,6 +1,6 @@
 import {BufferGeometry,Float32BufferAttribute,LineBasicMaterial,LineSegments,Color} from 'three/webgpu'
 import {createNetworkGPU3D} from './webgpu-3d-renderer.js'
-import {project4D} from './particle-life-4d.js'
+import {projectND} from './particle-life-4d.js'
 import {persistNetworkSettings} from './network-settings.js'
 
 const axes=['X','Y','Z'],axisColors=['#f67d75','#62d8a0','#75baff'],layers=[-200,-100,0,100,200],spacing=50,extent=100
@@ -84,7 +84,7 @@ export function mountNavigationPractice(root){
   if(mode==='scale')wScale=Math.max(.1,Math.min(3,wScale*Math.exp(delta*.003)))
   syncTransforms()
  }
- function projectPoint(point){return project4D(transformPracticePoint(point,Number($('#practice-plane').value),angle,wScale),[0,0,0],.5,200,position4)}
+ function projectPoint(point){return projectND(transformPracticePoint(point,Number($('#practice-plane').value),angle,wScale),[0,0,0],.5,200,position4)}
  $('#practice-object').addEventListener('change',()=>{setObject();if($('#practice-object').value==='tesseract')$('#practice-transform').value='rotate';reset()},{signal:abort.signal})
  $('#practice-angle').addEventListener('input',()=>{angle=Number($('#practice-angle').value);syncTransforms()},{signal:abort.signal})
  $('#practice-scale').addEventListener('input',()=>{wScale=Number($('#practice-scale').value);syncTransforms()},{signal:abort.signal})

@@ -44,7 +44,7 @@
     "test:timebank:imports:selenium": "python3 scripts/selenium-timebank-imports.py",
     "test:e2e:local": "playwright test --config playwright.local.config.ts",
     "test:organizer:local": "python3 scripts/test-local-organizer.py",
-    "test:ecosystem": "node --test scripts/network-analysis.test.mjs scripts/network-layouts.test.mjs scripts/portal-ecosystem.test.mjs scripts/fund-pies.test.mjs scripts/network-history.test.mjs scripts/ecosystem-physics.test.mjs scripts/force-law.test.mjs scripts/network-rendering.test.mjs scripts/network-settings.test.mjs scripts/frame-budget.test.mjs scripts/government-awards.test.mjs scripts/performance.test.mjs scripts/graph-3d.test.mjs scripts/sphere-pies.test.mjs scripts/navigation-practice.test.mjs scripts/particle-life-4d.test.mjs",
+    "test:ecosystem": "node --test scripts/network-analysis.test.mjs scripts/network-layouts.test.mjs scripts/network-projection.test.mjs scripts/network-links.test.mjs scripts/portal-ecosystem.test.mjs scripts/fund-pies.test.mjs scripts/network-history.test.mjs scripts/ecosystem-physics.test.mjs scripts/force-law.test.mjs scripts/network-rendering.test.mjs scripts/network-settings.test.mjs scripts/frame-budget.test.mjs scripts/government-awards.test.mjs scripts/performance.test.mjs scripts/graph-3d.test.mjs scripts/sphere-pies.test.mjs scripts/navigation-practice.test.mjs scripts/particle-life-4d.test.mjs",
     "sync:ecosystem": "node scripts/sync-ecosystem.mjs && node scripts/sync-portal-ecosystem.mjs",
     "build:ecosystem-history": "node scripts/build-network-history.mjs",
     "test:ecosystem:webgpu": "node scripts/check-network-webgpu.mjs",

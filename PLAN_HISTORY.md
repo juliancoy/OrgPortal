@@ -24,3 +24,12 @@ Verification:
 - Bundled graph: 1,961 displayed organizations and 11,916 records; Overview reduces geometry to 40 community markers and 60 representative inter-community relationships. Paused-motion samples, baseline comparisons, heap figures and limitations are recorded in the implementation documentation.
 
 Production release and sustained hardware-GPU acceptance remain in PLAN.md.
+
+## Complete repository release candidate, 2026-10-19
+
+- Reconciled and reviewed all pending N-dimensional, network-search, interpolation, local-home, local-login and public DKIM changes under explicit authorization to commit, push and deploy all changed code.
+- Preserved government obligation semantics and rejected malformed organization-selector payloads during review.
+- Required release checks passed: 229 frontend tests, 44 routing/release tests, API type checking and 384 API tests. All 18 ecosystem test files and seven local-login tests passed. Both production builds and Wrangler dry runs passed.
+- Local Canvas and six-dimensional exploration passed with 11,916 records retained in All mode, settings reload, inspection and mobile checks. N-dimensional acceptance passed dimensions 8/16/32, all six algorithms, independent 2D/3D display, worker payloads, live physics, hidden-axis movement and reset with no browser errors. Live WebGPU 3D interpolation showed no partial frames and stabilized when paused.
+- Production release uses the existing authenticated OrgPortal Workers Builds trigger, followed by frontend/API commit identity and read-only public navigation checks. Deployment results are reported with the release rather than inferred from the push.
+- Sustained hardware-GPU performance and missing geographic coverage remain tracked in PLAN.md.

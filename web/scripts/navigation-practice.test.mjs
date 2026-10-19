@@ -1,7 +1,7 @@
 import {test} from 'node:test'
 import assert from 'node:assert/strict'
 import {practiceGrid,practiceTesseract,transformPracticePoint} from '../src/features/ecosystem/navigation-practice.js'
-import {project4D} from '../src/features/ecosystem/particle-life-4d.js'
+import {projectND} from '../src/features/ecosystem/particle-life-4d.js'
 test('practice lattice has measured lines on XYZ and five labeled W layers',()=>{
  const grid=practiceGrid()
  assert.equal(grid.segments.length,375);assert.equal(grid.labels.length,18)
@@ -15,7 +15,7 @@ test('practice lattice has measured lines on XYZ and five labeled W layers',()=>
 })
 test('practice W travel changes projection and retains measured grid coordinates',()=>{
  const point=practiceGrid().segments[0].from,original=[...point]
- assert.notDeepEqual(project4D(point,[0,0,0],.5,200,[0,0,0,0]),project4D(point,[0,0,0],.5,200,[0,0,0,50]))
+ assert.notDeepEqual(projectND(point,[0,0,0],.5,200,[0,0,0,0]),projectND(point,[0,0,0],.5,200,[0,0,0,50]))
  assert.deepEqual(point,original)
 })
 

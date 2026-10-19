@@ -16,6 +16,13 @@ login=importlib.util.module_from_spec(spec)
 spec.loader.exec_module(login)
 
 class LocalLoginTests(unittest.TestCase):
+    def test_session_reports_database_recovery_without_exposing_subprocess_output(self):
+        result = type('Result', (), {'returncode': 1, 'stderr': 'private details: the database system is in recovery mode'})()
+        with patch.object(login.subprocess, 'run', return_value=result):
+            with self.assertRaisesRegex(RuntimeError, 'database is in recovery mode') as error:
+                login.session('identity', admin=True)
+        self.assertNotIn('private details', str(error.exception))
+
     def test_rejects_remote_origins_and_embedded_credentials(self):
         for base in ['https://orgportal.cc','https://localhost.evil.test','https://user:password@localhost:8443','https://localhost:8443/pidp','https://localhost:8443?next=https://evil.test']:
             with self.subTest(base=base),self.assertRaises(ValueError):login.local_base(base)

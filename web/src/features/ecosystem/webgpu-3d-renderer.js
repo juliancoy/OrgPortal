@@ -21,7 +21,7 @@ export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D',mo
  const input=new AbortController(),keys=new Set(),rotation=new Euler(0,0,0,'YXZ'),forward=new Vector3(),right=new Vector3(),vertical=new Vector3(),movement=new Vector3()
  let look=null,moveFrame=0,lastMove=0,boosted=false,slowed=false
  const previousTabIndex=canvas.getAttribute('tabindex'),previousLabel=canvas.getAttribute('aria-label')
- canvas.tabIndex=0;canvas.setAttribute('aria-label',dimension+' network. Drag to look around. W/S move forward/backward; A/D move left/right. '+(dimension==='4D'?'E/Q move through the fourth dimension.':'E moves up; Q moves down.')+' Hold Shift for 10× speed; Control for 0.1× speed.')
+ canvas.tabIndex=0;canvas.setAttribute('aria-label',dimension+' network. Drag to look around. W/S move forward/backward; A/D move left/right. '+(dimension!=='3D'?'E/Q move through the selected hidden dimension.':'E moves up; Q moves down.')+' Hold Shift for 10× speed; Control for 0.1× speed.')
  const stopMovement=()=>{boosted=false;slowed=false;keys.clear();cancelAnimationFrame(moveFrame);moveFrame=0;lastMove=0;look=null}
  function move(time){
   moveFrame=0
@@ -29,7 +29,7 @@ export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D',mo
   const dt=lastMove?Math.min((time-lastMove)/1000,.05):0;lastMove=time
   camera.getWorldDirection(forward);right.setFromMatrixColumn(camera.matrixWorld,0)
   movement.set(0,0,0).addScaledVector(forward,Number(keys.has('KeyW'))-Number(keys.has('KeyS'))).addScaledVector(right,Number(keys.has('KeyD'))-Number(keys.has('KeyA')))
-  const fourth=dimension==='4D',axis=Number(keys.has('KeyE'))-Number(keys.has('KeyQ'))
+  const fourth=dimension!=='3D',axis=Number(keys.has('KeyE'))-Number(keys.has('KeyQ'))
   if(!fourth){vertical.setFromMatrixColumn(camera.matrixWorld,1);movement.addScaledVector(vertical,axis)}
   const length=Math.max(1,Math.sqrt(movement.lengthSq()+(fourth?axis*axis:0))),step=.5*movementSpeed()*(boosted?10:1)*(slowed?0.1:1)*dt/length
   movement.multiplyScalar(referenceDistance*step)

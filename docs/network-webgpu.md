@@ -27,3 +27,48 @@ The default graph uses `canvas-renderer.js` to batch edge paths, arrowheads, nod
 Directory refresh uses precomputed ID/name/website indexes and funding records indexed by endpoint and direct fund administrator. It preserves ambiguous-match handling, exact-ID precedence, and separate received/disbursed totals without rescanning the entire directory for every record.
 
 `network-data.worker.js` performs full-directory reconciliation, history merging, and funding-summary preparation. Its cached summaries and folded graph are reused by the UI controller; the short-lived worker terminates after preparation or when navigation aborts it.
+
+## N-dimensional layout
+
+The `/ecosystem/network/4d` view supports 4–32 simulation dimensions. In Controls,
+set **Dimensions**, choose a hidden **Viewing axis**, and rotate it into X, Y,
+or Z. Each hidden axis retains its own three rotation angles. E/Q moves along
+that selected axis. Dimension count, axis selection, and rotations persist in
+settings and shared URLs. Reset returns to four dimensions.
+
+`createNetworkND` uses N-dimensional relationship springs and local repulsion.
+Its core accepts any integer dimension count of at least four; 32 is the UI limit.
+Repulsion sorts nodes along one coordinate before testing full distances, avoiding
+an exponential grid search. Worst-case work is still quadratic in node count and
+linear in dimensions. Workers transfer N positions and N velocities per node.
+Plane rotations preserve an orthonormal viewing frame; its first three coordinates
+feed the existing 3D renderer. Projection perspective can be set to zero for an
+orthographic view. Changing projection does not restart the simulation.
+
+For the isolated, unauthenticated synthetic browser fixture, start Vite locally
+and run `NETWORK_TEST_ORIGIN=http://127.0.0.1:5187 node scripts/check-network-nd.mjs`
+from `web`. It checks 8/16/32 dimensions, the final hidden axis, worker buffers,
+animation, settings reload, and reset without using an account or real data.
+
+Computed dimensions and displayed dimensions are independent. A 32-dimensional
+simulation can be shown as a flat 2D projection or a 3D projection without
+changing forces, coordinates, velocities, or worker lifetime. Projection choices:
+
+- **Rotated perspective** uses the original plane rotations and hidden-depth magnification.
+- **Rotated orthographic** removes perspective magnification.
+- **PCA** centers the cloud and fits its leading principal components. The basis
+  stays fixed during animation; **Refit PCA** updates it. Fits use at most 1,024
+  evenly spaced nodes, with degenerate clouds handled deterministically.
+- **Seeded random projection** uses reproducible orthonormal viewing axes and
+  distance scaling. Changing the seed changes the view, not the simulation.
+- **Radial shell** preserves full-dimensional distance from the viewing origin
+  while retaining projected direction. It is a nonlinear visual effect.
+- **Dimensional slice** shows a slab around the selected hidden coordinate.
+  Slice thickness and E/Q movement let you inspect separate layers; clipped
+  nodes still participate in physics.
+
+Projection mode, displayed dimensions, seed, and slice thickness persist in the
+same settings and shared URLs as the other view controls. Camera movement uses
+the selected projection's viewing basis. Unit coverage is in
+`web/scripts/network-projection.test.mjs`; the N-D browser fixture checks all six
+modes without restarting physics.

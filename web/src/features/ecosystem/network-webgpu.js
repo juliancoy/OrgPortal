@@ -3,10 +3,11 @@ import {appendNetworkInspection,applyNetworkFinancialSummary} from './network-in
 import {analyticalLayout} from './network-layouts.js'
 import {createNetworkAnalysis,disclosure,metricRadius,financialEvidence,endpoint} from './network-analysis.js'
 import {mountVisibilityControls} from './network-visibility.js'
+import {MAX_NETWORK_DIMENSIONS} from './nd-controls.js'
 import {createFrameBudget,createFrameRate} from './frame-budget.js'
 import {createLabelGrid} from './label-layout.js'
 import {mountNetworkLawDialogs} from './network-law-dialogs.js'
-import {movement4D} from './particle-life-4d.js'
+import {rotateND} from './particle-life-4d.js'
 import {shortGroupName} from '../../domain/organization/groupNames'
 import {persistNetworkSettings} from './network-settings.js'
 import { transactionVisibility, transactionCounts } from './zoom-visibility.js'
@@ -16,6 +17,7 @@ import {mergeNetworkHistory,appendNonprofitEvidence} from './network-history.js'
 import { applyFundHierarchy, foldFundNodes, financialNodePies, pieLabel } from './fund-pies.js'
 import { createNetworkGPU, curvePoints } from './webgpu-renderer.js'
 import { assignEdgeCurvature } from './ecosystem-physics.js'
+import { uniqueNetworkLinks } from './network-links.js'
 import { createNetworkLayout } from './network-layout.js'
 import { prepareNetworkData, loadSharedNetworkData } from './network-data.js'
 import { organizationPreview, edgeDetails, networkPreviewSummaries } from './ecosystem-view.js'
@@ -123,9 +125,28 @@ const settingsReady=persistNetworkSettings(root,abort.signal,four?'4d':spatial?'
 $('#camera-speed').addEventListener('input',()=>{$('#camera-speed-value').textContent=Number($('#camera-speed').value).toFixed(1)},{signal:abort.signal})
 const recordPaint=()=>{const now=performance.now();paintInterval=lastPaint&&now-lastPaint<1000?now-lastPaint:0;lastPaint=now;frameRate.frame(now)}
 const physicsEnabled=()=>!analysisLayout&&!document.hidden&&!reducedMotion.matches&&$('#live-physics').checked
-let fourthPosition=[0,0,0,0]
-function moveFourth(delta){const world=movement4D(delta,['xw','yw','zw'].map(axis=>Number($('#life-'+axis).value)));fourthPosition=fourthPosition.map((v,i)=>v+world[i]);$('#life-w-position').textContent=fourthPosition[3].toFixed(2);applyProjection()}
-function applyProjection(){if(four)simulation?.projection(['xw','yw','zw'].map(axis=>Number($('#life-'+axis).value)),Number($('#life-perspective').value),fourthPosition)}
+const dimensionCount=()=>four?Math.max(4,Math.min(MAX_NETWORK_DIMENSIONS,Math.round(Number($('#network-dimensions').value)||4))):spatial?3:2
+const projectionAngles=()=>Array.from({length:(dimensionCount()-3)*3},(_,i)=>Number($('#projection-'+(3+Math.floor(i/3))+'-'+(i%3)).value))
+let fourthPosition=Array(MAX_NETWORK_DIMENSIONS).fill(0),projectionNeedsFit=false
+function updateProjectionControls(){
+ if(!four)return
+ const dimensions=dimensionCount(),select=$('#projection-axis')
+ for(const option of select.options)option.hidden=Number(option.value)>=dimensions
+ if(Number(select.value)>=dimensions)select.value='3'
+ for(const group of root.querySelectorAll('[data-projection-option]'))group.hidden=group.dataset.projectionOption!==$('#projection-algorithm').value
+ for(const group of root.querySelectorAll('[data-projection-axis]'))group.hidden=group.dataset.projectionAxis!==select.value
+ $('#life-w-position').textContent=(simulation?.axisPosition(fourthPosition,Number(select.value))??rotateND(fourthPosition.slice(0,dimensions),projectionAngles())[Number(select.value)]).toFixed(2)
+}
+function moveFourth(delta){
+ const world=simulation?.movement(delta,Number($('#projection-axis').value));if(!world)return
+ world.forEach((v,i)=>fourthPosition[i]+=v);applyProjection()
+}
+function applyProjection(refit=false,fitView=false){if(four){
+ projectionNeedsFit ||= fitView
+ simulation?.projection(projectionAngles(),Number($('#life-perspective').value),fourthPosition,{
+  algorithm:$('#projection-algorithm').value,displayDimensions:Number($('#display-dimensions').value),seed:Number($('#projection-seed').value),sliceAxis:Number($('#projection-axis').value),sliceWidth:Number($('#projection-slice-width').value),refit,
+ });updateProjectionControls()
+}}
 function motionChange(){simulation?.motion(physicsEnabled());requestRender()}
 document.addEventListener('visibilitychange',motionChange,{signal:abort.signal})
 reducedMotion.addEventListener('change',motionChange,{signal:abort.signal})
@@ -138,7 +159,7 @@ function focusView(node){
  const tick=now=>{if(disposed)return;const t=reducedMotion.matches?1:Math.min(1,(now-start)/350),ease=t*t*(3-2*t);view.x=x+(endX-x)*ease;view.y=y+(endY-y)*ease;requestRender();if(t<1)cameraTransition=requestAnimationFrame(tick)};tick(start)
 }
 abort.signal.addEventListener('abort',()=>cancelAnimationFrame(cameraTransition),{once:true})
-const forceOptions=()=>({live:true,attractionLaw:$('#attraction-law').value,repulsionLaw:$('#repulsion-law').value,attractionAlpha:Number($('#attraction-alpha').value),repulsionAlpha:Number($('#repulsion-alpha').value),dimensions:four?4:spatial?3:2,lifeRadius:Number($('#life-radius')?.value??300),lifeFriction:Number($('#life-friction')?.value??.85),lifeSeed:Number($('#life-seed')?.value??1),attraction:Number($('#attraction').value),repulsion:Number($('#repulsion').value),proximity:Number($('#proximity').value),centralGravity:Number($('#central-gravity').value),dither:Number($('#dither').value)})
+const forceOptions=()=>({live:true,attractionLaw:$('#attraction-law').value,repulsionLaw:$('#repulsion-law').value,attractionAlpha:Number($('#attraction-alpha').value),repulsionAlpha:Number($('#repulsion-alpha').value),dimensions:dimensionCount(),lifeRadius:Number($('#life-radius')?.value??300),lifeFriction:Number($('#life-friction')?.value??.85),attraction:Number($('#attraction').value),repulsion:Number($('#repulsion').value),proximity:Number($('#proximity').value),centralGravity:Number($('#central-gravity').value),dither:Number($('#dither').value)})
 const financialLabel = n => n.financialAmount ? `Recorded USD transaction volume: ${new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(n.financialAmount)}; incoming + outgoing; payment unverified${n.financialPie ? '. '+pieLabel(n.financialPie) : ''}` : 'USD volume undisclosed'
 function previewNode(org) {
  hovered=org.id;labelPriority=[];requestRender()
@@ -146,12 +167,12 @@ function previewNode(org) {
  const geographic=analysisLayout?.geographicGroups?.get(org.id),group=disclosed?.clusters.get(disclosed.membership.get(org.id)),aggregate=geographic||(!analysisLayout&&$('#network-detail-mode').value==='overview'&&$('#network-clustering').checked&&!expandedCommunities.has(group?.id)&&group?.members.length>1?group:null)
  if(aggregate){const panel=$('#network-detail'),heading=document.createElement('h2'),note=document.createElement('p');heading.textContent=`${geographic?.label||'Community'} · ${aggregate.members.length} organizations`;note.textContent=`Click to expand. Organization anchor: ${org.name}. This marker is an aggregate, not an organization balance.`;panel.replaceChildren(heading,note);return}
  const key='node:'+org.id;if(inspectorKey===key)return;inspectorKey=key
- $('#network-detail').innerHTML=organizationPreview(org,previewSummaries);if(analysis)applyNetworkFinancialSummary($('#network-detail'),org,analysis);rewriteLinks();if(matchMedia('(max-width:900px)').matches&&!root.classList.contains('eco-controls-open')&&!root.classList.contains('eco-visualization-open')){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
+ $('#network-detail').innerHTML=organizationPreview(org,previewSummaries);if(analysis)applyNetworkFinancialSummary($('#network-detail'),org,analysis);rewriteLinks();if(matchMedia('(max-width:900px)').matches&&!root.classList.contains('eco-controls-open')&&!root.classList.contains('eco-visualization-open')&&!root.classList.contains('eco-search-open')){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
 }
 function previewEdge(edge) {
  if(selected)return
  const key='edge:'+edge.id;if(inspectorKey===key)return;inspectorKey=key
- $('#network-detail').innerHTML=edgeDetails(edge,data);if(edge.records?.length>1){const count=document.createElement('p');count.textContent=`${edge.records.length} records share this geometry; select either organization to inspect every record and source.`;$('#network-detail').prepend(count)}rewriteLinks();if(matchMedia('(max-width:900px)').matches&&!root.classList.contains('eco-controls-open')&&!root.classList.contains('eco-visualization-open')){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
+ $('#network-detail').innerHTML=edgeDetails(edge,data);if(edge.records?.length>1){const count=document.createElement('p');count.textContent=`${edge.records.length} records share this geometry; select either organization to inspect every record and source.`;$('#network-detail').prepend(count)}rewriteLinks();if(matchMedia('(max-width:900px)').matches&&!root.classList.contains('eco-controls-open')&&!root.classList.contains('eco-visualization-open')&&!root.classList.contains('eco-search-open')){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
 }
 function bindNodePreview(button,node) {
  button.addEventListener('pointerenter',()=>previewNode(node))
@@ -164,7 +185,7 @@ function select(id) {
  previewSummaries=preparedData?.data===data?preparedData.summaries:networkPreviewSummaries(data)
  if($('#network-analysis-mode').value==='geography'){const group=$('#network-grouping').value==='county'?org.county:org.municipality||org.city;if(group){expandedCommunities.add(group);saveExpanded();updateAnalysisLayout()}}
  selected = id;$('#network-detail-mode').value='focus';$('#network-detail-mode').dispatchEvent(new Event('input',{bubbles:true})); inspectorKey='node:'+id; $('#neighbors').disabled=false
- $('#network-detail').innerHTML = organizationPreview(org,previewSummaries);if(analysis)appendNetworkInspection($('#network-detail'),org,analysis,recordEdges,unpin); rewriteLinks();if(matchMedia('(max-width:900px)').matches&&!root.classList.contains('eco-controls-open')&&!root.classList.contains('eco-visualization-open')){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
+ $('#network-detail').innerHTML = organizationPreview(org,previewSummaries);if(analysis)appendNetworkInspection($('#network-detail'),org,analysis,recordEdges,unpin); rewriteLinks();if(matchMedia('(max-width:900px)').matches&&!root.classList.contains('eco-controls-open')&&!root.classList.contains('eco-visualization-open')&&!root.classList.contains('eco-search-open')){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
  selectPanel('inspector')
  const u = new URL(location.href); u.searchParams.set('org',id); history.replaceState(history.state,'',u)
  refreshSelection()
@@ -190,8 +211,9 @@ root.addEventListener('keydown',event=>{if(event.key==='Escape'&&root.classList.
 function search() {
  const q = $('#network-search').value.trim().toLowerCase()
  const result = $('#network-results'); result.replaceChildren()
+ $('#network-results-heading').textContent=q?'Search results':'Suggested organizations'
  const matches = data.organizations.filter(o=>!q || `${o.name} ${shortGroupName(o.name)} ${o.type}`.toLowerCase().includes(q))
- for (const org of matches.slice(0,q ? 20 : 5)) { const b=document.createElement('button'); b.type='button'; b.textContent=shortGroupName(org.name);b.setAttribute('aria-label',org.name); b.addEventListener('click',()=>select(org.id)); result.append(b) }
+ for (const org of matches.slice(0,q ? 20 : 5)) { const b=document.createElement('button'); b.type='button'; b.textContent=shortGroupName(org.name);b.setAttribute('aria-label',org.name); b.addEventListener('click',()=>{select(org.id);selectPanel('inspector')}); result.append(b) }
  if (!matches.length) result.textContent='No matching organization.'
 }
 function rebuild() {
@@ -199,7 +221,7 @@ function rebuild() {
  inspectorKey=null
  previewSummaries=preparedData?.data===data?preparedData.summaries:networkPreviewSummaries(data)
  simulation?.stop()
- nodes.forEach(n=>savedPositions.set(n.id,{q:n.q,velocity4:n.velocity4,x:n.x,y:n.y,z:n.z,vx:n.vx,vy:n.vy,vz:n.vz}))
+ nodes.forEach(n=>savedPositions.set(n.id,{q:n.q,velocityND:n.velocityND,x:n.x,y:n.y,z:n.z,vx:n.vx,vy:n.vy,vz:n.vz}))
  visibilityKey=null;geometryDirty=true;labelPriority=[]
  const cats=selectedCategories(), rels=selectedRelationships(), context=$('#include-context').checked
  const graphData=preparedData?.data===data?preparedData.folded:foldFundNodes(data)
@@ -207,7 +229,7 @@ function rebuild() {
  let visible=graphData.organizations.filter(n=>cats.has(n.category))
  let visibleIds=new Set(visible.map(n=>n.id))
  const moneyOnly=$('#network-view').value==='money'
- edges=graphRelationships(graphData,{moneyOnly,includeCapitalization:context}).filter(e=>visibleIds.has(e.source) && visibleIds.has(e.target) && (moneyOnly || rels.has(e.relationship)))
+ edges=uniqueNetworkLinks(graphRelationships(graphData,{moneyOnly,includeCapitalization:context}).filter(e=>visibleIds.has(e.source) && visibleIds.has(e.target) && (moneyOnly || rels.has(e.relationship))))
  if ($('#neighbors').checked && selected) {
   const neighbors=new Set([selected]); edges.forEach(e=>{if(e.source===selected)neighbors.add(e.target);if(e.target===selected)neighbors.add(e.source)})
   visible=visible.filter(n=>neighbors.has(n.id)); visibleIds=new Set(visible.map(n=>n.id)); edges=edges.filter(e=>visibleIds.has(e.source)&&visibleIds.has(e.target))
@@ -254,6 +276,7 @@ function render(time=0) {
  const started=performance.now(),interval=previousFrame?time-previousFrame:0
  previousFrame=time
  const updated=analysisLayout?new Set():simulation?.consume(physicsEnabled()?frameBudget.count(nodes.length):nodes.length)||new Set()
+ if(four&&projectionNeedsFit&&!simulation.projectionPending()){projectionNeedsFit=false;renderer.fit(nodes)}
 
  const zoom=spatial?renderer.zoomLevel():fittedWidth/view.w
  const key=[zoom,selected,$('#show-links').checked,$('#zoom-sparse').checked,$('#visibility-factor').value,$('#network-detail-mode').value,$('#network-hop-depth').value,$('#network-grouping').value,$('#network-clustering').checked].join('|')
@@ -273,7 +296,7 @@ function render(time=0) {
  // Read layout once before changing any label styles or visibility.
  const viewportWidth=host.clientWidth,viewportHeight=host.clientHeight,positions=createLabelGrid()
  if(!labelPriority.length)labelPriority=[...labelItems].sort((a,b)=>(b.n.id===selected)-(a.n.id===selected)||(b.n.id===hovered)-(a.n.id===hovered)||(analysis?.adjacency.get(b.n.id)?.size||0)-(analysis?.adjacency.get(a.n.id)?.size||0))
- const labelCount=!physicsEnabled()?labelPriority.length:frameBudget.count(labelPriority.length)
+ const labelCount=!physicsEnabled()||spatial&&!four?labelPriority.length:frameBudget.count(labelPriority.length)
  const batch=new Set(Array.from({length:labelCount},(_,i)=>(labelCursor+i)%Math.max(1,labelPriority.length)))
  labelCursor=(labelCursor+labelCount)%Math.max(1,labelPriority.length)
  // Reuse unchanged label rectangles as collision obstacles between update turns.
@@ -338,10 +361,10 @@ function zoomGPU(factor, event) {
  view.x=worldX-cursor.x*view.w;view.y=worldY-cursor.y*view.h;requestRender()
 }
 async function initGPU(){
- canvas=document.createElement('canvas');canvas.style.cssText='width:100%;height:100%;display:block;touch-action:none;cursor:grab';canvas.setAttribute('aria-label',four?'4D Particle Life organization network':spatial?'3D WebGPU organization network':rendererKind==='canvas'?'Organization network':'Native WebGPU organization network');canvas.dataset.renderer=rendererKind;host.prepend(canvas)
+ canvas=document.createElement('canvas');canvas.style.cssText='width:100%;height:100%;display:block;touch-action:none;cursor:grab';canvas.setAttribute('aria-label',four?'N-dimensional organization relationship network':spatial?'3D WebGPU organization network':rendererKind==='canvas'?'Organization network':'Native WebGPU organization network');canvas.dataset.renderer=rendererKind;host.prepend(canvas)
  if(rendererKind==='canvas') {
   const {createNetworkCanvasWorker}=await import('./canvas-renderer-client.js');renderer=createNetworkCanvasWorker(canvas,recordPaint)
- } else if(spatial){const {createNetworkGPU3D}=await import('./webgpu-3d-renderer.js');renderer=await createNetworkGPU3D(canvas,message=>{if(disposed)return;gpuReady=false;simulation?.stop();status.textContent=(four?'4D':'3D')+' WebGPU unavailable: '+message},requestRender,four?'4D':'3D',()=>Number($('#camera-speed').value),moveFourth)}
+ } else if(spatial){const {createNetworkGPU3D}=await import('./webgpu-3d-renderer.js');renderer=await createNetworkGPU3D(canvas,message=>{if(disposed)return;gpuReady=false;simulation?.stop();status.textContent=(four?'N-D':'3D')+' WebGPU unavailable: '+message},requestRender,four?'N-D':'3D',()=>Number($('#camera-speed').value),moveFourth)}
  else renderer=await createNetworkGPU(canvas,message=>{if(disposed)return;console.error(message);gpuReady=false;simulation?.stop();cancelAnimationFrame(frame);frame=0;status.textContent='WebGPU graphics were lost. Reload to retry, or use the original Graph view.'},recordPaint)
  if(disposed){renderer.dispose();return}canvas.dataset.backend=renderer.backend || rendererKind;gpuReady=true;renderer.setCameraMode?.($('#network-camera-mode').value);$('#network-camera-mode').disabled=!spatial
  const resize=()=>{const width=host.clientWidth,height=host.clientHeight;renderer.resize(width,height);if(spatial){requestRender();return}if(fitted&&!spatial){const nextHeight=view.w/(width/Math.max(1,height));view.y+=(view.h-nextHeight)/2;view.h=nextHeight;requestRender()}}
@@ -428,8 +451,15 @@ async function start(){
    motionChange()
   })
   if(four){
-   for(const id of ['xw','yw','zw','perspective'])$('#life-'+id).addEventListener('input',()=>{$('#life-'+id+'-value').textContent=$('#life-'+id).value;applyProjection()})
-   for(const id of ['radius','friction','seed'])$('#life-'+id).addEventListener('change',()=>{simulation?.stop();simulation=createNetworkLayout(nodes,edges,forceOptions(),physicsEnabled(),reprojected=>{geometryDirty ||= reprojected;requestRender()});applyProjection()})
+   updateProjectionControls()
+   for(const input of root.querySelectorAll('[id^="projection-"][type="range"],#life-perspective'))input.addEventListener('input',()=>{$('#'+input.id+'-value').textContent=input.value;applyProjection()})
+   for(const id of ['projection-axis','projection-algorithm','display-dimensions','projection-seed','projection-slice-width'])$('#'+id).addEventListener('change',()=>{if($('#'+id).validity.valid)applyProjection(false,true)})
+   $('#projection-refit').addEventListener('click',()=>applyProjection(true,true))
+   $('#network-dimensions').addEventListener('change',()=>{
+    if(!$('#network-dimensions').validity.valid)return
+    updateProjectionControls();fitted=false;rebuild()
+   })
+   for(const id of ['radius','friction'])$('#life-'+id).addEventListener('change',()=>{simulation?.stop();simulation=createNetworkLayout(nodes,layoutConnections(edges),forceOptions(),physicsEnabled(),reprojected=>{geometryDirty ||= reprojected;requestRender()});applyProjection()})
   }
   $('#node-size-alpha').addEventListener('input',()=>{$('#node-size-alpha-value').textContent=Number($('#node-size-alpha').value).toFixed(1);rebuild()})
   const linkStyleChanged=()=>{geometryDirty=true;requestRender()}
@@ -442,7 +472,7 @@ async function start(){
   $('#network-fit').addEventListener('click',fit)
   for(const [id,factor] of [['#zoom-in',1.25],['#zoom-out',.8]]) $(id).addEventListener('click',()=>zoomGPU(factor))
   $('#network-reset').addEventListener('click',()=>{
-   selected=null;inspectorKey=null;fitted=false;analysisLayout=null;networkCoordinates.clear();expandedCommunities.clear();renderer.setCameraMode?.('perspective');fourthPosition=[0,0,0,0]
+   selected=null;inspectorKey=null;fitted=false;analysisLayout=null;networkCoordinates.clear();expandedCommunities.clear();renderer.setCameraMode?.('perspective');fourthPosition=Array(MAX_NETWORK_DIMENSIONS).fill(0)
    if(four)$('#life-w-position').textContent='0.00'
    savedPositions.clear();nodes=[]
    for(const el of root.querySelectorAll('.eco-network-controls input,.eco-network-controls select')){
@@ -454,23 +484,25 @@ async function start(){
    }
    $('#live-physics').checked=!reducedMotion.matches;$('#neighbors').disabled=true
    $('#network-detail').innerHTML='<h2>Select an organization</h2>'
-   history.replaceState(history.state,'',location.pathname);search();rebuild()
+   history.replaceState(history.state,'',location.pathname);updateProjectionControls();search();rebuild()
   })
   const initial=new URL(location.href).searchParams.get('org');if(initial&&data.organizations.some(n=>n.id===initial)){select(initial);rebuild()}else rebuild()
   loadSharedNetworkData(JSON.stringify([location.origin,dataUrl,historyUrl,apiPrefix]), () => loadPortalEvidence(data, sharedEvidenceFetch,apiPrefix,(base,directory,records)=>prepareNetworkData(base,directory,records,historyData,new AbortController().signal)), abort.signal).then(prepared=>{if(disposed)return;preparedData=prepared;data=prepared.data;search();if(selected)select(selected);rebuild();$('#network-source').textContent=(usingOfflineCopy?'Offline · last checked ':'Checked ')+new Date(oldestCheck).toLocaleString()}).catch(()=>{if(disposed)return;$('#network-source').textContent='Saved public evidence · refresh unavailable'})
  }catch(error){if(disposed)return;status.textContent=error.message || 'WebGPU network unavailable.';host.hidden=true;console.error(error)}
 }
 const panelState=()=>{
- const active=root.classList.contains('eco-visualization-open')?'visualization':root.classList.contains('eco-controls-open')?'controls':'inspector'
- for(const panel of ['visualization','controls','inspector']){
+ const active=root.classList.contains('eco-search-open')?'search':root.classList.contains('eco-visualization-open')?'visualization':root.classList.contains('eco-controls-open')?'controls':'inspector'
+ for(const panel of ['search','visualization','controls','inspector']){
   const button=root.querySelector(`[data-panel="${panel}"]`),open=panel===active
   button.setAttribute('aria-selected',String(open));button.tabIndex=open?0:-1
   $('#'+button.getAttribute('aria-controls')).hidden=!open
  }
 }
-const selectPanel=panel=>{for(const name of ['visualization','controls','inspector'])root.classList.toggle('eco-'+name+'-open',name===panel);panelState()}
-selectPanel(new URL(location.href).searchParams.get('panel')==='visualization'?'visualization':'inspector')
+const selectPanel=panel=>{for(const name of ['search','visualization','controls','inspector'])root.classList.toggle('eco-'+name+'-open',name===panel);panelState()}
+const initialPanel=new URL(location.href).searchParams.get('panel')
+selectPanel(['search','visualization','controls','inspector'].includes(initialPanel)?initialPanel:'inspector')
 root.querySelectorAll('[data-graph-type]').forEach(link=>{
+ if(link.dataset.graphType==='4d')link.textContent='✧ N-D'
  if(link.dataset.graphType===(four?'4d':spatial?'3d':'2d'))link.setAttribute('aria-current','true')
  const org=new URL(location.href).searchParams.get('org');if(org){const url=new URL(link.getAttribute('href'),location.origin);url.searchParams.set('org',org);link.setAttribute('href',url.pathname+url.search)}
 })
@@ -479,8 +511,8 @@ root.querySelectorAll('[data-panel]').forEach(button=>{
  button.addEventListener('keydown',event=>{
   if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return
   event.preventDefault()
-  const panels=['visualization','controls','inspector'],index=panels.indexOf(button.dataset.panel)
-  const panel=panels[event.key==='Home'?0:event.key==='End'?2:(index+(event.key==='ArrowRight'?1:2))%3]
+  const panels=['search','visualization','controls','inspector'],index=panels.indexOf(button.dataset.panel)
+  const panel=panels[event.key==='Home'?0:event.key==='End'?panels.length-1:(index+(event.key==='ArrowRight'?1:panels.length-1))%panels.length]
   selectPanel(panel);root.querySelector(`[data-panel="${panel}"]`).focus()
  },{signal:abort.signal})
 })

@@ -250,7 +250,7 @@ html.eco-map-open .portal-footer, html.eco-map-open .tb-shell-footer { display:n
 
 .portal-ecosystem [data-camera-settings][hidden] { display:none; }
 
-.portal-ecosystem #network-visualization-panel { padding:20px; }
+.portal-ecosystem :is(#network-visualization-panel,#network-search-panel) { padding:20px; }
 .portal-ecosystem .eco-panel-tabs [role=tab] { font-size:20px; min-height:48px; }
 .portal-ecosystem .eco-graph-types { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
 .portal-ecosystem .eco-graph-types a { text-align:center; padding:16px 8px; border:1px solid var(--line); border-radius:6px; text-decoration:none; color:var(--ink); }
@@ -314,7 +314,6 @@ html.eco-map-open .portal-footer, html.eco-map-open .tb-shell-footer { display:n
 .portal-ecosystem .eco-law-dialog .eco-force-law label.eco-slider-row { grid-template-columns:48px minmax(0,1fr) 4ch; }
 
 .portal-ecosystem .eco-network-fps{position:absolute;top:8px;left:8px;z-index:4;pointer-events:none;padding:4px 7px;border-radius:4px;background:var(--surface,#fff);color:var(--ink,#18242c);font:12px/1.4 monospace;font-variant-numeric:tabular-nums;box-shadow:0 1px 4px #0002}
-
 
 .portal-ecosystem[data-network-theme=dark]{--paper:#101820;--ink:#e8eef4;--muted:#b5c2cf;--line:#425363;--surface-subtle:#192632;--header-bg:#192632;--surface:#192632}
 .portal-ecosystem[data-network-theme=light]{--paper:#fff;--ink:#182630;--muted:#51616f;--line:#b9c5cf;--surface-subtle:#f0f4f7;--header-bg:#fff;--surface:#fff}

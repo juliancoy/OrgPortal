@@ -27,7 +27,7 @@ try{
  await page.reload();await ready(page);await page.waitForFunction(()=>new URL(location.href).searchParams.has('org'));await pause(page)
  await page.locator('[data-panel="inspector"]').focus();await page.keyboard.press('Escape');assert.equal(new URL(page.url()).searchParams.has('org'),false)
  await page.locator('[data-panel=controls]').click()
- await page.locator('#network-search').fill(name);assert.ok(await page.locator('#network-results button').count()>0)
+ await page.getByRole('tab',{name:'Search',exact:true}).click();await page.locator('#network-search').fill(name);assert.ok(await page.locator('#network-results button').count()>0)
  await page.locator('#zoom-sparse').check();await page.locator('#visibility-factor').fill('16');await page.waitForFunction(()=>Number(document.querySelector('#network-status').textContent.split(' ')[0])<140)
  const sparse=Number((await page.locator('#network-status').textContent()).split(' ')[0]);assert.ok(sparse<140)
  await page.locator('#network-reset').click();await pause(page);await ready(page)

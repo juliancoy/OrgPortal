@@ -79,9 +79,8 @@ NETWORK_RENDERER=webgpu3d node scripts/check-network-overhaul.mjs
 NETWORK_RENDERER=webgpu4d node scripts/check-network-overhaul.mjs
 ```
 
-The N-dimensional fixture uses the existing, uncommitted N-dimensional controls
-in the working checkout. The independently staged overhaul also builds against
-the committed projection implementation. Browser checks use bundled public
+The N-dimensional fixture exercises the integrated 4–32 dimensional controls,
+projection algorithms and worker state. Browser checks use bundled public
 snapshots and block live API calls; they do not establish production freshness.
 Use headless Chrome with the repository's SwiftShader/Vulkan flags. Test pages
 exercise disclosure, selection, three-hop focus, metrics, analytical views,
@@ -134,8 +133,8 @@ second worker protocol. Visibility changes do not reset force state.
 
 ## Release boundary
 
-Use only `scripts/release.mjs` and `docs/deployment/RELEASE.md`. The current
-checkout includes independent, pre-existing changes. This task preserves those
-unstaged changes, stages only its own integration, and does not make the checkout
-clean by committing unrelated work. The documented clean-checkout release gate
-requires an isolated clean release checkout. The current environment also has no `CLOUDFLARE_ACCOUNT_ID` or `CLOUDFLARE_API_TOKEN`; no production release or push was performed. The pre-existing N-dimensional UI changes remain unstaged, so their inclusion in a release needs separate reconciliation. No database changes are required.
+Use only `scripts/release.mjs` and `docs/deployment/RELEASE.md`. The complete release includes the reviewed N-dimensional, local-home and login
+changes under explicit user authorization. Use the existing OrgPortal production
+Workers Builds trigger after pushing the clean main commit; its stored deployment
+credentials run the same release script for frontend and API. No database changes
+are required. Verify both public health commit identities after the build succeeds.

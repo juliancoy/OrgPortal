@@ -1,3 +1,4 @@
+import {networkNDControls} from '../../features/ecosystem/nd-controls.js'
 import { useEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { portalPath } from '../../config/portalBase'
@@ -51,21 +52,13 @@ export function EcosystemNetworkPage({ renderer = 'canvas' }: { renderer?: Netwo
       }).catch(() => { if (!disposed) host.textContent = 'Navigation practice could not load.' })
       return () => { disposed = true; cleanup?.() }
     }
-    document.title = four ? 'Organization network · 4D Particle Life' : spatial ? 'Organization network · 3D WebGPU' : renderer === 'webgpu' ? 'Organization ecosystem network · WebGPU' : 'Organization ecosystem network'
+    document.title = four ? 'Organization network · N-dimensional relationship network' : spatial ? 'Organization network · 3D WebGPU' : renderer === 'webgpu' ? 'Organization ecosystem network · WebGPU' : 'Organization ecosystem network'
     if (!root.current) return
-    root.current.innerHTML = markup.replace('Organization network</h1>', `Organization network · ${four ? '4D Particle Life' : spatial ? '3D WebGPU' : renderer === 'webgpu' ? 'WebGPU' : '2D'}</h1>`)
+    root.current.innerHTML = markup.replace('Organization network</h1>', `Organization network · ${four ? 'N-dimensional relationship network' : spatial ? '3D WebGPU' : renderer === 'webgpu' ? 'WebGPU' : '2D'}</h1>`)
     root.current.querySelector<HTMLInputElement>('#network-search')!.value = search.current
     if (four) {
       const controls = root.current.querySelector('.eco-network-controls')!
-      controls.insertAdjacentHTML('afterbegin', `<fieldset><legend>4D Particle Life</legend><p>W position (world units): <output id="life-w-position">0.00</output></p>
-        ${['xw','yw','zw'].map(axis => `<label class="eco-slider-row"><span class="eco-slider-name">${axis.toUpperCase()} rotation</span><input id="life-${axis}" type="range" min="-180" max="180" step="1" value="0"><span class="eco-slider-value"><output id="life-${axis}-value">0</output>°</span></label>`).join('')}
-        <label class="eco-slider-row"><span class="eco-slider-name">4D perspective</span><input id="life-perspective" type="range" min="0" max="0.8" step="0.01" value="0.35"><span class="eco-slider-value"><output id="life-perspective-value">0.35</output></span></label>
-        <label>Interaction radius <input id="life-radius" type="number" min="50" max="600" step="10" value="300"></label>
-        <label>Velocity retention <input id="life-friction" type="number" min="0.1" max="0.98" step="0.01" value="0.85"></label>
-        <label>Interaction matrix seed <input id="life-seed" type="number" min="0" max="4294967295" step="1" value="1"></label>
-      </fieldset>`)
-      const proximity = root.current.querySelector('#proximity')?.closest('label')
-      if (proximity) (proximity as HTMLElement).hidden = true
+      controls.insertAdjacentHTML('afterbegin', networkNDControls())
     }
     const host = root.current
     let disposed = false
