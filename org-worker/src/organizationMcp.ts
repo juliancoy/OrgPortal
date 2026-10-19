@@ -5,6 +5,7 @@ import { EventIntegrationError } from './eventPlatforms';
 import { enforceEventRateLimit, prepareEventOperation, previewFingerprint, claimEventOperation, finishEventOperation } from './eventOperationStore';
 
 export const organizationCreateSchema = z.object({
+  kind: z.enum(['organization','team']).optional(),
   name: z.string().trim().min(1).max(255), city: z.string().trim().min(1).max(80),
   description: z.string().max(5000).optional(),
   source_url: z.string().url().optional(), image_url: z.string().url().optional(),

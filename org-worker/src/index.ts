@@ -1,3 +1,4 @@
+import { presentationRoutes } from './eventPresentations';
 import { publicDataResponse } from './publicDataResponse';
 import { visitorStatisticsRoutes } from './visitorStatistics';
 import { EventIntegrationError } from './eventPlatforms';
@@ -2016,6 +2017,8 @@ async function upsertOrganization(db: D1Database, raw: Record<string, unknown>) 
 
 async function createOrganization(env: Env, actor: OrganizationActor, payload: Record<string, unknown>) {
   const name = stringField(payload, 'name', 255) || 'Organization';
+  if (payload.kind !== undefined && !['team','organization'].includes(String(payload.kind))) throw new HTTPException(400, {message:'Invalid organization kind'});
+  if (payload.kind === 'team') payload.tags = [...(Array.isArray(payload.tags) ? payload.tags : []), 'Team'];
   const row = await insertOwnedOrganization(env.DB, actor, {
     name, slug: await uniqueTableSlug(env.DB, 'organizations', name),
     description: stringField(payload, 'description', 5000), source_url: cleanUrl(payload.source_url),
@@ -2624,6 +2627,7 @@ function deploymentHealth(c: { env: Env; req: { url: string }; header: (name: st
 
 app.route('/api/network/events',venueRankingRoutes(currentUser));
 app.route('/api/network/events',venueVoteRoutes(currentUser));
+app.route('/api/network/events',presentationRoutes(currentUser));
 app.route('/api/network/events',companyVoteRoutes(currentUser));
 app.get('/api/network/venues/public/:id/events', async c => {
   const venueId = c.req.param('id');
@@ -3397,6 +3401,7 @@ app.post("/api/network/orgs", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
   const row = await createOrganization(c.env, organizationActor(user, c.env), {
+    kind: payload.kind,
     name: stringField(payload, "name", 255) || "Organization",
     description: stringField(payload, "description", 5000),
     source_url: cleanUrl(payload.source_url),

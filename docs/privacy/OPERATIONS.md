@@ -188,3 +188,16 @@ before restoring any backup; deletion from independent exports or old backups
 requires the existing operator process. Do not infer ownership from email.
 
 Outreach rollout: migration 0091 adds private campaign source/review metadata, optional Gmail bounce monitoring, 50-attempt gates and 90-day outreach/report retention. Tests verify account/group isolation, report-only imports, opt-out/bounce exclusion and self-test enforcement. Migration 0091 was applied in production on 2026-10-18; the release flow verified frontend/API commit c11ed78. Expiry and cascade behavior pass SQLite integration tests; execution of an aged outreach purge on the live cron has not yet been observed. Optional Google read-only monitoring requires explicit reconnection before it runs. Existing older campaign/sender journal copies are not automatically erased by this migration.
+
+## Presentation applications
+
+Migration 0092 adds event presentation forms and private submissions. Submissions
+expire 90 days after the event end (or start if no end); retention deletes up to
+500 expired records per run. Managers of the submitting organization can withdraw
+them; host managers review them. Account erasure must remove rows where
+`submitted_by` matches the verified subject. Organization/event deletion cascades.
+These private tables are excluded from the public replica and public history.
+Include both tables in backup inventories; reapply withdrawals, expiry and
+verified erasure before restoring service and delete task exports. No separate
+notification, email or provider copy is created. Deploy migration and verify cron
+before advertising automatic cleanup in production.

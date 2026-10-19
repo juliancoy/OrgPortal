@@ -53,6 +53,7 @@ export function OrgProfilePage() {
   const [orgNameById, setOrgNameById] = useState<Record<string, string>>({})
   const [orgImageById, setOrgImageById] = useState<Record<string, string>>({})
 
+  const [newOrgKind, setNewOrgKind] = useState('organization')
   const [newOrgName, setNewOrgName] = useState('')
   const [newOrgUrl, setNewOrgUrl] = useState('')
   const [newOrgImage, setNewOrgImage] = useState('')
@@ -161,6 +162,7 @@ export function OrgProfilePage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          kind: newOrgKind,
           name: newOrgName.trim(),
           source_url: newOrgUrl.trim() || null,
           image_url: newOrgImage.trim() || null,
@@ -379,7 +381,8 @@ export function OrgProfilePage() {
       </div>
 
       <div className="portal-card" style={{ display: 'grid', gap: '0.6rem' }}>
-        <h2 style={{ margin: 0, fontSize: '1rem' }}>Create Organization</h2>
+        <h2 style={{ margin: 0, fontSize: '1rem' }}>Create Organization or Team</h2>
+        <label>Type<select value={newOrgKind} onChange={e => setNewOrgKind(e.target.value)}><option value="organization">Organization</option><option value="team">Team</option></select></label>
         <input value={newOrgName} onChange={(e) => setNewOrgName(e.target.value)} aria-label="Organization name" placeholder="Organization name" />
         <input value={newOrgUrl} onChange={(e) => setNewOrgUrl(e.target.value)} aria-label="Source URL (optional)" placeholder="Source URL (optional)" />
         <input value={newOrgImage} onChange={(e) => setNewOrgImage(e.target.value)} aria-label="Image URL (optional)" placeholder="Image URL (optional)" />

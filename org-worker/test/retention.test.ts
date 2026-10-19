@@ -13,6 +13,8 @@ test('expiry units, bounds, dry-run, retries and unresolved operations',async()=
  CREATE TABLE local_newsletter_previews(id TEXT PRIMARY KEY,expires_at TEXT);`);
  for(const name of ['email_engagement','email_segments','email_mailing_audit','email_campaign_previews'])sql.exec(`CREATE TABLE ${name}(id TEXT PRIMARY KEY,expires_at INTEGER);`);
  sql.exec('CREATE TABLE event_company_favorites(id TEXT PRIMARY KEY, expires_at TEXT);');
+ sql.exec('CREATE TABLE event_presentation_submissions(id TEXT PRIMARY KEY, expires_at TEXT);');
+ sql.prepare('INSERT INTO event_presentation_submissions VALUES (?,?)').run('expired-presentation',new Date(1).toISOString());
  sql.exec('CREATE TABLE event_company_votes(id TEXT PRIMARY KEY, expires_at TEXT);');
  sql.exec('CREATE TABLE organization_follow_event_jobs(id TEXT PRIMARY KEY, expires_at TEXT); CREATE TABLE user_notifications(id TEXT PRIMARY KEY,type TEXT,created_at TEXT);');
  const now=1800000000000,cutoff=now-23*3600000;
@@ -46,5 +48,6 @@ test('expiry units, bounds, dry-run, retries and unresolved operations',async()=
  assert.equal((await runRetention(db,now)).private_newsletter_previews,0);
  assert.deepEqual(sql.prepare('SELECT id FROM event_mcp_operations ORDER BY id').all().map(r=>r.id),['boundary','executing','uncertain']);
  assert.equal(sql.prepare('SELECT state_hash FROM email_oauth_states').get()!.state_hash,'live');
+ assert.equal(sql.prepare('SELECT COUNT(*) AS n FROM event_presentation_submissions').get()!.n,0);
  await assert.rejects(runRetention(db,NaN));sql.close();
 });

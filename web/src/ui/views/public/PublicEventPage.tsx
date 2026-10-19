@@ -1,3 +1,4 @@
+import { EventPresentations } from '../../components/EventPresentations'
 import { BioMarkdown } from '../../components/profile/BioMarkdown'
 import { getGroupSite } from '../../../config/timebankCommunity'
 import { getActivePortalProfileConfig } from '../../../config/portalFeatures'
@@ -767,6 +768,7 @@ export function PublicEventPage() {
               <BioMarkdown value={event.description} />
             </section>
           ) : null}
+          <EventPresentations key={`presentations-${event.id}`} eventId={event.id} />
           <EventCompanyVotes key={event.id} eventId={event.id} />
       <section className="portal-card public-event-chat">
         <div className="public-event-card-heading">

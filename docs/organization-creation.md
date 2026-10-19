@@ -61,3 +61,20 @@ requiring a reload. Access is tied to the authenticated account ID.
 
 Repeated claims by the owner are idempotent. A competing claim cannot replace an
 existing owner; it must use the separate ownership-challenge process.
+
+## Teams and presentation applications
+
+API and MCP organization creation accept `kind: "team"`, recorded as the `Team`
+tag using the existing organization model. The creator owns the team and its
+normal membership/chat controls; no legal incorporation is required.
+
+Hosted event pages let host owners/administrators open presentation applications.
+Signed-in applicants select an organization they manage or create a team inline,
+then submit a title and summary. One application per event/organization is saved;
+resubmission resets review to pending. Host managers accept or decline privately.
+Applicants can withdraw. Applications close at event start or when the host closes
+the form. The application is separate from event registration and acceptance
+does not add membership, register guests or publish the proposal.
+
+Migration `0092_event_presentations.sql` requires review before deployment.
+For LifeTech Demo Day #3, open applications from the event page after deployment.
