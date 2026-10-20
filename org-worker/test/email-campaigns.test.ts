@@ -609,3 +609,25 @@ test('provider retry delay defers both delivery and shared sender without retryi
   assert.ok(Number(delivery.next_attempt_at)>=before+7_190_000);
   assert.equal(database.prepare("SELECT cooldown_until FROM email_senders WHERE owner_user_id='admin'").get()!.cooldown_until,delivery.next_attempt_at);
 });
+
+test('operator recovery blocks subscriber resume until every uncertain outcome is reconciled', async t => {
+  const {env,request,database}=setup(t); network(t); await connect(env); await subscribe(env);
+  const draft=await(await request('/campaigns','POST',payload)).json(); recordSelfTest(database,draft.id);
+  database.prepare("UPDATE email_campaigns SET status='paused' WHERE id=?").run(draft.id);
+  database.prepare("UPDATE email_deliveries SET status='uncertain' WHERE campaign_id=? AND kind='campaign'").run(draft.id);
+  const blocked=await request(`/campaigns/${draft.id}/resume`,'POST',{});
+  assert.equal(blocked.status,409); assert.match((await blocked.json()).detail,/verified outcomes/);
+  const delivery=database.prepare("SELECT id FROM email_deliveries WHERE campaign_id=? AND kind='campaign'").get(draft.id)!;
+  assert.equal((await request(`/outreach/${draft.id}/reconcile`,'POST',{deliveryId:delivery.id,status:'failed',evidence:'Provider audit confirmed this message was not submitted.'})).status,200);
+  assert.equal((await request(`/campaigns/${draft.id}/resume`,'POST',{})).status,200);
+  assert.equal(database.prepare('SELECT status FROM email_deliveries WHERE id=?').get(delivery.id)!.status,'failed');
+});
+
+test('operator bulk recipient choices exclude known permanent failures in group and event audiences', async t => {
+  const {env,request,database}=setup(t); network(t); await subscribe(env,'good','organization','org-1'); await subscribe(env,'bad','organization','org-1');
+  database.prepare("INSERT INTO email_bounces(organization_id,email,reason,source_message_id,first_seen_at,updated_at) VALUES('org-1','bad@example.test','550 unavailable','notice',1,1)").run();
+  for(const path of ['/groups/org-1/audience','/audience/event-1']) {
+    const response=await request(path); assert.equal(response.status,200);
+    const result=await response.json(); assert.deepEqual(result.contacts.map((r:{email:string})=>r.email),['good@example.test']);
+  }
+});
