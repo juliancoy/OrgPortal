@@ -118,3 +118,16 @@ test('multi-megabyte UTF-8 snapshots fit D1 bindings and late failures roll back
   assert.equal(local.sqlite.prepare("SELECT name FROM organizations WHERE id=?").get(snapshot.organizations[0].id)!.name,snapshot.organizations[0].id);
  }finally{primary.sqlite.close();local.sqlite.close()}
 });
+
+
+test('organization links replicate, rotate and clear from the primary',async()=>{
+ const primary=setup(),local=setup();
+ try {
+  insert(primary,'group');const fetcher:typeof fetch=async()=>organizationSnapshot(primary.asD1(),new Request(source));
+  for(const links of [[{id:'calendar',type:'luma',url:'https://luma.com/one'}],[{id:'calendar',type:'luma',url:'https://luma.com/two'},{id:'tickets',type:'eventbrite',url:'https://www.eventbrite.com/o/group'}],[]]) {
+   primary.sqlite.prepare('UPDATE organizations SET links_json=? WHERE id=?').run(JSON.stringify(links),'group');
+   expire(local);await replicateOrganizations(env(local),fetcher);
+   assert.deepEqual(JSON.parse(String(local.sqlite.prepare('SELECT links_json FROM organizations WHERE id=?').get('group')!.links_json)),links);
+  }
+ }finally{primary.sqlite.close();local.sqlite.close();}
+});

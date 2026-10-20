@@ -6,7 +6,7 @@ import { enforceEventRateLimit, prepareEventOperation, previewFingerprint, claim
 const publicUrl = z.string().url().max(2000).refine(value => {
   const url = new URL(value);
   return ['https:', 'http:'].includes(url.protocol) && !url.username && !url.password;
-});
+}).transform(value => new URL(value).href);
 export const registrySchema = z.object({
   name: z.string().trim().min(1).max(255),
   description: z.string().trim().min(1).max(5000),
@@ -24,10 +24,11 @@ export async function runOrganizationRegistryOperation(db: D1Database, actor: Or
   if (!parsed.success) throw new EventIntegrationError(400, 'Invalid organization registry request');
   const { confirm, previewId, ...changes } = parsed.data;
   await enforceEventRateLimit(db, actor.id);
-  const existing = await db.prepare('SELECT id FROM organizations WHERE lower(name) = lower(?) OR (? IS NOT NULL AND source_url = ?) LIMIT 1')
+  const existing = await db.prepare(`SELECT id FROM organizations WHERE lower(trim(name)) = lower(?) OR (? IS NOT NULL AND rtrim(source_url,'/') = rtrim(?,'/')) LIMIT 1`)
     .bind(changes.name, changes.website || null, changes.website || null).first();
   if (existing) throw new EventIntegrationError(409, 'Organization already exists; review its existing identity');
-  const preview = { operation: 'register', changes, effect: 'Creates an unclaimed public directory organization. No ownership, memberships or account permissions are created.' };
+  const effects = { ownershipStatus: 'unclaimed', createsOwnership: false, createsMembership: false, createsPortal: false, changesPermissions: false, publicRecord: true, mayQueueChatProvisioning: true };
+  const preview = { operation: 'register', changes, effects, effect: 'Creates an unclaimed public directory organization. No ownership, memberships or account permissions are created.' };
   const fingerprint = await previewFingerprint(preview);
   const owner = { userId: actor.id, organizationId: 'organization:registry', eventId: `organization:registry:${fingerprint}` };
   if (!confirm) return { ...preview, ...await prepareEventOperation(db, owner, fingerprint) };
@@ -40,13 +41,15 @@ export async function runOrganizationRegistryOperation(db: D1Database, actor: Or
   try {
     await db.batch([
       db.prepare(`INSERT INTO organizations (id,name,slug,description,source_url,tags,city,created_at,updated_at)
-        VALUES (?,?,?,?,?,?,?,?,?)`).bind(id, changes.name, `${slug}-${identityHash.slice(0,12)}`, changes.description,
-          changes.website || null, JSON.stringify(changes.tags), changes.city || null, now, now),
+        SELECT ?,?,?,?,?,?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM organizations WHERE lower(trim(name))=lower(?) OR (? IS NOT NULL AND rtrim(source_url,'/')=rtrim(?,'/')))`).bind(id, changes.name, `${slug}-${identityHash.slice(0,12)}`, changes.description,
+          changes.website || null, JSON.stringify(changes.tags), changes.city || null, now, now, changes.name, changes.website || null, changes.website || null),
       db.prepare(`INSERT INTO audit_events (id,actor_user_id,action,resource_type,resource_id,metadata_json,created_at)
-        VALUES (?,?,'organization.register','organization',?,?,?)`).bind(crypto.randomUUID(), actor.id, id, JSON.stringify(preview), now),
+        SELECT ?,?,'organization.register','organization',id,?,? FROM organizations WHERE id=?`).bind(crypto.randomUUID(), actor.id, JSON.stringify({ sourceUrl: changes.sourceUrl, previewId }), now, id),
     ]);
+    const organization = await db.prepare('SELECT id,name,slug,source_url FROM organizations WHERE id=?').bind(id).first();
+    if (!organization) throw new EventIntegrationError(409, 'Organization was registered concurrently; search the directory before retrying');
     await finishEventOperation(db, previewId, true, ['register']);
-    return { organizationId: id, previewId, organization: await db.prepare('SELECT id,name,slug,source_url FROM organizations WHERE id=?').bind(id).first() };
+    return { organizationId: id, previewId, organization, effects };
   } catch (error) {
     await finishEventOperation(db, previewId, false, []);
     throw error;

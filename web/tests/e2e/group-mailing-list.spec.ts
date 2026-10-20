@@ -34,7 +34,7 @@ async function fixtures(page:Page,role:'guest'|'member'|'organizer') {
 
 test('organizers see consent details and group campaign tools; export stays disabled',async({page})=>{
   const state=await fixtures(page,'organizer')
-  await page.goto('/orgs/workshop?view=organizers')
+  await page.goto('/orgs/workshop/dashboard?view=organizers')
   const mailing=page.getByRole('region',{name:'Group mailing list'})
   await expect(mailing).toBeVisible();await expect(mailing.getByText('subscriber@example.test')).toBeVisible()
   await expect(mailing.getByRole('link',{name:'Compose campaign and review delivery history'})).toHaveAttribute('href','/email?organization_id=workshop')
@@ -54,7 +54,7 @@ test('members can change their own preference without requesting the mailing lis
 
 test('guests never fetch subscriber records',async({page})=>{
   const state=await fixtures(page,'guest')
-  await page.goto('/orgs/workshop?view=organizers')
+  await page.goto('/orgs/workshop?view=public')
   await expect(page.getByRole('heading',{name:'Workshop group',exact:true})).toBeVisible()
   await expect(page.getByRole('region',{name:'Group mailing list'})).toHaveCount(0)
   await expect(page.getByRole('checkbox',{name:'Receive announcements from this group'})).toHaveCount(0)
@@ -70,7 +70,7 @@ test('a member opening the campaign URL sees an organizer access message',async(
 
 test('organizers preview a group announcement before confirming the exact recipient snapshot',async({page})=>{
   await fixtures(page,'organizer')
-  let approved=false
+  let approved=false,testAccepted=false
   const campaign={id:'draft',subject:'Workshop news',status:'draft',recipient_count:1,sent_count:0,created_at:Date.now(),scheduled_at:Date.now(),sender_email:'organizer@example.test',audience:'organization',body:'A group update.',event_id:'',fingerprint:'snapshot',preview:{subject:'Workshop news',html:'<p>A group update.</p>',text:'A group update.'},counts:{draft:1},deliveries:[]}
   await page.route('**/api/org/api/email/**',async route=>{
     const path=new URL(route.request().url()).pathname
@@ -82,7 +82,8 @@ test('organizers preview a group announcement before confirming the exact recipi
       const payload=JSON.parse(route.request().postData() || '{}')
       expect(payload.organization_id).toBe('workshop');expect(payload.event_id).toBe(null);expect(payload.audience).toBe('organization')
       body=campaign
-    } else if(path.endsWith('/campaigns/draft'))body={...campaign,status:approved?'queued':'draft',preview_id:'one-use-preview'}
+    } else if(path.endsWith('/campaigns/draft'))body={...campaign,status:approved?'queued':'draft',preview_id:'one-use-preview',self_test_sent:testAccepted}
+    else if(path.endsWith('/campaigns/draft/test')) {testAccepted=true;body={recipient:'organizer@example.test'}}
     else if(path.endsWith('/campaigns/draft/send')) {
       expect(JSON.parse(route.request().postData() || '{}')).toEqual({fingerprint:'snapshot',preview_id:'one-use-preview',confirm:true})
       approved=true;body={queued:true}
@@ -96,6 +97,9 @@ test('organizers preview a group announcement before confirming the exact recipi
   await expect(page.getByRole('button',{name:'Send to 1 recipients',exact:true})).toHaveCount(0)
   await page.getByRole('button',{name:'Save draft & preview',exact:true}).click()
   await expect(page.getByRole('heading',{name:'Review your campaign'})).toBeVisible()
+  await expect(page.getByRole('button',{name:'Send to 1 recipients',exact:true})).toBeDisabled()
+  await page.getByRole('button',{name:'Send test to myself',exact:true}).click()
+  await expect(page.getByRole('button',{name:'Send to 1 recipients',exact:true})).toBeEnabled()
   await page.getByRole('button',{name:'Send to 1 recipients',exact:true}).click()
   await expect(page.getByRole('status').filter({hasText:'Campaign queued.'})).toBeVisible()
   expect(approved).toBe(true)

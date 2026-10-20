@@ -23,6 +23,7 @@ test('connection request is styled, keyboard accessible, and prevents repeated r
     await route.fulfill({ json: { status: 'pending' } })
   })
   await page.goto('/people')
+  await page.getByText('Actions and details for Jordan Contact', { exact: true }).click()
   const button = page.getByRole('button', { name: 'Connect with Jordan Contact' })
   await expect(button).toBeVisible()
   expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44)
@@ -47,6 +48,7 @@ test('a failed connection leaves a usable retry and readable error', async ({ pa
     ? { status: 503, body: '<html>Service unavailable</html>', contentType: 'text/html' }
     : { json: { status: 'pending' } }))
   await page.goto('/people')
+  await page.getByText('Actions and details for Jordan Contact', { exact: true }).click()
   const button = page.getByRole('button', { name: 'Connect with Jordan Contact' })
   await button.click()
   await expect(page.getByRole('status')).toHaveText('Unable to send the connection request. Please try again.')

@@ -651,7 +651,18 @@ def _configure_local_newsletters(prefix: str) -> Path:
     return vars_path
 
 
+def _service_startup_retries() -> int:
+    try:
+        seconds = int(os.getenv("ORGPORTAL_LOCAL_SERVICE_TIMEOUT", "900"))
+    except ValueError:
+        raise RuntimeError("ORGPORTAL_LOCAL_SERVICE_TIMEOUT must be an integer in 30..3600 seconds") from None
+    if not 30 <= seconds <= 3600:
+        raise RuntimeError("ORGPORTAL_LOCAL_SERVICE_TIMEOUT must be in 30..3600 seconds")
+    return (seconds + 1) // 2
+
+
 def run(prefix: str, network_name: str) -> None:
+    startup_retries = _service_startup_retries()
     if _env_truthy("ORGPORTAL_JOURNAL_AUTO_SYNC", default=True):
         result = subprocess.run([sys.executable, str(current_dir / "scripts/setup-journal-sync.py")])
         if result.returncode:
@@ -732,6 +743,7 @@ def run(prefix: str, network_name: str) -> None:
             str(current_dir / "docs"): {"bind": "/docs", "mode": "ro"},
             str(local_newsletter_vars_path): {"bind": "/app/.dev.vars", "mode": "ro"},
             str(current_dir / "shared"): {"bind": "/shared", "mode": "ro"},
+            prefix + "ORGPORTAL_ORG_WORKER_NPM_CACHE": {"bind": "/root/.npm", "mode": "rw"},
             prefix + "ORGPORTAL_ORG_WORKER_NODE_MODULES": {
                 "bind": "/app/node_modules",
                 "mode": "rw",
@@ -760,7 +772,7 @@ def run(prefix: str, network_name: str) -> None:
             (
                 "node scripts/write-local-ca-bundle.cjs && "
                 "export NODE_EXTRA_CA_CERTS=/tmp/orgportal-ca.pem && "
-                "npm ci && "
+                "npm ci --prefer-offline --no-audit --no-fund && "
                 "npm run build:metadata && "
                 "npm run db:migrate:local && "
                 f"npx wrangler dev --local --test-scheduled --ip 0.0.0.0 --port {worker_port} "
@@ -784,12 +796,13 @@ def run(prefix: str, network_name: str) -> None:
         "volumes": {
             str(chat_worker_dir): {"bind": container_app_dir, "mode": "rw"},
             str(current_dir / "shared"): {"bind": "/shared", "mode": "ro"},
+            prefix + "ORGPORTAL_CHAT_WORKER_NPM_CACHE": {"bind": "/root/.npm", "mode": "rw"},
             prefix + "ORGPORTAL_CHAT_WORKER_NODE_MODULES": {"bind": "/app/node_modules", "mode": "rw"},
             # Shared local storage lets chat resolve contacts from the org database.
             prefix + "ORGPORTAL_ORG_WORKER_WRANGLER": {"bind": "/app/.wrangler", "mode": "rw"},
         },
         "command": ["sh", "-c", (
-            "npm ci && npm run db:migrate:local && "
+            "npm ci --prefer-offline --no-audit --no-fund && npm run db:migrate:local && "
             "npx wrangler dev --local --ip 0.0.0.0 --port 8003 "
             f"--var {shlex.quote('PIDP_BASE_URL:' + (os.getenv('ORGPORTAL_WORKER_PIDP_BASE_URL') or f'http://{pidp_dev_name}:8000'))} "
             f"--var {shlex.quote('PUBLIC_PORTAL_BASE_URL:' + gateway_base)} "
@@ -807,6 +820,7 @@ def run(prefix: str, network_name: str) -> None:
         "volumes": {
             str(web_dir): {"bind": container_app_dir, "mode": "rw"},
             str(current_dir / "shared"): {"bind": "/shared", "mode": "ro"},
+            prefix + "ORGPORTAL_DEV_NPM_CACHE": {"bind": "/root/.npm", "mode": "rw"},
             prefix + "ORGPORTAL_DEV_NODE_MODULES": {
                 "bind": "/app/node_modules",
                 "mode": "rw",
@@ -829,7 +843,7 @@ def run(prefix: str, network_name: str) -> None:
             "sh",
             "-c",
             (
-                "npm ci && "
+                "npm ci --prefer-offline --no-audit --no-fund && "
                 "npm run dev -- --host 0.0.0.0 --port 5173 --strictPort"
             ),
         ],
@@ -864,16 +878,16 @@ def run(prefix: str, network_name: str) -> None:
 
     started_pidp = _start_pidp_if_available(prefix, network_name, gateway_base)
     if started_pidp:
-        docker_utils.wait_for_port(pidp_dev_name, 8000, network_name, retries=120, delay=2)
-        _wait_for_http(f"http://{pidp_dev_name}:8000/health", network_name, retries=120, delay=2)
+        docker_utils.wait_for_port(pidp_dev_name, 8000, network_name, retries=startup_retries, delay=2)
+        _wait_for_http(f"http://{pidp_dev_name}:8000/health", network_name, retries=startup_retries, delay=2)
         subprocess.check_call(["docker", "exec", pidp_dev_name, "/venv/bin/python", "/app/scripts/register_local_portal.py"])
 
     docker_utils.run_container(org_worker)
     docker_utils.run_container(chat_worker)
-    docker_utils.wait_for_port(chat_worker_name, 8003, network_name, retries=120, delay=2)
+    docker_utils.wait_for_port(chat_worker_name, 8003, network_name, retries=startup_retries, delay=2)
     docker_utils.run_container(dev)
-    docker_utils.wait_for_port(org_worker_name, int(worker_port), network_name, retries=120, delay=2)
-    _wait_for_http(f"http://{org_worker_name}:{worker_port}/health", network_name, retries=120, delay=2)
+    docker_utils.wait_for_port(org_worker_name, int(worker_port), network_name, retries=startup_retries, delay=2)
+    _wait_for_http(f"http://{org_worker_name}:{worker_port}/health", network_name, retries=startup_retries, delay=2)
     if replica_source:
         docker_utils.run_container({
             "image": "python:3.12-alpine", "name": service_name(prefix, "org-replication"),
@@ -886,10 +900,10 @@ def run(prefix: str, network_name: str) -> None:
         _remove_container(service_name(prefix, "org-replication"))
     if start_prod:
         docker_utils.run_container(prod)
-        docker_utils.wait_for_port(prod_name, 8080, network_name, retries=120, delay=2)
-        _wait_for_http(f"http://{prod_name}:8080/", network_name, retries=120, delay=2)
-    docker_utils.wait_for_port(dev_name, 5173, network_name, retries=120, delay=2)
-    _wait_for_http(f"http://{dev_name}:5173/availability", network_name, retries=120, delay=2)
+        docker_utils.wait_for_port(prod_name, 8080, network_name, retries=startup_retries, delay=2)
+        _wait_for_http(f"http://{prod_name}:8080/", network_name, retries=startup_retries, delay=2)
+    docker_utils.wait_for_port(dev_name, 5173, network_name, retries=startup_retries, delay=2)
+    _wait_for_http(f"http://{dev_name}:5173/availability", network_name, retries=startup_retries, delay=2)
     if _env_truthy("ORGPORTAL_START_LOCAL_GATEWAY", default=True):
         local_url = _start_local_gateway(prefix, network_name, dev_name, org_worker_name, pidp_dev_name, worker_port)
         paths = ['/availability', '/api/org/health', '/api/chat/health']

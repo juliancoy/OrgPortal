@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-test.use({ignoreHTTPSErrors:true,launchOptions:{executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH}})
+test.use({ignoreHTTPSErrors:true})
 for(const historical of [true,false]) test(`outreach analytics ${historical?'historical':'tracked'}`,async({page,baseURL},info)=>{
  if(!baseURL||!['localhost','127.0.0.1'].includes(new URL(baseURL).hostname))throw new Error('Local fixtures only')
  const campaign={id:'campaign',organization_id:'group',subject:'LifeTech invitation',status:historical?'completed':'paused',audience_mode:'outreach',report_only:historical?1:0,recipient_count:292,sent_count:248,created_at:Date.now(),eligible_count:50,fingerprint:'fingerprint',preview_id:'receipt',self_test_sent:true,scheduled_at:Date.now(),from_email:'events@example.test',preview:{subject:'LifeTech invitation',html:'<h1>LifeTech invitation</h1>',text:'LifeTech invitation'},counts:{sent:248,skipped:44},deliveries:[],engagement:{sent:248,tracked:historical?0:240,opened:120,clicked:60,unsubscribed:2},delivery_stats:{total:292,accepted:248,bounced:8,failed:0,uncertain:0,skipped:44,pending:0}}

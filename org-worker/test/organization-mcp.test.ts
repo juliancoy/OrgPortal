@@ -32,7 +32,7 @@ const identity = { userId: 'existing-pidp-user', scopes: ['org:portal.read', 'or
 test('organization creation requires scope and a matching one-use receipt', async () => {
   const { db, sql } = database(); let writes = 0;
   const create = async (_actor, payload) => { assert.equal(payload.kind, 'team'); writes++; return { id: 'new-org' }; };
-  const args = { name: 'LifeTech', city: 'Baltimore', kind: 'team' };
+  const args = { name: 'LifeTech', city: 'Baltimore', kind: 'team', acknowledgeOwnership: true as const };
   await assert.rejects(runOrganizationOperation(db, { ...identity, scopes: ['org:portal.read'] }, 'create', args, create), /Missing portal scope/);
   await assert.rejects(runOrganizationOperation(db, identity, 'create', { ...args, confirm: true }, create), /preview first/);
   const preview = await runOrganizationOperation(db, identity, 'create', args, create) as { previewId: string };
@@ -142,5 +142,24 @@ test('creation never overwrites an existing source match and creates distinct ow
   await assert.rejects(insertOwnedOrganization(db,actor,{name:'Rollback',slug:'rollback',city:'Baltimore',tags:'[]'}),/fixture failure/);
   assert.equal(sql.prepare("SELECT count(*) n FROM organizations WHERE slug='rollback'").get()!.n,0);
   assert.deepEqual(sql.prepare('SELECT * FROM organizations WHERE id=?').get(life.id),before);
+ }finally{sql.close();}
+});
+
+
+test('organization profile links are validated, reviewed, authorized and clearable', async () => {
+ const {db,sql}=database();const {runOrganizationProfileOperation:run}=await import('../src/organizationProfileMcp');
+ try {
+  sql.exec("INSERT INTO organizations(id,name,slug,tags) VALUES ('org','LifeTech','lifetech','[]'); INSERT INTO organization_memberships(organization_id,user_id,role,status) VALUES ('org','existing-pidp-user','administrator','active')");
+  const links=[{id:'whatsapp',type:'whatsapp',url:'https://chat.whatsapp.com/Group123'},{id:'calendar',type:'luma',url:'https://luma.com/lifetech'},{id:'tickets',type:'eventbrite',url:'https://www.eventbrite.com/o/lifetech'}];
+  const args={organizationId:'org',links};
+  await assert.rejects(run(db,identity,'update',{...args,links:[{id:'bad',type:'website',url:'javascript:alert(1)'}]}));
+  const preview=await run(db,identity,'update',args) as any;
+  assert.deepEqual(preview.after.links,links);
+  assert.equal(sql.prepare('SELECT links_json FROM organizations WHERE id=?').get('org')!.links_json,'[]');
+  const result=await run(db,identity,'update',{...args,confirm:true,previewId:preview.previewId}) as any;
+  assert.deepEqual(result.organization.links,links);
+  const clearing={organizationId:'org',links:[]};const clearPreview=await run(db,identity,'update',clearing) as any;
+  const cleared=await run(db,identity,'update',{...clearing,confirm:true,previewId:clearPreview.previewId}) as any;
+  assert.deepEqual(cleared.organization.links,[]);
  }finally{sql.close();}
 });

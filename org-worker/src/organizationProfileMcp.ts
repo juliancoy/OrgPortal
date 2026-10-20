@@ -1,3 +1,4 @@
+import { normalizeOrganizationLinks, readOrganizationLinks, organizationLinkTypes } from '../../shared/organizationLinks';
 import { z } from 'zod';
 import { authorizeOrganization } from './organizationIam';
 import { EventIntegrationError } from './eventPlatforms';
@@ -14,13 +15,14 @@ export const organizationProfileUpdateSchema = target.extend({
   name: z.string().trim().min(1).max(255).optional(),
   description: z.string().max(5000).nullable().optional(),
   image_url: publicImage.nullable().optional(),
+  links: z.array(z.object({id:z.string().min(1).max(80),type:z.enum(organizationLinkTypes),url:z.string().max(2048),label:z.string().max(80).optional()}).strict()).max(30).optional().superRefine((value,ctx) => { if(value===undefined)return;try{normalizeOrganizationLinks(value)}catch(error){ctx.addIssue({code:'custom',message:error instanceof Error ? error.message : 'Invalid organization links'})} }),
   city: z.string().trim().min(1).max(80).nullable().optional(),
   tags: z.array(z.string().trim().min(1).max(80)).max(40).optional(),
   previewId: z.string().uuid().optional(), confirm: z.boolean().optional(),
 }).strict();
-const columns = ['name', 'description', 'image_url', 'city', 'tags', 'updated_at'] as const;
-type ProfileRow = { id: string; slug: string; name: string; description: string | null; image_url: string | null; city: string | null; tags: string; updated_at: string };
-function profile(row: ProfileRow) { return { ...row, tags: JSON.parse(row.tags || '[]') as string[] }; }
+const columns = ['name', 'description', 'image_url', 'links_json', 'city', 'tags', 'updated_at'] as const;
+type ProfileRow = { id: string; slug: string; name: string; description: string | null; image_url: string | null; links_json: string; city: string | null; tags: string; updated_at: string };
+function profile(row: ProfileRow) { const {links_json,...fields}=row; return {...fields,links:readOrganizationLinks(links_json),tags:JSON.parse(row.tags || '[]') as string[]}; }
 
 export async function runOrganizationProfileOperation(db: D1Database, identity: { userId: string; scopes: string[]; isOperator?: boolean },
   operation: 'get' | 'update' | 'status', input: unknown) {
@@ -32,13 +34,13 @@ export async function runOrganizationProfileOperation(db: D1Database, identity: 
   await enforceEventRateLimit(db, actor.id);
   await authorizeOrganization(db, actor, operation === 'get' ? 'read_members' : 'manage', args.organizationId);
   if (operation === 'status') return eventOperationStatus(db, actor.id, args.organizationId, (args as z.infer<typeof organizationProfileStatusSchema>).previewId);
-  const before = await db.prepare(`SELECT id, slug, name, description, image_url, city, tags, updated_at FROM organizations WHERE id = ?`)
+  const before = await db.prepare(`SELECT id, slug, name, description, image_url, links_json, city, tags, updated_at FROM organizations WHERE id = ?`)
     .bind(args.organizationId).first<ProfileRow>();
   if (!before) throw new EventIntegrationError(404, 'Organization not found');
   if (operation === 'get') return { organization: profile(before) };
   const { organizationId, previewId, confirm, ...changes } = args as z.infer<typeof organizationProfileUpdateSchema>;
   if (!Object.keys(changes).length) throw new EventIntegrationError(400, 'Supply at least one profile field');
-  const after = { ...before, ...changes, tags: changes.tags === undefined ? before.tags : JSON.stringify(changes.tags) };
+  const after = { ...before, ...changes, links_json: changes.links === undefined ? before.links_json : JSON.stringify(normalizeOrganizationLinks(changes.links)), tags: changes.tags === undefined ? before.tags : JSON.stringify(changes.tags) };
   const preview = { organizationId, operation: 'profile', before: profile(before), after: profile(after), changes };
   const owner = { userId: actor.id, organizationId, eventId: 'organization:profile' };
   const fingerprint = await previewFingerprint(preview);
@@ -47,11 +49,11 @@ export async function runOrganizationProfileOperation(db: D1Database, identity: 
   await claimEventOperation(db, owner, previewId, fingerprint);
   try {
     // Check profile state AND live management membership in the same atomic write.
-    const result = await db.prepare(`UPDATE organizations SET name=?, description=?, image_url=?, city=?, tags=?, updated_at=?
+    const result = await db.prepare(`UPDATE organizations SET name=?, description=?, image_url=?, links_json=?, city=?, tags=?, updated_at=?
       WHERE id=? AND ${columns.map(column => `${column} IS ?`).join(' AND ')}
       AND (? = 1 OR EXISTS (SELECT 1 FROM organization_memberships WHERE organization_id=? AND user_id=? AND status='active' AND role IN ('owner','administrator')))
-      RETURNING id, slug, name, description, image_url, city, tags, updated_at`)
-      .bind(after.name, after.description, after.image_url, after.city, after.tags, new Date().toISOString(), organizationId,
+      RETURNING id, slug, name, description, image_url, links_json, city, tags, updated_at`)
+      .bind(after.name, after.description, after.image_url, after.links_json, after.city, after.tags, new Date().toISOString(), organizationId,
         ...columns.map(column => before[column]), actor.isOperator ? 1 : 0, organizationId, actor.id).first<ProfileRow>();
     if (!result) throw new EventIntegrationError(409, 'Profile or management permission changed; request a new preview');
     await finishEventOperation(db, previewId, true, ['profile']);

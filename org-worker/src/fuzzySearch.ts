@@ -8,11 +8,6 @@ function normalizeSearchText(value: unknown) {
     .replace(/\s+/g, " ");
 }
 
-function searchTokens(value: unknown) {
-  const normalized = normalizeSearchText(value);
-  return normalized ? normalized.split(" ") : [];
-}
-
 function fuzzyDistanceLimit(token: string) {
   if (token.length <= 2) return 0;
   if (token.length <= 4) return 1;
@@ -69,46 +64,67 @@ function scoreSearchToken(queryToken: string, fieldToken: string) {
   return 0;
 }
 
-export function scoreSearchCandidate(query: string, fields: Array<unknown>) {
+// Compile once per search. Token scores are query-local, so repeated words in
+// descriptions share typo comparisons without retaining data between requests.
+export function createSearchScorer(query: string) {
   const normalizedQuery = normalizeSearchText(query);
-  const queryTokens = searchTokens(normalizedQuery);
-  if (!normalizedQuery || !queryTokens.length) return 0;
-
-  const normalizedFields = fields.map(normalizeSearchText).filter(Boolean);
-  const fieldTokens = normalizedFields.flatMap((field) => field.split(" "));
-  let score = 0;
-
-  for (const field of normalizedFields) {
-    if (field === normalizedQuery) score = Math.max(score, 140);
-    else if (field.startsWith(normalizedQuery)) score = Math.max(score, 115);
-    else if (field.includes(normalizedQuery)) score = Math.max(score, 95);
+  const queryTokens = normalizedQuery ? normalizedQuery.split(" ") : [];
+  const tokenScores = queryTokens.map(() => new Map<string, number>());
+  function tokenScore(index: number, fieldToken: string) {
+    const cache = tokenScores[index];
+    const cached = cache.get(fieldToken);
+    if (cached !== undefined) return cached;
+    const score = scoreSearchToken(queryTokens[index], fieldToken);
+    // Bound memory even for unusually large directories or long descriptions.
+    if (cache.size < 8192) cache.set(fieldToken, score);
+    return score;
   }
+  return (fields: Array<unknown>) => {
+    if (!normalizedQuery) return 0;
+    const normalizedFields = fields.map(normalizeSearchText);
+    const fieldTokens = new Set(normalizedFields.filter(Boolean).flatMap(field => field.split(" ")));
+    let score = 0;
+    for (const field of normalizedFields) {
+      if (field === normalizedQuery) score = Math.max(score, 140);
+      else if (field.startsWith(normalizedQuery)) score = Math.max(score, 115);
+      else if (field.includes(normalizedQuery)) score = Math.max(score, 95);
+    }
+    for (let index = 0; index < queryTokens.length; index += 1) {
+      let best = 0;
+      for (const fieldToken of fieldTokens) {
+        best = Math.max(best, tokenScore(index, fieldToken));
+        if (best === 70) break; // Exact token match is the maximum possible.
+      }
+      if (!best) return 0;
+      score += best;
+    }
+    // Preserve distinct primary-name tokens for repeated query terms.
+    const primaryTokens = (normalizedFields[0] || '').split(" ");
+    const primaryMatches = queryTokens.every((_, index) => {
+      let best = 0, bestIndex = -1;
+      for (let position = 0; position < primaryTokens.length; position += 1) {
+        const value = tokenScore(index, primaryTokens[position]);
+        if (value > best) { best = value; bestIndex = position; }
+        if (best === 70) break;
+      }
+      if (!best) return false;
+      primaryTokens.splice(bestIndex, 1);
+      return true;
+    });
+    return score + (primaryMatches ? 60 : 0);
+  };
+}
 
-  for (const token of queryTokens) {
-    const best = fieldTokens.reduce((bestScore, fieldToken) => Math.max(bestScore, scoreSearchToken(token, fieldToken)), 0);
-    if (!best) return 0;
-    score += best;
-  }
-
-  // A name or title matching every query term is more useful than incidental
-  // matches scattered through a long description.
-  const primaryTokens = normalizeSearchText(fields[0]).split(" ");
-  const primaryMatches = queryTokens.every(token => {
-    const matches = primaryTokens.map((fieldToken,index) => ({index,score:scoreSearchToken(token,fieldToken)}));
-    matches.sort((a,b) => b.score-a.score);
-    if (!matches[0]?.score) return false;
-    primaryTokens.splice(matches[0].index,1);
-    return true;
-  });
-  if (primaryMatches) score += 60;
-  return score;
+export function scoreSearchCandidate(query: string, fields: Array<unknown>) {
+  return createSearchScorer(query)(fields);
 }
 
 export function rankSearchResults<T>(rows: T[], query: string, fieldsForRow: (row: T) => Array<unknown>, limit: number, tieBreaker?: (a: T, b: T) => number) {
   const q = query.trim();
   if (!q) return rows.slice(0, limit);
+  const score = createSearchScorer(q);
   return rows
-    .map((row, index) => ({ row, index, score: scoreSearchCandidate(q, fieldsForRow(row)) }))
+    .map((row, index) => ({ row, index, score: score(fieldsForRow(row)) }))
     .filter((item) => item.score > 0)
     .sort((a, b) => b.score - a.score || tieBreaker?.(a.row,b.row) || a.index - b.index)
     .slice(0, limit)

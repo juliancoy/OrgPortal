@@ -18,9 +18,26 @@ directly for portal-owned events and are the preferred path when retiring Luma.
 Organization setup uses the same browser OAuth connection and existing PIdP
 identity. `list_organizations` returns active memberships;
 `list_organization_members` checks OrgPortal's member-read permission.
-`preview_organization_creation` / `apply_organization_creation` create a separate
-organization owned by the authenticated identity. Existing organizations are
-rejected rather than overwritten. `preview_organization_membership` /
+`search_organization_directory` and `get_directory_organization` read public
+records independently of membership. `preview_directory_registration` /
+`apply_directory_registration` add an unclaimed public listing with live operator
+authority and no membership or permission grant. Never substitute owned creation
+when registration is unavailable or denied.
+
+`preview_owned_organization_creation` / `apply_owned_organization_creation` create
+an organization or team owned by the authenticated identity. The reviewed input
+must include `acknowledgeOwnership=true`. Previews identify the owner grant;
+claimed status does not verify legal representation. The ambiguous
+`preview_organization_creation` / `apply_organization_creation` names remain
+deprecated aliases with the same explicit intent requirement. Existing
+organizations are rejected rather than overwritten.
+
+`preview_organization_ownership_release` / `apply_organization_ownership_release`
+correct only the acting owner's association, preserving the public record and
+other members. They refuse configured portals and challenge history. Inspect
+`get_organization_operation` after an uncertain write; it remains available to
+the actor after releasing membership. See the [organization domain rollout](../architecture/ORGANIZATION_DOMAIN.md)
+for shared REST/MCP contracts, compatibility restrictions and later phases. `preview_organization_membership` /
 `apply_organization_membership` reuse existing PIdP user IDs and enforce live
 organization-management permissions. Both write pairs require portal read/write
 scopes and a matching ten-minute, one-use preview receipt. OAuth consent does
@@ -639,3 +656,11 @@ import upsert. A name/city or normalized source-URL match returns conflict witho
 modifying the existing record. Preview and apply use the same normalized identity
 check; a race or failure rolls back creation. Existing events and memberships are
 not renamed, moved or reassigned. No migration is required.
+
+## Local browser acceptance
+
+Use the [local MCP connection test](LOCAL_MCP_TEST.md) to exercise a simulated
+ChatGPT web client against isolated Docker services, including actual browser
+sign-in, consent, PKCE, MCP reads, scope/domain denials and live revocation.
+This also covers separate client and portal browsers with matching-code pairing.
+It does not connect OpenAI’s hosted service to localhost.

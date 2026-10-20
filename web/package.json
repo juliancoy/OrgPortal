@@ -26,6 +26,7 @@
     "test:e2e:report": "playwright show-report playwright-report",
     "test:e2e:docker": "docker compose -f docker/playwright/docker-compose.yml up --build --abort-on-container-exit --exit-code-from orgportal-playwright",
     "test:matrix:live": "node scripts/matrix-live-smoke.mjs",
+    "test:chat:ui": "node scripts/test-native-chat-ui.mjs",
     "test:chat:selenium": "python scripts/selenium-chat-smoke.py",
     "test:chat:selenium:docker": "scripts/run-selenium-chat-smoke.sh",
     "test:local:selenium:docker": "scripts/run-selenium-local-smoke.sh",
@@ -50,7 +51,9 @@
     "test:ecosystem:webgpu": "node scripts/check-network-webgpu.mjs",
     "test:ecosystem:local": "node scripts/test-local-ecosystem-network.mjs",
     "sync:government": "node scripts/sync-government-awards.mjs",
-    "build:performance": "node scripts/build-performance.mjs"
+    "build:performance": "node scripts/build-performance.mjs",
+    "test:organization-workflows": "node scripts/test-organization-workflows.mjs",
+    "test:mcp:local": "python3 ../scripts/run-local-mcp-test.py"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.1",
@@ -84,6 +87,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
+    "esbuild": "0.28.1",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",

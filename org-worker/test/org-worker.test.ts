@@ -237,7 +237,8 @@ class FakeD1 {
       return this.events.filter((row) => String(row.slug) >= lower && String(row.slug) < upper) as T[];
     }
     if (sql.includes("FROM organizations o")) {
-      return this.organizations.map((row) => ({
+      const ids = sql.includes('WHERE o.id IN (SELECT value FROM json_each(?))') ? JSON.parse(String(params[0])) as string[] : null;
+      return this.organizations.filter(row => !ids || ids.includes(String(row.id))).map((row) => ({
         ...row,
         upcoming_events_count: this.events.filter((event) => event.host_org_id === row.id).length,
         membership_count: this.organizationMemberships.filter((membership) => membership.organization_id === row.id && membership.status === "active").length,

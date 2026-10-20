@@ -1,7 +1,6 @@
 import { expect, test } from '@playwright/test'
 
 // Isolated UI fixtures: no real identity, Google connection, or email delivery.
-test.use({ launchOptions: { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH } })
 for (const scenario of ['no group', 'group data fails', 'sender fails then retries']) {
   test(`sender loading: ${scenario}`, async ({ page, baseURL }) => {
     if (!baseURL || !['localhost', '127.0.0.1'].includes(new URL(baseURL).hostname)) throw new Error('Run email fixtures on localhost only')

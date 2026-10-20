@@ -6,10 +6,11 @@ import { enforceEventRateLimit, prepareEventOperation, previewFingerprint, claim
 
 export const organizationCreateSchema = z.object({
   kind: z.enum(['organization','team']).optional(),
-  name: z.string().trim().min(1).max(255), city: z.string().trim().min(1).max(80),
+  name: z.string().trim().min(1).max(255), city: z.string().trim().min(1).max(80).optional(),
   description: z.string().max(5000).optional(),
   source_url: z.string().url().optional(), image_url: z.string().url().optional(),
   tags: z.array(z.string().max(80)).max(40).optional(),
+  acknowledgeOwnership: z.literal(true).optional(),
   previewId: z.string().uuid().optional(), confirm: z.boolean().optional(),
 }).strict();
 export const organizationMemberSchema = z.object({
@@ -59,17 +60,20 @@ export async function runOrganizationOperation(db: D1Database, identity: { userI
   const member = changes as z.infer<typeof organizationMemberSchema>;
   const assignment = operation === 'member' && member.role === 'administrator'
     ? await organizerAssignment(db, organizationId, member.user_id) : null;
-  const preview = { operation, organizationId, changes, before, assignment };
+  const effects = operation === 'create' ? { ownershipStatus: 'claimed', ownerUserId: actor.id, createsOwnership: true, createsMembership: true, membershipRole: 'owner', verifiesLegalRepresentation: false, publicRecord: true, requiresOwnershipAcknowledgement: true } : null;
+  const preview = { operation, organizationId, changes, before, assignment, effects };
   const owner = { userId: actor.id, organizationId, eventId: `organization:${operation}` };
   const fingerprint = await previewFingerprint(preview);
   if (!confirm) return { ...preview, ...await prepareEventOperation(db, owner, fingerprint) };
   if (!previewId) throw new EventIntegrationError(409, 'Request a preview first and supply its previewId');
+  if (operation === 'create' && (args as z.infer<typeof organizationCreateSchema>).acknowledgeOwnership !== true)
+    throw new EventIntegrationError(400, 'Owned creation grants you ownership. Use directory registration for a third-party listing, or preview again with acknowledgeOwnership=true');
   await claimEventOperation(db, owner, previewId, fingerprint);
   try {
     const result = operation === 'create' ? await create(actor, changes)
       : await saveOrganizationMember(db, organizationId, actor, changes, new Date().toISOString());
     await finishEventOperation(db, previewId, true, [operation]);
-    return { result, previewId };
+    return { result, previewId, effects };
   } catch (error) {
     await finishEventOperation(db, previewId, false, []);
     throw error;

@@ -1,10 +1,9 @@
+import { organizationLinkLabels, readOrganizationLinks, type OrganizationLink } from '../../../../shared/organizationLinks'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getActivePortalProfileConfig } from '../../config/portalFeatures'
 import { useGroupSite } from '../../config/timebankCommunity'
 
-const MEDTECH_WHATSAPP_URL = 'https://chat.whatsapp.com/D52d1XHKZQCFZyFfFq0KIR'
-const MEDTECH_GITHUB_URL = 'https://github.com/juliancoy/BmoreMedTech'
-const MEDTECH_LUMA_URL = 'https://luma.com/'
 
 function CalendarIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1.25A2.75 2.75 0 0 1 22 6.75v11.5A2.75 2.75 0 0 1 19.25 21H4.75A2.75 2.75 0 0 1 2 18.25V6.75A2.75 2.75 0 0 1 4.75 4H6V3a1 1 0 0 1 1-1Zm13 8H4v8.25c0 .41.34.75.75.75h14.5c.41 0 .75-.34.75-.75V10ZM4.75 6a.75.75 0 0 0-.75.75V8h16V6.75a.75.75 0 0 0-.75-.75H18v1a1 1 0 1 1-2 0V6H8v1a1 1 0 0 1-2 0V6H4.75Z" /></svg>
@@ -27,22 +26,28 @@ function isMedTechProfile() {
   return profile.id === 'baltimore-medtech' || profile.groupSiteId === 'baltimore-medtech' || (typeof window !== 'undefined' && window.location.hostname.endsWith('medtech.social'))
 }
 
-function externalUrlFromFeatureConfig(value: unknown) {
-  return typeof value === 'string' && value.trim() ? value.trim() : ''
-}
-
 export function FloatingSocialDock() {
   const tenant = useGroupSite()
-  if (!isMedTechProfile()) return null
+  const enabled = isMedTechProfile()
+  const orgTarget = enabled ? tenant?.organization_id || tenant?.home_org_slug : null
+  const [organizationLink, setOrganizationLink] = useState<{ org: string; links: OrganizationLink[] } | null>(null)
+  useEffect(() => {
+    if (!orgTarget) return
+    const controller = new AbortController()
+    fetch(`/api/org/api/network/orgs/public/${encodeURIComponent(orgTarget)}`, { signal: controller.signal, cache: 'no-cache' })
+      .then(async response => {
+        if (!response.ok) throw new Error('Organization unavailable')
+        const org = await response.json()
+        if (!controller.signal.aborted) setOrganizationLink({org:orgTarget,links:readOrganizationLinks(org.links)})
+      }).catch(() => { if (!controller.signal.aborted) setOrganizationLink(null) })
+    return () => controller.abort()
+  }, [orgTarget])
+  if (!enabled) return null
 
-  const githubUrl = externalUrlFromFeatureConfig(tenant?.feature_config?.githubUrl) || MEDTECH_GITHUB_URL
-  const whatsappUrl = externalUrlFromFeatureConfig(tenant?.feature_config?.whatsappUrl) || MEDTECH_WHATSAPP_URL
-  const lumaUrl = externalUrlFromFeatureConfig(tenant?.feature_config?.lumaUrl) || MEDTECH_LUMA_URL
+  const links = organizationLink?.org === orgTarget ? organizationLink?.links || [] : []
 
   return <nav className="floating-social-dock" aria-label="Baltimore MedTech social links">
     <Link className="floating-social-link calendar" to="/calendar" aria-label="Open Baltimore MedTech calendar" title="Calendar"><CalendarIcon /></Link>
-    <a className="floating-social-link whatsapp" href={whatsappUrl} target="_blank" rel="noopener noreferrer" aria-label="Join Baltimore MedTech on WhatsApp" title="WhatsApp"><WhatsAppIcon /></a>
-    <a className="floating-social-link github" href={githubUrl} target="_blank" rel="noopener noreferrer" aria-label="View Baltimore MedTech on GitHub" title="GitHub"><GithubIcon /></a>
-    <a className="floating-social-link luma" href={lumaUrl} target="_blank" rel="noopener noreferrer" aria-label="Open Baltimore MedTech on Luma" title="Luma"><LumaIcon /></a>
+    {links.map(link=><a key={link.id} className={`floating-social-link ${link.type}`} href={link.url} target="_blank" rel="noopener noreferrer" aria-label={link.label || organizationLinkLabels[link.type]} title={link.label || organizationLinkLabels[link.type]}>{link.type==='whatsapp'?<WhatsAppIcon/>:link.type==='github'?<GithubIcon/>:link.type==='luma'?<LumaIcon/>:<span aria-hidden="true">{link.type==='eventbrite'?'Eb':organizationLinkLabels[link.type].slice(0,2)}</span>}</a>)}
   </nav>
 }

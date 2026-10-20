@@ -14,17 +14,18 @@ async function account(page: Page, signedIn: boolean) {
   }))
 }
 
-test('MCP login uses the existing social login and retains its return path', async ({ page }) => {
+test('MCP login delegates to the shared account and retains its return path', async ({ page }) => {
   await account(page, false)
+  await page.route('**/auth/sso/start?**', route => route.fulfill({ contentType: 'text/html', body: '<h1>PIdP sign-in</h1>' }))
   await page.goto(path)
-  await expect(page).toHaveURL(/\/users\/login\?next=/)
-  const next = new URL(page.url()).searchParams.get('next')
-  expect(next).toBe(path)
-  const google = page.getByRole('link', { name: 'Continue with Google' })
-  await expect(google).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Continue with GitHub' })).toBeVisible()
-  const social = new URL(await google.getAttribute('href') || '', page.url())
-  expect(new URL(social.searchParams.get('next') || '').searchParams.get('next')).toBe(path)
+  await expect(page.getByRole('heading', { name: 'PIdP sign-in' })).toBeVisible()
+  const destination = new URL(page.url())
+  expect(destination.pathname).toBe('/pidp/auth/sso/start')
+  expect(destination.searchParams.get('app')).toBe('orgportal')
+  expect(destination.searchParams.has('owner')).toBe(false)
+  const callback = new URL(destination.searchParams.get('next')!)
+  expect(callback.pathname).toBe('/auth/callback')
+  expect(callback.searchParams.get('next')).toBe(path)
 })
 
 test('MCP continuation opens one combined account and permissions review', async ({ page }) => {

@@ -25,6 +25,31 @@ test('homepage feed includes ongoing hosted events and excludes related and fini
     return (await response.json() as { id: string }[]).map(event => event.id);
   };
   assert.deepEqual(await events('&hosted_only=true&limit=1'), ['ongoing']);
+  assert.deepEqual(await events('&hosted_only=true&limit=1&offset=1'), ['future']);
+  assert.deepEqual(await events('&hosted_only=true&limit=1&offset=2'), []);
   assert.deepEqual(await events('&hosted_only=true'), ['ongoing', 'future']);
   assert.deepEqual(await events(''), ['ongoing', 'related', 'future']);
+});
+
+test('homepage can retrieve more than one full page of upcoming hosted events', async t => {
+  const db = new EventTestDb();
+  t.after(() => db.close());
+  await db.prepare("INSERT INTO organizations (id, name, slug) VALUES ('life', 'LifeTech', 'lifetech')").run();
+  for (let i = 0; i < 205; i++) {
+    const id = `future-${String(i).padStart(3, '0')}`;
+    await db.prepare(`INSERT INTO events (id, ingest_key, title, slug, starts_at, host_org_id, created_at, updated_at)
+      VALUES (?, ?, ?, ?, '2099-01-01T12:00:00Z', 'life', '2026-01-01', '2026-01-01')`).bind(id, id, id, id).run();
+  }
+  const ids: string[] = [];
+  for (let offset = 0; ; offset += 200) {
+    const response = await app.request(`https://lifetech.fyi/api/network/orgs/public/lifetech/events?upcoming_only=true&hosted_only=true&limit=200&offset=${offset}`, {}, { DB: db } as unknown as Env);
+    assert.equal(response.status, 200);
+    const page = await response.json() as { id: string }[];
+    ids.push(...page.map(event => event.id));
+    if (page.length < 200) break;
+  }
+  assert.equal(ids.length, 205);
+  assert.equal(new Set(ids).size, 205);
+  assert.equal(ids[0], 'future-000');
+  assert.equal(ids.at(-1), 'future-204');
 });

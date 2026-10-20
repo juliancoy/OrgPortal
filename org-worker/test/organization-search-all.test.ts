@@ -11,8 +11,9 @@ function fixture() {
  const insert=sql.prepare('INSERT INTO organizations(id,name,slug) VALUES(?,?,?)');
  for(let i=0;i<1200;i++)insert.run(`a-${i}`,`A Popular Organization ${String(i).padStart(4,'0')}`,`a-${i}`);
  insert.run('tedco','TEDCO','tedco');
- const db={prepare(query:string){const stmt=sql.prepare(query);const bind=(args:any[])=>({bind:(...values:any[])=>bind(values),all:async()=>({results:stmt.all(...args)}),first:async()=>stmt.get(...args)||null});return bind([])}} as unknown as D1Database;
- return {sql,env:{DB:db,PIDP_BASE_URL:'https://local-id.test'} as Env};
+ const queries: {sql:string;rows:number}[]=[];
+ const db={prepare(query:string){const stmt=sql.prepare(query);const bind=(args:any[])=>({bind:(...values:any[])=>bind(values),all:async()=>{const results=stmt.all(...args);queries.push({sql:query,rows:results.length});return {results}},first:async()=>stmt.get(...args)||null});return bind([])}} as unknown as D1Database;
+ return {sql,queries,env:{DB:db,PIDP_BASE_URL:'https://local-id.test'} as Env};
 }
 test('public quick search finds organizations beyond the old candidate cap and paginates after matching',async()=>{
  const {sql,env}=fixture();try{
@@ -33,4 +34,43 @@ test('authenticated search covers all organizations while an explicit mine filte
   const response=await app.request(`https://local-portal.test/api/network/orgs?q=TEDCO&limit=5&mine=${mine}`,{headers:{authorization:'Bearer local-fixture'}},env);
   assert.equal(response.status,200);assert.deepEqual((await response.json() as any[]).map(r=>r.id),mine?[]:['tedco']);
  }
+});
+
+
+test('search enriches only text matches and retains activity ranking and pagination', async t => {
+ const {sql,queries,env}=fixture();t.after(()=>sql.close());
+ sql.exec("INSERT INTO organizations(id,name,slug) VALUES ('tedco-active','TEDCO','tedco-active')");
+ sql.exec("INSERT INTO organization_memberships(organization_id,user_id,role,status) VALUES ('tedco-active','member','member','active')");
+ const response=await app.request('https://local-portal.test/api/network/orgs/public?q=tedco&limit=1',{},env);
+ assert.equal(response.status,200);
+ assert.equal((await response.json() as any[])[0].id,'tedco-active');
+ assert.equal(queries.find(query=>query.sql.includes('SELECT o.*'))?.rows,2);
+ const page=await app.request('https://local-portal.test/api/network/orgs/public?q=tedco&limit=1&offset=1',{},env);
+ assert.equal((await page.json() as any[])[0].id,'tedco');
+ queries.length=0;
+ const empty=await app.request('https://local-portal.test/api/network/orgs/public?q=zzzzzzzz',{},env);
+ assert.deepEqual(await empty.json(),[]);
+ assert.equal(queries.length,1);
+});
+
+test('global search returns event cards without querying per-event details', async t => {
+ const {sql,queries,env}=fixture();t.after(()=>sql.close());
+ const insert=sql.prepare('INSERT INTO events(id,ingest_key,title,slug,starts_at,host_org_id) VALUES(?,?,?,?,?,?)');
+ for(let i=0;i<160;i++)insert.run(`event-${i}`,`event-${i}`,'TEDCO Demo Day',`tedco-demo-${i}`,'2099-01-01T18:00:00Z','tedco');
+ sql.exec("INSERT INTO user_contact_pages(id,user_id,user_name,slug,enabled) VALUES ('hidden','hidden','TEDCO Private Person','hidden',0)");
+ const get=async(limit:number)=>{
+  const response=await app.fetch(new Request(`https://local-portal.test/api/network/search?q=tedco&limit=${limit}`),env,{waitUntil(){},passThroughOnException(){},props:{}} as unknown as ExecutionContext);
+  assert.equal(response.status,200);
+  assert.equal(response.headers.get('cache-control'),'no-store');
+  return await response.json() as any;
+ };
+ const suggestions=await get(5);
+ assert.equal(suggestions.events.length,5);
+ assert.equal(suggestions.events[0].title,'TEDCO Demo Day');
+ assert.equal(suggestions.events[0].host_org_name,'TEDCO');
+ assert.deepEqual(suggestions.users,[]);
+ assert.deepEqual(suggestions.orgs.map((row:any)=>row.id),['tedco']);
+ assert.equal(queries.length,4); // Text match, matching org details, event candidates, visible people.
+ const full=await get(40);
+ assert.deepEqual(suggestions.events,full.events.slice(0,5));
 });

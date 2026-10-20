@@ -1,4 +1,7 @@
 import { presentationRoutes } from './eventPresentations';
+import { runOrganizationDirectoryOperation } from './organizationDirectoryOperations';
+import { runOrganizationOperation as runOwnedOrganizationOperation } from './organizationMcp';
+import { normalizeOrganizationLinks, readOrganizationLinks } from '../../shared/organizationLinks';
 import { publicDataResponse } from './publicDataResponse';
 import { visitorStatisticsRoutes } from './visitorStatistics';
 import { EventIntegrationError } from './eventPlatforms';
@@ -9,7 +12,7 @@ import { posterGallery } from './posterGallery';
 import { organizationFollowRoutes, dispatchFollowEventNotifications } from './organizationFollows';
 import { compareOrganizationActivity } from './organizationSearchActivity';
 import { personalizeSearch, type SearchResults } from './personalSearch';
-import { rankSearchResults } from './fuzzySearch';
+import { createSearchScorer, rankSearchResults } from './fuzzySearch';
 
 import { profileEvents } from './profileEvents';
 import policyPages from './generated/policyPages.json';
@@ -31,7 +34,6 @@ import {linkEventSupportRecords} from './eventSupportLinks';
 import { organizationSnapshot, replicaStatus, replicateOrganizations, snapshotEtagMatches } from './organizationReplication';
 import { memberMeetingRoutes } from './memberMeetings';
 import { runEventEnrichmentOperation } from './eventEnrichment';
-import { runOrganizationRegistryOperation } from './organizationRegistry';
 import { nametagRoutes } from './nametags';
 import { calendarCollectionOptions, addCalendarCollections } from './calendarCollections';
 import { organizationSupport, publicRelationshipRecords, runSupportOperation } from './organizationSupport';
@@ -187,6 +189,7 @@ type NotificationRow = {
 };
 
 type OrganizationRow = {
+  links_json?: string | null;
   id: string;
   name: string;
   slug: string;
@@ -263,6 +266,7 @@ type OrganizationPortalRow = {
 };
 
 type EventRow = {
+  organization_links_json?: string | null;
   id: string;
   ingest_key: string;
   title: string;
@@ -905,7 +909,7 @@ function icsFold(line: string) {
 
 async function registeredEventsIcs(env: Env, request: Request, feed: RegisteredEventCalendarFeedRow) {
   const rows = await env.DB.prepare(
-    `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url
+    `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url, o.links_json AS organization_links_json
      FROM event_registrations r
      JOIN events e ON e.id = r.event_id
      LEFT JOIN organizations o ON o.id = e.host_org_id
@@ -1335,6 +1339,7 @@ function mapOrganization(row: OrganizationRow, upcomingEventsCount = 0) {
     description: row.description,
     source_url: row.source_url,
     source_urls: row.source_url ? [row.source_url] : [],
+    links: readOrganizationLinks(row.links_json),
     image_url: row.image_url,
     media: parseOrganizationMedia(row.media_json),
     tags: parseJsonArray(row.tags),
@@ -1391,6 +1396,7 @@ async function mapEvent(env: Env, request: Request, row: EventRow) {
     host_org_name: row.organization_name || row.host_org_name,
     organization_name: row.organization_name || row.host_org_name,
     organization_slug: row.organization_slug || null,
+    organization_links: readOrganizationLinks(row.organization_links_json),
     organization_image_url: row.organization_image_url || null,
     tags: parseJsonArray(row.tags),
     public_url: await eventPublicUrl(env, request, row.slug),
@@ -1485,7 +1491,10 @@ async function eventFlyerSvg(env: Env, request: Request, event: EventRow, format
       }
     }
   }
-  return renderEventPoster(event, posterLinkTarget(publicUrl, new URL(request.url).searchParams.get("link"), [event.source_url, ...parseEventLinks(event.event_links_json).map(item => item.url)]), format, { name, tagline: tenant.tagline, logo }, theme, { background, backgroundImage: backgroundData, backgroundOnly, elements: parsePosterElements(new URL(request.url).searchParams.get("elements")), ...Object.fromEntries(["zoom", "offsetX", "offsetY", "opacity", "dimming"].map(key => [key, new URL(request.url).searchParams.has(key) ? Number(new URL(request.url).searchParams.get(key)) : undefined])) });
+  const requestedLink = new URL(request.url).searchParams.get("link");
+  const targetUrl = posterLinkTarget(publicUrl, requestedLink, [event.source_url, ...parseEventLinks(event.event_links_json).map(item => item.url)], event.organization_slug, readOrganizationLinks(event.organization_links_json));
+  const chatLink = (requestedLink === "event-chat" || requestedLink === "group-chat") && targetUrl !== publicUrl;
+  return renderEventPoster(event, targetUrl, format, { name, tagline: tenant.tagline, logo }, theme, { background, backgroundImage: backgroundData, backgroundOnly, chatLink, whatsappLink: (requestedLink === "whatsapp" || readOrganizationLinks(event.organization_links_json).some(link => `org-link:${link.id}` === requestedLink && link.type === "whatsapp")) && targetUrl !== publicUrl, organizationLink: requestedLink?.startsWith("org-link:") && targetUrl !== publicUrl, elements: parsePosterElements(new URL(request.url).searchParams.get("elements")), ...Object.fromEntries(["zoom", "offsetX", "offsetY", "opacity", "dimming"].map(key => [key, new URL(request.url).searchParams.has(key) ? Number(new URL(request.url).searchParams.get(key)) : undefined])) });
 }
 
 async function publicEventBySlug(db: D1Database, rawSlug: string) {
@@ -1493,7 +1502,7 @@ async function publicEventBySlug(db: D1Database, rawSlug: string) {
   // Preserve their exact identity instead of re-truncating an existing URL.
   const slug = /^[a-z0-9][a-z0-9-]{0,199}$/.test(rawSlug) ? rawSlug : slugify(rawSlug);
   const direct = await db.prepare(
-    `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url
+    `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url, o.links_json AS organization_links_json
      FROM events e
      LEFT JOIN organizations o ON o.id = e.host_org_id
      WHERE e.slug = ?
@@ -1505,7 +1514,7 @@ async function publicEventBySlug(db: D1Database, rawSlug: string) {
 
   try {
     return await db.prepare(
-      `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url
+      `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url, o.links_json AS organization_links_json
        FROM event_slug_aliases esa
        JOIN events e ON e.id = esa.event_id
        LEFT JOIN organizations o ON o.id = e.host_org_id
@@ -3096,16 +3105,21 @@ app.get('/api/network/search', async c => {
   const user = c.req.header('Authorization') ? await currentUser(c.env,c.req.raw) : null;
   if (q.length < 2) return c.json({orgs:[],events:[],users:[],personalized:Boolean(user)});
   const candidates = 160; // Same candidate pool for header suggestions and the full results page.
-  const publicPaths = ['/api/network/orgs/public','/api/network/events/public','/api/network/users/public'];
-  const responses = await Promise.all(publicPaths.map(path => {
+  const publicPaths = ['/api/network/orgs/public','/api/network/users/public'];
+  const [responses, eventRows] = await Promise.all([Promise.all(publicPaths.map(path => {
     const url = new URL(path,c.req.url);
     url.search = new URLSearchParams({q,limit:String(candidates),upcoming_only:'true'}).toString();
     const headers = new Headers(c.req.raw.headers);
     headers.delete('Authorization');
     return app.fetch(new Request(url,{headers}),c.env,c.executionCtx);
-  }));
+  })), publicEventSearchRows(c.env,q,candidates,true)]);
   if (responses.some(response=>!response.ok)) fail(503,'Search is temporarily unavailable.');
-  const [orgs,events,users] = await Promise.all(responses.map(response=>response.json())) as [SearchResults['orgs'],SearchResults['events'],SearchResults['users']];
+  const [orgs,users] = await Promise.all(responses.map(response=>response.json())) as [SearchResults['orgs'],SearchResults['users']];
+  // Search cards need public display fields, not per-event venue/media enrichment.
+  const events = eventRows.map(row => ({ id: row.id, title: row.title, slug: row.slug, description: row.description,
+    starts_at: row.starts_at, ends_at: row.ends_at, location: row.location, image_url: row.image_url,
+    organization_name: row.organization_name || row.host_org_name, host_org_name: row.organization_name || row.host_org_name,
+    host_org_id: row.host_org_id, host_user_id: row.host_user_id, tags: parseJsonArray(row.tags) }));
   const results = user ? await personalizeSearch(c.env.DB,user.id,q,{orgs,events,users}) : {orgs,events,users};
   return c.json({orgs:results.orgs.slice(0,limit),events:results.events.slice(0,limit),users:results.users.slice(0,limit),personalized:Boolean(user)});
 });
@@ -3113,6 +3127,19 @@ app.get("/api/network/orgs/public", async (c) => {
   const q = (c.req.query("q") || "").trim();
   const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "300", 10) || 300, 500));
   const offset = Math.max(0, Math.min(Number.parseInt(c.req.query("offset") || "0", 10) || 0, 100000));
+  // Match text before running activity/ownership subqueries. Every organization
+  // remains searchable; there is no pre-ranking candidate cap.
+  const relevance = new Map<string,number>();
+  const matchingIds: string[] = [];
+  if (q) {
+    const searchable = await c.env.DB.prepare('SELECT o.id, o.name, o.description, o.slug, o.tags, o.city FROM organizations o').all<OrganizationRow>();
+    const score = createSearchScorer(q);
+    for (const row of searchable.results || []) {
+      const value = score([row.name,row.description,row.slug,row.tags,row.city]);
+      if (value > 0) { relevance.set(row.id,value); matchingIds.push(row.id); }
+    }
+    if (!matchingIds.length) return publicDataResponse(c.req.raw, []);
+  }
   const rows = await c.env.DB.prepare(
     `SELECT o.*,
       (SELECT count(*) FROM events e WHERE e.host_org_id = o.id AND (COALESCE(e.starts_at,e.event_date) IS NULL OR COALESCE(e.starts_at,e.event_date) >= date('now'))) AS upcoming_events_count,
@@ -3124,12 +3151,15 @@ app.get("/api/network/orgs/public", async (c) => {
       (SELECT count(*) FROM organization_memberships m WHERE m.organization_id = o.id AND m.status = 'active') AS membership_count,
       (SELECT count(*) FROM organization_ownership_challenges ch WHERE ch.organization_id = o.id AND ch.status = 'open') AS pending_challenges_count
      FROM organizations o
+     ${q ? "WHERE o.id IN (SELECT value FROM json_each(?))" : ""}
      ORDER BY membership_count DESC, (feedback_positive_count - feedback_concern_count) DESC, upcoming_events_count DESC, lower(o.name) ASC, o.id ASC
      ${q ? "" : "LIMIT ? OFFSET ?"}`,
   )
-    .bind(...(q ? [] : [limit, offset]))
+    .bind(...(q ? [JSON.stringify(matchingIds)] : [limit, offset]))
     .all<OrganizationRow & { upcoming_events_count: number }>();
-  const rankedRows = rankSearchResults(rows.results || [], q, (row) => [row.name, row.description, row.slug, row.tags, row.city], q ? limit + offset : limit, compareOrganizationActivity).slice(q ? offset : 0);
+  const rankedRows = q
+    ? (rows.results || []).sort((a,b) => relevance.get(b.id)! - relevance.get(a.id)! || compareOrganizationActivity(a,b)).slice(offset,offset + limit)
+    : (rows.results || []);
   return publicDataResponse(c.req.raw, rankedRows.map((row) => mapOrganization(row, Number(row.upcoming_events_count || 0))));
 });
 
@@ -3143,9 +3173,9 @@ app.get("/api/network/orgs/public/:slug", async (c) => {
       (SELECT count(*) FROM organization_feedback f WHERE f.organization_id = o.id AND f.rating = 'positive') AS feedback_positive_count,
       (SELECT count(*) FROM organization_feedback f WHERE f.organization_id = o.id AND f.rating = 'concern') AS feedback_concern_count,
       (SELECT count(*) FROM organization_ownership_challenges ch WHERE ch.organization_id = o.id AND ch.status = 'open') AS pending_challenges_count
-     FROM organizations o WHERE o.slug = ?`,
+     FROM organizations o WHERE o.slug = ? OR o.id = ?`,
   )
-    .bind(slugify(c.req.param("slug")))
+    .bind(slugify(c.req.param("slug")), c.req.param("slug"))
     .first<OrganizationRow>();
   if (!row) fail(404, "Organization not found");
   const count = await c.env.DB.prepare("SELECT count(*) AS n FROM events WHERE host_org_id = ? AND (starts_at IS NULL OR starts_at >= datetime('now'))")
@@ -3232,18 +3262,19 @@ app.get("/api/network/orgs/public/:slug/events", async (c) => {
     .first<OrganizationRow>();
   if (!org) return c.json([]);
   const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "60", 10) || 60, 200));
+  const offset = Math.max(0, Number.parseInt(c.req.query("offset") || "0", 10) || 0);
   const hostedOnly = c.req.query("hosted_only") === "true";
   const upcomingOnly = c.req.query("upcoming_only") === "true";
   const rows = await c.env.DB.prepare(
-    `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url
+    `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url, o.links_json AS organization_links_json
      FROM events e
      LEFT JOIN organizations o ON o.id = e.host_org_id
      WHERE (e.host_org_id = ? OR (? = 0 AND EXISTS (SELECT 1 FROM event_organizations eo WHERE eo.event_id = e.id AND eo.organization_id = ?)))
      ${upcomingOnly ? "AND ((e.starts_at IS NOT NULL AND julianday(COALESCE(e.ends_at, e.starts_at)) >= julianday('now')) OR (e.starts_at IS NULL AND e.event_date >= date('now')))" : ""}
-     ORDER BY COALESCE(e.starts_at,e.event_date,e.created_at) ${upcomingOnly ? "ASC" : "DESC"}
-     LIMIT ?`,
+     ORDER BY COALESCE(e.starts_at,e.event_date,e.created_at) ${upcomingOnly ? "ASC" : "DESC"}, e.id ASC
+     LIMIT ? OFFSET ?`,
   )
-    .bind(org.id, hostedOnly ? 1 : 0, org.id, limit)
+    .bind(org.id, hostedOnly ? 1 : 0, org.id, limit, offset)
     .all<EventRow>();
   return c.json(await Promise.all((rows.results || []).map((row) => mapEvent(c.env, c.req.raw, row))));
 });
@@ -3276,10 +3307,7 @@ app.get("/api/network/orgs/public/:slug/media/:mediaId", async (c) => {
   return new Response(object.body, { status: 200, headers });
 });
 
-app.get("/api/network/events/public", async (c) => {
-  const q = (c.req.query("q") || "").trim();
-  const upcomingOnly = (c.req.query("upcoming_only") || "true").toLowerCase() !== "false";
-  const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "120", 10) || 120, 500));
+async function publicEventSearchRows(env: Env, q: string, limit: number, upcomingOnly: boolean) {
   const filters: string[] = [];
   const binds: unknown[] = [];
   if (upcomingOnly) {
@@ -3287,8 +3315,8 @@ app.get("/api/network/events/public", async (c) => {
   }
   const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
   const candidateLimit = q ? searchCandidateLimit(limit) : limit;
-  const rows = await c.env.DB.prepare(
-    `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url
+  const rows = await env.DB.prepare(
+    `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url, o.links_json AS organization_links_json
      FROM events e
      LEFT JOIN organizations o ON o.id = e.host_org_id
      ${where}
@@ -3297,12 +3325,19 @@ app.get("/api/network/events/public", async (c) => {
   )
     .bind(...binds, candidateLimit)
     .all<EventRow>();
-  const rankedRows = rankSearchResults(
+  return rankSearchResults(
     rows.results || [],
     q,
     (row) => [row.title, row.description, row.location, row.organization_name, row.host_org_name, row.slug, row.tags, row.city],
     limit,
   );
+}
+
+app.get("/api/network/events/public", async (c) => {
+  const q = (c.req.query("q") || "").trim();
+  const upcomingOnly = (c.req.query("upcoming_only") || "true").toLowerCase() !== "false";
+  const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "120", 10) || 120, 500));
+  const rankedRows = await publicEventSearchRows(c.env,q,limit,upcomingOnly);
   return c.json(await Promise.all(rankedRows.map((row) => mapEvent(c.env, c.req.raw, row))));
 });
 
@@ -3343,7 +3378,7 @@ app.get("/api/network/events/public/:slug/flyer.svg", async (c) => {
   return new Response(svg, {
     headers: {
       "content-type": "image/svg+xml; charset=utf-8",
-      "cache-control": background === "gallery" ? "no-store" : "public, max-age=300, s-maxage=900",
+      "cache-control": (background === "gallery" || (c.req.query("link") === "whatsapp" || c.req.query("link")?.startsWith("org-link:"))) ? "no-store" : "public, max-age=300, s-maxage=900",
       "content-disposition": `inline; filename="${dispositionName}"`,
     },
   });
@@ -3390,16 +3425,74 @@ app.get("/api/network/orgs", async (c) => {
   return c.json(rankedRows.map((row) => mapOrganization(row)));
 });
 
+// Shared organization application operations. Session authority comes from PIdP;
+// request bodies cannot supply actors, scopes or operator status.
+app.get('/api/network/directory', async c => {
+  const user = await currentUser(c.env, c.req.raw);
+  try {
+    return c.json(await runOrganizationDirectoryOperation(c.env.DB, {
+      actor: organizationActor(user, c.env), scopes: ['org:portal.read'],
+    }, 'search', { query: c.req.query('q') || '', limit: c.req.query('limit') ? Number(c.req.query('limit')) : 25, cursor: c.req.query('cursor') }));
+  } catch (error) { return eventErrorResponse(error, c.env, c.req.raw); }
+});
+app.get('/api/network/directory/:organizationId', async c => {
+  const user = await currentUser(c.env, c.req.raw);
+  try { return c.json(await runOrganizationDirectoryOperation(c.env.DB, {
+    actor: organizationActor(user, c.env), scopes: ['org:portal.read'],
+  }, 'get', { organizationId: c.req.param('organizationId') })); }
+  catch (error) { return eventErrorResponse(error, c.env, c.req.raw); }
+});
+app.post('/api/network/directory/registration/:phase', async c => {
+  const phase = c.req.param('phase');
+  if (!['preview', 'apply'].includes(phase)) return c.json({ error: 'Not found' }, 404);
+  const user = await currentUser(c.env, c.req.raw);
+  try {
+    const input = await c.req.json() as Record<string, unknown>;
+    return c.json(await runOrganizationDirectoryOperation(c.env.DB, {
+      actor: organizationActor(user, c.env), scopes: ['org:portal.read', 'org:portal.write'],
+    }, 'register', { ...input, confirm: phase === 'apply' && input.confirm === true }));
+  } catch (error) { return eventErrorResponse(error, c.env, c.req.raw); }
+});
+app.post('/api/network/orgs/:organizationId/ownership/release/:phase', async c => {
+  const phase = c.req.param('phase');
+  if (!['preview', 'apply'].includes(phase)) return c.json({ error: 'Not found' }, 404);
+  const user = await currentUser(c.env, c.req.raw);
+  try {
+    const input = await c.req.json() as Record<string, unknown>;
+    return c.json(await runOrganizationDirectoryOperation(c.env.DB, {
+      actor: organizationActor(user, c.env), scopes: ['org:portal.read', 'org:portal.write'],
+    }, 'release', { ...input, organizationId: c.req.param('organizationId'), confirm: phase === 'apply' && input.confirm === true }));
+  } catch (error) { return eventErrorResponse(error, c.env, c.req.raw); }
+});
+app.get('/api/network/orgs/:organizationId/operations/:previewId', async c => {
+  const user = await currentUser(c.env, c.req.raw);
+  try { return c.json(await runOrganizationDirectoryOperation(c.env.DB, {
+    actor: organizationActor(user, c.env), scopes: ['org:portal.read'],
+  }, 'status', { organizationId: c.req.param('organizationId'), previewId: c.req.param('previewId') })); }
+  catch (error) { return eventErrorResponse(error, c.env, c.req.raw); }
+});
+app.post('/api/network/owned-organizations/:phase', async c => {
+  const phase = c.req.param('phase');
+  if (!['preview', 'apply'].includes(phase)) return c.json({ error: 'Not found' }, 404);
+  const user = await currentUser(c.env, c.req.raw);
+  try {
+    const input = await c.req.json() as Record<string, unknown>;
+    return c.json(await runOwnedOrganizationOperation(c.env.DB, { userId: user.id, scopes: ['org:portal.read', 'org:portal.write'] },
+      'create', { ...input, confirm: phase === 'apply' && input.confirm === true }, (actor, fields) => createOrganization(c.env, actor, fields)));
+  } catch (error) { return eventErrorResponse(error, c.env, c.req.raw); }
+});
+
 app.post("/api/network/orgs/registry", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   try {
-    return c.json(await runOrganizationRegistryOperation(c.env.DB, organizationActor(user, c.env), await c.req.json()));
+    return c.json(await runOrganizationDirectoryOperation(c.env.DB, { actor: organizationActor(user, c.env), scopes: ['org:portal.read', 'org:portal.write'] }, 'register', await c.req.json()));
   } catch (error) { return eventErrorResponse(error, c.env, c.req.raw); }
 });
 
 app.post("/api/network/orgs", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  if (payload.acknowledgeOwnership !== true) fail(400, 'Owned creation requires acknowledgeOwnership=true; use directory registration for third-party listings');
   const row = await createOrganization(c.env, organizationActor(user, c.env), {
     kind: payload.kind,
     name: stringField(payload, "name", 255) || "Organization",
@@ -3742,6 +3835,9 @@ app.patch("/api/network/orgs/:organizationId", async (c) => {
   const actor = organizationActor(user, c.env);
   const role = await authorizeOrganization(c.env.DB, actor, "manage", existing.id);
   const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  let organizationLinksJson = '[]';
+  try { if (Object.hasOwn(payload,'links')) organizationLinksJson = JSON.stringify(normalizeOrganizationLinks(payload.links)); }
+  catch (error) { fail(400, error instanceof Error ? error.message : 'Invalid organization links'); }
   const updatedAt = nowIso();
   await c.env.DB.prepare(
     `UPDATE organizations SET
@@ -3750,6 +3846,7 @@ app.patch("/api/network/orgs/:organizationId", async (c) => {
       image_url = COALESCE(?, image_url),
       tags = COALESCE(?, tags),
       city = COALESCE(?, city),
+      links_json = CASE WHEN ? THEN ? ELSE links_json END,
       updated_at = ?
      WHERE id = ?`,
   )
@@ -3759,6 +3856,8 @@ app.patch("/api/network/orgs/:organizationId", async (c) => {
       cleanPublicAssetUrl(payload.image_url),
       Array.isArray(payload.tags) ? JSON.stringify(payload.tags.map((item) => String(item || "").trim()).filter(Boolean)) : null,
       stringField(payload, "city", 80),
+      Object.hasOwn(payload, "links") ? 1 : 0,
+      organizationLinksJson,
       updatedAt,
       existing.id,
     )
@@ -3982,7 +4081,7 @@ app.get("/api/network/events", async (c) => {
   await currentUser(c.env, c.req.raw);
   const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "300", 10) || 300, 500));
   const rows = await c.env.DB.prepare(
-    `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url
+    `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url, o.links_json AS organization_links_json
      FROM events e
      LEFT JOIN organizations o ON o.id = e.host_org_id
      ORDER BY COALESCE(e.starts_at,e.event_date,e.created_at) ASC
@@ -4138,7 +4237,7 @@ app.patch("/api/network/events/:eventId", async (c) => {
   updates.updated_at = nowIso();
   const assignments = Object.keys(updates).map((key) => `${key} = ?`).join(", ");
   await c.env.DB.prepare(`UPDATE events SET ${assignments} WHERE id = ?`).bind(...Object.values(updates), row.id).run();
-  const updated = await c.env.DB.prepare("SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url FROM events e LEFT JOIN organizations o ON o.id = e.host_org_id WHERE e.id = ?")
+  const updated = await c.env.DB.prepare("SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url, o.links_json AS organization_links_json FROM events e LEFT JOIN organizations o ON o.id = e.host_org_id WHERE e.id = ?")
     .bind(row.id)
     .first<EventRow>();
   return c.json(await mapEvent(c.env, c.req.raw, updated!));
@@ -4160,7 +4259,7 @@ app.patch("/api/network/events/:eventId/media", async (c) => {
   if (c.env.SCAN_IMAGES) {
     await Promise.all(removedEventMediaImageKeys(row.id, before, media).map((key) => c.env.SCAN_IMAGES!.delete(key)));
   }
-  const updated = await c.env.DB.prepare("SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url FROM events e LEFT JOIN organizations o ON o.id = e.host_org_id WHERE e.id = ?")
+  const updated = await c.env.DB.prepare("SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url, o.links_json AS organization_links_json FROM events e LEFT JOIN organizations o ON o.id = e.host_org_id WHERE e.id = ?")
     .bind(row.id)
     .first<EventRow>();
   return c.json(await mapEvent(c.env, c.req.raw, updated!));
@@ -4199,7 +4298,7 @@ app.post("/api/network/events/:eventId/media", async (c) => {
   await c.env.DB.prepare("UPDATE events SET media_json = ?, updated_at = ? WHERE id = ?")
     .bind(JSON.stringify(media), nowIso(), row.id)
     .run();
-  const updated = await c.env.DB.prepare("SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url FROM events e LEFT JOIN organizations o ON o.id = e.host_org_id WHERE e.id = ?")
+  const updated = await c.env.DB.prepare("SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url, o.links_json AS organization_links_json FROM events e LEFT JOIN organizations o ON o.id = e.host_org_id WHERE e.id = ?")
     .bind(row.id)
     .first<EventRow>();
   return c.json(await mapEvent(c.env, c.req.raw, updated!), 201);
