@@ -23,6 +23,6 @@ export type CampaignPreview = CampaignSummary & {
   engagement: import('./EmailCampaignStats').Engagement;
   self_test_sent: boolean; sender_email: string; from_email: string; audience: string; body: string; event_id: string; fingerprint: string; preview_id?: string;
   preview: { subject: string; html: string; text: string }; counts: Record<string, number>;
-  deliveries: { id: string; email: string; name: string; status: string; kind: string; error: string | null; gmail_message_id: string | null; bounced_at?:number;source_url?:string;source_checked_at?:string;review_status?:string;dns_status?:string;suppressed?:number;known_bounced?:number }[]
+  deliveries: { id: string; email: string; name: string; status: string; kind: string; error: string | null; gmail_message_id: string | null; subscription_status?:string;next_attempt_at?:number;bounced_at?:number;source_url?:string;source_checked_at?:string;review_status?:string;dns_status?:string;suppressed?:number;known_bounced?:number }[]
 }
 export type EmailAudience = { event_count: number; organization_count: number; contacts: { id: string; name: string; email: string }[] }
