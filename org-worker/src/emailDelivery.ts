@@ -31,6 +31,10 @@ export async function runEmailDelivery(env: Env) {
   // A crashed worker may have sent the message before recording the result. Never retry it automatically.
   await env.DB.prepare("UPDATE email_deliveries SET status = 'uncertain', error = 'Sending stopped before a result was recorded. Check Gmail Sent mail.' WHERE status = 'sending' AND attempted_at < ?")
     .bind(start - 180_000).run();
+  // A crash must stop the rest of that campaign, just like an uncertain API response.
+  // Otherwise later recipients can be sent while the operator is still reconciling it.
+  await env.DB.prepare(`UPDATE email_campaigns SET status='paused' WHERE status='queued'
+    AND EXISTS (SELECT 1 FROM email_deliveries d WHERE d.campaign_id=email_campaigns.id AND d.status='uncertain')`).run();
   for (const sender of senders.results || []) {
     if (Date.now() - start > 35_000) break;
     const lease = crypto.randomUUID();
@@ -88,10 +92,11 @@ export async function runEmailDelivery(env: Env) {
         await env.DB.prepare('INSERT INTO email_send_attempts (id, sender_user_id, attempted_at) VALUES (?, ?, ?)')
           .bind(crypto.randomUUID(), sender.owner_user_id, now).run();
         const result = await sendGmail(accessToken, raw);
+        const retryAt = Date.now() + (result.retryAfterMs || 3_600_000);
         const retry = result.status === 'retry' && pending.attempts < 3;
         const status = retry ? 'queued' : result.status === 'retry' ? 'failed' : result.status;
         await env.DB.prepare(`UPDATE email_deliveries SET status = ?, gmail_message_id = ?, sent_at = ?, error = ?, next_attempt_at = ? WHERE id = ? AND status = 'sending'`)
-          .bind(status, result.id || null, status === 'sent' ? Date.now() : null, result.error || null, retry ? Date.now() + 3_600_000 : 0, pending.id).run();
+          .bind(status, result.id || null, status === 'sent' ? Date.now() : null, result.error || null, retry ? retryAt : 0, pending.id).run();
         if(result.status==='uncertain'){await env.DB.prepare("UPDATE email_campaigns SET status='paused' WHERE id=? AND status='queued'").bind(campaign.id).run();break;}
         if (result.reconnect) {
           await env.DB.prepare("UPDATE email_senders SET status = 'reconnect' WHERE owner_user_id = ? AND lease_owner = ?")
@@ -100,7 +105,7 @@ export async function runEmailDelivery(env: Env) {
         }
         if (result.status === 'retry') {
           await env.DB.prepare('UPDATE email_senders SET cooldown_until = ? WHERE owner_user_id = ? AND lease_owner = ?')
-            .bind(Date.now() + 3_600_000, sender.owner_user_id, lease).run();
+            .bind(retryAt, sender.owner_user_id, lease).run();
           break;
         }
       }
