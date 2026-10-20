@@ -163,3 +163,23 @@ campaign/delivery metadata, failure protection and temporary bounce receipts;
 excludes future private campaign/sender journal copies without deleting old
 history; and adds a per-campaign recipient uniqueness constraint. The unique index rejects preexisting duplicate recipients atomically instead of deleting or merging delivery history. No email is queued
 or sent by the migration or a report import. See the privacy retention schedule.
+
+## Delivery recovery and provider cooldowns
+
+Rate-limit rejections retain the existing bounded retry count and one-hour
+minimum cooldown. A valid `Retry-After` header, in seconds or HTTP-date form,
+can extend both the delivery's next attempt and the shared sender cooldown.
+Account-status notifications use the same provider delay. Invalid headers fall
+back to one hour.
+
+Network failures, server errors and acceptance without a Gmail receipt remain
+uncertain and are never retried automatically. A stale `sending` delivery after
+a worker interruption also pauses its campaign before further campaign dispatch.
+Reconcile the uncertain recipient against Gmail Sent mail using the existing
+campaign reconciliation action before approving a fresh resume preview. Account
+notifications stop their current batch on an uncertain result as well.
+
+These controls do not change domain authentication or request additional Google
+permissions. All formatting and tracking are completed before Gmail submission;
+Google supplies the outbound DKIM signature. Validate a received copy's headers
+when enabling a new sender or verified send-as alias.
