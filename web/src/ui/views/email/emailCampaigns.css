@@ -31,3 +31,24 @@
 .email-pies figcaption i{display:inline-block;width:10px;height:10px;margin-right:7px;border-radius:2px}
 
 .email-engagement p{margin:.65rem 0}
+
+.email-operator { display: grid; gap: 1rem; }
+.email-progress-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(145px,1fr)); gap: .65rem; }
+.email-progress-grid > div { display: grid; gap: .3rem; padding: 1rem; border: 1px solid var(--border); border-radius: .65rem; }
+.email-progress-grid strong { font-size: 1.8rem; line-height: 1.1; }
+.email-progress-grid span { font-size: .88rem; }
+.email-readiness { display: grid; grid-template-columns: minmax(80px,auto) 1fr; gap: .6rem 1rem; }
+.email-readiness dt { font-weight: 650; }
+.email-readiness dd { margin: 0; overflow-wrap: anywhere; }
+.email-final-review { display: grid; gap: .8rem; padding: 1rem; border: 1px solid var(--border); border-radius: .65rem; }
+.email-final-review h3 { margin: 0; }
+.email-final-review pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
+.email-final-review .email-checkbox { display: flex; gap: .6rem; align-items: start; }
+.email-final-review input[type=checkbox] { flex-shrink: 0; margin-top: .3rem; }
+.email-recipient-filters { display: flex; flex-wrap: wrap; gap: .8rem; align-items: end; margin-bottom: 1rem; }
+.email-recipient-filters label, .email-recovery label { display: grid; gap: .35rem; }
+.email-recipient-filters input, .email-recipient-filters select, .email-recovery input, .email-recovery select, .email-recovery textarea { width: 100%; min-width: 0; box-sizing: border-box; font: inherit; }
+.email-recovery { display: grid; gap: .65rem; min-width: 180px; max-width: 420px; }
+.email-recovery form { display: grid; gap: .75rem; padding: .8rem; border: 1px solid var(--border); border-radius: .5rem; }
+.email-recovery textarea { min-height: 6rem; }
+@media(max-width: 600px) { .email-readiness { grid-template-columns: 1fr; gap: .3rem; } .email-readiness dd { margin-bottom: .65rem; } .email-recipient-filters > label { flex: 1 1 100%; } }
