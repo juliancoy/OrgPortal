@@ -54,6 +54,8 @@ try {
   await page.locator('[data-poster-element="title"]').click();
   await page.waitForFunction(() => document.querySelector('select[aria-label="Element"]')?.value === 'title');
   await expect(page.getByLabel('Size:')).toBeVisible();
+  await page.getByLabel('Drop shadow', { exact: true }).check();
+  await expect(page.locator('[data-poster-element="title"]')).toHaveAttribute('filter', 'url(#poster-element-shadow)');
   await expect(page.getByLabel('Zoom:')).toHaveCount(0);
   await page.getByRole('heading', { name: 'Event poster', exact: true }).click();
   await expect(page.getByLabel('Element', { exact: true })).toHaveValue('');
@@ -71,9 +73,15 @@ try {
     const image = new Image(), url = URL.createObjectURL(new Blob([source], {type:'image/svg+xml'}));
     try { image.src = url; await image.decode(); } finally { URL.revokeObjectURL(url); }
   }, exported);
+  assert.match(exported, /feDropShadow/);
+  assert.match(exported, /filter="url\(#poster-element-shadow\)"/);
   assert.match(exported, /feGaussianBlur/); assert.doesNotMatch(exported, /data-editor-ui|data-resize/);
   assert.match(exported, /opacity="0.35"/); assert.match(exported, /display="none"/);
   await page.reload(); await page.locator('[data-poster-background]').waitFor();
+  await page.getByLabel('Element', { exact: true }).selectOption('title');
+  await expect(page.getByLabel('Drop shadow', { exact: true })).toBeChecked();
+  await page.getByLabel('Drop shadow', { exact: true }).uncheck();
+  await expect(page.locator('[data-poster-element="title"]')).not.toHaveAttribute('filter');
   await page.getByLabel('Element', { exact: true }).selectOption('background');
   await expect(page.getByLabel('Blur image into empty edges')).toBeChecked();
   assert.equal(await page.getByLabel('Opacity:').inputValue(), '0.35'); assert.equal(await page.getByLabel('Zoom:').inputValue(), '2');

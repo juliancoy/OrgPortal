@@ -116,6 +116,7 @@ test('brand tool discovery and calls cannot escape their organization, including
     const organizations = (await rpc('tools/call', { name: 'list_organizations', arguments: {} })).result.structuredContent.organizations;
     assert.deepEqual(organizations, [{ id: 'lifetech-org' }]);
     for (const name of ['get_organization_profile','preview_organization_profile','apply_organization_profile','get_organization_profile_operation']) assert.ok(tools.some((t: any) => t.name === name));
+    for (const name of ['get_portal_branding', 'preview_portal_branding', 'apply_portal_branding']) assert.ok(tools.some((t: any) => t.name === name));
     assert.ok(tools.some((t: any) => t.name === 'preview_motion'));
     assert.ok(!tools.some((t: any) => t.name === 'apply_organization_creation'));
     for (const [name, args] of [
@@ -124,6 +125,9 @@ test('brand tool discovery and calls cannot escape their organization, including
       ['get_motion', { organizationId: 'medtech-org', motionId: 'motion' }],
       ['get_event', { organizationId: 'medtech-org', eventId: 'event' }],
       ['get_portal_setup', { organizationId: 'medtech-org' }],
+      ['get_portal_branding', { organizationId: 'medtech-org' }],
+      ['preview_portal_branding', { organizationId: 'medtech-org', palette: [{ label: 'Test', value: '#123456' }] }],
+      ['apply_portal_branding', { organizationId: 'medtech-org', palette: [{ label: 'Test', value: '#123456' }], previewId: '11111111-1111-4111-8111-111111111111' }],
       ['list_organization_members', { organizationId: 'medtech-org' }],
     ] as const) {
       const result = (await rpc('tools/call', { name, arguments: args })).result;

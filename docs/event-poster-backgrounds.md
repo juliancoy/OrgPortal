@@ -126,3 +126,10 @@ implementation uses a local Gaussian blur instead of JCut's Qt/Vulkan paths.
 Preview, PNG, SVG and print use the same composed artwork; editing handles are
 removed from exports. Settings persist with the existing per-event browser
 preferences. A four-up poster edits the shared source so all four copies match.
+
+### Drop shadows
+
+Select a text, logo, or QR element and enable **Drop shadow** in Element settings.
+Each element has its own soft black shadow, saved with the event’s local settings.
+Preview, PNG, SVG, print, and four-up exports use the same SVG filter. Reset element
+or Reset all elements removes its shadow along with its other adjustments.

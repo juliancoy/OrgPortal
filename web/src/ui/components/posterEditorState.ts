@@ -1,6 +1,6 @@
 export const elementLabels = { background: 'Background image', logo: 'Logo', brand: 'Organization name', tagline: 'Tagline', title: 'Title', date: 'Date', time: 'Time', location: 'Location', description: 'Description', qr: 'RSVP QR code', invitation: 'Join us', website: 'Website' }
 export type ElementId = keyof typeof elementLabels
-export type ElementLayout = { hidden?: boolean; scale?: number; x?: number; y?: number }
+export type ElementLayout = { hidden?: boolean; shadow?: boolean; scale?: number; x?: number; y?: number }
 export type PosterSettings = {
   format: 'letter' | 'letter-4up' | 'postcard' | 'social'; theme: 'light' | 'dark'
   background: 'solid' | 'city' | 'gradient' | 'lifetech' | 'gallery'; mediaId: string
@@ -27,7 +27,7 @@ export function parseSettings(raw: string | null): PosterSettings {
     s.elements = {}
     for (const id of Object.keys(elementLabels) as ElementId[]) {
       const item = v.elements?.[id]
-      if (item && typeof item === 'object') s.elements[id] = { hidden: item.hidden === true, scale: bound(item.scale, 1, .25, 3), x: bound(item.x, 0, -100, 100), y: bound(item.y, 0, -100, 100) }
+      if (item && typeof item === 'object') s.elements[id] = { hidden: item.hidden === true, shadow: item.shadow === true, scale: bound(item.scale, 1, .25, 3), x: bound(item.x, 0, -100, 100), y: bound(item.y, 0, -100, 100) }
     }
     return s
   } catch { return { ...defaults } }
@@ -66,11 +66,14 @@ export function applySettings(svg: SVGSVGElement, settings: PosterSettings) {
     image.setAttribute('opacity', String(settings.opacity))
   }
   for (const overlay of svg.querySelectorAll('[data-poster-dimming]')) overlay.setAttribute('opacity', String(settings.dimming))
+  applyDropShadow(svg)
   for (const node of svg.querySelectorAll('[data-poster-element]')) {
     const layout = settings.elements[node.getAttribute('data-poster-element') as ElementId] || {}
     const base = node.getAttribute('data-base-transform') || ''
     node.setAttribute('transform', base.replace(/^translate\([^)]*\)/, `translate(${(layout.x || 0) * width / 100} ${(layout.y || 0) * height / 100})`).replace(/scale\([^)]*\)/, `scale(${layout.scale ?? 1})`))
     node.setAttribute('display', layout.hidden ? 'none' : 'inline')
+    if (layout.shadow) node.setAttribute('filter', 'url(#poster-element-shadow)')
+    else node.removeAttribute('filter')
   }
 }
 
@@ -101,4 +104,21 @@ function applyEdgeFill(image: SVGImageElement, enabled: boolean) {
     copy.setAttribute('filter', 'url(#poster-edge-blur)')
     fill.append(defs, copy); parent.insertBefore(fill, image)
   }
+}
+
+// A local SVG filter keeps preview and every export on the same renderer.
+function applyDropShadow(svg: SVGSVGElement) {
+  if (svg.querySelector('#poster-element-shadow')) return
+  const ns = 'http://www.w3.org/2000/svg'
+  const defs = document.createElementNS(ns, 'defs')
+  const filter = document.createElementNS(ns, 'filter')
+  filter.id = 'poster-element-shadow'
+  filter.setAttribute('x', '-50%'); filter.setAttribute('y', '-50%')
+  filter.setAttribute('width', '200%'); filter.setAttribute('height', '200%')
+  filter.setAttribute('color-interpolation-filters', 'sRGB')
+  const shadow = document.createElementNS(ns, 'feDropShadow')
+  shadow.setAttribute('dx', '2'); shadow.setAttribute('dy', '3')
+  shadow.setAttribute('stdDeviation', '3')
+  shadow.setAttribute('flood-color', '#000000'); shadow.setAttribute('flood-opacity', '0.65')
+  filter.append(shadow); defs.append(filter); svg.prepend(defs)
 }
