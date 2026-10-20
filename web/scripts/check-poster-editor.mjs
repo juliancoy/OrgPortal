@@ -12,7 +12,7 @@ const server = createServer(async (req, res) => {
   if (url.pathname.endsWith('flyer.svg')) {
     requests++;
     res.setHeader('Content-Type', 'image/svg+xml');
-    res.end(await renderEventPoster({ title: 'Fixture', starts_at: '2026-10-20T22:00:00Z' }, posterLinkTarget('https://example.org/event', url.searchParams.get('link'), ['https://luma.com/example']), url.searchParams.get('format'), { name: 'Test' }, 'light', { background: url.searchParams.get('background'), backgroundImage: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=' })); return;
+    res.end(await renderEventPoster({ title: 'Fixture', location: '123 Main Street, Baltimore, MD', starts_at: '2026-10-20T22:00:00Z' }, posterLinkTarget('https://example.org/event', url.searchParams.get('link'), ['https://luma.com/example']), url.searchParams.get('format'), { name: 'Test' }, 'light', { background: url.searchParams.get('background'), backgroundImage: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=' })); return;
   }
   if (url.pathname === '/test.js' || url.pathname === '/test.css') { const file = bundle.outputFiles.find(f => f.path.endsWith(url.pathname.endsWith('js') ? '.js' : '.css')); res.setHeader('Content-Type', url.pathname.endsWith('js') ? 'text/javascript' : 'text/css'); res.end(file?.text || ''); return; }
   res.setHeader('Content-Type', 'text/html'); res.end('<link rel="stylesheet" href="/test.css"><div id="root"></div><script src="/test.js"></script>');
@@ -58,9 +58,15 @@ try {
   await expect(page.locator('[data-poster-element="title"]')).toHaveAttribute('filter', 'url(#poster-element-shadow)');
   await expect(page.getByLabel('Zoom:')).toHaveCount(0);
   await page.getByRole('heading', { name: 'Event poster', exact: true }).click();
-  await expect(page.getByLabel('Element', { exact: true })).toHaveValue('');
-  await expect(page.locator('[data-editor-ui]')).toHaveCount(0);
-  await expect(page.getByLabel('Size:')).toHaveCount(0);
+  await expect(page.getByLabel('Element', { exact: true })).toHaveValue('title');
+  await expect(page.locator('[data-editor-ui]')).toHaveCount(1);
+  await expect(page.getByLabel('Size:')).toBeVisible();
+  await page.getByLabel('Element', { exact: true }).selectOption('location');
+  await expect(page.getByLabel('Element text')).toHaveValue('123 Main Street, Baltimore, MD');
+  await page.getByLabel('Element text').fill('456 Harbor Road\nBaltimore, MD & <Meet here>');
+  await expect(page.locator('[data-poster-element="location"]')).toHaveText('456 Harbor RoadBaltimore, MD & <Meet here>');
+  await page.getByRole('heading', { name: 'Event poster', exact: true }).click();
+  await expect(page.getByLabel('Element', { exact: true })).toHaveValue('location');
   await page.getByLabel('Element', { exact: true }).selectOption('time');
   await page.getByLabel('Show time').uncheck();
   await page.waitForFunction(() => document.querySelector('.event-poster-preview > div')?.shadowRoot?.querySelector('[data-poster-background]')?.getAttribute('opacity') === '0.35');
@@ -73,11 +79,18 @@ try {
     const image = new Image(), url = URL.createObjectURL(new Blob([source], {type:'image/svg+xml'}));
     try { image.src = url; await image.decode(); } finally { URL.revokeObjectURL(url); }
   }, exported);
+  assert.match(exported, /456 Harbor Road/);
+  assert.match(exported, /&amp; &lt;Meet here&gt;/);
   assert.match(exported, /feDropShadow/);
   assert.match(exported, /filter="url\(#poster-element-shadow\)"/);
   assert.match(exported, /feGaussianBlur/); assert.doesNotMatch(exported, /data-editor-ui|data-resize/);
   assert.match(exported, /opacity="0.35"/); assert.match(exported, /display="none"/);
   await page.reload(); await page.locator('[data-poster-background]').waitFor();
+  await page.getByLabel('Element', { exact: true }).selectOption('location');
+  await expect(page.getByLabel('Element text')).toHaveValue('456 Harbor Road\nBaltimore, MD & <Meet here>');
+  await page.getByRole('button', { name: 'Restore original text', exact: true }).click();
+  await expect(page.getByLabel('Element text')).toHaveValue('123 Main Street, Baltimore, MD');
+  await expect(page.locator('[data-poster-element="location"]')).toHaveText('123 Main Street, Baltimore, MD');
   await page.getByLabel('Element', { exact: true }).selectOption('title');
   await expect(page.getByLabel('Drop shadow', { exact: true })).toBeChecked();
   await page.getByLabel('Drop shadow', { exact: true }).uncheck();

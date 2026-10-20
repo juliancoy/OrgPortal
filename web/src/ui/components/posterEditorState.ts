@@ -1,6 +1,6 @@
 export const elementLabels = { background: 'Background image', logo: 'Logo', brand: 'Organization name', tagline: 'Tagline', title: 'Title', date: 'Date', time: 'Time', location: 'Location', description: 'Description', qr: 'RSVP QR code', invitation: 'Join us', website: 'Website' }
 export type ElementId = keyof typeof elementLabels
-export type ElementLayout = { hidden?: boolean; shadow?: boolean; scale?: number; x?: number; y?: number }
+export type ElementLayout = { hidden?: boolean; shadow?: boolean; text?: string; scale?: number; x?: number; y?: number }
 export type PosterSettings = {
   format: 'letter' | 'letter-4up' | 'postcard' | 'social'; theme: 'light' | 'dark'
   background: 'solid' | 'city' | 'gradient' | 'lifetech' | 'gallery'; mediaId: string
@@ -27,7 +27,7 @@ export function parseSettings(raw: string | null): PosterSettings {
     s.elements = {}
     for (const id of Object.keys(elementLabels) as ElementId[]) {
       const item = v.elements?.[id]
-      if (item && typeof item === 'object') s.elements[id] = { hidden: item.hidden === true, shadow: item.shadow === true, scale: bound(item.scale, 1, .25, 3), x: bound(item.x, 0, -100, 100), y: bound(item.y, 0, -100, 100) }
+      if (item && typeof item === 'object') s.elements[id] = { hidden: item.hidden === true, shadow: item.shadow === true, ...(typeof item.text === 'string' ? { text: item.text.slice(0, 4000) } : {}), scale: bound(item.scale, 1, .25, 3), x: bound(item.x, 0, -100, 100), y: bound(item.y, 0, -100, 100) }
     }
     return s
   } catch { return { ...defaults } }
@@ -69,6 +69,7 @@ export function applySettings(svg: SVGSVGElement, settings: PosterSettings) {
   applyDropShadow(svg)
   for (const node of svg.querySelectorAll('[data-poster-element]')) {
     const layout = settings.elements[node.getAttribute('data-poster-element') as ElementId] || {}
+    applyElementText(node, layout.text, width)
     const base = node.getAttribute('data-base-transform') || ''
     node.setAttribute('transform', base.replace(/^translate\([^)]*\)/, `translate(${(layout.x || 0) * width / 100} ${(layout.y || 0) * height / 100})`).replace(/scale\([^)]*\)/, `scale(${layout.scale ?? 1})`))
     node.setAttribute('display', layout.hidden ? 'none' : 'inline')
@@ -121,4 +122,60 @@ function applyDropShadow(svg: SVGSVGElement) {
   shadow.setAttribute('stdDeviation', '3')
   shadow.setAttribute('flood-color', '#000000'); shadow.setAttribute('flood-opacity', '0.65')
   filter.append(shadow); defs.append(filter); svg.prepend(defs)
+}
+
+const originalText = new WeakMap<Element, SVGTextElement>()
+const appliedText = new WeakMap<Element, string | undefined>()
+let textMeasure: CanvasRenderingContext2D | null = null
+function sourceText(node: Element) {
+  const text = node.querySelector<SVGTextElement>('text')
+  if (!text) return null
+  if (!originalText.has(text)) originalText.set(text, text.cloneNode(true) as SVGTextElement)
+  return { text, original: originalText.get(text)! }
+}
+export function posterElementText(svg: SVGSVGElement, id: ElementId): string | null {
+  const node = svg.querySelector(`[data-poster-element="${id}"]`)
+  const source = node && sourceText(node)
+  if (!source) return null
+  const spans = [...source.original.querySelectorAll('tspan')]
+  return spans.length ? spans.map(span => span.textContent).join(' ') : source.original.textContent || ''
+}
+function applyElementText(node: Element, value: string | undefined, width: number) {
+  const source = sourceText(node)
+  if (!source) return
+  const { text, original } = source
+  if (appliedText.get(text) === value) return
+  appliedText.set(text, value)
+  if (value === undefined) {
+    if (text.textContent !== original.textContent) text.replaceChildren(...[...original.childNodes].map(child => child.cloneNode(true)))
+    return
+  }
+  const first = original.querySelector('tspan') || original
+  const x = Number(first.getAttribute('x')), y = Number(first.getAttribute('y'))
+  const size = Number(original.getAttribute('font-size')) || 24
+  const id = node.getAttribute('data-poster-element')
+  const margin = width === 400 ? 28 : 56
+  const qr = node.parentElement?.querySelector('[data-poster-element="qr"] svg')
+  const right = ['invitation', 'website'].includes(id || '') && qr ? Number(qr.getAttribute('x')) - 16 : width - margin
+  const maxWidth = id === 'qr' ? 200 : Math.max(size, right - x)
+  const context = textMeasure ||= document.createElement('canvas').getContext('2d')!
+  context.font = `${original.getAttribute('font-weight') || '400'} ${size}px sans-serif`
+  const lines: string[] = []
+  for (const paragraph of value.split('\n')) {
+    let line = ''
+    for (const word of paragraph.split(/(\s+)/)) {
+      if (line && context.measureText(line + word).width > maxWidth) { lines.push(line.trimEnd()); line = '' }
+      for (const character of word) {
+        if (line && context.measureText(line + character).width > maxWidth) { lines.push(line); line = '' }
+        line += character
+      }
+    }
+    lines.push(line.trimEnd())
+  }
+  text.replaceChildren(...lines.map((line, index) => {
+    const span = document.createElementNS('http://www.w3.org/2000/svg', 'tspan')
+    span.setAttribute('x', String(x)); span.setAttribute('y', String(y + index * size * 1.25))
+    span.textContent = line
+    return span
+  }))
 }

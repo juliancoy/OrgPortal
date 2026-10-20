@@ -133,3 +133,13 @@ Select a text, logo, or QR element and enable **Drop shadow** in Element setting
 Each element has its own soft black shadow, saved with the event’s local settings.
 Preview, PNG, SVG, print, and four-up exports use the same SVG filter. Reset element
 or Reset all elements removes its shadow along with its other adjustments.
+
+### Selection and text editing
+
+Click an element to select it and reveal its editing controls. Clicking outside
+the canvas keeps the current selection; choose another element or the empty
+Element option to change or clear it. Text controls start with the rendered event
+text, including location/address, and accept custom text and line breaks. Edits
+are saved locally for this poster and included in every export; event details
+and QR destinations are unchanged. Restore original text removes only the text
+override. Element resets also restore the original text.
