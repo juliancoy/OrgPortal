@@ -2,8 +2,10 @@
 """Exercise real local Docker sessions across browser and service lifetimes."""
 
 import json
+import os
 from pathlib import Path
 import secrets
+import sys
 import time
 from urllib.parse import urlparse
 
@@ -12,6 +14,13 @@ from playwright.sync_api import sync_playwright, expect
 
 
 BASE = 'https://localhost:8443'
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from service_names import service_name
+PREFIX = os.getenv('ORGPORTAL_SESSION_TEST_PREFIX', 'session-test-')
+NETWORK = os.getenv('ORGPORTAL_SESSION_TEST_NETWORK', 'orgportal-session-test')
+PORTAL = service_name(PREFIX, 'portal-dev')
+IDENTITY = service_name(PREFIX, 'pidp-dev')
+GATEWAY = service_name(PREFIX, 'local-gateway')
 ROOT = Path(__file__).resolve().parents[2] / '.local' / 'session-test'
 ROOT.mkdir(parents=True, exist_ok=True)
 ROOT.chmod(0o700)
@@ -28,17 +37,25 @@ client = docker.from_env()
 
 def redeploy(name):
     """Recreate only our test container, preserving its mounts and environment."""
-    assert name in {'session-test-portal-dev', 'session-test-pidp-dev'}
+    assert name in {PORTAL, IDENTITY}
     container = client.containers.get(name)
     config = container.attrs['Config']
     host_config = container.attrs['HostConfig']
-    assert host_config['NetworkMode'] == 'orgportal-session-test'
+    assert host_config['NetworkMode'] == NETWORK
+    endpoints = {
+        network: client.api.create_endpoint_config(aliases=list(dict.fromkeys([
+            name, *[alias for alias in endpoint.get('Aliases') or []
+                    if alias not in {container.id, container.short_id}]
+        ])))
+        for network, endpoint in container.attrs['NetworkSettings']['Networks'].items()
+    }
     container.stop(timeout=10)
     container.remove()
     created = client.api.create_container(
         image=config['Image'], name=name, command=config['Cmd'],
         environment=config['Env'], working_dir=config['WorkingDir'],
         volumes=config.get('Volumes'), host_config=host_config,
+        networking_config=client.api.create_networking_config(endpoints),
     )
     client.api.start(created['Id'])
 
@@ -110,10 +127,10 @@ with sync_playwright() as p:
     print('PASS: session persists across a fresh browser run', flush=True)
     context.close()
 
-    redeploy('session-test-portal-dev')
-    redeploy('session-test-pidp-dev')
+    redeploy(PORTAL)
+    redeploy(IDENTITY)
     # The gateway must re-resolve the recreated containers, whose IPs can change.
-    client.containers.get('session-test-local-gateway').restart(timeout=10)
+    client.containers.get(GATEWAY).restart(timeout=10)
     context = browser(p)
     wait_ready(context, '/pidp/health')
     wait_ready(context, '/users/login')
