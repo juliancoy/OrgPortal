@@ -300,6 +300,25 @@ test('tenant organization and event pages use canonical routes', async ({ page }
   await expect(page).toHaveURL(/\/org-events$/)
 })
 
+test('tenant brand guide renders stored palette changes after reload', async ({ page }) => {
+  await mockTenant(page)
+  let palette = [{ label: 'Custom teal', value: '#123456', description: 'Configured through MCP' }]
+  await page.route('**/api/org/api/portal/site', route => route.fulfill({ json: {
+    id: 'lifetech', slug: 'lifetech', hostname: 'lifetech.fyi', name: 'LifeTech',
+    profile: 'community', accent_color: '#155e59', features: ['directory', 'events', 'chat'],
+    feature_config: JSON.stringify({ brandPalette: palette }),
+  } }))
+  await page.goto(portal('/branding'))
+  await expect(page.getByRole('button', { name: 'Copy Custom teal color #123456' })).toBeVisible()
+  await expect(page.getByText('Configured through MCP', { exact: true })).toBeVisible()
+  await expect(page.locator('.tenant-brand-swatch')).toHaveCSS('background-color', 'rgb(18, 52, 86)')
+  palette = [{ label: 'Renamed gold', value: '#D4AF37', description: 'Updated meaning' }]
+  await page.reload()
+  await expect(page.getByRole('button', { name: 'Copy Renamed gold color #D4AF37' })).toBeVisible()
+  await expect(page.getByText('Custom teal', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('Updated meaning', { exact: true })).toBeVisible()
+})
+
 test('tenant brand guide uses the active organization identity', async ({ page }) => {
   await page.addInitScript(() => {
     Object.defineProperty(navigator, 'clipboard', {
@@ -316,13 +335,14 @@ test('tenant brand guide uses the active organization identity', async ({ page }
 
   await expect(page.getByRole('heading', { name: 'Baltimore MedTech', exact: true })).toBeVisible()
   await expect(page.locator('main').getByText('Health x Medicine x Biotech', { exact: true }).first()).toBeVisible()
-  await expect(page.locator('.tenant-brand-lockup strong')).toHaveCSS('color', 'rgb(23, 32, 51)')
+  await expect(page.locator('.tenant-brand-lockup strong')).toHaveCSS('color', 'rgb(23, 23, 23)')
   await expect(page.getByRole('img', { name: 'Baltimore MedTech primary logo' })).toHaveAttribute('src', /\/images\/baltimore-medtech-logo-square-v2\.jpg$/)
   await expect(page.getByText('#0f6f8f', { exact: true })).toBeVisible()
-  await expect(page.getByText('#061a26', { exact: true })).toBeVisible()
-  await expect(page.getByText('#FFFFFF', { exact: true })).toBeVisible()
+  await expect(page.getByText('#F4F5F0', { exact: true })).toBeVisible()
+  await expect(page.getByText('#D4AF37', { exact: true })).toBeVisible()
+  await expect(page.getByText('Inspired by the off-white finish of MRI machines.', { exact: true })).toBeVisible()
 
-  await page.getByRole('button', { name: 'Copy Accent color #0f6f8f' }).click()
+  await page.getByRole('button', { name: 'Copy HealthTech Teal color #0f6f8f' }).click()
   await expect(page.getByText('Copied', { exact: true })).toBeVisible()
   await expect.poll(() => page.evaluate(() => (window as unknown as { __copiedBrandColor?: string }).__copiedBrandColor)).toBe('#0f6f8f')
 
