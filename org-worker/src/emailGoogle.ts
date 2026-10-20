@@ -100,7 +100,7 @@ export async function googleAccessToken(env: Env, sender: Sender): Promise<strin
   return tokens.access_token || null;
 }
 
-export async function sendGmail(accessToken: string, raw: string): Promise<{ status: 'sent' | 'failed' | 'uncertain' | 'retry'; id?: string; error?: string; reconnect?: boolean }> {
+export async function sendGmail(accessToken: string, raw: string): Promise<{ status: 'sent' | 'failed' | 'uncertain' | 'retry'; id?: string; error?: string; reconnect?: boolean; retryAfterMs?: number }> {
   let response: Response;
   try {
     response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
@@ -112,12 +112,17 @@ export async function sendGmail(accessToken: string, raw: string): Promise<{ sta
     const body = await response.json().catch(() => null) as { id?: string } | null;
     return body?.id ? { status: 'sent', id: body.id } : { status: 'uncertain', error: 'Gmail accepted the request without a message ID. Check Sent mail.' };
   }
-  if (response.status === 429) return { status: 'retry', error: 'Google sending limit reached. Sending has been deferred.' };
+  // Honor provider cooldowns without retaining or exposing Google response bodies.
+  const retryHeader = response.headers.get('Retry-After')?.trim();
+  const retryAt = retryHeader && /^\d+$/.test(retryHeader)
+    ? Date.now() + Number(retryHeader) * 1000 : Date.parse(retryHeader || '');
+  const retryAfterMs = Number.isFinite(retryAt) ? Math.max(3_600_000, retryAt - Date.now()) : 3_600_000;
+  if (response.status === 429) return { status: 'retry', retryAfterMs, error: 'Google sending limit reached. Sending has been deferred.' };
   if (response.status === 401) return { status: 'failed', error: 'Google authorization expired. Reconnect the sender.', reconnect: true };
   if (response.status === 403) {
     const body = await response.json().catch(() => null) as { error?: { errors?: { reason?: string }[] } } | null;
     if (body?.error?.errors?.some((error) => ['rateLimitExceeded', 'userRateLimitExceeded', 'dailyLimitExceeded'].includes(error.reason || '')))
-      return { status: 'retry', error: 'Google sending limit reached. Sending has been deferred.' };
+      return { status: 'retry', retryAfterMs, error: 'Google sending limit reached. Sending has been deferred.' };
   }
   return response.status >= 500
     ? { status: 'uncertain', error: 'Google returned a server error. Check Sent mail before sending again.' }
