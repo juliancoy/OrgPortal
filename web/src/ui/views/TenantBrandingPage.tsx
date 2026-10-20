@@ -3,7 +3,6 @@ import { Navigate } from 'react-router-dom'
 import { Check, Copy, ExternalLink } from 'lucide-react'
 import { portalPath } from '../../config/portalBase'
 import { getActivePortalProfileConfig } from '../../config/portalFeatures'
-import { resolveBrandPalette } from '../../../../shared/brandPalette'
 import { getGroupSite } from '../../config/timebankCommunity'
 
 function assetUrl(value?: string | null) {
@@ -36,7 +35,11 @@ export function TenantBrandingPage() {
       : null,
   ].filter((asset): asset is NonNullable<typeof asset> => Boolean(asset))
 
-  const colors = resolveBrandPalette({ ...tenant, profile: profile.id, theme_color: profile.themeColor })
+  const colors = [
+    { label: 'Accent', value: tenant.accent_color },
+    { label: 'Portal theme', value: profile.themeColor },
+    { label: 'White', value: '#FFFFFF' },
+  ].filter((color, index, list) => color.value && list.findIndex((item) => item.value.toLowerCase() === color.value.toLowerCase()) === index)
 
   async function copyColor(value: string) {
     try {
@@ -103,7 +106,7 @@ export function TenantBrandingPage() {
           onClick={() => void copyColor(color.value)}
         >
           <span className="tenant-brand-swatch" style={{ backgroundColor: color.value }} aria-hidden="true" />
-          <span className="tenant-brand-color-copy"><strong>{color.label}</strong><code>{color.value}</code>{color.description ? <small>{color.description}</small> : null}</span>
+          <span className="tenant-brand-color-copy"><strong>{color.label}</strong><code>{color.value}</code></span>
           <span className={`tenant-brand-copy-state${copiedColor === color.value ? ' is-copied' : ''}`} aria-live="polite">
             {copiedColor === color.value ? <><Check size={17} aria-hidden="true" />Copied</> : <Copy size={17} aria-hidden="true" />}
           </span>

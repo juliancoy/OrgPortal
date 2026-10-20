@@ -232,7 +232,7 @@ test("authenticated MCP initializes, lists tools and previews through the shared
     assert.equal((await bounded('preview_email_history_import',70000)).status,200);
     assert.equal((await bounded('preview_email_history_import',1048576)).status,413);
     const listed = await rpc("tools/list", {});
-    assert.equal(listed.result.tools.length, 58);
+    assert.equal(listed.result.tools.length, 55);
     const contactLink = listed.result.tools.find((tool: { name: string }) => tool.name === 'prepare_email_contact_link');
     assert.equal(contactLink.annotations.readOnlyHint, true);
     assert.deepEqual(contactLink.securitySchemes[0].scopes, ['org:portal.read', 'org:portal.write']);

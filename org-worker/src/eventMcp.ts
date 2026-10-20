@@ -1,4 +1,3 @@
-import { runPortalBrandingOperation, portalBrandingTargetSchema, portalBrandingUpdateSchema } from './portalBrandingMcp';
 import { emailHistorySchema, importEmailHistory, emailReportSchema, readEmailReport } from './emailOutreach';
 import { companyBallotSchema, companyVoteSchema, companyVotesTargetSchema, getCompanyVotes, runCompanyBallotOperation, runCompanyVoteOperation } from './companyVotesMcp';
 import { runOrganizationProfileOperation, organizationProfileTargetSchema, organizationProfileUpdateSchema, organizationProfileStatusSchema } from './organizationProfileMcp';
@@ -749,12 +748,10 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
           ...(reauthorize ? { _meta: { "mcp/www_authenticate": [`Bearer resource_metadata="${config.metadataUrl}", error="insufficient_scope", error_description="Authorize the required event scopes", scope="${readScope} ${writeScope}"`] } } : {}) };
       }
     };
-    const portalResult = async (operation: "get" | "save" | "requestDomain" | "brandingGet" | "brandingUpdate", args: unknown) => {
+    const portalResult = async (operation: "get" | "save" | "requestDomain", args: unknown) => {
       try {
         args = scopedArgs(args);
-        const data = operation === "brandingGet" || operation === "brandingUpdate"
-          ? await runPortalBrandingOperation(env.DB, identity, operation === "brandingGet" ? "get" : "update", args)
-          : await runPortalOperation(env, identity, operation, args);
+        const data = await runPortalOperation(env, identity, operation, args);
         return { content: [{ type: "text" as const, text: JSON.stringify(data) }], structuredContent: data };
       } catch (error) {
         const response = eventErrorResponse(error, env, request);
@@ -963,15 +960,6 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
     server.registerTool("apply_event_media_changes", { description: "Replace a native OrgPortal event's public image/media URL list after previewing it. Use admin UI for direct binary uploads.",
       inputSchema: eventMediaSchema, annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
       _meta: metadata([readScope, writeScope]) }, args => result("mediaApply", args));
-    server.registerTool("get_portal_branding", { description: "Read the effective brand-guide palette, including each color's label, hex value and meaning. Requires organization management permission.",
-      inputSchema: portalBrandingTargetSchema, annotations: { readOnlyHint: true, openWorldHint: false },
-      _meta: metadata([portalReadScope]) }, args => portalResult("brandingGet", args));
-    server.registerTool("preview_portal_branding", { description: "Preview replacing the brand-guide palette. Returns before/after and a one-use previewId; does not change settings.",
-      inputSchema: portalBrandingUpdateSchema.omit({ previewId: true, confirm: true }), annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-      _meta: metadata([portalReadScope, portalWriteScope]) }, args => portalResult("brandingUpdate", { ...args, confirm: false }));
-    server.registerTool("apply_portal_branding", { description: "Save the previewed brand-guide palette without changing portal routing, theme or other settings. Requires the same palette and its previewId. Changes appear on the brand guide after reload, without deployment.",
-      inputSchema: portalBrandingUpdateSchema.omit({ confirm: true }).extend({ previewId: z.string().uuid() }), annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-      _meta: metadata([portalReadScope, portalWriteScope]) }, args => portalResult("brandingUpdate", { ...args, confirm: true }));
     server.registerTool("get_portal_setup", { description: "Read the group homepage setup for an organization, including shared slug URL and custom-domain status.",
       inputSchema: z.object({ organizationId: z.string().min(1).max(200) }).strict(),
       annotations: { readOnlyHint: true, openWorldHint: false }, _meta: metadata([portalReadScope]) }, args => portalResult("get", args));
