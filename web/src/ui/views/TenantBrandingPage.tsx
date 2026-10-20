@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Navigate } from 'react-router-dom'
-import { Check, Copy, ExternalLink } from 'lucide-react'
+import { Check, Copy, Download, ExternalLink } from 'lucide-react'
 import { portalPath } from '../../config/portalBase'
 import { getActivePortalProfileConfig } from '../../config/portalFeatures'
 import { resolveBrandPalette } from '../../../../shared/brandPalette'
+import { downloadBrandGuide } from '../utils/downloadBrandGuide'
 import { getGroupSite } from '../../config/timebankCommunity'
 
 function assetUrl(value?: string | null) {
@@ -15,6 +16,8 @@ export function TenantBrandingPage() {
   const tenant = getGroupSite()
   const profile = getActivePortalProfileConfig()
   const [copiedColor, setCopiedColor] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
+  const [exportMessage, setExportMessage] = useState('')
   const copyResetTimer = useRef<number | null>(null)
 
   useEffect(() => {
@@ -37,6 +40,18 @@ export function TenantBrandingPage() {
   ].filter((asset): asset is NonNullable<typeof asset> => Boolean(asset))
 
   const colors = resolveBrandPalette({ ...tenant, profile: profile.id, theme_color: profile.themeColor })
+
+  async function exportStyleGuide() {
+    setExporting(true)
+    setExportMessage('')
+    try {
+      await downloadBrandGuide({ name: profile.brandName, tagline: profile.tagline, colors,
+        url: new URL(portalPath('/branding'), window.location.origin).href })
+      setExportMessage('Style guide downloaded.')
+    } catch (error) {
+      setExportMessage(error instanceof Error ? error.message : 'Could not download the style guide. Please try again.')
+    } finally { setExporting(false) }
+  }
 
   async function copyColor(value: string) {
     try {
@@ -92,7 +107,11 @@ export function TenantBrandingPage() {
           <p className="tenant-home-eyebrow">Color</p>
           <h2 id="tenant-brand-colors-title">Portal palette</h2>
         </div>
+        <button type="button" className="btn-secondary" disabled={exporting} onClick={() => void exportStyleGuide()}>
+          <Download size={17} aria-hidden="true" /> {exporting ? 'Creating style guide…' : 'Download style guide (PNG)'}
+        </button>
       </div>
+      {exportMessage ? <p role="status">{exportMessage}</p> : null}
       <div className="tenant-brand-colors">
         {colors.map((color) => <button
           type="button"

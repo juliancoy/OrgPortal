@@ -9055,6 +9055,10 @@ textarea:focus {
   color: var(--text-muted);
 }
 
+.tenant-brand-section > .tenant-home-section-heading {
+  flex-wrap: wrap;
+}
+
 .tenant-brand-section {
   display: grid;
   gap: 1.25rem;

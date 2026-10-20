@@ -25,3 +25,15 @@ characters and descriptions to 300 characters. These are public brand settings.
 Palette edits change the brand guide only. They do not change the portal's
 accent/theme, routing, profile, or other feature configuration. No database
 migration is needed.
+
+## Downloadable style guide
+
+The `/branding` page's **Download style guide (PNG)** button draws a portrait
+card directly with the browser Canvas API. It uses the same resolved palette
+as the page, including MCP edits, and includes the organization name, tagline,
+color labels, exact hex values, descriptions, and branding-page URL. Swatch
+interiors are exact solid RGB fills. Export uses no image generation service,
+external images, or server uploads.
+
+Images are 1200 pixels wide and at least 1800 pixels high. Text wraps and the
+card grows vertically for longer labels, descriptions, and larger palettes.
