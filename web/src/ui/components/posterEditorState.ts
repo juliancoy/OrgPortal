@@ -1,6 +1,7 @@
 export const elementLabels = { background: 'Background image', logo: 'Logo', brand: 'Organization name', tagline: 'Tagline', title: 'Title', date: 'Date', time: 'Time', location: 'Location', description: 'Description', qr: 'RSVP QR code', invitation: 'Join us', website: 'Website' }
 export type ElementId = keyof typeof elementLabels
-export type ElementLayout = { hidden?: boolean; shadow?: boolean; text?: string; scale?: number; x?: number; y?: number }
+export type ElementLayout = { hidden?: boolean; shadow?: boolean; shadowOpacity?: number; shadowBlur?: number; shadowDistance?: number; shadowSpread?: number; text?: string; scale?: number; x?: number; y?: number }
+export const shadowDefaults = { shadowOpacity: 1, shadowBlur: 2, shadowDistance: 5, shadowSpread: 1.5 }
 export type PosterSettings = {
   format: 'letter' | 'letter-4up' | 'postcard' | 'social'; theme: 'light' | 'dark'
   background: 'solid' | 'city' | 'gradient' | 'lifetech' | 'gallery'; mediaId: string
@@ -27,7 +28,7 @@ export function parseSettings(raw: string | null): PosterSettings {
     s.elements = {}
     for (const id of Object.keys(elementLabels) as ElementId[]) {
       const item = v.elements?.[id]
-      if (item && typeof item === 'object') s.elements[id] = { hidden: item.hidden === true, shadow: item.shadow === true, ...(typeof item.text === 'string' ? { text: item.text.slice(0, 4000) } : {}), scale: bound(item.scale, 1, .25, 3), x: bound(item.x, 0, -100, 100), y: bound(item.y, 0, -100, 100) }
+      if (item && typeof item === 'object') s.elements[id] = { hidden: item.hidden === true, shadow: item.shadow === true, ...Object.fromEntries(Object.entries(shadowDefaults).filter(([key]) => Object.hasOwn(item, key)).map(([key, fallback]) => [key, bound(item[key], fallback, 0, key === 'shadowOpacity' ? 1 : key === 'shadowSpread' ? 12 : 30)])), ...(typeof item.text === 'string' ? { text: item.text.slice(0, 4000) } : {}), scale: bound(item.scale, 1, .25, 3), x: bound(item.x, 0, -100, 100), y: bound(item.y, 0, -100, 100) }
     }
     return s
   } catch { return { ...defaults } }
@@ -66,14 +67,17 @@ export function applySettings(svg: SVGSVGElement, settings: PosterSettings) {
     image.setAttribute('opacity', String(settings.opacity))
   }
   for (const overlay of svg.querySelectorAll('[data-poster-dimming]')) overlay.setAttribute('opacity', String(settings.dimming))
-  applyDropShadow(svg)
   for (const node of svg.querySelectorAll('[data-poster-element]')) {
     const layout = settings.elements[node.getAttribute('data-poster-element') as ElementId] || {}
     applyElementText(node, layout.text, width)
     const base = node.getAttribute('data-base-transform') || ''
     node.setAttribute('transform', base.replace(/^translate\([^)]*\)/, `translate(${(layout.x || 0) * width / 100} ${(layout.y || 0) * height / 100})`).replace(/scale\([^)]*\)/, `scale(${layout.scale ?? 1})`))
     node.setAttribute('display', layout.hidden ? 'none' : 'inline')
-    if (layout.shadow) node.setAttribute('filter', 'url(#poster-element-shadow)')
+    if (layout.shadow) {
+      const id = node.getAttribute('data-poster-element') as ElementId
+      applyDropShadow(svg, id, layout)
+      node.setAttribute('filter', `url(#poster-shadow-${id})`)
+    }
     else node.removeAttribute('filter')
   }
 }
@@ -108,20 +112,39 @@ function applyEdgeFill(image: SVGImageElement, enabled: boolean) {
 }
 
 // A local SVG filter keeps preview and every export on the same renderer.
-function applyDropShadow(svg: SVGSVGElement) {
-  if (svg.querySelector('#poster-element-shadow')) return
+function applyDropShadow(svg: SVGSVGElement, id: ElementId, layout: ElementLayout) {
   const ns = 'http://www.w3.org/2000/svg'
-  const defs = document.createElementNS(ns, 'defs')
-  const filter = document.createElementNS(ns, 'filter')
-  filter.id = 'poster-element-shadow'
-  filter.setAttribute('x', '-50%'); filter.setAttribute('y', '-50%')
-  filter.setAttribute('width', '200%'); filter.setAttribute('height', '200%')
-  filter.setAttribute('color-interpolation-filters', 'sRGB')
-  const shadow = document.createElementNS(ns, 'feDropShadow')
-  shadow.setAttribute('dx', '2'); shadow.setAttribute('dy', '3')
-  shadow.setAttribute('stdDeviation', '3')
-  shadow.setAttribute('flood-color', '#000000'); shadow.setAttribute('flood-opacity', '0.65')
-  filter.append(shadow); defs.append(filter); svg.prepend(defs)
+  let filter = svg.querySelector(`#poster-shadow-${id}`)
+  if (!filter) {
+    const defs = document.createElementNS(ns, 'defs')
+    filter = document.createElementNS(ns, 'filter')
+    filter.id = `poster-shadow-${id}`
+    filter.setAttribute('x', '-100%'); filter.setAttribute('y', '-100%')
+    filter.setAttribute('width', '300%'); filter.setAttribute('height', '300%')
+    filter.setAttribute('color-interpolation-filters', 'sRGB')
+    const primitive = (tag: string, attrs: Record<string, string>) => {
+      const node = document.createElementNS(ns, tag)
+      for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, value)
+      filter!.append(node)
+      return node
+    }
+    primitive('feMorphology', { in: 'SourceAlpha', operator: 'dilate' })
+    primitive('feGaussianBlur', {})
+    primitive('feOffset', { result: 'shadow-mask' })
+    primitive('feFlood', { 'flood-color': '#000000' })
+    primitive('feComposite', { in2: 'shadow-mask', operator: 'in' })
+    const merge = primitive('feMerge', {})
+    for (const input of ['', 'SourceGraphic']) {
+      const node = document.createElementNS(ns, 'feMergeNode')
+      if (input) node.setAttribute('in', input)
+      merge.append(node)
+    }
+    defs.append(filter); svg.prepend(defs)
+  }
+  filter.querySelector('feMorphology')!.setAttribute('radius', String(layout.shadowSpread ?? shadowDefaults.shadowSpread))
+  filter.querySelector('feGaussianBlur')!.setAttribute('stdDeviation', String(layout.shadowBlur ?? shadowDefaults.shadowBlur))
+  for (const axis of ['dx', 'dy']) filter.querySelector('feOffset')!.setAttribute(axis, String(layout.shadowDistance ?? shadowDefaults.shadowDistance))
+  filter.querySelector('feFlood')!.setAttribute('flood-opacity', String(layout.shadowOpacity ?? shadowDefaults.shadowOpacity))
 }
 
 const originalText = new WeakMap<Element, SVGTextElement>()

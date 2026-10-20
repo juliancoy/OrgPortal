@@ -2,7 +2,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { Download, FileImage, Moon, Printer, RefreshCw, Sun, X } from 'lucide-react'
 import './eventPoster.css'
 import { bindCanvas, drawSelection } from './posterCanvas'
-import { applySettings, defaults, elementLabels, parsePosterSvg, parseSettings, posterElementText, type ElementId, type ElementLayout, type PosterSettings } from './posterEditorState'
+import { applySettings, defaults, elementLabels, parsePosterSvg, parseSettings, posterElementText, shadowDefaults, type ElementId, type ElementLayout, type PosterSettings } from './posterEditorState'
 import { useGroupSite } from '../../config/timebankCommunity'
 
 type Format = 'letter' | 'letter-4up' | 'postcard' | 'social'
@@ -267,7 +267,15 @@ function PosterEditor({ slug, title, revision = '', sourceUrl, eventLinks = [] }
         </select></label>
         {selectedElement && ready && posterElementText(ready.svg, selectedElement) !== null && <label className="event-poster-text">Text<textarea aria-label="Element text" maxLength={4000} rows={3} value={elementLayout.text ?? posterElementText(ready.svg, selectedElement) ?? ''} onChange={event => updateElement({ text: event.target.value })}/><span>Changes apply to this poster only.</span><button type="button" onClick={() => setElements(value => { const next = { ...value[selectedElement] }; delete next.text; return { ...value, [selectedElement]: next } })}>Restore original text</button></label>}
         {selectedElement && selectedElement !== 'background' && <label className="event-poster-visible"><input type="checkbox" checked={!elementLayout.hidden} onChange={event => updateElement({ hidden: !event.target.checked })}/>Show {elementLabels[selectedElement].toLowerCase()}</label>}
-        {selectedElement && selectedElement !== 'background' && <><label className="event-poster-visible"><input type="checkbox" checked={elementLayout.shadow === true} onChange={event => updateElement({ shadow: event.target.checked })}/>Drop shadow</label><label>Size: {Math.round((elementLayout.scale ?? 1) * 100)}%<input type="range" min="0.25" max="3" step="0.05" value={elementLayout.scale ?? 1} onChange={event => updateElement({ scale: Number(event.target.value) })}/></label>
+        {selectedElement && selectedElement !== 'background' && <><label className="event-poster-visible"><input type="checkbox" checked={elementLayout.shadow === true} onChange={event => updateElement({ shadow: event.target.checked })}/>Drop shadow</label>
+        {elementLayout.shadow && <>
+          <label>Shadow strength: {Math.round((elementLayout.shadowOpacity ?? shadowDefaults.shadowOpacity) * 100)}%<input type="range" min="0" max="1" step="0.05" value={elementLayout.shadowOpacity ?? shadowDefaults.shadowOpacity} onChange={event => updateElement({ shadowOpacity: Number(event.target.value) })}/></label>
+          <label>Shadow blur: {elementLayout.shadowBlur ?? shadowDefaults.shadowBlur}<input type="range" min="0" max="30" step="0.5" value={elementLayout.shadowBlur ?? shadowDefaults.shadowBlur} onChange={event => updateElement({ shadowBlur: Number(event.target.value) })}/></label>
+          <label>Shadow distance: {elementLayout.shadowDistance ?? shadowDefaults.shadowDistance}<input type="range" min="0" max="30" step="0.5" value={elementLayout.shadowDistance ?? shadowDefaults.shadowDistance} onChange={event => updateElement({ shadowDistance: Number(event.target.value) })}/></label>
+          <label>Shadow thickness: {elementLayout.shadowSpread ?? shadowDefaults.shadowSpread}<input type="range" min="0" max="12" step="0.5" value={elementLayout.shadowSpread ?? shadowDefaults.shadowSpread} onChange={event => updateElement({ shadowSpread: Number(event.target.value) })}/></label>
+          <button type="button" onClick={() => updateElement(shadowDefaults)}>Reset shadow</button>
+        </>}
+        <label>Size: {Math.round((elementLayout.scale ?? 1) * 100)}%<input type="range" min="0.25" max="3" step="0.05" value={elementLayout.scale ?? 1} onChange={event => updateElement({ scale: Number(event.target.value) })}/></label>
         <label>Horizontal position: {Math.round(elementLayout.x ?? 0)}<input type="range" min="-100" max="100" value={elementLayout.x ?? 0} onChange={event => updateElement({ x: Number(event.target.value) })}/></label>
         <label>Vertical position: {Math.round(elementLayout.y ?? 0)}<input type="range" min="-100" max="100" value={elementLayout.y ?? 0} onChange={event => updateElement({ y: Number(event.target.value) })}/></label>
         <button type="button" onClick={() => setElements(value => { const next = { ...value }; delete next[selectedElement]; return next })}>Reset element</button>

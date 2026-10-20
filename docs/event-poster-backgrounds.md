@@ -143,3 +143,8 @@ text, including location/address, and accept custom text and line breaks. Edits
 are saved locally for this poster and included in every export; event details
 and QR destinations are unchanged. Restore original text removes only the text
 override. Element resets also restore the original text.
+
+Shadow controls adjust strength (0–100%), blur (0–30), distance (0–30), and
+thickness (0–12) independently for each element. Defaults use 100% strength,
+2 blur, 5 distance, and 1.5 thickness for a stronger, tighter black shadow.
+Reset shadow restores those values. All controls persist and apply to every export.
