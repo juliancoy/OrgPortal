@@ -11,6 +11,7 @@ function dimensions(svg: SVGSVGElement) {
 }
 export function drawSelection(svg: SVGSVGElement, settings: PosterSettings) {
   svg.querySelector('[data-editor-ui]')?.remove()
+  if (!settings.selectedElement) return
   const art = artwork(svg), { width, height } = dimensions(svg)
   let box = { x: 6, y: 6, width: width - 12, height: height - 12 }
   if (settings.selectedElement === 'background') {
@@ -79,7 +80,9 @@ export function bindCanvas(svg: SVGSVGElement, getSettings: () => PosterSettings
     if (!drag || drag.id !== event.pointerId) return
     const p = new DOMPoint(event.clientX, event.clientY).matrixTransform(drag.matrix)
     const dx = (p.x - drag.start.x) / width, dy = (p.y - drag.start.y) / height
-    const s = drag.settings, id = s.selectedElement, layout = s.elements[id] || {}
+    const s = drag.settings, id = s.selectedElement
+    if (!id) return
+    const layout = s.elements[id] || {}
     const delta = drag.resize ? (dx * drag.resize[0] + dy * drag.resize[1]) * 2 : 0
     if (id === 'background') update({ ...s, ...(drag.resize ? { zoom: clamp(s.zoom + delta, .25, 3) } : { offsetX: clamp(s.offsetX + dx * 200, -100, 100), offsetY: clamp(s.offsetY + dy * 200, -100, 100) }) })
     else update({ ...s, elements: { ...s.elements, [id]: { ...layout, ...(drag.resize ? { scale: clamp((layout.scale ?? 1) + delta, .25, 3) } : { x: clamp((layout.x || 0) + dx * 100, -100, 100), y: clamp((layout.y || 0) + dy * 100, -100, 100) }) } } })

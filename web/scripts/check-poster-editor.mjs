@@ -25,14 +25,20 @@ try {
   await page.goto(origin);
   const svg = page.locator('.event-poster-preview svg').first();
   await svg.waitFor();
+  const canvasBox = await page.locator('.event-poster-preview').boundingBox();
+  const settingsBox = await page.locator('.event-poster-settings').boundingBox();
+  assert.ok(canvasBox.x + canvasBox.width <= settingsBox.x, 'poster appears left of settings');
   await page.getByLabel('Background', { exact: true }).selectOption('gallery');
   await page.getByRole('button', { name: 'Fixture photo Host' }).click();
   await page.locator('[data-poster-background]').waitFor();
   const before = requests;
+  await page.getByLabel('Element', { exact: true }).selectOption('background');
   await page.getByLabel('Blur image into empty edges').check();
   await page.getByLabel('Zoom:').fill('0.5');
   await page.getByRole('button', { name: 'Select background on canvas' }).click();
   const handle = page.locator('[data-resize="1,1"]');
+  await page.locator('.event-poster-preview').scrollIntoViewIfNeeded();
+  await page.waitForTimeout(100);
   const bounds = await handle.boundingBox();
   await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
   await page.mouse.down(); await page.mouse.move(bounds.x + bounds.width / 2 + 20, bounds.y + bounds.height / 2 + 20); await page.mouse.up();
@@ -47,7 +53,12 @@ try {
   await page.getByLabel('Background dimming:').fill('0');
   await page.locator('[data-poster-element="title"]').click();
   await page.waitForFunction(() => document.querySelector('select[aria-label="Element"]')?.value === 'title');
-  await page.getByText('Adjust text and other elements', { exact: true }).click();
+  await expect(page.getByLabel('Size:')).toBeVisible();
+  await expect(page.getByLabel('Zoom:')).toHaveCount(0);
+  await page.getByRole('heading', { name: 'Event poster', exact: true }).click();
+  await expect(page.getByLabel('Element', { exact: true })).toHaveValue('');
+  await expect(page.locator('[data-editor-ui]')).toHaveCount(0);
+  await expect(page.getByLabel('Size:')).toHaveCount(0);
   await page.getByLabel('Element', { exact: true }).selectOption('time');
   await page.getByLabel('Show time').uncheck();
   await page.waitForFunction(() => document.querySelector('.event-poster-preview > div')?.shadowRoot?.querySelector('[data-poster-background]')?.getAttribute('opacity') === '0.35');
@@ -63,6 +74,7 @@ try {
   assert.match(exported, /feGaussianBlur/); assert.doesNotMatch(exported, /data-editor-ui|data-resize/);
   assert.match(exported, /opacity="0.35"/); assert.match(exported, /display="none"/);
   await page.reload(); await page.locator('[data-poster-background]').waitFor();
+  await page.getByLabel('Element', { exact: true }).selectOption('background');
   await expect(page.getByLabel('Blur image into empty edges')).toBeChecked();
   assert.equal(await page.getByLabel('Opacity:').inputValue(), '0.35'); assert.equal(await page.getByLabel('Zoom:').inputValue(), '2');
   for (const name of ['8.5 x 11', 'Letter 2 × 2', '4 x 6', 'Social']) {
@@ -95,6 +107,11 @@ try {
   await page.reload(); await svg.waitFor();
   assert.equal(await page.getByLabel('Background', { exact: true }).inputValue(), 'solid');
   assert.equal(await page.getByRole('button', { name: '8.5 x 11', exact: true }).getAttribute('aria-pressed'), 'true');
+  await page.setViewportSize({ width: 375, height: 812 });
+  const mobileCanvas = await page.locator('.event-poster-preview').boundingBox();
+  const mobileSettings = await page.locator('.event-poster-settings').boundingBox();
+  assert.ok(mobileCanvas.y + mobileCanvas.height <= mobileSettings.y, 'mobile settings stack below poster');
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'mobile editor fits viewport');
   assert.deepEqual(errors, []);
   console.log('PASS: live edits without fetches, SVG export, reload persistence, all formats, SVG safety, click selection, reset');
 } finally { await browser.close(); server.close(); }

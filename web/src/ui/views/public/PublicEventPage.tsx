@@ -977,9 +977,9 @@ export function PublicEventPage() {
               </div>
             ) : null}
           </section>
-          <EventPosterTools sourceUrl={event.source_url} eventLinks={event.links} slug={event.slug} title={event.title} revision={event.updated_at || ''} inline />
         </aside>
       </div>
+      <EventPosterTools sourceUrl={event.source_url} eventLinks={event.links} slug={event.slug} title={event.title} revision={event.updated_at || ''} inline />
       {selectedMedia ? (
         <div className="public-event-gallery-backdrop" role="presentation" onMouseDown={(event) => {
           if (event.target === event.currentTarget) setSelectedMediaIndex(-1)

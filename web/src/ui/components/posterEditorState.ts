@@ -5,9 +5,9 @@ export type PosterSettings = {
   format: 'letter' | 'letter-4up' | 'postcard' | 'social'; theme: 'light' | 'dark'
   background: 'solid' | 'city' | 'gradient' | 'lifetech' | 'gallery'; mediaId: string
   link: string; zoom: number; offsetX: number; offsetY: number; opacity: number; dimming: number; edgeBlur: boolean; imageFit: 'original' | 'contain' | 'cover'
-  elements: Partial<Record<ElementId, ElementLayout>>; selectedElement: ElementId
+  elements: Partial<Record<ElementId, ElementLayout>>; selectedElement: ElementId | null
 }
-export const defaults: PosterSettings = { format: 'letter', theme: 'light', background: 'solid', mediaId: '', link: 'portal', zoom: 1, offsetX: 0, offsetY: 0, opacity: 1, dimming: .66, edgeBlur: false, imageFit: 'original', elements: {}, selectedElement: 'time' }
+export const defaults: PosterSettings = { format: 'letter', theme: 'light', background: 'solid', mediaId: '', link: 'portal', zoom: 1, offsetX: 0, offsetY: 0, opacity: 1, dimming: .66, edgeBlur: false, imageFit: 'original', elements: {}, selectedElement: null }
 const bound = (value: unknown, fallback: number, min: number, max: number) => typeof value === 'number' && Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : fallback
 export function parseSettings(raw: string | null): PosterSettings {
   try {

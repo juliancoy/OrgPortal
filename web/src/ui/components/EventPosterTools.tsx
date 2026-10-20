@@ -66,8 +66,8 @@ function PosterEditor({ slug, title, revision = '', sourceUrl, eventLinks = [] }
   }
   const [gallery, setGallery] = useState<{ id: string; label: string; alt?: string; source: string; url: string }[]>([])
   const [galleryStatus, setGalleryStatus] = useState('Loading gallery...')
-  const elementLayout = elements[selectedElement] || {}
-  function updateElement(change: ElementLayout) { setElements(value => ({ ...value, [selectedElement]: { ...value[selectedElement], ...change } })) }
+  const elementLayout = selectedElement ? elements[selectedElement] || {} : {}
+  function updateElement(change: ElementLayout) { if (!selectedElement) return; setElements(value => ({ ...value, [selectedElement]: { ...value[selectedElement], ...change } })) }
   const imageBackground = ['gallery', 'city', 'lifetech'].includes(background)
   const [galleryRetry, setGalleryRetry] = useState(0)
   useEffect(() => {
@@ -87,7 +87,16 @@ function PosterEditor({ slug, title, revision = '', sourceUrl, eventLinks = [] }
   const [retry, setRetry] = useState(0)
   const [poster, setPoster] = useState<{ svg: SVGSVGElement; key: string } | null>(null)
   const preview = useRef<HTMLDivElement>(null)
-  const elementControls = useRef<HTMLDetailsElement>(null)
+  const controls = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const clearSelection = (event: PointerEvent) => {
+      const path = event.composedPath()
+      if ((preview.current && path.includes(preview.current)) || (controls.current && path.includes(controls.current))) return
+      setSettings(old => old.selectedElement === null ? old : { ...old, selectedElement: null })
+    }
+    document.addEventListener('pointerdown', clearSelection)
+    return () => document.removeEventListener('pointerdown', clearSelection)
+  }, [])
   const [error, setError] = useState('')
   const [exporting, setExporting] = useState(false)
   // Layout controls never change this key: they are applied locally each frame.
@@ -188,6 +197,13 @@ function PosterEditor({ slug, title, revision = '', sourceUrl, eventLinks = [] }
   return <section className="event-poster" aria-labelledby={id}>
     <h2 id={id}>Event poster</h2>
     <p>{storageError ? "Settings could not be saved in this browser." : "Settings are saved automatically for this event in this browser."}</p>
+    <div className="event-poster-workspace">
+      <div className="event-poster-canvas-column">
+        <div className={`event-poster-preview event-poster-preview-${format}`} aria-busy={!ready && !error && (background !== 'gallery' || Boolean(selectedMediaId))}>
+          {ready ? <div ref={preview} role="img" aria-label={`${title}, ${formats[format].label}, ${theme}, ${backgrounds[background]} poster`}/> : <span role="status">{error ? 'Preview unavailable' : background === 'gallery' && !selectedMediaId ? 'Select a gallery image to preview your poster.' : 'Generating poster...'}</span>}
+        </div>
+      </div>
+      <div className="event-poster-settings" ref={controls}>
     <button type="button" onClick={resetSettings} disabled={exporting}>Reset all settings</button>
     <div className="event-poster-toolbar">
       <div className="event-poster-formats" role="group" aria-label="Poster format">
@@ -226,7 +242,7 @@ function PosterEditor({ slug, title, revision = '', sourceUrl, eventLinks = [] }
         <span>{item.label || `Image ${index + 1}`}<small style={{ display: 'block' }}>{item.source}</small></span>
       </button>)}
     </div>}
-    {imageBackground && (background !== 'gallery' || selectedMediaId) && <fieldset className="event-poster-crop" disabled={exporting}>
+    {selectedElement === 'background' && imageBackground && (background !== 'gallery' || selectedMediaId) && <fieldset className="event-poster-crop" disabled={exporting}>
       <legend>Adjust background image</legend>
       <button type="button" aria-pressed={selectedElement === 'background'} onClick={() => setSelectedElement('background')}>Select background on canvas</button>
       <label className="event-poster-visible"><input type="checkbox" checked={edgeBlur} onChange={event => setter('edgeBlur')(event.target.checked)}/>Blur image into empty edges</label>
@@ -242,25 +258,27 @@ function PosterEditor({ slug, title, revision = '', sourceUrl, eventLinks = [] }
       <label>Vertical position: {Math.round(offsetY)}<input type="range" min="-100" max="100" step="1" value={offsetY} onChange={event => setOffsetY(Number(event.target.value))}/></label>
       <button type="button" onClick={() => { setZoom(1); setOffsetX(0); setOffsetY(0); setOpacity(1); setDimming(.66); setter('edgeBlur')(false); setter('imageFit')('original') }}>Reset image</button>
     </fieldset>}
-    <details ref={elementControls} className="event-poster-elements">
-      <summary>Adjust text and other elements</summary>
+    <div className="event-poster-elements">
+      <h3>Selected element</h3>
       <fieldset className="event-poster-crop" disabled={exporting}>
         <legend>Element settings</legend>
-        <label>Element<select aria-label="Element" value={selectedElement} onChange={event => setSelectedElement(event.target.value as ElementId)}>
+        <label>Element<select aria-label="Element" value={selectedElement || ''} onChange={event => setSelectedElement(event.target.value ? event.target.value as ElementId : null)}>
+          <option value="">Select an element on the poster</option>
           {Object.entries(elementLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
         </select></label>
-        {selectedElement !== 'background' && <label className="event-poster-visible"><input type="checkbox" checked={!elementLayout.hidden} onChange={event => updateElement({ hidden: !event.target.checked })}/>Show {elementLabels[selectedElement].toLowerCase()}</label>}
-        {selectedElement !== 'background' && <><label>Size: {Math.round((elementLayout.scale ?? 1) * 100)}%<input type="range" min="0.25" max="3" step="0.05" value={elementLayout.scale ?? 1} onChange={event => updateElement({ scale: Number(event.target.value) })}/></label>
+        {selectedElement && selectedElement !== 'background' && <label className="event-poster-visible"><input type="checkbox" checked={!elementLayout.hidden} onChange={event => updateElement({ hidden: !event.target.checked })}/>Show {elementLabels[selectedElement].toLowerCase()}</label>}
+        {selectedElement && selectedElement !== 'background' && <><label>Size: {Math.round((elementLayout.scale ?? 1) * 100)}%<input type="range" min="0.25" max="3" step="0.05" value={elementLayout.scale ?? 1} onChange={event => updateElement({ scale: Number(event.target.value) })}/></label>
         <label>Horizontal position: {Math.round(elementLayout.x ?? 0)}<input type="range" min="-100" max="100" value={elementLayout.x ?? 0} onChange={event => updateElement({ x: Number(event.target.value) })}/></label>
         <label>Vertical position: {Math.round(elementLayout.y ?? 0)}<input type="range" min="-100" max="100" value={elementLayout.y ?? 0} onChange={event => updateElement({ y: Number(event.target.value) })}/></label>
         <button type="button" onClick={() => setElements(value => { const next = { ...value }; delete next[selectedElement]; return next })}>Reset element</button>
         <button type="button" onClick={() => setElements({})}>Reset all elements</button></>}
       </fieldset>
-    </details>
+      {!selectedElement && <p>Click an element on the poster to adjust its size and position.</p>}
+    </div>
     {error && <div role="alert" className="event-poster-error">{error}<button type="button" title="Retry poster" onClick={() => setRetry(value => value + 1)}><RefreshCw size={18} aria-hidden="true"/>Retry</button></div>}
-      <p>Drag an image or text on the canvas to move it. Drag a corner handle to resize. Select the background above to show its resize handles; drag an empty area to move it. Sliders provide precise positioning.</p>
-    <div className={`event-poster-preview event-poster-preview-${format}`} aria-busy={!ready && !error && (background !== 'gallery' || Boolean(selectedMediaId))}>
-      {ready ? <div ref={preview} role="img" aria-label={`${title}, ${formats[format].label}, ${theme}, ${backgrounds[background]} poster`}/> : <span role="status">{error ? 'Preview unavailable' : background === 'gallery' && !selectedMediaId ? 'Select a gallery image to preview your poster.' : 'Generating poster...'}</span>}
+      <p>Drag an image or text on the canvas to move it. Drag a corner handle to resize. Select the background in the element menu or drag an empty image area to move it. Sliders provide precise positioning.</p>
+
+      </div>
     </div>
   </section>
 }

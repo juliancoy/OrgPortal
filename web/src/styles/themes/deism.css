@@ -1,0 +1,122 @@
+/* Complete deism brand palette. */
+:root[data-portal-profile='deism'] {
+  --primary: #166534;
+  --primary-2: #15803d;
+  --primary-bg: #dcfce7;
+  --primary-hover: #14532d;
+  --surface: #fafafa;
+  --panel: #ffffff;
+  --panel-2: #f5f5f5;
+  --border: #d4d4d4;
+  --border-subtle: #e5e5e5;
+  --border-hover: var(--primary-2);
+  --text-primary: #171717;
+  --text-secondary: #525252;
+  --text-muted: #595959;
+  --bg-surface: #fafafa;
+  --border-input: #a3a3a3;
+  --btn-primary-bg: #166534;
+  --btn-primary-text: #fff;
+  --icon-tile-bg: #dcfce7;
+  --color-cream-dark: #f5f5f5;
+  --color-sage: #737373;
+  --icon-stroke: var(--primary);
+  --surface-solid: #ffffff;
+  --surface-soft: #fafafa;
+  --surface-softer: #ffffff;
+  --surface-strong: #ffffff;
+  --surface-input: #ffffff;
+  --surface-muted: #f5f5f5;
+  --header-bg: #ffffff;
+  --hero-bg: #dcfce7;
+  --footer-bg: #ffffff;
+  --body-bg: #f0fdf4;
+  --selection-bg: var(--primary);
+  --selection-text: var(--panel);
+  --color-border: var(--border);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --focus-ring: 0 0 0 3px var(--panel), 0 0 0 6px var(--primary-2);
+}
+
+:root[data-portal-profile='deism'][data-theme='dark'] {
+  --primary: #86efac;
+  --primary-2: #bbf7d0;
+  --primary-bg: #14532d;
+  --primary-hover: #bbf7d0;
+  --surface: #171717;
+  --panel: #222222;
+  --panel-2: #303030;
+  --border: #737373;
+  --border-subtle: #404040;
+  --border-hover: var(--primary-2);
+  --text-primary: #fafafa;
+  --text-secondary: #d4d4d4;
+  --text-muted: #b3b3b3;
+  --bg-surface: #171717;
+  --border-input: #8a8a8a;
+  --btn-primary-bg: #86efac;
+  --btn-primary-text: #052e16;
+  --icon-tile-bg: #14532d;
+  --color-cream-dark: #303030;
+  --color-sage: #b3b3b3;
+  --icon-stroke: var(--primary);
+  --surface-solid: #222222;
+  --surface-soft: #262626;
+  --surface-softer: #222222;
+  --surface-strong: #333333;
+  --surface-input: #171717;
+  --surface-muted: #303030;
+  --header-bg: #222222;
+  --hero-bg: #14532d;
+  --footer-bg: #222222;
+  --body-bg: #052e16;
+  --selection-bg: var(--primary);
+  --selection-text: var(--panel);
+  --color-border: var(--border);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --focus-ring: 0 0 0 3px var(--panel), 0 0 0 6px var(--primary-2);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-portal-profile='deism']:not([data-theme]) {
+    --primary: #86efac;
+    --primary-2: #bbf7d0;
+    --primary-bg: #14532d;
+    --primary-hover: #bbf7d0;
+    --surface: #171717;
+    --panel: #222222;
+    --panel-2: #303030;
+    --border: #737373;
+    --border-subtle: #404040;
+    --border-hover: var(--primary-2);
+    --text-primary: #fafafa;
+    --text-secondary: #d4d4d4;
+    --text-muted: #b3b3b3;
+    --bg-surface: #171717;
+    --border-input: #8a8a8a;
+    --btn-primary-bg: #86efac;
+    --btn-primary-text: #052e16;
+    --icon-tile-bg: #14532d;
+    --color-cream-dark: #303030;
+    --color-sage: #b3b3b3;
+    --icon-stroke: var(--primary);
+    --surface-solid: #222222;
+    --surface-soft: #262626;
+    --surface-softer: #222222;
+    --surface-strong: #333333;
+    --surface-input: #171717;
+    --surface-muted: #303030;
+    --header-bg: #222222;
+    --hero-bg: #14532d;
+    --footer-bg: #222222;
+    --body-bg: #052e16;
+    --selection-bg: var(--primary);
+    --selection-text: var(--panel);
+    --color-border: var(--border);
+    --color-text-primary: var(--text-primary);
+    --color-text-secondary: var(--text-secondary);
+    --focus-ring: 0 0 0 3px var(--panel), 0 0 0 6px var(--primary-2);
+  }
+}

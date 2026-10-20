@@ -9,6 +9,6 @@ describe('poster local preferences', () => {
     for (const raw of [null, 'bad json', 'null', '{"version":2}']) expect(parseSettings(raw)).toEqual(defaults)
     const value = parseSettings(JSON.stringify({ version: 1, opacity: -1, zoom: 20, offsetX: '5', selectedElement: '__proto__', elements: { time: { hidden: 'false', scale: 99 }, script: { hidden: true } } }))
     expect(value.opacity).toBe(0); expect(value.zoom).toBe(3); expect(value.offsetX).toBe(0)
-    expect(value.selectedElement).toBe('time'); expect(value.elements).toEqual({ time: { hidden: false, scale: 3, x: 0, y: 0 } })
+    expect(value.selectedElement).toBeNull(); expect(value.elements).toEqual({ time: { hidden: false, scale: 3, x: 0, y: 0 } })
   })
 })

@@ -1,0 +1,122 @@
+/* Complete orgportal brand palette. */
+:root:is(:not([data-portal-profile]), [data-portal-profile='orgportal']) {
+  --primary: #155e59;
+  --primary-2: #0f766e;
+  --primary-bg: #e1f4ee;
+  --primary-hover: #104842;
+  --surface: #f1f8f5;
+  --panel: #ffffff;
+  --panel-2: #f5faf7;
+  --border: #bed4cb;
+  --border-subtle: #d8e7df;
+  --border-hover: #0f766e;
+  --text-primary: #18352d;
+  --text-secondary: #456158;
+  --text-muted: #526d63;
+  --bg-surface: #f1f8f5;
+  --border-input: #8cae9f;
+  --btn-primary-bg: #155e59;
+  --btn-primary-text: #fff;
+  --icon-tile-bg: #e1f4ee;
+  --color-cream-dark: #eaf3ee;
+  --color-sage: #789e8d;
+  --icon-stroke: #155e59;
+  --surface-solid: #ffffff;
+  --surface-soft: #f5faf7;
+  --surface-softer: #ffffff;
+  --surface-strong: #ffffff;
+  --surface-input: #ffffff;
+  --surface-muted: #eaf3ee;
+  --header-bg: #ffffff;
+  --hero-bg: #e1f4ee;
+  --footer-bg: #f5faf7;
+  --body-bg: #f1f8f5;
+  --selection-bg: #155e59;
+  --selection-text: #ffffff;
+  --color-border: var(--border);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --focus-ring: 0 0 0 3px var(--panel), 0 0 0 6px var(--primary-2);
+}
+
+:root:is(:not([data-portal-profile]), [data-portal-profile='orgportal'])[data-theme='dark'] {
+  --primary: #8be4cd;
+  --primary-2: #99f6e4;
+  --primary-bg: #153d36;
+  --primary-hover: #99f6e4;
+  --surface: #102d27;
+  --panel: #15372f;
+  --panel-2: #1d443a;
+  --border: #496e60;
+  --border-subtle: #315448;
+  --border-hover: #8be4cd;
+  --text-primary: #edf9f2;
+  --text-secondary: #c0dccd;
+  --text-muted: #a3c4b3;
+  --bg-surface: #102d27;
+  --border-input: #739c88;
+  --btn-primary-bg: #8be4cd;
+  --btn-primary-text: #102d27;
+  --icon-tile-bg: #214b3e;
+  --color-cream-dark: #173b30;
+  --color-sage: #a3c4b3;
+  --icon-stroke: #8be4cd;
+  --surface-solid: #15372f;
+  --surface-soft: #193e33;
+  --surface-softer: #15372f;
+  --surface-strong: #234e40;
+  --surface-input: #102d27;
+  --surface-muted: #1b4035;
+  --header-bg: #15372f;
+  --hero-bg: #1d443a;
+  --footer-bg: #15372f;
+  --body-bg: #0b211b;
+  --selection-bg: #8be4cd;
+  --selection-text: #102d27;
+  --color-border: var(--border);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --focus-ring: 0 0 0 3px var(--panel), 0 0 0 6px var(--primary-2);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:is(:not([data-portal-profile]), [data-portal-profile='orgportal']):not([data-theme]) {
+    --primary: #8be4cd;
+    --primary-2: #99f6e4;
+    --primary-bg: #153d36;
+    --primary-hover: #99f6e4;
+    --surface: #102d27;
+    --panel: #15372f;
+    --panel-2: #1d443a;
+    --border: #496e60;
+    --border-subtle: #315448;
+    --border-hover: #8be4cd;
+    --text-primary: #edf9f2;
+    --text-secondary: #c0dccd;
+    --text-muted: #a3c4b3;
+    --bg-surface: #102d27;
+    --border-input: #739c88;
+    --btn-primary-bg: #8be4cd;
+    --btn-primary-text: #102d27;
+    --icon-tile-bg: #214b3e;
+    --color-cream-dark: #173b30;
+    --color-sage: #a3c4b3;
+    --icon-stroke: #8be4cd;
+    --surface-solid: #15372f;
+    --surface-soft: #193e33;
+    --surface-softer: #15372f;
+    --surface-strong: #234e40;
+    --surface-input: #102d27;
+    --surface-muted: #1b4035;
+    --header-bg: #15372f;
+    --hero-bg: #1d443a;
+    --footer-bg: #15372f;
+    --body-bg: #0b211b;
+    --selection-bg: #8be4cd;
+    --selection-text: #102d27;
+    --color-border: var(--border);
+    --color-text-primary: var(--text-primary);
+    --color-text-secondary: var(--text-secondary);
+    --focus-ring: 0 0 0 3px var(--panel), 0 0 0 6px var(--primary-2);
+  }
+}
