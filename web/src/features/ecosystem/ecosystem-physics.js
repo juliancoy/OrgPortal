@@ -1,4 +1,5 @@
-import { forceSimulation, forceLink, forceManyBody, forceCollide, forceX, forceY } from 'd3-force'
+import {forceDistanceLaw} from './force-law.js'
+import { forceSimulation, forceLink, forceCollide, forceX, forceY } from 'd3-force'
 
 // Canonical pairing keeps reverse-direction reports in the same curve bundle.
 export function assignEdgeCurvature(edges) {
@@ -62,14 +63,18 @@ export function forceCrossingAttraction(links,radius) {
   if(tick++%6===0) {
    crossing=new Set()
    // Bounded by actual links, independent of the world-space length of edges.
-   for(let i=0;i<links.length;i++)for(let j=0;j<i;j++) {
+   for(let i=0;i<links.length;i++){
+    if(crossing.has(links[i]))continue
+    for(let j=0;j<links.length;j++) {
+    if(i===j)continue
     const link=links[i],a=link.source,b=link.target,c=links[j].source,d=links[j].target
     if(a===c||a===d||b===c||b===d)continue
     if(Math.max(a.x,b.x)<Math.min(c.x,d.x)||Math.max(c.x,d.x)<Math.min(a.x,b.x)||Math.max(a.y,b.y)<Math.min(c.y,d.y)||Math.max(c.y,d.y)<Math.min(a.y,b.y))continue
-    if(side(a,b,c)*side(a,b,d)<0&&side(c,d,a)*side(c,d,b)<0){crossing.add(link);crossing.add(links[j])}
+    if(side(a,b,c)*side(a,b,d)<0&&side(c,d,a)*side(c,d,b)<0){crossing.add(link);crossing.add(links[j]);break}
+   }
    }
   }
-  for(const {source:a,target:b} of crossing) {
+  for(const {source:a,target:b} of links.filter(link=>crossing.has(link))) {
    const dx=a.x-b.x,dy=a.y-b.y,distance=Math.hypot(dx,dy),gap=distance-radius(a)-radius(b)-24
    if(gap<=0)continue
    const impulse=Math.min(1.2,gap*.012)*alpha
@@ -101,7 +106,7 @@ export function forceDither(strength) {
  return force
 }
 
-export function layoutNetwork(nodes, edges, radius, center, { live = false, attraction = 1, repulsion = 1, proximity = 1, centralGravity = 0, dither = 0 } = {}) {
+export function layoutNetwork(nodes, edges, radius, center, { live = false, attraction = 1, repulsion = 1, attractionLaw = "power", repulsionLaw = "power", attractionAlpha = 1, repulsionAlpha = 1, proximity = 1, centralGravity = 0, dither = 0 } = {}) {
  const radii=new Map(nodes.map(n=>[n.id,radius(n)])), size=n=>radii.get(n.id)
  const byId=new Map(nodes.map(n=>[n.id,n])), pairs=new Map()
  for(const edge of edges) {
@@ -120,8 +125,8 @@ export function layoutNetwork(nodes, edges, radius, center, { live = false, attr
    .distance(e=>size(e.source)+size(e.target)+(e.support?18+30/(1+e.pull):70))
    .strength(e=>Math.min(.9,e.support?proximity*(.55+.2*e.pull/(1+e.pull)):attraction*.08)))
   // Larger rendered area acts as gravitational mass; repulsion is local.
-  .force('attraction',forceManyBody().strength(n=>12*attraction*(size(n)/10)**2).distanceMin(80))
-  .force('charge',forceManyBody().strength(-80*repulsion).distanceMin(30).distanceMax(180))
+  .force('attraction',forceDistanceLaw({strength:n=>12*attraction*(size(n)/10)**2,law:attractionLaw,exponent:attractionAlpha,min:80,dimensions:2}))
+  .force('charge',forceDistanceLaw({strength:()=>-80*repulsion,law:repulsionLaw,exponent:repulsionAlpha,min:30,max:180,dimensions:2}))
   // Optional pull to the fixed graph origin, weighted by rendered node area.
   .force('centralX',forceX(0).strength(n=>.006*centralGravity*(size(n)/10)**2))
   .force('centralY',forceY(0).strength(n=>.006*centralGravity*(size(n)/10)**2))

@@ -1,3 +1,4 @@
+import { SignInLink } from '../../components/SignInLink'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../../app/AppProviders'
 import { emailApi } from './emailApi'
@@ -7,16 +8,19 @@ export function EmailPreferencesPage({embedded=false}:{embedded?:boolean}) {
   const { token } = useAuth()
   const [subscriptions, setSubscriptions] = useState<Subscription[] | null>(null)
   const [pending, setPending] = useState<string | null>(null)
+  const [revision, setRevision] = useState(0)
   const [error, setError] = useState('')
   useEffect(() => {
     let cancelled = false
     setSubscriptions(null); setPending(null); setError('')
+    if (!token) return
     emailApi<Subscription[]>(token, '/subscriptions/me').then((data) => { if (!cancelled) setSubscriptions(data) })
       .catch((err: Error) => { if (!cancelled) setError(err.message) })
     return () => { cancelled = true }
-  }, [token])
+  }, [token, revision])
+  if (!token) return <p><SignInLink /> to manage email preferences.</p>
   return <section className={embedded?'':'panel'}>{embedded?<h2>Event updates and organization announcements</h2>:<h1>Email preferences</h1>}<p>Choose which event updates and organization announcements you receive.</p>
-    {error && <p role="alert">{error}</p>}
+    {error && <div role="alert"><p>{error}</p><button type="button" disabled={Boolean(pending)} onClick={() => setRevision(value => value + 1)}>Reload preferences</button></div>}
     {!subscriptions && !error && <p>Loading email preferences…</p>}
     {subscriptions?.length === 0 && <p>No subscriptions yet. You can opt in when registering for an event.</p>}
     {subscriptions?.map((subscription) => <label key={subscription.id} className="portal-card" style={{ display: 'flex', gap: '.75rem', marginBottom: '.75rem', alignItems: 'center' }}>

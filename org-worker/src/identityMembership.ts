@@ -16,7 +16,7 @@ export function identityMembershipRoutes(getUser:(env:Env,request:Request)=>Prom
    const user=await getUser(c.env,c.req.raw),body=await c.req.json<Record<string,unknown>>();
    if(user.canonical_user_id!==user.id)throw new EventIntegrationError(401,'A verified PIdP person is required');
    if(typeof body.sourceAccountId!=='string'||body.sourceAccountId===user.id)throw new EventIntegrationError(400,'Select a linked account');
-   const identityResponse=await fetch(`${(c.env.PIDP_BASE_URL||'https://id.codecollective.us').replace(/\/+$/,'')}/auth/account-links`,{headers:{Authorization:c.req.header('authorization')||''},redirect:'manual'});
+   const identityResponse=await fetch(`${(c.env.PIDP_BASE_URL||'https://orgportal.cc/pidp').replace(/\/+$/,'')}/auth/account-links`,{headers:{Authorization:c.req.header('authorization')||''},redirect:'manual'});
    if(!identityResponse.ok)throw new EventIntegrationError(503,'PIdP account-link verification is unavailable');
    const identity=await identityResponse.json() as {canonical_user_id:string;accounts:Array<{subject:string;website_user_id:string;linked_at:string}>};
    const linked=identity.accounts?.find(account=>account.website_user_id===body.sourceAccountId);

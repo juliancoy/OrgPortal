@@ -16,11 +16,13 @@ export async function emailApi<T>(token: string | null, path: string, method = '
   return result
 }
 
-export type EmailSender = { configured: boolean; connection_origin?:string|null; sending_enabled: boolean; connected: boolean; status: string; email: string; daily_limit: number; used_today: number; cooldown_until: number }
+export type EmailSender = { can_read_bounces?:boolean; configured: boolean; setup_issues: string[]; from_email: string; connection_origin?:string|null; sending_enabled: boolean; connected: boolean; status: string; email: string; daily_limit: number; used_today: number; cooldown_until: number }
 export type CampaignSummary = { id: string; subject: string; status: string; created_at: number; scheduled_at: number; recipient_count: number; sent_count: number }
 export type CampaignPreview = CampaignSummary & {
-  sender_email: string; audience: string; body: string; event_id: string; fingerprint: string; preview_id?: string;
+  audience_mode?:string;batch_size?:number;batch_limit?:number;report_only?:number;delivery_stats?:import('./EmailCampaignStats').DeliveryStats;
+  engagement: import('./EmailCampaignStats').Engagement;
+  self_test_sent: boolean; sender_email: string; from_email: string; audience: string; body: string; event_id: string; fingerprint: string; preview_id?: string;
   preview: { subject: string; html: string; text: string }; counts: Record<string, number>;
-  deliveries: { id: string; email: string; name: string; status: string; kind: string; error: string | null; gmail_message_id: string | null }[]
+  deliveries: { id: string; email: string; name: string; status: string; kind: string; error: string | null; gmail_message_id: string | null; bounced_at?:number;source_url?:string;source_checked_at?:string;review_status?:string;dns_status?:string;suppressed?:number;known_bounced?:number }[]
 }
 export type EmailAudience = { event_count: number; organization_count: number; contacts: { id: string; name: string; email: string }[] }

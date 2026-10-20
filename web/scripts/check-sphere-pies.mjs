@@ -1,0 +1,20 @@
+import {chromium} from '@playwright/test'
+import {PNG} from 'pngjs'
+import assert from 'node:assert/strict'
+const browser=await chromium.launch({headless:true,executablePath:'/usr/bin/google-chrome',args:['--no-sandbox','--enable-unsafe-webgpu','--use-angle=swiftshader','--enable-features=Vulkan','--use-vulkan=swiftshader']})
+try{
+for(const fallback of [false,true]){
+const context=await browser.newContext({viewport:{width:900,height:700}});if(fallback)await context.addInitScript(()=>Object.defineProperty(navigator,'gpu',{value:undefined}));const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});await page.route('**/sphere-test',r=>r.fulfill({contentType:'text/html',body:'<!doctype html><body style="margin:0;background:white"><canvas style="width:900px;height:700px"></canvas></body>'}));await page.goto((process.env.MAP_ORIGIN||'http://127.0.0.1:5187')+'/sphere-test');
+await page.evaluate(async()=>{
+window.gpuErrors=[];const {createNetworkGPU3D}=await import('/src/features/ecosystem/webgpu-3d-renderer.js');window.r=await createNetworkGPU3D(document.querySelector('canvas'),e=>gpuErrors.push(e),()=>requestAnimationFrame(()=>r?.render()));r.resize(900,700);const {financialNodePies}=await import('/src/features/ecosystem/fund-pies.js');const funding={organizations:[{id:'red',name:'Funder Red'},{id:'blue',name:'Health Fund'},{id:'pie',name:'Recipient'}],relationships:[{id:'red-award',source:'red',target:'pie',kind:'transfer',relationship:'funding',currency:'USD',amount:25},{id:'blue-award',source:'blue',target:'pie',kind:'transfer',relationship:'funding',currency:'USD',amount:75}],financing:[]};window.nodes=[{id:'pie',x:0,y:0,z:0,renderRadius:40,category:'company',financialPie:financialNodePies(funding).get('pie')}];r.update(nodes,[],new Set(['pie']),new Set(),null,{company:0x00aa00},()=>0);r.fit(nodes);r.zoom(1.6);r.render();
+});await page.waitForFunction(()=>window.r?.backend,{timeout:30000});await page.waitForTimeout(1000);
+const pixels=async()=>{const p=PNG.sync.read(await page.screenshot());let red=0,blue=0;for(let i=0;i<p.data.length;i+=4){const [r,g,b]=p.data.slice(i,i+3);if(r>g*1.5&&r>b*1.5&&r>80)red++;if(b>g*1.5&&b>r*1.5&&b>80)blue++}return {red,blue}};
+assert.equal(await page.evaluate(()=>r.backend),fallback?'webgl2':'webgpu');
+assert.deepEqual(await page.evaluate(()=>({total:nodes[0].financialPie.total,shares:nodes[0].financialPie.slices.map(s=>s.share),hsl:nodes[0].financialPie.slices.every(s=>s.color.startsWith('hsl('))})),{total:100,shares:[.75,.25],hsl:true});
+let counts=await pixels();assert(counts.red>200&&counts.blue>200,JSON.stringify({fallback,counts,errors}));assert(Math.abs(counts.red/(counts.red+counts.blue)-.25)<.04,JSON.stringify(counts));
+const point=await page.evaluate(()=>r.project(nodes[0]));const hit=await page.evaluate(p=>r.hit({clientX:p.x,clientY:p.y}).node?.id,point);assert.equal(hit,'pie');
+await page.evaluate(()=>{r.update(nodes,[],new Set(['pie']),new Set(),'pie',{company:0x00aa00},()=>0);r.render()});await page.waitForTimeout(250);counts=await pixels();assert(counts.red>200&&counts.blue>200,'selection preserves wedges');
+await page.mouse.move(50,50);await page.mouse.down();await page.mouse.move(90,75,{steps:5});await page.mouse.up();await page.waitForTimeout(300);counts=await pixels();assert(counts.red>200&&counts.blue>200,'turning camera preserves visible wedges');
+await page.evaluate(()=>{nodes.push({id:'solid',x:70,y:0,z:0,renderRadius:15,category:'company'});r.update(nodes,[],new Set(nodes.map(n=>n.id)),new Set(),null,{company:0x00aa00},()=>0);r.render()});await page.waitForTimeout(300);assert.deepEqual(await page.evaluate(()=>gpuErrors),[]);assert.deepEqual(errors,[]);console.log('PASS '+(fallback?'WebGL fallback':'WebGPU')+' real funding HSL colors, 25/75 visible area, picking, selected slices, camera turn, atlas resize');await page.evaluate(()=>r.dispose());await context.close();
+}
+}finally{await browser.close()}

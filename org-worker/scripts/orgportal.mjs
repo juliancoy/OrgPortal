@@ -13,7 +13,7 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 const root = fileURLToPath(new URL('../../', import.meta.url));
 
 const help = `Usage:
-  orgportal auth login [--admin] [--portal https://lifetech.fyi] [--connection NAME] [--browser]
+  orgportal auth login [--admin] [--portal https://lifetech.fyi] [--connection NAME] [--browser | --dialog]
   orgportal auth logout [--portal https://lifetech.fyi] [--connection NAME]
   orgportal profile get|preview|apply|status --organization ID [--file PATCH_JSON] [--preview-id UUID]
   orgportal sync [--portal https://lifetech.fyi] [--connection NAME] [--dry-run]
@@ -22,9 +22,9 @@ const help = `Usage:
 Options: --resource HTTPS_MCP_URL, --issuer HTTPS_PIDP_ORIGIN, --client-id ID
 Sync options: --dry-run, --local LOOPBACK_HTTPS_ORIGIN, --deployment CONFIG_JSON, --cert CA_FILE
 Defaults: ORGPORTAL_PORTAL or https://lifetech.fyi;
-          ORGPORTAL_ISSUER or https://id.codecollective.us;
+          ORGPORTAL_ISSUER or https://orgportal.cc;
           ORGPORTAL_CONNECTION or default.
-Login prints a pasteable link; --browser explicitly opens your default browser.
+Login prints a pasteable link; --browser opens your browser; --dialog offers copy/open choices (Linux desktop).
 Login uses browser consent and the OS keyring. Logout revokes the saved grant.
 Account permissions and preview/apply requirements still govern remote updates.`;
 
@@ -32,7 +32,7 @@ export function parseCommand(args, env = process.env) {
   const { values, positionals } = parseArgs({ args, allowPositionals: true, options: {
     portal: { type: 'string' }, resource: { type: 'string' }, issuer: { type: 'string' },
     connection: { type: 'string' }, 'client-id': { type: 'string' },
-    admin: { type: 'boolean' }, browser: { type: 'boolean' }, 'no-browser': { type: 'boolean' }, help: { type: 'boolean', short: 'h' },
+    admin: { type: 'boolean' }, browser: { type: 'boolean' }, dialog: { type: 'boolean' }, 'no-browser': { type: 'boolean' }, help: { type: 'boolean', short: 'h' },
     'dry-run': { type: 'boolean' }, local: { type: 'string' }, deployment: { type: 'string' }, cert: { type: 'string' },
     file: { type: 'string' }, organization: { type: 'string' }, 'preview-id': { type: 'string' },
   } });
@@ -50,13 +50,13 @@ export function parseCommand(args, env = process.env) {
   }
   if (values.portal && values.resource) throw new Error('Choose --portal or --resource.');
   const portal = new URL(values.portal || env.ORGPORTAL_PORTAL || 'https://lifetech.fyi');
-  const issuer = new URL(values.issuer || env.ORGPORTAL_ISSUER || 'https://id.codecollective.us');
+  const issuer = new URL(values.issuer || env.ORGPORTAL_ISSUER || 'https://orgportal.cc');
   for (const url of [portal, issuer]) {
     if (url.protocol !== 'https:' || url.username || url.password || url.pathname !== '/' || url.search || url.hash) {
       throw new Error('Portal and issuer must be HTTPS origins.');
     }
   }
-  const resource = new URL(values.resource || '/api/org/mcp', portal);
+  const resource = new URL(values.resource || (portal.hostname === 'orgportal.cc' ? '/mcp' : '/api/org/mcp'), portal);
   if (resource.protocol !== 'https:' || resource.username || resource.password || resource.search || resource.hash || !resource.pathname.endsWith('/mcp')) {
     throw new Error('Resource must be an HTTPS MCP endpoint.');
   }
@@ -65,7 +65,7 @@ export function parseCommand(args, env = process.env) {
   const connection = values.connection || env.ORGPORTAL_CONNECTION || 'default';
   if (!/^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,79}$/.test(connection)) throw new Error('Invalid connection name.');
   return { action: profile ? 'profile' : sync ? 'sync' : positionals[1], profileAction: profile ? positionals[1] : undefined, organizationId: values.organization, previewId: values['preview-id'], profileFile: values.file ? resolve(values.file) : undefined, resource: resource.href, issuer: issuer.origin,
-    connection, clientId: values['client-id'], admin: !!values.admin, openBrowser: !!values.browser && !values['no-browser'], dryRun: !!values['dry-run'],
+    connection, dialog: !!values.dialog, clientId: values['client-id'], admin: !!values.admin, openBrowser: !!values.browser && !values['no-browser'], dryRun: !!values['dry-run'],
     local: values.local || 'https://localhost:8443', deployment: resolve(values.deployment || root + '/.local/bmoremedtech-newsletter-storage.json'),
     cert: resolve(values.cert || root + '/.local/certs/localhost.crt') };
 }
@@ -88,7 +88,7 @@ export async function run(args, dependencies = {}) {
     }
     account = await (dependencies.browserLogin || browserLogin)(command.resource, command.issuer,
       command.clientId, command.openBrowser, { store, disconnect: command.action === 'logout',
-        admin: command.admin, clientName: 'OrgPortal CLI', scope: 'org:events.read org:events.write org:portal.read org:portal.write' });
+        dialog: command.dialog, admin: command.admin, clientName: 'OrgPortal CLI', scope: 'org:events.read org:events.write org:portal.read org:portal.write' });
     if (command.action === 'profile') {
       log(JSON.stringify(await (dependencies.runProfileCommand || runProfileCommand)(command, account), null, 2));
     } else if (command.action === 'sync') {

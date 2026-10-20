@@ -1,3 +1,4 @@
+import { shortGroupName } from '../../../domain/organization/groupNames'
 import { OrganizationTools } from '../../components/OrganizationTools'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -268,7 +269,7 @@ export function PublicOrganizationsPage() {
             <div style={{ display: 'grid', gap: '0.45rem', minWidth: 0, maxWidth: '100%', flex: '1 1 240px' }}>
               <h2 style={{ margin: 0, fontSize: '1.1rem' }}>
                 <Link to={`/orgs/${org.slug}`} style={{ textDecoration: 'none' }}>
-                  {org.name}
+                  <span title={org.name}>{shortGroupName(org.name)}</span>
                 </Link>
               </h2>
               <p className="muted" style={{ margin: 0 }}>

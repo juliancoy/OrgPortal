@@ -13,7 +13,7 @@ try {
   const plan = JSON.parse(await readFile(values.file, 'utf8'));
   const resource = new URL(plan.resource);
   if (resource.protocol !== 'https:' || resource.username || resource.password || resource.search || resource.hash) throw new Error('Expected a public HTTPS MCP resource.');
-  const issuer = 'https://id.codecollective.us';
+  const issuer = 'https://orgportal.cc';
   store = await credentialStore(resource.href, issuer, values.connection);
   connection = await browserLogin(resource.href, issuer, undefined, !values['no-browser'], {
     store, scope: 'org:events.read org:events.write', clientName: 'OrgPortal venue images',

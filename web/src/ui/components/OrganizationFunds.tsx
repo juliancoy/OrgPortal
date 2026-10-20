@@ -13,6 +13,7 @@ export function OrganizationFunds({ organization, refresh }: { organization: { i
    .catch(reason => { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Unable to load funds') })
   return () => controller.abort()
  }, [organization.id, organization.name, refresh])
+ if(funds?.length === 0 && !error)return null
  return <section aria-label="Organization funds">
   <h2>Funds</h2>
   <p className="muted">Registered funds bearing this organization’s name. Each fund has its own page and documented financial records; amounts are not added to this organization’s totals.</p>

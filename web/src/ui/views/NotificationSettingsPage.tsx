@@ -1,3 +1,4 @@
+import { SignInLink } from '../components/SignInLink'
 import {useEffect,useRef,useState} from 'react'
 import {useAuth} from '../../app/AppProviders'
 import {getDeviceNotificationState,enableDeviceNotifications,disableDeviceNotifications,type DeviceNotificationState} from '../../infrastructure/platform/notificationDelivery'
@@ -7,6 +8,7 @@ const deviceLabels:Record<DeviceNotificationState,string>={enabled:'Push notific
 export function NotificationSettingsPage() {
  const {token,user}=useAuth()
  const identity=useRef(token);identity.current=token
+ const [revision,setRevision]=useState(0)
  const [prefs,setPrefs]=useState<Preferences|null>(null),[device,setDevice]=useState<DeviceNotificationState|null>(null)
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[status,setStatus]=useState('')
  useEffect(()=>{
@@ -15,7 +17,7 @@ export function NotificationSettingsPage() {
   void fetch('/api/org/api/notifications/preferences',{headers:{Authorization:`Bearer ${token}`}}).then(async response=>{if(!response.ok)throw new Error('Notification preferences could not be loaded.');const data=await response.json() as Preferences;if(active)setPrefs(data)}).catch(error=>{if(active)setError(error.message)})
   void getDeviceNotificationState(token).then(value=>{if(active)setDevice(value)}).catch(()=>{if(active)setError('Device notification settings could not be loaded.')})
   return()=>{active=false}
- },[token,user?.id])
+ },[token,user?.id,revision])
  async function save(key:keyof Pick<Preferences,'organization_status_email'|'organization_status_push'|'push_enabled'>,value:boolean) {
   const actingToken=token
   setBusy(true);setError('');setStatus('')
@@ -27,8 +29,9 @@ export function NotificationSettingsPage() {
   setBusy(true);setError('');setStatus('')
   try {if(device==='enabled')await disableDeviceNotifications(actingToken);else await enableDeviceNotifications(actingToken);const state=await getDeviceNotificationState(actingToken);if(identity.current!==actingToken)return;setDevice(state);setStatus('Device notification setting updated.')}catch(error){if(identity.current===actingToken)setError(error instanceof Error?error.message:'Device notifications could not be updated.')}finally{if(identity.current===actingToken)setBusy(false)}
  }
+ if(!token)return <section className="panel"><h1>Notification settings</h1><p><SignInLink /> to manage notifications.</p></section>
  return <section className="panel"><h1>Notification settings</h1><p>These preferences belong to your account and apply across all organizations.</p>
-  {error&&<p role="alert">{error}</p>}<p role="status">{status}</p>
+  {error&&<div role="alert"><p>{error}</p><button type="button" disabled={busy} onClick={()=>setRevision(value=>value+1)}>Reload settings</button></div>}<p role="status">{status}</p>
   {!prefs&&!error&&<p>Loading notification settings…</p>}
   {prefs&&<>
    <section className="portal-card" style={{marginBottom:'1rem'}}><h2>Organization status changes</h2><p>Get notified when you join or leave an organization, claim it, or your member or organizer role changes. Email is enabled by default.</p>

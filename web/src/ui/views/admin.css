@@ -114,3 +114,17 @@
 .sysadmin-settings-form .sysadmin-wide { grid-column: 1 / -1; }
 
 .sysadmin-page p { text-indent: 0; }
+/* Visitor totals come from Cloudflare; application audit records stay separate. */
+.visitor-statistics { display: grid; gap: .75rem; }
+.visitor-statistics h2 { margin: 0; font-size: 1rem; }
+.visitor-statistics p { margin: 0; }
+.visitor-statistics-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
+.visitor-statistics-toolbar label { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; }
+.visitor-statistics-toolbar select { max-width: 100%; }
+.visitor-statistics-totals { display: flex; flex-wrap: wrap; gap: 2rem; }
+.visitor-statistics-totals > div { display: grid; gap: .2rem; }
+.visitor-statistics-totals strong { font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+.visitor-statistics-table { overflow: auto; max-height: 24rem; }
+.visitor-statistics-table table { width: 100%; border-collapse: collapse; text-align: left; }
+.visitor-statistics-table caption { text-align: left; font-weight: 600; margin-bottom: .5rem; }
+.visitor-statistics-table td, .visitor-statistics-table th { padding: .5rem; border-bottom: 1px solid var(--border-color, #8885); overflow-wrap: anywhere; }

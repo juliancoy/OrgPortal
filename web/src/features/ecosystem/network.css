@@ -207,7 +207,6 @@ html.eco-map-open .portal-footer, html.eco-map-open .tb-shell-footer { display:n
 
 .eco-preview-totals{display:grid;grid-template-columns:minmax(0,1fr);gap:4px;margin:16px 0}.eco-preview-totals dt{margin-top:12px;font-size:12px;line-height:1.5}.eco-preview-totals dt:first-child{margin-top:0}.eco-preview-totals dd{min-width:0;margin:0;font-weight:600;overflow-wrap:anywhere}.eco-organization-preview+ .eco-organization-preview{margin-top:24px;padding-top:16px;border-top:1px solid #ccd5df}
 
-.portal-ecosystem .eco-close-details { position:sticky; top:0; z-index:6; display:block; margin-left:auto; min-height:44px; min-width:44px; background:var(--paper); color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:8px 12px; }
 
 /* Keep the renderer and its controls mounted while the workspace expands. */
 .portal-ecosystem.eco-page:fullscreen,
@@ -222,21 +221,7 @@ html.eco-map-open .portal-footer, html.eco-map-open .tb-shell-footer { display:n
   z-index: 1000;
   background: var(--paper);
 }
-.portal-ecosystem .eco-network-heading [data-eco-fullscreen] {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 36px;
-  padding: 6px 10px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--paper);
-  color: var(--ink);
-  font: inherit;
-  font-size: 12px;
-  white-space: nowrap;
-  cursor: pointer;
-}
+.portal-ecosystem .eco-canvas-fullscreen { position:absolute; bottom:12px; right:12px; z-index:10; display:flex; align-items:center; justify-content:center; width:40px; height:40px; padding:0; border:1px solid var(--line,#d9dfe1); border-radius:6px; background:var(--paper,#fff); color:var(--ink,#192a32); box-shadow:0 2px 8px #0002; cursor:pointer; }
 .portal-ecosystem [data-eco-fullscreen]::before {
   content: '';
   display: block;
@@ -245,5 +230,101 @@ html.eco-map-open .portal-footer, html.eco-map-open .tb-shell-footer { display:n
   background: currentColor;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='black' stroke-width='2' d='M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5'/%3E%3C/svg%3E") center / contain no-repeat;
 }
-.portal-ecosystem [data-eco-fullscreen][aria-pressed='true'] { outline: none; background: var(--surface-subtle); }
+.portal-ecosystem [data-eco-fullscreen][aria-pressed='true'] { outline: none; background: var(--surface-subtle,var(--paper,#fff)); }
 .portal-ecosystem [data-eco-fullscreen]:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* Tabs belong to the panel they switch. */
+.portal-ecosystem .eco-network-shell { grid-template-columns:minmax(0,1fr) 320px; }
+.portal-ecosystem .eco-network-sidebar { grid-column:2; grid-row:1; display:flex; flex-direction:column; min-height:0; min-width:0; overflow:hidden; border-left:1px solid var(--line); }
+.portal-ecosystem .eco-panel-tabs { display:flex; flex-shrink:0; border-bottom:1px solid var(--line); }
+.portal-ecosystem .eco-panel-tabs [role=tab] { flex:1; border:0; border-radius:0; border-bottom:3px solid transparent; padding:12px; }
+.portal-ecosystem .eco-panel-tabs [aria-selected=true] { color:var(--teal); border-bottom-color:var(--teal); font-weight:700; }
+.portal-ecosystem .eco-network-sidebar > [role=tabpanel] { position:static; width:auto; height:auto; flex:1; min-height:0; overflow:auto; border:0; box-shadow:none; }
+.portal-ecosystem .eco-network-sidebar > [hidden] { display:none; }
+@media(max-width:900px) {
+ .portal-ecosystem .eco-network-shell { display:grid; grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(0,1fr) minmax(0,42%); }
+ .portal-ecosystem .eco-network-sidebar { grid-column:1; grid-row:2; border-left:0; border-top:1px solid var(--line); }
+}
+
+.portal-ecosystem.eco-page:is(:fullscreen,.eco-fullscreen) .eco-network-heading { display:none; }
+
+.portal-ecosystem [data-camera-settings][hidden] { display:none; }
+
+.portal-ecosystem :is(#network-visualization-panel,#network-search-panel) { padding:20px; }
+.portal-ecosystem .eco-panel-tabs [role=tab] { font-size:20px; min-height:48px; }
+.portal-ecosystem .eco-graph-types { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.portal-ecosystem .eco-graph-types a { text-align:center; padding:16px 8px; border:1px solid var(--line); border-radius:6px; text-decoration:none; color:var(--ink); }
+.portal-ecosystem .eco-graph-types a[aria-current] { border-color:var(--teal); background:var(--surface-subtle); font-weight:700; }
+
+.portal-ecosystem .eco-practice-shell { flex:1; min-height:0; display:grid; grid-template-columns:minmax(0,1fr) 280px; }
+.portal-ecosystem .eco-practice-view { position:relative; min-width:0; min-height:0; overflow:hidden; background:radial-gradient(ellipse at center,#17243a,#070d18); }
+.portal-ecosystem .eco-practice-view canvas { width:100%; height:100%; display:block; touch-action:none; cursor:grab; }
+.portal-ecosystem .eco-practice-shell .eco-practice-controls { display:block; position:static; min-height:0; width:auto; height:auto; overflow:auto; padding:16px; border-left:1px solid var(--line); }
+.portal-ecosystem .eco-practice-labels { position:absolute; inset:0; pointer-events:none; }
+.portal-ecosystem .eco-practice-labels span { position:absolute; left:0; top:0; font:11px monospace; white-space:nowrap; text-shadow:0 1px 4px #000; }
+.portal-ecosystem .eco-practice-labels [hidden] { display:none; }
+.portal-ecosystem .eco-practice-position { position:absolute; top:12px; left:12px; display:flex; flex-wrap:wrap; gap:16px; padding:10px 14px; margin:0; color:#fff; border-radius:8px; background:#07101fd9; font:14px monospace; }
+.portal-ecosystem .eco-practice-position div { display:flex; gap:7px; }.portal-ecosystem .eco-practice-position dd { margin:0; min-width:5ch; }
+.portal-ecosystem .eco-practice-status { position:absolute; bottom:56px; left:12px; right:12px; margin:0; color:#cbd9eb; font-size:12px; pointer-events:none; }
+.portal-ecosystem .eco-practice-key { list-style:none; padding:0; }.portal-ecosystem .eco-practice-key li::before { content:'●'; color:var(--axis-color); margin-right:8px; }
+.portal-ecosystem .eco-practice-gradient { height:10px; border-radius:5px; background:linear-gradient(90deg,#f4a43b,#5ddd86,#4baff1,#aa78f4); }
+.portal-ecosystem .eco-practice-scale { display:flex; justify-content:space-between; font:11px monospace; margin:5px 0 12px; }
+.portal-ecosystem .eco-practice-actions { display:flex; flex-wrap:wrap; gap:8px; }
+.portal-ecosystem [data-practice-4d] { width:100%; margin-top:16px; }
+@media(max-width:900px){.portal-ecosystem .eco-practice-shell { grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(0,1fr) minmax(0,38%); }.portal-ecosystem .eco-practice-shell .eco-practice-controls { border-left:0; border-top:1px solid var(--line); }.portal-ecosystem .eco-practice-position { gap:8px; font-size:12px; }}
+.portal-ecosystem .eco-practice-view { grid-column:1; grid-row:1; }
+.portal-ecosystem .eco-practice-shell .eco-practice-controls { grid-column:2; grid-row:1; box-shadow:none; }
+@media(max-width:900px){.portal-ecosystem .eco-practice-shell .eco-practice-controls { grid-column:1; grid-row:2; }}
+
+.portal-ecosystem .eco-network-controls > label { margin:8px 0; gap:3px; }
+.portal-ecosystem .eco-network-controls .eco-check { margin:8px 0; }
+.portal-ecosystem .eco-network-controls select { padding:5px 7px; font-size:12px; }
+.portal-ecosystem .eco-network-controls fieldset { margin:12px 0; gap:6px; }
+.portal-ecosystem .eco-force-law label { gap:3px; }
+.portal-ecosystem .eco-force-law input { width:100%; min-width:0; }
+
+.portal-ecosystem .eco-network-controls :is(label,div).eco-slider-row { display:grid; grid-template-columns:minmax(0,1fr) minmax(55px,1fr) 4ch; align-items:center; gap:6px; }
+.portal-ecosystem .eco-slider-name { font-size:12px; font-weight:500; line-height:1.4; overflow-wrap:normal; }
+.portal-ecosystem .eco-slider-value { text-align:right; white-space:nowrap; color:var(--muted); font-size:12px; font-weight:500; font-variant-numeric:tabular-nums; letter-spacing:0; }
+.portal-ecosystem .eco-slider-row input[type=range] { width:100%; min-width:0; margin:0; padding:0; }
+.portal-ecosystem .eco-network-controls :is(label,div).eco-slider-row[hidden] { display:none; }
+
+/* A quiet, consistent type scale for the network workspace. */
+.portal-ecosystem :is(.eco-network-heading,.eco-network-shell) { font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; letter-spacing:0; }
+.portal-ecosystem :is(.eco-network-sidebar,.eco-network-controls,.eco-detail) :is(h2,h3) { margin:0 0 16px; font-size:16px; line-height:1.35; font-weight:650; letter-spacing:-.02em; }
+.portal-ecosystem .eco-network-controls label { font-size:12px; font-weight:500; line-height:1.4; overflow-wrap:normal; }
+.portal-ecosystem .eco-network-controls :is(.eco-check,fieldset label) { font-size:12px; font-weight:400; line-height:1.45; }
+.portal-ecosystem .eco-network-controls legend { margin-bottom:8px; font-size:11px; font-weight:600; line-height:1.4; letter-spacing:.02em; text-transform:none; color:var(--muted); }
+.portal-ecosystem .eco-network-controls :is(select,input[type=search],input[type=number]) { font-family:inherit; font-size:12px; font-weight:400; line-height:1.4; }
+.portal-ecosystem .eco-results button { font-size:12px; font-weight:400; line-height:1.4; }
+.portal-ecosystem .eco-graph-top { font-size:11px; font-weight:400; line-height:1.5; font-variant-numeric:tabular-nums; }
+.portal-ecosystem #network-labels button { font-family:inherit; font-weight:500; line-height:1.35; letter-spacing:0; }
+.portal-ecosystem .eco-detail > p { font-size:13px; line-height:1.6; }
+
+.portal-ecosystem .eco-network-controls > div.eco-slider-row { margin:8px 0; }
+.portal-ecosystem .eco-law-trigger { padding:0; border:0; border-radius:0; background:none; text-align:left; color:var(--ink); text-decoration:underline; text-decoration-style:dotted; text-decoration-color:var(--muted); text-underline-offset:3px; }
+.portal-ecosystem .eco-law-trigger:hover { color:var(--teal); text-decoration-style:solid; }
+.portal-ecosystem .eco-law-dialog { width:min(360px,calc(100vw - 32px)); box-sizing:border-box; padding:20px; border:1px solid var(--line); border-radius:12px; background:var(--paper); color:var(--ink); box-shadow:0 20px 60px #0003; font-family:inherit; }
+.portal-ecosystem .eco-law-dialog::backdrop { background:#0006; }
+.portal-ecosystem .eco-law-dialog > header { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:20px; }
+.portal-ecosystem .eco-law-dialog > header h2 { margin:0; font-size:16px; font-weight:600; }
+.portal-ecosystem .eco-law-dialog [data-close-law] { padding:2px 8px; font-size:20px; line-height:1.2; }
+.portal-ecosystem .eco-law-dialog .eco-force-law { display:grid; grid-template-columns:1fr; gap:16px; margin:0; }
+.portal-ecosystem .eco-law-dialog .eco-force-law > label:first-child { display:grid; grid-template-columns:48px 1fr; }
+.portal-ecosystem .eco-law-dialog .eco-force-law label.eco-slider-row { grid-template-columns:48px minmax(0,1fr) 4ch; }
+
+.portal-ecosystem .eco-network-fps{position:absolute;top:8px;left:8px;z-index:4;pointer-events:none;padding:4px 7px;border-radius:4px;background:var(--surface,#fff);color:var(--ink,#18242c);font:12px/1.4 monospace;font-variant-numeric:tabular-nums;box-shadow:0 1px 4px #0002}
+
+.portal-ecosystem[data-network-theme=dark]{--paper:#101820;--ink:#e8eef4;--muted:#b5c2cf;--line:#425363;--surface-subtle:#192632;--header-bg:#192632;--surface:#192632}
+.portal-ecosystem[data-network-theme=light]{--paper:#fff;--ink:#182630;--muted:#51616f;--line:#b9c5cf;--surface-subtle:#f0f4f7;--header-bg:#fff;--surface:#fff}
+.portal-ecosystem .eco-visibility{display:grid;gap:10px;min-width:0}
+.portal-ecosystem .eco-visibility label{display:grid;gap:4px}
+.portal-ecosystem .eco-visibility input{max-width:100%;min-width:0}
+.portal-ecosystem #network-community-list{max-height:190px;overflow:auto;display:grid;gap:5px}
+.portal-ecosystem #network-community-list button{text-align:left;overflow-wrap:anywhere}
+.portal-ecosystem .eco-network-advanced{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
+.portal-ecosystem .eco-network-advanced summary{cursor:pointer;font-weight:600}
+.portal-ecosystem[data-network-theme=dark] a{color:#75c6f2}
+.portal-ecosystem[data-network-theme=light] a{color:#005b91}
+.portal-ecosystem[data-network-theme] :focus-visible{outline:2px solid currentColor;outline-offset:3px}
+.portal-ecosystem .eco-network-controls [hidden]{display:none!important}

@@ -5,14 +5,21 @@ export function mountNetworkFullscreen(host: HTMLElement) {
   let disposed = false
   let previousFocus: HTMLElement | null = null
   const buttonSelector = '[data-eco-fullscreen]'
+  const fullscreenButton = document.createElement('button')
+  fullscreenButton.type = 'button'
+  fullscreenButton.dataset.ecoFullscreen = ''
+  fullscreenButton.className = 'eco-canvas-fullscreen'
   const active = () => expanded || document.fullscreenElement === host
 
   const sync = () => {
     const fullscreen = active()
     host.classList.toggle('eco-fullscreen', fullscreen)
+    const canvasArea = host.querySelector('#network-canvas, .eco-practice-view') || host
+    if (fullscreenButton.parentElement !== canvasArea) canvasArea.append(fullscreenButton)
     host.querySelectorAll<HTMLButtonElement>(buttonSelector).forEach(button => {
       const label = fullscreen ? 'Exit fullscreen' : 'Fullscreen'
-      if (button.textContent !== label) button.textContent = label
+      if (button.textContent) button.textContent = ''
+      button.setAttribute('aria-label', label)
       button.setAttribute('aria-pressed', String(fullscreen))
       button.title = fullscreen ? 'Exit fullscreen (Esc)' : 'Expand map to fullscreen'
     })
@@ -74,6 +81,7 @@ export function mountNetworkFullscreen(host: HTMLElement) {
     host.removeEventListener('click', click)
     document.removeEventListener('fullscreenchange', sync)
     document.removeEventListener('keydown', keydown)
+    fullscreenButton.remove()
     host.classList.remove('eco-fullscreen')
     if (document.fullscreenElement === host) void document.exitFullscreen().catch(() => {})
   }

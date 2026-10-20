@@ -1,3 +1,4 @@
+import { SignInLink } from '../components/SignInLink'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
@@ -388,7 +389,7 @@ export function ContactSettingsPage({ embedded = false, hideQr = false, hideProf
     return (
       <section className={embedded ? 'profile-settings-section' : 'panel'}>
         {embedded ? <h2 style={{ marginTop: 0 }}>Public Profile</h2> : <h1 style={{ marginTop: 0 }}>Public Profile Settings</h1>}
-        <p className="muted">Sign in required.</p>
+        <p className="muted"><SignInLink /> to continue.</p>
       </section>
     )
   }

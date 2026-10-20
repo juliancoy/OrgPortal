@@ -1,3 +1,4 @@
+import { SignInLink } from '../components/SignInLink'
 import { BioMarkdown } from '../components/profile/BioMarkdown'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -117,7 +118,7 @@ export function IdPage() {
     return (
       <section className="panel">
         <h1 style={{ marginTop: 0 }}>ID</h1>
-        <p className="muted">{status}</p>
+        <p className="muted">{status === 'Sign in required.' ? <><SignInLink /> to continue.</> : status}</p>
       </section>
     )
   }
@@ -126,7 +127,7 @@ export function IdPage() {
     return (
       <section className="panel">
         <h1 style={{ marginTop: 0 }}>ID</h1>
-        <p className="muted">{status}</p>
+        <p className="muted">{status === 'Sign in required.' ? <><SignInLink /> to continue.</> : status}</p>
       </section>
     )
   }

@@ -1,3 +1,4 @@
+import { shortGroupName } from '../../domain/organization/groupNames'
 import { useEffect, useId, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { OrgImage } from './media/OrgImage'
@@ -35,9 +36,10 @@ export function PeerOrganizations({ organizationId, tags = [] }: { organizationI
     const term = query.trim().toLowerCase()
     return organizations.filter(org => org.id !== organizationId).map(org => ({
       ...org, sharedTags: (org.tags || []).filter(tag => interests.has(tag.trim().toLowerCase())),
-    })).filter(org => org.sharedTags.length && (!term || [org.name, org.description, ...(org.tags || [])].some(value => value?.toLowerCase().includes(term))))
+    })).filter(org => org.sharedTags.length && (!term || [org.name, shortGroupName(org.name), org.description, ...(org.tags || [])].some(value => value?.toLowerCase().includes(term))))
       .sort((a, b) => b.sharedTags.length - a.sharedTags.length || a.name.localeCompare(b.name))
   }, [organizations, organizationId, tags, query])
+  if(!loading && !error && !peers.length && !query.trim())return null
   return <section className="portal-card peer-organizations" aria-label="Peer Organizations">
     <h2>Peer Organizations</h2>
     <p className="muted">Organizations with shared interests.</p>
@@ -46,7 +48,7 @@ export function PeerOrganizations({ organizationId, tags = [] }: { organizationI
     {loading ? <p role="status">Loading peer organizations…</p> : error ? <p role="alert">{error} <button type="button" onClick={() => setRevision(value => value + 1)}>Retry</button></p> : peers.length ? <>
       <div className="peer-organizations-grid">{peers.slice(0, limit).map(org => <Link key={org.id} to={`/orgs/${encodeURIComponent(org.slug)}`} className="peer-organization-card">
         <OrgImage src={org.image_url} alt="" className="peer-organization-image" />
-        <div><strong>{org.name}</strong><p className="muted">{org.sharedTags.join(' · ')}</p></div>
+        <div><strong title={org.name}>{shortGroupName(org.name)}</strong><p className="muted">{org.sharedTags.join(' · ')}</p></div>
       </Link>)}</div>
       {peers.length > limit && <button type="button" className="btn-secondary" onClick={() => setLimit(value => value + 12)}>Show more organizations</button>}
     </> : <p className="muted">{query.trim() ? `No peer organizations match “${query.trim()}”.` : 'No organizations with shared interests listed yet.'}</p>}

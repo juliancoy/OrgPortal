@@ -1,3 +1,4 @@
+import { SignInLink } from '../../components/SignInLink'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
@@ -111,7 +112,7 @@ export function UserSettingsPage() {
       <main className="portal-page">
         <section className="panel">
           <h1 style={{ marginTop: 0 }}>Settings</h1>
-          <p className="muted">Sign in required.</p>
+          <p className="muted"><SignInLink /> to continue.</p>
         </section>
       </main>
     )

@@ -56,7 +56,7 @@ so initial platform configuration remains in immutable deployment history.
 
 ## ChatGPT MCP connection
 
-Connect ChatGPT to `https://orgportal.cc/api/org/mcp` using OAuth. The platform
+Connect ChatGPT to `https://orgportal.cc/mcp` using OAuth. The platform
 resource has no fixed organization; live membership and operation permissions
 still apply. MedTech and LifeTech retain their separate organization resources.
 

@@ -1,3 +1,4 @@
+import { SignInLink } from '../../components/SignInLink'
 import { BioMarkdown } from '../../components/profile/BioMarkdown'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -338,7 +339,7 @@ export function PublicContactPage({ self = false }: PublicContactPageProps = {})
     return (
       <section className="panel">
         <h1 style={{ marginTop: 0 }}>Public Profile</h1>
-        <p className="muted">{status}</p>
+        <p className="muted">{status === 'Sign in required.' ? <><SignInLink /> to continue.</> : status}</p>
       </section>
     )
   }

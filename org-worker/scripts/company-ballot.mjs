@@ -5,7 +5,7 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import { browserLogin } from './event-upload.mjs';
 import { credentialStore } from './upload-connection.mjs';
 const {values}=parseArgs({options:{
- resource:{type:'string',default:'https://lifetech.fyi/api/org/mcp'},issuer:{type:'string',default:'https://id.codecollective.us'},connection:{type:'string'},
+ resource:{type:'string',default:'https://lifetech.fyi/api/org/mcp'},issuer:{type:'string',default:'https://orgportal.cc'},connection:{type:'string'},
  event:{type:'string'},organization:{type:'string'},mode:{type:'string',default:'favorites'},fraction:{type:'string',default:'0.25'},
  get:{type:'boolean'},apply:{type:'boolean'},'preview-id':{type:'string'},
 }});

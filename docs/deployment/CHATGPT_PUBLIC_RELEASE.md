@@ -2,7 +2,7 @@
 
 ## Implemented source
 
-- Canonical endpoint: `https://orgportal.cc/api/org/mcp`.
+- Canonical endpoint: `https://orgportal.cc/mcp`.
 - PIdP owns OAuth. Live discovery advertises DCR and S256 PKCE. DCR provides
   automatic registration; CIMD is not implemented or advertised by this release.
 - The companion PIdP change permits any nonempty subset of allowed scopes at

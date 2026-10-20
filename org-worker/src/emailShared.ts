@@ -3,7 +3,7 @@ import { HTTPException } from 'hono/http-exception';
 export type EmailActor = { id: string; email?: string | null; full_name?: string | null };
 export type EmailSubscription = { id: string; user_id: string; email: string; name: string; topic_type: string; topic_id: string; status: string; consent_source: string; consented_at: number | null; unsubscribed_at: number | null; updated_at: number };
 export type EmailEvent = { id: string; title: string; slug: string; starts_at: string | null; location: string | null; image_url: string | null; host_org_id: string | null; organization_name: string | null };
-export type EmailCampaign = { id: string; owner_user_id: string; sender_email: string; organization_id: string; event_id: string; event_json: string; audience: string; subject: string; body: string; status: string; scheduled_at: number; created_at: number };
+export type EmailCampaign = { id: string; owner_user_id: string; sender_email: string; organization_id: string; event_id: string; event_json: string; audience: string; subject: string; body: string; status: string; scheduled_at: number; created_at: number; audience_mode?: string; batch_size?: number; batch_limit?: number; content_json?: string | null; report_only?: number; expires_at?: number | null };
 
 export function emailFail(status: 400 | 401 | 403 | 404 | 409 | 429 | 503, message: string): never {
   throw new HTTPException(status, { res: Response.json({ detail: message }, { status }) });
@@ -52,6 +52,27 @@ export function emailPortalBase(env: Env) {
   if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) emailFail(503, 'Public portal URL is not configured.');
   return url.toString().replace(/\/+$/, '');
 }
+export function emailSetupIssues(env: Env): string[] {
+  const issues: string[] = [];
+  if (!env.EMAIL_GOOGLE_CLIENT_ID?.trim()) issues.push('Google OAuth client ID');
+  if (!env.EMAIL_GOOGLE_CLIENT_SECRET?.trim()) issues.push('Google OAuth client secret');
+  let callback: URL | undefined;
+  try {
+    callback = new URL(env.EMAIL_GOOGLE_REDIRECT_URI || '');
+    if (callback.protocol !== 'https:' || callback.username || callback.password || callback.search || callback.hash || !callback.pathname.endsWith('/api/email/google/callback')) throw new Error();
+  } catch { issues.push('Valid Google OAuth callback URL'); callback = undefined; }
+  try { encryptionBytes(env); } catch { issues.push('Sender token encryption key'); }
+  if (!env.EMAIL_UNSUBSCRIBE_SECRET || env.EMAIL_UNSUBSCRIBE_SECRET.length < 32) issues.push('Unsubscribe signing secret');
+  try { if(decodeBase64(env.EMAIL_CONTACT_UNSUBSCRIBE_KEY || '').length!==32)throw new Error(); } catch { issues.push('Contact unsubscribe encryption key'); }
+  try {
+    const portal = new URL(emailPortalBase(env));
+    if (callback && portal.origin !== callback.origin) issues.push('Matching portal and Google callback hosts');
+  } catch { issues.push('Public portal URL'); }
+  if (!env.EMAIL_POSTAL_ADDRESS?.trim()) issues.push('Sender mailing address');
+  if (!(env.EMAIL_ALLOWED_SENDERS || '').split(',').some(value => normalizeEmail(value))) issues.push('Approved sender email');
+  return issues;
+}
+
 export function emailDailyLimit(env: Env) {
   const value = Number(env.EMAIL_DAILY_LIMIT || 250);
   return Number.isFinite(value) ? Math.max(1, Math.min(1500, Math.floor(value))) : 250;
@@ -88,4 +109,25 @@ export function subscriptionStatement(db: D1Database, user: EmailActor, type: 'e
     WHERE email_subscriptions.user_id=excluded.user_id`)
     .bind(crypto.randomUUID(),user.id,email,user.full_name || 'Member',type,topicId,
       subscribed ? 'subscribed' : 'unsubscribed',source,now,subscribed ? now : null,subscribed ? null : now);
+}
+
+// Operator-configured Gmail send-as aliases; Google account ownership stays unchanged.
+export function emailFromAddress(env: Env, accountEmail: string): string {
+  if (!env.EMAIL_SENDER_ALIASES) return accountEmail;
+  let aliases: Record<string, unknown>;
+  try {
+    aliases = JSON.parse(env.EMAIL_SENDER_ALIASES);
+    if (!aliases || Array.isArray(aliases) || typeof aliases !== 'object') throw new Error();
+  } catch { emailFail(503, 'Email sender aliases need configuration.'); }
+  const alias = aliases[normalizeEmail(accountEmail)];
+  if (alias === undefined) return accountEmail;
+  if (typeof alias !== 'string' || !/^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+$/.test(alias)) emailFail(503, 'Email sender alias is invalid.');
+  return normalizeEmail(alias);
+}
+
+
+export async function hasSuccessfulSelfTest(env: Env, campaign: EmailCampaign): Promise<boolean> {
+  return Boolean(await env.DB.prepare(`SELECT id FROM email_deliveries WHERE campaign_id = ?
+    AND sender_user_id = ? AND email = ? AND kind = 'test' AND status = 'sent' LIMIT 1`)
+    .bind(campaign.id, campaign.owner_user_id, campaign.sender_email).first());
 }

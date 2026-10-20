@@ -20,7 +20,6 @@ import { tenantHomeAction } from '../../config/tenantHome'
 
 const LocalNewslettersPage = lazy(() => import('../views/LocalNewslettersPage').then(module => ({ default: module.LocalNewslettersPage })))
 const EcosystemNetworkPage = lazy(() => import('../views/EcosystemNetworkPage').then(module => ({ default: module.EcosystemNetworkPage })))
-const EcosystemNetworkGPUPage = lazy(() => import('../views/EcosystemNetworkGPUPage').then(module => ({ default: module.EcosystemNetworkGPUPage })))
 const SeriesAFundingGapPage = lazy(() => import('../views/SeriesAFundingGapPage').then(module => ({ default: module.SeriesAFundingGapPage })))
 const PublicFundingPerformancePage = lazy(() => import('../views/PublicFundingPerformancePage').then(module => ({ default: module.PublicFundingPerformancePage })))
 const InterventionDashboardPage = lazy(() => import('../views/InterventionDashboardPage').then(module => ({ default: module.InterventionDashboardPage })))
@@ -291,9 +290,9 @@ export function createAppRouter() {
           { path: '/ecosystem/network/nonprofits', element: <AuthenticatedRoute><NonprofitNetworkPage /></AuthenticatedRoute> },
           { path: '/ecosystem/network/overview', element: <AuthenticatedRoute><EcosystemOverviewPage /></AuthenticatedRoute> },
           { path: '/ecosystem/network', element: <AuthenticatedRoute><EcosystemNetworkPage /></AuthenticatedRoute> },
-          { path: '/ecosystem/network/webgpu', element: <AuthenticatedRoute><EcosystemNetworkGPUPage /></AuthenticatedRoute> },
-          { path: '/ecosystem/network/4d', element: <AuthenticatedRoute><EcosystemNetworkGPUPage four /></AuthenticatedRoute> },
-          { path: '/ecosystem/network/3d', element: <AuthenticatedRoute><EcosystemNetworkGPUPage spatial /></AuthenticatedRoute> },
+          { path: '/ecosystem/network/webgpu', element: <AuthenticatedRoute><EcosystemNetworkPage renderer="webgpu" /></AuthenticatedRoute> },
+          { path: '/ecosystem/network/4d', element: <AuthenticatedRoute><EcosystemNetworkPage renderer="webgpu4d" /></AuthenticatedRoute> },
+          { path: '/ecosystem/network/3d', element: <AuthenticatedRoute><EcosystemNetworkPage renderer="webgpu3d" /></AuthenticatedRoute> },
           { path: '/ecosystem/network/events', element: <AuthenticatedRoute><EcosystemNetworkViews view="events" /></AuthenticatedRoute> },
           { path: '/ecosystem/network/relationships', element: <AuthenticatedRoute><EcosystemNetworkViews view="relationships" /></AuthenticatedRoute> },
           { path: '/ecosystem/network/funding', element: <AuthenticatedRoute><SeriesAFundingGapPage /></AuthenticatedRoute> },

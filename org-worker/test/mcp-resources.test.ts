@@ -19,6 +19,12 @@ const request = (resource: string, path = '/mcp', headers: Record<string, string
   headers: { 'x-forwarded-host': new URL(resource).host, ...headers },
 });
 
+test('namespace trust accepts a path-mounted identity on the issuer origin and rejects other origins', () => {
+  const configured = { ...env, PIDP_BASE_URL: 'https://id.example/pidp', MCP_PIDP_ACCOUNT_NAMESPACES_JSON: '["owner"]' };
+  assert.equal(mcpConfiguration(configured).issuer, 'https://id.example');
+  assert.throws(() => mcpConfiguration({ ...configured, PIDP_BASE_URL: 'https://other.example/pidp' }), /Invalid PIdP account namespace configuration/);
+});
+
 test('each host advertises its own resource and authentication challenge', async () => {
   for (const resource of [medtech, lifetech]) {
     const req = request(resource, '/.well-known/oauth-protected-resource/api/org/mcp');
@@ -129,7 +135,7 @@ test('brand tool discovery and calls cannot escape their organization, including
 });
 
  test('OrgPortal platform resource has its own audience and no organization restriction', async () => {
-  const resource = 'https://orgportal.cc/api/org/mcp';
+  const resource = 'https://orgportal.cc/mcp';
   const platformEnv = { ...env, MCP_ORGPORTAL_INTROSPECTION_SECRET: 'platform-secret', MCP_RESOURCE_CONFIG_JSON: JSON.stringify({ ...JSON.parse(env.MCP_RESOURCE_CONFIG_JSON!), [resource]: { name: 'OrgPortal', introspectionSecretBinding: 'MCP_ORGPORTAL_INTROSPECTION_SECRET' } }) };
   const config = mcpConfiguration(platformEnv, request(resource));
   assert.equal(config.resource, resource);

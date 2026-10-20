@@ -227,8 +227,15 @@ test("authenticated MCP initializes, lists tools and previews through the shared
   };
   try {
     assert.equal((await rpc("initialize", { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "test", version: "1" } })).result.serverInfo.name, "orgportal-events");
+    const bounded = async (name:string, padding:number) => handleEventMcp(new Request(authEnv.MCP_PUBLIC_URL!,{method:'POST',headers:{authorization:`Bearer ${token}`,'content-type':'application/json',accept:'application/json, text/event-stream'},body:JSON.stringify({jsonrpc:'2.0',id:2,method:'tools/call',params:{name,arguments:{padding:'x'.repeat(padding)}}})}),env);
+    assert.equal((await bounded('get_event',70000)).status,413);
+    assert.equal((await bounded('preview_email_history_import',70000)).status,200);
+    assert.equal((await bounded('preview_email_history_import',1048576)).status,413);
     const listed = await rpc("tools/list", {});
-    assert.equal(listed.result.tools.length, 51);
+    assert.equal(listed.result.tools.length, 55);
+    const contactLink = listed.result.tools.find((tool: { name: string }) => tool.name === 'prepare_email_contact_link');
+    assert.equal(contactLink.annotations.readOnlyHint, true);
+    assert.deepEqual(contactLink.securitySchemes[0].scopes, ['org:portal.read', 'org:portal.write']);
     for (const name of ['list_organization_support', 'preview_organization_support', 'apply_organization_support', 'preview_void_organization_support', 'apply_void_organization_support']) {
       assert.ok(listed.result.tools.some((tool: { name: string }) => tool.name === name), `Missing support tool: ${name}`);
     }

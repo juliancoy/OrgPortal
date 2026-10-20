@@ -142,8 +142,8 @@ export function OrganizationSupport({ organizationId, slug, canManage }: { organ
     </div>
     {data && <OrganizationMoneyDashboard report={data} />}
     {slug !== 'tedco' && <TedcoCompanyEvidence organizationId={organizationId} />}
-    <h2>Descendant organizations</h2>
-    <p className="muted">Organizations supported with funding, resources, time, or services. Indirect descendants are reached through another supported organization.</p>
+    {!!data?.descendants.length && <><h2>Descendant organizations</h2>
+    <p className="muted">Organizations supported with funding, resources, time, or services. Indirect descendants are reached through another supported organization.</p></>}
     {<TedcoRecipientResearch organizationId={organizationId} registered={data?.descendants || []} onImported={() => setRefresh(value => value + 1)} />}
     {data ? <>
       {data.descendants.length > 0 && <div className="support-recipient-filters">
@@ -151,10 +151,10 @@ export function OrganizationSupport({ organizationId, slug, canManage }: { organ
         <label><input type="checkbox" checked={adjacentOnly} onChange={event => setAdjacentOnly(event.target.checked)} /> LifeTech adjacent ({data.descendants.filter(adjacent).length})</label>
         <p role="status">Showing {descendants.length} of {data.descendants.length} supported organizations</p>
       </div>}
-      {(data.descendants.length ? descendants.length ? <ul className="support-organizations">{descendants.map(org => <li key={org.id}><Link to={`/orgs/${org.slug}`}>{org.name}</Link> <small>{org.is_direct ? 'Direct support' : 'Indirect descendant'}</small>{adjacent(org) && <span className="support-adjacent-tag">LifeTech adjacent</span>}</li>)}</ul> : <p>No supported organizations match these filters.</p> : <p>No documented descendant organizations yet.</p>)}
-      <h3>Supported by</h3>
-      {data.supporters.length ? <ul className="support-organizations">{data.supporters.map(org => <li key={org.id}><Link to={`/orgs/${org.slug}`}>{org.name}</Link></li>)}</ul> : <p>No documented supporters yet.</p>}
-      <details><summary>Support records and source evidence ({data.recordCount})</summary>{data.records.length ? <SupportRecordTable records={data.records} /> : <p>No support records yet.</p>}{data.nextRecordOffset !== null && <button disabled={busy} onClick={() => void loadMoreRecords()}>Load more source evidence ({data.records.length} of {data.recordCount})</button>}</details>
+      {(data.descendants.length ? descendants.length ? <ul className="support-organizations">{descendants.map(org => <li key={org.id}><Link to={`/orgs/${org.slug}`}>{org.name}</Link> <small>{org.is_direct ? 'Direct support' : 'Indirect descendant'}</small>{adjacent(org) && <span className="support-adjacent-tag">LifeTech adjacent</span>}</li>)}</ul> : <p>No supported organizations match these filters.</p> : null)}
+      {data.supporters.length>0&&<><h3>Supported by</h3>
+      <ul className="support-organizations">{data.supporters.map(org => <li key={org.id}><Link to={`/orgs/${org.slug}`}>{org.name}</Link></li>)}</ul></>}
+      {data.recordCount>0&&<details><summary>Support records and source evidence ({data.recordCount})</summary>{data.records.length ? <SupportRecordTable records={data.records} /> : <p>No support records yet.</p>}{data.nextRecordOffset !== null && <button disabled={busy} onClick={() => void loadMoreRecords()}>Load more source evidence ({data.records.length} of {data.recordCount})</button>}</details>}
     </> : !message && <p role="status">{cacheStatus.error || 'Loading support records…'}</p>}
     {canManage && token && <details open={expanded} onToggle={event => setExpanded(event.currentTarget.open)}><summary>Record organizational support</summary>
       <form onSubmit={event => void submit(event)} className="support-form">

@@ -46,6 +46,12 @@ uses text relevance. Personalized responses are not publicly cached.
 
 ## Retention schedule
 
+Visitor reporting uses Cloudflare Web Analytics aggregates, separate from account,
+membership and audit activity. OrgPortal retrieves daily hostname totals and
+popular page paths for administrators without storing a separate visitor history,
+visitor identifiers, or analytics backups. Cloudflare manages collection and
+retention; see [Cloudflare Web Analytics](https://developers.cloudflare.com/web-analytics/).
+
 These are adopted operational limits and review deadlines, not a claim that
 every store already has automatic expiry. Temporary authorization state and
 completed/unused preview receipts have scheduled cleanup; account erasure and
@@ -131,3 +137,86 @@ cannot generate new notices. Organization and event deletion cascade their relat
 Include these stores in backup inventories and reapply the account erasure ledger
 before restoring any backup; deletion from independent exports or old backups
 requires the existing operator process. Do not infer ownership from email.
+
+## Recipient contact suppression
+
+`email_contact_suppressions` keeps a normalized recipient email address, sending
+organization ID, source, and first/last opt-out timestamps. This is a private
+contact preference in the organization database, shared across that group's
+announcements and event invitations. An address can be a personal contact or an
+organizational role inbox; it does not establish account ownership or opt out an
+entire recipient organization. Public contacts/imports never override this state.
+Existing account subscriptions are updated when the same address opts out.
+
+Suppression is retained while the mailing group exists to prevent reimporting
+an opted-out address. `updated_at` is the annual operational-review clock; it is
+not an automatic expiry that would silently permit sending again. A verified
+recipient can explicitly re-consent to that group; group deletion cascades, and
+verified erasure requests remove matching address rows through the manual
+privacy workflow. Restore operations must reapply opt-outs and erasure requests
+before resuming delivery. The table is excluded from public replicas and the
+immutable change journal; it remains in protected operational database backups.
+Encrypted unsubscribe links do not expire and contain no plaintext address.
+Keep their encryption key stable; do not rotate it without retaining decryption
+support for previously issued links. These links authorize only opting out.
+
+## Campaign engagement
+
+New OrgPortal campaign sends measure image loads, link clicks and opt-outs through
+that email's unsubscribe link. The message footer discloses this measurement.
+Image blocking, privacy proxies, forwarding and security scanners mean open and
+click signals are estimates, not proof a person read or clicked. Tests are excluded.
+Each rate counts unique recipients among tracked, Gmail-accepted campaign sends;
+the three rates overlap and must not be summed. Gmail acceptance is not delivery.
+
+`email_engagement` links a delivery ID to first-action timestamps and a 90-day
+expiry measured from initial send preparation. It stores no IP or user agent.
+The existing scheduled retention job deletes expired rows in batches of 500,
+even when sending is disabled. Reads/writes exclude expired data immediately.
+Older sends are not backfilled; expired/untracked data is shown as unavailable.
+No permanent engagement aggregates are retained. Signed click destinations remain
+usable after analytics expire, and opt-outs remain valid indefinitely.
+
+This store is excluded from public replicas and immutable change journals.
+Deletion of a campaign/delivery cascades; verified erasure must also inventory
+these rows by the delivery's canonical account/address under the manual workflow.
+Unsubscribe suppression is independent and is not removed by analytics expiry.
+Protected operational backups may contain older data: reapply erasure and expiry
+before restoring service and inventory independent exports under OPERATIONS.md.
+The application does not log tracking tokens, addresses, IPs or user agents;
+provider request logs remain subject to the separately documented log controls.
+
+## Reviewed one-time email outreach
+
+An organizer can import a source-backed list for one campaign without subscribing
+any contact or treating portal login as consent. The private campaign recipient
+snapshot holds source URLs, check dates, review state, mail-routing results and
+provider receipt/failure IDs. Draft, paused and completed outreach campaigns and
+report-only imports expire 90 days after creation/import; the existing bounded
+retention job deletes them and cascades recipients, previews and engagement.
+Expired campaigns are not eligible for dispatch. Queued expired campaigns are
+paused before sending, then removed on a subsequent retention run.
+
+New campaign content, inline JPEG/PNG photos and Google connection state are
+excluded from the immutable journal and public replicas. This does not erase
+older journal entries, provider mail or independent exports: inventory and handle
+those under OPERATIONS.md and reapply deletions when restoring backups. Account
+erasure must remove the owner's campaigns and bounce-processing receipts; group
+deletion must also inventory these owner records. Every temporary export retains
+its own seven-day task review deadline.
+
+`email_bounces` stores a group/address, provider reason, notice ID and first/last
+failure timestamps to prevent further delivery attempts. It is distinct from
+unsubscribe state and retained while the mailing group exists, with annual
+operational review using `updated_at`. Corrections and verified erasure follow
+the existing manual process; removing a failure must never clear an opt-out.
+Group deletion cascades this protection. Include it in protected backup and
+restore inventories and reapply failure/opt-out corrections before sending.
+
+Optional delivery monitoring requests Google Gmail read-only permission in a
+separate, visible reconnect flow. It reads delivery-failure notices, matches the
+original recipient and message ID against this connected owner's campaigns,
+and stores only the failure evidence needed for the recipient record. Full
+mail bodies are not retained or logged. Private processed-notice identifiers
+expire in 30 days through bounded cleanup. Imported historical Gmail campaigns
+have no fabricated opens/clicks; analytics show those measurements as unavailable.

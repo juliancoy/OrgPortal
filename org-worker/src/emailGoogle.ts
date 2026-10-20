@@ -4,12 +4,12 @@ import { base64Url, decryptSecret, digest, emailFail, encryptSecret, googleConfi
 
 const gmailScope = 'https://www.googleapis.com/auth/gmail.send';
 const googleKeys = createRemoteJWKSet(new URL('https://www.googleapis.com/oauth2/v3/certs'));
-export type Sender = { owner_user_id: string; email: string; refresh_token_ciphertext: string; status: string; cooldown_until: number };
+export type Sender = { owner_user_id: string; email: string; refresh_token_ciphertext: string; status: string; cooldown_until: number; can_read_bounces?:number; bounce_page_token?:string|null };
 
 export async function senderFor(env: Env, userId: string) {
   return env.DB.prepare('SELECT * FROM email_senders WHERE owner_user_id = ?').bind(userId).first<Sender>();
 }
-export async function startGoogleConnection(env: Env, user: EmailActor, organizationId: string | null = null) {
+export async function startGoogleConnection(env: Env, user: EmailActor, organizationId: string | null = null, monitorBounces=false) {
   const config = googleConfig(env);
   await requireEmailOrganizer(env,user,organizationId || undefined);
   const email = normalizeEmail(user.email);
@@ -25,7 +25,7 @@ export async function startGoogleConnection(env: Env, user: EmailActor, organiza
     .bind(await digest(state), user.id, email, await digest(browser), await encryptSecret(env, verifier, `oauth:${user.id}`), nonce, Date.now() + 600_000, organizationId).run();
   const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
   url.search = new URLSearchParams({ client_id: config.clientId, redirect_uri: config.redirectUri, response_type: 'code',
-    scope: `openid email ${gmailScope}`, state, nonce, access_type: 'offline', prompt: 'consent', login_hint: email,
+    scope: `openid email ${gmailScope}${monitorBounces ? " https://www.googleapis.com/auth/gmail.readonly" : ""}`, state, nonce, access_type: 'offline', prompt: 'consent', login_hint: email,
     code_challenge: await digest(verifier), code_challenge_method: 'S256' }).toString();
   return { url: url.toString(), browser };
 }
@@ -40,13 +40,29 @@ export async function finishGoogleConnection(env: Env, state: string, browser: s
     }>();
   if (!pending) emailFail(400, 'Google connection expired. Please connect again.');
   await requireEmailOrganizer(env,{id:pending.owner_user_id},pending.organization_id || undefined);
+  let verifier: string;
+  try { verifier = await decryptSecret(env, pending.verifier_ciphertext, `oauth:${pending.owner_user_id}`); }
+  catch { emailFail(400, 'This Google connection can no longer be verified. Start a new connection from the Email page.'); }
+  // Workerd rejects redirect: 'error'. Manual mode also keeps credentials from following redirects.
   let response: Response;
   try {
-    response = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', redirect: 'error', signal: AbortSignal.timeout(15_000),
+    response = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', redirect: 'manual', signal: AbortSignal.timeout(15_000),
       body: new URLSearchParams({ grant_type: 'authorization_code', code, client_id: config.clientId, client_secret: config.clientSecret,
-        redirect_uri: config.redirectUri, code_verifier: await decryptSecret(env, pending.verifier_ciphertext, `oauth:${pending.owner_user_id}`) }) });
-  } catch { emailFail(503, 'Google connection could not be completed. Please connect again.'); }
-  if (!response.ok) emailFail(400, 'Google connection could not be completed. Please connect again.');
+        redirect_uri: config.redirectUri, code_verifier: verifier }) });
+  } catch { emailFail(503, 'OrgPortal could not reach Google to finish authorization. Start a new connection from the Email page.'); }
+  if (!response.ok) {
+    const failure = await response.json().catch(() => ({})) as { error?: unknown };
+    // Return only known error categories. Google response bodies can include credentials.
+    const messages: Record<string, string> = {
+      invalid_client: 'Google rejected the configured OAuth client credentials (invalid_client). The portal operator must check the client ID and secret.',
+      invalid_grant: 'Google rejected the authorization code or its verification (invalid_grant). Start a new connection from the Email page and complete it once in the same browser.',
+      redirect_uri_mismatch: 'Google rejected the callback URL (redirect_uri_mismatch). Register the exact OrgPortal email callback on this OAuth client.',
+      unauthorized_client: 'Google does not permit this OAuth client to complete this authorization (unauthorized_client). Check its Google Cloud configuration.',
+      access_denied: 'Google denied this authorization (access_denied). Check the account permissions and Workspace policy.',
+    };
+    const message = typeof failure.error === 'string' && Object.hasOwn(messages, failure.error) ? messages[failure.error] : `Google could not finish authorization (HTTP ${response.status}). Start a new connection from the Email page.`;
+    emailFail(response.status >= 500 ? 503 : 400, message);
+  }
   const tokens = await response.json() as { id_token?: string; refresh_token?: string; scope?: string };
   if (!tokens.id_token || !tokens.scope?.split(' ').includes(gmailScope)) emailFail(400, 'Please grant permission to send email and reconnect.');
   let email: string;
@@ -61,17 +77,17 @@ export async function finishGoogleConnection(env: Env, state: string, browser: s
   const encrypted = tokens.refresh_token ? await encryptSecret(env, tokens.refresh_token, `sender:${pending.owner_user_id}:${email}`)
     : previous?.email === email ? previous.refresh_token_ciphertext : null;
   if (!encrypted) emailFail(400, 'Google did not provide background sending access. Please reconnect with consent.');
-  await env.DB.prepare(`INSERT INTO email_senders (owner_user_id, email, refresh_token_ciphertext, connected_at)
-    VALUES (?, ?, ?, ?) ON CONFLICT(owner_user_id) DO UPDATE SET email = excluded.email,
-      refresh_token_ciphertext = excluded.refresh_token_ciphertext, status = 'connected', connected_at = excluded.connected_at, cooldown_until = 0`)
-    .bind(pending.owner_user_id, email, encrypted, Date.now()).run();
+  await env.DB.prepare(`INSERT INTO email_senders (owner_user_id, email, refresh_token_ciphertext, connected_at,can_read_bounces)
+    VALUES (?, ?, ?, ?,?) ON CONFLICT(owner_user_id) DO UPDATE SET email = excluded.email,
+      refresh_token_ciphertext = excluded.refresh_token_ciphertext, status = 'connected', connected_at = excluded.connected_at, cooldown_until = 0,can_read_bounces=excluded.can_read_bounces,bounce_page_token=NULL`)
+    .bind(pending.owner_user_id, email, encrypted, Date.now(),tokens.scope?.split(' ').includes('https://www.googleapis.com/auth/gmail.readonly')?1:0).run();
   return pending.organization_id;
 }
 export async function googleAccessToken(env: Env, sender: Sender): Promise<string | null> {
   const config = googleConfig(env);
   let response: Response;
   try {
-    response = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', redirect: 'error', signal: AbortSignal.timeout(10_000),
+    response = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', redirect: 'manual', signal: AbortSignal.timeout(10_000),
       body: new URLSearchParams({ grant_type: 'refresh_token', client_id: config.clientId, client_secret: config.clientSecret,
         refresh_token: await decryptSecret(env, sender.refresh_token_ciphertext, `sender:${sender.owner_user_id}:${sender.email}`) }) });
   } catch { return null; }
@@ -89,7 +105,7 @@ export async function sendGmail(accessToken: string, raw: string): Promise<{ sta
   try {
     response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
       method: 'POST', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ raw: base64Url(new TextEncoder().encode(raw)) }), redirect: 'error', signal: AbortSignal.timeout(10_000),
+      body: JSON.stringify({ raw: base64Url(new TextEncoder().encode(raw)) }), redirect: 'manual', signal: AbortSignal.timeout(10_000),
     });
   } catch { return { status: 'uncertain', error: 'No definitive Gmail response. Check Sent mail before sending again.' }; }
   if (response.ok) {

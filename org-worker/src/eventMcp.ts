@@ -1,3 +1,4 @@
+import { emailHistorySchema, importEmailHistory, emailReportSchema, readEmailReport } from './emailOutreach';
 import { companyBallotSchema, companyVoteSchema, companyVotesTargetSchema, getCompanyVotes, runCompanyBallotOperation, runCompanyVoteOperation } from './companyVotesMcp';
 import { runOrganizationProfileOperation, organizationProfileTargetSchema, organizationProfileUpdateSchema, organizationProfileStatusSchema } from './organizationProfileMcp';
 import { eventHostSchema, runEventHostOperation } from './eventHost';
@@ -16,6 +17,7 @@ import { getNativeEvent, listNativeEvents } from './nativeEventReads';
 import { hasEventIntegration, configuredProvider, eventPlanSchema, eventTargetSchema, executeEventPlan, EventIntegrationError } from "./eventPlatforms";
 import { enforceEventRateLimit, prepareEventOperation, claimEventOperation, finishEventOperation, previewFingerprint, eventOperationStatus } from "./eventOperationStore";
 import { runOrganizationOperation, organizationCreateSchema, organizationMemberSchema, type CreateOrganization } from './organizationMcp';
+import { emailContactLinkSchema, prepareEmailContactLink } from './emailContactMcp';
 
 const readScope = "org:events.read";
 const writeScope = "org:events.write";
@@ -101,7 +103,7 @@ function approvedAccountNamespaces(env: Env) {
 export function mcpConfiguration(env: Env, request?: Request) {
   const resourceBindingsSchema = z.record(z.string().url().refine(value => {
     const url = new URL(value);
-    return url.protocol === 'https:' && url.pathname === '/api/org/mcp' && !url.username && !url.password && !url.search && !url.hash;
+    return url.protocol === 'https:' && url.pathname === (url.hostname === 'orgportal.cc' ? '/mcp' : '/api/org/mcp') && !url.username && !url.password && !url.search && !url.hash;
   }), z.object({
     name: z.string().min(1).max(120), organizationId: z.string().min(1).max(200).optional(),
     introspectionSecretBinding: z.string().regex(/^MCP_[A-Z_]+$/).optional(),
@@ -144,7 +146,9 @@ export function mcpConfiguration(env: Env, request?: Request) {
   }
   try {
     const namespaces = approvedAccountNamespaces(env);
-    if (namespaces.length && (!introspection || issuer !== env.PIDP_BASE_URL?.replace(/\/$/, ''))) {
+    // Browser identity can live at /pidp while OAuth is mounted at the root.
+    // Namespace trust belongs to the configured identity origin, not its mount.
+    if (namespaces.length && (!introspection || issuer !== new URL(env.PIDP_BASE_URL || '').origin)) {
       throw new Error();
     }
   } catch { throw new EventIntegrationError(503, "Invalid PIdP account namespace configuration"); }
@@ -699,7 +703,7 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
         const { done, value } = await reader.read();
         if (done) break;
         size += value.length;
-        if (size > 65536) { await reader.cancel(); return new Response(null, { status: 413 }); }
+        if (size > 1048576) { await reader.cancel(); return new Response(null, { status: 413 }); }
         chunks.push(value);
       }
     }
@@ -709,6 +713,12 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
     let parsedBody: unknown;
     try { parsedBody = JSON.parse(new TextDecoder().decode(bytes)); }
     catch { return new Response("Invalid JSON", { status: 400 }); }
+    // Only authenticated history imports need room for 500 evidence rows and a
+    // 300 KB inline image. Other MCP operations keep their 64 KB request cap.
+    if(size>65536){
+      const envelope=parsedBody as {method?:unknown;params?:{name?:unknown}};
+      if(envelope?.method!=='tools/call'||!['preview_email_history_import','apply_email_history_import'].includes(String(envelope.params?.name)))return new Response(null,{status:413});
+    }
     const method = parsedBody && typeof parsedBody === 'object' && 'method' in parsedBody ? parsedBody.method : undefined;
     observation.method = typeof method === 'string' && ['initialize', 'notifications/initialized', 'tools/list', 'tools/call', 'ping'].includes(method) ? method : 'other';
     const server = new McpServer({ name: config.name ? `${config.name} MCP` : "orgportal-events", version: "1.1.0", ...(config.name === "OrgPortal" ? { icons: [{ src: "https://orgportal.cc/orgportal.svg", mimeType: "image/svg+xml", sizes: ["any"] }] } : {}) });
@@ -751,6 +761,26 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
       }
     };
     const metadata = (scopes: string[]) => ({ securitySchemes: [{ type: "oauth2", scopes }] });
+    server.registerTool('prepare_email_contact_link', {
+      description: 'Prepare an individual recipient unsubscribe link for a group email or test. Requires active group organizer access. Does not subscribe, unsubscribe, queue, or send email. Never reuse a link for another recipient.',
+      inputSchema: emailContactLinkSchema, annotations: { readOnlyHint: true },
+      _meta: metadata([portalReadScope, portalWriteScope]),
+    }, async args => {
+      try {
+        const data = await prepareEmailContactLink(env, identity, scopedArgs(args));
+        return { content: [{ type: 'text' as const, text: JSON.stringify(data) }], structuredContent: data };
+      } catch (error) {
+        return { isError: true, content: [{ type: 'text' as const, text: await eventErrorResponse(error, env, request).text() }] };
+      }
+    });
+    server.registerTool('get_email_campaign_report',{
+      description:'Read an owned campaign delivery and engagement summary, with its analytics link. Requires current group organizer access. Historical engagement remains unavailable.',
+      inputSchema:emailReportSchema,annotations:{readOnlyHint:true},_meta:metadata([portalReadScope]),
+    },async args=>{try{const data=await readEmailReport(env,identity,scopedArgs(args));return {content:[{type:'text' as const,text:JSON.stringify(data)}],structuredContent:data}}catch(error){return {isError:true,content:[{type:'text' as const,text:await eventErrorResponse(error,env,request).text()}]}}});
+    for(const operation of ['preview','apply'] as const) server.registerTool(`${operation}_email_history_import`,{
+      description:'Import an already-sent campaign report with source evidence, Gmail receipts and failures. Never queues or sends messages. Apply requires confirm=true and the matching one-use previewId. Missing historical engagement is unavailable, never invented.',
+      inputSchema:emailHistorySchema,annotations:{readOnlyHint:operation==='preview',destructiveHint:false},_meta:metadata([portalReadScope,portalWriteScope]),
+    },async args=>{try{const data=await importEmailHistory(env,identity,scopedArgs({...args,confirm:operation==='apply'&&args.confirm===true}));return {content:[{type:'text' as const,text:JSON.stringify(data)}],structuredContent:data}}catch(error){return {isError:true,content:[{type:'text' as const,text:await eventErrorResponse(error,env,request).text()}]}}});
     const supportResult = async (operation: 'list' | 'record' | 'void', args: unknown) => {
       try {
         const data = await runSupportMcp(env.DB, identity, operation, scopedArgs(args));

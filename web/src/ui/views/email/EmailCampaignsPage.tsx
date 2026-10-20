@@ -1,8 +1,11 @@
+import { OutreachComposer } from './OutreachComposer'
+import { EmailHistoryImport } from './EmailHistoryImport'
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
 import { emailApi, type CampaignPreview, type CampaignSummary, type EmailAudience, type EmailSender } from './emailApi'
 import './emailCampaigns.css'
+import { EmailCampaignStats } from './EmailCampaignStats'
 
 type EventChoice = { id: string; title: string; host_org_id?: string | null; host_type?: string; organization_name?: string }
 const initialBody = 'Hi {{first_name}},\n\nJoin us for {{event_title}}. We’d love to see you there!\n\n{{organization}}'
@@ -17,6 +20,11 @@ export function EmailCampaignsPage() {
   const [segments,setSegments]=useState<{id:string;name:string;subscription_ids:string[]}[]>([])
   const [segmentId,setSegmentId]=useState('')
   useEffect(()=>{let cancelled=false;emailApi<{id:string;name:string}[]>(token,'/groups').then(rows=>{if(!cancelled){setGroups(rows);setGroupsReady(true)}}).catch(err=>{if(!cancelled){setError(err.message);setGroupsReady(true)}});return()=>{cancelled=true}},[token])
+  const [reviewRecipient,setReviewRecipient]=useState('')
+  const [monitorBounces,setMonitorBounces]=useState(false)
+  const [senderLoading, setSenderLoading] = useState(true)
+  const [senderError, setSenderError] = useState('')
+  const [senderRevision, setSenderRevision] = useState(0)
   const [sender, setSender] = useState<EmailSender | null>(null)
   const [events, setEvents] = useState<EventChoice[]>([])
   const [campaigns, setCampaigns] = useState<CampaignSummary[]>([])
@@ -32,19 +40,27 @@ export function EmailCampaignsPage() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
+  useEffect(() => {
+    let cancelled = false
+    setSender(null); setSenderError(''); setSenderLoading(true)
+    emailApi<EmailSender>(token, '/sender')
+      .then(data => { if (!cancelled) setSender(data) })
+      .catch((err: Error) => { if (!cancelled) setSenderError(err.message) })
+      .finally(() => { if (!cancelled) setSenderLoading(false) })
+    return () => { cancelled = true }
+  }, [token, senderRevision])
+
   async function refresh() {
-    const [nextSender, nextCampaigns] = await Promise.all([
-      emailApi<EmailSender>(token, '/sender'), emailApi<CampaignSummary[]>(token, `/campaigns?organization_id=${encodeURIComponent(groupId)}`),
-    ])
-    setSender(nextSender); setCampaigns(nextCampaigns)
+    setSenderRevision(value => value + 1)
+    if (groupId) setCampaigns(await emailApi<CampaignSummary[]>(token, `/campaigns?organization_id=${encodeURIComponent(groupId)}`))
   }
   useEffect(() => {
     let cancelled = false
-    setSender(null);setCampaigns([]);setEvents([]);setAudienceInfo(null);setPreview(null);setEventId('');setSelected([]);setSegments([]);setSegmentId('');setError('')
+    setCampaigns([]);setEvents([]);setAudienceInfo(null);setPreview(null);setEventId('');setSelected([]);setSegments([]);setSegmentId('');setError('')
     if(!groupId) return
-    Promise.all([emailApi<EmailSender>(token,'/sender'),emailApi<CampaignSummary[]>(token,`/campaigns?organization_id=${encodeURIComponent(groupId)}`),
+    Promise.all([emailApi<CampaignSummary[]>(token,`/campaigns?organization_id=${encodeURIComponent(groupId)}`),
       emailApi<EventChoice[]>(token,`/groups/${groupId}/events`),emailApi<{id:string;name:string;subscription_ids:string[]}[]>(token,`/groups/${groupId}/segments`)])
-      .then(([nextSender,nextCampaigns,nextEvents,nextSegments])=>{if(cancelled)return;setSender(nextSender);setCampaigns(nextCampaigns);setEvents(nextEvents);setSegments(nextSegments)})
+      .then(([nextCampaigns,nextEvents,nextSegments])=>{if(cancelled)return;setCampaigns(nextCampaigns);setEvents(nextEvents);setSegments(nextSegments)})
       .catch((err:Error)=>{if(!cancelled)setError(err.message)})
     return()=>{cancelled=true}
   },[token,groupId])
@@ -63,7 +79,9 @@ export function EmailCampaignsPage() {
     try { await action() } catch (err) { setError(err instanceof Error ? err.message : 'Please try again.') } finally { setBusy(false) }
   }
   function changed() { setPreview(null); setMessage('') }
-  async function openCampaign(id: string) { setPreview(await emailApi<CampaignPreview>(token, `/campaigns/${id}`)) }
+  async function openCampaign(id: string) { setPreview(await emailApi<CampaignPreview>(token, `/campaigns/${id}`)); if(params.get('campaign_id')!==id)setParams({organization_id:groupId,campaign_id:id}) }
+  const requestedCampaign=params.get('campaign_id')
+  useEffect(()=>{if(!groupId||!requestedCampaign)return;let cancelled=false;emailApi<CampaignPreview>(token,`/campaigns/${encodeURIComponent(requestedCampaign)}`).then(data=>{if(!cancelled)setPreview(data)}).catch(e=>{if(!cancelled)setError(e.message)});return()=>{cancelled=true}},[token,groupId,requestedCampaign])
   const recipientCount = audience==='selected' && segmentId ? segments.find(s=>s.id===segmentId)?.subscription_ids.filter(id=>audienceInfo?.contacts.some(c=>c.id===id)).length : audience === 'event' ? audienceInfo?.event_count : audience === 'organization' ? audienceInfo?.organization_count : selected.length
 
   const needsSenderHost=Boolean(sender?.connection_origin && sender.connection_origin!==window.location.origin)
@@ -76,17 +94,26 @@ export function EmailCampaignsPage() {
     {error && <p role="alert" className="email-notice">{error}</p>}
     {message && <p role="status" className="email-notice">{message}</p>}
     <section className="portal-card email-sender" aria-label="Email sender">
-      <div><h2>Sender</h2><strong>{sender?.email || 'Loading sender…'}</strong>
+      <div><h2>Sender</h2><strong>{sender?.from_email || sender?.email || (senderLoading ? 'Loading sender…' : 'Sender unavailable')}</strong>
+        {senderError && <div role="alert"><p>{senderError}</p><button type="button" disabled={senderLoading} onClick={() => setSenderRevision(value => value + 1)}>Retry sender</button></div>}
+        {sender && sender.from_email !== sender.email && <p className="muted">Connect as {sender.email} to send using this alias.</p>}
         {sender && <p className="muted">{sender.connected ? 'Google account connected' : sender.status === 'reconnect' ? 'Reconnect your Google account to continue sending' : 'Connect Google Workspace to send email'}</p>}
         {sender?.connected && <p>{sender.used_today} of {sender.daily_limit} portal sends used in the last 24 hours.</p>}
         {sender?.connected && <p className="muted">Your regular Gmail messages also count toward Google’s sending limits.</p>}
         {sender && sender.cooldown_until > Date.now() && <p>Google requested a pause until {date(sender.cooldown_until)}.</p>}
-        {sender && !sender.configured && <p>Google email setup must be completed by the portal administrator.</p>}
-        {sender?.configured && !sender.sending_enabled && <p>Sending is disabled. You can connect your account and prepare previews.</p>}
+        {sender && !sender.configured && <div role="status">
+          <p>Email sending is not configured on OrgPortal yet. Your administrator role does not complete the Google connection setup.</p>
+          <p>Missing or invalid server settings:</p>
+          <ul>{sender.setup_issues.map(issue => <li key={issue}>{issue}</li>)}</ul>
+          <p><a href="mailto:julian@codecollective.us?subject=OrgPortal%20email%20setup">Contact portal support</a> to complete these server settings. Then refresh status and connect your Google account.</p>
+        </div>}
+        {sender?.configured && !sender.sending_enabled && <p>Mass sending is disabled. You can prepare drafts and send self-tests.</p>}
       </div>
       <div className="email-actions">
+        <label><input type="checkbox" checked={monitorBounces} onChange={e=>setMonitorBounces(e.target.checked)}/> Read Gmail delivery failures (requires Google permission)</label>
+        {sender?.connected&&<p>{sender.can_read_bounces?'Delivery-failure monitoring enabled.':'Gmail send-only connection. Enable delivery monitoring and reconnect to sync bounces.'}</p>}
         <button disabled={busy || !sender?.configured || needsSenderHost} onClick={() => void act(async () => {
-          const result = await emailApi<{ url: string }>(token, '/google/connect', 'POST',{organization_id:groupId})
+          const result = await emailApi<{ url: string }>(token, '/google/connect', 'POST',{organization_id:groupId,monitor_bounces:monitorBounces})
           const url = new URL(result.url)
           if (url.origin !== 'https://accounts.google.com') throw new Error('Unexpected Google sign-in address.')
           window.location.assign(url.toString())
@@ -98,7 +125,10 @@ export function EmailCampaignsPage() {
       </div>
     </section>
 
-    <section className="portal-card email-compose">
+    {!groupId && <p className="email-notice">Choose a group above to compose an email and view its campaigns.</p>}
+    {groupId&&<details><summary>Prepare a one-time outreach campaign</summary><OutreachComposer token={token} groupId={groupId} disabled={!sender?.connected||!sender?.configured} onCreated={async id=>{await openCampaign(id);await refresh()}}/></details>}
+    {groupId&&<EmailHistoryImport token={token} groupId={groupId} onCreated={async id=>{await openCampaign(id);await refresh()}}/>}
+    {groupId && <section className="portal-card email-compose">
       <h2>Compose a group email</h2>
       <label>Event<select value={eventId} disabled={busy} onChange={(e) => { changed(); setEventId(e.target.value); if(!e.target.value)setAudience('organization'); setSelected([]); setSegmentId(''); setAudienceInfo(null) }}>
         <option value="">Group announcement (no event)</option>{events.map((event) => <option key={event.id} value={event.id}>{event.title}</option>)}
@@ -122,37 +152,46 @@ export function EmailCampaignsPage() {
           scheduled_at: schedule ? new Date(schedule).toISOString() : null })
         await openCampaign(draft.id); await refresh(); setMessage('Draft saved. Review the email and recipients below.')
       })}>{busy ? 'Working…' : 'Save draft & preview'}</button></div>
-    </section>
+    </section>}
 
     {preview && <section className="portal-card email-preview">
       <div className="email-heading"><h2>{preview.status === 'draft' ? 'Review your campaign' : 'Campaign status'}</h2><span>{preview.status}</span></div>
-      <p><strong>From:</strong> {preview.sender_email}<br /><strong>Subject:</strong> {preview.preview.subject}<br />
-        <strong>Audience:</strong> {preview.recipient_count} subscribed recipients<br /><strong>Send time:</strong> {preview.scheduled_at > Date.now() ? date(preview.scheduled_at) : 'As soon as queued'}</p>
+      <p><strong>From:</strong> {preview.from_email}<br /><strong>Subject:</strong> {preview.preview.subject}<br />
+        <strong>Audience:</strong> {preview.report_only?preview.delivery_stats?.total:preview.recipient_count} {preview.audience_mode==='outreach'?'reviewed outreach contacts':'subscribed recipients'}<br /><strong>Send time:</strong> {preview.scheduled_at > Date.now() ? date(preview.scheduled_at) : 'As soon as queued'}</p>
       <p className="muted">Example personalized for Alex. Each recipient receives an individual email and their unsubscribe link.</p>
       <iframe title="Email preview" sandbox="" referrerPolicy="no-referrer" srcDoc={preview.preview.html} />
+      {preview.audience_mode==='outreach'&&!preview.report_only&&<p>Batch size: {preview.batch_size||50}. Delivery pauses at each batch boundary for review. Contacts remain separate from subscriptions.</p>}
+      {!preview.report_only&&<p>{preview.self_test_sent ? 'Test email accepted by Gmail. Check it in your inbox before sending to the group.' : 'First send a test to yourself. After Gmail accepts it, refresh status, review the email in your inbox, then send or schedule the campaign. Each new draft requires its own test.'}</p>}
       <div className="email-actions">
-        <button className="portal-button-secondary" disabled={busy || !sender?.sending_enabled || !sender.connected} onClick={() => void act(async () => {
+        <button className="portal-button-secondary" disabled={busy || Boolean(preview.report_only) || !sender?.connected} onClick={() => void act(async () => {
           const result = await emailApi<{ recipient: string }>(token, `/campaigns/${preview.id}/test`, 'POST')
           setMessage(`Test queued for ${result.recipient}. Check status after the next minute.`); await openCampaign(preview.id)
         })}>Send test to myself</button>
-        {preview.status === 'draft' && <button disabled={busy || !sender?.sending_enabled || !sender.connected || !preview.recipient_count} onClick={() => void act(async () => {
+        {preview.status === 'draft' && !preview.report_only && <button disabled={busy || !sender?.sending_enabled || !sender.connected || !preview.self_test_sent || !preview.recipient_count} onClick={() => void act(async () => {
           await emailApi(token, `/campaigns/${preview.id}/send`, 'POST', { fingerprint: preview.fingerprint, preview_id:preview.preview_id, confirm:true }); await openCampaign(preview.id); await refresh()
           setMessage('Campaign queued. You can follow its progress or pause it below.')
         })}>{preview.scheduled_at > Date.now() ? 'Schedule' : 'Send'} to {preview.recipient_count} recipients</button>}
-        {['queued', 'paused'].includes(preview.status) && <button className="portal-button-secondary" disabled={busy} onClick={() => void act(async () => {
-          await emailApi(token, `/campaigns/${preview.id}/${preview.status === 'queued' ? 'pause' : 'resume'}`, 'POST'); await openCampaign(preview.id); await refresh()
-        })}>{preview.status === 'queued' ? 'Pause campaign' : 'Resume campaign'}</button>}
+        {['queued', 'paused'].includes(preview.status) && <button className="portal-button-secondary" disabled={busy || (preview.status === 'paused' && (!preview.self_test_sent || !sender?.sending_enabled || !sender.connected))} onClick={() => void act(async () => {
+          await emailApi(token, `/campaigns/${preview.id}/${preview.status === 'queued' ? 'pause' : 'resume'}`, 'POST',preview.status==='paused'?{fingerprint:preview.fingerprint,preview_id:preview.preview_id,confirm:true}:undefined); await openCampaign(preview.id); await refresh()
+        })}>{preview.status === 'queued' ? 'Pause campaign' : preview.audience_mode==='outreach'?'Approve next batch of 50':'Resume campaign'}</button>}
       </div>
+      {!preview.report_only&&preview.self_test_sent&&<div className="email-actions"><label>Additional review recipient<input type="email" value={reviewRecipient} onChange={e=>setReviewRecipient(e.target.value)}/></label><button disabled={busy||!reviewRecipient} onClick={()=>void act(async()=>{await emailApi(token,`/campaigns/${preview.id}/test`,'POST',{recipient:reviewRecipient});setMessage(`Review copy queued for ${reviewRecipient}. No audience expanded.`)})}>Send review copy</button></div>}
       {preview.status !== 'draft' && <p>{Object.entries(preview.counts).map(([state, count]) => `${count} ${state}`).join(' · ')}. Sent means Gmail accepted the email.</p>}
-      <details><summary>Recipients and delivery history ({preview.deliveries.length})</summary><div className="email-table"><table><thead><tr><th>Recipient</th><th>Type</th><th>Status</th><th>Details</th></tr></thead><tbody>
-        {preview.deliveries.map((delivery) => <tr key={delivery.id}><td>{delivery.name}<br />{delivery.email}</td><td>{delivery.kind}</td><td>{delivery.status}</td><td>{delivery.error || (delivery.gmail_message_id ? 'Accepted by Gmail' : '—')}</td></tr>)}
+      {preview.engagement && <EmailCampaignStats stats={preview.engagement} delivery={preview.delivery_stats} reportOnly={Boolean(preview.report_only)} />}
+      <div className="email-actions"><button disabled={busy||!sender?.can_read_bounces} onClick={()=>void act(async()=>{const r=await emailApi<{processed:number;matched:number;has_more:boolean}>(token,`/campaigns/${preview.id}/sync-bounces`,'POST');await openCampaign(preview.id);setMessage(`Checked ${r.processed} notices; ${r.matched} campaign matches.${r.has_more?' Sync again to process the next page.':''}`)})}>Sync delivery failures</button>
+      {preview.audience_mode==='outreach'&&<button disabled={busy||preview.status==='queued'} className="portal-button-secondary" onClick={()=>void act(async()=>{if(!window.confirm('Delete this campaign and its private recipient history? Saved group opt-outs and bounce protection remain.'))return;await emailApi(token,`/outreach/${preview.id}`,'DELETE');setPreview(null);setParams({organization_id:groupId});await refresh()})}>Delete campaign</button>}</div>
+      <details><summary>Recipients and delivery history ({preview.deliveries.length})</summary><div className="email-table"><table><thead><tr><th>Recipient</th><th>Type</th><th>Status</th><th>Details and evidence</th><th>Review</th></tr></thead><tbody>
+        {preview.deliveries.map((delivery) => <tr key={delivery.id}><td>{delivery.name}<br />{delivery.email}</td><td>{delivery.kind}</td><td>{delivery.bounced_at?'bounced':delivery.status}</td><td>{delivery.error || (delivery.gmail_message_id ? 'Accepted by Gmail' : '—')}{delivery.source_url&&<><br/><a href={delivery.source_url} target="_blank" rel="noreferrer">Source evidence</a><br/>{delivery.source_checked_at}<br/>Routing: {delivery.dns_status} · {delivery.suppressed?'Opted out':delivery.known_bounced?'Previous failure':delivery.review_status}</>}</td><td>
+          {preview.audience_mode==='outreach'&&preview.status==='draft'&&delivery.review_status==='held'&&<button disabled={busy} onClick={()=>void act(async()=>{const reason=window.prompt('Explain the verified source identity and why this mailbox is appropriate (at least 20 characters).');if(!reason)return;await emailApi(token,`/outreach/${preview.id}/review`,'POST',{deliveryId:delivery.id,approved:true,reason});await openCampaign(preview.id)})}>Review held contact</button>}
+          {delivery.status==='uncertain'&&<button disabled={busy} onClick={()=>void act(async()=>{const id=window.prompt('Gmail message ID if confirmed sent; leave blank only if confirmed not sent:');if(id===null)return;const evidence=window.prompt('Record how Sent mail or provider evidence confirmed the outcome (at least 20 characters):');if(!evidence)return;await emailApi(token,`/outreach/${preview.id}/reconcile`,'POST',{deliveryId:delivery.id,status:id?'sent':'failed',gmail_message_id:id,evidence});await openCampaign(preview.id)})}>Record verified outcome</button>}
+          {delivery.status==='sent'&&!delivery.bounced_at&&<button disabled={busy} onClick={()=>void act(async()=>{const notice_id=window.prompt('Gmail delivery-failure notice ID:');if(!notice_id)return;const reason=window.prompt('Exact provider failure reason:');if(!reason)return;await emailApi(token,`/campaigns/${preview.id}/bounce`,'POST',{email:delivery.email,notice_id,reason});await openCampaign(preview.id)})}>Record bounce</button>}</td></tr>)}
       </tbody></table></div></details>
     </section>}
 
-    <section className="portal-card"><h2>Campaign history</h2>
+    {groupId && <section className="portal-card"><h2>Campaign history</h2>
       {campaigns.length === 0 ? <p className="muted">Your drafts and sent campaigns will appear here.</p> : <div className="email-table"><table><thead><tr><th>Campaign</th><th>Status</th><th>Sent</th><th>Created</th><th /></tr></thead><tbody>
-        {campaigns.map((campaign) => <tr key={campaign.id}><td>{campaign.subject}</td><td>{campaign.status}</td><td>{campaign.sent_count} / {campaign.recipient_count}</td><td>{date(campaign.created_at)}</td><td><button className="portal-button-secondary" disabled={busy} onClick={() => void act(() => openCampaign(campaign.id))}>View</button></td></tr>)}
+        {campaigns.map((campaign) => <tr key={campaign.id}><td>{campaign.subject}</td><td>{campaign.status}</td><td>{campaign.sent_count} / {campaign.recipient_count}</td><td>{date(campaign.created_at)}</td><td><button className="portal-button-secondary" disabled={busy} onClick={() => void act(() => openCampaign(campaign.id))}>View analytics</button></td></tr>)}
       </tbody></table></div>}
-    </section>
+    </section>}
   </main>
 }

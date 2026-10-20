@@ -1,4 +1,5 @@
 import { publicDataResponse } from './publicDataResponse';
+import { visitorStatisticsRoutes } from './visitorStatistics';
 import { EventIntegrationError } from './eventPlatforms';
 import { bodyLimit } from 'hono/body-limit';
 import {publicInitiatives,initiativeAccess,saveInitiative,initiativeHistory} from './interventions';
@@ -1013,7 +1014,7 @@ function bearerToken(request: Request) {
 }
 
 async function currentUser(env: Env, request: Request): Promise<PidpUser> {
-  const base = (env.PIDP_BASE_URL || "https://id.codecollective.us").replace(/\/+$/g, "");
+  const base = (env.PIDP_BASE_URL || "https://orgportal.cc/pidp").replace(/\/+$/g, "");
   const resp = await fetch(`${base}/auth/me`, {
     headers: { Authorization: `Bearer ${bearerToken(request)}` },
   });
@@ -1025,7 +1026,7 @@ async function currentUser(env: Env, request: Request): Promise<PidpUser> {
 }
 
 async function pidpServiceJson<T>(env: Env, path: string, payload: Record<string, unknown>): Promise<T> {
-  const base = (env.PIDP_BASE_URL || "https://id.codecollective.us").replace(/\/+$/g, "");
+  const base = (env.PIDP_BASE_URL || "https://orgportal.cc/pidp").replace(/\/+$/g, "");
   const token = String(env.PIDP_SERVICE_TOKEN || "").trim();
   if (!token) fail(500, "PIDP service token is not configured");
   const response = await fetch(`${base}${path}`, {
@@ -4986,6 +4987,8 @@ app.get("/api/ubi/eligibility", async (c) => {
     total_payments_received: Number(row.total_payments_received || 0),
   });
 });
+
+app.route('/api/admin/visitor-statistics', visitorStatisticsRoutes(currentUser));
 
 app.get("/api/system/metrics", async (c) => {
   await currentUser(c.env, c.req.raw);

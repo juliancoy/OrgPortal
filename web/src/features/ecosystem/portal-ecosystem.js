@@ -1,8 +1,8 @@
 import { key, safeUrl, applyGovernmentClasses, governmentCategory } from './ecosystem.js'
-const moneyKinds = new Set(['transfer', 'terms', 'capitalization', 'portfolio', 'coinvestment'])
-const graphKinds = new Set(['transfer','affiliation','incubation','acceleration','collaboration','services','mentoring','venue','in_kind'])
+const moneyKinds = new Set(['grant','donation','contract','transfer', 'terms', 'capitalization', 'portfolio', 'coinvestment'])
+const graphKinds = new Set(['grant','donation','contract','transfer','affiliation','incubation','acceleration','collaboration','services','mentoring','venue','in_kind'])
 export function graphRelationships(data, { moneyOnly = false, includeCapitalization = false } = {}) {
- return data.relationships.filter(r => r.source && r.target && (graphKinds.has(r.kind || r.relationship) || (includeCapitalization && r.kind === 'capitalization')) && (!moneyOnly || r.kind === 'transfer' || (includeCapitalization && r.kind === 'capitalization')))
+ return data.relationships.filter(r => r.source && r.target && (graphKinds.has(r.kind || r.relationship) || (includeCapitalization && r.kind === 'capitalization')) && (!moneyOnly || ['transfer','grant','donation','contract'].includes(r.kind) || (includeCapitalization && r.kind === 'capitalization')))
 }
 export function mergePortalEvidence(base, organizations, records, refreshedAt = new Date().toISOString()) {
  const data = structuredClone(base)
@@ -20,10 +20,11 @@ export function mergePortalEvidence(base, organizations, records, refreshedAt = 
   const match=snapshotIds.get(org.id) || (candidates.size===1 ? [...candidates][0] : null)
   const id=match?.id || org.id;mapping.set(org.id,id)
   const image=safeUrl(org.image_url)
+  const category=governmentCategory(org) || ((org.tags || []).includes('Fiscal organization')?'funding':null)
   if(match && org.slug)match.portalSlug=org.slug
   if(match && 'image_url' in org && (image || match.imageCaption!=='Published website preview image')){match.imageUrl=image;match.imageSourceUrl=safeUrl(org.source_url);match.portalSlug=org.slug}
-  if(match && governmentCategory(org))match.category=governmentCategory(org)
-  if (!match) byId.set(id,{id,name:org.name,type:(org.tags || []).includes('Venture')?'Venture':'Organization',category:governmentCategory(org) || ((org.tags || []).includes('Venture')?'company':'general'),website:safeUrl(org.source_url),relevance:org.description || '',proximity:null,directory:true,publicEmails:[],sourceRows:[],sourceCategory:'OrgPortal',portalSlug:org.slug,imageUrl:image,imageSourceUrl:safeUrl(org.source_url)})
+  if(match && category)match.category=category
+  if (!match) byId.set(id,{id,name:org.name,type:(org.tags || []).includes('Venture')?'Venture':'Organization',category:category || ((org.tags || []).includes('Venture')?'company':'general'),website:safeUrl(org.source_url),relevance:org.description || '',proximity:null,directory:true,publicEmails:[],sourceRows:[],sourceCategory:'OrgPortal',portalSlug:org.slug,imageUrl:image,imageSourceUrl:safeUrl(org.source_url)})
  }
  data.organizations=[...byId.values()];applyGovernmentClasses(data)
  const known=new Set()

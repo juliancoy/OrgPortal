@@ -6,6 +6,7 @@ import { basename, extname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 import { createInterface } from 'node:readline/promises';
+import { loginDialog } from './login-dialog.mjs';
 import { credentialStore, tokenConnection } from './upload-connection.mjs';
 
 function secureUrl(value) {
@@ -90,6 +91,7 @@ export async function browserLogin(resource, issuer, clientId, openBrowser = fal
       if (url.searchParams.get('state') === state && url.searchParams.get('iss') === issuer) cancel(error);
     }
   });
+  const dialogController = new AbortController();
   const timer = setTimeout(() => cancel(new Error('Browser sign-in timed out')), 10 * 60 * 1000);
   try {
     await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
@@ -109,15 +111,16 @@ export async function browserLogin(resource, issuer, clientId, openBrowser = fal
       const command = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? null : 'xdg-open';
       if (command) { const child = spawn(command, [url.toString()], { stdio: 'ignore' }); child.on('error', () => {}); child.unref(); }
     }
+    if (options.dialog) loginDialog(localStart, dialogController.signal).catch(cancel);
     const code = await codePromise;
     const token = await json(metadata.token_endpoint, { method: 'POST', body: new URLSearchParams({
       grant_type: 'authorization_code', client_id: clientId, code, redirect_uri: redirect, resource, code_verifier: verifier }) });
     return tokenConnection({ resource, clientId, metadata, token, store: options.store, requestJson: json });
-  } finally { clearTimeout(timer); server.closeAllConnections(); server.close(); }
+  } finally { dialogController.abort(); clearTimeout(timer); server.closeAllConnections(); server.close(); }
 }
 
 async function main() {
-  const { values } = parseArgs({ options: { connection: { type: 'string' }, status: { type: 'boolean' }, resource: { type: 'string' }, issuer: { type: 'string', default: 'https://id.codecollective.us' },
+  const { values } = parseArgs({ options: { connection: { type: 'string' }, status: { type: 'boolean' }, resource: { type: 'string' }, issuer: { type: 'string', default: 'https://orgportal.cc' },
     'client-id': { type: 'string' }, organization: { type: 'string' }, event: { type: 'string' },
     connect: { type: 'boolean' }, disconnect: { type: 'boolean' }, ephemeral: { type: 'boolean' },
     directory: { type: 'string' }, yes: { type: 'boolean' }, 'no-browser': { type: 'boolean' }, help: { type: 'boolean' } } });

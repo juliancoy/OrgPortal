@@ -17,10 +17,7 @@ def state_file():
 
 def local_admin_ids(base, existing=''):
     ids = [value.strip() for value in existing.split(',') if value.strip()]
-    if urlsplit(base).hostname != 'localhost':
-        return ','.join(ids)
-    path = state_file()
-    if path.exists() and json.loads(path.read_text()).get(base) == ADMIN_ID and ADMIN_ID not in ids:
+    if urlsplit(base).hostname in {'localhost', '127.0.0.1', '::1'} and ADMIN_ID not in ids:
         ids.append(ADMIN_ID)
     return ','.join(ids)
 

@@ -1,0 +1,42 @@
+# Network overhaul completion history
+
+- `fdc41b1` — Indexed graph analysis: cached 1–3 hop BFS, deterministic bounded label-propagation communities and grouping counts, conservative directed USD metrics, and bounded area sizing. Node analysis tests passed.
+
+## Visualization implementation milestone
+
+Commit: `96d5689` — `Overhaul organization network exploration and financial inspection`.
+
+Completed phases:
+- Progressive Overview / Focus / All disclosure; computational, sector, county and municipality groups; expansion and stable IDs; full-record retention with shared geometry for identical visual semantics.
+- Conservative financial direction and amount handling, original-record inspection and source links, missing-total labels, bounded node metrics, neutral edges, optional arrows, opacity, type/amount encoding, and legends.
+- Adaptive Hover / Priority / All labels using screen-space collision management; retained search and pinned selection; responsive inspection, clearing and camera focus.
+- Funding lanes with type/category/date filters; published-coordinate Maryland layout, county/municipality centroids and expansion, and missing/out-of-state location reporting.
+- Visibility controls, separate Advanced section, light/dark/automatic themes, perspective/orthographic spatial cameras, reduced-motion-aware focus, default-eliding share URLs, persistent expansion, and reuse of existing local preferences and evidence caches.
+- Indexed metrics and clusters outside the frame loop, one physical spring per pair, immediate paused-state updates, shared edge geometry, and the existing scalar Barnes-Hut optimization. Regenerated the committed position cache and verified its fingerprint against every staged source input.
+
+Verification:
+- Current checkout: all 18 ecosystem test files passed; production build passed, including regenerated position caches.
+- Isolated staged snapshot: ecosystem tests and production builds passed independently of unrelated working-tree changes.
+- Required frontend release checks: 229 application tests and 44 routing/release tests passed.
+- Headless Canvas, native WebGPU, 3D and six-dimensional fixtures passed with no page errors. Checks cover controls, selection and deep-link reload, three hops, inspection, analytical layouts, spatial camera modes, theme/URL restoration, persistent expansion, keyboard tabs, and 390px mobile width. Six-dimensional checks use the retained pre-existing N-D working-tree implementation.
+- New pure tests cover disconnected and unknown organizations, hop bounds/cache reuse, community membership/expansion, missing and uncertain money, duplicate award identities, type preservation, geometry bundles, physical-link deduplication, funding filters/roles, geographic centroids/expansion, and missing/out-of-state coordinates.
+- Synthetic 2,009-node / 2,503-edge processing: approximately 26 ms indexing/clustering, 3.4 ms for all three-hop queries and 0.7 ms cached; broad CI budgets passed.
+- Bundled graph: 1,961 displayed organizations and 11,916 records; Overview reduces geometry to 40 community markers and 60 representative inter-community relationships. Paused-motion samples, baseline comparisons, heap figures and limitations are recorded in the implementation documentation.
+
+Production release and sustained hardware-GPU acceptance remain in PLAN.md.
+
+## Complete repository release candidate, 2026-10-19
+
+- Reconciled and reviewed all pending N-dimensional, network-search, interpolation, local-home, local-login and public DKIM changes under explicit authorization to commit, push and deploy all changed code.
+- Preserved government obligation semantics and rejected malformed organization-selector payloads during review.
+- Required release checks passed: 229 frontend tests, 44 routing/release tests, API type checking and 384 API tests. All 18 ecosystem test files and seven local-login tests passed. Both production builds and Wrangler dry runs passed.
+- Local Canvas and six-dimensional exploration passed with 11,916 records retained in All mode, settings reload, inspection and mobile checks. N-dimensional acceptance passed dimensions 8/16/32, all six algorithms, independent 2D/3D display, worker payloads, live physics, hidden-axis movement and reset with no browser errors. Live WebGPU 3D interpolation showed no partial frames and stabilized when paused.
+- Production release uses the existing authenticated OrgPortal Workers Builds trigger, followed by frontend/API commit identity and read-only public navigation checks. Deployment results are reported with the release rather than inferred from the push.
+- Sustained hardware-GPU performance and missing geographic coverage remain tracked in PLAN.md.
+
+## Release acceptance follow-up
+
+- Browser acceptance found and fixed navigation practice calling the graph-only settings helper without a graph type, URL settings leaking across graph-type switches, and restored selection overriding the requested panel.
+- Updated browser fixtures to select organizations through Search and import the same React dependency URLs as the running Vite server.
+- Navigation-practice and 2D → 3D → N-D → 2D/Back checks passed, including fullscreen, mobile layout, search, selected organization, cached evidence, independent settings, and hidden-axis movement.
+- Repeated required frontend release checks and all 18 ecosystem files passed. The first production build published 6aa14a0 to both workers with clean commit metadata; the follow-up release publishes these acceptance fixes through the same pipeline.

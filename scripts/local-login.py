@@ -68,7 +68,9 @@ def session(container, admin=False):
     result = subprocess.run(['docker', 'exec', '-e', 'ORGPORTAL_LOCAL_DEVELOPER_SESSION=1', container,
                              '/venv/bin/python', '/app/scripts/local_developer_session.py', *(['--admin'] if admin else [])], capture_output=True, text=True)
     if result.returncode:
-        raise RuntimeError('Could not create the local developer session. Check the local portal registration.')
+        if 'the database system is in recovery mode' in result.stderr:
+            raise RuntimeError('The local identity database is in recovery mode. Check its Docker logs and available disk space.')
+        raise RuntimeError('Could not create the local developer session. Check the identity container and database logs.')
     return json.loads(result.stdout)
 
 
