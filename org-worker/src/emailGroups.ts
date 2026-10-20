@@ -38,7 +38,7 @@ export function emailGroups(getUser: (env: Env, request: Request) => Promise<Ema
   });
   routes.get('/:organizationId/audience',async c=>{
     const user=await getUser(c.env,c.req.raw),organizationId=c.req.param('organizationId');
-    const rows=await c.env.DB.prepare(`SELECT id,name,email FROM email_subscriptions WHERE topic_type='organization' AND topic_id=? AND status='subscribed' AND NOT EXISTS(SELECT 1 FROM email_contact_suppressions x WHERE x.organization_id=email_subscriptions.topic_id AND x.email=email_subscriptions.email) ORDER BY email LIMIT 1001`).bind(organizationId).all();
+    const rows=await c.env.DB.prepare(`SELECT id,name,email FROM email_subscriptions WHERE topic_type='organization' AND topic_id=? AND status='subscribed' AND NOT EXISTS(SELECT 1 FROM email_contact_suppressions x WHERE x.organization_id=email_subscriptions.topic_id AND x.email=email_subscriptions.email) AND NOT EXISTS(SELECT 1 FROM email_bounces b WHERE b.organization_id=email_subscriptions.topic_id AND b.email=email_subscriptions.email) ORDER BY email LIMIT 1001`).bind(organizationId).all();
     if((rows.results?.length || 0)>1000) emailFail(400,'Use an audience of 1,000 or fewer subscribers.');
     await emailAudit(c.env,user.id,organizationId,'audience.view',null,rows.results?.length || 0).run();
     return c.json({event_count:0,organization_count:rows.results?.length || 0,contacts:rows.results || []});
