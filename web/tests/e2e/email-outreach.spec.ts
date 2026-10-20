@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 test.use({ignoreHTTPSErrors:true})
 for(const historical of [true,false]) test(`outreach analytics ${historical?'historical':'tracked'}`,async({page,baseURL},info)=>{
  if(!baseURL||!['localhost','127.0.0.1'].includes(new URL(baseURL).hostname))throw new Error('Local fixtures only')
- const campaign={id:'campaign',organization_id:'group',subject:'LifeTech invitation',status:historical?'completed':'paused',audience_mode:'outreach',report_only:historical?1:0,recipient_count:292,sent_count:248,created_at:Date.now(),eligible_count:50,fingerprint:'fingerprint',preview_id:'receipt',self_test_sent:true,scheduled_at:Date.now(),from_email:'events@example.test',preview:{subject:'LifeTech invitation',html:'<h1>LifeTech invitation</h1>',text:'LifeTech invitation'},counts:{sent:248,skipped:44},deliveries:[],engagement:{sent:248,tracked:historical?0:240,opened:120,clicked:60,unsubscribed:2},delivery_stats:{total:292,accepted:248,bounced:8,failed:0,uncertain:0,skipped:44,pending:0}}
+ const campaign={id:'campaign',organization_id:'group',subject:'LifeTech invitation',status:historical?'completed':'paused',audience_mode:'outreach',report_only:historical?1:0,recipient_count:292,sent_count:248,created_at:Date.now(),eligible_count:50,fingerprint:'fingerprint',preview_id:'receipt',self_test_sent:true,scheduled_at:Date.now(),sender_email:'sender@example.test',from_email:'events@example.test',preview:{subject:'LifeTech invitation',html:'<h1>LifeTech invitation</h1>',text:'LifeTech invitation'},counts:{sent:248,skipped:44},deliveries:historical?[]:[{id:'waiting',email:'contact@example.test',name:'Contact',kind:'campaign',status:'queued',review_status:'approved',dns_status:'mx_present',source_url:'https://example.test/contact'}],engagement:{sent:248,tracked:historical?0:240,opened:120,clicked:60,unsubscribed:2},delivery_stats:{total:292,accepted:248,bounced:8,failed:0,uncertain:0,skipped:44,pending:0}}
  let resumed=false
  await page.route('**/api/org/**',r=>r.fulfill({json:{}}))
  await page.route('**/auth/session-token',r=>r.fulfill({json:{access_token:'fixture.payload.signature'}}))
@@ -23,7 +23,7 @@ for(const historical of [true,false]) test(`outreach analytics ${historical?'his
  await expect(page.getByRole('img',{name:/Delivery outcomes for 292/})).toBeVisible()
  await expect(page.locator('.email-pie')).toHaveCount(historical?1:4)
  if(historical)await expect(page.getByText(/cannot be recovered/)).toBeVisible()
- else{await page.getByRole('button',{name:'Approve next batch of 50'}).click();await expect.poll(()=>resumed).toBe(true)}
+ else{await page.getByRole('checkbox',{name:/I inspected the test email/}).check();await page.getByRole('button',{name:'Approve next batch of 50'}).click();await expect.poll(()=>resumed).toBe(true)}
  await page.getByText('Prepare a one-time outreach campaign',{exact:true}).click()
  await page.locator('input[type=file]').first().setInputFiles({name:'contacts.csv',mimeType:'text/csv',buffer:Buffer.from('email,name,source_url,source_checked_at\ncontact@example.test,Contact,https://example.test/contact,2026-10-18\n')})
  await expect(page.getByText('1 imported rows · review evidence')).toBeVisible()
