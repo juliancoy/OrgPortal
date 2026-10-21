@@ -32,7 +32,7 @@ const identity = { userId: 'existing-pidp-user', scopes: ['org:portal.read', 'or
 test('organization creation requires scope and a matching one-use receipt', async () => {
   const { db, sql } = database(); let writes = 0;
   const create = async (_actor, payload) => { assert.equal(payload.kind, 'team'); writes++; return { id: 'new-org' }; };
-  const args = { name: 'LifeTech', city: 'Baltimore', kind: 'team' };
+  const args = { name: 'LifeTech', city: 'Baltimore', kind: 'team', acknowledgeOwnership: true as const };
   await assert.rejects(runOrganizationOperation(db, { ...identity, scopes: ['org:portal.read'] }, 'create', args, create), /Missing portal scope/);
   await assert.rejects(runOrganizationOperation(db, identity, 'create', { ...args, confirm: true }, create), /preview first/);
   const preview = await runOrganizationOperation(db, identity, 'create', args, create) as { previewId: string };

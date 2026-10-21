@@ -10,6 +10,7 @@ export function EventPresentations({eventId}:{eventId:string}) {
  const [enabled,setEnabled]=useState(false),[closed,setClosed]=useState(false),[ready,setReady]=useState(false)
  const [canReview,setCanReview]=useState(false),[orgs,setOrgs]=useState<Org[]>([]),[rows,setRows]=useState<Submission[]>([])
  const [org,setOrg]=useState(''),[name,setName]=useState(''),[city,setCity]=useState('Baltimore'),[description,setDescription]=useState('')
+ const [ownsTeam,setOwnsTeam]=useState(false)
  const [title,setTitle]=useState(''),[summary,setSummary]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false),[version,setVersion]=useState(0)
  async function request(url:string,method='GET',body?:unknown,signal?:AbortSignal) {
   const response=await fetch(url,{method,headers:{...(token?{Authorization:`Bearer ${token}`} : {}),...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),signal,cache:'no-store'})
@@ -45,12 +46,12 @@ export function EventPresentations({eventId}:{eventId:string}) {
   {closed&&<p>Applications have closed for this event.</p>}
   {enabled&&!closed&&token&&<form onSubmit={e=>{e.preventDefault();void action(async()=>{
    let organizationId=org
-   if(!organizationId){const team=await request('/api/org/api/network/orgs','POST',{name,city,description,kind:'team'});organizationId=team.id;setOrg(team.id);setOrgs(previous=>[...previous,team])}
+   if(!organizationId){if(!ownsTeam)throw new Error('Confirm that you intend to manage the new team.');const team=await request('/api/org/api/network/orgs','POST',{name,city,description,kind:'team',acknowledgeOwnership:true});organizationId=team.id;setOrg(team.id);setOrgs(previous=>[...previous,team])}
    await request(`${base}/${encodeURIComponent(organizationId)}`,'PUT',{title,summary});setMessage('Application submitted to the event organizers.')
   })}}>
    <p>Apply on behalf of a team or organization you manage. Your proposal is visible to its managers and the event organizers. Submitting does not guarantee a presentation slot.</p>
    <label>Team or organization<select value={org} onChange={e=>{setOrg(e.target.value);const saved=rows.find(r=>r.organization_id===e.target.value);setTitle(saved?.title||'');setSummary(saved?.summary||'')}}><option value="">Create a team</option>{orgs.map(o=><option key={o.id} value={o.id}>{o.name}</option>)}</select></label>
-   {!org&&<><label>Team name<input required maxLength={255} value={name} onChange={e=>setName(e.target.value)}/></label><label>City<input required maxLength={80} value={city} onChange={e=>setCity(e.target.value)}/></label><label>About your team<textarea maxLength={5000} value={description} onChange={e=>setDescription(e.target.value)}/></label></>}
+   {!org&&<><label><input type="checkbox" required checked={ownsTeam} onChange={e=>setOwnsTeam(e.target.checked)}/>I intend to manage this team and understand my account will receive owner access.</label><label>Team name<input required maxLength={255} value={name} onChange={e=>setName(e.target.value)}/></label><label>City<input required maxLength={80} value={city} onChange={e=>setCity(e.target.value)}/></label><label>About your team<textarea maxLength={5000} value={description} onChange={e=>setDescription(e.target.value)}/></label></>}
    <label>Presentation title<input required maxLength={200} value={title} onChange={e=>setTitle(e.target.value)}/></label>
    <label>What will you present?<textarea required maxLength={5000} value={summary} onChange={e=>setSummary(e.target.value)}/></label>
    <button disabled={busy} type="submit">{busy?'Saving…':'Submit application'}</button>

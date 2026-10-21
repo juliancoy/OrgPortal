@@ -1,7 +1,9 @@
 # Organization creation and chat
 
-The organization API (`POST /api/network/orgs`) and MCP organization creation
-share one routine: persist the organization, claim it through organization IAM,
+Owned creation requires explicit `acknowledgeOwnership=true`. For third-party
+research, use the separate unclaimed directory registration workflow; it grants
+no account access. The reviewed REST and MCP commands and the deprecated
+`POST /api/network/orgs` owned-creation endpoint share one routine: persist the organization, claim it through organization IAM,
 then provision its native organization chat room.
 
 Migration `0062_organization_chat.sql` creates a durable provisioning job in the
@@ -78,3 +80,18 @@ does not add membership, register guests or publish the proposal.
 
 Migration `0092_event_presentations.sql` requires review before deployment.
 For LifeTech Demo Day #3, open applications from the event page after deployment.
+
+
+## Directory registration and mistaken ownership
+
+The organization profile defaults to adding public directory information.
+Operators preview and publish the listing without ownership or membership.
+Creating a managed organization or team is a separate explicit choice that shows
+the receiving account's owner access before confirmation.
+
+The current owner can preview a mistaken-association correction from the
+organization profile or MCP. It preserves the directory record and other members,
+deactivates their own membership, and records minimal authority history. Portals
+and ownership-challenge history require managed review. A founder name or email
+never identifies a replacement owner. See [Organization domain and multi-user
+rollout](architecture/ORGANIZATION_DOMAIN.md).

@@ -1,4 +1,6 @@
 import { presentationRoutes } from './eventPresentations';
+import { runOrganizationDirectoryOperation } from './organizationDirectoryOperations';
+import { runOrganizationOperation as runOwnedOrganizationOperation } from './organizationMcp';
 import { publicDataResponse } from './publicDataResponse';
 import { visitorStatisticsRoutes } from './visitorStatistics';
 import { EventIntegrationError } from './eventPlatforms';
@@ -31,7 +33,6 @@ import {linkEventSupportRecords} from './eventSupportLinks';
 import { organizationSnapshot, replicaStatus, replicateOrganizations, snapshotEtagMatches } from './organizationReplication';
 import { memberMeetingRoutes } from './memberMeetings';
 import { runEventEnrichmentOperation } from './eventEnrichment';
-import { runOrganizationRegistryOperation } from './organizationRegistry';
 import { nametagRoutes } from './nametags';
 import { calendarCollectionOptions, addCalendarCollections } from './calendarCollections';
 import { organizationSupport, publicRelationshipRecords, runSupportOperation } from './organizationSupport';
@@ -3390,16 +3391,74 @@ app.get("/api/network/orgs", async (c) => {
   return c.json(rankedRows.map((row) => mapOrganization(row)));
 });
 
+// Shared organization application operations. Session authority comes from PIdP;
+// request bodies cannot supply actors, scopes or operator status.
+app.get('/api/network/directory', async c => {
+  const user = await currentUser(c.env, c.req.raw);
+  try {
+    return c.json(await runOrganizationDirectoryOperation(c.env.DB, {
+      actor: organizationActor(user, c.env), scopes: ['org:portal.read'],
+    }, 'search', { query: c.req.query('q') || '', limit: c.req.query('limit') ? Number(c.req.query('limit')) : 25, cursor: c.req.query('cursor') }));
+  } catch (error) { return eventErrorResponse(error, c.env, c.req.raw); }
+});
+app.get('/api/network/directory/:organizationId', async c => {
+  const user = await currentUser(c.env, c.req.raw);
+  try { return c.json(await runOrganizationDirectoryOperation(c.env.DB, {
+    actor: organizationActor(user, c.env), scopes: ['org:portal.read'],
+  }, 'get', { organizationId: c.req.param('organizationId') })); }
+  catch (error) { return eventErrorResponse(error, c.env, c.req.raw); }
+});
+app.post('/api/network/directory/registration/:phase', async c => {
+  const phase = c.req.param('phase');
+  if (!['preview', 'apply'].includes(phase)) return c.json({ error: 'Not found' }, 404);
+  const user = await currentUser(c.env, c.req.raw);
+  try {
+    const input = await c.req.json() as Record<string, unknown>;
+    return c.json(await runOrganizationDirectoryOperation(c.env.DB, {
+      actor: organizationActor(user, c.env), scopes: ['org:portal.read', 'org:portal.write'],
+    }, 'register', { ...input, confirm: phase === 'apply' && input.confirm === true }));
+  } catch (error) { return eventErrorResponse(error, c.env, c.req.raw); }
+});
+app.post('/api/network/orgs/:organizationId/ownership/release/:phase', async c => {
+  const phase = c.req.param('phase');
+  if (!['preview', 'apply'].includes(phase)) return c.json({ error: 'Not found' }, 404);
+  const user = await currentUser(c.env, c.req.raw);
+  try {
+    const input = await c.req.json() as Record<string, unknown>;
+    return c.json(await runOrganizationDirectoryOperation(c.env.DB, {
+      actor: organizationActor(user, c.env), scopes: ['org:portal.read', 'org:portal.write'],
+    }, 'release', { ...input, organizationId: c.req.param('organizationId'), confirm: phase === 'apply' && input.confirm === true }));
+  } catch (error) { return eventErrorResponse(error, c.env, c.req.raw); }
+});
+app.get('/api/network/orgs/:organizationId/operations/:previewId', async c => {
+  const user = await currentUser(c.env, c.req.raw);
+  try { return c.json(await runOrganizationDirectoryOperation(c.env.DB, {
+    actor: organizationActor(user, c.env), scopes: ['org:portal.read'],
+  }, 'status', { organizationId: c.req.param('organizationId'), previewId: c.req.param('previewId') })); }
+  catch (error) { return eventErrorResponse(error, c.env, c.req.raw); }
+});
+app.post('/api/network/owned-organizations/:phase', async c => {
+  const phase = c.req.param('phase');
+  if (!['preview', 'apply'].includes(phase)) return c.json({ error: 'Not found' }, 404);
+  const user = await currentUser(c.env, c.req.raw);
+  try {
+    const input = await c.req.json() as Record<string, unknown>;
+    return c.json(await runOwnedOrganizationOperation(c.env.DB, { userId: user.id, scopes: ['org:portal.read', 'org:portal.write'] },
+      'create', { ...input, confirm: phase === 'apply' && input.confirm === true }, (actor, fields) => createOrganization(c.env, actor, fields)));
+  } catch (error) { return eventErrorResponse(error, c.env, c.req.raw); }
+});
+
 app.post("/api/network/orgs/registry", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   try {
-    return c.json(await runOrganizationRegistryOperation(c.env.DB, organizationActor(user, c.env), await c.req.json()));
+    return c.json(await runOrganizationDirectoryOperation(c.env.DB, { actor: organizationActor(user, c.env), scopes: ['org:portal.read', 'org:portal.write'] }, 'register', await c.req.json()));
   } catch (error) { return eventErrorResponse(error, c.env, c.req.raw); }
 });
 
 app.post("/api/network/orgs", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  if (payload.acknowledgeOwnership !== true) fail(400, 'Owned creation requires acknowledgeOwnership=true; use directory registration for third-party listings');
   const row = await createOrganization(c.env, organizationActor(user, c.env), {
     kind: payload.kind,
     name: stringField(payload, "name", 255) || "Organization",
