@@ -48,6 +48,12 @@ with sync_playwright() as p:
         successful(host.request.post(BASE + '/pidp/auth/session/login', form={'username': credentials['email'], 'password': credentials['password']}, headers={'Origin': BASE}))
         token = successful(host.request.get(BASE + '/pidp/auth/session-token'))['access_token']
         auth = {'Authorization': 'Bearer ' + token}
+        successful(host.request.put(BASE + '/api/org/api/network/contact/me', headers=auth, data={'enabled': True}))
+        colleague = context()
+        colleague_credentials = account(colleague, 'colleague')
+        successful(colleague.request.post(BASE + '/pidp/auth/session/login', form={'username': colleague_credentials['email'], 'password': colleague_credentials['password']}, headers={'Origin': BASE}))
+        colleague_token = successful(colleague.request.get(BASE + '/pidp/auth/session-token'))['access_token']
+        successful(colleague.request.put(BASE + '/api/org/api/network/contact/me', headers={'Authorization': 'Bearer ' + colleague_token}, data={'enabled': True}))
         group = successful(host.request.post(BASE + '/api/org/api/network/orgs', headers=auth, data={'name': f'Dummy Demo Host {run_id}', 'city': 'Baltimore', 'kind': 'organization', 'description': 'An organization-owned introduction for the local community.', 'acknowledgeOwnership': True}))
         event = successful(host.request.post(BASE + '/api/org/api/network/events', headers=auth, data={'title': f'Dummy Demo Day {run_id}', 'host_type': 'org', 'host_org_id': group['id'], 'ingest_key': f'local-team-form-{run_id}', 'starts_at': '2099-11-17T23:00:00Z', 'ends_at': '2099-11-18T01:30:00Z', 'location': 'Local test venue', 'description': '## What to expect\n\n- A local demonstration.\n- A team presentation.'}))
         endpoint = BASE + '/api/org/api/network/events/' + event['id'] + '/presentations'
@@ -78,6 +84,21 @@ with sync_playwright() as p:
         form.get_by_label('About your team', exact=True).fill('A dummy organization for a local browser test.')
         form.get_by_label('Presentation title', exact=True).fill('A local demo')
         form.get_by_label('What will you present?', exact=True).fill('A synthetic demo to verify the submission flow.')
+        picker = form.get_by_label('Person’s email or portal member name', exact=True)
+        roster = form.get_by_role('list', name='Selected team members')
+        for query, person in [(f'Dummy host {run_id}', f'Dummy host {run_id}'), (colleague_credentials['email'], f'Dummy colleague {run_id}')]:
+            picker.fill(query)
+            form.get_by_role('button', name='Choose ' + person, exact=True).click()
+            expect(roster.get_by_role('img', name=person + ' · Status unavailable', exact=True)).to_be_visible()
+        invitation_email = f'new-teammate-{run_id}@example.com'
+        picker.fill(invitation_email)
+        form.get_by_role('button', name=f'Invite {invitation_email} by email', exact=True).click()
+        expect(roster.get_by_role('img', name=invitation_email + ' · Status unavailable', exact=True)).to_be_visible()
+        expect(roster.get_by_role('listitem')).to_have_count(3)
+        # Adding the same account again must not duplicate its avatar or membership.
+        picker.fill(f'Dummy host {run_id}')
+        form.get_by_role('button', name=f'Choose Dummy host {run_id}', exact=True).click()
+        expect(roster.get_by_role('listitem')).to_have_count(3)
         expect(form).to_have_attribute('data-draft-saved', 'true', timeout=10000)
         expect(form).to_have_css('border-top-color', 'rgb(212, 175, 55)')
         page.get_by_role('tab',name='Info',exact=True).click()
@@ -88,6 +109,8 @@ with sync_playwright() as p:
         expect(form.get_by_label('Team name', exact=True)).to_have_value(f'Dummy Demo Team {run_id}', timeout=30000)
         expect(form.get_by_label('What will you present?', exact=True)).to_have_value('A synthetic demo to verify the submission flow.')
         expect(form).to_have_attribute('data-draft-saved', 'true', timeout=10000)
+        expect(roster.get_by_role('listitem')).to_have_count(3)
+        expect(roster.get_by_role('img')).to_have_count(3)
         submit = form.get_by_role('button', name='Submit application', exact=True)
         assert form.evaluate('(form) => form.checkValidity()'), 'No ownership checkbox should block a complete application'
         for width, filename in [(1280, 'team-form-desktop.png'), (390, 'team-form-mobile.png')]:
@@ -101,7 +124,10 @@ with sync_playwright() as p:
         # Verify the shared fallback also styles classless buttons outside the form.
         baseline = page.evaluate("""() => {const button=document.createElement('button');button.textContent='Baseline test';document.querySelector('main').append(button);const s=getComputedStyle(button);const result={height:button.getBoundingClientRect().height,radius:parseFloat(s.borderRadius)};button.remove();return result}""")
         assert baseline['height'] >= 44 and baseline['radius'] > 8
-        submit.click()
+        with page.expect_response(lambda response: '/invitations/apply' in response.url and response.request.method == 'POST', timeout=30000) as invitation_response:
+            submit.click()
+        invitation_result = successful(invitation_response.value)
+        assert invitation_result['saved'] and invitation_result['invitationId'], 'Email invitation must be queued'
         expect(section.get_by_role('status').filter(has_text='Application submitted to the event organizers.')).to_have_text('Application submitted to the event organizers.', timeout=30000)
         expect(section.get_by_role('heading', name=f'Dummy Demo Team {run_id}: A local demo')).to_be_visible(timeout=30000)
         expect(form.get_by_label('Presentation title', exact=True)).to_have_value('')
@@ -114,6 +140,9 @@ with sync_playwright() as p:
         applicant_token = successful(applicant.request.get(BASE + '/pidp/auth/session-token'))['access_token']
         membership = successful(applicant.request.get(BASE + '/api/org/api/network/orgs/' + team_id + '/membership', headers={'Authorization': 'Bearer ' + applicant_token}))
         assert membership['role'] == 'owner' and membership['status'] == 'active'
+        members = successful(applicant.request.get(BASE + '/api/org/api/network/orgs/' + team_id + '/members', headers={'Authorization': 'Bearer ' + applicant_token}))
+        assert sum(member['role'] == 'member' for member in members) == 2, members
+        assert len(members) == 3, 'Unverified email must not create an identity or membership'
         # A real host dashboard must review every application across pages.
         for index in range(25):
             team = successful(host.request.post(BASE + '/api/org/api/network/orgs', headers=auth, data={'name': f'Dummy Review Team {run_id} {index}', 'city': 'Baltimore', 'kind': 'team', 'acknowledgeOwnership': True}))

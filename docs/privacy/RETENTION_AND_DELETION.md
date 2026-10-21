@@ -256,7 +256,7 @@ remain required before advertising deployed cleanup.
 ## Local form drafts
 
 Presentation applications and organization participation forms save response
-fields in browser localStorage, isolated by signed-in account and event or
+fields (including staged team members’ names, account IDs, public avatar URLs and invitation email addresses) in browser localStorage, isolated by signed-in account and event or
 organization. No credentials, tokens, one-use preview receipts, or server
 permissions are saved in these drafts. A BioTech Gold border means the current
 fields match a verified local write; it does not mean the form was submitted.
