@@ -24,7 +24,7 @@ run_id = uuid.uuid4().hex[:10]
 
 def successful(response):
     assert response.ok, f'Local fixture request failed: {response.status} {response.text()[:500]}'
-    return response.json()
+    return response.json() if 'application/json' in response.headers.get('content-type', '') else {}
 
 with sync_playwright() as p:
     browser = p.chromium.launch(executable_path=os.environ.get('PLAYWRIGHT_CHROMIUM_EXECUTABLE', '/usr/bin/google-chrome'), headless=True, args=['--no-sandbox'])
