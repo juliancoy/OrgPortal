@@ -40,7 +40,7 @@ export function EventPresentations({eventId}:{eventId:string}) {
  if(!ready) return <section aria-label="Presentation applications"><p role="status">{message||'Loading presentation applications…'}</p>{message&&<button type="button" className="btn-secondary" onClick={()=>setVersion(v=>v+1)}>Retry</button>}</section>
  if(!enabled&&!canReview)return null
  return <section className="portal-card presentation-applications" aria-label="Presentation applications">
-  <div className="presentation-heading"><p className="public-event-eyebrow">Share your work</p><h2>Present at this event</h2><p className="muted">Bring your team’s ideas, research, or latest demo to the LifeTech community.</p></div>
+  <div className="presentation-heading"><p className="public-event-eyebrow">Share your work</p><h2>Present at this event</h2><p className="muted">Bring your team’s ideas, research, or latest demo to the community.</p></div>
   {canReview&&<button type="button" className="btn-secondary" disabled={busy} onClick={()=>void action(async()=>{await request(`${base}/form`,'PUT',{enabled:!enabled})})}>{enabled?'Close applications':'Open applications'}</button>}
   {message&&<p role="status">{message}</p>}
   {enabled&&!closed&&!token&&<p><Link to={`/users/login?next=${encodeURIComponent(location.pathname)}`}>Sign in</Link> to create a team and apply to present.</p>}
