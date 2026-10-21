@@ -181,3 +181,19 @@ test('zero dimming removes all fixed photo darkening', async () => {
   assert.doesNotMatch(svg,/opacity="0\.66"|opacity="0\.26"/);
  }
 });
+
+test('native chat poster destinations stay on the portal and preserve its mount path', async () => {
+  const portal = 'https://example.org/portals/lifetech/events/test';
+  assert.equal(posterLinkTarget(portal,'event-chat',[]), `${portal}#discussion`);
+  assert.equal(posterLinkTarget(portal,'group-chat',[],'lifetech'), 'https://example.org/portals/lifetech/chat?start=org&org=lifetech');
+  assert.equal(posterLinkTarget(portal,'group-chat',[]),portal);
+  const injected = new URL(posterLinkTarget(portal,'group-chat',[],'lifetech&user=other'));
+  assert.equal(injected.searchParams.get('org'),'lifetech&user=other');
+  assert.equal(injected.searchParams.get('user'),null);
+  assert.equal(posterLinkTarget(portal,'https://chat.whatsapp.com/TestGroup123',[]),portal);
+  for(const format of ['letter','letter-4up','postcard','social'] as const) {
+    const svg = await renderEventPoster({ title: 'Community' }, `${portal}#discussion`, format, { name: 'Community' }, 'light', {chatLink:true});
+    assert.match(svg, /Scan to join chat/);
+    assert.doesNotMatch(svg, /Scan to RSVP|WhatsApp/);
+  }
+});

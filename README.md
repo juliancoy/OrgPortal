@@ -184,6 +184,13 @@ accounts. This requires the sibling PIdP checkout's
 `scripts/register_local_portal.py`; its registration owner is inactive and
 grants no sign-in or organization privileges.
 
+The development containers retain separate npm download-cache volumes across
+restarts and install from their lockfiles with `--prefer-offline`. This avoids
+downloading the Worker runtimes again on every restart. Service readiness allows
+a 900-second polling window by default; set `ORGPORTAL_LOCAL_SERVICE_TIMEOUT`
+to 30–3600 seconds for a different window. These caches are separate from
+application databases and user-data volumes.
+
 `run.py` starts the portal, org worker, chat worker, and sibling PIdP on the
 local Docker network. Chat and org share local D1 storage for the contact
 directory. The HTTPS gateway serves the app and API/WebSocket routes at

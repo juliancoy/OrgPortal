@@ -1,6 +1,5 @@
 import { CommunitiesPage, PlatformHomePage } from '../views/PlatformHomePage'
 import { LocalHomePage } from '../views/LocalHomePage'
-import { resolveOrganizationView, useOrganizationAccess, useOrganizationViewPreference } from '../hooks/useOrganizationView'
 import { PortalProfileBoundary } from '../shell/PortalProfileBoundary'
 import { getDomainCommunity, getGroupSite, type GroupSite } from '../../config/timebankCommunity'
 import { lazy, useEffect, useState } from 'react'
@@ -112,21 +111,23 @@ function tenantHomeElement(tenant: GroupSite, role: string, profile: ReturnType<
   return <Navigate to={portalProfilePath(action.to, profile)} replace />
 }
 
+function OrganizationProfileRoute() {
+  const location = useLocation()
+  const view = new URLSearchParams(location.search).get('view')
+  // Preserve existing workspace bookmarks while giving profiles a stable URL.
+  if (view && ['members', 'organizers', 'attendees', 'volunteers'].includes(view)) {
+    return <Navigate to={`${location.pathname.replace(/\/$/, '')}/dashboard${location.search}${location.hash}`} replace />
+  }
+  return <PublicAdminPage />
+}
+
 function HomeRoute() {
   const { role, isLoading } = useAuth()
   const tenant = getGroupSite()
-  const access = useOrganizationAccess(tenant?.home_org_slug)
-  const location = useLocation()
-  const requestedView = useOrganizationViewPreference(tenant?.home_org_slug, new URLSearchParams(location.search).get('view'))
   if (['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)) return <LocalHomePage />
-  if (isLoading || access.loading) return null
+  if (isLoading) return null
   const profile = getActivePortalProfileConfig()
   if (profile.id === 'orgportal') return <PlatformHomePage />
-  if (tenant?.home_org_slug && (access.organizer || requestedView)) {
-    const view = resolveOrganizationView(requestedView, access.organizer, access.member)
-    if (view === 'public') return <TenantHomePage />
-    return <Navigate to={`/orgs/${encodeURIComponent(tenant.home_org_slug)}?view=${view}`} replace />
-  }
   if (tenant) return tenantHomeElement(tenant, role, profile)
   if (getDomainCommunity()) return <Navigate to="/timebanking" replace />
   if (role === 'guest') return <App />
@@ -469,7 +470,8 @@ export function createAppRouter() {
           { path: '/search', element: <GlobalSearchPage /> },
 
           // Public profile
-          { path: '/orgs/:handle', element: <PublicAdminPage /> },
+          { path: '/orgs/:handle', element: <OrganizationProfileRoute /> },
+          { path: '/orgs/:handle/dashboard', element: <AuthenticatedRoute><PublicAdminPage dashboard /></AuthenticatedRoute> },
           { path: '/users/:slug', element: <PublicContactPage /> },
           { path: '/contact/:slug', element: <LegacyPublicContactRoute /> },
           { path: '/contact-settings', element: <LegacyUserRoute to="/profile" /> },

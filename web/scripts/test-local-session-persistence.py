@@ -2,12 +2,14 @@
 """Exercise real local Docker sessions across browser and service lifetimes."""
 
 import json
+import importlib.util
 import os
 from pathlib import Path
 import secrets
+import re
 import sys
 import time
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 
 import docker
 from playwright.sync_api import sync_playwright, expect
@@ -33,6 +35,27 @@ if not ACCOUNT.exists():
 ACCOUNT.chmod(0o600)
 account = json.loads(ACCOUNT.read_text())
 client = docker.from_env()
+
+# Verify the local deployment before registering a synthetic account. Verification
+# email must stay in the local log; use the normal verification route below.
+spec = importlib.util.spec_from_file_location('session_test_local_login', ROOT.parents[1] / 'scripts/local-login.py')
+local_login = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(local_login)
+local_login.preflight(IDENTITY, BASE)
+assert account['email'] == 'session-persistence@example.com'
+delivery_check = client.containers.get(IDENTITY).exec_run([
+    '/venv/bin/python', '-c', '''import asyncio
+from main import _stored_email_delivery_settings
+from db import SessionLocal, engine
+async def check():
+    try:
+        async with SessionLocal() as db:
+            assert (await _stored_email_delivery_settings(db))['delivery'] == 'log'
+    finally:
+        await engine.dispose()
+asyncio.run(check())'''
+], workdir='/app')
+assert delivery_check.exit_code == 0, 'Session fixtures require local log email delivery'
 
 
 def redeploy(name):
@@ -112,6 +135,18 @@ with sync_playwright() as p:
         **account, 'full_name': 'Local Session Test',
     })
     assert registration.status in {200, 201, 409}, ('Local registration failed', registration.status)
+    if registration.status in {200, 201}:
+        denied = context.request.post(BASE + '/pidp/auth/session/login', form={
+            'username': account['email'], 'password': account['password'],
+        }, headers={'Origin': BASE})
+        assert denied.status == 403, 'Fresh fixture must require email verification'
+        logs = client.containers.get(IDENTITY).logs(tail=200).decode('utf-8', errors='replace')
+        links = re.findall(re.escape(BASE) + r'/pidp/auth/verify-email\?\S+', logs)
+        links = [link for link in links if parse_qs(urlparse(link).query).get('email') == [account['email']]]
+        assert links, 'Local verification email was not logged'
+        verified = context.request.get(links[-1], max_redirects=0)
+        assert verified.status == 303 and 'error' not in parse_qs(urlparse(verified.headers['location']).query), 'Local email verification failed'
+        print('PASS: unverified login rejected and local email verification completed', flush=True)
     login = context.request.post(BASE + '/pidp/auth/session/login', form={
         'username': account['email'], 'password': account['password'],
     }, headers={'Origin': BASE})

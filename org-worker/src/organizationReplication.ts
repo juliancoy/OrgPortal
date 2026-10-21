@@ -5,7 +5,7 @@ export interface ReplicaEnv {
   ORGANIZATION_REPLICA_INTERVAL_SECONDS?: string;
 }
 const columns = {
-  organizations: ['id','name','slug','description','source_url','image_url','tags','city','created_at','updated_at','media_json'],
+  organizations: ['id','name','slug','description','source_url','image_url','tags','city','created_at','updated_at','media_json','links_json'],
   organization_support_records: ['id','from_organization_id','to_organization_id','from_label','to_label','support_kind','amount','currency','amount_label','quantity','unit','description','occurred_at','source_url','evidence','notes','provenance_json','status','void_reason','created_at'],
   financing_recipients: ['id','name','organization_id','metadata_json','updated_at'],
   financing_agency_recipients: ['id','agency_id','recipient_id','research_json','audit_json','reviewed_at','updated_at'],
@@ -76,6 +76,8 @@ export async function replicateOrganizations(env: ReplicaEnv, fetcher: typeof fe
     if (body.length>8*1024*1024) throw new Error('Snapshot exceeds 8 MiB; retain last successful data');
     const snapshot=JSON.parse(body);
     if (snapshot.version!==3) throw new Error('Unsupported snapshot version');
+    // Existing version-3 primaries may not have released the optional field yet.
+    if (Array.isArray(snapshot.organizations)) snapshot.organizations = snapshot.organizations.map((row: Record<string,unknown>) => ({links_json:'[]',...row}));
     validateRows(snapshot.organizations,'organizations');validateRows(snapshot.support,'organization_support_records');
     validateRows(snapshot.financingRecipients,'financing_recipients'); validateRows(snapshot.financingAgencies,'financing_agency_recipients'); validateRows(snapshot.financingEvents,'financing_events');
     const orgs=JSON.stringify(snapshot.organizations.map((row:Record<string,unknown>)=>({id:row.id,slug:row.slug})));

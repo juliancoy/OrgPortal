@@ -1,3 +1,4 @@
+import type { OrganizationLink } from '../../../../../shared/organizationLinks'
 import { BioMarkdown } from '../../components/profile/BioMarkdown'
 import { getGroupSite } from '../../../config/timebankCommunity'
 import { getActivePortalProfileConfig } from '../../../config/portalFeatures'
@@ -6,7 +7,7 @@ import { PhotoTags } from '../../components/PhotoTags'
 import { EventVenues, type Venue } from '../../components/EventVenues'
 import { EventCompanyVotes } from '../../components/EventCompanyVotes'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useLocation } from 'react-router-dom'
 import { CalendarPlus, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, MapPinned, Pencil, RotateCcw, X, ZoomIn, ZoomOut } from 'lucide-react'
 import { externalEventListings } from '../../utils/externalEventListings'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
@@ -57,6 +58,7 @@ type PublicEvent = {
   media?: EventMediaItem[]
   links?: EventLinkItem[]
   organization_name?: string | null
+  organization_links?: OrganizationLink[]
   organization_slug?: string | null
   organization_image_url?: string | null
   host_org_name?: string | null
@@ -267,6 +269,7 @@ function uuid() {
 export function PublicEventPage() {
   const { token, user, isLoading: authLoading } = useAuth()
   const { slug } = useParams()
+  const location = useLocation()
   const tenant = getGroupSite()
   const brand = getActivePortalProfileConfig()
   const lifeTech = tenant?.home_org_slug === 'lifetech'
@@ -354,6 +357,10 @@ export function PublicEventPage() {
       })
     return () => { cancelled = true }
   }, [slug])
+
+  useEffect(() => {
+    if (event?.id && location.hash === '#discussion') document.getElementById('discussion')?.scrollIntoView({ block: 'start' });
+  }, [event?.id, location.hash])
 
   useEffect(() => {
     if (!slug) return
@@ -768,7 +775,7 @@ export function PublicEventPage() {
             </section>
           ) : null}
           <EventCompanyVotes key={event.id} eventId={event.id} />
-      <section className="portal-card public-event-chat">
+      <section id="discussion" className="portal-card public-event-chat">
         <div className="public-event-card-heading">
           <p className="public-event-eyebrow">Conversation</p>
           <h2>Comments</h2>
@@ -816,7 +823,7 @@ export function PublicEventPage() {
             ) : (
               <a
                 className="btn-primary"
-                href={pidpAppLoginUrl(`/events/${encodeURIComponent(event.slug)}`)}
+                href={pidpAppLoginUrl(`/events/${encodeURIComponent(event.slug)}#discussion`)}
                 style={{ textDecoration: 'none', width: 'fit-content' }}
               >
                 Login to Comment
@@ -979,7 +986,7 @@ export function PublicEventPage() {
           </section>
         </aside>
       </div>
-      <EventPosterTools sourceUrl={event.source_url} eventLinks={event.links} slug={event.slug} title={event.title} revision={event.updated_at || ''} inline />
+      <EventPosterTools sourceUrl={event.source_url} eventLinks={event.links} organizationSlug={event.organization_slug} organizationLinks={event.organization_links} slug={event.slug} title={event.title} revision={event.updated_at || ''} inline />
       {selectedMedia ? (
         <div className="public-event-gallery-backdrop" role="presentation" onMouseDown={(event) => {
           if (event.target === event.currentTarget) setSelectedMediaIndex(-1)

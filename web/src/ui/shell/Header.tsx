@@ -1031,6 +1031,7 @@ export function Header() {
             <NavLink to="/people">People</NavLink>
             {!isGuest && <NavLink to="/chat">Messages</NavLink>}
           </> : domainTenant && !domainCommunity ? <>
+            {!isGuest && domainTenant.home_org_slug && <NavLink to={`/orgs/${encodeURIComponent(domainTenant.home_org_slug)}/dashboard`} isActive={location.pathname === `/orgs/${encodeURIComponent(domainTenant.home_org_slug)}/dashboard`}>Organization dashboard</NavLink>}
             {domainTenant.features?.includes('events') && <NavLink to="/org-events">Events</NavLink>}
             {hasTenantCalendar(domainTenant) && !['lifetech', 'baltimore-medtech'].includes(domainTenant.home_org_slug || '') && <NavLink to="/calendar" isActive={isCalendarActive}>Calendar</NavLink>}
             {domainTenant.features?.includes('directory') && <NavLink to="/people">People</NavLink>}

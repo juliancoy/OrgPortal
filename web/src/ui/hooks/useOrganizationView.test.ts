@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { readOrganizationView, saveOrganizationView, resolveOrganizationView } from './useOrganizationView'
+import { readOrganizationView, saveOrganizationView, resolveOrganizationPageView, resolveOrganizationView } from './useOrganizationView'
 
 describe('organization views', () => {
   it('defaults organizers to their dashboard and members to their member view', () => {
@@ -38,5 +38,19 @@ describe('saved organization views', () => {
     vi.stubGlobal('window', { dispatchEvent: vi.fn() })
     expect(readOrganizationView('lifetech')).toBeNull()
     expect(() => saveOrganizationView('lifetech', 'public')).not.toThrow()
+  })
+})
+
+describe('organization profile and dashboard routes', () => {
+  it('keeps public profiles public regardless of saved view or permissions', () => {
+    for (const view of [null, 'public', 'members', 'organizers']) {
+      expect(resolveOrganizationPageView(false, view, true, true)).toBe('public')
+    }
+  })
+  it('opens the dashboard with the permitted workspace even after viewing the public profile', () => {
+    expect(resolveOrganizationPageView(true, 'public', true, true)).toBe('organizers')
+    expect(resolveOrganizationPageView(true, null, false, true)).toBe('members')
+    expect(resolveOrganizationPageView(true, 'organizers', false, true)).toBe('members')
+    expect(resolveOrganizationPageView(true, 'organizers', false, false)).toBe('public')
   })
 })

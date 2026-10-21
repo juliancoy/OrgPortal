@@ -1,5 +1,5 @@
 import { compareOrganizationActivity } from './organizationSearchActivity';
-import { scoreSearchCandidate } from './fuzzySearch';
+import { createSearchScorer } from './fuzzySearch';
 
 type SearchRow = Record<string, unknown>;
 export type SearchResults = { orgs: SearchRow[]; events: SearchRow[]; users: SearchRow[] };
@@ -30,9 +30,10 @@ export async function personalizeSearch(db: D1Database, userId: string, query: s
       FROM user_contact_pages c WHERE c.user_id IN (SELECT value FROM json_each(?))`)
       .bind(userId,userId,userId,userId,userId,JSON.stringify(results.users.map(row=>row.user_id))).all<{id:string;score:number}>(),
   ]);
+  const scoreCandidate = createSearchScorer(query);
   function rank(rows: SearchRow[], scores: {id:string;score:number}[], idField: string, fields: string[], tieBreaker?: (a:SearchRow,b:SearchRow)=>number) {
     const boosts = new Map(scores.map(row=>[row.id,row.score]));
-    return rows.map((row,index)=>({row,index,score:scoreSearchCandidate(query,fields.map(field=>row[field])) + (boosts.get(String(row[idField])) || 0)}))
+    return rows.map((row,index)=>({row,index,score:scoreCandidate(fields.map(field=>row[field])) + (boosts.get(String(row[idField])) || 0)}))
       .sort((a,b)=>b.score-a.score || tieBreaker?.(a.row,b.row) || a.index-b.index).map(item=>item.row);
   }
   return {

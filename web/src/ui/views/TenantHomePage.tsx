@@ -1,8 +1,7 @@
 import { GlobalSearchForm } from '../components/GlobalSearchForm'
-import { useOrganizationAccess, resolveOrganizationView, useOrganizationViewPreference } from '../hooks/useOrganizationView'
 import { useEffect, useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
-import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
 import { portalPath } from '../../config/portalBase'
 import { getActivePortalProfileConfig, portalProfilePath } from '../../config/portalFeatures'
@@ -83,9 +82,6 @@ function TenantHomeActions({ tenant }: { tenant: GroupSite }) {
 export function TenantHomePage() {
   const profile = getActivePortalProfileConfig()
   const tenant = getGroupSite()
-  const access = useOrganizationAccess(tenant?.home_org_slug)
-  const [viewParams] = useSearchParams()
-  const requestedView = useOrganizationViewPreference(tenant?.home_org_slug, viewParams.get('view'))
   const [events, setEvents] = useState<TenantEvent[]>([])
   const [eventStatus, setEventStatus] = useState('')
   const specialtyResources = useMemo(() => specialtyResourcesForTenant(tenant), [tenant])
@@ -98,24 +94,30 @@ export function TenantHomePage() {
     if (!tenant?.home_org_slug) return
     const controller = new AbortController()
     setEventStatus('Loading upcoming events...')
-    fetch(`/api/org/api/network/orgs/public/${encodeURIComponent(tenant.home_org_slug)}/events?upcoming_only=true&limit=6`, { signal: controller.signal })
-      .then(async (response) => {
+    async function loadEvents() {
+      const allEvents: TenantEvent[] = []
+      const pageSize = 200
+      for (let offset = 0; ; offset += pageSize) {
+        const response = await fetch(`/api/org/api/network/orgs/public/${encodeURIComponent(tenant!.home_org_slug!)}/events?upcoming_only=true&hosted_only=true&limit=${pageSize}&offset=${offset}`, { signal: controller.signal })
         if (!response.ok) throw new Error('Unable to load events.')
-        const data = await response.json()
-        setEvents(Array.isArray(data) ? data : [])
+        const page: TenantEvent[] = await response.json()
+        if (!Array.isArray(page)) throw new Error('Invalid event response.')
+        allEvents.push(...page)
+        if (page.length < pageSize) break
+      }
+      if (!controller.signal.aborted) {
+        setEvents(allEvents)
         setEventStatus('')
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setEventStatus('Upcoming events are not available right now.')
-      })
+      }
+    }
+    void loadEvents().catch(() => {
+      if (!controller.signal.aborted) setEventStatus('Upcoming events are not available right now.')
+    })
     return () => controller.abort()
   }, [tenant?.home_org_slug])
 
   if (!tenant) return null
   const imageUrl = tenant.home_image_url || profile.brandImagePath
-
-  const organizationView = resolveOrganizationView(requestedView, access.organizer, access.member)
-  if (tenant?.home_org_slug && !access.loading && (organizationView === 'organizers' || organizationView === 'members')) return <Navigate to={`/orgs/${encodeURIComponent(tenant.home_org_slug)}?view=${organizationView}`} replace />
 
   return <div className="portal-shell tenant-home-shell">
     <a className="skip-link" href="#main-content">Skip to main content</a>

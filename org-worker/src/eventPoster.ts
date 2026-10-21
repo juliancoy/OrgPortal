@@ -1,3 +1,4 @@
+import { readOrganizationLinks, type OrganizationLink } from '../../shared/organizationLinks';
 import { publicPosterImageUrl } from './posterGallery';
 import QRCode from 'qrcode';
 
@@ -22,15 +23,29 @@ export function parsePosterElements(value: string | null): PosterElementLayout {
     return result;
   } catch { return {}; }
 }
-export function posterLinkTarget(publicUrl: string, requested: string | null, associated: (string | null | undefined)[]) {
+export function posterLinkTarget(publicUrl: string, requested: string | null, associated: (string | null | undefined)[], organizationSlug?: string | null, organizationLinks: OrganizationLink[] = []) {
   if (!requested || requested === 'portal') return publicUrl;
+  if (requested === 'whatsapp' || requested.startsWith('org-link:')) {
+    const links=readOrganizationLinks(organizationLinks);
+    const link=requested === 'whatsapp' ? links.find(link=>link.type==='whatsapp') : links.find(link=>link.id===requested.slice(9));
+    return link?.url || publicUrl;
+  }
+  if (requested === 'event-chat') return `${publicUrl}#discussion`;
+  if (requested === 'group-chat') {
+    if (!organizationSlug) return publicUrl;
+    const url = new URL(publicUrl);
+    url.pathname = url.pathname.replace(/\/events\/[^/]+\/?$/, '') + '/chat';
+    url.hash = '';
+    url.search = new URLSearchParams({ start: 'org', org: organizationSlug }).toString();
+    return url.href;
+  }
   if (!associated.includes(requested)) return publicUrl;
   try {
     const url = new URL(requested);
     return ['https:', 'http:'].includes(url.protocol) && !url.username && !url.password ? url.href : publicUrl;
   } catch { return publicUrl; }
 }
-export type PosterOptions = { background?: PosterBackground; backgroundImage?: string; backgroundOnly?: boolean; zoom?: number; offsetX?: number; offsetY?: number; opacity?: number; dimming?: number; elements?: PosterElementLayout };
+export type PosterOptions = { background?: PosterBackground; backgroundImage?: string; backgroundOnly?: boolean; zoom?: number; offsetX?: number; offsetY?: number; opacity?: number; dimming?: number; elements?: PosterElementLayout; chatLink?: boolean; whatsappLink?: boolean; organizationLink?: boolean };
 const escape = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]!));
 const clean = (value: unknown) => String(value || '').replace(/\s+/g, ' ').trim();
 
@@ -178,7 +193,7 @@ export async function renderEventPoster(event: PosterEvent, publicUrl: string, f
   parts.push(`<path d="M${margin} ${footerTop}H${social ? 876 : width - margin}" stroke="${palette.rule}" stroke-width="2"/>`);
   element('qr', qrX, qrY, () => {
   parts.push(qr.replace('<svg ', `<svg x="${qrX}" y="${qrY}" width="${qrSize}" height="${qrSize}" `));
-  parts.push(`<text x="${qrX + qrSize / 2}" y="${qrY + qrSize + (small ? 15 : 24)}" text-anchor="middle" fill="${palette.brand}" font-size="${small ? 11 : 16}" font-weight="700">Scan to RSVP</text>`);
+  parts.push(`<text x="${qrX + qrSize / 2}" y="${qrY + qrSize + (small ? 15 : 24)}" text-anchor="middle" fill="${palette.brand}" font-size="${small ? 11 : 16}" font-weight="700">${options.whatsappLink ? 'Scan to join WhatsApp' : options.chatLink ? 'Scan to join chat' : options.organizationLink ? 'Scan to connect' : 'Scan to RSVP'}</text>`);
   });
   element('invitation', margin, footerTop, () => block('Join us', margin, footerTop + (small ? 40 : social ? 33 : 55), social ? 800 : qrX - margin - 16, small ? 23 : social ? 26 : 34, 1, palette.brand, 700));
   element('website', margin, footerTop, () => block(new URL(publicUrl).hostname, margin, footerTop + (small ? 65 : social ? 64 : 89), social ? 800 : qrX - margin - 16, small ? 12 : 19, social ? 1 : 2, palette.muted));

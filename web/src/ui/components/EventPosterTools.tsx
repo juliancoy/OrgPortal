@@ -1,3 +1,4 @@
+import { organizationLinkLabels, type OrganizationLink } from '../../../../shared/organizationLinks'
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { Download, FileImage, Moon, Printer, RefreshCw, Sun, X } from 'lucide-react'
 import './eventPoster.css'
@@ -21,7 +22,7 @@ const backgrounds: Record<Background, string> = {
   lifetech: 'LifeTech plain artwork',
 }
 
-type Props = { slug: string; title: string; revision?: string; inline?: boolean; sourceUrl?: string | null; eventLinks?: { url: string; label?: string }[] }
+type Props = { slug: string; title: string; revision?: string; inline?: boolean; sourceUrl?: string | null; eventLinks?: { url: string; label?: string }[]; organizationSlug?: string | null; organizationLinks?: OrganizationLink[] }
 export function EventPosterTools({ inline = false, ...props }: Props) {
   const [open, setOpen] = useState(false)
   if (inline) return <PosterEditor key={props.slug} {...props} />
@@ -33,7 +34,7 @@ export function EventPosterTools({ inline = false, ...props }: Props) {
   </div>
 }
 
-function PosterEditor({ slug, title, revision = '', sourceUrl, eventLinks = [] }: Props) {
+function PosterEditor({ slug, title, revision = '', sourceUrl, eventLinks = [], organizationSlug, organizationLinks = [] }: Props) {
   const id = useId()
   const tenant = useGroupSite()
   const isLifeTech = tenant?.home_org_slug === 'lifetech'
@@ -50,7 +51,8 @@ function PosterEditor({ slug, title, revision = '', sourceUrl, eventLinks = [] }
   const links = [...new Set([sourceUrl, ...eventLinks.map(item => item.url)])].filter((url): url is string => {
     try { const parsed = new URL(url || ''); return ['http:', 'https:'].includes(parsed.protocol) && !parsed.username && !parsed.password } catch { return false }
   })
-  const selectedLink = links.includes(link) ? link : 'portal'
+  const requestedLink = link === 'whatsapp' ? `org-link:${organizationLinks.find(item=>item.type==='whatsapp')?.id || ''}` : link
+  const selectedLink = organizationLinks.some(item=>`org-link:${item.id}`===requestedLink) || requestedLink === 'event-chat' || (requestedLink === 'group-chat' && organizationSlug) || links.includes(requestedLink) ? requestedLink : 'portal'
   const setLink = setter('link')
   const setFormat = setter('format'), setTheme = setter('theme'), setBackground = setter('background'), setMediaId = setter('mediaId')
   const setElements = setter('elements'), setSelectedElement = setter('selectedElement')
@@ -100,7 +102,7 @@ function PosterEditor({ slug, title, revision = '', sourceUrl, eventLinks = [] }
   const [error, setError] = useState('')
   const [exporting, setExporting] = useState(false)
   // Layout controls never change this key: they are applied locally each frame.
-  const key = JSON.stringify([slug, format, theme, background, selectedMediaId, selectedLink, revision, retry])
+  const key = JSON.stringify([slug, format, theme, background, selectedMediaId, selectedLink, organizationLinks, revision, retry])
   const ready = poster?.key === key ? poster : null
   useEffect(() => {
     if (background === 'gallery' && !selectedMediaId) { setPoster(null); setError(''); return }
@@ -223,9 +225,12 @@ function PosterEditor({ slug, title, revision = '', sourceUrl, eventLinks = [] }
         <span>Poster link</span>
         <select aria-label="Poster link" value={selectedLink} onChange={event => setLink(event.target.value)} disabled={exporting}>
           <option value="portal">This event page (OrgPortal)</option>
+          {organizationLinks.map(item=><option key={item.id} value={`org-link:${item.id}`}>Organization: {item.label || organizationLinkLabels[item.type]}</option>)}
+          <option value="event-chat">Event conversation (OrgPortal)</option>
+          {organizationSlug && <option value="group-chat">Organization group chat (OrgPortal)</option>}
           {links.map(url => <option key={url} value={url}>{eventLinks.find(item => item.url === url)?.label || 'Associated event'} — {url}</option>)}
         </select>
-        <small>Used by the RSVP QR code and printed website.{!links.length && ' No external event link is attached yet.'}</small>
+        <small>Used by the QR code and printed website. Organization Links are managed in organization settings. Native chat uses your OrgPortal sign-in; organization rooms require membership.{!links.length && ' No external event link is attached yet.'}</small>
       </label>
       <div className="event-poster-actions">
         <button type="button" disabled={!ready || exporting} onClick={() => void downloadPng()} title="Download PNG"><Download size={18} aria-hidden="true"/>{exporting ? 'Exporting...' : 'PNG'}</button>

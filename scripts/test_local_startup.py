@@ -42,6 +42,15 @@ class StartupTests(unittest.TestCase):
         with patch.dict(os.environ,{'PIDP_GOOGLE_CLIENT_ID':'configured-id','PIDP_GOOGLE_CLIENT_SECRET':'configured-secret'},clear=True):
             self.assertEqual(portal_run._local_oauth_credentials(example,'google'),('configured-id','configured-secret'))
 
+    def test_invalid_service_timeout_fails_before_changing_the_stack(self):
+        spec=importlib.util.spec_from_file_location('portal_timeout',PORTAL/'run.py')
+        portal_run=importlib.util.module_from_spec(spec);spec.loader.exec_module(portal_run)
+        for value in ['bad', '0', '3601']:
+            with self.subTest(value=value), patch.dict(os.environ, {'ORGPORTAL_LOCAL_SERVICE_TIMEOUT': value}), patch.object(docker_utils, 'ensure_network') as network:
+                with self.assertRaisesRegex(RuntimeError, 'ORGPORTAL_LOCAL_SERVICE_TIMEOUT'):
+                    portal_run.run('unused-', 'unused')
+                network.assert_not_called()
+
     def test_root_launcher_reuses_existing_local_data_namespace(self):
         args=launcher.parse_args([])
         self.assertEqual((args.prefix,args.network,args.port),('bmoremedtech-','bmoremedtech',8443))
