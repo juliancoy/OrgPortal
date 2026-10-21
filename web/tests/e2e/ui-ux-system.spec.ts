@@ -426,6 +426,12 @@ test.describe('Code Collective UI and UX system coverage', () => {
     await page.route('**/api/org/api/network/orgs/org-1/membership', route => fulfillJson(route, {
       organization_id: 'org-1', role: 'administrator', status: 'active', membership_count: 1,
     }))
+    await page.route('**/api/org/api/email/groups/org-1/**', route => {
+      const path = new URL(route.request().url()).pathname
+      return fulfillJson(route, path.endsWith('/subscribers')
+        ? { items: [], has_more: false, exports_enabled: false }
+        : path.endsWith('/subscription') ? { status: 'unsubscribed' } : [])
+    })
     await page.goto('/orgs/code-collective?view=public')
     await expect(page.getByRole('heading', { name: 'Code Collective', exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Edit page' })).toHaveCount(0)
@@ -539,7 +545,7 @@ test.describe('Code Collective UI and UX system coverage', () => {
       })
     })
 
-    await page.goto('/')
+    await page.goto('/events')
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
     expect(await page.evaluate(() => localStorage.getItem('orgportal.theme'))).toBe('dark')
 
