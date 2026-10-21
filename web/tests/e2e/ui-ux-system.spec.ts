@@ -303,12 +303,12 @@ test.describe('Code Collective UI and UX system coverage', () => {
     await expect(page.locator('.portal-user-trigger img')).toHaveAttribute('src', authUser.avatar_url)
     const navigationToggle = page.getByRole('button', { name: 'Open navigation', exact: true })
     if (await navigationToggle.isVisible()) await navigationToggle.click()
-    await expect(page.getByRole('link', { name: /^ID card$/ })).toBeVisible()
-    await expect(page.getByRole('link', { name: /^Chat$/ })).toBeVisible()
+    await expect(page.getByRole('link', { name: /^People$/ })).toBeVisible()
+    await expect(page.getByRole('link', { name: /^Messages$/ })).toBeVisible()
     await expect(page.getByRole('link', { name: /log in/i })).toHaveCount(0)
 
-    await page.getByRole('link', { name: /^ID card$/ }).click()
-    await expect(page).toHaveURL(/\/id$/)
+    await page.getByRole('link', { name: /^People$/ }).click()
+    await expect(page).toHaveURL(/\/people$/)
   })
 
   test('sign-in delegates identity-provider choice to PIdP', async ({ page }) => {
@@ -423,7 +423,13 @@ test.describe('Code Collective UI and UX system coverage', () => {
       })
     })
 
-    await page.goto('/orgs/code-collective')
+    await page.route('**/api/org/api/network/orgs/org-1/membership', route => fulfillJson(route, {
+      organization_id: 'org-1', role: 'administrator', status: 'active', membership_count: 1,
+    }))
+    await page.goto('/orgs/code-collective?view=public')
+    await expect(page.getByRole('heading', { name: 'Code Collective', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Edit page' })).toHaveCount(0)
+    await page.goto('/orgs/code-collective?view=organizers')
 
     const editPage = page.getByRole('button', { name: 'Edit page' })
     await expect(editPage).toBeVisible()
