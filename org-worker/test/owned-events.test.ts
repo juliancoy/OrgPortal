@@ -20,3 +20,13 @@ test("organization listings apply ownership and upcoming dates before limiting",
     assert.deepEqual(await missing.json(), []);
   } finally { db.close(); }
 });
+
+test('public event introduction follows its organization profile independently of event copy',async()=>{
+ const db=new EventTestDb();try{
+  db.sqlite.exec("UPDATE organizations SET description='Organization-owned introduction' WHERE id='org-one'; INSERT INTO events(id,ingest_key,title,slug,host_org_id,description,starts_at,created_at,updated_at,tags) VALUES('intro','test:intro','Our gathering','intro','org-one','Event-specific details','2099-01-01T12:00:00Z','2026-01-01','2026-01-01','[]')");
+  const get=async()=>{const response=await app.request('https://example.com/api/network/events/public/intro',undefined,{DB:db} as unknown as Env);assert.equal(response.status,200);return response.json() as Promise<{description:string;organization_description:string}>};
+  assert.equal((await get()).organization_description,'Organization-owned introduction');
+  db.sqlite.exec("UPDATE organizations SET description='Updated organization introduction' WHERE id='org-one'");
+  const updated=await get();assert.equal(updated.organization_description,'Updated organization introduction');assert.equal(updated.description,'Event-specific details');
+ }finally{db.close()}
+});

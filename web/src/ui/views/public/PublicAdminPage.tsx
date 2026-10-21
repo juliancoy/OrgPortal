@@ -1,3 +1,4 @@
+import { BioMarkdown } from '../../components/profile/BioMarkdown'
 import { OrganizationLinksEditor } from '../../components/OrganizationLinksEditor'
 import { normalizeOrganizationLinks, organizationLinkLabels, type OrganizationLink } from '../../../../../shared/organizationLinks'
 import { OrganizationFollowButton } from '../../components/OrganizationFollowButton'
@@ -956,7 +957,7 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
                   <span className="portal-org-image-hint">Click image to change</span>
                 ) : null}
               </div>
-              {org.description ? <p>{org.description}</p> : null}
+              {org.description ? <BioMarkdown value={org.description} /> : null}
               {isOrganizerView && <button type="button" className="btn-secondary" onClick={() => openOrganizationEditor('org-description')}>Edit description</button>}
               <div className="portal-org-actions" aria-label={`${org.name} actions`}>
                 <OrganizationFollowButton orgId={org.id} slug={org.slug} />

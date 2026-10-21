@@ -48,7 +48,7 @@ with sync_playwright() as p:
         successful(host.request.post(BASE + '/pidp/auth/session/login', form={'username': credentials['email'], 'password': credentials['password']}, headers={'Origin': BASE}))
         token = successful(host.request.get(BASE + '/pidp/auth/session-token'))['access_token']
         auth = {'Authorization': 'Bearer ' + token}
-        group = successful(host.request.post(BASE + '/api/org/api/network/orgs', headers=auth, data={'name': f'Dummy Demo Host {run_id}', 'city': 'Baltimore', 'kind': 'organization', 'description': 'Synthetic local clickthrough fixture.', 'acknowledgeOwnership': True}))
+        group = successful(host.request.post(BASE + '/api/org/api/network/orgs', headers=auth, data={'name': f'Dummy Demo Host {run_id}', 'city': 'Baltimore', 'kind': 'organization', 'description': 'An organization-owned introduction for the local community.', 'acknowledgeOwnership': True}))
         event = successful(host.request.post(BASE + '/api/org/api/network/events', headers=auth, data={'title': f'Dummy Demo Day {run_id}', 'host_type': 'org', 'host_org_id': group['id'], 'ingest_key': f'local-team-form-{run_id}', 'starts_at': '2099-11-17T23:00:00Z', 'ends_at': '2099-11-18T01:30:00Z', 'location': 'Local test venue', 'description': '## What to expect\n\n- A local demonstration.\n- A team presentation.'}))
         endpoint = BASE + '/api/org/api/network/events/' + event['id'] + '/presentations'
         successful(host.request.put(endpoint + '/form', headers=auth, data={'enabled': True}))
@@ -60,9 +60,18 @@ with sync_playwright() as p:
         page.goto(BASE + '/events/' + event['slug'])
         section = page.get_by_role('region', name='Presentation applications', exact=True)
         form = page.get_by_role('form', name='Team presentation application')
+        expect(page.get_by_role('heading', name='What to expect', exact=True)).to_be_visible(timeout=30000)
+        expect(page.get_by_role('region', name='About '+group['name'],exact=True)).to_contain_text('An organization-owned introduction')
+        page.set_viewport_size({'width':390,'height':1000})
+        facts=page.get_by_role('region',name='Event date, time and place',exact=True)
+        expect(facts).to_be_visible()
+        assert facts.bounding_box()['y'] < page.locator('.public-event-description').bounding_box()['y']
+        page.get_by_role('tab',name='Poster',exact=True).click()
+        expect(page.get_by_role('tabpanel',name='Poster',exact=True)).to_be_visible()
+        page.get_by_role('tab',name='Apply',exact=True).click()
         expect(form).to_be_visible(timeout=30000)
-        expect(page.get_by_role('heading', name='What to expect', exact=True)).to_be_visible()
-        expect(page.locator('.bio-markdown li')).to_have_count(2)
+        expect(form.get_by_role('checkbox')).to_have_count(0)
+        expect(page.locator('.public-event-description .bio-markdown li')).to_have_count(2)
         form.get_by_label('Team name', exact=True).fill(f'Dummy Demo Team {run_id}')
         form.get_by_label('City', exact=True).fill('Baltimore')
         form.get_by_label('About your team', exact=True).fill('A dummy organization for a local browser test.')
@@ -71,18 +80,12 @@ with sync_playwright() as p:
         expect(form).to_have_attribute('data-draft-saved', 'true', timeout=10000)
         expect(form).to_have_css('border-top-color', 'rgb(212, 175, 55)')
         page.reload()
+        page.get_by_role('tab',name='Apply',exact=True).click()
         expect(form.get_by_label('Team name', exact=True)).to_have_value(f'Dummy Demo Team {run_id}', timeout=30000)
         expect(form.get_by_label('What will you present?', exact=True)).to_have_value('A synthetic demo to verify the submission flow.')
         expect(form).to_have_attribute('data-draft-saved', 'true', timeout=10000)
         submit = form.get_by_role('button', name='Submit application', exact=True)
-        # Native form validation must prevent submission without ownership consent.
-        await_response = []
-        page.on('request', lambda request: await_response.append(request.url) if request.method == 'PUT' and '/presentations/' in request.url else None)
-        submit.click()
-        assert not form.evaluate('(form) => form.checkValidity()')
-        assert not await_response
-        form.get_by_role('checkbox').check()
-        expect(form).to_have_attribute('data-draft-saved', 'true', timeout=10000)
+        assert form.evaluate('(form) => form.checkValidity()'), 'No ownership checkbox should block a complete application'
         for width, filename in [(1280, 'team-form-desktop.png'), (390, 'team-form-mobile.png')]:
             page.set_viewport_size({'width': width, 'height': 1000})
             submit.scroll_into_view_if_needed()
@@ -99,6 +102,7 @@ with sync_playwright() as p:
         expect(section.get_by_role('heading', name=f'Dummy Demo Team {run_id}: A local demo')).to_be_visible(timeout=30000)
         expect(form.get_by_label('Presentation title', exact=True)).to_have_value('')
         page.reload()
+        page.get_by_role('tab',name='Apply',exact=True).click()
         expect(section.get_by_role('heading', name=f'Dummy Demo Team {run_id}: A local demo')).to_be_visible(timeout=30000)
         saved = successful(host.request.get(endpoint, headers=auth))['submissions']
         assert len(saved) == 1 and saved[0]['title'] == 'A local demo'
@@ -112,6 +116,7 @@ with sync_playwright() as p:
             successful(host.request.put(endpoint + '/' + team['id'], headers=auth, data={'title': f'Review demo {index}', 'summary': 'Local application review fixture.'}))
         manager = host.new_page()
         manager.goto(BASE + '/events/' + event['slug'])
+        manager.get_by_role('tab',name='Apply',exact=True).click()
         expect(manager.get_by_role('tab', name='Applications', exact=True)).to_have_attribute('aria-selected', 'true', timeout=30000)
         review = manager.get_by_role('region', name='Review applications', exact=True)
         expect(review.locator('.presentation-submission')).to_have_count(25, timeout=30000)
@@ -144,7 +149,7 @@ with sync_playwright() as p:
         section.get_by_role('button', name='Withdraw application', exact=True).click()
         expect(section.get_by_role('button', name='Withdraw application', exact=True)).to_have_count(0, timeout=30000)
         assert len(successful(host.request.get(endpoint, headers=auth))['submissions']) == 25
-        print('PASS: local authenticated session → dummy team creation → ownership validation → styled desktop/mobile form → submit → persisted application → manager tabs, counts, filters, pagination and full/filtered CSV → withdraw; Markdown and global button fallback verified')
+        print('PASS: local authenticated session → dummy team creation → checkbox-free team submission → styled desktop/mobile form → submit → persisted application → manager tabs, counts, filters, pagination and full/filtered CSV → withdraw; Markdown and global button fallback verified')
         print('Screenshots: ' + str(REPORT))
     finally:
         browser.close()

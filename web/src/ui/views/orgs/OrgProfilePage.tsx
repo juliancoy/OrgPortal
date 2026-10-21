@@ -1,3 +1,4 @@
+import { BioMarkdown } from '../../components/profile/BioMarkdown'
 import { OwnershipReleaseControl } from '../../components/OwnershipReleaseControl'
 import { OrganizationRegistrationForm } from '../../components/OrganizationRegistrationForm'
 import { OrganizationTools } from '../../components/OrganizationTools'
@@ -362,7 +363,7 @@ export function OrgProfilePage() {
                   />
                   <div>
                     <strong>{org.name}</strong> <span className="muted">(@{org.slug})</span>
-                    {org.description ? <div className="muted" style={{ overflowWrap: 'anywhere' }}>{org.description}</div> : null}
+                    {org.description ? <BioMarkdown value={org.description} /> : null}
                     <div className="muted" style={{ fontSize: '0.8rem', overflowWrap: 'anywhere' }}>
                       {sourceUrls.length > 0 ? sourceUrls[0] : 'User-created'} • Members: {org.membership_count} • {org.seeded_from_events ? 'Seeded' : 'Custom'}
                     </div>

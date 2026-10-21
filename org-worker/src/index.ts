@@ -269,6 +269,7 @@ type OrganizationPortalRow = {
 
 type EventRow = {
   organization_links_json?: string | null;
+  organization_description?: string | null;
   id: string;
   ingest_key: string;
   title: string;
@@ -1398,6 +1399,7 @@ async function mapEvent(env: Env, request: Request, row: EventRow) {
     host_org_name: row.organization_name || row.host_org_name,
     organization_name: row.organization_name || row.host_org_name,
     organization_slug: row.organization_slug || null,
+    organization_description: row.organization_description || null,
     organization_links: readOrganizationLinks(row.organization_links_json),
     organization_image_url: row.organization_image_url || null,
     tags: parseJsonArray(row.tags),
@@ -1504,7 +1506,7 @@ async function publicEventBySlug(db: D1Database, rawSlug: string) {
   // Preserve their exact identity instead of re-truncating an existing URL.
   const slug = /^[a-z0-9][a-z0-9-]{0,199}$/.test(rawSlug) ? rawSlug : slugify(rawSlug);
   const direct = await db.prepare(
-    `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url, o.links_json AS organization_links_json
+    `SELECT e.*, o.name AS organization_name, o.description AS organization_description, o.slug AS organization_slug, o.image_url AS organization_image_url, o.links_json AS organization_links_json
      FROM events e
      LEFT JOIN organizations o ON o.id = e.host_org_id
      WHERE e.slug = ?
@@ -1516,7 +1518,7 @@ async function publicEventBySlug(db: D1Database, rawSlug: string) {
 
   try {
     return await db.prepare(
-      `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url, o.links_json AS organization_links_json
+      `SELECT e.*, o.name AS organization_name, o.description AS organization_description, o.slug AS organization_slug, o.image_url AS organization_image_url, o.links_json AS organization_links_json
        FROM event_slug_aliases esa
        JOIN events e ON e.id = esa.event_id
        LEFT JOIN organizations o ON o.id = e.host_org_id
@@ -4241,7 +4243,7 @@ app.patch("/api/network/events/:eventId", async (c) => {
   updates.updated_at = nowIso();
   const assignments = Object.keys(updates).map((key) => `${key} = ?`).join(", ");
   await c.env.DB.prepare(`UPDATE events SET ${assignments} WHERE id = ?`).bind(...Object.values(updates), row.id).run();
-  const updated = await c.env.DB.prepare("SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url, o.links_json AS organization_links_json FROM events e LEFT JOIN organizations o ON o.id = e.host_org_id WHERE e.id = ?")
+  const updated = await c.env.DB.prepare("SELECT e.*, o.name AS organization_name, o.description AS organization_description, o.slug AS organization_slug, o.image_url AS organization_image_url, o.links_json AS organization_links_json FROM events e LEFT JOIN organizations o ON o.id = e.host_org_id WHERE e.id = ?")
     .bind(row.id)
     .first<EventRow>();
   return c.json(await mapEvent(c.env, c.req.raw, updated!));
@@ -4263,7 +4265,7 @@ app.patch("/api/network/events/:eventId/media", async (c) => {
   if (c.env.SCAN_IMAGES) {
     await Promise.all(removedEventMediaImageKeys(row.id, before, media).map((key) => c.env.SCAN_IMAGES!.delete(key)));
   }
-  const updated = await c.env.DB.prepare("SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url, o.links_json AS organization_links_json FROM events e LEFT JOIN organizations o ON o.id = e.host_org_id WHERE e.id = ?")
+  const updated = await c.env.DB.prepare("SELECT e.*, o.name AS organization_name, o.description AS organization_description, o.slug AS organization_slug, o.image_url AS organization_image_url, o.links_json AS organization_links_json FROM events e LEFT JOIN organizations o ON o.id = e.host_org_id WHERE e.id = ?")
     .bind(row.id)
     .first<EventRow>();
   return c.json(await mapEvent(c.env, c.req.raw, updated!));
@@ -4302,7 +4304,7 @@ app.post("/api/network/events/:eventId/media", async (c) => {
   await c.env.DB.prepare("UPDATE events SET media_json = ?, updated_at = ? WHERE id = ?")
     .bind(JSON.stringify(media), nowIso(), row.id)
     .run();
-  const updated = await c.env.DB.prepare("SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url, o.links_json AS organization_links_json FROM events e LEFT JOIN organizations o ON o.id = e.host_org_id WHERE e.id = ?")
+  const updated = await c.env.DB.prepare("SELECT e.*, o.name AS organization_name, o.description AS organization_description, o.slug AS organization_slug, o.image_url AS organization_image_url, o.links_json AS organization_links_json FROM events e LEFT JOIN organizations o ON o.id = e.host_org_id WHERE e.id = ?")
     .bind(row.id)
     .first<EventRow>();
   return c.json(await mapEvent(c.env, c.req.raw, updated!), 201);

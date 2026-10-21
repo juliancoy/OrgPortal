@@ -12,7 +12,7 @@ import { EventVenues, type Venue } from '../../components/EventVenues'
 import { EventCompanyVotes } from '../../components/EventCompanyVotes'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams, useLocation } from 'react-router-dom'
-import { CalendarPlus, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, MapPinned, Pencil, RotateCcw, X, ZoomIn, ZoomOut } from 'lucide-react'
+import { CalendarDays, Clock, FileImage, Info, Send, CalendarPlus, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, MapPinned, Pencil, RotateCcw, X, ZoomIn, ZoomOut } from 'lucide-react'
 import { externalEventListings } from '../../utils/externalEventListings'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
 import { downloadIcsEvent, googleCalendarUrl, outlookCalendarUrl } from '../../utils/calendar'
@@ -61,6 +61,7 @@ type PublicEvent = {
   social_image_url?: string | null
   media?: EventMediaItem[]
   links?: EventLinkItem[]
+  organization_description?: string | null
   organization_name?: string | null
   organization_links?: OrganizationLink[]
   organization_slug?: string | null
@@ -275,6 +276,8 @@ export function PublicEventPage() {
   const tenant = getGroupSite()
   const brand = getActivePortalProfileConfig()
   const lifeTech = tenant?.home_org_slug === 'lifetech'
+  const [activeTab, setActiveTab] = useState<'info' | 'poster' | 'apply'>('info')
+  useEffect(() => { setActiveTab(location.hash === '#apply' ? 'apply' : location.hash === '#poster' ? 'poster' : 'info') }, [slug, location.hash])
   const [event, setEvent] = useState<PublicEvent | null>(null)
   const personnelFor = useOrganizationPersonnel(event?.host_org_id)
   const [status, setStatus] = useState<string>('Loading event…')
@@ -731,43 +734,20 @@ export function PublicEventPage() {
             </div>
           </section>
           {canManageEvent && editingEvent && token ? <EventDetailsEditor key={event.id} event={event} token={token} onCancel={() => setEditingEvent(false)} onSaved={updated => { setEvent({ ...event, ...updated, media: (updated as PublicEvent).media?.map(item => ({ ...item, url: item.url.startsWith('/api/network/') ? orgUrl(item.url) : item.url })) || event.media }); setEditingEvent(false) }} /> : null}
-          {mediaItems.length ? (
-            <section className="portal-card public-event-media" aria-labelledby="event-media-title">
-              <div className="public-event-card-heading public-event-media-heading-row">
-                <div>
-                  <p className="public-event-eyebrow">Event Media</p>
-                  <h2 id="event-media-title">Files And Images</h2>
-                </div>
-                {mediaItems.length > 1 ? (
-                  <div className="public-event-media-controls" aria-label="Browse event media">
-                    <button type="button" onClick={() => scrollEventMedia(-1)} aria-label="Previous event media" title="Previous event media">
-                      <ChevronLeft size={18} aria-hidden="true" />
-                    </button>
-                    <button type="button" onClick={() => scrollEventMedia(1)} aria-label="Next event media" title="Next event media">
-                      <ChevronRight size={18} aria-hidden="true" />
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-              <div className="public-event-media-grid" ref={mediaRailRef}>
-                {mediaItems.map((item, index) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className="public-event-media-card"
-                    onClick={() => setSelectedMediaIndex(index)}
-                    aria-label={`Open ${item.alt || item.label} in gallery`}
-                  >
-                    <img
-                      src={item.url}
-                      alt={item.alt || item.label}
-                    />
-                    <strong>{item.label}</strong>
-                  </button>
-                ))}
-              </div>
-            </section>
-          ) : null}
+          <section className="portal-card public-event-mobile-details" aria-label="Event date, time and place">
+            <div><CalendarDays size={20} aria-hidden="true" /><strong>{toEventDate(event.starts_at || (event.event_date ? event.event_date+'T12:00:00' : null))}</strong></div>
+            <div><Clock size={20} aria-hidden="true" /><span>{toEventTimeRange(event.starts_at,event.ends_at)}</span></div>
+            {event.location&&<div><MapPinned size={20} aria-hidden="true" /><a href={mapsUrl!} target="_blank" rel="noreferrer">{event.location}</a></div>}
+          </section>
+          <div className="public-event-tabs" role="tablist" aria-label="Event sections" onKeyDown={keyEvent=>{
+            const tabs=['info','poster','apply'] as const,index=tabs.indexOf(activeTab)
+            if(!['ArrowLeft','ArrowRight','Home','End'].includes(keyEvent.key))return
+            keyEvent.preventDefault();const next=keyEvent.key==='Home'?'info':keyEvent.key==='End'?'apply':tabs[(index+(keyEvent.key==='ArrowLeft'?2:1))%3]
+            setActiveTab(next);document.getElementById(`event-${next}-tab`)?.focus()
+          }}>
+            {([{key:'info',label:'Info',Icon:Info},{key:'poster',label:'Poster',Icon:FileImage},{key:'apply',label:'Apply',Icon:Send}] as const).map(({key,label,Icon})=><button type="button" key={key} id={`event-${key}-tab`} role="tab" aria-selected={activeTab===key} aria-controls={`event-${key}-panel`} tabIndex={activeTab===key?0:-1} onClick={()=>setActiveTab(key)}><Icon size={19} aria-hidden="true" /><span>{label}</span></button>)}
+          </div>
+          <section className="public-event-tab-panel" role="tabpanel" id="event-info-panel" aria-labelledby="event-info-tab" hidden={activeTab!=='info'}>
           {event.description ? (
             <section className="portal-card public-event-description">
               <div className="public-event-card-heading">
@@ -777,7 +757,11 @@ export function PublicEventPage() {
               <BioMarkdown value={event.description} />
             </section>
           ) : null}
-          <EventPresentations key={`presentations-${event.id}`} eventId={event.id} />
+          {event.organization_description&&<section className="portal-card public-event-organization-description" aria-label={`About ${organizerName}`}>
+            <div className="public-event-card-heading"><p className="public-event-eyebrow">The organizer</p><h2>About {organizerName}</h2></div>
+            <BioMarkdown value={event.organization_description} />
+            {event.organization_slug&&<Link to={`/orgs/${encodeURIComponent(event.organization_slug)}`}>View {organizerName}</Link>}
+          </section>}
           <EventCompanyVotes key={event.id} eventId={event.id} />
       <section id="discussion" className="portal-card public-event-chat">
         <div className="public-event-card-heading">
@@ -911,6 +895,50 @@ export function PublicEventPage() {
           </>
         ) : null}
       </section>
+          </section>
+          <section className="public-event-tab-panel" role="tabpanel" id="event-poster-panel" aria-labelledby="event-poster-tab" hidden={activeTab!=='poster'}>
+          {mediaItems.length ? (
+            <section className="portal-card public-event-media" aria-labelledby="event-media-title">
+              <div className="public-event-card-heading public-event-media-heading-row">
+                <div>
+                  <p className="public-event-eyebrow">Event Media</p>
+                  <h2 id="event-media-title">Files And Images</h2>
+                </div>
+                {mediaItems.length > 1 ? (
+                  <div className="public-event-media-controls" aria-label="Browse event media">
+                    <button type="button" onClick={() => scrollEventMedia(-1)} aria-label="Previous event media" title="Previous event media">
+                      <ChevronLeft size={18} aria-hidden="true" />
+                    </button>
+                    <button type="button" onClick={() => scrollEventMedia(1)} aria-label="Next event media" title="Next event media">
+                      <ChevronRight size={18} aria-hidden="true" />
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+              <div className="public-event-media-grid" ref={mediaRailRef}>
+                {mediaItems.map((item, index) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="public-event-media-card"
+                    onClick={() => setSelectedMediaIndex(index)}
+                    aria-label={`Open ${item.alt || item.label} in gallery`}
+                  >
+                    <img
+                      src={item.url}
+                      alt={item.alt || item.label}
+                    />
+                    <strong>{item.label}</strong>
+                  </button>
+                ))}
+              </div>
+            </section>
+          ) : null}
+            {activeTab==='poster'&&<EventPosterTools sourceUrl={event.source_url} eventLinks={event.links} organizationSlug={event.organization_slug} organizationLinks={event.organization_links} slug={event.slug} title={event.title} revision={event.updated_at || ''} inline />}
+          </section>
+          <section className="public-event-tab-panel" role="tabpanel" id="event-apply-panel" aria-labelledby="event-apply-tab" hidden={activeTab!=='apply'}>
+          <EventPresentations key={`presentations-${event.id}`} eventId={event.id} />
+          </section>
         </main>
         <aside className="public-event-side public-event-luma-side" aria-label="Event actions and location">
           <EventVenues location={event.location} organizationSlug={event.organization_slug} eventId={event.id} venues={event.venues||[]} canManage={canManageEvent} onSaved={venues=>{const confirmed=venues.find(v=>v.event_status==='confirmed');setEvent({...event,venues,location:confirmed?[confirmed.name,confirmed.address].filter(Boolean).join(' · '):null})}} />
@@ -990,7 +1018,6 @@ export function PublicEventPage() {
           </section>
         </aside>
       </div>
-      <EventPosterTools sourceUrl={event.source_url} eventLinks={event.links} organizationSlug={event.organization_slug} organizationLinks={event.organization_links} slug={event.slug} title={event.title} revision={event.updated_at || ''} inline />
       {selectedMedia ? (
         <div className="public-event-gallery-backdrop" role="presentation" onMouseDown={(event) => {
           if (event.target === event.currentTarget) setSelectedMediaIndex(-1)
