@@ -1,3 +1,5 @@
+import { organizationInvitationRoutes, runOrganizationInvitations } from './organizationInvitations';
+import { organizationPersonnelRoutes } from './organizationPersonnel'
 import { presentationRoutes } from './eventPresentations';
 import { runOrganizationDirectoryOperation } from './organizationDirectoryOperations';
 import { runOrganizationOperation as runOwnedOrganizationOperation } from './organizationMcp';
@@ -2634,6 +2636,8 @@ function deploymentHealth(c: { env: Env; req: { url: string }; header: (name: st
   };
 }
 
+app.route('/api/network/orgs',organizationPersonnelRoutes(currentUser));
+app.route('/api/network',organizationInvitationRoutes(currentUser));
 app.route('/api/network/events',venueRankingRoutes(currentUser));
 app.route('/api/network/events',venueVoteRoutes(currentUser));
 app.route('/api/network/events',presentationRoutes(currentUser));
@@ -5608,7 +5612,7 @@ export default {
     ctx.waitUntil(dispatchFollowEventNotifications(env.DB));
     ctx.waitUntil(replicateChangeJournal(env));
     ctx.waitUntil(Promise.all([runUbiTick(env.DB, controller.scheduledTime), dispatchTimebankPush(env)]));
-    ctx.waitUntil(runOrganizationStatusEmail(env).then(() => runEmailDelivery(env)));
+    ctx.waitUntil(runOrganizationStatusEmail(env).then(() => runOrganizationInvitations(env)).then(() => runEmailDelivery(env)));
     ctx.waitUntil(dispatchOrganizationStatusPush(env));
     ctx.waitUntil(provisionPendingOrganizationChats(env));
   },

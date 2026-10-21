@@ -1,3 +1,4 @@
+import { stream } from 'hono/streaming';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { authorizeOrganization, organizationRole, type OrganizationActor } from './organizationIam';
@@ -31,6 +32,40 @@ export function presentationRoutes<E extends PresentationEnv>(auth: (env:E, requ
   const rows=await c.env.DB.prepare(`SELECT s.*,o.name AS organization_name FROM event_presentation_submissions s JOIN organizations o ON o.id=s.organization_id WHERE s.event_id=? AND ${active} AND (?=1 OR EXISTS(SELECT 1 FROM organization_memberships m WHERE m.organization_id=s.organization_id AND m.user_id=? AND m.status='active' AND m.role IN ('owner','administrator'))) ORDER BY s.updated_at DESC LIMIT 200`).bind(e.id,canReview?1:0,user.id).all();
   return c.json({canReview,submissions:rows.results});
  });
+ // Manager review is independently authorized; applicant views remain team-scoped.
+ function statusFilter(value:string|undefined) {
+  const status=value||'all';
+  if(!['all','submitted','accepted','declined'].includes(status))throw new HTTPException(400,{message:'Invalid application status filter'});
+  return status;
+ }
+ app.get('/:id/presentations/review',async c=>{
+  const user=await auth(c.env,c.req.raw),e=await event(c.env.DB,c.req.param('id'));await manager(c.env.DB,user,e.host_org_id!);
+  const status=statusFilter(c.req.query('status')),page=Number(c.req.query('page')||1),pageSize=25;
+  if(!Number.isSafeInteger(page)||page<1||page>1000000)throw new HTTPException(400,{message:'Invalid page'});
+  const grouped=await c.env.DB.prepare(`SELECT status,COUNT(*) AS n FROM event_presentation_submissions s WHERE event_id=? AND ${active} GROUP BY status`).bind(e.id).all<{status:string;n:number}>();
+  const counts={all:0,submitted:0,accepted:0,declined:0};
+  for(const row of grouped.results){if(row.status in counts&&row.status!=='all'){counts[row.status as keyof typeof counts]=Number(row.n);counts.all+=Number(row.n)}}
+  const total=counts[status as keyof typeof counts],pages=Math.max(1,Math.ceil(total/pageSize)),currentPage=Math.min(page,pages);
+  const rows=await c.env.DB.prepare(`SELECT s.*,o.name AS organization_name FROM event_presentation_submissions s JOIN organizations o ON o.id=s.organization_id WHERE s.event_id=? AND ${active} AND (?='all' OR s.status=?) ORDER BY s.updated_at DESC,s.organization_id ASC LIMIT ? OFFSET ?`).bind(e.id,status,status,pageSize,(currentPage-1)*pageSize).all();
+  return c.json({submissions:rows.results,counts,total,page:currentPage,pageSize,pages});
+ });
+ app.get('/:id/presentations/export',async c=>{
+  const user=await auth(c.env,c.req.raw),e=await event(c.env.DB,c.req.param('id'));await manager(c.env.DB,user,e.host_org_id!);
+  const status=statusFilter(c.req.query('status'));
+  c.header('Content-Type','text/csv; charset=utf-8');c.header('Content-Disposition','attachment; filename="event-applications.csv"');
+  // Keyset batches avoid truncating exports and keep worker memory bounded.
+  return stream(c,async output=>{
+   const keys=['organization_name','organization_id','title','summary','status','submitted_by','updated_at'];
+   await output.write('\uFEFF'+keys.join(',')+'\r\n');let after='';
+   while(!output.aborted){
+    await manager(c.env.DB,user,e.host_org_id!);
+    const rows=await c.env.DB.prepare(`SELECT s.*,o.name AS organization_name FROM event_presentation_submissions s JOIN organizations o ON o.id=s.organization_id WHERE s.event_id=? AND ${active} AND (?='all' OR s.status=?) AND s.organization_id>? ORDER BY s.organization_id LIMIT 100`).bind(e.id,status,status,after).all<Record<string,unknown>>();
+    for(const row of rows.results)await output.write(keys.map(key=>applicationCsvCell(row[key])).join(',')+'\r\n');
+    if(rows.results.length<100)break;
+    after=String(rows.results[rows.results.length-1].organization_id);
+   }
+  },async(_error,output)=>{output.abort()});
+ });
  app.put('/:id/presentations/:org',async c=>{
   const user=await auth(c.env,c.req.raw),e=await event(c.env.DB,c.req.param('id')),org=c.req.param('org');await manager(c.env.DB,user,org);
   const body=await c.req.json();
@@ -54,4 +89,10 @@ export function presentationRoutes<E extends PresentationEnv>(auth: (env:E, requ
   await c.env.DB.prepare('DELETE FROM event_presentation_submissions WHERE event_id=? AND organization_id=?').bind(e.id,c.req.param('org')).run();return c.json({deleted:true});
  });
  return app;
+}
+
+// Quote every field and neutralize spreadsheet formulas, including leading whitespace.
+export function applicationCsvCell(value:unknown) {
+ const text=String(value??''),safe=/^[\s\uFEFF]*[=+@-]/.test(text)||/^[\t\r\n]/.test(text)?"'"+text:text;
+ return '"'+safe.replace(/"/g,'""')+'"';
 }

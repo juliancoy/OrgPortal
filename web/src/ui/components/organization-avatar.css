@@ -1,0 +1,28 @@
+.organization-avatar {
+  display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center;
+  width: 44px; height: 44px; box-sizing: border-box; overflow: hidden;
+  border: 3px solid var(--personnel-color); border-radius: 50%;
+  outline: 1px solid var(--text-muted); outline-offset: 1px;
+  background: var(--surface-soft); color: var(--text-primary); font-weight: 700;
+}
+.organization-avatar[data-personnel-class='unknown'] { border-style: dashed; }
+.organization-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.organization-personnel-legend { font-size: .875rem; }
+.organization-personnel-legend summary { cursor: pointer; }
+.organization-personnel-legend ul { display: flex; flex-wrap: wrap; gap: .75rem 1rem; list-style: none; padding: .5rem 0; }
+.organization-personnel-legend li { display: inline-flex; align-items: center; gap: .5rem; }
+.organization-personnel-swatch { width: 16px; height: 16px; border: 3px solid var(--personnel-color); outline: 1px solid var(--text-muted); border-radius: 50%; }
+.organization-personnel-controls { display: grid; gap: .85rem; padding-top: 1rem; }
+.organization-personnel-controls label { display: grid; gap: .4rem; }
+.organization-personnel-controls :is(input:not([type='checkbox']),textarea,select) { width: 100%; box-sizing: border-box; }
+.organization-personnel-controls details { display: grid; gap: .75rem; }
+.organization-personnel-buttons { display: flex; flex-wrap: wrap; gap: .5rem; }
+.organization-personnel-motion { border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-top: 1rem; overflow-wrap: anywhere; }
+.organization-personnel-controls .organization-personnel-check { display: flex; align-items: flex-start; gap: .6rem; }
+.organization-personnel-check input { width: 18px; height: 18px; flex: 0 0 auto; }
+.organization-avatar.portal-chat-message-avatar { border: 3px solid var(--personnel-color); }
+.organization-avatar.people-directory-photo, .organization-avatar.public-id-avatar { border: 3px solid var(--personnel-color); }
+
+.organization-avatar.profile-photo-personnel-avatar { width: 100%; height: 100%; }
+
+.organization-avatar.public-event-person-avatar { width: 100%; height: 100%; }

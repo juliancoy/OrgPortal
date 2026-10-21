@@ -221,3 +221,61 @@ and stores only the failure evidence needed for the recipient record. Full
 mail bodies are not retained or logged. Private processed-notice identifiers
 expire in 30 days through bounded cleanup. Imported historical Gmail campaigns
 have no fabricated opens/clicks; analytics show those measurements as unavailable.
+
+## Organization personnel indicators
+
+Avatar classes are scoped to one organization. Attendee status derives from an
+RSVP for an upcoming event or an event within the preceding three calendar
+months. Stakeholder status derives from active membership in a directly
+supporting or supported organization using the existing evidence-backed support
+and financing edges. These derived classes do not create separate histories or
+grant membership or technical permissions.
+
+Volunteer awards store organization/account IDs, awarding account, award time,
+and a three-calendar-month expiry. They stop affecting indicators at expiry;
+the bounded retention job deletes expired awards. The awarding member or an
+organizer can revoke an award. Organization deletion cascades these records.
+
+Personnel conduct motions and ballots are restricted to organizers. Only the
+resulting class is included in the member-visible status lookup; procedural
+notes and individual ballots are not. Motions have a two-year `review_at` clock
+for operator review of continued necessity, correction, and reapplication;
+exclusion does not lapse automatically. This review is manual. Deleting a motion
+cascades its ballots. The platform's existing verified account-erasure process
+must review target, proposer, seconder, chair, electorate and voter identifiers,
+including aggregate-result preservation where continued retention is justified.
+
+These stores are excluded from public organization replicas and the immutable
+change journal. They remain in ordinary database backups until the applicable
+backup window expires. Reapply the verified erasure/correction ledger before
+restoring service; delete related exports. Avatar lookup results are held in browser memory only. Presentation and
+participation form drafts use the local-only draft policy below. Production migration and cron verification
+remain required before advertising deployed cleanup.
+
+
+## Local form drafts
+
+Presentation applications and organization participation forms save response
+fields in browser localStorage, isolated by signed-in account and event or
+organization. No credentials, tokens, one-use preview receipts, or server
+permissions are saved in these drafts. A BioTech Gold border means the current
+fields match a verified local write; it does not mean the form was submitted.
+
+Drafts expire after 30 days and are discarded when next opened. “Clear saved
+draft” removes the current local record; a successful submission or confirmed
+participation update also removes it. Drafts remain local across reloads and
+sign-outs, and another account does not restore them. They are not sent to a
+server, replicated, or included in server backups. Browser/device backups may
+retain local storage under the device owner's policies. Verified account erasure
+on a device must clear its scoped draft keys or the site's browser storage.
+
+Organization invitations hold the normalized recipient email, organization, purpose,
+inviter, delivery state, and accepting account ID for seven days from creation.
+The hourly retention job removes expired invitations in batches; acceptance stops
+at the expiry time even before cleanup. They are excluded from public replication
+and immutable journals. Organization deletion cascades. Verified erasure requests
+must delete invitations by accepting account, inviter, and verified recipient email;
+restore procedures must repeat that deletion and expiry cleanup before serving.
+The existing backup expiry policy applies. Gmail Sent mail is a separate provider
+copy subject to the sender's retention and erasure process. Invitations do not
+subscribe recipients to mailing lists or create identities from email addresses.

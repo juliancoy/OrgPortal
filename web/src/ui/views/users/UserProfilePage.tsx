@@ -1,3 +1,6 @@
+import { OrganizationAvatar } from '../../components/OrganizationAvatar'
+import { useOrganizationPersonnel } from '../../hooks/useOrganizationPersonnel'
+import { useOrganizationScope } from '../../hooks/useOrganizationScope'
 import { useEffect, useRef, useState } from 'react'
 import { Download, X } from 'lucide-react'
 import { useAuth } from '../../../app/AppProviders'
@@ -83,6 +86,7 @@ type UserProfilePageProps = {
 }
 
 export function UserProfilePage({ embedded = false, photoOnly = false, detailsOnly = false, photoUrl, onPhotoSaved, publicPageUrl: publicPageUrlProp, onClose }: UserProfilePageProps = {}) {
+  const personnelFor = useOrganizationPersonnel(useOrganizationScope())
   const { user, setUser, token, logout } = useAuth()
   const [fullName, setFullName] = useState('')
   const [birthDate, setBirthDate] = useState('')
@@ -465,11 +469,7 @@ export function UserProfilePage({ embedded = false, photoOnly = false, detailsOn
         className="profile-public-photo-button"
         onClick={() => profilePhotoInputRef.current?.click()}
       >
-        {avatarUrl ? (
-          <img src={avatarUrl} alt="Profile preview" />
-        ) : (
-          <span>No photo</span>
-        )}
+        <OrganizationAvatar className="profile-photo-personnel-avatar" name={user?.displayName || 'Your profile'} src={avatarUrl} status={user?.id ? personnelFor(user.id) : null} />
       </button>
       <input
         ref={profilePhotoInputRef}

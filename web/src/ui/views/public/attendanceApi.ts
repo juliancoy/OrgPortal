@@ -106,6 +106,7 @@ export async function recordAttendanceWithRetry(eventId: string, token: string |
   }
 
   if (resp.ok) {
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('organization-access-change'))
     return { ok: true, message: method === 'DELETE' ? 'Registration cancelled.' : 'Registration saved.', attendance: await resp.json() as EventAttendance }
   }
 

@@ -8,6 +8,7 @@ python3 web/scripts/test-local-team-form.py
 Uses synthetic accounts, a dummy host organization/event, and a dummy applicant
 team. All requests stay on loopback; remote organization replication must be off.
 """
+import csv
 import json
 import os
 import secrets
@@ -67,6 +68,12 @@ with sync_playwright() as p:
         form.get_by_label('About your team', exact=True).fill('A dummy organization for a local browser test.')
         form.get_by_label('Presentation title', exact=True).fill('A local demo')
         form.get_by_label('What will you present?', exact=True).fill('A synthetic demo to verify the submission flow.')
+        expect(form).to_have_attribute('data-draft-saved', 'true', timeout=10000)
+        expect(form).to_have_css('border-top-color', 'rgb(212, 175, 55)')
+        page.reload()
+        expect(form.get_by_label('Team name', exact=True)).to_have_value(f'Dummy Demo Team {run_id}', timeout=30000)
+        expect(form.get_by_label('What will you present?', exact=True)).to_have_value('A synthetic demo to verify the submission flow.')
+        expect(form).to_have_attribute('data-draft-saved', 'true', timeout=10000)
         submit = form.get_by_role('button', name='Submit application', exact=True)
         # Native form validation must prevent submission without ownership consent.
         await_response = []
@@ -75,6 +82,7 @@ with sync_playwright() as p:
         assert not form.evaluate('(form) => form.checkValidity()')
         assert not await_response
         form.get_by_role('checkbox').check()
+        expect(form).to_have_attribute('data-draft-saved', 'true', timeout=10000)
         for width, filename in [(1280, 'team-form-desktop.png'), (390, 'team-form-mobile.png')]:
             page.set_viewport_size({'width': width, 'height': 1000})
             submit.scroll_into_view_if_needed()
@@ -87,8 +95,9 @@ with sync_playwright() as p:
         baseline = page.evaluate("""() => {const button=document.createElement('button');button.textContent='Baseline test';document.querySelector('main').append(button);const s=getComputedStyle(button);const result={height:button.getBoundingClientRect().height,radius:parseFloat(s.borderRadius)};button.remove();return result}""")
         assert baseline['height'] >= 44 and baseline['radius'] > 8
         submit.click()
-        expect(section.get_by_role('status')).to_have_text('Application submitted to the event organizers.', timeout=30000)
+        expect(section.get_by_role('status').filter(has_text='Application submitted to the event organizers.')).to_have_text('Application submitted to the event organizers.', timeout=30000)
         expect(section.get_by_role('heading', name=f'Dummy Demo Team {run_id}: A local demo')).to_be_visible(timeout=30000)
+        expect(form.get_by_label('Presentation title', exact=True)).to_have_value('')
         page.reload()
         expect(section.get_by_role('heading', name=f'Dummy Demo Team {run_id}: A local demo')).to_be_visible(timeout=30000)
         saved = successful(host.request.get(endpoint, headers=auth))['submissions']
@@ -97,10 +106,45 @@ with sync_playwright() as p:
         applicant_token = successful(applicant.request.get(BASE + '/pidp/auth/session-token'))['access_token']
         membership = successful(applicant.request.get(BASE + '/api/org/api/network/orgs/' + team_id + '/membership', headers={'Authorization': 'Bearer ' + applicant_token}))
         assert membership['role'] == 'owner' and membership['status'] == 'active'
+        # A real host dashboard must review every application across pages.
+        for index in range(25):
+            team = successful(host.request.post(BASE + '/api/org/api/network/orgs', headers=auth, data={'name': f'Dummy Review Team {run_id} {index}', 'city': 'Baltimore', 'kind': 'team', 'acknowledgeOwnership': True}))
+            successful(host.request.put(endpoint + '/' + team['id'], headers=auth, data={'title': f'Review demo {index}', 'summary': 'Local application review fixture.'}))
+        manager = host.new_page()
+        manager.goto(BASE + '/events/' + event['slug'])
+        expect(manager.get_by_role('tab', name='Applications', exact=True)).to_have_attribute('aria-selected', 'true', timeout=30000)
+        review = manager.get_by_role('region', name='Review applications', exact=True)
+        expect(review.locator('.presentation-submission')).to_have_count(25, timeout=30000)
+        expect(review.get_by_role('status').filter(has_text='Page 1 of 2')).to_contain_text('26 matching applications')
+        review.get_by_role('button', name='Next page', exact=True).click()
+        expect(review.locator('.presentation-submission')).to_have_count(1, timeout=30000)
+        review.get_by_role('button', name='Previous page', exact=True).click()
+        expect(review.locator('.presentation-submission')).to_have_count(25, timeout=30000)
+        with manager.expect_download() as download_event:
+            review.get_by_role('button', name='Export CSV', exact=True).click()
+        exported=list(csv.DictReader(Path(download_event.value.path()).read_text(encoding='utf-8-sig').splitlines()))
+        assert len(exported)==26, 'CSV must include all pages'
+        review.locator('.presentation-submission').first.get_by_role('button',name='Accept',exact=True).click()
+        expect(review.get_by_role('status').filter(has_text='marked accepted.')).to_be_visible(timeout=30000)
+        review.get_by_label('Application status',exact=True).select_option('accepted')
+        expect(review.locator('.presentation-submission')).to_have_count(1, timeout=30000)
+        expect(review.get_by_role('status').filter(has_text='Page 1 of 1')).to_contain_text('1 matching applications')
+        with manager.expect_download() as filtered_download:
+            review.get_by_role('button', name='Export CSV', exact=True).click()
+        filtered=list(csv.DictReader(Path(filtered_download.value.path()).read_text(encoding='utf-8-sig').splitlines()))
+        assert len(filtered)==1 and filtered[0]['status']=='accepted'
+        for width,filename in [(1280,'applications-desktop.png'),(390,'applications-mobile.png')]:
+            manager.set_viewport_size({'width':width,'height':1000})
+            assert manager.evaluate('document.documentElement.scrollWidth <= innerWidth'), 'Application review overflow'
+            review.screenshot(path=str(REPORT/filename))
+        review.locator('.presentation-submission').first.get_by_role('button',name='Mark pending',exact=True).click()
+        expect(review.get_by_text('No accepted applications yet.',exact=True)).to_be_visible(timeout=30000)
+        manager.get_by_role('tab',name='Team Form',exact=True).click()
+        expect(manager.get_by_role('form',name='Team presentation application')).to_be_visible()
         section.get_by_role('button', name='Withdraw application', exact=True).click()
         expect(section.get_by_role('button', name='Withdraw application', exact=True)).to_have_count(0, timeout=30000)
-        assert successful(host.request.get(endpoint, headers=auth))['submissions'] == []
-        print('PASS: local authenticated session → dummy team creation → ownership validation → styled desktop/mobile form → submit → persisted application → withdraw; Markdown and global button fallback verified')
+        assert len(successful(host.request.get(endpoint, headers=auth))['submissions']) == 25
+        print('PASS: local authenticated session → dummy team creation → ownership validation → styled desktop/mobile form → submit → persisted application → manager tabs, counts, filters, pagination and full/filtered CSV → withdraw; Markdown and global button fallback verified')
         print('Screenshots: ' + str(REPORT))
     finally:
         browser.close()

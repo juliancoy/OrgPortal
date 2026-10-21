@@ -24,3 +24,13 @@
 .presentation-submission h4 { margin-top: 0; }
 .presentation-submission > div { display: flex; flex-wrap: wrap; gap: .5rem; }
 @media (max-width: 540px) { .presentation-submit { width: 100%; } .presentation-form-footer { justify-items: stretch; } }
+.application-tabs { display: flex; flex-wrap: wrap; gap: .6rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; }
+.application-review { display: grid; gap: 1rem; min-width: 0; }
+.application-review-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+.application-review-heading h3 { margin: 0 0 .5rem; }
+.application-review-heading p { margin: 0; }
+.application-counts { display: flex; flex-wrap: wrap; gap: .6rem; }
+.application-counts > span { display: flex; gap: .75rem; border: 1px solid var(--border); border-radius: 10px; padding: .6rem .9rem; background: var(--surface-soft); }
+.application-review-toolbar, .application-pagination { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
+.application-review-toolbar select { font: inherit; min-height: 44px; max-width: 100%; }
+@media (max-width: 540px) { .application-pagination { justify-content: center; } .application-review-heading > button { width: 100%; } }

@@ -1,3 +1,4 @@
+import { InvitationAcceptPage } from '../views/InvitationAcceptPage'
 import { CommunitiesPage, PlatformHomePage } from '../views/PlatformHomePage'
 import { LocalHomePage } from '../views/LocalHomePage'
 import { PortalProfileBoundary } from '../shell/PortalProfileBoundary'
@@ -314,6 +315,7 @@ export function createAppRouter() {
           // Canonical user routes
           { path: '/users/register', element: <LoginRedirectRoute /> },
           { path: '/users/login', element: <UserLoginPage /> },
+          { path: '/invitations/:id', element: <InvitationAcceptPage /> },
           { path: '/users/mcp-connect', element: <AuthenticatedRoute><McpConnectPage /></AuthenticatedRoute> },
           { path: '/users/dashboard', element: <DashboardPage /> },
           {

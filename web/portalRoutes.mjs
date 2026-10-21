@@ -44,6 +44,7 @@ const paths = [
   "/android/install",
   "/users/register",
   "/users/login",
+  "/invitations/:id",
   "/users/mcp-connect",
   "/users/dashboard",
   "/profile",

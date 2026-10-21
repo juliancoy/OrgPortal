@@ -222,3 +222,57 @@ account-erasure inventory. Apply the established 12-month audit review and
 receipt cleanup rules; no new automatic retention control is claimed. Public
 replicas must receive the resulting unclaimed state and must not reintroduce the
 removed claim after refresh or restoration.
+
+## Organization personnel indicators
+
+Migration 0094 adds `organization_volunteer_awards`,
+`organization_personnel_motions`, and `organization_personnel_votes`. Only apply
+it after schema review. Test local expiry, revocation, organizer-only ballot
+reads, role changes between preview/apply, and two-organization isolation before
+release. No production migration or browser acceptance is claimed by unit tests.
+
+Expired volunteer awards are ignored synchronously and cleaned in batches of
+500 by `runRetention`. Watch cleanup backlog. Review conduct records with
+`review_at <= now` at least monthly; record continued necessity or arrange
+correction/deletion through verified authority. A two-year review is not an
+automatic readmission. Restrict procedural records and ballots to organizers;
+member-visible indicators expose only the resulting class.
+
+For verified account erasure, inventory awards by `user_id` and `awarded_by`;
+conduct motions by target/proposer/seconder/chair and `electorate_json`; votes by
+`user_id`. Review/redact retained shared decision identifiers under the existing
+shared-record policy, or delete motions (ballots cascade). Organization deletion
+cascades all three stores. Include ordinary D1 backups and exports in the
+inventory, and reapply erasure/correction ledgers before restoring service.
+These records must not be added to public replication or immutable journaling.
+
+
+## Local form-draft storage
+
+`orgportal.form-draft.v1:<encoded-account-id>:<resource-scope>` contains only
+response fields and a save timestamp, expires on read after 30 days, and is
+removed by the clear-draft control or successful form confirmation. Account and
+resource changes must never restore another scope's responses. For verified
+account erasure on a device, remove that account's scoped keys or clear site
+storage. No server copy, replica, journal, or server-backup cleanup is required;
+consider browser/device backups separately. Never persist bearer tokens or
+preview/apply receipts. Test reload recovery, blocked/quota storage, explicit
+clearing, successful submission clearing, and the Gold indicator against actual
+localStorage contents. The indicator is local persistence, not server approval.
+
+For verified account erasure, include `organization_invitations`: delete rows by
+`accepted_user_id`, `invited_by`, and verified recipient email. Include outstanding
+invitations when an inviter loses permissions or requests revocation. To revoke,
+set `status='revoked'`; acceptance and queued delivery both require pending status.
+Never record invitation emails in public replicas or journals. After a backup
+restore, reapply erasures and run invitation expiry cleanup before serving traffic.
+Invitation delivery requires `EMAIL_SENDING_ENABLED=true`, a connected Gmail sender
+with live organizer rights in the invited organization, and the existing configured
+public portal URL. Missing senders leave mail queued; ambiguous deliveries are
+marked uncertain and require manual Sent-mail review rather than automatic retry.
+
+Event application CSV exports require live host-organization management access
+and include only unexpired proposals matching the selected status. Exports contain
+team names, proposal text, submitter account IDs and update times. They do not
+create another server-side store. Treat downloaded files as private organization
+records; include retained exports in the organization's deletion and sharing process.

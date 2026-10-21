@@ -1,3 +1,8 @@
+import { OrganizationEmailInvite } from './OrganizationEmailInvite'
+import { useOrganizationPersonnel } from '../hooks/useOrganizationPersonnel'
+import { OrganizationPersonnelActions } from './OrganizationPersonnelActions'
+import { OrganizationAvatar, OrganizationPersonnelLegend } from './OrganizationAvatar'
+import { personnelClasses } from '../../../../shared/organizationPersonnel'
 import { SignInLink } from './SignInLink'
 import './OrganizationMembers.css'
 import { useEffect, useId, useState } from 'react'
@@ -6,7 +11,7 @@ import { toUserFacingErrorMessage } from '../../infrastructure/http/userFacingEr
 import { uniqueAccounts } from './organizationMemberSearch'
 import type { NetworkUser } from '../views/peopleDirectory'
 
-type Member = { user_id: string; user_name?: string | null; role: string; user_email?: string | null; pending_organizer?: number; onboarding_completed_at?: string | null }
+type Member = { photo_url?: string | null; personnel_class?: string | null; status?: string; user_id: string; user_name?: string | null; role: string; user_email?: string | null; pending_organizer?: number; onboarding_completed_at?: string | null }
 
 async function readResponse<T>(response: Response): Promise<T> {
   const data = await response.json()
@@ -18,6 +23,7 @@ export function OrganizationMembers({ organizationId, name, canRead, canManage, 
   organizationId: string; name: string; canRead: boolean; canManage: boolean; membershipCount: number
 }) {
   const { token } = useAuth()
+  const personnelFor = useOrganizationPersonnel(organizationId)
   const searchId = useId()
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(false)
@@ -54,7 +60,7 @@ export function OrganizationMembers({ organizationId, name, canRead, canManage, 
     const timer = window.setTimeout(() => {
       const params = new URLSearchParams({ q: query.trim(), limit: '40' })
       void fetch(`/api/org/api/network/users?${params}`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal })
-        .then(readResponse<NetworkUser[]>).then(rows => { if (!controller.signal.aborted) setPeople(uniqueAccounts(rows)) })
+        .then(readResponse<NetworkUser[]>).then(rows => { if (!controller.signal.aborted) setPeople(uniqueAccounts(query.includes('@') ? rows.filter(person => person.email?.trim().toLowerCase() === query.trim().toLowerCase()) : rows)) })
         .catch(err => { if (!controller.signal.aborted) setSearchError(toUserFacingErrorMessage(err, 'Could not search people.')) })
         .finally(() => { if (!controller.signal.aborted) setSearching(false) })
     }, 250)
@@ -84,28 +90,33 @@ export function OrganizationMembers({ organizationId, name, canRead, canManage, 
   if(!canManage && !error && ((!canRead && membershipCount === 0) || (canRead && !loading && members.length === 0)))return null
   return <section className="portal-card organization-members" aria-label="Community members">
     <h2>Community members <span className="muted">({canRead && !loading && !error ? members.length : membershipCount})</span></h2>
+    <OrganizationPersonnelLegend />
     {!canRead ? <p className="muted">{token ? `Join ${name} to see community members.` : <><SignInLink /> to see community members.</>}</p> : <>
       {loading && <p role="status">Loading members…</p>}
       {error && <p role="alert">{error} <button type="button" onClick={() => setRevision(value => value + 1)}>Retry</button></p>}
       {!loading && !error && (members.length ? <ul className="organization-members-list">
         {members.map(member => <li key={member.user_id}>
-          <div>{member.user_name || 'Community member'}<small className="muted" style={{ display: 'block', overflowWrap: 'anywhere' }}>{member.user_email || member.user_id}</small></div>
-          <span className="pill">{member.pending_organizer ? (member.onboarding_completed_at ? 'Organizer ready for activation' : 'Organizer pending onboarding') : member.role === 'administrator' ? 'Organizer' : member.role === 'owner' ? 'Owner' : 'Member'}</span>
+          <OrganizationAvatar name={member.user_name || 'Community member'} src={member.photo_url || personnelFor.photoFor(member.user_id)} status={personnelFor(member.user_id)} />
+          <div className="organization-member-identity">{member.user_name || 'Community member'}<small className="muted" style={{ display: 'block', overflowWrap: 'anywhere' }}>{member.user_email || member.user_id}</small></div>
+          <span className="pill">{personnelFor(member.user_id) === 'persona_non_grata' ? personnelClasses.persona_non_grata.label : member.pending_organizer ? (member.onboarding_completed_at ? 'Organizer ready for activation' : 'Organizer pending onboarding') : member.role === 'administrator' ? 'Organizer' : member.role === 'owner' ? 'Owner' : 'Member'}</span>
           {canManage && member.role === 'member' && (!member.pending_organizer || member.onboarding_completed_at) && <button type="button" disabled={!!adding || !!preview} onClick={() => void assignMember({ user_id: member.user_id, user_name: member.user_name || 'Community member' } as NetworkUser, 'administrator')}>{member.pending_organizer ? 'Activate organizer' : 'Assign organizer'}</button>}
         </li>)}
       </ul> : <p className="muted">No community members yet.</p>)}
     </>}
+    {canRead && <OrganizationPersonnelActions organizationId={organizationId} canManage={canManage} />}
     {canManage && <div className="organization-member-search">
-      <label htmlFor={searchId}>Search people to add</label>
-      <input id={searchId} type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search by name" />
+      <label htmlFor={searchId}>Add people by email or portal member name</label>
+      <input id={searchId} type="search" value={query} onChange={event => { setQuery(event.target.value); setPreview(null) }} placeholder="Email address or existing member’s name" />
       {searching && <p role="status">Searching people…</p>}
       {searchError && <p role="alert">{searchError}</p>}
       {query.trim() && !searching && !searchError && !people.length && <p className="muted">No people match “{query.trim()}”.</p>}
+      {!searching && !searchError && !people.length && <OrganizationEmailInvite key={query} organizationId={organizationId} email={query} purpose="member" />}
       {!!people.length && <ul className="organization-members-list" aria-label="People search results">
         {people.map(person => {
           const alreadyMember = members.some(member => member.user_id === person.user_id)
           return <li key={person.user_id}>
-            <div><strong>{person.user_name}</strong><small className="muted" style={{ display: 'block', overflowWrap: 'anywhere' }}>{person.email ? `${person.email} · ` : ''}Account: {person.user_id}</small>{person.headline && <p className="muted">{person.headline}</p>}</div>
+            <OrganizationAvatar name={person.user_name} src={person.photo_url} status={personnelFor(person.user_id)} />
+            <div className="organization-member-identity"><strong>{person.user_name}</strong><small className="muted" style={{ display: 'block', overflowWrap: 'anywhere' }}>{person.email ? `${person.email} · ` : ''}Account: {person.user_id}</small>{person.headline && <p className="muted">{person.headline}</p>}</div>
             {alreadyMember ? <span className="pill">Already a member</span> : <button type="button" className="btn-secondary" disabled={!!adding || !!preview || loading || !!error} onClick={() => void assignMember(person, 'member')} aria-label={`Add ${person.user_name}`}>
               {adding === person.user_id ? 'Adding…' : 'Add'}
             </button>}

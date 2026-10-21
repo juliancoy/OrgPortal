@@ -72,3 +72,24 @@ test('deadline and invalid proposals',async()=>{
  assert.equal((await f.request('/team','PUT','applicant',{title:'Demo',summary:'Details'})).status,409);
  }finally{f.db.sqlite.close();}
 });
+test('manager review paginates beyond 200 with counts, filters, stable ties and complete CSV',async()=>{
+ const f=fixture();try{
+  const org=f.db.sqlite.prepare('INSERT INTO organizations(id,name,slug) VALUES(?,?,?)');
+  const submission=f.db.sqlite.prepare("INSERT INTO event_presentation_submissions(event_id,organization_id,submitted_by,title,summary,status,updated_at,expires_at) VALUES('event',?,'applicant',?,?,?,'2026-01-01T00:00:00Z','2100-01-01T00:00:00Z')");
+  for(let i=0;i<207;i++){const id='fixture-'+String(i).padStart(3,'0');org.run(id,'Team '+i,id);submission.run(id,i===0?'=HYPERLINK("bad")':'Demo '+i,'Details, including "quotes"\nand another line',i<3?'accepted':'submitted')}
+  f.db.sqlite.prepare("UPDATE event_presentation_submissions SET expires_at='2000-01-01' WHERE organization_id='fixture-206'").run();
+  assert.equal((await f.request('/review','GET','applicant')).status,403);
+  assert.equal((await f.request('/export','GET','applicant')).status,403);
+  const review=await(await f.request('/review','GET','host')).json() as any;
+  assert.equal(review.total,206);assert.equal(review.counts.accepted,3);assert.equal(review.counts.submitted,203);assert.equal(review.pages,9);assert.equal(review.submissions.length,25);
+  const ids=new Set<string>();for(let page=1;page<=9;page++){const data=await(await f.request('/review?page='+page,'GET','host')).json() as any;for(const row of data.submissions){assert.ok(!ids.has(row.organization_id));ids.add(row.organization_id)}}assert.equal(ids.size,206);
+  const filtered=await(await f.request('/review?status=accepted','GET','host')).json() as any;assert.equal(filtered.total,3);assert.equal(filtered.counts.all,206);
+  assert.equal((await f.request('/review?status=unknown','GET','host')).status,400);
+  assert.equal((await f.request('/review?page=-1','GET','host')).status,400);
+  const last=await(await f.request('/review?page=999','GET','host')).json() as any;assert.equal(last.page,9);assert.equal(last.submissions.length,6);
+  const csv=await f.request('/export','GET','host');assert.match(csv.headers.get('Content-Type')!,/text\/csv/);const text=await csv.text();
+  assert.ok(text.includes('fixture-205'));assert.ok(!text.includes('fixture-206'));assert.ok(text.includes('"\'=HYPERLINK(""bad"")"'));assert.ok(text.includes('including ""quotes""\nand another line'));
+  const accepted=await(await f.request('/export?status=accepted','GET','host')).text();assert.ok(accepted.includes('fixture-002'));assert.ok(!accepted.includes('fixture-003'));
+  f.db.sqlite.exec("UPDATE organization_memberships SET status='inactive' WHERE user_id='host'");assert.equal((await f.request('/review','GET','host')).status,403);assert.equal((await f.request('/export','GET','host')).status,403);
+ }finally{f.db.sqlite.close()}
+});

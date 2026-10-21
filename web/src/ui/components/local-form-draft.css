@@ -1,0 +1,5 @@
+.local-form-draft { border: 2px solid var(--border); border-radius: 12px; padding: 1rem; transition: border-color .15s ease; }
+.local-form-draft[data-draft-saved='true'] { border-color: #D4AF37; }
+.local-form-draft[data-draft-saved='true'] :is(textarea,input:not([type='checkbox']),select) { border-color: #D4AF37; }
+.local-draft-status { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; font-size: .85rem; }
+.local-draft-status p { margin: 0; }
