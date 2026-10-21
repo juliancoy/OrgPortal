@@ -349,7 +349,7 @@ test('tenant event auth actions return to the same root-mounted event', async ({
   await expect(page.getByRole('heading', { name: 'MedTech in the Hut' })).toBeVisible()
   await page.getByRole('link', { name: 'Login to Comment' }).click()
 
-  await expect(page).toHaveURL(/\/events\/medtech-in-the-hut$/)
+  await expect(page).toHaveURL(/\/events\/medtech-in-the-hut#discussion$/)
   await expect(page.getByRole('heading', { name: 'MedTech in the Hut' })).toBeVisible()
   await expect(page.locator('body')).not.toContainText(/404|not found/i)
 })

@@ -683,7 +683,8 @@ test.describe('Code Collective UI and UX system coverage', () => {
     await page.getByRole('button', { name: 'Send' }).click()
     await expect(page.getByText('This send should fail')).toBeVisible()
     await expect(page.getByText('Message service unavailable')).toBeVisible()
-    await expect(page.getByText('Failed. Retry by sending again.')).toBeVisible()
+    await expect(page.getByText('Not sent.', { exact: false })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Retry', exact: true })).toBeEnabled()
   })
 
   test('core routes avoid horizontal overflow and keep interactive controls accessible', async ({ page }) => {

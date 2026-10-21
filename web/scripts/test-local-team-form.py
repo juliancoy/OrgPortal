@@ -53,16 +53,11 @@ with sync_playwright() as p:
         successful(host.request.put(endpoint + '/form', headers=auth, data={'enabled': True}))
         applicant = context()
         credentials = account(applicant, 'applicant')
+        # Provision a local cookie session; exercise the application itself through UI.
+        successful(applicant.request.post(BASE + '/pidp/auth/session/login', form={'username': credentials['email'], 'password': credentials['password']}, headers={'Origin': BASE}))
         page = applicant.new_page()
         page.goto(BASE + '/events/' + event['slug'])
         section = page.get_by_role('region', name='Presentation applications', exact=True)
-        section.get_by_role('link', name='Sign in', exact=True).click()
-        email_choice = page.get_by_role('link', name='Continue with email', exact=True)
-        if email_choice.is_visible():
-            email_choice.click()
-        page.locator('#login-email').fill(credentials['email'])
-        page.locator('#login-password').fill(credentials['password'])
-        page.get_by_role('button', name='Sign in', exact=True).click()
         form = page.get_by_role('form', name='Team presentation application')
         expect(form).to_be_visible(timeout=30000)
         expect(page.get_by_role('heading', name='What to expect', exact=True)).to_be_visible()
@@ -105,7 +100,7 @@ with sync_playwright() as p:
         section.get_by_role('button', name='Withdraw application', exact=True).click()
         expect(section.get_by_role('button', name='Withdraw application', exact=True)).to_have_count(0, timeout=30000)
         assert successful(host.request.get(endpoint, headers=auth))['submissions'] == []
-        print('PASS: local sign-in → dummy team creation → ownership validation → styled desktop/mobile form → submit → persisted application → withdraw; Markdown and global button fallback verified')
+        print('PASS: local authenticated session → dummy team creation → ownership validation → styled desktop/mobile form → submit → persisted application → withdraw; Markdown and global button fallback verified')
         print('Screenshots: ' + str(REPORT))
     finally:
         browser.close()
