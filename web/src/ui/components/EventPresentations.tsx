@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import './event-presentations.css'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
 
@@ -36,26 +37,26 @@ export function EventPresentations({eventId}:{eventId:string}) {
   if(busy)return;setBusy(true);setMessage('')
   try{await work();setVersion(v=>v+1)}catch(error){setMessage(error instanceof Error?error.message:'Unable to save')}finally{setBusy(false)}
  }
- if(!ready) return <section aria-label="Presentation applications"><p role="status">{message||'Loading presentation applications…'}</p>{message&&<button onClick={()=>setVersion(v=>v+1)}>Retry</button>}</section>
+ if(!ready) return <section aria-label="Presentation applications"><p role="status">{message||'Loading presentation applications…'}</p>{message&&<button type="button" className="btn-secondary" onClick={()=>setVersion(v=>v+1)}>Retry</button>}</section>
  if(!enabled&&!canReview)return null
- return <section className="portal-card" aria-label="Presentation applications">
-  <h2>Present at this event</h2>
-  {canReview&&<button disabled={busy} onClick={()=>void action(async()=>{await request(`${base}/form`,'PUT',{enabled:!enabled})})}>{enabled?'Close applications':'Open applications'}</button>}
+ return <section className="portal-card presentation-applications" aria-label="Presentation applications">
+  <div className="presentation-heading"><p className="public-event-eyebrow">Share your work</p><h2>Present at this event</h2><p className="muted">Bring your team’s ideas, research, or latest demo to the LifeTech community.</p></div>
+  {canReview&&<button type="button" className="btn-secondary" disabled={busy} onClick={()=>void action(async()=>{await request(`${base}/form`,'PUT',{enabled:!enabled})})}>{enabled?'Close applications':'Open applications'}</button>}
   {message&&<p role="status">{message}</p>}
   {enabled&&!closed&&!token&&<p><Link to={`/users/login?next=${encodeURIComponent(location.pathname)}`}>Sign in</Link> to create a team and apply to present.</p>}
   {closed&&<p>Applications have closed for this event.</p>}
-  {enabled&&!closed&&token&&<form onSubmit={e=>{e.preventDefault();void action(async()=>{
+  {enabled&&!closed&&token&&<form className="presentation-form" aria-label="Team presentation application" aria-busy={busy} onSubmit={e=>{e.preventDefault();void action(async()=>{
    let organizationId=org
    if(!organizationId){if(!ownsTeam)throw new Error('Confirm that you intend to manage the new team.');const team=await request('/api/org/api/network/orgs','POST',{name,city,description,kind:'team',acknowledgeOwnership:true});organizationId=team.id;setOrg(team.id);setOrgs(previous=>[...previous,team])}
    await request(`${base}/${encodeURIComponent(organizationId)}`,'PUT',{title,summary});setMessage('Application submitted to the event organizers.')
   })}}>
-   <p>Apply on behalf of a team or organization you manage. Your proposal is visible to its managers and the event organizers. Submitting does not guarantee a presentation slot.</p>
+   <p className="presentation-form-intro">Apply on behalf of a team or organization you manage. Your proposal is visible to its managers and the event organizers. Submitting does not guarantee a presentation slot.</p>
    <label>Team or organization<select value={org} onChange={e=>{setOrg(e.target.value);const saved=rows.find(r=>r.organization_id===e.target.value);setTitle(saved?.title||'');setSummary(saved?.summary||'')}}><option value="">Create a team</option>{orgs.map(o=><option key={o.id} value={o.id}>{o.name}</option>)}</select></label>
-   {!org&&<><label><input type="checkbox" required checked={ownsTeam} onChange={e=>setOwnsTeam(e.target.checked)}/>I intend to manage this team and understand my account will receive owner access.</label><label>Team name<input required maxLength={255} value={name} onChange={e=>setName(e.target.value)}/></label><label>City<input required maxLength={80} value={city} onChange={e=>setCity(e.target.value)}/></label><label>About your team<textarea maxLength={5000} value={description} onChange={e=>setDescription(e.target.value)}/></label></>}
+   {!org&&<><label className="presentation-ownership"><input type="checkbox" required checked={ownsTeam} onChange={e=>setOwnsTeam(e.target.checked)}/>I intend to manage this team and understand my account will receive owner access.</label><label>Team name<input required maxLength={255} value={name} onChange={e=>setName(e.target.value)}/></label><label>City<input required maxLength={80} value={city} onChange={e=>setCity(e.target.value)}/></label><label>About your team<textarea rows={3} maxLength={5000} value={description} onChange={e=>setDescription(e.target.value)}/></label></>}
    <label>Presentation title<input required maxLength={200} value={title} onChange={e=>setTitle(e.target.value)}/></label>
-   <label>What will you present?<textarea required maxLength={5000} value={summary} onChange={e=>setSummary(e.target.value)}/></label>
-   <button disabled={busy} type="submit">{busy?'Saving…':'Submit application'}</button>
+   <label>What will you present?<textarea rows={5} required maxLength={5000} value={summary} onChange={e=>setSummary(e.target.value)}/></label>
+   <div className="presentation-form-footer"><p className="muted">Only your team’s managers and the event organizers can see this proposal.</p><button className="btn-primary presentation-submit" disabled={busy} type="submit">{busy?'Submitting…':'Submit application'}</button></div>
   </form>}
-  {rows.length>0&&<><h3>{canReview?'Review applications':'Your applications'}</h3>{rows.map(r=><article key={r.organization_id}><h4>{r.organization_name}: {r.title}</h4><p style={{whiteSpace:'pre-wrap'}}>{r.summary}</p><p>Status: {r.status}</p>{canReview?<div>{['accepted','declined','submitted'].map(status=><button key={status} disabled={busy||r.status===status} onClick={()=>void action(async()=>{await request(`${base}/${encodeURIComponent(r.organization_id)}`,'PATCH',{status})})}>{status==='accepted'?'Accept':status==='declined'?'Decline':'Mark pending'}</button>)}</div>:<button disabled={busy} onClick={()=>void action(async()=>{await request(`${base}/${encodeURIComponent(r.organization_id)}`,'DELETE')})}>Withdraw application</button>}</article>)}</>}
+  {rows.length>0&&<><h3>{canReview?'Review applications':'Your applications'}</h3>{rows.map(r=><article className="presentation-submission" key={r.organization_id}><h4>{r.organization_name}: {r.title}</h4><p style={{whiteSpace:'pre-wrap'}}>{r.summary}</p><p>Status: {r.status}</p>{canReview?<div>{['accepted','declined','submitted'].map(status=><button type="button" className="btn-secondary" key={status} disabled={busy||r.status===status} onClick={()=>void action(async()=>{await request(`${base}/${encodeURIComponent(r.organization_id)}`,'PATCH',{status})})}>{status==='accepted'?'Accept':status==='declined'?'Decline':'Mark pending'}</button>)}</div>:<button type="button" className="btn-secondary" disabled={busy} onClick={()=>void action(async()=>{await request(`${base}/${encodeURIComponent(r.organization_id)}`,'DELETE')})}>Withdraw application</button>}</article>)}</>}
  </section>
 }
