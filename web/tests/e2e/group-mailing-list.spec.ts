@@ -34,7 +34,7 @@ async function fixtures(page:Page,role:'guest'|'member'|'organizer') {
 
 test('organizers see consent details and group campaign tools; export stays disabled',async({page})=>{
   const state=await fixtures(page,'organizer')
-  await page.goto('/orgs/workshop?view=organizers')
+  await page.goto('/orgs/workshop/dashboard?view=organizers')
   const mailing=page.getByRole('region',{name:'Group mailing list'})
   await expect(mailing).toBeVisible();await expect(mailing.getByText('subscriber@example.test')).toBeVisible()
   await expect(mailing.getByRole('link',{name:'Compose campaign and review delivery history'})).toHaveAttribute('href','/email?organization_id=workshop')
@@ -54,7 +54,7 @@ test('members can change their own preference without requesting the mailing lis
 
 test('guests never fetch subscriber records',async({page})=>{
   const state=await fixtures(page,'guest')
-  await page.goto('/orgs/workshop?view=organizers')
+  await page.goto('/orgs/workshop/dashboard?view=organizers')
   await expect(page.getByRole('heading',{name:'Workshop group',exact:true})).toBeVisible()
   await expect(page.getByRole('region',{name:'Group mailing list'})).toHaveCount(0)
   await expect(page.getByRole('checkbox',{name:'Receive announcements from this group'})).toHaveCount(0)

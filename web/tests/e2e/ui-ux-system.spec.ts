@@ -435,7 +435,7 @@ test.describe('Code Collective UI and UX system coverage', () => {
     await page.goto('/orgs/code-collective?view=public')
     await expect(page.getByRole('heading', { name: 'Code Collective', exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Edit page' })).toHaveCount(0)
-    await page.goto('/orgs/code-collective?view=organizers')
+    await page.goto('/orgs/code-collective/dashboard?view=organizers')
 
     const editPage = page.getByRole('button', { name: 'Edit page' })
     await expect(editPage).toBeVisible()
