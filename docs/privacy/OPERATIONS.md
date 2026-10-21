@@ -201,3 +201,24 @@ Include both tables in backup inventories; reapply withdrawals, expiry and
 verified erasure before restoring service and delete task exports. No separate
 notification, email or provider copy is created. Deploy migration and verify cron
 before advertising automatic cleanup in production.
+
+## Organization directory and authority corrections
+
+Directory reads expose existing public organization fields and claimed/unclaimed
+status, without member identities or permission grants. Registration audits retain
+only the public evidence URL and operation receipt; do not copy the full profile
+or private outreach into immutable audit metadata. These contributions use the
+existing shared organization record review and deletion process.
+
+Self-service ownership correction preserves the public organization, deactivates
+the actor's membership, and removes the active claim only when there is no portal
+binding or challenge history. A minimal `organization.ownership.released` audit
+retains the claim ID, start/end timestamps, reason code and receipt. This is an
+access correction, not account erasure or a verification of representation.
+
+Include actor/subject references, ownership-correction audits, operation receipts,
+inactive membership rows, prior journals and backups in the existing manual
+account-erasure inventory. Apply the established 12-month audit review and
+receipt cleanup rules; no new automatic retention control is claimed. Public
+replicas must receive the resulting unclaimed state and must not reintroduce the
+removed claim after refresh or restoration.

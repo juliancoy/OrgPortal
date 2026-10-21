@@ -2,9 +2,9 @@ name: Check portal web integrations
 
 on:
   push:
-    paths: ['web/**', 'shared/**', 'org-worker/**', '.github/workflows/check-web.yml']
+    paths: ['web/**', 'shared/**', 'org-worker/**', 'scripts/mcp-local/**', 'scripts/run-local-mcp-test.py', '.github/workflows/check-web.yml']
   pull_request:
-    paths: ['web/**', 'shared/**', 'org-worker/**', '.github/workflows/check-web.yml']
+    paths: ['web/**', 'shared/**', 'org-worker/**', 'scripts/mcp-local/**', 'scripts/run-local-mcp-test.py', '.github/workflows/check-web.yml']
   workflow_dispatch:
 
 permissions:
@@ -30,11 +30,18 @@ jobs:
         run: npm ci --ignore-scripts
         working-directory: org-worker
       - run: npm ci
+      - name: Check local MCP acceptance harness syntax
+        run: |
+          node --check scripts/test-local-mcp.mjs
+          node --check ../scripts/mcp-local/chatgpt-client.mjs
+          python3 -m py_compile ../scripts/run-local-mcp-test.py
       - run: npm test -- --maxWorkers=2
       - name: Test HTTP routing and release contracts
         run: node --test tests/unit/*.test.mjs
       - run: npm run build
       - run: npx playwright install --with-deps chromium
+      - name: Test directory and ownership workflows
+        run: npm run test:organization-workflows
       # These tests run against local Vite with fixture API responses. No real accounts.
       - name: Test browser integrations, including insurance birthday flows
         run: npm run test:e2e -- --workers=2

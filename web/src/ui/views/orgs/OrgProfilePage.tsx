@@ -1,3 +1,5 @@
+import { OwnershipReleaseControl } from '../../components/OwnershipReleaseControl'
+import { OrganizationRegistrationForm } from '../../components/OrganizationRegistrationForm'
 import { OrganizationTools } from '../../components/OrganizationTools'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -53,12 +55,6 @@ export function OrgProfilePage() {
   const [orgNameById, setOrgNameById] = useState<Record<string, string>>({})
   const [orgImageById, setOrgImageById] = useState<Record<string, string>>({})
 
-  const [newOrgKind, setNewOrgKind] = useState('organization')
-  const [newOrgName, setNewOrgName] = useState('')
-  const [newOrgUrl, setNewOrgUrl] = useState('')
-  const [newOrgImage, setNewOrgImage] = useState('')
-  const [newOrgTags, setNewOrgTags] = useState('')
-  const [newOrgDescription, setNewOrgDescription] = useState('')
 
   useEffect(() => {
     document.title = 'Org Portal • Organization network'
@@ -144,48 +140,6 @@ export function OrgProfilePage() {
       await loadOrgs()
     } catch (err) {
       setStatus(err instanceof Error ? err.message : 'Challenge failed')
-    }
-  }
-
-  async function createOrg() {
-    if (!token) return
-    if (!newOrgName.trim()) {
-      setStatus('Organization name is required.')
-      return
-    }
-    setStatus(null)
-    try {
-      const resp = await fetch(orgUrl('/api/network/orgs'), {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          kind: newOrgKind,
-          name: newOrgName.trim(),
-          source_url: newOrgUrl.trim() || null,
-          image_url: newOrgImage.trim() || null,
-          description: newOrgDescription.trim() || null,
-          tags: newOrgTags
-            .split(',')
-            .map((item) => item.trim())
-            .filter(Boolean),
-        }),
-      })
-      if (!resp.ok) {
-        const text = await resp.text().catch(() => '')
-        throw new Error(text || `Create failed (${resp.status})`)
-      }
-      setNewOrgName('')
-      setNewOrgUrl('')
-      setNewOrgImage('')
-      setNewOrgDescription('')
-      setNewOrgTags('')
-      setStatus('Organization created. You are now its owner.')
-      await loadOrgs()
-    } catch (err) {
-      setStatus(err instanceof Error ? err.message : 'Create failed')
     }
   }
 
@@ -355,7 +309,7 @@ export function OrgProfilePage() {
     <section className="panel" style={{ display: 'grid', gap: '1rem' }}>
       <h1 style={{ marginTop: 0 }}>Organization Profile</h1>
       <p className="muted" style={{ marginTop: 0 }}>
-        Create organizations or immediately claim an unclaimed listing. Existing ownership remains authoritative until challenged.
+        Add directory information separately from account access. A claimed listing records portal authority; it does not establish verified legal representation.
       </p>
 
       <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
@@ -380,18 +334,7 @@ export function OrgProfilePage() {
         </div>
       </div>
 
-      <div className="portal-card" style={{ display: 'grid', gap: '0.6rem' }}>
-        <h2 style={{ margin: 0, fontSize: '1rem' }}>Create Organization or Team</h2>
-        <label>Type<select value={newOrgKind} onChange={e => setNewOrgKind(e.target.value)}><option value="organization">Organization</option><option value="team">Team</option></select></label>
-        <input value={newOrgName} onChange={(e) => setNewOrgName(e.target.value)} aria-label="Organization name" placeholder="Organization name" />
-        <input value={newOrgUrl} onChange={(e) => setNewOrgUrl(e.target.value)} aria-label="Source URL (optional)" placeholder="Source URL (optional)" />
-        <input value={newOrgImage} onChange={(e) => setNewOrgImage(e.target.value)} aria-label="Image URL (optional)" placeholder="Image URL (optional)" />
-        <input value={newOrgTags} onChange={(e) => setNewOrgTags(e.target.value)} aria-label="Tags, comma separated" placeholder="Tags, comma separated" />
-        <textarea value={newOrgDescription} onChange={(e) => setNewOrgDescription(e.target.value)} rows={3} aria-label="Description" placeholder="Description" />
-        <div>
-          <button className="btn-secondary" type="button" onClick={createOrg} disabled={!token}>Create</button>
-        </div>
-      </div>
+      <OrganizationRegistrationForm token={token} onSaved={loadOrgs} />
 
       {status ? <p className="muted" role="status">{status}</p> : null}
 
@@ -443,6 +386,7 @@ export function OrgProfilePage() {
                   ) : null}
                 </div>
               </div>
+              {org.my_role === 'owner' && <OwnershipReleaseControl token={token} organizationId={org.id} onSaved={loadOrgs} />}
               {org.claimed_by_user_id && !canManage ? (
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                   <input
