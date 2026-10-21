@@ -69,6 +69,7 @@ with sync_playwright() as p:
         page.get_by_role('tab',name='Poster',exact=True).click()
         expect(page.get_by_role('tabpanel',name='Poster',exact=True)).to_be_visible()
         page.get_by_role('tab',name='Apply',exact=True).click()
+        assert page.url.endswith('#apply'), 'Apply tab must survive reload and sign-in return'
         expect(form).to_be_visible(timeout=30000)
         expect(form.get_by_role('checkbox')).to_have_count(0)
         expect(page.locator('.public-event-description .bio-markdown li')).to_have_count(2)
@@ -79,6 +80,9 @@ with sync_playwright() as p:
         form.get_by_label('What will you present?', exact=True).fill('A synthetic demo to verify the submission flow.')
         expect(form).to_have_attribute('data-draft-saved', 'true', timeout=10000)
         expect(form).to_have_css('border-top-color', 'rgb(212, 175, 55)')
+        page.get_by_role('tab',name='Info',exact=True).click()
+        page.get_by_role('tab',name='Apply',exact=True).click()
+        expect(form.get_by_label('Team name',exact=True)).to_have_value(f'Dummy Demo Team {run_id}')
         page.reload()
         page.get_by_role('tab',name='Apply',exact=True).click()
         expect(form.get_by_label('Team name', exact=True)).to_have_value(f'Dummy Demo Team {run_id}', timeout=30000)
@@ -149,6 +153,10 @@ with sync_playwright() as p:
         section.get_by_role('button', name='Withdraw application', exact=True).click()
         expect(section.get_by_role('button', name='Withdraw application', exact=True)).to_have_count(0, timeout=30000)
         assert len(successful(host.request.get(endpoint, headers=auth))['submissions']) == 25
+        successful(host.request.put(endpoint+'/form',headers=auth,data={'enabled':False}))
+        page.reload()
+        page.get_by_role('tab',name='Apply',exact=True).click()
+        expect(page.get_by_text('Applications are not open for this event.',exact=True)).to_be_visible(timeout=30000)
         print('PASS: local authenticated session → dummy team creation → checkbox-free team submission → styled desktop/mobile form → submit → persisted application → manager tabs, counts, filters, pagination and full/filtered CSV → withdraw; Markdown and global button fallback verified')
         print('Screenshots: ' + str(REPORT))
     finally:

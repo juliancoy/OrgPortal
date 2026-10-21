@@ -11,7 +11,7 @@ import { PhotoTags } from '../../components/PhotoTags'
 import { EventVenues, type Venue } from '../../components/EventVenues'
 import { EventCompanyVotes } from '../../components/EventCompanyVotes'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useParams, useLocation } from 'react-router-dom'
+import { Link, useParams, useLocation, useNavigate } from 'react-router-dom'
 import { CalendarDays, Clock, FileImage, Info, Send, CalendarPlus, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, MapPinned, Pencil, RotateCcw, X, ZoomIn, ZoomOut } from 'lucide-react'
 import { externalEventListings } from '../../utils/externalEventListings'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
@@ -273,10 +273,15 @@ export function PublicEventPage() {
   const { token, user, isLoading: authLoading } = useAuth()
   const { slug } = useParams()
   const location = useLocation()
+  const navigate = useNavigate()
   const tenant = getGroupSite()
   const brand = getActivePortalProfileConfig()
   const lifeTech = tenant?.home_org_slug === 'lifetech'
   const [activeTab, setActiveTab] = useState<'info' | 'poster' | 'apply'>('info')
+  function selectEventTab(tab: 'info' | 'poster' | 'apply') {
+    setActiveTab(tab)
+    navigate({ pathname: location.pathname, search: location.search, hash: `#${tab}` }, { replace: true, preventScrollReset: true })
+  }
   useEffect(() => { setActiveTab(location.hash === '#apply' ? 'apply' : location.hash === '#poster' ? 'poster' : 'info') }, [slug, location.hash])
   const [event, setEvent] = useState<PublicEvent | null>(null)
   const personnelFor = useOrganizationPersonnel(event?.host_org_id)
@@ -693,6 +698,28 @@ export function PublicEventPage() {
     url: publicEventUrl,
   } : null
 
+  const calendarActions = calendarDownloadEvent ? (
+    <div className="public-event-calendar-actions" aria-label="Add event to calendar">
+      <details className="public-event-calendar-menu">
+        <summary className="public-event-icon-action" title="Add to calendar" aria-label="Add to calendar">
+          <CalendarPlus size={17} aria-hidden="true" />
+        </summary>
+        <div className="public-event-calendar-menu-list">
+          <a href={googleCalendarUrl(calendarDownloadEvent)} target="_blank" rel="noreferrer">
+            Google Calendar
+          </a>
+          <a href={outlookCalendarUrl(calendarDownloadEvent)} target="_blank" rel="noreferrer">
+            Outlook Calendar
+          </a>
+          <button type="button" onClick={() => downloadIcsEvent(calendarDownloadEvent)}>
+            <Download size={15} aria-hidden="true" />
+            <span>Apple / iCal file</span>
+          </button>
+        </div>
+      </details>
+    </div>
+  ) : null
+
   return (
     <article className={`public-event-page${lifeTech ? ' lifetech-event-page' : ''}`} style={lifeTech ? { '--event-brand-accent': tenant.accent_color, '--event-brand-navy': brand.themeColor } as CSSProperties : undefined}>
       {eventLinks.length ? <nav className="public-event-listing-banner" aria-label="External event listings">
@@ -736,16 +763,16 @@ export function PublicEventPage() {
           {canManageEvent && editingEvent && token ? <EventDetailsEditor key={event.id} event={event} token={token} onCancel={() => setEditingEvent(false)} onSaved={updated => { setEvent({ ...event, ...updated, media: (updated as PublicEvent).media?.map(item => ({ ...item, url: item.url.startsWith('/api/network/') ? orgUrl(item.url) : item.url })) || event.media }); setEditingEvent(false) }} /> : null}
           <section className="portal-card public-event-mobile-details" aria-label="Event date, time and place">
             <div><CalendarDays size={20} aria-hidden="true" /><strong>{toEventDate(event.starts_at || (event.event_date ? event.event_date+'T12:00:00' : null))}</strong></div>
-            <div><Clock size={20} aria-hidden="true" /><span>{toEventTimeRange(event.starts_at,event.ends_at)}</span></div>
+            <div><Clock size={20} aria-hidden="true" /><span>{toEventTimeRange(event.starts_at,event.ends_at)}</span>{calendarActions}</div>
             {event.location&&<div><MapPinned size={20} aria-hidden="true" /><a href={mapsUrl!} target="_blank" rel="noreferrer">{event.location}</a></div>}
           </section>
           <div className="public-event-tabs" role="tablist" aria-label="Event sections" onKeyDown={keyEvent=>{
             const tabs=['info','poster','apply'] as const,index=tabs.indexOf(activeTab)
             if(!['ArrowLeft','ArrowRight','Home','End'].includes(keyEvent.key))return
             keyEvent.preventDefault();const next=keyEvent.key==='Home'?'info':keyEvent.key==='End'?'apply':tabs[(index+(keyEvent.key==='ArrowLeft'?2:1))%3]
-            setActiveTab(next);document.getElementById(`event-${next}-tab`)?.focus()
+            selectEventTab(next);document.getElementById(`event-${next}-tab`)?.focus()
           }}>
-            {([{key:'info',label:'Info',Icon:Info},{key:'poster',label:'Poster',Icon:FileImage},{key:'apply',label:'Apply',Icon:Send}] as const).map(({key,label,Icon})=><button type="button" key={key} id={`event-${key}-tab`} role="tab" aria-selected={activeTab===key} aria-controls={`event-${key}-panel`} tabIndex={activeTab===key?0:-1} onClick={()=>setActiveTab(key)}><Icon size={19} aria-hidden="true" /><span>{label}</span></button>)}
+            {([{key:'info',label:'Info',Icon:Info},{key:'poster',label:'Poster',Icon:FileImage},{key:'apply',label:'Apply',Icon:Send}] as const).map(({key,label,Icon})=><button type="button" key={key} id={`event-${key}-tab`} role="tab" aria-selected={activeTab===key} aria-controls={`event-${key}-panel`} tabIndex={activeTab===key?0:-1} onClick={()=>selectEventTab(key)}><Icon size={19} aria-hidden="true" /><span>{label}</span></button>)}
           </div>
           <section className="public-event-tab-panel" role="tabpanel" id="event-info-panel" aria-labelledby="event-info-tab" hidden={activeTab!=='info'}>
           {event.description ? (
@@ -945,7 +972,7 @@ export function PublicEventPage() {
           <EventRegistration key={`${event.id}:${user?.id || 'guest'}:${Boolean(token)}`}
             eventId={event.id} slug={event.slug} token={token} authLoading={authLoading} saveToCalendar={saveToCalendar}
             organizationName={event.host_org_id ? event.organization_name || event.host_org_name : null} />
-          <section className="portal-card public-event-logistics-card" aria-label="Event details">
+          <section className={`portal-card public-event-logistics-card${event.location ? ' has-location' : ''}`} aria-label="Event details">
             <div className="public-event-logistics-list">
               <div className="public-event-logistics-item">
                 <span>Date</span>
@@ -954,27 +981,7 @@ export function PublicEventPage() {
               <div className="public-event-logistics-item">
                 <span>Time</span>
                 <strong>{toEventTimeRange(event.starts_at, event.ends_at)}</strong>
-                {calendarDownloadEvent ? (
-                  <div className="public-event-calendar-actions" aria-label="Add event to calendar">
-                    <details className="public-event-calendar-menu">
-                      <summary className="public-event-icon-action" title="Add to calendar" aria-label="Add to calendar">
-                        <CalendarPlus size={17} aria-hidden="true" />
-                      </summary>
-                      <div className="public-event-calendar-menu-list">
-                        <a href={googleCalendarUrl(calendarDownloadEvent)} target="_blank" rel="noreferrer">
-                          Google Calendar
-                        </a>
-                        <a href={outlookCalendarUrl(calendarDownloadEvent)} target="_blank" rel="noreferrer">
-                          Outlook Calendar
-                        </a>
-                        <button type="button" onClick={() => downloadIcsEvent(calendarDownloadEvent)}>
-                          <Download size={15} aria-hidden="true" />
-                          <span>Apple / iCal file</span>
-                        </button>
-                      </div>
-                    </details>
-                  </div>
-                ) : null}
+                {calendarActions}
               </div>
               {event.location ? (
                 <div className="public-event-logistics-item">

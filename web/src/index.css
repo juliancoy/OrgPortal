@@ -9598,5 +9598,6 @@ a.public-event-comment-avatar:focus-visible { outline: 3px solid var(--primary);
   .public-event-mobile-details { display: grid; gap: .9rem; }
   .public-event-mobile-details > div { display: flex; align-items: flex-start; gap: .75rem; line-height: 1.5; overflow-wrap: anywhere; }
   .public-event-mobile-details svg { flex-shrink: 0; margin-top: .15rem; color: var(--primary); }
-  .public-event-side > .public-event-logistics-card { display: none; }
+  .public-event-side .public-event-logistics-list { display: none; }
+  .public-event-side > .public-event-logistics-card:not(.has-location) { display: none; }
 }

@@ -3,7 +3,7 @@ import { useLocalFormDraft } from '../hooks/useLocalFormDraft'
 import { formDraftKey } from '../hooks/localFormDraft'
 import { useEffect, useId, useState } from 'react'
 import './event-presentations.css'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
 
 type Org = { id:string; name:string; my_role?:string }
@@ -11,6 +11,7 @@ type Submission = { organization_id:string; organization_name:string; title:stri
 const emptyPresentationDraft = { org: '', name: '', city: 'Baltimore', description: '', title: '', summary: '' }
 export function EventPresentations({eventId}:{eventId:string}) {
  const {token,user}=useAuth()
+ const location=useLocation()
  const fieldId=useId()
  const draft=useLocalFormDraft(formDraftKey(user?.id,`presentation:${encodeURIComponent(eventId)}`),emptyPresentationDraft)
  const {org,name,city,description,title,summary}=draft.value
@@ -46,7 +47,7 @@ export function EventPresentations({eventId}:{eventId:string}) {
   try{await work();setVersion(v=>v+1)}catch(error){setMessage(error instanceof Error?error.message:'Unable to save')}finally{setBusy(false)}
  }
  if(!ready) return <section aria-label="Presentation applications"><p role="status">{message||'Loading presentation applications…'}</p>{message&&<button type="button" className="btn-secondary" onClick={()=>setVersion(v=>v+1)}>Retry</button>}</section>
- if(!enabled&&!canReview)return null
+ if(!enabled&&!canReview)return <section className="portal-card" aria-label="Presentation applications"><h2>Applications</h2><p>Applications are not open for this event.</p></section>
  return <section className="portal-card presentation-applications" aria-label="Presentation applications">
   {canReview&&<div className="application-tabs" role="tablist" aria-label="Presentation management" onKeyDown={event=>{
    if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return
@@ -56,7 +57,7 @@ export function EventPresentations({eventId}:{eventId:string}) {
   <div className="presentation-heading"><p className="public-event-eyebrow">Share your work</p><h2>Present at this event</h2><p className="muted">Bring your team’s ideas, research, or latest demo to the community.</p></div>
   {canReview&&<button type="button" className="btn-secondary" disabled={busy} onClick={()=>void action(async()=>{await request(`${base}/form`,'PUT',{enabled:!enabled})})}>{enabled?'Close applications':'Open applications'}</button>}
   {message&&<p role="status">{message}</p>}
-  {enabled&&!closed&&!token&&<p><Link to={`/users/login?next=${encodeURIComponent(location.pathname)}`}>Sign in</Link> to create a team and apply to present.</p>}
+  {enabled&&!closed&&!token&&<p><Link to={`/users/login?next=${encodeURIComponent(location.pathname+location.search+location.hash)}`}>Sign in</Link> to create a team and apply to present.</p>}
   {closed&&<p>Applications have closed for this event.</p>}
   {enabled&&!closed&&token&&<form className="presentation-form local-form-draft" data-draft-saved={draft.saved} aria-label="Team presentation application" aria-busy={busy} onSubmit={e=>{e.preventDefault();void action(async()=>{
    let organizationId=org
