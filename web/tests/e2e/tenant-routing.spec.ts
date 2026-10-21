@@ -63,13 +63,13 @@ test('poster workflow previews formats, exports PNG and SVG, and opens print', a
   await expect(page.getByRole('button', { name: 'Create poster', exact: true })).toHaveCount(0)
   const editor = page.getByRole('region', { name: 'Event poster', exact: true })
   await editor.getByRole('button', { name: 'Dark', exact: true }).click()
-  await editor.getByLabel('Background').selectOption('city')
-  await expect(editor.getByRole('img')).toHaveAttribute('alt', 'MedTech in the Hut, 8.5 x 11, dark, Baltimore city photo poster')
-  await editor.getByLabel('Background').selectOption('gradient')
-  await expect(editor.getByRole('img')).toHaveAttribute('alt', 'MedTech in the Hut, 8.5 x 11, dark, High-contrast gradient poster')
+  await editor.getByLabel('Background', { exact: true }).selectOption('city')
+  await expect(editor.locator('.event-poster-preview > div[role="img"]')).toHaveAttribute('aria-label', 'MedTech in the Hut, 8.5 x 11, dark, Baltimore city photo poster')
+  await editor.getByLabel('Background', { exact: true }).selectOption('gradient')
+  await expect(editor.locator('.event-poster-preview > div[role="img"]')).toHaveAttribute('aria-label', 'MedTech in the Hut, 8.5 x 11, dark, High-contrast gradient poster')
   for (const [label, width, height] of [['8.5 x 11', 2550, 3300], ['Letter 2 × 2', 2550, 3300], ['4 x 6', 1200, 1800], ['Social', 1200, 630]] as const) {
     await editor.getByRole('button', { name: label, exact: true }).click()
-    await expect(editor.getByRole('img')).toHaveAttribute('alt', `MedTech in the Hut, ${label}, dark, High-contrast gradient poster`)
+    await expect(editor.locator('.event-poster-preview > div[role="img"]')).toHaveAttribute('aria-label', `MedTech in the Hut, ${label}, dark, High-contrast gradient poster`)
     const pending = page.waitForEvent('download')
     await editor.getByRole('button', { name: 'PNG', exact: true }).click()
     const download = await pending
@@ -109,7 +109,7 @@ test('poster failures offer retry and do not leave export buttons active', async
   await expect(editor.getByRole('button', { name: 'PNG', exact: true })).toBeDisabled()
   failing = false
   await editor.getByRole('button', { name: 'Retry', exact: true }).click()
-  await expect(editor.getByRole('img')).toBeVisible()
+  await expect(editor.locator('.event-poster-preview > div[role="img"]')).toBeVisible()
   await expect(editor.getByRole('button', { name: 'PNG', exact: true })).toBeEnabled()
 })
 
@@ -207,8 +207,10 @@ async function mockTenant(page: Page, options: MockTenantOptions = {}) {
   await page.route('**/pidp/**', async route => {
     const url = new URL(route.request().url())
     if (/\/auth\/(google|github)\/login$/.test(url.pathname) || url.pathname.endsWith('/auth/sso/start')) {
-      if (options.completeAppLogin) loggedIn = true
-      await route.fulfill({ status: 302, headers: { location: url.searchParams.get('next')! } })
+      if (options.completeAppLogin) {
+        loggedIn = true
+        await route.fulfill({ status: 302, headers: { location: url.searchParams.get('next')! } })
+      } else await route.fulfill({ contentType: 'text/html', body: '<h1>PIdP sign-in</h1>' })
       return
     }
     if (url.pathname.endsWith('/auth/session-token')) {
@@ -235,39 +237,31 @@ async function mockTenant(page: Page, options: MockTenantOptions = {}) {
   }
 }
 
-test('Google sign-in delegates account selection to PIdP and preserves return context', async ({ page }) => {
+test('sign-in delegates account selection to PIdP and preserves return context', async ({ page }) => {
   await mockTenant(page)
   let widgetRequests = 0
   await page.route('https://accounts.google.com/**', route => { widgetRequests++; return route.abort() })
   await page.goto(portal('/users/login?next=%2Fpeople'))
-  await expect(page.getByRole('heading', { name: 'Sign in to Baltimore MedTech', exact: true })).toBeVisible()
-  const request = page.waitForRequest(request => request.url().includes('/auth/sso/start'))
-  await page.getByRole('link', { name: 'Continue with Google' }).click()
-  const url = new URL((await request).url())
-  expect(url.searchParams.get('provider')).toBe('google')
+  await expect(page.getByRole('heading', { name: 'PIdP sign-in' })).toBeVisible()
+  const url = new URL(page.url())
+  expect(url.pathname).toBe('/pidp/auth/sso/start')
+  expect(url.searchParams.has('provider')).toBe(false)
   expect(url.searchParams.has('login_hint')).toBe(false)
-  expect(url.searchParams.get('app')).toBeTruthy()
+  expect(url.searchParams.get('app')).toBe('orgportal')
   expect(url.searchParams.has('owner')).toBe(false)
   expect(new URL(url.searchParams.get('next')!).searchParams.get('next')).toBe('/people')
   expect(widgetRequests).toBe(0)
 })
 
-test('unlisted alias skips the Google widget and keeps the standard OAuth return context', async ({ page, baseURL }) => {
+test('unlisted alias keeps its own origin in the shared account return context', async ({ page, baseURL }) => {
   await mockTenant(page)
-  let googleRequests = 0
-  await page.route('https://accounts.google.com/**', route => { googleRequests++; return route.abort() })
   const alias = new URL(portal('/users/login?next=%2Fpeople'), baseURL)
   alias.hostname = alias.hostname === 'localhost' ? '127.0.0.1' : 'localhost'
   await page.goto(alias.toString())
-  const link = page.getByRole('link', { name: 'Continue with Google' })
-  await expect(link).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Continue with GitHub' })).toBeVisible()
-  expect(googleRequests).toBe(0)
-  await expect(page.locator('.portal-google-personalized-button')).toBeHidden()
-  const url = new URL((await link.getAttribute('href'))!, alias.origin)
-  expect(url.searchParams.get('provider')).toBe('google')
-  expect(url.searchParams.has('login_hint')).toBe(false)
+  await expect(page.getByRole('heading', { name: 'PIdP sign-in' })).toBeVisible()
+  const url = new URL(page.url())
   expect(url.searchParams.has('owner')).toBe(false)
+  expect(url.searchParams.has('provider')).toBe(false)
   const callback = new URL(url.searchParams.get('next')!)
   expect(callback.origin).toBe(alias.origin)
   expect(callback.searchParams.get('next')).toBe('/people')
@@ -275,16 +269,14 @@ test('unlisted alias skips the Google widget and keeps the standard OAuth return
 
 test('tenant domains use root-mounted canonical routes and assets', async ({ page }) => {
   await mockTenant(page)
-  await page.goto(portal('/users/login'))
-
+  await page.goto(portal('/about'))
   await expect(page.locator('html')).toHaveAttribute('data-portal-profile', 'baltimore-medtech')
   await expect(page.locator('html')).toHaveAttribute('data-portal-tenant', 'baltimore-medtech')
-  await expect(page.getByRole('heading', { name: 'Sign in to Baltimore MedTech', exact: true })).toBeVisible()
   await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', /\/images\/baltimore-medtech-logo-square-v2\.jpg$/)
   await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', /\/medtech\.webmanifest$/)
-
-  const providerUrl = new URL((await page.getByRole('link', { name: 'Continue with Google' }).getAttribute('href'))!, 'http://portal.test')
-  const callback = new URL(providerUrl.searchParams.get('next')!)
+  await page.goto(portal('/users/login'))
+  await expect(page.getByRole('heading', { name: 'PIdP sign-in' })).toBeVisible()
+  const callback = new URL(new URL(page.url()).searchParams.get('next')!)
   expect(callback.pathname).toBe('/auth/callback')
   expect(callback.searchParams.has('portalProfile')).toBe(false)
   expect(callback.searchParams.get('next')).toBe('/chat')
@@ -595,8 +587,6 @@ test('tenant header login preserves the current event route', async ({ page }) =
   await page.goto(portal('/events/medtech-in-the-hut'))
 
   await page.getByRole('link', { name: 'Login', exact: true }).click()
-  await expect(page).toHaveURL(/\/users\/login\?next=%2Fevents%2Fmedtech-in-the-hut$/)
-  await page.getByRole('link', { name: 'Continue with email' }).click()
 
   await expect(page).toHaveURL(/\/events\/medtech-in-the-hut$/)
   await expect(page.getByRole('heading', { name: 'MedTech in the Hut' })).toBeVisible()
@@ -627,7 +617,7 @@ test('event lists separate past gatherings, show sourced attendance to guests, a
 })
 
 test('LifeTech keeps its own logo and app icons across chat and event navigation', async ({ page }) => {
-  await mockTenant(page)
+  await mockTenant(page, { initiallyLoggedIn: true })
   // LifeTech's proxy removes the upstream manifest link before serving portal HTML.
   await page.route('**/*', async route => {
     if (route.request().resourceType() !== 'document') return route.fallback()
@@ -643,7 +633,7 @@ test('LifeTech keeps its own logo and app icons across chat and event navigation
     theme_color: '#061a26', home_url: 'https://lifetech.fyi/',
   } }))
   await page.route('**/api/org/api/network/orgs/public/lifetech/events?**', route => route.fulfill({ json: [] }))
-  for (const path of ['/org-events', '/chat', '/users/login']) {
+  for (const path of ['/org-events', '/chat', '/about']) {
     await page.goto(portal(path))
     await expect(page.locator('img[src="/assets/images/lifetech-logo.png"]').first()).toBeVisible()
     await expect(page.locator('img[src*="codecollective_logo"], img[src*="namebanner"], img[alt="Code Collective"]')).toHaveCount(0)

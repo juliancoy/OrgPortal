@@ -295,11 +295,11 @@ test.describe('Code Collective UI and UX system coverage', () => {
   })
 
   test('authenticated shell uses the stored profile image and exposes stable primary navigation', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/events')
 
     const header = page.locator('.portal-header')
     await expect(header).toBeVisible()
-    await expect(header.getByAltText('Code Collective')).toBeVisible()
+    await expect(header.getByRole('link', { name: /OrgPortal/ }).first()).toBeVisible()
     await expect(page.locator('.portal-user-trigger img')).toHaveAttribute('src', authUser.avatar_url)
     const navigationToggle = page.getByRole('button', { name: 'Open navigation', exact: true })
     if (await navigationToggle.isVisible()) await navigationToggle.click()
@@ -311,20 +311,17 @@ test.describe('Code Collective UI and UX system coverage', () => {
     await expect(page).toHaveURL(/\/id$/)
   })
 
-  test('social login buttons route through PIdP OAuth instead of the legacy org endpoint', async ({ page }) => {
-    await page.route('**/auth/session-token', (route) => fulfillJson(route, {}, 401))
-    await page.route('**/auth/me', (route) => fulfillJson(route, {}, 401))
+  test('sign-in delegates identity-provider choice to PIdP', async ({ page }) => {
+    await page.route('**/auth/session-token', route => fulfillJson(route, {}, 401))
+    await page.route('**/auth/me', route => fulfillJson(route, {}, 401))
+    await page.route('**/auth/sso/start?**', route => route.fulfill({ contentType: 'text/html', body: '<h1>PIdP sign-in</h1>' }))
     await page.goto('/users/login')
-
-    await expect(page.getByRole('link', { name: 'Continue with Google' })).toHaveAttribute(
-      'href',
-      /\/pidp\/auth\/sso\/start\?.*provider=google/,
-    )
-    await expect(page.getByRole('link', { name: 'Continue with GitHub' })).toHaveAttribute(
-      'href',
-      /\/pidp\/auth\/sso\/start\?.*provider=github/,
-    )
-    await expect(page.getByRole('link', { name: 'Continue with Google' })).not.toHaveAttribute('href', /\/api\/org\/auth\/social/)
+    await expect(page.getByRole('heading', { name: 'PIdP sign-in' })).toBeVisible()
+    const destination = new URL(page.url())
+    expect(destination.pathname).toBe('/pidp/auth/sso/start')
+    expect(destination.searchParams.get('app')).toBe('orgportal')
+    expect(destination.searchParams.has('owner')).toBe(false)
+    expect(destination.searchParams.has('provider')).toBe(false)
   })
 
   test('organizations page prioritizes and filters the signed-in user organizations', async ({ page }) => {
@@ -362,7 +359,8 @@ test.describe('Code Collective UI and UX system coverage', () => {
     await mockNativeChat(page, { onStartDm: (payload) => { dmPayload = payload } })
 
     await page.goto('/people')
-    await page.getByLabel('Search people and organizations by name').fill('Jordan')
+    await page.getByLabel('Search people by name').fill('Jordan')
+    await page.getByText('Actions and details for Jordan Contact', { exact: true }).click()
     await page.getByRole('link', { name: 'Message Jordan Contact' }).click()
 
     await expect(page).toHaveURL(/\/chat\/dm-1$/)

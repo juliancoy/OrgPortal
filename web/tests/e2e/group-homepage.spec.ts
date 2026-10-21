@@ -36,9 +36,11 @@ test('sign-in describes one OrgPortal account on a branded group site', async ({
     name: 'Workshop', tagline: 'Workshop community', profile: 'community',
     features: ['directory', 'events', 'chat'], accent_color: '#155e59',
   } }))
+  await page.route('**/auth/sso/start?**', route => route.fulfill({ contentType: 'text/html', body: '<h1>PIdP sign-in</h1>' }))
   await page.goto('/users/login?next=/orgs/workshop')
-  await expect(page.getByRole('heading', { name: 'Sign in to OrgPortal', exact: true })).toBeVisible()
-  await expect(page.getByText('One account for all your groups. Choose how you’d like to continue.')).toBeVisible()
-  const login = new URL(await page.getByRole('link', { name: 'Continue with Google', exact: true }).getAttribute('href') || '', page.url())
+  await expect(page.getByRole('heading', { name: 'PIdP sign-in' })).toBeVisible()
+  const login = new URL(page.url())
   expect(login.searchParams.get('app')).toBe('orgportal')
+  expect(login.searchParams.has('owner')).toBe(false)
+  expect(new URL(login.searchParams.get('next')!).searchParams.get('next')).toBe('/orgs/workshop')
 })

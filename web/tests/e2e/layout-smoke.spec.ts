@@ -38,7 +38,7 @@ test.describe('OrgPortal responsive shell', () => {
   })
 
   test('profile dropdown stays fully inside viewport', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/events')
     await page.waitForSelector('.portal-user-trigger')
     await page.click('.portal-user-trigger')
 
@@ -65,7 +65,8 @@ test.describe('OrgPortal responsive shell', () => {
     for (const route of routes) {
       await page.goto(route)
       await expect(page.locator('main')).toBeVisible()
-      await expect(page.locator('.portal-user-trigger')).toBeVisible()
+      if (route === '/') await expect(page.getByRole('link', { name: 'Mobile Tester', exact: true })).toBeVisible()
+      else await expect(page.locator('.portal-user-trigger')).toBeVisible()
       const overflow = await page.evaluate(() => {
         const doc = document.documentElement
         return {
