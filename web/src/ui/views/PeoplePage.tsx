@@ -1,3 +1,6 @@
+import { OrganizationAvatar } from '../components/OrganizationAvatar'
+import { useOrganizationPersonnel } from '../hooks/useOrganizationPersonnel'
+import { useOrganizationScope } from '../hooks/useOrganizationScope'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
@@ -13,6 +16,8 @@ function orgUrl(path: string) {
 }
 
 export function PeoplePage() {
+  const organizationScope = useOrganizationScope()
+  const personnelFor = useOrganizationPersonnel(organizationScope)
   const portalProfile = getActivePortalProfileConfig()
   const { token, user } = useAuth()
   const [query, setQuery] = useState('')
@@ -122,14 +127,10 @@ export function PeoplePage() {
               const contactSlug = person.contact_slug || person.slug
               const contactEnabled = person.contact_enabled ?? person.enabled ?? true
               const profilePath = contactSlug && (contactEnabled || isSelf)
-                ? `/users/${encodeURIComponent(contactSlug)}`
+                ? `/users/${encodeURIComponent(contactSlug)}${organizationScope ? `?org=${encodeURIComponent(organizationScope)}` : ''}`
                 : isSelf ? '/profile' : null
               const summary = <>
-                <div className="people-directory-photo">
-                  <span aria-hidden="true">{person.user_name.trim().slice(0, 1).toUpperCase()}</span>
-                  {person.photo_url && <img src={person.photo_url} alt={person.user_name} loading="lazy"
-                    onError={event => { event.currentTarget.style.display = 'none' }} />}
-                </div>
+                <OrganizationAvatar className="people-directory-photo" name={person.user_name} src={person.photo_url} status={personnelFor(person.user_id)} />
                 <div className="people-directory-copy">
                   <h3>{person.user_name}</h3>
                   {person.headline && <p>{person.headline}</p>}

@@ -1,3 +1,6 @@
+import { OrganizationAvatar } from '../components/OrganizationAvatar'
+import { useOrganizationPersonnel } from '../hooks/useOrganizationPersonnel'
+import { useOrganizationScope } from '../hooks/useOrganizationScope'
 import { DeploymentSwitcher } from '../components/DeploymentSwitcher'
 import { OrganizationViewSwitcher } from '../components/OrganizationViewSwitcher'
 import { TaskQueue, useTaskQueue } from '../tasks/TaskQueue'
@@ -152,6 +155,7 @@ function authReturnQuery(location: ReturnType<typeof useLocation>): string {
 }
 
 export function Header() {
+  const personnelFor = useOrganizationPersonnel(useOrganizationScope())
   const { role, user, logout, token, isLoading } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
@@ -861,13 +865,7 @@ export function Header() {
                   aria-expanded={menuOpen}
                   aria-haspopup="menu"
                 >
-                  <span className="portal-avatar">
-                    {user?.avatarUrl ? (
-                      <img src={user.avatarUrl} alt={displayName} />
-                    ) : (
-                      displayName.slice(0, 1).toUpperCase()
-                    )}
-                  </span>
+                  <OrganizationAvatar className="portal-avatar" name={displayName} src={user?.avatarUrl} status={user?.id ? personnelFor(user.id) : null} />
                 </button>
 
                 {menuOpen && (

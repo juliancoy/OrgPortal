@@ -189,8 +189,9 @@ export async function listOrganizationMembers(db: D1Database, organizationId: st
   const role = await authorizeOrganization(db, actor, "read_members", organization.id);
   const rows = await db.prepare(
     `SELECT m.organization_id, m.user_id, m.user_name, m.user_email, m.role, m.status, m.created_at, m.updated_at,
-       m.pending_organizer, e.completed_at AS onboarding_completed_at
+       m.pending_organizer, e.completed_at AS onboarding_completed_at, p.photo_url
      FROM organization_memberships m
+     LEFT JOIN user_contact_pages p ON p.user_id = m.user_id AND p.enabled = 1
      LEFT JOIN onboarding_enrollments e ON e.group_site_id = m.onboarding_group_site_id AND e.user_id = m.user_id
      WHERE m.organization_id = ? AND m.status = 'active'
      ORDER BY CASE m.role WHEN 'owner' THEN 0 WHEN 'administrator' THEN 1 ELSE 2 END, lower(COALESCE(m.user_name, m.user_email, m.user_id))`,

@@ -1,3 +1,6 @@
+import { OrganizationAvatar } from '../../components/OrganizationAvatar'
+import { useOrganizationPersonnel } from '../../hooks/useOrganizationPersonnel'
+import { useOrganizationScope } from '../../hooks/useOrganizationScope'
 import { SignInLink } from '../../components/SignInLink'
 import { BioMarkdown } from '../../components/profile/BioMarkdown'
 import { useEffect, useMemo, useState } from 'react'
@@ -103,6 +106,7 @@ type PublicContactPageProps = {
 }
 
 export function PublicContactPage({ self = false }: PublicContactPageProps = {}) {
+  const personnelFor = useOrganizationPersonnel(useOrganizationScope())
   const { token, user, setUser } = useAuth()
   const { slug } = useParams()
   const navigate = useNavigate()
@@ -348,13 +352,7 @@ export function PublicContactPage({ self = false }: PublicContactPageProps = {})
     <section className="public-id-page">
       <article className="public-id-card" aria-label={`${page.user_name} public ID`}>
         <div className="public-id-identity">
-          {isOwner ? <UserProfilePage photoOnly photoUrl={page.photo_url || ''} embedded onPhotoSaved={url => setPage(current => current ? { ...current, photo_url: url || null } : current)} /> : page.photo_url ? (
-            <img className="public-id-avatar" src={page.photo_url} alt={page.user_name} />
-          ) : (
-            <div className="public-id-avatar public-id-avatar-fallback" aria-hidden="true">
-              {page.user_name.slice(0, 1).toUpperCase()}
-            </div>
-          )}
+          {isOwner ? <UserProfilePage photoOnly photoUrl={page.photo_url || ''} embedded onPhotoSaved={url => setPage(current => current ? { ...current, photo_url: url || null } : current)} /> : <OrganizationAvatar className="public-id-avatar" name={page.user_name} src={page.photo_url} status={personnelFor(page.user_id)} />}
           {isOwner ? <>
             <InlineProfileField label="Name" value={page.user_name} onSave={saveName}><h1 className="public-id-name">{page.user_name}</h1></InlineProfileField>
             <InlineProfileField label="Headline" value={page.headline || ''} onSave={value => saveField('headline', value || null)}>{page.headline && <p className="public-id-headline">{page.headline}</p>}</InlineProfileField>

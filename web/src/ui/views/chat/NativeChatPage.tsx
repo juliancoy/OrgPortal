@@ -1,3 +1,5 @@
+import { OrganizationAvatar } from '../../components/OrganizationAvatar'
+import { useOrganizationPersonnel } from '../../hooks/useOrganizationPersonnel'
 import { conversationChatPath, organizationChatPath, organizationChatSlug } from '../../../chat/chatLinks'
 import { MessageBody } from './MessageBody'
 import { useTimebankApi } from '../../timebank/useTimebankApi'
@@ -159,6 +161,7 @@ export function NativeChatPage() {
     () => conversations.find((conversation) => conversation.id === roomId) || null,
     [conversations, roomId],
   )
+  const personnelFor = useOrganizationPersonnel(selectedConversation?.kind === 'org_room' ? selectedConversation.org_id : null)
   const visibleConversations = useMemo(() => conversations.filter(conversation => conversationLabel(conversation, user?.id).toLocaleLowerCase().includes(groupQuery.trim().toLocaleLowerCase())), [conversations, groupQuery, user?.id])
   const visibleGroups = useMemo(() => groups.filter(group => group.name.toLocaleLowerCase().includes(groupQuery.trim().toLocaleLowerCase())), [groups, groupQuery])
 
@@ -805,9 +808,7 @@ export function NativeChatPage() {
                     <div className="portal-chat-message-meta" aria-hidden={groupedWithPrevious}>
                       {!mine ? (
                         <div className="portal-chat-message-author">
-                          <span className="portal-avatar portal-chat-message-avatar">
-                            {renderAvatar(authorLabel, avatarUrl)}
-                          </span>
+                          <OrganizationAvatar name={authorLabel} src={avatarUrl} status={personnelFor(message.sender_user_id)} className="portal-chat-message-avatar" />
                           <strong>{authorLabel}</strong>
                         </div>
                       ) : null}

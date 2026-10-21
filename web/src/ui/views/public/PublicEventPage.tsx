@@ -1,3 +1,6 @@
+import { OrganizationAvatar } from '../../components/OrganizationAvatar'
+import { useOrganizationPersonnel } from '../../hooks/useOrganizationPersonnel'
+import type { PersonnelClass } from '../../../../../shared/organizationPersonnel'
 import { EventPresentations } from '../../components/EventPresentations'
 import type { OrganizationLink } from '../../../../../shared/organizationLinks'
 import { BioMarkdown } from '../../components/profile/BioMarkdown'
@@ -198,10 +201,8 @@ function reactionOwnerSummary(reaction: NativeChatReaction) {
   return `${names.slice(0, 2).join(', ')} and ${names.length - 2} more`
 }
 
-function CommentAvatar({ message, myUserId }: { message: NativeChatMessage; myUserId: string | null }) {
-  const image = message.sender_avatar_url
-    ? <img src={message.sender_avatar_url} alt="" loading="lazy" />
-    : messageAuthorInitial(message, myUserId)
+function CommentAvatar({ message, myUserId, status }: { message: NativeChatMessage; myUserId: string | null; status: PersonnelClass | null }) {
+  const image = <OrganizationAvatar name={message.sender_name || messageAuthorInitial(message, myUserId)} src={message.sender_avatar_url} status={status} />
   if (!message.sender_user_id) return <span className="public-event-comment-avatar" aria-hidden="true">{image}</span>
   return <a
     className="public-event-comment-avatar"
@@ -275,6 +276,7 @@ export function PublicEventPage() {
   const brand = getActivePortalProfileConfig()
   const lifeTech = tenant?.home_org_slug === 'lifetech'
   const [event, setEvent] = useState<PublicEvent | null>(null)
+  const personnelFor = useOrganizationPersonnel(event?.host_org_id)
   const [status, setStatus] = useState<string>('Loading event…')
   const [googleCalendarConnected, setGoogleCalendarConnected] = useState(false)
   const [microsoftCalendarConnected, setMicrosoftCalendarConnected] = useState(false)
@@ -835,7 +837,7 @@ export function PublicEventPage() {
               <div className="public-event-comment-list">
                 {eventComments.map(({ message, replies }) => (
                   <article key={message.id} className="public-event-comment">
-                    <CommentAvatar message={message} myUserId={myUserId} />
+                    <CommentAvatar message={message} myUserId={myUserId} status={personnelFor(message.sender_user_id)} />
                     <div className="public-event-comment-body">
                       <div className="public-event-comment-meta">
                         <strong>{messageAuthorLabel(message, myUserId)}</strong>
@@ -858,7 +860,7 @@ export function PublicEventPage() {
                         <div className="public-event-comment-replies">
                           {replies.map((reply) => (
                             <article key={reply.id} className="public-event-comment public-event-comment-reply">
-                              <CommentAvatar message={reply} myUserId={myUserId} />
+                              <CommentAvatar message={reply} myUserId={myUserId} status={personnelFor(reply.sender_user_id)} />
                               <div className="public-event-comment-body">
                                 <div className="public-event-comment-meta">
                                   <strong>{messageAuthorLabel(reply, myUserId)}</strong>

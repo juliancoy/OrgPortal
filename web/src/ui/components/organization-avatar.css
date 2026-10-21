@@ -1,0 +1,14 @@
+.organization-avatar {
+  display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center;
+  width: 44px; height: 44px; box-sizing: border-box; overflow: hidden;
+  border: 3px solid var(--personnel-color); border-radius: 50%;
+  outline: 1px solid var(--text-muted); outline-offset: 1px;
+  background: var(--surface-soft); color: var(--text-primary); font-weight: 700;
+}
+.organization-avatar[data-personnel-class='unknown'] { border-style: dashed; }
+.organization-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.organization-personnel-legend { font-size: .875rem; }
+.organization-personnel-legend summary { cursor: pointer; }
+.organization-personnel-legend ul { display: flex; flex-wrap: wrap; gap: .75rem 1rem; list-style: none; padding: .5rem 0; }
+.organization-personnel-legend li { display: inline-flex; align-items: center; gap: .5rem; }
+.organization-personnel-swatch { width: 16px; height: 16px; border: 3px solid var(--personnel-color); outline: 1px solid var(--text-muted); border-radius: 50%; }

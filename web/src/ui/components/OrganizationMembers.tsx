@@ -1,3 +1,5 @@
+import { OrganizationAvatar, OrganizationPersonnelLegend } from './OrganizationAvatar'
+import { personnelClassForMembership } from '../../../../shared/organizationPersonnel'
 import { SignInLink } from './SignInLink'
 import './OrganizationMembers.css'
 import { useEffect, useId, useState } from 'react'
@@ -6,7 +8,7 @@ import { toUserFacingErrorMessage } from '../../infrastructure/http/userFacingEr
 import { uniqueAccounts } from './organizationMemberSearch'
 import type { NetworkUser } from '../views/peopleDirectory'
 
-type Member = { user_id: string; user_name?: string | null; role: string; user_email?: string | null; pending_organizer?: number; onboarding_completed_at?: string | null }
+type Member = { photo_url?: string | null; personnel_class?: string | null; status?: string; user_id: string; user_name?: string | null; role: string; user_email?: string | null; pending_organizer?: number; onboarding_completed_at?: string | null }
 
 async function readResponse<T>(response: Response): Promise<T> {
   const data = await response.json()
@@ -84,12 +86,14 @@ export function OrganizationMembers({ organizationId, name, canRead, canManage, 
   if(!canManage && !error && ((!canRead && membershipCount === 0) || (canRead && !loading && members.length === 0)))return null
   return <section className="portal-card organization-members" aria-label="Community members">
     <h2>Community members <span className="muted">({canRead && !loading && !error ? members.length : membershipCount})</span></h2>
+    <OrganizationPersonnelLegend />
     {!canRead ? <p className="muted">{token ? `Join ${name} to see community members.` : <><SignInLink /> to see community members.</>}</p> : <>
       {loading && <p role="status">Loading members…</p>}
       {error && <p role="alert">{error} <button type="button" onClick={() => setRevision(value => value + 1)}>Retry</button></p>}
       {!loading && !error && (members.length ? <ul className="organization-members-list">
         {members.map(member => <li key={member.user_id}>
-          <div>{member.user_name || 'Community member'}<small className="muted" style={{ display: 'block', overflowWrap: 'anywhere' }}>{member.user_email || member.user_id}</small></div>
+          <OrganizationAvatar name={member.user_name || 'Community member'} src={member.photo_url} status={personnelClassForMembership(member)} />
+          <div className="organization-member-identity">{member.user_name || 'Community member'}<small className="muted" style={{ display: 'block', overflowWrap: 'anywhere' }}>{member.user_email || member.user_id}</small></div>
           <span className="pill">{member.pending_organizer ? (member.onboarding_completed_at ? 'Organizer ready for activation' : 'Organizer pending onboarding') : member.role === 'administrator' ? 'Organizer' : member.role === 'owner' ? 'Owner' : 'Member'}</span>
           {canManage && member.role === 'member' && (!member.pending_organizer || member.onboarding_completed_at) && <button type="button" disabled={!!adding || !!preview} onClick={() => void assignMember({ user_id: member.user_id, user_name: member.user_name || 'Community member' } as NetworkUser, 'administrator')}>{member.pending_organizer ? 'Activate organizer' : 'Assign organizer'}</button>}
         </li>)}
@@ -105,7 +109,8 @@ export function OrganizationMembers({ organizationId, name, canRead, canManage, 
         {people.map(person => {
           const alreadyMember = members.some(member => member.user_id === person.user_id)
           return <li key={person.user_id}>
-            <div><strong>{person.user_name}</strong><small className="muted" style={{ display: 'block', overflowWrap: 'anywhere' }}>{person.email ? `${person.email} · ` : ''}Account: {person.user_id}</small>{person.headline && <p className="muted">{person.headline}</p>}</div>
+            <OrganizationAvatar name={person.user_name} src={person.photo_url} status={members.find(member => member.user_id === person.user_id) ? personnelClassForMembership(members.find(member => member.user_id === person.user_id)!) : null} />
+            <div className="organization-member-identity"><strong>{person.user_name}</strong><small className="muted" style={{ display: 'block', overflowWrap: 'anywhere' }}>{person.email ? `${person.email} · ` : ''}Account: {person.user_id}</small>{person.headline && <p className="muted">{person.headline}</p>}</div>
             {alreadyMember ? <span className="pill">Already a member</span> : <button type="button" className="btn-secondary" disabled={!!adding || !!preview || loading || !!error} onClick={() => void assignMember(person, 'member')} aria-label={`Add ${person.user_name}`}>
               {adding === person.user_id ? 'Adding…' : 'Add'}
             </button>}
