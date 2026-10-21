@@ -35,6 +35,8 @@ jobs:
         run: node --test tests/unit/*.test.mjs
       - run: npm run build
       - run: npx playwright install --with-deps chromium
+      - name: Test directory and ownership workflows
+        run: npm run test:organization-workflows
       # These tests run against local Vite with fixture API responses. No real accounts.
       - name: Test browser integrations, including insurance birthday flows
         run: npm run test:e2e -- --workers=2
