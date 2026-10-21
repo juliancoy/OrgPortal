@@ -1,3 +1,5 @@
+import { z } from 'zod'
+import { lookupPortalPeople } from './portalPeople'
 import { organizationInvitationRoutes, runOrganizationInvitations } from './organizationInvitations';
 import { organizationPersonnelRoutes } from './organizationPersonnel'
 import { presentationRoutes } from './eventPresentations';
@@ -4569,6 +4571,13 @@ app.get("/api/network/users/public", async (c) => {
   const q = c.req.query("q") || "";
   const limit = Number.parseInt(c.req.query("limit") || "40", 10);
   return c.json(await publicUsers(c.env, c.req.raw, q, Number.isFinite(limit) ? limit : 40));
+});
+app.get('/api/network/users/lookup', async c => {
+  await currentUser(c.env, c.req.raw);
+  const args = z.object({q:z.string().trim().min(2).max(254),limit:z.coerce.number().int().min(1).max(100).default(40),offset:z.coerce.number().int().min(0).max(1000000).default(0)}).safeParse(c.req.query());
+  if (!args.success) return c.json({error:'Enter at least two characters and valid pagination.'},400);
+  c.header('Cache-Control','no-store');
+  return c.json(await lookupPortalPeople(c.env.DB,args.data.q,args.data.limit,args.data.offset));
 });
 app.get("/api/network/users", async (c) => {
   await currentUser(c.env, c.req.raw);

@@ -30,6 +30,9 @@ export function OrganizationMembers({ organizationId, name, canRead, canManage, 
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
   const [people, setPeople] = useState<NetworkUser[]>([])
+  const [searchOffset, setSearchOffset] = useState(0)
+  const [nextSearchOffset, setNextSearchOffset] = useState<number | null>(null)
+  useEffect(() => { setSearchOffset(0) }, [query])
   const [searching, setSearching] = useState(false)
   const [searchError, setSearchError] = useState('')
   const [adding, setAdding] = useState<string | null>(null)
@@ -53,19 +56,19 @@ export function OrganizationMembers({ organizationId, name, canRead, canManage, 
   }, [url, token, canRead, membershipCount, revision])
 
   useEffect(() => {
-    setPeople([]); setSearchError(''); setSearching(false)
-    if (!token || !canManage || !query.trim()) return
+    if (!searchOffset) setPeople([]); setNextSearchOffset(null); setSearchError(''); setSearching(false)
+    if (!token || !canManage || query.trim().length < 2) return
     const controller = new AbortController()
     setSearching(true)
     const timer = window.setTimeout(() => {
-      const params = new URLSearchParams({ q: query.trim(), limit: '40' })
-      void fetch(`/api/org/api/network/users?${params}`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal })
-        .then(readResponse<NetworkUser[]>).then(rows => { if (!controller.signal.aborted) setPeople(uniqueAccounts(query.includes('@') ? rows.filter(person => person.email?.trim().toLowerCase() === query.trim().toLowerCase()) : rows)) })
+      const params = new URLSearchParams({ q: query.trim(), limit: '40', offset: String(searchOffset) })
+      void fetch(`/api/org/api/network/users/lookup?${params}`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal })
+        .then(readResponse<{people:NetworkUser[];nextOffset:number|null}>).then(result => { if (!controller.signal.aborted) {setPeople(previous => uniqueAccounts([...(searchOffset ? previous : []), ...result.people]));setNextSearchOffset(result.nextOffset)} })
         .catch(err => { if (!controller.signal.aborted) setSearchError(toUserFacingErrorMessage(err, 'Could not search people.')) })
         .finally(() => { if (!controller.signal.aborted) setSearching(false) })
     }, 250)
     return () => { controller.abort(); window.clearTimeout(timer) }
-  }, [query, token, canManage])
+  }, [query, token, canManage, searchOffset])
 
   async function assignMember(person: NetworkUser, role: 'member' | 'administrator', confirm = false) {
     if (!token || !canManage || adding) return
@@ -124,6 +127,7 @@ export function OrganizationMembers({ organizationId, name, canRead, canManage, 
           </li>
         })}
       </ul>}
+      {nextSearchOffset !== null && <button type="button" className="btn-secondary" disabled={searching} onClick={() => setSearchOffset(nextSearchOffset)}>Load more portal members</button>}
       {preview && <div role="region" aria-label="Review membership assignment">
         <h3>Review assignment</h3>
         <p>{preview.person.user_name} · Account: {preview.person.user_id}</p>

@@ -12,26 +12,30 @@ export function PortalPersonPicker({ query, selected, onQueryChange, onSelect, o
   const { token } = useAuth()
   const id = useId()
   const [people, setPeople] = useState<NetworkUser[]>([])
+  const [nextOffset, setNextOffset] = useState<number | null>(null)
+  const [offset, setOffset] = useState(0)
+  useEffect(() => { setOffset(0) }, [query])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   useEffect(() => {
-    setPeople([]); setError(''); setLoading(false)
+    if (!offset) setPeople([]); setNextOffset(null); setError(''); setLoading(false)
     if (!token || selected || query.trim().length < 2) return
     const controller = new AbortController()
     setLoading(true)
     const timer = window.setTimeout(() => {
-      void fetch(`/api/org/api/network/users?${new URLSearchParams({ q: query.trim(), limit: '40' })}`, {
+      void fetch(`/api/org/api/network/users/lookup?${new URLSearchParams({ q: query.trim(), limit: '40', offset: String(offset) })}`, {
         headers: { Authorization: `Bearer ${token}` }, signal: controller.signal, cache: 'no-store',
       }).then(async response => {
         if (!response.ok) throw new Error('Could not search portal members.')
-        const rows = await response.json() as NetworkUser[]
-        if (!controller.signal.aborted) setPeople(query.includes('@')
-          ? rows.filter(person => person.email?.trim().toLowerCase() === query.trim().toLowerCase()) : rows)
+        const result = await response.json() as { people: NetworkUser[]; nextOffset: number | null }
+        if (!controller.signal.aborted) {
+          setPeople(previous => [...new Map([...(offset ? previous : []), ...result.people].map(person => [person.user_id, person])).values()]); setNextOffset(result.nextOffset)
+        }
       }).catch(error => { if (!controller.signal.aborted) setError(error.message) })
         .finally(() => { if (!controller.signal.aborted) setLoading(false) })
     }, 250)
     return () => { window.clearTimeout(timer); controller.abort() }
-  }, [query, token, selected?.userId])
+  }, [query, token, selected?.userId, offset])
   return <div className="portal-person-picker">
     <label htmlFor={id}>Person’s email or portal member name</label>
     <input id={id} type="search" value={query} onChange={event => onQueryChange(event.target.value)}
@@ -48,6 +52,7 @@ export function PortalPersonPicker({ query, selected, onQueryChange, onSelect, o
           <button type="button" className="btn-secondary" onClick={() => onSelect(person)} aria-label={`Choose ${person.user_name}`}>Choose</button>
         </li>)}
       </ul>}
+      {nextOffset !== null && <button type="button" className="btn-secondary" disabled={loading} onClick={() => setOffset(nextOffset)}>Load more portal members</button>}
     </>}
   </div>
 }

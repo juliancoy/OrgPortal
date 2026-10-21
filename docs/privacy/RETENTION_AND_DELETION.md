@@ -279,3 +279,5 @@ restore procedures must repeat that deletion and expiry cleanup before serving.
 The existing backup expiry policy applies. Gmail Sent mail is a separate provider
 copy subject to the sender's retention and erasure process. Invitations do not
 subscribe recipients to mailing lists or create identities from email addresses.
+
+Signed-in team-member lookup searches existing portal contact, membership and individual account records by name or exact email, including profiles not published in the public directory. It returns only the account ID, display name, email and available avatar; it creates no identity or persistent search history. The public directory continues to exclude unpublished profiles.

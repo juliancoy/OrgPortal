@@ -48,12 +48,12 @@ with sync_playwright() as p:
         successful(host.request.post(BASE + '/pidp/auth/session/login', form={'username': credentials['email'], 'password': credentials['password']}, headers={'Origin': BASE}))
         token = successful(host.request.get(BASE + '/pidp/auth/session-token'))['access_token']
         auth = {'Authorization': 'Bearer ' + token}
-        successful(host.request.put(BASE + '/api/org/api/network/contact/me', headers=auth, data={'enabled': True}))
+        successful(host.request.put(BASE + '/api/org/api/network/contact/me', headers=auth, data={'enabled': False}))
         colleague = context()
         colleague_credentials = account(colleague, 'colleague')
         successful(colleague.request.post(BASE + '/pidp/auth/session/login', form={'username': colleague_credentials['email'], 'password': colleague_credentials['password']}, headers={'Origin': BASE}))
         colleague_token = successful(colleague.request.get(BASE + '/pidp/auth/session-token'))['access_token']
-        successful(colleague.request.put(BASE + '/api/org/api/network/contact/me', headers={'Authorization': 'Bearer ' + colleague_token}, data={'enabled': True}))
+        successful(colleague.request.get(BASE + '/api/org/api/accounts/me', headers={'Authorization': 'Bearer ' + colleague_token}))
         group = successful(host.request.post(BASE + '/api/org/api/network/orgs', headers=auth, data={'name': f'Dummy Demo Host {run_id}', 'city': 'Baltimore', 'kind': 'organization', 'description': 'An organization-owned introduction for the local community.', 'acknowledgeOwnership': True}))
         event = successful(host.request.post(BASE + '/api/org/api/network/events', headers=auth, data={'title': f'Dummy Demo Day {run_id}', 'host_type': 'org', 'host_org_id': group['id'], 'ingest_key': f'local-team-form-{run_id}', 'starts_at': '2099-11-17T23:00:00Z', 'ends_at': '2099-11-18T01:30:00Z', 'location': 'Local test venue', 'description': '## What to expect\n\n- A local demonstration.\n- A team presentation.'}))
         endpoint = BASE + '/api/org/api/network/events/' + event['id'] + '/presentations'
