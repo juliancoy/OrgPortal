@@ -67,6 +67,7 @@ const paths = [
   "/orgs/initiatives/new",
   "/orgs/initiatives/:id/edit",
   "/orgs/initiatives/:id/ballot",
+  "/orgs/:handle/dashboard",
   "/orgs/profile",
   "/orgs/account",
   "/orgs/events",
