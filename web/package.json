@@ -51,7 +51,8 @@
     "test:ecosystem:local": "node scripts/test-local-ecosystem-network.mjs",
     "sync:government": "node scripts/sync-government-awards.mjs",
     "build:performance": "node scripts/build-performance.mjs",
-    "test:organization-workflows": "node scripts/test-organization-workflows.mjs"
+    "test:organization-workflows": "node scripts/test-organization-workflows.mjs",
+    "test:mcp:local": "python3 ../scripts/run-local-mcp-test.py"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.1",

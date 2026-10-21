@@ -656,3 +656,11 @@ import upsert. A name/city or normalized source-URL match returns conflict witho
 modifying the existing record. Preview and apply use the same normalized identity
 check; a race or failure rolls back creation. Existing events and memberships are
 not renamed, moved or reassigned. No migration is required.
+
+## Local browser acceptance
+
+Use the [local MCP connection test](LOCAL_MCP_TEST.md) to exercise a simulated
+ChatGPT web client against isolated Docker services, including actual browser
+sign-in, consent, PKCE, MCP reads, scope/domain denials and live revocation.
+This also covers separate client and portal browsers with matching-code pairing.
+It does not connect OpenAI’s hosted service to localhost.

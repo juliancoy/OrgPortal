@@ -189,6 +189,10 @@ responses, launches Chromium headlessly (set `CHROME_BIN` to use an installed br
 checks directory intent, owned team creation, reviewed effects, ambiguous-response
 inspection without replay and self correction. Authenticated integration and
 session persistence tests continue to use the local Docker deployment.
+The [local MCP connection acceptance test](../deployment/LOCAL_MCP_TEST.md)
+uses real PIdP, OAuth, TLS, HTTP MCP and separate browser contexts; run it before
+releasing authentication or MCP transport changes. It is distinct from the mocked
+component test above.
 
 Verify REST/MCP parity using the same actor-bound receipt across transports.
 Verify resource-scoped discovery, operator revocation, directory privacy, duplicate

@@ -2,9 +2,9 @@ name: Check portal web integrations
 
 on:
   push:
-    paths: ['web/**', 'shared/**', 'org-worker/**', '.github/workflows/check-web.yml']
+    paths: ['web/**', 'shared/**', 'org-worker/**', 'scripts/mcp-local/**', 'scripts/run-local-mcp-test.py', '.github/workflows/check-web.yml']
   pull_request:
-    paths: ['web/**', 'shared/**', 'org-worker/**', '.github/workflows/check-web.yml']
+    paths: ['web/**', 'shared/**', 'org-worker/**', 'scripts/mcp-local/**', 'scripts/run-local-mcp-test.py', '.github/workflows/check-web.yml']
   workflow_dispatch:
 
 permissions:
@@ -30,6 +30,11 @@ jobs:
         run: npm ci --ignore-scripts
         working-directory: org-worker
       - run: npm ci
+      - name: Check local MCP acceptance harness syntax
+        run: |
+          node --check scripts/test-local-mcp.mjs
+          node --check ../scripts/mcp-local/chatgpt-client.mjs
+          python3 -m py_compile ../scripts/run-local-mcp-test.py
       - run: npm test -- --maxWorkers=2
       - name: Test HTTP routing and release contracts
         run: node --test tests/unit/*.test.mjs
