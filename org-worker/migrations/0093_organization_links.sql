@@ -23,17 +23,19 @@ BEGIN INSERT INTO change_journal(table_name,record_key,operation,before_json,aft
 -- Move portal social configuration into typed organization links once.
 UPDATE organizations SET links_json = COALESCE((
   SELECT (SELECT json_group_array(json_object('id',type,'type',type,'url',url)) FROM (
-    SELECT 'whatsapp' AS type,json_extract(t.feature_config,'$.whatsappUrl') AS url UNION ALL
-    SELECT 'luma',json_extract(t.feature_config,'$.lumaUrl') UNION ALL
-    SELECT 'eventbrite',json_extract(t.feature_config,'$.eventbriteUrl') UNION ALL
-    SELECT 'github',json_extract(t.feature_config,'$.githubUrl') UNION ALL
-    SELECT 'website',json_extract(t.feature_config,'$.websiteUrl') UNION ALL
-    SELECT 'linkedin',json_extract(t.feature_config,'$.linkedinUrl') UNION ALL
-    SELECT 'instagram',json_extract(t.feature_config,'$.instagramUrl') UNION ALL
-    SELECT 'facebook',json_extract(t.feature_config,'$.facebookUrl') UNION ALL
-    SELECT 'discord',json_extract(t.feature_config,'$.discordUrl') UNION ALL
-    SELECT 'telegram',json_extract(t.feature_config,'$.telegramUrl') UNION ALL
-    SELECT 'youtube',json_extract(t.feature_config,'$.youtubeUrl')
+    SELECT key AS type, value AS url FROM json_each(json_object(
+      'whatsapp', json_extract(t.feature_config,'$.whatsappUrl'),
+      'luma', json_extract(t.feature_config,'$.lumaUrl'),
+      'eventbrite', json_extract(t.feature_config,'$.eventbriteUrl'),
+      'github', json_extract(t.feature_config,'$.githubUrl'),
+      'website', json_extract(t.feature_config,'$.websiteUrl'),
+      'linkedin', json_extract(t.feature_config,'$.linkedinUrl'),
+      'instagram', json_extract(t.feature_config,'$.instagramUrl'),
+      'facebook', json_extract(t.feature_config,'$.facebookUrl'),
+      'discord', json_extract(t.feature_config,'$.discordUrl'),
+      'telegram', json_extract(t.feature_config,'$.telegramUrl'),
+      'youtube', json_extract(t.feature_config,'$.youtubeUrl')
+    ))
   ) WHERE url LIKE 'https://%' AND url NOT LIKE '%@%')
   FROM group_sites t
   WHERE t.organization_id = organizations.id OR (t.organization_id IS NULL AND t.home_org_slug = organizations.slug)

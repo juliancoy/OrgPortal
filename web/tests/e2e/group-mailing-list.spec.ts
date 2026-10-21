@@ -54,7 +54,7 @@ test('members can change their own preference without requesting the mailing lis
 
 test('guests never fetch subscriber records',async({page})=>{
   const state=await fixtures(page,'guest')
-  await page.goto('/orgs/workshop?view=organizers')
+  await page.goto('/orgs/workshop?view=public')
   await expect(page.getByRole('heading',{name:'Workshop group',exact:true})).toBeVisible()
   await expect(page.getByRole('region',{name:'Group mailing list'})).toHaveCount(0)
   await expect(page.getByRole('checkbox',{name:'Receive announcements from this group'})).toHaveCount(0)
