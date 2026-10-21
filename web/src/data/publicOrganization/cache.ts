@@ -12,15 +12,35 @@ function syncStorage() {
   const current = typeof indexedDB === 'undefined' ? undefined : indexedDB
   if (storage !== current) { memory.clear(); pending.clear(); storage = current }
 }
+export const PUBLIC_ORGANIZATION_CACHE_EVENT = 'orgportal-public-organization-cache-updated'
+let channel: BroadcastChannel | undefined
+function notify(url: string) {
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(PUBLIC_ORGANIZATION_CACHE_EVENT, { detail: { url } }))
+}
+function shareUpdates() {
+  if (channel || typeof window === 'undefined' || typeof BroadcastChannel === 'undefined') return
+  try {
+    channel = new BroadcastChannel('orgportal-public-organization-data-v1')
+    channel.onmessage = event => {
+      try {
+        if (event.data?.invalidate === true) { memory.clear(); notify(''); return }
+        const url = publicReportUrl(event.data?.url)
+        memory.delete(url)
+        notify(url)
+      } catch { /* Ignore messages outside the public cache allowlist. */ }
+    }
+  } catch { /* IndexedDB remains shared when cross-tab notifications are unavailable. */ }
+}
 const databaseName = 'orgportal-public-organization-data-v1'
 
 export function publicReportUrl(path: string) {
   const url = new URL(path, location.origin)
+  const profile = /^\/api\/org\/api\/network\/orgs\/public\/[^/]+$/.test(url.pathname) && !url.search
   const report = /^\/api\/org\/api\/network\/orgs\/public\/[^/]+\/(support|financing)$/.test(url.pathname) && (!url.search || /^\?offset=\d+$/.test(url.search))
   const snapshot = /^\/(?:p\/)?ecosystem-data\/ecosystem-(portal|history|relationships|nonprofits|performance)\.json$/.test(url.pathname) && !url.search
   const directory = url.pathname === '/api/org/api/network/orgs/public' && /^\?limit=500&offset=\d+$/.test(url.search)
   const relationships = url.pathname === '/api/org/api/network/relationships/public' && /^\?offset=\d+$/.test(url.search)
-  if (url.origin !== location.origin || url.username || url.password || url.hash || !(report || snapshot || directory || relationships)) {
+  if (url.origin !== location.origin || url.username || url.password || url.hash || !(profile || report || snapshot || directory || relationships)) {
     throw new Error('Only same-origin public organization data can be cached')
   }
   return url.href
@@ -43,7 +63,7 @@ async function database(): Promise<IDBDatabase | null> {
 }
 export async function readPublicReport<T>(path: string): Promise<PublicReportEntry<T> | null> {
   const url = publicReportUrl(path)
-  syncStorage()
+  syncStorage(); shareUpdates()
   const resident = memory.get(url)
   if (resident) return structuredClone(resident) as PublicReportEntry<T>
   const db = await database()
@@ -68,16 +88,39 @@ export async function savePublicReport<T>(entry: PublicReportEntry<T>) {
   remember(entry)
   const db = await database()
   if (!db) return
+  let committed = false
   try {
     await new Promise<void>(resolve => {
       const transaction = db.transaction('reports', 'readwrite')
       transaction.objectStore('reports').put(entry)
-      transaction.oncomplete = () => resolve()
+      transaction.oncomplete = () => { committed = true; resolve() }
       transaction.onerror = () => resolve()
       transaction.onabort = () => resolve()
     })
   } catch { /* Storage denial or quota exhaustion must not break a live read. */ }
   finally { db.close() }
+  shareUpdates(); notify(entry.url)
+  try { if (committed) channel?.postMessage({ url: entry.url }) } catch { /* A closed channel must not break reads. */ }
+}
+
+/** Mark public responses stale after a confirmed server write, preserving offline copies. */
+export async function invalidatePublicOrganizationData() {
+  syncStorage()
+  for (const entry of memory.values()) entry.checkedAt = 0
+  const db = await database()
+  if (db) {
+    try {
+      await new Promise<void>(resolve => {
+        const transaction = db.transaction('reports', 'readwrite')
+        const cursor = transaction.objectStore('reports').openCursor()
+        cursor.onsuccess = () => { const row = cursor.result; if (row) { row.update({ ...row.value, checkedAt: 0 }); row.continue() } }
+        transaction.oncomplete = transaction.onerror = transaction.onabort = () => resolve()
+      })
+    } catch { /* A failed local invalidation cannot undo a successful remote write. */ }
+    finally { db.close() }
+  }
+  shareUpdates(); notify('')
+  try { channel?.postMessage({ invalidate: true }) } catch { /* Storage remains usable without notifications. */ }
 }
 
 export async function refreshPublicReport<T>(path: string, options: {

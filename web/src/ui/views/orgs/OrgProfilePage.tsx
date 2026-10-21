@@ -1,3 +1,4 @@
+import { invalidatePublicOrganizationData } from '../../../data/publicOrganization/cache'
 import { BioMarkdown } from '../../components/profile/BioMarkdown'
 import { OwnershipReleaseControl } from '../../components/OwnershipReleaseControl'
 import { OrganizationRegistrationForm } from '../../components/OrganizationRegistrationForm'
@@ -169,6 +170,7 @@ export function OrgProfilePage() {
         const text = await resp.text().catch(() => '')
         throw new Error(text || `Merge failed (${resp.status})`)
       }
+      await invalidatePublicOrganizationData()
       setStatus('Organizations merged successfully.')
       setMergeSourceByTarget((prev) => {
         const next = { ...prev }
@@ -212,6 +214,7 @@ export function OrgProfilePage() {
         }
         throw new Error(detail || `Rename failed (${resp.status})`)
       }
+      await invalidatePublicOrganizationData()
       setStatus('Organization updated.')
       await loadOrgs()
     } catch (err) {
@@ -242,6 +245,7 @@ export function OrgProfilePage() {
         }
         throw new Error(detail || `Image update failed (${resp.status})`)
       }
+      await invalidatePublicOrganizationData()
       setStatus('Organization image updated.')
       await loadOrgs()
     } catch (err) {

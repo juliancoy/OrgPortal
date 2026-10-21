@@ -1,3 +1,5 @@
+import { invalidatePublicOrganizationData } from '../../../data/publicOrganization/cache'
+import { loadPublicOrganization } from '../../../data/publicOrganization/organizations'
 import { BioMarkdown } from '../../components/profile/BioMarkdown'
 import { OrganizationLinksEditor } from '../../components/OrganizationLinksEditor'
 import { normalizeOrganizationLinks, organizationLinkLabels, type OrganizationLink } from '../../../../../shared/organizationLinks'
@@ -243,14 +245,7 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
     if (!handle) return
     let cancelled = false
     setStatus('Loading organization…')
-    fetch(orgUrl(`/api/network/orgs/public/${encodeURIComponent(handle)}`))
-      .then(async (resp) => {
-        if (!resp.ok) {
-          const text = await resp.text().catch(() => '')
-          throw new Error(text || `Organization not found (${resp.status})`)
-        }
-        return resp.json() as Promise<PublicOrganization>
-      })
+    loadPublicOrganization<PublicOrganization>(handle)
       .then((orgData) => {
         if (cancelled) return
         if (orgData.redirected_from_slug && orgData.slug !== handle) {
@@ -560,8 +555,8 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
         })
         if (requestResp.ok) {
           setClaimStatus('Ownership challenge filed. The organization is now marked disputed.')
-          const freshOrgResp = await fetch(orgUrl(`/api/network/orgs/public/${encodeURIComponent(handle)}`))
-          if (freshOrgResp.ok) setOrg((await freshOrgResp.json()) as PublicOrganization)
+          await invalidatePublicOrganizationData()
+          setOrg(await loadPublicOrganization<PublicOrganization>(handle,{force:true}))
           return
         }
         const requestText = await requestResp.text().catch(() => '')
@@ -585,13 +580,12 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
       setMembership({ organization_id: claimed.id, role: 'owner', status: 'active', membership_count: claimed.membership_count || 1 })
       window.dispatchEvent(new Event('organization-access-change'))
       setClaimStatus('Organization claimed. You are now an organizer and its owner.')
-      const [freshOrgResp, freshAdminsResp] = await Promise.all([
-        fetch(orgUrl(`/api/network/orgs/public/${encodeURIComponent(handle)}`)),
+      await invalidatePublicOrganizationData()
+      const [freshOrg, freshAdminsResp] = await Promise.all([
+        loadPublicOrganization<PublicOrganization>(handle,{force:true}),
         fetch(orgUrl(`/api/network/orgs/public/${encodeURIComponent(handle)}/admins`)),
       ])
-      if (freshOrgResp.ok) {
-        setOrg((await freshOrgResp.json()) as PublicOrganization)
-      }
+      setOrg(freshOrg)
       if (freshAdminsResp.ok) {
         setAdmins((await freshAdminsResp.json()) as PublicOrgAdmin[])
       }
@@ -733,6 +727,7 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
         }
         throw new Error(detail || `Organization update failed (${orgResp.status})`)
       }
+      await invalidatePublicOrganizationData()
       const updatedOrg = (await orgResp.json()) as { name?: string; description?: string | null; image_url?: string | null; links?: OrganizationLink[] }
       const updatedName = String(updatedOrg?.name || nextName)
       const updatedDescription = updatedOrg?.description?.trim() || ''

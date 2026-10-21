@@ -1,3 +1,4 @@
+import { loadPublicOrganizationDirectory } from '../../data/publicOrganization/organizations'
 import { shortGroupName } from '../../domain/organization/groupNames'
 import { useEffect, useId, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -16,15 +17,7 @@ export function PeerOrganizations({ organizationId, tags = [] }: { organizationI
     const controller = new AbortController()
     setLoading(true); setError('')
     void (async () => {
-      const rows: PublicOrganization[] = []
-      for (let offset = 0; ; offset += 500) {
-        const response = await fetch(`/api/org/api/network/orgs/public?limit=500&offset=${offset}`, { signal: controller.signal })
-        if (!response.ok) throw new Error('Could not load peer organizations.')
-        const page = await response.json() as PublicOrganization[]
-        if (!Array.isArray(page)) throw new Error('Could not load peer organizations.')
-        rows.push(...page)
-        if (page.length < 500) break
-      }
+      const rows = await loadPublicOrganizationDirectory<PublicOrganization>({signal: controller.signal, force: revision > 0})
       if (!controller.signal.aborted) setOrganizations(rows)
     })().catch(err => { if (!controller.signal.aborted) setError(err.message) })
       .finally(() => { if (!controller.signal.aborted) setLoading(false) })

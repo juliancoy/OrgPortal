@@ -1,3 +1,4 @@
+import { refreshPublicReport } from '../../data/publicOrganization/cache'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { OrganizationFunds } from './OrganizationFunds'
@@ -40,10 +41,11 @@ export function OrganizationMoneyDashboard({ report }: { report: FundingReport }
   setGroup('');setYear(null);setRelated(null);setError('')
   if(scope===report.organization.slug)return
   const abort=new AbortController()
-  void fetch(`/api/org/api/network/orgs/public/${encodeURIComponent(scope)}/support`,{signal:abort.signal}).then(async response=>{
-   if(!response.ok)throw Error('This agency dashboard could not load.')
-   const value=await response.json() as FundingReport
-   if(!value.financialTotals || !Array.isArray(value.records))throw Error('Funding records are incomplete.')
+  void refreshPublicReport<FundingReport>(`/api/org/api/network/orgs/public/${encodeURIComponent(scope)}/support`, {signal:abort.signal,validate(data){
+   const value=data as FundingReport
+   if(!value?.financialTotals || !Array.isArray(value.records))throw Error('Funding records are incomplete.')
+   return value
+  }}).then(({data:value})=>{
    if(!abort.signal.aborted)setRelated(value)
   }).catch(reason=>{if(!abort.signal.aborted)setError(reason.message)})
   return ()=>abort.abort()

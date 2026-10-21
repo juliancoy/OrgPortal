@@ -1,3 +1,5 @@
+import { loadPublicOrganizationDirectory } from '../../data/publicOrganization/organizations'
+import { refreshPublicReport } from '../../data/publicOrganization/cache'
 import { usePublicOrganizationReport, updatePublicOrganizationData } from '../../data/publicOrganization/usePublicOrganizationReport'
 import { OrganizationMoneyDashboard } from './OrganizationMoneyDashboard'
 import type { FundingReport } from './fundingDashboard'
@@ -89,17 +91,7 @@ export function OrganizationSupport({ organizationId, slug, canManage }: { organ
   useEffect(() => {
     if (!canManage || !token) { setPreview(null); return }
     const controller = new AbortController()
-    ;(async () => {
-      const all: Organization[] = []
-      for (let offset = 0; ; offset += 500) {
-        const response = await fetch(`/api/org/api/network/orgs/public?limit=500&offset=${offset}`, { signal: controller.signal })
-        if (!response.ok) throw new Error('Unable to load recipient organizations')
-        const page = await response.json() as Organization[]
-        if (!Array.isArray(page)) throw new Error('Unable to load recipient organizations')
-        all.push(...page)
-        if (page.length < 500) return all
-      }
-    })()
+    void loadPublicOrganizationDirectory<Organization>({signal: controller.signal})
       .then(setOrganizations).catch(error => { if (!controller.signal.aborted) setMessage(error.message) })
     return () => controller.abort()
   }, [canManage, token])
@@ -108,9 +100,10 @@ export function OrganizationSupport({ organizationId, slug, canManage }: { organ
     const controller = new AbortController(); recordRequest.current = controller
     setBusy(true); setMessage('')
     try {
-      const response = await fetch(`/api/org/api/network/orgs/public/${encodeURIComponent(slug)}/support?offset=${data.nextRecordOffset}`, { signal: controller.signal })
-      if (!response.ok) throw new Error('Unable to load more source evidence')
-      const page = await response.json() as Support
+      const {data: page} = await refreshPublicReport<Support>(`/api/org/api/network/orgs/public/${encodeURIComponent(slug)}/support?offset=${data.nextRecordOffset}`, { signal: controller.signal, validate: value => {
+        if (!value || !Array.isArray((value as Support).records)) throw new Error('Incomplete source evidence page')
+        return value as Support
+      } })
       if (!Array.isArray(page.records) || (page.nextRecordOffset !== null && (!Number.isInteger(page.nextRecordOffset) || page.nextRecordOffset <= data.nextRecordOffset))) throw new Error('Incomplete source evidence page')
       if (controller.signal.aborted) return
       setData(current => current ? { ...page, records: [...new Map([...current.records, ...page.records].map(record => [record.id, record])).values()] } : current)

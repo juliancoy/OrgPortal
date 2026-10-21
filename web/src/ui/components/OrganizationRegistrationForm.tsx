@@ -1,3 +1,4 @@
+import { invalidatePublicOrganizationData } from '../../data/publicOrganization/cache'
 import { useState } from 'react'
 
 type Review = { previewId: string; organizationId: string; expiresAt: string; endpoint: string; payload: Record<string, unknown>; mode: 'directory' | 'owned' }
@@ -47,6 +48,7 @@ export function OrganizationRegistrationForm({ token, onSaved }: { token: string
     setBusy(true); setStatus('')
     try {
       await request(`${review.endpoint}/apply`, { ...review.payload, previewId: review.previewId, confirm: true })
+      await invalidatePublicOrganizationData()
       setReview(null); setName(''); setWebsite(''); setSource(''); setCity(''); setDescription(''); setImage(''); setTags(''); setAcknowledged(false)
       setStatus(review.mode === 'directory' ? 'Public directory listing added. No access or ownership was assigned.' : 'Organization created. Your account has owner access; legal representation has not been verified.')
       window.dispatchEvent(new Event('organization-access-change'))

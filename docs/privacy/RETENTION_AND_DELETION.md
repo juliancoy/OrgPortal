@@ -281,3 +281,5 @@ copy subject to the sender's retention and erasure process. Invitations do not
 subscribe recipients to mailing lists or create identities from email addresses.
 
 Signed-in team-member lookup searches existing portal contact, membership and individual account records by name or exact email, including profiles not published in the public directory. It returns only the account ID, display name, email and available avatar; it creates no identity or persistent search history. The public directory continues to exclude unpublished profiles.
+
+Public organization directory pages, profiles, support reports and ecosystem snapshots share the `orgportal-public-organization-data-v1` IndexedDB cache within each site origin. Reads revalidate after five minutes; saved public responses remain available until replaced or the visitor clears site storage. Public reads omit credentials, and membership, permission, invitation, newsletter and draft data are excluded from this shared cache. Other tabs receive only a public URL notification and read the saved response from IndexedDB; different domains retain separate browser storage.

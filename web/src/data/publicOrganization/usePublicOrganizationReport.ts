@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { PUBLIC_DATA_REFRESH_MS, refreshPublicReport } from './cache'
+import { PUBLIC_DATA_REFRESH_MS, PUBLIC_ORGANIZATION_CACHE_EVENT, publicReportUrl, refreshPublicReport, invalidatePublicOrganizationData } from './cache'
 const refreshEvent = 'orgportal-refresh-public-organization-data'
-export function updatePublicOrganizationData() { window.dispatchEvent(new Event(refreshEvent)) }
+export function updatePublicOrganizationData() { void invalidatePublicOrganizationData() }
 export function usePublicOrganizationReport<T>(url: string, validate: (data: unknown) => T, onData: (data: T) => void, revision = 0) {
   const callbacks = useRef({ validate, onData }); callbacks.current = { validate, onData }
   const [status, setStatus] = useState({ checkedAt: 0, cached: false, refreshing: false, error: '' })
@@ -31,16 +31,19 @@ export function usePublicOrganizationReport<T>(url: string, validate: (data: unk
         if (active) setStatus(current => ({ ...current, refreshing: false, error: 'Update unavailable. Showing the last saved data, if available.' }))
       } finally { controller = null; if (active && pendingForce) { pendingForce = false; void load(true) } }
     }
+    const shared = (event: Event) => { if ((event as CustomEvent<{url:string}>).detail?.url === '' || (event as CustomEvent<{url:string}>).detail?.url === publicReportUrl(url)) void load() }
     const manual = () => { void load(true) }
     const resume = () => { if (document.visibilityState === 'visible') void load() }
     void load(revision > 0)
     const timer = window.setInterval(resume, PUBLIC_DATA_REFRESH_MS)
     window.addEventListener(refreshEvent, manual)
+    window.addEventListener(PUBLIC_ORGANIZATION_CACHE_EVENT, shared)
     window.addEventListener('online', manual)
     document.addEventListener('visibilitychange', resume)
     return () => {
       active = false; controller?.abort(); window.clearInterval(timer)
-      window.removeEventListener(refreshEvent, manual); window.removeEventListener('online', manual)
+      window.removeEventListener(refreshEvent, manual)
+      window.removeEventListener(PUBLIC_ORGANIZATION_CACHE_EVENT, shared); window.removeEventListener('online', manual)
       document.removeEventListener('visibilitychange', resume)
     }
   }, [url, revision])

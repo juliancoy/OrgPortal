@@ -1,3 +1,4 @@
+import { invalidatePublicOrganizationData } from '../../data/publicOrganization/cache'
 import { TeamPeoplePicker, readTeamPeople } from './TeamPeoplePicker'
 import { EventApplicationReview } from './EventApplicationReview'
 import { useLocalFormDraft } from '../hooks/useLocalFormDraft'
@@ -63,7 +64,7 @@ export function EventPresentations({eventId}:{eventId:string}) {
   {closed&&<p>Applications have closed for this event.</p>}
   {enabled&&!closed&&token&&<form className="presentation-form local-form-draft" data-draft-saved={draft.saved} aria-label="Team presentation application" aria-busy={busy} onSubmit={e=>{e.preventDefault();void action(async()=>{
    let organizationId=org
-   if(!organizationId){const team=await request('/api/org/api/network/orgs','POST',{name,city,description,kind:'team',acknowledgeOwnership:true});organizationId=team.id;setOrg(team.id);setOrgs(previous=>[...previous,team])}
+   if(!organizationId){const team=await request('/api/org/api/network/orgs','POST',{name,city,description,kind:'team',acknowledgeOwnership:true});organizationId=team.id;setOrg(team.id);setOrgs(previous=>[...previous,team]);await invalidatePublicOrganizationData()}
    for(const person of people){
     const resource=`/api/org/api/network/orgs/${encodeURIComponent(organizationId)}/${person.userId?'members':'invitations'}`
     const payload=person.userId?{user_id:person.userId,user_name:person.name,role:'member',add_only:true}:{email:person.email,purpose:'member'}

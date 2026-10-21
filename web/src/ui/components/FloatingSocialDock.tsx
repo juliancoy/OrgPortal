@@ -1,3 +1,4 @@
+import { loadPublicOrganization } from '../../data/publicOrganization/organizations'
 import { organizationLinkLabels, readOrganizationLinks, type OrganizationLink } from '../../../../shared/organizationLinks'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -34,10 +35,8 @@ export function FloatingSocialDock() {
   useEffect(() => {
     if (!orgTarget) return
     const controller = new AbortController()
-    fetch(`/api/org/api/network/orgs/public/${encodeURIComponent(orgTarget)}`, { signal: controller.signal, cache: 'no-cache' })
-      .then(async response => {
-        if (!response.ok) throw new Error('Organization unavailable')
-        const org = await response.json()
+    loadPublicOrganization<{id:string;name:string;slug:string;links?:unknown}>(orgTarget,{signal:controller.signal})
+      .then(org => {
         if (!controller.signal.aborted) setOrganizationLink({org:orgTarget,links:readOrganizationLinks(org.links)})
       }).catch(() => { if (!controller.signal.aborted) setOrganizationLink(null) })
     return () => controller.abort()

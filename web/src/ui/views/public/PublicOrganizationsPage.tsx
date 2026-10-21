@@ -1,3 +1,5 @@
+import { invalidatePublicOrganizationData } from '../../../data/publicOrganization/cache'
+import { loadPublicOrganizationDirectory } from '../../../data/publicOrganization/organizations'
 import { shortGroupName } from '../../../domain/organization/groupNames'
 import { OrganizationTools } from '../../components/OrganizationTools'
 import { useEffect, useMemo, useState } from 'react'
@@ -49,6 +51,7 @@ export function PublicOrganizationsPage() {
   const { token } = useAuth()
   const [orgs, setOrgs] = useState<PublicOrganizationListItem[]>([])
   const [myOrgRoles, setMyOrgRoles] = useState<Map<string, string>>(new Map())
+  const [visibleCount, setVisibleCount] = useState(300)
   const [showMineOnly, setShowMineOnly] = useState(false)
   const [status, setStatus] = useState<string>('Loading organizations…')
   const [membershipStatus, setMembershipStatus] = useState<string>('')
@@ -118,14 +121,8 @@ export function PublicOrganizationsPage() {
   }, [myOrgRoles, showMineOnly, sortedOrgs])
 
   useEffect(() => {
-    fetch(orgUrl('/api/network/orgs/public?sort=popular&limit=300'))
-      .then(async (resp) => {
-        if (!resp.ok) {
-          const text = await resp.text().catch(() => '')
-          throw new Error(text || `Failed to load organizations (${resp.status})`)
-        }
-        return resp.json() as Promise<PublicOrganizationListItem[]>
-      })
+    const controller = new AbortController()
+    void loadPublicOrganizationDirectory<PublicOrganizationListItem>({signal:controller.signal})
       .then((data) => {
         const incoming = Array.isArray(data) ? data : []
         const uniqueOrgs = Array.from(new Map(incoming.map((org) => [org.slug, org])).values()).sort((a, b) => {
@@ -135,13 +132,16 @@ export function PublicOrganizationsPage() {
           if (eventDelta !== 0) return eventDelta
           return a.name.localeCompare(b.name)
         })
+        if (controller.signal.aborted) return
         setOrgs(uniqueOrgs)
         setStatus('')
       })
       .catch((err) => {
+        if (controller.signal.aborted) return
         setOrgs([])
         setStatus(err instanceof Error ? err.message : 'Unable to load organizations')
       })
+    return () => controller.abort()
   }, [])
 
   async function updateOrganizationMembership(org: PublicOrganizationListItem, join: boolean) {
@@ -160,6 +160,7 @@ export function PublicOrganizationsPage() {
         throw new Error(text || `Membership update failed (${resp.status})`)
       }
       const payload = (await resp.json()) as { status: 'active' | 'none'; membership_count: number }
+      await invalidatePublicOrganizationData()
       setMyOrgRoles((prev) => {
         const next = new Map(prev)
         if (payload.status === 'active') next.set(org.slug, 'member')
@@ -243,7 +244,7 @@ export function PublicOrganizationsPage() {
           gap: '0.9rem',
         }}
       >
-        {visibleOrgs.map((org) => (
+        {visibleOrgs.slice(0, visibleCount).map((org) => (
           <article
             key={org.id}
             className="portal-card"
@@ -346,6 +347,7 @@ export function PublicOrganizationsPage() {
           </article>
         ))}
       </div>
+      {visibleOrgs.length > visibleCount && <button type="button" className="btn-secondary" onClick={() => setVisibleCount(count => count + 300)}>Show more organizations</button>}
     </section>
   )
 }
