@@ -24,6 +24,15 @@ describe('tenant home modes', () => {
     expect(tenantHomeAction({ ...baseTenant, home_kind: 'auth', member_home_path: '/chat' }, 'member', '/chat')).toEqual({ kind: 'redirect', to: '/chat' })
   })
 
+  it('keeps landing pages independent of authentication', () => {
+    for (const role of ['guest', 'member', 'admin']) {
+      expect(tenantHomeAction(baseTenant, role, '/chat')).toEqual({ kind: 'landing' })
+      for (const home_kind of ['default', 'main', 'landing', 'org', 'auth'] as const) {
+        expect(tenantHomeAction({ ...baseTenant, home_org_slug: 'lifetech', home_kind }, role, '/chat')).toEqual({ kind: 'landing' })
+      }
+    }
+  })
+
   it('rejects unsafe or circular configured home paths', () => {
     expect(internalTenantHomePath('https://evil.test/people')).toBeNull()
     expect(internalTenantHomePath('/users/login?next=/chat')).toBeNull()

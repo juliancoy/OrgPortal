@@ -16,6 +16,8 @@ export type NativeChatConversation = {
   id: string
   kind: string
   title?: string | null
+  org_id?: string | null
+  event_id?: string | null
   updated_at: string
   last_message_at?: string | null
   unread_count?: number

@@ -1,10 +1,12 @@
+import { OrganizationLinksEditor } from '../../components/OrganizationLinksEditor'
+import { normalizeOrganizationLinks, organizationLinkLabels, type OrganizationLink } from '../../../../../shared/organizationLinks'
 import { OrganizationFollowButton } from '../../components/OrganizationFollowButton'
 import { GroupMailingList, GroupEmailPreference } from '../email/GroupMailingList'
 import { groupOrganizationEvents } from './organizationEvents'
 import { EmbeddedOrganizationChat } from '../../components/EmbeddedOrganizationChat'
 import { PeerOrganizations } from '../../components/PeerOrganizations'
 import { OrganizationMembers } from '../../components/OrganizationMembers'
-import { resolveOrganizationView, useOrganizationViewPreference } from '../../hooks/useOrganizationView'
+import { resolveOrganizationPageView, useOrganizationViewPreference } from '../../hooks/useOrganizationView'
 import { OrganizationPortalSections } from '../../components/OrganizationPortalSections'
 import { OrganizationBrandGuide } from '../../components/OrganizationBrandGuide'
 import { getGroupSite } from '../../../config/timebankCommunity'
@@ -35,6 +37,7 @@ type PublicOrganization = {
   slug: string
   description?: string | null
   source_url?: string | null
+  links?: OrganizationLink[]
   image_url?: string | null
   tags?: string[]
   upcoming_events_count: number
@@ -167,7 +170,7 @@ function normalizeDomain(value: string) {
   return value.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '')
 }
 
-export function PublicAdminPage() {
+export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) {
   const navigate = useNavigate()
   const { token } = useAuth()
   const { handle } = useParams()
@@ -210,6 +213,7 @@ export function PublicAdminPage() {
   const [orgNameDraft, setOrgNameDraft] = useState('')
   const [orgDescriptionDraft, setOrgDescriptionDraft] = useState('')
   const [orgImageDraft, setOrgImageDraft] = useState('')
+  const [orgLinksDraft, setOrgLinksDraft] = useState<OrganizationLink[]>([])
   const [savingOrgName, setSavingOrgName] = useState(false)
   const [savingOrgImage, setSavingOrgImage] = useState(false)
   const [adminView, setAdminView] = useState(false)
@@ -219,7 +223,7 @@ export function PublicAdminPage() {
   const hasExistingAdmins = admins.some((admin) => admin.role === 'administrator' || admin.role === 'owner')
   const canManageCurrentOrg = myAdminOrgs.some((item) => item.id === org?.id)
   const requestedView = useOrganizationViewPreference(org?.slug, searchParams.get('view'))
-  const organizationView = resolveOrganizationView(requestedView, canManageCurrentOrg, membership?.status === 'active')
+  const organizationView = resolveOrganizationPageView(dashboard, requestedView, canManageCurrentOrg, membership?.status === 'active')
   const isOrganizerView = canManageCurrentOrg && organizationView === 'organizers'
   const isWorkspaceView = organizationView === 'members' || isOrganizerView
   const claimActionLabel = hasExistingAdmins ? 'Challenge Ownership' : 'Claim This Organization'
@@ -259,6 +263,7 @@ export function PublicAdminPage() {
         setOrgNameDraft(orgData.name || '')
         setOrgDescriptionDraft(orgData.description || '')
         setOrgImageDraft(orgData.image_url || '')
+        setOrgLinksDraft(orgData.links || [])
         setPortalSlugDraft(normalizePortalSlug(orgData.slug || orgData.name || ''))
         setPortalNameDraft(orgData.name || '')
         setPortalTaglineDraft(orgData.description || '')
@@ -714,6 +719,7 @@ export function PublicAdminPage() {
           name: nextName,
           description: orgDescriptionDraft.trim(),
           image_url: orgImageDraft.trim() || null,
+          links: normalizeOrganizationLinks(orgLinksDraft),
         }),
       })
       if (!orgResp.ok) {
@@ -726,15 +732,16 @@ export function PublicAdminPage() {
         }
         throw new Error(detail || `Organization update failed (${orgResp.status})`)
       }
-      const updatedOrg = (await orgResp.json()) as { name?: string; description?: string | null; image_url?: string | null }
+      const updatedOrg = (await orgResp.json()) as { name?: string; description?: string | null; image_url?: string | null; links?: OrganizationLink[] }
       const updatedName = String(updatedOrg?.name || nextName)
       const updatedDescription = updatedOrg?.description?.trim() || ''
       const updatedImage = updatedOrg?.image_url?.trim() || orgImageDraft.trim() || ''
-      setOrg((prev) => (prev ? { ...prev, name: updatedName, description: updatedDescription, image_url: updatedImage || null } : prev))
+      setOrg((prev) => (prev ? { ...prev, name: updatedName, description: updatedDescription, image_url: updatedImage || null, links: updatedOrg.links || [] } : prev))
       setMyAdminOrgs((prev) => prev.map((row) => (row.id === org.id ? { ...row, name: updatedName, image_url: updatedImage || null } : row)))
       setOrgNameDraft(updatedName)
       setOrgDescriptionDraft(updatedDescription)
       setOrgImageDraft(updatedImage)
+      setOrgLinksDraft(updatedOrg.links || [])
 
       const portalResp = await fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/portal`), {
         method: 'PUT',
@@ -953,6 +960,7 @@ export function PublicAdminPage() {
               {isOrganizerView && <button type="button" className="btn-secondary" onClick={() => openOrganizationEditor('org-description')}>Edit description</button>}
               <div className="portal-org-actions" aria-label={`${org.name} actions`}>
                 <OrganizationFollowButton orgId={org.id} slug={org.slug} />
+                {dashboard ? <Link className="btn-secondary" to={`/orgs/${encodeURIComponent(org.slug)}`}>Public profile</Link> : (canManageCurrentOrg || membership?.status === 'active') && <Link className="btn-secondary" to={`/orgs/${encodeURIComponent(org.slug)}/dashboard`}>Organization dashboard</Link>}
                 {token ? (
                   <Link className="btn-secondary" to={`/chat?start=group&org=${encodeURIComponent(org.slug)}`}>
                     Message Group
@@ -965,6 +973,7 @@ export function PublicAdminPage() {
                 {org.group_home_url ? (
                   <a className="btn-secondary" href={org.group_home_url}>Group homepage</a>
                 ) : null}
+                {Boolean(org.links?.length) && <nav className="organization-public-links" aria-label="Organization Links">{org.links!.map(link=><a key={link.id} className="btn-secondary" href={link.url} target="_blank" rel="noopener noreferrer">{link.label || organizationLinkLabels[link.type]}</a>)}</nav>}
                 {org.source_url && org.source_url !== org.group_home_url ? (
                   <a className="btn-secondary" href={org.source_url} target="_blank" rel="noreferrer">
                     Website
@@ -1469,6 +1478,7 @@ export function PublicAdminPage() {
                       onChange={(e) => setOrgImageDraft(e.target.value)}
                       placeholder="https://example.com/org-image.png"
                     />
+                    <OrganizationLinksEditor links={orgLinksDraft} onChange={setOrgLinksDraft}/>
                     <label htmlFor="merge-source-org" className="muted">
                       Merge one of your organizations into this one
                     </label>

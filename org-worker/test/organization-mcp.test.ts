@@ -144,3 +144,22 @@ test('creation never overwrites an existing source match and creates distinct ow
   assert.deepEqual(sql.prepare('SELECT * FROM organizations WHERE id=?').get(life.id),before);
  }finally{sql.close();}
 });
+
+
+test('organization profile links are validated, reviewed, authorized and clearable', async () => {
+ const {db,sql}=database();const {runOrganizationProfileOperation:run}=await import('../src/organizationProfileMcp');
+ try {
+  sql.exec("INSERT INTO organizations(id,name,slug,tags) VALUES ('org','LifeTech','lifetech','[]'); INSERT INTO organization_memberships(organization_id,user_id,role,status) VALUES ('org','existing-pidp-user','administrator','active')");
+  const links=[{id:'whatsapp',type:'whatsapp',url:'https://chat.whatsapp.com/Group123'},{id:'calendar',type:'luma',url:'https://luma.com/lifetech'},{id:'tickets',type:'eventbrite',url:'https://www.eventbrite.com/o/lifetech'}];
+  const args={organizationId:'org',links};
+  await assert.rejects(run(db,identity,'update',{...args,links:[{id:'bad',type:'website',url:'javascript:alert(1)'}]}));
+  const preview=await run(db,identity,'update',args) as any;
+  assert.deepEqual(preview.after.links,links);
+  assert.equal(sql.prepare('SELECT links_json FROM organizations WHERE id=?').get('org')!.links_json,'[]');
+  const result=await run(db,identity,'update',{...args,confirm:true,previewId:preview.previewId}) as any;
+  assert.deepEqual(result.organization.links,links);
+  const clearing={organizationId:'org',links:[]};const clearPreview=await run(db,identity,'update',clearing) as any;
+  const cleared=await run(db,identity,'update',{...clearing,confirm:true,previewId:clearPreview.previewId}) as any;
+  assert.deepEqual(cleared.organization.links,[]);
+ }finally{sql.close();}
+});

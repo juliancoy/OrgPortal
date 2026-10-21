@@ -10,6 +10,11 @@ export function resolveOrganizationView(value: string | null, organizer: boolean
   return organizer ? 'organizers' : member ? 'members' : 'public'
 }
 
+// Public profiles never inherit a saved dashboard view.
+export function resolveOrganizationPageView(dashboard: boolean, requested: string | null, organizer: boolean, member: boolean): OrganizationView {
+  return dashboard ? resolveOrganizationView(requested === 'public' ? null : requested, organizer, member) : 'public'
+}
+
 export const organizationViewStorageKey = (slug: string) => `orgportal.organizationView.${slug}`
 export function readOrganizationView(slug: string | null | undefined): OrganizationView | null {
   if (!slug) return null

@@ -1,3 +1,4 @@
+import { conversationChatPath, organizationChatPath, organizationChatSlug } from '../../../chat/chatLinks'
 import { MessageBody } from './MessageBody'
 import { useTimebankApi } from '../../timebank/useTimebankApi'
 import { timebankListingPath } from '../../timebank/links'
@@ -116,6 +117,10 @@ export function NativeChatPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [conversations, setConversations] = useState<NativeChatConversation[]>([])
+  const [groupQuery, setGroupQuery] = useState('')
+  const [groups, setGroups] = useState<{ id: string; name: string; slug: string }[]>([])
+  const [groupsError, setGroupsError] = useState('')
+  const [shareStatus, setShareStatus] = useState('')
   const [people, setPeople] = useState<NetworkUser[]>([])
   const [messages, setMessages] = useState<MessageState[]>([])
   const [drafts, setDrafts] = useState<Record<string, string>>({})
@@ -134,9 +139,13 @@ export function NativeChatPage() {
   const [realtimeSocket, setRealtimeSocket] = useState<WebSocket | null>(null)
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(() => new Set())
   const [isSending, setIsSending] = useState(false)
+  const sendingIds = useRef(new Set<string>())
+  const activeRoom = useRef(roomId)
+  activeRoom.current = roomId
   const [sidebarExpanded, setSidebarExpanded] = useState(() => window.matchMedia('(min-width: 681px)').matches)
   const timelineRef = useRef<HTMLDivElement | null>(null)
-  const messagesEndRef = useRef<HTMLDivElement | null>(null)
+  const stickToBottom = useRef(true)
+  const [newMessagesBelow, setNewMessagesBelow] = useState(false)
 
   const api = useMemo(
     () =>
@@ -150,6 +159,30 @@ export function NativeChatPage() {
     () => conversations.find((conversation) => conversation.id === roomId) || null,
     [conversations, roomId],
   )
+  const visibleConversations = useMemo(() => conversations.filter(conversation => conversationLabel(conversation, user?.id).toLocaleLowerCase().includes(groupQuery.trim().toLocaleLowerCase())), [conversations, groupQuery, user?.id])
+  const visibleGroups = useMemo(() => groups.filter(group => group.name.toLocaleLowerCase().includes(groupQuery.trim().toLocaleLowerCase())), [groups, groupQuery])
+
+  useEffect(() => {
+    setShareStatus('')
+    stickToBottom.current = true
+    setNewMessagesBelow(false)
+    if (roomId && !window.matchMedia('(min-width: 681px)').matches) setSidebarExpanded(false)
+  }, [roomId])
+
+  useEffect(() => {
+    setGroups([]); setGroupsError('')
+    if (!token) return
+    const controller = new AbortController()
+    fetch('/api/org/api/network/orgs?mine=true&limit=500', { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal, cache: 'no-store' })
+      .then(async response => {
+        if (!response.ok) throw new Error('Your groups could not be loaded.')
+        const rows = await response.json()
+        if (!controller.signal.aborted) setGroups(Array.isArray(rows) ? rows : [])
+      })
+      .catch(() => { if (!controller.signal.aborted) setGroupsError('Your groups could not be loaded. Try reloading the page.') })
+    return () => controller.abort()
+  }, [token])
+
   const currentUserAvatarUrl = useMemo(() => {
     if (!user?.id) return ''
     return selectedConversation?.members?.find((member) => member.user_id === user.id)?.avatar_url?.trim() || ''
@@ -229,9 +262,10 @@ export function NativeChatPage() {
         setStatus('Loading conversations...')
         setError(null)
         const start = searchParams.get('start')
-        const organizationSlug = searchParams.get('org')
-        if (start === 'org' && organizationSlug) {
+        const organizationSlug = organizationChatSlug(searchParams)
+        if (organizationSlug) {
           const conversation = await api.startOrganizationRoom(organizationSlug)
+          if (!cancelled) setConversations(current => sortConversationsByRecency([conversation, ...current.filter(item => item.id !== conversation.id)]))
           if (!cancelled) navigate(`/chat/${encodeURIComponent(conversation.id)}`, { replace: true })
           return
         }
@@ -529,13 +563,13 @@ export function NativeChatPage() {
   useEffect(() => {
     const timeline = timelineRef.current
     if (!timeline) return
+    if (!stickToBottom.current) { setNewMessagesBelow(true); return }
     timeline.scrollTo({ top: timeline.scrollHeight, left: 0, behavior: 'auto' })
-    window.scrollTo({ top: window.scrollY, left: 0, behavior: 'auto' })
   }, [messages])
 
   async function sendMessage() {
     const body = draft.trim()
-    if (!body || !roomId) return
+    if (!body || !roomId || sendingIds.current.size > 0) return
     const clientMessageId = uuid()
     const pending: MessageState = {
       id: clientMessageId,
@@ -548,24 +582,53 @@ export function NativeChatPage() {
       created_at: new Date().toISOString(),
       delivery_state: 'pending',
     }
+    stickToBottom.current = true
+    setNewMessagesBelow(false)
     setDraft('')
     setIsSending(true)
     setMessages((current) => [...current, pending])
+    await deliverMessage(pending)
+  }
+
+  async function deliverMessage(message: MessageState) {
+    const clientMessageId = message.client_message_id
+    if (!clientMessageId || sendingIds.current.has(clientMessageId)) return
+    sendingIds.current.add(clientMessageId)
+    setIsSending(true)
+    setError(null)
+    setMessages(current => current.map(item => item.client_message_id === clientMessageId ? { ...item, delivery_state: 'pending' } : item))
     try {
-      const confirmed = await api.sendMessage(roomId, clientMessageId, body)
-      mergeMessages([confirmed])
-      const nextSequence = Math.max(latestSequenceRef.current, Number(confirmed.sequence || 0))
-      latestSequenceRef.current = nextSequence
+      const confirmed = await api.sendMessage(message.conversation_id, clientMessageId, message.body)
+      if (activeRoom.current === message.conversation_id) {
+        mergeMessages([confirmed])
+        latestSequenceRef.current = Math.max(latestSequenceRef.current, Number(confirmed.sequence || 0))
+      }
       refreshConversations().catch(() => {})
     } catch (err) {
-      setMessages((current) =>
-        current.map((message) =>
-          message.client_message_id === clientMessageId ? { ...message, delivery_state: 'failed' } : message,
-        ),
-      )
-      setError(toUserFacingErrorMessage(err, 'Failed to send message'))
+      if (activeRoom.current === message.conversation_id) {
+        setMessages(current => current.map(item => item.client_message_id === clientMessageId ? { ...item, delivery_state: 'failed' } : item))
+        setError(toUserFacingErrorMessage(err, 'Failed to send message'))
+      }
     } finally {
-      setIsSending(false)
+      sendingIds.current.delete(clientMessageId)
+      setIsSending(sendingIds.current.size > 0)
+    }
+  }
+
+  async function shareConversation() {
+    if (!roomId) return
+    const group = selectedConversation?.kind === 'org_room' ? groups.find(item => item.id === selectedConversation.org_id) : null
+    const url = portalUrl(group ? organizationChatPath(group.slug) : conversationChatPath(roomId))
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: selectedConversation ? conversationLabel(selectedConversation, user?.id) : 'OrgPortal chat', url })
+        setShareStatus('Chat link shared.')
+      } else if (navigator.clipboard) {
+        await navigator.clipboard.writeText(url)
+        setShareStatus('Chat link copied. Recipients need access to this conversation.')
+      } else setShareStatus(url)
+    } catch (err) {
+      if (!(err instanceof DOMException && err.name === 'AbortError')) setShareStatus(url)
     }
   }
 
@@ -605,8 +668,12 @@ export function NativeChatPage() {
             <span aria-hidden="true">{sidebarExpanded ? '‹' : '›'}</span>
           </button>
         </div>
+        <label className="native-chat-search">
+          <span>Find a conversation or group</span>
+          <input type="search" value={groupQuery} onChange={event => { setGroupQuery(event.target.value); setSidebarExpanded(true) }} placeholder="Search conversations and groups" />
+        </label>
         <ul className="portal-chat-room-list">
-          {conversations.map((conversation) => {
+          {visibleConversations.map((conversation) => {
             const label = conversationLabel(conversation, user?.id)
             const avatarUrl = conversationAvatarUrl(conversation, user?.id)
             const participant = conversationParticipant(conversation, user?.id)
@@ -635,8 +702,17 @@ export function NativeChatPage() {
               </li>
             )
           })}
-          {conversations.length === 0 ? <li className="portal-chat-muted">No conversations yet.</li> : null}
+          {visibleConversations.length === 0 ? <li className="portal-chat-muted">{groupQuery ? 'No matching conversations.' : 'No conversations yet.'}</li> : null}
         </ul>
+        <section className="native-chat-sociable native-chat-groups" aria-label="Your organization groups">
+          <h3>Your groups</h3>
+          <ul className="portal-chat-room-list">
+            {visibleGroups.map(group => <li key={group.id}><Link className="portal-chat-room-btn" to={organizationChatPath(group.slug)}>{group.name}</Link></li>)}
+          </ul>
+          {groupsError && <p className="portal-chat-muted" role="status">{groupsError}</p>}
+          {!groupsError && visibleGroups.length === 0 && <p className="portal-chat-muted">{groupQuery ? 'No matching groups.' : 'Your organization groups will appear here.'}</p>}
+          <Link to="/orgs">Find a community</Link>
+        </section>
         <section className="native-chat-sociable" aria-label="People to message">
           <h3>People to message</h3>
           <ul className="portal-chat-room-list native-chat-people-list">
@@ -697,13 +773,20 @@ export function NativeChatPage() {
                   />
                 ) : null}
               </div>
+              <button type="button" className="portal-button-secondary" onClick={() => shareConversation().catch(() => {})}>Share chat link</button>
+              {shareStatus && <p role="status" className="native-chat-share-status">{shareStatus}</p>}
               <p className="native-chat-room-status">
                 {status || (realtimeState === 'connected' ? 'Connected' : realtimeState === 'reconnecting' ? 'Reconnecting…' : selectedConversation?.kind === 'org_room' ? 'Organization chat' : selectedConversation?.kind === 'event_room' ? 'Event chat' : 'Direct message')}
               </p>
               {error ? <p className="portal-chat-error" role="alert" aria-live="assertive">{error}</p> : null}
             </header>
 
-            <div className="portal-chat-timeline" ref={timelineRef}>
+            <div className="portal-chat-timeline" ref={timelineRef} onScroll={() => {
+              const timeline = timelineRef.current
+              if (!timeline) return
+              stickToBottom.current = timeline.scrollHeight - timeline.scrollTop - timeline.clientHeight < 80
+              if (stickToBottom.current) setNewMessagesBelow(false)
+            }}>
               {messages.map((message, index) => {
                 const mine = message.sender_user_id === user?.id || message.sender_user_id === 'me'
                 const previous = messages[index - 1]
@@ -733,15 +816,20 @@ export function NativeChatPage() {
                     <MessageBody body={message.body} />
                     <div className="native-chat-message-footer">
                       {message.delivery_state === 'pending' ? <span>Sending...</span> : null}
-                      {message.delivery_state === 'failed' ? <span className="portal-chat-error" role="alert" aria-live="assertive">Failed. Retry by sending again.</span> : null}
+                      {message.delivery_state === 'failed' ? <span className="portal-chat-error" role="alert">Not sent. <button type="button" disabled={isSending} onClick={() => deliverMessage(message).catch(() => {})}>Retry</button></span> : null}
                     </div>
                   </article>
                 )
               })}
               {messages.length === 0 ? <p className="portal-chat-muted">No messages yet.</p> : null}
-              <div ref={messagesEndRef} />
             </div>
 
+            {newMessagesBelow && <button type="button" className="native-chat-jump" onClick={() => {
+              stickToBottom.current = true
+              setNewMessagesBelow(false)
+              const timeline = timelineRef.current
+              timeline?.scrollTo({ top: timeline.scrollHeight, behavior: 'smooth' })
+            }}>Jump to latest messages</button>}
             {listingContext && <aside className="tb-chat-context"><a href={portalUrl(timebankListingPath(listingContext.id))}>Regarding: {listingContext.title}</a><span>Your draft is editable. It sends only when you press Send.</span></aside>}
             {listingError && <p role="status" className="portal-chat-muted">{listingError}</p>}
             <footer className="portal-chat-composer">
@@ -752,7 +840,7 @@ export function NativeChatPage() {
                 placeholder={`Message ${selectedConversation ? conversationLabel(selectedConversation, user?.id) : ''}`.trim()}
                 onChange={(event) => setDraft(event.target.value)}
                 onKeyDown={(event) => {
-                  if (event.key === 'Enter' && !event.shiftKey) {
+                  if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
                     event.preventDefault()
                     sendMessage().catch(() => {})
                   }
