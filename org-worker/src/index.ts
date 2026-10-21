@@ -1,3 +1,4 @@
+import { organizationPersonnelRoutes } from './organizationPersonnel'
 import { presentationRoutes } from './eventPresentations';
 import { runOrganizationDirectoryOperation } from './organizationDirectoryOperations';
 import { runOrganizationOperation as runOwnedOrganizationOperation } from './organizationMcp';
@@ -2634,6 +2635,7 @@ function deploymentHealth(c: { env: Env; req: { url: string }; header: (name: st
   };
 }
 
+app.route('/api/network/orgs',organizationPersonnelRoutes(currentUser));
 app.route('/api/network/events',venueRankingRoutes(currentUser));
 app.route('/api/network/events',venueVoteRoutes(currentUser));
 app.route('/api/network/events',presentationRoutes(currentUser));

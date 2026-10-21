@@ -3,6 +3,7 @@ export async function runRetention(db: D1Database, now = Date.now(), dryRun = fa
   if (!Number.isSafeInteger(now) || now <= 0) throw new Error('Invalid retention clock');
   const cutoff = now - 23 * 3600_000; // hourly job leaves an hour to meet the 24h ceiling
   const rules: [string, string, string | number][] = [
+    ['organization_volunteer_awards', 'expires_at <= ?', new Date(now).toISOString()],
     ['event_presentation_submissions', 'expires_at < ?', new Date(cutoff).toISOString()],
     ['event_mcp_operations', "expires_at < ? AND status IN ('prepared','completed')", cutoff],
     ['event_mcp_rate_limits', 'window_start < ?', Math.floor(cutoff / 60000)],
