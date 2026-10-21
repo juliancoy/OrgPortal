@@ -308,7 +308,8 @@ def _pidp_env(pidp_editme, db_url: str, gateway_base: str, allowed_origins: list
             or os.getenv("PIDP_ACCESS_TOKEN_EXPIRE_MINUTES")
             or "525600"
         ),
-        "WATCHFILES_FORCE_POLLING": "true",
+        # Native notifications avoid repeatedly scanning Linux bind mounts.
+        "WATCHFILES_FORCE_POLLING": os.getenv("WATCHFILES_FORCE_POLLING", "false"),
         "BACKEND_IMAGE_RUNNING": "dev-bind-mount",
     }
 
