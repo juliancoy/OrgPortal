@@ -62,3 +62,5 @@
 .workspace-organization-switcher label { font-weight: 650; font-size: .9rem; }
 .workspace-organization-switcher select { width: min(100%, 360px); min-height: 44px; }
 .workspace-organization-switcher [role='status'] { color: var(--text-muted); font-size: .85rem; }
+
+.workspace-organization-logo { width: 56px; height: 56px; object-fit: contain; border-radius: 8px; border: 1px solid var(--border); }

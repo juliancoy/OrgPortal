@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { OrgImage } from '../components/media/OrgImage'
 import { refreshRuntimeTokenFromSession } from '../../infrastructure/auth/sessionToken'
 import { ArrowUpRight, Building2, CalendarDays, Compass, Network, Settings, ShieldCheck } from 'lucide-react'
 import { useAuth } from '../../app/AppProviders'
@@ -32,12 +33,15 @@ const sections = [
 export function LocalHomePage() {
   const { role, user, token, isLoading, logout } = useAuth()
   const navigate = useNavigate()
-  const [organizations, setOrganizations] = useState<Array<{ id: string; name: string; slug: string }>>([])
+  const [organizations, setOrganizations] = useState<Array<{ id: string; name: string; slug: string; image_url?: string | null }>>([])
+  const [selectedSlug, setSelectedSlug] = useState('')
+  const selectionKey = user?.id ? `orgportal.workspace.organization.${user.id}` : null
   const [organizationStatus, setOrganizationStatus] = useState('')
   const [organizationsLoading, setOrganizationsLoading] = useState(false)
   useEffect(() => {
     const controller = new AbortController()
     setOrganizations([])
+    setSelectedSlug('')
     setOrganizationStatus('')
     setOrganizationsLoading(Boolean(token))
     if (!token) return () => controller.abort()
@@ -59,6 +63,9 @@ export function LocalHomePage() {
         }
         if (!controller.signal.aborted) {
           setOrganizations(rows)
+          let saved: string | null = null
+          try { saved = selectionKey ? localStorage.getItem(selectionKey) : null } catch { /* Storage may be unavailable. */ }
+          setSelectedSlug(rows.find(row => row.slug === saved)?.slug || rows[0]?.slug || '')
           if (!rows.length) setOrganizationStatus('You have not joined any organizations yet.')
         }
       } catch {
@@ -69,7 +76,8 @@ export function LocalHomePage() {
     }
     void loadOrganizations()
     return () => controller.abort()
-  }, [token])
+  }, [token, selectionKey])
+  const selectedOrganization = organizations.find(organization => organization.slug === selectedSlug)
   const [query, setQuery] = useState('')
   const search = query.trim().toLowerCase()
   const visible = sections.map(section => ({ ...section, links: section.links.filter(([label, path]) => (path !== '/admin/ubi-settings' || isPortalFeatureEnabled('ubi')) && `${section.title} ${label}`.toLowerCase().includes(search)) })).filter(section => section.links.length)
@@ -82,11 +90,17 @@ export function LocalHomePage() {
     </div></header>
     <main id="main-content" className="portal-main" tabIndex={-1}><div className="portal-container">
       <div className="workspace-organization-switcher">
+        {selectedOrganization && <Link to={`/orgs/${encodeURIComponent(selectedOrganization.slug)}`} aria-label={`Open ${selectedOrganization.name}`}>
+          <OrgImage key={selectedOrganization.id} src={selectedOrganization.image_url} alt={`${selectedOrganization.name} logo`} className="workspace-organization-logo" />
+        </Link>}
         <label htmlFor="workspace-organization">Your organizations</label>
-        <select id="workspace-organization" value="" disabled={!token || organizationsLoading || !organizations.length} onChange={event => {
-          if (event.target.value) navigate(`/orgs/${encodeURIComponent(event.target.value)}`)
+        <select id="workspace-organization" value={selectedSlug} disabled={!token || organizationsLoading || !organizations.length} onChange={event => {
+          const slug = event.target.value
+          setSelectedSlug(slug)
+          try { if (selectionKey) localStorage.setItem(selectionKey, slug) } catch { /* Storage may be unavailable. */ }
+          if (slug) navigate(`/orgs/${encodeURIComponent(slug)}`)
         }}>
-          <option value="">{isLoading || organizationsLoading ? 'Loading organizations…' : !token ? 'Sign in to choose an organization' : 'Choose an organization…'}</option>
+          {!selectedOrganization && <option value="">{isLoading || organizationsLoading ? 'Loading organizations…' : !token ? 'Sign in to choose an organization' : 'No organizations available'}</option>}
           {organizations.map(organization => <option key={organization.id} value={organization.slug}>{organization.name}</option>)}
         </select>
         {organizationStatus && <span role="status">{organizationStatus}</span>}
