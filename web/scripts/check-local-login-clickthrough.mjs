@@ -52,6 +52,7 @@ try{
   await c.close()
  }
  const c=await context(),page=await c.newPage();await enter(page)
+ await page.getByText('Other sign-in options',{exact:true}).click()
  await page.getByRole('link',{name:'Sign in with a PIdP account',exact:true}).click()
  await submit(page,fixtures.bots[0])
  await expect(page.getByRole('link',{name:'Link my portal account',exact:true})).toBeVisible()
