@@ -1,3 +1,5 @@
+import { registerAccountTools } from './mcpAccountTools';
+import product from '../../shared/mcp-product.json';
 import {memberTitlesSchema,organizationPeopleSchema,organizationTitlePeople,runMemberTitlesOperation} from './organizationMemberTitles';
 import {organizationPageStatistics} from './organizationPageStatistics';
 import {organizationImageSchema} from './organizationBrandImage';
@@ -219,7 +221,7 @@ export async function authenticateMcp(request: Request, env: Env, getKey?: JWTVe
       isOperator = status.is_sysadmin === true && typeof payload.sub === 'string' && payload.sub.startsWith('owner:');
     }
     const scopes = typeof payload.scope === "string" ? payload.scope.split(" ") : [];
-    return { userId, scopes, isOperator, organizationId: config.organizationId, resource: config.resource };
+    return { userId, scopes, isOperator, subject: payload.sub!, expiresAt: payload.exp!, organizationId: config.organizationId, resource: config.resource };
   } catch (error) {
     if (error instanceof EventIntegrationError) throw error;
     console.warn("MCP access token rejected", { stage: validationStage });
@@ -729,7 +731,8 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
     }
     const method = parsedBody && typeof parsedBody === 'object' && 'method' in parsedBody ? parsedBody.method : undefined;
     observation.method = typeof method === 'string' && ['initialize', 'notifications/initialized', 'tools/list', 'tools/call', 'ping'].includes(method) ? method : 'other';
-    const server = new McpServer({ name: config.name ? `${config.name} MCP` : "orgportal-events", version: "1.2.0", ...(config.name === "OrgPortal" ? { icons: [{ src: "https://orgportal.cc/orgportal.svg", mimeType: "image/svg+xml", sizes: ["any"] }] } : {}) }, { instructions: "Search the public organization directory before adding an organization. Use directory_registration for researched third-party listings; it grants no access. Owned creation assigns owner access to the signed-in account and requires explicit ownership intent. Never substitute owned creation when directory registration is unavailable or denied. A claimed record is not verified legal representation. Inspect write receipts after uncertain outcomes before retrying." });
+    const server = new McpServer({ name: config.name ? `${config.name} MCP` : "orgportal-events", version: product.version, ...(config.name === "OrgPortal" ? { icons: [{ src: "https://orgportal.cc/orgportal.svg", mimeType: "image/svg+xml", sizes: ["any"] }] } : {}) }, { instructions: "Search the public organization directory before adding an organization. Use directory_registration for researched third-party listings; it grants no access. Owned creation assigns owner access to the signed-in account and requires explicit ownership intent. Never substitute owned creation when directory registration is unavailable or denied. A claimed record is not verified legal representation. Inspect write receipts after uncertain outcomes before retrying." });
+    registerAccountTools(server, env.DB, identity, config);
     const scopedArgs = (args: unknown) => {
       if (config.organizationId && (!args || typeof args !== 'object' || !('organizationId' in args)
         || args.organizationId !== config.organizationId)) throw new EventIntegrationError(403, 'This MCP connection is limited to its own organization');

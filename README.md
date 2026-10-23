@@ -380,3 +380,10 @@ For another local stack, supply its matching origin and identity container:
 The configured PIdP public origin must match that gateway. The gateway must use
 `localhost` so the browser can receive its secure host-only cookie over the
 loopback handoff. No production endpoint or login-bypass route is added.
+
+
+## OrgPortal CLI and MCP account tools
+
+Run `./orgportal --help` or see [account connections and diagnostics](docs/cli/ACCOUNTS.md)
+for `whoami`, `auth status --live`, named connection selection and `doctor`.
+The CLI uses the same hosted MCP tools and authorization as other clients.
