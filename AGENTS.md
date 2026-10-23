@@ -35,6 +35,63 @@
   PIdP releases remain separate and preserve Python/serverless parity.
   Database migrations require explicit review and are not part of ordinary releases.
 
+## Focused tests
+
+- Run the smallest meaningful set of tests for the changed behavior before
+  committing. Use host-based tests or isolated local Docker; do not use a VM
+  unless the user explicitly requests one.
+- For frontend behavior, run the affected Vitest files with
+  `npm --prefix web test -- <test paths> --maxWorkers=2` and check TypeScript
+  when types or component interfaces change. For API behavior, run the affected
+  `node --import tsx --test test/<name>.test.ts` files from `org-worker`, plus
+  `npm --prefix org-worker run typecheck` when API code changes.
+- For forms or navigation, also run one relevant headless clickthrough against
+  isolated local Docker. Use `web/scripts/test-local-team-form.py` for team
+  applications, presenter selection, editing, attachments and favorites. Keep
+  its dummy accounts, writable fixtures and mail delivery isolated locally.
+- Include permission denial and tenant isolation tests when authorization
+  changes; preservation, compatibility and retention checks when schemas change.
+  Expand the suite for shared infrastructure changes, failures or unresolved risk.
+- Run checks once after the final relevant changes. Reuse passing results for
+  unchanged code; do not repeat full suites locally and in multiple CI systems
+  merely to deploy. Existing required CI gates remain mandatory until the
+  pipeline itself is explicitly changed and verified.
+- Documentation-only changes require a diff/format and reference review, with
+  `git diff --check`; they do not require application tests, builds or deployment.
+  Report the checks actually run and any material gaps.
+
+## Staged Cloudflare releases
+
+- Prefer a two-version rollout: A is the last healthy version, B is the tested
+  candidate. Build each affected service once and promote the same version;
+  avoid rebuilding unchanged services or promoting untested artifacts. Keep
+  releases in the native Cloudflare workflow and `scripts/release.mjs`.
+- Before changing traffic, record both version IDs and the tested commit.
+  Where supported, add B at 0% and smoke-test it with version overrides. Verify
+  the response's actual version ID: an override can fall back to normal routing.
+  Then use a small canary and increase traffic only after the defined observation
+  window and health, error-rate and latency checks pass. Restore A on failure.
+- Candidate and post-promotion smoke tests must check service/commit identity,
+  HTML, the referenced JavaScript asset, and the API proxy. Production checks
+  stay read-only and unauthenticated; authenticated clickthroughs stay local.
+- Before splitting frontend traffic, implement and verify stable version
+  affinity for HTML and hashed assets, and compatible frontend/API routing.
+  Randomly mixing versions can break asset loading. Version overrides are for
+  testing and explicit service pinning, not general browser routing.
+- Database and storage changes must remain compatible with both A and B during
+  the rollout. Worker rollback does not undo D1 migrations or storage writes;
+  review migration and rollback compatibility separately.
+- Current implementation: `cloudflare/build.sh` runs full checks/builds and the
+  configured deploy command runs `deploy all` immediately. Gradual promotion and
+  focused CI selection are not yet automated. Implement and test them in the
+  release tooling before claiming a staged rollout; do not bypass existing gates
+  or replace the release workflow with ad hoc production uploads.
+- Consult Cloudflare's current [gradual deployment guidance](https://developers.cloudflare.com/workers/versions-and-deployments/gradual-deployments/),
+  [version overrides](https://developers.cloudflare.com/workers/versions-and-deployments/version-overrides/),
+  [version affinity](https://developers.cloudflare.com/workers/versions-and-deployments/gradual-deployments/version-affinity/)
+  and [rollback limitations](https://developers.cloudflare.com/workers/versions-and-deployments/rollbacks/)
+  before changing the pipeline.
+
 ## Browser tests
 
 - Run browser automation headlessly.
