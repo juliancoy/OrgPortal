@@ -14,7 +14,7 @@ import { MockChatService } from '../infrastructure/mocks/MockChatService'
 import { APIEngagementRepository } from '../infrastructure/api/APIEngagementRepository'
 import { APIMotionRepository } from '../infrastructure/api/APIMotionRepository'
 import { APIVoteRepository } from '../infrastructure/api/APIVoteRepository'
-import { MatrixChatService } from '../chat/matrixService'
+import { LazyChatService } from '../chat/LazyChatService'
 import { isNativeCapacitorRuntime } from '../infrastructure/platform/runtimePlatform'
 
 /**
@@ -131,7 +131,7 @@ function createChatService(config: ServicesConfig): ChatService {
   if (config.chatBackend === 'mock') {
     return new MockChatService()
   }
-  return new MatrixChatService()
+  return new LazyChatService()
 }
 
 /**

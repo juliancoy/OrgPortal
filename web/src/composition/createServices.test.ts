@@ -1,11 +1,11 @@
 import { createServices } from './createServices'
-import { MatrixChatService } from '../chat/matrixService'
+import { LazyChatService } from '../chat/LazyChatService'
 import { MockChatService } from '../infrastructure/mocks/MockChatService'
 
 describe('createServices chat adapter wiring', () => {
   it('uses matrix chat backend by default', () => {
     const services = createServices({ dataSource: 'api' })
-    expect(services.chatService).toBeInstanceOf(MatrixChatService)
+    expect(services.chatService).toBeInstanceOf(LazyChatService)
   })
 
   it('uses mock chat backend when requested', () => {
