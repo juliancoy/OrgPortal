@@ -1141,6 +1141,20 @@
       ]
     },
     {
+      "id": "suite-org-worker-test-organization-peers-test-ts",
+      "label": "org-worker/test/organization-peers.test.ts",
+      "category": "Organizations and membership",
+      "source": "org-worker/test/organization-peers.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organization-peers.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-org-worker-test-organization-personnel-test-ts",
       "label": "org-worker/test/organization-personnel.test.ts",
       "category": "Organizations and membership",
@@ -2629,6 +2643,20 @@
         {
           "id": "suite",
           "label": "proposeMotion.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-chat-LazyChatService-test-ts",
+      "label": "web/src/chat/LazyChatService.test.ts",
+      "category": "Messaging and email",
+      "source": "web/src/chat/LazyChatService.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "LazyChatService.test.ts"
         }
       ]
     },
