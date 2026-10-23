@@ -15,7 +15,9 @@ export function EventSubmissions({eventId}:{eventId:string}) {
  const [next,setNext]=useState<string|null>(null),[ready,setReady]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[revision,setRevision]=useState(0)
  async function request(path:string,options:RequestInit={},signal?:AbortSignal){
   const response=await fetch(base+path,{...options,signal,cache:'no-store',headers:{...(token?{Authorization:`Bearer ${token}`}:{}) ,'Content-Type':'application/json'}})
-  const data=await response.json();if(!response.ok)throw new Error(data.message||data.error||'Could not load submissions');return data
+  const text=await response.text();let data
+  try{data=JSON.parse(text)}catch{throw new Error(response.ok?'The server returned an invalid response.':text||'Could not complete the request')}
+  if(!response.ok)throw new Error(data.message||data.detail||data.error||'Could not complete the request');return data
  }
  useEffect(()=>{
   const controller=new AbortController();setReady(false);setCanManage(false);setError('');setFavorites([]);setRows([])
