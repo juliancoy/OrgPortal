@@ -382,6 +382,11 @@ The configured PIdP public origin must match that gateway. The gateway must use
 loopback handoff. No production endpoint or login-bypass route is added.
 
 
+For repeatable desktop and Pixel form tests in isolated local Docker, run
+`npm --prefix OrgPortal/web run test:forms:docker` from the Organization checkout.
+See [common form clickthroughs](docs/FORM_CLICKTHROUGH.md) for setup, coverage and
+saved reports.
+
 ## OrgPortal CLI and MCP account tools
 
 Run `./orgportal --help` or see [account connections and diagnostics](docs/cli/ACCOUNTS.md)

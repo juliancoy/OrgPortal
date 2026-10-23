@@ -7,6 +7,9 @@ python3 web/scripts/test-local-team-form.py
 
 Uses synthetic accounts, a dummy host organization/event, and a dummy applicant
 team. All requests stay on loopback; remote organization replication must be off.
+
+For attached Android Chrome, forward its DevTools socket and reverse the gateway
+port with adb, then set PLAYWRIGHT_CDP_URL=http://127.0.0.1:9223.
 """
 import csv
 import base64
@@ -18,7 +21,7 @@ import secrets
 import re
 import uuid
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 from playwright.sync_api import sync_playwright, expect
 from local_browser_test_support import BASE, preflight, verification_link
 
@@ -32,9 +35,23 @@ def successful(response):
     return response.json() if 'application/json' in response.headers.get('content-type', '') else {}
 
 with sync_playwright() as p:
-    browser = p.chromium.launch(executable_path=os.environ.get('PLAYWRIGHT_CHROMIUM_EXECUTABLE', '/usr/bin/google-chrome'), headless=True, args=['--no-sandbox'])
+    cdp_url = os.environ.get('PLAYWRIGHT_CDP_URL')
+    ws_url = os.environ.get('PLAYWRIGHT_WS_ENDPOINT')
+    device_name = os.environ.get('PLAYWRIGHT_DEVICE', 'Desktop Chrome')
+    assert not (cdp_url and ws_url), 'Choose one remote browser connection'
+    if cdp_url:
+        assert urlparse(cdp_url).hostname in {'localhost', '127.0.0.1'}, 'Use a local forwarded browser'
+        browser = p.chromium.connect_over_cdp(cdp_url)
+    elif ws_url:
+        assert urlparse(ws_url).hostname in {'localhost', '127.0.0.1'}, 'Use a local Docker browser'
+        browser = p.chromium.connect(ws_url)
+    else:
+        browser = p.chromium.launch(executable_path=os.environ.get('PLAYWRIGHT_CHROMIUM_EXECUTABLE', '/usr/bin/google-chrome'), headless=True, args=['--no-sandbox'])
+    test_contexts = []
     def context():
-        ctx = browser.new_context(ignore_https_errors=True, reduced_motion='reduce')
+        device = {'no_viewport': True} if cdp_url else {key: value for key, value in p.devices[device_name].items() if key != 'default_browser_type'}
+        ctx = browser.new_context(ignore_https_errors=True, reduced_motion='reduce', **device)
+        test_contexts.append(ctx)
         ctx.route('**/*', lambda route: route.continue_() if urlparse(route.request.url).hostname in {'localhost', '127.0.0.1'} else route.abort())
         return ctx
     def account(ctx, role):
@@ -42,6 +59,32 @@ with sync_playwright() as p:
         successful(ctx.request.post(BASE + '/pidp/auth/register', data={**credentials, 'full_name': f'Dummy {role} {run_id}'}))
         assert ctx.request.get(verification_link(credentials['email']), max_redirects=0).status == 303
         return credentials
+    def export_csv(page, review):
+        if cdp_url:
+            # Android CDP cannot save a browser download onto the runner's disk.
+            # Read the actual export Blob in the browser: CDP can return an empty
+            # response body for downloads on Android.
+            page.evaluate("""() => {
+                window.__teamFormExport = null;
+                const original = URL.createObjectURL;
+                URL.createObjectURL = function(blob) {
+                    URL.createObjectURL = original;
+                    blob.text().then(text => { window.__teamFormExport = text; });
+                    return original.call(this, blob);
+                };
+            }""")
+            with page.expect_response(lambda response: '/presentations/export?' in response.url) as exported_response:
+                review.get_by_role('button', name='Export CSV', exact=True).click()
+            assert exported_response.value.ok
+            page.wait_for_function('window.__teamFormExport !== null')
+            contents = page.evaluate('window.__teamFormExport')
+            (REPORT / f'export-{len(list(REPORT.glob("export-*.csv")))}.csv').write_text(contents, encoding='utf-8')
+            return list(csv.DictReader(contents.lstrip('\ufeff').splitlines()))
+        with page.expect_download() as exported_download:
+            review.get_by_role('button', name='Export CSV', exact=True).click()
+        target = REPORT / f'export-{len(list(REPORT.glob("export-*.csv")))}.csv'
+        exported_download.value.save_as(target)
+        return list(csv.DictReader(target.read_text(encoding='utf-8-sig').splitlines()))
     try:
         host = context()
         for path in ['/pidp/health', '/api/org/health']:
@@ -92,6 +135,14 @@ with sync_playwright() as p:
         page.get_by_role('tab',name='Apply',exact=True).click()
         assert page.url.endswith('#apply'), 'Apply tab must survive reload and sign-in return'
         expect(form).to_be_visible(timeout=30000)
+        if not cdp_url:
+            assert page.evaluate('navigator.maxTouchPoints > 0') == bool(p.devices[device_name]['has_touch'])
+        form.get_by_role('button', name='Submit application', exact=True).click()
+        assert not form.evaluate('(el) => el.checkValidity()'), 'Empty required fields must block submission'
+        assert successful(host.request.get(endpoint, headers=auth))['submissions'] == []
+        form.get_by_label('Presentation title', exact=True).fill('Discard this draft')
+        form.get_by_role('button', name='Clear saved draft', exact=True).click()
+        expect(form.get_by_label('Presentation title', exact=True)).to_have_value('')
         expect(form.get_by_role('checkbox')).to_have_count(0)
         expect(form.get_by_label('Your role in this presentation',exact=True)).to_have_count(0)
         expect(page.locator('.public-event-description .bio-markdown li')).to_have_count(2)
@@ -100,6 +151,10 @@ with sync_playwright() as p:
         form.get_by_label('About your team', exact=True).fill('A dummy organization for a local browser test.')
         form.get_by_label('Presentation title', exact=True).fill('A local demo')
         form.get_by_label('What will you present?', exact=True).fill('A synthetic demo to verify the submission flow.')
+        form.get_by_role('button', name='Submit application', exact=True).click()
+        expect(section.get_by_role('status').filter(has_text='Add at least one teammate')).to_be_visible()
+        assert successful(host.request.get(endpoint, headers=auth))['submissions'] == []
+        print('PASS: required fields, missing teammates and clearing a draft', flush=True)
         picker = form.get_by_label('Teammates (Email or Portal Name)', exact=True)
         roster = form.get_by_role('list', name='Selected team members')
         for query, person in [(f'Dummy host {run_id}', f'Dummy host {run_id}'), (colleague_credentials['email'], f'Dummy colleague {run_id}')]:
@@ -116,7 +171,8 @@ with sync_playwright() as p:
         form.get_by_role('button', name=f'Choose Dummy host {run_id}', exact=True).click()
         expect(roster.get_by_role('listitem')).to_have_count(3)
         expect(form).to_have_attribute('data-draft-saved', 'true', timeout=10000)
-        expect(form).to_have_css('border-top-color', 'rgb(212, 175, 55)')
+        assert form.evaluate('(el) => parseFloat(getComputedStyle(el).borderTopWidth) >= 1'), 'Form border must remain visible at the device pixel ratio'
+        expect(form).to_have_css('border-top-style', 'solid')
         page.get_by_role('tab',name='Info',exact=True).click()
         page.get_by_role('tab',name='Apply',exact=True).click()
         expect(form.get_by_label('New team name',exact=True)).to_have_value(f'Dummy Demo Team {run_id}')
@@ -171,6 +227,7 @@ with sync_playwright() as p:
         assert sum(member['role'] == 'member' for member in members) == 2, members
         assert len(members) == 3, 'Unverified email must not create an identity or membership'
         host_user_id = saved[0]['presenters'][0]['userId']
+        expect(page.get_by_text('Review applications', exact=True)).to_have_count(0)
         print('PASS: registration popup and profile link, saved form draft, teammate lookup/invitation and initial submission',flush=True)
         # A real host dashboard must review every application across pages.
         for index in range(25):
@@ -188,18 +245,14 @@ with sync_playwright() as p:
         expect(review.locator('.presentation-submission')).to_have_count(1, timeout=30000)
         review.get_by_role('button', name='Previous page', exact=True).click()
         expect(review.locator('.presentation-submission')).to_have_count(25, timeout=30000)
-        with manager.expect_download() as download_event:
-            review.get_by_role('button', name='Export CSV', exact=True).click()
-        exported=list(csv.DictReader(Path(download_event.value.path()).read_text(encoding='utf-8-sig').splitlines()))
-        assert len(exported)==26, 'CSV must include all pages'
+        exported=export_csv(manager, review)
+        assert len(exported)==26, f'CSV must include all pages; got {len(exported)} rows'
         review.locator('.presentation-submission').first.get_by_role('button',name='Accept',exact=True).click()
         expect(review.get_by_role('status').filter(has_text='marked accepted.')).to_be_visible(timeout=30000)
         review.get_by_label('Application status',exact=True).select_option('accepted')
         expect(review.locator('.presentation-submission')).to_have_count(1, timeout=30000)
         expect(review.get_by_role('status').filter(has_text='Page 1 of 1')).to_contain_text('1 matching applications')
-        with manager.expect_download() as filtered_download:
-            review.get_by_role('button', name='Export CSV', exact=True).click()
-        filtered=list(csv.DictReader(Path(filtered_download.value.path()).read_text(encoding='utf-8-sig').splitlines()))
+        filtered=export_csv(manager, review)
         assert len(filtered)==1 and filtered[0]['status']=='accepted'
         for width,filename in [(1280,'applications-desktop.png'),(390,'applications-mobile.png')]:
             manager.set_viewport_size({'width':width,'height':1000})
@@ -210,6 +263,7 @@ with sync_playwright() as p:
         manager.get_by_role('tab',name='Apply',exact=True).click()
         expect(manager.get_by_role('form',name='Team presentation application')).to_be_visible()
         print('PASS: manager pagination, CSV exports and review decisions',flush=True)
+        page.bring_to_front()
         page.reload()  # The host created review fixtures in another browser context.
         page.get_by_role('tab',name='Submissions',exact=True).click()
         submissions=page.get_by_role('region',name='Event submissions',exact=True)
@@ -229,6 +283,11 @@ with sync_playwright() as p:
         public_submissions=guest.get_by_role('region',name='Event submissions',exact=True)
         expect(public_submissions.locator('.presentation-submission')).to_have_count(26,timeout=30000)
         expect(public_submissions.get_by_role('link',name='Sign in',exact=True)).to_be_visible()
+        guest.get_by_role('tab', name='Apply', exact=True).click()
+        login = guest.get_by_role('link', name='Log In', exact=True)
+        expect(login).to_have_attribute('href', '/users/login?next=' + quote('/events/' + event['slug'] + '#apply', safe=''))
+        expect(guest.get_by_role('form', name='Team presentation application')).to_have_count(0)
+        guest.get_by_role('tab', name='Submissions', exact=True).click()
         public_team=public_submissions.locator('.presentation-submission').filter(has=guest.get_by_role('heading',name='A local demo',exact=True))
         expect(public_team.get_by_role('img',name='demo-image.png',exact=True)).to_be_visible()
         presenters=public_team.get_by_role('region',name='Presenters',exact=True)
@@ -242,6 +301,7 @@ with sync_playwright() as p:
             link=public_team.get_by_role('link').filter(has_text=name)
             response=guest.request.get(BASE+link.get_attribute('href'))
             assert response.ok and response.headers['content-type']==content_type
+        page.bring_to_front()
         own_team=submissions.locator('.presentation-submission').filter(has=page.get_by_role('heading',name='A local demo',exact=True))
         expect(own_team.get_by_role('heading',name='Attachments',exact=True)).to_have_count(0)
         with page.expect_file_chooser() as selected:
@@ -258,16 +318,20 @@ with sync_playwright() as p:
             own_team.screenshot(path=str(REPORT/f'compact-submission-{width}.png'))
         own_team.get_by_role('button',name='Delete attachment demo-summary.pdf',exact=True).click()
         expect(own_team.get_by_role('link').filter(has_text='demo-summary.pdf')).to_have_count(0,timeout=30000)
+        manager.bring_to_front()
         manager.get_by_role('tab',name='Submissions',exact=True).click()
         settings=manager.get_by_role('form',name='Submission voting settings',exact=True)
         settings.get_by_label('Maximum favorites per person',exact=True).fill('4')
         settings.get_by_role('button',name='Save favorite limit',exact=True).click()
         expect(manager.get_by_role('region',name='Event submissions').get_by_role('status')).to_have_text('0 of 4 favorites selected',timeout=30000)
+        page.bring_to_front()
         page.reload()
         expect(submissions.get_by_role('status')).to_have_text('2 of 4 favorites selected',timeout=30000)
+        manager.bring_to_front()
         settings.get_by_label('Maximum favorites per person',exact=True).fill('1')
         settings.get_by_role('button',name='Save favorite limit',exact=True).click()
         expect(manager.get_by_role('region',name='Event submissions').get_by_role('alert')).to_contain_text('cannot be lower than an existing ballot',timeout=30000)
+        page.bring_to_front()
         page.get_by_role('tab',name='Apply',exact=True).click()
         print('PASS: card voting, favorite limits, presenter roster and attachments',flush=True)
         # Same person and same team: create an independent second application.
@@ -324,5 +388,17 @@ with sync_playwright() as p:
         expect(page.get_by_text('Applications are not open for this event.',exact=True)).to_be_visible(timeout=30000)
         print('PASS: create a team for others with manager-only access, private invitations, public presenter roster and roster-preserving edits; multiple same-team submissions, editing after intake closes, independent attachments and withdrawal; local authenticated session → dummy team creation → checkbox-free team submission → styled desktop/mobile form → submit → persisted application → manager tabs, counts, filters, pagination and full/filtered CSV → image/PDF/PowerPoint upload and public download → attachment removal → public Submissions tab → three favorites persist across reload → fourth blocked → remove favorite → guest view → manager changes favorite limit → withdraw; Markdown and global button fallback verified')
         print('Screenshots: ' + str(REPORT))
+        if cdp_url:
+            print('LIMITATION: CSV button responses verified; Android download-manager file saving is not verified.')
+    except Exception:
+        for context_index, ctx in enumerate(test_contexts):
+            for page_index, failed_page in enumerate(ctx.pages):
+                try:
+                    failed_page.screenshot(path=str(REPORT / f'failure-{context_index}-{page_index}.png'), timeout=5000)
+                except Exception:
+                    pass
+        raise
     finally:
+        for ctx in test_contexts:
+            ctx.close()
         browser.close()

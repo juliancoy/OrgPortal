@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "test:forms:docker": "python3 scripts/run-common-forms.py",
     "test:company-votes": "node scripts/test-company-votes.mjs",
     "dev": "vite",
     "build": "node scripts/build-network-positions.mjs && tsc -b && vite build",

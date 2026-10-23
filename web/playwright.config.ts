@@ -24,7 +24,7 @@ export default defineConfig({
     },
     {
       name: 'mobile-chromium',
-      use: { ...devices['iPhone 12'], browserName: 'chromium' },
+      use: { ...devices['Pixel 7'], browserName: 'chromium' },
     },
   ],
   webServer: {
