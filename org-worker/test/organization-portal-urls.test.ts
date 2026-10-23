@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {EventTestDb} from './event-test-db';
 import {organizationPortalLinks} from '../src/organizationPortalUrls';
-import {canonicalOrganizationHref} from '../../shared/organizationUrls';
+import {canonicalOrganizationHref,organizationRoutingBase} from '../../shared/organizationUrls';
 
 test('portal metadata links to the bound organization, including different and renamed slugs',async()=>{
  const db=new EventTestDb();
@@ -25,4 +25,12 @@ test('normalization never emits retired routes and preserves unrelated destinati
  assert.equal(canonicalOrganizationHref('https://group.example/about','one'),'https://group.example/about');
  assert.equal(canonicalOrganizationHref('/portals/unlinked',null),null);
  assert.equal(canonicalOrganizationHref('/portals/alias/unrecognized','one'),null);
+});
+
+test('org home destinations cannot become nested routing bases',()=>{
+ for(const path of ['/orgs/one','/portals/alias','/portals/alias/branding']) {
+  assert.equal(organizationRoutingBase(`https://portal.example${path}?tab=branding#copy`),'https://portal.example');
+  assert.equal(organizationRoutingBase(`https://portal.example/p${path}`),'https://portal.example/p');
+ }
+ assert.equal(organizationRoutingBase('https://group.example/'),'https://group.example');
 });

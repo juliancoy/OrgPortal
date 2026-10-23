@@ -17,6 +17,12 @@ test('public organization metadata resolves attached group homes, configured slu
   assert.equal(org.group_home_url, 'https://lifetech.fyi/');
   db.sqlite.exec("UPDATE group_sites SET custom_domain_status='requested',home_url='https://codecollective.us/p/portals/lifetech' WHERE id='life-portal'");
   org = await (await get('lifetech')).json(); assert.equal(org.group_home_url, 'https://codecollective.us/p/orgs/lifetech');
+  // A homepage destination must never become the prefix for another org page.
+  for(const base of ['https://medtech.social/orgs/lifetech','https://medtech.social/portals/lifetech']) {
+    db.sqlite.prepare("UPDATE group_sites SET hostname='routing.example',public_base_url=? WHERE id='life-portal'").run(base);
+    const partner=await(await app.request('https://routing.example/api/network/orgs/public/partner',{},env)).json() as {public_url:string};
+    assert.equal(partner.public_url,'https://medtech.social/orgs/partner');
+  }
   for (const unsafe of ['javascript:alert(1)', 'https://user:password@group.example/', 'http://group.example/']) {
     db.sqlite.prepare("UPDATE group_sites SET home_url=? WHERE id='life-portal'").run(unsafe);
     org = await (await get('lifetech')).json(); assert.equal(org.group_home_url, null);

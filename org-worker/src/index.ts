@@ -1,7 +1,7 @@
 import { organizationPosterEvents, organizationPosterPages } from './organizationPoster';
 import {organizationMemberTitleRoutes} from './organizationMemberTitles';
 import {organizationPortalLinks} from './organizationPortalUrls';
-import {canonicalOrganizationHref,organizationPagePath} from '../../shared/organizationUrls';
+import {canonicalOrganizationHref,organizationPagePath,organizationRoutingBase} from '../../shared/organizationUrls';
 import {organizationPageStatisticsRoutes} from './organizationPageStatistics';
 import { organizationBrandingRoutes } from './organizationBranding';
 import { organizationRecognitionRoutes } from './organizationRecognition';
@@ -784,7 +784,7 @@ async function tenantPublicPortalBase(env: Env, request: Request): Promise<strin
       .bind(hostname).first<{public_base_url:string;canonical_path_prefix:string}>();
     if (!tenant) return null;
     const configured = String(tenant.public_base_url || "").replace(/\/+$/g, "");
-    if (configured) return configured;
+    if (configured) return organizationRoutingBase(configured);
     const prefix = String(tenant.canonical_path_prefix || "").trim().replace(/\/+$/g, "");
     return `${new URL(request.url).origin}${prefix === "/" ? "" : prefix}`;
   } catch {
@@ -796,7 +796,7 @@ async function publicPortalBase(env: Env, request: Request) {
   const tenantBase = await tenantPublicPortalBase(env, request);
   if (tenantBase) return tenantBase;
   const configured = (env.PUBLIC_PORTAL_BASE_URL || "").replace(/\/+$/g, "");
-  if (configured) return configured;
+  if (configured) return organizationRoutingBase(configured);
   return `${new URL(request.url).origin}/p`;
 }
 

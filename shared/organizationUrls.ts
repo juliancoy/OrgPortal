@@ -16,3 +16,13 @@ export function canonicalOrganizationHref(value:string|null|undefined,organizati
   return url.origin===base?`${url.pathname}${url.search}${url.hash}`:url.href;
  }catch{return value}
 }
+
+/** A configured org homepage is a destination, never an app routing prefix. */
+export function organizationRoutingBase(value:string):string {
+ try {
+  const url=new URL(value);
+  url.pathname=url.pathname.replace(/\/(?:orgs|portals)\/[^/]+(?:\/branding)?\/?$/, '').replace(/\/+$/, '') || '/';
+  url.search='';url.hash='';
+  return url.href.replace(/\/+$/, '');
+ }catch{return value.replace(/\/+$/, '')}
+}

@@ -1,6 +1,6 @@
 # Organization Board and roles
 
-Every organization has Info, Board, Personnel and Branding tabs. `/orgs/:slug?tab=board`
+Every organization has Info, Board, Personnel, Poster and Branding tabs. `/orgs/:slug?tab=board`
 shows active members with assigned titles, including officers, specialists and
 advisors. "Board" is the public people-and-roles view. Titles are independent of
 Member, Organizer and Owner access levels. Several people can share a title,

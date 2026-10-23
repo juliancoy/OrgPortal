@@ -3,7 +3,7 @@ import product from '../../shared/mcp-product.json';
 import {memberTitlesSchema,organizationPeopleSchema,organizationTitlePeople,runMemberTitlesOperation} from './organizationMemberTitles';
 import {organizationPageStatistics} from './organizationPageStatistics';
 import {organizationPortalLinks} from './organizationPortalUrls';
-import {organizationPagePath} from '../../shared/organizationUrls';
+import {organizationPagePath,organizationRoutingBase} from '../../shared/organizationUrls';
 import {organizationImageSchema} from './organizationBrandImage';
 import { runPortalBrandingOperation, portalBrandingTargetSchema, portalBrandingUpdateSchema } from './portalBrandingMcp';
 import { runOrganizationDirectoryOperation, organizationOperationStatusSchema, type DirectoryOperation } from './organizationDirectoryOperations';
@@ -294,7 +294,7 @@ async function nativeOrganization(db: D1Database, organizationId: string) {
 
 function portalBase(env: Env) {
   const configured = (env.PUBLIC_PORTAL_BASE_URL || "").replace(/\/+$/g, "");
-  if (configured) return configured;
+  if (configured) return organizationRoutingBase(configured);
   const resource = env.MCP_PUBLIC_URL ? new URL(env.MCP_PUBLIC_URL) : null;
   return resource ? `${resource.origin}/p` : "https://codecollective.us/p";
 }

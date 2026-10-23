@@ -294,7 +294,7 @@ test("MCP exposes organization portal setup and custom-domain flow", async () =>
   try {
     const saved = await rpc("save_portal_setup", { organizationId: "org-one", slug: "one", name: "One Portal", homeKind: "landing" });
     assert.equal(saved.portal.slug, "one");
-    assert.equal(saved.portal.slug_url, "https://codecollective.test/p/portals/one");
+    assert.equal(saved.portal.slug_url, "https://codecollective.test/p/orgs/one");
     const requested = await rpc("request_portal_custom_domain", { organizationId: "org-one", hostname: "one.example.org", notes: "ready for DNS" });
     assert.equal(requested.portal.custom_domain_status, "requested");
     assert.ok(requested.checklist.some((item: string) => item.includes("Cloudflare custom domain")));

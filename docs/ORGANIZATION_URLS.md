@@ -2,7 +2,7 @@
 
 The public homepage is `/orgs/:organizationSlug`. It includes configured welcome
 copy and actions, the organization description and image, every upcoming hosted
-event, specialty resources, and Info/Board/Personnel/Branding tabs. Branding uses
+event, specialty resources, and Info/Board/Personnel/Poster/Branding tabs. Branding uses
 `?tab=branding`; management stays at `/orgs/:organizationSlug/dashboard`.
 The page stays public regardless of sign-in status, with permission-checked
 management controls added for managers.
@@ -49,3 +49,7 @@ It reports `X-Poster-Pages`, `X-Poster-Page`, and `X-Poster-Events` and uses
 `Cache-Control: no-store` so event updates appear on the next poster request.
 Gallery files remain organization-scoped; the endpoint accepts no arbitrary
 image URL. No database migration is required.
+
+Public link generation treats a configured organization homepage as a destination,
+not as an application routing prefix. Organization and event links keep the real
+site mount and never nest below another organization’s URL.

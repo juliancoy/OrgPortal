@@ -153,6 +153,7 @@ test('communities isolate boards, balances, mutations and retry IDs for the same
 
 test('domain selection rejects unknown communities; only admins can customize or create them', async (t) => {
   const database = new TimebankDatabase();
+  database.sqlite.exec("CREATE TABLE organizations(id TEXT PRIMARY KEY,name TEXT,slug TEXT); INSERT INTO organizations VALUES('baltimore-medtech','Baltimore MedTech','baltimore-medtech')");
   t.after(() => database.sqlite.close());
   t.mock.method(globalThis, 'fetch', async (_input: unknown, init: RequestInit) => Response.json(identityProfile({ id: 'alice', full_name: 'Alice', is_sysadmin: new Headers(init.headers).get('Authorization') === 'Bearer admin' })));
   const env = { DB: database.asD1(), PIDP_BASE_URL: 'https://identity.example.test' };

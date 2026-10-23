@@ -97,10 +97,10 @@ class FakeD1 {
         ) as T
       ) || null;
     }
-    if (sql.includes("FROM organizations WHERE id = ?")) {
+    if ((sql.includes("FROM organizations WHERE id = ?") || sql.includes("FROM organizations WHERE id=?"))) {
       return (this.organizations.find((row) => row.id === params[0] || row.slug === params[1]) as T) || null;
     }
-    if (sql.includes("FROM organizations WHERE slug = ?") || sql.includes("FROM organizations o WHERE o.slug = ?")) {
+    if ((sql.includes("FROM organizations WHERE slug = ?") || sql.includes("FROM organizations WHERE slug=?")) || sql.includes("FROM organizations o WHERE o.slug = ?")) {
       return (this.organizations.find((row) => row.slug === params[0]) as T) || null;
     }
     if (sql.includes("FROM events WHERE ingest_key = ?")) {
@@ -164,7 +164,7 @@ class FakeD1 {
       const [organizationId, slug] = params;
       const row =
         this.portalTenants.find((row) => row.organization_id === organizationId) ||
-        this.portalTenants.find((row) => row.home_org_slug === slug);
+        this.portalTenants.find((row) => row.organization_id == null && row.home_org_slug === slug);
       return (row as T) || null;
     }
     if (sql.includes("FROM ubi_runtime_settings WHERE id = 1")) {
@@ -2134,7 +2134,7 @@ test("organization admins can publish a slug portal for their organization", asy
     assert.equal(savedPayload.portal.slug, "test-org");
     assert.equal(savedPayload.portal.home_org_slug, "test-org");
     assert.equal(savedPayload.portal.home_kind, "org-events");
-    assert.equal(savedPayload.portal.slug_url, "https://codecollective.test/p/portals/test-org");
+    assert.equal(savedPayload.portal.slug_url, "https://codecollective.test/p/orgs/test-org");
 
     const loaded = await app.request(
       "https://org.example.test/api/network/orgs/org-1/portal",
