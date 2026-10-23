@@ -235,6 +235,8 @@ with sync_playwright() as p:
             page.set_viewport_size({'width':width,'height':1000})
             expect(own_team.locator('.submission-presenter-summary')).to_contain_text('3 presenters')
             assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
+            box=own_team.bounding_box()
+            assert box['x']>=0 and box['x']+box['width']<=width+1, 'Submission card must fit the viewport'
             own_team.screenshot(path=str(REPORT/f'compact-submission-{width}.png'))
         own_team.get_by_role('button',name='Delete attachment demo-summary.pdf',exact=True).click()
         expect(own_team.get_by_role('link').filter(has_text='demo-summary.pdf')).to_have_count(0,timeout=30000)
