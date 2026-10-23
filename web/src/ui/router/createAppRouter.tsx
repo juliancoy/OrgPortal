@@ -59,6 +59,7 @@ const EmailCampaignsPage = lazy(() => import('../views/email/EmailCampaignsPage'
 const EmailPreferencesPage = lazy(() => import('../views/email/EmailPreferencesPage').then(module => ({ default: module.EmailPreferencesPage })))
 const NotificationSettingsPage = lazy(() => import('../views/NotificationSettingsPage').then(module => ({ default: module.NotificationSettingsPage })))
 const PublicOrganizationsPage = lazy(() => import('../views/public/PublicOrganizationsPage').then(module => ({ default: module.PublicOrganizationsPage })))
+const OrgClaimPage = lazy(() => import('../views/orgs/OrgClaimPage').then(module => ({ default: module.OrgClaimPage })))
 const GlobalSearchPage = lazy(() => import('../views/public/GlobalSearchPage').then(module => ({ default: module.GlobalSearchPage })))
 const MotionListPage = lazy(() => import('../views/governance/MotionListPage').then(module => ({ default: module.MotionListPage })))
 const MotionDetailPage = lazy(() => import('../views/governance/MotionDetailPage').then(module => ({ default: module.MotionDetailPage })))
@@ -476,6 +477,7 @@ export function createAppRouter() {
           // Public profile
           { path: '/orgs/:handle/five-over-five', element: <FiveOverFivePage /> },
           { path: '/orgs/:handle', element: <OrganizationProfileRoute /> },
+          { path: '/orgs/:handle/claim', element: <OrgClaimPage /> },
           { path: '/orgs/:handle/public', element: <PublicAdminPage /> },
           { path: '/orgs/:handle/member', element: <AuthenticatedRoute><PublicAdminPage dashboard view="members" /></AuthenticatedRoute> },
           { path: '/orgs/:handle/organizer', element: <AuthenticatedRoute><PublicAdminPage dashboard view="organizers" /></AuthenticatedRoute> },

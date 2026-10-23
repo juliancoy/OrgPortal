@@ -203,7 +203,6 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
   const [admins, setAdmins] = useState<PublicOrgAdmin[]>([])
   const [adminsLoading, setAdminsLoading] = useState(false)
   const [status, setStatus] = useState<string>('Loading organization…')
-  const [claimStatus, setClaimStatus] = useState<string | null>(null)
   const [feedbackRating, setFeedbackRating] = useState<FeedbackRating>('neutral')
   const [feedbackComment, setFeedbackComment] = useState('')
   const [feedbackStatus, setFeedbackStatus] = useState<string | null>(null)
@@ -227,8 +226,6 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
   const [portalStatus, setPortalStatus] = useState<string | null>(null)
   const [savingPortal, setSavingPortal] = useState(false)
   const [savingPortalDomain, setSavingPortalDomain] = useState(false)
-  const [claimRequestMessage, setClaimRequestMessage] = useState('')
-  const [claiming, setClaiming] = useState(false)
   const [myAdminOrgs, setMyAdminOrgs] = useState<MyOrganization[]>([])
   const [myAdminOrgsStatus, setMyAdminOrgsStatus] = useState<string | null>(null)
   const [mergeSourceOrgId, setMergeSourceOrgId] = useState('')
@@ -244,13 +241,11 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
   const organizationEditorRef = useRef<HTMLDivElement | null>(null)
   const [showImageEditor, setShowImageEditor] = useState(false)
   const [editorSource, setEditorSource] = useState<string | null>(null)
-  const hasExistingAdmins = admins.some((admin) => admin.role === 'administrator' || admin.role === 'owner')
   const canManageCurrentOrg = myAdminOrgs.some((item) => item.id === org?.id)
   const requestedView = useOrganizationViewPreference(org?.slug, view || searchParams.get('view'))
   const organizationView = resolveOrganizationPageView(dashboard, requestedView, canManageCurrentOrg, membership?.status === 'active')
   const isOrganizerView = canManageCurrentOrg && organizationView === 'organizers'
   const isWorkspaceView = organizationView === 'members' || isOrganizerView
-  const claimActionLabel = hasExistingAdmins ? 'Challenge Ownership' : 'Claim This Organization'
   useEffect(() => {
     if (!handle) return
     const canonicalUrl = currentOrgUrl(handle)
@@ -556,77 +551,6 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
     if (!jsonLd) return
     upsertJsonLd('org-profile', jsonLd)
   }, [jsonLd])
-
-  async function claimOrganizationBySlug() {
-    if (!handle || !token || !org) {
-      setClaimStatus('Sign in to claim this organization.')
-      return
-    }
-    if (canManageCurrentOrg) {
-      setClaimStatus('You already manage this organization.')
-      return
-    }
-    setClaiming(true)
-    setClaimStatus(null)
-    try {
-      if (hasExistingAdmins) {
-        const explanation = claimRequestMessage.trim()
-        if (!explanation) {
-          setClaimStatus('Explain why ownership should change.')
-          return
-        }
-        const requestResp = await fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/ownership-challenges`), {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            explanation,
-          }),
-        })
-        if (requestResp.ok) {
-          setClaimStatus('Ownership challenge filed. The organization is now marked disputed.')
-          await invalidatePublicOrganizationData()
-          setOrg(await loadPublicOrganization<PublicOrganization>(handle,{force:true}))
-          return
-        }
-        const requestText = await requestResp.text().catch(() => '')
-        throw new Error(requestText || `Ownership challenge failed (${requestResp.status})`)
-      }
-      const resp = await fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/claim`), {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (resp.status === 409) {
-        setClaimStatus('This organization was just claimed. Refresh to file an ownership challenge.')
-        return
-      }
-      if (!resp.ok) {
-        const text = await resp.text().catch(() => '')
-        throw new Error(text || `Claim failed (${resp.status})`)
-      }
-      const claimed = await resp.json() as PublicOrganization & MyOrganization
-      setOrg(claimed)
-      setMyAdminOrgs(previous => [...previous.filter(item => item.id !== claimed.id), claimed])
-      setMembership({ organization_id: claimed.id, role: 'owner', status: 'active', membership_count: claimed.membership_count || 1 })
-      window.dispatchEvent(new Event('organization-access-change'))
-      setClaimStatus('Organization claimed. You are now an organizer and its owner.')
-      await invalidatePublicOrganizationData()
-      const [freshOrg, freshAdminsResp] = await Promise.all([
-        loadPublicOrganization<PublicOrganization>(handle,{force:true}),
-        fetch(orgUrl(`/api/network/orgs/public/${encodeURIComponent(handle)}/admins`)),
-      ])
-      setOrg(freshOrg)
-      if (freshAdminsResp.ok) {
-        setAdmins((await freshAdminsResp.json()) as PublicOrgAdmin[])
-      }
-    } catch (err) {
-      setClaimStatus(toUserFacingErrorMessage(err, 'Claim failed'))
-    } finally {
-      setClaiming(false)
-    }
-  }
 
   function applyFeedbackPayload(payload: OrganizationFeedback) {
     setFeedbackRating(payload.my_feedback?.rating || 'neutral')
@@ -1269,51 +1193,7 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
             </div>
           ) : null}
 
-          {token && !canManageCurrentOrg ? (
-            <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
-              <button type="button" onClick={claimOrganizationBySlug} disabled={claiming || !token}>
-                {claiming ? 'Submitting…' : claimActionLabel}
-              </button>
-            </div>
-          ) : canManageCurrentOrg ? (
-            <p className="muted" style={{ margin: 0 }}>
-              You already administer this organization.
-            </p>
-          ) : !hasExistingAdmins ? (
-            <div>
-              <a className="btn-secondary" href={pidpAppLoginUrl(`/orgs/${encodeURIComponent(org.slug)}`)}>
-                Sign in to claim this organization
-              </a>
-              <p className="muted">Claim this organization to become its organizer and manage its profile, members, and events.</p>
-            </div>
-          ) : null}
-          {claimStatus ? (
-            <p className="muted" role="status" style={{ margin: 0 }}>
-              {claimStatus}
-            </p>
-          ) : null}
-          {token && hasExistingAdmins && !canManageCurrentOrg ? (
-            <div style={{ display: 'grid', gap: '0.45rem', maxWidth: 680 }}>
-              <label htmlFor="claim-request-message" className="muted">
-                Ownership challenge
-              </label>
-              <textarea
-                id="claim-request-message"
-                value={claimRequestMessage}
-                onChange={(e) => setClaimRequestMessage(e.target.value)}
-                placeholder="Explain why ownership should transfer to you."
-                rows={3}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  borderRadius: 10,
-                  border: '1px solid var(--border)',
-                  background: 'var(--panel)',
-                  color: 'var(--text-primary)',
-                }}
-              />
-            </div>
-          ) : null}
+          {!canManageCurrentOrg && <Link className="btn-secondary" to={`/orgs/${encodeURIComponent(org.slug)}/claim`}>Claim this Org</Link>}
 
           <SecondaryOrganizationSection className={isNeoNatalProfile ? 'neonatal-about' : undefined}>
           {isNeoNatalProfile && <summary>Related organizations and support</summary>}
