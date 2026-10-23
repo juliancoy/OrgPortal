@@ -1,3 +1,4 @@
+import { organizationPosterEvents, organizationPosterPages } from './organizationPoster';
 import {organizationMemberTitleRoutes} from './organizationMemberTitles';
 import {organizationPortalLinks} from './organizationPortalUrls';
 import {canonicalOrganizationHref,organizationPagePath} from '../../shared/organizationUrls';
@@ -3266,6 +3267,52 @@ app.get("/api/transactions/master", async (c) => {
     .bind(limit, offset).all();
   c.header("Cache-Control", "no-store");
   return c.json(rows.results);
+});
+
+app.get("/api/network/orgs/public/:slug/poster-images", async c => {
+  const org = await organizationByIdOrSlug(c.env.DB, c.req.param("slug"));
+  if (!org) fail(404, "Organization not found");
+  const images = await posterGallery(c.env.DB, org, true);
+  return c.json(images.map(({ image_key, ...image }) => image), 200, { "cache-control": "no-store" });
+});
+
+app.get("/api/network/orgs/public/:slug/flyer.svg", async c => {
+  const org = await organizationByIdOrSlug(c.env.DB, c.req.param("slug"));
+  if (!org) fail(404, "Organization not found");
+  const format = flyerFormat(c.req.query("format") || null);
+  const theme = flyerTheme(c.req.query("theme") || null);
+  const requestedBackground = flyerBackground(c.req.query("background") || null);
+  const background = ["solid", "gradient", "gallery"].includes(requestedBackground) ? requestedBackground : "solid";
+  let backgroundImage: string | undefined;
+  if (background === "gallery") {
+    const media = (await posterGallery(c.env.DB, org, true)).find(item => item.id === c.req.query("mediaId"));
+    if (!media) fail(404, "Gallery image is not available");
+    if (media.image_key) {
+      const object = await c.env.SCAN_IMAGES?.get(media.image_key);
+      if (!object) fail(404, "Gallery image is not available");
+      const mime = object.httpMetadata?.contentType?.split(";")[0];
+      if (!mime || !["image/png", "image/jpeg", "image/webp", "image/gif"].includes(mime) || object.size > 8 * 1024 * 1024) {
+        await object.body.cancel(); fail(400, "Unsupported gallery image");
+      }
+      backgroundImage = `data:${mime};base64,${arrayBufferToBase64(await object.arrayBuffer())}`;
+    } else backgroundImage = await posterGalleryImage(media.url);
+    if (!backgroundImage) fail(400, "Gallery image could not be loaded or is unsupported");
+  }
+  const includeEvents = c.req.query("includeEvents") === "true";
+  const events = includeEvents ? await organizationPosterEvents(c.env.DB, org.id) : [];
+  const pages = includeEvents ? organizationPosterPages(events, format) : [[]];
+  const page = Math.min(pages.length, Math.max(1, Number.parseInt(c.req.query("page") || "1", 10) || 1));
+  const publicUrl = await orgPublicUrl(c.env, c.req.raw, org.slug);
+  const requestedLink = c.req.query("link") || "portal";
+  const links = readOrganizationLinks(org.links_json);
+  // Organization posters never offer an event conversation or an arbitrary URL.
+  const target = requestedLink === "group-chat" ? `${publicUrl.replace(/\/orgs\/[^/]+$/, '')}/chat?${new URLSearchParams({start:'org',org:org.slug})}`
+    : posterLinkTarget(publicUrl, requestedLink === 'event-chat' ? 'portal' : requestedLink, [canonicalOrganizationHref(org.source_url, org.slug)], org.slug, links);
+  const svg = await renderEventPoster({ title: includeEvents ? 'What’s coming up' : org.name, description: org.description, location: org.city }, target, format,
+    { name: org.name }, theme, { organization: true, background, backgroundImage,
+      chatLink: requestedLink === 'group-chat', agenda: includeEvents ? { lines: pages[page - 1], page, pages: pages.length } : undefined });
+  return new Response(svg, {headers: {"content-type":"image/svg+xml; charset=utf-8", "cache-control":"no-store",
+    "x-poster-pages":String(pages.length), "x-poster-page":String(page), "x-poster-events":String(events.length)}});
 });
 
 app.get("/api/network/orgs/public/:slug/events", async (c) => {

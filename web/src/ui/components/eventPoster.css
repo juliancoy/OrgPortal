@@ -45,3 +45,6 @@
 
 .event-poster-crop .event-poster-text { flex-basis: 100%; }
 .event-poster-text textarea { width: 100%; box-sizing: border-box; resize: vertical; padding: .5rem; font: inherit; color: var(--text-primary); background: var(--panel); border: 1px solid var(--border); border-radius: 4px; }
+
+.event-poster .event-poster-include-events { display:flex; align-items:center; gap:.5rem; text-align:left; }
+.event-poster-include-events input { width:1.1rem; height:1.1rem; margin:0; flex-shrink:0; accent-color:#087482; }

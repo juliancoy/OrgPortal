@@ -31,3 +31,21 @@ Tests include canonical-URL/tenant/API/edge checks and the isolated Docker
 clickthrough `web/scripts/test-local-unified-organization.py` plus the existing
 local Branding test. The real fixture uses an organization and a differently
 named site, four hosted events, and an unrelated organization's event.
+
+The **Poster** tab at `/orgs/:slug?tab=poster` shares the event poster editor:
+print formats, light/dark themes, solid/gradient or organization-gallery
+backgrounds, editable canvas elements, PNG/SVG export and printing. Its optional
+upcoming-event list contains every upcoming event hosted by this organization,
+including events already underway. Past events and events merely associated
+with its calendar are excluded. Long lists continue across numbered poster
+pages; downloads export the selected page and **Print all pages** prints the
+complete list. Poster preferences are browser-local and separate from event
+poster preferences and other organizations.
+
+The public API serves `/api/network/orgs/public/:slug/poster-images` and
+`/api/network/orgs/public/:slug/flyer.svg`. The latter accepts `format`, `theme`,
+`background`, server-catalog `mediaId`, `link`, `includeEvents=true`, and `page`.
+It reports `X-Poster-Pages`, `X-Poster-Page`, and `X-Poster-Events` and uses
+`Cache-Control: no-store` so event updates appear on the next poster request.
+Gallery files remain organization-scoped; the endpoint accepts no arbitrary
+image URL. No database migration is required.

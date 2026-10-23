@@ -57,6 +57,8 @@
   counting, tab/reload/dashboard behavior, private reporting and org isolation.
   Use `web/scripts/test-local-brand-guide.py` for shared portal branding,
   configured palettes, PNG export, mobile layout and tenant-context restoration.
+  Use `web/scripts/test-local-organization-poster.py` for organization Poster
+  navigation, complete hosted-event pagination, exports, printing and org isolation.
   Use `web/scripts/test-local-unified-organization.py` for the canonical org
   homepage, retired routes, configured content and complete hosted-event lists.
 - Include permission denial and tenant isolation tests when authorization

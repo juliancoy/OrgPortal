@@ -1,3 +1,4 @@
+import { EventPosterTools } from '../../components/EventPosterTools'
 import { OrganizationBoard } from '../../components/OrganizationBoard'
 import {isRetiredOrganizationHref} from '../../../../../shared/organizationUrls'
 import { OrganizationPageStatistics } from '../../components/OrganizationPageStatistics'
@@ -25,7 +26,7 @@ import { OrganizationSupport } from '../../components/OrganizationSupport'
 import { OrganizationTools } from '../../components/OrganizationTools'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { Pencil, X, Info, Palette, Users } from 'lucide-react'
+import { Pencil, X, Info, Palette, Users, FileImage } from 'lucide-react'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
 import { useAuth } from '../../../app/AppProviders'
 import { PIDP_BASE_URL, pidpAppLoginUrl, pidpUrl } from '../../../config/pidp'
@@ -186,9 +187,9 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
   const { token } = useAuth()
   const { handle } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
-  const orgTabs = ['info','board','personnel','branding'] as const
+  const orgTabs = ['info','board','personnel','poster','branding'] as const
   const requestedTab = searchParams.get('tab')
-  const activeTab = requestedTab === 'board' || requestedTab === 'personnel' || requestedTab === 'branding' ? requestedTab : 'info'
+  const activeTab = requestedTab === 'board' || requestedTab === 'personnel' || requestedTab === 'branding' || requestedTab === 'poster' ? requestedTab : 'info'
   function selectTab(tab: typeof orgTabs[number]) {
     setSearchParams(previous => { const next = new URLSearchParams(previous); if (tab === 'info') next.delete('tab'); else next.set('tab', tab); return next })
   }
@@ -973,7 +974,7 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
           if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return
           event.preventDefault(); const next = event.key === 'Home' ? orgTabs[0] : event.key === 'End' ? orgTabs[orgTabs.length-1] : orgTabs[(orgTabs.indexOf(tab)+(event.key==='ArrowRight'?1:orgTabs.length-1))%orgTabs.length]
           selectTab(next); document.getElementById(`org-tab-${next}`)?.focus()
-        }}>{tab === 'info' ? <Info size={18} aria-hidden="true" /> : tab === 'board' || tab === 'personnel' ? <Users size={18} aria-hidden="true" /> : <Palette size={18} aria-hidden="true" />}{tab === 'info' ? 'Info' : tab === 'board' ? 'Board' : tab === 'personnel' ? 'Personnel' : 'Branding'}</button>)}
+        }}>{tab === 'info' ? <Info size={18} aria-hidden="true" /> : tab === 'board' || tab === 'personnel' ? <Users size={18} aria-hidden="true" /> : tab === 'poster' ? <FileImage size={18} aria-hidden="true" /> : <Palette size={18} aria-hidden="true" />}{tab === 'info' ? 'Info' : tab === 'board' ? 'Board' : tab === 'personnel' ? 'Personnel' : tab === 'poster' ? 'Poster' : 'Branding'}</button>)}
       </div>
       <div role="tabpanel" id="org-panel-info" aria-labelledby="org-tab-info" hidden={activeTab !== 'info'}>
       {canManageCurrentOrg&&token&&<OrganizationPageStatistics key={org.id} organizationId={org.id} token={token} />}
@@ -1582,6 +1583,9 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
       </div>
       <div role="tabpanel" id="org-panel-personnel" aria-labelledby="org-tab-personnel" hidden={activeTab !== 'personnel'}>
         {activeTab === 'personnel' && <OrganizationBoard organization={org} canManage={canManageCurrentOrg} view="personnel" />}
+      </div>
+      <div role="tabpanel" id="org-panel-poster" aria-labelledby="org-tab-poster" hidden={activeTab !== 'poster'}>
+        {activeTab === 'poster' && <EventPosterTools key={org.id} kind="organization" inline slug={org.slug} title={org.name} organizationSlug={org.slug} organizationLinks={org.links} sourceUrl={org.source_url && !isRetiredOrganizationHref(org.source_url) ? org.source_url : null} />}
       </div>
       <div role="tabpanel" id="org-panel-branding" aria-labelledby="org-tab-branding" hidden={activeTab !== 'branding'}>
         {activeTab === 'branding' && <OrganizationBranding organization={org} />}

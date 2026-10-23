@@ -18,11 +18,11 @@ export function publicPosterImageUrl(value: unknown): string | undefined {
   } catch { return; }
 }
 
-export async function posterGallery(db: D1Database, event: GalleryRecord & { host_org_id?: string | null }): Promise<PosterGalleryImage[]> {
+export async function posterGallery(db: D1Database, event: GalleryRecord & { host_org_id?: string | null }, organization = false): Promise<PosterGalleryImage[]> {
   // Calendar membership is not hosting: imported partner events must not leak in.
-  const organizations = await db.prepare(`SELECT o.id, o.slug, o.name, o.image_url, o.media_json FROM organizations o
+  const organizations = organization ? { results: [event] } : await db.prepare(`SELECT o.id, o.slug, o.name, o.image_url, o.media_json FROM organizations o
     WHERE o.id = ? ORDER BY o.id`).bind(event.host_org_id || '').all<GalleryRecord>();
-  const related = await db.prepare(`SELECT e.id, e.slug, e.title, e.image_url, e.social_image_url, e.media_json, e.event_links_json FROM events e
+  const related = organization ? { results: [] } : await db.prepare(`SELECT e.id, e.slug, e.title, e.image_url, e.social_image_url, e.media_json, e.event_links_json FROM events e
     WHERE e.id != ? AND e.host_org_id = ?
       AND julianday(COALESCE(e.ends_at, e.starts_at, e.event_date)) < julianday('now')
     ORDER BY COALESCE(e.starts_at, e.event_date) DESC, e.id`).bind(event.id, event.host_org_id || '').all<GalleryRecord>();
@@ -55,7 +55,7 @@ export async function posterGallery(db: D1Database, event: GalleryRecord & { hos
     append('$cover', type === 'organization' ? 'Organization profile image' : 'Event cover image', '', row.image_url);
     append('$social', 'Event social image', '', row.social_image_url);
   }
-  add(event, 'event', true);
+  if (!organization) add(event, 'event', true);
   for (const row of organizations.results || []) add(row, 'organization');
   for (const row of related.results || []) add(row, 'event');
   for (const row of organizations.results || []) if (row.id === MEDTECH_CAROUSEL.organizationId && !folders.has(MEDTECH_CAROUSEL.folderId)) {

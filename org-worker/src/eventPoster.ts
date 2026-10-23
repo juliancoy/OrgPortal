@@ -5,7 +5,7 @@ import QRCode from 'qrcode';
 export type PosterFormat = 'letter' | 'letter-4up' | 'postcard' | 'social';
 export type PosterTheme = 'light' | 'dark';
 export type PosterBackground = 'solid' | 'city' | 'gradient' | 'lifetech' | 'gallery';
-type PosterEvent = { title: string; social_title?: string | null; description?: string | null; social_description?: string | null;
+export type PosterEvent = { title: string; social_title?: string | null; description?: string | null; social_description?: string | null;
   starts_at?: string | null; ends_at?: string | null; location?: string | null };
 export type PosterBrand = { name: string; tagline?: string | null; logo?: string };
 export const posterElementIds = ['logo', 'brand', 'tagline', 'title', 'date', 'time', 'location', 'description', 'qr', 'invitation', 'website'] as const;
@@ -45,7 +45,7 @@ export function posterLinkTarget(publicUrl: string, requested: string | null, as
     return ['https:', 'http:'].includes(url.protocol) && !url.username && !url.password ? url.href : publicUrl;
   } catch { return publicUrl; }
 }
-export type PosterOptions = { background?: PosterBackground; backgroundImage?: string; backgroundOnly?: boolean; zoom?: number; offsetX?: number; offsetY?: number; opacity?: number; dimming?: number; elements?: PosterElementLayout; chatLink?: boolean; whatsappLink?: boolean; organizationLink?: boolean };
+export type PosterOptions = { background?: PosterBackground; backgroundImage?: string; backgroundOnly?: boolean; zoom?: number; offsetX?: number; offsetY?: number; opacity?: number; dimming?: number; elements?: PosterElementLayout; chatLink?: boolean; whatsappLink?: boolean; organizationLink?: boolean; organization?: boolean; agenda?: { lines: string[]; page: number; pages: number } };
 const escape = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]!));
 const clean = (value: unknown) => String(value || '').replace(/\s+/g, ' ').trim();
 
@@ -57,7 +57,7 @@ export function posterGeometry(format: PosterFormat) {
 function textWidth(text: string, size: number) {
   return Array.from(text).reduce((sum, c) => sum + (/[MW@%]/.test(c) ? 1 : /[ilI.,:;!'| ]/.test(c) ? 0.32 : /[A-Z0-9]/.test(c) ? 0.74 : 0.6), 0) * size;
 }
-function wrap(value: string, width: number, size: number) {
+export function wrapPosterText(value: string, width: number, size: number) {
   const lines: string[] = [];
   let line = '';
   for (const word of clean(value).split(' ')) {
@@ -144,7 +144,7 @@ export async function renderEventPoster(event: PosterEvent, publicUrl: string, f
     return value;
   }
   function block(value: string, x: number, y: number, maxWidth: number, size: number, maxLines: number, color = palette.text, weight = 400) {
-    let lines = wrap(value, maxWidth, size);
+    let lines = wrapPosterText(value, maxWidth, size);
     if (lines.length > maxLines) {
       lines = lines.slice(0, maxLines);
       let last = lines[maxLines - 1];
@@ -170,7 +170,7 @@ export async function renderEventPoster(event: PosterEvent, publicUrl: string, f
   const titleY = small ? 119 : social ? 181 : 232;
   const titleHeight = small ? 121 : social ? 146 : 242;
   let titleSize = small ? 35 : social ? 64 : 70;
-  while (titleSize > (small ? 19 : 30) && wrap(title, textArea, titleSize).length * titleSize * 1.25 > titleHeight) titleSize--;
+  while (titleSize > (small ? 19 : 30) && wrapPosterText(title, textArea, titleSize).length * titleSize * 1.25 > titleHeight) titleSize--;
   const titleBottom = element('title', margin, titleY, () => block(title, margin, titleY, textArea, titleSize, Math.floor(titleHeight / (titleSize * 1.25)), palette.text, 800));
   let y = Math.max(titleBottom + (small ? 14 : 22), small ? 217 : social ? 323 : 450);
   const start = event.starts_at ? new Date(event.starts_at) : null;
@@ -179,21 +179,37 @@ export async function renderEventPoster(event: PosterEvent, publicUrl: string, f
   const timeFormat = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
   const end = event.ends_at ? new Date(event.ends_at) : null;
   const time = valid ? `${timeFormat.format(start)}${end && !Number.isNaN(end.getTime()) ? ` - ${timeFormat.format(end)}` : ''}` : '';
-  const detailSize = small ? 15 : social ? 25 : 28;
-  y = element('date', margin, y, () => block(date, margin, y, textArea, detailSize, 2, palette.brand, 700));
-  if (time) y = element('time', margin, y + 3, () => block(time, margin, y + 3, textArea, detailSize, 1, palette.brand, 700));
-  y = element('location', margin, y + (small ? 14 : 22), () => block(clean(event.location) || 'Location to be announced', margin, y + (small ? 14 : 22), textArea, small ? 14 : 24, small ? 3 : 2, palette.text, 500));
   const footerTop = small ? 444 : social ? 553 : 854;
-  const descriptionSize = small ? 13 : social ? 20 : 23;
-  y += small ? 15 : 26;
-  const descLines = Math.min(social ? 2 : 5, Math.floor((footerTop - 25 - y) / (descriptionSize * 1.25)));
-  if (descLines > 0) element('description', margin, y, () => block(clean(event.social_description || event.description), margin, y, textArea, descriptionSize, descLines, palette.muted));
+  if (options.organization) {
+    if (options.agenda) {
+      const size = small ? 12 : social ? 19 : 22;
+      const top = small ? 220 : social ? 315 : 440;
+      const heading = `Upcoming events${options.agenda.pages > 1 ? ` · ${options.agenda.page} / ${options.agenda.pages}` : ''}`;
+      element('date', margin, top, () => block(heading, margin, top, textArea, size, 1, palette.brand, 700));
+      element('description', margin, top + size * 1.7, () => {
+        options.agenda!.lines.forEach((line, index) => block(line, margin, top + size * 1.7 + index * size * 1.3, textArea, size, 1, palette.text));
+      });
+    } else {
+      y = element('location', margin, y, () => block(clean(event.location), margin, y, textArea, small ? 14 : 24, 2, palette.brand, 700));
+      const size = small ? 13 : social ? 20 : 23;
+      element('description', margin, y + 22, () => block(clean(event.description), margin, y + 22, textArea, size, Math.max(1, Math.floor((footerTop - y - 40) / (size * 1.25))), palette.muted));
+    }
+  } else {
+    const detailSize = small ? 15 : social ? 25 : 28;
+    y = element('date', margin, y, () => block(date, margin, y, textArea, detailSize, 2, palette.brand, 700));
+    if (time) y = element('time', margin, y + 3, () => block(time, margin, y + 3, textArea, detailSize, 1, palette.brand, 700));
+    y = element('location', margin, y + (small ? 14 : 22), () => block(clean(event.location) || 'Location to be announced', margin, y + (small ? 14 : 22), textArea, small ? 14 : 24, small ? 3 : 2, palette.text, 500));
+    const descriptionSize = small ? 13 : social ? 20 : 23;
+    y += small ? 15 : 26;
+    const descLines = Math.min(social ? 2 : 5, Math.floor((footerTop - 25 - y) / (descriptionSize * 1.25)));
+    if (descLines > 0) element('description', margin, y, () => block(clean(event.social_description || event.description), margin, y, textArea, descriptionSize, descLines, palette.muted));
+  }
   const qrY = social ? 380 : footerTop + (small ? 17 : 28);
   const qr = await QRCode.toString(publicUrl, { type: 'svg', margin: 4, errorCorrectionLevel: 'M', color: { dark: palette.qrDark, light: palette.qrLight } });
   parts.push(`<path d="M${margin} ${footerTop}H${social ? 876 : width - margin}" stroke="${palette.rule}" stroke-width="2"/>`);
   element('qr', qrX, qrY, () => {
   parts.push(qr.replace('<svg ', `<svg x="${qrX}" y="${qrY}" width="${qrSize}" height="${qrSize}" `));
-  parts.push(`<text x="${qrX + qrSize / 2}" y="${qrY + qrSize + (small ? 15 : 24)}" text-anchor="middle" fill="${palette.brand}" font-size="${small ? 11 : 16}" font-weight="700">${options.whatsappLink ? 'Scan to join WhatsApp' : options.chatLink ? 'Scan to join chat' : options.organizationLink ? 'Scan to connect' : 'Scan to RSVP'}</text>`);
+  parts.push(`<text x="${qrX + qrSize / 2}" y="${qrY + qrSize + (small ? 15 : 24)}" text-anchor="middle" fill="${palette.brand}" font-size="${small ? 11 : 16}" font-weight="700">${options.whatsappLink ? 'Scan to join WhatsApp' : options.chatLink ? 'Scan to join chat' : options.organizationLink || options.organization ? 'Scan to connect' : 'Scan to RSVP'}</text>`);
   });
   element('invitation', margin, footerTop, () => block('Join us', margin, footerTop + (small ? 40 : social ? 33 : 55), social ? 800 : qrX - margin - 16, small ? 23 : social ? 26 : 34, 1, palette.brand, 700));
   element('website', margin, footerTop, () => block(new URL(publicUrl).hostname, margin, footerTop + (small ? 65 : social ? 64 : 89), social ? 800 : qrX - margin - 16, small ? 12 : 19, social ? 1 : 2, palette.muted));
@@ -206,7 +222,7 @@ export async function renderEventPoster(event: PosterEvent, publicUrl: string, f
     return `<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" width="8.5in" height="11in" viewBox="0 0 850 1100" role="img" aria-labelledby="title desc" font-family="Arial, Helvetica, sans-serif" letter-spacing="0"><title id="title">${escape(title)} - four posters</title><desc id="desc">Four identical ${theme} ${background} event posters in a 2 by 2 grid on US Letter paper. Text uses a high-contrast foreground over the selected background.</desc><rect width="850" height="1100" fill="${palette.paper}"/><defs><svg id="poster-art" width="${width}" height="${height}" overflow="hidden">${parts.join('')}</svg></defs>${copies.join('')}</svg>`;
   }
   const physical = format === 'letter' ? 'width="8.5in" height="11in"' : format === 'postcard' ? 'width="4in" height="6in"' : `width="${width}" height="${height}"`;
-  return `<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" ${physical} viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="title desc" font-family="Arial, Helvetica, sans-serif" letter-spacing="0"><title id="title">${escape(title)} flyer</title><desc id="desc">${escape(`${brand.name}. ${date}. ${time}. ${event.location || ''}. ${theme} ${background} ${format === 'postcard' ? '4×6' : format === 'letter' ? '8.5×11' : 'Social'} event poster. Text uses a high-contrast foreground over the selected background.`)}</desc>${parts.join('')}</svg>`;
+  return `<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" ${physical} viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="title desc" font-family="Arial, Helvetica, sans-serif" letter-spacing="0"><title id="title">${escape(title)} flyer</title><desc id="desc">${escape(`${brand.name}. ${options.organization ? 'Organization poster' : `${date}. ${time}`}. ${event.location || ''}. ${theme} ${background} ${format === 'postcard' ? '4×6' : format === 'letter' ? '8.5×11' : 'Social'} ${options.organization ? 'organization' : 'event'} poster. Text uses a high-contrast foreground over the selected background.`)}</desc>${parts.join('')}</svg>`;
 }
 
 async function posterDataImage(url: URL, maxBytes: number, allowGif = false): Promise<string | undefined> {
