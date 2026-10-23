@@ -82,3 +82,11 @@ test('live status and doctor share the selected account and distinguish live res
  await run(['auth','status','--live','--json'],deps);assert.equal(output[0].liveChecked,true);assert.equal(output[0].connectionName,'work');assert.equal(output[0].account.subject,current.account.subject);
  const result=await run(['doctor','--json'],deps);assert.equal(result.ok,true);assert.equal(result.checks.length,2);assert.equal(result.connectionName,'work');assert.equal(closed,2);assert.equal(released,2);
 });
+
+ test('explicit login requests reauthorization and human output identifies email without inferring it',async t=>{
+ const {settings:s}=await settings(t);const output=[];let reauthorize;
+ const deps={env:{},connectionSettings:s,log:v=>output.push(v),credentialStore:async()=>({load:async()=>({clientId:'client',refreshToken:'old'}),release:async()=>{}}),browserLogin:async(_r,_i,_c,_b,options)=>{reauthorize=options.reauthorize;return{accessToken:async()=>'token',close:async()=>{}}},accountCommand:async()=>({...current,account:{...current.account,email:'julian@codecollective.us',emailVerified:true}})};
+ await run(['auth','login','--connection','work'],deps);assert.equal(reauthorize,true);
+ await run(['whoami','--connection','work'],deps);assert.equal(reauthorize,false);assert.match(output.at(-1),/Email: julian@codecollective.us\nEmail verified: yes/);
+ deps.accountCommand=async()=>current;await run(['whoami','--connection','work'],deps);assert.match(output.at(-1),/Email: not supplied by PIdP\nEmail verified: unknown/);
+ });

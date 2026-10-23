@@ -194,6 +194,8 @@ export async function authenticateMcp(request: Request, env: Env, getKey?: JWTVe
     }
     if (typeof userId !== "string" || !userId) throw new Error();
     let isOperator = false;
+    let email: string | null = null;
+    let emailVerified: boolean | null = null;
     if (config.introspection) {
       let response: Response;
       try {
@@ -217,10 +219,14 @@ export async function authenticateMcp(request: Request, env: Env, getKey?: JWTVe
         || status.account_subject !== payload.sub || typeof status.canonical_user_id !== 'string'
         || !status.canonical_user_id || typeof status.account_id !== 'string' || !status.account_id) throw new Error();
       userId = status.canonical_user_id;
+      if (typeof status.email === 'string' && status.email.length <= 320 && !/[\x00-\x1f\x7f]/.test(status.email)) {
+        email = status.email;
+        emailVerified = typeof status.email_verified === 'boolean' ? status.email_verified : null;
+      }
       isOperator = status.is_sysadmin === true && typeof payload.sub === 'string' && payload.sub.startsWith('owner:');
     }
     const scopes = typeof payload.scope === "string" ? payload.scope.split(" ") : [];
-    return { userId, scopes, isOperator, subject: payload.sub!, expiresAt: payload.exp!, organizationId: config.organizationId, resource: config.resource };
+    return { userId, scopes, isOperator, email, emailVerified, subject: payload.sub!, expiresAt: payload.exp!, organizationId: config.organizationId, resource: config.resource };
   } catch (error) {
     if (error instanceof EventIntegrationError) throw error;
     console.warn("MCP access token rejected", { stage: validationStage });

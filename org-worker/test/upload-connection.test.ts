@@ -108,6 +108,10 @@ test('dynamic registration and consent happen once; later process reuses saved a
     assert.equal(await second.accessToken(), 'access');
     await second.close();
     assert.deepEqual([registrations, consents, refreshes], [1, 1, 1]);
+    const replacement = await browserLogin(base.resource, 'https://id.example', undefined, false, { store, reauthorize: true });
+    assert.equal(await replacement.accessToken(), 'access');
+    await callback!; await replacement.close();
+    assert.deepEqual([registrations, consents, refreshes], [1, 2, 1]);
   } finally { globalThis.fetch = originalFetch; console.log = originalLog; }
 });
 
@@ -135,4 +139,33 @@ test('simultaneous account connections survive process close and logout is isola
     assert.equal((await personal.load()).refreshToken, 'personal');
     assert.equal(await second.accessToken(), 'access');
   } finally { globalThis.fetch = original; }
+});
+
+test('explicit reauthorization bypasses saved credentials and cancellation preserves them', async () => {
+  const store = memoryStore();
+  const saved = { clientId: 'registered', refreshToken: 'previous-account' };
+  await store.save(saved);
+  const originalFetch = globalThis.fetch, originalLog = console.log;
+  let callback: Promise<Response> | undefined;
+  globalThis.fetch = async () => Response.json({ issuer: 'https://id.example', authorization_endpoint: 'https://id.example/authorize', token_endpoint: 'https://id.example/token', revocation_endpoint: 'https://id.example/revoke', code_challenge_methods_supported: ['S256'], token_endpoint_auth_methods_supported: ['none'], authorization_response_iss_parameter_supported: true });
+  console.log = (message: string) => {
+    const authorization = new URL(message.split('\n')[1]);
+    assert.equal(authorization.searchParams.get('prompt'), 'login');
+    const target = new URL(authorization.searchParams.get('redirect_uri')!);
+    target.search = new URLSearchParams({ error: 'access_denied', iss: 'https://id.example', state: authorization.searchParams.get('state')! }).toString();
+    callback = originalFetch(target); callback.catch(() => {});
+  };
+  try {
+    await assert.rejects(browserLogin(base.resource, 'https://id.example', undefined, false, { store, reauthorize: true }), /declined/);
+    await callback;
+    assert.deepEqual(await store.load(), saved);
+  } finally { globalThis.fetch = originalFetch; console.log = originalLog; }
+});
+
+test('replacement keyring save failure revokes the new grant and restores the prior account', async () => {
+ const previous={clientId:'client',refreshToken:'old'};let record=previous;
+ const store={save:async(value:any)=>{if(value.refreshToken==='new')throw Error('locked');record=value}};
+ const original=globalThis.fetch;
+ globalThis.fetch=async(_url,init)=>{assert.equal((init!.body as URLSearchParams).get('token'),'new');return new Response(null,{status:200})};
+ try{await assert.rejects(tokenConnection({...base,clientId:'client',token:{...token,refresh_token:'new'},saved:previous,store}),/locked/);assert.deepEqual(record,previous)}finally{globalThis.fetch=original}
 });

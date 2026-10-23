@@ -3,12 +3,12 @@ import { z } from 'zod';
 import product from '../../shared/mcp-product.json';
 import { buildMetadata } from './generated/buildMetadata';
 
-type Identity = { userId: string; scopes: string[]; subject: string; expiresAt: number; isOperator: boolean };
+type Identity = { userId: string; scopes: string[]; subject: string; expiresAt: number; isOperator: boolean; email?: string | null; emailVerified?: boolean | null };
 type Configuration = { resource: string; issuer: string; metadataUrl: string; introspection?: string; organizationId?: string };
 const scope = 'org:portal.read';
 const serverSchema = z.object({ name: z.literal('OrgPortal'), version: z.string(), commit: z.string().nullable() });
 const statusSchema = z.object({
-  authenticated: z.literal(true), account: z.object({ userId: z.string(), subject: z.string(), isOperator: z.boolean() }),
+  authenticated: z.literal(true), account: z.object({ userId: z.string(), subject: z.string(), isOperator: z.boolean(), email: z.string().nullable(), emailVerified: z.boolean().nullable() }),
   resource: z.string(), issuer: z.string(), organizationId: z.string().nullable(), scopes: z.array(z.string()),
   expiresAt: z.string(), revocationChecked: z.boolean(), server: serverSchema,
   accountSwitch: z.object({ managedBy: z.literal('client'), instructions: z.string() }),
@@ -21,7 +21,7 @@ const diagnosticSchema = z.object({ ok: z.boolean(), checks: z.array(checkSchema
 export function connectionStatus(identity: Identity, config: Configuration) {
   return {
     authenticated: true as const,
-    account: { userId: identity.userId, subject: identity.subject, isOperator: identity.isOperator },
+    account: { userId: identity.userId, subject: identity.subject, isOperator: identity.isOperator, email: identity.email ?? null, emailVerified: identity.emailVerified ?? null },
     resource: config.resource, issuer: config.issuer, organizationId: config.organizationId || null,
     scopes: [...new Set(identity.scopes)].filter(Boolean).sort(), expiresAt: new Date(identity.expiresAt * 1000).toISOString(),
     revocationChecked: Boolean(config.introspection),

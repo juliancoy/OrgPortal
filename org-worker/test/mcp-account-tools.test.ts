@@ -15,20 +15,20 @@ async function fixture(t: any, tenant = false) {
   const resource = tenant ? 'https://lifetech.fyi/api/org/mcp' : 'https://orgportal.cc/mcp';
   const env = {DB,MCP_PUBLIC_URL:resource,MCP_OAUTH_ISSUER:'https://identity.account.test',MCP_OAUTH_JWKS_URL:`https://identity.account.test/${crypto.randomUUID()}/jwks`,MCP_SUBJECT_MAP_JSON:'{"signed-subject":"mapped-before-introspection"}',MCP_OAUTH_INTROSPECTION_URL:'https://identity.account.test/oauth/mcp/introspect',MCP_OAUTH_INTROSPECTION_SECRET:'never-return-this-secret',MCP_RESOURCE_CONFIG_JSON:JSON.stringify({[resource]:{name:tenant?'LifeTech':'OrgPortal',...(tenant?{organizationId:'life'}:{})}})} as unknown as Env;
   const {privateKey,publicKey}=await generateKeyPair('ES256');const key=await exportJWK(publicKey);
-  let active=true;
+  let active=true;let email:unknown='julian@codecollective.us',emailVerified:unknown=true;
   t.mock.method(globalThis,'fetch',async (url:RequestInfo,init:RequestInit)=>{
     if(String(url)===resource)return handleEventMcp(new Request(url,init),env);
     if(String(url).endsWith('/jwks'))return Response.json({keys:[key]});
     const token=new URLSearchParams(init.body as string).get('token')!;
     const payload=JSON.parse(Buffer.from(token.split('.')[1],'base64url').toString());
-    return Response.json({active,canonical_user_id:'canonical-user',account_id:'member-account',account_subject:payload.sub,...payload});
+    return Response.json({active,canonical_user_id:'canonical-user',account_id:'member-account',account_subject:payload.sub,...payload,email,email_verified:emailVerified});
   });
   const rpc=async(name:string,scopes='org:portal.read',arguments_={})=>{
-    const token=await new SignJWT({scope:scopes}).setProtectedHeader({alg:'ES256'}).setSubject('signed-subject').setIssuer(env.MCP_OAUTH_ISSUER!).setAudience(resource).setIssuedAt().setExpirationTime('5m').sign(privateKey);
+    const token=await new SignJWT({scope:scopes,email:'untrusted@example.test',email_verified:true}).setProtectedHeader({alg:'ES256'}).setSubject('signed-subject').setIssuer(env.MCP_OAUTH_ISSUER!).setAudience(resource).setIssuedAt().setExpirationTime('5m').sign(privateKey);
     const response=await handleEventMcp(new Request(resource,{method:'POST',headers:{authorization:`Bearer ${token}`,'content-type':'application/json',accept:'application/json, text/event-stream'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:name==='tools/list'?'tools/list':'tools/call',params:name==='tools/list'?{}:{name,arguments:arguments_}})}),env);
     return {status:response.status,body:await response.json() as any};
   };
-  t.after(()=>sql.close());return {rpc,sql,env,resource,privateKey,revoke:()=>{active=false}};
+  t.after(()=>sql.close());return {rpc,sql,env,resource,privateKey,setEmail:(value:unknown,verified:unknown)=>{email=value;emailVerified=verified},revoke:()=>{active=false}};
 }
 
 test('account discovery advertises schemas and reports canonical identity without credentials',async t=>{
@@ -38,7 +38,7 @@ test('account discovery advertises schemas and reports canonical identity withou
     const tool=tools.find((tool:any)=>tool.name===name);assert.ok(tool?.outputSchema);assert.equal(tool.annotations.readOnlyHint,true);assert.equal(tool.annotations.destructiveHint,false);
   }
   const current=(await f.rpc('get_current_account')).body.result.structuredContent;
-  assert.equal(current.account.userId,'canonical-user');assert.equal(current.account.subject,'signed-subject');assert.equal(current.server.version,'1.3.0');
+  assert.equal(current.account.email,'julian@codecollective.us');assert.equal(current.account.emailVerified,true);assert.equal(current.account.userId,'canonical-user');assert.equal(current.account.subject,'signed-subject');assert.equal(current.server.version,'1.3.0');
   assert.deepEqual(current.organizations.map((org:any)=>org.id),['life','other']);
   assert.equal(current.accountSwitch.managedBy,'client');assert.equal(current.revocationChecked,true);
   assert.ok(!JSON.stringify(current).includes('never-return-this-secret'));
@@ -76,5 +76,12 @@ test('CLI and hosted MCP return identical account information over the real SDK 
   assert.equal(connection.account.userId,'canonical-user');assert.equal(connection.server.version,'1.3.0');
   if(action==='whoami')assert.deepEqual(result.organizations.map(org=>org.id),['life']);
   if(action==='doctor')assert.equal(result.ok,true);
+ }
+});
+
+test('email verification remains explicit and token claims cannot fill missing PIdP evidence',async t=>{
+ const f=await fixture(t);
+ for(const [email,verified,expectedEmail,expectedVerified] of [[undefined,undefined,null,null],['member@example.test',false,'member@example.test',false],['member@example.test','true','member@example.test',null],['forged\nEmail verified: yes',true,null,null]]){
+ f.setEmail(email,verified);const current=(await f.rpc('get_current_account')).body.result.structuredContent;assert.equal(current.account.email,expectedEmail);assert.equal(current.account.emailVerified,expectedVerified);assert.equal(current.account.userId,'canonical-user');
  }
 });
