@@ -74,3 +74,4 @@ chat-worker/src/generated/
 
 # Generated validation receipts and disposable evidence databases
 /artifacts/
+web/public/test-status.json

@@ -21,6 +21,7 @@ test('expiry units, bounds, dry-run, retries and unresolved operations',async()=
  sql.exec('CREATE TABLE organization_volunteer_awards(id TEXT PRIMARY KEY,expires_at TEXT);');
  sql.prepare('INSERT INTO organization_volunteer_awards VALUES (?,?)').run('expired-volunteer',new Date(1).toISOString());
  sql.exec('CREATE TABLE event_submissions(id TEXT PRIMARY KEY, expires_at TEXT); CREATE TABLE event_submission_favorites(id TEXT PRIMARY KEY, expires_at TEXT);');
+ for(const name of ['event_presentation_final_rounds','event_presentation_final_ballots']){sql.exec(`CREATE TABLE ${name}(id TEXT PRIMARY KEY,expires_at TEXT)`);sql.prepare(`INSERT INTO ${name} VALUES (?,?)`).run('expired-final',new Date(1).toISOString());sql.prepare(`INSERT INTO ${name} VALUES (?,?)`).run('live-final',new Date(2000000000000).toISOString());}
  sql.exec('CREATE TABLE event_company_favorites(id TEXT PRIMARY KEY, expires_at TEXT);');
  sql.exec('CREATE TABLE event_presentation_favorites(id TEXT PRIMARY KEY, expires_at TEXT);');
  sql.prepare('INSERT INTO event_presentation_favorites VALUES (?,?)').run('expired-choice',new Date(1).toISOString());
@@ -54,6 +55,7 @@ test('expiry units, bounds, dry-run, retries and unresolved operations',async()=
  assert.equal(first.organization_page_view_days,1);
  assert.equal(sql.prepare('SELECT organization_id FROM organization_page_view_days').get()!.organization_id,'boundary');
  assert.equal(first.event_presentation_favorites,1);
+ for(const name of ['event_presentation_final_rounds','event_presentation_final_ballots']){assert.equal(first[name],1);assert.equal(sql.prepare(`SELECT id FROM ${name}`).get()!.id,'live-final');}
  assert.equal(sql.prepare('SELECT id FROM event_presentation_favorites').get()!.id,'live-choice');
  assert.equal(first.organization_recognition_nominees,1);
  assert.equal(first.organization_recognition_ballots,1);

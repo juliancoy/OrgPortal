@@ -1,0 +1,2434 @@
+{
+  "suite-cloudflare-chat-websocket-test-mjs": {
+    "fingerprint": "864702e1703f524aa9d140144188cf8f03f0425503c4b8eac9668b3d823396d0",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:15.257Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:15.257Z"
+      }
+    }
+  },
+  "suite-cloudflare-event-source-preview-test-mjs": {
+    "fingerprint": "7dd5a76e2bd53b5a7ba4408b8ea5ebf7ff93c6b2471141ac750e643efe799814",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:15.257Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:15.257Z"
+      }
+    }
+  },
+  "suite-cloudflare-identity-test-mjs": {
+    "fingerprint": "3230bff16cfd19ec7a4fe6fd3f5608fbf73146cb67b61496b61cc417c248d715",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:15.257Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:15.257Z"
+      }
+    }
+  },
+  "suite-cloudflare-mcp-origin-test-mjs": {
+    "fingerprint": "fae2bfd263471f12f0d1238eee67fbb8fa9e02cd1ca9b8c86a161ca872ccaaa2",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:15.257Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:15.257Z"
+      }
+    }
+  },
+  "suite-cloudflare-not-found-test-mjs": {
+    "fingerprint": "ad5cf33c3b1e17ef04b34313e0b54341c0fa3b5dd4da34608be9e91435b4c291",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:15.258Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:15.258Z"
+      }
+    }
+  },
+  "suite-cloudflare-organization-canonical-test-mjs": {
+    "fingerprint": "dd12bf2cbd9c11ed203c7a38f8986dfd796b067cc31c78ddfb9a4f5a95a33387",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:15.258Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:15.258Z"
+      }
+    }
+  },
+  "suite-cloudflare-orgportal-platform-test-mjs": {
+    "fingerprint": "79f77fa164ef98555e110cd3fae7b359b127cef064022750677d01c7ba8b11b8",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:15.258Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:15.258Z"
+      }
+    }
+  },
+  "suite-cloudflare-release-test-mjs": {
+    "fingerprint": "dbfa9ddf78333ca7e04bf06165b5ab084437e0df8bd5e78beba5f59c6f35db86",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:15.258Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:15.258Z"
+      }
+    }
+  },
+  "suite-cloudflare-timebank-domain-test-mjs": {
+    "fingerprint": "858c589751119014cf5a16b63704ce0c9e9849a0d8f3fd524d20d7313d6dbbe9",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:15.258Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:15.258Z"
+      }
+    }
+  },
+  "suite-cloudflare-update-manifest-test-mjs": {
+    "fingerprint": "ceab2fe9ddb65cfbbfbd4b5dc3eb49f32da9830a40ccd1e92d451a781412c5a5",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:15.258Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:15.258Z"
+      }
+    }
+  },
+  "suite-org-worker-test-accountAvailability-test-ts": {
+    "fingerprint": "a924fcada8542e972e108a6de895b4e893141a3ee79765885b08be2a3e771b3b",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.227Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.227Z"
+      }
+    }
+  },
+  "suite-org-worker-test-availability-test-ts": {
+    "fingerprint": "2d85999e47cbc71ff8de309d6d108763d88005df945865831585aff75ecf6021",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.228Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.228Z"
+      }
+    }
+  },
+  "suite-org-worker-test-build-metadata-test-ts": {
+    "fingerprint": "9c4e4b650821f0d282f06ddf160b23868c1a5bfcd57847d55ec4f447272cf9b9",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.229Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.229Z"
+      }
+    }
+  },
+  "suite-org-worker-test-calendar-collections-test-ts": {
+    "fingerprint": "2a8b5d207a6cc299a14054b23ac9810391ef835c344f1a546d86428d0e152e4f",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.229Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.229Z"
+      }
+    }
+  },
+  "change-journal": {
+    "fingerprint": "ee2a2bb6dec5ba2994a1eeaadbda9c892f871386bd9b8f80ae03d9c61820ca2a",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.231Z",
+    "cases": {
+      "direct SQL writes journal before/after state and roll back atomically; no-op updates are inert": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.230Z"
+      },
+      "credential columns are redacted and replica refreshes are excluded while local newsletters are captured": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.230Z"
+      },
+      "every primary application table has explicit coverage or exclusion; trigger generation is reproducible": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.230Z"
+      },
+      "secondary copy retries are inert, checkpoints are atomic and rewinds fail safely": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.230Z"
+      },
+      "corrupted immutable copies abort the page without advancing its checkpoint": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.230Z"
+      },
+      "local WAL mirror survives process restart, retains exact rows and resumes without duplication": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.230Z"
+      },
+      "ballot settings and rosters are audited but cleared company votes never enter immutable copies": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.231Z"
+      },
+      "availability visibility changes are audited atomically and no-op saves are inert": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.231Z"
+      },
+      "title-only membership edits are journaled atomically and retained on deletion": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.231Z"
+      }
+    }
+  },
+  "suite-org-worker-test-cli-account-tools-test-ts": {
+    "fingerprint": "c1cf760bd30969cd36782571c0c29796056db9cb8757fd8367f269c1cf99dacb",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.231Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.231Z"
+      }
+    }
+  },
+  "suite-org-worker-test-comment-profile-links-test-ts": {
+    "fingerprint": "08b9c3e97d7abf010838b536e7f1cfc1c8121438b7f378c43e129ebe02807d4c",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.232Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.232Z"
+      }
+    }
+  },
+  "suite-org-worker-test-company-favorites-test-ts": {
+    "fingerprint": "cb77fee360c0ed00522cec37ce0c646f854c0512189900beeaebeeb227324e39",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.233Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.233Z"
+      }
+    }
+  },
+  "suite-org-worker-test-company-votes-test-ts": {
+    "fingerprint": "8c964757c36408a1dd6603e44c6ec22883babc2bc3a069c17b86135b41684afd",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.233Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.233Z"
+      }
+    }
+  },
+  "suite-org-worker-test-deism-tenant-test-ts": {
+    "fingerprint": "6d867e6d1361c6df2998fa086f807f6dfc262ae8662824ecd723f34d91546c0d",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.234Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.234Z"
+      }
+    }
+  },
+  "suite-org-worker-test-driveCarousel-test-ts": {
+    "fingerprint": "a76e378caf2c176f6b42b8184f93c6aae933aedc90df5b7897697acf233e81e2",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.234Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.234Z"
+      }
+    }
+  },
+  "suite-org-worker-test-ecosystem-sync-test-ts": {
+    "fingerprint": "e435428cf933aa9193415adcd4788d96f54396a0cb909f8c5e97cd302d56cc9a",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.235Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.235Z"
+      }
+    }
+  },
+  "suite-org-worker-test-email-campaigns-test-ts": {
+    "fingerprint": "0c40f15f3f356b03c554f6cd7705d84ba47dd9ac9e67994ab6a676d040800120",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.235Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.235Z"
+      }
+    }
+  },
+  "suite-org-worker-test-email-runtime-test-ts": {
+    "fingerprint": "07eab0c45950e2fb4283ec17adb65b7f409baba7c2605fc9877e6b9c20e3c29a",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.236Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.236Z"
+      }
+    }
+  },
+  "suite-org-worker-test-event-chat-test-ts": {
+    "fingerprint": "59dbd4f59862b7aa52aad6b6acee6e5423f5664105b54c8e85ba7a2efa00519f",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.236Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.236Z"
+      }
+    }
+  },
+  "suite-org-worker-test-event-details-test-ts": {
+    "fingerprint": "d5f46149f1e4e3a1adcb0a9251cbc1709e7e3d4d84a51608736a63780175e2db",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.237Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.237Z"
+      }
+    }
+  },
+  "suite-org-worker-test-event-enrichment-test-ts": {
+    "fingerprint": "6d8a9109bdeb6d6b588e9c5dcd36a2ce511f1c9b6a11985364f4097aab887eed",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.237Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.237Z"
+      }
+    }
+  },
+  "suite-org-worker-test-event-history-test-ts": {
+    "fingerprint": "921ff898d9466002ca1aecf397ded0c3002e7e4ce01690f8d65075ac28a6621f",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.238Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.238Z"
+      }
+    }
+  },
+  "suite-org-worker-test-event-host-test-ts": {
+    "fingerprint": "80f7f394f9c9e6aeec016a6f1efa742097e119bd562f422c8d57265bcec53f45",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.238Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.238Z"
+      }
+    }
+  },
+  "suite-org-worker-test-event-media-upload-test-ts": {
+    "fingerprint": "2fcd68ca537537001e46a71e6df7ec9b3e603820b69d298f12381888f1a5bcc6",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.239Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.239Z"
+      }
+    }
+  },
+  "suite-org-worker-test-event-platforms-test-ts": {
+    "fingerprint": "41129201f4416e67b3e8c791f8d083c269e38633268919b06ff4108fd12ac002",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.239Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.239Z"
+      }
+    }
+  },
+  "suite-org-worker-test-event-poster-test-ts": {
+    "fingerprint": "e79e26415e5edd94cbda44668ffa431cda29586fd37d81ccff08c62e844b6389",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.240Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.240Z"
+      }
+    }
+  },
+  "applications-api": {
+    "fingerprint": "9ac1e10a5b311ab40d7b30b32f7e8c69e6845ff20ff656566dca523e6d5d371c",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.242Z",
+    "cases": {
+      "final round host controls, immutable shortlist, tenant isolation and private single-choice ballots": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.240Z"
+      },
+      "final votes do not reuse favorites; live totals handle ties, withdrawal and expiry": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.240Z"
+      },
+      "management, isolation, review, closing, expiry and withdrawal": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.241Z"
+      },
+      "deadline and invalid proposals": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.241Z"
+      },
+      "manager review paginates beyond 200 with counts, filters, stable ties and complete CSV": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.241Z"
+      },
+      "public submissions omit private fields and favorites are private, capped at three, removable and cascading": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.241Z"
+      },
+      "event managers configure the limit; lowering never silently removes existing favorites": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.241Z"
+      },
+      "configurable-limit migration preserves existing favorites and defaults existing events to three": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.241Z"
+      },
+      "one person can create multiple entries for the same team and edit them independently after intake closes": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.241Z"
+      },
+      "multiple-submission migration preserves legacy entries, favorites and attachment targets during rolling deployment": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.241Z"
+      },
+      "submissions share all organization members including their manager": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.241Z"
+      },
+      "invited presenters expose no email publicly and resolve only through verified invitation acceptance": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.242Z"
+      },
+      "applications use the shared team without requiring a separate presenter selection": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.242Z"
+      },
+      "MCP applications preserve permission and host boundaries, reviewed receipts and private email invitations": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.242Z"
+      },
+      "shared team changes appear on every submission and private team reads require management": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.242Z"
+      }
+    }
+  },
+  "suite-org-worker-test-event-registrations-test-ts": {
+    "fingerprint": "9c0490b7b512807f838ebdefc1a662e3756280530ecfb46054fe5f1d0be4781f",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.242Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.242Z"
+      }
+    }
+  },
+  "suite-org-worker-test-event-safety-test-ts": {
+    "fingerprint": "e0fa00def1b70e46373ce2a4ed5d58325678972d1e1396048032475cf1316e1c",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.243Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.243Z"
+      }
+    }
+  },
+  "suite-org-worker-test-event-slugs-test-ts": {
+    "fingerprint": "0a3d5fc7b558596fdebd926671100b2700c310450f1ac9868576d63af8b1bfa0",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.243Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.243Z"
+      }
+    }
+  },
+  "suite-org-worker-test-event-support-links-test-ts": {
+    "fingerprint": "b14cdee720be40c71ceffe04a6c6dd65f802283d1334fd9bf30bdd3acd559341",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.244Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.244Z"
+      }
+    }
+  },
+  "suite-org-worker-test-financing-records-test-ts": {
+    "fingerprint": "c4a0970abf6d402a602d6f41aedbb11874f0498ab0790c49e2f60d9d5bf1a9e9",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.244Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.244Z"
+      }
+    }
+  },
+  "suite-org-worker-test-fuzzy-search-test-ts": {
+    "fingerprint": "8d0a7eb670c5f8442f0bebf8a5093c25af5bad93f3b50102297ef593c4224dc3",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.245Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.245Z"
+      }
+    }
+  },
+  "suite-org-worker-test-governance-documents-test-ts": {
+    "fingerprint": "a71fd864c8345924fd5dc0fef2ba68cf38074bda265c2392f85b3dfd0af4f3d6",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.246Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.246Z"
+      }
+    }
+  },
+  "suite-org-worker-test-governance-mcp-test-ts": {
+    "fingerprint": "5691b476e3884f55be79554fc5c21479523519a0c6551c8e34555ff966fe0891",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.246Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.246Z"
+      }
+    }
+  },
+  "suite-org-worker-test-government-awards-migration-test-ts": {
+    "fingerprint": "bf1cc8bca694130f25ca11dd4c8d1a87504706b347637b1e6b5238b5f891708c",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.247Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.247Z"
+      }
+    }
+  },
+  "suite-org-worker-test-group-sites-migration-test-ts": {
+    "fingerprint": "7496483c0ae2930a1c53e84b2d1ba8fe3dcff468afe43653b4c88d152a69b8b4",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.247Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.247Z"
+      }
+    }
+  },
+  "suite-org-worker-test-health-insurance-test-ts": {
+    "fingerprint": "47922672faf042de408c22d90b18c48104b0099e023f4ddfefea910ddbdb80de",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.248Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.248Z"
+      }
+    }
+  },
+  "suite-org-worker-test-identity-membership-test-ts": {
+    "fingerprint": "3615ac660a0546b1bb5d57fe92b60b7c47b9eec49d1b5ec0b87b764766b73f92",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.249Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.249Z"
+      }
+    }
+  },
+  "suite-org-worker-test-interventions-test-ts": {
+    "fingerprint": "bd5b1598029f4408a8a85ced84b87ab14cef3e27890db8580d1cecb110181f9f",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.249Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.249Z"
+      }
+    }
+  },
+  "suite-org-worker-test-life-insurance-test-ts": {
+    "fingerprint": "78f53bd7f518d816c638128271afe16624cca87e2af83f92233b32720d22bdcc",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.250Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.250Z"
+      }
+    }
+  },
+  "suite-org-worker-test-local-newsletters-test-ts": {
+    "fingerprint": "49e2dbf30d8bb15b56216437eb5bd10488eba541f1d88f4487d362896bb9b817",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.250Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.250Z"
+      }
+    }
+  },
+  "suite-org-worker-test-mcp-account-tools-test-ts": {
+    "fingerprint": "6de79daa5c06fb9c630d91f3ed368be8f49e40c30ecc0b6c99f645667e593788",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.251Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.251Z"
+      }
+    }
+  },
+  "suite-org-worker-test-mcp-resources-test-ts": {
+    "fingerprint": "b1da7cfa9204cc1a22e8ed328014e601920ae1445f7903163d4025fd0cd93427",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.251Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.251Z"
+      }
+    }
+  },
+  "suite-org-worker-test-mcp-setup-test-ts": {
+    "fingerprint": "f2c8c23080469e6faf781fe57379b2806e147d7dd739b38c0455f5cdc36ab676",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.252Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.252Z"
+      }
+    }
+  },
+  "suite-org-worker-test-memberMeetings-test-ts": {
+    "fingerprint": "13897f4aa5968343097ca5e38815648bd0f9c4a128f731a32a91f7d1eee17b33",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.253Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.253Z"
+      }
+    }
+  },
+  "suite-org-worker-test-nametags-test-ts": {
+    "fingerprint": "ff7fb120f009377296a499f1fe702ec39458435e42fb4a5ccee675b91327c933",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.253Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.253Z"
+      }
+    }
+  },
+  "suite-org-worker-test-native-event-reads-test-ts": {
+    "fingerprint": "9e061ebc8d103ebb76083f6e60ca76aeb3e7d371537880e6ac20dde36022fe8d",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.254Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.254Z"
+      }
+    }
+  },
+  "suite-org-worker-test-newsletter-sync-test-ts": {
+    "fingerprint": "6298816c82ba9cdd2727389b65c76259fdddbf6e9e16124f0898f46826c13132",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.254Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.254Z"
+      }
+    }
+  },
+  "suite-org-worker-test-nonprofit-filings-migration-test-ts": {
+    "fingerprint": "4769f8dd7f5c1620e85097660dfdf838d2a61fa582795c9fbc552560eae2d907",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.255Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.255Z"
+      }
+    }
+  },
+  "suite-org-worker-test-onboarding-settings-test-ts": {
+    "fingerprint": "a42a91002dbc5a15cb292569b98b07417b386b9be71b9e29a0e1687918f2c9aa",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.255Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.255Z"
+      }
+    }
+  },
+  "suite-org-worker-test-onboarding-test-ts": {
+    "fingerprint": "a01817f7fb416a7b4a00d42069a4981bc50e1af29238c702bb87d404d44d541d",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.256Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.256Z"
+      }
+    }
+  },
+  "suite-org-worker-test-org-worker-test-ts": {
+    "fingerprint": "2f9ddfee31279a5f24afaf8206a15097fba1a301df56e4bbb8fb6f7fb8d26b5b",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.256Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.256Z"
+      }
+    }
+  },
+  "suite-org-worker-test-organization-branding-test-ts": {
+    "fingerprint": "9cad56245a3e74439ba47b1493de01cdc860c79e0e91ab0453dd3ba65ded249f",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.257Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.257Z"
+      }
+    }
+  },
+  "suite-org-worker-test-organization-chat-test-ts": {
+    "fingerprint": "d9a64088889fad90c5fcfb8800e92d3c44782827ca2d1da994b74a21de99924b",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.257Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.257Z"
+      }
+    }
+  },
+  "suite-org-worker-test-organization-directory-operations-test-ts": {
+    "fingerprint": "008966eed355107995aac1bbb5933d0cf12002f7acb86279371acaff837021a2",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.258Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.258Z"
+      }
+    }
+  },
+  "suite-org-worker-test-organization-evidence-import-test-ts": {
+    "fingerprint": "704bc5002f63933a1f372305c95cec5237bcfd6f8e36629042d6b0be64a8d82c",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.259Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.259Z"
+      }
+    }
+  },
+  "suite-org-worker-test-organization-follows-test-ts": {
+    "fingerprint": "af4b7f3e6447620ed1ec900b61e0513002cabef3487a9bda6f1b68ce2f980245",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.259Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.259Z"
+      }
+    }
+  },
+  "suite-org-worker-test-organization-home-events-test-ts": {
+    "fingerprint": "ce044a85ec7a6aacf50b547c641bc46272a800b125cb7790424d10f571c64684",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.260Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.260Z"
+      }
+    }
+  },
+  "suite-org-worker-test-organization-iam-test-ts": {
+    "fingerprint": "f9a03267915cf313acc341ba5d186d164a092c64f2bb37373d7f08d1a7a4b8dc",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.260Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.260Z"
+      }
+    }
+  },
+  "suite-org-worker-test-organization-invitations-test-ts": {
+    "fingerprint": "00b43ef2eca9afb196e4431fa9a8aafc5e00f3f661d90fe7663fcf499f595f09",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.261Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.261Z"
+      }
+    }
+  },
+  "suite-org-worker-test-organization-links-test-ts": {
+    "fingerprint": "8d9fc15c1ca5bbe249ba2d55fedb71b3a154908fe36d6faf8f391c332b46d409",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.261Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.261Z"
+      }
+    }
+  },
+  "suite-org-worker-test-organization-mcp-test-ts": {
+    "fingerprint": "36588bd0ace32c2a6a606fabf828a8321dfd9d3a0205408dd66ad97cbebdc596",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.262Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.262Z"
+      }
+    }
+  },
+  "suite-org-worker-test-organization-media-upload-test-ts": {
+    "fingerprint": "71e5aca9b11ad224a55e6e3b1ccd04c2eabdc7653b625da516f769ceecaef8af",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.262Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.262Z"
+      }
+    }
+  },
+  "suite-org-worker-test-organization-member-titles-test-ts": {
+    "fingerprint": "bccaf6cf979b24fff10162c588dd0d6e32edf42daf0823d3cfeef2a8a9de194d",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.263Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.263Z"
+      }
+    }
+  },
+  "suite-org-worker-test-organization-page-statistics-test-ts": {
+    "fingerprint": "b3f332a0d79a310a5191c198b801ce913f0def973f27f5cadc76dbe0227f5bc0",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.263Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.263Z"
+      }
+    }
+  },
+  "suite-org-worker-test-organization-personnel-test-ts": {
+    "fingerprint": "eb392635eec84b2f4fa39c6bb3dd45860655f3ea34022973eb71e6434c9ebc5e",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.264Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.264Z"
+      }
+    }
+  },
+  "suite-org-worker-test-organization-portal-urls-test-ts": {
+    "fingerprint": "9497371813669e121cc63a424cbd673c871a852dd3c8c57cdc40d43fb40c0614",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.264Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.264Z"
+      }
+    }
+  },
+  "suite-org-worker-test-organization-poster-test-ts": {
+    "fingerprint": "4f6381606e983f49c49eb37e1446d8ed09a8c595eddaae27ca1f09aee16255dc",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.265Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.265Z"
+      }
+    }
+  },
+  "suite-org-worker-test-organization-recognition-test-ts": {
+    "fingerprint": "40a870c700470d5dd66de1e4d7ed05bd50f7684a978f0baf541c048a1d0557a5",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.266Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.266Z"
+      }
+    }
+  },
+  "suite-org-worker-test-organization-registry-test-ts": {
+    "fingerprint": "e0958e1e0e748fda450e60e6f34bcb3086764a731920fb6dc802cf9c897f462b",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.266Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.266Z"
+      }
+    }
+  },
+  "replication": {
+    "fingerprint": "9153a321f740c118a377e1b741c1ba067e42909f280a0879b69cb0b2b7e72765",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.267Z",
+    "cases": {
+      "snapshot covers every org, excludes identities, ETag unchanged checks transfer no body": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.267Z"
+      },
+      "updates, additions, deletions converge; failures retain last committed data and expose stale status": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.267Z"
+      },
+      "foreign-key failure rolls back the complete refresh; switching primaries is rejected": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.267Z"
+      },
+      "replicas reject mutations including MCP uploads before identity handlers": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.267Z"
+      },
+      "documented support evidence replicates without its creator identity": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.267Z"
+      },
+      "multi-megabyte UTF-8 snapshots fit D1 bindings and late failures roll back every chunk": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.267Z"
+      },
+      "organization links replicate, rotate and clear from the primary": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.267Z"
+      }
+    }
+  },
+  "suite-org-worker-test-organization-search-all-test-ts": {
+    "fingerprint": "78e28a4428094121012ad51ee5fc52d4a7d5f1f28cdac612771920ca88240786",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.268Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.268Z"
+      }
+    }
+  },
+  "suite-org-worker-test-organization-status-notifications-test-ts": {
+    "fingerprint": "4bbeb6a64a73d0dcdb34e3a798e2115cbbbd3f704dcffe1d93c979e18844e014",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.268Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.268Z"
+      }
+    }
+  },
+  "suite-org-worker-test-organization-support-test-ts": {
+    "fingerprint": "144dccc08e3d7244ee2005ac68929bfb0472b692195a63eccafffafd347016f3",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.269Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.269Z"
+      }
+    }
+  },
+  "suite-org-worker-test-organization-tasks-mcp-test-ts": {
+    "fingerprint": "6dfff8bcde9e817a10bf05843d724ed7e3b850223b83d2c80c87f0ca04520b6c",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.269Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.269Z"
+      }
+    }
+  },
+  "suite-org-worker-test-organization-tenant-home-test-ts": {
+    "fingerprint": "24f5c58a7abdc751d0233eefaa5ba229203c1b8984828ce519e3532cc7205bd3",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.270Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.270Z"
+      }
+    }
+  },
+  "suite-org-worker-test-organization-transport-parity-test-ts": {
+    "fingerprint": "33fdf66201379466bcb4039de3028611072d73fca2a36671902ee8b92ddde358",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.270Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.270Z"
+      }
+    }
+  },
+  "suite-org-worker-test-orgportal-cli-test-ts": {
+    "fingerprint": "245dc3589eebd83caf85e3ee33ac5a0766528f3e79ae687034a39411dee2e0fe",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.271Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.271Z"
+      }
+    }
+  },
+  "suite-org-worker-test-orgportal-platform-test-ts": {
+    "fingerprint": "f652a13fb16f9842f6af9a368da714862cc17cb036879a2688e422d7d84dda7d",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.272Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.272Z"
+      }
+    }
+  },
+  "suite-org-worker-test-owned-events-test-ts": {
+    "fingerprint": "b66cf6bd858f85ce4aabb9c300ce469d08a51252370dbdc7de51cea54d210a56",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.272Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.272Z"
+      }
+    }
+  },
+  "suite-org-worker-test-personal-search-test-ts": {
+    "fingerprint": "6d0a968318a093e88f0dded008f9312ca4546fcd814784b76c2fd46a79f6b2b0",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.273Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.273Z"
+      }
+    }
+  },
+  "suite-org-worker-test-photoTags-test-ts": {
+    "fingerprint": "8a34dc633a4bf657e898acbcd1080225791e584c097f1a8f1161b7f2ea78c0ac",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.273Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.273Z"
+      }
+    }
+  },
+  "suite-org-worker-test-pidp-introspection-test-ts": {
+    "fingerprint": "2a7285fc58ce94a24168d3b173bff14d9cf566036a469a377273f86333de5c04",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.274Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.274Z"
+      }
+    }
+  },
+  "suite-org-worker-test-portal-branding-mcp-test-ts": {
+    "fingerprint": "03db0fb0a793f09268d311c23f6a887f8b723d802af04010dfcd07e1dfdd7c1c",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.275Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.275Z"
+      }
+    }
+  },
+  "suite-org-worker-test-portal-people-test-ts": {
+    "fingerprint": "16e8504bb9258f4728954f23e24e217683452e3b2404bf429d2c7311af9b79ca",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.275Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.275Z"
+      }
+    }
+  },
+  "suite-org-worker-test-poster-gallery-test-ts": {
+    "fingerprint": "864b84ab6c036b7daf74083244f03a7830d6a4838e9f891a69e2abb9835ae352",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.276Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.276Z"
+      }
+    }
+  },
+  "attachments-api": {
+    "fingerprint": "49029abddf3414e2a697e64d259e99016b33f31aa5679ce9acbc1d0f3a5b6d0f",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.277Z",
+    "cases": {
+      "validates supported file signatures and excludes active browser content": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.276Z"
+      },
+      "team and event managers upload; everyone can list and download; retries do not duplicate files": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.276Z"
+      },
+      "caps uploads, rejects invalid content, and cleans withdrawn files without losing failed deletions": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.276Z"
+      },
+      "attachments stay with their own submission when a team has multiple entries": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.277Z"
+      }
+    }
+  },
+  "suite-org-worker-test-profile-availability-test-ts": {
+    "fingerprint": "df520483139eb3ef87cb8f51a2099ffe27470aefc189709acb5db204c8f2ba1a",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.277Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.277Z"
+      }
+    }
+  },
+  "suite-org-worker-test-profile-events-test-ts": {
+    "fingerprint": "731b2e5d01d5c8b0a8c04e81e47cd871480fcf0520c6bdebc4f766ad41d08270",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.278Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.278Z"
+      }
+    }
+  },
+  "suite-org-worker-test-profile-favorite-companies-test-ts": {
+    "fingerprint": "fbfc72dc227ecef9c1afa49f9cc05ca43f3b74cbe6e61d237ca988808f019d79",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.279Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.279Z"
+      }
+    }
+  },
+  "suite-org-worker-test-public-event-comments-test-ts": {
+    "fingerprint": "bdaf0c1bf31fdbf8d7bb3e96d1f95dcf0fbeb838653e5d1584d2c12bdd4fb41c",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.279Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.279Z"
+      }
+    }
+  },
+  "suite-org-worker-test-public-media-object-test-ts": {
+    "fingerprint": "377645582997ebea648f373771a6d9f977c2e7b45abfd3c3312536cedb3a9cf7",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.280Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.280Z"
+      }
+    }
+  },
+  "suite-org-worker-test-publicDataResponse-test-ts": {
+    "fingerprint": "3a4da0d824e1aec518b4386ac411e14a22f46ba638382d42cb76e5eaed8f7d08",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.280Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.280Z"
+      }
+    }
+  },
+  "suite-org-worker-test-push-test-ts": {
+    "fingerprint": "f23cbaaa61d6afa3c655498b9e497dff601743fe6fffbb0f6f088ed57846c700",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.281Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.281Z"
+      }
+    }
+  },
+  "retention": {
+    "fingerprint": "ccb6d50d0a9c05fa70956d689855db817dbb64e0f0a20b3ceaa09510cfc4a752",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.281Z",
+    "cases": {
+      "expiry units, bounds, dry-run, retries and unresolved operations": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.281Z"
+      }
+    }
+  },
+  "suite-org-worker-test-timebank-test-ts": {
+    "fingerprint": "c5312bb566006f7b2f70d813c98d44e5a2818439a2b3140818f7582670665b8d",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.282Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.282Z"
+      }
+    }
+  },
+  "suite-org-worker-test-timebankImports-test-ts": {
+    "fingerprint": "011469487056d78a238ac2c837148affb4594ef24183c77ca0adfc4b4e5c06eb",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.283Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.283Z"
+      }
+    }
+  },
+  "suite-org-worker-test-timebankNotifications-test-ts": {
+    "fingerprint": "8474f482df4d50db622c83ad7647054afe311aabef3fac17124a067fee094929",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.283Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.283Z"
+      }
+    }
+  },
+  "suite-org-worker-test-timebankPublicOffers-test-ts": {
+    "fingerprint": "b7015f0b0d58242ac0f8e95bed6bee5b776ebdf586fcc8212ce3a3eac7db5a98",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.284Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.284Z"
+      }
+    }
+  },
+  "suite-org-worker-test-timebankVisibility-test-ts": {
+    "fingerprint": "022f299dee45caa3ada955b30d009ed683e5a3ef2a2cf8e9da8b501420de7f61",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.284Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.284Z"
+      }
+    }
+  },
+  "suite-org-worker-test-upload-connection-test-ts": {
+    "fingerprint": "20599e1217279d512b2155b70ed2a09ea9ccac2fb474234e4c7da75a1ecf75a0",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.285Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.285Z"
+      }
+    }
+  },
+  "suite-org-worker-test-userTasks-test-ts": {
+    "fingerprint": "e05ec1ca9b88336f05a6a67c645334a8c483cd6884cf0377cea8d21398124d84",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.285Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.285Z"
+      }
+    }
+  },
+  "suite-org-worker-test-venue-enrichment-test-ts": {
+    "fingerprint": "a0ba857729e5a396498da45a42da34e68db66f4e848d8d7e802c2d7f443d6211",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.286Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.286Z"
+      }
+    }
+  },
+  "suite-org-worker-test-venue-images-mcp-test-ts": {
+    "fingerprint": "a5f535c21252c8d5cef4024daa49243fe857d94848c87c1bfec9b514ac764a43",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.286Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.286Z"
+      }
+    }
+  },
+  "suite-org-worker-test-venue-rankings-test-ts": {
+    "fingerprint": "360577b3feedfc7d04da3c11a239ae31e94a9e476eae0e1c5e5b38efcca7b140",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.287Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.287Z"
+      }
+    }
+  },
+  "suite-org-worker-test-venue-votes-test-ts": {
+    "fingerprint": "cfac2e7da5d5e4482295911c215f94e94ff0ca3a994a39f457dd0c4bbd68b5be",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.288Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.288Z"
+      }
+    }
+  },
+  "suite-org-worker-test-venues-test-ts": {
+    "fingerprint": "9686b7509933df356361c5bab691ed8387edba97ee4900bbb7dbeeb49b3550a2",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.288Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.288Z"
+      }
+    }
+  },
+  "suite-org-worker-test-visitorStatistics-test-ts": {
+    "fingerprint": "e5781cdf8817026e3cb7498ba8ac3c17e4924892107d3ce9ea2a76c5e81921d1",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.289Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.289Z"
+      }
+    }
+  },
+  "suite-org-worker-test-website-observatory-test-ts": {
+    "fingerprint": "fc5224a009462e84c7f1aaabbe9eaf8ae3bf46dd6ff283dde7111ae18143309d",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:41.289Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:41.289Z"
+      }
+    }
+  },
+  "suite-scripts-test-status-test-mjs": {
+    "fingerprint": "aad70b3f2df60b4d68ce88311f1ef36ea7a9c8e2732fc2d9ee694f67d60e1bde",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:56:45.810Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:56:45.810Z"
+      }
+    }
+  },
+  "suite-web-src-application-usecases-proposeMotion-test-ts": {
+    "fingerprint": "3a0df86f8cd775a378f1e733be114ae683758ec59f4b2bfc252d3c1813a5f37a",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.948Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.948Z"
+      }
+    }
+  },
+  "suite-web-src-chat-bootstrapSession-test-ts": {
+    "fingerprint": "c964b0e2e6b3a72e5950b634e04678f37cd52542cea22cc67a10a7f1834c4930",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.948Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.948Z"
+      }
+    }
+  },
+  "suite-web-src-chat-chatLinks-test-ts": {
+    "fingerprint": "674f4f1bc31ee6bc167ee16634bcdbbe1b3f10bf119e864175b174e883d31170",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.948Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.948Z"
+      }
+    }
+  },
+  "suite-web-src-chat-matrixService-test-ts": {
+    "fingerprint": "b943c5336453b1b6894bd7aa1499d525a45ebb13db310e64a9269cd4b3762172",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.948Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.948Z"
+      }
+    }
+  },
+  "suite-web-src-chat-nativeChatApi-test-ts": {
+    "fingerprint": "84171cb99591e8004692d79394d3493a29834da91f40801777fda764bfe968c0",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.948Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.948Z"
+      }
+    }
+  },
+  "suite-web-src-composition-createServices-test-ts": {
+    "fingerprint": "1c9264975d7aaad2cb1482a621ee266b543b2de875b4479babba0e79b1b585ff",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.949Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.949Z"
+      }
+    }
+  },
+  "suite-web-src-config-chatGptListing-test-ts": {
+    "fingerprint": "eb8f800bc163947a83c127469a8391279fc8bb6970f2b7bc9cd360454be8cea6",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.949Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.949Z"
+      }
+    }
+  },
+  "suite-web-src-config-localProxy-test-ts": {
+    "fingerprint": "59b71b7c00a986da9c5993081970493e670723cfbcd743ada38c6a7cdcf38394",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.949Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.949Z"
+      }
+    }
+  },
+  "suite-web-src-config-pidp-test-ts": {
+    "fingerprint": "0328b991ff3b61f8097e385297df1ba0828b5bc59fe955e770f70feacd669bd9",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.949Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.949Z"
+      }
+    }
+  },
+  "suite-web-src-config-portalBase-test-ts": {
+    "fingerprint": "177c607efbfdba125983764e1904ad4335bc9d6bac86fdb44bfb5098c8d6d100",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.949Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.949Z"
+      }
+    }
+  },
+  "suite-web-src-config-portalFeatures-test-ts": {
+    "fingerprint": "4e1890c900368961b274d00cf3a44ff59bdb6870533f6dae0fcddeb095eac69a",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.950Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.950Z"
+      }
+    }
+  },
+  "suite-web-src-config-specialtyResources-test-ts": {
+    "fingerprint": "89e5e171886afec4fee45ed18f76807f0d6f1485cde7d76d87c225919d7e9b07",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.950Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.950Z"
+      }
+    }
+  },
+  "suite-web-src-config-tenantHome-test-ts": {
+    "fingerprint": "38317c01a5db87b8f5ce5a2059fc34436b61c6f8bef88ee0c944cb7a3794214d",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.950Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.950Z"
+      }
+    }
+  },
+  "suite-web-src-config-theme-test-ts": {
+    "fingerprint": "81af8f9f99d386e5f707da012f764fde9435e2bb649c42dbb0662668a987e2a6",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.950Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.950Z"
+      }
+    }
+  },
+  "suite-web-src-config-timebankRouting-test-ts": {
+    "fingerprint": "5b48a5c20fbfaa7ce03241a93bd0d9f67759b4d7e4344509e54b24d3937d9905",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.950Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.950Z"
+      }
+    }
+  },
+  "suite-web-src-data-ecosystemSync-newsletters-test-ts": {
+    "fingerprint": "79f544480b430281356bc09f18286b409dac8dd6ba45128a5fbae675eeddd59b",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.950Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.950Z"
+      }
+    }
+  },
+  "suite-web-src-data-ecosystemSync-protocol-test-ts": {
+    "fingerprint": "8c83d8984a179cc6c5faa15b81d9b4562a4478ae0dd1bf0b7c7fecf0ca9531f1",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.951Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.951Z"
+      }
+    }
+  },
+  "suite-web-src-data-ecosystemSync-store-test-ts": {
+    "fingerprint": "59a5f77d4926772c69a38cddadc9d75d24e7ae1e02da8c577674af9a6fad1025",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.951Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.951Z"
+      }
+    }
+  },
+  "suite-web-src-data-publicOrganization-cache-test-ts": {
+    "fingerprint": "9ea7e3cdc640f0b6bb0265e469feee560ad6ef54c9ea2c383c447c313847f462",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.952Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.952Z"
+      }
+    }
+  },
+  "suite-web-src-data-publicOrganization-cacheSharing-test-ts": {
+    "fingerprint": "b1a2734037dcdfd481943333caa8fbc3c73aac3a46a038d1e971188187c70efa",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.952Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.952Z"
+      }
+    }
+  },
+  "suite-web-src-data-publicOrganization-hostedEvents-test-ts": {
+    "fingerprint": "a3f7b4bf305167da3eeefc7f46a542e54e38fd61bd29771843735990df3ff0fd",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.952Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.952Z"
+      }
+    }
+  },
+  "suite-web-src-data-publicOrganization-organizations-test-ts": {
+    "fingerprint": "1a6c84a6c1bb099f211c80a390968bb43a6793c375986b45139e9f0eeae990bf",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.953Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.953Z"
+      }
+    }
+  },
+  "suite-web-src-domain-insurance-lifeInsuranceModel-test-ts": {
+    "fingerprint": "2bea98af8b40fc88d681f11476a5497a1adfb67e544a5dd9b345a86a8b16e008",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.953Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.953Z"
+      }
+    }
+  },
+  "suite-web-src-domain-motion-motionStateMachine-test-ts": {
+    "fingerprint": "89671fbac2aa704e7f810ee6e0227439908dfa604139302e83a382938c220114",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.953Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.953Z"
+      }
+    }
+  },
+  "suite-web-src-features-ecosystem-companyRetention-test-ts": {
+    "fingerprint": "c7fbff8aabde8cd9236e079fc3b0d7a49102dc7ed4478d6bf0d40ec556ec5462",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.953Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.953Z"
+      }
+    }
+  },
+  "suite-web-src-features-ecosystem-ecosystemOverview-test-ts": {
+    "fingerprint": "473d81c81a472df35c06fa62e0e55c4c81b562e732f52adb585aa36921adbd9e",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.953Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.953Z"
+      }
+    }
+  },
+  "suite-web-src-features-ecosystem-fundingStatistics-test-ts": {
+    "fingerprint": "1f581608abca8d6ff494ddab762f6cee088dc440d3aef546e7bae20de8d04583",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.954Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.954Z"
+      }
+    }
+  },
+  "suite-web-src-features-ecosystem-interventions-test-ts": {
+    "fingerprint": "717eb9697721b1864a30ade57efea97c5b160700c82373eb4a89e947018214cd",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.954Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.954Z"
+      }
+    }
+  },
+  "suite-web-src-features-ecosystem-network-data-test-ts": {
+    "fingerprint": "b476e465ca22778b1176e00aeb4c33af51b62b0bd0090996685c53df099d002e",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.954Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.954Z"
+      }
+    }
+  },
+  "suite-web-src-features-ecosystem-performance-test-ts": {
+    "fingerprint": "e7fce452ebacba1c11240bba3add1ced6d8cc3601ea2f95c6250866f6b032003",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.954Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.954Z"
+      }
+    }
+  },
+  "suite-web-src-features-events-medicalEvents-test-ts": {
+    "fingerprint": "dc4aab30cd3f9ab8fb520338ca264b5f6557739e510f5a3e5d8f21e81451c873",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.955Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.955Z"
+      }
+    }
+  },
+  "suite-web-src-infrastructure-auth-avatarUpload-test-ts": {
+    "fingerprint": "6ac9ef0f4e7deae7217eed7540e970a0a557abc9fb064a57bbeb339cdc6f00e4",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.955Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.955Z"
+      }
+    }
+  },
+  "suite-web-src-infrastructure-auth-restoreSession-test-ts": {
+    "fingerprint": "93a76d3a9d2cab35019a833551fddc7378e62e4f0de6ab3425eed606042e71f2",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.955Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.955Z"
+      }
+    }
+  },
+  "suite-web-src-infrastructure-http-userFacingError-test-ts": {
+    "fingerprint": "e637a9cb5e02c8eddce54f6cacca449f21df36c9f6f07caeb626a5b921413190",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.955Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.955Z"
+      }
+    }
+  },
+  "suite-web-src-infrastructure-mocks-MockChatService-test-ts": {
+    "fingerprint": "7d102fc0c688f1a573b73bc8faa3df0fc33511638f6faf34161bd923b40ab339",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.955Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.955Z"
+      }
+    }
+  },
+  "suite-web-src-infrastructure-mocks-MockEngagementRepository-test-ts": {
+    "fingerprint": "a877240a783c44e4b6dab99397a6393bf43493473722b26a68688961b5dcf92e",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.956Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.956Z"
+      }
+    }
+  },
+  "suite-web-src-infrastructure-mocks-MockMotionRepository-test-ts": {
+    "fingerprint": "61c20558bf53167f1007a9a802bbe52bd77a124fd44e0c2c76e0732e2db34283",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.956Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.956Z"
+      }
+    }
+  },
+  "suite-web-src-infrastructure-mocks-MockVoteRepository-test-ts": {
+    "fingerprint": "245f122b0fe2eb3878d6cd45bf594b802c4b1472d90aa76d8af65dccd30b8f75",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.956Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.956Z"
+      }
+    }
+  },
+  "suite-web-src-infrastructure-platform-androidApp-test-ts": {
+    "fingerprint": "b2ad8dadfad5c6e13d517386c7e6dfc950310787d4184a433f00630b63567259",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.956Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.956Z"
+      }
+    }
+  },
+  "suite-web-src-infrastructure-platform-chunkRecovery-test-ts": {
+    "fingerprint": "cba3c8151551983a375187be6c98800c03cdeef7d3563dda1c1db7e5edc3a261",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.956Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.956Z"
+      }
+    }
+  },
+  "suite-web-src-infrastructure-platform-deployment-test-ts": {
+    "fingerprint": "767814f518db826d58d87c9e7bc00878aec0451ad79f155e6d21b4be6d540a03",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.957Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.957Z"
+      }
+    }
+  },
+  "suite-web-src-infrastructure-platform-inAppBrowser-test-ts": {
+    "fingerprint": "111022c8fb12067f27ec3873170996dd4d6e62d3d1026b42b0eca6297956c3a0",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.957Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.957Z"
+      }
+    }
+  },
+  "suite-web-src-infrastructure-platform-notificationDelivery-test-ts": {
+    "fingerprint": "aec48fb4be65edeb8a34ba4238d54b6f6446285b9c4a196643f632632e7e95db",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.957Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.957Z"
+      }
+    }
+  },
+  "suite-web-src-infrastructure-platform-updateManifest-test-ts": {
+    "fingerprint": "10134c852f73fb2e726bff1e8e08d45466a855929a49f64e830a9f7408241133",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.957Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.957Z"
+      }
+    }
+  },
+  "suite-web-src-infrastructure-platform-webPush-test-ts": {
+    "fingerprint": "7807bf04ebb84d7ad0bcbd4d2bcbc56576055fdc58f7cfc52e76bb29fbb3767a",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.958Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.958Z"
+      }
+    }
+  },
+  "suite-web-src-infrastructure-utils-chatWindowCache-test-ts": {
+    "fingerprint": "315f29b8116b5387e5dfb0e79661257f482525668b4118b0dfba12bc5309c4f4",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.958Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.958Z"
+      }
+    }
+  },
+  "suite-web-src-ui-components-EmbeddedOrganizationChat-test-ts": {
+    "fingerprint": "701665d4da658e6c1be614b44c2e14d685dcfc3107e06662c36852d63340a496",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.958Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.958Z"
+      }
+    }
+  },
+  "suite-web-src-ui-components-EventVenues-test-ts": {
+    "fingerprint": "56c29cf45ae7089d05524b22947b83c86c3e00c73d07ca2140e49bdb20394439",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.959Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.959Z"
+      }
+    }
+  },
+  "suite-web-src-ui-components-GroupVenueHistory-test-ts": {
+    "fingerprint": "92a76e9cef1844e053a0db733edfc081efd55c3415434ecbf53086d2ea3b4c73",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.959Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.959Z"
+      }
+    }
+  },
+  "suite-web-src-ui-components-OrganizationAvatar-test-ts": {
+    "fingerprint": "116602bc1ffe8729cca262c0433d91c3a47e49664d7cd61057dbbc5f8605b29e",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.959Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.959Z"
+      }
+    }
+  },
+  "suite-web-src-ui-components-OrganizationFundingChart-test-ts": {
+    "fingerprint": "2a192b160a11d49cfcd79cf914a479eb8b7ec2772f9c2601c0de1bb174daf296",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.959Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.959Z"
+      }
+    }
+  },
+  "suite-web-src-ui-components-TeamPeoplePicker-test-ts": {
+    "fingerprint": "4c913d66ac5f639c742a3e90ad4baeb6f5f3e0165a89dd26cfe7a1c81b81f7da",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.960Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.960Z"
+      }
+    }
+  },
+  "suite-web-src-ui-components-chat-MatrixVideoCall-test-ts": {
+    "fingerprint": "acdf3e78cc1d96feef0e33cbe5cf3b9180e31094e6a6193fe9df05e6fe572ba9",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.960Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.960Z"
+      }
+    }
+  },
+  "suite-web-src-ui-components-companyFinancing-test-ts": {
+    "fingerprint": "07d93df03e83619cc2c0b86bbb454aae9a7cc14da2cf938986e9b394f67f979e",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.960Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.960Z"
+      }
+    }
+  },
+  "suite-web-src-ui-components-financingImport-test-ts": {
+    "fingerprint": "e048b45bad5c84dbe078f4fdf2a73a7206c6fb5f4788948363ec098bb37f508c",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.961Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.961Z"
+      }
+    }
+  },
+  "suite-web-src-ui-components-fundingDashboard-test-ts": {
+    "fingerprint": "b7f3fd265cf5f21d6047d78a0fa8b2cfc578e22d814466a6a473fc0b437f7a9b",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.961Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.961Z"
+      }
+    }
+  },
+  "suite-web-src-ui-components-organizationEvidenceImport-test-ts": {
+    "fingerprint": "eaa2370bdab8bd2b41b7eaa28bc94ac6ea8cb46945c8f73b4214ee84a0e4c0f1",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.961Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.961Z"
+      }
+    }
+  },
+  "suite-web-src-ui-components-organizationFollowApi-test-ts": {
+    "fingerprint": "e36d88b9504e49790fbf53728ebca2736831c437f418fba4ac79293c2ae9a793",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.961Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.961Z"
+      }
+    }
+  },
+  "suite-web-src-ui-components-organizationFunds-test-ts": {
+    "fingerprint": "0cc6592ae0a81241b01d9453ba04e2e7ec81650d23c410db20c894b49609ed6a",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.962Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.962Z"
+      }
+    }
+  },
+  "suite-web-src-ui-components-organizationMemberSearch-test-ts": {
+    "fingerprint": "2fcab593617a0cd142f1c3e9d840f988989ffc530cd5979df7cbeecc3ccf2052",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.962Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.962Z"
+      }
+    }
+  },
+  "suite-web-src-ui-components-posterEditorState-test-ts": {
+    "fingerprint": "f951020d194ef15ee2804291f08168ca2b3bb86ddc5eeec556f3e6d994fc7867",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.962Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.962Z"
+      }
+    }
+  },
+  "suite-web-src-ui-components-profile-BioMarkdown-test-ts": {
+    "fingerprint": "1a15fbf39a25c83fa0bc0a29824e4dcb900cb23135b456e2602cd87b9d1b6d63",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.963Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.963Z"
+      }
+    }
+  },
+  "suite-web-src-ui-components-supportEventLinks-test-ts": {
+    "fingerprint": "a6030a8f68a6f58a04f10c1c1133b15927e5b6fedecf26b215fc1e44ec17b916",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.963Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.963Z"
+      }
+    }
+  },
+  "suite-web-src-ui-components-system-AppUpdatePrompt-test-ts": {
+    "fingerprint": "9940f34a1175bf4712a8b02520577f6576b199a353364cc58c3e5bff1431f1c4",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.963Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.963Z"
+      }
+    }
+  },
+  "suite-web-src-ui-components-tedcoFunding-test-ts": {
+    "fingerprint": "aae8a30eb553e99d52ea0db07126d89356dd594e668b4575afa503661220412d",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.963Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.963Z"
+      }
+    }
+  },
+  "suite-web-src-ui-hooks-localFormDraft-test-ts": {
+    "fingerprint": "5be7b24f453c00a605614be40d718d2087482e32f5641c5cc5e26f51e1949e37",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.964Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.964Z"
+      }
+    }
+  },
+  "suite-web-src-ui-hooks-useOrganizationView-test-ts": {
+    "fingerprint": "3b05cf4cbd0e1e85ce3956b641423afa95e158059a02d2fae933ea490fcd4e51",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.964Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.964Z"
+      }
+    }
+  },
+  "suite-web-src-ui-timebank-links-test-ts": {
+    "fingerprint": "44de33facf10053d365c8d6e39f88688c066782c39c01dc324329d18ae3533e5",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.964Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.964Z"
+      }
+    }
+  },
+  "suite-web-src-ui-utils-calendar-test-ts": {
+    "fingerprint": "182886951d0ac6968f76e9c280125c193607225918ab64b0e572fd510f5cddcb",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.964Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.964Z"
+      }
+    }
+  },
+  "suite-web-src-ui-utils-externalEventListings-test-ts": {
+    "fingerprint": "c96300df4be7175f85f041f22df788f139e4cd143783baf5355761df5865fb88",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.965Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.965Z"
+      }
+    }
+  },
+  "suite-web-src-ui-utils-qr-test-ts": {
+    "fingerprint": "b0c92b98053ee6405ce6b8271a7b423d822c6e73eaad2fc4b804daf64ad75239",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.965Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.965Z"
+      }
+    }
+  },
+  "suite-web-src-ui-utils-vcard-test-ts": {
+    "fingerprint": "5dc77b313bb584af651833a770bcdc582358f66f42b4d2c188c45f362f49a893",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.965Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.965Z"
+      }
+    }
+  },
+  "suite-web-src-ui-views-availabilityDraft-test-ts": {
+    "fingerprint": "872a92b71267b3729f1c896e1cf2b822ccc05860f5063e4033d1a548a9400b3d",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.965Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.965Z"
+      }
+    }
+  },
+  "suite-web-src-ui-views-economicOpsUtils-test-ts": {
+    "fingerprint": "5ab7830ca09b5310c01b0d4492c43a298a853ce8a213223d113460b90ba7503e",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.965Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.965Z"
+      }
+    }
+  },
+  "suite-web-src-ui-views-email-EmailCampaignStats-test-ts": {
+    "fingerprint": "a7b261cb4c54af8b7335995decda703e4cd529aff3daf9c16f3764802decc212",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.966Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.966Z"
+      }
+    }
+  },
+  "suite-web-src-ui-views-email-emailApi-test-ts": {
+    "fingerprint": "2daa511ad66818e7db1649d21e61dc17f53c832ece17b6778c17b1f190c78213",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.966Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.966Z"
+      }
+    }
+  },
+  "suite-web-src-ui-views-email-outreachCsv-test-ts": {
+    "fingerprint": "d02c9a3afb6350beafcbfae38800723fdebfc1fd59cb335fd84d207f02749197",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.966Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.966Z"
+      }
+    }
+  },
+  "suite-web-src-ui-views-financeUtils-test-ts": {
+    "fingerprint": "bed585b048f0d869f9996b2448eac38fafe40af3cdf26ecbba29ee7702218ab4",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.981Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.981Z"
+      }
+    }
+  },
+  "suite-web-src-ui-views-peopleDirectory-test-ts": {
+    "fingerprint": "309491198b4b4cae9e960f127aab380813dcba73b6b8e9c9b3fdbd79b1575818",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.982Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.982Z"
+      }
+    }
+  },
+  "suite-web-src-ui-views-public-attendanceApi-test-ts": {
+    "fingerprint": "3441df810c6c04a07531a75e3e4d2cc1e5a6ff4359e6da19c77c2c06e7d06129",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.982Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.982Z"
+      }
+    }
+  },
+  "suite-web-src-ui-views-public-organizationEvents-test-ts": {
+    "fingerprint": "e584f92f477c58719bd23ab9f2c9b152073302f34507b6b94acf3f4887ac5557",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:12.982Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:12.982Z"
+      }
+    }
+  },
+  "suite-web-tests-unit-insurance-fixture-safety-test-mjs": {
+    "fingerprint": "dfc10e615035f637157c9c1b6ed2fc565823bc40c494567cba37ecaaab2f45e4",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:15.259Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:15.259Z"
+      }
+    }
+  },
+  "suite-web-tests-unit-portal-routes-test-mjs": {
+    "fingerprint": "29bcdf7b81c53ea3b9e6c0fcd19c9796892640a13c86ee40c0534f74a128900a",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:15.259Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:15.259Z"
+      }
+    }
+  },
+  "suite-web-tests-unit-seo-test-mjs": {
+    "fingerprint": "f39ed3aedcec6e7e0d4cb880f7f37f8bdea5527352123da2494c042edac2b03d",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:15.259Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:15.259Z"
+      }
+    }
+  },
+  "suite-web-tests-unit-web-update-release-test-mjs": {
+    "fingerprint": "790a20bb88be9c1051038210161950fb43d191137f6e76e85394d6a3a7884c49",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:55:15.259Z",
+    "cases": {
+      "suite": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:15.259Z"
+      }
+    }
+  },
+  "browser-desktop": {
+    "fingerprint": "7567e9a66eafe576623d64ccecd2f1fea0ec554e1bb3ef3650515f7291f97e77",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:57:40.512Z",
+    "cases": {
+      "setup": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:56:52.771Z"
+      },
+      "draft": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:56:56.705Z"
+      },
+      "submission": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:57:02.288Z"
+      },
+      "review": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:57:09.299Z"
+      },
+      "favorites": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:57:17.954Z"
+      },
+      "editing": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:57:22.319Z"
+      },
+      "finals": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:57:37.101Z"
+      },
+      "closure": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:57:38.312Z"
+      },
+      "status-page": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:57:40.512Z"
+      }
+    }
+  },
+  "browser-pixel": {
+    "fingerprint": "7567e9a66eafe576623d64ccecd2f1fea0ec554e1bb3ef3650515f7291f97e77",
+    "revision": "5654a64 + working tree",
+    "recordedAt": "2026-10-23T15:56:29.851Z",
+    "cases": {
+      "setup": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:42.958Z"
+      },
+      "draft": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:47.586Z"
+      },
+      "submission": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:53.153Z"
+      },
+      "review": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:55:57.943Z"
+      },
+      "favorites": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:56:06.625Z"
+      },
+      "editing": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:56:10.744Z"
+      },
+      "finals": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:56:25.751Z"
+      },
+      "closure": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:56:27.436Z"
+      },
+      "status-page": {
+        "status": "passed",
+        "recordedAt": "2026-10-23T15:56:29.851Z"
+      }
+    }
+  }
+}

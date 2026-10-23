@@ -897,6 +897,9 @@ export function Header({ organizationId }: { organizationId?: string | null } = 
                   <Link to="/dev-tools" onClick={() => setMenuOpen(false)} className="portal-user-menu-item" role="menuitem">
                     Dev Tools
                   </Link>
+                  <Link to="/test-status" onClick={() => setMenuOpen(false)} className="portal-user-menu-item" role="menuitem">
+                    Test status
+                  </Link>
 
                   <a href={pidpUrl('/')} onClick={() => setMenuOpen(false)} className="portal-user-menu-item" role="menuitem">
                     Identity (PIdP)

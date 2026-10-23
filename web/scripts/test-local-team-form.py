@@ -11,6 +11,7 @@ team. All requests stay on loopback; remote organization replication must be off
 For attached Android Chrome, forward its DevTools socket and reverse the gateway
 port with adb, then set PLAYWRIGHT_CDP_URL=http://127.0.0.1:9223.
 """
+import subprocess
 import csv
 import base64
 import io
@@ -29,6 +30,17 @@ preflight()
 REPORT = Path(os.environ.get('TEAM_FORM_REPORT_DIR', '/tmp/orgportal-team-form-clickthrough'))
 REPORT.mkdir(parents=True, exist_ok=True)
 run_id = uuid.uuid4().hex[:10]
+current_status_case = 'setup'
+def status_case(case_id):
+    global current_status_case
+    current_status_case = case_id
+
+def record_status(status):
+    suite = os.environ.get('ORGPORTAL_STATUS_SUITE')
+    if suite:
+        subprocess.run(['node', str(Path(__file__).resolve().parents[2] / 'scripts/test-status.mjs'),
+                        'case', suite, current_status_case, status], check=True)
+
 
 def successful(response):
     assert response.ok, f'Local fixture request failed: {response.status} {response.text()[:500]}'
@@ -41,12 +53,14 @@ with sync_playwright() as p:
     assert not (cdp_url and ws_url), 'Choose one remote browser connection'
     if cdp_url:
         assert urlparse(cdp_url).hostname in {'localhost', '127.0.0.1'}, 'Use a local forwarded browser'
-        browser = p.chromium.connect_over_cdp(cdp_url)
+        browser = p.chromium.connect_over_cdp(cdp_url, timeout=30000)
     elif ws_url:
         assert urlparse(ws_url).hostname in {'localhost', '127.0.0.1'}, 'Use a local Docker browser'
-        browser = p.chromium.connect(ws_url)
+        browser = p.chromium.connect(ws_url, timeout=30000, headers={'x-playwright-launch-options':json.dumps({'channel':'chromium','timeout':30000})})
     else:
         browser = p.chromium.launch(executable_path=os.environ.get('PLAYWRIGHT_CHROMIUM_EXECUTABLE', '/usr/bin/google-chrome'), headless=True, args=['--no-sandbox'])
+    record_status('passed')
+    status_case('draft')
     test_contexts = []
     def context():
         device = {'no_viewport': True} if cdp_url else {key: value for key, value in p.devices[device_name].items() if key != 'default_browser_type'}
@@ -134,6 +148,10 @@ with sync_playwright() as p:
         expect(page.get_by_role('tabpanel',name='Poster',exact=True)).to_be_visible()
         page.get_by_role('tab',name='Apply',exact=True).click()
         assert page.url.endswith('#apply'), 'Apply tab must survive reload and sign-in return'
+        ai_help = page.get_by_role('region', name='Apply with AI', exact=True)
+        expect(ai_help).to_be_visible()
+        expect(ai_help.get_by_label('Submission prompt', exact=True)).to_have_value(re.compile(r'Connect to ' + re.escape(BASE.rstrip('/')) + r'/mcp .*shared team list.*approval before submitting\.'))
+        expect(ai_help.get_by_role('button', name='Copy prompt', exact=True)).to_be_visible()
         expect(form).to_be_visible(timeout=30000)
         if not cdp_url:
             assert page.evaluate('navigator.maxTouchPoints > 0') == bool(p.devices[device_name]['has_touch'])
@@ -151,10 +169,9 @@ with sync_playwright() as p:
         form.get_by_label('About your team', exact=True).fill('A dummy organization for a local browser test.')
         form.get_by_label('Presentation title', exact=True).fill('A local demo')
         form.get_by_label('What will you present?', exact=True).fill('A synthetic demo to verify the submission flow.')
-        form.get_by_role('button', name='Submit application', exact=True).click()
-        expect(section.get_by_role('status').filter(has_text='Add at least one teammate')).to_be_visible()
-        assert successful(host.request.get(endpoint, headers=auth))['submissions'] == []
-        print('PASS: required fields, missing teammates and clearing a draft', flush=True)
+        print('PASS: required fields and clearing a draft', flush=True)
+        record_status('passed')
+        status_case('submission')
         picker = form.get_by_label('Teammates (Email or Portal Name)', exact=True)
         roster = form.get_by_role('list', name='Selected team members')
         for query, person in [(f'Dummy host {run_id}', f'Dummy host {run_id}'), (colleague_credentials['email'], f'Dummy colleague {run_id}')]:
@@ -165,11 +182,11 @@ with sync_playwright() as p:
         picker.fill(invitation_email)
         form.get_by_role('button', name=f'Invite {invitation_email} by email', exact=True).click()
         expect(roster.get_by_role('img', name=invitation_email + ' · Status unavailable', exact=True)).to_be_visible()
-        expect(roster.get_by_role('listitem')).to_have_count(3)
+        expect(roster.get_by_role('listitem')).to_have_count(4)
         # Adding the same account again must not duplicate its avatar or membership.
         picker.fill(f'Dummy host {run_id}')
         form.get_by_role('button', name=f'Choose Dummy host {run_id}', exact=True).click()
-        expect(roster.get_by_role('listitem')).to_have_count(3)
+        expect(roster.get_by_role('listitem')).to_have_count(4)
         expect(form).to_have_attribute('data-draft-saved', 'true', timeout=10000)
         assert form.evaluate('(el) => parseFloat(getComputedStyle(el).borderTopWidth) >= 1'), 'Form border must remain visible at the device pixel ratio'
         expect(form).to_have_css('border-top-style', 'solid')
@@ -181,8 +198,11 @@ with sync_playwright() as p:
         expect(form.get_by_label('New team name', exact=True)).to_have_value(f'Dummy Demo Team {run_id}', timeout=30000)
         expect(form.get_by_label('What will you present?', exact=True)).to_have_value('A synthetic demo to verify the submission flow.')
         expect(form).to_have_attribute('data-draft-saved', 'true', timeout=10000)
-        expect(roster.get_by_role('listitem')).to_have_count(3)
-        expect(roster.get_by_role('img')).to_have_count(3)
+        expect(roster.get_by_role('listitem')).to_have_count(4)
+        expect(roster.get_by_role('img')).to_have_count(4)
+        form.get_by_label('Team image (optional)',exact=True).set_input_files({'name':'team-logo.png','mimeType':'image/png','buffer':base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=')})
+        expect(form.get_by_role('img',name='Team image preview')).to_be_visible()
+        expect(page.get_by_role('tab',name='Apply',exact=True)).to_have_css('background-color','rgb(212, 175, 55)')
         pptx=io.BytesIO()
         with zipfile.ZipFile(pptx,'w') as archive:
             archive.writestr('[Content_Types].xml','<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"/>')
@@ -219,16 +239,23 @@ with sync_playwright() as p:
         saved = successful(host.request.get(endpoint, headers=auth))['submissions']
         assert len(saved) == 1 and saved[0]['title'] == 'A local demo'
         team_id = saved[0]['organization_id']
+        public_saved=successful(host.request.get(endpoint+'/submissions'))['submissions'][0]
+        assert '/api/org/api/network/orgs/public/' in public_saved['image_url'], 'Upload must become the organization main image'
+        assert host.request.get(public_saved['image_url']).ok
+
+
         applicant_token = successful(applicant.request.get(BASE + '/pidp/auth/session-token'))['access_token']
         membership = successful(applicant.request.get(BASE + '/api/org/api/network/orgs/' + team_id + '/membership', headers={'Authorization': 'Bearer ' + applicant_token}))
         assert membership['role'] == 'owner' and membership['status'] == 'active'
-        assert len(saved[0]['presenters'])==3 and all(person.get('name')!=f'Dummy applicant {run_id}' for person in saved[0]['presenters'])
+        assert len(saved[0]['presenters'])==4 and any(person.get('name')==f'Dummy applicant {run_id}' for person in saved[0]['presenters'])
         members = successful(applicant.request.get(BASE + '/api/org/api/network/orgs/' + team_id + '/members', headers={'Authorization': 'Bearer ' + applicant_token}))
         assert sum(member['role'] == 'member' for member in members) == 2, members
         assert len(members) == 3, 'Unverified email must not create an identity or membership'
-        host_user_id = saved[0]['presenters'][0]['userId']
+        host_user_id = next(person['userId'] for person in saved[0]['presenters'] if person.get('name')==f'Dummy host {run_id}')
         expect(page.get_by_text('Review applications', exact=True)).to_have_count(0)
         print('PASS: registration popup and profile link, saved form draft, teammate lookup/invitation and initial submission',flush=True)
+        record_status('passed')
+        status_case('review')
         # A real host dashboard must review every application across pages.
         for index in range(25):
             team = successful(host.request.post(BASE + '/api/org/api/network/orgs', headers=auth, data={'name': f'Dummy Review Team {run_id} {index}', 'city': 'Baltimore', 'kind': 'team', 'acknowledgeOwnership': True}))
@@ -263,20 +290,30 @@ with sync_playwright() as p:
         manager.get_by_role('tab',name='Apply',exact=True).click()
         expect(manager.get_by_role('form',name='Team presentation application')).to_be_visible()
         print('PASS: manager pagination, CSV exports and review decisions',flush=True)
+        record_status('passed')
+        status_case('favorites')
         page.bring_to_front()
         page.reload()  # The host created review fixtures in another browser context.
         page.get_by_role('tab',name='Submissions',exact=True).click()
         submissions=page.get_by_role('region',name='Event submissions',exact=True)
         expect(submissions.locator('.presentation-submission')).to_have_count(26,timeout=30000)
+        first_card=submissions.locator('.presentation-submission').first
+        expand=first_card.get_by_role('button',name=re.compile('^Expand submission:'))
+        expect(expand).to_have_attribute('aria-expanded','false')
+        expand.click()
+        expect(first_card.get_by_role('button',name=re.compile('^Collapse submission:'))).to_have_attribute('aria-expanded','true')
+        expect(submissions.get_by_role('status').filter(has_text=re.compile(r'^\d+ of \d+ favorites selected$'))).to_have_text('0 of 3 favorites selected')
+        first_card.get_by_role('button',name=re.compile('^Collapse submission:')).click()
+        expect(expand).to_have_attribute('aria-expanded','false')
         for count in range(1,4):
-            submissions.get_by_role('button',name=re.compile('^Favorite:')).first.click(position={'x':12,'y':12})
-            expect(submissions.get_by_role('status')).to_have_text(f'{count} of 3 favorites selected',timeout=30000)
+            submissions.get_by_role('button',name=re.compile('^Favorite:')).first.click(position={'x':12,'y':70})
+            expect(submissions.get_by_role('status').filter(has_text=re.compile(r'^\d+ of \d+ favorites selected$'))).to_have_text(f'{count} of 3 favorites selected',timeout=30000)
             expect(submissions.locator('.submission-voting-card.is-selected')).to_have_count(count)
         expect(submissions.get_by_role('button',name=re.compile('^Favorite:')).first).to_be_disabled()
         page.reload()
-        expect(submissions.get_by_role('status')).to_have_text('3 of 3 favorites selected',timeout=30000)
-        submissions.get_by_role('button',name=re.compile('^Remove favorite:')).first.click(position={'x':12,'y':12})
-        expect(submissions.get_by_role('status')).to_have_text('2 of 3 favorites selected',timeout=30000)
+        expect(submissions.get_by_role('status').filter(has_text=re.compile(r'^\d+ of \d+ favorites selected$'))).to_have_text('3 of 3 favorites selected',timeout=30000)
+        submissions.get_by_role('button',name=re.compile('^Remove favorite:')).first.click(position={'x':12,'y':70})
+        expect(submissions.get_by_role('status').filter(has_text=re.compile(r'^\d+ of \d+ favorites selected$'))).to_have_text('2 of 3 favorites selected',timeout=30000)
         expect(submissions.get_by_role('button',name=re.compile('^Favorite:')).first).to_be_enabled()
         guest=context().new_page()
         guest.goto(BASE+'/events/'+event['slug']+'#submissions')
@@ -289,20 +326,23 @@ with sync_playwright() as p:
         expect(guest.get_by_role('form', name='Team presentation application')).to_have_count(0)
         guest.get_by_role('tab', name='Submissions', exact=True).click()
         public_team=public_submissions.locator('.presentation-submission').filter(has=guest.get_by_role('heading',name='A local demo',exact=True))
+        public_team.get_by_role('button',name='Expand submission: A local demo',exact=True).click()
         expect(public_team.get_by_role('img',name='demo-image.png',exact=True)).to_be_visible()
-        presenters=public_team.get_by_role('region',name='Presenters',exact=True)
-        expect(presenters.locator('summary')).to_contain_text('3 presenters')
-        expect(presenters.locator('summary .public-event-registrant')).to_have_count(3)
+        presenters=public_team.get_by_role('region',name='Team members',exact=True)
+        expect(presenters.locator('summary')).to_contain_text('4 teammates')
+        expect(presenters.locator('summary .public-event-registrant')).to_have_count(4)
         presenters.locator('summary').click()
         expect(presenters.get_by_text(f'Dummy host {run_id}',exact=True)).to_be_visible()
         expect(presenters.get_by_text(f'Dummy colleague {run_id}',exact=True)).to_be_visible()
-        assert f'Dummy applicant {run_id}' not in presenters.inner_text() and invitation_email not in presenters.inner_text()
+        assert f'Dummy applicant {run_id}' in presenters.inner_text() and invitation_email not in presenters.inner_text()
         for name,content_type in [('demo-summary.pdf','application/pdf'),('demo-slides.pptx','application/vnd.openxmlformats-officedocument.presentationml.presentation')]:
             link=public_team.get_by_role('link').filter(has_text=name)
             response=guest.request.get(BASE+link.get_attribute('href'))
             assert response.ok and response.headers['content-type']==content_type
         page.bring_to_front()
         own_team=submissions.locator('.presentation-submission').filter(has=page.get_by_role('heading',name='A local demo',exact=True))
+        own_team.get_by_role('button',name='Expand submission: A local demo',exact=True).click()
+        expect(submissions.get_by_role('status').filter(has_text=re.compile(r'^\d+ of \d+ favorites selected$'))).to_have_text('2 of 3 favorites selected')
         expect(own_team.get_by_role('heading',name='Attachments',exact=True)).to_have_count(0)
         with page.expect_file_chooser() as selected:
             own_team.get_by_role('button',name='Add attachments',exact=True).click()
@@ -311,7 +351,7 @@ with sync_playwright() as p:
         expect(own_team.get_by_role('link').filter(has_text='extra.txt')).to_be_visible(timeout=30000)
         for width in [1280,390]:
             page.set_viewport_size({'width':width,'height':1000})
-            expect(own_team.locator('.submission-presenter-summary')).to_contain_text('3 presenters')
+            expect(own_team.locator('.submission-presenter-summary')).to_contain_text('4 teammates')
             assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
             box=own_team.bounding_box()
             assert box['x']>=0 and box['x']+box['width']<=width+1, 'Submission card must fit the viewport'
@@ -326,14 +366,16 @@ with sync_playwright() as p:
         expect(manager.get_by_role('region',name='Event submissions').get_by_role('status')).to_have_text('0 of 4 favorites selected',timeout=30000)
         page.bring_to_front()
         page.reload()
-        expect(submissions.get_by_role('status')).to_have_text('2 of 4 favorites selected',timeout=30000)
+        expect(submissions.get_by_role('status').filter(has_text=re.compile(r'^\d+ of \d+ favorites selected$'))).to_have_text('2 of 4 favorites selected',timeout=30000)
         manager.bring_to_front()
         settings.get_by_label('Maximum favorites per person',exact=True).fill('1')
         settings.get_by_role('button',name='Save favorite limit',exact=True).click()
         expect(manager.get_by_role('region',name='Event submissions').get_by_role('alert')).to_contain_text('cannot be lower than an existing ballot',timeout=30000)
         page.bring_to_front()
         page.get_by_role('tab',name='Apply',exact=True).click()
-        print('PASS: card voting, favorite limits, presenter roster and attachments',flush=True)
+        print('PASS: card voting, favorite limits, shared team roster and attachments',flush=True)
+        record_status('passed')
+        status_case('editing')
         # Same person and same team: create an independent second application.
         form.get_by_label('Team or organization',exact=True).select_option(team_id)
         form.get_by_label('Presentation title',exact=True).fill('A second local demo')
@@ -354,7 +396,7 @@ with sync_playwright() as p:
         expect(form.get_by_label('Presentation title',exact=True)).to_have_value('A local demo')
         expect(form.get_by_label('Team or organization',exact=True)).to_be_disabled()
         expect(form.get_by_label('Your role in this presentation',exact=True)).to_have_count(0)
-        expect(form.get_by_role('list',name='Selected team members').get_by_role('listitem')).to_have_count(3)
+        expect(form.get_by_role('list',name='Selected team members').get_by_role('listitem')).to_have_count(4)
         form.get_by_label('Presentation title',exact=True).fill('A revised local demo')
         form.get_by_label('What will you present?',exact=True).fill('Revised after intake closed.')
         form.get_by_role('button',name='Save changes',exact=True).click()
@@ -365,7 +407,7 @@ with sync_playwright() as p:
         own=[row for row in saved if row['organization_id']==team_id]
         assert len(own)==2 and any(row['title']=='A second local demo' for row in own)
         revised_saved=next(row for row in own if row['title']=='A revised local demo')
-        assert len(revised_saved['presenters'])==3, 'Editing must preserve the selected presenters'
+        assert len(revised_saved['presenters'])==4, 'Editing must preserve the shared team members'
         revised=submissions.locator('.presentation-submission').filter(has=page.get_by_role('heading',name='A revised local demo',exact=True))
         revised.get_by_role('button',name='Delete application',exact=True).click()
         deletion=page.get_by_role('dialog',name='Are you sure?',exact=True)
@@ -382,15 +424,126 @@ with sync_playwright() as p:
         deletion.get_by_role('button',name='Delete application',exact=True).click()
         expect(submissions.get_by_role('button', name='Delete application', exact=True)).to_have_count(0, timeout=30000)
         assert len(successful(host.request.get(endpoint, headers=auth))['submissions']) == 25
+        record_status('passed')
+        status_case('finals')
+        # Final round: a host chooses six, independent ballots update other sessions live.
+        manager.bring_to_front()
+        final_host=manager.get_by_role('region',name='Final presentation vote',exact=True)
+        final_host.get_by_role('button',name='Choose finalists',exact=True).click()
+        expect(final_host.get_by_role('checkbox')).to_have_count(25,timeout=30000)
+        assert final_host.get_by_role('checkbox').evaluate_all('(els)=>els.filter(el=>el.checked).length') == 6
+        final_host.get_by_role('button',name='Save finalists',exact=True).click()
+        expect(final_host.get_by_role('status')).to_have_text('Finalists saved.',timeout=30000)
+        final_host.get_by_role('button',name='Choose finalists',exact=True).click()
+        expect(final_host.get_by_role('checkbox')).to_have_count(25,timeout=30000)
+        final_host.get_by_role('checkbox').last.check()
+        assert final_host.get_by_role('checkbox').evaluate_all('(els)=>els.filter(el=>el.checked).length') == 7
+        final_host.get_by_role('checkbox').last.uncheck()
+        final_host.get_by_role('button',name='Open final voting',exact=True).click()
+        expect(final_host.get_by_role('button',name='Close final voting',exact=True)).to_be_visible(timeout=30000)
+        final_data=successful(host.request.get(endpoint+'/final-round'))
+        assert final_data['phase']=='open' and len(final_data['results'])==6
+        assert all(row['votes']==0 for row in final_data['results']), 'Preliminary favorites must never become final votes'
+        first_final,last_final=final_data['results'][0],final_data['results'][-1]
+        final_user=page.get_by_role('region',name='Final presentation vote',exact=True)
+        final_guest=guest.get_by_role('region',name='Final presentation vote',exact=True)
+        expect(final_user.get_by_role('list',name='Live final vote results',exact=True).get_by_role('listitem')).to_have_count(6,timeout=15000)
+        page.bring_to_front()
+        final_user.get_by_role('button',name='Vote: '+first_final['organization_name'],exact=True).click()
+        expect(final_user.get_by_role('button',name='Your vote: '+first_final['organization_name'],exact=True)).to_have_attribute('aria-pressed','true',timeout=30000)
+        manager.bring_to_front()
+        final_host.get_by_role('button',name='Vote: '+last_final['organization_name'],exact=True).click()
+        guest.bring_to_front()
+        expect(final_guest.get_by_text(re.compile('^Tied for the lead:'))).to_be_visible(timeout=15000)
+        expect(final_guest.get_by_role('button',name=re.compile('^(Vote|Your vote):'))).to_have_count(0)
+        page.bring_to_front()
+        final_user.get_by_role('button',name='Vote: '+last_final['organization_name'],exact=True).click()
+        guest.bring_to_front()
+        chart=final_guest.get_by_role('list',name='Live final vote results',exact=True)
+        expect(chart.get_by_role('listitem').first.locator('strong')).to_have_text(last_final['organization_name'],timeout=15000)
+        expect(chart.get_by_role('listitem').first).to_contain_text('2 votes (100%)',timeout=15000)
+        for width in [1280,390]:
+            guest.set_viewport_size({'width':width,'height':1000})
+            assert guest.evaluate('document.documentElement.scrollWidth<=innerWidth'), 'Live chart must fit the viewport'
+            final_guest.screenshot(path=str(REPORT/f'final-vote-chart-{width}.png'))
+        manager.bring_to_front()
+        final_host.get_by_role('button',name='Close final voting',exact=True).click()
+        guest.bring_to_front()
+        expect(final_guest.get_by_text('Winner: '+last_final['organization_name'],exact=True)).to_be_visible(timeout=15000)
+        assert applicant.request.put(endpoint+'/final-ballot',headers={'Authorization':'Bearer '+applicant_token},data={'submissionId':first_final['submission_id']}).status==409
+        page.bring_to_front()
+        page.reload()
+        expect(final_user.locator('.presentation-results li.is-selected')).to_contain_text(last_final['organization_name'],timeout=30000)
+        expect(final_user.get_by_role('button',name=re.compile('^(Vote|Your vote):'))).to_have_count(0)
+        manager.bring_to_front()
+        final_host.get_by_role('button',name='Reopen final voting',exact=True).click()
+        page.bring_to_front()
+        expect(final_user.get_by_role('button',name='Your vote: '+last_final['organization_name'],exact=True)).to_have_attribute('aria-pressed','true',timeout=15000)
+        print('PASS: host shortlist, separate single-choice final ballot, live ranked bars across sessions, ties, changing votes and closing/reopening',flush=True)
+        record_status('passed')
+        status_case('closure')
         successful(host.request.put(endpoint+'/form',headers=auth,data={'enabled':False}))
         page.reload()
         page.get_by_role('tab',name='Apply',exact=True).click()
         expect(page.get_by_text('Applications are not open for this event.',exact=True)).to_be_visible(timeout=30000)
-        print('PASS: create a team for others with manager-only access, private invitations, public presenter roster and roster-preserving edits; multiple same-team submissions, editing after intake closes, independent attachments and withdrawal; local authenticated session → dummy team creation → checkbox-free team submission → styled desktop/mobile form → submit → persisted application → manager tabs, counts, filters, pagination and full/filtered CSV → image/PDF/PowerPoint upload and public download → attachment removal → public Submissions tab → three favorites persist across reload → fourth blocked → remove favorite → guest view → manager changes favorite limit → withdraw; Markdown and global button fallback verified')
+        print('PASS: create a team with one shared member roster, private invitations and shared-roster edits; multiple same-team submissions, editing after intake closes, independent attachments and withdrawal; local authenticated session → dummy team creation → checkbox-free team submission → styled desktop/mobile form → submit → persisted application → manager tabs, counts, filters, pagination and full/filtered CSV → image/PDF/PowerPoint upload and public download → attachment removal → public Submissions tab → three favorites persist across reload → fourth blocked → remove favorite → guest view → manager changes favorite limit → withdraw; Markdown and global button fallback verified')
+        record_status('passed')
+        status_case('status-page')
+        status_page=context().new_page()
+        status_page.goto(BASE+'/test-status')
+        expect(status_page.get_by_role('heading',name='Test status',exact=True)).to_be_visible(timeout=30000)
+        expect(status_page.get_by_text('OrgPortal tests',exact=True)).to_be_visible()
+        assert status_page.locator('.test-status-category').count() >= 10
+        sample={'version':1,'title':'Dashboard fixture','environment':'Local fixture','groups':[
+            {'id':'sample','label':'Sample suite','category':'Submission and voting','cases':[
+                {'id':'pass','label':'A passed check','status':'passed'},
+                {'id':'fail','label':'A failed check','status':'failed'},
+                {'id':'idle','label':'An unrun check','status':'not_run'}]}]}
+        status_page.route('**/test-status.json',lambda route:route.fulfill(json=sample))
+        status_page.reload()
+        overview=status_page.get_by_role('region',name='All test results',exact=True)
+        for label in ['1 passed','1 failed','1 not run']:
+            expect(overview.get_by_text(label,exact=True)).to_be_visible()
+        category=status_page.locator('.test-status-category')
+        summary=category.locator('summary').first
+        assert '33.3333' in summary.get_attribute('style') and '66.6666' in summary.get_attribute('style'), 'Category fill must match all three proportions'
+        expect(status_page.get_by_text('A passed check',exact=True)).not_to_be_visible()
+        summary.click()
+        category.locator('details summary').click()
+        colors=[]
+        for label,outcome in [('A passed check','Passed'),('A failed check','Failed'),('An unrun check','Not run')]:
+            row=status_page.locator('.test-status-check').filter(has_text=label)
+            expect(row).to_be_visible()
+            expect(row.locator('strong')).to_have_text(outcome)
+            colors.append(row.evaluate('(el)=>getComputedStyle(el).backgroundColor'))
+        assert len(set(colors))==3, 'Passed, failed and unrun checks need different fills'
+        for width in [1280,390]:
+            status_page.set_viewport_size({'width':width,'height':1000})
+            assert status_page.evaluate('document.documentElement.scrollWidth<=innerWidth')
+            status_page.screenshot(path=str(REPORT/f'test-status-{width}.png'))
+        status_page.unroute('**/test-status.json')
+        status_page.route('**/test-status.json',lambda route:route.fulfill(status=500,body='Unavailable'))
+        status_page.get_by_role('button',name='Refresh results',exact=True).click()
+        expect(status_page.get_by_role('status')).to_contain_text('Could not refresh results')
+        expect(overview.get_by_text('1 passed',exact=True)).to_be_visible()
+        status_page.unroute('**/test-status.json')
+        status_page.route('**/test-status.json',lambda route:route.fulfill(json={**sample,'environment':{'invalid':'metadata'}}))
+        status_page.get_by_role('button',name='Refresh results',exact=True).click()
+        expect(status_page.get_by_role('status')).to_contain_text('Could not refresh results')
+        expect(overview.get_by_text('1 passed',exact=True)).to_be_visible()
+        status_page.unroute('**/test-status.json')
+        status_page.route('**/test-status.json',lambda route:route.fulfill(status=404,body='Not found'))
+        status_page.get_by_role('button',name='Refresh results',exact=True).click()
+        expect(status_page.get_by_role('status')).to_contain_text('No recorded results')
+        expect(overview.get_by_text('0 passed',exact=True)).to_be_visible()
+        expect(overview.get_by_text('0 failed',exact=True)).to_be_visible()
+        record_status('passed')
+        print('PASS: OrgPortal test dashboard, expandable categories, counts, proportional colors, unavailable/missing reports and desktop/mobile layout',flush=True)
         print('Screenshots: ' + str(REPORT))
         if cdp_url:
             print('LIMITATION: CSV button responses verified; Android download-manager file saving is not verified.')
     except Exception:
+        record_status('failed')
         for context_index, ctx in enumerate(test_contexts):
             for page_index, failed_page in enumerate(ctx.pages):
                 try:

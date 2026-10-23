@@ -47,6 +47,9 @@ def main():
     if gateway.stdout.strip() != 'true':
         run(sys.executable, str(ROOT.parent / 'run.py'), '--prefix', PREFIX,
             '--network', 'common-form-test', '--port', '19458', env=env)
+    else:
+        # Hot reload picks up API code; keep the reused fixture schema current too.
+        run('docker', 'exec', PREFIX + 'community-api', 'npm', 'run', 'db:migrate:local')
     image = f'orgportal-form-browser:{required}'
     run('docker', 'build', '--tag', image, str(DOCKER))
     name = 'orgportal-form-browser-' + stamp.lower()
@@ -76,6 +79,8 @@ def main():
             test_env.update(PLAYWRIGHT_BASE_URL=BASE, ONBOARDING_PIDP_CONTAINER=PREFIX + 'identity-api',
                             PLAYWRIGHT_WS_ENDPOINT='ws://127.0.0.1:9460/', PLAYWRIGHT_DEVICE=device,
                             TEAM_FORM_REPORT_DIR=str(output), PYTHONUNBUFFERED='1')
+            run('node', str(ROOT / 'scripts/test-status.mjs'), 'start', 'browser-' + profile)
+            test_env['ORGPORTAL_STATUS_SUITE'] = 'browser-' + profile
             print(f'Running common form cases: {device}', flush=True)
             with (output / 'run.log').open('w') as log:
                 process = subprocess.Popen([sys.executable, str(ROOT / 'web/scripts/test-local-team-form.py')],
@@ -84,6 +89,7 @@ def main():
                     print(line, end='', flush=True)
                     log.write(line)
                 code = process.wait()
+            run('node', str(ROOT / 'scripts/test-status.mjs'), 'finish', 'browser-' + profile, str(code))
             results.append({'device': device, 'passed': code == 0, 'exit_code': code, 'artifacts': str(output)})
     finally:
         subprocess.run(['docker', 'rm', '--force', name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

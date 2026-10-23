@@ -22,7 +22,7 @@ ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 ENV VITE_PUBLIC_BASE=${VITE_PUBLIC_BASE}
 ENV VITE_PORTAL_MOUNT_PATH=${VITE_PORTAL_MOUNT_PATH}
 
-RUN npx vite build
+RUN node scripts/build-test-status.mjs && npx vite build
 
 FROM node:24-alpine AS runtime
 

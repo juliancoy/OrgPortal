@@ -41,6 +41,76 @@ function fixture(){
  app.onError((error,c)=>c.json({message:error.message},(error as any).status||500));
  return {db,request:(suffix='',method='GET',user='applicant',body?:unknown)=>app.request('/event/presentations'+suffix,{method,headers:{Authorization:user,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})},{DB:db.asD1()})};
 }
+function finalCandidates(db:Database) {
+ const insert=db.sqlite.prepare("INSERT INTO event_submissions(event_id,submission_id,organization_id,submitted_by,title,summary,status,updated_at,expires_at) VALUES('event',?,?,'applicant',?,'Details','submitted','2026-01-01','2099-04-01')");
+ insert.run('final-a','team','Demo A');insert.run('final-b','two','Demo B');insert.run('final-c','one','Demo C');
+}
+test('final round host controls, immutable shortlist, tenant isolation and private single-choice ballots',async()=>{
+ const f=fixture();try{
+  finalCandidates(f.db);
+  const round={phase:'shortlist',finalistIds:['final-a','final-b']};
+  assert.equal((await f.request('/final-round','PUT','applicant',round)).status,403);
+  assert.equal((await f.request('/final-round','PUT','stranger',round)).status,403);
+  assert.equal((await f.request('/final-round','PUT','',round)).status,401);
+  for(const finalistIds of [[],['final-a','final-a'],['missing'],Array.from({length:21},(_,i)=>String(i))])assert.equal((await f.request('/final-round','PUT','host',{...round,finalistIds})).status,finalistIds[0]==='missing'?409:400);
+  f.db.event('elsewhere','two');
+  f.db.sqlite.exec("INSERT INTO organization_memberships(organization_id,user_id,role,status) VALUES('two','other-host','owner','active'); INSERT INTO event_submissions(event_id,submission_id,organization_id,submitted_by,title,summary,status,updated_at,expires_at) VALUES('elsewhere','foreign','team','applicant','Foreign','Details','submitted','2026-01-01','2099-04-01')");
+  assert.equal((await f.request('/final-round','PUT','other-host',round)).status,403);
+  assert.equal((await f.request('/final-round','PUT','host',{...round,finalistIds:['foreign']})).status,409);
+  assert.equal((await f.request('/final-round','PUT','host',{...round,phase:'closed'})).status,409);
+  assert.equal((await f.request('/final-round','PUT','host',round)).status,200);
+  assert.equal((await f.request('/final-ballot','PUT','voter',{submissionId:'final-a'})).status,409);
+  assert.equal((await f.request('/final-round','PUT','host',{...round,phase:'open'})).status,200);
+  assert.equal((await f.request('/final-round','PUT','host',{...round,phase:'open',finalistIds:['final-a','final-c']})).status,409);
+  assert.equal((await f.request('/final-round','PUT','host',round)).status,409);
+  assert.equal((await f.request('/final-ballot','PUT','',{submissionId:'final-a'})).status,401);
+  assert.equal((await f.request('/final-ballot','PUT','voter',{submissionId:'final-c'})).status,409);
+  assert.equal((await f.request('/final-ballot','PUT','voter',{submissionId:'final-a',userId:'another'})).status,400);
+  for(let n=0;n<2;n++)assert.equal((await f.request('/final-ballot','PUT','voter',{submissionId:'final-a'})).status,200);
+  assert.equal(f.db.rows('SELECT * FROM event_presentation_final_ballots').length,1);
+  assert.equal((await f.request('/final-ballot','GET','')).status,401);
+  assert.deepEqual(await (await f.request('/final-ballot','GET','other')).json(),{submissionId:null});
+  assert.deepEqual(await (await f.request('/final-ballot','GET','voter')).json(),{submissionId:'final-a'});
+  assert.equal((await f.request('/final-ballot','PUT','voter',{submissionId:'final-b'})).status,200);
+  assert.equal(f.db.rows('SELECT * FROM event_presentation_final_ballots').length,1);
+  const publicRound=await(await f.request('/final-round','GET','')).json() as any;
+  assert.equal(publicRound.results[0].submission_id,'final-b');assert.equal(publicRound.results[0].votes,1);
+  assert.equal(JSON.stringify(publicRound).includes('voter'),false);
+  assert.equal((await f.request('/final-round','PUT','host',{...round,phase:'closed'})).status,200);
+  assert.equal((await f.request('/final-ballot','PUT','voter',{submissionId:'final-a'})).status,409);
+  assert.deepEqual(await (await f.request('/final-ballot','GET','voter')).json(),{submissionId:'final-b'});
+  assert.equal((await f.request('/final-round','PUT','host',{...round,phase:'open'})).status,200);
+ }finally{f.db.sqlite.close();}
+});
+test('final votes do not reuse favorites; live totals handle ties, withdrawal and expiry',async()=>{
+ const f=fixture();try{
+  finalCandidates(f.db);
+  await f.request('/favorites/final-a','PUT','voter',{selected:true});
+  const round={phase:'open',finalistIds:['final-a','final-b']};
+  assert.equal((await f.request('/final-round','PUT','host',round)).status,200);
+  let data=await(await f.request('/final-round','GET','')).json() as any;
+  assert.equal(data.results.reduce((sum:number,row:any)=>sum+row.votes,0),0);
+  await Promise.all(['final-a','final-b'].map(submissionId=>f.request('/final-ballot','PUT','voter',{submissionId})));
+  assert.equal(f.db.rows('SELECT * FROM event_presentation_final_ballots').length,1);
+  await f.request('/final-ballot','PUT','voter',{submissionId:'final-a'});
+  await f.request('/final-ballot','PUT','second-voter',{submissionId:'final-b'});
+  data=await(await f.request('/final-round','GET','')).json() as any;
+  assert.deepEqual(data.results.map((row:any)=>row.votes),[1,1]);
+  assert.equal((await(await f.request('/favorites','GET','voter')).json() as any).favorites[0],'final-a');
+  f.db.sqlite.exec("DELETE FROM event_submissions WHERE submission_id='final-a'");
+  assert.equal(f.db.rows('SELECT * FROM event_presentation_final_ballots').length,1);
+  assert.equal((await f.request('/final-round','PUT','host',{...round,phase:'closed'})).status,200);
+  data=await(await f.request('/final-round','GET','')).json() as any;
+  assert.equal(data.results.length,1);assert.equal(data.results[0].submission_id,'final-b');
+  f.db.sqlite.exec("UPDATE event_presentation_final_rounds SET expires_at='2000-01-01'; UPDATE event_presentation_final_ballots SET expires_at='2000-01-01'");
+  assert.deepEqual((await(await f.request('/final-round','GET','')).json() as any).results,[]);
+  assert.deepEqual(await(await f.request('/final-ballot','GET','second-voter')).json(),{submissionId:null});
+  assert.equal((await f.request('/final-ballot','PUT','voter',{submissionId:'final-b'})).status,409);
+  f.db.sqlite.exec("DELETE FROM events WHERE id='event'");
+  assert.equal(f.db.rows('SELECT * FROM event_presentation_final_rounds').length,0);
+  assert.equal(f.db.rows('SELECT * FROM event_presentation_final_ballots').length,0);
+ }finally{f.db.sqlite.close();}
+});
 test('management, isolation, review, closing, expiry and withdrawal',async()=>{
  const f=fixture();try{
  const proposal={title:'Our demo',summary:'A medical device prototype',presenters:[{userId:'member'}]};
@@ -207,16 +277,16 @@ test('multiple-submission migration preserves legacy entries, favorites and atta
  }finally{db.close()}
 });
 
-test('a manager can apply for other presenters without becoming a presenter or losing management access',async()=>{
+test('submissions share all organization members including their manager',async()=>{
  const f=fixture();try{
   await f.request('/form','PUT','host',{enabled:true});const id=crypto.randomUUID();
   assert.equal((await f.request('/'+id,'PUT','applicant',{organization_id:'team',title:'Their demo',summary:'I manage this team for others',presenters:[{userId:'member'}]})).status,200);
   let publicRows=(await(await f.request('/submissions','GET','')).json() as any).submissions;
-  assert.deepEqual(publicRows[0].presenters,[{name:'Team presenter'}]);
+  assert.deepEqual(publicRows[0].presenters,[{name:'Team member'},{name:'Team member'}]);
   assert.ok(!JSON.stringify(publicRows).includes('applicant'));assert.ok(!JSON.stringify(publicRows).includes('userId'));
   assert.equal(f.db.rows("SELECT role FROM organization_memberships WHERE user_id='applicant'")[0].role,'owner');
   assert.equal((await f.request('/'+id,'PUT','applicant',{title:'Edited for them',summary:'Still managing'})).status,200);
-  assert.equal((await(await f.request()).json() as any).submissions[0].presenters[0].userId,'member');
+  assert.deepEqual((await(await f.request()).json() as any).submissions[0].presenters.map((person:any)=>person.userId).sort(),['applicant','member']);
   assert.equal((await f.request('/'+id,'PUT','applicant',{title:'No outsider',summary:'Details',presenters:[{userId:'stranger'}]})).status,400);
   assert.equal((await f.request('/'+id,'PUT','applicant',{title:'Bad data',summary:'Details',presenters:[{userId:'member',name:'Spoofed'}]})).status,400);
   assert.equal((await f.request('/'+id,'PUT','applicant',{title:'Both presenting',summary:'Details',presenters:[{userId:'applicant'},{userId:'member'}]})).status,200);
@@ -231,28 +301,28 @@ test('invited presenters expose no email publicly and resolve only through verif
   f.db.sqlite.prepare("INSERT INTO organization_invitations(id,organization_id,email,purpose,invited_by,created_at,expires_at) VALUES(?,'team','private@example.test','member','applicant',?,?)").run(invite,now,now+86400000);
   assert.equal((await f.request('/'+id,'PUT','applicant',{organization_id:'team',title:'Invited demo',summary:'Details',presenters:[{invitationId:invite}]})).status,200);
   let listing=await(await f.request('/submissions','GET','')).json() as any;
-  assert.deepEqual(listing.submissions[0].presenters,[{name:'Invited presenter',pending:true}]);assert.ok(!JSON.stringify(listing).includes('private@example.test'));
-  assert.equal((await(await f.request()).json() as any).submissions[0].presenters[0].email,'private@example.test');
+  assert.deepEqual(listing.submissions[0].presenters,[{name:'Team member'},{name:'Team member'},{name:'Invited teammate',pending:true}]);assert.ok(!JSON.stringify(listing).includes('private@example.test'));
+  assert.equal((await(await f.request()).json() as any).submissions[0].presenters.find((person:any)=>person.invitationId===invite).email,'private@example.test');
   f.db.sqlite.exec("INSERT INTO organization_memberships(organization_id,user_id,user_name,role,status) VALUES('team','canonical-recipient','Recipient','member','active')");
   f.db.sqlite.prepare("UPDATE organization_invitations SET status='accepted',accepted_user_id='canonical-recipient' WHERE id=?").run(invite);
   const references=JSON.parse(String(f.db.rows('SELECT presenters_json FROM event_submissions')[0].presenters_json));assert.deepEqual(references,[{userId:'canonical-recipient'}]);
   f.db.sqlite.prepare('DELETE FROM organization_invitations WHERE id=?').run(invite);
-  listing=await(await f.request('/submissions','GET','')).json() as any;assert.deepEqual(listing.submissions[0].presenters,[{name:'Recipient'}]);
+  listing=await(await f.request('/submissions','GET','')).json() as any;assert.equal(listing.submissions[0].presenters.length,3);assert.ok(listing.submissions[0].presenters.some((person:any)=>person.name==='Recipient'));
   assert.equal((await f.request('/'+id,'PUT','applicant',{title:'Foreign invite',summary:'Details',presenters:[{invitationId:'missing'}]})).status,400);
  }finally{f.db.sqlite.close()}
 });
 
 
-test('all application writes require at least one valid teammate, including edits to legacy empty rosters',async()=>{
+test('applications use the shared team without requiring a separate presenter selection',async()=>{
  const f=fixture();try{
   await f.request('/form','PUT','host',{enabled:true});
   const proposal={title:'Demo',summary:'Details'};
-  assert.equal((await f.request('/team','PUT','applicant',proposal)).status,400);
+  assert.equal((await f.request('/team','PUT','applicant',proposal)).status,200);
   assert.equal((await f.request('/team','PUT','applicant',{...proposal,presenters:[]})).status,400);
   assert.equal((await f.request('/team','PUT','applicant',{...proposal,presenters:[{userId:'member'}]})).status,200);
   assert.equal((await f.request('/team','PUT','applicant',{...proposal,presenters:[]})).status,400);
   f.db.sqlite.exec("UPDATE event_submissions SET presenters_json='[]'");
-  assert.equal((await f.request('/team','PUT','applicant',proposal)).status,400);
+  assert.equal((await f.request('/team','PUT','applicant',proposal)).status,200);
  }finally{f.db.sqlite.close()}
 });
 
@@ -275,7 +345,7 @@ test('MCP applications preserve permission and host boundaries, reviewed receipt
   assert.equal(invitations.length,1);assert.equal(invitations[0].email,'new-teammate@example.com');
   assert.equal(f.db.rows("SELECT * FROM organization_memberships WHERE user_id='new-teammate@example.com'").length,0);
   const publicData=await(await f.request('/submissions','GET','stranger')).json() as any;
-  assert.equal(publicData.submissions[0].presenters.length,2);
+  assert.equal(publicData.submissions[0].presenters.length,3);
   assert.ok(!JSON.stringify(publicData).includes('new-teammate@example.com'));
   await assert.rejects(runPresentationOperation(env,identity,'save',{...args,previewId:preview.previewId,confirm:true}),{status:409});
   const list=await runPresentationOperation(env,identity,'list',{organizationId:'one',eventId:'event'}) as any;
@@ -288,5 +358,21 @@ test('MCP applications preserve permission and host boundaries, reviewed receipt
   await runPresentationOperation(env,identity,'save',{...edited,previewId:receipt.previewId,confirm:true});
   assert.equal(f.db.rows('SELECT * FROM organization_invitations').length,1,'retry/edit must reuse pending invitation');
   await assert.rejects(runPresentationOperation(env,identity,'save',{...args,submissionId:crypto.randomUUID()}),{status:409});
+ }finally{f.db.sqlite.close()}
+});
+
+test('shared team changes appear on every submission and private team reads require management',async()=>{
+ const f=fixture();try{
+  await f.request('/form','PUT','host',{enabled:true});
+  for(const id of [crypto.randomUUID(),crypto.randomUUID()])assert.equal((await f.request('/'+id,'PUT','applicant',{organization_id:'team',title:'Shared team',summary:'Details',presenters:[{userId:'member'}]})).status,200);
+  f.db.sqlite.exec("INSERT INTO organization_memberships(organization_id,user_id,user_name,role,status) VALUES('team','later','New teammate','member','active')");
+  const rows=(await(await f.request('/submissions','GET','')).json() as any).submissions;
+  assert.equal(rows.length,2);for(const row of rows)assert.ok(row.presenters.some((person:any)=>person.name==='New teammate'));
+  assert.equal((await f.request('/team/team','GET','stranger')).status,403);
+  assert.equal((await f.request('/team/team','GET','host')).status,403);
+  const own=await f.request('/team/team');assert.equal(own.status,200);assert.equal((await own.json() as any).people.length,3);
+  f.db.sqlite.exec("UPDATE organization_memberships SET status='inactive' WHERE user_id='later'");
+  const changed=(await(await f.request('/submissions','GET','')).json() as any).submissions;
+  for(const row of changed)assert.equal(row.presenters.length,2);
  }finally{f.db.sqlite.close()}
 });

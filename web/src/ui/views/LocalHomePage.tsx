@@ -26,7 +26,7 @@ const sections = [
     ['Dashboard', '/users/dashboard'], ['Profile', '/profile'], ['Settings', '/settings'], ['Notifications', '/settings/notifications'], ['ID card', '/id'], ['Get started', '/onboarding'], ['Email preferences', '/email/preferences'], ['Connect an AI assistant', '/users/mcp-connect'], ['Install Android app', '/android/install'],
   ] },
   { title: 'Administration', description: 'Platform controls and local services. Administrator or organizer access may be required.', icon: ShieldCheck, links: [
-    ['System administration & abuse controls', '/admin'], ['Platform statistics', '/admin?tab=stats'], ['Accounts', '/admin?tab=users'], ['Operations', '/admin?tab=ops'], ['Print nametags', '/admin/nametags'], ['UBI settings', '/admin/ubi-settings'], ['Developer tools', '/dev-tools'], ['Portal branding', '/branding'], ['Identity portal', '/pidp/'], ['Local services', '/services/'], ['About OrgPortal', '/about'], ['Terms & privacy', '/terms'],
+    ['System administration & abuse controls', '/admin'], ['Platform statistics', '/admin?tab=stats'], ['Accounts', '/admin?tab=users'], ['Operations', '/admin?tab=ops'], ['Print nametags', '/admin/nametags'], ['UBI settings', '/admin/ubi-settings'], ['Developer tools', '/dev-tools'], ['Test status', '/test-status'], ['Portal branding', '/branding'], ['Identity portal', '/pidp/'], ['Local services', '/services/'], ['About OrgPortal', '/about'], ['Terms & privacy', '/terms'],
   ] },
 ] as const
 

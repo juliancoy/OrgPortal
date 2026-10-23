@@ -1,0 +1,26 @@
+.test-status-page { --test-pass-fill: #15803d35; --test-fail-fill: #dc262635; --test-idle-fill: #64748b35; max-width: 1100px; margin-inline: auto; padding: 1.5rem; }
+.test-status-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
+.test-status-header h1 { margin-bottom: .25rem; }
+.test-status-overview { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .75rem; padding: 1.25rem; border: 1px solid #64748b; border-radius: .75rem; }
+.test-status-counts { display: inline-flex; gap: .5rem 1rem; flex-wrap: wrap; }
+.test-status-counts > span { display: inline-flex; align-items: center; gap: .35rem; white-space: nowrap; }
+.test-status-counts > span::before { content: ''; width: .7rem; height: .7rem; border: 1px solid currentColor; border-radius: 50%; background: #64748b; }
+.test-status-counts > .test-status-passed::before { background: #22c55e; }
+.test-status-counts > .test-status-failed::before { background: #ef4444; }
+.test-status-groups { display: grid; gap: 1rem; margin-block: 1.5rem; }
+.test-status-category-body { padding: 1rem; display: grid; gap: .75rem; }
+.test-status-group { border: 1px solid #64748b; border-radius: .75rem; overflow: clip; }
+.test-status-group > summary { padding: 1rem; cursor: pointer; }
+.test-status-group > summary:focus-visible { outline: 3px solid #D4AF37; outline-offset: -3px; }
+.test-status-group-name { font-weight: 700; margin-right: 1.5rem; overflow-wrap: anywhere; }
+.test-status-group-body { padding: 0 1rem 1rem; }
+.test-status-group-body ul { list-style: none; padding: 0; display: grid; gap: .5rem; }
+.test-status-check { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .4rem 1rem; padding: .85rem; border-left: 5px solid #64748b; background: var(--test-idle-fill); border-radius: .3rem; overflow-wrap: anywhere; }
+.test-status-check.test-status-passed { border-color: #22c55e; background: var(--test-pass-fill); }
+.test-status-check.test-status-failed { border-color: #ef4444; background: var(--test-fail-fill); }
+.test-status-check small { grid-column: 1 / -1; opacity: .8; }
+@media (max-width: 600px) {
+ .test-status-page { padding: 1rem; }
+ .test-status-group > summary > .test-status-counts { display: flex; margin-top: .5rem; }
+ .test-status-check { grid-template-columns: minmax(0, 1fr); }
+}

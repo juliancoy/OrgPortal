@@ -47,7 +47,7 @@ export default defineConfig(({ command }) => ({
     watch: {
       usePolling: process.env.CHOKIDAR_USEPOLLING === '1',
       interval: Number(process.env.CHOKIDAR_INTERVAL || 200),
-      ignored: ['**/dist/**', '**/playwright-report/**', '**/test-results/**'],
+      ignored: ['**/dist/**', '**/playwright-report/**', '**/test-results/**', '**/public/test-status.json*'],
     },
     proxy: {
       ...(chatApiOrigin ? { '/api/chat': { target: chatApiOrigin, changeOrigin: true, xfwd: true, ws: true, rewrite: (path: string) => path.replace(/^\/api\/chat/, '') } } : {}),

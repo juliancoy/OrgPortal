@@ -24,15 +24,18 @@ removed after the run. Browser requests to non-loopback hosts are blocked.
 
 Both **Desktop Chrome** and **Pixel 7** profiles run the real presentation workflow:
 
-- Required fields and missing-teammate validation, with no saved submission.
+- Required-field validation, with no saved submission.
 - Clear a draft; restore a populated draft after navigation and reload.
-- Create a team, select teammates, and queue a local email invitation.
+- Create a team, add teammates to its shared roster, and queue a local email invitation.
+- Upload an optional team image and verify it becomes the organization main image.
+- Match the Apply tab to BioTech Gold from the brand palette.
 - Submit for an existing team and create multiple independent proposals.
 - Upload images, PDF and PowerPoint; download public files; add/remove attachments.
 - Review applications, paginate, change status, export full and filtered CSV files.
-- Public presenter privacy and guest sign-in return destination.
+- Public teammate privacy and guest sign-in return destination.
 - Favorite limits, persistence, removal and organizer configuration.
-- Edit after intake closes; preserve presenters and other proposals' attachments.
+- Host-selected finalists (top six suggested), separate single-choice final votes, live ranked bars across browser sessions, ties, vote changes and closing/reopening voting.
+- Edit after intake closes; preserve the shared team roster and other proposals' attachments.
 - Cancel deletion, confirm deletion and reject new applications after closure.
 - Narrow/wide layouts, visible submit buttons and horizontal overflow.
 
@@ -48,3 +51,8 @@ download manager. Login sessions are provisioned through the local API; this
 suite does not test the interactive sign-in flow. Keep real-device checks for
 those behaviors. The separate Playwright E2E configuration also uses Pixel 7
 for its `mobile-chromium` project.
+
+The Docker connection uses Chromium's full-browser headless channel and a
+30-second startup timeout. Browser startup/isolation has its own recorded check.
+Generated dashboard reports are excluded from Vite's file watcher; the dashboard
+polls them without reloading other pages during test execution.

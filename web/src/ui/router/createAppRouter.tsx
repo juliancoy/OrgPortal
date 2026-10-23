@@ -84,6 +84,7 @@ const CreateNonProfitPage = lazy(() => import('../views/CreateNonProfitPage').th
 const OrgChatPage = lazy(() => import('../views/chat/OrgChatPage').then(module => ({ default: module.OrgChatPage })))
 const NativeChatPage = lazy(() => import('../views/chat/NativeChatPage').then(module => ({ default: module.NativeChatPage })))
 const DevToolsPage = lazy(() => import('../views/DevToolsPage').then(module => ({ default: module.DevToolsPage })))
+const TestStatusPage = lazy(() => import('../views/TestStatusPage').then(module => ({ default: module.TestStatusPage })))
 const BusinessCardIntakePage = lazy(() => import('../views/BusinessCardIntakePage').then(module => ({ default: module.BusinessCardIntakePage })))
 const PeoplePage = lazy(() => import('../views/PeoplePage').then(module => ({ default: module.PeoplePage })))
 const UbiSettingsPage = lazy(() => import('../views/UbiSettingsPage').then(module => ({ default: module.UbiSettingsPage })))
@@ -398,6 +399,7 @@ export function createAppRouter() {
               </AuthenticatedRoute>
             ),
           },
+          { path: '/test-status', element: <TestStatusPage /> },
           {
             path: '/tools/business-cards',
             element: <BusinessCardIntakePage />,

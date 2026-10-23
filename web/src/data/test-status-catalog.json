@@ -1,0 +1,4170 @@
+{
+  "version": 1,
+  "title": "OrgPortal tests",
+  "groups": [
+    {
+      "id": "suite-chat-worker-test-chat-worker-test-ts",
+      "label": "chat-worker/test/chat-worker.test.ts",
+      "category": "Messaging and email",
+      "source": "chat-worker/test/chat-worker.test.ts",
+      "kind": "node",
+      "cwd": "chat-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "chat-worker.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-cloudflare-chat-websocket-test-mjs",
+      "label": "cloudflare/chat-websocket.test.mjs",
+      "category": "Messaging and email",
+      "source": "cloudflare/chat-websocket.test.mjs",
+      "kind": "node",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "chat-websocket.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-cloudflare-event-source-preview-test-mjs",
+      "label": "cloudflare/event-source-preview.test.mjs",
+      "category": "Events and services",
+      "source": "cloudflare/event-source-preview.test.mjs",
+      "kind": "node",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "event-source-preview.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-cloudflare-identity-test-mjs",
+      "label": "cloudflare/identity.test.mjs",
+      "category": "Identity and access",
+      "source": "cloudflare/identity.test.mjs",
+      "kind": "node",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "identity.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-cloudflare-mcp-origin-test-mjs",
+      "label": "cloudflare/mcp-origin.test.mjs",
+      "category": "Deployment and infrastructure",
+      "source": "cloudflare/mcp-origin.test.mjs",
+      "kind": "node",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "mcp-origin.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-cloudflare-not-found-test-mjs",
+      "label": "cloudflare/not-found.test.mjs",
+      "category": "Deployment and infrastructure",
+      "source": "cloudflare/not-found.test.mjs",
+      "kind": "node",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "not-found.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-cloudflare-organization-canonical-test-mjs",
+      "label": "cloudflare/organization-canonical.test.mjs",
+      "category": "Organizations and membership",
+      "source": "cloudflare/organization-canonical.test.mjs",
+      "kind": "node",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organization-canonical.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-cloudflare-orgportal-platform-test-mjs",
+      "label": "cloudflare/orgportal-platform.test.mjs",
+      "category": "Deployment and infrastructure",
+      "source": "cloudflare/orgportal-platform.test.mjs",
+      "kind": "node",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "orgportal-platform.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-cloudflare-release-test-mjs",
+      "label": "cloudflare/release.test.mjs",
+      "category": "Deployment and infrastructure",
+      "source": "cloudflare/release.test.mjs",
+      "kind": "node",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "release.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-cloudflare-timebank-domain-test-mjs",
+      "label": "cloudflare/timebank-domain.test.mjs",
+      "category": "Timebank",
+      "source": "cloudflare/timebank-domain.test.mjs",
+      "kind": "node",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "timebank-domain.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-cloudflare-update-manifest-test-mjs",
+      "label": "cloudflare/update-manifest.test.mjs",
+      "category": "Deployment and infrastructure",
+      "source": "cloudflare/update-manifest.test.mjs",
+      "kind": "node",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "update-manifest.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-nginx-service-directory-test-collect-py",
+      "label": "nginx/service-directory/test_collect.py",
+      "category": "Organizations and membership",
+      "source": "nginx/service-directory/test_collect.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test_collect.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-nginx-service-directory-test-names-py",
+      "label": "nginx/service-directory/test_names.py",
+      "category": "Organizations and membership",
+      "source": "nginx/service-directory/test_names.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test_names.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-accountAvailability-test-ts",
+      "label": "org-worker/test/accountAvailability.test.ts",
+      "category": "Events and services",
+      "source": "org-worker/test/accountAvailability.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "accountAvailability.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-availability-test-ts",
+      "label": "org-worker/test/availability.test.ts",
+      "category": "Events and services",
+      "source": "org-worker/test/availability.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "availability.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-build-metadata-test-ts",
+      "label": "org-worker/test/build-metadata.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/build-metadata.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "build-metadata.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-calendar-collections-test-ts",
+      "label": "org-worker/test/calendar-collections.test.ts",
+      "category": "Events and services",
+      "source": "org-worker/test/calendar-collections.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "calendar-collections.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "change-journal",
+      "label": "Private data and change journals",
+      "source": "org-worker/test/change-journal.test.ts",
+      "kind": "node",
+      "cases": [
+        {
+          "id": "direct SQL writes journal before/after state and roll back atomically; no-op updates are inert",
+          "label": "direct SQL writes journal before/after state and roll back atomically; no-op updates are inert"
+        },
+        {
+          "id": "credential columns are redacted and replica refreshes are excluded while local newsletters are captured",
+          "label": "credential columns are redacted and replica refreshes are excluded while local newsletters are captured"
+        },
+        {
+          "id": "every primary application table has explicit coverage or exclusion; trigger generation is reproducible",
+          "label": "every primary application table has explicit coverage or exclusion; trigger generation is reproducible"
+        },
+        {
+          "id": "secondary copy retries are inert, checkpoints are atomic and rewinds fail safely",
+          "label": "secondary copy retries are inert, checkpoints are atomic and rewinds fail safely"
+        },
+        {
+          "id": "corrupted immutable copies abort the page without advancing its checkpoint",
+          "label": "corrupted immutable copies abort the page without advancing its checkpoint"
+        },
+        {
+          "id": "local WAL mirror survives process restart, retains exact rows and resumes without duplication",
+          "label": "local WAL mirror survives process restart, retains exact rows and resumes without duplication"
+        },
+        {
+          "id": "ballot settings and rosters are audited but cleared company votes never enter immutable copies",
+          "label": "ballot settings and rosters are audited but cleared company votes never enter immutable copies"
+        },
+        {
+          "id": "availability visibility changes are audited atomically and no-op saves are inert",
+          "label": "availability visibility changes are audited atomically and no-op saves are inert"
+        },
+        {
+          "id": "title-only membership edits are journaled atomically and retained on deletion",
+          "label": "title-only membership edits are journaled atomically and retained on deletion"
+        }
+      ],
+      "category": "Privacy and security",
+      "cwd": "org-worker"
+    },
+    {
+      "id": "suite-org-worker-test-cli-account-tools-test-ts",
+      "label": "org-worker/test/cli-account-tools.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/cli-account-tools.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "cli-account-tools.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-comment-profile-links-test-ts",
+      "label": "org-worker/test/comment-profile-links.test.ts",
+      "category": "Organizations and membership",
+      "source": "org-worker/test/comment-profile-links.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "comment-profile-links.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-company-favorites-test-ts",
+      "label": "org-worker/test/company-favorites.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/company-favorites.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "company-favorites.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-company-votes-test-ts",
+      "label": "org-worker/test/company-votes.test.ts",
+      "category": "Submission and voting",
+      "source": "org-worker/test/company-votes.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "company-votes.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-deism-tenant-test-ts",
+      "label": "org-worker/test/deism-tenant.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/deism-tenant.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "deism-tenant.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-driveCarousel-test-ts",
+      "label": "org-worker/test/driveCarousel.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/driveCarousel.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "driveCarousel.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-ecosystem-sync-test-ts",
+      "label": "org-worker/test/ecosystem-sync.test.ts",
+      "category": "Ecosystem and data",
+      "source": "org-worker/test/ecosystem-sync.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "ecosystem-sync.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-email-campaigns-test-ts",
+      "label": "org-worker/test/email-campaigns.test.ts",
+      "category": "Messaging and email",
+      "source": "org-worker/test/email-campaigns.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "email-campaigns.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-email-runtime-test-ts",
+      "label": "org-worker/test/email-runtime.test.ts",
+      "category": "Messaging and email",
+      "source": "org-worker/test/email-runtime.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "email-runtime.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-event-chat-test-ts",
+      "label": "org-worker/test/event-chat.test.ts",
+      "category": "Messaging and email",
+      "source": "org-worker/test/event-chat.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "event-chat.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-event-details-test-ts",
+      "label": "org-worker/test/event-details.test.ts",
+      "category": "Events and services",
+      "source": "org-worker/test/event-details.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "event-details.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-event-enrichment-test-ts",
+      "label": "org-worker/test/event-enrichment.test.ts",
+      "category": "Events and services",
+      "source": "org-worker/test/event-enrichment.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "event-enrichment.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-event-history-test-ts",
+      "label": "org-worker/test/event-history.test.ts",
+      "category": "Events and services",
+      "source": "org-worker/test/event-history.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "event-history.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-event-host-test-ts",
+      "label": "org-worker/test/event-host.test.ts",
+      "category": "Events and services",
+      "source": "org-worker/test/event-host.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "event-host.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-event-media-upload-test-ts",
+      "label": "org-worker/test/event-media-upload.test.ts",
+      "category": "Events and services",
+      "source": "org-worker/test/event-media-upload.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "event-media-upload.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-event-platforms-test-ts",
+      "label": "org-worker/test/event-platforms.test.ts",
+      "category": "Events and services",
+      "source": "org-worker/test/event-platforms.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "event-platforms.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-event-poster-test-ts",
+      "label": "org-worker/test/event-poster.test.ts",
+      "category": "Events and services",
+      "source": "org-worker/test/event-poster.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "event-poster.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "applications-api",
+      "label": "Submission and final-voting API",
+      "source": "org-worker/test/event-presentations.test.ts",
+      "kind": "node",
+      "cases": [
+        {
+          "id": "final round host controls, immutable shortlist, tenant isolation and private single-choice ballots",
+          "label": "final round host controls, immutable shortlist, tenant isolation and private single-choice ballots"
+        },
+        {
+          "id": "final votes do not reuse favorites; live totals handle ties, withdrawal and expiry",
+          "label": "final votes do not reuse favorites; live totals handle ties, withdrawal and expiry"
+        },
+        {
+          "id": "management, isolation, review, closing, expiry and withdrawal",
+          "label": "management, isolation, review, closing, expiry and withdrawal"
+        },
+        {
+          "id": "deadline and invalid proposals",
+          "label": "deadline and invalid proposals"
+        },
+        {
+          "id": "manager review paginates beyond 200 with counts, filters, stable ties and complete CSV",
+          "label": "manager review paginates beyond 200 with counts, filters, stable ties and complete CSV"
+        },
+        {
+          "id": "public submissions omit private fields and favorites are private, capped at three, removable and cascading",
+          "label": "public submissions omit private fields and favorites are private, capped at three, removable and cascading"
+        },
+        {
+          "id": "event managers configure the limit; lowering never silently removes existing favorites",
+          "label": "event managers configure the limit; lowering never silently removes existing favorites"
+        },
+        {
+          "id": "configurable-limit migration preserves existing favorites and defaults existing events to three",
+          "label": "configurable-limit migration preserves existing favorites and defaults existing events to three"
+        },
+        {
+          "id": "one person can create multiple entries for the same team and edit them independently after intake closes",
+          "label": "one person can create multiple entries for the same team and edit them independently after intake closes"
+        },
+        {
+          "id": "multiple-submission migration preserves legacy entries, favorites and attachment targets during rolling deployment",
+          "label": "multiple-submission migration preserves legacy entries, favorites and attachment targets during rolling deployment"
+        },
+        {
+          "id": "submissions share all organization members including their manager",
+          "label": "submissions share all organization members including their manager"
+        },
+        {
+          "id": "invited presenters expose no email publicly and resolve only through verified invitation acceptance",
+          "label": "invited presenters expose no email publicly and resolve only through verified invitation acceptance"
+        },
+        {
+          "id": "applications use the shared team without requiring a separate presenter selection",
+          "label": "applications use the shared team without requiring a separate presenter selection"
+        },
+        {
+          "id": "MCP applications preserve permission and host boundaries, reviewed receipts and private email invitations",
+          "label": "MCP applications preserve permission and host boundaries, reviewed receipts and private email invitations"
+        },
+        {
+          "id": "shared team changes appear on every submission and private team reads require management",
+          "label": "shared team changes appear on every submission and private team reads require management"
+        }
+      ],
+      "category": "Submission and voting",
+      "cwd": "org-worker"
+    },
+    {
+      "id": "suite-org-worker-test-event-registrations-test-ts",
+      "label": "org-worker/test/event-registrations.test.ts",
+      "category": "Events and services",
+      "source": "org-worker/test/event-registrations.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "event-registrations.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-event-safety-test-ts",
+      "label": "org-worker/test/event-safety.test.ts",
+      "category": "Events and services",
+      "source": "org-worker/test/event-safety.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "event-safety.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-event-slugs-test-ts",
+      "label": "org-worker/test/event-slugs.test.ts",
+      "category": "Events and services",
+      "source": "org-worker/test/event-slugs.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "event-slugs.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-event-support-links-test-ts",
+      "label": "org-worker/test/event-support-links.test.ts",
+      "category": "Events and services",
+      "source": "org-worker/test/event-support-links.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "event-support-links.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-financing-records-test-ts",
+      "label": "org-worker/test/financing-records.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/financing-records.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "financing-records.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-fuzzy-search-test-ts",
+      "label": "org-worker/test/fuzzy-search.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/fuzzy-search.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "fuzzy-search.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-governance-documents-test-ts",
+      "label": "org-worker/test/governance-documents.test.ts",
+      "category": "Organizations and membership",
+      "source": "org-worker/test/governance-documents.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "governance-documents.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-governance-mcp-test-ts",
+      "label": "org-worker/test/governance-mcp.test.ts",
+      "category": "Organizations and membership",
+      "source": "org-worker/test/governance-mcp.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "governance-mcp.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-government-awards-migration-test-ts",
+      "label": "org-worker/test/government-awards-migration.test.ts",
+      "category": "Ecosystem and data",
+      "source": "org-worker/test/government-awards-migration.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "government-awards-migration.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-group-sites-migration-test-ts",
+      "label": "org-worker/test/group-sites-migration.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/group-sites-migration.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "group-sites-migration.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-health-insurance-test-ts",
+      "label": "org-worker/test/health-insurance.test.ts",
+      "category": "Events and services",
+      "source": "org-worker/test/health-insurance.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "health-insurance.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-identity-membership-test-ts",
+      "label": "org-worker/test/identity-membership.test.ts",
+      "category": "Identity and access",
+      "source": "org-worker/test/identity-membership.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "identity-membership.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-interventions-test-ts",
+      "label": "org-worker/test/interventions.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/interventions.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "interventions.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-life-insurance-test-ts",
+      "label": "org-worker/test/life-insurance.test.ts",
+      "category": "Events and services",
+      "source": "org-worker/test/life-insurance.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "life-insurance.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-local-newsletters-test-ts",
+      "label": "org-worker/test/local-newsletters.test.ts",
+      "category": "Messaging and email",
+      "source": "org-worker/test/local-newsletters.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "local-newsletters.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-mcp-account-tools-test-ts",
+      "label": "org-worker/test/mcp-account-tools.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/mcp-account-tools.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "mcp-account-tools.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-mcp-resources-test-ts",
+      "label": "org-worker/test/mcp-resources.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/mcp-resources.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "mcp-resources.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-mcp-setup-test-ts",
+      "label": "org-worker/test/mcp-setup.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/mcp-setup.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "mcp-setup.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-memberMeetings-test-ts",
+      "label": "org-worker/test/memberMeetings.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/memberMeetings.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "memberMeetings.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-nametags-test-ts",
+      "label": "org-worker/test/nametags.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/nametags.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "nametags.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-native-event-reads-test-ts",
+      "label": "org-worker/test/native-event-reads.test.ts",
+      "category": "Events and services",
+      "source": "org-worker/test/native-event-reads.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "native-event-reads.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-newsletter-sync-test-ts",
+      "label": "org-worker/test/newsletter-sync.test.ts",
+      "category": "Messaging and email",
+      "source": "org-worker/test/newsletter-sync.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "newsletter-sync.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-nonprofit-filings-migration-test-ts",
+      "label": "org-worker/test/nonprofit-filings-migration.test.ts",
+      "category": "Ecosystem and data",
+      "source": "org-worker/test/nonprofit-filings-migration.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "nonprofit-filings-migration.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-onboarding-settings-test-ts",
+      "label": "org-worker/test/onboarding-settings.test.ts",
+      "category": "Identity and access",
+      "source": "org-worker/test/onboarding-settings.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "onboarding-settings.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-onboarding-test-ts",
+      "label": "org-worker/test/onboarding.test.ts",
+      "category": "Identity and access",
+      "source": "org-worker/test/onboarding.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "onboarding.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-org-worker-test-ts",
+      "label": "org-worker/test/org-worker.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/org-worker.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "org-worker.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-organization-branding-test-ts",
+      "label": "org-worker/test/organization-branding.test.ts",
+      "category": "Organizations and membership",
+      "source": "org-worker/test/organization-branding.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organization-branding.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-organization-chat-test-ts",
+      "label": "org-worker/test/organization-chat.test.ts",
+      "category": "Messaging and email",
+      "source": "org-worker/test/organization-chat.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organization-chat.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-organization-directory-operations-test-ts",
+      "label": "org-worker/test/organization-directory-operations.test.ts",
+      "category": "Organizations and membership",
+      "source": "org-worker/test/organization-directory-operations.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organization-directory-operations.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-organization-evidence-import-test-ts",
+      "label": "org-worker/test/organization-evidence-import.test.ts",
+      "category": "Organizations and membership",
+      "source": "org-worker/test/organization-evidence-import.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organization-evidence-import.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-organization-follows-test-ts",
+      "label": "org-worker/test/organization-follows.test.ts",
+      "category": "Organizations and membership",
+      "source": "org-worker/test/organization-follows.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organization-follows.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-organization-home-events-test-ts",
+      "label": "org-worker/test/organization-home-events.test.ts",
+      "category": "Events and services",
+      "source": "org-worker/test/organization-home-events.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organization-home-events.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-organization-iam-test-ts",
+      "label": "org-worker/test/organization-iam.test.ts",
+      "category": "Organizations and membership",
+      "source": "org-worker/test/organization-iam.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organization-iam.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-organization-invitations-test-ts",
+      "label": "org-worker/test/organization-invitations.test.ts",
+      "category": "Identity and access",
+      "source": "org-worker/test/organization-invitations.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organization-invitations.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-organization-links-test-ts",
+      "label": "org-worker/test/organization-links.test.ts",
+      "category": "Organizations and membership",
+      "source": "org-worker/test/organization-links.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organization-links.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-organization-mcp-test-ts",
+      "label": "org-worker/test/organization-mcp.test.ts",
+      "category": "Organizations and membership",
+      "source": "org-worker/test/organization-mcp.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organization-mcp.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-organization-media-upload-test-ts",
+      "label": "org-worker/test/organization-media-upload.test.ts",
+      "category": "Organizations and membership",
+      "source": "org-worker/test/organization-media-upload.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organization-media-upload.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-organization-member-titles-test-ts",
+      "label": "org-worker/test/organization-member-titles.test.ts",
+      "category": "Organizations and membership",
+      "source": "org-worker/test/organization-member-titles.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organization-member-titles.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-organization-page-statistics-test-ts",
+      "label": "org-worker/test/organization-page-statistics.test.ts",
+      "category": "Organizations and membership",
+      "source": "org-worker/test/organization-page-statistics.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organization-page-statistics.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-organization-personnel-test-ts",
+      "label": "org-worker/test/organization-personnel.test.ts",
+      "category": "Organizations and membership",
+      "source": "org-worker/test/organization-personnel.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organization-personnel.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-organization-portal-urls-test-ts",
+      "label": "org-worker/test/organization-portal-urls.test.ts",
+      "category": "Organizations and membership",
+      "source": "org-worker/test/organization-portal-urls.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organization-portal-urls.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-organization-poster-test-ts",
+      "label": "org-worker/test/organization-poster.test.ts",
+      "category": "Organizations and membership",
+      "source": "org-worker/test/organization-poster.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organization-poster.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-organization-recognition-test-ts",
+      "label": "org-worker/test/organization-recognition.test.ts",
+      "category": "Submission and voting",
+      "source": "org-worker/test/organization-recognition.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organization-recognition.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-organization-registry-test-ts",
+      "label": "org-worker/test/organization-registry.test.ts",
+      "category": "Organizations and membership",
+      "source": "org-worker/test/organization-registry.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organization-registry.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "replication",
+      "label": "Organization replication and isolation",
+      "source": "org-worker/test/organization-replication.test.ts",
+      "kind": "node",
+      "cases": [
+        {
+          "id": "snapshot covers every org, excludes identities, ETag unchanged checks transfer no body",
+          "label": "snapshot covers every org, excludes identities, ETag unchanged checks transfer no body"
+        },
+        {
+          "id": "updates, additions, deletions converge; failures retain last committed data and expose stale status",
+          "label": "updates, additions, deletions converge; failures retain last committed data and expose stale status"
+        },
+        {
+          "id": "foreign-key failure rolls back the complete refresh; switching primaries is rejected",
+          "label": "foreign-key failure rolls back the complete refresh; switching primaries is rejected"
+        },
+        {
+          "id": "replicas reject mutations including MCP uploads before identity handlers",
+          "label": "replicas reject mutations including MCP uploads before identity handlers"
+        },
+        {
+          "id": "documented support evidence replicates without its creator identity",
+          "label": "documented support evidence replicates without its creator identity"
+        },
+        {
+          "id": "multi-megabyte UTF-8 snapshots fit D1 bindings and late failures roll back every chunk",
+          "label": "multi-megabyte UTF-8 snapshots fit D1 bindings and late failures roll back every chunk"
+        },
+        {
+          "id": "organization links replicate, rotate and clear from the primary",
+          "label": "organization links replicate, rotate and clear from the primary"
+        }
+      ],
+      "category": "Privacy and security",
+      "cwd": "org-worker"
+    },
+    {
+      "id": "suite-org-worker-test-organization-search-all-test-ts",
+      "label": "org-worker/test/organization-search-all.test.ts",
+      "category": "Organizations and membership",
+      "source": "org-worker/test/organization-search-all.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organization-search-all.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-organization-status-notifications-test-ts",
+      "label": "org-worker/test/organization-status-notifications.test.ts",
+      "category": "Organizations and membership",
+      "source": "org-worker/test/organization-status-notifications.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organization-status-notifications.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-organization-support-test-ts",
+      "label": "org-worker/test/organization-support.test.ts",
+      "category": "Organizations and membership",
+      "source": "org-worker/test/organization-support.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organization-support.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-organization-tasks-mcp-test-ts",
+      "label": "org-worker/test/organization-tasks-mcp.test.ts",
+      "category": "Organizations and membership",
+      "source": "org-worker/test/organization-tasks-mcp.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organization-tasks-mcp.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-organization-tenant-home-test-ts",
+      "label": "org-worker/test/organization-tenant-home.test.ts",
+      "category": "Organizations and membership",
+      "source": "org-worker/test/organization-tenant-home.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organization-tenant-home.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-organization-transport-parity-test-ts",
+      "label": "org-worker/test/organization-transport-parity.test.ts",
+      "category": "Organizations and membership",
+      "source": "org-worker/test/organization-transport-parity.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organization-transport-parity.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-orgportal-cli-test-ts",
+      "label": "org-worker/test/orgportal-cli.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/orgportal-cli.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "orgportal-cli.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-orgportal-platform-test-ts",
+      "label": "org-worker/test/orgportal-platform.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/orgportal-platform.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "orgportal-platform.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-owned-events-test-ts",
+      "label": "org-worker/test/owned-events.test.ts",
+      "category": "Events and services",
+      "source": "org-worker/test/owned-events.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "owned-events.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-personal-search-test-ts",
+      "label": "org-worker/test/personal-search.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/personal-search.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "personal-search.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-photoTags-test-ts",
+      "label": "org-worker/test/photoTags.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/photoTags.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "photoTags.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-pidp-introspection-test-ts",
+      "label": "org-worker/test/pidp-introspection.test.ts",
+      "category": "Identity and access",
+      "source": "org-worker/test/pidp-introspection.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "pidp-introspection.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-portal-branding-mcp-test-ts",
+      "label": "org-worker/test/portal-branding-mcp.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/portal-branding-mcp.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "portal-branding-mcp.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-portal-people-test-ts",
+      "label": "org-worker/test/portal-people.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/portal-people.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "portal-people.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-poster-gallery-test-ts",
+      "label": "org-worker/test/poster-gallery.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/poster-gallery.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "poster-gallery.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "attachments-api",
+      "label": "Submission attachments API",
+      "source": "org-worker/test/presentation-attachments.test.ts",
+      "kind": "node",
+      "cases": [
+        {
+          "id": "validates supported file signatures and excludes active browser content",
+          "label": "validates supported file signatures and excludes active browser content"
+        },
+        {
+          "id": "team and event managers upload; everyone can list and download; retries do not duplicate files",
+          "label": "team and event managers upload; everyone can list and download; retries do not duplicate files"
+        },
+        {
+          "id": "caps uploads, rejects invalid content, and cleans withdrawn files without losing failed deletions",
+          "label": "caps uploads, rejects invalid content, and cleans withdrawn files without losing failed deletions"
+        },
+        {
+          "id": "attachments stay with their own submission when a team has multiple entries",
+          "label": "attachments stay with their own submission when a team has multiple entries"
+        }
+      ],
+      "category": "Submission and voting",
+      "cwd": "org-worker"
+    },
+    {
+      "id": "suite-org-worker-test-profile-availability-test-ts",
+      "label": "org-worker/test/profile-availability.test.ts",
+      "category": "Events and services",
+      "source": "org-worker/test/profile-availability.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "profile-availability.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-profile-events-test-ts",
+      "label": "org-worker/test/profile-events.test.ts",
+      "category": "Events and services",
+      "source": "org-worker/test/profile-events.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "profile-events.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-profile-favorite-companies-test-ts",
+      "label": "org-worker/test/profile-favorite-companies.test.ts",
+      "category": "Organizations and membership",
+      "source": "org-worker/test/profile-favorite-companies.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "profile-favorite-companies.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-public-event-comments-test-ts",
+      "label": "org-worker/test/public-event-comments.test.ts",
+      "category": "Events and services",
+      "source": "org-worker/test/public-event-comments.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "public-event-comments.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-public-media-object-test-ts",
+      "label": "org-worker/test/public-media-object.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/public-media-object.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "public-media-object.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-publicDataResponse-test-ts",
+      "label": "org-worker/test/publicDataResponse.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/publicDataResponse.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "publicDataResponse.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-push-test-ts",
+      "label": "org-worker/test/push.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/push.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "push.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "retention",
+      "label": "Retention and deletion",
+      "source": "org-worker/test/retention.test.ts",
+      "kind": "node",
+      "cases": [
+        {
+          "id": "expiry units, bounds, dry-run, retries and unresolved operations",
+          "label": "expiry units, bounds, dry-run, retries and unresolved operations"
+        }
+      ],
+      "category": "Privacy and security",
+      "cwd": "org-worker"
+    },
+    {
+      "id": "suite-org-worker-test-timebank-test-ts",
+      "label": "org-worker/test/timebank.test.ts",
+      "category": "Timebank",
+      "source": "org-worker/test/timebank.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "timebank.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-timebankImports-test-ts",
+      "label": "org-worker/test/timebankImports.test.ts",
+      "category": "Timebank",
+      "source": "org-worker/test/timebankImports.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "timebankImports.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-timebankNotifications-test-ts",
+      "label": "org-worker/test/timebankNotifications.test.ts",
+      "category": "Timebank",
+      "source": "org-worker/test/timebankNotifications.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "timebankNotifications.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-timebankPublicOffers-test-ts",
+      "label": "org-worker/test/timebankPublicOffers.test.ts",
+      "category": "Timebank",
+      "source": "org-worker/test/timebankPublicOffers.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "timebankPublicOffers.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-timebankVisibility-test-ts",
+      "label": "org-worker/test/timebankVisibility.test.ts",
+      "category": "Timebank",
+      "source": "org-worker/test/timebankVisibility.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "timebankVisibility.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-upload-connection-test-ts",
+      "label": "org-worker/test/upload-connection.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/upload-connection.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "upload-connection.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-userTasks-test-ts",
+      "label": "org-worker/test/userTasks.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/userTasks.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "userTasks.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-venue-enrichment-test-ts",
+      "label": "org-worker/test/venue-enrichment.test.ts",
+      "category": "Events and services",
+      "source": "org-worker/test/venue-enrichment.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "venue-enrichment.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-venue-images-mcp-test-ts",
+      "label": "org-worker/test/venue-images-mcp.test.ts",
+      "category": "Events and services",
+      "source": "org-worker/test/venue-images-mcp.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "venue-images-mcp.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-venue-rankings-test-ts",
+      "label": "org-worker/test/venue-rankings.test.ts",
+      "category": "Events and services",
+      "source": "org-worker/test/venue-rankings.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "venue-rankings.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-venue-votes-test-ts",
+      "label": "org-worker/test/venue-votes.test.ts",
+      "category": "Events and services",
+      "source": "org-worker/test/venue-votes.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "venue-votes.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-venues-test-ts",
+      "label": "org-worker/test/venues.test.ts",
+      "category": "Events and services",
+      "source": "org-worker/test/venues.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "venues.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-visitorStatistics-test-ts",
+      "label": "org-worker/test/visitorStatistics.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/visitorStatistics.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "visitorStatistics.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-website-observatory-test-ts",
+      "label": "org-worker/test/website-observatory.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/website-observatory.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "website-observatory.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-tests-test-calendar-feed-py",
+      "label": "org-worker/tests/test_calendar_feed.py",
+      "category": "Events and services",
+      "source": "org-worker/tests/test_calendar_feed.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test_calendar_feed.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-tests-test-funding-fact-model-py",
+      "label": "org-worker/tests/test_funding_fact_model.py",
+      "category": "Ecosystem and data",
+      "source": "org-worker/tests/test_funding_fact_model.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test_funding_fact_model.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-scripts-run-local-mcp-test-py",
+      "label": "scripts/run-local-mcp-test.py",
+      "category": "User interface and integrations",
+      "source": "scripts/run-local-mcp-test.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "run-local-mcp-test.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-scripts-test-status-test-mjs",
+      "label": "scripts/test-status.test.mjs",
+      "category": "User interface and integrations",
+      "source": "scripts/test-status.test.mjs",
+      "kind": "node",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-status.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-scripts-test-local-login-py",
+      "label": "scripts/test_local_login.py",
+      "category": "Identity and access",
+      "source": "scripts/test_local_login.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test_local_login.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-scripts-test-local-startup-py",
+      "label": "scripts/test_local_startup.py",
+      "category": "Deployment and infrastructure",
+      "source": "scripts/test_local_startup.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test_local_startup.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-testbackend-sh",
+      "label": "testbackend.sh",
+      "category": "Deployment and infrastructure",
+      "source": "testbackend.sh",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "testbackend.sh"
+        }
+      ]
+    },
+    {
+      "id": "suite-tools-website-probe-test-portal-sync-py",
+      "label": "tools/website-probe/test_portal_sync.py",
+      "category": "User interface and integrations",
+      "source": "tools/website-probe/test_portal_sync.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test_portal_sync.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-accessibility-audit-mjs",
+      "label": "web/scripts/accessibility/audit.mjs",
+      "category": "User interface and integrations",
+      "source": "web/scripts/accessibility/audit.mjs",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "audit.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-accessibility-run-orca-sh",
+      "label": "web/scripts/accessibility/run-orca.sh",
+      "category": "User interface and integrations",
+      "source": "web/scripts/accessibility/run-orca.sh",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "run-orca.sh"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-ecosystem-physics-test-mjs",
+      "label": "web/scripts/ecosystem-physics.test.mjs",
+      "category": "Ecosystem and data",
+      "source": "web/scripts/ecosystem-physics.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "ecosystem-physics.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-force-law-test-mjs",
+      "label": "web/scripts/force-law.test.mjs",
+      "category": "Ecosystem and data",
+      "source": "web/scripts/force-law.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "force-law.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-frame-budget-test-mjs",
+      "label": "web/scripts/frame-budget.test.mjs",
+      "category": "Ecosystem and data",
+      "source": "web/scripts/frame-budget.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "frame-budget.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-fund-pies-test-mjs",
+      "label": "web/scripts/fund-pies.test.mjs",
+      "category": "Ecosystem and data",
+      "source": "web/scripts/fund-pies.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "fund-pies.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-government-awards-test-mjs",
+      "label": "web/scripts/government-awards.test.mjs",
+      "category": "Ecosystem and data",
+      "source": "web/scripts/government-awards.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "government-awards.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-graph-3d-test-mjs",
+      "label": "web/scripts/graph-3d.test.mjs",
+      "category": "Ecosystem and data",
+      "source": "web/scripts/graph-3d.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "graph-3d.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-navigation-practice-test-mjs",
+      "label": "web/scripts/navigation-practice.test.mjs",
+      "category": "User interface and integrations",
+      "source": "web/scripts/navigation-practice.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "navigation-practice.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-network-analysis-test-mjs",
+      "label": "web/scripts/network-analysis.test.mjs",
+      "category": "Ecosystem and data",
+      "source": "web/scripts/network-analysis.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "network-analysis.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-network-history-test-mjs",
+      "label": "web/scripts/network-history.test.mjs",
+      "category": "Ecosystem and data",
+      "source": "web/scripts/network-history.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "network-history.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-network-layouts-test-mjs",
+      "label": "web/scripts/network-layouts.test.mjs",
+      "category": "Ecosystem and data",
+      "source": "web/scripts/network-layouts.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "network-layouts.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-network-links-test-mjs",
+      "label": "web/scripts/network-links.test.mjs",
+      "category": "Ecosystem and data",
+      "source": "web/scripts/network-links.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "network-links.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-network-projection-test-mjs",
+      "label": "web/scripts/network-projection.test.mjs",
+      "category": "Ecosystem and data",
+      "source": "web/scripts/network-projection.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "network-projection.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-network-rendering-test-mjs",
+      "label": "web/scripts/network-rendering.test.mjs",
+      "category": "Ecosystem and data",
+      "source": "web/scripts/network-rendering.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "network-rendering.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-network-settings-test-mjs",
+      "label": "web/scripts/network-settings.test.mjs",
+      "category": "Ecosystem and data",
+      "source": "web/scripts/network-settings.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "network-settings.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-particle-life-4d-test-mjs",
+      "label": "web/scripts/particle-life-4d.test.mjs",
+      "category": "Ecosystem and data",
+      "source": "web/scripts/particle-life-4d.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "particle-life-4d.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-performance-test-mjs",
+      "label": "web/scripts/performance.test.mjs",
+      "category": "User interface and integrations",
+      "source": "web/scripts/performance.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "performance.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-portal-ecosystem-test-mjs",
+      "label": "web/scripts/portal-ecosystem.test.mjs",
+      "category": "Ecosystem and data",
+      "source": "web/scripts/portal-ecosystem.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "portal-ecosystem.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-sphere-pies-test-mjs",
+      "label": "web/scripts/sphere-pies.test.mjs",
+      "category": "Ecosystem and data",
+      "source": "web/scripts/sphere-pies.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "sphere-pies.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-android-session-persistence-mjs",
+      "label": "web/scripts/test-android-session-persistence.mjs",
+      "category": "Identity and access",
+      "source": "web/scripts/test-android-session-persistence.mjs",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-android-session-persistence.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-company-votes-mjs",
+      "label": "web/scripts/test-company-votes.mjs",
+      "category": "Submission and voting",
+      "source": "web/scripts/test-company-votes.mjs",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-company-votes.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-local-account-availability-py",
+      "label": "web/scripts/test-local-account-availability.py",
+      "category": "Events and services",
+      "source": "web/scripts/test-local-account-availability.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-account-availability.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-local-availability-tasks-py",
+      "label": "web/scripts/test-local-availability-tasks.py",
+      "category": "Events and services",
+      "source": "web/scripts/test-local-availability-tasks.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-availability-tasks.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-local-brand-guide-py",
+      "label": "web/scripts/test-local-brand-guide.py",
+      "category": "User interface and integrations",
+      "source": "web/scripts/test-local-brand-guide.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-brand-guide.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-local-deism-mjs",
+      "label": "web/scripts/test-local-deism.mjs",
+      "category": "User interface and integrations",
+      "source": "web/scripts/test-local-deism.mjs",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-deism.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-local-ecosystem-network-mjs",
+      "label": "web/scripts/test-local-ecosystem-network.mjs",
+      "category": "Ecosystem and data",
+      "source": "web/scripts/test-local-ecosystem-network.mjs",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-ecosystem-network.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-local-ecosystem-network-py",
+      "label": "web/scripts/test-local-ecosystem-network.py",
+      "category": "Ecosystem and data",
+      "source": "web/scripts/test-local-ecosystem-network.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-ecosystem-network.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-local-five-over-five-py",
+      "label": "web/scripts/test-local-five-over-five.py",
+      "category": "Submission and voting",
+      "source": "web/scripts/test-local-five-over-five.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-five-over-five.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-local-governance-documents-py",
+      "label": "web/scripts/test-local-governance-documents.py",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-governance-documents.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-governance-documents.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-local-inline-profile-py",
+      "label": "web/scripts/test-local-inline-profile.py",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-inline-profile.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-inline-profile.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-local-invitations-py",
+      "label": "web/scripts/test-local-invitations.py",
+      "category": "Identity and access",
+      "source": "web/scripts/test-local-invitations.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-invitations.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-local-mcp-mjs",
+      "label": "web/scripts/test-local-mcp.mjs",
+      "category": "User interface and integrations",
+      "source": "web/scripts/test-local-mcp.mjs",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-mcp.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-local-nametags-py",
+      "label": "web/scripts/test-local-nametags.py",
+      "category": "User interface and integrations",
+      "source": "web/scripts/test-local-nametags.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-nametags.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-local-onboarding-py",
+      "label": "web/scripts/test-local-onboarding.py",
+      "category": "Identity and access",
+      "source": "web/scripts/test-local-onboarding.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-onboarding.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-local-organization-board-py",
+      "label": "web/scripts/test-local-organization-board.py",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-organization-board.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-organization-board.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-local-organization-page-statistics-py",
+      "label": "web/scripts/test-local-organization-page-statistics.py",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-organization-page-statistics.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-organization-page-statistics.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-local-organization-poster-py",
+      "label": "web/scripts/test-local-organization-poster.py",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-organization-poster.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-organization-poster.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-local-organization-views-py",
+      "label": "web/scripts/test-local-organization-views.py",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-organization-views.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-organization-views.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-local-organizer-py",
+      "label": "web/scripts/test-local-organizer.py",
+      "category": "User interface and integrations",
+      "source": "web/scripts/test-local-organizer.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-organizer.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-local-personnel-py",
+      "label": "web/scripts/test-local-personnel.py",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-personnel.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-personnel.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-local-session-persistence-py",
+      "label": "web/scripts/test-local-session-persistence.py",
+      "category": "Identity and access",
+      "source": "web/scripts/test-local-session-persistence.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-session-persistence.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-local-shared-org-cache-py",
+      "label": "web/scripts/test-local-shared-org-cache.py",
+      "category": "User interface and integrations",
+      "source": "web/scripts/test-local-shared-org-cache.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-shared-org-cache.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-local-sso-registration-mjs",
+      "label": "web/scripts/test-local-sso-registration.mjs",
+      "category": "User interface and integrations",
+      "source": "web/scripts/test-local-sso-registration.mjs",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-sso-registration.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-local-unified-organization-py",
+      "label": "web/scripts/test-local-unified-organization.py",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-unified-organization.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-unified-organization.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-local-venue-votes-py",
+      "label": "web/scripts/test-local-venue-votes.py",
+      "category": "Events and services",
+      "source": "web/scripts/test-local-venue-votes.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-venue-votes.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-native-chat-ui-mjs",
+      "label": "web/scripts/test-native-chat-ui.mjs",
+      "category": "Messaging and email",
+      "source": "web/scripts/test-native-chat-ui.mjs",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-native-chat-ui.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-organization-workflows-mjs",
+      "label": "web/scripts/test-organization-workflows.mjs",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-organization-workflows.mjs",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-organization-workflows.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-visitor-statistics-mjs",
+      "label": "web/scripts/test-visitor-statistics.mjs",
+      "category": "User interface and integrations",
+      "source": "web/scripts/test-visitor-statistics.mjs",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-visitor-statistics.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-application-usecases-proposeMotion-test-ts",
+      "label": "web/src/application/usecases/proposeMotion.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/application/usecases/proposeMotion.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "proposeMotion.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-chat-bootstrapSession-test-ts",
+      "label": "web/src/chat/bootstrapSession.test.ts",
+      "category": "Messaging and email",
+      "source": "web/src/chat/bootstrapSession.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "bootstrapSession.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-chat-chatLinks-test-ts",
+      "label": "web/src/chat/chatLinks.test.ts",
+      "category": "Messaging and email",
+      "source": "web/src/chat/chatLinks.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "chatLinks.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-chat-matrixService-test-ts",
+      "label": "web/src/chat/matrixService.test.ts",
+      "category": "Messaging and email",
+      "source": "web/src/chat/matrixService.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "matrixService.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-chat-nativeChatApi-test-ts",
+      "label": "web/src/chat/nativeChatApi.test.ts",
+      "category": "Messaging and email",
+      "source": "web/src/chat/nativeChatApi.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "nativeChatApi.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-composition-createServices-test-ts",
+      "label": "web/src/composition/createServices.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/composition/createServices.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "createServices.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-config-chatGptListing-test-ts",
+      "label": "web/src/config/chatGptListing.test.ts",
+      "category": "Messaging and email",
+      "source": "web/src/config/chatGptListing.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "chatGptListing.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-config-localProxy-test-ts",
+      "label": "web/src/config/localProxy.test.ts",
+      "category": "Deployment and infrastructure",
+      "source": "web/src/config/localProxy.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "localProxy.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-config-pidp-test-ts",
+      "label": "web/src/config/pidp.test.ts",
+      "category": "Identity and access",
+      "source": "web/src/config/pidp.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "pidp.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-config-portalBase-test-ts",
+      "label": "web/src/config/portalBase.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/config/portalBase.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "portalBase.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-config-portalFeatures-test-ts",
+      "label": "web/src/config/portalFeatures.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/config/portalFeatures.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "portalFeatures.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-config-specialtyResources-test-ts",
+      "label": "web/src/config/specialtyResources.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/config/specialtyResources.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "specialtyResources.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-config-tenantHome-test-ts",
+      "label": "web/src/config/tenantHome.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/config/tenantHome.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "tenantHome.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-config-theme-test-ts",
+      "label": "web/src/config/theme.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/config/theme.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "theme.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-config-timebankRouting-test-ts",
+      "label": "web/src/config/timebankRouting.test.ts",
+      "category": "Timebank",
+      "source": "web/src/config/timebankRouting.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "timebankRouting.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-data-ecosystemSync-newsletters-test-ts",
+      "label": "web/src/data/ecosystemSync/newsletters.test.ts",
+      "category": "Messaging and email",
+      "source": "web/src/data/ecosystemSync/newsletters.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "newsletters.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-data-ecosystemSync-protocol-test-ts",
+      "label": "web/src/data/ecosystemSync/protocol.test.ts",
+      "category": "Ecosystem and data",
+      "source": "web/src/data/ecosystemSync/protocol.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "protocol.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-data-ecosystemSync-store-test-ts",
+      "label": "web/src/data/ecosystemSync/store.test.ts",
+      "category": "Ecosystem and data",
+      "source": "web/src/data/ecosystemSync/store.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "store.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-data-publicOrganization-cache-test-ts",
+      "label": "web/src/data/publicOrganization/cache.test.ts",
+      "category": "Organizations and membership",
+      "source": "web/src/data/publicOrganization/cache.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "cache.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-data-publicOrganization-cacheSharing-test-ts",
+      "label": "web/src/data/publicOrganization/cacheSharing.test.ts",
+      "category": "Organizations and membership",
+      "source": "web/src/data/publicOrganization/cacheSharing.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "cacheSharing.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-data-publicOrganization-hostedEvents-test-ts",
+      "label": "web/src/data/publicOrganization/hostedEvents.test.ts",
+      "category": "Events and services",
+      "source": "web/src/data/publicOrganization/hostedEvents.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "hostedEvents.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-data-publicOrganization-organizations-test-ts",
+      "label": "web/src/data/publicOrganization/organizations.test.ts",
+      "category": "Organizations and membership",
+      "source": "web/src/data/publicOrganization/organizations.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organizations.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-domain-insurance-lifeInsuranceModel-test-ts",
+      "label": "web/src/domain/insurance/lifeInsuranceModel.test.ts",
+      "category": "Events and services",
+      "source": "web/src/domain/insurance/lifeInsuranceModel.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "lifeInsuranceModel.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-domain-motion-motionStateMachine-test-ts",
+      "label": "web/src/domain/motion/motionStateMachine.test.ts",
+      "category": "Deployment and infrastructure",
+      "source": "web/src/domain/motion/motionStateMachine.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "motionStateMachine.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-features-ecosystem-companyRetention-test-ts",
+      "label": "web/src/features/ecosystem/companyRetention.test.ts",
+      "category": "Privacy and security",
+      "source": "web/src/features/ecosystem/companyRetention.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "companyRetention.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-features-ecosystem-ecosystemOverview-test-ts",
+      "label": "web/src/features/ecosystem/ecosystemOverview.test.ts",
+      "category": "Ecosystem and data",
+      "source": "web/src/features/ecosystem/ecosystemOverview.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "ecosystemOverview.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-features-ecosystem-fundingStatistics-test-ts",
+      "label": "web/src/features/ecosystem/fundingStatistics.test.ts",
+      "category": "Ecosystem and data",
+      "source": "web/src/features/ecosystem/fundingStatistics.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "fundingStatistics.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-features-ecosystem-interventions-test-ts",
+      "label": "web/src/features/ecosystem/interventions.test.ts",
+      "category": "Ecosystem and data",
+      "source": "web/src/features/ecosystem/interventions.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "interventions.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-features-ecosystem-network-data-test-ts",
+      "label": "web/src/features/ecosystem/network-data.test.ts",
+      "category": "Ecosystem and data",
+      "source": "web/src/features/ecosystem/network-data.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "network-data.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-features-ecosystem-performance-test-ts",
+      "label": "web/src/features/ecosystem/performance.test.ts",
+      "category": "Ecosystem and data",
+      "source": "web/src/features/ecosystem/performance.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "performance.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-features-events-medicalEvents-test-ts",
+      "label": "web/src/features/events/medicalEvents.test.ts",
+      "category": "Events and services",
+      "source": "web/src/features/events/medicalEvents.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "medicalEvents.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-infrastructure-auth-avatarUpload-test-ts",
+      "label": "web/src/infrastructure/auth/avatarUpload.test.ts",
+      "category": "Identity and access",
+      "source": "web/src/infrastructure/auth/avatarUpload.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "avatarUpload.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-infrastructure-auth-restoreSession-test-ts",
+      "label": "web/src/infrastructure/auth/restoreSession.test.ts",
+      "category": "Identity and access",
+      "source": "web/src/infrastructure/auth/restoreSession.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "restoreSession.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-infrastructure-http-userFacingError-test-ts",
+      "label": "web/src/infrastructure/http/userFacingError.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/infrastructure/http/userFacingError.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "userFacingError.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-infrastructure-mocks-MockChatService-test-ts",
+      "label": "web/src/infrastructure/mocks/MockChatService.test.ts",
+      "category": "Messaging and email",
+      "source": "web/src/infrastructure/mocks/MockChatService.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "MockChatService.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-infrastructure-mocks-MockEngagementRepository-test-ts",
+      "label": "web/src/infrastructure/mocks/MockEngagementRepository.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/infrastructure/mocks/MockEngagementRepository.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "MockEngagementRepository.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-infrastructure-mocks-MockMotionRepository-test-ts",
+      "label": "web/src/infrastructure/mocks/MockMotionRepository.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/infrastructure/mocks/MockMotionRepository.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "MockMotionRepository.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-infrastructure-mocks-MockVoteRepository-test-ts",
+      "label": "web/src/infrastructure/mocks/MockVoteRepository.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/infrastructure/mocks/MockVoteRepository.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "MockVoteRepository.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-infrastructure-platform-androidApp-test-ts",
+      "label": "web/src/infrastructure/platform/androidApp.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/infrastructure/platform/androidApp.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "androidApp.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-infrastructure-platform-chunkRecovery-test-ts",
+      "label": "web/src/infrastructure/platform/chunkRecovery.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/infrastructure/platform/chunkRecovery.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "chunkRecovery.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-infrastructure-platform-deployment-test-ts",
+      "label": "web/src/infrastructure/platform/deployment.test.ts",
+      "category": "Deployment and infrastructure",
+      "source": "web/src/infrastructure/platform/deployment.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "deployment.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-infrastructure-platform-inAppBrowser-test-ts",
+      "label": "web/src/infrastructure/platform/inAppBrowser.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/infrastructure/platform/inAppBrowser.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "inAppBrowser.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-infrastructure-platform-notificationDelivery-test-ts",
+      "label": "web/src/infrastructure/platform/notificationDelivery.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/infrastructure/platform/notificationDelivery.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "notificationDelivery.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-infrastructure-platform-updateManifest-test-ts",
+      "label": "web/src/infrastructure/platform/updateManifest.test.ts",
+      "category": "Deployment and infrastructure",
+      "source": "web/src/infrastructure/platform/updateManifest.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "updateManifest.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-infrastructure-platform-webPush-test-ts",
+      "label": "web/src/infrastructure/platform/webPush.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/infrastructure/platform/webPush.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "webPush.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-infrastructure-utils-chatWindowCache-test-ts",
+      "label": "web/src/infrastructure/utils/chatWindowCache.test.ts",
+      "category": "Messaging and email",
+      "source": "web/src/infrastructure/utils/chatWindowCache.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "chatWindowCache.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-components-EmbeddedOrganizationChat-test-ts",
+      "label": "web/src/ui/components/EmbeddedOrganizationChat.test.ts",
+      "category": "Messaging and email",
+      "source": "web/src/ui/components/EmbeddedOrganizationChat.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "EmbeddedOrganizationChat.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-components-EventVenues-test-ts",
+      "label": "web/src/ui/components/EventVenues.test.ts",
+      "category": "Events and services",
+      "source": "web/src/ui/components/EventVenues.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "EventVenues.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-components-GroupVenueHistory-test-ts",
+      "label": "web/src/ui/components/GroupVenueHistory.test.ts",
+      "category": "Events and services",
+      "source": "web/src/ui/components/GroupVenueHistory.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "GroupVenueHistory.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-components-OrganizationAvatar-test-ts",
+      "label": "web/src/ui/components/OrganizationAvatar.test.ts",
+      "category": "Organizations and membership",
+      "source": "web/src/ui/components/OrganizationAvatar.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "OrganizationAvatar.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-components-OrganizationFundingChart-test-ts",
+      "label": "web/src/ui/components/OrganizationFundingChart.test.ts",
+      "category": "Ecosystem and data",
+      "source": "web/src/ui/components/OrganizationFundingChart.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "OrganizationFundingChart.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-components-TeamPeoplePicker-test-ts",
+      "label": "web/src/ui/components/TeamPeoplePicker.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/ui/components/TeamPeoplePicker.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "TeamPeoplePicker.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-components-chat-MatrixVideoCall-test-ts",
+      "label": "web/src/ui/components/chat/MatrixVideoCall.test.ts",
+      "category": "Messaging and email",
+      "source": "web/src/ui/components/chat/MatrixVideoCall.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "MatrixVideoCall.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-components-companyFinancing-test-ts",
+      "label": "web/src/ui/components/companyFinancing.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/ui/components/companyFinancing.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "companyFinancing.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-components-financingImport-test-ts",
+      "label": "web/src/ui/components/financingImport.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/ui/components/financingImport.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "financingImport.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-components-fundingDashboard-test-ts",
+      "label": "web/src/ui/components/fundingDashboard.test.ts",
+      "category": "Ecosystem and data",
+      "source": "web/src/ui/components/fundingDashboard.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "fundingDashboard.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-components-organizationEvidenceImport-test-ts",
+      "label": "web/src/ui/components/organizationEvidenceImport.test.ts",
+      "category": "Organizations and membership",
+      "source": "web/src/ui/components/organizationEvidenceImport.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organizationEvidenceImport.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-components-organizationFollowApi-test-ts",
+      "label": "web/src/ui/components/organizationFollowApi.test.ts",
+      "category": "Organizations and membership",
+      "source": "web/src/ui/components/organizationFollowApi.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organizationFollowApi.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-components-organizationFunds-test-ts",
+      "label": "web/src/ui/components/organizationFunds.test.ts",
+      "category": "Ecosystem and data",
+      "source": "web/src/ui/components/organizationFunds.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organizationFunds.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-components-organizationMemberSearch-test-ts",
+      "label": "web/src/ui/components/organizationMemberSearch.test.ts",
+      "category": "Organizations and membership",
+      "source": "web/src/ui/components/organizationMemberSearch.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organizationMemberSearch.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-components-posterEditorState-test-ts",
+      "label": "web/src/ui/components/posterEditorState.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/ui/components/posterEditorState.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "posterEditorState.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-components-profile-BioMarkdown-test-ts",
+      "label": "web/src/ui/components/profile/BioMarkdown.test.ts",
+      "category": "Organizations and membership",
+      "source": "web/src/ui/components/profile/BioMarkdown.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "BioMarkdown.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-components-supportEventLinks-test-ts",
+      "label": "web/src/ui/components/supportEventLinks.test.ts",
+      "category": "Events and services",
+      "source": "web/src/ui/components/supportEventLinks.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "supportEventLinks.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-components-system-AppUpdatePrompt-test-ts",
+      "label": "web/src/ui/components/system/AppUpdatePrompt.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/ui/components/system/AppUpdatePrompt.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "AppUpdatePrompt.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-components-tedcoFunding-test-ts",
+      "label": "web/src/ui/components/tedcoFunding.test.ts",
+      "category": "Ecosystem and data",
+      "source": "web/src/ui/components/tedcoFunding.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "tedcoFunding.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-hooks-localFormDraft-test-ts",
+      "label": "web/src/ui/hooks/localFormDraft.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/ui/hooks/localFormDraft.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "localFormDraft.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-hooks-useOrganizationView-test-ts",
+      "label": "web/src/ui/hooks/useOrganizationView.test.ts",
+      "category": "Organizations and membership",
+      "source": "web/src/ui/hooks/useOrganizationView.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "useOrganizationView.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-timebank-links-test-ts",
+      "label": "web/src/ui/timebank/links.test.ts",
+      "category": "Timebank",
+      "source": "web/src/ui/timebank/links.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "links.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-utils-calendar-test-ts",
+      "label": "web/src/ui/utils/calendar.test.ts",
+      "category": "Events and services",
+      "source": "web/src/ui/utils/calendar.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "calendar.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-utils-externalEventListings-test-ts",
+      "label": "web/src/ui/utils/externalEventListings.test.ts",
+      "category": "Events and services",
+      "source": "web/src/ui/utils/externalEventListings.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "externalEventListings.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-utils-qr-test-ts",
+      "label": "web/src/ui/utils/qr.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/ui/utils/qr.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "qr.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-utils-vcard-test-ts",
+      "label": "web/src/ui/utils/vcard.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/ui/utils/vcard.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "vcard.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-views-availabilityDraft-test-ts",
+      "label": "web/src/ui/views/availabilityDraft.test.ts",
+      "category": "Events and services",
+      "source": "web/src/ui/views/availabilityDraft.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "availabilityDraft.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-views-economicOpsUtils-test-ts",
+      "label": "web/src/ui/views/economicOpsUtils.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/ui/views/economicOpsUtils.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "economicOpsUtils.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-views-email-EmailCampaignStats-test-ts",
+      "label": "web/src/ui/views/email/EmailCampaignStats.test.ts",
+      "category": "Messaging and email",
+      "source": "web/src/ui/views/email/EmailCampaignStats.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "EmailCampaignStats.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-views-email-emailApi-test-ts",
+      "label": "web/src/ui/views/email/emailApi.test.ts",
+      "category": "Messaging and email",
+      "source": "web/src/ui/views/email/emailApi.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "emailApi.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-views-email-outreachCsv-test-ts",
+      "label": "web/src/ui/views/email/outreachCsv.test.ts",
+      "category": "Messaging and email",
+      "source": "web/src/ui/views/email/outreachCsv.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "outreachCsv.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-views-financeUtils-test-ts",
+      "label": "web/src/ui/views/financeUtils.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/ui/views/financeUtils.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "financeUtils.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-views-peopleDirectory-test-ts",
+      "label": "web/src/ui/views/peopleDirectory.test.ts",
+      "category": "Organizations and membership",
+      "source": "web/src/ui/views/peopleDirectory.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "peopleDirectory.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-views-public-attendanceApi-test-ts",
+      "label": "web/src/ui/views/public/attendanceApi.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/ui/views/public/attendanceApi.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "attendanceApi.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-views-public-organizationEvents-test-ts",
+      "label": "web/src/ui/views/public/organizationEvents.test.ts",
+      "category": "Events and services",
+      "source": "web/src/ui/views/public/organizationEvents.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organizationEvents.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-tests-e2e-auth-redirect-spec-ts",
+      "label": "web/tests/e2e/auth-redirect.spec.ts",
+      "category": "Identity and access",
+      "source": "web/tests/e2e/auth-redirect.spec.ts",
+      "kind": "playwright",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "auth-redirect.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-tests-e2e-brand-guide-export-spec-ts",
+      "label": "web/tests/e2e/brand-guide-export.spec.ts",
+      "category": "User interface and integrations",
+      "source": "web/tests/e2e/brand-guide-export.spec.ts",
+      "kind": "playwright",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "brand-guide-export.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-tests-e2e-email-outreach-spec-ts",
+      "label": "web/tests/e2e/email-outreach.spec.ts",
+      "category": "Messaging and email",
+      "source": "web/tests/e2e/email-outreach.spec.ts",
+      "kind": "playwright",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "email-outreach.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-tests-e2e-email-sender-spec-ts",
+      "label": "web/tests/e2e/email-sender.spec.ts",
+      "category": "Messaging and email",
+      "source": "web/tests/e2e/email-sender.spec.ts",
+      "kind": "playwright",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "email-sender.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-tests-e2e-group-homepage-spec-ts",
+      "label": "web/tests/e2e/group-homepage.spec.ts",
+      "category": "User interface and integrations",
+      "source": "web/tests/e2e/group-homepage.spec.ts",
+      "kind": "playwright",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "group-homepage.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-tests-e2e-group-mailing-list-spec-ts",
+      "label": "web/tests/e2e/group-mailing-list.spec.ts",
+      "category": "Messaging and email",
+      "source": "web/tests/e2e/group-mailing-list.spec.ts",
+      "kind": "playwright",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "group-mailing-list.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-tests-e2e-health-insurance-spec-ts",
+      "label": "web/tests/e2e/health-insurance.spec.ts",
+      "category": "Events and services",
+      "source": "web/tests/e2e/health-insurance.spec.ts",
+      "kind": "playwright",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "health-insurance.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-tests-e2e-layout-smoke-spec-ts",
+      "label": "web/tests/e2e/layout-smoke.spec.ts",
+      "category": "User interface and integrations",
+      "source": "web/tests/e2e/layout-smoke.spec.ts",
+      "kind": "playwright",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "layout-smoke.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-tests-e2e-life-insurance-spec-ts",
+      "label": "web/tests/e2e/life-insurance.spec.ts",
+      "category": "Events and services",
+      "source": "web/tests/e2e/life-insurance.spec.ts",
+      "kind": "playwright",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "life-insurance.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-tests-e2e-mcp-login-spec-ts",
+      "label": "web/tests/e2e/mcp-login.spec.ts",
+      "category": "Identity and access",
+      "source": "web/tests/e2e/mcp-login.spec.ts",
+      "kind": "playwright",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "mcp-login.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-tests-e2e-native-chat-layout-spec-ts",
+      "label": "web/tests/e2e/native-chat-layout.spec.ts",
+      "category": "Messaging and email",
+      "source": "web/tests/e2e/native-chat-layout.spec.ts",
+      "kind": "playwright",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "native-chat-layout.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-tests-e2e-organization-iam-spec-ts",
+      "label": "web/tests/e2e/organization-iam.spec.ts",
+      "category": "Organizations and membership",
+      "source": "web/tests/e2e/organization-iam.spec.ts",
+      "kind": "playwright",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organization-iam.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-tests-e2e-organization-support-spec-ts",
+      "label": "web/tests/e2e/organization-support.spec.ts",
+      "category": "Organizations and membership",
+      "source": "web/tests/e2e/organization-support.spec.ts",
+      "kind": "playwright",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organization-support.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-tests-e2e-people-connections-spec-ts",
+      "label": "web/tests/e2e/people-connections.spec.ts",
+      "category": "User interface and integrations",
+      "source": "web/tests/e2e/people-connections.spec.ts",
+      "kind": "playwright",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "people-connections.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-tests-e2e-property-casualty-insurance-spec-ts",
+      "label": "web/tests/e2e/property-casualty-insurance.spec.ts",
+      "category": "Events and services",
+      "source": "web/tests/e2e/property-casualty-insurance.spec.ts",
+      "kind": "playwright",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "property-casualty-insurance.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-tests-e2e-provider-scheduling-spec-ts",
+      "label": "web/tests/e2e/provider-scheduling.spec.ts",
+      "category": "User interface and integrations",
+      "source": "web/tests/e2e/provider-scheduling.spec.ts",
+      "kind": "playwright",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "provider-scheduling.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-tests-e2e-tenant-routing-spec-ts",
+      "label": "web/tests/e2e/tenant-routing.spec.ts",
+      "category": "User interface and integrations",
+      "source": "web/tests/e2e/tenant-routing.spec.ts",
+      "kind": "playwright",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "tenant-routing.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-tests-e2e-ui-ux-backlog-spec-ts",
+      "label": "web/tests/e2e/ui-ux-backlog.spec.ts",
+      "category": "User interface and integrations",
+      "source": "web/tests/e2e/ui-ux-backlog.spec.ts",
+      "kind": "playwright",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "ui-ux-backlog.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-tests-e2e-ui-ux-system-spec-ts",
+      "label": "web/tests/e2e/ui-ux-system.spec.ts",
+      "category": "User interface and integrations",
+      "source": "web/tests/e2e/ui-ux-system.spec.ts",
+      "kind": "playwright",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "ui-ux-system.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-tests-e2e-user-calendar-spec-ts",
+      "label": "web/tests/e2e/user-calendar.spec.ts",
+      "category": "Events and services",
+      "source": "web/tests/e2e/user-calendar.spec.ts",
+      "kind": "playwright",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "user-calendar.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-tests-unit-insurance-fixture-safety-test-mjs",
+      "label": "web/tests/unit/insurance-fixture-safety.test.mjs",
+      "category": "Events and services",
+      "source": "web/tests/unit/insurance-fixture-safety.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "insurance-fixture-safety.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-tests-unit-portal-routes-test-mjs",
+      "label": "web/tests/unit/portal-routes.test.mjs",
+      "category": "User interface and integrations",
+      "source": "web/tests/unit/portal-routes.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "portal-routes.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-tests-unit-seo-test-mjs",
+      "label": "web/tests/unit/seo.test.mjs",
+      "category": "User interface and integrations",
+      "source": "web/tests/unit/seo.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "seo.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-tests-unit-web-update-release-test-mjs",
+      "label": "web/tests/unit/web-update-release.test.mjs",
+      "category": "Deployment and infrastructure",
+      "source": "web/tests/unit/web-update-release.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "web-update-release.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "browser-desktop",
+      "label": "Desktop Chromium",
+      "source": "web/scripts/test-local-team-form.py",
+      "kind": "browser",
+      "cases": [
+        {
+          "id": "setup",
+          "label": "Docker browser startup and local test isolation"
+        },
+        {
+          "id": "draft",
+          "label": "Required fields, saved drafts and clearing"
+        },
+        {
+          "id": "submission",
+          "label": "Registration, shared team, invitations, image and submission"
+        },
+        {
+          "id": "review",
+          "label": "Host review, pagination and CSV exports"
+        },
+        {
+          "id": "favorites",
+          "label": "Card expansion, favorites, team privacy and attachments"
+        },
+        {
+          "id": "editing",
+          "label": "Multiple submissions, editing and withdrawal"
+        },
+        {
+          "id": "finals",
+          "label": "Finalists, one final vote, live chart, ties and closing"
+        },
+        {
+          "id": "closure",
+          "label": "Intake closure and complete workflow"
+        },
+        {
+          "id": "status-page",
+          "label": "Test status page, counts, colors and mobile layout"
+        }
+      ],
+      "category": "Submission and voting"
+    },
+    {
+      "id": "browser-pixel",
+      "label": "Pixel 7 emulation",
+      "source": "web/scripts/test-local-team-form.py",
+      "kind": "browser",
+      "cases": [
+        {
+          "id": "setup",
+          "label": "Docker browser startup and local test isolation"
+        },
+        {
+          "id": "draft",
+          "label": "Required fields, saved drafts and clearing"
+        },
+        {
+          "id": "submission",
+          "label": "Registration, shared team, invitations, image and submission"
+        },
+        {
+          "id": "review",
+          "label": "Host review, pagination and CSV exports"
+        },
+        {
+          "id": "favorites",
+          "label": "Card expansion, favorites, team privacy and attachments"
+        },
+        {
+          "id": "editing",
+          "label": "Multiple submissions, editing and withdrawal"
+        },
+        {
+          "id": "finals",
+          "label": "Finalists, one final vote, live chart, ties and closing"
+        },
+        {
+          "id": "closure",
+          "label": "Intake closure and complete workflow"
+        },
+        {
+          "id": "status-page",
+          "label": "Test status page, counts, colors and mobile layout"
+        }
+      ],
+      "category": "Submission and voting"
+    },
+    {
+      "id": "checks",
+      "label": "Build and type checks",
+      "kind": "checks",
+      "cases": [
+        {
+          "id": "web-build",
+          "label": "Frontend production build"
+        },
+        {
+          "id": "api-types",
+          "label": "API TypeScript check"
+        }
+      ],
+      "category": "Build and type checks"
+    }
+  ]
+}

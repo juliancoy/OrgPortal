@@ -1,3 +1,4 @@
+import { resolveBrandPalette } from '../../../../../shared/brandPalette'
 import { OrganizationViewSwitcher } from '../../components/OrganizationViewSwitcher'
 import { EventSubmissions } from '../../components/EventSubmissions'
 import { OrganizationAvatar } from '../../components/OrganizationAvatar'
@@ -279,8 +280,20 @@ export function PublicEventPage() {
   const tenant = getGroupSite()
   const brand = getActivePortalProfileConfig()
   const lifeTech = tenant?.home_org_slug === 'lifetech'
+  const applyGold = resolveBrandPalette({ ...tenant, profile: brand.id, theme_color: brand.themeColor }).find(color => color.label === 'BioTech Gold')?.value || '#D4AF37'
   const [presentationAction,setPresentationAction]=useState<PresentationFormAction|null>(null)
   const [presentationRevision,setPresentationRevision]=useState(0)
+  const [submissionPromptStatus, setSubmissionPromptStatus] = useState('')
+  const mcpPath = ['orgportal.cc', 'localhost', '127.0.0.1'].includes(window.location.hostname) ? '/mcp' : '/api/org/mcp'
+  const submissionPrompt = `Connect to ${window.location.origin}${mcpPath} with my account using OAuth. Help me submit a presentation for ${window.location.origin}${location.pathname}#apply. Ask for my organization, presentation title and summary, and use the organization's shared team list. Show me a preview and ask for my approval before submitting.`
+  async function copySubmissionPrompt() {
+    try {
+      await navigator.clipboard.writeText(submissionPrompt)
+      setSubmissionPromptStatus('Prompt copied')
+    } catch {
+      setSubmissionPromptStatus('Select and copy the prompt below.')
+    }
+  }
   useEffect(()=>setPresentationAction(null),[slug])
   const [activeTab, setActiveTab] = useState<'info' | 'poster' | 'apply' | 'submissions'>('info')
   function selectEventTab(tab: 'info' | 'poster' | 'apply' | 'submissions') {
@@ -778,7 +791,7 @@ export function PublicEventPage() {
             keyEvent.preventDefault();const next=keyEvent.key==='Home'?'info':keyEvent.key==='End'?'submissions':tabs[(index+(keyEvent.key==='ArrowLeft'?tabs.length-1:1))%tabs.length]
             selectEventTab(next);document.getElementById(`event-${next}-tab`)?.focus()
           }}>
-            {([{key:'info',label:'Info',Icon:Info},{key:'poster',label:'Poster',Icon:FileImage},{key:'apply',label:'Apply',Icon:Send},{key:'submissions',label:'Submissions',Icon:Users}] as const).map(({key,label,Icon})=><button type="button" key={key} id={`event-${key}-tab`} role="tab" aria-selected={activeTab===key} aria-controls={`event-${key}-panel`} tabIndex={activeTab===key?0:-1} onClick={()=>selectEventTab(key)}><Icon size={19} aria-hidden="true" /><span>{label}</span></button>)}
+            {([{key:'info',label:'Info',Icon:Info},{key:'poster',label:'Poster',Icon:FileImage},{key:'apply',label:'Apply',Icon:Send},{key:'submissions',label:'Submissions',Icon:Users}] as const).map(({key,label,Icon})=><button type="button" key={key} id={`event-${key}-tab`} role="tab" aria-selected={activeTab===key} aria-controls={`event-${key}-panel`} tabIndex={activeTab===key?0:-1} onClick={()=>selectEventTab(key)} style={key==='apply'?{background:applyGold,color:'#17201c',borderColor:applyGold}:undefined}><Icon size={19} aria-hidden="true" /><span>{label}</span></button>)}
           </div>
           <section className="public-event-tab-panel" role="tabpanel" id="event-info-panel" aria-labelledby="event-info-tab" hidden={activeTab!=='info'}>
           {event.description ? (
@@ -970,6 +983,13 @@ export function PublicEventPage() {
             {activeTab==='poster'&&<EventPosterTools sourceUrl={event.source_url} eventLinks={event.links} organizationSlug={event.organization_slug} organizationLinks={event.organization_links} slug={event.slug} title={event.title} revision={event.updated_at || ''} inline />}
           </section>
           <section className="public-event-tab-panel" role="tabpanel" id="event-apply-panel" aria-labelledby="event-apply-tab" hidden={activeTab!=='apply'}>
+          <section aria-label="Apply with AI" style={{ marginBottom: '1.5rem' }}>
+            <h3>Apply with AI</h3>
+            <p>Copy this prompt into an AI assistant that supports MCP, then approve the connection with your account.</p>
+            <textarea aria-label="Submission prompt" readOnly value={submissionPrompt} rows={5} style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical' }} onFocus={e => e.currentTarget.select()} />
+            <button type="button" className="secondary" onClick={copySubmissionPrompt}><Copy size={16} aria-hidden="true" /> Copy prompt</button>
+            <span role="status">{submissionPromptStatus}</span>
+          </section>
           <EventPresentations key={`presentations-${event.id}`} eventId={event.id} formAction={presentationAction} onActionHandled={()=>setPresentationAction(null)} onSaved={()=>setPresentationRevision(value=>value+1)} />
           </section>
           <section className="public-event-tab-panel" role="tabpanel" id="event-submissions-panel" aria-labelledby="event-submissions-tab" hidden={activeTab!=='submissions'}>

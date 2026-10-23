@@ -105,3 +105,18 @@
 
 .presentation-login { display: grid; justify-items: start; gap: .75rem; }
 .presentation-login p { margin: 0; }
+
+.presentation-submission > .submission-card-expand { position: absolute; top: .4rem; left: .5rem; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; border-radius: 50%; }
+.presentation-final-round { margin-block: 1rem 2rem; padding: 1rem; border: 1px solid var(--border-color, #64748b); border-radius: .75rem; }
+.presentation-finalist-editor { display: grid; gap: .75rem; margin-top: 1rem; }
+.presentation-finalist-editor fieldset { max-height: 22rem; overflow: auto; min-width: 0; }
+.presentation-finalist-option { display: flex; align-items: start; gap: .5rem; padding: .5rem 0; overflow-wrap: anywhere; }
+.presentation-finalist-option input { flex: 0 0 auto; margin-top: .25rem; }
+.presentation-results { display: grid; gap: 1rem; list-style: none; margin: 1rem 0; padding: 0; }
+.presentation-results li { padding: .75rem; border: 1px solid var(--border-color, #64748b); border-radius: .5rem; overflow-wrap: anywhere; }
+.presentation-results li.is-selected { border-color: #D4AF37; box-shadow: 0 0 0 1px #D4AF37; }
+.presentation-result-heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem; }
+.presentation-results li p { margin: .4rem 0; }
+.presentation-result-track { height: 1rem; margin: .5rem 0; background: #64748b33; border-radius: .25rem; overflow: hidden; }
+.presentation-result-track > div { height: 100%; background: #D4AF37; transition: width .3s ease; }
+@media (prefers-reduced-motion: reduce) { .presentation-result-track > div { transition: none; } }

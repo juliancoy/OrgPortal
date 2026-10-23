@@ -1,4 +1,5 @@
 import { submissionPresenters, validateSubmissionPresenters } from './submissionPresenters'
+import { presentationFinalRoundRoutes } from './presentationFinalRound'
 import { presentationAttachmentRoutes, publicAttachment } from './presentationAttachments'
 import { stream } from 'hono/streaming';
 import { Hono } from 'hono';
@@ -10,6 +11,7 @@ export function presentationRoutes<E extends PresentationEnv>(auth: (env:E, requ
  const app = new Hono<{Bindings:E}>();
  app.route('/',presentationAttachmentRoutes(auth));
  app.use('*',async(c,next)=>{c.header('Cache-Control','no-store');await next();});
+ app.route('/',presentationFinalRoundRoutes(auth));
  async function event(db:D1Database,id:string) {
   const row=await db.prepare('SELECT id,host_org_id,starts_at,ends_at FROM events WHERE id=?').bind(id).first<{id:string;host_org_id:string|null;starts_at:string|null;ends_at:string|null}>();
   if(!row || !row.host_org_id) throw new HTTPException(404,{message:'Hosted event not found'});
@@ -37,6 +39,13 @@ export function presentationRoutes<E extends PresentationEnv>(auth: (env:E, requ
   const attachments=page.length?await c.env.DB.prepare(`SELECT id,submission_id,name,content_type,size FROM event_presentation_attachments WHERE event_id=? AND state='ready' AND submission_id IN (${page.map(()=>'?').join(',')})`).bind(e.id,...page.map(row=>row.submission_id)).all<{id:string;submission_id:string;name:string;content_type:string;size:number}>():{results:[]};
   const presenters=await submissionPresenters(c.env.DB,e.id,page.map(row=>row.submission_id));
   return c.json({favoriteLimit:settings?.favorite_limit??3,submissions:page.map(row=>({...row,presenters:presenters.get(row.submission_id)||[],attachments:attachments.results.filter(file=>file.submission_id===row.submission_id).map(publicAttachment)})),next:rows.results.length>50?rows.results[49].submission_id:null});
+ });
+ app.get('/:id/presentations/team/:org',async c=>{
+  const user=await auth(c.env,c.req.raw);await event(c.env.DB,c.req.param('id'));
+  const org=c.req.param('org');await manager(c.env.DB,user,org);
+  const members=await c.env.DB.prepare(`SELECT m.user_id AS userId,COALESCE(m.user_name,'Team member') AS name,u.photo_url AS photo FROM organization_memberships m LEFT JOIN user_contact_pages u ON u.user_id=m.user_id AND u.enabled=1 WHERE m.organization_id=? AND m.status='active' ORDER BY m.created_at,m.user_id`).bind(org).all();
+  const invitations=await c.env.DB.prepare("SELECT id AS invitationId,email,email AS name FROM organization_invitations WHERE organization_id=? AND purpose='member' AND status='pending' AND expires_at>? ORDER BY created_at,id").bind(org,Date.now()).all();
+  return c.json({people:[...members.results.map(({photo,...member})=>({...member,...(typeof photo==='string'?{photo}: {})})),...invitations.results]});
  });
  app.get('/:id/presentations/favorites',async c=>{
   const user=await auth(c.env,c.req.raw),e=await event(c.env.DB,c.req.param('id'));
@@ -134,7 +143,7 @@ export function presentationRoutes<E extends PresentationEnv>(auth: (env:E, requ
   await manager(c.env.DB,user,org);
   const title=typeof body.title==='string'?body.title.trim():'',summary=typeof body.summary==='string'?body.summary.trim():'';
   if(!title || title.length>200 || !summary || summary.length>5000) throw new HTTPException(400,{message:'A title (up to 200 characters) and summary (up to 5000 characters) are required'});
-  const presenters=await validateSubmissionPresenters(c.env.DB,org,body.presenters===undefined?JSON.parse(existing?.presenters_json||'[]'):body.presenters);
+  const presenters=await validateSubmissionPresenters(c.env.DB,org,body.presenters===undefined?[{userId:user.id}]:body.presenters);
   // New applications require open intake. Existing applications remain editable
   // until expiry, with live team authority checked in the write itself.
   const result=await c.env.DB.prepare(`INSERT INTO event_submissions(event_id,submission_id,organization_id,submitted_by,title,summary,status,updated_at,expires_at,presenters_json)

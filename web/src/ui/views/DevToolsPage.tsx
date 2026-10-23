@@ -415,6 +415,7 @@ For photo uploads, ask which local files and whether they belong in the organiza
         <div className="portal-section-header">
           <div>
             <h1 style={{ margin: 0 }}>Dev Tools Admin Panel</h1>
+            <Link to="/test-status">View test status</Link>
             <p className="muted" style={{ margin: '0.4rem 0 0 0' }}>
               Single-page PAT and OAuth operations with live inventory and lifecycle controls.
             </p>

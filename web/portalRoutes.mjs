@@ -81,6 +81,7 @@ const paths = [
   "/chat",
   "/chat/:roomId",
   "/dev-tools",
+  "/test-status",
   "/tools/business-cards",
   "/admin",
   "/admin/nametags",

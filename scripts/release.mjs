@@ -22,10 +22,14 @@ function run(command, args, cwd = root, extraEnv = {}) {
 const npm = (dir, ...args) => run('npm', args, resolve(root, dir));
 if (action === 'check') {
   if (web) {
-    npm('web', 'test', '--', '--maxWorkers=2');
-    run('bash', ['-c', 'node --test cloudflare/*.test.mjs web/tests/unit/*.test.mjs']);
+    run('node', ['scripts/test-status.mjs', 'capture', 'web']);
+    run('node', ['scripts/test-status.mjs', 'capture', 'routing']);
   }
-  if (api) { npm('org-worker', 'run', 'typecheck'); npm('org-worker', 'test'); }
+  if (api) {
+    npm('org-worker', 'run', 'typecheck');
+    npm('org-worker', 'run', 'build:metadata');
+    run('node', ['scripts/test-status.mjs', 'capture', 'api']);
+  }
 }
 if (action === 'build') {
   mkdirSync('.release', { recursive: true });

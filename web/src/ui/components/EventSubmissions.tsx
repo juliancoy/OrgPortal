@@ -1,4 +1,5 @@
 import { SubmissionActions } from './SubmissionActions'
+import { PresentationFinalRound } from './PresentationFinalRound'
 import { EventApplicationReview } from './EventApplicationReview'
 import type { PresentationApplication } from './EventPresentations'
 import { SubmissionPresenters } from './SubmissionPresenters'
@@ -6,7 +7,7 @@ import { SubmissionAttachments } from './SubmissionAttachments'
 import type { SubmissionAttachment } from './submissionAttachments'
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Star } from 'lucide-react'
+import { Plus, Minus, Star } from 'lucide-react'
 import { useAuth } from '../../app/AppProviders'
 import { BioMarkdown } from './profile/BioMarkdown'
 import { OrgImage } from './media/OrgImage'
@@ -16,9 +17,12 @@ type Submission={presenters?:{name:string;photo?:string;pending?:boolean}[];subm
 export function EventSubmissions({eventId,onEdit,onDeleted}:{eventId:string;onEdit:(application:PresentationApplication)=>void;onDeleted:(submissionId:string)=>void}) {
  const {token}=useAuth(),location=useLocation()
  const base=`/api/org/api/network/events/${encodeURIComponent(eventId)}/presentations`
+ const [expanded,setExpanded]=useState<string[]>([])
+ useEffect(()=>setExpanded([]),[eventId,token])
  const [rows,setRows]=useState<Submission[]>([]),[favorites,setFavorites]=useState<string[]>([])
  const [editableApplications,setEditableApplications]=useState<Record<string,PresentationApplication>>({})
  const [reviewOpen,setReviewOpen]=useState(false),[reviewRevision,setReviewRevision]=useState(0)
+ const [finalPhase,setFinalPhase]=useState<'shortlist'|'open'|'closed'>('shortlist')
  useEffect(()=>setReviewOpen(false),[base,token])
  const [managedTeams,setManagedTeams]=useState<string[]>([])
  const [limit,setLimit]=useState(3),[canManage,setCanManage]=useState(false),[limitDraft,setLimitDraft]=useState('3')
@@ -56,9 +60,11 @@ export function EventSubmissions({eventId,onEdit,onDeleted}:{eventId:string;onEd
   finally{setBusy(false)}
  }
  return <section className="portal-card presentation-applications" aria-label="Event submissions">
-  <h2>Submissions</h2><p>Explore the teams and select up to {limit} favorites for this event. You can change your selections.</p>
-  {token?(ready&&<p role="status">{favorites.length} of {limit} favorites selected</p>):<p><Link to={`/users/login?next=${encodeURIComponent(location.pathname+location.search+'#submissions')}`}>Sign in</Link> to save your favorites.</p>}
-  {canManage&&<form className="presentation-form" aria-label="Submission voting settings" onSubmit={event=>{event.preventDefault();setBusy(true);setError('');void request('/settings',{method:'PUT',body:JSON.stringify({favoriteLimit:Number(limitDraft)})}).then(data=>{setLimit(data.favoriteLimit);setRevision(value=>value+1)}).catch(reason=>setError(reason.message)).finally(()=>setBusy(false))}}>
+  <h2>Submissions</h2>
+  <PresentationFinalRound eventId={eventId} canManage={canManage} onPhaseChange={setFinalPhase} />
+  {finalPhase==='shortlist'?<><p>Explore the teams and select up to {limit} favorites for this event. You can change your selections.</p>
+  {token?(ready&&<p role="status">{favorites.length} of {limit} favorites selected</p>):<p><Link to={`/users/login?next=${encodeURIComponent(location.pathname+location.search+'#submissions')}`}>Sign in</Link> to save your favorites.</p>}</>:<h3>All submissions · preliminary favorites</h3>}
+  {canManage&&finalPhase==='shortlist'&&<form className="presentation-form" aria-label="Submission voting settings" onSubmit={event=>{event.preventDefault();setBusy(true);setError('');void request('/settings',{method:'PUT',body:JSON.stringify({favoriteLimit:Number(limitDraft)})}).then(data=>{setLimit(data.favoriteLimit);setRevision(value=>value+1)}).catch(reason=>setError(reason.message)).finally(()=>setBusy(false))}}>
    <label>Maximum favorites per person<input type="number" min="1" max="100" step="1" required value={limitDraft} onChange={event=>setLimitDraft(event.target.value)} /></label>
    <button className="btn-secondary" type="submit" disabled={busy}>Save favorite limit</button>
   </form>}
@@ -71,13 +77,17 @@ export function EventSubmissions({eventId,onEdit,onDeleted}:{eventId:string;onEd
   {ready&&!rows.length&&<p>No submissions yet.</p>}
   {rows.map(row=><article key={row.submission_id} className={`presentation-submission submission-voting-card${favorites.includes(row.submission_id)?' is-selected':''}`}>
    <div className="submission-team"><OrgImage src={row.image_url} alt="" style={{width:48,height:48,objectFit:'contain'}} /><Link to={`/orgs/${encodeURIComponent(row.organization_slug)}`}>{row.organization_name}</Link></div>
-   <h3>{row.title}</h3><BioMarkdown value={row.summary} /><p>Status: {row.status} · {row.favorites} {row.favorites===1?'favorite':'favorites'}</p>
+   <button type="button" className="submission-card-expand" aria-label={`${expanded.includes(row.submission_id)?'Collapse':'Expand'} submission: ${row.title}`} aria-expanded={expanded.includes(row.submission_id)} aria-controls={`submission-details-${row.submission_id}`} onClick={()=>setExpanded(previous=>previous.includes(row.submission_id)?previous.filter(id=>id!==row.submission_id):[...previous,row.submission_id])}>{expanded.includes(row.submission_id)?<Minus size={20} aria-hidden="true" />:<Plus size={20} aria-hidden="true" />}</button>
+   <h3>{row.title}</h3><p>Status: {row.status} · {row.favorites} {row.favorites===1?'favorite':'favorites'}</p>
    {editableApplications[row.submission_id]&&<SubmissionActions eventId={eventId} application={editableApplications[row.submission_id]} onEdit={onEdit} onDeleted={submissionId=>{
     setRows(previous=>previous.filter(item=>item.submission_id!==submissionId));setFavorites(previous=>previous.filter(id=>id!==submissionId));setReviewRevision(value=>value+1);onDeleted(submissionId)
    }} />}
+   <div id={`submission-details-${row.submission_id}`} hidden={!expanded.includes(row.submission_id)}>
+   <BioMarkdown value={row.summary} />
    <SubmissionPresenters people={row.presenters || []} />
    <SubmissionAttachments eventId={eventId} submissionId={row.submission_id} initial={row.attachments} canManage={canManage||managedTeams.includes(row.submission_id)} />
-   <button type="button" className="submission-card-select" aria-pressed={favorites.includes(row.submission_id)} aria-label={`${favorites.includes(row.submission_id)?'Remove favorite':'Favorite'}: ${row.title}`} disabled={!token||!ready||busy||(!favorites.includes(row.submission_id)&&favorites.length>=limit)} onClick={()=>void toggle(row)}><span className="submission-card-state"><Star size={18} aria-hidden="true" fill={favorites.includes(row.submission_id)?'currentColor':'none'} /> {favorites.includes(row.submission_id)?'Selected favorite':'Choose favorite'}</span></button>
+   </div>
+   {finalPhase==='shortlist'&&<button type="button" className="submission-card-select" aria-pressed={favorites.includes(row.submission_id)} aria-label={`${favorites.includes(row.submission_id)?'Remove favorite':'Favorite'}: ${row.title}`} disabled={!token||!ready||busy||(!favorites.includes(row.submission_id)&&favorites.length>=limit)} onClick={()=>void toggle(row)}><span className="submission-card-state"><Star size={18} aria-hidden="true" fill={favorites.includes(row.submission_id)?'currentColor':'none'} /> {favorites.includes(row.submission_id)?'Selected favorite':'Choose favorite'}</span></button>}
   </article>)}
   {next&&<button type="button" className="btn-secondary" disabled={busy} onClick={()=>{
    setBusy(true);setError('');void request('/submissions?after='+encodeURIComponent(next)).then(data=>{setRows(previous=>[...new Map([...previous,...data.submissions].map((row:Submission)=>[row.submission_id,row])).values()]);setNext(data.next)}).catch(reason=>setError(reason.message)).finally(()=>setBusy(false))

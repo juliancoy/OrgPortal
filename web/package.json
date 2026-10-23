@@ -4,6 +4,11 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "test:status": "node ../scripts/test-status.mjs run",
+    "pretest:status": "node ../scripts/build-test-catalog.mjs",
+    "test:status:checks": "node ../scripts/test-status.mjs checks",
+    "test:status:refresh": "node ../scripts/test-status.mjs refresh",
+    "prebuild": "node scripts/build-test-status.mjs",
     "test:forms:docker": "python3 scripts/run-common-forms.py",
     "test:company-votes": "node scripts/test-company-votes.mjs",
     "dev": "vite",
