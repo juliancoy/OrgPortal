@@ -1,3 +1,4 @@
+import {beginBrowserSignIn} from '../../../infrastructure/auth/restoreSession'
 import { useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useGroupSite } from '../../../config/timebankCommunity'
@@ -10,6 +11,7 @@ export function UserLoginPage({ defaultNext }: { defaultNext?: string } = {}) {
   const next = normalizePostLoginPath(searchParams.get('next') || defaultNext || defaultPostLoginPath())
   const login = pidpSingleSignOnUrl(next)
   useEffect(() => {
+    beginBrowserSignIn()
     document.title = title
     window.location.replace(login)
   }, [login, title])

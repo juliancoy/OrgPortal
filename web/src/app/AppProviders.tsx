@@ -1,3 +1,4 @@
+import {restoreSessionToken,SessionEnded,logoutBrowserSession,beginBrowserSignIn} from '../infrastructure/auth/restoreSession'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { AppServices } from '../composition/createServices'
@@ -95,7 +96,9 @@ function writeStoredToken(storageKey: string, token: string | null): void {
 }
 
 function readInitialToken(isNativeRuntime: boolean): string | null {
-  return readStoredToken(isNativeRuntime ? NATIVE_TOKEN_STORAGE_KEY : BROWSER_TOKEN_STORAGE_KEY)
+  if(isNativeRuntime)return readStoredToken(NATIVE_TOKEN_STORAGE_KEY)
+  writeStoredToken(BROWSER_TOKEN_STORAGE_KEY,null)
+  return null
 }
 
 function decodeJwtExpiry(token: string | null): number | null {
@@ -146,10 +149,12 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
 
     window.addEventListener('pageshow', rehydrateVisibleSession)
     window.addEventListener('focus', rehydrateVisibleSession)
+    window.addEventListener('online', rehydrateVisibleSession)
     document.addEventListener('visibilitychange', handleVisibilityChange)
     return () => {
       window.removeEventListener('pageshow', rehydrateVisibleSession)
       window.removeEventListener('focus', rehydrateVisibleSession)
+      window.removeEventListener('online', rehydrateVisibleSession)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [])
@@ -282,7 +287,8 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
     tokenRef.current = nextToken
     setToken(nextToken)
     setRuntimeAccessToken(nextToken)
-    writeStoredToken(isNativeRuntime ? NATIVE_TOKEN_STORAGE_KEY : BROWSER_TOKEN_STORAGE_KEY, nextToken)
+    if(isNativeRuntime)writeStoredToken(NATIVE_TOKEN_STORAGE_KEY,nextToken)
+    else writeStoredToken(BROWSER_TOKEN_STORAGE_KEY,null)
   }, [isNativeRuntime])
 
   // Login with password.
@@ -291,6 +297,7 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
       const body = new URLSearchParams()
       body.set('username', email)
       body.set('password', password)
+      if(!isNativeRuntime)beginBrowserSignIn()
       const endpoint = isNativeRuntime ? '/auth/token' : '/auth/session/login'
       const resp = await fetch(pidpUrl(endpoint), {
         method: 'POST',
@@ -356,33 +363,15 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
     async function hydrateSession() {
       try {
         let activeToken = tokenRef.current
-        if (!activeToken) {
-          if (isNativeRuntime) {
-            activeToken = readStoredToken(NATIVE_TOKEN_STORAGE_KEY)
-            if (activeToken) {
-              setAuthToken(activeToken)
-            }
-          } else {
-            const sessionTokenResp = await fetch(pidpUrl('/auth/session-token'), {
-              credentials: 'include',
-              signal: controller.signal,
-            })
-            if (sessionTokenResp.ok) {
-              const sessionTokenData = (await sessionTokenResp.json()) as { access_token?: string }
-              activeToken = sessionTokenData.access_token ?? null
-              if (activeToken) {
-                setAuthToken(activeToken)
-              }
-            }
-            if (!activeToken) {
-              activeToken = readStoredToken(BROWSER_TOKEN_STORAGE_KEY)
-              if (activeToken) {
-                setAuthToken(activeToken)
-              }
-            }
-          }
+        if(isNativeRuntime){
+          if(!activeToken)activeToken=readStoredToken(NATIVE_TOKEN_STORAGE_KEY)
+          if(!activeToken)throw new SessionEnded('Not authenticated')
+        }else{
+          // Resume through the HttpOnly cookie, even if an old access token expired
+          // while Android suspended the page or the browser was closed.
+          activeToken=await restoreSessionToken(controller.signal)
         }
-        if (!activeToken) throw new Error('Not authenticated')
+        setAuthToken(activeToken)
 
         const resp = await fetch(pidpUrl('/auth/me'), {
           credentials: isNativeRuntime ? 'omit' : 'include',
@@ -392,7 +381,8 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
           signal: controller.signal,
         })
         
-        if (!resp.ok) throw new Error('Not authenticated')
+        if(resp.status===401 || resp.status===403)throw new SessionEnded('Not authenticated')
+        if(!resp.ok)throw new Error('Account service temporarily unavailable')
         
         const data = (await resp.json()) as PidpUser
         const displayName = data.identity_data?.display_name?.trim() || data.full_name?.trim() || data.email
@@ -436,8 +426,8 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
             setShowMigration(true)
           }
         }
-      } catch {
-        if (!cancelled) {
+      } catch (error) {
+        if (!cancelled && error instanceof SessionEnded) {
           setRoleState('guest')
           setAuthToken(null)
           setUserState(null)
@@ -590,14 +580,9 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
           window.location.reload()
           return
         }
-        // Browser flow: clear session cookie server-side.
-        fetch(pidpUrl('/auth/session/logout'), {
-          method: 'POST',
-          credentials: 'include',
-        }).then(() => {
-          window.location.reload()
-        }).catch(() => {
-          window.location.reload()
+        // Remember explicit sign-out while offline; never silently restore it.
+        void logoutBrowserSession().then(completed=>{
+          if(completed)window.location.reload()
         })
       },
     }),

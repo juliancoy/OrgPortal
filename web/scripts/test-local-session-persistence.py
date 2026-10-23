@@ -15,7 +15,8 @@ import docker
 from playwright.sync_api import sync_playwright, expect
 
 
-BASE = 'https://localhost:8443'
+BASE = os.getenv('PLAYWRIGHT_BASE_URL','https://localhost:8443').rstrip('/')
+assert urlparse(BASE).hostname in {'localhost','127.0.0.1'}, 'Use isolated local Docker'
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from service_names import service_name
 PREFIX = os.getenv('ORGPORTAL_SESSION_TEST_PREFIX', 'session-test-')
@@ -44,7 +45,9 @@ spec.loader.exec_module(local_login)
 local_login.preflight(IDENTITY, BASE)
 assert account['email'] == 'session-persistence@example.com'
 delivery_check = client.containers.get(IDENTITY).exec_run([
-    '/venv/bin/python', '-c', '''import asyncio
+    '/venv/bin/python', '-c', '''import sys
+sys.path.insert(0,'/app')
+import asyncio
 from main import _stored_email_delivery_settings
 from db import SessionLocal, engine
 async def check():
@@ -54,7 +57,7 @@ async def check():
     finally:
         await engine.dispose()
 asyncio.run(check())'''
-], workdir='/app')
+], workdir='/tmp')
 assert delivery_check.exit_code == 0, 'Session fixtures require local log email delivery'
 
 
