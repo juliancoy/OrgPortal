@@ -1,4 +1,5 @@
 import { refreshPublicReport } from '../../data/publicOrganization/cache'
+import { validatePublicOrganization } from '../../data/publicOrganization/organizations'
 import { shortGroupName } from '../../domain/organization/groupNames'
 import { useEffect, useId, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -19,7 +20,11 @@ export function PeerOrganizations({ organizationId, tags = [] }: { organizationI
     setLoading(true); setError('')
     void (async () => {
       const path = `/api/org/api/network/orgs/public/${encodeURIComponent(organizationId)}/peers?limit=${limit}&q=${encodeURIComponent(query)}`
-      const {data} = await refreshPublicReport<{organizations: PublicOrganization[]; hasMore: boolean}>(path, {signal: controller.signal, force: revision > 0})
+      const {data} = await refreshPublicReport<{organizations: PublicOrganization[]; hasMore: boolean}>(path, {signal: controller.signal, force: revision > 0, validate: value => {
+        const result = value as {organizations: PublicOrganization[]; hasMore: boolean}
+        if (!result || !Array.isArray(result.organizations) || typeof result.hasMore !== 'boolean') throw new Error('Invalid peer organizations response')
+        return {...result, organizations: result.organizations.map(row => validatePublicOrganization<PublicOrganization>(row))}
+      }})
       if (!controller.signal.aborted) { setOrganizations(data.organizations); setHasMore(data.hasMore) }
     })().catch(err => { if (!controller.signal.aborted) setError(err.message) })
       .finally(() => { if (!controller.signal.aborted) setLoading(false) })

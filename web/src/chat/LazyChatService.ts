@@ -5,10 +5,12 @@ export class LazyChatService implements ChatService {
   private service: ChatService | null = null
   private loading: Promise<ChatService> | null = null
 
-  constructor(private readonly load = async (): Promise<ChatService> => {
+  private readonly load: () => Promise<ChatService>
+
+  constructor(load = async (): Promise<ChatService> => {
     const { MatrixChatService } = await import('./matrixService')
     return new MatrixChatService()
-  }) {}
+  }) { this.load = load }
 
   async start(session: ChatSession) {
     this.loading ??= this.load().catch(error => {
