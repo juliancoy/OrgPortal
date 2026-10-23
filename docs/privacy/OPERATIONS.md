@@ -278,3 +278,5 @@ create another server-side store. Treat downloaded files as private organization
 records; include retained exports in the organization's deletion and sharing process.
 
 For account erasure, delete `event_presentation_favorites` rows using the verified canonical `user_id`. These private choices have no journal or replica copies. Record the erasure under the existing backup handling procedure. Do not select an identity by email.
+
+For submission attachment erasure, first revoke the proposal/download access, then delete the referenced `submission-attachments/` R2 objects before deleting their `event_presentation_attachments` rows. Preserve failed-deletion rows for retry; do not delete metadata first. The hourly `cleanupPresentationAttachments` job handles expired proposals, withdrawn/deleted parents and abandoned pending uploads. Scope erasure by verified canonical proposal ownership, event and organization; filenames and email addresses do not establish identity. Include stored object copies in the existing backup-erasure procedure.

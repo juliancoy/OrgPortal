@@ -1,3 +1,5 @@
+import { SubmissionAttachments } from './SubmissionAttachments'
+import type { SubmissionAttachment } from './submissionAttachments'
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Star } from 'lucide-react'
@@ -6,11 +8,12 @@ import { BioMarkdown } from './profile/BioMarkdown'
 import { OrgImage } from './media/OrgImage'
 import './event-presentations.css'
 
-type Submission={organization_id:string;organization_name:string;organization_slug:string;image_url:string|null;title:string;summary:string;status:string;favorites:number}
+type Submission={attachments?:SubmissionAttachment[];organization_id:string;organization_name:string;organization_slug:string;image_url:string|null;title:string;summary:string;status:string;favorites:number}
 export function EventSubmissions({eventId}:{eventId:string}) {
  const {token}=useAuth(),location=useLocation()
  const base=`/api/org/api/network/events/${encodeURIComponent(eventId)}/presentations`
  const [rows,setRows]=useState<Submission[]>([]),[favorites,setFavorites]=useState<string[]>([])
+ const [managedTeams,setManagedTeams]=useState<string[]>([])
  const [limit,setLimit]=useState(3),[canManage,setCanManage]=useState(false),[limitDraft,setLimitDraft]=useState('3')
  const [next,setNext]=useState<string|null>(null),[ready,setReady]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[revision,setRevision]=useState(0)
  async function request(path:string,options:RequestInit={},signal?:AbortSignal){
@@ -23,7 +26,7 @@ export function EventSubmissions({eventId}:{eventId:string}) {
   const controller=new AbortController();setReady(false);setCanManage(false);setError('');setFavorites([]);setRows([])
   void Promise.all([request('/submissions',{},controller.signal),token?request('/favorites',{},controller.signal):Promise.resolve({favorites:[]}),token?request('',{},controller.signal):Promise.resolve({canReview:false})]).then(([data,own,access])=>{
    if(controller.signal.aborted)return
-   setRows(data.submissions);setNext(data.next);setFavorites(own.favorites);setLimit(data.favoriteLimit);setLimitDraft(String(data.favoriteLimit));setCanManage(access.canReview);setReady(true)
+   setRows(data.submissions);setNext(data.next);setFavorites(own.favorites);setLimit(data.favoriteLimit);setLimitDraft(String(data.favoriteLimit));setCanManage(access.canReview);setManagedTeams((access.submissions||[]).map((row:Submission)=>row.organization_id));setReady(true)
   }).catch(reason=>{if(!controller.signal.aborted)setError(reason.message)})
   return()=>controller.abort()
  // All request dependencies are represented by base and token.
@@ -53,6 +56,7 @@ export function EventSubmissions({eventId}:{eventId:string}) {
   {rows.map(row=><article key={row.organization_id} className="presentation-submission">
    <div className="submission-team"><OrgImage src={row.image_url} alt="" style={{width:48,height:48,objectFit:'contain'}} /><Link to={`/orgs/${encodeURIComponent(row.organization_slug)}`}>{row.organization_name}</Link></div>
    <h3>{row.title}</h3><BioMarkdown value={row.summary} /><p>Status: {row.status} · {row.favorites} {row.favorites===1?'favorite':'favorites'}</p>
+   <SubmissionAttachments eventId={eventId} organizationId={row.organization_id} initial={row.attachments} canManage={canManage||managedTeams.includes(row.organization_id)} />
    <button type="button" className={favorites.includes(row.organization_id)?'btn-primary':'btn-secondary'} aria-pressed={favorites.includes(row.organization_id)} aria-label={`${favorites.includes(row.organization_id)?'Remove favorite':'Favorite'}: ${row.title}`} disabled={!token||!ready||busy||(!favorites.includes(row.organization_id)&&favorites.length>=limit)} onClick={()=>void toggle(row)}><Star size={18} aria-hidden="true" fill={favorites.includes(row.organization_id)?'currentColor':'none'} /> {favorites.includes(row.organization_id)?'Selected favorite':'Choose favorite'}</button>
   </article>)}
   {next&&<button type="button" className="btn-secondary" disabled={busy} onClick={()=>{

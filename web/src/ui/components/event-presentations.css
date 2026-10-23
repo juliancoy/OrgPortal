@@ -49,3 +49,14 @@
 
 .submission-team { display: flex; align-items: center; gap: .75rem; margin-bottom: 1rem; }
 .presentation-submission > button { display: inline-flex; align-items: center; gap: .5rem; }
+
+.submission-attachments { min-width: 0; border: 1px solid var(--border); border-radius: 12px; padding: 1rem; margin: 1rem 0; }
+.submission-attachments legend, .submission-attachments h4 { font-weight: 600; display: flex; align-items: center; gap: .5rem; }
+.submission-attachments ul { list-style: none; padding: 0; display: grid; gap: .75rem; }
+.submission-attachments li { display: flex; gap: .75rem; align-items: center; justify-content: space-between; min-width: 0; flex-wrap: wrap; }
+.submission-attachments li > span { overflow-wrap: anywhere; }
+.submission-attachment-link { display: flex; align-items: center; gap: .75rem; min-width: 0; flex: 1; overflow-wrap: anywhere; }
+.submission-attachment-link img { width: 88px; height: 68px; object-fit: contain; border-radius: 8px; }
+.submission-attachment-link small { display: block; color: var(--text-muted); margin-top: .3rem; }
+.submission-attachments input[type=file] { max-width: 100%; min-width: 0; font-size: .85rem; }
+.submission-attachments input[type=file]::file-selector-button { min-height: 44px; padding: .6rem .9rem; margin-right: .6rem; border: 1px solid var(--primary); border-radius: 999px; background: var(--panel); color: var(--primary); font: inherit; font-weight: 600; cursor: pointer; }

@@ -1,11 +1,13 @@
+import { presentationAttachmentRoutes, publicAttachment } from './presentationAttachments'
 import { stream } from 'hono/streaming';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { authorizeOrganization, organizationRole, type OrganizationActor } from './organizationIam';
 
-type PresentationEnv = { DB: D1Database };
+type PresentationEnv = { DB: D1Database; SCAN_IMAGES?: R2Bucket };
 export function presentationRoutes<E extends PresentationEnv>(auth: (env:E, request:Request)=>Promise<{id:string}>) {
  const app = new Hono<{Bindings:E}>();
+ app.route('/',presentationAttachmentRoutes(auth));
  app.use('*',async(c,next)=>{c.header('Cache-Control','no-store');await next();});
  async function event(db:D1Database,id:string) {
   const row=await db.prepare('SELECT id,host_org_id,starts_at,ends_at FROM events WHERE id=?').bind(id).first<{id:string;host_org_id:string|null;starts_at:string|null;ends_at:string|null}>();
@@ -30,7 +32,9 @@ export function presentationRoutes<E extends PresentationEnv>(auth: (env:E, requ
    FROM event_presentation_submissions s JOIN organizations o ON o.id=s.organization_id
    WHERE s.event_id=? AND ${active} AND s.organization_id>? ORDER BY s.organization_id LIMIT 51`).bind(e.id,after).all<{organization_id:string}>();
   const settings=await c.env.DB.prepare('SELECT favorite_limit FROM event_presentation_forms WHERE event_id=?').bind(e.id).first<{favorite_limit:number}>();
-  return c.json({favoriteLimit:settings?.favorite_limit??3,submissions:rows.results.slice(0,50),next:rows.results.length>50?rows.results[49].organization_id:null});
+  const page=rows.results.slice(0,50);
+  const attachments=page.length?await c.env.DB.prepare(`SELECT id,organization_id,name,content_type,size FROM event_presentation_attachments WHERE event_id=? AND state='ready' AND organization_id IN (${page.map(()=>'?').join(',')})`).bind(e.id,...page.map(row=>row.organization_id)).all<{id:string;organization_id:string;name:string;content_type:string;size:number}>():{results:[]};
+  return c.json({favoriteLimit:settings?.favorite_limit??3,submissions:page.map(row=>({...row,attachments:attachments.results.filter(file=>file.organization_id===row.organization_id).map(publicAttachment)})),next:rows.results.length>50?rows.results[49].organization_id:null});
  });
  app.get('/:id/presentations/favorites',async c=>{
   const user=await auth(c.env,c.req.raw),e=await event(c.env.DB,c.req.param('id'));
@@ -125,7 +129,8 @@ export function presentationRoutes<E extends PresentationEnv>(auth: (env:E, requ
    SELECT e.id,?,?,?,?,'submitted',?,strftime('%Y-%m-%dT%H:%M:%fZ',COALESCE(e.ends_at,e.starts_at),'+90 days') FROM events e JOIN event_presentation_forms f ON f.event_id=e.id
    WHERE e.id=? AND f.enabled=1 AND julianday(e.starts_at)>julianday('now') AND EXISTS(SELECT 1 FROM organization_memberships m WHERE m.organization_id=? AND m.user_id=? AND m.status='active' AND m.role IN ('owner','administrator'))
    ON CONFLICT(event_id,organization_id) DO UPDATE SET title=excluded.title,summary=excluded.summary,status='submitted',submitted_by=excluded.submitted_by,updated_at=excluded.updated_at,expires_at=excluded.expires_at`).bind(org,user.id,title,summary,new Date().toISOString(),e.id,org,user.id).run();
-  if(!result.meta.changes)throw new HTTPException(409,{message:'Applications are closed or team management access changed'});return c.json({status:'submitted'});
+  if(!result.meta.changes)throw new HTTPException(409,{message:'Applications are closed or team management access changed'});
+  await c.env.DB.prepare("UPDATE event_presentation_attachments SET expires_at=(SELECT expires_at FROM event_presentation_submissions WHERE event_id=? AND organization_id=?) WHERE event_id=? AND organization_id=? AND state='ready'").bind(e.id,org,e.id,org).run();return c.json({status:'submitted'});
  });
  app.patch('/:id/presentations/:org',async c=>{
   const user=await auth(c.env,c.req.raw),e=await event(c.env.DB,c.req.param('id'));await manager(c.env.DB,user,e.host_org_id!);

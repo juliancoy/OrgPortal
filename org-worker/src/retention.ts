@@ -1,5 +1,6 @@
+import { cleanupPresentationAttachments } from './presentationAttachments';
 // Bounded cleanup of explicitly temporary records only. No account/content purge.
-export async function runRetention(db: D1Database, now = Date.now(), dryRun = false) {
+export async function runRetention(db: D1Database, now = Date.now(), dryRun = false, bucket?: R2Bucket) {
   if (!Number.isSafeInteger(now) || now <= 0) throw new Error('Invalid retention clock');
   const cutoff = now - 23 * 3600_000; // hourly job leaves an hour to meet the 24h ceiling
   const rules: [string, string, string | number][] = [
@@ -24,6 +25,10 @@ export async function runRetention(db: D1Database, now = Date.now(), dryRun = fa
     ['event_company_votes', 'expires_at < ?', new Date(cutoff).toISOString()],
   ];
   const counts: Record<string, number> = {};
+  if (bucket && !dryRun) {
+    try { counts.event_presentation_attachments = await cleanupPresentationAttachments(db,bucket,now) }
+    catch { counts.event_presentation_attachment_cleanup_failed = 1 }
+  }
   for (const [table, where, value] of rules) {
     if (dryRun) {
       const result = await db.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE ${where}`).bind(value).first<{n:number}>();

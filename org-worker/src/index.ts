@@ -5617,7 +5617,7 @@ export default {
   fetch: orgWorkerFetch,
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext) {
     if (env.ORGANIZATION_REPLICA_SOURCE) { ctx.waitUntil(replicateOrganizations(env)); return; }
-    ctx.waitUntil(runRetention(env.DB, controller.scheduledTime).then(counts => {
+    ctx.waitUntil(runRetention(env.DB, controller.scheduledTime, false, env.SCAN_IMAGES).then(counts => {
       console.info(JSON.stringify({event:'orgportal.retention',counts,backlog:Object.values(counts).some(n=>n===500)}));
     }).catch(() => { console.error(JSON.stringify({event:'orgportal.retention',outcome:'error'})); throw new Error('Retention cleanup failed'); }));
     ctx.waitUntil(dispatchFollowEventNotifications(env.DB));

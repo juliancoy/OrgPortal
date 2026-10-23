@@ -9,6 +9,9 @@ Uses synthetic accounts, a dummy host organization/event, and a dummy applicant
 team. All requests stay on loopback; remote organization replication must be off.
 """
 import csv
+import base64
+import io
+import zipfile
 import json
 import os
 import secrets
@@ -112,6 +115,15 @@ with sync_playwright() as p:
         expect(form).to_have_attribute('data-draft-saved', 'true', timeout=10000)
         expect(roster.get_by_role('listitem')).to_have_count(3)
         expect(roster.get_by_role('img')).to_have_count(3)
+        pptx=io.BytesIO()
+        with zipfile.ZipFile(pptx,'w') as archive:
+            archive.writestr('[Content_Types].xml','<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"/>')
+            archive.writestr('ppt/presentation.xml','<presentation/>')
+        form.get_by_label('Add submission attachments',exact=True).set_input_files([
+            {'name':'demo-image.png','mimeType':'image/png','buffer':base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=')},
+            {'name':'demo-summary.pdf','mimeType':'application/pdf','buffer':b'%PDF-1.4\nLocal dummy submission'},
+            {'name':'demo-slides.pptx','mimeType':'application/vnd.openxmlformats-officedocument.presentationml.presentation','buffer':pptx.getvalue()},
+        ])
         submit = form.get_by_role('button', name='Submit application', exact=True)
         assert form.evaluate('(form) => form.checkValidity()'), 'No ownership checkbox should block a complete application'
         for width, filename in [(1280, 'team-form-desktop.png'), (390, 'team-form-mobile.png')]:
@@ -197,6 +209,15 @@ with sync_playwright() as p:
         public_submissions=guest.get_by_role('region',name='Event submissions',exact=True)
         expect(public_submissions.locator('.presentation-submission')).to_have_count(26,timeout=30000)
         expect(public_submissions.get_by_role('link',name='Sign in',exact=True)).to_be_visible()
+        public_team=public_submissions.locator('.presentation-submission').filter(has=guest.get_by_role('heading',name='A local demo',exact=True))
+        expect(public_team.get_by_role('img',name='demo-image.png',exact=True)).to_be_visible()
+        for name,content_type in [('demo-summary.pdf','application/pdf'),('demo-slides.pptx','application/vnd.openxmlformats-officedocument.presentationml.presentation')]:
+            link=public_team.get_by_role('link').filter(has_text=name)
+            response=guest.request.get(BASE+link.get_attribute('href'))
+            assert response.ok and response.headers['content-type']==content_type
+        own_team=submissions.locator('.presentation-submission').filter(has=page.get_by_role('heading',name='A local demo',exact=True))
+        own_team.get_by_role('button',name='Delete attachment demo-summary.pdf',exact=True).click()
+        expect(own_team.get_by_role('link').filter(has_text='demo-summary.pdf')).to_have_count(0,timeout=30000)
         manager.get_by_role('tab',name='Submissions',exact=True).click()
         settings=manager.get_by_role('form',name='Submission voting settings',exact=True)
         settings.get_by_label('Maximum favorites per person',exact=True).fill('4')
@@ -215,7 +236,7 @@ with sync_playwright() as p:
         page.reload()
         page.get_by_role('tab',name='Apply',exact=True).click()
         expect(page.get_by_text('Applications are not open for this event.',exact=True)).to_be_visible(timeout=30000)
-        print('PASS: local authenticated session → dummy team creation → checkbox-free team submission → styled desktop/mobile form → submit → persisted application → manager tabs, counts, filters, pagination and full/filtered CSV → public Submissions tab → three favorites persist across reload → fourth blocked → remove favorite → guest view → manager changes favorite limit → withdraw; Markdown and global button fallback verified')
+        print('PASS: local authenticated session → dummy team creation → checkbox-free team submission → styled desktop/mobile form → submit → persisted application → manager tabs, counts, filters, pagination and full/filtered CSV → image/PDF/PowerPoint upload and public download → attachment removal → public Submissions tab → three favorites persist across reload → fourth blocked → remove favorite → guest view → manager changes favorite limit → withdraw; Markdown and global button fallback verified')
         print('Screenshots: ' + str(REPORT))
     finally:
         browser.close()
