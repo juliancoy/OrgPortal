@@ -17,6 +17,9 @@ test('expiry units, bounds, dry-run, retries and unresolved operations',async()=
  sql.exec('CREATE TABLE organization_volunteer_awards(id TEXT PRIMARY KEY,expires_at TEXT);');
  sql.prepare('INSERT INTO organization_volunteer_awards VALUES (?,?)').run('expired-volunteer',new Date(1).toISOString());
  sql.exec('CREATE TABLE event_company_favorites(id TEXT PRIMARY KEY, expires_at TEXT);');
+ sql.exec('CREATE TABLE event_presentation_favorites(id TEXT PRIMARY KEY, expires_at TEXT);');
+ sql.prepare('INSERT INTO event_presentation_favorites VALUES (?,?)').run('expired-choice',new Date(1).toISOString());
+ sql.prepare('INSERT INTO event_presentation_favorites VALUES (?,?)').run('live-choice',new Date(2000000000000).toISOString());
  sql.exec('CREATE TABLE event_presentation_submissions(id TEXT PRIMARY KEY, expires_at TEXT);');
  sql.prepare('INSERT INTO event_presentation_submissions VALUES (?,?)').run('expired-presentation',new Date(1).toISOString());
  sql.exec('CREATE TABLE event_company_votes(id TEXT PRIMARY KEY, expires_at TEXT);');
@@ -41,6 +44,8 @@ test('expiry units, bounds, dry-run, retries and unresolved operations',async()=
  assert.equal((await runRetention(db,now,true)).event_company_votes,1);
  for(const name of ['email_engagement','email_segments','email_mailing_audit','email_campaign_previews'])assert.equal((await runRetention(db,now,true))[name],1);
  const first=await runRetention(db,now);
+ assert.equal(first.event_presentation_favorites,1);
+ assert.equal(sql.prepare('SELECT id FROM event_presentation_favorites').get()!.id,'live-choice');
  assert.equal(first.organization_volunteer_awards,1);
  assert.equal(first.organization_invitations,1);
  for(const name of ['email_engagement','email_segments','email_mailing_audit','email_campaign_previews']){assert.equal(first[name],1);assert.equal(sql.prepare(`SELECT id FROM ${name}`).get()!.id,'valid')}
