@@ -1,0 +1,23 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { HTTPException } from 'hono/http-exception';
+import { websiteObservatoryRoutes, pruneWebsiteObservatory } from '../src/websiteObservatory';
+
+class Storage {
+ objects=new Map<string,{value:string,customMetadata?:Record<string,string>}>();
+ async put(key:string,value:string,options?:any){this.objects.set(key,{value,customMetadata:options?.customMetadata});}
+ async get(key:string){const object=this.objects.get(key);return object?{json:async()=>JSON.parse(object.value)}:null;}
+ async delete(keys:string|string[]){for(const key of Array.isArray(keys)?keys:[keys])this.objects.delete(key);}
+ async list(options:any){return {objects:[...this.objects.entries()].filter(([key])=>key.startsWith(options.prefix)&&(!options.startAfter||key>options.startAfter)).sort(([a],[b])=>a.localeCompare(b)).slice(0,options.limit).map(([key,value])=>({key,customMetadata:value.customMetadata})),truncated:false};}
+}
+function setup(){const storage=new Storage(),env={SCAN_IMAGES:storage,WEBSITE_OBSERVATORY_TOKEN:'collector-fixture'} as unknown as Env;
+ const routes=websiteObservatoryRoutes(async(_env,request)=>{const auth=request.headers.get('authorization');if(!auth)throw new HTTPException(401);return {is_sysadmin:auth==='Bearer admin'};});
+ const request=(path='/',auth='admin',method='GET',body?:unknown)=>routes.fetch(new Request('https://example.test'+path,{method,headers:auth?{authorization:'Bearer '+auth,'content-type':'application/json'}:{},body:body===undefined?undefined:JSON.stringify(body)}),env);
+ return {storage,env,request};}
+function run(){return {schema_version:1,site:'https://lifetech.fyi/',observed:new Date().toISOString(),duration_seconds:6,requests:[{origin:'https://lifetech.fyi',method:'GET',type:'document',status:200,bytes:100,duration_ms:20,error:null,blocked:null},{origin:'https://lifetech.fyi',method:'GET',type:'fetch',status:401,bytes:null,duration_ms:null,error:null,blocked:null}],initiators:[],metrics:{fcp_ms:100},navigation_error:null,javascript_errors:0,final_origin:'https://lifetech.fyi',evidence:'synthetic_browser',vantage:'isolated fixture',coverage:'fixture'};}
+
+test('reports and capture commands require system authority; collector has upload-only authority',async()=>{const {request}=setup();assert.equal((await request('/','')).status,401);assert.equal((await request('/','member')).status,403);assert.equal((await request('/','collector-fixture')).status,403);assert.equal((await request('/capture','member','POST')).status,403);assert.equal((await request('/collector','admin')).status,401);assert.equal((await request('/collector','collector-fixture')).status,200);});
+test('validated uploads are durable and idempotent; unrelated fields are discarded',async()=>{const {request,storage}=setup(),fixture={...run(),cookies:'do-not-store'};const first=await request('/collector','collector-fixture','POST',fixture);assert.equal(first.status,201);const {id}=await first.json() as any;assert.equal((await request('/collector','collector-fixture','POST',fixture)).status,201);assert.equal(storage.objects.size,1);assert.ok(![...storage.objects.values()][0].value.includes('do-not-store'));const response=await request('/?run='+id);const data=await response.json() as any;assert.equal(data.runs[0].summary.auth_challenges,1);assert.equal(data.runs[0].summary.errors,0);assert.equal(data.selected.id,id);assert.equal(response.headers.get('cache-control'),'no-store');assert.equal((await request('/'+id,'admin','DELETE')).status,204);assert.equal(storage.objects.size,0);});
+test('uploads reject arbitrary sites, full URLs and expired observations',async()=>{const {request}=setup();for(const fixture of [{...run(),site:'https://evil.test/'},{...run(),observed:'2020-01-01T00:00:00Z'},{...run(),requests:[{...run().requests[0],origin:'https://lifetech.fyi/private?secret=x'}]}])assert.equal((await request('/collector','collector-fixture','POST',fixture)).status,400);});
+test('capture request is read by the collector without exposing reports',async()=>{const {request}=setup();assert.equal((await request('/capture','admin','POST')).status,202);const job=await (await request('/collector','collector-fixture')).json() as any;assert.ok(job.requested_at);assert.equal((await (await request()).json() as any).running,true);});
+test('scheduled retention deletes only expired observatory keys',async()=>{const {storage,env}=setup();const old=Date.now()-31*86400000;await storage.put('private/website-observatory/runs/'+(9999999999999-old)+'-0123456789abcdef.json','{}');await storage.put('org-media/keep','{}');await pruneWebsiteObservatory(env);assert.equal(storage.objects.size,1);assert.ok(storage.objects.has('org-media/keep'));});

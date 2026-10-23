@@ -1,0 +1,12 @@
+[Unit]
+Description=OrgPortal website observatory browser probe
+After=network.target
+
+[Service]
+WorkingDirectory=%h/Documents/Organization/OrgPortal/tools/website-probe
+ExecStart=%h/global/bin/python3 %h/Documents/Organization/OrgPortal/tools/website-probe/probe.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import './admin.css'
 import { useAuth } from '../../app/AppProviders'
 import { refreshRuntimeTokenFromSession } from '../../infrastructure/auth/sessionToken'
+import { WebsiteObservatory } from './WebsiteObservatory'
 import { VisitorStatistics } from './VisitorStatistics'
 
 const ORG_API_BASE = '/api/org'
@@ -683,6 +684,7 @@ export function AdminPage() {
           {tab === 'stats' ? (
             <>
               {token && <VisitorStatistics token={token} />}
+              {token && <WebsiteObservatory token={token} />}
               <div className="portal-card" style={{ display: 'grid', gap: '0.75rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
                   <h2 style={{ margin: 0, fontSize: '1rem' }}>Platform statistics</h2>

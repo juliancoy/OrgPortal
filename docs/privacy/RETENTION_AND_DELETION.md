@@ -46,6 +46,24 @@ uses text relevance. Personalized responses are not publicly cached.
 
 ## Retention schedule
 
+Website observatory reports contain minimized synthetic browser measurements of the
+allowlisted CodeCollective and LifeTech public homepages. They are private to PIdP
+system administrators and stored under the private website-observatory prefix in
+Cloudflare R2. Request origins, response codes, byte counts, timings, public server
+IPs and browser/collector versions are retained for 30 days; URL paths, query strings,
+request/response bodies, cookies, account tokens and visitor identifiers are not stored.
+Expired reports are hidden immediately and removed by the existing minute cron in
+bounded batches. Administrators can delete individual reports through the protected
+observatory API. These operational reports do not enter the immutable change journal,
+organization replication, or public media indexes. The probe retains a separate local
+30-day copy; deleting a hosted report does not remove that local copy or an existing
+backup. The probe's sync ledger prevents an acknowledged hosted report from being
+re-uploaded. Deletion requests must cover both copies and any backups; apply the same
+30-day expiry when restoring a backup. Capture-control metadata contains a request
+timestamp only, without an administrator identity. The dedicated probe credential can
+only upload validated observations and read capture requests; it cannot read reports,
+queue captures, manage organizations or access PIdP accounts.
+
 Site-wide visitor reporting uses Cloudflare Web Analytics aggregates, separate from account,
 membership and audit activity. OrgPortal retrieves daily hostname totals and
 popular page paths for administrators without storing a separate visitor history,

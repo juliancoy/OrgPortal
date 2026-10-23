@@ -14,6 +14,7 @@ import { runOrganizationDirectoryOperation } from './organizationDirectoryOperat
 import { runOrganizationOperation as runOwnedOrganizationOperation } from './organizationMcp';
 import { normalizeOrganizationLinks, readOrganizationLinks } from '../../shared/organizationLinks';
 import { publicDataResponse } from './publicDataResponse';
+import { websiteObservatoryRoutes, pruneWebsiteObservatory } from './websiteObservatory';
 import { visitorStatisticsRoutes } from './visitorStatistics';
 import { EventIntegrationError } from './eventPlatforms';
 import { bodyLimit } from 'hono/body-limit';
@@ -5159,6 +5160,7 @@ app.get("/api/ubi/eligibility", async (c) => {
   });
 });
 
+app.route('/api/admin/website-observatory', websiteObservatoryRoutes(currentUser));
 app.route('/api/admin/visitor-statistics', visitorStatisticsRoutes(currentUser));
 
 app.get("/api/system/metrics", async (c) => {
@@ -5672,6 +5674,7 @@ export default {
     ctx.waitUntil(runRetention(env.DB, controller.scheduledTime, false, env.SCAN_IMAGES).then(counts => {
       console.info(JSON.stringify({event:'orgportal.retention',counts,backlog:Object.values(counts).some(n=>n===500)}));
     }).catch(() => { console.error(JSON.stringify({event:'orgportal.retention',outcome:'error'})); throw new Error('Retention cleanup failed'); }));
+    ctx.waitUntil(pruneWebsiteObservatory(env));
     ctx.waitUntil(dispatchFollowEventNotifications(env.DB));
     ctx.waitUntil(replicateChangeJournal(env));
     ctx.waitUntil(Promise.all([runUbiTick(env.DB, controller.scheduledTime), dispatchTimebankPush(env)]));
