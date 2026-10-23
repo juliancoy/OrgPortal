@@ -61,7 +61,7 @@ export async function browserLogin(resource, issuer, clientId, openBrowser = fal
     clientId = registration.client_id;
   }
   if (options.store && saved?.clientId !== clientId) await options.store.save({ clientId });
-  if (saved?.refreshToken) return tokenConnection({ resource, clientId, metadata, store: options.store, saved, requestJson: json });
+  if (saved?.refreshToken && !options.reauthorize) return tokenConnection({ resource, clientId, metadata, store: options.store, saved, requestJson: json });
   const verifier = randomBytes(32).toString('base64url');
   const state = randomBytes(32).toString('base64url');
   let complete, cancel;
@@ -100,6 +100,7 @@ export async function browserLogin(resource, issuer, clientId, openBrowser = fal
     url.search = new URLSearchParams({ response_type: 'code', client_id: clientId, redirect_uri: redirect, resource,
       scope, state, code_challenge_method: 'S256',
       code_challenge: createHash('sha256').update(verifier).digest('base64url') }).toString();
+    if (options.reauthorize) url.searchParams.set('prompt', 'login');
     if (options.admin) {
       url.searchParams.set('account', 'system_admin');
       url.searchParams.set('prompt', 'login');
@@ -115,7 +116,7 @@ export async function browserLogin(resource, issuer, clientId, openBrowser = fal
     const code = await codePromise;
     const token = await json(metadata.token_endpoint, { method: 'POST', body: new URLSearchParams({
       grant_type: 'authorization_code', client_id: clientId, code, redirect_uri: redirect, resource, code_verifier: verifier }) });
-    return tokenConnection({ resource, clientId, metadata, token, store: options.store, requestJson: json });
+    return tokenConnection({ resource, clientId, metadata, token, saved, store: options.store, requestJson: json });
   } finally { dialogController.abort(); clearTimeout(timer); server.closeAllConnections(); server.close(); }
 }
 

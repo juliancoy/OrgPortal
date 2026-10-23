@@ -70,7 +70,7 @@ export async function tokenConnection({ resource, clientId, metadata, token, sto
           const response = await fetch(metadata.revocation_endpoint, { method: 'POST', redirect: 'error', signal: AbortSignal.timeout(10000),
             body: new URLSearchParams({ client_id: clientId, token: token.refresh_token }) });
           if (!response.ok) throw new Error();
-          await store?.save({ clientId });
+          await store?.save(saved || { clientId });
         } catch { throw new Error('Connection could not be saved or cleaned up. Revoke it in PIdP before reconnecting.'); }
       }
       throw error;

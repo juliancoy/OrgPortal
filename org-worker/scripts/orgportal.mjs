@@ -135,7 +135,7 @@ export async function run(args, dependencies = {}) {
     try {
       account = await (dependencies.browserLogin || browserLogin)(command.resource, command.issuer,
         command.clientId, command.openBrowser, { store, disconnect: command.action === 'logout',
-          dialog: command.dialog, admin: command.admin, clientName: 'OrgPortal CLI', scope: 'org:events.read org:events.write org:portal.read org:portal.write' });
+          dialog: command.dialog, admin: command.admin, reauthorize: command.action === 'login', clientName: 'OrgPortal CLI', scope: 'org:events.read org:events.write org:portal.read org:portal.write' });
     } catch(error) {
       if(command.action!=='doctor')throw error;
       checks.push({code:'authorization',status:'fail',message:'PIdP authorization is unavailable. Check issuer connectivity and the saved connection.'});
@@ -205,8 +205,12 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
 
 export function formatAccountResult(command, data) {
   if (data.connections) return [`Connections for ${data.resource}`, ...data.connections.map(entry=>`${entry.selected?'*':' '} ${entry.name}: ${entry.needsReconnect?'reconnect required':entry.connected?'saved':'not connected'}`)].join('\n');
-  if (command.action === 'status' && data.authenticated) return `Connection: ${command.connection}\nAccount: ${data.account.subject}\nResource: ${data.resource}\nScopes: ${data.scopes.join(', ')}\nAccess expires: ${data.expiresAt}\nServer: ${data.server.name} ${data.server.version}\nStatus: checked live`;
+  if (command.action === 'status' && data.authenticated) return `Connection: ${command.connection}\nAccount: ${data.account.subject}\n${accountEmailLines(data.account).join('\n')}\nResource: ${data.resource}\nScopes: ${data.scopes.join(', ')}\nAccess expires: ${data.expiresAt}\nServer: ${data.server.name} ${data.server.version}\nStatus: checked live`;
   if (command.action === 'status') return `Connection: ${data.connection}\nResource: ${data.resource}\nStatus: ${data.needsReconnect?'reconnect required':data.connected?'saved (not checked live)':'not connected'}\nCredentials: OS keyring`;
-  if (command.action === 'doctor') return [...(data.connection ? [`Connection: ${command.connection}`, `Account: ${data.connection.account.subject}`, `Server: ${data.connection.server.name} ${data.connection.server.version}`] : []), ...data.checks.map(check=>`${check.status.toUpperCase()} ${check.code}: ${check.message}`)].join('\n');
-  return [`${command.action==='switch'?'Selected connection':'Connection'}: ${command.connection}`, `Account: ${data.account.subject}`, `Resource: ${data.resource}`, `Scopes: ${data.scopes.join(', ')}`, `Access expires: ${data.expiresAt}`, `Server: ${data.server.name} ${data.server.version}`, ...data.organizations.map(org=>`  ${org.name} (${org.role})`), ...(data.organizationsTruncated?['  Additional memberships omitted.']:[])].join('\n');
+  if (command.action === 'doctor') return [...(data.connection ? [`Connection: ${command.connection}`, `Account: ${data.connection.account.subject}`, ...accountEmailLines(data.connection.account), `Server: ${data.connection.server.name} ${data.connection.server.version}`] : []), ...data.checks.map(check=>`${check.status.toUpperCase()} ${check.code}: ${check.message}`)].join('\n');
+  return [`${command.action==='switch'?'Selected connection':'Connection'}: ${command.connection}`, `Account: ${data.account.subject}`, ...accountEmailLines(data.account), `Resource: ${data.resource}`, `Scopes: ${data.scopes.join(', ')}`, `Access expires: ${data.expiresAt}`, `Server: ${data.server.name} ${data.server.version}`, ...data.organizations.map(org=>`  ${org.name} (${org.role})`), ...(data.organizationsTruncated?['  Additional memberships omitted.']:[])].join('\n');
+}
+
+function accountEmailLines(account) {
+  return [`Email: ${account.email || 'not supplied by PIdP'}`, `Email verified: ${account.emailVerified === true ? 'yes' : account.emailVerified === false ? 'no' : 'unknown'}`];
 }

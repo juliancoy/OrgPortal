@@ -26,7 +26,13 @@ credentials or membership between tenants. An explicit `--connection` or
 `auth list` inspects locally registered connection names and keyring status,
 without a network call. `auth status` reports saved state, not proof that a grant
 is still valid. `auth status --live` verifies it against the MCP server.
-`whoami` returns the verified subject, canonical user ID, granted scopes,
+Explicit `auth login` always opens a fresh PIdP account-selection flow, even when
+the named connection has saved credentials. Cancelled sign-in preserves them.
+Use `auth switch NAME` after login to select that connection. The browser profile
+does not prove which PIdP account is selected.
+
+`whoami` returns the PIdP account email and its verification status when supplied,
+the verified subject, canonical user ID, granted scopes,
 expiry, server version and current memberships. IDs identify the account;
 organization access is checked separately. Tenant resources expose only that
 tenant's memberships, with at most 500 rows and an explicit truncation flag.
@@ -85,3 +91,7 @@ These tests include real SDK client/server calls, scope denial, revoked grants,
 canonical identity mapping, tenant isolation, keyring lifecycle, private metadata,
 failed selection and sanitized diagnostics. Authenticated production browser tests
 are excluded; test credentials and accounts remain local fixtures.
+
+Email is read live from PIdP for the authenticated subject with `org:portal.read`.
+Missing verification is reported as unknown. It is never used to link identities
+or grant organization access, and is not persisted in CLI connection metadata.
