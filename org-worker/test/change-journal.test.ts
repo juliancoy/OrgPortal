@@ -189,8 +189,13 @@ test('title-only membership edits are journaled atomically and retained on delet
     const row=f.primary.sqlite.prepare("SELECT before_json,after_json FROM change_journal WHERE table_name='organization_memberships' AND operation='update' ORDER BY sequence DESC LIMIT 1").get()!
     assert.equal(JSON.parse(String(row.before_json)).titles_json,'[]')
     assert.deepEqual(JSON.parse(JSON.parse(String(row.after_json)).titles_json),['CTO','Advisor'])
+    const portrait=JSON.stringify({url:'https://example.com/portrait.jpg',source_url:'https://example.com/officer'})
+    f.primary.sqlite.prepare("UPDATE organization_memberships SET portrait_json=? WHERE organization_id='board' AND user_id='officer'").run(portrait)
+    const photo=f.primary.sqlite.prepare("SELECT after_json FROM change_journal WHERE table_name='organization_memberships' AND operation='update' ORDER BY sequence DESC LIMIT 1").get()!
+    assert.equal(JSON.parse(String(photo.after_json)).portrait_json,portrait)
     f.primary.sqlite.exec("DELETE FROM organization_memberships WHERE organization_id='board' AND user_id='officer'")
     const removed=f.primary.sqlite.prepare("SELECT before_json FROM change_journal WHERE table_name='organization_memberships' AND operation='delete' ORDER BY sequence DESC LIMIT 1").get()!
     assert.deepEqual(JSON.parse(JSON.parse(String(removed.before_json)).titles_json),['CTO','Advisor'])
+    assert.equal(JSON.parse(String(removed.before_json)).portrait_json,portrait)
   } finally { f.close() }
 })

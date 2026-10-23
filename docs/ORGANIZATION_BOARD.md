@@ -1,6 +1,6 @@
 # Organization Board and roles
 
-Every organization has Info, Board and Branding tabs. `/orgs/:slug?tab=board`
+Every organization has Info, Board, Personnel and Branding tabs. `/orgs/:slug?tab=board`
 shows active members with assigned titles, including officers, specialists and
 advisors. "Board" is the public people-and-roles view. Titles are independent of
 Member, Organizer and Owner access levels. Several people can share a title,
@@ -31,3 +31,21 @@ Workers ignore the added field, so rolling back code preserves assignments.
 Migration 0103 updates the existing membership audit triggers to include titles.
 Review/apply both migrations separately before deployment. See the privacy policy
 for membership deletion and backup restoration handling.
+
+
+The Personnel tab (`?tab=personnel`, public API `/public/:slug/personnel`)
+adds active members with a public profile or explicitly published personnel photo
+to the titled roster. Inactive memberships are excluded. Board remains the titled
+roster; it does not assert that every officer is a legal director.
+
+The role editor also accepts an optional HTTPS photo URL and its source page.
+Photos are scoped to this organization and never overwrite a personal profile.
+The source is linked below the portrait. The browser loads the image without a
+referrer; broken images fall back to initials. No server-side scraper or arbitrary
+URL fetch is introduced. Existing public profile photos are the fallback.
+
+MCP title previews/applications also accept `portrait: {url, source_url}`. Omit
+the field to preserve the current portrait, or send `null` to clear it. Preview
+receipts bind titles, portrait and membership state; changed sources need a new
+preview. Migration 0104 adds the optional field and 0105 updates audit triggers.
+Both preserve current access levels and work with the previous Worker.

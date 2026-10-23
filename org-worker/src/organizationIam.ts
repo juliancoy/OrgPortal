@@ -1,4 +1,4 @@
-import {readMemberTitles} from '../../shared/organizationMemberTitles';
+import {readMemberTitles,readMemberPortrait} from '../../shared/organizationMemberTitles';
 export type OrganizationActor = {
   id: string;
   name: string;
@@ -199,7 +199,7 @@ export async function listOrganizationMembers(db: D1Database, organizationId: st
     organization_id:row.organization_id,user_id:row.user_id,
     user_name:row.user_name,
     user_email:row.user_email,role:row.role,status:row.status,created_at:row.created_at,updated_at:row.updated_at,
-    pending_organizer:row.pending_organizer,onboarding_completed_at:row.onboarding_completed_at,titles:readMemberTitles(row.titles_json),
+    pending_organizer:row.pending_organizer,onboarding_completed_at:row.onboarding_completed_at,titles:readMemberTitles(row.titles_json),portrait:readMemberPortrait(row.portrait_json),
   }));
   if (actor.isOperator || role === "owner" || role === "administrator") return members;
   return members.map(({ user_email: _email, ...member }) => member);

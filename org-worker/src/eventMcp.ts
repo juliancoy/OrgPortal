@@ -953,7 +953,7 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
       }catch(error){return {isError:true,content:[{type:'text' as const,text:await eventErrorResponse(error,env,request).text()}]}}
     };
     for(const phase of ['preview','apply'] as const)server.registerTool(`${phase}_organization_member_titles`,{
-      description:`${phase==='preview'?'Preview':'Save'} organization-specific titles such as CEO, Geneticist or Advisor for an active member or organizer. Titles and display names appear on the public Board. Titles do not grant permissions. ${phase==='apply'?'Requires matching one-use previewId and confirm=true.':''}`,
+      description:`${phase==='preview'?'Preview':'Save'} organization-specific titles such as CEO, Geneticist or Advisor for an active member or organizer. Titles and display names appear on the public Board and Personnel tabs. Optional portrait sets an organization-specific public photo URL and source_url; null clears it, omission preserves it. Portraits do not alter personal profiles. Titles do not grant permissions. ${phase==='apply'?'Requires matching one-use previewId and confirm=true.':''}`,
       inputSchema:memberTitlesSchema,annotations:{readOnlyHint:phase==='preview'},_meta:metadata([portalReadScope,portalWriteScope]),
     },args=>titleResult({...args,confirm:phase==='apply'&&args.confirm===true}));
     server.registerTool('lookup_portal_people',{

@@ -180,9 +180,9 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
   const { token } = useAuth()
   const { handle } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
-  const orgTabs = ['info','board','branding'] as const
+  const orgTabs = ['info','board','personnel','branding'] as const
   const requestedTab = searchParams.get('tab')
-  const activeTab = requestedTab === 'board' || requestedTab === 'branding' ? requestedTab : 'info'
+  const activeTab = requestedTab === 'board' || requestedTab === 'personnel' || requestedTab === 'branding' ? requestedTab : 'info'
   function selectTab(tab: typeof orgTabs[number]) {
     setSearchParams(previous => { const next = new URLSearchParams(previous); if (tab === 'info') next.delete('tab'); else next.set('tab', tab); return next })
   }
@@ -941,7 +941,7 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
           if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return
           event.preventDefault(); const next = event.key === 'Home' ? orgTabs[0] : event.key === 'End' ? orgTabs[orgTabs.length-1] : orgTabs[(orgTabs.indexOf(tab)+(event.key==='ArrowRight'?1:orgTabs.length-1))%orgTabs.length]
           selectTab(next); document.getElementById(`org-tab-${next}`)?.focus()
-        }}>{tab === 'info' ? <Info size={18} aria-hidden="true" /> : tab === 'board' ? <Users size={18} aria-hidden="true" /> : <Palette size={18} aria-hidden="true" />}{tab === 'info' ? 'Info' : tab === 'board' ? 'Board' : 'Branding'}</button>)}
+        }}>{tab === 'info' ? <Info size={18} aria-hidden="true" /> : tab === 'board' || tab === 'personnel' ? <Users size={18} aria-hidden="true" /> : <Palette size={18} aria-hidden="true" />}{tab === 'info' ? 'Info' : tab === 'board' ? 'Board' : tab === 'personnel' ? 'Personnel' : 'Branding'}</button>)}
       </div>
       <div role="tabpanel" id="org-panel-info" aria-labelledby="org-tab-info" hidden={activeTab !== 'info'}>
       {isWorkspaceView && <nav className="portal-org-organizer-nav" aria-label={`${org.name} workspace navigation`}>
@@ -1551,6 +1551,9 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
       </div>
       <div role="tabpanel" id="org-panel-board" aria-labelledby="org-tab-board" hidden={activeTab !== 'board'}>
         {activeTab === 'board' && <OrganizationBoard organization={org} canManage={canManageCurrentOrg} />}
+      </div>
+      <div role="tabpanel" id="org-panel-personnel" aria-labelledby="org-tab-personnel" hidden={activeTab !== 'personnel'}>
+        {activeTab === 'personnel' && <OrganizationBoard organization={org} canManage={canManageCurrentOrg} view="personnel" />}
       </div>
       <div role="tabpanel" id="org-panel-branding" aria-labelledby="org-tab-branding" hidden={activeTab !== 'branding'}>
         {activeTab === 'branding' && <OrganizationBranding organization={org} />}

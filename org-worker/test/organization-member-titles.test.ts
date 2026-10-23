@@ -13,7 +13,7 @@ function fixture(){return new EventTestDb(`ALTER TABLE organization_memberships 
  INSERT INTO organization_memberships(organization_id,user_id,user_name,role,status) VALUES('org-one','colleague','Dummy Colleague','member','active'),('org-one','inactive','Inactive','member','inactive');
  INSERT INTO organizations(id,name,slug) VALUES('other','Other','other');
  INSERT INTO user_contact_pages VALUES('pidp-user','Dummy Owner','private-owner@example.test','/private.png','private-owner',0),('colleague','Dummy Colleague','private-member@example.test','/public.png','dummy-colleague',1);
- `+readFileSync(new URL('../migrations/0102_organization_member_titles.sql',import.meta.url),'utf8'))}
+ `+readFileSync(new URL('../migrations/0102_organization_member_titles.sql',import.meta.url),'utf8')+readFileSync(new URL('../migrations/0104_organization_personnel_portraits.sql',import.meta.url),'utf8'))}
 test('titles apply to members and owners without changing authorization; clearing, preview and replay are safe',async()=>{
  const db=fixture(),d1=db as unknown as D1Database;
  try{
@@ -73,5 +73,33 @@ test('MCP directory lookup uses live management checks and returns canonical ide
   assert.equal(found.people[0].user_id,'colleague');
   await assert.rejects(organizationTitlePeople(d1,{...identity,userId:'colleague'},{organizationId:'org-one',q:'Dummy'}));
   await assert.rejects(organizationTitlePeople(d1,{...identity,scopes:[]},{organizationId:'org-one',q:'Dummy'}));
+ }finally{db.close()}
+});
+
+
+test('Personnel includes public untitled members and sourced portraits, with exact receipts and no identity changes',async()=>{
+ const db=fixture(),d1=db as unknown as D1Database;
+ try {
+  const routes=organizationMemberTitleRoutes(async()=>({id:'pidp-user'}),()=>new Response('Denied',{status:403}));
+  const read=async(view:string)=>(await(await routes.request('https://example.test/public/one/'+view,{}, {DB:d1} as Env)).json()) as {people:{name:string;photo_url:string|null;photo_source_url:string|null;titles:string[]}[]};
+  assert.equal((await read('board')).people.length,0);
+  const roster=await read('personnel');assert.equal(roster.people.length,1);assert.equal(roster.people[0].name,'Dummy Colleague');
+  const portrait={url:'https://example.com/officer.jpg',source_url:'https://example.com/people/officer'};
+  const args={organizationId:'org-one',user_id:'pidp-user',titles:['CEO'],portrait};
+  const preview=await runMemberTitlesOperation(d1,identity,args) as {previewId:string};
+  await assert.rejects(runMemberTitlesOperation(d1,identity,{...args,portrait:{...portrait,url:'https://example.com/other.jpg'},confirm:true,previewId:preview.previewId}));
+  const reviewed=await runMemberTitlesOperation(d1,identity,args) as {previewId:string};
+  await runMemberTitlesOperation(d1,identity,{...args,confirm:true,previewId:reviewed.previewId});
+  const published=await read('personnel');assert.equal(published.people.length,2);assert.equal(published.people[0].photo_url,portrait.url);assert.equal(published.people[0].photo_source_url,portrait.source_url);
+  // Omitting portrait on a title-only change preserves it; null explicitly clears it.
+  const titleOnly={organizationId:'org-one',user_id:'pidp-user',titles:['Advisor']};
+  const p=await runMemberTitlesOperation(d1,identity,titleOnly) as {previewId:string};await runMemberTitlesOperation(d1,identity,{...titleOnly,confirm:true,previewId:p.previewId});
+  assert.equal((await read('board')).people[0].photo_url,portrait.url);
+  const clear={...titleOnly,titles:[],portrait:null};const c=await runMemberTitlesOperation(d1,identity,clear) as {previewId:string};await runMemberTitlesOperation(d1,identity,{...clear,confirm:true,previewId:c.previewId});
+  assert.equal((await read('personnel')).people.length,1);
+  for(const url of ['javascript:alert(1)','http://example.com/p.jpg','https://user:secret@example.com/p.jpg'])await assert.rejects(runMemberTitlesOperation(d1,identity,{...args,portrait:{...portrait,url}}));
+  await assert.rejects(runMemberTitlesOperation(d1,identity,{...args,portrait:{url:portrait.url}}));
+  assert.equal((await db.prepare("SELECT role FROM organization_memberships WHERE user_id='pidp-user'").first() as {role:string}).role,'owner');
+  await db.prepare("UPDATE user_contact_pages SET enabled=0 WHERE user_id='colleague'").run();assert.equal((await read('personnel')).people.length,0);
  }finally{db.close()}
 });

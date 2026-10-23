@@ -51,8 +51,8 @@
   its dummy accounts, writable fixtures and mail delivery isolated locally.
   Use `web/scripts/test-local-five-over-five.py` for recognition nominations,
   private ballots, the dynamic 25% allowance and website login destinations.
-  Use `web/scripts/test-local-organization-board.py` for Board navigation,
-  member/owner title previews, public visibility and permission preservation.
+  Use `web/scripts/test-local-organization-board.py` for Board/Personnel navigation,
+  member/owner title and sourced-photo previews, public visibility and permission preservation.
   Use `web/scripts/test-local-brand-guide.py` for shared portal branding,
   configured palettes, PNG export, mobile layout and tenant-context restoration.
 - Include permission denial and tenant isolation tests when authorization

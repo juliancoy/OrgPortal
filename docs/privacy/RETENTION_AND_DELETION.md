@@ -331,3 +331,16 @@ title assignment does not grant permissions. Changes also enter the existing
 atomic membership audit journal, including before/after titles, under its existing
 restricted access, retention and backup rules; clearing the live field does not
 remove immutable journal history. No additional history store is created.
+
+
+The Personnel tab includes active members with published titles, an explicitly
+published organization-specific portrait, or an enabled public profile. Optional
+`portrait_json` stores a public HTTPS image URL and source page on the membership.
+A manager's preview explicitly publishes the portrait and source; it never
+changes the account's personal photo. Private profile images remain excluded.
+The external image is loaded by the browser without a referrer and is not copied
+into an additional image store. Removing a portrait clears the live override;
+membership deletion removes it, and support erasure clears it alongside titles.
+The existing restricted membership journal records changes and follows its
+existing retention/restore restrictions. Apply verified erasures again after a
+backup restore. No automatic identity matching or access grants use photos.

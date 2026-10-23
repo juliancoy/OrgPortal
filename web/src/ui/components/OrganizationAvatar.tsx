@@ -12,7 +12,7 @@ export function OrganizationAvatar({ name, src, status, className = '', children
     style={{ '--personnel-color': classification?.color || 'var(--text-muted)' } as CSSProperties}
     role="img" aria-label={`${name} · ${label}`} title={`${name} · ${label}`}>
     {children || (src && failedSrc !== src
-      ? <img src={src} alt="" loading="lazy" onError={() => setFailedSrc(src)} />
+      ? <img src={src} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setFailedSrc(src)} />
       : <span aria-hidden="true">{name.trim().slice(0, 1).toUpperCase() || '?'}</span>)}
   </span>
 }

@@ -38,20 +38,26 @@ with sync_playwright() as p:
  expect(page.get_by_role('heading',name=org['name']+' Board',exact=True)).to_be_visible(timeout=30000)
  roster=page.get_by_role('region',name='Community members',exact=True)
  expect(roster.locator('.organization-member-identity').filter(has_text=colleague_name)).to_be_visible(timeout=30000)
- def set_titles(person_name,values):
+ def set_titles(person_name,values,portrait=None):
   item=roster.locator('li').filter(has=page.locator('.organization-member-identity').filter(has_text=person_name)).first
   item.get_by_role('button',name='Edit roles',exact=True).click()
   form=page.get_by_role('form',name='Roles for '+person_name,exact=True)
   form.get_by_label('Organization roles (one per line)').fill(values)
+  if portrait is not None:
+   form.get_by_label('Personnel photo URL',exact=True).fill(portrait[0])
+   form.get_by_label('Photo source page',exact=True).fill(portrait[1])
   form.get_by_role('button',name='Review roles',exact=True).click()
   expect(form.get_by_role('button',name='Save roles',exact=True)).to_be_enabled(timeout=30000)
   form.get_by_role('button',name='Save roles',exact=True).click()
   expect(form).to_have_count(0,timeout=30000)
  set_titles(owner_name,'CEO')
- set_titles(colleague_name,'CTO\nAdvisor')
+ set_titles(colleague_name,'CTO\nAdvisor',(BASE+'/laurel_wreath_logo.png',BASE+'/about'))
  board=page.locator('.organization-board-grid')
  expect(board.get_by_role('heading',name=owner_name,exact=True)).to_be_visible(timeout=30000)
  expect(board.get_by_text('CTO',exact=True)).to_be_visible();expect(board.get_by_text('Advisor',exact=True)).to_be_visible()
+ expect(board.get_by_role('link',name='Photo source',exact=True)).to_have_attribute('href',BASE+'/about')
+ expect(board.locator('img')).to_have_attribute('src',BASE+'/laurel_wreath_logo.png')
+ page.wait_for_function("document.querySelector('.organization-board-grid img')?.naturalWidth>0")
  roles={row['user_id']:row for row in good(owner.request.get(base+'/members',headers=auth))}
  assert roles[person['user_id']]['role']=='member' and roles[person['user_id']]['titles']==['CTO','Advisor']
  assert any(row['role']=='owner' and row['titles']==['CEO'] for row in roles.values())
@@ -70,5 +76,18 @@ with sync_playwright() as p:
  expect(guestpage.get_by_role('button',name='Edit roles',exact=True)).to_have_count(0)
  assert owner_email not in guestpage.locator('body').inner_text() and colleague_email not in guestpage.locator('body').inner_text()
  payload=good(guest.request.get(public));assert all('user_id' not in row and 'email' not in row for row in payload['people'])
- set_titles(colleague_name,'');expect(board.get_by_role('heading',name=colleague_name,exact=True)).to_have_count(0,timeout=30000)
- browser.close();print('PASS: real Board tab → owner/member role review/save → multiple roles → permissions retained → member denial → reload/edit/clear → public read/privacy → desktop/mobile')
+ set_titles(colleague_name,'',('',''));expect(board.get_by_role('heading',name=colleague_name,exact=True)).to_have_count(0,timeout=30000)
+ # Personnel also includes active members who have opted into a public profile.
+ good(colleague.request.put(BASE+'/api/org/api/network/contact/me',headers=colleague_auth,data={'enabled':True}))
+ page.get_by_role('tab',name='Personnel',exact=True).click()
+ expect(page).to_have_url(BASE+'/orgs/'+org['slug']+'?tab=personnel')
+ expect(page.get_by_role('heading',name=org['name']+' Personnel',exact=True)).to_be_visible(timeout=30000)
+ expect(board.get_by_role('heading',name=colleague_name,exact=True)).to_be_visible(timeout=30000)
+ guestpage.goto(BASE+'/orgs/'+org['slug']+'?tab=personnel',wait_until='domcontentloaded')
+ expect(guestpage.locator('.organization-board-grid').get_by_role('heading',name=colleague_name,exact=True)).to_be_visible(timeout=30000)
+ expect(guestpage.get_by_role('button',name='Edit roles',exact=True)).to_have_count(0)
+ for width in [1280,390]:
+  guestpage.set_viewport_size({'width':width,'height':1000})
+  assert guestpage.evaluate('document.documentElement.scrollWidth<=innerWidth'),width
+  guestpage.screenshot(path=f'/tmp/dummy-organization-personnel-{width}.png',full_page=True)
+ browser.close();print('PASS: real Board/Personnel tabs → sourced photo preview/save/clear → owner/member role review/save → multiple roles → permissions retained → member denial → reload/edit/clear → public read/privacy → desktop/mobile')
