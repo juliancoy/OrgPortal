@@ -1,8 +1,9 @@
+import { OrganizationViewSwitcher } from '../../components/OrganizationViewSwitcher'
 import { EventSubmissions } from '../../components/EventSubmissions'
 import { OrganizationAvatar } from '../../components/OrganizationAvatar'
 import { useOrganizationPersonnel } from '../../hooks/useOrganizationPersonnel'
 import type { PersonnelClass } from '../../../../../shared/organizationPersonnel'
-import { EventPresentations } from '../../components/EventPresentations'
+import { EventPresentations, type PresentationFormAction } from '../../components/EventPresentations'
 import type { OrganizationLink } from '../../../../../shared/organizationLinks'
 import { BioMarkdown } from '../../components/profile/BioMarkdown'
 import { getGroupSite } from '../../../config/timebankCommunity'
@@ -278,6 +279,8 @@ export function PublicEventPage() {
   const tenant = getGroupSite()
   const brand = getActivePortalProfileConfig()
   const lifeTech = tenant?.home_org_slug === 'lifetech'
+  const [presentationAction,setPresentationAction]=useState<PresentationFormAction|null>(null)
+  useEffect(()=>setPresentationAction(null),[slug])
   const [activeTab, setActiveTab] = useState<'info' | 'poster' | 'apply' | 'submissions'>('info')
   function selectEventTab(tab: 'info' | 'poster' | 'apply' | 'submissions') {
     setActiveTab(tab)
@@ -761,6 +764,7 @@ export function PublicEventPage() {
               ) : null}
             </div>
           </section>
+          {canManageEvent && event.organization_slug && <OrganizationViewSwitcher organizationSlug={event.organization_slug} manager />}
           {canManageEvent && editingEvent && token ? <EventDetailsEditor key={event.id} event={event} token={token} onCancel={() => setEditingEvent(false)} onSaved={updated => { setEvent({ ...event, ...updated, media: (updated as PublicEvent).media?.map(item => ({ ...item, url: item.url.startsWith('/api/network/') ? orgUrl(item.url) : item.url })) || event.media }); setEditingEvent(false) }} /> : null}
           <section className="portal-card public-event-mobile-details" aria-label="Event date, time and place">
             <div><CalendarDays size={20} aria-hidden="true" /><strong>{toEventDate(event.starts_at || (event.event_date ? event.event_date+'T12:00:00' : null))}</strong></div>
@@ -965,10 +969,10 @@ export function PublicEventPage() {
             {activeTab==='poster'&&<EventPosterTools sourceUrl={event.source_url} eventLinks={event.links} organizationSlug={event.organization_slug} organizationLinks={event.organization_links} slug={event.slug} title={event.title} revision={event.updated_at || ''} inline />}
           </section>
           <section className="public-event-tab-panel" role="tabpanel" id="event-apply-panel" aria-labelledby="event-apply-tab" hidden={activeTab!=='apply'}>
-          <EventPresentations key={`presentations-${event.id}`} eventId={event.id} />
+          <EventPresentations key={`presentations-${event.id}`} eventId={event.id} formAction={presentationAction} onActionHandled={()=>setPresentationAction(null)} />
           </section>
           <section className="public-event-tab-panel" role="tabpanel" id="event-submissions-panel" aria-labelledby="event-submissions-tab" hidden={activeTab!=='submissions'}>
-            {activeTab==='submissions'&&<EventSubmissions eventId={event.id} />}
+            {activeTab==='submissions'&&<EventSubmissions eventId={event.id} onEdit={application=>{setPresentationAction({kind:'edit',application});selectEventTab('apply')}} onDeleted={submissionId=>setPresentationAction({kind:'delete',submissionId})} />}
           </section>
         </main>
         <aside className="public-event-side public-event-luma-side" aria-label="Event actions and location">

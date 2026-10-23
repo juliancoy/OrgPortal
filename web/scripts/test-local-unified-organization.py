@@ -60,4 +60,19 @@ with sync_playwright() as p:
   page.goto(BASE+path,wait_until='domcontentloaded')
   expect(page.get_by_role('heading',name='Page not found',exact=True)).to_be_visible(timeout=30000)
   expect(page).to_have_url(BASE+path)
+ # Audience links are URL-only and preserve the signed-in account's permissions.
+ member_page=owner.new_page()
+ member_page.goto(BASE+'/orgs/'+a['slug']+'/organizer',wait_until='domcontentloaded')
+ views=member_page.get_by_role('navigation',name='Organization views',exact=True)
+ expect(views.get_by_role('link',name='Public page',exact=True)).to_be_visible(timeout=30000)
+ member_page.evaluate('(slug)=>localStorage.setItem("orgportal.organizationView."+slug,"organizers")',a['slug'])
+ views.get_by_role('link',name='Public page',exact=True).click()
+ expect(member_page).to_have_url(BASE+'/orgs/'+a['slug']+'/public')
+ expect(member_page.get_by_role('heading',name=heading,exact=True)).to_be_visible(timeout=30000)
+ views.get_by_role('link',name='Member page',exact=True).click()
+ expect(member_page).to_have_url(BASE+'/orgs/'+a['slug']+'/member')
+ assert member_page.evaluate('(slug)=>localStorage.getItem("orgportal.organizationView."+slug)',a['slug'])=='organizers','URL navigation must not write a saved view'
+ member_page.goto(BASE+'/orgs/'+a['slug'],wait_until='domcontentloaded')
+ expect(member_page.get_by_role('heading',name=heading,exact=True)).to_be_visible(timeout=30000)
+ assert member_page.locator('.organization-view-indicator').count()==0
  browser.close();print('PASS: unified org homepage → configured copy/actions/imagery → all four hosted events, other group excluded → Branding tab → no retired links → retired routes not found → org isolation → desktop/mobile')

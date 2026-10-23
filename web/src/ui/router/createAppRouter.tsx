@@ -474,6 +474,11 @@ export function createAppRouter() {
           // Public profile
           { path: '/orgs/:handle/five-over-five', element: <FiveOverFivePage /> },
           { path: '/orgs/:handle', element: <OrganizationProfileRoute /> },
+          { path: '/orgs/:handle/public', element: <PublicAdminPage /> },
+          { path: '/orgs/:handle/member', element: <AuthenticatedRoute><PublicAdminPage dashboard view="members" /></AuthenticatedRoute> },
+          { path: '/orgs/:handle/organizer', element: <AuthenticatedRoute><PublicAdminPage dashboard view="organizers" /></AuthenticatedRoute> },
+          { path: '/orgs/:handle/attendee', element: <AuthenticatedRoute><PublicAdminPage dashboard view="attendees" /></AuthenticatedRoute> },
+          { path: '/orgs/:handle/volunteer', element: <AuthenticatedRoute><PublicAdminPage dashboard view="volunteers" /></AuthenticatedRoute> },
           { path: '/orgs/:handle/dashboard', element: <AuthenticatedRoute><PublicAdminPage dashboard /></AuthenticatedRoute> },
           { path: '/users/:slug', element: <PublicContactPage /> },
           { path: '/contact/:slug', element: <LegacyPublicContactRoute /> },

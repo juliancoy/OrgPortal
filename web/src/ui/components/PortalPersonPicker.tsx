@@ -4,8 +4,8 @@ import { useEffect, useId, useState } from 'react'
 import { useAuth } from '../../app/AppProviders'
 import type { NetworkUser } from '../views/peopleDirectory'
 
-export function PortalPersonPicker({ query, selected, onQueryChange, onSelect, organizationId, onInvite, helpText }: {
-  onInvite?: (email: string) => void; helpText?: string
+export function PortalPersonPicker({ query, selected, onQueryChange, onSelect, organizationId, onInvite, helpText, label = "Person’s email or portal member name" }: {
+  onInvite?: (email: string) => void; helpText?: string; label?: string
   organizationId?: string; query: string; selected: { userId: string; name: string; email?: string } | null
   onQueryChange: (value: string) => void; onSelect: (person: NetworkUser) => void
 }) {
@@ -37,10 +37,10 @@ export function PortalPersonPicker({ query, selected, onQueryChange, onSelect, o
     return () => { window.clearTimeout(timer); controller.abort() }
   }, [query, token, selected?.userId, offset])
   return <div className="portal-person-picker">
-    <label htmlFor={id}>Person’s email or portal member name</label>
+    <label htmlFor={id}>{label}</label>
     <input id={id} type="search" value={query} onChange={event => onQueryChange(event.target.value)}
       placeholder="Email address or existing member’s name" autoComplete="off" aria-describedby={`${id}-help`} />
-    <p id={`${id}-help`} className="muted">{helpText || 'Choose the matching account before applying a status.'}</p>
+    <p id={`${id}-help`} className="muted" hidden={helpText === ''}>{helpText ?? 'Choose the matching account before applying a status.'}</p>
     {selected ? <p>Selected: <strong>{selected.name || selected.userId}</strong>{selected.email ? ` · ${selected.email}` : ''}</p> : <>
       {loading && <p role="status">Searching portal members…</p>}
       {error && <p role="alert">{error}</p>}

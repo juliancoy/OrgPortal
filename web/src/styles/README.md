@@ -12,8 +12,9 @@ Brand-specific component layout remains in `tenantBranding.css`.
 The profile is selected by `config/portalFeatures.ts` and applied by
 `config/portalBranding.ts`. The independently selected appearance is managed by
 `config/theme.ts`: an explicit `data-theme` takes precedence; otherwise the CSS
-system preference applies. Each brand's system-dark block must match its explicit
-dark block. LifeTech's existing default-dark preference remains in theme.ts.
+system preference applies only when explicitly selected. All portals default to
+dark; choosing Light or System in Settings opts out. Each brand's system-dark
+block must match its explicit dark block.
 
 When adding a theme, supply all the palette variables used by the OrgPortal theme
 for both appearances. Use neutral surfaces where appropriate; do not inherit a

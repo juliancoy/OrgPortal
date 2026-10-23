@@ -1,3 +1,4 @@
+import { OrganizationViewSwitcher } from '../../components/OrganizationViewSwitcher'
 import { EventPosterTools } from '../../components/EventPosterTools'
 import { OrganizationBoard } from '../../components/OrganizationBoard'
 import {isRetiredOrganizationHref} from '../../../../../shared/organizationUrls'
@@ -182,7 +183,7 @@ function normalizeDomain(value: string) {
   return value.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '')
 }
 
-export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) {
+export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boolean; view?: string }) {
   const navigate = useNavigate()
   const { token } = useAuth()
   const { handle } = useParams()
@@ -244,7 +245,7 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
   const [editorSource, setEditorSource] = useState<string | null>(null)
   const hasExistingAdmins = admins.some((admin) => admin.role === 'administrator' || admin.role === 'owner')
   const canManageCurrentOrg = myAdminOrgs.some((item) => item.id === org?.id)
-  const requestedView = useOrganizationViewPreference(org?.slug, searchParams.get('view'))
+  const requestedView = useOrganizationViewPreference(org?.slug, view || searchParams.get('view'))
   const organizationView = resolveOrganizationPageView(dashboard, requestedView, canManageCurrentOrg, membership?.status === 'active')
   const isOrganizerView = canManageCurrentOrg && organizationView === 'organizers'
   const isWorkspaceView = organizationView === 'members' || isOrganizerView
@@ -990,6 +991,7 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
         {isOrganizerView && <a href="#organization-domain" onClick={event => { event.preventDefault(); openOrganizationEditor('organization-domain') }}>Domain</a>}
         {isOrganizerView && <a href="#organization-page-editor" onClick={event => { event.preventDefault(); openOrganizationEditor() }}>Settings</a>}
       </nav>}
+      {canManageCurrentOrg && <OrganizationViewSwitcher organizationSlug={org.slug} manager />}
       <div className={`portal-org-layout${org.claimed_by_user_id ? '' : ' portal-org-layout-single'}`}>
         <div className="portal-org-main-column">
           <div id="organization-overview" className="portal-org-hero portal-org-nav-target" tabIndex={-1}>

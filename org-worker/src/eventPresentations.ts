@@ -134,7 +134,7 @@ export function presentationRoutes<E extends PresentationEnv>(auth: (env:E, requ
   await manager(c.env.DB,user,org);
   const title=typeof body.title==='string'?body.title.trim():'',summary=typeof body.summary==='string'?body.summary.trim():'';
   if(!title || title.length>200 || !summary || summary.length>5000) throw new HTTPException(400,{message:'A title (up to 200 characters) and summary (up to 5000 characters) are required'});
-  const presenters=body.presenters===undefined?(existing?.presenters_json||'[]'):await validateSubmissionPresenters(c.env.DB,org,body.presenters);
+  const presenters=await validateSubmissionPresenters(c.env.DB,org,body.presenters===undefined?JSON.parse(existing?.presenters_json||'[]'):body.presenters);
   // New applications require open intake. Existing applications remain editable
   // until expiry, with live team authority checked in the write itself.
   const result=await c.env.DB.prepare(`INSERT INTO event_submissions(event_id,submission_id,organization_id,submitted_by,title,summary,status,updated_at,expires_at,presenters_json)

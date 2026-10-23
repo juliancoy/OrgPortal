@@ -25,7 +25,6 @@
 .presentation-submission h4 { margin-top: 0; }
 .presentation-submission > div { display: flex; flex-wrap: wrap; gap: .5rem; }
 @media (max-width: 540px) { .presentation-submit { width: 100%; } .presentation-form-footer { justify-items: stretch; } }
-.application-tabs { display: flex; flex-wrap: wrap; gap: .6rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; }
 .application-review { display: grid; gap: 1rem; min-width: 0; }
 .application-review-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
 .application-review-heading h3 { margin: 0 0 .5rem; }
@@ -74,3 +73,33 @@
 .submission-presenter-list li { display: flex; align-items: center; gap: .65rem; }
 .submission-presenter-list small { display: block; color: var(--text-muted); }
 .submission-presenters-empty { font-size: .85rem; }
+
+.application-row-actions { gap: .5rem; }
+.application-icon-action { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: .5rem; }
+.presentation-applications .application-delete { color: var(--text-danger); border-color: var(--text-danger); }
+.presentation-applications .application-delete:hover { background: color-mix(in srgb, var(--text-danger) 12%, var(--panel)); }
+.application-delete-dialog { width: min(440px, calc(100% - 2rem)); box-sizing: border-box; padding: 1.5rem; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--panel); color: var(--text-primary); box-shadow: var(--shadow-card); }
+.application-delete-dialog::backdrop { background: rgb(0 0 0 / .6); }
+.application-delete-dialog h3 { margin: 0 0 .75rem; }
+.application-delete-dialog p { overflow-wrap: anywhere; }
+.application-delete-dialog-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: .75rem; margin-top: 1.5rem; }
+
+.submission-review-tools > summary { cursor: pointer; font-weight: 600; padding: .75rem 0; }
+.submission-review-tools[open] > summary { margin-bottom: 1rem; }
+
+.presentation-team-choice { display: grid; gap: .65rem; min-width: 0; padding: 1rem; border: 1px solid var(--border); border-radius: 12px; }
+.presentation-team-choice p { margin: 0; line-height: 1.5; }
+
+/* A native toggle button stretches over the card; independent controls sit above it. */
+.submission-voting-card { position: relative; isolation: isolate; padding-top: 3.25rem; transition: background-color .15s, border-color .15s; }
+.submission-voting-card.is-selected { background: #173d75; border-color: #60a5fa; color: #eff6ff; --text-primary: #eff6ff; --text-muted: #bfdbfe; }
+.submission-voting-card.is-selected a { color: #bfdbfe; }
+.presentation-submission > .submission-card-select { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; border-radius: inherit; background: transparent; color: inherit; box-shadow: none; cursor: pointer; }
+.presentation-submission > .submission-card-select:hover { background: transparent; }
+.submission-card-select:focus-visible { outline: 3px solid #60a5fa; outline-offset: 3px; }
+.submission-card-select:disabled { cursor: default; }
+.submission-card-state { position: absolute; top: .8rem; right: 1rem; display: inline-flex; gap: .4rem; align-items: center; font-weight: 600; }
+.submission-voting-card :is(a, button:not(.submission-card-select), input, label, summary) { position: relative; z-index: 2; }
+
+.presentation-login { display: grid; justify-items: start; gap: .75rem; }
+.presentation-login p { margin: 0; }

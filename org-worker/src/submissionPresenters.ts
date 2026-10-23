@@ -2,7 +2,7 @@ import { HTTPException } from 'hono/http-exception';
 
 type Reference={userId:string}|{invitationId:string};
 export async function validateSubmissionPresenters(db:D1Database,org:string,input:unknown):Promise<string>{
- if(!Array.isArray(input)||input.length>51)throw new HTTPException(400,{message:'Choose at most 51 presenters'});
+ if(!Array.isArray(input)||input.length<1||input.length>51)throw new HTTPException(400,{message:'Choose between 1 and 51 teammates'});
  const references:Reference[]=[],seen=new Set<string>();
  for(const value of input){
   if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).length!==1)throw new HTTPException(400,{message:'Choose a portal member or a team invitation'});

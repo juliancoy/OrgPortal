@@ -848,7 +848,6 @@ export function Header({ organizationId }: { organizationId?: string | null } = 
         </div>
 
         <div className="portal-auth">
-          <OrganizationViewSwitcher indicator />
           {isLoading && role === 'guest' ? (
             <div className="portal-auth-loading" role="status" aria-label="Checking sign-in status">
               <span className="portal-auth-loading-avatar" aria-hidden="true" />

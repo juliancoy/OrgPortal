@@ -1,3 +1,4 @@
+import { presentationTargetSchema, presentationApplicationSchema, runPresentationOperation } from './presentationMcp';
 import { registerAccountTools } from './mcpAccountTools';
 import product from '../../shared/mcp-product.json';
 import {memberTitlesSchema,organizationPeopleSchema,organizationTitlePeople,runMemberTitlesOperation} from './organizationMemberTitles';
@@ -908,6 +909,17 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
         inputSchema: schema, annotations: { readOnlyHint: false, destructiveHint: operation === 'action', idempotentHint: false }, _meta: metadata([portalReadScope, portalWriteScope]) },
         (args: Record<string, unknown>) => governanceResult(operation, args));
     }
+    const presentationResult = async (operation: 'list' | 'save', args: unknown) => {
+      try {
+        const data = await runPresentationOperation(env, identity, operation, scopedArgs(args));
+        return { content: [{ type: 'text' as const, text: JSON.stringify(data) }], structuredContent: data };
+      } catch (error) {
+        return { isError: true, content: [{ type: 'text' as const, text: await eventErrorResponse(error, env, request).text() }] };
+      }
+    };
+    server.registerTool('list_presentation_applications', { description: 'List applications you manage, or all event applications if you manage the host. Private teammate references are returned only within existing application access.', inputSchema: presentationTargetSchema, annotations: { readOnlyHint: true }, _meta: metadata([readScope]) }, args => presentationResult('list', args));
+    server.registerTool('preview_presentation_application', { description: 'Preview creating or editing a presentation application for a team you manage. organizationId is the event host; teamOrganizationId is your team. Supply at least one teammate: an active team userId, existing invitationId, or email to invite. New email invitations require verified acceptance before joining. Review the public title, summary and invitation recipients before applying. Reuse a generated submissionId for retries.', inputSchema: presentationApplicationSchema.omit({confirm:true,previewId:true}), annotations: { readOnlyHint: true }, _meta: metadata([readScope,writeScope,portalReadScope,portalWriteScope]) }, args => presentationResult('save', {...args,confirm:false}));
+    server.registerTool('apply_presentation_application', { description: 'Save the reviewed application and queue teammate email invitations, using matching previewId and confirm=true. Requires live team management permission and at least one teammate. Existing applications can be edited after intake closes until expiry. Partial invitation work may persist after failure; inspect applications and retry with a fresh preview and the same submissionId.', inputSchema: presentationApplicationSchema.extend({previewId:z.string().uuid(),confirm:z.literal(true)}), annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true }, _meta: metadata([readScope,writeScope,portalReadScope,portalWriteScope]) }, args => presentationResult('save', args));
     const taskResult = async (args: unknown) => {
       try {
         const data = await runOrganizationTaskOperation(env, request, identity, scopedArgs(args));

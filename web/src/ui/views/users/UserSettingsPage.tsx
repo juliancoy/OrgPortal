@@ -145,7 +145,7 @@ export function UserSettingsPage() {
             onChange={(event) => void saveTheme(event.target.value as ThemeMode)}
           >
             <option value="system">System default</option>
-            <option value="dark">Dark</option>
+            <option value="dark">Dark (default)</option>
             <option value="light">Light</option>
           </select>
         </label>

@@ -1,3 +1,4 @@
+import { runPresentationOperation } from '../src/presentationMcp';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
@@ -42,7 +43,7 @@ function fixture(){
 }
 test('management, isolation, review, closing, expiry and withdrawal',async()=>{
  const f=fixture();try{
- const proposal={title:'Our demo',summary:'A medical device prototype'};
+ const proposal={title:'Our demo',summary:'A medical device prototype',presenters:[{userId:'member'}]};
  assert.equal((await f.request('/team','PUT','applicant',proposal)).status,409);
  assert.equal((await f.request('/form','PUT','applicant',{enabled:true})).status,403);
  assert.equal((await f.request('/form','PUT','host',{enabled:true})).status,200);
@@ -69,7 +70,7 @@ test('deadline and invalid proposals',async()=>{
  await f.request('/form','PUT','host',{enabled:true});
  assert.equal((await f.request('/team','PUT','applicant',{title:'',summary:'x'})).status,400);
  f.db.sqlite.exec("UPDATE events SET starts_at='2000-01-01T00:00:00Z'");
- assert.equal((await f.request('/team','PUT','applicant',{title:'Demo',summary:'Details'})).status,409);
+ assert.equal((await f.request('/team','PUT','applicant',{title:'Demo',summary:'Details',presenters:[{userId:'member'}]})).status,409);
  }finally{f.db.sqlite.close();}
 });
 test('manager review paginates beyond 200 with counts, filters, stable ties and complete CSV',async()=>{
@@ -167,7 +168,7 @@ test('one person can create multiple entries for the same team and edit them ind
  const f=fixture();try{
   await f.request('/form','PUT','host',{enabled:true});
   const first=crypto.randomUUID(),second=crypto.randomUUID();
-  for(const [id,title] of [[first,'First'],[second,'Second']])assert.equal((await f.request('/'+id,'PUT','applicant',{organization_id:'team',title,summary:'Details '+title})).status,200);
+  for(const [id,title] of [[first,'First'],[second,'Second']])assert.equal((await f.request('/'+id,'PUT','applicant',{organization_id:'team',title,summary:'Details '+title,presenters:[{userId:'member'}]})).status,200);
   assert.equal((await f.request('/'+first,'PUT','applicant',{organization_id:'team',title:'First',summary:'Details First'})).status,200);
   assert.equal(f.db.rows('SELECT * FROM event_submissions').length,2,'retry must not create another entry');
   await f.request('/favorites/'+first,'PUT','voter',{selected:true});await f.request('/favorites/'+second,'PUT','voter',{selected:true});
@@ -175,7 +176,7 @@ test('one person can create multiple entries for the same team and edit them ind
   await f.request('/form','PUT','host',{enabled:false});
   assert.equal((await f.request('/'+first,'PUT','stranger',{title:'Hijacked',summary:'No'})).status,403);
   assert.equal((await f.request('/'+first,'PUT','applicant',{title:'First edited',summary:'Revised details'})).status,200);
-  assert.equal((await f.request('/'+crypto.randomUUID(),'PUT','applicant',{organization_id:'team',title:'Third',summary:'Closed'})).status,409);
+  assert.equal((await f.request('/'+crypto.randomUUID(),'PUT','applicant',{organization_id:'team',title:'Third',summary:'Closed',presenters:[{userId:'member'}]})).status,409);
   const rows=(await(await f.request()).json() as any).submissions;
   assert.equal(rows.find((r:any)=>r.submission_id===first).status,'submitted');
   assert.equal(rows.find((r:any)=>r.submission_id===second).title,'Second');
@@ -238,5 +239,54 @@ test('invited presenters expose no email publicly and resolve only through verif
   f.db.sqlite.prepare('DELETE FROM organization_invitations WHERE id=?').run(invite);
   listing=await(await f.request('/submissions','GET','')).json() as any;assert.deepEqual(listing.submissions[0].presenters,[{name:'Recipient'}]);
   assert.equal((await f.request('/'+id,'PUT','applicant',{title:'Foreign invite',summary:'Details',presenters:[{invitationId:'missing'}]})).status,400);
+ }finally{f.db.sqlite.close()}
+});
+
+
+test('all application writes require at least one valid teammate, including edits to legacy empty rosters',async()=>{
+ const f=fixture();try{
+  await f.request('/form','PUT','host',{enabled:true});
+  const proposal={title:'Demo',summary:'Details'};
+  assert.equal((await f.request('/team','PUT','applicant',proposal)).status,400);
+  assert.equal((await f.request('/team','PUT','applicant',{...proposal,presenters:[]})).status,400);
+  assert.equal((await f.request('/team','PUT','applicant',{...proposal,presenters:[{userId:'member'}]})).status,200);
+  assert.equal((await f.request('/team','PUT','applicant',{...proposal,presenters:[]})).status,400);
+  f.db.sqlite.exec("UPDATE event_submissions SET presenters_json='[]'");
+  assert.equal((await f.request('/team','PUT','applicant',proposal)).status,400);
+ }finally{f.db.sqlite.close()}
+});
+
+test('MCP applications preserve permission and host boundaries, reviewed receipts and private email invitations',async()=>{
+ const f=fixture();try{
+  await f.request('/form','PUT','host',{enabled:true});
+  const env={DB:f.db.asD1()} as Env;
+  const identity={userId:'applicant',scopes:['org:events.read','org:events.write','org:portal.read','org:portal.write']};
+  const args={organizationId:'one',eventId:'event',teamOrganizationId:'team',submissionId:crypto.randomUUID(),title:'MCP demo',summary:'Details',teammates:[{userId:'member'},{email:'new-teammate@example.com'}]};
+  await assert.rejects(runPresentationOperation(env,{...identity,scopes:['org:events.read']},'save',args),{status:403});
+  await assert.rejects(runPresentationOperation(env,{...identity,userId:'stranger'},'save',args),{status:403});
+  await assert.rejects(runPresentationOperation(env,identity,'save',{...args,organizationId:'two'}),{status:404});
+  await assert.rejects(runPresentationOperation(env,identity,'save',{...args,teammates:[]}));
+  const preview=await runPresentationOperation(env,identity,'save',args) as any;
+  assert.equal(f.db.rows('SELECT * FROM organization_invitations').length,0,'preview must not invite');
+  await assert.rejects(runPresentationOperation(env,identity,'save',{...args,title:'Changed',previewId:preview.previewId,confirm:true}),{status:409});
+  const saved=await runPresentationOperation(env,identity,'save',{...args,previewId:preview.previewId,confirm:true}) as any;
+  assert.equal(saved.submission_id,args.submissionId);
+  const invitations=f.db.rows('SELECT * FROM organization_invitations') as any[];
+  assert.equal(invitations.length,1);assert.equal(invitations[0].email,'new-teammate@example.com');
+  assert.equal(f.db.rows("SELECT * FROM organization_memberships WHERE user_id='new-teammate@example.com'").length,0);
+  const publicData=await(await f.request('/submissions','GET','stranger')).json() as any;
+  assert.equal(publicData.submissions[0].presenters.length,2);
+  assert.ok(!JSON.stringify(publicData).includes('new-teammate@example.com'));
+  await assert.rejects(runPresentationOperation(env,identity,'save',{...args,previewId:preview.previewId,confirm:true}),{status:409});
+  const list=await runPresentationOperation(env,identity,'list',{organizationId:'one',eventId:'event'}) as any;
+  assert.equal(list.submissions.length,1);
+  const foreign=await runPresentationOperation(env,{...identity,userId:'stranger'},'list',{organizationId:'one',eventId:'event'}) as any;
+  assert.equal(foreign.submissions.length,0);
+  await f.request('/form','PUT','host',{enabled:false});
+  const edited={...args,title:'Edited after closure'};
+  const receipt=await runPresentationOperation(env,identity,'save',edited) as any;
+  await runPresentationOperation(env,identity,'save',{...edited,previewId:receipt.previewId,confirm:true});
+  assert.equal(f.db.rows('SELECT * FROM organization_invitations').length,1,'retry/edit must reuse pending invitation');
+  await assert.rejects(runPresentationOperation(env,identity,'save',{...args,submissionId:crypto.randomUUID()}),{status:409});
  }finally{f.db.sqlite.close()}
 });

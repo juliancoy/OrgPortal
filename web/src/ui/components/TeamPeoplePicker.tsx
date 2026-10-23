@@ -22,10 +22,11 @@ export function TeamPeoplePicker({ people, onChange, presenters=false }: { peopl
   if (!people.some(existing => (person.userId && existing.userId === person.userId) || (person.email && existing.email?.toLowerCase() === person.email.toLowerCase()))) onChange([...people, person])
   setQuery('')
  }
- return <fieldset className="team-people-picker"><legend>{presenters?'Presenters':'Team members'}</legend>
-  <p className="muted">{presenters?'Choose the people who will present. They will also be added to the team. ':''}Add portal members by name or email. New email addresses receive an invitation when you submit; they must verify their email and accept before joining.</p>
+ return <fieldset className="team-people-picker"><legend className={presenters?'sr-only':undefined}>{presenters?'Teammates':'Team members'}</legend>
+  {!presenters && <p className="muted">Add portal members by name or email. New email addresses receive an invitation when you submit; they must verify their email and accept before joining.</p>}
   {people.length < 50 && <PortalPersonPicker query={query} selected={null} onQueryChange={setQuery}
-   helpText="Choose a portal member or add an email invitation to your team."
+   label={presenters ? "Teammates (Email or Portal Name)" : undefined}
+   helpText={presenters ? "" : "Choose a portal member or add an email invitation to your team."}
    onSelect={person => add({ userId: person.user_id, name: person.user_name, ...(person.email ? {email: person.email} : {}), ...(person.photo_url ? {photo: person.photo_url} : {}) })}
    onInvite={email => add({name: email, email})} />}
   <ul className="team-people-list" aria-label="Selected team members">{people.map((person, index) => <li key={person.userId || person.email}>

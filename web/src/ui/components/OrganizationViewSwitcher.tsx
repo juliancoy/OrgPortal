@@ -1,27 +1,20 @@
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { getGroupSite } from '../../config/timebankCommunity'
-import { organizationViews, resolveOrganizationPageView, resolveOrganizationView, useOrganizationAccess, useOrganizationViewPreference, saveOrganizationView } from '../hooks/useOrganizationView'
+import { useOrganizationAccess } from '../hooks/useOrganizationView'
 
-export function OrganizationViewSwitcher({ indicator = false }: { indicator?: boolean }) {
+export function OrganizationViewSwitcher({ organizationSlug, manager = false }: { organizationSlug?: string | null; manager?: boolean } = {}) {
   const location = useLocation()
-  const navigate = useNavigate()
-  const match = location.pathname.match(/^\/orgs\/([^/]+)(\/dashboard)?\/?$/)
-  const slug = match && !['login', 'register', 'profile', 'account', 'initiatives', 'events'].includes(match[1]) ? decodeURIComponent(match[1]) : getGroupSite()?.home_org_slug
+  const match = location.pathname.match(/^\/orgs\/([^/]+)(?:\/(?:dashboard|public|member|organizer|attendee|volunteer))?\/?$/)
+  const slug = organizationSlug || (match && !['login', 'register', 'profile', 'account', 'initiatives', 'events'].includes(match[1]) ? decodeURIComponent(match[1]) : getGroupSite()?.home_org_slug)
   const access = useOrganizationAccess(slug)
-  const requested = useOrganizationViewPreference(slug, new URLSearchParams(location.search).get('view'))
   if (!slug) return null
-  const view = resolveOrganizationPageView(Boolean(match?.[2]), requested, access.organizer, access.member)
-  if (indicator) return access.loading ? null : <span className="organization-view-indicator" role="status" aria-label={`Active organization view: ${view}`}>View: {view[0].toUpperCase() + view.slice(1)}</span>
-  return <label className="organization-view-switcher" style={{ display: 'flex', alignItems: 'center', gap: '.4rem', fontSize: '.85rem' }}>
-    <span>View as</span>
-    <select aria-label="Organization view" value={view} disabled={access.loading} onChange={event => {
-      const next = resolveOrganizationView(event.target.value, access.organizer, access.member)
-      saveOrganizationView(slug, next)
-      navigate(next === 'public'
-        ? `/orgs/${encodeURIComponent(slug)}`
-        : `/orgs/${encodeURIComponent(slug)}/dashboard?view=${next}`)
-    }}>
-      {organizationViews.map(value => <option key={value} value={value} disabled={(value === 'members' && !access.member) || (value === 'organizers' && !access.organizer)}>{value[0].toUpperCase() + value.slice(1)}</option>)}
-    </select>
-  </label>
+  const base = `/orgs/${encodeURIComponent(slug)}`
+  return <nav aria-label="Organization views" className="organization-view-links">
+    <span>Organization pages</span>
+    <Link to={`${base}/public`}>Public page</Link>
+    <Link to={`${base}/attendee`}>Attendee page</Link>
+    <Link to={`${base}/volunteer`}>Volunteer page</Link>
+    {(access.member || manager || import.meta.env.DEV) && <Link to={`${base}/member`}>Member page</Link>}
+    {(access.organizer || manager || import.meta.env.DEV) && <Link to={`${base}/organizer`}>Organizer page</Link>}
+  </nav>
 }

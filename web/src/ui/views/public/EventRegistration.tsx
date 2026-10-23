@@ -1,5 +1,5 @@
 import { RegistrantAvatar } from '../../components/RegistrantAvatar'
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { pidpAppLoginUrl } from '../../../config/pidp'
 import { loadAttendance, recordAttendanceWithRetry, type EventAttendance } from './attendanceApi'
@@ -22,6 +22,8 @@ export function EventRegistration({ eventId, slug, token, authLoading = false, s
   const [organizationAnnouncements, setOrganizationAnnouncements] = useState(false)
   const [guestListOpen, setGuestListOpen] = useState(false)
   const guestListTitleId = useId()
+  const guestListRef = useRef<HTMLDialogElement>(null)
+  const guestListCloseRef = useRef<HTMLButtonElement>(null)
   const next = `/events/${encodeURIComponent(slug)}`
   const visibleAttendees = attendance?.attendees.slice(0, 5) || []
   const hiddenAttendeeCount = attendance ? Math.max(0, attendance.count - visibleAttendees.length) : 0
@@ -36,13 +38,12 @@ export function EventRegistration({ eventId, slug, token, authLoading = false, s
   }, [authLoading, eventId, token, reload])
 
   useEffect(() => {
-    if (!guestListOpen) return
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setGuestListOpen(false)
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [guestListOpen])
+    const dialog = guestListRef.current
+    if (!guestListOpen || !dialog) return
+    dialog.showModal()
+    guestListCloseRef.current?.focus()
+    return () => { if (dialog.open) dialog.close() }
+  }, [guestListOpen, token, attendance !== null])
 
   async function updateRegistration() {
     if (pending || !token || !attendance) return
@@ -144,11 +145,15 @@ export function EventRegistration({ eventId, slug, token, authLoading = false, s
         {' '}<a href={pidpAppLoginUrl(next)}>Log in again</a>
       </div>}
       {token && attendance && guestListOpen ? (
-        <div className="public-event-guest-list-backdrop" role="presentation" onMouseDown={(event) => {
-          if (event.target === event.currentTarget) setGuestListOpen(false)
-        }}>
-          <section
-            role="dialog"
+          <dialog
+            ref={guestListRef}
+            onCancel={(event) => { event.preventDefault(); setGuestListOpen(false) }}
+            onClick={(event) => {
+              if (event.target !== event.currentTarget) return
+              const bounds = event.currentTarget.getBoundingClientRect()
+              if (event.clientX < bounds.left || event.clientX > bounds.right ||
+                  event.clientY < bounds.top || event.clientY > bounds.bottom) setGuestListOpen(false)
+            }}
             aria-modal="true"
             aria-labelledby={guestListTitleId}
             className="portal-card public-event-guest-list-dialog"
@@ -158,18 +163,24 @@ export function EventRegistration({ eventId, slug, token, authLoading = false, s
                 <p className="public-event-eyebrow">Guests</p>
                 <h3 id={guestListTitleId}>{attendeeSummaryText}</h3>
               </div>
-              <button type="button" className="portal-button-secondary" onClick={() => setGuestListOpen(false)}>Close</button>
+              <button ref={guestListCloseRef} type="button" className="portal-button-secondary" onClick={() => setGuestListOpen(false)}>Close</button>
             </div>
             <div className="public-event-guest-list" aria-label="Guest list">
               {attendance.attendees.map((person, index) => {
                 const profileUrl = person.profile_url || (person.slug ? `/users/${encodeURIComponent(person.slug)}` : null)
                 return (
                   <div className="public-event-guest-list-item" key={person.user_id || `${person.slug || 'registrant'}-${index}`}>
-                    <RegistrantAvatar name={person.name} photoUrl={person.photo_url} />
-                    <div>
-                      {profileUrl ? <Link to={profileUrl} onClick={() => setGuestListOpen(false)}>{person.name}</Link> : <strong>{person.name}</strong>}
-                      <small>Guest</small>
-                    </div>
+                    {profileUrl ? (
+                      <Link to={profileUrl} className="public-event-guest-profile" onClick={() => setGuestListOpen(false)}>
+                        <RegistrantAvatar name={person.name} photoUrl={person.photo_url} />
+                        <span><strong>{person.name}</strong><small>Guest</small></span>
+                      </Link>
+                    ) : (
+                      <div className="public-event-guest-profile">
+                        <RegistrantAvatar name={person.name} photoUrl={person.photo_url} />
+                        <span><strong>{person.name}</strong><small>Guest</small></span>
+                      </div>
+                    )}
                     <Link
                       to={`/chat?start=dm&userId=${encodeURIComponent(person.user_id)}&name=${encodeURIComponent(person.name)}`}
                       className="public-event-registrant-message"
@@ -181,8 +192,7 @@ export function EventRegistration({ eventId, slug, token, authLoading = false, s
                 )
               })}
             </div>
-          </section>
-        </div>
+          </dialog>
       ) : null}
     </section>
   )

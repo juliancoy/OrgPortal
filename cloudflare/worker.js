@@ -1142,6 +1142,7 @@ const productionWorker = {
         || pathMatchesPrefix(path, "/css")
         || pathMatchesPrefix(path, "/fonts")
         || pathMatchesPrefix(path, "/images")
+        || path === "/llms.txt"
         || path === "/orgportal.svg"
         || path === "/orgportal.webmanifest"
         || path === "/manifest.webmanifest"

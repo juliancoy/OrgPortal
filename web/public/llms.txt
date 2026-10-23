@@ -1,0 +1,22 @@
+# OrgPortal
+
+> Organizations, events, teams, and presentation applications. Use the MCP connection for authenticated work; public pages do not grant management access.
+
+## Public pages
+
+- [Organizations](/orgs): Organization directory, personnel, branding, posters, and upcoming events.
+- [Events](/events): Event information, application forms, and public submissions.
+- Event pages use `/events/{slug}#submissions` for public applications and `/events/{slug}#apply` for the application form.
+- Organization pages use `/orgs/{slug}`. Public, member, organizer, attendee, and volunteer links select a URL-based view; permissions remain enforced.
+
+## MCP
+
+- Connect through `/api/org/mcp` on the authoritative organization domain (for example, `https://lifetech.fyi/api/org/mcp`). Authenticate with the account that manages the submitting team.
+- Discover available tools and their exact schemas from MCP. Never infer authority from an email address or impersonate another account.
+- Use existing organization discovery and membership tools to locate or create a team you manage before applying.
+- `list_presentation_applications`: Read your managed applications; event managers can review all event applications.
+- `preview_presentation_application`: Preview an application with event host `organizationId`, `eventId`, `teamOrganizationId`, a stable UUID `submissionId`, `title`, `summary`, and `teammates`.
+- Each teammate is exactly one of `{"userId":"active-team-member-id"}`, `{"invitationId":"existing-team-invitation-id"}`, or `{"email":"teammate@example.com"}`. At least one is required. Email invitations require verification and acceptance before membership becomes active. Only selected teammates appear as presenters; the manager need not present.
+- `apply_presentation_application`: Apply the same reviewed fields with the returned `previewId` and `confirm:true`. This saves the application and queues email invitations. Titles and summaries become public; teammate emails remain private.
+- Reuse `submissionId` when editing. After an uncertain or partial failure, inspect existing applications, request a fresh preview, and retain that submission ID. Already queued invitations may remain even if saving fails.
+- Write tools require live permissions, appropriate OAuth scopes, and reviewed preview receipts. A URL or MCP connection alone never grants organization membership.

@@ -10,39 +10,14 @@ export function resolveOrganizationView(value: string | null, organizer: boolean
   return organizer ? 'organizers' : member ? 'members' : 'public'
 }
 
-// Public profiles never inherit a saved dashboard view.
+// Public profiles always render the public view.
 export function resolveOrganizationPageView(dashboard: boolean, requested: string | null, organizer: boolean, member: boolean): OrganizationView {
   return dashboard ? resolveOrganizationView(requested === 'public' ? null : requested, organizer, member) : 'public'
 }
 
-export const organizationViewStorageKey = (slug: string) => `orgportal.organizationView.${slug}`
-export function readOrganizationView(slug: string | null | undefined): OrganizationView | null {
-  if (!slug) return null
-  try {
-    const value = localStorage.getItem(organizationViewStorageKey(slug))
-    return organizationViews.includes(value as OrganizationView) ? value as OrganizationView : null
-  } catch { return null }
-}
-export function saveOrganizationView(slug: string, view: OrganizationView) {
-  try { localStorage.setItem(organizationViewStorageKey(slug), view) } catch { /* Storage may be unavailable. */ }
-  window.dispatchEvent(new Event('organization-view-change'))
-}
-export function useOrganizationViewPreference(slug: string | null | undefined, requested: string | null) {
-  const [, refresh] = useState(0)
-  const explicit = organizationViews.includes(requested as OrganizationView) ? requested as OrganizationView : null
-  useEffect(() => {
-    if (slug && explicit) saveOrganizationView(slug, explicit)
-  }, [slug, explicit])
-  useEffect(() => {
-    const update = () => refresh(value => value + 1)
-    window.addEventListener('storage', update)
-    window.addEventListener('organization-view-change', update)
-    return () => {
-      window.removeEventListener('storage', update)
-      window.removeEventListener('organization-view-change', update)
-    }
-  }, [])
-  return explicit || readOrganizationView(slug)
+// The URL is the only source of view selection; nothing is persisted.
+export function useOrganizationViewPreference(_slug: string | null | undefined, requested: string | null) {
+  return organizationViews.includes(requested as OrganizationView) ? requested as OrganizationView : null
 }
 
 export function useOrganizationAccess(slug: string | null | undefined) {

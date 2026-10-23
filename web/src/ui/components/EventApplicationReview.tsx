@@ -4,7 +4,7 @@ type Status='all'|'submitted'|'accepted'|'declined'
 type Submission={presenters?:{name:string}[];submission_id:string;organization_id:string;organization_name:string;title:string;summary:string;status:string;updated_at:string}
 type Review={submissions:Submission[];counts:Record<Status,number>;total:number;page:number;pages:number;pageSize:number}
 const labels:Record<Status,string>={all:'All',submitted:'Pending',accepted:'Accepted',declined:'Declined'}
-export function EventApplicationReview({eventId}:{eventId:string}){
+export function EventApplicationReview({eventId,onUpdated,refreshRevision=0}:{eventId:string;onUpdated?:()=>void;refreshRevision?:number}){
  const {token}=useAuth(),filterId=useId()
  const [status,setStatus]=useState<Status>('all'),[page,setPage]=useState(1),[revision,setRevision]=useState(0)
  const [data,setData]=useState<Review|null>(null),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[exporting,setExporting]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('')
@@ -18,13 +18,13 @@ export function EventApplicationReview({eventId}:{eventId:string}){
    .catch(e=>{if(!controller.signal.aborted)setError(e.message)})
    .finally(()=>{if(!controller.signal.aborted)setLoading(false)})
   return()=>controller.abort()
- },[base,token,status,page,revision])
+ },[base,token,status,page,revision,refreshRevision])
  async function update(row:Submission,next:string){
   setBusy(true);setError('');setNotice('')
   try{
    const response=await fetch(`${base}/${encodeURIComponent(row.submission_id)}`,{method:'PATCH',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({status:next})})
    if(!response.ok)throw new Error('Could not change this application’s status.')
-   setNotice(`${row.organization_name} marked ${next==='submitted'?'pending':next}.`);setRevision(v=>v+1)
+   setNotice(`${row.organization_name} marked ${next==='submitted'?'pending':next}.`);setRevision(v=>v+1);onUpdated?.()
   }catch(e){setError(e instanceof Error?e.message:'Could not save application')}
   finally{setBusy(false)}
  }

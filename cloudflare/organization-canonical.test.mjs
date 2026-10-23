@@ -24,3 +24,23 @@ test('install manifests launch recognized pages rather than retired organization
   assert.doesNotMatch(manifest.id||'',/\/portals(?:\/|$)/);
  }
 });
+
+test('organization audience pages have direct routes without restoring browser preferences',()=>{
+ for(const audience of ['public','member','organizer','attendee','volunteer']) {
+  assert.equal(isPortalPagePath(`/orgs/lifetech/${audience}`),true);
+  assert.equal(isPortalPagePath(`/orgs/lifetech/${audience}/missing`),false);
+ }
+});
+
+test('llms.txt is served as an actual text asset on tenant and platform domains',async()=>{
+ const content=readFileSync(new URL('../web/public/llms.txt',import.meta.url),'utf8');
+ for(const host of ['lifetech.fyi','orgportal.cc']){
+  const env={ORGPORTAL_SITE_HOSTS:host,ASSETS:{fetch:async request=>{
+   assert.equal(new URL(request.url).pathname,'/__portal_root/llms.txt');
+   return new Response(content,{headers:{'content-type':'text/plain; charset=utf-8'}});
+  }}};
+  const response=await worker.fetch(new Request(`https://${host}/llms.txt`),env);
+  assert.equal(response.status,200);assert.match(response.headers.get('content-type'),/text\/plain/);
+  assert.match(await response.text(),/preview_presentation_application/);
+ }
+});
