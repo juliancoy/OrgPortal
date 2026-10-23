@@ -26,8 +26,8 @@ local_nginx_conf = local_dir / "nginx.conf"
 container_app_dir = "/app"
 
 DEFAULT_PROD_IMAGE = "ghcr.io/juliancoy/orgportal:latest"
-DEFAULT_DEV_IMAGE = "node:24-alpine"
-DEFAULT_WORKER_IMAGE = "node:22-bookworm-slim"
+DEFAULT_DEV_IMAGE = (current_dir / "cloudflare" / "release-image.txt").read_text().strip()
+DEFAULT_WORKER_IMAGE = DEFAULT_DEV_IMAGE
 DEFAULT_DATA_SOURCE = "api"
 DEFAULT_LOCAL_GATEWAY_PORT = "8443"
 DEFAULT_WORKER_PORT = "8001"
@@ -659,6 +659,26 @@ def _service_startup_retries() -> int:
     if not 30 <= seconds <= 3600:
         raise RuntimeError("ORGPORTAL_LOCAL_SERVICE_TIMEOUT must be in 30..3600 seconds")
     return (seconds + 1) // 2
+
+
+def run_release(action: str, target: str = "all", checkout=None) -> int:
+    root = Path(checkout or current_dir).resolve()
+    image = (root / "cloudflare" / "release-image.txt").read_text().strip()
+    cache = Path(os.getenv("ORGPORTAL_RELEASE_CACHE", str(local_dir / "release-container"))).resolve()
+    common_git = subprocess.check_output(
+        ["git", "-C", str(root), "rev-parse", "--path-format=absolute", "--git-common-dir"], text=True
+    ).strip()
+    command = ["docker", "run", "--rm", "--init", "--user", f"{os.getuid()}:{os.getgid()}", "--workdir", str(root)]
+    for source, destination in [(root, root), (common_git, common_git)]:
+        command += ["--mount", f"type=bind,src={source},dst={destination}"]
+    for package in ("web", "org-worker", "chat-worker", "npm", "wrangler"):
+        source = cache / package
+        source.mkdir(parents=True, exist_ok=True)
+        destination = root / package / "node_modules" if package in ("web", "org-worker", "chat-worker") else Path("/tmp") / ("npm-cache" if package == "npm" else "wrangler-config")
+        command += ["--mount", f"type=bind,src={source},dst={destination}"]
+    for value in ("npm_config_cache=/tmp/npm-cache", "XDG_CONFIG_HOME=/tmp/wrangler-config", "CI=true", "WRANGLER_SEND_METRICS=false", "CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_API_TOKEN"):
+        command += ["--env", value]
+    return subprocess.call(command + [image, "bash", "cloudflare/release-container.sh", action, target])
 
 
 def run(prefix: str, network_name: str) -> None:

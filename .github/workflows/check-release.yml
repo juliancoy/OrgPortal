@@ -1,10 +1,10 @@
 name: Verify independent OrgPortal release
 on:
   pull_request:
-    paths: ['cloudflare/**', 'scripts/release.mjs', '.github/workflows/check-release.yml']
+    paths: ['cloudflare/**', 'scripts/release.mjs', 'run.py', '.github/workflows/check-release.yml']
   push:
     branches: [main]
-    paths: ['cloudflare/**', 'scripts/release.mjs', '.github/workflows/check-release.yml']
+    paths: ['cloudflare/**', 'scripts/release.mjs', 'run.py', '.github/workflows/check-release.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -14,12 +14,10 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
+    container: node:22-bookworm@sha256:8a34c4ab3ea2c5cd194f07e317b2a8f09461d3c8b05c4e34c8ccd56d56024c4d
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
       - run: npm ci --prefix web
       - run: npm ci --prefix org-worker
       - run: npm ci --prefix chat-worker

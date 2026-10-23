@@ -46,13 +46,19 @@ commit-stamped health manifest. Database migrations are never run implicitly.
 
 ## Manual targets
 
-With Node 22 and the lockfile dependencies installed in `web`, `org-worker`
-and `chat-worker`, use:
+Local releases use the digest-pinned Node 22 Debian Bookworm image in
+`cloudflare/release-image.txt`. Only Docker, Git and Bash are required on the
+host; host Node/npm are never used. The container includes npm, Git and Python
+with SQLite. Lockfile dependencies are installed inside the container and cached
+under `.local/release-container`, with separate caches for each package. Files
+are written as the invoking user. GitHub release checks use the same image.
+
+Use these commands from a clean checkout of current `main`:
 
 ```sh
-node scripts/release.mjs check all
-node scripts/release.mjs build all
-node scripts/release.mjs deploy all
+python3 ../run.py --release check
+python3 ../run.py --release build
+python3 ../run.py --release deploy
 ```
 
 Replace `all` with `web` or `api` for an explicit component release. Deployment
