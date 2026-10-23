@@ -1,4 +1,5 @@
 import { OrganizationViewSwitcher } from '../../components/OrganizationViewSwitcher'
+import { NeoNatalFocus } from '../../components/NeoNatalFocus'
 import { EventPosterTools } from '../../components/EventPosterTools'
 import { OrganizationBoard } from '../../components/OrganizationBoard'
 import {isRetiredOrganizationHref} from '../../../../../shared/organizationUrls'
@@ -944,6 +945,8 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
   const eventGroups = groupOrganizationEvents(events, org).filter(group => group.kind==='hosted')
   const resources=specialtyResourcesForTenant(site)
   const portalDescription=site?.home_description?.trim()
+  const isNeoNatalProfile = org.id === '20df0f86-111f-4cb1-bb3d-8dff604dded6' && !dashboard
+  const SecondaryOrganizationSection = isNeoNatalProfile ? 'details' : 'div'
   const portalAction=(label:string|null|undefined,value:string|null|undefined)=>{
     if(!label||!value)return null
     if(value==='/users/login')return <a className="btn-secondary" href={pidpAppLoginUrl(`/orgs/${encodeURIComponent(org.slug)}`)}>{label}</a>
@@ -969,7 +972,7 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
   }
 
   return (
-    <section className="panel portal-org-page">
+    <section className={`panel portal-org-page${isNeoNatalProfile ? ' neonatal-page' : ''}`}>
       <div className="portal-org-info-tabs" role="tablist" aria-label={`${org.name} information`}>
         {orgTabs.map(tab => <button type="button" role="tab" id={`org-tab-${tab}`} aria-controls={`org-panel-${tab}`} aria-selected={activeTab === tab} tabIndex={activeTab === tab ? 0 : -1} key={tab} onClick={() => selectTab(tab)} onKeyDown={event => {
           if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return
@@ -996,7 +999,7 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
         <div className="portal-org-main-column">
           <div id="organization-overview" className="portal-org-hero portal-org-nav-target" tabIndex={-1}>
             <div className="portal-org-hero-copy">
-              <p className="tenant-home-eyebrow">{isOrganizerView ? 'Organization dashboard' : `${organizationView[0].toUpperCase()}${organizationView.slice(1)} view`}</p>
+              <p className="tenant-home-eyebrow">{isNeoNatalProfile ? 'Baltimore · Data engineering' : isOrganizerView ? 'Organization dashboard' : `${organizationView[0].toUpperCase()}${organizationView.slice(1)} view`}</p>
               <div className="portal-org-hero-header">
                 <h1>{!dashboard&&site?.home_heading||org.name}</h1>
                 {isOrganizerView && <button type="button" className="btn-secondary" onClick={() => openOrganizationEditor('org-name')} aria-label="Edit organization name"><Pencil size={17} aria-hidden="true" /></button>}
@@ -1004,9 +1007,17 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
                   <span className="portal-org-image-hint">Click image to change</span>
                 ) : null}
               </div>
-              {site?.tagline&&site.tagline!==org.description&&<p className="muted">{site.tagline}</p>}
-              {org.description ? <BioMarkdown value={org.description} /> : null}
-              {portalDescription&&portalDescription!==org.description?.trim()&&portalDescription!==site?.tagline?.trim()&&<BioMarkdown value={portalDescription} />}
+              {isNeoNatalProfile && !!org.tags?.length && <ul className="neonatal-tags" aria-label="Organization tags">
+                {org.tags.map(tag => <li key={tag} className="pill">{tag}</li>)}
+              </ul>}
+              {isNeoNatalProfile ? <>
+                <p className="neonatal-tagline">Engineering insight into complex disease.</p>
+                <p className="neonatal-intro">A Baltimore team of data engineers working to better understand poorly understood diseases.</p>
+              </> : <>
+                {site?.tagline&&site.tagline!==org.description&&<p className="muted">{site.tagline}</p>}
+                {org.description ? <BioMarkdown value={org.description} /> : null}
+                {portalDescription&&portalDescription!==org.description?.trim()&&portalDescription!==site?.tagline?.trim()&&<BioMarkdown value={portalDescription} />}
+              </>}
               {publicPortal?.organizationId===org.id&&publicPortal.error&&<p role="status">{publicPortal.error}</p>}
               {isOrganizerView && <button type="button" className="btn-secondary" onClick={() => openOrganizationEditor('org-description')}>Edit description</button>}
               <div className="portal-org-actions" aria-label={`${org.name} actions`}>
@@ -1022,8 +1033,8 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
                     Log in to join
                   </a>
                 )}
-                {portalAction(site?.home_primary_label,site?.home_primary_href)}
-                {portalAction(site?.home_secondary_label,site?.home_secondary_href)}
+                {!isNeoNatalProfile && portalAction(site?.home_primary_label,site?.home_primary_href)}
+                {!isNeoNatalProfile && portalAction(site?.home_secondary_label,site?.home_secondary_href)}
                 {Boolean(org.links?.length) && <nav className="organization-public-links" aria-label="Organization Links">{org.links!.filter(link=>!isRetiredOrganizationHref(link.url)).map(link=><a key={link.id} className="btn-secondary" href={link.url} target="_blank" rel="noopener noreferrer">{link.label || organizationLinkLabels[link.type]}</a>)}</nav>}
                 {org.source_url && !isRetiredOrganizationHref(org.source_url) && org.source_url !== org.group_home_url ? (
                   <a className="btn-secondary" href={org.source_url} target="_blank" rel="noreferrer">
@@ -1053,9 +1064,16 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
               />
             </button>
           </div>
-          <OrganizationBrandGuide href={organizationBrandingPath(org.slug)} />
+          {isNeoNatalProfile && <>
+            <NeoNatalFocus />
+            {(org.description || portalDescription) && <details className="neonatal-about"><summary>About NeoNatal AI</summary>
+              {org.description && <BioMarkdown value={org.description} />}
+              {portalDescription && portalDescription !== org.description?.trim() && <BioMarkdown value={portalDescription} />}
+            </details>}
+          </>}
+          {!isNeoNatalProfile && <OrganizationBrandGuide href={organizationBrandingPath(org.slug)} />}
           <SpecialtyResourcesPanel resources={resources} />
-          {eventGroups.map((group) => <div key={group.kind} id={group.kind === 'hosted' ? 'organization-events' : 'organization-related-events'} className="portal-card portal-org-events-card portal-org-nav-target" tabIndex={-1}>
+          {eventGroups.filter(group => !isNeoNatalProfile || eventsLoading || eventsError || group.events.length > 0).map((group) => <div key={group.kind} id={group.kind === 'hosted' ? 'organization-events' : 'organization-related-events'} className="portal-card portal-org-events-card portal-org-nav-target" tabIndex={-1}>
             <div className="portal-org-events-heading">
               <div>
                 <p className="tenant-home-eyebrow">{org.name}</p>
@@ -1159,6 +1177,7 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
             canRead={Boolean(token && (canManageCurrentOrg || membership?.status === 'active'))}
             canManage={isOrganizerView}
             membershipCount={org.membership_count || 0}
+            memberType={org.tags?.includes('Team') ? 'team' : 'community'}
           />
           </div>}
 
@@ -1217,7 +1236,7 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
               Ownership status: Disputed ({org.pending_challenges_count} open challenge{org.pending_challenges_count === 1 ? '' : 's'}).
             </p>
           ) : null}
-          {org.tags && org.tags.length ? (
+          {!isNeoNatalProfile && org.tags && org.tags.length ? (
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
               {org.tags.map((tag) => (
                 <span key={tag} className="pill">
@@ -1296,11 +1315,14 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
             </div>
           ) : null}
 
+          <SecondaryOrganizationSection className={isNeoNatalProfile ? 'neonatal-about' : undefined}>
+          {isNeoNatalProfile && <summary>Related organizations and support</summary>}
           <PeerOrganizations organizationId={org.id} tags={org.tags} />
 
           <div id="organization-support" className="portal-org-nav-target" tabIndex={-1}>
             <OrganizationSupport organizationId={org.id} slug={org.slug} canManage={isOrganizerView} />
           </div>
+          </SecondaryOrganizationSection>
 
           {isOrganizerView && adminView ? (
             <div
