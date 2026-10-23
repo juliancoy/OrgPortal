@@ -377,3 +377,16 @@ membership deletion removes it, and support erasure clears it alongside titles.
 The existing restricted membership journal records changes and follows its
 existing retention/restore restrictions. Apply verified erasures again after a
 backup restore. No automatic identity matching or access grants use photos.
+
+Board and Personnel introductions may include a manager-published description
+of up to 600 characters on the existing membership. Without an override, only an
+enabled public profile's bio or headline is displayed. Descriptions do not alter
+personal profiles or membership permissions. They remain while the active
+membership needs them, subject to the annual public-record review above; inactive
+or deleted memberships are not published. Managers clear the live override with
+`description: null`; verified subject erasure clears this field alongside titles
+and portraits or deletes the membership. The existing restricted membership
+journal records before/after descriptions and uses the same review, erasure and
+backup restrictions; clearing live copy does not erase immutable history. Reapply
+verified removals to restored backups before serving them. No additional personal
+history store or public replica of memberships is created.

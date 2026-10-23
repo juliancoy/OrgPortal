@@ -38,11 +38,13 @@ with sync_playwright() as p:
  expect(page.get_by_role('heading',name=org['name']+' Board',exact=True)).to_be_visible(timeout=30000)
  roster=page.get_by_role('region',name='Community members',exact=True)
  expect(roster.locator('.organization-member-identity').filter(has_text=colleague_name)).to_be_visible(timeout=30000)
- def set_titles(person_name,values,portrait=None):
+ def set_titles(person_name,values,portrait=None,description=None):
   item=roster.locator('li').filter(has=page.locator('.organization-member-identity').filter(has_text=person_name)).first
   item.get_by_role('button',name='Edit roles',exact=True).click()
   form=page.get_by_role('form',name='Roles for '+person_name,exact=True)
   form.get_by_label('Organization roles (one per line)').fill(values)
+  if description is not None:
+   form.get_by_label('Board description or bio',exact=True).fill(description)
   if portrait is not None:
    form.get_by_label('Personnel photo URL',exact=True).fill(portrait[0])
    form.get_by_label('Photo source page',exact=True).fill(portrait[1])
@@ -50,11 +52,11 @@ with sync_playwright() as p:
   expect(form.get_by_role('button',name='Save roles',exact=True)).to_be_enabled(timeout=30000)
   form.get_by_role('button',name='Save roles',exact=True).click()
   expect(form).to_have_count(0,timeout=30000)
- set_titles(owner_name,'CEO')
- set_titles(colleague_name,'CTO\nAdvisor',(BASE+'/laurel_wreath_logo.png',BASE+'/about'))
+ set_titles(owner_name,'CEO',description='Leads the synthetic organization.')
+ set_titles(colleague_name,'CTO\nAdvisor',(BASE+'/laurel_wreath_logo.png',BASE+'/about'),description='Builds the synthetic research platform.')
  board=page.locator('.organization-board-grid')
  expect(board.get_by_role('heading',name=owner_name,exact=True)).to_be_visible(timeout=30000)
- expect(board.get_by_text('CTO',exact=True)).to_be_visible();expect(board.get_by_text('Advisor',exact=True)).to_be_visible()
+ expect(board.get_by_text('Builds the synthetic research platform.',exact=True)).to_be_visible();expect(board.get_by_text('CTO',exact=True)).to_be_visible();expect(board.get_by_text('Advisor',exact=True)).to_be_visible()
  expect(board.get_by_role('link',name='Photo source',exact=True)).to_have_attribute('href',BASE+'/about')
  expect(board.locator('img')).to_have_attribute('src',BASE+'/laurel_wreath_logo.png')
  page.wait_for_function("document.querySelector('.organization-board-grid img')?.naturalWidth>0")
@@ -76,7 +78,7 @@ with sync_playwright() as p:
  expect(guestpage.get_by_role('button',name='Edit roles',exact=True)).to_have_count(0)
  assert owner_email not in guestpage.locator('body').inner_text() and colleague_email not in guestpage.locator('body').inner_text()
  payload=good(guest.request.get(public));assert all('user_id' not in row and 'email' not in row for row in payload['people'])
- set_titles(colleague_name,'',('',''));expect(board.get_by_role('heading',name=colleague_name,exact=True)).to_have_count(0,timeout=30000)
+ set_titles(colleague_name,'',('',''),description='');expect(board.get_by_role('heading',name=colleague_name,exact=True)).to_have_count(0,timeout=30000)
  # Personnel also includes active members who have opted into a public profile.
  good(colleague.request.put(BASE+'/api/org/api/network/contact/me',headers=colleague_auth,data={'enabled':True}))
  page.get_by_role('tab',name='Personnel',exact=True).click()

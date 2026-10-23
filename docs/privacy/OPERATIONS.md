@@ -296,3 +296,15 @@ counts, not other users' private ballots. Both stores are excluded from journal
 replication. Reapply verified deletion requests to any restored backup before
 serving it. Ordinary self-service deletion uses the scoped nomination/ballot
 DELETE API. Hourly retention removes expired rows in bounded batches.
+
+### Organization member descriptions
+
+Migration 0108 adds a nullable, 600-character `organization_memberships.description`;
+0109 includes it in the existing restricted membership journal. Public Board and
+Personnel responses expose it only for active memberships. Public-profile bio and
+headline fallbacks require an enabled profile. Managers can clear overrides via
+the existing member-title preview/apply operation using `description: null`.
+On verified erasure, clear descriptions together with titles and portraits (or
+remove the membership); review journal retention separately and reapply verified
+erasures after backup restoration. Annual public-record review and existing
+membership deletion processes cover this field; no automatic erasure is claimed.

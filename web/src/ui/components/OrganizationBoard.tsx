@@ -5,7 +5,7 @@ import { OrganizationAvatar } from './OrganizationAvatar'
 import { OrganizationMembers } from './OrganizationMembers'
 import './OrganizationBoard.css'
 
-type Person={id:string;name:string;titles:string[];photo_url:string|null;photo_source_url?:string|null;profile_slug:string|null;personnel_class:PersonnelClass}
+type Person={id:string;name:string;titles:string[];description?:string|null;photo_url:string|null;photo_source_url?:string|null;profile_slug:string|null;personnel_class:PersonnelClass}
 export function OrganizationBoard({organization,canManage,view='board'}:{organization:{id:string;slug:string;name:string;membership_count?:number};canManage:boolean;view?:'board'|'personnel'}){
  const label=view==='personnel'?'Personnel':'Board'
  const [people,setPeople]=useState<Person[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[revision,setRevision]=useState(0)
@@ -30,6 +30,7 @@ export function OrganizationBoard({organization,canManage,view='board'}:{organiz
   <div className="organization-board-grid">{people.map(person=><article className="portal-card organization-board-person" key={person.id}>
    <OrganizationAvatar name={person.name} src={person.photo_url} status={person.personnel_class} />
    <h2>{person.profile_slug?<Link to={`/users/${encodeURIComponent(person.profile_slug)}`}>{person.name}</Link>:person.name}</h2><div className="organization-member-titles">{person.titles.map(title=><span className="pill" key={title}>{title}</span>)}</div>
+   {person.description&&<p className="organization-board-description">{person.description}</p>}
    {person.photo_source_url&&<a className="organization-portrait-source" href={person.photo_source_url} target="_blank" rel="noopener noreferrer">Photo source</a>}
   </article>)}</div>
   {canManage&&<OrganizationMembers organizationId={organization.id} name={organization.name} canRead canManage membershipCount={organization.membership_count||0} />}

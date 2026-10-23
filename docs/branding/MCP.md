@@ -59,3 +59,21 @@ PLAYWRIGHT_BASE_URL=https://localhost:9457 python3 web/scripts/test-local-brand-
 
 This headless test uses synthetic portal configuration and only permits local,
 read-only requests. It creates no real organization or account records.
+
+## Board and Personnel introductions
+
+`preview_organization_member_titles` and `apply_organization_member_titles` accept
+`organizationId`, the canonical member `user_id`, `titles`, an optional sourced
+`portrait`, and an optional `description` (up to 600 characters). Descriptions are
+public organization-specific introductions; they do not edit personal profiles
+or grant permissions. A description publishes an active member on Board even
+without a title. Both Board and Personnel use the enabled public bio or headline
+when no organization description is set. Disabled profiles never supply bios.
+
+Read `list_organization_members` and `lookup_portal_people` before choosing an
+account. Preview the exact changes, then apply with the returned one-use
+`previewId` and `confirm: true`. Omit `description` to preserve it; use `null` or
+an empty string to clear the override and restore the public-profile fallback.
+Changing any reviewed field requires a new preview. Current management access
+is checked again at apply time. Managers can also edit the same description
+through **Edit roles → Board description or bio** on the website.

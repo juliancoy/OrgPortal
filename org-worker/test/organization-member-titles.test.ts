@@ -8,12 +8,12 @@ function fixture(){return new EventTestDb(`ALTER TABLE organization_memberships 
  ALTER TABLE organization_memberships ADD COLUMN user_name TEXT;
  ALTER TABLE organization_memberships ADD COLUMN user_email TEXT;
  CREATE TABLE organization_personnel_motions(id TEXT,organization_id TEXT,target_user_id TEXT,decision TEXT,status TEXT,updated_at TEXT);
- CREATE TABLE user_contact_pages(user_id TEXT PRIMARY KEY,user_name TEXT,user_email TEXT,photo_url TEXT,slug TEXT,enabled INTEGER DEFAULT 0);
+ CREATE TABLE user_contact_pages(user_id TEXT PRIMARY KEY,user_name TEXT,user_email TEXT,photo_url TEXT,slug TEXT,enabled INTEGER DEFAULT 0,bio TEXT,headline TEXT);
  CREATE TABLE ledger_accounts(user_id TEXT,name TEXT,email TEXT,entity_type TEXT);
  INSERT INTO organization_memberships(organization_id,user_id,user_name,role,status) VALUES('org-one','colleague','Dummy Colleague','member','active'),('org-one','inactive','Inactive','member','inactive');
  INSERT INTO organizations(id,name,slug) VALUES('other','Other','other');
- INSERT INTO user_contact_pages VALUES('pidp-user','Dummy Owner','private-owner@example.test','/private.png','private-owner',0),('colleague','Dummy Colleague','private-member@example.test','/public.png','dummy-colleague',1);
- `+readFileSync(new URL('../migrations/0102_organization_member_titles.sql',import.meta.url),'utf8')+readFileSync(new URL('../migrations/0104_organization_personnel_portraits.sql',import.meta.url),'utf8'))}
+ INSERT INTO user_contact_pages VALUES('pidp-user','Dummy Owner','private-owner@example.test','/private.png','private-owner',0,'Private biography','Private headline'),('colleague','Dummy Colleague','private-member@example.test','/public.png','dummy-colleague',1,'Public colleague biography','Public headline');
+ `+readFileSync(new URL('../migrations/0102_organization_member_titles.sql',import.meta.url),'utf8')+readFileSync(new URL('../migrations/0104_organization_personnel_portraits.sql',import.meta.url),'utf8')+readFileSync(new URL('../migrations/0108_organization_member_descriptions.sql',import.meta.url),'utf8'))}
 test('titles apply to members and owners without changing authorization; clearing, preview and replay are safe',async()=>{
  const db=fixture(),d1=db as unknown as D1Database;
  try{
@@ -73,6 +73,37 @@ test('MCP directory lookup uses live management checks and returns canonical ide
   assert.equal(found.people[0].user_id,'colleague');
   await assert.rejects(organizationTitlePeople(d1,{...identity,userId:'colleague'},{organizationId:'org-one',q:'Dummy'}));
   await assert.rejects(organizationTitlePeople(d1,{...identity,scopes:[]},{organizationId:'org-one',q:'Dummy'}));
+ }finally{db.close()}
+});
+
+test('descriptions publish without titles, use exact receipts, preserve profiles and fall back only to public bios',async()=>{
+ const db=fixture(),d1=db as unknown as D1Database;
+ try {
+  const routes=organizationMemberTitleRoutes(async()=>({id:'pidp-user'}),()=>new Response('Denied',{status:403}));
+  const board=async()=>(await(await routes.request('https://example.test/public/one/board',{}, {DB:d1} as Env)).json()) as {people:{name:string;description:string|null}[]};
+  const args={organizationId:'org-one',user_id:'colleague',titles:[],description:'Research consultant for this team.'};
+  const p=await runMemberTitlesOperation(d1,identity,args) as {previewId:string};
+  await assert.rejects(runMemberTitlesOperation(d1,identity,{...args,description:'Unreviewed',confirm:true,previewId:p.previewId}));
+  const p2=await runMemberTitlesOperation(d1,identity,args) as {previewId:string};
+  await runMemberTitlesOperation(d1,identity,{...args,confirm:true,previewId:p2.previewId});
+  assert.equal((await board()).people[0].description,args.description);
+  assert.equal((await db.prepare("SELECT bio FROM user_contact_pages WHERE user_id='colleague'").first() as {bio:string}).bio,'Public colleague biography');
+  const titleOnly={organizationId:'org-one',user_id:'colleague',titles:['Advisor']};
+  const p3=await runMemberTitlesOperation(d1,identity,titleOnly) as {previewId:string};
+  await runMemberTitlesOperation(d1,identity,{...titleOnly,confirm:true,previewId:p3.previewId});
+  assert.equal((await board()).people[0].description,args.description);
+  const clear={...titleOnly,description:null};const p4=await runMemberTitlesOperation(d1,identity,clear) as {previewId:string};
+  await runMemberTitlesOperation(d1,identity,{...clear,confirm:true,previewId:p4.previewId});
+  assert.equal((await board()).people[0].description,'Public colleague biography');
+  await db.prepare("UPDATE user_contact_pages SET enabled=0 WHERE user_id='colleague'").run();
+  assert.equal((await board()).people[0].description,null);
+  for(const description of ['x'.repeat(601),'bad\0bio'])await assert.rejects(runMemberTitlesOperation(d1,identity,{...titleOnly,description}));
+  await assert.rejects(runMemberTitlesOperation(d1,{...identity,userId:'colleague'},args));
+  await assert.rejects(runMemberTitlesOperation(d1,identity,{...args,organizationId:'other'}));
+  const p5=await runMemberTitlesOperation(d1,identity,args) as {previewId:string};
+  await db.prepare("UPDATE organization_memberships SET description='Concurrent update' WHERE user_id='colleague'").run();
+  await assert.rejects(runMemberTitlesOperation(d1,identity,{...args,confirm:true,previewId:p5.previewId}));
+  assert.doesNotMatch(JSON.stringify(await board()),/Private biography|Private headline/);
  }finally{db.close()}
 });
 
