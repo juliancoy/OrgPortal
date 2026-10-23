@@ -47,7 +47,7 @@ commit-stamped health manifest. Database migrations are never run implicitly.
 ## Manual targets
 
 Local releases use the digest-pinned Node 22 Debian Bookworm image in
-`cloudflare/release-image.txt`. Only Docker, Git and Bash are required on the
+`cloudflare/release-image.txt`. Only Docker, Git and Python are required on the
 host; host Node/npm are never used. The container includes npm, Git and Python
 with SQLite. Lockfile dependencies are installed inside the container and cached
 under `.local/release-container`, with separate caches for each package. Files
@@ -61,7 +61,8 @@ python3 ../run.py --release build
 python3 ../run.py --release deploy
 ```
 
-Replace `all` with `web` or `api` for an explicit component release. Deployment
+Add `--target web` or `--target api` for an explicit component release. Use
+`--release-checkout /path/to/clean/OrgPortal` to release a clean worktree. Deployment
 requires `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` in the environment;
 never place token values in shell arguments, source control or logs.
 The API upload inherits all live bindings and keeps runtime settings, cron,
