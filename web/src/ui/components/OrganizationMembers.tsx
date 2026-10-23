@@ -1,8 +1,10 @@
+import { PersonnelInvitations } from './PersonnelInvitations'
+import { OrganizationPersonnelScheme, usePersonnelScheme } from './OrganizationPersonnelScheme'
 import { OrganizationEmailInvite } from './OrganizationEmailInvite'
 import { useOrganizationPersonnel } from '../hooks/useOrganizationPersonnel'
 import { OrganizationPersonnelActions } from './OrganizationPersonnelActions'
 import { OrganizationAvatar, OrganizationPersonnelLegend } from './OrganizationAvatar'
-import { personnelClasses } from '../../../../shared/organizationPersonnel'
+import { personnelClasses, personnelSchemes } from '../../../../shared/organizationPersonnel'
 import { SignInLink } from './SignInLink'
 import './OrganizationMembers.css'
 import { useEffect, useId, useState } from 'react'
@@ -22,6 +24,7 @@ async function readResponse<T>(response: Response): Promise<T> {
 export function OrganizationMembers({ organizationId, name, canRead, canManage, membershipCount, memberType = 'community' }: {
   organizationId: string; name: string; canRead: boolean; canManage: boolean; membershipCount: number; memberType?: 'community' | 'team'
 }) {
+  const scheme = usePersonnelScheme(organizationId)
   const memberLabel = memberType === 'team' ? 'Team' : 'Community'
   const { token } = useAuth()
   const personnelFor = useOrganizationPersonnel(organizationId)
@@ -43,6 +46,7 @@ export function OrganizationMembers({ organizationId, name, canRead, canManage, 
   const [editingTitles,setEditingTitles]=useState<string|null>(null)
   const [titlesDraft,setTitlesDraft]=useState('')
   const [descriptionDraft,setDescriptionDraft]=useState('')
+  const roleScheme = scheme
   const [portraitUrl,setPortraitUrl]=useState(''),[portraitSource,setPortraitSource]=useState('')
   const [titlePreview,setTitlePreview]=useState<{previewId:string;titles:string[];description:string|null;portrait:{url:string;source_url:string}|null;before:{titles:string[];description:string|null}}|null>(null)
   const url = `/api/org/api/network/orgs/${encodeURIComponent(organizationId)}/members`
@@ -113,24 +117,27 @@ export function OrganizationMembers({ organizationId, name, canRead, canManage, 
   if(!canManage && !error && ((!canRead && membershipCount === 0) || (canRead && !loading && members.length === 0)))return null
   return <section className="portal-card organization-members" aria-label={`${memberLabel} members`}>
     <h2>{memberLabel} members <span className="muted">({canRead && !loading && !error ? members.length : membershipCount})</span></h2>
-    <OrganizationPersonnelLegend />
+    <OrganizationPersonnelScheme organizationId={organizationId} canManage={canManage} scheme={scheme} />
+    <OrganizationPersonnelLegend scheme={scheme} />
+    {canManage && <PersonnelInvitations organizationId={organizationId} scheme={scheme} />}
     {!canRead ? <p className="muted">{token ? `Join ${name} to see ${memberType} members.` : <><SignInLink /> to see {memberType} members.</>}</p> : <>
       {loading && <p role="status">Loading members…</p>}
       {error && <p role="alert">{error} <button type="button" onClick={() => setRevision(value => value + 1)}>Retry</button></p>}
       {!loading && !error && (members.length ? <ul className="organization-members-list">
         {members.map(member => <li key={member.user_id}>
-          <OrganizationAvatar name={member.user_name || `${memberLabel} member`} src={member.photo_url || personnelFor.photoFor(member.user_id)} status={personnelFor(member.user_id)} />
+          <OrganizationAvatar name={member.user_name || `${memberLabel} member`} src={member.photo_url || personnelFor.photoFor(member.user_id)} status={personnelFor(member.user_id)} scheme={scheme} titles={member.titles} />
           <div className="organization-member-identity">{member.user_name || `${memberLabel} member`}<small className="muted" style={{ display: 'block', overflowWrap: 'anywhere' }}>{member.user_email || member.user_id}</small>{!!member.titles?.length && <span className="organization-member-titles">{member.titles.map(title=><span className="pill" key={title}>{title}</span>)}</span>}</div>
           <span className="pill">{personnelFor(member.user_id) === 'persona_non_grata' ? personnelClasses.persona_non_grata.label : member.pending_organizer ? (member.onboarding_completed_at ? 'Organizer ready for activation' : 'Organizer pending onboarding') : member.role === 'administrator' ? 'Organizer' : member.role === 'owner' ? 'Owner' : 'Member'}</span>
           {canManage && <button type="button" className="btn-secondary" disabled={!!adding||!!preview} onClick={()=>{setEditingTitles(member.user_id);setTitlesDraft((member.titles||[]).join('\n'));setDescriptionDraft(member.description||'');setPortraitUrl(member.portrait?.url||'');setPortraitSource(member.portrait?.source_url||'');setTitlePreview(null);setStatus('')}}>Edit roles</button>}
           {editingTitles===member.user_id && canManage && <form className="organization-title-editor" aria-label={`Roles for ${member.user_name||'member'}`} onSubmit={event=>{event.preventDefault();void saveTitles(member,!!titlePreview)}}>
+            <label>Add a class<select aria-label="Add a class" value="" onChange={event=>{const value=event.target.value;if(value){setTitlesDraft(previous=>[...new Set([...previous.split('\n').map(title=>title.trim()).filter(Boolean),value])].join('\n'));setTitlePreview(null)}}}><option value="">Choose a class…</option>{Object.entries(personnelSchemes[roleScheme].classes).map(([key,value])=><option key={key} value={value.label}>{value.label}</option>)}</select></label>
             <label>Organization roles (one per line)<textarea rows={3} maxLength={808} value={titlesDraft} onChange={event=>{setTitlesDraft(event.target.value);setTitlePreview(null)}} placeholder={'CEO\nAdvisor'} /></label>
             <label>Board description or bio<textarea aria-label="Board description or bio" rows={4} maxLength={600} value={descriptionDraft} onChange={event=>{setDescriptionDraft(event.target.value);setTitlePreview(null)}} placeholder="A short introduction and their work with this organization" /></label>
             <label>Personnel photo URL<input type="url" maxLength={2048} value={portraitUrl} onChange={event=>{setPortraitUrl(event.target.value);setTitlePreview(null)}} placeholder="https://…" /></label>
             <label>Photo source page<input type="url" maxLength={2048} required={!!portraitUrl.trim()} value={portraitSource} onChange={event=>{setPortraitSource(event.target.value);setTitlePreview(null)}} placeholder="https://…" /></label>
             <p className="muted">Up to eight roles, such as CEO, Geneticist, or Advisor. Roles, descriptions and optional sourced photos appear on the public Board and Personnel tabs. Publishing a photo also lists the person in Personnel. Membership access is separate. Clearing the photo restores their public profile image or initials.</p>
             {titlePreview && <p role="status">Current roles: {titlePreview.before.titles.join(', ')||'None'}. New roles: {titlePreview.titles.join(', ')||'None'}. Public description: {titlePreview.description||'Use enabled public bio or headline'}.</p>}
-            {titlePreview && <div>{titlePreview.portrait?<><OrganizationAvatar name={member.user_name||'Member'} src={titlePreview.portrait.url} status={personnelFor(member.user_id)} /><a href={titlePreview.portrait.source_url} target="_blank" rel="noopener noreferrer">Review photo source</a></>:<p>Photo: public profile image or initials.</p>}</div>}
+            {titlePreview && <div>{titlePreview.portrait?<><OrganizationAvatar name={member.user_name||'Member'} src={titlePreview.portrait.url} status={personnelFor(member.user_id)} scheme={scheme} titles={member.titles} /><a href={titlePreview.portrait.source_url} target="_blank" rel="noopener noreferrer">Review photo source</a></>:<p>Photo: public profile image or initials.</p>}</div>}
             <div><button type="submit" className="btn-primary" disabled={!!adding}>{adding===member.user_id?'Saving…':titlePreview?'Save roles':'Review roles'}</button><button type="button" className="btn-secondary" disabled={!!adding} onClick={()=>{setEditingTitles(null);setTitlePreview(null)}}>Cancel</button></div>
           </form>}
           {canManage && member.role === 'member'  && (!member.pending_organizer || member.onboarding_completed_at) && <button type="button" disabled={!!adding || !!preview} onClick={() => void assignMember({ user_id: member.user_id, user_name: member.user_name || 'Community member' } as NetworkUser, 'administrator')}>{member.pending_organizer ? 'Activate organizer' : 'Assign organizer'}</button>}

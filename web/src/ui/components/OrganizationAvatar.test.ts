@@ -22,6 +22,23 @@ describe('constitution personnel avatars', () => {
     expect(personnelClassForMembership({ role: 'member', personnel_class: 'persona_non_grata' })).toBe('persona_non_grata')
     expect(isPersonnelClass('toString')).toBe(false)
   })
+  it('uses explicit nonprofit assignments without treating portal owners as board members', () => {
+    const assigned = renderToStaticMarkup(createElement(OrganizationAvatar, { name: 'Example', status: 'organizer', scheme: 'nonprofit', titles: ['Board member', 'Advisor'] }))
+    expect(assigned).toContain('Example · Board member')
+    const unassigned = renderToStaticMarkup(createElement(OrganizationAvatar, { name: 'Example', status: 'organizer', scheme: 'nonprofit' }))
+    expect(unassigned).toContain('Status unavailable')
+    const legend = renderToStaticMarkup(createElement(OrganizationPersonnelLegend, { scheme: 'nonprofit' }))
+    expect(legend).toContain('Nonprofit Classes')
+    expect(legend).toContain('Program participant')
+    expect(renderToStaticMarkup(createElement(OrganizationPersonnelLegend))).toContain('Meetup Classes')
+  })
+  it('shows assigned corporation classes without inferring ownership from portal roles', () => {
+    const html = renderToStaticMarkup(createElement(OrganizationAvatar, { name: 'Example', status: 'member', scheme: 'corporation', titles: ['Manager'] }))
+    expect(html).toContain('Example · Manager')
+    const legend = renderToStaticMarkup(createElement(OrganizationPersonnelLegend, { scheme: 'corporation' }))
+    expect(legend).toContain('Corporation Classes')
+    expect(legend).toContain('Shareholder')
+  })
   it('distinguishes unavailable status from Public instead of guessing', () => {
     const html = renderToStaticMarkup(createElement(OrganizationAvatar, { name: 'Example', status: null }))
     expect(html).toContain('Status unavailable')

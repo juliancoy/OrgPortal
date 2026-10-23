@@ -72,6 +72,32 @@ export function organizationPersonnelRoutes<E extends Env>(auth:(env:E,request:R
   if(error instanceof EventIntegrationError || error instanceof OrganizationIamError)return c.json({error:error.message},error.status as ContentfulStatusCode);
   return c.json({error:'Could not load organization personnel'},500);
  });
+ app.get('/:organizationId/personnel/scheme',async c=>{
+  const org=await orgId(c.env.DB,c.req.param('organizationId'));
+  const row=await c.env.DB.prepare('SELECT scheme FROM organization_personnel_schemes WHERE organization_id=?').bind(org).first<{scheme:string}>();
+  return c.json({scheme:row?.scheme||'meetup'});
+ });
+ app.post('/:organizationId/personnel/scheme/:operation',async c=>{
+  const actor=await auth(c.env,c.req.raw),db=c.env.DB,org=await orgId(db,c.req.param('organizationId'));
+  await authorizeOrganization(db,{...actor,name:actor.id,email:null,isOperator:false},'manage',org);
+  const operation=c.req.param('operation');if(!['preview','apply'].includes(operation))fail(404,'Operation not found');
+  const args=z.object({scheme:z.enum(['meetup','nonprofit','corporation']),...receipt}).strict().parse(await c.req.json());
+  await enforceEventRateLimit(db,actor.id);
+  const before=await db.prepare('SELECT scheme FROM organization_personnel_schemes WHERE organization_id=?').bind(org).first<{scheme:string}>();
+  const owner={userId:actor.id,organizationId:org,eventId:'personnel:scheme'};
+  const fingerprint=await previewFingerprint({before:before?.scheme||'meetup',scheme:args.scheme});
+  if(operation==='preview')return c.json({scheme:args.scheme,...await prepareEventOperation(db,owner,fingerprint)});
+  if(!args.confirm||!args.previewId)fail(409,'Review the scheme first');
+  await claimEventOperation(db,owner,args.previewId!,fingerprint);
+  try{
+   const saved=await db.prepare(`INSERT INTO organization_personnel_schemes(organization_id,scheme)
+    SELECT ?,? WHERE COALESCE((SELECT scheme FROM organization_personnel_schemes WHERE organization_id=?),'meetup')=?
+    AND EXISTS(SELECT 1 FROM organization_memberships WHERE organization_id=? AND user_id=? AND status='active' AND role IN ('owner','administrator'))
+    ON CONFLICT(organization_id) DO UPDATE SET scheme=excluded.scheme RETURNING scheme`).bind(org,args.scheme,org,before?.scheme||'meetup',org,actor.id).first();
+   if(!saved)fail(409,'The scheme or management access changed. Review again');
+   await finishEventOperation(db,args.previewId!,true,['personnel-scheme']);return c.json({scheme:args.scheme});
+  }catch(error){await finishEventOperation(db,args.previewId!,false,[]);throw error}
+ });
  app.get('/:organizationId/personnel',async c=>{
   const actor=await auth(c.env,c.req.raw),org=await orgId(c.env.DB,c.req.param('organizationId'));
   await authorizeOrganization(c.env.DB,{...actor,name:actor.id,email:null,isOperator:false},'read_members',org);

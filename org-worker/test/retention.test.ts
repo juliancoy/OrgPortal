@@ -15,6 +15,7 @@ test('expiry units, bounds, dry-run, retries and unresolved operations',async()=
  sql.exec('CREATE TABLE organization_recognition_nominees(id TEXT PRIMARY KEY,expires_at TEXT); CREATE TABLE organization_recognition_ballots(id TEXT PRIMARY KEY,expires_at TEXT);');
  sql.prepare('INSERT INTO organization_recognition_nominees VALUES (?,?)').run('expired',new Date(1).toISOString());
  sql.prepare('INSERT INTO organization_recognition_ballots VALUES (?,?)').run('expired',new Date(1).toISOString());
+ sql.exec('CREATE TABLE organization_personnel_relationships(id TEXT PRIMARY KEY,expires_at INTEGER); INSERT INTO organization_personnel_relationships VALUES (\'expired\',1),(\'live\',2000000000000);');
  sql.exec('CREATE TABLE organization_invitations(id TEXT PRIMARY KEY,expires_at INTEGER);');
  sql.exec('CREATE TABLE organization_page_view_days(organization_id TEXT,day TEXT,views INTEGER);');
  sql.prepare('INSERT INTO organization_invitations VALUES (?,?)').run('expired-invitation',1);
@@ -61,6 +62,8 @@ test('expiry units, bounds, dry-run, retries and unresolved operations',async()=
  assert.equal(first.organization_recognition_ballots,1);
  assert.equal(first.organization_volunteer_awards,1);
  assert.equal(first.organization_invitations,1);
+ assert.equal(first.organization_personnel_relationships,1);
+ assert.equal(sql.prepare('SELECT id FROM organization_personnel_relationships').get()!.id,'live');
  for(const name of ['email_engagement','email_segments','email_mailing_audit','email_campaign_previews']){assert.equal(first[name],1);assert.equal(sql.prepare(`SELECT id FROM ${name}`).get()!.id,'valid')}
  assert.equal(first.private_newsletter_previews,500);assert.equal(first.event_mcp_operations,2);assert.equal(first.email_oauth_states,1);
  assert.equal(first.user_notifications,1);

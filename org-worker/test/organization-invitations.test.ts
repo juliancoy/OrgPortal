@@ -1,3 +1,5 @@
+import { organizationMemberTitleRoutes } from '../src/organizationMemberTitles';
+import { registerPersonnelInvitationTools } from '../src/personnelInvitationsMcp';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
@@ -85,4 +87,66 @@ test('delivery progress does not invalidate recipient preview',async t=>{
  const preview=await f.request('/invitations/'+id+'/preview','new',{});const data=await preview.json() as {previewId:string};
  f.db.sql.exec("UPDATE organization_invitations SET email_status='sent',attempts=1");
  assert.equal((await f.request('/invitations/'+id+'/apply','new',{previewId:data.previewId,confirm:true})).status,200);
+});
+
+test('consented external relationships publish without membership; restricted classes require evidence and live manager confirmation',async t=>{
+ const f=fixture(t);f.db.sql.exec("INSERT INTO organization_personnel_schemes VALUES('one','corporation')");
+ const intent={scheme:'corporation',classes:['advisor','board'],access:'none'};
+ const issued=await f.act('/orgs/one/invitations','chair',{email:'new@example.test',purpose:'volunteer',intent});assert.equal(issued.status,200,await issued.clone().text());
+ const {invitationId}=await issued.json() as {invitationId:string};
+ const review=await (await f.request('/invitations/'+invitationId,'new')).json() as {effect:string};assert.match(review.effect,/No portal membership access/);
+ assert.equal((await f.act('/invitations/'+invitationId,'new',{})).status,200);
+ assert.equal(f.db.sql.prepare("SELECT count(*) n FROM organization_memberships WHERE user_id='new'").get()!.n,0);
+ assert.equal(f.db.sql.prepare("SELECT count(*) n FROM organization_volunteer_awards WHERE user_id='new'").get()!.n,0);
+ const rows=f.db.sql.prepare("SELECT class_key,status FROM organization_personnel_relationships WHERE user_id='new' ORDER BY class_key").all();
+ assert.deepEqual(rows.map(r=>[r.class_key,r.status]),[['advisor','active'],['board','pending_confirmation']]);
+ const pub=organizationMemberTitleRoutes(async()=>({id:'outsider'}),()=>new Response('error',{status:500}));
+ const publicPeople=async()=>await (await pub.request('/public/one/personnel',{}, {DB:f.db.asD1()} as Env)).json() as {people:{titles:string[]}[]};
+ assert.deepEqual((await publicPeople()).people[0].titles,['Advisor']);
+ const action={userId:'new',scheme:'corporation',classKey:'board',action:'confirm',evidenceUrl:'https://example.test/board-resolution'};
+ assert.equal((await f.request('/orgs/one/relationships/preview','member',action)).status,403);
+ assert.equal((await f.request('/orgs/two/relationships/preview','chair',action)).status,403);
+ assert.equal((await f.request('/orgs/one/relationships/preview','chair',{...action,evidenceUrl:undefined})).status,400);
+ assert.equal((await f.act('/orgs/one/relationships','chair',action)).status,200);
+ assert.deepEqual((await publicPeople()).people[0].titles.sort(),['Advisor','Board member']);
+ const text=JSON.stringify(await publicPeople());assert.ok(!text.includes('new@example.test'));assert.ok(!text.includes('board-resolution'));
+ const removal=await f.request('/orgs/one/relationships/preview','new',{...action,action:'revoke',evidenceUrl:undefined});
+ const removalText=await removal.text();assert.ok(!removalText.includes('board-resolution'));
+ assert.equal((await f.request('/orgs/one/relationships/apply','new',{userId:'new',scheme:'corporation',classKey:'board',action:'revoke',previewId:JSON.parse(removalText).previewId,confirm:true})).status,200);
+ assert.deepEqual((await publicPeople()).people[0].titles,['Advisor']);
+});
+test('intent conflicts, class validation, cancellation, manager status and optional membership are explicit',async t=>{
+ const f=fixture(t);f.db.sql.exec("INSERT INTO organization_personnel_schemes VALUES('one','nonprofit')");
+ const args={email:'new@example.test',purpose:'member',intent:{scheme:'nonprofit',classes:['advisor'],access:'member'}};
+ assert.equal((await f.request('/orgs/one/invitations/preview','member',args)).status,403);
+ assert.equal((await f.request('/orgs/one/invitations/preview','chair',{...args,intent:{...args.intent,classes:['shareholder']}})).status,400);
+ const issued=await f.act('/orgs/one/invitations','chair',args);const {invitationId}=await issued.json() as {invitationId:string};
+ assert.equal((await f.act('/orgs/one/invitations','chair',{...args,intent:{...args.intent,classes:['member']}})).status,409);
+ assert.equal((await f.request('/orgs/one/invitations','outsider')).status,403);
+ await runOrganizationInvitations({DB:f.db.asD1(),EMAIL_SENDING_ENABLED:'false'} as Env);
+ const list=await (await f.request('/orgs/one/invitations')).json() as {invitations:{delivery_blocker:string}[]};assert.equal(list.invitations[0].delivery_blocker,'sending_disabled');
+ assert.equal((await f.act('/orgs/one/invitations/'+invitationId+'/cancel','chair',{})).status,200);
+ assert.equal((await f.request('/invitations/'+invitationId,'new')).status,409);
+ const replacement=await f.act('/orgs/one/invitations','chair',args);const next=await replacement.json() as {invitationId:string};
+ assert.notEqual(next.invitationId,invitationId);
+ assert.equal((await f.act('/invitations/'+next.invitationId,'new',{})).status,200);
+ assert.equal(f.db.sql.prepare("SELECT role FROM organization_memberships WHERE organization_id='one' AND user_id='new'").get()!.role,'member');
+});
+test('MCP uses the same lifecycle, scopes, tenant binding and verified-recipient acceptance',async t=>{
+ const f=fixture(t);f.db.sql.exec("INSERT INTO organization_personnel_schemes VALUES('one','corporation')");
+ function tools(userId:string,scopes=['org:portal.read','org:portal.write'],organizationId='one',verified=true){
+  const registered=new Map<string,(args:any)=>Promise<any>>();
+  registerPersonnelInvitationTools({registerTool:(name:string,_config:unknown,callback:any)=>registered.set(name,callback)} as any,{DB:f.db.asD1()} as Env,{userId,scopes,email:'new@example.test',emailVerified:verified},{organizationId},()=>({}));return registered;
+ }
+ const manager=tools('chair'),args={organizationId:'one',email:'new@example.test',purpose:'volunteer',intent:{scheme:'corporation',classes:['advisor'],access:'none'}};
+ const preview=await manager.get('preview_organization_invitation')!({...args,purpose:undefined});assert.equal(preview.isError,false);
+ const receipt=JSON.parse(preview.content[0].text);
+ const applied=await manager.get('apply_organization_invitation')!({...args,previewId:receipt.previewId,confirm:true});assert.equal(applied.isError,false);
+ const {invitationId}=JSON.parse(applied.content[0].text),target={organizationId:'one',invitationId};
+ assert.equal((await tools('new',undefined,'two').get('get_organization_invitation')!({...target,organizationId:'two'})).isError,true);
+ assert.equal((await tools('new',undefined,'one',false).get('preview_organization_invitation_acceptance')!(target)).isError,true);
+ const recipient=tools('new');const accept=await recipient.get('preview_organization_invitation_acceptance')!(target);assert.equal(accept.isError,false);
+ assert.equal((await recipient.get('apply_organization_invitation_acceptance')!({...target,confirm:true,previewId:JSON.parse(accept.content[0].text).previewId})).isError,false);
+ assert.equal((await tools('chair',['org:portal.read']).get('apply_organization_invitation')!({...args,confirm:true,previewId:receipt.previewId})).isError,true);
+ assert.equal((await manager.get('list_organization_invitations')!({organizationId:'two'})).isError,true);
 });

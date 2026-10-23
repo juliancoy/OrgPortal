@@ -1,3 +1,4 @@
+import { registerPersonnelInvitationTools } from './personnelInvitationsMcp';
 import { presentationTargetSchema, presentationApplicationSchema, runPresentationOperation } from './presentationMcp';
 import { registerAccountTools } from './mcpAccountTools';
 import product from '../../shared/mcp-product.json';
@@ -782,6 +783,7 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
       }
     };
     const metadata = (scopes: string[]) => ({ securitySchemes: [{ type: "oauth2", scopes }] });
+    registerPersonnelInvitationTools(server,env,identity,config,metadata);
     server.registerTool('prepare_email_contact_link', {
       description: 'Prepare an individual recipient unsubscribe link for a group email or test. Requires active group organizer access. Does not subscribe, unsubscribe, queue, or send email. Never reuse a link for another recipient.',
       inputSchema: emailContactLinkSchema, annotations: { readOnlyHint: true },

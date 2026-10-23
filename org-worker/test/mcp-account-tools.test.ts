@@ -37,6 +37,9 @@ test('account discovery advertises schemas and reports canonical identity withou
   for(const name of ['get_current_account','get_connection_status','diagnose_connection']){
     const tool=tools.find((tool:any)=>tool.name===name);assert.ok(tool?.outputSchema);assert.equal(tool.annotations.readOnlyHint,true);assert.equal(tool.annotations.destructiveHint,false);
   }
+  for(const name of ['get_personnel_class_schemes','get_organization_personnel_scheme','list_organization_invitations','list_my_personnel_relationships','preview_organization_invitation','apply_organization_invitation','preview_organization_invitation_acceptance','apply_organization_invitation_acceptance','preview_personnel_relationship','apply_personnel_relationship'])assert.ok(tools.some((tool:any)=>tool.name===name),name);
+  const schemes=(await f.rpc('get_personnel_class_schemes')).body.result;
+  assert.equal(JSON.parse(schemes.content[0].text).corporation.label,'Corporation Classes');
   const current=(await f.rpc('get_current_account')).body.result.structuredContent;
   assert.equal(current.account.email,'julian@codecollective.us');assert.equal(current.account.emailVerified,true);assert.equal(current.account.userId,'canonical-user');assert.equal(current.account.subject,'signed-subject');assert.equal(current.server.version,'1.3.0');
   assert.deepEqual(current.organizations.map((org:any)=>org.id),['life','other']);

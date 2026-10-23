@@ -5679,7 +5679,9 @@ export default {
     ctx.waitUntil(dispatchFollowEventNotifications(env.DB));
     ctx.waitUntil(replicateChangeJournal(env));
     ctx.waitUntil(Promise.all([runUbiTick(env.DB, controller.scheduledTime), dispatchTimebankPush(env)]));
-    ctx.waitUntil(runOrganizationStatusEmail(env).then(() => runOrganizationInvitations(env)).then(() => runEmailDelivery(env)));
+    ctx.waitUntil(runOrganizationStatusEmail(env));
+    ctx.waitUntil(runOrganizationInvitations(env));
+    ctx.waitUntil(runEmailDelivery(env));
     ctx.waitUntil(dispatchOrganizationStatusPush(env));
     ctx.waitUntil(provisionPendingOrganizationChats(env));
   },

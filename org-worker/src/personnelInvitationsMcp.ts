@@ -1,0 +1,40 @@
+import { organizationPersonnelRoutes } from './organizationPersonnel';
+import { personnelSchemes } from '../../shared/organizationPersonnel';
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
+import { organizationInvitationRoutes, issueInvitationSchema } from './organizationInvitations';
+import { relationshipActionSchema } from './personnelRelationships';
+const target=z.object({organizationId:z.string().min(1).max(200)}).strict();
+const invite=issueInvitationSchema.extend(target.shape);
+const acceptance=target.extend({invitationId:z.string().uuid(),previewId:z.string().uuid().optional(),confirm:z.boolean().optional()});
+type Identity={userId:string;scopes:string[];email?:string|null;emailVerified?:boolean|null};
+export function registerPersonnelInvitationTools(server:McpServer,env:Env,identity:Identity,config:{organizationId?:string},metadata:(scopes:string[])=>Record<string,unknown>){
+ const read='org:portal.read',write='org:portal.write';
+ const schemeRoutes=organizationPersonnelRoutes(async()=>({id:identity.userId}));
+ const routes=organizationInvitationRoutes(async()=>({id:identity.userId,email:identity.email,identity_data:{email_verified:identity.emailVerified===true}}));
+ async function invoke(org:string,path:string,body?:unknown){
+  try{
+   if(!identity.scopes.includes(read)||(body!==undefined&&!identity.scopes.includes(write)))throw new Error('Missing portal scope');
+   if(config.organizationId&&config.organizationId!==org)throw new Error('This connection is limited to its organization');
+   // Recipient routes must also bind the invitation to the selected tenant.
+   if(path.startsWith('/invitations/')){
+    const id=path.split('/')[2];const row=await env.DB.prepare('SELECT organization_id FROM organization_invitations WHERE id=?').bind(id).first<{organization_id:string}>();
+    if(!row||row.organization_id!==org)throw new Error('Invitation not available in this organization');
+   }
+   const response=await (path.includes('/personnel/scheme')?schemeRoutes:routes).request(path,{method:body===undefined?'GET':'POST',headers:{'Content-Type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)})},env);
+   return {isError:!response.ok,content:[{type:'text' as const,text:await response.text()}]};
+  }catch(error){return {isError:true,content:[{type:'text' as const,text:error instanceof Error?error.message:'Invitation operation failed'}]}}
+ }
+ server.registerTool('get_personnel_class_schemes',{description:'Read Meetup, Nonprofit and Corporation class keys and labels. These classes never grant permissions by themselves.',inputSchema:z.object({}).strict(),annotations:{readOnlyHint:true},_meta:metadata([read])},async()=>({isError:!identity.scopes.includes(read),content:[{type:'text' as const,text:identity.scopes.includes(read)?JSON.stringify(personnelSchemes):'Missing portal scope'}]}));
+ server.registerTool('get_organization_personnel_scheme',{description:'Read the organization’s saved personnel class scheme.',inputSchema:target,annotations:{readOnlyHint:true},_meta:metadata([read])},args=>invoke(args.organizationId,`/${encodeURIComponent(args.organizationId)}/personnel/scheme`));
+ for(const phase of ['preview','apply'] as const)server.registerTool(`${phase}_organization_personnel_scheme`,{description:'Review or save the organization class scheme. Apply requires matching previewId and confirm=true. Existing assignments and access are unchanged.',inputSchema:target.extend({scheme:z.enum(['meetup','nonprofit','corporation']),previewId:z.string().uuid().optional(),confirm:z.boolean().optional()}),annotations:{readOnlyHint:phase==='preview'},_meta:metadata([read,write])},args=>invoke(args.organizationId,`/${encodeURIComponent(args.organizationId)}/personnel/scheme/${phase}`,{scheme:args.scheme,...(args.previewId?{previewId:args.previewId}:{}),confirm:phase==='apply'&&args.confirm===true}));
+ server.registerTool('list_organization_invitations',{description:'Manager-only invitation delivery/acceptance status, blockers, proposed classes/access and accepted relationships awaiting confirmation. Sent means provider acceptance, not inbox delivery. Private recipient data; do not publish.',inputSchema:target,annotations:{readOnlyHint:true},_meta:metadata([read])},args=>invoke(args.organizationId,`/orgs/${encodeURIComponent(args.organizationId)}/invitations`));
+ server.registerTool('list_my_personnel_relationships',{description:'Read your accepted or pending-confirmation classes in an organization, without requiring membership. Use preview/apply_personnel_relationship with action revoke to remove your own class.',inputSchema:target,annotations:{readOnlyHint:true},_meta:metadata([read])},args=>invoke(args.organizationId,`/orgs/${encodeURIComponent(args.organizationId)}/relationships/me`));
+ server.registerTool('get_organization_invitation',{description:'Review an invitation addressed to your verified email, including intended classes, public visibility and portal access. Does not accept it.',inputSchema:acceptance.pick({organizationId:true,invitationId:true}),annotations:{readOnlyHint:true},_meta:metadata([read])},args=>invoke(args.organizationId,`/invitations/${args.invitationId}`));
+ for(const phase of ['preview','apply'] as const){
+  server.registerTool(`${phase}_organization_invitation`,{description:`${phase==='preview'?'Review':'Queue'} a seven-day invitation. Optional intent specifies scheme, class keys and access none/member. Purpose is derived from intent access; omit it for class invitations. Acceptance publishes consented relationships without requiring membership. Restricted classes await evidence confirmation. ${phase==='apply'?'Requires confirm=true and matching one-use previewId. This queues email.':''}`,inputSchema:invite,annotations:{readOnlyHint:phase==='preview',openWorldHint:true},_meta:metadata([read,write])},args=>{const {organizationId,...body}=args;return invoke(organizationId,`/orgs/${encodeURIComponent(organizationId)}/invitations/${phase}`,{...body,confirm:phase==='apply'&&args.confirm===true})});
+  server.registerTool(`${phase}_organization_invitation_acceptance`,{description:`${phase==='preview'?'Review':'Accept'} your own invitation using the verified recipient account. Acceptance consents to publishing the listed personnel classes and grants only the reviewed access. ${phase==='apply'?'Requires confirm=true and matching previewId.':''}`,inputSchema:acceptance,annotations:{readOnlyHint:phase==='preview'},_meta:metadata([read,write])},args=>invoke(args.organizationId,`/invitations/${args.invitationId}/${phase}`,{...(args.previewId?{previewId:args.previewId}:{}),confirm:phase==='apply'&&args.confirm===true}));
+  server.registerTool(`${phase}_personnel_relationship`,{description:`${phase==='preview'?'Review':'Save'} confirmation or revocation of an accepted personnel relationship. Confirmation requires live organization management and a supporting HTTPS evidenceUrl; it records organizer confirmation, not independent legal verification. Recipients can revoke their own relationship. ${phase==='apply'?'Requires matching previewId and confirm=true.':''}`,inputSchema:relationshipActionSchema,annotations:{readOnlyHint:phase==='preview'},_meta:metadata([read,write])},args=>{const {organizationId,...body}=args;return invoke(organizationId,`/orgs/${encodeURIComponent(organizationId)}/relationships/${phase}`,{...body,confirm:phase==='apply'&&args.confirm===true})});
+  server.registerTool(`${phase}_organization_invitation_cancellation`,{description:`${phase==='preview'?'Review':'Cancel'} a pending invitation as its organization manager. Does not resend mail.`,inputSchema:acceptance,annotations:{readOnlyHint:phase==='preview'},_meta:metadata([read,write])},args=>invoke(args.organizationId,`/orgs/${encodeURIComponent(args.organizationId)}/invitations/${args.invitationId}/cancel/${phase}`,{...(args.previewId?{previewId:args.previewId}:{}),confirm:phase==='apply'&&args.confirm===true}));
+ }
+}

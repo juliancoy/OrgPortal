@@ -87,3 +87,23 @@ test('an electorate change invalidates a conduct ballot instead of changing the 
  assert.equal(row.status,'failed');assert.equal(JSON.parse(String(row.result_json)).electorate_changed,true);
  assert.equal((await organizationPersonnel(f.db.asD1(),'one')).member,'member');
 });
+
+test('class scheme is reviewed, manager-only, scoped, journaled, and leaves permissions unchanged',async t=>{
+ const f=fixture(t);
+ assert.deepEqual(await (await f.request('/scheme')).json(),{scheme:'meetup'});
+ assert.equal((await f.request('/scheme/preview','member',{scheme:'nonprofit'})).status,403);
+ assert.equal((await f.request('/scheme/preview','chair',{scheme:'nonprofit'},'two')).status,403);
+ assert.equal((await f.request('/scheme/apply','chair',{scheme:'nonprofit',confirm:true})).status,409);
+ const before=f.db.sql.prepare('SELECT * FROM organization_memberships ORDER BY organization_id,user_id').all();
+ assert.equal((await f.act('/scheme','chair',{scheme:'nonprofit'})).status,200);
+ assert.deepEqual(await (await f.request('/scheme','outsider')).json(),{scheme:'nonprofit'});
+ assert.deepEqual(await (await f.request('/scheme','outsider',undefined,'two')).json(),{scheme:'meetup'});
+ assert.deepEqual(f.db.sql.prepare('SELECT * FROM organization_memberships ORDER BY organization_id,user_id').all(),before);
+ assert.equal(f.db.sql.prepare("SELECT count(*) n FROM change_journal WHERE table_name='organization_personnel_schemes'").get()!.n,1);
+});
+
+test('corporation scheme saves and is returned on reload',async t=>{
+ const f=fixture(t);
+ assert.equal((await f.act('/scheme','chair',{scheme:'corporation'})).status,200);
+ assert.deepEqual(await (await f.request('/scheme','outsider')).json(),{scheme:'corporation'});
+});

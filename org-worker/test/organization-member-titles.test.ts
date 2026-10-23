@@ -9,6 +9,7 @@ function fixture(){return new EventTestDb(`ALTER TABLE organization_memberships 
  ALTER TABLE organization_memberships ADD COLUMN user_email TEXT;
  CREATE TABLE organization_personnel_motions(id TEXT,organization_id TEXT,target_user_id TEXT,decision TEXT,status TEXT,updated_at TEXT);
  CREATE TABLE user_contact_pages(user_id TEXT PRIMARY KEY,user_name TEXT,user_email TEXT,photo_url TEXT,slug TEXT,enabled INTEGER DEFAULT 0,bio TEXT,headline TEXT);
+ CREATE TABLE organization_personnel_relationships(organization_id TEXT,user_id TEXT,scheme TEXT,class_key TEXT,user_name TEXT,status TEXT,expires_at INTEGER);
  CREATE TABLE ledger_accounts(user_id TEXT,name TEXT,email TEXT,entity_type TEXT);
  INSERT INTO organization_memberships(organization_id,user_id,user_name,role,status) VALUES('org-one','colleague','Dummy Colleague','member','active'),('org-one','inactive','Inactive','member','inactive');
  INSERT INTO organizations(id,name,slug) VALUES('other','Other','other');

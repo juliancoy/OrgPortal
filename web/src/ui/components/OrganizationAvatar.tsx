@@ -1,12 +1,13 @@
 import { useState, type CSSProperties, type ReactNode } from 'react'
-import { personnelClasses, type PersonnelClass } from '../../../../shared/organizationPersonnel'
+import { personnelClasses, personnelSchemes, type PersonnelScheme, type PersonnelClass } from '../../../../shared/organizationPersonnel'
 import './organization-avatar.css'
 
-export function OrganizationAvatar({ name, src, status, className = '', children }: {
-  name: string; src?: string | null; status: PersonnelClass | null; className?: string; children?: ReactNode
+export function OrganizationAvatar({ name, src, status, className = '', children, scheme = 'meetup', titles = [] }: {
+  name: string; src?: string | null; status: PersonnelClass | null; className?: string; children?: ReactNode; scheme?: PersonnelScheme; titles?: string[]
 }) {
   const [failedSrc, setFailedSrc] = useState<string | null>(null)
-  const classification = status ? personnelClasses[status] : null
+  const assignedClass = Object.values(personnelSchemes[scheme].classes).find(value => titles.some(title => title.toLowerCase() === value.label.toLowerCase()))
+  const classification = scheme !== 'meetup' ? assignedClass : status ? personnelClasses[status] : null
   const label = classification?.label || 'Status unavailable'
   return <span className={`organization-avatar ${className}`} data-personnel-class={status || 'unknown'}
     style={{ '--personnel-color': classification?.color || 'var(--text-muted)' } as CSSProperties}
@@ -17,10 +18,11 @@ export function OrganizationAvatar({ name, src, status, className = '', children
   </span>
 }
 
-export function OrganizationPersonnelLegend() {
-  return <details className="organization-personnel-legend"><summary>Avatar status colors</summary>
-    <ul>{Object.entries(personnelClasses).map(([key, value]) => <li key={key}>
-      <span className="organization-personnel-swatch" style={{ '--personnel-color': value.color } as CSSProperties} aria-hidden="true" />{value.label}
+export function OrganizationPersonnelLegend({scheme = 'meetup'}: {scheme?: PersonnelScheme} = {}) {
+  return <details className="organization-personnel-legend"><summary>Personnel classes</summary>
+    <p>{personnelSchemes[scheme].label}. {scheme === 'meetup' ? 'Avatar colors show recorded participation.' : 'People may hold several classes. Classes describe responsibilities and do not grant portal permissions.'}</p>
+    <ul>{Object.entries(personnelSchemes[scheme].classes).map(([key, value]) => <li key={key}>
+      <span className="organization-personnel-swatch" style={{ '--personnel-color': value.color } as CSSProperties} aria-hidden="true" />{value.label}{'description' in value && <span> · {value.description}</span>}
     </li>)}</ul>
   </details>
 }

@@ -2465,6 +2465,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-test-local-personnel-invitations-py",
+      "label": "web/scripts/test-local-personnel-invitations.py",
+      "category": "Identity and access",
+      "source": "web/scripts/test-local-personnel-invitations.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-personnel-invitations.py"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-test-local-personnel-py",
       "label": "web/scripts/test-local-personnel.py",
       "category": "Organizations and membership",

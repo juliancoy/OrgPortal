@@ -1,3 +1,5 @@
+import { classLabel } from './personnelRelationships';
+import type { PersonnelScheme } from '../../shared/organizationPersonnel';
 import {readMemberTitles,readMemberPortrait} from '../../shared/organizationMemberTitles';
 import { z } from 'zod';
 import { Hono } from 'hono';
@@ -72,6 +74,16 @@ export function organizationMemberTitleRoutes(auth:(env:Env,request:Request)=>Pr
     description:row.description?.trim()||row.public_bio?.trim()||null,
     personnel_class:row.conduct_decision==='exclude'?'persona_non_grata':row.role==='owner'||row.role==='administrator'?'organizer':'member'};
   }));
+  const relations=await c.env.DB.prepare(`SELECT r.user_id,r.user_name,r.scheme,r.class_key,c.photo_url,c.slug AS profile_slug
+   FROM organization_personnel_relationships r LEFT JOIN user_contact_pages c ON c.user_id=r.user_id AND c.enabled=1
+   WHERE r.organization_id=? AND r.status='active' AND r.expires_at>? LIMIT 500`).bind(org.id,Date.now()).all<{user_id:string;user_name:string;scheme:PersonnelScheme;class_key:string;photo_url:string|null;profile_slug:string|null}>();
+  for(const row of relations.results){
+   const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(`${org.id}:${row.user_id}`));
+   const id=Array.from(new Uint8Array(digest),byte=>byte.toString(16).padStart(2,'0')).join('');
+   const label=classLabel(row.scheme,row.class_key),existing=people.find(person=>person.id===id);
+   if(existing){if(!existing.titles.includes(label))existing.titles.push(label)}
+   else people.push({id,name:row.user_name,titles:[label],photo_url:row.photo_url,photo_source_url:null,profile_slug:row.profile_slug,description:null,personnel_class:'public'});
+  }
   return c.json({organization:org,people});
  });
  app.post('/:organizationId/members/:userId/titles/:operation',async c=>{

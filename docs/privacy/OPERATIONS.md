@@ -308,3 +308,7 @@ On verified erasure, clear descriptions together with titles and portraits (or
 remove the membership); review journal retention separately and reapply verified
 erasures after backup restoration. Annual public-record review and existing
 membership deletion processes cover this field; no automatic erasure is claimed.
+
+### Consented personnel relationships
+
+Migration 0112 adds invitation intent/blocker fields and private, revocable relationships. For verified erasure run parameterized deletion of `organization_personnel_relationships WHERE user_id = ?` and clear `confirmed_by` for the canonical subject on remaining rows. Apply the existing invitation/membership/profile erasure steps separately; do not infer identity from a matching email. Verify public Board/Personnel no longer returns removed relationship labels, and repeat deletions after a backup restore. Relationships and evidence never enter immutable change-journal copies or public snapshots. Expired relationships are excluded from reads and removed by the bounded retention job. Local authenticated tests must keep mail disabled and use synthetic accounts.

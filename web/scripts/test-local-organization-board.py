@@ -38,11 +38,19 @@ with sync_playwright() as p:
  expect(page.get_by_role('heading',name=org['name']+' Board',exact=True)).to_be_visible(timeout=30000)
  roster=page.get_by_role('region',name='Community members',exact=True)
  expect(roster.locator('.organization-member-identity').filter(has_text=colleague_name)).to_be_visible(timeout=30000)
+ scheme_panel=roster.get_by_role('region',name='Personnel class scheme')
+ scheme_panel.get_by_label('Organization class scheme',exact=True).select_option(os.environ.get('PERSONNEL_TEST_SCHEME','nonprofit'))
+ scheme_panel.get_by_role('button',name='Review class scheme',exact=True).click()
+ scheme_panel.get_by_role('button',name='Confirm class scheme',exact=True).click()
+ expect(scheme_panel.get_by_role('status')).to_have_text('Class scheme saved.')
  def set_titles(person_name,values,portrait=None,description=None):
   item=roster.locator('li').filter(has=page.locator('.organization-member-identity').filter(has_text=person_name)).first
   item.get_by_role('button',name='Edit roles',exact=True).click()
   form=page.get_by_role('form',name='Roles for '+person_name,exact=True)
   form.get_by_label('Organization roles (one per line)').fill(values)
+  if person_name==owner_name and values=='CEO':
+   form.get_by_label('Add a class',exact=True).select_option(label='Executive leadership')
+   expect(form.get_by_label('Organization roles (one per line)')).to_have_value('CEO\nExecutive leadership')
   if description is not None:
    form.get_by_label('Board description or bio',exact=True).fill(description)
   if portrait is not None:
@@ -62,7 +70,7 @@ with sync_playwright() as p:
  page.wait_for_function("document.querySelector('.organization-board-grid img')?.naturalWidth>0")
  roles={row['user_id']:row for row in good(owner.request.get(base+'/members',headers=auth))}
  assert roles[person['user_id']]['role']=='member' and roles[person['user_id']]['titles']==['CTO','Advisor']
- assert any(row['role']=='owner' and row['titles']==['CEO'] for row in roles.values())
+ assert any(row['role']=='owner' and row['titles']==['CEO','Executive leadership'] for row in roles.values())
  assert colleague.request.post(base+'/members/'+person['user_id']+'/titles/preview',headers=colleague_auth,data={'titles':['CEO']}).status==403
  page.reload(wait_until='domcontentloaded');expect(page.locator('.organization-board-grid').get_by_text('CTO',exact=True)).to_be_visible(timeout=30000)
  roster=page.get_by_role('region',name='Community members',exact=True)
