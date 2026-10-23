@@ -2409,6 +2409,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-test-local-organization-claim-py",
+      "label": "web/scripts/test-local-organization-claim.py",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-organization-claim.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-organization-claim.py"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-test-local-organization-page-statistics-py",
       "label": "web/scripts/test-local-organization-page-statistics.py",
       "category": "Organizations and membership",
