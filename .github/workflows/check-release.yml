@@ -20,6 +20,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: npm ci --prefix web
       - run: npm ci --prefix org-worker
+      - run: npm ci --prefix chat-worker --omit=dev --ignore-scripts
       - run: node scripts/release.mjs check all
       - run: node scripts/release.mjs build all
       # Production publication is Cloudflare Workers Builds, connected directly
