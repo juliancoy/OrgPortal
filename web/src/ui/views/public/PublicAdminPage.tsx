@@ -956,6 +956,7 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
               {isOrganizerView && <button type="button" className="btn-secondary" onClick={() => openOrganizationEditor('org-description')}>Edit description</button>}
               <div className="portal-org-actions" aria-label={`${org.name} actions`}>
                 <OrganizationFollowButton orgId={org.id} slug={org.slug} />
+                {org.slug === 'code-collective' && <Link className="btn-primary" to="/orgs/code-collective/five-over-five">★ Five over Five · Nominate and vote</Link>}
                 {dashboard ? <Link className="btn-secondary" to={`/orgs/${encodeURIComponent(org.slug)}`}>Public profile</Link> : (canManageCurrentOrg || membership?.status === 'active') && <Link className="btn-secondary" to={`/orgs/${encodeURIComponent(org.slug)}/dashboard`}>Organization dashboard</Link>}
                 {token ? (
                   <Link className="btn-secondary" to={`/chat?start=group&org=${encodeURIComponent(org.slug)}`}>

@@ -41,6 +41,7 @@ const UserCalendarPage = lazy(() => import('../views/users/UserCalendarPage').th
 const UserSettingsPage = lazy(() => import('../views/users/UserSettingsPage').then(module => ({ default: module.UserSettingsPage })))
 const UserLoginPage = lazy(() => import('../views/users/UserLoginPage').then(module => ({ default: module.UserLoginPage })))
 const McpConnectPage = lazy(() => import('../views/users/McpConnectPage').then(module => ({ default: module.McpConnectPage })))
+const FiveOverFivePage = lazy(() => import('../views/orgs/FiveOverFivePage').then(module => ({ default: module.FiveOverFivePage })))
 const OrgLoginPage = lazy(() => import('../views/orgs/OrgLoginPage').then(module => ({ default: module.OrgLoginPage })))
 const OrgRegisterPage = lazy(() => import('../views/orgs/OrgRegisterPage').then(module => ({ default: module.OrgRegisterPage })))
 const OrgInitiativesPage = lazy(() => import('../views/orgs/OrgInitiativesPage').then(module => ({ default: module.OrgInitiativesPage })))
@@ -473,6 +474,7 @@ export function createAppRouter() {
           { path: '/search', element: <GlobalSearchPage /> },
 
           // Public profile
+          { path: '/orgs/:handle/five-over-five', element: <FiveOverFivePage /> },
           { path: '/orgs/:handle', element: <OrganizationProfileRoute /> },
           { path: '/orgs/:handle/dashboard', element: <AuthenticatedRoute><PublicAdminPage dashboard /></AuthenticatedRoute> },
           { path: '/users/:slug', element: <PublicContactPage /> },

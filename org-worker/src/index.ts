@@ -1,3 +1,4 @@
+import { organizationRecognitionRoutes } from './organizationRecognition';
 import { z } from 'zod'
 import { lookupPortalPeople } from './portalPeople'
 import { organizationInvitationRoutes, runOrganizationInvitations } from './organizationInvitations';
@@ -2640,6 +2641,7 @@ function deploymentHealth(c: { env: Env; req: { url: string }; header: (name: st
   };
 }
 
+app.route('/api/network/orgs',organizationRecognitionRoutes(currentUser));
 app.route('/api/network/orgs',organizationPersonnelRoutes(currentUser));
 app.route('/api/network',organizationInvitationRoutes(currentUser));
 app.route('/api/network/events',venueRankingRoutes(currentUser));

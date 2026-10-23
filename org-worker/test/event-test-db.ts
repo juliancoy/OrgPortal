@@ -4,7 +4,7 @@ import { readCurrentSchemaFileSync as readFileSync } from './helpers/currentSche
 // Exercise actual SQL and migration semantics, not a string-matching storage mock.
 export class EventTestDb {
   private sqlite = new DatabaseSync(":memory:");
-  constructor() {
+  constructor(additionalSchema = "") {
     this.sqlite.exec(readFileSync(new URL("../migrations/0017_event_mcp_operations.sql", import.meta.url), "utf8"));
     this.sqlite.exec(`CREATE TABLE organizations (links_json TEXT NOT NULL DEFAULT '[]', id TEXT PRIMARY KEY, name TEXT, slug TEXT, description TEXT, source_url TEXT, image_url TEXT, media_json TEXT NOT NULL DEFAULT '[]', updated_at TEXT DEFAULT '');
       CREATE TABLE organization_memberships (organization_id TEXT, user_id TEXT, role TEXT, status TEXT);
@@ -83,6 +83,7 @@ export class EventTestDb {
     this.sqlite.exec(readFileSync(new URL("../migrations/0053_event_venue_votes.sql", import.meta.url), "utf8"));
     this.sqlite.exec(readFileSync(new URL("../migrations/0080_event_company_votes.sql", import.meta.url), "utf8"));
     this.sqlite.exec(readFileSync(new URL("../migrations/0082_company_favorites.sql", import.meta.url), "utf8").split('INSERT INTO change_journal_exclusions')[0]);
+    if (additionalSchema) this.sqlite.exec(additionalSchema);
   }
   prepare(sql: string) {
     const stmt = this.sqlite.prepare(sql);

@@ -66,3 +66,12 @@ test('timebank sign-in returns to the same origin and retains root listing desti
   vi.unstubAllGlobals()
   expect(callback.searchParams.get('next')).toBe('/?listing=abc')
 })
+
+ test('Code Collective sign-in defaults to its org while preserving explicit return paths', () => {
+  vi.stubGlobal('window', { location: { origin: 'https://codecollective.us', hostname: 'codecollective.us' } })
+  try {
+    expect(defaultPostLoginPath()).toBe('/orgs/code-collective')
+    expect(normalizePostLoginPath('/orgs/code-collective/five-over-five#nominate')).toBe('/orgs/code-collective/five-over-five#nominate')
+    expect(normalizePostLoginPath('//evil.example')).toBe('/orgs/code-collective')
+  } finally { vi.unstubAllGlobals() }
+})

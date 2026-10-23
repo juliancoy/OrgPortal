@@ -4,6 +4,9 @@ import { getNativeAuthCallbackUrl, isNativeCapacitorRuntime } from '../infrastru
 import { portalUrl, toInternalPortalPath } from './portalBase'
 
 export function defaultPostLoginPath(): string {
+  if (typeof window !== 'undefined' && ['codecollective.us', 'www.codecollective.us'].includes(window.location.hostname)) {
+    return '/orgs/code-collective'
+  }
   const profile = getActivePortalProfileConfig()
   return portalProfilePath(profile.memberHomePath, profile)
 }

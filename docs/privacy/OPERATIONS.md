@@ -284,3 +284,12 @@ For submission attachment erasure, first revoke the proposal/download access, th
 For presentation erasure, remove matching legacy `event_presentation_submissions` first (its rollout mirror removes the corresponding migrated entry), then matching `event_submissions`. Remove entries by verified submitter or authorized team/event scope as appropriate; never infer identity from email. Keep attachment metadata until the R2 cleanup has succeeded. Migration 0099 preserves existing IDs, choices and file targets; both compatibility tables retain their original expiry clocks.
 
 For verified account erasure, also remove matching `userId` references from `event_submissions.presenters_json` using the canonical ID. For invitation erasure remove matching `invitationId` references before deleting the invitation. Removing a presenter never grants or revokes management permissions. Presenter data expires with the parent proposal and is not copied to immutable journals or public replicas.
+
+Five over Five erasure: on a verified canonical subject ID, delete
+`organization_recognition_ballots WHERE user_id = ?` and
+`organization_recognition_nominees WHERE submitted_by = ?`. Nominee deletion
+triggers remove its votes and trim remaining ballots; inspect affected aggregate
+counts, not other users' private ballots. Both stores are excluded from journal
+replication. Reapply verified deletion requests to any restored backup before
+serving it. Ordinary self-service deletion uses the scoped nomination/ballot
+DELETE API. Hourly retention removes expired rows in bounded batches.

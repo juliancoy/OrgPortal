@@ -100,6 +100,7 @@ const paths = [
   "/property-casualty-insurance",
   "/search",
   "/orgs/:handle",
+  "/orgs/:handle/five-over-five",
   "/users/:slug",
   "/contact/:slug",
   "/contact-settings",

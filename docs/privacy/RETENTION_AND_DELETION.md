@@ -291,3 +291,23 @@ Submission attachments are public once uploaded to a saved proposal. The existin
 Multiple presentation entries use `event_submissions` and `event_submission_favorites`, with a separate submission ID per event. The same expiry, withdrawal, account-erasure and backup rules above apply to every entry and its favorites. Edits remain available until expiry, return decisions to pending review, and never extend retention. Attachments now identify their individual submission. The old presentation tables are temporary rollout compatibility copies: migration 0099 mirrors old Worker writes one way, and bounded retention expires both stores on the original clock. New Worker writes use only the new tables. Erasure must cover both old and new stores so compatibility copies cannot restore erased records.
 
 Presenter selection is separate from organization management. Creators retain management access without being implicitly named as presenters. `event_submissions.presenters_json` stores selected canonical member IDs or pending invitation IDs, with the proposal's existing expiry and deletion path. Public projections show selected presenter display names and enabled public portraits; pending invitees appear only as “Invited presenter,” with no address or identifier. Team and event managers can review the roster. Accepted invitations are converted to the verified recipient's canonical user ID before invitation expiry cleanup. Presenter references are excluded from immutable journals and public replicas along with their parent proposal; backups follow the same erasure policy.
+
+### Community recognition (Five over Five)
+
+`organization_recognition_nominees` holds explicitly public, permission-attested
+names, accomplishments, community connections and optional HTTPS work links,
+plus a private submitter ID for withdrawal. No date of birth is collected; the
+nominator attests that the person is older than five. Nominations expire 365 days
+after publication. `organization_recognition_ballots` holds a private canonical
+voter ID and replaceable selections; each save expires after 365 days. API reads
+exclude expired rows immediately; the hourly bounded retention job deletes them.
+Both tables are excluded from immutable journals and public replicas. Public
+responses expose nominee details and aggregate counts, never author/voter IDs.
+
+Authors may delete nominations; live owners/administrators may moderate them.
+Deleting a nominee removes its selections and trims ballots to the reduced
+25%-rounded-up allowance. Voters can deselect choices or DELETE their ballot.
+A reduced allowance keeps earliest selections; expired nominees never count.
+Support erasure removes rows by `submitted_by` and `user_id` respectively.
+Apply these deletions again after restoring a backup, before serving requests;
+provider backup retention and the existing restore restrictions still apply.

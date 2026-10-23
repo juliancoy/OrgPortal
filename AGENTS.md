@@ -49,6 +49,8 @@
   isolated local Docker. Use `web/scripts/test-local-team-form.py` for team
   applications, presenter selection, editing, attachments and favorites. Keep
   its dummy accounts, writable fixtures and mail delivery isolated locally.
+  Use `web/scripts/test-local-five-over-five.py` for recognition nominations,
+  private ballots, the dynamic 25% allowance and website login destinations.
   Use `web/scripts/test-local-brand-guide.py` for shared portal branding,
   configured palettes, PNG export, mobile layout and tenant-context restoration.
 - Include permission denial and tenant isolation tests when authorization
