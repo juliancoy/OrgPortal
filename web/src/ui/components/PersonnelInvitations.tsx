@@ -31,7 +31,7 @@ export function PersonnelInvitations({organizationId,scheme}:{organizationId:str
    <p>Acceptance publishes these relationships. Board, executive, employment, and shareholder classes await organizer confirmation with supporting evidence. Existing access roles remain.</p>
    <button type="submit" disabled={busy||!classes.length}>Review personnel invitation</button>
   </form>
-  <button type="button" disabled={busy} onClick={()=>void load().catch(reason=>setError(reason.message))}>Refresh invitation status</button>
+  <button type="button" disabled={busy} onClick={()=>void load().then(()=>window.dispatchEvent(new CustomEvent('organization-invitations-updated',{detail:{organizationId}}))).catch(reason=>setError(reason.message))}>Refresh invitation status</button>
   <ul aria-label="Personnel invitation status">{invitations.map(invitation=><li key={invitation.id}><strong>{invitation.email}</strong> · {invitation.status} · email: {invitation.email_status} · attempts: {invitation.attempts}{invitation.delivery_blocker&&<> · blocked: {invitation.delivery_blocker.replaceAll('_',' ')}</>}{invitation.intent&&<> · {invitation.intent.classes.map(key=>label(invitation.intent!.scheme,key)).join(', ')} · {invitation.intent.access==='member'?'member access':'no membership access'}</>}
    {invitation.status==='pending'&&<button type="button" disabled={busy} onClick={()=>void prepare(`/invitations/${invitation.id}/cancel`,{},`Cancel the pending invitation to ${invitation.email}`)}>Cancel invitation</button>}
   </li>)}</ul>

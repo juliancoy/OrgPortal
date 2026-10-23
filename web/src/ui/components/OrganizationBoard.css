@@ -7,3 +7,7 @@
 .organization-board-person .organization-avatar { width:9rem; height:9rem; font-size:3rem; }
 .organization-board-description { margin:0; line-height:1.7; color:var(--text-secondary); white-space:pre-line; max-width:65ch; }
 .organization-portrait-source { font-size:.8rem; color:var(--text-muted); }
+
+.organization-board .portal-card.organization-board-person-pending { background:#fff7cc; border:2px solid #d4af37; color:#4a3900; --text-muted:#685300; --text-secondary:#4a3900; }
+.organization-board-person-pending .pill { background:#ffec99; color:#4a3900; }
+.organization-invitation-pending-label { border:1px solid currentColor; border-radius:999px; padding:.25rem .65rem; }

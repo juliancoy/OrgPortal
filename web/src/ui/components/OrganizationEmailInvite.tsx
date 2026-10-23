@@ -9,7 +9,7 @@ export function OrganizationEmailInvite({organizationId,email,purpose}:{organiza
   try{
    const response=await fetch(`/api/org/api/network/orgs/${encodeURIComponent(organizationId)}/invitations/${confirm?'apply':'preview'}`,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({email:normalized,purpose,...(confirm?{previewId:preview,confirm:true}:{})})})
    const data=await response.json();if(!response.ok)throw new Error(data.detail||data.error||'Could not invite this person')
-   if(confirm){setPreview('');setMessage(data.message)}else setPreview(data.previewId)
+   if(confirm){setPreview('');setMessage(data.message);window.dispatchEvent(new CustomEvent('organization-invitations-updated',{detail:{organizationId}}))}else setPreview(data.previewId)
   }catch(error){setPreview('');setMessage(error instanceof Error?error.message:'Could not send invitation')}
   finally{setBusy(false)}
  }
