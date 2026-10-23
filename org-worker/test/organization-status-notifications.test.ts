@@ -4,7 +4,7 @@ import { readCurrentSchemaFileSync as readFileSync } from './helpers/currentSche
 import {TimebankDatabase} from './helpers/timebankDatabase';
 import {claimOrganization,saveOrganizationMember} from '../src/organizationIam';
 import {notificationPreferenceRoutes,notificationPreferences} from '../src/notificationPreferences';
-import {dispatchOrganizationStatusPush,runOrganizationStatusEmail} from '../src/organizationStatusNotifications';
+import {dispatchOrganizationStatusPush,runOrganizationStatusEmail,organizationStatusMessage,organizationStatusLinks,renderOrganizationStatusEmail,type OrganizationStatusNotice} from '../src/organizationStatusNotifications';
 import {consumePushBatch,enqueueUserPush} from '../src/push';
 import {encryptSecret} from '../src/emailShared';
 function fixture(t:{after:(fn:()=>void)=>void}) {
@@ -55,4 +55,63 @@ test('ambiguous mail submissions are never automatically retried',async t=>{
 });
 test('changes made while opted out stay suppressed after notifications are re-enabled',async t=>{
  const {db,env}=fixture(t);db.sqlite.exec("INSERT INTO notification_preferences(user_id,organization_status_email,organization_status_push) VALUES('website-member',0,0)");await addMember(env);db.sqlite.exec("UPDATE notification_preferences SET organization_status_email=1,organization_status_push=1 WHERE user_id='website-member'");const row=db.sqlite.prepare("SELECT email_status,push_status FROM organization_status_notifications WHERE user_id='website-member'").get()!;assert.equal(row.email_status,'skipped');assert.equal(row.push_status,'skipped');
+});
+
+function notice(changes:Partial<OrganizationStatusNotice>={}):OrganizationStatusNotice {
+ return {id:'notice',user_id:'owner',organization_id:'org-1',organization_name:'Code Collective',organization_slug:'code-collective',previous_role:null,previous_status:null,role:'owner',status:'active',attempts:0,...changes};
+}
+test('subjects name the actual new role, reactivation, inactivity or departure',()=>{
+ assert.equal(organizationStatusMessage(notice()).title,'You are now owner of Code Collective');
+ assert.equal(organizationStatusMessage(notice({role:'administrator'})).title,'You are now an organizer of Code Collective');
+ assert.equal(organizationStatusMessage(notice({role:'member',previous_role:'administrator',previous_status:'active'})).title,'You are now a member of Code Collective');
+ assert.equal(organizationStatusMessage(notice({previous_role:'owner',previous_status:'inactive'})).title,'Your owner access to Code Collective is active again');
+ assert.equal(organizationStatusMessage(notice({status:'inactive'})).title,'Your owner access to Code Collective is now inactive');
+ assert.equal(organizationStatusMessage(notice({role:'administrator',status:'inactive'})).title,'Your organizer access to Code Collective is now inactive');
+ assert.equal(organizationStatusMessage(notice({role:'member',status:'inactive'})).title,'Your membership in Code Collective is now inactive');
+ assert.equal(organizationStatusMessage(notice({previous_role:'owner',previous_status:'active',role:null,status:null})).title,'Your membership in Code Collective has ended');
+});
+test('email explains permissions and previous role, escapes content, and links only active managers to the dashboard',()=>{
+ const links={profile:'https://orgportal.cc/orgs/code-collective',dashboard:'https://orgportal.cc/orgs/code-collective/dashboard',settings:'https://orgportal.cc/settings/notifications'};
+ const ownerMail=renderOrganizationStatusEmail(notice(),links);
+ assert.equal(ownerMail.subject,'You are now owner of Code Collective');
+ assert.match(ownerMail.text,/profile, portal setup, members, and organizer access/);
+ assert.match(ownerMail.text,/Previous: No membership. Current: Owner./);
+ assert.match(ownerMail.text,/Open organization dashboard: https:\/\/orgportal.cc\/orgs\/code-collective\/dashboard/);
+ assert.match(ownerMail.html,/Manage email and push notifications/);
+ for(const changes of [{role:'member'},{status:'inactive'},{role:null,status:null}]) {
+  const mail=renderOrganizationStatusEmail(notice(changes),links);
+  assert.match(mail.text,/View organization: https:\/\/orgportal.cc\/orgs\/code-collective/);
+  assert.doesNotMatch(mail.html,/\/dashboard|Open organization dashboard/);
+ }
+ const demotion=renderOrganizationStatusEmail(notice({previous_role:'owner',previous_status:'active',role:'member'}),links);
+ assert.match(demotion.text,/Previous: Owner. Current: Member./);assert.doesNotMatch(demotion.text,/You can manage/);
+ const escaped=renderOrganizationStatusEmail(notice({organization_name:'R&D <script>alert(1)</script>'}),links);
+ assert.match(escaped.html,/R&amp;D &lt;script&gt;/);assert.doesNotMatch(escaped.html,/<script>/);
+});
+test('shared portals use public links and registered tenant domains retain their routing',async t=>{
+ const {db,env}=fixture(t);
+ db.sqlite.exec("INSERT INTO group_sites(id,organization_id,hostname,name,tagline,accent_color,canonical_path_prefix) VALUES('shared','org-1','code-collective.slug.portal.local','Code Collective','Community','#155e59','/p')");
+ env.PUBLIC_PORTAL_BASE_URL='https://orgportal.cc';
+ assert.deepEqual(await organizationStatusLinks(env,notice()),{profile:'https://orgportal.cc/orgs/code-collective',dashboard:'https://orgportal.cc/orgs/code-collective/dashboard',settings:'https://orgportal.cc/settings/notifications'});
+ db.sqlite.exec("UPDATE group_sites SET hostname='lifetech.fyi',canonical_path_prefix='' WHERE id='shared'");
+ assert.equal((await organizationStatusLinks(env,notice())).dashboard,'https://lifetech.fyi/orgs/code-collective/dashboard');
+});
+test('owner claim emails deliver the specific subject and actionable multipart content through the existing sender',async t=>{
+ const {db,env}=fixture(t);
+ env.PUBLIC_PORTAL_BASE_URL='https://orgportal.cc';
+ db.sqlite.exec("UPDATE organizations SET name='Code Collective',slug='code-collective' WHERE id='org-1'; INSERT INTO notification_preferences(user_id,email) VALUES('owner','verified-owner@example.test')");
+ await claimOrganization(env.DB,'org-1',owner,new Date().toISOString());await sender(env);
+ let sent=0;
+ t.mock.method(globalThis,'fetch',async(input:unknown,init?:RequestInit)=>{
+  if(String(input)==='https://oauth2.googleapis.com/token')return Response.json({access_token:'access'});
+  assert.equal(String(input),'https://gmail.googleapis.com/gmail/v1/users/me/messages/send');sent++;
+  const mime=Buffer.from(JSON.parse(String(init?.body)).raw,'base64url').toString();
+  const subject=mime.match(/Subject: =\?UTF-8\?B\?([^\r\n]+)\?=/)![1];
+  assert.equal(Buffer.from(subject,'base64').toString(),'You are now owner of Code Collective');
+  const parts=[...mime.matchAll(/Content-Transfer-Encoding: base64\r\n\r\n([\s\S]*?)\r\n--/g)].map(match=>Buffer.from(match[1],'base64').toString());
+  assert.equal(parts.length,2);assert.match(parts[0],/Current: Owner/);assert.match(parts[0],/Open organization dashboard/);assert.match(parts[1],/href="https:\/\/orgportal.cc\/orgs\/code-collective\/dashboard"/);
+  return Response.json({id:'owner-mail'});
+ });
+ await runOrganizationStatusEmail(env);await runOrganizationStatusEmail(env);assert.equal(sent,1);
+ assert.equal(db.sqlite.prepare("SELECT email_status FROM organization_status_notifications WHERE user_id='owner'").get()!.email_status,'sent');
 });
