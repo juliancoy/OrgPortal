@@ -33,7 +33,7 @@ with sync_playwright() as p:
   assert counted.value.status==204,counted.value.status
  visit(page,a);assert report(a)['total']==1
  # Each public top-level tab is still the same organization-page entry.
- for tab in ['Board','Personnel','Branding','Info']:
+ for tab in ['Board','Personnel','Poster','Branding','Info']:
   page.get_by_role('tab',name=tab,exact=True).click()
   expect(page.get_by_role('tab',name=tab,exact=True)).to_have_attribute('aria-selected','true')
  assert report(a)['total']==1 and len(requests)==1
