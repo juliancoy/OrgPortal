@@ -1,6 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import worker from './worker.js';
+test('test status reports use the portal asset mount and are never cached', async () => {
+  for (const method of ['GET', 'HEAD']) {
+    const response = await worker.fetch(new Request('https://orgportal.cc/test-status.json?refresh=1', {method}), {
+      ORGPORTAL_SITE_HOSTS: 'orgportal.cc',
+      ASSETS: {fetch: async request => {
+        assert.equal(new URL(request.url).pathname, '/__portal_root/test-status.json');
+        assert.equal(request.method, method);
+        return new Response(method === 'HEAD' ? null : '{"version":1}', {headers:{'content-type':'application/json'}});
+      }},
+    });
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+    assert.equal(await response.text(), method === 'HEAD' ? '' : '{"version":1}');
+  }
+});
 test('unknown portal pages return 404 in production and private previews', async () => {
   const assets = { fetch: async () => new Response('Missing asset', { status: 404 }) };
   for (const [host,path,preview] of [

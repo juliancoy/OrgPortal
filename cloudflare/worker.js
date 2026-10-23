@@ -165,7 +165,7 @@ function applyStaticCachePolicy(path, response) {
 
   if (path.startsWith("/assets/") || path.startsWith("/__portal_root/assets/") || path.startsWith("/r8-rowhome/assets/")) {
     headers.set("cache-control", "public, max-age=31536000, immutable");
-  } else if (path.endsWith("/mobile-update.json")) {
+  } else if (path.endsWith("/mobile-update.json") || path.endsWith("/test-status.json")) {
     headers.set("cache-control", "no-store");
   } else if (path === "/__portal_root/index.html") {
     headers.set("cache-control", "public, max-age=0, must-revalidate");
@@ -1151,6 +1151,7 @@ const productionWorker = {
         || path === "/deism.webmanifest"
         || path === "/timebank.webmanifest"
         || path === "/mobile-update.json"
+        || path === "/test-status.json"
         || path === "/push-sw.js"
         || path === "/codecollective_logo.png"
       ) {
