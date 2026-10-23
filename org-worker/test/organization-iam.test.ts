@@ -7,6 +7,7 @@ import {
   OrganizationIamError,
   authorizeOrganization,
   claimOrganization,
+  submitOrganizationClaim,
   createOwnershipChallenge,
   listAuditEvents,
   listOrganizationMembers,
@@ -113,6 +114,25 @@ test("the first authenticated claimant immediately becomes owner", async () => {
     () => listOrganizationMembers(db, "org-1", challenger),
     (error: unknown) => error instanceof OrganizationIamError && error.status === 403,
   );
+});
+
+test('all competing claims are accepted without explanations and the admin selects the winner', async t => {
+  const sqlite = new SqliteD1(); t.after(() => sqlite.database.close());
+  const db = asD1(sqlite), now = '2026-10-23T22:00:00Z';
+  assert.equal((await submitOrganizationClaim(db, 'org-1', owner, now)).status, 'owner');
+  const first = await submitOrganizationClaim(db, 'org-1', challenger, now);
+  assert.equal(first.status, 'pending');
+  assert.equal((await submitOrganizationClaim(db, 'org-1', challenger, now)).claimId, first.claimId);
+  const second = await submitOrganizationClaim(db, 'org-1', supporter, now);
+  assert.equal(second.status, 'pending');
+  const claims = await listOwnershipChallenges(db, operator, { status: 'open' });
+  assert.equal(claims.length, 2);
+  assert.ok(claims.every(claim => claim.explanation === ''));
+  await assert.rejects(authorizeOrganization(db, challenger, 'manage', 'org-1'));
+  await assert.rejects(resolveOwnershipChallenge(db, second.claimId, challenger, 'challenger', now));
+  await resolveOwnershipChallenge(db, second.claimId, operator, 'challenger', now);
+  assert.equal(await authorizeOrganization(db, supporter, 'manage', 'org-1'), 'owner');
+  assert.equal((await listOwnershipChallenges(db, operator, { status: 'open' })).length, 0);
 });
 
 test("active community members see the complete roster without emails or management rights", async () => {

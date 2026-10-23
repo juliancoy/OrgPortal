@@ -68,7 +68,6 @@ const paths = [
   "/orgs/initiatives/:id/edit",
   "/orgs/initiatives/:id/ballot",
   "/orgs/:handle/dashboard",
-  "/orgs/:handle/claim",
   "/orgs/:handle/public",
   "/orgs/:handle/member",
   "/orgs/:handle/organizer",

@@ -203,6 +203,9 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
   const [admins, setAdmins] = useState<PublicOrgAdmin[]>([])
   const [adminsLoading, setAdminsLoading] = useState(false)
   const [status, setStatus] = useState<string>('Loading organization…')
+  const [claimStatus, setClaimStatus] = useState('')
+  const [claiming, setClaiming] = useState(false)
+  const [claimRecorded, setClaimRecorded] = useState(false)
   const [feedbackRating, setFeedbackRating] = useState<FeedbackRating>('neutral')
   const [feedbackComment, setFeedbackComment] = useState('')
   const [feedbackStatus, setFeedbackStatus] = useState<string | null>(null)
@@ -551,6 +554,25 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
     if (!jsonLd) return
     upsertJsonLd('org-profile', jsonLd)
   }, [jsonLd])
+
+  useEffect(() => { setClaimStatus(''); setClaimRecorded(false) }, [org?.id, token])
+
+  async function submitClaim() {
+    if (!org || !token || claiming || claimRecorded) return
+    setClaiming(true); setClaimStatus('')
+    try {
+      const response = await fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/claim`), {
+        method: 'POST', headers: { Authorization: `Bearer ${token}` },
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.detail || result.error || 'Could not record your claim.')
+      setClaimRecorded(true)
+      setClaimStatus(result.status === 'owner' ? 'Claim recorded. You are now the owner.' : 'Claim recorded. An admin can select the owner from the claimants.')
+      await invalidatePublicOrganizationData()
+      window.dispatchEvent(new Event('organization-access-change'))
+    } catch (error) { setClaimStatus(toUserFacingErrorMessage(error, 'Could not record your claim.')) }
+    finally { setClaiming(false) }
+  }
 
   function applyFeedbackPayload(payload: OrganizationFeedback) {
     setFeedbackRating(payload.my_feedback?.rating || 'neutral')
@@ -1157,7 +1179,7 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
           ) : null}
           {org.is_disputed ? (
             <p className="muted" style={{ margin: 0 }}>
-              Ownership status: Disputed ({org.pending_challenges_count} open challenge{org.pending_challenges_count === 1 ? '' : 's'}).
+              {org.pending_challenges_count} pending ownership claim{org.pending_challenges_count === 1 ? '' : 's'}.
             </p>
           ) : null}
           {!isNeoNatalProfile && org.tags && org.tags.length ? (
@@ -1193,7 +1215,10 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
             </div>
           ) : null}
 
-          {!canManageCurrentOrg && <Link className="btn-secondary" to={`/orgs/${encodeURIComponent(org.slug)}/claim`}>Claim this Org</Link>}
+          {membership?.role !== 'owner' && (token
+            ? <button type="button" className="btn-secondary" onClick={() => void submitClaim()} disabled={claiming || claimRecorded}>{claiming ? 'Recording…' : claimRecorded ? 'Claim recorded' : 'Claim this Org'}</button>
+            : <a className="btn-secondary" href={pidpAppLoginUrl(`/orgs/${encodeURIComponent(org.slug)}`)}>Claim this Org</a>)}
+          {claimStatus && <p role="status">{claimStatus}</p>}
 
           <SecondaryOrganizationSection className={isNeoNatalProfile ? 'neonatal-about' : undefined}>
           {isNeoNatalProfile && <summary>Related organizations and support</summary>}

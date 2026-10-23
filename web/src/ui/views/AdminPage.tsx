@@ -401,7 +401,7 @@ export function AdminPage() {
         const text = await resp.text().catch(() => '')
         throw new Error(text || `Resolution failed (${resp.status})`)
       }
-      setClaimQueueStatus(decision === 'challenger' ? 'Ownership transferred to the challenger.' : 'Current ownership retained.')
+      setClaimQueueStatus(decision === 'challenger' ? 'Claimant selected as owner.' : 'Current ownership retained.')
       await loadClaimQueue()
     } catch (err) {
       setClaimQueueStatus(err instanceof Error ? err.message : 'Resolution failed.')
@@ -786,7 +786,7 @@ export function AdminPage() {
             <>
               <div className="portal-card" style={{ display: 'grid', gap: '0.75rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
-                  <h2 style={{ margin: 0, fontSize: '1rem' }}>Ownership disputes</h2>
+                  <h2 style={{ margin: 0, fontSize: '1rem' }}>Organization claims</h2>
                   <button type="button" onClick={() => void loadClaimQueue()} disabled={claimQueueLoading}>
                     {claimQueueLoading ? 'Refreshing…' : 'Refresh'}
                   </button>
@@ -798,7 +798,7 @@ export function AdminPage() {
                 ) : null}
                 {!claimQueueLoading && claimRequests.length === 0 ? (
                   <p className="muted" style={{ margin: 0 }}>
-                    No pending ownership contests.
+                    No pending organization claims.
                   </p>
                 ) : null}
                 {claimRequests.length > 0 ? (
@@ -812,19 +812,19 @@ export function AdminPage() {
                           <span className="pill">{item.status}</span>
                         </div>
                         <p className="muted" style={{ margin: 0 }}>
-                          Challenger: {item.challenger_name || item.challenger_email || item.challenger_user_id}
+                          Claimant: {item.challenger_name || item.challenger_email || item.challenger_user_id}
                         </p>
                         <p className="muted" style={{ margin: 0 }}>
-                          Current owner: {item.owner_user_id || 'none'} • Challenged at: {formatDateTime(item.created_at)}
+                          Current owner: {item.owner_user_id || 'none'} • Claimed at: {formatDateTime(item.created_at)}
                         </p>
-                        <p style={{ margin: 0 }}>{item.explanation}</p>
+                        {item.explanation && <p style={{ margin: 0 }}>{item.explanation}</p>}
                         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                           <button
                             type="button"
                             onClick={() => void reviewClaimRequest(item.id, 'challenger')}
                             disabled={claimActionRunningId === item.id}
                           >
-                            {claimActionRunningId === item.id ? 'Working…' : 'Transfer ownership'}
+                            {claimActionRunningId === item.id ? 'Working…' : 'Select this claimant'}
                           </button>
                           <button
                             type="button"

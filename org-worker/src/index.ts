@@ -102,7 +102,7 @@ import {
   OrganizationIamError,
   authorizeOrganization,
   organizationRole,
-  claimOrganization,
+  submitOrganizationClaim,
   createOwnershipChallenge,
   listAuditEvents,
   listOrganizationMembers,
@@ -3997,17 +3997,7 @@ app.post("/api/network/orgs/:organizationId/claim", async (c) => {
   const requested = c.req.param("organizationId");
   const organization = await organizationByIdOrSlug(c.env.DB, requested);
   if (!organization) fail(404, "Organization not found");
-  await claimOrganization(c.env.DB, organization.id, organizationActor(user, c.env), nowIso());
-  const row = await c.env.DB.prepare(
-    `SELECT o.*,
-      (SELECT own.owner_user_id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS claimed_by_user_id,
-      (SELECT own.id FROM organization_ownerships own WHERE own.organization_id = o.id AND own.status = 'active') AS ownership_id,
-      (SELECT count(*) FROM organization_memberships m WHERE m.organization_id = o.id AND m.status = 'active') AS membership_count,
-      (SELECT count(*) FROM organization_ownership_challenges ch WHERE ch.organization_id = o.id AND ch.status = 'open') AS pending_challenges_count,
-      'owner' AS my_role
-     FROM organizations o WHERE o.id = ?`,
-  ).bind(organization.id).first<OrganizationRow>();
-  return c.json(mapOrganization(row!));
+  return c.json(await submitOrganizationClaim(c.env.DB, organization.id, organizationActor(user, c.env), nowIso()));
 });
 app.get("/api/network/orgs/:organizationId/members", async (c) => {
   const user = await currentUser(c.env, c.req.raw);

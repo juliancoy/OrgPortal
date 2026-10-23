@@ -170,6 +170,25 @@ export async function claimOrganization(db: D1Database, organizationId: string, 
   return ownership;
 }
 
+/** Every signed-in claim is accepted; competing claims enter the administrator queue. */
+export async function submitOrganizationClaim(db: D1Database, organizationId: string, actor: OrganizationActor, now: string) {
+  const organization = await requireOrganization(db, organizationId);
+  let current = await activeOwnership(db, organization.id);
+  if (!current) {
+    try {
+      const ownership = await claimOrganization(db, organization.id, actor, now);
+      return { status: 'owner' as const, claimId: ownership.id };
+    } catch (error) {
+      if (!(error instanceof OrganizationIamError) || error.status !== 409) throw error;
+      current = await activeOwnership(db, organization.id);
+      if (!current) throw error;
+    }
+  }
+  if (current.owner_user_id === actor.id) return { status: 'owner' as const, claimId: current.id };
+  const claim = await createOwnershipChallenge(db, organization.id, actor, {}, now);
+  return { status: 'pending' as const, claimId: claim.id };
+}
+
 export async function organizerAssignment(db: D1Database, organizationId: string, userId: string) {
   const existing = await db.prepare("SELECT role FROM organization_memberships WHERE organization_id = ? AND user_id = ? AND status = 'active'")
     .bind(organizationId, userId).first<{ role: string }>();
@@ -259,7 +278,7 @@ export async function createOwnershipChallenge(
   if (!ownership) fail(400, "Unclaimed organizations must be claimed directly");
   if (ownership.owner_user_id === actor.id) fail(400, "The current owner cannot challenge their own ownership");
   const explanation = String(payload.explanation || "").trim();
-  if (!explanation || explanation.length > 4000) fail(400, "A challenge explanation is required");
+  if (explanation.length > 4000) fail(400, "Claim explanation must be at most 4000 characters");
   const evidence = parseEvidence(payload.evidence);
   const existing = await db.prepare(
     "SELECT * FROM organization_ownership_challenges WHERE organization_id = ? AND challenger_user_id = ? AND status = 'open'",
