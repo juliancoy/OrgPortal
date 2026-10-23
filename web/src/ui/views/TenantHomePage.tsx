@@ -1,4 +1,3 @@
-import { TenantBrandingPage } from './TenantBrandingPage'
 import { GlobalSearchForm } from '../components/GlobalSearchForm'
 import { useEffect, useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
@@ -140,7 +139,7 @@ export function TenantHomePage({brandGuideHref}:{brandGuideHref?:string}={}) {
           </div>
         </section>
 
-        <OrganizationBrandGuide href={brandGuideHref} />
+        <OrganizationBrandGuide href={brandGuideHref || (tenant.home_org_slug ? `/orgs/${encodeURIComponent(tenant.home_org_slug)}?tab=branding` : undefined)} />
         <SpecialtyResourcesPanel resources={specialtyResources.slice(0, 4)} compact={specialtyResources.length > 4} />
 
         {tenant.home_org_slug && <section className="tenant-home-events" aria-labelledby="tenant-home-events-title">
@@ -202,7 +201,7 @@ export function TenantEventsHomePage() {
   </div>
 }
 
-export function TenantSlugHomePage({branding=false}:{branding?:boolean}={}) {
+export function TenantSlugHomePage() {
   const { tenantSlug } = useParams()
   const [status, setStatus] = useState('Loading portal...')
 
@@ -246,7 +245,7 @@ export function TenantSlugHomePage({branding=false}:{branding?:boolean}={}) {
     </div>
   }
 
-  const brandGuidePath=`/portals/${encodeURIComponent(tenantSlug!)}/branding`
-  if(branding)return <div className="portal-shell tenant-home-shell"><Header /><main className="portal-main" tabIndex={-1}><div className="portal-container"><TenantBrandingPage brandGuidePath={brandGuidePath} /></div></main><Footer /></div>
+  const orgSlug=getGroupSite()?.home_org_slug
+  const brandGuidePath=orgSlug ? `/orgs/${encodeURIComponent(orgSlug)}?tab=branding` : '/branding'
   return <TenantHomePage brandGuideHref={portalPath(brandGuidePath)} />
 }

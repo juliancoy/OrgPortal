@@ -5,7 +5,7 @@ MCP image import and profile/portal operations.
 
 - Organization: https://orgportal.cc/orgs/neonatal-ai
 - Portal: https://orgportal.cc/portals/neonatal-ai
-- Brand guide: https://orgportal.cc/portals/neonatal-ai/branding
+- Brand guide: https://orgportal.cc/orgs/neonatal-ai?tab=branding
 - Public artwork: https://orgportal.cc/api/org/api/network/orgs/public/neonatal-ai/media/3ac5c3f01e2e2dd9db9308fb8a4e0bda47937063a69b6baabe0263c68f439091
 - Original PNG: `assets/branding/neonatal-ai/identity-v1.png`
 - WebP: `assets/branding/neonatal-ai/identity-v1.webp` (330,044 bytes)

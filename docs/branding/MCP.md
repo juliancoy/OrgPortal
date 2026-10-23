@@ -35,9 +35,15 @@ fails and the unreferenced object from that attempt is removed when possible.
 - `get_portal_branding` / `preview_portal_branding` / `apply_portal_branding`:
   named palette colors, hex values and descriptions. Applying a palette requires
   its matching one-use preview and preserves other portal settings.
-- `/portals/:slug/branding`: the public guide for a shared organization portal,
-  including approved imagery, copyable colors and PNG export. Domain-specific
-  `/branding` pages continue to use the domain's own configuration.
+- `/orgs/:orgSlug?tab=branding`: the public Branding tab beside Info on each
+  organization page, with approved imagery, copyable colors and PNG export.
+  It reads that organization's existing portal/MCP settings without changing the
+  surrounding portal identity. Organizations without portal setup use their
+  profile image and the default palette.
+- Existing `/portals/:portalSlug/branding` links redirect to the linked org tab,
+  including when portal and organization slugs differ. Domain `/branding` links
+  open the org tab when the domain has a linked organization. Other domain-only
+  brand guides remain available.
 
 These tools are advertised by OrgPortal's MCP server. Clients that cache the
 tool list must refresh their connection to discover newly added tools.

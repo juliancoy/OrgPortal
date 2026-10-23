@@ -9601,3 +9601,34 @@ a.public-event-comment-avatar:focus-visible { outline: 3px solid var(--primary);
   .public-event-side .public-event-logistics-list { display: none; }
   .public-event-side > .public-event-logistics-card:not(.has-location) { display: none; }
 }
+
+.portal-org-info-tabs {
+  display: flex;
+  gap: .4rem;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border-color, #d9e4e1);
+  margin-bottom: 1.25rem;
+  padding-bottom: .45rem;
+}
+.portal-org-info-tabs [role="tab"] {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .75rem 1.1rem;
+  border: 1px solid transparent;
+  border-radius: .65rem;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+.portal-org-info-tabs [aria-selected="true"] {
+  background: var(--color-primary, #155e59);
+  color: #fff;
+}
+.portal-org-info-tabs [role="tab"]:focus-visible {
+  outline: 3px solid #b87910;
+  outline-offset: 3px;
+}
+#org-panel-branding { min-width: 0; }

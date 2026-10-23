@@ -2,26 +2,28 @@ import { useEffect, useRef, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { Check, Copy, Download, ExternalLink } from 'lucide-react'
 import { portalPath } from '../../config/portalBase'
-import { getActivePortalProfileConfig } from '../../config/portalFeatures'
+import { getActivePortalProfileConfig, tenantProfileConfig } from '../../config/portalFeatures'
 import { resolveBrandPalette } from '../../../../shared/brandPalette'
 import { downloadBrandGuide } from '../utils/downloadBrandGuide'
-import { getGroupSite } from '../../config/timebankCommunity'
+import { getGroupSite, type GroupSite } from '../../config/timebankCommunity'
 
 function assetUrl(value?: string | null) {
   if (!value) return ''
   return value.startsWith('/') ? portalPath(value) : value
 }
 
-export function TenantBrandingPage({brandGuidePath='/branding'}:{brandGuidePath?:string}={}) {
-  const tenant = getGroupSite()
-  const profile = getActivePortalProfileConfig()
+export function TenantBrandingPage({brandGuidePath='/branding',tenant:organizationTenant}:{brandGuidePath?:string;tenant?:GroupSite}={}) {
+  const tenant = organizationTenant || getGroupSite()
+  const profile = organizationTenant ? tenantProfileConfig(organizationTenant) : getActivePortalProfileConfig()
   const [copiedColor, setCopiedColor] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
   const [exportMessage, setExportMessage] = useState('')
   const copyResetTimer = useRef<number | null>(null)
 
   useEffect(() => {
+    const previousTitle = document.title
     document.title = `Brand Guide | ${profile.brandName}`
+    return () => { document.title = previousTitle }
   }, [profile.brandName])
 
   useEffect(() => () => {
@@ -29,6 +31,7 @@ export function TenantBrandingPage({brandGuidePath='/branding'}:{brandGuidePath?
   }, [])
 
   if (!tenant) return <Navigate to="/" replace />
+  if (!organizationTenant && tenant.home_org_slug) return <Navigate to={`/orgs/${encodeURIComponent(tenant.home_org_slug)}?tab=branding`} replace />
 
   const assets = [
     profile.brandImagePath

@@ -42,6 +42,7 @@ const UserSettingsPage = lazy(() => import('../views/users/UserSettingsPage').th
 const UserLoginPage = lazy(() => import('../views/users/UserLoginPage').then(module => ({ default: module.UserLoginPage })))
 const McpConnectPage = lazy(() => import('../views/users/McpConnectPage').then(module => ({ default: module.McpConnectPage })))
 const FiveOverFivePage = lazy(() => import('../views/orgs/FiveOverFivePage').then(module => ({ default: module.FiveOverFivePage })))
+const LegacyPortalBrandingRedirect = lazy(() => import('../components/OrganizationBranding').then(module => ({ default: module.LegacyPortalBrandingRedirect })))
 const OrgLoginPage = lazy(() => import('../views/orgs/OrgLoginPage').then(module => ({ default: module.OrgLoginPage })))
 const OrgRegisterPage = lazy(() => import('../views/orgs/OrgRegisterPage').then(module => ({ default: module.OrgRegisterPage })))
 const OrgInitiativesPage = lazy(() => import('../views/orgs/OrgInitiativesPage').then(module => ({ default: module.OrgInitiativesPage })))
@@ -268,7 +269,7 @@ export function createAppRouter() {
     [{ element: <PortalProfileBoundary />, errorElement: <RouteErrorPage />, children: [
       { path: '/', element: <HomeRoute /> },
       { path: '/portals/:tenantSlug', element: <TenantSlugHomePage /> },
-      { path: '/portals/:tenantSlug/branding', element: <TenantSlugHomePage branding /> },
+      { path: '/portals/:tenantSlug/branding', element: <LegacyPortalBrandingRedirect /> },
       { path: '/finance', element: <EconomicOpsPage /> },
       { path: '/departments', element: <DepartmentsPage /> },
       { path: '/ecops', element: <Navigate to="/finance" replace /> },

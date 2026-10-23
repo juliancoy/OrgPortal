@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import * as communities from './timebankCommunity'
 import {
   getActivePortalProfileConfig,
+  tenantProfileConfig,
   isPortalFeatureEnabled,
 } from './portalFeatures'
 import { parseGroupSite } from './timebankCommunity'
@@ -170,3 +171,11 @@ for (const hostname of ['localhost', '127.0.0.1', '[::1]']) {
     } finally { domain.mockRestore() }
   })
 }
+
+ it('renders a supplied organization brand without changing the portal identity', () => {
+  const before=getActivePortalProfileConfig('',null,'orgportal.cc')
+  const brand=tenantProfileConfig({id:'org-test',name:'Dummy Organization',hostname:'dummy.slug.portal.local',tagline:'Community',accent_color:'#123456',brand_image_path:'/dummy-logo.png'})
+  expect(brand.brandName).toBe('Dummy Organization')
+  expect(brand.brandImagePath).toBe('/dummy-logo.png')
+  expect(getActivePortalProfileConfig('',null,'orgportal.cc')).toEqual(before)
+ })

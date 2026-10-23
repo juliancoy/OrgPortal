@@ -12,12 +12,13 @@ import { OrganizationMembers } from '../../components/OrganizationMembers'
 import { resolveOrganizationPageView, useOrganizationViewPreference } from '../../hooks/useOrganizationView'
 import { OrganizationPortalSections } from '../../components/OrganizationPortalSections'
 import { OrganizationBrandGuide } from '../../components/OrganizationBrandGuide'
+import { OrganizationBranding, organizationBrandingPath } from '../../components/OrganizationBranding'
 import { getGroupSite } from '../../../config/timebankCommunity'
 import { OrganizationSupport } from '../../components/OrganizationSupport'
 import { OrganizationTools } from '../../components/OrganizationTools'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { Pencil, X } from 'lucide-react'
+import { Pencil, X, Info, Palette } from 'lucide-react'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
 import { useAuth } from '../../../app/AppProviders'
 import { PIDP_BASE_URL, pidpAppLoginUrl, pidpUrl } from '../../../config/pidp'
@@ -177,7 +178,11 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
   const navigate = useNavigate()
   const { token } = useAuth()
   const { handle } = useParams()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const activeTab = searchParams.get('tab') === 'branding' ? 'branding' : 'info'
+  function selectTab(tab: 'info' | 'branding') {
+    setSearchParams(previous => { const next = new URLSearchParams(previous); if (tab === 'info') next.delete('tab'); else next.set('tab', tab); return next })
+  }
   const [org, setOrg] = useState<PublicOrganization | null>(null)
   const [events, setEvents] = useState<PublicEvent[]>([])
   const [eventsLoading, setEventsLoading] = useState(false)
@@ -928,10 +933,18 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
 
   return (
     <section className="panel portal-org-page">
+      <div className="portal-org-info-tabs" role="tablist" aria-label={`${org.name} information`}>
+        {(['info','branding'] as const).map(tab => <button type="button" role="tab" id={`org-tab-${tab}`} aria-controls={`org-panel-${tab}`} aria-selected={activeTab === tab} tabIndex={activeTab === tab ? 0 : -1} key={tab} onClick={() => selectTab(tab)} onKeyDown={event => {
+          if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return
+          event.preventDefault(); const next = event.key === 'Home' ? 'info' : event.key === 'End' ? 'branding' : tab === 'info' ? 'branding' : 'info'
+          selectTab(next); document.getElementById(`org-tab-${next}`)?.focus()
+        }}>{tab === 'info' ? <Info size={18} aria-hidden="true" /> : <Palette size={18} aria-hidden="true" />}{tab === 'info' ? 'Info' : 'Branding'}</button>)}
+      </div>
+      <div role="tabpanel" id="org-panel-info" aria-labelledby="org-tab-info" hidden={activeTab !== 'info'}>
       {isWorkspaceView && <nav className="portal-org-organizer-nav" aria-label={`${org.name} workspace navigation`}>
         <span className="portal-org-organizer-nav-label">{isOrganizerView ? 'Organizer tools' : 'Member tools'}</span>
         <a href="#organization-overview">Overview</a>
-        <a href="#organization-brand-guide">Branding</a>
+        <a href="?tab=branding" onClick={event => { event.preventDefault(); selectTab('branding') }}>Branding</a>
         <a href="#organization-members">Members</a>
         <a href="#organization-events">Events</a>
         <a href="#organization-support">Money and support</a>
@@ -1045,11 +1058,7 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
             features={portalConfig?.features ?? (getGroupSite()?.home_org_slug === org.slug ? getGroupSite()?.features : undefined) ?? ['directory', 'events', 'chat']}
           />
           <div id="organization-brand-guide" className="portal-org-nav-target" tabIndex={-1}>
-          {getGroupSite()?.home_org_slug === org.slug
-            ? <OrganizationBrandGuide />
-            : portalConfig?.slug_url
-              ? <OrganizationBrandGuide href={`${portalConfig.slug_url.replace(/\/$/, '')}/branding`} />
-              : null}
+          <OrganizationBrandGuide href={organizationBrandingPath(org.slug)} />
           {isOrganizerView && <button type="button" className="btn-secondary" onClick={() => openOrganizationEditor('organization-branding')}>Edit branding and portal sections</button>}
           </div>
           </>}
@@ -1535,6 +1544,11 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
             )}
           </div>}
         </aside>}
+      </div>
+      </div>
+      <div role="tabpanel" id="org-panel-branding" aria-labelledby="org-tab-branding" hidden={activeTab !== 'branding'}>
+        {activeTab === 'branding' && <OrganizationBranding organization={org} />}
+        {activeTab === 'branding' && isOrganizerView && <button type="button" className="btn-secondary" onClick={() => { selectTab('info'); openOrganizationEditor('organization-branding') }}>Edit branding and portal sections</button>}
       </div>
       {showImageEditor && editorSource ? (
         <ImageEditorModal

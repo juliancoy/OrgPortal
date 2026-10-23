@@ -110,7 +110,7 @@ function tenantBrandHomeUrl(tenant: GroupSite, fallback: string): string {
   return configured
 }
 
-function tenantProfileConfig(tenant: GroupSite): PortalProfileConfig {
+export function tenantProfileConfig(tenant: GroupSite): PortalProfileConfig {
   const profileId = normalizeProfileId(tenant.profile) || (tenant.slug === 'lifetech' ? 'lifetech' : 'code-collective')
   const base = PORTAL_PROFILES[profileId]
   const features = new Set(tenant.features || [])
