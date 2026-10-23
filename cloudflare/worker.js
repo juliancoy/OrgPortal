@@ -1137,6 +1137,7 @@ const productionWorker = {
       const portalPath = path;
       if (
         pathMatchesPrefix(path, "/assets")
+        || pathMatchesPrefix(path, "/website-observatory")
         || pathMatchesPrefix(path, "/ecosystem-data")
         || pathMatchesPrefix(path, "/specialty")
         || pathMatchesPrefix(path, "/css")

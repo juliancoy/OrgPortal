@@ -20,6 +20,6 @@ export function WebsiteObservatory({ token }: { token: string }) {
   return <section className="portal-card" aria-label="Website request observatory">
     <h2>Website request observatory</h2>
     <p className="muted">Private synthetic request maps for CodeCollective and LifeTech. Captures run on the connected probe; reports and history are hosted by OrgPortal.</p>
-    <iframe ref={frame} src="/website-observatory/index.html" title="Website request observatory" style={{ width: '100%', height: '1100px', border: 0, borderRadius: 8 }} />
+    <iframe ref={frame} src="/website-observatory/" title="Website request observatory" style={{ width: '100%', height: '1100px', border: 0, borderRadius: 8 }} />
   </section>
 }

@@ -33,3 +33,13 @@ test('OAuth discovery routes reach the API for root and resource-specific metada
   }
   assert.deepEqual(paths, ['/.well-known/oauth-protected-resource', '/.well-known/oauth-protected-resource/mcp']);
 });
+
+
+test('website observatory static viewer and modules resolve through the portal asset mount', async () => {
+  const env = { ORGPORTAL_SITE_HOSTS: 'orgportal.cc', ASSETS: { fetch: async request => new Response(new URL(request.url).pathname) } };
+  for (const path of ['/website-observatory/', '/website-observatory/websites.js', '/website-observatory/providers.js', '/website-observatory/websites.css']) {
+    const response = await worker.fetch(new Request('https://orgportal.cc'+path),env);
+    assert.equal(response.status,200);
+    assert.equal(await response.text(),'/__portal_root'+path);
+  }
+});
