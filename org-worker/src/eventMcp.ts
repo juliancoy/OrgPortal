@@ -1,4 +1,5 @@
 import {memberTitlesSchema,organizationPeopleSchema,organizationTitlePeople,runMemberTitlesOperation} from './organizationMemberTitles';
+import {organizationPageStatistics} from './organizationPageStatistics';
 import {organizationImageSchema} from './organizationBrandImage';
 import { runPortalBrandingOperation, portalBrandingTargetSchema, portalBrandingUpdateSchema } from './portalBrandingMcp';
 import { runOrganizationDirectoryOperation, organizationOperationStatusSchema, type DirectoryOperation } from './organizationDirectoryOperations';
@@ -963,6 +964,17 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
       try{
         if(config.organizationId&&args.organizationId!==config.organizationId)throw new EventIntegrationError(403,'This connection is limited to its organization');
         const data=await organizationTitlePeople(env.DB,identity,args);return {content:[{type:'text' as const,text:JSON.stringify(data)}]};
+      }catch(error){return {isError:true,content:[{type:'text' as const,text:await eventErrorResponse(error,env,request).text()}]}}
+    });
+    server.registerTool('get_organization_page_statistics',{
+      description:'Read anonymous organization-page view totals and a daily breakdown. Requires current organization management access. Counts are page views, not unique visitors; includes today in UTC. No visitor identities are stored.',
+      inputSchema:z.object({organizationId:z.string().min(1).max(200),days:z.union([z.literal(7),z.literal(30),z.literal(90),z.literal(365)]).default(30)}).strict(),annotations:{readOnlyHint:true},_meta:metadata([portalReadScope]),
+    },async args=>{
+      try{
+        if(config.organizationId&&args.organizationId!==config.organizationId)throw new EventIntegrationError(403,'This connection is limited to its organization');
+        if(!identity.scopes.includes(portalReadScope))throw new EventIntegrationError(403,'Missing portal read scope');
+        const data=await organizationPageStatistics(env.DB,identity.userId,args.organizationId,args.days);
+        return {content:[{type:'text' as const,text:JSON.stringify(data)}]};
       }catch(error){return {isError:true,content:[{type:'text' as const,text:await eventErrorResponse(error,env,request).text()}]}}
     });
     server.registerTool('preview_organization_membership', { description: 'Preview adding an existing PIdP identity or changing its organization role.',

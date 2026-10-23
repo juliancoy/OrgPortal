@@ -53,6 +53,8 @@
   private ballots, the dynamic 25% allowance and website login destinations.
   Use `web/scripts/test-local-organization-board.py` for Board/Personnel navigation,
   member/owner title and sourced-photo previews, public visibility and permission preservation.
+  Use `web/scripts/test-local-organization-page-statistics.py` for anonymous
+  counting, tab/reload/dashboard behavior, private reporting and org isolation.
   Use `web/scripts/test-local-brand-guide.py` for shared portal branding,
   configured palettes, PNG export, mobile layout and tenant-context restoration.
 - Include permission denial and tenant isolation tests when authorization

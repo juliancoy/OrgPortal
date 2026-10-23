@@ -16,6 +16,7 @@ test('expiry units, bounds, dry-run, retries and unresolved operations',async()=
  sql.prepare('INSERT INTO organization_recognition_nominees VALUES (?,?)').run('expired',new Date(1).toISOString());
  sql.prepare('INSERT INTO organization_recognition_ballots VALUES (?,?)').run('expired',new Date(1).toISOString());
  sql.exec('CREATE TABLE organization_invitations(id TEXT PRIMARY KEY,expires_at INTEGER);');
+ sql.exec('CREATE TABLE organization_page_view_days(organization_id TEXT,day TEXT,views INTEGER);');
  sql.prepare('INSERT INTO organization_invitations VALUES (?,?)').run('expired-invitation',1);
  sql.exec('CREATE TABLE organization_volunteer_awards(id TEXT PRIMARY KEY,expires_at TEXT);');
  sql.prepare('INSERT INTO organization_volunteer_awards VALUES (?,?)').run('expired-volunteer',new Date(1).toISOString());
@@ -29,6 +30,8 @@ test('expiry units, bounds, dry-run, retries and unresolved operations',async()=
  sql.exec('CREATE TABLE event_company_votes(id TEXT PRIMARY KEY, expires_at TEXT);');
  sql.exec('CREATE TABLE organization_follow_event_jobs(id TEXT PRIMARY KEY, expires_at TEXT); CREATE TABLE user_notifications(id TEXT PRIMARY KEY,type TEXT,created_at TEXT);');
  const now=1800000000000,cutoff=now-23*3600000;
+ sql.prepare('INSERT INTO organization_page_view_days VALUES(?,?,?)').run('expired',new Date(now-365*86400_000).toISOString().slice(0,10),7);
+ sql.prepare('INSERT INTO organization_page_view_days VALUES(?,?,?)').run('boundary',new Date(now-364*86400_000).toISOString().slice(0,10),3);
  for(const name of ['email_engagement','email_segments','email_mailing_audit','email_campaign_previews']){sql.prepare(`INSERT INTO ${name} VALUES(?,?)`).run('expired',cutoff-1);sql.prepare(`INSERT INTO ${name} VALUES(?,?)`).run('valid',now+1000)}
  const put=sql.prepare("INSERT INTO event_mcp_operations VALUES(?, 'actor','org','event','fingerprint',?,0,?,NULL,'[]')");
  for(const status of ['prepared','completed','executing','uncertain'])put.run(status,status,cutoff-1);
@@ -48,6 +51,8 @@ test('expiry units, bounds, dry-run, retries and unresolved operations',async()=
  assert.equal((await runRetention(db,now,true)).event_company_votes,1);
  for(const name of ['email_engagement','email_segments','email_mailing_audit','email_campaign_previews'])assert.equal((await runRetention(db,now,true))[name],1);
  const first=await runRetention(db,now);
+ assert.equal(first.organization_page_view_days,1);
+ assert.equal(sql.prepare('SELECT organization_id FROM organization_page_view_days').get()!.organization_id,'boundary');
  assert.equal(first.event_presentation_favorites,1);
  assert.equal(sql.prepare('SELECT id FROM event_presentation_favorites').get()!.id,'live-choice');
  assert.equal(first.organization_recognition_nominees,1);

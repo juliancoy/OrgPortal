@@ -46,11 +46,24 @@ uses text relevance. Personalized responses are not publicly cached.
 
 ## Retention schedule
 
-Visitor reporting uses Cloudflare Web Analytics aggregates, separate from account,
+Site-wide visitor reporting uses Cloudflare Web Analytics aggregates, separate from account,
 membership and audit activity. OrgPortal retrieves daily hostname totals and
 popular page paths for administrators without storing a separate visitor history,
 visitor identifiers, or analytics backups. Cloudflare manages collection and
 retention; see [Cloudflare Web Analytics](https://developers.cloudflare.com/web-analytics/).
+
+Organization-page reporting separately stores anonymous totals per organization
+and UTC day. It does not store visitor IDs, accounts, IP addresses, referrers,
+user agents, URLs with query strings, or cookies. The counting request omits
+credentials, and the browser keeps no persistent tracking identifier. Daily
+buckets expire after 365 calendar days, including today, through bounded
+scheduled cleanup; expired buckets are immediately excluded from reports.
+Lifetime aggregate totals last while the organization exists. Deleting the
+organization cascades both counter tables. These aggregates have no account
+subject to erase and are excluded from the immutable journal and public replica.
+Reports require current organization management access. Normal D1 backup rules
+apply; reapply verified organization deletions and expiry before serving a
+restored database. There is no separate visitor-history export or backup store.
 
 These are adopted operational limits and review deadlines, not a claim that
 every store already has automatic expiry. Temporary authorization state and

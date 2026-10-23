@@ -1,0 +1,13 @@
+.organization-page-statistics { margin:1rem 0; min-width:0; }
+.organization-page-statistics summary { cursor:pointer; font-weight:700; }
+.organization-page-statistics section { display:grid; gap:1rem; margin-top:1rem; }
+.organization-page-statistics h2,.organization-page-statistics p { margin:0; }
+.organization-statistics-toolbar { display:flex; flex-wrap:wrap; align-items:end; gap:1rem; }
+.organization-statistics-toolbar label { display:grid; gap:.4rem; }
+.organization-statistics-totals { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:.8rem; margin:0; }
+.organization-statistics-totals div { padding:1rem; border:1px solid var(--border); border-radius:.5rem; }
+.organization-statistics-totals dt { font-size:.85rem; }
+.organization-statistics-totals dd { margin:.4rem 0 0; font-size:1.8rem; font-weight:750; }
+.organization-statistics-table { max-height:22rem; overflow:auto; }
+.organization-statistics-table table { width:100%; border-collapse:collapse; }
+.organization-statistics-table :is(th,td) { padding:.5rem; text-align:left; border-bottom:1px solid var(--border); }

@@ -1,4 +1,6 @@
 import { OrganizationBoard } from '../../components/OrganizationBoard'
+import { OrganizationPageStatistics } from '../../components/OrganizationPageStatistics'
+import { useOrganizationPageView } from '../../hooks/useOrganizationPageView'
 import { invalidatePublicOrganizationData } from '../../../data/publicOrganization/cache'
 import { loadPublicOrganization } from '../../../data/publicOrganization/organizations'
 import { BioMarkdown } from '../../components/profile/BioMarkdown'
@@ -187,6 +189,7 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
     setSearchParams(previous => { const next = new URLSearchParams(previous); if (tab === 'info') next.delete('tab'); else next.set('tab', tab); return next })
   }
   const [org, setOrg] = useState<PublicOrganization | null>(null)
+  useOrganizationPageView(org&&org.slug===handle?org.slug:null,dashboard)
   const [events, setEvents] = useState<PublicEvent[]>([])
   const [eventsLoading, setEventsLoading] = useState(false)
   const [admins, setAdmins] = useState<PublicOrgAdmin[]>([])
@@ -944,6 +947,7 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
         }}>{tab === 'info' ? <Info size={18} aria-hidden="true" /> : tab === 'board' || tab === 'personnel' ? <Users size={18} aria-hidden="true" /> : <Palette size={18} aria-hidden="true" />}{tab === 'info' ? 'Info' : tab === 'board' ? 'Board' : tab === 'personnel' ? 'Personnel' : 'Branding'}</button>)}
       </div>
       <div role="tabpanel" id="org-panel-info" aria-labelledby="org-tab-info" hidden={activeTab !== 'info'}>
+      {canManageCurrentOrg&&token&&<OrganizationPageStatistics key={org.id} organizationId={org.id} token={token} />}
       {isWorkspaceView && <nav className="portal-org-organizer-nav" aria-label={`${org.name} workspace navigation`}>
         <span className="portal-org-organizer-nav-label">{isOrganizerView ? 'Organizer tools' : 'Member tools'}</span>
         <a href="#organization-overview">Overview</a>
