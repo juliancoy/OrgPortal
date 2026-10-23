@@ -92,7 +92,8 @@ test("JWT verifies audience, issuer, expiration and explicit subject mapping", a
       .setProtectedHeader({ alg: "RS256" }).sign(privateKey);
   }
   const request = (token: string) => new Request(authEnv.MCP_PUBLIC_URL!, { headers: { authorization: `Bearer ${token}` } });
-  assert.deepEqual(await authenticateMcp(request(await signed()), authEnv, getKey), { userId: "pidp-user", scopes: ["org:events.read"], isOperator: false, organizationId: undefined, resource: authEnv.MCP_PUBLIC_URL });
+  const expiresAt = Math.floor(Date.now()/1000) + 60;
+  assert.deepEqual(await authenticateMcp(request(await signed({exp:expiresAt})), authEnv, getKey), { userId: "pidp-user", scopes: ["org:events.read"], isOperator: false, subject: "subject", expiresAt, organizationId: undefined, resource: authEnv.MCP_PUBLIC_URL });
   for (const overrides of [{ aud: "wrong" }, { iss: "wrong" }, { exp: 1 }, { sub: "unmapped" }]) {
     await assert.rejects(authenticateMcp(request(await signed(overrides)), authEnv, getKey), /Invalid/);
   }

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseCommand, run } from '../scripts/orgportal.mjs';
+import { parseCommand, run as runCli } from '../scripts/orgportal.mjs';
+const run=(args,dependencies)=>runCli(args,{connectionSettings:{active:async()=> 'default',list:async()=>[],remember:async()=>{},select:async()=>{},remove:async()=>{}},...dependencies});
 
 test('CLI selects portal-bound account connections and rejects malformed targets', () => {
   const command = parseCommand(['auth', 'login', '--portal', 'https://medtech.social', '--connection', 'work', '--no-browser'], {});

@@ -1,0 +1,5 @@
+#!/usr/bin/env node
+import('./org-worker/scripts/orgportal.mjs').then(({ main }) => main()).catch(() => {
+  console.error('OrgPortal CLI could not start. Install dependencies with npm --prefix org-worker ci and use Node.js 22 or newer.');
+  process.exitCode = 1;
+});

@@ -1,0 +1,1 @@
+{"name":"OrgPortal","version":"1.3.0","accountTools":{"whoami":"get_current_account","status":"get_connection_status","doctor":"diagnose_connection"}}
