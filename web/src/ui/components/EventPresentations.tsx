@@ -1,7 +1,7 @@
 import { SubmissionAttachmentPicker } from './SubmissionAttachments'
 import { uploadSubmissionAttachment, type StagedSubmissionAttachment } from './submissionAttachments'
 import { invalidatePublicOrganizationData } from '../../data/publicOrganization/cache'
-import { TeamPeoplePicker, readTeamPeople } from './TeamPeoplePicker'
+import { TeamPeoplePicker, readTeamPeople, type TeamPerson } from './TeamPeoplePicker'
 import { EventApplicationReview } from './EventApplicationReview'
 import { useLocalFormDraft } from '../hooks/useLocalFormDraft'
 import { formDraftKey } from '../hooks/localFormDraft'
@@ -11,8 +11,8 @@ import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
 
 type Org = { id:string; name:string; my_role?:string }
-type Submission = { submission_id:string; organization_id:string; organization_name:string; title:string; summary:string; status:string }
-const emptyPresentationDraft = { submissionId: '', editing: '', org: '', name: '', city: 'Baltimore', description: '', title: '', summary: '', people: '[]' }
+type Submission = { submission_id:string; organization_id:string; organization_name:string; title:string; summary:string; status:string; presenters:TeamPerson[] }
+const emptyPresentationDraft = { submissionId: '', editing: '', presenting: 'manager', org: '', name: '', city: 'Baltimore', description: '', title: '', summary: '', people: '[]' }
 export function EventPresentations({eventId}:{eventId:string}) {
  const {token,user}=useAuth()
  const [files,setFiles]=useState<StagedSubmissionAttachment[]>([])
@@ -69,16 +69,20 @@ export function EventPresentations({eventId}:{eventId:string}) {
   {((enabled&&!closed)||draft.value.editing)&&token&&<form className="presentation-form local-form-draft" data-draft-saved={draft.saved} aria-label="Team presentation application" aria-busy={busy} onSubmit={e=>{e.preventDefault();void action(async()=>{
    let organizationId=org
    if(!organizationId){const team=await request('/api/org/api/network/orgs','POST',{name,city,description,kind:'team',acknowledgeOwnership:true});organizationId=team.id;setOrg(team.id);setOrgs(previous=>[...previous,team]);await invalidatePublicOrganizationData()}
+   const presenters:({userId:string}|{invitationId:string})[]=[];
+   if(draft.value.presenting==='presenter'&&user?.id)presenters.push({userId:user.id});
    for(const person of people){
+    if(person.invitationId){presenters.push({invitationId:person.invitationId});continue}
     const resource=`/api/org/api/network/orgs/${encodeURIComponent(organizationId)}/${person.userId?'members':'invitations'}`
     const payload=person.userId?{user_id:person.userId,user_name:person.name,role:'member',add_only:true}:{email:person.email,purpose:'member'}
     try {
      const preview=await request(`${resource}/preview`,'POST',payload)
-     await request(`${resource}/apply`,'POST',{...payload,previewId:preview.previewId,...(!person.userId?{confirm:true}:{})})
+     const added=await request(`${resource}/apply`,'POST',{...payload,previewId:preview.previewId,...(!person.userId?{confirm:true}:{})});
+     if(person.userId)presenters.push({userId:person.userId});else if(added.invitationId)presenters.push({invitationId:added.invitationId});else throw new Error('The invitation could not be linked to a presenter')
     }catch(error){throw new Error(`Your team is saved, but ${person.name} could not be added: ${error instanceof Error?error.message:'Please retry'}. Your draft is retained; submitting again safely retries the additions.`)}
    }
    const submissionId=draft.value.submissionId||crypto.randomUUID();setField('submissionId',submissionId);
-   await request(`${base}/${encodeURIComponent(submissionId)}`,'PUT',{organization_id:organizationId,title,summary});
+   await request(`${base}/${encodeURIComponent(submissionId)}`,'PUT',{organization_id:organizationId,title,summary,presenters});
    setField('editing','true');
    try{for(const file of files){await uploadSubmissionAttachment(eventId,submissionId,file,token!);setFiles(previous=>previous.filter(item=>item.id!==file.id))}}catch(error){throw new Error(`Your application is saved, but an attachment could not upload: ${error instanceof Error?error.message:'Please retry'}. Your draft and remaining selected files are retained.`)}
    draft.clear();setMessage(draft.value.editing?'Application updated.':'Application submitted to the event organizers.')
@@ -87,14 +91,16 @@ export function EventPresentations({eventId}:{eventId:string}) {
    <div className="local-draft-status"><p role="status">{draft.unavailable?'Local draft storage unavailable.':draft.saved?'Draft saved on this device.':'Draft not yet saved on this device.'}</p><button type="button" className="btn-secondary" onClick={()=>{draft.clear();setFiles([])}}>Clear saved draft</button></div>
    <p className="presentation-form-intro">You can submit multiple applications for the same team or organization, and edit each one afterwards. Updates return the application to pending review. Your team name, presentation title and summary will be publicly visible under Submissions. Submitting does not guarantee a presentation slot.</p>
    <label htmlFor={`${fieldId}-team`}>Team or organization</label><select id={`${fieldId}-team`} disabled={!!draft.value.editing} value={org} onChange={e=>{setOrg(e.target.value);setField('people','[]')}}><option value="">Create a team</option>{orgs.map(o=><option key={o.id} value={o.id}>{o.name}</option>)}</select>
-   {!org&&<><p className="muted">Creating a team makes you its owner.</p><label>Team name<input required maxLength={255} value={name} onChange={e=>setName(e.target.value)}/></label><label>City<input required maxLength={80} value={city} onChange={e=>setCity(e.target.value)}/></label><div><label htmlFor={`${fieldId}-about`}>About your team</label><textarea id={`${fieldId}-about`} rows={3} maxLength={5000} value={description} onChange={e=>setDescription(e.target.value)}/></div></>}
-   <TeamPeoplePicker people={people} onChange={value=>setField('people',JSON.stringify(value))} />
+   {!org&&<><p className="muted">Creating a team gives you management access. Choose the presenters separately; you can create and manage a team for other people.</p><label>Team name<input required maxLength={255} value={name} onChange={e=>setName(e.target.value)}/></label><label>City<input required maxLength={80} value={city} onChange={e=>setCity(e.target.value)}/></label><div><label htmlFor={`${fieldId}-about`}>About your team</label><textarea id={`${fieldId}-about`} rows={3} maxLength={5000} value={description} onChange={e=>setDescription(e.target.value)}/></div></>}
+   <label htmlFor={`${fieldId}-role`}>Your role in this presentation</label><select id={`${fieldId}-role`} value={draft.value.presenting} onChange={e=>setField('presenting',e.target.value)}><option value="manager">Team manager only</option><option value="presenter">Presenter and team manager</option></select>
+   <p className="muted">Management access lets you submit and edit applications. Only selected presenters will appear on the submission.</p>
+   <TeamPeoplePicker presenters people={people} onChange={value=>{setField('people',JSON.stringify(value.filter(person=>person.userId!==user?.id)));if(value.some(person=>person.userId===user?.id))setField('presenting','presenter')}} />
    <label>Presentation title<input required maxLength={200} value={title} onChange={e=>setTitle(e.target.value)}/></label>
    <div><label htmlFor={`${fieldId}-summary`}>What will you present?</label><textarea id={`${fieldId}-summary`} rows={5} required maxLength={5000} value={summary} onChange={e=>setSummary(e.target.value)}/></div>
    <SubmissionAttachmentPicker files={files} onChange={setFiles} disabled={busy} />
    <div className="presentation-form-footer"><p className="muted">Your team name, presentation title and summary will be publicly visible.</p><button className="btn-primary presentation-submit" disabled={busy} type="submit">{busy?'Saving…':draft.value.editing?'Save changes':'Submit application'}</button></div>
   </form>}
-  {rows.filter(r=>orgs.some(o=>o.id===r.organization_id)).length>0&&<><h3>Your applications</h3>{rows.filter(r=>orgs.some(o=>o.id===r.organization_id)).map(r=><article className="presentation-submission" key={r.submission_id}><h4>{r.organization_name}: {r.title}</h4><p style={{whiteSpace:'pre-wrap'}}>{r.summary}</p><p>Status: {r.status}</p><div><button type="button" className="btn-secondary" disabled={busy} onClick={()=>{draft.setValue({...emptyPresentationDraft,submissionId:r.submission_id,editing:'true',org:r.organization_id,title:r.title,summary:r.summary});setFiles([])}}>Edit application</button><button type="button" className="btn-secondary" disabled={busy} onClick={()=>void action(async()=>{await request(`${base}/${encodeURIComponent(r.submission_id)}`,'DELETE');if(draft.value.submissionId===r.submission_id){draft.clear();setFiles([])}})}>Withdraw application</button></div></article>)}</>}
+  {rows.filter(r=>orgs.some(o=>o.id===r.organization_id)).length>0&&<><h3>Your applications</h3>{rows.filter(r=>orgs.some(o=>o.id===r.organization_id)).map(r=><article className="presentation-submission" key={r.submission_id}><h4>{r.organization_name}: {r.title}</h4><p style={{whiteSpace:'pre-wrap'}}>{r.summary}</p><p>Status: {r.status}</p><div><button type="button" className="btn-secondary" disabled={busy} onClick={()=>{draft.setValue({...emptyPresentationDraft,submissionId:r.submission_id,editing:'true',org:r.organization_id,title:r.title,summary:r.summary,presenting:r.presenters?.some(person=>person.userId===user?.id)?'presenter':'manager',people:JSON.stringify((r.presenters||[]).filter(person=>person.userId!==user?.id))});setFiles([])}}>Edit application</button><button type="button" className="btn-secondary" disabled={busy} onClick={()=>void action(async()=>{await request(`${base}/${encodeURIComponent(r.submission_id)}`,'DELETE');if(draft.value.submissionId===r.submission_id){draft.clear();setFiles([])}})}>Withdraw application</button></div></article>)}</>}
 
   </div>}
  </section>

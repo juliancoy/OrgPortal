@@ -53,7 +53,7 @@ test('caps uploads, rejects invalid content, and cleans withdrawn files without 
 
 test('attachments stay with their own submission when a team has multiple entries',async t=>{
  const f=fixture(t),second=crypto.randomUUID();
- f.sql.prepare("INSERT INTO event_submissions VALUES('event',?,'team','applicant','Second','Summary','submitted','2026-01-01','2099-06-01')").run(second);
+ f.sql.prepare("INSERT INTO event_submissions(event_id,submission_id,organization_id,submitted_by,title,summary,status,updated_at,expires_at) VALUES('event',?,'team','applicant','Second','Summary','submitted','2026-01-01','2099-06-01')").run(second);
  const firstFile=f.upload(),secondFile=f.upload('other.pdf');
  assert.equal((await f.request('/team/attachments','POST','applicant',firstFile.form)).status,201);
  assert.equal((await f.request('/'+second+'/attachments','POST','applicant',secondFile.form)).status,201);

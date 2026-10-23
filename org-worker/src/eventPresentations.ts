@@ -1,3 +1,4 @@
+import { submissionPresenters, validateSubmissionPresenters } from './submissionPresenters'
 import { presentationAttachmentRoutes, publicAttachment } from './presentationAttachments'
 import { stream } from 'hono/streaming';
 import { Hono } from 'hono';
@@ -34,7 +35,8 @@ export function presentationRoutes<E extends PresentationEnv>(auth: (env:E, requ
   const settings=await c.env.DB.prepare('SELECT favorite_limit FROM event_presentation_forms WHERE event_id=?').bind(e.id).first<{favorite_limit:number}>();
   const page=rows.results.slice(0,50);
   const attachments=page.length?await c.env.DB.prepare(`SELECT id,submission_id,name,content_type,size FROM event_presentation_attachments WHERE event_id=? AND state='ready' AND submission_id IN (${page.map(()=>'?').join(',')})`).bind(e.id,...page.map(row=>row.submission_id)).all<{id:string;submission_id:string;name:string;content_type:string;size:number}>():{results:[]};
-  return c.json({favoriteLimit:settings?.favorite_limit??3,submissions:page.map(row=>({...row,attachments:attachments.results.filter(file=>file.submission_id===row.submission_id).map(publicAttachment)})),next:rows.results.length>50?rows.results[49].submission_id:null});
+  const presenters=await submissionPresenters(c.env.DB,e.id,page.map(row=>row.submission_id));
+  return c.json({favoriteLimit:settings?.favorite_limit??3,submissions:page.map(row=>({...row,presenters:presenters.get(row.submission_id)||[],attachments:attachments.results.filter(file=>file.submission_id===row.submission_id).map(publicAttachment)})),next:rows.results.length>50?rows.results[49].submission_id:null});
  });
  app.get('/:id/presentations/favorites',async c=>{
   const user=await auth(c.env,c.req.raw),e=await event(c.env.DB,c.req.param('id'));
@@ -82,8 +84,9 @@ export function presentationRoutes<E extends PresentationEnv>(auth: (env:E, requ
  app.get('/:id/presentations',async c=>{
   const user=await auth(c.env,c.req.raw),e=await event(c.env.DB,c.req.param('id'));
   const role=await organizationRole(c.env.DB,e.host_org_id!,user.id),canReview=role==='owner'||role==='administrator';
-  const rows=await c.env.DB.prepare(`SELECT s.*,o.name AS organization_name FROM event_submissions s JOIN organizations o ON o.id=s.organization_id WHERE s.event_id=? AND ${active} AND (?=1 OR EXISTS(SELECT 1 FROM organization_memberships m WHERE m.organization_id=s.organization_id AND m.user_id=? AND m.status='active' AND m.role IN ('owner','administrator'))) ORDER BY s.updated_at DESC LIMIT 200`).bind(e.id,canReview?1:0,user.id).all();
-  return c.json({canReview,submissions:rows.results});
+  const rows=await c.env.DB.prepare(`SELECT s.*,o.name AS organization_name FROM event_submissions s JOIN organizations o ON o.id=s.organization_id WHERE s.event_id=? AND ${active} AND (?=1 OR EXISTS(SELECT 1 FROM organization_memberships m WHERE m.organization_id=s.organization_id AND m.user_id=? AND m.status='active' AND m.role IN ('owner','administrator'))) ORDER BY s.updated_at DESC LIMIT 200`).bind(e.id,canReview?1:0,user.id).all<{submission_id:string}>();
+  const presenters=await submissionPresenters(c.env.DB,e.id,rows.results.map(row=>row.submission_id),true);
+  return c.json({canReview,submissions:rows.results.map(row=>({...row,presenters:presenters.get(row.submission_id)||[]}))});
  });
  // Manager review is independently authorized; applicant views remain team-scoped.
  function statusFilter(value:string|undefined) {
@@ -99,8 +102,9 @@ export function presentationRoutes<E extends PresentationEnv>(auth: (env:E, requ
   const counts={all:0,submitted:0,accepted:0,declined:0};
   for(const row of grouped.results){if(row.status in counts&&row.status!=='all'){counts[row.status as keyof typeof counts]=Number(row.n);counts.all+=Number(row.n)}}
   const total=counts[status as keyof typeof counts],pages=Math.max(1,Math.ceil(total/pageSize)),currentPage=Math.min(page,pages);
-  const rows=await c.env.DB.prepare(`SELECT s.*,o.name AS organization_name FROM event_submissions s JOIN organizations o ON o.id=s.organization_id WHERE s.event_id=? AND ${active} AND (?='all' OR s.status=?) ORDER BY s.updated_at DESC,s.submission_id ASC LIMIT ? OFFSET ?`).bind(e.id,status,status,pageSize,(currentPage-1)*pageSize).all();
-  return c.json({submissions:rows.results,counts,total,page:currentPage,pageSize,pages});
+  const rows=await c.env.DB.prepare(`SELECT s.*,o.name AS organization_name FROM event_submissions s JOIN organizations o ON o.id=s.organization_id WHERE s.event_id=? AND ${active} AND (?='all' OR s.status=?) ORDER BY s.updated_at DESC,s.submission_id ASC LIMIT ? OFFSET ?`).bind(e.id,status,status,pageSize,(currentPage-1)*pageSize).all<{submission_id:string}>();
+  const presenters=await submissionPresenters(c.env.DB,e.id,rows.results.map(row=>row.submission_id),true);
+  return c.json({submissions:rows.results.map(row=>({...row,presenters:presenters.get(row.submission_id)||[]})),counts,total,page:currentPage,pageSize,pages});
  });
  app.get('/:id/presentations/export',async c=>{
   const user=await auth(c.env,c.req.raw),e=await event(c.env.DB,c.req.param('id'));await manager(c.env.DB,user,e.host_org_id!);
@@ -108,12 +112,13 @@ export function presentationRoutes<E extends PresentationEnv>(auth: (env:E, requ
   c.header('Content-Type','text/csv; charset=utf-8');c.header('Content-Disposition','attachment; filename="event-applications.csv"');
   // Keyset batches avoid truncating exports and keep worker memory bounded.
   return stream(c,async output=>{
-   const keys=['submission_id','organization_name','organization_id','title','summary','status','submitted_by','updated_at'];
+   const keys=['submission_id','organization_name','organization_id','title','summary','presenters','status','submitted_by','updated_at'];
    await output.write('\uFEFF'+keys.join(',')+'\r\n');let after='';
    while(!output.aborted){
     await manager(c.env.DB,user,e.host_org_id!);
     const rows=await c.env.DB.prepare(`SELECT s.*,o.name AS organization_name FROM event_submissions s JOIN organizations o ON o.id=s.organization_id WHERE s.event_id=? AND ${active} AND (?='all' OR s.status=?) AND s.submission_id>? ORDER BY s.submission_id LIMIT 100`).bind(e.id,status,status,after).all<Record<string,unknown>>();
-    for(const row of rows.results)await output.write(keys.map(key=>applicationCsvCell(row[key])).join(',')+'\r\n');
+    const presenters=await submissionPresenters(c.env.DB,e.id,rows.results.map(row=>String(row.submission_id)),true);
+    for(const row of rows.results){row.presenters=(presenters.get(String(row.submission_id))||[]).map(person=>person.name).join('; ');await output.write(keys.map(key=>applicationCsvCell(row[key])).join(',')+'\r\n')}
     if(rows.results.length<100)break;
     after=String(rows.results[rows.results.length-1].submission_id);
    }
@@ -122,21 +127,22 @@ export function presentationRoutes<E extends PresentationEnv>(auth: (env:E, requ
  // PUT uses a client-generated ID, making creation and attachment retries idempotent.
  app.put('/:id/presentations/:submission',async c=>{
   const user=await auth(c.env,c.req.raw),e=await event(c.env.DB,c.req.param('id')),id=c.req.param('submission');
-  const existing=await c.env.DB.prepare('SELECT organization_id FROM event_submissions WHERE event_id=? AND submission_id=?').bind(e.id,id).first<{organization_id:string}>();
+  const existing=await c.env.DB.prepare('SELECT organization_id,presenters_json FROM event_submissions WHERE event_id=? AND submission_id=?').bind(e.id,id).first<{organization_id:string;presenters_json:string}>();
   const body=await c.req.json(),org=existing?.organization_id || body.organization_id || id;
   if(typeof org!=='string'||id.length>255)throw new HTTPException(400,{message:'Invalid submission or team'});
   if(!existing&&body.organization_id&&!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))throw new HTTPException(400,{message:'A valid submission identifier is required'});
   await manager(c.env.DB,user,org);
   const title=typeof body.title==='string'?body.title.trim():'',summary=typeof body.summary==='string'?body.summary.trim():'';
   if(!title || title.length>200 || !summary || summary.length>5000) throw new HTTPException(400,{message:'A title (up to 200 characters) and summary (up to 5000 characters) are required'});
+  const presenters=body.presenters===undefined?(existing?.presenters_json||'[]'):await validateSubmissionPresenters(c.env.DB,org,body.presenters);
   // New applications require open intake. Existing applications remain editable
   // until expiry, with live team authority checked in the write itself.
-  const result=await c.env.DB.prepare(`INSERT INTO event_submissions(event_id,submission_id,organization_id,submitted_by,title,summary,status,updated_at,expires_at)
-   SELECT e.id,?,?,?,?,?,'submitted',?,strftime('%Y-%m-%dT%H:%M:%fZ',COALESCE(e.ends_at,e.starts_at),'+90 days') FROM events e
+  const result=await c.env.DB.prepare(`INSERT INTO event_submissions(event_id,submission_id,organization_id,submitted_by,title,summary,status,updated_at,expires_at,presenters_json)
+   SELECT e.id,?,?,?,?,?,'submitted',?,strftime('%Y-%m-%dT%H:%M:%fZ',COALESCE(e.ends_at,e.starts_at),'+90 days'),? FROM events e
    WHERE e.id=? AND (EXISTS(SELECT 1 FROM event_submissions s WHERE s.event_id=e.id AND s.submission_id=? AND s.organization_id=? AND ${active}) OR EXISTS(SELECT 1 FROM event_presentation_forms f WHERE f.event_id=e.id AND f.enabled=1 AND julianday(e.starts_at)>julianday('now')))
    AND EXISTS(SELECT 1 FROM organization_memberships m WHERE m.organization_id=? AND m.user_id=? AND m.status='active' AND m.role IN ('owner','administrator'))
-   ON CONFLICT(event_id,submission_id) DO UPDATE SET title=excluded.title,summary=excluded.summary,status='submitted',updated_at=excluded.updated_at
-   WHERE event_submissions.organization_id=excluded.organization_id AND event_submissions.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')`).bind(id,org,user.id,title,summary,new Date().toISOString(),e.id,id,org,org,user.id).run();
+   ON CONFLICT(event_id,submission_id) DO UPDATE SET title=excluded.title,summary=excluded.summary,status='submitted',updated_at=excluded.updated_at,presenters_json=excluded.presenters_json
+   WHERE event_submissions.organization_id=excluded.organization_id AND event_submissions.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')`).bind(id,org,user.id,title,summary,new Date().toISOString(),presenters,e.id,id,org,org,user.id).run();
   if(!result.meta.changes)throw new HTTPException(409,{message:'Applications are closed, this submission has expired, or team management access changed'});
   // Keep the temporary rollout copy consistent when editing a migrated entry.
   if(id===org)await c.env.DB.prepare("UPDATE event_presentation_submissions SET title=?,summary=?,status='submitted',updated_at=? WHERE event_id=? AND organization_id=?").bind(title,summary,new Date().toISOString(),e.id,org).run();

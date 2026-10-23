@@ -205,3 +205,38 @@ test('multiple-submission migration preserves legacy entries, favorites and atta
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[]);
  }finally{db.close()}
 });
+
+test('a manager can apply for other presenters without becoming a presenter or losing management access',async()=>{
+ const f=fixture();try{
+  await f.request('/form','PUT','host',{enabled:true});const id=crypto.randomUUID();
+  assert.equal((await f.request('/'+id,'PUT','applicant',{organization_id:'team',title:'Their demo',summary:'I manage this team for others',presenters:[{userId:'member'}]})).status,200);
+  let publicRows=(await(await f.request('/submissions','GET','')).json() as any).submissions;
+  assert.deepEqual(publicRows[0].presenters,[{name:'Team presenter'}]);
+  assert.ok(!JSON.stringify(publicRows).includes('applicant'));assert.ok(!JSON.stringify(publicRows).includes('userId'));
+  assert.equal(f.db.rows("SELECT role FROM organization_memberships WHERE user_id='applicant'")[0].role,'owner');
+  assert.equal((await f.request('/'+id,'PUT','applicant',{title:'Edited for them',summary:'Still managing'})).status,200);
+  assert.equal((await(await f.request()).json() as any).submissions[0].presenters[0].userId,'member');
+  assert.equal((await f.request('/'+id,'PUT','applicant',{title:'No outsider',summary:'Details',presenters:[{userId:'stranger'}]})).status,400);
+  assert.equal((await f.request('/'+id,'PUT','applicant',{title:'Bad data',summary:'Details',presenters:[{userId:'member',name:'Spoofed'}]})).status,400);
+  assert.equal((await f.request('/'+id,'PUT','applicant',{title:'Both presenting',summary:'Details',presenters:[{userId:'applicant'},{userId:'member'}]})).status,200);
+  publicRows=(await(await f.request('/submissions','GET','')).json() as any).submissions;assert.equal(publicRows[0].presenters.length,2);
+  assert.equal((await f.request('/'+id,'PUT','member',{title:'No rights',summary:'Details',presenters:[]})).status,403);
+ }finally{f.db.sqlite.close()}
+});
+
+test('invited presenters expose no email publicly and resolve only through verified invitation acceptance',async()=>{
+ const f=fixture();try{
+  await f.request('/form','PUT','host',{enabled:true});const id=crypto.randomUUID(),invite=crypto.randomUUID(),now=Date.now();
+  f.db.sqlite.prepare("INSERT INTO organization_invitations(id,organization_id,email,purpose,invited_by,created_at,expires_at) VALUES(?,'team','private@example.test','member','applicant',?,?)").run(invite,now,now+86400000);
+  assert.equal((await f.request('/'+id,'PUT','applicant',{organization_id:'team',title:'Invited demo',summary:'Details',presenters:[{invitationId:invite}]})).status,200);
+  let listing=await(await f.request('/submissions','GET','')).json() as any;
+  assert.deepEqual(listing.submissions[0].presenters,[{name:'Invited presenter',pending:true}]);assert.ok(!JSON.stringify(listing).includes('private@example.test'));
+  assert.equal((await(await f.request()).json() as any).submissions[0].presenters[0].email,'private@example.test');
+  f.db.sqlite.exec("INSERT INTO organization_memberships(organization_id,user_id,user_name,role,status) VALUES('team','canonical-recipient','Recipient','member','active')");
+  f.db.sqlite.prepare("UPDATE organization_invitations SET status='accepted',accepted_user_id='canonical-recipient' WHERE id=?").run(invite);
+  const references=JSON.parse(String(f.db.rows('SELECT presenters_json FROM event_submissions')[0].presenters_json));assert.deepEqual(references,[{userId:'canonical-recipient'}]);
+  f.db.sqlite.prepare('DELETE FROM organization_invitations WHERE id=?').run(invite);
+  listing=await(await f.request('/submissions','GET','')).json() as any;assert.deepEqual(listing.submissions[0].presenters,[{name:'Recipient'}]);
+  assert.equal((await f.request('/'+id,'PUT','applicant',{title:'Foreign invite',summary:'Details',presenters:[{invitationId:'missing'}]})).status,400);
+ }finally{f.db.sqlite.close()}
+});

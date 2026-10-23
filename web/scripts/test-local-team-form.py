@@ -82,6 +82,7 @@ with sync_playwright() as p:
         assert page.url.endswith('#apply'), 'Apply tab must survive reload and sign-in return'
         expect(form).to_be_visible(timeout=30000)
         expect(form.get_by_role('checkbox')).to_have_count(0)
+        expect(form.get_by_label('Your role in this presentation',exact=True)).to_have_value('manager')
         expect(page.locator('.public-event-description .bio-markdown li')).to_have_count(2)
         form.get_by_label('Team name', exact=True).fill(f'Dummy Demo Team {run_id}')
         form.get_by_label('City', exact=True).fill('Baltimore')
@@ -153,6 +154,7 @@ with sync_playwright() as p:
         applicant_token = successful(applicant.request.get(BASE + '/pidp/auth/session-token'))['access_token']
         membership = successful(applicant.request.get(BASE + '/api/org/api/network/orgs/' + team_id + '/membership', headers={'Authorization': 'Bearer ' + applicant_token}))
         assert membership['role'] == 'owner' and membership['status'] == 'active'
+        assert len(saved[0]['presenters'])==3 and all(person.get('name')!=f'Dummy applicant {run_id}' for person in saved[0]['presenters'])
         members = successful(applicant.request.get(BASE + '/api/org/api/network/orgs/' + team_id + '/members', headers={'Authorization': 'Bearer ' + applicant_token}))
         assert sum(member['role'] == 'member' for member in members) == 2, members
         assert len(members) == 3, 'Unverified email must not create an identity or membership'
@@ -211,6 +213,10 @@ with sync_playwright() as p:
         expect(public_submissions.get_by_role('link',name='Sign in',exact=True)).to_be_visible()
         public_team=public_submissions.locator('.presentation-submission').filter(has=guest.get_by_role('heading',name='A local demo',exact=True))
         expect(public_team.get_by_role('img',name='demo-image.png',exact=True)).to_be_visible()
+        presenters=public_team.get_by_role('region',name='Presenters',exact=True)
+        expect(presenters.get_by_text(f'Dummy host {run_id}',exact=True)).to_be_visible()
+        expect(presenters.get_by_text(f'Dummy colleague {run_id}',exact=True)).to_be_visible()
+        assert f'Dummy applicant {run_id}' not in presenters.inner_text() and invitation_email not in presenters.inner_text()
         for name,content_type in [('demo-summary.pdf','application/pdf'),('demo-slides.pptx','application/vnd.openxmlformats-officedocument.presentationml.presentation')]:
             link=public_team.get_by_role('link').filter(has_text=name)
             response=guest.request.get(BASE+link.get_attribute('href'))
@@ -245,6 +251,8 @@ with sync_playwright() as p:
         original.get_by_role('button',name='Edit application',exact=True).click()
         expect(form.get_by_label('Presentation title',exact=True)).to_have_value('A local demo')
         expect(form.get_by_label('Team or organization',exact=True)).to_be_disabled()
+        expect(form.get_by_label('Your role in this presentation',exact=True)).to_have_value('manager')
+        expect(form.get_by_role('list',name='Selected team members').get_by_role('listitem')).to_have_count(3)
         form.get_by_label('Presentation title',exact=True).fill('A revised local demo')
         form.get_by_label('What will you present?',exact=True).fill('Revised after intake closed.')
         form.get_by_role('button',name='Save changes',exact=True).click()
@@ -253,6 +261,8 @@ with sync_playwright() as p:
         saved=successful(host.request.get(endpoint,headers=auth))['submissions']
         own=[row for row in saved if row['organization_id']==team_id]
         assert len(own)==2 and any(row['title']=='A second local demo' for row in own)
+        revised_saved=next(row for row in own if row['title']=='A revised local demo')
+        assert len(revised_saved['presenters'])==3, 'Editing must preserve the selected presenters'
         revised=section.locator('.presentation-submission').filter(has=page.get_by_role('heading',name=f'Dummy Demo Team {run_id}: A revised local demo',exact=True))
         revised.get_by_role('button',name='Withdraw application',exact=True).click()
         expect(section.get_by_role('button',name='Withdraw application',exact=True)).to_have_count(1,timeout=30000)
@@ -266,7 +276,7 @@ with sync_playwright() as p:
         page.reload()
         page.get_by_role('tab',name='Apply',exact=True).click()
         expect(page.get_by_text('Applications are not open for this event.',exact=True)).to_be_visible(timeout=30000)
-        print('PASS: multiple same-team submissions, editing after intake closes, independent attachments and withdrawal; local authenticated session → dummy team creation → checkbox-free team submission → styled desktop/mobile form → submit → persisted application → manager tabs, counts, filters, pagination and full/filtered CSV → image/PDF/PowerPoint upload and public download → attachment removal → public Submissions tab → three favorites persist across reload → fourth blocked → remove favorite → guest view → manager changes favorite limit → withdraw; Markdown and global button fallback verified')
+        print('PASS: create a team for others with manager-only access, private invitations, public presenter roster and roster-preserving edits; multiple same-team submissions, editing after intake closes, independent attachments and withdrawal; local authenticated session → dummy team creation → checkbox-free team submission → styled desktop/mobile form → submit → persisted application → manager tabs, counts, filters, pagination and full/filtered CSV → image/PDF/PowerPoint upload and public download → attachment removal → public Submissions tab → three favorites persist across reload → fourth blocked → remove favorite → guest view → manager changes favorite limit → withdraw; Markdown and global button fallback verified')
         print('Screenshots: ' + str(REPORT))
     finally:
         browser.close()

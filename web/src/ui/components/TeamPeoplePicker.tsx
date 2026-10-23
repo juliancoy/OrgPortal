@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { PortalPersonPicker } from './PortalPersonPicker'
 import { OrganizationAvatar } from './OrganizationAvatar'
 
-export type TeamPerson = { userId?: string; name: string; email?: string; photo?: string }
+export type TeamPerson = { userId?: string; name: string; email?: string; photo?: string; invitationId?: string }
 export function readTeamPeople(value: string): TeamPerson[] {
  try {
   const rows: unknown = JSON.parse(value)
@@ -12,17 +12,18 @@ export function readTeamPeople(value: string): TeamPerson[] {
    && (row.userId === undefined || (typeof row.userId === 'string' && row.userId.length <= 255))
    && (row.email === undefined || (typeof row.email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)))
    && (row.photo === undefined || (typeof row.photo === 'string' && /^https?:\/\//.test(row.photo)))
+   && (row.invitationId === undefined || (typeof row.invitationId === 'string' && row.invitationId.length <= 255))
    && !!(row.userId || row.email))
  } catch { return [] }
 }
-export function TeamPeoplePicker({ people, onChange }: { people: TeamPerson[]; onChange: (people: TeamPerson[]) => void }) {
+export function TeamPeoplePicker({ people, onChange, presenters=false }: { people: TeamPerson[]; onChange: (people: TeamPerson[]) => void; presenters?: boolean }) {
  const [query, setQuery] = useState('')
  function add(person: TeamPerson) {
   if (!people.some(existing => (person.userId && existing.userId === person.userId) || (person.email && existing.email?.toLowerCase() === person.email.toLowerCase()))) onChange([...people, person])
   setQuery('')
  }
- return <fieldset className="team-people-picker"><legend>Team members</legend>
-  <p className="muted">Add portal members by name or email. New email addresses receive an invitation when you submit; they must verify their email and accept before joining.</p>
+ return <fieldset className="team-people-picker"><legend>{presenters?'Presenters':'Team members'}</legend>
+  <p className="muted">{presenters?'Choose the people who will present. They will also be added to the team. ':''}Add portal members by name or email. New email addresses receive an invitation when you submit; they must verify their email and accept before joining.</p>
   {people.length < 50 && <PortalPersonPicker query={query} selected={null} onQueryChange={setQuery}
    helpText="Choose a portal member or add an email invitation to your team."
    onSelect={person => add({ userId: person.user_id, name: person.user_name, ...(person.email ? {email: person.email} : {}), ...(person.photo_url ? {photo: person.photo_url} : {}) })}

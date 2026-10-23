@@ -1,3 +1,4 @@
+import { OrganizationAvatar } from './OrganizationAvatar'
 import { SubmissionAttachments } from './SubmissionAttachments'
 import type { SubmissionAttachment } from './submissionAttachments'
 import { useEffect, useState } from 'react'
@@ -8,7 +9,7 @@ import { BioMarkdown } from './profile/BioMarkdown'
 import { OrgImage } from './media/OrgImage'
 import './event-presentations.css'
 
-type Submission={submission_id:string;attachments?:SubmissionAttachment[];organization_id:string;organization_name:string;organization_slug:string;image_url:string|null;title:string;summary:string;status:string;favorites:number}
+type Submission={presenters?:{name:string;photo?:string;pending?:boolean}[];submission_id:string;attachments?:SubmissionAttachment[];organization_id:string;organization_name:string;organization_slug:string;image_url:string|null;title:string;summary:string;status:string;favorites:number}
 export function EventSubmissions({eventId}:{eventId:string}) {
  const {token}=useAuth(),location=useLocation()
  const base=`/api/org/api/network/events/${encodeURIComponent(eventId)}/presentations`
@@ -56,6 +57,7 @@ export function EventSubmissions({eventId}:{eventId:string}) {
   {rows.map(row=><article key={row.submission_id} className="presentation-submission">
    <div className="submission-team"><OrgImage src={row.image_url} alt="" style={{width:48,height:48,objectFit:'contain'}} /><Link to={`/orgs/${encodeURIComponent(row.organization_slug)}`}>{row.organization_name}</Link></div>
    <h3>{row.title}</h3><BioMarkdown value={row.summary} /><p>Status: {row.status} · {row.favorites} {row.favorites===1?'favorite':'favorites'}</p>
+   {!!row.presenters?.length&&<section aria-label="Presenters"><h4>Presenters</h4><ul className="team-people-list">{row.presenters.map((person,index)=><li key={index}><OrganizationAvatar name={person.name} src={person.photo} status={null} /><span>{person.name}{person.pending?' · awaiting invitation acceptance':''}</span></li>)}</ul></section>}
    <SubmissionAttachments eventId={eventId} submissionId={row.submission_id} initial={row.attachments} canManage={canManage||managedTeams.includes(row.submission_id)} />
    <button type="button" className={favorites.includes(row.submission_id)?'btn-primary':'btn-secondary'} aria-pressed={favorites.includes(row.submission_id)} aria-label={`${favorites.includes(row.submission_id)?'Remove favorite':'Favorite'}: ${row.title}`} disabled={!token||!ready||busy||(!favorites.includes(row.submission_id)&&favorites.length>=limit)} onClick={()=>void toggle(row)}><Star size={18} aria-hidden="true" fill={favorites.includes(row.submission_id)?'currentColor':'none'} /> {favorites.includes(row.submission_id)?'Selected favorite':'Choose favorite'}</button>
   </article>)}
