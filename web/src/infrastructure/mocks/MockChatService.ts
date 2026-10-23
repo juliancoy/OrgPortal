@@ -1,4 +1,4 @@
-import { type MatrixClient } from 'matrix-js-sdk'
+import type { MatrixClient } from 'matrix-js-sdk'
 import type { ChatMessage, ChatRoomSummary, ChatService, ChatSession } from '../../application/ports/ChatService'
 
 type MutableRoom = {
