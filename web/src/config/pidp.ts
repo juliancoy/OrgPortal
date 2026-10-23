@@ -131,6 +131,9 @@ export function pidpSingleSignOnUrl(next: string, provider?: 'google' | 'github'
     return pidpUrl(`/auth/${provider}/login?${params.toString()}`)
   }
   const params = new URLSearchParams({ app: PIDP_APP_SLUG, next: portalAuthCallbackUrl(next) })
+  // An explicit sign-in must let the user choose instead of silently reusing
+  // the central PIdP session left after signing out of a tenant.
+  params.set('prompt', provider ? 'login' : 'select_account')
   if (provider) params.set('provider', provider)
   if (provider === 'google' && googleSubjectHint && /^[0-9]{1,255}$/.test(googleSubjectHint)) params.set('login_hint', googleSubjectHint)
   return pidpUrl(`/auth/sso/start?${params.toString()}`)

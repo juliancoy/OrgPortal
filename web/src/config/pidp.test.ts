@@ -111,3 +111,15 @@ it('keeps central path-mounted identity on the tenant proxy for browser cookies'
   vi.stubGlobal('window', {location:{origin:'https://lifetech.fyi',hostname:'lifetech.fyi'}})
   expect(normalizePidpBase('https://orgportal.cc/pidp')).toBe('/pidp')
 })
+
+it('explicit portal sign-in offers account selection and provider sign-in requests fresh proof', () => {
+  vi.stubGlobal('window', { location: { origin:'https://lifetech.fyi', hostname:'lifetech.fyi' } })
+  const login = new URL(pidpSingleSignOnUrl('/orgs/lifetech'), 'https://lifetech.fyi')
+  expect(login.searchParams.get('prompt')).toBe('select_account')
+  expect(new URL(login.searchParams.get('next')!).searchParams.get('next')).toBe('/orgs/lifetech')
+  for (const provider of ['google', 'github'] as const) {
+    const social = new URL(pidpSingleSignOnUrl('/orgs/lifetech', provider), 'https://lifetech.fyi')
+    expect(social.searchParams.get('prompt')).toBe('login')
+    expect(social.searchParams.get('provider')).toBe(provider)
+  }
+})
