@@ -118,11 +118,47 @@ test('public submissions omit private fields and favorites are private, capped a
   assert.equal((await f.request('/favorites/team','PUT','guest',{selected:false})).status,200);
   assert.equal((await f.request('/favorites/demo-3','PUT','guest',{selected:true})).status,200);
   const counts=await (await f.request('/submissions','GET','')).json() as {submissions:{organization_id:string;favorites:number}[]};assert.equal(counts.submissions.find(row=>row.organization_id==='demo-3')?.favorites,2);
-  assert.throws(()=>f.db.sqlite.prepare("INSERT INTO event_presentation_favorites VALUES('event','guest',4,'team','2026-01-01','2099-06-01')").run(),/CHECK/);
+  assert.throws(()=>f.db.sqlite.prepare("INSERT INTO event_presentation_favorites VALUES('event','guest',101,'team','2026-01-01','2099-06-01')").run(),/CHECK/);
   f.db.sqlite.exec("DELETE FROM event_presentation_submissions WHERE organization_id='demo-3'");
   assert.equal(f.db.rows("SELECT * FROM event_presentation_favorites WHERE organization_id='demo-3'").length,0);
   f.db.sqlite.exec("UPDATE event_presentation_submissions SET expires_at='2000-01-01'");
   assert.equal((await (await f.request('/submissions','GET','')).json() as {submissions:unknown[]}).submissions.length,0);
   assert.equal((await f.request('/favorites/team','PUT','guest',{selected:true})).status,409);
  }finally{f.db.sqlite.close()}
+});
+
+test('event managers configure the limit; lowering never silently removes existing favorites',async()=>{
+ const f=fixture();try{
+  for(let n=0;n<5;n++){
+   const id='choice-'+n;f.db.sqlite.prepare('INSERT INTO organizations(id,name,slug) VALUES(?,?,?)').run(id,id,id);
+   f.db.sqlite.prepare("INSERT INTO event_presentation_submissions VALUES('event',?,'applicant','Demo','Details','submitted','2026-01-01','2099-06-01')").run(id);
+  }
+  assert.equal((await f.request('/settings','PUT','applicant',{favoriteLimit:4})).status,403);
+  for(const favoriteLimit of [0,101,1.5])assert.equal((await f.request('/settings','PUT','host',{favoriteLimit})).status,400);
+  assert.equal((await f.request('/settings','PUT','host',{favoriteLimit:4})).status,200);
+  assert.equal((await(await f.request('/submissions','GET','')).json() as {favoriteLimit:number}).favoriteLimit,4);
+  for(let n=0;n<4;n++)assert.equal((await f.request('/favorites/choice-'+n,'PUT','voter',{selected:true})).status,200);
+  assert.equal((await f.request('/favorites/choice-4','PUT','voter',{selected:true})).status,409);
+  assert.equal((await f.request('/settings','PUT','host',{favoriteLimit:3})).status,409);
+  assert.equal((await(await f.request('/favorites','GET','voter')).json() as {favorites:string[]}).favorites.length,4);
+  await f.request('/favorites/choice-0','PUT','voter',{selected:false});
+  assert.equal((await f.request('/settings','PUT','host',{favoriteLimit:3})).status,200);
+ }finally{f.db.sqlite.close()}
+});
+
+test('configurable-limit migration preserves existing favorites and defaults existing events to three',()=>{
+ const db=new DatabaseSync(':memory:');try{
+  db.exec(`PRAGMA foreign_keys=ON; CREATE TABLE events(id TEXT PRIMARY KEY);
+   CREATE TABLE event_presentation_forms(event_id TEXT PRIMARY KEY,enabled INTEGER);
+   CREATE TABLE event_presentation_submissions(event_id TEXT,organization_id TEXT,PRIMARY KEY(event_id,organization_id));
+   CREATE TABLE change_journal_exclusions(table_name TEXT PRIMARY KEY,reason TEXT);
+   INSERT INTO events VALUES('event');INSERT INTO event_presentation_forms VALUES('event',1);INSERT INTO event_presentation_submissions VALUES('event','team');`);
+  db.exec(readFileSync(new URL('../migrations/0096_presentation_favorites.sql',import.meta.url),'utf8'));
+  db.exec("INSERT INTO event_presentation_favorites VALUES('event','voter',3,'team','2026-01-01','2099-01-01')");
+  db.exec(readFileSync(new URL('../migrations/0097_presentation_favorite_limits.sql',import.meta.url),'utf8'));
+  assert.equal(db.prepare('SELECT favorite_limit FROM event_presentation_forms').get()!.favorite_limit,3);
+  assert.equal(db.prepare('SELECT slot FROM event_presentation_favorites').get()!.slot,3);
+  assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[]);
+  db.exec("DELETE FROM event_presentation_submissions");assert.equal(db.prepare('SELECT COUNT(*) AS n FROM event_presentation_favorites').get()!.n,0);
+ }finally{db.close()}
 });

@@ -18,8 +18,8 @@ export function presentationRoutes<E extends PresentationEnv>(auth: (env:E, requ
  const active = "s.expires_at > strftime('%Y-%m-%dT%H:%M:%fZ','now')";
  app.get('/:id/presentations/public',async c=>{
   const e=await event(c.env.DB,c.req.param('id'));
-  const form=await c.env.DB.prepare('SELECT enabled FROM event_presentation_forms WHERE event_id=?').bind(e.id).first<{enabled:number}>();
-  return c.json({enabled:!!form?.enabled,closed:!e.starts_at || Date.parse(e.starts_at)<=Date.now()});
+  const form=await c.env.DB.prepare('SELECT enabled,favorite_limit FROM event_presentation_forms WHERE event_id=?').bind(e.id).first<{enabled:number;favorite_limit:number}>();
+  return c.json({favoriteLimit:form?.favorite_limit??3,enabled:!!form?.enabled,closed:!e.starts_at || Date.parse(e.starts_at)<=Date.now()});
  });
  // Public projection deliberately omits submitter identities and application timestamps.
  app.get('/:id/presentations/submissions',async c=>{
@@ -29,31 +29,46 @@ export function presentationRoutes<E extends PresentationEnv>(auth: (env:E, requ
    (SELECT COUNT(*) FROM event_presentation_favorites f WHERE f.event_id=s.event_id AND f.organization_id=s.organization_id AND f.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')) AS favorites
    FROM event_presentation_submissions s JOIN organizations o ON o.id=s.organization_id
    WHERE s.event_id=? AND ${active} AND s.organization_id>? ORDER BY s.organization_id LIMIT 51`).bind(e.id,after).all<{organization_id:string}>();
-  return c.json({submissions:rows.results.slice(0,50),next:rows.results.length>50?rows.results[49].organization_id:null});
+  const settings=await c.env.DB.prepare('SELECT favorite_limit FROM event_presentation_forms WHERE event_id=?').bind(e.id).first<{favorite_limit:number}>();
+  return c.json({favoriteLimit:settings?.favorite_limit??3,submissions:rows.results.slice(0,50),next:rows.results.length>50?rows.results[49].organization_id:null});
  });
  app.get('/:id/presentations/favorites',async c=>{
   const user=await auth(c.env,c.req.raw),e=await event(c.env.DB,c.req.param('id'));
   const rows=await c.env.DB.prepare(`SELECT f.organization_id FROM event_presentation_favorites f JOIN event_presentation_submissions s ON s.event_id=f.event_id AND s.organization_id=f.organization_id WHERE f.event_id=? AND f.user_id=? AND ${active} AND f.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') ORDER BY f.slot`).bind(e.id,user.id).all<{organization_id:string}>();
-  return c.json({favorites:rows.results.map(row=>row.organization_id),limit:3});
+  const settings=await c.env.DB.prepare('SELECT favorite_limit FROM event_presentation_forms WHERE event_id=?').bind(e.id).first<{favorite_limit:number}>();
+  return c.json({favorites:rows.results.map(row=>row.organization_id),limit:settings?.favorite_limit??3});
  });
  app.put('/:id/presentations/favorites/:org',async c=>{
   const user=await auth(c.env,c.req.raw),e=await event(c.env.DB,c.req.param('id')),org=c.req.param('org');
   const body=await c.req.json().catch(()=>null);
   if(!body||typeof body.selected!=='boolean'||Object.keys(body).some(key=>key!=='selected'))throw new HTTPException(400,{message:'selected must be a boolean'});
   if(!body.selected){await c.env.DB.prepare('DELETE FROM event_presentation_favorites WHERE event_id=? AND user_id=? AND organization_id=?').bind(e.id,user.id,org).run();return c.json({saved:true})}
-  // The slot primary key and slot CHECK enforce three favorites even for concurrent requests.
+  // Select a free slot within the live event limit in the same atomic write.
   await c.env.DB.batch([
    c.env.DB.prepare("DELETE FROM event_presentation_favorites WHERE event_id=? AND user_id=? AND expires_at<=strftime('%Y-%m-%dT%H:%M:%fZ','now')").bind(e.id,user.id),
    c.env.DB.prepare(`INSERT OR IGNORE INTO event_presentation_favorites(event_id,user_id,slot,organization_id,created_at,expires_at)
     SELECT s.event_id,?,slots.slot,s.organization_id,strftime('%Y-%m-%dT%H:%M:%fZ','now'),s.expires_at
-    FROM event_presentation_submissions s CROSS JOIN (SELECT 1 AS slot UNION ALL SELECT 2 UNION ALL SELECT 3) slots
+    FROM event_presentation_submissions s CROSS JOIN (WITH RECURSIVE slots(slot) AS (SELECT 1 UNION ALL SELECT slot+1 FROM slots WHERE slot<100) SELECT slot FROM slots) slots
     WHERE s.event_id=? AND s.organization_id=? AND ${active}
+    AND slots.slot<=COALESCE((SELECT favorite_limit FROM event_presentation_forms WHERE event_id=s.event_id),3)
+    AND (SELECT COUNT(*) FROM event_presentation_favorites f WHERE f.event_id=s.event_id AND f.user_id=?)<COALESCE((SELECT favorite_limit FROM event_presentation_forms WHERE event_id=s.event_id),3)
     AND NOT EXISTS(SELECT 1 FROM event_presentation_favorites f WHERE f.event_id=s.event_id AND f.user_id=? AND f.slot=slots.slot)
-    ORDER BY slots.slot LIMIT 1`).bind(user.id,e.id,org,user.id)
+    ORDER BY slots.slot LIMIT 1`).bind(user.id,e.id,org,user.id,user.id)
   ]);
   const saved=await c.env.DB.prepare('SELECT 1 AS saved FROM event_presentation_favorites WHERE event_id=? AND user_id=? AND organization_id=?').bind(e.id,user.id,org).first();
-  if(!saved)throw new HTTPException(409,{message:'Choose up to three favorites. Remove one first, or refresh if the submission is no longer available.'});
+  if(!saved)throw new HTTPException(409,{message:'The event favorite limit has been reached. Remove a favorite first, or refresh if the submission is no longer available.'});
   return c.json({saved:true});
+ });
+ app.put('/:id/presentations/settings',async c=>{
+  const user=await auth(c.env,c.req.raw),e=await event(c.env.DB,c.req.param('id'));await manager(c.env.DB,user,e.host_org_id!);
+  const body=await c.req.json().catch(()=>null),limit=body?.favoriteLimit;
+  if(!Number.isInteger(limit)||limit<1||limit>100)throw new HTTPException(400,{message:'Choose a favorite limit between 1 and 100'});
+  // A limit change never discards choices or makes a saved ballot invalid.
+  const result=await c.env.DB.prepare(`INSERT INTO event_presentation_forms(event_id,enabled,favorite_limit)
+   SELECT ?,0,? WHERE ?>=COALESCE((SELECT MAX(n) FROM (SELECT COUNT(*) AS n FROM event_presentation_favorites f JOIN event_presentation_submissions s ON s.event_id=f.event_id AND s.organization_id=f.organization_id WHERE f.event_id=? AND ${active} AND f.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') GROUP BY f.user_id)),0)
+   ON CONFLICT(event_id) DO UPDATE SET favorite_limit=excluded.favorite_limit`).bind(e.id,limit,limit,e.id).run();
+  if(!result.meta.changes)throw new HTTPException(409,{message:'The limit cannot be lower than an existing ballot. Existing favorites were preserved.'});
+  return c.json({favoriteLimit:limit});
  });
  app.put('/:id/presentations/form',async c=>{
   const user=await auth(c.env,c.req.raw),e=await event(c.env.DB,c.req.param('id'));await manager(c.env.DB,user,e.host_org_id!);
