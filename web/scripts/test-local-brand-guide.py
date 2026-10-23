@@ -42,7 +42,7 @@ with sync_playwright() as p:
  page.get_by_role('tab',name='Info',exact=True).click()
  expect(page.get_by_role('tabpanel',name='Info',exact=True)).to_be_visible()
  expect(page.get_by_role('heading',name='Approved imagery',exact=True)).not_to_be_visible()
- page.get_by_role('tab',name='Info',exact=True).press('ArrowRight')
+ page.get_by_role('tab',name='Info',exact=True).press('End')
  expect(page.get_by_role('tab',name='Branding',exact=True)).to_be_focused()
  expect(page.get_by_role('heading',name='Approved imagery',exact=True)).to_be_visible()
  page.go_back();expect(page.get_by_role('tab',name='Info',exact=True)).to_have_attribute('aria-selected','true')

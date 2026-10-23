@@ -1,3 +1,4 @@
+import {organizationMemberTitleRoutes} from './organizationMemberTitles';
 import { organizationBrandingRoutes } from './organizationBranding';
 import { organizationRecognitionRoutes } from './organizationRecognition';
 import { z } from 'zod'
@@ -2644,6 +2645,7 @@ function deploymentHealth(c: { env: Env; req: { url: string }; header: (name: st
 
 app.route('/api/network/orgs/public',organizationBrandingRoutes());
 app.route('/api/network/orgs',organizationRecognitionRoutes(currentUser));
+app.route('/api/network/orgs',organizationMemberTitleRoutes(currentUser,eventErrorResponse));
 app.route('/api/network/orgs',organizationPersonnelRoutes(currentUser));
 app.route('/api/network',organizationInvitationRoutes(currentUser));
 app.route('/api/network/events',venueRankingRoutes(currentUser));

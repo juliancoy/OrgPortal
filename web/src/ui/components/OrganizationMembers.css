@@ -7,3 +7,10 @@
 .organization-member-search { display: grid; gap: .6rem; min-width: 0; }
 .organization-member-search input { width: 100%; min-width: 0; box-sizing: border-box; }
 .organization-members [aria-label="Review membership assignment"] { overflow-wrap: anywhere; }
+.organization-member-titles { display:flex; flex-wrap:wrap; gap:.35rem; margin-top:.4rem; }
+.organization-members-list li:has(.organization-title-editor) { flex-wrap:wrap; }
+.organization-title-editor { flex:1 0 100%; display:grid; gap:.75rem; border-top:1px solid var(--border); padding-top:1rem; min-width:0; }
+.organization-title-editor label { display:grid; gap:.4rem; }
+.organization-title-editor textarea { box-sizing:border-box; width:100%; padding:.7rem; border:1px solid var(--border); border-radius:.5rem; color:inherit; background:var(--body-bg); font:inherit; }
+.organization-title-editor > div { display:flex; flex-wrap:wrap; gap:.5rem; }
+@media(max-width:650px) { .organization-members-list li { flex-wrap:wrap; } .organization-member-identity { overflow-wrap:anywhere; } }

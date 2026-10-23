@@ -1,3 +1,4 @@
+import { OrganizationBoard } from '../../components/OrganizationBoard'
 import { invalidatePublicOrganizationData } from '../../../data/publicOrganization/cache'
 import { loadPublicOrganization } from '../../../data/publicOrganization/organizations'
 import { BioMarkdown } from '../../components/profile/BioMarkdown'
@@ -18,7 +19,7 @@ import { OrganizationSupport } from '../../components/OrganizationSupport'
 import { OrganizationTools } from '../../components/OrganizationTools'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { Pencil, X, Info, Palette } from 'lucide-react'
+import { Pencil, X, Info, Palette, Users } from 'lucide-react'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
 import { useAuth } from '../../../app/AppProviders'
 import { PIDP_BASE_URL, pidpAppLoginUrl, pidpUrl } from '../../../config/pidp'
@@ -179,8 +180,10 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
   const { token } = useAuth()
   const { handle } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
-  const activeTab = searchParams.get('tab') === 'branding' ? 'branding' : 'info'
-  function selectTab(tab: 'info' | 'branding') {
+  const orgTabs = ['info','board','branding'] as const
+  const requestedTab = searchParams.get('tab')
+  const activeTab = requestedTab === 'board' || requestedTab === 'branding' ? requestedTab : 'info'
+  function selectTab(tab: typeof orgTabs[number]) {
     setSearchParams(previous => { const next = new URLSearchParams(previous); if (tab === 'info') next.delete('tab'); else next.set('tab', tab); return next })
   }
   const [org, setOrg] = useState<PublicOrganization | null>(null)
@@ -934,11 +937,11 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
   return (
     <section className="panel portal-org-page">
       <div className="portal-org-info-tabs" role="tablist" aria-label={`${org.name} information`}>
-        {(['info','branding'] as const).map(tab => <button type="button" role="tab" id={`org-tab-${tab}`} aria-controls={`org-panel-${tab}`} aria-selected={activeTab === tab} tabIndex={activeTab === tab ? 0 : -1} key={tab} onClick={() => selectTab(tab)} onKeyDown={event => {
+        {orgTabs.map(tab => <button type="button" role="tab" id={`org-tab-${tab}`} aria-controls={`org-panel-${tab}`} aria-selected={activeTab === tab} tabIndex={activeTab === tab ? 0 : -1} key={tab} onClick={() => selectTab(tab)} onKeyDown={event => {
           if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return
-          event.preventDefault(); const next = event.key === 'Home' ? 'info' : event.key === 'End' ? 'branding' : tab === 'info' ? 'branding' : 'info'
+          event.preventDefault(); const next = event.key === 'Home' ? orgTabs[0] : event.key === 'End' ? orgTabs[orgTabs.length-1] : orgTabs[(orgTabs.indexOf(tab)+(event.key==='ArrowRight'?1:orgTabs.length-1))%orgTabs.length]
           selectTab(next); document.getElementById(`org-tab-${next}`)?.focus()
-        }}>{tab === 'info' ? <Info size={18} aria-hidden="true" /> : <Palette size={18} aria-hidden="true" />}{tab === 'info' ? 'Info' : 'Branding'}</button>)}
+        }}>{tab === 'info' ? <Info size={18} aria-hidden="true" /> : tab === 'board' ? <Users size={18} aria-hidden="true" /> : <Palette size={18} aria-hidden="true" />}{tab === 'info' ? 'Info' : tab === 'board' ? 'Board' : 'Branding'}</button>)}
       </div>
       <div role="tabpanel" id="org-panel-info" aria-labelledby="org-tab-info" hidden={activeTab !== 'info'}>
       {isWorkspaceView && <nav className="portal-org-organizer-nav" aria-label={`${org.name} workspace navigation`}>
@@ -1545,6 +1548,9 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
           </div>}
         </aside>}
       </div>
+      </div>
+      <div role="tabpanel" id="org-panel-board" aria-labelledby="org-tab-board" hidden={activeTab !== 'board'}>
+        {activeTab === 'board' && <OrganizationBoard organization={org} canManage={canManageCurrentOrg} />}
       </div>
       <div role="tabpanel" id="org-panel-branding" aria-labelledby="org-tab-branding" hidden={activeTab !== 'branding'}>
         {activeTab === 'branding' && <OrganizationBranding organization={org} />}

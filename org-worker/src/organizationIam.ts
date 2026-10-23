@@ -1,3 +1,4 @@
+import {readMemberTitles} from '../../shared/organizationMemberTitles';
 export type OrganizationActor = {
   id: string;
   name: string;
@@ -184,18 +185,22 @@ export async function organizerAssignment(db: D1Database, organizationId: string
     pending_organizer: enrollment?.completed_at ? 0 : 1, onboarding_group_site_id: tenant.id };
 }
 
-export async function listOrganizationMembers(db: D1Database, organizationId: string, actor: OrganizationActor) {
+export async function listOrganizationMembers(db: D1Database, organizationId: string, actor: OrganizationActor):Promise<Record<string,unknown>[]> {
   const organization = await requireOrganization(db, organizationId);
   const role = await authorizeOrganization(db, actor, "read_members", organization.id);
   const rows = await db.prepare(
-    `SELECT m.organization_id, m.user_id, m.user_name, m.user_email, m.role, m.status, m.created_at, m.updated_at,
-       m.pending_organizer, e.completed_at AS onboarding_completed_at
+    `SELECT m.*, e.completed_at AS onboarding_completed_at
      FROM organization_memberships m
      LEFT JOIN onboarding_enrollments e ON e.group_site_id = m.onboarding_group_site_id AND e.user_id = m.user_id
      WHERE m.organization_id = ? AND m.status = 'active'
      ORDER BY CASE m.role WHEN 'owner' THEN 0 WHEN 'administrator' THEN 1 ELSE 2 END, lower(COALESCE(m.user_name, m.user_email, m.user_id))`,
   ).bind(organization.id).all<Record<string, unknown>>();
-  const members = rows.results || [];
+  const members = (rows.results || []).map(row => ({
+    organization_id:row.organization_id,user_id:row.user_id,
+    user_name:row.user_name,
+    user_email:row.user_email,role:row.role,status:row.status,created_at:row.created_at,updated_at:row.updated_at,
+    pending_organizer:row.pending_organizer,onboarding_completed_at:row.onboarding_completed_at,titles:readMemberTitles(row.titles_json),
+  }));
   if (actor.isOperator || role === "owner" || role === "administrator") return members;
   return members.map(({ user_email: _email, ...member }) => member);
 }

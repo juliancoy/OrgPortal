@@ -311,3 +311,20 @@ A reduced allowance keeps earliest selections; expired nominees never count.
 Support erasure removes rows by `submitted_by` and `user_id` respectively.
 Apply these deletions again after restoring a backup, before serving requests;
 provider backup retention and the existing restore restrictions still apply.
+
+### Organization titles and public Board
+
+Membership `titles_json` holds up to eight informational role titles (for example
+CEO or Advisor), with the membership's existing lifecycle. The role editor and
+MCP preview explicitly identify publication: assigned titles and display names
+appear on that organization's public Board. Email, canonical identity IDs, and
+private profile images are excluded from the public projection. Card IDs are
+hashed per organization. Public profile images appear only when the person's
+profile is public; otherwise the card uses initials. Existing constitution-based
+personnel classifications still control avatar borders.
+
+Clearing titles removes the person from the Board immediately. Removing the
+membership deletes its titles. Support erasure clears `titles_json` on the
+verified subject's memberships; repeat verified deletions on a restored backup
+before serving it. Title previews use the existing expiring operation receipts;
+title assignment does not create an additional history store or grant permissions.

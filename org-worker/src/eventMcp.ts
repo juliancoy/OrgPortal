@@ -1,3 +1,4 @@
+import {memberTitlesSchema,organizationPeopleSchema,organizationTitlePeople,runMemberTitlesOperation} from './organizationMemberTitles';
 import {organizationImageSchema} from './organizationBrandImage';
 import { runPortalBrandingOperation, portalBrandingTargetSchema, portalBrandingUpdateSchema } from './portalBrandingMcp';
 import { runOrganizationDirectoryOperation, organizationOperationStatusSchema, type DirectoryOperation } from './organizationDirectoryOperations';
@@ -944,6 +945,26 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
       inputSchema: organizationCreateSchema, annotations: { readOnlyHint: false, destructiveHint: false }, _meta: metadata([portalReadScope, portalWriteScope]) },
       args => organizationResult('create', args));
     }
+    const titleResult=async (args:z.infer<typeof memberTitlesSchema>)=>{
+      try {
+        if(config.organizationId&&args.organizationId!==config.organizationId)throw new EventIntegrationError(403,'This connection is limited to its organization');
+        const data=await runMemberTitlesOperation(env.DB,identity,args);
+        return {content:[{type:'text' as const,text:JSON.stringify(data)}]};
+      }catch(error){return {isError:true,content:[{type:'text' as const,text:await eventErrorResponse(error,env,request).text()}]}}
+    };
+    for(const phase of ['preview','apply'] as const)server.registerTool(`${phase}_organization_member_titles`,{
+      description:`${phase==='preview'?'Preview':'Save'} organization-specific titles such as CEO, Geneticist or Advisor for an active member or organizer. Titles and display names appear on the public Board. Titles do not grant permissions. ${phase==='apply'?'Requires matching one-use previewId and confirm=true.':''}`,
+      inputSchema:memberTitlesSchema,annotations:{readOnlyHint:phase==='preview'},_meta:metadata([portalReadScope,portalWriteScope]),
+    },args=>titleResult({...args,confirm:phase==='apply'&&args.confirm===true}));
+    server.registerTool('lookup_portal_people',{
+      description:'Search existing portal accounts by name or email before organization membership or title assignment. Returns canonical account IDs. Requires management access to the selected organization.',
+      inputSchema:organizationPeopleSchema,annotations:{readOnlyHint:true},_meta:metadata([portalReadScope]),
+    },async args=>{
+      try{
+        if(config.organizationId&&args.organizationId!==config.organizationId)throw new EventIntegrationError(403,'This connection is limited to its organization');
+        const data=await organizationTitlePeople(env.DB,identity,args);return {content:[{type:'text' as const,text:JSON.stringify(data)}]};
+      }catch(error){return {isError:true,content:[{type:'text' as const,text:await eventErrorResponse(error,env,request).text()}]}}
+    });
     server.registerTool('preview_organization_membership', { description: 'Preview adding an existing PIdP identity or changing its organization role.',
       inputSchema: organizationMemberSchema, annotations: { readOnlyHint: true }, _meta: metadata([portalReadScope, portalWriteScope]) },
       args => organizationResult('member', { ...args, confirm: false }));
