@@ -1,3 +1,4 @@
+import { publicMediaObject } from './publicMediaObject';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { organizationRole } from './organizationIam';
@@ -81,7 +82,7 @@ export function presentationAttachmentRoutes<E extends Environment>(auth:(env:E,
   await parent(c.env.DB,c.req.param('id'),c.req.param('org'));
   const row=await c.env.DB.prepare("SELECT * FROM event_presentation_attachments WHERE id=? AND event_id=? AND submission_id=? AND state='ready'").bind(c.req.param('attachment'),c.req.param('id'),c.req.param('org')).first<Attachment>();
   if(!row||!c.env.SCAN_IMAGES)fail(404,'Attachment not found.');
-  const object=await c.env.SCAN_IMAGES.get(row.object_key);if(!object)fail(404,'Attachment not found.');
+  const object=await publicMediaObject(c.env.SCAN_IMAGES, row.object_key);if(!object)fail(404,'Attachment not found.');
   return new Response(object.body,{headers:{'Content-Type':row.content_type,'Content-Length':String(row.size),'Content-Disposition':`${row.content_type.startsWith('image/')?'inline':'attachment'}; filename*=UTF-8''${encodeURIComponent(row.name)}`,'X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; sandbox",'Cache-Control':'no-store'}});
  });
  app.delete('/:id/presentations/:org/attachments/:attachment',async c=>{

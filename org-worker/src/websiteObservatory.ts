@@ -31,7 +31,7 @@ function summarize(run: Run) {
   return {origins:nodes,links:[...links.values()],requests:run.requests.length,bytes:nodes.reduce((a,n)=>a+n.bytes,0),errors:nodes.reduce((a,n)=>a+n.errors,0),blocked:nodes.reduce((a,n)=>a+n.blocked,0),auth_challenges:nodes.reduce((a,n)=>a+n.auth_challenges,0),cancelled:nodes.reduce((a,n)=>a+n.cancelled,0)};
 }
 function bucket(env:Bindings){if(!env.SCAN_IMAGES)throw new HTTPException(503,{message:'Observatory storage is unavailable'});return env.SCAN_IMAGES;}
-function collector(env:Bindings,request:Request){const expected=env.WEBSITE_OBSERVATORY_TOKEN,actual=request.headers.get('authorization')?.replace(/^Bearer /,'');if(!expected||!actual||actual.length!==expected.length||!timingSafeEqual(Buffer.from(actual),Buffer.from(expected)))throw new HTTPException(401);}
+function collector(env:Bindings,request:Request){const expected=env.WEBSITE_OBSERVATORY_TOKEN,actual=request.headers.get('authorization')?.replace(/^Bearer /,'');if(!expected||!actual||Buffer.byteLength(actual)!==Buffer.byteLength(expected)||!timingSafeEqual(Buffer.from(actual),Buffer.from(expected)))throw new HTTPException(401);}
 function cutoff(){return Date.now()-retention;}
 function validKey(id:string){if(!/^\d{13}-[a-f0-9]{16}$/.test(id))throw new HTTPException(400);return prefix+id+'.json';}
 export async function pruneWebsiteObservatory(env:Bindings){if(!env.SCAN_IMAGES)return;const startAfter=prefix+String(9999999999999-cutoff()).padStart(13,'0')+'-z';const list=await env.SCAN_IMAGES.list({prefix,startAfter,limit:100});if(list.objects.length)await env.SCAN_IMAGES.delete(list.objects.map(o=>o.key));}

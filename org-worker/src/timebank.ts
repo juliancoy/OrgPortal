@@ -1,3 +1,4 @@
+import { publicMediaObject } from './publicMediaObject';
 export class TimebankError extends Error {
   constructor(message: string, readonly status: 400 | 403 | 404 | 409 = 400) {
     super(message);
@@ -556,7 +557,7 @@ export async function setTimebankPhoto(db: D1Database, bucket: R2Bucket | undefi
 export async function getTimebankPhoto(db: D1Database, bucket: R2Bucket | undefined, communityId: string, id: string, userId: string | null = null) {
   const row = await db.prepare(`SELECT image_key FROM timebank_listings WHERE id = ? AND community_id = ?
     AND (? IS NOT NULL OR (visibility = 'public' AND status = 'open'))`).bind(id, communityId, userId).first<{ image_key: string | null }>();
-  const object = row?.image_key && bucket ? await bucket.get(row.image_key) : null;
+  const object = row?.image_key && bucket ? await publicMediaObject(bucket, row.image_key) : null;
   if (!object) throw new TimebankError('Photo not found.', 404);
   const headers = new Headers({ 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'none'", 'Cache-Control': 'private, max-age=300' });
   object.writeHttpMetadata(headers);

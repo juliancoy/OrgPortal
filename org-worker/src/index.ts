@@ -1,3 +1,4 @@
+import { publicMediaObject } from './publicMediaObject';
 import { organizationPosterEvents, organizationPosterPages } from './organizationPoster';
 import {organizationMemberTitleRoutes} from './organizationMemberTitles';
 import {organizationPortalLinks} from './organizationPortalUrls';
@@ -1477,7 +1478,7 @@ async function eventFlyerSvg(env: Env, request: Request, event: EventRow, format
       if (!backgroundData) fail(400, "Gallery image could not be loaded or is unsupported");
     } else {
       if (!env.SCAN_IMAGES) fail(404, "Gallery image is not available");
-      const object = await env.SCAN_IMAGES.get(media.image_key);
+      const object = await publicMediaObject(env.SCAN_IMAGES, media.image_key);
       if (!object) fail(404, "Gallery image is not available");
       const mime = object.httpMetadata?.contentType?.split(";")[0];
       if (!mime || !["image/png", "image/jpeg", "image/webp", "image/gif"].includes(mime) || object.size > 8 * 1024 * 1024) {
@@ -3289,7 +3290,7 @@ app.get("/api/network/orgs/public/:slug/flyer.svg", async c => {
     const media = (await posterGallery(c.env.DB, org, true)).find(item => item.id === c.req.query("mediaId"));
     if (!media) fail(404, "Gallery image is not available");
     if (media.image_key) {
-      const object = await c.env.SCAN_IMAGES?.get(media.image_key);
+      const object = await publicMediaObject(c.env.SCAN_IMAGES, media.image_key);
       if (!object) fail(404, "Gallery image is not available");
       const mime = object.httpMetadata?.contentType?.split(";")[0];
       if (!mime || !["image/png", "image/jpeg", "image/webp", "image/gif"].includes(mime) || object.size > 8 * 1024 * 1024) {
@@ -3359,7 +3360,7 @@ app.get("/api/network/orgs/public/:slug/media/:mediaId", async (c) => {
   if (!row) fail(404, "Organization not found");
   const media = parseOrganizationMedia(row.media_json).find((item) => item.id === c.req.param("mediaId"));
   if (!media?.image_key || !c.env.SCAN_IMAGES) fail(404, "Organization media is not available");
-  const object = await c.env.SCAN_IMAGES.get(media.image_key);
+  const object = await publicMediaObject(c.env.SCAN_IMAGES, media.image_key);
   if (!object) fail(404, "Organization media is not available");
   const headers = new Headers();
   object.writeHttpMetadata(headers);
@@ -3412,7 +3413,7 @@ app.get("/api/network/events/public/:slug/media/:mediaId", async (c) => {
   if (!row) fail(404, "Event not found");
   const media = parseEventMedia(row.media_json).find((item) => item.id === c.req.param("mediaId"));
   if (!media?.image_key || !c.env.SCAN_IMAGES) fail(404, "Event media is not available");
-  const object = await c.env.SCAN_IMAGES.get(media.image_key);
+  const object = await publicMediaObject(c.env.SCAN_IMAGES, media.image_key);
   if (!object) fail(404, "Event media is not available");
   const headers = new Headers();
   object.writeHttpMetadata(headers);
@@ -4602,7 +4603,7 @@ app.get("/api/network/scans/:scanId/image", async (c) => {
   if (!row) fail(404, "Scan not found");
   if (row.submitted_by_user_id !== user.id && !adminUser(user, c.env)) fail(403, "Access denied");
   if (!row.image_key || !c.env.SCAN_IMAGES) fail(404, "Scan image is not available");
-  const object = await c.env.SCAN_IMAGES.get(row.image_key);
+  const object = await publicMediaObject(c.env.SCAN_IMAGES, row.image_key);
   if (!object) fail(404, "Scan image is not available");
   const headers = new Headers();
   object.writeHttpMetadata(headers);

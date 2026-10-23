@@ -1,3 +1,4 @@
+import { publicMediaObject } from './publicMediaObject';
 import { TimebankError } from './timebank';
 
 type Claimant = { id: string; name: string; email: string };
@@ -139,7 +140,7 @@ export async function importedListingImage(env: Env, userId: string | null, comm
         SELECT 1 FROM timebank_import_record_accounts link JOIN timebank_import_accounts a ON a.id = link.account_id
         WHERE link.record_id = r.id AND ? IS NOT NULL AND a.claimed_by_user_id = ?))`).bind(recordId, communityId, userId, userId).first<{object_key: string; content_type: string}>();
   if (!row) throw new TimebankError('Imported photo not found.', 404);
-  const photo = await env.SCAN_IMAGES?.get(row.object_key);
+  const photo = await publicMediaObject(env.SCAN_IMAGES, row.object_key);
   if (!photo) throw new TimebankError('Imported photo not found.', 404);
   return new Response(photo.body, { headers: { 'Content-Type': row.content_type, 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' } });
 }
