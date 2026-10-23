@@ -3,6 +3,8 @@ import json
 from pathlib import Path
 import sqlite3
 import threading
+import time
+import urllib.error
 import urllib.request
 
 BASE='https://orgportal.cc/api/org/api/admin/website-observatory'
@@ -20,7 +22,14 @@ class PortalSync:
     def request(self,path,body=None):
         config=json.loads(self.config.read_text())
         request=urllib.request.Request(BASE+path,data=json.dumps(body).encode() if body is not None else None,headers={'Authorization':'Bearer '+config['token'],'Content-Type':'application/json','User-Agent':'OrgPortalWebsiteProbe/1.0'})
-        with urllib.request.urlopen(request,timeout=15) as response:return json.load(response)
+        for attempt in range(3):
+            try:
+                with urllib.request.urlopen(request,timeout=15) as response:return json.load(response)
+            except urllib.error.HTTPError as error:
+                if attempt==2 or (error.code<500 and error.code!=429):raise
+            except (urllib.error.URLError, TimeoutError):
+                if attempt==2:raise
+            time.sleep(1+attempt*2)
 
     def save(self):
         temporary=self.state_path.with_suffix('.tmp');temporary.write_text(json.dumps(self.state));temporary.replace(self.state_path)
@@ -34,11 +43,14 @@ class PortalSync:
                 for run_id,payload in rows:
                     if run_id in published:continue
                     self.request('/collector',json.loads(payload));published.add(run_id)
+                    self.state['published']=sorted(published);self.save()
                 self.state['published']=sorted(published.intersection({row[0] for row in rows}));self.save()
                 job=self.request('/collector');self.error=None
                 return job.get('requested_at') if job.get('requested_at') and job['requested_at']!=self.state.get('command') else None
             except Exception as exc:
-                self.error=type(exc).__name__;return None
+                self.error=type(exc).__name__
+                print('OrgPortal website report sync failed: '+self.error, flush=True)
+                return None
 
     def ack(self,command):
         with self.lock:self.state['command']=command;self.save()
