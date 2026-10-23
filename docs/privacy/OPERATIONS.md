@@ -276,3 +276,5 @@ and include only unexpired proposals matching the selected status. Exports conta
 team names, proposal text, submitter account IDs and update times. They do not
 create another server-side store. Treat downloaded files as private organization
 records; include retained exports in the organization's deletion and sharing process.
+
+For account erasure, delete `event_presentation_favorites` rows using the verified canonical `user_id`. These private choices have no journal or replica copies. Record the erasure under the existing backup handling procedure. Do not select an identity by email.

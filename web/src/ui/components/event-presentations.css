@@ -46,3 +46,6 @@
  .team-people-list li, .team-people-picker .organization-members-list li { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; }
  .team-people-picker li > button { grid-column: 2; justify-self: start; }
 }
+
+.submission-team { display: flex; align-items: center; gap: .75rem; margin-bottom: 1rem; }
+.presentation-submission > button { display: inline-flex; align-items: center; gap: .5rem; }

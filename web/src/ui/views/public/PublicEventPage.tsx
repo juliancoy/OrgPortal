@@ -1,3 +1,4 @@
+import { EventSubmissions } from '../../components/EventSubmissions'
 import { OrganizationAvatar } from '../../components/OrganizationAvatar'
 import { useOrganizationPersonnel } from '../../hooks/useOrganizationPersonnel'
 import type { PersonnelClass } from '../../../../../shared/organizationPersonnel'
@@ -12,7 +13,7 @@ import { EventVenues, type Venue } from '../../components/EventVenues'
 import { EventCompanyVotes } from '../../components/EventCompanyVotes'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams, useLocation, useNavigate } from 'react-router-dom'
-import { CalendarDays, Clock, FileImage, Info, Send, CalendarPlus, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, MapPinned, Pencil, RotateCcw, X, ZoomIn, ZoomOut } from 'lucide-react'
+import { CalendarDays, Clock, FileImage, Info, Send, Users, CalendarPlus, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, MapPinned, Pencil, RotateCcw, X, ZoomIn, ZoomOut } from 'lucide-react'
 import { externalEventListings } from '../../utils/externalEventListings'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
 import { downloadIcsEvent, googleCalendarUrl, outlookCalendarUrl } from '../../utils/calendar'
@@ -277,12 +278,12 @@ export function PublicEventPage() {
   const tenant = getGroupSite()
   const brand = getActivePortalProfileConfig()
   const lifeTech = tenant?.home_org_slug === 'lifetech'
-  const [activeTab, setActiveTab] = useState<'info' | 'poster' | 'apply'>('info')
-  function selectEventTab(tab: 'info' | 'poster' | 'apply') {
+  const [activeTab, setActiveTab] = useState<'info' | 'poster' | 'apply' | 'submissions'>('info')
+  function selectEventTab(tab: 'info' | 'poster' | 'apply' | 'submissions') {
     setActiveTab(tab)
     navigate({ pathname: location.pathname, search: location.search, hash: `#${tab}` }, { replace: true, preventScrollReset: true })
   }
-  useEffect(() => { setActiveTab(location.hash === '#apply' ? 'apply' : location.hash === '#poster' ? 'poster' : 'info') }, [slug, location.hash])
+  useEffect(() => { setActiveTab(location.hash === '#submissions' ? 'submissions' : location.hash === '#apply' ? 'apply' : location.hash === '#poster' ? 'poster' : 'info') }, [slug, location.hash])
   const [event, setEvent] = useState<PublicEvent | null>(null)
   const personnelFor = useOrganizationPersonnel(event?.host_org_id)
   const [status, setStatus] = useState<string>('Loading event…')
@@ -767,12 +768,12 @@ export function PublicEventPage() {
             {event.location&&<div><MapPinned size={20} aria-hidden="true" /><a href={mapsUrl!} target="_blank" rel="noreferrer">{event.location}</a></div>}
           </section>
           <div className="public-event-tabs" role="tablist" aria-label="Event sections" onKeyDown={keyEvent=>{
-            const tabs=['info','poster','apply'] as const,index=tabs.indexOf(activeTab)
+            const tabs=['info','poster','apply','submissions'] as const,index=tabs.indexOf(activeTab)
             if(!['ArrowLeft','ArrowRight','Home','End'].includes(keyEvent.key))return
-            keyEvent.preventDefault();const next=keyEvent.key==='Home'?'info':keyEvent.key==='End'?'apply':tabs[(index+(keyEvent.key==='ArrowLeft'?2:1))%3]
+            keyEvent.preventDefault();const next=keyEvent.key==='Home'?'info':keyEvent.key==='End'?'submissions':tabs[(index+(keyEvent.key==='ArrowLeft'?tabs.length-1:1))%tabs.length]
             selectEventTab(next);document.getElementById(`event-${next}-tab`)?.focus()
           }}>
-            {([{key:'info',label:'Info',Icon:Info},{key:'poster',label:'Poster',Icon:FileImage},{key:'apply',label:'Apply',Icon:Send}] as const).map(({key,label,Icon})=><button type="button" key={key} id={`event-${key}-tab`} role="tab" aria-selected={activeTab===key} aria-controls={`event-${key}-panel`} tabIndex={activeTab===key?0:-1} onClick={()=>selectEventTab(key)}><Icon size={19} aria-hidden="true" /><span>{label}</span></button>)}
+            {([{key:'info',label:'Info',Icon:Info},{key:'poster',label:'Poster',Icon:FileImage},{key:'apply',label:'Apply',Icon:Send},{key:'submissions',label:'Submissions',Icon:Users}] as const).map(({key,label,Icon})=><button type="button" key={key} id={`event-${key}-tab`} role="tab" aria-selected={activeTab===key} aria-controls={`event-${key}-panel`} tabIndex={activeTab===key?0:-1} onClick={()=>selectEventTab(key)}><Icon size={19} aria-hidden="true" /><span>{label}</span></button>)}
           </div>
           <section className="public-event-tab-panel" role="tabpanel" id="event-info-panel" aria-labelledby="event-info-tab" hidden={activeTab!=='info'}>
           {event.description ? (
@@ -965,6 +966,9 @@ export function PublicEventPage() {
           </section>
           <section className="public-event-tab-panel" role="tabpanel" id="event-apply-panel" aria-labelledby="event-apply-tab" hidden={activeTab!=='apply'}>
           <EventPresentations key={`presentations-${event.id}`} eventId={event.id} />
+          </section>
+          <section className="public-event-tab-panel" role="tabpanel" id="event-submissions-panel" aria-labelledby="event-submissions-tab" hidden={activeTab!=='submissions'}>
+            {activeTab==='submissions'&&<EventSubmissions eventId={event.id} />}
           </section>
         </main>
         <aside className="public-event-side public-event-luma-side" aria-label="Event actions and location">

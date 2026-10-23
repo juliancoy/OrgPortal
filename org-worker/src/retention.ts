@@ -5,6 +5,7 @@ export async function runRetention(db: D1Database, now = Date.now(), dryRun = fa
   const rules: [string, string, string | number][] = [
     ['organization_invitations', 'expires_at <= ?', now],
     ['organization_volunteer_awards', 'expires_at <= ?', new Date(now).toISOString()],
+    ['event_presentation_favorites', 'expires_at < ?', new Date(cutoff).toISOString()],
     ['event_presentation_submissions', 'expires_at < ?', new Date(cutoff).toISOString()],
     ['event_mcp_operations', "expires_at < ? AND status IN ('prepared','completed')", cutoff],
     ['event_mcp_rate_limits', 'window_start < ?', Math.floor(cutoff / 60000)],

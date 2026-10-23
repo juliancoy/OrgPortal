@@ -12,6 +12,7 @@ import csv
 import json
 import os
 import secrets
+import re
 import uuid
 from pathlib import Path
 from urllib.parse import urlparse
@@ -179,6 +180,24 @@ with sync_playwright() as p:
         expect(review.get_by_text('No accepted applications yet.',exact=True)).to_be_visible(timeout=30000)
         manager.get_by_role('tab',name='Team Form',exact=True).click()
         expect(manager.get_by_role('form',name='Team presentation application')).to_be_visible()
+        page.get_by_role('tab',name='Submissions',exact=True).click()
+        submissions=page.get_by_role('region',name='Event submissions',exact=True)
+        expect(submissions.locator('.presentation-submission')).to_have_count(26,timeout=30000)
+        for count in range(1,4):
+            submissions.get_by_role('button',name=re.compile('^Favorite:')).first.click()
+            expect(submissions.get_by_role('status')).to_have_text(f'{count} of 3 favorites selected',timeout=30000)
+        expect(submissions.get_by_role('button',name=re.compile('^Favorite:')).first).to_be_disabled()
+        page.reload()
+        expect(submissions.get_by_role('status')).to_have_text('3 of 3 favorites selected',timeout=30000)
+        submissions.get_by_role('button',name=re.compile('^Remove favorite:')).first.click()
+        expect(submissions.get_by_role('status')).to_have_text('2 of 3 favorites selected',timeout=30000)
+        expect(submissions.get_by_role('button',name=re.compile('^Favorite:')).first).to_be_enabled()
+        guest=context().new_page()
+        guest.goto(BASE+'/events/'+event['slug']+'#submissions')
+        public_submissions=guest.get_by_role('region',name='Event submissions',exact=True)
+        expect(public_submissions.locator('.presentation-submission')).to_have_count(26,timeout=30000)
+        expect(public_submissions.get_by_role('link',name='Sign in',exact=True)).to_be_visible()
+        page.get_by_role('tab',name='Apply',exact=True).click()
         section.get_by_role('button', name='Withdraw application', exact=True).click()
         expect(section.get_by_role('button', name='Withdraw application', exact=True)).to_have_count(0, timeout=30000)
         assert len(successful(host.request.get(endpoint, headers=auth))['submissions']) == 25
@@ -186,7 +205,7 @@ with sync_playwright() as p:
         page.reload()
         page.get_by_role('tab',name='Apply',exact=True).click()
         expect(page.get_by_text('Applications are not open for this event.',exact=True)).to_be_visible(timeout=30000)
-        print('PASS: local authenticated session → dummy team creation → checkbox-free team submission → styled desktop/mobile form → submit → persisted application → manager tabs, counts, filters, pagination and full/filtered CSV → withdraw; Markdown and global button fallback verified')
+        print('PASS: local authenticated session → dummy team creation → checkbox-free team submission → styled desktop/mobile form → submit → persisted application → manager tabs, counts, filters, pagination and full/filtered CSV → public Submissions tab → three favorites persist across reload → fourth blocked → remove favorite → guest view → withdraw; Markdown and global button fallback verified')
         print('Screenshots: ' + str(REPORT))
     finally:
         browser.close()

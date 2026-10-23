@@ -78,6 +78,9 @@ test('manager review paginates beyond 200 with counts, filters, stable ties and 
   const submission=f.db.sqlite.prepare("INSERT INTO event_presentation_submissions(event_id,organization_id,submitted_by,title,summary,status,updated_at,expires_at) VALUES('event',?,'applicant',?,?,?,'2026-01-01T00:00:00Z','2100-01-01T00:00:00Z')");
   for(let i=0;i<207;i++){const id='fixture-'+String(i).padStart(3,'0');org.run(id,'Team '+i,id);submission.run(id,i===0?'=HYPERLINK("bad")':'Demo '+i,'Details, including "quotes"\nand another line',i<3?'accepted':'submitted')}
   f.db.sqlite.prepare("UPDATE event_presentation_submissions SET expires_at='2000-01-01' WHERE organization_id='fixture-206'").run();
+  const publicIds=new Set<string>();let cursor:string|null=null;
+  do{const page=await(await f.request('/submissions'+(cursor?'?after='+encodeURIComponent(cursor):''),'GET','')).json() as {submissions:{organization_id:string}[];next:string|null};for(const row of page.submissions){assert.ok(!publicIds.has(row.organization_id));publicIds.add(row.organization_id)}cursor=page.next}while(cursor);
+  assert.equal(publicIds.size,206);
   assert.equal((await f.request('/review','GET','applicant')).status,403);
   assert.equal((await f.request('/export','GET','applicant')).status,403);
   const review=await(await f.request('/review','GET','host')).json() as any;
@@ -91,5 +94,35 @@ test('manager review paginates beyond 200 with counts, filters, stable ties and 
   assert.ok(text.includes('fixture-205'));assert.ok(!text.includes('fixture-206'));assert.ok(text.includes('"\'=HYPERLINK(""bad"")"'));assert.ok(text.includes('including ""quotes""\nand another line'));
   const accepted=await(await f.request('/export?status=accepted','GET','host')).text();assert.ok(accepted.includes('fixture-002'));assert.ok(!accepted.includes('fixture-003'));
   f.db.sqlite.exec("UPDATE organization_memberships SET status='inactive' WHERE user_id='host'");assert.equal((await f.request('/review','GET','host')).status,403);assert.equal((await f.request('/export','GET','host')).status,403);
+ }finally{f.db.sqlite.close()}
+});
+
+test('public submissions omit private fields and favorites are private, capped at three, removable and cascading',async()=>{
+ const f=fixture();try{
+  for(let n=0;n<4;n++){
+   const id=n?'demo-'+n:'team';
+   if(n)f.db.sqlite.prepare('INSERT INTO organizations(id,name,slug) VALUES(?,?,?)').run(id,id,id);
+   f.db.sqlite.prepare("INSERT INTO event_presentation_submissions VALUES('event',?,'private-submitter','Demo '||?,'Public summary','submitted','2026-01-01','2099-06-01')").run(id,n);
+  }
+  const publicResponse=await f.request('/submissions','GET','');assert.equal(publicResponse.status,200);
+  const listing=await publicResponse.json() as {submissions:Record<string,unknown>[]};assert.equal(listing.submissions.length,4);
+  assert.ok(!JSON.stringify(listing).includes('private-submitter'));assert.ok(!('submitted_by' in listing.submissions[0]));
+  assert.equal((await f.request('/favorites','GET','')).status,401);
+  for(const id of ['team','demo-1','demo-2'])assert.equal((await f.request('/favorites/'+id,'PUT','guest',{selected:true})).status,200);
+  assert.equal((await f.request('/favorites/demo-3','PUT','guest',{selected:true})).status,409);
+  assert.equal((await f.request('/favorites/team','PUT','guest',{selected:true})).status,200);
+  assert.equal((await (await f.request('/favorites','GET','guest')).json() as {favorites:string[]}).favorites.length,3);
+  assert.deepEqual((await (await f.request('/favorites','GET','other')).json() as {favorites:string[]}).favorites,[]);
+  assert.equal((await f.request('/favorites/demo-3','PUT','other',{selected:true})).status,200);
+  assert.equal((await f.request('/favorites/demo-3','PUT','guest',{selected:true,user_id:'other'})).status,400);
+  assert.equal((await f.request('/favorites/team','PUT','guest',{selected:false})).status,200);
+  assert.equal((await f.request('/favorites/demo-3','PUT','guest',{selected:true})).status,200);
+  const counts=await (await f.request('/submissions','GET','')).json() as {submissions:{organization_id:string;favorites:number}[]};assert.equal(counts.submissions.find(row=>row.organization_id==='demo-3')?.favorites,2);
+  assert.throws(()=>f.db.sqlite.prepare("INSERT INTO event_presentation_favorites VALUES('event','guest',4,'team','2026-01-01','2099-06-01')").run(),/CHECK/);
+  f.db.sqlite.exec("DELETE FROM event_presentation_submissions WHERE organization_id='demo-3'");
+  assert.equal(f.db.rows("SELECT * FROM event_presentation_favorites WHERE organization_id='demo-3'").length,0);
+  f.db.sqlite.exec("UPDATE event_presentation_submissions SET expires_at='2000-01-01'");
+  assert.equal((await (await f.request('/submissions','GET','')).json() as {submissions:unknown[]}).submissions.length,0);
+  assert.equal((await f.request('/favorites/team','PUT','guest',{selected:true})).status,409);
  }finally{f.db.sqlite.close()}
 });

@@ -21,6 +21,40 @@ export function presentationRoutes<E extends PresentationEnv>(auth: (env:E, requ
   const form=await c.env.DB.prepare('SELECT enabled FROM event_presentation_forms WHERE event_id=?').bind(e.id).first<{enabled:number}>();
   return c.json({enabled:!!form?.enabled,closed:!e.starts_at || Date.parse(e.starts_at)<=Date.now()});
  });
+ // Public projection deliberately omits submitter identities and application timestamps.
+ app.get('/:id/presentations/submissions',async c=>{
+  const e=await event(c.env.DB,c.req.param('id')),after=c.req.query('after')||'';
+  if(after.length>255)throw new HTTPException(400,{message:'Invalid cursor'});
+  const rows=await c.env.DB.prepare(`SELECT s.organization_id,o.name AS organization_name,o.slug AS organization_slug,o.image_url,s.title,s.summary,s.status,
+   (SELECT COUNT(*) FROM event_presentation_favorites f WHERE f.event_id=s.event_id AND f.organization_id=s.organization_id AND f.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')) AS favorites
+   FROM event_presentation_submissions s JOIN organizations o ON o.id=s.organization_id
+   WHERE s.event_id=? AND ${active} AND s.organization_id>? ORDER BY s.organization_id LIMIT 51`).bind(e.id,after).all<{organization_id:string}>();
+  return c.json({submissions:rows.results.slice(0,50),next:rows.results.length>50?rows.results[49].organization_id:null});
+ });
+ app.get('/:id/presentations/favorites',async c=>{
+  const user=await auth(c.env,c.req.raw),e=await event(c.env.DB,c.req.param('id'));
+  const rows=await c.env.DB.prepare(`SELECT f.organization_id FROM event_presentation_favorites f JOIN event_presentation_submissions s ON s.event_id=f.event_id AND s.organization_id=f.organization_id WHERE f.event_id=? AND f.user_id=? AND ${active} AND f.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') ORDER BY f.slot`).bind(e.id,user.id).all<{organization_id:string}>();
+  return c.json({favorites:rows.results.map(row=>row.organization_id),limit:3});
+ });
+ app.put('/:id/presentations/favorites/:org',async c=>{
+  const user=await auth(c.env,c.req.raw),e=await event(c.env.DB,c.req.param('id')),org=c.req.param('org');
+  const body=await c.req.json().catch(()=>null);
+  if(!body||typeof body.selected!=='boolean'||Object.keys(body).some(key=>key!=='selected'))throw new HTTPException(400,{message:'selected must be a boolean'});
+  if(!body.selected){await c.env.DB.prepare('DELETE FROM event_presentation_favorites WHERE event_id=? AND user_id=? AND organization_id=?').bind(e.id,user.id,org).run();return c.json({saved:true})}
+  // The slot primary key and slot CHECK enforce three favorites even for concurrent requests.
+  await c.env.DB.batch([
+   c.env.DB.prepare("DELETE FROM event_presentation_favorites WHERE event_id=? AND user_id=? AND expires_at<=strftime('%Y-%m-%dT%H:%M:%fZ','now')").bind(e.id,user.id),
+   c.env.DB.prepare(`INSERT OR IGNORE INTO event_presentation_favorites(event_id,user_id,slot,organization_id,created_at,expires_at)
+    SELECT s.event_id,?,slots.slot,s.organization_id,strftime('%Y-%m-%dT%H:%M:%fZ','now'),s.expires_at
+    FROM event_presentation_submissions s CROSS JOIN (SELECT 1 AS slot UNION ALL SELECT 2 UNION ALL SELECT 3) slots
+    WHERE s.event_id=? AND s.organization_id=? AND ${active}
+    AND NOT EXISTS(SELECT 1 FROM event_presentation_favorites f WHERE f.event_id=s.event_id AND f.user_id=? AND f.slot=slots.slot)
+    ORDER BY slots.slot LIMIT 1`).bind(user.id,e.id,org,user.id)
+  ]);
+  const saved=await c.env.DB.prepare('SELECT 1 AS saved FROM event_presentation_favorites WHERE event_id=? AND user_id=? AND organization_id=?').bind(e.id,user.id,org).first();
+  if(!saved)throw new HTTPException(409,{message:'Choose up to three favorites. Remove one first, or refresh if the submission is no longer available.'});
+  return c.json({saved:true});
+ });
  app.put('/:id/presentations/form',async c=>{
   const user=await auth(c.env,c.req.raw),e=await event(c.env.DB,c.req.param('id'));await manager(c.env.DB,user,e.host_org_id!);
   const body=await c.req.json();if(typeof body.enabled!=='boolean')throw new HTTPException(400,{message:'enabled must be a boolean'});
