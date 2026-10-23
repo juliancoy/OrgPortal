@@ -1,4 +1,4 @@
-import { loadPublicOrganizationDirectory } from '../../data/publicOrganization/organizations'
+import { refreshPublicReport } from '../../data/publicOrganization/cache'
 import { shortGroupName } from '../../domain/organization/groupNames'
 import { useEffect, useId, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -13,23 +13,24 @@ export function PeerOrganizations({ organizationId, tags = [] }: { organizationI
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [revision, setRevision] = useState(0)
+  const [hasMore, setHasMore] = useState(false)
   useEffect(() => {
     const controller = new AbortController()
     setLoading(true); setError('')
     void (async () => {
-      const rows = await loadPublicOrganizationDirectory<PublicOrganization>({signal: controller.signal, force: revision > 0})
-      if (!controller.signal.aborted) setOrganizations(rows)
+      const path = `/api/org/api/network/orgs/public/${encodeURIComponent(organizationId)}/peers?limit=${limit}&q=${encodeURIComponent(query)}`
+      const {data} = await refreshPublicReport<{organizations: PublicOrganization[]; hasMore: boolean}>(path, {signal: controller.signal, force: revision > 0})
+      if (!controller.signal.aborted) { setOrganizations(data.organizations); setHasMore(data.hasMore) }
     })().catch(err => { if (!controller.signal.aborted) setError(err.message) })
       .finally(() => { if (!controller.signal.aborted) setLoading(false) })
     return () => controller.abort()
-  }, [revision])
+  }, [revision, organizationId, limit, query])
   useEffect(() => { setQuery(''); setLimit(12) }, [organizationId])
   const peers = useMemo(() => {
     const interests = new Set(tags.map(tag => tag.trim().toLowerCase()).filter(Boolean))
-    const term = query.trim().toLowerCase()
     return organizations.filter(org => org.id !== organizationId).map(org => ({
       ...org, sharedTags: (org.tags || []).filter(tag => interests.has(tag.trim().toLowerCase())),
-    })).filter(org => org.sharedTags.length && (!term || [org.name, shortGroupName(org.name), org.description, ...(org.tags || [])].some(value => value?.toLowerCase().includes(term))))
+    })).filter(org => org.sharedTags.length)
       .sort((a, b) => b.sharedTags.length - a.sharedTags.length || a.name.localeCompare(b.name))
   }, [organizations, organizationId, tags, query])
   if(!loading && !error && !peers.length && !query.trim())return null
@@ -43,7 +44,7 @@ export function PeerOrganizations({ organizationId, tags = [] }: { organizationI
         <OrgImage src={org.image_url} alt="" className="peer-organization-image" />
         <div><strong title={org.name}>{shortGroupName(org.name)}</strong><p className="muted">{org.sharedTags.join(' · ')}</p></div>
       </Link>)}</div>
-      {peers.length > limit && <button type="button" className="btn-secondary" onClick={() => setLimit(value => value + 12)}>Show more organizations</button>}
+      {hasMore && <button type="button" className="btn-secondary" onClick={() => setLimit(value => Math.min(100, value + 12))}>Show more organizations</button>}
     </> : <p className="muted">{query.trim() ? `No peer organizations match “${query.trim()}”.` : 'No organizations with shared interests listed yet.'}</p>}
     <Link to="/orgs">Browse organization directory</Link>
   </section>

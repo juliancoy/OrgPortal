@@ -1,3 +1,4 @@
+import { organizationPeersRoutes } from './organizationPeers';
 import { publicMediaObject } from './publicMediaObject';
 import { organizationPosterEvents, organizationPosterPages } from './organizationPoster';
 import {organizationMemberTitleRoutes} from './organizationMemberTitles';
@@ -2643,6 +2644,7 @@ function deploymentHealth(c: { env: Env; req: { url: string }; header: (name: st
   };
 }
 
+app.route('/api/network/orgs/public',organizationPeersRoutes());
 app.route('/api/network/orgs/public',organizationBrandingRoutes());
 app.route('/api/network/orgs',organizationRecognitionRoutes(currentUser));
 app.route('/api/network/orgs',organizationMemberTitleRoutes(currentUser,eventErrorResponse));
