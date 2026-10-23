@@ -965,6 +965,7 @@ const productionWorker = {
     const url = new URL(request.url);
     const path = url.pathname;
     const tenantHost = isOrgGroupSiteHost(url.hostname, env);
+    if (/^\/(?:p\/)?portals(?:\/|$)/.test(path)) return notFoundResponse(request);
 
     if (url.hostname === "orgportal.cc" && ["/timebanking", "/timebanking/"].includes(path)) {
       url.pathname = "/communities";

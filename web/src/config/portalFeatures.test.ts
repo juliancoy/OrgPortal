@@ -121,14 +121,14 @@ it('uses the attached domain homepage for a stale slug-portal logo link', () => 
   finally { domain.mockRestore() }
 })
 
-it('preserves configured shared portal and external homepage destinations', () => {
+it('canonicalizes stored portal destinations and preserves external homepages', () => {
   for (const home_url of ['https://codecollective.us/p/portals/lifetech', 'https://lifetech.fyi/about']) {
     const domain = vi.spyOn(communities, 'getGroupSite').mockReturnValue({
       id: 'lifetech', name: 'LifeTech', slug: 'lifetech', hostname: 'lifetech.fyi',
-      tagline: '', accent_color: '#155e59', home_url,
+      tagline: '', accent_color: '#155e59', home_url, home_org_slug:'lifetech',
       custom_domain_hostname: 'lifetech.fyi', custom_domain_status: 'attached',
     })
-    try { expect(getActivePortalProfileConfig().homeUrl).toBe(home_url) }
+    try { expect(getActivePortalProfileConfig().homeUrl).toBe(home_url.includes('/portals/')?'https://codecollective.us/p/orgs/lifetech':home_url) }
     finally { domain.mockRestore() }
   }
 })

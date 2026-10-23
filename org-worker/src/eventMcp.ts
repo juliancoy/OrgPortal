@@ -2,6 +2,8 @@ import { registerAccountTools } from './mcpAccountTools';
 import product from '../../shared/mcp-product.json';
 import {memberTitlesSchema,organizationPeopleSchema,organizationTitlePeople,runMemberTitlesOperation} from './organizationMemberTitles';
 import {organizationPageStatistics} from './organizationPageStatistics';
+import {organizationPortalLinks} from './organizationPortalUrls';
+import {organizationPagePath} from '../../shared/organizationUrls';
 import {organizationImageSchema} from './organizationBrandImage';
 import { runPortalBrandingOperation, portalBrandingTargetSchema, portalBrandingUpdateSchema } from './portalBrandingMcp';
 import { runOrganizationDirectoryOperation, organizationOperationStatusSchema, type DirectoryOperation } from './organizationDirectoryOperations';
@@ -325,7 +327,7 @@ function parseFeatures(value: string | string[] | undefined) {
 async function portalTenantByOrg(db: D1Database, organization: { id: string; slug: string }) {
   return db.prepare(
     `SELECT * FROM group_sites
-     WHERE organization_id = ? OR home_org_slug = ?
+     WHERE organization_id = ? OR (organization_id IS NULL AND home_org_slug = ?)
      ORDER BY CASE WHEN organization_id = ? THEN 0 ELSE 1 END
      LIMIT 1`,
   ).bind(organization.id, organization.slug, organization.id).first<Record<string, unknown>>();
@@ -333,11 +335,10 @@ async function portalTenantByOrg(db: D1Database, organization: { id: string; slu
 
 async function portalResponse(env: Env, tenant: Record<string, unknown> | null) {
   if (!tenant) return null;
-  const slug = String(tenant.slug || "").trim();
   return {
     ...tenant,
     features: parseFeatures(tenant.features as string | string[] | undefined),
-    slug_url: slug ? `${portalBase(env)}/portals/${encodeURIComponent(slug)}` : null,
+    ...await organizationPortalLinks(env.DB,tenant,portalBase(env)),
   };
 }
 
@@ -385,11 +386,11 @@ async function runPortalOperation(env: Env, identity: { userId: string; scopes: 
         feature_config = json_patch(group_sites.feature_config,excluded.feature_config), updated_at = excluded.updated_at`,
     ).bind(existing?.id || `org-${organization.id}-portal`, organization.id, slug, `${slug}.slug.portal.local`,
       setup.name || organization.name, setup.tagline || `Portal for ${organization.name}`, setup.accentColor || "#155e59",
-      JSON.stringify(setup.features || ["directory", "events", "chat"]), setup.homeImageUrl || null, `${portalBase(env)}/portals/${encodeURIComponent(slug)}`,
+      JSON.stringify(setup.features || ["directory", "events", "chat"]), setup.homeImageUrl || null, `${portalBase(env)}${organizationPagePath(organization.slug)}`,
       setup.accentColor || "#155e59", homeKind, homeKind === "route" ? setup.homePath || null : null, organization.slug,
       setup.homeHeading || setup.name || organization.name, setup.homeDescription || setup.tagline || `Portal for ${organization.name}`,
       "Join Group", "/users/login", "View Events", "/org-events", setup.homeImageUrl || null,
-      `${portalBase(env)}/portals/${encodeURIComponent(slug)}`, JSON.stringify({ slugPortal: { enabled: true, path: `/portals/${slug}` } }), now, now).run();
+      `${portalBase(env)}${organizationPagePath(organization.slug)}`, JSON.stringify({ slugPortal: { enabled: true, path: organizationPagePath(organization.slug) } }), now, now).run();
     return { portal: await portalResponse(env, await portalTenantByOrg(env.DB, organization)) };
   }
   if (!existing) throw new EventIntegrationError(409, "Save the organization portal before configuring a custom domain.");
@@ -1066,7 +1067,7 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
     server.registerTool("get_portal_setup", { description: "Read the group homepage setup for an organization, including shared slug URL and custom-domain status.",
       inputSchema: z.object({ organizationId: z.string().min(1).max(200) }).strict(),
       annotations: { readOnlyHint: true, openWorldHint: false }, _meta: metadata([portalReadScope]) }, args => portalResult("get", args));
-    server.registerTool("save_portal_setup", { description: "Create or update the branded group homepage available at /portals/:slug using existing OrgPortal primitives.",
+    server.registerTool("save_portal_setup", { description: "Create or update branding and public homepage content on the organization's canonical /orgs/:slug page using existing OrgPortal primitives.",
       inputSchema: portalSetupSchema, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       _meta: metadata([portalReadScope, portalWriteScope]) }, args => portalResult("save", args));
     server.registerTool("request_portal_custom_domain", { description: "Record an org admin's desired custom domain and return the operator provisioning checklist. This does not change canonical routing.",

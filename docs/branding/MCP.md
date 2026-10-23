@@ -40,10 +40,10 @@ fails and the unreferenced object from that attempt is removed when possible.
   It reads that organization's existing portal/MCP settings without changing the
   surrounding portal identity. Organizations without portal setup use their
   profile image and the default palette.
-- Existing `/portals/:portalSlug/branding` links redirect to the linked org tab,
-  including when portal and organization slugs differ. Domain `/branding` links
-  open the org tab when the domain has a linked organization. Other domain-only
-  brand guides remain available.
+- Retired portal-page URLs return 404. Organization pages and branding links
+  use the organization's canonical slug, even if its stored site configuration
+  has a different internal slug. Domain `/branding` links open the organization
+  tab when linked; the platform's global branding guide remains available.
 
 These tools are advertised by OrgPortal's MCP server. Clients that cache the
 tool list must refresh their connection to discover newly added tools.

@@ -8,7 +8,7 @@ Coding agents setting up an organization tenant should also follow `docs/deploym
 
 - `codecollective.us` serves OrgPortal at `/p`.
 - Tenant domains, for example `medtech.social`, serve OrgPortal at `/`.
-- Organization admins can publish a shared slug portal at `/portals/:slug` before a custom domain is attached.
+- Organization admins configure their homepage and branding on `/orgs/:slug` before a custom domain is attached.
 - Tenant routes are canonical at the tenant root: `/users/login`, `/events/:slug`, `/orgs/:slug`, `/people`, `/chat`, `/org-events`, and `/timebanking`.
 - Tenant event homes use `/org-events`; compatibility aliases such as `/community` and `/medtech-events` may redirect to canonical tenant routes, but they are not the primary routing model.
 
@@ -18,7 +18,7 @@ The web build emits relative static asset URLs so the same artifact can load fro
 
 `group_sites` is the source of truth for tenant branding, routing, home behavior, and generated public URLs. Important fields:
 
-- `organization_id`, `slug`: optional organization link and shared slug URL for admin-created portals.
+- `organization_id`, `slug`: organization binding and internal site-configuration slug.
 - `hostname`: custom domain used to resolve the tenant. Slug portals use a reserved internal hostname until an operator attaches a real domain.
 - `public_base_url`: canonical public URL base. Use `https://codecollective.us/p` for CodeCollective and the root origin for tenant domains.
 - `canonical_path_prefix`: `/p` for CodeCollective, empty string for root-mounted tenants.
@@ -40,7 +40,7 @@ For each organization tenant, operators still provision:
 
 ## Custom Domain Flow
 
-1. The organization admin saves the Portal panel, which creates the shared `/portals/:slug` tenant.
+1. The organization admin saves Homepage and branding on the organization dashboard; it uses the same `/orgs/:slug` page.
 2. The admin enters the desired custom domain and chooses `Request Domain`. OrgPortal stores `custom_domain_status = requested` and returns the operator checklist.
 3. The operator provisions Cloudflare custom domain/DNS, PIdP origins and callbacks, MCP resource metadata, and feature-provider bindings.
 4. After verifying DNS ownership, HTTPS, and shared OrgPortal sign-in, an operator activates the requested domain through `POST /api/network/orgs/:organizationId/portal/custom-domain/attach`. OrgPortal updates `hostname`, `public_base_url`, and `canonical_path_prefix = ''`, then marks `custom_domain_status = attached`.
@@ -57,10 +57,10 @@ MCP clients need `org:portal.read` for reads and `org:portal.write` for saves an
 ## New Tenant Checklist
 
 1. Create or confirm the organization row and public slug.
-2. Have an existing organization admin open the public org profile and save the Portal panel; this creates the `group_sites` row and shared `/portals/:slug` URL.
+2. Have an existing organization admin open the public org profile and save Homepage and branding; this creates the `group_sites` configuration for the existing `/orgs/:slug` page.
 3. Add the Cloudflare custom domain and route it to the OrgPortal site/worker when the tenant is ready for a first-class domain.
 4. Add PIdP origins/callbacks for the tenant domain.
 5. Update the `group_sites` row with `hostname`, `public_base_url`, root `canonical_path_prefix`, brand assets, features, and home settings.
 6. Configure MCP resource metadata and provider bindings for enabled integrations.
-7. Verify `/portals/:slug`, then verify `/`, `/users/login`, `/people`, `/orgs/:slug`, `/events`, `/org-events`, favicon, manifest, CSS, JS chunks, and service worker registration on the tenant domain.
+7. Verify the organization homepage and Branding tab, then verify `/`, `/users/login`, `/people`, `/orgs/:slug`, `/events`, `/org-events`, favicon, manifest, CSS, JS chunks, and service worker registration on the tenant domain.
 8. Verify `https://codecollective.us/p` behavior still works after deploying the same web artifact.

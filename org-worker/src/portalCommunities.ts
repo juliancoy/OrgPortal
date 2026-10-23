@@ -1,13 +1,15 @@
+import {canonicalOrganizationHref} from '../../shared/organizationUrls';
 type PublicPortalRow = {
   id: string; name: string; tagline: string; hostname: string; profile: string;
   brand_image_path?: string | null; accent_color?: string | null;
   features: string; slug: string | null; public_base_url: string | null;
   custom_domain_hostname: string | null; custom_domain_status: string;
+  organization_slug?:string|null;
 };
 
 export function publicCommunity(row: PublicPortalRow) {
   const destination = row.custom_domain_status === 'attached' && row.custom_domain_hostname
-    ? `https://${row.custom_domain_hostname}` : row.public_base_url;
+    ? `https://${row.custom_domain_hostname}` : canonicalOrganizationHref(row.public_base_url,row.organization_slug);
   if (!destination || row.profile === 'orgportal') return null;
   let url: URL;
   try { url = new URL(destination); } catch { return null; }
@@ -32,8 +34,10 @@ export function publicCommunity(row: PublicPortalRow) {
 }
 
 export async function listPublicCommunities(db: D1Database) {
-  const rows = await db.prepare(`SELECT id, name, tagline, hostname, profile, features,
-    brand_image_path, accent_color, slug, public_base_url, custom_domain_hostname, custom_domain_status
-    FROM group_sites WHERE profile <> 'orgportal' ORDER BY name COLLATE NOCASE`).all<PublicPortalRow>();
+  const rows = await db.prepare(`SELECT site.id,site.name,site.tagline,site.hostname,site.profile,site.features,
+    site.brand_image_path,site.accent_color,site.slug,site.public_base_url,site.custom_domain_hostname,site.custom_domain_status,org.slug AS organization_slug
+    FROM group_sites site LEFT JOIN organizations org ON (site.organization_id IS NOT NULL AND org.id=site.organization_id)
+     OR (site.organization_id IS NULL AND org.slug=site.home_org_slug)
+    WHERE site.profile <> 'orgportal' ORDER BY site.name COLLATE NOCASE`).all<PublicPortalRow>();
   return rows.results.map(publicCommunity).filter(value => value !== null);
 }

@@ -1,8 +1,10 @@
 import { OrganizationBoard } from '../../components/OrganizationBoard'
+import {isRetiredOrganizationHref} from '../../../../../shared/organizationUrls'
 import { OrganizationPageStatistics } from '../../components/OrganizationPageStatistics'
 import { useOrganizationPageView } from '../../hooks/useOrganizationPageView'
 import { invalidatePublicOrganizationData } from '../../../data/publicOrganization/cache'
 import { loadPublicOrganization } from '../../../data/publicOrganization/organizations'
+import { loadHostedOrganizationEvents } from '../../../data/publicOrganization/hostedEvents'
 import { BioMarkdown } from '../../components/profile/BioMarkdown'
 import { OrganizationLinksEditor } from '../../components/OrganizationLinksEditor'
 import { normalizeOrganizationLinks, organizationLinkLabels, type OrganizationLink } from '../../../../../shared/organizationLinks'
@@ -16,7 +18,9 @@ import { resolveOrganizationPageView, useOrganizationViewPreference } from '../.
 import { OrganizationPortalSections } from '../../components/OrganizationPortalSections'
 import { OrganizationBrandGuide } from '../../components/OrganizationBrandGuide'
 import { OrganizationBranding, organizationBrandingPath } from '../../components/OrganizationBranding'
-import { getGroupSite } from '../../../config/timebankCommunity'
+import { getGroupSite,parseGroupSite,type GroupSite } from '../../../config/timebankCommunity'
+import { specialtyResourcesForTenant } from '../../../config/specialtyResources'
+import { SpecialtyResourcesPanel } from '../../components/SpecialtyResourcesPanel'
 import { OrganizationSupport } from '../../components/OrganizationSupport'
 import { OrganizationTools } from '../../components/OrganizationTools'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -192,6 +196,7 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
   useOrganizationPageView(org&&org.slug===handle?org.slug:null,dashboard)
   const [events, setEvents] = useState<PublicEvent[]>([])
   const [eventsLoading, setEventsLoading] = useState(false)
+  const [eventsError,setEventsError]=useState('')
   const [admins, setAdmins] = useState<PublicOrgAdmin[]>([])
   const [adminsLoading, setAdminsLoading] = useState(false)
   const [status, setStatus] = useState<string>('Loading organization…')
@@ -204,6 +209,8 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
   const [membership, setMembership] = useState<OrganizationMembership | null>(null)
   const [membershipStatus, setMembershipStatus] = useState<string | null>(null)
   const [portalConfig, setPortalConfig] = useState<OrganizationPortal | null>(null)
+  const [publicPortal,setPublicPortal]=useState<{organizationId:string;site:GroupSite|null;error:string}|null>(null)
+  const [publicPortalRevision,setPublicPortalRevision]=useState(0)
   const [portalSlugDraft, setPortalSlugDraft] = useState('')
   const [portalNameDraft, setPortalNameDraft] = useState('')
   const [portalTaglineDraft, setPortalTaglineDraft] = useState('')
@@ -295,16 +302,13 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
   useEffect(() => {
     if (!org?.slug) return
     let cancelled = false
+    const controller=new AbortController()
     setEventsLoading(true)
+    setEventsError('')
     setAdminsLoading(true)
     Promise.all([
-      fetch(orgUrl(`/api/network/orgs/public/${encodeURIComponent(org.slug)}/events?upcoming_only=true&limit=200`)).then(
-        async (resp) => {
-          if (!resp.ok) return []
-          return (await resp.json()) as PublicEvent[]
-        },
-      ),
-      fetch(orgUrl(`/api/network/orgs/public/${encodeURIComponent(org.slug)}/admins`)).then(async (resp) => {
+      loadHostedOrganizationEvents<PublicEvent>(org.slug,controller.signal),
+      fetch(orgUrl(`/api/network/orgs/public/${encodeURIComponent(org.slug)}/admins`),{signal:controller.signal}).then(async (resp) => {
         if (!resp.ok) return []
         return (await resp.json()) as PublicOrgAdmin[]
       }),
@@ -314,6 +318,7 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
         setEvents(Array.isArray(eventData) ? eventData : [])
         setAdmins(Array.isArray(adminData) ? adminData : [])
       })
+      .catch(()=>{if(!cancelled){setEvents([]);setEventsError('Upcoming events are temporarily unavailable.')}})
       .finally(() => {
         if (cancelled) return
         setEventsLoading(false)
@@ -321,8 +326,21 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
       })
     return () => {
       cancelled = true
+      controller.abort()
     }
   }, [org?.slug])
+
+  useEffect(()=>{
+    if(!org?.id||!org.slug)return
+    const controller=new AbortController(),organizationId=org.id
+    void fetch(orgUrl(`/api/network/orgs/public/${encodeURIComponent(org.slug)}/branding`),{signal:controller.signal,cache:'no-store'}).then(async response=>{
+      if(!response.ok)throw new Error('Organization homepage details are temporarily unavailable.')
+      const data=await response.json(),site=data.portal?parseGroupSite(data.portal):null
+      if(data.portal&&!site)throw new Error('Organization homepage details are temporarily unavailable.')
+      if(!controller.signal.aborted)setPublicPortal({organizationId,site,error:''})
+    }).catch(error=>{if(!controller.signal.aborted)setPublicPortal({organizationId,site:null,error:error.message})})
+    return()=>controller.abort()
+  },[org?.id,org?.slug,publicPortalRevision])
 
   useEffect(() => {
     if (!org?.id || !token) {
@@ -773,6 +791,7 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
       }
       const payload = (await portalResp.json()) as { portal: OrganizationPortal }
       setPortalConfig(payload.portal)
+      setPublicPortalRevision(value=>value+1)
       setPortalSlugDraft(normalizePortalSlug(payload.portal.slug || slug))
       setPortalStatus('Organization settings saved.')
       setMergeStatus('Organization settings saved.')
@@ -916,11 +935,21 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
   const mergeCandidates = myAdminOrgs.filter((item) => item.id !== org.id)
   const canEditOrgImage = isOrganizerView
   const tenant = getGroupSite()
-  const organizationBrandImage = tenant?.organization_id === org.id ? tenant.brand_image_path : null
-  const heroImageSource = org.image_url?.trim() || organizationBrandImage || ORG_PLACEHOLDER_SRC
-  const eventGroups = groupOrganizationEvents(events, org).filter(group => group.events.length > 0).map(group => ({
-    ...group, events: group.events.slice(0, 3),
-  }))
+  const site=publicPortal?.organizationId===org.id?publicPortal.site:null
+  const organizationBrandImage = site?.home_image_url||site?.brand_image_path||(tenant?.organization_id === org.id ? tenant.brand_image_path : null)
+  const ownImage=org.image_url?.trim()
+  const heroImageSource = ownImage&&ownImage!==ORG_PLACEHOLDER_SRC?ownImage:organizationBrandImage||ORG_PLACEHOLDER_SRC
+  const eventGroups = groupOrganizationEvents(events, org).filter(group => group.kind==='hosted')
+  const resources=specialtyResourcesForTenant(site)
+  const portalDescription=site?.home_description?.trim()
+  const portalAction=(label:string|null|undefined,value:string|null|undefined)=>{
+    if(!label||!value)return null
+    if(value==='/users/login')return <a className="btn-secondary" href={pidpAppLoginUrl(`/orgs/${encodeURIComponent(org.slug)}`)}>{label}</a>
+    if(value==='/org-events')return <a className="btn-secondary" href="#organization-events">{label}</a>
+    try{const url=new URL(value,window.location.origin);if(!['https:','http:'].includes(url.protocol)||url.username||url.password)return null
+      return url.origin===window.location.origin?<Link className="btn-secondary" to={url.pathname+url.search+url.hash}>{label}</Link>:<a className="btn-secondary" href={url.href} target="_blank" rel="noopener noreferrer">{label}</a>
+    }catch{return null}
+  }
   function openImageEditor() {
     if (!canEditOrgImage) return
     setEditorSource(heroImageSource)
@@ -966,13 +995,16 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
             <div className="portal-org-hero-copy">
               <p className="tenant-home-eyebrow">{isOrganizerView ? 'Organization dashboard' : `${organizationView[0].toUpperCase()}${organizationView.slice(1)} view`}</p>
               <div className="portal-org-hero-header">
-                <h1>{org.name}</h1>
+                <h1>{!dashboard&&site?.home_heading||org.name}</h1>
                 {isOrganizerView && <button type="button" className="btn-secondary" onClick={() => openOrganizationEditor('org-name')} aria-label="Edit organization name"><Pencil size={17} aria-hidden="true" /></button>}
                 {canEditOrgImage ? (
                   <span className="portal-org-image-hint">Click image to change</span>
                 ) : null}
               </div>
+              {site?.tagline&&site.tagline!==org.description&&<p className="muted">{site.tagline}</p>}
               {org.description ? <BioMarkdown value={org.description} /> : null}
+              {portalDescription&&portalDescription!==org.description?.trim()&&portalDescription!==site?.tagline?.trim()&&<BioMarkdown value={portalDescription} />}
+              {publicPortal?.organizationId===org.id&&publicPortal.error&&<p role="status">{publicPortal.error}</p>}
               {isOrganizerView && <button type="button" className="btn-secondary" onClick={() => openOrganizationEditor('org-description')}>Edit description</button>}
               <div className="portal-org-actions" aria-label={`${org.name} actions`}>
                 <OrganizationFollowButton orgId={org.id} slug={org.slug} />
@@ -987,11 +1019,10 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
                     Log in to join
                   </a>
                 )}
-                {org.group_home_url ? (
-                  <a className="btn-secondary" href={org.group_home_url}>Group homepage</a>
-                ) : null}
-                {Boolean(org.links?.length) && <nav className="organization-public-links" aria-label="Organization Links">{org.links!.map(link=><a key={link.id} className="btn-secondary" href={link.url} target="_blank" rel="noopener noreferrer">{link.label || organizationLinkLabels[link.type]}</a>)}</nav>}
-                {org.source_url && org.source_url !== org.group_home_url ? (
+                {portalAction(site?.home_primary_label,site?.home_primary_href)}
+                {portalAction(site?.home_secondary_label,site?.home_secondary_href)}
+                {Boolean(org.links?.length) && <nav className="organization-public-links" aria-label="Organization Links">{org.links!.filter(link=>!isRetiredOrganizationHref(link.url)).map(link=><a key={link.id} className="btn-secondary" href={link.url} target="_blank" rel="noopener noreferrer">{link.label || organizationLinkLabels[link.type]}</a>)}</nav>}
+                {org.source_url && !isRetiredOrganizationHref(org.source_url) && org.source_url !== org.group_home_url ? (
                   <a className="btn-secondary" href={org.source_url} target="_blank" rel="noreferrer">
                     Website
                   </a>
@@ -1019,6 +1050,8 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
               />
             </button>
           </div>
+          <OrganizationBrandGuide href={organizationBrandingPath(org.slug)} />
+          <SpecialtyResourcesPanel resources={resources} />
           {eventGroups.map((group) => <div key={group.kind} id={group.kind === 'hosted' ? 'organization-events' : 'organization-related-events'} className="portal-card portal-org-events-card portal-org-nav-target" tabIndex={-1}>
             <div className="portal-org-events-heading">
               <div>
@@ -1032,7 +1065,7 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
               <p className="muted" style={{ margin: 0 }}>
                 Loading events…
               </p>
-            ) : group.events.length === 0 ? (
+            ) : eventsError ? <p role="status" className="muted">{eventsError}</p> : group.events.length === 0 ? (
               <p className="muted" style={{ margin: 0 }}>
                 {group.kind === 'hosted' ? `No upcoming events hosted by ${org.name} are listed.` : 'No upcoming related events are listed.'}
               </p>
@@ -1065,7 +1098,6 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
             features={portalConfig?.features ?? (getGroupSite()?.home_org_slug === org.slug ? getGroupSite()?.features : undefined) ?? ['directory', 'events', 'chat']}
           />
           <div id="organization-brand-guide" className="portal-org-nav-target" tabIndex={-1}>
-          <OrganizationBrandGuide href={organizationBrandingPath(org.slug)} />
           {isOrganizerView && <button type="button" className="btn-secondary" onClick={() => openOrganizationEditor('organization-branding')}>Edit branding and portal sections</button>}
           </div>
           </>}
@@ -1294,20 +1326,12 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
                   ) : null}
                   <div id="organization-branding" tabIndex={-1} className="portal-card portal-org-portal-setup portal-org-nav-target" style={{ display: 'grid', gap: '0.65rem', boxShadow: 'none' }}>
                     <div>
-                      <h3 style={{ margin: 0, fontSize: '0.98rem' }}>Portal</h3>
+                      <h3 style={{ margin: 0, fontSize: '0.98rem' }}>Homepage and branding</h3>
                       <p className="muted" style={{ margin: '0.2rem 0 0' }}>
-                        Publish a branded group homepage. Its URL and custom domain use the same OrgPortal accounts, members, and organizer roles.
+                        Configure the content and branding on this organization page. Custom domains use the same accounts, members, and organizer roles.
                       </p>
                     </div>
                     <div className="portal-org-portal-grid">
-                      <label>
-                        <span className="muted">Slug URL</span>
-                        <input
-                          value={portalSlugDraft}
-                          onChange={(e) => setPortalSlugDraft(normalizePortalSlug(e.target.value))}
-                          placeholder={org.slug}
-                        />
-                      </label>
                       <label>
                         <span className="muted">Home mode</span>
                         <select
@@ -1324,11 +1348,11 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
                     </div>
                     {portalConfig?.slug_url ? (
                       <p className="muted" style={{ margin: 0 }}>
-                        Portal URL: <a href={portalConfig.slug_url}>{portalConfig.slug_url}</a>
+                        Organization URL: <a href={portalConfig.slug_url}>{portalConfig.slug_url}</a>
                       </p>
                     ) : (
                       <p className="muted" style={{ margin: 0 }}>
-                        Portal URL will be available after saving.
+                        Organization URL: /orgs/{org.slug}
                       </p>
                     )}
                     <div id="organization-domain" tabIndex={-1} className="portal-org-domain-flow portal-org-nav-target">

@@ -1,4 +1,6 @@
 import {organizationMemberTitleRoutes} from './organizationMemberTitles';
+import {organizationPortalLinks} from './organizationPortalUrls';
+import {canonicalOrganizationHref,organizationPagePath} from '../../shared/organizationUrls';
 import {organizationPageStatisticsRoutes} from './organizationPageStatistics';
 import { organizationBrandingRoutes } from './organizationBranding';
 import { organizationRecognitionRoutes } from './organizationRecognition';
@@ -1943,15 +1945,10 @@ function customDomainField(payload: Record<string, unknown>) {
   return hostname;
 }
 
-async function organizationPortalSlugUrl(env: Env, request: Request, slug: string) {
-  const base = (await publicPortalBase(env, request)).replace(/\/+$/g, "");
-  return `${base}/portals/${encodeURIComponent(slug)}`;
-}
-
 async function organizationPortalByOrg(db: D1Database, organization: OrganizationRow) {
   return db.prepare(
     `SELECT * FROM group_sites
-     WHERE organization_id = ? OR home_org_slug = ?
+     WHERE organization_id = ? OR (organization_id IS NULL AND home_org_slug = ?)
      ORDER BY CASE WHEN organization_id = ? THEN 0 ELSE 1 END
      LIMIT 1`,
   )
@@ -1966,7 +1963,7 @@ async function organizationGroupHome(env: Env, request: Request, organization: O
   if (tenant.custom_domain_status === 'attached' && tenant.custom_domain_hostname) {
     home = `https://${tenant.custom_domain_hostname}/`;
   } else {
-    home = tenant.home_url || (tenant.slug ? await organizationPortalSlugUrl(env, request, tenant.slug) : null);
+    home = canonicalOrganizationHref(tenant.home_url,organization.slug) || await orgPublicUrl(env, request, organization.slug);
   }
   try {
     const url = new URL(home || '');
@@ -1979,11 +1976,10 @@ async function organizationGroupHome(env: Env, request: Request, organization: O
 
 async function organizationPortalResponse(env: Env, request: Request, tenant: OrganizationPortalRow | null) {
   if (!tenant) return null;
-  const slug = String(tenant.slug || "").trim();
   return {
     ...tenant,
     features: parseGroupSiteFeatures(tenant.features),
-    slug_url: slug ? await organizationPortalSlugUrl(env, request, slug) : null,
+    ...await organizationPortalLinks(env.DB,tenant,await publicPortalBase(env,request)),
   };
 }
 
@@ -3707,7 +3703,7 @@ app.put("/api/network/orgs/:organizationId/portal", async (c) => {
   const heading = stringField(payload, "home_heading", 120) || name;
   const description = stringField(payload, "home_description", 500) || row.description || tagline;
   const homeImageUrl = cleanUrl(payload.home_image_url) || row.image_url || null;
-  const slugUrl = await organizationPortalSlugUrl(c.env, c.req.raw, slug);
+  const slugUrl = await orgPublicUrl(c.env, c.req.raw, row.slug);
   const timestamp = nowIso();
   await c.env.DB.prepare(
     `INSERT INTO group_sites (
@@ -3769,7 +3765,7 @@ app.put("/api/network/orgs/:organizationId/portal", async (c) => {
       stringField(payload, "home_secondary_href", 200) || "/org-events",
       homeImageUrl,
       slugUrl,
-      JSON.stringify({ slugPortal: { enabled: true, path: `/portals/${slug}` } }),
+      JSON.stringify({ slugPortal: { enabled: true, path: organizationPagePath(row.slug) } }),
       timestamp,
       timestamp,
     )
@@ -4721,14 +4717,15 @@ app.get("/api/portal/communities", async (c) => {
 
 app.get("/api/portal/site", async (c) => {
   c.header("Cache-Control", "no-store");
-  return c.json(await resolveGroupSite(c.env.DB, c.req.raw));
+  const site=await resolveGroupSite(c.env.DB,c.req.raw);
+  return c.json({...site,...await organizationPortalLinks(c.env.DB,site,await publicPortalBase(c.env,c.req.raw))});
 });
 
 app.get("/api/portal/sites/:slug", async (c) => {
   c.header("Cache-Control", "no-store");
   const tenant = await resolveGroupSiteBySlug(c.env.DB, c.req.param("slug"));
   if (!tenant) fail(404, "Tenant portal not found");
-  return c.json(tenant);
+  return c.json({...tenant,...await organizationPortalLinks(c.env.DB,tenant,await publicPortalBase(c.env,c.req.raw))});
 });
 
 app.get("/api/timebank/public-offers", async (c) => {

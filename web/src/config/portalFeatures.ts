@@ -1,4 +1,5 @@
 import { getGroupSite, type GroupSite } from './timebankCommunity'
+import { canonicalOrganizationHref } from '../../../shared/organizationUrls'
 export type PortalFeature = 'ubi'
 
 export type PortalProfileId = 'code-collective' | 'baltimore-medtech' | 'deism' | 'orgportal' | 'lifetech'
@@ -98,16 +99,7 @@ function normalizeProfileId(value?: string | null): PortalProfileId | null {
 }
 
 function tenantBrandHomeUrl(tenant: GroupSite, fallback: string): string {
-  const configured = tenant.home_url || fallback
-  if (tenant.custom_domain_status !== 'attached' || !tenant.custom_domain_hostname || !tenant.slug) return configured
-  try {
-    const canonical = new URL(`https://${tenant.custom_domain_hostname}/`)
-    const home = new URL(configured, canonical)
-    if (home.origin === canonical.origin && home.pathname.replace(/\/$/, '') === `/portals/${encodeURIComponent(tenant.slug)}`) {
-      return canonical.href
-    }
-  } catch { /* Keep other configured destinations unchanged. */ }
-  return configured
+  return canonicalOrganizationHref(tenant.home_url,tenant.home_org_slug) || fallback
 }
 
 export function tenantProfileConfig(tenant: GroupSite): PortalProfileConfig {

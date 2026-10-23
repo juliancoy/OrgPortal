@@ -1,11 +1,12 @@
 import { GlobalSearchForm } from '../components/GlobalSearchForm'
+import { loadHostedOrganizationEvents } from '../../data/publicOrganization/hostedEvents'
 import { useEffect, useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
 import { portalPath } from '../../config/portalBase'
 import { getActivePortalProfileConfig, portalProfilePath } from '../../config/portalFeatures'
-import { getGroupSite, parseGroupSite, setGroupSite, type GroupSite } from '../../config/timebankCommunity'
+import { getGroupSite, type GroupSite } from '../../config/timebankCommunity'
 import { specialtyResourcesForTenant } from '../../config/specialtyResources'
 import { OrganizationBrandGuide } from '../components/OrganizationBrandGuide'
 import { SpecialtyResourcesPanel } from '../components/SpecialtyResourcesPanel'
@@ -95,16 +96,7 @@ export function TenantHomePage({brandGuideHref}:{brandGuideHref?:string}={}) {
     const controller = new AbortController()
     setEventStatus('Loading upcoming events...')
     async function loadEvents() {
-      const allEvents: TenantEvent[] = []
-      const pageSize = 200
-      for (let offset = 0; ; offset += pageSize) {
-        const response = await fetch(`/api/org/api/network/orgs/public/${encodeURIComponent(tenant!.home_org_slug!)}/events?upcoming_only=true&hosted_only=true&limit=${pageSize}&offset=${offset}`, { signal: controller.signal })
-        if (!response.ok) throw new Error('Unable to load events.')
-        const page: TenantEvent[] = await response.json()
-        if (!Array.isArray(page)) throw new Error('Invalid event response.')
-        allEvents.push(...page)
-        if (page.length < pageSize) break
-      }
+      const allEvents=await loadHostedOrganizationEvents<TenantEvent>(tenant!.home_org_slug!,controller.signal)
       if (!controller.signal.aborted) {
         setEvents(allEvents)
         setEventStatus('')
@@ -199,53 +191,4 @@ export function TenantEventsHomePage() {
     <Footer />
     <FloatingSocialDock />
   </div>
-}
-
-export function TenantSlugHomePage() {
-  const { tenantSlug } = useParams()
-  const [status, setStatus] = useState('Loading portal...')
-
-  useEffect(() => {
-    if (!tenantSlug) return
-    const previousTenant = getGroupSite()
-    const controller = new AbortController()
-    setStatus('Loading portal...')
-    fetch(`/api/org/api/portal/sites/${encodeURIComponent(tenantSlug)}`, { signal: controller.signal })
-      .then(async (response) => {
-        if (!response.ok) throw new Error('Portal not found.')
-        const parsed = parseGroupSite(await response.json())
-        if (!parsed) throw new Error('Portal not found.')
-        setGroupSite(parsed)
-        setStatus('')
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) {
-          setGroupSite(null)
-          setStatus('Portal not found.')
-        }
-      })
-    return () => {
-      controller.abort()
-      setGroupSite(previousTenant)
-    }
-  }, [tenantSlug])
-
-  if (status) {
-    return <div className="portal-shell tenant-home-shell">
-      <Header />
-      <main className="portal-main" tabIndex={-1}>
-        <div className="portal-container">
-          <section className="panel">
-            <h1 style={{ marginTop: 0 }}>Organization Portal</h1>
-            <p className="muted" role="status">{status}</p>
-          </section>
-        </div>
-      </main>
-      <Footer />
-    </div>
-  }
-
-  const orgSlug=getGroupSite()?.home_org_slug
-  const brandGuidePath=orgSlug ? `/orgs/${encodeURIComponent(orgSlug)}?tab=branding` : '/branding'
-  return <TenantHomePage brandGuideHref={portalPath(brandGuidePath)} />
 }

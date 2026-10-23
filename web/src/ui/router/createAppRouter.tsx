@@ -12,7 +12,7 @@ import { TimebankHeader } from '../shell/TimebankHeader'
 import App from '../../App'
 import { useAuth } from '../../app/AppProviders'
 import { TimebankInboxProvider } from '../timebank/TimebankInbox'
-import { TenantEventsContent, TenantEventsHomePage, TenantHomePage, TenantSlugHomePage } from '../views/TenantHomePage'
+import { TenantEventsContent, TenantEventsHomePage, TenantHomePage } from '../views/TenantHomePage'
 import { refreshRuntimeTokenFromSession } from '../../infrastructure/auth/sessionToken'
 import { portalBasePath } from '../../config/portalBase'
 import { getActivePortalProfileConfig, portalProfilePath, isPortalFeatureEnabled, type PortalFeature } from '../../config/portalFeatures'
@@ -42,7 +42,6 @@ const UserSettingsPage = lazy(() => import('../views/users/UserSettingsPage').th
 const UserLoginPage = lazy(() => import('../views/users/UserLoginPage').then(module => ({ default: module.UserLoginPage })))
 const McpConnectPage = lazy(() => import('../views/users/McpConnectPage').then(module => ({ default: module.McpConnectPage })))
 const FiveOverFivePage = lazy(() => import('../views/orgs/FiveOverFivePage').then(module => ({ default: module.FiveOverFivePage })))
-const LegacyPortalBrandingRedirect = lazy(() => import('../components/OrganizationBranding').then(module => ({ default: module.LegacyPortalBrandingRedirect })))
 const OrgLoginPage = lazy(() => import('../views/orgs/OrgLoginPage').then(module => ({ default: module.OrgLoginPage })))
 const OrgRegisterPage = lazy(() => import('../views/orgs/OrgRegisterPage').then(module => ({ default: module.OrgRegisterPage })))
 const OrgInitiativesPage = lazy(() => import('../views/orgs/OrgInitiativesPage').then(module => ({ default: module.OrgInitiativesPage })))
@@ -268,8 +267,6 @@ export function createAppRouter() {
   return createBrowserRouter(
     [{ element: <PortalProfileBoundary />, errorElement: <RouteErrorPage />, children: [
       { path: '/', element: <HomeRoute /> },
-      { path: '/portals/:tenantSlug', element: <TenantSlugHomePage /> },
-      { path: '/portals/:tenantSlug/branding', element: <LegacyPortalBrandingRedirect /> },
       { path: '/finance', element: <EconomicOpsPage /> },
       { path: '/departments', element: <DepartmentsPage /> },
       { path: '/ecops', element: <Navigate to="/finance" replace /> },

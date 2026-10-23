@@ -46,7 +46,7 @@ test('community directory publishes safe destinations and omits platform and pri
   assert.equal(rows.some(row => row.id === 'orgportal'), false);
   assert.equal(rows.find(row => row.id === 'code-collective')?.url, 'https://codecollective.us/p');
   assert.equal(rows.some(row => 'custom_domain_notes' in row || 'feature_config' in row), false);
-  const base = { id: 'test', name: 'Test', tagline: '', hostname: 'internal.slug.portal.local', profile: 'community', features: '["events"]', slug: 'test', public_base_url: 'https://orgportal.cc/portals/test', custom_domain_hostname: 'test.example', custom_domain_status: 'requested' };
+  const base = { organization_slug:'test-org', id: 'test', name: 'Test', tagline: '', hostname: 'internal.slug.portal.local', profile: 'community', features: '["events"]', slug: 'test', public_base_url: 'https://orgportal.cc/portals/test', custom_domain_hostname: 'test.example', custom_domain_status: 'requested' };
   assert.equal(publicCommunity({ ...base, brand_image_path: '/images/logo.svg', accent_color: '#12325b' })?.logoUrl, 'https://orgportal.cc/images/logo.svg');
   assert.equal(publicCommunity({ ...base, brand_image_path: 'https://lifetech.fyi/logo.png', accent_color: '#12325b' })?.accentColor, '#12325b');
   assert.equal(publicCommunity({ ...base, features: '["timebank"]' })?.logoUrl, 'https://orgportal.cc/images/timebank/timebank-mark.svg');
@@ -54,7 +54,8 @@ test('community directory publishes safe destinations and omits platform and pri
     assert.equal(publicCommunity({ ...base, brand_image_path: image, accent_color: 'red;display:none' })?.logoUrl, null);
     assert.equal(publicCommunity({ ...base, accent_color: 'red;display:none' })?.accentColor, null);
   }
-  assert.equal(publicCommunity(base)?.url, 'https://orgportal.cc/portals/test');
+  assert.equal(publicCommunity(base)?.url, 'https://orgportal.cc/orgs/test-org');
+  assert.equal(publicCommunity({...base,organization_slug:null}),null);
   assert.equal(publicCommunity({ ...base, custom_domain_status: 'attached' })?.url, 'https://test.example/');
   for (const url of ['javascript:alert(1)', 'http://example.com', 'https://user:pass@example.com', 'https://localhost', 'https://test.slug.portal.local']) {
     assert.equal(publicCommunity({ ...base, public_base_url: url }), null);

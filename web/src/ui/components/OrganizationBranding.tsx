@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { Navigate, useParams } from 'react-router-dom'
 import { parseGroupSite, type GroupSite } from '../../config/timebankCommunity'
 import { TenantBrandingPage } from '../views/TenantBrandingPage'
 
@@ -25,21 +24,4 @@ export function OrganizationBranding({organization}:{organization:Organization})
   tagline:'',accent_color:'#155e59',brand_image_path:fallbackImage,home_url:new URL(`/orgs/${encodeURIComponent(organization.slug)}`,window.location.origin).href,
  }
  return <TenantBrandingPage tenant={site} brandGuidePath={organizationBrandingPath(organization.slug)} />
-}
-
-/** Keep published portal links working while moving the canonical guide to its org. */
-export function LegacyPortalBrandingRedirect(){
- const {tenantSlug}=useParams(),[slug,setSlug]=useState(''),[error,setError]=useState('')
- useEffect(()=>{
-  const controller=new AbortController();setSlug('');setError('')
-  void fetch(`/api/org/api/portal/sites/${encodeURIComponent(tenantSlug||'')}`,{signal:controller.signal}).then(async response=>{
-   if(!response.ok)throw new Error('Organization branding not found.')
-   const site=parseGroupSite(await response.json())
-   if(!site?.home_org_slug)throw new Error('This portal has no linked organization.')
-   if(!controller.signal.aborted)setSlug(site.home_org_slug)
-  }).catch(reason=>{if(!controller.signal.aborted)setError(reason.message)})
-  return()=>controller.abort()
- },[tenantSlug])
- if(slug)return <Navigate to={organizationBrandingPath(slug)} replace />
- return <section className="panel"><p role={error?'alert':'status'}>{error||'Opening organization branding…'}</p></section>
 }

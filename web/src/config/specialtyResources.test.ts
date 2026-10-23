@@ -14,6 +14,14 @@ function tenant(overrides: Partial<GroupSite> = {}): GroupSite {
 }
 
 describe('tenant specialty resources', () => {
+  it('does not publish retired organization URLs or unsafe links',()=>{
+    const resources=specialtyResourcesForTenant(tenant({feature_config:{specialtyResources:[
+      {id:'old',label:'Retired',href:'/portals/old'},
+      {id:'unsafe',label:'Unsafe',href:'javascript:alert(1)'},
+      {id:'current',label:'Current',href:'/orgs/current?tab=branding'},
+    ]}}))
+    expect(resources.map(resource=>resource.id)).toEqual(['current'])
+  })
   it('keeps branding out of specialty resources', () => {
     expect(specialtyResourcesForTenant(tenant())).toEqual([])
   })

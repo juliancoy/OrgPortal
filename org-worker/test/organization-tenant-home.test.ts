@@ -16,11 +16,13 @@ test('public organization metadata resolves attached group homes, configured slu
   let org = await response.json() as { group_home_url: string | null };
   assert.equal(org.group_home_url, 'https://lifetech.fyi/');
   db.sqlite.exec("UPDATE group_sites SET custom_domain_status='requested',home_url='https://codecollective.us/p/portals/lifetech' WHERE id='life-portal'");
-  org = await (await get('lifetech')).json(); assert.equal(org.group_home_url, 'https://codecollective.us/p/portals/lifetech');
+  org = await (await get('lifetech')).json(); assert.equal(org.group_home_url, 'https://codecollective.us/p/orgs/lifetech');
   for (const unsafe of ['javascript:alert(1)', 'https://user:password@group.example/', 'http://group.example/']) {
     db.sqlite.prepare("UPDATE group_sites SET home_url=? WHERE id='life-portal'").run(unsafe);
     org = await (await get('lifetech')).json(); assert.equal(org.group_home_url, null);
   }
   org = await (await get('partner')).json(); assert.equal(org.group_home_url, null);
+  db.sqlite.exec("DELETE FROM group_sites WHERE id='life-portal'; INSERT INTO group_sites(id,organization_id,slug,hostname,name,tagline,home_org_slug,home_url) VALUES('wrong','partner','other-alias','other.slug.portal.local','Partner','Other group','lifetech','https://other.example/')");
+  org = await (await get('lifetech')).json();assert.equal(org.group_home_url,null);
   assert.equal((await get('missing')).status, 404);
 });

@@ -6,8 +6,9 @@ resources in the portal. Existing Deism icons are copied into `web/public/images
 
 Migration `0069_deism_tenant.sql` links the `deism` tenant to the organization with
 slug `deism`, reusing an existing organization if present. It publishes
-`https://codecollective.us/p/portals/deism` with Deism branding, a community landing
-page, sign-in, events, calendar, directory, and chat. Signed-in members go to chat.
+site configuration with Deism branding, sign-in, events, calendar, directory,
+and chat. The public organization homepage is `https://orgportal.cc/orgs/deism`;
+branding is a tab there. Historical stored homepage paths are normalized on read.
 The migration grants no memberships or administrator permissions. It preserves
 existing organization data and existing tenant settings on reruns.
 

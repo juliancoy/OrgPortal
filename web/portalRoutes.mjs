@@ -3,8 +3,6 @@ const paths = [
   "/local/newsletters",
 
   "/",
-  "/portals/:tenantSlug",
-  "/portals/:tenantSlug/branding",
   "/finance",
   "/departments",
   "/ecops",

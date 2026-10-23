@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { canonicalOrganizationHref } from '../../../shared/organizationUrls'
 
 export type GroupSite = {
   id: string
@@ -90,7 +91,7 @@ export function parseGroupSite(value: unknown): GroupSite | null {
     id,
     organization_id: optionalString(input.organization_id),
     slug: optionalString(input.slug),
-    slug_url: optionalString(input.slug_url),
+    slug_url: canonicalOrganizationHref(optionalString(input.slug_url),optionalString(input.home_org_slug)),
     hostname,
     name,
     tagline: optionalString(input.tagline) || '',
@@ -98,7 +99,7 @@ export function parseGroupSite(value: unknown): GroupSite | null {
     profile: optionalString(input.profile) || 'community',
     features,
     brand_image_path: optionalString(input.brand_image_path),
-    home_url: optionalString(input.home_url),
+    home_url: canonicalOrganizationHref(optionalString(input.home_url),optionalString(input.home_org_slug)),
     member_home_path: optionalString(input.member_home_path),
     manifest_path: optionalString(input.manifest_path),
     theme_color: optionalString(input.theme_color),
@@ -108,11 +109,11 @@ export function parseGroupSite(value: unknown): GroupSite | null {
     home_heading: optionalString(input.home_heading),
     home_description: optionalString(input.home_description),
     home_primary_label: optionalString(input.home_primary_label),
-    home_primary_href: optionalString(input.home_primary_href),
+    home_primary_href: canonicalOrganizationHref(optionalString(input.home_primary_href),optionalString(input.home_org_slug)),
     home_secondary_label: optionalString(input.home_secondary_label),
-    home_secondary_href: optionalString(input.home_secondary_href),
+    home_secondary_href: canonicalOrganizationHref(optionalString(input.home_secondary_href),optionalString(input.home_org_slug)),
     home_image_url: optionalString(input.home_image_url),
-    public_base_url: optionalString(input.public_base_url),
+    public_base_url: canonicalOrganizationHref(optionalString(input.public_base_url),optionalString(input.home_org_slug)),
     canonical_path_prefix: optionalString(input.canonical_path_prefix),
     feature_config: optionalObject(input.feature_config),
     custom_domain_hostname: optionalString(input.custom_domain_hostname),

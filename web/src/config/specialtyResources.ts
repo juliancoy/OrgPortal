@@ -1,4 +1,5 @@
 import type { GroupSite } from './timebankCommunity'
+import {isRetiredOrganizationHref} from '../../../shared/organizationUrls'
 
 export type SpecialtyResource = {
   id: string
@@ -55,6 +56,7 @@ function cleanResource(value: unknown): SpecialtyResource | null {
   const label = typeof input.label === 'string' ? input.label.trim() : ''
   const href = typeof input.href === 'string' ? input.href.trim() : ''
   if (!id || !label || !href) return null
+  try{const url=new URL(href,'https://portal.invalid');if(!['http:','https:'].includes(url.protocol)||url.username||url.password||isRetiredOrganizationHref(href))return null}catch{return null}
   return {
     id,
     label,

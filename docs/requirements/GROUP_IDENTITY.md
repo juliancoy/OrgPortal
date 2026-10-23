@@ -14,10 +14,12 @@ to gate organizer activation where configured for the group.
 
 ## Group homepages
 
-`/orgs/:slug` is the group profile and management page. It stays reachable and
-does not redirect to another domain. Its `group_home_url` links to the group's
-branded public homepage. An attached custom domain takes precedence over the
-configured homepage or `/portals/:slug` URL. A pending domain is not a homepage.
+`/orgs/:slug` is the group's public homepage, including its configured welcome
+copy, actions, artwork, all upcoming hosted events, resources and Branding tab.
+`/orgs/:slug/dashboard` holds management tools. Retired portal-page routes return
+404; there is no separate slug homepage or redirect alias. Attached custom domains
+remain presentation settings on the same organization. A pending domain is not a
+published homepage.
 
 Branding and domains are presentation configuration for the same group. They
 do not create accounts, credential stores, OAuth clients, or permission scopes.

@@ -73,7 +73,7 @@ Attach a provisioned custom domain:
 The tenant row is the source of truth for branding, routing, home behavior, and public URL generation:
 
 - `organization_id` links the tenant to an organization.
-- `slug` publishes the shared slug portal at `/portals/:slug`.
+- `slug` identifies site configuration internally; the public page uses the linked organization slug at `/orgs/:slug`.
 - `hostname` resolves an attached first-class custom domain.
 - `public_base_url` is the canonical base for generated public links.
 - `canonical_path_prefix` is `/p` for CodeCollective and empty for root-mounted tenant domains.
@@ -126,7 +126,7 @@ Do not paste secrets into an agent chat. Configure secrets through the deploymen
 
 1. Confirm organization row, slug, public profile, and at least one active owner/admin.
 2. Save the portal setup through MCP or the admin UI.
-3. Verify `/portals/:slug` on `https://codecollective.us/p`.
+3. Verify `/orgs/:organizationSlug` on `https://orgportal.cc`.
 4. Request the desired custom domain.
 5. Complete the operator checklist returned by MCP.
 6. Attach the provisioned custom domain.

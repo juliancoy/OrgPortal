@@ -61,8 +61,8 @@ describe('profile-aware authentication destinations', () => {
       member_home_path: '/chat',
       canonical_path_prefix: '/p',
     })
-    const callback = new URL(portalAuthCallbackUrl('/portals/test-org'))
-    expect(callback.toString()).toBe('https://codecollective.us/p/auth/callback?next=%2Fportals%2Ftest-org')
+    const callback = new URL(portalAuthCallbackUrl('/orgs/test-org'))
+    expect(callback.toString()).toBe('https://codecollective.us/p/auth/callback?next=%2Forgs%2Ftest-org')
   })
 
   it('uses the same-origin PIdP proxy for browser sessions on tenant domains', () => {
