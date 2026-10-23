@@ -13,7 +13,7 @@ type Org = { id:string; name:string; my_role?:string }
 export type PresentationApplication = { submission_id:string; organization_id:string; organization_name:string; title:string; summary:string; status:string; presenters:TeamPerson[] }
 export type PresentationFormAction = { kind: 'edit'; application: PresentationApplication } | { kind: 'delete'; submissionId: string }
 const emptyPresentationDraft = { submissionId: '', editing: '', presenting: 'manager', org: '', name: '', city: 'Baltimore', description: '', title: '', summary: '', people: '[]' }
-export function EventPresentations({eventId,formAction,onActionHandled}:{eventId:string;formAction?:PresentationFormAction|null;onActionHandled?:()=>void}) {
+export function EventPresentations({eventId,formAction,onActionHandled,onSaved}:{eventId:string;formAction?:PresentationFormAction|null;onActionHandled?:()=>void;onSaved?:()=>void}) {
  const {token,user}=useAuth()
  const [files,setFiles]=useState<StagedSubmissionAttachment[]>([])
  useEffect(()=>{setFiles([])},[eventId,user?.id])
@@ -91,7 +91,7 @@ export function EventPresentations({eventId,formAction,onActionHandled}:{eventId
    const submissionId=draft.value.submissionId||crypto.randomUUID();setField('submissionId',submissionId);
    await request(`${base}/${encodeURIComponent(submissionId)}`,'PUT',{organization_id:organizationId,title,summary,presenters});
    setField('editing','true');
-   try{for(const file of files){await uploadSubmissionAttachment(eventId,submissionId,file,token!);setFiles(previous=>previous.filter(item=>item.id!==file.id))}}catch(error){throw new Error(`Your application is saved, but an attachment could not upload: ${error instanceof Error?error.message:'Please retry'}. Your draft and remaining selected files are retained.`)}
+   try{for(const file of files){await uploadSubmissionAttachment(eventId,submissionId,file,token!);setFiles(previous=>previous.filter(item=>item.id!==file.id))}}catch(error){throw new Error(`Your application is saved, but an attachment could not upload: ${error instanceof Error?error.message:'Please retry'}. Your draft and remaining selected files are retained.`)}finally{onSaved?.()}
    draft.clear();setMessage(draft.value.editing?'Application updated.':'Application submitted to the event organizers.')
   })}}>
    {draft.value.editing&&<div><h3>Edit application</h3><button type="button" className="btn-secondary" onClick={()=>{draft.clear();setFiles([])}}>Cancel editing</button></div>}

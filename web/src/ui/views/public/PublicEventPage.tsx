@@ -280,6 +280,7 @@ export function PublicEventPage() {
   const brand = getActivePortalProfileConfig()
   const lifeTech = tenant?.home_org_slug === 'lifetech'
   const [presentationAction,setPresentationAction]=useState<PresentationFormAction|null>(null)
+  const [presentationRevision,setPresentationRevision]=useState(0)
   useEffect(()=>setPresentationAction(null),[slug])
   const [activeTab, setActiveTab] = useState<'info' | 'poster' | 'apply' | 'submissions'>('info')
   function selectEventTab(tab: 'info' | 'poster' | 'apply' | 'submissions') {
@@ -969,10 +970,10 @@ export function PublicEventPage() {
             {activeTab==='poster'&&<EventPosterTools sourceUrl={event.source_url} eventLinks={event.links} organizationSlug={event.organization_slug} organizationLinks={event.organization_links} slug={event.slug} title={event.title} revision={event.updated_at || ''} inline />}
           </section>
           <section className="public-event-tab-panel" role="tabpanel" id="event-apply-panel" aria-labelledby="event-apply-tab" hidden={activeTab!=='apply'}>
-          <EventPresentations key={`presentations-${event.id}`} eventId={event.id} formAction={presentationAction} onActionHandled={()=>setPresentationAction(null)} />
+          <EventPresentations key={`presentations-${event.id}`} eventId={event.id} formAction={presentationAction} onActionHandled={()=>setPresentationAction(null)} onSaved={()=>setPresentationRevision(value=>value+1)} />
           </section>
           <section className="public-event-tab-panel" role="tabpanel" id="event-submissions-panel" aria-labelledby="event-submissions-tab" hidden={activeTab!=='submissions'}>
-            {activeTab==='submissions'&&<EventSubmissions eventId={event.id} onEdit={application=>{setPresentationAction({kind:'edit',application});selectEventTab('apply')}} onDeleted={submissionId=>setPresentationAction({kind:'delete',submissionId})} />}
+            {activeTab==='submissions'&&<EventSubmissions key={`${event.id}:${presentationRevision}`} eventId={event.id} onEdit={application=>{setPresentationAction({kind:'edit',application});selectEventTab('apply')}} onDeleted={submissionId=>setPresentationAction({kind:'delete',submissionId})} />}
           </section>
         </main>
         <aside className="public-event-side public-event-luma-side" aria-label="Event actions and location">
