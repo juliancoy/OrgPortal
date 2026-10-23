@@ -1,3 +1,4 @@
+import { TenantBrandingPage } from './TenantBrandingPage'
 import { GlobalSearchForm } from '../components/GlobalSearchForm'
 import { useEffect, useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
@@ -79,7 +80,7 @@ function TenantHomeActions({ tenant }: { tenant: GroupSite }) {
   </div>
 }
 
-export function TenantHomePage() {
+export function TenantHomePage({brandGuideHref}:{brandGuideHref?:string}={}) {
   const profile = getActivePortalProfileConfig()
   const tenant = getGroupSite()
   const [events, setEvents] = useState<TenantEvent[]>([])
@@ -139,7 +140,7 @@ export function TenantHomePage() {
           </div>
         </section>
 
-        <OrganizationBrandGuide />
+        <OrganizationBrandGuide href={brandGuideHref} />
         <SpecialtyResourcesPanel resources={specialtyResources.slice(0, 4)} compact={specialtyResources.length > 4} />
 
         {tenant.home_org_slug && <section className="tenant-home-events" aria-labelledby="tenant-home-events-title">
@@ -201,7 +202,7 @@ export function TenantEventsHomePage() {
   </div>
 }
 
-export function TenantSlugHomePage() {
+export function TenantSlugHomePage({branding=false}:{branding?:boolean}={}) {
   const { tenantSlug } = useParams()
   const [status, setStatus] = useState('Loading portal...')
 
@@ -245,5 +246,7 @@ export function TenantSlugHomePage() {
     </div>
   }
 
-  return <TenantHomePage />
+  const brandGuidePath=`/portals/${encodeURIComponent(tenantSlug!)}/branding`
+  if(branding)return <div className="portal-shell tenant-home-shell"><Header /><main className="portal-main" tabIndex={-1}><div className="portal-container"><TenantBrandingPage brandGuidePath={brandGuidePath} /></div></main><Footer /></div>
+  return <TenantHomePage brandGuideHref={portalPath(brandGuidePath)} />
 }

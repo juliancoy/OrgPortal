@@ -7,7 +7,7 @@ import { claimOrganization } from '../src/organizationIam';
 
 function database() {
   const sql = new DatabaseSync(':memory:');
-  for (const file of ['0002_org_event_directories.sql', '0015_organization_iam.sql', '0017_event_mcp_operations.sql']) {
+  for (const file of ['0002_org_event_directories.sql', '0015_organization_iam.sql', '0017_event_mcp_operations.sql','0043_organization_media.sql']) {
     sql.exec(readFileSync(new URL(`../migrations/${file}`, import.meta.url), 'utf8'));
   }
   sql.exec("CREATE TABLE group_sites (id TEXT PRIMARY KEY, home_org_slug TEXT, feature_config TEXT NOT NULL DEFAULT '{}');\n CREATE TABLE onboarding_enrollments (group_site_id TEXT, user_id TEXT, completed_at TEXT, PRIMARY KEY(group_site_id,user_id));");
@@ -162,4 +162,64 @@ test('organization profile links are validated, reviewed, authorized and clearab
   const cleared=await run(db,identity,'update',{...clearing,confirm:true,previewId:clearPreview.previewId}) as any;
   assert.deepEqual(cleared.organization.links,[]);
  }finally{sql.close();}
+});
+
+test('native organization image upload previews metadata and applies scoped media once',async()=>{
+ const {db,sql}=database();const {runOrganizationProfileOperation:run}=await import('../src/organizationProfileMcp');
+ sql.exec("INSERT INTO organizations(id,name,slug) VALUES('org','Brand test','brand-test')");
+ await claimOrganization(db,'org',{id:identity.userId,name:'Owner',email:null,isOperator:false},new Date().toISOString());
+ const objects=new Map<string,Uint8Array>();
+ const images={PUBLIC_PORTAL_BASE_URL:'https://orgportal.cc',SCAN_IMAGES:{put:async(key:string,bytes:Uint8Array)=>{objects.set(key,bytes);return{}},delete:async(key:string)=>{objects.delete(key)}} as unknown as R2Bucket};
+ const dataBase64='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=';
+ const args={organizationId:'org',image_upload:{dataBase64,contentType:'image/png',label:'Primary identity',alt:'Brand test identity'}};
+ try{
+  await assert.rejects(run(db,{...identity,userId:'outsider'},'update',args,images),/management/);
+  const preview=await run(db,identity,'update',args,images) as any;
+  assert.equal(objects.size,0);assert.ok(!JSON.stringify(preview).includes(dataBase64));assert.equal(preview.image.contentType,'image/png');
+  assert.match(preview.after.image_url,/https:\/\/orgportal.cc\/api\/org\/api\/network\/orgs\/public\/brand-test\/media\/[0-9a-f]{64}$/);
+  const saved=await run(db,identity,'update',{...args,previewId:preview.previewId,confirm:true},images) as any;
+  assert.equal(saved.organization.image_url,preview.after.image_url);assert.equal(objects.size,1);
+  const media=JSON.parse(sql.prepare("SELECT media_json FROM organizations WHERE id='org'").get()!.media_json as string);
+  assert.equal(media.length,1);assert.ok(objects.has(media[0].image_key));assert.equal(media[0].alt,'Brand test identity');
+  await assert.rejects(run(db,identity,'update',{...args,previewId:preview.previewId,confirm:true},images),/used|changed/);
+  const again=await run(db,identity,'update',args,images) as any;await run(db,identity,'update',{...args,previewId:again.previewId,confirm:true},images);
+  assert.equal(objects.size,1);assert.equal(JSON.parse(String(sql.prepare("SELECT media_json FROM organizations WHERE id='org'").get()!.media_json)).length,1);
+  await assert.rejects(run(db,identity,'update',{...args,image_upload:{...args.image_upload,contentType:'image/jpeg'}},images),/declared type/);
+  await assert.rejects(run(db,identity,'update',{...args,image_upload:{...args.image_upload,dataBase64:btoa('<svg>active</svg>')}},images),/valid PNG/);
+ }finally{sql.close()}
+});
+
+test('MCP image URLs import bounded bytes into native storage and reject unsafe sources',async t=>{
+ const {db,sql}=database();const {runOrganizationProfileOperation:run}=await import('../src/organizationProfileMcp');
+ const {publicImageSource}=await import('../src/organizationBrandImage');
+ for(const url of ['http://public.example/image.png','https://localhost/image.png','https://127.0.0.1/image.png','https://[::1]/image.png','https://host.internal/image.png','https://example.com:444/image.png'])assert.throws(()=>publicImageSource(url));
+ sql.exec("INSERT INTO organizations(id,name,slug) VALUES('org','Brand test','brand-test')");
+ await claimOrganization(db,'org',{id:identity.userId,name:'Owner',email:null,isOperator:false},new Date().toISOString());
+ const bytes=new Uint8Array([137,80,78,71,13,10,26,10]);let writes=0;
+ const images={PUBLIC_PORTAL_BASE_URL:'https://orgportal.cc',SCAN_IMAGES:{put:async()=>{writes++;return{}},delete:async()=>{}} as unknown as R2Bucket};
+ t.mock.method(globalThis,'fetch',async(url,options)=>{assert.equal(options.redirect,'manual');return new Response(bytes,{headers:{'content-type':'image/png'}})});
+ const args={organizationId:'org',image_url:'https://images.example/identity.png'};
+ try{
+  const preview=await run(db,identity,'update',args,images) as any;assert.equal(writes,0);
+  await run(db,identity,'update',{...args,confirm:true,previewId:preview.previewId},images);assert.equal(writes,1);
+  assert.ok(!String(sql.prepare("SELECT image_url FROM organizations WHERE id='org'").get()!.image_url).includes('images.example'));
+  t.mock.method(globalThis,'fetch',async()=>new Response('redirect',{status:302,headers:{location:'https://localhost'}}));
+  await assert.rejects(run(db,identity,'update',args,images),/could not be downloaded/);
+  t.mock.method(globalThis,'fetch',async()=>new Response(bytes,{headers:{'content-length':String(9*1024*1024)}}));
+  await assert.rejects(run(db,identity,'update',args,images),/8 MB/);
+ }finally{sql.close()}
+});
+
+test('native upload rejects permission revocation during publication and cleans its object',async()=>{
+ const {db,sql}=database();const {runOrganizationProfileOperation:run}=await import('../src/organizationProfileMcp');
+ sql.exec("INSERT INTO organizations(id,name,slug) VALUES('org','Brand test','brand-test')");
+ await claimOrganization(db,'org',{id:identity.userId,name:'Owner',email:null,isOperator:false},new Date().toISOString());
+ const objects=new Set<string>();
+ const images={SCAN_IMAGES:{put:async(key:string)=>{objects.add(key);sql.exec("UPDATE organization_memberships SET status='inactive'");return{}},delete:async(key:string)=>{objects.delete(key)}} as unknown as R2Bucket};
+ const args={organizationId:'org',image_upload:{dataBase64:'iVBORw0KGgo=',contentType:'image/png'}};
+ try{
+  const preview=await run(db,identity,'update',args,images) as any;
+  await assert.rejects(run(db,identity,'update',{...args,previewId:preview.previewId,confirm:true},images),/permission changed/);
+  assert.equal(objects.size,0);assert.equal(sql.prepare("SELECT image_url FROM organizations WHERE id='org'").get()!.image_url,null);
+ }finally{sql.close()}
 });

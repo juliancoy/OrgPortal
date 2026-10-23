@@ -12,7 +12,7 @@ function assetUrl(value?: string | null) {
   return value.startsWith('/') ? portalPath(value) : value
 }
 
-export function TenantBrandingPage() {
+export function TenantBrandingPage({brandGuidePath='/branding'}:{brandGuidePath?:string}={}) {
   const tenant = getGroupSite()
   const profile = getActivePortalProfileConfig()
   const [copiedColor, setCopiedColor] = useState<string | null>(null)
@@ -46,7 +46,7 @@ export function TenantBrandingPage() {
     setExportMessage('')
     try {
       await downloadBrandGuide({ name: profile.brandName, tagline: profile.tagline, colors,
-        url: new URL(portalPath('/branding'), window.location.origin).href })
+        url: new URL(portalPath(brandGuidePath), window.location.origin).href })
       setExportMessage('Style guide downloaded.')
     } catch (error) {
       setExportMessage(error instanceof Error ? error.message : 'Could not download the style guide. Please try again.')

@@ -267,6 +267,7 @@ export function createAppRouter() {
     [{ element: <PortalProfileBoundary />, errorElement: <RouteErrorPage />, children: [
       { path: '/', element: <HomeRoute /> },
       { path: '/portals/:tenantSlug', element: <TenantSlugHomePage /> },
+      { path: '/portals/:tenantSlug/branding', element: <TenantSlugHomePage branding /> },
       { path: '/finance', element: <EconomicOpsPage /> },
       { path: '/departments', element: <DepartmentsPage /> },
       { path: '/ecops', element: <Navigate to="/finance" replace /> },

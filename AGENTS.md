@@ -49,6 +49,8 @@
   isolated local Docker. Use `web/scripts/test-local-team-form.py` for team
   applications, presenter selection, editing, attachments and favorites. Keep
   its dummy accounts, writable fixtures and mail delivery isolated locally.
+  Use `web/scripts/test-local-brand-guide.py` for shared portal branding,
+  configured palettes, PNG export, mobile layout and tenant-context restoration.
 - Include permission denial and tenant isolation tests when authorization
   changes; preservation, compatibility and retention checks when schemas change.
   Expand the suite for shared infrastructure changes, failures or unresolved risk.

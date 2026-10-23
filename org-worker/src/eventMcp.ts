@@ -1,3 +1,4 @@
+import {organizationImageSchema} from './organizationBrandImage';
 import { runPortalBrandingOperation, portalBrandingTargetSchema, portalBrandingUpdateSchema } from './portalBrandingMcp';
 import { runOrganizationDirectoryOperation, organizationOperationStatusSchema, type DirectoryOperation } from './organizationDirectoryOperations';
 import { directorySearchSchema, directoryTargetSchema } from './organizations/directory';
@@ -907,7 +908,7 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
     server.registerTool('apply_organization_tasks', { description: 'Assign the availability-calendar task to every active member after reviewing the preview. Requires confirm=true and a matching one-use previewId. Existing assignments are preserved without duplicates.', inputSchema: organizationTaskSchema, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }, _meta: metadata([portalReadScope, portalWriteScope]) }, taskResult);
     const profileResult = async (operation: 'get' | 'update' | 'status', args: unknown) => {
       try {
-        const data = await runOrganizationProfileOperation(env.DB, identity, operation, scopedArgs(args));
+        const data = await runOrganizationProfileOperation(env.DB, identity, operation, scopedArgs(args),env);
         return { content: [{ type: 'text' as const, text: JSON.stringify(data) }], structuredContent: data };
       } catch (error) {
         return { isError: true, content: [{ type: 'text' as const, text: await eventErrorResponse(error, env, request).text() }] };
@@ -915,10 +916,14 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
     };
     server.registerTool('get_organization_profile', { description: 'Read the current organization profile as an active member.',
       inputSchema: organizationProfileTargetSchema, annotations: { readOnlyHint: true }, _meta: metadata([portalReadScope]) }, args => profileResult('get', args));
-    server.registerTool('preview_organization_profile', { description: 'Preview profile edits without changing the organization. Requires live organization management permission.',
+    server.registerTool('preview_organization_profile', { description: 'Preview profile edits. Raster image URLs are imported into native OrgPortal media storage on apply. Direct bytes are supported by preview_organization_image_upload. Requires live management permission.',
       inputSchema: organizationProfileUpdateSchema, annotations: { readOnlyHint: true }, _meta: metadata([portalReadScope, portalWriteScope]) }, args => profileResult('update', { ...args, confirm: false }));
     server.registerTool('apply_organization_profile', { description: 'Save reviewed profile changes with confirm=true and the matching one-use previewId. Requires unchanged profile state and live management permission.',
       inputSchema: organizationProfileUpdateSchema, annotations: { readOnlyHint: false, destructiveHint: false }, _meta: metadata([portalReadScope, portalWriteScope]) }, args => profileResult('update', args));
+    const imageUploadSchema=z.object({organizationId:z.string().min(1).max(200),...organizationImageSchema.shape,previewId:z.string().uuid().optional()}).strict();
+    const imageArgs=(args:z.infer<typeof imageUploadSchema>,confirm:boolean)=>({organizationId:args.organizationId,previewId:args.previewId,confirm,image_upload:{dataBase64:args.dataBase64,contentType:args.contentType,label:args.label,alt:args.alt}});
+    server.registerTool('preview_organization_image_upload',{description:'Preview a PNG, JPEG, WebP or GIF upload (up to 8 MB) as the organization image. Supply standard base64 bytes; preview returns only metadata, never image bytes. Requires organization management access.',inputSchema:imageUploadSchema.omit({previewId:true}),annotations:{readOnlyHint:true},_meta:metadata([portalReadScope,portalWriteScope])},args=>profileResult('update',imageArgs(args,false)));
+    server.registerTool('apply_organization_image_upload',{description:'Upload the reviewed image into native OrgPortal media storage and set it as the organization image, using the matching one-use previewId. Rechecks live management access.',inputSchema:imageUploadSchema.extend({previewId:z.string().uuid()}),annotations:{readOnlyHint:false,destructiveHint:false},_meta:metadata([portalReadScope,portalWriteScope])},args=>profileResult('update',imageArgs(args,true)));
     server.registerTool('get_organization_profile_operation', { description: 'Inspect a profile edit receipt before retrying an uncertain write.',
       inputSchema: organizationProfileStatusSchema, annotations: { readOnlyHint: true }, _meta: metadata([portalReadScope]) }, args => profileResult('status', args));
     server.registerTool('list_organizations', { description: 'List only organizations where you have active membership. For public third-party directory records use search_organization_directory.',
