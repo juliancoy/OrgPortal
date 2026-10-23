@@ -1,18 +1,8 @@
+import { RegistrantAvatar } from '../../components/RegistrantAvatar'
 import { useEffect, useId, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { pidpAppLoginUrl } from '../../../config/pidp'
 import { loadAttendance, recordAttendanceWithRetry, type EventAttendance } from './attendanceApi'
-
-function RegistrantAvatar({ name, photoUrl }: { name: string; photoUrl: string | null }) {
-  const [failed, setFailed] = useState(false)
-  const initials = name.split(/\s+/).slice(0, 2).map((word) => word[0]).join('').toUpperCase()
-  return photoUrl && !failed ? (
-    <img src={photoUrl} alt="" width={44} height={44} loading="lazy" referrerPolicy="no-referrer"
-      onError={() => setFailed(true)} className="public-event-registrant-avatar" />
-  ) : (
-    <span aria-hidden="true" className="public-event-registrant-avatar public-event-registrant-initials">{initials || '?'}</span>
-  )
-}
 
 // The parent keys this component by event and account to reset state on navigation/sign-in.
 export function EventRegistration({ eventId, slug, token, authLoading = false, saveToCalendar, organizationName }: {

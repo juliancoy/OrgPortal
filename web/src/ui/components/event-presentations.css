@@ -50,13 +50,26 @@
 .submission-team { display: flex; align-items: center; gap: .75rem; margin-bottom: 1rem; }
 .presentation-submission > button { display: inline-flex; align-items: center; gap: .5rem; }
 
-.submission-attachments { min-width: 0; border: 1px solid var(--border); border-radius: 12px; padding: 1rem; margin: 1rem 0; }
-.submission-attachments legend, .submission-attachments h4 { font-weight: 600; display: flex; align-items: center; gap: .5rem; }
+.submission-attachments { min-width: 0; padding: 0; margin: .75rem 0; }
 .submission-attachments ul { list-style: none; padding: 0; display: grid; gap: .75rem; }
 .submission-attachments li { display: flex; gap: .75rem; align-items: center; justify-content: space-between; min-width: 0; flex-wrap: wrap; }
 .submission-attachments li > span { overflow-wrap: anywhere; }
 .submission-attachment-link { display: flex; align-items: center; gap: .75rem; min-width: 0; flex: 1; overflow-wrap: anywhere; }
-.submission-attachment-link img { width: 88px; height: 68px; object-fit: contain; border-radius: 8px; }
+.submission-attachment-link img { width: 40px; height: 40px; object-fit: contain; border-radius: 8px; }
 .submission-attachment-link small { display: block; color: var(--text-muted); margin-top: .3rem; }
-.submission-attachments input[type=file] { max-width: 100%; min-width: 0; font-size: .85rem; }
-.submission-attachments input[type=file]::file-selector-button { min-height: 44px; padding: .6rem .9rem; margin-right: .6rem; border: 1px solid var(--primary); border-radius: 999px; background: var(--panel); color: var(--primary); font: inherit; font-weight: 600; cursor: pointer; }
+
+/* Keep submission cards compact; selected and uploaded files remain accessible. */
+.submission-attachment-picker { min-width: 0; }
+.submission-attachment-picker input[type=file] { display: none; }
+.submission-attachment-add { display: inline-flex; align-items: center; justify-content: center; gap: .15rem; min-width: 44px; min-height: 44px; padding: .5rem; }
+.submission-attachment-picker ul { list-style: none; padding: 0; display: grid; gap: .5rem; }
+.submission-attachment-picker li { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem; }
+.submission-attachment-picker li > span { overflow-wrap: anywhere; }
+.submission-presenters { margin: .75rem 0; }
+.submission-presenter-summary { display: inline-flex; flex-wrap: wrap; justify-content: flex-start; width: fit-content; max-width: 100%; cursor: pointer; list-style: none; }
+.submission-presenter-summary::-webkit-details-marker { display: none; }
+.submission-presenter-summary .public-event-registrants { min-width: 0; max-width: none; }
+.submission-presenter-list { list-style: none; padding: 0; display: grid; gap: .65rem; }
+.submission-presenter-list li { display: flex; align-items: center; gap: .65rem; }
+.submission-presenter-list small { display: block; color: var(--text-muted); }
+.submission-presenters-empty { font-size: .85rem; }

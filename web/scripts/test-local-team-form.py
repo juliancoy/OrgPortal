@@ -214,6 +214,9 @@ with sync_playwright() as p:
         public_team=public_submissions.locator('.presentation-submission').filter(has=guest.get_by_role('heading',name='A local demo',exact=True))
         expect(public_team.get_by_role('img',name='demo-image.png',exact=True)).to_be_visible()
         presenters=public_team.get_by_role('region',name='Presenters',exact=True)
+        expect(presenters.locator('summary')).to_contain_text('3 presenters')
+        expect(presenters.locator('summary .public-event-registrant')).to_have_count(3)
+        presenters.locator('summary').click()
         expect(presenters.get_by_text(f'Dummy host {run_id}',exact=True)).to_be_visible()
         expect(presenters.get_by_text(f'Dummy colleague {run_id}',exact=True)).to_be_visible()
         assert f'Dummy applicant {run_id}' not in presenters.inner_text() and invitation_email not in presenters.inner_text()
@@ -222,6 +225,17 @@ with sync_playwright() as p:
             response=guest.request.get(BASE+link.get_attribute('href'))
             assert response.ok and response.headers['content-type']==content_type
         own_team=submissions.locator('.presentation-submission').filter(has=page.get_by_role('heading',name='A local demo',exact=True))
+        expect(own_team.get_by_role('heading',name='Attachments',exact=True)).to_have_count(0)
+        with page.expect_file_chooser() as selected:
+            own_team.get_by_role('button',name='Add attachments',exact=True).click()
+        selected.value.set_files({'name':'extra.txt','mimeType':'text/plain','buffer':b'Extra local attachment'})
+        own_team.get_by_role('button',name='Upload attachments',exact=True).click()
+        expect(own_team.get_by_role('link').filter(has_text='extra.txt')).to_be_visible(timeout=30000)
+        for width in [1280,390]:
+            page.set_viewport_size({'width':width,'height':1000})
+            expect(own_team.locator('.submission-presenter-summary')).to_contain_text('3 presenters')
+            assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
+            own_team.screenshot(path=str(REPORT/f'compact-submission-{width}.png'))
         own_team.get_by_role('button',name='Delete attachment demo-summary.pdf',exact=True).click()
         expect(own_team.get_by_role('link').filter(has_text='demo-summary.pdf')).to_have_count(0,timeout=30000)
         manager.get_by_role('tab',name='Submissions',exact=True).click()
