@@ -28,5 +28,6 @@ private portraits and canonical account IDs do not appear in that projection.
 
 Migration 0102 is additive: existing memberships get an empty title list. Old
 Workers ignore the added field, so rolling back code preserves assignments.
-Review/apply the migration separately before deployment. See the privacy policy
+Migration 0103 updates the existing membership audit triggers to include titles.
+Review/apply both migrations separately before deployment. See the privacy policy
 for membership deletion and backup restoration handling.

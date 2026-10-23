@@ -178,3 +178,19 @@ test('availability visibility changes are audited atomically and no-op saves are
   assert.equal(f.primary.sqlite.prepare("SELECT COUNT(*) n FROM change_journal WHERE table_name='profile_availability_settings'").get()!.n,2)
  } finally { f.close() }
 })
+
+
+test('title-only membership edits are journaled atomically and retained on deletion', () => {
+  const f = fixture()
+  try {
+    f.primary.sqlite.exec("INSERT INTO organizations(id,name,slug) VALUES('board','Board','board')")
+    f.primary.sqlite.exec("INSERT INTO organization_memberships(organization_id,user_id,role,status) VALUES('board','officer','member','active')")
+    f.primary.sqlite.prepare("UPDATE organization_memberships SET titles_json=? WHERE organization_id='board' AND user_id='officer'").run(JSON.stringify(['CTO','Advisor']))
+    const row=f.primary.sqlite.prepare("SELECT before_json,after_json FROM change_journal WHERE table_name='organization_memberships' AND operation='update' ORDER BY sequence DESC LIMIT 1").get()!
+    assert.equal(JSON.parse(String(row.before_json)).titles_json,'[]')
+    assert.deepEqual(JSON.parse(JSON.parse(String(row.after_json)).titles_json),['CTO','Advisor'])
+    f.primary.sqlite.exec("DELETE FROM organization_memberships WHERE organization_id='board' AND user_id='officer'")
+    const removed=f.primary.sqlite.prepare("SELECT before_json FROM change_journal WHERE table_name='organization_memberships' AND operation='delete' ORDER BY sequence DESC LIMIT 1").get()!
+    assert.deepEqual(JSON.parse(JSON.parse(String(removed.before_json)).titles_json),['CTO','Advisor'])
+  } finally { f.close() }
+})

@@ -327,4 +327,7 @@ Clearing titles removes the person from the Board immediately. Removing the
 membership deletes its titles. Support erasure clears `titles_json` on the
 verified subject's memberships; repeat verified deletions on a restored backup
 before serving it. Title previews use the existing expiring operation receipts;
-title assignment does not create an additional history store or grant permissions.
+title assignment does not grant permissions. Changes also enter the existing
+atomic membership audit journal, including before/after titles, under its existing
+restricted access, retention and backup rules; clearing the live field does not
+remove immutable journal history. No additional history store is created.

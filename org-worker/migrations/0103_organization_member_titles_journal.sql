@@ -1,0 +1,18 @@
+-- Include informational titles in the existing atomic membership audit journal.
+-- Replacing triggers preserves all existing journal records and replica exclusions.
+UPDATE change_journal_coverage SET columns_json='["organization_id", "user_id", "user_name", "user_email", "role", "status", "created_at", "updated_at", "pending_organizer", "onboarding_group_site_id", "titles_json"]' WHERE table_name='organization_memberships';
+DROP TRIGGER "journal_organization_memberships_insert";
+CREATE TRIGGER "journal_organization_memberships_insert" AFTER INSERT ON "organization_memberships"
+WHEN NOT EXISTS(SELECT 1 FROM organization_replica_state WHERE source IS NOT NULL)
+BEGIN INSERT INTO change_journal(table_name,record_key,operation,before_json,after_json)
+ VALUES('organization_memberships',json_object('organization_id',NEW."organization_id",'user_id',NEW."user_id"),'insert',NULL,json_object('organization_id',NEW."organization_id",'user_id',NEW."user_id",'user_name',NEW."user_name",'user_email',NEW."user_email",'role',NEW."role",'status',NEW."status",'created_at',NEW."created_at",'updated_at',NEW."updated_at",'pending_organizer',NEW."pending_organizer",'onboarding_group_site_id',NEW."onboarding_group_site_id",'titles_json',NEW."titles_json")); END;
+DROP TRIGGER "journal_organization_memberships_update";
+CREATE TRIGGER "journal_organization_memberships_update" AFTER UPDATE ON "organization_memberships"
+WHEN NOT EXISTS(SELECT 1 FROM organization_replica_state WHERE source IS NOT NULL) AND NOT(OLD."organization_id" IS NEW."organization_id" AND OLD."user_id" IS NEW."user_id" AND OLD."user_name" IS NEW."user_name" AND OLD."user_email" IS NEW."user_email" AND OLD."role" IS NEW."role" AND OLD."status" IS NEW."status" AND OLD."created_at" IS NEW."created_at" AND OLD."updated_at" IS NEW."updated_at" AND OLD."pending_organizer" IS NEW."pending_organizer" AND OLD."onboarding_group_site_id" IS NEW."onboarding_group_site_id" AND OLD."titles_json" IS NEW."titles_json")
+BEGIN INSERT INTO change_journal(table_name,record_key,operation,before_json,after_json)
+ VALUES('organization_memberships',json_object('organization_id',NEW."organization_id",'user_id',NEW."user_id"),'update',json_object('organization_id',OLD."organization_id",'user_id',OLD."user_id",'user_name',OLD."user_name",'user_email',OLD."user_email",'role',OLD."role",'status',OLD."status",'created_at',OLD."created_at",'updated_at',OLD."updated_at",'pending_organizer',OLD."pending_organizer",'onboarding_group_site_id',OLD."onboarding_group_site_id",'titles_json',OLD."titles_json"),json_object('organization_id',NEW."organization_id",'user_id',NEW."user_id",'user_name',NEW."user_name",'user_email',NEW."user_email",'role',NEW."role",'status',NEW."status",'created_at',NEW."created_at",'updated_at',NEW."updated_at",'pending_organizer',NEW."pending_organizer",'onboarding_group_site_id',NEW."onboarding_group_site_id",'titles_json',NEW."titles_json")); END;
+DROP TRIGGER "journal_organization_memberships_delete";
+CREATE TRIGGER "journal_organization_memberships_delete" AFTER DELETE ON "organization_memberships"
+WHEN NOT EXISTS(SELECT 1 FROM organization_replica_state WHERE source IS NOT NULL)
+BEGIN INSERT INTO change_journal(table_name,record_key,operation,before_json,after_json)
+ VALUES('organization_memberships',json_object('organization_id',OLD."organization_id",'user_id',OLD."user_id"),'delete',json_object('organization_id',OLD."organization_id",'user_id',OLD."user_id",'user_name',OLD."user_name",'user_email',OLD."user_email",'role',OLD."role",'status',OLD."status",'created_at',OLD."created_at",'updated_at',OLD."updated_at",'pending_organizer',OLD."pending_organizer",'onboarding_group_site_id',OLD."onboarding_group_site_id",'titles_json',OLD."titles_json"),NULL); END;
