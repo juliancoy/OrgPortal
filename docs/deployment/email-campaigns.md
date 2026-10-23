@@ -163,3 +163,42 @@ campaign/delivery metadata, failure protection and temporary bounce receipts;
 excludes future private campaign/sender journal copies without deleting old
 history; and adds a per-campaign recipient uniqueness constraint. The unique index rejects preexisting duplicate recipients atomically instead of deleting or merging delivery history. No email is queued
 or sent by the migration or a report import. See the privacy retention schedule.
+
+## Delivery recovery and provider cooldowns
+
+Rate-limit rejections retain the existing bounded retry count and one-hour
+minimum cooldown. A valid `Retry-After` header, in seconds or HTTP-date form,
+can extend both the delivery's next attempt and the shared sender cooldown.
+Account-status notifications use the same provider delay. Invalid headers fall
+back to one hour.
+
+Network failures, server errors and acceptance without a Gmail receipt remain
+uncertain and are never retried automatically. A stale `sending` delivery after
+a worker interruption also pauses its campaign before further campaign dispatch.
+Reconcile the uncertain recipient against Gmail Sent mail using the existing
+campaign reconciliation action before approving a fresh resume preview. Account
+notifications stop their current batch on an uncertain result as well.
+
+These controls do not change domain authentication or request additional Google
+permissions. All formatting and tracking are completed before Gmail submission;
+Google supplies the outbound DKIM signature. Validate a received copy's headers
+when enabling a new sender or verified send-as alias.
+
+## Campaign operator dashboard
+
+The existing email dashboard includes readiness checks, separate delivery outcome
+counts, provider cooldown and scheduling notices, and searchable recipient/status
+filters. Campaign totals exclude test/review copies; bounces are separated from
+Gmail-accepted messages without reported failures. Gmail acceptance is not proof
+of inbox delivery. Known permanent failures are excluded from bulk subscriber
+choices as well as checked again by dispatch.
+
+Before sending or resuming, inspect the personalized self-test and confirm the
+message, audience, exclusions and local send time in the final review. Outreach
+batch review shows the configured batch size and remaining eligible recipients.
+Uncertain sends open an account-specific Gmail Sent search and an inline form
+for a receipt and supporting evidence. An empty search is not proof of failure.
+Reconciliation does not resend or resume; all campaign types require uncertain
+outcomes to be resolved before send/resume. Refresh status after reviewing a
+batch or syncing bounces. These UI controls add no credentials or personal-data
+stores; the existing preview receipts, audit and reconciliation records apply.

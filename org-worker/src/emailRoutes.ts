@@ -22,8 +22,8 @@ async function ownCampaign(env: Env, id: string, ownerId: string) {
 async function audience(env: Env, event: EmailEvent, kind: string, selected: unknown) {
   const type = kind === 'event' ? 'event' : 'organization';
   const topicId = type === 'event' ? event.id : event.host_org_id;
-  const rows = await env.DB.prepare("SELECT * FROM email_subscriptions WHERE topic_type = ? AND topic_id = ? AND status = 'subscribed' AND NOT EXISTS(SELECT 1 FROM email_contact_suppressions x WHERE x.organization_id=? AND x.email=email_subscriptions.email) ORDER BY email LIMIT 1001")
-    .bind(type, topicId, event.host_org_id).all<EmailSubscription>();
+  const rows = await env.DB.prepare("SELECT * FROM email_subscriptions WHERE topic_type = ? AND topic_id = ? AND status = 'subscribed' AND NOT EXISTS(SELECT 1 FROM email_contact_suppressions x WHERE x.organization_id=? AND x.email=email_subscriptions.email) AND NOT EXISTS(SELECT 1 FROM email_bounces b WHERE b.organization_id=? AND b.email=email_subscriptions.email) ORDER BY email LIMIT 1001")
+    .bind(type, topicId, event.host_org_id, event.host_org_id).all<EmailSubscription>();
   if ((rows.results || []).length > 1000) emailFail(400, 'Use an audience of 1,000 or fewer subscribers for this sender.');
   if (kind !== 'selected') return rows.results || [];
   if (!Array.isArray(selected) || selected.length > 1000 || selected.some((id) => typeof id !== 'string')) emailFail(400, 'Select subscribers for this campaign.');
@@ -264,6 +264,7 @@ export function emailRoutes(getUser: GetActor) {
     if(campaign.report_only)emailFail(409,'This is an imported report; it cannot send messages.');
     const sender = await senderFor(c.env, user.id);
     if (c.env.EMAIL_SENDING_ENABLED !== 'true' || sender?.status !== 'connected' || sender.email !== campaign.sender_email) emailFail(409, 'Email sending is not enabled or the sender needs reconnecting.');
+    if (await c.env.DB.prepare("SELECT id FROM email_deliveries WHERE campaign_id=? AND status='uncertain' LIMIT 1").bind(campaign.id).first()) emailFail(409,'Record verified outcomes for uncertain sends before continuing. No uncertain message will be resent.');
     if (campaign.status !== 'draft') emailFail(409, 'This campaign has already been queued.');
     if (!await hasSuccessfulSelfTest(c.env, campaign)) emailFail(409, 'Send a test email to yourself first and wait until Gmail accepts it before sending or scheduling this campaign.');
     const preview = await campaignPreview(c.env, campaign);
@@ -299,6 +300,7 @@ export function emailRoutes(getUser: GetActor) {
     if(campaign.report_only)emailFail(409,'Imported reports cannot send messages.');
     const sender = await senderFor(c.env, user.id);
     if (campaign.status !== 'paused' || sender?.status !== 'connected' || sender.email !== campaign.sender_email || c.env.EMAIL_SENDING_ENABLED !== 'true') emailFail(409, 'Reconnect the sender and enable sending before resuming this campaign.');
+    if (await c.env.DB.prepare("SELECT id FROM email_deliveries WHERE campaign_id=? AND status='uncertain' LIMIT 1").bind(campaign.id).first()) emailFail(409,'Record verified outcomes for uncertain sends before continuing. No uncertain message will be resent.');
     if (!await hasSuccessfulSelfTest(c.env, campaign)) emailFail(409, 'Send a successful test email to yourself before resuming this campaign.');
     if(campaign.audience_mode==='outreach') {
       const preview=await campaignPreview(c.env,campaign),payload=await c.req.json().catch(()=>({})) as {fingerprint?:string;preview_id?:string;confirm?:boolean};

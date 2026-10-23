@@ -85,12 +85,13 @@ export async function runOrganizationStatusEmail(env:Env) {
       if(!claimed)continue;
       await env.DB.prepare('INSERT INTO email_send_attempts (id,sender_user_id,attempted_at) VALUES (?,?,?)').bind(crypto.randomUUID(),sender.owner_user_id,Date.now()).run();
       const result=await sendGmail(token,raw),retry=result.status==='retry'&&row.attempts<3;
+      const retryAt=Date.now()+(result.retryAfterMs||3_600_000);
       const status=retry?'queued':result.status==='retry'?'failed':result.status;
       await env.DB.prepare("UPDATE organization_status_notifications SET email_status=?,gmail_message_id=?,sent_at=?,error=?,next_attempt_at=? WHERE id=? AND email_status='sending'")
-        .bind(status,result.id||null,status==='sent'?Date.now():null,result.error||null,retry?Date.now()+3_600_000:0,row.id).run();
+        .bind(status,result.id||null,status==='sent'?Date.now():null,result.error||null,retry?retryAt:0,row.id).run();
       if(result.reconnect)await env.DB.prepare("UPDATE email_senders SET status='reconnect' WHERE owner_user_id=? AND lease_owner=?").bind(sender.owner_user_id,lease).run();
-      if(result.status==='retry')await env.DB.prepare('UPDATE email_senders SET cooldown_until=? WHERE owner_user_id=? AND lease_owner=?').bind(Date.now()+3_600_000,sender.owner_user_id,lease).run();
-      if(result.reconnect||result.status==='retry')break;
+      if(result.status==='retry')await env.DB.prepare('UPDATE email_senders SET cooldown_until=? WHERE owner_user_id=? AND lease_owner=?').bind(retryAt,sender.owner_user_id,lease).run();
+      if(result.reconnect||result.status==='retry'||result.status==='uncertain')break;
     }
   } finally {await env.DB.prepare('UPDATE email_senders SET lease_until=0,lease_owner=NULL WHERE owner_user_id=? AND lease_owner=?').bind(sender.owner_user_id,lease).run();}
 }

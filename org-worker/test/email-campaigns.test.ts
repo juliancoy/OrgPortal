@@ -574,3 +574,60 @@ test('opted-in bounce monitoring continues after the outbox is empty without sub
  t.mock.method(globalThis,'fetch',async(input:string|URL|Request)=>{const url=String(input);if(url==='https://oauth2.googleapis.com/token')return Response.json({access_token:'test-access'});if(url.startsWith('https://gmail.googleapis.com/gmail/v1/users/me/messages?')){scans++;return Response.json({messages:[]})}throw Error('Unexpected network request')});
  await runEmailDelivery(env);assert.equal(scans,1);assert.equal(database.prepare('SELECT count(*) n FROM email_send_attempts').get()!.n,0);
 });
+
+test('crashed sends pause their campaign before dispatching further recipients', async t => {
+  const { env, request, database } = setup(t);
+  let sent = 0;
+  network(t, async () => { sent++; return Response.json({id:'unexpected'}); });
+  await connect(env); await subscribe(env); await subscribe(env,'bob');
+  const draft = await (await request('/campaigns','POST',payload)).json();
+  recordSelfTest(database,draft.id);
+  const preview = await (await request(`/campaigns/${draft.id}`)).json();
+  assert.equal((await request(`/campaigns/${draft.id}/send`,'POST',{fingerprint:preview.fingerprint,preview_id:preview.preview_id,confirm:true})).status,200);
+  database.prepare("UPDATE email_deliveries SET status='sending',attempted_at=? WHERE email='alice@example.test' AND campaign_id=?").run(Date.now()-240_000,draft.id);
+  await runEmailDelivery(env);
+  assert.equal(sent,0);
+  assert.equal(database.prepare('SELECT status FROM email_campaigns WHERE id=?').get(draft.id)!.status,'paused');
+  assert.equal(database.prepare("SELECT status FROM email_deliveries WHERE email='alice@example.test' AND campaign_id=?").get(draft.id)!.status,'uncertain');
+  assert.equal(database.prepare("SELECT status FROM email_deliveries WHERE email='bob@example.test' AND campaign_id=?").get(draft.id)!.status,'queued');
+});
+
+test('provider retry delay defers both delivery and shared sender without retrying immediately', async t => {
+  const { env, request, database } = setup(t);
+  let sent = 0;
+  network(t, async () => { sent++; return new Response('',{status:429,headers:{'Retry-After':'7200'}}); });
+  await connect(env); await subscribe(env);
+  const draft = await (await request('/campaigns','POST',payload)).json();
+  recordSelfTest(database,draft.id);
+  const preview = await (await request(`/campaigns/${draft.id}`)).json();
+  assert.equal((await request(`/campaigns/${draft.id}/send`,'POST',{fingerprint:preview.fingerprint,preview_id:preview.preview_id,confirm:true})).status,200);
+  const before = Date.now();
+  await runEmailDelivery(env); await runEmailDelivery(env);
+  assert.equal(sent,1);
+  const delivery=database.prepare("SELECT status,next_attempt_at FROM email_deliveries WHERE kind='campaign' AND campaign_id=?").get(draft.id)!;
+  assert.equal(delivery.status,'queued');
+  assert.ok(Number(delivery.next_attempt_at)>=before+7_190_000);
+  assert.equal(database.prepare("SELECT cooldown_until FROM email_senders WHERE owner_user_id='admin'").get()!.cooldown_until,delivery.next_attempt_at);
+});
+
+test('operator recovery blocks subscriber resume until every uncertain outcome is reconciled', async t => {
+  const {env,request,database}=setup(t); network(t); await connect(env); await subscribe(env);
+  const draft=await(await request('/campaigns','POST',payload)).json(); recordSelfTest(database,draft.id);
+  database.prepare("UPDATE email_campaigns SET status='paused' WHERE id=?").run(draft.id);
+  database.prepare("UPDATE email_deliveries SET status='uncertain' WHERE campaign_id=? AND kind='campaign'").run(draft.id);
+  const blocked=await request(`/campaigns/${draft.id}/resume`,'POST',{});
+  assert.equal(blocked.status,409); assert.match((await blocked.json()).detail,/verified outcomes/);
+  const delivery=database.prepare("SELECT id FROM email_deliveries WHERE campaign_id=? AND kind='campaign'").get(draft.id)!;
+  assert.equal((await request(`/outreach/${draft.id}/reconcile`,'POST',{deliveryId:delivery.id,status:'failed',evidence:'Provider audit confirmed this message was not submitted.'})).status,200);
+  assert.equal((await request(`/campaigns/${draft.id}/resume`,'POST',{})).status,200);
+  assert.equal(database.prepare('SELECT status FROM email_deliveries WHERE id=?').get(delivery.id)!.status,'failed');
+});
+
+test('operator bulk recipient choices exclude known permanent failures in group and event audiences', async t => {
+  const {env,request,database}=setup(t); network(t); await subscribe(env,'good','organization','org-1'); await subscribe(env,'bad','organization','org-1');
+  database.prepare("INSERT INTO email_bounces(organization_id,email,reason,source_message_id,first_seen_at,updated_at) VALUES('org-1','bad@example.test','550 unavailable','notice',1,1)").run();
+  for(const path of ['/groups/org-1/audience','/audience/event-1']) {
+    const response=await request(path); assert.equal(response.status,200);
+    const result=await response.json(); assert.deepEqual(result.contacts.map((r:{email:string})=>r.email),['good@example.test']);
+  }
+});
