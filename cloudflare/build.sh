@@ -11,6 +11,5 @@ if ! python3 -c 'import sqlite3' >/dev/null 2>&1; then
 fi
 npm ci --prefix web
 npm ci --prefix org-worker
-npm ci --prefix chat-worker
 node scripts/release.mjs check all
 node scripts/release.mjs build all

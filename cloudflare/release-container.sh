@@ -10,7 +10,9 @@ case "${1:-}" in
   check|build|deploy|verify) ;;
   *) echo 'Use python3 ../run.py --release check|build|deploy|verify --target all|web|api' >&2; exit 2 ;;
 esac
-for package in web org-worker chat-worker; do
+packages=(org-worker)
+if [[ "${2:-all}" != api ]]; then packages+=(web); fi
+for package in "${packages[@]}"; do
   fingerprint="$(sha256sum "$package/package-lock.json" cloudflare/release-image.txt | sha256sum)"
   marker="$package/node_modules/.orgportal-release-dependencies"
   if [[ ! -f "$marker" ]] || [[ "$(cat "$marker")" != "$fingerprint" ]]; then
