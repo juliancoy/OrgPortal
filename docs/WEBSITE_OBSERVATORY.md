@@ -31,7 +31,8 @@ backups and operational journal exclusions.
 
 Configure the `WEBSITE_OBSERVATORY_TOKEN` Worker secret and the probe's mode-0600
 `~/.config/lan-monitor/orgportal.json` with the same `token`. It must never be a PIdP
-account token or be placed in frontend files, build vars, logs or URLs. Rotate the
+account token or be placed in frontend files, build vars, logs or URLs. The probe sends the explicit `OrgPortalWebsiteProbe/1.0` user agent; generic
+Python user agents may be rejected by the site edge policy. Rotate the
 Worker secret and host file together. The probe uploads only synthetic website
 observations, never LAN-device inventory. The standalone probe lives in `tools/website-probe/`, runs with Playwright and
 `/usr/bin/google-chrome`, and stores its local SQLite history and sync ledger under

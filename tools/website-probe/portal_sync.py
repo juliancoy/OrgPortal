@@ -19,7 +19,7 @@ class PortalSync:
 
     def request(self,path,body=None):
         config=json.loads(self.config.read_text())
-        request=urllib.request.Request(BASE+path,data=json.dumps(body).encode() if body is not None else None,headers={'Authorization':'Bearer '+config['token'],'Content-Type':'application/json'})
+        request=urllib.request.Request(BASE+path,data=json.dumps(body).encode() if body is not None else None,headers={'Authorization':'Bearer '+config['token'],'Content-Type':'application/json','User-Agent':'OrgPortalWebsiteProbe/1.0'})
         with urllib.request.urlopen(request,timeout=15) as response:return json.load(response)
 
     def save(self):
