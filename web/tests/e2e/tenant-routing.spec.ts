@@ -152,8 +152,7 @@ async function mockTenant(page: Page, options: MockTenantOptions = {}) {
   let loggedIn = Boolean(options.initiallyLoggedIn)
   await page.route('**/api/org/**', route => {
     const path = new URL(route.request().url()).pathname
-    if (path.endsWith('/portal/site')) {
-      return route.fulfill({ json: {
+    const brandingSite = {
         id: 'baltimore-medtech',
         hostname: 'medtech.social',
         name: 'Baltimore MedTech',
@@ -175,8 +174,13 @@ async function mockTenant(page: Page, options: MockTenantOptions = {}) {
         public_base_url: 'https://medtech.social',
         canonical_path_prefix: '',
         feature_config: { externalCalendarUrl: 'https://medtech.social/calendar.html' },
-      } })
-    }
+      }
+    if (path.endsWith('/portal/site')) return route.fulfill({ json: brandingSite })
+    if (path.endsWith('/network/orgs/public/baltimore-medtech/branding')) return route.fulfill({ json: { portal: brandingSite } })
+    if (path.endsWith('/network/orgs/public/baltimore-medtech')) return route.fulfill({ json: {
+      id: 'org-medtech', slug: 'baltimore-medtech', name: 'Baltimore MedTech', description: 'A synthetic community fixture.',
+      image_url: brandingSite.brand_image_path, membership_count: 0, upcoming_events_count: 0, pending_challenges_count: 0, is_disputed: false,
+    } })
     if (path.includes('/photo-tags/')) return route.fulfill({ json: { tags: [], canEdit: false } })
     if (path.endsWith('/company-votes/public')) return route.fulfill({ json: { available: false, closed: false, closes_at: null, companies: [] } })
     if (path.endsWith('/admin/me')) return route.fulfill({ json: { is_sysadmin: false } })
@@ -339,7 +343,7 @@ test('tenant brand guide uses the active organization identity', async ({ page }
   await expect.poll(() => page.evaluate(() => (window as unknown as { __copiedBrandColor?: string }).__copiedBrandColor)).toBe('#0f6f8f')
 
   await page.goto(portal('/branding.html'))
-  await expect(page).toHaveURL(/\/branding$/)
+  await expect(page).toHaveURL(/\/orgs\/baltimore-medtech\?tab=branding$/)
 })
 
 test('tenant event auth actions return to the same root-mounted event', async ({ page }) => {
