@@ -19,10 +19,10 @@ export function SubmissionAttachmentPicker({files,onChange,disabled=false}:{file
   {error&&<p role="alert">{error}</p>}
  </fieldset>
 }
-export function SubmissionAttachments({eventId,organizationId,initial=emptyAttachments,canManage=false}:{eventId:string;organizationId:string;initial?:SubmissionAttachment[];canManage?:boolean}){
+export function SubmissionAttachments({eventId,submissionId,initial=emptyAttachments,canManage=false}:{eventId:string;submissionId:string;initial?:SubmissionAttachment[];canManage?:boolean}){
  const {token}=useAuth(),[attachments,setAttachments]=useState(initial),[files,setFiles]=useState<StagedSubmissionAttachment[]>([]),[busy,setBusy]=useState(false),[error,setError]=useState('')
  useEffect(()=>{setAttachments(initial)},[initial])
- const base=attachmentBase(eventId,organizationId)
+ const base=attachmentBase(eventId,submissionId)
  async function refresh(){const data=await attachmentRequest(base,null);setAttachments(data.attachments)}
  return <section className="submission-attachments" aria-label="Submission attachments">
   <h4><Paperclip size={18} aria-hidden="true" /> Attachments</h4>
@@ -37,7 +37,7 @@ export function SubmissionAttachments({eventId,organizationId,initial=emptyAttac
    }}><Trash2 size={16} aria-hidden="true" /> Remove</button>}
   </li>)}</ul>
   {canManage&&token&&<><SubmissionAttachmentPicker files={files} onChange={setFiles} disabled={busy} />{!!files.length&&<button type="button" className="btn-primary" disabled={busy} onClick={()=>{
-   setBusy(true);setError('');void(async()=>{for(const file of files){await uploadSubmissionAttachment(eventId,organizationId,file,token);setFiles(previous=>previous.filter(item=>item.id!==file.id))}await refresh()})().catch(reason=>{setError(reason.message);void refresh().catch(()=>{})}).finally(()=>setBusy(false))
+   setBusy(true);setError('');void(async()=>{for(const file of files){await uploadSubmissionAttachment(eventId,submissionId,file,token);setFiles(previous=>previous.filter(item=>item.id!==file.id))}await refresh()})().catch(reason=>{setError(reason.message);void refresh().catch(()=>{})}).finally(()=>setBusy(false))
   }}>{busy?'Uploading…':'Upload attachments'}</button>}</>}
   {error&&<p role="alert">{error}</p>}
  </section>

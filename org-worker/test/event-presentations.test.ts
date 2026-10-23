@@ -50,18 +50,18 @@ test('management, isolation, review, closing, expiry and withdrawal',async()=>{
  assert.equal((await f.request('/team','PUT','stranger',proposal)).status,403);
  assert.equal((await f.request('/team','PUT','applicant',proposal)).status,200);
  assert.equal((await f.request('/team','PUT','applicant',proposal)).status,200);
- assert.equal(f.db.rows('SELECT * FROM event_presentation_submissions').length,1);
+ assert.equal(f.db.rows('SELECT * FROM event_submissions').length,1);
  assert.equal((await (await f.request('','GET','stranger')).json() as any).submissions.length,0);
  assert.equal((await (await f.request('','GET','host')).json() as any).submissions.length,1);
  assert.equal((await f.request('/team','PATCH','applicant',{status:'accepted'})).status,403);
  assert.equal((await f.request('/team','PATCH','host',{status:'accepted'})).status,200);
  await f.request('/form','PUT','host',{enabled:false});
- assert.equal((await f.request('/team','PUT','applicant',proposal)).status,409);
- f.db.sqlite.exec("UPDATE event_presentation_submissions SET expires_at='2000-01-01T00:00:00.000Z'");
+ assert.equal((await f.request('/team','PUT','applicant',proposal)).status,200);
+ f.db.sqlite.exec("UPDATE event_submissions SET expires_at='2000-01-01T00:00:00.000Z'");
  assert.equal((await (await f.request('','GET','host')).json() as any).submissions.length,0);
  assert.equal((await f.request('/team','DELETE','stranger')).status,403);
  assert.equal((await f.request('/team','DELETE','applicant')).status,200);
- assert.equal(f.db.rows('SELECT * FROM event_presentation_submissions').length,0);
+ assert.equal(f.db.rows('SELECT * FROM event_submissions').length,0);
  }finally{f.db.sqlite.close();}
 });
 test('deadline and invalid proposals',async()=>{
@@ -77,7 +77,7 @@ test('manager review paginates beyond 200 with counts, filters, stable ties and 
   const org=f.db.sqlite.prepare('INSERT INTO organizations(id,name,slug) VALUES(?,?,?)');
   const submission=f.db.sqlite.prepare("INSERT INTO event_presentation_submissions(event_id,organization_id,submitted_by,title,summary,status,updated_at,expires_at) VALUES('event',?,'applicant',?,?,?,'2026-01-01T00:00:00Z','2100-01-01T00:00:00Z')");
   for(let i=0;i<207;i++){const id='fixture-'+String(i).padStart(3,'0');org.run(id,'Team '+i,id);submission.run(id,i===0?'=HYPERLINK("bad")':'Demo '+i,'Details, including "quotes"\nand another line',i<3?'accepted':'submitted')}
-  f.db.sqlite.prepare("UPDATE event_presentation_submissions SET expires_at='2000-01-01' WHERE organization_id='fixture-206'").run();
+  f.db.sqlite.prepare("UPDATE event_submissions SET expires_at='2000-01-01' WHERE organization_id='fixture-206'").run();
   const publicIds=new Set<string>();let cursor:string|null=null;
   do{const page=await(await f.request('/submissions'+(cursor?'?after='+encodeURIComponent(cursor):''),'GET','')).json() as {submissions:{organization_id:string}[];next:string|null};for(const row of page.submissions){assert.ok(!publicIds.has(row.organization_id));publicIds.add(row.organization_id)}cursor=page.next}while(cursor);
   assert.equal(publicIds.size,206);
@@ -121,7 +121,7 @@ test('public submissions omit private fields and favorites are private, capped a
   assert.throws(()=>f.db.sqlite.prepare("INSERT INTO event_presentation_favorites VALUES('event','guest',101,'team','2026-01-01','2099-06-01')").run(),/CHECK/);
   f.db.sqlite.exec("DELETE FROM event_presentation_submissions WHERE organization_id='demo-3'");
   assert.equal(f.db.rows("SELECT * FROM event_presentation_favorites WHERE organization_id='demo-3'").length,0);
-  f.db.sqlite.exec("UPDATE event_presentation_submissions SET expires_at='2000-01-01'");
+  f.db.sqlite.exec("UPDATE event_submissions SET expires_at='2000-01-01'");
   assert.equal((await (await f.request('/submissions','GET','')).json() as {submissions:unknown[]}).submissions.length,0);
   assert.equal((await f.request('/favorites/team','PUT','guest',{selected:true})).status,409);
  }finally{f.db.sqlite.close()}
@@ -160,5 +160,48 @@ test('configurable-limit migration preserves existing favorites and defaults exi
   assert.equal(db.prepare('SELECT slot FROM event_presentation_favorites').get()!.slot,3);
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[]);
   db.exec("DELETE FROM event_presentation_submissions");assert.equal(db.prepare('SELECT COUNT(*) AS n FROM event_presentation_favorites').get()!.n,0);
+ }finally{db.close()}
+});
+
+test('one person can create multiple entries for the same team and edit them independently after intake closes',async()=>{
+ const f=fixture();try{
+  await f.request('/form','PUT','host',{enabled:true});
+  const first=crypto.randomUUID(),second=crypto.randomUUID();
+  for(const [id,title] of [[first,'First'],[second,'Second']])assert.equal((await f.request('/'+id,'PUT','applicant',{organization_id:'team',title,summary:'Details '+title})).status,200);
+  assert.equal((await f.request('/'+first,'PUT','applicant',{organization_id:'team',title:'First',summary:'Details First'})).status,200);
+  assert.equal(f.db.rows('SELECT * FROM event_submissions').length,2,'retry must not create another entry');
+  await f.request('/favorites/'+first,'PUT','voter',{selected:true});await f.request('/favorites/'+second,'PUT','voter',{selected:true});
+  await f.request('/'+first,'PATCH','host',{status:'accepted'});
+  await f.request('/form','PUT','host',{enabled:false});
+  assert.equal((await f.request('/'+first,'PUT','stranger',{title:'Hijacked',summary:'No'})).status,403);
+  assert.equal((await f.request('/'+first,'PUT','applicant',{title:'First edited',summary:'Revised details'})).status,200);
+  assert.equal((await f.request('/'+crypto.randomUUID(),'PUT','applicant',{organization_id:'team',title:'Third',summary:'Closed'})).status,409);
+  const rows=(await(await f.request()).json() as any).submissions;
+  assert.equal(rows.find((r:any)=>r.submission_id===first).status,'submitted');
+  assert.equal(rows.find((r:any)=>r.submission_id===second).title,'Second');
+  assert.equal((await(await f.request('/favorites','GET','voter')).json() as any).favorites.length,2);
+  await f.request('/'+first,'DELETE','applicant');
+  assert.deepEqual((await(await f.request('/favorites','GET','voter')).json() as any).favorites,[second]);
+  assert.equal((await(await f.request('/submissions','GET','')).json() as any).submissions[0].submission_id,second);
+ }finally{f.db.sqlite.close()}
+});
+
+test('multiple-submission migration preserves legacy entries, favorites and attachment targets during rolling deployment',()=>{
+ const db=new DatabaseSync(':memory:');try{
+  db.exec('PRAGMA foreign_keys=ON');const dir=new URL('../migrations/',import.meta.url);
+  for(const name of readdirSync(dir).filter(n=>n.endsWith('.sql')&&n<'0099').sort())db.exec(readFileSync(new URL(name,dir),'utf8'));
+  db.exec(`INSERT INTO organizations(id,name,slug) VALUES('team','Team','team');
+   INSERT INTO events(id,ingest_key,slug,title,host_org_id,starts_at) VALUES('event','event','event','Event','team','2099-01-01');
+   INSERT INTO event_presentation_submissions VALUES('event','team','author','Demo','Details','accepted','2026-01-01','2099-06-01');
+   INSERT INTO event_presentation_favorites VALUES('event','voter',3,'team','2026-01-01','2099-06-01');
+   INSERT INTO event_presentation_attachments VALUES('file','event','team','deck.pdf','application/pdf',10,'hash','submission-attachments/file','ready','2026-01-01','2099-06-01');`);
+  db.exec(readFileSync(new URL('../migrations/0099_multiple_submissions.sql',import.meta.url),'utf8'));
+  assert.equal(db.prepare('SELECT submission_id FROM event_submissions').get()!.submission_id,'team');
+  assert.equal(db.prepare('SELECT slot FROM event_submission_favorites').get()!.slot,3);
+  assert.equal(db.prepare('SELECT submission_id FROM event_presentation_attachments').get()!.submission_id,'team');
+  db.exec("UPDATE event_presentation_submissions SET title='Changed by old worker'");
+  assert.equal(db.prepare('SELECT title FROM event_submissions').get()!.title,'Changed by old worker');
+  db.exec('DELETE FROM event_presentation_favorites');assert.equal(db.prepare('SELECT COUNT(*) AS n FROM event_submission_favorites').get()!.n,0);
+  assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[]);
  }finally{db.close()}
 });

@@ -50,3 +50,16 @@ test('caps uploads, rejects invalid content, and cleans withdrawn files without 
  f.setDeleteFailure(true);await assert.rejects(cleanupPresentationAttachments(f.db,f.bucket,Date.now()));assert.equal(f.sql.prepare('SELECT COUNT(*) AS n FROM event_presentation_attachments').get()!.n,10);
  f.setDeleteFailure(false);assert.equal(await cleanupPresentationAttachments(f.db,f.bucket,Date.now()),10);assert.equal(f.objects.size,0);
 });
+
+test('attachments stay with their own submission when a team has multiple entries',async t=>{
+ const f=fixture(t),second=crypto.randomUUID();
+ f.sql.prepare("INSERT INTO event_submissions VALUES('event',?,'team','applicant','Second','Summary','submitted','2026-01-01','2099-06-01')").run(second);
+ const firstFile=f.upload(),secondFile=f.upload('other.pdf');
+ assert.equal((await f.request('/team/attachments','POST','applicant',firstFile.form)).status,201);
+ assert.equal((await f.request('/'+second+'/attachments','POST','applicant',secondFile.form)).status,201);
+ assert.equal((await f.request('/'+second+'/attachments/'+firstFile.id)).status,404);
+ f.sql.exec("DELETE FROM event_submissions WHERE submission_id='team'");
+ assert.equal((await f.request('/'+second+'/attachments/'+secondFile.id)).status,200);
+ assert.equal(await cleanupPresentationAttachments(f.db,f.bucket,Date.now()),1);
+ assert.equal(f.objects.size,1);
+});

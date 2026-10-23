@@ -229,6 +229,36 @@ with sync_playwright() as p:
         settings.get_by_role('button',name='Save favorite limit',exact=True).click()
         expect(manager.get_by_role('region',name='Event submissions').get_by_role('alert')).to_contain_text('cannot be lower than an existing ballot',timeout=30000)
         page.get_by_role('tab',name='Apply',exact=True).click()
+        # Same person and same team: create an independent second application.
+        form.get_by_label('Team or organization',exact=True).select_option(team_id)
+        form.get_by_label('Presentation title',exact=True).fill('A second local demo')
+        form.get_by_label('What will you present?',exact=True).fill('A separate proposal from the same team.')
+        form.get_by_label('Add submission attachments',exact=True).set_input_files({'name':'second.pdf','mimeType':'application/pdf','buffer':b'%PDF-1.4\nSecond proposal'})
+        form.get_by_role('button',name='Submit application',exact=True).click()
+        expect(section.get_by_role('button',name='Edit application',exact=True)).to_have_count(2,timeout=30000)
+        saved=successful(host.request.get(endpoint,headers=auth))['submissions']
+        own=[row for row in saved if row['organization_id']==team_id]
+        assert len(own)==2 and len({row['submission_id'] for row in own})==2
+        original=section.locator('.presentation-submission').filter(has=page.get_by_role('heading',name=f'Dummy Demo Team {run_id}: A local demo',exact=True))
+        successful(host.request.put(endpoint+'/form',headers=auth,data={'enabled':False}))
+        page.reload()
+        original.get_by_role('button',name='Edit application',exact=True).click()
+        expect(form.get_by_label('Presentation title',exact=True)).to_have_value('A local demo')
+        expect(form.get_by_label('Team or organization',exact=True)).to_be_disabled()
+        form.get_by_label('Presentation title',exact=True).fill('A revised local demo')
+        form.get_by_label('What will you present?',exact=True).fill('Revised after intake closed.')
+        form.get_by_role('button',name='Save changes',exact=True).click()
+        expect(section.get_by_role('heading',name=f'Dummy Demo Team {run_id}: A revised local demo',exact=True)).to_be_visible(timeout=30000)
+        page.reload()
+        saved=successful(host.request.get(endpoint,headers=auth))['submissions']
+        own=[row for row in saved if row['organization_id']==team_id]
+        assert len(own)==2 and any(row['title']=='A second local demo' for row in own)
+        revised=section.locator('.presentation-submission').filter(has=page.get_by_role('heading',name=f'Dummy Demo Team {run_id}: A revised local demo',exact=True))
+        revised.get_by_role('button',name='Withdraw application',exact=True).click()
+        expect(section.get_by_role('button',name='Withdraw application',exact=True)).to_have_count(1,timeout=30000)
+        second=next(row for row in own if row['title']=='A second local demo')
+        remaining_files=successful(applicant.request.get(endpoint+'/'+second['submission_id']+'/attachments'))['attachments']
+        assert [file['name'] for file in remaining_files]==['second.pdf']
         section.get_by_role('button', name='Withdraw application', exact=True).click()
         expect(section.get_by_role('button', name='Withdraw application', exact=True)).to_have_count(0, timeout=30000)
         assert len(successful(host.request.get(endpoint, headers=auth))['submissions']) == 25
@@ -236,7 +266,7 @@ with sync_playwright() as p:
         page.reload()
         page.get_by_role('tab',name='Apply',exact=True).click()
         expect(page.get_by_text('Applications are not open for this event.',exact=True)).to_be_visible(timeout=30000)
-        print('PASS: local authenticated session → dummy team creation → checkbox-free team submission → styled desktop/mobile form → submit → persisted application → manager tabs, counts, filters, pagination and full/filtered CSV → image/PDF/PowerPoint upload and public download → attachment removal → public Submissions tab → three favorites persist across reload → fourth blocked → remove favorite → guest view → manager changes favorite limit → withdraw; Markdown and global button fallback verified')
+        print('PASS: multiple same-team submissions, editing after intake closes, independent attachments and withdrawal; local authenticated session → dummy team creation → checkbox-free team submission → styled desktop/mobile form → submit → persisted application → manager tabs, counts, filters, pagination and full/filtered CSV → image/PDF/PowerPoint upload and public download → attachment removal → public Submissions tab → three favorites persist across reload → fourth blocked → remove favorite → guest view → manager changes favorite limit → withdraw; Markdown and global button fallback verified')
         print('Screenshots: ' + str(REPORT))
     finally:
         browser.close()

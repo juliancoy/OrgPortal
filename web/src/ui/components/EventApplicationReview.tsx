@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import { useAuth } from '../../app/AppProviders'
 type Status='all'|'submitted'|'accepted'|'declined'
-type Submission={organization_id:string;organization_name:string;title:string;summary:string;status:string;updated_at:string}
+type Submission={submission_id:string;organization_id:string;organization_name:string;title:string;summary:string;status:string;updated_at:string}
 type Review={submissions:Submission[];counts:Record<Status,number>;total:number;page:number;pages:number;pageSize:number}
 const labels:Record<Status,string>={all:'All',submitted:'Pending',accepted:'Accepted',declined:'Declined'}
 export function EventApplicationReview({eventId}:{eventId:string}){
@@ -22,7 +22,7 @@ export function EventApplicationReview({eventId}:{eventId:string}){
  async function update(row:Submission,next:string){
   setBusy(true);setError('');setNotice('')
   try{
-   const response=await fetch(`${base}/${encodeURIComponent(row.organization_id)}`,{method:'PATCH',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({status:next})})
+   const response=await fetch(`${base}/${encodeURIComponent(row.submission_id)}`,{method:'PATCH',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({status:next})})
    if(!response.ok)throw new Error('Could not change this application’s status.')
    setNotice(`${row.organization_name} marked ${next==='submitted'?'pending':next}.`);setRevision(v=>v+1)
   }catch(e){setError(e instanceof Error?e.message:'Could not save application')}
@@ -45,7 +45,7 @@ export function EventApplicationReview({eventId}:{eventId:string}){
   {loading&&<p role="status">Loading applications…</p>}
   {error&&<p role="alert">{error} <button type="button" className="btn-secondary" onClick={()=>setRevision(v=>v+1)}>Retry</button></p>}
   {notice&&<p role="status">{notice}</p>}
-  {data&&!loading&&<>{data.submissions.length===0?<p>No {status==='all'?'applications':labels[status].toLowerCase()+' applications'} yet.</p>:data.submissions.map(row=><article className="presentation-submission" key={row.organization_id}><h4>{row.organization_name}: {row.title}</h4><p style={{whiteSpace:'pre-wrap'}}>{row.summary}</p><p>Status: <strong>{labels[row.status as Status]||row.status}</strong> · Updated {new Date(row.updated_at).toLocaleString()}</p><div>{(['accepted','declined','submitted'] as const).map(next=><button type="button" className="btn-secondary" key={next} disabled={busy||row.status===next} onClick={()=>void update(row,next)}>{next==='accepted'?'Accept':next==='declined'?'Decline':'Mark pending'}</button>)}</div></article>)}
+  {data&&!loading&&<>{data.submissions.length===0?<p>No {status==='all'?'applications':labels[status].toLowerCase()+' applications'} yet.</p>:data.submissions.map(row=><article className="presentation-submission" key={row.submission_id}><h4>{row.organization_name}: {row.title}</h4><p style={{whiteSpace:'pre-wrap'}}>{row.summary}</p><p>Status: <strong>{labels[row.status as Status]||row.status}</strong> · Updated {new Date(row.updated_at).toLocaleString()}</p><div>{(['accepted','declined','submitted'] as const).map(next=><button type="button" className="btn-secondary" key={next} disabled={busy||row.status===next} onClick={()=>void update(row,next)}>{next==='accepted'?'Accept':next==='declined'?'Decline':'Mark pending'}</button>)}</div></article>)}
    <nav className="application-pagination" aria-label="Application pages"><button type="button" className="btn-secondary" disabled={busy||data.page<=1} onClick={()=>setPage(data.page-1)}>Previous page</button><span role="status">Page {data.page} of {data.pages} · {data.total} matching applications</span><button type="button" className="btn-secondary" disabled={busy||data.page>=data.pages} onClick={()=>setPage(data.page+1)}>Next page</button></nav>
   </>}
  </section>

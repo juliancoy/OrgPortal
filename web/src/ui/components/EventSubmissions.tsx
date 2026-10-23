@@ -8,7 +8,7 @@ import { BioMarkdown } from './profile/BioMarkdown'
 import { OrgImage } from './media/OrgImage'
 import './event-presentations.css'
 
-type Submission={attachments?:SubmissionAttachment[];organization_id:string;organization_name:string;organization_slug:string;image_url:string|null;title:string;summary:string;status:string;favorites:number}
+type Submission={submission_id:string;attachments?:SubmissionAttachment[];organization_id:string;organization_name:string;organization_slug:string;image_url:string|null;title:string;summary:string;status:string;favorites:number}
 export function EventSubmissions({eventId}:{eventId:string}) {
  const {token}=useAuth(),location=useLocation()
  const base=`/api/org/api/network/events/${encodeURIComponent(eventId)}/presentations`
@@ -26,7 +26,7 @@ export function EventSubmissions({eventId}:{eventId:string}) {
   const controller=new AbortController();setReady(false);setCanManage(false);setError('');setFavorites([]);setRows([])
   void Promise.all([request('/submissions',{},controller.signal),token?request('/favorites',{},controller.signal):Promise.resolve({favorites:[]}),token?request('',{},controller.signal):Promise.resolve({canReview:false})]).then(([data,own,access])=>{
    if(controller.signal.aborted)return
-   setRows(data.submissions);setNext(data.next);setFavorites(own.favorites);setLimit(data.favoriteLimit);setLimitDraft(String(data.favoriteLimit));setCanManage(access.canReview);setManagedTeams((access.submissions||[]).map((row:Submission)=>row.organization_id));setReady(true)
+   setRows(data.submissions);setNext(data.next);setFavorites(own.favorites);setLimit(data.favoriteLimit);setLimitDraft(String(data.favoriteLimit));setCanManage(access.canReview);setManagedTeams((access.submissions||[]).map((row:Submission)=>row.submission_id));setReady(true)
   }).catch(reason=>{if(!controller.signal.aborted)setError(reason.message)})
   return()=>controller.abort()
  // All request dependencies are represented by base and token.
@@ -35,7 +35,7 @@ export function EventSubmissions({eventId}:{eventId:string}) {
  async function toggle(row:Submission){
   if(busy||!token)return;setBusy(true);setError('')
   try{
-   await request(`/favorites/${encodeURIComponent(row.organization_id)}`,{method:'PUT',body:JSON.stringify({selected:!favorites.includes(row.organization_id)})})
+   await request(`/favorites/${encodeURIComponent(row.submission_id)}`,{method:'PUT',body:JSON.stringify({selected:!favorites.includes(row.submission_id)})})
    const own=await request('/favorites');setFavorites(own.favorites);setLimit(own.limit)
    const refreshed:Submission[]=[];let cursor:string|null=null
    do{const data=await request('/submissions'+(cursor?'?after='+encodeURIComponent(cursor):''));refreshed.push(...data.submissions);cursor=data.next}while(cursor&&refreshed.length<rows.length)
@@ -53,14 +53,14 @@ export function EventSubmissions({eventId}:{eventId:string}) {
   {error&&<p role="alert">{error} <button type="button" className="btn-secondary" onClick={()=>setRevision(value=>value+1)}>Refresh submissions</button></p>}
   {!ready&&!error&&<p role="status">Loading submissions…</p>}
   {ready&&!rows.length&&<p>No submissions yet.</p>}
-  {rows.map(row=><article key={row.organization_id} className="presentation-submission">
+  {rows.map(row=><article key={row.submission_id} className="presentation-submission">
    <div className="submission-team"><OrgImage src={row.image_url} alt="" style={{width:48,height:48,objectFit:'contain'}} /><Link to={`/orgs/${encodeURIComponent(row.organization_slug)}`}>{row.organization_name}</Link></div>
    <h3>{row.title}</h3><BioMarkdown value={row.summary} /><p>Status: {row.status} · {row.favorites} {row.favorites===1?'favorite':'favorites'}</p>
-   <SubmissionAttachments eventId={eventId} organizationId={row.organization_id} initial={row.attachments} canManage={canManage||managedTeams.includes(row.organization_id)} />
-   <button type="button" className={favorites.includes(row.organization_id)?'btn-primary':'btn-secondary'} aria-pressed={favorites.includes(row.organization_id)} aria-label={`${favorites.includes(row.organization_id)?'Remove favorite':'Favorite'}: ${row.title}`} disabled={!token||!ready||busy||(!favorites.includes(row.organization_id)&&favorites.length>=limit)} onClick={()=>void toggle(row)}><Star size={18} aria-hidden="true" fill={favorites.includes(row.organization_id)?'currentColor':'none'} /> {favorites.includes(row.organization_id)?'Selected favorite':'Choose favorite'}</button>
+   <SubmissionAttachments eventId={eventId} submissionId={row.submission_id} initial={row.attachments} canManage={canManage||managedTeams.includes(row.submission_id)} />
+   <button type="button" className={favorites.includes(row.submission_id)?'btn-primary':'btn-secondary'} aria-pressed={favorites.includes(row.submission_id)} aria-label={`${favorites.includes(row.submission_id)?'Remove favorite':'Favorite'}: ${row.title}`} disabled={!token||!ready||busy||(!favorites.includes(row.submission_id)&&favorites.length>=limit)} onClick={()=>void toggle(row)}><Star size={18} aria-hidden="true" fill={favorites.includes(row.submission_id)?'currentColor':'none'} /> {favorites.includes(row.submission_id)?'Selected favorite':'Choose favorite'}</button>
   </article>)}
   {next&&<button type="button" className="btn-secondary" disabled={busy} onClick={()=>{
-   setBusy(true);setError('');void request('/submissions?after='+encodeURIComponent(next)).then(data=>{setRows(previous=>[...new Map([...previous,...data.submissions].map((row:Submission)=>[row.organization_id,row])).values()]);setNext(data.next)}).catch(reason=>setError(reason.message)).finally(()=>setBusy(false))
+   setBusy(true);setError('');void request('/submissions?after='+encodeURIComponent(next)).then(data=>{setRows(previous=>[...new Map([...previous,...data.submissions].map((row:Submission)=>[row.submission_id,row])).values()]);setNext(data.next)}).catch(reason=>setError(reason.message)).finally(()=>setBusy(false))
   }}>Load more submissions</button>}
  </section>
 }

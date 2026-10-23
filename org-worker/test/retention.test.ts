@@ -16,6 +16,7 @@ test('expiry units, bounds, dry-run, retries and unresolved operations',async()=
  sql.prepare('INSERT INTO organization_invitations VALUES (?,?)').run('expired-invitation',1);
  sql.exec('CREATE TABLE organization_volunteer_awards(id TEXT PRIMARY KEY,expires_at TEXT);');
  sql.prepare('INSERT INTO organization_volunteer_awards VALUES (?,?)').run('expired-volunteer',new Date(1).toISOString());
+ sql.exec('CREATE TABLE event_submissions(id TEXT PRIMARY KEY, expires_at TEXT); CREATE TABLE event_submission_favorites(id TEXT PRIMARY KEY, expires_at TEXT);');
  sql.exec('CREATE TABLE event_company_favorites(id TEXT PRIMARY KEY, expires_at TEXT);');
  sql.exec('CREATE TABLE event_presentation_favorites(id TEXT PRIMARY KEY, expires_at TEXT);');
  sql.prepare('INSERT INTO event_presentation_favorites VALUES (?,?)').run('expired-choice',new Date(1).toISOString());

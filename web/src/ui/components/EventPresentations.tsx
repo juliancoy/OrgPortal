@@ -11,8 +11,8 @@ import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
 
 type Org = { id:string; name:string; my_role?:string }
-type Submission = { organization_id:string; organization_name:string; title:string; summary:string; status:string }
-const emptyPresentationDraft = { org: '', name: '', city: 'Baltimore', description: '', title: '', summary: '', people: '[]' }
+type Submission = { submission_id:string; organization_id:string; organization_name:string; title:string; summary:string; status:string }
+const emptyPresentationDraft = { submissionId: '', editing: '', org: '', name: '', city: 'Baltimore', description: '', title: '', summary: '', people: '[]' }
 export function EventPresentations({eventId}:{eventId:string}) {
  const {token,user}=useAuth()
  const [files,setFiles]=useState<StagedSubmissionAttachment[]>([])
@@ -31,7 +31,7 @@ export function EventPresentations({eventId}:{eventId:string}) {
  const [message,setMessage]=useState(''),[busy,setBusy]=useState(false),[version,setVersion]=useState(0)
  async function request(url:string,method='GET',body?:unknown,signal?:AbortSignal) {
   const response=await fetch(url,{method,headers:{...(token?{Authorization:`Bearer ${token}`} : {}),...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),signal,cache:'no-store'})
-  const data=await response.json()
+  const text=await response.text();let data;try{data=JSON.parse(text)}catch{throw new Error(response.ok?'Invalid response':text||'Unable to complete request')}
   if(!response.ok) throw new Error(data.message || data.detail || data.error || 'Unable to complete request')
   return data
  }
@@ -54,7 +54,7 @@ export function EventPresentations({eventId}:{eventId:string}) {
   try{await work();setVersion(v=>v+1)}catch(error){setMessage(error instanceof Error?error.message:'Unable to save')}finally{setBusy(false)}
  }
  if(!ready) return <section aria-label="Presentation applications"><p role="status">{message||'Loading presentation applications…'}</p>{message&&<button type="button" className="btn-secondary" onClick={()=>setVersion(v=>v+1)}>Retry</button>}</section>
- if(!enabled&&!canReview)return <section className="portal-card" aria-label="Presentation applications"><h2>Applications</h2><p>Applications are not open for this event.</p></section>
+ if(!enabled&&!canReview&&!rows.length)return <section className="portal-card" aria-label="Presentation applications"><h2>Applications</h2><p>Applications are not open for this event.</p></section>
  return <section className="portal-card presentation-applications" aria-label="Presentation applications">
   {canReview&&<div className="application-tabs" role="tablist" aria-label="Presentation management" onKeyDown={event=>{
    if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return
@@ -66,7 +66,7 @@ export function EventPresentations({eventId}:{eventId:string}) {
   {message&&<p role="status">{message}</p>}
   {enabled&&!closed&&!token&&<p><Link to={`/users/login?next=${encodeURIComponent(location.pathname+location.search+location.hash)}`}>Sign in</Link> to create a team and apply to present.</p>}
   {closed&&<p>Applications have closed for this event.</p>}
-  {enabled&&!closed&&token&&<form className="presentation-form local-form-draft" data-draft-saved={draft.saved} aria-label="Team presentation application" aria-busy={busy} onSubmit={e=>{e.preventDefault();void action(async()=>{
+  {((enabled&&!closed)||draft.value.editing)&&token&&<form className="presentation-form local-form-draft" data-draft-saved={draft.saved} aria-label="Team presentation application" aria-busy={busy} onSubmit={e=>{e.preventDefault();void action(async()=>{
    let organizationId=org
    if(!organizationId){const team=await request('/api/org/api/network/orgs','POST',{name,city,description,kind:'team',acknowledgeOwnership:true});organizationId=team.id;setOrg(team.id);setOrgs(previous=>[...previous,team]);await invalidatePublicOrganizationData()}
    for(const person of people){
@@ -77,21 +77,25 @@ export function EventPresentations({eventId}:{eventId:string}) {
      await request(`${resource}/apply`,'POST',{...payload,previewId:preview.previewId,...(!person.userId?{confirm:true}:{})})
     }catch(error){throw new Error(`Your team is saved, but ${person.name} could not be added: ${error instanceof Error?error.message:'Please retry'}. Your draft is retained; submitting again safely retries the additions.`)}
    }
-   await request(`${base}/${encodeURIComponent(organizationId)}`,'PUT',{title,summary});
-   try{for(const file of files){await uploadSubmissionAttachment(eventId,organizationId,file,token!);setFiles(previous=>previous.filter(item=>item.id!==file.id))}}catch(error){throw new Error(`Your application is saved, but an attachment could not upload: ${error instanceof Error?error.message:'Please retry'}. Your draft and remaining selected files are retained.`)}
-   draft.clear();setMessage('Application submitted to the event organizers.')
+   const submissionId=draft.value.submissionId||crypto.randomUUID();setField('submissionId',submissionId);
+   await request(`${base}/${encodeURIComponent(submissionId)}`,'PUT',{organization_id:organizationId,title,summary});
+   setField('editing','true');
+   try{for(const file of files){await uploadSubmissionAttachment(eventId,submissionId,file,token!);setFiles(previous=>previous.filter(item=>item.id!==file.id))}}catch(error){throw new Error(`Your application is saved, but an attachment could not upload: ${error instanceof Error?error.message:'Please retry'}. Your draft and remaining selected files are retained.`)}
+   draft.clear();setMessage(draft.value.editing?'Application updated.':'Application submitted to the event organizers.')
   })}}>
+   {draft.value.editing&&<div><h3>Edit application</h3><button type="button" className="btn-secondary" onClick={()=>{draft.clear();setFiles([])}}>Cancel editing</button></div>}
    <div className="local-draft-status"><p role="status">{draft.unavailable?'Local draft storage unavailable.':draft.saved?'Draft saved on this device.':'Draft not yet saved on this device.'}</p><button type="button" className="btn-secondary" onClick={()=>{draft.clear();setFiles([])}}>Clear saved draft</button></div>
-   <p className="presentation-form-intro">Apply on behalf of a team or organization you manage. Your team name, presentation title and summary will be publicly visible under Submissions. Submitting does not guarantee a presentation slot.</p>
-   <label>Team or organization<select value={org} onChange={e=>{setOrg(e.target.value);setField('people','[]');const saved=rows.find(r=>r.organization_id===e.target.value);setTitle(saved?.title||'');setSummary(saved?.summary||'')}}><option value="">Create a team</option>{orgs.map(o=><option key={o.id} value={o.id}>{o.name}</option>)}</select></label>
+   <p className="presentation-form-intro">You can submit multiple applications for the same team or organization, and edit each one afterwards. Updates return the application to pending review. Your team name, presentation title and summary will be publicly visible under Submissions. Submitting does not guarantee a presentation slot.</p>
+   <label htmlFor={`${fieldId}-team`}>Team or organization</label><select id={`${fieldId}-team`} disabled={!!draft.value.editing} value={org} onChange={e=>{setOrg(e.target.value);setField('people','[]')}}><option value="">Create a team</option>{orgs.map(o=><option key={o.id} value={o.id}>{o.name}</option>)}</select>
    {!org&&<><p className="muted">Creating a team makes you its owner.</p><label>Team name<input required maxLength={255} value={name} onChange={e=>setName(e.target.value)}/></label><label>City<input required maxLength={80} value={city} onChange={e=>setCity(e.target.value)}/></label><div><label htmlFor={`${fieldId}-about`}>About your team</label><textarea id={`${fieldId}-about`} rows={3} maxLength={5000} value={description} onChange={e=>setDescription(e.target.value)}/></div></>}
    <TeamPeoplePicker people={people} onChange={value=>setField('people',JSON.stringify(value))} />
    <label>Presentation title<input required maxLength={200} value={title} onChange={e=>setTitle(e.target.value)}/></label>
    <div><label htmlFor={`${fieldId}-summary`}>What will you present?</label><textarea id={`${fieldId}-summary`} rows={5} required maxLength={5000} value={summary} onChange={e=>setSummary(e.target.value)}/></div>
    <SubmissionAttachmentPicker files={files} onChange={setFiles} disabled={busy} />
-   <div className="presentation-form-footer"><p className="muted">Your team name, presentation title and summary will be publicly visible.</p><button className="btn-primary presentation-submit" disabled={busy} type="submit">{busy?'Submitting…':'Submit application'}</button></div>
+   <div className="presentation-form-footer"><p className="muted">Your team name, presentation title and summary will be publicly visible.</p><button className="btn-primary presentation-submit" disabled={busy} type="submit">{busy?'Saving…':draft.value.editing?'Save changes':'Submit application'}</button></div>
   </form>}
-  {!canReview&&rows.length>0&&<><h3>Your applications</h3>{rows.map(r=><article className="presentation-submission" key={r.organization_id}><h4>{r.organization_name}: {r.title}</h4><p style={{whiteSpace:'pre-wrap'}}>{r.summary}</p><p>Status: {r.status}</p>{canReview?<div>{['accepted','declined','submitted'].map(status=><button type="button" className="btn-secondary" key={status} disabled={busy||r.status===status} onClick={()=>void action(async()=>{await request(`${base}/${encodeURIComponent(r.organization_id)}`,'PATCH',{status})})}>{status==='accepted'?'Accept':status==='declined'?'Decline':'Mark pending'}</button>)}</div>:<button type="button" className="btn-secondary" disabled={busy} onClick={()=>void action(async()=>{await request(`${base}/${encodeURIComponent(r.organization_id)}`,'DELETE')})}>Withdraw application</button>}</article>)}</>}
+  {rows.filter(r=>orgs.some(o=>o.id===r.organization_id)).length>0&&<><h3>Your applications</h3>{rows.filter(r=>orgs.some(o=>o.id===r.organization_id)).map(r=><article className="presentation-submission" key={r.submission_id}><h4>{r.organization_name}: {r.title}</h4><p style={{whiteSpace:'pre-wrap'}}>{r.summary}</p><p>Status: {r.status}</p><div><button type="button" className="btn-secondary" disabled={busy} onClick={()=>{draft.setValue({...emptyPresentationDraft,submissionId:r.submission_id,editing:'true',org:r.organization_id,title:r.title,summary:r.summary});setFiles([])}}>Edit application</button><button type="button" className="btn-secondary" disabled={busy} onClick={()=>void action(async()=>{await request(`${base}/${encodeURIComponent(r.submission_id)}`,'DELETE');if(draft.value.submissionId===r.submission_id){draft.clear();setFiles([])}})}>Withdraw application</button></div></article>)}</>}
+
   </div>}
  </section>
 }

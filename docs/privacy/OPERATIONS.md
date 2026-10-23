@@ -277,6 +277,8 @@ team names, proposal text, submitter account IDs and update times. They do not
 create another server-side store. Treat downloaded files as private organization
 records; include retained exports in the organization's deletion and sharing process.
 
-For account erasure, delete `event_presentation_favorites` rows using the verified canonical `user_id`. These private choices have no journal or replica copies. Record the erasure under the existing backup handling procedure. Do not select an identity by email.
+For account erasure, delete `event_submission_favorites` and legacy `event_presentation_favorites` rows using the verified canonical `user_id`. These private choices have no journal or replica copies. Record the erasure under the existing backup handling procedure. Do not select an identity by email.
 
 For submission attachment erasure, first revoke the proposal/download access, then delete the referenced `submission-attachments/` R2 objects before deleting their `event_presentation_attachments` rows. Preserve failed-deletion rows for retry; do not delete metadata first. The hourly `cleanupPresentationAttachments` job handles expired proposals, withdrawn/deleted parents and abandoned pending uploads. Scope erasure by verified canonical proposal ownership, event and organization; filenames and email addresses do not establish identity. Include stored object copies in the existing backup-erasure procedure.
+
+For presentation erasure, remove matching legacy `event_presentation_submissions` first (its rollout mirror removes the corresponding migrated entry), then matching `event_submissions`. Remove entries by verified submitter or authorized team/event scope as appropriate; never infer identity from email. Keep attachment metadata until the R2 cleanup has succeeded. Migration 0099 preserves existing IDs, choices and file targets; both compatibility tables retain their original expiry clocks.
