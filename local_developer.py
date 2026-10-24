@@ -33,7 +33,7 @@ def ensure_local_admin(name, base):
     config, host = original['Config'], original['HostConfig']
     environment = dict(value.split('=', 1) for value in config['Env'] if '=' in value)
     public=urlsplit(environment.get('PUBLIC_BASE_URL',''))
-    if (public.scheme,public.port)!=(urlsplit(base).scheme,urlsplit(base).port):
+    if public.hostname not in {'localhost','id.localhost'} or (public.scheme,public.port)!=(urlsplit(base).scheme,urlsplit(base).port):
         raise RuntimeError('The selected identity deployment does not match the local gateway.')
     database=client.containers.get(urlsplit(environment.get('DATABASE_URL','')).hostname)
     if not set(original['NetworkSettings']['Networks']).intersection(database.attrs['NetworkSettings']['Networks']):

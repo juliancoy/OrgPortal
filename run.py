@@ -469,7 +469,7 @@ def _write_local_gateway_config(
                   proxy_pass http://$chat_upstream;
                 }}
 
-                location ~ ^/pidp/(?:auth/(?:sso/(?:start|finish|client)|session(?:-token|/logout)?|me|public/users)|health)$ {{
+                location ~ ^/pidp/(?:auth/(?:sso/(?:start|finish|complete|client)|session(?:-token|/logout)?|me|public/users)|health)$ {{
                   rewrite ^/pidp/?(.*)$ /$1 break;
                   proxy_set_header Host $http_host;
                   proxy_set_header X-Forwarded-Host $http_host;
@@ -556,6 +556,23 @@ def _start_local_gateway(
     return os.getenv("ORGPORTAL_LOCAL_PUBLIC_BASE_URL", f"https://localhost:{gateway_port}")
 
 
+def _local_preview_origins():
+    from urllib.parse import urlsplit
+    result = []
+    for value in os.getenv("ORGPORTAL_LOCAL_PREVIEW_ORIGINS", "").split(","):
+        value = value.strip()
+        if not value:
+            continue
+        parsed = urlsplit(value)
+        if (parsed.scheme != "https" or parsed.hostname not in {"localhost", "127.0.0.1", "::1"}
+                or parsed.username or parsed.password or not parsed.port
+                or value != f"{parsed.scheme}://{parsed.netloc}"):
+            raise RuntimeError("Local preview SSO requires an exact HTTPS loopback origin with a port.")
+        if value not in result:
+            result.append(value)
+    return result
+
+
 def _start_pidp_if_available(prefix: str, network_name: str, gateway_base: str) -> bool:
     if not _env_truthy("ORGPORTAL_START_PIDP", default=True):
         print("Skipping PIdP startup because ORGPORTAL_START_PIDP is disabled")
@@ -573,6 +590,7 @@ def _start_pidp_if_available(prefix: str, network_name: str, gateway_base: str) 
     gateway_port = gateway_base.rsplit(":", 1)[-1]
     allowed_origins = [f"https://{host}:{gateway_port}" for host in LOCAL_GATEWAY_ALIASES]
     allowed_origins.extend([f"http://localhost:{gateway_port}", f"http://127.0.0.1:{gateway_port}", gateway_base, gateway_base.replace("localhost", "127.0.0.1")])
+    allowed_origins.extend(_local_preview_origins())
     _set_env_default("PIDP_DEV_PUBLIC_BASE_URL", local_identity_base(gateway_base) + "/")
     _merge_csv_env_default("PIDP_DEV_ALLOWED_ORIGINS", allowed_origins)
     _merge_csv_env_default("PIDP_ALLOWED_ORIGINS", allowed_origins)

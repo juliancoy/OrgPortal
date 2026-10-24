@@ -36,6 +36,20 @@ class StartupTests(unittest.TestCase):
             self.assertNotIn('restartOrigin',client)
 
 
+    def test_preview_registration_requires_exact_https_loopback_origins(self):
+        spec=importlib.util.spec_from_file_location('portal_preview',PORTAL/'run.py')
+        portal_run=importlib.util.module_from_spec(spec);spec.loader.exec_module(portal_run)
+        previews=['https://localhost:8769','https://localhost:8770','https://127.0.0.1:8770']
+        with patch.dict(os.environ,{'ORGPORTAL_LOCAL_PREVIEW_ORIGINS':','.join(previews)},clear=True):
+            self.assertEqual(portal_run._local_preview_origins(),previews)
+            origins=['https://localhost:8443',*portal_run._local_preview_origins()]
+            env=portal_run._pidp_env(SimpleNamespace(),'local-database','https://localhost:8443',origins)
+            self.assertEqual(set(json.loads(env['PORTAL_CLIENTS_JSON'])),set(origins))
+            self.assertEqual(set(env['PORTAL_AUTH_ORIGINS'].split(',')),set(origins))
+        for value in ['https://lifetech.fyi','https://localhost:8770/','https://localhost:8770/path','http://localhost:8770','https://localhost:8770?x=1']:
+            with self.subTest(value=value),patch.dict(os.environ,{'ORGPORTAL_LOCAL_PREVIEW_ORIGINS':value},clear=True):
+                with self.assertRaises(RuntimeError):portal_run._local_preview_origins()
+
     def test_oauth_uses_explicit_environment_credentials_and_rejects_examples(self):
         spec=importlib.util.spec_from_file_location('portal_run_oauth',PORTAL/'run.py')
         portal_run=importlib.util.module_from_spec(spec);spec.loader.exec_module(portal_run)
