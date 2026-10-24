@@ -39,8 +39,9 @@ export function publicReportUrl(path: string) {
   const report = /^\/api\/org\/api\/network\/orgs\/public\/[^/]+\/(support|financing)$/.test(url.pathname) && (!url.search || /^\?offset=\d+$/.test(url.search))
   const snapshot = /^\/(?:p\/)?ecosystem-data\/ecosystem-(portal|history|relationships|nonprofits|performance)\.json$/.test(url.pathname) && !url.search
   const directory = url.pathname === '/api/org/api/network/orgs/public' && /^\?limit=500&offset=\d+$/.test(url.search)
+  const peers = /^\/api\/org\/api\/network\/orgs\/public\/[^/]+\/peers$/.test(url.pathname) && /^\?limit=(?:[1-9]\d?|100)&q=[^&]*$/.test(url.search)
   const relationships = url.pathname === '/api/org/api/network/relationships/public' && /^\?offset=\d+$/.test(url.search)
-  if (url.origin !== location.origin || url.username || url.password || url.hash || !(profile || report || snapshot || directory || relationships)) {
+  if (url.origin !== location.origin || url.username || url.password || url.hash || !(profile || report || snapshot || directory || relationships || peers)) {
     throw new Error('Only same-origin public organization data can be cached')
   }
   return url.href
