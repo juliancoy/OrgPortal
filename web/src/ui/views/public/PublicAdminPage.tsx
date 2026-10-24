@@ -933,8 +933,8 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
       </div>}
       </div>
       <div role="tabpanel" id="org-panel-info" aria-labelledby="org-tab-info" hidden={activeTab !== 'info'}>
-      {isWorkspaceView && <nav className="portal-org-organizer-nav" aria-label={`${org.name} workspace navigation`}>
-        <span className="portal-org-organizer-nav-label">{isOrganizerView ? 'Organizer tools' : 'Member tools'}</span>
+      {isWorkspaceView && <details className="portal-org-organizer-nav" aria-label={`${org.name} workspace navigation`}>
+        <summary>{isOrganizerView ? 'Organizer tools' : 'Member tools'}</summary>
         <a href="#organization-overview">Overview</a>
         <a href="?tab=branding" onClick={event => { event.preventDefault(); selectTab('branding') }}>Branding</a>
         <a href="#organization-members">Members</a>
@@ -944,7 +944,7 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
         {isOrganizerView && <a href="#organization-mailing-list">Mailing list</a>}
         {isOrganizerView && <a href="#organization-domain" onClick={event => { event.preventDefault(); openOrganizationEditor('organization-domain') }}>Domain</a>}
         {isOrganizerView && <a href="#organization-page-editor" onClick={event => { event.preventDefault(); openOrganizationEditor() }}>Settings</a>}
-      </nav>}
+      </details>}
       <div className={`portal-org-layout${org.claimed_by_user_id ? '' : ' portal-org-layout-single'}`}>
         <div className="portal-org-main-column">
           <div id="organization-overview" className="portal-org-hero portal-org-nav-target" tabIndex={-1}>
