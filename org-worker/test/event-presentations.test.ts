@@ -393,7 +393,7 @@ test('standalone guest intake: no login, bounded private storage, host isolation
   assert.equal((await call('/apply','POST',new URLSearchParams({...Object.fromEntries(form),website:'spam'}))).status,400);
   assert.equal((await call('/apply','POST',new URLSearchParams({...Object.fromEntries(form),email:'invalid'}))).status,400);
   assert.equal((await call('/apply','POST',new URLSearchParams({...Object.fromEntries(form),summary:'x'.repeat(40000)}))).status,413);
-  const submitted=await call('/apply','POST',form);assert.equal(submitted.status,303);assert.equal(submitted.headers.get('Location'),'apply/received');
+  const submitted=await call('/apply','POST',form);assert.equal(submitted.status,303);assert.match(submitted.headers.get('Location')||'',/^apply\/received\?submission=[0-9a-f-]{36}$/);
   assert.equal((await call('/apply/received')).status,200);
   const saved=f.db.rows('SELECT * FROM event_guest_presentations') as any[];assert.equal(saved.length,1);assert.equal(saved[0].email,'guest@example.com');assert.equal(saved[0].expires_at,'2099-04-01T12:00:00.000Z');
   assert.equal(f.db.rows('SELECT * FROM event_submissions').length,0);assert.equal(f.db.rows("SELECT * FROM organization_support_records WHERE from_label='Guest Team'").length,0);
