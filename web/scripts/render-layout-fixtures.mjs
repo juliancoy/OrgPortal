@@ -5,12 +5,14 @@ import {mkdir,writeFile} from 'node:fs/promises'
 import {resolve,join} from 'node:path'
 import {fileURLToPath} from 'node:url'
 import {renderLayouts} from './render-layouts.mjs'
+import {reviewCodexUi} from '../../../lan-monitor/scripts/review-codex-ui.mjs'
 import {reviewUserTask,userModel} from './user-model/review.mjs'
 const root=resolve(fileURLToPath(new URL('..',import.meta.url)))
 const output=resolve(process.argv[2]||join(root,'../artifacts/layout-review/fixtures'))
 await mkdir(output,{recursive:true})
 const {server,base}=await fixtureServer(root,output)
 try{
+ if(!process.env.SUBMISSION_REVIEW_ONLY)await reviewCodexUi(output)
  const layouts=[['Workspace','/workspace'],['Organizations','/orgs'],['Empty organizations','/orgs?empty=1'],['People','/people'],['Events','/events'],['Onboarding','/onboarding?brand=lifetech'],['Join now','/onboarding?brand=lifetech&complete=1','.onboarding-join-footer'],['Service desk','/support'],['Brand guide','/branding'],['About','/about']].map(([name,path,selector])=>({name,url:base+path,selector,ready:selector||'h1'}))
  const supportLayouts=[
   {name:'Service conversation',url:base+'/support/fixture-ticket?admin=1',ready:'.support-thread'},
