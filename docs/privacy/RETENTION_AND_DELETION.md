@@ -462,3 +462,14 @@ or withdrawal voids it. Upcoming organization events include the relationship on
 while its submitted or accepted application remains active and unexpired. The public
 support evidence follows existing organization-support retention; application expiry
 does not preserve the application contents in that evidence.
+
+Anonymous presentation intake (`event_guest_presentations`) stores self-reported
+contact name, email, organization name and proposal for event-host managers only.
+It grants no membership, organization ownership, public listing or support
+relationship. Records expire 90 days after event end, stop serving immediately at
+expiry, and the bounded hourly retention job removes them within 24 hours. Event
+deletion cascades. Verified withdrawal/erasure requests through support delete the
+matching private intake rows; reapply those erasures to restored backups before
+serving. This store is excluded from immutable journals and public replication.
+No email is sent by submission; email addresses are unverified and imply no mailing
+consent. Per-event and per-email intake limits retain no additional IP history.

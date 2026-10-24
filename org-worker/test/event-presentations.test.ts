@@ -376,3 +376,34 @@ test('shared team changes appear on every submission and private team reads requ
   for(const row of changed)assert.equal(row.presenters.length,2);
  }finally{f.db.sqlite.close()}
 });
+
+test('standalone guest intake: no login, bounded private storage, host isolation and expiry',async()=>{
+ const f=fixture();try{
+  const app=presentationRoutes(async(_env,req)=>{const id=req.headers.get('Authorization');if(!id)throw new HTTPException(401);return {id};});
+  app.onError((error,c)=>c.json({message:error.message},(error as any).status||500));
+  const call=(suffix:string,method='GET',body?:URLSearchParams,user?:string)=>app.request('/event/presentations'+suffix,{method,headers:{...(body?{'Content-Type':'application/x-www-form-urlencoded'}:{}),...(user?{Authorization:user}:{})},...(body?{body:body.toString()}:{})},{DB:f.db.asD1()});
+  const form=new URLSearchParams({contact_name:'Guest Presenter',email:'Guest@Example.com',organization_name:'Guest Team',title:'Guest demo',summary:'A private proposal'});
+  assert.equal((await call('/apply')).status,409);
+  assert.equal((await call('/apply','POST',form)).status,409);
+  await f.request('/form','PUT','host',{enabled:true});
+  const page=await call('/apply');assert.equal(page.status,200);assert.equal(page.headers.get('Cache-Control'),'no-store');
+  const html=await page.text();assert.match(html,/No account needed/);assert.match(html,/method="post"/);assert.doesNotMatch(html,/<script/);
+  f.db.sqlite.exec("UPDATE events SET title='<script>alert(1)</script>' WHERE id='event'");
+  assert.match(await(await call('/apply')).text(),/&lt;script&gt;/);
+  assert.equal((await call('/apply','POST',new URLSearchParams({...Object.fromEntries(form),website:'spam'}))).status,400);
+  assert.equal((await call('/apply','POST',new URLSearchParams({...Object.fromEntries(form),email:'invalid'}))).status,400);
+  assert.equal((await call('/apply','POST',new URLSearchParams({...Object.fromEntries(form),summary:'x'.repeat(40000)}))).status,413);
+  const submitted=await call('/apply','POST',form);assert.equal(submitted.status,303);assert.equal(submitted.headers.get('Location'),'apply/received');
+  assert.equal((await call('/apply/received')).status,200);
+  const saved=f.db.rows('SELECT * FROM event_guest_presentations') as any[];assert.equal(saved.length,1);assert.equal(saved[0].email,'guest@example.com');assert.equal(saved[0].expires_at,'2099-04-01T12:00:00.000Z');
+  assert.equal(f.db.rows('SELECT * FROM event_submissions').length,0);assert.equal(f.db.rows("SELECT * FROM organization_support_records WHERE from_label='Guest Team'").length,0);
+  assert.equal((await call('/guest-review')).status,401);assert.equal((await call('/guest-review','GET',undefined,'applicant')).status,403);
+  assert.equal((await call('/guest-review','GET',undefined,'stranger')).status,403);
+  const review=await(await call('/guest-review','GET',undefined,'host')).json() as any;assert.equal(review.submissions.length,1);assert.equal(review.submissions[0].email,'guest@example.com');
+  assert.equal(JSON.stringify(await(await f.request('/submissions','GET','')).json()).includes('guest@example.com'),false);
+  assert.equal((await call('/apply','POST',form)).status,303);assert.equal((await call('/apply','POST',form)).status,303);assert.equal((await call('/apply','POST',form)).status,409);
+  f.db.sqlite.exec("UPDATE event_guest_presentations SET expires_at='2000-01-01'");assert.equal(((await(await call('/guest-review','GET',undefined,'host')).json()) as any).submissions.length,0);
+  f.db.sqlite.exec("UPDATE events SET starts_at='2000-01-01' WHERE id='event'");assert.equal((await call('/apply')).status,409);assert.equal((await call('/apply','POST',form)).status,409);
+  f.db.sqlite.exec("DELETE FROM events WHERE id='event'");assert.equal(f.db.rows('SELECT * FROM event_guest_presentations').length,0);
+ }finally{f.db.sqlite.close()}
+});

@@ -94,6 +94,7 @@ export function EventPresentations({eventId,formAction,onActionHandled,onSaved,o
   <p className="sr-only" role="status" aria-live="polite">{busy?'Saving application…':''}</p>
   {message&&<p className="application-message" ref={messageRef} tabIndex={-1} role="alert">{message}</p>}
   {enabled&&!closed&&!token&&<div className="presentation-login"><p>Sign in to submit with an existing organization or create a new team.</p><Link className="btn-primary" to={`/users/login?next=${encodeURIComponent(location.pathname+location.search)}`}>Sign in to apply</Link></div>}
+  {enabled&&!closed&&<p><a href={`${base}/apply`}>Use the simple application form — no login needed</a></p>}
   {closed&&<p>Applications have closed for this event.</p>}
   {((enabled&&!closed)||draft.value.editing)&&token&&<form className="presentation-form" data-draft-saved={draft.saved} aria-label="Team presentation application" aria-busy={busy} onSubmit={e=>{e.preventDefault();void action(async()=>{
    if(!people.length)throw new Error('Add at least one teammate before submitting.')

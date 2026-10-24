@@ -1,3 +1,4 @@
+import { GuestPresentationReview } from './GuestPresentationReview'
 import { SubmissionActions } from './SubmissionActions'
 import { PresentationFinalRound } from './PresentationFinalRound'
 import { EventApplicationReview } from './EventApplicationReview'
@@ -70,6 +71,7 @@ export function EventSubmissions({eventId,onEdit,onDeleted}:{eventId:string;onEd
   </form>}
   {canManage&&<details className="submission-review-tools" onToggle={event=>setReviewOpen(event.currentTarget.open)}>
    <summary>Review applications</summary>
+   {reviewOpen&&<GuestPresentationReview eventId={eventId} />}
    {reviewOpen&&<EventApplicationReview eventId={eventId} refreshRevision={reviewRevision} onUpdated={()=>{void refreshSubmissions().catch(reason=>setError(reason.message))}} />}
   </details>}
   {error&&<p role="alert">{error} <button type="button" className="btn-secondary" onClick={()=>setRevision(value=>value+1)}>Refresh submissions</button></p>}
