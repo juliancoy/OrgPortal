@@ -73,6 +73,7 @@ import { posterLinkTarget, parsePosterElements, renderEventPoster, posterBackgro
 import { buildMetadata } from "./generated/buildMetadata";
 import { HTTPException } from "hono/http-exception";
 import { handleEventMcp, protectedResourceMetadata, eventErrorResponse } from "./eventMcp";
+import { syncEverythingRoutes } from './syncEverything';
 import { handleEventMediaUpload } from "./eventMediaUpload";
 import { handleOrganizationMediaUpload } from "./organizationMediaUpload";
 import { checkEventConfiguration } from "./eventConfiguration";
@@ -2582,6 +2583,8 @@ app.onError((err) => {
 });
 
 // Register MCP before generic CORS; do not grant arbitrary origins event access.
+app.route('/api/sync', syncEverythingRoutes((request, env) => handleEventMcp(request, env,
+  (actor, payload) => createOrganization(env, actor, payload), governanceService(env.DB))));
 app.all("/mcp", (c) => handleEventMcp(c.req.raw, c.env, async (actor, payload) => {
   return createOrganization(c.env, actor, payload);
 }, governanceService(c.env.DB)));
