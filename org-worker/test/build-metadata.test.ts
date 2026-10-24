@@ -15,7 +15,7 @@ test('build metadata identifies its own checkout, marks edits, and never adopts 
   }
   function generate(root: string, explicit = '') {
     execFileSync(process.execPath, [join(root, 'org-worker/scripts/build-metadata.mjs')], {
-      cwd: dir, env: { ...process.env, ORGPORTAL_BUILD_COMMIT: explicit, GITHUB_SHA: 'f'.repeat(40) }, stdio: 'pipe',
+      cwd: dir, env: { ...process.env, ORGPORTAL_BUILD_DIRTY: '', ORGPORTAL_BUILD_COMMIT: explicit, GITHUB_SHA: 'f'.repeat(40) }, stdio: 'pipe',
     });
     const source = readFileSync(join(root, 'org-worker/src/generated/buildMetadata.ts'), 'utf8');
     return JSON.parse(source.match(/export const buildMetadata = (.*) as const;/)![1]);

@@ -7,6 +7,7 @@ import { runGovernanceOperation } from '../src/governanceMcp';
 import { constitutionalResult, readGovernanceDocument } from '../src/governanceDocuments';
 function fixture() {
  const sql=new DatabaseSync(':memory:');
+ sql.exec('CREATE TABLE change_journal_exclusions(table_name TEXT PRIMARY KEY,reason TEXT NOT NULL)');
  for(const file of ['0001_contact_pages.sql','0002_org_event_directories.sql','0003_governance.sql','0015_organization_iam.sql','0017_event_mcp_operations.sql','0055_governance_documents.sql','0056_constitution_ratification.sql','0118_governance_suggestion_reviews.sql'])sql.exec(readFileSync(new URL('../migrations/'+file,import.meta.url),'utf8'));
  const db={prepare(query:string){const statement=sql.prepare(query);const bound=(args:any[])=>({bind:(...args:any[])=>bound(args),first:async()=>statement.get(...args)||null,all:async()=>({results:statement.all(...args)}),run:async()=>({meta:{changes:Number(statement.run(...args).changes)}})});return bound([])},async batch(statements:any[]){sql.exec('BEGIN');try{const result=[];for(const s of statements)result.push(await s.run());sql.exec('COMMIT');return result}catch(e){sql.exec('ROLLBACK');throw e}}} as unknown as D1Database;
  sql.exec(`INSERT INTO organizations(id,name,slug,tags,city) VALUES('life','LifeTech','lifetech','[]','Baltimore'),('other','Other','other','[]','Baltimore');

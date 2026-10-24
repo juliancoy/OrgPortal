@@ -9,3 +9,6 @@ CREATE TABLE governance_suggestion_reviews (
  updated_at TEXT NOT NULL,
  PRIMARY KEY(organization_id,document_id,section_id)
 );
+
+INSERT INTO change_journal_exclusions(table_name,reason) VALUES
+ ('governance_suggestion_reviews','Mutable editorial triage only; formal governance decisions remain recorded in governance motions and their journal.');
