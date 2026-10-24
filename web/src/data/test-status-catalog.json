@@ -413,6 +413,20 @@
       ]
     },
     {
+      "id": "suite-org-worker-test-email-postal-address-test-ts",
+      "label": "org-worker/test/email-postal-address.test.ts",
+      "category": "Messaging and email",
+      "source": "org-worker/test/email-postal-address.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "email-postal-address.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-org-worker-test-email-runtime-test-ts",
       "label": "org-worker/test/email-runtime.test.ts",
       "category": "Messaging and email",
