@@ -8,6 +8,7 @@ function fixture() {
  const sql=new DatabaseSync(':memory:');
  for(const name of ['0001_contact_pages.sql','0004_ledger_ubi.sql','0002_org_event_directories.sql','0009_people_ubi_org_sentiments.sql','0015_organization_iam.sql','0030_organization_feedback.sql','0043_organization_media.sql'])sql.exec(readFileSync(new URL(`../migrations/${name}`,import.meta.url),'utf8'));
  sql.exec('ALTER TABLE events ADD COLUMN event_date TEXT');
+ sql.exec('CREATE TABLE portal_account_activity(user_id TEXT PRIMARY KEY,user_name TEXT,email TEXT,last_active_at INTEGER)');
  const insert=sql.prepare('INSERT INTO organizations(id,name,slug) VALUES(?,?,?)');
  for(let i=0;i<1200;i++)insert.run(`a-${i}`,`A Popular Organization ${String(i).padStart(4,'0')}`,`a-${i}`);
  insert.run('tedco','TEDCO','tedco');
@@ -68,7 +69,9 @@ test('global search returns event cards without querying per-event details', asy
  assert.equal(suggestions.events.length,5);
  assert.equal(suggestions.events[0].title,'TEDCO Demo Day');
  assert.equal(suggestions.events[0].host_org_name,'TEDCO');
- assert.deepEqual(suggestions.users,[]);
+ assert.deepEqual(suggestions.users.map((row:any)=>row.user_id),['hidden']);
+ assert.equal(suggestions.users[0].contact_slug,null);
+ assert.equal(suggestions.users[0].contact_enabled,false);
  assert.deepEqual(suggestions.orgs.map((row:any)=>row.id),['tedco']);
  assert.equal(queries.length,4); // Text match, matching org details, event candidates, visible people.
  const full=await get(40);

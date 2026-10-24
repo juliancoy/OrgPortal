@@ -1,4 +1,7 @@
+import { supportRoutes } from './supportTickets';
 import { organizationPeersRoutes } from './organizationPeers';
+import { databaseCostMetrics } from './databaseCost';
+import { mcpLiveStatisticsRoutes } from './mcpLiveStatistics';
 import { publicMediaObject } from './publicMediaObject';
 import { organizationPosterEvents, organizationPosterPages } from './organizationPoster';
 import {organizationMemberTitleRoutes} from './organizationMemberTitles';
@@ -502,6 +505,7 @@ type ContactPayload = Partial<{
 const DEFAULT_ADMIN_EMAIL = "julian@codecollective.us";
 
 export const app = new Hono<{ Bindings: Env; Variables: { user: PidpUser } }>();
+for (const path of ['/api/network/notifications/summary', '/api/network/notifications', '/api/network/connections/requests', '/api/tasks']) app.use(path, databaseCostMetrics());
 app.use("*", async (c, next) => {
   if (c.env.ORGANIZATION_REPLICA_SOURCE && !c.req.path.startsWith('/api/local/newsletters/') && !["GET", "HEAD", "OPTIONS"].includes(c.req.method)) {
     return c.json({detail:"Read-only organization replica. Use the primary OrgPortal API with its normal authentication, permissions and preview/apply flow."}, 403);
@@ -1042,6 +1046,14 @@ async function currentUser(env: Env, request: Request): Promise<PidpUser> {
   const user = (await resp.json()) as PidpUser;
   if (!user.id || !user.canonical_user_id || !user.account_id || !user.account_subject) fail(401, "Invalid PIdP identity");
   if (user.id !== user.canonical_user_id) fail(401, "Inconsistent PIdP identity");
+  // One bounded private activity record per verified account; never publish this identity data.
+  try {
+    await env.DB.prepare(`INSERT INTO portal_account_activity(user_id,user_name,email,last_active_at)
+      VALUES(?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET
+      user_name=excluded.user_name,email=excluded.email,last_active_at=excluded.last_active_at
+      WHERE portal_account_activity.last_active_at < excluded.last_active_at - 300000`)
+      .bind(user.id, user.full_name || "Portal member", user.email || "", Date.now()).run();
+  } catch { console.warn("Portal account activity unavailable"); }
   return user;
 }
 
@@ -2782,7 +2794,7 @@ app.get("/api/network/notifications", async (c) => {
   const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "20", 10) || 20, 100));
   const rows = await c.env.DB.prepare(
     `SELECT * FROM user_notifications
-     WHERE user_id = ? AND (? = 0 OR (type = 'organization_event' AND status = 'unread'))
+     WHERE user_id = ? AND (? = 0 OR (type IN ('organization_event','support_ticket') AND status = 'unread'))
      ORDER BY created_at DESC,id DESC
      LIMIT ?`,
   )
@@ -2999,16 +3011,6 @@ async function publicContact(env: Env, request: Request, slug: string) {
     .first<ContactRow>();
   if (!row) fail(404, "Public profile not found");
   if (!row.enabled) {
-    const eventVisible = await env.DB.prepare(`
-      SELECT 1
-      FROM event_registrations r
-      JOIN events e ON e.id = r.event_id
-      WHERE r.user_id = ?
-      LIMIT 1
-    `)
-      .bind(row.user_id)
-      .first();
-    if (eventVisible) return mapContact(env, request, row);
     try {
       const user = await currentUser(env, request);
       if (user.id !== row.user_id) fail(404, "Public profile not found");
@@ -3019,49 +3021,75 @@ async function publicContact(env: Env, request: Request, slug: string) {
   return mapContact(env, request, row);
 }
 
-async function publicUsers(env: Env, request: Request, query = "", limit = 40) {
-  const safeLimit = Math.max(1, Math.min(limit, 500));
-  const q = query.trim();
-  const candidateLimit = q ? searchCandidateLimit(safeLimit) : safeLimit;
-  const rows = await env.DB.prepare(
-    `SELECT * FROM user_contact_pages
-     WHERE enabled = 1
-     ORDER BY updated_at DESC
-     LIMIT ?`,
-  )
-    .bind(candidateLimit)
-    .all<ContactRow>();
-  const rankedRows = rankSearchResults(rows.results || [], q, (row) => [row.user_name, row.headline, row.slug], safeLimit);
-  return Promise.all(rankedRows.map((row) => mapContact(env, request, row)));
+type DirectoryPerson = {
+  user_id: string; user_name: string; photo_url: string | null;
+  contact_slug: string | null; contact_enabled: number; headline: string | null;
+};
+
+async function directoryRows(env: Env, query: string, limit: number, offset: number) {
+  const terms = query.slice(0,254).trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const filter = terms.map(() => "instr(lower(p.user_name), ?) > 0").join(' AND ') || '1=1';
+  // Presence in People is independent of permission to read contact details.
+  return (await env.DB.prepare(`WITH known AS (
+    SELECT user_id,user_name,1 AS priority FROM user_contact_pages
+    UNION ALL SELECT user_id,user_name,2 FROM portal_account_activity
+    UNION ALL SELECT user_id,user_name,3 FROM organization_memberships
+    UNION ALL SELECT user_id,name,4 FROM ledger_accounts WHERE entity_type='individual'
+  ), people AS (
+    SELECT user_id,COALESCE(MAX(CASE WHEN priority=1 THEN NULLIF(user_name,'') END),MAX(NULLIF(user_name,'')),'Portal member') AS user_name
+    FROM known WHERE user_id IS NOT NULL AND trim(user_id)<>'' GROUP BY user_id
+  ) SELECT p.user_id,p.user_name,c.photo_url,
+    CASE WHEN c.enabled=1 THEN c.slug ELSE NULL END AS contact_slug,
+    COALESCE(c.enabled,0) AS contact_enabled,
+    CASE WHEN c.enabled=1 THEN c.headline ELSE NULL END AS headline
+    FROM people p LEFT JOIN user_contact_pages c ON c.user_id=p.user_id
+    WHERE ${filter} ORDER BY lower(p.user_name),p.user_id LIMIT ? OFFSET ?`)
+    .bind(...terms, limit, offset).all<DirectoryPerson>()).results || [];
 }
 
-async function networkUsers(env: Env, request: Request, query = "", limit = 500) {
+function directoryPerson(row: DirectoryPerson) {
+  return {...row, contact_enabled: Boolean(row.contact_enabled)};
+}
+
+async function publicUsers(env: Env, _request: Request, query = "", limit = 40, offset = 0) {
+  return (await directoryRows(env, query, limit, offset)).map(directoryPerson);
+}
+
+async function networkUsers(env: Env, request: Request, query = "", limit = 40, offset = 0) {
   const user = await currentUser(env, request);
-  const safeLimit = Math.max(1, Math.min(limit, 1000));
-  const q = query.trim();
-  const candidateLimit = q ? searchCandidateLimit(safeLimit) : safeLimit;
-  const rows = await env.DB.prepare(
-    `SELECT * FROM user_contact_pages
-     WHERE enabled = 1
-     ORDER BY updated_at DESC
-     LIMIT ?`,
-  )
-    .bind(candidateLimit)
-    .all<ContactRow>();
-  const contactRows = rankSearchResults(rows.results || [], q, (row) => [row.user_name, row.user_email, row.headline, row.slug], safeLimit);
-  const statuses = await connectionStatusMap(env.DB, user.id, contactRows.map((row) => row.user_id));
-  return contactRows.map((row) => ({
-    user_id: row.user_id,
-    user_name: row.user_name || "User",
-    email: row.user_email || "",
-    created_at: row.created_at,
-    contact_slug: row.slug,
-    contact_enabled: Boolean(row.enabled),
-    headline: row.headline,
-    photo_url: row.photo_url,
+  const rows = await directoryRows(env, query, limit, offset);
+  const statuses = await connectionStatusMap(env.DB, user.id, rows.map(row => row.user_id));
+  return rows.map(row => ({
+    ...directoryPerson(row),
     connection_status: row.user_id === user.id ? "self" : statuses.get(row.user_id) || "none",
   }));
 }
+
+app.get('/api/admin/people', async c => {
+  c.header('Cache-Control', 'no-store');
+  const actor = await currentUser(c.env, c.req.raw);
+  if (!adminUser(actor, c.env)) fail(403, 'Admin access required');
+  const args = z.object({q:z.string().max(254).default(''),limit:z.coerce.number().int().min(1).max(100).default(40),offset:z.coerce.number().int().min(0).max(1000000).default(0)}).safeParse(c.req.query());
+  if (!args.success) fail(400, 'Invalid pagination');
+  const {q,limit,offset} = args.data;
+  const terms = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const filter = terms.map(() => "instr(lower(p.user_name || ' ' || COALESCE(p.email,'')), ?) > 0").join(' AND ') || '1=1';
+  const rows = await c.env.DB.prepare(`WITH known AS (
+    SELECT user_id,user_name,user_email AS email,1 AS priority FROM user_contact_pages
+    UNION ALL SELECT user_id,user_name,email,2 FROM portal_account_activity
+    UNION ALL SELECT user_id,user_name,user_email,3 FROM organization_memberships
+    UNION ALL SELECT user_id,name,email,4 FROM ledger_accounts WHERE entity_type='individual'
+  ), people AS (
+    SELECT user_id, COALESCE(MAX(CASE WHEN priority=1 THEN NULLIF(user_name,'') END),MAX(NULLIF(user_name,'')),'Portal member') AS user_name,
+      MAX(NULLIF(email,'')) AS email FROM known WHERE user_id IS NOT NULL AND trim(user_id)<>'' GROUP BY user_id
+  ) SELECT p.*,c.slug AS contact_slug,COALESCE(c.enabled,0) AS contact_enabled,
+      a.last_active_at FROM people p LEFT JOIN user_contact_pages c ON c.user_id=p.user_id
+      LEFT JOIN portal_account_activity a ON a.user_id=p.user_id
+      WHERE ${filter} ORDER BY lower(p.user_name),p.user_id LIMIT ? OFFSET ?`)
+    .bind(...terms,limit+1,offset).all();
+  const people = rows.results || [];
+  return c.json({users:people.slice(0,limit).map(person => ({...person,contact_enabled:Boolean(person.contact_enabled)})),nextOffset:people.length>limit?offset+limit:null});
+});
 
 app.post("/api/network/ingest/calendar", async (c) => {
   const configuredToken = c.env.ORG_INGEST_TOKEN || "";
@@ -4615,7 +4643,7 @@ app.get("/api/network/chat/link-preview", async (c) => {
 app.get("/api/network/users/public", async (c) => {
   const q = c.req.query("q") || "";
   const limit = Number.parseInt(c.req.query("limit") || "40", 10);
-  return c.json(await publicUsers(c.env, c.req.raw, q, Number.isFinite(limit) ? limit : 40));
+  return c.json(await publicUsers(c.env, c.req.raw, q, Math.max(1, Math.min(100, limit || 40)), Math.max(0, Number.parseInt(c.req.query("offset") || "0", 10) || 0)));
 });
 app.get('/api/network/users/lookup', async c => {
   await currentUser(c.env, c.req.raw);
@@ -4625,10 +4653,10 @@ app.get('/api/network/users/lookup', async c => {
   return c.json(await lookupPortalPeople(c.env.DB,args.data.q,args.data.limit,args.data.offset));
 });
 app.get("/api/network/users", async (c) => {
-  await currentUser(c.env, c.req.raw);
+  c.header("Cache-Control", "no-store");
   const q = c.req.query("q") || "";
   const limit = Number.parseInt(c.req.query("limit") || "500", 10);
-  return c.json(await networkUsers(c.env, c.req.raw, q, Number.isFinite(limit) ? limit : 500));
+  return c.json(await networkUsers(c.env, c.req.raw, q, Math.max(1, Math.min(100, limit || 40)), Math.max(0, Number.parseInt(c.req.query("offset") || "0", 10) || 0)));
 });
 
 app.get("/api/life-insurance", async (c) => {
@@ -5154,6 +5182,7 @@ app.get("/api/ubi/eligibility", async (c) => {
 });
 
 app.route('/api/admin/website-observatory', websiteObservatoryRoutes(currentUser));
+app.route('/api/admin/mcp-statistics',mcpLiveStatisticsRoutes(currentUser));
 app.route('/api/admin/visitor-statistics', visitorStatisticsRoutes(currentUser));
 
 app.get("/api/system/metrics", async (c) => {
@@ -5628,13 +5657,14 @@ app.all("/api/chat", (c) => proxyChatRequest(c.req.raw, c.env));
 app.all("/api/chat/*", (c) => proxyChatRequest(c.req.raw, c.env));
 
 app.route('/api/email', emailRoutes(currentUser));
+app.route('/api/support', supportRoutes(currentUser));
 
 app.all("*", (c) => c.json({ detail: "Endpoint is not implemented in the Cloudflare org worker" }, 501));
 
 function orgWorkerFetch(request: Request, env: Env, ctx: ExecutionContext) {
   const url = new URL(request.url);
 const privateFollowRoute = /^\/api\/network\/(following\/(events|orgs)|orgs\/[^/]+\/follow|notifications(?:\/.*)?)$/.test(url.pathname);
-  if (env.ORGANIZATION_REPLICA_SOURCE && privateFollowRoute) {
+  if (env.ORGANIZATION_REPLICA_SOURCE && (privateFollowRoute || /^\/api\/support(?:\/|$)/.test(url.pathname))) {
     const upstream = new URL(env.ORGANIZATION_REPLICA_SOURCE);
     upstream.pathname = upstream.pathname.replace(/\/network\/replication\/snapshot$/, "") + url.pathname.replace(/^\/api/, "");
     upstream.search = url.search;
@@ -5662,6 +5692,10 @@ const privateFollowRoute = /^\/api\/network\/(following\/(events|orgs)|orgs\/[^/
 
 export default {
   fetch: orgWorkerFetch,
+  async email(message:ForwardableEmailMessage,env:Env){
+    const {receiveSupportEmail}=await import('./supportEmail');
+    await receiveSupportEmail(message,env);
+  },
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext) {
     if (env.ORGANIZATION_REPLICA_SOURCE) { ctx.waitUntil(replicateOrganizations(env)); return; }
     ctx.waitUntil(runRetention(env.DB, controller.scheduledTime, false, env.SCAN_IMAGES).then(counts => {

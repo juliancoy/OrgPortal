@@ -213,7 +213,7 @@ test('public preview counts all registrations and returns registrant profiles wi
   assert.doesNotMatch(JSON.stringify(data), /private@|email@|555-0100/);
 });
 
-test('event-visible registrant profiles can be opened without directory listing the person', async (t) => {
+test('event registration does not publish an unpublished contact profile', async (t) => {
   const { database, request } = setup();
   t.after(() => database.close());
   database.exec(`INSERT INTO user_contact_pages
@@ -233,14 +233,7 @@ test('event-visible registrant profiles can be opened without directory listing 
     } },
     PIDP_BASE_URL: 'https://identity.test',
   } as unknown as Env);
-  assert.equal(profileResponse.status, 200);
-  const profile = await profileResponse.json();
-  assert.equal(profile.user_name, 'Private Person');
-  assert.equal(profile.slug, 'private-person');
-  assert.equal(profile.enabled, false);
-  assert.equal(profile.photo_url, 'https://images.test/private.png');
-  assert.equal(profile.email_public, null);
-  assert.equal(profile.phone_public, null);
+  assert.equal(profileResponse.status, 404);
 
   database.exec("DELETE FROM event_registrations WHERE event_id = 'event-1' AND user_id = 'private-person'");
   assert.equal((await app.request('https://org.test/api/network/users/public/private-person', undefined, {

@@ -1,14 +1,20 @@
-import { useEffect, useRef, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { invalidatePublicOrganizationData } from '../../data/publicOrganization/cache'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
 import { refreshRuntimeTokenFromSession } from '../../infrastructure/auth/sessionToken'
 import { signalTasksChanged, useTaskQueue } from '../tasks/TaskQueue'
 import { readAvailabilityDraft, writeAvailabilityDraft, clearAvailabilityDraft } from './availabilityDraft'
+import { usePersonnelScheme } from '../components/OrganizationPersonnelScheme'
+import { personnelSchemes } from '../../../../shared/organizationPersonnel'
+import { resolveBrandPalette } from '../../../../shared/brandPalette'
+import { useGroupSite } from '../../config/timebankCommunity'
+import { OnboardingStepCard } from '../components/OnboardingStepCard'
 import './availability.css'
 import './onboarding.css'
 
 type Step = { id: string; title: string; description: string; href: string }
-type Onboarding = { enabled: boolean; organizationName: string; start_date: string; end_date: string; completed_at: string | null; availability_saved_at: string | null; acknowledgements: Record<string,string>; steps: Step[] }
+type Onboarding = { enabled: boolean; organizationName: string; organizationId?: string; start_date: string; end_date: string; completed_at: string | null; availability_saved_at: string | null; acknowledgements: Record<string,string>; steps: Step[] }
 type Calendar = { start:string; end:string; timezone:string; slots:string[]; selected:string[]; suggested_slots:string[] }
 const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
 async function request(token:string|null,path='',init:RequestInit={}) {
@@ -18,6 +24,27 @@ async function request(token:string|null,path='',init:RequestInit={}) {
  if(!response.ok)throw new Error((await response.text())||'Unable to update onboarding.')
  return response.json()
 }
+function OnboardingTitle({data,busy,onApply}:{data:Onboarding;busy:boolean;onApply:(title:string)=>Promise<void>}) {
+ const tenant=useGroupSite()
+ const {scheme,error}=usePersonnelScheme(data.organizationId||'')
+ const titles=scheme?Object.values(personnelSchemes[scheme].classes).filter(value=>!['Public','Persona Non Grata'].includes(value.label)).map(value=>value.label):[]
+ const saved=data.acknowledgements.selected_title||''
+ const [title,setTitle]=useState(saved)
+ const [custom,setCustom]=useState(false)
+ useEffect(()=>{setTitle(saved)},[saved])
+ const gold=resolveBrandPalette(tenant||{}).find(color=>color.label==='BioTech Gold')?.value||'#D4AF37'
+ return <form className="onboarding-title" onSubmit={event=>{event.preventDefault();void onApply(title.trim())}}>
+  <h2>Select your title</h2>
+  <p>Choose a title from the organization’s scheme or enter your own.</p>
+  {error&&<p role="alert">{error} You can still enter your own title.</p>}
+  <label>Title<select aria-label="Title" value={custom||!!title&&!titles.includes(title)?'custom':title} disabled={busy} onChange={event=>{const value=event.target.value;setCustom(value==='custom');setTitle(value==='custom'?'':value)}}>
+   <option value="">Select a title…</option>{titles.map(value=><option key={value} value={value}>{value}</option>)}<option value="custom">Enter your own</option>
+  </select></label>
+  {(custom||!!title&&!titles.includes(title))&&<label>Your title<input required maxLength={100} value={title} disabled={busy} onChange={event=>setTitle(event.target.value)} /></label>}
+  {saved&&<p role="status">Saved title: {saved}</p>}
+  <button type="submit" className="onboarding-apply" style={{background:gold,borderColor:gold,color:'#17201c'}} disabled={busy||!title.trim()||title.trim()===saved}>{busy?'Saving…':'Apply'}</button>
+ </form>
+}
 export function OnboardingBanner() {
  const queue=useTaskQueue()
  const task=queue.tasks.find(task=>task.href?.startsWith('/onboarding'))
@@ -25,6 +52,10 @@ export function OnboardingBanner() {
 }
 export function OnboardingPage({ availabilityOnly = false }: { availabilityOnly?: boolean } = {}) {
  const {token,user}=useAuth()
+ const tenant=useGroupSite()
+ const navigate=useNavigate()
+ const gold=resolveBrandPalette(tenant||{}).find(color=>color.label==='BioTech Gold')?.value||'#D4AF37'
+ const teal=resolveBrandPalette(tenant||{}).find(color=>color.label==='HealthTech Teal')?.value||tenant?.accent_color||'#155e59'
  const {hash}=useLocation()
  const [data,setData]=useState<Onboarding|null>(null),[calendar,setCalendar]=useState<Calendar|null>(null)
  const [selected,setSelected]=useState(new Set<string>()),[dirty,setDirty]=useState(false)
@@ -48,7 +79,7 @@ export function OnboardingPage({ availabilityOnly = false }: { availabilityOnly?
  },[hash,data,calendar])
  async function save(path:string,body:unknown,method='POST') {
   setBusy(true);setError('');setMessage('')
-  try {await request(token,path,{method,body:JSON.stringify(body)});if(path==='/availability'&&user&&calendar){clearAvailabilityDraft(user.id,calendar.start,timezone);setDirty(false)}setData(await request(token));signalTasksChanged();setMessage(path==='/availability'?'Availability saved to your account. You can update it here anytime.':'Progress saved.')}catch(e){setError(e instanceof Error?e.message:'Unable to save.')}finally{setBusy(false)}
+  try {await request(token,path,{method,body:JSON.stringify(body)});if(path==='/availability'&&user&&calendar){clearAvailabilityDraft(user.id,calendar.start,timezone);setDirty(false)}setData(await request(token));signalTasksChanged();setMessage(path==='/availability'?'Availability saved to your account. You can update it here anytime.':path==='/title'?'Title saved.':'Progress saved.')}catch(e){setError(e instanceof Error?e.message:'Unable to save.')}finally{setBusy(false)}
  }
  useEffect(()=>{
   if(!dirty||!calendar||!user||!token)return
@@ -77,8 +108,21 @@ export function OnboardingPage({ availabilityOnly = false }: { availabilityOnly?
  const slotVisible=(slot:string)=>{const time=timeFormat.format(new Date(slot));return showOvernight||(time>='08:00'&&time<'23:00')}
  const times=Array.from({length:48},(_,i)=>`${String(Math.floor(i/2)).padStart(2,'0')}:${i%2?'30':'00'}`).filter(time=>showOvernight||(time>='08:00'&&time<'23:00'))
  function toggle(slots:string[]) {const next=new Set(selected),add=!slots.every(s=>next.has(s));for(const s of slots){if(add)next.add(s);else next.delete(s)}selectionRef.current=next;setSelected(next);setDirty(true);setMessage('');setRetry(0);if(user&&calendar)writeAvailabilityDraft(user.id,calendar.start,timezone,[...next])}
+ async function joinOrganization() {
+  if(!data?.organizationId||!token||!readyToJoin||busy)return
+  setBusy(true);setError('');setMessage('')
+  try {
+   const send=(auth:string)=>fetch(`/api/org/api/network/orgs/${encodeURIComponent(data.organizationId!)}/membership`,{method:'POST',headers:{Authorization:`Bearer ${auth}`}})
+   let response=await send(token)
+   if(response.status===401){const refreshed=await refreshRuntimeTokenFromSession();if(refreshed)response=await send(refreshed)}
+   if(!response.ok)throw new Error((await response.text())||'Unable to join. Please try again.')
+   await invalidatePublicOrganizationData();signalTasksChanged()
+   navigate(`/orgs/${encodeURIComponent(tenant?.home_org_slug||tenant?.slug||data.organizationId)}`)
+  } catch(error){setError(error instanceof Error?error.message:'Unable to join. Please try again.')} finally{setBusy(false)}
+ }
+ const readyToJoin=Boolean(data?.completed_at&&data.availability_saved_at&&data.steps.every(step=>data.acknowledgements[step.id])&&data.acknowledgements.selected_title?.trim()&&!dirty&&!saving)
  const completed=data ? data.steps.filter(s=>data.acknowledgements[s.id]).length+Number(!!data.availability_saved_at) : 0
- return <section className={`availability-page onboarding-page${availabilityOnly ? ' profile-availability-matrix' : ''}`}>
+ return <section style={{'--onboarding-completed-teal':teal,'--onboarding-biotech-gold':gold} as CSSProperties} className={`availability-page onboarding-page${availabilityOnly ? ' profile-availability-matrix' : ''}`}>
   {!availabilityOnly && <h1>{data?.organizationName||'Community'} onboarding</h1>}
   {!token&&<p><Link to="/users/login?next=%2Fonboarding">Sign in</Link> to start your onboarding.</p>}
   {error&&<p role="alert">{error}</p>}{message&&<p role="status">{message}</p>}
@@ -90,7 +134,7 @@ export function OnboardingPage({ availabilityOnly = false }: { availabilityOnly?
    <p role="status"><strong>{data.completed_at?'Onboarding complete':`${completed} of ${data.steps.length+1} steps complete`}</strong></p>
    <progress value={completed} max={data.steps.length+1} aria-label="Onboarding progress" />
    </>}
-   <section id="availability" className="onboarding-calendar">
+   <section id="availability" className={`onboarding-calendar${data.availability_saved_at?' is-complete':''}`}>
     <h2>When can you meet? {data.availability_saved_at?'✓':''}</h2>
     <p>Select the times you’re usually free in {timezone}. Changes save automatically. Unselected times mean unavailable; update your week anytime.</p>
     {calendar&&<>
@@ -105,12 +149,13 @@ export function OnboardingPage({ availabilityOnly = false }: { availabilityOnly?
     </>}
    </section>
    {!availabilityOnly && <>
-   <details className="onboarding-checklist"><summary>Finish onboarding · {data.steps.filter(s=>data.acknowledgements[s.id]).length} of {data.steps.length} complete</summary><ol className="onboarding-steps">{data.steps.map(step=><li key={step.id} id={step.id}>
-    <h2>{step.title}</h2><p>{step.description}</p>
-    <a href={step.href} target={step.href.startsWith('https:')?'_blank':undefined} rel="noreferrer">Open resource{step.href.startsWith('https:')?' (new tab)':''}</a>
-    {data.acknowledgements[step.id]?<p>✓ Confirmed</p>:<button disabled={busy} onClick={()=>void save(`/steps/${step.id}`,{acknowledged:true})}>I have completed this step</button>}
-   </li>)}</ol></details>
-   <details className="onboarding-organizers"><summary>Becoming an organizer</summary><p>Discuss this path with an existing organizer. The Constitution describes relevant skills, regular attendance, two organizer meetings, and a two-thirds admission vote. Organizers then record onboarding, add the person to the website, and arrange appropriate access. An inaugural eMCee role is encouraged.</p><p>This checklist does not grant an organizer role or system permissions. An organizer must verify the prerequisites and use the existing membership and access tools.</p><a href={data.steps.find(step=>step.id==='constitution')?.href||'https://codecollective.us/constitution'}>Read organizer eligibility and responsibilities</a></details>
+   <details className="onboarding-checklist"><summary>Finish onboarding · {data.steps.filter(s=>data.acknowledgements[s.id]).length} of {data.steps.length} complete</summary><ol className="onboarding-steps">{data.steps.map(step=><OnboardingStepCard key={step.id} step={step} completed={!!data.acknowledgements[step.id]} busy={busy}
+    organization={{id:data.organizationId||tenant?.home_org_slug||'',slug:tenant?.home_org_slug||tenant?.slug||'',name:data.organizationName}}
+    onComplete={()=>void save(`/steps/${step.id}`,{acknowledged:true})} />)}</ol></details>
+   <OnboardingTitle data={data} busy={busy} onApply={title=>save('/title',{title},'PUT')} />
+   {readyToJoin&&data.organizationId&&<div className="onboarding-join-footer">
+    <button type="button" className="onboarding-join" disabled={busy} onClick={()=>void joinOrganization()}><span>{busy?'Joining…':'JOIN NOW'}</span></button>
+   </div>}
    </>}
   </>}
  </section>

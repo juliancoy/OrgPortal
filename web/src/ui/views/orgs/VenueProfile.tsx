@@ -1,3 +1,4 @@
+import { CmsImage } from '../../components/media/CmsImage'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { MapPin, ExternalLink } from 'lucide-react'
@@ -28,7 +29,7 @@ export function VenueProfile({ venue }: { venue: Venue }) {
   const facts = [['Hours', venue.opening_hours], ['Amenities', venue.amenities], ['Capacity', venue.capacity], ['Cost', venue.cost], ['Setting', venue.category ? venue.category[0].toUpperCase() + venue.category.slice(1) : null], ['Availability', venue.status === 'inactive' ? 'Inactive' : 'Active']] as const
   return <>
     <header className="venue-profile-header">
-      <div className="venue-profile-mark">{venue.image_url ? <img src={venue.image_url} alt="" onError={event => { event.currentTarget.style.display='none' }} /> : <MapPin size={40}/>}</div>
+      <div className="venue-profile-mark">{venue.image_url ? <CmsImage src={venue.image_url} alt="" onError={event => { event.currentTarget.style.display='none' }} /> : <MapPin size={40}/>}</div>
       <div><p className="venue-eyebrow">Event venue</p><h1>{venue.name}</h1>{venue.address && <p className="venue-address"><MapPin size={17}/>{venue.address}</p>}
       <div className="venue-actions">{venue.website && <a className="btn-secondary" href={venue.website} target="_blank" rel="noreferrer">Visit website <ExternalLink size={15}/></a>}{venue.address && <a className="btn-secondary" href={`https://www.google.com/maps/dir/?api=1&destination=${mapQuery}`} target="_blank" rel="noreferrer">Get directions <ExternalLink size={15}/></a>}</div></div>
     </header>
@@ -40,7 +41,7 @@ export function VenueProfile({ venue }: { venue: Venue }) {
           {venue.image_source_url && <p className="venue-source"><a href={venue.image_source_url} target="_blank" rel="noreferrer">{venue.image_credit || 'Venue image source'} ↗</a></p>}
         </section>
         <section className="portal-card venue-section"><h2>Photos from past events</h2>
-          {loading ? <p className="muted">Loading event photos…</p> : error ? <p role="status">{error}</p> : photos.length ? <div className="venue-photo-grid">{photos.map(({event,photo})=><figure key={`${event.id}-${photo.id}`}><a href={mediaUrl(photo.url)} target="_blank" rel="noreferrer"><img src={mediaUrl(photo.url)} alt={photo.alt || photo.label} loading="lazy"/></a><figcaption><Link to={`/events/${encodeURIComponent(event.slug)}`}>{event.title}</Link><span>{dateLabel(event)}</span></figcaption></figure>)}</div> : <p className="muted">No photos have been added to past events recorded at this venue yet.</p>}
+          {loading ? <p className="muted">Loading event photos…</p> : error ? <p role="status">{error}</p> : photos.length ? <div className="venue-photo-grid">{photos.map(({event,photo})=><figure key={`${event.id}-${photo.id}`}><a href={mediaUrl(photo.url)} target="_blank" rel="noreferrer"><CmsImage src={mediaUrl(photo.url)} alt={photo.alt || photo.label} loading="lazy"/></a><figcaption><Link to={`/events/${encodeURIComponent(event.slug)}`}>{event.title}</Link><span>{dateLabel(event)}</span></figcaption></figure>)}</div> : <p className="muted">No photos have been added to past events recorded at this venue yet.</p>}
         </section>
         <section className="portal-card venue-section"><h2>Past events</h2>{!loading && !error && !events.length ? <p className="muted">No past events are recorded at this venue yet.</p> : <ul className="venue-event-list">{events.map(event=><li key={event.id}><Link to={`/events/${encodeURIComponent(event.slug)}`}>{event.title}</Link><time>{dateLabel(event)}</time></li>)}</ul>}</section>
       </div>

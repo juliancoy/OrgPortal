@@ -1,5 +1,5 @@
 import { invalidatePublicOrganizationData } from '../../../data/publicOrganization/cache'
-import { loadPublicOrganizationDirectory } from '../../../data/publicOrganization/organizations'
+import { loadPublicOrganizationDirectory, peekPublicOrganizationDirectory } from '../../../data/publicOrganization/organizations'
 import { shortGroupName } from '../../../domain/organization/groupNames'
 import { OrganizationTools } from '../../components/OrganizationTools'
 import { useEffect, useMemo, useState } from 'react'
@@ -49,11 +49,12 @@ function currentUrl() {
 
 export function PublicOrganizationsPage() {
   const { token } = useAuth()
-  const [orgs, setOrgs] = useState<PublicOrganizationListItem[]>([])
+  const [cachedOrgs] = useState(() => peekPublicOrganizationDirectory<PublicOrganizationListItem>())
+  const [orgs, setOrgs] = useState<PublicOrganizationListItem[]>(cachedOrgs || [])
   const [myOrgRoles, setMyOrgRoles] = useState<Map<string, string>>(new Map())
   const [visibleCount, setVisibleCount] = useState(300)
   const [showMineOnly, setShowMineOnly] = useState(false)
-  const [status, setStatus] = useState<string>('Loading organizations…')
+  const [status, setStatus] = useState<string>(cachedOrgs ? '' : 'Loading organizations…')
   const [membershipStatus, setMembershipStatus] = useState<string>('')
 
   useEffect(() => {
@@ -138,7 +139,6 @@ export function PublicOrganizationsPage() {
       })
       .catch((err) => {
         if (controller.signal.aborted) return
-        setOrgs([])
         setStatus(err instanceof Error ? err.message : 'Unable to load organizations')
       })
     return () => controller.abort()

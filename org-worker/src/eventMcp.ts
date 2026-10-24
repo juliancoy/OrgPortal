@@ -1,3 +1,4 @@
+import { recordMcpStatistics } from './mcpLiveStatistics';
 import { registerPersonnelInvitationTools } from './personnelInvitationsMcp';
 import { presentationTargetSchema, presentationApplicationSchema, runPresentationOperation } from './presentationMcp';
 import { registerAccountTools } from './mcpAccountTools';
@@ -688,12 +689,13 @@ export function eventErrorResponse(error: unknown, env: Env, request?: Request) 
 export async function handleEventMcp(request: Request, env: Env, createOrganization?: CreateOrganization, governance?: GovernanceService) {
   const started = Date.now();
   const observation = { method: 'unparsed', rpcError: false };
-  let status = 500;
+  let status = 500,invalidToken=false;
   try {
     const response = await handleEventMcpRequest(request, env, observation, createOrganization, governance);
-    status = response.status;
+    status = response.status;invalidToken=status===401&&(response.headers.get('www-authenticate')||'').includes('invalid_token');
     return response;
   } finally {
+    try{await recordMcpStatistics(env.DB,observation.method,status,observation.rpcError,Date.now()-started,invalidToken)}catch{console.warn(JSON.stringify({event:'orgportal.mcp.statistics',outcome:'unavailable'}))}
     // Deliberately exclude tokens, subjects, arguments, results, URLs and error text.
     console.info(JSON.stringify({ event: 'orgportal.mcp.request', method: observation.method,
       status, outcome: status >= 400 || observation.rpcError ? 'error' : 'ok',
@@ -1069,13 +1071,13 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
     server.registerTool("apply_event_media_changes", { description: "Replace a native OrgPortal event's public image/media URL list after previewing it. Use admin UI for direct binary uploads.",
       inputSchema: eventMediaSchema, annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
       _meta: metadata([readScope, writeScope]) }, args => result("mediaApply", args));
-    server.registerTool("get_portal_branding", { description: "Read the effective brand-guide palette, including each color's label, hex value and meaning. Requires organization management permission.",
+    server.registerTool("get_portal_branding", { description: "Read the effective brand-guide palette and horizontal nameBannerUrl, including each color's label, hex value and meaning. Requires organization management permission.",
       inputSchema: portalBrandingTargetSchema, annotations: { readOnlyHint: true, openWorldHint: false },
       _meta: metadata([portalReadScope]) }, args => portalResult("brandingGet", args));
-    server.registerTool("preview_portal_branding", { description: "Preview replacing the brand-guide palette. Returns before/after and a one-use previewId; does not change settings.",
+    server.registerTool("preview_portal_branding", { description: "Preview updating the brand-guide palette or horizontal nameBannerUrl. Returns before/after and a one-use previewId; does not change settings.",
       inputSchema: portalBrandingUpdateSchema.omit({ previewId: true, confirm: true }), annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
       _meta: metadata([portalReadScope, portalWriteScope]) }, args => portalResult("brandingUpdate", { ...args, confirm: false }));
-    server.registerTool("apply_portal_branding", { description: "Save the previewed brand-guide palette without changing portal routing, theme or other settings. Requires the same palette and its previewId. Changes appear on the brand guide after reload, without deployment.",
+    server.registerTool("apply_portal_branding", { description: "Save the previewed palette or horizontal nameBannerUrl. Requires the same changes and previewId. Changes appear on the brand guide after reload, without deployment.",
       inputSchema: portalBrandingUpdateSchema.omit({ confirm: true }).extend({ previewId: z.string().uuid() }), annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
       _meta: metadata([portalReadScope, portalWriteScope]) }, args => portalResult("brandingUpdate", { ...args, confirm: true }));
     server.registerTool("get_portal_setup", { description: "Read the group homepage setup for an organization, including shared slug URL and custom-domain status.",

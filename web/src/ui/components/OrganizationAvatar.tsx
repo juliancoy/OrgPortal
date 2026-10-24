@@ -2,12 +2,12 @@ import { useState, type CSSProperties, type ReactNode } from 'react'
 import { personnelClasses, personnelSchemes, type PersonnelScheme, type PersonnelClass } from '../../../../shared/organizationPersonnel'
 import './organization-avatar.css'
 
-export function OrganizationAvatar({ name, src, status, className = '', children, scheme = 'meetup', titles = [] }: {
-  name: string; src?: string | null; status: PersonnelClass | null; className?: string; children?: ReactNode; scheme?: PersonnelScheme; titles?: string[]
+export function OrganizationAvatar({ name, src, status, className = '', children, scheme = 'meetup', titles = [], classKeys = [] }: {
+  name: string; src?: string | null; status: PersonnelClass | null; className?: string; children?: ReactNode; scheme?: PersonnelScheme; titles?: string[]; classKeys?: string[]
 }) {
   const [failedSrc, setFailedSrc] = useState<string | null>(null)
-  const assignedClass = Object.values(personnelSchemes[scheme].classes).find(value => titles.some(title => title.toLowerCase() === value.label.toLowerCase()))
-  const classification = scheme !== 'meetup' ? assignedClass : status ? personnelClasses[status] : null
+  const assignedClass = Object.entries(personnelSchemes[scheme].classes).find(([key,value]) => classKeys.includes(key) || titles.some(title => title.toLowerCase() === value.label.toLowerCase()))?.[1]
+  const classification = scheme !== 'meetup' || classKeys.length ? assignedClass : status ? personnelClasses[status] : null
   const label = classification?.label || 'Status unavailable'
   return <span className={`organization-avatar ${className}`} data-personnel-class={status || 'unknown'}
     style={{ '--personnel-color': classification?.color || 'var(--text-muted)' } as CSSProperties}

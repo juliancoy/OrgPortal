@@ -1,3 +1,4 @@
+import { CmsImage } from '../../components/media/CmsImage'
 import { resolveBrandPalette } from '../../../../../shared/brandPalette'
 import { OrganizationViewSwitcher } from '../../components/OrganizationViewSwitcher'
 import { EventSubmissions } from '../../components/EventSubmissions'
@@ -302,6 +303,39 @@ export function PublicEventPage() {
   }
   useEffect(() => { setActiveTab(location.hash === '#submissions' ? 'submissions' : location.hash === '#apply' ? 'apply' : location.hash === '#poster' ? 'poster' : 'info') }, [slug, location.hash])
   const [event, setEvent] = useState<PublicEvent | null>(null)
+  const [presentationSettings, setPresentationSettings] = useState<{ eventId: string; enabled: boolean } | null>(null)
+  const [presentationSettingsBusy, setPresentationSettingsBusy] = useState(false)
+  const [presentationSettingsError, setPresentationSettingsError] = useState('')
+  const presentationsEnabled = presentationSettings?.eventId === event?.id && presentationSettings?.enabled === true
+  useEffect(() => {
+    if (!event?.id) return
+    const controller = new AbortController()
+    void fetch(orgUrl(`/api/network/events/${encodeURIComponent(event.id)}/presentations/public`), { signal: controller.signal, cache: 'no-store' })
+      .then(response => { if (!response.ok) throw new Error('Unable to load presentation settings'); return response.json() })
+      .then(form => setPresentationSettings({ eventId: event.id, enabled: form.enabled === true }))
+      .catch(error => { if (!controller.signal.aborted) setPresentationSettingsError(error.message) })
+    return () => controller.abort()
+  }, [event?.id])
+  useEffect(() => {
+    if (event && presentationSettings?.eventId === event.id && !presentationsEnabled && (activeTab === 'apply' || activeTab === 'submissions')) {
+      setActiveTab('info')
+      navigate({ pathname: location.pathname, search: location.search, hash: '#info' }, { replace: true, preventScrollReset: true })
+    }
+  }, [presentationSettings, presentationsEnabled, event?.id, activeTab, navigate, location.pathname, location.search])
+  async function togglePresentations() {
+    if (!event || !token || presentationSettingsBusy) return
+    setPresentationSettingsBusy(true)
+    setPresentationSettingsError('')
+    try {
+      const response = await fetch(orgUrl(`/api/network/events/${encodeURIComponent(event.id)}/presentations/form`), {
+        method: 'PUT', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: !presentationsEnabled }),
+      })
+      if (!response.ok) throw new Error('Unable to update presentation applications. Please try again.')
+      const form = await response.json()
+      setPresentationSettings({ eventId: event.id, enabled: form.enabled === true })
+    } catch (error) { setPresentationSettingsError(error instanceof Error ? error.message : 'Unable to update applications') }
+    finally { setPresentationSettingsBusy(false) }
+  }
   const personnelFor = useOrganizationPersonnel(event?.host_org_id)
   const [status, setStatus] = useState<string>('Loading event…')
   const [googleCalendarConnected, setGoogleCalendarConnected] = useState(false)
@@ -750,7 +784,7 @@ export function PublicEventPage() {
         <main className="public-event-main">
           <section className="public-event-hero">
             {heroImage ? (
-              <img className="public-event-hero-image" src={heroImage} alt="" />
+              <CmsImage priority className="public-event-hero-image" src={heroImage} alt="" />
             ) : <div className="public-event-hero-image public-event-hero-placeholder" aria-hidden="true" />}
             <div className="public-event-hero-content">
               {event.organization_slug ? (
@@ -760,7 +794,7 @@ export function PublicEventPage() {
                   aria-label={`View ${organizerName} group page`}
                 >
                   <span className="public-event-organizer-avatar" aria-hidden="true">
-                    {organizerAvatar ? <img src={organizerAvatar} alt="" /> : organizationInitials(organizerName)}
+                    {organizerAvatar ? <CmsImage src={organizerAvatar} alt="" /> : organizationInitials(organizerName)}
                   </span>
                   <span>{organizerName}</span>
                 </Link>
@@ -785,13 +819,14 @@ export function PublicEventPage() {
             <div><Clock size={20} aria-hidden="true" /><span>{toEventTimeRange(event.starts_at,event.ends_at)}</span>{calendarActions}</div>
             {event.location&&<div><MapPinned size={20} aria-hidden="true" /><a href={mapsUrl!} target="_blank" rel="noreferrer">{event.location}</a></div>}
           </section>
+          {canManageEvent && <div className="presentation-settings"><label><input type="checkbox" checked={presentationsEnabled} disabled={presentationSettingsBusy || presentationSettings?.eventId !== event.id} onChange={() => void togglePresentations()} /> Enable presentation applications</label>{presentationSettingsError && <p role="status">{presentationSettingsError}</p>}</div>}
           <div className="public-event-tabs" role="tablist" aria-label="Event sections" onKeyDown={keyEvent=>{
-            const tabs=['info','poster','apply','submissions'] as const,index=tabs.indexOf(activeTab)
+            const tabs: Array<typeof activeTab> = presentationsEnabled ? ['info','poster','apply','submissions'] : ['info','poster'],index=tabs.indexOf(activeTab)
             if(!['ArrowLeft','ArrowRight','Home','End'].includes(keyEvent.key))return
-            keyEvent.preventDefault();const next=keyEvent.key==='Home'?'info':keyEvent.key==='End'?'submissions':tabs[(index+(keyEvent.key==='ArrowLeft'?tabs.length-1:1))%tabs.length]
+            keyEvent.preventDefault();const next=keyEvent.key==='Home'?'info':keyEvent.key==='End'?tabs[tabs.length-1]:tabs[(index+(keyEvent.key==='ArrowLeft'?tabs.length-1:1))%tabs.length]
             selectEventTab(next);document.getElementById(`event-${next}-tab`)?.focus()
           }}>
-            {([{key:'info',label:'Info',Icon:Info},{key:'poster',label:'Poster',Icon:FileImage},{key:'apply',label:'Apply',Icon:Send},{key:'submissions',label:'Submissions',Icon:Users}] as const).map(({key,label,Icon})=><button type="button" key={key} id={`event-${key}-tab`} role="tab" aria-selected={activeTab===key} aria-controls={`event-${key}-panel`} tabIndex={activeTab===key?0:-1} onClick={()=>selectEventTab(key)} style={key==='apply'?{background:applyGold,color:'#17201c',borderColor:applyGold}:undefined}><Icon size={19} aria-hidden="true" /><span>{label}</span></button>)}
+            {([{key:'info',label:'Info',Icon:Info},{key:'poster',label:'Poster',Icon:FileImage},{key:'apply',label:'Apply',Icon:Send},{key:'submissions',label:'Submissions',Icon:Users}] as const).filter(({key}) => presentationsEnabled || (key !== 'apply' && key !== 'submissions')).map(({key,label,Icon})=><button type="button" key={key} id={`event-${key}-tab`} role="tab" aria-selected={activeTab===key} aria-controls={`event-${key}-panel`} tabIndex={activeTab===key?0:-1} onClick={()=>selectEventTab(key)} style={key==='apply'?{borderColor:applyGold}:undefined}><Icon size={19} aria-hidden="true" /><span>{label}</span></button>)}
           </div>
           <section className="public-event-tab-panel" role="tabpanel" id="event-info-panel" aria-labelledby="event-info-tab" hidden={activeTab!=='info'}>
           {event.description ? (
@@ -970,7 +1005,7 @@ export function PublicEventPage() {
                     onClick={() => setSelectedMediaIndex(index)}
                     aria-label={`Open ${item.alt || item.label} in gallery`}
                   >
-                    <img
+                    <CmsImage
                       src={item.url}
                       alt={item.alt || item.label}
                     />
@@ -982,19 +1017,19 @@ export function PublicEventPage() {
           ) : null}
             {activeTab==='poster'&&<EventPosterTools sourceUrl={event.source_url} eventLinks={event.links} organizationSlug={event.organization_slug} organizationLinks={event.organization_links} slug={event.slug} title={event.title} revision={event.updated_at || ''} inline />}
           </section>
-          <section className="public-event-tab-panel" role="tabpanel" id="event-apply-panel" aria-labelledby="event-apply-tab" hidden={activeTab!=='apply'}>
-          <section aria-label="Apply with AI" style={{ marginBottom: '1.5rem' }}>
-            <h3>Apply with AI</h3>
+          {presentationsEnabled && <section className="public-event-tab-panel" role="tabpanel" id="event-apply-panel" aria-labelledby="event-apply-tab" hidden={activeTab!=='apply'}>
+          <EventPresentations key={`presentations-${event.id}`} eventId={event.id} formAction={presentationAction} onActionHandled={()=>setPresentationAction(null)} onSaved={()=>setPresentationRevision(value=>value+1)} />
+          <details className="presentation-ai-option">
+            <summary>Apply with an AI assistant</summary>
             <p>Copy this prompt into an AI assistant that supports MCP, then approve the connection with your account.</p>
             <textarea aria-label="Submission prompt" readOnly value={submissionPrompt} rows={5} style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical' }} onFocus={e => e.currentTarget.select()} />
             <button type="button" className="secondary" onClick={copySubmissionPrompt}><Copy size={16} aria-hidden="true" /> Copy prompt</button>
             <span role="status">{submissionPromptStatus}</span>
-          </section>
-          <EventPresentations key={`presentations-${event.id}`} eventId={event.id} formAction={presentationAction} onActionHandled={()=>setPresentationAction(null)} onSaved={()=>setPresentationRevision(value=>value+1)} />
-          </section>
-          <section className="public-event-tab-panel" role="tabpanel" id="event-submissions-panel" aria-labelledby="event-submissions-tab" hidden={activeTab!=='submissions'}>
+          </details>
+          </section>}
+          {presentationsEnabled && <section className="public-event-tab-panel" role="tabpanel" id="event-submissions-panel" aria-labelledby="event-submissions-tab" hidden={activeTab!=='submissions'}>
             {activeTab==='submissions'&&<EventSubmissions key={`${event.id}:${presentationRevision}`} eventId={event.id} onEdit={application=>{setPresentationAction({kind:'edit',application});selectEventTab('apply')}} onDeleted={submissionId=>setPresentationAction({kind:'delete',submissionId})} />}
-          </section>
+          </section>}
         </main>
         <aside className="public-event-side public-event-luma-side" aria-label="Event actions and location">
           <EventVenues location={event.location} organizationSlug={event.organization_slug} eventId={event.id} venues={event.venues||[]} canManage={canManageEvent} onSaved={venues=>{const confirmed=venues.find(v=>v.event_status==='confirmed');setEvent({...event,venues,location:confirmed?[confirmed.name,confirmed.address].filter(Boolean).join(' · '):null})}} />
@@ -1134,7 +1169,7 @@ export function PublicEventPage() {
                   <ChevronLeft size={26} aria-hidden="true" />
                 </button>
               ) : null}
-              <img
+              <CmsImage
                 src={selectedMedia.url}
                 alt={selectedMedia.alt || selectedMedia.label}
                 style={mediaZoom > 1 ? { width: `${mediaZoom * 100}%` } : undefined}

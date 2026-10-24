@@ -3,6 +3,7 @@ import { uniqueAccounts } from '../components/organizationMemberSearch'
 const ORG_API_BASE = '/api/org'
 
 export type NetworkUser = {
+  last_active_at?: number | null
   user_id: string
   user_name: string
   email?: string | null
@@ -33,6 +34,8 @@ export type PublicOrganization = {
 }
 
 type DirectoryRequest = {
+  offset?: number
+  admin?: boolean
   token: string | null
   query: string
   signal: AbortSignal
@@ -41,6 +44,7 @@ type DirectoryRequest = {
 
 export type DirectoryResult = {
   users: NetworkUser[]
+  nextOffset: number | null
   status: string
 }
 
@@ -59,26 +63,34 @@ async function fetchRows<T>(fetcher: typeof fetch, url: string, options: Request
 
 export async function loadPeopleDirectory({
   token,
+  offset = 0,
+  admin = false,
   query,
   signal,
   fetcher = fetch,
 }: DirectoryRequest): Promise<DirectoryResult> {
   const params = new URLSearchParams({
-    limit: '40',
-    sort: 'recent',
+    limit: admin ? '40' : '41',
+    offset: String(offset),
   })
   if (query.trim()) params.set('q', query.trim())
 
-  const userPath = token ? '/api/network/users' : '/api/network/users/public'
+  const userPath = admin ? '/api/admin/people' : token ? '/api/network/users' : '/api/network/users/public'
   const userOptions: RequestInit = token
     ? { headers: { Authorization: `Bearer ${token}` }, signal }
     : { signal }
 
   try {
-    const users = uniqueAccounts(await fetchRows<NetworkUser>(fetcher, orgUrl(`${userPath}?${params.toString()}`), userOptions))
-    return { users, status: '' }
+    if (admin) {
+      const response = await fetcher(orgUrl(`${userPath}?${params}`), userOptions)
+      if (!response.ok) throw new Error(`Request failed (${response.status})`)
+      const data = await response.json() as {users: NetworkUser[]; nextOffset: number | null}
+      return {users: uniqueAccounts(data.users), nextOffset: data.nextOffset, status: ''}
+    }
+    const rows = await fetchRows<NetworkUser>(fetcher, orgUrl(`${userPath}?${params}`), userOptions)
+    return { users: uniqueAccounts(rows.slice(0,40)), nextOffset: rows.length > 40 ? offset + 40 : null, status: '' }
   } catch (error) {
     if (signal.aborted) throw error
-    return { users: [], status: 'People are temporarily unavailable.' }
+    return { users: [], nextOffset: null, status: 'People are temporarily unavailable.' }
   }
 }

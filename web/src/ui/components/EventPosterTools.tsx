@@ -45,7 +45,14 @@ function PosterEditor({ kind = 'event', slug, title, revision = '', sourceUrl, e
   const [eventCount, setEventCount] = useState(0)
   const storageKey = `orgportal:poster:v1:${isOrganization ? 'organization:' : ''}${slug}`
   const [settings, setSettings] = useState<PosterSettings>(() => {
-    try { const parsed = parseSettings(localStorage.getItem(storageKey)); if (isOrganization && ['city','lifetech'].includes(parsed.background)) parsed.background = 'solid'; return parsed } catch { return { ...defaults } }
+    const initial = { ...defaults, background: isOrganization ? 'gallery' as const : defaults.background }
+    try {
+      const stored = localStorage.getItem(storageKey)
+      if (!stored) return initial
+      const parsed = parseSettings(stored)
+      if (isOrganization && ['city','lifetech'].includes(parsed.background)) parsed.background = initial.background
+      return parsed
+    } catch { return initial }
   })
   const { format, theme, background, mediaId, elements, selectedElement, zoom, offsetX, offsetY, opacity, dimming, edgeBlur, link } = settings
   const settingsRef = useRef(settings)
@@ -69,7 +76,7 @@ function PosterEditor({ kind = 'event', slug, title, revision = '', sourceUrl, e
   }, [storageKey, settings])
   function resetSettings() {
     try { localStorage.removeItem(storageKey) } catch { /* Editing still works without storage. */ }
-    setSettings({ ...defaults })
+    setSettings({ ...defaults, background: isOrganization && gallery.length ? 'gallery' : defaults.background })
   }
   const [gallery, setGallery] = useState<{ id: string; label: string; alt?: string; source: string; url: string }[]>([])
   const [galleryStatus, setGalleryStatus] = useState('Loading gallery...')
@@ -86,11 +93,12 @@ function PosterEditor({ kind = 'event', slug, title, revision = '', sourceUrl, e
         const images = await response.json()
         if (abort.signal.aborted) return
         setGallery(images); setGalleryStatus(images.length ? '' : 'No images yet. Add images to the gallery.')
+        if (isOrganization && !images.length) setSettings(old => old.background === 'gallery' ? { ...old, background: 'solid' } : old)
       })
       .catch(() => { if (!abort.signal.aborted) setGalleryStatus('Could not load gallery.') })
     return () => abort.abort()
-  }, [endpoint, revision, galleryRetry])
-  const selectedMediaId = gallery.some(item => item.id === mediaId) ? mediaId : ''
+  }, [endpoint, revision, galleryRetry, isOrganization])
+  const selectedMediaId = gallery.some(item => item.id === mediaId) ? mediaId : gallery[0]?.id || ''
   const [retry, setRetry] = useState(0)
   const [poster, setPoster] = useState<{ svg: SVGSVGElement; key: string } | null>(null)
   const preview = useRef<HTMLDivElement>(null)

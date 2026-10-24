@@ -266,6 +266,16 @@ class FakeD1 {
           organization_image_url: this.organizations.find((org) => org.id === event.host_org_id)?.image_url || null,
         })) as T[];
     }
+    if (sql.includes('WITH known AS (') && sql.includes('FROM people p')) {
+      const terms = params.slice(0, -2).map(String);
+      return [...this.contacts]
+        .filter(row => terms.every(term => String(row.user_name).toLowerCase().includes(term)))
+        .sort((a,b) => String(a.user_name).toLowerCase().localeCompare(String(b.user_name).toLowerCase()) || String(a.user_id).localeCompare(String(b.user_id)))
+        .slice(Number(params.at(-1)), Number(params.at(-1)) + Number(params.at(-2)))
+        .map(row => ({user_id:row.user_id,user_name:row.user_name,photo_url:row.photo_url ?? null,
+          contact_slug:row.enabled ? row.slug : null,contact_enabled:row.enabled,
+          headline:row.enabled ? row.headline ?? null : null})) as T[];
+    }
     if (sql.includes("FROM user_contact_pages")) {
       const enabledOnly = sql.includes("WHERE enabled = 1");
       return [...this.contacts]
@@ -1518,7 +1528,7 @@ test("public user event route returns individual-hosted calendar entries", async
   assert.equal(events[0].host_user_id, "user-1");
 });
 
-test("public network search tolerates slight misspellings", async () => {
+test("organization and event searches tolerate misspellings while People searches names", async () => {
   const db = new FakeD1();
   db.organizations.push(
     {
@@ -1598,10 +1608,10 @@ test("public network search tolerates slight misspellings", async () => {
   const events = (await eventSearch.json()) as Array<{ slug: string }>;
   assert.deepEqual(events.map((event) => event.slug), ["open-meeting"]);
 
-  const userSearch = await app.request("https://org.example.test/api/network/users/public?q=julain", {}, env(db));
+  const userSearch = await app.request("https://org.example.test/api/network/users/public?q=julian", {}, env(db));
   assert.equal(userSearch.status, 200);
-  const users = (await userSearch.json()) as Array<{ slug: string }>;
-  assert.deepEqual(users.map((user) => user.slug), ["julian-coy"]);
+  const users = (await userSearch.json()) as Array<{ contact_slug: string }>;
+  assert.deepEqual(users.map((user) => user.contact_slug), ["julian-coy"]);
 });
 
 test("public network search does not broaden unrelated short queries", async () => {
@@ -2284,7 +2294,7 @@ test('event creation preserves an explicit organization ID without a source URL'
   assert.equal(db.events[0].host_org_id, 'org-lifetech');
 });
 
-test('global search uses public fuzzy candidates, hides private profiles, and rejects an invalid ranking identity', async () => {
+test('global search keeps organization fuzzy matching and rejects an invalid ranking identity', async () => {
   const db = new FakeD1();
   db.organizations.push({id:'org-fuzzy',name:'Code Collective',slug:'code-collective',tags:'[]'});
   db.contacts.push({id:'public-contact',user_id:'public-user',user_name:'Code Person',slug:'public-person',enabled:1,links:'[]'},
@@ -2296,7 +2306,7 @@ test('global search uses public fuzzy candidates, hides private profiles, and re
   assert.equal(response.headers.get('vary'),'Authorization');
   const result = await response.json() as {orgs:{id:string}[];users:{user_id:string}[];personalized:boolean};
   assert.deepEqual(result.orgs.map(row=>row.id),['org-fuzzy']);
-  assert.deepEqual(result.users.map(row=>row.user_id),['public-user']);
+  assert.deepEqual(result.users,[]);
   assert.equal(result.personalized,false);
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async () => new Response('{}',{status:401});
@@ -2309,21 +2319,24 @@ test('global search uses public fuzzy candidates, hides private profiles, and re
 });
 
 
-test("signed-in and public People directories exclude disabled profiles, including chat robots", async () => {
+test("People directories show known names while withholding unpublished contact details", async () => {
   const db = new FakeD1();
   for (const [id,name,enabled] of [['person','Visible Person',1],['robot','Code Collective Chat Robot A',0],['private','Private Person',0]] as const) {
     db.contacts.push({id,user_id:id,user_name:name,user_email:`${id}@example.test`,slug:id,enabled,links:'[]',created_at:'2026-10-09T00:00:00Z',updated_at:'2026-10-09T00:00:00Z'});
   }
   const publicResponse = await app.request('https://org.example.test/api/network/users/public',{},env(db));
   assert.equal(publicResponse.status,200);
-  assert.deepEqual((await publicResponse.json() as Row[]).map(row=>row.user_id),['person']);
+  const people=await publicResponse.json() as Row[];
+  assert.deepEqual(people.map(row=>row.user_id),['robot','private','person']);
+  assert.ok(people.every(row => !('email' in row) && !('user_email' in row)));
+  assert.ok(people.filter(row=>!row.contact_enabled).every(row=>row.contact_slug===null && row.headline===null));
   await withPidpUser({id:'viewer',email:'viewer@example.test'},async () => {
     const options = {headers:{authorization:'Bearer viewer-token'}};
     const response = await app.request('https://org.example.test/api/network/users',options,env(db));
     assert.equal(response.status,200);
-    assert.deepEqual((await response.json() as Row[]).map(row=>row.user_id),['person']);
+    assert.deepEqual((await response.json() as Row[]).map(row=>row.user_id),['robot','private','person']);
     const search = await app.request('https://org.example.test/api/network/users?q=robot',options,env(db));
     assert.equal(search.status,200);
-    assert.deepEqual(await search.json(),[]);
+    assert.deepEqual((await search.json() as Row[]).map(row=>row.user_id),['robot']);
   });
 });

@@ -1,0 +1,8 @@
+.cms-image[data-image-state='loading'] {
+  background: var(--surface-muted, #e5e7eb);
+}
+/* Keep the reserved image box and its alt text when a download fails. */
+.cms-image[data-image-state='error'] {
+  background: var(--surface-muted, #e5e7eb);
+  color: var(--text-muted, #475569);
+}

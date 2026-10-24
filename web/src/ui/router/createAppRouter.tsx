@@ -1,9 +1,11 @@
+import { RouteLoading } from '../components/RouteLoading'
 import { InvitationAcceptPage } from '../views/InvitationAcceptPage'
 import { CommunitiesPage, PlatformHomePage } from '../views/PlatformHomePage'
 import { LocalHomePage } from '../views/LocalHomePage'
 import { PortalProfileBoundary } from '../shell/PortalProfileBoundary'
 import { getDomainCommunity, getGroupSite, type GroupSite } from '../../config/timebankCommunity'
-import { lazy, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { lazyPage as lazy, withRouteModules, installRoutePrefetch } from './routeModules'
 import type { ReactElement } from 'react'
 import { Navigate, createBrowserRouter, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { RouteErrorPage } from '../components/RouteErrorPage'
@@ -28,6 +30,7 @@ const EcosystemOverviewPage = lazy(() => import('../views/EcosystemOverviewPage'
 const EcosystemNetworkViews = lazy(() => import('../views/EcosystemNetworkViews').then(module => ({ default: module.EcosystemNetworkViews })))
 const MemberMeetingsPage = lazy(() => import('../views/MemberMeetingsPage').then(module => ({ default: module.MemberMeetingsPage })))
 const NametagsPage = lazy(() => import('../views/NametagsPage').then(module => ({ default: module.NametagsPage })))
+const SupportPage = lazy(() => import('../views/support/SupportPage').then(module => ({ default: module.SupportPage })))
 const GovernanceDocumentPage = lazy(() => import('../views/governance/GovernanceDocumentPage').then(module => ({ default: module.GovernanceDocumentPage })))
 const VenuesPage = lazy(() => import('../views/orgs/VenuesPage').then(module => ({ default: module.VenuesPage })))
 const AvailabilityPage = lazy(() => import('../views/AvailabilityPage').then(module => ({ default: module.AvailabilityPage })))
@@ -265,8 +268,8 @@ function FeatureRoute(props: { feature: PortalFeature; children: ReactElement })
 export function createAppRouter() {
   const basename = portalBasePath() || '/'
 
-  return createBrowserRouter(
-    [{ element: <PortalProfileBoundary />, errorElement: <RouteErrorPage />, children: [
+  const routes = withRouteModules(
+    [{ element: <PortalProfileBoundary />, hydrateFallbackElement: <RouteLoading />, errorElement: <RouteErrorPage />, children: [
       { path: '/', element: <HomeRoute /> },
       { path: '/finance', element: <EconomicOpsPage /> },
       { path: '/departments', element: <DepartmentsPage /> },
@@ -487,6 +490,8 @@ export function createAppRouter() {
           { path: '/contact-settings', element: <LegacyUserRoute to="/profile" /> },
 
           // Governance
+          { path: '/support', element: <AuthenticatedRoute><SupportPage /></AuthenticatedRoute> },
+          { path: '/support/:ticketId', element: <AuthenticatedRoute><SupportPage /></AuthenticatedRoute> },
           { path: '/governance/documents/lifetech-constitution', element: <GovernanceDocumentPage /> },
           { path: '/governance/documents/lifetech-constitution/tickets/:ticketId', element: <GovernanceDocumentPage /> },
           { path: '/governance/roberts', element: <MotionListPage /> },
@@ -502,6 +507,7 @@ export function createAppRouter() {
         ],
       },
     ] }],
-    { basename },
   )
+  installRoutePrefetch(routes, basename)
+  return createBrowserRouter(routes, { basename })
 }

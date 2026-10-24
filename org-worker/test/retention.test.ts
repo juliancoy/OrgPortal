@@ -7,6 +7,7 @@ function adapter(sql) { return {prepare(q){return {bind(...v){return {async firs
 
 test('expiry units, bounds, dry-run, retries and unresolved operations',async()=>{
  const sql=new DatabaseSync(':memory:');
+ sql.exec('CREATE TABLE support_tickets(id TEXT PRIMARY KEY,expires_at INTEGER);CREATE TABLE support_messages(id TEXT PRIMARY KEY,ticket_id TEXT);');
  sql.exec(readFileSync(new URL('../migrations/0017_event_mcp_operations.sql',import.meta.url),'utf8'));
  sql.exec(`CREATE TABLE email_oauth_states(state_hash TEXT PRIMARY KEY,expires_at INTEGER); CREATE TABLE email_bounce_receipts(id TEXT PRIMARY KEY,expires_at INTEGER); CREATE TABLE email_campaigns(id TEXT PRIMARY KEY,expires_at INTEGER,status TEXT);
  CREATE TABLE private_newsletter_previews(id TEXT PRIMARY KEY,expires_at TEXT);
@@ -16,6 +17,8 @@ test('expiry units, bounds, dry-run, retries and unresolved operations',async()=
  sql.prepare('INSERT INTO organization_recognition_nominees VALUES (?,?)').run('expired',new Date(1).toISOString());
  sql.prepare('INSERT INTO organization_recognition_ballots VALUES (?,?)').run('expired',new Date(1).toISOString());
  sql.exec('CREATE TABLE organization_personnel_relationships(id TEXT PRIMARY KEY,expires_at INTEGER); INSERT INTO organization_personnel_relationships VALUES (\'expired\',1),(\'live\',2000000000000);');
+ sql.exec('CREATE TABLE portal_account_activity(user_id TEXT PRIMARY KEY,last_active_at INTEGER);');
+ sql.exec('CREATE TABLE mcp_live_statistics(day TEXT);');
  sql.exec('CREATE TABLE organization_invitations(id TEXT PRIMARY KEY,expires_at INTEGER);');
  sql.exec('CREATE TABLE organization_page_view_days(organization_id TEXT,day TEXT,views INTEGER);');
  sql.prepare('INSERT INTO organization_invitations VALUES (?,?)').run('expired-invitation',1);
@@ -30,7 +33,7 @@ test('expiry units, bounds, dry-run, retries and unresolved operations',async()=
  sql.exec('CREATE TABLE event_presentation_submissions(id TEXT PRIMARY KEY, expires_at TEXT);');
  sql.prepare('INSERT INTO event_presentation_submissions VALUES (?,?)').run('expired-presentation',new Date(1).toISOString());
  sql.exec('CREATE TABLE event_company_votes(id TEXT PRIMARY KEY, expires_at TEXT);');
- sql.exec('CREATE TABLE organization_follow_event_jobs(id TEXT PRIMARY KEY, expires_at TEXT); CREATE TABLE user_notifications(id TEXT PRIMARY KEY,type TEXT,created_at TEXT);');
+ sql.exec('CREATE TABLE organization_follow_event_jobs(id TEXT PRIMARY KEY, expires_at TEXT); CREATE TABLE user_notifications(id TEXT PRIMARY KEY,type TEXT,created_at TEXT,entity_id TEXT);');
  const now=1800000000000,cutoff=now-23*3600000;
  sql.prepare('INSERT INTO organization_page_view_days VALUES(?,?,?)').run('expired',new Date(now-365*86400_000).toISOString().slice(0,10),7);
  sql.prepare('INSERT INTO organization_page_view_days VALUES(?,?,?)').run('boundary',new Date(now-364*86400_000).toISOString().slice(0,10),3);
@@ -44,9 +47,9 @@ test('expiry units, bounds, dry-run, retries and unresolved operations',async()=
  sql.prepare('INSERT INTO event_company_votes VALUES (?,?)').run('boundary-vote',new Date(cutoff).toISOString());
  for(let i=0;i<501;i++)sql.prepare('INSERT INTO private_newsletter_previews VALUES (?,?)').run(String(i),new Date(cutoff-1).toISOString());
  sql.prepare('INSERT INTO event_company_favorites VALUES (?,?)').run('expired-favorite',new Date(cutoff-1).toISOString());
- sql.prepare('INSERT INTO user_notifications VALUES (?,?,?)').run('expired-event','organization_event',new Date(now-91*86400_000).toISOString());
- sql.prepare('INSERT INTO user_notifications VALUES (?,?,?)').run('other','connection_request',new Date(now-91*86400_000).toISOString());
- sql.prepare('INSERT INTO user_notifications VALUES (?,?,?)').run('recent-event','organization_event',new Date(now).toISOString());
+ sql.prepare('INSERT INTO user_notifications(id,type,created_at) VALUES (?,?,?)').run('expired-event','organization_event',new Date(now-91*86400_000).toISOString());
+ sql.prepare('INSERT INTO user_notifications(id,type,created_at) VALUES (?,?,?)').run('other','connection_request',new Date(now-91*86400_000).toISOString());
+ sql.prepare('INSERT INTO user_notifications(id,type,created_at) VALUES (?,?,?)').run('recent-event','organization_event',new Date(now).toISOString());
  const db=adapter(sql) as unknown as D1Database;
  assert.equal((await runRetention(db,now,true)).private_newsletter_previews,501);
  assert.equal(sql.prepare('SELECT COUNT(*) n FROM email_oauth_states').get()!.n,2);

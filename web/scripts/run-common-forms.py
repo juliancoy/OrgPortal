@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import socket
+import docker_utils
 import subprocess
 import sys
 import time
@@ -51,7 +52,7 @@ def main():
         # Hot reload picks up API code; keep the reused fixture schema current too.
         run('docker', 'exec', PREFIX + 'community-api', 'npm', 'run', 'db:migrate:local')
     image = f'orgportal-form-browser:{required}'
-    run('docker', 'build', '--tag', image, str(DOCKER))
+    docker_utils.build_image(image,DOCKER)
     name = 'orgportal-form-browser-' + stamp.lower()
     results = []
     # Host networking keeps every browser request on the loopback gateway.
@@ -60,7 +61,7 @@ def main():
         probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         probe.bind(('127.0.0.1', 9460))
     try:
-        run('docker', 'run', '--detach', '--rm', '--init', '--network', 'host',
+        run('docker', 'run', '--pull=never', '--detach', '--rm', '--init', '--network', 'host',
             '--shm-size', '1g', '--name', name, image, stdout=subprocess.DEVNULL)
         for attempt in range(60):
             try:

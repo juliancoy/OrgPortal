@@ -1,3 +1,4 @@
+import { NavigationProgress } from '../components/RouteLoading'
 import { useLayoutEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 import { applyPortalBranding } from '../../config/portalBranding'
@@ -12,5 +13,5 @@ export function PortalProfileBoundary() {
     applyPortalBranding()
   }, [profile.id, tenant])
 
-  return <Outlet />
+  return <><NavigationProgress /><Outlet /></>
 }

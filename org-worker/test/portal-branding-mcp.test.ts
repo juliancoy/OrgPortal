@@ -44,6 +44,15 @@ test('MCP palette changes enforce management, scope, preview freshness and one-u
     const saved = await run(identity, 'update', { ...args, confirm: true, previewId: fresh.previewId });
     assert.deepEqual(saved.palette, args.palette);
     assert.deepEqual((await run(identity, 'get', { organizationId: 'org' })).palette, args.palette);
+    const banner = { organizationId: 'org', nameBannerUrl: 'https://lifetech.fyi/assets/images/lifetech-namebanner.webp' };
+    const bannerPreview = await run(identity, 'update', banner);
+    assert.equal((await run(identity, 'get', { organizationId: 'org' })).nameBannerUrl, null);
+    await run(identity, 'update', { ...banner, confirm: true, previewId: bannerPreview.previewId });
+    const branded = await run(identity, 'get', { organizationId: 'org' });
+    assert.equal(branded.nameBannerUrl, banner.nameBannerUrl);
+    assert.deepEqual(branded.palette, args.palette);
+    await assert.rejects(run(identity, 'update', { organizationId: 'org', nameBannerUrl: 'javascript:alert(1)' }));
+    await assert.rejects(run(identity, 'update', { organizationId: 'org' }), /Supply/);
     const row = db.sqlite.prepare("SELECT * FROM group_sites WHERE id='life'").get()!;
     assert.equal(row.profile, 'community'); assert.equal(row.hostname, 'lifetech.example'); assert.equal(row.accent_color, '#155e59');
     assert.deepEqual(JSON.parse(row.feature_config as string).other, { enabled: true });

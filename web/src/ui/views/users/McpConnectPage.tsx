@@ -8,11 +8,11 @@ import './McpConnectPage.css'
 export function McpConnectPage() {
  const [params]=useSearchParams()
  const request=params.getAll('request').length===1?params.get('request')||'':''
- const [error,setError]=useState(''),[needsSignIn,setNeedsSignIn]=useState(false)
+ const [error,setError]=useState(''),[needsSignIn,setNeedsSignIn]=useState(false),[retryable,setRetryable]=useState(false),[attempt,setAttempt]=useState(0)
  const handoff=useRef<{request:string;promise:Promise<string>}|null>(null)
  useEffect(()=>{
   let active=true
-  setError('');setNeedsSignIn(false)
+  setError('');setNeedsSignIn(false);setRetryable(false)
   if(!/^login_[A-Za-z0-9_-]{43,100}$/.test(request)){
    setError('This connection link is invalid. Start sign-in again from your MCP client.')
    return
@@ -20,15 +20,16 @@ export function McpConnectPage() {
   // Reuse the one-use handoff during React Strict Mode's effect remount.
   if(handoff.current?.request!==request)handoff.current={request,promise:continueMcpToConsent(request)}
   void handoff.current.promise.then(destination=>{if(active)window.location.assign(destination)}).catch(err=>{
-   if(active){setError(err instanceof Error?err.message:'Unable to continue.');setNeedsSignIn(err instanceof McpHandoffError&&err.needsSignIn)}
+   if(active){setError(err instanceof Error?err.message:'Unable to continue.');setNeedsSignIn(err instanceof McpHandoffError&&err.needsSignIn);setRetryable(err instanceof McpHandoffError&&err.retryable)}
   })
   return()=>{active=false}
- },[request])
+ },[request,attempt])
  return <section className="portal-auth-page mcp-connect" aria-labelledby="mcp-connect-title">
   <div className="portal-auth-card mcp-connect-card">
    <header className="mcp-connect-heading"><p className="mcp-connect-eyebrow">Account connection</p><h1 id="mcp-connect-title">Review connection permissions</h1></header>
    {error?<p className="mcp-connect-error" role="alert">{error}</p>:<p className="mcp-connect-loading" role="status">Opening your account and permissions review…</p>}
    <div className="mcp-connect-actions">
+    {retryable&&<button type="button" className="mcp-connect-continue" onClick={()=>{handoff.current=null;setRetryable(false);setAttempt(value=>value+1)}}>Try again</button>}
     {needsSignIn&&<a className="mcp-connect-continue" href={pidpSingleSignOnUrl(`/users/mcp-connect?${new URLSearchParams({request})}`)}>Sign in again</a>}
     <a href={portalPath('/')} className="mcp-connect-cancel">Cancel</a>
    </div>

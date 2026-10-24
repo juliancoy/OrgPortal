@@ -394,3 +394,30 @@ history store or public replica of memberships is created.
 Personnel invitation intents remain in the existing seven-day private invitation store. Delivery blockers contain enumerated operational reasons, never raw provider responses. Accepted `organization_personnel_relationships` stores canonical user ID, display name, class, consent time, confirmation state and optional supporting evidence URL/confirming actor. Public personnel responses expose only active classes and display names, public-profile links/photos, and organization-scoped opaque identifiers; pending classes, recipient emails and evidence are private. Both active and pending relationships expire 24 calendar months after acceptance; bounded scheduled retention removes expired rows. Reads exclude expired rows immediately. Recipients may remove their own relationships, managers may remove any in their organization, and deleting an organization cascades its relationships. This store is excluded from immutable journaling and public replication.
 
 On a verified account-erasure request, delete relationships by canonical subject ID and clear that subject's `confirmed_by` references on remaining relationships. Reapply verified erasures to restored backups before serving them. Removing an accepted relationship leaves separately held membership and independently published titles unchanged; review those existing stores under their own erasure rules. Private evidence must be a reference URL rather than uploaded credentials or sensitive supporting documents.
+
+Live MCP statistics retain anonymous daily stage/outcome counts, duration sum and maximum for 30 UTC dates. They contain no user, client, session, tool payload, raw URL or credential information and are restricted to administrators. The `mcp_live_statistics` table is explicitly excluded from immutable journaling and public replication. Bounded retention removes old dates; reads also filter the selected window. No identity lookup or per-subject erasure linkage is created. Apply the same 30-day cleanup before serving a restored backup. PIdP owns its equivalent OAuth statistics and releases that schema separately.
+
+## Private portal account activity
+
+`portal_account_activity` retains one latest verified portal request timestamp,
+name and email per canonical account for 90 days, with five-minute update
+throttling. It supports the administrator-only People account view. It contains
+no login event history, credentials, sessions, IPs or provider payloads. It is
+excluded from public replication and immutable history. Existing bounded cleanup
+removes expired rows. Verified account erasure must delete the row by canonical
+user ID; restores must reapply expiry and confirmed deletions, including backups
+and administrative exports. Migration 0115 and activation remain pending;
+no live collection or cleanup verification is claimed. See
+[People directory](../PEOPLE_DIRECTORY.md).
+
+### Private service correspondence
+
+Service-desk tickets and messages expire 90 days after their latest activity.
+The scheduled cleanup removes expired messages, tickets, and related service
+notifications; organization administrators can delete a complete ticket earlier.
+Only current owners and administrators of the ticket's organization can access
+it. FAQ and routing settings persist until changed or the organization is retired.
+No raw message, HTML, or attachments are retained. Service tables are excluded
+from public replication and the immutable change journal. Copies in email
+recipients' mailboxes and existing backups remain subject to their own retention.
+Implementation and activation steps: [Service desk](../SERVICE_DESK.md).

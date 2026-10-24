@@ -1,3 +1,4 @@
+import { CmsImage } from '../components/media/CmsImage'
 import { GlobalSearchForm } from '../components/GlobalSearchForm'
 import { loadHostedOrganizationEvents } from '../../data/publicOrganization/hostedEvents'
 import { useEffect, useMemo, useState } from 'react'
@@ -148,7 +149,7 @@ export function TenantHomePage({brandGuideHref}:{brandGuideHref?:string}={}) {
           {!eventStatus && events.length === 0 ? <p className="muted">New events will appear here as soon as they are published.</p> : null}
           <div className="tenant-home-event-list">
             {events.map((event, index) => <Link className={`tenant-home-event${index === 0 ? ' tenant-home-event-featured' : ''}`} to={portalProfilePath(`/events/${encodeURIComponent(event.slug)}`)} key={event.id}>
-              {event.image_url && <img src={event.image_url} alt="" loading="lazy" decoding="async" />}
+              {event.image_url && <CmsImage src={event.image_url} alt="" loading="lazy" decoding="async" />}
               <span>{formatEventDate(event.starts_at)}</span>
               <strong>{event.title}</strong>
               {event.location && <small>{event.location}</small>}

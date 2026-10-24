@@ -4,11 +4,10 @@
 .onboarding-page strong{color:inherit}.onboarding-page p{text-align:left}
 .onboarding-steps{padding-left:24px}.onboarding-steps li{padding:12px;margin:12px 0;border:1px solid var(--border-subtle);border-radius:8px}
 .onboarding-steps h2{font-size:19px}.onboarding-steps button{display:block;margin-top:12px}
-.onboarding-calendar,.onboarding-organizers{margin-top:24px;padding-top:16px;border-top:1px solid var(--border-subtle)}
+.onboarding-calendar{margin-top:24px;padding-top:16px;border-top:1px solid var(--border-subtle)}
 .onboarding-page .onboarding-review{display:flex;align-items:center;gap:10px;margin:16px 0}
 .onboarding-calendar .availability-grid{min-width:0}.onboarding-calendar .availability-grid thead th button{writing-mode:horizontal-tb}
 .onboarding-calendar .availability-grid button[aria-pressed=true]{background:#16847d;color:white}
-.onboarding-organizers summary{cursor:pointer;font-weight:700}
 
 .onboarding-page [id]{scroll-margin-top:100px}
 
@@ -17,3 +16,24 @@
 
 .profile-availability-matrix{max-width:none;padding:0;margin:0}
 .profile-availability-matrix .onboarding-calendar{margin-top:16px}
+
+.onboarding-title{display:grid;gap:16px;margin-top:24px;padding-top:16px;border-top:1px solid var(--border-subtle)}
+.onboarding-title h2,.onboarding-title p{margin:0}
+.onboarding-title label{display:grid;gap:8px}
+.onboarding-title select,.onboarding-title input{width:100%;box-sizing:border-box;padding:12px;font:inherit;color:var(--text-primary);background:var(--panel);border:1px solid var(--border-subtle);border-radius:8px}
+.onboarding-title .onboarding-apply{justify-self:end;margin-top:8px;padding:12px 28px;border:1px solid;border-radius:8px;font:inherit;font-weight:700;cursor:pointer}
+.onboarding-title .onboarding-apply:disabled{opacity:.55;cursor:default}
+
+.onboarding-steps .onboarding-step.is-complete,.onboarding-calendar.is-complete{border:2px solid var(--onboarding-completed-teal);background:color-mix(in srgb,var(--onboarding-completed-teal) 16%,var(--panel));box-shadow:inset 5px 0 0 var(--onboarding-completed-teal)}
+.onboarding-calendar.is-complete{padding:16px;border-radius:8px}
+.onboarding-confirmed{font-weight:700}
+.onboarding-step iframe{display:block;margin:16px 0;width:100%;box-sizing:border-box}
+
+.onboarding-join-footer{display:flex;justify-content:center;margin-top:32px;padding-top:24px;border-top:1px solid var(--border-subtle)}
+.onboarding-page .onboarding-join{position:relative;isolation:isolate;overflow:hidden;width:min(100%,420px);min-height:64px;padding:18px 32px;border:2px solid var(--onboarding-biotech-gold);border-radius:10px;background:var(--onboarding-completed-teal);color:#fff;font:inherit;font-size:1.2rem;font-weight:800;letter-spacing:.08em;cursor:pointer}
+.onboarding-join::before{content:"";position:absolute;z-index:-1;inset:0;background-image:linear-gradient(90deg,transparent 0%,color-mix(in srgb,var(--onboarding-biotech-gold) 12%,transparent) 25%,color-mix(in srgb,var(--onboarding-biotech-gold) 80%,transparent) 50%,color-mix(in srgb,var(--onboarding-biotech-gold) 12%,transparent) 75%,transparent 100%);background-size:240px 100%;background-repeat:repeat-x;animation:onboarding-gold-chaser 3s linear infinite;pointer-events:none}
+.onboarding-join span{position:relative;text-shadow:0 1px 3px #073e3b,0 0 4px #073e3b}
+.onboarding-join:focus-visible{outline:3px solid var(--onboarding-biotech-gold);outline-offset:4px}
+.onboarding-join:disabled{cursor:wait;opacity:.7}
+@keyframes onboarding-gold-chaser{from{background-position:0 0}to{background-position:240px 0}}
+@media(prefers-reduced-motion:reduce){.onboarding-join::before{animation:none;opacity:.45}}

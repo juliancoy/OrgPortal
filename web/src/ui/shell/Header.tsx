@@ -1,3 +1,5 @@
+import { CmsImage } from '../components/media/CmsImage'
+import { startActivePolling } from '../../infrastructure/http/activePolling'
 import { OrganizationAvatar } from '../components/OrganizationAvatar'
 import { useOrganizationPersonnel } from '../hooks/useOrganizationPersonnel'
 import { useOrganizationScope } from '../hooks/useOrganizationScope'
@@ -186,6 +188,9 @@ export function Header({ organizationId }: { organizationId?: string | null } = 
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [unreadNotifications, setUnreadNotifications] = useState(0)
   const [followEventNotifications, setFollowEventNotifications] = useState<{ id: string; entity_id: string; title: string; body: string; type: string; status: string }[]>([])
+  const notificationRequestRef = useRef<AbortController | null>(null)
+  const notificationsOpenRef = useRef(notificationsOpen)
+  notificationsOpenRef.current = notificationsOpen
   const notificationAuthRef = useRef(token)
   notificationAuthRef.current = token
   const [connectionRequests, setConnectionRequests] = useState<ConnectionRequest[]>([])
@@ -273,40 +278,53 @@ export function Header({ organizationId }: { organizationId?: string | null } = 
     return () => document.removeEventListener('mousedown', handleClick)
   }, [notificationsOpen])
 
-  async function refreshNotifications(signal?: AbortSignal) {
+  async function refreshNotifications(signal?: AbortSignal, includeDetails = notificationsOpenRef.current) {
+    if (notificationAuthRef.current !== token) return
     if (!token || isGuest) {
       setUnreadNotifications(0)
       setConnectionRequests([])
       setFollowEventNotifications([])
       return
     }
+    notificationRequestRef.current?.abort()
+    const controller = new AbortController()
+    notificationRequestRef.current = controller
+    const abort = () => controller.abort()
+    signal?.addEventListener('abort', abort, { once: true })
+    if (signal?.aborted) controller.abort()
+    const options = { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal, cache: 'no-store' as const }
     try {
       const [summaryResp, eventsResp, requestsResp] = await Promise.all([
-        fetch(orgUrl('/api/network/notifications/summary'), {
-          headers: { Authorization: `Bearer ${token}` },
-          signal,
-        }),
-        fetch(orgUrl('/api/network/notifications?limit=100&follow_events=true'), { headers: { Authorization: `Bearer ${token}` }, signal, cache: 'no-store' }),
-        fetch(orgUrl('/api/network/connections/requests'), {
-          headers: { Authorization: `Bearer ${token}` },
-          signal,
-        }),
+        fetch(orgUrl('/api/network/notifications/summary'), options),
+        includeDetails ? fetch(orgUrl('/api/network/notifications?limit=100&follow_events=true'), options) : null,
+        includeDetails ? fetch(orgUrl('/api/network/connections/requests'), options) : null,
       ])
-      if (!summaryResp.ok || !requestsResp.ok || !eventsResp.ok) throw new Error('Notifications unavailable')
+      if (!summaryResp.ok || (eventsResp && !eventsResp.ok) || (requestsResp && !requestsResp.ok)) throw new Error('Notifications unavailable')
       const summary = (await summaryResp.json()) as { unread_count?: number; pending_connections_count?: number }
-      const requests = (await requestsResp.json()) as ConnectionRequest[]
-      const events = await eventsResp.json() as typeof followEventNotifications
-      if (signal?.aborted || notificationAuthRef.current !== token) return
-      setFollowEventNotifications(Array.isArray(events) ? events.filter(item => item.type === 'organization_event' && item.status === 'unread') : [])
+      const events = eventsResp ? await eventsResp.json() : null
+      const requests = requestsResp ? await requestsResp.json() : null
+      if (controller.signal.aborted || notificationAuthRef.current !== token) return
+      if (events !== null) setFollowEventNotifications(Array.isArray(events) ? events.filter(item => ['organization_event','support_ticket'].includes(item.type) && item.status === 'unread') : [])
+      if (requests !== null) setConnectionRequests(Array.isArray(requests) ? requests : [])
       setUnreadNotifications(Number(summary.unread_count || summary.pending_connections_count || 0))
-      setConnectionRequests(Array.isArray(requests) ? requests : [])
       setNotificationsStatus('')
     } catch (error) {
-      if (signal?.aborted || notificationAuthRef.current !== token) return
+      if (controller.signal.aborted || notificationAuthRef.current !== token) return
       if (error instanceof DOMException && error.name === 'AbortError') return
       setNotificationsStatus('Notifications unavailable')
+    } finally {
+      signal?.removeEventListener('abort', abort)
+      if (notificationRequestRef.current === controller) notificationRequestRef.current = null
     }
   }
+
+  useEffect(() => {
+    setNotificationsOpen(false)
+    setUnreadNotifications(0)
+    setConnectionRequests([])
+    setFollowEventNotifications([])
+    setNotificationsStatus('')
+  }, [user?.id, isGuest])
 
   useEffect(() => {
     if (!token || role === 'guest') {
@@ -315,17 +333,12 @@ export function Header({ organizationId }: { organizationId?: string | null } = 
       setFollowEventNotifications([])
       return
     }
-    const controller = new AbortController()
-    refreshNotifications(controller.signal)
-    const interval = window.setInterval(() => refreshNotifications(), 30000)
-    const handleFocus = () => refreshNotifications()
-    window.addEventListener('focus', handleFocus)
+    const stop = startActivePolling(signal => refreshNotifications(signal))
     return () => {
-      controller.abort()
-      window.clearInterval(interval)
-      window.removeEventListener('focus', handleFocus)
+      stop()
+      notificationRequestRef.current?.abort()
     }
-  }, [isGuest, token])
+  }, [isGuest, token, user?.id])
 
   async function markEventNotificationRead(id: string) {
     if (!token) return
@@ -560,9 +573,9 @@ export function Header({ organizationId }: { organizationId?: string | null } = 
   return (
     <header className="portal-header">
       <div className="portal-header-inner">
-        <a href={portalProfile.homeUrl} className="portal-brand">
-          {portalProfile.brandImagePath ? (
-            <img src={portalAssetPath(portalProfile.brandImagePath)} alt={portalProfile.brandName} />
+        <Link to={portalProfile.homeUrl} className="portal-brand">
+          {(portalProfile.nameBannerUrl || portalProfile.brandImagePath) ? (
+            <CmsImage priority width={portalProfile.nameBannerUrl ? 180 : 46} height={portalProfile.nameBannerUrl ? 60 : 46} className={portalProfile.nameBannerUrl ? 'portal-name-banner' : undefined} src={portalAssetPath(portalProfile.nameBannerUrl || portalProfile.brandImagePath!)} alt={portalProfile.brandName} />
           ) : (
             <span
               aria-hidden="true"
@@ -586,7 +599,7 @@ export function Header({ organizationId }: { organizationId?: string | null } = 
             <div className="portal-brand-title">{portalProfile.brandName}</div>
             {portalProfile.groupSiteId && <div className="portal-brand-sub">{portalProfile.tagline}</div>}
           </div>
-        </a>
+        </Link>
 
         <div className="portal-middle">
           <div className="portal-search" ref={searchRef}>
@@ -935,7 +948,11 @@ export function Header({ organizationId }: { organizationId?: string | null } = 
                   aria-expanded={notificationsOpen}
                   aria-controls="portal-notification-menu"
                   aria-haspopup="dialog"
-                  onClick={() => { setNotificationsOpen((prev) => !prev); void taskQueue.refresh(); void refreshNotifications() }}
+                  onClick={() => {
+                    const opening = !notificationsOpen
+                    setNotificationsOpen(opening)
+                    if (opening) { void taskQueue.refresh(); void refreshNotifications(undefined, true) }
+                  }}
                 >
                   <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                     <path d="M10 2a5 5 0 00-5 5v2.6c0 .8-.24 1.58-.68 2.24L3.3 13.38A1 1 0 004.13 15h11.74a1 1 0 00.83-1.56l-1.02-1.54A4 4 0 0115 9.6V7a5 5 0 00-5-5zm0 16a2.5 2.5 0 002.45-2h-4.9A2.5 2.5 0 0010 18z" />
@@ -951,10 +968,10 @@ export function Header({ organizationId }: { organizationId?: string | null } = 
                       <strong>Notifications</strong>
                       <button type="button" onClick={() => { void refreshNotifications(); void taskQueue.refresh() }}>Refresh</button>
                     </div>
-                    {followEventNotifications.length > 0 && <section aria-label="Events from organizations you follow" className="portal-notification-list">
-                      <strong>Events from organizations you follow</strong>
+                    {followEventNotifications.length > 0 && <section aria-label="Event and service notifications" className="portal-notification-list">
+                      <strong>Event and service notifications</strong>
                       {followEventNotifications.map(item => <article className="portal-notification-item" key={item.id}>
-                        <Link to={`/events/${encodeURIComponent(item.entity_id)}`} onClick={() => { setNotificationsOpen(false); void markEventNotificationRead(item.id) }}>
+                        <Link to={item.type==='support_ticket'?`/support/${encodeURIComponent(item.entity_id)}`:`/events/${encodeURIComponent(item.entity_id)}`} onClick={() => { setNotificationsOpen(false); void markEventNotificationRead(item.id) }}>
                           <strong>{item.title}</strong><p className="muted">{item.body}</p>
                         </Link>
                         <button type="button" onClick={() => void markEventNotificationRead(item.id)}>Mark read</button>
@@ -1023,6 +1040,7 @@ export function Header({ organizationId }: { organizationId?: string | null } = 
           </svg>
         </button>
         <div id="portal-primary-nav" className="portal-nav">
+          {!isGuest&&<NavLink to="/support">Service desk</NavLink>}
           {portalProfile.id === 'orgportal' ? <>
             <NavLink to="/communities">Communities</NavLink>
             <NavLink to="/ecosystem/network" isActive={location.pathname.startsWith('/ecosystem/network')}>Research</NavLink>

@@ -22,7 +22,7 @@ export function organizationInvitationRoutes(auth:(env:Env,req:Request)=>Promise
  app.onError((e,c)=>e instanceof HTTPException?e.getResponse():e instanceof z.ZodError?c.json({error:'Invalid invitation request'},400):e instanceof OrganizationIamError?c.json({error:e.message},e.status as ContentfulStatusCode):e instanceof EventIntegrationError?c.json({error:e.message},e.status as ContentfulStatusCode):c.json({error:'Could not process invitation'},500));
  app.get('/orgs/:org/relationships/me',async c=>{
   const actor=await auth(c.env,c.req.raw);
-  const rows=await c.env.DB.prepare('SELECT scheme,class_key,status,accepted_at,expires_at FROM organization_personnel_relationships WHERE organization_id=? AND user_id=? AND expires_at>?').bind(c.req.param('org'),actor.id,Date.now()).all();
+  const rows=await c.env.DB.prepare('SELECT scheme,class_key,role_name,status,accepted_at,expires_at FROM organization_personnel_relationships WHERE organization_id=? AND user_id=? AND expires_at>?').bind(c.req.param('org'),actor.id,Date.now()).all();
   return c.json({userId:actor.id,relationships:rows.results});
  });
  app.get('/orgs/:org/invitations',async c=>{
@@ -115,8 +115,12 @@ export function organizationInvitationRoutes(auth:(env:Env,req:Request)=>Promise
    const intent=readPersonnelIntent(invitation.intent_json);
    const grant=invitation.purpose==='member'?db.prepare(`INSERT INTO organization_memberships(organization_id,user_id,user_name,user_email,role,status) SELECT ?,?,?,?,'member','active' WHERE ${condition} ON CONFLICT(organization_id,user_id) DO NOTHING`).bind(org,actor.id,actor.full_name||actor.id,invitation.email,invitation.id,actor.id):db.prepare(`INSERT INTO organization_volunteer_awards(organization_id,user_id,awarded_by,awarded_at,expires_at) SELECT ?,?,?,?,? WHERE ${condition} ON CONFLICT(organization_id,user_id) DO UPDATE SET awarded_by=excluded.awarded_by,awarded_at=excluded.awarded_at,expires_at=excluded.expires_at`).bind(org,actor.id,invitation.invited_by,now.toISOString(),monthsAfter(now,3),invitation.id,actor.id);
    const complete=db.prepare("UPDATE organization_invitations SET status='accepted' WHERE id=? AND status='accepting' AND accepted_user_id=?").bind(invitation.id,actor.id);
-   const relationships=(intent?.classes||[]).map(key=>db.prepare(`INSERT INTO organization_personnel_relationships(organization_id,user_id,scheme,class_key,user_name,status,accepted_at,expires_at)
-    SELECT ?,?,?,?,?,?,?,? WHERE ${condition} ON CONFLICT(organization_id,user_id,scheme,class_key) DO UPDATE SET user_name=excluded.user_name,status=excluded.status,accepted_at=excluded.accepted_at,expires_at=excluded.expires_at,evidence_url=NULL,confirmed_by=NULL WHERE organization_personnel_relationships.expires_at<=excluded.accepted_at`).bind(org,actor.id,intent!.scheme,key,actor.full_name||'Organization participant',requiresConfirmation(key)?'pending_confirmation':'active',now.getTime(),Date.parse(monthsAfter(now,24)),invitation.id,actor.id));
+   const relationships=(intent?.classes||[]).map(key=>db.prepare(`INSERT INTO organization_personnel_relationships(organization_id,user_id,scheme,class_key,user_name,status,accepted_at,expires_at,role_name)
+    SELECT ?,?,?,?,?,?,?,?,? WHERE ${condition} ON CONFLICT(organization_id,user_id,scheme,class_key) DO UPDATE SET user_name=excluded.user_name,role_name=excluded.role_name,
+     status=CASE WHEN organization_personnel_relationships.expires_at<=excluded.accepted_at THEN excluded.status ELSE organization_personnel_relationships.status END,
+     evidence_url=CASE WHEN organization_personnel_relationships.expires_at<=excluded.accepted_at THEN NULL ELSE organization_personnel_relationships.evidence_url END,
+     confirmed_by=CASE WHEN organization_personnel_relationships.expires_at<=excluded.accepted_at THEN NULL ELSE organization_personnel_relationships.confirmed_by END,
+     accepted_at=excluded.accepted_at,expires_at=excluded.expires_at`).bind(org,actor.id,intent!.scheme,key,actor.full_name||'Organization participant',requiresConfirmation(key)?'pending_confirmation':'active',now.getTime(),Date.parse(monthsAfter(now,24)),intent!.roleNames?.[key]||null,invitation.id,actor.id));
    const applied=await db.batch([claim,...(!intent||intent.access==='member'?[grant]:[]),...relationships,complete]);
    if(!applied[0].meta.changes)emailFail(409,'Invitation expired or already accepted');
    await finishEventOperation(db,args.previewId,true,['accepted']);return c.json({accepted:true,pendingConfirmation:intent?.classes.filter(requiresConfirmation)||[]});

@@ -11,3 +11,53 @@
 .organization-board .portal-card.organization-board-person-pending { background:#fff7cc; border:2px solid #d4af37; color:#4a3900; --text-muted:#685300; --text-secondary:#4a3900; }
 .organization-board-person-pending .pill { background:#ffec99; color:#4a3900; }
 .organization-invitation-pending-label { border:1px solid currentColor; border-radius:999px; padding:.25rem .65rem; }
+
+/* Personnel tools stay secondary to the people cards. */
+.organization-board .personnel-invite-toolbar,
+.organization-board .personnel-actions,
+.organization-board .personnel-history-heading,
+.organization-board .personnel-status-heading { display:flex; flex-wrap:wrap; align-items:center; gap:.75rem; }
+.organization-board .personnel-invite-toolbar { justify-content:space-between; }
+.organization-board .organization-personnel-invitations { display:grid; gap:1rem; min-width:0; }
+.organization-board .personnel-invite-form { display:grid; gap:1.25rem; width:100%; max-width:46rem; box-sizing:border-box; padding:clamp(1rem,3vw,1.5rem); border:1px solid var(--border); border-radius:16px; background:var(--surface-soft,var(--panel)); }
+.organization-board .personnel-invite-form h2 { margin:0; font-size:1.2rem; }
+.organization-board .personnel-field { display:grid; gap:.45rem; min-width:0; font-weight:600; }
+.organization-board .personnel-field :is(input,select) { width:100%; min-width:0; box-sizing:border-box; font:inherit; padding:.7rem .85rem; border:1px solid var(--border); border-radius:8px; background:var(--body-bg,var(--panel)); color:var(--text-primary); }
+.organization-board .personnel-role-options { padding:0; border:0; margin:0; min-width:0; }
+.organization-board .personnel-role-options legend { font-weight:600; margin-bottom:.35rem; }
+.organization-board .personnel-role-options > p { margin:.2rem 0 .75rem; font-size:.85rem; }
+.organization-board .personnel-role-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.65rem; }
+.organization-board .personnel-role-option { border:1px solid var(--border); border-radius:10px; min-width:0; overflow:hidden; }
+.organization-board .personnel-role-option.is-selected { border-color:var(--accent,var(--text-primary)); background:color-mix(in srgb,var(--accent,#147d92) 8%,transparent); }
+.organization-board .personnel-role-check { display:flex; flex-direction:row; align-items:center; justify-content:flex-start; gap:.65rem; width:auto; padding:.85rem; margin:0; cursor:pointer; text-align:left; }
+.organization-board .personnel-role-check input[type='checkbox'] { appearance:auto; width:1.1rem; height:1.1rem; min-width:1.1rem; min-height:1.1rem; flex:0 0 1.1rem; margin:0; padding:0; accent-color:var(--accent,#147d92); }
+.organization-board .personnel-role-title { padding:0 .85rem .85rem; font-size:.85rem; }
+.organization-board .personnel-form-help { margin:0; font-size:.85rem; line-height:1.6; color:var(--text-muted); }
+.organization-board .personnel-review { display:grid; gap:.75rem; padding:1.25rem; border:1px solid var(--accent,var(--border)); border-radius:12px; max-width:46rem; box-sizing:border-box; overflow-wrap:anywhere; }
+.organization-board .personnel-review :is(h3,p) { margin:0; }
+.organization-board .personnel-review p { line-height:1.65; }
+.organization-board :is(.personnel-invitation-history,.personnel-relationship-tools,.personnel-settings,.personnel-member-tools) { border-top:1px solid var(--border); padding-top:1rem; min-width:0; }
+.organization-board :is(.personnel-invitation-history,.personnel-relationship-tools,.personnel-settings,.personnel-member-tools) > summary { cursor:pointer; width:fit-content; font-weight:600; font-size:.9rem; }
+.organization-board :is(.personnel-invitation-history,.personnel-relationship-tools,.personnel-settings,.personnel-member-tools)[open] > summary { margin-bottom:1rem; }
+.organization-board .personnel-history-heading { justify-content:space-between; margin-bottom:1rem; }
+.organization-board .personnel-history-heading p { margin:0; font-size:.85rem; flex:1 1 16rem; }
+.organization-board .personnel-status-list { display:grid; gap:.75rem; list-style:none; margin:0; padding:0; }
+.organization-board .personnel-status-list > li { display:grid; gap:.65rem; padding:1rem; border:1px solid var(--border); border-radius:12px; min-width:0; overflow-wrap:anywhere; }
+.organization-board .personnel-status-heading { justify-content:space-between; }
+.organization-board .personnel-status-heading strong { min-width:0; overflow-wrap:anywhere; }
+.organization-board .personnel-status-list p { margin:0; line-height:1.5; font-size:.9rem; }
+.organization-board .personnel-delivery-notice { padding:.75rem; border-left:3px solid #d4af37; background:color-mix(in srgb,#d4af37 10%,transparent); }
+.organization-board .personnel-delivery-details { margin-right:auto; font-size:.8rem; color:var(--text-muted); }
+.organization-board .personnel-delivery-details summary { cursor:pointer; }
+.organization-board .personnel-delivery-details dl { display:grid; grid-template-columns:auto auto; gap:.4rem 1rem; margin:.75rem 0 0; }
+.organization-board .personnel-delivery-details dd { margin:0; }
+.organization-board .personnel-scheme-settings { display:grid; gap:.85rem; max-width:32rem; margin-bottom:1rem; }
+.organization-board .personnel-scheme-settings p { margin:0; font-size:.9rem; line-height:1.5; }
+.organization-board .personnel-scheme-settings button { justify-self:start; }
+.organization-board .personnel-member-tools > .organization-members { margin-top:.75rem; }
+@media(max-width:600px) {
+ .organization-board .personnel-role-grid { grid-template-columns:1fr; }
+ .organization-board .personnel-actions > button { flex:1 1 10rem; }
+ .organization-board .personnel-invite-toolbar { align-items:flex-start; }
+ .organization-board .personnel-status-heading { align-items:flex-start; }
+}

@@ -9643,3 +9643,17 @@ a.public-event-comment-avatar:focus-visible { outline: 3px solid var(--primary);
 .organization-view-links { display: grid; gap: .55rem; padding: .4rem 0; }
 .organization-view-links > span { color: var(--text-muted); font-size: .8rem; }
 .organization-view-links a { padding: .4rem 0; }
+
+/* Horizontal name banners retain their proportions at every viewport width. */
+.portal-brand > img.portal-name-banner, .portal-guest-brand img.portal-name-banner {
+  flex: 0 1 auto !important; width: clamp(110px, 18vw, 180px) !important;
+  height: auto !important; max-height: 60px; object-fit: contain; border-radius: 0;
+}
+.portal-brand:has(.portal-name-banner) .portal-brand-title { display: none; }
+
+.portal-navigation-progress {
+  position: fixed; top: 0; left: 50%; transform: translateX(-50%); z-index: 10000;
+  padding: 6px 14px; border-radius: 0 0 8px 8px;
+  background: var(--panel, #fff); color: var(--text, #123);
+  box-shadow: 0 2px 8px #0002; font-size: 0.85rem;
+}

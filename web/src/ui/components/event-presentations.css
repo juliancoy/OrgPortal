@@ -89,7 +89,7 @@
 .submission-review-tools > summary { cursor: pointer; font-weight: 600; padding: .75rem 0; }
 .submission-review-tools[open] > summary { margin-bottom: 1rem; }
 
-.presentation-team-choice { display: grid; gap: .65rem; min-width: 0; padding: 1rem; border: 1px solid var(--border); border-radius: 12px; }
+.presentation-team-choice { display: grid; gap: .75rem; min-width: 0; }
 .presentation-team-choice p { margin: 0; line-height: 1.5; }
 
 /* A native toggle button stretches over the card; independent controls sit above it. */
@@ -120,3 +120,13 @@
 .presentation-result-track { height: 1rem; margin: .5rem 0; background: #64748b33; border-radius: .25rem; overflow: hidden; }
 .presentation-result-track > div { height: 100%; background: #D4AF37; transition: width .3s ease; }
 @media (prefers-reduced-motion: reduce) { .presentation-result-track > div { transition: none; } }
+
+.presentation-settings { margin-block: 1rem; }
+.presentation-settings label { display: flex; align-items: center; gap: .65rem; }
+.presentation-ai-option { margin-top: 1.25rem; padding: 1rem; border: 1px solid var(--border); border-radius: 12px; }
+.presentation-ai-option summary { cursor: pointer; font-weight: 600; }
+.presentation-ai-option textarea { font: inherit; padding: .75rem; border: 1px solid var(--border); border-radius: 8px; }
+.presentation-form h3 { margin: .5rem 0 0; font-size: 1.1rem; }
+
+.presentation-form .team-people-picker { padding: 0; border: 0; border-radius: 0; }
+.presentation-form[data-draft-saved='true'] .local-draft-status p::before { background: var(--accent-green); opacity: .75; }

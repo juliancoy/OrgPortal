@@ -1,3 +1,4 @@
+import { RouteLoading } from '../components/RouteLoading'
 import { TimebankInboxProvider } from '../timebank/TimebankInbox'
 import { TimebankHeader } from './TimebankHeader'
 import { useDomainCommunity } from '../../config/timebankCommunity'
@@ -38,7 +39,7 @@ export function AppLayout() {
         <div className={`portal-container ${isChatRoute ? 'portal-chat-container' : ''}`}>
           {!timebankShell && !embeddedChat && <ExternalBrowserPrompt />}
           {!embeddedChat && location.pathname !== '/onboarding' && <OnboardingBanner />}
-          <Suspense fallback={<p role="status">Loading page…</p>}><Outlet /></Suspense>
+          <Suspense fallback={<RouteLoading />}><Outlet /></Suspense>
         </div>
       </main>
       {embeddedChat ? null : timebankShell ? <footer className="tb-shell-footer">Timebank hours are separate from Dena.</footer> : <Footer />}

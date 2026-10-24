@@ -111,7 +111,16 @@ export function onboardingRoutes(getUser: (env: Env, request: Request) => Promis
  }
  app.get('/',async c=>{
   const {tenant,enrollment}=await context(c.env,c.req.raw);
-  return c.json(enrollment ? {enabled:true,organizationName:tenant.name,...enrollment,acknowledgements:JSON.parse(enrollment.acknowledgements),steps:stepsFor(tenant).map(step => lifeTech(tenant) && ['constitution','communications','participation'].includes(step.id) ? {...step,description:step.id==='constitution'?'Read the current Constitution and Bylaws and its ratification status.':step.description,href:step.id==='participation'?'/chat?start=org&org=lifetech':'/governance/documents/lifetech-constitution'} : step)} : {enabled:false});
+  return c.json(enrollment ? {enabled:true,organizationName:tenant.name,organizationId:tenant.organization_id,...enrollment,acknowledgements:JSON.parse(enrollment.acknowledgements),steps:stepsFor(tenant).map(step => lifeTech(tenant) && ['constitution','communications','participation'].includes(step.id) ? {...step,description:step.id==='constitution'?'Read the current Constitution and Bylaws and its ratification status.':step.description,href:step.id==='participation'?'/chat?start=org&org=lifetech':'/governance/documents/lifetech-constitution'} : step)} : {enabled:false});
+ });
+ app.put('/title',async c=>{
+  const {accountId,tenant,enrollment}=await context(c.env,c.req.raw);
+  if(!enrollment)throw new HTTPException(404);
+  const body=await c.req.json().catch(()=>null);
+  const title=typeof body?.title==='string'?body.title.trim():'';
+  if(!title||title.length>100||/[\r\n\0]/.test(title))throw new HTTPException(400,{message:'Enter a title of 1–100 characters on a single line.'});
+  await c.env.DB.prepare("UPDATE onboarding_enrollments SET acknowledgements=json_set(acknowledgements,'$.selected_title',?) WHERE group_site_id=? AND user_id=?").bind(title,tenant.id,accountId).run();
+  return c.json({ok:true});
  });
  app.post('/steps/:step',async c=>{
   const {user,accountId,tenant,enrollment}=await context(c.env,c.req.raw);

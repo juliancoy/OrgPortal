@@ -1,6 +1,6 @@
 # Personnel classes
 
-Organizations choose **Meetup Classes**, **Nonprofit Classes**, or **Corporation Classes** in Board / Personnel → Community members. Managers review and confirm the organization-wide setting.
+Organizations choose **Meetup Classes**, **Nonprofit Classes**, or **Corporation Classes** in Personnel → Community members. Managers review and confirm the organization-wide setting.
 
 Meetup Classes describes participation: Public, Attendee, Volunteer, Member, Organizer, Stakeholder, Persona Non Grata.
 
@@ -18,7 +18,7 @@ Corporation Classes offers Board member, Executive leadership, Manager, Employee
 
 Use Personnel invitations and status to select a recipient email, one or more classes in the saved organization scheme, and either no membership access or member access. Review the exact effects before confirming. The verified recipient reviews and confirms acceptance. This consents to public personnel relationships; no-access invitations create neither a membership nor volunteer recognition. Existing memberships and privileged roles remain unchanged. Invitations expire after seven days. Accepted relationships expire after 24 months and may be removed sooner.
 
-Board, executive, staff, employee and shareholder classes remain pending confirmation after acceptance. An organizer must review a supporting HTTPS evidence URL and confirm the class before publication. This records organizer confirmation, not independent verification of legal office, employment or ownership. Evidence URLs remain private to managers. Other accepted classes appear on Board/Personnel without requiring membership. Removing a relationship does not revoke separately held membership or erase independently assigned titles.
+Board, executive, staff, employee and shareholder classes remain pending confirmation after acceptance. An organizer must review a supporting HTTPS evidence URL and confirm the class before publication. This records organizer confirmation, not independent verification of legal office, employment or ownership. Evidence URLs remain private to managers. Other accepted classes appear on Personnel without requiring membership. Removing a relationship does not revoke separately held membership or erase independently assigned titles.
 
 Manager status shows pending/accepted/cancelled/expired invitations, provider state, attempt count and delivery blockers. “Sent” means provider acceptance, not confirmed inbox delivery. Uncertain sends are not automatically retried. Cancellation invalidates the acceptance link, but cannot recall email already submitted to the provider.
 
@@ -33,3 +33,8 @@ Example prompt:
 `preview_organization_invitation` / `apply_organization_invitation` accept `organizationId`, `email` and `intent: {scheme: "corporation", classes: ["advisor"], access: "none"}`. Purpose is derived from intent access, so omit it for class invitations. For ordinary member or volunteer-recognition invitations without intent, use purpose `member` or `volunteer`.
 
 Managers use `list_organization_invitations` for delivery status and accepted relationships, and preview/apply `organization_invitation_cancellation` to cancel a pending invitation. Recipients use `get_organization_invitation`, then preview/apply `organization_invitation_acceptance` with their own verified email account. Invitation IDs and recipient data are private; do not put invitation links in public documents. `list_my_personnel_relationships` lists the caller’s classes without requiring membership. Preview/apply `personnel_relationship` confirms a class with `action: "confirm"` and `evidenceUrl`, or removes it with `action: "revoke"`. Only managers confirm; recipients may revoke their own relationships.
+
+
+Custom invitation role titles use `intent.roleNames`, a mapping from selected class keys to display text, such as `{"executive":"Co-founder","advisor":"Scientific Advisor"}`. Each title is a single line of up to 100 characters. The invitation preview names both the custom title and underlying class. Confirmation rules and portal access use the class and access selection, never the custom wording. Public cards and private pending cards display the chosen titles. Existing member profiles also support free-form titles through Edit profiles and member access. Migration 0113 adds the nullable display title to the existing private relationship store and shares its expiry and erasure policy.
+
+The Personnel screen shows people cards with one Invite a person action. Invitation history, relationship administration, profile/access editing and class settings are secondary expandable sections. Unsaved scheme changes are labeled explicitly; invitation choices always use the saved scheme. Settings failures block class-based invitations instead of silently substituting Meetup Classes.

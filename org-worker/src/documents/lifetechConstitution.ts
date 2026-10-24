@@ -1,11 +1,17 @@
-/** Adapted from the Code Collective source in ../CodeCollective/constitution.html.
- * Preserve its nine titles and subsection structure; this is a new, unratified draft.
+/** LifeTech nonprofit governance draft. Historical SCLC material informs the
+ * organizing structure; LifeTech-specific rules are independent proposals.
  */
 export const lifetechConstitution = {
   id: 'lifetech-constitution', organizationSlug: 'lifetech',
   title: 'LifeTech Constitution and Bylaws', status: 'Unratified draft',
   sourceUrl: 'https://codecollective.us/constitution',
-  introduction: 'Adapted from the Code Collective Constitution and Bylaws for LifeTech. This draft has not been ratified. Organizer decisions on change tickets revise this draft; they do not establish incorporation, charitable status, clinical authority, or system access. The original nine-title structure is retained, with the duplicated final title number corrected to IX. Proposed electronic voting rules below require adoption by the organization before they govern binding business.',
+  sourceReferences: [
+    { label: 'Historical SCLC Constitution and Bylaws (archival copy; not verified as current)', url: 'https://www.crmvet.org/docs/sclc_const.pdf' },
+    { label: 'IRS: Governance and Related Topics for 501(c)(3) Organizations', url: 'https://www.irs.gov/pub/irs-tege/governance_practices.pdf' },
+    { label: 'IRS: Form 1023 instructions, charitable purposes and asset dedication', url: 'https://www.irs.gov/instructions/i1023' },
+    { label: 'Original Code Collective draft', url: 'https://codecollective.us/constitution' },
+  ],
+  introduction: "Adapted from the Code Collective Constitution and Bylaws for LifeTech. This draft has not been ratified. Organizer decisions on change tickets revise this draft; they do not establish incorporation, charitable status, clinical authority, or system access. The original nine-title structure is retained, with the duplicated final title number corrected to IX. Proposed electronic voting rules below require adoption by the organization before they govern binding business.",
   sections: [
     { id: 'overview', title: 'Title I: Overview', text: `LifeTech brings people together at the intersection of health, medicine, biotechnology, and technology. These Constitution and Bylaws support clear responsibilities, respectful debate, practical collaboration, and accountable decisions. Planning and retrospective practices help the community learn from each event and project.
 

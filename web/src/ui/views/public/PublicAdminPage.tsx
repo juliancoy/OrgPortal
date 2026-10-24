@@ -16,7 +16,6 @@ import { GroupMailingList, GroupEmailPreference } from '../email/GroupMailingLis
 import { groupOrganizationEvents } from './organizationEvents'
 import { EmbeddedOrganizationChat } from '../../components/EmbeddedOrganizationChat'
 import { PeerOrganizations } from '../../components/PeerOrganizations'
-import { OrganizationMembers } from '../../components/OrganizationMembers'
 import { resolveOrganizationPageView, useOrganizationViewPreference } from '../../hooks/useOrganizationView'
 import { OrganizationPortalSections } from '../../components/OrganizationPortalSections'
 import { OrganizationBrandGuide } from '../../components/OrganizationBrandGuide'
@@ -189,9 +188,9 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
   const { token } = useAuth()
   const { handle } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
-  const orgTabs = ['info','board','personnel','poster','branding'] as const
+  const orgTabs = ['info','personnel','poster','branding'] as const
   const requestedTab = searchParams.get('tab')
-  const activeTab = requestedTab === 'board' || requestedTab === 'personnel' || requestedTab === 'branding' || requestedTab === 'poster' ? requestedTab : 'info'
+  const activeTab = requestedTab === 'personnel' || requestedTab === 'branding' || requestedTab === 'poster' ? requestedTab : 'info'
   function selectTab(tab: typeof orgTabs[number]) {
     setSearchParams(previous => { const next = new URLSearchParams(previous); if (tab === 'info') next.delete('tab'); else next.set('tab', tab); return next })
   }
@@ -925,7 +924,7 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
           if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return
           event.preventDefault(); const next = event.key === 'Home' ? orgTabs[0] : event.key === 'End' ? orgTabs[orgTabs.length-1] : orgTabs[(orgTabs.indexOf(tab)+(event.key==='ArrowRight'?1:orgTabs.length-1))%orgTabs.length]
           selectTab(next); document.getElementById(`org-tab-${next}`)?.focus()
-        }}>{tab === 'info' ? <Info size={18} aria-hidden="true" /> : tab === 'board' || tab === 'personnel' ? <Users size={18} aria-hidden="true" /> : tab === 'poster' ? <FileImage size={18} aria-hidden="true" /> : <Palette size={18} aria-hidden="true" />}{tab === 'info' ? 'Info' : tab === 'board' ? 'Board' : tab === 'personnel' ? 'Personnel' : tab === 'poster' ? 'Poster' : 'Branding'}</button>)}
+        }}>{tab === 'info' ? <Info size={18} aria-hidden="true" /> : tab === 'personnel' ? <Users size={18} aria-hidden="true" /> : tab === 'poster' ? <FileImage size={18} aria-hidden="true" /> : <Palette size={18} aria-hidden="true" />}{tab === 'info' ? 'Info' : tab === 'personnel' ? 'Personnel' : tab === 'poster' ? 'Poster' : 'Branding'}</button>)}
       </div>
       {canManageCurrentOrg && <div className="organization-page-tools">
         <OrganizationViewSwitcher organizationSlug={org.slug} manager />
@@ -937,7 +936,7 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
         <summary>{isOrganizerView ? 'Organizer tools' : 'Member tools'}</summary>
         <a href="#organization-overview">Overview</a>
         <a href="?tab=branding" onClick={event => { event.preventDefault(); selectTab('branding') }}>Branding</a>
-        <a href="#organization-members">Members</a>
+        <a href="?tab=personnel" onClick={event => { event.preventDefault(); selectTab('personnel') }}>Personnel</a>
         <a href="#organization-events">Events</a>
         <a href="#organization-support">Money and support</a>
         <a href="#organization-member-feedback">Feedback</a>
@@ -1118,17 +1117,6 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
               </div>
             ) : null}
             {membershipStatus ? <p className="muted" role="status" style={{ margin: 0 }}>{membershipStatus}</p> : null}
-          </div>}
-          {(isOrganizerView || (org.membership_count || 0) > 0) && <div id="organization-members" className="portal-org-nav-target" tabIndex={-1}>
-          <OrganizationMembers
-            key={org.id}
-            organizationId={org.id}
-            name={org.name}
-            canRead={Boolean(token && (canManageCurrentOrg || membership?.status === 'active'))}
-            canManage={isOrganizerView}
-            membershipCount={org.membership_count || 0}
-            memberType={org.tags?.includes('Team') ? 'team' : 'community'}
-          />
           </div>}
 
           {token && (isOrganizerView || (org.feedback_count || 0) > 0 || feedbackComment || feedbackRating !== 'neutral') ? (
@@ -1511,11 +1499,8 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
         </aside>}
       </div>
       </div>
-      <div role="tabpanel" id="org-panel-board" aria-labelledby="org-tab-board" hidden={activeTab !== 'board'}>
-        {activeTab === 'board' && <OrganizationBoard organization={org} canManage={canManageCurrentOrg} />}
-      </div>
       <div role="tabpanel" id="org-panel-personnel" aria-labelledby="org-tab-personnel" hidden={activeTab !== 'personnel'}>
-        {activeTab === 'personnel' && <OrganizationBoard organization={org} canManage={canManageCurrentOrg} view="personnel" />}
+        {activeTab === 'personnel' && <OrganizationBoard organization={org} canManage={canManageCurrentOrg} canRead={Boolean(token && (canManageCurrentOrg || membership?.status === 'active'))} memberType={org.tags?.includes('Team') ? 'team' : 'community'} />}
       </div>
       <div role="tabpanel" id="org-panel-poster" aria-labelledby="org-tab-poster" hidden={activeTab !== 'poster'}>
         {activeTab === 'poster' && <EventPosterTools key={org.id} kind="organization" inline slug={org.slug} title={org.name} organizationSlug={org.slug} organizationLinks={org.links} sourceUrl={org.source_url && !isRetiredOrganizationHref(org.source_url) ? org.source_url : null} />}

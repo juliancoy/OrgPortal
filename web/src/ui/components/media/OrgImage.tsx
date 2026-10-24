@@ -1,3 +1,4 @@
+import { CmsImage } from './CmsImage'
 import { portalAssetPath } from '../../../config/portalBase'
 import { useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
@@ -10,6 +11,7 @@ type OrgImageProps = {
   className?: string
   style?: CSSProperties
   fallbackSrc?: string | null
+  priority?: boolean
   fallbackLetter?: string
 }
 
@@ -26,7 +28,10 @@ export function OrgImage(props: OrgImageProps) {
   const finalSrc = candidates.find(candidate => !failedSources.includes(candidate)) || ORG_PLACEHOLDER_SRC
 
   return (
-    <img
+    <CmsImage
+      priority={props.priority}
+      width={160}
+      height={160}
       src={portalAssetPath(finalSrc)}
       alt={alt}
       className={className}

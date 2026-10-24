@@ -1,3 +1,4 @@
+import { CmsImage } from './ui/components/media/CmsImage'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth, useServices } from './app/AppProviders'
@@ -124,9 +125,9 @@ export default function App() {
         >
           <ExternalBrowserPrompt />
           <div className="portal-guest-brand">
-            {portalProfile.brandImagePath ? (
-              <img
-                src={portalAssetPath(portalProfile.brandImagePath)}
+            {(portalProfile.nameBannerUrl || portalProfile.brandImagePath) ? (
+              <CmsImage priority width={portalProfile.nameBannerUrl ? 180 : 54} height={portalProfile.nameBannerUrl ? 60 : 54}
+                className={portalProfile.nameBannerUrl ? 'portal-name-banner' : undefined} src={portalAssetPath(portalProfile.nameBannerUrl || portalProfile.brandImagePath!)}
                 alt={portalProfile.brandName}
               />
             ) : (

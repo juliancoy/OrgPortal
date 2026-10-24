@@ -32,6 +32,12 @@ test('onboarding enrolls once, isolates tenants and users, and requires all step
   assert.deepEqual(await (await req('/onboarding','GET',undefined,'alice','codecollective.us')).json(),{enabled:false});
   const initial:any=await (await req('/onboarding')).json();assert.equal(initial.enabled,true);assert.equal(initial.completed_at,null);
   await req('/onboarding');
+  for(const title of ['', 'x'.repeat(101), 'Two\nlines']) assert.equal((await req('/onboarding/title','PUT',{title})).status,400);
+  assert.equal((await req('/onboarding/title','PUT',{title:'  Community builder  '})).status,200);
+  assert.equal((await (await req('/onboarding')).json() as any).acknowledgements.selected_title,'Community builder');
+  assert.equal((await (await req('/onboarding','GET',undefined,'bob')).json() as any).acknowledgements.selected_title,undefined);
+  assert.equal((await req('/onboarding/title','PUT',{title:'Advisor'},'alice','codecollective.us')).status,404);
+  assert.equal((await req('/onboarding/title','PUT',{title:'Advisor'},'')).status,401);
   const queue:any=await (await req('/tasks')).json();assert.equal(queue.tasks.length,5);assert.equal(queue.tasks[0].href,'/onboarding#availability');
   assert.match(queue.tasks[0].title,/meeting availability/);
   assert.deepEqual(queue.tasks.slice(1).map((t:any)=>t.href),onboardingSteps.map(s=>`/onboarding#${s.id}`));

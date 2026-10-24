@@ -29,6 +29,7 @@
     "ADMIN_EMAILS": "",
     "ADMIN_USER_IDS": ""
   },
+  "send_email": [{"name":"SUPPORT_EMAIL","allowed_sender_addresses":["service@lifetech.fyi"]}],
   "services": [
     { "binding": "CHAT_ORGANIZATION_ROOMS", "service": "chat-codecollective", "entrypoint": "OrganizationRooms" },
     { "binding": "CHAT_SERVICE", "service": "chat-codecollective" }

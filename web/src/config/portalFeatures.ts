@@ -9,6 +9,7 @@ export type PortalProfileConfig = {
   brandName: string
   portalTitle: string
   tagline: string
+  nameBannerUrl?: string
   brandImagePath?: string
   homeUrl: string
   memberHomePath: string
@@ -131,6 +132,7 @@ export function tenantProfileConfig(tenant: GroupSite): PortalProfileConfig {
     portalTitle: profileId === 'orgportal' ? 'OrgPortal' : tenant.name ? `${tenant.name} Portal` : base.portalTitle,
     tagline: tenant.tagline || base.tagline,
     brandImagePath,
+    nameBannerUrl: typeof tenant.feature_config?.nameBannerUrl === 'string' && /^https:\/\//.test(tenant.feature_config.nameBannerUrl) ? tenant.feature_config.nameBannerUrl : undefined,
     homeUrl: tenantBrandHomeUrl(tenant, base.homeUrl),
     memberHomePath: tenant.member_home_path || (profileId === 'code-collective' && tenant.features?.includes('timebank') ? '/' : base.memberHomePath),
     disabledFeatures,

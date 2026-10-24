@@ -1,4 +1,4 @@
-import { refreshPublicReport } from './cache'
+import { peekPublicReport, refreshPublicReport } from './cache'
 
 export type PublicOrganizationRecord = { id: string; name: string; slug: string }
 export function validatePublicOrganization<T extends PublicOrganizationRecord>(value: unknown): T {
@@ -18,6 +18,17 @@ export async function loadPublicOrganizationDirectory<T extends PublicOrganizati
    },
   })
   for (const row of entry.data) rows.set(row.id,row)
+  if (entry.data.length < 500) return [...rows.values()]
+ }
+}
+
+export function peekPublicOrganizationDirectory<T extends PublicOrganizationRecord>(): T[] | null {
+ const rows = new Map<string, T>()
+ for (let offset = 0; ; offset += 500) {
+  const entry = peekPublicReport<T[]>(`/api/org/api/network/orgs/public?limit=500&offset=${offset}`)
+  if (!entry || !Array.isArray(entry.data)) return null
+  try { for (const row of entry.data) { const valid = validatePublicOrganization<T>(row); rows.set(valid.id, valid) } }
+  catch { return null }
   if (entry.data.length < 500) return [...rows.values()]
  }
 }

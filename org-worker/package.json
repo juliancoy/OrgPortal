@@ -21,6 +21,8 @@
     "@modelcontextprotocol/sdk": "^1.30.0",
     "hono": "^4.13.7",
     "jose": "^6.2.12",
+    "mimetext": "^3.0.28",
+    "postal-mime": "^4.1.4",
     "qrcode": "^1.5.4",
     "web-push": "^3.6.7",
     "zod": "^4.5.4"

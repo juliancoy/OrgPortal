@@ -20,3 +20,27 @@
 .draft-edit:focus-visible { outline: 3px solid #2563eb; outline-offset: 3px; }
 .draft-history summary { cursor: pointer; font-weight: 600; }
 .draft-history li { margin: 20px 0; }
+
+.ratification-rehearsal{padding:20px;border:2px dashed var(--accent,#155e59);border-radius:12px;background:color-mix(in srgb,#155e59 10%,var(--panel))}.rehearsal-stages{display:flex;flex-wrap:wrap;gap:12px 28px;padding-left:24px}.rehearsal-stages [aria-current=step]{font-weight:800;text-decoration:underline;text-underline-offset:4px}.ratification-rehearsal fieldset{display:grid;gap:12px;min-width:0;border:1px solid var(--border);border-radius:8px;margin:16px 0}.ratification-rehearsal>button{margin:8px 12px 8px 0}
+
+.governance-role-bubbles { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0 24px; white-space: normal; }
+.governance-role-bubbles button { border: 1px solid var(--accent, #155e59); border-radius: 999px; background: color-mix(in srgb, var(--accent, #155e59) 10%, var(--panel)); color: var(--text-primary); }
+.governance-role-bubbles button[aria-expanded=true] { outline: 3px solid var(--accent, #155e59); outline-offset: 2px; }
+.interactive-clauses { white-space: normal; }
+.governance-clause { border-bottom: 1px solid var(--border); padding: 12px 0 20px; scroll-margin-top: 100px; }
+.governance-clause p { white-space: pre-wrap; }
+.governance-clause h3 { margin-bottom: 8px; }
+.governance-clause-edit { font-size: .9rem; }
+.governance-clause-editor { margin-top: 16px; padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel); }
+.governance-clause-editor button { margin: 12px 12px 0 0; }
+.gpt-recommendation-grid { display: grid; gap: 16px; }
+.gpt-recommendation { padding: 20px; border: 1px solid var(--border); border-radius: 16px; background: var(--panel); }
+.gpt-recommendation header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.gpt-recommendation h3 { margin: 0; }
+.gpt-recommendation summary { cursor: pointer; padding: 12px 0; }
+.recommendation-status { border-radius: 999px; padding: 6px 12px; font-weight: 650; border: 1px solid var(--border); }
+.recommendation-approved { color: #14532d; background: #dcfce7; }
+.recommendation-denied { color: #881337; background: #ffe4e6; }
+.governance-document button:focus-visible, .governance-document summary:focus-visible { outline: 3px solid var(--accent, #155e59); outline-offset: 3px; }
+.governance-document button:disabled { cursor: default; opacity: .55; }
+@media (max-width: 600px) { .governance-document { padding: 16px; } .gpt-recommendation { padding: 14px; } .governance-actions > button { flex: 1 1 100%; } }

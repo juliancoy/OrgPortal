@@ -1,3 +1,4 @@
+import { startActivePolling } from '../../infrastructure/http/activePolling'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
@@ -9,6 +10,7 @@ export function useTaskQueue() {
  const {token,user}=useAuth()
  const [tasks,setTasks]=useState<Task[]>([]),[error,setError]=useState(''),[busy,setBusy]=useState(false)
  const generation=useRef(0),refreshSequence=useRef(0)
+ const refreshController=useRef<AbortController|null>(null)
  const request=useCallback(async(path='',init:RequestInit={})=>{
   const send=(auth:string|null)=>fetch(`/api/org/api/tasks${path}`,{...init,headers:{'Content-Type':'application/json',...(auth?{Authorization:`Bearer ${auth}`}:{})}})
   let response=await send(token)
@@ -18,19 +20,24 @@ export function useTaskQueue() {
   if(path===''&&(!init.method||init.method==='GET')&&(!data||!Array.isArray(data.tasks)))throw new Error('Tasks unavailable. Please try again.')
   return data
  },[token])
- const refresh=useCallback(async()=>{
+ const refresh=useCallback(async(signal?:AbortSignal)=>{
   if(!token)return
+  refreshController.current?.abort()
+  const controller=new AbortController();refreshController.current=controller
+  const abort=()=>controller.abort();signal?.addEventListener('abort',abort,{once:true})
+  if(signal?.aborted)controller.abort()
   const current=generation.current,sequence=++refreshSequence.current
-  try{const data=await request();if(current===generation.current&&sequence===refreshSequence.current){setTasks(data.tasks);setError('')}}catch(e){if(current===generation.current&&sequence===refreshSequence.current)setError(e instanceof Error?e.message:'Tasks unavailable.')}
+  try{const data=await request('',{signal:controller.signal});if(!controller.signal.aborted&&current===generation.current&&sequence===refreshSequence.current){setTasks(data.tasks);setError('')}}
+  catch(e){if(!controller.signal.aborted&&current===generation.current&&sequence===refreshSequence.current)setError(e instanceof Error?e.message:'Tasks unavailable.')}
+  finally{signal?.removeEventListener('abort',abort);if(refreshController.current===controller)refreshController.current=null}
  },[request,token])
  useEffect(()=>{
   generation.current++;setTasks([]);setError('');setBusy(false)
   if(!token)return
-  void refresh()
-  const wake=()=>{if(document.visibilityState==='visible')void refresh()}
-  const interval=window.setInterval(wake,30000)
-  window.addEventListener('focus',wake);window.addEventListener('portal:tasks-changed',wake)
-  return()=>{generation.current++;window.clearInterval(interval);window.removeEventListener('focus',wake);window.removeEventListener('portal:tasks-changed',wake)}
+  const stop=startActivePolling(refresh)
+  const changed=()=>{if(document.visibilityState==='visible'&&navigator.onLine)void refresh()}
+  window.addEventListener('portal:tasks-changed',changed)
+  return()=>{generation.current++;stop();refreshController.current?.abort();window.removeEventListener('portal:tasks-changed',changed)}
  },[token,user?.id,refresh])
  async function mutate(path:string,body?:unknown){
   const current=generation.current;setBusy(true);setError('')

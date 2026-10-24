@@ -343,6 +343,20 @@
       ]
     },
     {
+      "id": "suite-org-worker-test-database-cost-test-ts",
+      "label": "org-worker/test/database-cost.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/database-cost.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "database-cost.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-org-worker-test-deism-tenant-test-ts",
       "label": "org-worker/test/deism-tenant.test.ts",
       "category": "User interface and integrations",
@@ -1611,6 +1625,20 @@
       "cwd": "org-worker"
     },
     {
+      "id": "suite-org-worker-test-support-tickets-test-ts",
+      "label": "org-worker/test/support-tickets.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/support-tickets.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "support-tickets.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-org-worker-test-timebank-test-ts",
       "label": "org-worker/test/timebank.test.ts",
       "category": "Timebank",
@@ -2395,6 +2423,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-test-local-notification-polling-py",
+      "label": "web/scripts/test-local-notification-polling.py",
+      "category": "User interface and integrations",
+      "source": "web/scripts/test-local-notification-polling.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-notification-polling.py"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-test-local-onboarding-py",
       "label": "web/scripts/test-local-onboarding.py",
       "category": "Identity and access",
@@ -3109,6 +3151,20 @@
       ]
     },
     {
+      "id": "suite-web-src-infrastructure-http-activePolling-test-ts",
+      "label": "web/src/infrastructure/http/activePolling.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/infrastructure/http/activePolling.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "activePolling.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-web-src-infrastructure-http-userFacingError-test-ts",
       "label": "web/src/infrastructure/http/userFacingError.test.ts",
       "category": "User interface and integrations",
@@ -3329,6 +3385,20 @@
         {
           "id": "suite",
           "label": "GroupVenueHistory.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-components-OnboardingStepCard-test-ts",
+      "label": "web/src/ui/components/OnboardingStepCard.test.ts",
+      "category": "Ecosystem and data",
+      "source": "web/src/ui/components/OnboardingStepCard.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "OnboardingStepCard.test.ts"
         }
       ]
     },
@@ -3585,6 +3655,20 @@
       ]
     },
     {
+      "id": "suite-web-src-ui-router-routeModules-test-tsx",
+      "label": "web/src/ui/router/routeModules.test.tsx",
+      "category": "User interface and integrations",
+      "source": "web/src/ui/router/routeModules.test.tsx",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "routeModules.test.tsx"
+        }
+      ]
+    },
+    {
       "id": "suite-web-src-ui-timebank-links-test-ts",
       "label": "web/src/ui/timebank/links.test.ts",
       "category": "Timebank",
@@ -3735,6 +3819,20 @@
         {
           "id": "suite",
           "label": "financeUtils.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-views-governance-RatificationRehearsal-test-ts",
+      "label": "web/src/ui/views/governance/RatificationRehearsal.test.ts",
+      "category": "Organizations and membership",
+      "source": "web/src/ui/views/governance/RatificationRehearsal.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "RatificationRehearsal.test.ts"
         }
       ]
     },

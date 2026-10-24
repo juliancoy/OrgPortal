@@ -40,7 +40,7 @@ test('profile favorites require opt-in and a public profile, deduplicate, isolat
   } finally { db.close(); }
 });
 
-test('public favorite endpoint hides private profiles even when event registration makes their contact page visible', async () => {
+test('event registration does not publish a private profile or its favorite companies', async () => {
   const { app } = await import('../src/index');
   const db = new EventTestDb();
   try {
@@ -59,9 +59,7 @@ test('public favorite endpoint hides private profiles even when event registrati
     const env = { DB: db, PUBLIC_PORTAL_BASE_URL:'https://portal.test' } as unknown as Env;
     const request = () => app.fetch(new Request('https://portal.test/api/network/users/public/alice/favorite-companies'),env);
     const privateResponse = await request();
-    assert.equal(privateResponse.status,200);
-    assert.equal(privateResponse.headers.get('cache-control'),'no-store');
-    assert.deepEqual(await privateResponse.json(),{public:true,companies:[]});
+    assert.equal(privateResponse.status,404);
     await db.prepare("UPDATE user_contact_pages SET enabled=1 WHERE user_id='alice'").run();
     const publicResponse = await request();
     assert.equal(publicResponse.status,200);

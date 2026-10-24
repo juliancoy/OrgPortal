@@ -5,9 +5,10 @@ import { refreshRuntimeTokenFromSession } from '../../../infrastructure/auth/ses
 import { DiffView } from '../../components/governance/DiffView'
 import { DraftSection } from './DraftSection'
 import './governance-document.css'
+import { RatificationRehearsal } from './RatificationRehearsal'
 
 export type Section = { id: string; title: string; text: string }
-type Document = { candidateHash:string; title: string; introduction: string; status: string; version: number; sourceUrl: string; organizationId: string | null; sections: Section[]; pendingRatificationId: string | null; openChangeTickets: number; ratification: { version:number; motionId:string; ratifiedAt:string; effectiveAt:string } | null }
+type Document = { candidateHash:string; title: string; introduction: string; status: string; version: number; sourceUrl: string; sourceReferences: {label:string;url:string}[]; gptContributor:{id:string;name:string;profileUrl:string;codexUrl:string;mcpUrl:string}; gptSuggestions: {hash:string;decision:'pending'|'approved'|'denied';reviewedAt:string|null;sectionId:string;title:string;author:string;preparedWith:string;status:string;original:string;replacement:string}[]; organizationId: string | null; sections: Section[]; pendingRatificationId: string | null; openChangeTickets: number; ratification: { version:number; motionId:string; ratifiedAt:string; effectiveAt:string } | null }
 export type Ticket = { document_action?: 'amend' | 'ratify'; ratification_snapshot?:string; ratification_authority?:string; ratification_notice_at?:string;  id: string; title: string; body: string; status: string; proposer_id: string; proposer_name: string; document_section: string; document_version: number; document_base: string; proposed_body_diff: string; chair_id: string | null; voting_deadline: string | null; created_at: string }
 type Access = { userId: string; role: string | null; canPropose: boolean; canVote: boolean }
 type Detail = { ratification: {version:number;ratified_at:string;effective_at:string} | null; motion: Ticket; appliedVersion: number | null; results: { yea: number; nay: number; abstain: number; quorum_required: number; quorum_met: boolean; electorate_changed?: boolean; document_changed?: boolean }; comments: { id: string; user_name: string; body: string }[]; events: { id: string; action: string; detail: string; created_at: string }[] }
@@ -34,11 +35,12 @@ export function GovernanceDocumentPage() {
  async function load() {
   const [document,list]=await Promise.all([request(''),request('/tickets')])
   setDoc(document);setTickets(list.tickets)
+  if(!doc)setReplacement(document.sections[0]?.text||'')
   if(ticketId)setDetail(await request('/tickets/'+encodeURIComponent(ticketId)));else setDetail(null)
   setAccess(token?await request('/access'):null)
  }
  useEffect(()=>{setError('');setPreview(null);void load().catch(e=>setError(e.message))},[ticketId,token]) // eslint-disable-line react-hooks/exhaustive-deps
- useEffect(()=>{if(doc)setReplacement(doc.sections.find(s=>s.id===sectionId)?.text||'')},[doc,sectionId])
+
  async function review(operation:string,args:Record<string,unknown>,label:string) {
   setBusy(true);setError('')
   try {const result=await request('/operations',{method:'POST',body:JSON.stringify({operation,args:{organizationId:doc?.organizationId,...args}})});setPreview({operation,args:{organizationId:doc?.organizationId,...args},previewId:result.previewId,label})}
@@ -60,7 +62,7 @@ export function GovernanceDocumentPage() {
  const procedureLabel=motion?.status==='seconded'?'Chair’s statement of the exact question':recordingNotice?'Notice delivery record for every organizer':'Chair’s record: notice delivered to every organizer and debate exhausted'
  const snapshot=ratifying&&motion?.ratification_snapshot?JSON.parse(motion.ratification_snapshot) as {title:string;sections:Section[]}:null
  const changeEditor=doc?<form onSubmit={e=>{e.preventDefault();void review('propose',{title,body:reason,documentChange:{documentId:'lifetech-constitution',sectionId,version:doc.version,replacement}},'Open this change ticket')}}>
-     <label>Title to change<select disabled={!!editingSection} aria-label="Title to change" value={sectionId} onChange={e=>{setSectionId(e.target.value);setPreview(null)}}>{doc.sections.map(s=><option value={s.id} key={s.id}>{s.title}</option>)}</select></label>
+     <label>Title to change<select disabled={!!editingSection} aria-label="Title to change" value={sectionId} onChange={e=>{setSectionId(e.target.value);setReplacement(doc.sections.find(s=>s.id===e.target.value)?.text||'');setPreview(null)}}>{doc.sections.map(s=><option value={s.id} key={s.id}>{s.title}</option>)}</select></label>
      <label>Ticket title<input required maxLength={500} value={title} onChange={e=>{setTitle(e.target.value);setPreview(null)}}/></label>
      <label>Reason for the change<textarea aria-label="Reason for the change" required maxLength={10000} value={reason} onChange={e=>{setReason(e.target.value);setPreview(null)}}/></label>
      <label>Complete replacement text<textarea aria-label="Complete replacement text" required rows={14} maxLength={50000} value={replacement} onChange={e=>{setReplacement(e.target.value);setPreview(null)}}/></label>
@@ -68,25 +70,45 @@ export function GovernanceDocumentPage() {
      <button disabled={busy} type="submit">Review change ticket</button>
     </form>:null
  return <main className="governance-document">
-  <nav aria-label="Governance"><Link to={path}>LifeTech Constitution and Bylaws</Link> · <Link to={path+'#tickets'}>Change tickets</Link></nav>
+  <nav aria-label="Governance"><Link to={path}>LifeTech Constitution and Bylaws</Link> · <Link to={path+'#tickets'}>Change tickets</Link> · <a href="#gpt-suggestions">GPT recommendations</a></nav>
   {error&&<p role="alert">{error}</p>}
   {!doc&&!error&&<p>Loading constitution…</p>}
   {doc&&!ticketId&&<>
-   <header><p className="governance-draft">{doc.status} · Revision {doc.version}</p><h1>{doc.title}</h1><p>{doc.introduction}</p><p>Adapted from <a href={doc.sourceUrl}>Code Collective’s Constitution and Bylaws</a>. Parliamentary reference: <a href="https://robertsrules.com/frequently-asked-questions/">official Robert’s Rules FAQ</a>.</p><a href="#suggest" onClick={()=>setEditingSection(null)}>Suggest a change</a><p>Suggested additions are green; deletions are red and struck through. Hover over colored text for authorship and history, or select it to open the section history. Suggestions take effect only through organizer approval.</p></header>
-   <section id="ratification"><h2>Path to ratification</h2>
+   <header><p className="governance-draft">{doc.status} · Revision {doc.version}</p><h1>{doc.title}</h1><p>{doc.introduction}</p><p>Draft research references:</p><ul>{doc.sourceReferences.map(reference=><li key={reference.url}><a href={reference.url}>{reference.label}</a></li>)}</ul><p>Parliamentary reference: <a href="https://robertsrules.com/frequently-asked-questions/">official Robert’s Rules FAQ</a>.</p><a href="#suggest" onClick={()=>setEditingSection(null)}>Suggest a change</a><p>Suggested additions are green; deletions are red and struck through. Hover over colored text for authorship and history, or select it to open the section history. Suggestions take effect only through organizer approval.</p></header>
+   {!doc.ratification&&<RatificationRehearsal candidate={doc} />}
+   <section id="ratification"><h2>Lock the final draft for real voting</h2>
     {doc.ratification?<p role="status">Ratified on {new Date(doc.ratification.ratifiedAt).toLocaleString()}, effective {new Date(doc.ratification.effectiveAt).toLocaleString()}. <Link to={path+'/tickets/'+doc.ratification.motionId}>Read the adoption record and original adopted text</Link>.</p>:<>
      <ol><li>Finish the draft and resolve open change tickets.</li><li>Organizers agree in advance on the ratification procedure: organizer voting, majority participation quorum, two-thirds approval, seven days of notice, and a 24-hour electronic ballot. Record the agreement in meeting minutes.</li><li>Open a ratification ticket to capture and freeze this full revision.</li><li>Obtain a second, have the chair state the question, and record delivery of the full candidate and procedure to every organizer.</li><li>After notice and discussion, hold the organizer ballot. On adoption, publish the record and effective date.</li></ol>
      <p>Ratification takes effect immediately when the chair records a passing result. Creating a ticket or accepting an edit does not ratify the Constitution.</p>
-     {doc.pendingRatificationId?<p><Link to={path+'/tickets/'+doc.pendingRatificationId}>Continue the active ratification ticket</Link>. The candidate is frozen until that ticket is resolved.</p>:doc.openChangeTickets>0?<p>Resolve {doc.openChangeTickets} open change ticket(s) before starting ratification.</p>:organizer?<form onSubmit={e=>{e.preventDefault();void review('propose',{title:`Ratify LifeTech Constitution — revision ${doc.version}`,body:ratificationReason,documentRatification:{documentId:'lifetech-constitution',version:doc.version,candidateHash:doc.candidateHash,authorityRecord:authority}},`Submit revision ${doc.version} for ratification`)}}>
+     {doc.pendingRatificationId?<p><Link to={path+'/tickets/'+doc.pendingRatificationId}>Continue the active ratification ticket</Link>. The candidate is frozen until that ticket is resolved.</p>:doc.openChangeTickets>0?<p>Resolve {doc.openChangeTickets} open change ticket(s) before starting ratification.</p>:organizer?<form onSubmit={e=>{e.preventDefault();void review('propose',{title:`Ratify LifeTech Constitution — revision ${doc.version}`,body:ratificationReason,documentRatification:{documentId:'lifetech-constitution',version:doc.version,candidateHash:doc.candidateHash,authorityRecord:authority}},`Lock revision ${doc.version} for real ratification voting`)}}>
       <label>Reason to ratify this revision<textarea aria-label="Reason to ratify this revision" required maxLength={10000} value={ratificationReason} onChange={e=>{setRatificationReason(e.target.value);setPreview(null)}}/></label>
       <label>Prior organizer agreement and meeting record<textarea aria-label="Prior organizer agreement and meeting record" required minLength={20} maxLength={10000} value={authority} onChange={e=>{setAuthority(e.target.value);setPreview(null)}}/></label>
       <p>Identify the date, participants, decision, and minutes that independently authorized this procedure. The unratified draft cannot authorize its own ballot.</p>
-      <button disabled={busy}>Review ratification ticket</button>
+      <p>Locking captures this exact draft and freezes changes until the real ratification ticket is resolved. The real ballot retains all organizer, notice, quorum, and voting requirements.</p><button disabled={busy}>Review and lock this draft for voting</button>
      </form>:<p>An active LifeTech organizer can open the ratification ticket once the draft is ready.</p>}
     </>}
    </section>
+   {doc.gptSuggestions.length>0&&<section id="gpt-suggestions"><h2>GPT recommendations</h2><p>Prepared by GPT using Codex. These proposals are separate from the current draft and are not submitted change tickets, votes, or adopted amendments. Authored by <a href={doc.gptContributor.profileUrl}>{doc.gptContributor.name}</a> · <a href={doc.gptContributor.codexUrl}>Codex</a> · <a href={doc.gptContributor.mcpUrl}>LifeTech MCP server</a>. A submitting member’s identity remains recorded on each actual ticket.</p>
+    <p>Organizers can approve a recommendation for a change ticket, deny it, or reopen review. Decisions are shared across accounts. Approval here is editorial review; adoption still requires the recorded organizer ballot.</p>
+    {!token&&<Link to={'/users/login?next='+encodeURIComponent(path+'#gpt-suggestions')}>Sign in to review recommendations</Link>}
+    {token&&!organizer&&<p>Active LifeTech organizers approve or deny recommendations. Members can prepare change tickets.</p>}
+    <div className="gpt-recommendation-grid">{doc.gptSuggestions.map(suggestion=>{const current=doc.sections.find(section=>section.id===suggestion.sectionId);const applicable=current?.text===suggestion.original;const related=tickets.filter(ticket=>ticket.document_section===suggestion.sectionId&&ticket.proposed_body_diff===suggestion.replacement);return <article className="gpt-recommendation" key={suggestion.sectionId}>
+     <header><h3>{suggestion.title}</h3><span className={'recommendation-status recommendation-'+suggestion.decision}>{suggestion.decision==='approved'?'Approved for proposal':suggestion.decision==='denied'?'Denied':'Awaiting review'}</span></header>
+     <p>GPT · Prepared with {suggestion.preparedWith}</p><p className="recommendation-excerpt">{suggestion.replacement.length>360?suggestion.replacement.slice(0,360)+'…':suggestion.replacement}</p>
+     {!applicable&&<p>The section has changed since this suggestion was prepared. Rebase it before submitting.</p>}
+     <details><summary>Compare current wording and GPT recommendation</summary><h4>Prepared recommendation</h4><DiffView original={suggestion.original} proposed={suggestion.replacement}/>{!applicable&&<><h4>Current wording</h4><div className="governance-document-text">{current?.text}</div></>}</details>
+     {suggestion.reviewedAt&&<p>Last reviewed: <time dateTime={suggestion.reviewedAt}>{new Date(suggestion.reviewedAt).toLocaleString()}</time></p>}
+     {organizer&&!doc.pendingRatificationId&&<div className="governance-actions">
+      <button disabled={busy||!applicable||suggestion.decision==='approved'} onClick={()=>void review('review-suggestion',{sectionId:suggestion.sectionId,hash:suggestion.hash,candidateHash:doc.candidateHash,decision:'approved'},`Approve for proposal: ${suggestion.title}`)}>Approve recommendation</button>
+      <button disabled={busy||suggestion.decision==='denied'} onClick={()=>void review('review-suggestion',{sectionId:suggestion.sectionId,hash:suggestion.hash,candidateHash:doc.candidateHash,decision:'denied'},`Deny recommendation: ${suggestion.title}`)}>Deny recommendation</button>
+      {suggestion.decision!=='pending'&&<button disabled={busy} onClick={()=>void review('review-suggestion',{sectionId:suggestion.sectionId,hash:suggestion.hash,candidateHash:doc.candidateHash,decision:'pending'},`Reopen review: ${suggestion.title}`)}>Reopen review</button>}
+     </div>}
+     {related.map(ticket=><p key={ticket.id}><Link to={path+'/tickets/'+ticket.id}>Change ticket: {ticket.status}</Link></p>)}
+     {access?.canPropose&&!doc.pendingRatificationId&&applicable&&suggestion.decision!=='denied'&&!related.some(ticket=>!['passed','failed','withdrawn'].includes(ticket.status))&&<button onClick={()=>{setSectionId(suggestion.sectionId);setReplacement(suggestion.replacement);setTitle(`GPT suggestion: ${suggestion.title}`);setReason('GPT-prepared governance suggestion, reviewed and submitted by the signed-in member.');setPreview(null);setEditingSection(suggestion.sectionId);setTimeout(()=>document.getElementById(suggestion.sectionId)?.scrollIntoView({block:'start'}),0)}}>Prepare change ticket</button>}
+    </article>})}</div>
+   </section>}
    <nav aria-label="Table of contents"><ol>{doc.sections.map(s=><li key={s.id}><a href={'#'+s.id}>{s.title}</a></li>)}</ol></nav>
-   {doc.sections.map(s=><DraftSection key={s.id} section={s} version={doc.version} tickets={tickets.filter(t=>t.document_action!=='ratify'&&t.document_section===s.id)} canEdit={!!access?.canPropose&&!doc.pendingRatificationId} editing={editingSection===s.id} onEdit={()=>{setSectionId(s.id);setReplacement(s.text);setTitle(`Amend ${s.title}`);setReason('');setPreview(null);setEditingSection(s.id)}} onCancel={()=>{setEditingSection(null);setPreview(null)}}>{editingSection===s.id?changeEditor:null}</DraftSection>)}
+   {doc.sections.map(s=><DraftSection key={s.id} section={s} version={doc.version} tickets={tickets.filter(t=>t.document_action!=='ratify'&&t.document_section===s.id)} canEdit={!!access?.canPropose&&!doc.pendingRatificationId} editing={editingSection===s.id} onEdit={(text)=>{setSectionId(s.id);setReplacement(text??s.text);setTitle(`Amend ${s.title}`);setReason('');setPreview(null);setEditingSection(s.id);setTimeout(()=>document.getElementById(s.id)?.querySelector('form')?.scrollIntoView({block:'start'}),0)}} onCancel={()=>{setEditingSection(null);setPreview(null)}}>{editingSection===s.id?changeEditor:null}</DraftSection>)}
    <section id="suggest"><h2>Open a change ticket</h2><p>Active LifeTech members may propose and discuss changes. Organizers second motions and vote. Every proposal starts from an exact document revision and retains its original wording.</p>
     {!token?<Link to="/users/login?next=%2Fgovernance%2Fdocuments%2Flifetech-constitution">Sign in to suggest a change</Link>:doc.pendingRatificationId?<p>The full candidate is frozen for ratification. Discuss it on the <Link to={path+'/tickets/'+doc.pendingRatificationId}>ratification ticket</Link>.</p>:!access?.canPropose?<p>Your account needs active LifeTech membership to open a ticket. Contact a LifeTech organizer through the existing membership process.</p>:(!editingSection&&changeEditor)}
    </section>

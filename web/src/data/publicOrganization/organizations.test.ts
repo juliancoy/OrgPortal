@@ -1,6 +1,6 @@
 import { IDBFactory } from 'fake-indexeddb'
 import { beforeEach, expect, it, vi } from 'vitest'
-import { loadPublicOrganization, loadPublicOrganizationDirectory } from './organizations'
+import { loadPublicOrganization, loadPublicOrganizationDirectory, peekPublicOrganizationDirectory } from './organizations'
 import { refreshPublicReport, invalidatePublicOrganizationData, readPublicReport } from './cache'
 
 beforeEach(() => {
@@ -52,4 +52,18 @@ it('invalidates saved public data after edits without losing the last offline co
  expect(saved?.data.name).toBe('Before edit')
  expect((await loadPublicOrganization('rpm-tech')).name).toBe('After edit')
  expect(fetcher).toHaveBeenCalledTimes(2)
+})
+
+it('restores complete resident directories synchronously without exposing partial pages or shared objects', async () => {
+ const first = Array.from({length:500}, (_, n) => ({id:`org-${n}`,name:`Organization ${n}`,slug:`org-${n}`}))
+ vi.stubGlobal('fetch', vi.fn(async () => Response.json(first)))
+ expect(peekPublicOrganizationDirectory()).toBeNull()
+ await refreshPublicReport('/api/org/api/network/orgs/public?limit=500&offset=0', {validate:v=>v})
+ expect(peekPublicOrganizationDirectory()).toBeNull()
+ vi.stubGlobal('fetch', vi.fn(async () => Response.json([])))
+ await refreshPublicReport('/api/org/api/network/orgs/public?limit=500&offset=500', {validate:v=>v})
+ const resident = peekPublicOrganizationDirectory()!
+ expect(resident).toHaveLength(500)
+ resident[0].name='Changed by a renderer'
+ expect(peekPublicOrganizationDirectory()![0].name).toBe('Organization 0')
 })

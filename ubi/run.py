@@ -20,6 +20,12 @@ def ensure_ubi_image(force_rebuild: bool = False) -> None:
         for image in images:
             if "ubi" in image.tags:
                 return
+    from docker_utils.policy import resolver
+    service=resolver()
+    for peer in service.hosts:
+        if service.inspect(peer,'ubi'):
+            service.ensure('ubi',[None])
+            return
     print("Building ubi image from ubi/Dockerfile...")
     docker_utils.DOCKER_CLIENT.images.build(
         path=str(here),

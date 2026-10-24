@@ -1,3 +1,4 @@
+import { CmsImage } from '../components/media/CmsImage'
 import { useEffect, useRef, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { Check, Copy, Download, ExternalLink } from 'lucide-react'
@@ -34,6 +35,7 @@ export function TenantBrandingPage({brandGuidePath='/branding',tenant:organizati
   if (!organizationTenant && tenant.home_org_slug) return <Navigate to={`/orgs/${encodeURIComponent(tenant.home_org_slug)}?tab=branding`} replace />
 
   const assets = [
+    profile.nameBannerUrl ? { id: 'namebanner', label: 'Name banner', description: 'Horizontal wordmark used in portal navigation and sign-in.', url: assetUrl(profile.nameBannerUrl) } : null,
     profile.brandImagePath
       ? { id: 'logo', label: 'Primary logo', description: 'Used in portal navigation, sign-in, favicons, and member-facing pages.', url: assetUrl(profile.brandImagePath) }
       : null,
@@ -75,7 +77,7 @@ export function TenantBrandingPage({brandGuidePath='/branding',tenant:organizati
         <p>{profile.tagline}</p>
       </div>
       <div className="tenant-brand-lockup" aria-label={`${profile.brandName} identity preview`}>
-        {profile.brandImagePath ? <img src={assetUrl(profile.brandImagePath)} alt="" /> : null}
+        {profile.brandImagePath ? <CmsImage src={assetUrl(profile.brandImagePath)} alt="" /> : null}
         <div>
           <strong>{profile.brandName}</strong>
           <span>{profile.tagline}</span>
@@ -93,7 +95,7 @@ export function TenantBrandingPage({brandGuidePath='/branding',tenant:organizati
       <div className="tenant-brand-assets">
         {assets.map((asset) => <article className="tenant-brand-asset" key={asset.id}>
           <div className={`tenant-brand-asset-preview tenant-brand-asset-${asset.id}`}>
-            <img src={asset.url} alt={`${profile.brandName} ${asset.label.toLowerCase()}`} />
+            <CmsImage width={640} height={asset.id === 'namebanner' ? 214 : 640} style={{ objectFit: 'contain' }} src={asset.url} alt={`${profile.brandName} ${asset.label.toLowerCase()}`} />
           </div>
           <h3>{asset.label}</h3>
           <p>{asset.description}</p>

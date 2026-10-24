@@ -10,6 +10,16 @@ import textwrap
 from pathlib import Path
 
 import docker_utils
+from service_names import RENAMES
+_run_container = docker_utils.run_container
+
+def _run_tenant_container(config):
+    config=dict(config)
+    network=config.get('network')
+    aliases=[old for old,current in RENAMES.items() if current==config.get('name')]
+    if network and aliases and not config.get('networking_config'):
+        config['networking_config']={network:docker_utils.DOCKER_CLIENT.api.create_endpoint_config(aliases=[config['name'],*aliases])}
+    return _run_container(config)
 from service_names import service_name
 from local_developer import local_admin_ids
 
@@ -459,6 +469,7 @@ def _write_local_gateway_config(
                   proxy_set_header X-Forwarded-Host "";
                   proxy_set_header X-Forwarded-Proto https;
                   proxy_set_header X-Forwarded-Prefix /pidp;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
                   proxy_set_header Origin $http_origin;
                   proxy_set_header Referer $http_referer;
                   proxy_pass http://{pidp_dev_name}:8000;
@@ -502,7 +513,7 @@ def _start_local_gateway(
     except Exception:
         pass
 
-    docker_utils.run_container(
+    _run_tenant_container(
         {
             "image": os.getenv("ORGPORTAL_LOCAL_GATEWAY_IMAGE", "nginx:alpine"),
             "name": gateway_name,
@@ -593,32 +604,14 @@ def _start_pidp_if_available(prefix: str, network_name: str, gateway_base: str) 
         _remove_container(service_name(prefix, "pidp-dev"))
         _remove_container(service_name(prefix, "pidp"))
     print(f"PIdP secrets pinned from {selected_env_path}")
-    docker_utils.run_container(pidp_db)
+    _run_tenant_container(pidp_db)
     docker_utils.wait_for_db(network_name, db_url=db_url, db_user=db_user)
-    docker_utils.run_container(pidp_dev)
+    _run_tenant_container(pidp_dev)
     return True
 
 
 def _ensure_prod_image_available(requested_image: str, pidp_base_url: str, pidp_app_slug: str) -> tuple[str, str]:
-    skip_pull = _env_truthy("ORGPORTAL_SKIP_PROD_PULL", default=False)
-
-    if not skip_pull:
-        pull_proc = subprocess.run(["docker", "pull", requested_image])
-        if pull_proc.returncode == 0:
-            return requested_image, "pulled"
-        print(f"Warning: failed to pull portal prod image {requested_image}")
-    else:
-        print("Skipping portal prod image pull because ORGPORTAL_SKIP_PROD_PULL is enabled")
-
-    if _docker_image_exists(requested_image):
-        print(f"Using cached local portal prod image: {requested_image}")
-        return requested_image, "local-cache"
-
-    raise RuntimeError(
-        "Unable to start portal prod container: registry pull failed and no local image exists. "
-        "Set ORGPORTAL_PROD_IMAGE to an accessible image, run `docker login ghcr.io`, "
-        "or leave ORGPORTAL_START_PROD disabled for local bind-mounted development."
-    )
+    return docker_utils.ensure_image(requested_image), 'lan-first'
 
 
 def _configure_local_newsletters(prefix: str) -> Path:
@@ -668,7 +661,8 @@ def run_release(action: str, target: str = "all", checkout=None) -> int:
     common_git = subprocess.check_output(
         ["git", "-C", str(root), "rev-parse", "--path-format=absolute", "--git-common-dir"], text=True
     ).strip()
-    command = ["docker", "run", "--rm", "--init", "--user", f"{os.getuid()}:{os.getgid()}", "--workdir", str(root)]
+    image = docker_utils.ensure_image(image)
+    command = ["docker", "run", "--pull=never", "--rm", "--init", "--user", f"{os.getuid()}:{os.getgid()}", "--workdir", str(root)]
     for source, destination in [(root, root), (common_git, common_git)]:
         command += ["--mount", f"type=bind,src={source},dst={destination}"]
     for package in ("web", "org-worker", "chat-worker", "npm", "wrangler"):
@@ -902,14 +896,14 @@ def run(prefix: str, network_name: str) -> None:
         _wait_for_http(f"http://{pidp_dev_name}:8000/health", network_name, retries=startup_retries, delay=2)
         subprocess.check_call(["docker", "exec", pidp_dev_name, "/venv/bin/python", "/app/scripts/register_local_portal.py"])
 
-    docker_utils.run_container(org_worker)
-    docker_utils.run_container(chat_worker)
+    _run_tenant_container(org_worker)
+    _run_tenant_container(chat_worker)
     docker_utils.wait_for_port(chat_worker_name, 8003, network_name, retries=startup_retries, delay=2)
-    docker_utils.run_container(dev)
+    _run_tenant_container(dev)
     docker_utils.wait_for_port(org_worker_name, int(worker_port), network_name, retries=startup_retries, delay=2)
     _wait_for_http(f"http://{org_worker_name}:{worker_port}/health", network_name, retries=startup_retries, delay=2)
     if replica_source:
-        docker_utils.run_container({
+        _run_tenant_container({
             "image": "python:3.12-alpine", "name": service_name(prefix, "org-replication"),
             "network": network_name, "restart_policy": {"Name": "always"}, "detach": True,
             "environment": {"REPLICA_TRIGGER": f"http://{org_worker_name}:{worker_port}/__scheduled", "REPLICA_INTERVAL": replica_interval},
@@ -919,7 +913,7 @@ def run(prefix: str, network_name: str) -> None:
     else:
         _remove_container(service_name(prefix, "org-replication"))
     if start_prod:
-        docker_utils.run_container(prod)
+        _run_tenant_container(prod)
         docker_utils.wait_for_port(prod_name, 8080, network_name, retries=startup_retries, delay=2)
         _wait_for_http(f"http://{prod_name}:8080/", network_name, retries=startup_retries, delay=2)
     docker_utils.wait_for_port(dev_name, 5173, network_name, retries=startup_retries, delay=2)

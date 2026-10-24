@@ -1,3 +1,4 @@
+import { CmsImage } from './CmsImage'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../../app/AppProviders'
 import { getGroupSite } from '../../../config/timebankCommunity'
@@ -41,7 +42,7 @@ export function HiddenCarouselImages() {
     {status && !status.startsWith('Loading') ? <button type="button" onClick={() => setRefresh(value => value + 1)}>Retry</button> : null}
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,240px),1fr))', gap: 18, marginTop: 18 }}>
       {images.map(image => <article key={image.id}>
-        <a href={image.driveUrl} target="_blank" rel="noopener noreferrer"><img src={image.imageUrl} alt={`Community photo: ${image.name}`} loading="lazy" referrerPolicy="no-referrer" style={{ width: '100%', height: 220, objectFit: 'contain' }} /></a>
+        <a href={image.driveUrl} target="_blank" rel="noopener noreferrer"><CmsImage src={image.imageUrl} alt={`Community photo: ${image.name}`} loading="lazy" referrerPolicy="no-referrer" style={{ width: '100%', height: 220, objectFit: 'contain' }} /></a>
         <p style={{ overflowWrap: 'anywhere' }}>{image.name}</p>
         <button type="button" disabled={busy !== null} onClick={async () => {
           setBusy(image.id); setStatus('')

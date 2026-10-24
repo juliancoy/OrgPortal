@@ -108,6 +108,8 @@ const paths = [
   "/users/:slug",
   "/contact/:slug",
   "/contact-settings",
+  "/support",
+  "/support/:ticketId",
   "/governance/documents/lifetech-constitution",
   "/governance/documents/lifetech-constitution/tickets/:ticketId",
   "/governance/roberts",

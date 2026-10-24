@@ -142,3 +142,18 @@ test('a stale candidate hash cannot be ratified',async()=>{
   assert.equal((await f.run('get',{motionId:ticket.id})).results.document_changed,true);
  }finally{f.sql.close()}
 });
+
+test('GPT suggestions are attributed proposals and do not replace or lock the draft',async()=>{
+ const f=fixture();
+ const doc=await readGovernanceDocument(f.db);
+ assert.equal(doc.gptSuggestions.length,8);
+ assert.equal(doc.pendingRatificationId,null);
+ assert.equal(doc.ratification,null);
+ assert.equal(doc.sections.find(section=>section.id==='overview')?.title,'Title I: Overview');
+ for(const suggestion of doc.gptSuggestions){
+  assert.equal(suggestion.author,'GPT');
+  assert.equal(suggestion.preparedWith,'Codex');
+  assert.equal(doc.sections.find(section=>section.id===suggestion.sectionId)?.text,suggestion.original);
+  assert.notEqual(suggestion.original,suggestion.replacement);
+ }
+});

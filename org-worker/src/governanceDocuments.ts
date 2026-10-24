@@ -1,6 +1,8 @@
 import { Hono } from 'hono';
+import { enforceEventRateLimit, prepareEventOperation, previewFingerprint, claimEventOperation, finishEventOperation } from './eventOperationStore';
 import { z } from 'zod';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
+import { lifetechGptSuggestions, gptContributor } from './documents/lifetechGptSuggestions';
 import { lifetechConstitution } from './documents/lifetechConstitution';
 import { organizationRole } from './organizationIam';
 import { EventIntegrationError } from './eventPlatforms';
@@ -37,7 +39,13 @@ export async function readGovernanceDocument(db:D1Database) {
   organizationId:(await documentOrganization(db))?.id||null, lastMotionId:latest?.motion_id||null,
   pendingRatificationId:pending?.id||null,openChangeTickets:open?.n||0,
   ratification:ratified?{version:ratified.version,motionId:ratified.motion_id,ratifiedAt:ratified.ratified_at,effectiveAt:ratified.effective_at,snapshotHash:ratified.snapshot_hash}:null};
- return {...document,candidateHash:await snapshotHash(snapshotDocument(document))};
+ const reviews=await db.prepare('SELECT section_id,suggestion_hash,decision,updated_at FROM governance_suggestion_reviews WHERE organization_id=? AND document_id=?').bind(document.organizationId,lifetechConstitution.id).all<{section_id:string;suggestion_hash:string;decision:string;updated_at:string}>();
+ const gptSuggestions=await Promise.all(lifetechGptSuggestions.map(async suggestion=>{
+  const hash=await previewFingerprint(suggestion);
+  const review=reviews.results.find(row=>row.section_id===suggestion.sectionId&&row.suggestion_hash===hash);
+  return {...suggestion,hash,decision:review?.decision||'pending',reviewedAt:review?.updated_at||null};
+ }));
+ return {...document,gptSuggestions,gptContributor,candidateHash:await snapshotHash(snapshotDocument(document))};
 }
 function snapshotDocument(doc:{version:number;title:string;sections:typeof lifetechConstitution.sections}) {
  return JSON.stringify({documentId:lifetechConstitution.id,version:doc.version,title:doc.title,sections:doc.sections});
@@ -234,6 +242,32 @@ export function governanceDocumentRoutes(getUser:(env:Env,request:Request)=>Prom
   const input=await c.req.json<{operation:string;args:Record<string,unknown>}>();
   const org=await documentOrganization(c.env.DB);
   if(!org||input.args?.organizationId!==org.id)fail(404,'LifeTech organization not found');
+  if(input.operation==='review-suggestion') {
+   const args=z.object({organizationId:z.string(),sectionId:z.string(),hash:z.string(),candidateHash:z.string(),decision:z.enum(['approved','denied','pending']),confirm:z.boolean().optional(),previewId:z.string().uuid().optional()}).strict().parse(input.args);
+   if(!isOrganizer(await organizationRole(c.env.DB,org.id,user.id)))fail(403,'Active LifeTech organizer required');
+   await enforceEventRateLimit(c.env.DB,user.id);
+   const doc=await readGovernanceDocument(c.env.DB);
+   if(doc.pendingRatificationId)fail(409,'The candidate is frozen for ratification');
+   if(doc.candidateHash!==args.candidateHash)fail(409,'The document changed. Reload before reviewing.');
+   const suggestion=doc.gptSuggestions.find(s=>s.sectionId===args.sectionId&&s.hash===args.hash);
+   if(!suggestion)fail(409,'The recommendation changed. Reload before reviewing.');
+   if(args.decision==='approved'&&doc.sections.find(s=>s.id===args.sectionId)?.text!==suggestion.original)fail(409,'Rebase this recommendation before approving it');
+   const before=await c.env.DB.prepare('SELECT suggestion_hash,decision,updated_at FROM governance_suggestion_reviews WHERE organization_id=? AND document_id=? AND section_id=?').bind(org.id,lifetechConstitution.id,args.sectionId).first();
+   const owner={userId:user.id,organizationId:org.id,eventId:`governance:suggestion:${args.sectionId}`};
+   const fingerprint=await previewFingerprint({sectionId:args.sectionId,hash:args.hash,candidateHash:args.candidateHash,decision:args.decision,before});
+   if(!args.confirm)return c.json(await prepareEventOperation(c.env.DB,owner,fingerprint));
+   if(!args.previewId)fail(409,'Preview the review first');
+   await claimEventOperation(c.env.DB,owner,args.previewId,fingerprint);
+   try {
+    const saved=await c.env.DB.prepare(`INSERT INTO governance_suggestion_reviews(organization_id,document_id,section_id,suggestion_hash,decision,updated_at)
+     VALUES(?,?,?,?,?,?) ON CONFLICT(organization_id,document_id,section_id) DO UPDATE SET suggestion_hash=excluded.suggestion_hash,decision=excluded.decision,updated_at=excluded.updated_at
+     WHERE governance_suggestion_reviews.updated_at=? RETURNING section_id`)
+     .bind(org.id,lifetechConstitution.id,args.sectionId,args.hash,args.decision,new Date().toISOString(),before?.updated_at??null).first();
+    if(!saved)fail(409,'Another organizer reviewed this recommendation. Reload and review again.');
+    await finishEventOperation(c.env.DB,args.previewId,true,[args.decision]);
+    return c.json({decision:args.decision});
+   } catch(error) {await finishEventOperation(c.env.DB,args.previewId,false,[]);throw error;}
+  }
   if(!['propose','action'].includes(input.operation))fail(400,'Invalid operation');
   if(input.operation==='propose') {
    const change=(input.args.documentChange||input.args.documentRatification) as {documentId?:string}|undefined;

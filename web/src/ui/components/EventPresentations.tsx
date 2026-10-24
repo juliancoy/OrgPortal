@@ -45,7 +45,7 @@ export function EventPresentations({eventId,formAction,onActionHandled,onSaved}:
  const setOrg=(value:string)=>setField('org',value),setName=(value:string)=>setField('name',value),setCity=(value:string)=>setField('city',value),setDescription=(value:string)=>setField('description',value),setTitle=(value:string)=>setField('title',value),setSummary=(value:string)=>setField('summary',value)
  const base=`/api/org/api/network/events/${encodeURIComponent(eventId)}/presentations`
  const [enabled,setEnabled]=useState(false),[closed,setClosed]=useState(false),[ready,setReady]=useState(false)
- const [canReview,setCanReview]=useState(false),[orgs,setOrgs]=useState<Org[]>([])
+ const [orgs,setOrgs]=useState<Org[]>([])
  const [message,setMessage]=useState(''),[busy,setBusy]=useState(false),[version,setVersion]=useState(0)
  async function request(url:string,method='GET',body?:unknown,signal?:AbortSignal) {
   const response=await fetch(url,{method,headers:{...(token?{Authorization:`Bearer ${token}`} : {}),...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),signal,cache:'no-store'})
@@ -54,13 +54,13 @@ export function EventPresentations({eventId,formAction,onActionHandled,onSaved}:
   return data
  }
  useEffect(()=>{
-  const controller=new AbortController();setReady(false);setOrgs([]);setCanReview(false)
+  const controller=new AbortController();setReady(false);setOrgs([])
   void (async()=>{try {
    const form=await request(`${base}/public`,'GET',undefined,controller.signal)
-   let own:{canReview:boolean}={canReview:false},teams:Org[]=[]
-   if(token) [own,teams]=await Promise.all([request(base,'GET',undefined,controller.signal),request('/api/org/api/network/orgs?mine=true&limit=500','GET',undefined,controller.signal)])
+   let teams:Org[]=[]
+   if(token && form.enabled) teams=await request('/api/org/api/network/orgs?mine=true&limit=500','GET',undefined,controller.signal)
    if(controller.signal.aborted)return
-   setEnabled(form.enabled);setClosed(form.closed);setCanReview(own.canReview);
+   setEnabled(form.enabled);setClosed(form.closed);
    setOrgs(teams.filter(o=>o.my_role==='owner'||o.my_role==='administrator'));setReady(true)
   }catch(error){if(!controller.signal.aborted)setMessage(error instanceof Error?error.message:'Unable to load applications')}})()
   return()=>controller.abort()
@@ -84,14 +84,13 @@ export function EventPresentations({eventId,formAction,onActionHandled,onSaved}:
   try{await work();setVersion(v=>v+1)}catch(error){setMessage(error instanceof Error?error.message:'Unable to save')}finally{setBusy(false)}
  }
  if(!ready) return <section aria-label="Presentation applications"><p role="status">{message||'Loading presentation applications…'}</p>{message&&<button type="button" className="btn-secondary" onClick={()=>setVersion(v=>v+1)}>Retry</button>}</section>
- if(!enabled&&!canReview&&!draft.value.editing)return <section className="portal-card" aria-label="Presentation applications"><h2>Applications</h2><p>Applications are not open for this event.</p></section>
+ if(!enabled)return null
  return <section className="portal-card presentation-applications" aria-label="Presentation applications">
-  {token&&<div className="presentation-heading"><p className="public-event-eyebrow">Share your work</p><h2>Present at this event</h2><p className="muted">Bring your team’s ideas, research, or latest demo to the community.</p></div>}
-  {canReview&&<button type="button" className="btn-secondary" disabled={busy} onClick={()=>void action(async()=>{await request(`${base}/form`,'PUT',{enabled:!enabled})})}>{enabled?'Close applications':'Open applications'}</button>}
+  {<div className="presentation-heading"><p className="public-event-eyebrow">Share your work</p><h2>Present at this event</h2><p className="muted">Share your ideas, research, or latest demo. Apply with an existing organization or create a team below.</p></div>}
   {message&&<p role="status">{message}</p>}
-  {enabled&&!closed&&!token&&<div className="presentation-login"><p>Log in to apply</p><Link className="btn-primary" to={`/users/login?next=${encodeURIComponent(location.pathname+location.search+'#apply')}`}>Log In</Link></div>}
+  {enabled&&!closed&&!token&&<div className="presentation-login"><p>Sign in to choose your organization or create a team and submit your presentation.</p><Link className="btn-primary" to={`/users/login?next=${encodeURIComponent(location.pathname+location.search+'#apply')}`}>Sign in to apply</Link></div>}
   {closed&&<p>Applications have closed for this event.</p>}
-  {((enabled&&!closed)||draft.value.editing)&&token&&<form className="presentation-form local-form-draft" data-draft-saved={draft.saved} aria-label="Team presentation application" aria-busy={busy} onSubmit={e=>{e.preventDefault();void action(async()=>{
+  {((enabled&&!closed)||draft.value.editing)&&token&&<form className="presentation-form" data-draft-saved={draft.saved} aria-label="Team presentation application" aria-busy={busy} onSubmit={e=>{e.preventDefault();void action(async()=>{
    if(!people.length)throw new Error('Add at least one teammate before submitting.')
    let organizationId=org
    if(!organizationId){const team=await request('/api/org/api/network/orgs','POST',{name,city,description,kind:'team',acknowledgeOwnership:true});organizationId=team.id;setOrg(team.id);if(teamImage)setField('imageOrg',team.id);setOrgs(previous=>[...previous,team]);await invalidatePublicOrganizationData()}
@@ -125,7 +124,7 @@ export function EventPresentations({eventId,formAction,onActionHandled,onSaved}:
   })}}>
    {draft.value.editing&&<div><h3>Edit application</h3><button type="button" className="btn-secondary" onClick={()=>{draft.clear();setFiles([]);setTeamImage(null)}}>Cancel editing</button></div>}
    <div className="local-draft-status"><p role="status">{draft.unavailable?'Local draft storage unavailable.':draft.saved?'Draft saved on this device.':'Draft not yet saved on this device.'}</p><button type="button" className="btn-secondary" onClick={()=>{draft.clear();setFiles([]);setTeamImage(null)}}>Clear saved draft</button></div>
-   <div className="presentation-team-choice">
+   <div className="presentation-team-choice"><h3>1. Your team or organization</h3>
     <label className="sr-only" htmlFor={`${fieldId}-team`}>Team or organization</label>
     <select id={`${fieldId}-team`} disabled={!!draft.value.editing} value={org} onChange={e=>{setOrg(e.target.value);setField('people','[]')}}>
      <option value="">＋ Create a new team</option>
@@ -140,6 +139,7 @@ export function EventPresentations({eventId,formAction,onActionHandled,onSaved}:
    }}/><small>This becomes your new organization’s main image.</small>{imagePreview&&<img src={imagePreview} alt="Team image preview" style={{maxWidth:160,maxHeight:160,objectFit:'contain'}}/>}</label>}
    <p className="muted">This is your organization’s shared team. Additions join every submission.{org&&<> <Link to={`/orgs/${encodeURIComponent(org)}?tab=personnel`}>Manage existing members</Link>.</>}</p>
    <TeamPeoplePicker compact people={people} onChange={value=>draft.setValue(previous=>({...previous,people:JSON.stringify(value)}))} />
+   <h3>2. Your presentation</h3>
    <label>Presentation title<input required maxLength={200} value={title} onChange={e=>setTitle(e.target.value)}/></label>
    <div><label htmlFor={`${fieldId}-summary`}>What will you present?</label><textarea id={`${fieldId}-summary`} rows={5} required maxLength={5000} value={summary} onChange={e=>setSummary(e.target.value)}/></div>
    <SubmissionAttachmentPicker files={files} onChange={setFiles} disabled={busy} />

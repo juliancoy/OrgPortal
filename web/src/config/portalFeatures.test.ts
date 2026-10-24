@@ -179,3 +179,10 @@ for (const hostname of ['localhost', '127.0.0.1', '[::1]']) {
   expect(brand.brandImagePath).toBe('/dummy-logo.png')
   expect(getActivePortalProfileConfig('',null,'orgportal.cc')).toEqual(before)
  })
+
+it('uses a separate tenant name banner without changing the logo or favicon', () => {
+  const brand = tenantProfileConfig({id:'life', name:'LifeTech', hostname:'lifetech.fyi', profile:'lifetech', tagline:'Community', accent_color:'#155e59', brand_image_path:'/square.png', feature_config:{ nameBannerUrl:'https://lifetech.fyi/banner.webp' }})
+  expect(brand.nameBannerUrl).toBe('https://lifetech.fyi/banner.webp')
+  expect(brand.brandImagePath).toBe('/square.png')
+  expect(brand.faviconPath).toBe('/square.png')
+})

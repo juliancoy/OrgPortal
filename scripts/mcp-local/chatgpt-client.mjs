@@ -51,6 +51,8 @@ async function exercise(attempt,code) {
   const tools=checked(await rpc(tokens.access_token,'tools/list')).tools;
   assert(tools.some(tool=>tool.name==='search_organization_directory'));
   const directory=checked(await rpc(tokens.access_token,'tools/call',{name:'search_organization_directory',arguments:{query:'local-mcp-fixture-does-not-exist',limit:5}}));
+  const who=checked(await rpc(tokens.access_token,'tools/call',{name:'get_current_account',arguments:{}}));
+  if(attempt.expectedAccount)assert(who.structuredContent.account.email===attempt.expectedAccount,'Connected account does not match the account chosen during recovery');
   const organizations=checked(await rpc(tokens.access_token,'tools/call',{name:'list_organizations',arguments:{}}));
   assert.deepEqual(organizations.structuredContent.organizations,[], 'Consent must not create memberships');
   assert.deepEqual(directory.structuredContent.organizations,[]);
@@ -65,7 +67,7 @@ async function exercise(attempt,code) {
   assert.equal((await form(metadata.revocation_endpoint,{token:renewed.refresh_token},client)).status,200);
   assert.equal((await rpc(renewed.access_token,'tools/list')).status,401,'Revoked access token must fail live introspection');
   assert.equal((await form(metadata.token_endpoint,{grant_type:'refresh_token',refresh_token:renewed.refresh_token,resource},client)).status,400);
-  return {outcome:'passed',scope,checks:['discovery','dynamic confidential web-client registration','PKCE and resource binding','one-use authorization code','MCP initialization','tool discovery','directory search','membership read','scope/domain permission denial','refresh rotation','live revocation'],toolCount:tools.length,server:init.serverInfo.name};
+  return {outcome:'passed',scope,checks:['canonical account identity','discovery','dynamic confidential web-client registration','PKCE and resource binding','one-use authorization code','MCP initialization','tool discovery','directory search','membership read','scope/domain permission denial','refresh rotation','live revocation'],toolCount:tools.length,server:init.serverInfo.name};
 }
 createServer(async(req,res)=>{
   res.setHeader('cache-control','no-store');
@@ -90,7 +92,9 @@ createServer(async(req,res)=>{
       const client=await json(metadata.registration_endpoint,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({client_name:'Local ChatGPT web simulator',redirect_uris:[base+prefix+'/callback'],token_endpoint_auth_method:'client_secret_basic',grant_types:['authorization_code','refresh_token'],response_types:['code'],scope})});
       assert(client.client_id && client.client_secret);
       const state=random(),verifier=random()+random();
-      attempts.set(state,{client,metadata,state,verifier,scope,expires:Date.now()+600000});
+      const expectedAccount=url.searchParams.get('expectedAccount');
+      assert(!expectedAccount||/^[a-z0-9-]+@example\.com$/.test(expectedAccount),'Use a synthetic recovery account');
+      attempts.set(state,{client,metadata,state,verifier,scope,expectedAccount,expires:Date.now()+600000});
       res.setHeader('set-cookie',`mcp_simulator_state=${state}; HttpOnly; Secure; SameSite=Lax; Path=${prefix}; Max-Age=600`);
       const authorize=new URL(metadata.authorization_endpoint);
       authorize.search=new URLSearchParams({response_type:'code',client_id:client.client_id,redirect_uri:base+prefix+'/callback',resource,scope,state,code_challenge:createHash('sha256').update(verifier).digest('base64url'),code_challenge_method:'S256',...(url.searchParams.get('mode')==='other'?{browser:'other'}:{})});

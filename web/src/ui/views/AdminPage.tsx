@@ -1,3 +1,4 @@
+import { McpLiveStatistics } from './McpLiveStatistics'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import './admin.css'
@@ -683,6 +684,7 @@ export function AdminPage() {
 
           {tab === 'stats' ? (
             <>
+              {token && <McpLiveStatistics token={token} />}
               {token && <VisitorStatistics token={token} />}
               {token && <WebsiteObservatory token={token} />}
               <div className="portal-card" style={{ display: 'grid', gap: '0.75rem' }}>

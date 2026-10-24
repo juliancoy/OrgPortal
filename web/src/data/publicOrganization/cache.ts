@@ -62,6 +62,13 @@ async function database(): Promise<IDBDatabase | null> {
     } catch { finish(null) }
   })
 }
+export function peekPublicReport<T>(path: string): PublicReportEntry<T> | null {
+  const url = publicReportUrl(path)
+  syncStorage()
+  const entry = memory.get(url)
+  return entry ? structuredClone(entry) as PublicReportEntry<T> : null
+}
+
 export async function readPublicReport<T>(path: string): Promise<PublicReportEntry<T> | null> {
   const url = publicReportUrl(path)
   syncStorage(); shareUpdates()
