@@ -39,6 +39,18 @@ rollback and cascading-deletion checks run against isolated test databases.
 
 ## Inventory and monthly review
 
+Production CLI working copies live separately in `~/.orgportal-working-copy`.
+They may contain authorized private organization API results and pending draft
+arguments. Subject/issuer/resource/org/workflow binding isolates datasets; creation
+starts a fixed seven-day clock. Each invocation purges expired records. The
+workspace installer `scripts/setup_working_copy_timer.py` installs hourly idle
+cleanup through the user service manager. This timer is host-dependent, not proof
+of deletion on an offline host. `orgportal working-copy forget --organization ID`
+removes local copies without requiring a live grant. Review manual exports and
+independent backups during erasure; this store is not added to DR archives. Full
+private-domain coverage and authenticated acceptance remain unverified. See
+[working-copy operations](../cli/WORKING_COPY.md).
+
 Maintain a restricted operational inventory outside this public repository:
 store/table/bucket, data categories, owner, purpose, subject keys, timestamp
 semantics, dependencies, replicas, provider, configured retention, deletion

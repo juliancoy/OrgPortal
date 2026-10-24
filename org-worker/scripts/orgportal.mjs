@@ -7,6 +7,8 @@ import { pathToFileURL } from 'node:url';
 import { browserLogin } from './event-upload.mjs';
 import { credentialStore } from './upload-connection.mjs';
 import { syncNewsletterDatabase } from './newsletter-sync.mjs';
+import { workingCopy } from './working-copy.mjs';
+import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { readFile } from 'node:fs/promises';
@@ -25,10 +27,14 @@ const help = `Usage:
   orgportal doctor [--connection NAME] [--json]
   orgportal profile get|preview|apply|status --organization ID [--file PATCH_JSON] [--preview-id UUID]
   orgportal sync [--portal https://lifetech.fyi] [--connection NAME] [--dry-run]
+  orgportal working-copy pull|edit|preview|sync|status|forget --organization ID [--file PATCH_JSON] [--preview-id UUID]
+  orgportal working-copy purge
   orgportal journal sync [--file SQLITE_PATH] (requires Cloudflare operator login)
 
 Options: --resource HTTPS_MCP_URL, --issuer HTTPS_PIDP_ORIGIN, --client-id ID, --json, --version
 Sync options: --dry-run, --local LOOPBACK_HTTPS_ORIGIN, --deployment CONFIG_JSON, --cert CA_FILE
+Working-copy options: --directory PRIVATE_DIRECTORY (default ~/.orgportal-working-copy), --workflow WORKFLOW_JSON.
+Default workflow: organization profiles. Other records use enrolled read/preview/apply tools.
 Defaults: ORGPORTAL_PORTAL or https://lifetech.fyi;
           ORGPORTAL_ISSUER or https://orgportal.cc;
           ORGPORTAL_CONNECTION or default.
@@ -43,7 +49,7 @@ export function parseCommand(args, env = process.env) {
     live: { type: 'boolean' }, json: { type: 'boolean' }, version: { type: 'boolean' },
     admin: { type: 'boolean' }, browser: { type: 'boolean' }, dialog: { type: 'boolean' }, 'no-browser': { type: 'boolean' }, help: { type: 'boolean', short: 'h' },
     'dry-run': { type: 'boolean' }, local: { type: 'string' }, deployment: { type: 'string' }, cert: { type: 'string' },
-    file: { type: 'string' }, organization: { type: 'string' }, 'preview-id': { type: 'string' },
+    file: { type: 'string' }, organization: { type: 'string' }, 'preview-id': { type: 'string' }, directory: { type: 'string' }, workflow: { type: 'string' },
   } });
   if (values.version) return { version: true };
   if (values.help || !args.length) return { help: true };
@@ -52,6 +58,12 @@ export function parseCommand(args, env = process.env) {
     return { action: 'journal', file: resolve(values.file || root + '/.local/journal/change-journal.sqlite') };
   }
   const profile = positionals.length === 2 && positionals[0] === 'profile' && ['get','preview','apply','status'].includes(positionals[1]);
+  const working = positionals.length === 2 && positionals[0] === 'working-copy' && ['pull','edit','preview','sync','status','forget','purge'].includes(positionals[1]);
+  if (working && positionals[1] !== 'purge' && !values.organization) throw Error('Working-copy commands require an exact --organization ID.');
+  if (working && positionals[1] === 'edit' && !values.file) throw Error('Working-copy edit requires --file PATCH_JSON.');
+  if (working && values['dry-run']) throw Error('Use working-copy preview to review outgoing changes.');
+  if (values.directory && !working) throw Error('--directory applies only to working-copy commands.');
+  if (values.workflow && !working) throw Error('--workflow applies only to working-copy commands.');
   if (profile && (!values.organization || (['preview','apply'].includes(positionals[1]) && !values.file) || (['apply','status'].includes(positionals[1]) && !values['preview-id']))) throw Error('Profile commands require --organization; preview/apply require --file; apply/status require --preview-id.');
   if (profile && values['dry-run']) throw Error('Use profile preview instead of --dry-run.');
   const sync = positionals.length === 1 && positionals[0] === 'sync';
@@ -60,7 +72,7 @@ export function parseCommand(args, env = process.env) {
   if (values.live && !(authInspection && positionals[1] === 'status')) throw Error('--live applies only to auth status.');
   if (values.json && !(inspection || authInspection)) throw Error('--json is supported for whoami, doctor, and auth status/list/switch.');
   if (authInspection && positionals[1] === 'switch' && values.connection) throw Error('Use auth switch NAME without --connection.');
-  if (!profile && !sync && !inspection && !authInspection && (positionals.length !== 2 || positionals[0] !== 'auth' || !['login', 'logout'].includes(positionals[1]))) {
+  if (!working && !profile && !sync && !inspection && !authInspection && (positionals.length !== 2 || positionals[0] !== 'auth' || !['login', 'logout'].includes(positionals[1]))) {
     throw new Error('Unknown command. Run orgportal --help for account, profile and synchronization commands.');
   }
   if (values.portal && values.resource) throw new Error('Choose --portal or --resource.');
@@ -79,7 +91,7 @@ export function parseCommand(args, env = process.env) {
   if (values.admin && !values.connection) throw Error('Use --admin with an explicit --connection name to keep the website connection separate.');
   const connection = (authInspection && positionals[1] === 'switch' ? positionals[2] : values.connection) || env.ORGPORTAL_CONNECTION || 'default';
   if (!/^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,79}$/.test(connection)) throw new Error('Invalid connection name.');
-  return { action: profile ? 'profile' : sync ? 'sync' : inspection ? positionals[0] : positionals[1], json: !!values.json, live: !!values.live, connectionExplicit: !!values.connection || !!env.ORGPORTAL_CONNECTION || positionals[1] === 'switch', profileAction: profile ? positionals[1] : undefined, organizationId: values.organization, previewId: values['preview-id'], profileFile: values.file ? resolve(values.file) : undefined, resource: resource.href, issuer: issuer.origin,
+  return { action: working ? 'working-copy' : profile ? 'profile' : sync ? 'sync' : inspection ? positionals[0] : positionals[1], workingAction: working ? positionals[1] : undefined, workingDirectory: resolve(values.directory || homedir() + '/.orgportal-working-copy'), workflowFile: values.workflow ? resolve(values.workflow) : undefined, json: !!values.json, live: !!values.live, connectionExplicit: !!values.connection || !!env.ORGPORTAL_CONNECTION || positionals[1] === 'switch', profileAction: profile ? positionals[1] : undefined, organizationId: values.organization, previewId: values['preview-id'], profileFile: values.file ? resolve(values.file) : undefined, resource: resource.href, issuer: issuer.origin,
     connection, dialog: !!values.dialog, clientId: values['client-id'], admin: !!values.admin, openBrowser: !!values.browser && !values['no-browser'], dryRun: !!values['dry-run'],
     local: values.local || 'https://localhost:8443', deployment: resolve(values.deployment || root + '/.local/bmoremedtech-newsletter-storage.json'),
     cert: resolve(values.cert || root + '/.local/certs/localhost.crt') };
@@ -90,6 +102,7 @@ export async function run(args, dependencies = {}) {
   const log = dependencies.log || console.log;
   if (command.version) { log(`OrgPortal ${product.version}`); return; }
   if (command.help) { log(help); return; }
+  if (command.action === 'working-copy' && ['purge','forget'].includes(command.workingAction)) { log(JSON.stringify(await workingCopy(command, null))); return; }
   if (command.action === 'journal') {
     const mirror = dependencies.mirrorChangeJournal || (await import('./journal-mirror.mjs')).mirrorChangeJournal;
     log(JSON.stringify(await mirror(command.file))); return;
@@ -126,7 +139,7 @@ export async function run(args, dependencies = {}) {
       if (!saved?.refreshToken) checks.push({code:'account',status:'warn',message:'No saved account. Run orgportal auth login.'});
       emit({ ok: false, checks }); return { ok: false };
     }
-    if (['sync','profile','whoami','doctor','switch','status'].includes(command.action) && !(await store.load())?.refreshToken) throw Object.assign(Error('Sign in first: orgportal auth login'),{code:'login_required'});
+    if (['working-copy','sync','profile','whoami','doctor','switch','status'].includes(command.action) && !(await store.load())?.refreshToken) throw Object.assign(Error('Sign in first: orgportal auth login'),{code:'login_required'});
     // Logging out an absent connection needs neither a browser nor a network call.
     if (command.action === 'logout' && !(await store.load())?.refreshToken) {
       await settings.remove(command.resource,command.issuer,command.connection);
@@ -149,6 +162,10 @@ export async function run(args, dependencies = {}) {
       const result = command.action === 'doctor' ? {...data,checks:[...checks,...data.checks],ok:checks.every(check=>check.status==='pass') && data.ok} : data;
       const output = {...result,connectionName:command.connection,...(command.action==='status'?{connected:true,needsReconnect:false,liveChecked:true}:{})};
       emit(output); return output;
+    } else if (command.action === 'working-copy') {
+      const result = await (dependencies.workingCopy || workingCopy)(command, account);
+      log(JSON.stringify(result, null, 2));
+      if (result.conflict || result.outcomeUncertain) return { ok: false };
     } else if (command.action === 'profile') {
       log(JSON.stringify(await (dependencies.runProfileCommand || runProfileCommand)(command, account), null, 2));
     } else if (command.action === 'sync') {

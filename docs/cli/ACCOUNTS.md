@@ -1,5 +1,8 @@
 # OrgPortal account connections
 
+For separate production working copies and reviewed bidirectional updates, see
+[working-copy operations](WORKING_COPY.md).
+
 OrgPortal CLI 1.3 uses the same authenticated MCP tools as hosted clients.
 From this checkout, use Node.js 22 or newer, install the lockfile dependencies
 with `npm --prefix org-worker ci`, then run `./orgportal --help`.
