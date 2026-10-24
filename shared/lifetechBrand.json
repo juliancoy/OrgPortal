@@ -1,0 +1,32 @@
+{
+  "colors": [
+    {"id":"teal","label":"HealthTech Teal","value":"#155E59","description":"Core brand teal. Use for light-theme links and buttons with MedTech OffWhite text."},
+    {"id":"offWhite","label":"MedTech OffWhite","value":"#F4F5F0","description":"Inspired by the off-white finish of MRI machines. Use for light backgrounds and text on dark surfaces."},
+    {"id":"gold","label":"BioTech Gold","value":"#D4AF37","description":"Represents the monetary potential of biotechnology. Use for accents on dark surfaces; use Gold Ink for text on light surfaces."},
+    {"id":"ink","label":"LifeTech Deep Ink","value":"#061A26","description":"Primary text on light backgrounds, dark-theme canvas, and text on light teal or gold buttons."},
+    {"id":"darkSurface","label":"Deep Teal Surface","value":"#0B2733","description":"Dark-theme panels and navigation; pair with MedTech OffWhite, Light Teal, or BioTech Gold."},
+    {"id":"lightTeal","label":"Light Teal","value":"#7BDDCF","description":"Accessible links, focus indicators, and primary buttons on dark surfaces. Pair filled buttons with Deep Ink text."},
+    {"id":"tealMist","label":"Teal Mist","value":"#E5F2EE","description":"Light-theme secondary surfaces and selected rows. Pair with Deep Ink or HealthTech Teal text."},
+    {"id":"mutedInk","label":"Muted Ink","value":"#465D65","description":"Secondary text on white, MedTech OffWhite, and Teal Mist; retains normal-text contrast."},
+    {"id":"mutedLight","label":"Muted Light","value":"#AFC9CE","description":"Secondary text on Deep Ink and Deep Teal Surface; retains normal-text contrast."},
+    {"id":"goldInk","label":"Gold Ink","value":"#795B12","description":"Accessible gold-family text on white, MedTech OffWhite, and Teal Mist. Original BioTech Gold remains the core accent."},
+    {"id":"controlBorder","label":"Control Teal","value":"#60817C","description":"Input boundaries and essential control indicators on light surfaces; use Light Teal for dark-theme focus."},
+    {"id":"white","label":"Clinical White","value":"#FFFFFF","description":"Raised light-theme surfaces; use Deep Ink, Muted Ink, HealthTech Teal, or Gold Ink for text."}
+  ],
+  "pairings": [
+    {"label":"Light body text","foreground":"ink","background":"offWhite","minimum":4.5},
+    {"label":"Light secondary text","foreground":"mutedInk","background":"tealMist","minimum":4.5},
+    {"label":"Light links","foreground":"teal","background":"offWhite","minimum":4.5},
+    {"label":"Light primary button","foreground":"offWhite","background":"teal","minimum":4.5},
+    {"label":"Light gold text","foreground":"goldInk","background":"offWhite","minimum":4.5},
+    {"label":"Dark body text","foreground":"offWhite","background":"darkSurface","minimum":4.5},
+    {"label":"Dark secondary text","foreground":"mutedLight","background":"darkSurface","minimum":4.5},
+    {"label":"Dark links","foreground":"lightTeal","background":"darkSurface","minimum":4.5},
+    {"label":"Dark primary button","foreground":"ink","background":"lightTeal","minimum":4.5},
+    {"label":"Dark gold text","foreground":"gold","background":"darkSurface","minimum":4.5},
+    {"label":"Gold button text","foreground":"ink","background":"gold","minimum":4.5},
+    {"label":"Light input boundary","foreground":"controlBorder","background":"offWhite","minimum":3},
+    {"label":"Light keyboard focus","foreground":"teal","background":"offWhite","minimum":3},
+    {"label":"Dark keyboard focus","foreground":"lightTeal","background":"darkSurface","minimum":3}
+  ]
+}

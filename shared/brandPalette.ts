@@ -1,3 +1,4 @@
+import lifetechBrand from './lifetechBrand.json'
 export type BrandColor = { label: string; value: string; description?: string }
 
 export function parseBrandPalette(value: unknown): BrandColor[] | null {
@@ -24,6 +25,9 @@ export function resolveBrandPalette(site: { profile?: string | null; slug?: stri
     if (palette) return palette
   }
   const accent = site.accent_color || site.theme_color || '#155e59'
+  if (site.profile === 'lifetech' || (site.slug || site.home_org_slug) === 'lifetech') {
+    return lifetechBrand.colors.map(({ label, value, description }) => ({ label, value, description }))
+  }
   if (site.profile === 'lifetech' || site.profile === 'baltimore-medtech'
     || ['lifetech', 'baltimore-medtech'].includes(site.slug || site.home_org_slug || '')) return [
     { label: 'HealthTech Teal', value: accent, description: 'Our existing health technology teal.' },
