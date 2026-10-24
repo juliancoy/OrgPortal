@@ -1,11 +1,11 @@
 # OrgPortal
 
-Shared primary-account identity is implemented behind a disabled feature flag.
-The configured identity base is `https://orgportal.cc/pidp`; tenant browser flows
-use their same-origin `/pidp` proxy and the `orgportal` application namespace.
-The agreed plan centralizes login, identity settings, APIs and MCP under
-`orgportal.cc`, with account consolidation and protocol changes staged separately.
-See the [migration plan](../PIdP/docs/shared-orgportal-identity.md).
+Shared primary-account identity remains behind a disabled feature flag.
+The plan uses `orgportal.cc` for the portal and `id.orgportal.cc` for isolated
+identity pages, account settings and OAuth. The local deployment mirrors that
+boundary at `https://localhost:8443` and `https://id.localhost:8443`. The production
+configuration still requires a separate cutover. See the
+[migration plan](../PIdP/docs/shared-orgportal-identity.md).
 
 
 ## Privacy, support and data lifecycle
