@@ -5,7 +5,6 @@ import { EventSubmissions } from '../../components/EventSubmissions'
 import { OrganizationAvatar } from '../../components/OrganizationAvatar'
 import { useOrganizationPersonnel } from '../../hooks/useOrganizationPersonnel'
 import type { PersonnelClass } from '../../../../../shared/organizationPersonnel'
-import { EventPresentations, type PresentationFormAction } from '../../components/EventPresentations'
 import type { OrganizationLink } from '../../../../../shared/organizationLinks'
 import { BioMarkdown } from '../../components/profile/BioMarkdown'
 import { getGroupSite } from '../../../config/timebankCommunity'
@@ -16,7 +15,7 @@ import { EventVenues, type Venue } from '../../components/EventVenues'
 import { EventCompanyVotes } from '../../components/EventCompanyVotes'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams, useLocation, useNavigate } from 'react-router-dom'
-import { CalendarDays, Clock, FileImage, Info, Send, Users, CalendarPlus, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, MapPinned, Pencil, RotateCcw, X, ZoomIn, ZoomOut } from 'lucide-react'
+import { CalendarDays, Clock, FileImage, Info, Send, Users, CalendarPlus, ChevronLeft, ChevronRight, Download, ExternalLink, MapPinned, Pencil, RotateCcw, X, ZoomIn, ZoomOut } from 'lucide-react'
 import { externalEventListings } from '../../utils/externalEventListings'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
 import { downloadIcsEvent, googleCalendarUrl, outlookCalendarUrl } from '../../utils/calendar'
@@ -282,26 +281,12 @@ export function PublicEventPage() {
   const brand = getActivePortalProfileConfig()
   const lifeTech = tenant?.home_org_slug === 'lifetech'
   const applyGold = resolveBrandPalette({ ...tenant, profile: brand.id, theme_color: brand.themeColor }).find(color => color.label === 'BioTech Gold')?.value || '#D4AF37'
-  const [presentationAction,setPresentationAction]=useState<PresentationFormAction|null>(null)
-  const [presentationRevision,setPresentationRevision]=useState(0)
-  const [submissionPromptStatus, setSubmissionPromptStatus] = useState('')
-  const mcpPath = ['orgportal.cc', 'localhost', '127.0.0.1'].includes(window.location.hostname) ? '/mcp' : '/api/org/mcp'
-  const submissionPrompt = `Connect to ${window.location.origin}${mcpPath} with my account using OAuth. Help me submit a presentation for ${window.location.origin}${location.pathname}#apply. Ask for my organization, presentation title and summary, and use the organization's shared team list. Show me a preview and ask for my approval before submitting.`
-  async function copySubmissionPrompt() {
-    try {
-      await navigator.clipboard.writeText(submissionPrompt)
-      setSubmissionPromptStatus('Prompt copied')
-    } catch {
-      setSubmissionPromptStatus('Select and copy the prompt below.')
-    }
-  }
-  useEffect(()=>setPresentationAction(null),[slug])
-  const [activeTab, setActiveTab] = useState<'info' | 'poster' | 'apply' | 'submissions'>('info')
-  function selectEventTab(tab: 'info' | 'poster' | 'apply' | 'submissions') {
+  const [activeTab, setActiveTab] = useState<'info' | 'poster' | 'submissions'>('info')
+  function selectEventTab(tab: 'info' | 'poster' | 'submissions') {
     setActiveTab(tab)
     navigate({ pathname: location.pathname, search: location.search, hash: `#${tab}` }, { replace: true, preventScrollReset: true })
   }
-  useEffect(() => { setActiveTab(location.hash === '#submissions' ? 'submissions' : location.hash === '#apply' ? 'apply' : location.hash === '#poster' ? 'poster' : 'info') }, [slug, location.hash])
+  useEffect(() => { setActiveTab(location.hash === '#submissions' ? 'submissions' : location.hash === '#poster' ? 'poster' : 'info') }, [slug, location.hash])
   const [event, setEvent] = useState<PublicEvent | null>(null)
   const [presentationSettings, setPresentationSettings] = useState<{ eventId: string; enabled: boolean } | null>(null)
   const [presentationSettingsBusy, setPresentationSettingsBusy] = useState(false)
@@ -317,7 +302,7 @@ export function PublicEventPage() {
     return () => controller.abort()
   }, [event?.id])
   useEffect(() => {
-    if (event && presentationSettings?.eventId === event.id && !presentationsEnabled && (activeTab === 'apply' || activeTab === 'submissions')) {
+    if (event && presentationSettings?.eventId === event.id && !presentationsEnabled && activeTab === 'submissions') {
       setActiveTab('info')
       navigate({ pathname: location.pathname, search: location.search, hash: '#info' }, { replace: true, preventScrollReset: true })
     }
@@ -820,13 +805,14 @@ export function PublicEventPage() {
             {event.location&&<div><MapPinned size={20} aria-hidden="true" /><a href={mapsUrl!} target="_blank" rel="noreferrer">{event.location}</a></div>}
           </section>
           {canManageEvent && <div className="presentation-settings"><label><input type="checkbox" checked={presentationsEnabled} disabled={presentationSettingsBusy || presentationSettings?.eventId !== event.id} onChange={() => void togglePresentations()} /> Enable presentation applications</label>{presentationSettingsError && <p role="status">{presentationSettingsError}</p>}</div>}
+          {presentationsEnabled && <Link className="btn-primary event-apply-link" style={{background:applyGold,color:"#17201c",borderColor:applyGold}} to={`/events/${encodeURIComponent(event.slug || slug!)}/apply`}><Send size={18} aria-hidden="true" /> Apply to present</Link>}
           <div className="public-event-tabs" role="tablist" aria-label="Event sections" onKeyDown={keyEvent=>{
-            const tabs: Array<typeof activeTab> = presentationsEnabled ? ['info','poster','apply','submissions'] : ['info','poster'],index=tabs.indexOf(activeTab)
+            const tabs: Array<typeof activeTab> = presentationsEnabled ? ['info','poster','submissions'] : ['info','poster'],index=tabs.indexOf(activeTab)
             if(!['ArrowLeft','ArrowRight','Home','End'].includes(keyEvent.key))return
             keyEvent.preventDefault();const next=keyEvent.key==='Home'?'info':keyEvent.key==='End'?tabs[tabs.length-1]:tabs[(index+(keyEvent.key==='ArrowLeft'?tabs.length-1:1))%tabs.length]
             selectEventTab(next);document.getElementById(`event-${next}-tab`)?.focus()
           }}>
-            {([{key:'info',label:'Info',Icon:Info},{key:'poster',label:'Poster',Icon:FileImage},{key:'apply',label:'Apply',Icon:Send},{key:'submissions',label:'Submissions',Icon:Users}] as const).filter(({key}) => presentationsEnabled || (key !== 'apply' && key !== 'submissions')).map(({key,label,Icon})=><button type="button" key={key} id={`event-${key}-tab`} role="tab" aria-selected={activeTab===key} aria-controls={`event-${key}-panel`} tabIndex={activeTab===key?0:-1} onClick={()=>selectEventTab(key)} style={key==='apply'?{borderColor:applyGold}:undefined}><Icon size={19} aria-hidden="true" /><span>{label}</span></button>)}
+            {([{key:'info',label:'Info',Icon:Info},{key:'poster',label:'Poster',Icon:FileImage},{key:'submissions',label:'Submissions',Icon:Users}] as const).filter(({key}) => presentationsEnabled || key !== 'submissions').map(({key,label,Icon})=><button type="button" key={key} id={`event-${key}-tab`} role="tab" aria-selected={activeTab===key} aria-controls={`event-${key}-panel`} tabIndex={activeTab===key?0:-1} onClick={()=>selectEventTab(key)}><Icon size={19} aria-hidden="true" /><span>{label}</span></button>)}
           </div>
           <section className="public-event-tab-panel" role="tabpanel" id="event-info-panel" aria-labelledby="event-info-tab" hidden={activeTab!=='info'}>
           {event.description ? (
@@ -1017,18 +1003,8 @@ export function PublicEventPage() {
           ) : null}
             {activeTab==='poster'&&<EventPosterTools sourceUrl={event.source_url} eventLinks={event.links} organizationSlug={event.organization_slug} organizationLinks={event.organization_links} slug={event.slug} title={event.title} revision={event.updated_at || ''} inline />}
           </section>
-          {presentationsEnabled && <section className="public-event-tab-panel" role="tabpanel" id="event-apply-panel" aria-labelledby="event-apply-tab" hidden={activeTab!=='apply'}>
-          <EventPresentations key={`presentations-${event.id}`} eventId={event.id} formAction={presentationAction} onActionHandled={()=>setPresentationAction(null)} onSaved={()=>setPresentationRevision(value=>value+1)} />
-          <details className="presentation-ai-option">
-            <summary>Apply with an AI assistant</summary>
-            <p>Copy this prompt into an AI assistant that supports MCP, then approve the connection with your account.</p>
-            <textarea aria-label="Submission prompt" readOnly value={submissionPrompt} rows={5} style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical' }} onFocus={e => e.currentTarget.select()} />
-            <button type="button" className="secondary" onClick={copySubmissionPrompt}><Copy size={16} aria-hidden="true" /> Copy prompt</button>
-            <span role="status">{submissionPromptStatus}</span>
-          </details>
-          </section>}
           {presentationsEnabled && <section className="public-event-tab-panel" role="tabpanel" id="event-submissions-panel" aria-labelledby="event-submissions-tab" hidden={activeTab!=='submissions'}>
-            {activeTab==='submissions'&&<EventSubmissions key={`${event.id}:${presentationRevision}`} eventId={event.id} onEdit={application=>{setPresentationAction({kind:'edit',application});selectEventTab('apply')}} onDeleted={submissionId=>setPresentationAction({kind:'delete',submissionId})} />}
+            {activeTab==='submissions'&&<EventSubmissions key={event.id} eventId={event.id} onEdit={application=>navigate(`/events/${encodeURIComponent(event.slug || slug!)}/apply?edit=${encodeURIComponent(application.submission_id)}`)} onDeleted={()=>{}} />}
           </section>}
         </main>
         <aside className="public-event-side public-event-luma-side" aria-label="Event actions and location">

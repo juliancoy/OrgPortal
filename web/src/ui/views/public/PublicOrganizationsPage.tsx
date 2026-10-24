@@ -1,3 +1,4 @@
+import './organizationDirectory.css'
 import { invalidatePublicOrganizationData } from '../../../data/publicOrganization/cache'
 import { loadPublicOrganizationDirectory, peekPublicOrganizationDirectory } from '../../../data/publicOrganization/organizations'
 import { shortGroupName } from '../../../domain/organization/groupNames'
@@ -203,7 +204,7 @@ export function PublicOrganizationsPage() {
   }, [jsonLd])
 
   return (
-    <section className="panel" style={{ display: 'grid', gap: '1rem' }}>
+    <section className="organization-directory" style={{ display: 'grid', gap: '1rem' }}>
       <h1 style={{ marginTop: 0 }}>Organizations</h1>
       <p className="muted" style={{ marginTop: 0 }}>
         Browse registered organizations and their claimed links.
@@ -236,7 +237,7 @@ export function PublicOrganizationsPage() {
       {status ? <p className="muted">{status}</p> : null}
       {membershipStatus ? <p className="muted" role="status">{membershipStatus}</p> : null}
       {!status && visibleOrgs.length === 0 ? (
-        <p className="muted">No organizations were found.</p>
+        <p className="muted organization-directory-empty">No organizations were found.</p>
       ) : null}
       <div
         style={{
@@ -247,7 +248,7 @@ export function PublicOrganizationsPage() {
         {visibleOrgs.slice(0, visibleCount).map((org) => (
           <article
             key={org.id}
-            className="portal-card"
+            className="portal-card organization-directory-card"
             style={{
               display: 'flex',
               gap: '0.85rem',
@@ -259,27 +260,27 @@ export function PublicOrganizationsPage() {
               src={org.image_url}
               alt={org.name}
               style={{
-                width: 140,
-                height: 92,
-                objectFit: 'cover',
+                width: 64,
+                height: 64,
+                objectFit: 'contain',
                 borderRadius: 10,
                 border: '1px solid var(--border)',
                 flex: '0 0 auto',
               }}
             />
-            <div style={{ display: 'grid', gap: '0.45rem', minWidth: 0, maxWidth: '100%', flex: '1 1 240px' }}>
+            <div style={{ display: 'grid', gap: '0.45rem', minWidth: 0, maxWidth: '100%', flex: '1 1 200px' }}>
               <h2 style={{ margin: 0, fontSize: '1.1rem' }}>
                 <Link to={`/orgs/${org.slug}`} style={{ textDecoration: 'none' }}>
                   <span title={org.name}>{shortGroupName(org.name)}</span>
                 </Link>
               </h2>
-              <p className="muted" style={{ margin: 0 }}>
+              <p className="muted organization-directory-meta" style={{ margin: 0 }}>
                 Members: {org.membership_count} • Upcoming events: {org.upcoming_events_count}
                 {` • Feedback ${org.feedback_count || 0}`}
                 {org.is_disputed ? ` • Disputed ownership (${org.pending_challenges_count})` : ''}
                 {myOrgRoles.has(org.slug) ? ' • Your organization' : ''}
               </p>
-              {org.description ? <p style={{ margin: 0, overflowWrap: 'anywhere' }}>{org.description}</p> : null}
+              {org.description ? <p className="organization-directory-description" style={{ margin: 0, overflowWrap: 'anywhere' }}>{org.description}</p> : null}
               {(() => {
                 const links = Array.from(
                   new Set(
@@ -328,7 +329,7 @@ export function PublicOrganizationsPage() {
                 {token ? (
                   <Link
                     to={`/chat?start=group&org=${encodeURIComponent(org.slug)}`}
-                    className="btn-primary"
+                    className="btn-secondary"
                     style={{ textDecoration: 'none', width: 'fit-content' }}
                   >
                     Message Group
@@ -336,7 +337,7 @@ export function PublicOrganizationsPage() {
                 ) : (
                   <a
                     href={pidpAppLoginUrl(`/chat?start=group&org=${encodeURIComponent(org.slug)}`)}
-                    className="btn-primary"
+                    className="btn-secondary"
                     style={{ textDecoration: 'none', width: 'fit-content' }}
                   >
                     Message Group

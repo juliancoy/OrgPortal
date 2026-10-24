@@ -16,7 +16,7 @@ type Org = { id:string; name:string; my_role?:string }
 export type PresentationApplication = { submission_id:string; organization_id:string; organization_name:string; title:string; summary:string; status:string; presenters:TeamPerson[] }
 export type PresentationFormAction = { kind: 'edit'; application: PresentationApplication } | { kind: 'delete'; submissionId: string }
 const emptyPresentationDraft = { submissionId: '', editing: '', imageOrg: '', imageUrl: '', org: '', name: '', city: 'Baltimore', description: '', title: '', summary: '', people: '[]' }
-export function EventPresentations({eventId,formAction,onActionHandled,onSaved}:{eventId:string;formAction?:PresentationFormAction|null;onActionHandled?:()=>void;onSaved?:()=>void}) {
+export function EventPresentations({eventId,formAction,onActionHandled,onSaved,onSubmitted}:{eventId:string;formAction?:PresentationFormAction|null;onActionHandled?:()=>void;onSaved?:()=>void;onSubmitted?:(submissionId:string)=>void}) {
  const {token,user}=useAuth()
  const tenant=getGroupSite(),brand=getActivePortalProfileConfig()
  const gold=resolveBrandPalette({...tenant,profile:brand.id,theme_color:brand.themeColor}).find(color=>color.label==='BioTech Gold')?.value||'#D4AF37'
@@ -84,11 +84,11 @@ export function EventPresentations({eventId,formAction,onActionHandled,onSaved}:
   try{await work();setVersion(v=>v+1)}catch(error){setMessage(error instanceof Error?error.message:'Unable to save')}finally{setBusy(false)}
  }
  if(!ready) return <section aria-label="Presentation applications"><p role="status">{message||'Loading presentation applications…'}</p>{message&&<button type="button" className="btn-secondary" onClick={()=>setVersion(v=>v+1)}>Retry</button>}</section>
- if(!enabled)return null
+ if(!enabled)return <p role="status">Presentation applications are not available for this event.</p>
  return <section className="portal-card presentation-applications" aria-label="Presentation applications">
-  {<div className="presentation-heading"><p className="public-event-eyebrow">Share your work</p><h2>Present at this event</h2><p className="muted">Share your ideas, research, or latest demo. Apply with an existing organization or create a team below.</p></div>}
+  {<div className="presentation-heading"><p className="public-event-eyebrow">Share your work</p><h2>Present at this event</h2><p className="muted">Bring your research, idea, or demo to the community. Choose your team and tell us what you’ll present.</p></div>}
   {message&&<p role="status">{message}</p>}
-  {enabled&&!closed&&!token&&<div className="presentation-login"><p>Sign in to choose your organization or create a team and submit your presentation.</p><Link className="btn-primary" to={`/users/login?next=${encodeURIComponent(location.pathname+location.search+'#apply')}`}>Sign in to apply</Link></div>}
+  {enabled&&!closed&&!token&&<div className="presentation-login"><p>Sign in to choose your organization or create a team and submit your presentation.</p><Link className="btn-primary" to={`/users/login?next=${encodeURIComponent(location.pathname+location.search)}`}>Sign in to apply</Link></div>}
   {closed&&<p>Applications have closed for this event.</p>}
   {((enabled&&!closed)||draft.value.editing)&&token&&<form className="presentation-form" data-draft-saved={draft.saved} aria-label="Team presentation application" aria-busy={busy} onSubmit={e=>{e.preventDefault();void action(async()=>{
    if(!people.length)throw new Error('Add at least one teammate before submitting.')
@@ -120,18 +120,18 @@ export function EventPresentations({eventId,formAction,onActionHandled,onSaved}:
    await request(`${base}/${encodeURIComponent(submissionId)}`,'PUT',{organization_id:organizationId,title,summary});
    setField('editing','true');
    try{for(const file of files){await uploadSubmissionAttachment(eventId,submissionId,file,token!);setFiles(previous=>previous.filter(item=>item.id!==file.id))}}catch(error){throw new Error(`Your application is saved, but an attachment could not upload: ${error instanceof Error?error.message:'Please retry'}. Your draft and remaining selected files are retained.`)}finally{onSaved?.()}
-   draft.clear();setMessage(draft.value.editing?'Application updated.':'Application submitted to the event organizers.')
+   draft.clear();setMessage(draft.value.editing?'Application updated.':'Application submitted to the event organizers.');onSubmitted?.(submissionId)
   })}}>
    {draft.value.editing&&<div><h3>Edit application</h3><button type="button" className="btn-secondary" onClick={()=>{draft.clear();setFiles([]);setTeamImage(null)}}>Cancel editing</button></div>}
-   <div className="local-draft-status"><p role="status">{draft.unavailable?'Local draft storage unavailable.':draft.saved?'Draft saved on this device.':'Draft not yet saved on this device.'}</p><button type="button" className="btn-secondary" onClick={()=>{draft.clear();setFiles([]);setTeamImage(null)}}>Clear saved draft</button></div>
-   <div className="presentation-team-choice"><h3>1. Your team or organization</h3>
+
+   <div className="presentation-form-sections"><fieldset className="presentation-section"><legend><span className="presentation-step">1</span> Your team</legend><p className="presentation-section-intro muted">Apply with an organization you manage, or start a new team.</p><div className="presentation-team-choice">
     <label className="sr-only" htmlFor={`${fieldId}-team`}>Team or organization</label>
     <select id={`${fieldId}-team`} disabled={!!draft.value.editing} value={org} onChange={e=>{setOrg(e.target.value);setField('people','[]')}}>
      <option value="">＋ Create a new team</option>
      {!!orgs.length&&<optgroup label="Your existing organizations">{orgs.map(o=><option key={o.id} value={o.id}>{o.name}</option>)}</optgroup>}
     </select>
    </div>
-   {!org&&<><p className="muted">Create your team below. Its members appear together on every submission.</p><label>New team name<input required maxLength={255} value={name} onChange={e=>setName(e.target.value)}/></label><label>City<input required maxLength={80} value={city} onChange={e=>setCity(e.target.value)}/></label><div><label htmlFor={`${fieldId}-about`}>About your team</label><textarea id={`${fieldId}-about`} rows={3} maxLength={5000} value={description} onChange={e=>setDescription(e.target.value)}/></div></>}
+   {!org&&<><div className="presentation-team-fields"><label>Team name<input placeholder="e.g. Harbor Health Lab" required maxLength={255} value={name} onChange={e=>setName(e.target.value)}/></label><label>City<input required maxLength={80} value={city} onChange={e=>setCity(e.target.value)}/></label></div><div><label htmlFor={`${fieldId}-about`}>About your team</label><textarea id={`${fieldId}-about`} rows={3} maxLength={5000} value={description} onChange={e=>setDescription(e.target.value)}/></div></>}
    {(!org||draft.value.imageOrg===org)&&<label>Team image (optional)<input aria-label="Team image (optional)" type="file" accept="image/jpeg,image/png,image/webp,image/gif" disabled={busy} onChange={event=>{
     const file=event.target.files?.[0];if(!file){setTeamImage(null);return}
     if(!['image/jpeg','image/png','image/webp','image/gif'].includes(file.type)||file.size>8*1024*1024){setMessage('Choose a JPEG, PNG, WebP or GIF image up to 8 MB.');event.target.value='';return}
@@ -139,11 +139,13 @@ export function EventPresentations({eventId,formAction,onActionHandled,onSaved}:
    }}/><small>This becomes your new organization’s main image.</small>{imagePreview&&<img src={imagePreview} alt="Team image preview" style={{maxWidth:160,maxHeight:160,objectFit:'contain'}}/>}</label>}
    <p className="muted">This is your organization’s shared team. Additions join every submission.{org&&<> <Link to={`/orgs/${encodeURIComponent(org)}?tab=personnel`}>Manage existing members</Link>.</>}</p>
    <TeamPeoplePicker compact people={people} onChange={value=>draft.setValue(previous=>({...previous,people:JSON.stringify(value)}))} />
-   <h3>2. Your presentation</h3>
-   <label>Presentation title<input required maxLength={200} value={title} onChange={e=>setTitle(e.target.value)}/></label>
-   <div><label htmlFor={`${fieldId}-summary`}>What will you present?</label><textarea id={`${fieldId}-summary`} rows={5} required maxLength={5000} value={summary} onChange={e=>setSummary(e.target.value)}/></div>
-   <SubmissionAttachmentPicker files={files} onChange={setFiles} disabled={busy} />
-   <div className="presentation-form-footer"><p className="muted">Your team name, presentation title and summary will be publicly visible so that the community can become familiar with your submission in advance, and vote on it.</p><button className="btn-primary presentation-submit" style={{background:gold,borderColor:gold,color:'#17201c'}} disabled={busy} type="submit">{busy?'Saving…':draft.value.editing?'Save changes':'Submit application'}</button></div>
+   </fieldset><fieldset className="presentation-section"><legend><span className="presentation-step">2</span> Your presentation</legend><p className="presentation-section-intro muted">Give the community a clear picture of what you’re working on.</p>
+   <label>Presentation title<input placeholder="A clear, memorable title" required maxLength={200} value={title} onChange={e=>setTitle(e.target.value)}/></label>
+   <div><label htmlFor={`${fieldId}-summary`}>What will you present?</label><textarea id={`${fieldId}-summary`} placeholder="What are you building or exploring? What will people see or learn from your presentation?" rows={7} required maxLength={5000} value={summary} onChange={e=>setSummary(e.target.value)}/></div>
+   <div className="presentation-materials"><h3>Supporting materials <span className="muted">(optional)</span></h3><p className="muted">Add slides, images, or a document. Up to 10 files, 20 MB each. Attachments are public.</p><SubmissionAttachmentPicker files={files} onChange={setFiles} disabled={busy} /></div>
+   </fieldset></div>
+   <div className="local-draft-status"><p role="status">{draft.unavailable?'Local draft storage unavailable.':draft.saved?'Draft saved on this device.':'Draft not yet saved on this device.'}</p><button type="button" className="btn-secondary" onClick={()=>{draft.clear();setFiles([]);setTeamImage(null)}}>Clear saved draft</button></div>
+   <div className="presentation-form-footer"><p className="muted">Your team name, title, and summary will be public. The community can explore and vote on your submission.</p><button className="btn-primary presentation-submit" style={{background:gold,borderColor:gold,color:'#17201c'}} disabled={busy} type="submit">{busy?'Saving…':draft.value.editing?'Save changes':'Submit application'}</button></div>
   </form>}
  </section>
 }

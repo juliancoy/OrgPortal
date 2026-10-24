@@ -12,6 +12,7 @@
     "test:forms:docker": "python3 scripts/run-common-forms.py",
     "test:company-votes": "node scripts/test-company-votes.mjs",
     "dev": "vite",
+    "render:layouts": "node scripts/render-layout-fixtures.mjs",
     "build": "node scripts/build-network-positions.mjs && tsc -b && vite build",
     "build:network-positions": "node scripts/build-network-positions.mjs",
     "android:prepare": "npm run build && node scripts/prepare-android-project.mjs",

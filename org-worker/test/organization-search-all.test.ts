@@ -73,7 +73,10 @@ test('global search returns event cards without querying per-event details', asy
  assert.equal(suggestions.users[0].contact_slug,null);
  assert.equal(suggestions.users[0].contact_enabled,false);
  assert.deepEqual(suggestions.orgs.map((row:any)=>row.id),['tedco']);
- assert.equal(queries.length,4); // Text match, matching org details, event candidates, visible people.
+ assert.equal(queries.length,5); // Organization match/details, event candidates, contacts and account activity.
+ const smallQueryCount=queries.length;
+ queries.length=0;
  const full=await get(40);
+ assert.equal(queries.length,smallQueryCount,'Query count must stay constant as result count grows');
  assert.deepEqual(suggestions.events,full.events.slice(0,5));
 });

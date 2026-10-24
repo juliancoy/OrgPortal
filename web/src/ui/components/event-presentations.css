@@ -130,3 +130,45 @@
 
 .presentation-form .team-people-picker { padding: 0; border: 0; border-radius: 0; }
 .presentation-form[data-draft-saved='true'] .local-draft-status p::before { background: var(--accent-green); opacity: .75; }
+
+/* Presentation application: two readable sections with a shared submit area. */
+.presentation-applications { padding: clamp(1.1rem, 3vw, 2rem); gap: 1.5rem; }
+.presentation-heading { max-width: 42rem; }
+.presentation-heading h2 { font-size: clamp(1.5rem, 3vw, 2rem); letter-spacing: -.025em; line-height: 1.2; }
+.presentation-heading p { line-height: 1.65; }
+.presentation-form { gap: 1.25rem; }
+.presentation-form-sections { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 2rem; align-items: start; }
+.presentation-section { display: grid; gap: 1rem; min-width: 0; margin: 0; padding: 1rem 0 0; border: 0; }
+.presentation-section > legend { padding: 0; font-size: 1.15rem; font-weight: 700; letter-spacing: -.015em; }
+.presentation-step { display: inline-grid; place-items: center; width: 1.8rem; height: 1.8rem; margin-right: .45rem; border-radius: 50%; background: var(--primary-bg); color: var(--primary); font-size: .85rem; }
+.presentation-section p { margin: 0; line-height: 1.6; font-size: .875rem; }
+.presentation-section-intro { min-height: 2.8em; }
+.presentation-team-fields { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: .8rem; }
+.presentation-form label { font-size: .875rem; gap: .4rem; }
+.presentation-form :is(input:not([type='checkbox']), select, textarea) { border: 1px solid var(--border-input); border-radius: 8px; padding: .7rem .8rem; background: var(--surface-input); color: var(--text-primary); font-weight: 400; font-size: .9375rem; }
+.presentation-form :is(input, textarea)::placeholder { color: var(--text-muted); opacity: .85; }
+.presentation-form :is(input, select, textarea):focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.presentation-form input[type='file'] { padding: .5rem; font-size: .8rem; }
+.presentation-form input[type='file']::file-selector-button { font: inherit; border: 0; border-radius: 5px; padding: .4rem .65rem; margin-right: .6rem; background: var(--primary-bg); color: var(--primary); cursor: pointer; }
+.presentation-form label small { font-weight: 400; color: var(--text-muted); line-height: 1.5; }
+.presentation-form .team-people-list { margin: .6rem 0 0; gap: .4rem; }
+.presentation-form .team-people-list li { padding: .65rem; background: var(--surface-soft); border: 1px solid var(--border); border-radius: 8px; font-size: .875rem; }
+.presentation-materials { display: grid; gap: .65rem; padding: 1rem; border: 1px dashed var(--border-input); border-radius: 10px; }
+.presentation-materials h3 { margin: 0; font-size: .9rem; }
+.presentation-materials h3 span { font-weight: 400; }
+.presentation-materials .submission-attachment-add { gap: .4rem; padding-inline: .8rem; }
+.presentation-materials .submission-attachment-add::after { content: 'Add files'; font-size: .875rem; }
+.presentation-form .local-draft-status { margin: 0; padding: .75rem 0 0; border-top: 1px solid var(--border); }
+.presentation-form .local-draft-status p { font-size: .8rem; }
+.presentation-form .local-draft-status button { min-height: 36px; padding: .35rem .6rem; border-color: transparent; font-size: .8rem; }
+.presentation-form-footer { display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; border: 0; padding: 0; }
+.presentation-form-footer p { max-width: 35rem; font-size: .8rem; }
+.presentation-submit { flex-shrink: 0; border-radius: 8px; font-size: .9375rem; font-weight: 700; }
+.presentation-login { padding: 1.25rem; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-soft); }
+@media (max-width: 760px) {
+ .presentation-form-sections { grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
+ .presentation-section + .presentation-section { border-top: 1px solid var(--border); padding-top: 1.5rem; }
+ .presentation-section-intro { min-height: 0; }
+ .presentation-form-footer { flex-direction: column; align-items: stretch; gap: 1rem; }
+ .presentation-team-fields { grid-template-columns: minmax(0, 1fr); }
+}

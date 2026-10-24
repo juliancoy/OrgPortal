@@ -89,7 +89,7 @@ export function LocalHomePage() {
       <div className="workspace-account">{isLoading ? <span role="status">Checking sign-in…</span> : role === 'guest' ? <Link to="/users/login?next=%2F" className="btn-secondary">Sign in</Link> : <><Link to="/profile">{user?.displayName || 'Your account'}</Link><button onClick={logout}>Sign out</button></>}</div>
     </div></header>
     <main id="main-content" className="portal-main" tabIndex={-1}><div className="portal-container">
-      <div className="workspace-organization-switcher">
+      {token && <div className="workspace-organization-switcher">
         {selectedOrganization && <Link to={`/orgs/${encodeURIComponent(selectedOrganization.slug)}`} aria-label={`Open ${selectedOrganization.name}`}>
           <OrgImage key={selectedOrganization.id} src={selectedOrganization.image_url} alt={`${selectedOrganization.name} logo`} className="workspace-organization-logo" />
         </Link>}
@@ -104,7 +104,7 @@ export function LocalHomePage() {
           {organizations.map(organization => <option key={organization.id} value={organization.slug}>{organization.name}</option>)}
         </select>
         {organizationStatus && <span role="status">{organizationStatus}</span>}
-      </div>
+      </div>}
       <section className="workspace-hero" aria-labelledby="workspace-title">
         <p className="workspace-eyebrow">Your starting point</p>
         <h1 id="workspace-title">A place to explore.<br /><span>A place to get things done.</span></h1>

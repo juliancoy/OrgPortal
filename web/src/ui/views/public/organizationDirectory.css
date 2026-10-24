@@ -1,0 +1,15 @@
+.organization-directory > h1 { margin-bottom: 0; }
+.organization-directory > .muted { margin-bottom: 8px; }
+.organization-directory-card { box-shadow: none; padding: 24px; border-color: var(--border-subtle); border-radius: 14px; }
+.organization-directory-card:hover { border-color: var(--border-hover); }
+.organization-directory-card .organization-directory-meta { font-size: .8rem; color: var(--text-muted); }
+.organization-directory-description { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; line-height: 1.65; color: var(--text-secondary); }
+.organization-directory-card h2 a:hover { color: var(--primary); text-decoration: underline; }
+.organization-directory-card p + div a { font-size: .85rem; }
+@media(max-width:600px) {
+ .organization-directory-card { padding: 20px; }
+ .organization-directory-card > img { width: 48px !important; height: 48px !important; }
+ .organization-directory-card > div { flex-basis: 180px !important; }
+}
+
+.organization-directory-empty { padding: 48px 24px; text-align: center; border: 1px dashed var(--border); border-radius: 14px; background: var(--surface-soft); }

@@ -1,0 +1,14 @@
+.event-application-page { width: min(100%, 1040px); margin: 0 auto; padding-block: 1.5rem 3rem; }
+.application-back { display: inline-flex; align-items: center; gap: .5rem; font-size: .9rem; }
+.application-event-context { margin: 1.5rem 0; }
+.application-event-context p { margin: 0 0 .4rem; font-size: .8rem; color: var(--text-muted); }
+.application-event-context h1 { margin: 0; font-size: clamp(1.5rem, 4vw, 2.15rem); line-height: 1.2; letter-spacing: -.025em; overflow-wrap: anywhere; }
+.application-confirmation { display: grid; justify-items: start; gap: 1rem; padding: clamp(1.25rem, 4vw, 2.5rem); }
+.application-confirmation > svg { color: var(--primary); }
+.application-confirmation :is(h1,p) { margin: 0; }
+.application-confirmation h1 { font-size: 1.6rem; }
+.application-page-actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: .5rem; }
+.event-application-page .presentation-ai-option textarea { box-sizing: border-box; width: 100%; resize: vertical; }
+.event-application-page .presentation-ai-option button { display: inline-flex; gap: .5rem; align-items: center; margin-right: .75rem; }
+.event-apply-link { display: inline-flex; align-items: center; gap: .5rem; margin-bottom: 1rem; text-decoration: none; }
+@media(max-width:540px) { .application-page-actions { width: 100%; } .application-page-actions a { width: 100%; text-align: center; } }

@@ -57,6 +57,7 @@ const PublicAdminPage = lazy(() => import('../views/public/PublicAdminPage').the
 const PublicContactPage = lazy(() => import('../views/public/PublicContactPage').then(module => ({ default: module.PublicContactPage })))
 const PublicEventsPage = lazy(() => import('../views/public/PublicEventsPage').then(module => ({ default: module.PublicEventsPage })))
 const PublicCalendarPage = lazy(() => import('../views/public/PublicCalendarPage').then(module => ({ default: module.PublicCalendarPage })))
+const EventApplicationPage = lazy(() => import('../views/public/EventApplicationPage').then(module => ({ default: module.EventApplicationPage })))
 const PublicEventPage = lazy(() => import('../views/public/PublicEventPage').then(module => ({ default: module.PublicEventPage })))
 const EmailCampaignsPage = lazy(() => import('../views/email/EmailCampaignsPage').then(module => ({ default: module.EmailCampaignsPage })))
 const EmailPreferencesPage = lazy(() => import('../views/email/EmailPreferencesPage').then(module => ({ default: module.EmailPreferencesPage })))
@@ -439,6 +440,7 @@ export function createAppRouter() {
           { path: '/following', element: <AuthenticatedRoute><PublicEventsPage sourcePath="/api/network/following/events?limit=200" heading="Following" description="Upcoming events from organizations you follow." emptyMessage="Follow an organization to see its events here." requiresAuth /></AuthenticatedRoute> },
           { path: '/events', element: <PublicEventsRoute /> },
           { path: '/events/:slug', element: <PublicEventPage /> },
+          { path: '/events/:slug/apply', element: <EventApplicationPage /> },
           { path: '/orgs', element: <PublicOrganizationsPage /> },
           { path: '/people', element: <PeoplePage /> },
           { path: '/timebanking', element: <TimebankRoute /> },

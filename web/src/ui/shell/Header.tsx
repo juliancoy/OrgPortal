@@ -1168,6 +1168,12 @@ export function Header({ organizationId }: { organizationId?: string | null } = 
         </div>
       </div> : null}
       </div>
+      <nav className="portal-explore-nav" aria-label="Explore">
+        <NavLink to="/orgs" isActive={isOrgDirectoryActive}>Organizations</NavLink>
+        <NavLink to="/events" isActive={location.pathname.startsWith('/events')}>Events</NavLink>
+        <NavLink to="/people" isActive={location.pathname.startsWith('/people')}>People</NavLink>
+        {portalProfile.id==='orgportal'&&<NavLink to="/communities">Communities</NavLink>}
+      </nav>
     </header>
   )
 }
