@@ -124,6 +124,7 @@ export function EventPresentations({eventId,formAction,onActionHandled,onSaved,o
    const submissionId=draft.value.submissionId||crypto.randomUUID();setField('submissionId',submissionId);
    await request(`${base}/${encodeURIComponent(submissionId)}`,'PUT',{organization_id:organizationId,title,summary});
    setField('editing','true');
+   await invalidatePublicOrganizationData();
    try{for(const file of files){await uploadSubmissionAttachment(eventId,submissionId,file,token!);setFiles(previous=>previous.filter(item=>item.id!==file.id))}}catch(error){throw new Error(`Your application is saved, but an attachment could not upload: ${error instanceof Error?error.message:'Please retry'}. Your draft and remaining selected files are retained.`)}finally{onSaved?.()}
    draft.clear();setMessage(draft.value.editing?'Application updated.':'Application submitted to the event organizers.');onSubmitted?.(submissionId)
   })}}>

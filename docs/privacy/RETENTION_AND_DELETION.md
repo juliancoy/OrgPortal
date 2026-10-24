@@ -452,3 +452,13 @@ private tables in backups and exports; apply confirmed erasures and overdue
 retention reviews before serving restored copies. Erasure does not remove text
 already copied into another member's independently saved wording or a formal
 motion; review those shared records separately under the existing privacy policy.
+
+Presentation applications also publish a nonmonetary `in_kind` organization-support
+relationship from the applicant organization to the event host. This is a reported
+proposal, not delivered service or confirmed acceptance. Its durable public evidence
+contains organization names, event/submission IDs and the event URL, without submitter
+identity, roster, title or summary. Resubmission reuses the same relationship; decline
+or withdrawal voids it. Upcoming organization events include the relationship only
+while its submitted or accepted application remains active and unexpired. The public
+support evidence follows existing organization-support retention; application expiry
+does not preserve the application contents in that evidence.

@@ -24,6 +24,7 @@ try{
    try{
     await page.goto(layout.url,{waitUntil:'domcontentloaded',timeout:30000})
     if(layout.ready)await page.locator(layout.ready).first().waitFor({timeout:12000})
+    for(const action of layout.actions||[])await page.getByRole('button',{name:action.click,exact:true}).click()
     await page.evaluate(()=>document.fonts.ready)
     await page.waitForTimeout(1000)
     await page.evaluate(async()=>{

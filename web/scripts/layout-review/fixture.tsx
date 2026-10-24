@@ -28,6 +28,7 @@ const body=<Routes>
  <Route path="/orgs" element={<PublicOrganizationsPage/>}/>
  <Route path="/events" element={<PublicEventsPage/>}/>
  <Route path="/support" element={<SupportPage/>}/>
+ <Route path="/support/:ticketId" element={<SupportPage/>}/>
  <Route path="/branding" element={<TenantBrandingPage tenant={life}/>}/>
  <Route path="/about" element={<AboutPage/>}/>
 </Routes>

@@ -139,7 +139,7 @@ export function TenantHomePage({brandGuideHref}:{brandGuideHref?:string}={}) {
           <div className="tenant-home-section-heading">
             <div>
               <p className="tenant-home-eyebrow">Upcoming</p>
-              <h2 id="tenant-home-events-title">Hosted events</h2>
+              <h2 id="tenant-home-events-title">Upcoming events</h2>
             </div>
             <div className="tenant-home-section-links">
               <Link to={portalProfilePath('/org-events')}>View all events</Link>

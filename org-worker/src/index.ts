@@ -3359,12 +3359,18 @@ app.get("/api/network/orgs/public/:slug/events", async (c) => {
     `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url, o.links_json AS organization_links_json
      FROM events e
      LEFT JOIN organizations o ON o.id = e.host_org_id
-     WHERE (e.host_org_id = ? OR (? = 0 AND EXISTS (SELECT 1 FROM event_organizations eo WHERE eo.event_id = e.id AND eo.organization_id = ?)))
+     WHERE (e.host_org_id = ? OR (? = 0 AND (
+       EXISTS (SELECT 1 FROM event_organizations eo WHERE eo.event_id = e.id AND eo.organization_id = ?)
+       OR EXISTS (SELECT 1 FROM event_submissions s JOIN organization_support_records r
+         ON r.id = 'presentation:' || s.event_id || ':' || s.submission_id
+         WHERE s.event_id = e.id AND s.organization_id = ? AND s.status IN ('submitted','accepted')
+         AND s.expires_at > strftime('%Y-%m-%dT%H:%M:%fZ','now') AND r.status != 'voided' AND r.support_kind = 'in_kind')
+     )))
      ${upcomingOnly ? "AND ((e.starts_at IS NOT NULL AND julianday(COALESCE(e.ends_at, e.starts_at)) >= julianday('now')) OR (e.starts_at IS NULL AND e.event_date >= date('now')))" : ""}
      ORDER BY COALESCE(e.starts_at,e.event_date,e.created_at) ${upcomingOnly ? "ASC" : "DESC"}, e.id ASC
      LIMIT ? OFFSET ?`,
   )
-    .bind(org.id, hostedOnly ? 1 : 0, org.id, limit, offset)
+    .bind(org.id, hostedOnly ? 1 : 0, org.id, org.id, limit, offset)
     .all<EventRow>();
   return c.json(await Promise.all((rows.results || []).map((row) => mapEvent(c.env, c.req.raw, row))));
 });

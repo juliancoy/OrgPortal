@@ -6,7 +6,7 @@ import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { authorizeOrganization, organizationRole, type OrganizationActor } from './organizationIam';
 
-type PresentationEnv = { DB: D1Database; SCAN_IMAGES?: R2Bucket };
+type PresentationEnv = { DB: D1Database; SCAN_IMAGES?: R2Bucket; PUBLIC_PORTAL_BASE_URL?: string };
 export function presentationRoutes<E extends PresentationEnv>(auth: (env:E, request:Request)=>Promise<{id:string}>) {
  const app = new Hono<{Bindings:E}>();
  app.route('/',presentationAttachmentRoutes(auth));
@@ -146,12 +146,22 @@ export function presentationRoutes<E extends PresentationEnv>(auth: (env:E, requ
   const presenters=await validateSubmissionPresenters(c.env.DB,org,body.presenters===undefined?[{userId:user.id}]:body.presenters);
   // New applications require open intake. Existing applications remain editable
   // until expiry, with live team authority checked in the write itself.
-  const result=await c.env.DB.prepare(`INSERT INTO event_submissions(event_id,submission_id,organization_id,submitted_by,title,summary,status,updated_at,expires_at,presenters_json)
+  const savedAt=new Date().toISOString();
+  const submissionWrite=c.env.DB.prepare(`INSERT INTO event_submissions(event_id,submission_id,organization_id,submitted_by,title,summary,status,updated_at,expires_at,presenters_json)
    SELECT e.id,?,?,?,?,?,'submitted',?,strftime('%Y-%m-%dT%H:%M:%fZ',COALESCE(e.ends_at,e.starts_at),'+90 days'),? FROM events e
    WHERE e.id=? AND (EXISTS(SELECT 1 FROM event_submissions s WHERE s.event_id=e.id AND s.submission_id=? AND s.organization_id=? AND ${active}) OR EXISTS(SELECT 1 FROM event_presentation_forms f WHERE f.event_id=e.id AND f.enabled=1 AND julianday(e.starts_at)>julianday('now')))
    AND EXISTS(SELECT 1 FROM organization_memberships m WHERE m.organization_id=? AND m.user_id=? AND m.status='active' AND m.role IN ('owner','administrator'))
    ON CONFLICT(event_id,submission_id) DO UPDATE SET title=excluded.title,summary=excluded.summary,status='submitted',updated_at=excluded.updated_at,presenters_json=excluded.presenters_json
-   WHERE event_submissions.organization_id=excluded.organization_id AND event_submissions.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')`).bind(id,org,user.id,title,summary,new Date().toISOString(),presenters,e.id,id,org,org,user.id).run();
+   WHERE event_submissions.organization_id=excluded.organization_id AND event_submissions.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')`).bind(id,org,user.id,title,summary,savedAt,presenters,e.id,id,org,org,user.id);
+  const publicUrl=new URL(`/events/${encodeURIComponent((await c.env.DB.prepare('SELECT slug FROM events WHERE id=?').bind(e.id).first<{slug:string}>())!.slug)}#submissions`,new URL(c.req.url).hostname==='internal.invalid' ? c.env.PUBLIC_PORTAL_BASE_URL || 'https://orgportal.cc' : c.req.url).href;
+  const [result]=await c.env.DB.batch([submissionWrite,c.env.DB.prepare(`INSERT INTO organization_support_records
+   (id,from_organization_id,to_organization_id,from_label,to_label,support_kind,description,occurred_at,source_url,evidence,notes,provenance_json,status,created_at)
+   SELECT ?,o.id,h.id,o.name,h.name,'in_kind','Proposed presentation contribution',COALESCE(e.starts_at,''),?,
+    'Presentation application submitted by the contributing organization.','Proposed service only; acceptance and delivery are not asserted.',?,'reported',?
+   FROM event_submissions s JOIN events e ON e.id=s.event_id JOIN organizations o ON o.id=s.organization_id JOIN organizations h ON h.id=e.host_org_id
+   WHERE s.event_id=? AND s.submission_id=? AND s.updated_at=? AND o.id!=h.id
+   ON CONFLICT(id) DO UPDATE SET status='reported',void_reason=NULL,occurred_at=excluded.occurred_at,source_url=excluded.source_url,provenance_json=excluded.provenance_json`)
+   .bind(`presentation:${e.id}:${id}`,publicUrl,JSON.stringify([{source:'Presentation application',eventId:e.id,submissionId:id,eventUrl:publicUrl}]),savedAt,e.id,id,savedAt)]);
   if(!result.meta.changes)throw new HTTPException(409,{message:'Applications are closed, this submission has expired, or team management access changed'});
   // Keep the temporary rollout copy consistent when editing a migrated entry.
   if(id===org)await c.env.DB.prepare("UPDATE event_presentation_submissions SET title=?,summary=?,status='submitted',updated_at=? WHERE event_id=? AND organization_id=?").bind(title,summary,new Date().toISOString(),e.id,org).run();
@@ -161,11 +171,13 @@ export function presentationRoutes<E extends PresentationEnv>(auth: (env:E, requ
   const user=await auth(c.env,c.req.raw),e=await event(c.env.DB,c.req.param('id'));await manager(c.env.DB,user,e.host_org_id!);
   const {status}=await c.req.json();if(!['accepted','declined','submitted'].includes(status))throw new HTTPException(400,{message:'Invalid status'});
   const result=await c.env.DB.prepare(`UPDATE event_submissions AS s SET status=?,updated_at=? WHERE event_id=? AND submission_id=? AND ${active}`).bind(status,new Date().toISOString(),e.id,c.req.param('org')).run();
-  if(!result.meta.changes)throw new HTTPException(404,{message:'Application not found'});return c.json({status});
+  if(!result.meta.changes)throw new HTTPException(404,{message:'Application not found'});
+  await c.env.DB.prepare("UPDATE organization_support_records SET status=?,void_reason=? WHERE id=?").bind(status==='declined'?'voided':'reported',status==='declined'?'Presentation application declined':null,`presentation:${e.id}:${c.req.param('org')}`).run();
+  return c.json({status});
  });
  app.delete('/:id/presentations/:org',async c=>{
   const user=await auth(c.env,c.req.raw),e=await event(c.env.DB,c.req.param('id'));const row=await c.env.DB.prepare('SELECT organization_id FROM event_submissions WHERE event_id=? AND submission_id=?').bind(e.id,c.req.param('org')).first<{organization_id:string}>();if(!row)throw new HTTPException(404,{message:'Application not found'});await manager(c.env.DB,user,row.organization_id);
-  await c.env.DB.batch([c.env.DB.prepare('DELETE FROM event_presentation_submissions WHERE event_id=? AND organization_id=? AND organization_id=?').bind(e.id,c.req.param('org'),row.organization_id),c.env.DB.prepare('DELETE FROM event_submissions WHERE event_id=? AND submission_id=?').bind(e.id,c.req.param('org'))]);return c.json({deleted:true});
+  await c.env.DB.batch([c.env.DB.prepare("UPDATE organization_support_records SET status='voided',void_reason='Presentation application withdrawn' WHERE id=?").bind(`presentation:${e.id}:${c.req.param('org')}`),c.env.DB.prepare('DELETE FROM event_presentation_submissions WHERE event_id=? AND organization_id=? AND organization_id=?').bind(e.id,c.req.param('org'),row.organization_id),c.env.DB.prepare('DELETE FROM event_submissions WHERE event_id=? AND submission_id=?').bind(e.id,c.req.param('org'))]);return c.json({deleted:true});
  });
  return app;
 }

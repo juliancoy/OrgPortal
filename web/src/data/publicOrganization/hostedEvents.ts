@@ -1,8 +1,8 @@
-/** All upcoming events hosted by this organization, shared by home/profile views. */
+/** All upcoming events hosted by or related to this organization, shared by home/profile views. */
 export async function loadHostedOrganizationEvents<T extends {id:string}>(slug:string,signal?:AbortSignal):Promise<T[]> {
  const events=new Map<string,T>(),limit=200
  for(let offset=0;;offset+=limit){
-  const response=await fetch(`/api/org/api/network/orgs/public/${encodeURIComponent(slug)}/events?upcoming_only=true&hosted_only=true&limit=${limit}&offset=${offset}`,{signal})
+  const response=await fetch(`/api/org/api/network/orgs/public/${encodeURIComponent(slug)}/events?upcoming_only=true&limit=${limit}&offset=${offset}`,{signal})
   if(!response.ok)throw new Error('Unable to load organization events.')
   const page=await response.json() as T[]
   if(!Array.isArray(page)||page.some(event=>!event||typeof event.id!=='string'))throw new Error('Invalid organization event response.')

@@ -12,7 +12,8 @@ light and dark themes. Each capture has a fresh browser context. The fixture
 server uses synthetic data, refuses writes, and needs no credentials or external
 services. It renders workspace, organization and people directories, an empty
 state, events with no cover image, onboarding, the completed JOIN NOW action,
-the service desk, a tenant brand guide, and the About page.
+the service inbox, conversation, compose, settings and empty states, a tenant
+brand guide, and the About page.
 
 Images, four labeled contact sheets, and reports are written under
 `artifacts/layout-review/fixtures`. Open the contact sheets and inspect any
