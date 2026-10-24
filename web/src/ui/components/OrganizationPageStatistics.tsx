@@ -17,8 +17,8 @@ export function OrganizationPageStatistics({organizationId,token}:{organizationI
    .finally(()=>{if(!controller.signal.aborted)setLoading(false)})
   return()=>controller.abort()
  },[organizationId,token,open,days,revision])
- return <details className="portal-card organization-page-statistics" onToggle={event=>setOpen(event.currentTarget.open)}>
-  <summary>Page statistics · Managers only</summary>
+ return <details className="organization-page-statistics" onToggle={event=>setOpen(event.currentTarget.open)}>
+  <summary>Statistics</summary>
   {open&&<section aria-label="Organization page statistics">
    <h2>Organization page views</h2>
    <p className="muted">Views of the public organization page across its tabs. Reloads and return visits count again; tab changes and dashboard visits do not. These are page views, not unique people.</p>

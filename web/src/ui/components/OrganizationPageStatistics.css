@@ -1,6 +1,6 @@
-.organization-page-statistics { margin:1rem 0; min-width:0; }
-.organization-page-statistics summary { cursor:pointer; font-weight:700; }
-.organization-page-statistics section { display:grid; gap:1rem; margin-top:1rem; }
+.organization-page-statistics { position:relative; min-width:0; }
+.organization-page-statistics summary { cursor:pointer; padding:.5rem .25rem; font-size:.85rem; color:var(--text-muted); white-space:nowrap; }
+.organization-page-statistics section { position:absolute; z-index:20; right:0; top:calc(100% + .5rem); display:grid; gap:1rem; width:min(38rem,calc(100vw - 4rem)); max-height:70vh; overflow:auto; padding:1.25rem; border:1px solid var(--border); border-radius:.75rem; background:var(--panel, var(--bg, white)); box-shadow:0 12px 32px #0002; }
 .organization-page-statistics h2,.organization-page-statistics p { margin:0; }
 .organization-statistics-toolbar { display:flex; flex-wrap:wrap; align-items:end; gap:1rem; }
 .organization-statistics-toolbar label { display:grid; gap:.4rem; }

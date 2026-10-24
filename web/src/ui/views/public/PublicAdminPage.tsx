@@ -919,6 +919,7 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
 
   return (
     <section className={`panel portal-org-page${isNeoNatalProfile ? ' neonatal-page' : ''}`}>
+      <div className="organization-page-toolbar">
       <div className="portal-org-info-tabs" role="tablist" aria-label={`${org.name} information`}>
         {orgTabs.map(tab => <button type="button" role="tab" id={`org-tab-${tab}`} aria-controls={`org-panel-${tab}`} aria-selected={activeTab === tab} tabIndex={activeTab === tab ? 0 : -1} key={tab} onClick={() => selectTab(tab)} onKeyDown={event => {
           if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return
@@ -926,8 +927,12 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
           selectTab(next); document.getElementById(`org-tab-${next}`)?.focus()
         }}>{tab === 'info' ? <Info size={18} aria-hidden="true" /> : tab === 'board' || tab === 'personnel' ? <Users size={18} aria-hidden="true" /> : tab === 'poster' ? <FileImage size={18} aria-hidden="true" /> : <Palette size={18} aria-hidden="true" />}{tab === 'info' ? 'Info' : tab === 'board' ? 'Board' : tab === 'personnel' ? 'Personnel' : tab === 'poster' ? 'Poster' : 'Branding'}</button>)}
       </div>
+      {canManageCurrentOrg && <div className="organization-page-tools">
+        <OrganizationViewSwitcher organizationSlug={org.slug} manager />
+        {token && <OrganizationPageStatistics key={org.id} organizationId={org.id} token={token} />}
+      </div>}
+      </div>
       <div role="tabpanel" id="org-panel-info" aria-labelledby="org-tab-info" hidden={activeTab !== 'info'}>
-      {canManageCurrentOrg&&token&&<OrganizationPageStatistics key={org.id} organizationId={org.id} token={token} />}
       {isWorkspaceView && <nav className="portal-org-organizer-nav" aria-label={`${org.name} workspace navigation`}>
         <span className="portal-org-organizer-nav-label">{isOrganizerView ? 'Organizer tools' : 'Member tools'}</span>
         <a href="#organization-overview">Overview</a>
@@ -940,7 +945,6 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
         {isOrganizerView && <a href="#organization-domain" onClick={event => { event.preventDefault(); openOrganizationEditor('organization-domain') }}>Domain</a>}
         {isOrganizerView && <a href="#organization-page-editor" onClick={event => { event.preventDefault(); openOrganizationEditor() }}>Settings</a>}
       </nav>}
-      {canManageCurrentOrg && <OrganizationViewSwitcher organizationSlug={org.slug} manager />}
       <div className={`portal-org-layout${org.claimed_by_user_id ? '' : ' portal-org-layout-single'}`}>
         <div className="portal-org-main-column">
           <div id="organization-overview" className="portal-org-hero portal-org-nav-target" tabIndex={-1}>
