@@ -333,7 +333,7 @@ def _pidp_env(pidp_editme, db_url: str, gateway_base: str, allowed_origins: list
             os.getenv("MINIO_SERVER_SIDE_ENCRYPTION", "AES256"),
         ),
         "ENV": "dev",
-        "ALLOWED_ORIGINS": ",".join(allowed_origins),
+        "ALLOWED_ORIGINS": pidp_base,
         "ALLOWED_NATIVE_REDIRECT_SCHEMES": os.getenv("PIDP_ALLOWED_NATIVE_REDIRECT_SCHEMES", "org.arkavo.portal"),
         "ALLOW_CROSS_LANE_REDIRECT": "false",
         "ACCESS_TOKEN_EXPIRE_MINUTES": (
