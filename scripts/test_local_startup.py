@@ -25,6 +25,7 @@ class StartupTests(unittest.TestCase):
         with patch.dict(os.environ,{},clear=True):
             env=portal_run._pidp_env(SimpleNamespace(),'local-database','https://localhost:8443',origins)
         self.assertEqual(env['PUBLIC_BASE_URL'],'https://id.localhost:8443')
+        self.assertEqual(env['PORTAL_SHARED_IDENTITY'],'true')
         self.assertEqual(env['ALLOWED_ORIGINS'],'https://id.localhost:8443')
         self.assertEqual(env['GOOGLE_REDIRECT_URI'],'https://id.localhost:8443/auth/google/callback')
         registrations=json.loads(env['PORTAL_CLIENTS_JSON'])

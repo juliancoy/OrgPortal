@@ -1,6 +1,7 @@
 # OrgPortal
 
-Shared primary-account identity remains behind a disabled feature flag.
+Shared primary-account identity is enabled in the local deployment. Production
+remains behind a disabled feature flag pending its separate cutover.
 The plan uses `orgportal.cc` for the portal and `id.orgportal.cc` for isolated
 identity pages, account settings and OAuth. The local deployment mirrors that
 boundary at `https://localhost:8443` and `https://id.localhost:8443`. The production

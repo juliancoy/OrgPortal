@@ -311,6 +311,7 @@ def _pidp_env(pidp_editme, db_url: str, gateway_base: str, allowed_origins: list
         "PORTAL_AUTH_ORIGINS": ",".join(allowed_origins),
         "PORTAL_CLIENTS_JSON": portal_clients,
         "PORTAL_SSO_APP_SLUG": os.getenv("ORGPORTAL_DEV_PIDP_APP_SLUG") or os.getenv("ORGPORTAL_PIDP_APP_SLUG", "orgportal"),
+        "PORTAL_SHARED_IDENTITY": "true",
         "FRONTEND_REDIRECT_URL": f"{pidp_base}/profile",
         "GOOGLE_CLIENT_ID": google_id,
         "GOOGLE_CLIENT_SECRET": google_secret,
