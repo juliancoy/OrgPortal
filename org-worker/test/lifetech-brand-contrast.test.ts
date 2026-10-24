@@ -18,10 +18,12 @@ test('every approved LifeTech text and control pairing meets its WCAG AA thresho
  assert.ok(contrastRatio(colors.gold,colors.offWhite)<4.5)
  assert.ok(contrastRatio(colors.goldInk,colors.offWhite)>=4.5)
 })
-test('LifeTech guide exposes twelve valid colors while preserving explicitly stored palettes', () => {
+test('LifeTech guide exposes eighteen valid colors while preserving explicitly stored palettes', () => {
  const palette=resolveBrandPalette({slug:'lifetech'})
- assert.equal(palette.length,12)
+ assert.equal(palette.length,18)
  assert.ok(parseBrandPalette(palette))
+ assert.ok(parseBrandPalette(Array.from({length:24},()=>palette[0])))
+ assert.equal(parseBrandPalette(Array.from({length:25},()=>palette[0])),null)
  assert.deepEqual(palette.slice(0,3).map(color=>color.label),['HealthTech Teal','MedTech OffWhite','BioTech Gold'])
  const stored=[{label:'Custom accent',value:'#123456'}]
  assert.deepEqual(resolveBrandPalette({slug:'lifetech',feature_config:{brandPalette:stored}}),stored)

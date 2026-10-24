@@ -56,10 +56,18 @@ css += `:root[data-site-brand='lifetech'] .outside.day .day-number { color: var(
 :root[data-portal-profile='lifetech'] .lifetech-event-page .public-event-hero-content .public-event-eyebrow { color: ${color.lightTeal}; }
 ${roots.map(s=>s+' ::placeholder').join(',\n')} { color: var(--muted); opacity: 1; }
 `
+const lightData={'strategy-cyan':color.teal,'strategy-coral':color.coral,'strategy-gold':color.goldInk,'strategy-violet':color.violet,'strategy-green':color.green}
+const darkData={'strategy-cyan':color.lightTeal,'strategy-coral':color.coralLight,'strategy-gold':color.gold,'strategy-violet':color.violetLight,'strategy-green':color.greenLight}
+const dataSelector=":root[data-site-brand='lifetech'] :is(.distortion-body,.strategy-dashboard)"
+css += block(dataSelector,lightData)+block(dataSelector.replace("] :is","][data-theme='dark'] :is"),darkData)
+css += `@media (prefers-color-scheme: dark) {\n${block(dataSelector.replace('] :is',']:not([data-theme]) :is'),darkData)}}\n`
+css += `:root[data-site-brand='lifetech'] .dataset-toolbar-button.is-primary { background: var(--action-bg); color: var(--action-text); }
+:root[data-site-brand='lifetech'] :is(.pathway-card-map,.pathway-card-index) .pathway-label { opacity: 1; }
+`
 const destinations=[new URL('web/src/styles/themes/lifetech.css',root),new URL('../BmoreMedTech/assets/lifetech-brand.css',root)]
 for(const path of destinations) {
  if(process.argv.includes('--check')) {
   if(await readFile(path,'utf8')!==css)throw Error(`Regenerate the LifeTech theme: ${path.pathname}`)
  } else await writeFile(path,css)
 }
-console.log('Generated LifeTech portal and website themes from 12 shared brand colors.')
+console.log('Generated LifeTech portal and website themes from 18 shared brand colors.')

@@ -10,7 +10,7 @@ export const portalBrandingUpdateSchema = portalBrandingTargetSchema.extend({
     label: z.string().trim().min(1).max(80),
     value: z.string().regex(/^#[0-9a-f]{6}$/i),
     description: z.string().max(300).optional(),
-  }).strict()).min(1).max(12).optional(),
+  }).strict()).min(1).max(24).optional(),
   nameBannerUrl: z.string().url().max(1000).refine(value => new URL(value).protocol === 'https:' && !new URL(value).username && !new URL(value).password, 'Use an HTTPS image URL').nullable().optional(),
   previewId: z.string().uuid().optional(), confirm: z.boolean().optional(),
 }).strict();

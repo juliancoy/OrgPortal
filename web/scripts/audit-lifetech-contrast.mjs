@@ -1,12 +1,24 @@
 import {chromium} from 'playwright'
-import {mkdir,writeFile} from 'node:fs/promises'
+import {mkdir,writeFile,readdir} from 'node:fs/promises'
 import {resolve,join} from 'node:path'
 import {createRequire} from 'node:module'
 const require=createRequire(import.meta.url)
 const base=new URL(process.argv[2]||'https://localhost:8770')
 if(!['localhost','127.0.0.1','lifetech.fyi'].includes(base.hostname))throw Error('Use the LifeTech site or a local preview')
 const out=resolve(process.argv[3]||'../artifacts/lifetech-contrast/local');await mkdir(out,{recursive:true})
-const paths=process.argv.slice(4);if(!paths.length)paths.push('/','/about','/start','/calendar','/taxonomy','/datasets','/org-events','/orgs/lifetech?tab=branding','/events/lifetech-demo-day-3')
+const paths=process.argv.slice(4),all=paths.includes('--all');if(all)paths.splice(paths.indexOf('--all'),1);if(!paths.length)paths.push('/','/about','/start','/calendar','/taxonomy','/datasets','/org-events','/orgs/lifetech?tab=branding','/events/lifetech-demo-day-3')
+if(all){
+ const built=new URL('../../../BmoreMedTech/dist-lifetech/',import.meta.url)
+ async function walk(url,prefix=''){
+  for(const entry of await readdir(url,{withFileTypes:true})){
+   if(entry.isDirectory())await walk(new URL(entry.name+'/',url),prefix+entry.name+'/')
+   else if(entry.name.endsWith('.html'))paths.push(('/'+prefix+entry.name).replace(/\/index\.html$/,'/').replace(/\.html$/,''))
+  }
+ }
+ await walk(built)
+ paths.push('/ecosystem/network','/people','/orgs','/search?q=health')
+ paths.splice(0,paths.length,...new Set(paths))
+}
 const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||'/usr/bin/google-chrome'})
 const report=[]
 try{for(const theme of ['light','dark'])for(const path of paths){

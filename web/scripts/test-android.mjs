@@ -25,8 +25,9 @@ try {
   const started=performance.now()
   await page.goto(base+path,{waitUntil:'networkidle',timeout:30000})
   await page.locator(ready).first().waitFor()
-  const device=await page.evaluate(()=>({userAgent:navigator.userAgent,width:innerWidth,height:innerHeight,dpr:devicePixelRatio,touch:navigator.maxTouchPoints}))
+  const device=await page.evaluate(()=>({userAgent:navigator.userAgent,width:innerWidth,height:innerHeight,dpr:devicePixelRatio,touch:navigator.maxTouchPoints,visibility:document.visibilityState}))
   if(!/Android/.test(device.userAgent)||!device.touch)throw Error('Expected physical Android Chrome with touch input')
+  if(device.visibility!=='visible')throw Error('Unlock the Pixel and keep Chrome visible during the mobile test')
   if(name==='application-options') {
    const link=page.getByRole('link',{name:'Registered Apply',exact:true})
    if(await link.getAttribute('href')!=='/events/lifetech-demo-day-3/apply')throw Error('Incorrect application destination')

@@ -2,7 +2,7 @@ import lifetechBrand from './lifetechBrand.json'
 export type BrandColor = { label: string; value: string; description?: string }
 
 export function parseBrandPalette(value: unknown): BrandColor[] | null {
-  if (!Array.isArray(value) || value.length < 1 || value.length > 12) return null
+  if (!Array.isArray(value) || value.length < 1 || value.length > 24) return null
   const colors: BrandColor[] = []
   for (const item of value) {
     if (!item || typeof item !== 'object' || Array.isArray(item)) return null
