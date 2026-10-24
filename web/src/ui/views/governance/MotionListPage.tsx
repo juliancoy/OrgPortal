@@ -51,9 +51,10 @@ function motionProposerLabel(motion: Motion) {
 export function MotionListPage() {
   const { motionRepository, engagementRepository } = useGovernanceRepositories()
   const { basePath, isRoberts } = useGovernanceParadigm()
-  const { user } = useAuth()
+  const { user, token } = useAuth()
   const effectiveUserId = user?.id ?? getGuestId()
   const [motions, setMotions] = useState<Motion[]>([])
+  const [loadError, setLoadError] = useState('')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<MotionStatus | null>(null)
   const [sortMode, setSortMode] = useState<SortMode>('newest')
@@ -68,16 +69,20 @@ export function MotionListPage() {
     const query: MotionListQuery = {}
     if (search) query.search = search
     if (statusFilter) query.status = [statusFilter]
-    listMotions(motionRepository, query).then((fetched) => {
+    let active = true
+    setLoadError('')
+    listMotions(motionRepository, query).then(async (fetched) => {
+      if (!active) return
       setMotions(fetched)
-      Promise.all(
+      const triples = await Promise.all(
         fetched.map((m) =>
           Promise.all([
-            engagementRepository.getUserVote(m.id, effectiveUserId),
+            token ? engagementRepository.getUserVote(m.id, effectiveUserId) : Promise.resolve(null),
             engagementRepository.getVoteCounts(m.id),
           ]).then(([dir, vc]) => [m.id, dir, vc] as const),
         ),
-      ).then((triples) => {
+      )
+      if (active) {
         const voteMap: Record<string, VoteDirection | null> = {}
         const countMap: Record<string, VoteCounts> = {}
         for (const [id, dir, vc] of triples) {
@@ -86,9 +91,12 @@ export function MotionListPage() {
         }
         setUserVotes(voteMap)
         setVoteCounts(countMap)
-      })
+      }
+    }).catch(error => {
+      if (active) setLoadError(error instanceof Error ? error.message : 'Unable to load motions')
     })
-  }, [motionRepository, engagementRepository, search, statusFilter, effectiveUserId])
+    return () => { active = false }
+  }, [motionRepository, engagementRepository, search, statusFilter, effectiveUserId, token])
 
   const sortedMotions = [...motions].sort((a, b) => {
     if (sortMode === 'score') return b.score - a.score || b.createdAtISO.localeCompare(a.createdAtISO)
@@ -108,6 +116,7 @@ export function MotionListPage() {
   return (
     <div>
       <GovernanceNav />
+      {loadError && <p role="alert">{loadError}</p>}
       <div className="motion-list-wrap">
         <GovernanceBreadcrumb items={[]} />
 
