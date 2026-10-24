@@ -121,3 +121,22 @@
 .event-apply-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; margin-bottom: 1rem; }
 .event-apply-actions .event-apply-link { margin: 0; min-height: 44px; justify-content: center; }
 @media (max-width: 540px) { .event-apply-actions .event-apply-link { flex: 1 1 180px; } }
+
+/* Keep event application controls together without inherited full-width inputs. */
+.public-event-applications { padding: 1.25rem; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); }
+.public-event-applications-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+.public-event-applications-heading h2 { margin: 0 0 .3rem; font-size: 1.05rem; line-height: 1.35; }
+.public-event-applications-heading p { margin: 0; color: var(--muted); font-size: .9rem; line-height: 1.5; }
+.public-event-applications .presentation-settings { margin: 0; flex-shrink: 0; }
+.public-event-applications .presentation-settings label { display: inline-flex; gap: .5rem; align-items: center; font-size: .85rem; font-weight: 600; cursor: pointer; }
+.public-event-applications .presentation-settings input[type='checkbox'] { width: 1.1rem; height: 1.1rem; min-width: 1.1rem; margin: 0; padding: 0; accent-color: var(--primary); }
+.public-event-applications .event-apply-actions { margin: 0; gap: .65rem; }
+.public-event-applications .event-apply-link { padding: .7rem 1rem; border-radius: 10px; font-size: .9rem; }
+.public-event-main .public-event-tabs { background: transparent; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; padding: 0 0 .5rem; gap: .35rem; grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+.public-event-main .public-event-tabs [role='tab'] { min-height: 44px; border-radius: 9px; font-size: .9rem; gap: .45rem; }
+.public-event-main .public-event-tabs [role='tab'][aria-selected='true'] { box-shadow: none; }
+@media (max-width: 600px) {
+ .public-event-applications-heading { align-items: flex-start; flex-direction: column; gap: .75rem; }
+ .public-event-applications { padding: 1rem; }
+ .public-event-main .public-event-tabs [role='tab'] { padding: .6rem .3rem; gap: .3rem; font-size: .82rem; }
+}
