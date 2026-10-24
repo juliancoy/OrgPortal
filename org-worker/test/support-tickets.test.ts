@@ -10,6 +10,8 @@ function fixture(){
  INSERT INTO organizations(id,name,slug,tags,city) VALUES('life','LifeTech','lifetech','[]','Baltimore'),('other','Other','other','[]','Baltimore');
  INSERT INTO organization_memberships(organization_id,user_id,user_name,role,status) VALUES('life','owner','Owner','owner','active'),('life','admin','Admin','administrator','active'),('life','member','Member','member','active'),('other','outsider','Other owner','owner','active');`);
  sql.exec(readFileSync(new URL('../migrations/0116_support_tickets.sql',import.meta.url),'utf8'));
+ sql.exec(readFileSync(new URL('../migrations/0117_support_controls.sql',import.meta.url),'utf8'));
+ sql.exec("INSERT INTO support_settings VALUES('life',1,'owner','2026-01-01')");
  const db={prepare(query:string){const statement=sql.prepare(query);const bind=(args:any[])=>({bind:(...args:any[])=>bind(args),first:async()=>statement.get(...args)||null,all:async()=>({results:statement.all(...args)}),run:async()=>({meta:{changes:Number(statement.run(...args).changes)}})});return bind([])},async batch(statements:any[]){sql.exec('BEGIN');try{const results=[];for(const statement of statements)results.push(await statement.run());sql.exec('COMMIT');return results}catch(e){sql.exec('ROLLBACK');throw e}}} as unknown as D1Database;
  const mail:SupportMail={from:'sender@example.com',to:'service@lifetech.fyi',subject:'Question',text:'Where can I read the LifeTech bylaws?',messageId:'<one@example.com>',automated:false,attachments:false};
  const app=supportRoutes(async(_env,request)=>({id:request.headers.get('X-Test-User')||'member'}));
