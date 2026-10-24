@@ -1,10 +1,10 @@
 # OrgPortal
 
-Shared-account migration: OrgPortal and all tenants use primary PIdP credentials
-and the central sign-in at `id.orgportal.cc`. Legacy member subjects remain aliases;
-separate community login screens are retired. See
-[shared identity operations](../PIdP/docs/shared-orgportal-identity.md).
-The older architecture notes below describe compatibility namespaces.
+Shared primary-account identity is implemented behind a disabled feature flag.
+The configured identity base is `https://orgportal.cc/pidp`; tenant browser flows
+use their same-origin `/pidp` proxy and the `orgportal` application namespace.
+Account consolidation and any later login-domain move require separate rollout
+review. See the [migration proposal](../PIdP/docs/shared-orgportal-identity.md).
 
 
 ## Privacy, support and data lifecycle
