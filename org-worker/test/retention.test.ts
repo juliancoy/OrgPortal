@@ -7,6 +7,8 @@ function adapter(sql) { return {prepare(q){return {bind(...v){return {async firs
 
 test('expiry units, bounds, dry-run, retries and unresolved operations',async()=>{
  const sql=new DatabaseSync(':memory:');
+ sql.exec('CREATE TABLE change_journal_exclusions(table_name TEXT PRIMARY KEY,reason TEXT)');
+ sql.exec(readFileSync(new URL('../migrations/0124_push_outbox.sql',import.meta.url),'utf8'));
  sql.exec('CREATE TABLE support_tickets(id TEXT PRIMARY KEY,expires_at INTEGER);CREATE TABLE support_messages(id TEXT PRIMARY KEY,ticket_id TEXT);');
  sql.exec(readFileSync(new URL('../migrations/0017_event_mcp_operations.sql',import.meta.url),'utf8'));
  sql.exec(`CREATE TABLE email_oauth_states(state_hash TEXT PRIMARY KEY,expires_at INTEGER); CREATE TABLE email_bounce_receipts(id TEXT PRIMARY KEY,expires_at INTEGER); CREATE TABLE email_campaigns(id TEXT PRIMARY KEY,expires_at INTEGER,status TEXT);

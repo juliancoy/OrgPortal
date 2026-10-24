@@ -1,5 +1,6 @@
 import webpush from "web-push";
 import { accountPushEnabled, notificationPreferences } from './notificationPreferences';
+import { persistPush, sendPushOutbox, claimPush, finishPush, renewPush, retryPush } from './pushOutbox';
 
 export type PushDeliveryJob = {
   eventId: string;
@@ -82,9 +83,10 @@ export function matrixJobs(notification: MatrixNotification): { jobs: PushDelive
 }
 
 export async function enqueueUserPush(env: Env, job: PushDeliveryJob): Promise<void> {
-  if (!env.PUSH_QUEUE) return;
+  if (env.ORGANIZATION_REPLICA_SOURCE) return;
   if (job.userId && !await accountPushEnabled(env.DB, job.userId)) return;
-  await env.PUSH_QUEUE.send(job);
+  const id=await persistPush(env.DB,job);
+  await sendPushOutbox(env,id);
 }
 
 async function deliverToSubscription(env: Env, job: PushDeliveryJob, subscription: PushSubscriptionRow): Promise<void> {
@@ -109,7 +111,7 @@ async function deliverToSubscription(env: Env, job: PushDeliveryJob, subscriptio
     await webpush.sendNotification(
       { endpoint: subscription.endpoint, keys: { p256dh: subscription.p256dh, auth: subscription.auth } },
       JSON.stringify({ title: job.title, body: job.body, url: job.deepLink, eventId: job.eventId, data: job.data }),
-      { TTL: 60 * 60, urgency: "normal" },
+      { TTL: 60 * 60, urgency: "normal", timeout: 10000 },
     );
     await env.DB.prepare(
       "UPDATE push_deliveries SET status = 'sent', attempts = attempts + 1, last_error = NULL, sent_at = ? WHERE event_id = ? AND subscription_id = ?",
@@ -131,26 +133,36 @@ async function deliverToSubscription(env: Env, job: PushDeliveryJob, subscriptio
 
 export async function consumePushBatch(batch: MessageBatch<PushDeliveryJob>, env: Env): Promise<void> {
   for (const message of batch.messages) {
+    let id:string|null=null,token:string|null=null;
     try {
-      const job = message.body;
+      id=await persistPush(env.DB,message.body,message.timestamp?.getTime()??Date.now());
+      const claimed=await claimPush(env.DB,id);
+      token=claimed.token;
+      if (!claimed.job) { if (claimed.busy) message.retry({delaySeconds:30}); else message.ack(); continue; }
+      const job = claimed.job;
       if (job.organizationStatusId) {
         const notice = await env.DB.prepare('SELECT id FROM organization_status_notifications WHERE id=? AND user_id=?')
           .bind(job.organizationStatusId, job.userId || '').first();
         const prefs = await notificationPreferences(env.DB, job.userId || '');
-        if (!notice || !prefs.push_enabled || !prefs.organization_status_push) { message.ack(); continue; }
+        if (!notice || !prefs.push_enabled || !prefs.organization_status_push) { await finishPush(env.DB,id,token); message.ack(); continue; }
       }
       if (job.data) {
         const unread = await env.DB.prepare("SELECT id FROM user_notifications WHERE id = ? AND user_id = ? AND community_id = ? AND status = 'unread'")
           .bind(job.data.notificationId, job.userId || '', job.data.communityId).first();
-        if (!unread) { message.ack(); continue; }
+        if (!unread) { await finishPush(env.DB,id,token); message.ack(); continue; }
       }
       const query = job.subscriptionId
         ? env.DB.prepare("SELECT * FROM push_subscriptions WHERE id = ? AND enabled = 1").bind(job.subscriptionId)
         : env.DB.prepare("SELECT * FROM push_subscriptions WHERE user_id = ? AND enabled = 1").bind(job.userId || "");
       const rows = await query.all<PushSubscriptionRow>();
-      for (const subscription of rows.results || []) await deliverToSubscription(env, job, subscription);
+      for (const subscription of rows.results || []) {
+        await renewPush(env.DB,id,token!);
+        await deliverToSubscription(env, job, subscription);
+      }
+      await finishPush(env.DB,id,token);
       message.ack();
     } catch {
+      if (id && token) await retryPush(env.DB,id,token);
       message.retry({ delaySeconds: 30 });
     }
   }

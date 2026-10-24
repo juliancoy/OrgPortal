@@ -1,4 +1,5 @@
 import { cleanupPresentationAttachments } from './presentationAttachments';
+import { expirePushOutbox } from './pushOutbox';
 // Bounded cleanup of explicitly temporary records only. No account/content purge.
 export async function runRetention(db: D1Database, now = Date.now(), dryRun = false, bucket?: R2Bucket) {
   if (!Number.isSafeInteger(now) || now <= 0) throw new Error('Invalid retention clock');
@@ -39,6 +40,7 @@ export async function runRetention(db: D1Database, now = Date.now(), dryRun = fa
     ['event_company_votes', 'expires_at < ?', new Date(cutoff).toISOString()],
   ];
   const counts: Record<string, number> = {};
+  counts.push_outbox=await expirePushOutbox(db,now,dryRun);
   if (bucket && !dryRun) {
     try { counts.event_presentation_attachments = await cleanupPresentationAttachments(db,bucket,now) }
     catch { counts.event_presentation_attachment_cleanup_failed = 1 }

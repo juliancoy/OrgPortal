@@ -83,6 +83,7 @@ import {
   proposeTimebankExchange, resolveTimebankExchange,
 } from "./timebank";
 import { consumePushBatch, endpointHash, enqueueUserPush, matrixJobs, normalizeSubscription } from "./push";
+import { dispatchPushOutbox } from './pushOutbox';
 import {
   LifeInsuranceError,
   insuranceDashboard,
@@ -5734,6 +5735,7 @@ export default {
     ctx.waitUntil(runOrganizationInvitations(env));
     ctx.waitUntil(runEmailDelivery(env));
     ctx.waitUntil(dispatchOrganizationStatusPush(env));
+    ctx.waitUntil(dispatchPushOutbox(env));
     ctx.waitUntil(provisionPendingOrganizationChats(env));
   },
   async queue(batch: MessageBatch<import("./push").PushDeliveryJob>, env: Env) {

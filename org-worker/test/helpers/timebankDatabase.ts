@@ -39,6 +39,8 @@ export class TimebankDatabase {
     this.sqlite.exec(readFileSync(new URL('../../migrations/0028_portal_tenant_home_page.sql', import.meta.url), 'utf8'));
     this.sqlite.exec(readFileSync(new URL('../../migrations/0039_timebank_listing_tags.sql', import.meta.url), 'utf8'));
     this.sqlite.exec(readFileSync(new URL('../../migrations/0063_notification_preferences.sql', import.meta.url), 'utf8'));
+    this.sqlite.exec('CREATE TABLE change_journal_exclusions(table_name TEXT PRIMARY KEY,reason TEXT)');
+    this.sqlite.exec(readFileSync(new URL('../../migrations/0124_push_outbox.sql', import.meta.url), 'utf8'));
   }
   prepare(sql: string) { return new SqliteStatement(this.sqlite.prepare(sql)); }
   async batch(statements: SqliteStatement[]) {
