@@ -2648,6 +2648,7 @@ function deploymentHealth(c: { env: Env; req: { url: string }; header: (name: st
   return {
     ...(ok ? { ok: true } : {}),
     service: "org-worker",
+    queueRecovery: {pushOutbox:1,payloadExpiryHours:23,dedupeRetentionDays:7},
     time: new Date().toISOString(),
     ...buildMetadata,
     workerVersionId: c.env.CF_VERSION_METADATA?.id ?? null,

@@ -607,6 +607,14 @@
         {
           "id": "standalone guest intake: no login, bounded private storage, host isolation and expiry",
           "label": "standalone guest intake: no login, bounded private storage, host isolation and expiry"
+        },
+        {
+          "id": "guest acknowledgement and account claim require the same verified email and grant no organization access",
+          "label": "guest acknowledgement and account claim require the same verified email and grant no organization access"
+        },
+        {
+          "id": "unconfirmed acknowledgement does not lose a saved application or expose its contact details",
+          "label": "unconfirmed acknowledgement does not lose a saved application or expose its contact details"
         }
       ],
       "category": "Submission and voting",
@@ -1597,6 +1605,20 @@
         {
           "id": "suite",
           "label": "publicDataResponse.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-push-outbox-test-ts",
+      "label": "org-worker/test/push-outbox.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/push-outbox.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "push-outbox.test.ts"
         }
       ]
     },
