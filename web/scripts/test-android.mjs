@@ -42,10 +42,11 @@ try {
    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]})
    await cdp.detach()
    await details.waitFor({state:'visible'})
+   await details.scrollIntoViewIfNeeded()
   }
   if(errors.length)throw Error(errors.join('\n'))
   if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1))throw Error(name+' overflows the phone viewport')
-  await page.screenshot({path:join(output,name+'.png'),fullPage:true})
+  await page.screenshot({path:join(output,name+'.png'),fullPage:false})
   const check={name,status:'passed',duration_seconds:(performance.now()-started)/1000,device}
   checks.push(check);console.log(JSON.stringify({kind:'mobile_check',...check}))
  }

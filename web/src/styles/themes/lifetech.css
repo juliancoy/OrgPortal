@@ -224,4 +224,14 @@
 :root[data-site-brand='lifetech'] .social-link:hover .social-button { background: var(--brand-gold); border-color: var(--brand-gold); color: #061A26; }
 :root[data-site-brand='lifetech'] :is(.gold-text,.funding-amount) { color: var(--gold-text); }
 :root[data-portal-profile='lifetech'] .lifetech-event-page .btn-primary { background: var(--btn-primary-bg); color: var(--btn-primary-text); }
+:root[data-portal-profile='lifetech'] .public-calendar-day-event.medtech-owned { background: var(--brand-gold); color: #061A26; }
+:root[data-site-brand='lifetech'] .taxonomy-cluster:nth-child(4n + 4) { color: var(--gold-text); }
 :root[data-portal-profile='lifetech'] .public-calendar-view-switch button[aria-pressed='true'] { color: var(--on-primary); }
+:root[data-site-brand='lifetech'] .outside.day .day-number { color: var(--muted); }
+:root[data-site-brand='lifetech'] .icd-chapter :is(.icd-chapter-number,.icd-chapter-range) { color: var(--ink); }
+:root[data-site-brand='lifetech'] .dataset-mode-badge[data-mode='live-release'] { color: var(--teal); }
+:root[data-site-brand='lifetech'] :is(.pathway-card-map,.pathway-card-index) p { color: #061A26; }
+:root[data-portal-profile='lifetech'] .lifetech-event-page .public-event-eyebrow { color: var(--primary); }
+:root[data-portal-profile='lifetech'] .lifetech-event-page .public-event-hero-content .public-event-eyebrow { color: #7BDDCF; }
+:root[data-portal-profile='lifetech'] ::placeholder,
+:root[data-site-brand='lifetech'] ::placeholder { color: var(--muted); opacity: 1; }

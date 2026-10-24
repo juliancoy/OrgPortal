@@ -831,6 +831,20 @@
       ]
     },
     {
+      "id": "suite-org-worker-test-lifetech-brand-contrast-test-ts",
+      "label": "org-worker/test/lifetech-brand-contrast.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/lifetech-brand-contrast.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "lifetech-brand-contrast.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-org-worker-test-local-newsletters-test-ts",
       "label": "org-worker/test/local-newsletters.test.ts",
       "category": "Messaging and email",
@@ -2291,6 +2305,20 @@
         {
           "id": "suite",
           "label": "test-android-session-persistence.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-android-mjs",
+      "label": "web/scripts/test-android.mjs",
+      "category": "User interface and integrations",
+      "source": "web/scripts/test-android.mjs",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-android.mjs"
         }
       ]
     },

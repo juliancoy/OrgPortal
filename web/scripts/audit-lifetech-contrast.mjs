@@ -18,6 +18,9 @@ try{for(const theme of ['light','dark'])for(const path of paths){
  try{
   const response=await page.goto(new URL(path,base).href,{waitUntil:'domcontentloaded',timeout:30000});item.status=response.status()
   await page.waitForTimeout(2200);await page.evaluate(()=>document.fonts.ready)
+  if(!(await page.locator('body').innerText()).trim())throw Error('The page is blank')
+  item.brand=await page.evaluate(()=>({site:document.documentElement.dataset.siteBrand,portal:document.documentElement.dataset.portalProfile,teal:getComputedStyle(document.documentElement).getPropertyValue('--brand-teal').trim()}))
+  if(item.brand.site!=='lifetech'&&item.brand.portal!=='lifetech')throw Error('The page did not resolve LifeTech branding')
   await page.addScriptTag({path:require.resolve('axe-core/axe.min.js')})
   const results=await page.evaluate(()=>window.axe.run(document,{runOnly:{type:'rule',values:['color-contrast','link-in-text-block']},resultTypes:['violations','incomplete']}))
   item.url=page.url();item.profile=await page.locator('html').getAttribute('data-portal-profile');item.title=await page.title()
