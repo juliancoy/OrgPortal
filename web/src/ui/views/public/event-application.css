@@ -6,7 +6,7 @@
  --application-muted: #5d6258;
  --application-rule: #c9cdc1;
  --application-input-border: #898f82;
- --application-focus: var(--application-gold, #d4af37);
+ --application-focus: color-mix(in srgb, var(--application-gold, #d4af37) 65%, #242820);
  --application-measure: 42rem;
  --application-space: 2.75rem;
  /* Map shared form components onto the document palette. */
@@ -29,6 +29,7 @@
  line-height: 1.65;
 }
 [data-theme='dark'] .event-application-page {
+ --application-focus: var(--application-gold, #d4af37);
  --application-background: #1c211f;
  --application-field: #222825;
  --application-text: #eceee6;
@@ -105,6 +106,7 @@
 .event-application-page .application-confirmation { display: block; padding: 1.5rem 0 0; border: 0; border-top: 1px solid var(--application-rule); border-radius: 0; background: none; box-shadow: none; }
 .application-optional { font-size: .875rem; font-weight: 400; color: var(--application-muted); }
 .application-confirmation h2 { font: inherit; font-size: 1.5rem; font-weight: 600; letter-spacing: -.025em; margin: 0 0 .75rem; }
+.event-application-page :is(.application-confirmation h2, .application-message):focus { outline: none; box-shadow: none; }
 .application-confirmation p { margin: 0; color: var(--application-muted); }
 .application-page-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem 1.75rem; margin-top: 2rem; }
 .event-apply-link { display: inline-flex; align-items: center; gap: .5rem; margin-bottom: 1rem; text-decoration: none; }

@@ -91,6 +91,7 @@ export function EventPresentations({eventId,formAction,onActionHandled,onSaved,o
  if(!ready) return <section aria-label="Presentation applications"><p role="status">{message||'Loading application…'}</p>{message&&<button type="button" className="btn-secondary" onClick={()=>setVersion(v=>v+1)}>Retry</button>}</section>
  if(!enabled&&!draft.value.editing)return <p role="status">Presentation applications are not available for this event.</p>
  return <section className="presentation-applications" aria-label="Presentation applications">
+  <p className="sr-only" role="status" aria-live="polite">{busy?'Saving application…':''}</p>
   {message&&<p className="application-message" ref={messageRef} tabIndex={-1} role="alert">{message}</p>}
   {enabled&&!closed&&!token&&<div className="presentation-login"><p>Sign in to submit with an existing organization or create a new team.</p><Link className="btn-primary" to={`/users/login?next=${encodeURIComponent(location.pathname+location.search)}`}>Sign in to apply</Link></div>}
   {closed&&<p>Applications have closed for this event.</p>}

@@ -25,7 +25,7 @@ export type PortalProfileConfig = {
 const PORTAL_PROFILES: Record<PortalProfileId, PortalProfileConfig> = {
   lifetech: {
     id: 'lifetech', brandName: 'LifeTech', portalTitle: 'LifeTech Portal',
-    nameBannerUrl: '/images/lifetech-namebanner.png',
+    nameBannerUrl: '/images/lifetech-namebanner.webp',
     tagline: 'Health × Medicine × Biotech', brandImagePath: 'https://lifetech.fyi/assets/images/lifetech-logo.png',
     homeUrl: 'https://lifetech.fyi/', memberHomePath: '/chat', disabledFeatures: ['ubi'],
     manifestPath: '/manifest.webmanifest', faviconPath: 'https://lifetech.fyi/assets/images/lifetech-logo.png',

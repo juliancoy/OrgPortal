@@ -14,7 +14,7 @@ export function ApplicationPageHeader({eventTitle,editing=false,submitted=false}
  return <header className="application-event-context">
   <div className="application-identity">{logo&&<img src={logo} alt="" width={32} height={40}/>}<span>{profile.brandName}</span></div>
   <p className="application-event-name">{eventTitle}</p>
-  <h1>{submitted?'Application received':editing?'Edit your application':'Presenter application'}</h1>
+  <h1>{submitted?(editing?'Application updated':'Application received'):editing?'Edit your application':'Presenter application'}</h1>
   {!submitted&&!editing&&<p className="application-introduction">Submit your research, project or demonstration for consideration.</p>}
  </header>
 }

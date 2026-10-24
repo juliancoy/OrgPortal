@@ -24,7 +24,7 @@ run = uuid.uuid4().hex[:10]
 
 def data(response):
     assert response.ok, f'Local fixture request failed ({response.status}): {response.text()[:300]}'
-    return response.json()
+    return response.json() if "application/json" in response.headers.get("content-type", "") else {}
 
 
 with sync_playwright() as playwright:
@@ -60,12 +60,20 @@ async def main():
  await engine.dispose()
 asyncio.run(main())
 """
-        subprocess.run(['docker','exec','-i','-w','/app',PIDP_CONTAINER,'/venv/bin/python','-c',fixture_script],input=json.dumps({'id':registered['id'],'email':email}),text=True,check=True,capture_output=True)
+        result=subprocess.run(['docker','exec','-i','-w','/tmp','-e','PYTHONPATH=/app',PIDP_CONTAINER,'/venv/bin/python','-c',fixture_script],input=json.dumps({'id':registered['id'],'email':email}),text=True,capture_output=True)
+        assert result.returncode==0, 'Local synthetic account verification failed'
         data(ctx.request.post(BASE + '/pidp/auth/session/login', form={'username': email, 'password': password}, headers={'Origin': BASE}))
         token = data(ctx.request.get(BASE + '/pidp/auth/session-token'))['access_token']
         auth = {'Authorization': 'Bearer ' + token}
         data(ctx.request.get(BASE + '/api/org/api/accounts/me', headers=auth))
         return auth
+
+    def audit(page):
+        if not page.evaluate('Boolean(window.axe)'):
+            page.add_script_tag(path=str(Path(__file__).resolve().parents[1] / 'node_modules/axe-core/axe.min.js'))
+        page.evaluate('()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))')
+        violations = page.evaluate("""async()=> (await axe.run('.event-application-page', {runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}})).violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>({target:n.target,checks:n.any.map(c=>c.data)}))}))""")
+        assert not violations, {'theme':page.evaluate('document.documentElement.dataset.theme'),'computed':page.locator('.event-application-page').evaluate('(el)=>({color:getComputedStyle(el).color,label:getComputedStyle(el.querySelector("label")||el).color})'),'violations':violations}
 
     try:
         host = context()
@@ -125,13 +133,19 @@ asyncio.run(main())
                 submit = form.get_by_role('button', name='Submit application', exact=True)
                 assert submit.evaluate('(el)=>el.getBoundingClientRect().height') >= 44
                 submit.focus()
+                page.keyboard.press('Tab')
+                page.keyboard.press('Shift+Tab')
                 assert submit.evaluate('(el)=>getComputedStyle(el).outlineStyle') != 'none'
+                audit(page)
                 page.locator('.event-application-page').screenshot(path=str(REPORT / f'application-{width}-{theme}.png'))
         # A failed upload must not show confirmation or discard the staged file/draft.
         failed = [False]
         def fail_once(route):
             if route.request.method == 'POST' and not failed[0]:
                 failed[0] = True
+                expect(form).to_have_attribute('aria-busy', 'true')
+                expect(form.get_by_label('Presentation title', exact=True)).to_be_disabled()
+                expect(form.get_by_role('button', name='Saving application…', exact=True)).to_be_disabled()
                 route.fulfill(status=503, content_type='application/json', body='{"message":"Local upload retry fixture"}')
             else:
                 route.continue_()
@@ -149,11 +163,13 @@ asyncio.run(main())
         assert public['image_url'], 'Organization image must be retained'
         form.get_by_role('button', name='Save changes', exact=True).click()
         expect(page.get_by_role('heading', name='Submission complete', exact=True)).to_be_visible(timeout=30000)
+        audit(page)
         assert page.get_by_role('heading', name='Submission complete', exact=True).evaluate('(el)=>el===document.activeElement')
         assert len(data(host.request.get(endpoint, headers=host_auth))['submissions']) == 1, 'Retry must be idempotent'
         assert len(data(applicant.request.get(endpoint + '/' + submission_id + '/attachments', headers=applicant_auth))['attachments']) == 1
         page.get_by_role('link', name='View application', exact=True).click()
         expect(form.get_by_label('Applying as', exact=True)).to_be_disabled(timeout=30000)
+        audit(page)
         form.get_by_label('Presentation title', exact=True).fill('Revised rehabilitation research')
         expect(form).to_have_attribute('data-draft-saved', 'true')
         page.reload()
@@ -168,15 +184,22 @@ asyncio.run(main())
         form.get_by_label('Applying as', exact=True).select_option(team_id)
         expect(form.get_by_label('Team name', exact=True)).to_have_count(0)
         expect(form.get_by_role('list', name='Selected team members').get_by_role('listitem')).to_have_count(3)
+        data(host.request.put(endpoint + '/form', headers=host_auth, data={'enabled': False}))
+        page.goto(BASE + application_path + '?edit=' + submission_id)
+        expect(form.get_by_label('Presentation title', exact=True)).to_have_value('Revised rehabilitation research', timeout=30000)
+        form.get_by_role('button', name='Save changes', exact=True).click()
+        expect(page.get_by_role('heading', name='Changes saved', exact=True)).to_be_visible(timeout=30000)
+        data(host.request.put(endpoint + '/form', headers=host_auth, data={'enabled': True}))
         guest = context()
         guest_page = guest.new_page()
         guest_page.goto(BASE + application_path + '?edit=' + submission_id)
         login = guest_page.get_by_role('link', name='Sign in to apply', exact=True)
         expect(login).to_have_attribute('href', '/users/login?next=' + quote(application_path + '?edit=' + submission_id, safe=''), timeout=30000)
+        audit(guest_page)
         assert guest_page.get_by_role('form', name='Team presentation application').count() == 0
         assert guest.request.put(endpoint + '/' + submission_id, data={'organization_id': team_id, 'title': 'Unauthorized', 'summary': 'Denied'}).status in [401, 403]
         assert not errors, errors
-        print('PASS: desktop/mobile light/dark; validation; local draft and edit reload; team/roster/image; public attachments; failed-upload retry; confirmation focus; existing organization; guest return; unauthenticated denial.', flush=True)
+        print('PASS: desktop/mobile light/dark; scoped WCAG checks; validation; local draft and edit reload; team/roster/image; public attachments; busy controls; failed-upload retry; closed-intake editing; confirmation focus; existing organization; guest return; unauthenticated denial.', flush=True)
     finally:
         for ctx in contexts:
             ctx.close()
