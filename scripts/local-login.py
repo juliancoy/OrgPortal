@@ -18,7 +18,7 @@ import webbrowser
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from local_developer import ensure_local_admin
 
-LOOPBACK = {'localhost', '127.0.0.1', '::1'}
+LOOPBACK = {'localhost', 'id.localhost', '127.0.0.1', '::1'}
 
 
 def local_base(value):
@@ -50,7 +50,7 @@ def preflight(container, base):
     public = urlsplit(env.get('PUBLIC_BASE_URL', ''))
     if not config['State']['Running'] or public.hostname not in LOOPBACK:
         raise RuntimeError('The selected identity container must be a running loopback deployment.')
-    if (public.scheme, public.netloc) != (urlsplit(base).scheme, urlsplit(base).netloc):
+    if (public.scheme, public.port) != (urlsplit(base).scheme, urlsplit(base).port):
         raise RuntimeError('The gateway must match the local identity PUBLIC_BASE_URL.')
     db_host = urlsplit(env.get('DATABASE_URL', '')).hostname
     if not db_host:

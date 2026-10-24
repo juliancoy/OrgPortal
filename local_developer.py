@@ -17,7 +17,7 @@ def state_file():
 
 def local_admin_ids(base, existing=''):
     ids = [value.strip() for value in existing.split(',') if value.strip()]
-    if urlsplit(base).hostname in {'localhost', '127.0.0.1', '::1'} and ADMIN_ID not in ids:
+    if urlsplit(base).hostname in {'localhost', 'id.localhost', '127.0.0.1', '::1'} and ADMIN_ID not in ids:
         ids.append(ADMIN_ID)
     return ','.join(ids)
 
@@ -33,7 +33,7 @@ def ensure_local_admin(name, base):
     config, host = original['Config'], original['HostConfig']
     environment = dict(value.split('=', 1) for value in config['Env'] if '=' in value)
     public=urlsplit(environment.get('PUBLIC_BASE_URL',''))
-    if (public.scheme,public.netloc)!=(urlsplit(base).scheme,urlsplit(base).netloc):
+    if (public.scheme,public.port)!=(urlsplit(base).scheme,urlsplit(base).port):
         raise RuntimeError('The selected identity deployment does not match the local gateway.')
     database=client.containers.get(urlsplit(environment.get('DATABASE_URL','')).hostname)
     if not set(original['NetworkSettings']['Networks']).intersection(database.attrs['NetworkSettings']['Networks']):

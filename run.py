@@ -270,10 +270,16 @@ def _local_oauth_credentials(pidp_editme, provider):
     return client_id.strip(), client_secret.strip()
 
 
+def local_identity_base(gateway_base):
+    from urllib.parse import urlsplit
+    url = urlsplit(gateway_base)
+    return os.getenv('ORGPORTAL_LOCAL_IDENTITY_BASE_URL', f'https://id.localhost:{url.port or 8443}').rstrip('/')
+
+
 def _pidp_env(pidp_editme, db_url: str, gateway_base: str, allowed_origins: list[str]) -> dict[str, str | None]:
     google_id, google_secret = _local_oauth_credentials(pidp_editme, "google")
     github_id, github_secret = _local_oauth_credentials(pidp_editme, "github")
-    pidp_base = f"{gateway_base}/pidp"
+    pidp_base = local_identity_base(gateway_base)
     account_app = os.getenv("ORGPORTAL_DEV_PIDP_APP_SLUG") or os.getenv("ORGPORTAL_PIDP_APP_SLUG", "orgportal")
     # SSO requires both the origin allowlist and an explicit client registration.
     # Keep local callbacks local; production registrations remain in PIdP.
@@ -305,7 +311,7 @@ def _pidp_env(pidp_editme, db_url: str, gateway_base: str, allowed_origins: list
         "PORTAL_AUTH_ORIGINS": ",".join(allowed_origins),
         "PORTAL_CLIENTS_JSON": portal_clients,
         "PORTAL_SSO_APP_SLUG": os.getenv("ORGPORTAL_DEV_PIDP_APP_SLUG") or os.getenv("ORGPORTAL_PIDP_APP_SLUG", "orgportal"),
-        "FRONTEND_REDIRECT_URL": f"{pidp_base}/auth/callback",
+        "FRONTEND_REDIRECT_URL": f"{pidp_base}/profile",
         "GOOGLE_CLIENT_ID": google_id,
         "GOOGLE_CLIENT_SECRET": google_secret,
         "GOOGLE_REDIRECT_URI": f"{pidp_base}/auth/google/callback",
@@ -344,7 +350,7 @@ def _pidp_env(pidp_editme, db_url: str, gateway_base: str, allowed_origins: list
 def _ensure_local_tls_certificates() -> None:
     crt = local_certs_dir / "localhost.crt"
     key = local_certs_dir / "localhost.key"
-    required_names = ["localhost", "bmoremedtech-local", "bmoremedtech-local-gateway", "local-orgportal"]
+    required_names = ["id.localhost", "portal.localhost", "localhost", "bmoremedtech-local", "bmoremedtech-local-gateway", "local-orgportal"]
     if crt.exists() and key.exists():
         cert_text = subprocess.run(
             ["openssl", "x509", "-in", str(crt), "-noout", "-text"],
@@ -427,7 +433,7 @@ def _write_local_gateway_config(
               }}
               server {{
                 listen 8443 ssl;
-                server_name localhost local-orgportal bmoremedtech-local bmoremedtech-local-gateway;
+                server_name localhost portal.localhost local-orgportal bmoremedtech-local bmoremedtech-local-gateway;
 
                 ssl_certificate /certs/localhost.crt;
                 ssl_certificate_key /certs/localhost.key;
@@ -463,16 +469,20 @@ def _write_local_gateway_config(
                   proxy_pass http://$chat_upstream;
                 }}
 
-                location /pidp/ {{
+                location ~ ^/pidp/(?:auth/(?:sso/(?:start|finish|client)|session(?:-token|/logout)?|me|public/users)|health)$ {{
                   rewrite ^/pidp/?(.*)$ /$1 break;
                   proxy_set_header Host $http_host;
-                  proxy_set_header X-Forwarded-Host "";
+                  proxy_set_header X-Forwarded-Host $http_host;
                   proxy_set_header X-Forwarded-Proto https;
-                  proxy_set_header X-Forwarded-Prefix /pidp;
+                  proxy_set_header X-Forwarded-Prefix "";
                   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
                   proxy_set_header Origin $http_origin;
                   proxy_set_header Referer $http_referer;
                   proxy_pass http://{pidp_dev_name}:8000;
+                }}
+
+                location /pidp/ {{
+                  return 303 {local_identity_base('https://localhost:' + str(gateway_port))}$request_uri;
                 }}
 
                 location / {{
@@ -484,6 +494,21 @@ def _write_local_gateway_config(
                   proxy_buffering off;
                   add_header Cache-Control "no-store" always;
                   proxy_pass http://{dev_name}:5173;
+                }}
+              }}
+              server {{
+                listen 8443 ssl;
+                server_name id.localhost;
+                ssl_certificate /certs/localhost.crt;
+                ssl_certificate_key /certs/localhost.key;
+                location ~ ^/pidp/(.*)$ {{ return 303 /$1$is_args$args; }}
+                location / {{
+                  proxy_http_version 1.1;
+                  proxy_set_header Host $http_host;
+                  proxy_set_header X-Forwarded-Proto https;
+                  proxy_set_header X-Forwarded-Host "";
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_pass http://{pidp_dev_name}:8000;
                 }}
               }}
             }}
@@ -548,7 +573,7 @@ def _start_pidp_if_available(prefix: str, network_name: str, gateway_base: str) 
     gateway_port = gateway_base.rsplit(":", 1)[-1]
     allowed_origins = [f"https://{host}:{gateway_port}" for host in LOCAL_GATEWAY_ALIASES]
     allowed_origins.extend([f"http://localhost:{gateway_port}", f"http://127.0.0.1:{gateway_port}", gateway_base, gateway_base.replace("localhost", "127.0.0.1")])
-    _set_env_default("PIDP_DEV_PUBLIC_BASE_URL", f"{gateway_base}/pidp/")
+    _set_env_default("PIDP_DEV_PUBLIC_BASE_URL", local_identity_base(gateway_base) + "/")
     _merge_csv_env_default("PIDP_DEV_ALLOWED_ORIGINS", allowed_origins)
     _merge_csv_env_default("PIDP_ALLOWED_ORIGINS", allowed_origins)
 
@@ -595,7 +620,7 @@ def _start_pidp_if_available(prefix: str, network_name: str, gateway_base: str) 
             (
                 "python -m venv /venv && "
                 "/venv/bin/pip install -r /app/requirements.txt && "
-                "exec /venv/bin/uvicorn main:app --app-dir /app --host 0.0.0.0 --port 8000 --root-path /pidp --forwarded-allow-ips '*' --reload --reload-dir /app"
+                "exec /venv/bin/uvicorn main:app --app-dir /app --host 0.0.0.0 --port 8000 --forwarded-allow-ips '*' --reload --reload-dir /app"
             ),
         ],
     }
