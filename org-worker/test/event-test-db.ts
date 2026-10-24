@@ -83,6 +83,8 @@ export class EventTestDb {
     this.sqlite.exec(readFileSync(new URL("../migrations/0053_event_venue_votes.sql", import.meta.url), "utf8"));
     this.sqlite.exec(readFileSync(new URL("../migrations/0080_event_company_votes.sql", import.meta.url), "utf8"));
     this.sqlite.exec(readFileSync(new URL("../migrations/0082_company_favorites.sql", import.meta.url), "utf8").split('INSERT INTO change_journal_exclusions')[0]);
+    this.sqlite.exec(readFileSync(new URL('../migrations/0057_organization_support.sql',import.meta.url),'utf8'));
+    this.sqlite.exec(readFileSync(new URL('../migrations/0099_multiple_submissions.sql',import.meta.url),'utf8').split('CREATE INDEX event_submissions_expiry')[0]);
     if (additionalSchema) this.sqlite.exec(additionalSchema);
   }
   prepare(sql: string) {
