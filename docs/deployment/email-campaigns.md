@@ -36,7 +36,7 @@ Store secrets with `wrangler secret put NAME` from `org-worker`. Do not paste re
 | `EMAIL_TOKEN_ENCRYPTION_KEY` | Base64 of 32 cryptographically random bytes. AES-GCM encryption binds tokens to their owner and email. |
 | `EMAIL_UNSUBSCRIBE_SECRET` | Separate high-entropy signing secret of at least 32 characters. |
 | `EMAIL_ALLOWED_SENDERS` | Defaults to `julian@codecollective.us`. Comma-separated allowlist; each sender must connect their own account. |
-| `EMAIL_POSTAL_ADDRESS` | Default sender mailing address for campaign HTML and plain-text footers. Checked-in value: `1110 W Cross St, Baltimore MD`. A campaign can supply its own valid sender address through `content.postal_address`. |
+| `EMAIL_POSTAL_ADDRESS` | Canonical sender address: `1110 W Cross St Baltimore MD`. Rendering uses `emailPostalAddress.ts`; saved campaign values and runtime settings cannot override it. |
 | `EMAIL_DAILY_LIMIT` | Defaults to 250 portal submissions per rolling 24 hours; hard-capped at 1,500 in code. This is a local allowance, not a report of Google's remaining quota. |
 | `EMAIL_SENDING_ENABLED` | Defaults to `false`. Set to `true` only after setup is complete and Julian is ready to use the sending controls. |
 | `PUBLIC_PORTAL_BASE_URL` | Existing setting. For the current deployment, `https://orgportal.cc`; email buttons link to this base plus `/events/:slug`. |
@@ -164,9 +164,8 @@ excludes future private campaign/sender journal copies without deleting old
 history; and adds a per-campaign recipient uniqueness constraint. The unique index rejects preexisting duplicate recipients atomically instead of deleting or merging delivery history. No email is queued
 or sent by the migration or a report import. See the privacy retention schedule.
 
-The shared mailing address is `1110 W Cross St, Baltimore MD`, supplied by the
-operator. Do not invent a ZIP code. Organizations sending from a different postal
-address must supply their own campaign address. Campaign footers retain their
-unsubscribe controls. Service-ticket replies use the separate service template.
-Updating the checked-in variable does not change an existing live Worker setting;
-the owning release must reconcile `EMAIL_POSTAL_ADDRESS` in production.
+Every campaign HTML and plain-text footer uses `1110 W Cross St Baltimore MD`.
+`emailPostalAddress.ts` is authoritative. Saved campaign content and runtime
+variables cannot override it, and the composer does not expose an address editor.
+Campaign unsubscribe controls remain in place. Previously delivered messages
+cannot be changed. Production must run the updated renderer to enforce this.

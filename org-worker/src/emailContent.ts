@@ -1,10 +1,11 @@
 import { z } from 'zod';
+import { EMAIL_POSTAL_ADDRESS } from './emailPostalAddress';
 export const emailContentSchema = z.object({
  heading:z.string().max(160).default(''),tagline:z.string().max(160).default(''),sender_name:z.string().max(120).regex(/^[^\r\n\0]*$/).default(''),
  accent:z.string().regex(/^#[0-9a-f]{6}$/i).default('#155e59'),
  logo_url:z.string().max(2000).default('').refine(v=>!v||https(v),'Use an HTTPS image URL'),
  rsvp_url:z.string().max(2000).default('').refine(v=>!v||https(v),'Use an HTTPS RSVP URL'),
- rsvp_label:z.string().max(80).default('RSVP'),postal_address:z.string().max(300).default(''),
+ rsvp_label:z.string().max(80).default('RSVP'),postal_address:z.string().max(300).default(EMAIL_POSTAL_ADDRESS).transform(()=>EMAIL_POSTAL_ADDRESS),
  image_data:z.string().max(410000).default('').refine(v=>!v||validImage(v),'Choose a JPEG or PNG under 300 KB'),
 }).strict();
 function https(v:string){try{const u=new URL(v);return u.protocol==='https:'&&!u.username&&!u.password}catch{return false}}

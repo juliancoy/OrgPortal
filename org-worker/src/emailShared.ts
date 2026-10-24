@@ -68,7 +68,6 @@ export function emailSetupIssues(env: Env): string[] {
     const portal = new URL(emailPortalBase(env));
     if (callback && portal.origin !== callback.origin) issues.push('Matching portal and Google callback hosts');
   } catch { issues.push('Public portal URL'); }
-  if (!env.EMAIL_POSTAL_ADDRESS?.trim()) issues.push('Sender mailing address');
   if (!(env.EMAIL_ALLOWED_SENDERS || '').split(',').some(value => normalizeEmail(value))) issues.push('Approved sender email');
   return issues;
 }

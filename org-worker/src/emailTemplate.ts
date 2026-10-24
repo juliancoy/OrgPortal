@@ -1,6 +1,7 @@
+import { EMAIL_POSTAL_ADDRESS } from './emailPostalAddress';
 import { emailContent } from './emailContent';
 import { engagementUrl } from './emailEngagement';
-import { emailFromAddress, emailFail, emailPortalBase, type EmailCampaign, type EmailEvent } from './emailShared';
+import { emailFromAddress, emailPortalBase, type EmailCampaign, type EmailEvent } from './emailShared';
 
 export function escapeHtml(value: string) { return value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]!)); }
 function publicImage(value: string | null) { try { const url = new URL(value || ''); return url.protocol === 'https:' && !url.username && !url.password ? url.toString() : null; } catch { return null; } }
@@ -15,8 +16,7 @@ export function renderCampaign(env: Env, campaign: EmailCampaign, name: string, 
   const body = replace(campaign.body);
   const bodyHtml = body.split(/(https:\/\/[^\s<>"']+)/g).map((part,index) => index%2
     ? `<a href="${escapeHtml(part)}">${escapeHtml(part)}</a>` : escapeHtml(part)).join('').replace(/\r?\n/g,'<br>');
-  const postalAddress = content.postal_address || env.EMAIL_POSTAL_ADDRESS?.trim();
-  if (!postalAddress) emailFail(503, 'The sender mailing address needs administrator setup.');
+  const postalAddress = EMAIL_POSTAL_ADDRESS;
   const image = content.image_data || publicImage(event.image_url);
   const eventTime = event.starts_at ? new Date(event.starts_at) : null;
   const date = eventTime && !Number.isNaN(eventTime.getTime()) ? eventTime.toLocaleString('en-US', { timeZone: 'America/New_York', dateStyle: 'full', timeStyle: 'short' }) + ' (Eastern)' : 'Date to be announced';

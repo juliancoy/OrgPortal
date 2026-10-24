@@ -333,7 +333,7 @@ test('sender setup reports missing configuration without exposing secrets or tre
   assert.equal(response.status, 200);
   const result = await response.json();
   assert.equal(result.configured, false);
-  assert.deepEqual(result.setup_issues, ['Google OAuth client ID', 'Sender token encryption key', 'Matching portal and Google callback hosts', 'Sender mailing address']);
+  assert.deepEqual(result.setup_issues, ['Google OAuth client ID', 'Sender token encryption key', 'Matching portal and Google callback hosts']);
   assert.doesNotMatch(JSON.stringify(result), /test-client-secret|test-unsubscribe-secret/);
   assert.equal((await request('/sender', 'GET', undefined, '')).status, 401);
 });
