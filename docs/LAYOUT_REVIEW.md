@@ -43,3 +43,25 @@ An unchanged visual suite links back to its recorded passing baseline.
 
 Integrating this suite does not start a run. The distributed start operation also
 commits and pushes repositories; use it only when explicitly requested.
+
+## Submission cards
+
+The visual suite includes collapsed, expanded, and unselected submission cards in
+both themes on desktop and mobile. The fixture uses synthetic organizations and
+teams; the server refuses writes. It also checks actual controls at 320, 390,
+and 1440 pixels: collapse hides details, expand and team disclosure preserve the
+vote, edit and delete confirmation preserve the vote, cancellation preserves the
+application, and mouse/keyboard voting each makes exactly one synthetic request.
+Vote responses are intercepted in browser memory; these checks never submit a
+production ballot or delete an application.
+
+For a focused iteration with the same fixtures and interaction checks:
+
+```sh
+SUBMISSION_REVIEW_ONLY=1 node scripts/render-layout-fixtures.mjs ../artifacts/layout-review/submissions
+```
+
+Review the contact sheets and `submission-interactions.json`. Inspect the
+expanded team and application controls, the unselected state, theme contrast and
+mobile wrapping. A completed render alone does not prove these are satisfactory.
+The normal distributed `visual` suite includes these checks without the filter.

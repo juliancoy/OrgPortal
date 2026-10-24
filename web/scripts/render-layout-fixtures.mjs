@@ -1,7 +1,8 @@
 // Offline visual renders for local review and the distributed Portal visual suite.
 import {build} from 'esbuild'
+import {chromium} from '@playwright/test'
 import {createServer} from 'node:http'
-import {readFile,mkdir} from 'node:fs/promises'
+import {readFile,mkdir,writeFile} from 'node:fs/promises'
 import {resolve,join,extname} from 'node:path'
 import {fileURLToPath} from 'node:url'
 import {renderLayouts} from './render-layouts.mjs'
@@ -34,11 +35,50 @@ try{
   {name:'Empty service inbox',url:base+'/support?empty=1',ready:'.support-compose-button:not(:disabled)'},
  ]
  const submissionLayouts=[
-  {name:'Collapsed submission',url:base+'/submissions?brand=lifetech&submissionReview=1',ready:'.submission-voting-card',hidden:['.submission-card-details']},
-  {name:'Expanded submission',url:base+'/submissions?brand=lifetech&submissionReview=1',ready:'.submission-voting-card',actions:[{click:'Expand submission: The Limits of Contemporary Medicine'}],visible:['.submission-card-details']},
-  {name:'Unselected submission',url:base+'/submissions?brand=lifetech&submissionReview=1&unselected=1',ready:'.submission-voting-card',hidden:['.submission-card-details']},
+  {name:'Collapsed submission',url:base+'/submissions?brand=lifetech&submissionReview=1',ready:'.submission-voting-card',selector:'.presentation-applications',hidden:['.submission-card-details']},
+  {name:'Expanded submission',url:base+'/submissions?brand=lifetech&submissionReview=1',ready:'.submission-voting-card',selector:'.presentation-applications',actions:[{click:'Expand submission: The Limits of Contemporary Medicine'}],visible:['.submission-card-details']},
+  {name:'Unselected submission',url:base+'/submissions?brand=lifetech&submissionReview=1&unselected=1',ready:'.submission-voting-card',selector:'.presentation-applications',hidden:['.submission-card-details']},
  ]
- const report=await renderLayouts([...layouts,...supportLayouts,...submissionLayouts],output)
+ const report=await renderLayouts(process.env.SUBMISSION_REVIEW_ONLY?submissionLayouts:[...layouts,...supportLayouts,...submissionLayouts],output)
+ // Exercise actual controls against synthetic, in-memory vote responses only.
+ const browser=await chromium.launch({headless:true})
+ const interactionResults=[]
+ try{
+  for(const width of [320,390,1440]){
+   const context=await browser.newContext({viewport:{width,height:1000},colorScheme:'light'})
+   const page=await context.newPage();let selected=true,votes=0
+   await page.route('**/presentations/favorites**',async route=>{
+    if(route.request().method()==='PUT'){
+     selected=Boolean(route.request().postDataJSON().selected);votes++
+     await route.fulfill({json:{selected}})
+    }else await route.fulfill({json:{favorites:selected?['fixture-submission']:[],limit:3}})
+   })
+   await page.goto(base+'/submissions?brand=lifetech&submissionReview=1')
+   const card=page.locator('.submission-voting-card'),details=card.locator('.submission-card-details')
+   await card.waitFor()
+   if(await details.isVisible())throw Error('Collapsed details are visible')
+   await page.getByRole('button',{name:'Expand submission: The Limits of Contemporary Medicine',exact:true}).click()
+   if(!await details.isVisible()||votes)throw Error('Expand changed the vote or failed to reveal details')
+   await card.getByText('View team',{exact:true}).click()
+   if(!await card.getByText('Sam Rivera',{exact:true}).isVisible()||votes)throw Error('Team disclosure failed or changed vote')
+   await card.getByRole('button',{name:'Edit application',exact:true}).click()
+   await card.getByRole('button',{name:'Delete application',exact:true}).click()
+   if(!await card.locator('dialog').isVisible()||votes)throw Error('Delete confirmation failed or changed vote')
+   await card.getByRole('button',{name:'Cancel',exact:true}).click()
+   await page.getByRole('button',{name:'Collapse submission: The Limits of Contemporary Medicine',exact:true}).click()
+   if(await details.isVisible())throw Error('Collapse did not hide details')
+   const title=card.getByRole('heading',{name:'The Limits of Contemporary Medicine',exact:true})
+   await title.evaluate(el=>el.scrollIntoView({block:'center'}))
+   const rect=await title.boundingBox();await page.mouse.click(rect.x+10,rect.y+10)
+   await page.waitForFunction(()=>document.querySelector('.submission-card-select')?.getAttribute('aria-pressed')==='false')
+   if(votes!==1)throw Error('Card click must change vote exactly once')
+   const vote=card.locator('.submission-card-select');await vote.focus();await page.keyboard.press('Enter')
+   await page.waitForFunction(()=>document.querySelector('.submission-card-select')?.getAttribute('aria-pressed')==='true')
+   if(votes!==2)throw Error('Keyboard vote must change vote exactly once')
+   if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('Submission layout overflows viewport')
+   interactionResults.push({width,status:'passed',checks:8});await context.close()
+  }
+ }finally{await browser.close();await writeFile(join(output,'submission-interactions.json'),JSON.stringify(interactionResults,null,2))}
  await import('node:fs/promises').then(fs=>fs.writeFile(join(output,'review.json'),JSON.stringify({mode:'synthetic-offline-fixtures',humanVisualReviewRequired:true,views:report.length,errors:report.filter(r=>r.error||r.errors?.length||r.brokenImages?.length),overflow:report.filter(r=>r.overflow)},null,2)))
  if(report.some(r=>r.error||r.errors?.length||r.brokenImages?.length||r.overflow))process.exitCode=1
 }finally{server.closeAllConnections();await new Promise(r=>server.close(r))}
