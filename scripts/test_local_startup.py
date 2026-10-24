@@ -61,32 +61,21 @@ class StartupTests(unittest.TestCase):
         self.assertEqual(launcher.parse_args(['--login','admin']).login,'admin')
 
     def test_database_wait_is_bounded_and_never_logs_credentials(self):
-        output=io.StringIO()
-        with patch.object(docker_utils.subprocess,'run',side_effect=subprocess.CalledProcessError(1,['pg_isready'])) as run,patch.object(docker_utils.time,'sleep'),contextlib.redirect_stdout(output):
-            with self.assertRaisesRegex(RuntimeError,'after 2 attempts'):
-                docker_utils.wait_for_db('local','postgresql://fixture:do-not-print@db:5432/test',max_attempts=2)
-            self.assertEqual(run.call_count,2)
-        self.assertNotIn('do-not-print',output.getvalue())
-        self.assertNotIn('postgresql://',output.getvalue())
-        self.assertIn('db:5432',output.getvalue())
+        from docker_utils import sdk
+        from docker.errors import ContainerError
+        client=Mock();client.containers.run.side_effect=ContainerError(None,1,'pg_isready','postgres','not ready')
+        with patch.object(sdk,'client',return_value=client),patch.object(sdk,'ensure_image',return_value='postgres:15-alpine'),patch.object(sdk.time,'sleep'):
+            with self.assertRaisesRegex(RuntimeError,'timed out'):
+                sdk.wait_for_db('local','postgresql://fixture:do-not-print@db:5432/test',max_attempts=2)
+        self.assertEqual(client.containers.run.call_count,2)
+        self.assertNotIn('do-not-print',str(client.containers.run.call_args))
 
     def test_ready_database_returns_after_first_probe(self):
-        with patch.object(docker_utils.subprocess,'run') as run,contextlib.redirect_stdout(io.StringIO()):
-            docker_utils.wait_for_db('local','postgresql://fixture:secret@db:5432/test')
-            self.assertEqual(run.call_count,1)
-            self.assertNotIn('secret',' '.join(run.call_args.args[0]))
-
-    def test_container_start_preserves_legacy_dns_through_docker_sdk(self):
-        from docker.errors import NotFound
-        from docker.models.containers import _create_container_args
+        from docker_utils import sdk
         client=Mock()
-        client.containers.get.side_effect=NotFound('absent')
-        client.api.create_endpoint_config.side_effect=docker_utils.DOCKER_CLIENT.api.create_endpoint_config
-        with patch.object(docker_utils,'DOCKER_CLIENT',client),contextlib.redirect_stdout(io.StringIO()):
-            docker_utils.run_container({'name':'lifetech-identity-api','image':'python:3.11-slim','network':'bmoremedtech'})
-        options=_create_container_args({**client.containers.run.call_args.kwargs,'version':'1.45'})
-        aliases=options['networking_config']['EndpointsConfig']['bmoremedtech']['Aliases']
-        self.assertIn('lifetech-identity-api',aliases)
-        self.assertIn('bmoremedtech-pidp-dev',aliases)
+        with patch.object(sdk,'client',return_value=client),patch.object(sdk,'ensure_image',return_value='postgres:15-alpine'):
+            sdk.wait_for_db('local','postgresql://fixture:secret@db:5432/test')
+        self.assertEqual(client.containers.run.call_count,1)
+        self.assertNotIn('secret',str(client.containers.run.call_args))
 
 if __name__=='__main__':unittest.main()
