@@ -1,5 +1,8 @@
 # Authenticated production working copies
 
+The [sync everything API](SYNC_EVERYTHING.md) provides a single catalog/pull/
+preview/apply endpoint and a client for complete pagination of supported reads.
+
 `orgportal working-copy` exchanges selected records with production through
 the authenticated MCP API. It never imports or uploads a database. The local
 working directory defaults to `~/.orgportal-working-copy`, outside DR archives,

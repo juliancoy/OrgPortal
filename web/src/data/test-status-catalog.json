@@ -1639,6 +1639,20 @@
       ]
     },
     {
+      "id": "suite-org-worker-test-sync-everything-test-ts",
+      "label": "org-worker/test/sync-everything.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/sync-everything.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "sync-everything.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-org-worker-test-timebank-test-ts",
       "label": "org-worker/test/timebank.test.ts",
       "category": "Timebank",
@@ -2559,6 +2573,20 @@
         {
           "id": "suite",
           "label": "test-local-personnel.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-local-presenter-application-py",
+      "label": "web/scripts/test-local-presenter-application.py",
+      "category": "User interface and integrations",
+      "source": "web/scripts/test-local-presenter-application.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-presenter-application.py"
         }
       ]
     },

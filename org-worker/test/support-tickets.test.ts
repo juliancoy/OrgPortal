@@ -7,14 +7,18 @@ function fixture(){
  const sql=new DatabaseSync(':memory:');sql.exec('PRAGMA foreign_keys=ON');
  for(const file of ['0001_contact_pages.sql','0002_org_event_directories.sql','0015_organization_iam.sql','0006_connections_notifications.sql'])sql.exec(readFileSync(new URL('../migrations/'+file,import.meta.url),'utf8'));
  sql.exec(`CREATE TABLE change_journal_exclusions(table_name TEXT PRIMARY KEY,reason TEXT);
+ CREATE TABLE group_sites(organization_id TEXT,hostname TEXT,custom_domain_hostname TEXT,custom_domain_status TEXT);
  INSERT INTO organizations(id,name,slug,tags,city) VALUES('life','LifeTech','lifetech','[]','Baltimore'),('other','Other','other','[]','Baltimore');
  INSERT INTO organization_memberships(organization_id,user_id,user_name,role,status) VALUES('life','owner','Owner','owner','active'),('life','admin','Admin','administrator','active'),('life','member','Member','member','active'),('other','outsider','Other owner','owner','active');`);
  sql.exec(readFileSync(new URL('../migrations/0116_support_tickets.sql',import.meta.url),'utf8'));
  sql.exec(readFileSync(new URL('../migrations/0117_support_controls.sql',import.meta.url),'utf8'));
+ sql.exec(readFileSync(new URL('../migrations/0120_support_mailbox_identity.sql',import.meta.url),'utf8'));
+ sql.exec(readFileSync(new URL('../migrations/0121_organization_service_email.sql',import.meta.url),'utf8'));
+ sql.exec("INSERT INTO support_mailboxes VALUES('life','service@lifetech.fyi')");
  sql.exec("INSERT INTO support_settings VALUES('life',1,'owner','2026-01-01')");
  const db={prepare(query:string){const statement=sql.prepare(query);const bind=(args:any[])=>({bind:(...args:any[])=>bind(args),first:async()=>statement.get(...args)||null,all:async()=>({results:statement.all(...args)}),run:async()=>({meta:{changes:Number(statement.run(...args).changes)}})});return bind([])},async batch(statements:any[]){sql.exec('BEGIN');try{const results=[];for(const statement of statements)results.push(await statement.run());sql.exec('COMMIT');return results}catch(e){sql.exec('ROLLBACK');throw e}}} as unknown as D1Database;
  const mail:SupportMail={from:'sender@example.com',to:'service@lifetech.fyi',subject:'Question',text:'Where can I read the LifeTech bylaws?',messageId:'<one@example.com>',automated:false,attachments:false};
- const app=supportRoutes(async(_env,request)=>({id:request.headers.get('X-Test-User')||'member'}));
+ const app=supportRoutes(async(_env,request)=>({id:request.headers.get('X-Test-User')||'member',email:'verified@example.com',identity_data:{email_verified:true}}));
  const request=(path:string,method='GET',body?:unknown,user='owner',send=async()=>{})=>app.request('/'+path,{method,headers:{'X-Test-User':user,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined},{DB:db,SUPPORT_EMAIL:{send}} as unknown as Env);
  return {sql,db,mail,request};
 }
@@ -46,16 +50,18 @@ test('failed automatic delivery stays open and alerts admins; replies reopen the
  assert.equal(f.sql.prepare("SELECT delivery FROM support_messages WHERE direction='outbound'").get()?.delivery,'uncertain');
  assert.equal(f.sql.prepare('SELECT count(*) AS n FROM user_notifications').get()?.n,2);
  assert.ok('ticketId'in result);
- const reply=await acceptSupportMail(f.db,{...f.mail,subject:'Re: [LT-'+result.ticketId+'] Question',messageId:'<followup>',text:'More help please'},async()=>{});
+ const reply=await acceptSupportMail(f.db,{...f.mail,subject:'Re: [OP-'+result.ticketId+'] Question',messageId:'<followup>',text:'More help please'},async()=>{});
  assert.equal('ticketId'in reply&&reply.ticketId,result.ticketId);
- const stranger=await acceptSupportMail(f.db,{...f.mail,from:'stranger@example.com',subject:'Re: [LT-'+result.ticketId+'] Question',messageId:'<stranger>',text:'More help please'},async()=>{});
+ const stranger=await acceptSupportMail(f.db,{...f.mail,from:'stranger@example.com',subject:'Re: [OP-'+result.ticketId+'] Question',messageId:'<stranger>',text:'More help please'},async()=>{});
  assert.notEqual('ticketId'in stranger&&stranger.ticketId,result.ticketId);
 });
 test('private queue, ticket details, FAQ and replies require live admin permission in the correct org',async()=>{
  const f=fixture();const result=await acceptSupportMail(f.db,{...f.mail,text:'Unknown question'},async()=>{});assert.ok('ticketId'in result);const id=result.ticketId!;
  for(const user of ['member','outsider']){
   assert.equal((await f.request(id,'GET',undefined,user)).status,403);
-  assert.equal((await f.request('settings/life','GET',undefined,user)).status,403);
+  const settings=await f.request('settings/life','GET',undefined,user);
+  assert.equal(settings.status,user==='member'?200:403);
+  if(user==='member'){const data=await settings.json();assert.equal(data.canManage,false);assert.deepEqual(data.faqs,[]);assert.deepEqual(data.routes,[]);assert.deepEqual(data.admins,[]);}
   assert.equal((await f.request(id+'/reply','POST',{body:'Unauthorized',requestId:crypto.randomUUID()},user)).status,403);
   assert.equal((await f.request(id,'DELETE',undefined,user)).status,403);
   assert.deepEqual((await(await f.request('','GET',undefined,user)).json()).tickets,[]);

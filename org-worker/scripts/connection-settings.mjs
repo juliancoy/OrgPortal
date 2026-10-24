@@ -32,7 +32,7 @@ export function connectionSettings(directory = join(homedir(), '.orgportal-conne
   const matches = (entry, resource, issuer) => entry.resource === resource && entry.issuer === issuer;
   async function update(change) {
     await prepare();
-    const release = await lockfile.lock(join(directory, 'connection-settings'), { realpath: false, retries: { retries: 5, minTimeout: 25, maxTimeout: 100 }, stale: 120000 });
+    const release = await lockfile.lock(join(directory, 'connection-settings'), { realpath: false, retries: { retries: 20, minTimeout: 50, maxTimeout: 250, randomize: true }, stale: 120000 });
     const temporary = join(directory, `.connections-${randomUUID()}.tmp`);
     try {
       const value = await read(); change(value);

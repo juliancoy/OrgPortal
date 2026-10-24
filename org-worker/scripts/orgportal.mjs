@@ -8,6 +8,7 @@ import { browserLogin } from './event-upload.mjs';
 import { credentialStore } from './upload-connection.mjs';
 import { syncNewsletterDatabase } from './newsletter-sync.mjs';
 import { workingCopy } from './working-copy.mjs';
+import { syncEverything } from './sync-everything.mjs';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
@@ -29,6 +30,7 @@ const help = `Usage:
   orgportal sync [--portal https://lifetech.fyi] [--connection NAME] [--dry-run]
   orgportal working-copy pull|edit|preview|sync|status|forget --organization ID [--file PATCH_JSON] [--preview-id UUID]
   orgportal working-copy purge
+  orgportal sync-everything --organization ID [--connection NAME] [--catalog]
   orgportal journal sync [--file SQLITE_PATH] (requires Cloudflare operator login)
 
 Options: --resource HTTPS_MCP_URL, --issuer HTTPS_PIDP_ORIGIN, --client-id ID, --json, --version
@@ -46,7 +48,7 @@ export function parseCommand(args, env = process.env) {
   const { values, positionals } = parseArgs({ args, allowPositionals: true, options: {
     portal: { type: 'string' }, resource: { type: 'string' }, issuer: { type: 'string' },
     connection: { type: 'string' }, 'client-id': { type: 'string' },
-    live: { type: 'boolean' }, json: { type: 'boolean' }, version: { type: 'boolean' },
+    live: { type: 'boolean' }, json: { type: 'boolean' }, version: { type: 'boolean' }, catalog: { type: 'boolean' },
     admin: { type: 'boolean' }, browser: { type: 'boolean' }, dialog: { type: 'boolean' }, 'no-browser': { type: 'boolean' }, help: { type: 'boolean', short: 'h' },
     'dry-run': { type: 'boolean' }, local: { type: 'string' }, deployment: { type: 'string' }, cert: { type: 'string' },
     file: { type: 'string' }, organization: { type: 'string' }, 'preview-id': { type: 'string' }, directory: { type: 'string' }, workflow: { type: 'string' },
@@ -59,10 +61,14 @@ export function parseCommand(args, env = process.env) {
   }
   const profile = positionals.length === 2 && positionals[0] === 'profile' && ['get','preview','apply','status'].includes(positionals[1]);
   const working = positionals.length === 2 && positionals[0] === 'working-copy' && ['pull','edit','preview','sync','status','forget','purge'].includes(positionals[1]);
+  const everything = positionals.length === 1 && positionals[0] === 'sync-everything';
+  if (everything && !values.organization) throw Error('sync-everything requires an exact --organization ID.');
+  if (values.catalog && !everything) throw Error('--catalog applies only to sync-everything.');
+  if (everything && (values['dry-run'] || values.file || values.workflow || values['preview-id'])) throw Error('sync-everything pulls API records; use --catalog for coverage and the domain preview/apply API for outgoing changes.');
   if (working && positionals[1] !== 'purge' && !values.organization) throw Error('Working-copy commands require an exact --organization ID.');
   if (working && positionals[1] === 'edit' && !values.file) throw Error('Working-copy edit requires --file PATCH_JSON.');
   if (working && values['dry-run']) throw Error('Use working-copy preview to review outgoing changes.');
-  if (values.directory && !working) throw Error('--directory applies only to working-copy commands.');
+  if (values.directory && !working && !everything) throw Error('--directory applies only to working-copy commands.');
   if (values.workflow && !working) throw Error('--workflow applies only to working-copy commands.');
   if (profile && (!values.organization || (['preview','apply'].includes(positionals[1]) && !values.file) || (['apply','status'].includes(positionals[1]) && !values['preview-id']))) throw Error('Profile commands require --organization; preview/apply require --file; apply/status require --preview-id.');
   if (profile && values['dry-run']) throw Error('Use profile preview instead of --dry-run.');
@@ -72,7 +78,7 @@ export function parseCommand(args, env = process.env) {
   if (values.live && !(authInspection && positionals[1] === 'status')) throw Error('--live applies only to auth status.');
   if (values.json && !(inspection || authInspection)) throw Error('--json is supported for whoami, doctor, and auth status/list/switch.');
   if (authInspection && positionals[1] === 'switch' && values.connection) throw Error('Use auth switch NAME without --connection.');
-  if (!working && !profile && !sync && !inspection && !authInspection && (positionals.length !== 2 || positionals[0] !== 'auth' || !['login', 'logout'].includes(positionals[1]))) {
+  if (!everything && !working && !profile && !sync && !inspection && !authInspection && (positionals.length !== 2 || positionals[0] !== 'auth' || !['login', 'logout'].includes(positionals[1]))) {
     throw new Error('Unknown command. Run orgportal --help for account, profile and synchronization commands.');
   }
   if (values.portal && values.resource) throw new Error('Choose --portal or --resource.');
@@ -91,7 +97,7 @@ export function parseCommand(args, env = process.env) {
   if (values.admin && !values.connection) throw Error('Use --admin with an explicit --connection name to keep the website connection separate.');
   const connection = (authInspection && positionals[1] === 'switch' ? positionals[2] : values.connection) || env.ORGPORTAL_CONNECTION || 'default';
   if (!/^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,79}$/.test(connection)) throw new Error('Invalid connection name.');
-  return { action: working ? 'working-copy' : profile ? 'profile' : sync ? 'sync' : inspection ? positionals[0] : positionals[1], workingAction: working ? positionals[1] : undefined, workingDirectory: resolve(values.directory || homedir() + '/.orgportal-working-copy'), workflowFile: values.workflow ? resolve(values.workflow) : undefined, json: !!values.json, live: !!values.live, connectionExplicit: !!values.connection || !!env.ORGPORTAL_CONNECTION || positionals[1] === 'switch', profileAction: profile ? positionals[1] : undefined, organizationId: values.organization, previewId: values['preview-id'], profileFile: values.file ? resolve(values.file) : undefined, resource: resource.href, issuer: issuer.origin,
+  return { action: everything ? 'sync-everything' : working ? 'working-copy' : profile ? 'profile' : sync ? 'sync' : inspection ? positionals[0] : positionals[1], catalog: !!values.catalog, workingAction: working ? positionals[1] : undefined, workingDirectory: resolve(values.directory || homedir() + '/.orgportal-working-copy'), workflowFile: values.workflow ? resolve(values.workflow) : undefined, json: !!values.json, live: !!values.live, connectionExplicit: !!values.connection || !!env.ORGPORTAL_CONNECTION || positionals[1] === 'switch', profileAction: profile ? positionals[1] : undefined, organizationId: values.organization, previewId: values['preview-id'], profileFile: values.file ? resolve(values.file) : undefined, resource: resource.href, issuer: issuer.origin,
     connection, dialog: !!values.dialog, clientId: values['client-id'], admin: !!values.admin, openBrowser: !!values.browser && !values['no-browser'], dryRun: !!values['dry-run'],
     local: values.local || 'https://localhost:8443', deployment: resolve(values.deployment || root + '/.local/bmoremedtech-newsletter-storage.json'),
     cert: resolve(values.cert || root + '/.local/certs/localhost.crt') };
@@ -139,7 +145,7 @@ export async function run(args, dependencies = {}) {
       if (!saved?.refreshToken) checks.push({code:'account',status:'warn',message:'No saved account. Run orgportal auth login.'});
       emit({ ok: false, checks }); return { ok: false };
     }
-    if (['working-copy','sync','profile','whoami','doctor','switch','status'].includes(command.action) && !(await store.load())?.refreshToken) throw Object.assign(Error('Sign in first: orgportal auth login'),{code:'login_required'});
+    if (['sync-everything','working-copy','sync','profile','whoami','doctor','switch','status'].includes(command.action) && !(await store.load())?.refreshToken) throw Object.assign(Error('Sign in first: orgportal auth login'),{code:'login_required'});
     // Logging out an absent connection needs neither a browser nor a network call.
     if (command.action === 'logout' && !(await store.load())?.refreshToken) {
       await settings.remove(command.resource,command.issuer,command.connection);
@@ -162,6 +168,8 @@ export async function run(args, dependencies = {}) {
       const result = command.action === 'doctor' ? {...data,checks:[...checks,...data.checks],ok:checks.every(check=>check.status==='pass') && data.ok} : data;
       const output = {...result,connectionName:command.connection,...(command.action==='status'?{connected:true,needsReconnect:false,liveChecked:true}:{})};
       emit(output); return output;
+    } else if (command.action === 'sync-everything') {
+      await (dependencies.syncEverything || syncEverything)(command, account, log);
     } else if (command.action === 'working-copy') {
       const result = await (dependencies.workingCopy || workingCopy)(command, account);
       log(JSON.stringify(result, null, 2));

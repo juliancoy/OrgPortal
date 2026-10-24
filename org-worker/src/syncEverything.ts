@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { authenticateMcp, eventErrorResponse, mcpConfiguration } from './eventMcp';
 import { EventIntegrationError } from './eventPlatforms';
 import { authorizeOrganization } from './organizationIam';
+import { enforceEventRateLimit } from './eventOperationStore';
 
 type Dispatch = (request: Request, env: Env) => Promise<Response>;
 const object = z.record(z.string(), z.unknown());
@@ -18,7 +19,7 @@ const inputSchema = z.object({
 }).strict();
 const cursorSchema = z.object({ version: z.literal(1), subject: z.string(), resource: z.string(),
   organizationId: z.string(), expiresAt: z.number(), pending: z.array(taskSchema).max(500),
-  seen: z.array(z.string().max(500)).max(1000) }).strict();
+  seen: z.array(z.string().max(2000)).max(1000) }).strict();
 const rpcSchema = z.object({ error: z.unknown().optional(), result: z.unknown().optional() });
 const resultSchema = z.object({ isError: z.boolean().optional(), structuredContent: z.unknown().optional(),
   content: z.array(z.object({ type: z.string(), text: z.string().optional() }).passthrough()).optional() }).passthrough();
@@ -59,13 +60,25 @@ const exclusions = [
   'Records outside existing authorized organization API projections',
 ];
 
-function encodeCursor(value: z.infer<typeof cursorSchema>) {
+async function cursorKey(secret: string) {
+  return crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
+}
+async function encodeCursor(value: z.infer<typeof cursorSchema>, secret: string) {
   const bytes = new TextEncoder().encode(JSON.stringify(value));
   if (bytes.length > 65000) throw new EventIntegrationError(413, 'Sync continuation exceeds its bound; use domain pagination');
-  return btoa(Array.from(bytes, byte => String.fromCharCode(byte)).join(''));
+  const payload = btoa(Array.from(bytes, byte => String.fromCharCode(byte)).join(''));
+  const signature = new Uint8Array(await crypto.subtle.sign('HMAC', await cursorKey(secret), new TextEncoder().encode('orgportal-sync-everything:v1:' + payload)));
+  return payload + '.' + btoa(Array.from(signature, byte => String.fromCharCode(byte)).join(''));
 }
-function decodeCursor(value: string) {
-  try { return cursorSchema.parse(JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(value), c => c.charCodeAt(0))))); }
+async function decodeCursor(value: string, secret: string) {
+  try {
+    const parts = value.split('.');
+    if (parts.length !== 2) throw Error();
+    const [payload, signature] = parts;
+    const valid = await crypto.subtle.verify('HMAC', await cursorKey(secret), Uint8Array.from(atob(signature), c => c.charCodeAt(0)), new TextEncoder().encode('orgportal-sync-everything:v1:' + payload));
+    if (!valid) throw Error();
+    return cursorSchema.parse(JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(payload), c => c.charCodeAt(0)))));
+  }
   catch { throw new EventIntegrationError(400, 'Invalid sync cursor'); }
 }
 
@@ -78,12 +91,13 @@ export function syncEverythingRoutes(dispatch: Dispatch) {
     try {
       if (c.env.ORGANIZATION_REPLICA_SOURCE) throw new EventIntegrationError(409, 'Sync requires the authoritative production API');
       const config = mcpConfiguration(c.env, c.req.raw);
-      if (!config.introspection) throw new EventIntegrationError(503, 'Sync requires live account revocation checks');
+      if (!config.introspection || !config.introspectionSecret) throw new EventIntegrationError(503, 'Sync requires live account revocation checks');
       const identity = await authenticateMcp(c.req.raw, c.env);
       const input = inputSchema.parse(await c.req.json());
       if (!identity.scopes.includes('org:portal.read') || (['preview', 'apply'].includes(input.mode) && !identity.scopes.includes('org:portal.write'))) throw new EventIntegrationError(403, 'Missing portal scope');
       if (config.organizationId && input.organizationId !== config.organizationId) throw new EventIntegrationError(403, 'Connection is limited to its own organization');
       await authorizeOrganization(c.env.DB, { id: identity.userId, name: identity.userId, email: null, isOperator: identity.isOperator === true }, 'read_members', input.organizationId);
+      await enforceEventRateLimit(c.env.DB, identity.userId);
       if (input.mode !== 'pull' && input.cursor) throw new EventIntegrationError(400, 'Cursors apply only to pulls');
       if (['pull', 'catalog'].includes(input.mode) && input.operation) throw new EventIntegrationError(400, 'Read requests cannot contain outgoing changes');
 
@@ -134,7 +148,7 @@ export function syncEverythingRoutes(dispatch: Dispatch) {
           operation: operation.name, atomicBatch: false, ...result }, result.isError ? 409 : 200);
       }
 
-      const state = input.cursor ? decodeCursor(input.cursor) : { version: 1 as const, subject: identity.subject,
+      const state = input.cursor ? await decodeCursor(input.cursor, config.introspectionSecret) : { version: 1 as const, subject: identity.subject,
         resource: config.resource, organizationId: input.organizationId, expiresAt: Date.now() + 10 * 60000,
         pending: rootReads.map(task => ({ ...task, arguments: { ...task.arguments } })), seen: [] as string[] };
       if (state.subject !== identity.subject || state.resource !== config.resource || state.organizationId !== input.organizationId || state.expiresAt <= Date.now()) throw new EventIntegrationError(409, 'Sync cursor is expired or belongs to another dataset/account');
@@ -148,21 +162,26 @@ export function syncEverythingRoutes(dispatch: Dispatch) {
         const data = result.structuredContent;
         if (!result.isError && data && typeof data === 'object' && !Array.isArray(data)) {
           const record = object.parse(data);
-          if (typeof record.nextCursor === 'string' && record.nextCursor) state.pending.unshift({ tool: task.tool, arguments: { ...task.arguments, cursor: record.nextCursor } });
           const queue = (tool: string, key: string, id: unknown) => {
             if (typeof id !== 'string' || !id || id.length > 200) return;
-            const tag = tool + ':' + id;
-            if (!state.seen.includes(tag)) { state.seen.push(tag); state.pending.push({ tool, arguments: { [key]: id, ...(tool === 'get_event' ? { source: 'native' } : {}) } }); }
+            if (!state.pending.some(task => task.tool === tool && task.arguments[key] === id)) state.pending.push({ tool, arguments: { [key]: id, ...(tool === 'get_event' ? { source: 'native' } : {}) } });
           };
           if (task.tool === 'list_events' && Array.isArray(record.events)) for (const entry of record.events) {
             const row = object.parse(entry);
             for (const tool of ['get_event', 'get_event_company_votes', 'list_presentation_applications']) queue(tool, 'eventId', row.id);
           }
           if (task.tool === 'list_motions' && Array.isArray(record.motions)) for (const entry of record.motions) queue('get_motion', 'motionId', object.parse(entry).id);
+          // Drain each page's details before requesting another collection page;
+          // the continuation never grows with the total event count.
+          if (typeof record.nextCursor === 'string' && record.nextCursor) {
+            if (state.seen.includes(record.nextCursor)) throw new EventIntegrationError(502, 'Domain pagination repeated a cursor');
+            state.seen = [...state.seen.slice(-20), record.nextCursor];
+            state.pending.push({ tool: task.tool, arguments: { ...task.arguments, cursor: record.nextCursor } });
+          }
         }
-        if (new TextEncoder().encode(JSON.stringify(records)).length > 1024 * 1024) throw new EventIntegrationError(413, 'Sync page exceeds 1 MiB; retry with a smaller limit or use domain APIs');
+        if (new TextEncoder().encode(JSON.stringify(records)).length > 900000) throw new EventIntegrationError(413, 'Sync page exceeds its size bound; retry with a smaller limit or use domain APIs');
       }
-      const nextCursor = state.pending.length ? encodeCursor(cursorSchema.parse(state)) : null;
+      const nextCursor = state.pending.length ? await encodeCursor(cursorSchema.parse(state), config.introspectionSecret) : null;
       return c.json({ version: 1, organizationId: input.organizationId, resource: config.resource,
         records, nextCursor, cycleComplete: !nextCursor, coverage });
     } catch (error) {
