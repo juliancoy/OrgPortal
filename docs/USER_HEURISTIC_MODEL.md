@@ -1,0 +1,55 @@
+# User heuristic model for clickthrough analysis
+
+The executable model is [model.json](../web/scripts/user-model/model.json). It describes assumed goals, not measured human behavior. Its personas are task roles; they do not infer age, disability, preferences or account permissions from personal characteristics.
+
+## Analysis procedure
+
+1. Select a persona, concrete goal, starting page, authentication/permission state and device/network conditions. Use a fresh browser context or explicitly record retained state.
+2. State what a user should understand and expect before each action. Assess the visible label and surrounding information before consulting the implementation's destination. Record equally plausible alternatives and any unexplained portal terminology.
+3. Follow a visible action using the intended input method. Record accessible name, route, observed state, errors, backtracks, required authentication and loss of tenant/task context. Never infer task success from HTTP 200, a changed URL or a screenshot alone.
+4. Verify the task's required outcome evidence through browser assertions. A form must actually be visible; its event/tenant must match. Sign-in must return to the intended task. A successful save needs confirmation and persisted state. Writes belong in authorized isolated fixtures, not public live audits.
+5. Review hierarchy, grouping and information scent against the intended reading order. Keep human judgments pending until someone examines the actual captures. Record each finding with the task, step, observation, impact, evidence and proposed correction.
+6. Test recovery and an alternate condition where relevant. Distinguish a delayed response from a failed task; do not invent timing limits or assume a slow connection was tested.
+
+## Roles and priorities
+
+| Role | Primary question |
+| --- | --- |
+| First-time visitor | What is this event, when/where is it, and what can I do? |
+| Organization applicant | How do I apply with my organization? |
+| Guest applicant | Can I apply without creating an organization account? |
+| Returning member | Will signing in restore my intended task? |
+| Manager | Which controls configure the event, and was my change saved? |
+| Keyboard user | Where is focus, and can I complete the same task? |
+
+Keyboard operation and slow connections are cross-cutting conditions, not substitutes for the other task roles. A manager's permission must come from test setup, never from the persona label.
+
+## Evidence and reporting
+
+`reviewUserTask(page, taskId, parameters, evidence)` checks visible, enabled and uniquely named actions within a defined task scope and compares their destinations to the model. It encodes route parameters and rejects external/wrong destinations. The existing layout interaction runner invokes this before its application/submission checks at 320, 390 and 1440 pixels.
+
+Its `user-heuristics.json` report distinguishes:
+
+- `affordance-verified`: the modeled entry control is present and points to the expected route. It does not assert successful application or sign-in.
+- `failed`: a modeled entry action is absent, ambiguous, hidden, disabled or misdirected.
+- `destination-unverified`: required task-completion evidence is missing.
+- `not-assessed`: no automated observer covers this task yet.
+- Human review `pending`: no aesthetic or cognitive assessment has been inferred from automated checks.
+
+Callers may supply outcome evidence only after asserting it in the journey. An evidence string is an assertion contract, not independent proof. The current fixture integration supplies no completion evidence and deliberately reports all application outcomes as unverified. Visitor orientation, contextual sign-in, manager settings and keyboard section journeys remain unassessed by this integration. Light/dark captures exist separately; these affordance checks run at three widths in the fixture's default theme. Slow-network behavior is not covered.
+
+Do not combine these categories into a percentage “usability score.” Report blockers (cannot proceed), major issues (wrong/ambiguous action or lost context), and minor issues (extra effort with a clear recovery), with evidence. Severity requires a task-specific judgment; it is not automatically assigned from a missing selector.
+
+## Historical and UX basis
+
+Read [the hierarchy review](EVENT_CONTROLS_UX.md). Relevant principles are reading order, consistent alignment, proximity, restrained emphasis and separation of administrative and attendee tasks. [NN/g's visual hierarchy guidance](https://www.nngroup.com/articles/visual-hierarchy-ux-definition/) explains grouping and emphasis; [GOV.UK button guidance](https://design-system.service.gov.uk/components/button/) supports explicit action labels. These guide analysis rather than prescribe LifeTech's visual identity.
+
+## Run
+
+```sh
+cd web
+node --test scripts/user-model/review.test.mjs
+SUBMISSION_REVIEW_ONLY=1 npm run render:layouts -- ../artifacts/layout-review/user-heuristics
+```
+
+The existing distributed `visual` suite runs this same fixture runner and writes the report alongside its layout artifacts. A passing run establishes the checks it executed, not full usability or accessibility conformance.

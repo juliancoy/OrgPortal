@@ -65,3 +65,10 @@ Review the contact sheets and `submission-interactions.json`. Inspect the
 expanded team and application controls, the unselected state, theme contrast and
 mobile wrapping. A completed render alone does not prove these are satisfactory.
 The normal distributed `visual` suite includes these checks without the filter.
+
+## User task heuristics
+
+The fixture interaction runner also writes `user-heuristics.json`, using the
+[task-based user model](USER_HEURISTIC_MODEL.md). Entry-control checks are separate
+from task completion and human hierarchy review; uncovered journeys remain
+explicitly unassessed. The distributed visual suite uses the same runner.

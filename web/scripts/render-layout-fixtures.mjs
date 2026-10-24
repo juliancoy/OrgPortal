@@ -5,6 +5,7 @@ import {mkdir,writeFile} from 'node:fs/promises'
 import {resolve,join} from 'node:path'
 import {fileURLToPath} from 'node:url'
 import {renderLayouts} from './render-layouts.mjs'
+import {reviewUserTask,userModel} from './user-model/review.mjs'
 const root=resolve(fileURLToPath(new URL('..',import.meta.url)))
 const output=resolve(process.argv[2]||join(root,'../artifacts/layout-review/fixtures'))
 await mkdir(output,{recursive:true})
@@ -27,6 +28,7 @@ try{
  // Exercise actual controls against synthetic, in-memory vote responses only.
  const browser=await chromium.launch({headless:true})
  const interactionResults=[]
+ const userReviews=[]
  try{
   for(const width of [320,390,1440]){
    const context=await browser.newContext({viewport:{width,height:1000},colorScheme:'light'})
@@ -40,6 +42,11 @@ try{
    await page.goto(base+'/event-apply-options?brand=lifetech')
    const registered=page.getByRole('link',{name:'Apply with an organization',exact:true}),guest=page.getByRole('link',{name:'Apply as a guest',exact:true})
    await registered.waitFor()
+   for(const task of ['apply-organization','apply-guest']) {
+    const result=await reviewUserTask(page,task,{eventSlug:'lifetech-demo-day-3',eventId:'fixture-event'})
+    userReviews.push({width,...result})
+    if(result.status==='failed')throw Error(`User task failed: ${task} at ${width}px`)
+   }
    if(await registered.getAttribute('href')!=='/events/lifetech-demo-day-3/apply')throw Error('Registered application link is incorrect')
    if(await guest.getAttribute('href')!=='/api/org/api/network/events/fixture-event/presentations/apply')throw Error('Guest application link is incorrect')
    if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('Application options overflow viewport')
@@ -69,6 +76,7 @@ try{
    interactionResults.push({width,status:'passed',checks:8});await context.close()
   }
  }finally{await browser.close();await writeFile(join(output,'submission-interactions.json'),JSON.stringify(interactionResults,null,2))}
+ await writeFile(join(output,'user-heuristics.json'),JSON.stringify({modelVersion:userModel.version,mode:'synthetic-affordance-review',tasks:userReviews,unassessed:userModel.tasks.filter(task=>!userReviews.some(review=>review.task===task.id)).map(task=>task.id),limitations:'No completed application, real sign-in, saved settings, keyboard journey, slow-network or human usability result is inferred from these fixture checks.'},null,2)+'\n')
  await import('node:fs/promises').then(fs=>fs.writeFile(join(output,'review.json'),JSON.stringify({mode:'synthetic-offline-fixtures',humanVisualReviewRequired:true,views:report.length,errors:report.filter(r=>r.error||r.errors?.length||r.brokenImages?.length),overflow:report.filter(r=>r.overflow)},null,2)))
  if(report.some(r=>r.error||r.errors?.length||r.brokenImages?.length||r.overflow))process.exitCode=1
 }finally{server.closeAllConnections();await new Promise(r=>server.close(r))}
