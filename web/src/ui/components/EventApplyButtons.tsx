@@ -1,4 +1,5 @@
-import { Send, UserRound } from 'lucide-react'
+import Send from 'lucide-react/dist/esm/icons/send.mjs'
+import UserRound from 'lucide-react/dist/esm/icons/user-round.mjs'
 import { Link } from 'react-router-dom'
 import '../views/public/event-application.css'
 

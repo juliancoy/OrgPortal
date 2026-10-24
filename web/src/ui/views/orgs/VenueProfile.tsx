@@ -1,7 +1,8 @@
 import { CmsImage } from '../../components/media/CmsImage'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { MapPin, ExternalLink } from 'lucide-react'
+import MapPin from 'lucide-react/dist/esm/icons/map-pin.mjs'
+import ExternalLink from 'lucide-react/dist/esm/icons/external-link.mjs'
 import type { Venue } from '../../components/EventVenues'
 
 type PastEvent = { id: string; title: string; slug: string; starts_at?: string | null; event_date?: string | null; media?: { id: string; url: string; label: string; alt?: string; kind?: string }[] }

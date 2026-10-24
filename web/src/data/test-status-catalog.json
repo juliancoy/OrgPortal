@@ -2757,6 +2757,20 @@
       ]
     },
     {
+      "id": "suite-web-src-buildPipeline-test-ts",
+      "label": "web/src/buildPipeline.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/buildPipeline.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "buildPipeline.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-web-src-chat-LazyChatService-test-ts",
       "label": "web/src/chat/LazyChatService.test.ts",
       "category": "Messaging and email",

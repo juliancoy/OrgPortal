@@ -13,7 +13,7 @@
     "test:company-votes": "node scripts/test-company-votes.mjs",
     "dev": "vite",
     "render:layouts": "node scripts/render-layout-fixtures.mjs",
-    "build": "node scripts/build-network-positions.mjs && tsc -b && vite build",
+    "build": "node scripts/build.mjs",
     "build:network-positions": "node scripts/build-network-positions.mjs",
     "android:prepare": "npm run build && node scripts/prepare-android-project.mjs",
     "android:add": "npx cap add android",
@@ -60,7 +60,9 @@
     "sync:government": "node scripts/sync-government-awards.mjs",
     "build:performance": "node scripts/build-performance.mjs",
     "test:organization-workflows": "node scripts/test-organization-workflows.mjs",
-    "test:mcp:local": "python3 ../scripts/run-local-mcp-test.py"
+    "test:mcp:local": "python3 ../scripts/run-local-mcp-test.py",
+    "typecheck": "tsc -b",
+    "build:bundle": "node scripts/build-network-positions.mjs && vite build"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.1",

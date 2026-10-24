@@ -1,6 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Award, ArrowLeft, Plus, Star, Users } from 'lucide-react'
+import Award from 'lucide-react/dist/esm/icons/award.mjs'
+import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left.mjs'
+import Plus from 'lucide-react/dist/esm/icons/plus.mjs'
+import Star from 'lucide-react/dist/esm/icons/star.mjs'
+import Users from 'lucide-react/dist/esm/icons/users.mjs'
 import { useAuth } from '../../../app/AppProviders'
 import './five-over-five.css'
 

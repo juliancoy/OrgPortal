@@ -1,4 +1,6 @@
-import { Activity, Network, Sparkles } from 'lucide-react'
+import Activity from 'lucide-react/dist/esm/icons/activity.mjs'
+import Network from 'lucide-react/dist/esm/icons/network.mjs'
+import Sparkles from 'lucide-react/dist/esm/icons/sparkles.mjs'
 import './neonatal-focus.css'
 
 // Focus areas from the organization's public profile; these are not outcome claims.

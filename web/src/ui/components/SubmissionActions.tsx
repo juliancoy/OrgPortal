@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { Pencil, Trash2 } from 'lucide-react'
+import Pencil from 'lucide-react/dist/esm/icons/pencil.mjs'
+import Trash2 from 'lucide-react/dist/esm/icons/trash.mjs'
 import { useAuth } from '../../app/AppProviders'
 import type { PresentationApplication } from './EventPresentations'
 

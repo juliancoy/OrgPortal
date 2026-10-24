@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { ArrowBigDown, ArrowBigUp } from 'lucide-react'
+import ArrowBigDown from 'lucide-react/dist/esm/icons/arrow-big-down.mjs'
+import ArrowBigUp from 'lucide-react/dist/esm/icons/arrow-big-up.mjs'
 import { useAuth } from '../../app/AppProviders'
 import './event-company-votes.css'
 

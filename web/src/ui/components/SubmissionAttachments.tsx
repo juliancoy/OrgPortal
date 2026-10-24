@@ -1,5 +1,8 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { FileText, Paperclip, Plus, Trash2 } from 'lucide-react'
+import FileText from 'lucide-react/dist/esm/icons/file-text.mjs'
+import Paperclip from 'lucide-react/dist/esm/icons/paperclip.mjs'
+import Plus from 'lucide-react/dist/esm/icons/plus.mjs'
+import Trash2 from 'lucide-react/dist/esm/icons/trash.mjs'
 import { useAuth } from '../../app/AppProviders'
 import { attachmentBase, attachmentRequest, submissionAttachmentAccept, uploadSubmissionAttachment, type SubmissionAttachment, type StagedSubmissionAttachment } from './submissionAttachments'
 

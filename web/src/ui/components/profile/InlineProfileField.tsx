@@ -1,6 +1,8 @@
 import { useId, useState, type ReactNode } from 'react'
 import { BioMarkdownEditor } from './BioMarkdownEditor'
-import { Check, Copy, Pencil } from 'lucide-react'
+import Check from 'lucide-react/dist/esm/icons/check.mjs'
+import Copy from 'lucide-react/dist/esm/icons/copy.mjs'
+import Pencil from 'lucide-react/dist/esm/icons/pencil.mjs'
 import './inline-profile.css'
 
 export function InlineProfileField({ label, value, children, onSave, multiline = false, markdown = false, type = 'text', options }: {

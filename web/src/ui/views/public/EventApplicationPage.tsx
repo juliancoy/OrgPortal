@@ -1,6 +1,7 @@
 import {useEffect, useRef, useState} from 'react'
 import {Link, useLocation, useNavigate, useParams} from 'react-router-dom'
-import {ArrowLeft, Copy} from 'lucide-react'
+import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left.mjs'
+import Copy from 'lucide-react/dist/esm/icons/copy.mjs'
 import {useAuth} from '../../../app/AppProviders'
 import {EventPresentations, type PresentationApplication, type PresentationFormAction} from '../../components/EventPresentations'
 import {getActivePortalProfileConfig} from '../../../config/portalFeatures'
