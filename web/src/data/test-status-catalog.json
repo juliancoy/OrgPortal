@@ -603,6 +603,10 @@
         {
           "id": "shared team changes appear on every submission and private team reads require management",
           "label": "shared team changes appear on every submission and private team reads require management"
+        },
+        {
+          "id": "standalone guest intake: no login, bounded private storage, host isolation and expiry",
+          "label": "standalone guest intake: no login, bounded private storage, host isolation and expiry"
         }
       ],
       "category": "Submission and voting",
