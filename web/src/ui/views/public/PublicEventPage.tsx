@@ -823,9 +823,7 @@ export function PublicEventPage() {
             {event.location&&<div><MapPinned size={20} aria-hidden="true" /><a href={mapsUrl!} target="_blank" rel="noreferrer">{event.location}</a></div>}
           </section>
           {(canManageEvent || presentationsEnabled) && <section className="public-event-applications" aria-label="Presentation applications">
-          <div className="public-event-applications-heading"><div><h2>Present at this event</h2><p>Apply with your organization or submit as a guest.</p></div>
-          {canManageEvent && <div className="presentation-settings"><label><input type="checkbox" checked={presentationsEnabled} disabled={presentationSettingsBusy || presentationSettings?.eventId !== event.id} onChange={() => void togglePresentations()} /> Applications open</label>{presentationSettingsError && <p role="status">{presentationSettingsError}</p>}</div>}
-          </div>
+          {canManageEvent && <div className="presentation-settings"><label><input type="checkbox" checked={presentationsEnabled} disabled={presentationSettingsBusy || presentationSettings?.eventId !== event.id} onChange={() => void togglePresentations()} /> Enable presentation applications</label>{presentationSettingsError && <p role="status">{presentationSettingsError}</p>}</div>}
           {presentationsEnabled && <EventApplyButtons eventId={event.id} eventSlug={event.slug || slug!} gold={applyGold} />}
           </section>}
           <div className="public-event-tabs" role="tablist" aria-label="Event sections" onKeyDown={keyEvent=>{

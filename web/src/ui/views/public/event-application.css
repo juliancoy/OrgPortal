@@ -122,21 +122,21 @@
 .event-apply-actions .event-apply-link { margin: 0; min-height: 44px; justify-content: center; }
 @media (max-width: 540px) { .event-apply-actions .event-apply-link { flex: 1 1 180px; } }
 
-/* Keep event application controls together without inherited full-width inputs. */
-.public-event-applications { padding: 1.25rem; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); }
-.public-event-applications-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
-.public-event-applications-heading h2 { margin: 0 0 .3rem; font-size: 1.05rem; line-height: 1.35; }
-.public-event-applications-heading p { margin: 0; color: var(--muted); font-size: .9rem; line-height: 1.5; }
-.public-event-applications .presentation-settings { margin: 0; flex-shrink: 0; }
-.public-event-applications .presentation-settings label { display: inline-flex; gap: .5rem; align-items: center; font-size: .85rem; font-weight: 600; cursor: pointer; }
-.public-event-applications .presentation-settings input[type='checkbox'] { width: 1.1rem; height: 1.1rem; min-width: 1.1rem; margin: 0; padding: 0; accent-color: var(--primary); }
-.public-event-applications .event-apply-actions { margin: 0; gap: .65rem; }
-.public-event-applications .event-apply-link { padding: .7rem 1rem; border-radius: 10px; font-size: .9rem; }
-.public-event-main .public-event-tabs { background: transparent; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; padding: 0 0 .5rem; gap: .35rem; grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
-.public-event-main .public-event-tabs [role='tab'] { min-height: 44px; border-radius: 9px; font-size: .9rem; gap: .45rem; }
-.public-event-main .public-event-tabs [role='tab'][aria-selected='true'] { box-shadow: none; }
-@media (max-width: 600px) {
- .public-event-applications-heading { align-items: flex-start; flex-direction: column; gap: .75rem; }
- .public-event-applications { padding: 1rem; }
- .public-event-main .public-event-tabs [role='tab'] { padding: .6rem .3rem; gap: .3rem; font-size: .82rem; }
+/* Event actions and section navigation: restrained, left-aligned hierarchy.
+   See docs/EVENT_CONTROLS_UX.md for the design guidance. */
+.public-event-applications { display: flex; flex-direction: column; gap: 15px; padding: 0; }
+.public-event-applications .presentation-settings { margin: 0; }
+.public-event-applications .presentation-settings label { display: inline-flex; gap: 10px; align-items: center; min-height: 44px; font-size: .875rem; color: var(--text-muted); cursor: pointer; }
+.public-event-applications .presentation-settings input[type='checkbox'] { flex: 0 0 18px; width: 18px; height: 18px; min-width: 18px; margin: 0; padding: 0; accent-color: var(--primary); }
+.public-event-applications .event-apply-actions { margin: 0; gap: 15px; }
+.public-event-applications .event-apply-link { padding: 10px 15px; border-radius: 6px; font-size: .9375rem; font-weight: 600; }
+.public-event-main .public-event-tabs { display: flex; flex-wrap: nowrap; gap: 25px; padding: 0; background: transparent; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; }
+.public-event-main .public-event-tabs [role='tab'] { position: relative; flex: 0 1 auto; min-height: 48px; padding: 10px 5px; border-radius: 0; font: inherit; font-size: .9375rem; font-weight: 500; color: var(--text-muted); gap: 8px; }
+.public-event-main .public-event-tabs [role='tab'][aria-selected='true'] { background: transparent; color: var(--text); font-weight: 700; box-shadow: inset 0 -3px 0 var(--primary); }
+.public-event-main .public-event-tabs [role='tab']:hover { color: var(--text); }
+@media (max-width: 540px) {
+ .public-event-applications .event-apply-actions { gap: 10px; }
+ .public-event-applications .event-apply-link { flex: 1 1 100%; }
+ .public-event-main .public-event-tabs { gap: 15px; }
+ .public-event-main .public-event-tabs [role='tab'] { font-size: .875rem; gap: 5px; }
 }

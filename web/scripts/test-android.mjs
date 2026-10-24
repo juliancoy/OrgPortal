@@ -29,7 +29,7 @@ try {
   if(!/Android/.test(device.userAgent)||!device.touch)throw Error('Expected physical Android Chrome with touch input')
   if(device.visibility!=='visible')throw Error('Unlock the Pixel and keep Chrome visible during the mobile test')
   if(name==='application-options') {
-   const link=page.getByRole('link',{name:'Registered Apply',exact:true})
+   const link=page.getByRole('link',{name:'Apply with an organization',exact:true})
    if(await link.getAttribute('href')!=='/events/lifetech-demo-day-3/apply')throw Error('Incorrect application destination')
   }
   if(name==='submission-touch') {
