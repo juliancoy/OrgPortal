@@ -8,6 +8,9 @@ import ExternalLink from 'lucide-react/dist/esm/icons/external-link.mjs'
 import { portalPath } from '../../config/portalBase'
 import { getActivePortalProfileConfig, tenantProfileConfig } from '../../config/portalFeatures'
 import { resolveBrandPalette } from '../../../../shared/brandPalette'
+import lifetechBrand from '../../../../shared/lifetechBrand.json'
+import { contrastRatio } from '../../../../shared/brandContrast'
+import './brand-contrast.css'
 import { downloadBrandGuide } from '../utils/downloadBrandGuide'
 import { getGroupSite, type GroupSite } from '../../config/timebankCommunity'
 
@@ -50,11 +53,15 @@ export function TenantBrandingPage({brandGuidePath='/branding',tenant:organizati
 
   const colors = resolveBrandPalette({ ...tenant, profile: profile.id, theme_color: profile.themeColor })
 
+  const brandColors = Object.fromEntries(lifetechBrand.colors.map(color => [color.id, color.value]))
+  const accessiblePairs = profile.id === 'lifetech' ? lifetechBrand.pairings.map(pair => ({ ...pair, foreground: brandColors[pair.foreground], background: brandColors[pair.background], ratio: contrastRatio(brandColors[pair.foreground], brandColors[pair.background]) })) : []
+
   async function exportStyleGuide() {
     setExporting(true)
     setExportMessage('')
     try {
       await downloadBrandGuide({ name: profile.brandName, tagline: profile.tagline, colors,
+        guidance: accessiblePairs.length ? ['WCAG 2.2 AA color contrast: 4.5:1 for ordinary text; 3:1 for large text and essential control indicators. Core BioTech Gold is an accent; use Gold Ink for gold text on light surfaces.', ...accessiblePairs.map(pair => `${pair.label}: ${pair.foreground} on ${pair.background} — ${pair.ratio.toFixed(2)}:1 (minimum ${pair.minimum}:1).`)] : [],
         url: new URL(portalPath(brandGuidePath), window.location.origin).href })
       setExportMessage('Style guide downloaded.')
     } catch (error) {
@@ -138,6 +145,17 @@ export function TenantBrandingPage({brandGuidePath='/branding',tenant:organizati
         </button>)}
       </div>
     </section>
+
+    {accessiblePairs.length > 0 && <section className="tenant-brand-section" aria-labelledby="tenant-brand-contrast-title">
+      <div className="tenant-home-section-heading"><div><p className="tenant-home-eyebrow">Accessible use</p><h2 id="tenant-brand-contrast-title">Color pairings and contrast</h2></div></div>
+      <p>Keep HealthTech Teal, MedTech OffWhite, and BioTech Gold as the core identity. Use the supporting shades for readable text and controls. BioTech Gold works on dark surfaces; use Gold Ink for text on light surfaces.</p>
+      <p>WCAG 2.2 AA calls for at least 4.5:1 for ordinary text, 3:1 for large text, and 3:1 for essential control indicators. Pairing checks cover color contrast, not complete accessibility conformance.</p>
+      <div className="tenant-brand-contrast-list">{accessiblePairs.map(pair => <article className="tenant-brand-contrast-pair" key={pair.label}>
+        {pair.minimum === 3 ? <span className="tenant-brand-contrast-sample" style={{backgroundColor:pair.background}} aria-hidden="true"><span className="tenant-brand-control-sample" style={{borderColor:pair.foreground}}/></span> : <span className="tenant-brand-contrast-sample" style={{color:pair.foreground,backgroundColor:pair.background}} aria-hidden="true">Aa</span>}
+        <div><strong>{pair.label}</strong><span>{pair.foreground} on {pair.background}</span></div><div className="tenant-brand-contrast-ratio"><strong>{pair.ratio.toFixed(2)}:1</strong><span>Minimum {pair.minimum}:1 · {pair.ratio>=pair.minimum?'Pass':'Needs adjustment'}</span></div>
+      </article>)}</div>
+      <p className="tenant-brand-contrast-reference">Reference: <a href="https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html">WCAG text contrast</a> and <a href="https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html">non-text contrast</a>. Check hover, focus, selected states, text over images, and any new color combination before use.</p>
+    </section>}
 
     <section className="tenant-brand-section" aria-labelledby="tenant-brand-details-title">
       <div className="tenant-home-section-heading">

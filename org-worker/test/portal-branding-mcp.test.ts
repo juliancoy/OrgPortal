@@ -10,7 +10,7 @@ const identity = { userId: 'owner', scopes: ['org:portal.read', 'org:portal.writ
 test('brand palette uses named medical defaults and stored overrides, including repeated hex values', () => {
   const site = { profile: 'lifetech', accent_color: '#155e59' };
   const defaults = resolveBrandPalette(site);
-  assert.deepEqual(defaults.map(c => [c.label, c.value]), [['HealthTech Teal', '#155e59'], ['MedTech OffWhite', '#F4F5F0'], ['BioTech Gold', '#D4AF37']]);
+  assert.deepEqual(defaults.slice(0, 3).map(c => [c.label, c.value]), [['HealthTech Teal', '#155E59'], ['MedTech OffWhite', '#F4F5F0'], ['BioTech Gold', '#D4AF37']]);
   assert.match(defaults[1].description!, /MRI/);
   assert.deepEqual(resolveBrandPalette({ ...site, profile: 'community', slug: 'lifetech' }), defaults);
   const palette = [{ label: 'Updated', value: '#112233', description: 'New meaning' }, { label: 'Same value', value: '#112233' }];

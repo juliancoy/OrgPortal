@@ -1,6 +1,6 @@
 import type { BrandColor } from '../../../../shared/brandPalette'
 
-type BrandGuide = { name: string; tagline: string; colors: BrandColor[]; url: string }
+type BrandGuide = { name: string; tagline: string; colors: BrandColor[]; url: string; guidance?: string[] }
 type TextBlock = { lines: string[]; font: string; lineHeight: number; y: number }
 const WIDTH = 1200
 const MARGIN = 72
@@ -54,6 +54,10 @@ export function renderBrandGuideCard(guide: BrandGuide): HTMLCanvasElement {
     text(color.description || '', '28px Arial, sans-serif', 40, 44)
     return { color: color.value, top }
   })
+  if (guide.guidance?.length) {
+    text('ACCESSIBLE COLOR PAIRINGS', '700 30px Arial, sans-serif', 44, 20)
+    for (const line of guide.guidance) text(line, '24px Arial, sans-serif', 36, 14)
+  }
   const footerTop = y
   text(guide.url, '24px Arial, sans-serif', 34)
   canvas.height = Math.max(1800, Math.ceil(y + MARGIN))
