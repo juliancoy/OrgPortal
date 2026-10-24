@@ -1,0 +1,7 @@
+{
+  "readArguments": {},
+  "writeArguments": {},
+  "readTool": "list_organization_invitations",
+  "previewTool": "preview_organization_invitation",
+  "applyTool": "apply_organization_invitation"
+}

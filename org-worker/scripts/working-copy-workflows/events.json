@@ -1,0 +1,10 @@
+{
+  "readArguments": {
+    "source": "native"
+  },
+  "writeArguments": {},
+  "readTool": "list_events",
+  "previewTool": "preview_org_event_changes",
+  "applyTool": "apply_org_event_changes",
+  "statusTool": "get_event_operation"
+}

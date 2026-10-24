@@ -1,0 +1,8 @@
+{
+  "readArguments": {},
+  "writeArguments": {},
+  "readTool": "list_organization_support",
+  "previewTool": "preview_organization_support",
+  "applyTool": "apply_organization_support",
+  "statusTool": "get_organization_operation"
+}

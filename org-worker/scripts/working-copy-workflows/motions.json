@@ -1,0 +1,10 @@
+{
+  "readArguments": {
+    "limit": 100
+  },
+  "writeArguments": {},
+  "readTool": "list_motions",
+  "previewTool": "preview_motion",
+  "applyTool": "apply_motion",
+  "statusTool": "get_motion_operation"
+}

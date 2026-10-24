@@ -1,0 +1,7 @@
+{
+  "readArguments": {},
+  "writeArguments": {},
+  "readTool": "get_organization_personnel_scheme",
+  "previewTool": "preview_organization_personnel_scheme",
+  "applyTool": "apply_organization_personnel_scheme"
+}

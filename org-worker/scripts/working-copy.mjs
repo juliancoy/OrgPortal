@@ -42,9 +42,11 @@ export async function workingCopy(command, account) {
     return JSON.parse(await readFile(path, 'utf8'));
   };
   const save = async (path, data) => {
+    const serialized = JSON.stringify(data, null, 2) + '\n';
+    if (Buffer.byteLength(serialized) > 1024 * 1024) throw Error('Working copy exceeds 1 MiB; enroll smaller record-specific workflows. Previous copy retained.');
     const temporary = join(directory, '.' + randomUUID() + '.tmp');
     const file = await open(temporary, 'wx', 0o600);
-    try { await file.writeFile(JSON.stringify(data, null, 2) + '\n'); await file.sync(); }
+    try { await file.writeFile(serialized); await file.sync(); }
     finally { await file.close(); }
     try { await rename(temporary, path); } finally { await unlink(temporary).catch(e => { if (e.code !== 'ENOENT') throw e; }); }
   };
@@ -84,7 +86,19 @@ export async function workingCopy(command, account) {
     const readArguments = { ...workflow?.readArguments, organizationId: command.organizationId };
     const fetchCurrent = async () => {
       const reply = await call(readTool, readArguments);
-      if (workflow) return reply;
+      if (workflow) {
+        if (!reply.nextCursor) return reply;
+        const pages = [reply], seen = new Set();
+        let cursor = reply.nextCursor;
+        while (cursor) {
+          if (typeof cursor !== 'string' || seen.has(cursor) || pages.length >= 1000) throw Error('Invalid or excessive pagination; previous copy retained.');
+          seen.add(cursor);
+          const page = await call(readTool, { ...readArguments, cursor });
+          pages.push(page); cursor = page.nextCursor;
+          if (Buffer.byteLength(JSON.stringify(pages)) > 900000) throw Error('Collection exceeds working-copy limit; enroll record-specific workflows.');
+        }
+        return { pages };
+      }
       if (reply.organization?.id !== command.organizationId) throw Error('Production returned another organization. Use its exact ID.');
       return profile(reply.organization);
     };

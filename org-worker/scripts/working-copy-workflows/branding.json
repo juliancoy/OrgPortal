@@ -1,0 +1,7 @@
+{
+  "readArguments": {},
+  "writeArguments": {},
+  "readTool": "get_portal_branding",
+  "previewTool": "preview_portal_branding",
+  "applyTool": "apply_portal_branding"
+}
