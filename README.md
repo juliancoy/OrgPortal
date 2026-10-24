@@ -3,8 +3,9 @@
 Shared primary-account identity is implemented behind a disabled feature flag.
 The configured identity base is `https://orgportal.cc/pidp`; tenant browser flows
 use their same-origin `/pidp` proxy and the `orgportal` application namespace.
-Account consolidation and any later login-domain move require separate rollout
-review. See the [migration proposal](../PIdP/docs/shared-orgportal-identity.md).
+The agreed plan centralizes login, identity settings, APIs and MCP under
+`orgportal.cc`, with account consolidation and protocol changes staged separately.
+See the [migration plan](../PIdP/docs/shared-orgportal-identity.md).
 
 
 ## Privacy, support and data lifecycle
