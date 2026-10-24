@@ -4,6 +4,10 @@
   --brand-teal: #155E59;
   --brand-off-white: #F4F5F0;
   --brand-gold: #D4AF37;
+  --background: #F4F5F0;
+  --data-violet: #58459E;
+  --data-coral: #9D3C32;
+  --data-green: #2B6651;
   --primary: #155E59;
   --primary-2: #155E59;
   --primary-bg: #E5F2EE;
@@ -75,6 +79,10 @@
   --brand-teal: #155E59;
   --brand-off-white: #F4F5F0;
   --brand-gold: #D4AF37;
+  --background: #061A26;
+  --data-violet: #C8B5FF;
+  --data-coral: #FF9B8E;
+  --data-green: #98D7B9;
   --primary: #7BDDCF;
   --primary-2: #7BDDCF;
   --primary-bg: #0B2733;
@@ -147,6 +155,10 @@
   --brand-teal: #155E59;
   --brand-off-white: #F4F5F0;
   --brand-gold: #D4AF37;
+  --background: #061A26;
+  --data-violet: #C8B5FF;
+  --data-coral: #FF9B8E;
+  --data-green: #98D7B9;
   --primary: #7BDDCF;
   --primary-2: #7BDDCF;
   --primary-bg: #0B2733;
@@ -260,3 +272,7 @@
 }
 :root[data-site-brand='lifetech'] .dataset-toolbar-button.is-primary { background: var(--action-bg); color: var(--action-text); }
 :root[data-site-brand='lifetech'] :is(.pathway-card-map,.pathway-card-index) .pathway-label { opacity: 1; }
+:root[data-site-brand='lifetech'] .link-kind-badge { background: var(--action-bg); color: var(--action-text); }
+:root[data-site-brand='lifetech'] .link-kind-badge:is([data-kind='app-handoff'],[data-kind='portal-route'],[data-kind='same-page-anchor']) { background: var(--data-violet); }
+:root[data-site-brand='lifetech'] .link-kind-badge[data-kind='external-handoff'] { background: var(--data-coral); }
+:root[data-site-brand='lifetech'] .link-kind-badge[data-kind='runtime-placeholder'] { background: var(--brand-gold); color: #061A26; }

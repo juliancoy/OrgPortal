@@ -4,7 +4,7 @@ const root=new URL('../',import.meta.url)
 const brand=JSON.parse(await readFile(new URL('shared/lifetechBrand.json',root),'utf8'))
 const color=Object.fromEntries(brand.colors.map(c=>[c.id,c.value]))
 const common={'brand-teal':color.teal,'brand-off-white':color.offWhite,'brand-gold':color.gold}
-const light={...common,primary:color.teal,'primary-2':color.teal,'primary-bg':color.tealMist,'primary-hover':color.ink,
+const light={...common,background:color.offWhite,'data-violet':color.violet,'data-coral':color.coral,'data-green':color.green,primary:color.teal,'primary-2':color.teal,'primary-bg':color.tealMist,'primary-hover':color.ink,
  surface:color.offWhite,panel:color.white,'panel-2':color.tealMist,border:'#BBCFCC','border-subtle':'#BBCFCC','border-hover':color.teal,
  text:color.ink,'text-primary':color.ink,'text-secondary':color.mutedInk,'text-muted':color.mutedInk,'bg-surface':color.offWhite,
  'border-input':color.controlBorder,'btn-primary-bg':color.teal,'btn-primary-text':color.offWhite,'on-primary':color.offWhite,
@@ -17,7 +17,7 @@ const light={...common,primary:color.teal,'primary-2':color.teal,'primary-bg':co
  'calendar-head-bg':color.tealMist,'calendar-event-bg':color.tealMist,'calendar-event-ink':color.ink,'date-bg':color.tealMist,
  'map-page-bg':color.offWhite,'map-status-bg':color.white,blue:color.teal,teal:color.teal,gold:color.gold,goldInk:color.goldInk,'gold-ink':color.goldInk,
  'action-bg':color.teal,'action-text':color.offWhite}
-const dark={...light,primary:color.lightTeal,'primary-2':color.lightTeal,'primary-bg':color.darkSurface,'primary-hover':color.offWhite,
+const dark={...light,background:color.ink,'data-violet':color.violetLight,'data-coral':color.coralLight,'data-green':color.greenLight,primary:color.lightTeal,'primary-2':color.lightTeal,'primary-bg':color.darkSurface,'primary-hover':color.offWhite,
  surface:color.ink,panel:color.darkSurface,'panel-2':color.darkSurface,border:'#557C82','border-subtle':'#557C82','border-hover':color.lightTeal,
  text:color.offWhite,'text-primary':color.offWhite,'text-secondary':color.mutedLight,'text-muted':color.mutedLight,'bg-surface':color.ink,
  'border-input':color.controlBorder,'btn-primary-bg':color.lightTeal,'btn-primary-text':color.ink,'on-primary':color.ink,
@@ -63,6 +63,11 @@ css += block(dataSelector,lightData)+block(dataSelector.replace("] :is","][data-
 css += `@media (prefers-color-scheme: dark) {\n${block(dataSelector.replace('] :is',']:not([data-theme]) :is'),darkData)}}\n`
 css += `:root[data-site-brand='lifetech'] .dataset-toolbar-button.is-primary { background: var(--action-bg); color: var(--action-text); }
 :root[data-site-brand='lifetech'] :is(.pathway-card-map,.pathway-card-index) .pathway-label { opacity: 1; }
+`
+css += `:root[data-site-brand='lifetech'] .link-kind-badge { background: var(--action-bg); color: var(--action-text); }
+:root[data-site-brand='lifetech'] .link-kind-badge:is([data-kind='app-handoff'],[data-kind='portal-route'],[data-kind='same-page-anchor']) { background: var(--data-violet); }
+:root[data-site-brand='lifetech'] .link-kind-badge[data-kind='external-handoff'] { background: var(--data-coral); }
+:root[data-site-brand='lifetech'] .link-kind-badge[data-kind='runtime-placeholder'] { background: var(--brand-gold); color: ${color.ink}; }
 `
 const destinations=[new URL('web/src/styles/themes/lifetech.css',root),new URL('../BmoreMedTech/assets/lifetech-brand.css',root)]
 for(const path of destinations) {
