@@ -1,3 +1,4 @@
+import { EventApplyButtons } from '../../components/EventApplyButtons'
 import './event-application.css'
 import { CmsImage } from '../../components/media/CmsImage'
 import { resolveBrandPalette } from '../../../../../shared/brandPalette'
@@ -16,7 +17,7 @@ import { EventVenues, type Venue } from '../../components/EventVenues'
 import { EventCompanyVotes } from '../../components/EventCompanyVotes'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams, useLocation, useNavigate } from 'react-router-dom'
-import { CalendarDays, Clock, FileImage, Info, Send, Users, CalendarPlus, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, MapPinned, Pencil, RotateCcw, X, ZoomIn, ZoomOut } from 'lucide-react'
+import { CalendarDays, Clock, FileImage, Info, Users, CalendarPlus, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, MapPinned, Pencil, RotateCcw, X, ZoomIn, ZoomOut } from 'lucide-react'
 import { externalEventListings } from '../../utils/externalEventListings'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
 import { downloadIcsEvent, googleCalendarUrl, outlookCalendarUrl } from '../../utils/calendar'
@@ -806,7 +807,7 @@ export function PublicEventPage() {
             {event.location&&<div><MapPinned size={20} aria-hidden="true" /><a href={mapsUrl!} target="_blank" rel="noreferrer">{event.location}</a></div>}
           </section>
           {canManageEvent && <div className="presentation-settings"><label><input type="checkbox" checked={presentationsEnabled} disabled={presentationSettingsBusy || presentationSettings?.eventId !== event.id} onChange={() => void togglePresentations()} /> Enable presentation applications</label>{presentationSettingsError && <p role="status">{presentationSettingsError}</p>}</div>}
-          {presentationsEnabled && <Link className="btn-primary event-apply-link" style={{background:applyGold,color:"#17201c",borderColor:applyGold}} to={`/events/${encodeURIComponent(event.slug || slug!)}/apply`}><Send size={18} aria-hidden="true" /> Apply to present</Link>}
+          {presentationsEnabled && <EventApplyButtons eventId={event.id} eventSlug={event.slug || slug!} gold={applyGold} />}
           <div className="public-event-tabs" role="tablist" aria-label="Event sections" onKeyDown={keyEvent=>{
             const tabs: Array<typeof activeTab> = presentationsEnabled ? ['info','poster','submissions'] : ['info','poster'],index=tabs.indexOf(activeTab)
             if(!['ArrowLeft','ArrowRight','Home','End'].includes(keyEvent.key))return

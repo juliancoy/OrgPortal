@@ -117,3 +117,7 @@
  .application-page-actions { align-items: stretch; flex-direction: column; gap: .5rem; }
  .application-page-actions .btn-secondary { align-self: center; }
 }
+
+.event-apply-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; margin-bottom: 1rem; }
+.event-apply-actions .event-apply-link { margin: 0; min-height: 44px; justify-content: center; }
+@media (max-width: 540px) { .event-apply-actions .event-apply-link { flex: 1 1 180px; } }

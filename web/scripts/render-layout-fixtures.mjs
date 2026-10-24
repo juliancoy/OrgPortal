@@ -35,6 +35,7 @@ try{
   {name:'Empty service inbox',url:base+'/support?empty=1',ready:'.support-compose-button:not(:disabled)'},
  ]
  const submissionLayouts=[
+  {name:'Event application options',url:base+'/event-apply-options?brand=lifetech',ready:'.event-apply-actions',selector:'.panel',visible:['a:has-text("Registered Apply")','a:has-text("Guest Apply")']},
   {name:'Collapsed submission',url:base+'/submissions?brand=lifetech&submissionReview=1',ready:'.submission-voting-card',selector:'.presentation-applications',hidden:['.submission-card-details']},
   {name:'Expanded submission',url:base+'/submissions?brand=lifetech&submissionReview=1',ready:'.submission-voting-card',selector:'.presentation-applications',actions:[{click:'Expand submission: The Limits of Contemporary Medicine'}],visible:['.submission-card-details']},
   {name:'Unselected submission',url:base+'/submissions?brand=lifetech&submissionReview=1&unselected=1',ready:'.submission-voting-card',selector:'.presentation-applications',hidden:['.submission-card-details']},
@@ -53,6 +54,12 @@ try{
      await route.fulfill({json:{selected}})
     }else await route.fulfill({json:{favorites:selected?['fixture-submission']:[],limit:3}})
    })
+   await page.goto(base+'/event-apply-options?brand=lifetech')
+   const registered=page.getByRole('link',{name:'Registered Apply',exact:true}),guest=page.getByRole('link',{name:'Guest Apply',exact:true})
+   await registered.waitFor()
+   if(await registered.getAttribute('href')!=='/events/lifetech-demo-day-3/apply')throw Error('Registered application link is incorrect')
+   if(await guest.getAttribute('href')!=='/api/org/api/network/events/fixture-event/presentations/apply')throw Error('Guest application link is incorrect')
+   if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('Application options overflow viewport')
    await page.goto(base+'/submissions?brand=lifetech&submissionReview=1')
    const card=page.locator('.submission-voting-card'),details=card.locator('.submission-card-details')
    await card.waitFor()
