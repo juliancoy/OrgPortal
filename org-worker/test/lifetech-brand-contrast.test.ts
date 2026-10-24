@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import brand from '../../shared/lifetechBrand.json'
 import { contrastRatio } from '../../shared/brandContrast'
 import { parseBrandPalette, resolveBrandPalette } from '../../shared/brandPalette'
@@ -24,4 +25,12 @@ test('LifeTech guide exposes twelve valid colors while preserving explicitly sto
  assert.deepEqual(palette.slice(0,3).map(color=>color.label),['HealthTech Teal','MedTech OffWhite','BioTech Gold'])
  const stored=[{label:'Custom accent',value:'#123456'}]
  assert.deepEqual(resolveBrandPalette({slug:'lifetech',feature_config:{brandPalette:stored}}),stored)
+})
+
+test('the portal theme includes every approved palette color and matching core tokens', () => {
+ const css=readFileSync(new URL('../../web/src/styles/themes/lifetech.css',import.meta.url),'utf8')
+ for(const color of brand.colors)assert.ok(css.includes(color.value),color.label)
+ assert.ok(css.includes('--brand-teal: '+brand.colors[0].value))
+ assert.ok(css.includes('--brand-off-white: '+brand.colors[1].value))
+ assert.ok(css.includes('--brand-gold: '+brand.colors[2].value))
 })
