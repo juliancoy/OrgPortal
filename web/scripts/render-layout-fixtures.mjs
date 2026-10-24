@@ -9,7 +9,7 @@ import {fixtureData} from './layout-review/data.mjs'
 const root=resolve(fileURLToPath(new URL('..',import.meta.url)))
 const output=resolve(process.argv[2]||join(root,'../artifacts/layout-review/fixtures'))
 await mkdir(output,{recursive:true})
-const bundle=await build({entryPoints:[join(root,'scripts/layout-review/fixture.tsx')],bundle:true,write:false,outdir:join(output,'bundle'),jsx:'automatic',format:'esm',external:['/fonts/*'],define:{'process.env.NODE_ENV':'"production"','import.meta.env':'{}','__APP_VERSION__':'"visual-fixture"','__APP_BUILD_NUMBER__':'1'},loader:{'.woff2':'file','.woff':'file','.png':'file','.svg':'file'},plugins:[{name:'fixture-identity',setup(b){b.onResolve({filter:/app\/AppProviders$/},()=>({path:'identity',namespace:'fixture'}));b.onLoad({filter:/.*/,namespace:'fixture'},()=>({contents:`export const useAuth=()=>({token:'synthetic-render-only',role:'member',isLoading:false,user:{id:'fixture-member',displayName:'Alex Morgan',name:'Alex Morgan',email:'member@example.invalid',themeMode:'light'},logout:()=>{},setThemeMode:()=>{}});export const useServices=()=>({});`}))}}]})
+const bundle=await build({entryPoints:[join(root,'scripts/layout-review/fixture.tsx')],bundle:true,write:false,outdir:join(output,'bundle'),jsx:'automatic',format:'esm',external:['/fonts/*'],define:{'process.env.NODE_ENV':'"production"','import.meta.env':'{}','__APP_VERSION__':'"visual-fixture"','__APP_BUILD_NUMBER__':'1'},loader:{'.woff2':'file','.woff':'file','.png':'file','.svg':'file'},plugins:[{name:'fixture-identity',setup(b){b.onResolve({filter:/^\.\/submissionAttachments$/},()=>({path:join(root,'src/ui/components/submissionAttachments.ts')}));b.onResolve({filter:/app\/AppProviders$/},()=>({path:'identity',namespace:'fixture'}));b.onLoad({filter:/.*/,namespace:'fixture'},()=>({contents:`export const useAuth=()=>({token:'synthetic-render-only',role:'member',isLoading:false,user:{id:'fixture-member',displayName:'Alex Morgan',name:'Alex Morgan',email:'member@example.invalid',themeMode:'light'},logout:()=>{},setThemeMode:()=>{}});export const useServices=()=>({});`}))}}]})
 let base
 const server=createServer(async(req,res)=>{
  const url=new URL(req.url,base||'http://127.0.0.1'),path=url.pathname
@@ -33,7 +33,12 @@ try{
   {name:'Service settings',url:base+'/support?admin=1',ready:'.support-settings-button',actions:[{click:'Mailbox settings'}]},
   {name:'Empty service inbox',url:base+'/support?empty=1',ready:'.support-compose-button:not(:disabled)'},
  ]
- const report=await renderLayouts([...layouts,...supportLayouts],output)
+ const submissionLayouts=[
+  {name:'Collapsed submission',url:base+'/submissions?brand=lifetech&submissionReview=1',ready:'.submission-voting-card',hidden:['.submission-card-details']},
+  {name:'Expanded submission',url:base+'/submissions?brand=lifetech&submissionReview=1',ready:'.submission-voting-card',actions:[{click:'Expand submission: The Limits of Contemporary Medicine'}],visible:['.submission-card-details']},
+  {name:'Unselected submission',url:base+'/submissions?brand=lifetech&submissionReview=1&unselected=1',ready:'.submission-voting-card',hidden:['.submission-card-details']},
+ ]
+ const report=await renderLayouts([...layouts,...supportLayouts,...submissionLayouts],output)
  await import('node:fs/promises').then(fs=>fs.writeFile(join(output,'review.json'),JSON.stringify({mode:'synthetic-offline-fixtures',humanVisualReviewRequired:true,views:report.length,errors:report.filter(r=>r.error||r.errors?.length||r.brokenImages?.length),overflow:report.filter(r=>r.overflow)},null,2)))
  if(report.some(r=>r.error||r.errors?.length||r.brokenImages?.length||r.overflow))process.exitCode=1
 }finally{server.closeAllConnections();await new Promise(r=>server.close(r))}

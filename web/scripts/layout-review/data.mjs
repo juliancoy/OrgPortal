@@ -7,7 +7,16 @@ const supportTickets=[
  {id:'fixture-followup',sender_email:'casey@example.invalid',subject:'Thank you for the introduction',category:'general',status:'answered',updated_at:'2026-10-22T14:00:00Z'},
  {id:'fixture-closed',sender_email:'avery@example.invalid',subject:'Workshop registration confirmed',category:'general',status:'closed',updated_at:'2026-10-21T09:00:00Z'},
 ].map(ticket=>({...ticket,organization_id:'fixture-org',assigned_user_id:null}))
+const submission={submission_id:'fixture-submission',organization_id:'fixture-org0',organization_name:'Harbor Research Collective',organization_slug:'fixture-0',image_url:null,title:'The Limits of Contemporary Medicine',summary:'The statistics of chronic disease. Our team is exploring how better evidence can improve everyday care.',status:'submitted',favorites:1,attachments:[],presenters:[{name:'Alex Morgan'},{name:'Sam Rivera'}]}
 export function fixtureData(path,params){
+ if(path.includes('/presentations')){
+  if(path.endsWith('/submissions'))return {submissions:[submission],favoriteLimit:3,next:null}
+  if(path.endsWith('/favorites'))return {favorites:params.has('unselected')?[]:['fixture-submission'],limit:3}
+  if(path.endsWith('/final-round'))return {phase:'shortlist',finalistIds:[],results:[]}
+  if(path.endsWith('/final-ballot'))return {submissionId:null}
+  return {canReview:true,submissions:[submission]}
+ }
+ if(path.includes('/orgs')&&params.has('submissionReview'))return [{...organizations[0],my_role:'owner'}]
  if(path.endsWith('/admin/me'))return {is_sysadmin:false}
  if(path.endsWith('/scheme'))return {scheme:'nonprofit'}
  if(path.endsWith('/personnel'))return {classes:{},photos:{}}

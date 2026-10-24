@@ -36,7 +36,7 @@ export function SubmissionAttachments({eventId,submissionId,initial=emptyAttachm
     setBusy(true);setError('');void attachmentRequest(`${base}/${encodeURIComponent(file.id)}`,token,{method:'DELETE'}).then(refresh).catch(reason=>setError(reason.message)).finally(()=>setBusy(false))
    }}><Trash2 size={16} aria-hidden="true" /> Remove</button>}
   </li>)}</ul>}
-  {canManage&&token&&<><SubmissionAttachmentPicker files={files} onChange={setFiles} disabled={busy} />{!!files.length&&<button type="button" className="btn-primary" disabled={busy} onClick={()=>{
+  {canManage&&token&&<><SubmissionAttachmentPicker files={files} onChange={setFiles} disabled={busy} buttonLabel="Add files" />{!!files.length&&<button type="button" className="btn-primary" disabled={busy} onClick={()=>{
    setBusy(true);setError('');void(async()=>{for(const file of files){await uploadSubmissionAttachment(eventId,submissionId,file,token);setFiles(previous=>previous.filter(item=>item.id!==file.id))}await refresh()})().catch(reason=>{setError(reason.message);void refresh().catch(()=>{})}).finally(()=>setBusy(false))
   }}>{busy?'Uploading…':'Upload attachments'}</button>}</>}
   {error&&<p role="alert">{error}</p>}

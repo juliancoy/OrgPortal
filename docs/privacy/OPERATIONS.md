@@ -324,3 +324,12 @@ membership deletion processes cover this field; no automatic erasure is claimed.
 ### Consented personnel relationships
 
 Migration 0112 adds invitation intent/blocker fields and private, revocable relationships. For verified erasure run parameterized deletion of `organization_personnel_relationships WHERE user_id = ?` and clear `confirmed_by` for the canonical subject on remaining rows. Apply the existing invitation/membership/profile erasure steps separately; do not infer identity from a matching email. Verify public Board/Personnel no longer returns removed relationship labels, and repeat deletions after a backup restore. Relationships and evidence never enter immutable change-journal copies or public snapshots. Expired relationships are excluded from reads and removed by the bounded retention job. Local authenticated tests must keep mail disabled and use synthetic accounts.
+
+For guest presentation applications, verify the requester's identity before erasure.
+Delete rows in `event_guest_presentations` by canonical `claimed_by_user_id` for
+account erasure; verify email ownership separately for unclaimed submission
+withdrawal. This removes acknowledgement status and claim metadata with the
+proposal. Reapply verified erasures before serving restored backups. Claiming a
+submission never grants access to an existing organization. Explicit confirmation
+creates a new owned team and a pending invitation for the supplied teammate. Existing
+unclaimed applications are not sent thank-you emails retroactively.

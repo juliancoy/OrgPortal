@@ -20,6 +20,7 @@ import { portalBasePath } from '../../config/portalBase'
 import { getActivePortalProfileConfig, portalProfilePath, isPortalFeatureEnabled, type PortalFeature } from '../../config/portalFeatures'
 import { tenantHomeAction } from '../../config/tenantHome'
 
+const GuestPresentationClaimPage = lazy(() => import('../views/GuestPresentationClaimPage').then(module => ({ default: module.GuestPresentationClaimPage })))
 const LocalNewslettersPage = lazy(() => import('../views/LocalNewslettersPage').then(module => ({ default: module.LocalNewslettersPage })))
 const EcosystemNetworkPage = lazy(() => import('../views/EcosystemNetworkPage').then(module => ({ default: module.EcosystemNetworkPage })))
 const SeriesAFundingGapPage = lazy(() => import('../views/SeriesAFundingGapPage').then(module => ({ default: module.SeriesAFundingGapPage })))
@@ -321,6 +322,7 @@ export function createAppRouter() {
           { path: '/users/register', element: <LoginRedirectRoute /> },
           { path: '/users/login', element: <UserLoginPage /> },
           { path: '/invitations/:id', element: <InvitationAcceptPage /> },
+          { path: '/presentation-claims/:eventId/:submissionId', element: <GuestPresentationClaimPage /> },
           { path: '/users/mcp-connect', element: <AuthenticatedRoute><McpConnectPage /></AuthenticatedRoute> },
           { path: '/users/dashboard', element: <DashboardPage /> },
           {

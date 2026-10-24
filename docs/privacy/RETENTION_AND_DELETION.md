@@ -464,12 +464,35 @@ support evidence follows existing organization-support retention; application ex
 does not preserve the application contents in that evidence.
 
 Anonymous presentation intake (`event_guest_presentations`) stores self-reported
-contact name, email, organization name and proposal for event-host managers only.
-It grants no membership, organization ownership, public listing or support
-relationship. Records expire 90 days after event end, stop serving immediately at
+contact name, email, teammate email, organization name and proposal for event-host managers only.
+Anonymous submission grants no membership, organization ownership, public listing
+or support relationship. After verifying the submitter email, explicit claim
+confirmation creates a new owned team organization and a pending invitation for
+the supplied teammate; it never claims an existing organization. Records expire 90 days after event end, stop serving immediately at
 expiry, and the bounded hourly retention job removes them within 24 hours. Event
 deletion cascades. Verified withdrawal/erasure requests through support delete the
 matching private intake rows; reapply those erasures to restored backups before
 serving. This store is excluded from immutable journals and public replication.
-No email is sent by submission; email addresses are unverified and imply no mailing
-consent. Per-event and per-email intake limits retain no additional IP history.
+Submitting sends one transactional thank-you receipt with an optional account-claim
+link, using the host organization's configured transactional sender. The form
+explains this before submission. Delivery state records provider acceptance or an
+unconfirmed send, never claimed inbox delivery. No historical applications are
+emailed automatically and no newsletter consent is implied. Claiming requires
+PIdP authentication with the same verified email as the submission and explicit
+confirmation; no email alone grants access to an existing organization. Team invitations use
+the existing seven-day invitation lifecycle and require recipient verification
+and acceptance. The canonical claiming
+account ID and claim timestamp share the application's original expiry. Claimed
+applications are private to that account and event-host managers. Verified account
+erasure must also delete anonymous intake rows by claimed_by_user_id and reapply
+erasure after backup restoration. Send metadata expires and is deleted with the
+application. Per-event and per-email intake limits retain no additional IP history.
+
+Guest team setup retains the teammate email and references to the created team and
+pending invitation with the application's original expiry. The teammate email must
+be different from the submitter's address. Only the verified submitter can confirm
+creation and invitation. The created organization, ownership and accepted
+memberships follow the existing organization lifecycle; proposal expiry does not
+delete that separately owned organization or accepted memberships. Invitation
+expiry and recipient verification/acceptance use the existing seven-day invitation
+workflow. Ambiguous invitation sends are not automatically duplicated.

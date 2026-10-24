@@ -1,4 +1,5 @@
 import { guestPresentationRoutes } from './guestPresentations';
+import type { GuestPresentationActor, GuestPresentationEnv } from './guestPresentationAccounts';
 import { submissionPresenters, validateSubmissionPresenters } from './submissionPresenters'
 import { presentationFinalRoundRoutes } from './presentationFinalRound'
 import { presentationAttachmentRoutes, publicAttachment } from './presentationAttachments'
@@ -7,8 +8,8 @@ import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { authorizeOrganization, organizationRole, type OrganizationActor } from './organizationIam';
 
-type PresentationEnv = { DB: D1Database; SCAN_IMAGES?: R2Bucket; PUBLIC_PORTAL_BASE_URL?: string };
-export function presentationRoutes<E extends PresentationEnv>(auth: (env:E, request:Request)=>Promise<{id:string}>) {
+type PresentationEnv = GuestPresentationEnv & { SCAN_IMAGES?: R2Bucket };
+export function presentationRoutes<E extends PresentationEnv>(auth: (env:E, request:Request)=>Promise<GuestPresentationActor>) {
  const app = new Hono<{Bindings:E}>();
  app.route('/',guestPresentationRoutes(auth));
  app.route('/',presentationAttachmentRoutes(auth));

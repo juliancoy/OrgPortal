@@ -14,13 +14,18 @@ export function organizationCreationIdentity(raw: { name: string; city?: string 
 export const organizationCreationConflict = `(lower(trim(name)) = lower(?) AND lower(trim(COALESCE(city,''))) = lower(COALESCE(?,''))) OR (? IS NOT NULL AND rtrim(source_url,'/') = rtrim(?,'/'))`;
 
 // Creation is deliberately separate from the directory import/upsert path.
-// Every statement targets a new random ID; a collision never updates an old row.
+// Creation never updates an existing organization. Internal callers may reuse a
+// stable ID for retries only when that organization is already owned by the actor.
 export async function insertOwnedOrganization(db: D1Database, actor: OrganizationActor, raw: {
-  name: string; slug: string; city?: string | null; source_url?: string | null;
+  id?: string; name: string; slug: string; city?: string | null; source_url?: string | null;
   description?: string | null; image_url?: string | null; tags: string;
 }) {
   const { name, city, sourceUrl } = organizationCreationIdentity(raw);
-  const id = crypto.randomUUID(), ownershipId = crypto.randomUUID(), now = new Date().toISOString();
+  if (raw.id) {
+    const owned = await db.prepare("SELECT o.* FROM organizations o JOIN organization_memberships m ON m.organization_id=o.id WHERE o.id=? AND m.user_id=? AND m.role='owner' AND m.status='active'").bind(raw.id,actor.id).first();
+    if (owned) return owned;
+  }
+  const id = raw.id || crypto.randomUUID(), ownershipId = crypto.randomUUID(), now = new Date().toISOString();
   await db.batch([
     db.prepare(`INSERT INTO organizations (id,name,slug,description,source_url,image_url,tags,city,created_at,updated_at)
       SELECT ?,?,?,?,?,?,?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM organizations WHERE ${organizationCreationConflict})`)

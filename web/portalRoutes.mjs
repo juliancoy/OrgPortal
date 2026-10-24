@@ -44,6 +44,7 @@ const paths = [
   "/users/register",
   "/users/login",
   "/invitations/:id",
+  "/presentation-claims/:eventId/:submissionId",
   "/users/mcp-connect",
   "/users/dashboard",
   "/profile",

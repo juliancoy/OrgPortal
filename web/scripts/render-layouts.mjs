@@ -25,6 +25,8 @@ try{
     await page.goto(layout.url,{waitUntil:'domcontentloaded',timeout:30000})
     if(layout.ready)await page.locator(layout.ready).first().waitFor({timeout:12000})
     for(const action of layout.actions||[])await page.getByRole('button',{name:action.click,exact:true}).click()
+    for(const selector of layout.hidden||[])if(await page.locator(selector).isVisible())throw Error(`Expected hidden content: ${selector}`)
+    for(const selector of layout.visible||[])if(!await page.locator(selector).isVisible())throw Error(`Expected visible content: ${selector}`)
     await page.evaluate(()=>document.fonts.ready)
     await page.waitForTimeout(1000)
     await page.evaluate(async()=>{

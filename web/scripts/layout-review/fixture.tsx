@@ -9,6 +9,7 @@ import {PublicOrganizationsPage} from '../../src/ui/views/public/PublicOrganizat
 import {PublicEventsPage} from '../../src/ui/views/public/PublicEventsPage'
 import {TenantBrandingPage} from '../../src/ui/views/TenantBrandingPage'
 import {LocalHomePage} from '../../src/ui/views/LocalHomePage'
+import {EventSubmissions} from '../../src/ui/components/EventSubmissions'
 import {AboutPage} from '../../src/ui/views/AboutPage'
 import {applyPortalBranding} from '../../src/config/portalBranding'
 import {setGroupSite} from '../../src/config/timebankCommunity'
@@ -23,6 +24,7 @@ const life={id:'lifetech',slug:'lifetech',organization_id:'fixture-org',hostname
 if(brand==='lifetech')setGroupSite(life)
 applyPortalBranding()
 const body=<Routes>
+ <Route path="/submissions" element={<EventSubmissions eventId="fixture-event" onEdit={()=>{}} onDeleted={()=>{}}/>}/>
  <Route path="/onboarding" element={<OnboardingPage/>}/>
  <Route path="/people" element={<PeoplePage/>}/>
  <Route path="/orgs" element={<PublicOrganizationsPage/>}/>

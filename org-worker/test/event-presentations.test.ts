@@ -382,7 +382,7 @@ test('standalone guest intake: no login, bounded private storage, host isolation
   const app=presentationRoutes(async(_env,req)=>{const id=req.headers.get('Authorization');if(!id)throw new HTTPException(401);return {id};});
   app.onError((error,c)=>c.json({message:error.message},(error as any).status||500));
   const call=(suffix:string,method='GET',body?:URLSearchParams,user?:string)=>app.request('/event/presentations'+suffix,{method,headers:{...(body?{'Content-Type':'application/x-www-form-urlencoded'}:{}),...(user?{Authorization:user}:{})},...(body?{body:body.toString()}:{})},{DB:f.db.asD1()});
-  const form=new URLSearchParams({contact_name:'Guest Presenter',email:'Guest@Example.com',organization_name:'Guest Team',title:'Guest demo',summary:'A private proposal'});
+  const form=new URLSearchParams({contact_name:'Guest Presenter',email:'Guest@Example.com',organization_name:'Guest Team',teammate_email:'teammate@example.com',title:'Guest demo',summary:'A private proposal'});
   assert.equal((await call('/apply')).status,409);
   assert.equal((await call('/apply','POST',form)).status,409);
   await f.request('/form','PUT','host',{enabled:true});
@@ -405,5 +405,56 @@ test('standalone guest intake: no login, bounded private storage, host isolation
   f.db.sqlite.exec("UPDATE event_guest_presentations SET expires_at='2000-01-01'");assert.equal(((await(await call('/guest-review','GET',undefined,'host')).json()) as any).submissions.length,0);
   f.db.sqlite.exec("UPDATE events SET starts_at='2000-01-01' WHERE id='event'");assert.equal((await call('/apply')).status,409);assert.equal((await call('/apply','POST',form)).status,409);
   f.db.sqlite.exec("DELETE FROM events WHERE id='event'");assert.equal(f.db.rows('SELECT * FROM event_guest_presentations').length,0);
+ }finally{f.db.sqlite.close()}
+});
+
+test('guest acknowledgement and account claim require the same verified email and grant no organization access',async()=>{
+ const f=fixture();try{
+  await f.request('/form','PUT','host',{enabled:true});
+  const sent:any[]=[];
+  const env={DB:f.db.asD1(),PUBLIC_PORTAL_BASE_URL:'https://orgportal.cc',SUPPORT_EMAIL:{send:async(message:any)=>{sent.push(message)}}};
+  const app=presentationRoutes<typeof env>(async(_env,req)=>{
+   const id=req.headers.get('Authorization');if(!id)throw new HTTPException(401);
+   return {id,email:id==='other'?'other@example.com':'guest@example.com',identity_data:{email_verified:id!=='unverified'}};
+  });
+  app.onError((error,c)=>c.json({message:error.message},(error as any).status||500));
+  const form=new URLSearchParams({contact_name:'Guest',email:'Guest@Example.com',organization_name:'Guest Team',teammate_email:'teammate@example.com',title:'Private demo',summary:'Private proposal'});
+  const submitted=await app.request('/event/presentations/apply',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:form.toString()},env);
+  assert.equal(submitted.status,303);
+  const row=f.db.rows('SELECT * FROM event_guest_presentations')[0] as any;
+  assert.equal(row.acknowledgement_status,'accepted');assert.equal(sent.length,1);assert.equal(sent[0].to,'guest@example.com');
+  assert.match(sent[0].text,/Thank you/);assert.match(sent[0].text,/recommend claiming/);assert.match(sent[0].text,/same email address/);
+  assert.match(sent[0].html,new RegExp('https://orgportal.cc/presentation-claims/event/'+row.id));
+  const path='/event/presentations/guest/'+row.id;
+  const call=(user:string,method='GET',suffix='')=>app.request(path+suffix,{method,headers:{Authorization:user,...(method==='POST'?{'Content-Type':'application/json'}:{})},...(method==='POST'?{body:JSON.stringify({confirm:true})}:{})},env);
+  for(const user of ['','other','unverified']){assert.equal((await call(user)).status,user?403:401);assert.equal((await call(user,'POST','/claim')).status,user?403:401)}
+  assert.equal((await call('recipient')).status,200);
+  assert.equal((await call('recipient','POST','/claim')).status,200);assert.equal((await call('recipient','POST','/claim')).status,200);
+  assert.equal((await call('different-account','POST','/claim')).status,403);
+  const claimed=f.db.rows('SELECT * FROM event_guest_presentations')[0] as any;
+  assert.equal(claimed.claimed_by_user_id,'recipient');assert.equal(claimed.expires_at,row.expires_at);
+  assert.equal(f.db.rows("SELECT * FROM organization_memberships WHERE user_id='recipient' AND role='owner'").length,1);
+  assert.equal(f.db.rows("SELECT * FROM organization_memberships WHERE organization_id IN ('one','two','team') AND user_id='recipient'").length,0);
+  assert.equal(f.db.rows("SELECT * FROM organization_invitations WHERE email='teammate@example.com' AND purpose='member'").length,1);
+  assert.equal(sent.length,2);assert.equal(sent[1].to,'teammate@example.com');
+  assert.equal(f.db.rows('SELECT * FROM event_submissions').length,0);
+  const foreign=await app.request('/another-event/presentations/guest/'+row.id,{headers:{Authorization:'recipient'}},env);assert.equal(foreign.status,404);
+  f.db.sqlite.exec("UPDATE event_guest_presentations SET expires_at='2000-01-01'");assert.equal((await call('recipient')).status,404);
+ }finally{f.db.sqlite.close()}
+});
+
+test('unconfirmed acknowledgement does not lose a saved application or expose its contact details',async()=>{
+ const f=fixture();try{
+  await f.request('/form','PUT','host',{enabled:true});
+  let attempts=0;
+  const env={DB:f.db.asD1(),PUBLIC_PORTAL_BASE_URL:'https://orgportal.cc',SUPPORT_EMAIL:{send:async()=>{attempts++;throw new Error('Private provider response')}}};
+  const app=presentationRoutes<typeof env>(async()=>({id:'host'}));
+  const form=new URLSearchParams({contact_name:'Guest',email:'guest@example.com',organization_name:'Guest Team',teammate_email:'teammate@example.com',title:'Demo',summary:'Private proposal'});
+  const response=await app.request('/event/presentations/apply',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:form.toString()},env);
+  assert.equal(response.status,303);assert.equal(attempts,1);
+  const row=f.db.rows('SELECT * FROM event_guest_presentations')[0] as any;assert.equal(row.acknowledgement_status,'uncertain');
+  const receipt=await app.request('/event/presentations/'+response.headers.get('Location'),{},env);
+  const html=await receipt.text();assert.match(html,/application is saved/);assert.match(html,/Claim your submission/);assert.doesNotMatch(html,/guest@example.com|Private provider response|Private proposal/);
+  assert.equal(attempts,1);
  }finally{f.db.sqlite.close()}
 });

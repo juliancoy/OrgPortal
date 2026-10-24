@@ -148,7 +148,7 @@ export function EventPresentations({eventId,formAction,onActionHandled,onSaved,o
       </div></details></>}
      {org&&draft.value.imageOrg===org&&<label>Team image (optional)<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={chooseTeamImage}/>{imagePreview&&<img src={imagePreview} alt="Team image preview" style={{maxWidth:160,maxHeight:160,objectFit:'contain'}}/>}</label>}
      <TeamPeoplePicker compact people={people} onChange={value=>draft.setValue(previous=>({...previous,people:JSON.stringify(value)}))}/>
-     <p className="muted">Members are shared across your organization’s submissions. New email invitations are sent when you submit.{org&&<> <Link to={`/orgs/${encodeURIComponent(org)}?tab=personnel`}>Manage members</Link>.</>}</p>
+     <p className="muted">Include a teammate’s email address. They will receive an invitation to join your team organization when you submit. They join only after accepting. Members are shared across your organization’s submissions.{org&&<> <Link to={`/orgs/${encodeURIComponent(org)}?tab=personnel`}>Manage members</Link>.</>}</p>
     </fieldset>
     <fieldset className="presentation-section"><legend>Supporting materials <span className="application-optional">(optional)</span></legend>
      <p className="muted">Slides, images or documents. Up to 10 files, 20 MB each. Attachments are public.</p>
