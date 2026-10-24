@@ -2771,6 +2771,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-user-model-review-test-mjs",
+      "label": "web/scripts/user-model/review.test.mjs",
+      "category": "User interface and integrations",
+      "source": "web/scripts/user-model/review.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "review.test.mjs"
+        }
+      ]
+    },
+    {
       "id": "suite-web-src-application-usecases-proposeMotion-test-ts",
       "label": "web/src/application/usecases/proposeMotion.test.ts",
       "category": "User interface and integrations",
