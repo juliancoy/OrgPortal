@@ -1,100 +1,86 @@
-# LifeTech service desk
+# Organization service email
 
-`service@lifetech.fyi` is a Cloudflare Email Routing alias for the ChatGPT service
-account. Until the ticket-capable OrgPortal release is live, it forwards to the
-owner's verified Gmail address. The service account's original address remains
-`chatgpt@lifetech.fyi`; creating an alias does not change identity or grant roles.
+Every OrgPortal organization can use the service desk at `/support`. Active
+members with a verified account email can compose messages and reply to their own
+correspondence. Email verification comes from the authenticated PIdP identity's
+`identity_data.email_verified === true`, never from a user-entered address or an
+incoming email. Each message has one recipient and an explicit review/send step.
+Organization owners and administrators manage activation, FAQs, assignments, and
+the complete queue. They also need a verified email to send messages.
 
-## Mail processing
+## Mailboxes and branding
 
-After activation, the Cloudflare rule sends this one address to the existing
-`org-codecollective` Worker `email()` handler. Other addresses remain unchanged.
-The handler parses MIME with postal-mime, accepts at most 256 KiB, discards
-attachments and HTML, and stores at most 50,000 characters of plain text. A
-message without plain text requires admin review. No public mail-ingestion HTTP
-endpoint, external LLM, or autonomous privileged tool execution is introduced.
+`org-worker/src/supportMailboxes.ts` resolves mailboxes and organization branding.
+On first access, each organization receives a stable random
+`service+<32-character identifier>@notify.orgportal.cc` reply address stored in the private
+`support_mailboxes` table. Shared outbound mail uses `service@notify.orgportal.cc` with
+the organization's name and its own reply address. LifeTech uses
+`service@lifetech.fyi` for both. Changing an organization's slug does not change
+its mailbox. New organizations receive the same capability without code changes.
 
-Each accepted email creates a private ticket. A repeated Message-ID from the
-same sender/address is idempotent. A reply with `[LT-<ticket id>]` reopens that
-sender's existing ticket. The envelope sender is an untrusted contact address,
-not proof of account ownership; support emails cannot authorize account changes
-or retrieve private records. Automated/list mail never receives an automatic
-answer. The handler avoids replying to its own address and common bounce senders.
-A sender is limited to 30 accepted messages per hour.
+The service page defaults to the current group site's organization when the user
+is a member, preserves manual selections, and displays the mailbox returned by
+the API. Members see their own authored conversations; administrators see the
+organization queue. Membership and access are checked on every request.
 
-Automatic answers require an exact normalized match to an enabled FAQ question,
-with no attachment, additional question, sensitive category, or prior ticket
-thread. The two initial answers point to the current bylaws and availability
-pages; admins can manage answers and source links at `/support`. An unknown
-question remains open. Native `message.reply()` additionally enforces Cloudflare's
-DMARC and reply-loop checks. If automatic delivery fails, the ticket remains open
-and notifies admins; an uncertain send is not automatically retried.
+`supportEmailTemplate.ts` renders HTML and plain text with the organization name,
+optional HTTPS image, greeting, service signature, reference, and reply guidance.
+FAQ replies identify themselves as automatic. Human emails carry no automation
+notice. Incoming Message-IDs are retained for reply threading. API acceptance is
+reported as sent, not proof of mailbox delivery. Failed or uncertain sends remain
+visible and must not be retried without checking delivery. Request IDs prevent
+repeated sends, and sending is limited to 30 messages per member per hour.
 
-## Routing and access
+## Incoming mail
 
-Categories are general, membership, technical, privacy, and security. Active
-organization owners/administrators can assign each category to a current admin.
-If the assignee loses that role, notifications fall back to all active admins of
-that organization. Notification text contains no sender address or message body.
-The normal OrgPortal bell links to the private ticket. Queue, details, settings,
-assignment, deletion, and replies all recheck live organization permissions.
-Ordinary members, the ChatGPT contributor account, other organizations, and
-anonymous visitors cannot read or manage tickets.
+Cloudflare routes configured service addresses to the primary `org-codecollective`
+Worker `email()` handler. Unknown addresses, disabled organizations, and replica
+workers reject incoming messages. Processing defaults to off. Other mail routes
+must remain unchanged. Mail from outside the organization can open a support
+ticket; its envelope sender is an untrusted contact address and grants no account
+or organization permission.
 
-Admins review a reply in the UI before explicitly sending it. Each composed
-reply carries an idempotency key, preventing a repeated request from sending the
-same reply twice. Replies are sent
-using the `SUPPORT_EMAIL` binding, restricted to `service@lifetech.fyi`. Email
-Sending is enabled for the LifeTech domain. A failed or uncertain send stays
-visible for manual investigation. Do not retry an uncertain send without checking
-for prior delivery. The UI does not claim mailbox delivery merely because the
-provider accepted a send.
+The handler accepts at most 256 KiB, discards attachments and HTML, and stores at
+most 50,000 characters of plain text. A message without plain text requires admin
+review. Repeated Message-IDs are idempotent. Replies with the ticket reference
+reopen the same sender's ticket in the same organization. Automated/list mail and
+bounce senders receive no automatic answer. Inbound acceptance is limited to 30
+messages per sender, per organization, per hour.
 
-## Retention and deletion
-
-Tickets and correspondence expire 90 days after the latest inbound message or
-admin action. The scheduled retention job deletes expired messages, tickets, and
-related support notifications in bounded batches. An organization admin can
-permanently delete a ticket and its correspondence sooner. Removing an
-organization cascades its support records, and ticket deletion removes associated
-service notifications. FAQ answers and routing
-configuration persist until changed or the organization is retired. These private
-tables are explicitly excluded from public replication and the immutable
-change journal; they are not added to public organization snapshots. The system
-does not preserve raw email or attachments. Recipient mailbox copies, the current
-Gmail forwarding destination, and existing backups have separate retention.
+Automatic answers require an exact normalized match to an enabled FAQ with no
+attachment, sensitive category, or existing conversation. Native `message.reply()`
+adds Cloudflare's reply-loop and DMARC checks. No external LLM or autonomous
+privileged actions are involved.
 
 ## Activation and release
 
-1. Review and apply `org-worker/migrations/0116_support_tickets.sql` and
-   `org-worker/migrations/0117_support_controls.sql` using
-   the established remote migration path; they create the private support tables and
-   their journal exclusions without changing existing identities or permissions.
-2. Add `SUPPORT_EMAIL` to live Worker settings as a `send_email` binding restricted
-   to `service@lifetech.fyi`. Code releases inherit live bindings; the checked-in
-   Wrangler binding alone does not update an existing production Worker.
-3. Release API and frontend through `scripts/release.mjs` from clean current main
-   and verify both public commit health endpoints. There is no migration during
-   ordinary release and no deployment through CodeCollective.
-4. In `/support`, select LifeTech and use **Enable email processing**. The
-   setting defaults to off and requires an active organization owner/admin and
-   the sending binding. Disabling blocks incoming processing and manual sends,
-   while preserving existing tickets; in-flight work may finish. Incoming mail
-   routed to the disabled Worker is explicitly rejected, never silently dropped.
-5. Change only the existing exact-address service alias action from owner Gmail
-   forwarding to Worker `org-codecollective`, preserving all other rules.
-6. Verify a known FAQ answer and an unknown-question ticket through the real
-   Cloudflare email path. Use owned addresses; tests must not send to strangers.
+1. Apply pending migrations through the established owning release workflow.
+   `0120_support_mailbox_identity.sql` fills missing LifeTech defaults without
+   replacing existing answers. `0121_organization_service_email.sql` creates the
+   private mailbox mapping and adds conversation authorship and Message-ID fields.
+2. Reuse the existing `notify.orgportal.cc` and `lifetech.fyi` Email Sending
+   domains. Configure the live
+   `SUPPORT_EMAIL` binding to permit `service@notify.orgportal.cc` and
+   `service@lifetech.fyi`. Checked-in configuration does not update live bindings.
+3. Release API and frontend through the owning release workflow when requested.
+4. An organization owner/admin enables processing at `/support`.
+5. Route the generated organization service addresses to `org-codecollective`.
+   Use exact-address rules, or an approved catch-all only on a domain dedicated
+   to this service. Do not replace an existing domain catch-all or unrelated rules.
+   Keep LifeTech forwarding until its processing and release are ready.
+6. When requested, verify actual sending and receiving using owned addresses.
 
-Local tests must use isolated writable Docker with replication off. Never seed
-fixture identities, ticket bodies, or permissions into a production database.
+The console reports binding presence and application activation. It cannot verify
+Cloudflare routing, current domain status, or final delivery. No mail is sent merely
+by applying a migration or visiting the page. This source change does not enable
+any organization, apply remote migrations, change routing, or deploy.
 
-## Current implementation handoff
+## Privacy and retention
 
-The console control and activation migration are prepared in source. No new
-migration has been applied remotely and this implementation has not been released.
-The next activation step is review of migrations 0116 and 0117, followed by focused
-validation when requested. Keep Gmail forwarding in place until the candidate has
-passed validation and the owning release workflow has completed. The console
-reports application enablement and binding presence, not verified mail delivery
-or Cloudflare routing. No Cloudflare API credential is exposed to the browser.
+Tickets, correspondence, and notifications expire after 90 days without activity.
+Admins can delete tickets sooner; organization deletion cascades to its service
+records and mailbox mapping. FAQs, routing, activation, and mailbox configuration
+persist until changed or the organization is removed. These private tables are
+excluded from public replication and the immutable public change journal.
+Notification text omits sender addresses and bodies. The system retains neither
+raw MIME nor attachments. Recipient copies and backups have separate retention.

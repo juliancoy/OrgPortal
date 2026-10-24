@@ -676,10 +676,6 @@ function slugify(value: string) {
   return slug || "contact";
 }
 
-function searchCandidateLimit(limit: number) {
-  return Math.min(Math.max(limit * 8, 200), 1000);
-}
-
 function connectionPairKey(a: string, b: string) {
   return [a, b].sort().join(":");
 }
@@ -3400,28 +3396,48 @@ app.get("/api/network/orgs/public/:slug/media/:mediaId", async (c) => {
 
 async function publicEventSearchRows(env: Env, q: string, limit: number, upcomingOnly: boolean) {
   const filters: string[] = [];
-  const binds: unknown[] = [];
   if (upcomingOnly) {
     filters.push("(COALESCE(e.starts_at,e.event_date) IS NULL OR COALESCE(e.starts_at,e.event_date) >= date('now'))");
   }
   const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
-  const candidateLimit = q ? searchCandidateLimit(limit) : limit;
+  // Score every eligible event before limiting. A chronological candidate cap
+  // silently hides strong matches scheduled beyond the busiest upcoming dates.
+  let rankedIds: string[] | undefined;
+  if (q) {
+    type SearchRow = Pick<EventRow, 'id' | 'title' | 'description' | 'location' | 'organization_name' | 'host_org_name' | 'slug' | 'tags' | 'city'>;
+    const searchable = await env.DB.prepare(
+      `SELECT e.id, e.title, e.description, e.location, o.name AS organization_name,
+              e.host_org_name, e.slug, e.tags, e.city
+       FROM events e
+       LEFT JOIN organizations o ON o.id = e.host_org_id
+       ${where}
+       ORDER BY COALESCE(e.starts_at,e.event_date,e.created_at) ${upcomingOnly ? "ASC" : "DESC"}, e.id ASC`,
+    ).all<SearchRow>();
+    rankedIds = rankSearchResults(
+      searchable.results || [], q,
+      row => [row.title, row.description, row.location, row.organization_name, row.host_org_name, row.slug, row.tags, row.city],
+      limit,
+    ).map(row => row.id);
+    if (!rankedIds.length) return [];
+  }
+  // Fetch full display records only for the selected matches. A single JSON
+  // parameter avoids growing the SQL bind count with the result limit.
   const rows = await env.DB.prepare(
     `SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.image_url AS organization_image_url, o.links_json AS organization_links_json
      FROM events e
      LEFT JOIN organizations o ON o.id = e.host_org_id
-     ${where}
-     ORDER BY COALESCE(e.starts_at,e.event_date,e.created_at) ${upcomingOnly ? "ASC" : "DESC"}
+     ${rankedIds ? "WHERE e.id IN (SELECT value FROM json_each(?))" : where}
+     ORDER BY COALESCE(e.starts_at,e.event_date,e.created_at) ${upcomingOnly ? "ASC" : "DESC"}, e.id ASC
      LIMIT ?`,
   )
-    .bind(...binds, candidateLimit)
+    .bind(...(rankedIds ? [JSON.stringify(rankedIds), limit] : [limit]))
     .all<EventRow>();
-  return rankSearchResults(
-    rows.results || [],
-    q,
-    (row) => [row.title, row.description, row.location, row.organization_name, row.host_org_name, row.slug, row.tags, row.city],
-    limit,
-  );
+  if (!rankedIds) return rows.results || [];
+  const byId = new Map((rows.results || []).map(row => [row.id, row]));
+  return rankedIds.flatMap(id => {
+    const row = byId.get(id);
+    return row ? [row] : [];
+  });
 }
 
 app.get("/api/network/events/public", async (c) => {

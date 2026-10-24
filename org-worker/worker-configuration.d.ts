@@ -1,5 +1,5 @@
 interface Env {
-  SUPPORT_EMAIL?: {send(message:{from:{email:string;name:string};to:string;subject:string;text:string}):Promise<unknown>};
+  SUPPORT_EMAIL?: {send(message:{from:{email:string;name:string};to:string;subject:string;text:string;html?:string;replyTo?:string;inReplyTo?:string}):Promise<unknown>};
   CLOUDFLARE_ANALYTICS_ACCOUNT_ID?: string;
   CLOUDFLARE_ANALYTICS_HOSTS?: string;
   CLOUDFLARE_ANALYTICS_API_TOKEN?: string;

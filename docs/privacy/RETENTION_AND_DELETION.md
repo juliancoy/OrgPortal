@@ -421,3 +421,34 @@ No raw message, HTML, or attachments are retained. Service tables are excluded
 from public replication and the immutable change journal. Copies in email
 recipients' mailboxes and existing backups remain subject to their own retention.
 Implementation and activation steps: [Service desk](../SERVICE_DESK.md).
+
+## Member governance drafts
+
+`governance_personal_drafts` holds the owner account ID, document ID, draft name,
+current revision pointer and timestamps. `governance_personal_draft_revisions`
+holds saved wording, the common base, save notes, content hashes and copied-source
+references. These editorial drafts are visible only to active LifeTech members.
+Do not put private health information, contact details or case reports in drafts.
+The owner alone can save revisions. Explicit saves append snapshots; restores do
+not rewrite history. Draft names are mutable metadata, not immutable content.
+
+Review personal drafts 24 months after their last save (`updated_at`). This is an
+operator review clock, not automated expiry. Ask whether continued retention is
+needed; delete abandoned drafts unless a documented organizational/legal need
+justifies retention and a dated follow-up review. Formal adoption records retain
+their separate governance lifecycle. Personal draft history is not a permanent
+formal adoption record.
+
+For a verified owner deletion request or account erasure, an authorized operator
+removes the owner's `governance_personal_drafts` rows in a bounded, scoped operation;
+the foreign key cascades to all snapshots. Review copied-source references in
+other members' drafts for residual personal information and handle corrections
+through the privacy process. Deletion of the organization cascades to all drafts.
+No automatic account-erasure integration or draft-deletion UI is claimed.
+
+Both tables are excluded from the immutable change journal and public replicas.
+Existing preview receipts retain their established lifecycle. Inventory these
+private tables in backups and exports; apply confirmed erasures and overdue
+retention reviews before serving restored copies. Erasure does not remove text
+already copied into another member's independently saved wording or a formal
+motion; review those shared records separately under the existing privacy policy.

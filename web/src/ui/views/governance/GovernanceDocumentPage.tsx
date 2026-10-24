@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
 import { refreshRuntimeTokenFromSession } from '../../../infrastructure/auth/sessionToken'
 import { DiffView } from '../../components/governance/DiffView'
-import { DraftSection } from './DraftSection'
+import { DraftMergeWorkspace } from './DraftMergeWorkspace'
 import './governance-document.css'
 import { RatificationRehearsal } from './RatificationRehearsal'
 
@@ -69,12 +69,15 @@ export function GovernanceDocumentPage() {
      <DiffView original={doc.sections.find(s=>s.id===sectionId)?.text||''} proposed={replacement}/>
      <button disabled={busy} type="submit">Review change ticket</button>
     </form>:null
- return <main className="governance-document">
+ return <main className={'governance-document'+(!ticketId?' governance-merge-page':'')}>
   <nav aria-label="Governance"><Link to={path}>LifeTech Constitution and Bylaws</Link> · <Link to={path+'#tickets'}>Change tickets</Link> · <a href="#gpt-suggestions">GPT recommendations</a></nav>
   {error&&<p role="alert">{error}</p>}
   {!doc&&!error&&<p>Loading constitution…</p>}
   {doc&&!ticketId&&<>
-   <header><p className="governance-draft">{doc.status} · Revision {doc.version}</p><h1>{doc.title}</h1><p>{doc.introduction}</p><p>Draft research references:</p><ul>{doc.sourceReferences.map(reference=><li key={reference.url}><a href={reference.url}>{reference.label}</a></li>)}</ul><p>Parliamentary reference: <a href="https://robertsrules.com/frequently-asked-questions/">official Robert’s Rules FAQ</a>.</p><a href="#suggest" onClick={()=>setEditingSection(null)}>Suggest a change</a><p>Suggested additions are green; deletions are red and struck through. Hover over colored text for authorship and history, or select it to open the section history. Suggestions take effect only through organizer approval.</p></header>
+   <header className="merge-page-header"><p className="governance-draft">{doc.status} · Organization revision {doc.version}</p><h1>{doc.title}</h1><p>{doc.introduction}</p></header>
+   <DraftMergeWorkspace key={access?.userId||'guest'} doc={doc} userId={access?.userId} canEdit={!!access?.canPropose} canPropose={!doc.pendingRatificationId} request={request} onPropose={section=>{setSectionId(section.id);setReplacement(section.text);setTitle(`Amend ${section.title}`);setReason('Changes assembled in my comparison draft.');setEditingSection(null);setPreview(null);setTimeout(()=>{const tools=document.getElementById('governance-tools');if(tools instanceof HTMLDetailsElement)tools.open=true;document.getElementById('suggest')?.scrollIntoView({block:'start'})},0)}}/>
+   <details className="merge-governance-tools" id="governance-tools"><summary>GPT approval, change tickets, ratification, and source references</summary>
+   <p>Draft research references: {doc.sourceReferences.map(reference=><a key={reference.url} href={reference.url}>{reference.label} </a>)}</p>
    {!doc.ratification&&<RatificationRehearsal candidate={doc} />}
    <section id="ratification"><h2>Lock the final draft for real voting</h2>
     {doc.ratification?<p role="status">Ratified on {new Date(doc.ratification.ratifiedAt).toLocaleString()}, effective {new Date(doc.ratification.effectiveAt).toLocaleString()}. <Link to={path+'/tickets/'+doc.ratification.motionId}>Read the adoption record and original adopted text</Link>.</p>:<>
@@ -104,15 +107,14 @@ export function GovernanceDocumentPage() {
       {suggestion.decision!=='pending'&&<button disabled={busy} onClick={()=>void review('review-suggestion',{sectionId:suggestion.sectionId,hash:suggestion.hash,candidateHash:doc.candidateHash,decision:'pending'},`Reopen review: ${suggestion.title}`)}>Reopen review</button>}
      </div>}
      {related.map(ticket=><p key={ticket.id}><Link to={path+'/tickets/'+ticket.id}>Change ticket: {ticket.status}</Link></p>)}
-     {access?.canPropose&&!doc.pendingRatificationId&&applicable&&suggestion.decision!=='denied'&&!related.some(ticket=>!['passed','failed','withdrawn'].includes(ticket.status))&&<button onClick={()=>{setSectionId(suggestion.sectionId);setReplacement(suggestion.replacement);setTitle(`GPT suggestion: ${suggestion.title}`);setReason('GPT-prepared governance suggestion, reviewed and submitted by the signed-in member.');setPreview(null);setEditingSection(suggestion.sectionId);setTimeout(()=>document.getElementById(suggestion.sectionId)?.scrollIntoView({block:'start'}),0)}}>Prepare change ticket</button>}
+     {access?.canPropose&&!doc.pendingRatificationId&&applicable&&suggestion.decision!=='denied'&&!related.some(ticket=>!['passed','failed','withdrawn'].includes(ticket.status))&&<button onClick={()=>{setSectionId(suggestion.sectionId);setReplacement(suggestion.replacement);setTitle(`GPT suggestion: ${suggestion.title}`);setReason('GPT-prepared governance suggestion, reviewed and submitted by the signed-in member.');setPreview(null);setEditingSection(null);setTimeout(()=>document.getElementById('suggest')?.scrollIntoView({block:'start'}),0)}}>Prepare change ticket</button>}
     </article>})}</div>
    </section>}
-   <nav aria-label="Table of contents"><ol>{doc.sections.map(s=><li key={s.id}><a href={'#'+s.id}>{s.title}</a></li>)}</ol></nav>
-   {doc.sections.map(s=><DraftSection key={s.id} section={s} version={doc.version} tickets={tickets.filter(t=>t.document_action!=='ratify'&&t.document_section===s.id)} canEdit={!!access?.canPropose&&!doc.pendingRatificationId} editing={editingSection===s.id} onEdit={(text)=>{setSectionId(s.id);setReplacement(text??s.text);setTitle(`Amend ${s.title}`);setReason('');setPreview(null);setEditingSection(s.id);setTimeout(()=>document.getElementById(s.id)?.querySelector('form')?.scrollIntoView({block:'start'}),0)}} onCancel={()=>{setEditingSection(null);setPreview(null)}}>{editingSection===s.id?changeEditor:null}</DraftSection>)}
-   <section id="suggest"><h2>Open a change ticket</h2><p>Active LifeTech members may propose and discuss changes. Organizers second motions and vote. Every proposal starts from an exact document revision and retains its original wording.</p>
+   <section id="suggest" onFocus={()=>{const tools=document.getElementById('governance-tools');if(tools instanceof HTMLDetailsElement)tools.open=true}}><h2>Open a change ticket</h2><p>Active LifeTech members may propose and discuss changes. Organizers second motions and vote. Every proposal starts from an exact document revision and retains its original wording.</p>
     {!token?<Link to="/users/login?next=%2Fgovernance%2Fdocuments%2Flifetech-constitution">Sign in to suggest a change</Link>:doc.pendingRatificationId?<p>The full candidate is frozen for ratification. Discuss it on the <Link to={path+'/tickets/'+doc.pendingRatificationId}>ratification ticket</Link>.</p>:!access?.canPropose?<p>Your account needs active LifeTech membership to open a ticket. Contact a LifeTech organizer through the existing membership process.</p>:(!editingSection&&changeEditor)}
    </section>
    <section id="tickets"><h2>Change tickets</h2>{tickets.length===0?<p>No change tickets yet.</p>:<ul>{tickets.map(t=><li key={t.id}><Link to={path+'/tickets/'+t.id}>{t.title}</Link> — {t.status} · {t.proposer_name}</li>)}</ul>}</section>
+   </details>
   </>}
   {motion&&detail&&<>
    <header><p className="governance-draft">{motion.status} · Proposed against revision {motion.document_version}</p><h1>{motion.title}</h1><p>Proposed by {motion.proposer_name}</p><p>{motion.body}</p></header>

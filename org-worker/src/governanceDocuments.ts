@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { governancePersonalDraftRoutes } from './governancePersonalDrafts';
 import { enforceEventRateLimit, prepareEventOperation, previewFingerprint, claimEventOperation, finishEventOperation } from './eventOperationStore';
 import { z } from 'zod';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
@@ -222,6 +223,7 @@ export function governanceDocumentRoutes(getUser:(env:Env,request:Request)=>Prom
   throw error;
  });
  app.use('*',async(c,next)=>{c.header('Cache-Control','no-store');await next();});
+ app.route('/lifetech-constitution/drafts',governancePersonalDraftRoutes(getUser,readGovernanceDocument));
  app.get('/lifetech-constitution',async c=>c.json(await readGovernanceDocument(c.env.DB)));
  app.get('/lifetech-constitution/tickets',async c=>{
   const rows=await c.env.DB.prepare('SELECT * FROM governance_motions WHERE document_id=? ORDER BY created_at DESC LIMIT 200').bind(lifetechConstitution.id).all<DocumentMotion>();

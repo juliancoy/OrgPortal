@@ -200,9 +200,9 @@ or view the current text without suggestions.
 
 ## Interactive editorial review
 
-Role bubbles in the Personnel and Meetings titles open the relevant clause.
-Members can edit one clause, then review the assembled section and submit an
-exact-revision change ticket. Role wording does not assign people or permissions.
+Members edit wording in their comparison draft, then review the assembled
+section and submit an exact-revision change ticket. Editing role wording does
+not assign people or permissions.
 
 GPT recommendations display shared organizer triage: pending, approved for
 proposal, or denied. Review operations use authenticated live organizer access
@@ -220,3 +220,42 @@ change journals: it is replaceable editorial triage, not an adoption record.
 It contains no reviewer identities or free text; existing operation receipts keep
 their existing retention policy. Include the table in organization deletion and
 backup inventories and reapply confirmed deletions after restoring a backup.
+
+## Draft comparison workspace
+
+The document page is a two- or three-pane comparison workspace. The center pane
+is the signed-in member's editable draft. Source panes offer current organization
+text, the saved common base, GPT recommendations, and searchable member drafts.
+Comparison aligns exact paragraphs and matching clause headings. A changed block
+shows its replacement text and the exact current text it will replace; clicking
+copies that block into the center. Insertions and removals are explicit. All edits
+support session undo/redo. Three panes support manual comparison and merging;
+the interface flags sections changed on both sides of the base without claiming
+to resolve conflicts automatically. On small screens panes remain side by side
+and can be scrolled horizontally.
+
+A save requires a note and a preview/confirm receipt. Saved drafts are shared
+with active LifeTech members, not public. Only the owner can append revisions;
+other members copy wording into their own draft. The search directory and history
+are paginated. Members can compare historical snapshots, restore wording as a
+new revision, or save a copy as a separate draft. Unsaved navigation prompts,
+preview invalidation on edits, and optimistic head checks protect working text.
+A stale save keeps the working copy and offers the latest saved text for comparison.
+Ctrl/Cmd+S opens the save preview when a save note is present. Drafts are not
+autosaved; save explicitly before leaving or changing accounts.
+
+Migration `0119_governance_personal_drafts.sql` adds draft metadata and immutable
+snapshot revisions. Each revision contains its parent revision, canonical base
+version and snapshot, complete sections, SHA-256 content hash, save note, timestamp,
+and copied-source references. Revisions cannot be updated; restoration appends.
+Head movement and snapshot creation use a transactional D1 batch with conditional
+writes and unique parent/revision keys. Copy references record member-supplied
+editing provenance, not verified authorship or signatures. Saved member drafts
+are editorial work; the existing motion and ballot workflow governs adoption.
+Personal drafting can continue during ratification; proposing changes cannot.
+
+These tables have explicit change-journal exclusions because they provide their
+own revision history and must support privacy deletion. They are excluded from
+public organization replication. See the personal-draft retention policy for
+review clocks, verified deletion, and backup handling. Migration is prepared only;
+no database changes, application tests, or deployment were performed for this work.
