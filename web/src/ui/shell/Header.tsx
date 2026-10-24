@@ -595,10 +595,10 @@ export function Header({ organizationId }: { organizationId?: string | null } = 
               {portalProfile.brandName.split(' ').slice(0, 2).map((word) => word[0]).join('')}
             </span>
           )}
-          <div>
+          {!portalProfile.nameBannerUrl && <div>
             <div className="portal-brand-title">{portalProfile.brandName}</div>
             {portalProfile.groupSiteId && <div className="portal-brand-sub">{portalProfile.tagline}</div>}
-          </div>
+          </div>}
         </Link>
 
         <div className="portal-middle">

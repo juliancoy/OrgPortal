@@ -1,14 +1,117 @@
-.event-application-page { width: min(100%, 1040px); margin: 0 auto; padding-block: 1.5rem 3rem; }
-.application-back { display: inline-flex; align-items: center; gap: .5rem; font-size: .9rem; }
-.application-event-context { margin: 1.5rem 0; }
-.application-event-context p { margin: 0 0 .4rem; font-size: .8rem; color: var(--text-muted); }
-.application-event-context h1 { margin: 0; font-size: clamp(1.5rem, 4vw, 2.15rem); line-height: 1.2; letter-spacing: -.025em; overflow-wrap: anywhere; }
-.application-confirmation { display: grid; justify-items: start; gap: 1rem; padding: clamp(1.25rem, 4vw, 2.5rem); }
-.application-confirmation > svg { color: var(--primary); }
-.application-confirmation :is(h1,p) { margin: 0; }
-.application-confirmation h1 { font-size: 1.6rem; }
-.application-page-actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: .5rem; }
-.event-application-page .presentation-ai-option textarea { box-sizing: border-box; width: 100%; resize: vertical; }
-.event-application-page .presentation-ai-option button { display: inline-flex; gap: .5rem; align-items: center; margin-right: .75rem; }
+/* Application document tokens. Type follows the portal's existing sans-serif family. */
+.event-application-page {
+ --application-background: var(--application-paper, #f4f5f0);
+ --application-field: #fdfdfa;
+ --application-text: #242820;
+ --application-muted: #5d6258;
+ --application-rule: #c9cdc1;
+ --application-input-border: #898f82;
+ --application-focus: var(--application-gold, #d4af37);
+ --application-measure: 42rem;
+ --application-space: 2.75rem;
+ /* Map shared form components onto the document palette. */
+ --text-primary: var(--application-text);
+ --text-muted: var(--application-muted);
+ --text-secondary: var(--application-muted);
+ --border: var(--application-rule);
+ --panel: var(--application-background);
+ --surface-input: var(--application-field);
+ --surface-soft: var(--application-background);
+ --primary: var(--application-text);
+ box-sizing: border-box;
+ width: min(100%, 58rem);
+ margin-inline: auto;
+ padding: clamp(1.5rem, 5vw, 3.5rem) clamp(1.25rem, 5vw, 4rem) 4rem;
+ background: var(--application-background);
+ color: var(--application-text);
+ font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+ font-size: 1rem;
+ line-height: 1.65;
+}
+[data-theme='dark'] .event-application-page {
+ --application-background: #1c211f;
+ --application-field: #222825;
+ --application-text: #eceee6;
+ --application-muted: #b4bcb1;
+ --application-rule: #454e46;
+ --application-input-border: #7a8579;
+}
+.event-application-page > * { max-width: var(--application-measure); margin-inline: auto; }
+.event-application-page :is(h1,h2,h3,p) { text-indent: 0; }
+.event-application-page a { color: inherit; text-underline-offset: .22em; }
+.application-back { width: 100%; display: flex; align-items: center; gap: .5rem; font-size: .875rem; text-decoration: none; }
+.application-back:hover { text-decoration: underline; }
+.application-event-context { margin-block: 2.5rem var(--application-space); }
+.application-identity { display: flex; align-items: center; gap: .7rem; margin-bottom: 1.75rem; }
+.application-identity img { width: 32px; height: 40px; object-fit: contain; }
+.application-identity span { font-size: .9375rem; font-weight: 600; letter-spacing: -.01em; }
+.application-event-context .application-event-name { font-size: 1rem; margin: 0 0 .6rem; color: var(--application-muted); }
+.application-event-context h1 { margin: 0; font-family: inherit; font-size: clamp(2rem, 5vw, 2.875rem); font-weight: 600; letter-spacing: -.045em; line-height: 1.12; overflow-wrap: anywhere; }
+.application-event-context .application-introduction { margin: 1rem 0 0; max-width: 36rem; color: var(--application-muted); }
+.event-application-page .presentation-applications { display: block; padding: 0; margin-block: 0; background: none; border: 0; border-radius: 0; box-shadow: none; }
+.event-application-page .presentation-form { display: block; }
+.event-application-page .presentation-fields { display: contents; margin: 0; padding: 0; border: 0; min-width: 0; }
+.event-application-page .presentation-section { display: grid; gap: 1.4rem; padding: 1.5rem 0 0; margin: 0 0 var(--application-space); border: 0; border-top: 1px solid var(--application-rule); border-radius: 0; min-width: 0; }
+.event-application-page .presentation-section > legend { float: left; width: 100%; margin: 0 0 .25rem; padding: 0; font-size: 1.25rem; font-weight: 600; letter-spacing: -.025em; line-height: 1.4; }
+.event-application-page .presentation-section > legend + * { clear: both; }
+.event-application-page .presentation-section p { margin: 0; font-size: .875rem; line-height: 1.6; }
+.event-application-page .presentation-form label { display: grid; gap: .5rem; font-size: .9375rem; font-weight: 500; line-height: 1.4; }
+.event-application-page .presentation-form :is(input:not([type='checkbox']),select,textarea),
+.event-application-page .presentation-ai-option textarea {
+ box-sizing: border-box; width: 100%; min-width: 0; max-width: 100%; min-height: 46px;
+ padding: .75rem; border: 1px solid var(--application-input-border); border-radius: 2px;
+ background: var(--application-field); color: var(--application-text);
+ font: inherit; font-size: 1rem; font-weight: 400; line-height: 1.5; box-shadow: none;
+}
+.event-application-page .presentation-form textarea { resize: vertical; }
+.event-application-page .presentation-form :is(input,textarea)::placeholder { color: var(--application-muted); opacity: 1; }
+.event-application-page .presentation-form label small { font-weight: 400; color: var(--application-muted); }
+.event-application-page :is(button,a,input,select,textarea,summary):focus-visible {
+ outline: 2px solid var(--application-focus); outline-offset: 4px; box-shadow: none;
+}
+.event-application-page .presentation-team-choice { gap: .5rem; }
+.event-application-page .presentation-team-fields { display: grid; grid-template-columns: minmax(0,1fr); gap: 1.4rem; }
+.event-application-page .application-optional-profile { padding: 0; border: 0; }
+.event-application-page summary { cursor: pointer; font-size: .9375rem; font-weight: 500; }
+.event-application-page .application-optional-profile[open] > summary { margin-bottom: 1.25rem; }
+.application-profile-fields { display: grid; gap: 1.4rem; }
+.event-application-page .presentation-form input[type='file'] { font-size: .875rem; padding: .6rem; }
+.event-application-page input[type='file']::file-selector-button { font: inherit; background: transparent; color: inherit; border: 0; border-right: 1px solid var(--application-rule); border-radius: 0; margin-right: .75rem; padding: .2rem .75rem .2rem 0; cursor: pointer; }
+.event-application-page .team-people-picker { border: 0; padding: 0; margin: 0; }
+.event-application-page .team-people-list { margin: 1rem 0 0; gap: 0; }
+.event-application-page .team-people-list li { border: 0; border-bottom: 1px solid var(--application-rule); border-radius: 0; padding: .75rem 0; background: none; font-size: .875rem; }
+.event-application-page .team-people-list .organization-avatar { width: 30px; height: 30px; min-width: 30px; font-size: .8rem; }
+.event-application-page .team-people-list strong { font-weight: 500; }
+.event-application-page .team-people-list small { font-size: .8125rem; }
+.event-application-page .submission-attachment-add { display: inline-flex; align-items: center; gap: .5rem; }
+.event-application-page .submission-attachment-add::after { content: none; }
+.event-application-page .presentation-form-footer { display: grid; justify-items: start; gap: 1.25rem; margin-top: 0; padding-top: 1.5rem; border-top: 1px solid var(--application-rule); }
+.event-application-page .presentation-form-footer p { max-width: 36rem; font-size: .875rem; line-height: 1.6; }
+.event-application-page .btn-primary { display: inline-flex; justify-content: center; align-items: center; min-height: 48px; padding: .75rem 1.35rem; border: 1px solid var(--application-gold); border-radius: 2px; background: var(--application-gold); color: #242820; font: inherit; font-size: .9375rem; font-weight: 600; line-height: 1.4; text-decoration: none; box-shadow: none; transform: none; }
+.event-application-page .btn-primary:hover:not(:disabled) { background: color-mix(in srgb,var(--application-gold) 88%,white); color: #242820; transform: none; }
+.event-application-page .btn-secondary { display: inline-flex; align-items: center; gap: .5rem; width: fit-content; min-height: 44px; padding: .5rem 0; border: 0; border-radius: 0; background: none; color: var(--application-text); font: inherit; font-size: .875rem; font-weight: 400; text-decoration: underline; text-underline-offset: .22em; box-shadow: none; transform: none; }
+.event-application-page .btn-secondary:hover:not(:disabled) { background: none; color: var(--application-text); text-decoration-thickness: 2px; transform: none; }
+.event-application-page :disabled { cursor: not-allowed; opacity: .6; }
+.event-application-page .local-draft-status { display: flex; justify-content: space-between; gap: .5rem 1.5rem; padding: 0; margin: 0 0 1.5rem; border: 0; }
+.event-application-page .local-draft-status p { font-size: .8125rem; line-height: 1.5; }
+.event-application-page .local-draft-status p::before { content: none; }
+.event-application-page .local-draft-status button { padding: .25rem 0; min-height: 44px; font-size: .8125rem; }
+.event-application-page .application-message { padding: 1rem 0; margin: 0 0 1.5rem; border-block: 1px solid var(--application-rule); font-weight: 500; overflow-wrap: anywhere; }
+.event-application-page .presentation-login { display: grid; justify-items: start; gap: 1.5rem; padding: 1.5rem 0 0; border: 0; border-top: 1px solid var(--application-rule); border-radius: 0; background: none; }
+.event-application-page .presentation-login p { margin: 0; max-width: 34rem; }
+.event-application-page .presentation-ai-option { margin: 2.5rem auto 0; padding: 1rem 0 0; border: 0; border-top: 1px solid var(--application-rule); border-radius: 0; }
+.event-application-page .presentation-ai-option :is(p,textarea) { margin-block: 1rem; font-size: .875rem; }
+.event-application-page .presentation-ai-option button { margin-right: 1rem; }
+.event-application-page .application-confirmation { display: block; padding: 1.5rem 0 0; border: 0; border-top: 1px solid var(--application-rule); border-radius: 0; background: none; box-shadow: none; }
+.application-optional { font-size: .875rem; font-weight: 400; color: var(--application-muted); }
+.application-confirmation h2 { font: inherit; font-size: 1.5rem; font-weight: 600; letter-spacing: -.025em; margin: 0 0 .75rem; }
+.application-confirmation p { margin: 0; color: var(--application-muted); }
+.application-page-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem 1.75rem; margin-top: 2rem; }
 .event-apply-link { display: inline-flex; align-items: center; gap: .5rem; margin-bottom: 1rem; text-decoration: none; }
-@media(max-width:540px) { .application-page-actions { width: 100%; } .application-page-actions a { width: 100%; text-align: center; } }
+@media(max-width:540px) {
+ .event-application-page { --application-space: 2.25rem; padding-inline: 1.25rem; }
+ .application-event-context { margin-top: 2rem; }
+ .event-application-page .presentation-form-footer .btn-primary { width: 100%; }
+ .application-page-actions { align-items: stretch; flex-direction: column; gap: .5rem; }
+ .application-page-actions .btn-secondary { align-self: center; }
+}

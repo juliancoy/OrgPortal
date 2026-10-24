@@ -5,11 +5,11 @@ import { attachmentBase, attachmentRequest, submissionAttachmentAccept, uploadSu
 
 const emptyAttachments:SubmissionAttachment[]=[]
 function sizeLabel(bytes:number){return bytes<1024*1024?`${Math.max(1,Math.round(bytes/1024))} KB`:`${(bytes/(1024*1024)).toFixed(1)} MB`}
-export function SubmissionAttachmentPicker({files,onChange,disabled=false}:{files:StagedSubmissionAttachment[];onChange:(files:StagedSubmissionAttachment[])=>void;disabled?:boolean}){
+export function SubmissionAttachmentPicker({files,onChange,disabled=false,buttonLabel}:{files:StagedSubmissionAttachment[];onChange:(files:StagedSubmissionAttachment[])=>void;disabled?:boolean;buttonLabel?:string}){
  const id=useId(),input=useRef<HTMLInputElement>(null),[error,setError]=useState('')
  return <div className="submission-attachment-picker" role="group" aria-label="Submission attachment picker">
   <span id={`${id}-help`} className="sr-only">Images, PDFs, presentations, documents, spreadsheets, text or ZIP files. Up to 10 files, 20 MB each. Uploaded attachments are public.</span>
-  <button type="button" className="btn-secondary submission-attachment-add" aria-label="Add attachments" aria-describedby={`${id}-help`} title="Add attachments · up to 10 files, 20 MB each · publicly visible" disabled={disabled} onClick={()=>input.current?.click()}><Paperclip size={20} aria-hidden="true" /><Plus size={14} aria-hidden="true" /></button>
+  <button type="button" className="btn-secondary submission-attachment-add" aria-label="Add attachments" aria-describedby={`${id}-help`} title="Add attachments · up to 10 files, 20 MB each · publicly visible" disabled={disabled} onClick={()=>input.current?.click()}><Paperclip size={20} aria-hidden="true" />{buttonLabel?<span>{buttonLabel}</span>:<Plus size={14} aria-hidden="true" />}</button>
   <input ref={input} id={id} aria-label="Add submission attachments" hidden type="file" accept={submissionAttachmentAccept} multiple disabled={disabled} onChange={event=>{
    const incoming=Array.from(event.target.files||[]);event.target.value='';setError('')
    if(incoming.some(file=>!file.size||file.size>20*1024*1024)){setError('Choose nonempty files, 20 MB or smaller.');return}

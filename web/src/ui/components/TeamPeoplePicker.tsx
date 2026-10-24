@@ -25,7 +25,7 @@ export function TeamPeoplePicker({ people, onChange, compact=false }: { people: 
  return <fieldset className="team-people-picker"><legend className={compact?'sr-only':undefined}>{compact?'Teammates':'Team members'}</legend>
   {!compact && <p className="muted">Add portal members by name or email. New email addresses receive an invitation when you submit; they must verify their email and accept before joining.</p>}
   {people.length < 50 && <PortalPersonPicker query={query} selected={null} onQueryChange={setQuery}
-   label={compact ? "Teammates (Email or Portal Name)" : undefined}
+   label={compact ? "Team members" : undefined}
    helpText={compact ? "" : "Choose a portal member or add an email invitation to your team."}
    onSelect={person => add({ userId: person.user_id, name: person.user_name, ...(person.email ? {email: person.email} : {}), ...(person.photo_url ? {photo: person.photo_url} : {}) })}
    onInvite={email => add({name: email, email})} />}

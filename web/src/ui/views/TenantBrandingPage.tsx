@@ -34,8 +34,9 @@ export function TenantBrandingPage({brandGuidePath='/branding',tenant:organizati
   if (!tenant) return <Navigate to="/" replace />
   if (!organizationTenant && tenant.home_org_slug) return <Navigate to={`/orgs/${encodeURIComponent(tenant.home_org_slug)}?tab=branding`} replace />
 
+  const nameBannerUrl = profile.nameBannerUrl
   const assets = [
-    profile.nameBannerUrl ? { id: 'namebanner', label: 'Name banner', description: 'Horizontal wordmark used in portal navigation and sign-in.', url: assetUrl(profile.nameBannerUrl) } : null,
+    nameBannerUrl ? { id: 'namebanner', label: 'Name banner', description: 'Horizontal wordmark for wide brand placements.', url: assetUrl(nameBannerUrl) } : null,
     profile.brandImagePath
       ? { id: 'logo', label: 'Primary logo', description: 'Used in portal navigation, sign-in, favicons, and member-facing pages.', url: assetUrl(profile.brandImagePath) }
       : null,
