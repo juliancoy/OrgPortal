@@ -4,11 +4,6 @@ import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
 let chromium;
-try {
-  ({ chromium } = require("playwright"));
-} catch {
-  ({ chromium } = require("../node_modules/playwright"));
-}
 
 function env(name, fallback = "") {
   return String(process.env[name] || fallback).trim();
@@ -203,6 +198,13 @@ async function main() {
     if (!["localhost", "127.0.0.1", "[::1]"].includes(new URL(base).hostname)) {
       throw new Error("Insurance fixtures require localhost portal, PIdP, and org endpoints.");
     }
+  }
+
+  // Reject remote endpoints before loading any browser dependencies.
+  try {
+    ({ chromium } = require("playwright"));
+  } catch {
+    ({ chromium } = require("../node_modules/playwright"));
   }
 
   const primaryBirthday = env("VERIFY_PRIMARY_BIRTHDAY", "1990-04-15");

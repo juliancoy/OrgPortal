@@ -384,7 +384,7 @@ test('tenant event page keeps the hero compact and removes redundant labels', as
   await expect(listings).toBeVisible()
   const lumaLink = listings.getByRole('link', { name: 'View this event on luma.com' })
   await expect(lumaLink).toHaveAttribute('href', 'https://luma.com/csd7fvgm?tk=iQTYPW')
-  await page.getByLabel('Event date, time and place').getByLabel('Add to calendar', {exact:true}).click()
+  await page.getByLabel('Add to calendar', {exact:true}).filter({visible:true}).click()
   await expect(page.getByRole('link', { name: 'Google Calendar', exact: true })).toHaveAttribute('href', /calendar\.google\.com/)
   await expect(page.getByRole('link', { name: 'Outlook Calendar', exact: true })).toHaveAttribute('href', /outlook\.live\.com/)
   await expect(page.getByRole('button', { name: 'Apple / iCal file', exact: true })).toBeVisible()
@@ -557,8 +557,8 @@ test('tenant event guest list is compact publicly and explorable when logged in'
   await page.getByRole('button', { name: /2 coming/ }).click()
   const dialog = page.getByRole('dialog', { name: /2 coming/ })
   await expect(dialog).toBeVisible()
-  await expect(dialog.getByRole('link', { name: 'Public Registrant', exact: true })).toHaveAttribute('href', '/users/public-registrant')
-  await expect(dialog.getByRole('link', { name: 'Private Registrant', exact: true })).toHaveAttribute('href', '/users/private-registrant')
+  await expect(dialog.getByRole('link', { name: /^Public Registrant\b/ })).toHaveAttribute('href', '/users/public-registrant')
+  await expect(dialog.getByRole('link', { name: /^Private Registrant\b/ })).toHaveAttribute('href', '/users/private-registrant')
 
   const privateMessage = dialog.locator('.public-event-guest-list-item').filter({ hasText: 'Private Registrant' }).getByRole('link', { name: 'Message' })
   await expect(privateMessage).toBeVisible()
@@ -584,7 +584,7 @@ test('tenant event location opens Google Maps and copies the address', async ({ 
   await mockTenant(page, { initiallyLoggedIn: true })
   await page.goto(portal('/events/medtech-in-the-hut'))
 
-  const mapsLink = page.getByRole('link', { name: 'Open location in Google Maps' })
+  const mapsLink = page.getByRole('link', { name: 'Open Checkerspot Brewing in Google Maps', exact: true })
   await expect(mapsLink).toBeVisible()
   await expect(mapsLink).toHaveAttribute('href', /google\.com\/maps\/search/)
   await expect(page.locator('.public-event-map-frame iframe')).toHaveAttribute('src', /google\.com\/maps/)

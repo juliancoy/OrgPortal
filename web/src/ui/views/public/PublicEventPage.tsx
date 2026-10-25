@@ -820,7 +820,7 @@ export function PublicEventPage() {
           <section className="portal-card public-event-mobile-details" aria-label="Event date, time and place">
             <div><CalendarDays size={20} aria-hidden="true" /><strong>{toEventDate(event.starts_at || (event.event_date ? event.event_date+'T12:00:00' : null))}</strong></div>
             <div><Clock size={20} aria-hidden="true" /><span>{toEventTimeRange(event.starts_at,event.ends_at)}</span>{calendarActions}</div>
-            {event.location&&<div><MapPinned size={20} aria-hidden="true" /><a href={mapsUrl!} target="_blank" rel="noreferrer">{event.location}</a></div>}
+            {event.location&&<div><MapPinned size={20} aria-hidden="true" /><a href={mapsUrl!} target="_blank" rel="noreferrer">{event.location}</a><button type="button" className="public-event-icon-action" onClick={()=>void copyEventAddress().catch(()=>{})} aria-label={addressCopied?'Address copied':'Copy address'} title={addressCopied?'Address copied':'Copy address'}><Copy size={17} aria-hidden="true" /></button></div>}
           </section>
           {(canManageEvent || presentationsEnabled) && <section className="public-event-applications" aria-label="Presentation applications">
           {canManageEvent && <div className="presentation-settings"><label><input type="checkbox" checked={presentationsEnabled} disabled={presentationSettingsBusy || presentationSettings?.eventId !== event.id} onChange={() => void togglePresentations()} /> Enable presentation applications</label>{presentationSettingsError && <p role="status">{presentationSettingsError}</p>}</div>}
