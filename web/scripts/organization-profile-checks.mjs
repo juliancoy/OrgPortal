@@ -40,6 +40,7 @@ export async function testOrganizationProfile(base,output,contactOutput=output){
    if(viewer==='visitor')for(const mode of ['light','dark'])for(const width of [1440,390]){
     await page.setViewportSize({width,height:1000});await page.evaluate(mode=>document.documentElement.dataset.theme=mode,mode)
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true)
+    await expect.poll(()=>profile.locator('.organization-profile-cover img').evaluate(img=>img.complete&&img.naturalWidth>0)).toBe(true)
     const name=`profile-${mode}-${width}.png`;await page.screenshot({path:join(output,name),fullPage:true});captures.push(name)
    }
    await profile.getByRole('tab',{name:'Events',exact:true}).click();await expect.poll(()=>eventRequests).toBeGreaterThan(0)
