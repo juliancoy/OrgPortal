@@ -13,7 +13,7 @@ import { useAuth } from '../../app/AppProviders'
 type Org = { id:string; name:string; my_role?:string }
 export type PresentationApplication = { submission_id:string; organization_id:string; organization_name:string; title:string; summary:string; status:string; presenters:TeamPerson[] }
 export type PresentationFormAction = { kind: 'edit'; application: PresentationApplication } | { kind: 'delete'; submissionId: string }
-const emptyPresentationDraft = { submissionId: '', editing: '', imageOrg: '', imageUrl: '', org: '', name: '', city: 'Baltimore', description: '', title: '', summary: '', people: '[]' }
+const emptyPresentationDraft = { submissionId: '', editing: '', imageOrg: '', imageUrl: '', teamChoice: '', org: '', name: '', city: 'Baltimore', description: '', title: '', summary: '', people: '[]' }
 export function EventPresentations({eventId,formAction,onActionHandled,onSaved,onSubmitted,onCancelEdit,guestApplyPath}:{eventId:string;formAction?:PresentationFormAction|null;onActionHandled?:()=>void;onSaved?:()=>void;onSubmitted?:(submissionId:string,details:{title:string;teamName:string})=>void;guestApplyPath?:string;onCancelEdit?:()=>void}) {
  const {token,user}=useAuth()
  const choseInitialTeam=useRef(false)
@@ -39,7 +39,7 @@ export function EventPresentations({eventId,formAction,onActionHandled,onSaved,o
  },[formAction,user?.id])
  const people=readTeamPeople(draft.value.people)
  const setField=<K extends keyof typeof emptyPresentationDraft>(field:K,value:typeof emptyPresentationDraft[K])=>draft.setValue(previous=>({...previous,[field]:value}))
- const setOrg=(value:string)=>setField('org',value),setName=(value:string)=>setField('name',value),setCity=(value:string)=>setField('city',value),setDescription=(value:string)=>setField('description',value),setTitle=(value:string)=>setField('title',value),setSummary=(value:string)=>setField('summary',value)
+ const setOrg=(value:string)=>draft.setValue(previous=>({...previous,org:value,teamChoice:'selected'})),setName=(value:string)=>setField('name',value),setCity=(value:string)=>setField('city',value),setDescription=(value:string)=>setField('description',value),setTitle=(value:string)=>setField('title',value),setSummary=(value:string)=>setField('summary',value)
  const base=`/api/org/api/network/events/${encodeURIComponent(eventId)}/presentations`
  const [enabled,setEnabled]=useState(false),[closed,setClosed]=useState(false),[ready,setReady]=useState(false)
  const [orgs,setOrgs]=useState<Org[]>([])
@@ -61,7 +61,7 @@ export function EventPresentations({eventId,formAction,onActionHandled,onSaved,o
    if(controller.signal.aborted)return
    setEnabled(form.enabled);setClosed(form.closed);
    const manageable=teams.filter(o=>o.my_role==='owner'||o.my_role==='administrator');setOrgs(manageable);
-   if(!choseInitialTeam.current&&manageable.length)draft.setValue(previous=>previous.org||previous.name||previous.title||previous.summary||previous.editing?previous:{...previous,org:manageable[0].id});choseInitialTeam.current=true;setReady(true)
+   if(!choseInitialTeam.current&&manageable.length)draft.setValue(previous=>previous.teamChoice||previous.org||previous.name||previous.title||previous.summary||previous.description||previous.city!=='Baltimore'||previous.editing?previous:{...previous,org:manageable[0].id});choseInitialTeam.current=true;setReady(true)
   }catch(error){if(!controller.signal.aborted)setMessage(error instanceof Error?error.message:'Unable to load applications')}})()
   return()=>controller.abort()
  // request uses only the token captured by this load.

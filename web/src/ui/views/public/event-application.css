@@ -4,6 +4,7 @@
  --application-field: #fdfdfa;
  --application-text: #242820;
  --application-muted: #5d6258;
+ --application-error: #9f241a;
  --application-rule: #c9cdc1;
  --application-input-border: #898f82;
  --application-focus: color-mix(in srgb, var(--application-gold, #d4af37) 65%, #242820);
@@ -34,6 +35,7 @@
  --application-field: #222825;
  --application-text: #eceee6;
  --application-muted: #b4bcb1;
+ --application-error: #ffb4ab;
  --application-rule: #454e46;
  --application-input-border: #7a8579;
 }
@@ -146,5 +148,5 @@
 .application-receipt-summary { display: grid; grid-template-columns: max-content minmax(0,1fr); gap: .5rem 1rem; margin-block: 1.5rem; overflow-wrap: anywhere; }
 .application-receipt-summary dt { color: var(--application-muted); }
 .application-receipt-summary dd { margin: 0; font-weight: 600; }
-.application-field-error { color: var(--text-danger, #b42318); }
-.presentation-form [aria-invalid='true'] { border-color: var(--text-danger, #b42318); }
+.event-application-page .presentation-form label small.application-field-error { color: var(--application-error); }
+.event-application-page .presentation-form [aria-invalid='true'] { border-color: var(--application-error); }

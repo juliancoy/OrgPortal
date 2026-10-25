@@ -36,7 +36,7 @@ Its `user-heuristics.json` report distinguishes:
 - `not-assessed`: no automated observer covers this task yet.
 - Human review `pending`: no aesthetic or cognitive assessment has been inferred from automated checks.
 
-Callers may supply outcome evidence only after asserting it in the journey. An evidence string is an assertion contract, not independent proof. The current fixture integration supplies no completion evidence and deliberately reports all application outcomes as unverified. Visitor orientation, contextual sign-in, manager settings and keyboard section journeys remain unassessed by this integration. Light/dark captures exist separately; these affordance checks run at three widths in the fixture's default theme. Slow-network behavior is not covered.
+Callers may supply outcome evidence only after asserting it in the journey. An evidence string is an assertion contract, not independent proof. The affordance observer supplies no completion evidence and deliberately reports those application outcomes as unverified. The separate application journey runner below verifies saves and recovery within its isolated fixtures. Visitor orientation, contextual sign-in, manager settings and keyboard section journeys remain unassessed by this integration. Light/dark captures exist separately; these affordance checks run at three widths in the fixture's default theme. Slow-network behavior is not covered.
 
 Do not combine these categories into a percentage “usability score.” Report blockers (cannot proceed), major issues (wrong/ambiguous action or lost context), and minor issues (extra effort with a clear recovery), with evidence. Severity requires a task-specific judgment; it is not automatically assigned from a missing selector.
 
@@ -53,3 +53,9 @@ SUBMISSION_REVIEW_ONLY=1 npm run render:layouts -- ../artifacts/layout-review/us
 ```
 
 The existing distributed `visual` suite runs this same fixture runner and writes the report alongside its layout artifacts. A passing run establishes the checks it executed, not full usability or accessibility conformance.
+
+## Application walkthrough and recovery
+
+From `web`, run `node scripts/test-application-journeys.mjs`. The distributed `visual` suite runs it too, publishing `journeys.json` and selected mobile captures. It follows the real React application pages at 390 and 1440 pixels. Guest submissions use the actual Hono handler with an in-memory SQLite database; organization writes and identity are synthetic. It checks canonical guest routes, contextual sign-in entry, existing-organization defaults, save/reopen, receipt reload, duplicate-email validation, lost connections, server validation, retained entries and successful retry. No production records or emails are created. It does not verify the real OAuth round trip, provider delivery, guest account-linking browser flow or measured human hesitation.
+
+Guest proposals remain private to organizers; organization proposals remain public for community voting. Both entry buttons explain this difference. Account linking after guest submission is optional and requires the same verified email; its confirmation explicitly creates a team and invites the supplied teammate. Receipt reload exposes status only, without returning private application details to an anonymous bearer of the receipt URL.
