@@ -1,0 +1,15 @@
+.event-standings { margin: 1.25rem 0; min-width: 0; }
+.event-standings header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: .5rem 1rem; }
+.event-standings :is(h2,h3) { margin: 0; font-size: 1.2rem; }
+.event-standings-caption { color: var(--text-secondary); font-size: .9rem; margin: .65rem 0; }
+.event-standings-list { padding: 0; margin: 1rem 0; list-style: none; }
+.event-standings-list li { display: grid; grid-template-columns: 1.6rem minmax(0,1fr) auto; gap: .75rem; align-items: start; padding: .85rem 0; border-top: 1px solid var(--border); }
+.event-standing-rank { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.event-standing-entry { display: grid; gap: .3rem; overflow-wrap: anywhere; }
+.event-standing-entry a { text-decoration: none; }
+.event-standing-entry a:first-child { color: var(--text-primary); }
+.event-standing-entry a:last-child { font-size: .9rem; }
+.event-standing-score { display: grid; gap: .35rem; justify-items: end; font-variant-numeric: tabular-nums; font-size: .9rem; }
+.event-standing-score > span { display: inline-flex; gap: .4rem; align-items: center; }
+.event-standing-score svg { color: var(--gold,var(--primary)); }
+@media(max-width:480px){.event-standings-list li{gap:.5rem;grid-template-columns:1.2rem minmax(0,1fr) auto}.event-standing-score strong{max-width:7rem;text-align:right}}

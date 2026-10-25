@@ -1,3 +1,4 @@
+import {EventStandings} from '../../components/EventStandings'
 import { useEffect, useMemo, useState, type KeyboardEvent, type MouseEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
@@ -27,6 +28,7 @@ type PublicEvent = {
   image_url?: string | null
   organization_name?: string | null
   organization_slug?: string | null
+  host_org_id?: string | null
   attendance_count?: number | null
   attendance_source_url?: string | null
 }
@@ -317,6 +319,7 @@ export function PublicEventsPage({
                     {event.location ? <span>{event.location}</span> : null}
                   </div>
                   {event.description ? <p className="public-event-list-description">{shortDescription(event.description)}</p> : null}
+                  {!past&&event.host_org_id&&<EventStandings key={event.id} eventId={event.id} eventSlug={event.slug} lazy/>}
                   <div className="public-event-rsvp-panel" aria-label={`Registration status for ${event.title}`}>
                     <div className={`public-event-rsvp-state${registered ? ' is-registered' : ''}`}>
                       <span>{past ? 'Past event' : registrationLabel}</span>

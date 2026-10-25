@@ -1,3 +1,4 @@
+import {testEventStandings} from './event-standings-checks.mjs'
 import {testOrganizationProfile} from './organization-profile-checks.mjs'
 import {testOrganizationThemes} from './organization-themes-checks.mjs'
 import {execFileSync} from 'node:child_process'
@@ -19,6 +20,7 @@ await mkdir(output,{recursive:true})
 await testUploadImageCompression()
 const {server,base}=await fixtureServer(root,output)
 try{
+ await testEventStandings(base,join(output,'event-standings'),output)
  await testOrganizationThemes(base,join(output,'organization-themes'),output)
  await testOrganizationBranding(base,join(output,'organization-branding'),output)
  await testOrganizationPersonnel(base,join(output,'organization-personnel'))

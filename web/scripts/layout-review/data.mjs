@@ -10,6 +10,7 @@ const supportTickets=[
 const submission={submission_id:'fixture-submission',organization_id:'fixture-org0',organization_name:'Harbor Research Collective',organization_slug:'fixture-0',image_url:null,title:'The Limits of Contemporary Medicine',summary:'The statistics of chronic disease. Our team is exploring how better evidence can improve everyday care.',status:'submitted',favorites:1,attachments:[],presenters:[{name:'Alex Morgan'},{name:'Sam Rivera'}]}
 export function fixtureData(path,params){
  if(path.includes('/presentations')){
+  if(path.endsWith('/public'))return {enabled:true,favoriteLimit:3,closed:false}
   if(path.endsWith('/submissions'))return {submissions:[submission],favoriteLimit:3,next:null}
   if(path.endsWith('/favorites'))return {favorites:params.has('unselected')?[]:['fixture-submission'],limit:3}
   if(path.endsWith('/final-round'))return {phase:'shortlist',finalistIds:[],results:[]}

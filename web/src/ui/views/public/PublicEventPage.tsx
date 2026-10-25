@@ -1,3 +1,4 @@
+import {EventStandings} from '../../components/EventStandings'
 import { EventApplyButtons } from '../../components/EventApplyButtons'
 import './event-application.css'
 import { CmsImage } from '../../components/media/CmsImage'
@@ -835,6 +836,7 @@ export function PublicEventPage() {
             {([{key:'info',label:'Info',Icon:Info},{key:'poster',label:'Poster',Icon:FileImage},{key:'submissions',label:'Submissions',Icon:Users}] as const).filter(({key}) => presentationsEnabled || key !== 'submissions').map(({key,label,Icon})=><button type="button" key={key} id={`event-${key}-tab`} role="tab" aria-selected={activeTab===key} aria-controls={`event-${key}-panel`} tabIndex={activeTab===key?0:-1} onClick={()=>selectEventTab(key)}><Icon size={19} aria-hidden="true" /><span>{label}</span></button>)}
           </div>
           <section className="public-event-tab-panel" role="tabpanel" id="event-info-panel" aria-labelledby="event-info-tab" hidden={activeTab!=='info'}>
+          {presentationsEnabled&&activeTab==='info'&&<EventStandings key={event.id} eventId={event.id} eventSlug={event.slug || slug!}/>}
           {event.description ? (
             <section className="portal-card public-event-description">
               <div className="public-event-card-heading">
