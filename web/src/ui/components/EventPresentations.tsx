@@ -148,7 +148,7 @@ export function EventPresentations({eventId,formAction,onActionHandled,onSaved,o
     </fieldset>
     <fieldset className="presentation-section"><legend>Team &amp; organization</legend>
      <div className="presentation-team-choice"><label htmlFor={`${fieldId}-team`}>Applying as</label>
-      <select id={`${fieldId}-team`} disabled={!!draft.value.editing} value={org} onChange={e=>{setOrg(e.target.value);setField('people','[]')}}>
+      <select id={`${fieldId}-team`} disabled={!!draft.value.editing} value={org} onChange={e=>{setOrg(e.target.value);setTeamImage(null);setField('imageUrl','');setField('imageOrg','');setField('brandingOrg','');setField('people','[]')}}>
        <option value="">Create a new team</option>
        {!!orgs.length&&<optgroup label="Your existing organizations">{orgs.map(o=><option key={o.id} value={o.id}>{o.name}</option>)}</optgroup>}
       </select>

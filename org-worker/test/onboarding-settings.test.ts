@@ -54,6 +54,7 @@ test('organization administrators save branding with an empty or explicit taglin
  f.db.sqlite.exec("UPDATE group_sites SET brand_image_path='https://example.org/logo.png',home_image_url='https://example.org/cover.jpg' WHERE organization_id='org'");
  actor='admin';assert.equal((await save('Care comes first')).status,200);
  assert.equal(f.db.sqlite.prepare("SELECT brand_image_path FROM group_sites WHERE organization_id='org'").get()!.brand_image_path,'https://example.org/logo.png');
+ assert.equal(f.db.sqlite.prepare("SELECT home_image_url FROM group_sites WHERE organization_id='org'").get()!.home_image_url,'https://example.org/cover.jpg');
  assert.equal(f.db.sqlite.prepare("SELECT tagline FROM group_sites WHERE organization_id='org'").get()!.tagline,'Care comes first');
  actor='member';assert.equal((await save('Unauthorized')).status,403);
  assert.equal(f.db.sqlite.prepare("SELECT tagline FROM group_sites WHERE organization_id='org'").get()!.tagline,'Care comes first');
