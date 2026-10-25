@@ -53,6 +53,7 @@ const portalSetupSchema = z.object({
   homeHeading: z.string().max(120).optional(),
   homeDescription: z.string().max(500).optional(),
   homeImageUrl: z.string().url().optional().nullable(),
+  brandImageUrl: z.string().url().refine(value => { const url = new URL(value); return url.protocol === "https:" && !url.username && !url.password; }).optional().nullable(),
 }).strict();
 const portalDomainSchema = z.object({
   organizationId: z.string().min(1).max(200),
@@ -345,7 +346,7 @@ async function portalResponse(env: Env, tenant: Record<string, unknown> | null) 
   };
 }
 
-async function runPortalOperation(env: Env, identity: { userId: string; scopes: string[] },
+async function runPortalOperation(env: Env, identity: { userId: string; scopes: string[]; isOperator?: boolean },
   operation: "get" | "save" | "requestDomain", input: unknown) {
   const args = operation === "get" ? z.object({ organizationId: z.string().min(1).max(200) }).strict().parse(input)
     : operation === "save" ? portalSetupSchema.parse(input) : portalDomainSchema.parse(input);
@@ -354,7 +355,7 @@ async function runPortalOperation(env: Env, identity: { userId: string; scopes: 
     throw new EventIntegrationError(403, "Missing portal scope");
   }
   const organization = await nativeOrganization(env.DB, args.organizationId);
-  await authorizeOrganization(env.DB, { id: identity.userId, name: identity.userId, email: null, isOperator: false }, "manage", organization.id);
+  await authorizeOrganization(env.DB, { id: identity.userId, name: identity.userId, email: null, isOperator: identity.isOperator === true }, "manage", organization.id);
   const existing = await portalTenantByOrg(env.DB, organization);
   if (operation === "get") return { portal: await portalResponse(env, existing) };
   if (operation === "save") {
@@ -389,7 +390,7 @@ async function runPortalOperation(env: Env, identity: { userId: string; scopes: 
         feature_config = json_patch(group_sites.feature_config,excluded.feature_config), updated_at = excluded.updated_at`,
     ).bind(existing?.id || `org-${organization.id}-portal`, organization.id, slug, `${slug}.slug.portal.local`,
       setup.name || organization.name, setup.tagline || `Portal for ${organization.name}`, setup.accentColor || "#155e59",
-      JSON.stringify(setup.features || ["directory", "events", "chat"]), setup.homeImageUrl || null, `${portalBase(env)}${organizationPagePath(organization.slug)}`,
+      JSON.stringify(setup.features || ["directory", "events", "chat"]), setup.brandImageUrl === undefined ? existing?.brand_image_path || null : setup.brandImageUrl, `${portalBase(env)}${organizationPagePath(organization.slug)}`,
       setup.accentColor || "#155e59", homeKind, homeKind === "route" ? setup.homePath || null : null, organization.slug,
       setup.homeHeading || setup.name || organization.name, setup.homeDescription || setup.tagline || `Portal for ${organization.name}`,
       "Join Group", "/users/login", "View Events", "/org-events", setup.homeImageUrl || null,
@@ -744,8 +745,8 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
     observation.method = typeof method === 'string' && ['initialize', 'notifications/initialized', 'tools/list', 'tools/call', 'ping'].includes(method) ? method : 'other';
     const server = new McpServer({ name: config.name ? `${config.name} MCP` : "orgportal-events", version: product.version, ...(config.name === "OrgPortal" ? { icons: [{ src: "https://orgportal.cc/orgportal.svg", mimeType: "image/svg+xml", sizes: ["any"] }] } : {}) }, { instructions: "Search the public organization directory before adding an organization. Use directory_registration for researched third-party listings; it grants no access. Owned creation assigns owner access to the signed-in account and requires explicit ownership intent. Never substitute owned creation when directory registration is unavailable or denied. A claimed record is not verified legal representation. Inspect write receipts after uncertain outcomes before retrying." });
     registerAccountTools(server, env.DB, identity, config);
-    const scopedArgs = (args: unknown) => {
-      if (config.organizationId && (!args || typeof args !== 'object' || !('organizationId' in args)
+    const scopedArgs = (args: unknown, operatorAccess = false) => {
+      if (!(operatorAccess && identity.isOperator === true) && config.organizationId && (!args || typeof args !== 'object' || !('organizationId' in args)
         || args.organizationId !== config.organizationId)) throw new EventIntegrationError(403, 'This MCP connection is limited to its own organization');
       return args;
     };
@@ -772,7 +773,7 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
     };
     const portalResult = async (operation: "get" | "save" | "requestDomain" | "brandingGet" | "brandingUpdate", args: unknown) => {
       try {
-        args = scopedArgs(args);
+        args = scopedArgs(args, operation !== "requestDomain");
         const data = operation === "brandingGet" || operation === "brandingUpdate"
           ? await runPortalBrandingOperation(env.DB, identity, operation === "brandingGet" ? "get" : "update", args)
           : await runPortalOperation(env, identity, operation, args);
@@ -936,7 +937,7 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
     server.registerTool('apply_organization_tasks', { description: 'Assign the availability-calendar task to every active member after reviewing the preview. Requires confirm=true and a matching one-use previewId. Existing assignments are preserved without duplicates.', inputSchema: organizationTaskSchema, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }, _meta: metadata([portalReadScope, portalWriteScope]) }, taskResult);
     const profileResult = async (operation: 'get' | 'update' | 'status', args: unknown) => {
       try {
-        const data = await runOrganizationProfileOperation(env.DB, identity, operation, scopedArgs(args),env);
+        const data = await runOrganizationProfileOperation(env.DB, identity, operation, scopedArgs(args, true),env);
         return { content: [{ type: 'text' as const, text: JSON.stringify(data) }], structuredContent: data };
       } catch (error) {
         return { isError: true, content: [{ type: 'text' as const, text: await eventErrorResponse(error, env, request).text() }] };

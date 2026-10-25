@@ -23,11 +23,11 @@ export const portalBrandingUpdateSchema = portalBrandingTargetSchema.extend({
 }).strict();
 type PortalRow = { id: string; profile: string; slug: string | null; home_org_slug: string | null; accent_color: string; theme_color: string | null; feature_config: string; updated_at: string };
 
-export async function runPortalBrandingOperation(db: D1Database, identity: { userId: string; scopes: string[] }, operation: 'get' | 'update', input: unknown) {
+export async function runPortalBrandingOperation(db: D1Database, identity: { userId: string; scopes: string[]; isOperator?: boolean }, operation: 'get' | 'update', input: unknown) {
   if (!identity.scopes.includes('org:portal.read') || (operation === 'update' && !identity.scopes.includes('org:portal.write')))
     throw new EventIntegrationError(403, 'Missing portal scope');
   const args = operation === 'get' ? portalBrandingTargetSchema.parse(input) : portalBrandingUpdateSchema.parse(input);
-  const actor = { id: identity.userId, name: identity.userId, email: null, isOperator: false };
+  const actor = { id: identity.userId, name: identity.userId, email: null, isOperator: identity.isOperator === true };
   await enforceEventRateLimit(db, actor.id);
   await authorizeOrganization(db, actor, 'manage', args.organizationId);
   const before = await db.prepare(`SELECT s.id, s.profile, s.slug, s.home_org_slug, s.accent_color, s.theme_color, s.feature_config, s.updated_at
@@ -52,9 +52,9 @@ export async function runPortalBrandingOperation(db: D1Database, identity: { use
     const result = await db.prepare(`UPDATE group_sites
       SET feature_config = ?, updated_at = ?
       WHERE id = ? AND feature_config IS ? AND updated_at IS ?
-      AND EXISTS (SELECT 1 FROM organization_memberships WHERE organization_id = ? AND user_id = ? AND status = 'active' AND role IN ('owner', 'administrator'))
+      AND (? = 1 OR EXISTS (SELECT 1 FROM organization_memberships WHERE organization_id = ? AND user_id = ? AND status = 'active' AND role IN ('owner', 'administrator')))
       RETURNING id, profile, slug, home_org_slug, accent_color, theme_color, feature_config, updated_at`)
-      .bind(JSON.stringify(nextConfig), new Date().toISOString(), before.id, before.feature_config, before.updated_at, organizationId, actor.id).first<PortalRow>();
+      .bind(JSON.stringify(nextConfig), new Date().toISOString(), before.id, before.feature_config, before.updated_at, actor.isOperator ? 1 : 0, organizationId, actor.id).first<PortalRow>();
     if (!result) throw new EventIntegrationError(409, 'Branding or management permission changed; request a new preview');
     await finishEventOperation(db, previewId, true, [...(brandThemes === undefined ? [] : ['brandThemes']), ...(palette === undefined ? [] : ['brandPalette']), ...(nameBannerUrl === undefined ? [] : ['nameBannerUrl'])]);
     return { organizationId, portalId: result.id, palette: resolveBrandPalette(result), nameBannerUrl: nextConfig.nameBannerUrl || null, brandThemes: parseOrganizationThemes(nextConfig.brandThemes), previewId };
