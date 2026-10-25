@@ -6,7 +6,7 @@ import { TimebankDatabase } from './helpers/timebankDatabase';
 
 test('public organization metadata resolves attached group homes, configured slug portals and ordinary profiles', async t => {
   const db = new TimebankDatabase(); t.after(() => db.sqlite.close());
-  for (const file of ['0002_org_event_directories.sql', '0009_people_ubi_org_sentiments.sql', '0015_organization_iam.sql', '0029_portal_tenant_deployment_model.sql', '0030_organization_feedback.sql', '0032_portal_tenant_org_slug.sql', '0033_portal_tenant_custom_domains.sql']) {
+  for (const file of ['0002_org_event_directories.sql', '0009_people_ubi_org_sentiments.sql', '0015_organization_iam.sql', '0029_portal_tenant_deployment_model.sql', '0030_organization_feedback.sql', '0032_portal_tenant_org_slug.sql', '0033_portal_tenant_custom_domains.sql', '0092_event_presentations.sql', '0096_presentation_favorites.sql', '0097_presentation_favorite_limits.sql', '0098_submission_attachments.sql', '0099_multiple_submissions.sql']) {
     db.sqlite.exec(readFileSync(new URL(`../migrations/${file}`, import.meta.url), 'utf8'));
   }
   db.sqlite.exec("INSERT INTO organizations(id,name,slug) VALUES('life','LifeTech','lifetech'),('partner','Partner','partner'); INSERT INTO group_sites(id,organization_id,slug,hostname,name,tagline,home_org_slug,home_url,custom_domain_hostname,custom_domain_status) VALUES('life-portal','life','lifetech','lifetech.fyi','LifeTech','Health','lifetech','https://lifetech.fyi/portals/lifetech','lifetech.fyi','attached')");
