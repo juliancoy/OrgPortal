@@ -34,7 +34,15 @@ export async function buildEcosystemQuery(){
  }
  const ranks=new Map();for(const group of analysis.communities().clusters.values())group.members.sort((a,b)=>analysis.adjacency.get(b).size-analysis.adjacency.get(a).size||a.localeCompare(b)).forEach((id,rank)=>ranks.set(id,rank))
  const summaries=networkPreviewSummaries(data),contextPies=financialNodePies(data,{includeCapitalization:true}),amounts=financialNodeAmounts(folded,{includeCapitalization:true})
- const organizations=folded.organizations.map(o=>({...o,sourceRows:undefined,publicEmails:undefined,positions:positions.organizations?.[o.id],networkMetrics:{pie:summaries.pies.get(o.id),contextPie:contextPies.get(o.id),totals:summaries.totals.get(o.id),counterparties:summaries.counterparties.get(o.id),obligations:summaries.obligationIds.has(o.id),incoming:analysis.incoming.get(o.id),outgoing:analysis.outgoing.get(o.id),amount:amounts.get(o.id)}})).sort((a,b)=>a.name.localeCompare(b.name)||a.id.localeCompare(b.id))
+ const compactPie=pie=>{
+  if(!pie)return undefined
+  const slices=pie.slices.slice(0,15).map(({records,...slice})=>({...slice,recordCount:records.length}))
+  const rest=pie.slices.slice(15)
+  if(rest.length)slices.push({label:'Other disclosed counterparties',amount:rest.reduce((s,r)=>s+r.amount,0),color:'#77878c',recordCount:rest.reduce((s,r)=>s+r.records.length,0)})
+  let angle=-Math.PI/2;for(const slice of slices){slice.share=slice.amount/pie.total;slice.startAngle=angle;angle+=slice.share*Math.PI*2;slice.endAngle=angle}
+  return {...pie,slices}
+ }
+ const organizations=folded.organizations.map(o=>({...o,sourceRows:undefined,publicEmails:undefined,positions:positions.organizations?.[o.id],networkMetrics:{pie:compactPie(summaries.pies.get(o.id)),contextPie:compactPie(contextPies.get(o.id)),totals:summaries.totals.get(o.id),counterparties:summaries.counterparties.get(o.id),obligations:summaries.obligationIds.has(o.id),incoming:analysis.incoming.get(o.id),outgoing:analysis.outgoing.get(o.id),amount:amounts.get(o.id)}})).sort((a,b)=>a.name.localeCompare(b.name)||a.id.localeCompare(b.id))
  const temp=new URL(`.${version}-${process.pid}/`,folder),target=new URL(`${version}/`,folder)
  await mkdir(temp,{recursive:true})
  const write=async(path,value)=>{const bytes=JSON.stringify(value);if(Buffer.byteLength(bytes)>16*1024*1024)throw Error(`Query artifact exceeds 16 MiB: ${path}`);const url=new URL(path,temp);await mkdir(new URL('./',url),{recursive:true});await writeFile(url,bytes)}
