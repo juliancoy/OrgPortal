@@ -1,6 +1,6 @@
 import {execFileSync} from 'node:child_process'
 import {testUploadImageCompression} from './test-upload-image-compression.mjs'
-import {testOrganizationBranding} from './test-organization-branding.mjs'
+import {testOrganizationBranding} from './organization-branding-checks.mjs'
 import {fixtureServer} from './fixture-server.mjs'
 // Offline visual renders for local review and the distributed Portal visual suite.
 import {chromium,expect} from '@playwright/test'
