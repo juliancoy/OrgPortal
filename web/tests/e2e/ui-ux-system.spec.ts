@@ -303,11 +303,11 @@ test.describe('Code Collective UI and UX system coverage', () => {
     await expect(page.locator('.portal-user-trigger img')).toHaveAttribute('src', authUser.avatar_url)
     const navigationToggle = page.getByRole('button', { name: 'Open navigation', exact: true })
     if (await navigationToggle.isVisible()) await navigationToggle.click()
-    await expect(page.getByRole('link', { name: /^People$/ })).toBeVisible()
+    await expect(page.getByRole('navigation', {name:'Primary',exact:true}).getByRole('link', { name: /^People$/ })).toBeVisible()
     await expect(page.getByRole('link', { name: /^Messages$/ })).toBeVisible()
     await expect(page.getByRole('link', { name: /log in/i })).toHaveCount(0)
 
-    await page.getByRole('link', { name: /^People$/ }).click()
+    await page.getByRole('navigation', {name:'Primary',exact:true}).getByRole('link', { name: /^People$/ }).click()
     await expect(page).toHaveURL(/\/people$/)
   })
 
@@ -501,7 +501,7 @@ test.describe('Code Collective UI and UX system coverage', () => {
 
     await page.goto('/profile')
     await expect(page.getByRole('heading', { name: 'Mobile Tester', exact: true })).toBeVisible()
-    await expect(page.getByAltText('Profile preview')).toHaveAttribute('src', authUser.avatar_url)
+    await expect(page.locator('.profile-public-photo-button img')).toHaveAttribute('src', authUser.avatar_url)
     await expect(page.getByLabel(/profile image url/i)).toHaveCount(0)
     await expect(page.getByLabel(/profile photo url/i)).toHaveCount(0)
     await expect(page.getByRole('heading', { name: 'System Appearance' })).toHaveCount(0)
@@ -515,7 +515,7 @@ test.describe('Code Collective UI and UX system coverage', () => {
     expect(savedProfile).not.toHaveProperty('organizations')
     expect(savedProfile).not.toHaveProperty('avatar_url')
     expect(savedContact).toEqual({})
-    await expect(page.getByAltText('Profile preview')).toHaveAttribute('src', authUser.avatar_url)
+    await expect(page.locator('.profile-public-photo-button img')).toHaveAttribute('src', authUser.avatar_url)
 
   })
 
@@ -550,7 +550,7 @@ test.describe('Code Collective UI and UX system coverage', () => {
     expect(await page.evaluate(() => localStorage.getItem('orgportal.theme'))).toBe('dark')
 
     await page.getByLabel('Open user menu').click()
-    await page.getByRole('menuitem', { name: 'Settings', exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Account settings', exact: true }).click()
 
     await expect(page).toHaveURL(/\/settings$/)
     await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
@@ -635,7 +635,7 @@ test.describe('Code Collective UI and UX system coverage', () => {
     await page.getByRole('button', { name: 'Apply photo' }).click()
     await expect(page.getByRole('heading', { name: 'Edit profile photo' })).toHaveCount(0)
     await expect(page.getByRole('status').filter({ hasText: 'Photo saved.' })).toBeVisible()
-    await expect(page.getByAltText('Profile preview')).toHaveAttribute('src', uploadedAvatarUrl)
+    await expect(page.locator('.profile-public-photo-button img')).toHaveAttribute('src', uploadedAvatarUrl)
 
     expect(uploadSetupRequested).toBe(true)
     expect(uploadRequest).toEqual({

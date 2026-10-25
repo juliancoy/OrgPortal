@@ -15,6 +15,7 @@ export function useOrganizationPersonnel(organizationId: string | null | undefin
       })
       if (!response.ok) throw new Error('Organization status unavailable')
       const data: { classes: Record<string, PersonnelClass>; photos: Record<string, string | null> } = await response.json()
+      if (!data || !data.classes || typeof data.classes !== 'object' || Array.isArray(data.classes)) throw new Error('Organization status unavailable')
       if (!controller.signal.aborted) setState({ key, classes: data.classes, photos: data.photos || {} })
     }
     const refresh = () => { void load().catch(() => { if (!controller.signal.aborted) setState(null) }) }

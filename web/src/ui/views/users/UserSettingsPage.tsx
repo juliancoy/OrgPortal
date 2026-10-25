@@ -109,17 +109,17 @@ export function UserSettingsPage() {
 
   if (role === 'guest') {
     return (
-      <main className="portal-page">
+      <section className="portal-page">
         <section className="panel">
           <h1 style={{ marginTop: 0 }}>Settings</h1>
           <p className="muted"><SignInLink /> to continue.</p>
         </section>
-      </main>
+      </section>
     )
   }
 
   return (
-    <main className="portal-page user-settings-page">
+    <section className="portal-page user-settings-page">
       <section className="portal-page-heading">
         <div>
           <p className="portal-eyebrow">Account</p>
@@ -196,6 +196,6 @@ export function UserSettingsPage() {
         </div>
         {pushMessage ? <p role="status" className="portal-muted">{pushMessage}</p> : null}
       </section>
-    </main>
+    </section>
   )
 }

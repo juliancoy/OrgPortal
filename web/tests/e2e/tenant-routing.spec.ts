@@ -332,7 +332,7 @@ test('tenant brand guide uses the active organization identity', async ({ page }
   await page.goto(portal('/branding'))
 
   await expect(page.getByRole('heading', { name: 'Baltimore MedTech', exact: true })).toBeVisible()
-  await expect(page.locator('main').getByText('Health x Medicine x Biotech', { exact: true }).first()).toBeVisible()
+  await expect(page.locator('main').getByText('Health x Medicine x Biotech', { exact: true }).filter({visible:true})).toBeVisible()
   await expect(page.locator('.tenant-brand-lockup strong')).toHaveCSS('color', 'rgb(23, 23, 23)')
   await expect(page.getByRole('img', { name: 'Baltimore MedTech primary logo' })).toHaveAttribute('src', /\/images\/baltimore-medtech-logo-square-v2\.jpg$/)
   await expect(page.getByText('#0f6f8f', { exact: true })).toBeVisible()
@@ -378,7 +378,7 @@ test('tenant event page keeps the hero compact and removes redundant labels', as
   await expect(listings).toBeVisible()
   const lumaLink = listings.getByRole('link', { name: 'View this event on luma.com' })
   await expect(lumaLink).toHaveAttribute('href', 'https://luma.com/csd7fvgm?tk=iQTYPW')
-  await page.locator('.public-event-calendar-menu summary').click()
+  await page.getByLabel('Event date, time and place').getByLabel('Add to calendar', {exact:true}).click()
   await expect(page.getByRole('link', { name: 'Google Calendar', exact: true })).toHaveAttribute('href', /calendar\.google\.com/)
   await expect(page.getByRole('link', { name: 'Outlook Calendar', exact: true })).toHaveAttribute('href', /outlook\.live\.com/)
   await expect(page.getByRole('button', { name: 'Apple / iCal file', exact: true })).toBeVisible()

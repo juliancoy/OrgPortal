@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 // Public fixture only; no authenticated sessions or external group data.
-test('group profile stays in OrgPortal and links to its branded homepage', async ({ page }) => {
+test('canonical organization profile keeps its external source link', async ({ page }) => {
   await page.route('**/auth/session-token', route => route.fulfill({ status: 401, json: {} }))
   await page.route('**/auth/me', route => route.fulfill({ status: 401, json: {} }))
   await page.route('**/api/users/me**', route => route.fulfill({ status: 401, json: {} }))
@@ -21,7 +21,7 @@ test('group profile stays in OrgPortal and links to its branded homepage', async
   await page.goto('/orgs/workshop?view=public#organization-overview')
   await expect(page.getByRole('heading', { name: 'Workshop group', exact: true })).toBeVisible()
   await expect(page).toHaveURL(/\/orgs\/workshop\?view=public#organization-overview$/)
-  await expect(page.getByRole('link', { name: 'Group homepage', exact: true })).toHaveAttribute('href', 'https://workshop.example/')
+  await expect(page.getByRole('link', { name: 'Group homepage', exact: true })).toHaveCount(0)
   await expect(page.getByRole('link', { name: 'Website', exact: true })).toHaveAttribute('href', 'https://meetup.example/workshop')
   const login = new URL(await page.getByRole('link', { name: 'Log in to join', exact: true }).getAttribute('href') || '', page.url())
   expect(login.searchParams.get('app')).toBe('orgportal')

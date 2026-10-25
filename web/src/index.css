@@ -3235,6 +3235,7 @@ h6 {
 
 .people-directory-actions .btn-primary,
 .people-directory-actions .btn-secondary {
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
