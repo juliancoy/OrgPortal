@@ -1017,8 +1017,8 @@ test("tenant host public URLs are root-mounted even when shared portal base is c
   const flyer = await flyerRes.text();
   assert.match(flyer, /Founder Night flyer/);
   assert.match(flyer, /Scan to RSVP/);
-  assert.match(flyer, /dark solid 4×6/);
-  assert.match(flyer, /fill="#101820"/);
+  assert.match(flyer, /dark gradient 4×6/);
+  assert.match(flyer, /fill="#07131c"/);
 
   const bucket = new TimebankBucket();
   await bucket.put("event-media/event-1/photo.png", new Uint8Array([1, 2, 3]), { httpMetadata: { contentType: "image/png" } });

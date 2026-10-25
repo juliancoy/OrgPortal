@@ -1,6 +1,6 @@
 import {build} from 'esbuild'
 import {chromium,expect} from '@playwright/test'
-import {mkdir,writeFile} from 'node:fs/promises'
+import {mkdir,writeFile,readFile} from 'node:fs/promises'
 import {join,resolve} from 'node:path'
 import {pathToFileURL} from 'node:url'
 import {existsSync} from 'node:fs'
@@ -29,6 +29,8 @@ export async function testPosterDesign(base,output){
   await expect(description).toHaveAttribute('display','none')
   await page.getByRole('checkbox',{name:'Show description',exact:true}).check();await expect(description).toHaveAttribute('display','inline')
   await page.getByRole('checkbox',{name:'Show description',exact:true}).uncheck()
+  const downloadPromise=page.waitForEvent('download');await page.getByRole('button',{name:'SVG',exact:true}).click();const download=await downloadPromise
+  expect(await readFile(await download.path(),'utf8')).not.toContain('OPTIONAL_DESCRIPTION')
   await page.setViewportSize({width:390,height:1000});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true)
   await page.screenshot({path:join(output,'poster-editor-mobile.png'),fullPage:true})
   const contact=await browser.newPage({viewport:{width:1360,height:900}})

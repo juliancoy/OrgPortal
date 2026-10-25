@@ -170,7 +170,7 @@ function PosterEditor({ kind = 'event', slug, title, revision = '', sourceUrl, e
     // Apply synchronously too, so exporting in the same frame cannot use stale controls.
     applySettings(ready.svg, settings)
     const exported = ready.svg.cloneNode(true) as SVGSVGElement
-    exported.querySelectorAll('[data-editor-ui]').forEach(node => node.remove())
+    exported.querySelectorAll('[data-editor-ui], [data-poster-element][display="none"]').forEach(node => node.remove())
     exported.querySelectorAll('[data-poster-selected]').forEach(node => node.removeAttribute('data-poster-selected'))
     if (backgroundOnly) exported.querySelectorAll('[data-poster-element]').forEach(node => node.remove())
     return new Blob([new XMLSerializer().serializeToString(exported)], { type: 'image/svg+xml' })
