@@ -20,7 +20,7 @@ function assetUrl(value?: string | null) {
   return value.startsWith('/') ? portalPath(value) : value
 }
 
-export function TenantBrandingPage({brandGuidePath='/branding',tenant:organizationTenant}:{brandGuidePath?:string;tenant?:GroupSite}={}) {
+export function TenantBrandingPage({brandGuidePath='/branding',tenant:organizationTenant,embedded=false}:{brandGuidePath?:string;tenant?:GroupSite;embedded?:boolean}={}) {
   const tenant = organizationTenant || getGroupSite()
   const profile = organizationTenant ? tenantProfileConfig(organizationTenant) : getActivePortalProfileConfig()
   const brandThemes = parseOrganizationThemes(tenant?.feature_config?.brandThemes)
@@ -103,7 +103,7 @@ export function TenantBrandingPage({brandGuidePath='/branding',tenant:organizati
   }
 
   return <article className="tenant-brand-page">
-    <header className="tenant-brand-intro">
+    {!embedded && <header className="tenant-brand-intro">
       <div>
         <p className="tenant-home-eyebrow">Brand guide</p>
         <h1>{profile.brandName}</h1>
@@ -116,7 +116,7 @@ export function TenantBrandingPage({brandGuidePath='/branding',tenant:organizati
           <span>{profile.tagline}</span>
         </div>
       </div>
-    </header>
+    </header>}
 
     {assets.length ? <section className="tenant-brand-section" aria-labelledby="tenant-brand-assets-title">
       <div className="tenant-home-section-heading">

@@ -82,6 +82,6 @@ export function OrganizationBranding({organization,canManage=false,onSaved}:{org
  </fieldset>
  </form>}
  {message&&<p role="status">{message}</p>}
- <TenantBrandingPage tenant={site} brandGuidePath={organizationBrandingPath(organization.slug)} />
+ <TenantBrandingPage embedded tenant={site} brandGuidePath={organizationBrandingPath(organization.slug)} />
  </>
 }

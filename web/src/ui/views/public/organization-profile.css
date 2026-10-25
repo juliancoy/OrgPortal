@@ -1,0 +1,92 @@
+.organization-profile.portal-org-page {
+  gap: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  min-width: 0;
+}
+.organization-profile-header {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1rem 0 1.75rem;
+}
+.organization-profile-avatar {
+  flex: 0 0 76px;
+  width: 76px;
+  height: 76px;
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  overflow: hidden;
+}
+.organization-profile-avatar:disabled { opacity: 1; cursor: default; }
+.organization-profile-avatar img { width: 100%; height: 100%; object-fit: contain; }
+.organization-profile-identity { flex: 1; min-width: 0; }
+.organization-profile-identity h1 { margin: 0; font-size: clamp(1.65rem, 3vw, 2.6rem); line-height: 1.15; overflow-wrap: anywhere; }
+.organization-profile-tagline { margin: .55rem 0 0; max-width: 65ch; color: var(--text-secondary); line-height: 1.5; }
+.organization-profile-actions { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
+.organization-profile .organization-profile-tabs {
+  display: flex;
+  gap: 1.5rem;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  min-width: 0;
+}
+.organization-profile .organization-profile-tabs [role="tab"] {
+  flex: 0 0 auto;
+  padding: .9rem .1rem;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.organization-profile .organization-profile-tabs [role="tab"][aria-selected="true"] { border-bottom-color: var(--primary); color: var(--text-primary); background: transparent; }
+.organization-profile-panel { min-width: 0; padding: 2rem 0; }
+.organization-profile-panel[hidden] { display: none; }
+.organization-about { display: grid; gap: 2rem; align-items: start; }
+.organization-about-with-cover { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); }
+.organization-profile-cover { margin: 0; overflow: hidden; border-radius: 10px; }
+.organization-profile-cover img { display: block; width: 100%; height: auto; aspect-ratio: 1.9; object-fit: contain; background: transparent; }
+.organization-about-copy { display: grid; gap: 1rem; min-width: 0; max-width: 72ch; line-height: 1.7; }
+.organization-about-copy h2 { margin: 0; font-size: 1.15rem; }
+.organization-about-copy p { margin: 0; }
+.organization-profile-tags { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0; padding: 0; list-style: none; }
+.organization-profile .organization-profile-tags .pill { font-size: .8rem; font-weight: 500; }
+.organization-community { display: grid; gap: 1.75rem; }
+.organization-community-section { padding: 0 0 1.75rem; border-bottom: 1px solid var(--border); display: grid; gap: .8rem; }
+.organization-community-section h2 { margin: 0; font-size: 1.25rem; }
+.organization-community summary, .organization-ownership summary { cursor: pointer; font-weight: 600; padding: .5rem 0; }
+.organization-event-section { display: grid; gap: 1.5rem; }
+.organization-profile .portal-org-events-heading h2 { margin: 0; font-size: 1.45rem; }
+.organization-profile .portal-org-events-heading .tenant-home-eyebrow { display: none; }
+.organization-profile-management { display: flex; flex-wrap: wrap; gap: 1rem; align-items: start; padding-bottom: 1.5rem; }
+.organization-profile .organization-settings { padding: 2rem 0 0; border: 0; background: transparent; box-shadow: none; }
+.organization-profile .organization-settings .portal-org-portal-setup,
+.organization-profile .organization-settings-section { border: 0; padding: 1.5rem 0; border-bottom: 1px solid var(--border); border-radius: 0; background: transparent; }
+.organization-profile .organization-settings .portal-org-domain-flow { border: 0; border-left: 2px solid var(--border); padding: .5rem 1rem; border-radius: 0; background: transparent; }
+.organization-profile .organization-board > header h2 { margin: 0; font-size: 1.5rem; }
+.organization-profile .organization-board > header .tenant-home-eyebrow { display: none; }
+.organization-profile .tenant-brand-section { border-radius: 0; }
+.organization-profile :is(.group-email-preference, .organization-community-section > .portal-card) { box-shadow: none; }
+@media (max-width: 760px) {
+  .organization-profile-header { flex-wrap: wrap; gap: 1rem; padding-top: .5rem; }
+  .organization-profile-avatar { flex-basis: 60px; width: 60px; height: 60px; }
+  .organization-profile-identity { flex-basis: calc(100% - 76px); }
+  .organization-profile-actions { flex-basis: 100%; }
+  .organization-profile .organization-profile-tabs { gap: 1.3rem; }
+  .organization-profile-panel { padding: 1.5rem 0; }
+  .organization-about-with-cover { grid-template-columns: 1fr; gap: 1.5rem; }
+  .organization-profile-cover img { max-height: 290px; }
+}

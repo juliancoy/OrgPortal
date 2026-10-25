@@ -10,10 +10,11 @@ import { OrganizationMembers } from './OrganizationMembers'
 import './OrganizationBoard.css'
 
 type Person={id:string;name:string;titles:string[];description?:string|null;photo_url:string|null;photo_source_url?:string|null;profile_slug:string|null;personnel_class:PersonnelClass;role_classes?:{scheme:PersonnelScheme;key:string}[];pendingInvitation?:boolean;deliveryStatus?:string}
-export function OrganizationBoard({organization,canManage,canRead=false,memberType='community'}:{organization:{id:string;slug:string;name:string;membership_count?:number};canManage:boolean;canRead?:boolean;memberType?:'community'|'team'}){
+export function OrganizationBoard({organization,canManage,canRead=false,memberType='community',embedded=false}:{organization:{id:string;slug:string;name:string;membership_count?:number};canManage:boolean;canRead?:boolean;memberType?:'community'|'team';embedded?:boolean}){
  const {token}=useAuth()
  const {scheme,error:schemeError}=usePersonnelScheme(organization.id)
  const label='Personnel'
+ const Heading=embedded?'h2':'h1'
  const [people,setPeople]=useState<Person[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[revision,setRevision]=useState(0)
  useEffect(()=>{
   const refresh=(event:Event)=>{if((event as CustomEvent).detail?.organizationId===organization.id)setRevision(value=>value+1)}
@@ -42,7 +43,7 @@ export function OrganizationBoard({organization,canManage,canRead=false,memberTy
   return()=>controller.abort()
  },[organization.id,organization.slug,revision,label,canManage,token])
  return <section className="organization-board" aria-label={`${organization.name} ${label.toLowerCase()}`}>
-  <header><p className="tenant-home-eyebrow">People and roles</p><h1>{organization.name} {label}</h1><p>The people behind the organization: board members, officers, specialists, advisors, and community members.</p></header>
+  <header><p className="tenant-home-eyebrow">People and roles</p><Heading>{embedded?'People':organization.name+' '+label}</Heading><p>The people behind the organization: board members, officers, specialists, advisors, and community members.</p></header>
   {schemeError&&<p role="alert">{schemeError} <button type="button" className="btn-secondary" onClick={()=>window.dispatchEvent(new Event('organization-personnel-scheme-updated'))}>Retry settings</button></p>}
   {!scheme&&!schemeError&&<p className="muted">Loading personnel settings…</p>}
   {canManage&&scheme&&<PersonnelInvitations organizationId={organization.id} scheme={scheme} />}

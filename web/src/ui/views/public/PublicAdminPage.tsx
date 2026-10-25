@@ -1,3 +1,5 @@
+import './organization-profile.css'
+import { organizationPageTabs, resolveOrganizationPageTab, type OrganizationPageTab } from './organizationPageTabs'
 import { organizationPageTheme } from '../../../config/organizationThemes'
 import { OrganizationViewSwitcher } from '../../components/OrganizationViewSwitcher'
 import { NeoNatalFocus } from '../../components/NeoNatalFocus'
@@ -16,11 +18,8 @@ import { OrganizationFollowButton } from '../../components/OrganizationFollowBut
 import { GroupMailingList, GroupEmailPreference } from '../email/GroupMailingList'
 import { groupOrganizationEvents } from './organizationEvents'
 import { EmbeddedOrganizationChat } from '../../components/EmbeddedOrganizationChat'
-import { PeerOrganizations } from '../../components/PeerOrganizations'
 import { resolveOrganizationPageView, useOrganizationViewPreference } from '../../hooks/useOrganizationView'
-import { OrganizationPortalSections } from '../../components/OrganizationPortalSections'
-import { OrganizationBrandGuide } from '../../components/OrganizationBrandGuide'
-import { OrganizationBranding, organizationBrandingPath } from '../../components/OrganizationBranding'
+import { OrganizationBranding } from '../../components/OrganizationBranding'
 import { getGroupSite,parseGroupSite,type GroupSite } from '../../../config/timebankCommunity'
 import { specialtyResourcesForTenant } from '../../../config/specialtyResources'
 import { SpecialtyResourcesPanel } from '../../components/SpecialtyResourcesPanel'
@@ -28,12 +27,7 @@ import { OrganizationSupport } from '../../components/OrganizationSupport'
 import { OrganizationTools } from '../../components/OrganizationTools'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import Pencil from 'lucide-react/dist/esm/icons/pencil.mjs'
 import X from 'lucide-react/dist/esm/icons/x.mjs'
-import Info from 'lucide-react/dist/esm/icons/info.mjs'
-import Palette from 'lucide-react/dist/esm/icons/palette.mjs'
-import Users from 'lucide-react/dist/esm/icons/users.mjs'
-import FileImage from 'lucide-react/dist/esm/icons/file-image.mjs'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
 import { useAuth } from '../../../app/AppProviders'
 import { PIDP_BASE_URL, pidpAppLoginUrl, pidpUrl } from '../../../config/pidp'
@@ -146,11 +140,7 @@ type EventMediaItem = {
   kind: 'image'
 }
 
-type PublicOrgAdmin = {
-  user_id: string
-  user_name?: string | null
-  role: string
-}
+
 
 type MyOrganization = {
   id: string
@@ -194,20 +184,16 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
   const { token } = useAuth()
   const { handle } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
-  const orgTabs = ['info','personnel','poster','branding'] as const
-  const requestedTab = searchParams.get('tab')
-  const activeTab = requestedTab === 'personnel' || requestedTab === 'branding' || requestedTab === 'poster' ? requestedTab : 'info'
-  function selectTab(tab: typeof orgTabs[number]) {
-    setSearchParams(previous => { const next = new URLSearchParams(previous); if (tab === 'info') next.delete('tab'); else next.set('tab', tab); return next })
+  function selectTab(tab: OrganizationPageTab) {
+    setSearchParams(previous => { const next = new URLSearchParams(previous); if (tab === 'about') next.delete('tab'); else next.set('tab', tab); return next })
   }
   const [org, setOrg] = useState<PublicOrganization | null>(null)
   useOrganizationPageView(org&&org.slug===handle?org.slug:null,dashboard)
   const [events, setEvents] = useState<PublicEvent[]>([])
   const [eventsLoading, setEventsLoading] = useState(false)
   const [eventsError,setEventsError]=useState('')
-  const [admins, setAdmins] = useState<PublicOrgAdmin[]>([])
-  const [adminsLoading, setAdminsLoading] = useState(false)
   const [status, setStatus] = useState<string>('Loading organization…')
+  const [supportOpen, setSupportOpen] = useState(false)
   const [claimStatus, setClaimStatus] = useState('')
   const [claiming, setClaiming] = useState(false)
   const [claimRecorded, setClaimRecorded] = useState(false)
@@ -247,11 +233,12 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
   const [orgLinksDraft, setOrgLinksDraft] = useState<OrganizationLink[]>([])
   const [savingOrgName, setSavingOrgName] = useState(false)
   const [savingOrgImage, setSavingOrgImage] = useState(false)
-  const [adminView, setAdminView] = useState(false)
   const organizationEditorRef = useRef<HTMLDivElement | null>(null)
   const [showImageEditor, setShowImageEditor] = useState(false)
   const [editorSource, setEditorSource] = useState<string | null>(null)
   const canManageCurrentOrg = Boolean(token && (operatorToken === token || (permissionToken === token && myAdminOrgs.some((item) => item.id === org?.id))))
+  const orgTabs = organizationPageTabs(canManageCurrentOrg)
+  const activeTab = resolveOrganizationPageTab(searchParams.get('tab'), canManageCurrentOrg)
   const requestedView = useOrganizationViewPreference(org?.slug, view || searchParams.get('view'))
   const organizationView = resolveOrganizationPageView(dashboard, requestedView, canManageCurrentOrg, membership?.status === 'active')
   const isOrganizerView = canManageCurrentOrg && organizationView === 'organizers'
@@ -294,49 +281,29 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
         setPortalDescriptionDraft(orgData.description || '')
         setPortalImageDraft(orgData.image_url || '')
         setEvents([])
-        setAdmins([])
         setStatus('')
       })
       .catch((err) => {
         if (cancelled) return
         setOrg(null)
         setEvents([])
-        setAdmins([])
         setStatus(toUserFacingErrorMessage(err, 'Organization unavailable'))
       })
     return () => { cancelled = true }
   }, [handle, navigate])
 
   useEffect(() => {
-    if (!org?.slug) return
+    if (!org?.slug || activeTab !== 'events') return
     let cancelled = false
-    const controller=new AbortController()
+    const controller = new AbortController()
     setEventsLoading(true)
     setEventsError('')
-    setAdminsLoading(true)
-    Promise.all([
-      loadHostedOrganizationEvents<PublicEvent>(org.slug,controller.signal),
-      fetch(orgUrl(`/api/network/orgs/public/${encodeURIComponent(org.slug)}/admins`),{signal:controller.signal}).then(async (resp) => {
-        if (!resp.ok) return []
-        return (await resp.json()) as PublicOrgAdmin[]
-      }),
-    ])
-      .then(([eventData, adminData]) => {
-        if (cancelled) return
-        setEvents(Array.isArray(eventData) ? eventData : [])
-        setAdmins(Array.isArray(adminData) ? adminData : [])
-      })
-      .catch(()=>{if(!cancelled){setEvents([]);setEventsError('Upcoming events are temporarily unavailable.')}})
-      .finally(() => {
-        if (cancelled) return
-        setEventsLoading(false)
-        setAdminsLoading(false)
-      })
-    return () => {
-      cancelled = true
-      controller.abort()
-    }
-  }, [org?.slug])
+    loadHostedOrganizationEvents<PublicEvent>(org.slug, controller.signal)
+      .then(rows => { if (!cancelled) setEvents(Array.isArray(rows) ? rows : []) })
+      .catch(() => { if (!cancelled) { setEvents([]); setEventsError('Upcoming events are temporarily unavailable.') } })
+      .finally(() => { if (!cancelled) setEventsLoading(false) })
+    return () => { cancelled = true; controller.abort() }
+  }, [org?.slug, activeTab])
 
   useEffect(()=>{
     if(!org?.id||!org.slug)return
@@ -850,7 +817,7 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
   }
 
   async function handleSaveCroppedOrgImage(base64Image: string) {
-    if (!org || !token || !isOrganizerView) return
+    if (!org || !token || !canManageCurrentOrg) return
     setSavingOrgImage(true)
     setMergeStatus(null)
     try {
@@ -902,22 +869,22 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
   }
 
   const mergeCandidates = myAdminOrgs.filter((item) => item.id !== org.id)
-  const canEditOrgImage = isOrganizerView
+  const canEditOrgImage = canManageCurrentOrg
   const tenant = getGroupSite()
   const site=publicPortal?.organizationId===org.id?publicPortal.site:null
   const pageTheme=organizationPageTheme(site)
-  const organizationBrandImage = site?.home_image_url||site?.brand_image_path||(tenant?.organization_id === org.id ? tenant.brand_image_path : null)
+  const organizationBrandImage = site?.brand_image_path||(tenant?.organization_id === org.id ? tenant.brand_image_path : null)
   const ownImage=org.image_url?.trim()
-  const heroImageSource = site?.home_image_url||(ownImage&&ownImage!==ORG_PLACEHOLDER_SRC?ownImage:organizationBrandImage||ORG_PLACEHOLDER_SRC)
+  const heroImageSource = ownImage&&ownImage!==ORG_PLACEHOLDER_SRC?ownImage:organizationBrandImage||ORG_PLACEHOLDER_SRC
   const eventGroups = groupOrganizationEvents(events, org).filter(group => group.kind==='hosted')
   const resources=specialtyResourcesForTenant(site)
   const portalDescription=site?.home_description?.trim()
   const isNeoNatalProfile = org.id === '20df0f86-111f-4cb1-bb3d-8dff604dded6' && !dashboard
-  const SecondaryOrganizationSection = isNeoNatalProfile ? 'details' : 'div'
+  const coverImage = site?.home_image_url || (isNeoNatalProfile ? ownImage : null)
   const portalAction=(label:string|null|undefined,value:string|null|undefined)=>{
     if(!label||!value)return null
     if(value==='/users/login')return <a className="btn-secondary" href={pidpAppLoginUrl(`/orgs/${encodeURIComponent(org.slug)}`)}>{label}</a>
-    if(value==='/org-events')return <a className="btn-secondary" href="#organization-events">{label}</a>
+    if(value==='/org-events')return <button type="button" className="btn-secondary" onClick={()=>selectTab('events')}>{label}</button>
     try{const url=new URL(value,window.location.origin);if(!['https:','http:'].includes(url.protocol)||url.username||url.password)return null
       return url.origin===window.location.origin?<Link className="btn-secondary" to={url.pathname+url.search+url.hash}>{label}</Link>:<a className="btn-secondary" href={url.href} target="_blank" rel="noopener noreferrer">{label}</a>
     }catch{return null}
@@ -929,8 +896,8 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
   }
 
   function openOrganizationEditor(sectionId = 'organization-page-editor') {
-    if (!isOrganizerView) return
-    setAdminView(true)
+    if (!canManageCurrentOrg) return
+    selectTab('settings')
     window.requestAnimationFrame(() => {
       const section = document.getElementById(sectionId) || organizationEditorRef.current
       section?.scrollIntoView({ block: 'start' })
@@ -939,120 +906,61 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
   }
 
   return (
-    <section className={`panel portal-org-page${isNeoNatalProfile ? ' neonatal-page' : ''}`} data-brand-theme={pageTheme?'configured':undefined}>
-      {pageTheme&&<style>{pageTheme}</style>}
-      <div className="organization-page-toolbar">
-      <div className="portal-org-info-tabs" role="tablist" aria-label={`${org.name} information`}>
-        {orgTabs.map(tab => <button type="button" role="tab" id={`org-tab-${tab}`} aria-controls={`org-panel-${tab}`} aria-selected={activeTab === tab} tabIndex={activeTab === tab ? 0 : -1} key={tab} onClick={() => selectTab(tab)} onKeyDown={event => {
+    <section className={`portal-org-page organization-profile${isNeoNatalProfile ? ' neonatal-page' : ''}`} data-brand-theme={pageTheme?'configured':undefined}>
+      {pageTheme && <style>{pageTheme}</style>}
+      <header className="organization-profile-header" id="organization-overview">
+        <button type="button" className={`organization-profile-avatar${canEditOrgImage ? ' editable' : ''}`} onClick={openImageEditor} disabled={!canEditOrgImage} aria-label={canEditOrgImage ? 'Change organization image' : 'Organization image'}>
+          <OrgImage src={heroImageSource} fallbackSrc={organizationBrandImage} alt={org.name}/>
+        </button>
+        <div className="organization-profile-identity">
+          {dashboard && <p className="tenant-home-eyebrow">Organization workspace</p>}
+          <h1>{site?.home_heading || org.name}</h1>
+          {site?.tagline && site.tagline !== org.description && <p className="organization-profile-tagline">{site.tagline}</p>}
+        </div>
+        <div className="organization-profile-actions">
+          {Boolean(org.links?.length) && org.links!.filter(link=>!isRetiredOrganizationHref(link.url)).map(link=><a key={link.id} className={link.type === 'website' ? 'btn-primary' : 'btn-secondary'} href={link.url} target="_blank" rel="noopener noreferrer">{link.label || organizationLinkLabels[link.type]}</a>)}
+          {org.source_url && !isRetiredOrganizationHref(org.source_url) && !org.links?.some(link=>link.url===org.source_url) && <a className="btn-primary" href={org.source_url} target="_blank" rel="noreferrer">Website</a>}
+          {token && <OrganizationFollowButton orgId={org.id} slug={org.slug}/>}
+          {dashboard && <Link className="btn-secondary" to={`/orgs/${encodeURIComponent(org.slug)}`}>Public profile</Link>}
+        </div>
+      </header>
+      <div className="portal-org-info-tabs organization-profile-tabs" role="tablist" aria-label={`${org.name} information`}>
+        {orgTabs.map((tab,index) => <button type="button" role="tab" id={`org-tab-${tab.id}`} aria-controls={`org-panel-${tab.id}`} aria-selected={activeTab === tab.id} tabIndex={activeTab === tab.id ? 0 : -1} key={tab.id} onClick={() => selectTab(tab.id)} onKeyDown={event => {
           if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return
-          event.preventDefault(); const next = event.key === 'Home' ? orgTabs[0] : event.key === 'End' ? orgTabs[orgTabs.length-1] : orgTabs[(orgTabs.indexOf(tab)+(event.key==='ArrowRight'?1:orgTabs.length-1))%orgTabs.length]
-          selectTab(next); document.getElementById(`org-tab-${next}`)?.focus()
-        }}>{tab === 'info' ? <Info size={18} aria-hidden="true" /> : tab === 'personnel' ? <Users size={18} aria-hidden="true" /> : tab === 'poster' ? <FileImage size={18} aria-hidden="true" /> : <Palette size={18} aria-hidden="true" />}{tab === 'info' ? 'Info' : tab === 'personnel' ? 'Personnel' : tab === 'poster' ? 'Poster' : 'Branding'}</button>)}
+          event.preventDefault()
+          const next=event.key==='Home'?orgTabs[0]:event.key==='End'?orgTabs[orgTabs.length-1]:orgTabs[(index+(event.key==='ArrowRight'?1:orgTabs.length-1))%orgTabs.length]
+          selectTab(next.id); document.getElementById(`org-tab-${next.id}`)?.focus()
+        }}>{tab.label}</button>)}
       </div>
-      {canManageCurrentOrg && <div className="organization-page-tools">
-        <OrganizationViewSwitcher organizationSlug={org.slug} manager />
-        {token && <OrganizationPageStatistics key={org.id} organizationId={org.id} token={token} />}
-      </div>}
+      <div className="organization-profile-panel" role="tabpanel" id="org-panel-about" aria-labelledby="org-tab-about" hidden={activeTab !== 'about'}>
+        <div className={`organization-about${coverImage ? ' organization-about-with-cover' : ''}`}>
+          {coverImage && <figure className="organization-profile-cover"><OrgImage src={coverImage} alt={`${org.name} cover`}/></figure>}
+          <section className="organization-about-copy">
+            <h2>About {site?.name || org.name}</h2>
+            {isNeoNatalProfile ? <><p className="neonatal-tagline">Engineering insight into complex disease.</p><p>A Baltimore team of data engineers working to better understand poorly understood diseases.</p></> : <>
+              {org.description && <BioMarkdown value={org.description}/>}
+              {portalDescription && portalDescription !== org.description?.trim() && portalDescription !== site?.tagline?.trim() && <BioMarkdown value={portalDescription}/>}
+            </>}
+            {Boolean(org.tags?.length) && <ul className="organization-profile-tags" aria-label="Organization tags">{org.tags!.map(tag=><li className="pill" key={tag}>{tag}</li>)}</ul>}
+            {org.slug==='code-collective' && <Link className="btn-secondary" to="/orgs/code-collective/five-over-five">★ Five over Five · Nominate and vote</Link>}
+            {site?.home_primary_href && !['/users/login','/org-events'].includes(site.home_primary_href) && portalAction(site.home_primary_label,site.home_primary_href)}
+            {site?.home_secondary_href && !['/users/login','/org-events'].includes(site.home_secondary_href) && portalAction(site.home_secondary_label,site.home_secondary_href)}
+            {mergedFrom && <p className="muted" role="status">Redirected from merged organization <code>{mergedFrom}</code>.</p>}
+            {publicPortal?.organizationId===org.id && publicPortal.error && <p role="status">{publicPortal.error}</p>}
+          </section>
+        </div>
+        {isNeoNatalProfile && <><NeoNatalFocus/>{(org.description || portalDescription) && <details className="neonatal-about"><summary>About NeoNatal AI</summary>{org.description && <BioMarkdown value={org.description}/>}</details>}</>}
+        {resources.length>0 && <SpecialtyResourcesPanel resources={resources}/>}
       </div>
-      <div role="tabpanel" id="org-panel-info" aria-labelledby="org-tab-info" hidden={activeTab !== 'info'}>
-      {isWorkspaceView && <details className="portal-org-organizer-nav" aria-label={`${org.name} workspace navigation`}>
-        <summary>{isOrganizerView ? 'Organizer tools' : 'Member tools'}</summary>
-        <a href="#organization-overview">Overview</a>
-        <a href="?tab=branding" onClick={event => { event.preventDefault(); selectTab('branding') }}>Branding</a>
-        <a href="?tab=personnel" onClick={event => { event.preventDefault(); selectTab('personnel') }}>Personnel</a>
-        <a href="#organization-events">Events</a>
-        <a href="#organization-support">Money and support</a>
-        <a href="#organization-member-feedback">Feedback</a>
-        {isOrganizerView && <a href="#organization-mailing-list">Mailing list</a>}
-        {isOrganizerView && <a href="#organization-domain" onClick={event => { event.preventDefault(); openOrganizationEditor('organization-domain') }}>Domain</a>}
-        {isOrganizerView && <a href="#organization-page-editor" onClick={event => { event.preventDefault(); openOrganizationEditor() }}>Settings</a>}
-      </details>}
-      <div className={`portal-org-layout${org.claimed_by_user_id ? '' : ' portal-org-layout-single'}`}>
-        <div className="portal-org-main-column">
-          <div id="organization-overview" className="portal-org-hero portal-org-nav-target" tabIndex={-1}>
-            <div className="portal-org-hero-copy">
-              <p className="tenant-home-eyebrow">{isNeoNatalProfile ? 'Baltimore · Data engineering' : isOrganizerView ? 'Organization dashboard' : `${organizationView[0].toUpperCase()}${organizationView.slice(1)} view`}</p>
-              <div className="portal-org-hero-header">
-                <h1>{!dashboard&&site?.home_heading||org.name}</h1>
-                {isOrganizerView && <button type="button" className="btn-secondary" onClick={() => openOrganizationEditor('org-name')} aria-label="Edit organization name"><Pencil size={17} aria-hidden="true" /></button>}
-                {canEditOrgImage ? (
-                  <span className="portal-org-image-hint">Click image to change</span>
-                ) : null}
-              </div>
-              {isNeoNatalProfile && !!org.tags?.length && <ul className="neonatal-tags" aria-label="Organization tags">
-                {org.tags.map(tag => <li key={tag} className="pill">{tag}</li>)}
-              </ul>}
-              {isNeoNatalProfile ? <>
-                <p className="neonatal-tagline">Engineering insight into complex disease.</p>
-                <p className="neonatal-intro">A Baltimore team of data engineers working to better understand poorly understood diseases.</p>
-              </> : <>
-                {site?.tagline&&site.tagline!==org.description&&<p className="muted">{site.tagline}</p>}
-                {org.description ? <BioMarkdown value={org.description} /> : null}
-                {portalDescription&&portalDescription!==org.description?.trim()&&portalDescription!==site?.tagline?.trim()&&<BioMarkdown value={portalDescription} />}
-              </>}
-              {publicPortal?.organizationId===org.id&&publicPortal.error&&<p role="status">{publicPortal.error}</p>}
-              {isOrganizerView && <button type="button" className="btn-secondary" onClick={() => openOrganizationEditor('org-description')}>Edit description</button>}
-              <div className="portal-org-actions" aria-label={`${org.name} actions`}>
-                <OrganizationFollowButton orgId={org.id} slug={org.slug} />
-                {org.slug === 'code-collective' && <Link className="btn-primary" to="/orgs/code-collective/five-over-five">★ Five over Five · Nominate and vote</Link>}
-                {dashboard ? <Link className="btn-secondary" to={`/orgs/${encodeURIComponent(org.slug)}`}>Public profile</Link> : (canManageCurrentOrg || membership?.status === 'active') && <Link className="btn-secondary" to={`/orgs/${encodeURIComponent(org.slug)}/dashboard`}>Organization dashboard</Link>}
-                {token ? (
-                  <Link className="btn-secondary" to={`/chat?start=group&org=${encodeURIComponent(org.slug)}`}>
-                    Message Group
-                  </Link>
-                ) : (
-                  <a className="btn-secondary" href={pidpAppLoginUrl(`/orgs/${encodeURIComponent(org.slug)}`)}>
-                    Log in to join
-                  </a>
-                )}
-                {!isNeoNatalProfile && portalAction(site?.home_primary_label,site?.home_primary_href)}
-                {!isNeoNatalProfile && portalAction(site?.home_secondary_label,site?.home_secondary_href)}
-                {Boolean(org.links?.length) && <nav className="organization-public-links" aria-label="Organization Links">{org.links!.filter(link=>!isRetiredOrganizationHref(link.url)).map(link=><a key={link.id} className="btn-secondary" href={link.url} target="_blank" rel="noopener noreferrer">{link.label || organizationLinkLabels[link.type]}</a>)}</nav>}
-                {org.source_url && !isRetiredOrganizationHref(org.source_url) && org.source_url !== org.group_home_url ? (
-                  <a className="btn-secondary" href={org.source_url} target="_blank" rel="noreferrer">
-                    Website
-                  </a>
-                ) : null}
-                {isOrganizerView ? (
-                  <button type="button" className="btn-secondary" onClick={() => openOrganizationEditor()} aria-expanded={adminView}>
-                    <Pencil size={17} aria-hidden="true" />
-                    Edit page
-                  </button>
-                ) : null}
-              </div>
-            </div>
-            <button
-              type="button"
-              className={`portal-org-image-button${canEditOrgImage ? ' editable' : ''}`}
-              onClick={openImageEditor}
-              disabled={!canEditOrgImage}
-              aria-label={canEditOrgImage ? 'Change organization image' : 'Organization image'}
-            >
-              <OrgImage
-                src={heroImageSource}
-                fallbackSrc={organizationBrandImage}
-                alt={org.name}
-                className={`portal-org-hero-image${organizationBrandImage ? ' portal-org-brand-image' : ''}`}
-              />
-            </button>
-          </div>
-          {isNeoNatalProfile && <>
-            <NeoNatalFocus />
-            {(org.description || portalDescription) && <details className="neonatal-about"><summary>About NeoNatal AI</summary>
-              {org.description && <BioMarkdown value={org.description} />}
-              {portalDescription && portalDescription !== org.description?.trim() && <BioMarkdown value={portalDescription} />}
-            </details>}
-          </>}
-          {!isNeoNatalProfile && <OrganizationBrandGuide href={organizationBrandingPath(org.slug)} />}
-          <SpecialtyResourcesPanel resources={resources} />
-          {eventGroups.filter(group => !isNeoNatalProfile || eventsLoading || eventsError || group.events.length > 0).map((group) => <div key={group.kind} id={group.kind === 'hosted' ? 'organization-events' : 'organization-related-events'} className="portal-card portal-org-events-card portal-org-nav-target" tabIndex={-1}>
+      <div className="organization-profile-panel" role="tabpanel" id="org-panel-events" aria-labelledby="org-tab-events" hidden={activeTab !== 'events'}>
+        {activeTab==='events' && <>          {eventGroups.map((group) => <div key={group.kind} id={group.kind === 'hosted' ? 'organization-events' : 'organization-related-events'} className="organization-event-section portal-org-nav-target" tabIndex={-1}>
             <div className="portal-org-events-heading">
               <div>
                 <p className="tenant-home-eyebrow">{org.name}</p>
-                <h2>{group.kind === 'hosted' ? `${org.name} upcoming events` : 'Events from nearby organizations'}</h2>
+                <h2>{group.kind === 'hosted' ? 'Upcoming events' : 'Events from nearby organizations'}</h2>
               </div>
               <Link to="/events">View all events</Link>
-              {isOrganizerView && group.kind === 'hosted' && <Link className="btn-secondary" to="/orgs/events">Manage events</Link>}
+              {canManageCurrentOrg && group.kind === 'hosted' && <Link className="btn-secondary" to="/orgs/events">Manage events</Link>}
             </div>
             {eventsLoading ? (
               <p className="muted" style={{ margin: 0 }}>
@@ -1067,7 +975,7 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
                 {group.events.map((event) => (
                   <Link key={event.id} className="portal-org-event-card" to={`/events/${encodeURIComponent(event.slug)}`}>
                     <OrgImage
-                      src={event.image_url || event.media?.[0]?.url || heroImageSource}
+                      src={event.image_url || event.media?.[0]?.url || coverImage || heroImageSource}
                       fallbackSrc={organizationBrandImage}
                       alt=""
                       className={!event.image_url && !event.media?.length ? 'portal-org-event-brand-image' : undefined}
@@ -1079,74 +987,26 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
                 ))}
               </div>
             )}
-          </div>)}
-
-
-          {isOrganizerView && <GroupMailingList organizationId={org.id} />}
-          {token && <GroupEmailPreference organizationId={org.id} />}
-          {isWorkspaceView && <OrganizationTools />}
-          {isWorkspaceView && <>
-          <OrganizationPortalSections
-            name={org.name}
-            features={portalConfig?.features ?? (getGroupSite()?.home_org_slug === org.slug ? getGroupSite()?.features : undefined) ?? ['directory', 'events', 'chat']}
-          />
-          <div id="organization-brand-guide" className="portal-org-nav-target" tabIndex={-1}>
-          {isOrganizerView && <button type="button" className="btn-secondary" onClick={() => openOrganizationEditor('organization-branding')}>Edit branding and portal sections</button>}
-          </div>
-          </>}
-          {(organizationView === 'attendees' || organizationView === 'volunteers') && <section className="portal-card" aria-label={`${organizationView} workspace`} style={{ display: 'grid', gap: '.6rem' }}>
-            <h2>{organizationView === 'volunteers' ? 'Volunteer workspace' : 'Attendee workspace'}</h2>
-            <p>{organizationView === 'volunteers' ? 'Volunteers have helped with a group activity within the previous three months.' : 'Attendees have attended a group activity within the previous three months.'}</p>
-            <div className="portal-org-actions">
-              <Link className="btn-secondary" to="/org-events">Events and registration</Link>
-            </div>
-          </section>}
-          {mergedFrom ? (
-            <p className="muted" role="status" style={{ margin: 0 }}>
-              Redirected from merged organization <code>{mergedFrom}</code>.
-            </p>
-          ) : null}
-          {(token || org.upcoming_events_count > 0 || (canManageCurrentOrg && (org.feedback_count || 0) > 0)) && <div className="portal-card portal-org-stats-card" style={{ display: 'grid', gap: '0.8rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.6rem' }}>
-              {org.upcoming_events_count > 0 && <div>
-                <strong>{org.upcoming_events_count}</strong>
-                <p className="muted" style={{ margin: 0 }}>Upcoming events</p>
-              </div>}
-              {(token || canManageCurrentOrg) && (org.feedback_count || 0) > 0 ? (
-                <div>
-                  <strong>{org.feedback_count || 0}</strong>
-                  <p className="muted" style={{ margin: 0 }}>Feedback notes</p>
-                </div>
-              ) : null}
-            </div>
-            {token ? (
-              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
-              {membership?.status === 'active' ? (
-                membership.role === 'member' ? (
-                  <button type="button" onClick={() => void updateOrganizationMembership(false)}>
-                    Leave Group
-                  </button>
-                ) : (
-                  <span className="pill">You manage this group</span>
-                )
-              ) : (
-                <button type="button" className="btn-primary" onClick={() => void updateOrganizationMembership(true)}>
-                  Join Group
-                </button>
-              )}
-                <Link className="btn-secondary" to={`/chat?start=group&org=${encodeURIComponent(org.slug)}`} style={{ textDecoration: 'none', width: 'fit-content' }}>
-                  Message Group
-                </Link>
-              </div>
-            ) : null}
-            {membershipStatus ? <p className="muted" role="status" style={{ margin: 0 }}>{membershipStatus}</p> : null}
-          </div>}
-
-          {token && (isOrganizerView || (org.feedback_count || 0) > 0 || feedbackComment || feedbackRating !== 'neutral') ? (
-            <div id="organization-member-feedback" className="portal-card portal-org-nav-target" tabIndex={-1} style={{ display: 'grid', gap: '0.65rem' }}>
+          </div>)}</>}
+      </div>
+      <div className="organization-profile-panel" role="tabpanel" id="org-panel-personnel" aria-labelledby="org-tab-personnel" hidden={activeTab !== 'personnel'}>
+        {activeTab==='personnel' && <OrganizationBoard embedded organization={org} canManage={canManageCurrentOrg} canRead={Boolean(token&&(canManageCurrentOrg||membership?.status==='active'))} memberType={org.tags?.includes('Team')?'team':'community'}/>}
+      </div>
+      <div className="organization-profile-panel" role="tabpanel" id="org-panel-community" aria-labelledby="org-tab-community" hidden={activeTab !== 'community'}>
+        {activeTab==='community' && <div className="organization-community">
+          <section className="organization-community-section">
+            <h2>Community</h2>
+            {membership?.status==='active' ? <p className="muted">{membership.role==='member'?'You are a member of this organization.':'You manage this organization.'}</p> : token ? <button type="button" className="btn-primary" onClick={()=>void updateOrganizationMembership(true)}>Join Group</button> : <a className="btn-primary" href={pidpAppLoginUrl(`/orgs/${encodeURIComponent(org.slug)}?tab=community`)}>Sign in to participate</a>}
+            {membership?.status==='active' && membership.role==='member' && <button type="button" className="btn-secondary" onClick={()=>void updateOrganizationMembership(false)}>Leave Group</button>}
+            {membershipStatus && <p role="status">{membershipStatus}</p>}
+            {org.claimed_by_user_id && (isWorkspaceView ? <EmbeddedOrganizationChat id={org.id} slug={org.slug} name={org.name}/> : token && membership?.status==='active' ? <Link className="btn-secondary" to={`/chat?start=org&org=${encodeURIComponent(org.slug)}`}>Open group conversation</Link> : <p className="muted">Members can take part in the group conversation.</p>)}
+          </section>
+          {token && <GroupEmailPreference organizationId={org.id}/>}
+                    {token ? (
+            <div id="organization-member-feedback" className="organization-community-section portal-org-nav-target" tabIndex={-1} style={{ display: 'grid', gap: '0.65rem' }}>
             <div>
               <h2 style={{ margin: 0, fontSize: '1rem' }}>Group Feedback</h2>
-              {isOrganizerView && <button type="button" className="btn-secondary" onClick={() => openOrganizationEditor('organization-feedback')}>Manage feedback</button>}
+              {canManageCurrentOrg && <button type="button" className="btn-secondary" onClick={() => openOrganizationEditor('organization-feedback')}>Manage feedback</button>}
               <p className="muted" style={{ margin: '0.25rem 0 0' }}>
                 {org.feedback_positive_count || 0} positive • {org.feedback_concern_count || 0} concerns
               </p>
@@ -1192,72 +1052,40 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
             {feedbackStatus ? <p className="muted" role="status" style={{ margin: 0 }}>{feedbackStatus}</p> : null}
             </div>
           ) : null}
-          {org.is_disputed ? (
-            <p className="muted" style={{ margin: 0 }}>
-              {org.pending_challenges_count} pending ownership claim{org.pending_challenges_count === 1 ? '' : 's'}.
-            </p>
-          ) : null}
-          {!isNeoNatalProfile && org.tags && org.tags.length ? (
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-              {org.tags.map((tag) => (
-                <span key={tag} className="pill">
-                  {tag}
-                </span>
-              ))}
-            </div>
-          ) : null}
-          {(token || canManageCurrentOrg) && admins.length > 0 ? (
-            <div className="portal-card" style={{ display: 'grid', gap: '0.55rem' }}>
-            <h2 style={{ margin: 0, fontSize: '1rem' }}>Organization Admins</h2>
-            {adminsLoading ? (
-              <p className="muted" style={{ margin: 0 }}>
-                Loading admins…
-              </p>
-            ) : admins.length === 0 ? (
-              <p className="muted" style={{ margin: 0 }}>
-                No admins listed yet.
-              </p>
-            ) : (
-              <ul style={{ margin: 0, paddingLeft: '1.1rem' }}>
-                {admins.map((admin) => (
-                  <li key={`${admin.user_id}-${admin.role}`}>
-                    <strong>{admin.user_name || admin.user_id}</strong>{' '}
-                    <span className="muted">({admin.role})</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-            </div>
-          ) : null}
-
-          {membership?.role !== 'owner' && (token
-            ? <button type="button" className="btn-secondary" onClick={() => void submitClaim()} disabled={claiming || claimRecorded}>{claiming ? 'Recording…' : claimRecorded ? 'Claim recorded' : 'Claim this Org'}</button>
-            : <a className="btn-secondary" href={pidpAppLoginUrl(`/orgs/${encodeURIComponent(org.slug)}`)}>Claim this Org</a>)}
-          {claimStatus && <p role="status">{claimStatus}</p>}
-
-          <SecondaryOrganizationSection className={isNeoNatalProfile ? 'neonatal-about' : undefined}>
-          {isNeoNatalProfile && <summary>Related organizations and support</summary>}
-          <PeerOrganizations organizationId={org.id} tags={org.tags} />
-
-          <div id="organization-support" className="portal-org-nav-target" tabIndex={-1}>
-            <OrganizationSupport organizationId={org.id} slug={org.slug} canManage={isOrganizerView} />
-          </div>
-          </SecondaryOrganizationSection>
-
-          {isOrganizerView && adminView ? (
+          {isWorkspaceView && <section className="organization-community-section"><h2>Member tools</h2><OrganizationTools/></section>}
+          {(organizationView==='attendees'||organizationView==='volunteers') && <section className="organization-community-section"><h2>{organizationView==='volunteers'?'Volunteer workspace':'Attendee workspace'}</h2><button className="btn-secondary" onClick={()=>selectTab('events')}>Events and registration</button></section>}
+          <details className="organization-community-section" onToggle={event=>setSupportOpen(event.currentTarget.open)}><summary>Support and contributions</summary>{supportOpen && <OrganizationSupport organizationId={org.id} slug={org.slug} canManage={canManageCurrentOrg}/>}</details>
+          {!canManageCurrentOrg && membership?.role!=='owner' && <details className="organization-ownership"><summary>Organization ownership</summary>
+            {org.is_disputed && <p>{org.pending_challenges_count} pending ownership claim{org.pending_challenges_count===1?'':'s'}.</p>}
+            {token ? <button type="button" className="btn-secondary" onClick={()=>void submitClaim()} disabled={claiming||claimRecorded}>{claiming?'Recording…':claimRecorded?'Claim recorded':'Claim this Org'}</button> : <a href={pidpAppLoginUrl(`/orgs/${encodeURIComponent(org.slug)}?tab=community`)}>Claim this Org</a>}
+            {claimStatus && <p role="status">{claimStatus}</p>}
+          </details>}
+        </div>}
+      </div>
+      <div className="organization-profile-panel" role="tabpanel" id="org-panel-branding" aria-labelledby="org-tab-branding" hidden={activeTab !== 'branding'}>
+        {activeTab==='branding' && <OrganizationBranding organization={org} canManage={canManageCurrentOrg} onSaved={()=>setPublicPortalRevision(value=>value+1)}/>}
+      </div>
+      <div className="organization-profile-panel" role="tabpanel" id="org-panel-poster" aria-labelledby="org-tab-poster" hidden={activeTab !== 'poster'}>
+        {activeTab==='poster' && <EventPosterTools key={org.id} kind="organization" inline slug={org.slug} title={org.name} organizationSlug={org.slug} organizationLinks={org.links} sourceUrl={org.source_url&&!isRetiredOrganizationHref(org.source_url)?org.source_url:null}/>}
+      </div>
+      {canManageCurrentOrg && <div className="organization-profile-panel" role="tabpanel" id="org-panel-settings" aria-labelledby="org-tab-settings" hidden={activeTab !== 'settings'}>
+        {activeTab==='settings' && <>
+          <div className="organization-profile-management"><OrganizationViewSwitcher organizationSlug={org.slug} manager/>{token && <OrganizationPageStatistics key={org.id} organizationId={org.id} token={token}/>}</div>
+          <GroupMailingList organizationId={org.id}/>
+                    {canManageCurrentOrg && activeTab === 'settings' ? (
             <div
               ref={organizationEditorRef}
               id="organization-page-editor"
-              className="portal-card portal-org-admin-card"
+              className="organization-settings"
               style={{ display: 'grid', gap: '0.7rem' }}
               tabIndex={-1}
               aria-label={`Edit ${org.name}`}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
                 <h2 style={{ margin: 0, fontSize: '1rem' }}>Edit organization page</h2>
-                <button type="button" className="btn-secondary" onClick={() => setAdminView(false)}>
+                <button type="button" className="btn-secondary" onClick={() => selectTab('about')}>
                   <X size={17} aria-hidden="true" />
-                  Close editor
+                  Back to About
                 </button>
               </div>
               <>
@@ -1269,7 +1097,7 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
                       {myAdminOrgsStatus}
                     </p>
                   ) : null}
-                  <div id="organization-branding" tabIndex={-1} className="portal-card portal-org-portal-setup portal-org-nav-target" style={{ display: 'grid', gap: '0.65rem', boxShadow: 'none' }}>
+                  <div id="organization-branding" tabIndex={-1} className="portal-org-portal-setup portal-org-nav-target" style={{ display: 'grid', gap: '0.65rem', boxShadow: 'none' }}>
                     <div>
                       <h3 style={{ margin: 0, fontSize: '0.98rem' }}>Homepage and branding</h3>
                       <p className="muted" style={{ margin: '0.2rem 0 0' }}>
@@ -1394,7 +1222,7 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
                     </label>
                     {portalStatus ? <p className="muted" role="status" style={{ margin: 0 }}>{portalStatus}</p> : null}
                   </div>
-                  <div id="organization-feedback" tabIndex={-1} className="portal-card portal-org-nav-target" style={{ display: 'grid', gap: '0.55rem', boxShadow: 'none' }}>
+                  <div id="organization-feedback" tabIndex={-1} className="organization-settings-section portal-org-nav-target" style={{ display: 'grid', gap: '0.55rem', boxShadow: 'none' }}>
                     <div>
                       <h3 style={{ margin: 0, fontSize: '0.98rem' }}>Feedback Inbox</h3>
                       <p className="muted" style={{ margin: '0.2rem 0 0' }}>
@@ -1501,37 +1329,8 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
               </>
             </div>
           ) : null}
-
-        </div>
-        {org.claimed_by_user_id && <aside className="portal-org-chat-column">
-          {isWorkspaceView ? <EmbeddedOrganizationChat id={org.id} slug={org.slug} name={org.name} /> : <div className="portal-card" style={{ display: 'grid', gap: '0.75rem' }}>
-            <h2 style={{ margin: 0, fontSize: '1rem' }}>{org.name} Chat</h2>
-            <p className="muted" style={{ margin: 0 }}>Connect with {org.name} members in our shared chat room.</p>
-            {token ? (
-              membership?.status === 'active' ? (
-                <Link className="btn-primary" to={`/chat?start=org&org=${encodeURIComponent(org.slug)}`}>
-                  Open {org.name} Chat
-                </Link>
-              ) : <p className="muted" style={{ margin: 0 }}>Join {org.name} above to take part in the chat.</p>
-            ) : (
-              <a className="btn-primary" href={pidpAppLoginUrl(`/orgs/${encodeURIComponent(org.slug)}`)}>
-                Sign in to join {org.name} Chat
-              </a>
-            )}
-          </div>}
-        </aside>}
-      </div>
-      </div>
-      <div role="tabpanel" id="org-panel-personnel" aria-labelledby="org-tab-personnel" hidden={activeTab !== 'personnel'}>
-        {activeTab === 'personnel' && <OrganizationBoard organization={org} canManage={canManageCurrentOrg} canRead={Boolean(token && (canManageCurrentOrg || membership?.status === 'active'))} memberType={org.tags?.includes('Team') ? 'team' : 'community'} />}
-      </div>
-      <div role="tabpanel" id="org-panel-poster" aria-labelledby="org-tab-poster" hidden={activeTab !== 'poster'}>
-        {activeTab === 'poster' && <EventPosterTools key={org.id} kind="organization" inline slug={org.slug} title={org.name} organizationSlug={org.slug} organizationLinks={org.links} sourceUrl={org.source_url && !isRetiredOrganizationHref(org.source_url) ? org.source_url : null} />}
-      </div>
-      <div role="tabpanel" id="org-panel-branding" aria-labelledby="org-tab-branding" hidden={activeTab !== 'branding'}>
-        {activeTab === 'branding' && <OrganizationBranding organization={org} canManage={canManageCurrentOrg} onSaved={()=>setPublicPortalRevision(value=>value+1)} />}
-        {activeTab === 'branding' && isOrganizerView && <button type="button" className="btn-secondary" onClick={() => { selectTab('info'); openOrganizationEditor('organization-branding') }}>Edit branding and portal sections</button>}
-      </div>
+        </>}
+      </div>}
       {showImageEditor && editorSource ? (
         <ImageEditorModal
           image={editorSource}
