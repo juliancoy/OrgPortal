@@ -2,7 +2,7 @@ import {execFileSync} from 'node:child_process'
 import {testUploadImageCompression} from './test-upload-image-compression.mjs'
 import {fixtureServer} from './fixture-server.mjs'
 // Offline visual renders for local review and the distributed Portal visual suite.
-import {chromium} from '@playwright/test'
+import {chromium,expect} from '@playwright/test'
 import {mkdir,writeFile} from 'node:fs/promises'
 import {resolve,join} from 'node:path'
 import {fileURLToPath} from 'node:url'
@@ -78,15 +78,16 @@ try{
    await page.waitForFunction(()=>document.querySelector('.submission-card-select')?.getAttribute('aria-pressed')==='false')
    if(!await page.getByText('0 of 3 favorites selected · Saving…',{exact:true}).isVisible())throw Error('Favorite selection must update before save completes')
    if(!await card.locator('.submission-card-footer').getByText('0 favorites',{exact:true}).isVisible())throw Error('Favorite count must update immediately')
-   if(votes!==1)throw Error('Card click must change vote exactly once')
+   await expect.poll(()=>votes).toBe(1)
    releaseVote();await page.waitForFunction(()=>!document.querySelector('.submission-card-select')?.disabled)
    const vote=card.locator('.submission-card-select');await vote.focus();await page.keyboard.press('Enter')
    await page.waitForFunction(()=>document.querySelector('.submission-card-select')?.getAttribute('aria-pressed')==='true')
-   if(votes!==2)throw Error('Keyboard vote must change vote exactly once')
+   await expect.poll(()=>votes).toBe(2)
    releaseVote();await page.waitForFunction(()=>!document.querySelector('.submission-card-select')?.disabled)
    failVote=true
    await vote.click()
    await page.waitForFunction(()=>document.querySelector('.submission-card-select')?.getAttribute('aria-pressed')==='false')
+   await expect.poll(()=>votes).toBe(3)
    releaseVote()
    await page.getByRole('alert').filter({hasText:'Favorite could not be saved'}).waitFor()
    if(await vote.getAttribute('aria-pressed')!=='true'||!await card.locator('.submission-card-footer').getByText('1 favorite',{exact:true}).isVisible())throw Error('Failed favorite must restore selection and count')

@@ -105,7 +105,7 @@ export function EventSubmissions({eventId,onEdit,onDeleted}:{eventId:string;onEd
     <SubmissionPresenters people={row.presenters || []} />
     <SubmissionAttachments eventId={eventId} submissionId={row.submission_id} initial={row.attachments} canManage={canManage||managedTeams.includes(row.submission_id)} />
     {editableApplications[row.submission_id]&&<div className="submission-card-management"><span>Manage your application</span><SubmissionActions eventId={eventId} application={editableApplications[row.submission_id]} onEdit={onEdit} onDeleted={submissionId=>{
-     setRows(previous=>previous.filter(item=>item.submission_id!==submissionId));setFavorites(previous=>previous.filter(id=>id!==submissionId));setReviewRevision(value=>value+1);onDeleted(submissionId)
+     setRows(previous=>previous.filter(item=>item.submission_id!==submissionId));favoriteIds.current=favoriteIds.current.filter(id=>id!==submissionId);setFavorites(favoriteIds.current);setReviewRevision(value=>value+1);onDeleted(submissionId)
     }} /></div>}
    </div>
    <p className={`submission-card-footer${finalPhase==='shortlist'?' has-voting':''}`}>{row.favorites} {row.favorites===1?'favorite':'favorites'}{row.status!=='submitted'&&<> · {row.status}</>}</p>
