@@ -64,7 +64,8 @@ Guest proposals remain private to organizers; organization proposals remain publ
 
 The `mcp-admin-reconnect` task is exercised by
 `PIdP/serverless/browser/mcp-admin-reconnect.mjs`. The distributed `identity`
-catalog includes this browser journey and the existing MCP consent browser tests.
+catalog discovers `PIdP/serverless/test/mcp-browser.test.mjs`, which imports this
+journey and the existing MCP consent browser tests.
 It follows the visible administrator action with the keyboard, preserves OAuth
 state and PKCE through the primary-account login handoff, checks administrator
 consent, exchanges the code and verifies live introspection. Removing administrator
