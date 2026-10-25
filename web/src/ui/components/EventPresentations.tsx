@@ -13,7 +13,7 @@ import { useAuth } from '../../app/AppProviders'
 type Org = { id:string; name:string; my_role?:string }
 export type PresentationApplication = { submission_id:string; organization_id:string; organization_name:string; title:string; summary:string; status:string; presenters:TeamPerson[] }
 export type PresentationFormAction = { kind: 'edit'; application: PresentationApplication } | { kind: 'delete'; submissionId: string }
-const emptyPresentationDraft = { submissionId: '', editing: '', imageOrg: '', imageUrl: '', teamChoice: '', org: '', name: '', city: 'Baltimore', description: '', title: '', summary: '', people: '[]' }
+const emptyPresentationDraft = { submissionId: '', editing: '', imageOrg: '', imageUrl: '', teamChoice: '', tagline: '', accent: '#155e59', brandingOrg: '', org: '', name: '', city: 'Baltimore', description: '', title: '', summary: '', people: '[]' }
 export function EventPresentations({eventId,formAction,onActionHandled,onSaved,onSubmitted,onCancelEdit,guestApplyPath}:{eventId:string;formAction?:PresentationFormAction|null;onActionHandled?:()=>void;onSaved?:()=>void;onSubmitted?:(submissionId:string,details:{title:string;teamName:string})=>void;guestApplyPath?:string;onCancelEdit?:()=>void}) {
  const {token,user}=useAuth()
  const choseInitialTeam=useRef(false)
@@ -109,8 +109,8 @@ export function EventPresentations({eventId,formAction,onActionHandled,onSaved,o
   {((enabled&&!closed)||draft.value.editing)&&token&&<form className="presentation-form" data-draft-saved={draft.saved} aria-label="Team presentation application" aria-busy={busy} onSubmit={e=>{e.preventDefault();void action(async()=>{
    if(!people.length)throw new Error('Add at least one teammate before submitting.')
    let organizationId=org
-   if(!organizationId){const team=await request('/api/org/api/network/orgs','POST',{name,city,description,kind:'team',acknowledgeOwnership:true});organizationId=team.id;setOrg(team.id);if(teamImage)setField('imageOrg',team.id);setOrgs(previous=>[...previous,team]);await invalidatePublicOrganizationData()}
-   if((teamImage||draft.value.imageUrl)&&(!org||draft.value.imageOrg===organizationId)){
+   if(!organizationId){const team=await request('/api/org/api/network/orgs','POST',{name,city,description,kind:'team',acknowledgeOwnership:true});organizationId=team.id;setOrg(team.id);setField('brandingOrg',team.id);if(teamImage)setField('imageOrg',team.id);setOrgs(previous=>[...previous,team]);await invalidatePublicOrganizationData()}
+   if(teamImage||draft.value.imageUrl){
     let imageUrl=draft.value.imageUrl;
     if(!imageUrl&&teamImage){
     const imageForm=new FormData();imageForm.set('image',teamImage);
@@ -122,6 +122,7 @@ export function EventPresentations({eventId,formAction,onActionHandled,onSaved,o
     await request(`/api/org/api/network/orgs/${encodeURIComponent(organizationId)}`,'PATCH',{image_url:imageUrl});
     setTeamImage(null);setField('imageOrg','');setField('imageUrl','');await invalidatePublicOrganizationData();
    }
+   if(!org||draft.value.brandingOrg===organizationId){await request(`/api/org/api/network/orgs/${encodeURIComponent(organizationId)}/portal`,'PUT',{name,tagline:draft.value.tagline,accent_color:draft.value.accent,home_kind:'org',home_image_url:draft.value.imageUrl||undefined});setField('brandingOrg','')}
    for(const person of people){
     if(person.existing||person.userId===user?.id||person.invitationId)continue
     const resource=`/api/org/api/network/orgs/${encodeURIComponent(organizationId)}/${person.userId?'members':'invitations'}`
@@ -153,10 +154,10 @@ export function EventPresentations({eventId,formAction,onActionHandled,onSaved,o
       </select>
      </div>
      {!org&&<><div className="presentation-team-fields"><label>Team name<input required maxLength={255} value={name} onChange={e=>setName(e.target.value)}/></label><label>City<input required maxLength={80} value={city} onChange={e=>setCity(e.target.value)}/></label></div>
-      <details className="application-optional-profile"><summary>Team profile (optional)</summary><div className="application-profile-fields"><div><label htmlFor={`${fieldId}-about`}>About your team</label><textarea id={`${fieldId}-about`} rows={3} maxLength={5000} value={description} onChange={e=>setDescription(e.target.value)}/></div>
-       <label>Team image<input aria-label="Team image (optional)" type="file" accept="image/jpeg,image/png,image/webp,image/gif" disabled={busy} onChange={chooseTeamImage}/><small>Your organization’s main image. JPEG, PNG, WebP or GIF, up to 8 MB after compression. Still JPEG and PNG images are compressed automatically; transparency is preserved.</small>{imagePreview&&<img src={imagePreview} alt="Team image preview" style={{maxWidth:160,maxHeight:160,objectFit:'contain'}}/>}</label>
+      <details className="application-optional-profile" open><summary>Team profile and branding (optional)</summary><div className="application-profile-fields"><div><label htmlFor={`${fieldId}-about`}>About your team</label><textarea id={`${fieldId}-about`} rows={3} maxLength={5000} value={description} onChange={e=>setDescription(e.target.value)}/></div>
+       <label>Tagline<input maxLength={180} value={draft.value.tagline} onChange={e=>setField('tagline',e.target.value)}/></label><label>Brand color<input type="color" value={draft.value.accent} onChange={e=>setField('accent',e.target.value)}/></label><label>Team image<input aria-label="Team image (optional)" type="file" accept="image/jpeg,image/png,image/webp,image/gif" disabled={busy} onChange={chooseTeamImage}/><small>Your organization’s main image. JPEG, PNG, WebP or GIF, up to 8 MB after compression. Still JPEG and PNG images are compressed automatically; transparency is preserved.</small>{imagePreview&&<img src={imagePreview} alt="Team image preview" style={{maxWidth:160,maxHeight:160,objectFit:'contain'}}/>}</label>
       </div></details></>}
-     {org&&draft.value.imageOrg===org&&<label>Team image (optional)<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" disabled={busy} onChange={chooseTeamImage}/>{imagePreview&&<img src={imagePreview} alt="Team image preview" style={{maxWidth:160,maxHeight:160,objectFit:'contain'}}/>}</label>}
+     {org&&<label>Team image (optional)<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" disabled={busy} onChange={chooseTeamImage}/>{imagePreview&&<img src={imagePreview} alt="Team image preview" style={{maxWidth:160,maxHeight:160,objectFit:'contain'}}/>}</label>}
      <TeamPeoplePicker compact people={people} onChange={value=>draft.setValue(previous=>({...previous,people:JSON.stringify(value)}))}/>
      <p className="muted">Include a teammate’s email address. They will receive an invitation to join your team organization when you submit. They join only after accepting. Members are shared across your organization’s submissions.{org&&<> <Link to={`/orgs/${encodeURIComponent(org)}?tab=personnel`}>Manage members</Link>.</>}</p>
     </fieldset>

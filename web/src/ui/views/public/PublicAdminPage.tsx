@@ -1511,7 +1511,7 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
         {activeTab === 'poster' && <EventPosterTools key={org.id} kind="organization" inline slug={org.slug} title={org.name} organizationSlug={org.slug} organizationLinks={org.links} sourceUrl={org.source_url && !isRetiredOrganizationHref(org.source_url) ? org.source_url : null} />}
       </div>
       <div role="tabpanel" id="org-panel-branding" aria-labelledby="org-tab-branding" hidden={activeTab !== 'branding'}>
-        {activeTab === 'branding' && <OrganizationBranding organization={org} />}
+        {activeTab === 'branding' && <OrganizationBranding organization={org} canManage={canManageCurrentOrg} />}
         {activeTab === 'branding' && isOrganizerView && <button type="button" className="btn-secondary" onClick={() => { selectTab('info'); openOrganizationEditor('organization-branding') }}>Edit branding and portal sections</button>}
       </div>
       {showImageEditor && editorSource ? (

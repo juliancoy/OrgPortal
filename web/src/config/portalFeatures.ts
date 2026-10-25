@@ -105,7 +105,7 @@ function tenantBrandHomeUrl(tenant: GroupSite, fallback: string): string {
 }
 
 export function tenantProfileConfig(tenant: GroupSite): PortalProfileConfig {
-  const profileId = normalizeProfileId(tenant.profile) || (tenant.slug === 'lifetech' ? 'lifetech' : 'code-collective')
+  const profileId = normalizeProfileId(tenant.profile) || (tenant.slug === 'lifetech' ? 'lifetech' : 'orgportal')
   const base = PORTAL_PROFILES[profileId]
   const features = new Set(tenant.features || [])
   const isTimebank = features.has('timebank')
@@ -131,11 +131,11 @@ export function tenantProfileConfig(tenant: GroupSite): PortalProfileConfig {
     groupSiteId: tenant.id,
     brandName: tenant.name || base.brandName,
     portalTitle: profileId === 'orgportal' ? 'OrgPortal' : tenant.name ? `${tenant.name} Portal` : base.portalTitle,
-    tagline: tenant.tagline || base.tagline,
+    tagline: tenant.tagline ?? base.tagline,
     brandImagePath,
     nameBannerUrl: typeof tenant.feature_config?.nameBannerUrl === 'string' && /^https:\/\//.test(tenant.feature_config.nameBannerUrl) ? tenant.feature_config.nameBannerUrl : base.nameBannerUrl,
     homeUrl: tenantBrandHomeUrl(tenant, base.homeUrl),
-    memberHomePath: tenant.member_home_path || (profileId === 'code-collective' && tenant.features?.includes('timebank') ? '/' : base.memberHomePath),
+    memberHomePath: tenant.member_home_path || (tenant.features?.includes('timebank') ? '/' : base.memberHomePath),
     disabledFeatures,
     manifestPath: tenant.manifest_path || (isTimebank ? '/timebank.webmanifest' : base.manifestPath),
     faviconPath,

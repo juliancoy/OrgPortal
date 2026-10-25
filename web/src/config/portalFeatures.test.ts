@@ -186,3 +186,11 @@ it('uses a separate tenant name banner without changing the logo or favicon', ()
   expect(brand.brandImagePath).toBe('/square.png')
   expect(brand.faviconPath).toBe('/square.png')
 })
+
+it('keeps an unconfigured organization identity neutral and its tagline empty', () => {
+ const profile=tenantProfileConfig({id:'anchor',slug:'anchor',hostname:'lifetech.fyi',name:'Anchor Advance Care',tagline:'',accent_color:'#155e59'})
+ expect(profile.tagline).toBe('')
+ expect(profile.brandName).toBe('Anchor Advance Care')
+ expect(profile.id).toBe('orgportal')
+ expect(profile.nameBannerUrl).toBeUndefined()
+})

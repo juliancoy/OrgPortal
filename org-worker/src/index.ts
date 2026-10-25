@@ -3802,7 +3802,7 @@ app.put("/api/network/orgs/:organizationId/portal", async (c) => {
   }
   const id = existing?.id || `org-${row.id}-portal`;
   const name = stringField(payload, "name", 120) || row.name;
-  const tagline = stringField(payload, "tagline", 180) || row.description || `Portal for ${row.name}`;
+  const tagline = stringField(payload, "tagline", 180) || "";
   const accent = stringField(payload, "accent_color", 7) || "#155e59";
   if (!/^#[0-9a-f]{6}$/i.test(accent)) fail(400, "Choose a valid accent color.");
   const homeKind = tenantHomeKindField(payload);
