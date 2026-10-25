@@ -55,3 +55,9 @@ node --import tsx --test test/mcp-browser.test.mjs
 The distributed request should select that standard test file directly. Re-run
 and inspect captures after prototype changes; do not infer actual ChatGPT UI
 behavior from a passing mock.
+
+The identity worker uses a bundled copy of the canonical OrgPortal model and
+review helper under `browser/fixtures/user-model/`. Local runs compare both files
+byte-for-byte when the OrgPortal checkout is present. The identity cache inputs
+include the canonical model so changes invalidate historical results. This keeps
+the browser job runnable when only its owning PIdP checkout is mounted.
