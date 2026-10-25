@@ -1,3 +1,4 @@
+import {testEventApplicants} from './event-applicants-checks.mjs'
 import {testEventStandings} from './event-standings-checks.mjs'
 import {testOrganizationProfile} from './organization-profile-checks.mjs'
 import {testOrganizationThemes} from './organization-themes-checks.mjs'
@@ -20,6 +21,7 @@ await mkdir(output,{recursive:true})
 await testUploadImageCompression()
 const {server,base}=await fixtureServer(root,output)
 try{
+ await testEventApplicants(base,join(output,'event-applicants'))
  await testEventStandings(base,join(output,'event-standings'),output)
  await testOrganizationThemes(base,join(output,'organization-themes'),output)
  await testOrganizationBranding(base,join(output,'organization-branding'),output)
@@ -74,6 +76,8 @@ try{
    const card=page.locator('.submission-voting-card'),details=card.locator('.submission-card-details')
    await card.waitFor()
    if(await details.isVisible())throw Error('Collapsed details are visible')
+   await expect(card.locator('.submission-presenter-summary')).toBeVisible()
+   await expect(card.locator('.submission-presenter-summary .public-event-registrant-avatar')).toHaveCount(2)
    await page.getByRole('button',{name:'Expand submission: The Limits of Contemporary Medicine',exact:true}).click()
    if(!await details.isVisible()||votes)throw Error('Expand changed the vote or failed to reveal details')
    await card.getByText('View team',{exact:true}).click()
@@ -97,7 +101,7 @@ try{
    await expect.poll(()=>votes).toBe(2)
    releaseVote();await page.waitForFunction(()=>!document.querySelector('.submission-card-select')?.disabled)
    failVote=true
-   await vote.click()
+   await vote.locator('.submission-card-state').click()
    await page.waitForFunction(()=>document.querySelector('.submission-card-select')?.getAttribute('aria-pressed')==='false')
    await expect.poll(()=>votes).toBe(3)
    releaseVote()

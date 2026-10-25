@@ -643,6 +643,10 @@
         {
           "id": "unconfirmed acknowledgement does not lose a saved application or expose its contact details",
           "label": "unconfirmed acknowledgement does not lose a saved application or expose its contact details"
+        },
+        {
+          "id": "public applicants rank by unexpired stars before pagination with stable ties",
+          "label": "public applicants rank by unexpired stars before pagination with stable ties"
         }
       ],
       "category": "Submission and voting",

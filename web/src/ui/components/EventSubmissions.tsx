@@ -83,7 +83,8 @@ export function EventSubmissions({eventId,onEdit,onDeleted}:{eventId:string;onEd
  }
 
  return <section className="portal-card presentation-applications" aria-label="Event submissions">
-  <h2>Submissions</h2>
+  <h2>Applicants</h2>
+  <p className="muted">Most stars first</p>
   <PresentationFinalRound eventId={eventId} canManage={canManage} onPhaseChange={setFinalPhase} />
   {finalPhase==='shortlist'?<><p>Explore the teams and select up to {limit} favorites for this event. You can change your selections.</p>
   {token?(ready&&<p role="status">{favorites.length} of {limit} favorites selected{savingFavorites.length>0?' · Saving…':''}</p>):<p><Link to={`/users/login?next=${encodeURIComponent(location.pathname+location.search+'#submissions')}`}>Sign in</Link> to save your favorites.</p>}</>:<h3>All submissions · preliminary favorites</h3>}
@@ -101,15 +102,15 @@ export function EventSubmissions({eventId,onEdit,onDeleted}:{eventId:string;onEd
   {!ready&&!error&&<p role="status">Loading submissions…</p>}
   {ready&&!rows.length&&<p>No submissions yet.</p>}
   {quota&&token&&<FavoriteQuota eventId={eventId} ids={favorites} limit={limit} token={token} onClose={()=>{setQuota(false);quotaTrigger.current?.focus()}} onRemove={async(choice:FavoriteChoice)=>{await request(`/favorites/${encodeURIComponent(choice.submission_id)}`,{method:'PUT',body:JSON.stringify({selected:false})});favoriteIds.current=favoriteIds.current.filter(id=>id!==choice.submission_id);setFavorites(favoriteIds.current);setRows(previous=>previous.map(row=>row.submission_id===choice.submission_id?{...row,favorites:Math.max(0,row.favorites-1)}:row));await invalidatePublicOrganizationData()}}/>}
-  {rows.map(row=><article key={row.submission_id} className={`presentation-submission submission-voting-card${favorites.includes(row.submission_id)?' is-selected':''}`}>
+  {[...rows].sort((a,b)=>b.favorites-a.favorites||(a.submission_id<b.submission_id?-1:a.submission_id>b.submission_id?1:0)).map(row=><article key={row.submission_id} className={`presentation-submission submission-voting-card${favorites.includes(row.submission_id)?' is-selected':''}`}>
    <div className="submission-card-header">
     <div className="submission-team"><OrgImage src={row.image_url} alt="" style={{width:44,height:44,objectFit:'contain'}} /><Link to={`/orgs/${encodeURIComponent(row.organization_slug)}`}>{row.organization_name}</Link></div>
     <button type="button" className="btn-secondary submission-card-expand" aria-label={`${expanded.includes(row.submission_id)?'Collapse':'Expand'} submission: ${row.title}`} aria-expanded={expanded.includes(row.submission_id)} aria-controls={`submission-details-${row.submission_id}`} onClick={()=>setExpanded(previous=>previous.includes(row.submission_id)?previous.filter(id=>id!==row.submission_id):[...previous,row.submission_id])}>{expanded.includes(row.submission_id)?<Minus size={20} aria-hidden="true" />:<Plus size={20} aria-hidden="true" />}</button>
    </div>
    <h3 className="submission-card-title">{row.title}</h3>
+   <SubmissionPresenters people={row.presenters || []} />
    <div className="submission-card-details" id={`submission-details-${row.submission_id}`} hidden={!expanded.includes(row.submission_id)}>
     <BioMarkdown value={row.summary} />
-    <SubmissionPresenters people={row.presenters || []} />
     <SubmissionAttachments eventId={eventId} submissionId={row.submission_id} initial={row.attachments} canManage={canManage||managedTeams.includes(row.submission_id)} />
     {editableApplications[row.submission_id]&&<div className="submission-card-management"><span>Manage your application</span><SubmissionActions eventId={eventId} application={editableApplications[row.submission_id]} onEdit={onEdit} onDeleted={submissionId=>{
      setRows(previous=>previous.filter(item=>item.submission_id!==submissionId));favoriteIds.current=favoriteIds.current.filter(id=>id!==submissionId);setFavorites(favoriteIds.current);setReviewRevision(value=>value+1);onDeleted(submissionId)

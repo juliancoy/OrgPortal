@@ -32,16 +32,24 @@ export function presentationRoutes<E extends PresentationEnv>(auth: (env:E, requ
  // Public projection deliberately omits submitter identities and application timestamps.
  app.get('/:id/presentations/submissions',async c=>{
   const e=await event(c.env.DB,c.req.param('id')),after=c.req.query('after')||'';
-  if(after.length>255)throw new HTTPException(400,{message:'Invalid cursor'});
-  const rows=await c.env.DB.prepare(`SELECT s.submission_id,s.organization_id,o.name AS organization_name,o.slug AS organization_slug,o.image_url,s.title,s.summary,s.status,
+  let cursor:{favorites:number;id:string}|null=null;
+  if(after.length>512)throw new HTTPException(400,{message:'Invalid cursor'});
+  if(after){
+   try{cursor=JSON.parse(after)}catch{throw new HTTPException(400,{message:'Invalid cursor'})}
+   if(!cursor||!Number.isSafeInteger(cursor.favorites)||cursor.favorites<0||typeof cursor.id!=='string'||!cursor.id||cursor.id.length>255)throw new HTTPException(400,{message:'Invalid cursor'});
+  }
+  const rows=await c.env.DB.prepare(`WITH ranked AS (
+   SELECT s.submission_id,s.organization_id,o.name AS organization_name,o.slug AS organization_slug,o.image_url,s.title,s.summary,s.status,
    (SELECT COUNT(*) FROM event_submission_favorites f WHERE f.event_id=s.event_id AND f.submission_id=s.submission_id AND f.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')) AS favorites
    FROM event_submissions s JOIN organizations o ON o.id=s.organization_id
-   WHERE s.event_id=? AND ${active} AND s.submission_id>? ORDER BY s.submission_id LIMIT 51`).bind(e.id,after).all<{submission_id:string;organization_id:string}>();
+   WHERE s.event_id=? AND ${active})
+   SELECT * FROM ranked WHERE ?=0 OR favorites<? OR (favorites=? AND submission_id>?)
+   ORDER BY favorites DESC,submission_id ASC LIMIT 51`).bind(e.id,cursor?1:0,cursor?.favorites??0,cursor?.favorites??0,cursor?.id??'').all<{submission_id:string;organization_id:string;favorites:number}>();
   const settings=await c.env.DB.prepare('SELECT favorite_limit FROM event_presentation_forms WHERE event_id=?').bind(e.id).first<{favorite_limit:number}>();
   const page=rows.results.slice(0,50);
   const attachments=page.length?await c.env.DB.prepare(`SELECT id,submission_id,name,content_type,size FROM event_presentation_attachments WHERE event_id=? AND state='ready' AND submission_id IN (${page.map(()=>'?').join(',')})`).bind(e.id,...page.map(row=>row.submission_id)).all<{id:string;submission_id:string;name:string;content_type:string;size:number}>():{results:[]};
   const presenters=await submissionPresenters(c.env.DB,e.id,page.map(row=>row.submission_id));
-  return c.json({favoriteLimit:settings?.favorite_limit??3,submissions:page.map(row=>({...row,presenters:presenters.get(row.submission_id)||[],attachments:attachments.results.filter(file=>file.submission_id===row.submission_id).map(publicAttachment)})),next:rows.results.length>50?rows.results[49].submission_id:null});
+  return c.json({favoriteLimit:settings?.favorite_limit??3,submissions:page.map(row=>({...row,presenters:presenters.get(row.submission_id)||[],attachments:attachments.results.filter(file=>file.submission_id===row.submission_id).map(publicAttachment)})),next:rows.results.length>50?JSON.stringify({favorites:rows.results[49].favorites,id:rows.results[49].submission_id}):null});
  });
  app.get('/:id/presentations/team/:org',async c=>{
   const user=await auth(c.env,c.req.raw);await event(c.env.DB,c.req.param('id'));

@@ -1,3 +1,4 @@
+import {PublicEventPage} from '../../src/ui/views/public/PublicEventPage'
 import {PublicCalendarPage} from '../../src/ui/views/public/PublicCalendarPage'
 import {EventStandings} from '../../src/ui/components/EventStandings'
 import {PublicAdminPage} from '../../src/ui/views/public/PublicAdminPage'
@@ -34,6 +35,7 @@ const life={id:'lifetech',slug:'lifetech',organization_id:'fixture-org',hostname
 if(brand==='lifetech')setGroupSite(life)
 applyPortalBranding()
 const body=<Routes>
+ <Route path="/events/:slug" element={<PublicEventPage/>}/>
  <Route path="/calendar-events" element={<PublicCalendarPage/>}/>
  <Route path="/standings" element={<main><h1>Demo Day</h1><EventStandings eventId="fixture-event" eventSlug="demo-day"/></main>}/>
  <Route path="/orgs/:handle" element={<PublicAdminPage/>}/>

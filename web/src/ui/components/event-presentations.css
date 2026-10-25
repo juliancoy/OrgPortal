@@ -152,4 +152,4 @@
 .presentation-form h3 { margin: .5rem 0 0; font-size: 1.1rem; }
 
 .presentation-form .team-people-picker { padding: 0; border: 0; border-radius: 0; }
-.presentation-form[data-draft-saved='true'] .local-draft-status p::before { background: var(--accent-green); opacity: .75; }
+.presentation-form[data-draft-saved='true'] .local-draft-status p::before { background: var(--accent-green); opacity: .75; }.submission-presenters .public-event-registrant { flex: 0 0 38px; width: 38px; }

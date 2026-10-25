@@ -458,3 +458,22 @@ test('unconfirmed acknowledgement does not lose a saved application or expose it
   assert.equal(attempts,1);
  }finally{f.db.sqlite.close()}
 });
+
+test('public applicants rank by unexpired stars before pagination with stable ties',async()=>{
+ const f=fixture();try{
+  const insert=f.db.sqlite.prepare("INSERT INTO event_submissions(event_id,submission_id,organization_id,submitted_by,title,summary,status,updated_at,expires_at) VALUES('event',?,'team','applicant','Demo','Details','submitted','2026-01-01','2099-04-01')");
+  for(let i=0;i<60;i++)insert.run('rank-'+String(i).padStart(2,'0'));
+  const vote=f.db.sqlite.prepare("INSERT INTO event_submission_favorites(event_id,user_id,slot,submission_id,created_at,expires_at) VALUES('event',?,1,?,'2026-01-01',?)");
+  vote.run('one','rank-59','2099-04-01');vote.run('two','rank-59','2099-04-01');vote.run('three','rank-58','2099-04-01');
+  vote.run('expired','rank-00','2000-01-01');
+  const ids:string[]=[];let cursor:string|null=null;
+  do{
+   const response=await f.request('/submissions'+(cursor?'?after='+encodeURIComponent(cursor):''),'GET','');assert.equal(response.status,200);
+   const page=await response.json() as {submissions:{submission_id:string;favorites:number}[];next:string|null};
+   if(!cursor){assert.deepEqual(page.submissions.slice(0,3).map(row=>[row.submission_id,row.favorites]),[['rank-59',2],['rank-58',1],['rank-00',0]]);assert.equal(page.submissions.length,50)}
+   ids.push(...page.submissions.map(row=>row.submission_id));cursor=page.next;
+  }while(cursor);
+  assert.equal(ids.length,60);assert.equal(new Set(ids).size,60);
+  for(const cursor of ['not-json','null','{}',JSON.stringify({favorites:-1,id:'x'}),JSON.stringify({favorites:1.5,id:'x'})])assert.equal((await f.request('/submissions?after='+encodeURIComponent(cursor),'GET','')).status,400);
+ }finally{f.db.sqlite.close();}
+});
