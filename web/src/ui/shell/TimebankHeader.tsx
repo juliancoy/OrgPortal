@@ -1,4 +1,3 @@
-import { DeploymentSwitcher } from '../components/DeploymentSwitcher'
 import { TaskQueue, useTaskQueue } from '../tasks/TaskQueue'
 import { useTimebankInbox } from '../timebank/TimebankInbox'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
@@ -80,7 +79,6 @@ export function TimebankHeader() {
           <Link to="/settings/notifications" onClick={close}>Notification settings</Link>
           <Link to="/settings" onClick={close}><AccountIcon><path d="M4 7h16M4 17h16" /><circle cx="9" cy="7" r="3" fill="var(--panel)" /><circle cx="15" cy="17" r="3" fill="var(--panel)" /></AccountIcon><span>Account settings</span></Link>
         </nav>
-        <DeploymentSwitcher />
         <div className="tb-account-signout"><button type="button" onClick={() => { close(); logout() }}><AccountIcon><path d="M9 4H4v16h5M9 12h12m-5-5 5 5-5 5" /></AccountIcon><span>Sign out</span></button></div>
       </div>}
     </div></div> : <Link className="tb-signin" to={`/users/login?next=${encodeURIComponent(timebankHomePath())}`}>Sign in</Link>}

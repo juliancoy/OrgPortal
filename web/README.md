@@ -1,20 +1,12 @@
 # React + TypeScript + Vite
 
-## Same-URL frontend preview
+## Local development
 
-The avatar menu offers **App version → Deployed app / Development preview** on
-hosts configured with a private `DEV_ASSETS` service binding. Selection is stored
-in a secure, host-only HttpOnly browser cookie and reloads the current URL,
-including query and fragment. It changes frontend assets only: account and
-organization operations still use the existing tenant APIs and permissions.
-Development pages show a banner and disable caching and search indexing.
-
-Shared edge selection lives in `web/deployment.mjs`; the React menus and static
-LifeTech menu share the selection client. CodeCollective owns the private asset
-Worker, build, and deployment command. Run
-`./cloudflare/scripts/deploy_web_preview.sh` from CodeCollective to update the
-development build without publishing production frontends or any backends.
-Cloudflare credentials are loaded from its ignored `.env.cloudflare`.
+Production sites always serve the published application. Use the development
+computer's local deployment to review changes: run `python3 run.py` from the
+Organization launcher checkout, then open LifeTech at `https://localhost:8770/`
+or OrgPortal at `https://localhost:8443/`. Local services and tenant routing are
+configured by the launcher; there is no development-version account menu.
 
 ## App Update Channel (Web + Android)
 

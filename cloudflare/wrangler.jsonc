@@ -39,11 +39,7 @@
     }
   ],
   "services": [
-    {"binding":"PIDP","service":"pidp-codecollective"},
-    {
-      "binding": "DEV_ASSETS",
-      "service": "codecollective-site-preview"
-    }
+    {"binding":"PIDP","service":"pidp-codecollective"}
   ],
   "compatibility_flags": [
     "global_fetch_strictly_public"

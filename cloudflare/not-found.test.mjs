@@ -48,3 +48,20 @@ test('removed /p mount returns 404 without accessing assets or APIs', async () =
     }
   }
 });
+
+
+test('production ignores old development cookies and rejects the removed selector', async () => {
+  const forbidden = {fetch: () => {throw new Error('Production must never fetch development assets')}};
+  for (const method of ['GET', 'POST']) {
+    const response = await worker.fetch(new Request('https://orgportal.cc/__portal/deployment', {method}), {DEV_ASSETS: forbidden, ASSETS: forbidden});
+    assert.equal(response.status, 404);
+  }
+  let fetched = false;
+  const response = await worker.fetch(new Request('https://orgportal.cc/assets/example.js', {headers: {cookie: '__Host-portal_deployment=development'}}), {
+    DEV_ASSETS: forbidden,
+    ASSETS: {fetch: async () => {fetched = true; return new Response('published asset')}},
+  });
+  assert.equal(fetched, true);
+  assert.equal(await response.text(), 'published asset');
+  assert.equal(response.headers.get('x-portal-deployment'), null);
+});

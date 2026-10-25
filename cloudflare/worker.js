@@ -1,7 +1,6 @@
 import { identityRequest, isResearchPage, researchAccess } from './identity.js';
 import { withEventSourcePreview } from '../web/eventSourcePreview.mjs';
 import { eventListingPreview } from '../web/eventListingPreview.mjs';
-import { deploymentResponse, deploymentCachePolicy, deploymentPath, isDeploymentAssetRequest } from '../web/deployment.mjs';
 import { previewResponse } from "./preview.js";
 import { isPortalPagePath, notFoundResponse, missingPortalResource } from '../web/portalRoutes.mjs';
 import { handleDatasetApi as handleMedTechDatasetApi } from './medtech/datasets.js';
@@ -1203,6 +1202,7 @@ export default {
   async fetch(request, env) {
     if (env.WEB_PREVIEW === 'true') return previewResponse(request, env);
     const url = new URL(request.url);
+    if (url.pathname === '/__portal/deployment') return notFoundResponse(request);
     // The independent Worker preview uses the platform tenant, without trusting
     // client-supplied forwarding headers as a tenant selector.
     if (url.hostname === 'orgportal-web.jcloiacon.workers.dev' && !['/health', '/version'].includes(url.pathname)) {
@@ -1217,14 +1217,9 @@ export default {
     }
     const research=isResearchPage(url.pathname);
     if(research) {const denied=await researchAccess(request,env);if(denied)return denied;}
-    const selected = await deploymentResponse(request, env, {
-      enabled: tenant || url.pathname === deploymentPath,
-      mount: 'root',
-    });
-    if (selected) return research ? privateResearchResponse(selected) : selected;
     const response = await productionWorker.fetch(request, env);
     if(research)return privateResearchResponse(response);
-    return isDeploymentAssetRequest(request) ? deploymentCachePolicy(response, env) : response;
+    return response;
   },
 };
 

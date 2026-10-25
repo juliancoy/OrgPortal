@@ -12,7 +12,7 @@ BASE='https://orgportal.cc/api/org/api/admin/website-observatory'
 
 class PortalSync:
     def __init__(self):
-        self.config=Path.home()/'.config/lan-monitor/orgportal.json'
+        self.config=Path.home()/'.config/swarm-control/integrations/orgportal.json'
         self.state_path=Path.home()/'.local/share/orgportal/website-probe/portal-sync.json'
         self.state_path.parent.mkdir(parents=True,exist_ok=True)
         self.lock=threading.Lock();self.error=None

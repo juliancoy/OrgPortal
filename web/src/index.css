@@ -4605,11 +4605,21 @@ h6 {
   color: var(--accent-purple);
 }
 
-.portal-user-menu-item.logout {
-  color: var(--accent-red);
+.portal-user-menu-context:empty { display: none; }
+
+.portal-user-menu button.portal-user-menu-item.logout {
+  color: var(--text-primary);
+  background: transparent;
+  border: 0;
   border-top: 1px solid var(--border-subtle);
+  border-radius: 0;
+  box-shadow: none;
   margin-top: 2px;
-  padding-top: 10px;
+  padding: 10px;
+}
+
+.portal-user-menu button.portal-user-menu-item.logout:hover {
+  background: var(--surface-strong);
 }
 
 .user-settings-page {
@@ -9409,10 +9419,6 @@ textarea:focus {
 .portal-auth-provider-actions > a { width: 100%; box-sizing: border-box; }
 .portal-auth-card a:focus-visible { outline: 3px solid var(--primary); outline-offset: 4px; }
 
-.portal-deployment-switcher { padding: 8px 0; border-top: 1px solid var(--border, #ddd); }
-.portal-deployment-label { display: block; padding: 4px 12px; font-size: 12px; opacity: .75; }
-.portal-deployment-switcher button { display: block; width: 100%; min-height: 44px; text-align: left; }
-.portal-deployment-error { padding: 0 12px; font-size: 13px; color: var(--danger, #b42318); }
 
 .portal-embedded-chat .portal-main { padding: 0; }
 .portal-embedded-chat .portal-container { width: 100%; }

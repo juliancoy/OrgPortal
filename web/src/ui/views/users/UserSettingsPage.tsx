@@ -171,6 +171,7 @@ export function UserSettingsPage() {
       <section className="portal-card user-settings-section">
         <div>
           <h2>Push Notifications</h2>
+          <p><Link to="/settings/notifications">Manage notification preferences</Link></p>
           <p className="portal-muted">Receive connection and chat alerts even when the portal is not open.</p>
         </div>
         <div className="user-settings-notification-row">

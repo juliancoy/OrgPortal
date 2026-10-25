@@ -5,15 +5,14 @@ import {mkdir,writeFile} from 'node:fs/promises'
 import {resolve,join} from 'node:path'
 import {fileURLToPath} from 'node:url'
 import {renderLayouts} from './render-layouts.mjs'
-import {reviewCodexUi} from '../../../lan-monitor/scripts/review-codex-ui.mjs'
 import {reviewUserTask,userModel} from './user-model/review.mjs'
 const root=resolve(fileURLToPath(new URL('..',import.meta.url)))
 const output=resolve(process.argv[2]||join(root,'../artifacts/layout-review/fixtures'))
 await mkdir(output,{recursive:true})
 const {server,base}=await fixtureServer(root,output)
 try{
- if(!process.env.SUBMISSION_REVIEW_ONLY)await reviewCodexUi(output)
  const layouts=[['Workspace','/workspace'],['Organizations','/orgs'],['Empty organizations','/orgs?empty=1'],['People','/people'],['Events','/events'],['Onboarding','/onboarding?brand=lifetech'],['Join now','/onboarding?brand=lifetech&complete=1','.onboarding-join-footer'],['Service desk','/support'],['Brand guide','/branding'],['About','/about']].map(([name,path,selector])=>({name,url:base+path,selector,ready:selector||'h1'}))
+ const accountMenuLayout={name:'LifeTech account menu',url:base+'/branding?brand=lifetech',ready:'button[aria-label="Open user menu"]',actions:[{click:'Open user menu'}],visible:['#portal-user-menu a[href="/profile"]','#portal-user-menu a[href="/settings"]'],hidden:['.portal-deployment-switcher','#portal-user-menu a[href="/dev-tools"]','#portal-user-menu a[href="/test-status"]']}
  const supportLayouts=[
   {name:'Service conversation',url:base+'/support/fixture-ticket?admin=1',ready:'.support-thread'},
   {name:'Service compose',url:base+'/support',ready:'.support-compose-button:not(:disabled)',actions:[{click:'New message'}]},
@@ -26,7 +25,7 @@ try{
   {name:'Expanded submission',url:base+'/submissions?brand=lifetech&submissionReview=1',ready:'.submission-voting-card',selector:'.presentation-applications',actions:[{click:'Expand submission: The Limits of Contemporary Medicine'}],visible:['.submission-card-details']},
   {name:'Unselected submission',url:base+'/submissions?brand=lifetech&submissionReview=1&unselected=1',ready:'.submission-voting-card',selector:'.presentation-applications',hidden:['.submission-card-details']},
  ]
- const report=await renderLayouts(process.env.SUBMISSION_REVIEW_ONLY?submissionLayouts:[...layouts,...supportLayouts,...submissionLayouts],output)
+ const report=await renderLayouts(process.env.SUBMISSION_REVIEW_ONLY?submissionLayouts:[...layouts,accountMenuLayout,...supportLayouts,...submissionLayouts],output)
  // Exercise actual controls against synthetic, in-memory vote responses only.
  const browser=await chromium.launch({headless:true})
  const interactionResults=[]

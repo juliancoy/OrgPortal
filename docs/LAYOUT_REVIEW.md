@@ -33,7 +33,7 @@ sign-in, not the intended authenticated layout; use the isolated fixture instead
 
 ## Distributed runs
 
-The Organization workspace's `lan-monitor` runner assigns a separate **Portal
+The Organization workspace's `swarm-control/server` runner assigns a separate **Portal
 layout renders** suite. It uses the pinned Playwright image and the run's exact
 OrgPortal commit, with Docker networking disabled during rendering. PNG and JSON
 artifacts travel over the existing authenticated launcher event stream in bounded,

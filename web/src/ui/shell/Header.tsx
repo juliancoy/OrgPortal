@@ -3,7 +3,6 @@ import { startActivePolling } from '../../infrastructure/http/activePolling'
 import { OrganizationAvatar } from '../components/OrganizationAvatar'
 import { useOrganizationPersonnel } from '../hooks/useOrganizationPersonnel'
 import { useOrganizationScope } from '../hooks/useOrganizationScope'
-import { DeploymentSwitcher } from '../components/DeploymentSwitcher'
 import { OrganizationViewSwitcher } from '../components/OrganizationViewSwitcher'
 import { TaskQueue, useTaskQueue } from '../tasks/TaskQueue'
 import { useDomainCommunity, useGroupSite } from '../../config/timebankCommunity'
@@ -11,11 +10,10 @@ import { hasTenantCalendar, specialtyResourcesForTenant } from '../../config/spe
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../../app/AppProviders'
-import { pidpUrl } from '../../config/pidp'
 import { refreshRuntimeTokenFromSession } from '../../infrastructure/auth/sessionToken'
 import { isAndroidDevice } from '../../infrastructure/platform/androidApp'
 import { OrgImage } from '../components/media/OrgImage'
-import { getActivePortalProfileConfig, portalProfilePath, isPortalFeatureEnabled } from '../../config/portalFeatures'
+import { getActivePortalProfileConfig, portalProfilePath } from '../../config/portalFeatures'
 import { portalAssetPath } from '../../config/portalBase'
 
 const ORG_API_BASE = '/api/org'
@@ -170,7 +168,6 @@ export function Header({ organizationId }: { organizationId?: string | null } = 
   const domainCommunity = useDomainCommunity()
   const domainTenant = useGroupSite()
   const portalProfile = getActivePortalProfileConfig()
-  const ubiEnabled = isPortalFeatureEnabled('ubi', portalProfile)
   const authNextQuery = authReturnQuery(location)
 
   const [menuOpen, setMenuOpen] = useState(false)
@@ -883,10 +880,11 @@ export function Header({ organizationId }: { organizationId?: string | null } = 
 
                 {menuOpen && (
                   <div id="portal-user-menu" className="portal-user-menu" role="menu" aria-label="User menu">
-                  <div className="portal-user-menu-item">
+                  <div className="portal-user-menu-context">
                     <OrganizationViewSwitcher />
                   </div>
                   <div className="portal-user-menu-meta">
+                    <strong>{displayName}</strong>
                     <span>{roleLabel}</span>
                   </div>
 
@@ -900,39 +898,14 @@ export function Header({ organizationId }: { organizationId?: string | null } = 
                   </Link>
 
                   <Link to="/settings" onClick={() => setMenuOpen(false)} className="portal-user-menu-item" role="menuitem">
-                    Settings
+                    Account settings
                   </Link>
-
-                  <Link to="/calendar/integrations" onClick={() => setMenuOpen(false)} className="portal-user-menu-item" role="menuitem">
-                    Calendar integrations
-                  </Link>
-
-                  <Link to="/dev-tools" onClick={() => setMenuOpen(false)} className="portal-user-menu-item" role="menuitem">
-                    Dev Tools
-                  </Link>
-                  <Link to="/test-status" onClick={() => setMenuOpen(false)} className="portal-user-menu-item" role="menuitem">
-                    Test status
-                  </Link>
-
-                  <a href={pidpUrl('/')} onClick={() => setMenuOpen(false)} className="portal-user-menu-item" role="menuitem">
-                    Identity (PIdP)
-                  </a>
 
                   {isAdmin && (
                     <Link to="/admin" onClick={() => setMenuOpen(false)} className="portal-user-menu-item admin" role="menuitem">
-                      SysAdmin
+                      Administration
                     </Link>
                   )}
-                  {isAdmin && ubiEnabled && (
-                    <Link to="/admin/ubi-settings" onClick={() => setMenuOpen(false)} className="portal-user-menu-item admin" role="menuitem">
-                      UBI Settings
-                    </Link>
-                  )}
-
-
-                  <Link to="/settings/notifications" onClick={() => setMenuOpen(false)} className="portal-user-menu-item" role="menuitem">Notification settings</Link>
-
-                  <DeploymentSwitcher menu />
                   <button type="button" onClick={logout} className="portal-user-menu-item logout" role="menuitem">
                     Sign out
                   </button>

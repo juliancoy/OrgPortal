@@ -38,9 +38,8 @@ its `ORGPORTAL_WEB` service binding to the independently deployed artifacts.
 Keep that compatibility forward until the LifeTech wrapper is updated.
 
 No CodeCollective checkout, frontend build or deployment job is involved.
-The existing `codecollective-site-preview` service remains a compatibility
-binding for explicitly selected private previews; it is not a production build
-dependency.
+Development is served by the local launcher. Production has no browser-selected
+development assets or preview service binding.
 The frontend artifact includes only `web/dist`, the update manifest, and a
 commit-stamped health manifest. Database migrations are never run implicitly.
 
