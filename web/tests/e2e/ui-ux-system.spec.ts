@@ -437,14 +437,12 @@ test.describe('Code Collective UI and UX system coverage', () => {
     await expect(page.getByRole('button', { name: 'Edit page' })).toHaveCount(0)
     await page.goto('/orgs/code-collective/dashboard?view=organizers')
 
-    const editPage = page.getByRole('button', { name: 'Edit page' })
-    await expect(editPage).toBeVisible()
     await expect(page.locator('#organization-page-editor')).toHaveCount(0)
-    await editPage.click()
+    await page.getByRole('tab', {name:'Settings',exact:true}).click()
     await expect(page.locator('#organization-page-editor')).toBeVisible()
     await expect(page.getByRole('textbox', { name: 'Organization name', exact: true })).toHaveValue('Code Collective')
     await expect(page.getByRole('textbox', { name: 'Public description', exact: true })).toHaveValue('The organization this user administers.')
-    await page.getByRole('button', { name: 'Close editor' }).click()
+    await page.getByRole('button', { name: 'Back to About',exact:true }).click()
     await expect(page.locator('#organization-page-editor')).toHaveCount(0)
   })
 

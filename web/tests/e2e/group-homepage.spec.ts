@@ -23,9 +23,10 @@ test('canonical organization profile keeps its external source link', async ({ p
   await expect(page).toHaveURL(/\/orgs\/workshop\?view=public#organization-overview$/)
   await expect(page.getByRole('link', { name: 'Group homepage', exact: true })).toHaveCount(0)
   await expect(page.getByRole('link', { name: 'Website', exact: true })).toHaveAttribute('href', 'https://meetup.example/workshop')
-  const login = new URL(await page.getByRole('link', { name: 'Log in to join', exact: true }).getAttribute('href') || '', page.url())
+  await page.getByRole('tab', {name:'Community',exact:true}).click()
+  const login = new URL(await page.getByRole('link', { name: 'Sign in to participate', exact: true }).getAttribute('href') || '', page.url())
   expect(login.searchParams.get('app')).toBe('orgportal')
-  expect(new URL(login.searchParams.get('next')!).searchParams.get('next')).toBe('/orgs/workshop')
+  expect(new URL(login.searchParams.get('next')!).searchParams.get('next')).toBe('/orgs/workshop?tab=community')
 })
 
 test('sign-in describes one OrgPortal account on a branded group site', async ({ page }) => {

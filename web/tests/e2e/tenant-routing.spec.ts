@@ -334,9 +334,11 @@ test('tenant brand guide uses the active organization identity', async ({ page }
 
   await expect(page.getByRole('heading', { name: 'Baltimore MedTech', exact: true })).toBeVisible()
   await expect(page.locator('main').getByText('Health x Medicine x Biotech', { exact: true }).filter({visible:true}).first()).toBeVisible()
-  const brandContrast = await page.locator('.tenant-brand-lockup strong').evaluate(element => {
+  const brandContrast = await page.getByRole('heading', { name: 'Baltimore MedTech', exact: true }).evaluate(element => {
     const luminance = (color: string) => (color.match(/[\d.]+/g) || []).slice(0, 3).map(Number).map(channel => {const value=channel/255;return value<=0.04045?value/12.92:((value+0.055)/1.055)**2.4}).reduce((total,value,index)=>total+value*[0.2126,0.7152,0.0722][index],0)
-    const foreground=luminance(getComputedStyle(element).color),background=luminance(getComputedStyle(element.closest('.tenant-brand-lockup')!).backgroundColor)
+    let surface:Element|null=element
+    while(surface?.parentElement && ['transparent','rgba(0, 0, 0, 0)'].includes(getComputedStyle(surface).backgroundColor))surface=surface.parentElement
+    const foreground=luminance(getComputedStyle(element).color),background=luminance(getComputedStyle(surface!).backgroundColor)
     return (Math.max(foreground,background)+0.05)/(Math.min(foreground,background)+0.05)
   })
   expect(brandContrast).toBeGreaterThanOrEqual(4.5)

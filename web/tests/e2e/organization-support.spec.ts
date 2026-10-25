@@ -23,6 +23,8 @@ test('public organization shows descendants, nonmonetary support and source prov
   })
   await page.route('**/api/users/me**', route => route.fulfill({ status: 401, body: '{}' }))
   await page.goto('/orgs/parent')
+  await page.getByRole('tab',{name:'Community',exact:true}).click()
+  await page.getByText('Support and contributions',{exact:true}).click()
   const support = page.getByRole('region', { name: 'Organization support and descendants' })
   await expect(support.getByRole('heading', { name: 'Descendant organizations' })).toBeVisible({ timeout: 30_000 })
   await expect(support.getByRole('link', { name: 'Supported organization', exact: true })).toBeVisible()
