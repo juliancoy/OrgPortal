@@ -1041,6 +1041,20 @@
       ]
     },
     {
+      "id": "suite-org-worker-test-organization-candidates-test-ts",
+      "label": "org-worker/test/organization-candidates.test.ts",
+      "category": "Organizations and membership",
+      "source": "org-worker/test/organization-candidates.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organization-candidates.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-org-worker-test-organization-chat-test-ts",
       "label": "org-worker/test/organization-chat.test.ts",
       "category": "Messaging and email",
