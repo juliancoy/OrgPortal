@@ -1013,7 +1013,7 @@ test("tenant host public URLs are root-mounted even when shared portal base is c
   }, env(db));
   assert.equal(flyerRes.status, 200);
   assert.equal(flyerRes.headers.get("content-type"), "image/svg+xml; charset=utf-8");
-  assert.equal(flyerRes.headers.get("content-disposition"), 'inline; filename="founder-night-4x6-dark-flyer.svg"');
+  assert.equal(flyerRes.headers.get("content-disposition"), 'inline; filename="founder-night-4x6-dark-gradient-flyer.svg"');
   const flyer = await flyerRes.text();
   assert.match(flyer, /Founder Night flyer/);
   assert.match(flyer, /Scan to RSVP/);
