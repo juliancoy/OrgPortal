@@ -1,1 +1,1 @@
-export function mountEcosystemNetworkGPU(root: HTMLElement, options: {dataUrl: string; historyUrl: string; apiPrefix: string; portalPath: (path: string) => string; renderer?: 'canvas' | 'webgpu' | 'webgpu3d' | 'webgpu4d'}): () => void;
+export function mountEcosystemNetworkGPU(root: HTMLElement, options: {portalPath: (path: string) => string; renderer?: 'canvas' | 'webgpu' | 'webgpu3d' | 'webgpu4d'}): () => void;

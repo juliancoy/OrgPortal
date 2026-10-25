@@ -1,5 +1,5 @@
-import {readFile,writeFile,mkdir,rename,rm,readdir} from 'node:fs/promises'
-import {createHash} from 'node:crypto'
+import {readFile,writeFile,mkdir,rename,rm,readdir,mkdtemp,stat} from 'node:fs/promises'
+import {createHash,randomUUID} from 'node:crypto'
 import {fileURLToPath} from 'node:url'
 import {resolve} from 'node:path'
 import {mergeNetworkHistory,appendNonprofitEvidence} from '../src/features/ecosystem/network-history.js'
@@ -46,8 +46,9 @@ export async function buildEcosystemQuery(){
  }
  const counts=transactionCounts(edges)
  const organizations=folded.organizations.map(o=>({...o,sourceRows:undefined,publicEmails:undefined,positions:positions.organizations?.[o.id],networkMetrics:{pie:compactPie(summaries.pies.get(o.id)),contextPie:compactPie(contextPies.get(o.id)),totals:summaries.totals.get(o.id),counterparties:summaries.counterparties.get(o.id),obligations:summaries.obligationIds.has(o.id),incoming:analysis.incoming.get(o.id),outgoing:analysis.outgoing.get(o.id),amount:amounts.get(o.id),connections:analysis.adjacency.get(o.id)?.size||0,recordCount:counts.get(o.id)||0}})).sort((a,b)=>a.name.localeCompare(b.name)||a.id.localeCompare(b.id))
- for(const name of await readdir(folder).catch(()=>[]))if(name.startsWith('.'))await rm(new URL(name+'/',folder),{recursive:true,force:true})
- const temp=new URL(`.${version}-${process.pid}/`,folder),target=new URL(`${version}/`,folder)
+
+ await mkdir(folder,{recursive:true})
+ const temp=new URL('file://'+(await mkdtemp(fileURLToPath(new URL(`.${version}-`,folder))))+'/'),target=new URL(`${version}/`,folder)
  await mkdir(temp,{recursive:true})
  const write=async(path,value)=>{const bytes=JSON.stringify(value);if(Buffer.byteLength(bytes)>16*1024*1024)throw Error(`Query artifact exceeds 16 MiB: ${path}`);const url=new URL(path,temp);await mkdir(new URL('./',url),{recursive:true});await writeFile(url,bytes)}
  const collection=async(name,records,metadata)=>{
@@ -91,10 +92,10 @@ export async function buildEcosystemQuery(){
  topology.overview={organizations:[...clusterById.values()],relationships:[...communityPairs.values()].map(({a,b,count},i)=>({id:'community-summary:'+i,source:clusterById.get(a).id,target:clusterById.get(b).id,sourceLabel:clusterById.get(a).name,targetLabel:clusterById.get(b).name,kind:'affiliation',relationship:'affiliation',type:`Community connection summary · ${count} evidence records`,aggregate:true,count,provenance:{sheet:'Derived community grouping'},evidence:'Summary between groups, not a claim of a transaction between particular organizations. Expand a community for source records.'}))}
  await write('topology.json',topology)
  const manifest={version,generatedAt:new Date().toISOString(),governmentCoverage:data.governmentCoverage,nonprofitCoverage:data.nonprofitCoverage,totals:{organizations:organizations.length,relationships:edges.length},metricMax:{connections:Math.max(1,...Object.values(topology.degree)),incoming:Math.max(1,...analysis.incoming.values()),outgoing:Math.max(1,...analysis.outgoing.values())},groups,performance:performanceMeta}
- await mkdir(folder,{recursive:true});await rm(target,{recursive:true,force:true});await rename(temp,target)
- await writeFile(new URL('manifest.json.tmp',folder),JSON.stringify(manifest));await rename(new URL('manifest.json.tmp',folder),new URL('manifest.json',folder))
+ await mkdir(folder,{recursive:true});try{await rename(temp,target)}catch(error){if(!['EEXIST','ENOTEMPTY'].includes(error.code))throw error;await rm(temp,{recursive:true,force:true})}
+ const manifestTemp=new URL(`manifest-${version}-${randomUUID()}.tmp`,folder);await writeFile(manifestTemp,JSON.stringify(manifest));await rename(manifestTemp,new URL('manifest.json',folder))
  const versions=(await readdir(folder)).filter(name=>/^[a-f0-9]{24}$/.test(name)&&name!==version)
- for(const old of versions.slice(0,-1))await rm(new URL(old+'/',folder),{recursive:true,force:true})
+ for(const old of versions){const url=new URL(old+'/',folder);try{if(Date.now()-(await stat(url)).mtimeMs>3600000)await rm(url,{recursive:true,force:true})}catch{/* Another build may already have pruned this generated version. */}}
  console.log(`Ecosystem query index ${version}: ${organizations.length} organizations, ${edges.length} graph records, ${data.relationships.length} evidence records`)
  return manifest
 }

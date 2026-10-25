@@ -69,9 +69,7 @@ export function EcosystemNetworkPage({ renderer = 'canvas' }: { renderer?: Netwo
     void import('../../features/ecosystem/network-webgpu.js').then(({ mountEcosystemNetworkGPU }) => {
       if (disposed) return
       cleanup = mountEcosystemNetworkGPU(host, {
-        dataUrl: portalPath('/ecosystem-data/ecosystem-portal.json'),
-        historyUrl: portalPath('/ecosystem-data/ecosystem-relationships.json'),
-        apiPrefix: '/api/org/api/network', portalPath, renderer,
+        portalPath, renderer,
       })
     }).catch(() => { if (!disposed) host.textContent = 'The network could not load. Reload to try again.' })
     return () => { disposed = true; search.current = host.querySelector<HTMLInputElement>('#network-search')?.value || ''; cleanup?.() }

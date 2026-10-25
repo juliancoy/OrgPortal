@@ -3191,6 +3191,20 @@
       ]
     },
     {
+      "id": "suite-web-src-features-ecosystem-ecosystem-query-test-ts",
+      "label": "web/src/features/ecosystem/ecosystem-query.test.ts",
+      "category": "Ecosystem and data",
+      "source": "web/src/features/ecosystem/ecosystem-query.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "ecosystem-query.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-web-src-features-ecosystem-ecosystemOverview-test-ts",
       "label": "web/src/features/ecosystem/ecosystemOverview.test.ts",
       "category": "Ecosystem and data",

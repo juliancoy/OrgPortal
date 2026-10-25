@@ -31,6 +31,7 @@ test('graphs have hard limits, no dangling edges, stable global financial summar
  const common=overview.organizations.find(o=>focus.organizations.some(n=>n.id===o.id))
  assert.deepEqual(common.networkMetrics,focus.organizations.find(o=>o.id===common.id).networkMetrics)
  assert.deepEqual(overview.metricMax,focus.metricMax)
+ const funding=await query('graph',{mode:'funding',kind:'transfer',org:focus.organizations[0].id});assert(funding.relationships.every(e=>e.kind==='transfer'));assert(funding.organizations.some(o=>o.id===focus.organizations[0].id))
  assert.deepEqual(overview.organizations.map(o=>o.id),(await query('graph',{community:manifest.groups.community[0].id})).organizations.map(o=>o.id))
 })
 test('map starts with county aggregates and narrows to published coordinates',async()=>{
@@ -50,7 +51,7 @@ test('summary totals cover full scope and preserve signed government obligations
  assert.deepEqual(funding.summary,filtered.summary);assert.equal(filtered.total,0)
 })
 test('snapshot pinning, input validation, HEAD, errors and unsupported methods have explicit responses',async()=>{
- for(const [suffix,status] of [['relationships?version=old',409],['relationships?limit=101',400],['events?offset=-1',400],['events?from=bad',400],['graph?depth=4',400],['relationships?q='+('a'.repeat(129)),400],['unknown',404]]){
+ for(const [suffix,status] of [['relationships?version=old',409],['relationships?limit=101',400],['events?offset=-1',400],['events?from=bad',400],['events?from=2026-02-30',400],['graph?depth=4',400],['relationships?q='+('a'.repeat(129)),400],['unknown',404]]){
   const response=await ecosystemResponse(new Request('https://orgportal.cc/api/ecosystem/'+suffix),read);assert.equal(response.status,status,suffix);assert.equal(response.headers.get('cache-control'),'no-store')
  }
  const head=await ecosystemResponse(new Request('https://orgportal.cc/api/ecosystem/overview',{method:'HEAD'}),read);assert.equal(head.status,200);assert.equal(await head.text(),'');assert(head.headers.get('x-ecosystem-version'))

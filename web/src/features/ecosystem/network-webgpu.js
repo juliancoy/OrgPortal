@@ -20,12 +20,12 @@ import { uniqueNetworkLinks } from './network-links.js'
 import { createNetworkLayout } from './network-layout.js'
 import { organizationPreview, edgeDetails, networkPreviewSummaries } from './ecosystem-view.js'
 import { graphRelationships, financialNodeRadius } from './portal-ecosystem.js'
-export function mountEcosystemNetworkGPU(root, {dataUrl, historyUrl, apiPrefix, portalPath, renderer: rendererKind = 'webgpu'}) {
+export function mountEcosystemNetworkGPU(root, {portalPath, renderer: rendererKind = 'webgpu'}) {
 const four=rendererKind==='webgpu4d',spatial=four||rendererKind==='webgpu3d'
 const abort = new AbortController(); let disposed=false, resizeObserver;
 mountNetworkLawDialogs(root,abort.signal)
 const $ = s => root.querySelector(s)
-const rewriteLinks = () => root.querySelectorAll('a[href^="/"]').forEach(a => { const path=a.getAttribute('href'); if(!a.dataset.portalLinked){a.setAttribute('href', path.startsWith('/ecosystem-data/') ? new URL(path.split('/').pop(),historyUrl.startsWith('http')?historyUrl:new URL(historyUrl,location.origin)).pathname : portalPath(path));a.dataset.portalLinked='true'} });
+const rewriteLinks = () => root.querySelectorAll('a[href^="/"]').forEach(a => { const path=a.getAttribute('href'); if(!a.dataset.portalLinked){a.setAttribute('href', portalPath(path));a.dataset.portalLinked='true'} });
 
 const colors = { ecosystem:0x16847d, company:0x357db7, health:0xc76e57, university:0x8564b3, funding:0xad7b26, general:0x77878c, 'federal-government':0x234c8c, 'state-government':0xa54161 }
 const selectedCategories = () => new Set([...root.querySelectorAll('[name=node-category]:checked')].map(c=>c.value))
@@ -57,7 +57,7 @@ async function loadGraph(scope=graphScope,{keepView=false}={}){
   const response=await fetch(graphEndpoint(parameters),{signal:controller.signal,credentials:'omit'}),next=await response.json()
   if(!response.ok)throw Error(next.error||'Network scope unavailable')
   if(disposed||sequence!==graphSequence)return
-  graphScope=scope;graphOffset=next.offset;graphNext=next.nextOffset;data=next
+  graphScope=scope;if(!scope.org)selected=null;graphOffset=next.offset;graphNext=next.nextOffset;data=next
   const metrics=new Map(data.organizations.map(o=>[o.id,o.networkMetrics||{}]))
   const map=key=>new Map([...metrics].map(([id,value])=>[id,value[key]]).filter(([,value])=>value!==undefined))
   preparedData={data,folded:data,summaries:{pies:map('pie'),totals:map('totals'),counterparties:map('counterparties'),obligationIds:new Set([...metrics].filter(([,m])=>m.obligations).map(([id])=>id))},contextPies:map('contextPie')}
@@ -69,13 +69,13 @@ async function loadGraph(scope=graphScope,{keepView=false}={}){
   }
   groupSelect.value=scope.group?JSON.stringify(scope.group):''
   $('#network-data-previous').disabled=!graphOffset;$('#network-data-next').disabled=graphNext===null
-  const message=next.communityOverview?`${next.organizations.length} of ${next.total} community markers representing ${next.totalOrganizations} organizations. Select a community to load its organizations and source connections.`:next.clustered?`${next.organizations.length} county aggregate markers from ${next.geography.located} organizations with published Maryland coordinates; ${next.geography.missing} missing or outside Maryland. Select a county or zoom in to load organizations.`:`Loaded ${next.organizations.length} of ${next.total} matching organizations; ${next.totalOrganizations} in the full network. ${next.relationships.length} of ${next.matchingEdges} relationships between these loaded organizations.${next.truncated?' More evidence is available in Relationships.':''} Financial summaries use the full snapshot.`
+  const message=next.communityOverview?`${next.organizations.length} of ${next.total} community markers representing ${next.totalOrganizations} organizations. Select a community to load its organizations and source connections.`:next.clustered?`${next.organizations.length} county aggregate markers from ${next.geography.located} organizations with published Maryland coordinates; ${next.geography.missing} missing or outside Maryland. Select a county or zoom in to load organizations.`:`Loaded ${next.organizations.length} of ${next.total} matching organizations; ${next.totalOrganizations} in the full network. ${next.relationships.length} connection representatives for ${next.matchingEdges} evidence records between these loaded organizations. See Relationships for every source record.${next.truncated?' More evidence is available in Relationships.':''} Financial summaries use the full snapshot.`
   $('#network-data-status').textContent=message
   $('#network-source').textContent='Evidence snapshot built '+new Date(next.generatedAt).toLocaleString()
   if(!keepView)fitted=false
   analysisLayout=null;networkCoordinates.clear();previewSummaries=preparedData.summaries
   if(gpuReady){search();rebuild()}
- }catch(error){if(!disposed&&!controller.signal.aborted){$('#network-data-status').textContent=error.message;throw error}}
+ }catch(error){if(!disposed&&!controller.signal.aborted)$('#network-data-status').textContent=error.message;throw error}
 }
 function scheduleGeography(){
  if(spatial||$('#network-analysis-mode').value!=='geography')return
@@ -197,7 +197,7 @@ function bindNodePreview(button,node) {
 }
 function activateNode(id){const marker=data.organizations.find(o=>o.id===id);if(marker?.serverCommunity){void loadGraph({group:['community',marker.serverCommunity]}).catch(()=>{});return}if(marker?.serverCluster){void loadGraph({group:['county',marker.serverCluster]}).catch(()=>{});return}const geographic=analysisLayout?.geographicGroups?.get(id);if(geographic){expandedCommunities.add(geographic.id);saveExpanded();updateCommunityList();updateAnalysisLayout();return}const group=disclosed?.membership.get(id);if(!analysisLayout&&$('#network-detail-mode').value==='overview'&&$('#network-clustering').checked&&!expandedCommunities.has(group)&&disclosed.clusters.get(group)?.members.length>1){expandedCommunities.add(group);saveExpanded();updateCommunityList();updateDisclosure()}else select(id)}
 function select(id,openInspector=true) {
- if(data?.version&&graphScope.org!==id){void loadGraph({org:id}).then(()=>{if(!disposed)select(id,openInspector)}).catch(()=>{});return}
+ if(data?.version&&graphScope.org!==id){void loadGraph({org:id}).then(()=>{if(!disposed&&graphScope.org===id)select(id,openInspector)}).catch(()=>{});return}
  let org = data.organizations.find(o=>o.id===id); if (!org) return
  if(org.administratorId){id=org.administratorId;org=data.organizations.find(o=>o.id===id);if(!org)return}
  previewSummaries=preparedData?.data===data?preparedData.summaries:networkPreviewSummaries(data)
@@ -461,7 +461,7 @@ async function start(){
   },{passive:false,capture:true,signal:abort.signal})
   $('#network-detail').addEventListener('error',event=>{if(event.target.tagName==='IMG'){event.target.hidden=true;const note=document.createElement('p');note.className='eco-note';note.textContent='Published image is currently unavailable.';event.target.after(note)}},true)
   $('#network-search').addEventListener('input',search,{signal:abort.signal})
-  for(const id of ['network-analysis-mode','network-hop-depth','network-flow-kind','network-flow-category','network-flow-from','network-flow-to'])$('#'+id).addEventListener('change',()=>{void loadGraph({...graphScope,offset:0,bbox:undefined}).catch(()=>{})},{signal:abort.signal})
+  for(const id of ['network-analysis-mode','network-hop-depth','network-flow-kind','network-flow-category','network-flow-from','network-flow-to'])$('#'+id).addEventListener('change',()=>{void loadGraph(id==='network-analysis-mode'?{offset:0}:{...graphScope,offset:0,bbox:undefined}).catch(()=>{})},{signal:abort.signal})
   for(const control of visibilityControls.querySelectorAll('select,input'))control.addEventListener('input',()=>{if(control.id==='network-expanded-communities')restoreExpanded();if(control.id==='network-grouping'){expandedCommunities.clear();saveExpanded();updateCommunityList()}if(control.id==='network-size-metric')updateNodeSizes();if(control.id==='network-theme')applyTheme();if(control.id==='network-camera-mode')renderer.setCameraMode?.(control.value);if(control.id==='network-analysis-mode'||control.id.startsWith('network-flow-')||($('#network-analysis-mode').value==='geography'&&['network-grouping','network-expanded-communities'].includes(control.id))){updateAnalysisLayout();if(control.id!=='network-expanded-communities')fit()}updateDisclosure()},{signal:abort.signal})
   $('#network-home').addEventListener('click',()=>{unpin();fit()},{signal:abort.signal})
   $('#network-focus').addEventListener('click',()=>{const node=nodes.find(n=>n.id===selected);if(node)focusView(node)},{signal:abort.signal})
