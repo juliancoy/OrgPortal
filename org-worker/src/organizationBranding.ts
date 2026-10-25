@@ -18,11 +18,13 @@ export function organizationBrandingRoutes() {
   if(!site)return c.json({portal:null});
   const parsed=(value:unknown,fallback:unknown)=>{try{return typeof value==='string'?JSON.parse(value):value??fallback}catch{return fallback}};
   const config=parsed(site.feature_config,{}) as Record<string,unknown>;
+  let nameBannerUrl:string|undefined;
+  try{if(typeof config?.nameBannerUrl==='string'&&config.nameBannerUrl.length<=1000){const url=new URL(config.nameBannerUrl);if(url.protocol==='https:'&&!url.username&&!url.password)nameBannerUrl=config.nameBannerUrl}}catch{/* Omit invalid image URLs from the public guide. */}
   return c.json({portal:{...site,home_org_slug:org.slug,slug_url:organizationPagePath(org.slug),
    home_url:canonicalOrganizationHref(typeof site.home_url==='string'?site.home_url:null,org.slug),
    home_primary_href:canonicalOrganizationHref(typeof site.home_primary_href==='string'?site.home_primary_href:null,org.slug),
    home_secondary_href:canonicalOrganizationHref(typeof site.home_secondary_href==='string'?site.home_secondary_href:null,org.slug),
-   features:parsed(site.features,[]),feature_config:{brandThemes:parseOrganizationThemes(config?.brandThemes),brandPalette:config?.brandPalette,specialtyResources:config?.specialtyResources}}});
+   features:parsed(site.features,[]),feature_config:{nameBannerUrl,brandThemes:parseOrganizationThemes(config?.brandThemes),brandPalette:config?.brandPalette,specialtyResources:config?.specialtyResources}}});
  });
  return app;
 }

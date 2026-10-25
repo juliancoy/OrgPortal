@@ -13,6 +13,11 @@ test('org branding is public, resolves different portal slugs, and excludes oper
   const data=await response.json() as {portal:{slug:string;brand_image_path:string;features:string[];feature_config:unknown}};
   assert.equal(data.portal.slug,'different-portal-slug');assert.equal(data.portal.brand_image_path,'/one.png');assert.deepEqual(data.portal.features,['events']);
   assert.deepEqual(data.portal.feature_config,{brandThemes:null,brandPalette:[{label:'Gold',value:'#d4af37'}]});
+  for(const [banner,expected] of [['https://company.example/namebanner.webp','https://company.example/namebanner.webp'],['javascript:alert(1)',undefined],['https://user:password@company.example/logo.png',undefined]]){
+   await db.prepare("UPDATE group_sites SET feature_config=json_set(feature_config,'$.nameBannerUrl',?) WHERE id='site'").bind(banner).run();
+   const guide=await(await app.request('https://example.test/one/branding',{}, {DB:db as unknown as D1Database} as Env)).json() as {portal:{feature_config:{nameBannerUrl?:string}}};
+   assert.equal(guide.portal.feature_config.nameBannerUrl,expected);assert.doesNotMatch(JSON.stringify(guide),/privateSetting|private provisioning|custom_domain_notes/);
+  }
   const themes={defaultTheme:'ocean',themes:[{id:'ocean',name:'Ocean',light:{primary:'#123456'},dark:{primary:'#ABCDEF'}}]};
   await db.prepare("UPDATE group_sites SET feature_config=json_set(feature_config,'$.brandThemes',json(?)) WHERE id='site'").bind(JSON.stringify(themes)).run();
   const themed=await(await app.request('https://example.test/one/branding',{}, {DB:db as unknown as D1Database} as Env)).json() as {portal:{feature_config:{brandThemes:unknown}}};
