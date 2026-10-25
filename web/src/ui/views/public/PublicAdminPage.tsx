@@ -1,4 +1,4 @@
-import Star from 'lucide-react/dist/esm/icons/star.mjs'
+import {OrganizationCandidateStar} from '../../components/OrganizationCandidateStar'
 import './organization-profile.css'
 import { organizationPageTabs, resolveOrganizationPageTab, type OrganizationPageTab } from './organizationPageTabs'
 import { organizationPageTheme } from '../../../config/organizationThemes'
@@ -928,7 +928,7 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
       </header>
       {Boolean(org.candidates?.length) && <ul className="organization-candidates" aria-label="Event candidacies">{org.candidates!.map(candidate=><li key={`${candidate.event_id}:${candidate.submission_id}`}>
         <Link className="organization-candidate-event" to={`/events/${encodeURIComponent(candidate.event_slug)}?tab=submissions#submissions`}><span className="organization-candidate-label">Candidate</span><strong>{candidate.event_title}</strong>{org.candidates!.filter(item=>item.event_id===candidate.event_id).length>1&&<span>{candidate.title}</span>}</Link>
-        <Link className="organization-candidate-stars" to={`/events/${encodeURIComponent(candidate.event_slug)}?tab=submissions#submissions`} aria-label={`${candidate.stars} ${candidate.stars===1?'star':'stars'} for ${candidate.title}. View voting.`}><Star size={17} fill="currentColor" aria-hidden="true"/><span>{candidate.stars.toLocaleString()}</span></Link>
+        <OrganizationCandidateStar key={`${candidate.event_id}:${candidate.submission_id}`} eventId={candidate.event_id} submissionId={candidate.submission_id} title={candidate.title} stars={candidate.stars}/>
       </li>)}</ul>}
       <div className="portal-org-info-tabs organization-profile-tabs" role="tablist" aria-label={`${org.name} information`}>
         {orgTabs.map((tab,index) => <button type="button" role="tab" id={`org-tab-${tab.id}`} aria-controls={`org-panel-${tab.id}`} aria-selected={activeTab === tab.id} tabIndex={activeTab === tab.id ? 0 : -1} key={tab.id} onClick={() => selectTab(tab.id)} onKeyDown={event => {

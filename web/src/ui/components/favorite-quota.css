@@ -1,0 +1,6 @@
+
+.favorite-quota { margin: 1rem 0; padding: 1rem; border: 1px solid var(--primary); border-radius: 8px; background: var(--panel); color: var(--text-primary); max-width: 46rem; }
+.favorite-quota h3 { margin: 0 0 .75rem; }
+.favorite-quota ul { list-style: none; padding: 0; display: grid; gap: 1rem; }
+.favorite-quota li { display: flex; gap: 1rem; justify-content: space-between; align-items: center; flex-wrap: wrap; overflow-wrap: anywhere; }
+.favorite-quota-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; }

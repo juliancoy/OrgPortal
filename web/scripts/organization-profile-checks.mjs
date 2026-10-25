@@ -19,6 +19,7 @@ export async function testOrganizationProfile(base,output,contactOutput=output){
     else if(path.endsWith('/admin/me'))json={is_sysadmin:viewer==='operator'}
     else if(path.endsWith('/orgs')&&url.searchParams.has('mine'))json=viewer==='owner'?[{...org,my_role:'administrator'}]:[]
     else if(path.endsWith('/membership'))json={role:'member',status:'active',membership_count:2}
+    else if(path.endsWith('/presentations/favorites'))json={favorites:[],limit:3}
     else if(path.endsWith('/follow'))json={following:false}
     else if(path.endsWith('/events')){eventRequests++;json=[]}
     else if(path.endsWith('/personnel'))json={people:[{id:'person-one',name:'Alex Morgan',titles:[],personnel_class:'organizer'},{id:'person-two',name:'Invited teammate',titles:[],personnel_class:'public',pendingInvitation:true}]}
@@ -36,7 +37,8 @@ export async function testOrganizationProfile(base,output,contactOutput=output){
    expect(eventRequests).toBe(0)
    await expect(profile.locator('.portal-card .portal-card')).toHaveCount(0)
    await expect(profile.locator('.peer-organizations')).toHaveCount(0)
-   await expect(profile.getByRole('link',{name:'7 stars for Care planning. View voting.'})).toHaveAttribute('href','/events/demo-day?tab=submissions#submissions')
+   if(viewer==='visitor')await expect(profile.getByRole('link',{name:'Sign in to star Care planning; 7 stars'})).toHaveAttribute('href',/users\/login/)
+   else await expect(profile.getByRole('button',{name:'Star Care planning; 7 stars',exact:true})).toBeEnabled()
    await expect(profile.locator('.organization-candidates')).toContainText('Candidate')
    const manager=viewer==='owner'||viewer==='operator'
    await expect(profile.getByRole('tab',{name:'Settings',exact:true})).toHaveCount(manager?1:0)

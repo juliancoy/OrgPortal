@@ -98,3 +98,6 @@
 .organization-candidate-stars { display: inline-flex; gap: .5rem; align-items: center; border: 1px solid var(--border); border-radius: 6px; padding: .4rem .7rem; color: var(--text-primary); background: var(--panel); text-decoration: none; font-variant-numeric: tabular-nums; }
 .organization-candidate-stars svg { color: var(--gold, var(--primary)); }
 .organization-candidate-stars:hover { border-color: var(--primary); }
+.organization-candidate-vote { min-width: 0; }
+.organization-candidate-stars[aria-pressed="true"] { border-color: var(--primary); }
+.organization-candidate-vote:has(.favorite-quota) { flex-basis: 100%; }
