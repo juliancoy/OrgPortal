@@ -1693,6 +1693,20 @@
       "cwd": "org-worker"
     },
     {
+      "id": "suite-org-worker-test-submission-related-events-test-ts",
+      "label": "org-worker/test/submission-related-events.test.ts",
+      "category": "Submission and voting",
+      "source": "org-worker/test/submission-related-events.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "submission-related-events.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-org-worker-test-support-tickets-test-ts",
       "label": "org-worker/test/support-tickets.test.ts",
       "category": "User interface and integrations",
