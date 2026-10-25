@@ -1,9 +1,10 @@
 import {chromium,expect} from '@playwright/test'
 import {mkdir,readFile} from 'node:fs/promises'
 import {join} from 'node:path'
+import {existsSync} from 'node:fs'
 export async function testOrganizationProfile(base,output,contactOutput=output){
  await mkdir(output,{recursive:true})
- const browser=await chromium.launch({headless:true,executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH||'/usr/bin/google-chrome'})
+ const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH||existsSync('/usr/bin/google-chrome')?{executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH||'/usr/bin/google-chrome'}:{})})
  const org={id:'fixture-org',slug:'fixture-org',name:'Harbor Care',description:'Advance care planning with patients, families, and care teams.',image_url:'/images/organization-themes/harbor-avatar.webp',tags:['Health'],links:[],membership_count:2,upcoming_events_count:0}
  const portal={id:'fixture-site',organization_id:org.id,hostname:'fixture.example',slug:org.slug,name:org.name,tagline:'Care that starts with a conversation',brand_image_path:'/images/organization-themes/harbor-icon.webp',home_image_url:'/images/organization-themes/harbor-background.webp'}
  try{
