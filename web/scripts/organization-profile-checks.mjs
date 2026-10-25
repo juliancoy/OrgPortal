@@ -5,7 +5,7 @@ import {existsSync} from 'node:fs'
 export async function testOrganizationProfile(base,output,contactOutput=output){
  await mkdir(output,{recursive:true})
  const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH||existsSync('/usr/bin/google-chrome')?{executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH||'/usr/bin/google-chrome'}:{})})
- const org={id:'fixture-org',slug:'fixture-org',name:'Harbor Care',description:'Advance care planning with patients, families, and care teams.',image_url:'/images/organization-themes/harbor-avatar.webp',tags:['Health'],links:[],membership_count:2,upcoming_events_count:0}
+ const org={id:'fixture-org',slug:'fixture-org',name:'Harbor Care',description:'Advance care planning with patients, families, and care teams.',image_url:'/images/organization-themes/harbor-avatar.webp',tags:['Health'],links:[],membership_count:2,upcoming_events_count:0,candidates:[{event_id:'demo',event_slug:'demo-day',event_title:'LifeTech Demo Day',submission_id:'application',title:'Care planning',stars:7}]}
  const portal={id:'fixture-site',organization_id:org.id,hostname:'fixture.example',slug:org.slug,name:org.name,tagline:'Care that starts with a conversation',brand_image_path:'/images/organization-themes/harbor-icon.webp',home_image_url:'/images/organization-themes/harbor-background.webp'}
  try{
   const captures=[]
@@ -36,6 +36,8 @@ export async function testOrganizationProfile(base,output,contactOutput=output){
    expect(eventRequests).toBe(0)
    await expect(profile.locator('.portal-card .portal-card')).toHaveCount(0)
    await expect(profile.locator('.peer-organizations')).toHaveCount(0)
+   await expect(profile.getByRole('link',{name:'7 stars for Care planning. View voting.'})).toHaveAttribute('href','/events/demo-day?tab=submissions#submissions')
+   await expect(profile.locator('.organization-candidates')).toContainText('Candidate')
    const manager=viewer==='owner'||viewer==='operator'
    await expect(profile.getByRole('tab',{name:'Settings',exact:true})).toHaveCount(manager?1:0)
    if(viewer==='visitor')for(const mode of ['light','dark'])for(const width of [1440,390]){

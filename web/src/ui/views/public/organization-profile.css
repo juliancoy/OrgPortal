@@ -91,3 +91,10 @@
   .organization-about-with-cover { grid-template-columns: 1fr; gap: 1.5rem; }
   .organization-profile-cover img { max-height: 290px; }
 }
+.organization-candidates { list-style: none; padding: 0; margin: 0 0 1.5rem; display: grid; gap: .65rem; }
+.organization-candidates li { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.organization-candidate-event { display: flex; gap: .6rem; align-items: baseline; flex-wrap: wrap; color: var(--text-primary); text-decoration: none; }
+.organization-candidate-label { color: var(--text-secondary); font-size: .85rem; }
+.organization-candidate-stars { display: inline-flex; gap: .5rem; align-items: center; border: 1px solid var(--border); border-radius: 6px; padding: .4rem .7rem; color: var(--text-primary); background: var(--panel); text-decoration: none; font-variant-numeric: tabular-nums; }
+.organization-candidate-stars svg { color: var(--gold, var(--primary)); }
+.organization-candidate-stars:hover { border-color: var(--primary); }

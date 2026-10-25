@@ -1,3 +1,4 @@
+import { organizationCandidates } from './organizationCandidates';
 import { parseOrganizationThemes } from '../../shared/organizationThemes';
 import { supportRoutes } from './supportTickets';
 import { organizationPeersRoutes } from './organizationPeers';
@@ -3228,7 +3229,8 @@ app.get("/api/network/orgs/public/:slug", async (c) => {
   const count = await c.env.DB.prepare("SELECT count(*) AS n FROM events WHERE host_org_id = ? AND (starts_at IS NULL OR starts_at >= datetime('now'))")
     .bind(row.id)
     .first<{ n: number }>();
-  return c.json({ ...mapOrganization(row, Number(count?.n || 0)), public_url: await orgPublicUrl(c.env, c.req.raw, row.slug), ...await organizationGroupHome(c.env, c.req.raw, row) });
+  c.header('Cache-Control','no-store');
+  return c.json({ ...mapOrganization(row, Number(count?.n || 0)), candidates: await organizationCandidates(c.env.DB,row.id), public_url: await orgPublicUrl(c.env, c.req.raw, row.slug), ...await organizationGroupHome(c.env, c.req.raw, row) });
 });
 
 app.get('/api/network/initiatives/public',async c=>{

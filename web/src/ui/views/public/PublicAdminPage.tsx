@@ -1,3 +1,4 @@
+import Star from 'lucide-react/dist/esm/icons/star.mjs'
 import './organization-profile.css'
 import { organizationPageTabs, resolveOrganizationPageTab, type OrganizationPageTab } from './organizationPageTabs'
 import { organizationPageTheme } from '../../../config/organizationThemes'
@@ -53,6 +54,7 @@ type PublicOrganization = {
   links?: OrganizationLink[]
   image_url?: string | null
   tags?: string[]
+  candidates?: {event_id:string;event_slug:string;event_title:string;submission_id:string;title:string;stars:number}[]
   upcoming_events_count: number
   membership_count?: number
   feedback_count?: number
@@ -924,6 +926,10 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
           {dashboard && <Link className="btn-secondary" to={`/orgs/${encodeURIComponent(org.slug)}`}>Public profile</Link>}
         </div>
       </header>
+      {Boolean(org.candidates?.length) && <ul className="organization-candidates" aria-label="Event candidacies">{org.candidates!.map(candidate=><li key={`${candidate.event_id}:${candidate.submission_id}`}>
+        <Link className="organization-candidate-event" to={`/events/${encodeURIComponent(candidate.event_slug)}?tab=submissions#submissions`}><span className="organization-candidate-label">Candidate</span><strong>{candidate.event_title}</strong>{org.candidates!.filter(item=>item.event_id===candidate.event_id).length>1&&<span>{candidate.title}</span>}</Link>
+        <Link className="organization-candidate-stars" to={`/events/${encodeURIComponent(candidate.event_slug)}?tab=submissions#submissions`} aria-label={`${candidate.stars} ${candidate.stars===1?'star':'stars'} for ${candidate.title}. View voting.`}><Star size={17} fill="currentColor" aria-hidden="true"/><span>{candidate.stars.toLocaleString()}</span></Link>
+      </li>)}</ul>}
       <div className="portal-org-info-tabs organization-profile-tabs" role="tablist" aria-label={`${org.name} information`}>
         {orgTabs.map((tab,index) => <button type="button" role="tab" id={`org-tab-${tab.id}`} aria-controls={`org-panel-${tab.id}`} aria-selected={activeTab === tab.id} tabIndex={activeTab === tab.id ? 0 : -1} key={tab.id} onClick={() => selectTab(tab.id)} onKeyDown={event => {
           if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return

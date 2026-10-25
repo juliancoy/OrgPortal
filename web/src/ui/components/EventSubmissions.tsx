@@ -1,3 +1,4 @@
+import { invalidatePublicOrganizationData } from '../../data/publicOrganization/cache'
 import { GuestPresentationReview } from './GuestPresentationReview'
 import { SubmissionActions } from './SubmissionActions'
 import { PresentationFinalRound } from './PresentationFinalRound'
@@ -66,7 +67,7 @@ export function EventSubmissions({eventId,onEdit,onDeleted}:{eventId:string;onEd
   }
   updateSelection(selected)
   try{
-   await request(`/favorites/${encodeURIComponent(id)}`,{method:'PUT',body:JSON.stringify({selected})})
+   await request(`/favorites/${encodeURIComponent(id)}`,{method:'PUT',body:JSON.stringify({selected})});await invalidatePublicOrganizationData()
   }catch(reason){
    if(epoch!==favoriteEpoch.current)return
    updateSelection(!selected)
@@ -108,7 +109,7 @@ export function EventSubmissions({eventId,onEdit,onDeleted}:{eventId:string;onEd
      setRows(previous=>previous.filter(item=>item.submission_id!==submissionId));favoriteIds.current=favoriteIds.current.filter(id=>id!==submissionId);setFavorites(favoriteIds.current);setReviewRevision(value=>value+1);onDeleted(submissionId)
     }} /></div>}
    </div>
-   <p className={`submission-card-footer${finalPhase==='shortlist'?' has-voting':''}`}>{row.favorites} {row.favorites===1?'favorite':'favorites'}{row.status!=='submitted'&&<> · {row.status}</>}</p>
+   <p className={`submission-card-footer${finalPhase==='shortlist'?' has-voting':''}`}><Star size={15} fill="currentColor" aria-hidden="true"/> {row.favorites} {row.favorites===1?'star':'stars'}{row.status!=='submitted'&&<> · {row.status}</>}</p>
    {finalPhase==='shortlist'&&<button type="button" className="submission-card-select" aria-pressed={favorites.includes(row.submission_id)} aria-label={`${favorites.includes(row.submission_id)?'Remove favorite':'Favorite'}: ${row.title}`} disabled={!token||!ready||busy||savingFavorites.includes(row.submission_id)||(!favorites.includes(row.submission_id)&&favorites.length>=limit)} onClick={()=>void toggle(row)}><span className="submission-card-state"><Star size={18} aria-hidden="true" fill={favorites.includes(row.submission_id)?'currentColor':'none'} /> {favorites.includes(row.submission_id)?'Selected':'Choose favorite'}</span></button>}
   </article>)}
   {next&&<button type="button" className="btn-secondary" disabled={busy} onClick={()=>{

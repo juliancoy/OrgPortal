@@ -87,7 +87,7 @@ try{
    const rect=await title.boundingBox();await page.mouse.click(rect.x+10,rect.y+10)
    await page.waitForFunction(()=>document.querySelector('.submission-card-select')?.getAttribute('aria-pressed')==='false')
    if(!await page.getByText('0 of 3 favorites selected · Saving…',{exact:true}).isVisible())throw Error('Favorite selection must update before save completes')
-   if(!await card.locator('.submission-card-footer').getByText('0 favorites',{exact:true}).isVisible())throw Error('Favorite count must update immediately')
+   if(!await card.locator('.submission-card-footer').getByText('0 stars',{exact:true}).isVisible())throw Error('Favorite count must update immediately')
    await expect.poll(()=>votes).toBe(1)
    releaseVote();await page.waitForFunction(()=>!document.querySelector('.submission-card-select')?.disabled)
    const vote=card.locator('.submission-card-select');await vote.focus();await page.keyboard.press('Enter')
