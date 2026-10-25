@@ -9,14 +9,14 @@ export function FavoriteQuota({eventId,ids,limit,token,onRemove,onClose}:{eventI
  useEffect(()=>{
   const controller=new AbortController();setLoading(true);setError('');setChoices([])
   void (async()=>{const found:FavoriteChoice[]=[];let cursor:string|null=null
-   do{const response=await fetch(`/api/org/api/network/events/${encodeURIComponent(eventId)}/presentations/submissions${cursor?'?after='+encodeURIComponent(cursor):''}`,{signal:controller.signal,cache:'no-store'});if(!response.ok)throw Error('Could not load your starred submissions.');const data=await response.json();found.push(...data.submissions.filter((row:FavoriteChoice)=>ids.includes(row.submission_id)));cursor=data.next}while(cursor&&found.length<ids.length)
+   do{const response:Response=await fetch(`/api/org/api/network/events/${encodeURIComponent(eventId)}/presentations/submissions${cursor?'?after='+encodeURIComponent(cursor):''}`,{signal:controller.signal,cache:'no-store'});if(!response.ok)throw Error('Could not load your starred submissions.');const data:{submissions:FavoriteChoice[];next:string|null}=await response.json();found.push(...data.submissions.filter((row:FavoriteChoice)=>ids.includes(row.submission_id)));cursor=data.next}while(cursor&&found.length<ids.length)
    if(!controller.signal.aborted)setChoices(found)
   })().catch(reason=>{if(!controller.signal.aborted)setError(reason.message)}).finally(()=>{if(!controller.signal.aborted)setLoading(false)})
   return()=>controller.abort()
  },[eventId,ids,token])
  return <section className="favorite-quota" aria-label="Manage your stars">
   <h3 ref={heading} tabIndex={-1}>Your star quota is full</h3>
-  <p role="alert">You’ve used all {limit} stars for this event. Remove a star below, then star your new choice.</p>
+  <p role="alert">You’ve used all {limit} {limit===1?'star':'stars'} for this event. Remove a star below, then star your new choice.</p>
   {loading&&<p role="status">Loading your starred submissions…</p>}
   {error&&<p role="alert">{error}</p>}
   <ul>{choices.map(choice=><li key={choice.submission_id}><span><strong>{choice.organization_name}</strong><br/>{choice.title}</span><button type="button" className="btn-secondary" disabled={busy} onClick={async()=>{setBusy(true);setError('');try{await onRemove(choice);onClose()}catch(reason){setError(reason instanceof Error?reason.message:'Could not remove this star.')}finally{setBusy(false)}}}>Remove star: {choice.title}</button></li>)}</ul>

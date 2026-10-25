@@ -25,6 +25,7 @@ export function EventSubmissions({eventId,onEdit,onDeleted}:{eventId:string;onEd
  const favoriteIds=useRef<string[]>([]),savingIds=useRef(new Set<string>()),favoriteEpoch=useRef(0)
  const [savingFavorites,setSavingFavorites]=useState<string[]>([])
  const [quota,setQuota]=useState(false)
+ const quotaTrigger=useRef<HTMLButtonElement|null>(null)
  const [expanded,setExpanded]=useState<string[]>([])
  useEffect(()=>setExpanded([]),[eventId,token])
  const [rows,setRows]=useState<Submission[]>([]),[favorites,setFavorites]=useState<string[]>([])
@@ -99,7 +100,7 @@ export function EventSubmissions({eventId,onEdit,onDeleted}:{eventId:string;onEd
   {error&&<p role="alert">{error} <button type="button" className="btn-secondary" onClick={()=>setRevision(value=>value+1)}>Refresh submissions</button></p>}
   {!ready&&!error&&<p role="status">Loading submissions…</p>}
   {ready&&!rows.length&&<p>No submissions yet.</p>}
-  {quota&&token&&<FavoriteQuota eventId={eventId} ids={favorites} limit={limit} token={token} onClose={()=>setQuota(false)} onRemove={async(choice:FavoriteChoice)=>{await request(`/favorites/${encodeURIComponent(choice.submission_id)}`,{method:'PUT',body:JSON.stringify({selected:false})});favoriteIds.current=favoriteIds.current.filter(id=>id!==choice.submission_id);setFavorites(favoriteIds.current);setRows(previous=>previous.map(row=>row.submission_id===choice.submission_id?{...row,favorites:Math.max(0,row.favorites-1)}:row));await invalidatePublicOrganizationData()}}/>}
+  {quota&&token&&<FavoriteQuota eventId={eventId} ids={favorites} limit={limit} token={token} onClose={()=>{setQuota(false);quotaTrigger.current?.focus()}} onRemove={async(choice:FavoriteChoice)=>{await request(`/favorites/${encodeURIComponent(choice.submission_id)}`,{method:'PUT',body:JSON.stringify({selected:false})});favoriteIds.current=favoriteIds.current.filter(id=>id!==choice.submission_id);setFavorites(favoriteIds.current);setRows(previous=>previous.map(row=>row.submission_id===choice.submission_id?{...row,favorites:Math.max(0,row.favorites-1)}:row));await invalidatePublicOrganizationData()}}/>}
   {rows.map(row=><article key={row.submission_id} className={`presentation-submission submission-voting-card${favorites.includes(row.submission_id)?' is-selected':''}`}>
    <div className="submission-card-header">
     <div className="submission-team"><OrgImage src={row.image_url} alt="" style={{width:44,height:44,objectFit:'contain'}} /><Link to={`/orgs/${encodeURIComponent(row.organization_slug)}`}>{row.organization_name}</Link></div>
@@ -115,7 +116,7 @@ export function EventSubmissions({eventId,onEdit,onDeleted}:{eventId:string;onEd
     }} /></div>}
    </div>
    <p className={`submission-card-footer${finalPhase==='shortlist'?' has-voting':''}`}><Star size={15} fill="currentColor" aria-hidden="true"/> {row.favorites} {row.favorites===1?'star':'stars'}{row.status!=='submitted'&&<> · {row.status}</>}</p>
-   {finalPhase==='shortlist'&&<button type="button" className="submission-card-select" aria-pressed={favorites.includes(row.submission_id)} aria-label={`${favorites.includes(row.submission_id)?'Remove favorite':'Favorite'}: ${row.title}`} disabled={!token||!ready||busy||savingFavorites.includes(row.submission_id)} onClick={()=>void toggle(row)}><span className="submission-card-state"><Star size={18} aria-hidden="true" fill={favorites.includes(row.submission_id)?'currentColor':'none'} /> {favorites.includes(row.submission_id)?'Selected':'Choose favorite'}</span></button>}
+   {finalPhase==='shortlist'&&<button type="button" className="submission-card-select" aria-pressed={favorites.includes(row.submission_id)} aria-label={`${favorites.includes(row.submission_id)?'Remove favorite':'Favorite'}: ${row.title}`} disabled={!token||!ready||busy||savingFavorites.includes(row.submission_id)} onClick={event=>{quotaTrigger.current=event.currentTarget;void toggle(row)}}><span className="submission-card-state"><Star size={18} aria-hidden="true" fill={favorites.includes(row.submission_id)?'currentColor':'none'} /> {favorites.includes(row.submission_id)?'Selected':'Choose favorite'}</span></button>}
   </article>)}
   {next&&<button type="button" className="btn-secondary" disabled={busy} onClick={()=>{
    setBusy(true);setError('');void request('/submissions?after='+encodeURIComponent(next)).then(data=>{setRows(previous=>[...new Map([...previous,...data.submissions].map((row:Submission)=>[row.submission_id,row])).values()]);setNext(data.next)}).catch(reason=>setError(reason.message)).finally(()=>setBusy(false))

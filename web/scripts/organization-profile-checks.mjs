@@ -10,16 +10,18 @@ export async function testOrganizationProfile(base,output,contactOutput=output){
  try{
   const captures=[]
   for(const viewer of ['visitor','member','owner','operator']){
-   const page=await browser.newPage();let eventRequests=0;const errors=[];page.on('pageerror',e=>{errors.push(e.message);console.error(viewer,e.stack)})
+   const page=await browser.newPage();let eventRequests=0,ownStars=viewer==='member'?['other']:[],starWrites=0,failStar=false;const errors=[];page.on('pageerror',e=>{errors.push(e.message);console.error(viewer,e.stack)})
    await page.route('**/api/**',route=>{
     const url=new URL(route.request().url()),path=url.pathname
     let json=[]
+    if(path.includes('/presentations/favorites/')){starWrites++;if(failStar)return route.fulfill({status:503,json:{message:'Could not save your star.'}});const id=decodeURIComponent(path.split('/').at(-1)),selected=route.request().postDataJSON().selected;ownStars=selected?[...new Set([...ownStars,id])]:ownStars.filter(item=>item!==id);return route.fulfill({json:{saved:true}})}
+    if(path.endsWith('/presentations/submissions'))return route.fulfill({json:url.searchParams.has('after')?{submissions:[{submission_id:'other',title:'Other pitch',organization_name:'Other team',favorites:1}],next:null}:{submissions:[],next:'second-page'}})
     if(path.endsWith('/orgs/public/fixture-org'))json=org
     else if(path.endsWith('/branding')||path.endsWith('/portal'))json={portal}
     else if(path.endsWith('/admin/me'))json={is_sysadmin:viewer==='operator'}
     else if(path.endsWith('/orgs')&&url.searchParams.has('mine'))json=viewer==='owner'?[{...org,my_role:'administrator'}]:[]
     else if(path.endsWith('/membership'))json={role:'member',status:'active',membership_count:2}
-    else if(path.endsWith('/presentations/favorites'))json={favorites:[],limit:3}
+    else if(path.endsWith('/presentations/favorites'))json={favorites:ownStars,limit:1}
     else if(path.endsWith('/follow'))json={following:false}
     else if(path.endsWith('/events')){eventRequests++;json=[]}
     else if(path.endsWith('/personnel'))json={people:[{id:'person-one',name:'Alex Morgan',titles:[],personnel_class:'organizer'},{id:'person-two',name:'Invited teammate',titles:[],personnel_class:'public',pendingInvitation:true}]}
@@ -40,6 +42,19 @@ export async function testOrganizationProfile(base,output,contactOutput=output){
    if(viewer==='visitor')await expect(profile.getByRole('link',{name:'Sign in to star Care planning; 7 stars'})).toHaveAttribute('href',/users\/login/)
    else await expect(profile.getByRole('button',{name:'Star Care planning; 7 stars',exact:true})).toBeEnabled()
    await expect(profile.locator('.organization-candidates')).toContainText('Candidate')
+   if(viewer==='member'){
+    const star=profile.locator('.organization-candidate-stars'),quota=profile.getByRole('region',{name:'Manage your stars'})
+    await star.click();await expect(quota).toContainText('You’ve used all 1 star');expect(starWrites).toBe(0)
+    await expect(quota.getByText('Other team',{exact:true})).toBeVisible()
+    await page.setViewportSize({width:390,height:1000});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true)
+    await page.screenshot({path:join(output,'profile-star-quota.png'),fullPage:true})
+    await quota.getByRole('button',{name:'Keep my stars'}).click();expect(ownStars).toEqual(['other'])
+    await star.click();await quota.getByRole('button',{name:'Remove star: Other pitch',exact:true}).click();await expect(quota).toHaveCount(0);expect(ownStars).toEqual([])
+    await star.click();await expect(star).toHaveAttribute('aria-pressed','true');await expect(star).toHaveText('8');expect(ownStars).toEqual(['application'])
+    await star.click();await expect(star).toHaveAttribute('aria-pressed','false');await expect(star).toHaveText('7');expect(ownStars).toEqual([])
+    failStar=true;await star.click();await expect(profile.getByRole('alert').filter({hasText:'Could not save your star.'})).toBeVisible();await expect(star).toHaveText('7');await expect(star).toHaveAttribute('aria-pressed','false');expect(ownStars).toEqual([])
+   }
+
    const manager=viewer==='owner'||viewer==='operator'
    await expect(profile.getByRole('tab',{name:'Settings',exact:true})).toHaveCount(manager?1:0)
    if(viewer==='visitor')for(const mode of ['light','dark'])for(const width of [1440,390]){
@@ -57,6 +72,19 @@ export async function testOrganizationProfile(base,output,contactOutput=output){
    await profile.getByRole('tab',{name:'About',exact:true}).focus();await page.keyboard.press('ArrowRight');await expect(profile.getByRole('tab',{name:'People',exact:true})).toHaveAttribute('aria-selected','true');await page.keyboard.press('Home');await expect(profile.getByRole('tab',{name:'About',exact:true})).toHaveAttribute('aria-selected','true')
    expect(errors).toEqual([]);await page.close()
   }
+  const votePage=await browser.newPage();let chosen=['first'],failRemoval=true
+  await votePage.route('**/presentations/submissions**',route=>route.fulfill({json:{favoriteLimit:1,next:null,submissions:['first','second'].map(id=>({submission_id:id,organization_id:id,organization_slug:id,organization_name:id==='first'?'First team':'Second team',title:id==='first'?'First pitch':'Second pitch',summary:'A test pitch',status:'submitted',favorites:chosen.includes(id)?1:0,presenters:[],attachments:[],image_url:null}))}}))
+  await votePage.route('**/presentations/favorites**',route=>{
+   if(route.request().method()==='PUT'){const id=decodeURIComponent(new URL(route.request().url()).pathname.split('/').at(-1)),selected=route.request().postDataJSON().selected;if(!selected&&failRemoval)return route.fulfill({status:503,json:{message:'Could not remove this star.'}});chosen=selected?[...chosen,id]:chosen.filter(item=>item!==id);return route.fulfill({json:{saved:true}})}
+   return route.fulfill({json:{favorites:chosen,limit:1}})
+  })
+  await votePage.goto(base+'/submissions?brand=lifetech&submissionReview=1')
+  const choose=votePage.getByRole('button',{name:'Favorite: Second pitch',exact:true}),quota=votePage.getByRole('region',{name:'Manage your stars'})
+  await expect(choose).toBeEnabled();await choose.click();await expect(quota).toContainText('First team')
+  await quota.getByRole('button',{name:'Remove star: First pitch',exact:true}).click();await expect(quota.getByRole('alert').filter({hasText:'Could not remove this star.'})).toBeVisible();expect(chosen).toEqual(['first'])
+  failRemoval=false;await quota.getByRole('button',{name:'Remove star: First pitch',exact:true}).click();await expect(quota).toHaveCount(0);expect(chosen).toEqual([])
+  await choose.click();await expect(votePage.getByRole('button',{name:'Remove favorite: Second pitch',exact:true})).toHaveAttribute('aria-pressed','true');expect(chosen).toEqual(['second'])
+  await votePage.close()
   const sheet=await browser.newPage({viewport:{width:1500,height:1000}})
   await sheet.setContent('<style>body{font:14px sans-serif;background:#ddd;display:grid;grid-template-columns:repeat(4,1fr);gap:12px}figure{margin:0}img{width:100%;height:900px;object-fit:contain;object-position:top}</style>'+(await Promise.all(captures.map(async name=>`<figure><figcaption>${name}</figcaption><img src="data:image/png;base64,${(await readFile(join(output,name))).toString('base64')}"></figure>`))).join(''))
   await sheet.screenshot({path:join(contactOutput,'organization-profile-contact.png'),fullPage:true})
