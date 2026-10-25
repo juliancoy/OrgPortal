@@ -1,6 +1,6 @@
 import type { BrandColor } from '../../../../shared/brandPalette'
 
-type BrandGuide = { name: string; tagline: string; colors: BrandColor[]; url: string; guidance?: string[] }
+type BrandGuide = { name: string; tagline: string; colors: BrandColor[]; url: string; guidance?: string[]; paper?: string; ink?: string }
 type TextBlock = { lines: string[]; font: string; lineHeight: number; y: number }
 const WIDTH = 1200
 const MARGIN = 72
@@ -62,16 +62,16 @@ export function renderBrandGuideCard(guide: BrandGuide): HTMLCanvasElement {
   text(guide.url, '24px Arial, sans-serif', 34)
   canvas.height = Math.max(1800, Math.ceil(y + MARGIN))
   // Resizing clears canvas state. Paint from the measured layout afterwards.
-  context.fillStyle = PAPER
+  context.fillStyle = guide.paper || PAPER
   context.fillRect(0, 0, WIDTH, canvas.height)
   for (const swatch of swatches) {
     context.fillStyle = swatch.color
     context.fillRect(MARGIN, swatch.top, CONTENT_WIDTH, 220)
-    context.strokeStyle = INK
+    context.strokeStyle = guide.ink || INK
     context.lineWidth = 2
     context.strokeRect(MARGIN + 1, swatch.top + 1, CONTENT_WIDTH - 2, 218)
   }
-  context.fillStyle = INK
+  context.fillStyle = guide.ink || INK
   context.textBaseline = 'top'
   for (const block of blocks) {
     context.font = block.font

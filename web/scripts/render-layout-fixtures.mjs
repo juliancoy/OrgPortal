@@ -1,3 +1,4 @@
+import {testOrganizationThemes} from './organization-themes-checks.mjs'
 import {execFileSync} from 'node:child_process'
 import {testUploadImageCompression} from './test-upload-image-compression.mjs'
 import {testOrganizationPersonnel} from './organization-personnel-checks.mjs'
@@ -16,6 +17,7 @@ await mkdir(output,{recursive:true})
 await testUploadImageCompression()
 const {server,base}=await fixtureServer(root,output)
 try{
+ await testOrganizationThemes(base,output)
  await testOrganizationBranding(base,output)
  await testOrganizationPersonnel(base,output)
  const layouts=[['Workspace','/workspace'],['Organizations','/orgs'],['Empty organizations','/orgs?empty=1'],['People','/people'],['Events','/events'],['Onboarding','/onboarding?brand=lifetech'],['Join now','/onboarding?brand=lifetech&complete=1','.onboarding-join-footer'],['Service desk','/support'],['Brand guide','/branding'],['About','/about']].map(([name,path,selector])=>({name,url:base+path,selector,ready:selector||'h1'}))

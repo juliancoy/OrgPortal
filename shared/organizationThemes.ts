@@ -2,7 +2,7 @@
 export type OrganizationTheme = { id: string; name: string; light: Record<string, string>; dark: Record<string, string> }
 export type OrganizationThemes = { defaultTheme: string; themes: OrganizationTheme[] }
 export const THEME_ID = /^[a-z][a-z0-9-]{0,63}$/
-export const THEME_COLOR_TOKEN = /^[a-z][a-z0-9-]{0,63}$/
+export const THEME_COLOR_TOKEN = /^[a-zA-Z][a-zA-Z0-9-]{0,63}$/
 export const THEME_COLOR = /^#[0-9a-f]{6}$/i
 
 export function parseOrganizationThemes(value: unknown): OrganizationThemes | null {

@@ -1,3 +1,5 @@
+import { fixtureThemes } from './organization-themes'
+import { UserSettingsPage } from '../../src/ui/views/users/UserSettingsPage'
 import {createRoot} from 'react-dom/client'
 import {MemoryRouter,Routes,Route} from 'react-router-dom'
 import {Header} from '../../src/ui/shell/Header'
@@ -24,10 +26,11 @@ import '../../src/styles/themes/lifetech.css'
 import '../../src/tenantBranding.css'
 import '../../src/styles/layout.css'
 const brand=new URLSearchParams(location.search).get('brand')
-const life={id:'lifetech',slug:'lifetech',organization_id:'fixture-org',hostname:'lifetech.fyi',name:'LifeTech',tagline:'Health × Medicine × Biotech',accent_color:'#155e59',profile:'lifetech',features:['directory','events','chat'],brand_image_path:'/fixture-assets/lifetech-logo.png'}
+const life={id:'lifetech',slug:'lifetech',organization_id:'fixture-org',hostname:'lifetech.fyi',name:'LifeTech',tagline:'Health × Medicine × Biotech',accent_color:'#155e59',profile:'lifetech',features:['directory','events','chat'],brand_image_path:'/fixture-assets/lifetech-logo.png',feature_config:new URLSearchParams(location.search).has('customThemes')?{brandThemes:fixtureThemes}:undefined}
 if(brand==='lifetech')setGroupSite(life)
 applyPortalBranding()
 const body=<Routes>
+ <Route path="/settings" element={<UserSettingsPage/>}/>
  <Route path="/organization-personnel" element={<OrganizationBoard organization={{id:'fixture-org',slug:'fixture-org',name:'Harbor Care Team'}} memberType="team" canManage={new URLSearchParams(location.search).has('admin')}/>}/>
 
  <Route path="/organization-branding" element={<OrganizationBranding organization={{id:'fixture-org',slug:'fixture-org',name:'Anchor Advance Care'}} canManage={!new URLSearchParams(location.search).has('readonly')}/>}/>

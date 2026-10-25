@@ -62,3 +62,7 @@
 .organization-brand-editor input[type="color"] { height: 2.75rem; padding: .35rem; }
 .organization-brand-editor button { justify-self: start; }
 .organization-brand-editor p { margin: 0; font-size: .9rem; }
+
+.tenant-brand-theme-controls { display: flex; flex-wrap: wrap; gap: 1rem; margin-block: 1rem; }
+.tenant-brand-theme-controls label { display: grid; gap: .4rem; min-width: 0; flex: 1 1 10rem; }
+.tenant-brand-theme-controls select { width: 100%; color: var(--text-primary); background: var(--panel); border: 1px solid var(--border-input); border-radius: var(--radius-sm); padding: .6rem; }

@@ -55,3 +55,11 @@ change the account's light/dark/system setting. System mode follows the browser
 color-scheme preference. Removed selections fall back to the organization
 default. Switching to another portal replaces the color map; a portal without
 custom themes clears it.
+
+Core tokens (`surface`, `panel`, `panel-2`, `text-primary`, `text-secondary`,
+`primary`, `on-primary`, `border`) also populate the matching component tokens,
+so buttons, navigation, inputs, focus indicators, and page surfaces share the
+portal palette. An explicit component token overrides its derived value.
+The organization brand guide offers theme and color-mode selectors, includes
+the selected map beside the core brand swatches, and computes contrast from
+those mapped colors. PNG exports use the same selection and mapped paper/ink.

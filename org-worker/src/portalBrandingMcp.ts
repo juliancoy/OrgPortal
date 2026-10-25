@@ -32,7 +32,7 @@ export async function runPortalBrandingOperation(db: D1Database, identity: { use
   await authorizeOrganization(db, actor, 'manage', args.organizationId);
   const before = await db.prepare(`SELECT s.id, s.profile, s.slug, s.home_org_slug, s.accent_color, s.theme_color, s.feature_config, s.updated_at
     FROM group_sites s JOIN organizations o ON o.id = ?
-    WHERE s.organization_id = o.id OR s.home_org_slug = o.slug
+    WHERE s.organization_id = o.id OR (s.organization_id IS NULL AND s.home_org_slug = o.slug)
     ORDER BY CASE WHEN s.organization_id = o.id THEN 0 ELSE 1 END LIMIT 1`)
     .bind(args.organizationId).first<PortalRow>();
   if (!before) throw new EventIntegrationError(404, 'Organization portal not found');

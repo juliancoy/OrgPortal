@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest'
-import { parseOrganizationThemes } from '../../../shared/organizationThemes'
+import { parseOrganizationThemes, portalThemeColors } from '../../../shared/organizationThemes'
 import { setGroupSite } from './timebankCommunity'
 import { applyOrganizationTheme, readOrganizationTheme, selectOrganizationTheme } from './organizationThemes'
 
@@ -42,4 +42,16 @@ it('rejects malformed public configuration before generating CSS', () => {
     { ...themes, themes: [{ ...themes.themes[0], dark: { primary: '</style><script>' } }] }]) {
     expect(parseOrganizationThemes(value)).toBeNull()
   }
+})
+
+
+it('harmonizes component aliases with core portal colors and respects explicit mappings', () => {
+  const colors = portalThemeColors({ primary: '#123456', surface: '#F0FAFF', panel: '#FFFFFF', 'text-primary': '#102030', 'on-primary': '#FFFFFF', border: '#445566', 'btn-primary-bg': '#005588' })
+  expect(colors['action-bg']).toBe('#123456')
+  expect(colors['btn-primary-bg']).toBe('#005588')
+  expect(colors['btn-primary-text']).toBe('#FFFFFF')
+  expect(colors['body-bg']).toBe('#F0FAFF')
+  expect(colors.ink).toBe('#102030')
+  expect(colors['color-border']).toBe('#445566')
+  expect(colors['paper-rgb']).toBe('255, 255, 255')
 })

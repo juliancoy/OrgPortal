@@ -1,3 +1,4 @@
+import { parseOrganizationThemes, portalThemeColors } from '../../../../shared/organizationThemes'
 import { CmsImage } from '../components/media/CmsImage'
 import { useEffect, useRef, useState } from 'react'
 import { Navigate } from 'react-router-dom'
@@ -7,7 +8,7 @@ import Download from 'lucide-react/dist/esm/icons/download.mjs'
 import ExternalLink from 'lucide-react/dist/esm/icons/external-link.mjs'
 import { portalPath } from '../../config/portalBase'
 import { getActivePortalProfileConfig, tenantProfileConfig } from '../../config/portalFeatures'
-import { resolveBrandPalette } from '../../../../shared/brandPalette'
+import { resolveBrandPalette, type BrandColor } from '../../../../shared/brandPalette'
 import lifetechBrand from '../../../../shared/lifetechBrand.json'
 import { contrastRatio } from '../../../../shared/brandContrast'
 import './brand-contrast.css'
@@ -22,6 +23,11 @@ function assetUrl(value?: string | null) {
 export function TenantBrandingPage({brandGuidePath='/branding',tenant:organizationTenant}:{brandGuidePath?:string;tenant?:GroupSite}={}) {
   const tenant = organizationTenant || getGroupSite()
   const profile = organizationTenant ? tenantProfileConfig(organizationTenant) : getActivePortalProfileConfig()
+  const brandThemes = parseOrganizationThemes(tenant?.feature_config?.brandThemes)
+  const [themeId, setThemeId] = useState('')
+  const [colorMode, setColorMode] = useState<'light' | 'dark'>('light')
+  const selectedTheme = brandThemes?.themes.find(theme => theme.id === themeId) || brandThemes?.themes.find(theme => theme.id === brandThemes.defaultTheme)
+  const themeColors = selectedTheme ? portalThemeColors(selectedTheme[colorMode]) : null
   const [copiedColor, setCopiedColor] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
   const [exportMessage, setExportMessage] = useState('')
@@ -51,17 +57,23 @@ export function TenantBrandingPage({brandGuidePath='/branding',tenant:organizati
       : null,
   ].filter((asset): asset is NonNullable<typeof asset> => Boolean(asset))
 
-  const colors = resolveBrandPalette({ ...tenant, profile: profile.id, theme_color: profile.themeColor })
+  const colors: BrandColor[] = [...resolveBrandPalette({ ...tenant, profile: profile.id, theme_color: profile.themeColor }), ...Object.entries(selectedTheme?.[colorMode] || {}).map(([label, value]) => ({ label: `${selectedTheme!.name} ${colorMode}: ${label}`, value }))]
 
   const brandColors = Object.fromEntries(lifetechBrand.colors.map(color => [color.id, color.value]))
-  const accessiblePairs = profile.id === 'lifetech' ? lifetechBrand.pairings.map(pair => ({ ...pair, foreground: brandColors[pair.foreground], background: brandColors[pair.background], ratio: contrastRatio(brandColors[pair.foreground], brandColors[pair.background]) })) : []
+  const accessiblePairs = themeColors ? [
+    { label: 'Body text', foreground: themeColors['text-primary'], background: themeColors.surface, minimum: 4.5 },
+    { label: 'Panel text', foreground: themeColors['text-primary'], background: themeColors.panel, minimum: 4.5 },
+    { label: 'Secondary text', foreground: themeColors['text-secondary'], background: themeColors.surface, minimum: 4.5 },
+    { label: 'Links', foreground: themeColors.primary, background: themeColors.surface, minimum: 4.5 },
+    { label: 'Primary button', foreground: themeColors['on-primary'] || themeColors['btn-primary-text'], background: themeColors['btn-primary-bg'], minimum: 4.5 },
+  ].filter((pair): pair is typeof pair & {foreground: string; background: string} => Boolean(pair.foreground && pair.background)).map(pair => ({ ...pair, ratio: contrastRatio(pair.foreground, pair.background) })) : profile.id === 'lifetech' ? lifetechBrand.pairings.map(pair => ({ ...pair, foreground: brandColors[pair.foreground], background: brandColors[pair.background], ratio: contrastRatio(brandColors[pair.foreground], brandColors[pair.background]) })) : []
 
   async function exportStyleGuide() {
     setExporting(true)
     setExportMessage('')
     try {
-      await downloadBrandGuide({ name: profile.brandName, tagline: profile.tagline, colors,
-        guidance: accessiblePairs.length ? ['WCAG 2.2 AA color contrast: 4.5:1 for ordinary text; 3:1 for large text and essential control indicators. Core BioTech Gold is an accent; use Gold Ink for gold text on light surfaces.', ...accessiblePairs.map(pair => `${pair.label}: ${pair.foreground} on ${pair.background} — ${pair.ratio.toFixed(2)}:1 (minimum ${pair.minimum}:1).`)] : [],
+      await downloadBrandGuide({ name: profile.brandName, tagline: profile.tagline, colors, paper: themeColors?.surface, ink: themeColors?.['text-primary'],
+        guidance: accessiblePairs.length ? ['WCAG 2.2 AA color contrast: 4.5:1 for ordinary text; 3:1 for large text and essential control indicators. Check the selected portal palette in both light and dark modes.', ...accessiblePairs.map(pair => `${pair.label}: ${pair.foreground} on ${pair.background} — ${pair.ratio.toFixed(2)}:1 (minimum ${pair.minimum}:1).`)] : [],
         url: new URL(portalPath(brandGuidePath), window.location.origin).href })
       setExportMessage('Style guide downloaded.')
     } catch (error) {
@@ -127,6 +139,14 @@ export function TenantBrandingPage({brandGuidePath='/branding',tenant:organizati
           <Download size={17} aria-hidden="true" /> {exporting ? 'Creating style guide…' : 'Download style guide (PNG)'}
         </button>
       </div>
+      {brandThemes ? <div className="tenant-brand-theme-controls">
+        <label>Theme <select aria-label="Brand guide theme" value={selectedTheme?.id} onChange={event => setThemeId(event.target.value)}>
+          {brandThemes.themes.map(theme => <option key={theme.id} value={theme.id}>{theme.name}</option>)}
+        </select></label>
+        <label>Color mode <select aria-label="Brand guide color mode" value={colorMode} onChange={event => setColorMode(event.target.value as 'light' | 'dark')}>
+          <option value="light">Light</option><option value="dark">Dark</option>
+        </select></label>
+      </div> : null}
       {exportMessage ? <p role="status">{exportMessage}</p> : null}
       <div className="tenant-brand-colors">
         {colors.map((color) => <button
@@ -148,7 +168,7 @@ export function TenantBrandingPage({brandGuidePath='/branding',tenant:organizati
 
     {accessiblePairs.length > 0 && <section className="tenant-brand-section" aria-labelledby="tenant-brand-contrast-title">
       <div className="tenant-home-section-heading"><div><p className="tenant-home-eyebrow">Accessible use</p><h2 id="tenant-brand-contrast-title">Color pairings and contrast</h2></div></div>
-      <p>Keep HealthTech Teal, MedTech OffWhite, and BioTech Gold as the core identity. Use the supporting shades for readable text and controls. BioTech Gold works on dark surfaces; use Gold Ink for text on light surfaces.</p>
+      {selectedTheme ? <p>Pairings use {selectedTheme.name} in {colorMode} mode from the portal palette.</p> : <p>Keep HealthTech Teal, MedTech OffWhite, and BioTech Gold as the core identity. Use the supporting shades for readable text and controls. BioTech Gold works on dark surfaces; use Gold Ink for text on light surfaces.</p>}
       <p>WCAG 2.2 AA calls for at least 4.5:1 for ordinary text, 3:1 for large text, and 3:1 for essential control indicators. Pairing checks cover color contrast, not complete accessibility conformance.</p>
       <div className="tenant-brand-contrast-list">{accessiblePairs.map(pair => <article className="tenant-brand-contrast-pair" key={pair.label}>
         {pair.minimum === 3 ? <span className="tenant-brand-contrast-sample" style={{backgroundColor:pair.background}} aria-hidden="true"><span className="tenant-brand-control-sample" style={{borderColor:pair.foreground}}/></span> : <span className="tenant-brand-contrast-sample" style={{color:pair.foreground,backgroundColor:pair.background}} aria-hidden="true">Aa</span>}
