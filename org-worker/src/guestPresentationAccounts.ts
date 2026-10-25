@@ -3,8 +3,8 @@ import { HTTPException } from 'hono/http-exception';
 import { supportMailboxForOrganization } from './supportMailboxes';
 export type GuestPresentationActor={id:string;email?:string|null;identity_data?:Record<string,unknown>|null};
 export type GuestPresentationEnv={DB:D1Database;SUPPORT_EMAIL?:Env['SUPPORT_EMAIL'];PUBLIC_PORTAL_BASE_URL?:string};
-export const teammateInvitationNotice='Include a teammate’s email address. After you claim your submission with your verified account, we’ll create your team organization and invite that teammate by email to join it.';
-export const claimRecommendation='We recommend claiming your submission to your account to keep event communications and your presentation records organized.';
+export const teammateInvitationNotice='Include a teammate’s email address. Only if you choose to link your application with your verified account, we’ll create your team organization and invite that teammate by email to join it.';
+export const claimRecommendation='Your application is already saved. Linking it to an account is optional; no further action is required to apply.';
 export function guestClaimPath(eventId:string,submissionId:string){return `/presentation-claims/${encodeURIComponent(eventId)}/${encodeURIComponent(submissionId)}`}
 export function escapeGuestHtml(value:string){return value.replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]!))}
 export async function sendGuestAcknowledgement(env:GuestPresentationEnv,event:{id:string;host_org_id:string;title:string},id:string,email:string){
@@ -17,12 +17,12 @@ export async function sendGuestAcknowledgement(env:GuestPresentationEnv,event:{i
    const origin=new URL(env.PUBLIC_PORTAL_BASE_URL||'https://orgportal.cc');
    if(!['https:','http:'].includes(origin.protocol)||(origin.protocol==='http:'&&!['localhost','127.0.0.1'].includes(origin.hostname)))throw new Error('Invalid portal URL');
    const url=new URL(guestClaimPath(event.id,id),origin).href;
-   const instructions='Sign in or create an account with the same email address that received this message, verify that email, then confirm that you want to claim the submission, create your team, and invite your teammate. Your application is already saved. Claiming it creates your team organization and invites the teammate whose email you supplied; it does not grant access to an existing organization.';
+   const instructions='Sign in or create an account with the same email address that received this message, verify that email, then confirm that you want to link the application, create your team, and invite your teammate. Your application is already saved. Linking it creates your team organization and invites the teammate whose email you supplied; it does not grant access to an existing organization.';
    status='uncertain'; // A transport exception does not prove that nothing was sent.
    await env.SUPPORT_EMAIL.send({from:{email:mailbox.senderAddress,name:mailbox.organizationName},to:email,replyTo:mailbox.address,
     subject:'Thank you for your presentation submission',
-    text:`Thank you for submitting a presentation for ${event.title}. The event organizers have received your application for review.\n\n${claimRecommendation}\n\n${teammateInvitationNotice}\n\nClaim your submission: ${url}\n\n${instructions}\n\nIf you did not submit an application, you can ignore this message. This is a submission receipt, not a mailing-list subscription.`,
-    html:`<p>Thank you for submitting a presentation for <strong>${escapeGuestHtml(event.title)}</strong>. The event organizers have received your application for review.</p><p>${claimRecommendation}</p><p>${teammateInvitationNotice}</p><p><a href="${escapeGuestHtml(url)}">Claim your submission</a></p><p>${instructions}</p><p>If you did not submit an application, you can ignore this message. This is a submission receipt, not a mailing-list subscription.</p>`});
+    text:`Thank you for submitting a presentation for ${event.title}. The event organizers have received your application for review.\n\n${claimRecommendation}\n\n${teammateInvitationNotice}\n\nLink your application (optional): ${url}\n\n${instructions}\n\nIf you did not submit an application, you can ignore this message. This is a submission receipt, not a mailing-list subscription.`,
+    html:`<p>Thank you for submitting a presentation for <strong>${escapeGuestHtml(event.title)}</strong>. The event organizers have received your application for review.</p><p>${claimRecommendation}</p><p>${teammateInvitationNotice}</p><p><a href="${escapeGuestHtml(url)}">Link your application (optional)</a></p><p>${instructions}</p><p>If you did not submit an application, you can ignore this message. This is a submission receipt, not a mailing-list subscription.</p>`});
    status='accepted';
   }
  }catch{/* Never log recipient addresses, proposal contents or provider responses. */}

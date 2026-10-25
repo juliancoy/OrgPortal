@@ -140,3 +140,11 @@
  .public-event-main .public-event-tabs { gap: 15px; }
  .public-event-main .public-event-tabs [role='tab'] { font-size: .875rem; gap: 5px; }
 }
+
+.event-apply-option { flex: 1 1 260px; min-width: 0; display: grid; gap: .6rem; align-content: start; }
+.event-apply-option > p { margin: 0; font-size: .875rem; color: var(--text-muted); line-height: 1.5; }
+.application-receipt-summary { display: grid; grid-template-columns: max-content minmax(0,1fr); gap: .5rem 1rem; margin-block: 1.5rem; overflow-wrap: anywhere; }
+.application-receipt-summary dt { color: var(--application-muted); }
+.application-receipt-summary dd { margin: 0; font-weight: 600; }
+.application-field-error { color: var(--text-danger, #b42318); }
+.presentation-form [aria-invalid='true'] { border-color: var(--text-danger, #b42318); }

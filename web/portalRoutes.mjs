@@ -97,6 +97,7 @@ const paths = [
   "/events",
   "/events/:slug",
   "/events/:slug/apply",
+  "/events/:slug/apply/guest",
   "/orgs",
   "/people",
   "/timebanking",

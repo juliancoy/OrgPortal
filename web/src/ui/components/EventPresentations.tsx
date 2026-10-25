@@ -14,13 +14,14 @@ type Org = { id:string; name:string; my_role?:string }
 export type PresentationApplication = { submission_id:string; organization_id:string; organization_name:string; title:string; summary:string; status:string; presenters:TeamPerson[] }
 export type PresentationFormAction = { kind: 'edit'; application: PresentationApplication } | { kind: 'delete'; submissionId: string }
 const emptyPresentationDraft = { submissionId: '', editing: '', imageOrg: '', imageUrl: '', org: '', name: '', city: 'Baltimore', description: '', title: '', summary: '', people: '[]' }
-export function EventPresentations({eventId,formAction,onActionHandled,onSaved,onSubmitted,onCancelEdit}:{eventId:string;formAction?:PresentationFormAction|null;onActionHandled?:()=>void;onSaved?:()=>void;onSubmitted?:(submissionId:string)=>void;onCancelEdit?:()=>void}) {
+export function EventPresentations({eventId,formAction,onActionHandled,onSaved,onSubmitted,onCancelEdit,guestApplyPath}:{eventId:string;formAction?:PresentationFormAction|null;onActionHandled?:()=>void;onSaved?:()=>void;onSubmitted?:(submissionId:string,details:{title:string;teamName:string})=>void;guestApplyPath?:string;onCancelEdit?:()=>void}) {
  const {token,user}=useAuth()
+ const choseInitialTeam=useRef(false)
  const [teamImage,setTeamImage]=useState<File|null>(null)
  const [imagePreview,setImagePreview]=useState('')
  useEffect(()=>{if(!teamImage){setImagePreview('');return}const url=URL.createObjectURL(teamImage);setImagePreview(url);return()=>URL.revokeObjectURL(url)},[teamImage])
  const [files,setFiles]=useState<StagedSubmissionAttachment[]>([])
- useEffect(()=>{setFiles([]);setTeamImage(null)},[eventId,user?.id])
+ useEffect(()=>{choseInitialTeam.current=false;setFiles([]);setTeamImage(null)},[eventId,user?.id])
  const location=useLocation()
  const fieldId=useId()
  const draft=useLocalFormDraft(formDraftKey(user?.id,`presentation:${encodeURIComponent(eventId)}`),emptyPresentationDraft)
@@ -59,7 +60,8 @@ export function EventPresentations({eventId,formAction,onActionHandled,onSaved,o
    if(token) teams=await request('/api/org/api/network/orgs?mine=true&limit=500','GET',undefined,controller.signal)
    if(controller.signal.aborted)return
    setEnabled(form.enabled);setClosed(form.closed);
-   setOrgs(teams.filter(o=>o.my_role==='owner'||o.my_role==='administrator'));setReady(true)
+   const manageable=teams.filter(o=>o.my_role==='owner'||o.my_role==='administrator');setOrgs(manageable);
+   if(!choseInitialTeam.current&&manageable.length)draft.setValue(previous=>previous.org||previous.name||previous.title||previous.summary||previous.editing?previous:{...previous,org:manageable[0].id});choseInitialTeam.current=true;setReady(true)
   }catch(error){if(!controller.signal.aborted)setMessage(error instanceof Error?error.message:'Unable to load applications')}})()
   return()=>controller.abort()
  // request uses only the token captured by this load.
@@ -101,8 +103,8 @@ export function EventPresentations({eventId,formAction,onActionHandled,onSaved,o
  return <section className="presentation-applications" aria-label="Presentation applications">
   <p className="sr-only" role="status" aria-live="polite">{busy?'Saving application…':''}</p>
   {message&&<p className="application-message" ref={messageRef} tabIndex={-1} role="alert">{message}</p>}
-  {enabled&&!closed&&!token&&<div className="presentation-login"><p>Sign in to submit with an existing organization or create a new team.</p><Link className="btn-primary" to={`/users/login?next=${encodeURIComponent(location.pathname+location.search)}`}>Registered Apply</Link></div>}
-  {enabled&&!closed&&!draft.value.editing&&<p><a className="btn-secondary" href={`${base}/apply`}>Guest Apply</a></p>}
+  {enabled&&!closed&&!token&&<div className="presentation-login"><p>Sign in to submit with an existing organization or create a new team.</p><Link className="btn-primary" to={`/users/login?next=${encodeURIComponent(location.pathname+location.search)}`}>Sign in to apply</Link></div>}
+  {enabled&&!closed&&!draft.value.editing&&guestApplyPath&&<p className="muted">Prefer a private application? <Link to={guestApplyPath}>Apply as a guest</Link> — no account needed.</p>}
   {closed&&<p>Applications have closed for this event.</p>}
   {((enabled&&!closed)||draft.value.editing)&&token&&<form className="presentation-form" data-draft-saved={draft.saved} aria-label="Team presentation application" aria-busy={busy} onSubmit={e=>{e.preventDefault();void action(async()=>{
    if(!people.length)throw new Error('Add at least one teammate before submitting.')
@@ -135,7 +137,7 @@ export function EventPresentations({eventId,formAction,onActionHandled,onSaved,o
    setField('editing','true');
    await invalidatePublicOrganizationData();
    try{for(const file of files){await uploadSubmissionAttachment(eventId,submissionId,file,token!);setFiles(previous=>previous.filter(item=>item.id!==file.id))}}catch(error){throw new Error(`Your application is saved, but an attachment could not upload: ${error instanceof Error?error.message:'Please retry'}. Your draft and remaining selected files are retained.`)}finally{onSaved?.()}
-   draft.clear();setMessage(draft.value.editing?'Application updated.':'Application submitted to the event organizers.');onSubmitted?.(submissionId)
+   draft.clear();setMessage(draft.value.editing?'Application updated.':'Application submitted to the event organizers.');onSubmitted?.(submissionId,{title,teamName:orgs.find(team=>team.id===organizationId)?.name||name})
   })}}>
    <div className="local-draft-status"><p role="status" aria-live="polite">{busy?'Saving your application…':draft.unavailable?'Draft storage is unavailable. Keep this page open until you submit.':draft.saved?'Draft saved on this device.':'Saving draft on this device…'}</p>{draft.value.editing&&<button type="button" disabled={busy} className="btn-secondary" onClick={()=>{draft.clear();setFiles([]);setTeamImage(null);onCancelEdit?.()}}>Cancel editing</button>}</div>
    <fieldset className="presentation-fields" disabled={busy}><legend className="sr-only">Application details</legend>

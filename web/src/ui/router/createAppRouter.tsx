@@ -443,6 +443,7 @@ export function createAppRouter() {
           { path: '/events', element: <PublicEventsRoute /> },
           { path: '/events/:slug', element: <PublicEventPage /> },
           { path: '/events/:slug/apply', element: <EventApplicationPage /> },
+          { path: '/events/:slug/apply/guest', element: <EventApplicationPage guest /> },
           { path: '/orgs', element: <PublicOrganizationsPage /> },
           { path: '/people', element: <PeoplePage /> },
           { path: '/timebanking', element: <TimebankRoute /> },

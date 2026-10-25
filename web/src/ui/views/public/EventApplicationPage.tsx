@@ -3,6 +3,7 @@ import {Link, useLocation, useNavigate, useParams} from 'react-router-dom'
 import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left.mjs'
 import Copy from 'lucide-react/dist/esm/icons/copy.mjs'
 import {useAuth} from '../../../app/AppProviders'
+import {GuestPresentationForm} from '../../components/GuestPresentationForm'
 import {EventPresentations, type PresentationApplication, type PresentationFormAction} from '../../components/EventPresentations'
 import {getActivePortalProfileConfig} from '../../../config/portalFeatures'
 import {applicationBrandStyle} from '../../../config/applicationBranding'
@@ -19,22 +20,24 @@ export function ApplicationPageHeader({eventTitle,editing=false,submitted=false}
   {!submitted&&!editing&&<p className="application-introduction">Submit your research, project or demonstration for consideration.</p>}
  </header>
 }
-export function ApplicationConfirmation({eventPath,submissionId,editing,onView}:{eventPath:string;submissionId:string;editing:boolean;onView?:()=>void}) {
+export function ApplicationConfirmation({eventPath,submissionId,editing,onView,eventTitle,presentationTitle,teamName}:{eventPath:string;submissionId:string;editing:boolean;onView?:()=>void;eventTitle?:string;presentationTitle?:string;teamName?:string}) {
  const heading=useRef<HTMLHeadingElement>(null)
  useEffect(()=>{heading.current?.focus()},[])
  return <section className="application-confirmation" aria-labelledby="application-confirmation-title">
   <h2 ref={heading} tabIndex={-1} id="application-confirmation-title">{editing?'Changes saved':'Submission complete'}</h2>
   <p>Your presentation has been saved for the event organizers. You can return to your application to review or update it.</p>
+  <dl className="application-receipt-summary">{eventTitle&&<><dt>Event</dt><dd>{eventTitle}</dd></>}{presentationTitle&&<><dt>Presentation</dt><dd>{presentationTitle}</dd></>}{teamName&&<><dt>Team</dt><dd>{teamName}</dd></>}</dl>
   <div className="application-page-actions"><Link className="btn-primary" onClick={onView} to={`${eventPath}/apply?edit=${encodeURIComponent(submissionId)}`}>View application</Link><Link className="btn-secondary" to={eventPath}>Back to event</Link></div>
  </section>
 }
-export function EventApplicationPage() {
+export function EventApplicationPage({guest=false}:{guest?:boolean}={}) {
  const navigate=useNavigate()
  const {slug}=useParams(),location=useLocation(),{token,isLoading}=useAuth()
  const edit=new URLSearchParams(location.search).get('edit')
  const eventPath=`/events/${encodeURIComponent(slug||'')}`
  const [event,setEvent]=useState<ApplicationEvent|null>(null),[action,setAction]=useState<PresentationFormAction|null>(null)
  const [ready,setReady]=useState(false),[error,setError]=useState(''),[revision,setRevision]=useState(0)
+ const [savedDetails,setSavedDetails]=useState<{title:string;teamName:string}|null>(null)
  const [saved,setSaved]=useState(''),[copyStatus,setCopyStatus]=useState('')
  useEffect(()=>{
   if(isLoading)return
@@ -62,9 +65,9 @@ export function EventApplicationPage() {
  const prompt=`Connect to ${window.location.origin}${mcpPath} with my account using OAuth. Help me submit a presentation for ${window.location.origin}${eventPath}/apply. Ask for my organization, presentation title and summary, and use the organization's shared team list. Show me a preview and ask for my approval before submitting.`
  return <div className="event-application-page" style={applicationBrandStyle()}>
   <Link className="application-back" to={eventPath}><ArrowLeft size={18} aria-hidden="true" /> Back to event</Link>
-  {event&&<ApplicationPageHeader eventTitle={event.title} editing={!!edit} submitted={!!saved}/>}
-  {error?<section className="application-message"><p role="alert">{error}</p><button className="btn-secondary" onClick={()=>setRevision(value=>value+1)}>Try again</button></section>:!ready?<p role="status">Loading application…</p>:saved?<ApplicationConfirmation eventPath={eventPath} submissionId={saved} editing={!!edit} onView={()=>setRevision(value=>value+1)}/>:<>
-   <EventPresentations key={`${event!.id}:${edit||'new'}`} eventId={event!.id} formAction={action} onActionHandled={()=>setAction(null)} onSubmitted={setSaved} onCancelEdit={()=>navigate(`${eventPath}#submissions`)}/>
+  {event&&<ApplicationPageHeader eventTitle={event.title} editing={!!edit} submitted={!!saved||(guest&&new URLSearchParams(location.search).has('submission'))}/>}
+  {error?<section className="application-message"><p role="alert">{error}</p><button className="btn-secondary" onClick={()=>setRevision(value=>value+1)}>Try again</button></section>:!ready?<p role="status">Loading application…</p>:guest?<GuestPresentationForm eventId={event!.id} eventTitle={event!.title} eventPath={eventPath}/>:saved?<ApplicationConfirmation eventPath={eventPath} submissionId={saved} editing={!!edit} eventTitle={event?.title} presentationTitle={savedDetails?.title} teamName={savedDetails?.teamName} onView={()=>setRevision(value=>value+1)}/>:<>
+   <EventPresentations key={`${event!.id}:${edit||'new'}`} eventId={event!.id} formAction={action} onActionHandled={()=>setAction(null)} onSubmitted={(id,details)=>{setSavedDetails(details||null);setSaved(id)}} guestApplyPath={`${eventPath}/apply/guest`} onCancelEdit={()=>navigate(`${eventPath}#submissions`)}/>
    {!edit&&<details className="presentation-ai-option"><summary>Apply with an AI assistant</summary><p>Copy this prompt into an assistant that supports MCP, then approve the connection with your account.</p><textarea aria-label="Submission prompt" readOnly value={prompt} rows={5} onFocus={e=>e.currentTarget.select()}/><button className="btn-secondary" onClick={()=>{void navigator.clipboard.writeText(prompt).then(()=>setCopyStatus('Prompt copied'),()=>setCopyStatus('Select and copy the prompt above.'))}}><Copy size={16} aria-hidden="true"/> Copy prompt</button><span role="status">{copyStatus}</span></details>}
   </>}
  </div>

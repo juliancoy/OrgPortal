@@ -1,3 +1,4 @@
+import {execFileSync} from 'node:child_process'
 import {testUploadImageCompression} from './test-upload-image-compression.mjs'
 import {fixtureServer} from './fixture-server.mjs'
 // Offline visual renders for local review and the distributed Portal visual suite.
@@ -27,6 +28,7 @@ try{
   {name:'Expanded submission',url:base+'/submissions?brand=lifetech&submissionReview=1',ready:'.submission-voting-card',selector:'.presentation-applications',actions:[{click:'Expand submission: The Limits of Contemporary Medicine'}],visible:['.submission-card-details']},
   {name:'Unselected submission',url:base+'/submissions?brand=lifetech&submissionReview=1&unselected=1',ready:'.submission-voting-card',selector:'.presentation-applications',hidden:['.submission-card-details']},
  ]
+ execFileSync(process.execPath,[join(root,'scripts/test-application-journeys.mjs'),output],{cwd:root,stdio:'inherit',env:{...process.env,APPLICATION_COMPACT_CAPTURES:'1'}})
  const report=await renderLayouts(process.env.SUBMISSION_REVIEW_ONLY?submissionLayouts:[...layouts,accountMenuLayout,...supportLayouts,...submissionLayouts],output)
  // Exercise actual controls against synthetic, in-memory vote responses only.
  const browser=await chromium.launch({headless:true})
@@ -51,7 +53,7 @@ try{
     if(result.status==='failed')throw Error(`User task failed: ${task} at ${width}px`)
    }
    if(await registered.getAttribute('href')!=='/events/lifetech-demo-day-3/apply')throw Error('Registered application link is incorrect')
-   if(await guest.getAttribute('href')!=='/api/org/api/network/events/fixture-event/presentations/apply')throw Error('Guest application link is incorrect')
+   if(await guest.getAttribute('href')!=='/events/lifetech-demo-day-3/apply/guest')throw Error('Guest application link is incorrect')
    if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('Application options overflow viewport')
    await page.goto(base+'/submissions?brand=lifetech&submissionReview=1')
    const card=page.locator('.submission-voting-card'),details=card.locator('.submission-card-details')
