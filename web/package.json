@@ -62,7 +62,7 @@
     "test:organization-workflows": "node scripts/test-organization-workflows.mjs",
     "test:mcp:local": "python3 ../scripts/run-local-mcp-test.py",
     "typecheck": "tsc -b",
-    "build:bundle": "node scripts/build-network-positions.mjs && vite build"
+    "build:bundle": "node scripts/build-network-positions.mjs && node scripts/build-ecosystem-query.mjs && vite build"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.1",
