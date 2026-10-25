@@ -37,10 +37,13 @@ try{
  try{
   for(const width of [320,390,1440]){
    const context=await browser.newContext({viewport:{width,height:1000},colorScheme:'light'})
-   const page=await context.newPage();let selected=true,votes=0
+   const page=await context.newPage();let selected=true,votes=0,releaseVote,failVote=false
    await page.route('**/presentations/favorites**',async route=>{
     if(route.request().method()==='PUT'){
-     selected=Boolean(route.request().postDataJSON().selected);votes++
+     votes++
+     await new Promise(resolve=>{releaseVote=resolve})
+     if(failVote){await route.fulfill({status:503,json:{message:'Favorite could not be saved. Try again.'}});return}
+     selected=Boolean(route.request().postDataJSON().selected)
      await route.fulfill({json:{selected}})
     }else await route.fulfill({json:{favorites:selected?['fixture-submission']:[],limit:3}})
    })
@@ -73,12 +76,22 @@ try{
    await title.evaluate(el=>el.scrollIntoView({block:'center'}))
    const rect=await title.boundingBox();await page.mouse.click(rect.x+10,rect.y+10)
    await page.waitForFunction(()=>document.querySelector('.submission-card-select')?.getAttribute('aria-pressed')==='false')
+   if(!await page.getByText('0 of 3 favorites selected · Saving…',{exact:true}).isVisible())throw Error('Favorite selection must update before save completes')
+   if(!await card.locator('.submission-card-footer').getByText('0 favorites',{exact:true}).isVisible())throw Error('Favorite count must update immediately')
    if(votes!==1)throw Error('Card click must change vote exactly once')
+   releaseVote();await page.waitForFunction(()=>!document.querySelector('.submission-card-select')?.disabled)
    const vote=card.locator('.submission-card-select');await vote.focus();await page.keyboard.press('Enter')
    await page.waitForFunction(()=>document.querySelector('.submission-card-select')?.getAttribute('aria-pressed')==='true')
    if(votes!==2)throw Error('Keyboard vote must change vote exactly once')
+   releaseVote();await page.waitForFunction(()=>!document.querySelector('.submission-card-select')?.disabled)
+   failVote=true
+   await vote.click()
+   await page.waitForFunction(()=>document.querySelector('.submission-card-select')?.getAttribute('aria-pressed')==='false')
+   releaseVote()
+   await page.getByRole('alert').filter({hasText:'Favorite could not be saved'}).waitFor()
+   if(await vote.getAttribute('aria-pressed')!=='true'||!await card.locator('.submission-card-footer').getByText('1 favorite',{exact:true}).isVisible())throw Error('Failed favorite must restore selection and count')
    if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('Submission layout overflows viewport')
-   interactionResults.push({width,status:'passed',checks:8});await context.close()
+   interactionResults.push({width,status:'passed',checks:11});await context.close()
   }
  }finally{await browser.close();await writeFile(join(output,'submission-interactions.json'),JSON.stringify(interactionResults,null,2))}
  await writeFile(join(output,'user-heuristics.json'),JSON.stringify({modelVersion:userModel.version,mode:'synthetic-affordance-review',tasks:userReviews,unassessed:userModel.tasks.filter(task=>!userReviews.some(review=>review.task===task.id)).map(task=>task.id),limitations:'No completed application, real sign-in, saved settings, keyboard journey, slow-network or human usability result is inferred from these fixture checks.'},null,2)+'\n')
