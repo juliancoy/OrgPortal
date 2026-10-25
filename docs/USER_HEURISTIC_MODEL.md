@@ -78,3 +78,22 @@ PIdP OAuth handlers, local SQLite and intercepted brand images; it sends no live
 credentials or writes. Its heuristic outcome remains distinct from pending human
 review. ChatGPT's plugin discovery, Manage menu and reconnect controls are external
 and remain unassessed; a passing run does not certify that external user journey.
+
+## Sign in using another browser
+
+The `mcp-other-browser` task runs in
+`PIdP/serverless/browser/mcp-other-browser.mjs`, imported by the distributed
+`identity` catalog through `test/mcp-browser.test.mjs`. Two isolated browser
+contexts follow the visible **Use another browser** action, reject an incorrect
+matching code, confirm the account and automatically advance the waiting browser
+to permissions without an extra click or reload. The journey checks recovery from
+a failed status request and immediate checking when the waiting tab becomes visible
+with its interval timer paused. It asserts that no grant exists before explicit
+**Allow access**, preserves OAuth state and PKCE, and verifies the confirmed identity
+through token introspection. Pairing and browser-binding checks remain enforced.
+
+Run `node --import tsx --test browser/mcp-other-browser.mjs` from
+`PIdP/serverless`. Reports are written to `MCP_OTHER_BROWSER_ARTIFACTS` or
+`/tmp/pidp-other-browser`. Identity cookies are synthetic; handlers and isolated
+SQLite are real. These checks do not establish human usability or certify the
+external ChatGPT interface. Human review remains pending.

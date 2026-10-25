@@ -193,8 +193,6 @@ try {
   await page.getByLabel('Matching code').fill(pairing);
   await page.getByRole('button',{name:'Confirm this account',exact:true}).click();
   await expect(page.getByRole('heading',{name:'Account confirmed',exact:true})).toBeVisible();
-  await expect(chat.getByRole('button',{name:'Continue to permissions',exact:true})).toBeVisible({timeout:15000});
-  await chat.getByRole('button',{name:'Continue to permissions',exact:true}).click();
   await expect(chat.getByRole('button',{name:'Allow access',exact:true})).toBeVisible();
   await expect(chat.getByText(activeEmail,{exact:true})).toBeVisible();
   await chat.getByRole('button',{name:'Allow access',exact:true}).click();
