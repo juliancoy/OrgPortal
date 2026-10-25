@@ -18,8 +18,8 @@ function runStep(label, script, args = []) {
 }
 
 export async function build(run = runStep) {
-  await run('Ecosystem query index', 'scripts/build-ecosystem-query.mjs')
   await run('Network positions', 'scripts/build-network-positions.mjs')
+  await run('Ecosystem query index', 'scripts/build-ecosystem-query.mjs')
   // TypeScript uses noEmit: it and Vite can read the same sources independently.
   // Wait for both, and require both to pass before reporting a successful build.
   const results = await Promise.allSettled([

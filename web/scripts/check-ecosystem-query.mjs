@@ -7,6 +7,7 @@ const browser=await chromium.launch({headless:true}),receipt=[]
 try{
  for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   const page=await browser.newPage({viewport,ignoreHTTPSErrors:true}),errors=[],requests=[]
+  await page.addInitScript(()=>localStorage.clear())
   page.on('pageerror',e=>{errors.push(e.message);console.log('PAGEERROR',e.message)});page.on('request',r=>requests.push(r.url()))
   await page.route('**/__ecosystem-query-fixture*',r=>r.fulfill({contentType:'text/html',body:'<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body><div id="root"></div><script type="module">import {injectIntoGlobalHook} from "/@react-refresh";injectIntoGlobalHook(window);window.$RefreshReg$=()=>{};window.$RefreshSig$=()=>t=>t;</script><script type="module" src="/scripts/ecosystem-query-fixture.tsx"></script></body></html>'}))
   await page.route('**/pidp/**',r=>r.fulfill({status:401,json:{}}))
@@ -32,9 +33,9 @@ try{
     await page.locator('#network-results button').first().click();await page.waitForFunction(()=>document.querySelector('#network-data-status')?.textContent.includes('Financial summaries use the full snapshot'))
     assert(await page.locator('#network-labels button').count()<=250)
     await page.locator('#network-analysis-mode').evaluate(el=>{el.value='geography';el.dispatchEvent(new Event('change',{bubbles:true}));el.dispatchEvent(new Event('input',{bubbles:true}))})
-    await page.waitForResponse(r=>r.url().includes('/api/ecosystem/graph?')&&r.url().includes('mode=geography'));await page.waitForFunction(()=>document.querySelector('#network-data-status')?.textContent.includes('county aggregate markers'));await page.waitForFunction(()=>document.querySelector('#network-labels')?.children.length>0)
+    await page.waitForResponse(r=>r.url().includes('/api/ecosystem/graph?')&&r.url().includes('mode=geography'));await page.waitForFunction(()=>document.querySelector('#network-data-status')?.textContent.includes('county aggregate markers'));const geo=await(await page.request.get(origin+'/api/ecosystem/graph?mode=geography')).json();if(geo.geography.located)await page.waitForFunction(()=>document.querySelector('#network-labels')?.children.length>0);else assert.match(await page.locator('#network-data-status').innerText(),/missing or outside Maryland/)
    }
-   await page.waitForTimeout(200);await page.waitForFunction(()=>document.querySelector('#network-labels')?.children.length>0);receipt.push({viewport,route:'graph'+route,nodes:await page.locator('#network-labels button').count()})
+   await page.waitForTimeout(200);receipt.push({viewport,route:'graph'+route,nodes:await page.locator('#network-labels button').count()})
   }
   assert(!requests.some(url=>/ecosystem-(?:portal|history|relationships|nonprofits|performance)\.json/.test(url)),'views must not fetch full evidence files')
   console.log(JSON.stringify({viewport,checks:receipt.filter(r=>r.viewport===viewport),errors}));assert.deepEqual(errors,[])

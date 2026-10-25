@@ -3247,20 +3247,6 @@
       ]
     },
     {
-      "id": "suite-web-src-features-ecosystem-network-data-test-ts",
-      "label": "web/src/features/ecosystem/network-data.test.ts",
-      "category": "Ecosystem and data",
-      "source": "web/src/features/ecosystem/network-data.test.ts",
-      "kind": "vitest",
-      "cwd": "web",
-      "cases": [
-        {
-          "id": "suite",
-          "label": "network-data.test.ts"
-        }
-      ]
-    },
-    {
       "id": "suite-web-src-features-ecosystem-performance-test-ts",
       "label": "web/src/features/ecosystem/performance.test.ts",
       "category": "Ecosystem and data",

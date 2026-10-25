@@ -57,7 +57,7 @@ async function loadGraph(scope=graphScope,{keepView=false}={}){
   const response=await fetch(graphEndpoint(parameters),{signal:controller.signal,credentials:'omit'}),next=await response.json()
   if(!response.ok)throw Error(next.error||'Network scope unavailable')
   if(disposed||sequence!==graphSequence)return
-  graphScope=scope;if(!scope.org)selected=null;graphOffset=next.offset;graphNext=next.nextOffset;data=next
+  graphScope=scope;if(!scope.org){selected=null;$('#neighbors').checked=false;$('#neighbors').disabled=true;if($('#network-detail-mode').value==='focus')$('#network-detail-mode').value='overview';$('#network-detail').innerHTML='<h2>Select an organization or group</h2>'}graphOffset=next.offset;graphNext=next.nextOffset;data=next
   const metrics=new Map(data.organizations.map(o=>[o.id,o.networkMetrics||{}]))
   const map=key=>new Map([...metrics].map(([id,value])=>[id,value[key]]).filter(([,value])=>value!==undefined))
   preparedData={data,folded:data,summaries:{pies:map('pie'),totals:map('totals'),counterparties:map('counterparties'),obligationIds:new Set([...metrics].filter(([,m])=>m.obligations).map(([id])=>id))},contextPies:map('contextPie')}

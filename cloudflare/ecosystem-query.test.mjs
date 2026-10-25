@@ -40,6 +40,17 @@ test('map starts with county aggregates and narrows to published coordinates',as
  assert.equal(overview.organizations.reduce((s,o)=>s+o.count,0),overview.geography.located)
  const bounded=await query('graph',{mode:'geography',bbox:'-76.7,39.2,-76.5,39.4'})
  assert(bounded.organizations.every(o=>o.longitude>=-76.7&&o.longitude<=-76.5&&o.latitude>=39.2&&o.latitude<=39.4));assert(bounded.organizations.length<=MAX_NODES)
+ const point={id:'published-point',name:'Published test coordinate',latitude:39.3,longitude:-76.6},outside={id:'outside-view',name:'Outside test view',latitude:39.9,longitude:-77.9}
+ const points=[point,outside]
+ const fixtureRead=async path=>{
+  if(path.endsWith('organizations/index.json'))return {rows:points.map(p=>({...p,search:p.name.toLowerCase()})),filters:{},gramCounts:{}}
+  if(path.endsWith('organizations/0.json'))return points
+  if(path.endsWith('topology.json'))return {edges:[],edgesByOrg:{},adjacency:{'published-point':[],'outside-view':[]},degree:{'published-point':0,'outside-view':0},geography:{located:2,missing:0,clusters:[]}}
+  return read(path)
+ }
+ const fixture=await queryEcosystem(fixtureRead,'graph',new URLSearchParams({mode:'geography',bbox:'-76.7,39.2,-76.5,39.4'}))
+ assert.deepEqual(fixture.body.organizations.map(p=>p.id),['published-point'])
+ if(!overview.geography.located)assert.equal(overview.geography.missing,overview.totalOrganizations)
  await assert.rejects(()=>query('graph',{bbox:'not,bounds'}),/Invalid map bounds/)
 })
 test('summary totals cover full scope and preserve signed government obligations',async()=>{
