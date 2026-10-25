@@ -10,7 +10,7 @@ export const organizationBrandingPath=(slug:string)=>`/orgs/${encodeURIComponent
 type Organization={id:string;slug:string;name:string;description?:string|null;image_url?:string|null}
 const roles=['icon','avatar','background'] as const
 const emptyFiles={icon:null,avatar:null,background:null}
-export function OrganizationBranding({organization,canManage=false,onSaved}:{organization:Organization;canManage?:boolean;onSaved?:()=>void}) {
+export function OrganizationBranding({organization,canManage=false,onSaved,embedded=false}:{organization:Organization;canManage?:boolean;onSaved?:()=>void;embedded?:boolean}) {
  const {token}=useAuth()
  const [tagline,setTagline]=useState(''),[accent,setAccent]=useState('#155e59'),[themeId,setThemeId]=useState('harbor')
  const [imagery,setImagery]=useState<OrganizationThemeImagery>(standardOrganizationThemes[0].imagery!)
@@ -82,6 +82,6 @@ export function OrganizationBranding({organization,canManage=false,onSaved}:{org
  </fieldset>
  </form>}
  {message&&<p role="status">{message}</p>}
- <TenantBrandingPage embedded tenant={site} brandGuidePath={organizationBrandingPath(organization.slug)} />
+ <TenantBrandingPage embedded={embedded} tenant={site} brandGuidePath={organizationBrandingPath(organization.slug)} />
  </>
 }

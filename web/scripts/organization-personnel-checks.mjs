@@ -1,8 +1,10 @@
 import {chromium,expect} from '@playwright/test'
 import {existsSync} from 'node:fs'
+import {mkdir} from 'node:fs/promises'
 import {join} from 'node:path'
 
 export async function testOrganizationPersonnel(base,output){
+ await mkdir(output,{recursive:true})
  const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH||existsSync('/usr/bin/google-chrome')?{executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH||'/usr/bin/google-chrome'}:{})})
  try{
   const page=await browser.newPage()
