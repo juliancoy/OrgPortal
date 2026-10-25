@@ -68,6 +68,9 @@ test('MCP palette changes enforce management, scope, preview freshness and one-u
     assert.deepEqual((await run(identity, 'get', { organizationId: 'org' })).brandThemes, brandThemes);
     db.sqlite.exec("INSERT INTO organizations(id,name,slug,tags,city) VALUES ('other','Other','other','[]','Baltimore')");
     await assert.rejects(run(identity, 'get', { organizationId: 'other' }), /management/);
+    await claimOrganization(db.asD1(), 'other', { id: 'owner', name: 'Owner', email: null, isOperator: false }, new Date().toISOString());
+    db.sqlite.exec("INSERT INTO group_sites(id,organization_id,hostname,name,tagline,accent_color,profile,features,home_org_slug) VALUES ('wrong','org','wrong.example','Wrong','Wrong','#123456','community','[]','other')");
+    await assert.rejects(run(identity, 'get', { organizationId: 'other' }), /not found/);
     await assert.rejects(run(identity, 'update', { ...themeArgs, confirm: true, previewId: themeFresh.previewId }), /already used|changed/);
     const resetArgs = { organizationId: 'org', brandThemes: null };
     const reset = await run(identity, 'update', resetArgs);

@@ -57,16 +57,20 @@ export function TenantBrandingPage({brandGuidePath='/branding',tenant:organizati
       : null,
   ].filter((asset): asset is NonNullable<typeof asset> => Boolean(asset))
 
-  const colors: BrandColor[] = [...resolveBrandPalette({ ...tenant, profile: profile.id, theme_color: profile.themeColor }), ...Object.entries(selectedTheme?.[colorMode] || {}).map(([label, value]) => ({ label: `${selectedTheme!.name} ${colorMode}: ${label}`, value }))]
+  const palette = resolveBrandPalette({ ...tenant, profile: profile.id, theme_color: profile.themeColor })
+  const colors: BrandColor[] = [...palette, ...Object.entries(selectedTheme?.[colorMode] || {}).map(([label, value]) => ({ label: `${selectedTheme!.name} ${colorMode}: ${label}`, value }))]
 
-  const brandColors = Object.fromEntries(lifetechBrand.colors.map(color => [color.id, color.value]))
+  const brandColors = Object.fromEntries(lifetechBrand.colors.flatMap(color => {
+    const configured = palette.find(item => item.label === color.label)
+    return configured ? [[color.id, configured.value]] : []
+  }))
   const accessiblePairs = themeColors ? [
     { label: 'Body text', foreground: themeColors['text-primary'], background: themeColors.surface, minimum: 4.5 },
     { label: 'Panel text', foreground: themeColors['text-primary'], background: themeColors.panel, minimum: 4.5 },
     { label: 'Secondary text', foreground: themeColors['text-secondary'], background: themeColors.surface, minimum: 4.5 },
     { label: 'Links', foreground: themeColors.primary, background: themeColors.surface, minimum: 4.5 },
     { label: 'Primary button', foreground: themeColors['on-primary'] || themeColors['btn-primary-text'], background: themeColors['btn-primary-bg'], minimum: 4.5 },
-  ].filter((pair): pair is typeof pair & {foreground: string; background: string} => Boolean(pair.foreground && pair.background)).map(pair => ({ ...pair, ratio: contrastRatio(pair.foreground, pair.background) })) : profile.id === 'lifetech' ? lifetechBrand.pairings.map(pair => ({ ...pair, foreground: brandColors[pair.foreground], background: brandColors[pair.background], ratio: contrastRatio(brandColors[pair.foreground], brandColors[pair.background]) })) : []
+  ].filter((pair): pair is typeof pair & {foreground: string; background: string} => Boolean(pair.foreground && pair.background)).map(pair => ({ ...pair, ratio: contrastRatio(pair.foreground, pair.background) })) : profile.id === 'lifetech' ? lifetechBrand.pairings.filter(pair => brandColors[pair.foreground] && brandColors[pair.background]).map(pair => ({ ...pair, foreground: brandColors[pair.foreground], background: brandColors[pair.background], ratio: contrastRatio(brandColors[pair.foreground], brandColors[pair.background]) })) : []
 
   async function exportStyleGuide() {
     setExporting(true)
