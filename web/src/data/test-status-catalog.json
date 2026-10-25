@@ -2967,6 +2967,20 @@
       ]
     },
     {
+      "id": "suite-web-src-config-organizationThemes-test-ts",
+      "label": "web/src/config/organizationThemes.test.ts",
+      "category": "Organizations and membership",
+      "source": "web/src/config/organizationThemes.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organizationThemes.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-web-src-config-pidp-test-ts",
       "label": "web/src/config/pidp.test.ts",
       "category": "Identity and access",
