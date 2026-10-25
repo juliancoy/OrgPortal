@@ -122,6 +122,9 @@ test('verified operators edit catalog profiles without claiming organizations; s
   const preview=await run(db,admin,'update',args) as any;
   await assert.rejects(run(db,{...admin,isOperator:false},'update',{...args,confirm:true,previewId:preview.previewId}),/management/);
   const result=await run(db,admin,'update',{...args,confirm:true,previewId:preview.previewId}) as any;assert.equal(result.organization.description,args.description);
+  const reopened=await run(db,admin,'get',{organizationId:args.organizationId}) as any;
+  assert.equal(reopened.organization.description,args.description);
+  await assert.rejects(run(db,identity,'get',{organizationId:args.organizationId}),/membership/);
   assert.equal(sql.prepare("SELECT COUNT(*) n FROM organization_memberships WHERE organization_id='unclaimed'").get()!.n,0);
  }finally{sql.close()}
 });

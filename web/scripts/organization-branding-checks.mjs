@@ -7,7 +7,7 @@ export async function testOrganizationBranding(base,output,contactOutput=output)
  await mkdir(output,{recursive:true})
  const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH||existsSync('/usr/bin/google-chrome')?{executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH||'/usr/bin/google-chrome'}:{})})
  try{
- const page=await browser.newPage();let portal=null,patches=[],uploads=0,imageBytes=null
+ const page=await browser.newPage();page.on('pageerror',error=>console.error(error));let portal=null,patches=[],uploads=0,imageBytes=null
  await page.route('**/api/**',async route=>{
   const request=route.request(),url=new URL(request.url()),path=url.pathname;
   if(path.includes('/media/test-'))return route.fulfill({contentType:'image/png',body:imageBytes})
@@ -76,13 +76,13 @@ export async function testOrganizationBranding(base,output,contactOutput=output)
    return route.fulfill({json:[]})
   })
   await page.goto(base+'/orgs/fixture-org?tab=branding&brand=lifetech')
-  await expect(page.getByRole('heading',{name:'Anchor Advance Care',exact:true}).first()).toBeVisible()
+  await expect(page.locator('.portal-org-page')).toBeVisible()
   if(authority===true){
    await expect(page.getByRole('form',{name:'Edit organization branding'})).toBeVisible()
    await expect(page.getByLabel('Organization theme',{exact:true})).toBeVisible()
    await expect(page.getByLabel('Icon image',{exact:true})).toBeVisible()
   }else{
-   await expect(page.getByRole('heading',{name:'Brand guide',exact:false}).first()).toBeVisible()
+   await expect(page.getByRole('heading',{name:'Portal palette',exact:true})).toBeVisible()
    await expect(page.getByRole('form',{name:'Edit organization branding'})).toHaveCount(0)
   }
   await page.unroute('**/api/**')

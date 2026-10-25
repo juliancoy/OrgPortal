@@ -59,3 +59,21 @@ The existing distributed `visual` suite runs this same fixture runner and writes
 From `web`, run `node scripts/test-application-journeys.mjs`. The distributed `visual` suite runs it too, publishing `journeys.json` and selected mobile captures. It follows the real React application pages at 390 and 1440 pixels. Guest submissions use the actual Hono handler with an in-memory SQLite database; organization writes and identity are synthetic. It checks canonical guest routes, contextual sign-in entry, existing-organization defaults, save/reopen, receipt reload, duplicate-email validation, lost connections, server validation, retained entries and successful retry. No production records or emails are created. It does not verify the real OAuth round trip, provider delivery, guest account-linking browser flow or measured human hesitation.
 
 Guest proposals remain private to organizers; organization proposals remain public for community voting. Both entry buttons explain this difference. Account linking after guest submission is optional and requires the same verified email; its confirmation explicitly creates a team and invites the supplied teammate. Receipt reload exposes status only, without returning private application details to an anonymous bearer of the receipt URL.
+
+## Administrator MCP reconnect
+
+The `mcp-admin-reconnect` task is exercised by
+`PIdP/serverless/browser/mcp-admin-reconnect.mjs`. The distributed `identity`
+catalog includes this browser journey and the existing MCP consent browser tests.
+It follows the visible administrator action with the keyboard, preserves OAuth
+state and PKCE through the primary-account login handoff, checks administrator
+consent, exchanges the code and verifies live introspection. Removing administrator
+authority must revoke the elevated result and deny new administrator consent.
+The existing distributed `org-api` organization profile test separately verifies
+preview/apply, persisted edits without membership and denial for ordinary accounts.
+
+Primary-account authentication is a synthetic fixture. The browser test uses real
+PIdP OAuth handlers, local SQLite and intercepted brand images; it sends no live
+credentials or writes. Its heuristic outcome remains distinct from pending human
+review. ChatGPT's plugin discovery, Manage menu and reconnect controls are external
+and remain unassessed; a passing run does not certify that external user journey.
