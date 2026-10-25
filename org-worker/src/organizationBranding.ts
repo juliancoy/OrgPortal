@@ -11,7 +11,7 @@ export function organizationBrandingRoutes() {
   if(!org)throw new HTTPException(404,{message:'Organization not found.'});
   const site=await c.env.DB.prepare(`SELECT id,organization_id,slug,hostname,name,tagline,accent_color,profile,features,
    brand_image_path,home_url,home_org_slug,home_image_url,theme_color,feature_config,
-   home_heading,home_description,home_primary_label,home_primary_href,home_secondary_label,home_secondary_href
+   home_kind,home_path,home_heading,home_description,home_primary_label,home_primary_href,home_secondary_label,home_secondary_href
    FROM group_sites WHERE organization_id=? OR (organization_id IS NULL AND home_org_slug=?) ORDER BY CASE WHEN organization_id=? THEN 0 ELSE 1 END,id LIMIT 1`)
    .bind(org.id,org.slug,org.id).first<Record<string,unknown>>();
   if(!site)return c.json({portal:null});

@@ -55,3 +55,10 @@
 [data-portal-profile='lifetech'] .portal-brand img { width: 46px; height: 46px; object-fit: contain; border: 0; border-radius: 0; background: transparent; }
 [data-portal-profile='lifetech'] .portal-brand-title { font-family: inherit; text-transform: none; font-weight: 800; }
 [data-portal-profile='lifetech'] .portal-brand-sub { font-size: .68rem; letter-spacing: .03em; }
+
+.organization-brand-editor { margin-bottom: 2rem; }
+.organization-brand-editor fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 1rem; }
+.organization-brand-editor label { display: grid; gap: .4rem; font-weight: 600; }
+.organization-brand-editor input[type="color"] { height: 2.75rem; padding: .35rem; }
+.organization-brand-editor button { justify-self: start; }
+.organization-brand-editor p { margin: 0; font-size: .9rem; }

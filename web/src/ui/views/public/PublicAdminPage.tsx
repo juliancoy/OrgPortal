@@ -497,7 +497,7 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
         if (portal) {
           setPortalSlugDraft(normalizePortalSlug(portal.slug || org.slug))
           setPortalNameDraft(portal.name || org.name)
-          setPortalTaglineDraft(portal.tagline || org.description || '')
+          setPortalTaglineDraft(portal.tagline ?? '')
           setPortalHomeKindDraft(portal.home_kind || 'landing')
           setPortalHeadingDraft(portal.home_heading || portal.name || org.name)
           setPortalDescriptionDraft(portal.home_description || portal.tagline || org.description || '')
@@ -730,7 +730,7 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
         body: JSON.stringify({
           slug,
           name: portalNameDraft || updatedName,
-          tagline: portalTaglineDraft || org.description || `Portal for ${updatedName}`,
+          tagline: portalTaglineDraft,
           home_kind: portalHomeKindDraft || 'main',
           home_heading: portalHeadingDraft || portalNameDraft || updatedName,
           home_description: portalDescriptionDraft || portalTaglineDraft || org.description || '',

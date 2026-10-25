@@ -3810,6 +3810,7 @@ app.put("/api/network/orgs/:organizationId/portal", async (c) => {
   const heading = stringField(payload, "home_heading", 120) || name;
   const description = stringField(payload, "home_description", 500) || row.description || tagline;
   const homeImageUrl = cleanUrl(payload.home_image_url) || row.image_url || null;
+  const brandImageUrl = cleanUrl(payload.brand_image_path) || existing?.brand_image_path || row.image_url || null;
   const slugUrl = await orgPublicUrl(c.env, c.req.raw, row.slug);
   const timestamp = nowIso();
   await c.env.DB.prepare(
@@ -3858,7 +3859,7 @@ app.put("/api/network/orgs/:organizationId/portal", async (c) => {
       tagline,
       accent,
       features,
-      homeImageUrl,
+      brandImageUrl,
       slugUrl,
       accent,
       homeKind,

@@ -44,3 +44,18 @@ test('saving a slug portal preserves attached domains and unrelated onboarding p
  assert.equal(tenant.hostname,'medtech.social');assert.equal(tenant.public_base_url,'https://medtech.social');
  assert.equal(JSON.parse(String(tenant.feature_config)).onboarding.enabled,true);
 });
+test('organization administrators save branding with an empty or explicit tagline; ordinary members cannot',async t=>{
+ const f=fixture();t.after(()=>f.db.sqlite.close());
+ let actor='owner';t.mock.method(globalThis,'fetch',async()=>Response.json(identityProfile({id:actor,full_name:'Brand editor'})));
+ f.db.sqlite.exec("INSERT INTO organization_memberships(organization_id,user_id,role,status) VALUES('org','admin','administrator','active'),('org','member','member','active')");
+ const save=(tagline:string)=>app.request('https://medtech.social/api/network/orgs/org/portal',{method:'PUT',headers:{authorization:'Bearer session','content-type':'application/json'},body:JSON.stringify({name:'LifeTech',slug:'lifetech',tagline,accent_color:'#123456'})},f.env);
+ assert.equal((await save('')).status,200);
+ assert.equal(f.db.sqlite.prepare("SELECT tagline FROM group_sites WHERE organization_id='org'").get()!.tagline,'');
+ f.db.sqlite.exec("UPDATE group_sites SET brand_image_path='https://example.org/logo.png',home_image_url='https://example.org/cover.jpg' WHERE organization_id='org'");
+ actor='admin';assert.equal((await save('Care comes first')).status,200);
+ assert.equal(f.db.sqlite.prepare("SELECT brand_image_path FROM group_sites WHERE organization_id='org'").get()!.brand_image_path,'https://example.org/logo.png');
+ assert.equal(f.db.sqlite.prepare("SELECT tagline FROM group_sites WHERE organization_id='org'").get()!.tagline,'Care comes first');
+ actor='member';assert.equal((await save('Unauthorized')).status,403);
+ assert.equal(f.db.sqlite.prepare("SELECT tagline FROM group_sites WHERE organization_id='org'").get()!.tagline,'Care comes first');
+ const anonymous=await app.request('https://medtech.social/api/network/orgs/org/portal',{method:'PUT',body:'{}'},f.env);assert.equal(anonymous.status,401);
+});

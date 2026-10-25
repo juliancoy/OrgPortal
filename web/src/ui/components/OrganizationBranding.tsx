@@ -10,6 +10,7 @@ type Organization={id:string;slug:string;name:string;description?:string|null;im
 export function OrganizationBranding({organization,canManage=false}:{organization:Organization;canManage?:boolean}) {
  const {token}=useAuth()
  const [tagline,setTagline]=useState(''),[accent,setAccent]=useState('#155e59'),[image,setImage]=useState<File|null>(null),[busy,setBusy]=useState(false),[message,setMessage]=useState('')
+ useEffect(()=>{setImage(null);setMessage('')},[organization.id])
  const [result,setResult]=useState<{slug:string;site:GroupSite|null}|null>(null),[error,setError]=useState(''),[revision,setRevision]=useState(0)
  useEffect(()=>{
   const controller=new AbortController();setError('');setResult(null)
@@ -29,7 +30,7 @@ export function OrganizationBranding({organization,canManage=false}:{organizatio
   tagline:'',accent_color:'#155e59',brand_image_path:fallbackImage,home_url:new URL(`/orgs/${encodeURIComponent(organization.slug)}`,window.location.origin).href,
  }
  return <>
- {canManage&&token&&<form className="portal-card" aria-label="Edit organization branding" onSubmit={async event=>{
+ {canManage&&token&&<form className="portal-card organization-brand-editor" aria-label="Edit organization branding" onSubmit={async event=>{
   event.preventDefault();if(busy)return;setBusy(true);setMessage('');
   const base=`/api/org/api/network/orgs/${encodeURIComponent(organization.id)}`;
   async function request(url:string,method:string,body:BodyInit,json=false){
@@ -44,7 +45,7 @@ export function OrganizationBranding({organization,canManage=false}:{organizatio
     imageUrl=new URL(path.startsWith('/api/network/')?`/api/org${path}`:path,window.location.origin).href;
     await request(base,'PATCH',JSON.stringify({image_url:imageUrl}),true);setImage(null);
    }
-   await request(`${base}/portal`,'PUT',JSON.stringify({...result.site,slug:result.site?.slug||organization.slug,name:site.name,tagline,accent_color:accent,home_image_url:imageUrl,home_kind:result.site?.home_kind||'org'}),true);
+   await request(`${base}/portal`,'PUT',JSON.stringify({...result.site,slug:result.site?.slug||organization.slug,name:site.name,tagline,accent_color:accent,brand_image_path:imageUrl,home_image_url:result.site?.home_image_url||imageUrl,home_kind:result.site?.home_kind||'org'}),true);
    await invalidatePublicOrganizationData();setRevision(value=>value+1);setMessage('Branding saved.');
   }catch(reason){setMessage(reason instanceof Error?reason.message:'Could not save branding.')}finally{setBusy(false)}
  }}>

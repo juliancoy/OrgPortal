@@ -7,6 +7,8 @@ import {SupportPage} from '../../src/ui/views/support/SupportPage'
 import {PeoplePage} from '../../src/ui/views/PeoplePage'
 import {PublicOrganizationsPage} from '../../src/ui/views/public/PublicOrganizationsPage'
 import {PublicEventsPage} from '../../src/ui/views/public/PublicEventsPage'
+import {OrganizationBranding} from '../../src/ui/components/OrganizationBranding'
+import {EventPresentations} from '../../src/ui/components/EventPresentations'
 import {TenantBrandingPage} from '../../src/ui/views/TenantBrandingPage'
 import {LocalHomePage} from '../../src/ui/views/LocalHomePage'
 import {EventApplyButtons} from '../../src/ui/components/EventApplyButtons'
@@ -25,6 +27,9 @@ const life={id:'lifetech',slug:'lifetech',organization_id:'fixture-org',hostname
 if(brand==='lifetech')setGroupSite(life)
 applyPortalBranding()
 const body=<Routes>
+ <Route path="/organization-branding" element={<OrganizationBranding organization={{id:'fixture-org',slug:'fixture-org',name:'Anchor Advance Care'}} canManage={!new URLSearchParams(location.search).has('readonly')}/>}/>
+ <Route path="/presentation-form" element={<EventPresentations eventId="fixture-event"/>}/>
+
  <Route path="/event-apply-options" element={<section className="panel public-event-main"><h1>LifeTech Demo Day</h1><section className="public-event-applications"><div className="presentation-settings"><label><input type="checkbox" defaultChecked/>Enable presentation applications</label></div><EventApplyButtons eventId="fixture-event" eventSlug="lifetech-demo-day-3" gold="#D4AF37"/></section><div className="public-event-tabs" role="tablist" aria-label="Event sections"><button role="tab" aria-selected="true">Info</button><button role="tab" aria-selected="false">Poster</button><button role="tab" aria-selected="false">Submissions</button></div><section className="portal-card public-event-description"><div className="public-event-card-heading"><p className="public-event-eyebrow">About the event</p><h2>What to expect</h2></div><p>Baltimore’s Life Sciences in Action</p></section></section>}/>
  <Route path="/submissions" element={<EventSubmissions eventId="fixture-event" onEdit={()=>{}} onDeleted={()=>{}}/>}/>
  <Route path="/onboarding" element={<OnboardingPage/>}/>
