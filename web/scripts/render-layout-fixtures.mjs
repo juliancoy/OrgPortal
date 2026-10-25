@@ -100,7 +100,7 @@ try{
    await expect.poll(()=>votes).toBe(3)
    releaseVote()
    await page.getByRole('alert').filter({hasText:'Favorite could not be saved'}).waitFor()
-   if(await vote.getAttribute('aria-pressed')!=='true'||!await card.locator('.submission-card-footer').getByText('1 favorite',{exact:true}).isVisible())throw Error('Failed favorite must restore selection and count')
+   if(await vote.getAttribute('aria-pressed')!=='true'||!await card.locator('.submission-card-footer').getByText('1 star',{exact:true}).isVisible())throw Error('Failed favorite must restore selection and count')
    if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('Submission layout overflows viewport')
    interactionResults.push({width,status:'passed',checks:11});await context.close()
   }
