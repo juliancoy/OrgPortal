@@ -65,6 +65,28 @@ export async function testOrganizationBranding(base,output,contactOutput=output)
  const tiles=await Promise.all(names.map(async name=>`<figure><figcaption>${name}</figcaption><img src="data:image/png;base64,${(await readFile(join(output,name))).toString('base64')}"/></figure>`))
  await contact.setContent('<style>body{background:#e8edf2;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;font:14px Arial}figure{margin:0}img{width:100%;height:920px;object-fit:contain;object-position:top}figcaption{padding:10px}</style>'+tiles.join(''))
  await contact.screenshot({path:join(contactOutput,'contact-organization-branding.png'),fullPage:true})
+ // Exercise the real parent permission gate with no organization memberships.
+ for (const authority of [true,false,'true',null]) {
+  await page.route('**/api/**',async route=>{
+   const path=new URL(route.request().url()).pathname
+   if(path.endsWith('/admin/me'))return route.fulfill(authority===null?{status:403,json:{error:'Denied'}}:{json:{is_sysadmin:authority}})
+   if(path.endsWith('/orgs/public/fixture-org'))return route.fulfill({json:{id:'fixture-org',slug:'fixture-org',name:'Anchor Advance Care',description:'Care team',tags:[],links:[],membership_count:2,upcoming_events_count:0}})
+   if(path.endsWith('/branding')||path.endsWith('/portal'))return route.fulfill({json:{portal}})
+   if(path.endsWith('/membership'))return route.fulfill({json:{membership:null}})
+   return route.fulfill({json:[]})
+  })
+  await page.goto(base+'/orgs/fixture-org?tab=branding&brand=lifetech')
+  await expect(page.getByRole('heading',{name:'Anchor Advance Care',exact:true}).first()).toBeVisible()
+  if(authority===true){
+   await expect(page.getByRole('form',{name:'Edit organization branding'})).toBeVisible()
+   await expect(page.getByLabel('Organization theme',{exact:true})).toBeVisible()
+   await expect(page.getByLabel('Icon image',{exact:true})).toBeVisible()
+  }else{
+   await expect(page.getByRole('heading',{name:'Brand guide',exact:false}).first()).toBeVisible()
+   await expect(page.getByRole('form',{name:'Edit organization branding'})).toHaveCount(0)
+  }
+  await page.unroute('**/api/**')
+ }
  console.log('PASS: organization branding edit/upload/reload, neutral tagline, read-only permissions, desktop/mobile, initial application branding and existing-team image')
  }finally{await browser.close()}
 }

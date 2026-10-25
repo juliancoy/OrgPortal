@@ -235,6 +235,8 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
   const [savingPortal, setSavingPortal] = useState(false)
   const [savingPortalDomain, setSavingPortalDomain] = useState(false)
   const [myAdminOrgs, setMyAdminOrgs] = useState<MyOrganization[]>([])
+  const [permissionToken, setPermissionToken] = useState<string | null>(null)
+  const [operatorToken, setOperatorToken] = useState<string | null>(null)
   const [myAdminOrgsStatus, setMyAdminOrgsStatus] = useState<string | null>(null)
   const [mergeSourceOrgId, setMergeSourceOrgId] = useState('')
   const [mergeStatus, setMergeStatus] = useState<string | null>(null)
@@ -249,7 +251,7 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
   const organizationEditorRef = useRef<HTMLDivElement | null>(null)
   const [showImageEditor, setShowImageEditor] = useState(false)
   const [editorSource, setEditorSource] = useState<string | null>(null)
-  const canManageCurrentOrg = myAdminOrgs.some((item) => item.id === org?.id)
+  const canManageCurrentOrg = Boolean(token && (operatorToken === token || (permissionToken === token && myAdminOrgs.some((item) => item.id === org?.id))))
   const requestedView = useOrganizationViewPreference(org?.slug, view || searchParams.get('view'))
   const organizationView = resolveOrganizationPageView(dashboard, requestedView, canManageCurrentOrg, membership?.status === 'active')
   const isOrganizerView = canManageCurrentOrg && organizationView === 'organizers'
@@ -412,13 +414,22 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
   }, [org])
 
   useEffect(() => {
+    const controller = new AbortController()
+    setPermissionToken(null)
+    setOperatorToken(null)
+    setMyAdminOrgs([])
     if (!token) {
       setMyAdminOrgs([])
       setMyAdminOrgsStatus('Sign in to access organization admin controls.')
       return
     }
+    fetch(orgUrl('/admin/me'), { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal })
+      .then(response => response.ok ? response.json() : null)
+      .then(data => { if (!controller.signal.aborted && data?.is_sysadmin === true) setOperatorToken(token) })
+      .catch(() => {})
     setMyAdminOrgsStatus('Loading admin organizations…')
     fetch(orgUrl('/api/network/orgs?mine=true&limit=300'), {
+      signal: controller.signal,
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -431,14 +442,18 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
         return (await resp.json()) as MyOrganization[]
       })
       .then((rows) => {
+        if (controller.signal.aborted) return
+        setPermissionToken(token)
         const admins = (Array.isArray(rows) ? rows : []).filter((row) => row.my_role === 'owner' || row.my_role === 'administrator')
         setMyAdminOrgs(admins)
         setMyAdminOrgsStatus('')
       })
       .catch((err) => {
+        if (controller.signal.aborted) return
         setMyAdminOrgs([])
         setMyAdminOrgsStatus(toUserFacingErrorMessage(err, 'Failed to load admin organizations'))
       })
+    return () => controller.abort()
   }, [token])
 
   useEffect(() => {

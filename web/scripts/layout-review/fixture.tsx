@@ -1,3 +1,4 @@
+import {PublicAdminPage} from '../../src/ui/views/public/PublicAdminPage'
 import { fixtureThemes } from './organization-themes'
 import { UserSettingsPage } from '../../src/ui/views/users/UserSettingsPage'
 import {createRoot} from 'react-dom/client'
@@ -31,6 +32,7 @@ const life={id:'lifetech',slug:'lifetech',organization_id:'fixture-org',hostname
 if(brand==='lifetech')setGroupSite(life)
 applyPortalBranding()
 const body=<Routes>
+ <Route path="/orgs/:handle" element={<PublicAdminPage/>}/>
  <Route path="/poster-review" element={<EventPosterTools inline slug="fixture-event" title="Life sciences, in motion"/>}/>
  <Route path="/settings" element={<UserSettingsPage/>}/>
  <Route path="/organization-personnel" element={<OrganizationBoard organization={{id:'fixture-org',slug:'fixture-org',name:'Harbor Care Team'}} memberType="team" canManage={new URLSearchParams(location.search).has('admin')}/>}/>
