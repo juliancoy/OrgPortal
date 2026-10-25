@@ -12,7 +12,7 @@ test('org branding is public, resolves different portal slugs, and excludes oper
   assert.equal(response.status,200);assert.equal(response.headers.get('cache-control'),'no-store');
   const data=await response.json() as {portal:{slug:string;brand_image_path:string;features:string[];feature_config:unknown}};
   assert.equal(data.portal.slug,'different-portal-slug');assert.equal(data.portal.brand_image_path,'/one.png');assert.deepEqual(data.portal.features,['events']);
-  assert.deepEqual(data.portal.feature_config,{brandPalette:[{label:'Gold',value:'#d4af37'}]});
+  assert.deepEqual(data.portal.feature_config,{brandThemes:null,brandPalette:[{label:'Gold',value:'#d4af37'}]});
   await db.prepare("UPDATE group_sites SET home_heading='Welcome to One',home_description='Public welcome copy',home_primary_label='Events',home_primary_href='/portals/different-portal-slug',home_url='https://orgportal.cc/portals/different-portal-slug' WHERE id='site'").run();
   const home=await(await app.request('https://example.test/one/branding',{}, {DB:db as unknown as D1Database} as Env)).json() as {portal:{home_heading:string;home_description:string;home_primary_href:string;home_url:string}};
   assert.equal(home.portal.home_heading,'Welcome to One');assert.equal(home.portal.home_description,'Public welcome copy');assert.equal(home.portal.home_primary_href,'/orgs/one');assert.equal(home.portal.home_url,'https://orgportal.cc/orgs/one');

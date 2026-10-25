@@ -7,7 +7,7 @@ export function applicationBrandStyle(): CSSProperties {
  const tenant=getGroupSite(),brand=getActivePortalProfileConfig()
  const palette=resolveBrandPalette({...tenant,profile:brand.id,theme_color:brand.themeColor})
  return {
-  '--application-paper':palette.find(color=>color.label==='MedTech OffWhite')?.value||'#F4F5F0',
-  '--application-gold':palette.find(color=>color.label==='BioTech Gold')?.value||'#D4AF37',
+  '--application-paper':'var(--brand-off-white, ' + (palette.find(color=>color.label==='MedTech OffWhite')?.value||'#F4F5F0') + ')',
+  '--application-gold':'var(--brand-gold, ' + (palette.find(color=>color.label==='BioTech Gold')?.value||'#D4AF37') + ')',
  } as CSSProperties
 }

@@ -24,3 +24,24 @@ export function parseOrganizationThemes(value: unknown): OrganizationThemes | nu
   }
   return typeof config.defaultTheme === 'string' && ids.has(config.defaultTheme) ? config : null
 }
+
+/** Keep component vocabulary aligned with the portal's core palette tokens. */
+export function portalThemeColors(colors: Record<string, string>): Record<string, string> {
+  const aliases: Record<string, string[]> = {
+    surface: ['background', 'body-bg', 'bg-surface', 'surface-soft', 'soft', 'map-page-bg'],
+    panel: ['paper', 'surface-solid', 'surface-raised', 'surface-input', 'header-bg', 'footer-bg', 'map-status-bg', 'button-secondary-bg'],
+    'panel-2': ['surface-muted', 'surface-subtle', 'surface-strong', 'surface-softer', 'primary-bg', 'hero-bg', 'nav-active-bg', 'icon-tile-bg', 'calendar-head-bg', 'calendar-event-bg', 'date-bg'],
+    'text-primary': ['text', 'ink', 'color-text-primary', 'calendar-event-ink'],
+    'text-secondary': ['text-muted', 'muted', 'color-text-secondary', 'color-sage'],
+    primary: ['primary-2', 'primary-hover', 'btn-primary-bg', 'action-bg', 'focus-color', 'icon-stroke', 'border-hover', 'blue', 'teal', 'brand-teal'],
+    'on-primary': ['btn-primary-text', 'action-text', 'selection-text'],
+    border: ['border-subtle', 'border-input', 'control-border', 'line', 'color-border'],
+  }
+  const result: Record<string, string> = {}
+  for (const [token, targets] of Object.entries(aliases)) {
+    if (colors[token]) for (const target of targets) result[target] = colors[token]
+  }
+  if (colors.primary) result['selection-bg'] = colors.primary
+  if (colors.panel) result['paper-rgb'] = colors.panel.slice(1).match(/../g)!.map(hex => parseInt(hex, 16)).join(', ')
+  return { ...result, ...colors }
+}

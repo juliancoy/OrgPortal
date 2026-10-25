@@ -1,4 +1,4 @@
-import { parseOrganizationThemes } from '../../../shared/organizationThemes'
+import { parseOrganizationThemes, portalThemeColors } from '../../../shared/organizationThemes'
 import { getGroupSite } from './timebankCommunity'
 
 export function organizationThemes() {
@@ -36,7 +36,7 @@ export function applyOrganizationTheme(id = readOrganizationTheme()) {
   }
   // Extra root specificity overrides built-in tenant palettes in both modes.
   const root = ':root:root:root[data-organization-theme]'
-  const declarations = (colors: Record<string, string>) => Object.entries(colors).map(([token, color]) => `--${token}:${color};`).join('')
+  const declarations = (colors: Record<string, string>) => Object.entries(portalThemeColors(colors)).map(([token, color]) => `--${token}:${color};`).join('')
   style.textContent = `${root}{${declarations(theme.light)}}\n${root}[data-theme="dark"]{${declarations(theme.dark)}}\n@media(prefers-color-scheme:dark){${root}:not([data-theme]){${declarations(theme.dark)}}}`
   document.documentElement.dataset.organizationTheme = theme.id
 }

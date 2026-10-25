@@ -1,3 +1,4 @@
+import { parseOrganizationThemes } from '../../shared/organizationThemes';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import {canonicalOrganizationHref,organizationPagePath} from '../../shared/organizationUrls';
@@ -21,7 +22,7 @@ export function organizationBrandingRoutes() {
    home_url:canonicalOrganizationHref(typeof site.home_url==='string'?site.home_url:null,org.slug),
    home_primary_href:canonicalOrganizationHref(typeof site.home_primary_href==='string'?site.home_primary_href:null,org.slug),
    home_secondary_href:canonicalOrganizationHref(typeof site.home_secondary_href==='string'?site.home_secondary_href:null,org.slug),
-   features:parsed(site.features,[]),feature_config:{brandPalette:config?.brandPalette,specialtyResources:config?.specialtyResources}}});
+   features:parsed(site.features,[]),feature_config:{brandThemes:parseOrganizationThemes(config?.brandThemes),brandPalette:config?.brandPalette,specialtyResources:config?.specialtyResources}}});
  });
  return app;
 }
