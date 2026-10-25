@@ -31,6 +31,20 @@
       ]
     },
     {
+      "id": "suite-cloudflare-ecosystem-query-test-mjs",
+      "label": "cloudflare/ecosystem-query.test.mjs",
+      "category": "Ecosystem and data",
+      "source": "cloudflare/ecosystem-query.test.mjs",
+      "kind": "node",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "ecosystem-query.test.mjs"
+        }
+      ]
+    },
+    {
       "id": "suite-cloudflare-event-source-preview-test-mjs",
       "label": "cloudflare/event-source-preview.test.mjs",
       "category": "Events and services",
