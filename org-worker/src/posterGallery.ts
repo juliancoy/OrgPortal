@@ -55,6 +55,11 @@ export async function posterGallery(db: D1Database, event: GalleryRecord & { hos
     append('$cover', type === 'organization' ? 'Organization profile image' : 'Event cover image', '', row.image_url);
     append('$social', 'Event social image', '', row.social_image_url);
   }
+  if(organization){
+    const sites=await db.prepare('SELECT home_image_url FROM group_sites WHERE organization_id=? ORDER BY id LIMIT 1').bind(event.id).all<{home_image_url:string|null}>();
+    const background=publicPosterImageUrl(sites.results?.[0]?.home_image_url);
+    if(background&&!/\.svg$/i.test(new URL(background).pathname)){seen.add(background);images.push({id:`organization:${event.id}:$brand-background`,label:'Brand background',alt:'Organization brand background',source:`Organization: ${event.name||event.slug}`,url:background})}
+  }
   if (!organization) add(event, 'event', true);
   for (const row of organizations.results || []) add(row, 'organization');
   for (const row of related.results || []) add(row, 'event');

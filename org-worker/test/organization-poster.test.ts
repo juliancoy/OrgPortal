@@ -32,7 +32,7 @@ test('all formats paginate complete text without dropping long entries',async()=
   }
   assert.match(organizationPosterPages([],'letter')[0][0],/No upcoming/);
   const svg=await renderEventPoster({title:'<script>Org</script>',description:'Build & collaborate',location:'Baltimore'},'https://portal.example/orgs/one','letter',{name:'One'},'light',{organization:true});
-  assert.ok(!svg.includes('<script>'));assert.ok(svg.includes('Build &amp; collaborate'));assert.ok(!svg.includes('Date to be announced'));
+  assert.ok(!svg.includes('<script>'));assert.ok(!svg.includes('Build &amp; collaborate'));assert.ok(!svg.includes('Date to be announced'));
 });
 
 test('public org poster endpoints isolate gallery selection and report every page', async () => {
@@ -57,4 +57,12 @@ test('public org poster endpoints isolate gallery selection and report every pag
     assert.equal((await app.request(root+'/flyer.svg?background=gallery&mediaId=organization:other:photo',{},env)).status,404);
     assert.equal((await app.request('https://portal.example/api/network/orgs/public/missing/flyer.svg',{},env)).status,404);
   } finally {db.close();}
+});
+
+test('organization brand backdrops precede gallery imagery and stay organization scoped',async()=>{
+ const db=new EventTestDb();try{
+  await db.prepare("INSERT INTO group_sites(id,organization_id,hostname,name,tagline,home_image_url) VALUES('one-brand','org-one','one.example','One','','https://one.example/brand.webp'),('other-brand','other','other.example','Other','','https://other.example/private.webp')").run();
+  const gallery=await posterGallery(db as unknown as D1Database,{id:'org-one',slug:'one',name:'One',image_url:'https://one.example/avatar.png'},true);
+  assert.equal(gallery[0].label,'Brand background');assert.equal(gallery[0].url,'https://one.example/brand.webp');assert.ok(!JSON.stringify(gallery).includes('other.example'));
+ }finally{db.close()}
 });

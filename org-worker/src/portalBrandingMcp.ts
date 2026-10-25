@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { parseOrganizationThemes, THEME_ID, THEME_COLOR_TOKEN, THEME_COLOR } from '../../shared/organizationThemes';
+import { parseOrganizationThemes, isThemeImage, THEME_ID, THEME_COLOR_TOKEN, THEME_COLOR } from '../../shared/organizationThemes';
 import { resolveBrandPalette } from '../../shared/brandPalette';
 import { authorizeOrganization } from './organizationIam';
 import { EventIntegrationError } from './eventPlatforms';
@@ -9,7 +9,7 @@ export const portalBrandingTargetSchema = z.object({ organizationId: z.string().
 const themeColorsSchema = z.record(z.string().regex(THEME_COLOR_TOKEN), z.string().regex(THEME_COLOR));
 export const organizationThemesSchema = z.object({
   defaultTheme: z.string().regex(THEME_ID),
-  themes: z.array(z.object({ id: z.string().regex(THEME_ID), name: z.string().trim().min(1).max(80), light: themeColorsSchema, dark: themeColorsSchema }).strict()).min(1).max(24),
+  themes: z.array(z.object({ id: z.string().regex(THEME_ID), name: z.string().trim().min(1).max(80), light: themeColorsSchema, dark: themeColorsSchema, imagery:z.object({icon:z.string().refine(isThemeImage),avatar:z.string().refine(isThemeImage),background:z.string().refine(isThemeImage)}).strict().optional() }).strict()).min(1).max(24),
 }).strict().refine(value => parseOrganizationThemes(value) !== null, 'Use unique theme IDs, an existing defaultTheme, and matching light/dark keys with 1-128 hex colors per mode');
 export const portalBrandingUpdateSchema = portalBrandingTargetSchema.extend({
   brandThemes: organizationThemesSchema.nullable().optional(),

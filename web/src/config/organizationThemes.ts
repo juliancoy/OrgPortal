@@ -46,3 +46,13 @@ export function selectOrganizationTheme(id: string) {
   try { localStorage.setItem(storageKey(), id) } catch { /* Apply even without storage. */ }
   applyOrganizationTheme(id)
 }
+
+/** Organization page styling stays inside its panel, preserving the host portal. */
+export function organizationPageTheme(site:import('./timebankCommunity').GroupSite|null|undefined):string|null {
+ const config=parseOrganizationThemes(site?.feature_config?.brandThemes)
+ const theme=config?.themes.find(theme=>theme.id===config.defaultTheme)
+ if(!theme)return null
+ const selector='.portal-org-page[data-brand-theme]'
+ const colors=(values:Record<string,string>)=>Object.entries(portalThemeColors(values)).map(([key,value])=>`--${key}:${value};`).join('')
+ return `${selector}{${colors(theme.light)}color:var(--text-primary);background:var(--surface);} :root[data-theme="dark"] ${selector}{${colors(theme.dark)}} @media(prefers-color-scheme:dark){:root:not([data-theme]) ${selector}{${colors(theme.dark)}}}`
+}

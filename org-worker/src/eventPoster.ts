@@ -100,6 +100,9 @@ function posterBackgroundParts(width: number, height: number, palette: ReturnTyp
       `<defs><linearGradient id="poster-bg-gradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#061a26"/><stop offset="56%" stop-color="#087482"/><stop offset="100%" stop-color="#101820"/></linearGradient></defs>`,
       `<rect width="${width}" height="${height}" fill="url(#poster-bg-gradient)"/>`,
       `<rect width="${width}" height="${height}" fill="#000000" opacity="0.2"/>`,
+      `<path d="M${width*.65} 0H${width}V${height*.63}Z" fill="#79d9ce" opacity=".12"/>`,
+      `<path d="M${width*.82} 0L${width*.28} ${height}" fill="none" stroke="#d4af37" stroke-width="${width*.018}" opacity=".25"/>`,
+      `<path d="M${width*.94} 0L${width*.4} ${height}" fill="none" stroke="#79d9ce" stroke-width="2" opacity=".4"/>`,
     ];
   }
   if (background === 'lifetech' && backgroundImage) {
@@ -121,7 +124,7 @@ function posterBackgroundParts(width: number, height: number, palette: ReturnTyp
 export async function renderEventPoster(event: PosterEvent, publicUrl: string, format: PosterFormat, brand: PosterBrand, theme: PosterTheme = 'light', options: PosterOptions = {}) {
   const { width, height } = posterGeometry(format);
   const social = format === 'social', small = format === 'postcard';
-  const background = options.background || 'solid';
+  const background = options.background || 'gradient';
   const palette = posterPalette(theme, background);
   if (options.backgroundOnly) {
     const artwork = posterBackgroundParts(width, height, palette, background, options.backgroundImage, options).join('');
@@ -134,7 +137,7 @@ export async function renderEventPoster(event: PosterEvent, publicUrl: string, f
   const textArea = social ? 830 : contentWidth;
   const title = clean(event.social_title || event.title || 'Community event');
   const parts: string[] = [];
-  const layouts = parsePosterElements(JSON.stringify(options.elements || {}));
+  const layouts:PosterElementLayout = {description:{hidden:!options.agenda},...parsePosterElements(JSON.stringify(options.elements || {}))};
   function element<T>(id: PosterElementId, anchorX: number, anchorY: number, draw: () => T): T {
     const start = parts.length;
     const value = draw();
@@ -167,6 +170,7 @@ export async function renderEventPoster(event: PosterEvent, publicUrl: string, f
   const brandWidth = width - margin - brandX;
   element('brand', brandX, brandY, () => block(clean(brand.name), brandX, brandY + (small ? 17 : 26), brandWidth, small ? 13 : 22, 1, palette.brand, 700));
   if (brand.tagline) element('tagline', brandX, brandY, () => block(clean(brand.tagline), brandX, brandY + (small ? 35 : 52), brandWidth, small ? 10 : 15, 1, palette.muted));
+  parts.push(`<path d="M${margin} ${small?90:155}H${margin+(small?54:108)}" stroke="${palette.accent}" stroke-width="${small?5:8}"/>`);
   const titleY = small ? 119 : social ? 181 : 232;
   const titleHeight = small ? 121 : social ? 146 : 242;
   let titleSize = small ? 35 : social ? 64 : 70;
@@ -195,6 +199,7 @@ export async function renderEventPoster(event: PosterEvent, publicUrl: string, f
       element('description', margin, y + 22, () => block(clean(event.description), margin, y + 22, textArea, size, Math.max(1, Math.floor((footerTop - y - 40) / (size * 1.25))), palette.muted));
     }
   } else {
+    parts.push(`<rect x="${margin-12}" y="${y-(small?22:38)}" width="${textArea+24}" height="${small?148:social?170:244}" fill="${palette.paper}" opacity=".78"/><path d="M${margin-12} ${y-(small?22:38)}V${y+(small?126:social?132:206)}" stroke="${palette.accent}" stroke-width="4"/>`);
     const detailSize = small ? 15 : social ? 25 : 28;
     y = element('date', margin, y, () => block(date, margin, y, textArea, detailSize, 2, palette.brand, 700));
     if (time) y = element('time', margin, y + 3, () => block(time, margin, y + 3, textArea, detailSize, 1, palette.brand, 700));

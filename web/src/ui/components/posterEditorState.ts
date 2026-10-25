@@ -8,7 +8,7 @@ export type PosterSettings = {
   includeEvents: boolean; link: string; zoom: number; offsetX: number; offsetY: number; opacity: number; dimming: number; edgeBlur: boolean; imageFit: 'original' | 'contain' | 'cover'
   elements: Partial<Record<ElementId, ElementLayout>>; selectedElement: ElementId | null
 }
-export const defaults: PosterSettings = { includeEvents: false, format: 'letter', theme: 'light', background: 'solid', mediaId: '', link: 'portal', zoom: 1, offsetX: 0, offsetY: 0, opacity: 1, dimming: .66, edgeBlur: false, imageFit: 'original', elements: {}, selectedElement: null }
+export const defaults: PosterSettings = { includeEvents: false, format: 'letter', theme: 'light', background: 'gradient', mediaId: '', link: 'portal', zoom: 1, offsetX: 0, offsetY: 0, opacity: 1, dimming: .66, edgeBlur: false, imageFit: 'original', elements: {description:{hidden:true,shadow:false,scale:1,x:0,y:0}}, selectedElement: null }
 const bound = (value: unknown, fallback: number, min: number, max: number) => typeof value === 'number' && Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : fallback
 export function parseSettings(raw: string | null): PosterSettings {
   try {
@@ -26,7 +26,7 @@ export function parseSettings(raw: string | null): PosterSettings {
     s.edgeBlur = v.edgeBlur === true
     if (['original', 'contain', 'cover'].includes(v.imageFit)) s.imageFit = v.imageFit
     s.dimming = bound(v.dimming, .66, 0, 1)
-    s.elements = {}
+    s.elements = {description:{hidden:true,shadow:false,scale:1,x:0,y:0}}
     for (const id of Object.keys(elementLabels) as ElementId[]) {
       const item = v.elements?.[id]
       if (item && typeof item === 'object') s.elements[id] = { hidden: item.hidden === true, shadow: item.shadow === true, ...Object.fromEntries(Object.entries(shadowDefaults).filter(([key]) => Object.hasOwn(item, key)).map(([key, fallback]) => [key, bound(item[key], fallback, 0, key === 'shadowOpacity' ? 1 : key === 'shadowSpread' ? 12 : 30)])), ...(typeof item.text === 'string' ? { text: item.text.slice(0, 4000) } : {}), scale: bound(item.scale, 1, .25, 3), x: bound(item.x, 0, -100, 100), y: bound(item.y, 0, -100, 100) }

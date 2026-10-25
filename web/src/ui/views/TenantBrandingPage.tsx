@@ -47,14 +47,20 @@ export function TenantBrandingPage({brandGuidePath='/branding',tenant:organizati
   if (!organizationTenant && tenant.home_org_slug) return <Navigate to={`/orgs/${encodeURIComponent(tenant.home_org_slug)}?tab=branding`} replace />
 
   const nameBannerUrl = profile.nameBannerUrl
+  const identityImage = selectedTheme?.imagery?.icon || profile.brandImagePath
   const assets = [
     nameBannerUrl ? { id: 'namebanner', label: 'Name banner', description: 'Horizontal wordmark for wide brand placements.', url: assetUrl(nameBannerUrl) } : null,
-    profile.brandImagePath
+    !selectedTheme?.imagery && profile.brandImagePath
       ? { id: 'logo', label: 'Primary logo', description: 'Used in portal navigation, sign-in, favicons, and member-facing pages.', url: assetUrl(profile.brandImagePath) }
       : null,
-    tenant.home_image_url && tenant.home_image_url !== profile.brandImagePath
+    !selectedTheme?.imagery && tenant.home_image_url && tenant.home_image_url !== profile.brandImagePath
       ? { id: 'hero', label: 'Portal cover image', description: 'Used as the organization portal cover and landing-page image.', url: assetUrl(tenant.home_image_url) }
       : null,
+    ...(selectedTheme?.imagery ? [
+      {id:'icon',label:'Brand icon',description:'Navigation and favicon imagery.',url:assetUrl(selectedTheme.imagery.icon)},
+      {id:'avatar',label:'Organization avatar',description:'Profile and directory imagery.',url:assetUrl(selectedTheme.imagery.avatar)},
+      {id:'background',label:'Standard background',description:'Organization cover and standard backdrop.',url:assetUrl(selectedTheme.imagery.background)},
+    ] : []),
   ].filter((asset): asset is NonNullable<typeof asset> => Boolean(asset))
 
   const palette = resolveBrandPalette({ ...tenant, profile: profile.id, theme_color: profile.themeColor })
@@ -104,7 +110,7 @@ export function TenantBrandingPage({brandGuidePath='/branding',tenant:organizati
         <p>{profile.tagline}</p>
       </div>
       <div className="tenant-brand-lockup" aria-label={`${profile.brandName} identity preview`}>
-        {profile.brandImagePath ? <CmsImage src={assetUrl(profile.brandImagePath)} alt="" /> : null}
+        {identityImage ? <CmsImage src={assetUrl(identityImage)} alt="" /> : null}
         <div>
           <strong>{profile.brandName}</strong>
           <span>{profile.tagline}</span>

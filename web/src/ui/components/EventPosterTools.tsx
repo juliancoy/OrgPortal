@@ -99,7 +99,7 @@ function PosterEditor({ kind = 'event', slug, title, revision = '', sourceUrl, e
         const images = await response.json()
         if (abort.signal.aborted) return
         setGallery(images); setGalleryStatus(images.length ? '' : 'No images yet. Add images to the gallery.')
-        if (isOrganization && !images.length) setSettings(old => old.background === 'gallery' ? { ...old, background: 'solid' } : old)
+        if (isOrganization && !images.length) setSettings(old => old.background === 'gallery' ? { ...old, background: 'gradient' } : old)
       })
       .catch(() => { if (!abort.signal.aborted) setGalleryStatus('Could not load gallery.') })
     return () => abort.abort()
@@ -119,7 +119,7 @@ function PosterEditor({ kind = 'event', slug, title, revision = '', sourceUrl, e
     if (background === 'gallery' && !selectedMediaId) { setPoster(null); setError(''); return }
     const abort = new AbortController()
     setPoster(null); setError('')
-    const query = new URLSearchParams({ format, theme, background, version: '9', link: selectedLink, revision, mediaId: background === 'gallery' ? selectedMediaId : '', includeEvents: String(settings.includeEvents), page: String(page) })
+    const query = new URLSearchParams({ format, theme, background, version: '10', elements: JSON.stringify({description:{hidden:false}}), link: selectedLink, revision, mediaId: background === 'gallery' ? selectedMediaId : '', includeEvents: String(settings.includeEvents), page: String(page) })
     fetch(`${endpoint}/flyer.svg?${query}`, { signal: AbortSignal.any([abort.signal, AbortSignal.timeout(30000)]), cache: 'no-cache' })
       .then(async response => {
         if (!response.ok || !response.headers.get('content-type')?.includes('image/svg+xml')) throw new Error()
@@ -215,7 +215,7 @@ function PosterEditor({ kind = 'event', slug, title, revision = '', sourceUrl, e
       style.textContent = `@page { size: ${formats[format].print}; margin: 0; } body { margin:0 } img { display:block; width:100%; height:auto; break-after:page } img:last-child { break-after:auto }`
       popup.document.head.append(style)
       for (let number = 1; number <= pageCount; number++) {
-        const query = new URLSearchParams({ format, theme, background, link: selectedLink, mediaId: selectedMediaId, includeEvents: 'true', page: String(number) })
+        const query = new URLSearchParams({ format, theme, background, link: selectedLink, mediaId: selectedMediaId, includeEvents: 'true', elements: JSON.stringify({description:{hidden:false}}), page: String(number) })
         const response = await fetch(`${endpoint}/flyer.svg?${query}`, { signal: AbortSignal.timeout(30000), cache: 'no-store' })
         if (!response.ok) throw new Error()
         const svg = parsePosterSvg(await response.text())
@@ -253,7 +253,7 @@ function PosterEditor({ kind = 'event', slug, title, revision = '', sourceUrl, e
     <h2 id={id}>{isOrganization ? 'Organization poster' : 'Event poster'}</h2>
     <p>{storageError ? "Settings could not be saved in this browser." : `Settings are saved automatically for this ${kind} in this browser.`}</p>
     {isOrganization && <div className="event-poster-toolbar">
-      <label className="event-poster-include-events"><input type="checkbox" disabled={exporting} checked={settings.includeEvents} onChange={event => { setter('includeEvents')(event.target.checked); setPage(1) }} /> Include all upcoming hosted events</label>
+      <label className="event-poster-include-events"><input type="checkbox" disabled={exporting} checked={settings.includeEvents} onChange={event => { setSettings(old=>({...old,includeEvents:event.target.checked,elements:{...old.elements,description:{...old.elements.description,hidden:!event.target.checked}}})); setPage(1) }} /> Include all upcoming hosted events</label>
       {settings.includeEvents && <div role="group" aria-label="Poster pages">
         <button type="button" disabled={page <= 1 || !ready || exporting} onClick={() => setPage(value => value - 1)}>Previous page</button>
         <span role="status"> Page {page} of {pageCount} · {eventCount} upcoming events </span>

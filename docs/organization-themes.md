@@ -63,3 +63,18 @@ portal palette. An explicit component token overrides its derived value.
 The organization brand guide offers theme and color-mode selectors, includes
 the selected map beside the core brand swatches, and computes contrast from
 those mapped colors. PNG exports use the same selection and mapped paper/ink.
+
+Administrators can also select and save a named theme on the organization's
+**Branding** tab. Harbor Teal, Midnight Gold, and Botanical are included. Each
+preset contains independent icon, avatar, and standard background imagery;
+each image can be replaced with a compressed upload. The selected default and
+per-theme `imagery: { icon, avatar, background }` are stored with `brandThemes`.
+The icon supplies portal identity, the avatar supplies the organization profile,
+and the background supplies the organization cover and first poster backdrop.
+Organization colors stay within the organization page; the host portal keeps its
+own identity. Saving requires live owner or administrator access.
+
+New posters use a geometric gradient composition. Descriptions are off by
+default in every format. Select **Description** in the poster's element controls
+and enable **Show description** to include one. Explicitly requested event
+agendas remain available; saved individual layouts are retained.

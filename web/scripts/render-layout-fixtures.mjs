@@ -1,6 +1,7 @@
 import {testOrganizationThemes} from './organization-themes-checks.mjs'
 import {execFileSync} from 'node:child_process'
 import {testUploadImageCompression} from './test-upload-image-compression.mjs'
+import {testPosterDesign} from './poster-design-checks.mjs'
 import {testOrganizationPersonnel} from './organization-personnel-checks.mjs'
 import {testOrganizationBranding} from './organization-branding-checks.mjs'
 import {fixtureServer} from './fixture-server.mjs'
@@ -18,8 +19,9 @@ await testUploadImageCompression()
 const {server,base}=await fixtureServer(root,output)
 try{
  await testOrganizationThemes(base,join(output,'organization-themes'),output)
- await testOrganizationBranding(base,output)
+ await testOrganizationBranding(base,join(output,'organization-branding'),output)
  await testOrganizationPersonnel(base,output)
+ await testPosterDesign(base,output)
  const layouts=[['Workspace','/workspace'],['Organizations','/orgs'],['Empty organizations','/orgs?empty=1'],['People','/people'],['Events','/events'],['Onboarding','/onboarding?brand=lifetech'],['Join now','/onboarding?brand=lifetech&complete=1','.onboarding-join-footer'],['Service desk','/support'],['Brand guide','/branding'],['About','/about']].map(([name,path,selector])=>({name,url:base+path,selector,ready:selector||'h1'}))
  const accountMenuLayout={name:'LifeTech account menu',url:base+'/branding?brand=lifetech',ready:'button[aria-label="Open user menu"]',actions:[{click:'Open user menu'}],visible:['#portal-user-menu a[href="/profile"]','#portal-user-menu a[href="/settings"]'],hidden:['.portal-deployment-switcher','#portal-user-menu a[href="/dev-tools"]','#portal-user-menu a[href="/test-status"]']}
  const supportLayouts=[

@@ -49,7 +49,7 @@ test('missing dates and malformed optional dates do not crash generation', async
 });
 
 test('dark poster theme uses dark paper while retaining a white QR background', async () => {
-  const svg = await renderEventPoster({ title: 'Night builders', starts_at: '2026-09-29T22:00:00Z' }, 'https://example.org/event', 'letter', { name: 'Community' }, 'dark');
+  const svg = await renderEventPoster({ title: 'Night builders', starts_at: '2026-09-29T22:00:00Z' }, 'https://example.org/event', 'letter', { name: 'Community' }, 'dark',{background:'solid'});
   assert.match(svg, /fill="#101820"/);
   assert.match(svg, /fill="#f7fbfc"/);
   assert.match(svg, /fill="#33c6d4"/);
@@ -196,4 +196,14 @@ test('native chat poster destinations stay on the portal and preserve its mount 
     assert.match(svg, /Scan to join chat/);
     assert.doesNotMatch(svg, /Scan to RSVP|WhatsApp/);
   }
+});
+
+test('default posters are designed and omit descriptions; descriptions remain available on request',async()=>{
+ for(const format of ['letter','postcard','social','letter-4up'] as const){
+  const event={title:'Community research night',description:'OPTIONAL_DETAIL_TEXT',starts_at:'2026-11-17T23:00:00Z'};
+  const svg=await renderEventPoster(event,'https://example.org/event',format,{name:'Research collective'});
+  assert.match(svg,/poster-bg-gradient/);assert.doesNotMatch(svg,/OPTIONAL_DETAIL_TEXT|data-poster-element="description"/);
+  const details=await renderEventPoster(event,'https://example.org/event',format,{name:'Research collective'},'light',{elements:{description:{hidden:false}}});
+  assert.match(details,/OPTIONAL_DETAIL_TEXT/);
+ }
 });

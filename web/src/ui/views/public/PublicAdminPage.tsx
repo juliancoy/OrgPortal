@@ -1,3 +1,4 @@
+import { organizationPageTheme } from '../../../config/organizationThemes'
 import { OrganizationViewSwitcher } from '../../components/OrganizationViewSwitcher'
 import { NeoNatalFocus } from '../../components/NeoNatalFocus'
 import { EventPosterTools } from '../../components/EventPosterTools'
@@ -889,9 +890,10 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
   const canEditOrgImage = isOrganizerView
   const tenant = getGroupSite()
   const site=publicPortal?.organizationId===org.id?publicPortal.site:null
+  const pageTheme=organizationPageTheme(site)
   const organizationBrandImage = site?.home_image_url||site?.brand_image_path||(tenant?.organization_id === org.id ? tenant.brand_image_path : null)
   const ownImage=org.image_url?.trim()
-  const heroImageSource = ownImage&&ownImage!==ORG_PLACEHOLDER_SRC?ownImage:organizationBrandImage||ORG_PLACEHOLDER_SRC
+  const heroImageSource = site?.home_image_url||(ownImage&&ownImage!==ORG_PLACEHOLDER_SRC?ownImage:organizationBrandImage||ORG_PLACEHOLDER_SRC)
   const eventGroups = groupOrganizationEvents(events, org).filter(group => group.kind==='hosted')
   const resources=specialtyResourcesForTenant(site)
   const portalDescription=site?.home_description?.trim()
@@ -922,7 +924,8 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
   }
 
   return (
-    <section className={`panel portal-org-page${isNeoNatalProfile ? ' neonatal-page' : ''}`}>
+    <section className={`panel portal-org-page${isNeoNatalProfile ? ' neonatal-page' : ''}`} data-brand-theme={pageTheme?'configured':undefined}>
+      {pageTheme&&<style>{pageTheme}</style>}
       <div className="organization-page-toolbar">
       <div className="portal-org-info-tabs" role="tablist" aria-label={`${org.name} information`}>
         {orgTabs.map(tab => <button type="button" role="tab" id={`org-tab-${tab}`} aria-controls={`org-panel-${tab}`} aria-selected={activeTab === tab} tabIndex={activeTab === tab ? 0 : -1} key={tab} onClick={() => selectTab(tab)} onKeyDown={event => {
@@ -1511,7 +1514,7 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
         {activeTab === 'poster' && <EventPosterTools key={org.id} kind="organization" inline slug={org.slug} title={org.name} organizationSlug={org.slug} organizationLinks={org.links} sourceUrl={org.source_url && !isRetiredOrganizationHref(org.source_url) ? org.source_url : null} />}
       </div>
       <div role="tabpanel" id="org-panel-branding" aria-labelledby="org-tab-branding" hidden={activeTab !== 'branding'}>
-        {activeTab === 'branding' && <OrganizationBranding organization={org} canManage={canManageCurrentOrg} />}
+        {activeTab === 'branding' && <OrganizationBranding organization={org} canManage={canManageCurrentOrg} onSaved={()=>setPublicPortalRevision(value=>value+1)} />}
         {activeTab === 'branding' && isOrganizerView && <button type="button" className="btn-secondary" onClick={() => { selectTab('info'); openOrganizationEditor('organization-branding') }}>Edit branding and portal sections</button>}
       </div>
       {showImageEditor && editorSource ? (

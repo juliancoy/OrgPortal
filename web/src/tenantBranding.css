@@ -66,3 +66,10 @@
 .tenant-brand-theme-controls { display: flex; flex-wrap: wrap; gap: 1rem; margin-block: 1rem; }
 .tenant-brand-theme-controls label { display: grid; gap: .4rem; min-width: 0; flex: 1 1 10rem; }
 .tenant-brand-theme-controls select { width: 100%; color: var(--text-primary); background: var(--panel); border: 1px solid var(--border-input); border-radius: var(--radius-sm); padding: .6rem; }
+.organization-brand-imagery { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 1rem; }
+.organization-brand-image { min-width: 0; display: grid; gap: .65rem; align-content: start; padding: .85rem; border: 1px solid var(--border); border-radius: 12px; }
+.organization-brand-image > img { width: 100%; height: 130px; object-fit: contain; border-radius: 8px; }
+.organization-brand-image-background > img { object-fit: cover; }
+.organization-brand-image input { width: 100%; min-width: 0; font-size: .8rem; }
+.organization-brand-image small { color: var(--text-muted); }
+@media(max-width:700px) { .organization-brand-imagery { grid-template-columns: 1fr; } }

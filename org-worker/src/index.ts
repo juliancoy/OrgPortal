@@ -1,3 +1,4 @@
+import { parseOrganizationThemes } from '../../shared/organizationThemes';
 import { supportRoutes } from './supportTickets';
 import { organizationPeersRoutes } from './organizationPeers';
 import { databaseCostMetrics } from './databaseCost';
@@ -1462,7 +1463,7 @@ function flyerBackground(value: string | null): PosterBackground {
   if (normalized === "gallery") return "gallery";
   if (normalized === "gradient") return "gradient";
   if (normalized === "lifetech") return "lifetech";
-  return "solid";
+  return normalized === "solid" ? "solid" : "gradient";
 }
 
 async function eventFlyerSvg(env: Env, request: Request, event: EventRow, format: FlyerFormat, theme: PosterTheme, background: PosterBackground, backgroundOnly = false, mediaId = "") {
@@ -3342,9 +3343,11 @@ app.get("/api/network/orgs/public/:slug/flyer.svg", async c => {
   // Organization posters never offer an event conversation or an arbitrary URL.
   const target = requestedLink === "group-chat" ? `${publicUrl.replace(/\/orgs\/[^/]+$/, '')}/chat?${new URLSearchParams({start:'org',org:org.slug})}`
     : posterLinkTarget(publicUrl, requestedLink === 'event-chat' ? 'portal' : requestedLink, [canonicalOrganizationHref(org.source_url, org.slug)], org.slug, links);
+  const branding=await organizationPortalByOrg(c.env.DB,org);
+  const brandLogo=branding?.brand_image_path?await posterGalleryImage(branding.brand_image_path):undefined;
   const svg = await renderEventPoster({ title: includeEvents ? 'What’s coming up' : org.name, description: org.description, location: org.city }, target, format,
-    { name: org.name }, theme, { organization: true, background, backgroundImage,
-      chatLink: requestedLink === 'group-chat', agenda: includeEvents ? { lines: pages[page - 1], page, pages: pages.length } : undefined });
+    { name: org.name,tagline:branding?.tagline,logo:brandLogo }, theme, { organization: true, background, backgroundImage,
+      elements:parsePosterElements(c.req.query('elements')||null),chatLink: requestedLink === 'group-chat', agenda: includeEvents ? { lines: pages[page - 1], page, pages: pages.length } : undefined });
   return new Response(svg, {headers: {"content-type":"image/svg+xml; charset=utf-8", "cache-control":"no-store",
     "x-poster-pages":String(pages.length), "x-poster-page":String(page), "x-poster-events":String(events.length)}});
 });
@@ -3805,6 +3808,8 @@ app.put("/api/network/orgs/:organizationId/portal", async (c) => {
   const tagline = stringField(payload, "tagline", 180) || "";
   const accent = stringField(payload, "accent_color", 7) || "#155e59";
   if (!/^#[0-9a-f]{6}$/i.test(accent)) fail(400, "Choose a valid accent color.");
+  const brandThemes = payload.brandThemes === undefined ? undefined : parseOrganizationThemes(payload.brandThemes);
+  if(payload.brandThemes !== undefined && !brandThemes) fail(400,"Choose a valid named theme and imagery.");
   const homeKind = tenantHomeKindField(payload);
   const features = portalTenantFeaturesField(payload);
   const heading = stringField(payload, "home_heading", 120) || name;
@@ -3873,7 +3878,7 @@ app.put("/api/network/orgs/:organizationId/portal", async (c) => {
       stringField(payload, "home_secondary_href", 200) || "/org-events",
       homeImageUrl,
       slugUrl,
-      JSON.stringify({ slugPortal: { enabled: true, path: organizationPagePath(row.slug) } }),
+      JSON.stringify({ slugPortal: { enabled: true, path: organizationPagePath(row.slug) }, ...(brandThemes ? {brandThemes} : {}) }),
       timestamp,
       timestamp,
     )
