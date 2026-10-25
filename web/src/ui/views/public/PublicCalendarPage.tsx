@@ -1,3 +1,4 @@
+import {EventStandings} from '../../components/EventStandings'
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { isLifeTechMedicalEvent, eventCalendarDateKey } from '../../../features/events/medicalEvents'
@@ -9,6 +10,7 @@ const EVENT_TIME_ZONE = 'America/New_York'
 const ORG_API_BASE = '/api/org'
 
 type RegionalEvent = {
+  id?: string
   name?: string | null
   title?: string | null
   description?: string | null
@@ -189,6 +191,7 @@ export function PublicCalendarPage() {
   const organizationSlug = tenant?.home_org_slug || 'baltimore-medtech'
   const organizationPaths = [...new Set([organizationSlug, 'baltimore-medtech', ...(organizationSlug === 'lifetech' || organizationSlug === 'baltimore-medtech' ? ['lifetech'] : [])])].map(slug => `/api/network/orgs/public/${encodeURIComponent(slug)}/events?upcoming_only=false&limit=200`)
   const [events, setEvents] = useState<CalendarEvent[]>([])
+  const [submissionEvents,setSubmissionEvents]=useState<{id:string;slug:string;title:string}[]>([])
   const [visibleDate, setVisibleDate] = useState(() => new Date())
   const [status, setStatus] = useState('Loading medical events…')
 
@@ -204,6 +207,7 @@ export function PublicCalendarPage() {
   useEffect(() => {
     let cancelled = false
     setStatus('Loading medical events…')
+    setSubmissionEvents([])
     Promise.allSettled([
       fetch(MEDICAL_EVENTS_SOURCE_URL, { cache: 'no-store' }).then((response) => { if (!response.ok) throw new Error('Regional source unavailable'); return response.json() }),
       ...organizationPaths.map(path => fetch(orgUrl(path), { cache: 'no-store' }).then((response) => { if (!response.ok) throw new Error('Organization source unavailable'); return response.json() })),
@@ -219,6 +223,7 @@ export function PublicCalendarPage() {
           .filter((event): event is CalendarEvent => Boolean(event))
           .sort((a, b) => a.date.getTime() - b.date.getTime())
         setEvents(nextEvents)
+        setSubmissionEvents([...new Map(medtech.filter((event:RegionalEvent)=>event.id&&event.slug&&event.host_org_id&&Date.parse(event.ends_at||event.starts_at||'')>=Date.now()).map((event:RegionalEvent)=>[event.id,{id:event.id!,slug:event.slug!,title:event.title||event.name||'Event'}])).values()])
         const firstUpcoming = nextEvents.find((event) => event.date >= new Date())
         if (firstUpcoming) setVisibleDate(new Date(`${firstUpcoming.dateKey}T12:00:00`))
         setStatus([regionalResult, ...organizationResults].every((result) => result.status === 'rejected')
@@ -277,6 +282,7 @@ export function PublicCalendarPage() {
       </div>
     </div>
 
+    {submissionEvents.map(event=><EventStandings key={event.id} eventId={event.id} eventSlug={event.slug} eventTitle={event.title}/>)}
     {status ? <p className="muted" role="status">{status}</p> : null}
 
     {view === 'list' ? <div className="community-events-columns">

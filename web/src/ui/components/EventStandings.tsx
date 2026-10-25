@@ -4,7 +4,7 @@ import Star from 'lucide-react/dist/esm/icons/star.mjs'
 import './event-standings.css'
 type Submission={submission_id:string;organization_name:string;organization_slug:string;title:string;status:string;favorites:number}
 type Round={phase:'shortlist'|'open'|'closed';results:{submission_id:string;votes:number}[]}
-export function EventStandings({eventId,eventSlug,lazy=false}:{eventId:string;eventSlug:string;lazy?:boolean}){
+export function EventStandings({eventId,eventSlug,lazy=false,eventTitle}:{eventId:string;eventSlug:string;lazy?:boolean;eventTitle?:string}){
  const root=useRef<HTMLDivElement>(null),[visible,setVisible]=useState(!lazy),[rows,setRows]=useState<Submission[]|null>(null),[enabled,setEnabled]=useState(false),[round,setRound]=useState<Round|null>(null),[error,setError]=useState(''),[revision,setRevision]=useState(0)
  useEffect(()=>{if(!lazy){setVisible(true);return}const observer=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting)){setVisible(true);observer.disconnect()}},{rootMargin:'160px'});if(root.current)observer.observe(root.current);return()=>observer.disconnect()},[lazy,eventId])
  useEffect(()=>{
@@ -27,7 +27,7 @@ export function EventStandings({eventId,eventSlug,lazy=false}:{eventId:string;ev
  const sorted=[...(rows||[])].sort((a,b)=>(final?(votes.get(b.submission_id)??-1)-(votes.get(a.submission_id)??-1):b.favorites-a.favorites)||a.organization_name.localeCompare(b.organization_name)||a.title.localeCompare(b.title)||a.submission_id.localeCompare(b.submission_id))
  const score=(row:Submission)=>final?votes.get(row.submission_id)??-1:row.favorites
  return <div ref={root} className="event-standings-slot">{(enabled||error)&&<section className="event-standings" aria-label="Current submissions and vote standings">
-  <header><Heading>Current submissions &amp; standings</Heading><Link to={votingPath}>View submissions &amp; vote</Link></header>
+  <header><Heading>{eventTitle?`${eventTitle} · submissions & standings`:'Current submissions & standings'}</Heading><Link to={votingPath}>View submissions &amp; vote</Link></header>
   {error?<p role="alert">{error} <button type="button" className="btn-secondary" onClick={()=>setRevision(value=>value+1)}>Retry standings</button></p>:!rows?<p role="status">Loading standings…</p>:<>
    <p className="event-standings-caption">{final?`Final-round votes · ${round?.phase==='closed'?'Voting closed':'Voting open'}. Stars show preliminary favorites.`:'Ranked by current stars. Each favorite vote adds one star.'}</p>
    {!sorted.length?<p>No submissions yet.</p>:<ol className="event-standings-list">{sorted.map(row=><li key={row.submission_id}>

@@ -1,3 +1,4 @@
+import {PublicCalendarPage} from '../../src/ui/views/public/PublicCalendarPage'
 import {EventStandings} from '../../src/ui/components/EventStandings'
 import {PublicAdminPage} from '../../src/ui/views/public/PublicAdminPage'
 import { fixtureThemes } from './organization-themes'
@@ -33,6 +34,7 @@ const life={id:'lifetech',slug:'lifetech',organization_id:'fixture-org',hostname
 if(brand==='lifetech')setGroupSite(life)
 applyPortalBranding()
 const body=<Routes>
+ <Route path="/calendar-events" element={<PublicCalendarPage/>}/>
  <Route path="/standings" element={<main><h1>Demo Day</h1><EventStandings eventId="fixture-event" eventSlug="demo-day"/></main>}/>
  <Route path="/orgs/:handle" element={<PublicAdminPage/>}/>
  <Route path="/poster-review" element={<EventPosterTools inline slug="fixture-event" title="Life sciences, in motion"/>}/>
