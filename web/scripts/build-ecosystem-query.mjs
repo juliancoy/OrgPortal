@@ -6,11 +6,13 @@ import {mergeNetworkHistory,appendNonprofitEvidence} from '../src/features/ecosy
 import {foldFundNodes,applyFundHierarchy,financialNodePies} from '../src/features/ecosystem/fund-pies.js'
 import {networkPreviewSummaries} from '../src/features/ecosystem/ecosystem-view.js'
 import {graphRelationships,financialNodeAmounts} from '../src/features/ecosystem/portal-ecosystem.js'
+import {geographicPoint} from '../src/features/ecosystem/network-layouts.js'
+import {transactionCounts} from '../src/features/ecosystem/zoom-visibility.js'
 import {createNetworkAnalysis} from '../src/features/ecosystem/network-analysis.js'
 import {ecosystemOverview} from '../src/features/ecosystem/ecosystemOverview.ts'
 import {fundingStage} from '../src/features/ecosystem/fundingStatistics.ts'
 import {performanceRows,recipientExposure} from '../src/features/ecosystem/performance.ts'
-import {normalize,grams,PAGE_SIZE} from '../server/ecosystem-query.mjs'
+import {normalize,grams,gramBucket,PAGE_SIZE} from '../server/ecosystem-query.mjs'
 const root=new URL('../',import.meta.url)
 const names=['ecosystem-portal','ecosystem-relationships','ecosystem-history','ecosystem-nonprofits','ecosystem-performance','network-default-positions']
 export async function buildEcosystemQuery(){
@@ -42,29 +44,36 @@ export async function buildEcosystemQuery(){
   let angle=-Math.PI/2;for(const slice of slices){slice.share=slice.amount/pie.total;slice.startAngle=angle;angle+=slice.share*Math.PI*2;slice.endAngle=angle}
   return {...pie,slices}
  }
- const organizations=folded.organizations.map(o=>({...o,sourceRows:undefined,publicEmails:undefined,positions:positions.organizations?.[o.id],networkMetrics:{pie:compactPie(summaries.pies.get(o.id)),contextPie:compactPie(contextPies.get(o.id)),totals:summaries.totals.get(o.id),counterparties:summaries.counterparties.get(o.id),obligations:summaries.obligationIds.has(o.id),incoming:analysis.incoming.get(o.id),outgoing:analysis.outgoing.get(o.id),amount:amounts.get(o.id)}})).sort((a,b)=>a.name.localeCompare(b.name)||a.id.localeCompare(b.id))
+ const counts=transactionCounts(edges)
+ const organizations=folded.organizations.map(o=>({...o,sourceRows:undefined,publicEmails:undefined,positions:positions.organizations?.[o.id],networkMetrics:{pie:compactPie(summaries.pies.get(o.id)),contextPie:compactPie(contextPies.get(o.id)),totals:summaries.totals.get(o.id),counterparties:summaries.counterparties.get(o.id),obligations:summaries.obligationIds.has(o.id),incoming:analysis.incoming.get(o.id),outgoing:analysis.outgoing.get(o.id),amount:amounts.get(o.id),connections:analysis.adjacency.get(o.id)?.size||0,recordCount:counts.get(o.id)||0}})).sort((a,b)=>a.name.localeCompare(b.name)||a.id.localeCompare(b.id))
+ for(const name of await readdir(folder).catch(()=>[]))if(name.startsWith('.'))await rm(new URL(name+'/',folder),{recursive:true,force:true})
  const temp=new URL(`.${version}-${process.pid}/`,folder),target=new URL(`${version}/`,folder)
  await mkdir(temp,{recursive:true})
  const write=async(path,value)=>{const bytes=JSON.stringify(value);if(Buffer.byteLength(bytes)>16*1024*1024)throw Error(`Query artifact exceeds 16 MiB: ${path}`);const url=new URL(path,temp);await mkdir(new URL('./',url),{recursive:true});await writeFile(url,bytes)}
  const collection=async(name,records,metadata)=>{
-  const index={rows:[],filters:{},grams:{}}
+  const index={rows:[],filters:Object.create(null),grams:Object.create(null)}
   const add=(map,key,id)=>{(map[key]??=[]).push(id)}
   records.forEach((r,i)=>{
    const row=metadata(r);row.search=normalize(row.search);index.rows.push(row)
-   for(const [field,values] of Object.entries(row.filters||{}))for(const value of new Set(values.filter(Boolean))){index.filters[field]??={};add(index.filters[field],value,i)}
+   for(const [field,values] of Object.entries(row.filters||{}))for(const value of new Set(values.filter(Boolean))){index.filters[field]??=Object.create(null);add(index.filters[field],value,i)}
    delete row.filters
    for(const gram of grams(row.search))add(index.grams,gram,i)
   })
+  const buckets=Array.from({length:16},()=>Object.create(null));index.gramCounts=Object.create(null)
+  for(const [gram,postings] of Object.entries(index.grams)){buckets[Number(gramBucket(gram))][gram]=postings;index.gramCounts[gram]=postings.length}
+  delete index.grams
   await write(`${name}/index.json`,index)
+  for(let i=0;i<16;i++)await write(`${name}/grams-${i}.json`,buckets[i])
   for(let start=0;start<records.length;start+=PAGE_SIZE)await write(`${name}/${Math.floor(start/PAGE_SIZE)}.json`,records.slice(start,start+PAGE_SIZE))
  }
  const relational=r=>({id:r.id,search:[r.sourceLabel,r.targetLabel,r.type,r.kind,r.date].filter(Boolean).join(' '),date:r.date,filters:{org:[r.source,r.target],kind:[r.kind||r.relationship]}})
  await collection('relationships',data.relationships,relational)
  await collection('events',data.events,r=>({id:r.id,search:[r.title,r.organizationName,r.location,r.date].filter(Boolean).join(' '),date:r.date,filters:{org:[r.organizationId]}}))
  await collection('nonprofits',data.nonprofitProfiles||[],r=>({id:r.ein,search:`${r.name} ${r.ein}`,filters:{org:[r.organizationId]}}))
- await collection('organizations',organizations,r=>({id:r.id,search:`${r.name} ${r.type||''} ${r.city||''} ${r.county||''}`,rank:ranks.get(r.id)||0,filters:{org:[r.id],...Object.fromEntries(Object.entries(membership).map(([mode,map])=>[mode,[map.get(r.id)]]))}}))
- await collection('graph',edges,relational)
- const perf=performanceRows(performance,'9999-12-31')
+ await collection('organizations',organizations,r=>({id:r.id,latitude:geographicPoint(r)?r.latitude:null,longitude:geographicPoint(r)?r.longitude:null,search:`${r.name} ${r.type||''} ${r.city||''} ${r.county||''}`,rank:ranks.get(r.id)||0,filters:{org:[r.id],...Object.fromEntries(Object.entries(membership).map(([mode,map])=>[mode,[map.get(r.id)]]))}}))
+ await collection('graph',edges.map(({summary,description,notes,evidence,...edge})=>({...edge,type:String(edge.type||'').slice(0,500),notes:String(notes||'').slice(0,500),evidence:String(evidence||'').slice(0,500)})),relational)
+ await collection('directory',organizations.map(({id,name,type})=>({id,name,type})),r=>({id:r.id,search:`${r.name} ${r.type||''}`,filters:{org:[r.id]}}))
+ const perf=performanceRows(performance,new Date().toISOString().slice(0,10))
  await collection('performance',perf,r=>({id:r.awardKey,search:`${r.recipientName} ${r.awardId} ${r.agency}`,amount:r.amount,program:r.program,assessment:Boolean(r.assessment),cohort:r.assessment?.cohort,attainment:r.assessment?.attainment,meetsTarget:r.assessment?.meetsTarget,reviewedDate:r.assessment?.reviewedDate}))
  const federal=perf.filter(r=>r.program==='Federal grants'),reviewed=perf.filter(r=>r.assessment),exposures=recipientExposure(federal)
  const performanceMeta={coverage:performance.coverage,sourceGeneratedAt:performance.generatedAt,cohorts:[...new Set(reviewed.map(r=>r.assessment.cohort))].sort(),federalCount:federal.length,reviewedCount:reviewed.length,unassessedCount:perf.length-reviewed.length,recipientCount:exposures.length,unidentifiedCount:federal.filter(r=>!r.identified).length,unidentifiedUsd:federal.filter(r=>!r.identified).reduce((s,r)=>s+r.amount,0),exposures:exposures.slice(0,10)}
@@ -73,10 +82,19 @@ export async function buildEcosystemQuery(){
  await write('funding.json',{organizations:data.organizations.filter(o=>o.category==='company').map(({id,name,category})=>({id,name,category})),financing:data.financing.filter(r=>r.kind==='transfer'&&(fundingStage(r.type)||r.type==='Financing round (stage undisclosed)')),research:research.rounds})
  const topology={adjacency:Object.fromEntries([...analysis.adjacency].map(([id,neighbors])=>[id,[...neighbors].sort()])),degree:Object.fromEntries([...analysis.adjacency].map(([id,neighbors])=>[id,neighbors.size])),edges:edges.map(e=>[e.source,e.target,e.kind,e.date]),edgesByOrg:{}}
  edges.forEach((e,i)=>{for(const id of new Set([e.source,e.target]))(topology.edgesByOrg[id]??=[]).push(i)})
+ const located=organizations.filter(o=>geographicPoint(o)),geoGroups=new Map()
+ for(const o of located){const name=o.county||'Unknown county';if(!geoGroups.has(name))geoGroups.set(name,[]);geoGroups.get(name).push(o)}
+ topology.geography={located:located.length,missing:organizations.length-located.length,clusters:[...geoGroups].map(([name,members])=>({id:'geographic-cluster:'+name,name:`${name} · ${members.length} organizations`,type:'Geographic aggregate',category:'general',serverCluster:name,latitude:members.reduce((s,o)=>s+o.latitude,0)/members.length,longitude:members.reduce((s,o)=>s+o.longitude,0)/members.length,count:members.length,bounds:[Math.min(...members.map(o=>o.longitude)),Math.min(...members.map(o=>o.latitude)),Math.max(...members.map(o=>o.longitude)),Math.max(...members.map(o=>o.latitude))],networkMetrics:{}}))}
+ const communities=analysis.communities(),clusterById=new Map(groups.community.map(g=>[g.id,{id:'community-cluster:'+g.id,name:`${g.name} community · ${g.count} organizations`,type:'Community aggregate',category:analysis.byId.get(g.id)?.category||'general',serverCommunity:g.id,count:g.count,networkMetrics:{connections:g.count}}]))
+ const communityPairs=new Map()
+ for(const edge of edges){const a=communities.membership.get(edge.source),b=communities.membership.get(edge.target);if(!a||!b||a===b)continue;const pair=JSON.stringify([a,b].sort());const item=communityPairs.get(pair)||{a,b,count:0};item.count++;communityPairs.set(pair,item)}
+ topology.overview={organizations:[...clusterById.values()],relationships:[...communityPairs.values()].map(({a,b,count},i)=>({id:'community-summary:'+i,source:clusterById.get(a).id,target:clusterById.get(b).id,sourceLabel:clusterById.get(a).name,targetLabel:clusterById.get(b).name,kind:'affiliation',relationship:'affiliation',type:`Community connection summary · ${count} evidence records`,aggregate:true,count,provenance:{sheet:'Derived community grouping'},evidence:'Summary between groups, not a claim of a transaction between particular organizations. Expand a community for source records.'}))}
  await write('topology.json',topology)
- const manifest={version,generatedAt:new Date().toISOString(),governmentCoverage:data.governmentCoverage,nonprofitCoverage:data.nonprofitCoverage,totals:{organizations:organizations.length,relationships:edges.length},groups,performance:performanceMeta}
+ const manifest={version,generatedAt:new Date().toISOString(),governmentCoverage:data.governmentCoverage,nonprofitCoverage:data.nonprofitCoverage,totals:{organizations:organizations.length,relationships:edges.length},metricMax:{connections:Math.max(1,...Object.values(topology.degree)),incoming:Math.max(1,...analysis.incoming.values()),outgoing:Math.max(1,...analysis.outgoing.values())},groups,performance:performanceMeta}
  await mkdir(folder,{recursive:true});await rm(target,{recursive:true,force:true});await rename(temp,target)
  await writeFile(new URL('manifest.json.tmp',folder),JSON.stringify(manifest));await rename(new URL('manifest.json.tmp',folder),new URL('manifest.json',folder))
+ const versions=(await readdir(folder)).filter(name=>/^[a-f0-9]{24}$/.test(name)&&name!==version)
+ for(const old of versions.slice(0,-1))await rm(new URL(old+'/',folder),{recursive:true,force:true})
  console.log(`Ecosystem query index ${version}: ${organizations.length} organizations, ${edges.length} graph records, ${data.relationships.length} evidence records`)
  return manifest
 }

@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { ecosystemApi } from './server/ecosystem-vite'
 
 // https://vite.dev/config/
 const envAllowedHosts = (process.env.VITE_ALLOWED_HOSTS || '')
@@ -29,7 +30,7 @@ const chatApiOrigin = process.env.CHAT_API_ORIGIN || ''
 const governanceApiOrigin = process.env.GOVERNANCE_API_ORIGIN || 'http://localhost:8002'
 
 export default defineConfig(({ command }) => ({
-  plugins: [react()],
+  plugins: [react(), ecosystemApi()],
   base: process.env.VITE_PUBLIC_BASE || (command === 'build' ? './' : '/'),
   cacheDir: process.env.VITE_CACHE_DIR || 'node_modules/.vite',
   define: {

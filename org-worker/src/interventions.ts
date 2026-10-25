@@ -20,9 +20,19 @@ export const initiativeSchema=z.object({
  if(v.status==='completed'&&(v.current===null||!v.measurementDate||!v.result||!v.resultSourceUrl))fail('Completed work requires a measurement, result and source');
  if(v.baselineDate&&v.targetDate&&v.baselineDate>v.targetDate)fail('Target date must follow baseline date');
 });
-export async function publicInitiatives(db:D1Database,offset=0){
- const result=await db.prepare(`SELECT i.*,o.name organization_name FROM ecosystem_initiatives i JOIN organizations o ON o.id=i.organization_id ORDER BY i.updated_at DESC,i.id LIMIT 101 OFFSET ?`).bind(offset).all<any>();
- return {records:result.results.slice(0,100).map(r=>({...JSON.parse(r.payload_json),revision:r.revision,organizationName:r.organization_name,updatedAt:r.updated_at})),nextOffset:result.results.length>100?offset+100:null};
+export async function publicInitiatives(db:D1Database,offset=0,query='',status='all'){
+ if(!Number.isSafeInteger(offset)||offset<0||offset>100000||query.length>128||!['all','overdue','proposed','authorized','active','paused','completed'].includes(status))throw new EventIntegrationError(400,'Invalid initiative filters');
+ const today=new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+ const deadline="min(coalesce(nullif(json_extract(i.payload_json,'$.decisionDate'),''),'9999-12-31'),coalesce(nullif(json_extract(i.payload_json,'$.actionDueDate'),''),'9999-12-31'),coalesce(nullif(json_extract(i.payload_json,'$.targetDate'),''),'9999-12-31'))";
+ const workStatus="json_extract(i.payload_json,'$.status')";
+ const where=`instr(lower(json_extract(i.payload_json,'$.title')||' '||json_extract(i.payload_json,'$.outcome')||' '||json_extract(i.payload_json,'$.authority')||' '||o.name),?)>0 AND (?='all' OR (?='overdue' AND ${workStatus} NOT IN ('completed','paused') AND ${deadline}<?) OR ${workStatus}=?)`;
+ const values=[query.toLowerCase(),status,status,today,status];
+ const [result,total,summary]=await Promise.all([
+  db.prepare(`SELECT i.*,o.name organization_name FROM ecosystem_initiatives i JOIN organizations o ON o.id=i.organization_id WHERE ${where} ORDER BY (${workStatus} IN ('completed','paused')),${deadline},i.id LIMIT 51 OFFSET ?`).bind(...values,offset).all<{payload_json:string;revision:number;organization_name:string;updated_at:string}>(),
+  db.prepare(`SELECT count(*) total FROM ecosystem_initiatives i JOIN organizations o ON o.id=i.organization_id WHERE ${where}`).bind(...values).first<{total:number}>(),
+  db.prepare(`SELECT count(*) total,coalesce(sum(${workStatus}='active'),0) active,coalesce(sum(${workStatus}='proposed'),0) proposed,coalesce(sum(${workStatus}='completed'),0) completed,coalesce(sum(${workStatus} NOT IN ('completed','paused') AND ${deadline}<?),0) overdue FROM ecosystem_initiatives i`).bind(today).first<{total:number;active:number;proposed:number;completed:number;overdue:number}>(),
+ ]);
+ return {records:result.results.slice(0,50).map(r=>({...JSON.parse(r.payload_json),revision:r.revision,organizationName:r.organization_name,updatedAt:r.updated_at})),nextOffset:result.results.length>50?offset+50:null,total:total?.total||0,summary};
 }
 export async function initiativeAccess(db:D1Database,actor:OrganizationActor){
  const result=await db.prepare(`SELECT o.id,o.name FROM organizations o WHERE ?=1 OR EXISTS(SELECT 1 FROM organization_memberships m WHERE m.organization_id=o.id AND m.user_id=? AND m.status='active' AND m.role IN ('owner','administrator')) ORDER BY o.name LIMIT 1000`).bind(actor.isOperator?1:0,actor.id).all();

@@ -3231,8 +3231,9 @@ app.get("/api/network/orgs/public/:slug", async (c) => {
 });
 
 app.get('/api/network/initiatives/public',async c=>{
-  const offset=Math.max(0,Math.min(100000,Number.parseInt(c.req.query('offset')||'0',10)||0));
-  c.header('Cache-Control','no-store');return c.json(await publicInitiatives(c.env.DB,offset));
+  const rawOffset=c.req.query('offset')||'0';
+  if(!/^\d+$/.test(rawOffset))return c.json({error:'Invalid initiative offset'},400);
+  c.header('Cache-Control','no-store');return c.json(await publicInitiatives(c.env.DB,Number(rawOffset),c.req.query('q')||'',c.req.query('status')||'all'));
 });
 app.get('/api/network/initiatives/public/:id/history',async c=>{
   const offset=Math.max(0,Math.min(100000,Number.parseInt(c.req.query('offset')||'0',10)||0));c.header('Cache-Control','no-store');return c.json(await initiativeHistory(c.env.DB,c.req.param('id'),offset));

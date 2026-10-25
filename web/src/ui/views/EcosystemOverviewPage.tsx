@@ -1,7 +1,7 @@
-import {useEffect,useMemo,useRef,useState} from 'react'
+import {useEffect,useRef} from 'react'
 import {Link} from 'react-router-dom'
-import {loadNetworkViewData,type NetworkData} from '../../features/ecosystem/networkViewData'
 import {CompanyRetentionSummary} from '../../features/ecosystem/CompanyRetentionSummary'
+import {useEcosystemQuery,type QueryMeta} from '../../features/ecosystem/ecosystemApi'
 import {ecosystemOverview} from '../../features/ecosystem/ecosystemOverview'
 import {useNetworkViewport} from '../../features/ecosystem/useNetworkViewport'
 import '../../features/ecosystem/network.css'
@@ -10,16 +10,15 @@ const dollars=(n:number)=>n.toLocaleString('en-US',{style:'currency',currency:'U
 const count=(n:number)=>n.toLocaleString('en-US')
 export function EcosystemOverviewPage(){
  const root=useRef<HTMLDivElement>(null);useNetworkViewport(root)
- const [data,setData]=useState<NetworkData|null>(null),[error,setError]=useState('')
- useEffect(()=>{document.title='Ecosystem overview';const abort=new AbortController();void loadNetworkViewData('overview',abort.signal).then(d=>{if(!abort.signal.aborted)setData(d)}).catch(()=>{if(!abort.signal.aborted)setError('The ecosystem overview could not load. Reload to try again.')});return()=>abort.abort()},[])
- const stats=useMemo(()=>data?ecosystemOverview(data):null,[data])
- const redacted=data?.organizations.find(o=>o.name==='Redacted')
+ const {data,error}=useEcosystemQuery<QueryMeta & {stats:ReturnType<typeof ecosystemOverview>;redacted?:string}>('overview')
+ useEffect(()=>{document.title='Ecosystem overview'},[])
+ const stats=data?.stats,redacted=data?.redacted
  return <div ref={root} className="portal-ecosystem eco-page eco-secondary-view eco-overview">
   <header className="eco-network-heading"><h1>Ecosystem overview</h1><nav aria-label="Network views"><Link to="/ecosystem/network/performance">Performance</Link><Link to="/ecosystem/network/interventions">Interventions</Link><Link to="/ecosystem/network/nonprofits">Nonprofits</Link><Link to="/ecosystem/network/overview" aria-current="page">Overview</Link><Link to="/ecosystem/network">Graph</Link><Link to="/ecosystem/network/events">Events</Link><Link to="/ecosystem/network/relationships">Relationships</Link><Link to="/ecosystem/network/funding">Funding gap</Link><Link to="/ecosystem/network/help">Sources &amp; help</Link></nav></header>
   <section className="eco-view-content" tabIndex={0} aria-label="Ecosystem totals">
    <p className="eco-overview-intro">The scale of the network and the money documented across its funding records.</p>
    {!stats||!data?<p role="status">{error||'Loading ecosystem totals…'}</p>:<>
-    <p className="eco-note" role="status">{data.offline?'Saved public evidence · live refresh unavailable · last checked ':'Public evidence checked '}{new Date(data.lastCheckedAt!).toLocaleString()}</p>
+    <p className="eco-note" role="status">Evidence snapshot built {new Date(data.generatedAt).toLocaleString()}</p>
     <div className="eco-overview-metrics">
      <article className="eco-overview-money"><h2>Tracked USD volume</h2><strong data-metric="tracked-usd">{dollars(stats.trackedUsd)}</strong><p>Net value of {count(stats.disclosedUsdRecords)} distinct recorded USD funding observations. Each record counts once across its sender and recipient.</p><Link to="/ecosystem/network/relationships">Explore funding evidence →</Link></article>
      <article><h2>Organizations tracked</h2><strong data-metric="organizations">{count(stats.organizations)}</strong><p>{count(stats.identifiedOrganizations)} named organizations and {count(stats.placeholders)} unidentified-recipient grouping. Directory records may represent the same legal entity until their identities are verified.</p><Link to="/ecosystem/network">Explore the network →</Link></article>
@@ -28,7 +27,7 @@ export function EcosystemOverviewPage(){
     <div className="eco-overview-metrics eco-overview-breakdown">
      <article><h2>Government obligations</h2><strong data-metric="government-usd">{dollars(stats.governmentUsd)}</strong><p>{count(stats.governmentAwards)} government award records. Lifetime cumulative obligations, including signed adjustments; amounts are not limited to the search period.</p></article>
      <article><h2>Other documented USD funding</h2><strong data-metric="other-usd">{dollars(stats.otherUsd)}</strong><p>Reported awards and funding outside the government obligation feed. Program ceilings, capitalization, portfolio aggregates and in-kind quantities are excluded.</p></article>
-     <article><h2>Redacted recipients</h2><strong data-metric="redacted-usd">{dollars(stats.redactedUsd)}</strong><p>{count(stats.redactedAwards)} funding observations with unidentified recipients, already included in tracked USD volume. Redacted is a grouping, not one legal recipient.</p><Link to={`/ecosystem/network/relationships${redacted?`?org=${encodeURIComponent(redacted.id)}`:''}`}>View unidentified awards →</Link></article>
+     <article><h2>Redacted recipients</h2><strong data-metric="redacted-usd">{dollars(stats.redactedUsd)}</strong><p>{count(stats.redactedAwards)} funding observations with unidentified recipients, already included in tracked USD volume. Redacted is a grouping, not one legal recipient.</p><Link to={`/ecosystem/network/relationships${redacted?`?org=${encodeURIComponent(redacted)}`:''}`}>View unidentified awards →</Link></article>
     </div>
     {data.governmentCoverage&&<p className="eco-note">Government coverage: {data.governmentCoverage.recipientState} recipients · USAspending date filter {data.governmentCoverage.start} through {data.governmentCoverage.end}{data.governmentCoverage.retrievedAt?` · retrieved ${new Date(data.governmentCoverage.retrievedAt).toLocaleString()}`:''}.</p>}
     {data.nonprofitCoverage&&<p><Link to="/ecosystem/network/nonprofits">Nonprofit evidence →</Link> {data.nonprofitCoverage.profileCount} profiles and {data.nonprofitCoverage.grantRecordCount.toLocaleString()} grant observations. {dollars(stats.nonprofitUsd)} in reported grant volume is included above; {dollars(stats.futureNonprofitUsd)} approved for future payment is excluded. Annual revenue, expenses and balance sheets remain separate from the funding volume above.</p>}

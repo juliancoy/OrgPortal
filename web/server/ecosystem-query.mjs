@@ -6,11 +6,12 @@ export const normalize=value=>String(value??'').normalize('NFKC').toLowerCase().
 export const grams=value=>[...new Set(Array.from({length:Math.max(0,value.length-2)},(_,i)=>value.slice(i,i+3)))]
 const integer=(params,key,fallback,max)=>{const raw=params.get(key);if(raw===null)return fallback;if(!/^\d+$/.test(raw)||!Number.isSafeInteger(Number(raw))||Number(raw)>max)throw new Error(`Invalid ${key}`);return Number(raw)}
 const intersect=(a,b)=>{const values=new Set(b);return a.filter(id=>values.has(id))}
+export const gramBucket=gram=>String([...gram].reduce((sum,char)=>sum+char.charCodeAt(0),0)%16)
 export function matching(index,params){
  const q=normalize(params.get('q'));if(q.length>128)throw new Error('Search is limited to 128 characters')
  const pools=[]
- for(const key of ['org','kind','category','county','municipality','community'])if(params.get(key))pools.push(index.filters[key]?.[params.get(key)]||[])
- if(q.length>=3)for(const gram of grams(q))pools.push(index.grams[gram]||[])
+ for(const key of ['org','kind','category','county','municipality','community'])if(params.get(key))pools.push(Object.hasOwn(index.filters[key]||{},params.get(key))?index.filters[key][params.get(key)]:[])
+ if(q.length>=3)for(const gram of grams(q).sort((a,b)=>(index.gramCounts?.[a]||0)-(index.gramCounts?.[b]||0)).slice(0,3))pools.push(index.grams[gram]||[])
  pools.sort((a,b)=>a.length-b.length)
  let ids=pools.length?[...pools[0]]:index.rows.map((_,i)=>i)
  for(const pool of pools.slice(1)){ids=intersect(ids,pool);if(!ids.length)break}
@@ -20,7 +21,8 @@ export function matching(index,params){
 }
 export async function readRows(read,version,collection,ids){
  const pages=[...new Set(ids.map(i=>Math.floor(i/PAGE_SIZE)))];
- const loaded=new Map(await Promise.all(pages.map(async page=>[page,await read(`${version}/${collection}/${page}.json`)])))
+ const loaded=new Map(),queue=[...pages]
+ await Promise.all(Array.from({length:Math.min(6,queue.length)},async()=>{while(queue.length){const page=queue.shift();loaded.set(page,await read(`${version}/${collection}/${page}.json`))}}))
  return ids.map(i=>loaded.get(Math.floor(i/PAGE_SIZE))[i%PAGE_SIZE])
 }
 export async function queryEcosystem(read,section,params){
@@ -41,8 +43,12 @@ export async function queryEcosystem(read,section,params){
   return {body:{...meta,total:visible.length,cohortTotal:cohort.length,summary:fundingSummary(cohort),records:visible.slice(offset,offset+limit),offset,nextOffset:offset+limit<visible.length?offset+limit:null}}
  }
  if(!['relationships','events','organizations','nonprofits','performance','graph'].includes(section))return {status:404,body:{error:'Unknown ecosystem view'}}
- const graph=section==='graph',collection=graph?'organizations':section
+ const graph=section==='graph',collection=graph?'organizations':section==='organizations'?'directory':section
  const index=await read(`${version}/${collection}/index.json`)
+ const q=normalize(params.get('q'));if(q.length>128)throw new Error('Search is limited to 128 characters')
+ index.grams={}
+ const selectedGrams=grams(q).sort((a,b)=>(index.gramCounts[a]||0)-(index.gramCounts[b]||0)).slice(0,3)
+ for(const bucket of new Set(selectedGrams.filter(g=>index.gramCounts[g]).map(gramBucket)))Object.assign(index.grams,await read(`${version}/${collection}/grams-${bucket}.json`))
  const nodeParams=new URLSearchParams(params);if(graph)for(const key of ['kind','from','to'])nodeParams.delete(key)
  let ids=matching(index,nodeParams)
  if(section==='performance'){
@@ -53,27 +59,52 @@ export async function queryEcosystem(read,section,params){
  }
  if(graph){
   const topology=await read(`${version}/topology.json`),selected=params.get('org'),depth=integer(params,'depth',1,3)
+  const mode=params.get('mode')||'network',geographic=mode==='geography'
+  if(!['network','funding','geography'].includes(mode))throw new Error('Invalid graph mode')
+  // Validate dates even though node membership itself is not dated.
+  matching({rows:[],filters:{},grams:{}},new URLSearchParams({from:params.get('from')||'',to:params.get('to')||''}))
+  let bbox=null
+  if(params.has('bbox')){bbox=params.get('bbox').split(',').map(Number);if(bbox.length!==4||bbox.some(n=>!Number.isFinite(n))||bbox[0]>=bbox[2]||bbox[1]>=bbox[3]||bbox[0]<-180||bbox[2]>180||bbox[1]<-90||bbox[3]>90)throw new Error('Invalid map bounds')}
+  if(geographic){
+   ids=ids.filter(i=>{const r=index.rows[i];return Number.isFinite(r.latitude)&&Number.isFinite(r.longitude)&&(!bbox||(r.longitude>=bbox[0]&&r.latitude>=bbox[1]&&r.longitude<=bbox[2]&&r.latitude<=bbox[3]))})
+   if(!selected&&!params.get('county')&&!params.get('municipality')&&(!bbox||bbox[2]-bbox[0]>1)){
+    const clusters=topology.geography.clusters.filter(c=>!bbox||(c.bounds[2]>=bbox[0]&&c.bounds[0]<=bbox[2]&&c.bounds[3]>=bbox[1]&&c.bounds[1]<=bbox[3]))
+    return {body:{...meta,metricMax:manifest.metricMax,organizations:clusters,relationships:[],financing:[],clustered:true,geography:topology.geography,total:ids.length,totalOrganizations:manifest.totals.organizations,totalRelationships:manifest.totals.relationships,offset:0,nextOffset:null,matchingEdges:0,truncated:false,groups:manifest.groups}}
+   }
+  }
   if(!depth)throw new Error('Invalid depth')
+  const offset=integer(params,'offset',0,1e7)
+  if(!selected&&!geographic&&mode==='network'&&!['q','community','category','county','municipality','kind','from','to'].some(key=>params.get(key))){
+   const clusters=topology.overview.organizations.slice(offset,offset+MAX_NODES),visible=new Set(clusters.map(o=>o.id)),links=topology.overview.relationships.filter(e=>visible.has(e.source)&&visible.has(e.target))
+   return {body:{...meta,metricMax:{connections:Math.max(1,...topology.overview.organizations.map(o=>o.count))},organizations:clusters,relationships:links.slice(0,MAX_EDGES),financing:[],communityOverview:true,total:topology.overview.organizations.length,totalOrganizations:manifest.totals.organizations,totalRelationships:manifest.totals.relationships,offset,nextOffset:offset+MAX_NODES<topology.overview.organizations.length?offset+MAX_NODES:null,matchingEdges:links.length,truncated:links.length>MAX_EDGES,groups:manifest.groups}}
+  }
   // An org selects an indexed neighborhood, not just its own directory row.
   if(selected){
    if(!topology.adjacency[selected])throw new Error('Unknown organization')
    const seen=new Set([selected]);let frontier=[selected]
    for(let hop=0;hop<depth;hop++){const next=[];for(const id of frontier)for(const neighbor of topology.adjacency[id]||[])if(!seen.has(neighbor)){seen.add(neighbor);next.push(neighbor)}frontier=next}
    const scoped=new URLSearchParams(nodeParams);scoped.delete('org');ids=matching(index,scoped).filter(i=>seen.has(index.rows[i].id))
+   if(geographic)ids=ids.filter(i=>{const r=index.rows[i];return Number.isFinite(r.latitude)&&Number.isFinite(r.longitude)&&(!bbox||(r.longitude>=bbox[0]&&r.latitude>=bbox[1]&&r.longitude<=bbox[2]&&r.latitude<=bbox[3]))})
    ids.sort((a,b)=>Number(index.rows[b].id===selected)-Number(index.rows[a].id===selected)||topology.degree[index.rows[b].id]-topology.degree[index.rows[a].id]||index.rows[a].id.localeCompare(index.rows[b].id))
   }else if(!['community','category','county','municipality'].some(key=>params.get(key))){
    // Stable breadth across communities; do not take the first arbitrary nodes.
    ids.sort((a,b)=>index.rows[a].rank-index.rows[b].rank||index.rows[a].id.localeCompare(index.rows[b].id))
   }
-  const offset=integer(params,'offset',0,1e7),page=ids.slice(offset,offset+MAX_NODES),organizations=await readRows(read,version,'organizations',page)
+  if(mode==='funding'){
+   const categoryIds=params.get('category')?new Set(index.filters.category?.[params.get('category')]?.map(i=>index.rows[i].id)||[]):null
+   const endpoints=new Set(topology.edges.filter(e=>['transfer','grant','donation','contract'].includes(e[2])&&(!params.get('kind')||e[2]===params.get('kind'))&&(!categoryIds||categoryIds.has(e[0])||categoryIds.has(e[1]))&&(!params.get('from')||(e[3]&&e[3]>=params.get('from')))&&(!params.get('to')||(e[3]&&e[3].slice(0,10)<=params.get('to')))).flatMap(e=>[e[0],e[1]]))
+   const membership=new URLSearchParams(nodeParams);membership.delete('category');membership.delete('org');ids=matching(index,membership).filter(i=>endpoints.has(index.rows[i].id))
+  }
+  const page=ids.slice(offset,offset+MAX_NODES),organizations=await readRows(read,version,'organizations',page)
   const visible=new Set(organizations.map(o=>o.id)),edgeIds=new Set()
   for(const id of visible)for(const edge of topology.edgesByOrg[id]||[])edgeIds.add(edge)
   const candidates=[...edgeIds].sort((a,b)=>a-b).filter(i=>{const e=topology.edges[i];return visible.has(e[0])&&visible.has(e[1])&&(!params.get('kind')||e[2]===params.get('kind'))&&(!params.get('from')||(e[3]&&e[3]>=params.get('from')))&&(!params.get('to')||(e[3]&&e[3].slice(0,10)<=params.get('to')))})
   const relationships=await readRows(read,version,'graph',candidates.slice(0,MAX_EDGES))
-  return {body:{...meta,organizations,relationships,financing:[],total:ids.length,totalOrganizations:manifest.totals.organizations,totalRelationships:manifest.totals.relationships,offset,nextOffset:offset+MAX_NODES<ids.length?offset+MAX_NODES:null,matchingEdges:candidates.length,truncated:candidates.length>MAX_EDGES,groups:manifest.groups}}
+  return {body:{...meta,metricMax:manifest.metricMax,geography:geographic?{located:topology.geography.located,missing:topology.geography.missing}:undefined,organizations,relationships,financing:[],total:ids.length,totalOrganizations:manifest.totals.organizations,totalRelationships:manifest.totals.relationships,offset,nextOffset:offset+MAX_NODES<ids.length?offset+MAX_NODES:null,matchingEdges:candidates.length,truncated:candidates.length>MAX_EDGES,groups:manifest.groups}}
  }
  const offset=integer(params,'offset',0,1e7),limit=integer(params,'limit',50,MAX_PAGE);if(!limit)throw new Error('Invalid limit')
- return {body:{...meta,...(section==='performance'?manifest.performance:{}),records:await readRows(read,version,collection,ids.slice(offset,offset+limit)),total:ids.length,offset,nextOffset:offset+limit<ids.length?offset+limit:null}}
+ const rows=await readRows(read,version,collection,ids.slice(offset,offset+limit))
+ return {body:{...meta,...(section==='performance'?manifest.performance:{}),records:section==='organizations'?rows.map(({id,name,type})=>({id,name,type})):rows,total:ids.length,offset,nextOffset:offset+limit<ids.length?offset+limit:null}}
 }
 export async function ecosystemResponse(request,read){
  const url=new URL(request.url),section=url.pathname.split('/').pop()

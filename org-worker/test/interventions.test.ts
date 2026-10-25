@@ -48,3 +48,13 @@ test('audit failure rolls back the initiative and its revision history',async()=
  await assert.rejects(saveInitiative(db.asD1(),owner,{operation:'save',initiative,confirm:true,previewId:p.previewId}),/audit unavailable/);
  assert.equal((await publicInitiatives(db.asD1())).records.length,0);assert.equal((await initiativeHistory(db.asD1(),initiative.id)).records.length,0);
  }finally{db.sqlite.close()}});
+
+test('public initiative search returns bounded pages while totals cover all plans',async()=>{const db=setup();try{
+ const insert=db.sqlite.prepare('INSERT INTO ecosystem_initiatives(id,organization_id,revision,payload_json,created_at,updated_at) VALUES(?,?,1,?,?,?)');
+ for(let i=0;i<121;i++){const initiative={...proposal(),id:`plan-${String(i).padStart(3,'0')}`,status:i%2?'active':'proposed',title:i%2?'Searchable transport':'Housing plan',actionDueDate:'2020-01-01'};insert.run(initiative.id,'org',JSON.stringify(initiative),'2026-01-01','2026-01-01')}
+ const first=await publicInitiatives(db.asD1()),second=await publicInitiatives(db.asD1(),50);
+ assert.equal(first.records.length,50);assert.equal(first.total,121);assert.equal(first.summary?.total,121);assert.equal(first.summary?.overdue,121);
+ assert.equal(new Set([...first.records,...second.records].map(r=>r.id)).size,100);
+ const filtered=await publicInitiatives(db.asD1(),0,'transport','active');assert.equal(filtered.total,60);assert.equal(filtered.records.length,50);assert.equal(filtered.summary?.total,121);
+ await assert.rejects(publicInitiatives(db.asD1(),-1),/Invalid initiative filters/);await assert.rejects(publicInitiatives(db.asD1(),0,'','not-a-status'),/Invalid initiative filters/);
+ }finally{db.sqlite.close()}});

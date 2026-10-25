@@ -1,7 +1,8 @@
-import { useDeferredValue, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { portalPath } from '../../config/portalBase'
-import { loadNetworkViewData, type NetworkData } from '../../features/ecosystem/networkViewData'
+import type { NetworkData, NetworkOrganization, NetworkEvent, NetworkRelationship } from '../../features/ecosystem/networkViewData'
+import { useEcosystemQuery, type QueryPage } from '../../features/ecosystem/ecosystemApi'
 import { relationshipTable } from '../../features/ecosystem/ecosystem-view.js'
 import { useNetworkViewport } from '../../features/ecosystem/useNetworkViewport'
 import '../../features/ecosystem/network.css'
@@ -15,24 +16,16 @@ function sourceUrl(value: string) {
 export function EcosystemNetworkViews({ view }: { view: keyof typeof labels }) {
   const root = useRef<HTMLDivElement>(null)
   useNetworkViewport(root)
-  const [data, setData] = useState<NetworkData | null>(null)
-  const [error, setError] = useState('')
   const [query, setQuery] = useState('')
-  const search = useDeferredValue(query.trim().toLowerCase())
-  const [limit, setLimit] = useState(100)
+  const [offset, setOffset] = useState(0)
   const [params, setParams] = useSearchParams()
   const selected = params.get('org') || ''
-  useEffect(() => {
-    document.title = `${labels[view]} · Organization network`
-    setData(null); setError(''); setQuery(''); setLimit(100)
-    if (view === 'help') return
-    const abort = new AbortController()
-    void loadNetworkViewData(view, abort.signal).then(data => { if (!abort.signal.aborted) setData(data) }).catch(() => { if (!abort.signal.aborted) setError('Public evidence could not load. Reload to try again.') })
-    return () => abort.abort()
-  }, [view])
-  useEffect(() => setLimit(100), [search, selected])
-  const events = (data?.events || []).filter(event => (!selected || event.organizationId === selected) && (!search || `${event.title} ${event.organizationName} ${event.location} ${event.date}`.toLowerCase().includes(search)))
-  const relationships = (data?.relationships || []).filter(record => (!selected || record.source === selected || record.target === selected) && (!search || `${record.sourceLabel} ${record.targetLabel} ${record.type} ${record.kind} ${record.date}`.toLowerCase().includes(search)))
+  const {data:page,error}=useEcosystemQuery<QueryPage<NetworkEvent|NetworkRelationship>>(view==='help'?'organizations':view,{q:query,org:selected,offset,limit:100})
+  const {data:directory}=useEcosystemQuery<QueryPage<NetworkOrganization>>('organizations',{q:params.get('orgSearch')||'',limit:100})
+  const data:NetworkData|null=page?{organizations:directory?.records||[],relationships:view==='relationships'?page.records as NetworkRelationship[]:[],events:view==='events'?page.records as NetworkEvent[]:[],financing:[]}:null
+  useEffect(()=>{document.title=`${labels[view]} · Organization network`},[view])
+  useEffect(()=>setOffset(0),[view,selected,query])
+  const events=data?.events||[],relationships=data?.relationships||[]
   return <div ref={root} className="portal-ecosystem eco-page eco-secondary-view">
     <header className="eco-network-heading"><h1>{labels[view]}</h1><nav aria-label="Network views"><Link to="/ecosystem/network/performance">Performance</Link><Link to="/ecosystem/network/interventions">Interventions</Link><Link to="/ecosystem/network/nonprofits">Nonprofits</Link><Link to="/ecosystem/network/overview">Overview</Link>
       <Link to={`/ecosystem/network${selected ? `?org=${encodeURIComponent(selected)}` : ''}`}>Graph</Link>
@@ -55,12 +48,12 @@ export function EcosystemNetworkViews({ view }: { view: keyof typeof labels }) {
         <p><a href={portalPath('/ecosystem-data/ecosystem-government.json')}>Download government award evidence</a> · <a href={portalPath('/ecosystem-data/ecosystem-portal.json')}>Download organization evidence</a> · <a href={portalPath('/ecosystem-data/ecosystem-history.json')}>Download complete sourced event history</a></p>
       </> : <>
         <p>{view === 'events' ? 'Past and upcoming events across the ecosystem. Listings do not imply funding or hosting.' : 'All documented relationships, including aggregate scopes and program terms excluded from the graph. Amounts are not additive.'}</p>
-        <div className="eco-view-filters"><label>Search {labels[view].toLowerCase()}<input type="search" value={query} onChange={event => setQuery(event.target.value)} /></label>
-          <label>Organization<select value={selected} onChange={event => setParams(event.target.value ? { org: event.target.value } : {})}><option value="">All organizations</option>{data?.organizations.map(org => <option key={org.id} value={org.id}>{org.name}</option>)}</select></label></div>
+        <div className="eco-view-filters"><label>Search {labels[view].toLowerCase()}<input type="search" value={query} onChange={event => {setQuery(event.target.value);setOffset(0)}} /></label>
+          <label>Find an organization<input type="search" value={params.get('orgSearch')||''} onChange={event=>{const next=new URLSearchParams(params);next.set('orgSearch',event.target.value);setParams(next)}} /></label><label>Organization<select value={selected} onChange={event => {setOffset(0);const next=new URLSearchParams(params);if(event.target.value)next.set('org',event.target.value);else next.delete('org');setParams(next)}}><option value="">All organizations</option>{selected&&!data?.organizations.some(o=>o.id===selected)&&<option value={selected}>Selected organization</option>}{data?.organizations.map(org => <option key={org.id} value={org.id}>{org.name}</option>)}</select></label></div>
         {!data && <p role="status">{error || 'Loading public evidence…'}</p>}
-        {data && <><p className="eco-note" role="status">{data.offline ? 'Saved evidence · refresh unavailable · last checked ' : 'Public evidence checked '}{new Date(data.lastCheckedAt!).toLocaleString()}</p>
-          {view === 'events' ? <><p>{events.length.toLocaleString()} events · showing {Math.min(limit, events.length)}</p><ul id="event-results">{events.slice(0, limit).map(event => <li key={event.id}><a href={sourceUrl(event.sourceUrl)} target="_blank" rel="noopener noreferrer">{event.title}</a> · {event.date || 'Date not supplied'} · {event.organizationName || 'Organization not supplied'}{event.location ? ` · ${event.location}` : ''}</li>)}</ul></> : <><p>{relationships.length.toLocaleString()} relationships · showing {Math.min(limit, relationships.length)}</p><div id="network-table" dangerouslySetInnerHTML={{ __html: relationshipTable({ ...data, relationships: relationships.slice(0, limit) }) }} /></>}
-          {limit < (view === 'events' ? events.length : relationships.length) && <button type="button" onClick={() => setLimit(limit + 100)}>Show more {labels[view].toLowerCase()}</button>}
+        {data && <><p className="eco-note" role="status">Evidence snapshot built {new Date(page!.generatedAt).toLocaleString()}</p>
+          {view === 'events' ? <><p>{page!.total.toLocaleString()} events · showing {offset+1}–{offset+events.length}</p><ul id="event-results">{events.map(event => <li key={event.id}><a href={sourceUrl(event.sourceUrl)} target="_blank" rel="noopener noreferrer">{event.title}</a> · {event.date || 'Date not supplied'} · {event.organizationName || 'Organization not supplied'}{event.location ? ` · ${event.location}` : ''}</li>)}</ul></> : <><p>{page!.total.toLocaleString()} relationships · showing {offset+1}–{offset+relationships.length}</p><div id="network-table" dangerouslySetInnerHTML={{ __html: relationshipTable({ ...data, relationships }) }} /></>}
+          <div className="eco-view-filters"><button type="button" disabled={!offset} onClick={()=>setOffset(Math.max(0,offset-100))}>Previous</button><button type="button" disabled={page?.nextOffset==null} onClick={()=>setOffset(page!.nextOffset!)}>Next</button></div>
         </>}
       </>}
     </section>

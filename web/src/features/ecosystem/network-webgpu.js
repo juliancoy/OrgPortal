@@ -10,54 +10,20 @@ import {mountNetworkLawDialogs} from './network-law-dialogs.js'
 import {rotateND} from './particle-life-4d.js'
 import {shortGroupName} from '../../domain/organization/groupNames'
 import {persistNetworkSettings} from './network-settings.js'
-import { transactionVisibility, transactionCounts } from './zoom-visibility.js'
+import { transactionVisibility } from './zoom-visibility.js'
 import { quantityEdgeWidths } from './edge-quantity.js'
 import { relationshipColor } from './relationship-colors.js'
-import {mergeNetworkHistory,appendNonprofitEvidence} from './network-history.js'
 import { applyFundHierarchy, foldFundNodes, financialNodePies, pieLabel } from './fund-pies.js'
 import { createNetworkGPU, curvePoints } from './webgpu-renderer.js'
 import { assignEdgeCurvature } from './ecosystem-physics.js'
 import { uniqueNetworkLinks } from './network-links.js'
 import { createNetworkLayout } from './network-layout.js'
-import { prepareNetworkData, loadSharedNetworkData } from './network-data.js'
 import { organizationPreview, edgeDetails, networkPreviewSummaries } from './ecosystem-view.js'
-import { loadPortalEvidence, graphRelationships, financialNodeAmounts, financialNodeRadius } from './portal-ecosystem.js'
-import { refreshPublicReport } from '../../data/publicOrganization/cache'
+import { graphRelationships, financialNodeRadius } from './portal-ecosystem.js'
 export function mountEcosystemNetworkGPU(root, {dataUrl, historyUrl, apiPrefix, portalPath, renderer: rendererKind = 'webgpu'}) {
 const four=rendererKind==='webgpu4d',spatial=four||rendererKind==='webgpu3d'
 const abort = new AbortController(); let disposed=false, resizeObserver;
 mountNetworkLawDialogs(root,abort.signal)
-let oldestCheck=Infinity, usingOfflineCopy=false
-const cachedPublicJson = (url, validate) => new Promise((resolve,reject) => {
- let saved
- // Render saved evidence immediately; revalidation updates the shared cache
- // for subsequent views without blocking GPU startup on network latency.
- void refreshPublicReport(url, {signal:abort.signal, validate, onCached:entry=>{
-  saved=entry;oldestCheck=Math.min(oldestCheck,entry.checkedAt);resolve(entry.data)
- }}).then(entry=>{
-  oldestCheck=Math.min(oldestCheck,entry.checkedAt);resolve(entry.data)
- }).catch(error=>{
-  if(saved && !abort.signal.aborted){usingOfflineCopy=true;resolve(saved.data)}
-  else reject(error)
- })
-})
-const validateSnapshot = value => {
- if(!value || !['organizations','relationships','financing'].every(key=>Array.isArray(value[key])))throw new Error('Network data is incomplete')
- return value
-}
-const sharedEvidenceFetch = async url => {
- let saved
- try {
-  const entry=await refreshPublicReport(url.replace(/\/support\?offset=0$/, '/support'), {
-   validate:value=>{if(url.includes('/orgs/public?')?!Array.isArray(value):!Array.isArray(value?.records))throw new Error('Public evidence is incomplete');return value},
-   onCached:entry=>{saved=entry},
-  })
-  return {ok:true,status:200,json:async()=>entry.data}
- } catch(error) {
-  if(saved)return {ok:true,status:200,json:async()=>saved.data}
-  throw error
- }
-}
 const $ = s => root.querySelector(s)
 const rewriteLinks = () => root.querySelectorAll('a[href^="/"]').forEach(a => { const path=a.getAttribute('href'); if(!a.dataset.portalLinked){a.setAttribute('href', path.startsWith('/ecosystem-data/') ? new URL(path.split('/').pop(),historyUrl.startsWith('http')?historyUrl:new URL(historyUrl,location.origin)).pathname : portalPath(path));a.dataset.portalLinked='true'} });
 
@@ -72,6 +38,55 @@ const fpsTimer=setInterval(()=>{const fps=frameRate.value(performance.now());fps
 let fittedWidth=1, recordedCounts=new Map()
 let preparedData, previewSummaries, data, selected = null, renderer, canvas, nodes=[], edges=[], labelItems=[], frame=0
 let inspectorKey=null, simulation, fitted=false, geometryDirty=true, visibilityKey=null, visible=new Set(), visibleEdges=new Set(), labelPriority=[]
+const queryControls=document.createElement('section');queryControls.className='eco-view-filters';queryControls.setAttribute('aria-label','Network data scope')
+queryControls.innerHTML='<label>Explore group<select id="network-data-group"><option value="">Network overview</option></select></label><button id="network-data-previous" type="button" disabled>Previous group page</button><button id="network-data-next" type="button" disabled>Next group page</button><p id="network-data-status" role="status"></p>'
+root.querySelector('.eco-network-controls').prepend(queryControls)
+let graphRequest,searchRequest,searchTimer,geographyTimer,graphScope={},graphOffset=0,graphNext=null,graphSequence=0
+const graphEndpoint=parameters=>portalPath('/api/ecosystem/graph?'+new URLSearchParams(parameters))
+async function loadGraph(scope=graphScope,{keepView=false}={}){
+ graphRequest?.abort();const controller=new AbortController();graphRequest=controller
+ const sequence=++graphSequence,parameters={depth:$('#network-hop-depth').value||'1',offset:String(scope.offset||0)}
+ if(data?.version)parameters.version=data.version
+ if(scope.org)parameters.org=scope.org
+ if(scope.group)parameters[scope.group[0]]=scope.group[1]
+ const mode=$('#network-analysis-mode').value;parameters.mode=mode
+ if(mode==='funding')for(const [key,id] of [['kind','network-flow-kind'],['category','network-flow-category'],['from','network-flow-from'],['to','network-flow-to']]){const value=$('#'+id).value;if(value&&value!=='all')parameters[key]=value}
+ if(scope.bbox)parameters.bbox=scope.bbox
+ $('#network-data-status').textContent='Loading network scope…'
+ try{
+  const response=await fetch(graphEndpoint(parameters),{signal:controller.signal,credentials:'omit'}),next=await response.json()
+  if(!response.ok)throw Error(next.error||'Network scope unavailable')
+  if(disposed||sequence!==graphSequence)return
+  graphScope=scope;graphOffset=next.offset;graphNext=next.nextOffset;data=next
+  const metrics=new Map(data.organizations.map(o=>[o.id,o.networkMetrics||{}]))
+  const map=key=>new Map([...metrics].map(([id,value])=>[id,value[key]]).filter(([,value])=>value!==undefined))
+  preparedData={data,folded:data,summaries:{pies:map('pie'),totals:map('totals'),counterparties:map('counterparties'),obligationIds:new Set([...metrics].filter(([,m])=>m.obligations).map(([id])=>id))},contextPies:map('contextPie')}
+  defaultPositions=Object.fromEntries(data.organizations.map(o=>[o.id,o.positions||{}]))
+  const groupSelect=$('#network-data-group')
+  if(groupSelect.options.length===1)for(const [mode,groups] of Object.entries(next.groups)){
+   const optgroup=document.createElement('optgroup');optgroup.label=mode
+   for(const group of groups){const option=document.createElement('option');option.value=JSON.stringify([mode,group.id]);option.textContent=`${group.name} (${group.count})`;optgroup.append(option)}groupSelect.append(optgroup)
+  }
+  groupSelect.value=scope.group?JSON.stringify(scope.group):''
+  $('#network-data-previous').disabled=!graphOffset;$('#network-data-next').disabled=graphNext===null
+  const message=next.communityOverview?`${next.organizations.length} of ${next.total} community markers representing ${next.totalOrganizations} organizations. Select a community to load its organizations and source connections.`:next.clustered?`${next.organizations.length} county aggregate markers from ${next.geography.located} organizations with published Maryland coordinates; ${next.geography.missing} missing or outside Maryland. Select a county or zoom in to load organizations.`:`Loaded ${next.organizations.length} of ${next.total} matching organizations; ${next.totalOrganizations} in the full network. ${next.relationships.length} of ${next.matchingEdges} relationships between these loaded organizations.${next.truncated?' More evidence is available in Relationships.':''} Financial summaries use the full snapshot.`
+  $('#network-data-status').textContent=message
+  $('#network-source').textContent='Evidence snapshot built '+new Date(next.generatedAt).toLocaleString()
+  if(!keepView)fitted=false
+  analysisLayout=null;networkCoordinates.clear();previewSummaries=preparedData.summaries
+  if(gpuReady){search();rebuild()}
+ }catch(error){if(!disposed&&!controller.signal.aborted){$('#network-data-status').textContent=error.message;throw error}}
+}
+function scheduleGeography(){
+ if(spatial||$('#network-analysis-mode').value!=='geography')return
+ clearTimeout(geographyTimer);geographyTimer=setTimeout(()=>{
+  const scale=230*Math.cos(39*Math.PI/180),bbox=[view.x/scale-77.3,39-(view.y+view.h)/230,(view.x+view.w)/scale-77.3,39-view.y/230]
+  void loadGraph({...graphScope,offset:0,bbox:bbox.join(',')},{keepView:true}).catch(()=>{})
+ },250)
+}
+$('#network-data-group').addEventListener('change',()=>{selected=null;void loadGraph({group:$('#network-data-group').value?JSON.parse($('#network-data-group').value):undefined}).catch(()=>{})},{signal:abort.signal})
+$('#network-data-next').addEventListener('click',()=>{selected=null;void loadGraph({...graphScope,offset:graphNext}).catch(()=>{})},{signal:abort.signal})
+$('#network-data-previous').addEventListener('click',()=>{selected=null;void loadGraph({...graphScope,offset:Math.max(0,graphOffset-250)}).catch(()=>{})},{signal:abort.signal})
 const savedPositions=new Map()
 let defaultPositions={}
 const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)')
@@ -92,7 +107,7 @@ function updateAnalysisLayout(){
  $('#network-flow-filters').hidden=mode!=='funding'
  if(mode==='network'){if(analysisLayout)for(const n of nodes)Object.assign(n,networkCoordinates.get(n.id));analysisLayout=null;simulation?.motion(physicsEnabled())}
  else{if(!analysisLayout){networkCoordinates.clear();for(const n of nodes)networkCoordinates.set(n.id,{x:n.x,y:n.y,z:n.z})}simulation?.motion(false);analysisLayout=analyticalLayout(nodes,recordEdges,mode,{kind:$('#network-flow-kind').value,category:$('#network-flow-category').value,from:$('#network-flow-from').value,to:$('#network-flow-to').value,grouping:$('#network-grouping').value,expanded:expandedCommunities});for(const n of nodes){const point=analysisLayout.positions.get(n.id);if(point)Object.assign(n,point)}}
- $('#network-analysis-legend').textContent=mode==='funding'?`Funder → intermediary → recipient. ${analysisLayout.edgeIds.size} documented directional relationships; ${analysisLayout.missing} organizations have no matching flow. Unknown amounts remain unweighted; awards do not establish payment.`:mode==='geography'?`Published Maryland coordinates only. ${analysisLayout.locatedCount} located in ${analysisLayout.positions.size} markers; ${analysisLayout.missing} missing or outside Maryland. County/city markers are centroids of published member coordinates; expand to see organizations.`:'Node colors identify sectors or communities. Orange marks selected relationships. Dashed lines identify non-funding associations.'
+ $('#network-analysis-legend').textContent=mode==='funding'?`Funder → intermediary → recipient. ${analysisLayout.edgeIds.size} documented directional relationships; ${analysisLayout.missing} organizations have no matching flow. Unknown amounts remain unweighted; awards do not establish payment.`:mode==='geography'?`Published Maryland coordinates only. ${data.geography?.located??analysisLayout.locatedCount} located across the snapshot; ${analysisLayout.positions.size} markers loaded; ${data.geography?.missing??analysisLayout.missing} missing or outside Maryland. County/city markers are centroids of published member coordinates; expand to see organizations.`:'Node colors identify sectors or communities. Orange marks selected relationships. Dashed lines identify non-funding associations.'
  visibilityKey=null;geometryDirty=true;requestRender()
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>applyTheme(),{signal:abort.signal})
@@ -106,7 +121,7 @@ function updateDisclosure(){
 }
 function updateNodeSizes(){
  if(!analysis)return
- const metric=$('#network-size-metric').value,values=nodes.map(n=>metric==='connections'?analysis.adjacency.get(n.id).size:metric==='uniform'?0:analysis[metric].get(n.id)||0),max=Math.max(1,...values)
+ const metric=$('#network-size-metric').value,values=nodes.map(n=>metric==='connections'?(n.networkMetrics?.connections??analysis.adjacency.get(n.id).size):metric==='uniform'?0:analysis[metric].get(n.id)||0),max=data.metricMax?.[metric]||Math.max(1,...values)
  nodes.forEach((n,i)=>n.renderRadius=metricRadius(values[i],max));geometryDirty=true;requestRender()
 }
 function updateCommunityList(){
@@ -162,6 +177,8 @@ abort.signal.addEventListener('abort',()=>cancelAnimationFrame(cameraTransition)
 const forceOptions=()=>({live:true,attractionLaw:$('#attraction-law').value,repulsionLaw:$('#repulsion-law').value,attractionAlpha:Number($('#attraction-alpha').value),repulsionAlpha:Number($('#repulsion-alpha').value),dimensions:dimensionCount(),lifeRadius:Number($('#life-radius')?.value??300),lifeFriction:Number($('#life-friction')?.value??.85),attraction:Number($('#attraction').value),repulsion:Number($('#repulsion').value),proximity:Number($('#proximity').value),centralGravity:Number($('#central-gravity').value),dither:Number($('#dither').value)})
 const financialLabel = n => n.financialAmount ? `Recorded USD transaction volume: ${new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(n.financialAmount)}; incoming + outgoing; payment unverified${n.financialPie ? '. '+pieLabel(n.financialPie) : ''}` : 'USD volume undisclosed'
 function previewNode(org) {
+ if(org.serverCommunity||org.serverCluster){const heading=document.createElement('h2'),note=document.createElement('p');heading.textContent=org.name;note.textContent=`Aggregate marker for ${org.count} organizations. Select to load this group. Financial observations belong to the underlying organizations and source records.`;$('#network-detail').replaceChildren(heading,note);return}
+
  hovered=org.id;labelPriority=[];requestRender()
  if(selected)return
  const geographic=analysisLayout?.geographicGroups?.get(org.id),group=disclosed?.clusters.get(disclosed.membership.get(org.id)),aggregate=geographic||(!analysisLayout&&$('#network-detail-mode').value==='overview'&&$('#network-clustering').checked&&!expandedCommunities.has(group?.id)&&group?.members.length>1?group:null)
@@ -178,24 +195,27 @@ function bindNodePreview(button,node) {
  button.addEventListener('pointerenter',()=>previewNode(node))
  button.addEventListener('focus',()=>previewNode(node))
 }
-function activateNode(id){const geographic=analysisLayout?.geographicGroups?.get(id);if(geographic){expandedCommunities.add(geographic.id);saveExpanded();updateCommunityList();updateAnalysisLayout();return}const group=disclosed?.membership.get(id);if(!analysisLayout&&$('#network-detail-mode').value==='overview'&&$('#network-clustering').checked&&!expandedCommunities.has(group)&&disclosed.clusters.get(group)?.members.length>1){expandedCommunities.add(group);saveExpanded();updateCommunityList();updateDisclosure()}else select(id)}
+function activateNode(id){const marker=data.organizations.find(o=>o.id===id);if(marker?.serverCommunity){void loadGraph({group:['community',marker.serverCommunity]}).catch(()=>{});return}if(marker?.serverCluster){void loadGraph({group:['county',marker.serverCluster]}).catch(()=>{});return}const geographic=analysisLayout?.geographicGroups?.get(id);if(geographic){expandedCommunities.add(geographic.id);saveExpanded();updateCommunityList();updateAnalysisLayout();return}const group=disclosed?.membership.get(id);if(!analysisLayout&&$('#network-detail-mode').value==='overview'&&$('#network-clustering').checked&&!expandedCommunities.has(group)&&disclosed.clusters.get(group)?.members.length>1){expandedCommunities.add(group);saveExpanded();updateCommunityList();updateDisclosure()}else select(id)}
 function select(id,openInspector=true) {
+ if(data?.version&&graphScope.org!==id){void loadGraph({org:id}).then(()=>{if(!disposed)select(id,openInspector)}).catch(()=>{});return}
  let org = data.organizations.find(o=>o.id===id); if (!org) return
  if(org.administratorId){id=org.administratorId;org=data.organizations.find(o=>o.id===id);if(!org)return}
  previewSummaries=preparedData?.data===data?preparedData.summaries:networkPreviewSummaries(data)
  if($('#network-analysis-mode').value==='geography'){const group=$('#network-grouping').value==='county'?org.county:org.municipality||org.city;if(group){expandedCommunities.add(group);saveExpanded();updateAnalysisLayout()}}
  selected = id;$('#network-detail-mode').value='focus';$('#network-detail-mode').dispatchEvent(new Event('input',{bubbles:true})); inspectorKey='node:'+id; $('#neighbors').disabled=false
- $('#network-detail').innerHTML = organizationPreview(org,previewSummaries);if(analysis)appendNetworkInspection($('#network-detail'),org,analysis,recordEdges,unpin); rewriteLinks();if(matchMedia('(max-width:900px)').matches&&!root.classList.contains('eco-controls-open')&&!root.classList.contains('eco-visualization-open')&&!root.classList.contains('eco-search-open')){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
+ $('#network-detail').innerHTML = organizationPreview(org,previewSummaries);if(analysis)appendNetworkInspection($('#network-detail'),org,analysis,recordEdges,unpin);appendEvidenceLink(org);rewriteLinks();if(matchMedia('(max-width:900px)').matches&&!root.classList.contains('eco-controls-open')&&!root.classList.contains('eco-visualization-open')&&!root.classList.contains('eco-search-open')){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
  if(openInspector)selectPanel('inspector')
  const u = new URL(location.href); u.searchParams.set('org',id); history.replaceState(history.state,'',u)
  refreshSelection()
  const point=nodes.find(n=>n.id===id);if(point)focusView(point)
 }
+function appendEvidenceLink(org){const link=document.createElement('a');link.href=portalPath('/ecosystem/network/relationships?org='+encodeURIComponent(org.id));link.textContent='All relationships and source evidence →';$('#network-detail').append(link)}
 function refreshSelection(){
  for(const {button,n} of labelItems)button.setAttribute('aria-pressed',String(n.id===selected))
  updateDisclosure()
 }
 function unpin() {
+ if(data?.version&&graphScope.org)void loadGraph({}).catch(()=>{})
  const filtered=$('#neighbors').checked
  selected=null;inspectorKey=null
  $('#neighbors').checked=false;$('#neighbors').disabled=true
@@ -209,13 +229,19 @@ function closeDetails() {
 }
 root.addEventListener('keydown',event=>{if(event.key==='Escape'&&root.classList.contains('eco-inspector-open'))closeDetails()},{signal:abort.signal})
 function search() {
- const q = $('#network-search').value.trim().toLowerCase()
- const result = $('#network-results'); result.replaceChildren()
+ clearTimeout(searchTimer);searchRequest?.abort()
+ const q=$('#network-search').value.trim(),result=$('#network-results');result.replaceChildren()
  $('#network-results-heading').textContent=q?'Search results':'Suggested organizations'
- const matches = data.organizations.filter(o=>!q || `${o.name} ${shortGroupName(o.name)} ${o.type}`.toLowerCase().includes(q))
- for (const org of matches.slice(0,q ? 20 : 5)) { const b=document.createElement('button'); b.type='button'; b.textContent=shortGroupName(org.name);b.setAttribute('aria-label',org.name); b.addEventListener('click',()=>{select(org.id);selectPanel('inspector')}); result.append(b) }
- if (!matches.length) result.textContent='No matching organization.'
+ const controller=new AbortController();searchRequest=controller
+ searchTimer=setTimeout(()=>{
+  const params=new URLSearchParams({q,limit:q?'20':'5'});if(data?.version)params.set('version',data.version)
+  void fetch(portalPath('/api/ecosystem/organizations?'+params),{signal:controller.signal,credentials:'omit'}).then(async response=>{const payload=await response.json();if(!response.ok)throw Error(payload.error||'Search unavailable');if(disposed||controller.signal.aborted)return
+   for(const org of payload.records){const button=document.createElement('button');button.type='button';button.textContent=shortGroupName(org.name);button.setAttribute('aria-label',org.name);button.addEventListener('click',()=>{select(org.id);selectPanel('inspector')});result.append(button)}
+   if(!payload.records.length)result.textContent='No matching organization.'
+  }).catch(error=>{if(!controller.signal.aborted&&!disposed)result.textContent=error.message})
+ },150)
 }
+
 function rebuild() {
  if (!data || !gpuReady) return
  inspectorKey=null
@@ -236,17 +262,17 @@ function rebuild() {
  }
  if ($('#hide-isolated').checked) {
   const connected=new Set(edges.flatMap(e=>[e.source,e.target]))
-  visible=visible.filter(n=>connected.has(n.id))
+  visible=visible.filter(n=>n.serverCommunity||n.serverCluster||connected.has(n.id))
  }
- recordedCounts=transactionCounts(graphRelationships(graphData,{includeCapitalization:context}))
- const amounts=financialNodeAmounts(graphData,{includeCapitalization:context})
+ recordedCounts=new Map(graphData.organizations.map(n=>[n.id,n.networkMetrics?.recordCount||0]))
+ const amounts=new Map(graphData.organizations.map(n=>[n.id,n.networkMetrics?.amount||0]))
  const widths=quantityEdgeWidths(graphRelationships(graphData,{includeCapitalization:context}),$('#scale-edge-quantity').checked)
  nodes=visible.map(n=>({...n,...(savedPositions.get(n.id)||defaultPositions[n.id]?.[four?'4d':spatial?'3d':'2d']),financialAmount:amounts.get(n.id) ?? null,financialPie:pies.get(n.id) || null})); edges=edges.map(e=>({...e,quantityWidth:widths.get(e.id) ?? 1.4}))
  const scaleFinances=$('#scale-node-finances').checked
  const sizing={algorithm:$('#node-size-algorithm').value,alpha:Number($('#node-size-alpha').value),maxAmount:Math.max(0,...amounts.values())}
  nodes.forEach(n=>{n.renderRadius=financialNodeRadius(scaleFinances?n.financialAmount:null,sizing)})
  const recordIds=new Set(nodes.map(n=>n.id));recordEdges=graphRelationships(graphData,{moneyOnly,includeCapitalization:context}).filter(e=>recordIds.has(endpoint(e.source))&&recordIds.has(endpoint(e.target))&&(moneyOnly||rels.has(e.relationship)))
- analysis=createNetworkAnalysis(nodes,recordEdges);restoreExpanded();updateNodeSizes();updateDisclosure();updateCommunityList()
+ analysis=createNetworkAnalysis(nodes,recordEdges);for(const n of nodes){const m=n.networkMetrics;if(m){if(m.incoming!==undefined)analysis.incoming.set(n.id,m.incoming);if(m.outgoing!==undefined)analysis.outgoing.set(n.id,m.outgoing)}}restoreExpanded();updateNodeSizes();updateDisclosure();updateCommunityList()
  const categorySelect=$('#network-flow-category');for(const category of new Set(nodes.map(n=>n.category)))if(![...categorySelect.options].some(o=>o.value===category)){const option=document.createElement('option');option.value=category;option.textContent=category;categorySelect.append(option)}
  status.textContent=`${nodes.length} organizations · ${edges.length} links`
  labels.replaceChildren();labelItems=[]
@@ -258,7 +284,7 @@ function rebuild() {
   if(n.financialPie){button.dataset.fundingSlices=String(n.financialPie.slices.length);button.dataset.fundingTotal=String(n.financialPie.total)}
   button.setAttribute('aria-label',`${n.name} · ${financialLabel(n)}`);button.setAttribute('aria-pressed',String(n.id===selected));button.addEventListener('click',()=>activateNode(n.id));bindNodePreview(button,n);labels.append(button);labelItems.push({button,n,width:Math.min(155,button.textContent.length*5.5+10)})
  }
- if(selected&&analysis.byId.has(selected)){const org=analysis.byId.get(selected);$('#network-detail').innerHTML=organizationPreview(org,previewSummaries);appendNetworkInspection($('#network-detail'),org,analysis,recordEdges,unpin);rewriteLinks()}
+ if(selected&&analysis.byId.has(selected)){const org=analysis.byId.get(selected);$('#network-detail').innerHTML=organizationPreview(org,previewSummaries);appendNetworkInspection($('#network-detail'),org,analysis,recordEdges,unpin);appendEvidenceLink(org);rewriteLinks()}
  if(!fitted){fit();fitted=true;if(selected){const point=nodes.find(n=>n.id===selected);if(point)focusView(point)}}requestRender()
 }
 function fit(){
@@ -358,7 +384,7 @@ function zoomGPU(factor, event) {
  factor=view.w/(fittedWidth/zoom)
  const cursor=cursorPosition(event), worldX=view.x+cursor.x*view.w, worldY=view.y+cursor.y*view.h
  view.w/=factor;view.h/=factor
- view.x=worldX-cursor.x*view.w;view.y=worldY-cursor.y*view.h;requestRender()
+ view.x=worldX-cursor.x*view.w;view.y=worldY-cursor.y*view.h;requestRender();scheduleGeography()
 }
 async function initGPU(){
  canvas=document.createElement('canvas');canvas.style.cssText='width:100%;height:100%;display:block;touch-action:none;cursor:grab';canvas.setAttribute('aria-label',four?'N-dimensional organization relationship network':spatial?'3D WebGPU organization network':rendererKind==='canvas'?'Organization network':'Native WebGPU organization network');canvas.dataset.renderer=rendererKind;host.prepend(canvas)
@@ -418,15 +444,13 @@ async function initGPU(){
   if(spatial&&(pointers.size>1||(down&&Math.hypot(event.clientX-down.x,event.clientY-down.y)>6)))return
   const item=hit(event);const nextHover=item.node?.id||null;if(nextHover!==hovered){hovered=nextHover;labelPriority=[];requestRender()}if(selected)return;if(item.node)previewNode(item.node);else if(item.edge)previewEdge(item.edge);canvas.style.cursor=item.node||item.edge?'pointer':'grab'
  },{signal:abort.signal})
- const release=event=>{if(event.type==='pointerup'&&down&&Math.hypot(event.clientX-down.x,event.clientY-down.y)<6){const item=hit(event);if(item.node)activateNode(item.node.id);else if(item.edge)previewEdge(item.edge)}pointers.delete(event.pointerId);down=null;pinch=null;drag=null;if(pointers.size===1){const a=[...pointers.values()][0];drag={x:a.x,y:a.y,vx:view.x,vy:view.y}}}
+ const release=event=>{scheduleGeography();if(event.type==='pointerup'&&down&&Math.hypot(event.clientX-down.x,event.clientY-down.y)<6){const item=hit(event);if(item.node)activateNode(item.node.id);else if(item.edge)previewEdge(item.edge)}pointers.delete(event.pointerId);down=null;pinch=null;drag=null;if(pointers.size===1){const a=[...pointers.values()][0];drag={x:a.x,y:a.y,vx:view.x,vy:view.y}}}
  canvas.addEventListener('pointerup',release,{signal:abort.signal});canvas.addEventListener('pointercancel',release,{signal:abort.signal})
 }
 async function start(){
  try {
   await settingsReady
-  try{const response=await fetch(new URL('network-default-positions.json',new URL(historyUrl,location.origin)),{signal:abort.signal});if(response.ok)defaultPositions=(await response.json()).organizations||{}}catch{/* New organizations still get deterministic initial coordinates. */}
-  const snapshots=await Promise.all([cachedPublicJson(dataUrl,validateSnapshot),cachedPublicJson(historyUrl,validateSnapshot),cachedPublicJson(new URL('ecosystem-nonprofits.json',new URL(historyUrl,location.origin)).href,validateSnapshot)])
-  const historyData=appendNonprofitEvidence(snapshots[1],snapshots[2]);data=applyFundHierarchy(mergeNetworkHistory(snapshots[0],historyData)); if(disposed)return; rewriteLinks()
+  await loadGraph({org:new URL(location.href).searchParams.get('org')||undefined})
   search();await initGPU();if(disposed)return
   root.addEventListener('wheel',event=>{
    if(!host.contains(event.target))return
@@ -436,7 +460,8 @@ async function start(){
    zoomGPU(factor,event)
   },{passive:false,capture:true,signal:abort.signal})
   $('#network-detail').addEventListener('error',event=>{if(event.target.tagName==='IMG'){event.target.hidden=true;const note=document.createElement('p');note.className='eco-note';note.textContent='Published image is currently unavailable.';event.target.after(note)}},true)
-  $('#network-search').addEventListener('input',search)
+  $('#network-search').addEventListener('input',search,{signal:abort.signal})
+  for(const id of ['network-analysis-mode','network-hop-depth','network-flow-kind','network-flow-category','network-flow-from','network-flow-to'])$('#'+id).addEventListener('change',()=>{void loadGraph({...graphScope,offset:0,bbox:undefined}).catch(()=>{})},{signal:abort.signal})
   for(const control of visibilityControls.querySelectorAll('select,input'))control.addEventListener('input',()=>{if(control.id==='network-expanded-communities')restoreExpanded();if(control.id==='network-grouping'){expandedCommunities.clear();saveExpanded();updateCommunityList()}if(control.id==='network-size-metric')updateNodeSizes();if(control.id==='network-theme')applyTheme();if(control.id==='network-camera-mode')renderer.setCameraMode?.(control.value);if(control.id==='network-analysis-mode'||control.id.startsWith('network-flow-')||($('#network-analysis-mode').value==='geography'&&['network-grouping','network-expanded-communities'].includes(control.id))){updateAnalysisLayout();if(control.id!=='network-expanded-communities')fit()}updateDisclosure()},{signal:abort.signal})
   $('#network-home').addEventListener('click',()=>{unpin();fit()},{signal:abort.signal})
   $('#network-focus').addEventListener('click',()=>{const node=nodes.find(n=>n.id===selected);if(node)focusView(node)},{signal:abort.signal})
@@ -484,10 +509,10 @@ async function start(){
    }
    $('#live-physics').checked=!reducedMotion.matches;$('#neighbors').disabled=true
    $('#network-detail').innerHTML='<h2>Select an organization</h2>'
-   history.replaceState(history.state,'',location.pathname);updateProjectionControls();search();rebuild()
+   history.replaceState(history.state,'',location.pathname);updateProjectionControls();void loadGraph({}).catch(()=>{})
   })
   const initial=new URL(location.href).searchParams.get('org');if(initial&&data.organizations.some(n=>n.id===initial)){select(initial,false);rebuild()}else rebuild()
-  loadSharedNetworkData(JSON.stringify([location.origin,dataUrl,historyUrl,apiPrefix]), () => loadPortalEvidence(data, sharedEvidenceFetch,apiPrefix,(base,directory,records)=>prepareNetworkData(base,directory,records,historyData,new AbortController().signal)), abort.signal).then(prepared=>{if(disposed)return;preparedData=prepared;data=prepared.data;search();if(selected)select(selected,false);rebuild();$('#network-source').textContent=(usingOfflineCopy?'Offline · last checked ':'Checked ')+new Date(oldestCheck).toLocaleString()}).catch(()=>{if(disposed)return;$('#network-source').textContent='Saved public evidence · refresh unavailable'})
+
  }catch(error){if(disposed)return;status.textContent=error.message || 'WebGPU network unavailable.';host.hidden=true;console.error(error)}
 }
 const panelState=()=>{
@@ -517,5 +542,5 @@ root.querySelectorAll('[data-panel]').forEach(button=>{
  },{signal:abort.signal})
 })
 rewriteLinks(); start();
-return () => { disposed=true;simulation?.stop();abort.abort();resizeObserver?.disconnect();cancelAnimationFrame(frame);clearInterval(fpsTimer);renderer?.dispose();root.replaceChildren() };
+return () => { disposed=true;graphRequest?.abort();searchRequest?.abort();clearTimeout(searchTimer);clearTimeout(geographyTimer);simulation?.stop();abort.abort();resizeObserver?.disconnect();cancelAnimationFrame(frame);clearInterval(fpsTimer);renderer?.dispose();root.replaceChildren() };
 }

@@ -2,7 +2,7 @@ import {useEffect,useRef,useState,type FormEvent} from 'react'
 import {Link} from 'react-router-dom'
 import {useAuth} from '../../app/AppProviders'
 import {newInitiative,initiativeStatuses,initiativeSummary,initiativeProgress,nextDeadline,type Initiative} from '../../../../shared/interventions'
-import {portalPath} from '../../config/portalBase'
+import {useEcosystemQuery,type QueryPage} from '../../features/ecosystem/ecosystemApi'
 import {useNetworkViewport} from '../../features/ecosystem/useNetworkViewport'
 import '../../features/ecosystem/network.css'
 import './intervention-dashboard.css'
@@ -15,16 +15,20 @@ function payload(i:Initiative){const {updatedAt,organizationName,...value}=i;voi
 export function InterventionDashboardPage(){
  const root=useRef<HTMLDivElement>(null);useNetworkViewport(root);const {token}=useAuth()
  const [accessError,setAccessError]=useState('')
- const [records,setRecords]=useState<Initiative[]|null>(null),[managed,setManaged]=useState<Org[]>([]),[directory,setDirectory]=useState<Org[]>([]),[draft,setDraft]=useState<Initiative|null>(null),[preview,setPreview]=useState<Preview|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[writeError,setWriteError]=useState(''),[query,setQuery]=useState(''),[filter,setFilter]=useState('all'),[message,setMessage]=useState('')
+ const [records,setRecords]=useState<Initiative[]|null>(null),[managed,setManaged]=useState<Org[]>([]),[directoryQuery,setDirectoryQuery]=useState(''),[draft,setDraft]=useState<Initiative|null>(null),[preview,setPreview]=useState<Preview|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[writeError,setWriteError]=useState(''),[query,setQuery]=useState(''),[filter,setFilter]=useState('all'),[message,setMessage]=useState('')
+ const [offset,setOffset]=useState(0),[nextOffset,setNextOffset]=useState<number|null>(null),[total,setTotal]=useState(0),[summary,setSummary]=useState<ReturnType<typeof initiativeSummary>|null>(null)
+ const {data:directoryPage}=useEcosystemQuery<QueryPage<Org>>('organizations',{q:directoryQuery,limit:50})
+ const directory=directoryPage?.records||[]
  async function load(signal?:AbortSignal){
-  const all:Initiative[]=[];let offset:number|null=0
-  do{const response:Response=await fetch(endpoint+`/public?offset=${offset}`,{signal,credentials:'omit',cache:'no-store'});if(!response.ok)throw Error('Shared planning is unavailable. Existing initiatives could not be loaded.');const page:{records:Initiative[];nextOffset:number|null}=await response.json();if(!Array.isArray(page.records)||(page.nextOffset!==null&&(!Number.isInteger(page.nextOffset)||page.nextOffset<=offset)))throw Error('The initiative list is incomplete.');all.push(...page.records);offset=page.nextOffset}while(offset!==null)
-  setRecords(all);setError('')
+  const params=new URLSearchParams({offset:String(offset),q:query,status:filter})
+  const response=await fetch(endpoint+'/public?'+params,{signal,credentials:'omit',cache:'no-store'})
+  if(!response.ok)throw Error('Shared planning is unavailable. Existing initiatives could not be loaded.')
+  const page=await response.json();if(signal?.aborted)return
+  setRecords(page.records);setNextOffset(page.nextOffset);setTotal(page.total);setSummary(page.summary);setError('')
  }
- useEffect(()=>{document.title='Maryland intervention dashboard';const abort=new AbortController();void load(abort.signal).catch(e=>{if(!abort.signal.aborted)setError(e.message)});void fetch(portalPath('/ecosystem-data/ecosystem-organizations.json'),{signal:abort.signal,credentials:'omit'}).then(r=>r.ok?r.json():Promise.reject()).then(d=>{if(Array.isArray(d.organizations))setDirectory(d.organizations)}).catch(()=>{});return()=>abort.abort()},[])
+ useEffect(()=>{document.title='Maryland intervention dashboard';const abort=new AbortController();setRecords(null);const timer=setTimeout(()=>{void load(abort.signal).catch(e=>{if(!abort.signal.aborted)setError(e.message)})},150);return()=>{clearTimeout(timer);abort.abort()}},[offset,query,filter])
  useEffect(()=>{setManaged([]);setPreview(null);setAccessError('');if(!token)return;const abort=new AbortController();void fetch(endpoint+'/access',{signal:abort.signal,headers:{Authorization:`Bearer ${token}`}}).then(r=>r.ok?r.json():Promise.reject()).then(d=>{if(Array.isArray(d.organizations))setManaged(d.organizations)}).catch(()=>{if(!abort.signal.aborted)setAccessError('Management access could not be checked; publishing is disabled.')});return()=>abort.abort()},[token])
- const summary=records?initiativeSummary(records,today()):null
- const visible=(records||[]).filter(i=>(filter==='all'||(filter==='overdue'?!['completed','paused'].includes(i.status)&&!!nextDeadline(i)&&nextDeadline(i)<today():i.status===filter))&&`${i.title} ${i.outcome} ${i.authority} ${i.organizationName}`.toLowerCase().includes(query.toLowerCase())).sort((a,b)=>Number(['completed','paused'].includes(a.status))-Number(['completed','paused'].includes(b.status))||(nextDeadline(a)||'9999').localeCompare(nextDeadline(b)||'9999'))
+ const visible=records||[]
  const update=(key:keyof Initiative,value:string|number|null)=>{if(draft)setDraft({...draft,[key]:value});setPreview(null);setWriteError('')}
  async function review(event:FormEvent|undefined,operation:'save'|'delete'='save'){
   event?.preventDefault();if(!draft||!token)return;setBusy(true);setWriteError('')
@@ -45,9 +49,10 @@ export function InterventionDashboardPage(){
    {error&&<p role="alert">{error} <button type="button" onClick={()=>void load().catch(e=>setError(e.message))}>Retry</button></p>}
    {message&&<p role="status">{message}</p>}
    {records===null&&!error&&<p role="status">Loading shared initiatives…</p>}
-   <div className="eco-view-filters"><label>Search initiatives<input type="search" value={query} onChange={e=>setQuery(e.target.value)} /></label><label>Work status<select value={filter} onChange={e=>setFilter(e.target.value)}><option value="all">All initiatives</option><option value="overdue">Overdue</option>{initiativeStatuses.map(s=><option key={s} value={s}>{s}</option>)}</select></label></div>
+   <div className="eco-view-filters"><label>Search initiatives<input type="search" value={query} onChange={e=>{setQuery(e.target.value);setOffset(0)}} /></label><label>Work status<select value={filter} onChange={e=>{setFilter(e.target.value);setOffset(0)}}><option value="all">All initiatives</option><option value="overdue">Overdue</option>{initiativeStatuses.map(s=><option key={s} value={s}>{s}</option>)}</select></label></div>
    {records?.length===0&&<div className="intervention-empty"><h2>No initiatives published yet</h2><p>Start with one measurable outcome. Identify the decision-maker, collect baseline evidence, and propose the smallest consequential next action.</p></div>}
    {records&&records.length>0&&visible.length===0&&<p>No initiatives match these filters.</p>}
+   <p>{total} matching initiatives</p><button disabled={!offset} onClick={()=>setOffset(Math.max(0,offset-50))}>Previous</button><button disabled={nextOffset===null} onClick={()=>setOffset(nextOffset!)}>Next</button>
    <div className="intervention-board">{visible.map(i=>{const progress=initiativeProgress(i),deadline=nextDeadline(i),late=deadline&&deadline<today()&&!['completed','paused'].includes(i.status);return <article className="intervention-card" key={i.id}>
     <div className="intervention-card-heading"><span className={`intervention-status status-${i.status}`}>{i.status}</span><span>{i.organizationName}</span>{late&&<strong className="intervention-overdue">Overdue</strong>}</div><h2>{i.title}</h2><p>{i.outcome}</p>
     <dl><dt>Measure</dt><dd>{i.metric} · {i.unit||'Unit not set'}</dd><dt>Baseline → target</dt><dd>{i.baseline??'Unknown'} → {i.target??'Unknown'} by {date(i.targetDate)}</dd><dt>Latest measurement</dt><dd>{i.current??'Not measured'}{i.current!==null&&i.measurementDate?` · ${date(i.measurementDate)}`:''}</dd><dt>Decision authority</dt><dd>{i.authority||'Not established'} · {i.instrument}{i.authoritySourceUrl&&<> · <a href={i.authoritySourceUrl} target="_blank" rel="noopener noreferrer">Authority source ↗</a></>}{i.authorityReferenceId&&<> · <Link to={`/ecosystem/network?org=${encodeURIComponent(i.authorityReferenceId)}`}>Common organization</Link></>}</dd><dt>Decision window</dt><dd>{date(i.decisionDate)}</dd><dt>Next action</dt><dd>{i.nextAction}</dd><dt>Action owner / due</dt><dd>{i.organizationName} · {date(i.actionDueDate)}</dd></dl>
@@ -64,7 +69,8 @@ export function InterventionDashboardPage(){
      {text('title','Initiative title','text',true)}{area('outcome','Measurable change sought',true)}{text('metric','Outcome metric','text',true)}{text('unit','Measurement unit')}
      {(['baseline','target','current'] as const).map(k=><label key={k}>{k==='current'?'Latest measurement':k==='baseline'?'Baseline value':'Target value'}<input type="number" step="any" value={draft[k]??''} onChange={e=>update(k,e.target.value===''?null:Number(e.target.value))}/></label>)}
      {text('measurementDate','Measurement date','date')}{text('baselineDate','Baseline date','date')}{text('targetDate','Target date','date')}
-     <label>Institution in common data<select value={draft.authorityReferenceId} onChange={e=>{const org=directory.find(o=>o.id===e.target.value);setDraft({...draft,authorityReferenceId:e.target.value,authority:org?.name||draft.authority});setPreview(null)}}><option value="">Unlinked / research needed</option>{directory.map(o=><option key={o.id} value={o.id}>{o.name}</option>)}</select></label>
+     <label>Find an institution<input type="search" value={directoryQuery} onChange={e=>setDirectoryQuery(e.target.value)} /></label>
+     <label>Institution in common data<select value={draft.authorityReferenceId} onChange={e=>{const org=directory.find(o=>o.id===e.target.value);setDraft({...draft,authorityReferenceId:e.target.value,authority:org?.name||draft.authority});setPreview(null)}}><option value="">Unlinked / research needed</option>{draft.authorityReferenceId&&!directory.some(o=>o.id===draft.authorityReferenceId)&&<option value={draft.authorityReferenceId}>{draft.authority}</option>}{directory.map(o=><option key={o.id} value={o.id}>{o.name}</option>)}</select></label>
      {text('authority','Office or institution with decision authority')}{text('authoritySourceUrl','Evidence of decision authority','url')}
      <label>Policy instrument<select value={draft.instrument} onChange={e=>update('instrument',e.target.value)}>{['legislation','regulation','budget','procurement','administrative','community'].map(s=><option key={s}>{s}</option>)}</select></label>{text('decisionDate','Next decision deadline','date')}
      {area('nextAction','Smallest consequential next action',true)}{text('actionDueDate','Action due date','date')}{area('constraints','Constraints and dependencies')}

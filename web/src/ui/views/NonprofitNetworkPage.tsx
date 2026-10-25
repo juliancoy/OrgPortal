@@ -1,23 +1,26 @@
 import {useEffect,useRef,useState} from 'react'
 import {Link} from 'react-router-dom'
-import {loadNetworkViewData,type NetworkData} from '../../features/ecosystem/networkViewData'
+import type {NonprofitProfile} from '../../features/ecosystem/networkViewData'
+import {useEcosystemQuery,type QueryPage} from '../../features/ecosystem/ecosystemApi'
 import {useNetworkViewport} from '../../features/ecosystem/useNetworkViewport'
 import '../../features/ecosystem/network.css'
 const money=(v:number|null)=>v===null?'Not disclosed':v.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0})
 export function NonprofitNetworkPage(){
  const root=useRef<HTMLDivElement>(null);useNetworkViewport(root)
- const [data,setData]=useState<NetworkData|null>(null),[error,setError]=useState(''),[query,setQuery]=useState('')
- useEffect(()=>{document.title='Nonprofit financial evidence';const abort=new AbortController();void loadNetworkViewData('overview',abort.signal).then(d=>{if(!abort.signal.aborted)setData(d)}).catch(()=>{if(!abort.signal.aborted)setError('Nonprofit evidence could not load. Reload to try again.')});return()=>abort.abort()},[])
- const profiles=data?.nonprofitProfiles?.filter(p=>`${p.name} ${p.ein}`.toLowerCase().includes(query.toLowerCase().replaceAll('-',''))) || []
+ const [query,setQuery]=useState(''),[offset,setOffset]=useState(0)
+ const {data,error}=useEcosystemQuery<QueryPage<NonprofitProfile>>('nonprofits',{q:query.replaceAll('-',''),offset,limit:50})
+ useEffect(()=>{document.title='Nonprofit financial evidence'},[])
+ const profiles=data?.records||[]
  return <div ref={root} className="portal-ecosystem eco-page eco-secondary-view">
   <header className="eco-network-heading"><h1>Nonprofit evidence</h1><nav aria-label="Network views"><Link to="/ecosystem/network/performance">Performance</Link><Link to="/ecosystem/network/interventions">Interventions</Link><Link to="/ecosystem/network/overview">Overview</Link><Link to="/ecosystem/network">Graph</Link><Link to="/ecosystem/network/nonprofits" aria-current="page">Nonprofits</Link><Link to="/ecosystem/network/relationships">Relationships</Link><Link to="/ecosystem/network/help">Sources &amp; help</Link></nav></header>
   <section className="eco-view-content" tabIndex={0} aria-label="Nonprofit financial evidence">
    <p>Original IRS financial statements and grant disclosures, identified by EIN. ProPublica supplies discovery and organization context; figures below come from the original XML returns.</p>
    {!data?<p role="status">{error||'Loading nonprofit evidence…'}</p>:<>
-    <p className="eco-note" role="status">{data.offline?'Saved evidence · live directory refresh unavailable. ':''}{data.nonprofitCoverage?.scope} Retrieved {data.nonprofitCoverage?new Date(data.nonprofitCoverage.retrievedAt).toLocaleString():'date unavailable'}.</p>
+    <p className="eco-note" role="status">{data.nonprofitCoverage?.scope} Retrieved {data.nonprofitCoverage?new Date(data.nonprofitCoverage.retrievedAt).toLocaleString():'date unavailable'}.</p>
     <p>{data.nonprofitCoverage?.profileCount.toLocaleString()} nonprofit profiles · {data.nonprofitCoverage?.grantRecordCount.toLocaleString()} grant observations · IRS index {data.nonprofitCoverage?.indexYear}.</p>
-    <div className="eco-view-filters"><label>Search name or EIN<input type="search" value={query} onChange={e=>setQuery(e.target.value)} /></label></div>
+    <div className="eco-view-filters"><label>Search name or EIN<input type="search" value={query} onChange={e=>{setQuery(e.target.value);setOffset(0)}} /></label></div>
     <div className="eco-table-scroll"><table className="eco-table"><caption>Annual financial statements — these measures are separate from tracked funding volume.</caption><thead><tr><th scope="col">Organization / EIN</th><th scope="col">Fiscal period</th><th scope="col">Revenue</th><th scope="col">Expenses</th><th scope="col">Assets at year end (book value)</th><th scope="col">Liabilities at year end</th><th scope="col">Evidence</th></tr></thead><tbody>{profiles.map(p=><tr key={p.ein}><th scope="row">{p.name}<small>{p.ein.slice(0,2)}-{p.ein.slice(2)}</small><Link to={`/ecosystem/network/relationships?org=${encodeURIComponent(p.organizationId)}`}>Grant relationships →</Link></th><td>{p.periodStart} through {p.periodEnd}<small>{p.formType} · {p.accountingBasis} accounting</small>{p.amended&&<small>Amended return</small>}</td><td>{money(p.revenue)}</td><td>{money(p.expenses)}</td><td>{money(p.assets)}</td><td>{money(p.liabilities)}</td><td><a href={p.sourceUrl} target="_blank" rel="noopener noreferrer">View filing ↗</a><small>Filed {p.filedAt.slice(0,10)}</small><a href={p.archiveUrl} target="_blank" rel="noopener noreferrer">IRS archive (ZIP) ↗</a><small><a href={p.propublicaUrl} target="_blank" rel="noopener noreferrer">ProPublica profile ↗</a></small></td></tr>)}</tbody></table></div>
+    <p>{data.total} matching profiles</p><button disabled={!offset} onClick={()=>setOffset(Math.max(0,offset-50))}>Previous</button><button disabled={data.nextOffset===null} onClick={()=>setOffset(data.nextOffset!)}>Next</button>
     {!profiles.length&&<p>No nonprofits match this search.</p>}
     <h2>How to read this evidence</h2><p>Revenue, expenses, assets and liabilities describe the filer and are never added to the network’s money volume. Grant observations retain the fiscal period and accounting basis. Foundation grants reported paid during the year are separate from approvals for future payment. Schedule I grants may follow accrual accounting; they are not independently verified bank transfers. Noncash assistance stays separate from USD cash grant volume.</p><p>Only matching EINs establish recipient identity. A named recipient without an EIN remains an unresolved relationship, available in the evidence table without inventing a legal entity. Undisclosed recipients are grouped as Redacted. Personal names, addresses, officer compensation and donor lists are not collected.</p><p>When multiple returns exist for the same fiscal period, the latest filing timestamp determines the selected version; ambiguous versions stop the import for review. The chosen filing ID, amendment indicator and source checksum remain recorded. Coverage is limited to the selected organizations and index year.</p>
    </>}
