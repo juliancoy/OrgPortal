@@ -1,3 +1,4 @@
+import {testUploadImageCompression} from './test-upload-image-compression.mjs'
 import {fixtureServer} from './fixture-server.mjs'
 // Offline visual renders for local review and the distributed Portal visual suite.
 import {chromium} from '@playwright/test'
@@ -9,6 +10,7 @@ import {reviewUserTask,userModel} from './user-model/review.mjs'
 const root=resolve(fileURLToPath(new URL('..',import.meta.url)))
 const output=resolve(process.argv[2]||join(root,'../artifacts/layout-review/fixtures'))
 await mkdir(output,{recursive:true})
+await testUploadImageCompression()
 const {server,base}=await fixtureServer(root,output)
 try{
  const layouts=[['Workspace','/workspace'],['Organizations','/orgs'],['Empty organizations','/orgs?empty=1'],['People','/people'],['Events','/events'],['Onboarding','/onboarding?brand=lifetech'],['Join now','/onboarding?brand=lifetech&complete=1','.onboarding-join-footer'],['Service desk','/support'],['Brand guide','/branding'],['About','/about']].map(([name,path,selector])=>({name,url:base+path,selector,ready:selector||'h1'}))

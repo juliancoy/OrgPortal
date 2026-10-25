@@ -1,3 +1,4 @@
+import { compressUploadImage } from './compressUploadImage'
 export type SubmissionAttachment={id:string;name:string;contentType:string;size:number}
 export type StagedSubmissionAttachment={id:string;file:File}
 export const submissionAttachmentAccept='.png,.jpg,.jpeg,.gif,.webp,.pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.txt,.csv,.md,.zip'
@@ -10,6 +11,6 @@ export async function attachmentRequest(url:string,token:string|null,options:Req
  return data
 }
 export async function uploadSubmissionAttachment(event:string,submission:string,item:StagedSubmissionAttachment,token:string){
- const body=new FormData();body.set('id',item.id);body.set('file',item.file)
+ const body=new FormData();body.set('id',item.id);body.set('file',await compressUploadImage(item.file))
  return attachmentRequest(attachmentBase(event,submission),token,{method:'POST',body}) as Promise<SubmissionAttachment>
 }

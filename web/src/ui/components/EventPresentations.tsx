@@ -1,3 +1,4 @@
+import { compressUploadImage } from './compressUploadImage'
 import { SubmissionAttachmentPicker } from './SubmissionAttachments'
 import { uploadSubmissionAttachment, type StagedSubmissionAttachment } from './submissionAttachments'
 import { invalidatePublicOrganizationData } from '../../data/publicOrganization/cache'
@@ -76,13 +77,20 @@ export function EventPresentations({eventId,formAction,onActionHandled,onSaved,o
  // The organization owns this roster; staged additions remain in the local draft.
  // eslint-disable-next-line react-hooks/exhaustive-deps
  },[org,token,eventId,people.length===0])
- function chooseTeamImage(event:ChangeEvent<HTMLInputElement>) {
-  const file=event.target.files?.[0]
-  if(!file){setTeamImage(null);return}
-  if(!['image/jpeg','image/png','image/webp','image/gif'].includes(file.type)||file.size>8*1024*1024){
-   setMessage('Choose a JPEG, PNG, WebP or GIF image up to 8 MB.');event.target.value='';return
+ async function chooseTeamImage(event:ChangeEvent<HTMLInputElement>) {
+  const input=event.target,file=input.files?.[0]
+  setTeamImage(null)
+  if(!file)return
+  if(!['image/jpeg','image/png','image/webp','image/gif'].includes(file.type)){
+   setMessage('Choose a JPEG, PNG, WebP or GIF image.');input.value='';return
   }
-  setTeamImage(file);setField('imageUrl','');setMessage('')
+  setBusy(true);setMessage('Preparing image…')
+  try {
+   const image=await compressUploadImage(file)
+   if(image.size>8*1024*1024)throw new Error('The image is still larger than 8 MB after compression. Choose a smaller image.')
+   setTeamImage(image);setField('imageUrl','');setMessage('')
+  }catch(error){input.value='';setMessage(error instanceof Error?error.message:'Unable to prepare this image.')}
+  finally{setBusy(false)}
  }
  async function action(work:()=>Promise<void>) {
   if(busy)return;setBusy(true);setMessage('')
@@ -144,9 +152,9 @@ export function EventPresentations({eventId,formAction,onActionHandled,onSaved,o
      </div>
      {!org&&<><div className="presentation-team-fields"><label>Team name<input required maxLength={255} value={name} onChange={e=>setName(e.target.value)}/></label><label>City<input required maxLength={80} value={city} onChange={e=>setCity(e.target.value)}/></label></div>
       <details className="application-optional-profile"><summary>Team profile (optional)</summary><div className="application-profile-fields"><div><label htmlFor={`${fieldId}-about`}>About your team</label><textarea id={`${fieldId}-about`} rows={3} maxLength={5000} value={description} onChange={e=>setDescription(e.target.value)}/></div>
-       <label>Team image<input aria-label="Team image (optional)" type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={chooseTeamImage}/><small>Your organization’s main image. JPEG, PNG, WebP or GIF, up to 8 MB.</small>{imagePreview&&<img src={imagePreview} alt="Team image preview" style={{maxWidth:160,maxHeight:160,objectFit:'contain'}}/>}</label>
+       <label>Team image<input aria-label="Team image (optional)" type="file" accept="image/jpeg,image/png,image/webp,image/gif" disabled={busy} onChange={chooseTeamImage}/><small>Your organization’s main image. JPEG, PNG, WebP or GIF, up to 8 MB after compression. Still JPEG and PNG images are compressed automatically; transparency is preserved.</small>{imagePreview&&<img src={imagePreview} alt="Team image preview" style={{maxWidth:160,maxHeight:160,objectFit:'contain'}}/>}</label>
       </div></details></>}
-     {org&&draft.value.imageOrg===org&&<label>Team image (optional)<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={chooseTeamImage}/>{imagePreview&&<img src={imagePreview} alt="Team image preview" style={{maxWidth:160,maxHeight:160,objectFit:'contain'}}/>}</label>}
+     {org&&draft.value.imageOrg===org&&<label>Team image (optional)<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" disabled={busy} onChange={chooseTeamImage}/>{imagePreview&&<img src={imagePreview} alt="Team image preview" style={{maxWidth:160,maxHeight:160,objectFit:'contain'}}/>}</label>}
      <TeamPeoplePicker compact people={people} onChange={value=>draft.setValue(previous=>({...previous,people:JSON.stringify(value)}))}/>
      <p className="muted">Include a teammate’s email address. They will receive an invitation to join your team organization when you submit. They join only after accepting. Members are shared across your organization’s submissions.{org&&<> <Link to={`/orgs/${encodeURIComponent(org)}?tab=personnel`}>Manage members</Link>.</>}</p>
     </fieldset>
