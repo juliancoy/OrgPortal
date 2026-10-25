@@ -9,7 +9,7 @@ export async function testOrganizationProfile(base,output,contactOutput=output){
  try{
   const captures=[]
   for(const viewer of ['visitor','member','owner','operator']){
-   const page=await browser.newPage();let eventRequests=0;const errors=[];page.on('pageerror',e=>errors.push(e.message))
+   const page=await browser.newPage();let eventRequests=0;const errors=[];page.on('pageerror',e=>{errors.push(e.message);console.error(viewer,e.stack)})
    await page.route('**/api/**',route=>{
     const url=new URL(route.request().url()),path=url.pathname
     let json=[]
@@ -21,6 +21,8 @@ export async function testOrganizationProfile(base,output,contactOutput=output){
     else if(path.endsWith('/follow'))json={following:false}
     else if(path.endsWith('/events')){eventRequests++;json=[]}
     else if(path.endsWith('/personnel'))json={people:[{id:'person-one',name:'Alex Morgan',titles:[],personnel_class:'organizer'},{id:'person-two',name:'Invited teammate',titles:[],personnel_class:'public',pendingInvitation:true}]}
+    else if(path.endsWith('/subscribers'))json={items:[],has_more:false,exports_enabled:false}
+    else if(path.endsWith('/motions'))json={motions:[]}
     else if(path.endsWith('/scheme'))json={scheme:'meetup'}
     else if(path.endsWith('/invitations'))json={relationships:[],invitations:[]}
     return route.fulfill({json})
@@ -41,7 +43,7 @@ export async function testOrganizationProfile(base,output,contactOutput=output){
     const name=`profile-${mode}-${width}.png`;await page.screenshot({path:join(output,name),fullPage:true});captures.push(name)
    }
    await profile.getByRole('tab',{name:'Events',exact:true}).click();await expect.poll(()=>eventRequests).toBeGreaterThan(0)
-   await profile.getByRole('tab',{name:'People',exact:true}).click();await expect(profile.getByRole('heading',{name:'Alex Morgan',exact:true})).toBeVisible();await expect(profile.getByRole('heading',{name:'Invited teammate',exact:true})).toBeVisible()
+   await profile.getByRole('tab',{name:'People',exact:true}).click();await expect(profile.getByRole('heading',{name:'Alex Morgan',exact:true})).toBeVisible();await expect(profile.getByRole('heading',{name:'Invited teammate',exact:true})).toHaveCount(manager?0:1)
    await profile.getByRole('tab',{name:'Community',exact:true}).click();await expect(profile.locator('#org-panel-community')).toBeVisible()
    await profile.getByRole('tab',{name:'Branding',exact:true}).click();await expect(profile.getByRole('heading',{name:'Edit organization branding',exact:true})).toHaveCount(manager?1:0)
    await expect(profile.getByRole('heading',{level:1})).toHaveCount(1)
