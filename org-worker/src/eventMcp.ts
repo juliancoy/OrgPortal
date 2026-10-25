@@ -15,7 +15,7 @@ import { registrySchema } from './organizationRegistry';
 import { ownershipReleaseSchema } from './organization-access/release';
 import { emailHistorySchema, importEmailHistory, emailReportSchema, readEmailReport } from './emailOutreach';
 import { companyBallotSchema, companyVoteSchema, companyVotesTargetSchema, getCompanyVotes, runCompanyBallotOperation, runCompanyVoteOperation } from './companyVotesMcp';
-import { runOrganizationProfileOperation, organizationProfileTargetSchema, organizationProfileUpdateSchema, organizationProfileStatusSchema } from './organizationProfileMcp';
+import { runOrganizationProfileOperation, resolveOrganizationProfileId, organizationProfileTargetSchema, organizationProfileUpdateSchema, organizationProfileStatusSchema } from './organizationProfileMcp';
 import { eventHostSchema, runEventHostOperation } from './eventHost';
 import { eventSlugSchema, runEventSlugOperation } from './eventSlugs';
 import { runSupportMcp, supportSchema, supportVoidSchema, supportTargetSchema } from './organizationSupport';
@@ -937,13 +937,15 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
     server.registerTool('apply_organization_tasks', { description: 'Assign the availability-calendar task to every active member after reviewing the preview. Requires confirm=true and a matching one-use previewId. Existing assignments are preserved without duplicates.', inputSchema: organizationTaskSchema, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }, _meta: metadata([portalReadScope, portalWriteScope]) }, taskResult);
     const profileResult = async (operation: 'get' | 'update' | 'status', args: unknown) => {
       try {
-        const data = await runOrganizationProfileOperation(env.DB, identity, operation, scopedArgs(args, true),env);
+        const target=organizationProfileTargetSchema.parse({organizationId:(args as {organizationId?:unknown})?.organizationId});
+        const organizationId=await resolveOrganizationProfileId(env.DB,target.organizationId);
+        const data = await runOrganizationProfileOperation(env.DB, identity, operation, scopedArgs({...args as object,organizationId}, true),env);
         return { content: [{ type: 'text' as const, text: JSON.stringify(data) }], structuredContent: data };
       } catch (error) {
         return { isError: true, content: [{ type: 'text' as const, text: await eventErrorResponse(error, env, request).text() }] };
       }
     };
-    server.registerTool('get_organization_profile', { description: 'Read the current organization profile as an active member.',
+    server.registerTool('get_organization_profile', { description: 'Read an organization profile using its internal ID or public slug (for example palava-hut). Requires active membership or verified operator access; returns the canonical organization ID.',
       inputSchema: organizationProfileTargetSchema, annotations: { readOnlyHint: true }, _meta: metadata([portalReadScope]) }, args => profileResult('get', args));
     server.registerTool('preview_organization_profile', { description: 'Preview profile edits. Raster image URLs are imported into native OrgPortal media storage on apply. Direct bytes are supported by preview_organization_image_upload. Requires live management permission.',
       inputSchema: organizationProfileUpdateSchema, annotations: { readOnlyHint: true }, _meta: metadata([portalReadScope, portalWriteScope]) }, args => profileResult('update', { ...args, confirm: false }));

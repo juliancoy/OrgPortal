@@ -72,7 +72,7 @@ test('REST and MCP share directory receipts, policies, public projection and own
 test('live superadmin can brand a company through a tenant MCP connection without company membership',async t=>{
  const db=new TimebankDatabase();t.after(()=>db.sqlite.close());
  for(const file of ['0002_org_event_directories.sql','0015_organization_iam.sql','0017_event_mcp_operations.sql','0043_organization_media.sql','0029_portal_tenant_deployment_model.sql','0032_portal_tenant_org_slug.sql','0033_portal_tenant_custom_domains.sql'])db.sqlite.exec(readFileSync(new URL(`../migrations/${file}`,import.meta.url),'utf8'));
- db.sqlite.exec("INSERT INTO organizations(id,name,slug,tags) VALUES('company','Company','company','[]'),('tenant','Tenant','tenant','[]')");
+ db.sqlite.exec("INSERT INTO organizations(id,name,slug,tags) VALUES('company','Company','company-public','[]'),('tenant','Tenant','tenant-public','[]')");
  const resource='https://tenant.test/api/org/mcp',issuer='https://id.operator.test',subject='owner:00000000-0000-4000-8000-000000000002';
  const env={DB:db.asD1(),PUBLIC_PORTAL_BASE_URL:'https://tenant.test',MCP_OAUTH_ISSUER:issuer,MCP_OAUTH_JWKS_URL:issuer+'/keys',MCP_SUBJECT_MAP_JSON:JSON.stringify({[subject]:'operator'}),MCP_OAUTH_INTROSPECTION_URL:issuer+'/oauth/mcp/introspect',MCP_OAUTH_INTROSPECTION_SECRET:'synthetic-secret',MCP_RESOURCE_CONFIG_JSON:JSON.stringify({[resource]:{name:'Tenant',organizationId:'tenant'}})} as Env;
  const {privateKey,publicKey}=await generateKeyPair('ES256'),jwk=await exportJWK(publicKey);
@@ -82,12 +82,17 @@ test('live superadmin can brand a company through a tenant MCP connection withou
  async function rpc(name:string,args:Record<string,unknown>){const response=await handleEventMcp(new Request(resource,{method:'POST',headers:{authorization:`Bearer ${token}`,'content-type':'application/json',accept:'application/json, text/event-stream'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'tools/call',params:{name,arguments:args}})}),env);assert.equal(response.status,200);return (await response.json() as any).result;}
  const target={organizationId:'company'};
  assert.equal((await rpc('get_organization_profile',target)).structuredContent.organization.id,'company');
+ assert.equal((await rpc('get_organization_profile',{organizationId:'company-public'})).structuredContent.organization.id,'company');
+ const profilePreview=await rpc('preview_organization_profile',{organizationId:'company-public',description:'Reviewed profile'});assert.equal(profilePreview.structuredContent.organizationId,'company');
  const setup=await rpc('save_portal_setup',{...target,slug:'company',name:'Company',homeKind:'org',homeImageUrl:'https://company.example/cover.webp',brandImageUrl:'https://company.example/icon.webp'});assert.equal(setup.isError,undefined,JSON.stringify(setup));assert.equal(setup.structuredContent.portal.brand_image_path,"https://company.example/icon.webp");assert.equal(setup.structuredContent.portal.home_image_url,"https://company.example/cover.webp");
  const args={...target,palette:[{label:'Company Navy',value:'#1A2B4C'}]};
  const preview=await rpc('preview_portal_branding',args);assert.equal(preview.isError,undefined);
  authority=false;
  for(const name of ['get_organization_profile','get_portal_setup','preview_portal_branding'])assert.equal((await rpc(name,name==='preview_portal_branding'?args:target)).isError,true);
  assert.equal((await rpc('apply_portal_branding',{...args,previewId:preview.structuredContent.previewId})).isError,true);
+ db.sqlite.exec("INSERT INTO organization_memberships(organization_id,user_id,role,status) VALUES('tenant','operator','owner','active')");
+ assert.equal((await rpc('get_organization_profile',{organizationId:'tenant-public'})).structuredContent.organization.id,'tenant');
+ assert.equal((await rpc('get_organization_profile',{organizationId:'company-public'})).isError,true);
  authority=true;
  const saved=await rpc('apply_portal_branding',{...args,previewId:preview.structuredContent.previewId});assert.equal(saved.isError,undefined);assert.equal(saved.structuredContent.palette[0].value,'#1A2B4C');
  assert.equal(db.sqlite.prepare("SELECT COUNT(*) AS n FROM organization_memberships WHERE organization_id='company'").get()!.n,0);

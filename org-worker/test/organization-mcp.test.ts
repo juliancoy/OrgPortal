@@ -226,3 +226,20 @@ test('native upload rejects permission revocation during publication and cleans 
   assert.equal(objects.size,0);assert.equal(sql.prepare("SELECT image_url FROM organizations WHERE id='org'").get()!.image_url,null);
  }finally{sql.close()}
 });
+
+test('profile slugs resolve to canonical IDs for member permissions, previews, writes and receipts',async()=>{
+ const {db,sql}=database();const {runOrganizationProfileOperation:run}=await import('../src/organizationProfileMcp');
+ sql.exec("INSERT INTO organizations(id,name,slug,tags) VALUES('canonical-id','Palava Hut','palava-hut','[]'),('other-id','Other','other','[]')");
+ await claimOrganization(db,'canonical-id',{id:identity.userId,name:'Owner',email:null,isOperator:false},new Date().toISOString());
+ try{
+  const read=await run(db,identity,'get',{organizationId:'palava-hut'}) as any;assert.equal(read.organization.id,'canonical-id');
+  const args={organizationId:'palava-hut',description:'Reviewed description'};const preview=await run(db,identity,'update',args) as any;assert.equal(preview.organizationId,'canonical-id');
+  const saved=await run(db,identity,'update',{...args,organizationId:'canonical-id',previewId:preview.previewId,confirm:true}) as any;assert.equal(saved.organization.id,'canonical-id');assert.equal(saved.organization.description,args.description);
+  assert.equal((await run(db,identity,'status',{organizationId:'palava-hut',previewId:preview.previewId}) as any).status,'completed');
+  await assert.rejects(run(db,{...identity,userId:'outsider'},'get',{organizationId:'palava-hut'}),/membership/);
+  await assert.rejects(run(db,identity,'update',{organizationId:'other',description:'Denied'}),/management/);
+  await assert.rejects(run(db,{...identity,isOperator:true},'get',{organizationId:'missing'}),/Organization not found/);
+  const operator=await run(db,{...identity,userId:'operator',isOperator:true},'get',{organizationId:'palava-hut'}) as any;assert.equal(operator.organization.id,'canonical-id');
+  await assert.rejects(run(db,identity,'update',{organizationId:'palava-hut',description:'Second write',previewId:preview.previewId,confirm:true}),/already used|changed/);
+ }finally{sql.close()}
+});

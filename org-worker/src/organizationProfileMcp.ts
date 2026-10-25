@@ -5,7 +5,7 @@ import { authorizeOrganization } from './organizationIam';
 import { EventIntegrationError } from './eventPlatforms';
 import { enforceEventRateLimit, prepareEventOperation, previewFingerprint, claimEventOperation, finishEventOperation, eventOperationStatus } from './eventOperationStore';
 
-const target = z.object({ organizationId: z.string().min(1).max(200) }).strict();
+const target = z.object({ organizationId: z.string().trim().min(1).max(200).describe('Organization internal ID or public slug, such as palava-hut.') }).strict();
 const publicImage = z.string().max(1000).url().refine(value => {
   const url = new URL(value);
   return url.protocol === 'https:' && !url.username && !url.password;
@@ -26,14 +26,22 @@ const columns = ['name', 'description', 'image_url', 'links_json', 'city', 'tags
 type ProfileRow = { id: string; slug: string; name: string; description: string | null; image_url: string | null; links_json: string; city: string | null; tags: string; updated_at: string;media_json:string };
 function profile(row: ProfileRow) { const {links_json,media_json:_media,...fields}=row; return {...fields,links:readOrganizationLinks(links_json),tags:JSON.parse(row.tags || '[]') as string[]}; }
 
+export async function resolveOrganizationProfileId(db:D1Database,reference:string){
+  const row=await db.prepare('SELECT id FROM organizations WHERE id=? OR slug=? ORDER BY CASE WHEN id=? THEN 0 ELSE 1 END LIMIT 1')
+    .bind(reference,reference,reference).first<{id:string}>();
+  if(!row)throw new EventIntegrationError(404,'Organization not found');
+  return row.id;
+}
+
 export async function runOrganizationProfileOperation(db: D1Database, identity: { userId: string; scopes: string[]; isOperator?: boolean },
   operation: 'get' | 'update' | 'status', input: unknown, images?:BrandImageEnvironment) {
   if (!identity.scopes.includes('org:portal.read') || (operation === 'update' && !identity.scopes.includes('org:portal.write')))
     throw new EventIntegrationError(403, 'Missing portal scope');
-  const args = operation === 'update' ? organizationProfileUpdateSchema.parse(input)
+  const parsed = operation === 'update' ? organizationProfileUpdateSchema.parse(input)
     : operation === 'status' ? organizationProfileStatusSchema.parse(input) : target.parse(input);
   const actor = { id: identity.userId, name: identity.userId, email: null, isOperator: identity.isOperator === true };
   await enforceEventRateLimit(db, actor.id);
+  const args={...parsed,organizationId:await resolveOrganizationProfileId(db,parsed.organizationId)};
   await authorizeOrganization(db, actor, operation === 'get' ? 'read_members' : 'manage', args.organizationId);
   if (operation === 'status') return eventOperationStatus(db, actor.id, args.organizationId, (args as z.infer<typeof organizationProfileStatusSchema>).previewId);
   const before = await db.prepare(`SELECT id, slug, name, description, image_url, links_json, city, tags, updated_at, media_json FROM organizations WHERE id = ?`)
