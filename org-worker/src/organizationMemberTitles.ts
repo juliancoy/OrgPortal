@@ -58,21 +58,24 @@ export function organizationMemberTitleRoutes(auth:(env:Env,request:Request)=>Pr
   c.header('Cache-Control','no-store');
   const org=await c.env.DB.prepare('SELECT id,name,slug FROM organizations WHERE slug=?').bind(c.req.param('slug')).first<{id:string;name:string;slug:string}>();
   if(!org)return c.json({error:'Organization not found'},404);
-  const rows=await c.env.DB.prepare(`SELECT m.user_id,m.user_name,m.role,m.titles_json,m.portrait_json,m.description,c.user_name AS profile_name,
+  // Submission rosters already publish active team names. Keep Personnel in sync
+  // without publishing unrelated private members or invitation email addresses.
+  const submittedTeam=c.req.param('view')==='personnel'&&!!await c.env.DB.prepare("SELECT 1 AS published FROM event_submissions WHERE organization_id=? AND expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') LIMIT 1").bind(org.id).first();
+  const rows=await c.env.DB.prepare(`SELECT m.user_id,m.user_name,m.role,m.titles_json,m.portrait_json,m.description,CASE WHEN c.enabled=1 OR json_array_length(m.titles_json)>0 OR NULLIF(trim(m.description),'') IS NOT NULL OR m.portrait_json IS NOT NULL THEN c.user_name END AS profile_name,
    (SELECT decision FROM organization_personnel_motions WHERE organization_id=? AND target_user_id=m.user_id AND status='passed' ORDER BY updated_at DESC,id DESC LIMIT 1) AS conduct_decision,
    CASE WHEN c.enabled=1 THEN c.photo_url END AS photo_url,CASE WHEN c.enabled=1 THEN c.slug END AS profile_slug,
    CASE WHEN c.enabled=1 THEN COALESCE(NULLIF(trim(c.bio),''),c.headline) END AS public_bio
    FROM organization_memberships m LEFT JOIN user_contact_pages c ON c.user_id=m.user_id
-   WHERE m.organization_id=? AND m.status='active' AND (json_array_length(m.titles_json)>0 OR NULLIF(trim(m.description),'') IS NOT NULL OR (?=1 AND (c.enabled=1 OR m.portrait_json IS NOT NULL)))
+   WHERE m.organization_id=? AND m.status='active' AND (json_array_length(m.titles_json)>0 OR NULLIF(trim(m.description),'') IS NOT NULL OR (?=1 AND (c.enabled=1 OR m.portrait_json IS NOT NULL OR ?=1)))
    ORDER BY CASE m.role WHEN 'owner' THEN 0 WHEN 'administrator' THEN 1 ELSE 2 END,lower(COALESCE(NULLIF(m.user_name,''),c.user_name,'')),m.user_id LIMIT 500`)
-   .bind(org.id,org.id,c.req.param('view')==='personnel'?1:0).all<{conduct_decision:string|null;user_id:string;user_name:string|null;role:string;titles_json:string;portrait_json:string|null;description:string|null;public_bio:string|null;profile_name:string|null;photo_url:string|null;profile_slug:string|null}>();
+   .bind(org.id,org.id,c.req.param('view')==='personnel'?1:0,submittedTeam?1:0).all<{conduct_decision:string|null;user_id:string;user_name:string|null;role:string;titles_json:string;portrait_json:string|null;description:string|null;public_bio:string|null;profile_name:string|null;photo_url:string|null;profile_slug:string|null}>();
   const people=await Promise.all(rows.results.map(async row=>{
    const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(`${org.id}:${row.user_id}`));
    return {id:Array.from(new Uint8Array(digest),byte=>byte.toString(16).padStart(2,'0')).join(''),
     name:(!row.user_name||row.user_name===row.user_id?row.profile_name:row.user_name)||'Organization member',
     titles:readMemberTitles(row.titles_json),photo_url:readMemberPortrait(row.portrait_json)?.url||row.photo_url,photo_source_url:readMemberPortrait(row.portrait_json)?.source_url||null,profile_slug:row.profile_slug,
     description:row.description?.trim()||row.public_bio?.trim()||null,
-    role_classes:[] as {scheme:PersonnelScheme;key:string}[],
+    pendingInvitation:false,role_classes:[] as {scheme:PersonnelScheme;key:string}[],
     personnel_class:row.conduct_decision==='exclude'?'persona_non_grata':row.role==='owner'||row.role==='administrator'?'organizer':'member'};
   }));
   const relations=await c.env.DB.prepare(`SELECT r.user_id,r.user_name,r.scheme,r.class_key,r.role_name,c.photo_url,c.slug AS profile_slug
@@ -83,7 +86,14 @@ export function organizationMemberTitleRoutes(auth:(env:Env,request:Request)=>Pr
    const id=Array.from(new Uint8Array(digest),byte=>byte.toString(16).padStart(2,'0')).join('');
    const label=row.role_name||classLabel(row.scheme,row.class_key),existing=people.find(person=>person.id===id);
    if(existing){if(!existing.titles.includes(label))existing.titles.push(label);existing.role_classes.push({scheme:row.scheme,key:row.class_key})}
-   else people.push({id,name:row.user_name,titles:[label],photo_url:row.photo_url,photo_source_url:null,profile_slug:row.profile_slug,description:null,personnel_class:'public',role_classes:[{scheme:row.scheme,key:row.class_key}]});
+   else people.push({id,name:row.user_name,titles:[label],photo_url:row.photo_url,photo_source_url:null,profile_slug:row.profile_slug,description:null,pendingInvitation:false,personnel_class:'public',role_classes:[{scheme:row.scheme,key:row.class_key}]});
+  }
+  if(submittedTeam){
+   const pending=await c.env.DB.prepare("SELECT id FROM organization_invitations WHERE organization_id=? AND purpose='member' AND status='pending' AND expires_at>? ORDER BY created_at,id LIMIT 500").bind(org.id,Date.now()).all<{id:string}>();
+   for(const row of pending.results){
+    const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(`${org.id}:invitation:${row.id}`));
+    people.push({id:Array.from(new Uint8Array(digest),byte=>byte.toString(16).padStart(2,'0')).join(''),name:'Invited teammate',titles:[],photo_url:null,photo_source_url:null,profile_slug:null,description:null,personnel_class:'public',role_classes:[],pendingInvitation:true});
+   }
   }
   return c.json({organization:org,people});
  });

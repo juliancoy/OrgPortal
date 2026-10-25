@@ -27,7 +27,7 @@ export function OrganizationBoard({organization,canManage,canRead=false,memberTy
   const controller=new AbortController();setLoading(true);setPeople([]);setError('')
   void fetch(`/api/org/api/network/orgs/public/${encodeURIComponent(organization.slug)}/personnel`,{cache:'no-store',signal:controller.signal}).then(async response=>{
    if(!response.ok)throw new Error(`Could not load organization ${label.toLowerCase()}.`)
-   const data=await response.json();const people:Person[]=data.people
+   const data=await response.json();const people:Person[]=canManage&&token?data.people.filter((person:Person)=>!person.pendingInvitation):data.people
    if(canManage&&token){
     const invitations=await fetch(`/api/org/api/network/orgs/${encodeURIComponent(organization.id)}/invitations`,{headers:{Authorization:`Bearer ${token}`},cache:'no-store',signal:controller.signal})
     if(!invitations.ok)throw new Error('Could not load pending invitations.')

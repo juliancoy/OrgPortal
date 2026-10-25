@@ -1071,13 +1071,13 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
     server.registerTool("apply_event_media_changes", { description: "Replace a native OrgPortal event's public image/media URL list after previewing it. Use admin UI for direct binary uploads.",
       inputSchema: eventMediaSchema, annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
       _meta: metadata([readScope, writeScope]) }, args => result("mediaApply", args));
-    server.registerTool("get_portal_branding", { description: "Read the effective brand-guide palette and horizontal nameBannerUrl, including each color's label, hex value and meaning. Requires organization management permission.",
+    server.registerTool("get_portal_branding", { description: "Read the effective brand-guide palette, named brandThemes with light/dark CSS color maps and defaultTheme, and horizontal nameBannerUrl, including each color's label, hex value and meaning. Requires organization management permission.",
       inputSchema: portalBrandingTargetSchema, annotations: { readOnlyHint: true, openWorldHint: false },
       _meta: metadata([portalReadScope]) }, args => portalResult("brandingGet", args));
-    server.registerTool("preview_portal_branding", { description: "Preview updating the brand-guide palette or horizontal nameBannerUrl. Returns before/after and a one-use previewId; does not change settings.",
+    server.registerTool("preview_portal_branding", { description: "Preview updating the brand-guide palette, named brandThemes (null resets), or horizontal nameBannerUrl. Returns before/after and a one-use previewId; does not change settings.",
       inputSchema: portalBrandingUpdateSchema.omit({ previewId: true, confirm: true }), annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
       _meta: metadata([portalReadScope, portalWriteScope]) }, args => portalResult("brandingUpdate", { ...args, confirm: false }));
-    server.registerTool("apply_portal_branding", { description: "Save the previewed palette or horizontal nameBannerUrl. Requires the same changes and previewId. Changes appear on the brand guide after reload, without deployment.",
+    server.registerTool("apply_portal_branding", { description: "Save the previewed palette, named brandThemes, or horizontal nameBannerUrl. Requires the same changes and previewId. Changes appear on the portal after reload, without deployment.",
       inputSchema: portalBrandingUpdateSchema.omit({ confirm: true }).extend({ previewId: z.string().uuid() }), annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
       _meta: metadata([portalReadScope, portalWriteScope]) }, args => portalResult("brandingUpdate", { ...args, confirm: true }));
     server.registerTool("get_portal_setup", { description: "Read the group homepage setup for an organization, including shared slug URL and custom-domain status.",

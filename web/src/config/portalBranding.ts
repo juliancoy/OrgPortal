@@ -1,7 +1,9 @@
+import { applyOrganizationTheme } from './organizationThemes'
 import { portalAssetPath } from './portalBase'
 import { getActivePortalProfileConfig } from './portalFeatures'
 
 export function applyPortalBranding() {
+  applyOrganizationTheme()
   const profile = getActivePortalProfileConfig()
   document.title = profile.portalTitle
   document.documentElement.dataset.portalProfile = profile.id

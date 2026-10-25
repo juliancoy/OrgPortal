@@ -7,6 +7,7 @@ import {SupportPage} from '../../src/ui/views/support/SupportPage'
 import {PeoplePage} from '../../src/ui/views/PeoplePage'
 import {PublicOrganizationsPage} from '../../src/ui/views/public/PublicOrganizationsPage'
 import {PublicEventsPage} from '../../src/ui/views/public/PublicEventsPage'
+import {OrganizationBoard} from '../../src/ui/components/OrganizationBoard'
 import {OrganizationBranding} from '../../src/ui/components/OrganizationBranding'
 import {EventPresentations} from '../../src/ui/components/EventPresentations'
 import {TenantBrandingPage} from '../../src/ui/views/TenantBrandingPage'
@@ -27,6 +28,8 @@ const life={id:'lifetech',slug:'lifetech',organization_id:'fixture-org',hostname
 if(brand==='lifetech')setGroupSite(life)
 applyPortalBranding()
 const body=<Routes>
+ <Route path="/organization-personnel" element={<OrganizationBoard organization={{id:'fixture-org',slug:'fixture-org',name:'Harbor Care Team'}} memberType="team" canManage={new URLSearchParams(location.search).has('admin')}/>}/>
+
  <Route path="/organization-branding" element={<OrganizationBranding organization={{id:'fixture-org',slug:'fixture-org',name:'Anchor Advance Care'}} canManage={!new URLSearchParams(location.search).has('readonly')}/>}/>
  <Route path="/presentation-form" element={<EventPresentations eventId="fixture-event"/>}/>
 

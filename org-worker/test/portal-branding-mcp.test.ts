@@ -3,7 +3,7 @@ import test from 'node:test';
 import { readCurrentSchemaFileSync as readFileSync } from './helpers/currentSchema';
 import { TimebankDatabase } from './helpers/timebankDatabase';
 import { claimOrganization } from '../src/organizationIam';
-import { runPortalBrandingOperation } from '../src/portalBrandingMcp';
+import { organizationThemesSchema, runPortalBrandingOperation } from '../src/portalBrandingMcp';
 import { resolveBrandPalette } from '../../shared/brandPalette';
 const identity = { userId: 'owner', scopes: ['org:portal.read', 'org:portal.write'] };
 
@@ -53,9 +53,48 @@ test('MCP palette changes enforce management, scope, preview freshness and one-u
     assert.deepEqual(branded.palette, args.palette);
     await assert.rejects(run(identity, 'update', { organizationId: 'org', nameBannerUrl: 'javascript:alert(1)' }));
     await assert.rejects(run(identity, 'update', { organizationId: 'org' }), /Supply/);
+    const brandThemes = { defaultTheme: 'ocean', themes: [
+      { id: 'ocean', name: 'Ocean', light: { primary: '#123456', surface: '#FFFFFF' }, dark: { primary: '#ABCDEF', surface: '#112233' } },
+      { id: 'forest', name: 'Forest', light: { primary: '#234567' }, dark: { primary: '#BCDEFA' } },
+    ] };
+    const themeArgs = { organizationId: 'org', brandThemes };
+    await assert.rejects(run({ ...identity, userId: 'outsider' }, 'update', themeArgs), /management/);
+    await assert.rejects(run({ ...identity, scopes: ['org:portal.read'] }, 'update', themeArgs), /scope/);
+    const themePreview = await run(identity, 'update', themeArgs);
+    assert.equal((await run(identity, 'get', { organizationId: 'org' })).brandThemes, null);
+    await assert.rejects(run(identity, 'update', { ...themeArgs, brandThemes: { ...brandThemes, defaultTheme: 'forest' }, confirm: true, previewId: themePreview.previewId }), /changed/);
+    const themeFresh = await run(identity, 'update', themeArgs);
+    await run(identity, 'update', { ...themeArgs, confirm: true, previewId: themeFresh.previewId });
+    assert.deepEqual((await run(identity, 'get', { organizationId: 'org' })).brandThemes, brandThemes);
+    db.sqlite.exec("INSERT INTO organizations(id,name,slug,tags,city) VALUES ('other','Other','other','[]','Baltimore')");
+    await assert.rejects(run(identity, 'get', { organizationId: 'other' }), /management/);
+    await assert.rejects(run(identity, 'update', { ...themeArgs, confirm: true, previewId: themeFresh.previewId }), /already used|changed/);
+    const resetArgs = { organizationId: 'org', brandThemes: null };
+    const reset = await run(identity, 'update', resetArgs);
+    await run(identity, 'update', { ...resetArgs, confirm: true, previewId: reset.previewId });
+    const resetBranding = await run(identity, 'get', { organizationId: 'org' });
+    assert.equal(resetBranding.brandThemes, null);
+    assert.deepEqual(resetBranding.palette, args.palette);
+    assert.equal(resetBranding.nameBannerUrl, banner.nameBannerUrl);
     const row = db.sqlite.prepare("SELECT * FROM group_sites WHERE id='life'").get()!;
     assert.equal(row.profile, 'community'); assert.equal(row.hostname, 'lifetech.example'); assert.equal(row.accent_color, '#155e59');
     assert.deepEqual(JSON.parse(row.feature_config as string).other, { enabled: true });
     await assert.rejects(run(identity, 'update', { ...args, confirm: true, previewId: fresh.previewId }), /already used|changed/);
   } finally { db.sqlite.close(); }
+});
+
+
+test('named themes reject unknown defaults, duplicates, unsafe CSS and incomplete mode mappings', () => {
+  const theme = { id: 'ocean', name: 'Ocean', light: { primary: '#123456' }, dark: { primary: '#ABCDEF' } };
+  const config = { defaultTheme: 'ocean', themes: [theme] };
+  assert.equal(organizationThemesSchema.safeParse(config).success, true);
+  for (const value of [
+    { ...config, defaultTheme: 'missing' },
+    { ...config, themes: [theme, theme] },
+    { ...config, themes: [{ ...theme, light: {} }] },
+    { ...config, themes: [{ ...theme, dark: { surface: '#123456' } }] },
+    { ...config, themes: [{ ...theme, light: { primary: 'red;display:none' } }] },
+    { ...config, themes: [{ ...theme, light: { '</style>': '#123456' } }] },
+    { ...config, themes: [{ ...theme, light: Object.fromEntries(Array.from({ length: 129 }, (_, i) => [`color-${i}`, '#123456'])) }] },
+  ]) assert.equal(organizationThemesSchema.safeParse(value).success, false);
 });

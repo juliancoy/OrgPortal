@@ -1,3 +1,5 @@
+import { organizationThemes, readOrganizationTheme, selectOrganizationTheme } from '../../../config/organizationThemes'
+import { useGroupSite } from '../../../config/timebankCommunity'
 import { SignInLink } from '../../components/SignInLink'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -13,6 +15,10 @@ import {
 
 export function UserSettingsPage() {
   const { role, token, user, setUser } = useAuth()
+  const tenant = useGroupSite()
+  const themes = organizationThemes()
+  const [organizationTheme, setOrganizationTheme] = useState(readOrganizationTheme)
+  useEffect(() => { setOrganizationTheme(readOrganizationTheme()) }, [tenant])
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => readThemeMode())
   const [themeSaving, setThemeSaving] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
@@ -149,6 +155,16 @@ export function UserSettingsPage() {
             <option value="light">Light</option>
           </select>
         </label>
+        {themes ? <label className="user-settings-control">
+          <span>Organization theme</span>
+          <select aria-label="Organization theme" value={organizationTheme} onChange={event => {
+            selectOrganizationTheme(event.target.value)
+            setOrganizationTheme(event.target.value)
+          }}>
+            {themes.themes.map(theme => <option key={theme.id} value={theme.id}>{theme.name}</option>)}
+          </select>
+          <span className="portal-muted">Saved on this browser for {tenant?.name}.</span>
+        </label> : null}
         {status ? <p role="status" className="portal-muted">{status}</p> : null}
       </section>
 
