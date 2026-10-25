@@ -48,7 +48,7 @@ export async function queryEcosystem(read,section,params){
  if(section==='performance'){
   const view=params.get('view')||'reviewed',cohort=params.get('cohort')||manifest.performance.cohorts[0]||''
   if(!['reviewed','strongest','shortfalls','exposure','unassessed'].includes(view))throw new Error('Invalid performance view')
-  ids=ids.filter(i=>{const r=index.rows[i];return view==='unassessed'?!r.assessment:view==='exposure'?!r.assessment&&r.program==='Federal grants':r.assessment&&r.cohort===cohort&&(view!=='strongest'||r.meetsTarget)&&(view!=='shortfalls'||!r.meetsTarget))})
+  ids=ids.filter(i=>{const r=index.rows[i];return view==='unassessed'?!r.assessment:view==='exposure'?!r.assessment&&r.program==='Federal grants':r.assessment&&r.cohort===cohort&&(view!=='strongest'||r.meetsTarget)&&(view!=='shortfalls'||!r.meetsTarget)})
   ids.sort((a,b)=>{const x=index.rows[a],y=index.rows[b];return x.assessment&&y.assessment?(view==='shortfalls'?1:-1)*compareAttainment(x,y)||x.id.localeCompare(y.id):y.amount-x.amount||x.id.localeCompare(y.id)})
  }
  if(graph){
