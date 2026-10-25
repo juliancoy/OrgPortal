@@ -303,11 +303,11 @@ test.describe('Code Collective UI and UX system coverage', () => {
     await expect(page.locator('.portal-user-trigger img')).toHaveAttribute('src', authUser.avatar_url)
     const navigationToggle = page.getByRole('button', { name: 'Open navigation', exact: true })
     if (await navigationToggle.isVisible()) await navigationToggle.click()
-    await expect(page.getByRole('navigation', {name:'Primary',exact:true}).getByRole('link', { name: /^People$/ })).toBeVisible()
+    await expect(page.locator('#portal-primary-nav').getByRole('link', { name: /^People$/ })).toBeVisible()
     await expect(page.getByRole('link', { name: /^Messages$/ })).toBeVisible()
     await expect(page.getByRole('link', { name: /log in/i })).toHaveCount(0)
 
-    await page.getByRole('navigation', {name:'Primary',exact:true}).getByRole('link', { name: /^People$/ }).click()
+    await page.locator('#portal-primary-nav').getByRole('link', { name: /^People$/ }).click()
     await expect(page).toHaveURL(/\/people$/)
   })
 

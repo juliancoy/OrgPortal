@@ -125,6 +125,7 @@ test('event gallery resolves stored images through the org API without rewriting
     ],
   } }));
   await page.goto(portal('/events/medtech-in-the-hut'));
+  await page.getByRole('tab', {name:'Poster',exact:true}).click();
   const image = page.getByRole('img', { name: 'Menu photo', exact: true });
   await expect(image).toHaveAttribute('src', '/api/org/api/network/events/public/medtech-in-the-hut/media/stored');
   const labelFits = await page.getByRole('button', { name: 'Open Menu photo in gallery', exact: true }).locator('strong').evaluate(label => label.scrollWidth <= label.parentElement!.clientWidth);
