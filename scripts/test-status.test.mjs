@@ -51,6 +51,6 @@ test('catalog spans the portal and keeps submission and voting together', () => 
  assert.equal(catalog.title, 'OrgPortal tests');
  assert.ok(catalog.groups.length > 200);
  assert.ok(new Set(catalog.groups.map(group => group.category)).size >= 10);
- for (const id of ['applications-api', 'attachments-api', 'browser-desktop', 'browser-pixel']) assert.equal(catalog.groups.find(group => group.id === id).category, 'Submission and voting');
+ for (const id of ['applications-api', 'attachments-api', 'browser-desktop', 'browser-pixel', 'suite-web-scripts-test-application-journeys-mjs']) assert.equal(catalog.groups.find(group => group.id === id).category, 'Submission and voting');
  assert.equal(new Set(catalog.groups.map(group => group.id)).size, catalog.groups.length);
 });

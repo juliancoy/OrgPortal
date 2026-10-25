@@ -9,7 +9,7 @@ const previous=JSON.parse(readFileSync(path,'utf8'));
 const old=new Map(previous.groups.filter(group=>group.source&&group.kind==='node'&&group.cases[0]?.id!=='suite').map(group=>[group.source,group]));
 const files=execFileSync('git',['ls-files','--cached','--others','--exclude-standard','-z'],{cwd:root,encoding:'utf8'}).split('\0').filter(Boolean);
 export function category(source){
- if(/presentation|submission|company[-_]?votes|team-form|recognition|five-over-five/i.test(source))return 'Submission and voting';
+ if(/presentation|submission|application-journeys|company[-_]?votes|team-form|recognition|five-over-five/i.test(source))return 'Submission and voting';
  if(/retention|privacy|journal|replication|abuse|security|consent/i.test(source))return 'Privacy and security';
  if(/email|newsletter|mailing|chat|messag|matrix/i.test(source))return 'Messaging and email';
  if(/timebank|time-bank/i.test(source))return 'Timebank';

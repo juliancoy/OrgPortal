@@ -2337,6 +2337,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-test-application-journeys-mjs",
+      "label": "web/scripts/test-application-journeys.mjs",
+      "category": "Submission and voting",
+      "source": "web/scripts/test-application-journeys.mjs",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-application-journeys.mjs"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-test-company-votes-mjs",
       "label": "web/scripts/test-company-votes.mjs",
       "category": "Submission and voting",
