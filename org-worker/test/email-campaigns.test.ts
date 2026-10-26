@@ -574,3 +574,33 @@ test('opted-in bounce monitoring continues after the outbox is empty without sub
  t.mock.method(globalThis,'fetch',async(input:string|URL|Request)=>{const url=String(input);if(url==='https://oauth2.googleapis.com/token')return Response.json({access_token:'test-access'});if(url.startsWith('https://gmail.googleapis.com/gmail/v1/users/me/messages?')){scans++;return Response.json({messages:[]})}throw Error('Unexpected network request')});
  await runEmailDelivery(env);assert.equal(scans,1);assert.equal(database.prepare('SELECT count(*) n FROM email_send_attempts').get()!.n,0);
 });
+
+test('public newsletter accepts email without joining and preserves opt-outs and tenant scope', async t => {
+  const { database, env } = setup(t);
+  const group = 'ef646755-9443-4c7b-ba4b-a7a29754f666';
+  database.prepare('INSERT INTO organizations(id,name,slug) VALUES(?,?,?)').run(group,'LifeTech','lifetech');
+  const submit = (email: string, consent=true, origin='https://lifetech.fyi') => app.request('https://portal.test/api/email/newsletter', {
+    method:'POST',headers:{'Content-Type':'application/json',Origin:origin,'cf-connecting-ip':'192.0.2.1'},body:JSON.stringify({email,consent,organizationId:'org-2'})
+  },env);
+  const before = database.prepare('SELECT count(*) n FROM organization_memberships').get()!.n;
+  assert.equal((await submit(' NEWS@example.test ')).status,200);
+  const row = database.prepare('SELECT * FROM email_subscriptions WHERE email=?').get('news@example.test')!;
+  assert.equal(row.user_id,''); assert.equal(row.topic_id,group); assert.equal(row.status,'subscribed');
+  assert.equal(row.consent_source,'public-newsletter-form');
+  assert.equal(database.prepare('SELECT count(*) n FROM organization_memberships').get()!.n,before);
+  assert.equal((await submit('news@example.test')).status,200);
+  assert.equal(database.prepare('SELECT count(*) n FROM email_subscriptions').get()!.n,1);
+  assert.equal((await submit('invalid')).status,400);
+  assert.equal((await submit('other@example.test',false)).status,400);
+  assert.equal((await submit('other@example.test',true,'https://other.test')).status,403);
+  await subscriptionStatement(env.DB,{id:'alice',email:'alice@example.test',full_name:'Alice'},'organization',group,false).run();
+  database.prepare('INSERT INTO email_contact_suppressions(organization_id,email,unsubscribed_at,updated_at) VALUES(?,?,?,?)').run(group,'suppressed@example.test',Date.now(),Date.now());
+  assert.equal((await submit('alice@example.test')).status,200);
+  assert.equal((await submit('suppressed@example.test')).status,200);
+  const alice=database.prepare('SELECT user_id,status FROM email_subscriptions WHERE email=?').get('alice@example.test')!;
+  assert.equal(alice.status,'unsubscribed'); assert.equal(alice.user_id,'alice');
+  assert.equal(database.prepare('SELECT count(*) n FROM email_subscriptions WHERE email=?').get('suppressed@example.test')!.n,0);
+  assert.equal((await submit('fifth@example.test')).status,200);
+  assert.equal((await submit('limited@example.test')).status,429);
+  assert.equal((await app.request('https://portal.test/api/email/groups/'+group+'/subscribers',{},env)).status,401);
+});

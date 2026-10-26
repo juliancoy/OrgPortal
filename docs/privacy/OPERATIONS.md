@@ -333,3 +333,16 @@ proposal. Reapply verified erasures before serving restored backups. Claiming a
 submission never grants access to an existing organization. Explicit confirmation
 creates a new owned team and a pending invitation for the supplied teammate. Existing
 unclaimed applications are not sent thank-you emails retroactively.
+
+## Email-only LifeTech newsletter
+
+The public `/api/email/newsletter` endpoint uses the existing private
+`email_subscriptions` store, with `user_id=''` and consent source
+`public-newsletter-form`. It creates no identity or membership and cannot claim
+account-linked preferences, reactivate opt-outs, or clear suppression/bounces.
+Recipients use the existing signed unsubscribe flow. Include address-only
+records in annual subscription reviews and verified recipient erasure requests;
+reapply erasures and opt-outs before restoring protected backups or resuming
+mail delivery. These remain operator tasks. Minute-scoped IP digests use the
+existing temporary rate-limit store and its cleanup. Public responses never
+contain subscriber addresses or existing subscription status.

@@ -4,6 +4,7 @@ import { campaignEngagement, emailEngagementRoutes } from './emailEngagement';
 import { emailContactPreferences } from './emailContactPreferences';
 import { emailAudit, requireEmailOrganizer } from './emailAccess';
 import { emailGroups } from './emailGroups';
+import { publicNewsletterRoutes } from './publicNewsletter';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
@@ -63,6 +64,7 @@ export function emailRoutes(getUser: GetActor) {
   routes.use('*', async (c, next) => { c.header('Cache-Control', 'no-store'); c.header('Referrer-Policy', 'no-referrer'); await next(); });
 
   routes.route('/groups',emailGroups(getUser));
+  routes.route('/newsletter',publicNewsletterRoutes());
   routes.route('/outreach',emailOutreachRoutes(getUser));
   routes.route('/campaigns',emailBounceRoutes(getUser));
   routes.route('/engagement',emailEngagementRoutes());
