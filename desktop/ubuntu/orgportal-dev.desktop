@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=OrgPortal Development
+Comment=Open a running local LifeTech development server
+Exec=orgportal --dev
+Icon=orgportal
+Terminal=false
+Categories=Development;
+StartupWMClass=orgportal-dev
+StartupNotify=true
+NoDisplay=true

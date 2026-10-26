@@ -1,0 +1,7 @@
+#!/bin/sh
+set -eu
+unset ELECTRON_RUN_AS_NODE
+case "${1:-}" in
+    --help) printf '%s\n' 'Usage: orgportal [--dev [URL]]'; exit 0 ;;
+esac
+exec /opt/orgportal/electron /opt/orgportal/resources/app/main.cjs "$@"

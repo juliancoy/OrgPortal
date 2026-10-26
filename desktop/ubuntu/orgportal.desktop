@@ -1,0 +1,16 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=OrgPortal
+Comment=OrgPortal — LifeTech community
+Exec=orgportal
+Icon=orgportal
+Terminal=false
+Categories=Network;
+StartupWMClass=orgportal
+StartupNotify=true
+Actions=Development;
+
+[Desktop Action Development]
+Name=OrgPortal Development
+Exec=orgportal --dev

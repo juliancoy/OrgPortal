@@ -1,0 +1,283 @@
+/* Desktop-only presentation; website styles remain the source for page content. */
+:root[data-desktop] {
+  font-family: 'Inter', 'Noto Sans', Ubuntu, system-ui, sans-serif;
+  --ink: #292929;
+  --muted: #626262;
+  --line: #deddda;
+  --paper: #fff;
+  --soft: #fafafa;
+  --header-bg: #ebebeb;
+  --surface-raised: #fff;
+  --surface-subtle: #f5f5f5;
+  --blue: #16766d;
+  --teal: #16766d;
+  --shadow: none;
+  color-scheme: light;
+}
+:root[data-desktop][data-theme='dark'] {
+  --ink: #edf4f3;
+  --muted: #9aaead;
+  --line: #253638;
+  --paper: #111f22;
+  --soft: #0b1417;
+  --header-bg: #0e191c;
+  --surface-raised: #18292c;
+  --surface-subtle: #132326;
+  --blue: #82ddd0;
+  --teal: #82ddd0;
+  color-scheme: dark;
+}
+:root[data-desktop] body { background: var(--soft); color: var(--ink); }
+:root[data-desktop] .site-header {
+  min-height: 64px;
+  padding: 10px 28px;
+  background: var(--header-bg);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: none;
+  box-shadow: none;
+}
+:root[data-desktop] .site-header-inner { gap: 16px; max-width: none; }
+:root[data-desktop] .brand img { width: 32px; height: 32px; object-fit: contain; border-radius: 9px; }
+:root[data-desktop] .brand-copy small { display: none; }
+:root[data-desktop] nav a, :root[data-desktop] .nav-group > summary {
+  min-height: 34px;
+  font-size: 13px;
+  border-radius: 9px;
+  padding: 7px 10px;
+}
+:root[data-desktop] .button, :root[data-desktop] button, :root[data-desktop] .theme-control {
+  border-radius: 9px;
+  font-family: inherit;
+}
+:root[data-desktop] .home-body nav .nav-cta {
+  border: 1px solid var(--line);
+  background: var(--surface-raised);
+  color: var(--ink);
+  padding-inline: 16px;
+}
+:root[data-desktop] .home-body .hero {
+  min-height: auto;
+  margin: 0;
+  padding: 48px 40px 36px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+:root[data-desktop] .hero::before, :root[data-desktop] .hero::after,
+:root[data-desktop] .hero-image { display: none; }
+:root[data-desktop] .hero-grid { display: block; }
+:root[data-desktop] .hero-copy { max-width: 850px; padding: 0; color: var(--ink); }
+:root[data-desktop] .home-body .hero h1 {
+  max-width: 720px;
+  font-size: clamp(30px, 3.7vw, 46px);
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+  text-wrap: initial;
+}
+:root[data-desktop] .home-body .hero p:not(.eyebrow) {
+  color: var(--muted);
+  max-width: 740px;
+  margin-top: 16px;
+  font-size: 15px;
+  line-height: 1.75;
+}
+:root[data-desktop] .home-body .hero .eyebrow { color: var(--teal); margin-bottom: 12px; font-size: 11px; }
+:root[data-desktop] .home-body .hero .eyebrow span { color: var(--muted); }
+:root[data-desktop] .hero-actions { margin-top: 20px; }
+:root[data-desktop] .hero-actions .button { min-height: 36px; font-size: 13px; padding: 9px 16px; }
+:root[data-desktop] .hero-actions .primary { background: #16766d; color: white; border-color: #16766d; }
+:root[data-desktop] .hero-actions .secondary { color: var(--ink); border-color: var(--line); background: var(--surface-subtle); }
+:root[data-desktop] .hero-meta { margin-top: 20px; color: var(--muted); }
+:root[data-desktop] .hero-place { display: none; }
+:root[data-desktop] .hero-event { color: var(--ink); }
+:root[data-desktop] .technology-section,
+:root[data-desktop] .drive-carousel-section,
+:root[data-desktop] .showcase-section { padding: 32px 40px; background: var(--soft); }
+:root[data-desktop] .technology-heading h2 { font-size: 24px; letter-spacing: -0.025em; }
+:root[data-desktop] .technology-card { border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); background: var(--paper); }
+:root[data-desktop] .technology-card h3 { font-size: 18px; }
+:root[data-desktop] .technology-card p { font-size: 14px; }
+@media (max-width: 700px) {
+  :root[data-desktop] .home-body .hero { margin: 12px; padding: 20px; }
+  :root[data-desktop] .site-header { padding-inline: 12px; }
+}
+:root[data-desktop] .site-header .brand .name-banner { display: none; }
+:root[data-desktop] .site-header .brand:has(.name-banner) > img:not(.name-banner) { display: block; }
+:root[data-desktop] .home-body .hero-actions .button { border-radius: 9px; }
+:root[data-desktop] .hero-event button { width: auto; justify-self: start; padding: 7px 18px; }
+:root[data-desktop] .home-body .hero-event { gap: 8px; margin-top: 16px; }
+:root[data-desktop] .site-header .brand > .brand-copy,
+:root[data-desktop] .site-header .brand:has(.name-banner) > .brand-copy { display: none; }
+:root[data-desktop] .site-header .brand::after { content: 'LifeTech'; color: var(--ink); font-size: 15px; font-weight: 600; }
+:root[data-desktop] .home-body .hero { box-shadow: none; }
+/* The simpler content pages have a plain brand span instead of brand-copy. */
+:root[data-desktop] .site-header .brand > span { display: none; }
+:root[data-desktop] .start-hero,
+:root[data-desktop] .home-body .home-section { min-height: auto; padding: 28px 24px; }
+:root[data-desktop] .section-heading { display: block; }
+:root[data-desktop] .section-heading h1 { margin: 8px 0 16px; }
+:root[data-desktop] .start-hero { align-items: start; gap: 24px; }
+:root[data-desktop] .start-hero h1 { font-size: 32px; line-height: 1.2; max-width: 700px; letter-spacing: -.025em; }
+:root[data-desktop] .taxonomy-hero,
+:root[data-desktop] .dataset-catalog-hero,
+:root[data-desktop] .dataset-sheet-hero { min-height: auto; padding: 28px; border-radius: 10px; background: var(--paper); color: var(--ink); border-color: var(--line); box-shadow: 0 1px 3px #00000012; }
+:root[data-desktop] .taxonomy-hero::before,
+:root[data-desktop] .dataset-catalog-hero::before,
+:root[data-desktop] .dataset-sheet-hero::before { display: none; }
+:root[data-desktop] .taxonomy-hero h1,
+:root[data-desktop] .dataset-catalog-hero h1,
+:root[data-desktop] .dataset-sheet-hero h1 { font-size: 32px; line-height: 1.2; letter-spacing: -.025em; }
+:root[data-desktop] .taxonomy-hero p,
+:root[data-desktop] .dataset-catalog-hero p,
+:root[data-desktop] .dataset-sheet-hero p { color: var(--muted); font-size: 14px; }
+:root[data-desktop] .taxonomy-hero h1 span,
+:root[data-desktop] .dataset-catalog-hero h1 span { color: var(--teal); }
+:root[data-desktop] .dataset-catalog-hero { grid-template-columns: 1fr; gap: 20px; }
+:root[data-desktop] .dataset-catalog-hero h1 em { color: var(--teal); }
+:root[data-desktop] .dataset-catalog-hero > div:first-child > p:not(.dataset-eyebrow) { margin: 16px 0; color: var(--muted); font-size: 14px; }
+:root[data-desktop] .dataset-catalog-stats { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); }
+:root[data-desktop] .dataset-catalog-stats > article { background: var(--surface-subtle); border: 1px solid var(--line); padding: 14px; }
+:root[data-desktop] .dataset-catalog-stats strong { font-size: 30px; color: var(--ink); }
+:root[data-desktop] .dataset-catalog-stats span,
+:root[data-desktop] .dataset-catalog-stats dt { color: var(--muted); }
+:root[data-desktop] .dataset-hero-links a { color: var(--teal); border-color: var(--line); border-radius: 9px; }
+:root[data-desktop] .dataset-reviewed { color: var(--muted); background: var(--surface-subtle); }
+:root[data-desktop] .dataset-workbook-index > header h2 { font-size: 28px; }
+:root[data-desktop] .global-flow-hero { min-height: auto; padding: 28px; background: var(--paper); color: var(--ink); border-radius: 10px; border-color: var(--line); box-shadow: 0 1px 3px #00000012; }
+:root[data-desktop] .global-flow-hero::before,
+:root[data-desktop] .global-flow-hero::after { display: none; }
+:root[data-desktop] .global-flow-copy h1 { font-size: 32px; line-height: 1.2; letter-spacing: -.025em; }
+:root[data-desktop] .global-flow-copy h1 em { color: var(--teal); }
+:root[data-desktop] .global-flow-copy .eyebrow { color: var(--teal); }
+:root[data-desktop] .global-flow-lede { font-size: 14px; color: var(--muted); }
+:root[data-desktop] .global-flow-principle { color: var(--ink); background: var(--surface-subtle); border-color: var(--line); }
+:root[data-desktop] .global-flow-jumps a { color: var(--teal); border-color: var(--line); border-radius: 9px; }
+:root[data-desktop] .eco-hero { padding-block: 24px; gap: 24px; }
+:root[data-desktop] .eco-hero h1 { font-size: 32px; line-height: 1.2; }
+:root[data-desktop] .home-body .action-strip { box-shadow: 0 1px 3px #00000012; }
+:root[data-desktop] .global-flow-masthead { align-items: start; gap: 24px; }
+:root[data-desktop] .global-flow-principle { box-shadow: none; }
+:root[data-desktop] .portal-header { background: var(--header-bg); border-bottom: 1px solid var(--line); }
+:root[data-desktop] .portal-header-inner { min-height: 64px; padding-block: 8px; }
+:root[data-desktop] .portal-brand .portal-name-banner { width: 110px; max-height: 38px; object-fit: contain; }
+
+/* Flat desktop surfaces with LifeTech's teal accent. */
+:root[data-desktop] .site-header .brand::after { font-size: 16px; letter-spacing: -.03em; }
+:root[data-desktop] .theme-control { background: var(--soft); border: 1px solid var(--line); box-shadow: none; padding: 3px; gap: 3px; }
+:root[data-desktop] .theme-option { border: 0; box-shadow: none; }
+:root[data-desktop] .theme-option[aria-pressed='true'] { background: var(--surface-raised); color: var(--teal); box-shadow: none; }
+:root[data-desktop] .button { box-shadow: none; font-weight: 600; transition: background 150ms ease, border-color 150ms ease; }
+:root[data-desktop] .hero-actions .primary { background: #64d6c3; color: #08201c; border-color: #64d6c3; }
+:root[data-desktop] .home-body .hero-event { max-width: 740px; margin-top: 28px; }
+:root[data-desktop] .hero-event-card,
+:root[data-desktop] .hero-event-card:hover,
+:root[data-desktop] .hero-event-card:focus-visible {
+  padding: 18px; border: 1px solid var(--line); border-radius: 14px;
+  background: var(--paper); box-shadow: none; transform: none; backdrop-filter: none;
+}
+:root[data-desktop] .hero-event-card.has-image { grid-template-columns: 72px minmax(0, 1fr); }
+:root[data-desktop] .hero-event-card img { width: 72px; border-radius: 9px; }
+:root[data-desktop] .hero-event-card::after { display: none; }
+:root[data-desktop] .hero-event-label { color: var(--teal); font-size: 10px; font-weight: 600; letter-spacing: .1em; }
+:root[data-desktop] .hero-event-title { color: var(--ink); font-size: 21px; font-weight: 650; letter-spacing: -.025em; line-height: 1.3; }
+:root[data-desktop] .hero-event-meta { color: var(--muted); font-size: 13px; }
+:root[data-desktop] .hero-event-cue { grid-column: 2; min-height: auto; padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--teal); font-size: 12px; font-weight: 600; }
+:root[data-desktop] .technology-card { box-shadow: none; border-radius: 14px; }
+:root[data-desktop] :is(a, button, summary):focus-visible { outline: 2px solid var(--teal); outline-offset: 3px; }
+@media (max-width: 700px) {
+  :root[data-desktop] .home-body .hero { margin: 0; padding: 28px 20px; }
+  :root[data-desktop] .technology-section,
+  :root[data-desktop] .drive-carousel-section,
+  :root[data-desktop] .showcase-section { padding: 24px 20px; }
+}
+@media (max-width: 721px) {
+  :root[data-desktop].nav-enhanced .site-header nav:not(.is-open) { display: none; }
+  :root[data-desktop].nav-enhanced .site-header nav.is-open { background: var(--paper); opacity: 1; transition: none; }
+}
+/* GNOME HIG: system typography, restrained hierarchy, clear interactive states. */
+:root[data-desktop] body { font-family: system-ui, sans-serif; font-size: 15px; line-height: 1.5; }
+:root[data-desktop] .site-header-inner { gap: 12px; }
+:root[data-desktop] .home-body .hero h1 { font-size: clamp(28px, 3vw, 36px); font-weight: 700; max-width: 760px; }
+:root[data-desktop] .home-body .hero p:not(.eyebrow) { max-width: 68ch; }
+:root[data-desktop] .home-body .hero .eyebrow,
+:root[data-desktop] .hero-event-label { font-size: 12px; font-weight: 600; }
+:root[data-desktop] .hero-event-title { font-weight: 650; }
+:root[data-desktop] .site-header :is(nav a, .nav-group > summary) { min-height: 36px; font-weight: 600; }
+:root[data-desktop] .site-header :is(nav a, .nav-group > summary):hover { background: var(--surface-raised); }
+:root[data-desktop] .site-header a[aria-current='page'],
+:root[data-desktop] .site-header .nav-group.has-current > summary { color: var(--teal); background: var(--surface-subtle); }
+:root[data-desktop] .desktop-app-menu {
+  flex: 0 0 36px; width: 36px; height: 36px; min-height: 36px; padding: 0;
+  display: inline-grid; place-items: center; font-size: 24px; line-height: 1;
+  color: var(--ink); background: transparent; border: 1px solid transparent;
+  border-radius: 9px; box-shadow: none; cursor: pointer;
+}
+:root[data-desktop] .desktop-app-menu:hover { background: var(--surface-raised); border-color: var(--line); }
+:root[data-desktop] .desktop-sign-in-status {
+  position: fixed; z-index: 1000; bottom: 24px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 20px; width: max-content; max-width: calc(100% - 40px);
+  padding: 16px 20px; background: var(--paper); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 8px 32px #0004;
+}
+:root[data-desktop] .desktop-sign-in-status button {
+  flex-shrink: 0; padding: 8px 12px; min-height: 36px; color: var(--ink);
+  background: var(--surface-raised); border: 1px solid var(--line); cursor: pointer;
+}
+@media (max-width: 721px) {
+  :root[data-desktop] .site-header-inner { gap: 8px; }
+  :root[data-desktop] .desktop-sign-in-status { flex-direction: column; align-items: start; gap: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root[data-desktop] *, :root[data-desktop] *::before, :root[data-desktop] *::after {
+    animation: none !important; transition: none !important; scroll-behavior: auto !important;
+  }
+}
+@media (forced-colors: active) {
+  :root[data-desktop] { --ink: CanvasText; --muted: CanvasText; --paper: Canvas; --soft: Canvas; --header-bg: Canvas; --surface-raised: Canvas; --surface-subtle: Canvas; --line: ButtonText; --teal: LinkText; }
+  :root[data-desktop] :is(button, .button, .theme-control) { border: 1px solid ButtonText; }
+}
+/* Community shortcuts belong after the content, never over reading or controls. */
+:root[data-desktop] .social-links { position: static; justify-content: flex-end; flex-wrap: wrap; padding: 16px 24px; background: var(--header-bg); border-top: 1px solid var(--line); }
+:root[data-desktop] .social-link { display: inline-flex; align-items: center; gap: 8px; color: var(--ink); font-size: 13px; }
+:root[data-desktop] .social-link::after { content: attr(title); }
+:root[data-desktop] .social-button { width: 36px; height: 36px; border: 1px solid var(--line); background: var(--surface-subtle); box-shadow: none; border-radius: 9px; }
+:root[data-desktop] .social-icon { width: 22px; height: 22px; }
+/* Keep secondary pages at the same desktop density as Home. */
+:root[data-desktop] .calendar-page { padding: 28px 32px; }
+:root[data-desktop] .page-heading h1 { font-size: 32px; line-height: 1.2; letter-spacing: -.025em; }
+:root[data-desktop] .calendar-page .event-card { padding: 18px; border-color: var(--line); }
+:root[data-desktop] .calendar-page .event-details > p { font-size: 13px; line-height: 1.5; }
+:root[data-desktop] .calendar-page .event-details > p:nth-last-of-type(1) { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+:root[data-desktop] .home-page .home-section { min-height: auto; padding: 28px 32px; }
+:root[data-desktop] .home-page .pathways { padding: 32px; }
+:root[data-desktop] .home-page .pathways-heading { margin-bottom: 24px; gap: 24px; }
+:root[data-desktop] .home-page .pathways-heading h2 { font-size: 30px; line-height: 1.2; letter-spacing: -.025em; }
+:root[data-desktop] .home-page .action-strip { margin: 0 32px; }
+:root[data-desktop] .site-header > .desktop-app-menu { flex-shrink: 0; }
+@media (max-width: 721px) {
+  :root[data-desktop] .calendar-page { padding: 24px 16px; }
+  :root[data-desktop] .calendar-page .event-card.has-image { grid-template-columns: 44px minmax(0, 1fr) 72px; gap: 12px; align-items: start; }
+  :root[data-desktop] .calendar-page .event-card .event-date { padding: 8px 4px; font-size: 10px; }
+  :root[data-desktop] .calendar-page .event-date span { font-size: 24px; }
+  :root[data-desktop] .calendar-page .event-image-link { grid-column: 3; grid-row: 1; width: 72px; }
+  :root[data-desktop] .calendar-page .event-image { width: 72px; height: 72px; object-fit: cover; }
+  :root[data-desktop] .home-page .home-section,
+  :root[data-desktop] .home-page .pathways { padding: 24px 20px; }
+  :root[data-desktop] .home-page .action-strip { margin: 0 20px; }
+}
+:root[data-desktop] .home-page .pathway-card { min-height: 240px; padding: 24px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); color: var(--ink); box-shadow: none; }
+:root[data-desktop] .home-page .pathway-card h3 { font-size: 24px; line-height: 1.2; letter-spacing: -.025em; }
+:root[data-desktop] .home-page .pathway-card p { color: var(--muted); font-size: 14px; }
+:root[data-desktop] .home-page .pathway-number,
+:root[data-desktop] .home-page .pathway-link { color: var(--teal); }
+@media (max-width: 721px) {
+  :root[data-desktop] .calendar-page .event-card .event-date { display: flex; flex-direction: column; gap: 4px; width: 44px; min-height: 58px; align-items: center; justify-content: center; }
+}
+:root[data-desktop] .home-page .home-section,
+:root[data-desktop] .home-page .pathways { width: 100%; margin-inline: 0; }
+:root[data-desktop] .home-page .action-strip { width: calc(100% - 64px); }
+@media (max-width: 721px) {
+  :root[data-desktop] .home-page .action-strip { width: calc(100% - 40px); border: 1px solid var(--line); border-radius: 12px; }
+}
