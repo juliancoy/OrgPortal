@@ -94,13 +94,13 @@
 
 /* Card space votes; explicit links and controls remain independent. */
 .presentation-applications > h2, .presentation-applications > p { margin: 0; }
-.submission-voting-card { position: relative; isolation: isolate; display: grid; gap: .9rem; padding: 1rem; transition: background-color .15s, border-color .15s; }
-.submission-voting-card.is-selected { background: color-mix(in srgb, var(--primary, #155e59) 12%, var(--panel)); border-color: var(--primary, #155e59); box-shadow: inset 0 0 0 1px var(--primary, #155e59); }
+.submission-voting-card { position: relative; isolation: isolate; display: grid; gap: .8rem; padding: 1.15rem; border-radius: 16px; align-content: start; transition: background-color .15s, border-color .15s; }
+.submission-voting-card.is-selected { background: color-mix(in srgb, var(--primary, #155e59) 5%, var(--panel)); border-color: color-mix(in srgb, var(--primary, #155e59) 55%, var(--border)); box-shadow: inset 3px 0 0 var(--primary, #155e59); }
 .submission-card-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-width: 0; }
 .submission-card-header .submission-team { margin: 0; min-width: 0; }
 .submission-card-header .submission-team img { border-radius: 8px; flex-shrink: 0; }
-.submission-card-header .submission-team a { overflow-wrap: anywhere; }
-.submission-card-title { margin: 0; font-size: 1.15rem; line-height: 1.4; }
+.submission-card-header .submission-team a { overflow-wrap: anywhere; font-size: .9rem; line-height: 1.35; font-weight: 500; color: var(--text-muted); }
+.submission-card-title { margin: 0; font-size: 1.15rem; line-height: 1.35; letter-spacing: -.015em; text-wrap: pretty; }
 .submission-card-details { display: grid; gap: .9rem; min-width: 0; padding-block: .9rem; border-top: 1px solid var(--border); }
 .submission-card-details[hidden] { display: none; }
 .submission-card-details > :is(p,section), .submission-card-details .submission-presenters, .submission-card-details .submission-attachments { margin: 0; }
@@ -108,15 +108,15 @@
 .submission-voting-card .submission-presenter-summary .public-event-attendance-count { text-align: left; }
 .submission-card-management { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; padding-top: .9rem; border-top: 1px solid var(--border); color: var(--text-muted); font-size: .875rem; }
 .submission-card-management .application-row-actions { display: flex; gap: .5rem; }
-.submission-card-footer { margin: 0; min-height: 1.75rem; display: flex; align-items: center; font-size: .875rem; color: var(--text-muted); }
+.submission-card-footer { margin: 0; min-height: 1.75rem; display: flex; align-items: center; font-size: .8rem; gap: .35rem; padding-top: .8rem; border-top: 1px solid var(--border); color: var(--text-muted); }
 .submission-card-footer.has-voting { padding-right: 11rem; }
 .presentation-submission > .submission-card-select { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; border-radius: inherit; background: transparent; color: inherit; box-shadow: none; outline: none; cursor: pointer; }
 .presentation-submission > .submission-card-select:hover { background: transparent; }
 .submission-card-select:focus-visible { outline: 3px solid var(--text-primary); outline-offset: 3px; }
 .submission-card-select:disabled { cursor: default; }
-.submission-card-state { position: absolute; bottom: 1rem; right: 1rem; min-height: 1.75rem; display: inline-flex; gap: .4rem; align-items: center; font-size: .875rem; font-weight: 600; }
+.submission-card-state { position: absolute; bottom: 1.15rem; right: 1.15rem; min-height: 1.75rem; display: inline-flex; gap: .4rem; align-items: center; font-size: .875rem; font-weight: 600; }
 .submission-voting-card :where(a, button:not(.submission-card-select), input, label, summary) { position: relative; z-index: 2; }
-.submission-card-header .submission-card-expand { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 44px; width: 44px; height: 44px; min-height: 44px; margin: 0; padding: 0; border-radius: 50%; color: var(--text-primary); background: var(--panel); }
+.submission-card-header .submission-card-expand { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 44px; width: 44px; height: 44px; min-height: 44px; margin: 0; padding: 0; border-radius: 12px; color: var(--text-muted); background: transparent; }
 .submission-voting-card .btn-secondary { color: var(--text-primary); }
 .submission-review-tools { padding: .8rem 1rem; border: 1px solid var(--border); border-radius: 10px; }
 .submission-review-tools > summary { cursor: pointer; font-weight: 600; }
@@ -153,3 +153,12 @@
 
 .presentation-form .team-people-picker { padding: 0; border: 0; border-radius: 0; }
 .presentation-form[data-draft-saved='true'] .local-draft-status p::before { background: var(--accent-green); opacity: .75; }.submission-presenters .public-event-registrant { flex: 0 0 38px; width: 38px; }
+
+/* Compact team metadata keeps the proposal title as the visual anchor. */
+.submission-voting-card .submission-presenters { margin: .15rem 0; }
+.submission-voting-card .public-event-registrant { width: 30px; height: 30px; }
+.submission-voting-card .public-event-registrant-avatar { width: 30px; height: 30px; border-width: 2px; box-shadow: none; font-size: .65rem; }
+.submission-voting-card .public-event-attendance-count strong { font-size: .8rem; font-weight: 500; }
+.submission-voting-card .public-event-attendance-count small { font-size: .75rem; }
+.submission-voting-card.is-selected .submission-card-state { color: var(--primary); }
+.submission-card-state { font-size: .8rem; }
