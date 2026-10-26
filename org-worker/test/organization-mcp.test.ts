@@ -29,6 +29,67 @@ function database() {
 }
 const identity = { userId: 'existing-pidp-user', scopes: ['org:portal.read', 'org:portal.write'] };
 
+function disenrollmentFixture(t: {after: (fn:()=>void)=>void}) {
+  const {db,sql}=database();t.after(()=>sql.close());
+  sql.exec(`INSERT INTO organizations(id,name,slug) VALUES('anchor','Anchor Advance Care LLC','anchor'),('other','Other','other');
+    INSERT INTO organization_memberships(organization_id,user_id,role,status,pending_organizer) VALUES
+    ('anchor','existing-pidp-user','member','active',1),('anchor','another-member','member','active',0),('other','existing-pidp-user','member','active',0);`);
+  const run=(args:unknown={organizationId:'anchor'},actor=identity)=>runOrganizationOperation(db,actor,'disenroll',args,async()=>assert.fail('Must not create an organization'));
+  return {db,sql,run};
+}
+test('self disenrollment previews and removes only the caller with a one-use receipt',async t=>{
+  const {db,sql,run}=disenrollmentFixture(t);
+  const preview=await run() as any;
+  assert.equal(preview.userId,identity.userId);assert.equal(preview.organization.name,'Anchor Advance Care LLC');
+  assert.equal(preview.effects.changesEmailPreferences,false);
+  assert.equal(sql.prepare("SELECT status FROM organization_memberships WHERE organization_id='anchor' AND user_id=?").get(identity.userId)!.status,'active');
+  await assert.rejects(run({organizationId:'anchor',confirm:true}),/preview first/);
+  await assert.rejects(run({organizationId:'anchor',confirm:true,previewId:preview.previewId},{...identity,userId:'another-member'}),/another user|changed/);
+  const applied=await run({organizationId:'anchor',confirm:true,previewId:preview.previewId}) as any;
+  assert.equal(applied.result.status,'inactive');assert.equal(applied.result.user_id,identity.userId);
+  assert.equal(sql.prepare("SELECT pending_organizer FROM organization_memberships WHERE organization_id='anchor' AND user_id=?").get(identity.userId)!.pending_organizer,0);
+  assert.equal(sql.prepare("SELECT count(*) n FROM organization_memberships WHERE status='active'").get()!.n,2);
+  const listed=await runOrganizationOperation(db,identity,'list',{},async()=>null) as any;
+  assert.deepEqual(listed.organizations.map((org:any)=>org.id),['other']);
+  assert.equal(sql.prepare('SELECT status FROM event_mcp_operations WHERE id=?').get(preview.previewId)!.status,'completed');
+  await assert.rejects(run({organizationId:'anchor',confirm:true,previewId:preview.previewId}),/membership required/);
+  sql.exec("UPDATE organization_memberships SET status='active',pending_organizer=1 WHERE organization_id='anchor' AND user_id='existing-pidp-user'");
+  await assert.rejects(run({organizationId:'anchor',confirm:true,previewId:preview.previewId}),/already used|changed/);
+});
+test('self disenrollment rejects missing scopes, impersonation, outsiders, owners and administrators',async t=>{
+  const {sql,run}=disenrollmentFixture(t);
+  for(const scopes of [[],['org:portal.read'],['org:portal.write']])await assert.rejects(run(undefined,{...identity,scopes}),/Missing portal scope/);
+  await assert.rejects(run(undefined,{...identity,userId:'outsider'}),/membership required/);
+  await assert.rejects(run({organizationId:'anchor',user_id:'another-member'}),/Unrecognized key/);
+  for(const role of ['owner','administrator']){
+    sql.prepare('UPDATE organization_memberships SET role=? WHERE user_id=?').run(role,identity.userId);
+    await assert.rejects(run(),/transfer or remove admin/);
+  }
+  sql.exec("UPDATE organization_memberships SET role='member'; INSERT INTO organization_ownerships(id,organization_id,owner_user_id,status,started_at) VALUES('own','anchor','existing-pidp-user','active','now')");
+  await assert.rejects(run(),/transfer or remove admin/);
+});
+test('self disenrollment refuses expired, cross-organization and stale receipts',async t=>{
+  const {sql,run}=disenrollmentFixture(t);
+  const preview=await run() as any;
+  await assert.rejects(run({organizationId:'other',confirm:true,previewId:preview.previewId}),/changed/);
+  sql.exec("UPDATE organization_memberships SET updated_at='newer' WHERE organization_id='anchor'");
+  await assert.rejects(run({organizationId:'anchor',confirm:true,previewId:preview.previewId}),/changed/);
+  const fresh=await run() as any;
+  sql.prepare('UPDATE event_mcp_operations SET expires_at=0 WHERE id=?').run(fresh.previewId);
+  await assert.rejects(run({organizationId:'anchor',confirm:true,previewId:fresh.previewId}),/expired/);
+  assert.equal(sql.prepare("SELECT count(*) n FROM organization_memberships WHERE status='active'").get()!.n,3);
+});
+test('atomic self disenrollment cannot detach a concurrently promoted member or active owner',async t=>{
+  const {disenrollOrganizationMember}=await import('../src/organizationIam');
+  const {sql,db}=disenrollmentFixture(t);
+  const before=sql.prepare("SELECT updated_at FROM organization_memberships WHERE organization_id='anchor' AND user_id=?").get(identity.userId)!;
+  sql.exec("UPDATE organization_memberships SET role='administrator' WHERE user_id='existing-pidp-user'");
+  await assert.rejects(disenrollOrganizationMember(db,'anchor',identity.userId,before.updated_at as string,1),/changed/);
+  sql.exec("UPDATE organization_memberships SET role='member'; INSERT INTO organization_ownerships(id,organization_id,owner_user_id,status,started_at) VALUES('own','anchor','existing-pidp-user','active','now')");
+  await assert.rejects(disenrollOrganizationMember(db,'anchor',identity.userId,before.updated_at as string,1),/changed/);
+  assert.equal(sql.prepare("SELECT count(*) n FROM organization_memberships WHERE status='active'").get()!.n,3);
+});
+
 test('organization creation requires scope and a matching one-use receipt', async () => {
   const { db, sql } = database(); let writes = 0;
   const create = async (_actor, payload) => { assert.equal(payload.kind, 'team'); writes++; return { id: 'new-org' }; };

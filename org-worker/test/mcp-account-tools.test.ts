@@ -34,6 +34,13 @@ async function fixture(t: any, tenant = false) {
 test('account discovery advertises schemas and reports canonical identity without credentials',async t=>{
   const f=await fixture(t);
   const tools=(await f.rpc('tools/list')).body.result.tools;
+  for(const phase of ['preview','apply']) {
+    const tool=tools.find((tool:any)=>tool.name===`${phase}_organization_disenrollment`);
+    assert.ok(tool);assert.equal(tool.annotations.readOnlyHint,phase==='preview');
+    assert.equal(tool.inputSchema.additionalProperties,false);
+    assert.deepEqual(tool.inputSchema.required,['organizationId']);
+    assert.equal(tool.inputSchema.properties.user_id,undefined);
+  }
   for(const name of ['get_current_account','get_connection_status','diagnose_connection']){
     const tool=tools.find((tool:any)=>tool.name===name);assert.ok(tool?.outputSchema);assert.equal(tool.annotations.readOnlyHint,true);assert.equal(tool.annotations.destructiveHint,false);
   }
@@ -51,6 +58,10 @@ test('account discovery advertises schemas and reports canonical identity withou
 
 test('tenant whoami cannot inspect other organizations or accept another user as input',async t=>{
   const f=await fixture(t,true);
+  for(const phase of ['preview','apply']) {
+    const denied=(await f.rpc(`${phase}_organization_disenrollment`,'org:portal.read org:portal.write',{organizationId:'other'})).body.result;
+    assert.equal(denied.isError,true);assert.match(denied.content[0].text,/limited to its own organization/);
+  }
   const result=(await f.rpc('get_current_account')).body.result;
   assert.deepEqual(result.structuredContent.organizations.map((org:any)=>org.id),['life']);
   assert.equal(result.structuredContent.organizationId,'life');

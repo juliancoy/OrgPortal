@@ -43,6 +43,18 @@ organization-management permissions. Both write pairs require portal read/write
 scopes and a matching ten-minute, one-use preview receipt. OAuth consent does
 not grant management permission or create additional identity accounts.
 
+`preview_organization_disenrollment` / `apply_organization_disenrollment` let an
+ordinary active member leave their own organization using the same portal
+read/write scopes and ten-minute, one-use receipt. The subject always comes
+from the authenticated MCP identity; another user ID is never accepted. The
+write rechecks role, membership revision and active ownership atomically.
+Owners and administrators must transfer or remove their administrative access
+first, matching the website's leave policy. Disenrollment marks only that
+membership inactive and clears its pending organizer nomination. It leaves
+identity, other memberships, organization records and email preferences intact.
+After an uncertain result, inspect `get_organization_operation`; the actor can
+inspect their receipt after losing organization access.
+
 Connect from Codex with a configured MCP resource URL:
 
 ```sh

@@ -1,6 +1,6 @@
 import { organizationCreationConflict, organizationCreationIdentity } from './organizationCreation';
 import { z } from 'zod';
-import { authorizeOrganization, organizerAssignment, listOrganizationMembers, saveOrganizationMember, type OrganizationActor } from './organizationIam';
+import { authorizeOrganization, disenrollOrganizationMember, organizerAssignment, listOrganizationMembers, saveOrganizationMember, type OrganizationActor } from './organizationIam';
 import { EventIntegrationError } from './eventPlatforms';
 import { enforceEventRateLimit, prepareEventOperation, previewFingerprint, claimEventOperation, finishEventOperation } from './eventOperationStore';
 
@@ -19,16 +19,48 @@ export const organizationMemberSchema = z.object({
   role: z.enum(['member', 'administrator']), add_only: z.boolean().optional(),
   previewId: z.string().uuid().optional(), confirm: z.boolean().optional(),
 }).strict();
+export const organizationDisenrollmentSchema = z.object({
+  organizationId: z.string().min(1).max(200),
+  previewId: z.string().uuid().optional(), confirm: z.boolean().optional(),
+}).strict();
 export type CreateOrganization = (actor: OrganizationActor, payload: Record<string, unknown>) => Promise<unknown>;
 
 export async function runOrganizationOperation(db: D1Database, identity: { userId: string; scopes: string[] },
-  operation: 'create' | 'member' | 'members' | 'list', input: unknown, create: CreateOrganization) {
-  const write = operation === 'create' || operation === 'member';
+  operation: 'create' | 'member' | 'members' | 'list' | 'disenroll', input: unknown, create: CreateOrganization) {
+  const write = operation === 'create' || operation === 'member' || operation === 'disenroll';
   if (!identity.scopes.includes('org:portal.read') || (write && !identity.scopes.includes('org:portal.write'))) {
     throw new EventIntegrationError(403, 'Missing portal scope');
   }
   const actor = { id: identity.userId, name: identity.userId, email: null, isOperator: false };
   await enforceEventRateLimit(db, actor.id);
+  if (operation === 'disenroll') {
+    const { organizationId, previewId, confirm } = organizationDisenrollmentSchema.parse(input);
+    const organization = await db.prepare('SELECT id,name,slug FROM organizations WHERE id=?').bind(organizationId).first();
+    if (!organization) throw new EventIntegrationError(404, 'Organization not found');
+    const membership = await db.prepare(`SELECT role,status,updated_at,pending_organizer FROM organization_memberships
+      WHERE organization_id=? AND user_id=? AND status='active'`).bind(organizationId, actor.id)
+      .first<{ role: string; status: string; updated_at: string; pending_organizer: number }>();
+    if (!membership) throw new EventIntegrationError(403, 'Active organization membership required');
+    const ownership = await db.prepare("SELECT id FROM organization_ownerships WHERE organization_id=? AND owner_user_id=? AND status='active'")
+      .bind(organizationId, actor.id).first();
+    if (membership.role !== 'member' || ownership) throw new EventIntegrationError(409, 'Organization admins must transfer or remove admin access before leaving');
+    const preview = { operation, organizationId, organization, userId: actor.id, before: membership,
+      effects: { membershipStatus: 'inactive', losesOrganizationAccess: true, deletesOrganization: false,
+        changesOtherMemberships: false, changesIdentity: false, changesEmailPreferences: false } };
+    const owner = { userId: actor.id, organizationId, eventId: 'organization:disenroll' };
+    const fingerprint = await previewFingerprint(preview);
+    if (!confirm) return { ...preview, ...await prepareEventOperation(db, owner, fingerprint) };
+    if (!previewId) throw new EventIntegrationError(409, 'Request a preview first and supply its previewId');
+    await claimEventOperation(db, owner, previewId, fingerprint);
+    try {
+      const result = await disenrollOrganizationMember(db, organizationId, actor.id, membership.updated_at, membership.pending_organizer);
+      await finishEventOperation(db, previewId, true, ['disenroll']);
+      return { result, previewId, effects: preview.effects };
+    } catch (error) {
+      await finishEventOperation(db, previewId, false, []);
+      throw error;
+    }
+  }
   if (operation === 'list') {
     const args = z.object({ limit: z.number().int().min(1).max(500).default(100) }).strict().parse(input);
     const rows = await db.prepare(`SELECT o.id, o.name, o.slug, m.role FROM organizations o

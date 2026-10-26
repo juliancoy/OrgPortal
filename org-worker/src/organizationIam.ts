@@ -106,6 +106,20 @@ export async function organizationRole(db: D1Database, organizationId: string, u
   return row?.role || null;
 }
 
+// Self-service only. Keep the live role/ownership checks in the same write so
+// a concurrent promotion cannot leave an organization with a detached owner.
+export async function disenrollOrganizationMember(db: D1Database, organizationId: string, userId: string, updatedAt: string, pendingOrganizer: number) {
+  const row = await db.prepare(`UPDATE organization_memberships
+    SET status='inactive', pending_organizer=0, updated_at=?
+    WHERE organization_id=? AND user_id=? AND status='active' AND role='member'
+      AND updated_at=? AND pending_organizer=?
+      AND NOT EXISTS(SELECT 1 FROM organization_ownerships WHERE organization_id=? AND owner_user_id=? AND status='active')
+    RETURNING organization_id,user_id,role,status`)
+    .bind(new Date().toISOString(), organizationId, userId, updatedAt, pendingOrganizer, organizationId, userId).first();
+  if (!row) fail(409, 'Membership or ownership changed; request a new disenrollment preview');
+  return row;
+}
+
 export async function authorizeOrganization(
   db: D1Database,
   actor: OrganizationActor,
