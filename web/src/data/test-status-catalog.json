@@ -2663,6 +2663,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-test-local-membership-requests-py",
+      "label": "web/scripts/test-local-membership-requests.py",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-membership-requests.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-membership-requests.py"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-test-local-nametags-py",
       "label": "web/scripts/test-local-nametags.py",
       "category": "User interface and integrations",
@@ -3307,6 +3321,20 @@
       ]
     },
     {
+      "id": "suite-web-src-data-publicOrganization-events-test-ts",
+      "label": "web/src/data/publicOrganization/events.test.ts",
+      "category": "Events and services",
+      "source": "web/src/data/publicOrganization/events.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "events.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-web-src-data-publicOrganization-hostedEvents-test-ts",
       "label": "web/src/data/publicOrganization/hostedEvents.test.ts",
       "category": "Events and services",
@@ -3317,6 +3345,20 @@
         {
           "id": "suite",
           "label": "hostedEvents.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-data-publicOrganization-organizationRevalidation-test-ts",
+      "label": "web/src/data/publicOrganization/organizationRevalidation.test.ts",
+      "category": "Organizations and membership",
+      "source": "web/src/data/publicOrganization/organizationRevalidation.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organizationRevalidation.test.ts"
         }
       ]
     },
@@ -3975,20 +4017,6 @@
         {
           "id": "suite",
           "label": "localFormDraft.test.ts"
-        }
-      ]
-    },
-    {
-      "id": "suite-web-src-ui-hooks-useOrganizationView-test-ts",
-      "label": "web/src/ui/hooks/useOrganizationView.test.ts",
-      "category": "Organizations and membership",
-      "source": "web/src/ui/hooks/useOrganizationView.test.ts",
-      "kind": "vitest",
-      "cwd": "web",
-      "cases": [
-        {
-          "id": "suite",
-          "label": "useOrganizationView.test.ts"
         }
       ]
     },
