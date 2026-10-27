@@ -9,7 +9,7 @@ import Sun from 'lucide-react/dist/esm/icons/sun.mjs'
 import X from 'lucide-react/dist/esm/icons/x.mjs'
 import './eventPoster.css'
 import { bindCanvas, drawSelection } from './posterCanvas'
-import { applySettings, applyPosterAnimation, exportPosterSvg, defaults, elementLabels, parsePosterSvg, parseSettings, posterElementText, shadowDefaults, type ElementId, type ElementLayout, type PosterSettings } from './posterEditorState'
+import { applySettings, applyPosterAnimation, exportPosterSvg, defaults, elementLabels, parsePosterSvg, preparePosterImages, parseSettings, posterElementText, shadowDefaults, type ElementId, type ElementLayout, type PosterSettings } from './posterEditorState'
 import { useGroupSite } from '../../config/timebankCommunity'
 
 type Format = 'letter' | 'letter-4up' | 'postcard' | 'social'
@@ -125,6 +125,7 @@ function PosterEditor({ kind = 'event', slug, title, revision = '', sourceUrl, e
       .then(async response => {
         if (!response.ok || !response.headers.get('content-type')?.includes('image/svg+xml')) throw new Error()
         const svg = parsePosterSvg(await response.text())
+        await preparePosterImages(svg)
         if (!abort.signal.aborted && isOrganization) {
           setPageCount(Number(response.headers.get('x-poster-pages')) || 1)
           setEventCount(Number(response.headers.get('x-poster-events')) || 0)
@@ -218,6 +219,7 @@ function PosterEditor({ kind = 'event', slug, title, revision = '', sourceUrl, e
         const response = await fetch(`${endpoint}/flyer.svg?${query}`, { signal: AbortSignal.timeout(30000), cache: 'no-store' })
         if (!response.ok) throw new Error()
         const svg = parsePosterSvg(await response.text())
+        await preparePosterImages(svg)
         if (Number(response.headers.get('x-poster-pages')) !== pageCount) throw new Error('Event list changed')
         applySettings(svg, settings)
         applyPosterAnimation(svg, settings, false)

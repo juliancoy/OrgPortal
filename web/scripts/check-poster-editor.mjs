@@ -28,6 +28,28 @@ try {
   await page.goto(origin);
   const svg = page.locator('.event-poster-preview svg').first();
   await svg.waitFor();
+  const sourcePixels=await page.evaluate(async()=>{
+    const source=document.createElement('canvas');source.width=300;source.height=100;
+    const paint=source.getContext('2d');
+    for(const [index,color] of ['blue','lime','red'].entries()){paint.fillStyle=color;paint.fillRect(index*100,0,100,100)}
+    const svg=window.posterState.parsePosterSvg(`<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><svg width="100" height="100" overflow="hidden"><image href="${source.toDataURL()}" width="100" height="100" data-poster-background="true" data-width="100" data-height="100" preserveAspectRatio="xMidYMid slice"/></svg></svg>`);
+    await window.posterState.preparePosterImages(svg);
+    const samples=[];
+    for(const change of [{offsetX:100},{zoom:.5}]){
+      const settings={...window.posterState.defaults,...change};
+      const url=URL.createObjectURL(window.posterState.exportPosterSvg(svg,settings));
+      const image=new Image();image.src=url;
+      try {
+        await image.decode();
+        const canvas=document.createElement('canvas');canvas.width=100;canvas.height=100;
+        const context=canvas.getContext('2d');context.drawImage(image,0,0);
+        samples.push([10,50,90].map(x=>[...context.getImageData(x,50,1,1).data]));
+      }finally{URL.revokeObjectURL(url)}
+    }
+    return samples;
+  });
+  assert.deepEqual(sourcePixels[0][0],[0,0,255,255],'panning reveals source pixels outside the initial crop');
+  assert.deepEqual(sourcePixels[1],[[0,0,255,255],[0,255,0,255],[255,0,0,255]],'zooming out retains both edges of the original photo');
   const canvasBox = await page.locator('.event-poster-preview').boundingBox();
   const settingsBox = await page.locator('.event-poster-settings').boundingBox();
   assert.ok(canvasBox.x + canvasBox.width <= settingsBox.x, 'poster appears left of settings');

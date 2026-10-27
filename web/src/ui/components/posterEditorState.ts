@@ -58,17 +58,46 @@ export function parsePosterSvg(source: string): SVGSVGElement {
   }
   return document.importNode(doc.documentElement, true) as unknown as SVGSVGElement
 }
+
+// Measure the embedded raster before framing it. A poster-shaped <image>
+// viewport with `slice` permanently crops source pixels before any pan/zoom.
+export async function preparePosterImages(svg: SVGSVGElement) {
+  await Promise.all([...svg.querySelectorAll('[data-poster-background]')].map(async node => {
+    const source = node.getAttribute('href')
+    if (!source) return
+    const image = new Image()
+    image.src = source
+    await image.decode()
+    node.setAttribute('data-source-width', String(image.naturalWidth))
+    node.setAttribute('data-source-height', String(image.naturalHeight))
+  }))
+}
+
+export function backgroundImageFrame(width: number, height: number, sourceWidth: number, sourceHeight: number, settings: PosterSettings, aspect: string) {
+  const zoom = settings.zoom, dx = width * settings.offsetX / 200, dy = height * settings.offsetY / 200
+  if (!(Number.isFinite(sourceWidth) && Number.isFinite(sourceHeight) && sourceWidth > 0 && sourceHeight > 0)) return { x: width * (1 - zoom) / 2 + dx, y: height * (1 - zoom) / 2 + dy, width: width * zoom, height: height * zoom, aspect }
+  const scale = aspect.includes('slice') ? Math.max(width / sourceWidth, height / sourceHeight) : Math.min(width / sourceWidth, height / sourceHeight)
+  const w = sourceWidth * scale, h = sourceHeight * scale
+  const alignX = aspect.startsWith('xMin') ? 0 : aspect.startsWith('xMax') ? 1 : .5
+  const alignY = aspect.includes('YMin') ? 0 : aspect.includes('YMax') ? 1 : .5
+  return {
+    x: width / 2 + ((width - w) * alignX - width / 2) * zoom + dx,
+    y: height / 2 + ((height - h) * alignY - height / 2) * zoom + dy,
+    width: w * zoom, height: h * zoom, aspect: 'xMidYMid meet',
+  }
+}
 export function applySettings(svg: SVGSVGElement, settings: PosterSettings) {
   const art = svg.querySelector('#poster-art') || svg
   const viewBox = (art.getAttribute('viewBox') || '').split(/\s+/).map(Number)
   const width = viewBox[2] || Number(art.getAttribute('width')), height = viewBox[3] || Number(art.getAttribute('height'))
   for (const image of svg.querySelectorAll('[data-poster-background]')) {
     applyEdgeFill(image as SVGImageElement, settings.edgeBlur)
-    image.setAttribute('preserveAspectRatio', settings.imageFit === 'original' ? image.getAttribute('data-original-aspect') || 'xMidYMid slice' : settings.imageFit === 'contain' ? 'xMidYMid meet' : 'xMidYMid slice')
+    const aspect = settings.imageFit === 'original' ? image.getAttribute('data-original-aspect') || 'xMidYMid slice' : settings.imageFit === 'contain' ? 'xMidYMid meet' : 'xMidYMid slice'
     const w = Number(image.getAttribute('data-width')), h = Number(image.getAttribute('data-height'))
-    image.setAttribute('x', String(w * ((1 - settings.zoom) / 2 + settings.offsetX / 200)))
-    image.setAttribute('y', String(h * ((1 - settings.zoom) / 2 + settings.offsetY / 200)))
-    image.setAttribute('width', String(w * settings.zoom)); image.setAttribute('height', String(h * settings.zoom))
+    const frame = backgroundImageFrame(w, h, Number(image.getAttribute('data-source-width')), Number(image.getAttribute('data-source-height')), settings, aspect)
+    image.setAttribute('preserveAspectRatio', frame.aspect)
+    image.setAttribute('x', String(frame.x)); image.setAttribute('y', String(frame.y))
+    image.setAttribute('width', String(frame.width)); image.setAttribute('height', String(frame.height))
     image.setAttribute('opacity', String(settings.opacity))
   }
   for (const overlay of svg.querySelectorAll('[data-poster-dimming]')) overlay.setAttribute('opacity', String(settings.dimming))

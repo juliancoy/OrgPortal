@@ -1,6 +1,15 @@
 import { describe, it, expect } from 'vitest'
-import { defaults, parseSettings } from './posterEditorState'
+import { backgroundImageFrame, defaults, parseSettings } from './posterEditorState'
 describe('poster local preferences', () => {
+  it('frames the complete photo before clipping to the poster, including zoom and pan', () => {
+    const settings={...defaults,zoom:1,offsetX:100}
+    expect(backgroundImageFrame(100,100,300,100,settings,'xMidYMid slice')).toEqual({x:-50,y:0,width:300,height:100,aspect:'xMidYMid meet'})
+    expect(backgroundImageFrame(100,100,100,300,{...defaults,zoom:.5},'xMidYMid slice')).toEqual({x:25,y:-25,width:50,height:150,aspect:'xMidYMid meet'})
+    const contained=backgroundImageFrame(100,100,300,100,defaults,'xMidYMid meet')
+    expect(contained.width).toBe(100);expect(contained.height).toBeCloseTo(100/3)
+    const bottom=backgroundImageFrame(100,100,300,100,defaults,'xMidYMax meet')
+    expect(bottom.y+bottom.height).toBeCloseTo(100)
+  })
   it('starts with a designed background and no description',()=>{expect(defaults.background).toBe('gradient');expect(defaults.elements.description?.hidden).toBe(true)})
   it('restores animation preferences without changing older saved posters', () => {
     const legacy = parseSettings(JSON.stringify({version:1,background:'gallery',zoom:1.5}))
