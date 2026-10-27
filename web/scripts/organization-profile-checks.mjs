@@ -1,13 +1,13 @@
 import {chromium,expect} from '@playwright/test'
-import {mkdir,readFile} from 'node:fs/promises'
+import {mkdir,readFile,writeFile} from 'node:fs/promises'
 import {join} from 'node:path'
 import {existsSync} from 'node:fs'
 export async function testOrganizationProfile(base,output,contactOutput=output){
  await mkdir(output,{recursive:true})
  const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH||existsSync('/usr/bin/google-chrome')?{executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH||'/usr/bin/google-chrome'}:{})})
- const baseOrg={id:'fixture-org',slug:'fixture-org',name:'Harbor Care',description:'Advance care planning with patients, families, and care teams.',image_url:'/images/organization-themes/harbor-avatar.webp',tags:['Health'],links:[],membership_count:2,upcoming_events_count:0,candidates:[{event_id:'demo',event_slug:'demo-day',event_title:'LifeTech Demo Day',submission_id:'application',title:'Care planning',stars:7}]}
+ const baseOrg={id:'fixture-org',slug:'fixture-org',name:'Harbor Care',claimed_by_user_id:'fixture-owner',description:'Advance care planning with patients, families, and care teams.',image_url:'/images/organization-themes/harbor-avatar.webp',tags:['Health'],links:[],membership_count:2,upcoming_events_count:0,candidates:[{event_id:'demo',event_slug:'demo-day',event_title:'LifeTech Demo Day',submission_id:'application',title:'Care planning',stars:7}]}
  try{
-  const captures=[]
+  const captures=[],cohorts=[]
   for(const group of ['care','makers'])for(const viewer of ['visitor','nonmember','member','owner','operator']){
    const org={...baseOrg,...(group==='makers'?{id:'fixture-makers',slug:'fixture-makers',name:'Harbor Makers',tags:['Technology']}:{} )}
    const portal={id:'fixture-site-'+group,organization_id:org.id,hostname:'fixture.example',slug:org.slug,name:org.name,tagline:group==='care'?'Care that starts with a conversation':'Build together',brand_image_path:'/images/organization-themes/harbor-icon.webp',home_image_url:'/images/organization-themes/harbor-background.webp'}
@@ -32,7 +32,8 @@ export async function testOrganizationProfile(base,output,contactOutput=output){
     else if(path.endsWith('/invitations'))json={relationships:[],invitations:[]}
     return route.fulfill({json})
    })
-   await page.goto(`${base}/orgs/${org.slug}?brand=lifetech&viewer=${viewer}`)
+   await page.addInitScript(slug=>localStorage.setItem('orgportal.organizationView.'+slug,'organizers'),org.slug)
+   await page.goto(`${base}/orgs/${org.slug}?brand=lifetech&viewer=${viewer}&view=organizers`)
    const profile=page.locator('.organization-profile')
    await expect(profile.getByRole('heading',{level:1})).toHaveText(org.name)
    await expect(profile.getByRole('tab',{name:'About',exact:true})).toHaveAttribute('aria-selected','true')
@@ -66,7 +67,7 @@ export async function testOrganizationProfile(base,output,contactOutput=output){
    }
    await profile.getByRole('tab',{name:'Events',exact:true}).click();await expect.poll(()=>eventRequests).toBeGreaterThan(0)
    await profile.getByRole('tab',{name:'People',exact:true}).click();await expect(profile.getByRole('heading',{name:'Alex Morgan',exact:true})).toBeVisible();await expect(profile.getByRole('heading',{name:'Invited teammate',exact:true})).toHaveCount(1)
-   await profile.getByRole('tab',{name:'Community',exact:true}).click();await expect(profile.locator('#org-panel-community')).toBeVisible()
+   await profile.getByRole('tab',{name:'Community',exact:true}).click();await expect(profile.locator('#org-panel-community')).toBeVisible();await expect(profile.locator('iframe')).toHaveCount(0)
    await profile.getByRole('tab',{name:'Branding',exact:true}).click();await expect(profile.getByRole('heading',{name:'Edit organization branding',exact:true})).toHaveCount(0)
    await expect(profile.getByRole('heading',{level:1})).toHaveCount(1)
    await profile.getByRole('tab',{name:'About',exact:true}).focus();await page.keyboard.press('ArrowRight');await expect(profile.getByRole('tab',{name:'People',exact:true})).toHaveAttribute('aria-selected','true');await page.keyboard.press('Home');await expect(profile.getByRole('tab',{name:'About',exact:true})).toHaveAttribute('aria-selected','true')
@@ -79,10 +80,12 @@ export async function testOrganizationProfile(base,output,contactOutput=output){
     if(manager){await profile.getByRole('tab',{name:'Settings',exact:true}).click();await expect(profile.locator('#org-panel-settings')).toBeVisible()}
     await profile.getByRole('tab',{name:'Community',exact:true}).click()
     await expect(profile.getByRole('heading',{name:'Member tools',exact:true})).toHaveCount(viewer==='nonmember'?0:1)
+    await expect(profile.getByTitle(org.name+' chat messages and composer',{exact:true})).toHaveCount(viewer==='nonmember'?0:1)
     await expect(page.getByLabel('View as',{exact:true})).toHaveCount(0)
    }
-   expect(errors).toEqual([]);await page.close()
+   expect(errors).toEqual([]);cohorts.push({group:org.slug,account:viewer,publicTabs:['About','People','Events','Community','Branding','Poster'],workspaceSettings:manager,workspaceTools:!['visitor','nonmember'].includes(viewer)});await page.close()
   }
+  await writeFile(join(output,'organization-group-matrix.json'),JSON.stringify(cohorts,null,2)+'\n')
   const votePage=await browser.newPage();let chosen=['first'],failRemoval=true
   await votePage.route('**/presentations/submissions**',route=>route.fulfill({json:{favoriteLimit:1,next:null,submissions:['first','second'].map(id=>({submission_id:id,organization_id:id,organization_slug:id,organization_name:id==='first'?'First team':'Second team',title:id==='first'?'First pitch':'Second pitch',summary:'A test pitch',status:'submitted',favorites:chosen.includes(id)?1:0,presenters:[],attachments:[],image_url:null}))}}))
   await votePage.route('**/presentations/favorites**',route=>{
