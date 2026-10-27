@@ -56,3 +56,10 @@ export function organizationPageTheme(site:import('./timebankCommunity').GroupSi
  const colors=(values:Record<string,string>)=>Object.entries(portalThemeColors(values)).map(([key,value])=>`--${key}:${value};`).join('')
  return `${selector}{${colors(theme.light)}color:var(--text-primary);background:var(--surface);} :root[data-theme="dark"] ${selector}{${colors(theme.dark)}} @media(prefers-color-scheme:dark){:root:not([data-theme]) ${selector}{${colors(theme.dark)}}}`
 }
+
+
+/** Fresh saved branding takes precedence over an older cached directory portrait. */
+export function organizationPageAvatar(site:import('./timebankCommunity').GroupSite|null|undefined,profileImage?:string|null):string|null {
+ const config=parseOrganizationThemes(site?.feature_config?.brandThemes)
+ return config?.themes.find(theme=>theme.id===config.defaultTheme)?.imagery?.avatar || profileImage?.trim() || null
+}

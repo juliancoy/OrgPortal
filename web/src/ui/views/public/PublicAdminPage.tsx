@@ -4,7 +4,7 @@ import {AutosaveStatus} from '../../components/AutosaveStatus'
 import {OrganizationCandidateStar} from '../../components/OrganizationCandidateStar'
 import './organization-profile.css'
 import { organizationPageTabs, resolveOrganizationPageTab, type OrganizationPageTab } from './organizationPageTabs'
-import { organizationPageTheme } from '../../../config/organizationThemes'
+import { organizationPageTheme, organizationPageAvatar } from '../../../config/organizationThemes'
 import { NeoNatalFocus } from '../../components/NeoNatalFocus'
 import { EventPosterTools } from '../../components/EventPosterTools'
 import { OrganizationBoard } from '../../components/OrganizationBoard'
@@ -813,7 +813,7 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
   const site=publicPortal?.organizationId===org.id?publicPortal.site:null
   const pageTheme=organizationPageTheme(site)
   const organizationBrandImage = site?.brand_image_path||(tenant?.organization_id === org.id ? tenant.brand_image_path : null)
-  const ownImage=org.image_url?.trim()
+  const ownImage=organizationPageAvatar(site,org.image_url)
   const heroImageSource = ownImage&&ownImage!==ORG_PLACEHOLDER_SRC?ownImage:organizationBrandImage||ORG_PLACEHOLDER_SRC
   const eventGroups = groupOrganizationEvents(events, org).filter(group => group.kind==='hosted')
   const resources=specialtyResourcesForTenant(site)
