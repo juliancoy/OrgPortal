@@ -3,6 +3,7 @@ export type SupportMailbox = {
  organizationName: string; imageUrl: string | null; ticketPrefix: string;
 };
 const lifeTechId = 'ef646755-9443-4c7b-ba4b-a7a29754f666';
+const lifeTechAdminAddress = 'admin@lifetech.fyi';
 
 export async function supportMailboxForOrganization(db: D1Database, organizationId: string): Promise<SupportMailbox | null> {
  const org = await db.prepare('SELECT id,name,image_url FROM organizations WHERE id=?').bind(organizationId).first<{id:string;name:string;image_url:string|null}>();
@@ -11,10 +12,12 @@ export async function supportMailboxForOrganization(db: D1Database, organization
   .bind(org.id, org.id === lifeTechId ? 'service@lifetech.fyi' : 'service+'+crypto.randomUUID().replaceAll('-', '')+'@notify.orgportal.cc').run();
  const row = await db.prepare('SELECT address FROM support_mailboxes WHERE organization_id=?').bind(org.id).first<{address:string}>();
  if (!row) return null;
- return {address:row.address,senderAddress:org.id===lifeTechId?row.address:'service@notify.orgportal.cc',organizationId:org.id,
+ const address=org.id===lifeTechId?lifeTechAdminAddress:row.address;
+ return {address,senderAddress:org.id===lifeTechId?address:'service@notify.orgportal.cc',organizationId:org.id,
   senderName:org.name+' service',organizationName:org.name,imageUrl:org.image_url,ticketPrefix:org.id===lifeTechId?'LT':'OP'};
 }
 export async function supportMailboxForAddress(db: D1Database, address: string) {
+ if(address.toLowerCase()===lifeTechAdminAddress)return supportMailboxForOrganization(db,lifeTechId);
  const row = await db.prepare('SELECT organization_id FROM support_mailboxes WHERE address=?').bind(address.toLowerCase()).first<{organization_id:string}>();
  return row ? supportMailboxForOrganization(db,row.organization_id) : null;
 }

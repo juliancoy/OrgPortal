@@ -77,3 +77,20 @@ test('FAQ and routing changes cannot affect another organization or assign non-a
  assert.equal((await f.request('settings/life/faq','PUT',{id:'lifetech-bylaws',question:'A new question?',answer:'A reviewed answer',source_url:'https://lifetech.fyi',enabled:true},'outsider')).status,403);
  assert.equal((await f.request('settings/life/faq','PUT',{question:'A new question?',answer:'A reviewed answer',source_url:'https://lifetech.fyi',enabled:true})).status,200);
 });
+
+test('LifeTech admin alias shares its inbox, outbound address and organization permissions',async()=>{
+ const f=fixture(),id='ef646755-9443-4c7b-ba4b-a7a29754f666';
+ f.sql.prepare("INSERT INTO organizations(id,name,slug,tags,city) VALUES(?,'LifeTech live','lifetech-live','[]','Baltimore')").run(id);
+ f.sql.prepare("INSERT INTO organization_memberships(organization_id,user_id,user_name,role,status) VALUES(?,'owner','Owner','owner','active')").run(id);
+ f.sql.prepare("INSERT INTO support_settings VALUES(?,1,'owner','2026-01-01')").run(id);
+ f.sql.prepare("UPDATE support_mailboxes SET address='old-fixture@example.test' WHERE organization_id='life'").run();
+ const {supportMailboxForAddress,supportMailboxForOrganization}=await import('../src/supportMailboxes');
+ const mailbox=await supportMailboxForOrganization(f.db,id);assert.equal(mailbox?.address,'admin@lifetech.fyi');assert.equal(mailbox?.senderAddress,'admin@lifetech.fyi');
+ for(const address of ['admin@lifetech.fyi','ADMIN@LIFETECH.FYI','service@lifetech.fyi']){
+  const resolved=await supportMailboxForAddress(f.db,address);assert.equal(resolved?.organizationId,id);assert.equal(resolved?.address,'admin@lifetech.fyi');
+ }
+ const result=await acceptSupportMail(f.db,{...f.mail,to:'admin@lifetech.fyi',text:'Invitation reply for staff review',messageId:'<admin-alias-test@example.test>'},async()=>{throw Error('No automatic answer expected')});
+ assert.ok('ticketId' in result);const ticket=f.sql.prepare('SELECT * FROM support_tickets WHERE id=?').get(result.ticketId!);assert.equal(ticket?.organization_id,id);
+ assert.equal((await f.request(''+result.ticketId,'GET',undefined,'outsider')).status,403);
+ const settings=await (await f.request('settings/'+id)).json() as {activation:{mailboxAddress:string;enabled:boolean}};assert.equal(settings.activation.mailboxAddress,'admin@lifetech.fyi');assert.equal(settings.activation.enabled,true);
+});

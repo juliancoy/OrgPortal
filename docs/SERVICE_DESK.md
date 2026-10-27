@@ -15,7 +15,10 @@ On first access, each organization receives a stable random
 `service+<32-character identifier>@notify.orgportal.cc` reply address stored in the private
 `support_mailboxes` table. Shared outbound mail uses `service@notify.orgportal.cc` with
 the organization's name and its own reply address. LifeTech uses
-`service@lifetech.fyi` for both. Changing an organization's slug does not change
+`admin@lifetech.fyi` for outbound mail and replies. The stable stored
+`service@lifetech.fyi` address remains an inbound alias; existing forwarding rules
+are preserved unless separately changed. The admin address routes directly to the
+primary Worker and appears in the LifeTech `/support` inbox. Changing an organization's slug does not change
 its mailbox. New organizations receive the same capability without code changes.
 
 The service page defaults to the current group site's organization when the user

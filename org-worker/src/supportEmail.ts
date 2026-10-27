@@ -15,7 +15,7 @@ export async function receiveSupportEmail(message:ForwardableEmailMessage,env:En
  if(raw.byteLength>256*1024){message.setReject('Message too large');return}
  const mail=await PostalMime.parse(raw);
  const sender=message.from.toLowerCase();
- if(!sender||(sender===mailbox.address||sender===mailbox.senderAddress)||/^(?:mailer-daemon|postmaster|no-?reply)@/i.test(sender))return;
+ if(!sender||(sender===message.to.toLowerCase()||sender===mailbox.address||sender===mailbox.senderAddress)||/^(?:mailer-daemon|postmaster|no-?reply)@/i.test(sender))return;
  const automated=!!message.headers.get('Auto-Submitted')&&message.headers.get('Auto-Submitted')?.toLowerCase()!=='no'||/bulk|list|junk/i.test(message.headers.get('Precedence')||'')||!!message.headers.get('List-Id');
  const result=await acceptSupportMail(env.DB,{from:sender,to:message.to,subject:(mail.subject||'').replace(/[\r\n]/g,' '),text:mail.text||'(No plain text supplied; administrator review required.)',messageId:message.headers.get('Message-ID')||'',automated,attachments:!!mail.attachments.length},async (body,ticketId)=>{
   const reply=createMimeMessage();reply.setSender({addr:message.to,name:mailbox.senderName});reply.setRecipient(message.from);
