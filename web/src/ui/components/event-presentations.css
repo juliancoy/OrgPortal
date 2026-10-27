@@ -166,6 +166,6 @@
 .submission-card-header .submission-presenters { position:relative; margin:0 0 0 auto; flex-shrink:0; }
 .submission-card-header .submission-presenter-summary .public-event-registrants { flex-wrap:nowrap; }
 .submission-card-header .submission-presenters .public-event-registrant { flex-basis:30px; width:30px; }
-.submission-card-header .submission-presenter-list { position:absolute; right:0; top:100%; z-index:3; width:260px; max-width:calc(100vw - 64px); max-height:50vh; overflow:auto; margin:.35rem 0 0; padding:.85rem; border:1px solid var(--border); border-radius:12px; background:var(--panel); color:var(--text-primary); box-shadow:var(--shadow-card); }
+.submission-card-header .submission-presenter-list { position:absolute; right:calc(-44px - 1rem); top:100%; z-index:3; width:260px; max-width:calc(100vw - 64px); max-height:50vh; overflow:auto; margin:.35rem 0 0; padding:.85rem; border:1px solid var(--border); border-radius:12px; background:var(--panel); color:var(--text-primary); box-shadow:var(--shadow-card); }
 .submission-presenter-list li > span { min-width:0; overflow-wrap:anywhere; }
 .submission-voting-card:has(.submission-presenters details[open]) { z-index:2; }
