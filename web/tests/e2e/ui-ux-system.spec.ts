@@ -507,7 +507,7 @@ test.describe('Code Collective UI and UX system coverage', () => {
 
     await page.getByRole('button', { name: 'Edit name', exact: true }).click()
     await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Updated Tester')
-    await page.getByRole('button', { name: 'Save name', exact: true }).click()
+    await expect(page.getByRole('button', { name: 'Save name', exact: true })).toHaveCount(0)
     await expect(page.getByRole('status').filter({ hasText: 'Name saved.' })).toBeVisible()
     expect(savedProfile).toMatchObject({ full_name: 'Updated Tester', display_name: 'Updated Tester', first_name: 'Updated', last_name: 'Tester' })
     expect(savedProfile).not.toHaveProperty('organizations')
