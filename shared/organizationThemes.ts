@@ -62,4 +62,7 @@ export const standardOrganizationThemes:OrganizationTheme[] = [
  preset('harbor','Harbor Teal','#155E59','#79D9CE','#081F29'),
  preset('midnight','Midnight Gold','#735600','#E6C667','#161D30'),
  preset('botanical','Botanical','#355D3B','#ACD7A0','#122B24'),
+ {...preset('postcapitalist-corporate-light','PostCapitalist Corporate Light Mode','#175C53','#8CD5C2','#142925'),
+  light:{primary:'#175C53','on-primary':'#FFFFFF',surface:'#F8F7F2',panel:'#FFFFFF','panel-2':'#EEEDE5','text-primary':'#202E2A','text-secondary':'#52615A',border:'#8C9990'},
+  imagery:{icon:'/images/organization-themes/postcapitalist-corporate-light-icon.svg',avatar:'/images/organization-themes/postcapitalist-corporate-light-avatar.svg',background:'/images/organization-themes/postcapitalist-corporate-light-background.svg'}},
 ]

@@ -2537,6 +2537,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-test-local-branding-autosave-mjs",
+      "label": "web/scripts/test-local-branding-autosave.mjs",
+      "category": "User interface and integrations",
+      "source": "web/scripts/test-local-branding-autosave.mjs",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-branding-autosave.mjs"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-test-local-deism-mjs",
       "label": "web/scripts/test-local-deism.mjs",
       "category": "User interface and integrations",

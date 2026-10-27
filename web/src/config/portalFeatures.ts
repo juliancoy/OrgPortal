@@ -133,7 +133,7 @@ export function tenantProfileConfig(tenant: GroupSite): PortalProfileConfig {
     portalTitle: profileId === 'orgportal' ? 'OrgPortal' : tenant.name ? `${tenant.name} Portal` : base.portalTitle,
     tagline: tenant.tagline ?? base.tagline,
     brandImagePath,
-    nameBannerUrl: typeof tenant.feature_config?.nameBannerUrl === 'string' && /^https:\/\//.test(tenant.feature_config.nameBannerUrl) ? tenant.feature_config.nameBannerUrl : base.nameBannerUrl,
+    nameBannerUrl: tenant.feature_config?.brandThemes && tenant.brand_image_path ? undefined : typeof tenant.feature_config?.nameBannerUrl === 'string' && /^https:\/\//.test(tenant.feature_config.nameBannerUrl) ? tenant.feature_config.nameBannerUrl : base.nameBannerUrl,
     homeUrl: tenantBrandHomeUrl(tenant, base.homeUrl),
     memberHomePath: tenant.member_home_path || (tenant.features?.includes('timebank') ? '/' : base.memberHomePath),
     disabledFeatures,

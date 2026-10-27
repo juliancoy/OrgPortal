@@ -135,3 +135,11 @@
 - The browser-test rule above is an explicit exception: isolated local accounts
   and writable fixture data require `ORGPORTAL_ORGANIZATION_REPLICA_SOURCE=''`.
   Do not run authenticated fixture tests against production or a read replica.
+
+## Editing experience
+
+- Ordinary reversible settings and profile edits should save automatically after
+  a short pause, with visible pending, saving, saved and retry states. Preserve
+  edits made during a save; do not report success before the server confirms it.
+- Keep explicit user actions for sending/publishing, deletion, payments and other
+  consequential operations. Autosave does not authorize these actions.

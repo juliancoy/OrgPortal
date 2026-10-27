@@ -1069,7 +1069,7 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
         </div>}
       </div>
       <div className="organization-profile-panel" role="tabpanel" id="org-panel-branding" aria-labelledby="org-tab-branding" hidden={activeTab !== 'branding'}>
-        {activeTab==='branding' && <OrganizationBranding embedded organization={org} canManage={canManageCurrentOrg} onSaved={()=>setPublicPortalRevision(value=>value+1)}/>}
+        {activeTab==='branding' && <OrganizationBranding embedded organization={org} canManage={canManageCurrentOrg} onPreview={(site,avatar)=>{setPublicPortal({organizationId:org.id,site,error:''});setOrg(previous=>previous?.id===org.id?{...previous,image_url:avatar}:previous)}}/>}
       </div>
       <div className="organization-profile-panel" role="tabpanel" id="org-panel-poster" aria-labelledby="org-tab-poster" hidden={activeTab !== 'poster'}>
         {activeTab==='poster' && <EventPosterTools key={org.id} kind="organization" inline slug={org.slug} title={org.name} organizationSlug={org.slug} organizationLinks={org.links} sourceUrl={org.source_url&&!isRetiredOrganizationHref(org.source_url)?org.source_url:null}/>}
