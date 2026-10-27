@@ -1,3 +1,4 @@
+import { supportMailboxForOrganization } from './supportMailboxes';
 import { z } from 'zod';
 import { emailAudit, requireEmailOrganizer } from './emailAccess';
 import { emailContentSchema } from './emailContent';
@@ -20,6 +21,7 @@ export const emailDraftSchema = target.extend({
   subject: z.string().trim().min(1).max(200).regex(/^[^\r\n\0]+$/),
   body: z.string().trim().min(1).max(20000),
   audience: z.enum(['email-only', 'organization']).default('email-only'),
+  sender: z.enum(['connected-account', 'organization-mailbox']).default('connected-account'),
   eventId: z.string().min(1).max(200).optional(),
   content: emailContentSchema.omit({ image_data: true }).prefault({}),
   ...receipt,
@@ -35,6 +37,7 @@ export async function readEmailWorkspace(env: Env, identity: Identity, input: un
   const { organizationId } = target.parse(input);
   await authorize(env, identity, organizationId);
   const sender = await senderFor(env, identity.userId);
+  const mailbox = env.SUPPORT_EMAIL ? await supportMailboxForOrganization(env.DB, organizationId, { create: false }) : null;
   const group = await env.DB.prepare('SELECT name,slug FROM organizations WHERE id=?').bind(organizationId).first();
   const counts = await env.DB.prepare(`SELECT count(*) subscribed,sum(user_id='') email_only FROM email_subscriptions s
     WHERE topic_type='organization' AND topic_id=? AND status='subscribed'
@@ -43,7 +46,7 @@ export async function readEmailWorkspace(env: Env, identity: Identity, input: un
     .bind(organizationId, organizationId, organizationId).first();
   return { organizationId, group, ownerUserId: identity.userId, sender: sender ? {
     accountEmail: sender.email, fromEmail: emailFromAddress(env, sender.email), status: sender.status,
-  } : null, counts };
+  } : null, organizationSender: mailbox ? { email: mailbox.senderAddress, name: mailbox.organizationName, draftOnly: true } : null, counts };
 }
 export async function addEmailSubscriber(env: Env, identity: Identity, input: unknown) {
   const args = emailSubscriberSchema.parse(input);
@@ -83,7 +86,11 @@ export async function addEmailSubscriber(env: Env, identity: Identity, input: un
 async function draftPlan(env: Env, identity: Identity, args: z.infer<typeof emailDraftSchema>) {
   await authorize(env, identity, args.organizationId, true);
   const sender = await senderFor(env, identity.userId);
-  if (!sender || sender.status !== 'connected') emailFail(409, 'Connect this account’s email sender first.');
+  const mailbox = args.sender === 'organization-mailbox' && env.SUPPORT_EMAIL
+    ? await supportMailboxForOrganization(env.DB, args.organizationId, { create: false }) : null;
+  if (args.sender === 'organization-mailbox' && !mailbox) emailFail(409, 'Configure this organization’s service mailbox first.');
+  if (args.sender === 'connected-account' && (!sender || sender.status !== 'connected')) emailFail(409, 'Connect this account’s email sender first.');
+  const senderEmail = mailbox?.senderAddress || sender!.email;
   const group = await env.DB.prepare('SELECT id,name,slug FROM organizations WHERE id=?').bind(args.organizationId)
     .first<{ id: string; name: string; slug: string }>();
   if (!group) emailFail(404, 'Group not found.');
@@ -98,7 +105,7 @@ async function draftPlan(env: Env, identity: Identity, args: z.infer<typeof emai
     ORDER BY id LIMIT 1001`).bind(args.organizationId, args.audience, args.organizationId, args.organizationId)
     .all<{ id: string; email: string; name: string }>();
   if ((recipients.results?.length || 0) > 1000) emailFail(400, 'Select an audience of 1,000 or fewer subscribers.');
-  return { senderEmail: sender.email, fromEmail: emailFromAddress(env, sender.email), event: event || {
+  return { senderEmail, fromEmail: emailFromAddress(env, senderEmail), event: event || {
     id: '', title: group.name, slug: group.slug, host_org_id: group.id, organization_name: group.name,
     starts_at: null, location: null, image_url: null,
   }, recipients: recipients.results || [] };
@@ -111,6 +118,7 @@ export async function saveEmailDraft(env: Env, identity: Identity, input: unknow
   const owner = { userId: identity.userId, organizationId: args.organizationId, eventId: 'email:draft' };
   if (!confirm) return { ...changes, senderEmail: plan.senderEmail, fromEmail: plan.fromEmail,
     ownerUserId: identity.userId, recipients: plan.recipients.length, status: 'draft', sendsEmail: false,
+    draftOnly: args.sender === 'organization-mailbox',
     ...await prepareEventOperation(env.DB, owner, fingerprint) };
   if (!previewId) emailFail(409, 'Preview this email draft first.');
   await claimEventOperation(env.DB, owner, previewId, fingerprint);
@@ -148,11 +156,14 @@ export async function readEmailDraft(env: Env, identity: Identity, input: unknow
     AND owner_user_id=? AND status='draft' AND (expires_at IS NULL OR expires_at>?)`)
     .bind(args.campaignId, args.organizationId, identity.userId, Date.now()).first<EmailCampaign>();
   if (!campaign) emailFail(404, 'Draft not found for this account and group.');
+  const sender = await senderFor(env, identity.userId);
+  const draftOnly = sender?.email !== campaign.sender_email;
   const counts = await env.DB.prepare("SELECT count(*) recipients FROM email_deliveries WHERE campaign_id=? AND kind='campaign'")
     .bind(campaign.id).first();
   return { organizationId: args.organizationId, campaignId: campaign.id, ownerUserId: campaign.owner_user_id,
     senderEmail: campaign.sender_email, fromEmail: emailFromAddress(env, campaign.sender_email),
     subject: campaign.subject, body: campaign.body, content: JSON.parse(campaign.content_json || '{}'),
-    status: campaign.status, counts, sent: false,
+    status: campaign.status, counts, sent: false, draftOnly,
+    ...(draftOnly ? { deliveryBlocker: 'Organization mailbox campaign delivery is not enabled. This is an unsent draft.' } : {}),
     url: `${new URL('/email', emailPortalBase(env)).origin}/email?organization_id=${encodeURIComponent(args.organizationId)}&campaign_id=${campaign.id}` };
 }

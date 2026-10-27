@@ -5,10 +5,10 @@ export type SupportMailbox = {
 const lifeTechId = 'ef646755-9443-4c7b-ba4b-a7a29754f666';
 const lifeTechAdminAddress = 'admin@lifetech.fyi';
 
-export async function supportMailboxForOrganization(db: D1Database, organizationId: string): Promise<SupportMailbox | null> {
+export async function supportMailboxForOrganization(db: D1Database, organizationId: string, options: { create?: boolean } = {}): Promise<SupportMailbox | null> {
  const org = await db.prepare('SELECT id,name,image_url FROM organizations WHERE id=?').bind(organizationId).first<{id:string;name:string;image_url:string|null}>();
  if (!org) return null;
- await db.prepare('INSERT OR IGNORE INTO support_mailboxes(organization_id,address) VALUES(?,?)')
+ if (options.create !== false) await db.prepare('INSERT OR IGNORE INTO support_mailboxes(organization_id,address) VALUES(?,?)')
   .bind(org.id, org.id === lifeTechId ? 'service@lifetech.fyi' : 'service+'+crypto.randomUUID().replaceAll('-', '')+'@notify.orgportal.cc').run();
  const row = await db.prepare('SELECT address FROM support_mailboxes WHERE organization_id=?').bind(org.id).first<{address:string}>();
  if (!row) return null;

@@ -206,3 +206,10 @@ Writes require live organizer access, portal read/write scopes, and an exact
 one-use preview receipt. Tenant MCP connections remain limited to their own group;
 operator status cannot substitute for email organizer membership. Read the saved
 From address before describing a draft as coming from a particular sender.
+
+For an unsent organization-address draft, set `sender: "organization-mailbox"`.
+The tool reads the group's existing configured service mailbox; it never accepts
+an arbitrary From address or creates an identity. The result marks these drafts
+`draftOnly: true`: campaign delivery currently uses connected Google accounts,
+so organization mailbox drafts cannot be tested, queued or dispatched by that
+system. Saving a draft neither changes sender aliases nor sends a message.

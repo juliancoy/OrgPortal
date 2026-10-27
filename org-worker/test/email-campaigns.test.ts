@@ -651,3 +651,22 @@ test('MCP drafts reject changed audiences and revoked organizer access', async t
   await assert.rejects(saveEmailDraft(env,actor,{...draft,confirm:true,previewId:p2.previewId}));
   assert.equal(database.prepare('SELECT count(*) n FROM email_campaigns').get()!.n,0);
 });
+
+test('organization mailbox drafts use only the configured group sender and cannot dispatch Google mail', async t => {
+  const {env,database,request}=setup(t);network(t);await connect(env);
+  const actor={userId:'admin',scopes:['org:portal.read','org:portal.write']};
+  const input={organizationId:'org-1',subject:'Welcome',body:'Hello',sender:'organization-mailbox',content:{sender_name:'Our group'}};
+  await assert.rejects(saveEmailDraft(env,actor,input));
+  env.SUPPORT_EMAIL={send:async()=>{throw Error('Drafts must never send')}} as unknown as Env['SUPPORT_EMAIL'];
+  await assert.rejects(saveEmailDraft(env,actor,input));
+  assert.equal(database.prepare('SELECT count(*) n FROM support_mailboxes').get()!.n,0,'preview must not create a mailbox');
+  database.prepare("INSERT INTO support_mailboxes(organization_id,address) VALUES('org-1','service+fixture@notify.orgportal.cc')").run();
+  const context=await readEmailWorkspace(env,actor,{organizationId:'org-1'});
+  assert.equal(context.organizationSender!.email,'service@notify.orgportal.cc');
+  const preview=await saveEmailDraft(env,actor,input);
+  assert.equal(preview.fromEmail,'service@notify.orgportal.cc');assert.equal(preview.draftOnly,true);
+  const saved=await saveEmailDraft(env,actor,{...input,confirm:true,previewId:preview.previewId});
+  assert.equal(saved.fromEmail,'service@notify.orgportal.cc');assert.equal(saved.draftOnly,true);assert.equal(saved.status,'draft');
+  assert.equal((await request('/campaigns/'+saved.campaignId+'/test','POST',{})).status,409);
+  assert.equal(database.prepare('SELECT count(*) n FROM email_deliveries').get()!.n,0);
+});

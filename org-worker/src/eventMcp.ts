@@ -793,7 +793,7 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
       ['get_email_draft', emailDraftTargetSchema, readEmailDraft, true, 'Read an unsent email draft owned by this account in this group.'],
       ['preview_email_subscriber', emailSubscriberSchema, addEmailSubscriber, true, 'Preview adding an email-only group subscriber. Never creates an account, reactivates opt-outs or sends email.'],
       ['apply_email_subscriber', emailSubscriberSchema, addEmailSubscriber, false, 'Add the reviewed group subscriber with confirm=true and matching one-use previewId. Preserves opt-outs and existing identities. Does not send email.'],
-      ['preview_email_draft', emailDraftSchema, saveEmailDraft, true, 'Preview a draft with this account’s connected sender and this group’s organization or email-only subscribers. Does not send or queue email.'],
+      ['preview_email_draft', emailDraftSchema, saveEmailDraft, true, 'Preview a draft with this account’s connected sender or the configured organization service mailbox, and this group’s organization or email-only subscribers. Organization mailbox drafts cannot be sent by the campaign system. Does not send or queue email.'],
       ['apply_email_draft', emailDraftSchema, saveEmailDraft, false, 'Save the reviewed unsent campaign draft under this account and group using confirm=true and matching one-use previewId. Never sends or queues email.'],
     ] as const;
     for (const [name, inputSchema, run, readOnlyHint, description] of emailTools) server.registerTool(name, {
