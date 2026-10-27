@@ -1,3 +1,4 @@
+import { addEmailSubscriber, saveEmailDraft, readEmailDraft, readEmailWorkspace } from '../src/emailWorkspaceMcp';
 import { contactUnsubscribeToken } from '../src/emailContactPreferences';
 import { prepareEmailContactLink } from '../src/emailContactMcp';
 import {identityProfile} from './helpers/identityProfile';
@@ -603,4 +604,50 @@ test('public newsletter accepts email without joining and preserves opt-outs and
   assert.equal((await submit('fifth@example.test')).status,200);
   assert.equal((await submit('limited@example.test')).status,429);
   assert.equal((await app.request('https://portal.test/api/email/groups/'+group+'/subscribers',{},env)).status,401);
+});
+
+test('MCP email-only subscribers and drafts preserve permissions, opt-outs and unsent status', async t => {
+  const {env,database}=setup(t);await connect(env);
+  const actor={userId:'admin',scopes:['org:portal.read','org:portal.write']};
+  const input={organizationId:'org-1',email:'new@example.test',source:'organizer-request'};
+  await assert.rejects(addEmailSubscriber(env,{...actor,scopes:['org:portal.read']},input));
+  await assert.rejects(addEmailSubscriber(env,{...actor,userId:'other-admin'},input));
+  const p=await addEmailSubscriber(env,actor,input);
+  assert.equal(database.prepare('SELECT count(*) n FROM email_subscriptions').get()!.n,0);
+  await assert.rejects(addEmailSubscriber(env,actor,{...input,name:'Changed',confirm:true,previewId:p.previewId}));
+  await addEmailSubscriber(env,actor,{...input,confirm:true,previewId:p.previewId});
+  await assert.rejects(addEmailSubscriber(env,actor,{...input,confirm:true,previewId:p.previewId}));
+  assert.equal(database.prepare('SELECT user_id FROM email_subscriptions').get()!.user_id,'');
+  await subscribe(env,'member','organization','org-1');
+  await subscribe(env,'optout','organization','org-1',false);
+  await assert.rejects(addEmailSubscriber(env,actor,{...input,email:'optout@example.test'}));
+  database.prepare("INSERT INTO email_contact_suppressions(organization_id,email,source,unsubscribed_at,updated_at) VALUES('org-1','blocked@example.test','test',?,?)").run(Date.now(),Date.now());
+  await assert.rejects(addEmailSubscriber(env,actor,{...input,email:'blocked@example.test'}));
+  const draft={organizationId:'org-1',subject:'Welcome',body:'Join us',audience:'email-only',content:{sender_name:'LifeTech'}};
+  const plan=await saveEmailDraft(env,actor,draft);
+  assert.equal(plan.recipients,1);
+  assert.equal(database.prepare('SELECT count(*) n FROM email_campaigns').get()!.n,0);
+  await assert.rejects(saveEmailDraft(env,actor,{...draft,body:'Changed',confirm:true,previewId:plan.previewId}));
+  const saved=await saveEmailDraft(env,actor,{...draft,confirm:true,previewId:plan.previewId});
+  assert.equal(saved.ownerUserId,'admin');assert.equal(saved.status,'draft');assert.equal(saved.sent,false);
+  assert.equal(saved.counts!.recipients,1);
+  assert.equal(database.prepare('SELECT email FROM email_deliveries').get()!.email,'new@example.test');
+  assert.equal(database.prepare("SELECT count(*) n FROM email_deliveries WHERE status!='draft'").get()!.n,0);
+  await assert.rejects(saveEmailDraft(env,actor,{...draft,confirm:true,previewId:plan.previewId}));
+  await assert.rejects(readEmailDraft(env,{...actor,userId:'other-admin'},{organizationId:'org-1',campaignId:saved.campaignId}));
+  await assert.rejects(readEmailDraft(env,actor,{organizationId:'org-2',campaignId:saved.campaignId}));
+  assert.equal((await readEmailWorkspace(env,actor,{organizationId:'org-1'})).counts!.email_only,1);
+});
+
+test('MCP drafts reject changed audiences and revoked organizer access', async t => {
+  const {env,database}=setup(t);await connect(env);
+  const actor={userId:'admin',scopes:['org:portal.read','org:portal.write']};
+  const draft={organizationId:'org-1',subject:'Welcome',body:'Hello',audience:'organization'};
+  const p=await saveEmailDraft(env,actor,draft);
+  await subscribe(env,'late','organization','org-1');
+  await assert.rejects(saveEmailDraft(env,actor,{...draft,confirm:true,previewId:p.previewId}));
+  const p2=await saveEmailDraft(env,actor,draft);
+  database.prepare("UPDATE organization_memberships SET status='inactive' WHERE user_id='admin'").run();
+  await assert.rejects(saveEmailDraft(env,actor,{...draft,confirm:true,previewId:p2.previewId}));
+  assert.equal(database.prepare('SELECT count(*) n FROM email_campaigns').get()!.n,0);
 });

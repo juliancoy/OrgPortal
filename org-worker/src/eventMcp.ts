@@ -1,3 +1,4 @@
+import { emailWorkspaceSchema, emailSubscriberSchema, emailDraftSchema, emailDraftTargetSchema, readEmailWorkspace, addEmailSubscriber, saveEmailDraft, readEmailDraft } from './emailWorkspaceMcp';
 import { recordMcpStatistics } from './mcpLiveStatistics';
 import { registerPersonnelInvitationTools } from './personnelInvitationsMcp';
 import { presentationTargetSchema, presentationApplicationSchema, runPresentationOperation } from './presentationMcp';
@@ -787,6 +788,25 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
     };
     const metadata = (scopes: string[]) => ({ securitySchemes: [{ type: "oauth2", scopes }] });
     registerPersonnelInvitationTools(server,env,identity,config,metadata);
+    const emailTools = [
+      ['get_email_workspace', emailWorkspaceSchema, readEmailWorkspace, true, 'Read this account’s connected sender and the selected group’s subscriber counts. Requires live group organizer access.'],
+      ['get_email_draft', emailDraftTargetSchema, readEmailDraft, true, 'Read an unsent email draft owned by this account in this group.'],
+      ['preview_email_subscriber', emailSubscriberSchema, addEmailSubscriber, true, 'Preview adding an email-only group subscriber. Never creates an account, reactivates opt-outs or sends email.'],
+      ['apply_email_subscriber', emailSubscriberSchema, addEmailSubscriber, false, 'Add the reviewed group subscriber with confirm=true and matching one-use previewId. Preserves opt-outs and existing identities. Does not send email.'],
+      ['preview_email_draft', emailDraftSchema, saveEmailDraft, true, 'Preview a draft with this account’s connected sender and this group’s organization or email-only subscribers. Does not send or queue email.'],
+      ['apply_email_draft', emailDraftSchema, saveEmailDraft, false, 'Save the reviewed unsent campaign draft under this account and group using confirm=true and matching one-use previewId. Never sends or queues email.'],
+    ] as const;
+    for (const [name, inputSchema, run, readOnlyHint, description] of emailTools) server.registerTool(name, {
+      description, inputSchema, annotations: { readOnlyHint, destructiveHint: false },
+      _meta: metadata(name.startsWith('get_') ? [portalReadScope] : [portalReadScope, portalWriteScope]),
+    }, async (args: Record<string, unknown>) => {
+      try {
+        const data = await run(env, identity, scopedArgs(name.startsWith('preview_') ? { ...args, confirm: false } : args));
+        return { content: [{ type: 'text' as const, text: JSON.stringify(data) }], structuredContent: data };
+      } catch (error) {
+        return { isError: true, content: [{ type: 'text' as const, text: await eventErrorResponse(error, env, request).text() }] };
+      }
+    });
     server.registerTool('prepare_email_contact_link', {
       description: 'Prepare an individual recipient unsubscribe link for a group email or test. Requires active group organizer access. Does not subscribe, unsubscribe, queue, or send email. Never reuse a link for another recipient.',
       inputSchema: emailContactLinkSchema, annotations: { readOnlyHint: true },

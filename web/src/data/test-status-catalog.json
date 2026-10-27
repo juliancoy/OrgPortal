@@ -1017,6 +1017,20 @@
       ]
     },
     {
+      "id": "suite-org-worker-test-membership-request-compatibility-test-ts",
+      "label": "org-worker/test/membership-request-compatibility.test.ts",
+      "category": "Organizations and membership",
+      "source": "org-worker/test/membership-request-compatibility.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "membership-request-compatibility.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-org-worker-test-nametags-test-ts",
       "label": "org-worker/test/nametags.test.ts",
       "category": "User interface and integrations",

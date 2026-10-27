@@ -186,3 +186,23 @@ rolling daily allowance and an atomic claim. Provider exceptions become uncertai
 and require manual delivery review; they are not automatically resent. `sent`
 means provider acceptance, not inbox delivery. Remove the organization's map entry
 to pause its native delivery. Already-sending/uncertain messages are never replayed.
+
+### MCP subscriber and draft tools
+
+`get_email_workspace` reads the current account's sender identity, effective
+From address and eligible subscriber counts for one group. The
+`preview_email_subscriber` / `apply_email_subscriber` pair adds an email-only
+subscription without creating an account or membership. Organizer additions
+record their source and preserve existing opt-outs, suppressions and bounces.
+
+`preview_email_draft` / `apply_email_draft` saves an unsent campaign under the
+signed-in account and selected group. `audience: "email-only"` selects subscribed
+organization contacts whose `user_id` is empty; `organization` selects all
+eligible group subscribers. Drafts snapshot the audience and retain the existing
+90-day campaign expiry and deletion path. `get_email_draft` verifies the saved
+owner, sender, content and count. These tools never send, queue or self-test mail.
+
+Writes require live organizer access, portal read/write scopes, and an exact
+one-use preview receipt. Tenant MCP connections remain limited to their own group;
+operator status cannot substitute for email organizer membership. Read the saved
+From address before describing a draft as coming from a particular sender.

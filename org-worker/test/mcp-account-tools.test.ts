@@ -41,6 +41,12 @@ test('account discovery advertises schemas and reports canonical identity withou
     assert.deepEqual(tool.inputSchema.required,['organizationId']);
     assert.equal(tool.inputSchema.properties.user_id,undefined);
   }
+  for (const name of ['get_email_workspace','get_email_draft','preview_email_subscriber','apply_email_subscriber','preview_email_draft','apply_email_draft']) {
+    const tool=tools.find((tool:any)=>tool.name===name);assert.ok(tool,name);
+    assert.equal(tool.inputSchema.additionalProperties,false);
+    assert.equal(tool.annotations.readOnlyHint,!name.startsWith('apply_'));
+    assert.equal(tool.inputSchema.properties.ownerUserId,undefined);
+  }
   for(const name of ['get_current_account','get_connection_status','diagnose_connection']){
     const tool=tools.find((tool:any)=>tool.name===name);assert.ok(tool?.outputSchema);assert.equal(tool.annotations.readOnlyHint,true);assert.equal(tool.annotations.destructiveHint,false);
   }
@@ -60,6 +66,13 @@ test('tenant whoami cannot inspect other organizations or accept another user as
   const f=await fixture(t,true);
   for(const phase of ['preview','apply']) {
     const denied=(await f.rpc(`${phase}_organization_disenrollment`,'org:portal.read org:portal.write',{organizationId:'other'})).body.result;
+    assert.equal(denied.isError,true);assert.match(denied.content[0].text,/limited to its own organization/);
+  }
+  for (const [name,args] of [
+    ['get_email_workspace',{}],['preview_email_subscriber',{email:'test@example.test',source:'organizer-request'}],
+    ['preview_email_draft',{subject:'Hello',body:'Welcome'}],
+  ] as const) {
+    const denied=(await f.rpc(name,'org:portal.read org:portal.write',{organizationId:'other',...args})).body.result;
     assert.equal(denied.isError,true);assert.match(denied.content[0].text,/limited to its own organization/);
   }
   const result=(await f.rpc('get_current_account')).body.result;

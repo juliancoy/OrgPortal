@@ -1,3 +1,4 @@
+import { membershipRequestsAvailable } from './membershipRequests';
 import { cleanupPresentationAttachments } from './presentationAttachments';
 import { expirePushOutbox } from './pushOutbox';
 // Bounded cleanup of explicitly temporary records only. No account/content purge.
@@ -47,6 +48,8 @@ export async function runRetention(db: D1Database, now = Date.now(), dryRun = fa
     catch { counts.event_presentation_attachment_cleanup_failed = 1 }
   }
   for (const [table, where, value] of rules) {
+    // Code releases must work before the separately reviewed membership migration.
+    if (table === 'organization_membership_requests' && !await membershipRequestsAvailable(db)) continue;
     if (dryRun) {
       const result = await db.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE ${where}`).bind(value).first<{n:number}>();
       counts[table] = result?.n ?? 0;
