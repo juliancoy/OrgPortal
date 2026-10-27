@@ -1,3 +1,5 @@
+import {UserProfilePage} from '../../src/ui/views/users/UserProfilePage'
+import {InlineProfileField} from '../../src/ui/components/profile/InlineProfileField'
 import {PublicEventPage} from '../../src/ui/views/public/PublicEventPage'
 import {PublicCalendarPage} from '../../src/ui/views/public/PublicCalendarPage'
 import {EventStandings} from '../../src/ui/components/EventStandings'
@@ -35,6 +37,9 @@ const life={id:'lifetech',slug:'lifetech',organization_id:'fixture-org',hostname
 if(brand==='lifetech')setGroupSite(life)
 applyPortalBranding()
 const body=<Routes>
+ <Route path="/profile-editor" element={<UserProfilePage/>}/>
+ <Route path="/personal-details" element={<UserProfilePage detailsOnly/>}/>
+ <Route path="/inline-profile-review" element={<InlineProfileField label="Headline" value="Original headline" onSave={async headline=>{const response=await fetch('/api/org/api/network/contact/me',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({headline})});if(!response.ok)throw Error('Could not save headline')}}/>}/>
  <Route path="/events/:slug" element={<PublicEventPage/>}/>
  <Route path="/calendar-events" element={<PublicCalendarPage/>}/>
  <Route path="/standings" element={<main><h1>Demo Day</h1><EventStandings eventId="fixture-event" eventSlug="demo-day"/></main>}/>

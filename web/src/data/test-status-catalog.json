@@ -2831,6 +2831,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-test-local-profile-autosave-mjs",
+      "label": "web/scripts/test-local-profile-autosave.mjs",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-profile-autosave.mjs",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-profile-autosave.mjs"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-test-local-session-persistence-py",
       "label": "web/scripts/test-local-session-persistence.py",
       "category": "Identity and access",
@@ -3933,6 +3947,20 @@
         {
           "id": "suite",
           "label": "tedcoFunding.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-hooks-autosaveQueue-test-ts",
+      "label": "web/src/ui/hooks/autosaveQueue.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/ui/hooks/autosaveQueue.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "autosaveQueue.test.ts"
         }
       ]
     },

@@ -33,27 +33,29 @@ with sync_playwright() as p:
         expect(page.get_by_role('button', name='Edit name', exact=True)).to_be_visible(timeout=30000)
         expect(page.get_by_role('button', name='Edit page', exact=True)).to_have_count(0)
         page.get_by_role('button', name='Edit bio', exact=True).click()
-        page.get_by_label('Bio', exact=True).fill('Unsaved independent bio')
+        with page.expect_response(lambda response: response.url.endswith('/api/network/contact/me') and response.request.method == 'PUT') as bio_saved:
+            page.get_by_label('Bio', exact=True).fill('Automatically saved independent bio')
+        assert bio_saved.value.ok
+        assert bio_saved.value.request.post_data_json == {'bio': 'Automatically saved independent bio'}
         page.get_by_role('button', name='Edit headline', exact=True).click()
-        page.get_by_label('Headline', exact=True).fill('Saved headline')
         with page.expect_response(lambda response: response.url.endswith('/api/network/contact/me') and response.request.method == 'PUT') as saved:
-            page.get_by_role('button', name='Save headline', exact=True).click()
+            page.get_by_label('Headline', exact=True).fill('Saved headline')
         assert saved.value.ok
         assert saved.value.request.post_data_json == {'headline': 'Saved headline'}, 'Saving sent unrelated fields'
-        expect(page.get_by_label('Bio', exact=True)).to_have_value('Unsaved independent bio')
+        expect(page.get_by_label('Bio', exact=True)).to_have_value('Automatically saved independent bio')
         page.reload()
         expect(page.get_by_text('Saved headline', exact=True)).to_be_visible(timeout=30000)
-        expect(page.get_by_text('Original bio', exact=True)).to_be_visible()
+        expect(page.get_by_text('Automatically saved independent bio', exact=True)).to_be_visible()
         page.get_by_role('button', name='Edit name', exact=True).click()
-        page.get_by_label('Name', exact=True).fill('Updated Inline Name')
         with page.expect_response(lambda response: response.url.endswith('/pidp/auth/me') and response.request.method == 'PUT') as name_saved:
-            page.get_by_role('button', name='Save name', exact=True).click()
+            page.get_by_label('Name', exact=True).fill('Updated Inline Name')
         assert name_saved.value.ok
         assert set(name_saved.value.request.post_data_json) == {'full_name', 'display_name', 'first_name', 'last_name'}
+        expect(page.get_by_text('Name saved.', exact=True)).to_be_visible()
+        page.get_by_role('button', name='Done', exact=True).click()
         expect(page.get_by_role('heading', name='Updated Inline Name', exact=True)).to_be_visible()
         page.get_by_role('button', name='Edit headline', exact=True).click()
-        page.get_by_label('Headline', exact=True).fill('Cancelled headline')
-        page.get_by_role('button', name='Cancel', exact=True).click()
+        page.get_by_role('button', name='Done', exact=True).click()
         expect(page.get_by_text('Saved headline', exact=True)).to_be_visible()
         page.get_by_role('button', name='Edit headline', exact=True).click()
         page.get_by_label('Headline', exact=True).fill('Rejected headline')
@@ -61,19 +63,18 @@ with sync_playwright() as p:
             if route.request.method == 'PUT': route.fulfill(status=422, content_type='application/json', body=json.dumps({'detail': 'Test rejected save'}))
             else: route.continue_()
         page.route('**/api/network/contact/me', reject)
-        page.get_by_role('button', name='Save headline', exact=True).click()
+        expect(page.get_by_role('button', name='Save headline', exact=True)).to_have_count(0)
         expect(page.get_by_role('alert')).to_have_text('Test rejected save')
         expect(page.get_by_label('Headline', exact=True)).to_have_value('Rejected headline')
         page.unroute('**/api/network/contact/me', reject)
-        page.get_by_role('button', name='Save headline', exact=True).click()
-        expect(page.get_by_text('Rejected headline', exact=True)).to_be_visible()
+        page.get_by_role('button', name='Retry saving', exact=True).click()
+        expect(page.get_by_text('Headline saved.', exact=True)).to_be_visible()
         page.reload()
         expect(page.get_by_role('heading', name='Updated Inline Name', exact=True)).to_be_visible(timeout=30000)
-        expect(page.get_by_text('Original bio', exact=True)).to_be_visible()
+        expect(page.get_by_text('Automatically saved independent bio', exact=True)).to_be_visible()
         page.get_by_role('button', name='Edit city', exact=True).click()
-        page.get_by_label('City', exact=True).fill('Baltimore')
         with page.expect_response(lambda response: response.url.endswith('/pidp/auth/me') and response.request.method == 'PUT') as city_saved:
-            page.get_by_role('button', name='Save city', exact=True).click()
+            page.get_by_label('City', exact=True).fill('Baltimore')
         assert city_saved.value.ok
         assert city_saved.value.request.post_data_json == {'city': 'Baltimore'}
         expect(page.get_by_text('City: Baltimore', exact=True)).to_be_visible()
@@ -91,6 +92,6 @@ with sync_playwright() as p:
         page.goto(BASE + '/users/' + slug)
         expect(page.get_by_role('heading', name='Updated Inline Name', exact=True)).to_be_visible(timeout=30000)
         expect(page.get_by_role('button', name='Edit name', exact=True)).to_have_count(0)
-        print('PASS: independent field payloads, draft isolation, cancel, failed-save retry, persisted name, mobile layout, and visitor read-only profile')
+        print('PASS: independent field payloads, automatic saving, independent fields, failed-save retry, persisted name, mobile layout, and visitor read-only profile')
     finally:
         browser.close()

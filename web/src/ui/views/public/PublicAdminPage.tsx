@@ -1,3 +1,5 @@
+import {useAutosave} from '../../hooks/useAutosave'
+import {AutosaveStatus} from '../../components/AutosaveStatus'
 import {OrganizationCandidateStar} from '../../components/OrganizationCandidateStar'
 import './organization-profile.css'
 import { organizationPageTabs, resolveOrganizationPageTab, type OrganizationPageTab } from './organizationPageTabs'
@@ -206,6 +208,7 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
   const [feedbackReviewStatus, setFeedbackReviewStatus] = useState<string | null>(null)
   const [membership, setMembership] = useState<OrganizationMembership | null>(null)
   const [membershipStatus, setMembershipStatus] = useState<string | null>(null)
+  const [orgSettingsReady,setOrgSettingsReady]=useState('')
   const [portalConfig, setPortalConfig] = useState<OrganizationPortal | null>(null)
   const [publicPortal,setPublicPortal]=useState<{organizationId:string;site:GroupSite|null;error:string}|null>(null)
   const [publicPortalRevision,setPublicPortalRevision]=useState(0)
@@ -220,7 +223,6 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
   const [portalDomainNotesDraft, setPortalDomainNotesDraft] = useState('')
   const [portalDomainChecklist, setPortalDomainChecklist] = useState<string[]>([])
   const [portalStatus, setPortalStatus] = useState<string | null>(null)
-  const [savingPortal, setSavingPortal] = useState(false)
   const [savingPortalDomain, setSavingPortalDomain] = useState(false)
   const [myAdminOrgs, setMyAdminOrgs] = useState<MyOrganization[]>([])
   const [permissionToken, setPermissionToken] = useState<string | null>(null)
@@ -233,12 +235,13 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
   const [orgDescriptionDraft, setOrgDescriptionDraft] = useState('')
   const [orgImageDraft, setOrgImageDraft] = useState('')
   const [orgLinksDraft, setOrgLinksDraft] = useState<OrganizationLink[]>([])
-  const [savingOrgName, setSavingOrgName] = useState(false)
   const [savingOrgImage, setSavingOrgImage] = useState(false)
   const organizationEditorRef = useRef<HTMLDivElement | null>(null)
   const [showImageEditor, setShowImageEditor] = useState(false)
   const [editorSource, setEditorSource] = useState<string | null>(null)
   const canManageCurrentOrg = Boolean(token && (operatorToken === token || (permissionToken === token && myAdminOrgs.some((item) => item.id === org?.id))))
+  const organizationDraft={name:orgNameDraft,description:orgDescriptionDraft,image_url:orgImageDraft,links:orgLinksDraft,slug:portalSlugDraft,portalName:portalNameDraft,tagline:portalTaglineDraft,home_kind:portalHomeKindDraft,home_heading:portalHeadingDraft,home_description:portalDescriptionDraft,home_image_url:portalImageDraft}
+  const organizationAutosave=useAutosave({value:organizationDraft,scope:`organization:${org?.id}:${token}`,enabled:Boolean(org?.id&&orgSettingsReady===org.id&&canManageCurrentOrg),save:saveOrganizationSettings})
   const orgTabs = organizationPageTabs(canManageCurrentOrg)
   const activeTab = resolveOrganizationPageTab(searchParams.get('tab'), canManageCurrentOrg)
   const requestedView = useOrganizationViewPreference(org?.slug, view || searchParams.get('view'))
@@ -465,6 +468,7 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
       return
     }
     let cancelled = false
+    setOrgSettingsReady('')
     setPortalStatus('Loading portal setup...')
     fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/portal`), {
       headers: { Authorization: `Bearer ${token}` },
@@ -491,6 +495,7 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
           setPortalDomainNotesDraft(portal.custom_domain_notes || '')
         }
         setPortalStatus('')
+        setOrgSettingsReady(org.id)
       })
       .catch((err) => {
         if (cancelled) return
@@ -499,7 +504,7 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
     return () => {
       cancelled = true
     }
-  }, [canManageCurrentOrg, org?.id, org?.image_url, org?.name, org?.slug, org?.description, token])
+  }, [canManageCurrentOrg, org?.id, org?.slug, token])
 
   const jsonLd = useMemo(() => {
     if (!org) return null
@@ -650,98 +655,33 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
     }
   }
 
-  async function saveOrganizationSettings() {
-    if (!org || !token) {
-      setMergeStatus('Sign in to update this organization.')
-      return
+  async function saveOrganizationSettings(next:typeof organizationDraft,previous:typeof organizationDraft) {
+    if(!org||!token||!canManageCurrentOrg)throw new Error('Sign in as an organization manager to save changes.')
+    const changed=(key:keyof typeof next)=>JSON.stringify(next[key])!==JSON.stringify(previous[key])
+    const name=next.name.trim()
+    if(!name)throw new Error('Organization name is required.')
+    const headers={Authorization:`Bearer ${token}`,'Content-Type':'application/json'}
+    const profileChanged=(['name','description','image_url','links'] as const).some(changed)
+    if(profileChanged){
+      const body=Object.fromEntries((['name','description','image_url','links'] as const).filter(changed).map(key=>[key,key==='name'?name:key==='links'?normalizeOrganizationLinks(next.links):key==='image_url'?next.image_url.trim()||null:next.description.trim()]))
+      const response=await fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}`),{method:'PATCH',headers,body:JSON.stringify(body)})
+      if(!response.ok)throw new Error('Could not save organization changes. Please retry.')
+      const updated=await response.json()
+      setOrg(current=>current?.id===org.id?{...current,...updated}:current)
+      setMyAdminOrgs(current=>current.map(item=>item.id===org.id?{...item,...updated}:item))
     }
-    const nextName = orgNameDraft.trim()
-    if (!nextName) {
-      setMergeStatus('Organization name is required.')
-      return
+    const portalChanged=(['slug','portalName','tagline','home_kind','home_heading','home_description','home_image_url'] as const).some(changed)
+    if(portalChanged){
+      const slug=normalizePortalSlug(next.slug||org.slug)
+      if(slug.length<3)throw new Error('Use a portal slug with at least 3 characters.')
+      const base=orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/portal`)
+      const current=await fetch(base,{headers});if(!current.ok)throw new Error('Could not load current portal settings. Please retry.')
+      const existing=(await current.json()).portal
+      const response=await fetch(base,{method:'PUT',headers,body:JSON.stringify({...existing,slug,name:next.portalName||name,tagline:next.tagline,home_kind:next.home_kind||'main',home_heading:next.home_heading||next.portalName||name,home_description:next.home_description,home_image_url:next.home_image_url||null,features:existing?.features||['directory','events','chat']})})
+      if(!response.ok)throw new Error('Could not save portal settings. Please retry.')
+      const saved=await response.json();setPortalConfig(saved.portal);setPublicPortalRevision(value=>value+1)
     }
-    const slug = normalizePortalSlug(portalSlugDraft || org.slug)
-    if (!slug || slug.length < 3) {
-      setPortalStatus('Use a portal slug with at least 3 characters.')
-      return
-    }
-    setSavingOrgName(true)
-    setSavingOrgImage(true)
-    setSavingPortal(true)
-    setMergeStatus(null)
-    setPortalStatus(null)
-    try {
-      const orgResp = await fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}`), {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: nextName,
-          description: orgDescriptionDraft.trim(),
-          image_url: orgImageDraft.trim() || null,
-          links: normalizeOrganizationLinks(orgLinksDraft),
-        }),
-      })
-      if (!orgResp.ok) {
-        let detail = ''
-        try {
-          const payload = (await orgResp.json()) as { detail?: string }
-          detail = String(payload?.detail || '').trim()
-        } catch {
-          detail = (await orgResp.text().catch(() => '')).trim()
-        }
-        throw new Error(detail || `Organization update failed (${orgResp.status})`)
-      }
-      await invalidatePublicOrganizationData()
-      const updatedOrg = (await orgResp.json()) as { name?: string; description?: string | null; image_url?: string | null; links?: OrganizationLink[] }
-      const updatedName = String(updatedOrg?.name || nextName)
-      const updatedDescription = updatedOrg?.description?.trim() || ''
-      const updatedImage = updatedOrg?.image_url?.trim() || orgImageDraft.trim() || ''
-      setOrg((prev) => (prev ? { ...prev, name: updatedName, description: updatedDescription, image_url: updatedImage || null, links: updatedOrg.links || [] } : prev))
-      setMyAdminOrgs((prev) => prev.map((row) => (row.id === org.id ? { ...row, name: updatedName, image_url: updatedImage || null } : row)))
-      setOrgNameDraft(updatedName)
-      setOrgDescriptionDraft(updatedDescription)
-      setOrgImageDraft(updatedImage)
-      setOrgLinksDraft(updatedOrg.links || [])
-
-      const portalResp = await fetch(orgUrl(`/api/network/orgs/${encodeURIComponent(org.id)}/portal`), {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          slug,
-          name: portalNameDraft || updatedName,
-          tagline: portalTaglineDraft,
-          home_kind: portalHomeKindDraft || 'main',
-          home_heading: portalHeadingDraft || portalNameDraft || updatedName,
-          home_description: portalDescriptionDraft || portalTaglineDraft || org.description || '',
-          home_image_url: portalImageDraft || updatedImage || null,
-          features: ['directory', 'events', 'chat'],
-        }),
-      })
-      if (!portalResp.ok) {
-        const text = await portalResp.text().catch(() => '')
-        throw new Error(text || `Portal update failed (${portalResp.status})`)
-      }
-      const payload = (await portalResp.json()) as { portal: OrganizationPortal }
-      setPortalConfig(payload.portal)
-      setPublicPortalRevision(value=>value+1)
-      setPortalSlugDraft(normalizePortalSlug(payload.portal.slug || slug))
-      setPortalStatus('Organization settings saved.')
-      setMergeStatus('Organization settings saved.')
-    } catch (err) {
-      const message = toUserFacingErrorMessage(err, 'Could not save organization settings')
-      setPortalStatus(message)
-      setMergeStatus(message)
-    } finally {
-      setSavingOrgName(false)
-      setSavingOrgImage(false)
-      setSavingPortal(false)
-    }
+    await invalidatePublicOrganizationData()
   }
 
   async function updatePortalCustomDomain() {
@@ -849,7 +789,7 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
         throw new Error(`Image upload failed (${uploadResp.status})`)
       }
       setOrgImageDraft(uploadData.public_url)
-      setMergeStatus('Image uploaded. Save organization settings to publish it.')
+      setMergeStatus('Image uploaded. Changes save automatically.')
       setShowImageEditor(false)
       setEditorSource(null)
       openOrganizationEditor('org-image-url')
@@ -1081,7 +1021,7 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
                     {canManageCurrentOrg && activeTab === 'settings' ? (
             <div
               ref={organizationEditorRef}
-              id="organization-page-editor"
+              id="organization-page-editor" inert={orgSettingsReady!==org.id}
               className="organization-settings"
               style={{ display: 'grid', gap: '0.7rem' }}
               tabIndex={-1}
@@ -1316,16 +1256,7 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
                         {merging ? 'Merging…' : 'Merge Into This Org'}
                       </button>
                     </div>
-                    <div className="portal-org-save-bar">
-                      <button
-                        type="button"
-                        className="btn-primary"
-                        onClick={() => void saveOrganizationSettings()}
-                        disabled={savingPortal || savingOrgName || savingOrgImage || !orgNameDraft.trim()}
-                      >
-                        {(savingPortal || savingOrgName || savingOrgImage) ? 'Saving…' : 'Save organization settings'}
-                      </button>
-                    </div>
+                    <div className="portal-org-save-bar"><AutosaveStatus state={organizationAutosave} label="Organization settings" onRetry={organizationAutosave.retry}/></div>
                     {mergeStatus ? (
                       <p className="muted" role="status" style={{ margin: 0 }}>
                         {mergeStatus}
