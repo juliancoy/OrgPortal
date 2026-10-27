@@ -91,6 +91,17 @@ export function organizationInvitationRoutes(auth:(env:Env,req:Request)=>Promise
   if(invitation.purpose==='member'&&existing?.status==='inactive')emailFail(409,'Ask an organizer to restore your existing inactive membership');
   return invitation;
  }
+ // Possession of the invitation URL permits reading its invitation card only.
+ // Recipient identity and acceptance remain protected by recipient() below.
+ app.get('/invitations/:id/public',async c=>{
+  c.header('X-Robots-Tag','noindex, nofollow, noarchive');
+  const invitation=await c.env.DB.prepare('SELECT organization_id,purpose,status,expires_at,intent_json,invited_by FROM organization_invitations WHERE id=?').bind(c.req.param('id')).first<Invitation>();
+  if(!invitation)emailFail(404,'Invitation not found');
+  if(invitation.status!=='pending'||invitation.expires_at<=Date.now()||!await issuerAllowed(c.env.DB,invitation.organization_id,invitation.invited_by,invitation.purpose))return c.json({error:'This invitation is no longer available. Ask the sender for a new invitation.'},410);
+  const organization=await c.env.DB.prepare('SELECT name,slug FROM organizations WHERE id=?').bind(invitation.organization_id).first();
+  if(!organization)emailFail(404,'Invitation not found');
+  return c.json({organization,purpose:invitation.purpose,expiresAt:invitation.expires_at,effect:invitation.intent_json?intentDescription(readPersonnelIntent(invitation.intent_json)!):invitation.purpose==='member'?'You are invited to join this organization as a member.':'You are invited to accept Volunteer recognition for three months. This grants no membership permissions.'});
+ });
  app.get('/invitations/:id',async c=>{
   const actor=await auth(c.env,c.req.raw),invitation=await recipient(c.env.DB,c.req.param('id'),actor);
   const org=await c.env.DB.prepare('SELECT name,slug FROM organizations WHERE id=?').bind(invitation.organization_id).first();

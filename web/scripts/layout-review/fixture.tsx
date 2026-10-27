@@ -11,6 +11,7 @@ import {MemoryRouter,Routes,Route} from 'react-router-dom'
 import {Header} from '../../src/ui/shell/Header'
 import {Footer} from '../../src/ui/shell/Footer'
 import {OnboardingPage} from '../../src/ui/views/OnboardingPage'
+import {InvitationAcceptPage} from '../../src/ui/views/InvitationAcceptPage'
 import {SupportPage} from '../../src/ui/views/support/SupportPage'
 import {PeoplePage} from '../../src/ui/views/PeoplePage'
 import {PublicOrganizationsPage} from '../../src/ui/views/public/PublicOrganizationsPage'
@@ -58,6 +59,7 @@ const body=<Routes>
  <Route path="/people" element={<PeoplePage/>}/>
  <Route path="/orgs" element={<PublicOrganizationsPage/>}/>
  <Route path="/events" element={<PublicEventsPage/>}/>
+ <Route path="/invitations/:id" element={<InvitationAcceptPage/>}/>
  <Route path="/support" element={<SupportPage/>}/>
  <Route path="/support/:ticketId" element={<SupportPage/>}/>
  <Route path="/branding" element={<TenantBrandingPage tenant={life}/>}/>

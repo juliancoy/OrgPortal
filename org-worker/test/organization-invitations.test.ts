@@ -212,3 +212,21 @@ test('new native invitation archives the exact sent text and provider Message-ID
  await runOrganizationInvitations(env);const message=f.db.sql.prepare('SELECT body,message_id,delivery FROM support_messages WHERE id=?').get('invitation:'+id)!;
  assert.equal(message.message_id,'<native-invitation@example.test>');assert.equal(message.delivery,'sent');assert.doesNotMatch(String(message.body),/reconstructed/);assert.match(String(message.body),new RegExp('/invitations/'+id));
 });
+
+test('invitation card is readable without authentication, without revealing recipient data or accepting',async t=>{
+ const f=fixture(t),id=await f.issue();let authCalls=0;
+ const publicApp=organizationInvitationRoutes(async()=>{authCalls++;throw new Error('Authentication must not run for the invitation card')});
+ const response=await publicApp.request('/invitations/'+id+'/public',{}, {DB:f.db.asD1()} as Env);
+ assert.equal(response.status,200);assert.equal(authCalls,0);assert.equal(response.headers.get('Cache-Control'),'no-store');
+ const card=await response.json() as Record<string,unknown>;assert.deepEqual(card.organization,{name:'One',slug:'one'});assert.match(String(card.effect),/invited to join/);
+ assert.deepEqual(Object.keys(card).sort(),['effect','expiresAt','organization','purpose']);assert.ok(!JSON.stringify(card).includes('new@example.test'));
+ assert.equal(f.db.sql.prepare('SELECT status FROM organization_invitations WHERE id=?').get(id)?.status,'pending');
+ assert.equal((await f.request('/invitations/'+id+'/preview','wrong',{},'wrong@example.test')).status,403);
+ assert.equal((await f.request('/invitations/'+id+'/preview','new',{},'new@example.test',false)).status,403);
+ assert.equal((await publicApp.request('/invitations/missing/public',{}, {DB:f.db.asD1()} as Env)).status,404);
+ f.db.sql.prepare("UPDATE organization_memberships SET status='inactive' WHERE organization_id='one' AND user_id='chair'").run();
+ assert.equal((await publicApp.request('/invitations/'+id+'/public',{}, {DB:f.db.asD1()} as Env)).status,410);
+ f.db.sql.prepare("UPDATE organization_memberships SET status='active' WHERE organization_id='one' AND user_id='chair'").run();
+ f.db.sql.prepare('UPDATE organization_invitations SET expires_at=1 WHERE id=?').run(id);
+ assert.equal((await publicApp.request('/invitations/'+id+'/public',{}, {DB:f.db.asD1()} as Env)).status,410);
+});
