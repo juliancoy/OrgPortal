@@ -165,5 +165,5 @@ export async function readEmailDraft(env: Env, identity: Identity, input: unknow
     subject: campaign.subject, body: campaign.body, content: JSON.parse(campaign.content_json || '{}'),
     status: campaign.status, counts, sent: false, draftOnly,
     ...(draftOnly ? { deliveryBlocker: 'Organization mailbox campaign delivery is not enabled. This is an unsent draft.' } : {}),
-    url: `${new URL('/email', emailPortalBase(env)).origin}/email?organization_id=${encodeURIComponent(args.organizationId)}&campaign_id=${campaign.id}` };
+    url: `${new URL('/email', emailPortalBase(env)).origin}/support?folder=drafts&organization_id=${encodeURIComponent(args.organizationId)}&campaign_id=${campaign.id}` };
 }

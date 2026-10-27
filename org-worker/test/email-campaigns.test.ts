@@ -670,3 +670,36 @@ test('organization mailbox drafts use only the configured group sender and canno
   assert.equal((await request('/campaigns/'+saved.campaignId+'/test','POST',{})).status,409);
   assert.equal(database.prepare('SELECT count(*) n FROM email_deliveries').get()!.n,0);
 });
+
+test('service desk edits sanitize rich email, invalidate reviews, and send one private Julian preview', async t => {
+  const {env,database,request}=setup(t);network(t);await connect(env);
+  const sent:unknown[]=[];
+  env.SUPPORT_EMAIL={send:async(message:unknown)=>{sent.push(message)}} as unknown as Env['SUPPORT_EMAIL'];
+  database.prepare("INSERT INTO support_mailboxes(organization_id,address) VALUES('org-1','service+fixture@notify.orgportal.cc')").run();
+  await subscribe(env,'alice','organization','org-1');
+  const actor={userId:'admin',scopes:['org:portal.read','org:portal.write']};
+  const input={organizationId:'org-1',subject:'Welcome',body:'Welcome Alice',sender:'organization-mailbox',audience:'organization'};
+  const p=await saveEmailDraft(env,actor,input);
+  const saved=await saveEmailDraft(env,actor,{...input,confirm:true,previewId:p.previewId});
+  const id=saved.campaignId;
+  let view=await (await request('/campaigns/'+id)).json() as any;
+  assert.equal(view.native_sender,true);
+  assert.equal((await request('/campaigns/'+id,'PATCH',{subject:'Welcome',body:'Edited message',body_html:'<p><strong>Edited message</strong><script>alert(1)</script><img src="x" onerror="alert(1)"></p>',fingerprint:view.fingerprint})).status,200);
+  view=await (await request('/campaigns/'+id)).json() as any;
+  assert.match(view.preview.html,/<strong>Edited message<\/strong>/);
+  assert.ok(!view.preview.html.includes('<script>'));assert.ok(!view.preview.html.includes('onerror'));
+  const copy={recipient:'julian@gmail.com',requestId:crypto.randomUUID(),fingerprint:view.fingerprint,preview_id:view.preview_id};
+  assert.equal((await request('/campaigns/'+id+'/review-copy','POST',copy,'other-admin')).status,404);
+  assert.equal((await request('/campaigns/'+id+'/review-copy','POST',{...copy,recipient:'somebody@example.test'})).status,400);assert.equal(sent.length,0);
+  assert.equal((await request('/campaigns/'+id+'/review-copy','POST',copy)).status,200);
+  assert.equal(sent.length,1);assert.equal((sent[0] as any).to,'julian@gmail.com');
+  assert.match((sent[0] as any).subject,/^\[Preview\]/);
+  assert.equal((await request('/campaigns/'+id+'/review-copy','POST',copy)).status,409);
+  assert.equal((await request('/campaigns/'+id+'/review-copy','POST',{...copy,requestId:crypto.randomUUID()})).status,409);
+  assert.equal(database.prepare("SELECT status FROM email_deliveries WHERE campaign_id=? AND kind='campaign'").get(id)!.status,'draft');
+  view=await (await request('/campaigns/'+id)).json() as any;
+  assert.equal((await request('/campaigns/'+id,'PATCH',{subject:'New version',body:'Newest',body_html:'<p>Newest</p>',fingerprint:view.fingerprint})).status,200);
+  assert.equal(database.prepare("SELECT status FROM email_deliveries WHERE campaign_id=? AND kind='test'").get(id)!.status,'skipped');
+  assert.equal((await request('/campaigns/'+id+'/review-copy','POST',{...copy,requestId:crypto.randomUUID()})).status,409);
+  assert.equal(sent.length,1);
+});

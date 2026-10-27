@@ -9,6 +9,8 @@ const supportTickets=[
 ].map(ticket=>({has_inbound:1,has_outbound:0,...ticket,organization_id:'fixture-org',assigned_user_id:null}))
 const submission={submission_id:'fixture-submission',organization_id:'fixture-org0',organization_name:'Harbor Research Collective',organization_slug:'fixture-0',image_url:null,title:'The Limits of Contemporary Medicine',summary:'The statistics of chronic disease. Our team is exploring how better evidence can improve everyday care.',status:'submitted',favorites:1,attachments:[],presenters:[{name:'Alex Morgan'},{name:'Sam Rivera'}]}
 export function fixtureData(path,params){
+ if(path.endsWith('/email/campaigns'))return [serviceDeskDraft]
+ if(path.includes('/email/campaigns/'))return serviceDeskDraft
  if(path.includes('/presentations')){
   if(path.endsWith('/public'))return {enabled:true,favoriteLimit:3,closed:false}
   if(path.endsWith('/submissions'))return {submissions:[submission],favoriteLimit:3,next:null}
@@ -36,3 +38,5 @@ export function fixtureData(path,params){
  if(path.includes('/orgs'))return params.get('empty')==='1'?[]:organizations
  return {}
 }
+
+export const serviceDeskDraft={id:'fixture-draft',organization_id:'fixture-org',subject:'Welcome to LifeTech — help shape Demo Day',body:'Hello,\n\nWelcome to LifeTech! We connect people working across health, medicine, and biotech in Baltimore.\n\nCreating a profile is optional. Join us to review Demo Day submissions and vote when voting opens.\n\nThe LifeTech team',status:'draft',created_at:1793091600000,scheduled_at:1793091600000,recipient_count:12,sent_count:0,sender_email:'admin@example.invalid',from_email:'admin@example.invalid',native_sender:true,audience:'selected',event_id:'fixture-event',fingerprint:'fixture-original',preview_id:'00000000-0000-4000-8000-000000000001',self_test_sent:false,content_json:'{}',counts:{draft:12},deliveries:[],preview:{subject:'Welcome to LifeTech',text:'Welcome to LifeTech!',html:'<!doctype html><html><body style="background:#f3f5f7;font:16px/1.6 Arial;color:#18212b;padding:20px"><main style="max-width:600px;background:white;border-top:5px solid #175c53;padding:28px;margin:auto"><p style="color:#175c53;font-weight:bold">LifeTech</p><h1>Welcome to LifeTech</h1><p>Hello,</p><p>We connect people working across health, medicine, and biotech in Baltimore.</p><p>Creating a profile is optional. Join us to review Demo Day submissions and vote when voting opens.</p><h2>LifeTech Demo Day</h2><p>November 17 · Fearless HQ</p><a href="https://example.invalid" style="background:#175c53;color:white;padding:12px 20px;display:inline-block">Create a profile or sign in</a><p style="font-size:12px">LifeTech · Email preview</p></main></body></html>'}}

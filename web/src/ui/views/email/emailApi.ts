@@ -19,7 +19,7 @@ export async function emailApi<T>(token: string | null, path: string, method = '
 export type EmailSender = { can_read_bounces?:boolean; configured: boolean; setup_issues: string[]; from_email: string; connection_origin?:string|null; sending_enabled: boolean; connected: boolean; status: string; email: string; daily_limit: number; used_today: number; cooldown_until: number }
 export type CampaignSummary = { id: string; subject: string; status: string; created_at: number; scheduled_at: number; recipient_count: number; sent_count: number }
 export type CampaignPreview = CampaignSummary & {
-  audience_mode?:string;batch_size?:number;batch_limit?:number;report_only?:number;delivery_stats?:import('./EmailCampaignStats').DeliveryStats;
+  organization_id?:string;native_sender?:boolean;audience_mode?:string;batch_size?:number;batch_limit?:number;report_only?:number;delivery_stats?:import('./EmailCampaignStats').DeliveryStats;
   engagement: import('./EmailCampaignStats').Engagement;
   self_test_sent: boolean; sender_email: string; from_email: string; audience: string; body: string; event_id: string; fingerprint: string; preview_id?: string;
   preview: { subject: string; html: string; text: string }; counts: Record<string, number>;

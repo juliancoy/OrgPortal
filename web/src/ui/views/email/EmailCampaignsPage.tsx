@@ -1,7 +1,7 @@
 import { OutreachComposer } from './OutreachComposer'
 import { EmailHistoryImport } from './EmailHistoryImport'
 import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
 import { emailApi, type CampaignPreview, type CampaignSummary, type EmailAudience, type EmailSender } from './emailApi'
 import './emailCampaigns.css'
@@ -87,6 +87,7 @@ export function EmailCampaignsPage() {
   const needsSenderHost=Boolean(sender?.connection_origin && sender.connection_origin!==window.location.origin)
   if(!groupsReady)return <p>Checking organizer access…</p>
   if(!groups.length || (groupId && !groups.some(group=>group.id===groupId)))return <section className="portal-card email-campaigns"><h1>Organizer access required</h1><p>You can manage email only for groups where you are an active owner or organizer. System administrator access does not grant group membership.</p>{error && <p role="alert">{error}</p>}<Link to="/orgs" className="btn-secondary">Browse groups</Link></section>
+  if(preview?.status==='draft')return <Navigate to={`/support?folder=drafts&organization_id=${encodeURIComponent(groupId)}&campaign_id=${preview.id}`} replace/>
   return <main className="portal-card email-campaigns">
     <div className="email-heading"><div><h1>Group email campaigns</h1><p className="muted">Invite your community and keep event registrants updated.</p></div>
       <button className="portal-button-secondary" disabled={busy} onClick={() => void act(async () => { await refresh(); if (preview) await openCampaign(preview.id) })}>Refresh status</button></div>

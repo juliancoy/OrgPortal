@@ -72,3 +72,13 @@ The fixture interaction runner also writes `user-heuristics.json`, using the
 [task-based user model](USER_HEURISTIC_MODEL.md). Entry-control checks are separate
 from task completion and human hierarchy review; uncovered journeys remain
 explicitly unassessed. The distributed visual suite uses the same runner.
+
+## Service desk drafts
+
+`web/scripts/test-service-desk-drafts.mjs` uses the real service desk with synthetic
+campaigns in an isolated local browser. It covers the Drafts folder, formatted
+editing, autosave/reload, the complete rendered email, and the explicit Julian
+review-copy action without changing the audience. Run in the pinned local
+Playwright Docker image with networking disabled. Desktop/mobile light/dark
+screenshots and `checks.json` are written to `artifacts/service-desk-drafts`.
+The route mocks never send real mail.

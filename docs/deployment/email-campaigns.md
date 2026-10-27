@@ -213,3 +213,19 @@ an arbitrary From address or creates an identity. The result marks these drafts
 `draftOnly: true`: campaign delivery currently uses connected Google accounts,
 so organization mailbox drafts cannot be tested, queued or dispatched by that
 system. Saving a draft neither changes sender aliases nor sends a message.
+
+### Service desk drafts and review copies
+
+Saved campaign drafts open in `/support?folder=drafts&organization_id=…`.
+The service desk shows a formatted message editor and the complete rendered email.
+Edits use the existing autosave queue and optimistic concurrency; saving an edit
+invalidates prior preview receipts and test approvals. Rich message HTML is
+sanitized before storage and again after personalization.
+
+The explicit **Send preview to julian@gmail.com** action sends only one review
+copy and never changes or queues the subscriber audience. Organization mailbox
+previews use the existing native email binding, with live organizer access,
+owner/group isolation, exact fresh receipts, daily limits and an idempotent
+request ID. Uncertain native sends are recorded for inspection and never retried
+automatically. Connected Google campaigns retain their required self-test before
+additional review copies. Organization mailbox mass distribution remains disabled.

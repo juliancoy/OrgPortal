@@ -1,6 +1,8 @@
+import { sanitizeSupportHtml } from './supportHtml';
 import { z } from 'zod';
 import { EMAIL_POSTAL_ADDRESS } from './emailPostalAddress';
 export const emailContentSchema = z.object({
+ body_html:z.string().max(40000).default('').transform(v=>sanitizeSupportHtml(v)||''),
  heading:z.string().max(160).default(''),tagline:z.string().max(160).default(''),sender_name:z.string().max(120).regex(/^[^\r\n\0]*$/).default(''),
  accent:z.string().regex(/^#[0-9a-f]{6}$/i).default('#155e59'),
  logo_url:z.string().max(2000).default('').refine(v=>!v||https(v),'Use an HTTPS image URL'),

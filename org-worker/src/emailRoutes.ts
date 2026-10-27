@@ -1,3 +1,6 @@
+import { supportMailboxForOrganization } from './supportMailboxes';
+import { emailContentSchema, emailContent } from './emailContent';
+import { z } from 'zod';
 import { emailBounceRoutes } from './emailBounces';
 import { emailOutreachRoutes } from './emailOutreach';
 import { campaignEngagement, emailEngagementRoutes } from './emailEngagement';
@@ -51,7 +54,8 @@ async function campaignPreview(env: Env, campaign: EmailCampaign) {
   const counts: Record<string, number> = {};
   for (const row of rows.filter((row) => row.kind === 'campaign')) counts[String(row.status)] = (counts[String(row.status)] || 0) + 1;
   const delivery_stats={total:rows.filter(r=>r.kind==='campaign').length,accepted:rows.filter(r=>r.kind==='campaign'&&r.status==='sent').length,bounced:rows.filter(r=>r.kind==='campaign'&&r.bounced_at).length,failed:rows.filter(r=>r.kind==='campaign'&&r.status==='failed').length,uncertain:rows.filter(r=>r.kind==='campaign'&&r.status==='uncertain').length,skipped:rows.filter(r=>r.kind==='campaign'&&(r.status==='skipped'||r.review_status==='held')).length,pending:rows.filter(r=>r.kind==='campaign'&&['draft','queued','sending'].includes(String(r.status))&&r.review_status==='approved').length};
-  return { ...campaign,delivery_stats, engagement: await campaignEngagement(env,campaign.id), self_test_sent: await hasSuccessfulSelfTest(env, campaign), from_email: emailFromAddress(env, campaign.sender_email), preview: renderCampaign(env, campaign, 'Alex', null), fingerprint, recipient_count: eligible.length, counts, deliveries: rows };
+  const mailbox=env.SUPPORT_EMAIL?await supportMailboxForOrganization(env.DB,campaign.organization_id,{create:false}):null;
+  return { ...campaign,native_sender:mailbox?.senderAddress===campaign.sender_email,delivery_stats, engagement: await campaignEngagement(env,campaign.id), self_test_sent: await hasSuccessfulSelfTest(env, campaign), from_email: emailFromAddress(env, campaign.sender_email), preview: renderCampaign(env, campaign, 'Alex', null), fingerprint, recipient_count: eligible.length, counts, deliveries: rows };
 }
 
 export function emailRoutes(getUser: GetActor) {
@@ -61,6 +65,7 @@ export function emailRoutes(getUser: GetActor) {
     return user;
   };
   const routes = new Hono<{ Bindings: Env }>();
+  routes.onError((error,c)=>{if(error instanceof z.ZodError)return c.json({detail:'Invalid email request.'},400);if(error instanceof HTTPException)return error.getResponse();throw error;});
   routes.use('*', async (c, next) => { c.header('Cache-Control', 'no-store'); c.header('Referrer-Policy', 'no-referrer'); await next(); });
 
   routes.route('/groups',emailGroups(getUser));
@@ -227,6 +232,46 @@ export function emailRoutes(getUser: GetActor) {
     ]);
     await emailAudit(c.env,user.id,campaign.organization_id,'campaign.created',campaign.id,recipients.length).run();
     return c.json(await campaignPreview(c.env, campaign), 201);
+  });
+  routes.patch('/campaigns/:id',async c=>{
+    const user=await getOrganizer(c.env,c.req.raw),campaign=await ownCampaign(c.env,c.req.param('id'),user.id);
+    if(campaign.status!=='draft'||campaign.report_only)emailFail(409,'Only unsent drafts can be edited.');
+    const input=z.object({subject:z.string().trim().min(1).max(200).regex(/^[^\r\n\0]+$/),body:z.string().trim().min(1).max(20000),body_html:z.string().max(40000),fingerprint:z.string().min(1)}).strict().parse(await c.req.json());
+    const preview=await campaignPreview(c.env,campaign);
+    if(input.fingerprint!==preview.fingerprint)emailFail(409,'The draft changed. Reload it before editing.');
+    const content=emailContentSchema.parse({...emailContent(campaign.content_json),body_html:input.body_html});
+    const updated=await c.env.DB.prepare(`UPDATE email_campaigns SET subject=?,body=?,content_json=? WHERE id=? AND owner_user_id=? AND status='draft' AND subject=? AND body=? AND COALESCE(content_json,'')=? AND NOT EXISTS(SELECT 1 FROM email_deliveries d WHERE d.campaign_id=email_campaigns.id AND d.kind='test' AND d.status='sending') RETURNING id`)
+      .bind(input.subject,input.body,JSON.stringify(content),campaign.id,user.id,campaign.subject,campaign.body,campaign.content_json||'').first();
+    if(!updated)emailFail(409,'The draft changed. Reload it before editing.');
+    await c.env.DB.batch([
+      c.env.DB.prepare("UPDATE email_deliveries SET status='skipped',error='Draft edited; review the new version.' WHERE campaign_id=? AND kind='test' AND status IN ('sent','queued')").bind(campaign.id),
+      c.env.DB.prepare('DELETE FROM email_campaign_previews WHERE campaign_id=?').bind(campaign.id),
+      emailAudit(c.env,user.id,campaign.organization_id,'campaign.draft-edited',campaign.id),
+    ]);
+    return c.json({saved:true});
+  });
+  routes.post('/campaigns/:id/review-copy',async c=>{
+    const user=await getOrganizer(c.env,c.req.raw),campaign=await ownCampaign(c.env,c.req.param('id'),user.id);
+    if(campaign.status!=='draft'||campaign.report_only)emailFail(409,'Choose an unsent draft.');
+    const mailbox=await supportMailboxForOrganization(c.env.DB,campaign.organization_id,{create:false});
+    if(!c.env.SUPPORT_EMAIL||mailbox?.senderAddress!==campaign.sender_email)emailFail(409,'Choose a draft from the organization mailbox.');
+    const input=z.object({recipient:z.literal('julian@gmail.com'),requestId:z.string().uuid(),fingerprint:z.string().min(1),preview_id:z.string().uuid()}).strict().parse(await c.req.json());
+    const preview=await campaignPreview(c.env,campaign);
+    if(preview.fingerprint!==input.fingerprint)emailFail(409,'Refresh the draft before sending a preview.');
+    const prior=await c.env.DB.prepare('SELECT id FROM email_deliveries WHERE id=?').bind(input.requestId).first();
+    if(prior)emailFail(409,'This preview was already attempted. Check delivery before retrying.');
+    const claimed=await c.env.DB.prepare(`INSERT INTO email_deliveries(id,campaign_id,sender_user_id,email,name,kind,status)
+      SELECT ?,?,?,?,'Julian','test','sending' WHERE
+      EXISTS(SELECT 1 FROM email_campaign_previews WHERE id=? AND campaign_id=? AND actor_user_id=? AND fingerprint=? AND expires_at>? AND consumed_at IS NULL)
+      AND (SELECT count(*) FROM email_deliveries WHERE sender_user_id=? AND kind='test' AND created_at>?)<20
+      ON CONFLICT DO NOTHING RETURNING id`).bind(input.requestId,campaign.id,user.id,input.recipient,input.preview_id,campaign.id,user.id,input.fingerprint,Date.now(),user.id,Date.now()-86400000).first();
+    if(!claimed)emailFail(409,'Refresh the preview or wait until the daily preview allowance resets.');
+    await c.env.DB.prepare('UPDATE email_campaign_previews SET consumed_at=? WHERE id=? AND consumed_at IS NULL').bind(Date.now(),input.preview_id).run();
+    const rendered=renderCampaign(c.env,campaign,'Julian',null);
+    try{await c.env.SUPPORT_EMAIL.send({from:{email:mailbox.senderAddress,name:emailContent(campaign.content_json).sender_name||mailbox.organizationName},to:input.recipient,replyTo:mailbox.address,subject:'[Preview] '+rendered.subject,text:rendered.text,html:rendered.html});}
+    catch{await c.env.DB.prepare("UPDATE email_deliveries SET status='uncertain',error='Preview delivery could not be confirmed.' WHERE id=?").bind(input.requestId).run();emailFail(409,'Preview delivery could not be confirmed. Check the message history before retrying.');}
+    await c.env.DB.batch([c.env.DB.prepare("UPDATE email_deliveries SET status='sent',sent_at=? WHERE id=?").bind(Date.now(),input.requestId),emailAudit(c.env,user.id,campaign.organization_id,'campaign.review-sent',campaign.id,1)]);
+    return c.json({sent:true,recipient:input.recipient,audienceChanged:false});
   });
   routes.get('/campaigns/:id', async (c) => {
     const user = await getOrganizer(c.env, c.req.raw);

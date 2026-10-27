@@ -2971,6 +2971,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-test-service-desk-drafts-mjs",
+      "label": "web/scripts/test-service-desk-drafts.mjs",
+      "category": "User interface and integrations",
+      "source": "web/scripts/test-service-desk-drafts.mjs",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-service-desk-drafts.mjs"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-test-upload-image-compression-mjs",
       "label": "web/scripts/test-upload-image-compression.mjs",
       "category": "User interface and integrations",

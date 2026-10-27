@@ -1,3 +1,4 @@
+import { sanitizeSupportHtml } from './supportHtml';
 import { EMAIL_POSTAL_ADDRESS } from './emailPostalAddress';
 import { emailContent } from './emailContent';
 import { engagementUrl } from './emailEngagement';
@@ -14,7 +15,7 @@ export function renderCampaign(env: Env, campaign: EmailCampaign, name: string, 
   const replace = (text: string) => text.replace(/\{\{\s*(first_name|event_title|organization)\s*\}\}/g, (_, key: string) => values[key]);
   const subject = replace(campaign.subject).replace(/[\r\n\0]/g, ' ').slice(0, 240);
   const body = replace(campaign.body);
-  const bodyHtml = body.split(/(https:\/\/[^\s<>"']+)/g).map((part,index) => index%2
+  const bodyHtml = content.body_html ? sanitizeSupportHtml(content.body_html.replace(/{{\s*(first_name|event_title|organization)\s*}}/g, (_, key:string) => escapeHtml(values[key]))) || '' : body.split(/(https:\/\/[^\s<>"']+)/g).map((part,index) => index%2
     ? `<a href="${escapeHtml(part)}">${escapeHtml(part)}</a>` : escapeHtml(part)).join('').replace(/\r?\n/g,'<br>');
   const postalAddress = EMAIL_POSTAL_ADDRESS;
   const image = content.image_data || publicImage(event.image_url);
