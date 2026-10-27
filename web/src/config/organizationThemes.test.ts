@@ -95,12 +95,12 @@ it('includes a complete Postcapitalist Corporate theme with accessible text in b
 })
 
 
-it('uses the configured organization avatar ahead of a stale directory image without changing host branding',async()=>{
- const {organizationPageAvatar}=await import('./organizationThemes')
+it('uses the configured compact brand mark ahead of a stale directory image without changing host branding',async()=>{
+ const {organizationPageLogo}=await import('./organizationThemes')
  const branded={...site('company'),feature_config:{brandThemes:{defaultTheme:'company',themes:[{id:'company',name:'Company',light:{primary:'#123456'},dark:{primary:'#ABCDEF'},imagery:{avatar:'https://company.test/wordmark.png',icon:'https://company.test/icon.png',background:'https://company.test/cover.jpg'}}]}}}
  const host=site('host');setGroupSite(host)
- expect(organizationPageAvatar(branded,'https://lifetech.fyi/old-avatar.webp')).toBe('https://company.test/wordmark.png')
+ expect(organizationPageLogo(branded,'https://lifetech.fyi/old-avatar.webp')).toBe('https://company.test/icon.png')
  expect(readOrganizationTheme()).toBe('ocean')
- expect(organizationPageAvatar(site('plain'),'https://company.test/profile.png')).toBe('https://company.test/profile.png')
- expect(organizationPageAvatar(null,null)).toBeNull()
+ expect(organizationPageLogo(site('plain'),'https://company.test/profile.png')).toBe('https://company.test/profile.png')
+ expect(organizationPageLogo(null,null)).toBeNull()
 })

@@ -58,8 +58,9 @@ export function organizationPageTheme(site:import('./timebankCommunity').GroupSi
 }
 
 
-/** Fresh saved branding takes precedence over an older cached directory portrait. */
-export function organizationPageAvatar(site:import('./timebankCommunity').GroupSite|null|undefined,profileImage?:string|null):string|null {
+/** Use the saved compact brand mark in the page heading, ahead of cached directory imagery. */
+export function organizationPageLogo(site:import('./timebankCommunity').GroupSite|null|undefined,profileImage?:string|null):string|null {
  const config=parseOrganizationThemes(site?.feature_config?.brandThemes)
- return config?.themes.find(theme=>theme.id===config.defaultTheme)?.imagery?.avatar || profileImage?.trim() || null
+ const imagery=config?.themes.find(theme=>theme.id===config.defaultTheme)?.imagery
+ return imagery?.icon || imagery?.avatar || profileImage?.trim() || null
 }
