@@ -1,12 +1,12 @@
 // Synthetic content only. These records never leave the disposable render server.
 const organizations=Array.from({length:6},(_,n)=>({id:'fixture-org'+n,name:['Harbor Research Collective','Open Health Community','Community Makers','Baltimore Science Exchange','Neighborhood Technology Lab','Design for Everyone'][n],slug:'fixture-'+n,description:'A community of researchers, builders, and neighbors turning shared ideas into practical projects. Join our monthly conversations and help shape what comes next.',image_url:null,membership_count:24+n*7,upcoming_events_count:n%3,feedback_count:0,pending_challenges_count:0,is_disputed:false,tags:[],city:'Baltimore'}))
 const supportTickets=[
- {id:'fixture-ticket',sender_email:'alex@example.invalid',subject:'Help finding our next community meeting',category:'general',status:'open',updated_at:'2026-10-24T12:00:00Z'},
+ {has_inbound:1,has_outbound:1,id:'fixture-ticket',sender_email:'alex@example.invalid',subject:'Help finding our next community meeting',category:'general',status:'open',updated_at:'2026-10-24T12:00:00Z'},
  {id:'fixture-access',sender_email:'sam@example.invalid',subject:'Access to the shared research workspace',category:'technical',status:'open',updated_at:'2026-10-23T16:30:00Z'},
  {id:'fixture-membership',sender_email:'jordan@example.invalid',subject:'A question about joining LifeTech',category:'membership',status:'open',updated_at:'2026-10-23T10:00:00Z'},
  {id:'fixture-followup',sender_email:'casey@example.invalid',subject:'Thank you for the introduction',category:'general',status:'answered',updated_at:'2026-10-22T14:00:00Z'},
  {id:'fixture-closed',sender_email:'avery@example.invalid',subject:'Workshop registration confirmed',category:'general',status:'closed',updated_at:'2026-10-21T09:00:00Z'},
-].map(ticket=>({...ticket,organization_id:'fixture-org',assigned_user_id:null}))
+].map(ticket=>({has_inbound:1,has_outbound:0,...ticket,organization_id:'fixture-org',assigned_user_id:null}))
 const submission={submission_id:'fixture-submission',organization_id:'fixture-org0',organization_name:'Harbor Research Collective',organization_slug:'fixture-0',image_url:null,title:'The Limits of Contemporary Medicine',summary:'The statistics of chronic disease. Our team is exploring how better evidence can improve everyday care.',status:'submitted',favorites:1,attachments:[],presenters:[{name:'Alex Morgan'},{name:'Sam Rivera'}]}
 export function fixtureData(path,params){
  if(path.includes('/presentations')){

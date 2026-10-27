@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
 import { refreshRuntimeTokenFromSession } from '../../../infrastructure/auth/sessionToken'
+import Send from 'lucide-react/dist/esm/icons/send.mjs'
 import Inbox from 'lucide-react/dist/esm/icons/inbox.mjs'
 import CheckCheck from 'lucide-react/dist/esm/icons/check-check.mjs'
 import Archive from 'lucide-react/dist/esm/icons/archive.mjs'
@@ -13,11 +14,12 @@ import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw.mjs'
 import Settings2 from 'lucide-react/dist/esm/icons/settings-2.mjs'
 import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left.mjs'
 import './support.css'
-type Ticket={id:string;organization_id:string;sender_email:string;subject:string;category:string;status:string;assigned_user_id:string|null;updated_at:string}
+type Ticket={id:string;organization_id:string;sender_email:string;subject:string;category:string;status:string;assigned_user_id:string|null;updated_at:string;has_inbound:number;has_outbound:number}
 type Organization={id:string;name:string}
 type Message={id:string;direction:string;body:string;body_html?:string|null;delivery:string;created_at:string;faq_id?:string|null}
 type Faq={id:string;question:string;answer:string;source_url:string;enabled:number}
 type Settings={canManage:boolean;canSend:boolean;activation:{enabled:boolean;sendingConfigured:boolean;mailboxAddress:string|null};faqs:Faq[];routes:{category:string;assigned_user_id:string}[];admins:{user_id:string;user_name:string}[]}
+function matchesFolder(ticket:Ticket,folder:string){return folder==='sent'?!!ticket.has_outbound:!!ticket.has_inbound&&(folder==='all'||ticket.status===folder)}
 const categories=['general','membership','technical','privacy','security']
 export function SupportPage(){
  const {token}=useAuth(),{ticketId}=useParams(),navigate=useNavigate()
@@ -39,7 +41,7 @@ export function SupportPage(){
   const selected=ticketId;setLoading(true);setError('');try{
   const data=await request();if(activeTicket.current!==selected)return;
   setTickets(data.tickets);setNextOffset(data.nextOffset??null);setOrgs(data.organizations);
-  if(selected){const d=await request('/'+selected);if(activeTicket.current!==selected)return;setDetail(d);setOrg(d.ticket.organization_id);setFilter(value=>value==='all'||value===d.ticket.status?value:d.ticket.status)}
+  if(selected){const d=await request('/'+selected);if(activeTicket.current!==selected)return;setDetail(d);setOrg(d.ticket.organization_id);setFilter(value=>matchesFolder(d.ticket,value)?value:d.ticket.has_inbound?'all':'sent')}
   else{setDetail(null);setOrg(value=>data.organizations.some((item:Organization)=>item.id===value)?value:data.defaultOrganizationId||data.organizations[0]?.id||'')}
   }finally{if(activeTicket.current===selected)setLoading(false)}
  }
@@ -50,14 +52,14 @@ export function SupportPage(){
  async function loadMoreConversations(){setBusy(true);try{const data=await request('?offset='+nextOffset);setTickets(previous=>[...previous,...data.tickets.filter((item:Ticket)=>!previous.some(t=>t.id===item.id))]);setNextOffset(data.nextOffset??null)}catch(e){setError(e instanceof Error?e.message:'Unable to load mail')}finally{setBusy(false)}}
  async function loadEarlierMessages(){if(!detail?.nextBefore)return;setBusy(true);try{const id=detail.ticket.id;const data=await request('/'+id+'?before='+detail.nextBefore);if(activeTicket.current===id)setDetail(previous=>previous?{...previous,messages:[...data.messages,...previous.messages],nextBefore:data.nextBefore}:previous)}catch(e){setError(e instanceof Error?e.message:'Unable to load earlier messages')}finally{setBusy(false)}}
  const organizationTickets=tickets.filter(ticket=>ticket.organization_id===org)
- const visibleTickets=organizationTickets.filter(ticket=>(filter==='all'||ticket.status===filter)&&[ticket.subject,ticket.sender_email,ticket.category].some(value=>value.toLowerCase().includes(search.trim().toLowerCase()))).sort((a,b)=>b.updated_at.localeCompare(a.updated_at))
- const folders=[{id:'open',label:'Inbox',Icon:Inbox},{id:'answered',label:'Answered',Icon:CheckCheck},{id:'closed',label:'Closed',Icon:Archive},{id:'all',label:'All mail',Icon:Mail}]
+ const visibleTickets=organizationTickets.filter(ticket=>matchesFolder(ticket,filter)&&[ticket.subject,ticket.sender_email,ticket.category].some(value=>value.toLowerCase().includes(search.trim().toLowerCase()))).sort((a,b)=>b.updated_at.localeCompare(a.updated_at))
+ const folders=[{id:'open',label:'Inbox',Icon:Inbox},{id:'answered',label:'Answered',Icon:CheckCheck},{id:'closed',label:'Closed',Icon:Archive},{id:'all',label:'All mail',Icon:Mail},{id:'sent',label:'Sent',Icon:Send}]
  const folderName=folders.find(folder=>folder.id===filter)?.label||'Inbox'
  const organizationName=orgs.find(item=>item.id===org)?.name||'Your organization'
  function selectFolder(value:string){setFilter(value);setView('inbox');if(ticketId)navigate('/support')}
  return <section className="support-page" aria-label="Service mailbox">
   <header className="support-page-header">
-   <div><p className="support-eyebrow">Organization mail</p><h1>Service desk</h1><p>Sent and received mail in one conversation history.</p></div>
+   <div><p className="support-eyebrow">Organization mail</p><h1>Service desk</h1><p>Received mail and a separate Sent folder.</p></div>
    <div className="support-header-actions">
     {settings&&<span className={'support-connection '+(settings.activation.enabled?'is-enabled':'')}>{settings.activation.enabled?'Email active':'Email paused'}</span>}
     <button type="button" className="support-icon-button" title="Refresh inbox" aria-label="Refresh inbox" disabled={busy||loading} onClick={()=>void load().catch(e=>setError(e.message))}><RefreshCw size={18}/></button>
@@ -68,7 +70,7 @@ export function SupportPage(){
    <aside className="support-sidebar" aria-label="Mailbox folders">
     <button type="button" className="support-compose-button" disabled={busy||!settings} onClick={()=>{setView('compose');setError('')}}><Plus size={18}/>New message</button>
     <label className="support-organization">Organization<select disabled={busy||loading||!orgs.length} value={org} onChange={e=>{setOrg(e.target.value);setView('inbox');if(ticketId)navigate('/support')}}>{orgs.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-    <nav className="support-folders" aria-label="Mail folders">{folders.map(({id,label,Icon})=><button type="button" key={id} aria-pressed={view==='inbox'&&filter===id} onClick={()=>selectFolder(id)}><Icon size={17}/><span>{label}</span><span className="support-folder-count">{organizationTickets.filter(ticket=>id==='all'||ticket.status===id).length}</span></button>)}</nav>
+    <nav className="support-folders" aria-label="Mail folders">{folders.map(({id,label,Icon})=><button type="button" key={id} aria-pressed={view==='inbox'&&filter===id} onClick={()=>selectFolder(id)}><Icon size={17}/><span>{label}</span><span className="support-folder-count">{organizationTickets.filter(ticket=>matchesFolder(ticket,id)).length}</span></button>)}</nav>
     {settings?.canManage&&<button type="button" className="support-settings-button" aria-pressed={view==='settings'} onClick={()=>setView('settings')}><Settings2 size={17}/>Mailbox settings</button>}
     <div className="support-mailbox-address"><Mail size={16}/><span>{settings?.activation.mailboxAddress||organizationName}</span></div>
    </aside>
