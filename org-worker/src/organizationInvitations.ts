@@ -1,3 +1,4 @@
+import {archiveInvitationMail} from './supportCorrespondence';
 import { personnelIntentSchema, readPersonnelIntent, intentDescription, requiresConfirmation, managePersonnel, readPersonnelRelationships, relationshipActionSchema, runRelationshipAction } from './personnelRelationships';
 import { z } from 'zod';
 import { EventIntegrationError } from './eventPlatforms';
@@ -13,7 +14,7 @@ import { emailMime, escapeHtml } from './emailTemplate';
 type Actor={id:string;email?:string|null;full_name?:string|null;identity_data?:Record<string,unknown>|null};
 const receiptSchema=z.object({previewId:z.string().uuid().optional(),confirm:z.boolean().optional()}).strict();
 export const issueInvitationSchema=receiptSchema.extend({email:z.string().max(254),purpose:z.enum(['member','volunteer']).optional(),intent:personnelIntentSchema.optional()});
-type Invitation={id:string;organization_id:string;email:string;purpose:'member'|'volunteer';invited_by:string;created_at:number;expires_at:number;status:string;attempts:number;intent_json:string|null;delivery_blocker?:string|null};
+type Invitation={id:string;organization_id:string;email:string;purpose:'member'|'volunteer';invited_by:string;created_at:number;expires_at:number;status:string;attempts:number;attempted_at?:number|null;intent_json:string|null;delivery_blocker?:string|null};
 async function issuerAllowed(db:D1Database,org:string,user:string,purpose:string){const role=await organizationRole(db,org,user);return !!role&&(purpose==='volunteer'||role==='owner'||role==='administrator')}
 export function verifiedInvitationRecipient(actor:Actor,email:string){return normalizeEmail(actor.email)===email&&actor.identity_data?.email_verified===true}
 export function organizationInvitationRoutes(auth:(env:Env,req:Request)=>Promise<Actor>){
@@ -27,7 +28,7 @@ export function organizationInvitationRoutes(auth:(env:Env,req:Request)=>Promise
  });
  app.get('/orgs/:org/invitations',async c=>{
   const actor=await auth(c.env,c.req.raw),org=c.req.param('org');await managePersonnel(c.env.DB,org,actor.id);
-  const rows=await c.env.DB.prepare('SELECT id,email,purpose,intent_json,status,email_status,delivery_blocker,attempts,created_at,expires_at FROM organization_invitations WHERE organization_id=? ORDER BY created_at DESC LIMIT 100').bind(org).all<Invitation>();
+  const rows=await c.env.DB.prepare('SELECT id,email,purpose,intent_json,status,email_status,delivery_blocker,attempts,created_at,expires_at,email_archive_ticket_id AS correspondence_ticket_id FROM organization_invitations WHERE organization_id=? ORDER BY created_at DESC LIMIT 100').bind(org).all<Invitation>();
   return c.json({invitations:rows.results.map(row=>({...row,intent:readPersonnelIntent(row.intent_json),intent_json:undefined,status:row.status==='pending'&&row.expires_at<=Date.now()?'expired':row.status})),relationships:await readPersonnelRelationships(c.env.DB,org)});
  });
  app.post('/orgs/:org/relationships/:operation',async c=>{
@@ -154,6 +155,11 @@ export async function runOrganizationInvitations(env:Env){
   await db.prepare("UPDATE organization_invitations SET delivery_blocker='sending_disabled' WHERE status='pending' AND email_status='queued'").run();
   if(!nativeOrgs.length)return;
  }
+ // Backfill retained provider outcomes into their sender inbox; never replay delivery.
+ if(nativeOrgs.length){
+  const archived=await db.prepare("SELECT i.*,o.name FROM organization_invitations i JOIN organizations o ON o.id=i.organization_id WHERE i.email_status IN ('sent','uncertain','failed') AND i.attempted_at>? AND i.organization_id IN ("+nativeOrgs.map(()=>'?').join(',')+") AND i.email_archive_ticket_id IS NULL ORDER BY i.attempted_at LIMIT 100").bind(now-90*86400000,...nativeOrgs).all<Invitation&{name:string;email_status:string}>();
+  for(const row of archived.results){try{await archiveInvitationMail(env,row,nativeSenders[row.organization_id],invitationMessage(emailPortalBase(env),row.id,row.name,row.purpose,row.intent_json),row.email_status,undefined,true);}catch{console.error('Invitation correspondence backfill deferred');}}
+ }
  // Filter before LIMIT so unrelated blocked organizations cannot starve enabled delivery.
  const scoped=gmailEnabled?'':` AND i.organization_id IN (${nativeOrgs.map(()=>'?').join(',')})`;
  const rows=await db.prepare("SELECT i.*,o.name FROM organization_invitations i JOIN organizations o ON o.id=i.organization_id WHERE i.status='pending' AND i.email_status='queued' AND i.expires_at>? AND i.next_attempt_at<=?"+scoped+" ORDER BY i.created_at LIMIT 10").bind(now,now,...(gmailEnabled?[]:nativeOrgs)).all<Invitation&{name:string}>();
@@ -171,10 +177,12 @@ export async function runOrganizationInvitations(env:Env){
    const message=invitationMessage(emailPortalBase(env),row.id,row.name,row.purpose,row.intent_json);
    const claimed=await db.prepare("UPDATE organization_invitations SET delivery_blocker=NULL,email_status='sending',attempted_at=?,attempts=attempts+1 WHERE id=? AND email_status='queued' AND status='pending' AND expires_at>? AND (SELECT count(*) FROM organization_invitations WHERE organization_id=? AND attempted_at>?)<? RETURNING id").bind(Date.now(),row.id,Date.now(),row.organization_id,now-86400000,emailDailyLimit(env)).first();
    if(!claimed)continue;
-   let status='sent';
-   try{await env.SUPPORT_EMAIL.send({from:{email:nativeFrom,name:row.name},replyTo:nativeFrom,to:row.email,...message});}
+   let status='sent',providerMessageId:string|undefined;
+   try{const result=await env.SUPPORT_EMAIL.send({from:{email:nativeFrom,name:row.name},replyTo:nativeFrom,to:row.email,...message});
+    if(result&&typeof result==='object'&&'messageId' in result&&typeof result.messageId==='string')providerMessageId=result.messageId;}
    catch{status='uncertain';} // A lost provider response must never trigger duplicate mail.
    await db.prepare("UPDATE organization_invitations SET email_status=?,delivery_blocker=? WHERE id=? AND email_status='sending'").bind(status,status==='sent'?null:'native_delivery_uncertain',row.id).run();
+   try{await archiveInvitationMail(env,{...row,attempted_at:Date.now()},nativeFrom,message,status,providerMessageId);}catch{console.error('Invitation correspondence archive deferred');}
    continue;
   }
   if(!gmailEnabled){await block('sending_disabled');continue;}

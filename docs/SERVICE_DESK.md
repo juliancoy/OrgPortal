@@ -87,3 +87,22 @@ persist until changed or the organization is removed. These private tables are
 excluded from public replication and the immutable public change journal.
 Notification text omits sender addresses and bodies. The system retains neither
 raw MIME nor attachments. Recipient copies and backups have separate retention.
+
+## Combined correspondence
+
+All mail is the default view. Sent support mail, received mail and automatic
+answers share chronological conversation histories. Lists and message histories
+provide pagination; older retained records are accessible instead of silently
+stopping at 100 conversations or 200 messages.
+
+Operator-configured native invitations are archived in the uniquely resolved
+sender inbox, retaining delivery status and provider Message-ID where available.
+The cron backfills retained prior delivery outcomes idempotently without sending.
+The private invitation archival receipt prevents deleted conversations from being
+recreated by later backfill. Apply the reviewed additive migration
+`0128_invitation_correspondence.sql` before releasing this change.
+Historical reconstructed invitations are explicitly labeled; unavailable original
+MIME headers are not invented. Replies thread by ticket reference, matching
+Message-ID, or a unique reply subject within the same organization and sender.
+No personal Gmail inbox is imported. Existing access checks and 90-day inactivity
+retention continue to apply to all correspondence.

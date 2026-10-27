@@ -94,3 +94,30 @@ test('LifeTech admin alias shares its inbox, outbound address and organization p
  assert.equal((await f.request(''+result.ticketId,'GET',undefined,'outsider')).status,403);
  const settings=await (await f.request('settings/'+id)).json() as {activation:{mailboxAddress:string;enabled:boolean}};assert.equal(settings.activation.mailboxAddress,'admin@lifetech.fyi');assert.equal(settings.activation.enabled,true);
 });
+
+test('received replies join sent mail by Message-ID or unique reply subject and stay organization scoped',async()=>{
+ const f=fixture();const created=await f.request('compose/life/send','POST',{to:'sender@example.com',subject:'Staff invitation',body:'Original sent message',requestId:'136a8b46-df1e-43da-bbfb-a041d423c111'});const {ticketId}=await created.json() as {ticketId:string};
+ f.sql.prepare('UPDATE support_messages SET message_id=? WHERE ticket_id=?').run('<outbound@lifetech.fyi>',ticketId);
+ const first=await acceptSupportMail(f.db,{...f.mail,subject:'Re: Staff invitation',text:'Reply with reference',inReplyTo:'<outbound@lifetech.fyi>',messageId:'<reply-one@example.com>'},async()=>{throw Error('Must not auto-answer a thread')});assert.equal('ticketId' in first&&first.ticketId,ticketId);
+ const second=await acceptSupportMail(f.db,{...f.mail,subject:'Re: Staff invitation',text:'Reply without reference',messageId:'<reply-two@example.com>'},async()=>{});assert.equal('ticketId' in second&&second.ticketId,ticketId);
+ const other=await acceptSupportMail(f.db,{...f.mail,from:'someoneelse@example.com',subject:'Re: Staff invitation',text:'Unrelated sender',inReplyTo:'<outbound@lifetech.fyi>',messageId:'<other@example.com>'},async()=>{});assert.notEqual('ticketId' in other&&other.ticketId,ticketId);
+ const detail=await (await f.request(ticketId)).json() as {messages:{direction:string}[]};assert.deepEqual(detail.messages.map(m=>m.direction),['outbound','inbound','inbound']);
+});
+test('all retained conversations and messages are paginated without bypassing access checks',async()=>{
+ const f=fixture();
+ for(let i=0;i<102;i++)f.sql.prepare("INSERT INTO support_tickets(id,organization_id,sender_email,subject,category,status,created_at,updated_at,expires_at) VALUES(?,'life','sender@example.com',?,'general','answered','2026-01-01','2026-01-01',?)").run('page-'+String(i).padStart(3,'0'),'Mail '+i,Date.now()+86400000);
+ let page=await (await f.request('')).json() as {tickets:{id:string}[];nextOffset:number|null};assert.equal(page.tickets.length,100);assert.equal(page.nextOffset,100);
+ const next=await (await f.request('?offset=100')).json() as {tickets:{id:string}[];nextOffset:number|null};assert.equal(next.tickets.length,2);assert.equal(next.nextOffset,null);
+ for(let i=0;i<205;i++)f.sql.prepare("INSERT INTO support_messages(id,ticket_id,direction,body,delivery,created_at) VALUES(?,'page-000',?,?,'received','2026-01-01')").run('message-'+i,i%2?'outbound':'inbound','Message '+i);
+ const latest=await (await f.request('page-000')).json() as {messages:{body:string}[];nextBefore:number};assert.equal(latest.messages.length,200);assert.equal(latest.messages[0].body,'Message 5');
+ const older=await (await f.request('page-000?before='+latest.nextBefore)).json() as {messages:{body:string}[];nextBefore:null};assert.equal(older.messages.length,5);assert.equal(older.messages[0].body,'Message 0');assert.equal(older.nextBefore,null);
+ assert.equal((await f.request('page-000?before='+latest.nextBefore,'GET',undefined,'outsider')).status,403);
+});
+
+test('backdated records display chronologically and foreign message cursors are rejected',async()=>{
+ const f=fixture();await acceptSupportMail(f.db,f.mail,async()=>{});
+ const ticket=f.sql.prepare('SELECT id FROM support_tickets LIMIT 1').get()!.id;
+ f.sql.prepare("INSERT INTO support_messages(id,ticket_id,direction,body,delivery,created_at) VALUES('backdated',?,'outbound','Earlier sent mail','sent','2020-01-01T00:00:00Z')").run(ticket);
+ const data=await (await f.request(String(ticket))).json() as {messages:{body:string}[]};assert.equal(data.messages[0].body,'Earlier sent mail');
+ assert.equal((await f.request(String(ticket)+'?before=999999')).status,400);
+});

@@ -192,3 +192,23 @@ test('native daily allowance is enforced by the atomic claim across concurrent c
  await Promise.all([runOrganizationInvitations(env),runOrganizationInvitations(env)]);
  assert.equal(sends,1);assert.equal(f.db.sql.prepare("SELECT count(*) AS n FROM organization_invitations WHERE email_status='sent'").get()!.n,1);
 });
+
+test('native invitation outcomes backfill into the sender inbox once without resending or undoing deletion',async t=>{
+ const f=fixture(t),id=await f.issue(),life='ef646755-9443-4c7b-ba4b-a7a29754f666';
+ f.db.sql.prepare("INSERT INTO organizations(id,name,slug) VALUES(?,'LifeTech','lifetech')").run(life);
+ f.db.sql.prepare("INSERT INTO organization_memberships(organization_id,user_id,role,status) VALUES(?,'chair','owner','active')").run(life);
+ f.db.sql.prepare("UPDATE organization_invitations SET email_status='sent',attempted_at=?,attempts=1 WHERE id=?").run(Date.now(),id);
+ let sends=0;const env={DB:f.db.asD1(),PUBLIC_PORTAL_BASE_URL:'https://portal.example',ORGANIZATION_INVITATION_SENDERS_JSON:JSON.stringify({one:'admin@lifetech.fyi'}),SUPPORT_EMAIL:{send:async()=>{sends++}}} as Env;
+ await runOrganizationInvitations(env);await runOrganizationInvitations(env);
+ assert.equal(sends,0);const rows=f.db.sql.prepare("SELECT t.organization_id,t.id,m.body,m.delivery,m.author_id FROM support_tickets t JOIN support_messages m ON m.ticket_id=t.id").all();assert.equal(rows.length,1);assert.equal(rows[0].organization_id,life);assert.equal(rows[0].delivery,'sent');assert.match(String(rows[0].body),/reconstructed/);
+ assert.equal(f.db.sql.prepare('SELECT email_archive_ticket_id FROM organization_invitations WHERE id=?').get(id)!.email_archive_ticket_id,rows[0].id);
+ f.db.sql.prepare('DELETE FROM support_tickets WHERE id=?').run(rows[0].id);await runOrganizationInvitations(env);
+ assert.equal(f.db.sql.prepare('SELECT count(*) AS n FROM support_tickets').get()!.n,0);assert.equal(sends,0);
+});
+test('new native invitation archives the exact sent text and provider Message-ID',async t=>{
+ const f=fixture(t),id=await f.issue(),life='ef646755-9443-4c7b-ba4b-a7a29754f666';
+ f.db.sql.prepare("INSERT INTO organizations(id,name,slug) VALUES(?,'LifeTech','lifetech')").run(life);
+ const env={DB:f.db.asD1(),PUBLIC_PORTAL_BASE_URL:'https://portal.example',ORGANIZATION_INVITATION_SENDERS_JSON:JSON.stringify({one:'admin@lifetech.fyi'}),SUPPORT_EMAIL:{send:async()=>({messageId:'<native-invitation@example.test>'})}} as Env;
+ await runOrganizationInvitations(env);const message=f.db.sql.prepare('SELECT body,message_id,delivery FROM support_messages WHERE id=?').get('invitation:'+id)!;
+ assert.equal(message.message_id,'<native-invitation@example.test>');assert.equal(message.delivery,'sent');assert.doesNotMatch(String(message.body),/reconstructed/);assert.match(String(message.body),new RegExp('/invitations/'+id));
+});

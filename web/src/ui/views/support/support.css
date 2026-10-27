@@ -115,3 +115,6 @@
  .support-thread-controls { grid-template-columns:1fr; }
  .support-thread>h2 { font-size:21px; }
 }
+
+.support-page .support-load-more { margin:16px; padding:10px 16px; min-height:44px; border:1px solid var(--border); border-radius:7px; background:var(--panel-2); color:var(--text); cursor:pointer; }
+.support-page .support-load-more:disabled { cursor:wait; opacity:.65; }

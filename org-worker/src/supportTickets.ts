@@ -10,7 +10,7 @@ export const categories=['general','membership','technical','privacy','security'
 const categorySchema=z.enum(categories);
 type Category=typeof categories[number];
 type Ticket={id:string;organization_id:string;sender_email:string;subject:string;category:Category;status:string;assigned_user_id:string|null;created_by_user_id?:string|null};
-export type SupportMail={from:string;to:string;subject:string;text:string;messageId:string;automated:boolean;attachments:boolean};
+export type SupportMail={from:string;to:string;subject:string;text:string;messageId:string;automated:boolean;attachments:boolean;inReplyTo?:string;references?:string[]};
 export function normalizeQuestion(value:string){return value.normalize('NFKC').toLowerCase().replace(/[?!.]+$/g,'').replace(/\s+/g,' ').trim()}
 export function supportCategory(text:string):Category{
  if(/\b(security|hacked|vulnerability|breach)\b/i.test(text))return 'security';
@@ -41,6 +41,15 @@ export async function acceptSupportMail(db:D1Database,mail:SupportMail,reply:(bo
  const now=new Date().toISOString(),expiry=Date.now()+90*86400000,category=supportCategory(mail.subject+'\n'+mail.text);
  const reference=mail.subject.match(new RegExp('\\['+mailbox.ticketPrefix+'-([a-f0-9]{32})\\]','i'))?.[1];
  let ticket=reference?await db.prepare('SELECT * FROM support_tickets WHERE id=? AND organization_id=? AND sender_email=?').bind(reference,org.id,mail.from.toLowerCase()).first<Ticket>():null;
+ if(!ticket){
+  const references=[mail.inReplyTo,...(mail.references||[])].filter((id):id is string=>!!id).slice(0,20);
+  if(references.length)ticket=await db.prepare("SELECT t.* FROM support_tickets t JOIN support_messages m ON m.ticket_id=t.id WHERE t.organization_id=? AND t.sender_email=? AND m.message_id IN ("+references.map(()=>'?').join(',')+") ORDER BY m.created_at DESC LIMIT 1").bind(org.id,mail.from.toLowerCase(),...references).first<Ticket>();
+ }
+ if(!ticket&&/^re:\s*/i.test(mail.subject)){
+  const subject=mail.subject.replace(/^(?:re:\s*)+/ig,'').trim().toLowerCase();
+  const matches=await db.prepare('SELECT * FROM support_tickets WHERE organization_id=? AND sender_email=? AND lower(trim(subject))=? AND expires_at>? LIMIT 2').bind(org.id,mail.from.toLowerCase(),subject,Date.now()).all<Ticket>();
+  if(matches.results.length===1)ticket=matches.results[0];
+ }
  const existing=!!ticket;
  if(!ticket){const route=await db.prepare('SELECT assigned_user_id FROM support_routes WHERE organization_id=? AND category=?').bind(org.id,category).first<{assigned_user_id:string}>();
   ticket={id:crypto.randomUUID().replaceAll('-',''),organization_id:org.id,sender_email:mail.from.toLowerCase(),subject:mail.subject.slice(0,300)||'(No subject)',category,status:'open',assigned_user_id:route?.assigned_user_id||null};}
@@ -87,7 +96,7 @@ export function supportRoutes(getUser:(env:Env,request:Request)=>Promise<{id:str
   const row=await c.env.DB.prepare("SELECT count(*) AS n FROM support_messages WHERE author_id=? AND direction='outbound' AND created_at>=?").bind(userId,new Date(Date.now()-3600000).toISOString()).first<{n:number}>();
   if((row?.n||0)>=30)throw new HTTPException(429,{message:'Sending limit reached. Try again later.'});
  }
- app.get('/',async c=>{const user=await getUser(c.env,c.req.raw);const rows=await c.env.DB.prepare("SELECT t.* FROM support_tickets t JOIN organization_memberships m ON m.organization_id=t.organization_id WHERE m.user_id=? AND m.status='active' AND (m.role IN ('owner','administrator') OR (t.created_by_user_id=? AND ?=1)) ORDER BY t.updated_at DESC LIMIT 100").bind(user.id,user.id,Number(!!normalizeEmail(user.email)&&user.identity_data?.email_verified===true)).all();const organizations=(await c.env.DB.prepare("SELECT o.id,o.name FROM organizations o JOIN organization_memberships m ON m.organization_id=o.id WHERE m.user_id=? AND m.status='active' ORDER BY lower(o.name)").bind(user.id).all()).results;const preferredOrganizationId=await supportOrganizationForRequest(c.env.DB,c.req.raw);return c.json({tickets:rows.results,organizations,defaultOrganizationId:organizations.some(o=>o.id===preferredOrganizationId)?preferredOrganizationId:null})});
+ app.get('/',async c=>{const offset=Math.max(0,Math.min(100000,Math.floor(Number(c.req.query('offset'))||0)));const user=await getUser(c.env,c.req.raw);const rows=await c.env.DB.prepare("SELECT t.* FROM support_tickets t JOIN organization_memberships m ON m.organization_id=t.organization_id WHERE m.user_id=? AND m.status='active' AND (m.role IN ('owner','administrator') OR (t.created_by_user_id=? AND ?=1)) ORDER BY t.updated_at DESC,t.id DESC LIMIT 101 OFFSET ?").bind(user.id,user.id,Number(!!normalizeEmail(user.email)&&user.identity_data?.email_verified===true),offset).all();const organizations=(await c.env.DB.prepare("SELECT o.id,o.name FROM organizations o JOIN organization_memberships m ON m.organization_id=o.id WHERE m.user_id=? AND m.status='active' ORDER BY lower(o.name)").bind(user.id).all()).results;const preferredOrganizationId=await supportOrganizationForRequest(c.env.DB,c.req.raw);return c.json({tickets:rows.results.slice(0,100),nextOffset:rows.results.length>100?offset+100:null,organizations,defaultOrganizationId:organizations.some(o=>o.id===preferredOrganizationId)?preferredOrganizationId:null})});
  app.get('/settings/:org',async c=>{const org=c.req.param('org');const user=await getUser(c.env,c.req.raw),role=await organizationRole(c.env.DB,org,user.id);if(!role)throw new HTTPException(403);const mailbox=await supportMailboxForOrganization(c.env.DB,org);const canManage=role==='owner'||role==='administrator';return c.json({canManage,canSend:!!normalizeEmail(user.email)&&user.identity_data?.email_verified===true,activation:{enabled:await supportEnabled(c.env.DB,org),sendingConfigured:!!c.env.SUPPORT_EMAIL,mailboxAddress:mailbox?.address||null},faqs:canManage?(await c.env.DB.prepare('SELECT * FROM support_faqs WHERE organization_id=? ORDER BY updated_at DESC LIMIT 100').bind(org).all()).results:[],routes:canManage?(await c.env.DB.prepare('SELECT * FROM support_routes WHERE organization_id=?').bind(org).all()).results:[],admins:canManage?await admins(c.env.DB,org):[]})});
  app.put('/settings/:org/activation',async c=>{
   const org=c.req.param('org'),user=await access(c,org);
@@ -126,7 +135,16 @@ export function supportRoutes(getUser:(env:Env,request:Request)=>Promise<{id:str
   await c.env.DB.prepare("UPDATE support_messages SET delivery='sent' WHERE id=?").bind(a.requestId).run();
   return c.json({sent:true,ticketId});
  });
- app.get('/:id',async c=>{const t=await c.env.DB.prepare('SELECT * FROM support_tickets WHERE id=?').bind(c.req.param('id')).first<Ticket>();if(!t)throw new HTTPException(404);await ticketAccess(c,t);const messages=await c.env.DB.prepare('SELECT * FROM support_messages WHERE ticket_id=? ORDER BY rowid DESC LIMIT 200').bind(t.id).all();return c.json({ticket:t,messages:messages.results.reverse()})});
+ app.get('/:id',async c=>{
+  const ticket=await c.env.DB.prepare('SELECT * FROM support_tickets WHERE id=?').bind(c.req.param('id')).first<Ticket>();if(!ticket)throw new HTTPException(404);await ticketAccess(c,ticket);
+  const before=Number(c.req.query('before'))||0;
+  const cursor=before?await c.env.DB.prepare('SELECT created_at FROM support_messages WHERE ticket_id=? AND rowid=?').bind(ticket.id,before).first<{created_at:string}>():null;
+  if(before&&!cursor)throw new HTTPException(400,{message:'Invalid conversation cursor'});
+  const clause=cursor?' AND (created_at<? OR (created_at=? AND rowid<?))':'';
+  const messages=await c.env.DB.prepare('SELECT rowid AS message_cursor,* FROM support_messages WHERE ticket_id=?'+clause+' ORDER BY created_at DESC,rowid DESC LIMIT 201').bind(ticket.id,...(cursor?[cursor.created_at,cursor.created_at,before]:[])).all<{message_cursor:number}>();
+  const page=messages.results.slice(0,200).reverse();
+  return c.json({ticket,messages:page,nextBefore:messages.results.length>200?page[0].message_cursor:null});
+ });
  app.patch('/:id',async c=>{const t=await c.env.DB.prepare('SELECT * FROM support_tickets WHERE id=?').bind(c.req.param('id')).first<Ticket>();if(!t)throw new HTTPException(404);await access(c,t.organization_id);const a=z.object({status:z.enum(['open','answered','closed']),assigned_user_id:z.string().nullable()}).strict().parse(await c.req.json());if(a.assigned_user_id&&!(await admins(c.env.DB,t.organization_id)).some(u=>u.user_id===a.assigned_user_id))throw new HTTPException(400);await c.env.DB.prepare('UPDATE support_tickets SET status=?,assigned_user_id=?,updated_at=?,expires_at=? WHERE id=?').bind(a.status,a.assigned_user_id,new Date().toISOString(),Date.now()+90*86400000,t.id).run();if(a.status==='open'&&a.assigned_user_id!==t.assigned_user_id)await notify(c.env.DB,{...t,assigned_user_id:a.assigned_user_id});return c.json({saved:true})});
  app.post('/:id/reply-preview',async c=>{
   const t=await c.env.DB.prepare('SELECT * FROM support_tickets WHERE id=?').bind(c.req.param('id')).first<Ticket>();if(!t)throw new HTTPException(404);
