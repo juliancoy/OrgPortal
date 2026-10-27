@@ -150,3 +150,45 @@ test('MCP uses the same lifecycle, scopes, tenant binding and verified-recipient
  assert.equal((await tools('chair',['org:portal.read']).get('apply_organization_invitation')!({...args,confirm:true,previewId:receipt.previewId})).isError,true);
  assert.equal((await manager.get('list_organization_invitations')!({organizationId:'two'})).isError,true);
 });
+
+test('native transactional invitations use only the configured organization and sender with campaigns disabled',async t=>{
+ const f=fixture(t),id=await f.issue();
+ f.db.sql.prepare("INSERT INTO organization_memberships(organization_id,user_id,role,status) VALUES('two','second','owner','active')").run();
+ await f.act('/orgs/two/invitations','second',{email:'other@example.test'});
+ const messages:unknown[]=[];
+ const env={DB:f.db.asD1(),EMAIL_SENDING_ENABLED:'false',PUBLIC_PORTAL_BASE_URL:'https://portal.example',ORGANIZATION_INVITATION_SENDERS_JSON:JSON.stringify({one:'admin@lifetech.fyi'}),SUPPORT_EMAIL:{send:async(message:unknown)=>{messages.push(message)}}} as Env;
+ await Promise.all([runOrganizationInvitations(env),runOrganizationInvitations(env)]);
+ assert.equal(messages.length,1);
+ const mail=messages[0] as {from:{email:string};to:string;replyTo:string;text:string};
+ assert.equal(mail.from.email,'admin@lifetech.fyi');assert.equal(mail.replyTo,'admin@lifetech.fyi');assert.equal(mail.to,'new@example.test');assert.ok(mail.text.includes('/invitations/'+id));
+ assert.equal(f.db.sql.prepare('SELECT email_status FROM organization_invitations WHERE id=?').get(id)!.email_status,'sent');
+ assert.equal(f.db.sql.prepare("SELECT email_status FROM organization_invitations WHERE organization_id='two'").get()!.email_status,'queued');
+ assert.equal(f.db.sql.prepare('SELECT count(*) AS n FROM email_senders').get()!.n,0);
+});
+test('native invitation provider exceptions remain uncertain and are never retried',async t=>{
+ const f=fixture(t),id=await f.issue();let sends=0;
+ const env={DB:f.db.asD1(),PUBLIC_PORTAL_BASE_URL:'https://portal.example',ORGANIZATION_INVITATION_SENDERS_JSON:JSON.stringify({one:'admin@lifetech.fyi'}),SUPPORT_EMAIL:{send:async()=>{sends++;throw new Error('Lost response')}}} as Env;
+ await runOrganizationInvitations(env);await runOrganizationInvitations(env);
+ assert.equal(sends,1);assert.equal(f.db.sql.prepare('SELECT email_status FROM organization_invitations WHERE id=?').get(id)!.email_status,'uncertain');
+});
+for(const reason of ['permission','expired','suppressed','quota','binding'] as const)test('native invitation respects '+reason,async t=>{
+ const f=fixture(t),id=await f.issue();let sends=0;
+ const env={DB:f.db.asD1(),PUBLIC_PORTAL_BASE_URL:'https://portal.example',ORGANIZATION_INVITATION_SENDERS_JSON:JSON.stringify({one:'admin@lifetech.fyi'}),SUPPORT_EMAIL:{send:async()=>{sends++}}} as Env;
+ if(reason==='permission')f.db.sql.prepare("UPDATE organization_memberships SET status='inactive' WHERE user_id='chair'").run();
+ if(reason==='expired')f.db.sql.prepare('UPDATE organization_invitations SET expires_at=0').run();
+ if(reason==='suppressed')f.db.sql.prepare("INSERT INTO email_contact_suppressions(organization_id,email,unsubscribed_at,updated_at) VALUES('one','new@example.test',?,?)").run(Date.now(),Date.now());
+ if(reason==='quota'){env.EMAIL_DAILY_LIMIT='1';f.db.sql.prepare("UPDATE organization_invitations SET attempted_at=?").run(Date.now());}
+ if(reason==='binding')env.SUPPORT_EMAIL=undefined;
+ await runOrganizationInvitations(env);assert.equal(sends,0);
+ assert.notEqual(f.db.sql.prepare('SELECT email_status FROM organization_invitations WHERE id=?').get(id)!.email_status,'sent');
+});
+test('invalid native sender configuration fails closed without enabling Gmail',async t=>{
+ const {nativeInvitationSenders}=await import('../src/organizationInvitations');
+ for(const value of ['bad','[]','null','{"one":""}','{"one":"admin@lifetech.fyi\\r\\nBcc: x@example.test"}','{"one":true}'])assert.deepEqual(nativeInvitationSenders(value),{});
+});
+test('native daily allowance is enforced by the atomic claim across concurrent cron invocations',async t=>{
+ const f=fixture(t);await f.issue();await f.act('/orgs/one/invitations','chair',{email:'second@example.test'});let sends=0;
+ const env={DB:f.db.asD1(),EMAIL_DAILY_LIMIT:'1',PUBLIC_PORTAL_BASE_URL:'https://portal.example',ORGANIZATION_INVITATION_SENDERS_JSON:JSON.stringify({one:'admin@lifetech.fyi'}),SUPPORT_EMAIL:{send:async()=>{sends++}}} as Env;
+ await Promise.all([runOrganizationInvitations(env),runOrganizationInvitations(env)]);
+ assert.equal(sends,1);assert.equal(f.db.sql.prepare("SELECT count(*) AS n FROM organization_invitations WHERE email_status='sent'").get()!.n,1);
+});

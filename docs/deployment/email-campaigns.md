@@ -169,3 +169,20 @@ Every campaign HTML and plain-text footer uses `1110 W Cross St Baltimore MD`.
 variables cannot override it, and the composer does not expose an address editor.
 Campaign unsubscribe controls remain in place. Previously delivered messages
 cannot be changed. Production must run the updated renderer to enforce this.
+
+## Organization-scoped transactional invitations
+
+`ORGANIZATION_INVITATION_SENDERS_JSON` is an operator-managed JSON object mapping
+organization IDs to verified Cloudflare Email Sending addresses. A configured
+organization sends membership invitations through the existing `SUPPORT_EMAIL`
+binding without enabling Gmail campaigns (`EMAIL_SENDING_ENABLED` remains off).
+The binding must explicitly permit the sender address and the domain must be
+onboarded for Email Sending. Other organizations keep their existing delivery
+behavior. Never put recipient addresses or credentials in this map.
+
+Invitation delivery still requires the inviter's current organization permissions,
+a pending unexpired invitation, suppression checks, a bounded per-organization
+rolling daily allowance and an atomic claim. Provider exceptions become uncertain
+and require manual delivery review; they are not automatically resent. `sent`
+means provider acceptance, not inbox delivery. Remove the organization's map entry
+to pause its native delivery. Already-sending/uncertain messages are never replayed.

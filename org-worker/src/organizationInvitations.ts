@@ -132,18 +132,52 @@ export function invitationMessage(base:string,id:string,name:string,purpose:stri
  const link=`${base}/invitations/${encodeURIComponent(id)}`,effect=intentJson?intentDescription(readPersonnelIntent(intentJson)!):purpose==='member'?'join as a member':'accept Volunteer recognition (no membership permissions)';
  return {subject:`Invitation from ${name}`,text:`You are invited to ${effect} at ${name}. Sign in or create an account using this email address, verify it, then review and accept: ${link}\n\nThis invitation expires in seven days. If unexpected, ignore it.`,html:`<p>You are invited to ${escapeHtml(effect)} at ${escapeHtml(name)}.</p><p><a href="${escapeHtml(link)}">Review invitation</a></p><p>Sign in or create an account with this email address and verify it. Expires in seven days. If unexpected, ignore it.</p>`};
 }
-/** Durable outbox; reuse the existing Gmail adapter, sender lease and quota. */
+/** Operator-only, organization-scoped transactional senders. Never sourced from invitation input. */
+export function nativeInvitationSenders(value:string|undefined):Record<string,string>{
+ if(!value)return {};
+ try{
+  const parsed=JSON.parse(value);
+  if(!parsed||Array.isArray(parsed)||typeof parsed!=='object'||Object.keys(parsed).length>100)return {};
+  const result:Record<string,string>={};
+  for(const [org,email] of Object.entries(parsed)){
+   if(!org||org.length>200||typeof email!=='string'||!normalizeEmail(email)||normalizeEmail(email)!==email)return {};
+   result[org]=email;
+  }
+  return result;
+ }catch{return {}}
+}
+/** Durable outbox: scoped native transactional delivery or the existing Gmail adapter. */
 export async function runOrganizationInvitations(env:Env){
- const db=env.DB,now=Date.now();
+ const db=env.DB,now=Date.now(),nativeSenders=nativeInvitationSenders(env.ORGANIZATION_INVITATION_SENDERS_JSON),nativeOrgs=Object.keys(nativeSenders),gmailEnabled=env.EMAIL_SENDING_ENABLED==='true';
  await db.prepare("UPDATE organization_invitations SET email_status='uncertain' WHERE email_status='sending' AND attempted_at<?").bind(now-180000).run();
- if(env.EMAIL_SENDING_ENABLED!=='true'){await db.prepare("UPDATE organization_invitations SET delivery_blocker='sending_disabled' WHERE status='pending' AND email_status='queued'").run();return;}
- const rows=await db.prepare("SELECT i.*,o.name FROM organization_invitations i JOIN organizations o ON o.id=i.organization_id WHERE i.status='pending' AND i.email_status='queued' AND i.expires_at>? AND i.next_attempt_at<=? ORDER BY i.created_at LIMIT 10").bind(now,now).all<Invitation&{name:string}>();
+ if(!gmailEnabled){
+  await db.prepare("UPDATE organization_invitations SET delivery_blocker='sending_disabled' WHERE status='pending' AND email_status='queued'").run();
+  if(!nativeOrgs.length)return;
+ }
+ // Filter before LIMIT so unrelated blocked organizations cannot starve enabled delivery.
+ const scoped=gmailEnabled?'':` AND i.organization_id IN (${nativeOrgs.map(()=>'?').join(',')})`;
+ const rows=await db.prepare("SELECT i.*,o.name FROM organization_invitations i JOIN organizations o ON o.id=i.organization_id WHERE i.status='pending' AND i.email_status='queued' AND i.expires_at>? AND i.next_attempt_at<=?"+scoped+" ORDER BY i.created_at LIMIT 10").bind(now,now,...(gmailEnabled?[]:nativeOrgs)).all<Invitation&{name:string}>();
  for(const row of rows.results){
   const block=async(reason:string)=>{await db.prepare('UPDATE organization_invitations SET delivery_blocker=? WHERE id=?').bind(reason,row.id).run()};
   if(row.intent_json){try{await managePersonnel(db,row.organization_id,row.invited_by)}catch{await block('inviter_permission');continue}}
   if(!await issuerAllowed(db,row.organization_id,row.invited_by,row.purpose)){await block('inviter_permission');continue;}
   const blocked=await db.prepare('SELECT email FROM email_contact_suppressions WHERE organization_id=? AND email=? UNION SELECT email FROM email_bounces WHERE organization_id=? AND email=?').bind(row.organization_id,row.email,row.organization_id,row.email).first();
   if(blocked){await db.prepare("UPDATE organization_invitations SET email_status='skipped' WHERE id=?").bind(row.id).run();continue}
+  const nativeFrom=nativeSenders[row.organization_id];
+  if(nativeFrom){
+   if(!env.SUPPORT_EMAIL){await block('native_sender_unavailable');continue;}
+   const usage=await db.prepare('SELECT count(*) AS n FROM organization_invitations WHERE organization_id=? AND attempted_at>?').bind(row.organization_id,now-86400000).first<{n:number}>();
+   if(Number(usage?.n||0)>=emailDailyLimit(env)){await block('daily_limit');continue;}
+   const message=invitationMessage(emailPortalBase(env),row.id,row.name,row.purpose,row.intent_json);
+   const claimed=await db.prepare("UPDATE organization_invitations SET delivery_blocker=NULL,email_status='sending',attempted_at=?,attempts=attempts+1 WHERE id=? AND email_status='queued' AND status='pending' AND expires_at>? AND (SELECT count(*) FROM organization_invitations WHERE organization_id=? AND attempted_at>?)<? RETURNING id").bind(Date.now(),row.id,Date.now(),row.organization_id,now-86400000,emailDailyLimit(env)).first();
+   if(!claimed)continue;
+   let status='sent';
+   try{await env.SUPPORT_EMAIL.send({from:{email:nativeFrom,name:row.name},replyTo:nativeFrom,to:row.email,...message});}
+   catch{status='uncertain';} // A lost provider response must never trigger duplicate mail.
+   await db.prepare("UPDATE organization_invitations SET email_status=?,delivery_blocker=? WHERE id=? AND email_status='sending'").bind(status,status==='sent'?null:'native_delivery_uncertain',row.id).run();
+   continue;
+  }
+  if(!gmailEnabled){await block('sending_disabled');continue;}
   const sender=await db.prepare("SELECT s.* FROM email_senders s JOIN organization_memberships m ON m.user_id=s.owner_user_id WHERE m.organization_id=? AND m.status='active' AND m.role IN ('owner','administrator') AND s.status='connected' AND s.cooldown_until<=? ORDER BY s.connected_at LIMIT 1").bind(row.organization_id,now).first<Sender>();
   if(!sender){await block('sender_unavailable_or_cooling_down');continue;}
   const lease=crypto.randomUUID();
