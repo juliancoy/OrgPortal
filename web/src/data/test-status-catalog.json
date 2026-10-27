@@ -1809,6 +1809,20 @@
       ]
     },
     {
+      "id": "suite-org-worker-test-support-html-test-ts",
+      "label": "org-worker/test/support-html.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/support-html.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "support-html.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-org-worker-test-support-tickets-test-ts",
       "label": "org-worker/test/support-tickets.test.ts",
       "category": "User interface and integrations",

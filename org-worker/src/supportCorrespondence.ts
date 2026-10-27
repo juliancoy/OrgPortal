@@ -1,8 +1,9 @@
+import {sanitizeSupportHtml} from './supportHtml';
 import { supportMailboxForAddress } from './supportMailboxes';
 
 export type InvitationMailRecord={id:string;organization_id:string;email:string;invited_by:string;attempted_at?:number|null};
 /** Archive a delivered/attempted transactional email without sending or changing membership. */
-export async function archiveInvitationMail(env:Env,record:InvitationMailRecord,from:string,message:{subject:string;text:string},delivery:string,providerMessageId?:string,reconstructed=false){
+export async function archiveInvitationMail(env:Env,record:InvitationMailRecord,from:string,message:{subject:string;text:string;html?:string},delivery:string,providerMessageId?:string,reconstructed=false){
  const mailbox=await supportMailboxForAddress(env.DB,from);
  // A sender must resolve to one specific inbox; never guess from a shared sending domain.
  if(!mailbox)return;
@@ -18,7 +19,7 @@ export async function archiveInvitationMail(env:Env,record:InvitationMailRecord,
  const body=(reconstructed?'Archived invitation reconstructed from its saved record; original MIME headers are unavailable.\n\n':'')+message.text;
  await env.DB.batch([
   env.DB.prepare("INSERT OR IGNORE INTO support_tickets(id,organization_id,sender_email,subject,category,status,created_at,updated_at,expires_at,created_by_user_id) VALUES(?,?,?,?,'membership',?,?,?,?,?)").bind(ticketId,mailbox.organizationId,record.email,message.subject,delivery==='sent'?'answered':'open',date,date,expiry,record.invited_by),
-  env.DB.prepare("INSERT OR IGNORE INTO support_messages(id,ticket_id,direction,body,author_id,delivery,created_at,message_id) VALUES(?,?,'outbound',?,?,?,?,?)").bind(messageId,ticketId,body,record.invited_by,delivery,date,providerMessageId||null),
+  env.DB.prepare("INSERT OR IGNORE INTO support_messages(id,ticket_id,direction,body,author_id,delivery,created_at,message_id,body_html) VALUES(?,?,'outbound',?,?,?,?,?,?)").bind(messageId,ticketId,body,record.invited_by,delivery,date,providerMessageId||null,sanitizeSupportHtml(message.html?(reconstructed?'<p>Archived invitation reconstructed from its saved record; original MIME headers are unavailable.</p>':'')+message.html:undefined)),
   env.DB.prepare('UPDATE organization_invitations SET email_archive_ticket_id=? WHERE id=? AND email_archive_ticket_id IS NULL').bind(ticketId,record.id),
  ]);
 }

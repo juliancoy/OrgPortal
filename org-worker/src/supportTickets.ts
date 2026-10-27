@@ -1,3 +1,4 @@
+import {sanitizeSupportHtml} from './supportHtml';
 import { Hono, type Context } from 'hono';
 import { z } from 'zod';
 import { HTTPException } from 'hono/http-exception';
@@ -10,7 +11,7 @@ export const categories=['general','membership','technical','privacy','security'
 const categorySchema=z.enum(categories);
 type Category=typeof categories[number];
 type Ticket={id:string;organization_id:string;sender_email:string;subject:string;category:Category;status:string;assigned_user_id:string|null;created_by_user_id?:string|null};
-export type SupportMail={from:string;to:string;subject:string;text:string;messageId:string;automated:boolean;attachments:boolean;inReplyTo?:string;references?:string[]};
+export type SupportMail={from:string;to:string;subject:string;text:string;html?:string;messageId:string;automated:boolean;attachments:boolean;inReplyTo?:string;references?:string[]};
 export function normalizeQuestion(value:string){return value.normalize('NFKC').toLowerCase().replace(/[?!.]+$/g,'').replace(/\s+/g,' ').trim()}
 export function supportCategory(text:string):Category{
  if(/\b(security|hacked|vulnerability|breach)\b/i.test(text))return 'security';
@@ -34,7 +35,7 @@ export async function acceptSupportMail(db:D1Database,mail:SupportMail,reply:(bo
  const mailbox=await supportMailboxForAddress(db,mail.to);if(!mailbox)throw new Error('Unknown support mailbox');
  if(!/^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$/.test(mail.from)||mail.from.length>254)throw new Error('Invalid sender');
  const org=await db.prepare('SELECT id FROM organizations WHERE id=?').bind(mailbox.organizationId).first<{id:string}>();if(!org)throw new Error('Support organization missing');
- const dedupe=await hash(mail.to+'\0'+mail.from.toLowerCase()+'\0'+(mail.messageId||mail.subject+'\0'+mail.text));
+ const dedupe=await hash(mail.to+'\0'+mail.from.toLowerCase()+'\0'+(mail.messageId||mail.subject+'\0'+mail.text+'\0'+(mail.html||'')));
  const duplicate=await db.prepare('SELECT ticket_id FROM support_messages WHERE dedupe_key=?').bind(dedupe).first<{ticket_id:string}>();if(duplicate){const ticket=await db.prepare('SELECT * FROM support_tickets WHERE id=?').bind(duplicate.ticket_id).first<Ticket>();if(ticket?.status==='open')await notify(db,ticket);return {ticketId:duplicate.ticket_id,duplicate:true};}
  const count=await db.prepare(`SELECT count(*) AS n FROM support_messages m JOIN support_tickets t ON t.id=m.ticket_id WHERE t.organization_id=? AND t.sender_email=? AND m.direction='inbound' AND m.created_at>=?`).bind(org.id,mail.from.toLowerCase(),new Date(Date.now()-3600000).toISOString()).first<{n:number}>();
  if((count?.n||0)>=30)return {rateLimited:true};
@@ -56,14 +57,14 @@ export async function acceptSupportMail(db:D1Database,mail:SupportMail,reply:(bo
  const saved=ticket;
  try{await db.batch([
   existing?db.prepare("UPDATE support_tickets SET status='open',updated_at=?,expires_at=? WHERE id=?").bind(now,expiry,saved.id):db.prepare('INSERT INTO support_tickets(id,organization_id,sender_email,subject,category,status,assigned_user_id,created_at,updated_at,expires_at) VALUES(?,?,?,?,?,?,?,?,?,?)').bind(saved.id,org.id,saved.sender_email,saved.subject,saved.category,'open',saved.assigned_user_id,now,now,expiry),
-  db.prepare("INSERT INTO support_messages(id,ticket_id,dedupe_key,direction,body,delivery,created_at,message_id) VALUES(?,?,?,'inbound',?,'received',?,?)").bind(crypto.randomUUID(),saved.id,dedupe,mail.text.slice(0,50000),now,mail.messageId||null),
+  db.prepare("INSERT INTO support_messages(id,ticket_id,dedupe_key,direction,body,delivery,created_at,message_id,body_html) VALUES(?,?,?,'inbound',?,'received',?,?,?)").bind(crypto.randomUUID(),saved.id,dedupe,mail.text.slice(0,50000),now,mail.messageId||null,sanitizeSupportHtml(mail.html)),
  ]);}catch(error){const prior=await db.prepare('SELECT ticket_id FROM support_messages WHERE dedupe_key=?').bind(dedupe).first<{ticket_id:string}>();if(prior)return {ticketId:prior.ticket_id,duplicate:true};throw error}
  const query=normalizeQuestion(mail.text.trim()||mail.subject);
  const matchingFaqs=!existing&&!mail.automated&&!mail.attachments&&!['privacy','security'].includes(category)&&query.length<=500
   ?(await db.prepare('SELECT id,question,answer FROM support_faqs WHERE organization_id=? AND enabled=1 LIMIT 100').bind(org.id).all<{id:string;question:string;answer:string}>()).results.filter(f=>normalizeQuestion(f.question)===query):[];
  const faq=matchingFaqs.length===1?matchingFaqs[0]:null;
  if(faq){
-  const id=crypto.randomUUID();await db.prepare("INSERT INTO support_messages(id,ticket_id,direction,body,faq_id,delivery,created_at) VALUES(?,?,'outbound',?,?,'sending',?)").bind(id,saved.id,faq.answer,faq.id,now).run();
+  const id=crypto.randomUUID();await db.prepare("INSERT INTO support_messages(id,ticket_id,direction,body,faq_id,delivery,created_at,body_html) VALUES(?,?,'outbound',?,?,'sending',?,?)").bind(id,saved.id,faq.answer,faq.id,now,sanitizeSupportHtml(renderSupportEmail(mailbox,faq.answer,saved.id,true).html)).run();
   try{await reply(faq.answer,saved.id);
    await db.batch([db.prepare("UPDATE support_messages SET delivery='sent' WHERE id=?").bind(id),db.prepare("UPDATE support_tickets SET status='answered' WHERE id=?").bind(saved.id)]);
    return {ticketId:saved.id,answered:true};
@@ -128,7 +129,7 @@ export function supportRoutes(getUser:(env:Env,request:Request)=>Promise<{id:str
   const now=new Date().toISOString();
   await c.env.DB.batch([
    c.env.DB.prepare("INSERT INTO support_tickets(id,organization_id,sender_email,subject,category,status,created_at,updated_at,expires_at,created_by_user_id) VALUES(?,?,?,?,'general','open',?,?,?,?)").bind(ticketId,org,normalizeEmail(a.to),a.subject,now,now,Date.now()+90*86400000,user.id),
-   c.env.DB.prepare("INSERT INTO support_messages(id,ticket_id,direction,body,author_id,delivery,created_at) VALUES(?,?,'outbound',?,?,'sending',?)").bind(a.requestId,ticketId,a.body,user.id,now),
+   c.env.DB.prepare("INSERT INTO support_messages(id,ticket_id,direction,body,author_id,delivery,created_at,body_html) VALUES(?,?,'outbound',?,?,'sending',?,?)").bind(a.requestId,ticketId,a.body,user.id,now,sanitizeSupportHtml(rendered.html)),
   ]);
   try{await c.env.SUPPORT_EMAIL.send({from:{email:mailbox.senderAddress,name:mailbox.senderName},to:normalizeEmail(a.to),replyTo:mailbox.address,subject,...rendered});}
   catch{await c.env.DB.prepare("UPDATE support_messages SET delivery='uncertain' WHERE id=?").bind(a.requestId).run();throw new HTTPException(502,{message:'Delivery could not be confirmed. Check correspondence before retrying.'});}
@@ -159,7 +160,7 @@ export function supportRoutes(getUser:(env:Env,request:Request)=>Promise<{id:str
   const prior=await c.env.DB.prepare('SELECT ticket_id,body,delivery FROM support_messages WHERE id=?').bind(id).first<{ticket_id:string;body:string;delivery:string}>();
   if(prior){if(prior.ticket_id!==t.id||prior.body!==a.body)throw new HTTPException(409,{message:'Reply request changed'});if(prior.delivery==='sent')return c.json({sent:true});throw new HTTPException(409,{message:'This reply was already attempted. Check delivery before composing another reply.'})}
   await sendingLimit(c,user.id);
-  const claimed=await c.env.DB.prepare("INSERT OR IGNORE INTO support_messages(id,ticket_id,direction,body,author_id,delivery,created_at) VALUES(?,?,'outbound',?,?,'sending',?)").bind(id,t.id,a.body,user.id,now).run();
+  const claimed=await c.env.DB.prepare("INSERT OR IGNORE INTO support_messages(id,ticket_id,direction,body,author_id,delivery,created_at,body_html) VALUES(?,?,'outbound',?,?,'sending',?,?)").bind(id,t.id,a.body,user.id,now,sanitizeSupportHtml(renderSupportEmail(mailbox,a.body,t.id).html)).run();
   if(!claimed.meta.changes)throw new HTTPException(409,{message:'Reply is already being processed'});
   const inbound=await c.env.DB.prepare("SELECT message_id FROM support_messages WHERE ticket_id=? AND direction='inbound' AND message_id IS NOT NULL ORDER BY rowid DESC LIMIT 1").bind(t.id).first<{message_id:string}>();
   try{await c.env.SUPPORT_EMAIL.send({from:{email:mailbox.senderAddress,name:mailbox.senderName},inReplyTo:inbound?.message_id,to:t.sender_email,subject:'Re: ['+mailbox.ticketPrefix+'-'+t.id+'] '+t.subject,replyTo:mailbox.address,...renderSupportEmail(mailbox,a.body,t.id)});}
