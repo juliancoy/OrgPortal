@@ -14,6 +14,7 @@ function fixture(){
  sql.exec(readFileSync(new URL('../migrations/0117_support_controls.sql',import.meta.url),'utf8'));
  sql.exec(readFileSync(new URL('../migrations/0120_support_mailbox_identity.sql',import.meta.url),'utf8'));
  sql.exec(readFileSync(new URL('../migrations/0121_organization_service_email.sql',import.meta.url),'utf8'));
+ sql.exec(readFileSync(new URL('../migrations/0129_support_message_html.sql',import.meta.url),'utf8'));
  sql.exec("INSERT INTO support_mailboxes VALUES('life','service@lifetech.fyi')");
  sql.exec("INSERT INTO support_settings VALUES('life',1,'owner','2026-01-01')");
  const db={prepare(query:string){const statement=sql.prepare(query);const bind=(args:any[])=>({bind:(...args:any[])=>bind(args),first:async()=>statement.get(...args)||null,all:async()=>({results:statement.all(...args)}),run:async()=>({meta:{changes:Number(statement.run(...args).changes)}})});return bind([])},async batch(statements:any[]){sql.exec('BEGIN');try{const results=[];for(const statement of statements)results.push(await statement.run());sql.exec('COMMIT');return results}catch(e){sql.exec('ROLLBACK');throw e}}} as unknown as D1Database;
@@ -120,4 +121,22 @@ test('backdated records display chronologically and foreign message cursors are 
  f.sql.prepare("INSERT INTO support_messages(id,ticket_id,direction,body,delivery,created_at) VALUES('backdated',?,'outbound','Earlier sent mail','sent','2020-01-01T00:00:00Z')").run(ticket);
  const data=await (await f.request(String(ticket))).json() as {messages:{body:string}[]};assert.equal(data.messages[0].body,'Earlier sent mail');
  assert.equal((await f.request(String(ticket)+'?before=999999')).status,400);
+});
+
+test('inbound HTML and sent previews retain sanitized formatting in private correspondence',async()=>{
+ const f=fixture();const result=await acceptSupportMail(f.db,{...f.mail,subject:'Formatted preview',text:'Plain fallback',html:'<h1 style="color:#155e59">Anchor preview</h1><script>bad()</script>'},async()=>{});
+ const inbound=f.sql.prepare("SELECT body,body_html FROM support_messages WHERE ticket_id=? AND direction='inbound'").get('ticketId' in result?result.ticketId:'')!;assert.equal(inbound.body,'Plain fallback');assert.match(String(inbound.body_html),/color:#155e59/);assert.doesNotMatch(String(inbound.body_html),/script/);
+ await f.request('compose/life/send','POST',{to:'person@example.test',subject:'Formatted outbound',body:'Hello team',requestId:'136a8b46-df1e-43da-bbfb-a041d423c212'});
+ const outgoing=f.sql.prepare("SELECT body_html FROM support_messages WHERE id='136a8b46-df1e-43da-bbfb-a041d423c212'").get()!;assert.match(String(outgoing.body_html),/Hello team/);assert.match(String(outgoing.body_html),/<table/);
+ assert.equal((await f.request(''+('ticketId' in result?result.ticketId:''),'GET',undefined,'outsider')).status,403);
+});
+
+test('folder direction is independent of status and remains private',async()=>{
+ const f=fixture();
+ for(const [id,status] of [['received','answered'],['sent','closed'],['mixed','open'],['uncertain','open']])f.sql.prepare("INSERT INTO support_tickets(id,organization_id,sender_email,subject,category,status,created_at,updated_at,expires_at,created_by_user_id) VALUES(?,'life','person@example.com',?,'general',?,'2026-01-01','2026-01-01',?,'owner')").run(id,id,status,Date.now()+86400000);
+ for(const [id,direction,delivery] of [['received','inbound','received'],['sent','outbound','sent'],['mixed','inbound','received'],['mixed','outbound','sent'],['uncertain','outbound','uncertain']])f.sql.prepare('INSERT INTO support_messages(id,ticket_id,direction,body,delivery,created_at) VALUES(?,?,?,?,?,?)').run(id+direction,id,direction,'Message',delivery,'2026-01-01');
+ const data=await(await f.request('')).json() as {tickets:{id:string;has_inbound:number;has_outbound:number}[]};
+ assert.deepEqual(Object.fromEntries(data.tickets.map(t=>[t.id,[t.has_inbound,t.has_outbound]])),{received:[1,0],sent:[0,1],mixed:[1,1],uncertain:[0,1]});
+ const detail=await(await f.request('sent')).json() as {ticket:{has_inbound:number;has_outbound:number}};assert.equal(detail.ticket.has_inbound,0);assert.equal(detail.ticket.has_outbound,1);
+ const outsider=await(await f.request('','GET',undefined,'outsider')).json() as {tickets:unknown[]};assert.equal(outsider.tickets.length,0);assert.equal((await f.request('sent','GET',undefined,'outsider')).status,403);
 });

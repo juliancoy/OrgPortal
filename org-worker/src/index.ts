@@ -3845,7 +3845,7 @@ app.put("/api/network/orgs/:organizationId/portal", async (c) => {
       name = excluded.name,
       tagline = excluded.tagline,
       accent_color = excluded.accent_color,
-      profile = excluded.profile,
+      profile = group_sites.profile,
       features = excluded.features,
       brand_image_path = excluded.brand_image_path,
       home_url = CASE WHEN group_sites.custom_domain_status='attached' THEN 'https://' || group_sites.custom_domain_hostname || '/' ELSE excluded.home_url END,

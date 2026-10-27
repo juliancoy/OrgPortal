@@ -77,3 +77,19 @@ it('scopes saved organization themes to the organization panel in both color mod
  expect(css).toContain('--primary:#ABCDEF')
  expect(organizationPageTheme(null)).toBeNull()
 })
+
+
+it('includes a complete PostCapitalist Corporate Light Mode with accessible text and distinct imagery',async()=>{
+ const {standardOrganizationThemes}=await import('../../../shared/organizationThemes')
+ const {contrastRatio}=await import('../../../shared/brandContrast')
+ const theme=standardOrganizationThemes.find(theme=>theme.id==='postcapitalist-corporate-light')!
+ expect(theme.name).toBe('PostCapitalist Corporate Light Mode')
+ for(const mode of ['light','dark'] as const){
+  const colors=theme[mode]
+  expect(contrastRatio(colors['text-primary'],colors.surface)).toBeGreaterThanOrEqual(4.5)
+  expect(contrastRatio(colors['text-secondary'],colors.surface)).toBeGreaterThanOrEqual(4.5)
+  expect(contrastRatio(colors.primary,colors.surface)).toBeGreaterThanOrEqual(4.5)
+  expect(contrastRatio(colors['on-primary'],colors.primary)).toBeGreaterThanOrEqual(4.5)
+ }
+ expect(new Set(Object.values(theme.imagery!)).size).toBe(3)
+})

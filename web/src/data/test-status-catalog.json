@@ -1809,6 +1809,20 @@
       ]
     },
     {
+      "id": "suite-org-worker-test-support-html-test-ts",
+      "label": "org-worker/test/support-html.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/support-html.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "support-html.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-org-worker-test-support-tickets-test-ts",
       "label": "org-worker/test/support-tickets.test.ts",
       "category": "User interface and integrations",
@@ -2523,6 +2537,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-test-local-branding-autosave-mjs",
+      "label": "web/scripts/test-local-branding-autosave.mjs",
+      "category": "User interface and integrations",
+      "source": "web/scripts/test-local-branding-autosave.mjs",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-branding-autosave.mjs"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-test-local-deism-mjs",
       "label": "web/scripts/test-local-deism.mjs",
       "category": "User interface and integrations",
@@ -2799,6 +2827,20 @@
         {
           "id": "suite",
           "label": "test-local-presenter-application.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-local-profile-autosave-mjs",
+      "label": "web/scripts/test-local-profile-autosave.mjs",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-profile-autosave.mjs",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-profile-autosave.mjs"
         }
       ]
     },
@@ -3905,6 +3947,20 @@
         {
           "id": "suite",
           "label": "tedcoFunding.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-hooks-autosaveQueue-test-ts",
+      "label": "web/src/ui/hooks/autosaveQueue.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/ui/hooks/autosaveQueue.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "autosaveQueue.test.ts"
         }
       ]
     },

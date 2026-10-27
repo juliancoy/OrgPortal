@@ -36,12 +36,12 @@ test('attached domains retain their tenant and onboarding configuration requires
 });
 test('saving a slug portal preserves attached domains and unrelated onboarding preferences',async t=>{
  const f=fixture();t.after(()=>f.db.sqlite.close());
- f.db.sqlite.exec("UPDATE group_sites SET hostname='medtech.social',feature_config=json_set(feature_config,'$.onboarding.enabled',json('true')) WHERE id='baltimore-medtech'");
+ f.db.sqlite.exec("UPDATE group_sites SET profile='lifetech',hostname='medtech.social',feature_config=json_set(feature_config,'$.onboarding.enabled',json('true')) WHERE id='baltimore-medtech'");
  t.mock.method(globalThis,'fetch',async()=>Response.json(identityProfile({id:'owner',full_name:'Owner'})));
  const r=await app.request('https://medtech.social/api/network/orgs/org/portal',{method:'PUT',headers:{authorization:'Bearer session','content-type':'application/json'},body:JSON.stringify({name:'LifeTech',slug:'lifetech'})},f.env);
  assert.equal(r.status,200,await r.text());
- const tenant=f.db.sqlite.prepare("SELECT hostname,public_base_url,feature_config FROM group_sites WHERE id='baltimore-medtech'").get()!;
- assert.equal(tenant.hostname,'medtech.social');assert.equal(tenant.public_base_url,'https://medtech.social');
+ const tenant=f.db.sqlite.prepare("SELECT hostname,public_base_url,feature_config,profile FROM group_sites WHERE id='baltimore-medtech'").get()!;
+ assert.equal(tenant.profile,'lifetech');assert.equal(tenant.hostname,'medtech.social');assert.equal(tenant.public_base_url,'https://medtech.social');
  assert.equal(JSON.parse(String(tenant.feature_config)).onboarding.enabled,true);
 });
 test('organization administrators save branding with an empty or explicit tagline; ordinary members cannot',async t=>{

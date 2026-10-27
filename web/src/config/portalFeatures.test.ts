@@ -194,3 +194,11 @@ it('keeps an unconfigured organization identity neutral and its tagline empty', 
  expect(profile.id).toBe('orgportal')
  expect(profile.nameBannerUrl).toBeUndefined()
 })
+
+
+it('uses current themed icon instead of a stale name banner',()=>{
+ const site={id:'theme-test',name:'Theme test',hostname:'example.invalid',tagline:'',accent_color:'#175c53',brand_image_path:'https://example.invalid/new-icon.svg',feature_config:{nameBannerUrl:'https://example.invalid/old-banner.png',brandThemes:{defaultTheme:'test'}}}
+ expect(tenantProfileConfig(site).nameBannerUrl).toBeUndefined()
+ expect(tenantProfileConfig(site).brandImagePath).toBe(site.brand_image_path)
+ expect(tenantProfileConfig({...site,feature_config:{nameBannerUrl:'https://example.invalid/old-banner.png'}}).nameBannerUrl).toBe('https://example.invalid/old-banner.png')
+})

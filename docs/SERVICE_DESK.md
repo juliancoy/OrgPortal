@@ -43,9 +43,11 @@ must remain unchanged. Mail from outside the organization can open a support
 ticket; its envelope sender is an untrusted contact address and grants no account
 or organization permission.
 
-The handler accepts at most 256 KiB, discards attachments and HTML, and stores at
-most 50,000 characters of plain text. A message without plain text requires admin
-review. Repeated Message-IDs are idempotent. Replies with the ticket reference
+The handler accepts at most 256 KiB, discards attachments, sanitizes the HTML alternative, and stores at
+most 50,000 characters of plain text. Messages retain a plain-text fallback and, where present, sanitized HTML.
+Scripts, forms, frames, event handlers and external-resource CSS are removed.
+Formatted messages render in a sandboxed, opaque-origin frame with a restrictive
+CSP; only organization-hosted images load. Plain text remains available. Repeated Message-IDs are idempotent. Replies with the ticket reference
 reopen the same sender's ticket in the same organization. Automated/list mail and
 bounce senders receive no automatic answer. Inbound acceptance is limited to 30
 messages per sender, per organization, per hour.
@@ -106,3 +108,9 @@ MIME headers are not invented. Replies thread by ticket reference, matching
 Message-ID, or a unique reply subject within the same organization and sender.
 No personal Gmail inbox is imported. Existing access checks and 90-day inactivity
 retention continue to apply to all correspondence.
+
+Apply the reviewed additive migration `0129_support_message_html.sql` before
+releasing formatted message support. The HTML field shares its parent ticket's
+existing 90-day inactivity retention, deletion, erasure and replication exclusions.
+Previously discarded HTML cannot be recovered from the plain-text record; retain
+old messages as-is and add corrected copies to their existing conversation.

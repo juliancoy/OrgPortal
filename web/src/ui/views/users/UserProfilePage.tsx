@@ -1,3 +1,5 @@
+import {useAutosave} from '../../hooks/useAutosave'
+import {AutosaveStatus} from '../../components/AutosaveStatus'
 import { OrganizationAvatar } from '../../components/OrganizationAvatar'
 import { useOrganizationPersonnel } from '../../hooks/useOrganizationPersonnel'
 import { useOrganizationScope } from '../../hooks/useOrganizationScope'
@@ -89,6 +91,9 @@ type UserProfilePageProps = {
 export function UserProfilePage({ embedded = false, photoOnly = false, detailsOnly = false, photoUrl, onPhotoSaved, publicPageUrl: publicPageUrlProp, onClose }: UserProfilePageProps = {}) {
   const personnelFor = useOrganizationPersonnel(useOrganizationScope())
   const { user, setUser, token, logout } = useAuth()
+  const [profileReady,setProfileReady]=useState(false)
+  const activeIdentity=useRef(token);activeIdentity.current=token
+  const currentUser=useRef(user);currentUser.current=user
   const [fullName, setFullName] = useState('')
   const [birthDate, setBirthDate] = useState('')
   const [bio, setBio] = useState('Interested in local policy and civic engagement.')
@@ -103,6 +108,8 @@ export function UserProfilePage({ embedded = false, photoOnly = false, detailsOn
   const [campaignStatement, setCampaignStatement] = useState('')
   const [maslowNow, setMaslowNow] = useState<MaslowRatings>(DEFAULT_MASLOW_RATINGS)
   const [maslowFuture, setMaslowFuture] = useState<MaslowRatings>(DEFAULT_MASLOW_RATINGS)
+  const detailRatings=useRef({now:maslowNow,future:maslowFuture});detailRatings.current={now:maslowNow,future:maslowFuture}
+  const identityWrites=useRef<Promise<void>>(Promise.resolve())
   const [loadedPublicPageUrl, setLoadedPublicPageUrl] = useState<string | null>(null)
   const [status, setStatus] = useState<string | null>(null)
   const [editorOpen, setEditorOpen] = useState(false)
@@ -138,6 +145,7 @@ export function UserProfilePage({ embedded = false, photoOnly = false, detailsOn
 
   useEffect(() => {
     let cancelled = false
+    setProfileReady(false)
 
     async function hydrateFromPidp() {
       try {
@@ -147,7 +155,7 @@ export function UserProfilePage({ embedded = false, photoOnly = false, detailsOn
             Authorization: `Bearer ${token}`,
           },
         })
-        if (!resp.ok) return
+        if (!resp.ok) {if(!cancelled)setStatus('Could not load your profile. Refresh to retry.');return}
         const data = await resp.json()
         if (cancelled) return
 
@@ -169,8 +177,9 @@ export function UserProfilePage({ embedded = false, photoOnly = false, detailsOn
         if (data.identity_data?.campaign_statement) setCampaignStatement(data.identity_data.campaign_statement)
         if (data.identity_data?.maslow_now) setMaslowNow(normalizeMaslowRatings(data.identity_data.maslow_now))
         if (data.identity_data?.maslow_future) setMaslowFuture(normalizeMaslowRatings(data.identity_data.maslow_future))
+        setProfileReady(true)
       } catch {
-        // ignore
+        if(!cancelled)setStatus('Could not load your profile. Refresh to retry.')
       }
     }
 
@@ -182,9 +191,7 @@ export function UserProfilePage({ embedded = false, photoOnly = false, detailsOn
     }
 
     const raw = localStorage.getItem(USER_PROFILE_STORAGE_KEY) || localStorage.getItem(LEGACY_USER_PROFILE_STORAGE_KEY)
-    if (!raw) return () => {
-      cancelled = true
-    }
+    if (!raw) {setProfileReady(true);return () => {cancelled = true}}
     try {
       const saved = JSON.parse(raw) as Partial<ProfileDraft>
       if (saved.fullName) setFullName(saved.fullName)
@@ -203,6 +210,7 @@ export function UserProfilePage({ embedded = false, photoOnly = false, detailsOn
     } catch {
       // Ignore malformed local data.
     }
+    setProfileReady(true)
 
     return () => {
       cancelled = true
@@ -326,104 +334,25 @@ export function UserProfilePage({ embedded = false, photoOnly = false, detailsOn
     }
   }, [editorOpen])
 
-  function saveProfile() {
-    const nameParts = splitFullName(fullName)
-    const normalizedFullName = fullName.trim()
-    const payload: ProfileDraft = {
-      fullName: normalizedFullName,
-      firstName: nameParts.firstName,
-      lastName: nameParts.lastName,
-      displayName: normalizedFullName || 'Anonymous',
-      birthDate,
-      bio,
-      avatarUrl,
-      addressLine1,
-      addressLine2,
-      city,
-      state,
-      zip,
-      maslowNow,
-      maslowFuture,
+  const profileValues={full_name:fullName,birth_date:birthDate||null,address_line1:addressLine1,address_line2:addressLine2,city,state,zip,maslow_now:maslowNow,maslow_future:maslowFuture,is_running_for_office:isRunningForOffice,office_title:isRunningForOffice?officeTitle:null,campaign_statement:isRunningForOffice?campaignStatement:null}
+  const profileAutosave=useAutosave({value:profileValues,scope:`profile:${token||'local'}`,enabled:profileReady&&!photoOnly&&!detailsOnly,save:async(next,previous)=>{
+    const patch:Record<string,unknown>=Object.fromEntries(Object.entries(next).filter(([key,value])=>JSON.stringify(value)!==JSON.stringify(previous[key as keyof typeof previous])))
+    const nameChanged='full_name' in patch
+    const name=next.full_name.trim(),parts=splitFullName(name)
+    if(nameChanged)Object.assign(patch,{full_name:name||null,display_name:name||'Anonymous',first_name:parts.firstName||null,last_name:parts.lastName||null})
+    if(token){
+      const response=await fetch(pidpUrl('/auth/me'),{method:'PUT',credentials:'include',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify(patch)})
+      if(!response.ok)throw new Error('Could not save profile changes. Please retry.')
+      if(nameChanged){
+        const contact=await fetch(orgUrl('/api/network/contact/me'),{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:'{}'})
+        if(!contact.ok)throw new Error('Name updated, but the public page could not be updated. Please retry.')
+      }
+    }else{
+      const existing=JSON.parse(localStorage.getItem(USER_PROFILE_STORAGE_KEY)||'{}')
+      localStorage.setItem(USER_PROFILE_STORAGE_KEY,JSON.stringify({...existing,fullName:name,displayName:name||'Anonymous',...parts,birthDate:next.birth_date||'',addressLine1:next.address_line1,addressLine2:next.address_line2,city:next.city,state:next.state,zip:next.zip,maslowNow:next.maslow_now,maslowFuture:next.maslow_future,isRunningForOffice:next.is_running_for_office,officeTitle:next.office_title,campaignStatement:next.campaign_statement}))
     }
-
-    if (token) {
-      fetch(pidpUrl('/auth/me'), {
-        method: 'PUT',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          full_name: payload.fullName || null,
-          display_name: payload.displayName,
-          bio: payload.bio,
-          avatar_url: payload.avatarUrl || null,
-          first_name: payload.firstName || null,
-          last_name: payload.lastName || null,
-          birth_date: payload.birthDate || null,
-          address_line1: payload.addressLine1,
-          address_line2: payload.addressLine2,
-          city: payload.city,
-          state: payload.state,
-          zip: payload.zip,
-          maslow_now: maslowNow,
-          maslow_future: maslowFuture,
-          is_running_for_office: isRunningForOffice,
-          office_title: isRunningForOffice ? officeTitle : null,
-          campaign_statement: isRunningForOffice ? campaignStatement : null,
-        }),
-      })
-        .then(async (resp) => {
-          if (!resp.ok) {
-            const text = await resp.text().catch(() => '')
-            throw new Error(text || `Save failed (${resp.status})`)
-          }
-          return resp.json()
-        })
-        .then(async (data) => {
-          await fetch(orgUrl('/api/network/contact/me'), {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              photo_url: payload.avatarUrl || null,
-            }),
-          }).catch(() => null)
-          setStatus('Profile saved.')
-          if (user) {
-            const newDisplay = payload.displayName || user.displayName
-            setUser({
-              ...user,
-              displayName: newDisplay,
-              fullName: data.full_name ?? user.fullName,
-              firstName: payload.firstName,
-              lastName: payload.lastName,
-              avatarUrl: payload.avatarUrl,
-            })
-          }
-        })
-        .catch((err) => {
-          setStatus(err instanceof Error ? err.message : 'Profile save failed.')
-        })
-      return
-    }
-
-    localStorage.setItem(USER_PROFILE_STORAGE_KEY, JSON.stringify(payload))
-    setStatus('Profile saved.')
-    if (user) {
-      setUser({
-        ...user,
-        displayName: payload.displayName,
-        fullName: payload.fullName,
-        firstName: payload.firstName,
-        lastName: payload.lastName,
-        avatarUrl: payload.avatarUrl,
-      })
-    }
-  }
+    if(activeIdentity.current===token&&nameChanged&&currentUser.current)setUser({...currentUser.current,displayName:name||'Anonymous',fullName:name,firstName:parts.firstName,lastName:parts.lastName})
+  }})
 
   async function downloadPhoto(format: 'jpg' | 'png') {
     if (!avatarUrl || downloadingPhoto) return
@@ -566,13 +495,19 @@ export function UserProfilePage({ embedded = false, photoOnly = false, detailsOn
 
   async function saveIdentityField(field: string, value: unknown) {
     if (!token) throw new Error('Sign in to save your profile.')
+    const operation=identityWrites.current.catch(()=>{}).then(async()=>{
     const response = await fetch(pidpUrl('/auth/me'), {
       method: 'PUT', credentials: 'include',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ [field]: value }),
     })
     if (!response.ok) throw new Error('Could not save this field. Please try again.')
+    })
+    identityWrites.current=operation
+    await operation
   }
+
+  if(!profileReady&&!photoOnly)return <p role="status">{status||'Loading profile…'}</p>
 
   const publicPageUrl = publicPageUrlProp ?? loadedPublicPageUrl
 
@@ -594,9 +529,10 @@ export function UserProfilePage({ embedded = false, photoOnly = false, detailsOn
             return <InlineProfileField key={need.key} label={`${need.label} (${period})`} type="number" value={String(ratings[need.key])} onSave={async next => {
               const rating = Number(next)
               if (!Number.isInteger(rating) || rating < 1 || rating > 5) throw new Error('Enter a rating from 1 to 5.')
-              const updated = { ...ratings, [need.key]: rating }
-              await saveIdentityField(`maslow_${period}`, updated)
+              const updated = { ...detailRatings.current[period], [need.key]: rating }
+              detailRatings.current[period]=updated
               if (period === 'now') setMaslowNow(updated); else setMaslowFuture(updated)
+              await saveIdentityField(`maslow_${period}`, updated)
             }}><span>{need.label}: {ratings[need.key]} / 5</span></InlineProfileField>
           })}
         </div>)}
@@ -627,9 +563,7 @@ export function UserProfilePage({ embedded = false, photoOnly = false, detailsOn
       <section className="id-qr-card profile-settings-section">
         <div className="profile-detail-header profile-editor-section-header">
           <h2 style={{ margin: 0 }}>Name</h2>
-          <button type="button" className="profile-save-button" onClick={saveProfile}>
-            Save profile
-          </button>
+          <AutosaveStatus state={profileAutosave} label="Profile" onRetry={profileAutosave.retry}/>
         </div>
       <div className="profile-form-grid">
         <div>

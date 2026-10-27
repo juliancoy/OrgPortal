@@ -1,4 +1,4 @@
-import { parseOrganizationThemes, portalThemeColors } from '../../../../shared/organizationThemes'
+import { parseOrganizationThemes, portalThemeColors, type OrganizationThemeImagery } from '../../../../shared/organizationThemes'
 import { CmsImage } from '../components/media/CmsImage'
 import { useEffect, useRef, useState } from 'react'
 import { Navigate } from 'react-router-dom'
@@ -20,13 +20,13 @@ function assetUrl(value?: string | null) {
   return value.startsWith('/') ? portalPath(value) : value
 }
 
-export function TenantBrandingPage({brandGuidePath='/branding',tenant:organizationTenant,embedded=false}:{brandGuidePath?:string;tenant?:GroupSite;embedded?:boolean}={}) {
+export function TenantBrandingPage({brandGuidePath='/branding',tenant:organizationTenant,embedded=false,imageryOverride,selectedThemeId,onThemeChange}:{brandGuidePath?:string;tenant?:GroupSite;embedded?:boolean;imageryOverride?:OrganizationThemeImagery;selectedThemeId?:string;onThemeChange?:(id:string)=>void}={}) {
   const tenant = organizationTenant || getGroupSite()
   const profile = organizationTenant ? tenantProfileConfig(organizationTenant) : getActivePortalProfileConfig()
   const brandThemes = parseOrganizationThemes(tenant?.feature_config?.brandThemes)
   const [themeId, setThemeId] = useState('')
   const [colorMode, setColorMode] = useState<'light' | 'dark'>('light')
-  const selectedTheme = brandThemes?.themes.find(theme => theme.id === themeId) || brandThemes?.themes.find(theme => theme.id === brandThemes.defaultTheme)
+  const selectedTheme = brandThemes?.themes.find(theme => theme.id === (selectedThemeId||themeId)) || brandThemes?.themes.find(theme => theme.id === brandThemes.defaultTheme)
   const themeColors = selectedTheme ? portalThemeColors(selectedTheme[colorMode]) : null
   const [copiedColor, setCopiedColor] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
@@ -43,23 +43,26 @@ export function TenantBrandingPage({brandGuidePath='/branding',tenant:organizati
     if (copyResetTimer.current !== null) window.clearTimeout(copyResetTimer.current)
   }, [])
 
+  useEffect(() => { setThemeId('') }, [brandThemes?.defaultTheme])
+
   if (!tenant) return <Navigate to="/" replace />
   if (!organizationTenant && tenant.home_org_slug) return <Navigate to={`/orgs/${encodeURIComponent(tenant.home_org_slug)}?tab=branding`} replace />
 
-  const nameBannerUrl = profile.nameBannerUrl
-  const identityImage = selectedTheme?.imagery?.icon || profile.brandImagePath
+  const imagery = imageryOverride || selectedTheme?.imagery
+  const nameBannerUrl = selectedTheme?.imagery ? null : profile.nameBannerUrl
+  const identityImage = imagery?.icon || profile.brandImagePath
   const assets = [
     nameBannerUrl ? { id: 'namebanner', label: 'Name banner', description: 'Horizontal wordmark for wide brand placements.', url: assetUrl(nameBannerUrl) } : null,
-    !selectedTheme?.imagery && profile.brandImagePath
+    !imagery && profile.brandImagePath
       ? { id: 'logo', label: 'Primary logo', description: 'Used in portal navigation, sign-in, favicons, and member-facing pages.', url: assetUrl(profile.brandImagePath) }
       : null,
-    !selectedTheme?.imagery && tenant.home_image_url && tenant.home_image_url !== profile.brandImagePath
+    !imagery && tenant.home_image_url && tenant.home_image_url !== profile.brandImagePath
       ? { id: 'hero', label: 'Portal cover image', description: 'Used as the organization portal cover and landing-page image.', url: assetUrl(tenant.home_image_url) }
       : null,
-    ...(selectedTheme?.imagery ? [
-      {id:'icon',label:'Brand icon',description:'Navigation and favicon imagery.',url:assetUrl(selectedTheme.imagery.icon)},
-      {id:'avatar',label:'Organization avatar',description:'Profile and directory imagery.',url:assetUrl(selectedTheme.imagery.avatar)},
-      {id:'background',label:'Standard background',description:'Organization cover and standard backdrop.',url:assetUrl(selectedTheme.imagery.background)},
+    ...(imagery ? [
+      {id:'icon',label:'Brand icon',description:'Navigation and favicon imagery.',url:assetUrl(imagery.icon)},
+      {id:'avatar',label:'Organization avatar',description:'Profile and directory imagery.',url:assetUrl(imagery.avatar)},
+      {id:'background',label:'Standard background',description:'Organization cover and standard backdrop.',url:assetUrl(imagery.background)},
     ] : []),
   ].filter((asset): asset is NonNullable<typeof asset> => Boolean(asset))
 
@@ -152,7 +155,7 @@ export function TenantBrandingPage({brandGuidePath='/branding',tenant:organizati
         </button>
       </div>
       {brandThemes ? <div className="tenant-brand-theme-controls">
-        <label>Theme <select aria-label="Brand guide theme" value={selectedTheme?.id} onChange={event => setThemeId(event.target.value)}>
+        <label>Theme <select aria-label="Brand guide theme" value={selectedTheme?.id} onChange={event => onThemeChange?onThemeChange(event.target.value):setThemeId(event.target.value)}>
           {brandThemes.themes.map(theme => <option key={theme.id} value={theme.id}>{theme.name}</option>)}
         </select></label>
         <label>Color mode <select aria-label="Brand guide color mode" value={colorMode} onChange={event => setColorMode(event.target.value as 'light' | 'dark')}>
