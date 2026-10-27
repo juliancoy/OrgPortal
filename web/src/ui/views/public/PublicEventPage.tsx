@@ -2,7 +2,7 @@ import { EventApplyButtons } from '../../components/EventApplyButtons'
 import './event-application.css'
 import { CmsImage } from '../../components/media/CmsImage'
 import { resolveBrandPalette } from '../../../../../shared/brandPalette'
-import { OrganizationViewSwitcher } from '../../components/OrganizationViewSwitcher'
+import { OrganizationWorkspaceLink } from '../../components/OrganizationWorkspaceLink'
 import { EventSubmissions } from '../../components/EventSubmissions'
 import { OrganizationAvatar } from '../../components/OrganizationAvatar'
 import { useOrganizationPersonnel } from '../../hooks/useOrganizationPersonnel'
@@ -815,7 +815,7 @@ export function PublicEventPage() {
               ) : null}
             </div>
           </section>
-          {canManageEvent && event.organization_slug && <OrganizationViewSwitcher organizationSlug={event.organization_slug} manager />}
+          {canManageEvent && event.organization_slug && <OrganizationWorkspaceLink organizationSlug={event.organization_slug} />}
           {canManageEvent && editingEvent && token ? <EventDetailsEditor key={event.id} event={event} token={token} onCancel={() => setEditingEvent(false)} onSaved={updated => { setEvent({ ...event, ...updated, media: (updated as PublicEvent).media?.map(item => ({ ...item, url: item.url.startsWith('/api/network/') ? orgUrl(item.url) : item.url })) || event.media }); setEditingEvent(false) }} /> : null}
           <section className="portal-card public-event-mobile-details" aria-label="Event date, time and place">
             <div><CalendarDays size={20} aria-hidden="true" /><strong>{toEventDate(event.starts_at || (event.event_date ? event.event_date+'T12:00:00' : null))}</strong></div>

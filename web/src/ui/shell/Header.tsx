@@ -3,7 +3,7 @@ import { startActivePolling } from '../../infrastructure/http/activePolling'
 import { OrganizationAvatar } from '../components/OrganizationAvatar'
 import { useOrganizationPersonnel } from '../hooks/useOrganizationPersonnel'
 import { useOrganizationScope } from '../hooks/useOrganizationScope'
-import { OrganizationViewSwitcher } from '../components/OrganizationViewSwitcher'
+import { OrganizationWorkspaceLink } from '../components/OrganizationWorkspaceLink'
 import { TaskQueue, useTaskQueue } from '../tasks/TaskQueue'
 import { useDomainCommunity, useGroupSite } from '../../config/timebankCommunity'
 import { hasTenantCalendar, specialtyResourcesForTenant } from '../../config/specialtyResources'
@@ -868,7 +868,7 @@ export function Header({ organizationId }: { organizationId?: string | null } = 
               <div className="portal-user" ref={menuRef}>
                 <button
                   type="button"
-                  className={`portal-user-trigger ${isAdmin ? 'is-sysadmin' : 'is-standard-user'}`}
+                  className="portal-user-trigger"
                   onClick={() => setMenuOpen((prev) => !prev)}
                   aria-label="Open user menu"
                   aria-controls="portal-user-menu"
@@ -881,7 +881,7 @@ export function Header({ organizationId }: { organizationId?: string | null } = 
                 {menuOpen && (
                   <div id="portal-user-menu" className="portal-user-menu" role="menu" aria-label="User menu">
                   <div className="portal-user-menu-context">
-                    <OrganizationViewSwitcher />
+                    <OrganizationWorkspaceLink />
                   </div>
                   <div className="portal-user-menu-meta">
                     <strong>{displayName}</strong>
