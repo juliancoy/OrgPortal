@@ -80,7 +80,7 @@ try{
    await expect(card.locator('.submission-presenter-summary .public-event-registrant-avatar')).toHaveCount(2)
    await page.getByRole('button',{name:'Expand submission: The Limits of Contemporary Medicine',exact:true}).click()
    if(!await details.isVisible()||votes)throw Error('Expand changed the vote or failed to reveal details')
-   await card.getByText('View team',{exact:true}).click()
+   await card.locator('.submission-presenter-summary').click()
    if(!await card.getByText('Sam Rivera',{exact:true}).isVisible()||votes)throw Error('Team disclosure failed or changed vote')
    await card.getByRole('button',{name:'Edit application',exact:true}).click()
    await card.getByRole('button',{name:'Delete application',exact:true}).click()

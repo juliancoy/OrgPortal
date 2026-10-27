@@ -105,10 +105,10 @@ export function EventSubmissions({eventId,onEdit,onDeleted}:{eventId:string;onEd
   {[...rows].sort((a,b)=>b.favorites-a.favorites||(a.submission_id<b.submission_id?-1:a.submission_id>b.submission_id?1:0)).map(row=><article key={row.submission_id} className={`presentation-submission submission-voting-card${favorites.includes(row.submission_id)?' is-selected':''}`}>
    <div className="submission-card-header">
     <div className="submission-team"><OrgImage src={row.image_url} alt="" style={{width:44,height:44,objectFit:'contain'}} /><Link to={`/orgs/${encodeURIComponent(row.organization_slug)}`}>{row.organization_name}</Link></div>
+    <SubmissionPresenters people={row.presenters || []} />
     <button type="button" className="btn-secondary submission-card-expand" aria-label={`${expanded.includes(row.submission_id)?'Collapse':'Expand'} submission: ${row.title}`} aria-expanded={expanded.includes(row.submission_id)} aria-controls={`submission-details-${row.submission_id}`} onClick={()=>setExpanded(previous=>previous.includes(row.submission_id)?previous.filter(id=>id!==row.submission_id):[...previous,row.submission_id])}>{expanded.includes(row.submission_id)?<Minus size={20} aria-hidden="true" />:<Plus size={20} aria-hidden="true" />}</button>
    </div>
    <h3 className="submission-card-title">{row.title}</h3>
-   <SubmissionPresenters people={row.presenters || []} />
    <div className="submission-card-details" id={`submission-details-${row.submission_id}`} hidden={!expanded.includes(row.submission_id)}>
     <BioMarkdown value={row.summary} />
     <SubmissionAttachments eventId={eventId} submissionId={row.submission_id} initial={row.attachments} canManage={canManage||managedTeams.includes(row.submission_id)} />
