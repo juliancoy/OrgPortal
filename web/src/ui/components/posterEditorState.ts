@@ -7,8 +7,9 @@ export type PosterSettings = {
   background: 'solid' | 'city' | 'gradient' | 'lifetech' | 'gallery'; mediaId: string
   includeEvents: boolean; link: string; zoom: number; offsetX: number; offsetY: number; opacity: number; dimming: number; edgeBlur: boolean; imageFit: 'original' | 'contain' | 'cover'
   elements: Partial<Record<ElementId, ElementLayout>>; selectedElement: ElementId | null
+  animation: 'none' | 'slow-zoom'; animationDuration: number; animationZoom: number
 }
-export const defaults: PosterSettings = { includeEvents: false, format: 'letter', theme: 'light', background: 'gradient', mediaId: '', link: 'portal', zoom: 1, offsetX: 0, offsetY: 0, opacity: 1, dimming: .66, edgeBlur: false, imageFit: 'original', elements: {description:{hidden:true,shadow:false,scale:1,x:0,y:0}}, selectedElement: null }
+export const defaults: PosterSettings = { includeEvents: false, format: 'letter', theme: 'light', background: 'gradient', mediaId: '', link: 'portal', zoom: 1, offsetX: 0, offsetY: 0, opacity: 1, dimming: .66, edgeBlur: false, imageFit: 'original', elements: {description:{hidden:true,shadow:false,scale:1,x:0,y:0}}, selectedElement: null, animation: 'none', animationDuration: 20, animationZoom: 12 }
 const bound = (value: unknown, fallback: number, min: number, max: number) => typeof value === 'number' && Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : fallback
 export function parseSettings(raw: string | null): PosterSettings {
   try {
@@ -26,6 +27,9 @@ export function parseSettings(raw: string | null): PosterSettings {
     s.edgeBlur = v.edgeBlur === true
     if (['original', 'contain', 'cover'].includes(v.imageFit)) s.imageFit = v.imageFit
     s.dimming = bound(v.dimming, .66, 0, 1)
+    if (v.animation === 'slow-zoom') s.animation = v.animation
+    s.animationDuration = bound(v.animationDuration, 20, 8, 60)
+    s.animationZoom = bound(v.animationZoom, 12, 5, 30)
     s.elements = {description:{hidden:true,shadow:false,scale:1,x:0,y:0}}
     for (const id of Object.keys(elementLabels) as ElementId[]) {
       const item = v.elements?.[id]
@@ -81,6 +85,37 @@ export function applySettings(svg: SVGSVGElement, settings: PosterSettings) {
     }
     else node.removeAttribute('filter')
   }
+  applyPosterAnimation(svg, settings)
+}
+
+// Only trusted, numeric editor settings generate CSS. Fetched SVGs still pass
+// through the inert-vocabulary sanitizer; no incoming styles are allowed.
+export function applyPosterAnimation(svg: SVGSVGElement, settings: PosterSettings, enabled = true) {
+  let style = svg.querySelector('[data-poster-animation]')
+  if (!enabled || settings.animation !== 'slow-zoom' || !svg.querySelector('[data-poster-background]')) { style?.remove(); return }
+  if (!style) {
+    style = document.createElementNS('http://www.w3.org/2000/svg', 'style')
+    style.setAttribute('data-poster-animation', 'true'); svg.prepend(style)
+  }
+  const duration = bound(settings.animationDuration, 20, 8, 60)
+  const scale = 1 + bound(settings.animationZoom, 12, 5, 30) / 100
+  const css = `@keyframes poster-background-zoom { from { transform:scale(1) } to { transform:scale(${scale}) } }
+    [data-poster-background] { transform-box:fill-box; transform-origin:center; animation:poster-background-zoom ${duration}s ease-in-out infinite alternate; }
+    [data-poster-animation-paused] [data-poster-background] { animation-play-state:paused; }
+    @media (prefers-reduced-motion:reduce) { [data-poster-background] { animation:none; } }
+    @media print { [data-poster-background] { animation:none; } }`
+  if (style.textContent !== css) style.textContent = css
+}
+
+export function exportPosterSvg(svg: SVGSVGElement, settings: PosterSettings, animated = false, backgroundOnly = false) {
+  applySettings(svg, settings)
+  const exported = svg.cloneNode(true) as SVGSVGElement
+  exported.querySelectorAll('[data-editor-ui], [data-poster-element][display="none"]').forEach(node => node.remove())
+  exported.querySelectorAll('[data-poster-selected]').forEach(node => node.removeAttribute('data-poster-selected'))
+  exported.removeAttribute('data-poster-animation-paused')
+  if (backgroundOnly) exported.querySelectorAll('[data-poster-element]').forEach(node => node.remove())
+  applyPosterAnimation(exported, settings, animated)
+  return new Blob([new XMLSerializer().serializeToString(exported)], { type: 'image/svg+xml' })
 }
 
 // A stationary, overscanned copy fills the canvas even when the sharp image moves.

@@ -9,7 +9,7 @@ import Sun from 'lucide-react/dist/esm/icons/sun.mjs'
 import X from 'lucide-react/dist/esm/icons/x.mjs'
 import './eventPoster.css'
 import { bindCanvas, drawSelection } from './posterCanvas'
-import { applySettings, defaults, elementLabels, parsePosterSvg, parseSettings, posterElementText, shadowDefaults, type ElementId, type ElementLayout, type PosterSettings } from './posterEditorState'
+import { applySettings, applyPosterAnimation, exportPosterSvg, defaults, elementLabels, parsePosterSvg, parseSettings, posterElementText, shadowDefaults, type ElementId, type ElementLayout, type PosterSettings } from './posterEditorState'
 import { useGroupSite } from '../../config/timebankCommunity'
 
 type Format = 'letter' | 'letter-4up' | 'postcard' | 'social'
@@ -112,6 +112,7 @@ function PosterEditor({ kind = 'event', slug, title, revision = '', sourceUrl, e
   const elementControls = useRef<HTMLDivElement>(null)
   const [error, setError] = useState('')
   const [exporting, setExporting] = useState(false)
+  const [animationPaused, setAnimationPaused] = useState(false)
   // Layout controls never change this key: they are applied locally each frame.
   const key = JSON.stringify([slug, format, theme, background, selectedMediaId, selectedLink, organizationLinks, revision, retry, kind, settings.includeEvents, page])
   const ready = poster?.key === key ? poster : null
@@ -165,15 +166,13 @@ function PosterEditor({ kind = 'event', slug, title, revision = '', sourceUrl, e
     })
     return () => cancelAnimationFrame(frame)
   }, [ready, settings, selectedElement])
-  function posterBlob(backgroundOnly = false) {
+  useLayoutEffect(() => {
+    ready?.svg.toggleAttribute('data-poster-animation-paused', animationPaused)
+  }, [ready, animationPaused])
+  function posterBlob(backgroundOnly = false, animated = false) {
     if (!ready) throw new Error('Poster not ready')
     // Apply synchronously too, so exporting in the same frame cannot use stale controls.
-    applySettings(ready.svg, settings)
-    const exported = ready.svg.cloneNode(true) as SVGSVGElement
-    exported.querySelectorAll('[data-editor-ui], [data-poster-element][display="none"]').forEach(node => node.remove())
-    exported.querySelectorAll('[data-poster-selected]').forEach(node => node.removeAttribute('data-poster-selected'))
-    if (backgroundOnly) exported.querySelectorAll('[data-poster-element]').forEach(node => node.remove())
-    return new Blob([new XMLSerializer().serializeToString(exported)], { type: 'image/svg+xml' })
+    return exportPosterSvg(ready.svg, settings, animated, backgroundOnly)
   }
 
   function download(blob: Blob, extension: string, backgroundOnly = false) {
@@ -221,6 +220,7 @@ function PosterEditor({ kind = 'event', slug, title, revision = '', sourceUrl, e
         const svg = parsePosterSvg(await response.text())
         if (Number(response.headers.get('x-poster-pages')) !== pageCount) throw new Error('Event list changed')
         applySettings(svg, settings)
+        applyPosterAnimation(svg, settings, false)
         const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(svg)], {type:'image/svg+xml'}))
         urls.push(url)
         const image = popup.document.createElement('img')
@@ -299,8 +299,21 @@ function PosterEditor({ kind = 'event', slug, title, revision = '', sourceUrl, e
         {isOrganization && settings.includeEvents && pageCount > 1 && <button type="button" disabled={!ready || exporting} onClick={() => void printAllPages()}><Printer size={18} aria-hidden="true"/>Print all pages</button>}
         {background === 'lifetech' && <button type="button" disabled={!ready || exporting} onClick={() => void downloadPng(true)} title={`Download plain background, ${formats[format].width} × ${formats[format].height} pixels`}><Download size={18} aria-hidden="true"/>Background PNG</button>}
         <button type="button" disabled={!ready || exporting} onClick={() => ready && download(posterBlob(), 'svg')} title="Download SVG"><FileImage size={18} aria-hidden="true"/>SVG</button>
+        {imageBackground && settings.animation !== 'none' && <button type="button" disabled={!ready || exporting} onClick={() => ready && download(posterBlob(false, true), 'animated.svg')} title="Download animated SVG">Animated SVG</button>}
         <button type="button" disabled={!ready || exporting} onClick={print} title="Print poster"><Printer size={18} aria-hidden="true"/>Print</button>
       </div>
+      <fieldset className="event-poster-crop" disabled={!imageBackground || exporting}>
+        <legend>Background animation</legend>
+        <label>Animation<select aria-label="Background animation" value={settings.animation} onChange={event => { setter('animation')(event.target.value as PosterSettings['animation']); setAnimationPaused(false) }}>
+          <option value="none">None</option><option value="slow-zoom">Slow zoom</option>
+        </select></label>
+        {settings.animation === 'slow-zoom' && <>
+          <label>Zoom duration: {settings.animationDuration} seconds<input type="range" min="8" max="60" step="1" value={settings.animationDuration} onChange={event => setter('animationDuration')(Number(event.target.value))}/></label>
+          <label>Zoom amount: {settings.animationZoom}%<input type="range" min="5" max="30" step="1" value={settings.animationZoom} onChange={event => setter('animationZoom')(Number(event.target.value))}/></label>
+          <button type="button" disabled={!ready} aria-pressed={animationPaused} onClick={() => setAnimationPaused(value => !value)}>{animationPaused ? 'Play animation' : 'Pause animation'}</button>
+        </>}
+      </fieldset>
+      <p className="event-poster-motion-note">{imageBackground ? 'Slow zoom gently moves in and out of the photo while text and the QR code stay still. Animated SVG plays in a browser; PNG, SVG and print exports are still images. Reduced-motion preferences pause animation.' : 'Choose an image background to animate your poster.'}</p>
     </div>
     {background === 'gallery' && <div className="event-poster-gallery" role="group" aria-label="Gallery background image">
       {galleryStatus && <p role="status">{galleryStatus}</p>}

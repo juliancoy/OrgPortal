@@ -1,10 +1,13 @@
 // Local, unauthenticated fixture test: no production event writes or login.
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
+import { mkdir } from 'node:fs/promises';
 import { build } from 'esbuild';
 import { chromium, expect } from '@playwright/test';
 import { posterLinkTarget, renderEventPoster } from '../../org-worker/src/eventPoster.ts';
-const bundle = await build({ stdin: { contents: `import React from 'react'; import {createRoot} from 'react-dom/client'; import {EventPosterTools} from './src/ui/components/EventPosterTools'; import * as state from './src/ui/components/posterEditorState'; window.posterState=state; createRoot(document.getElementById('root')).render(<EventPosterTools inline sourceUrl="https://luma.com/example" slug="fixture" title="Fixture"/>);`, resolveDir: process.cwd(), loader: 'tsx' }, bundle: true, write: false, outdir: '/tmp/poster-editor-test', jsx: 'automatic', define: { 'process.env.NODE_ENV': '"production"' } });
+const bundle = await build({ stdin: { contents: `import './src/styles/theme-foundation.css'; import './src/styles/themes/orgportal.css'; import React from 'react'; import {createRoot} from 'react-dom/client'; import {EventPosterTools} from './src/ui/components/EventPosterTools'; import * as state from './src/ui/components/posterEditorState'; window.posterState=state; createRoot(document.getElementById('root')).render(<EventPosterTools inline sourceUrl="https://luma.com/example" slug="fixture" title="Fixture"/>);`, resolveDir: process.cwd(), loader: 'tsx' }, bundle: true, write: false, outdir: '/tmp/poster-editor-test', jsx: 'automatic', define: { 'process.env.NODE_ENV': '"production"' } });
+const artifacts=process.env.POSTER_CHECK_ARTIFACTS || '/tmp';
+await mkdir(artifacts,{recursive:true});
 let requests = 0;
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
@@ -85,6 +88,44 @@ try {
   await expect(page.locator('[data-poster-dimming]')).toHaveAttribute('opacity', '0');
   assert.equal(requests, before, 'sliders must not request new SVGs');
   await expect(page.locator('[data-poster-element="time"]')).toHaveAttribute('display', 'none');
+  await page.getByLabel('Background animation', {exact:true}).selectOption('slow-zoom');
+  await page.getByLabel('Zoom duration:').fill('8');
+  await page.getByLabel('Zoom amount:').fill('20');
+  await page.getByRole('button',{name:'Pause animation',exact:true}).click();
+  const motion = await page.evaluate(() => {
+    const root=document.querySelector('.event-poster-preview > div').shadowRoot;
+    const image=root.querySelector('[data-poster-background]'), title=root.querySelector('[data-poster-element="title"]');
+    const animation=image.getAnimations()[0];
+    const titleBefore=title.getBoundingClientRect().toJSON();
+    animation.currentTime=4000;
+    return {state:animation.playState,scale:new DOMMatrix(getComputedStyle(image).transform).a,titleBefore,titleAfter:title.getBoundingClientRect().toJSON()};
+  });
+  assert.equal(motion.state,'paused'); assert.ok(Math.abs(motion.scale-1.1)<.002,'background slowly zooms');
+  assert.deepEqual(motion.titleAfter,motion.titleBefore,'poster text remains stationary');
+  await page.emulateMedia({reducedMotion:'reduce'});
+  assert.equal(await page.locator('[data-poster-background]').evaluate(node=>getComputedStyle(node).animationName),'none');
+  await page.emulateMedia({reducedMotion:'no-preference'});
+  const animatedDownload=page.waitForEvent('download');
+  await page.getByRole('button',{name:'Animated SVG',exact:true}).click();
+  const animated=await animatedDownload; let animatedSource='';
+  for await(const chunk of await animated.createReadStream())animatedSource+=chunk;
+  assert.ok(animated.suggestedFilename().endsWith('.animated.svg'));
+  assert.match(animatedSource,/poster-background-zoom 8s/); assert.doesNotMatch(animatedSource,/data-poster-animation-paused="|data-editor-ui/);
+  const standalone=await browser.newPage();
+  try {
+    await standalone.goto('data:image/svg+xml;base64,'+Buffer.from(animatedSource).toString('base64'));
+    await expect(standalone.locator('[data-poster-background]')).toHaveCSS('animation-name','poster-background-zoom');
+    await standalone.emulateMedia({reducedMotion:'reduce'});
+    await expect(standalone.locator('[data-poster-background]')).toHaveCSS('animation-name','none');
+    await standalone.emulateMedia({reducedMotion:'no-preference',media:'print'});
+    await expect(standalone.locator('[data-poster-background]')).toHaveCSS('animation-name','none');
+  } finally {await standalone.close()}
+  await page.getByRole('group',{name:'Background animation',exact:true}).screenshot({path:`${artifacts}/poster-animation-desktop.png`});
+  const pngDownload=page.waitForEvent('download');
+  await page.getByRole('button',{name:'PNG',exact:true}).click();
+  let png=Buffer.alloc(0);for await(const chunk of await (await pngDownload).createReadStream())png=Buffer.concat([png,chunk]);
+  assert.deepEqual([...png.subarray(0,8)],[137,80,78,71,13,10,26,10]);
+  assert.equal(requests,before,'animation and exports stay local without refetching the poster');
   const downloadPromise = page.waitForEvent('download'); await page.getByRole('button', { name: 'SVG', exact: true }).click();
   const download = await downloadPromise; const stream = await download.createReadStream(); let exported = ''; for await (const chunk of stream) exported += chunk;
   await page.evaluate(async source => {
@@ -96,8 +137,11 @@ try {
   assert.match(exported, /feMorphology/);
   assert.match(exported, /filter="url\(#poster-shadow-title\)"/);
   assert.match(exported, /feGaussianBlur/); assert.doesNotMatch(exported, /data-editor-ui|data-resize/);
-  assert.match(exported, /opacity="0.35"/); assert.match(exported, /display="none"/);
+  assert.match(exported, /opacity="0.35"/); assert.doesNotMatch(exported, /data-poster-element="time"|data-poster-animation/);
   await page.reload(); await page.locator('[data-poster-background]').waitFor();
+  await expect(page.getByLabel('Background animation',{exact:true})).toHaveValue('slow-zoom');
+  await expect(page.getByLabel('Zoom duration:')).toHaveValue('8');
+  await expect(page.getByLabel('Zoom amount:')).toHaveValue('20');
   await page.getByLabel('Element', { exact: true }).selectOption('location');
   await expect(page.getByLabel('Element text')).toHaveValue('456 Harbor Road\nBaltimore, MD & <Meet here>');
   await page.getByRole('button', { name: 'Restore original text', exact: true }).click();
@@ -143,13 +187,18 @@ try {
   assert.doesNotMatch(safe, /script|onload|evil|foreignObject/);
   await page.getByRole('button', { name: 'Reset all settings', exact: true }).click(); await svg.waitFor();
   await page.reload(); await svg.waitFor();
-  assert.equal(await page.getByLabel('Background', { exact: true }).inputValue(), 'solid');
+  assert.equal(await page.getByLabel('Background', { exact: true }).inputValue(), 'gradient');
   assert.equal(await page.getByRole('button', { name: '8.5 x 11', exact: true }).getAttribute('aria-pressed'), 'true');
   await page.setViewportSize({ width: 375, height: 812 });
   const mobileCanvas = await page.locator('.event-poster-preview').boundingBox();
   const mobileSettings = await page.locator('.event-poster-settings').boundingBox();
   assert.ok(mobileCanvas.y + mobileCanvas.height <= mobileSettings.y, 'mobile settings stack below poster');
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'mobile editor fits viewport');
+  await page.getByLabel('Background',{exact:true}).selectOption('gallery');
+  await page.locator('[data-poster-background]').waitFor();
+  await page.getByLabel('Background animation',{exact:true}).selectOption('slow-zoom');
+  await page.evaluate(() => {document.documentElement.dataset.theme='dark'});
+  await page.getByRole('group',{name:'Background animation',exact:true}).screenshot({path:`${artifacts}/poster-animation-mobile.png`});
   assert.deepEqual(errors, []);
-  console.log('PASS: live edits without fetches, SVG export, reload persistence, all formats, SVG safety, click selection, reset');
+  console.log('PASS: background-only zoom, pause, reduced motion, animated SVG playback, static SVG/PNG, reload persistence, all formats, SVG safety and mobile layout');
 } finally { await browser.close(); server.close(); }
