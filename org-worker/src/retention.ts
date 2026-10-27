@@ -15,6 +15,7 @@ export async function runRetention(db: D1Database, now = Date.now(), dryRun = fa
     ['organization_recognition_ballots', 'expires_at <= ?', new Date(now).toISOString()],
     ['organization_recognition_nominees', 'expires_at <= ?', new Date(now).toISOString()],
     ['organization_personnel_relationships', 'expires_at <= ?', now],
+    ['organization_membership_requests', 'expires_at <= ?', now],
     ['organization_invitations', 'expires_at <= ?', now],
     ['organization_volunteer_awards', 'expires_at <= ?', new Date(now).toISOString()],
     ['event_submission_favorites', 'expires_at < ?', new Date(cutoff).toISOString()],

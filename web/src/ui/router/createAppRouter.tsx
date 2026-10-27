@@ -119,14 +119,12 @@ function tenantHomeElement(tenant: GroupSite, role: string, profile: ReturnType<
   return <Navigate to={portalProfilePath(action.to, profile)} replace />
 }
 
-function OrganizationProfileRoute() {
-  const location = useLocation()
-  const view = new URLSearchParams(location.search).get('view')
-  // Preserve existing workspace bookmarks while giving profiles a stable URL.
-  if (view && ['members', 'organizers', 'attendees', 'volunteers'].includes(view)) {
-    return <Navigate to={`${location.pathname.replace(/\/$/, '')}/dashboard${location.search}${location.hash}`} replace />
-  }
-  return <PublicAdminPage />
+function OrganizationProfileRoute() { return <PublicAdminPage /> }
+
+// Old audience bookmarks point to ordinary pages; audience selection no longer exists.
+function LegacyOrganizationRoute({ workspace = false }: { workspace?: boolean }) {
+  const { handle } = useParams()
+  return <Navigate to={`/orgs/${encodeURIComponent(handle || '')}${workspace ? '/dashboard' : ''}`} replace />
 }
 
 function HomeRoute() {
@@ -484,11 +482,11 @@ export function createAppRouter() {
           // Public profile
           { path: '/orgs/:handle/five-over-five', element: <FiveOverFivePage /> },
           { path: '/orgs/:handle', element: <OrganizationProfileRoute /> },
-          { path: '/orgs/:handle/public', element: <PublicAdminPage /> },
-          { path: '/orgs/:handle/member', element: <AuthenticatedRoute><PublicAdminPage dashboard view="members" /></AuthenticatedRoute> },
-          { path: '/orgs/:handle/organizer', element: <AuthenticatedRoute><PublicAdminPage dashboard view="organizers" /></AuthenticatedRoute> },
-          { path: '/orgs/:handle/attendee', element: <AuthenticatedRoute><PublicAdminPage dashboard view="attendees" /></AuthenticatedRoute> },
-          { path: '/orgs/:handle/volunteer', element: <AuthenticatedRoute><PublicAdminPage dashboard view="volunteers" /></AuthenticatedRoute> },
+          { path: '/orgs/:handle/public', element: <LegacyOrganizationRoute /> },
+          { path: '/orgs/:handle/member', element: <LegacyOrganizationRoute workspace /> },
+          { path: '/orgs/:handle/organizer', element: <LegacyOrganizationRoute workspace /> },
+          { path: '/orgs/:handle/attendee', element: <LegacyOrganizationRoute /> },
+          { path: '/orgs/:handle/volunteer', element: <LegacyOrganizationRoute /> },
           { path: '/orgs/:handle/dashboard', element: <AuthenticatedRoute><PublicAdminPage dashboard /></AuthenticatedRoute> },
           { path: '/users/:slug', element: <PublicContactPage /> },
           { path: '/contact/:slug', element: <LegacyPublicContactRoute /> },

@@ -58,10 +58,11 @@ it('harmonizes component aliases with core portal colors and respects explicit m
 
 it('provides distinct icon, avatar and background imagery for every named preset and rejects unsafe images',async()=>{
  const {standardOrganizationThemes}=await import('../../../shared/organizationThemes')
- const config={defaultTheme:'harbor',themes:standardOrganizationThemes}
+ const config={defaultTheme:'postcapitalist-corporate',themes:standardOrganizationThemes}
  expect(parseOrganizationThemes(config)).not.toBeNull()
  for(const theme of config.themes)expect(new Set(Object.values(theme.imagery!)).size).toBe(3)
- expect(new Set(config.themes.map(theme=>theme.imagery!.background)).size).toBe(3)
+ expect(new Set(config.themes.map(theme=>theme.imagery!.background)).size).toBe(2)
+ expect(config.themes.map(theme=>theme.name)).toEqual(['Postcapitalist Corporate','AnkhTech'])
  for(const url of ['javascript:alert(1)','data:image/svg+xml,bad','https://user:password@example.org/a.png','//example.org/a.png']){
   expect(parseOrganizationThemes({...config,themes:[{...config.themes[0],imagery:{...config.themes[0].imagery,icon:url}}]})).toBeNull()
  }

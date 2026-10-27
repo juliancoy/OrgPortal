@@ -1,0 +1,12 @@
+{
+  "generation": "Built-in image_gen tool; icons and wordmark use existing raster identity and native SVG geometry.",
+  "coreColors": {
+    "HealthTech Teal": "#155E59",
+    "MedTech OffWhite": "#F4F5F0",
+    "BioTech Gold": "#D4AF37"
+  },
+  "prompts": {
+    "ankhtech-background": "Create a wide 3:2 landscape background artwork for LifeTech nonprofit portal theme AnkhTech. Elegant dark HealthTech teal #155E59 and deep ink #061A26 field, fine BioTech gold #D4AF37 circuit traces and restrained ankh-inspired looping geometry on the right half, subtle medical science / life symbolism, off-white #F4F5F0 small highlights. Refined editorial institutional identity, quiet generous negative space on left for UI text, no lettering, no logos, no typography, no watermarks. Crisp polished illustration, restrained depth, no neon.",
+    "postcapitalist-corporate-background": "Create a wide 3:2 landscape background artwork for LifeTech nonprofit portal theme Postcapitalist Corporate. Refined Swiss institutional design, warm off-white #F4F5F0 paper field, three bold parallel vertical bars in HealthTech teal #155E59, BioTech gold #D4AF37 and off-white, arranged on the right third within a restrained teal geometric composition so off-white bar stays visible. Confident nonprofit annual-report aesthetic, subtle paper texture and architectural geometry, flat matte colors with crisp edges, generous empty off-white left half for UI text. Comparable to an elegant science foundation cover. No text, no letters, no logos, no watermark, no gradients, no financial imagery."
+  }
+}

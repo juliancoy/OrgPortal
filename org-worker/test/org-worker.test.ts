@@ -1,3 +1,4 @@
+import { FullSchemaDb } from './helpers/fullSchemaDb';
 import assert from "node:assert/strict";
 import test from "node:test";
 import worker, { app, runUbiTick } from "../src/index";
@@ -2056,47 +2057,39 @@ test("organization admins can review feedback history", async () => {
   });
 });
 
-test("users can join and leave organization groups", async () => {
-  const db = new FakeD1();
-  db.organizations.push({
-    id: "org-1",
-    name: "Test Org",
-    slug: "test-org",
-    description: null,
-    source_url: null,
-    image_url: null,
-    tags: "[]",
-    city: null,
-    created_at: "2026-06-07T00:00:00.000Z",
-    updated_at: "2026-06-07T00:00:00.000Z",
+test("membership requests grant no access; members can leave without rejoining instantly", async (t) => {
+  const db = new FullSchemaDb();t.after(()=>db.sql.close());
+  db.sql.exec("INSERT INTO organizations(id,name,slug) VALUES('org-1','Test Org','test-org'),('org-2','Other','other'); INSERT INTO organization_memberships(organization_id,user_id,role,status) VALUES('org-1','manager','administrator','active'),('org-2','user-1','administrator','active')");
+  const environment = {...env(),DB:db.asD1()};
+  const request=(path:string,method='GET')=>app.request('https://org.example.test/api/network/orgs/'+path,{method,headers:{authorization:'Bearer user-token'}},environment);
+  await withPidpUser({id:'user-1',email:'user@example.test',full_name:'Test User'},async()=>{
+    for(let i=0;i<2;i++) {
+      const response=await request('test-org/membership','POST');assert.equal(response.status,200,await response.clone().text());
+      assert.deepEqual(await response.json(),{organization_id:'org-1',role:null,status:'pending',membership_count:1});
+    }
+    assert.equal(db.sql.prepare("SELECT count(*) AS n FROM organization_memberships WHERE organization_id='org-1' AND user_id='user-1'").get()!.n,0);
+    assert.equal((await request('org-1/membership-requests')).status,403);
+    assert.equal((await request('org-1/membership-requests/user-1','DELETE')).status,403);
+    assert.equal((await request('org-1/members')).status,403);
+    assert.equal((await request('org-1/membership','DELETE')).status,200);
+    assert.equal(db.sql.prepare('SELECT count(*) AS n FROM organization_membership_requests').get()!.n,0);
+    await request('org-1/membership','POST');
   });
-
-  await withPidpUser({ id: "user-1", email: "user@example.test", full_name: "Test User" }, async () => {
-    const joined = await app.request(
-      "https://org.example.test/api/network/orgs/test-org/membership",
-      { method: "POST", headers: { authorization: "Bearer user-token" } },
-      env(db),
-    );
-    assert.equal(joined.status, 200);
-    assert.deepEqual(await joined.json(), {
-      organization_id: "org-1",
-      role: "member",
-      status: "active",
-      membership_count: 1,
-    });
-
-    const left = await app.request(
-      "https://org.example.test/api/network/orgs/org-1/membership",
-      { method: "DELETE", headers: { authorization: "Bearer user-token" } },
-      env(db),
-    );
-    assert.equal(left.status, 200);
-    assert.deepEqual(await left.json(), {
-      organization_id: "org-1",
-      role: null,
-      status: "none",
-      membership_count: 0,
-    });
+  await withPidpUser({id:'manager',full_name:'Manager'},async()=>{
+    const queue=await request('org-1/membership-requests');assert.equal(queue.status,200);
+    assert.deepEqual(await queue.json(),[{user_id:'user-1',user_name:'Test User'}]);
+    assert.equal((await request('org-2/membership-requests')).status,403);
+    assert.equal((await request('org-1/membership-requests/user-1','DELETE')).status,200);
+    assert.equal(db.sql.prepare('SELECT count(*) AS n FROM organization_membership_requests').get()!.n,0);
+  });
+  db.sql.exec("INSERT INTO organization_memberships(organization_id,user_id,role,status) VALUES('org-1','user-1','member','active')");
+  await withPidpUser({id:'user-1',full_name:'Test User'},async()=>{
+    assert.equal((await (await request('org-1/membership','POST')).json() as Row).status,'active');
+    assert.equal((await (await request('org-1/membership','DELETE')).json() as Row).status,'none');
+    assert.equal((await (await request('org-1/membership','POST')).json() as Row).status,'pending');
+    assert.equal((await request('org-2/membership','DELETE')).status,409);
+    db.sql.exec('UPDATE organization_membership_requests SET expires_at=1');
+    assert.equal((await (await request('org-1/membership')).json() as Row).status,'none');
   });
 });
 

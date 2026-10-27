@@ -1,8 +1,8 @@
+import { OrganizationShareButton } from '../../components/OrganizationShareButton'
 import {OrganizationCandidateStar} from '../../components/OrganizationCandidateStar'
 import './organization-profile.css'
 import { organizationPageTabs, resolveOrganizationPageTab, type OrganizationPageTab } from './organizationPageTabs'
 import { organizationPageTheme } from '../../../config/organizationThemes'
-import { OrganizationViewSwitcher } from '../../components/OrganizationViewSwitcher'
 import { NeoNatalFocus } from '../../components/NeoNatalFocus'
 import { EventPosterTools } from '../../components/EventPosterTools'
 import { OrganizationBoard } from '../../components/OrganizationBoard'
@@ -19,7 +19,6 @@ import { OrganizationFollowButton } from '../../components/OrganizationFollowBut
 import { GroupMailingList, GroupEmailPreference } from '../email/GroupMailingList'
 import { groupOrganizationEvents } from './organizationEvents'
 import { EmbeddedOrganizationChat } from '../../components/EmbeddedOrganizationChat'
-import { resolveOrganizationPageView, useOrganizationViewPreference } from '../../hooks/useOrganizationView'
 import { OrganizationBranding } from '../../components/OrganizationBranding'
 import { getGroupSite,parseGroupSite,type GroupSite } from '../../../config/timebankCommunity'
 import { specialtyResourcesForTenant } from '../../../config/specialtyResources'
@@ -96,7 +95,7 @@ type OrganizationFeedbackReview = {
 type OrganizationMembership = {
   organization_id: string
   role: string | null
-  status: 'active' | 'none'
+  status: 'active' | 'pending' | 'none'
   membership_count: number
 }
 
@@ -181,7 +180,7 @@ function normalizeDomain(value: string) {
   return value.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '')
 }
 
-export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boolean; view?: string }) {
+export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) {
   const navigate = useNavigate()
   const { token } = useAuth()
   const { handle } = useParams()
@@ -238,13 +237,11 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
   const organizationEditorRef = useRef<HTMLDivElement | null>(null)
   const [showImageEditor, setShowImageEditor] = useState(false)
   const [editorSource, setEditorSource] = useState<string | null>(null)
-  const canManageCurrentOrg = Boolean(token && (operatorToken === token || (permissionToken === token && myAdminOrgs.some((item) => item.id === org?.id))))
+  const hasManagementAccess = Boolean(token && (operatorToken === token || (permissionToken === token && myAdminOrgs.some((item) => item.id === org?.id))))
+  const canManageCurrentOrg = dashboard && hasManagementAccess
   const orgTabs = organizationPageTabs(canManageCurrentOrg)
   const activeTab = resolveOrganizationPageTab(searchParams.get('tab'), canManageCurrentOrg)
-  const requestedView = useOrganizationViewPreference(org?.slug, view || searchParams.get('view'))
-  const organizationView = resolveOrganizationPageView(dashboard, requestedView, canManageCurrentOrg, membership?.status === 'active')
-  const isOrganizerView = canManageCurrentOrg && organizationView === 'organizers'
-  const isWorkspaceView = organizationView === 'members' || isOrganizerView
+  const isWorkspaceView = Boolean(dashboard && token && (hasManagementAccess || membership?.status === 'active'))
   useEffect(() => {
     if (!handle) return
     const canonicalUrl = currentOrgUrl(handle)
@@ -644,7 +641,7 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
       const payload = (await resp.json()) as OrganizationMembership
       setMembership(payload)
       setOrg((prev) => (prev ? { ...prev, membership_count: payload.membership_count } : prev))
-      setMembershipStatus(join ? 'You joined this group.' : 'You left this group.')
+      setMembershipStatus(join ? (payload.status === 'active' ? 'You are already a member.' : 'Membership requested. An organization manager must approve your request.') : 'Membership or request removed.')
     } catch (err) {
       setMembershipStatus(toUserFacingErrorMessage(err, 'Could not update group membership'))
     }
@@ -920,8 +917,12 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
           {site?.tagline && site.tagline !== org.description && <p className="organization-profile-tagline">{site.tagline}</p>}
         </div>
         <div className="organization-profile-actions">
+          <OrganizationShareButton key={org.slug} url={currentOrgUrl(org.slug)} />
           {Boolean(org.links?.length) && org.links!.filter(link=>!isRetiredOrganizationHref(link.url)).map(link=><a key={link.id} className={link.type === 'website' ? 'btn-primary' : 'btn-secondary'} href={link.url} target="_blank" rel="noopener noreferrer">{link.label || organizationLinkLabels[link.type]}</a>)}
           {org.source_url && !isRetiredOrganizationHref(org.source_url) && !org.links?.some(link=>link.url===org.source_url) && <a className="btn-primary" href={org.source_url} target="_blank" rel="noreferrer">Website</a>}
+          {token && membership?.status === 'active' && membership.role === 'member' && <button type="button" className="btn-secondary" onClick={()=>void updateOrganizationMembership(false)}>Leave group</button>}
+          {token && membership?.status === 'pending' && <button type="button" className="btn-secondary" onClick={()=>void updateOrganizationMembership(false)}>Cancel join request</button>}
+          {membershipStatus && <p role="status">{membershipStatus}</p>}
           {token && <OrganizationFollowButton orgId={org.id} slug={org.slug}/>}
           {dashboard && <Link className="btn-secondary" to={`/orgs/${encodeURIComponent(org.slug)}`}>Public profile</Link>}
         </div>
@@ -1002,9 +1003,8 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
         {activeTab==='community' && <div className="organization-community">
           <section className="organization-community-section">
             <h2>Community</h2>
-            {membership?.status==='active' ? <p className="muted">{membership.role==='member'?'You are a member of this organization.':'You manage this organization.'}</p> : token ? <button type="button" className="btn-primary" onClick={()=>void updateOrganizationMembership(true)}>Join Group</button> : <a className="btn-primary" href={pidpAppLoginUrl(`/orgs/${encodeURIComponent(org.slug)}?tab=community`)}>Sign in to participate</a>}
+            {membership?.status==='active' ? <p className="muted">{membership.role==='member'?'You are a member of this organization.':'You manage this organization.'}</p> : token ? <button type="button" className="btn-primary" disabled={membership?.status === 'pending'} onClick={()=>void updateOrganizationMembership(true)}>{membership?.status === 'pending' ? 'Request pending' : 'Request to join'}</button> : <a className="btn-primary" href={pidpAppLoginUrl(`/orgs/${encodeURIComponent(org.slug)}?tab=community`)}>Sign in to participate</a>}
             {membership?.status==='active' && membership.role==='member' && <button type="button" className="btn-secondary" onClick={()=>void updateOrganizationMembership(false)}>Leave Group</button>}
-            {membershipStatus && <p role="status">{membershipStatus}</p>}
             {org.claimed_by_user_id && (isWorkspaceView ? <EmbeddedOrganizationChat id={org.id} slug={org.slug} name={org.name}/> : token && membership?.status==='active' ? <Link className="btn-secondary" to={`/chat?start=org&org=${encodeURIComponent(org.slug)}`}>Open group conversation</Link> : <p className="muted">Members can take part in the group conversation.</p>)}
           </section>
           {token && <GroupEmailPreference organizationId={org.id}/>}
@@ -1059,7 +1059,6 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
             </div>
           ) : null}
           {isWorkspaceView && <section className="organization-community-section"><h2>Member tools</h2><OrganizationTools/></section>}
-          {(organizationView==='attendees'||organizationView==='volunteers') && <section className="organization-community-section"><h2>{organizationView==='volunteers'?'Volunteer workspace':'Attendee workspace'}</h2><button className="btn-secondary" onClick={()=>selectTab('events')}>Events and registration</button></section>}
           <details className="organization-community-section" onToggle={event=>setSupportOpen(event.currentTarget.open)}><summary>Support and contributions</summary>{supportOpen && <OrganizationSupport organizationId={org.id} slug={org.slug} canManage={canManageCurrentOrg}/>}</details>
           {!canManageCurrentOrg && membership?.role!=='owner' && <details className="organization-ownership"><summary>Organization ownership</summary>
             {org.is_disputed && <p>{org.pending_challenges_count} pending ownership claim{org.pending_challenges_count===1?'':'s'}.</p>}
@@ -1076,7 +1075,7 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
       </div>
       {canManageCurrentOrg && <div className="organization-profile-panel" role="tabpanel" id="org-panel-settings" aria-labelledby="org-tab-settings" hidden={activeTab !== 'settings'}>
         {activeTab==='settings' && <>
-          <div className="organization-profile-management"><OrganizationViewSwitcher organizationSlug={org.slug} manager/>{token && <OrganizationPageStatistics key={org.id} organizationId={org.id} token={token}/>}</div>
+          <div className="organization-profile-management">{token && <OrganizationPageStatistics key={org.id} organizationId={org.id} token={token}/>}</div>
           <GroupMailingList organizationId={org.id}/>
                     {canManageCurrentOrg && activeTab === 'settings' ? (
             <div

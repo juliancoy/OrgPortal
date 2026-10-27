@@ -65,7 +65,7 @@ the selected map beside the core brand swatches, and computes contrast from
 those mapped colors. PNG exports use the same selection and mapped paper/ink.
 
 Administrators can also select and save a named theme on the organization's
-**Branding** tab. Harbor Teal, Midnight Gold, and Botanical are included. Each
+**Branding** tab. Postcapitalist Corporate and AnkhTech replace the retired Harbor Teal, Midnight Gold, and Botanical presets. Configured organization themes supply the complete chooser; built-in presets are used only when none are saved. Each
 preset contains independent icon, avatar, and standard background imagery;
 each image can be replaced with a compressed upload. The selected default and
 per-theme `imagery: { icon, avatar, background }` are stored with `brandThemes`.
@@ -78,3 +78,9 @@ New posters use a geometric gradient composition. Descriptions are off by
 default in every format. Select **Description** in the poster's element controls
 and enable **Show description** to include one. Explicitly requested event
 agendas remain available; saved individual layouts are retained.
+
+LifeTech shares HealthTech Teal (`#155E59`), MedTech OffWhite (`#F4F5F0`),
+and BioTech Gold (`#D4AF37`) across both styles. The brand guide highlights these
+three core colors separately from supporting accessibility shades and theme mappings.
+Postcapitalist Corporate uses the three-bar identity; AnkhTech retains the medical
+ankh. Each provides a square icon, profile avatar, and landscape background.

@@ -1,3 +1,4 @@
+import {testSlowConnection} from './slow-connection-checks.mjs'
 import {testEventApplicants} from './event-applicants-checks.mjs'
 import {testEventStandings} from './event-standings-checks.mjs'
 import {testOrganizationProfile} from './organization-profile-checks.mjs'
@@ -21,6 +22,7 @@ await mkdir(output,{recursive:true})
 await testUploadImageCompression()
 const {server,base}=await fixtureServer(root,output)
 try{
+ await testSlowConnection(root,output)
  await testEventApplicants(base,join(output,'event-applicants'))
  await testEventStandings(base,join(output,'event-standings'),output)
  await testOrganizationThemes(base,join(output,'organization-themes'),output)

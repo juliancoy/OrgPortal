@@ -12,7 +12,7 @@ const roles=['icon','avatar','background'] as const
 const emptyFiles={icon:null,avatar:null,background:null}
 export function OrganizationBranding({organization,canManage=false,onSaved,embedded=false}:{organization:Organization;canManage?:boolean;onSaved?:()=>void;embedded?:boolean}) {
  const {token}=useAuth()
- const [tagline,setTagline]=useState(''),[accent,setAccent]=useState('#155e59'),[themeId,setThemeId]=useState('harbor')
+ const [tagline,setTagline]=useState(''),[accent,setAccent]=useState('#155e59'),[themeId,setThemeId]=useState(standardOrganizationThemes[0].id)
  const [imagery,setImagery]=useState<OrganizationThemeImagery>(standardOrganizationThemes[0].imagery!)
  const [files,setFiles]=useState<Record<keyof OrganizationThemeImagery,File|null>>(emptyFiles),[previews,setPreviews]=useState<Record<string,string>>({})
  const [busy,setBusy]=useState(false),[message,setMessage]=useState('')
@@ -37,7 +37,7 @@ export function OrganizationBranding({organization,canManage=false,onSaved,embed
  if(error)return <p role="alert">{error} <button className="btn-secondary" onClick={()=>setRevision(value=>value+1)}>Retry branding</button></p>
  if(result?.slug!==organization.slug)return <p role="status">Loading organization branding…</p>
  const configured=parseOrganizationThemes(result.site?.feature_config?.brandThemes)
- const themes=[...new Map([...standardOrganizationThemes,...(configured?.themes||[])].map(theme=>[theme.id,theme])).values()]
+ const themes=configured?.themes || standardOrganizationThemes
  const site:GroupSite=result.site||{id:organization.id,organization_id:organization.id,slug:organization.slug,hostname:window.location.hostname,name:organization.name,tagline:'',accent_color:'#155e59',brand_image_path:organization.image_url||'/images/org-placeholder.svg',home_url:new URL(`/orgs/${encodeURIComponent(organization.slug)}`,window.location.origin).href}
  return <>
  {canManage&&token&&<form className="portal-card organization-brand-editor" aria-label="Edit organization branding" onSubmit={async event=>{

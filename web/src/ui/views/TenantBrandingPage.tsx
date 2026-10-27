@@ -64,6 +64,8 @@ export function TenantBrandingPage({brandGuidePath='/branding',tenant:organizati
   ].filter((asset): asset is NonNullable<typeof asset> => Boolean(asset))
 
   const palette = resolveBrandPalette({ ...tenant, profile: profile.id, theme_color: profile.themeColor })
+  const coreLabels = new Set(['HealthTech Teal', 'MedTech OffWhite', 'BioTech Gold'])
+  const coreColors = palette.filter(color => coreLabels.has(color.label))
   const colors: BrandColor[] = [...palette, ...Object.entries(selectedTheme?.[colorMode] || {}).map(([label, value]) => ({ label: `${selectedTheme!.name} ${colorMode}: ${label}`, value }))]
 
   const brandColors = Object.fromEntries(lifetechBrand.colors.flatMap(color => {
@@ -158,8 +160,17 @@ export function TenantBrandingPage({brandGuidePath='/branding',tenant:organizati
         </select></label>
       </div> : null}
       {exportMessage ? <p role="status">{exportMessage}</p> : null}
+      {coreColors.length === 3 && <>
+        <h3>Three core colors</h3>
+        <p>HealthTech Teal, MedTech OffWhite, and BioTech Gold define both LifeTech themes. Use the supporting colors for readable text and controls.</p>
+        <div className="tenant-brand-core-colors">{coreColors.map(color => <button type="button" className="tenant-brand-core-color" key={color.label} aria-label={`Copy ${color.label} color ${color.value}`} onClick={() => void copyColor(color.value)}>
+          <span className="tenant-brand-core-swatch" style={{backgroundColor:color.value}} aria-hidden="true" />
+          <strong>{color.label}</strong><code>{color.value}</code><span aria-live="polite">{copiedColor === color.value ? 'Copied' : 'Copy hex'}</span>
+        </button>)}</div>
+        <h3>Supporting colors and theme mappings</h3>
+      </>}
       <div className="tenant-brand-colors">
-        {colors.map((color) => <button
+        {colors.filter(color => coreColors.length !== 3 || !coreLabels.has(color.label)).map((color) => <button
           type="button"
           className="tenant-brand-color"
           key={`${color.label}-${color.value}`}

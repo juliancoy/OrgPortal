@@ -101,3 +101,8 @@
 .organization-candidate-vote { min-width: 0; }
 .organization-candidate-stars[aria-pressed="true"] { border-color: var(--primary); }
 .organization-candidate-vote:has(.favorite-quota) { flex-basis: 100%; }
+
+.organization-share { display: inline-flex; align-items: center; flex-wrap: wrap; gap: .5rem; }
+.organization-share button { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; min-height: 44px; }
+.organization-share [role="status"] { font-size: .85rem; color: var(--text-secondary); }
+.organization-share [role="status"]:empty { display: none; }

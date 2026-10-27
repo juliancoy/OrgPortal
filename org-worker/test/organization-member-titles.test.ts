@@ -1,3 +1,4 @@
+import {gptContributor} from '../src/documents/lifetechGptSuggestions';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -163,5 +164,24 @@ test('Personnel includes the public signup team and a pending teammate without l
   const accepted=await read();assert.equal(accepted.people.length,2);assert.equal(accepted.people.filter(person=>person.pendingInvitation).length,0);
   await db.prepare("UPDATE organization_invitations SET status='pending',expires_at=0").run();assert.equal((await read()).people.length,2);
   await db.prepare("UPDATE event_submissions SET expires_at='2000-01-01'").run();assert.equal((await read()).people.length,0);
+ }finally{db.close()}
+});
+
+
+test('public personnel and board omit the bot identity without changing its access or hiding people named ChatGPT',async()=>{
+ const db=fixture(),d1=db as unknown as D1Database;
+ try{
+  await db.prepare("INSERT INTO organization_memberships(organization_id,user_id,user_name,role,status,titles_json) VALUES('org-one',?,'Renamed assistant','member','active','[\"Advisor\"]')").bind(gptContributor.id).run();
+  await db.prepare("INSERT INTO organization_memberships(organization_id,user_id,user_name,role,status,titles_json) VALUES('org-one','human','ChatGPT','member','active','[\"Advisor\"]')").run();
+  await db.prepare("INSERT INTO organization_personnel_relationships VALUES('org-one',?,'corporation','advisor','Bot advisor','Renamed assistant','active',?)").bind(gptContributor.id,Date.now()+86400000).run();
+  const routes=organizationMemberTitleRoutes(async()=>({id:'outsider'}),()=>new Response('Denied',{status:403}));
+  for(const view of ['board','personnel']){
+   const response=await routes.request(`https://example.test/public/one/${view}`,{}, {DB:d1} as Env);
+   assert.equal(response.status,200);
+   const data=await response.json() as {people:{name:string}[]};
+   assert.ok(data.people.some(person=>person.name==='ChatGPT'));
+   assert.ok(!data.people.some(person=>person.name==='Renamed assistant'));
+  }
+  assert.equal((await db.prepare('SELECT status FROM organization_memberships WHERE user_id=?').bind(gptContributor.id).first() as {status:string}).status,'active');
  }finally{db.close()}
 });

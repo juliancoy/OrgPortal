@@ -66,14 +66,14 @@ test('administrators save named theme imagery, reject malformed themes and prese
  const f=fixture();t.after(()=>f.db.sqlite.close());let actor='owner';
  t.mock.method(globalThis,'fetch',async()=>Response.json(identityProfile({id:actor,full_name:'Brand administrator'})));
  const {standardOrganizationThemes}=await import('../../shared/organizationThemes');
- const themes={defaultTheme:'midnight',themes:standardOrganizationThemes};
+ const themes={defaultTheme:'ankhtech',themes:standardOrganizationThemes};
  const save=(brandThemes:unknown)=>app.request('https://medtech.social/api/network/orgs/org/portal',{method:'PUT',headers:{authorization:'Bearer session','content-type':'application/json'},body:JSON.stringify({name:'LifeTech',slug:'lifetech',brandThemes,brand_image_path:'https://example.org/icon.svg',home_image_url:'https://example.org/background.webp'})},f.env);
  f.db.sqlite.exec("INSERT INTO organization_memberships(organization_id,user_id,role,status) VALUES('org','admin','administrator','active'),('org','member','member','active');UPDATE group_sites SET feature_config=json_set(feature_config,'$.onboarding.enabled',json('true')) WHERE organization_id='org'");
  actor='admin';assert.equal((await save(themes)).status,200);
  const row=f.db.sqlite.prepare("SELECT feature_config,brand_image_path,home_image_url FROM group_sites WHERE organization_id='org'").get()!;
- const config=JSON.parse(String(row.feature_config));assert.equal(config.brandThemes.defaultTheme,'midnight');assert.equal(config.onboarding.enabled,true);assert.equal(config.brandThemes.themes[0].imagery.icon,standardOrganizationThemes[0].imagery!.icon);
+ const config=JSON.parse(String(row.feature_config));assert.equal(config.brandThemes.defaultTheme,'ankhtech');assert.equal(config.onboarding.enabled,true);assert.equal(config.brandThemes.themes[0].imagery.icon,standardOrganizationThemes[0].imagery!.icon);
  assert.equal(row.brand_image_path,'https://example.org/icon.svg');assert.equal(row.home_image_url,'https://example.org/background.webp');
  assert.equal((await save({...themes,defaultTheme:'missing'})).status,400);
  actor='member';assert.equal((await save(themes)).status,403);
- assert.equal(JSON.parse(String(f.db.sqlite.prepare("SELECT feature_config FROM group_sites WHERE organization_id='org'").get()!.feature_config)).brandThemes.defaultTheme,'midnight');
+ assert.equal(JSON.parse(String(f.db.sqlite.prepare("SELECT feature_config FROM group_sites WHERE organization_id='org'").get()!.feature_config)).brandThemes.defaultTheme,'ankhtech');
 });

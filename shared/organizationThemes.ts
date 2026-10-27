@@ -53,13 +53,13 @@ export function portalThemeColors(colors: Record<string, string>): Record<string
   return { ...result, ...colors }
 }
 
-const preset = (id:string,name:string,primary:string,darkPrimary:string,background:string):OrganizationTheme => ({
- id,name,light:{primary,'on-primary':'#FFFFFF',surface:'#F4F5F0',panel:'#FFFFFF','panel-2':'#E9EFEB','text-primary':'#142A31','text-secondary':'#425B61',border:'#9BAEB0'},
- dark:{primary:darkPrimary,'on-primary':'#10232B',surface:background,panel:background,'panel-2':'#19353F','text-primary':'#F4F5F0','text-secondary':'#C0D4D6',border:'#54727A'},
+const preset = (id:string,name:string):OrganizationTheme => ({
+ id,name,
+ light:{primary:'#155E59','on-primary':'#F4F5F0',surface:'#F4F5F0',panel:'#FFFFFF','panel-2':'#E5F2EE','text-primary':'#061A26','text-secondary':'#465D65',border:'#60817C','brand-gold':'#D4AF37','brand-teal':'#155E59','brand-offwhite':'#F4F5F0'},
+ dark:{primary:'#7BDDCF','on-primary':'#061A26',surface:'#061A26',panel:'#0B2733','panel-2':'#123C43','text-primary':'#F4F5F0','text-secondary':'#AFC9CE',border:'#60817C','brand-gold':'#D4AF37','brand-teal':'#155E59','brand-offwhite':'#F4F5F0'},
  imagery:{icon:`/images/organization-themes/${id}-icon.webp`,avatar:`/images/organization-themes/${id}-avatar.webp`,background:`/images/organization-themes/${id}-background.webp`},
 })
 export const standardOrganizationThemes:OrganizationTheme[] = [
- preset('harbor','Harbor Teal','#155E59','#79D9CE','#081F29'),
- preset('midnight','Midnight Gold','#735600','#E6C667','#161D30'),
- preset('botanical','Botanical','#355D3B','#ACD7A0','#122B24'),
+ preset('postcapitalist-corporate','Postcapitalist Corporate'),
+ {...preset('ankhtech','AnkhTech'),light:{...preset('ankhtech','AnkhTech').light,panel:'#F4F5F0','panel-2':'#E0EEEA'},dark:{...preset('ankhtech','AnkhTech').dark,primary:'#D4AF37','panel-2':'#155E59'}},
 ]

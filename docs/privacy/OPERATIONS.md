@@ -334,6 +334,13 @@ submission never grants access to an existing organization. Explicit confirmatio
 creates a new owned team and a pending invitation for the supplied teammate. Existing
 unclaimed applications are not sent thank-you emails retroactively.
 
+Membership requests use the private `organization_membership_requests` store.
+Account erasure must delete by `user_id`, including independent backups/exports;
+restore must reapply deletions and 30-day expiry. Cancellation/decline deletes
+immediately and the bounded retention job removes expired requests. Migration
+0127 and production cron verification are pending; source checks are not proof
+of deployed cleanup.
+
 ## Email-only LifeTech newsletter
 
 The public `/api/email/newsletter` endpoint uses the existing private

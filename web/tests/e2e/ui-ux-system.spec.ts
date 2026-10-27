@@ -324,16 +324,16 @@ test.describe('Code Collective UI and UX system coverage', () => {
     expect(destination.searchParams.has('provider')).toBe(false)
   })
 
-  test('organizations page prioritizes and filters the signed-in user organizations', async ({ page }) => {
+  test('organizations page prioritizes memberships without introductory tools or filter tabs', async ({ page }) => {
     await page.goto('/orgs')
 
     await expect(page.locator('article').first().getByRole('heading', { name: 'Code Collective' })).toBeVisible()
     await expect(page.locator('article').first()).toContainText('Your organization')
 
-    await page.getByRole('button', { name: 'Your organizations' }).click()
-    await expect(page.locator('article')).toHaveCount(1)
-    await expect(page.getByRole('heading', { name: 'Code Collective' })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Neighborhood Assembly' })).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: 'Neighborhood Assembly' })).toBeVisible()
+    await expect(page.getByRole('group', { name: 'Organization list filters' })).toHaveCount(0)
+    await expect(page.getByText('Browse registered organizations and their claimed links.', { exact: true })).toHaveCount(0)
+    await expect(page.locator('.organization-directory').getByRole('navigation')).toHaveCount(0)
   })
 
   test('users directory searches and starts a DM with a user who has no public profile', async ({ page }) => {

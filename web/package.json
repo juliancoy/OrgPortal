@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "test:slow-network": "node scripts/slow-connection-checks.mjs",
     "test:status": "node ../scripts/test-status.mjs run",
     "pretest:status": "node ../scripts/build-test-catalog.mjs",
     "test:status:checks": "node ../scripts/test-status.mjs checks",

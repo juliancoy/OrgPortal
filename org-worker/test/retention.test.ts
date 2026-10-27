@@ -21,6 +21,10 @@ test('expiry units, bounds, dry-run, retries and unresolved operations',async()=
  sql.exec('CREATE TABLE organization_personnel_relationships(id TEXT PRIMARY KEY,expires_at INTEGER); INSERT INTO organization_personnel_relationships VALUES (\'expired\',1),(\'live\',2000000000000);');
  sql.exec('CREATE TABLE portal_account_activity(user_id TEXT PRIMARY KEY,last_active_at INTEGER);');
  sql.exec('CREATE TABLE mcp_live_statistics(day TEXT);');
+ sql.exec("CREATE TABLE organizations(id TEXT PRIMARY KEY); INSERT INTO organizations VALUES('org');");
+ sql.exec(readFileSync(new URL('../migrations/0127_membership_requests.sql',import.meta.url),'utf8'));
+ sql.prepare('INSERT INTO organization_membership_requests VALUES (?,?,?,?)').run('org','expired','Dummy',1);
+ sql.prepare('INSERT INTO organization_membership_requests VALUES (?,?,?,?)').run('org','live','Dummy',1900000000000);
  sql.exec('CREATE TABLE organization_invitations(id TEXT PRIMARY KEY,expires_at INTEGER);');
  sql.exec('CREATE TABLE organization_page_view_days(organization_id TEXT,day TEXT,views INTEGER);');
  sql.prepare('INSERT INTO organization_invitations VALUES (?,?)').run('expired-invitation',1);
@@ -70,6 +74,8 @@ test('expiry units, bounds, dry-run, retries and unresolved operations',async()=
  assert.equal(first.organization_recognition_ballots,1);
  assert.equal(first.organization_volunteer_awards,1);
  assert.equal(first.organization_invitations,1);
+ assert.equal(first.organization_membership_requests,1);
+ assert.equal(sql.prepare('SELECT user_id FROM organization_membership_requests').get()!.user_id,'live');
  assert.equal(first.organization_personnel_relationships,1);
  assert.equal(sql.prepare('SELECT id FROM organization_personnel_relationships').get()!.id,'live');
  for(const name of ['email_engagement','email_segments','email_mailing_audit','email_campaign_previews']){assert.equal(first[name],1);assert.equal(sql.prepare(`SELECT id FROM ${name}`).get()!.id,'valid')}

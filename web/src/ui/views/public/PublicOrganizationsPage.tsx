@@ -2,7 +2,6 @@ import './organizationDirectory.css'
 import { invalidatePublicOrganizationData } from '../../../data/publicOrganization/cache'
 import { loadPublicOrganizationDirectory, peekPublicOrganizationDirectory } from '../../../data/publicOrganization/organizations'
 import { shortGroupName } from '../../../domain/organization/groupNames'
-import { OrganizationTools } from '../../components/OrganizationTools'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
@@ -54,7 +53,6 @@ export function PublicOrganizationsPage() {
   const [orgs, setOrgs] = useState<PublicOrganizationListItem[]>(cachedOrgs || [])
   const [myOrgRoles, setMyOrgRoles] = useState<Map<string, string>>(new Map())
   const [visibleCount, setVisibleCount] = useState(300)
-  const [showMineOnly, setShowMineOnly] = useState(false)
   const [status, setStatus] = useState<string>(cachedOrgs ? '' : 'Loading organizations…')
   const [membershipStatus, setMembershipStatus] = useState<string>('')
 
@@ -71,7 +69,6 @@ export function PublicOrganizationsPage() {
     let cancelled = false
     if (!token) {
       setMyOrgRoles(new Map())
-      setShowMineOnly(false)
       return () => {
         cancelled = true
       }
@@ -117,14 +114,14 @@ export function PublicOrganizationsPage() {
     })
   }, [myOrgRoles, orgs])
 
-  const visibleOrgs = useMemo(() => {
-    if (!showMineOnly) return sortedOrgs
-    return sortedOrgs.filter((org) => myOrgRoles.has(org.slug))
-  }, [myOrgRoles, showMineOnly, sortedOrgs])
 
   useEffect(() => {
     const controller = new AbortController()
-    void loadPublicOrganizationDirectory<PublicOrganizationListItem>({signal:controller.signal})
+    void loadPublicOrganizationDirectory<PublicOrganizationListItem>({signal:controller.signal,onPage: rows => {
+      if (controller.signal.aborted) return
+      setOrgs(Array.from(new Map(rows.map(org => [org.slug, org])).values()))
+      setStatus('Loading more organizations…')
+    }})
       .then((data) => {
         const incoming = Array.isArray(data) ? data : []
         const uniqueOrgs = Array.from(new Map(incoming.map((org) => [org.slug, org])).values()).sort((a, b) => {
@@ -160,7 +157,7 @@ export function PublicOrganizationsPage() {
         const text = await resp.text().catch(() => '')
         throw new Error(text || `Membership update failed (${resp.status})`)
       }
-      const payload = (await resp.json()) as { status: 'active' | 'none'; membership_count: number }
+      const payload = (await resp.json()) as { status: 'active' | 'pending' | 'none'; membership_count: number }
       await invalidatePublicOrganizationData()
       setMyOrgRoles((prev) => {
         const next = new Map(prev)
@@ -178,7 +175,7 @@ export function PublicOrganizationsPage() {
             : item,
         ),
       )
-      setMembershipStatus(join ? `Joined ${org.name}.` : `Left ${org.name}.`)
+      setMembershipStatus(join ? `Membership requested for ${org.name}. A manager must approve it.` : `Left ${org.name}.`)
     } catch (err) {
       setMembershipStatus(err instanceof Error ? err.message : 'Could not update group membership.')
     }
@@ -205,38 +202,10 @@ export function PublicOrganizationsPage() {
 
   return (
     <section className="organization-directory" style={{ display: 'grid', gap: '1rem' }}>
-      <h1 style={{ marginTop: 0 }}>Organizations</h1>
-      <p className="muted" style={{ marginTop: 0 }}>
-        Browse registered organizations and their claimed links.
-      </p>
-      <OrganizationTools />
-      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }} role="group" aria-label="Organization list filters">
-        <button
-          type="button"
-          className={!showMineOnly ? 'btn-primary' : 'btn-secondary'}
-          onClick={() => setShowMineOnly(false)}
-          aria-pressed={!showMineOnly}
-        >
-          All organizations
-        </button>
-        <button
-          type="button"
-          className={showMineOnly ? 'btn-primary' : 'btn-secondary'}
-          onClick={() => setShowMineOnly(true)}
-          disabled={!token}
-          aria-pressed={showMineOnly}
-        >
-          Your organizations
-        </button>
-        {!token ? (
-          <a href={pidpAppLoginUrl('/orgs')} style={{ alignSelf: 'center' }}>
-            Sign in to filter yours
-          </a>
-        ) : null}
-      </div>
+      <h1 className="sr-only">Organizations</h1>
       {status ? <p className="muted">{status}</p> : null}
       {membershipStatus ? <p className="muted" role="status">{membershipStatus}</p> : null}
-      {!status && visibleOrgs.length === 0 ? (
+      {!status && sortedOrgs.length === 0 ? (
         <p className="muted organization-directory-empty">No organizations were found.</p>
       ) : null}
       <div
@@ -245,7 +214,7 @@ export function PublicOrganizationsPage() {
           gap: '0.9rem',
         }}
       >
-        {visibleOrgs.slice(0, visibleCount).map((org) => (
+        {sortedOrgs.slice(0, visibleCount).map((org) => (
           <article
             key={org.id}
             className="portal-card organization-directory-card"
@@ -270,7 +239,7 @@ export function PublicOrganizationsPage() {
             />
             <div style={{ display: 'grid', gap: '0.45rem', minWidth: 0, maxWidth: '100%', flex: '1 1 200px' }}>
               <h2 style={{ margin: 0, fontSize: '1.1rem' }}>
-                <Link to={`/orgs/${org.slug}`} style={{ textDecoration: 'none' }}>
+                <Link className="organization-directory-link" to={`/orgs/${org.slug}`} style={{ textDecoration: 'none' }}>
                   <span title={org.name}>{shortGroupName(org.name)}</span>
                 </Link>
               </h2>
@@ -321,7 +290,7 @@ export function PublicOrganizationsPage() {
                     ? 'Managing'
                     : myOrgRoles.has(org.slug)
                       ? 'Leave Group'
-                      : 'Join Group'}
+                      : 'Request to join'}
                 </button>
                 <Link to={`/orgs/${org.slug}`} style={{ textDecoration: 'none' }}>
                   Give Feedback
@@ -348,7 +317,7 @@ export function PublicOrganizationsPage() {
           </article>
         ))}
       </div>
-      {visibleOrgs.length > visibleCount && <button type="button" className="btn-secondary" onClick={() => setVisibleCount(count => count + 300)}>Show more organizations</button>}
+      {sortedOrgs.length > visibleCount && <button type="button" className="btn-secondary" onClick={() => setVisibleCount(count => count + 300)}>Show more organizations</button>}
     </section>
   )
 }

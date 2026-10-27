@@ -67,3 +67,20 @@ it('restores complete resident directories synchronously without exposing partia
  resident[0].name='Changed by a renderer'
  expect(peekPublicOrganizationDirectory()![0].name).toBe('Organization 0')
 })
+
+
+it('publishes the first directory page before later pages finish, with independent snapshots', async () => {
+ const first=Array.from({length:500},(_,n)=>({id:`org-${n}`,name:`Organization ${n}`,slug:`org-${n}`}))
+ let finish!: (response: Response) => void
+ vi.stubGlobal('fetch',vi.fn(async (url:string)=>url.endsWith('offset=0')?Response.json(first):new Promise<Response>(resolve=>{finish=resolve})))
+ const pages: {id:string;name:string;slug:string}[][]=[]
+ const loading=loadPublicOrganizationDirectory({onPage:rows=>{pages.push(rows);rows[0].name='UI mutation'}})
+ await vi.waitFor(()=>expect(finish).toBeTypeOf('function'))
+ expect(pages).toHaveLength(1)
+ expect(pages[0]).toHaveLength(500)
+ finish(Response.json([{id:'last',name:'Last',slug:'last'}]))
+ const complete=await loading
+ expect(complete).toHaveLength(501)
+ expect(complete[0].name).toBe('Organization 0')
+ expect(pages).toHaveLength(2)
+})

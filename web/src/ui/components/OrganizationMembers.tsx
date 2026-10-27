@@ -26,6 +26,7 @@ export function OrganizationMembers({ organizationId, name, canRead, canManage, 
   const { token } = useAuth()
   const personnelFor = useOrganizationPersonnel(organizationId)
   const searchId = useId()
+  const [requests, setRequests] = useState<NetworkUser[]>([])
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -61,6 +62,26 @@ export function OrganizationMembers({ organizationId, name, canRead, canManage, 
       .finally(() => { if (!controller.signal.aborted) setLoading(false) })
     return () => controller.abort()
   }, [url, token, canRead, membershipCount, revision, memberType])
+
+  useEffect(() => {
+    setRequests([])
+    if (!token || !canManage) return
+    const controller = new AbortController()
+    void fetch(`/api/org/api/network/orgs/${encodeURIComponent(organizationId)}/membership-requests`, {headers:{Authorization:`Bearer ${token}`},signal:controller.signal})
+      .then(readResponse<NetworkUser[]>).then(setRequests)
+      .catch(err=>{if(!controller.signal.aborted)setError(toUserFacingErrorMessage(err,'Could not load join requests.'))})
+    return ()=>controller.abort()
+  }, [organizationId, token, canManage, revision])
+
+  async function declineRequest(person: NetworkUser) {
+    if (!token || adding) return
+    setAdding(person.user_id)
+    try {
+      await readResponse(await fetch(`/api/org/api/network/orgs/${encodeURIComponent(organizationId)}/membership-requests/${encodeURIComponent(person.user_id)}`,{method:'DELETE',headers:{Authorization:`Bearer ${token}`}}))
+      setRevision(value=>value+1)
+    } catch(err) {setSearchError(toUserFacingErrorMessage(err,'Could not decline request.'))}
+    finally {setAdding(null)}
+  }
 
   useEffect(() => {
     if (!searchOffset) setPeople([]); setNextSearchOffset(null); setSearchError(''); setSearching(false)
@@ -114,6 +135,7 @@ export function OrganizationMembers({ organizationId, name, canRead, canManage, 
   if(!canManage && !error && ((!canRead && membershipCount === 0) || (canRead && !loading && members.length === 0)))return null
   return <details className="personnel-member-tools"><summary>{canManage ? 'Edit profiles and member access' : 'Member directory'}</summary><section className="portal-card organization-members" aria-label={`${memberLabel} members`}>
     <h2>{memberLabel} members <span className="muted">({canRead && !loading && !error ? members.length : membershipCount})</span></h2>
+    {canManage && requests.length > 0 && <section aria-label="Join requests"><h3>Join requests</h3><p>Requests grant no access until you approve them.</p><ul>{requests.map(person=><li key={person.user_id}>{person.user_name || person.user_id} <button type="button" disabled={!!adding || !!preview} onClick={()=>void assignMember(person,'member')}>Review request</button> <button type="button" disabled={!!adding || !!preview} onClick={()=>void declineRequest(person)}>Decline</button></li>)}</ul></section>}
     {!canRead ? <p className="muted">{token ? `Join ${name} to see ${memberType} members.` : <><SignInLink /> to see {memberType} members.</>}</p> : <>
       {loading && <p role="status">Loading members…</p>}
       {error && <p role="alert">{error} <button type="button" onClick={() => setRevision(value => value + 1)}>Retry</button></p>}

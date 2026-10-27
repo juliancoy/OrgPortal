@@ -496,3 +496,14 @@ memberships follow the existing organization lifecycle; proposal expiry does not
 delete that separately owned organization or accepted memberships. Invitation
 expiry and recipient verification/acceptance use the existing seven-day invitation
 workflow. Ambiguous invitation sends are not automatically duplicated.
+
+### Organization membership requests
+
+`organization_membership_requests` holds organization/account IDs and the
+requester's display name for manager review. Requests expire after 30 days and
+the bounded retention job deletes expired rows. Cancellation and manager decline
+remove them immediately; organization deletion cascades. Approved members no
+longer appear in the queue. Include this private store in account erasure by
+`user_id`; exclude it from public replicas and immutable exports. Restore must
+reapply expiry and verified erasures before serving requests. Production migration
+0127 and scheduled cleanup remain unverified until deployment.

@@ -1,3 +1,4 @@
+import { gptContributor } from './documents/lifetechGptSuggestions';
 import { classLabel } from './personnelRelationships';
 import type { PersonnelScheme } from '../../shared/organizationPersonnel';
 import {readMemberTitles,readMemberPortrait} from '../../shared/organizationMemberTitles';
@@ -61,14 +62,16 @@ export function organizationMemberTitleRoutes(auth:(env:Env,request:Request)=>Pr
   // Submission rosters already publish active team names. Keep Personnel in sync
   // without publishing unrelated private members or invitation email addresses.
   const submittedTeam=c.req.param('view')==='personnel'&&!!await c.env.DB.prepare("SELECT 1 AS published FROM event_submissions WHERE organization_id=? AND expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') LIMIT 1").bind(org.id).first();
+  // Service identities retain access but are not public personnel. Match the
+  // verified account ID so renaming the bot cannot publish it as a person.
   const rows=await c.env.DB.prepare(`SELECT m.user_id,m.user_name,m.role,m.titles_json,m.portrait_json,m.description,CASE WHEN c.enabled=1 OR json_array_length(m.titles_json)>0 OR NULLIF(trim(m.description),'') IS NOT NULL OR m.portrait_json IS NOT NULL THEN c.user_name END AS profile_name,
    (SELECT decision FROM organization_personnel_motions WHERE organization_id=? AND target_user_id=m.user_id AND status='passed' ORDER BY updated_at DESC,id DESC LIMIT 1) AS conduct_decision,
    CASE WHEN c.enabled=1 THEN c.photo_url END AS photo_url,CASE WHEN c.enabled=1 THEN c.slug END AS profile_slug,
    CASE WHEN c.enabled=1 THEN COALESCE(NULLIF(trim(c.bio),''),c.headline) END AS public_bio
    FROM organization_memberships m LEFT JOIN user_contact_pages c ON c.user_id=m.user_id
-   WHERE m.organization_id=? AND m.status='active' AND (json_array_length(m.titles_json)>0 OR NULLIF(trim(m.description),'') IS NOT NULL OR (?=1 AND (c.enabled=1 OR m.portrait_json IS NOT NULL OR ?=1)))
+   WHERE m.organization_id=? AND m.status='active' AND m.user_id<>? AND (json_array_length(m.titles_json)>0 OR NULLIF(trim(m.description),'') IS NOT NULL OR (?=1 AND (c.enabled=1 OR m.portrait_json IS NOT NULL OR ?=1)))
    ORDER BY CASE m.role WHEN 'owner' THEN 0 WHEN 'administrator' THEN 1 ELSE 2 END,lower(COALESCE(NULLIF(m.user_name,''),c.user_name,'')),m.user_id LIMIT 500`)
-   .bind(org.id,org.id,c.req.param('view')==='personnel'?1:0,submittedTeam?1:0).all<{conduct_decision:string|null;user_id:string;user_name:string|null;role:string;titles_json:string;portrait_json:string|null;description:string|null;public_bio:string|null;profile_name:string|null;photo_url:string|null;profile_slug:string|null}>();
+   .bind(org.id,org.id,gptContributor.id,c.req.param('view')==='personnel'?1:0,submittedTeam?1:0).all<{conduct_decision:string|null;user_id:string;user_name:string|null;role:string;titles_json:string;portrait_json:string|null;description:string|null;public_bio:string|null;profile_name:string|null;photo_url:string|null;profile_slug:string|null}>();
   const people=await Promise.all(rows.results.map(async row=>{
    const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(`${org.id}:${row.user_id}`));
    return {id:Array.from(new Uint8Array(digest),byte=>byte.toString(16).padStart(2,'0')).join(''),
@@ -80,7 +83,7 @@ export function organizationMemberTitleRoutes(auth:(env:Env,request:Request)=>Pr
   }));
   const relations=await c.env.DB.prepare(`SELECT r.user_id,r.user_name,r.scheme,r.class_key,r.role_name,c.photo_url,c.slug AS profile_slug
    FROM organization_personnel_relationships r LEFT JOIN user_contact_pages c ON c.user_id=r.user_id AND c.enabled=1
-   WHERE r.organization_id=? AND r.status='active' AND r.expires_at>? LIMIT 500`).bind(org.id,Date.now()).all<{user_id:string;user_name:string;scheme:PersonnelScheme;class_key:string;role_name:string|null;photo_url:string|null;profile_slug:string|null}>();
+   WHERE r.organization_id=? AND r.status='active' AND r.expires_at>? AND r.user_id<>? LIMIT 500`).bind(org.id,Date.now(),gptContributor.id).all<{user_id:string;user_name:string;scheme:PersonnelScheme;class_key:string;role_name:string|null;photo_url:string|null;profile_slug:string|null}>();
   for(const row of relations.results){
    const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(`${org.id}:${row.user_id}`));
    const id=Array.from(new Uint8Array(digest),byte=>byte.toString(16).padStart(2,'0')).join('');

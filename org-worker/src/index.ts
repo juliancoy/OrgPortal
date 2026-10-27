@@ -1,3 +1,4 @@
+import { requestMembership, hasMembershipRequest, membershipRequests, removeMembershipRequest } from './membershipRequests';
 import { organizationCandidates } from './organizationCandidates';
 import { parseOrganizationThemes } from '../../shared/organizationThemes';
 import { supportRoutes } from './supportTickets';
@@ -247,7 +248,7 @@ type OrganizationFeedbackRow = {
 type OrganizationMembershipState = {
   organization_id: string;
   role: string | null;
-  status: "active" | "none";
+  status: "active" | "pending" | "none";
   membership_count: number;
 };
 
@@ -1914,7 +1915,7 @@ async function organizationMembershipState(db: D1Database, organizationId: strin
   return {
     organization_id: organizationId,
     role: membership?.role || null,
-    status: membership?.role ? "active" : "none",
+    status: membership?.role ? "active" : await hasMembershipRequest(db, organizationId, userId) ? "pending" : "none",
     membership_count: Number(count?.n || 0),
   };
 }
@@ -3754,18 +3755,10 @@ app.post("/api/network/orgs/:organizationId/membership", async (c) => {
   const user = await currentUser(c.env, c.req.raw);
   const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
   if (!row) fail(404, "Organization not found");
-  const timestamp = nowIso();
-  await c.env.DB.prepare(
-    `INSERT INTO organization_memberships (organization_id, user_id, user_name, user_email, role, status, created_at, updated_at)
-     VALUES (?, ?, ?, ?, 'member', 'active', ?, ?)
-     ON CONFLICT(organization_id, user_id) DO UPDATE SET
-      user_name = excluded.user_name,
-      user_email = excluded.user_email,
-      status = 'active',
-      updated_at = excluded.updated_at`,
-  )
-    .bind(row.id, user.id, userName(user), user.email || null, timestamp, timestamp)
-    .run();
+  const membership = await organizationMembershipState(c.env.DB, row.id, user.id);
+  if (membership.status !== "active") {
+    await requestMembership(c.env.DB, row.id, user.id, userName(user));
+  }
   return c.json(await organizationMembershipState(c.env.DB, row.id, user.id));
 });
 
@@ -3777,12 +3770,29 @@ app.delete("/api/network/orgs/:organizationId/membership", async (c) => {
   if (membership.role === "owner" || membership.role === "administrator") {
     fail(409, "Organization admins must transfer or remove admin access before leaving");
   }
+  await removeMembershipRequest(c.env.DB, row.id, user.id);
   await c.env.DB.prepare(
     "UPDATE organization_memberships SET status = 'inactive', updated_at = ? WHERE organization_id = ? AND user_id = ? AND role = 'member'",
   )
     .bind(nowIso(), row.id, user.id)
     .run();
   return c.json(await organizationMembershipState(c.env.DB, row.id, user.id));
+});
+
+app.get("/api/network/orgs/:organizationId/membership-requests", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
+  if (!row) fail(404, "Organization not found");
+  await authorizeOrganization(c.env.DB, organizationActor(user, c.env), "manage", row.id);
+  return c.json(await membershipRequests(c.env.DB, row.id));
+});
+app.delete("/api/network/orgs/:organizationId/membership-requests/:userId", async (c) => {
+  const user = await currentUser(c.env, c.req.raw);
+  const row = await organizationByIdOrSlug(c.env.DB, c.req.param("organizationId"));
+  if (!row) fail(404, "Organization not found");
+  await authorizeOrganization(c.env.DB, organizationActor(user, c.env), "manage", row.id);
+  await removeMembershipRequest(c.env.DB, row.id, c.req.param("userId"));
+  return c.json({ok:true});
 });
 
 app.get("/api/network/orgs/:organizationId/portal", async (c) => {

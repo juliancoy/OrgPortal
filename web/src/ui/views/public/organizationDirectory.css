@@ -13,3 +13,10 @@
 }
 
 .organization-directory-empty { padding: 48px 24px; text-align: center; border: 1px dashed var(--border); border-radius: 14px; background: var(--surface-soft); }
+
+/* One native link covers the card; independent actions stay above its hit area. */
+.organization-directory-card { position: relative; isolation: isolate; }
+.organization-directory-link::after { content: ''; position: absolute; inset: 0; z-index: 1; border-radius: 14px; cursor: pointer; }
+.organization-directory-card a:not(.organization-directory-link),
+.organization-directory-card button { position: relative; z-index: 2; }
+.organization-directory-link:focus-visible::after { outline: 3px solid var(--primary); outline-offset: 3px; }

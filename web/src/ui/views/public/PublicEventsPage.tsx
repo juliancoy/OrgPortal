@@ -1,3 +1,4 @@
+import { loadPublicEventFeed } from '../../../data/publicOrganization/events'
 import {EventStandings} from '../../components/EventStandings'
 import { useEffect, useMemo, useState, type KeyboardEvent, type MouseEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -108,7 +109,7 @@ export function PublicEventsPage({
     setEvents([])
     setStatus('Loading events…')
     if (requiresAuth && !token) { setStatus('Sign in to see followed events.'); return () => controller.abort() }
-    fetch(orgUrl(sourcePath), { signal: controller.signal, ...(requiresAuth ? { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' as const } : {}) })
+    const loading = requiresAuth ? fetch(orgUrl(sourcePath), { signal: controller.signal, ...(requiresAuth ? { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' as const } : {}) })
       .then(async (resp) => {
         if (!resp.ok) {
           const text = await resp.text().catch(() => '')
@@ -117,7 +118,8 @@ export function PublicEventsPage({
         const data = await resp.json()
         if (!Array.isArray(data)) throw new Error('The event listing is unavailable.')
         return data as PublicEvent[]
-      })
+      }) : loadPublicEventFeed<PublicEvent>(orgUrl(sourcePath), controller.signal)
+    loading
       .then((data) => {
         if (controller.signal.aborted) return
         setEvents(Array.isArray(data) ? data : [])
@@ -136,22 +138,23 @@ export function PublicEventsPage({
       setAttendanceById({})
       return
     }
-    let cancelled = false
-    Promise.allSettled(events.map((event) => loadAttendance(event.id, token)))
-      .then((results) => {
-        if (cancelled) return
-        const next: Record<string, EventAttendance> = {}
-        results.forEach((result, index) => {
-          if (result.status === 'fulfilled') next[events[index].id] = result.value
-        })
-        setAttendanceById(next)
-      })
-      .catch(() => {
-        if (!cancelled) setAttendanceById({})
-      })
-    return () => {
-      cancelled = true
+    let cancelled = false, next = 0
+    const time = Date.now()
+    const past = (event: PublicEvent) => Date.parse(event.ends_at || event.starts_at || (event.event_date ? event.event_date+'T23:59:59' : '')) < time
+    const ordered = [...events].sort((a,b) => Number(past(a))-Number(past(b)) || (past(a) ? Date.parse(b.starts_at || b.event_date || '')-Date.parse(a.starts_at || a.event_date || '') : Date.parse(a.starts_at || a.event_date || '')-Date.parse(b.starts_at || b.event_date || '')))
+    setAttendanceById({})
+    // Bound connection pressure and publish each result without waiting for the slowest.
+    async function worker() {
+      while (!cancelled && next < ordered.length) {
+        const event = ordered[next++]
+        try {
+          const attendance = await loadAttendance(event.id, token)
+          if (!cancelled) setAttendanceById(previous => ({...previous, [event.id]: attendance}))
+        } catch { /* Other event registrations remain usable. */ }
+      }
     }
+    for (let i = 0; i < Math.min(4, events.length); i++) void worker()
+    return () => { cancelled = true }
   }, [events, token])
 
   const itemListJsonLd = useMemo(

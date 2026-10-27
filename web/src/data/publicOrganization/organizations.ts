@@ -8,16 +8,25 @@ export function validatePublicOrganization<T extends PublicOrganizationRecord>(v
 export async function loadPublicOrganization<T extends PublicOrganizationRecord>(handle: string, options: {signal?: AbortSignal; force?: boolean} = {}): Promise<T> {
  return (await refreshPublicReport(`/api/org/api/network/orgs/public/${encodeURIComponent(handle)}`, { ...options, validate: validatePublicOrganization<T> })).data
 }
-export async function loadPublicOrganizationDirectory<T extends PublicOrganizationRecord>(options: {signal?: AbortSignal; force?: boolean} = {}): Promise<T[]> {
+export async function loadPublicOrganizationDirectory<T extends PublicOrganizationRecord>(options: {signal?: AbortSignal; force?: boolean; onPage?: (rows: T[]) => void} = {}): Promise<T[]> {
  const rows = new Map<string,T>()
  for (let offset = 0; ; offset += 500) {
-  const entry = await refreshPublicReport(`/api/org/api/network/orgs/public?limit=500&offset=${offset}`, {
-   ...options, validate(value) {
+  const entry = await refreshPublicReport<T[]>(`/api/org/api/network/orgs/public?limit=500&offset=${offset}`, {
+   ...options,
+   onCached(entry) {
+    options.signal?.throwIfAborted()
+    const preview = new Map(rows)
+    for (const row of entry.data) preview.set(row.id,row)
+    options.onPage?.(structuredClone([...preview.values()]))
+   },
+   validate(value) {
     if (!Array.isArray(value)) throw new Error('Public organization directory is incomplete')
     return value.map(row => validatePublicOrganization<T>(row))
    },
   })
   for (const row of entry.data) rows.set(row.id,row)
+  options.signal?.throwIfAborted()
+  options.onPage?.(structuredClone([...rows.values()]))
   if (entry.data.length < 500) return [...rows.values()]
  }
 }
