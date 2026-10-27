@@ -72,3 +72,14 @@ The fixture interaction runner also writes `user-heuristics.json`, using the
 [task-based user model](USER_HEURISTIC_MODEL.md). Entry-control checks are separate
 from task completion and human hierarchy review; uncovered journeys remain
 explicitly unassessed. The distributed visual suite uses the same runner.
+
+## Organization account and group matrix
+
+The distributed visual suite's organization-profile checks use two independent
+synthetic groups (care and makers), each with visitor, nonmember, member, owner,
+and operator fixtures. Accounts and membership responses vary in the test data;
+the product has no appearance selector for simulating those groups. Every
+public profile must have the same six public tabs and no management editor.
+Separate workspace checks verify that only actual members receive member tools
+and only owners/operators receive Settings. The public route must stay public
+when an old audience preference or query parameter is present.

@@ -44,6 +44,7 @@ const body=<Routes>
  <Route path="/calendar-events" element={<PublicCalendarPage/>}/>
  <Route path="/standings" element={<main><h1>Demo Day</h1><EventStandings eventId="fixture-event" eventSlug="demo-day"/></main>}/>
  <Route path="/orgs/:handle" element={<PublicAdminPage/>}/>
+ <Route path="/orgs/:handle/dashboard" element={<PublicAdminPage dashboard/>}/>
  <Route path="/poster-review" element={<EventPosterTools inline slug="fixture-event" title="Life sciences, in motion"/>}/>
  <Route path="/settings" element={<UserSettingsPage/>}/>
  <Route path="/organization-personnel" element={<OrganizationBoard organization={{id:'fixture-org',slug:'fixture-org',name:'Harbor Care Team'}} memberType="team" canManage={new URLSearchParams(location.search).has('admin')}/>}/>

@@ -3401,41 +3401,7 @@ h6 {
   background: var(--surface-strong);
 }
 
-.portal-user-trigger.is-standard-user {
-  background: #002a61;
-  border-color: #2a6fc4;
-  color: #dcedff;
-}
 
-.portal-user-trigger.is-standard-user:hover {
-  background: #0a3878;
-}
-
-.portal-user-trigger.is-sysadmin {
-  background:
-    repeating-linear-gradient(
-      135deg,
-      rgba(255, 255, 255, 0.16) 0px,
-      rgba(255, 255, 255, 0.16) 3px,
-      rgba(255, 255, 255, 0.05) 3px,
-      rgba(255, 255, 255, 0.05) 8px
-    ),
-    linear-gradient(140deg, #7a5a17 0%, #cda94b 45%, #6b4d12 100%);
-  border-color: #f0d27e;
-  color: #fff8e7;
-}
-
-.portal-user-trigger.is-sysadmin:hover {
-  background:
-    repeating-linear-gradient(
-      135deg,
-      rgba(255, 255, 255, 0.18) 0px,
-      rgba(255, 255, 255, 0.18) 3px,
-      rgba(255, 255, 255, 0.06) 3px,
-      rgba(255, 255, 255, 0.06) 8px
-    ),
-    linear-gradient(140deg, #85621d 0%, #d9b65a 45%, #745314 100%);
-}
 
 .portal-avatar {
   width: 28px;

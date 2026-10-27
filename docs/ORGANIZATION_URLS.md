@@ -4,8 +4,14 @@ The public homepage is `/orgs/:organizationSlug`. It includes configured welcome
 copy and actions, the organization description and image, every upcoming hosted
 event, specialty resources, and Info/Board/Personnel/Poster/Branding tabs. Branding uses
 `?tab=branding`; management stays at `/orgs/:organizationSlug/dashboard`.
-The page stays public regardless of sign-in status, with permission-checked
-management controls added for managers.
+The page uses the same public appearance and tabs for every account. Management
+controls, statistics, branding edits, embedded group chat and member tools are
+available on the explicit workspace at `/orgs/:organizationSlug/dashboard`, with
+live membership and management checks. There is no class-relative appearance,
+"View as" control, saved audience, or role-based landing redirect. Legacy
+`public`, `attendee`, and `volunteer` bookmarks redirect to the public profile;
+legacy `member` and `organizer` bookmarks redirect to the workspace. A `view`
+query parameter does not change the public profile.
 
 The retired portal-page namespace has no app routes or redirects and returns
 HTTP 404 at the web Worker. Stored old homepage paths are normalized to the

@@ -4,7 +4,6 @@ import {OrganizationCandidateStar} from '../../components/OrganizationCandidateS
 import './organization-profile.css'
 import { organizationPageTabs, resolveOrganizationPageTab, type OrganizationPageTab } from './organizationPageTabs'
 import { organizationPageTheme } from '../../../config/organizationThemes'
-import { OrganizationViewSwitcher } from '../../components/OrganizationViewSwitcher'
 import { NeoNatalFocus } from '../../components/NeoNatalFocus'
 import { EventPosterTools } from '../../components/EventPosterTools'
 import { OrganizationBoard } from '../../components/OrganizationBoard'
@@ -21,7 +20,6 @@ import { OrganizationFollowButton } from '../../components/OrganizationFollowBut
 import { GroupMailingList, GroupEmailPreference } from '../email/GroupMailingList'
 import { groupOrganizationEvents } from './organizationEvents'
 import { EmbeddedOrganizationChat } from '../../components/EmbeddedOrganizationChat'
-import { resolveOrganizationPageView, useOrganizationViewPreference } from '../../hooks/useOrganizationView'
 import { OrganizationBranding } from '../../components/OrganizationBranding'
 import { getGroupSite,parseGroupSite,type GroupSite } from '../../../config/timebankCommunity'
 import { specialtyResourcesForTenant } from '../../../config/specialtyResources'
@@ -183,7 +181,7 @@ function normalizeDomain(value: string) {
   return value.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '')
 }
 
-export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boolean; view?: string }) {
+export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) {
   const navigate = useNavigate()
   const { token } = useAuth()
   const { handle } = useParams()
@@ -239,15 +237,14 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
   const organizationEditorRef = useRef<HTMLDivElement | null>(null)
   const [showImageEditor, setShowImageEditor] = useState(false)
   const [editorSource, setEditorSource] = useState<string | null>(null)
-  const canManageCurrentOrg = Boolean(token && (operatorToken === token || (permissionToken === token && myAdminOrgs.some((item) => item.id === org?.id))))
+  const hasManagementAccess = Boolean(token && (operatorToken === token || (permissionToken === token && myAdminOrgs.some((item) => item.id === org?.id))))
+  const canManageCurrentOrg = dashboard && hasManagementAccess
   const organizationDraft={name:orgNameDraft,description:orgDescriptionDraft,image_url:orgImageDraft,links:orgLinksDraft,slug:portalSlugDraft,portalName:portalNameDraft,tagline:portalTaglineDraft,home_kind:portalHomeKindDraft,home_heading:portalHeadingDraft,home_description:portalDescriptionDraft,home_image_url:portalImageDraft}
   const organizationAutosave=useAutosave({value:organizationDraft,scope:`organization:${org?.id}:${token}`,enabled:Boolean(org?.id&&orgSettingsReady===org.id&&canManageCurrentOrg),save:saveOrganizationSettings})
+
   const orgTabs = organizationPageTabs(canManageCurrentOrg)
   const activeTab = resolveOrganizationPageTab(searchParams.get('tab'), canManageCurrentOrg)
-  const requestedView = useOrganizationViewPreference(org?.slug, view || searchParams.get('view'))
-  const organizationView = resolveOrganizationPageView(dashboard, requestedView, canManageCurrentOrg, membership?.status === 'active')
-  const isOrganizerView = canManageCurrentOrg && organizationView === 'organizers'
-  const isWorkspaceView = organizationView === 'members' || isOrganizerView
+  const isWorkspaceView = Boolean(dashboard && token && (hasManagementAccess || membership?.status === 'active'))
   useEffect(() => {
     if (!handle) return
     const canonicalUrl = currentOrgUrl(handle)
@@ -656,7 +653,7 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
   }
 
   async function saveOrganizationSettings(next:typeof organizationDraft,previous:typeof organizationDraft) {
-    if(!org||!token||!canManageCurrentOrg)throw new Error('Sign in as an organization manager to save changes.')
+    if(!org||!token||!hasManagementAccess)throw new Error('Sign in as an organization manager to save changes.')
     const changed=(key:keyof typeof next)=>JSON.stringify(next[key])!==JSON.stringify(previous[key])
     const name=next.name.trim()
     if(!name)throw new Error('Organization name is required.')
@@ -999,7 +996,6 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
             </div>
           ) : null}
           {isWorkspaceView && <section className="organization-community-section"><h2>Member tools</h2><OrganizationTools/></section>}
-          {(organizationView==='attendees'||organizationView==='volunteers') && <section className="organization-community-section"><h2>{organizationView==='volunteers'?'Volunteer workspace':'Attendee workspace'}</h2><button className="btn-secondary" onClick={()=>selectTab('events')}>Events and registration</button></section>}
           <details className="organization-community-section" onToggle={event=>setSupportOpen(event.currentTarget.open)}><summary>Support and contributions</summary>{supportOpen && <OrganizationSupport organizationId={org.id} slug={org.slug} canManage={canManageCurrentOrg}/>}</details>
           {!canManageCurrentOrg && membership?.role!=='owner' && <details className="organization-ownership"><summary>Organization ownership</summary>
             {org.is_disputed && <p>{org.pending_challenges_count} pending ownership claim{org.pending_challenges_count===1?'':'s'}.</p>}
@@ -1016,7 +1012,7 @@ export function PublicAdminPage({ dashboard = false, view }: { dashboard?: boole
       </div>
       {canManageCurrentOrg && <div className="organization-profile-panel" role="tabpanel" id="org-panel-settings" aria-labelledby="org-tab-settings" hidden={activeTab !== 'settings'}>
         {activeTab==='settings' && <>
-          <div className="organization-profile-management"><OrganizationViewSwitcher organizationSlug={org.slug} manager/>{token && <OrganizationPageStatistics key={org.id} organizationId={org.id} token={token}/>}</div>
+          <div className="organization-profile-management">{token && <OrganizationPageStatistics key={org.id} organizationId={org.id} token={token}/>}</div>
           <GroupMailingList organizationId={org.id}/>
                     {canManageCurrentOrg && activeTab === 'settings' ? (
             <div
