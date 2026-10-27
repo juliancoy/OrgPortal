@@ -171,6 +171,90 @@
       ]
     },
     {
+      "id": "suite-desktop-ubuntu-aesthetic-heuristics-test-mjs",
+      "label": "desktop/ubuntu/aesthetic-heuristics.test.mjs",
+      "category": "User interface and integrations",
+      "source": "desktop/ubuntu/aesthetic-heuristics.test.mjs",
+      "kind": "node",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "aesthetic-heuristics.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-desktop-ubuntu-browser-auth-test-cjs",
+      "label": "desktop/ubuntu/browser-auth.test.cjs",
+      "category": "Identity and access",
+      "source": "desktop/ubuntu/browser-auth.test.cjs",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "browser-auth.test.cjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-desktop-ubuntu-dev-test-mjs",
+      "label": "desktop/ubuntu/dev.test.mjs",
+      "category": "User interface and integrations",
+      "source": "desktop/ubuntu/dev.test.mjs",
+      "kind": "node",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "dev.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-desktop-ubuntu-login-test-mjs",
+      "label": "desktop/ubuntu/login.test.mjs",
+      "category": "Identity and access",
+      "source": "desktop/ubuntu/login.test.mjs",
+      "kind": "node",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "login.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-desktop-ubuntu-native-test-mjs",
+      "label": "desktop/ubuntu/native.test.mjs",
+      "category": "User interface and integrations",
+      "source": "desktop/ubuntu/native.test.mjs",
+      "kind": "node",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "native.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-desktop-ubuntu-package-test-cjs",
+      "label": "desktop/ubuntu/package.test.cjs",
+      "category": "User interface and integrations",
+      "source": "desktop/ubuntu/package.test.cjs",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "package.test.cjs"
+        }
+      ]
+    },
+    {
       "id": "suite-nginx-service-directory-test-collect-py",
       "label": "nginx/service-directory/test_collect.py",
       "category": "Organizations and membership",
