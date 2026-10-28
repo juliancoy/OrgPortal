@@ -7,7 +7,7 @@ type Result = { submission_id: string; title: string; organization_name: string;
 type Round = { phase: Phase; finalistIds: string[]; results: Result[] }
 type Candidate = Omit<Result, 'votes'> & { favorites: number; status: string }
 
-export function PresentationFinalRound({ eventId, canManage, onPhaseChange }: { eventId: string; canManage: boolean; onPhaseChange: (phase: Phase) => void }) {
+export function PresentationFinalRound({ eventId, canManage, onPhaseChange, managementOnly = false }: { eventId: string; canManage: boolean; managementOnly?: boolean; onPhaseChange: (phase: Phase) => void }) {
  const { token } = useAuth()
  const location = useLocation()
  const base = `/api/org/api/network/events/${encodeURIComponent(eventId)}/presentations`
@@ -100,15 +100,17 @@ export function PresentationFinalRound({ eventId, canManage, onPhaseChange }: { 
   } catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not save your vote') }
   finally { setBusy(false) }
  }
+ if (!round && !managementOnly) return null
  if (!round) return <p role="status">{pollError || 'Loading final round…'}</p>
+ if (managementOnly ? !canManage || round.phase !== 'shortlist' : round.phase === 'shortlist') return null
  if (!canManage && !round.finalistIds.length) return null
  const total = round.results.reduce((sum, row) => sum + row.votes, 0)
  const highest = Math.max(0, ...round.results.map(row => row.votes))
  const leaders = round.results.filter(row => row.votes === highest && highest > 0)
  return <section className="presentation-final-round" aria-label="Final presentation vote">
-  <h3>{round.phase === 'shortlist' ? 'Event finalists' : 'Vote for the winner'}</h3>
-  {round.phase === 'shortlist' ? <p>Preliminary favorites help the host choose about six teams to present. Final voting opens at the event.</p> : <p>Choose one presenting team. Your final vote is separate from your preliminary favorites. {round.phase === 'open' ? 'You can change it until the host closes voting.' : 'Voting is closed.'}</p>}
-  {canManage && round.phase === 'shortlist' && <button type="button" className="btn-secondary" onClick={() => setEditing(value => !value)}>{editing ? 'Cancel finalist selection' : 'Choose finalists'}</button>}
+  {round.phase !== 'shortlist' && <h3>Vote for the winner</h3>}
+  {round.phase !== 'shortlist' && <p>Choose one presenting team. Your final vote is separate from your preliminary favorites. {round.phase === 'open' ? 'You can change it until the host closes voting.' : 'Voting is closed.'}</p>}
+  {canManage && round.phase === 'shortlist' && <button type="button" className="btn-secondary" onClick={() => setEditing(value => !value)}>{editing ? 'Cancel finalist selection' : 'Manage finalists'}</button>}
   {canManage && editing && round.phase === 'shortlist' && <div className="presentation-finalist-editor">
    <label>Number of presenters<input type="number" min={1} max={20} step={1} value={target} onChange={event => setTarget(Number(event.target.value))} /></label>
    <button type="button" className="btn-secondary" disabled={!candidatesReady || busy || !Number.isInteger(target) || target < 1 || target > 20} onClick={() => setSelected(candidates.slice(0, target).map(row => row.submission_id))}>Select top {target || ''} by favorites</button>

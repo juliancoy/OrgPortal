@@ -9,7 +9,7 @@ import { SubmissionPresenters } from './SubmissionPresenters'
 import { SubmissionAttachments } from './SubmissionAttachments'
 import type { SubmissionAttachment } from './submissionAttachments'
 import { useEffect, useRef, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import Plus from 'lucide-react/dist/esm/icons/plus.mjs'
 import Minus from 'lucide-react/dist/esm/icons/minus.mjs'
 import Star from 'lucide-react/dist/esm/icons/star.mjs'
@@ -20,7 +20,7 @@ import './event-presentations.css'
 
 type Submission={presenters?:{name:string;photo?:string;pending?:boolean}[];submission_id:string;attachments?:SubmissionAttachment[];organization_id:string;organization_name:string;organization_slug:string;image_url:string|null;title:string;summary:string;status:string;favorites:number}
 export function EventSubmissions({eventId,onEdit,onDeleted}:{eventId:string;onEdit:(application:PresentationApplication)=>void;onDeleted:(submissionId:string)=>void}) {
- const {token}=useAuth(),location=useLocation()
+ const {token}=useAuth()
  const base=`/api/org/api/network/events/${encodeURIComponent(eventId)}/presentations`
  const favoriteIds=useRef<string[]>([]),savingIds=useRef(new Set<string>()),favoriteEpoch=useRef(0)
  const [savingFavorites,setSavingFavorites]=useState<string[]>([])
@@ -84,12 +84,10 @@ export function EventSubmissions({eventId,onEdit,onDeleted}:{eventId:string;onEd
 
  return <section className="portal-card presentation-applications" aria-label="Event submissions">
   <h2>Applicants</h2>
-  <p className="muted">Most stars first</p>
   <PresentationFinalRound eventId={eventId} canManage={canManage} onPhaseChange={setFinalPhase} />
-  {finalPhase==='shortlist'?<><p>Explore the teams and select up to {limit} favorites for this event. You can change your selections.</p>
-  {token?(ready&&<p role="status">{favorites.length} of {limit} favorites selected{savingFavorites.length>0?' · Saving…':''}</p>):<p><Link to={`/users/login?next=${encodeURIComponent(location.pathname+location.search+'#submissions')}`}>Sign in</Link> to save your favorites.</p>}</>:<h3>All submissions · preliminary favorites</h3>}
   {canManage&&<details className="submission-review-tools" onToggle={event=>setReviewOpen(event.currentTarget.open)}>
    <summary>Manage submissions</summary>
+   {reviewOpen&&finalPhase==='shortlist'&&<PresentationFinalRound eventId={eventId} canManage={canManage} onPhaseChange={setFinalPhase} managementOnly />}
   {canManage&&finalPhase==='shortlist'&&<form className="presentation-form" aria-label="Submission voting settings" onSubmit={event=>{event.preventDefault();setBusy(true);setError('');void request('/settings',{method:'PUT',body:JSON.stringify({favoriteLimit:Number(limitDraft)})}).then(data=>{setLimit(data.favoriteLimit);setRevision(value=>value+1)}).catch(reason=>setError(reason.message)).finally(()=>setBusy(false))}}>
    <label>Maximum favorites per person<input type="number" min="1" max="100" step="1" required value={limitDraft} onChange={event=>setLimitDraft(event.target.value)} /></label>
    <button className="btn-secondary" type="submit" disabled={busy}>Save favorite limit</button>
