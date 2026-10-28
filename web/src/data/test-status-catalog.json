@@ -2929,6 +2929,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-test-local-star-votes-py",
+      "label": "web/scripts/test-local-star-votes.py",
+      "category": "User interface and integrations",
+      "source": "web/scripts/test-local-star-votes.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-star-votes.py"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-test-local-unified-organization-py",
       "label": "web/scripts/test-local-unified-organization.py",
       "category": "Organizations and membership",
