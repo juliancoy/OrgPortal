@@ -3,13 +3,13 @@ import { useParams } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
 import { SignInLink } from '../components/SignInLink'
 export function InvitationAcceptPage(){
- const {id}=useParams(),{token}=useAuth(),[invitation,setInvitation]=useState<{effect?:string|null;purpose:string;organization:{name:string;slug:string}}|null>(null),[message,setMessage]=useState(''),[preview,setPreview]=useState(''),[busy,setBusy]=useState(false),[accepted,setAccepted]=useState(false),[awaitingConfirmation,setAwaitingConfirmation]=useState(false)
+ const {id}=useParams(),{token}=useAuth(),[invitation,setInvitation]=useState<{effect?:string|null;purpose:string;expiresAt:number;organization:{name:string;slug:string}}|null>(null),[loading,setLoading]=useState(true),[message,setMessage]=useState(''),[preview,setPreview]=useState(''),[busy,setBusy]=useState(false),[accepted,setAccepted]=useState(false),[awaitingConfirmation,setAwaitingConfirmation]=useState(false)
  const base=`/api/org/api/network/invitations/${encodeURIComponent(id||'')}`
  useEffect(()=>{
   setInvitation(null);setMessage('');setPreview('');setAccepted(false);setAwaitingConfirmation(false)
-  if(!token)return
+  setLoading(true)
   const controller=new AbortController()
-  void fetch(base,{headers:{Authorization:`Bearer ${token}`},signal:controller.signal,cache:'no-store'}).then(async r=>{const data=await r.json();if(!r.ok)throw new Error(data.detail||data.error);if(!controller.signal.aborted)setInvitation(data)}).catch(e=>{if(!controller.signal.aborted)setMessage(e.message)})
+  void fetch(base+'/public',{credentials:'omit',signal:controller.signal,cache:'no-store'}).then(async r=>{const data=await r.json();if(!r.ok)throw new Error(data.detail||data.error);if(!controller.signal.aborted)setInvitation(data)}).catch(e=>{if(!controller.signal.aborted)setMessage(e.message)}).finally(()=>{if(!controller.signal.aborted)setLoading(false)})
   return()=>controller.abort()
  },[base,token])
  async function accept(){
@@ -19,7 +19,7 @@ export function InvitationAcceptPage(){
   finally{setBusy(false)}
  }
  return <main className="page"><section className="portal-card"><h1>Organization invitation</h1>
- {!token?<p><SignInLink /> or create an account with the email address that received this invitation, then verify that address to review it.</p>:accepted?<><p role="status">Invitation accepted.</p>{awaitingConfirmation&&<p>Some classes await organizer confirmation before appearing publicly.</p>}</>:invitation?<><h2>{invitation.organization.name}</h2><p>{invitation.effect|| (invitation.purpose==='member'?'Join this organization as a member.':'Accept Volunteer recognition for three months. This grants no membership permissions.')}</p><button type="button" className="btn-primary" disabled={busy} onClick={()=>void accept()}>{preview?'Confirm acceptance':'Review acceptance'}</button></>:null}
+ {loading?<p role="status">Loading invitation…</p>:accepted?<><p role="status">Invitation accepted.</p>{awaitingConfirmation&&<p>Some classes await organizer confirmation before appearing publicly.</p>}</>:invitation?<><h2>You’re invited to {invitation.organization.name}</h2><p>{invitation.effect}</p><p>Invitation expires {new Date(invitation.expiresAt).toLocaleDateString(undefined,{month:'long',day:'numeric',year:'numeric'})}.</p>{!token?<p><SignInLink /> to accept, or create an account using the email address that received this invitation. Verify that address before accepting.</p>:<button type="button" className="btn-primary" disabled={busy} onClick={()=>void accept()}>{preview?'Confirm acceptance':'Review acceptance'}</button>}</>:null}
  {message&&<p role="alert">{message}</p>}
  </section></main>
 }
