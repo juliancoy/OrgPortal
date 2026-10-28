@@ -109,7 +109,7 @@
 .submission-card-management { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; padding-top: .9rem; border-top: 1px solid var(--border); color: var(--text-muted); font-size: .875rem; }
 .submission-card-management .application-row-actions { display: flex; gap: .5rem; }
 .submission-card-footer { margin: 0; min-height: 1.75rem; display: flex; align-items: center; font-size: .8rem; gap: .35rem; padding-top: .8rem; border-top: 1px solid var(--border); color: var(--text-muted); }
-.submission-card-footer.has-voting { padding-right: 11rem; }
+.submission-card-footer.has-voting { padding-right: 4rem; }
 .presentation-submission > .submission-card-select { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; border-radius: inherit; background: transparent; color: inherit; box-shadow: none; outline: none; cursor: pointer; }
 .presentation-submission > .submission-card-select:hover { background: transparent; }
 .submission-card-select:focus-visible { outline: 3px solid var(--text-primary); outline-offset: 3px; }
@@ -123,7 +123,7 @@
 .submission-review-tools[open] > :not(summary) { margin-top: 1rem; }
 @media (max-width: 540px) {
  .submission-voting-card { gap: .8rem; }
- .submission-card-footer.has-voting { padding-right: 9.5rem; }
+ .submission-card-footer.has-voting { padding-right: 4rem; }
  .submission-card-title { font-size: 1.05rem; }
 }
 
@@ -160,7 +160,9 @@
 .submission-voting-card .public-event-registrant-avatar { width: 30px; height: 30px; border-width: 2px; box-shadow: none; font-size: .65rem; }
 .submission-voting-card .public-event-attendance-count strong { font-size: .8rem; font-weight: 500; }
 .submission-voting-card .public-event-attendance-count small { font-size: .75rem; }
-.submission-voting-card.is-selected .submission-card-state { color: var(--primary); }
+.submission-card-state { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.submission-voting-card.is-selected .submission-card-state svg { color: #A67C00; }
+[data-theme="dark"] .submission-voting-card.is-selected .submission-card-state svg { color: #E5BF55; }
 .submission-card-state { font-size: .8rem; }
 
 .submission-card-header .submission-presenters { position:relative; margin:0 0 0 auto; flex-shrink:0; }
