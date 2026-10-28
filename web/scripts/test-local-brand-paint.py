@@ -13,9 +13,12 @@ with sync_playwright() as p:
  browser=p.chromium.launch(executable_path='/usr/bin/google-chrome',headless=True,args=['--no-sandbox'])
  c=browser.new_context(ignore_https_errors=True)
  c.route('**/*',lambda route:route.continue_() if urlparse(route.request.url).hostname in ['localhost','127.0.0.1'] else route.abort())
+ fail=[False]
  def data(route):
   path=urlparse(route.request.url).path
-  if path.endswith('/branding'):time.sleep(.8);value={'portal':site}
+  if path.endswith('/branding'):
+   if fail[0]:fail[0]=False;route.fulfill(status=503,json={'message':'Synthetic outage'});return
+   time.sleep(.8);value={'portal':site}
   elif path.endswith('/paint-company'):value=org
   else:value=[]
   route.fulfill(json=value)
@@ -30,4 +33,9 @@ with sync_playwright() as p:
   assert frames and all(f['brand']=='configured' for f in frames),frames[:5]
   assert all('ankhtech-icon.webp' in f['icon'] for f in frames),frames[:5]
  print('PASS: delayed organization branding, cold load and reload contain no unbranded organization frames')
+ fail[0]=True;page.goto(base+'/orgs/paint-company?tab=branding')
+ expect(page.get_by_role('button',name='Retry branding',exact=True)).to_be_visible(timeout=30000)
+ page.get_by_role('button',name='Retry branding',exact=True).click()
+ expect(page.locator('.organization-profile')).to_have_attribute('data-brand-theme','configured',timeout=30000)
+ print('PASS: branding request failure has a visible recovery action on the Branding tab')
  browser.close()

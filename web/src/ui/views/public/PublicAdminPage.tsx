@@ -851,6 +851,7 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
   return (
     <section className={`portal-org-page organization-profile${isNeoNatalProfile ? ' neonatal-page' : ''}`} data-brand-theme={pageTheme?'configured':undefined}>
       {pageTheme && <style>{pageTheme}</style>}
+{publicPortal?.organizationId===org.id && publicPortal.error && <div role="status"><p>{publicPortal.error}</p><button type="button" className="btn-secondary" onClick={()=>{setPublicPortal(null);setPublicPortalRevision(v=>v+1)}}>Retry branding</button></div>}
       <header className="organization-profile-header" id="organization-overview">
         <button type="button" className={`organization-profile-avatar${canEditOrgImage ? ' editable' : ''}`} onClick={openImageEditor} disabled={!canEditOrgImage} aria-label={canEditOrgImage ? 'Change organization image' : 'Organization image'}>
           <OrgImage src={heroImageSource} fallbackSrc={organizationBrandImage} alt={org.name}/>
@@ -897,7 +898,6 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
             {site?.home_primary_href && !['/users/login','/org-events'].includes(site.home_primary_href) && portalAction(site.home_primary_label,site.home_primary_href)}
             {site?.home_secondary_href && !['/users/login','/org-events'].includes(site.home_secondary_href) && portalAction(site.home_secondary_label,site.home_secondary_href)}
             {mergedFrom && <p className="muted" role="status">Redirected from merged organization <code>{mergedFrom}</code>.</p>}
-            {publicPortal?.organizationId===org.id && publicPortal.error && <div role="status"><p>{publicPortal.error}</p><button type="button" className="btn-secondary" onClick={()=>{setPublicPortal(null);setPublicPortalRevision(v=>v+1)}}>Retry branding</button></div>}
           </section>
         </div>
         {isNeoNatalProfile && <><NeoNatalFocus/>{(org.description || portalDescription) && <details className="neonatal-about"><summary>About NeoNatal AI</summary>{org.description && <BioMarkdown value={org.description}/>}</details>}</>}
