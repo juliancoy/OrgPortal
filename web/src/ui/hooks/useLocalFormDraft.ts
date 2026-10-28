@@ -1,4 +1,4 @@
-import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
+import { useEffect, useLayoutEffect, useState, type Dispatch, type SetStateAction } from 'react'
 import { readFormDraft, writeFormDraft } from './localFormDraft'
 import '../components/local-form-draft.css'
 
@@ -18,9 +18,10 @@ export function useLocalFormDraft<T extends object>(key: string | null, initial:
     // initial is a module-level form schema; drafts are isolated by account and resource.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key])
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!key || state.key !== key) return
-    const timer = window.setTimeout(() => {
+    // Persist each committed edit before navigation or reload can discard it.
+    {
       try {
         if (snapshot === JSON.stringify(initial)) {
           window.localStorage.removeItem(key); setSaved(null); return
@@ -28,8 +29,7 @@ export function useLocalFormDraft<T extends object>(key: string | null, initial:
         const ok = writeFormDraft(window.localStorage, key, value)
         setSaved(ok ? { key, snapshot } : null); setUnavailable(!ok)
       } catch { setSaved(null); setUnavailable(true) }
-    }, 250)
-    return () => window.clearTimeout(timer)
+    }
   }, [key, state.key, value, snapshot, initial])
   useEffect(() => {
     if (!key) return

@@ -310,13 +310,15 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
   useEffect(()=>{
     if(!org?.id||!org.slug)return
     const controller=new AbortController(),organizationId=org.id
+    const timeout=window.setTimeout(()=>{if(!controller.signal.aborted){setPublicPortal({organizationId,site:null,error:'Branding could not load. Retry to restore the organization’s appearance.'});controller.abort()}},8000)
     void fetch(orgUrl(`/api/network/orgs/public/${encodeURIComponent(org.slug)}/branding`),{signal:controller.signal,cache:'no-store'}).then(async response=>{
       if(!response.ok)throw new Error('Organization homepage details are temporarily unavailable.')
       const data=await response.json(),site=data.portal?parseGroupSite(data.portal):null
       if(data.portal&&!site)throw new Error('Organization homepage details are temporarily unavailable.')
+      window.clearTimeout(timeout)
       if(!controller.signal.aborted)setPublicPortal({organizationId,site,error:''})
-    }).catch(error=>{if(!controller.signal.aborted)setPublicPortal({organizationId,site:null,error:error.message})})
-    return()=>controller.abort()
+    }).catch(error=>{window.clearTimeout(timeout);if(!controller.signal.aborted)setPublicPortal({organizationId,site:null,error:error.message})})
+    return()=>{window.clearTimeout(timeout);controller.abort()}
   },[org?.id,org?.slug,publicPortalRevision])
 
   useEffect(() => {
@@ -807,6 +809,8 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
     )
   }
 
+  if(publicPortal?.organizationId!==org.id)return <section className="panel" aria-busy="true"><p role="status">Loading organization branding…</p></section>
+
   const mergeCandidates = myAdminOrgs.filter((item) => item.id !== org.id)
   const canEditOrgImage = canManageCurrentOrg
   const tenant = getGroupSite()
@@ -893,7 +897,7 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
             {site?.home_primary_href && !['/users/login','/org-events'].includes(site.home_primary_href) && portalAction(site.home_primary_label,site.home_primary_href)}
             {site?.home_secondary_href && !['/users/login','/org-events'].includes(site.home_secondary_href) && portalAction(site.home_secondary_label,site.home_secondary_href)}
             {mergedFrom && <p className="muted" role="status">Redirected from merged organization <code>{mergedFrom}</code>.</p>}
-            {publicPortal?.organizationId===org.id && publicPortal.error && <p role="status">{publicPortal.error}</p>}
+            {publicPortal?.organizationId===org.id && publicPortal.error && <div role="status"><p>{publicPortal.error}</p><button type="button" className="btn-secondary" onClick={()=>{setPublicPortal(null);setPublicPortalRevision(v=>v+1)}}>Retry branding</button></div>}
           </section>
         </div>
         {isNeoNatalProfile && <><NeoNatalFocus/>{(org.description || portalDescription) && <details className="neonatal-about"><summary>About NeoNatal AI</summary>{org.description && <BioMarkdown value={org.description}/>}</details>}</>}

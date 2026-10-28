@@ -10,6 +10,32 @@
         if (theme === 'system') document.documentElement.removeAttribute('data-theme');
         else document.documentElement.dataset.theme = theme;
       } catch {}
+      // Apply public host branding before CSS and the application can paint.
+      try {
+        const root = document.documentElement;
+        const hostProfiles = {'lifetech.fyi':'lifetech','medtech.social':'baltimore-medtech','orgportal.cc':'orgportal','portal.deism.church':'deism'};
+        root.dataset.portalProfile = hostProfiles[location.hostname] || 'orgportal';
+        const raw = localStorage.getItem('orgportal.brand-paint.v1');
+        if (raw && raw.length <= 65536) {
+          const paint = JSON.parse(raw);
+          const profiles = ['lifetech','baltimore-medtech','orgportal','deism','code-collective'];
+          const validColors = value => value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length <= 512 && Object.entries(value).every(([key,color]) => /^[a-zA-Z][a-zA-Z0-9-]{0,63}$/.test(key) && typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color));
+          if (!Number.isFinite(paint.savedAt) || paint.savedAt > Date.now()+60000 || paint.savedAt+86400000 <= Date.now() || !profiles.includes(paint.profile) || !validColors(paint.light) || !validColors(paint.dark)) {
+            localStorage.removeItem('orgportal.brand-paint.v1');
+          } else {
+            root.dataset.portalProfile = paint.profile;
+            if(typeof paint.tenant==='string' && /^[a-zA-Z0-9-]{1,200}$/.test(paint.tenant))root.dataset.portalTenant=paint.tenant;
+            if(typeof paint.theme==='string' && /^[a-z][a-z0-9-]{0,63}$/.test(paint.theme)){
+              root.dataset.organizationTheme=paint.theme;
+              const selector=':root:root:root[data-organization-theme]';
+              const declarations=colors=>Object.entries(colors).map(([key,color])=>'--'+key+':'+color+';').join('');
+              const style=document.createElement('style');style.id='organization-theme-colors';
+              style.textContent=selector+'{background:var(--surface);'+declarations(paint.light)+'}'+selector+'[data-theme="dark"]{'+declarations(paint.dark)+'}@media(prefers-color-scheme:dark){'+selector+':not([data-theme]){'+declarations(paint.dark)+'}}';
+              document.head.appendChild(style);
+            }
+          }
+        }
+      } catch {}
     </script>
     <link rel="icon" type="image/svg+xml" href="%BASE_URL%orgportal.svg" />
     <link rel="apple-touch-icon" href="%BASE_URL%orgportal.svg" />

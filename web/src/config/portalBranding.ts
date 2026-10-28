@@ -1,3 +1,6 @@
+import {rememberBrandingPaint} from './brandingPaint'
+import {getGroupSite} from './timebankCommunity'
+import {readOrganizationTheme} from './organizationThemes'
 import { applyOrganizationTheme } from './organizationThemes'
 import { portalAssetPath } from './portalBase'
 import { getActivePortalProfileConfig } from './portalFeatures'
@@ -7,6 +10,7 @@ export function applyPortalBranding() {
   const profile = getActivePortalProfileConfig()
   document.title = profile.portalTitle
   document.documentElement.dataset.portalProfile = profile.id
+  rememberBrandingPaint(getGroupSite(),profile.id,readOrganizationTheme())
   if (profile.groupSiteId) document.documentElement.dataset.portalTenant = profile.groupSiteId
   else delete document.documentElement.dataset.portalTenant
   const icon = document.querySelector<HTMLLinkElement>('link[rel="icon"]')

@@ -200,6 +200,8 @@ with sync_playwright() as p:
         expect(form).to_have_attribute('data-draft-saved', 'true', timeout=10000)
         expect(roster.get_by_role('listitem')).to_have_count(4)
         expect(roster.get_by_role('img')).to_have_count(4)
+        # A browser without bitmap decoding must still upload the original photo.
+        page.evaluate('window.createImageBitmap = undefined')
         form.get_by_label('Team image (optional)',exact=True).set_input_files({'name':'team-logo.png','mimeType':'image/png','buffer':base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=')})
         expect(form.get_by_role('img',name='Team image preview')).to_be_visible()
         expect(page.get_by_role('tab',name='Apply',exact=True)).to_have_css('background-color','rgb(212, 175, 55)')

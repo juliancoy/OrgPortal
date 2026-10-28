@@ -1,3 +1,4 @@
+import {rememberBrandingPaint} from './brandingPaint'
 import { parseOrganizationThemes, portalThemeColors } from '../../../shared/organizationThemes'
 import { getGroupSite } from './timebankCommunity'
 
@@ -45,6 +46,7 @@ export function selectOrganizationTheme(id: string) {
   if (!organizationThemes()?.themes.some(theme => theme.id === id)) return
   try { localStorage.setItem(storageKey(), id) } catch { /* Apply even without storage. */ }
   applyOrganizationTheme(id)
+  rememberBrandingPaint(getGroupSite(),document.documentElement.dataset.portalProfile||'orgportal',id)
 }
 
 /** Organization page styling stays inside its panel, preserving the host portal. */

@@ -1,3 +1,4 @@
+import {PendingUploadGuard} from './PendingUploadGuard'
 import { useEffect, useId, useRef, useState } from 'react'
 import FileText from 'lucide-react/dist/esm/icons/file-text.mjs'
 import Paperclip from 'lucide-react/dist/esm/icons/paperclip.mjs'
@@ -23,23 +24,26 @@ export function SubmissionAttachmentPicker({files,onChange,disabled=false,button
   {error&&<p role="alert">{error}</p>}
  </div>
 }
-export function SubmissionAttachments({eventId,submissionId,initial=emptyAttachments,canManage=false}:{eventId:string;submissionId:string;initial?:SubmissionAttachment[];canManage?:boolean}){
+export function SubmissionAttachments({eventId,submissionId,initial=emptyAttachments,canManage=false,loadOnMount=false,refreshKey=0,showPicker=true}:{eventId:string;submissionId:string;initial?:SubmissionAttachment[];canManage?:boolean;loadOnMount?:boolean;refreshKey?:number;showPicker?:boolean}){
  const {token}=useAuth(),[attachments,setAttachments]=useState(initial),[files,setFiles]=useState<StagedSubmissionAttachment[]>([]),[busy,setBusy]=useState(false),[error,setError]=useState('')
  useEffect(()=>{setAttachments(initial)},[initial])
  const base=attachmentBase(eventId,submissionId)
+ useEffect(()=>{if(!loadOnMount)return;let cancelled=false;void attachmentRequest(base,null).then(data=>{if(!cancelled)setAttachments(data.attachments)}).catch(reason=>{if(!cancelled)setError(reason.message)});return()=>{cancelled=true}},[base,loadOnMount,refreshKey])
  async function refresh(){const data=await attachmentRequest(base,null);setAttachments(data.attachments)}
  if(!attachments.length&&!(canManage&&token))return null
  return <section className="submission-attachments" aria-label="Submission attachments">
+  <PendingUploadGuard pending={busy||files.length>0}/>
   {!!attachments.length&&<ul>{attachments.map(file=><li key={file.id}>
    <a className="submission-attachment-link" href={`${base}/${encodeURIComponent(file.id)}`} target="_blank" rel="noreferrer">
     {file.contentType.startsWith('image/')?<img src={`${base}/${encodeURIComponent(file.id)}`} alt={file.name} loading="lazy" />:<FileText size={24} aria-hidden="true" />}
     <span>{file.name}<small>{file.contentType.startsWith('image/')?'Image':'Download'} · {sizeLabel(file.size)}</small></span>
    </a>
    {canManage&&token&&<button className="btn-secondary" type="button" disabled={busy} aria-label={`Delete attachment ${file.name}`} onClick={()=>{
+    if(!window.confirm('Remove this uploaded attachment? This cannot be undone.'))return;
     setBusy(true);setError('');void attachmentRequest(`${base}/${encodeURIComponent(file.id)}`,token,{method:'DELETE'}).then(refresh).catch(reason=>setError(reason.message)).finally(()=>setBusy(false))
    }}><Trash2 size={16} aria-hidden="true" /> Remove</button>}
   </li>)}</ul>}
-  {canManage&&token&&<><SubmissionAttachmentPicker files={files} onChange={setFiles} disabled={busy} buttonLabel="Add files" />{!!files.length&&<button type="button" className="btn-primary" disabled={busy} onClick={()=>{
+  {canManage&&token&&showPicker&&<><SubmissionAttachmentPicker files={files} onChange={setFiles} disabled={busy} buttonLabel="Add files" />{!!files.length&&<button type="button" className="btn-primary" disabled={busy} onClick={()=>{
    setBusy(true);setError('');void(async()=>{for(const file of files){await uploadSubmissionAttachment(eventId,submissionId,file,token);setFiles(previous=>previous.filter(item=>item.id!==file.id))}await refresh()})().catch(reason=>{setError(reason.message);void refresh().catch(()=>{})}).finally(()=>setBusy(false))
   }}>{busy?'Uploading…':'Upload attachments'}</button>}</>}
   {error&&<p role="alert">{error}</p>}

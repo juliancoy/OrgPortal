@@ -82,3 +82,26 @@ review-copy action without changing the audience. Run in the pinned local
 Playwright Docker image with networking disabled. Desktop/mobile light/dark
 screenshots and `checks.json` are written to `artifacts/service-desk-drafts`.
 The route mocks never send real mail.
+
+## Application upload recovery and first-paint branding
+
+Against an isolated local Docker deployment with organization replication disabled:
+
+```sh
+PLAYWRIGHT_BASE_URL=https://localhost:19458 ONBOARDING_PIDP_CONTAINER=common-form-test-identity-api python3 web/scripts/test-local-upload-resilience.py
+PLAYWRIGHT_BASE_URL=https://localhost:19458 python3 web/scripts/test-local-brand-paint.py
+```
+
+The upload test creates only fresh synthetic accounts and a dummy event. Its
+verification challenge is provisioned only inside an allowlisted test identity
+container/database; links and credentials are never printed. It checks missing
+bitmap decoding, image replacement errors, immediate text-draft reload, modal
+navigation protection, partial attachment failures, retained completed uploads,
+retry deduplication, saved images, reopening applications and private guest edits.
+Artifacts are written to `/tmp/orgportal-upload-resilience`.
+
+The read-only branding test delays synthetic organization branding and samples
+visible animation frames across cold load and reload. Public host paint snapshots
+contain only public colors and identifiers, are bounded, and expire after one day.
+Selected upload files remain in memory: leaving/reloading warns before discarding
+them; saved text drafts retain their existing account/event isolation and expiry.

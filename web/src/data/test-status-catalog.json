@@ -2551,6 +2551,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-test-local-brand-paint-py",
+      "label": "web/scripts/test-local-brand-paint.py",
+      "category": "User interface and integrations",
+      "source": "web/scripts/test-local-brand-paint.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-brand-paint.py"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-test-local-branding-autosave-mjs",
       "label": "web/scripts/test-local-branding-autosave.mjs",
       "category": "User interface and integrations",
@@ -2929,6 +2943,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-test-local-upload-resilience-py",
+      "label": "web/scripts/test-local-upload-resilience.py",
+      "category": "User interface and integrations",
+      "source": "web/scripts/test-local-upload-resilience.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-upload-resilience.py"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-test-local-venue-votes-py",
       "label": "web/scripts/test-local-venue-votes.py",
       "category": "Events and services",
@@ -3135,6 +3163,20 @@
         {
           "id": "suite",
           "label": "createServices.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-config-brandingPaint-test-ts",
+      "label": "web/src/config/brandingPaint.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/config/brandingPaint.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "brandingPaint.test.ts"
         }
       ]
     },
@@ -3863,6 +3905,20 @@
         {
           "id": "suite",
           "label": "companyFinancing.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-components-compressUploadImage-test-ts",
+      "label": "web/src/ui/components/compressUploadImage.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/ui/components/compressUploadImage.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "compressUploadImage.test.ts"
         }
       ]
     },

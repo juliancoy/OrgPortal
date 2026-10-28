@@ -1,5 +1,6 @@
+import {PendingUploadGuard} from './PendingUploadGuard'
 import { compressUploadImage } from './compressUploadImage'
-import { SubmissionAttachmentPicker } from './SubmissionAttachments'
+import { SubmissionAttachmentPicker, SubmissionAttachments } from './SubmissionAttachments'
 import { uploadSubmissionAttachment, type StagedSubmissionAttachment } from './submissionAttachments'
 import { invalidatePublicOrganizationData } from '../../data/publicOrganization/cache'
 import { TeamPeoplePicker, readTeamPeople, type TeamPerson } from './TeamPeoplePicker'
@@ -16,11 +17,11 @@ export type PresentationFormAction = { kind: 'edit'; application: PresentationAp
 const emptyPresentationDraft = { submissionId: '', editing: '', imageOrg: '', imageUrl: '', teamChoice: '', tagline: '', accent: '#155e59', brandingOrg: '', org: '', name: '', city: 'Baltimore', description: '', title: '', summary: '', people: '[]' }
 export function EventPresentations({eventId,formAction,onActionHandled,onSaved,onSubmitted,onCancelEdit,guestApplyPath}:{eventId:string;formAction?:PresentationFormAction|null;onActionHandled?:()=>void;onSaved?:()=>void;onSubmitted?:(submissionId:string,details:{title:string;teamName:string})=>void;guestApplyPath?:string;onCancelEdit?:()=>void}) {
  const {token,user}=useAuth()
- const choseInitialTeam=useRef(false)
+ const choseInitialTeam=useRef(false),completed=useRef(false)
  const [teamImage,setTeamImage]=useState<File|null>(null)
  const [imagePreview,setImagePreview]=useState('')
  useEffect(()=>{if(!teamImage){setImagePreview('');return}const url=URL.createObjectURL(teamImage);setImagePreview(url);return()=>URL.revokeObjectURL(url)},[teamImage])
- const [files,setFiles]=useState<StagedSubmissionAttachment[]>([])
+ const [files,setFiles]=useState<StagedSubmissionAttachment[]>([]),[attachmentRevision,setAttachmentRevision]=useState(0)
  useEffect(()=>{choseInitialTeam.current=false;setFiles([]);setTeamImage(null)},[eventId,user?.id])
  const location=useLocation()
  const fieldId=useId()
@@ -29,6 +30,7 @@ export function EventPresentations({eventId,formAction,onActionHandled,onSaved,o
  useEffect(()=>{
   if(!formAction)return
   if(formAction.kind==='edit'){
+   completed.current=false
    const application=formAction.application
    draft.setValue(previous=>previous.submissionId===application.submission_id&&previous.org===application.organization_id&&previous.editing?previous:{...emptyPresentationDraft,submissionId:application.submission_id,editing:'true',org:application.organization_id,title:application.title,summary:application.summary,people:JSON.stringify(application.presenters||[])})
    setFiles([])
@@ -38,7 +40,7 @@ export function EventPresentations({eventId,formAction,onActionHandled,onSaved,o
  // eslint-disable-next-line react-hooks/exhaustive-deps
  },[formAction,user?.id])
  const people=readTeamPeople(draft.value.people)
- const setField=<K extends keyof typeof emptyPresentationDraft>(field:K,value:typeof emptyPresentationDraft[K])=>draft.setValue(previous=>({...previous,[field]:value}))
+ const setField=<K extends keyof typeof emptyPresentationDraft>(field:K,value:typeof emptyPresentationDraft[K])=>{completed.current=false;draft.setValue(previous=>({...previous,[field]:value}))}
  const setOrg=(value:string)=>draft.setValue(previous=>({...previous,org:value,teamChoice:'selected'})),setName=(value:string)=>setField('name',value),setCity=(value:string)=>setField('city',value),setDescription=(value:string)=>setField('description',value),setTitle=(value:string)=>setField('title',value),setSummary=(value:string)=>setField('summary',value)
  const base=`/api/org/api/network/events/${encodeURIComponent(eventId)}/presentations`
  const [enabled,setEnabled]=useState(false),[closed,setClosed]=useState(false),[ready,setReady]=useState(false)
@@ -81,7 +83,6 @@ export function EventPresentations({eventId,formAction,onActionHandled,onSaved,o
  },[org,token,eventId,people.length===0])
  async function chooseTeamImage(event:ChangeEvent<HTMLInputElement>) {
   const input=event.target,file=input.files?.[0]
-  setTeamImage(null)
   if(!file)return
   if(!['image/jpeg','image/png','image/webp','image/gif'].includes(file.type)){
    setMessage('Choose a JPEG, PNG, WebP or GIF image.');input.value='';return
@@ -95,12 +96,13 @@ export function EventPresentations({eventId,formAction,onActionHandled,onSaved,o
   finally{setBusy(false)}
  }
  async function action(work:()=>Promise<void>) {
-  if(busy)return;setBusy(true);setMessage('')
+  if(busy)return;completed.current=false;setBusy(true);setMessage('')
   try{await work();setVersion(v=>v+1)}catch(error){setMessage(error instanceof Error?error.message:'Unable to save')}finally{setBusy(false)}
  }
  if(!ready) return <section aria-label="Presentation applications"><p role="status">{message||'Loading application…'}</p>{message&&<button type="button" className="btn-secondary" onClick={()=>setVersion(v=>v+1)}>Retry</button>}</section>
  if(!enabled&&!draft.value.editing)return <p role="status">Presentation applications are not available for this event.</p>
  return <section className="presentation-applications" aria-label="Presentation applications">
+  <PendingUploadGuard pending={busy||files.length>0||teamImage!==null} allowLeave={()=>completed.current}/>
   <p className="sr-only" role="status" aria-live="polite">{busy?'Saving application…':''}</p>
   {message&&<p className="application-message" ref={messageRef} tabIndex={-1} role="alert">{message}</p>}
   {enabled&&!closed&&!token&&<div className="presentation-login"><p>Sign in to submit with an existing organization or create a new team.</p><Link className="btn-primary" to={`/users/login?next=${encodeURIComponent(location.pathname+location.search)}`}>Sign in to apply</Link></div>}
@@ -137,8 +139,8 @@ export function EventPresentations({eventId,formAction,onActionHandled,onSaved,o
    await request(`${base}/${encodeURIComponent(submissionId)}`,'PUT',{organization_id:organizationId,title,summary});
    setField('editing','true');
    await invalidatePublicOrganizationData();
-   try{for(const file of files){await uploadSubmissionAttachment(eventId,submissionId,file,token!);setFiles(previous=>previous.filter(item=>item.id!==file.id))}}catch(error){throw new Error(`Your application is saved, but an attachment could not upload: ${error instanceof Error?error.message:'Please retry'}. Your draft and remaining selected files are retained.`)}finally{onSaved?.()}
-   draft.clear();setMessage(draft.value.editing?'Application updated.':'Application submitted to the event organizers.');onSubmitted?.(submissionId,{title,teamName:orgs.find(team=>team.id===organizationId)?.name||name})
+   try{for(const file of files){await uploadSubmissionAttachment(eventId,submissionId,file,token!);setFiles(previous=>previous.filter(item=>item.id!==file.id))}}catch(error){throw new Error(`Your application is saved, but an attachment could not upload: ${error instanceof Error?error.message:'Please retry'}. Your draft and remaining selected files are retained.`)}finally{setAttachmentRevision(value=>value+1);onSaved?.()}
+   completed.current=true;draft.clear();setMessage(draft.value.editing?'Application updated.':'Application submitted to the event organizers.');onSubmitted?.(submissionId,{title,teamName:orgs.find(team=>team.id===organizationId)?.name||name})
   })}}>
    <div className="local-draft-status"><p role="status" aria-live="polite">{busy?'Saving your application…':draft.unavailable?'Draft storage is unavailable. Keep this page open until you submit.':draft.saved?'Draft saved on this device.':'Saving draft on this device…'}</p>{draft.value.editing&&<button type="button" disabled={busy} className="btn-secondary" onClick={()=>{draft.clear();setFiles([]);setTeamImage(null);onCancelEdit?.()}}>Cancel editing</button>}</div>
    <fieldset className="presentation-fields" disabled={busy}><legend className="sr-only">Application details</legend>
@@ -163,12 +165,13 @@ export function EventPresentations({eventId,formAction,onActionHandled,onSaved,o
     </fieldset>
     <fieldset className="presentation-section"><legend>Supporting materials <span className="application-optional">(optional)</span></legend>
      <p className="muted">Slides, images or documents. Up to 10 files, 20 MB each. Attachments are public.</p>
-     <SubmissionAttachmentPicker files={files} onChange={setFiles} disabled={busy} buttonLabel="Add files"/>
+     {draft.value.editing&&draft.value.submissionId&&<SubmissionAttachments eventId={eventId} submissionId={draft.value.submissionId} canManage loadOnMount refreshKey={attachmentRevision} showPicker={false}/>}
+     <SubmissionAttachmentPicker files={files} onChange={value=>{completed.current=false;setFiles(value)}} disabled={busy} buttonLabel="Add files"/>
     </fieldset>
    </fieldset>
    <div className="presentation-form-footer"><p className="muted">Your team name, presentation title, abstract and attachments will be public. The community can explore and vote on your submission.</p>
     <button className="btn-primary presentation-submit" disabled={busy} type="submit">{busy?'Saving application…':draft.value.editing?'Save changes':'Submit application'}</button>
-    <button type="button" className="btn-secondary" disabled={busy} onClick={()=>{draft.clear();setFiles([]);setTeamImage(null)}}>Clear saved draft</button>
+    <button type="button" className="btn-secondary" disabled={busy} onClick={()=>{if(!window.confirm('Clear this application draft and selected files? This cannot be undone.'))return;draft.clear();setFiles([]);setTeamImage(null)}}>Clear saved draft</button>
    </div>
   </form>}
  </section>
