@@ -863,6 +863,7 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
         </div>
         <div className="organization-profile-actions">
           <OrganizationShareButton key={org.slug} url={currentOrgUrl(org.slug)} />
+          <Link className="btn-secondary" to={`/orgs/${encodeURIComponent(org.slug)}/subscribe`} aria-label={`Join ${org.name}’s mailing list`} title="Join the mailing list"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg> Mailing list</Link>
           {Boolean(org.links?.length) && org.links!.filter(link=>!isRetiredOrganizationHref(link.url)).map(link=><a key={link.id} className={link.type === 'website' ? 'btn-primary' : 'btn-secondary'} href={link.url} target="_blank" rel="noopener noreferrer">{link.label || organizationLinkLabels[link.type]}</a>)}
           {org.source_url && !isRetiredOrganizationHref(org.source_url) && !org.links?.some(link=>link.url===org.source_url) && <a className="btn-primary" href={org.source_url} target="_blank" rel="noreferrer">Website</a>}
           {token && membership?.status === 'active' && membership.role === 'member' && <button type="button" className="btn-secondary" onClick={()=>void updateOrganizationMembership(false)}>Leave group</button>}

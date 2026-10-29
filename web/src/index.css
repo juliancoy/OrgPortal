@@ -9645,3 +9645,9 @@ a.public-event-comment-avatar:focus-visible { outline: 3px solid var(--primary);
  .public-event-layout { grid-template-columns: minmax(0, 1fr); }
  .public-event-side { position: static; }
 }
+
+.newsletter-signup { max-width: 38rem; margin-inline: auto; }
+.newsletter-signup form { display: grid; gap: 1rem; }
+.newsletter-signup .newsletter-consent { display: flex; align-items: flex-start; gap: .65rem; line-height: 1.55; }
+.newsletter-signup .newsletter-consent input { width: auto; flex: 0 0 auto; margin-top: .35rem; }
+.newsletter-signup form > .btn-primary { justify-self: start; }

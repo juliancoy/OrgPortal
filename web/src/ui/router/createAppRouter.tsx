@@ -54,6 +54,7 @@ const OrgInitiativeBallotPage = lazy(() => import('../views/orgs/OrgInitiativeBa
 const OrgProfilePage = lazy(() => import('../views/orgs/OrgProfilePage').then(module => ({ default: module.OrgProfilePage })))
 const OrgAccountPage = lazy(() => import('../views/orgs/OrgAccountPage').then(module => ({ default: module.OrgAccountPage })))
 const OrgEventsPage = lazy(() => import('../views/orgs/OrgEventsPage').then(module => ({ default: module.OrgEventsPage })))
+const NewsletterSignupPage = lazy(() => import('../views/email/NewsletterSignupPage').then(module => ({ default: module.NewsletterSignupPage })))
 const PublicAdminPage = lazy(() => import('../views/public/PublicAdminPage').then(module => ({ default: module.PublicAdminPage })))
 const PublicContactPage = lazy(() => import('../views/public/PublicContactPage').then(module => ({ default: module.PublicContactPage })))
 const PublicEventsPage = lazy(() => import('../views/public/PublicEventsPage').then(module => ({ default: module.PublicEventsPage })))
@@ -481,6 +482,7 @@ export function createAppRouter() {
 
           // Public profile
           { path: '/orgs/:handle/five-over-five', element: <FiveOverFivePage /> },
+          { path: '/orgs/:handle/subscribe', element: <NewsletterSignupPage /> },
           { path: '/orgs/:handle', element: <OrganizationProfileRoute /> },
           { path: '/orgs/:handle/public', element: <LegacyOrganizationRoute /> },
           { path: '/orgs/:handle/member', element: <LegacyOrganizationRoute workspace /> },

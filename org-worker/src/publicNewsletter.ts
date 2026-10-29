@@ -1,17 +1,26 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
-import { digest, emailFail, normalizeEmail } from './emailShared';
+import { digest, emailFail, normalizeEmail, emailPortalBase } from './emailShared';
 
-const organizationId = 'ef646755-9443-4c7b-ba4b-a7a29754f666';
+const legacyLifeTechOrganizationId = 'ef646755-9443-4c7b-ba4b-a7a29754f666';
 
 // Public consent creates only an email subscription, never an identity or membership.
 export function publicNewsletterRoutes() {
   const routes = new Hono<{ Bindings: Env }>();
   routes.use('*', async (c, next) => { c.header('Cache-Control', 'no-store'); await next(); });
   routes.use('*', bodyLimit({ maxSize: 2048 }));
-  routes.post('/', async c => {
+  const subscribe = async (c: Context<{ Bindings: Env }>) => {
+    const organizationId = c.req.param('organizationId') || legacyLifeTechOrganizationId;
     const origin = c.req.header('origin');
-    if (origin !== 'https://lifetech.fyi') emailFail(403, 'Subscribe from the LifeTech website.');
+    if (!c.req.param('organizationId')) {
+      if (origin !== 'https://lifetech.fyi') emailFail(403, 'Subscribe from the organization website.');
+    } else {
+      let hostname='';
+      try { const parsed=new URL(origin || ''); if (parsed.protocol==='https:' || (parsed.protocol==='http:' && ['localhost','127.0.0.1'].includes(parsed.hostname))) hostname=parsed.hostname; } catch { /* Deny invalid origins. */ }
+      const portalOrigin=new URL(emailPortalBase(c.env)).origin;
+      const tenant=hostname ? await c.env.DB.prepare(`SELECT organization_id FROM group_sites WHERE hostname=? OR (custom_domain_hostname=? AND custom_domain_status='attached')`).bind(hostname,hostname).first<{organization_id:string}>() : null;
+      if (!hostname || (origin!==portalOrigin && tenant?.organization_id!==organizationId)) emailFail(403,'Subscribe from this organization’s website or OrgPortal.');
+    }
     if (!c.req.header('content-type')?.startsWith('application/json')) emailFail(400, 'Submit an email address.');
     const input = await c.req.json().catch(() => null);
     if (!input || typeof input !== 'object' || Array.isArray(input)) emailFail(400, 'Submit an email address.');
@@ -35,6 +44,8 @@ export function publicNewsletterRoutes() {
       ON CONFLICT(email,topic_type,topic_id) DO NOTHING`)
       .bind(crypto.randomUUID(), '', email, organizationId, now, now, organizationId, email, organizationId, email).run();
     return c.json({ ok: true, message: 'Thank you! New email addresses are subscribed. If you previously unsubscribed, contact the newsletter sender to subscribe again.' });
-  });
+  };
+  routes.post('/',subscribe); // Existing LifeTech embeds remain compatible.
+  routes.post('/:organizationId',subscribe);
   return routes;
 }

@@ -703,3 +703,21 @@ test('service desk edits sanitize rich email, invalidate reviews, and send one p
   assert.equal((await request('/campaigns/'+id+'/review-copy','POST',{...copy,requestId:crypto.randomUUID()})).status,409);
   assert.equal(sent.length,1);
 });
+
+
+test('generic anonymous signup isolates organizations and tenant domains without creating accounts', async t => {
+  const {database,env}=setup(t);
+  database.exec("INSERT INTO group_sites(id,organization_id,hostname,name,tagline) VALUES('one','org-1','group-one.test','One','Community'),('two','org-2','group-two.test','Two','Community')");
+  const submit=(org:string,origin:string,email='subscriber@example.test')=>app.request('https://portal.test/api/email/newsletter/'+org,{method:'POST',headers:{Origin:origin,'Content-Type':'application/json','cf-connecting-ip':'192.0.2.55'},body:JSON.stringify({email,consent:true,organizationId:'ignored'})},env);
+  const before=database.prepare('SELECT count(*) n FROM organization_memberships').get()!.n;
+  assert.equal((await submit('org-1','https://group-one.test')).status,200);
+  assert.equal((await submit('org-2','https://group-one.test')).status,403);
+  assert.equal((await submit('org-2','https://evil.test')).status,403);
+  assert.equal((await submit('org-2','https://portal.test')).status,200);
+  assert.equal(database.prepare('SELECT count(*) n FROM email_subscriptions WHERE email=?').get('subscriber@example.test')!.n,2);
+  assert.equal(database.prepare('SELECT count(*) n FROM organization_memberships').get()!.n,before);
+  database.exec("UPDATE email_subscriptions SET status='unsubscribed' WHERE topic_id='org-1'");
+  assert.equal((await submit('org-1','https://group-one.test')).status,200);
+  assert.equal(database.prepare("SELECT status FROM email_subscriptions WHERE topic_id='org-1'").get()!.status,'unsubscribed');
+  assert.equal((await submit('missing','https://portal.test')).status,503);
+});
