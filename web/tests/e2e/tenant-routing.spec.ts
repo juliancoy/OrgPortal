@@ -713,7 +713,10 @@ for (const width of [320, 360, 390, 430, 667, 680, 681, 720, 768, 820, 980, 981,
  test(`LifeTech Demo Day submissions remain readable at ${width}px`, async ({ page }, info) => {
   test.skip(info.project.name !== 'desktop-chromium', 'This matrix explicitly sets phone, tablet and desktop viewports.')
   await page.setViewportSize({ width, height: width < 600 ? 844 : width < 900 ? 600 : 900 })
-  await page.route('https://**/*', route => route.fulfill({status:204,body:''}))
+  await page.route('https://**/*', route => {
+   const localOrigin=new URL(process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:4173').origin
+   return new URL(route.request().url()).origin===localOrigin?route.fallback():route.fulfill({status:204,body:''})
+  })
   await mockTenant(page)
   await page.route('**/api/org/api/portal/site', route => route.fulfill({ json: {
    id:'lifetech', hostname:'lifetech.fyi', name:'LifeTech', profile:'community', features:['directory','events','chat'],
