@@ -108,6 +108,7 @@ const paths = [
   "/search",
   "/orgs/:handle",
   "/orgs/:handle/five-over-five",
+  "/orgs/:handle/subscribe",
   "/users/:slug",
   "/contact/:slug",
   "/contact-settings",
