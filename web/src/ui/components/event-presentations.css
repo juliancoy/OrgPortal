@@ -183,3 +183,11 @@
 @media (prefers-reduced-motion: reduce) {
  :is(.submission-vote-limit, .submission-card-state.is-limit) { animation: none; }
 }
+
+/* Keep the text track full-width; header controls must not squeeze names. */
+.submission-voting-card { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 480px) {
+ .submission-card-header { gap: .5rem; }
+ .submission-card-header .submission-team { flex: 1; }
+ .submission-card-header .submission-team img { display: none; }
+}

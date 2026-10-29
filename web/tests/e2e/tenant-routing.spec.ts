@@ -706,3 +706,54 @@ for (const path of ['/org-events', '/events', '/calendar']) {
     }
   });
 }
+
+// Include both sides of the old 680px breakpoint: a 320px registration sidebar
+// used to leave the submission's organization name only one character wide.
+for (const width of [320, 360, 390, 430, 667, 680, 681, 720, 768, 820, 980, 981, 1024, 1440]) {
+ test(`LifeTech Demo Day submissions remain readable at ${width}px`, async ({ page }, info) => {
+  test.skip(info.project.name !== 'desktop-chromium', 'This matrix explicitly sets phone, tablet and desktop viewports.')
+  await page.setViewportSize({ width, height: width < 600 ? 844 : width < 900 ? 600 : 900 })
+  await page.route('https://**/*', route => route.fulfill({status:204,body:''}))
+  await mockTenant(page)
+  await page.route('**/api/org/api/portal/site', route => route.fulfill({ json: {
+   id:'lifetech', hostname:'lifetech.fyi', name:'LifeTech', profile:'community', features:['directory','events','chat'],
+   home_org_slug:'lifetech', canonical_path_prefix:'', brand_image_path:'/assets/images/lifetech-logo.png', theme_color:'#061a26',
+  } }))
+  await page.route('**/api/org/api/network/events/public/lifetech-demo-day-3', route => route.fulfill({ json: {
+   ...medtechEvent, slug:'lifetech-demo-day-3', title:'LifeTech Demo Day [#3]', host_org_name:'LifeTech',
+   organization_name:'LifeTech',organization_slug:'lifetech',organization_image_url:'/assets/images/lifetech-logo.png',
+   image_url:'/assets/images/lifetech-hero.png',links:[{...medtechEvent.links[0],image_url:'/assets/images/lifetech-hero.png'}],
+   starts_at:'2027-11-17T23:00:00Z', ends_at:'2027-11-18T01:30:00Z',
+  } }))
+  await page.route('**/presentations/public', route => route.fulfill({ json:{enabled:true,favoriteLimit:3} }))
+  await page.route('**/presentations/final-round', route => route.fulfill({ json:{phase:'shortlist',canManage:false,results:[]} }))
+  await page.route('**/presentations/submissions', route => route.fulfill({ json:{favoriteLimit:3,next:null,submissions:[{
+   submission_id:'responsive-team',organization_id:'responsive-team',organization_slug:'responsive-team',
+   organization_name:'Harbor Advance Care Research Collective',title:'Physician-initiated advance care planning, built for the moment it is needed',
+   summary:'Our team is building practical tools to help clinicians and families make informed decisions. This description must use the full readable width of the submission card, including on landscape phones and small tablets.',
+   presenters:[{name:'Alex Morgan'},{name:'Jordan Rivera'}],attachments:[],favorites:2,status:'submitted',image_url:null,
+  }]} }))
+  await page.goto(portal('/events/lifetech-demo-day-3#submissions'))
+  const card=page.locator('.submission-voting-card').first()
+  await expect(card).toBeVisible()
+  await card.getByRole('button',{name:/Expand submission/}).click()
+  await expect(card.locator('.submission-card-details')).toBeVisible()
+  for(const theme of ['light','dark']) {
+   await page.evaluate(theme=>document.documentElement.dataset.theme=theme,theme)
+   const metrics=await card.evaluate(el=>{
+    const width=(selector:string)=>el.querySelector(selector)!.getBoundingClientRect().width
+    const bounds=el.getBoundingClientRect()
+    return {title:width('.submission-card-title'),description:width('.submission-card-details .bio-markdown p'),organization:width('.submission-team a'),
+     cardOverflow:el.scrollWidth-el.clientWidth,pageOverflow:document.documentElement.scrollWidth-innerWidth,left:bounds.left,right:bounds.right}
+   })
+   expect(metrics.title,`${theme}: title must have room for words`).toBeGreaterThanOrEqual(160)
+   expect(metrics.description,`${theme}: description must have room for words`).toBeGreaterThanOrEqual(160)
+   expect(metrics.organization,`${theme}: name must not collapse beside avatars and expand control`).toBeGreaterThanOrEqual(80)
+   expect(metrics.cardOverflow,`${theme}: card overflow`).toBeLessThanOrEqual(2)
+   expect(metrics.pageOverflow,`${theme}: page overflow`).toBeLessThanOrEqual(2)
+   expect(metrics.left).toBeGreaterThanOrEqual(0)
+   expect(metrics.right).toBeLessThanOrEqual(width+1)
+   await page.screenshot({path:info.outputPath(`lifetech-submissions-${width}-${theme}.png`),fullPage:true})
+  }
+ })
+}

@@ -9639,3 +9639,9 @@ a.public-event-comment-avatar:focus-visible { outline: 3px solid var(--primary);
   background: var(--panel, #fff); color: var(--text, #123);
   box-shadow: 0 2px 8px #0002; font-size: 0.85rem;
 }
+
+/* A registration sidebar needs more room than landscape phones/small tablets offer. */
+@media (max-width: 980px) {
+ .public-event-layout { grid-template-columns: minmax(0, 1fr); }
+ .public-event-side { position: static; }
+}

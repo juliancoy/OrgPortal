@@ -105,3 +105,24 @@ visible animation frames across cold load and reload. Public host paint snapshot
 contain only public colors and identifiers, are bounded, and expire after one day.
 Selected upload files remain in memory: leaving/reloading warns before discarding
 them; saved text drafts retain their existing account/event isolation and expiry.
+
+### Demo Day submission readability regression
+
+`web/tests/e2e/tenant-routing.spec.ts` includes a LifeTech Demo Day viewport
+matrix (320, 360, 390, 430, 667, 680, 681, 720, 768, 820, 980, 981, 1024,
+and 1440 CSS pixels). It uses synthetic public submissions with long team
+names, two presenter avatars, expanded descriptions, and the registration
+sidebar. Each size checks light and dark themes, actual title/paragraph/name
+widths, and horizontal overflow. Screenshots are written to Playwright's test
+artifacts. It runs in the existing browser integration CI workflow.
+
+Run the matrix with:
+
+```sh
+cd web
+npm run test:e2e -- tenant-routing.spec.ts --grep 'submissions remain readable' --project desktop-chromium
+```
+
+The 681–820px cases protect against a sidebar squeezing text between the
+phone and desktop breakpoints; 980/981px cover the current layout transition.
+The 320px case also protects team names beside the avatar and expand controls.
