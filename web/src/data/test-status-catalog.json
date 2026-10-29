@@ -3377,6 +3377,20 @@
       ]
     },
     {
+      "id": "suite-web-src-data-newsletterSignup-test-ts",
+      "label": "web/src/data/newsletterSignup.test.ts",
+      "category": "Messaging and email",
+      "source": "web/src/data/newsletterSignup.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "newsletterSignup.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-web-src-data-publicOrganization-cache-test-ts",
       "label": "web/src/data/publicOrganization/cache.test.ts",
       "category": "Organizations and membership",
