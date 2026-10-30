@@ -1,32 +1,21 @@
-import { describe, expect, it } from 'vitest'
-import { groupOrganizationEvents } from './organizationEvents'
+import {describe,expect,it} from 'vitest'
+import {organizationCalendarEvents} from './organizationEvents'
 
-describe('organization event sections', () => {
-  const org = { id: 'lifetech-id', slug: 'lifetech' }
-  it('keeps hosted events above related events even when related events happen sooner', () => {
-    const events = [
-      { id: 'nearby', host_org_id: 'partner', starts_at: '2026-10-07' },
-      { id: 'own-later', host_org_id: org.id, starts_at: '2026-10-20' },
-      { id: 'own-sooner', host_org_id: org.id, event_date: '2026-10-10' },
-      { id: 'undated', host_org_id: org.id },
-    ]
-    const groups = groupOrganizationEvents(events, org)
-    expect(groups.map(group => group.kind)).toEqual(['hosted', 'related'])
-    expect(groups[0].events.map(event => event.id)).toEqual(['own-sooner', 'own-later', 'undated'])
-    expect(groups[1].events.map(event => event.id)).toEqual(['nearby'])
-    expect(events[0].id).toBe('nearby')
-  })
-  it('does not assign other hosts to LifeTech by a matching label or slug', () => {
-    const groups = groupOrganizationEvents([
-      { id: 'import', organization_slug: 'lifetech' },
-      { id: 'partner', host_org_id: 'partner', organization_slug: 'lifetech' },
-    ], org)
-    expect(groups[0].events.map(event => event.id)).toEqual(['import'])
-    expect(groups[1].events.map(event => event.id)).toEqual(['partner'])
-  })
-  it('retains an empty hosted section above the nearby events', () => {
-    const groups = groupOrganizationEvents([{ host_org_id: 'partner' }], org)
-    expect(groups[0].events).toEqual([])
-    expect(groups[1].events).toHaveLength(1)
-  })
+describe('organization calendar',()=>{
+ it('shows presenting and hosted events in one chronological list without changing the host',()=>{
+  const events=[
+   {id:'hosted',host_org_id:'team',starts_at:'2026-12-01'},
+   {id:'demo',host_org_id:'lifetech',starts_at:'2026-11-17'},
+   {id:'undated',host_org_id:'team'},
+   {id:'date-only',host_org_id:'team',event_date:'2026-11-01'},
+  ]
+  expect(organizationCalendarEvents(events).map(event=>event.id)).toEqual(['date-only','demo','hosted','undated'])
+  expect(organizationCalendarEvents(events).find(event=>event.id==='demo')?.host_org_id).toBe('lifetech')
+  expect(events[0].id).toBe('hosted')
+ })
+ it('shows an event only once when the organization has multiple associations',()=>{
+  const event={id:'demo',starts_at:'2026-11-17'}
+  expect(organizationCalendarEvents([event,event])).toEqual([event])
+  expect(organizationCalendarEvents([])).toEqual([])
+ })
 })

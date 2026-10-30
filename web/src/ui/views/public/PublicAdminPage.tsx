@@ -19,7 +19,7 @@ import { OrganizationLinksEditor } from '../../components/OrganizationLinksEdito
 import { normalizeOrganizationLinks, organizationLinkLabels, type OrganizationLink } from '../../../../../shared/organizationLinks'
 import { OrganizationFollowButton } from '../../components/OrganizationFollowButton'
 import { GroupMailingList, GroupEmailPreference } from '../email/GroupMailingList'
-import { groupOrganizationEvents } from './organizationEvents'
+import { organizationCalendarEvents } from './organizationEvents'
 import { EmbeddedOrganizationChat } from '../../components/EmbeddedOrganizationChat'
 import { OrganizationBranding } from '../../components/OrganizationBranding'
 import { getGroupSite,parseGroupSite,type GroupSite } from '../../../config/timebankCommunity'
@@ -819,7 +819,7 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
   const organizationBrandImage = site?.brand_image_path||(tenant?.organization_id === org.id ? tenant.brand_image_path : null)
   const ownImage=organizationPageLogo(site,org.image_url)
   const heroImageSource = ownImage&&ownImage!==ORG_PLACEHOLDER_SRC?ownImage:organizationBrandImage||ORG_PLACEHOLDER_SRC
-  const eventGroups = groupOrganizationEvents(events, org).filter(group => group.kind==='hosted')
+  const calendarEvents = organizationCalendarEvents(events)
   const resources=specialtyResourcesForTenant(site)
   const portalDescription=site?.home_description?.trim()
   const isNeoNatalProfile = org.id === '20df0f86-111f-4cb1-bb3d-8dff604dded6' && !dashboard
@@ -905,26 +905,26 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
         {resources.length>0 && <SpecialtyResourcesPanel resources={resources}/>}
       </div>
       <div className="organization-profile-panel" role="tabpanel" id="org-panel-events" aria-labelledby="org-tab-events" hidden={activeTab !== 'events'}>
-        {activeTab==='events' && <>          {eventGroups.map((group) => <div key={group.kind} id={group.kind === 'hosted' ? 'organization-events' : 'organization-related-events'} className="organization-event-section portal-org-nav-target" tabIndex={-1}>
+        {activeTab==='events' && <div id="organization-events" className="organization-event-section portal-org-nav-target" tabIndex={-1}>
             <div className="portal-org-events-heading">
               <div>
                 <p className="tenant-home-eyebrow">{org.name}</p>
-                <h2>{group.kind === 'hosted' ? 'Upcoming events' : 'Events from nearby organizations'}</h2>
+                <h2>Upcoming events</h2>
               </div>
               <Link to="/events">View all events</Link>
-              {canManageCurrentOrg && group.kind === 'hosted' && <Link className="btn-secondary" to="/orgs/events">Manage events</Link>}
+              {canManageCurrentOrg && <Link className="btn-secondary" to="/orgs/events">Manage events</Link>}
             </div>
             {eventsLoading ? (
               <p className="muted" style={{ margin: 0 }}>
                 Loading events…
               </p>
-            ) : eventsError ? <p role="status" className="muted">{eventsError}</p> : group.events.length === 0 ? (
+            ) : eventsError ? <p role="status" className="muted">{eventsError}</p> : calendarEvents.length === 0 ? (
               <p className="muted" style={{ margin: 0 }}>
-                {group.kind === 'hosted' ? `No upcoming events hosted by ${org.name} are listed.` : 'No upcoming related events are listed.'}
+                {`No upcoming events are listed for ${org.name}.`}
               </p>
             ) : (
               <div className="portal-org-events-grid">
-                {group.events.map((event) => (
+                {calendarEvents.map((event) => (
                   <Link key={event.id} className="portal-org-event-card" to={`/events/${encodeURIComponent(event.slug)}`}>
                     <OrgImage
                       src={event.image_url || event.media?.[0]?.url || coverImage || heroImageSource}
@@ -939,7 +939,7 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
                 ))}
               </div>
             )}
-          </div>)}</>}
+          </div>}
       </div>
       <div className="organization-profile-panel" role="tabpanel" id="org-panel-personnel" aria-labelledby="org-tab-personnel" hidden={activeTab !== 'personnel'}>
         {activeTab==='personnel' && <OrganizationBoard embedded organization={org} canManage={canManageCurrentOrg} canRead={Boolean(token&&(canManageCurrentOrg||membership?.status==='active'))} memberType={org.tags?.includes('Team')?'team':'community'}/>}

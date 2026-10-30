@@ -1,14 +1,10 @@
-type Organization = { id: string; slug: string }
-type Event = { host_org_id?: string | null; organization_slug?: string | null; starts_at?: string | null; event_date?: string | null }
+type OrganizationEvent = { id: string; starts_at?: string | null; event_date?: string | null }
 
-export function groupOrganizationEvents<T extends Event>(events: T[], organization: Organization) {
-  const time = (event: T) => Date.parse(event.starts_at || event.event_date || '') || Infinity
-  const sorted = [...events].sort((a, b) => time(a) - time(b))
-  const hosted = (event: T) => event.host_org_id
-    ? event.host_org_id === organization.id
-    : event.organization_slug === organization.slug
-  return [
-    { kind: 'hosted' as const, events: sorted.filter(hosted) },
-    { kind: 'related' as const, events: sorted.filter(event => !hosted(event)) },
-  ]
+/** The organization feed already scopes hosting and participation; show one calendar. */
+export function organizationCalendarEvents<T extends OrganizationEvent>(events: T[]): T[] {
+ const time = (event: T) => {
+  const value = Date.parse(event.starts_at || event.event_date || '')
+  return Number.isFinite(value) ? value : Infinity
+ }
+ return [...new Map(events.map(event => [event.id,event])).values()].sort((a,b)=>time(a)-time(b))
 }
