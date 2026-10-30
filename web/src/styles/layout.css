@@ -81,3 +81,36 @@ h2 { font-size: clamp(1.2rem,2vw,1.55rem); letter-spacing: -.02em; }
 .onboarding-page .onboarding-calendar > label { display: inline-flex; align-items: center; gap: 8px; margin: 4px 20px 14px 0; vertical-align: middle; }
 .onboarding-page .onboarding-calendar > label input[type='checkbox'] { flex: 0 0 18px; width: 18px; height: 18px; min-height: 0; padding: 0; accent-color: var(--primary); }
 .support-page > button,.support-page form > button,.onboarding-step > button { border: 1px solid var(--border); border-radius: 9px; min-height: 42px; padding: 10px 16px; background: var(--panel); color: var(--text-primary); font: inherit; font-size: .875rem; font-weight: 600; cursor: pointer; }
+
+/* One consistent account/navigation bar; dropdowns remain outside its bounds. */
+.portal-header-controls {
+ display: inline-flex; align-items: center; gap: 4px; padding: 4px;
+ border: 1px solid var(--border); border-radius: 999px; background: var(--panel);
+}
+.portal-header .portal-header-controls :is(.portal-user-trigger,.portal-notification-trigger,.portal-nav-toggle) {
+ display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box;
+ width: 44px !important; min-width: 44px !important; max-width: 44px;
+ height: 44px !important; min-height: 44px !important; max-height: 44px;
+ flex: 0 0 44px; margin: 0; padding: 10px !important;
+ border: 0; border-radius: 50%; background: transparent; color: var(--text-primary); box-shadow: none;
+}
+.portal-header .portal-header-controls :is(.portal-user-trigger,.portal-notification-trigger,.portal-nav-toggle):hover,
+.portal-header .portal-header-controls :is(.portal-user-trigger,.portal-notification-trigger,.portal-nav-toggle)[aria-expanded="true"] {
+ background: var(--surface-strong); color: var(--text-primary); transform: none;
+}
+.portal-header .portal-header-controls :is(.portal-user-trigger,.portal-notification-trigger,.portal-nav-toggle):focus-visible {
+ outline: 2px solid var(--primary); outline-offset: -2px;
+}
+.portal-header-controls :is(.portal-notification-trigger,.portal-nav-toggle) > svg {
+ width: 24px; height: 24px; margin: 0; flex: 0 0 24px;
+}
+.portal-header-controls .portal-avatar {
+ display: grid; place-items: center; width: 24px !important; height: 24px !important;
+ min-width: 24px; flex: 0 0 24px !important; margin: 0; box-sizing: border-box; border-width: 1px;
+}
+@media(max-width:600px) {
+ .portal-header-controls :is(.portal-user-menu,.portal-notification-menu) {
+  position: fixed; top: calc(env(safe-area-inset-top,0px) + 74px); left: 12px; right: 12px;
+  width: auto; min-width: 0; max-width: none; max-height: calc(100dvh - 90px); overflow-y: auto;
+ }
+}

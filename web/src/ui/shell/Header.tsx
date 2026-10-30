@@ -857,7 +857,7 @@ export function Header({ organizationId }: { organizationId?: string | null } = 
 
         </div>
 
-        <div className="portal-auth">
+        <div className={isAuthenticated ? "portal-auth portal-header-controls" : "portal-auth"} role={isAuthenticated ? "group" : undefined} aria-label={isAuthenticated ? "Account and navigation controls" : undefined}>
           {isLoading && role === 'guest' ? (
             <div className="portal-auth-loading" role="status" aria-label="Checking sign-in status">
               <span className="portal-auth-loading-avatar" aria-hidden="true" />
@@ -986,7 +986,6 @@ export function Header({ organizationId }: { organizationId?: string | null } = 
               </Link>
             </div>
           )}
-        </div>
       {isAuthenticated ? <div className={`portal-nav-bar ${navOpen ? 'open' : ''}`}>
         <button
           type="button"
@@ -1140,6 +1139,7 @@ export function Header({ organizationId }: { organizationId?: string | null } = 
           </>}
         </div>
       </div> : null}
+        </div>
       </div>
       <nav className="portal-explore-nav" aria-label="Explore">
         <NavLink to="/orgs" isActive={isOrgDirectoryActive}>Organizations</NavLink>
