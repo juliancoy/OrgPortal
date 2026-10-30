@@ -1,3 +1,4 @@
+import { lumaStarIcon } from '../../../../shared/socialBrandIcons'
 import { loadPublicOrganization } from '../../data/publicOrganization/organizations'
 import { organizationLinkLabels, readOrganizationLinks, type OrganizationLink } from '../../../../shared/organizationLinks'
 import { useEffect, useState } from 'react'
@@ -18,7 +19,7 @@ function WhatsAppIcon() {
 }
 
 function LumaIcon() {
-  return <CalendarIcon />
+  return <svg viewBox={lumaStarIcon.viewBox} aria-hidden="true"><path d={lumaStarIcon.path} /></svg>
 }
 
 export function FloatingSocialDock() {
