@@ -1,3 +1,4 @@
+import Trophy from 'lucide-react/dist/esm/icons/trophy.mjs'
 import { EventApplyButtons } from '../../components/EventApplyButtons'
 import './event-application.css'
 import { CmsImage } from '../../components/media/CmsImage'
@@ -34,7 +35,7 @@ import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw.mjs'
 import X from 'lucide-react/dist/esm/icons/x.mjs'
 import ZoomIn from 'lucide-react/dist/esm/icons/zoom-in.mjs'
 import ZoomOut from 'lucide-react/dist/esm/icons/zoom-out.mjs'
-import { externalEventListings } from '../../utils/externalEventListings'
+import { externalEventListings, isEventPrizeLink } from '../../utils/externalEventListings'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
 import { downloadIcsEvent, googleCalendarUrl, outlookCalendarUrl } from '../../utils/calendar'
 import { useAuth } from '../../../app/AppProviders'
@@ -822,6 +823,11 @@ export function PublicEventPage() {
             <div><span>{toEventTimeRange(event.starts_at,event.ends_at)}</span><div className="public-event-detail-icons"><Clock size={20} aria-hidden="true" />{calendarActions}</div></div>
             {event.location&&<div><a href={mapsUrl!} target="_blank" rel="noreferrer">{event.location}</a><div className="public-event-detail-icons"><MapPinned size={20} aria-hidden="true" /><button type="button" className="public-event-icon-action" onClick={()=>void copyEventAddress().catch(()=>{})} aria-label={addressCopied?'Address copied':'Copy address'} title={addressCopied?'Address copied':'Copy address'}><Copy size={17} aria-hidden="true" /></button></div></div>}
           </section>
+          {(event.links || []).filter(isEventPrizeLink).map(prize=><a key={prize.id} className="public-event-prize" href={prize.url} aria-label={`Winner’s prize: ${prize.title}`}>
+            <Trophy size={22} aria-hidden="true" />
+            <span className="public-event-prize-copy"><strong>Winner’s prize</strong>{prize.description&&<span>{prize.description}</span>}</span>
+            {prize.image_url?<span className="public-event-prize-logo"><CmsImage src={prize.image_url} alt={prize.title} /></span>:<span>{prize.title}</span>}
+          </a>)}
           {(canManageEvent || presentationsEnabled) && <section className="public-event-applications" aria-label="Presentation applications">
           {canManageEvent && <div className="presentation-settings"><label><input type="checkbox" checked={presentationsEnabled} disabled={presentationSettingsBusy || presentationSettings?.eventId !== event.id} onChange={() => void togglePresentations()} /> Enable presentation applications</label>{presentationSettingsError && <p role="status">{presentationSettingsError}</p>}</div>}
           {presentationsEnabled && <EventApplyButtons eventId={event.id} eventSlug={event.slug || slug!} gold={applyGold} />}
@@ -1022,7 +1028,7 @@ export function PublicEventPage() {
               </div>
             </section>
           ) : null}
-            {activeTab==='poster'&&<EventPosterTools sourceUrl={event.source_url} eventLinks={event.links} organizationSlug={event.organization_slug} organizationLinks={event.organization_links} slug={event.slug} title={event.title} revision={event.updated_at || ''} inline />}
+            {activeTab==='poster'&&<EventPosterTools sourceUrl={event.source_url} eventLinks={event.links?.filter(link=>!isEventPrizeLink(link))} organizationSlug={event.organization_slug} organizationLinks={event.organization_links} slug={event.slug} title={event.title} revision={event.updated_at || ''} inline />}
           </section>
           {presentationsEnabled && <section className="public-event-tab-panel" role="tabpanel" id="event-submissions-panel" aria-labelledby="event-submissions-tab" hidden={activeTab!=='submissions'}>
             {activeTab==='submissions'&&<EventSubmissions key={event.id} eventId={event.id} onEdit={application=>navigate(`/events/${encodeURIComponent(event.slug || slug!)}/apply?edit=${encodeURIComponent(application.submission_id)}`)} onDeleted={()=>{}} />}

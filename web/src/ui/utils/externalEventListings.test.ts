@@ -6,6 +6,9 @@ describe('external event listings', () => {
     const source = { url: 'https://meetup.com/event', title: 'Original title', image_url: 'https://meetup.com/image.jpg' }
     expect(externalEventListings({ source_url: source.url, links: [{ url: 'https://example.com/other' }, source] }, 'https://lifetech.fyi')).toEqual([source, { url: 'https://example.com/other' }])
   })
+  it('keeps prize acknowledgements out of event listing and SEO previews', () => {
+    expect(externalEventListings({source_url:'https://luma.com/demo',links:[{id:'winner-prize-formedinsight',url:'https://formedinsight.com/'}]},'https://lifetech.fyi')).toEqual([{url:'https://luma.com/demo'}])
+  })
   it('filters internal, unsafe, invalid and duplicate links', () => {
     expect(externalEventListings({ source_url: 'https://example.com/event', links: [
       { url: 'https://lifetech.fyi/events/test' }, { url: 'javascript:alert(1)' }, { url: '/events/test' }, { url: 'https://example.com/event' },

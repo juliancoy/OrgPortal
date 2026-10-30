@@ -1,4 +1,6 @@
-type Listing = { url: string; title?: string | null; description?: string | null; image_url?: string | null }
+export function isEventPrizeLink(link: {id?: string}) { return link.id?.startsWith('winner-prize-') === true }
+
+type Listing = { id?: string; url: string; title?: string | null; description?: string | null; image_url?: string | null }
 
 export function externalEventListings(event: { source_url?: string | null; links?: Listing[] }, origin: string): Listing[] {
   const candidates = [...(event.links || [])]
@@ -9,6 +11,7 @@ export function externalEventListings(event: { source_url?: string | null; links
   }
   const seen = new Set<string>()
   return candidates.filter(link => {
+    if (isEventPrizeLink(link)) return false
     try {
       const url = new URL(link.url)
       if (!['https:', 'http:'].includes(url.protocol) || url.origin === origin || seen.has(url.href)) return false

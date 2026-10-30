@@ -9655,3 +9655,13 @@ a.public-event-comment-avatar:focus-visible { outline: 3px solid var(--primary);
 .newsletter-signup .newsletter-consent { display: flex; align-items: flex-start; gap: .65rem; line-height: 1.55; }
 .newsletter-signup .newsletter-consent input { width: auto; flex: 0 0 auto; margin-top: .35rem; }
 .newsletter-signup form > .btn-primary { justify-self: start; }
+
+/* A compact, event-configured prize acknowledgement above the application actions. */
+.public-event-prize { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-left: 3px solid #D4AF37; border-radius: 12px; background: var(--panel); color: var(--text-primary); text-decoration: none; }
+.public-event-prize > svg { flex: 0 0 22px; color: #D4AF37; }
+.public-event-prize-copy { display: grid; flex: 1; min-width: 0; gap: 3px; font-size: .875rem; line-height: 1.35; }
+.public-event-prize-copy > span { color: var(--text-muted); font-size: .8rem; }
+.public-event-prize-logo { display: grid; place-items: center; flex-shrink: 0; width: clamp(88px,24vw,136px); min-height: 34px; padding: 7px 9px; border-radius: 6px; background: #F4F5F0; }
+.public-event-prize-logo img { display: block; width: 100%; max-height: 26px; object-fit: contain; }
+.public-event-prize:hover { border-color: var(--primary); text-decoration: none; }
+.public-event-prize:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
