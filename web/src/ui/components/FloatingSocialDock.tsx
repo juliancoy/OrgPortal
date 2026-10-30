@@ -18,7 +18,7 @@ function WhatsAppIcon() {
 }
 
 function LumaIcon() {
-  return <span aria-hidden="true" className="floating-social-luma">Lu</span>
+  return <CalendarIcon />
 }
 
 export function FloatingSocialDock() {
@@ -36,11 +36,15 @@ export function FloatingSocialDock() {
   }, [orgTarget])
   if (!orgTarget) return null
 
-  const links = organizationLink?.org === orgTarget ? organizationLink?.links || [] : []
+  const isLifeTech = tenant?.organization_id === 'ef646755-9443-4c7b-ba4b-a7a29754f666' || tenant?.home_org_slug === 'lifetech' || tenant?.slug === 'lifetech'
+  if (isLifeTech && organizationLink?.org !== orgTarget) return null
+  const savedLinks = organizationLink?.org === orgTarget ? organizationLink?.links || [] : []
+  const links = isLifeTech ? ['luma','whatsapp'].flatMap(type=>savedLinks.filter(link=>link.type===type)) : savedLinks
 
   return <nav className="floating-social-dock" aria-label={`${tenant?.name || 'Organization'} social links`}>
-    <Link className="floating-social-link calendar" to="/calendar" aria-label={`Open ${tenant?.name || 'organization'} calendar`} title="Calendar"><CalendarIcon /></Link>
-    {organizationLink && organizationLink.org === orgTarget && <Link className="floating-social-link newsletter" to={`/orgs/${encodeURIComponent(organizationLink.slug)}/subscribe`} aria-label={`Join ${organizationLink.name}’s mailing list`} title="Join the mailing list"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm0 2 8 6 8-6H4Zm16 2.5-7.4 5.55a1 1 0 0 1-1.2 0L4 8.5V18h16V8.5Z"/></svg></Link>}
+    {!isLifeTech && <Link className="floating-social-link calendar" to="/calendar" aria-label={`Open ${tenant?.name || 'organization'} calendar`} title="Calendar"><CalendarIcon /></Link>}
+
     {links.map(link=><a key={link.id} className={`floating-social-link ${link.type}`} href={link.url} target="_blank" rel="noopener noreferrer" aria-label={link.label || organizationLinkLabels[link.type]} title={link.label || organizationLinkLabels[link.type]}>{link.type==='whatsapp'?<WhatsAppIcon/>:link.type==='github'?<GithubIcon/>:link.type==='luma'?<LumaIcon/>:<span aria-hidden="true">{link.type==='eventbrite'?'Eb':organizationLinkLabels[link.type].slice(0,2)}</span>}</a>)}
+    {organizationLink && organizationLink.org === orgTarget && <Link className="floating-social-link newsletter" to={`/orgs/${encodeURIComponent(organizationLink.slug)}/subscribe`} aria-label={`Join ${organizationLink.name}’s mailing list`} title="Join the mailing list"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm0 2 8 6 8-6H4Zm16 2.5-7.4 5.55a1 1 0 0 1-1.2 0L4 8.5V18h16V8.5Z"/></svg></Link>}
   </nav>
 }

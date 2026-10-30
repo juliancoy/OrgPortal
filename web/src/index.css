@@ -8653,8 +8653,8 @@ textarea:focus {
 }
 
 .floating-social-link {
-  width: 46px;
-  height: 46px;
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
   border-radius: 999px;
@@ -8892,8 +8892,8 @@ textarea:focus {
   }
 
   .floating-social-link {
-    width: 42px;
-    height: 42px;
+    width: 44px;
+    height: 44px;
   }
 
   .public-calendar-event-card,
@@ -9543,7 +9543,7 @@ a.public-event-comment-avatar:focus-visible { outline: 3px solid var(--primary);
 .organization-link-editor-row input, .organization-link-editor-row select { width: 100%; min-width: 0; }
 .organization-public-links { display: flex; flex-wrap: wrap; gap: .5rem; }
 .floating-social-dock { max-width: calc(100vw - 28px); overflow-x: auto; }
-.floating-social-link { flex: 0 0 46px; }
+.floating-social-link { flex: 0 0 44px; }
 .floating-social-link.eventbrite { background: #b53b16; }
 @media(max-width:680px) { .organization-link-editor-row { grid-template-columns: minmax(0,1fr); } }
 

@@ -1,3 +1,4 @@
+import {FloatingSocialDock} from '../../src/ui/components/FloatingSocialDock'
 import {UserProfilePage} from '../../src/ui/views/users/UserProfilePage'
 import {InlineProfileField} from '../../src/ui/components/profile/InlineProfileField'
 import {PublicEventPage} from '../../src/ui/views/public/PublicEventPage'
@@ -38,6 +39,7 @@ const life={id:'lifetech',slug:'lifetech',organization_id:'fixture-org',hostname
 if(brand==='lifetech')setGroupSite(life)
 applyPortalBranding()
 const body=<Routes>
+ <Route path="/social-links" element={<FloatingSocialDock/>}/>
  <Route path="/profile-editor" element={<UserProfilePage/>}/>
  <Route path="/personal-details" element={<UserProfilePage detailsOnly/>}/>
  <Route path="/inline-profile-review" element={<InlineProfileField label="Headline" value="Original headline" onSave={async headline=>{const response=await fetch('/api/org/api/network/contact/me',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({headline})});if(!response.ok)throw Error('Could not save headline')}}/>}/>
