@@ -9584,10 +9584,12 @@ a.public-event-comment-avatar:focus-visible { outline: 3px solid var(--primary);
 .public-event-mobile-details { display: none; }
 @media (max-width: 900px) {
   .public-event-mobile-details { display: grid; gap: .9rem; }
-  .public-event-mobile-details > div { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: start; gap: .75rem; line-height: 1.5; overflow-wrap: anywhere; }
+  .public-event-mobile-details > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 1rem; line-height: 1.5; overflow-wrap: anywhere; }
   .public-event-mobile-details .public-event-calendar-actions { margin-top: 0; }
   .public-event-mobile-details .public-event-icon-action { min-height: 44px; min-width: 44px; }
-  .public-event-mobile-details > div > svg { margin-top: .15rem; color: var(--primary); }
+  .public-event-detail-icons { display: flex; min-height: 44px; align-items: center; justify-content: flex-end; gap: .35rem; color: var(--primary); }
+  .public-event-detail-icons > svg { flex: 0 0 20px; margin: 0 12px; }
+  .public-event-mobile-details > div > :first-child { align-self: center; }
   .public-event-mobile-details .public-event-icon-action svg { margin: 0; }
   .public-event-side .public-event-logistics-list { display: none; }
   .public-event-side > .public-event-logistics-card:not(.has-location) { display: none; }
