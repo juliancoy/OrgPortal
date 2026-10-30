@@ -1,23 +1,17 @@
+import {ApplicantDetails} from './ApplicantDetails'
 import { invalidatePublicOrganizationData } from '../../data/publicOrganization/cache'
 import { GuestPresentationReview } from './GuestPresentationReview'
-import { SubmissionActions } from './SubmissionActions'
 import { PresentationFinalRound } from './PresentationFinalRound'
 import { EventApplicationReview } from './EventApplicationReview'
 import type { PresentationApplication } from './EventPresentations'
-import { SubmissionPresenters } from './SubmissionPresenters'
-import { SubmissionAttachments } from './SubmissionAttachments'
 import type { SubmissionAttachment } from './submissionAttachments'
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
-import Plus from 'lucide-react/dist/esm/icons/plus.mjs'
-import Minus from 'lucide-react/dist/esm/icons/minus.mjs'
 import Star from 'lucide-react/dist/esm/icons/star.mjs'
 import { useAuth } from '../../app/AppProviders'
-import { BioMarkdown } from './profile/BioMarkdown'
 import { OrgImage } from './media/OrgImage'
 import './event-presentations.css'
 
-type Submission={presenters?:{name:string;photo?:string;pending?:boolean}[];submission_id:string;attachments?:SubmissionAttachment[];organization_id:string;organization_name:string;organization_slug:string;image_url:string|null;title:string;summary:string;status:string;favorites:number}
+export type Submission={presenters?:{name:string;photo?:string;pending?:boolean}[];submission_id:string;attachments?:SubmissionAttachment[];organization_id:string;organization_name:string;organization_slug:string;image_url:string|null;title:string;summary:string;status:string;favorites:number}
 export function EventSubmissions({eventId,onEdit,onDeleted}:{eventId:string;onEdit:(application:PresentationApplication)=>void;onDeleted:(submissionId:string)=>void}) {
  const {token}=useAuth()
  const base=`/api/org/api/network/events/${encodeURIComponent(eventId)}/presentations`
@@ -31,8 +25,20 @@ export function EventSubmissions({eventId,onEdit,onDeleted}:{eventId:string;onEd
   quotaTimer.current=setTimeout(()=>setQuota(null),2400)
  }
  useEffect(()=>()=>clearTimeout(quotaTimer.current),[])
- const [expanded,setExpanded]=useState<string[]>([])
- useEffect(()=>setExpanded([]),[eventId,token])
+ const [active,setActive]=useState<{id:string;mode:'hover'|'modal';anchor:HTMLButtonElement}|null>(null)
+ const activeRef=useRef(active);activeRef.current=active
+ const opening=useRef<ReturnType<typeof setTimeout>|undefined>(undefined),closing=useRef<ReturnType<typeof setTimeout>|undefined>(undefined)
+ function cancelHover(){clearTimeout(opening.current);clearTimeout(closing.current)}
+ function preview(row:Submission,anchor:HTMLButtonElement){
+  if(activeRef.current?.mode==='modal'||!window.matchMedia('(hover:hover) and (pointer:fine) and (min-width:900px)').matches)return
+  cancelHover();opening.current=setTimeout(()=>setActive({id:row.submission_id,mode:'hover',anchor}),160)
+ }
+ function leave(){clearTimeout(opening.current);clearTimeout(closing.current);closing.current=setTimeout(()=>{
+  const current=activeRef.current
+  if(current?.mode==='hover'&&!document.getElementById(`applicant-details-${current.id}`)?.contains(document.activeElement))setActive(null)
+ },280)}
+ function open(row:Submission,anchor:HTMLButtonElement){cancelHover();setActive({id:row.submission_id,mode:'modal',anchor})}
+ useEffect(()=>{setActive(null);cancelHover();return cancelHover},[eventId,token])
  const [rows,setRows]=useState<Submission[]>([]),[favorites,setFavorites]=useState<string[]>([])
  const [editableApplications,setEditableApplications]=useState<Record<string,PresentationApplication>>({})
  const [reviewOpen,setReviewOpen]=useState(false),[reviewRevision,setReviewRevision]=useState(0)
@@ -88,8 +94,10 @@ export function EventSubmissions({eventId,onEdit,onDeleted}:{eventId:string;onEd
   }
  }
 
+ const activeRow=rows.find(row=>row.submission_id===active?.id)
+ const quotaText=quota?`You’ve used your ${limit===3?'three':limit} ${limit===1?'vote':'votes'}.`:''
  return <section className="portal-card presentation-applications" aria-label="Event submissions">
-  <h2>Applicants</h2>
+  <h2 tabIndex={-1}>Applicants</h2>
   <PresentationFinalRound eventId={eventId} canManage={canManage} onPhaseChange={setFinalPhase} />
   {canManage&&<details className="submission-review-tools" onToggle={event=>setReviewOpen(event.currentTarget.open)}>
    <summary>Manage submissions</summary>
@@ -105,23 +113,17 @@ export function EventSubmissions({eventId,onEdit,onDeleted}:{eventId:string;onEd
   {error&&<p role="alert">{error} <button type="button" className="btn-secondary" onClick={()=>setRevision(value=>value+1)}>Refresh submissions</button></p>}
   {!ready&&!error&&<p role="status">Loading submissions…</p>}
   {ready&&!rows.length&&<p>No submissions yet.</p>}
-  {[...rows].sort((a,b)=>b.favorites-a.favorites||(a.submission_id<b.submission_id?-1:a.submission_id>b.submission_id?1:0)).map(row=><article key={row.submission_id} className={`presentation-submission submission-voting-card${favorites.includes(row.submission_id)?' is-selected':''}`}>
-   <div className="submission-card-header">
-    <div className="submission-team"><OrgImage src={row.image_url} alt="" style={{width:44,height:44,objectFit:'contain'}} /><Link to={`/orgs/${encodeURIComponent(row.organization_slug)}`}>{row.organization_name}</Link></div>
-    <SubmissionPresenters people={row.presenters || []} />
-    <button type="button" className="btn-secondary submission-card-expand" aria-label={`${expanded.includes(row.submission_id)?'Collapse':'Expand'} submission: ${row.title}`} aria-expanded={expanded.includes(row.submission_id)} aria-controls={`submission-details-${row.submission_id}`} onClick={()=>setExpanded(previous=>previous.includes(row.submission_id)?previous.filter(id=>id!==row.submission_id):[...previous,row.submission_id])}>{expanded.includes(row.submission_id)?<Minus size={20} aria-hidden="true" />:<Plus size={20} aria-hidden="true" />}</button>
+  <ul className="applicant-list" aria-label="Demo Day applicants">{[...rows].sort((a,b)=>b.favorites-a.favorites||(a.submission_id<b.submission_id?-1:a.submission_id>b.submission_id?1:0)).map(row=><li key={row.submission_id} className={`presentation-submission applicant-row${favorites.includes(row.submission_id)?' is-selected':''}${active?.id===row.submission_id?' is-highlighted':''}`}>
+   <button type="button" className="applicant-open" aria-label={`View ${row.organization_name} application: ${row.title}`} aria-haspopup="dialog" aria-expanded={active?.id===row.submission_id} aria-controls={active?.id===row.submission_id?`applicant-details-${row.submission_id}`:undefined} onPointerEnter={event=>{if(event.pointerType==='mouse')preview(row,event.currentTarget)}} onPointerLeave={leave} onBlur={leave} onClick={event=>open(row,event.currentTarget)}>
+    <OrgImage src={row.image_url} alt=""/><span><strong>{row.organization_name}</strong><small>{row.title}</small></span>
+   </button>
+   <div className="applicant-row-vote">{finalPhase==='shortlist'?<button type="button" className={`applicant-vote${favorites.includes(row.submission_id)?' is-selected':''}${quota?.id===row.submission_id?' is-limit':''}`} aria-pressed={favorites.includes(row.submission_id)} aria-label={`${favorites.includes(row.submission_id)?'Remove favorite':'Favorite'}: ${row.title} (${row.favorites} ${row.favorites===1?'star':'stars'})`} disabled={!token||!ready||busy||savingFavorites.includes(row.submission_id)} onClick={()=>{void toggle(row)}}><Star size={20} aria-hidden="true" fill={favorites.includes(row.submission_id)?'currentColor':'none'}/><span>{row.favorites}</span></button>:<span className="applicant-vote"><Star size={20} aria-hidden="true"/>{row.favorites}</span>}
    </div>
-   <h3 className="submission-card-title">{row.title}</h3>
-   <div className="submission-card-details" id={`submission-details-${row.submission_id}`} hidden={!expanded.includes(row.submission_id)}>
-    <BioMarkdown value={row.summary} />
-    <SubmissionAttachments eventId={eventId} submissionId={row.submission_id} initial={row.attachments} canManage={canManage||managedTeams.includes(row.submission_id)} />
-    {editableApplications[row.submission_id]&&<div className="submission-card-management"><span>Manage your application</span><SubmissionActions eventId={eventId} application={editableApplications[row.submission_id]} onEdit={onEdit} onDeleted={submissionId=>{
-     setRows(previous=>previous.filter(item=>item.submission_id!==submissionId));favoriteIds.current=favoriteIds.current.filter(id=>id!==submissionId);setFavorites(favoriteIds.current);setReviewRevision(value=>value+1);onDeleted(submissionId)
-    }} /></div>}
-   </div>
-   <p className={`submission-card-footer${finalPhase==='shortlist'?' has-voting':''}`}>{finalPhase!=='shortlist'&&<><Star size={18} aria-hidden="true"/> {row.favorites}</>}{row.status!=='submitted'&&<> · {row.status}</>}{quota?.id===row.submission_id&&<span key={quota.sequence} className="submission-vote-limit" role="status">You’ve used your {limit===3?'three':limit} {limit===1?'vote':'votes'}.</span>}</p>
-   {finalPhase==='shortlist'&&<button type="button" className="submission-card-select" aria-pressed={favorites.includes(row.submission_id)} aria-label={`${favorites.includes(row.submission_id)?'Remove favorite':'Favorite'}: ${row.title} (${row.favorites} ${row.favorites===1?'star':'stars'})`} disabled={!token||!ready||busy||savingFavorites.includes(row.submission_id)} onClick={()=>{void toggle(row)}}><span key={quota?.id===row.submission_id?quota.sequence:0} className={`submission-card-state${quota?.id===row.submission_id?' is-limit':''}`}><Star size={18} aria-hidden="true" fill={favorites.includes(row.submission_id)?'currentColor':'none'} /> {row.favorites}</span></button>}
-  </article>)}
+  </li>)}</ul>
+  {quota&&<p key={quota.sequence} className="submission-vote-limit" role="status">{quotaText}</p>}
+  {active&&activeRow&&<ApplicantDetails row={activeRow} eventId={eventId} mode={active.mode} anchor={active.anchor} selected={favorites.includes(active.id)} voting={finalPhase==='shortlist'} disabled={!token||!ready||busy||savingFavorites.includes(active.id)} quotaText={quota?.id===active.id?quotaText:''} canManage={canManage||managedTeams.includes(active.id)} application={editableApplications[active.id]} onVote={()=>{void toggle(activeRow)}} onClose={()=>{cancelHover();setActive(null)}} onKeepOpen={()=>open(activeRow,active.anchor)} onEnter={cancelHover} onLeave={leave} onEdit={onEdit} onDeleted={submissionId=>{
+   setActive(null);setRows(previous=>previous.filter(item=>item.submission_id!==submissionId));favoriteIds.current=favoriteIds.current.filter(id=>id!==submissionId);setFavorites(favoriteIds.current);setReviewRevision(value=>value+1);onDeleted(submissionId)
+  }}/>}
   {next&&<button type="button" className="btn-secondary" disabled={busy} onClick={()=>{
    setBusy(true);setError('');void request('/submissions?after='+encodeURIComponent(next)).then(data=>{setRows(previous=>[...new Map([...previous,...data.submissions].map((row:Submission)=>[row.submission_id,row])).values()]);setNext(data.next)}).catch(reason=>setError(reason.message)).finally(()=>setBusy(false))
   }}>Load more submissions</button>}

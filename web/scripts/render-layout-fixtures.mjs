@@ -40,9 +40,9 @@ try{
  ]
  const submissionLayouts=[
   {name:'Event application options',url:base+'/event-apply-options?brand=lifetech',ready:'.event-apply-actions',selector:'.panel',visible:['a:has-text("Apply with an organization")','a:has-text("Apply as a guest")']},
-  {name:'Collapsed submission',url:base+'/submissions?brand=lifetech&submissionReview=1',ready:'.submission-voting-card',selector:'.presentation-applications',hidden:['.submission-card-details']},
-  {name:'Expanded submission',url:base+'/submissions?brand=lifetech&submissionReview=1',ready:'.submission-voting-card',selector:'.presentation-applications',actions:[{click:'Expand submission: The Limits of Contemporary Medicine'}],visible:['.submission-card-details']},
-  {name:'Unselected submission',url:base+'/submissions?brand=lifetech&submissionReview=1&unselected=1',ready:'.submission-voting-card',selector:'.presentation-applications',hidden:['.submission-card-details']},
+  {name:'Collapsed submission',url:base+'/submissions?brand=lifetech&submissionReview=1',ready:'.applicant-row',selector:'.presentation-applications',hidden:['.applicant-overlay']},
+  {name:'Expanded submission',url:base+'/submissions?brand=lifetech&submissionReview=1',ready:'.applicant-row',selector:'.applicant-modal',actions:[{click:'View Harbor Research Collective application: The Limits of Contemporary Medicine'}],visible:['.applicant-modal']},
+  {name:'Unselected submission',url:base+'/submissions?brand=lifetech&submissionReview=1&unselected=1',ready:'.applicant-row',selector:'.presentation-applications',hidden:['.applicant-overlay']},
  ]
  execFileSync(process.execPath,[join(root,'scripts/test-application-journeys.mjs'),output],{cwd:root,stdio:'inherit',env:{...process.env,APPLICATION_COMPACT_CAPTURES:'1'}})
  const report=await renderLayouts(process.env.SUBMISSION_REVIEW_ONLY?submissionLayouts:[...layouts,accountMenuLayout,...supportLayouts,...submissionLayouts],output)
@@ -75,43 +75,24 @@ try{
    if(await guest.getAttribute('href')!=='/events/lifetech-demo-day-3/apply/guest')throw Error('Guest application link is incorrect')
    if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('Application options overflow viewport')
    await page.goto(base+'/submissions?brand=lifetech&submissionReview=1')
-   const card=page.locator('.submission-voting-card'),details=card.locator('.submission-card-details')
+   const card=page.locator('.applicant-row').first()
    await card.waitFor()
-   if(await details.isVisible())throw Error('Collapsed details are visible')
-   await expect(card.locator('.submission-presenter-summary')).toBeVisible()
-   await expect(card.locator('.submission-presenter-summary .public-event-registrant-avatar')).toHaveCount(2)
-   await page.getByRole('button',{name:'Expand submission: The Limits of Contemporary Medicine',exact:true}).click()
-   if(!await details.isVisible()||votes)throw Error('Expand changed the vote or failed to reveal details')
-   await card.locator('.submission-presenter-summary').click()
-   if(!await card.getByText('Sam Rivera',{exact:true}).isVisible()||votes)throw Error('Team disclosure failed or changed vote')
-   const teamPanel=await card.locator('.submission-presenter-list').boundingBox()
-   if(!teamPanel||teamPanel.x<0||teamPanel.x+teamPanel.width>width)throw Error('Team details must stay inside the viewport')
-   await card.locator('.submission-presenter-summary').click()
-   await card.getByRole('button',{name:'Edit application',exact:true}).click()
-   await card.getByRole('button',{name:'Delete application',exact:true}).click()
-   if(!await card.locator('dialog').isVisible()||votes)throw Error('Delete confirmation failed or changed vote')
-   await card.getByRole('button',{name:'Cancel',exact:true}).click()
-   await page.getByRole('button',{name:'Collapse submission: The Limits of Contemporary Medicine',exact:true}).click()
-   if(await details.isVisible())throw Error('Collapse did not hide details')
-   const title=card.getByRole('heading',{name:'The Limits of Contemporary Medicine',exact:true})
-   await title.evaluate(el=>el.scrollIntoView({block:'center'}))
-   const rect=await title.boundingBox();await page.mouse.click(rect.x+10,rect.y+10)
-   await page.waitForFunction(()=>document.querySelector('.submission-card-select')?.getAttribute('aria-pressed')==='false')
-   if(!await page.getByText('0 of 3 favorites selected · Saving…',{exact:true}).isVisible())throw Error('Favorite selection must update before save completes')
-   if(!await card.locator('.submission-card-footer').getByText('0 stars',{exact:true}).isVisible())throw Error('Favorite count must update immediately')
-   await expect.poll(()=>votes).toBe(1)
-   releaseVote();await page.waitForFunction(()=>!document.querySelector('.submission-card-select')?.disabled)
-   const vote=card.locator('.submission-card-select');await vote.focus();await page.keyboard.press('Enter')
-   await page.waitForFunction(()=>document.querySelector('.submission-card-select')?.getAttribute('aria-pressed')==='true')
-   await expect.poll(()=>votes).toBe(2)
-   releaseVote();await page.waitForFunction(()=>!document.querySelector('.submission-card-select')?.disabled)
-   failVote=true
-   await vote.locator('.submission-card-state').click()
-   await page.waitForFunction(()=>document.querySelector('.submission-card-select')?.getAttribute('aria-pressed')==='false')
-   await expect.poll(()=>votes).toBe(3)
-   releaseVote()
-   await page.getByRole('alert').filter({hasText:'Favorite could not be saved'}).waitFor()
-   if(await vote.getAttribute('aria-pressed')!=='true'||!await card.locator('.submission-card-footer').getByText('1 star',{exact:true}).isVisible())throw Error('Failed favorite must restore selection and count')
+   await card.locator('.applicant-open').click()
+   const modal=page.locator('dialog.applicant-modal')
+   await expect(modal).toBeVisible();await expect(modal).toContainText('Sam Rivera')
+   await modal.getByRole('button',{name:'Delete application',exact:true}).click()
+   const confirmation=modal.locator('dialog');await expect(confirmation).toBeVisible()
+   await confirmation.getByRole('button',{name:'Cancel',exact:true}).click()
+   await modal.getByRole('button',{name:'Close applicant details'}).click()
+   const vote=card.locator('.applicant-vote')
+   await vote.click();await expect(vote).toHaveAttribute('aria-pressed','false');await expect(vote.locator('span')).toHaveText('0')
+   await expect.poll(()=>votes).toBe(1);releaseVote();await expect(vote).toBeEnabled()
+   await vote.focus();await page.keyboard.press('Enter');await expect(vote).toHaveAttribute('aria-pressed','true')
+   await expect.poll(()=>votes).toBe(2);releaseVote();await expect(vote).toBeEnabled()
+   failVote=true;await vote.click();await expect(vote).toHaveAttribute('aria-pressed','false')
+   await expect.poll(()=>votes).toBe(3);releaseVote()
+   await expect(page.getByRole('alert').filter({hasText:'Favorite could not be saved'})).toBeVisible()
+   await expect(vote).toHaveAttribute('aria-pressed','true');await expect(vote.locator('span')).toHaveText('1')
    if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('Submission layout overflows viewport')
    interactionResults.push({width,status:'passed',checks:11});await context.close()
   }

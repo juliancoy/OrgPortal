@@ -24,9 +24,10 @@ export function SubmissionAttachmentPicker({files,onChange,disabled=false,button
   {error&&<p role="alert">{error}</p>}
  </div>
 }
-export function SubmissionAttachments({eventId,submissionId,initial=emptyAttachments,canManage=false,loadOnMount=false,refreshKey=0,showPicker=true}:{eventId:string;submissionId:string;initial?:SubmissionAttachment[];canManage?:boolean;loadOnMount?:boolean;refreshKey?:number;showPicker?:boolean}){
+export function SubmissionAttachments({eventId,submissionId,initial=emptyAttachments,canManage=false,loadOnMount=false,refreshKey=0,showPicker=true,onPendingChange}:{eventId:string;submissionId:string;initial?:SubmissionAttachment[];canManage?:boolean;loadOnMount?:boolean;refreshKey?:number;showPicker?:boolean;onPendingChange?:(pending:boolean)=>void}){
  const {token}=useAuth(),[attachments,setAttachments]=useState(initial),[files,setFiles]=useState<StagedSubmissionAttachment[]>([]),[busy,setBusy]=useState(false),[error,setError]=useState('')
  useEffect(()=>{setAttachments(initial)},[initial])
+ useEffect(()=>{onPendingChange?.(busy||files.length>0)},[busy,files.length,onPendingChange])
  const base=attachmentBase(eventId,submissionId)
  useEffect(()=>{if(!loadOnMount)return;let cancelled=false;void attachmentRequest(base,null).then(data=>{if(!cancelled)setAttachments(data.attachments)}).catch(reason=>{if(!cancelled)setError(reason.message)});return()=>{cancelled=true}},[base,loadOnMount,refreshKey])
  async function refresh(){const data=await attachmentRequest(base,null);setAttachments(data.attachments)}
