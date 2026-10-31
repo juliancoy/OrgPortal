@@ -1669,8 +1669,7 @@ h6 {
   line-height: 1.48;
 }
 
-.public-event-comment-tools button,
-.public-event-comment-react-menu summary {
+.public-event-comment-tools button {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -1688,9 +1687,7 @@ h6 {
 }
 
 .public-event-comment-tools button:hover,
-.public-event-comment-react-menu summary:hover,
-.public-event-comment-tools button:focus-visible,
-.public-event-comment-react-menu summary:focus-visible {
+.public-event-comment-tools button:focus-visible {
   color: var(--text-primary);
   background: color-mix(in srgb, var(--panel-2), transparent 18%);
   border-color: color-mix(in srgb, var(--primary), transparent 45%);
@@ -1707,31 +1704,6 @@ h6 {
 .public-event-comment-tools button:disabled {
   cursor: not-allowed;
   opacity: 0.58;
-}
-
-.public-event-comment-react-menu {
-  position: relative;
-}
-
-.public-event-comment-react-menu summary {
-  list-style: none;
-  user-select: none;
-}
-
-.public-event-comment-react-menu summary::-webkit-details-marker {
-  display: none;
-}
-
-.public-event-comment-react-menu > div {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-top: 6px;
-  padding: 6px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  background: var(--panel);
-  box-shadow: 0 10px 26px rgb(0 0 0 / 0.18);
 }
 
 .public-event-comment-replies {
