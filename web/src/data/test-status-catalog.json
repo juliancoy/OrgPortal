@@ -3,6 +3,20 @@
   "title": "OrgPortal tests",
   "groups": [
     {
+      "id": "suite-chat-worker-test-chat-encryption-test-ts",
+      "label": "chat-worker/test/chat-encryption.test.ts",
+      "category": "Messaging and email",
+      "source": "chat-worker/test/chat-encryption.test.ts",
+      "kind": "node",
+      "cwd": "chat-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "chat-encryption.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-chat-worker-test-chat-worker-test-ts",
       "label": "chat-worker/test/chat-worker.test.ts",
       "category": "Messaging and email",
@@ -2495,6 +2509,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-test-chat-encryption-ui-mjs",
+      "label": "web/scripts/test-chat-encryption-ui.mjs",
+      "category": "Messaging and email",
+      "source": "web/scripts/test-chat-encryption-ui.mjs",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-chat-encryption-ui.mjs"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-test-company-votes-mjs",
       "label": "web/scripts/test-company-votes.mjs",
       "category": "Submission and voting",
@@ -3121,6 +3149,20 @@
         {
           "id": "suite",
           "label": "bootstrapSession.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-chat-chatEncryption-test-ts",
+      "label": "web/src/chat/chatEncryption.test.ts",
+      "category": "Messaging and email",
+      "source": "web/src/chat/chatEncryption.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "chatEncryption.test.ts"
         }
       ]
     },
