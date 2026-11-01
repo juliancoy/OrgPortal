@@ -1,3 +1,4 @@
+import { ReactionPicker } from '../../components/ReactionPicker'
 import {EventPrize} from '../../components/EventPrize'
 import { EventApplyButtons } from '../../components/EventApplyButtons'
 import './event-application.css'
@@ -262,22 +263,8 @@ function ReactionControls({
           <small>{reactionOwnerSummary(reaction)}</small>
         </button>
       ))}
-      <details className="public-event-comment-react-menu">
-        <summary>React</summary>
-        <div>
-          {QUICK_REACTIONS.map((emoji) => (
-            <button
-              key={`${message.id}-add-${emoji}`}
-              type="button"
-              onClick={() => onReact(message.id, emoji)}
-              disabled={disabled}
-              aria-label={`React with ${emoji}`}
-            >
-              {emoji}
-            </button>
-          ))}
-        </div>
-      </details>
+      <ReactionPicker emojis={QUICK_REACTIONS} disabled={disabled}
+        onSelect={emoji => onReact(message.id, emoji)} />
     </div>
   )
 }

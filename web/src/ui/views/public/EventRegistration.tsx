@@ -135,10 +135,9 @@ export function EventRegistration({ eventId, slug, token, authLoading = false, s
         {organizationName && <label><input type="checkbox" disabled={pending} checked={organizationAnnouncements} onChange={(event) => setOrganizationAnnouncements(event.target.checked)} /> <span>Also send me announcements from {organizationName}</span></label>}
       </div>}
       {token && <div className="public-event-registration-links">
-        <Link to="/settings/notifications" className="public-event-preferences-link">Manage notification settings</Link>
-        {attendance?.registered ? <Link to="/calendar/integrations" className="public-event-preferences-link">Subscribe to registered events</Link> : null}
+        <Link to="/settings/notifications" className="portal-button-secondary">Push Notifications</Link>
       </div>}
-      {message && <p role="status" className="public-event-status-message">{message}</p>}
+      {message && message !== 'Registration saved.' && <p role="status" className="public-event-status-message">{message}</p>}
       {error && <div role="alert" className="public-event-registration-error">
         <p style={{ margin: '0 0 0.5rem' }}>{error}</p>
         <button type="button" className="portal-button-secondary" disabled={pending} onClick={() => setReload((value) => value + 1)}>Retry</button>
