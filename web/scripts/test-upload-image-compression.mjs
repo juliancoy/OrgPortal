@@ -28,9 +28,8 @@ export async function testUploadImageCompression() {
     const original=new File(['preserve bytes'],name,{type})
     if(await uploadImages.compressUploadImage(original)!==original)throw Error('Animation or document modified')
    }
-   let rejected=false
-   try{await uploadImages.compressUploadImage(new File(['broken'],'broken.png',{type:'image/png'}))}catch{rejected=true}
-   if(!rejected)throw Error('Invalid image accepted')
+   const undecodable=new File(['broken'],'broken.png',{type:'image/png'})
+   if(await uploadImages.compressUploadImage(undecodable)!==undecodable)throw Error('Undecodable original was not preserved')
    return {inputBytes:input.size,outputBytes:output.size,transparency:'preserved'}
   });console.log('Upload compression:',JSON.stringify(result));return result
  }finally{await browser.close()}

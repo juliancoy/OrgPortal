@@ -20,7 +20,7 @@ try {
  for(const [name,path,ready] of [
   ['organizations','/orgs','h1'],['people','/people','h1'],['events','/events','h1'],
   ['application-options','/event-apply-options?brand=lifetech','.event-apply-actions'],
-  ['submission-touch','/submissions?brand=lifetech&submissionReview=1','.submission-voting-card'],
+  ['submission-touch','/submissions?brand=lifetech&submissionReview=1','.applicant-row'],
  ]) {
   const started=performance.now()
   await page.goto(base+path,{waitUntil:'networkidle',timeout:30000})
@@ -33,17 +33,24 @@ try {
    if(await link.getAttribute('href')!=='/events/lifetech-demo-day-3/apply')throw Error('Incorrect application destination')
   }
   if(name==='submission-touch') {
-   const details=page.locator('.submission-card-details')
+   const details=page.getByRole('dialog',{name:'Harbor Research Collective',exact:true})
    if(await details.isVisible())throw Error('Submission should initially be collapsed')
-   const control=page.getByRole('button',{name:'Expand submission: The Limits of Contemporary Medicine',exact:true})
-   await control.scrollIntoViewIfNeeded()
-   const box=await control.boundingBox()
-   const cdp=await context.newCDPSession(page)
-   await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:box.x+box.width/2,y:box.y+box.height/2}]})
-   await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]})
-   await cdp.detach()
+   const control=page.getByRole('button',{name:'View Harbor Research Collective application: The Limits of Contemporary Medicine',exact:true})
+   const touch=async locator=>{
+    await locator.scrollIntoViewIfNeeded()
+    const box=await locator.boundingBox()
+    const cdp=await context.newCDPSession(page)
+    try {
+     await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:box.x+box.width/2,y:box.y+box.height/2}]})
+     await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]})
+    } finally {await cdp.detach()}
+   }
+   await touch(control)
    await details.waitFor({state:'visible'})
-   await details.scrollIntoViewIfNeeded()
+   await details.getByRole('heading',{name:'The Limits of Contemporary Medicine',exact:true}).waitFor()
+   await touch(page.getByRole('button',{name:'Close applicant details',exact:true}))
+   await details.waitFor({state:'hidden'})
+   await control.waitFor({state:'visible'})
   }
   if(errors.length)throw Error(errors.join('\n'))
   if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1))throw Error(name+' overflows the phone viewport')

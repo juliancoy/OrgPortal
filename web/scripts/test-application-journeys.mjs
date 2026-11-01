@@ -29,7 +29,7 @@ const server=createServer(async(req,res)=>{try{
   res.setHeader('Content-Type','application/json');const ending=path.split('/').pop()
   if(req.method==='PUT'&&path.includes('/presentations/')){let body='';for await(const chunk of req)body+=chunk;const value=JSON.parse(body);saved.set(ending,{...value,submission_id:ending,organization_name:'Harbor Research Collective',status:'submitted',presenters:[]});res.end('{}');return}
   if(req.method!=='GET'){unexpected.push({method:req.method,path});res.writeHead(405);res.end('{}');return}
-  const data=path.includes('/events/public/')?{id,title,slug}:path.endsWith('/presentations/public')?{enabled:true,closed:false}:path.endsWith('/presentations')?{submissions:[...saved.values()]}:path.includes('/presentations/team/')?{people:[{userId:'fixture-member',name:'Alex Morgan'},{userId:'fixture-teammate',name:'Sam Rivera'}]}:path.includes('/orgs')?[{id:'fixture-org',name:'Harbor Research Collective',my_role:'owner'}]:path.includes('/tasks')?{tasks:[]}:{}
+  const data=path.endsWith('/attachments')?{attachments:[]}:path.includes('/events/public/')?{id,title,slug}:path.endsWith('/presentations/public')?{enabled:true,closed:false}:path.endsWith('/presentations')?{submissions:[...saved.values()]}:path.includes('/presentations/team/')?{people:[{userId:'fixture-member',name:'Alex Morgan'},{userId:'fixture-teammate',name:'Sam Rivera'}]}:path.includes('/orgs')?[{id:'fixture-org',name:'Harbor Research Collective',my_role:'owner'}]:path.includes('/tasks')?{tasks:[]}:{}
   res.end(JSON.stringify(data));return
  }
  const asset=bundle.outputFiles.find(file=>file.path.endsWith('/'+path.slice(1)));if(asset){res.setHeader('Content-Type',path.endsWith('.css')?'text/css':'text/javascript');res.end(asset.contents);return}

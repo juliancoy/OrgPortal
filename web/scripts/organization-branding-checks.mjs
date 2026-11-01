@@ -16,6 +16,7 @@ export async function testOrganizationBranding(base,output,contactOutput=output)
   if(request.method()==='PATCH'){patches.push(request.postDataJSON());return route.fulfill({json:{}})}
   if(path.endsWith('/portal')){portal={id:'fixture-site',hostname:'fixture.example',...request.postDataJSON(),feature_config:{brandThemes:request.postDataJSON().brandThemes}};return route.fulfill({json:{portal}})}
   if(path.endsWith('/presentations/public'))return route.fulfill({json:{enabled:true,closed:false}})
+  if(path.endsWith('/attachments'))return route.fulfill({json:{attachments:[]}})
   if(path.includes('/presentations/team/'))return route.fulfill({json:{people:[]}})
   if(path.endsWith('/orgs'))return route.fulfill({json:request.method()==='POST'?{id:'new-team',name:'New team'}:[{id:'fixture-org',name:'Existing team',my_role:'administrator'}]})
   return route.fulfill({json:{}})
