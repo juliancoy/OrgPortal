@@ -88,6 +88,7 @@ describe('NativeChatApi', () => {
 
   it('starts event rooms and sends threaded comments with reactions', async () => {
     const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/security')) return Response.json({mode:'none',current_user_id:'user-1',revision:0,devices:[],missing_members:[],can_manage:false})
       if (url.endsWith('/event-room')) {
         return new Response(
           JSON.stringify({ conversation: { id: 'event-room-1', kind: 'event_room', event_id: 'event-1', updated_at: '2026-09-09T22:00:00Z' } }),
@@ -132,12 +133,41 @@ describe('NativeChatApi', () => {
       title: 'MedTech in the Hut Comments',
       org_id: 'org-baltimore-medtech',
     })
-    expect(JSON.parse(String(fetcher.mock.calls[1][1]?.body))).toEqual({
+    expect(JSON.parse(String(fetcher.mock.calls[2][1]?.body))).toEqual({
       client_message_id: 'client-reply',
       body: 'Same here.',
       reply_to_message_id: 'root-message',
       thread_root_message_id: 'root-message',
     })
-    expect(JSON.parse(String(fetcher.mock.calls[2][1]?.body))).toEqual({ emoji: '👍' })
+    expect(JSON.parse(String(fetcher.mock.calls[3][1]?.body))).toEqual({ emoji: '👍' })
+  })
+  it('never sends content when the protection check fails', async () => {
+    const fetcher = vi.fn(async () => new Response('Unavailable', {status:503}))
+    vi.stubGlobal('fetch', fetcher)
+    const api = new NativeChatApi(async () => 'test-token')
+    await expect(api.sendMessage('room', 'client', 'private draft')).rejects.toThrow('Unavailable')
+    expect(fetcher).toHaveBeenCalledOnce()
+    expect(fetcher.mock.calls[0][0]).toMatch(/security$/)
+  })
+  it('starts the first public event comment without changing the existing room creation contract', async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(Response.json({detail:'Post a comment to start this event conversation'},{status:409}))
+      .mockResolvedValueOnce(Response.json({conversation:{id:'event'},message:{id:'first',body:'First comment'}}))
+    vi.stubGlobal('fetch',fetcher)
+    const api = new NativeChatApi(async () => 'token')
+    const result = await api.postEventComment('event-id','client-id','First comment')
+    expect(result.message.body).toBe('First comment')
+    expect(JSON.parse(fetcher.mock.calls[0][1].body)).toEqual({event_id:'event-id'})
+    expect(JSON.parse(fetcher.mock.calls[1][1].body)).toEqual({event_id:'event-id',initial_comment:'First comment',client_message_id:'client-id'})
+  })
+  it('checks an existing event room policy before submitting comment content', async () => {
+    const fetcher = vi.fn().mockResolvedValueOnce(Response.json({conversation:{id:'event-room'}}))
+      .mockResolvedValueOnce(new Response('Policy unavailable',{status:503}))
+    vi.stubGlobal('fetch',fetcher)
+    const api = new NativeChatApi(async () => 'token')
+    await expect(api.postEventComment('event-id','client','private comment')).rejects.toThrow('Policy unavailable')
+    expect(fetcher).toHaveBeenCalledTimes(2)
+    expect(fetcher.mock.calls[1][0]).toMatch(/security$/)
+    expect(JSON.stringify(fetcher.mock.calls)).not.toContain('private comment')
   })
 })

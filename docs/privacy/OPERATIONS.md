@@ -39,6 +39,19 @@ rollback and cascading-deletion checks run against isolated test databases.
 
 ## Inventory and monthly review
 
+For the chat encryption candidate, inventory chat D1 `chat_device_keys` and
+origin-local IndexedDB `orgportal-chat-encryption-v1`. Monthly operators must
+review registrations expired at `expires_at` (90 days since renewal); automatic
+cleanup only runs in bounded batches on registration. Never claim an idle cron.
+Verified account erasure includes subject-scoped public-key deletion in chat D1
+and existing shared-message review; instruct the verified user to forget browser
+keys/clear site data on their devices and review browser/OS backups. Neither
+sign-out nor public-key removal remotely erases private keys or recipients' copies.
+Exclude key registrations/envelopes from public organization replication and
+immutable journals. Reapply verified deletion and expiry to restored chat backups
+before use. Migration 0005 and production enforcement remain pending review and
+release; local test evidence does not establish production controls.
+
 Production CLI working copies live separately in `~/.orgportal-working-copy`.
 They may contain authorized private organization API results and pending draft
 arguments. Subject/issuer/resource/org/workflow binding isolates datasets; creation

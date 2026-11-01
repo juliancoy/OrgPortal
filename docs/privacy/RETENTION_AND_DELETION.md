@@ -46,6 +46,26 @@ uses text relevance. Personalized responses are not publicly cached.
 
 ## Retention schedule
 
+Chat encryption candidate (not yet deployed): `chat_device_keys` stores account
+IDs, public RSA/ML-KEM keys and activity/expiry timestamps, never private keys.
+Registrations expire 90 days after the last registration/renewal. Expired entries
+are excluded immediately; registration removes at most 100 expired rows per call.
+There is no idle scheduled cleanup: operators must review expiry during monthly
+retention operations. The authenticated owner can delete a device registration;
+verified account erasure must delete all rows by immutable `user_id`. Public keys
+are private service metadata, excluded from public replicas and immutable journals.
+Reapply expiry and verified erasure before serving restored chat backups.
+
+Origin-local IndexedDB `orgportal-chat-encryption-v1` stores account-separated
+private keys with creation timestamps while the user keeps encrypted history.
+The lifecycle ends with explicit Forget browser encryption keys or browser-site-data
+deletion; no automatic browser expiry/recovery or remote erasure is claimed. Review
+these keys when closing an account. Sign-out preserves history keys on that device.
+Browser/OS backups may contain them and require device-owner deletion. Encrypted
+messages and recipient envelopes follow existing shared-message retention and
+erasure review; deleting a public key does not delete messages or recipients'
+copies. See [protocol scope and release status](../CHAT_ENCRYPTION.md).
+
 Website observatory reports contain minimized synthetic browser measurements of the
 allowlisted CodeCollective and LifeTech public homepages. They are private to PIdP
 system administrators and stored under the private website-observatory prefix in

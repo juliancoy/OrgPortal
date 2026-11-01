@@ -22,7 +22,7 @@ export async function ensureOrganizationRoom(env: { DB: D1Database; CONTACTS_DB?
     ON CONFLICT(conversation_id, user_id) DO UPDATE SET user_name = excluded.user_name,
       role = excluded.role,
       state = CASE WHEN chat_conversation_members.state = 'blocked' THEN 'blocked' ELSE 'active' END`)
-    .bind(id, member.user_id, member.user_name, member.role === 'administrator' ? 'admin' : member.role, now));
+    .bind(id, member.user_id, member.user_name, organizationChatRole(member.role), now));
   for (let offset = 0; offset < statements.length; offset += 50) await env.DB.batch(statements.slice(offset, offset + 50));
   return { id, organizationId: org.id };
 }
@@ -52,3 +52,7 @@ export async function ensureEventRoom(env: { DB: D1Database; CONTACTS_DB?: D1Dat
 }
 import { HTTPException } from 'hono/http-exception';
 import { organizationAllowsChat, eventAllowsChat } from '../../shared/chatEligibility';
+
+export function organizationChatRole(role: string): 'owner' | 'admin' | 'member' {
+  return role === 'owner' ? 'owner' : ['admin', 'administrator', 'organizer'].includes(role) ? 'admin' : 'member';
+}

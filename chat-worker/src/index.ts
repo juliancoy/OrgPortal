@@ -1,7 +1,9 @@
-import { ensureOrganizationRoom, ensureEventRoom } from './organizationRooms';
+import { ensureOrganizationRoom, ensureEventRoom, organizationChatRole } from './organizationRooms';
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { buildMetadata } from "./generated/buildMetadata.ts";
+import { boundedChatJson, chatSecurityRoutes, modeOf, validateEncryptedChatSend } from './chatSecurity';
+import type { ChatEncryptionMode } from '../../shared/chatEncryption';
 
 type PidpUser = {
   id: string;
@@ -41,6 +43,8 @@ type ConversationRow = {
   last_message_created_at?: string | null;
   last_message_sequence?: number | null;
   unread_count?: number | null;
+  encryption_mode?: ChatEncryptionMode;
+  encryption_revision?: number;
 };
 
 type MemberRow = {
@@ -73,6 +77,7 @@ type MessageRow = {
   edited_at: string | null;
   deleted_at: string | null;
   moderation_state: string;
+  encryption?: string | null;
 };
 
 type ReactionOwner = {
@@ -195,13 +200,7 @@ function dmKey(a: string, b: string) {
 }
 
 async function readJsonObject(request: Request) {
-  try {
-    const parsed = (await request.json()) as unknown;
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
-    return parsed as Record<string, unknown>;
-  } catch {
-    return {};
-  }
+  return boundedChatJson(request);
 }
 
 async function currentUser(env: Env, request: Request): Promise<PidpUser> {
@@ -310,6 +309,8 @@ function mapMember(member: MemberRow, avatarUrls = new Map<string, string | null
 function mapConversation(row: ConversationRow, members: MemberRow[] = [], avatarUrls = new Map<string, string | null>()) {
   return {
     id: row.id,
+    encryption_mode: modeOf(row),
+    encryption_revision: row.encryption_revision || 0,
     kind: row.kind,
     title: row.title,
     slug: row.slug,
@@ -332,6 +333,10 @@ function mapConversation(row: ConversationRow, members: MemberRow[] = [], avatar
 }
 
 function mapMessage(row: MessageRow, reactions: ReactionRow[] = [], avatarUrls = new Map<string, string | null>()) {
+  let encryption: unknown = null;
+  if (row.encryption && !row.deleted_at) {
+    try { encryption = JSON.parse(row.encryption); } catch { /* Never expose malformed encrypted content as plaintext. */ }
+  }
   return {
     id: row.id,
     conversation_id: row.conversation_id,
@@ -339,7 +344,8 @@ function mapMessage(row: MessageRow, reactions: ReactionRow[] = [], avatarUrls =
     sender_name: row.sender_name,
     sender_avatar_url: row.sender_avatar_url || avatarUrls.get(row.sender_user_id) || null,
     client_message_id: row.client_message_id,
-    body: row.deleted_at ? "" : row.body,
+    body: row.deleted_at ? "" : row.encryption ? "Encrypted message" : row.body,
+    encryption,
     sequence: row.sequence,
     message_type: row.message_type,
     attachment_id: row.attachment_id,
@@ -533,6 +539,7 @@ app.get("/api/network/public/event-chat/:conversationId/messages", async (c) => 
   const rows = await c.env.DB.prepare(
     `SELECT * FROM chat_messages
      WHERE conversation_id = ?
+       AND encryption IS NULL
        AND deleted_at IS NULL
        AND moderation_state = 'visible'
        AND (
@@ -562,6 +569,9 @@ app.use("/api/network/chat/*", async (c, next) => {
   c.set("user", user);
   await next();
 });
+
+const securityDependencies = { requireMember, conversation, organizationRole, broadcast };
+app.route('/api/network/chat', chatSecurityRoutes(securityDependencies));
 
 app.get("/api/network/chat/conversations", async (c) => {
   const user = c.get("user");
@@ -728,7 +738,7 @@ app.post("/api/network/chat/org-room", async (c) => {
      VALUES (?, ?, ?, ?, 'active', ?)
      ON CONFLICT(conversation_id, user_id) DO UPDATE SET
        user_name = excluded.user_name, role = excluded.role, state = 'active'`,
-  ).bind(conversationId, user.id, userName(user), role === "administrator" ? "admin" : role, createdAt).run();
+  ).bind(conversationId, user.id, userName(user), organizationChatRole(role), createdAt).run();
   const members = await membersForConversation(c.env.DB, conversationId);
   const avatarUrls = await avatarUrlsForUsers(c.env, members.map((member) => member.user_id));
   return c.json({ conversation: mapConversation(room, members, avatarUrls) });
@@ -890,10 +900,10 @@ app.post("/api/network/chat/conversations/:conversationId/messages", async (c) =
   const user = c.get("user");
   const conversationId = c.req.param("conversationId");
   await requireMember(c.env, conversationId, user.id);
-  await conversation(c.env.DB, conversationId);
+  const room = await conversation(c.env.DB, conversationId);
 
   const payload = await readJsonObject(c.req.raw);
-  const body = cleanString(payload.body, 4000);
+  const body = payload.encryption ? 'Encrypted message' : cleanString(payload.body, 4000);
   if (!body) fail(400, "Message body is required");
   const clientMessageId = cleanString(payload.client_message_id || payload.clientMessageId, 160) || crypto.randomUUID();
 
@@ -908,14 +918,17 @@ app.post("/api/network/chat/conversations/:conversationId/messages", async (c) =
     return c.json({ message: mapMessage(existing, [], avatarUrls), idempotent: true }, 200);
   }
 
+  const encrypted = await validateEncryptedChatSend(c.env, room, user.id, clientMessageId, payload.encryption, securityDependencies);
+
   const createdAt = nowIso();
   const messageId = crypto.randomUUID();
   const sequence = await nextMessageSequence(c.env.DB, conversationId);
-  await c.env.DB.prepare(
+  const inserted = await c.env.DB.prepare(
     `INSERT INTO chat_messages
      (id, conversation_id, sender_user_id, sender_name, client_message_id, body, sequence, message_type, reply_to_message_id,
-      thread_root_message_id, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 'text', ?, ?, ?)`,
+      thread_root_message_id, created_at, encryption)
+     SELECT ?, ?, ?, ?, ?, ?, ?, 'text', ?, ?, ?, ? FROM chat_conversations
+     WHERE id = ? AND encryption_mode = ? AND encryption_revision = ?`,
   )
     .bind(
       messageId,
@@ -928,8 +941,13 @@ app.post("/api/network/chat/conversations/:conversationId/messages", async (c) =
       cleanNullableString(payload.reply_to_message_id, 120),
       cleanNullableString(payload.thread_root_message_id, 120),
       createdAt,
+      encrypted,
+      conversationId,
+      modeOf(room),
+      room.encryption_revision || 0,
     )
     .run();
+  if (inserted.meta?.changes === 0) fail(409, 'Chat protection or membership changed. Refresh before sending.');
 
   await c.env.DB.prepare("UPDATE chat_conversations SET updated_at = ?, last_message_at = ? WHERE id = ?")
     .bind(createdAt, createdAt, conversationId)

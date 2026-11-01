@@ -12,6 +12,8 @@ import { NativeChatApi, type NativeChatConversation, type NativeChatMessage, typ
 import { refreshRuntimeTokenFromSession } from '../../../infrastructure/auth/sessionToken'
 import { toUserFacingErrorMessage } from '../../../infrastructure/http/userFacingError'
 import { NativeVideoCall } from '../../components/chat/NativeVideoCall'
+import { ChatEncryptionBadge, ChatSecurityControls } from '../../components/chat/ChatSecurityControls'
+import type { ChatSecurity } from '../../../../../shared/chatEncryption'
 
 type MessageState = NativeChatMessage & {
   delivery_state?: 'pending' | 'confirmed' | 'failed'
@@ -148,6 +150,7 @@ export function NativeChatPage() {
   const timelineRef = useRef<HTMLDivElement | null>(null)
   const stickToBottom = useRef(true)
   const [newMessagesBelow, setNewMessagesBelow] = useState(false)
+  const [chatSecurity, setChatSecurity] = useState<{ room: string; value: ChatSecurity } | null>(null)
 
   const api = useMemo(
     () =>
@@ -162,6 +165,7 @@ export function NativeChatPage() {
     [conversations, roomId],
   )
   const personnelFor = useOrganizationPersonnel(selectedConversation?.kind === 'org_room' ? selectedConversation.org_id : null)
+  const encryptionBlocked = !!chatSecurity && chatSecurity.room === roomId && chatSecurity.value.mode !== 'none' && chatSecurity.value.missing_members.length > 0
   const visibleConversations = useMemo(() => conversations.filter(conversation => conversationLabel(conversation, user?.id).toLocaleLowerCase().includes(groupQuery.trim().toLocaleLowerCase())), [conversations, groupQuery, user?.id])
   const visibleGroups = useMemo(() => groups.filter(group => group.name.toLocaleLowerCase().includes(groupQuery.trim().toLocaleLowerCase())), [groups, groupQuery])
 
@@ -448,7 +452,9 @@ export function NativeChatPage() {
     async function handleEvent(event: NativeChatSocketEvent) {
       if (event.type === 'message.created' && event.conversation_id === activeRoomId) {
         if (event.message) {
-          mergeMessages([event.message])
+          const decrypted = await api.decryptMessage(event.message)
+          if (cancelled) return
+          mergeMessages([decrypted])
           const nextSequence = Math.max(latestSequenceRef.current, Number(event.sequence || event.message.sequence || 0))
           latestSequenceRef.current = nextSequence
           api.markRead(activeRoomId, event.message.id).catch(() => {})
@@ -457,6 +463,11 @@ export function NativeChatPage() {
         }
         await syncConversation(activeRoomId)
         return
+      }
+      if (event.type === 'conversation.security' && event.conversation_id === activeRoomId) {
+        refreshConversations().catch(() => {})
+        const value = await api.prepareEncryption(activeRoomId)
+        if (!cancelled) setChatSecurity({ room: activeRoomId, value })
       }
       if (event.type === 'message.reacted' && event.conversation_id === activeRoomId) {
         setMessages((current) => current.map((message) => (
@@ -572,7 +583,7 @@ export function NativeChatPage() {
 
   async function sendMessage() {
     const body = draft.trim()
-    if (!body || !roomId || sendingIds.current.size > 0) return
+    if (!body || !roomId || encryptionBlocked || sendingIds.current.size > 0) return
     const clientMessageId = uuid()
     const pending: MessageState = {
       id: clientMessageId,
@@ -695,6 +706,7 @@ export function NativeChatPage() {
                     {renderPresenceAvatar(label, avatarUrl, participantOnline)}
                     <span className="native-chat-room-copy">
                       <span className="native-chat-room-name">{label}</span>
+                      <ChatEncryptionBadge mode={conversation.encryption_mode || 'none'} compact />
                       {conversation.last_message?.body ? (
                         <small className="native-chat-room-preview">{conversation.last_message.body}</small>
                       ) : null}
@@ -776,6 +788,12 @@ export function NativeChatPage() {
                   />
                 ) : null}
               </div>
+              <ChatSecurityControls key={roomId} api={api} conversationId={roomId} initialMode={selectedConversation?.encryption_mode || 'none'}
+                onChange={value => {
+                  setChatSecurity({ room: roomId, value })
+                  setConversations(current => current.map(room => room.id === roomId ? { ...room, encryption_mode: value.mode, encryption_revision: value.revision } : room))
+                }}
+                onKeysForgotten={() => { void api.listMessages(roomId).then(payload => { if (activeRoom.current === roomId) setMessages(payload.messages) }).catch(() => setError('Messages could not be refreshed after removing browser keys.')) }} />
               <button type="button" className="portal-button-secondary" onClick={() => shareConversation().catch(() => {})}>Share chat link</button>
               {shareStatus && <p role="status" className="native-chat-share-status">{shareStatus}</p>}
               <p className="native-chat-room-status">
@@ -816,6 +834,7 @@ export function NativeChatPage() {
                     </div>
                     <MessageBody body={message.body} />
                     <div className="native-chat-message-footer">
+                      {(!message.delivery_state || message.delivery_state === 'confirmed') && <ChatEncryptionBadge compact mode={message.encryption?.mode || 'none'} />}
                       {message.delivery_state === 'pending' ? <span>Sending...</span> : null}
                       {message.delivery_state === 'failed' ? <span className="portal-chat-error" role="alert">Not sent. <button type="button" disabled={isSending} onClick={() => deliverMessage(message).catch(() => {})}>Retry</button></span> : null}
                     </div>
@@ -847,7 +866,7 @@ export function NativeChatPage() {
                   }
                 }}
               />
-              <button type="button" className="btn-primary" disabled={isSending || !draft.trim()} onClick={() => sendMessage().catch(() => {})}>
+              <button type="button" className="btn-primary" disabled={isSending || encryptionBlocked || !draft.trim()} onClick={() => sendMessage().catch(() => {})}>
                 Send
               </button>
             </footer>

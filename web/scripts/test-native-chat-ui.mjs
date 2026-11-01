@@ -36,6 +36,8 @@ try {
     if (url.origin !== origin) return route.abort()
     if (!url.pathname.startsWith('/api/')) return route.continue()
     const reply = body => route.fulfill({json:body})
+    if (url.pathname.endsWith('/security')) return reply({mode:'none',revision:0,current_user_id:'me',can_manage:true,devices:[],missing_members:['me']})
+    if (url.pathname.endsWith('/personnel')) return reply({classes:{},photos:{}})
     if (url.pathname === '/api/org/api/network/orgs/public/org-life') return reply({id:'org-life',name:'LifeTech',slug:'lifetech',links:organizationLinks})
     if (url.pathname === '/api/org/api/network/orgs/org-life' && request.method()==='PATCH') { organizationLinks=request.postDataJSON().links; return reply({links:organizationLinks}) }
     if (url.pathname.endsWith('/poster-images')) return reply([])
@@ -69,6 +71,7 @@ try {
   await page.getByRole('button',{name:'Send',exact:true}).click()
   await page.getByRole('button',{name:'Retry',exact:true}).click()
   await page.getByRole('button',{name:'Retry',exact:true}).waitFor({state:'detached'})
+  await page.locator('.portal-chat-message .chat-encryption-blue').waitFor()
   assert.equal(sends.length,2)
   assert.equal(sends[0].client_message_id,sends[1].client_message_id)
   assert.equal(accepted.size,1)
@@ -101,6 +104,7 @@ try {
   await page.waitForFunction(()=>{const node=document.querySelector('.portal-chat-timeline');return node.scrollHeight-node.scrollTop-node.clientHeight<80})
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth))
   await page.screenshot({path:`${root}test-results/native-chat-ui/mobile.png`})
+  if (!process.env.CHAT_ONLY) {
   await page.goto(`${origin}/poster-fixture`)
   await page.waitForFunction(()=>document.querySelector('a[title="WhatsApp group"]')?.getAttribute('href')==='https://chat.whatsapp.com/Group123')
   const posterLink = page.getByRole('combobox',{name:'Poster link',exact:true})
@@ -136,8 +140,9 @@ try {
   await page.goto(`${origin}/poster-fixture`)
   await page.getByRole('option',{name:'Organization: Workshops',exact:true}).waitFor({state:'attached'})
   await page.getByRole('link',{name:'Tickets',exact:true}).waitFor()
+  }
   assert.deepEqual(errors,[])
-  console.log('Native chat UI passed: legacy group links, group discovery, search, idempotent retry, sharing, IME input, history scrolling, mobile navigation, and typed Organization Links, Luma/Eventbrite editor round trips, and shared-link rotation/removal.')
+  console.log(process.env.CHAT_ONLY ? 'Native chat UI passed: group links/discovery, search, idempotent retry, sharing, IME, history scrolling and mobile navigation.' : 'Native chat and organization links/poster UI passed.')
   await context.close()
 } finally {
   await browser.close()

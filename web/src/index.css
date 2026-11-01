@@ -9676,3 +9676,26 @@ a.public-event-comment-avatar:focus-visible { outline: 3px solid var(--primary);
 .public-event-prize-details[hidden] { display: none; }
 .public-event-prize-details > h3 { margin: 0 0 10px; font-size: 1rem; }
 @media(max-width:480px) { .public-event-prize-link > svg { display: none; } }
+
+/* Chat protection: explicit labels accompany the requested blue/green/purple palette. */
+.chat-encryption-blue { --chat-protection-ink: #174ea6; --chat-protection-bg: #e8f0fe; }
+.chat-encryption-green { --chat-protection-ink: #166534; --chat-protection-bg: #dcfce7; }
+.chat-encryption-purple { --chat-protection-ink: #6b21a8; --chat-protection-bg: #f3e8ff; }
+.chat-encryption-badge, .chat-security-legend > span { color: var(--chat-protection-ink); background: var(--chat-protection-bg); border: 1px solid currentColor; border-radius: 999px; padding: .2rem .55rem; font-size: .75rem; line-height: 1.5; }
+.chat-encryption-badge { display: inline-flex; align-items: center; gap: .35rem; max-width: 100%; overflow-wrap: anywhere; }
+.chat-security-controls { display: flex; align-items: flex-start; flex-wrap: wrap; gap: .6rem; margin-block: .7rem; }
+.chat-security-controls details { flex: 1 1 180px; min-width: 0; }
+.chat-security-controls details[open] { flex-basis: 100%; }
+.chat-security-controls summary { cursor: pointer; padding: .25rem; font-size: .875rem; }
+.chat-security-settings { display: grid; gap: .65rem; margin-top: .6rem; padding: .85rem; border: 1px solid var(--border); border-radius: .65rem; background: var(--panel); font-size: .875rem; }
+.chat-security-settings p { margin: 0; line-height: 1.5; }
+.chat-security-settings label { display: grid; gap: .4rem; }
+.chat-security-settings select { max-width: 100%; width: 100%; min-width: 0; min-height: 44px; }
+.chat-security-settings button { white-space: normal; }
+.chat-security-settings .portal-button-secondary { color: var(--text-primary); background: var(--panel-2); border: 1px solid var(--border-input); }
+.chat-security-legend { display: flex; flex-wrap: wrap; gap: .4rem; }
+.chat-security-wait { flex-basis: 100%; margin: 0; font-size: .875rem; }
+.native-chat-shell .portal-chat-room-header:has(.chat-security-controls details[open]) { max-height: 50dvh; overflow-y: auto; }
+.native-chat-message-footer { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.native-chat-room-name + .chat-encryption-badge { margin-top: .25rem; }
+.native-chat-shell:not(.sidebar-expanded) .native-chat-room-copy { display: none; }
