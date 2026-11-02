@@ -3671,6 +3671,20 @@
       ]
     },
     {
+      "id": "suite-web-src-features-pqcoin-mining-test-ts",
+      "label": "web/src/features/pqcoin/mining.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/features/pqcoin/mining.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "mining.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-web-src-features-pqcoin-wallet-test-ts",
       "label": "web/src/features/pqcoin/wallet.test.ts",
       "category": "User interface and integrations",
