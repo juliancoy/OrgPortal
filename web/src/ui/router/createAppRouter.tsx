@@ -80,6 +80,7 @@ const TargetPage = lazy(() => import('../views/TargetPage').then(module => ({ de
 const OrgEditableInitiativesPage = lazy(() => import('../views/orgs/OrgEditableInitiativesPage').then(module => ({ default: module.OrgEditableInitiativesPage })))
 const IdPage = lazy(() => import('../views/IdPage').then(module => ({ default: module.IdPage })))
 const WalletBoundary = lazy(() => import('../../features/pqcoin/WalletBoundary').then(module => ({ default: module.WalletBoundary })))
+const MiningPage = lazy(() => import('../../features/pqcoin/MiningPage').then(module => ({ default: module.MiningPage })))
 const SendPage = lazy(() => import('../views/SendPage').then(module => ({ default: module.SendPage })))
 const ReceivePage = lazy(() => import('../views/ReceivePage').then(module => ({ default: module.ReceivePage })))
 const TimebankPage = lazy(() => import('../views/TimebankPage').then(module => ({ default: module.TimebankPage })))
@@ -274,6 +275,7 @@ export function createAppRouter() {
     [{ element: <PortalProfileBoundary />, hydrateFallbackElement: <RouteLoading />, errorElement: <RouteErrorPage />, children: [
       { path: '/', element: <HomeRoute /> },
       { path: '/finance', element: <EconomicOpsPage /> },
+      { path: '/finance/qcash/mining', element: <MiningPage /> },
       { path: '/departments', element: <DepartmentsPage /> },
       { path: '/ecops', element: <Navigate to="/finance" replace /> },
       { element: <WalletBoundary />, children: [

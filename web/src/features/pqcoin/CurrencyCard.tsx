@@ -15,6 +15,6 @@ export function PqcoinCurrencyCard() {
     <h2>QCash Testnet</h2>
     <p>Experimental blockchain currency. Open your test wallet to view its separate balance. QCash does not convert to Dena.</p>
     <p>{availability}</p>
-    <div className="finance-action-row"><Link className="finance-action primary" to="/send?currency=QCash">Send QCash</Link><Link className="finance-action secondary" to="/receive?currency=QCash">Receive QCash</Link></div>
+    <div className="finance-action-row"><Link className="finance-action primary" to="/send?currency=QCash">Send QCash</Link><Link className="finance-action secondary" to="/receive?currency=QCash">Receive QCash</Link><Link className="finance-action secondary" to="/finance/qcash/mining">Mining</Link></div>
   </section>
 }
