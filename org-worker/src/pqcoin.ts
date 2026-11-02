@@ -50,7 +50,9 @@ export function pqcoinRoutes(gatewayFetch: GatewayFetch = (url, init) => fetch(u
     }
     try {
       const base = url.href.replace(/\/$/, '')
-      const init = { redirect: 'error' as const, signal: AbortSignal.timeout(12000), headers: { Accept: 'application/json', ...(c.env.QCASH_GATEWAY_TOKEN ? { Authorization: `Bearer ${c.env.QCASH_GATEWAY_TOKEN}` } : {}) } }
+      // Workers supports manual/follow, not redirect:error. Reject all non-2xx
+      // responses below so the service credential never follows a redirect.
+      const init = { redirect: 'manual' as const, signal: AbortSignal.timeout(12000), headers: { Accept: 'application/json', ...(c.env.QCASH_GATEWAY_TOKEN ? { Authorization: `Bearer ${c.env.QCASH_GATEWAY_TOKEN}` } : {}) } }
       const response = await gatewayFetch(base + '/network', init)
       if (!response.ok) throw new Error('Gateway unavailable')
       const parsedNetwork = network.parse(await boundedJson(response))

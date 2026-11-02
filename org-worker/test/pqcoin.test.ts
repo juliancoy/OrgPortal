@@ -28,7 +28,7 @@ test('private keys, wrong methods, arbitrary paths and oversized requests are re
 test('bounded valid account response preserves exact integer strings without forwarding identity credentials',async()=>{
  let calls=0
  const app=pqcoinRoutes(async(input,init)=>{
-  assert.equal(new Headers(init?.headers).has('Authorization'),false);assert.equal(init?.redirect,'error')
+  assert.equal(new Headers(init?.headers).has('Authorization'),false);assert.equal(init?.redirect,'manual')
   ++calls
   return response(input.endsWith('/network')?network:{address,spendable:'9007199254740993',immature:'0',nonce:'0',transactions:[]})
  })
@@ -40,6 +40,21 @@ test('gateway cannot redirect, return another account or stream an unbounded pay
  for(const mode of ['account','oversize']) {
   const app=pqcoinRoutes(async(input)=>input.endsWith('/network')?response(network):response(mode==='account'?{address:chain,spendable:'0',immature:'0',nonce:'0',transactions:[]}:'x'.repeat(262145)))
   assert.equal((await app.request(url('/accounts/'+address),{},env)).status,503)
+ }
+})
+test('gateway redirects are rejected without forwarding service credentials to another origin',async()=>{
+ for (const redirectNetwork of [true,false]) {
+  let calls=0
+  const app=pqcoinRoutes(async(input,init)=>{
+   ++calls
+   assert.equal(init?.redirect,'manual')
+   assert.equal(new Headers(init?.headers).get('Authorization'),'Bearer isolated-gateway-test-token')
+   if (!redirectNetwork && input.endsWith('/network')) return response(network)
+   return new Response(null,{status:302,headers:{Location:'https://other.invalid/network'}})
+  })
+  const result=await app.request(url('/accounts/'+address),{},{...env,QCASH_GATEWAY_TOKEN:'isolated-gateway-test-token'})
+  assert.equal(result.status,redirectNetwork?503:400)
+  assert.equal(calls,redirectNetwork?1:2)
  }
 })
 test('valid signed submission is forwarded exactly once after network validation',async()=>{
