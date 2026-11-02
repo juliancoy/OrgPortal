@@ -4,6 +4,7 @@ const paths = [
 
   "/",
   "/finance",
+  "/finance/qcash/mining",
   "/departments",
   "/ecops",
   "/send",
