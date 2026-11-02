@@ -13,6 +13,7 @@ import { runPortalBrandingOperation, portalBrandingTargetSchema, portalBrandingU
 import { runOrganizationDirectoryOperation, organizationOperationStatusSchema, type DirectoryOperation } from './organizationDirectoryOperations';
 import { directorySearchSchema, directoryTargetSchema } from './organizations/directory';
 import { registrySchema } from './organizationRegistry';
+import { ownershipTransferSchema } from './organization-access/transfer';
 import { ownershipReleaseSchema } from './organization-access/release';
 import { emailHistorySchema, importEmailHistory, emailReportSchema, readEmailReport } from './emailOutreach';
 import { companyBallotSchema, companyVoteSchema, companyVotesTargetSchema, getCompanyVotes, runCompanyBallotOperation, runCompanyVoteOperation } from './companyVotesMcp';
@@ -898,6 +899,10 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
         description: `${apply ? 'Register' : 'Preview registering'} an unclaimed public directory organization from evidence. Requires live PIdP operator authority. Creates no ownership, memberships, portal or permissions. Never substitute owned creation if permission is denied. ${apply ? 'Requires confirm=true and the matching one-use previewId.' : 'Search for duplicates first.'}`,
         inputSchema: registrySchema, annotations: { readOnlyHint: !apply, destructiveHint: false }, _meta: metadata([portalReadScope, portalWriteScope]),
       }, args => directoryResult('register', { ...args, confirm: apply && args.confirm === true }));
+      server.registerTool(`${phase}_organization_ownership_transfer`, {
+        description: `${apply ? 'Transfer' : 'Preview transferring'} organization ownership to an existing active member by stable userId. Requires live PIdP superadmin authority. Previous owner becomes a member; other access and portal settings are preserved. Resolves open ownership challenges and records the reason in the authority audit. ${apply ? 'Requires confirm=true and matching one-use previewId.' : 'Review the owner and access changes.'}`,
+        inputSchema: ownershipTransferSchema, annotations: { readOnlyHint: !apply, destructiveHint: apply }, _meta: metadata([portalReadScope, portalWriteScope]),
+      }, args => directoryResult('transfer', { ...args, confirm: apply && args.confirm === true }));
       server.registerTool(`${phase}_organization_ownership_release`, {
         description: `${apply ? 'Release' : 'Preview releasing'} only your own organization ownership and deactivate your own membership, preserving the public listing and other members. No ownership transfer. Refuses configured portals or ownership challenge history. ${apply ? 'Requires confirm=true and matching one-use previewId.' : 'Review the access loss and remaining memberships.'}`,
         inputSchema: ownershipReleaseSchema, annotations: { readOnlyHint: !apply, destructiveHint: apply }, _meta: metadata([portalReadScope, portalWriteScope]),

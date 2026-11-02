@@ -1325,6 +1325,20 @@
       ]
     },
     {
+      "id": "suite-org-worker-test-organization-ownership-transfer-test-ts",
+      "label": "org-worker/test/organization-ownership-transfer.test.ts",
+      "category": "Organizations and membership",
+      "source": "org-worker/test/organization-ownership-transfer.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organization-ownership-transfer.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-org-worker-test-organization-page-statistics-test-ts",
       "label": "org-worker/test/organization-page-statistics.test.ts",
       "category": "Organizations and membership",

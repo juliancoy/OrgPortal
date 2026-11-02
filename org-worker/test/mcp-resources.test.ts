@@ -119,10 +119,11 @@ test('brand tool discovery and calls cannot escape their organization, including
     for (const name of ['get_portal_branding', 'preview_portal_branding', 'apply_portal_branding']) assert.ok(tools.some((t: any) => t.name === name));
     assert.ok(tools.some((t: any) => t.name === 'preview_motion'));
     assert.ok(!tools.some((t: any) => t.name === 'apply_organization_creation'));
-    for (const name of ['search_organization_directory', 'get_directory_organization', 'get_organization_operation', 'preview_organization_ownership_release', 'apply_organization_ownership_release']) assert.ok(tools.some((t: any) => t.name === name), name);
+    for (const name of ['search_organization_directory', 'get_directory_organization', 'get_organization_operation', 'preview_organization_ownership_release', 'apply_organization_ownership_release', 'preview_organization_ownership_transfer', 'apply_organization_ownership_transfer']) assert.ok(tools.some((t: any) => t.name === name), name);
     for (const name of ['preview_directory_registration', 'apply_directory_registration', 'preview_owned_organization_creation', 'apply_owned_organization_creation']) assert.ok(!tools.some((t: any) => t.name === name), name);
     for (const [name, args] of [
       ['get_organization_profile', { organizationId: 'medtech-org' }],
+      ['preview_organization_ownership_transfer', { organizationId: 'medtech-org', userId: 'target', reason: 'Requested transfer' }],
       ['preview_organization_ownership_release', { organizationId: 'medtech-org', reason: 'incorrect_association' }],
       ['preview_organization_profile', { organizationId: 'medtech-org', description: 'Test' }],
       ['get_motion', { organizationId: 'medtech-org', motionId: 'motion' }],

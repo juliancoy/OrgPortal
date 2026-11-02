@@ -3581,6 +3581,17 @@ app.post('/api/network/directory/registration/:phase', async c => {
     }, 'register', { ...input, confirm: phase === 'apply' && input.confirm === true }));
   } catch (error) { return eventErrorResponse(error, c.env, c.req.raw); }
 });
+app.post('/api/network/orgs/:organizationId/ownership/transfer/:phase', async c => {
+  const phase = c.req.param('phase');
+  if (!['preview', 'apply'].includes(phase)) return c.json({ error: 'Not found' }, 404);
+  const user = await currentUser(c.env, c.req.raw);
+  try {
+    const input = await c.req.json() as Record<string, unknown>;
+    return c.json(await runOrganizationDirectoryOperation(c.env.DB, {
+      actor: organizationActor(user, c.env), scopes: ['org:portal.read', 'org:portal.write'],
+    }, 'transfer', { ...input, organizationId: c.req.param('organizationId'), confirm: phase === 'apply' && input.confirm === true }));
+  } catch (error) { return eventErrorResponse(error, c.env, c.req.raw); }
+});
 app.post('/api/network/orgs/:organizationId/ownership/release/:phase', async c => {
   const phase = c.req.param('phase');
   if (!['preview', 'apply'].includes(phase)) return c.json({ error: 'Not found' }, 404);

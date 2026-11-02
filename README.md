@@ -290,6 +290,20 @@ request with `confirm: true` and its actor-bound, expiring, one-use `previewId`.
 Changes are audited; intervening event edits invalidate the preview. Unknown
 organization locations and websites remain null.
 
+### Superadmin ownership transfers
+
+PIdP superadmins can transfer an organization's ownership to an existing active
+member using `POST /api/network/orgs/:organizationId/ownership/transfer/preview`
+and `/apply`, or the `preview_organization_ownership_transfer` and
+`apply_organization_ownership_transfer` MCP tools. Supply the stable `userId` and
+a reason; apply also requires `confirm: true` and the unchanged one-use
+`previewId`. Authority is rechecked through live PIdP authentication. Organization
+owners and administrators cannot use this override. The recipient becomes owner
+with full organization management access; the previous owner becomes a member.
+Other memberships and portal settings remain unchanged. The atomic transaction
+retains ownership history, resolves reviewed open challenges, and records the
+actor, recipient, previous owner, reason and receipt in the existing audit store.
+
 ### Onboarding identity and persistence
 
 PIdP owns identity linking and the shared personal profile. Its authenticated
