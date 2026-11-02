@@ -8,6 +8,7 @@ import { createQrSvg } from '../../ui/utils/qr'
 import { paymentLink, pqcoinFetch, validateRequest, type Account, type Network } from './api'
 import { createWallet, exportWallet, importWallet, lockWallet, signTransfer, units } from './wallet'
 import { useWallet } from './WalletBoundary'
+import { readPaymentQr, readPaymentRequest } from './paymentRequest'
 
 export function PqcoinPayment({ mode }: { mode: 'send' | 'receive' }) {
   const { wallet, setWallet } = useWallet()
@@ -26,10 +27,16 @@ export function PqcoinPayment({ mode }: { mode: 'send' | 'receive' }) {
   const [review, setReview] = useState(false)
   const [lastSigned, setLastSigned] = useState<{ signedTransfer: string; id: string; chain: string } | null>(null)
   const [receipt, setReceipt] = useState('')
+  const [request, setRequest] = useState('')
+  const [backupVerified, setBackupVerified] = useState(false)
+  const [submitted, setSubmitted] = useState<{ recipient: string; amount: string; fee: string; chain: string } | null>(null)
+  const importGeneration = useRef(0)
+  useEffect(() => () => { importGeneration.current++ }, [])
+  useEffect(() => { setBackupVerified(false) }, [wallet])
 
   useEffect(() => {
     let active = true, pending = false
-    setAccount(null); setReview(false); setReceipt(''); setLastSigned(null)
+    setAccount(null); setReview(false); setReceipt(''); setLastSigned(null); setSubmitted(null)
     const refresh = async () => {
       if (pending) return
       pending = true
@@ -62,7 +69,7 @@ export function PqcoinPayment({ mode }: { mode: 'send' | 'receive' }) {
       const url = URL.createObjectURL(new Blob([backup], { type: 'application/json' }))
       const anchor = document.createElement('a'); anchor.href = url; anchor.download = `qcash-testnet-${value.address.slice(0, 12)}.json`; anchor.click()
       setTimeout(() => URL.revokeObjectURL(url), 1000)
-      setWallet(value); value = null; setPassword(''); setStatus('Wallet created. Keep the downloaded backup and its password safe.')
+      setWallet(value); value = null; setPassword(''); setStatus('Wallet created. Keep the downloaded backup and its password safe. Verify your backup below before receiving funds.')
     } catch (error) { setStatus(error instanceof Error ? error.message : 'Unable to create wallet.') }
     finally { if (value) lockWallet(value); setBusy(false) }
   }
@@ -72,6 +79,33 @@ export function PqcoinPayment({ mode }: { mode: 'send' | 'receive' }) {
     try { if (file.size > 2048) throw new Error('Invalid wallet backup.'); setWallet(await importWallet(await file.text(), password)); setPassword(''); setStatus('Wallet unlocked.') }
     catch { setStatus('Unable to unlock backup. Check the file and password.') }
     finally { setBusy(false) }
+  }
+  async function verifyBackup(file: File | undefined) {
+    if (!file || !wallet) return
+    const address = wallet.address
+    setBusy(true); setStatus('')
+    let restored: Awaited<ReturnType<typeof importWallet>> | null = null
+    try {
+      if (file.size > 2048) throw new Error('Invalid wallet backup.')
+      restored = await importWallet(await file.text(), password)
+      if (restored.address !== address) throw new Error('This backup belongs to a different wallet.')
+      setBackupVerified(true); setPassword(''); setStatus('Backup verified. This file and password recover your wallet.')
+    } catch (error) { setStatus(error instanceof Error && error.message.includes('different wallet') ? error.message : 'Unable to verify backup. Check the file and password.') }
+    finally { if (restored) lockWallet(restored); setBusy(false) }
+  }
+  function applyRequest(value: string) {
+    if (!network || loadError || networkId.current !== network.chainId) throw new Error('Connect to the testnet before importing a request.')
+    const details = readPaymentRequest(value, network)
+    setRecipient(details.recipient); setPerson(null); if (details.amount !== null) setAmount(details.amount)
+    setReview(false); setRequest(''); setStatus('Payment request loaded. Check the recipient and amount before sending.')
+  }
+  async function importQr(file: File | undefined) {
+    if (!file) return
+    const generation = ++importGeneration.current
+    setBusy(true)
+    try { const value = await readPaymentQr(file); if (generation === importGeneration.current) applyRequest(value) }
+    catch (error) { if (generation === importGeneration.current) setStatus(error instanceof Error ? error.message : 'Unable to read QR image.') }
+    finally { if (generation === importGeneration.current) setBusy(false) }
   }
   function checkPayment() {
     if (!wallet || !account || !network || loadError || requestError) throw new Error('Connect to the correct testnet and unlock your wallet first.')
@@ -102,6 +136,7 @@ export function PqcoinPayment({ mode }: { mode: 'send' | 'receive' }) {
       checkPayment()
       await checkRecipient()
       const signed = { ...signTransfer(wallet!, network!.chainId, recipient, amount, fee, account!.nonce), chain: network!.chainId }
+      setSubmitted({ recipient, amount, fee, chain: network!.chainId })
       setLastSigned(signed); setReceipt(signed.id)
       await broadcast(signed)
     } catch (error) { setStatus(`${error instanceof Error ? error.message : 'Submission failed.'} If submission is uncertain, retry the same signed transfer below.`) }
@@ -114,11 +149,18 @@ export function PqcoinPayment({ mode }: { mode: 'send' | 'receive' }) {
     finally { setBusy(false) }
   }
   const observed = account?.transactions.find(tx => tx.id === receipt)
+  const receiptState = loadError ? 'Status unavailable — reconnecting' : observed?.status === 'confirmed' ? `Confirmed · ${observed.confirmations} confirmation${observed.confirmations === 1 ? '' : 's'}` : observed?.status === 'pending' ? 'Pending confirmation' : 'Not currently observed — check again before sending another payment'
+  function downloadReceipt() {
+    if (!submitted || !receipt) return
+    const data = { currency: 'QCash', network: submitted.chain, transactionId: receipt, sender: wallet?.address, recipient: submitted.recipient, amount: submitted.amount, fee: submitted.fee, status: loadError ? 'unavailable' : observed?.status || 'unknown', confirmations: loadError ? null : observed?.confirmations ?? 0, observedAt: new Date().toISOString(), experimental: true }
+    const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }))
+    const anchor = document.createElement('a'); anchor.href = url; anchor.download = `qcash-receipt-${receipt.slice(0, 12)}.json`; anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
   return <section className="portal-section" aria-label="QCash testnet wallet">
-    <h1>{mode === 'send' ? 'Send' : 'Receive'} QCash Testnet</h1>
-    <p>Experimental QCash · Test coins have no stated monetary value. Uses ML-DSA signatures; consensus has not been independently audited. Transfers publish addresses and amounts to this testnet.</p>
+    <h1>{mode === 'send' ? 'Send' : 'Receive'} QCash Beta</h1>
+    <p>Experimental test coins with no stated monetary value. Transfers are public. This network has not been independently audited.</p>
     <p><Link to="/send?currency=QCash">Send QCash</Link> · <Link to="/receive?currency=QCash">Receive QCash</Link></p>
-    {network && <p style={{ overflowWrap: 'anywhere' }}>Network: <code>{network.chainId}</code> · Height {network.height}</p>}
+    {network && <details style={{ overflowWrap: 'anywhere' }}><summary>Beta network details · Block {network.height}</summary><p>Network: <code>{network.chainId}</code></p><p>Wallets use ML-DSA signatures. Confirmations can change during a chain reorganization. Beta test coins may be reset in a future release.</p></details>}
     {loadError && <p role="alert">{loadError}</p>}{requestError && <p role="alert">{requestError}</p>}
     {!wallet ? <div className="portal-card portal-form">
       <h2>Your test wallet</h2><p>Your signing key stays in this browser tab while unlocked. Locking, hiding or reloading the tab clears it. Unlock again with your encrypted backup.</p>
@@ -127,10 +169,21 @@ export function PqcoinPayment({ mode }: { mode: 'send' | 'receive' }) {
       <label>Unlock encrypted wallet backup<input type="file" accept="application/json,.json" disabled={busy || password.length < 12} onChange={e => { const file = e.target.files?.[0]; e.target.value = ''; void restore(file) }} /></label>
     </div> : <>
       <div className="portal-card"><h2>Your QCash wallet</h2><p style={{ overflowWrap: 'anywhere' }}><strong>Wallet address</strong><br /><code data-testid="pqt-address">{wallet.address}</code></p>
-        <p>Spendable: <strong data-testid="pqt-spendable">{account?.spendable ?? '—'} QCash</strong> · Immature mining rewards: {account?.immature ?? '—'} QCash</p>
+        <p>Spendable: <strong data-testid="pqt-spendable">{loadError ? '—' : account?.spendable ?? '—'} QCash</strong> · Immature mining rewards: {loadError ? '—' : account?.immature ?? '—'} QCash</p>
+        {loadError && <p>Balance and payment status are unavailable. Sending is paused until the connection returns.</p>}
+        <button type="button" onClick={() => { void navigator.clipboard.writeText(wallet.address).then(() => setStatus('Wallet address copied.'), () => setStatus('Unable to copy. Select the wallet address to copy it.')) }}>Copy wallet address</button>{' '}
         <button type="button" disabled={busy} onClick={() => setWallet(null)}>Lock wallet</button>
+        <details><summary>Verify wallet recovery</summary><p>Check that your downloaded backup and password recover this wallet. Keep both safe; portal sign-in cannot recover your funds.</p>
+          {backupVerified ? <p>Backup verified for this wallet.</p> : <><label>Recovery password<input type="password" autoComplete="off" maxLength={1024} value={password} onChange={e => setPassword(e.target.value)} /></label><label>Verify downloaded backup<input type="file" accept="application/json,.json" disabled={busy || password.length < 12} onChange={e => { const file = e.target.files?.[0]; e.target.value = ''; void verifyBackup(file) }} /></label></>}
+        </details>
       </div>
       {mode === 'send' ? <form className="portal-card portal-form" onSubmit={reviewPayment}>
+        <fieldset disabled={busy || !network || !!loadError || !!lastSigned}><legend>Use a payment request</legend>
+          <label>QCash payment link<input inputMode="url" value={request} maxLength={4096} onChange={e => setRequest(e.target.value)} placeholder="Paste a link from the recipient" /></label>
+          <button type="button" disabled={!request} onClick={() => { try { applyRequest(request) } catch (error) { setStatus(error instanceof Error ? error.message : 'Invalid payment request.') } }}>Use payment link</button>
+          <label>Scan QR image<input type="file" accept="image/png,image/jpeg,image/webp" onChange={e => { const file = e.target.files?.[0]; e.target.value = ''; void importQr(file) }} /></label>
+          <p>Choose a saved QR image or screenshot. Payment details are read on your device.</p>
+        </fieldset>
         {network && <ProfileRecipientPicker chainId={network.chainId} onSelect={value => { setPerson(value); setRecipient(value.address); setReview(false) }} />}
         {person && <p>Recipient: {person.name} · {person.profileSlug}</p>}
         <label>Recipient QCash wallet address<input value={recipient} required maxLength={64} spellCheck={false} autoComplete="off" onChange={e => { setRecipient(e.target.value.trim()); setPerson(null); setReview(false) }} /></label>
@@ -140,18 +193,22 @@ export function PqcoinPayment({ mode }: { mode: 'send' | 'receive' }) {
         <p>Whole QCash units. No currency conversion. {pending && 'A transfer is pending.'}</p>
         <button disabled={busy || pending || !!lastSigned || !!loadError || !!requestError || !account} type="submit">Review payment</button>
         {review && <div role="region" aria-label="Review QCash payment" style={{ overflowWrap: 'anywhere' }}><h2>Review payment</h2><p>{person ? `${person.name} (${person.profileSlug}) · ` : ''}Send {amount} QCash to <code>{recipient}</code></p><p>Fee: {fee} QCash. Total: {(units(amount) + units(fee, true)).toString()} QCash.</p><p>Network: <code>{network?.chainId}</code></p>
-          <button type="button" disabled={busy} onClick={() => { void send() }}>Authorize and send QCash</button><button type="button" onClick={() => setReview(false)}>Cancel</button></div>}
+          <button type="button" disabled={busy || !!loadError || !!requestError} onClick={() => { void send() }}>Authorize and send QCash</button><button type="button" disabled={busy} onClick={() => setReview(false)}>Cancel</button></div>}
       </form> : <div className="portal-card portal-form">
         <label>Requested amount (QCash)<input inputMode="numeric" value={amount} onChange={e => setAmount(e.target.value)} /></label>
         <label>Payment request link<input value={link} readOnly /></label>
         <button disabled={!link} type="button" onClick={() => { void navigator.clipboard.writeText(link).then(() => setStatus('Payment link copied.'), () => setStatus('Unable to copy. Select the payment link to copy it.')) }}>Copy link</button>
         {qr && <div style={{ maxWidth: 320, width: '100%' }} aria-label="QCash payment QR" dangerouslySetInnerHTML={{ __html: qr }} />}
       </div>}
-      {receipt && <p style={{ overflowWrap: 'anywhere' }}>Transaction: <code>{receipt}</code><br />{observed ? `${observed.status} · ${observed.confirmations} confirmations` : 'Not observed on the current chain yet. A previously confirmed transaction may have been reorganized out.'}</p>}
+      {receipt && <section className="portal-card" aria-label="QCash payment receipt" style={{ overflowWrap: 'anywhere' }}><h2>Payment receipt</h2><p aria-live="polite">{receiptState}</p>
+        {submitted && <><p>Amount: {submitted.amount} QCash · To: <code>{submitted.recipient}</code></p><p>Fee: {submitted.fee} QCash · Total: {(units(submitted.amount) + units(submitted.fee, true)).toString()} QCash</p></>}
+        <p>Transaction: <code>{receipt}</code></p><p>Confirmations may change if the chain reorganizes. A downloaded receipt records the status at download time.</p>
+        <button type="button" onClick={downloadReceipt}>Download payment receipt</button>
+      </section>}
       {lastSigned && <button type="button" disabled={busy || !!loadError || !!requestError} onClick={() => { void retry() }}>Retry same signed transfer</button>}
-      <div className="portal-card"><h2>Recent QCash transfers</h2>{!account?.transactions.length ? <p>No transfers on this chain yet.</p> : <ul>{account.transactions.map(tx => <li key={tx.id} style={{ overflowWrap: 'anywhere' }}>{tx.recipient === wallet.address ? 'Received' : 'Sent'} {tx.amount} QCash · {tx.status} · {tx.confirmations} confirmations<br /><code>{tx.id}</code></li>)}</ul>}<p>Confirmations can change during a reorganization. This development wallet has no guaranteed finality threshold.</p></div>
+      <div className="portal-card"><h2>Recent QCash transfers</h2>{loadError ? <p>Transfer history is unavailable until the connection returns.</p> : !account?.transactions.length ? <p>No transfers on this chain yet.</p> : <ul>{account.transactions.map(tx => <li key={tx.id} style={{ overflowWrap: 'anywhere' }}>{tx.recipient === wallet.address ? 'Received' : 'Sent'} {tx.amount} QCash · {tx.status} · {tx.confirmations} confirmations<br /><code>{tx.id}</code></li>)}</ul>}<p>Confirmations can change during a reorganization. This development wallet has no guaranteed finality threshold.</p></div>
     </>}
     {network && mode === 'receive' && <ProfileWallet chainId={network.chainId} />}
-    <p role="status" aria-live="polite">{busy ? 'Working…' : observed?.status === 'confirmed' && status.startsWith('Transfer submitted') ? `Transfer confirmed · ${observed.confirmations} confirmations.` : status}</p>
+    <p role="status" aria-label="Wallet activity" aria-live="polite">{busy ? 'Working…' : loadError && wallet ? 'Connection unavailable. Balances and payment status will refresh when reconnected.' : observed?.status === 'confirmed' && status.startsWith('Transfer submitted') ? `Transfer confirmed · ${observed.confirmations} confirmations.` : status}</p>
   </section>
 }

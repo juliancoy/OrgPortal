@@ -85,6 +85,13 @@ test('legacy gateway metadata is normalized without changing the chain identity'
  assert.deepEqual(await result.json(),{...network,currency:'QCash',name:'QCash Testnet'})
 })
 
+test('QCash Beta metadata preserves the existing currency and chain',async()=>{
+ const app=pqcoinRoutes(async()=>response({...network,name:'QCash Beta'}))
+ const result=await app.request('https://portal.invalid/api/qcash/network',{},env)
+ assert.equal(result.status,200)
+ assert.deepEqual(await result.json(),{...network,name:'QCash Beta'})
+})
+
 
 test('hosted gateway uses only its service secret, never browser credentials',async()=>{
  let calls=0

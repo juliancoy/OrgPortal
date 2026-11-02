@@ -122,7 +122,7 @@ export function SendPage() {
             setToAccountId(''); setAmount('1.00'); setDescription('Transfer'); setRequestSource(''); setStatus('')
             selectCurrency(selected)
           }}>
-            <option value="DEM">Dena (DEM)</option><option value="QCash">QCash Testnet · Experimental</option>
+            <option value="DEM">Dena (DEM)</option><option value="QCash">QCash Beta · Experimental</option>
             {!['DEM', 'QCash'].includes(currency) && <option value={currency}>Unsupported currency</option>}
           </select>
           {currency === 'QCash' ? <PqcoinPayment key={search} mode="send" /> : currency === 'DEM' ? <>

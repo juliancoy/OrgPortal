@@ -1,5 +1,21 @@
 # QCash testnet alongside Dena
 
+## QCash Beta release
+
+The hosted test network is presented as **QCash Beta**. This is a beta release
+label, not a new currency or a chain reset: `currency=QCash`, existing addresses,
+encrypted backups, signatures and the pinned chain identity remain compatible.
+The hosted chain retains its fixed 12-bit target (about 4096 classical hash
+attempts per successful proof). The operator's miner waits 30 seconds between
+blocks; that is local pacing, not a consensus-enforced block time. Other miners
+can produce blocks faster. Low difficulty makes this suitable for functional
+payment trials, not security or economic-value claims. Test coins have no stated
+monetary value, confirmations are reversible, and future beta resets are possible.
+
+The native gateway is authenticated and remains behind the HTTPS portal proxy.
+The existing native peer is not opened to the public by this release. There are
+no Dena conversions, deposits, purchases or implicit database migrations.
+
 The finance overview includes a separate QCash Testnet card. The existing
 `/send` and `/receive` pages offer Dena (`DEM`, the existing database
 ledger) and experimental QCash Testnet (`QCash`, the separate native C++ chain).
@@ -29,6 +45,26 @@ currency, chain ID, destination address and amount. Wrong-network requests canno
 be signed. Signed-in people can link a wallet with a one-use ML-DSA ownership proof and find
 recipients by public profile name. See [profile-link protocol and migration review](QCASH_PROFILE_LINKS.md). Portal login
 alone never authorizes spending blockchain funds.
+
+On Send, paste a complete QCash payment link or choose **Scan QR image** to read a
+saved PNG/JPEG/WebP QR image locally. This is image scanning, not a live camera
+scanner. Images are limited to 5 MB and 16 megapixels; decoded links are never
+opened or fetched. Wrong-network, ambiguous and invalid-amount requests leave
+the payment fields unchanged. Importing details never authorizes payment.
+
+After sending, a payment receipt shows the observed pending/confirmed status,
+amount, fee, recipient and transaction ID. **Download payment receipt** saves a
+public JSON snapshot, not proof of permanent settlement. Connection loss hides
+the stale balance, marks receipt status unavailable and pauses sending until
+reconnection. Receipts and polling state remain in memory for that page session;
+downloaded copies are retained/deleted by the user, outside portal backups.
+
+**Verify wallet recovery** checks that a chosen encrypted backup and password
+recover the currently unlocked address without replacing the active wallet.
+The temporary recovered key is cleared after the check. Wallet recovery still
+requires keeping both the backup file and its password; portal login cannot
+replace either. Verification is session-only, and hiding/reloading locks the
+wallet as before.
 
 Transfers expose addresses and amounts on the testnet. The wallet displays
 spendable balances, immature mining rewards, pending/confirmed history and depth.
@@ -101,7 +137,7 @@ PqcoinRuntimeBindings --include-runtime false --strict-vars false`.
 Run focused browser crypto/payment tests, API adapter tests and type checks:
 
 ```bash
-npm --prefix web test -- src/features/pqcoin/wallet.test.ts src/ui/views/financeUtils.test.ts src/ui/views/paymentCurrency.test.ts --maxWorkers=2
+npm --prefix web test -- src/features/pqcoin/wallet.test.ts src/features/pqcoin/paymentRequest.test.ts src/ui/views/financeUtils.test.ts src/ui/views/paymentCurrency.test.ts --maxWorkers=2
 npm --prefix web run typecheck
 (cd org-worker && node --import tsx --test test/pqcoin.test.ts)
 npm --prefix org-worker run typecheck
@@ -118,7 +154,10 @@ local browser's QCash API requests to the actual Worker adapter on loopback, bac
 by the real native gateway and two native peers; responses/signatures are not
 mocked. The rest of the page is served by the existing local Docker portal. It
 checks backup creation/import, QR requests, review/sign/broadcast, observed balances,
-wrong-network rejection, mobile overflow and Dena selection. Native checks include
+wrong-network rejection, mobile overflow and Dena selection. It also exercises
+two independent wallet contexts, QR-image and pasted-link import, backup-file
+verification, wrong-password rejection, receipt downloads, connection loss and
+recovery of a funded recipient wallet after reload. Native checks include
 invalid signatures, insufficient funds, duplicate retransmission, gossip, mining,
 reorganization and confirmed-history reconstruction after restart. Repeat native
 checks with `PQCOIN_POW_BINARY` pointing at the sanitizer binary.

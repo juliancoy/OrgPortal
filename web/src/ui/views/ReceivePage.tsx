@@ -107,7 +107,7 @@ export function ReceivePage() {
             const selected = event.target.value
             selectCurrency(selected)
           }}>
-            <option value="DEM">Dena (DEM)</option><option value="QCash">QCash Testnet · Experimental</option>
+            <option value="DEM">Dena (DEM)</option><option value="QCash">QCash Beta · Experimental</option>
             {!['DEM', 'QCash'].includes(currency) && <option value={currency}>Unsupported currency</option>}
           </select>
           {currency === 'QCash' ? <PqcoinPayment key={search} mode="receive" /> : currency === 'DEM' ? <>

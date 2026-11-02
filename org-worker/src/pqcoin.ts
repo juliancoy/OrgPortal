@@ -4,7 +4,7 @@ import { z } from 'zod'
 
 const digest = z.string().regex(/^[0-9a-f]{64}$/)
 const u64 = z.string().regex(/^(0|[1-9][0-9]{0,19})$/).refine(value => BigInt(value) <= 18446744073709551615n)
-const network = z.object({ currency: z.enum(['QCash','PQT']), name: z.enum(['QCash Testnet','PQCoin Testnet']), chainId: digest, height: z.number().int().nonnegative().safe(), tip: digest, decimals: z.literal(0), experimental: z.literal(true) })
+const network = z.object({ currency: z.enum(['QCash','PQT']), name: z.enum(['QCash Beta','QCash Testnet','PQCoin Testnet']), chainId: digest, height: z.number().int().nonnegative().safe(), tip: digest, decimals: z.literal(0), experimental: z.literal(true) })
 const receipt = z.object({ id: digest, status: z.enum(['pending', 'confirmed', 'unknown']), confirmations: z.number().int().nonnegative().safe() })
 const transfer = receipt.extend({ sender: digest, recipient: digest, amount: u64, fee: u64 })
 const account = z.object({ address: digest, spendable: u64, immature: u64, nonce: u64, transactions: z.array(transfer).max(178) })
@@ -56,7 +56,7 @@ export function pqcoinRoutes(gatewayFetch: GatewayFetch = (url, init) => fetch(u
       const response = await gatewayFetch(base + '/network', init)
       if (!response.ok) throw new Error('Gateway unavailable')
       const parsedNetwork = network.parse(await boundedJson(response))
-      const current = { ...parsedNetwork, currency: 'QCash', name: 'QCash Testnet' }
+      const current = { ...parsedNetwork, currency: 'QCash', name: parsedNetwork.name === 'QCash Beta' ? 'QCash Beta' : 'QCash Testnet' }
       if (current.chainId !== chain) return c.json({ error: 'Testnet network mismatch. Requests are disabled.' }, 503)
       if (resource === 'network') return c.json(current)
       const result = await gatewayFetch(base + path, { ...init, method: resource === 'submit' ? 'POST' : 'GET', headers: { ...init.headers, ...(body ? { 'Content-Type': 'application/json' } : {}) }, body })
