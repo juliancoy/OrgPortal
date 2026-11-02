@@ -9,6 +9,7 @@
 }
 .organization-profile-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 1.25rem;
   padding: 1rem 0 1.75rem;
@@ -25,10 +26,11 @@
 }
 .organization-profile-avatar:disabled { opacity: 1; cursor: default; }
 .organization-profile-avatar img { width: 100%; height: 100%; object-fit: contain; }
-.organization-profile-identity { flex: 1; min-width: 0; }
+.organization-profile-identity { flex: 1 1 18rem; min-width: 0; }
 .organization-profile-identity h1 { margin: 0; font-size: clamp(1.65rem, 3vw, 2.6rem); line-height: 1.15; overflow-wrap: anywhere; }
 .organization-profile-tagline { margin: .55rem 0 0; max-width: 65ch; color: var(--text-secondary); line-height: 1.5; }
-.organization-profile-actions { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
+.organization-profile-actions { display: flex; flex: 1 1 32rem; min-width: 0; gap: .6rem; align-items: center; flex-wrap: wrap; }
+.organization-profile-actions > :is(a, button), .organization-share { max-width: 100%; }
 .organization-profile .organization-profile-tabs {
   display: flex;
   gap: 1.5rem;
