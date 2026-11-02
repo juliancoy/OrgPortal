@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { usePaymentCurrency } from './paymentCurrency'
 import { PqcoinPayment } from '../../features/pqcoin/PqcoinPayment'
 import { SignInLink } from '../components/SignInLink'
@@ -116,15 +117,15 @@ export function SendPage() {
     <div className="portal-shell">
       <Header />
       <main className="portal-main">
-        <div className="portal-container">
-          <label htmlFor="payment-currency">Currency</label><select id="payment-currency" style={{ width: '100%', maxWidth: '100%' }} value={currency} onChange={event => {
+        <div className={`portal-container ${currency === 'QCash' ? 'qcash-page' : ''}`}>
+          <div className="payment-currency-picker">{currency === 'QCash' && <Link to="/finance" className="qc-back">← Finance</Link>}<label htmlFor="payment-currency">Currency</label><select id="payment-currency" style={{ width: '100%', maxWidth: '100%' }} value={currency} onChange={event => {
             const selected = event.target.value
             setToAccountId(''); setAmount('1.00'); setDescription('Transfer'); setRequestSource(''); setStatus('')
             selectCurrency(selected)
           }}>
             <option value="DEM">Dena (DEM)</option><option value="QCash">QCash Beta · Experimental</option>
             {!['DEM', 'QCash'].includes(currency) && <option value={currency}>Unsupported currency</option>}
-          </select>
+          </select></div>
           {currency === 'QCash' ? <PqcoinPayment key={search} mode="send" /> : currency === 'DEM' ? <>
           <section className="portal-hero">
             <div>

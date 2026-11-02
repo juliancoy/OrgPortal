@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { usePaymentCurrency } from './paymentCurrency'
 import { PqcoinPayment } from '../../features/pqcoin/PqcoinPayment'
 import { useEffect, useMemo, useState } from 'react'
@@ -102,14 +103,14 @@ export function ReceivePage() {
     <div className="portal-shell">
       <Header />
       <main className="portal-main">
-        <div className="portal-container">
-          <label htmlFor="payment-currency">Currency</label><select id="payment-currency" style={{ width: '100%', maxWidth: '100%' }} value={currency} onChange={event => {
+        <div className={`portal-container ${currency === 'QCash' ? 'qcash-page' : ''}`}>
+          <div className="payment-currency-picker">{currency === 'QCash' && <Link to="/finance" className="qc-back">← Finance</Link>}<label htmlFor="payment-currency">Currency</label><select id="payment-currency" style={{ width: '100%', maxWidth: '100%' }} value={currency} onChange={event => {
             const selected = event.target.value
             selectCurrency(selected)
           }}>
             <option value="DEM">Dena (DEM)</option><option value="QCash">QCash Beta · Experimental</option>
             {!['DEM', 'QCash'].includes(currency) && <option value={currency}>Unsupported currency</option>}
-          </select>
+          </select></div>
           {currency === 'QCash' ? <PqcoinPayment key={search} mode="receive" /> : currency === 'DEM' ? <>
           <section className="portal-hero">
             <div>

@@ -126,3 +126,27 @@ npm run test:e2e -- tenant-routing.spec.ts --grep 'submissions remain readable' 
 The 681–820px cases protect against a sidebar squeezing text between the
 phone and desktop breakpoints; 980/981px cover the current layout transition.
 The 320px case also protects team names beside the avatar and expand controls.
+
+## QCash wallet hierarchy
+
+From the workspace root, capture the real wallet components against the local
+Docker portal with synthetic, read-only network/account fixtures:
+
+```sh
+python3 OrgPortal/web/scripts/render-qcash-wallets.py
+```
+
+The runner captures Create, Unlock and unlocked payment states for Send and
+Receive in desktop/mobile and light/dark themes. It generates contact sheets and
+`report.json` under `artifacts/layout-review/qcash`. It uses temporary browser
+wallets, never submits payments, saves no private backup files, and sends no
+requests to non-local hosts. The balances shown are visual fixtures. Review the
+actual PNGs for hierarchy, contrast and spacing; passing overflow/error checks
+alone is insufficient. The runner requires host Playwright, Chromium and Pillow.
+
+For real signatures, QR import, receipt download and funded-wallet recovery,
+run `python3 pqcoin/tests/wallet_network.py --browser` from the workspace root.
+That separate check uses fresh native peers and the real gateway adapter. Wallet
+access now requires explicitly choosing **Create a wallet** or **Unlock a wallet**;
+profile linking, backup verification and technical details remain accessible
+through labeled disclosures.

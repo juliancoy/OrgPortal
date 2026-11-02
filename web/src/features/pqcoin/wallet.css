@@ -1,0 +1,666 @@
+/* Scoped wallet hierarchy; palette follows the active tenant and theme. */
+.qcash-page {
+  max-width: 1080px;
+}
+.qcash-page .payment-currency-picker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 26px;
+}
+.qcash-page .payment-currency-picker label {
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+.qcash-page .payment-currency-picker select {
+  width: 240px !important;
+  border-width: 1px;
+  padding: 9px 12px;
+}
+.qc-back {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  text-decoration: none;
+}
+.qcash-wallet {
+  display: grid;
+  gap: 24px;
+  color: var(--text-primary);
+}
+.qcash-wallet *,
+.qcash-wallet *::before,
+.qcash-wallet *::after {
+  box-sizing: border-box;
+  min-width: 0;
+}
+.qcash-wallet h1,
+.qcash-wallet h2,
+.qcash-wallet p {
+  margin: 0;
+}
+.qcash-wallet h1 {
+  font-size: clamp(1.6rem, 3vw, 2.15rem);
+  line-height: 1.2;
+  letter-spacing: -0.035em;
+  margin: 7px 0 9px;
+}
+.qcash-wallet h2 {
+  font-size: 1.22rem;
+  line-height: 1.35;
+  letter-spacing: -0.02em;
+}
+.qcash-wallet p {
+  line-height: 1.6;
+}
+.qcash-wallet svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.qcash-wallet code {
+  overflow-wrap: anywhere;
+  font-size: 0.8rem;
+}
+.qc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 25px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.qc-title {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.qc-title > div > p {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  max-width: 46ch;
+}
+.qc-mark {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 62px;
+  height: 62px;
+  border-radius: 20px;
+  font-size: 2.4rem;
+  font-weight: 750;
+  color: var(--primary);
+  background: var(--primary-bg);
+  border: 1px solid color-mix(in srgb, var(--primary) 20%, transparent);
+}
+.qc-eyebrow {
+  font-size: 0.65rem;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  color: var(--text-secondary);
+}
+.qc-beta {
+  display: inline-block;
+  color: var(--primary);
+  background: var(--primary-bg);
+  border: 1px solid color-mix(in srgb, var(--primary) 24%, transparent);
+  border-radius: 5px;
+  padding: 2px 6px;
+  font-size: 0.62rem;
+  letter-spacing: 0.07em;
+  font-weight: 750;
+  vertical-align: middle;
+}
+.qc-eyebrow .qc-beta {
+  margin-left: 5px;
+}
+.qc-navigation {
+  display: flex;
+  gap: 4px;
+  padding: 5px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+.qc-navigation a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 42px;
+  padding: 10px 12px;
+  color: var(--text-secondary);
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 0.8rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.qc-navigation a[aria-current="page"] {
+  background: var(--primary-bg);
+  color: var(--primary);
+}
+.qc-onboarding {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+  gap: 46px;
+  align-items: center;
+}
+.qc-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 28px;
+}
+.qcash-wallet .qc-access {
+  gap: 18px;
+  padding: 30px;
+  border-top: 3px solid var(--primary);
+}
+.qc-section-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.qc-section-title h2 {
+  margin-top: 4px;
+}
+.qc-icon {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  background: var(--primary-bg);
+  color: var(--primary);
+  border-radius: 12px;
+}
+.qcash-wallet .qc-access-options {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--surface-muted);
+}
+.qcash-wallet .qc-access-options button {
+  flex: 1;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-secondary);
+  min-height: 42px;
+  font-size: 0.85rem;
+}
+.qcash-wallet .qc-access-options button[aria-pressed="true"] {
+  background: var(--panel);
+  border-color: var(--border);
+  color: var(--text-primary);
+  box-shadow: 0 2px 4px #00000008;
+}
+.qcash-wallet .qc-description {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  max-width: 55ch;
+}
+.qcash-wallet label {
+  display: grid;
+  gap: 7px;
+  font-size: 0.8rem;
+  font-weight: 650;
+  color: var(--text-primary);
+}
+.qcash-wallet input {
+  border-width: 1px;
+  min-height: 46px;
+  border-radius: 9px;
+  font-size: 0.9rem;
+}
+.qcash-wallet input[type="file"] {
+  padding: 10px;
+  max-width: 100%;
+  font-size: 0.78rem;
+}
+.qcash-wallet input[type="file"]::file-selector-button {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel-2);
+  color: var(--text-primary);
+  margin-right: 8px;
+  cursor: pointer;
+}
+.qcash-wallet .qc-help {
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+.qc-access #qc-password-help {
+  margin-top: -10px;
+}
+.qcash-wallet .qc-primary,
+.qcash-wallet .qc-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+  border-radius: 9px;
+  padding: 11px 16px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1.35;
+  cursor: pointer;
+}
+.qcash-wallet .qc-primary {
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+  border: 1px solid var(--btn-primary-bg);
+}
+.qcash-wallet .qc-secondary {
+  background: var(--panel);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+.qcash-wallet button:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+.qcash-wallet button:focus-visible,
+.qcash-wallet a:focus-visible,
+.qcash-wallet summary:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 4px;
+}
+.qcash-wallet .qc-primary:not(:disabled):hover {
+  filter: brightness(0.94);
+}
+.qcash-wallet .qc-secondary:not(:disabled):hover {
+  border-color: var(--primary);
+  background: var(--panel-2);
+}
+.qcash-wallet .qc-device-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+.qc-device-note svg {
+  width: 14px;
+  height: 14px;
+}
+.qc-guide {
+  padding: 18px 10px 18px 0;
+}
+.qc-guide h2 {
+  margin: 9px 0 12px;
+  font-size: 1.65rem;
+  letter-spacing: -0.04em;
+}
+.qc-guide > p {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  max-width: 38ch;
+}
+.qc-steps {
+  display: grid;
+  gap: 23px;
+  padding: 0;
+  margin: 27px 0;
+  list-style: none;
+}
+.qc-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+}
+.qc-steps li > span {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  color: var(--primary);
+  background: var(--panel);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.qc-steps strong {
+  display: block;
+  font-size: 0.87rem;
+  margin: 2px 0 4px;
+}
+.qc-steps p {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  max-width: 34ch;
+}
+.qc-payment-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.4fr);
+  gap: 22px;
+  align-items: start;
+}
+.qc-balance {
+  display: grid;
+  gap: 18px;
+}
+.qcash-wallet .qc-balance-value {
+  font-size: clamp(1.6rem, 3vw, 2.1rem);
+  font-weight: 750;
+  letter-spacing: -0.045em;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.qc-balance > .qc-help {
+  margin-top: -9px;
+}
+.qc-address {
+  display: grid;
+  gap: 8px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border-subtle);
+}
+.qc-address strong {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.qc-address code {
+  line-height: 1.7;
+}
+.qc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.qc-balance .qc-actions button {
+  font-size: 0.73rem;
+  padding: 9px 10px;
+  min-height: 42px;
+}
+.qc-balance .qc-actions svg {
+  width: 15px;
+  height: 15px;
+}
+.qc-compose {
+  gap: 20px;
+}
+.qc-disclosure {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+.qc-disclosure > summary {
+  cursor: pointer;
+  padding: 8px 0;
+}
+.qc-disclosure > summary svg {
+  vertical-align: middle;
+  width: 15px;
+  height: 15px;
+  margin: 0 5px;
+}
+.qc-disclosure > div,
+.qc-disclosure > p {
+  margin-top: 12px;
+}
+.qc-disclosure[open] > summary {
+  color: var(--text-primary);
+}
+.qc-disclosure p,
+.qc-disclosure code {
+  overflow-wrap: anywhere;
+}
+.qc-request-import {
+  padding: 4px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-2);
+}
+.qc-request-import fieldset {
+  display: grid;
+  gap: 12px;
+  border: 0;
+  padding: 10px 0;
+  margin: 0;
+}
+.qc-request-import legend {
+  font-weight: 650;
+}
+.qc-amount-fields {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 14px;
+}
+.qc-review {
+  background: var(--primary-bg);
+  border: 1px solid var(--border);
+  padding: 18px;
+  border-radius: 12px;
+  display: grid;
+  gap: 14px;
+  overflow-wrap: anywhere;
+}
+.qc-receive-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+.qc-request-fields {
+  display: grid;
+  gap: 18px;
+}
+.qc-qr-wrap {
+  text-align: center;
+}
+.qc-qr {
+  width: 100%;
+  max-width: 260px;
+  margin: 0 auto 9px;
+  background: white;
+  border-radius: 12px;
+  padding: 7px;
+}
+.qc-qr svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.qc-receipt {
+  display: grid;
+  gap: 16px;
+  overflow-wrap: anywhere;
+}
+.qc-receipt > button {
+  justify-self: start;
+}
+.qc-history h2 {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+}
+.qc-history > .qc-help {
+  margin-top: 18px;
+}
+.qc-history ul {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0;
+}
+.qc-history li {
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+  padding: 15px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.qc-history li > div {
+  display: grid;
+  gap: 5px;
+}
+.qc-history strong {
+  font-size: 0.9rem;
+}
+.qc-history li > code {
+  max-width: 180px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--text-secondary);
+  align-self: center;
+}
+.qcash-wallet .qc-alert {
+  padding: 13px 17px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--primary);
+  background: var(--panel);
+  border-radius: 9px;
+  font-size: 0.875rem;
+}
+.qc-activity {
+  font-size: 0.85rem;
+  color: var(--primary);
+}
+.qc-activity:empty {
+  display: none;
+}
+.qc-footer {
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 20px;
+}
+.qc-footer > p {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  max-width: 85ch;
+}
+.qc-footer .qc-beta {
+  margin-right: 5px;
+}
+.qc-footer-details {
+  display: flex;
+  gap: 12px 30px;
+  align-items: start;
+  margin-top: 9px;
+  flex-wrap: wrap;
+}
+.qc-footer-details > details {
+  flex: 1 1 300px;
+}
+.qc-footer-details .portal-card {
+  background: var(--panel-2);
+  padding: 18px;
+}
+.qc-footer-details .portal-card h2 {
+  font-size: 1rem;
+}
+@media (max-width: 850px) {
+  .qc-header {
+    align-items: start;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .qc-onboarding {
+    gap: 28px;
+  }
+  .qc-payment-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 620px) {
+  .qcash-page .payment-currency-picker {
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+  .qcash-page .payment-currency-picker select {
+    width: 195px !important;
+    font-size: 0.78rem;
+  }
+  .qcash-page .payment-currency-picker label {
+    font-size: 0.73rem;
+  }
+  .qc-title {
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .qc-mark {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    font-size: 1.8rem;
+  }
+  .qc-eyebrow {
+    font-size: 0.59rem;
+    letter-spacing: 0.08em;
+  }
+  .qc-title h1 {
+    font-size: 1.5rem;
+  }
+  .qc-title > div > p {
+    font-size: 0.82rem;
+  }
+  .qc-navigation {
+    align-self: stretch;
+  }
+  .qc-navigation a {
+    flex: 1;
+  }
+  .qc-onboarding {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 26px;
+  }
+  .qc-panel,
+  .qcash-wallet .qc-access {
+    padding: 22px;
+    border-radius: 14px;
+  }
+  .qc-access .qc-section-title h2 {
+    font-size: 1.08rem;
+  }
+  .qc-guide {
+    padding: 0 6px;
+  }
+  .qc-guide h2 {
+    font-size: 1.35rem;
+  }
+  .qc-steps {
+    gap: 18px;
+    margin: 20px 0;
+  }
+  .qc-history li > code {
+    max-width: 95px;
+  }
+  .qc-receive-content {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .qc-qr {
+    max-width: 240px;
+  }
+  .qc-footer-details {
+    gap: 3px;
+  }
+}
+@media (max-width: 360px) {
+  .qcash-page .payment-currency-picker select {
+    width: 170px !important;
+  }
+  .qcash-page .payment-currency-picker label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .qc-panel,
+  .qcash-wallet .qc-access {
+    padding: 17px;
+  }
+  .qc-section-title {
+    gap: 9px;
+  }
+}
