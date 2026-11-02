@@ -1,4 +1,6 @@
-interface Env {
+/// <reference path="./pqcoin-bindings.d.ts" />
+interface Env extends Partial<Pick<PqcoinRuntimeBindings, 'PQCOIN_GATEWAY_URL' | 'PQCOIN_CHAIN_ID' | 'QCASH_GATEWAY_URL' | 'QCASH_CHAIN_ID'>> {
+  QCASH_GATEWAY_TOKEN?: string;
   SUPPORT_EMAIL?: {send(message:{from:{email:string;name:string};to:string;subject:string;text:string;html?:string;replyTo?:string;inReplyTo?:string}):Promise<unknown>};
   CLOUDFLARE_ANALYTICS_ACCOUNT_ID?: string;
   CLOUDFLARE_ANALYTICS_HOSTS?: string;

@@ -394,3 +394,13 @@ saved reports.
 Run `./orgportal --help` or see [account connections and diagnostics](docs/cli/ACCOUNTS.md)
 for `whoami`, `auth status --live`, named connection selection and `doctor`.
 The CLI uses the same hosted MCP tools and authorization as other clients.
+
+
+## Experimental QCash testnet
+
+The finance overview and Send/Receive pages also support a separate experimental
+QCash blockchain wallet. Dena keeps its existing ledger. Browser signing, encrypted
+backups, network-bound payment QR links and the native gateway are documented in
+[the testnet setup guide](docs/finance/QCASH_TESTNET.md). The adapter is disabled
+until its gateway URL and exact chain ID are configured; no production deployment
+or balance conversion is performed.

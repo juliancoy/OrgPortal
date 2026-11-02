@@ -46,6 +46,23 @@ uses text relevance. Personalized responses are not publicly cached.
 
 ## Retention schedule
 
+QCash profile-wallet candidate (not deployed): linking is an explicit opt-in,
+requires a current PIdP session and proof of wallet-key control, and is discoverable
+only to signed-in users while the linked profile is public. `qcash_wallet_links`
+contains canonical account ID, portal origin, chain/address, public proof and a
+90-day expiry; names are joined from the current profile, not copied.
+`qcash_wallet_challenges` holds one outstanding ownership challenge per account,
+portal and chain for ten minutes. No private keys/passwords are stored. The owner
+can unlink in Receive even with their wallet locked; profile deletion cascades.
+Verified account erasure must include both tables by immutable user ID.
+Expired entries are excluded immediately; bounded minute-cron cleanup is covered
+by source tests but production migration/cron enforcement remain unverified.
+Both tables are excluded from public replicas and immutable journals. Before
+serving a restored database, clear these two metadata stores and require fresh
+consent/proofs so revoked links cannot reappear. This does not erase public chain
+transactions or copies held by recipients. See [protocol and schema review](../finance/QCASH_PROFILE_LINKS.md).
+
+
 Chat encryption candidate (not yet deployed): `chat_device_keys` stores account
 IDs, public RSA/ML-KEM keys and activity/expiry timestamps, never private keys.
 Registrations expire 90 days after the last registration/renewal. Expired entries

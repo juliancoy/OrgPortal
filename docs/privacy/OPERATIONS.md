@@ -20,6 +20,26 @@ of production data, creation of identity mappings, or bypassing preview/approval
 | Public website policy | Public `/api/org/privacy`, `/api/org/support`, `/api/org/terms` routes are generated from repository policy documents | Verify deployed content and listing URLs; regeneration is part of the backend build |
 | Organization page counters | Anonymous organization/day counts; manager-only API and MCP report; 365-day bounded cleanup in `retention.ts`; lifetime totals cascade on organization deletion. SQL, rollback, access and local browser checks cover counts and tab/reload behavior | Apply migration 0106 and verify scheduled cleanup after deployment before claiming live tracking. Counters are excluded from immutable journal and public replicas. Restore processes must reapply expiry and verified organization deletions |
 
+## QCash profile wallet candidate — November 1, 2026
+
+Migration 0130 and production release are pending. Source tests verify canonical
+account/wallet proof binding, primary-only directory access, ownership/tenant
+isolation, challenge replay/stale-update rejection, revocation, profile deletion
+cascade, exact expiry and 500-row bounded cleanup. A local Docker test uses
+isolated website-user accounts and tests sending by name and revocation between
+review and signing. These checks are not evidence of deployed enforcement.
+
+Inventory `qcash_wallet_links` (90 days) and `qcash_wallet_challenges` (ten minutes).
+Both are excluded from public snapshots and immutable journals; do not add them
+to ad-hoc exports. User unlink deletes both account/origin/chain records. Verified
+account erasure includes both tables by canonical user ID and profile cascade;
+retain the existing manual cross-service erasure review. The Receive UI can unlink
+without an unlocked spending wallet. Review cleanup backlog and expiry after
+migration/cron release. Before enabling a restored database, clear both QCash
+metadata tables and require fresh user-authorized links; never resurrect old
+wallet mappings from an export. Wallet keys/funds and public-chain records are
+separate from these deletable directory entries.
+
 ## Public intervention planning
 
 `ecosystem_initiatives` stores public organization-owned plans;

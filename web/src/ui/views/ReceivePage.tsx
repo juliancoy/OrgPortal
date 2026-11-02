@@ -1,3 +1,5 @@
+import { usePaymentCurrency } from './paymentCurrency'
+import { PqcoinPayment } from '../../features/pqcoin/PqcoinPayment'
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../../app/AppProviders'
 import { Header } from '../shell/Header'
@@ -35,6 +37,7 @@ async function orgFetch<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export function ReceivePage() {
+  const { currency, search, selectCurrency } = usePaymentCurrency()
   const { token } = useAuth()
   const [me, setMe] = useState<MeAccount | null>(null)
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -43,7 +46,7 @@ export function ReceivePage() {
   const [copyStatus, setCopyStatus] = useState('')
 
   useEffect(() => {
-    if (!token) return
+    if (!token || currency !== 'DEM') return
     const headers = { Authorization: `Bearer ${token}` }
     Promise.allSettled([
       orgFetch<MeAccount>('/api/accounts/me', { headers }),
@@ -58,7 +61,7 @@ export function ReceivePage() {
         setTransactions(Array.isArray(txResult.value) ? txResult.value : [])
       }
     })
-  }, [token])
+  }, [token, currency])
 
   const incoming = useMemo(() => {
     if (!me) return []
@@ -100,6 +103,14 @@ export function ReceivePage() {
       <Header />
       <main className="portal-main">
         <div className="portal-container">
+          <label htmlFor="payment-currency">Currency</label><select id="payment-currency" style={{ width: '100%', maxWidth: '100%' }} value={currency} onChange={event => {
+            const selected = event.target.value
+            selectCurrency(selected)
+          }}>
+            <option value="DEM">Dena (DEM)</option><option value="QCash">QCash Testnet · Experimental</option>
+            {!['DEM', 'QCash'].includes(currency) && <option value={currency}>Unsupported currency</option>}
+          </select>
+          {currency === 'QCash' ? <PqcoinPayment key={search} mode="receive" /> : currency === 'DEM' ? <>
           <section className="portal-hero">
             <div>
               <span className="portal-pill">Payments</span>
@@ -183,6 +194,7 @@ export function ReceivePage() {
               {incoming.length === 0 && <p className="portal-muted">No incoming transfers yet.</p>}
             </div>
           </section>
+          </> : <p role="alert">Unsupported payment currency. Select a supported currency to continue.</p>}
         </div>
       </main>
       <Footer />

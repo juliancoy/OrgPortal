@@ -1671,6 +1671,20 @@
       ]
     },
     {
+      "id": "suite-org-worker-test-pqcoin-test-ts",
+      "label": "org-worker/test/pqcoin.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/pqcoin.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "pqcoin.test.ts"
+        }
+      ]
+    },
+    {
       "id": "attachments-api",
       "label": "Submission attachments API",
       "source": "org-worker/test/presentation-attachments.test.ts",
@@ -1805,6 +1819,20 @@
         {
           "id": "suite",
           "label": "push.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-qcashWalletLinks-test-ts",
+      "label": "org-worker/test/qcashWalletLinks.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/qcashWalletLinks.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "qcashWalletLinks.test.ts"
         }
       ]
     },
@@ -3643,6 +3671,20 @@
       ]
     },
     {
+      "id": "suite-web-src-features-pqcoin-wallet-test-ts",
+      "label": "web/src/features/pqcoin/wallet.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/features/pqcoin/wallet.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "wallet.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-web-src-infrastructure-auth-avatarUpload-test-ts",
       "label": "web/src/infrastructure/auth/avatarUpload.test.ts",
       "category": "Identity and access",
@@ -4353,6 +4395,20 @@
         {
           "id": "suite",
           "label": "RatificationRehearsal.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-views-paymentCurrency-test-ts",
+      "label": "web/src/ui/views/paymentCurrency.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/ui/views/paymentCurrency.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "paymentCurrency.test.ts"
         }
       ]
     },

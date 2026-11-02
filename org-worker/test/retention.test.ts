@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
 import { runRetention } from '../src/retention.ts';
-function adapter(sql) { return {prepare(q){return {bind(...v){return {async first(){return sql.prepare(q).get(...v);},async run(){return {meta:sql.prepare(q).run(...v)};}};}};}}; }
+function adapter(sql) { return {prepare(q){const bind=(...v)=>({async first(){return sql.prepare(q).get(...v);},async run(){return {meta:sql.prepare(q).run(...v)};}});return {...bind(),bind};}}; }
 
 test('expiry units, bounds, dry-run, retries and unresolved operations',async()=>{
  const sql=new DatabaseSync(':memory:');
@@ -57,12 +57,18 @@ test('expiry units, bounds, dry-run, retries and unresolved operations',async()=
  sql.prepare('INSERT INTO user_notifications(id,type,created_at) VALUES (?,?,?)').run('expired-event','organization_event',new Date(now-91*86400_000).toISOString());
  sql.prepare('INSERT INTO user_notifications(id,type,created_at) VALUES (?,?,?)').run('other','connection_request',new Date(now-91*86400_000).toISOString());
  sql.prepare('INSERT INTO user_notifications(id,type,created_at) VALUES (?,?,?)').run('recent-event','organization_event',new Date(now).toISOString());
+ for(const table of ['qcash_wallet_links','qcash_wallet_challenges']) {
+  sql.exec(`CREATE TABLE ${table}(id TEXT PRIMARY KEY,expires_at INTEGER)`);
+  for(let i=0;i<501;i++)sql.prepare(`INSERT INTO ${table} VALUES (?,?)`).run(String(i),now);
+  sql.prepare(`INSERT INTO ${table} VALUES (?,?)`).run('live',now+1);
+ }
  const db=adapter(sql) as unknown as D1Database;
  assert.equal((await runRetention(db,now,true)).private_newsletter_previews,501);
  assert.equal(sql.prepare('SELECT COUNT(*) n FROM email_oauth_states').get()!.n,2);
  assert.equal((await runRetention(db,now,true)).event_company_votes,1);
  for(const name of ['email_engagement','email_segments','email_mailing_audit','email_campaign_previews'])assert.equal((await runRetention(db,now,true))[name],1);
  const first=await runRetention(db,now);
+ for(const table of ['qcash_wallet_links','qcash_wallet_challenges'])assert.equal(first[table],500);
  assert.equal(first.event_guest_presentations,1);
  assert.equal(sql.prepare('SELECT id FROM event_guest_presentations').get()!.id,'live-guest');
  assert.equal(first.organization_page_view_days,1);
@@ -85,7 +91,8 @@ test('expiry units, bounds, dry-run, retries and unresolved operations',async()=
  assert.equal(first.event_company_votes,1);
  assert.equal(first.event_company_favorites,1);
  assert.equal(sql.prepare('SELECT id FROM event_company_votes').get()!.id,'boundary-vote');
- assert.equal((await runRetention(db,now)).private_newsletter_previews,1);
+ const second=await runRetention(db,now);assert.equal(second.private_newsletter_previews,1);
+ for(const table of ['qcash_wallet_links','qcash_wallet_challenges']){assert.equal(second[table],1);assert.equal(sql.prepare(`SELECT id FROM ${table}`).get()!.id,'live');}
  assert.equal((await runRetention(db,now)).private_newsletter_previews,0);
  assert.deepEqual(sql.prepare('SELECT id FROM event_mcp_operations ORDER BY id').all().map(r=>r.id),['boundary','executing','uncertain']);
  assert.equal(sql.prepare('SELECT state_hash FROM email_oauth_states').get()!.state_hash,'live');

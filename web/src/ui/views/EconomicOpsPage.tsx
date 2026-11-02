@@ -1,3 +1,4 @@
+import { PqcoinCurrencyCard } from '../../features/pqcoin/CurrencyCard'
 import { SupportRecordTable, type SupportRecord } from '../components/OrganizationSupport'
 import { useEffect, useMemo, useState, type FormEvent, type MouseEvent } from 'react'
 import { useAuth } from '../../app/AppProviders'
@@ -533,6 +534,8 @@ export function EconomicOpsPage() {
               </div>
             </div>
           </section>
+
+          <PqcoinCurrencyCard />
 
           <section className="portal-section" id="circulation">
             <div className="portal-section-header">

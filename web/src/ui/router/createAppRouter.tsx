@@ -79,6 +79,7 @@ const AdminPage = lazy(() => import('../views/AdminPage').then(module => ({ defa
 const TargetPage = lazy(() => import('../views/TargetPage').then(module => ({ default: module.TargetPage })))
 const OrgEditableInitiativesPage = lazy(() => import('../views/orgs/OrgEditableInitiativesPage').then(module => ({ default: module.OrgEditableInitiativesPage })))
 const IdPage = lazy(() => import('../views/IdPage').then(module => ({ default: module.IdPage })))
+const WalletBoundary = lazy(() => import('../../features/pqcoin/WalletBoundary').then(module => ({ default: module.WalletBoundary })))
 const SendPage = lazy(() => import('../views/SendPage').then(module => ({ default: module.SendPage })))
 const ReceivePage = lazy(() => import('../views/ReceivePage').then(module => ({ default: module.ReceivePage })))
 const TimebankPage = lazy(() => import('../views/TimebankPage').then(module => ({ default: module.TimebankPage })))
@@ -275,8 +276,10 @@ export function createAppRouter() {
       { path: '/finance', element: <EconomicOpsPage /> },
       { path: '/departments', element: <DepartmentsPage /> },
       { path: '/ecops', element: <Navigate to="/finance" replace /> },
-      { path: '/send', element: <SendPage /> },
-      { path: '/receive', element: <ReceivePage /> },
+      { element: <WalletBoundary />, children: [
+        { path: '/send', element: <SendPage /> },
+        { path: '/receive', element: <ReceivePage /> },
+      ] },
       { path: '/create', element: <CreatePage /> },
       { path: '/create/for-profit', element: <CreateForProfitPage /> },
       { path: '/create/non-profit', element: <CreateNonProfitPage /> },

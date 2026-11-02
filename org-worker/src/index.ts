@@ -1,3 +1,5 @@
+import { qcashWalletRoutes } from './qcashWalletLinks';
+import { pqcoinRoutes } from './pqcoin';
 import { requestMembership, hasMembershipRequest, membershipRequests, removeMembershipRequest } from './membershipRequests';
 import { organizationCandidates } from './organizationCandidates';
 import { parseOrganizationThemes } from '../../shared/organizationThemes';
@@ -512,7 +514,8 @@ const DEFAULT_ADMIN_EMAIL = "julian@codecollective.us";
 export const app = new Hono<{ Bindings: Env; Variables: { user: PidpUser } }>();
 for (const path of ['/api/network/notifications/summary', '/api/network/notifications', '/api/network/connections/requests', '/api/tasks']) app.use(path, databaseCostMetrics());
 app.use("*", async (c, next) => {
-  if (c.env.ORGANIZATION_REPLICA_SOURCE && !c.req.path.startsWith('/api/local/newsletters/') && !["GET", "HEAD", "OPTIONS"].includes(c.req.method)) {
+  // QCash forwards independently signed transactions and never writes the organization replica.
+  if (c.env.ORGANIZATION_REPLICA_SOURCE && !c.req.path.startsWith('/api/pqcoin/') && !c.req.path.startsWith('/api/qcash/') && !c.req.path.startsWith('/api/local/newsletters/') && !["GET", "HEAD", "OPTIONS"].includes(c.req.method)) {
     return c.json({detail:"Read-only organization replica. Use the primary OrgPortal API with its normal authentication, permissions and preview/apply flow."}, 403);
   }
   await next();
@@ -5227,6 +5230,9 @@ app.get("/api/ubi/eligibility", async (c) => {
   });
 });
 
+app.route('/api/qcash/profile-wallet', qcashWalletRoutes(currentUser, async(env,request)=>new URL(await publicPortalBase(env,request)).origin));
+app.route('/api/pqcoin', pqcoinRoutes());
+app.route('/api/qcash', pqcoinRoutes());
 app.route('/api/admin/website-observatory', websiteObservatoryRoutes(currentUser));
 app.route('/api/admin/mcp-statistics',mcpLiveStatisticsRoutes(currentUser));
 app.route('/api/admin/visitor-statistics', visitorStatisticsRoutes(currentUser));

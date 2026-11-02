@@ -1,3 +1,4 @@
+import { qcashWalletSchemaAvailable } from './qcashWalletLinks';
 import { membershipRequestsAvailable } from './membershipRequests';
 import { cleanupPresentationAttachments } from './presentationAttachments';
 import { expirePushOutbox } from './pushOutbox';
@@ -56,6 +57,12 @@ export async function runRetention(db: D1Database, now = Date.now(), dryRun = fa
     } else {
       const result = await db.prepare(`DELETE FROM ${table} WHERE rowid IN (SELECT rowid FROM ${table} WHERE ${where} ORDER BY rowid LIMIT 500)`).bind(value).run();
       counts[table] = result.meta.changes;
+    }
+  }
+  if(await qcashWalletSchemaAvailable(db)) {
+    for(const table of ['qcash_wallet_links','qcash_wallet_challenges']) {
+      if(dryRun) counts[table]=(await db.prepare(`SELECT count(*) AS n FROM ${table} WHERE expires_at<=?`).bind(now).first<{n:number}>())?.n||0;
+      else counts[table]=(await db.prepare(`DELETE FROM ${table} WHERE rowid IN (SELECT rowid FROM ${table} WHERE expires_at<=? ORDER BY rowid LIMIT 500)`).bind(now).run()).meta.changes;
     }
   }
   return counts;

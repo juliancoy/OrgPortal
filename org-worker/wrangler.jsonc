@@ -20,6 +20,10 @@
     ]
   },
   "vars": {
+    "QCASH_GATEWAY_URL": "",
+    "QCASH_CHAIN_ID": "",
+    "PQCOIN_GATEWAY_URL": "",
+    "PQCOIN_CHAIN_ID": "",
     "CLOUDFLARE_ANALYTICS_ACCOUNT_ID": "42d86bec91224cb6ef236aff4db81d30",
     "CLOUDFLARE_ANALYTICS_HOSTS": "orgportal.cc,lifetech.fyi,medtech.social,timebank.codecollective.us,bmoretimebank.codecollective.us,portal.deism.church",
     "PIDP_BASE_URL": "https://orgportal.cc/pidp",

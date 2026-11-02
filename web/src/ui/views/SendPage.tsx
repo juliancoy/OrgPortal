@@ -1,3 +1,5 @@
+import { usePaymentCurrency } from './paymentCurrency'
+import { PqcoinPayment } from '../../features/pqcoin/PqcoinPayment'
 import { SignInLink } from '../components/SignInLink'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useAuth } from '../../app/AppProviders'
@@ -35,6 +37,7 @@ async function orgFetch<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export function SendPage() {
+  const { currency, search, selectCurrency } = usePaymentCurrency()
   const { token } = useAuth()
   const [accounts, setAccounts] = useState<AccountSummary[]>([])
   const [me, setMe] = useState<MeAccount | null>(null)
@@ -46,15 +49,16 @@ export function SendPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
-    const request = parsePaymentRequestSearch(window.location.search)
-    if (request.toAccountId) setToAccountId(request.toAccountId)
-    if (request.amount) setAmount(request.amount)
-    if (request.memo) setDescription(request.memo)
-    if (request.requestSource) setRequestSource(request.requestSource)
-  }, [])
+    if (currency !== 'DEM') return
+    const request = parsePaymentRequestSearch(search)
+    setToAccountId(request.toAccountId)
+    setAmount(request.amount || '1.00')
+    setDescription(request.memo || 'Transfer')
+    setRequestSource(request.requestSource)
+  }, [search, currency])
 
   useEffect(() => {
-    if (!token) return
+    if (!token || currency !== 'DEM') return
     const headers = { Authorization: `Bearer ${token}` }
     Promise.allSettled([
       orgFetch<MeAccount>('/api/accounts/me', { headers }),
@@ -67,7 +71,7 @@ export function SendPage() {
         setAccounts(Array.isArray(accountsResult.value) ? accountsResult.value : [])
       }
     })
-  }, [token])
+  }, [token, currency])
 
   const recipientOptions = useMemo(() => {
     return buildRecipientOptions(accounts, me)
@@ -113,6 +117,15 @@ export function SendPage() {
       <Header />
       <main className="portal-main">
         <div className="portal-container">
+          <label htmlFor="payment-currency">Currency</label><select id="payment-currency" style={{ width: '100%', maxWidth: '100%' }} value={currency} onChange={event => {
+            const selected = event.target.value
+            setToAccountId(''); setAmount('1.00'); setDescription('Transfer'); setRequestSource(''); setStatus('')
+            selectCurrency(selected)
+          }}>
+            <option value="DEM">Dena (DEM)</option><option value="QCash">QCash Testnet · Experimental</option>
+            {!['DEM', 'QCash'].includes(currency) && <option value={currency}>Unsupported currency</option>}
+          </select>
+          {currency === 'QCash' ? <PqcoinPayment key={search} mode="send" /> : currency === 'DEM' ? <>
           <section className="portal-hero">
             <div>
               <span className="portal-pill">Payments</span>
@@ -156,6 +169,7 @@ export function SendPage() {
               {status && <p className="portal-muted">{status === 'Sign in required.' ? <><SignInLink /> to continue.</> : status}</p>}
             </form>
           </section>
+          </> : <p role="alert">Unsupported payment currency. Select a supported currency to continue.</p>}
         </div>
       </main>
       <Footer />
