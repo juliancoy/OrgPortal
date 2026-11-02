@@ -63,9 +63,15 @@ export function MiningPage() {
     </section>
     <section className="portal-card" style={{ marginTop: 16 }} aria-labelledby="quantum-miner-heading">
       <h2 id="quantum-miner-heading">Quantum machines and custom accelerators</h2>
-      <p><strong>Backend integration interface available; QPU implementation not included.</strong> Export a canonical work template, search on your own backend, and pass candidate nonces through the native verifier. Every backend must satisfy the same SHA3-256 target and full-node rules.</p>
+      <p><strong>Local QPU simulator available.</strong> Run small Grover circuits on your CPU with Qiskit Aer, then verify measured candidate nonces with the native miner. The simulator builds its oracle from classically precomputed SHA3 results and counts that work explicitly. It does not demonstrate a quantum mining speedup.</p>
+      <h3>Set up the optional simulator</h3>
+      <pre style={codeStyle}><code>{`python3 -m venv .deps/quantum-venv
+.deps/quantum-venv/bin/python -m pip install -r miners/requirements-simulator.txt
+.deps/quantum-venv/bin/python miners/quantum_simulator.py --help`}</code></pre>
+      <p>Use Python 3.12 and the pinned dependencies in a local QCash checkout. The guide includes the opt-in <code>--backend qpu-simulator</code> controller, offline work-file commands and reproducible tests. Simulation is capped at 12 search qubits, with shot, iteration and time budgets. It does not start in this browser.</p>
+      <p><a href={`${minerSource}#local-qpu-simulation`} target="_blank" rel="noreferrer">Run the local simulator</a></p>
       <p>The source includes <code>work</code>, <code>inspect-work</code>, <code>solve</code>, <code>complete-work</code> and <code>submit</code> commands. A custom backend can replace the nonce search while keeping reward selection, serialization and proof verification consistent.</p>
-      <p>A real quantum implementation requires a reversible SHA3 threshold oracle, a provider integration and hardware validation. No quantum mining run or quantum speedup is claimed. Keep provider credentials local and set a spending budget before submitting hardware jobs.</p>
+      <p>The separate reversible SHA3 reference computes the full hash and target comparison, and tests clean inverse execution on classical basis states. That large reference circuit is not run as a full quantum statevector. Physical QPU mining still requires a provider integration and hardware validation; no quantum-hardware mining run is claimed.</p>
       <p><a href={`${minerSource}#attach-another-conventional-or-quantum-implementation`} target="_blank" rel="noreferrer">Read the backend contract</a> · <a href="https://quantum.cloud.ibm.com/docs/en/tutorials/grovers-algorithm" target="_blank" rel="noreferrer">IBM Quantum: Grover’s algorithm</a></p>
     </section>
     <p><Link to="/send?currency=QCash">Send QCash</Link> · <Link to="/receive?currency=QCash">Receive QCash</Link></p>

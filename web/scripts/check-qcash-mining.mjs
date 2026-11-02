@@ -25,6 +25,8 @@ try{
   await expect(page.getByRole('heading',{name:'QCash Mining',exact:true})).toBeVisible()
   await expect(page.getByText('QCash Testnet · Last checked height 42')).toBeVisible()
   await expect(page.getByText('Public miner connection unavailable.',{exact:true})).toBeVisible()
+  await expect(page.getByText('Local QPU simulator available.',{exact:true})).toBeVisible()
+  await expect(page.getByRole('link',{name:'Run the local simulator',exact:true})).toHaveAttribute('href','https://github.com/juliancoy/QCash/tree/main/miners#local-qpu-simulation')
   const copy=page.getByRole('button',{name:'Copy mining command'});await expect(copy).toBeDisabled()
   const address=page.getByLabel('Public QCash reward address')
   await address.fill('$(touch /tmp/no)');await expect(copy).toBeDisabled();await expect(page.getByRole('alert')).toBeVisible()
