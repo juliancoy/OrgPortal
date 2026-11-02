@@ -3685,6 +3685,20 @@
       ]
     },
     {
+      "id": "suite-web-src-features-pqcoin-paymentRequest-test-ts",
+      "label": "web/src/features/pqcoin/paymentRequest.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/features/pqcoin/paymentRequest.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "paymentRequest.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-web-src-features-pqcoin-wallet-test-ts",
       "label": "web/src/features/pqcoin/wallet.test.ts",
       "category": "User interface and integrations",
