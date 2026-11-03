@@ -3,6 +3,322 @@
   "title": "OrgPortal tests",
   "groups": [
     {
+      "id": "applications-api",
+      "label": "Submission and final-voting API",
+      "source": "org-worker/test/event-presentations.test.ts",
+      "kind": "node",
+      "cases": [
+        {
+          "id": "final round host controls, immutable shortlist, tenant isolation and private single-choice ballots",
+          "label": "final round host controls, immutable shortlist, tenant isolation and private single-choice ballots"
+        },
+        {
+          "id": "final votes do not reuse favorites; live totals handle ties, withdrawal and expiry",
+          "label": "final votes do not reuse favorites; live totals handle ties, withdrawal and expiry"
+        },
+        {
+          "id": "management, isolation, review, closing, expiry and withdrawal",
+          "label": "management, isolation, review, closing, expiry and withdrawal"
+        },
+        {
+          "id": "deadline and invalid proposals",
+          "label": "deadline and invalid proposals"
+        },
+        {
+          "id": "manager review paginates beyond 200 with counts, filters, stable ties and complete CSV",
+          "label": "manager review paginates beyond 200 with counts, filters, stable ties and complete CSV"
+        },
+        {
+          "id": "public submissions omit private fields and favorites are private, capped at three, removable and cascading",
+          "label": "public submissions omit private fields and favorites are private, capped at three, removable and cascading"
+        },
+        {
+          "id": "event managers configure the limit; lowering never silently removes existing favorites",
+          "label": "event managers configure the limit; lowering never silently removes existing favorites"
+        },
+        {
+          "id": "configurable-limit migration preserves existing favorites and defaults existing events to three",
+          "label": "configurable-limit migration preserves existing favorites and defaults existing events to three"
+        },
+        {
+          "id": "one person can create multiple entries for the same team and edit them independently after intake closes",
+          "label": "one person can create multiple entries for the same team and edit them independently after intake closes"
+        },
+        {
+          "id": "multiple-submission migration preserves legacy entries, favorites and attachment targets during rolling deployment",
+          "label": "multiple-submission migration preserves legacy entries, favorites and attachment targets during rolling deployment"
+        },
+        {
+          "id": "submissions share all organization members including their manager",
+          "label": "submissions share all organization members including their manager"
+        },
+        {
+          "id": "invited presenters expose no email publicly and resolve only through verified invitation acceptance",
+          "label": "invited presenters expose no email publicly and resolve only through verified invitation acceptance"
+        },
+        {
+          "id": "applications use the shared team without requiring a separate presenter selection",
+          "label": "applications use the shared team without requiring a separate presenter selection"
+        },
+        {
+          "id": "MCP applications preserve permission and host boundaries, reviewed receipts and private email invitations",
+          "label": "MCP applications preserve permission and host boundaries, reviewed receipts and private email invitations"
+        },
+        {
+          "id": "shared team changes appear on every submission and private team reads require management",
+          "label": "shared team changes appear on every submission and private team reads require management"
+        },
+        {
+          "id": "standalone guest intake: no login, bounded private storage, host isolation and expiry",
+          "label": "standalone guest intake: no login, bounded private storage, host isolation and expiry"
+        },
+        {
+          "id": "guest acknowledgement and account claim require the same verified email and grant no organization access",
+          "label": "guest acknowledgement and account claim require the same verified email and grant no organization access"
+        },
+        {
+          "id": "unconfirmed acknowledgement does not lose a saved application or expose its contact details",
+          "label": "unconfirmed acknowledgement does not lose a saved application or expose its contact details"
+        },
+        {
+          "id": "public applicants rank by unexpired stars before pagination with stable ties",
+          "label": "public applicants rank by unexpired stars before pagination with stable ties"
+        }
+      ],
+      "category": "Submission and voting",
+      "cwd": "org-worker"
+    },
+    {
+      "id": "attachments-api",
+      "label": "Submission attachments API",
+      "source": "org-worker/test/presentation-attachments.test.ts",
+      "kind": "node",
+      "cases": [
+        {
+          "id": "validates supported file signatures and excludes active browser content",
+          "label": "validates supported file signatures and excludes active browser content"
+        },
+        {
+          "id": "team and event managers upload; everyone can list and download; retries do not duplicate files",
+          "label": "team and event managers upload; everyone can list and download; retries do not duplicate files"
+        },
+        {
+          "id": "caps uploads, rejects invalid content, and cleans withdrawn files without losing failed deletions",
+          "label": "caps uploads, rejects invalid content, and cleans withdrawn files without losing failed deletions"
+        },
+        {
+          "id": "attachments stay with their own submission when a team has multiple entries",
+          "label": "attachments stay with their own submission when a team has multiple entries"
+        }
+      ],
+      "category": "Submission and voting",
+      "cwd": "org-worker"
+    },
+    {
+      "id": "browser-desktop",
+      "label": "Desktop Chromium",
+      "source": "web/scripts/test-local-team-form.py",
+      "kind": "browser",
+      "cases": [
+        {
+          "id": "setup",
+          "label": "Docker browser startup and local test isolation"
+        },
+        {
+          "id": "draft",
+          "label": "Required fields, saved drafts and clearing"
+        },
+        {
+          "id": "submission",
+          "label": "Registration, shared team, invitations, image and submission"
+        },
+        {
+          "id": "review",
+          "label": "Host review, pagination and CSV exports"
+        },
+        {
+          "id": "favorites",
+          "label": "Card expansion, favorites, team privacy and attachments"
+        },
+        {
+          "id": "editing",
+          "label": "Multiple submissions, editing and withdrawal"
+        },
+        {
+          "id": "finals",
+          "label": "Finalists, one final vote, live chart, ties and closing"
+        },
+        {
+          "id": "closure",
+          "label": "Intake closure and complete workflow"
+        },
+        {
+          "id": "status-page",
+          "label": "Test status page, counts, colors and mobile layout"
+        }
+      ],
+      "category": "Submission and voting"
+    },
+    {
+      "id": "browser-pixel",
+      "label": "Pixel 7 emulation",
+      "source": "web/scripts/test-local-team-form.py",
+      "kind": "browser",
+      "cases": [
+        {
+          "id": "setup",
+          "label": "Docker browser startup and local test isolation"
+        },
+        {
+          "id": "draft",
+          "label": "Required fields, saved drafts and clearing"
+        },
+        {
+          "id": "submission",
+          "label": "Registration, shared team, invitations, image and submission"
+        },
+        {
+          "id": "review",
+          "label": "Host review, pagination and CSV exports"
+        },
+        {
+          "id": "favorites",
+          "label": "Card expansion, favorites, team privacy and attachments"
+        },
+        {
+          "id": "editing",
+          "label": "Multiple submissions, editing and withdrawal"
+        },
+        {
+          "id": "finals",
+          "label": "Finalists, one final vote, live chart, ties and closing"
+        },
+        {
+          "id": "closure",
+          "label": "Intake closure and complete workflow"
+        },
+        {
+          "id": "status-page",
+          "label": "Test status page, counts, colors and mobile layout"
+        }
+      ],
+      "category": "Submission and voting"
+    },
+    {
+      "id": "change-journal",
+      "label": "Private data and change journals",
+      "source": "org-worker/test/change-journal.test.ts",
+      "kind": "node",
+      "cases": [
+        {
+          "id": "direct SQL writes journal before/after state and roll back atomically; no-op updates are inert",
+          "label": "direct SQL writes journal before/after state and roll back atomically; no-op updates are inert"
+        },
+        {
+          "id": "credential columns are redacted and replica refreshes are excluded while local newsletters are captured",
+          "label": "credential columns are redacted and replica refreshes are excluded while local newsletters are captured"
+        },
+        {
+          "id": "every primary application table has explicit coverage or exclusion; trigger generation is reproducible",
+          "label": "every primary application table has explicit coverage or exclusion; trigger generation is reproducible"
+        },
+        {
+          "id": "secondary copy retries are inert, checkpoints are atomic and rewinds fail safely",
+          "label": "secondary copy retries are inert, checkpoints are atomic and rewinds fail safely"
+        },
+        {
+          "id": "corrupted immutable copies abort the page without advancing its checkpoint",
+          "label": "corrupted immutable copies abort the page without advancing its checkpoint"
+        },
+        {
+          "id": "local WAL mirror survives process restart, retains exact rows and resumes without duplication",
+          "label": "local WAL mirror survives process restart, retains exact rows and resumes without duplication"
+        },
+        {
+          "id": "ballot settings and rosters are audited but cleared company votes never enter immutable copies",
+          "label": "ballot settings and rosters are audited but cleared company votes never enter immutable copies"
+        },
+        {
+          "id": "availability visibility changes are audited atomically and no-op saves are inert",
+          "label": "availability visibility changes are audited atomically and no-op saves are inert"
+        },
+        {
+          "id": "title-only membership edits are journaled atomically and retained on deletion",
+          "label": "title-only membership edits are journaled atomically and retained on deletion"
+        }
+      ],
+      "category": "Privacy and security",
+      "cwd": "org-worker"
+    },
+    {
+      "id": "checks",
+      "label": "Build and type checks",
+      "kind": "checks",
+      "cases": [
+        {
+          "id": "web-build",
+          "label": "Frontend production build"
+        },
+        {
+          "id": "api-types",
+          "label": "API TypeScript check"
+        }
+      ],
+      "category": "Build and type checks"
+    },
+    {
+      "id": "replication",
+      "label": "Organization replication and isolation",
+      "source": "org-worker/test/organization-replication.test.ts",
+      "kind": "node",
+      "cases": [
+        {
+          "id": "snapshot covers every org, excludes identities, ETag unchanged checks transfer no body",
+          "label": "snapshot covers every org, excludes identities, ETag unchanged checks transfer no body"
+        },
+        {
+          "id": "updates, additions, deletions converge; failures retain last committed data and expose stale status",
+          "label": "updates, additions, deletions converge; failures retain last committed data and expose stale status"
+        },
+        {
+          "id": "foreign-key failure rolls back the complete refresh; switching primaries is rejected",
+          "label": "foreign-key failure rolls back the complete refresh; switching primaries is rejected"
+        },
+        {
+          "id": "replicas reject mutations including MCP uploads before identity handlers",
+          "label": "replicas reject mutations including MCP uploads before identity handlers"
+        },
+        {
+          "id": "documented support evidence replicates without its creator identity",
+          "label": "documented support evidence replicates without its creator identity"
+        },
+        {
+          "id": "multi-megabyte UTF-8 snapshots fit D1 bindings and late failures roll back every chunk",
+          "label": "multi-megabyte UTF-8 snapshots fit D1 bindings and late failures roll back every chunk"
+        },
+        {
+          "id": "organization links replicate, rotate and clear from the primary",
+          "label": "organization links replicate, rotate and clear from the primary"
+        }
+      ],
+      "category": "Privacy and security",
+      "cwd": "org-worker"
+    },
+    {
+      "id": "retention",
+      "label": "Retention and deletion",
+      "source": "org-worker/test/retention.test.ts",
+      "kind": "node",
+      "cases": [
+        {
+          "id": "expiry units, bounds, dry-run, retries and unresolved operations",
+          "label": "expiry units, bounds, dry-run, retries and unresolved operations"
+        }
+      ],
+      "category": "Privacy and security",
+      "cwd": "org-worker"
+    },
+    {
       "id": "suite-chat-worker-test-chat-encryption-test-ts",
       "label": "chat-worker/test/chat-encryption.test.ts",
       "category": "Messaging and email",
@@ -353,52 +669,6 @@
       ]
     },
     {
-      "id": "change-journal",
-      "label": "Private data and change journals",
-      "source": "org-worker/test/change-journal.test.ts",
-      "kind": "node",
-      "cases": [
-        {
-          "id": "direct SQL writes journal before/after state and roll back atomically; no-op updates are inert",
-          "label": "direct SQL writes journal before/after state and roll back atomically; no-op updates are inert"
-        },
-        {
-          "id": "credential columns are redacted and replica refreshes are excluded while local newsletters are captured",
-          "label": "credential columns are redacted and replica refreshes are excluded while local newsletters are captured"
-        },
-        {
-          "id": "every primary application table has explicit coverage or exclusion; trigger generation is reproducible",
-          "label": "every primary application table has explicit coverage or exclusion; trigger generation is reproducible"
-        },
-        {
-          "id": "secondary copy retries are inert, checkpoints are atomic and rewinds fail safely",
-          "label": "secondary copy retries are inert, checkpoints are atomic and rewinds fail safely"
-        },
-        {
-          "id": "corrupted immutable copies abort the page without advancing its checkpoint",
-          "label": "corrupted immutable copies abort the page without advancing its checkpoint"
-        },
-        {
-          "id": "local WAL mirror survives process restart, retains exact rows and resumes without duplication",
-          "label": "local WAL mirror survives process restart, retains exact rows and resumes without duplication"
-        },
-        {
-          "id": "ballot settings and rosters are audited but cleared company votes never enter immutable copies",
-          "label": "ballot settings and rosters are audited but cleared company votes never enter immutable copies"
-        },
-        {
-          "id": "availability visibility changes are audited atomically and no-op saves are inert",
-          "label": "availability visibility changes are audited atomically and no-op saves are inert"
-        },
-        {
-          "id": "title-only membership edits are journaled atomically and retained on deletion",
-          "label": "title-only membership edits are journaled atomically and retained on deletion"
-        }
-      ],
-      "category": "Privacy and security",
-      "cwd": "org-worker"
-    },
-    {
       "id": "suite-org-worker-test-cli-account-tools-test-ts",
       "label": "org-worker/test/cli-account-tools.test.ts",
       "category": "User interface and integrations",
@@ -493,6 +763,20 @@
         {
           "id": "suite",
           "label": "driveCarousel.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-ecosystem-public-test-ts",
+      "label": "org-worker/test/ecosystem-public.test.ts",
+      "category": "Ecosystem and data",
+      "source": "org-worker/test/ecosystem-public.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "ecosystem-public.test.ts"
         }
       ]
     },
@@ -663,92 +947,6 @@
           "label": "event-poster.test.ts"
         }
       ]
-    },
-    {
-      "id": "applications-api",
-      "label": "Submission and final-voting API",
-      "source": "org-worker/test/event-presentations.test.ts",
-      "kind": "node",
-      "cases": [
-        {
-          "id": "final round host controls, immutable shortlist, tenant isolation and private single-choice ballots",
-          "label": "final round host controls, immutable shortlist, tenant isolation and private single-choice ballots"
-        },
-        {
-          "id": "final votes do not reuse favorites; live totals handle ties, withdrawal and expiry",
-          "label": "final votes do not reuse favorites; live totals handle ties, withdrawal and expiry"
-        },
-        {
-          "id": "management, isolation, review, closing, expiry and withdrawal",
-          "label": "management, isolation, review, closing, expiry and withdrawal"
-        },
-        {
-          "id": "deadline and invalid proposals",
-          "label": "deadline and invalid proposals"
-        },
-        {
-          "id": "manager review paginates beyond 200 with counts, filters, stable ties and complete CSV",
-          "label": "manager review paginates beyond 200 with counts, filters, stable ties and complete CSV"
-        },
-        {
-          "id": "public submissions omit private fields and favorites are private, capped at three, removable and cascading",
-          "label": "public submissions omit private fields and favorites are private, capped at three, removable and cascading"
-        },
-        {
-          "id": "event managers configure the limit; lowering never silently removes existing favorites",
-          "label": "event managers configure the limit; lowering never silently removes existing favorites"
-        },
-        {
-          "id": "configurable-limit migration preserves existing favorites and defaults existing events to three",
-          "label": "configurable-limit migration preserves existing favorites and defaults existing events to three"
-        },
-        {
-          "id": "one person can create multiple entries for the same team and edit them independently after intake closes",
-          "label": "one person can create multiple entries for the same team and edit them independently after intake closes"
-        },
-        {
-          "id": "multiple-submission migration preserves legacy entries, favorites and attachment targets during rolling deployment",
-          "label": "multiple-submission migration preserves legacy entries, favorites and attachment targets during rolling deployment"
-        },
-        {
-          "id": "submissions share all organization members including their manager",
-          "label": "submissions share all organization members including their manager"
-        },
-        {
-          "id": "invited presenters expose no email publicly and resolve only through verified invitation acceptance",
-          "label": "invited presenters expose no email publicly and resolve only through verified invitation acceptance"
-        },
-        {
-          "id": "applications use the shared team without requiring a separate presenter selection",
-          "label": "applications use the shared team without requiring a separate presenter selection"
-        },
-        {
-          "id": "MCP applications preserve permission and host boundaries, reviewed receipts and private email invitations",
-          "label": "MCP applications preserve permission and host boundaries, reviewed receipts and private email invitations"
-        },
-        {
-          "id": "shared team changes appear on every submission and private team reads require management",
-          "label": "shared team changes appear on every submission and private team reads require management"
-        },
-        {
-          "id": "standalone guest intake: no login, bounded private storage, host isolation and expiry",
-          "label": "standalone guest intake: no login, bounded private storage, host isolation and expiry"
-        },
-        {
-          "id": "guest acknowledgement and account claim require the same verified email and grant no organization access",
-          "label": "guest acknowledgement and account claim require the same verified email and grant no organization access"
-        },
-        {
-          "id": "unconfirmed acknowledgement does not lose a saved application or expose its contact details",
-          "label": "unconfirmed acknowledgement does not lose a saved application or expose its contact details"
-        },
-        {
-          "id": "public applicants rank by unexpired stars before pagination with stable ties",
-          "label": "public applicants rank by unexpired stars before pagination with stable ties"
-        }
-      ],
-      "category": "Submission and voting",
-      "cwd": "org-worker"
     },
     {
       "id": "suite-org-worker-test-event-registrations-test-ts",
@@ -1451,44 +1649,6 @@
       ]
     },
     {
-      "id": "replication",
-      "label": "Organization replication and isolation",
-      "source": "org-worker/test/organization-replication.test.ts",
-      "kind": "node",
-      "cases": [
-        {
-          "id": "snapshot covers every org, excludes identities, ETag unchanged checks transfer no body",
-          "label": "snapshot covers every org, excludes identities, ETag unchanged checks transfer no body"
-        },
-        {
-          "id": "updates, additions, deletions converge; failures retain last committed data and expose stale status",
-          "label": "updates, additions, deletions converge; failures retain last committed data and expose stale status"
-        },
-        {
-          "id": "foreign-key failure rolls back the complete refresh; switching primaries is rejected",
-          "label": "foreign-key failure rolls back the complete refresh; switching primaries is rejected"
-        },
-        {
-          "id": "replicas reject mutations including MCP uploads before identity handlers",
-          "label": "replicas reject mutations including MCP uploads before identity handlers"
-        },
-        {
-          "id": "documented support evidence replicates without its creator identity",
-          "label": "documented support evidence replicates without its creator identity"
-        },
-        {
-          "id": "multi-megabyte UTF-8 snapshots fit D1 bindings and late failures roll back every chunk",
-          "label": "multi-megabyte UTF-8 snapshots fit D1 bindings and late failures roll back every chunk"
-        },
-        {
-          "id": "organization links replicate, rotate and clear from the primary",
-          "label": "organization links replicate, rotate and clear from the primary"
-        }
-      ],
-      "category": "Privacy and security",
-      "cwd": "org-worker"
-    },
-    {
       "id": "suite-org-worker-test-organization-search-all-test-ts",
       "label": "org-worker/test/organization-search-all.test.ts",
       "category": "Organizations and membership",
@@ -1727,32 +1887,6 @@
       ]
     },
     {
-      "id": "attachments-api",
-      "label": "Submission attachments API",
-      "source": "org-worker/test/presentation-attachments.test.ts",
-      "kind": "node",
-      "cases": [
-        {
-          "id": "validates supported file signatures and excludes active browser content",
-          "label": "validates supported file signatures and excludes active browser content"
-        },
-        {
-          "id": "team and event managers upload; everyone can list and download; retries do not duplicate files",
-          "label": "team and event managers upload; everyone can list and download; retries do not duplicate files"
-        },
-        {
-          "id": "caps uploads, rejects invalid content, and cleans withdrawn files without losing failed deletions",
-          "label": "caps uploads, rejects invalid content, and cleans withdrawn files without losing failed deletions"
-        },
-        {
-          "id": "attachments stay with their own submission when a team has multiple entries",
-          "label": "attachments stay with their own submission when a team has multiple entries"
-        }
-      ],
-      "category": "Submission and voting",
-      "cwd": "org-worker"
-    },
-    {
       "id": "suite-org-worker-test-profile-availability-test-ts",
       "label": "org-worker/test/profile-availability.test.ts",
       "category": "Events and services",
@@ -1877,20 +2011,6 @@
           "label": "qcashWalletLinks.test.ts"
         }
       ]
-    },
-    {
-      "id": "retention",
-      "label": "Retention and deletion",
-      "source": "org-worker/test/retention.test.ts",
-      "kind": "node",
-      "cases": [
-        {
-          "id": "expiry units, bounds, dry-run, retries and unresolved operations",
-          "label": "expiry units, bounds, dry-run, retries and unresolved operations"
-        }
-      ],
-      "category": "Privacy and security",
-      "cwd": "org-worker"
     },
     {
       "id": "suite-org-worker-test-submission-related-events-test-ts",
@@ -2187,34 +2307,6 @@
       ]
     },
     {
-      "id": "suite-scripts-test-maryland-comptroller-py",
-      "label": "scripts/test-maryland-comptroller.py",
-      "category": "User interface and integrations",
-      "source": "scripts/test-maryland-comptroller.py",
-      "kind": "external",
-      "cwd": ".",
-      "cases": [
-        {
-          "id": "suite",
-          "label": "test-maryland-comptroller.py"
-        }
-      ]
-    },
-    {
-      "id": "suite-scripts-test-status-test-mjs",
-      "label": "scripts/test-status.test.mjs",
-      "category": "User interface and integrations",
-      "source": "scripts/test-status.test.mjs",
-      "kind": "node",
-      "cwd": ".",
-      "cases": [
-        {
-          "id": "suite",
-          "label": "test-status.test.mjs"
-        }
-      ]
-    },
-    {
       "id": "suite-scripts-test-local-login-py",
       "label": "scripts/test_local_login.py",
       "category": "Identity and access",
@@ -2239,6 +2331,34 @@
         {
           "id": "suite",
           "label": "test_local_startup.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-scripts-test-maryland-comptroller-py",
+      "label": "scripts/test-maryland-comptroller.py",
+      "category": "User interface and integrations",
+      "source": "scripts/test-maryland-comptroller.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-maryland-comptroller.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-scripts-test-status-test-mjs",
+      "label": "scripts/test-status.test.mjs",
+      "category": "User interface and integrations",
+      "source": "scripts/test-status.test.mjs",
+      "kind": "node",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-status.test.mjs"
         }
       ]
     },
@@ -2551,20 +2671,6 @@
       ]
     },
     {
-      "id": "suite-web-scripts-test-android-session-persistence-mjs",
-      "label": "web/scripts/test-android-session-persistence.mjs",
-      "category": "Identity and access",
-      "source": "web/scripts/test-android-session-persistence.mjs",
-      "kind": "external",
-      "cwd": ".",
-      "cases": [
-        {
-          "id": "suite",
-          "label": "test-android-session-persistence.mjs"
-        }
-      ]
-    },
-    {
       "id": "suite-web-scripts-test-android-mjs",
       "label": "web/scripts/test-android.mjs",
       "category": "User interface and integrations",
@@ -2575,6 +2681,20 @@
         {
           "id": "suite",
           "label": "test-android.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-android-session-persistence-mjs",
+      "label": "web/scripts/test-android-session-persistence.mjs",
+      "category": "Identity and access",
+      "source": "web/scripts/test-android-session-persistence.mjs",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-android-session-persistence.mjs"
         }
       ]
     },
@@ -3163,6 +3283,20 @@
         {
           "id": "suite",
           "label": "test-visitor-statistics.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-unified-ecosystem-test-mjs",
+      "label": "web/scripts/unified-ecosystem.test.mjs",
+      "category": "Ecosystem and data",
+      "source": "web/scripts/unified-ecosystem.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "unified-ecosystem.test.mjs"
         }
       ]
     },
@@ -4887,112 +5021,6 @@
           "label": "web-update-release.test.mjs"
         }
       ]
-    },
-    {
-      "id": "browser-desktop",
-      "label": "Desktop Chromium",
-      "source": "web/scripts/test-local-team-form.py",
-      "kind": "browser",
-      "cases": [
-        {
-          "id": "setup",
-          "label": "Docker browser startup and local test isolation"
-        },
-        {
-          "id": "draft",
-          "label": "Required fields, saved drafts and clearing"
-        },
-        {
-          "id": "submission",
-          "label": "Registration, shared team, invitations, image and submission"
-        },
-        {
-          "id": "review",
-          "label": "Host review, pagination and CSV exports"
-        },
-        {
-          "id": "favorites",
-          "label": "Card expansion, favorites, team privacy and attachments"
-        },
-        {
-          "id": "editing",
-          "label": "Multiple submissions, editing and withdrawal"
-        },
-        {
-          "id": "finals",
-          "label": "Finalists, one final vote, live chart, ties and closing"
-        },
-        {
-          "id": "closure",
-          "label": "Intake closure and complete workflow"
-        },
-        {
-          "id": "status-page",
-          "label": "Test status page, counts, colors and mobile layout"
-        }
-      ],
-      "category": "Submission and voting"
-    },
-    {
-      "id": "browser-pixel",
-      "label": "Pixel 7 emulation",
-      "source": "web/scripts/test-local-team-form.py",
-      "kind": "browser",
-      "cases": [
-        {
-          "id": "setup",
-          "label": "Docker browser startup and local test isolation"
-        },
-        {
-          "id": "draft",
-          "label": "Required fields, saved drafts and clearing"
-        },
-        {
-          "id": "submission",
-          "label": "Registration, shared team, invitations, image and submission"
-        },
-        {
-          "id": "review",
-          "label": "Host review, pagination and CSV exports"
-        },
-        {
-          "id": "favorites",
-          "label": "Card expansion, favorites, team privacy and attachments"
-        },
-        {
-          "id": "editing",
-          "label": "Multiple submissions, editing and withdrawal"
-        },
-        {
-          "id": "finals",
-          "label": "Finalists, one final vote, live chart, ties and closing"
-        },
-        {
-          "id": "closure",
-          "label": "Intake closure and complete workflow"
-        },
-        {
-          "id": "status-page",
-          "label": "Test status page, counts, colors and mobile layout"
-        }
-      ],
-      "category": "Submission and voting"
-    },
-    {
-      "id": "checks",
-      "label": "Build and type checks",
-      "kind": "checks",
-      "cases": [
-        {
-          "id": "web-build",
-          "label": "Frontend production build"
-        },
-        {
-          "id": "api-types",
-          "label": "API TypeScript check"
-        }
-      ],
-      "category": "Build and type checks"
     }
   ]
 }
