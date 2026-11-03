@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { portalPath } from '../../config/portalBase'
 import type { NetworkData } from './networkViewData'
-export type QueryMeta = Pick<NetworkData,'governmentCoverage'|'nonprofitCoverage'> & { version:string;generatedAt:string }
+export type QueryMeta = Pick<NetworkData,'governmentCoverage'|'nonprofitCoverage'|'transactionalCoverage'> & { version:string;generatedAt:string }
 export type QueryPage<T> = QueryMeta & {records:T[];total:number;offset:number;nextOffset:number|null}
 export function ecosystemUrl(section:string,params:Record<string,string|number|undefined>={}) {
  const search=new URLSearchParams()

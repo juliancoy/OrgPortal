@@ -1,3 +1,4 @@
+import {mergeNetworkHistory,appendNonprofitEvidence} from '../web/src/features/ecosystem/network-history.js'
 import {test,before} from 'node:test'
 import assert from 'node:assert/strict'
 import {readFile,writeFile,mkdir} from 'node:fs/promises'
@@ -6,7 +7,15 @@ import {queryEcosystem,ecosystemResponse,MAX_NODES,MAX_EDGES} from '../web/serve
 const root=new URL('../web/public/ecosystem-data/query/',import.meta.url)
 const read=async path=>JSON.parse(await readFile(new URL(path,root),'utf8'))
 let manifest
-before(async()=>{manifest=await buildEcosystemQuery()})
+// Isolated archival fixture: tests never fetch or mutate production data.
+before(async()=>{manifest=await buildEcosystemQuery({source:async()=>{
+ const readSource=async name=>JSON.parse(await readFile(new URL('../web/public/ecosystem-data/'+name+'.json',import.meta.url),'utf8'))
+ const [base,history,events,nonprofit,performance,positions]=await Promise.all(['ecosystem-portal','ecosystem-relationships','ecosystem-history','ecosystem-nonprofits','ecosystem-performance','network-default-positions'].map(readSource))
+ const data=mergeNetworkHistory(base,appendNonprofitEvidence(history,nonprofit))
+ data.fundingResearch=JSON.parse(await readFile(new URL('../web/src/features/ecosystem/funding-research.json',import.meta.url),'utf8'))
+ data.events=mergeNetworkHistory({...data,relationships:[],financing:[]},{...events,relationships:[],financing:[]}).events||[]
+ return {datasetId:'isolated-test-fixture',data,performance,positions}
+}})})
 const query=(section,params={})=>queryEcosystem(read,section,new URLSearchParams(params)).then(r=>r.body)
 test('indexed substring and organization queries agree with independent scans; pages do not overlap',async()=>{
  const index=await read(`${manifest.version}/relationships/index.json`)

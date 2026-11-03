@@ -10,6 +10,7 @@ const read=async name=>JSON.parse(await readFile(resolve(root,name+'.json'),'utf
 const [base,history,events,nonprofit,performance,positions]=await Promise.all(['ecosystem-portal','ecosystem-relationships','ecosystem-history','ecosystem-nonprofits','ecosystem-performance','network-default-positions'].map(read));
 const data=mergeNetworkHistory(base,appendNonprofitEvidence(history,nonprofit));
 data.events=mergeNetworkHistory({...data,relationships:[],financing:[]},{...events,relationships:[],financing:[]}).events||[];
+data.fundingResearch=await read('funding-research');
 const hash=value=>createHash('sha256').update(value).digest('hex'),rows=[],seen=new Map();
 function add(collection,id,value){
  const key=hash(String(id)),sha256=hash(canonicalJson(value)),identity=collection+':'+key;

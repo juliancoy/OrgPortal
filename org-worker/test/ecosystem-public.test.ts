@@ -12,8 +12,8 @@ function setup(){
  db.sqlite.exec("INSERT INTO organizations(id,name,slug) VALUES('test-org','Test','test-org')");return db;
 }
 const actor={id:'operator',name:'Operator',email:null,isOperator:true};
-async function fixture(){
- const values=[['organizations',{id:'source:one',name:'Source label'}],['relationships',{id:'e1',source:'source:one',target:null,sourceLabel:'Source',targetLabel:'Unresolved',kind:'mentoring',relationship:'mentoring',amount:null,currency:null,description:'Non-monetary mentoring',sourceUrl:'https://example.test/evidence'}],['metadata',{id:'data:schemaVersion',value:1}]] as const;
+async function fixture(relationship:Record<string,unknown>={}){
+ const values=[['organizations',{id:'source:one',name:'Source label'}],['relationships',{id:'e1',source:'source:one',target:null,sourceLabel:'Source',targetLabel:'Unresolved',kind:'mentoring',relationship:'mentoring',amount:null,currency:null,description:'Non-monetary mentoring',sourceUrl:'https://example.test/evidence',...relationship}],['metadata',{id:'data:schemaVersion',value:1}]] as const;
  const rows=await Promise.all(values.map(async([collection,value])=>({collection,key:await previewFingerprint(value.id),value,sha256:await previewFingerprint(value)})));
  rows.sort((a,b)=>(a.collection+'\t'+a.key)<(b.collection+'\t'+b.key)?-1:1);
  const bytes=new TextEncoder().encode(rows.map(r=>`${r.collection}\t${r.key}\t${r.sha256}\n`).join(''));
@@ -62,5 +62,15 @@ test('MCP checks operator, scopes, tenant and confirmation over the actual SDK t
  for(const identity of [{...full,scopes:['org:portal.read']},{...full,isOperator:false}])assert.equal((await call(identity,input)).isError,true);
  assert.equal((await call(full,input,'different-tenant')).isError,true);assert.equal((await call(full,input)).isError,undefined);
  assert.equal((await call(full,input,'test-org','apply_ecosystem_dataset')).isError,true);
+ }finally{db.sqlite.close();}
+});
+
+test('portal snapshot aliases never duplicate their native non-fiscal support in the master view',async()=>{
+ const db=setup();try{
+ const native=db.sqlite.prepare('SELECT id FROM organization_support_records LIMIT 1').get()!;
+ const input=await fixture({id:'portal:'+native.id});await apply(db,input);await apply(db,{...input,action:'publish',rows:[]});
+ assert.equal(db.sqlite.prepare("SELECT count(*) n FROM master_transaction_records WHERE record_type='ecosystem_relationship'").get()!.n,0);
+ assert.equal(db.sqlite.prepare("SELECT count(*) n FROM master_transaction_records WHERE record_id=?").get(native.id)!.n,1);
+ assert.equal((await publicEcosystemRecords(db.asD1(),'relationships')).records.length,1);
  }finally{db.sqlite.close();}
 });

@@ -11,9 +11,15 @@ export function projectNativeEvidence(input,records){
   if(prior&&orgs.has(prior))return prior;
   if(id&&orgs.has(id))return id;
   if(!id&&!label)return null;
-  const nodeId=id||`source-label:${scope}:${role}:${hash(label)}`;
+  const nodeId=id||`source-label:${scope}:${role}:${hash(label).slice(0,32)}`;
   if(!orgs.has(nodeId))orgs.set(nodeId,{id:nodeId,name:label||id,type:id?'Organization':'Source label',category:role==='agency'?'government':'general',entityType:id?'organization':'source_label',identityStatus:id?'source_linked':'unverified_label',directory:false,sourceCategory:scope,relevance:id?'Organization linked by the transactional source record.':'Source-reported counterparty label; not a verified organization identity. May name multiple recipients.'});
   return nodeId;
+ }
+ // Preserve unresolved snapshot counterparties as source-label groups too.
+ for(const edge of data.relationships){
+  const scope=edge.id.startsWith('irs990:')?'irs990':edge.awardKey?.startsWith('usaspending:')?'usaspending':'ecosystem_source'
+  if(!edge.source)edge.source=endpoint(null,edge.sourceLabel,scope,'agency',null)
+  if(!edge.target)edge.target=endpoint(null,edge.targetLabel,scope,'recipient',null)
  }
  for(const r of records){
   const originalId=r.record_id?.replace(/^bmoremedtech:/,''),previous=bySource.get(r.record_id)||bySource.get(originalId);
@@ -29,7 +35,7 @@ export function projectNativeEvidence(input,records){
    amount:r.amount,currency:r.currency,amountLabel:r.amount_label||'',date:r.occurred_at||'',type:r.description||kind,description:r.description||'',
    sourceUrl:r.source_url,evidence:r.evidence,notes:r.notes,status:r.status,financialMeasure,financialFactType:r.financial_fact_type,
    measurement:r.financial_measurement,periodStart:r.period_start,periodEnd:r.period_end,quantity:r.quantity,unit:r.unit,
-   provenance,transactionRecordId:r.id,sourceRecordType:r.record_type,sourceRecord:r};
+   provenance,transactionRecordId:r.id,sourceRecordType:r.record_type};
   newEdges.push(edge);
  }
  data.organizations=[...orgs.values()];data.relationships=[...data.relationships.filter(r=>!replaced.has(r.id)),...newEdges];

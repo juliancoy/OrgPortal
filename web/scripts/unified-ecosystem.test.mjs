@@ -15,3 +15,18 @@ test('native source IDs replace their snapshot mirrors without double-counting a
 test('database export fails closed instead of falling back to archival files',async()=>{
  await assert.rejects(exportUnifiedEcosystem({fetcher:async()=>new Response('{}',{status:503})}),/503/);
 });
+
+test('large relationship search scans bounded shards and paginates without dropping non-fiscal records',async()=>{
+ const {queryEcosystem}=await import('../server/ecosystem-query.mjs');
+ const rows=[{id:'a',search:'mentoring source',date:'2026-01-01'},{id:'b',search:'payment source',date:'2026-02-01'},{id:'c',search:'mentoring source',date:'2026-03-01'}];
+ const read=async path=>{
+  if(path==='manifest.json')return {version:'fixture',generatedAt:'2026-11-03',transactionalCoverage:{datasetId:'db-fixture'}};
+  if(path.endsWith('/index.json'))return {shards:[{path:'relationships/search-0.json',start:0},{path:'relationships/search-1.json',start:2}]};
+  if(path.endsWith('search-0.json'))return {rows:rows.slice(0,2),filters:{kind:{mentoring:[0],transfer:[1]}},grams:{},gramCounts:{}};
+  if(path.endsWith('search-1.json'))return {rows:rows.slice(2),filters:{kind:{mentoring:[0]}},grams:{},gramCounts:{}};
+  if(path.endsWith('relationships/0.json'))return rows;
+  throw Error('Unexpected read '+path);
+ };
+ const first=await queryEcosystem(read,'relationships',new URLSearchParams({q:'mentoring',limit:'1'})),second=await queryEcosystem(read,'relationships',new URLSearchParams({kind:'mentoring',offset:'1',limit:'1'}));
+ assert.equal(first.body.total,2);assert.equal(first.body.records[0].id,'a');assert.equal(first.body.nextOffset,1);assert.equal(second.body.records[0].id,'c');assert.equal(first.body.transactionalCoverage.datasetId,'db-fixture');
+});

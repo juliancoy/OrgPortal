@@ -1,6 +1,6 @@
 # Unified ecosystem evidence in the transactional database
 
-Implementation candidate, November 3, 2026. Publication and verification pending.
+Database API deployed November 3, 2026; reviewed source import and graph publication in progress.
 
 The transactional organization database already stores fiscal and non-fiscal
 support. `organization_support_records` includes mentoring, venue, services,
@@ -8,9 +8,9 @@ in-kind support, incubation, acceleration, collaboration and affiliation; moneta
 amounts are nullable. These records join `master_transaction_records` alongside
 ledger, company financing, nonprofit grants and external financial observations.
 
-Migration 0132 adds versioned public source records to that same database.
+Migrations 0132–0133 add versioned public source records to that same database.
 Collections preserve source organizations, relationships, financing presentations,
-events, nonprofit profiles, performance evidence/assessments, metadata and saved
+events, nonprofit profiles, performance evidence/assessments, funding research, metadata and saved
 positions. Relationships are projected into the master transaction view, excluding
 native records with the same explicit source IDs. Graph source IDs are not account
 identities and confer no membership or access. The source payload remains intact.
@@ -35,12 +35,34 @@ are projections, not extra ledger settlements.
 
 ## Migration review
 
+0133 additionally recognizes explicit `portal:` aliases of native support IDs,
+preventing a saved public snapshot from projecting those facts twice. No matching
+on display names is used.
+
 0132 is additive apart from rebuilding the master view. It preserves every existing
 view branch and leaves ledger balances, memberships, permissions and source rows
 unchanged. A full migration-chain fixture verifies preservation and integrity.
 An older Worker can continue reading the old columns; rollback does not remove
 new records. Do not remove source tables during a code rollback. Database schema
 application is an explicit operation separate from a Worker release.
+
+## Graph generation
+
+`web/scripts/build-ecosystem-query.mjs` reads the version-pinned public database
+export and overlays native public transaction records. Archival JSON sources are
+used only by the explicit bootstrap and isolated tests. The 2D, 3D, 4D and
+n-dimensional renderers share this generated query index. It is a public read
+cache, refreshed on a frontend build, not a separate writable source of truth.
+Database unavailability fails the build; it does not silently switch to archival
+source files. The index manifest exposes database dataset ID, export time, native
+record counts and Comptroller coverage.
+
+Large relationship searches use bounded 1,000-record search chunks. Topology
+endpoints use compact integer references. Individual graph responses retain the
+250-node/1,000-edge limits and a 2 MiB byte budget, with explicit truncation and
+the full paginated Relationships evidence still available. Approvals are a distinct
+edge kind and do not enter payment sizing. Voided records remain evidence but do
+not become graph edges. Unresolved counterparties remain source-label groups.
 
 ## Lifecycle and corrections
 

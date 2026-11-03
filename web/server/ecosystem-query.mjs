@@ -29,7 +29,7 @@ export async function readRows(read,version,collection,ids){
 export async function queryEcosystem(read,section,params){
  const manifest=await read('manifest.json'),version=manifest.version
  if(params.get('version')&&params.get('version')!==version)return {status:409,body:{error:'Evidence snapshot changed. Reload this view.'}}
- const meta={version,generatedAt:manifest.generatedAt,governmentCoverage:manifest.governmentCoverage,nonprofitCoverage:manifest.nonprofitCoverage}
+ const meta={version,generatedAt:manifest.generatedAt,governmentCoverage:manifest.governmentCoverage,nonprofitCoverage:manifest.nonprofitCoverage,transactionalCoverage:manifest.transactionalCoverage}
  if(section==='overview')return {body:{...meta,...await read(`${version}/overview.json`)}}
  if(section==='funding'){
   const input=await read(`${version}/funding.json`),asOf=params.get('asOf')||new Date().toISOString().slice(0,10)
@@ -46,6 +46,20 @@ export async function queryEcosystem(read,section,params){
  if(!['relationships','events','organizations','nonprofits','performance','graph'].includes(section))return {status:404,body:{error:'Unknown ecosystem view'}}
  const graph=section==='graph',collection=graph?'organizations':section==='organizations'?'directory':section
  const index=await read(`${version}/${collection}/index.json`)
+ if(index.shards&&!graph){
+  const offset=integer(params,'offset',0,1e7),limit=integer(params,'limit',50,MAX_PAGE);if(!limit)throw new Error('Invalid limit')
+  const q=normalize(params.get('q'));if(q.length>128)throw new Error('Search is limited to 128 characters')
+  const scoped=new URLSearchParams(params);scoped.delete('q');let total=0;const selected=[]
+  // Scan bounded search shards; retain only IDs for the requested result page.
+  for(const shard of index.shards){
+   const part=await read(`${version}/${shard.path}`)
+   for(const i of matching(part,scoped))if(!q||part.rows[i].search.includes(q)){
+    if(total>=offset&&selected.length<limit)selected.push(shard.start+i)
+    total++
+   }
+  }
+  return {body:{...meta,records:await readRows(read,version,collection,selected),total,offset,nextOffset:offset+limit<total?offset+limit:null}}
+ }
  const q=normalize(params.get('q'));if(q.length>128)throw new Error('Search is limited to 128 characters')
  index.grams={}
  const selectedGrams=grams(q).sort((a,b)=>(index.gramCounts[a]||0)-(index.gramCounts[b]||0)).slice(0,3)
@@ -59,7 +73,7 @@ export async function queryEcosystem(read,section,params){
   ids.sort((a,b)=>{const x=index.rows[a],y=index.rows[b];return x.assessment&&y.assessment?(view==='shortfalls'?1:-1)*compareAttainment(x,y)||x.id.localeCompare(y.id):y.amount-x.amount||x.id.localeCompare(y.id)})
  }
  if(graph){
-  const topology=await read(`${version}/topology.json`),selected=params.get('org'),depth=integer(params,'depth',1,3)
+  const topology=await read(`${version}/topology.json`),nodeId=value=>typeof value==='number'?topology.nodeIds[value]:value,selected=params.get('org'),depth=integer(params,'depth',1,3)
   const mode=params.get('mode')||'network',geographic=mode==='geography'
   if(!['network','funding','geography'].includes(mode))throw new Error('Invalid graph mode')
   // Validate dates even though node membership itself is not dated.
@@ -83,7 +97,7 @@ export async function queryEcosystem(read,section,params){
   if(selected){
    if(!topology.adjacency[selected])throw new Error('Unknown organization')
    const seen=new Set([selected]);let frontier=[selected]
-   for(let hop=0;hop<depth;hop++){const next=[];for(const id of frontier)for(const neighbor of topology.adjacency[id]||[])if(!seen.has(neighbor)){seen.add(neighbor);next.push(neighbor)}frontier=next}
+   for(let hop=0;hop<depth;hop++){const next=[];for(const id of frontier)for(const value of topology.adjacency[id]||[]){const neighbor=nodeId(value);if(!seen.has(neighbor)){seen.add(neighbor);next.push(neighbor)}}frontier=next}
    const scoped=new URLSearchParams(nodeParams);scoped.delete('org');ids=matching(index,scoped).filter(i=>seen.has(index.rows[i].id))
    if(geographic)ids=ids.filter(i=>{const r=index.rows[i];return Number.isFinite(r.latitude)&&Number.isFinite(r.longitude)&&(!bbox||(r.longitude>=bbox[0]&&r.latitude>=bbox[1]&&r.longitude<=bbox[2]&&r.latitude<=bbox[3]))})
    ids.sort((a,b)=>Number(index.rows[b].id===selected)-Number(index.rows[a].id===selected)||topology.degree[index.rows[b].id]-topology.degree[index.rows[a].id]||index.rows[a].id.localeCompare(index.rows[b].id))
@@ -96,20 +110,27 @@ export async function queryEcosystem(read,section,params){
    const selectedIds=selected?new Set(ids):null
    const categoryIds=params.get('category')?new Set(index.filters.category?.[params.get('category')]?.map(i=>index.rows[i].id)||[]):null
    fundingCategoryIds=categoryIds
-   const endpoints=new Set(topology.edges.filter(e=>['transfer','grant','donation','contract'].includes(e[2])&&(!params.get('kind')||e[2]===params.get('kind'))&&(!categoryIds||categoryIds.has(e[0])||categoryIds.has(e[1]))&&(!params.get('from')||(e[3]&&e[3]>=params.get('from')))&&(!params.get('to')||(e[3]&&e[3].slice(0,10)<=params.get('to')))).flatMap(e=>[e[0],e[1]]))
+   const endpoints=new Set(topology.edges.filter(e=>['transfer','grant','donation','contract'].includes(e[2])&&(!params.get('kind')||e[2]===params.get('kind'))&&(!categoryIds||categoryIds.has(nodeId(e[0]))||categoryIds.has(nodeId(e[1])))&&(!params.get('from')||(e[3]&&e[3]>=params.get('from')))&&(!params.get('to')||(e[3]&&e[3].slice(0,10)<=params.get('to')))).flatMap(e=>[nodeId(e[0]),nodeId(e[1])]))
    const membership=new URLSearchParams(nodeParams);membership.delete('category');membership.delete('org');ids=matching(index,membership).filter(i=>endpoints.has(index.rows[i].id)&&(!selectedIds||selectedIds.has(i)))
   }
   ids.sort((a,b)=>Number(index.rows[b].id===selected)-Number(index.rows[a].id===selected)||topology.degree[index.rows[b].id]-topology.degree[index.rows[a].id]||index.rows[a].id.localeCompare(index.rows[b].id))
   const page=ids.slice(offset,offset+MAX_NODES),organizations=await readRows(read,version,'organizations',page)
   const visible=new Set(organizations.map(o=>o.id)),edgeIds=new Set()
   for(const id of visible)for(const edge of topology.edgesByOrg[id]||[])edgeIds.add(edge)
-  const candidates=[...edgeIds].sort((a,b)=>a-b).filter(i=>{const e=topology.edges[i];return visible.has(e[0])&&visible.has(e[1])&&(mode!=='funding'||(['transfer','grant','donation','contract'].includes(e[2])&&(!fundingCategoryIds||fundingCategoryIds.has(e[0])||fundingCategoryIds.has(e[1]))))&&(!params.get('kind')||e[2]===params.get('kind'))&&(!params.get('from')||(e[3]&&e[3]>=params.get('from')))&&(!params.get('to')||(e[3]&&e[3].slice(0,10)<=params.get('to')))})
-  if(selected)candidates.sort((a,b)=>Number(topology.edges[b][0]===selected||topology.edges[b][1]===selected)-Number(topology.edges[a][0]===selected||topology.edges[a][1]===selected)||a-b)
+  const candidates=[...edgeIds].sort((a,b)=>a-b).filter(i=>{const e=topology.edges[i];return visible.has(nodeId(e[0]))&&visible.has(nodeId(e[1]))&&(mode!=='funding'||(['transfer','grant','donation','contract'].includes(e[2])&&(!fundingCategoryIds||fundingCategoryIds.has(nodeId(e[0]))||fundingCategoryIds.has(nodeId(e[1])))))&&(!params.get('kind')||e[2]===params.get('kind'))&&(!params.get('from')||(e[3]&&e[3]>=params.get('from')))&&(!params.get('to')||(e[3]&&e[3].slice(0,10)<=params.get('to')))})
+  if(selected)candidates.sort((a,b)=>Number(nodeId(topology.edges[b][0])===selected||nodeId(topology.edges[b][1])===selected)-Number(nodeId(topology.edges[a][0])===selected||nodeId(topology.edges[a][1])===selected)||a-b)
   const pairs=new Map()
   for(const i of candidates){const edge=topology.edges[i],key=JSON.stringify([edge[0],edge[1]].sort());if(!pairs.has(key))pairs.set(key,{first:i,count:0});pairs.get(key).count++}
   const representatives=[...pairs.values()].slice(0,MAX_EDGES),loaded=await readRows(read,version,'graph',representatives.map(pair=>pair.first))
   const relationships=loaded.map((edge,i)=>({...edge,recordCount:representatives[i].count}))
-  return {body:{...meta,metricMax:manifest.metricMax,geography:geographic?{located:topology.geography.located,missing:topology.geography.missing}:undefined,organizations,relationships,financing:[],total:ids.length,totalOrganizations:manifest.totals.organizations,totalRelationships:manifest.totals.relationships,offset,nextOffset:offset+MAX_NODES<ids.length?offset+MAX_NODES:null,matchingEdges:candidates.length,matchingLinks:pairs.size,truncated:pairs.size>MAX_EDGES,groups:manifest.groups}}
+  const body={...meta,metricMax:manifest.metricMax,geography:geographic?{located:topology.geography.located,missing:topology.geography.missing}:undefined,organizations,relationships,financing:[],total:ids.length,totalOrganizations:manifest.totals.organizations,totalRelationships:manifest.totals.relationships,offset,nextOffset:offset+MAX_NODES<ids.length?offset+MAX_NODES:null,matchingEdges:candidates.length,matchingLinks:pairs.size,truncated:pairs.size>MAX_EDGES,groups:manifest.groups}
+  // The source table remains complete; bound graph response bytes as well as edge counts.
+  let budget=2*1024*1024-new TextEncoder().encode(JSON.stringify({...body,relationships:[]})).byteLength-1024
+  const bounded=[]
+  for(const edge of relationships){const bytes=new TextEncoder().encode(JSON.stringify(edge)).byteLength+1;if(bytes>budget){body.truncated=true;break}budget-=bytes;bounded.push(edge)}
+  body.relationships=bounded
+  return {body}
+
  }
  const offset=integer(params,'offset',0,1e7),limit=integer(params,'limit',50,MAX_PAGE);if(!limit)throw new Error('Invalid limit')
  const rows=await readRows(read,version,collection,ids.slice(offset,offset+limit))
