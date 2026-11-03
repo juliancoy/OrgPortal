@@ -7,6 +7,8 @@ import {resolve} from 'node:path';
 import {credentialStore} from './upload-connection.mjs';
 import {browserLogin} from './event-upload.mjs';
 import {accountCommand} from './mcp-account-client.mjs';
+import {Client} from '@modelcontextprotocol/sdk/client/index.js';
+import {StreamableHTTPClientTransport} from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 const {values}=parseArgs({options:{file:{type:'string'},'expected-sha256':{type:'string'},'expected-commit':{type:'string'},connection:{type:'string',default:'platform-admin'},apply:{type:'boolean'},directory:{type:'string'}}});
 if(!values.file||!values['expected-sha256']||!values['expected-commit'])throw Error('Supply --file, --expected-sha256 and --expected-commit; add --apply to publish');
 const resource='https://lifetech.fyi/api/org/mcp',issuer='https://orgportal.cc';
@@ -29,7 +31,7 @@ let state={digest,offset:0,pending:null};
 try{state=JSON.parse(await readFile(stateFile,'utf8'));if(state.digest!==digest)throw Error('Receipt directory belongs to a different dataset');}catch(error){if(error.code!=='ENOENT')throw error;}
 const save=async()=>{const temporary=stateFile+'.tmp';await writeFile(temporary,JSON.stringify(state)+'\n',{mode:0o600});await rename(temporary,stateFile);};
 const store=await credentialStore(resource,issuer,values.connection);
-let account;
+let account,client;
 try{
  const saved=await store.load();if(!saved?.refreshToken)throw Error('Saved operator connection is unavailable; no automatic sign-in is attempted');
  account=await browserLogin(resource,issuer,undefined,false,{store,scope:'org:portal.read org:portal.write'});
@@ -38,11 +40,20 @@ try{
  if(identity.server.commit!==values['expected-commit'])throw Error('MCP is not running the expected release commit');
  console.log(JSON.stringify({account:identity.account.email,operator:true,commit:identity.server.commit,records:rows.length,digest,apply:!!values.apply}));
  let previousRequest=0;
- const request=async(path,body)=>{
+ client=new Client({name:'OrgPortal reviewed Comptroller import',version:'1.3.0'});
+ const transport=new StreamableHTTPClientTransport(new URL(resource),{fetch:async(url,init)=>{
   const delay=1100-(Date.now()-previousRequest);if(delay>0)await new Promise(r=>setTimeout(r,delay));previousRequest=Date.now();
-  const response=await fetch(path,{method:body?'POST':'GET',redirect:'error',headers:{authorization:`Bearer ${await account.accessToken()}`,'content-type':'application/json'},body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(60000)});
-  if(!response.ok)throw Error(`Import API ${response.status}; stop and inspect the saved receipt before retrying`);
-  return response.json();
+  const headers=new Headers(init?.headers);headers.set('authorization',`Bearer ${await account.accessToken()}`);
+  return fetch(url,{...init,headers,redirect:'error',signal:AbortSignal.timeout(60000)});
+ }});
+ await client.connect(transport);
+ const request=async(path,body)=>{
+  let name,args;
+  if(body){name=body.confirm?'apply_maryland_comptroller_import':'preview_maryland_comptroller_import';args=body;}
+  else {name='get_maryland_comptroller_import_status';const url=new URL(path);args={organizationId,...(url.searchParams.get('previewId')?{previewId:url.searchParams.get('previewId')}:{})};}
+  const result=await client.callTool({name,arguments:args});
+  if(result.isError||!result.structuredContent)throw Error('MCP import failed; inspect the saved receipt and server operation status before retrying');
+  return result.structuredContent;
  };
  if(state.pending){
   const receipt=await request(`${base}/status?previewId=${encodeURIComponent(state.pending.previewId)}`);
@@ -68,4 +79,4 @@ try{
   const report={productionApplied:true,verifiedAt:new Date().toISOString(),commit:identity.server.commit,account:identity.account.email,digest,records:rows.length,totals:actual.totals,sourceCount:actual.sources.length};
   await writeFile(resolve(directory,'production-verification.json'),JSON.stringify(report,null,2)+'\n',{mode:0o600});console.log(JSON.stringify(report));
  }
-}finally{await account?.close?.();await store.release();}
+}finally{await client?.close();await account?.close?.();await store.release();}

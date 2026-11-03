@@ -1,3 +1,4 @@
+import {registerMarylandComptrollerTools} from './marylandComptrollerMcp';
 import { emailWorkspaceSchema, emailSubscriberSchema, emailDraftSchema, emailDraftTargetSchema, readEmailWorkspace, addEmailSubscriber, saveEmailDraft, readEmailDraft } from './emailWorkspaceMcp';
 import { recordMcpStatistics } from './mcpLiveStatistics';
 import { registerPersonnelInvitationTools } from './personnelInvitationsMcp';
@@ -737,16 +738,17 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
     let parsedBody: unknown;
     try { parsedBody = JSON.parse(new TextDecoder().decode(bytes)); }
     catch { return new Response("Invalid JSON", { status: 400 }); }
-    // Only authenticated history imports need room for 500 evidence rows and a
-    // 300 KB inline image. Other MCP operations keep their 64 KB request cap.
+    // Authenticated evidence imports use the bounded 1 MiB envelope.
+    // Other MCP operations retain their 64 KiB request cap.
     if(size>65536){
       const envelope=parsedBody as {method?:unknown;params?:{name?:unknown}};
-      if(envelope?.method!=='tools/call'||!['preview_email_history_import','apply_email_history_import'].includes(String(envelope.params?.name)))return new Response(null,{status:413});
+      if(envelope?.method!=='tools/call'||!['preview_email_history_import','apply_email_history_import','preview_maryland_comptroller_import','apply_maryland_comptroller_import'].includes(String(envelope.params?.name)))return new Response(null,{status:413});
     }
     const method = parsedBody && typeof parsedBody === 'object' && 'method' in parsedBody ? parsedBody.method : undefined;
     observation.method = typeof method === 'string' && ['initialize', 'notifications/initialized', 'tools/list', 'tools/call', 'ping'].includes(method) ? method : 'other';
     const server = new McpServer({ name: config.name ? `${config.name} MCP` : "orgportal-events", version: product.version, ...(config.name === "OrgPortal" ? { icons: [{ src: "https://orgportal.cc/orgportal.svg", mimeType: "image/svg+xml", sizes: ["any"] }] } : {}) }, { instructions: "Search the public organization directory before adding an organization. Use directory_registration for researched third-party listings; it grants no access. Owned creation assigns owner access to the signed-in account and requires explicit ownership intent. Never substitute owned creation when directory registration is unavailable or denied. A claimed record is not verified legal representation. Inspect write receipts after uncertain outcomes before retrying." });
     registerAccountTools(server, env.DB, identity, config);
+    registerMarylandComptrollerTools(server,env.DB,identity,config.organizationId);
     const scopedArgs = (args: unknown, operatorAccess = false) => {
       if (!(operatorAccess && identity.isOperator === true) && config.organizationId && (!args || typeof args !== 'object' || !('organizationId' in args)
         || args.organizationId !== config.organizationId)) throw new EventIntegrationError(403, 'This MCP connection is limited to its own organization');

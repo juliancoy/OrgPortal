@@ -42,6 +42,7 @@ test('operator authorization, exact one-use receipts, source types, and rollback
  const db=setup();try{
  await assert.rejects(importMarylandComptroller(db.asD1(),{...actor,isOperator:false},input),/Operator/);
  await assert.rejects(importMarylandComptroller(db.asD1(),actor,{...input,rows:[{...row,source_url:'https://example.com'}]}),/Invalid/);
+ await assert.rejects(importMarylandComptroller(db.asD1(),actor,{...input,rows:[{...row,source_url:'invalid URL'}]}),/Invalid/);
  await assert.rejects(importMarylandComptroller(db.asD1(),actor,{...input,rows:[{...row,fact_type:'reported_award'}]}),/Invalid/);
  await assert.rejects(importMarylandComptroller(db.asD1(),actor,{...input,rows:[row,row]}),/Duplicate/);
  await assert.rejects(importMarylandComptroller(db.asD1(),actor,{...input,confirm:true}),/preview/);
@@ -68,5 +69,41 @@ test('shared schema supports another provider, currency and nested JSON without 
  assert.equal(result.currency,'EUR');assert.equal(result.amount,5);assert.equal(result.financial_measurement,'cumulative');
  assert.equal(result.evidence,'other_government');assert.equal(result.fiscal_year_basis,null);
  assert.deepEqual(JSON.parse(result.provenance_json as string),{award:{category:'research'}});
+ }finally{db.sqlite.close();}
+});
+
+test('MCP tools enforce scopes, tenant boundary, operator access and exact receipt application over the SDK transport',async()=>{
+ const {McpServer}=await import('@modelcontextprotocol/sdk/server/mcp.js');
+ const {Client}=await import('@modelcontextprotocol/sdk/client/index.js');
+ const {InMemoryTransport}=await import('@modelcontextprotocol/sdk/inMemory.js');
+ const {registerMarylandComptrollerTools}=await import('../src/marylandComptrollerMcp');
+ const db=setup();
+ async function connected(identity:{userId:string;scopes:string[];isOperator:boolean},tenant='comptroller-test'){
+  const server=new McpServer({name:'test',version:'1'});registerMarylandComptrollerTools(server,db.asD1(),identity,tenant);
+  const client=new Client({name:'test',version:'1'});const [a,b]=InMemoryTransport.createLinkedPair();
+  await server.connect(a);await client.connect(b);return {client,close:async()=>{await client.close();await server.close();}};
+ }
+ try{
+  for(const [identity,tenant] of [
+   [{userId:'test-operator',scopes:['org:portal.read'],isOperator:true},'comptroller-test'],
+   [{userId:'test-operator',scopes:['org:portal.read','org:portal.write'],isOperator:false},'comptroller-test'],
+   [{userId:'test-operator',scopes:['org:portal.read','org:portal.write'],isOperator:true},'another-tenant'],
+  ] as const){
+   const c=await connected({...identity,scopes:[...identity.scopes]},tenant);
+   try{const r=await c.client.callTool({name:'preview_maryland_comptroller_import',arguments:input});assert.equal(r.isError,true);}finally{await c.close();}
+  }
+  const identity={userId:'test-operator',scopes:['org:portal.read','org:portal.write'],isOperator:true};
+  const c=await connected(identity);
+  try{
+   const p=await c.client.callTool({name:'preview_maryland_comptroller_import',arguments:input});assert.ok(!p.isError);const previewId=p.structuredContent!.previewId;
+   const unconfirmed=await c.client.callTool({name:'apply_maryland_comptroller_import',arguments:{...input,previewId}});assert.equal(unconfirmed.isError,true);
+   identity.isOperator=false;
+   const revoked=await c.client.callTool({name:'apply_maryland_comptroller_import',arguments:{...input,previewId,confirm:true}});assert.equal(revoked.isError,true);
+   assert.equal(db.sqlite.prepare('SELECT count(*) n FROM external_financial_observations').get()!.n,0);
+   identity.isOperator=true;
+   const result=await c.client.callTool({name:'apply_maryland_comptroller_import',arguments:{...input,previewId,confirm:true}});assert.ok(!result.isError);assert.equal(result.structuredContent!.recorded,1);
+   const status=await c.client.callTool({name:'get_maryland_comptroller_import_status',arguments:{organizationId:'comptroller-test',previewId}});assert.equal(status.structuredContent!.status,'completed');
+   const repeated=await c.client.callTool({name:'apply_maryland_comptroller_import',arguments:{...input,previewId,confirm:true}});assert.equal(repeated.isError,true);
+  }finally{await c.close();}
  }finally{db.sqlite.close();}
 });

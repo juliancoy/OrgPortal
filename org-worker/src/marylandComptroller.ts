@@ -3,10 +3,12 @@ import { authorizeOrganization, type OrganizationActor } from './organizationIam
 import { EventIntegrationError } from './eventPlatforms';
 import { prepareEventOperation, claimEventOperation, finishEventOperation, eventOperationStatus, previewFingerprint, enforceEventRateLimit } from './eventOperationStore';
 
+function sourceHost(value:string){try{return new URL(value).hostname;}catch{return '';}}
 const officialSource = z.string().url().max(2000).refine(value => {
-  const url = new URL(value);
-  return url.protocol === 'https:' && !url.username && !url.password &&
-    ['bpw.maryland.gov', 'interactive2.marylandtaxes.gov'].includes(url.hostname);
+  try { const url = new URL(value);
+    return url.protocol === 'https:' && !url.username && !url.password &&
+      ['bpw.maryland.gov', 'interactive2.marylandtaxes.gov'].includes(url.hostname);
+  } catch { return false; }
 });
 const rowSchema = z.object({
   id: z.string().regex(/^md-(?:bpw|view):[a-f0-9]{64}$/),
@@ -19,7 +21,7 @@ const rowSchema = z.object({
 }).strict().superRefine((row,ctx) => {
   const bpw = row.dataset === 'bpw';
   if (row.fact_type !== (bpw ? 'reported_award' : 'disbursement') || !row.id.startsWith(bpw ? 'md-bpw:' : 'md-view:') ||
-      new URL(row.source_url).hostname !== (bpw ? 'bpw.maryland.gov' : 'interactive2.marylandtaxes.gov'))
+      sourceHost(row.source_url) !== (bpw ? 'bpw.maryland.gov' : 'interactive2.marylandtaxes.gov'))
     ctx.addIssue({code:'custom',message:'Dataset, source, ID and financial fact type must match'});
 });
 export const comptrollerImportSchema = z.object({

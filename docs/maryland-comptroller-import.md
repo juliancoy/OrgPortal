@@ -12,7 +12,7 @@ partitions for the larger searches. Normalized JSONL SHA256:
 `1c33886e51e48b167645466c59f3c667ec7cac438326f1e78514214e4cec7cd8`.
 The federal aggregate ZIP contains 25 geographic CSV tables and stays separate.
 
-Validation passed: four collector tests, three API/import tests, TypeScript,
+Validation passed: four collector tests, four API/import tests, TypeScript,
 full-schema real-data import twice, signed-cent reconciliation, original
 transaction preservation, foreign-key checks, database integrity and diff checks.
 See `artifacts/maryland-comptroller/validation.json` and `manifest.json`.
@@ -24,8 +24,11 @@ and extends the existing master transaction view. All prior view branches are
 preserved. This is evidence alongside the internal ledger; importing observations
 does not create settled ledger transfers or change account balances.
 
-`POST /api/network/orgs/:organizationId/comptroller/import` accepts at most 250
-rows per request. It requires the existing live operator identity and organization
+`preview_maryland_comptroller_import` and `apply_maryland_comptroller_import`
+accept at most 250 rows per request through the authenticated MCP connection.
+`get_maryland_comptroller_import_status` returns source counts/checksums or
+inspects an exact operation receipt. The saved operator grant is MCP-scoped;
+the importer does not use the browser-facing session API. It requires the existing live operator identity and organization
 authorization, rate limit, and exact expiring preview/apply receipt. Each batch
 inserts observations and its minimal audit record atomically. An unchanged import
 is idempotent. A changed payment with the same identifier stops for source review.
