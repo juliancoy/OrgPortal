@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {projectNativeEvidence,exportUnifiedEcosystem} from './unified-ecosystem.mjs';
+import {projectNativeEvidence,exportUnifiedEcosystem,fetchPublicEvidenceJson} from './unified-ecosystem.mjs';
 test('native observations retain signed amounts, separate approvals and source-label identities; nonfiscal edges survive',()=>{
  const input={organizations:[{id:'a',name:'Known'}],relationships:[{id:'mentor',source:'a',target:'a',kind:'mentoring',amount:null}],financing:[]};
  const common={record_type:'external_financial_observation',from_label:'Maryland agency',to_label:'Unverified payee',amount:-5,currency:'USD',status:'reported'};
@@ -59,3 +59,12 @@ test('not-applicable source records share a placeholder class while preserving e
  const identified=projectNativeEvidence({organizations:[],relationships:[],financing:[]},[{...records[0],to_organization_id:'real-org',to_label:'Not applicable'}]);
  assert.equal(identified.relationships[0].target,'real-org');assert.equal(identified.organizations.find(o=>o.id==='real-org').entityType,'organization');
 });
+
+test('verified exports retry transient HTTP/network failures with a strict bound, but never retry conflicts or invalid evidence',async()=>{
+ let attempts=0;const waits=[]
+ const value=await fetchPublicEvidenceJson('https://example.invalid/public',{wait:async ms=>{waits.push(ms)},fetcher:async()=>{attempts++;if(attempts===1)throw new TypeError('network reset');return attempts===2?new Response('{}',{status:500}):Response.json({records:[]})}})
+ assert.deepEqual(value,{records:[]});assert.equal(attempts,3);assert.deepEqual(waits,[500,1000])
+ attempts=0;await assert.rejects(()=>fetchPublicEvidenceJson('https://example.invalid/public',{wait:async()=>{},fetcher:async()=>{attempts++;return new Response('{}',{status:503})}}),/503/);assert.equal(attempts,4)
+ attempts=0;await assert.rejects(()=>fetchPublicEvidenceJson('https://example.invalid/public',{wait:async()=>{},fetcher:async()=>{attempts++;return new Response('{}',{status:409})}}),/409/);assert.equal(attempts,1)
+ attempts=0;await assert.rejects(()=>fetchPublicEvidenceJson('https://example.invalid/public',{wait:async()=>{},fetcher:async()=>{attempts++;return new Response('{')}}));assert.equal(attempts,1)
+})

@@ -63,9 +63,20 @@ export function projectNativeEvidence(input,records,directory=[]){
  data.transactionalCoverage={directoryRecords:directory.length,nativeRecords:records.length,comptrollerRecords:records.filter(r=>r.record_type==='external_financial_observation').length,unverifiedLabelNodes:data.organizations.filter(o=>o.identityStatus==='unverified_label').length};
  return data;
 }
+// Retry only transient public-read failures; version/checksum conflicts still abort.
+export async function fetchPublicEvidenceJson(url,{fetcher=fetch,wait=ms=>new Promise(resolve=>setTimeout(resolve,ms))}={}){
+ for(let attempt=0;attempt<4;attempt++){
+  let response
+  try{response=await fetcher(url,{redirect:'error',signal:AbortSignal.timeout(60000)})}
+  catch(error){if(attempt===3)throw error;await wait(500*2**attempt);continue}
+  if((response.status===429||response.status>=500)&&attempt<3){await response.body?.cancel();await wait(500*2**attempt);continue}
+  if(!response.ok)throw Error(`Unified database export failed (${response.status})`)
+  return response.json()
+ }
+}
 export async function exportUnifiedEcosystem({fetcher=fetch,base='https://lifetech.fyi/api/org/api/network/ecosystem/public'}={}){
  let datasetId;const all=[],data={organizations:[],relationships:[],financing:[],events:[],nonprofitProfiles:[]},performance={records:[],assessments:[]},positions={organizations:{}};
- const get=async(url)=>{const response=await fetcher(url,{redirect:'error',signal:AbortSignal.timeout(60000)});if(!response.ok)throw Error(`Unified database export failed (${response.status})`);return response.json();};
+ const get=url=>fetchPublicEvidenceJson(url,{fetcher});
  for(const collection of collections){let after='';do{
   const url=new URL(base+'/'+collection);if(after)url.searchParams.set('after',after);if(datasetId)url.searchParams.set('datasetId',datasetId);
   const page=await get(url);if(!/^[a-f0-9]{64}$/.test(page.datasetId)||datasetId&&page.datasetId!==datasetId||!Array.isArray(page.records))throw Error('Inconsistent database snapshot');datasetId=page.datasetId;
