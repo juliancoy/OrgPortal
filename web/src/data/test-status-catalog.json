@@ -4965,6 +4965,20 @@
         }
       ],
       "category": "Build and type checks"
+    },
+    {
+      "id": "suite-org-worker-test-maryland-comptroller-test-ts",
+      "label": "org-worker/test/maryland-comptroller.test.ts",
+      "category": "Events and services",
+      "source": "org-worker/test/maryland-comptroller.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "maryland-comptroller.test.ts"
+        }
+      ]
     }
   ]
 }
