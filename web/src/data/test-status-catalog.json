@@ -975,6 +975,20 @@
       ]
     },
     {
+      "id": "suite-org-worker-test-maryland-comptroller-test-ts",
+      "label": "org-worker/test/maryland-comptroller.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/maryland-comptroller.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "maryland-comptroller.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-org-worker-test-mcp-account-tools-test-ts",
       "label": "org-worker/test/mcp-account-tools.test.ts",
       "category": "User interface and integrations",
@@ -2169,6 +2183,20 @@
         {
           "id": "suite",
           "label": "run-local-mcp-test.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-scripts-test-maryland-comptroller-py",
+      "label": "scripts/test-maryland-comptroller.py",
+      "category": "User interface and integrations",
+      "source": "scripts/test-maryland-comptroller.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-maryland-comptroller.py"
         }
       ]
     },
@@ -4965,20 +4993,6 @@
         }
       ],
       "category": "Build and type checks"
-    },
-    {
-      "id": "suite-org-worker-test-maryland-comptroller-test-ts",
-      "label": "org-worker/test/maryland-comptroller.test.ts",
-      "category": "Events and services",
-      "source": "org-worker/test/maryland-comptroller.test.ts",
-      "kind": "node",
-      "cwd": "org-worker",
-      "cases": [
-        {
-          "id": "suite",
-          "label": "maryland-comptroller.test.ts"
-        }
-      ]
     }
   ]
 }
