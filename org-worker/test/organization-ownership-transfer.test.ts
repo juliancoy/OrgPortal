@@ -88,3 +88,29 @@ test('REST derives superadmin authority from live PIdP, ignores client claims an
  superadmin=false;assert.equal((await request('apply',{...body,confirm:true,previewId:p.previewId})).status,403);assert.equal(activeOwner(db),'owner');
  superadmin=true;assert.equal((await request('apply',{...body,confirm:true,previewId:p.previewId})).status,200);assert.equal(activeOwner(db),'recipient');
 });
+
+test('D1 journal trigger change counts do not turn a committed transfer into a false conflict',async()=>{
+ const db=await setup();try{
+  const p=await preview(db),batch=db.batch.bind(db);
+  db.batch=async statements=>{const results=await batch(statements);results[0].meta.changes=3;return results};
+  await run(db.asD1(),operator,'transfer',{...args,confirm:true,previewId:p.previewId});
+  assert.equal(activeOwner(db),'recipient');
+  assert.match(JSON.stringify(await run(db.asD1(),operator,'status',{organizationId:'org',previewId:p.previewId})),/completed/);
+ }finally{db.sqlite.close()}
+});
+
+test('uncertain committed transfer recovers only its exact authorized receipt without repeating ownership writes',async()=>{
+ const db=await setup();try{
+  const p=await preview(db),apply={...args,confirm:true,previewId:p.previewId};
+  await run(db.asD1(),operator,'transfer',apply);
+  db.sqlite.prepare("UPDATE event_mcp_operations SET status='uncertain',completed_steps_json='[]' WHERE id=?").run(p.previewId);
+  await assert.rejects(run(db.asD1(),operator,'transfer',{...apply,reason:'Different reason'}),/already owns/);
+  await assert.rejects(run(db.asD1(),{...operator,actor:{...operator.actor,id:'another'}},'transfer',apply),/already owns/);
+  const recovered=await run(db.asD1(),operator,'transfer',apply);
+  assert.equal((recovered as {recovered:boolean}).recovered,true);
+  assert.equal(db.sqlite.prepare('SELECT count(*) n FROM organization_ownerships').get()!.n,2);
+  assert.equal(db.sqlite.prepare("SELECT count(*) n FROM audit_events WHERE action='organization.ownership_transferred'").get()!.n,1);
+  assert.match(JSON.stringify(await run(db.asD1(),operator,'status',{organizationId:'org',previewId:p.previewId})),/completed/);
+  await assert.rejects(run(db.asD1(),operator,'transfer',apply),/already owns/);
+ }finally{db.sqlite.close()}
+});
