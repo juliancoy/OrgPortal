@@ -2453,6 +2453,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-graph-relevance-test-mjs",
+      "label": "web/scripts/graph-relevance.test.mjs",
+      "category": "Ecosystem and data",
+      "source": "web/scripts/graph-relevance.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "graph-relevance.test.mjs"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-navigation-practice-test-mjs",
       "label": "web/scripts/navigation-practice.test.mjs",
       "category": "User interface and integrations",
@@ -3251,6 +3265,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-transaction-graph-test-mjs",
+      "label": "web/scripts/transaction-graph.test.mjs",
+      "category": "Ecosystem and data",
+      "source": "web/scripts/transaction-graph.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "transaction-graph.test.mjs"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-unified-ecosystem-test-mjs",
       "label": "web/scripts/unified-ecosystem.test.mjs",
       "category": "Ecosystem and data",
@@ -3797,6 +3825,20 @@
       ]
     },
     {
+      "id": "suite-web-src-features-ecosystem-graphRelevance-test-ts",
+      "label": "web/src/features/ecosystem/graphRelevance.test.ts",
+      "category": "Ecosystem and data",
+      "source": "web/src/features/ecosystem/graphRelevance.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "graphRelevance.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-web-src-features-ecosystem-interventions-test-ts",
       "label": "web/src/features/ecosystem/interventions.test.ts",
       "category": "Ecosystem and data",
@@ -3835,6 +3877,20 @@
         {
           "id": "suite",
           "label": "progressiveGraph.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-features-ecosystem-readEvidenceResponse-test-ts",
+      "label": "web/src/features/ecosystem/readEvidenceResponse.test.ts",
+      "category": "Ecosystem and data",
+      "source": "web/src/features/ecosystem/readEvidenceResponse.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "readEvidenceResponse.test.ts"
         }
       ]
     },
