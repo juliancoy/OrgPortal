@@ -3399,6 +3399,10 @@ app.get("/api/network/orgs/public/:slug/events", async (c) => {
      LEFT JOIN organizations o ON o.id = e.host_org_id
      WHERE (e.host_org_id = ? OR (? = 0 AND (
        EXISTS (SELECT 1 FROM event_organizations eo WHERE eo.event_id = e.id AND eo.organization_id = ?)
+       OR EXISTS (SELECT 1 FROM json_each(CASE WHEN json_valid(e.event_links_json) THEN e.event_links_json ELSE '[]' END) link
+         WHERE json_extract(CASE WHEN link.type = 'object' THEN link.value ELSE '{}' END, '$.url') LIKE 'https://%'
+         AND NULLIF(?, '') IS NOT NULL
+         AND rtrim(lower(json_extract(CASE WHEN link.type = 'object' THEN link.value ELSE '{}' END, '$.url')), '/') = rtrim(lower(?), '/'))
        OR EXISTS (SELECT 1 FROM event_submissions s JOIN organization_support_records r
          ON r.id = 'presentation:' || s.event_id || ':' || s.submission_id
          WHERE s.event_id = e.id AND s.organization_id = ? AND s.status IN ('submitted','accepted')
@@ -3408,7 +3412,7 @@ app.get("/api/network/orgs/public/:slug/events", async (c) => {
      ORDER BY COALESCE(e.starts_at,e.event_date,e.created_at) ${upcomingOnly ? "ASC" : "DESC"}, e.id ASC
      LIMIT ? OFFSET ?`,
   )
-    .bind(org.id, hostedOnly ? 1 : 0, org.id, org.id, limit, offset)
+    .bind(org.id, hostedOnly ? 1 : 0, org.id, org.source_url || "", org.source_url || "", org.id, limit, offset)
     .all<EventRow>();
   return c.json(await Promise.all((rows.results || []).map((row) => mapEvent(c.env, c.req.raw, row))));
 });

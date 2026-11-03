@@ -435,3 +435,5 @@ source metadata. The exact account owner can still edit their saved details.
 Explicit field selections, favorite-company sharing, availability and registered
 event attendance retain their separate sharing checks. Profile responses use
 `Cache-Control: no-store` so owner-only details cannot be cached as public data.
+
+Organization related-event lists include public featured event links whose HTTPS URL exactly matches the organization’s registered source URL (ignoring case and trailing slashes). This includes prize providers and sponsors without assigning host status. Names alone do not establish an association; hosted-only feeds remain restricted to the event host.
