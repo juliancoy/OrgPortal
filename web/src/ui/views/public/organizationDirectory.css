@@ -20,3 +20,9 @@
 .organization-directory-card a:not(.organization-directory-link),
 .organization-directory-card button { position: relative; z-index: 2; }
 .organization-directory-link:focus-visible::after { outline: 3px solid var(--primary); outline-offset: 3px; }
+
+/* Render formatted descriptions within the same compact directory preview. */
+.organization-directory-description { margin: 0; overflow-wrap: anywhere; max-height: 4.95em; }
+.bio-markdown.organization-directory-description :is(p, ul, ol, blockquote, pre) { margin-block: 0; }
+.bio-markdown.organization-directory-description :is(h1, h2, h3, h4, h5, h6) { margin: 0; font-size: 1em; line-height: inherit; }
+.organization-directory-card .organization-directory-description a { font-size: inherit; color: var(--primary); text-decoration: underline; text-underline-offset: .15em; }
