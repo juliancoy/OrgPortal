@@ -39,8 +39,11 @@ port 5198. It performs no production writes or authenticated requests.
 
 Selecting an organization starts with children (outgoing relationships). Clicking
 the selected node toggles to parents (incoming relationships), and clicking it
-again returns to children. Other nodes remain clickable; selecting one preserves
-the direction. The scope status names the direction and shared URLs retain it.
+again returns to children. Selecting another node opens its children and updates
+the URL organization and direction, including dimension-switch links. The previous
+selection remains visible when it is a child, even outside the first ranked page.
+The camera centers the selected node by default as the layout moves; the Navigation
+control offers Free fly to move independently.
 A node with no parents or children stays visible so the direction can be toggled
 again. Parent/child here follows stored source/target direction, including
 non-fiscal relationships; it does not infer ownership or a unique primary parent.

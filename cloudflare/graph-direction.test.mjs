@@ -32,3 +32,12 @@ test('compressed topology IDs, cycles and reciprocal links keep their recorded d
  const children=graphNeighborhood(topology,'b',1,'children')
  assert.deepEqual([...children.nodes].sort(),['a','b','c']);assert.deepEqual([...children.edges],[1,2])
 })
+
+test('context child survives pagination without admitting unrelated or incoming nodes',async()=>{
+ const fixture=directionFixture(300)
+ const included=await graph({direction:'children',nodeLimit:'2',include:'g299'},fixture)
+ assert.deepEqual(ids(included),['b','g299'])
+ assert(included.relationships.some(r=>r.source==='b'&&r.target==='g299'))
+ assert(!ids(await graph({direction:'children',include:'e'},fixture)).includes('e'))
+ assert(!ids(await graph({direction:'parents',include:'g299'},fixture)).includes('g299'))
+})
