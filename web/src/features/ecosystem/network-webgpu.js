@@ -1,3 +1,4 @@
+import {progressiveGraph,nextGraphFrame,retainLayoutNodes} from './progressive-graph.js'
 import {bundleRenderedEdges,layoutConnections} from './network-edge-bundles.js'
 import {appendNetworkInspection,applyNetworkFinancialSummary} from './network-inspection.js'
 import {analyticalLayout} from './network-layouts.js'
@@ -58,6 +59,15 @@ async function loadGraph(scope=graphScope,{keepView=false}={}){
   if(!response.ok)throw Error(next.error||'Network scope unavailable')
   if(disposed||sequence!==graphSequence)return
   graphScope=scope;if(!scope.org){selected=null;$('#neighbors').checked=false;$('#neighbors').disabled=true;if($('#network-detail-mode').value==='focus')$('#network-detail-mode').value='overview';$('#network-detail').innerHTML='<h2>Select an organization or group</h2>'}graphOffset=next.offset;graphNext=next.nextOffset;data=next
+  if(!keepView&&!nodes.length)fitted=false
+  analysisLayout=null;networkCoordinates.clear()
+  const stream=progressiveGraph(next)
+  let batchSize=24
+  do{
+   await nextGraphFrame(controller.signal)
+   if(disposed||sequence!==graphSequence)return
+   const started=performance.now()
+   data=stream.take(batchSize)
   const metrics=new Map(data.organizations.map(o=>[o.id,o.networkMetrics||{}]))
   const map=key=>new Map([...metrics].map(([id,value])=>[id,value[key]]).filter(([,value])=>value!==undefined))
   preparedData={data,folded:data,summaries:{pies:map('pie'),totals:map('totals'),counterparties:map('counterparties'),obligationIds:new Set([...metrics].filter(([,m])=>m.obligations).map(([id])=>id))},contextPies:map('contextPie')}
@@ -70,11 +80,14 @@ async function loadGraph(scope=graphScope,{keepView=false}={}){
   groupSelect.value=scope.group?JSON.stringify(scope.group):''
   $('#network-data-previous').disabled=!graphOffset;$('#network-data-next').disabled=graphNext===null
   const message=next.communityOverview?`${next.organizations.length} of ${next.total} community markers representing ${next.totalOrganizations} organizations. Select a community to load its organizations and source connections.`:next.clustered?`${next.organizations.length} county aggregate markers from ${next.geography.located} organizations with published Maryland coordinates; ${next.geography.missing} missing or outside Maryland. Select a county or zoom in to load organizations.`:`Loaded ${next.organizations.length} of ${next.total} matching organizations; ${next.totalOrganizations} in the full network. ${next.relationships.length} connection representatives for ${next.matchingEdges} evidence records between these loaded organizations. See Relationships for every source record.${next.truncated?' More evidence is available in Relationships.':''} Financial summaries use the full snapshot.`
-  $('#network-data-status').textContent=message
+  $('#network-data-status').textContent=stream.pending?`Loading detail: ${data.organizations.length}/${next.organizations.length} organizations in this page; ${next.total} in scope. The graph remains interactive.`:message
   $('#network-source').textContent='Evidence snapshot built '+new Date(next.generatedAt).toLocaleString()
-  if(!keepView)fitted=false
-  analysisLayout=null;networkCoordinates.clear();previewSummaries=preparedData.summaries
-  if(gpuReady){search();rebuild()}
+  previewSummaries=preparedData.summaries
+  if(gpuReady){search();rebuild({incremental:true})}
+   const elapsed=performance.now()-started,target=1000/minimumFPS()
+   batchSize=Math.max(4,Math.min(48,Math.floor(batchSize*(elapsed>target*.5?.65:1.15))))
+  }while(stream.pending)
+
  }catch(error){if(!disposed&&!controller.signal.aborted)$('#network-data-status').textContent=error.message;throw error}
 }
 function scheduleGeography(){
@@ -242,11 +255,12 @@ function search() {
  },150)
 }
 
-function rebuild() {
+function rebuild({incremental=false}={}) {
  if (!data || !gpuReady) return
  inspectorKey=null
  previewSummaries=preparedData?.data===data?preparedData.summaries:networkPreviewSummaries(data)
- simulation?.stop()
+ if(!incremental||simulation?.dimensions!==dimensionCount()){simulation?.stop();simulation=null}
+ const previousNodes=nodes
  nodes.forEach(n=>savedPositions.set(n.id,{q:n.q,velocityND:n.velocityND,x:n.x,y:n.y,z:n.z,vx:n.vx,vy:n.vy,vz:n.vz}))
  visibilityKey=null;geometryDirty=true;labelPriority=[]
  const cats=selectedCategories(), rels=selectedRelationships(), context=$('#include-context').checked
@@ -268,6 +282,7 @@ function rebuild() {
  const amounts=new Map(graphData.organizations.map(n=>[n.id,n.networkMetrics?.amount||0]))
  const widths=quantityEdgeWidths(graphRelationships(graphData,{includeCapitalization:context}),$('#scale-edge-quantity').checked)
  nodes=visible.map(n=>({...n,...(savedPositions.get(n.id)||defaultPositions[n.id]?.[four?'4d':spatial?'3d':'2d']),financialAmount:amounts.get(n.id) ?? null,financialPie:pies.get(n.id) || null})); edges=edges.map(e=>({...e,quantityWidth:widths.get(e.id) ?? 1.4}))
+ if(incremental)nodes=retainLayoutNodes(previousNodes,nodes)
  const scaleFinances=$('#scale-node-finances').checked
  const sizing={algorithm:$('#node-size-algorithm').value,alpha:Number($('#node-size-alpha').value),maxAmount:Math.max(0,...amounts.values())}
  nodes.forEach(n=>{n.renderRadius=financialNodeRadius(scaleFinances?n.financialAmount:null,sizing)})
@@ -276,7 +291,9 @@ function rebuild() {
  const categorySelect=$('#network-flow-category');for(const category of new Set(nodes.map(n=>n.category)))if(![...categorySelect.options].some(o=>o.value===category)){const option=document.createElement('option');option.value=category;option.textContent=category;categorySelect.append(option)}
  status.textContent=`${nodes.length} organizations · ${edges.length} links`
  labels.replaceChildren();labelItems=[]
- simulation=createNetworkLayout(nodes,layoutConnections(edges),forceOptions(),physicsEnabled(),reprojected=>{geometryDirty ||= reprojected;requestRender()});applyProjection()
+ if(simulation)simulation.update(nodes,layoutConnections(edges),forceOptions(),physicsEnabled())
+ else simulation=createNetworkLayout(nodes,layoutConnections(edges),forceOptions(),physicsEnabled(),reprojected=>{geometryDirty ||= reprojected;requestRender()})
+ applyProjection()
  const recordNodes=new Map(nodes.map(n=>[n.id,n]));recordEdges=recordEdges.map(e=>({...e,source:recordNodes.get(endpoint(e.source)),target:recordNodes.get(endpoint(e.target))}));assignEdgeCurvature(recordEdges)
  assignEdgeCurvature(edges);updateAnalysisLayout();applyTheme()
  for(const n of nodes){
@@ -298,7 +315,7 @@ function fit(){
 }
 function render(time=0) {
  frame=0;
- if(!gpuReady||document.hidden){previousFrame=0;frameBudget.reset();frameRate.reset();return}
+ if(!gpuReady||!analysis||document.hidden){previousFrame=0;frameBudget.reset();frameRate.reset();return}
  const started=performance.now(),interval=previousFrame?time-previousFrame:0
  previousFrame=time
  const updated=analysisLayout?new Set():simulation?.consume(physicsEnabled()?frameBudget.count(nodes.length):nodes.length)||new Set()
@@ -450,8 +467,9 @@ async function initGPU(){
 async function start(){
  try {
   await settingsReady
+  await initGPU();if(disposed)return
   await loadGraph({org:new URL(location.href).searchParams.get('org')||undefined})
-  search();await initGPU();if(disposed)return
+  search();if(disposed)return
   root.addEventListener('wheel',event=>{
    if(!host.contains(event.target))return
    event.preventDefault();event.stopPropagation()
@@ -472,7 +490,9 @@ async function start(){
   for(const name of ['attraction','repulsion','proximity','central-gravity','dither','attraction-law','repulsion-law','attraction-alpha','repulsion-alpha'])$('#'+name).addEventListener('input',()=>{
    const output=$('#'+name+'-value');if(output)output.textContent=Number($('#'+name).value).toFixed(1)
    simulation?.stop()
-   simulation=createNetworkLayout(nodes,layoutConnections(edges),forceOptions(),physicsEnabled(),reprojected=>{geometryDirty ||= reprojected;requestRender()});applyProjection()
+   if(simulation)simulation.update(nodes,layoutConnections(edges),forceOptions(),physicsEnabled())
+ else simulation=createNetworkLayout(nodes,layoutConnections(edges),forceOptions(),physicsEnabled(),reprojected=>{geometryDirty ||= reprojected;requestRender()})
+ applyProjection()
    motionChange()
   })
   if(four){
@@ -511,7 +531,7 @@ async function start(){
    $('#network-detail').innerHTML='<h2>Select an organization</h2>'
    history.replaceState(history.state,'',location.pathname);updateProjectionControls();void loadGraph({}).catch(()=>{})
   })
-  const initial=new URL(location.href).searchParams.get('org');if(initial&&data.organizations.some(n=>n.id===initial)){select(initial,false);rebuild()}else rebuild()
+  const initial=new URL(location.href).searchParams.get('org');if(initial&&data.organizations.some(n=>n.id===initial)){select(initial,false);rebuild({incremental:true})}else rebuild({incremental:true})
 
  }catch(error){if(disposed)return;status.textContent=error.message || 'WebGPU network unavailable.';host.hidden=true;console.error(error)}
 }

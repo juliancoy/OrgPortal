@@ -106,7 +106,7 @@ export function forceDither(strength) {
  return force
 }
 
-export function layoutNetwork(nodes, edges, radius, center, { live = false, attraction = 1, repulsion = 1, attractionLaw = "power", repulsionLaw = "power", attractionAlpha = 1, repulsionAlpha = 1, proximity = 1, centralGravity = 0, dither = 0 } = {}) {
+export function layoutNetwork(nodes, edges, radius, center, { live = false, attraction = 1, repulsion = 1, attractionLaw = "power", repulsionLaw = "power", attractionAlpha = 1, repulsionAlpha = 1, proximity = 1, centralGravity = 0, dither = 0, existingSimulation } = {}) {
  const radii=new Map(nodes.map(n=>[n.id,radius(n)])), size=n=>radii.get(n.id)
  const byId=new Map(nodes.map(n=>[n.id,n])), pairs=new Map()
  for(const edge of edges) {
@@ -120,7 +120,8 @@ export function layoutNetwork(nodes, edges, radius, center, { live = false, attr
   else {old.pull=Math.max(old.pull,pull);old.support ||= support}
  }
  const links=[...pairs.values()]
- const simulation=forceSimulation(nodes).stop().velocityDecay(.45)
+ if(existingSimulation)for(const name of ['link','attraction','charge','centralX','centralY','collision','crossings','edgeClearance','dither'])existingSimulation.force(name,null)
+ const simulation=(existingSimulation?existingSimulation.nodes(nodes):forceSimulation(nodes)).stop().velocityDecay(.45)
   .force('link',forceLink(links).id(n=>n.id)
    .distance(e=>size(e.source)+size(e.target)+(e.support?18+30/(1+e.pull):70))
    .strength(e=>Math.min(.9,e.support?proximity*(.55+.2*e.pull/(1+e.pull)):attraction*.08)))
@@ -135,7 +136,7 @@ export function layoutNetwork(nodes, edges, radius, center, { live = false, attr
   .force('edgeClearance',forceNodeEdgeRepulsion(nodes,links,size))
   .force('dither',forceDither(dither))
  // Live callers own the clock: no independent D3 timer or blocking layout pass.
- if(live)return simulation.alpha(.35).alphaDecay(.025).alphaTarget(dither>0?.04:0)
+ if(live)return simulation.alpha(Math.max(existingSimulation?.alpha()??.35,.15)).alphaDecay(.025).alphaTarget(dither>0?.04:0)
  // Fixed integration steps, independent of display refresh rate. Cool to rest.
  for(let i=0;i<360;i++)simulation.tick()
  // D3 collision is a soft velocity constraint. Project remaining penetrations
