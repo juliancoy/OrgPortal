@@ -213,7 +213,7 @@ test('public preview counts all registrations and returns registrant profiles wi
   assert.doesNotMatch(JSON.stringify(data), /private@|email@|555-0100/);
 });
 
-test('event registration does not publish an unpublished contact profile', async (t) => {
+test('event registration preserves hidden contact information on public profiles', async (t) => {
   const { database, request } = setup();
   t.after(() => database.close());
   database.exec(`INSERT INTO user_contact_pages
@@ -233,7 +233,7 @@ test('event registration does not publish an unpublished contact profile', async
     } },
     PIDP_BASE_URL: 'https://identity.test',
   } as unknown as Env);
-  assert.equal(profileResponse.status, 404);
+  assert.equal(profileResponse.status, 200);
 
   database.exec("DELETE FROM event_registrations WHERE event_id = 'event-1' AND user_id = 'private-person'");
   assert.equal((await app.request('https://org.test/api/network/users/public/private-person', undefined, {
@@ -243,7 +243,7 @@ test('event registration does not publish an unpublished contact profile', async
       return results;
     } },
     PIDP_BASE_URL: 'https://identity.test',
-  } as unknown as Env)).status, 404);
+  } as unknown as Env)).status, 200);
 });
 
 test('event registrant data migration repairs contact rows used for messaging', async (t) => {

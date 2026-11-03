@@ -102,18 +102,18 @@ test('consented external relationships publish without membership; restricted cl
  assert.deepEqual(rows.map(r=>[r.class_key,r.status]),[['advisor','active'],['board','pending_confirmation']]);
  const pub=organizationMemberTitleRoutes(async()=>({id:'outsider'}),()=>new Response('error',{status:500}));
  const publicPeople=async()=>await (await pub.request('/public/one/personnel',{}, {DB:f.db.asD1()} as Env)).json() as {people:{titles:string[]}[]};
- assert.deepEqual((await publicPeople()).people[0].titles,['Advisor']);
+ assert.deepEqual((await publicPeople()).people.find(p=>p.titles.includes('Advisor'))!.titles,['Advisor']);
  const action={userId:'new',scheme:'corporation',classKey:'board',action:'confirm',evidenceUrl:'https://example.test/board-resolution'};
  assert.equal((await f.request('/orgs/one/relationships/preview','member',action)).status,403);
  assert.equal((await f.request('/orgs/two/relationships/preview','chair',action)).status,403);
  assert.equal((await f.request('/orgs/one/relationships/preview','chair',{...action,evidenceUrl:undefined})).status,400);
  assert.equal((await f.act('/orgs/one/relationships','chair',action)).status,200);
- assert.deepEqual((await publicPeople()).people[0].titles.sort(),['Advisor','Board member']);
+ assert.deepEqual((await publicPeople()).people.find(p=>p.titles.includes('Advisor'))!.titles.sort(),['Advisor','Board member']);
  const text=JSON.stringify(await publicPeople());assert.ok(!text.includes('new@example.test'));assert.ok(!text.includes('board-resolution'));
  const removal=await f.request('/orgs/one/relationships/preview','new',{...action,action:'revoke',evidenceUrl:undefined});
  const removalText=await removal.text();assert.ok(!removalText.includes('board-resolution'));
  assert.equal((await f.request('/orgs/one/relationships/apply','new',{userId:'new',scheme:'corporation',classKey:'board',action:'revoke',previewId:JSON.parse(removalText).previewId,confirm:true})).status,200);
- assert.deepEqual((await publicPeople()).people[0].titles,['Advisor']);
+ assert.deepEqual((await publicPeople()).people.find(p=>p.titles.includes('Advisor'))!.titles,['Advisor']);
 });
 test('intent conflicts, class validation, cancellation, manager status and optional membership are explicit',async t=>{
  const f=fixture(t);f.db.sql.exec("INSERT INTO organization_personnel_schemes VALUES('one','nonprofit')");
