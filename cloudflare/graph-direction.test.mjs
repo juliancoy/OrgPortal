@@ -13,7 +13,7 @@ test('incoming parents and outgoing children are distinct, keeping the selected 
 })
 test('direction is applied before page limits and remains fixed across hops',async()=>{
  assert.deepEqual(ids(await graph({direction:'parents'},directionFixture(300))),['a','b','d'])
- assert.equal((await graph({direction:'children'},directionFixture(300))).organizations.length,MAX_NODES)
+ assert.equal((await graph({direction:'children',nodeLimit:String(MAX_NODES)},directionFixture(300))).organizations.length,MAX_NODES)
  assert.deepEqual(ids(await graph({direction:'parents',depth:'2'})),['a','b','d','e'])
  assert.deepEqual(ids(await graph({org:'d',direction:'parents'})),['d'])
 })
