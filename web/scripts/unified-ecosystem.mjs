@@ -10,6 +10,7 @@ export function projectNativeEvidence(input,records,directory=[]){
  for(const org of directory){
   const candidates=slugs.get(org.slug)||[],id=orgs.has(org.id)?org.id:candidates.length===1?candidates[0]:org.id
   aliases.set(org.id,id)
+  if(orgs.has(id))orgs.set(id,{...orgs.get(id),name:org.name,portalSlug:org.slug});
   if(!orgs.has(id))orgs.set(id,{id,name:org.name,type:'Organization',category:'general',website:org.source_url||'',relevance:org.description||'',portalSlug:org.slug,directory:true,sourceCategory:'OrgPortal'})
  }
  const bySource=new Map();for(const edge of data.relationships){bySource.set(edge.id,edge);if(edge.financingId)bySource.set(edge.financingId,edge);if(edge.id.startsWith('portal:'))bySource.set(edge.id.slice(7),edge);}

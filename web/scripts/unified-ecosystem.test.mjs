@@ -41,5 +41,5 @@ test('directory aliases require exact unique portal slugs and never matching nam
  const input={organizations:[{id:'source-org',name:'Same name',portalSlug:'verified-slug'}],relationships:[],financing:[]};
  const native=(id,from)=>({id,record_id:id,record_type:'organization_support',from_organization_id:from,to_organization_id:'recipient',from_label:'Same name',to_label:'Recipient',transaction_type:'collaboration',status:'reported'});
  const result=projectNativeEvidence(input,[native('linked','native-org'),native('unrelated','other-org')],[{id:'native-org',slug:'verified-slug',name:'Current name'},{id:'other-org',slug:'other-slug',name:'Same name'}]);
- assert.equal(result.relationships[0].source,'source-org');assert.equal(result.relationships[1].source,'other-org');
+ assert.equal(result.relationships[0].source,'source-org');assert.equal(result.relationships[1].source,'other-org');assert.equal(result.organizations.find(o=>o.id==='source-org').name,'Current name');
 });
