@@ -1,3 +1,5 @@
+import { useTransparentLogo } from './media/transparentLogo'
+import './media/transparent-logo.css'
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import { personnelClasses, personnelSchemes, type PersonnelScheme, type PersonnelClass } from '../../../../shared/organizationPersonnel'
 import './organization-avatar.css'
@@ -5,6 +7,7 @@ import './organization-avatar.css'
 export function OrganizationAvatar({ name, src, status, className = '', children, scheme = 'meetup', titles = [], classKeys = [] }: {
   name: string; src?: string | null; status: PersonnelClass | null; className?: string; children?: ReactNode; scheme?: PersonnelScheme; titles?: string[]; classKeys?: string[]
 }) {
+  const logo = useTransparentLogo()
   const [failedSrc, setFailedSrc] = useState<string | null>(null)
   const assignedClass = Object.entries(personnelSchemes[scheme].classes).find(([key,value]) => classKeys.includes(key) || titles.some(title => title.toLowerCase() === value.label.toLowerCase()))?.[1]
   const classification = scheme !== 'meetup' || classKeys.length ? assignedClass : status ? personnelClasses[status] : null
@@ -13,7 +16,7 @@ export function OrganizationAvatar({ name, src, status, className = '', children
     style={{ '--personnel-color': classification?.color || 'var(--text-muted)' } as CSSProperties}
     role="img" aria-label={`${name} · ${label}`} title={`${name} · ${label}`}>
     {children || (src && failedSrc !== src
-      ? <img src={src} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setFailedSrc(src)} />
+      ? <img src={src} onLoad={logo.inspect} className={logo.isTransparent(src) ? 'transparent-logo' : undefined} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setFailedSrc(src)} />
       : <span aria-hidden="true">{name.trim().slice(0, 1).toUpperCase() || '?'}</span>)}
   </span>
 }

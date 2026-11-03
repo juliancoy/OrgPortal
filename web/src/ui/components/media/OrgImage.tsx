@@ -1,3 +1,5 @@
+import { useTransparentLogo } from './transparentLogo'
+import './transparent-logo.css'
 import { CmsImage } from './CmsImage'
 import { portalAssetPath } from '../../../config/portalBase'
 import { useEffect, useState } from 'react'
@@ -21,6 +23,7 @@ function safeInitial(value: string | undefined): string {
 }
 
 export function OrgImage(props: OrgImageProps) {
+  const logo = useTransparentLogo()
   const { src, alt, className, style, fallbackLetter, fallbackSrc } = props
   const [failedSources, setFailedSources] = useState<string[]>([])
   useEffect(() => { setFailedSources([]) }, [src, fallbackSrc])
@@ -34,7 +37,8 @@ export function OrgImage(props: OrgImageProps) {
       height={160}
       src={portalAssetPath(finalSrc)}
       alt={alt}
-      className={className}
+      onLoad={logo.inspect}
+      className={[className, logo.isTransparent(portalAssetPath(finalSrc)) ? 'transparent-logo' : ''].filter(Boolean).join(' ')}
       style={style}
       data-fallback-letter={safeInitial(fallbackLetter || alt)}
       onError={() => setFailedSources(previous => previous.includes(finalSrc) ? previous : [...previous, finalSrc])}

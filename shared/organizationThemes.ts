@@ -1,3 +1,4 @@
+import { validLogoAppearance, type LogoAppearance } from './logoAppearance'
 export type OrganizationThemeImagery = { icon: string; avatar: string; background: string }
 export function isThemeImage(value: unknown): value is string {
  if(typeof value!=='string'||value.length>2048)return false
@@ -5,7 +6,7 @@ export function isThemeImage(value: unknown): value is string {
  try{const url=new URL(value);return (url.protocol==='https:'||(url.protocol==='http:'&&['localhost','127.0.0.1','[::1]'].includes(url.hostname)))&&!url.username&&!url.password}catch{return false}
 }
 /** Color maps use CSS custom-property names without the leading --. */
-export type OrganizationTheme = { id: string; name: string; light: Record<string, string>; dark: Record<string, string>; imagery?: OrganizationThemeImagery }
+export type OrganizationTheme = { id: string; name: string; light: Record<string, string>; dark: Record<string, string>; imagery?: OrganizationThemeImagery; logoAppearance?: LogoAppearance }
 export type OrganizationThemes = { defaultTheme: string; themes: OrganizationTheme[] }
 export const THEME_ID = /^[a-z][a-z0-9-]{0,63}$/
 export const THEME_COLOR_TOKEN = /^[a-zA-Z][a-zA-Z0-9-]{0,63}$/
@@ -20,6 +21,7 @@ export function parseOrganizationThemes(value: unknown): OrganizationThemes | nu
     if (!theme || typeof theme !== 'object' || typeof theme.id !== 'string' || !THEME_ID.test(theme.id) || ids.has(theme.id)
       || typeof theme.name !== 'string' || !theme.name.trim() || theme.name.length > 80) return null
     ids.add(theme.id)
+    if (theme.logoAppearance !== undefined && !validLogoAppearance(theme.logoAppearance)) return null
     if(theme.imagery!==undefined&&(!theme.imagery||typeof theme.imagery!=='object'||Array.isArray(theme.imagery)||!['icon','avatar','background'].every(key=>isThemeImage(theme.imagery![key as keyof OrganizationThemeImagery]))||Object.keys(theme.imagery).some(key=>!['icon','avatar','background'].includes(key))))return null
     for (const mode of ['light', 'dark'] as const) {
       const colors = theme[mode]

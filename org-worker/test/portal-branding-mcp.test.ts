@@ -101,3 +101,13 @@ test('named themes reject unknown defaults, duplicates, unsafe CSS and incomplet
     { ...config, themes: [{ ...theme, light: Object.fromEntries(Array.from({ length: 129 }, (_, i) => [`color-${i}`, '#123456'])) }] },
   ]) assert.equal(organizationThemesSchema.safeParse(value).success, false);
 });
+
+
+test('logo appearance accepts bounded color choices and rejects CSS injection', () => {
+ const theme={id:'logo',name:'Logo',light:{primary:'#123456'},dark:{primary:'#ABCDEF'}};
+ const config=(logoAppearance:unknown)=>({defaultTheme:'logo',themes:[{...theme,logoAppearance}]});
+ const logo={background:'solid',color:'#F7F5EF',secondaryColor:'#E8E5DD',shape:'circle'};
+ assert.equal(organizationThemesSchema.safeParse(config(logo)).success,true);
+ assert.equal(organizationThemesSchema.safeParse(config({...logo,background:'gradient'})).success,true);
+ for(const change of [{color:'red;display:none'},{shape:'fill'},{background:'url(test)'},{extra:'unexpected'}])assert.equal(organizationThemesSchema.safeParse(config({...logo,...change})).success,false);
+});
