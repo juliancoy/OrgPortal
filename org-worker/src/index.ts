@@ -47,6 +47,7 @@ import { newsletterSyncRoutes } from './newsletterSync';
 import { replicateChangeJournal } from './changeJournal';
 import {onboardingSettingsRoutes} from './onboardingSettings';
 import { importFinancing, financingAgencyReport, financingRecipientReport } from './financingRecords';
+import { importMarylandComptroller, marylandComptrollerStatus } from './marylandComptroller';
 import { provisionOrganizationChat, provisionPendingOrganizationChats } from './organizationChat';
 import { runOrganizationOperation } from './organizationMcp';
 import { notificationPreferenceRoutes } from './notificationPreferences';
@@ -3279,6 +3280,18 @@ app.get("/api/network/financing/recipients/:id", async c => {
   try { c.header("Cache-Control", "public, max-age=60"); return c.json(await financingRecipientReport(c.env.DB,c.req.param("id"))); }
   catch(error) { return eventErrorResponse(error,c.env,c.req.raw); }
 });
+app.get("/api/network/orgs/:organizationId/comptroller/status", async c => {
+  const user=await currentUser(c.env,c.req.raw);
+  try { c.header('Cache-Control','no-store'); return c.json(await marylandComptrollerStatus(c.env.DB,organizationActor(user,c.env),c.req.param('organizationId'),c.req.query('previewId'))); }
+  catch(error) { return eventErrorResponse(error,c.env,c.req.raw); }
+});
+
+app.post("/api/network/orgs/:organizationId/comptroller/import", bodyLimit({maxSize:2*1024*1024}), async c => {
+  const user=await currentUser(c.env,c.req.raw);
+  try { return c.json(await importMarylandComptroller(c.env.DB,organizationActor(user,c.env),{...await c.req.json<Record<string,unknown>>(),organizationId:c.req.param("organizationId")})); }
+  catch(error) { return eventErrorResponse(error,c.env,c.req.raw); }
+});
+
 app.post("/api/network/orgs/:organizationId/financing/import", async c => {
   const user=await currentUser(c.env,c.req.raw);
   try { return c.json(await importFinancing(c.env.DB,organizationActor(user,c.env),{...await c.req.json<Record<string,unknown>>(),organizationId:c.req.param("organizationId")})); }
