@@ -1,6 +1,12 @@
 import { isLifeTechMedicalEvent, lifeTechEventCategory, type MedicalEventCandidate } from '../../shared/eventRelevance';
 import { Hono } from 'hono';
 
+// SQLite accepts ISO offsets with a colon; imported calendars also use -0500.
+// Normalize each timestamp before parsing so an invalid end cannot hide a valid start.
+const julian = (column: string) => `julianday(CASE WHEN substr(${column},-5,1) IN ('+','-') AND substr(${column},-4) GLOB '[0-9][0-9][0-9][0-9]'
+  THEN substr(${column},1,length(${column})-2) || ':' || substr(${column},-2) ELSE ${column} END)`;
+const starts = `COALESCE(${julian('e.starts_at')},julianday(e.event_date || 'T12:00:00Z'))`;
+
 /** Rank existing public events without retaining a second copy of account activity. */
 export function eventRecommendationRoutes<Env extends { DB: D1Database }, Row>(
   auth: (env: Env, request: Request) => Promise<{ id: string }>,
@@ -64,14 +70,14 @@ export function eventRecommendationRoutes<Env extends { DB: D1Database }, Row>(
         SELECT past.host_org_id, past.host_user_id, COUNT(*) AS n
         FROM event_registrations r JOIN events past ON past.id = r.event_id
         WHERE r.user_id = (SELECT id FROM viewer)
-          AND julianday(COALESCE(past.starts_at,past.event_date)) BETWEEN julianday('now','-1 year') AND julianday('now')
+          AND COALESCE(${julian('past.starts_at')},julianday(past.event_date)) BETWEEN julianday('now','-1 year') AND julianday('now')
         GROUP BY past.host_org_id, past.host_user_id
       ),
       ranked AS (
         SELECT e.id, COALESCE(x.community,0) AS community,
           CASE WHEN e.starts_at IS NULL AND e.event_date IS NOT NULL
             THEN e.event_date < (SELECT today FROM options)
-            ELSE COALESCE(julianday(COALESCE(e.ends_at,e.starts_at)), julianday('now')) < julianday('now') END AS past,
+            ELSE COALESCE(${julian('e.ends_at')},${julian('e.starts_at')},julianday(e.event_date || 'T23:59:59Z'),julianday('now')) < julianday('now') END AS past,
           100 * EXISTS (SELECT 1 FROM event_registrations r WHERE r.event_id = e.id AND r.user_id = (SELECT id FROM viewer))
           + 90 * COALESCE(e.host_user_id = (SELECT id FROM viewer),0)
           + 60 * EXISTS (SELECT 1 FROM organization_follows f WHERE f.organization_id = e.host_org_id AND f.user_id = (SELECT id FROM viewer))
@@ -81,7 +87,7 @@ export function eventRecommendationRoutes<Env extends { DB: D1Database }, Row>(
               OR (e.host_user_id IS NOT NULL AND h.host_user_id = e.host_user_id)),0))
           + 80 * COALESCE(x.community,0)
           + MIN(10,COALESCE(r.n,0)) + MIN(10,COALESCE(m.n,0)) AS relevance,
-          julianday(COALESCE(e.starts_at,e.event_date)) AS starts
+          ${starts} AS starts
         FROM events e LEFT JOIN registrations r ON r.event_id = e.id
         LEFT JOIN members m ON m.organization_id = e.host_org_id
         LEFT JOIN context x ON x.id=e.id
@@ -91,8 +97,8 @@ export function eventRecommendationRoutes<Env extends { DB: D1Database }, Row>(
         o.image_url AS organization_image_url, o.links_json AS organization_links_json
       FROM ranked k JOIN events e ON e.id = k.id LEFT JOIN organizations o ON o.id = e.host_org_id
       WHERE ((SELECT period FROM options)='all' OR k.past=CASE WHEN (SELECT period FROM options)='past' THEN 1 ELSE 0 END)
-        AND ((SELECT after FROM options) IS NULL OR julianday(COALESCE(e.starts_at,e.event_date || 'T12:00:00Z')) >= julianday((SELECT after FROM options)))
-        AND ((SELECT before FROM options) IS NULL OR julianday(COALESCE(e.starts_at,e.event_date || 'T12:00:00Z')) < julianday((SELECT before FROM options)))
+        AND ((SELECT after FROM options) IS NULL OR ${starts} >= julianday((SELECT after FROM options)))
+        AND ((SELECT before FROM options) IS NULL OR ${starts} < julianday((SELECT before FROM options)))
       ORDER BY CASE WHEN (SELECT chronological FROM options)=1 THEN 0 ELSE k.past END ASC, CASE WHEN k.past = 0 AND (SELECT chronological FROM options)=0 THEN k.relevance END DESC,
         k.starts IS NULL, CASE WHEN k.past = 0 OR (SELECT chronological FROM options)=1 THEN k.starts END ASC,
         CASE WHEN k.past = 1 THEN k.starts END DESC, e.id ASC LIMIT ? OFFSET ?`)

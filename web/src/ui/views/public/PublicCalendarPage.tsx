@@ -1,3 +1,4 @@
+import {eventPreviewText as text} from './eventPreviewText'
 import lifetechBrand from '../../../../../shared/lifetechBrand.json'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
@@ -15,7 +16,6 @@ type CommunityEvent = {
  location?:string|null;image_url?:string|null;organization_name?:string|null;host_org_name?:string|null;community_event?:boolean;tags?:string[]
 }
 const topics=[['all','All events'],['community','LifeTech community'],['medical','Medicine & health'],['biotech','Biotech & research']] as const
-function text(value?:string|null) { return (value||'').replace(/<[^>]*>/g,' ').replace(/&amp;/g,'&').replace(/\s+/g,' ').trim() }
 function dateKey(event:CommunityEvent) {return eventCalendarDateKey(event.starts_at||event.event_date||'')}
 function eventDate(event:CommunityEvent) {return new Date(event.starts_at||(event.event_date?`${event.event_date}T12:00:00-05:00`:''))}
 function dayParts(event:CommunityEvent) {
@@ -39,7 +39,7 @@ function EventCard({event}:{event:CommunityEvent}) {
   <div className="lte-card-copy">
    <p className="lte-card-source">{event.community_event?'LifeTech community':event.organization_name||event.host_org_name||'Around the region'}</p>
    <h3><Link to={`/events/${encodeURIComponent(event.slug)}`}>{event.title}</Link></h3>
-   <div className="lte-meta"><span><Clock3 size={14} aria-hidden="true"/>{eventTime(event)}</span>{event.location&&<span><MapPin size={14} aria-hidden="true"/>{event.location}</span>}</div>
+   <div className="lte-meta"><span><Clock3 size={14} aria-hidden="true"/>{eventTime(event)}</span>{event.location&&<span><MapPin size={14} aria-hidden="true"/>{text(event.location)}</span>}</div>
    {event.description&&<p className="lte-card-description">{text(event.description)}</p>}
   </div>
   <Link className="lte-card-link" to={`/events/${encodeURIComponent(event.slug)}`} aria-label={`View ${event.title}`}><ArrowRight size={20} aria-hidden="true"/></Link>
@@ -101,7 +101,7 @@ export function PublicCalendarPage() {
    <div className="lte-heading-note"><CalendarDays size={23} aria-hidden="true"/><p>Baltimore & beyond<span>Health · Medicine · Biotech</span></p></div>
   </header>
   {featured&&<article className="lte-featured">
-   <div className="lte-featured-copy"><p className="lte-eyebrow">Coming up with LifeTech</p><h2><Link to={`/events/${encodeURIComponent(featured.slug)}`}>{featured.title}</Link></h2>{featured.description&&<p className="lte-featured-description">{text(featured.description)}</p>}<div className="lte-meta"><span><Clock3 size={16} aria-hidden="true"/>{eventTime(featured)}</span>{featured.location&&<span><MapPin size={16} aria-hidden="true"/>{featured.location}</span>}</div><div className="lte-featured-actions"><Link className="lte-primary-link" to={`/events/${encodeURIComponent(featured.slug)}`}>Explore event <ArrowRight size={17} aria-hidden="true"/></Link>{/demo day/i.test(featured.title)&&<Link to={`/events/${encodeURIComponent(featured.slug)}#submissions`} aria-label="Submissions and voting">Submissions <ArrowRight size={16} aria-hidden="true"/></Link>}</div></div>
+   <div className="lte-featured-copy"><p className="lte-eyebrow">Coming up with LifeTech</p><h2><Link to={`/events/${encodeURIComponent(featured.slug)}`}>{featured.title}</Link></h2>{featured.description&&<p className="lte-featured-description">{text(featured.description)}</p>}<div className="lte-meta"><span><Clock3 size={16} aria-hidden="true"/>{eventTime(featured)}</span>{featured.location&&<span><MapPin size={16} aria-hidden="true"/>{text(featured.location)}</span>}</div><div className="lte-featured-actions"><Link className="lte-primary-link" to={`/events/${encodeURIComponent(featured.slug)}`}>Explore event <ArrowRight size={17} aria-hidden="true"/></Link>{/demo day/i.test(featured.title)&&<Link to={`/events/${encodeURIComponent(featured.slug)}#submissions`} aria-label="Submissions and voting">Submissions <ArrowRight size={16} aria-hidden="true"/></Link>}</div></div>
    <div className="lte-featured-date"><span>Save the date</span><EventDate event={featured}/><small>{dateKey(featured)?`${eventDate(featured).toLocaleDateString('en-US',{timeZone:TIME_ZONE,weekday:'long'})} · ${dateKey(featured).slice(0,4)}`:'Date to be confirmed'}</small></div>
   </article>}
   <div className="lte-controls">

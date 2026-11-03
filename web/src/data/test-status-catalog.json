@@ -4665,6 +4665,20 @@
       ]
     },
     {
+      "id": "suite-web-src-ui-views-public-eventPreviewText-test-ts",
+      "label": "web/src/ui/views/public/eventPreviewText.test.ts",
+      "category": "Events and services",
+      "source": "web/src/ui/views/public/eventPreviewText.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "eventPreviewText.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-web-src-ui-views-public-organizationEvents-test-ts",
       "label": "web/src/ui/views/public/organizationEvents.test.ts",
       "category": "Events and services",
