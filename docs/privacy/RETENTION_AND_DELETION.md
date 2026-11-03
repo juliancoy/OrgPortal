@@ -544,3 +544,22 @@ longer appear in the queue. Include this private store in account erasure by
 `user_id`; exclude it from public replicas and immutable exports. Restore must
 reapply expiry and verified erasures before serving requests. Production migration
 0127 and scheduled cleanup remain unverified until deployment.
+
+## Browser chat queue and request acceptance
+
+The origin-local `orgportal-chat-outbox-v1` IndexedDB store holds messages queued
+with Send while chat acceptance or encryption readiness is pending. Message bodies
+are encrypted to this browser's own keys; account/conversation IDs, selected mode,
+client ID and creation time remain local metadata. Queued messages expire after
+seven days and are deleted on retrieval after expiry, on confirmed delivery, on
+Cancel, or when forgetting that account's browser encryption keys. Expired messages
+cannot send. Sign-out preserves the encrypted queue for the same account; other
+accounts cannot resume it. Clear the account queue or site data on account closure.
+Browser/OS backup copies require device-owner deletion. Pending message content
+never enters server storage, public replication or server backups. Delivery resumes
+in order while the chat is open, using the original security level.
+
+The server stores each DM member's accepted security revision on their membership,
+with the same retention, deletion and backup handling as that membership. No
+separate acceptance history is retained. See [queue lifecycle and migration
+review](../CHAT_OUTBOX.md).
