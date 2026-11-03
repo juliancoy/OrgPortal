@@ -69,8 +69,9 @@ not become graph edges. Unresolved counterparties remain source-label groups.
 `created_at` / `activated_at` are the annual manual review clocks. No automatic
 expiry is claimed. Keep public evidence only; do not import private contact,
 credential, membership or subscriber datasets. The new tables are excluded from
-the immutable journal so corrections/deletions can be honored. A reviewed dataset
-deletion cascades its source records. Regenerate graph exports/indexes after any
+the immutable journal so corrections/deletions can be honored. After publishing a reviewed replacement, operator MCP preview/apply with
+`action=delete_archived` deletes the superseded dataset and cascades its source
+records. Active datasets cannot be deleted through this operation. Regenerate graph exports/indexes after any
 correction or deletion, remove obsolete local/browser/downloaded exports, and
 reapply confirmed deletions before restoring backups. Include operator audit actor
 links in the existing account-erasure process. Review archived versions annually

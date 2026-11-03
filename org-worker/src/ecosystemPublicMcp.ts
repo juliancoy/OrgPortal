@@ -10,9 +10,9 @@ export function registerEcosystemDatasetTools(server:McpServer,db:D1Database,ide
   const writing=operation!=='status';
   const name=operation==='status'?'get_ecosystem_dataset_status':`${operation}_ecosystem_dataset`;
   server.registerTool(name,{
-   description:operation==='status'?'Read public ecosystem dataset counts/checksums or inspect a one-use operation receipt. Requires operator access.':`${operation==='preview'?'Preview':'Apply'} reviewed public fiscal and non-fiscal graph evidence in the transactional database. Requires operator access; apply requires confirm=true and the exact one-use previewId. No account balances change.`,
+   description:operation==='status'?'Read public ecosystem dataset counts/checksums or inspect a one-use operation receipt. Requires operator access.':`${operation==='preview'?'Preview':'Apply'} reviewed public fiscal and non-fiscal graph evidence in the transactional database. Requires operator access; apply requires confirm=true and the exact one-use previewId. Supports staging, publication and reviewed deletion of superseded archived datasets. No account balances change.`,
    inputSchema:writing?ecosystemImportSchema:target,
-   annotations:{readOnlyHint:operation!=='apply',destructiveHint:false,openWorldHint:false},
+   annotations:{readOnlyHint:operation!=='apply',destructiveHint:operation==='apply',openWorldHint:false},
    _meta:{securitySchemes:[{type:'oauth2',scopes:writing?['org:portal.read','org:portal.write']:['org:portal.read']}]},
   },async args=>{
    try{

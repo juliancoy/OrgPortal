@@ -6,7 +6,7 @@ export const collections=['organizations','relationships','financing','events','
 const digest=z.string().regex(/^[a-f0-9]{64}$/);
 const row=z.object({collection:z.enum(collections),key:digest,value:z.record(z.string(),z.unknown()),sha256:digest}).strict();
 export const ecosystemImportSchema=z.object({organizationId:z.string().min(1).max(200),datasetId:digest,
- action:z.enum(['stage','publish']),rows:z.array(row).max(200).default([]),previewId:z.string().uuid().optional(),confirm:z.boolean().optional()}).strict();
+ action:z.enum(['stage','publish','delete_archived']),rows:z.array(row).max(200).default([]),previewId:z.string().uuid().optional(),confirm:z.boolean().optional()}).strict();
 export async function ecosystemDatasetStatus(db:D1Database,actor:OrganizationActor,organizationId:string,datasetId:string,previewId?:string){
  if(!actor.isOperator)throw new EventIntegrationError(403,'Operator access required');
  await authorizeOrganization(db,actor,'manage',organizationId);
@@ -26,7 +26,7 @@ export async function importEcosystemDataset(db:D1Database,actor:OrganizationAct
  const {confirm,previewId,...changes}=parsed.data;
  await authorizeOrganization(db,actor,'manage',changes.organizationId);await enforceEventRateLimit(db,actor.id);
  if(changes.action==='stage'&&!changes.rows.length)throw new EventIntegrationError(400,'Stage requires records');
- if(changes.action==='publish'&&changes.rows.length)throw new EventIntegrationError(400,'Publish cannot change records');
+ if(changes.action!=='stage'&&changes.rows.length)throw new EventIntegrationError(400,'Publish cannot change records');
  const keys=new Set<string>();
  for(const r of changes.rows){
   const key=`${r.collection}:${r.key}`;if(keys.has(key))throw new EventIntegrationError(400,'Duplicate source key');keys.add(key);
@@ -34,7 +34,8 @@ export async function importEcosystemDataset(db:D1Database,actor:OrganizationAct
   if(['organizations','relationships','events'].includes(r.collection)&&typeof r.value.id!=='string')throw new EventIntegrationError(400,'Source ID required');
  }
  const current=await db.prepare('SELECT state FROM ecosystem_public_datasets WHERE id=?').bind(changes.datasetId).first<{state:string}>();
- if(current&&current.state!=='staging')throw new EventIntegrationError(409,'Published datasets are immutable; use a new reviewed version');
+ if(changes.action==='delete_archived'&&current?.state!=='archived')throw new EventIntegrationError(409,'Only superseded archived datasets can be deleted; publish a reviewed correction first');
+ if(changes.action!=='delete_archived'&&current&&current.state!=='staging')throw new EventIntegrationError(409,'Published datasets are immutable; use a new reviewed version');
  const previous=await db.prepare(`SELECT collection,record_key,sha256 FROM ecosystem_public_records WHERE dataset_id=?
  AND (collection || ':' || record_key) IN (SELECT value FROM json_each(?))`).bind(changes.datasetId,JSON.stringify([...keys])).all<{collection:string;record_key:string;sha256:string}>();
  const prior=new Map(previous.results.map(r=>[r.collection+':'+r.record_key,r.sha256]));
@@ -56,6 +57,8 @@ export async function importEcosystemDataset(db:D1Database,actor:OrganizationAct
   if(changes.action==='stage'){
    statements.push(db.prepare("INSERT OR IGNORE INTO ecosystem_public_datasets(id,state,created_at) VALUES(?,'staging',?)").bind(changes.datasetId,now));
    for(const r of changes.rows)if(!prior.has(r.collection+':'+r.key))statements.push(db.prepare('INSERT INTO ecosystem_public_records(dataset_id,collection,record_key,payload_json,sha256) VALUES(?,?,?,?,?)').bind(changes.datasetId,r.collection,r.key,canonicalJson(r.value),r.sha256));
+  }else if(changes.action==='delete_archived'){
+   statements.push(db.prepare("DELETE FROM ecosystem_public_datasets WHERE id=? AND state='archived'").bind(changes.datasetId));
   }else{
    statements.push(db.prepare("UPDATE ecosystem_public_datasets SET state='archived' WHERE state='active'"));
    statements.push(db.prepare("UPDATE ecosystem_public_datasets SET state=CASE WHEN (SELECT count(*) FROM ecosystem_public_records WHERE dataset_id=?)=? THEN 'active' ELSE 'invalid' END,activated_at=? WHERE id=? AND state='staging'").bind(changes.datasetId,publishedCount,now,changes.datasetId));

@@ -74,3 +74,14 @@ test('portal snapshot aliases never duplicate their native non-fiscal support in
  assert.equal((await publicEcosystemRecords(db.asD1(),'relationships')).records.length,1);
  }finally{db.sqlite.close();}
 });
+
+test('reviewed archive deletion cascades source copies while active datasets stay protected',async()=>{
+ const db=setup();try{
+ const first=await fixture();await apply(db,first);await apply(db,{...first,action:'publish',rows:[]});
+ await assert.rejects(importEcosystemDataset(db.asD1(),actor,{...first,action:'delete_archived',rows:[]}),/Only superseded/);
+ const second=await fixture({description:'Reviewed correction'});await apply(db,second);await apply(db,{...second,action:'publish',rows:[]});
+ await apply(db,{...first,action:'delete_archived',rows:[]});
+ assert.equal(db.sqlite.prepare('SELECT count(*) n FROM ecosystem_public_records WHERE dataset_id=?').get(first.datasetId)!.n,0);
+ assert.equal((await publicEcosystemRecords(db.asD1(),'relationships')).datasetId,second.datasetId);
+ }finally{db.sqlite.close();}
+});
