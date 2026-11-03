@@ -1,3 +1,4 @@
+import { BioMarkdown } from '../../components/profile/BioMarkdown'
 import './organizationDirectory.css'
 import { invalidatePublicOrganizationData } from '../../../data/publicOrganization/cache'
 import { loadPublicOrganizationDirectory, peekPublicOrganizationDirectory } from '../../../data/publicOrganization/organizations'
@@ -249,7 +250,7 @@ export function PublicOrganizationsPage() {
                 {org.is_disputed ? ` • Disputed ownership (${org.pending_challenges_count})` : ''}
                 {myOrgRoles.has(org.slug) ? ' • Your organization' : ''}
               </p>
-              {org.description ? <p className="organization-directory-description" style={{ margin: 0, overflowWrap: 'anywhere' }}>{org.description}</p> : null}
+              {org.description ? <BioMarkdown className="organization-directory-description" value={org.description} /> : null}
               {(() => {
                 const links = Array.from(
                   new Set(
