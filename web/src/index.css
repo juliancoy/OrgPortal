@@ -9649,12 +9649,15 @@ a.public-event-comment-avatar:focus-visible { outline: 3px solid var(--primary);
 .public-event-prize-details > h3 { margin: 0 0 10px; font-size: 1rem; }
 @media(max-width:480px) { .public-event-prize-link > svg { display: none; } }
 
-/* Chat protection: explicit labels accompany the requested blue/green/purple palette. */
-.chat-encryption-blue { --chat-protection-ink: #174ea6; --chat-protection-bg: #e8f0fe; }
-.chat-encryption-green { --chat-protection-ink: #166534; --chat-protection-bg: #dcfce7; }
-.chat-encryption-purple { --chat-protection-ink: #6b21a8; --chat-protection-bg: #f3e8ff; }
-.chat-encryption-badge, .chat-security-legend > span { color: var(--chat-protection-ink); background: var(--chat-protection-bg); border: 1px solid currentColor; border-radius: 999px; padding: .2rem .55rem; font-size: .75rem; line-height: 1.5; }
-.chat-encryption-badge { display: inline-flex; align-items: center; gap: .35rem; max-width: 100%; overflow-wrap: anywhere; }
+/* Quiet encryption markers; the level is available on hover and focus. */
+.chat-encryption-blue { --chat-protection-dot: #3b82f6; }
+.chat-encryption-green { --chat-protection-dot: #22c55e; }
+.chat-encryption-purple { --chat-protection-dot: #a855f7; }
+.chat-encryption-badge { position: relative; display: inline-grid; place-items: center; flex: 0 0 16px; width: 16px; height: 16px; vertical-align: middle; border-radius: 50%; }
+.chat-encryption-badge::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--chat-protection-dot); }
+.chat-encryption-badge::after { content: attr(aria-label); display: none; position: absolute; z-index: 10; top: calc(100% + 4px); left: 0; width: max-content; max-width: 240px; padding: 6px 9px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); color: var(--text-primary); font-size: .75rem; font-weight: 400; line-height: 1.4; text-align: left; pointer-events: none; box-shadow: 0 3px 10px #0003; }
+.chat-encryption-badge:hover::after, .chat-encryption-badge:focus-visible::after { display: block; }
+.chat-encryption-badge:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .chat-security-controls { display: flex; align-items: flex-start; flex-wrap: wrap; gap: .6rem; margin-block: .7rem; }
 .chat-security-controls details { flex: 1 1 180px; min-width: 0; }
 .chat-security-controls details[open] { flex-basis: 100%; }
@@ -9665,7 +9668,6 @@ a.public-event-comment-avatar:focus-visible { outline: 3px solid var(--primary);
 .chat-security-settings select { max-width: 100%; width: 100%; min-width: 0; min-height: 44px; }
 .chat-security-settings button { white-space: normal; }
 .chat-security-settings .portal-button-secondary { color: var(--text-primary); background: var(--panel-2); border: 1px solid var(--border-input); }
-.chat-security-legend { display: flex; flex-wrap: wrap; gap: .4rem; }
 .chat-security-wait { flex-basis: 100%; margin: 0; font-size: .875rem; }
 .native-chat-shell .portal-chat-room-header:has(.chat-security-controls details[open]) { max-height: 50dvh; overflow-y: auto; }
 .native-chat-message-footer { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }

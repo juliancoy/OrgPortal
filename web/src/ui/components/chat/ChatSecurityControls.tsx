@@ -2,12 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { CHAT_ENCRYPTION_LABELS, type ChatEncryptionMode, type ChatSecurity } from '../../../../../shared/chatEncryption'
 import type { NativeChatApi } from '../../../chat/nativeChatApi'
 
-export function ChatEncryptionBadge({ mode, compact = false }: { mode: ChatEncryptionMode; compact?: boolean }) {
+export function ChatEncryptionBadge({ mode }: { mode: ChatEncryptionMode }) {
   const descriptor = CHAT_ENCRYPTION_LABELS[mode]
-  return <span className={`chat-encryption-badge chat-encryption-${descriptor.color}`} title={descriptor.description}>
-    <span aria-hidden="true">{mode === 'none' ? '○' : '●'}</span>
-    {compact ? mode === 'none' ? 'Not encrypted' : mode === 'rsa' ? 'RSA' : 'RSA + ML-KEM' : descriptor.label}
-  </span>
+  const level = mode === 'none' ? 'Not encrypted' : mode === 'rsa' ? 'RSA encryption' : 'RSA + ML-KEM (Kyber)'
+  return <span className={`chat-encryption-badge chat-encryption-${descriptor.color}`}
+    role="img" aria-label={`Encryption: ${level}`} title={level} tabIndex={0} />
 }
 
 export function ChatSecurityControls({ api, conversationId, initialMode = 'none', onChange, onKeysForgotten, onPendingChange }: {
@@ -104,7 +103,6 @@ export function ChatSecurityControls({ api, conversationId, initialMode = 'none'
           </select>
         </label> : <p>Only a current chat administrator can change this setting.</p>}
         <p>{CHAT_ENCRYPTION_LABELS[mode].description}</p>
-        <p className="chat-security-legend"><span className="chat-encryption-blue">Blue: not encrypted</span><span className="chat-encryption-green">Green: RSA</span><span className="chat-encryption-purple">Purple: RSA + ML-KEM</span></p>
         {mode !== 'none' && <>
           <p>Keys stay in this browser. A new browser cannot read earlier encrypted messages. Chat membership and message metadata remain visible to the service.</p>
           <p>This experimental protocol uses the service’s device directory. It has not had an independent security audit or identity-key verification. Calls and earlier messages are not covered.</p>
