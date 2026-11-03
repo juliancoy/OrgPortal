@@ -1601,6 +1601,20 @@
       ]
     },
     {
+      "id": "suite-org-worker-test-people-directory-bots-test-ts",
+      "label": "org-worker/test/people-directory-bots.test.ts",
+      "category": "Organizations and membership",
+      "source": "org-worker/test/people-directory-bots.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "people-directory-bots.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-org-worker-test-personal-search-test-ts",
       "label": "org-worker/test/personal-search.test.ts",
       "category": "User interface and integrations",
